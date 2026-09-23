@@ -4,6 +4,7 @@ import {
   CONTENT_SCRIPT_FILES,
   CONTENT_STYLE_FILES
 } from "./src/shared/constants.js";
+import { getProviderHostPermissionPattern } from "./src/shared/provider-config.js";
 import { getOriginMatchPattern, normalizeOrigin } from "./src/shared/url.js";
 
 const $ = (id) => document.getElementById(id);
@@ -34,7 +35,9 @@ autoBtn.addEventListener("click", async () => {
         origin: site.origin
       });
       if (!response?.ok) throw new Error(response?.error || "关闭自动翻译失败");
-      await chrome.permissions.remove({ origins: [site.match] });
+      if (!(await isProviderPermission(site.match))) {
+        await chrome.permissions.remove({ origins: [site.match] });
+      }
       setStatus("已关闭本站自动增量翻译；已有 IndexedDB 缓存仍保留。");
     } else {
       const granted = await chrome.permissions.request({ origins: [site.match] });
@@ -200,4 +203,14 @@ function formatTime(timestamp) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
+}
+
+
+async function isProviderPermission(pattern) {
+  const { openAICompatible = {} } = await chrome.storage.local.get(["openAICompatible"]);
+  try {
+    return getProviderHostPermissionPattern(openAICompatible.baseUrl) === pattern;
+  } catch {
+    return false;
+  }
 }

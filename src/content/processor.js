@@ -94,6 +94,7 @@
 
     const response = await sendRuntimeMessage({
       type: messages.background.TRANSLATE_BATCH,
+      pageUrl,
       segments: uncached.map(({ id, text }) => ({ id, text }))
     });
     if (!response?.ok) throw new Error(response?.error || "翻译失败");

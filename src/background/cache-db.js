@@ -1,5 +1,6 @@
-import { CACHE_SCHEMA_VERSION } from "../shared/constants.js";
+import { CACHE_SCHEMA_VERSION, PROVIDER_IDS } from "../shared/constants.js";
 import { byteLength, sha256 } from "../shared/hash.js";
+import { normalizeOpenAIBaseUrl } from "../shared/provider-config.js";
 import { normalizeSourceText } from "../shared/text.js";
 import { normalizeUrl } from "../shared/url.js";
 
@@ -209,13 +210,19 @@ export async function pruneCache(maxBytes) {
 }
 
 async function getConfigHash(config) {
+  const provider = String(config?.provider || PROVIDER_IDS.DEEPSEEK).trim();
   const payload = {
     cacheSchema: CACHE_SCHEMA_VERSION,
-    provider: String(config?.provider || "deepseek").trim(),
+    provider,
     model: String(config?.model || "").trim(),
     targetLanguage: String(config?.targetLanguage || "").trim(),
     prompt: String(config?.prompt || "").trim()
   };
+
+  if (provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
+    payload.endpoint = normalizeOpenAIBaseUrl(config?.apiBaseUrl || "");
+  }
+
   return sha256(JSON.stringify(payload));
 }
 

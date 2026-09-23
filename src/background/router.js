@@ -8,7 +8,7 @@ import {
   pruneCache,
   storeTranslations
 } from "./cache-db.js";
-import { getConfig } from "./config.js";
+import { getConfig, getEffectiveConfig } from "./config.js";
 import { registerAutoSite, unregisterAutoSite } from "./auto-sites.js";
 import { testProvider, translateBatch } from "./providers/index.js";
 
@@ -24,28 +24,31 @@ export function registerMessageRouter() {
 export async function handleBackgroundMessage(message) {
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await getConfig();
+      const config = await getEffectiveConfig(message.pageUrl);
       return { translations: await translateBatch(message.segments, config) };
     }
     case BACKGROUND_MESSAGES.TEST_API: {
-      const config = await getConfig();
+      const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
     case BACKGROUND_MESSAGES.CACHE_LOOKUP:
       return lookupTranslations({
         pageUrl: message.pageUrl,
         segments: message.segments,
-        config: await getConfig()
+        config: await getEffectiveConfig(message.pageUrl)
       });
     case BACKGROUND_MESSAGES.CACHE_STORE:
       return storeTranslations({
         pageUrl: message.pageUrl,
         pageTitle: message.pageTitle,
         items: message.items,
-        config: await getConfig()
+        config: await getEffectiveConfig(message.pageUrl)
       });
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
-      return getPageCacheStatus({ pageUrl: message.pageUrl, config: await getConfig() });
+      return getPageCacheStatus({
+        pageUrl: message.pageUrl,
+        config: await getEffectiveConfig(message.pageUrl)
+      });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_PAGE:
       return clearPageCache({ pageUrl: message.pageUrl });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_ALL:

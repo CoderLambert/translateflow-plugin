@@ -75,12 +75,19 @@
       if (!enabled && state.auto) disableAutoMode({ announce: false });
     }
 
-    if (changes.apiKey && state.auto) {
+    if ((changes.apiKey || changes.openAICompatible) && state.auto) {
       state.autoBackoffUntil = 0;
       if (state.pending.size) scheduleAutoDrain(120);
     }
 
-    if (state.auto && (changes.model || changes.prompt || changes.targetLanguage || changes.provider)) {
+    if (state.auto && (
+      changes.provider
+      || changes.model
+      || changes.prompt
+      || changes.targetLanguage
+      || changes.openAICompatible
+      || changes.siteProfiles
+    )) {
       state.autoBackoffUntil = 0;
       clearTranslations();
       state.currentPageIdentity = getPageIdentity(location.href);

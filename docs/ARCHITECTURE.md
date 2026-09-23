@@ -3,109 +3,82 @@
 ## Dependency direction
 
 ```text
-UI (popup/options) ───────┐
-                         v
-                 shared contracts
-                         ^
-                         |
-content scripts -> runtime messages -> background router
-                                      |       |       |
-                                      v       v       v
-                                    cache   provider  auto-sites
+UI (popup/options)
+        |
+        v
+shared contracts / config normalization
+        |
+        +--------------------------+
+        |                          |
+        v                          v
+content scripts -> messages -> background router
+                                |
+                                v
+                    getEffectiveConfig(pageUrl)
+                         /      |       \
+                        v       v        v
+                     cache   providers  auto-sites
 ```
 
 ## Hard boundaries
 
-1. `src/shared/` contains pure contracts/utilities and must not access `chrome.*`.
-2. External HTTP calls live only in `src/background/providers/`.
-3. IndexedDB access lives only in `src/background/cache-db.js`.
-4. Dynamic content-script registration lives only in `src/background/auto-sites.js`.
-5. `background.js` and `content.js` are composition/bootstrap entries, not feature modules.
-6. New runtime message values are defined centrally before use.
-7. Permissions are treated as API surface: do not broaden them incidentally.
+1. `src/shared/` 是纯合同/纯函数层，不访问 `chrome.*`。
+2. 外部 HTTP 只能位于 `src/background/providers/`。
+3. IndexedDB 只能位于 `src/background/cache-db.js`。
+4. 动态 Content Script 注册只能位于 `src/background/auto-sites.js`。
+5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
+6. Runtime message value 必须集中定义。
+7. 权限属于公共 API，不能在普通重构中扩大。
+8. API 调用和缓存读写必须基于同一个 Effective Translation Config。
 
-These rules are partially enforced by `scripts/check.mjs`.
+## Configuration
+
+全局配置位于 `chrome.storage.local`。
+
+`resolveTranslationConfig()` 负责把：
+
+- 默认 Provider
+- Provider credentials
+- 默认 Prompt
+- Target Language
+- Site Profile
+
+解析成一次翻译真正使用的配置。
+
+站点 Profile 只覆盖 Provider / Model / Prompt，不复制 API Key。
 
 ## Background
 
-- `config.js`: defaults and storage-backed configuration.
-- `providers/`: translation-provider adapters.
-- `cache-db.js`: persistent translation cache and LRU pruning.
-- `auto-sites.js`: optional site permission and persistent content-script registration.
-- `router.js`: message routing only.
-- `index.js`: service-worker lifecycle wiring.
+- `config.js`: 持久配置 + effective config
+- `providers/`: 网络 Provider adapter
+- `cache-db.js`: cache identity / IndexedDB / LRU
+- `auto-sites.js`: optional site permission + persistent script registration
+- `router.js`: message dispatch
+- `index.js`: service-worker lifecycle
 
-Provider contract:
+## Content
 
-```text
-translateBatch(segments, config) -> [{ id, text }]
-test(config) -> string
-```
+Content Script 继续保持 build-free classic script modules：
 
-A new provider should not know about DOM nodes, IndexedDB records or Popup state.
+1. runtime
+2. dom
+3. batch
+4. processor
+5. auto
+6. bootstrap
 
-## Content scripts
+`processor.js` 会把 pageUrl 同时传给缓存和翻译请求，因此 Background 可以为当前站点解析同一份有效配置。
 
-Chrome content scripts remain build-free. Ordered classic scripts attach modules to the isolated-world namespace `globalThis.__TRANSLATE_FLOW_CONTENT__`.
+## Migration-sensitive boundaries
 
-Order:
-
-1. `runtime.js`
-2. `dom.js`
-3. `batch.js`
-4. `processor.js`
-5. `auto.js`
-6. `content.js`
-
-Both manual injection and persistent site registration consume `CONTENT_SCRIPT_FILES`; do not duplicate the list.
-
-Responsibilities:
-
-- runtime: state, URL/page identity, runtime message helper
-- dom: scan/extract/render/remove
-- batch: group identical text and create API-sized batches
-- processor: cache-first orchestration
-- auto: observers, incremental queue, retry/backoff
-- bootstrap: message and storage-change listeners
-
-## Cache compatibility boundaries
-
-Treat these as migrations:
+以下变化必须视为数据/协议迁移：
 
 - IndexedDB DB version/name
-- object-store/index shape
-- cache schema version
+- object-store/index schema
+- cache schema
 - URL normalization
-- source-text normalization
-- provider/model/prompt/target-language fingerprint
-
-v0.4 intentionally keeps the v0.3 cache identity for DeepSeek.
-
-## Message protocol
-
-There are two channels:
-
-- UI/content -> background
-- UI -> content
-
-ES-module contexts import constants from `src/shared/constants.js`. The build-free content runtime mirrors the values internally. If a value changes, update both sides and add tests.
-
-Future option: if a build pipeline is introduced, generate the content runtime contract from the shared source rather than maintaining a mirror.
-
-## Adding features
-
-### New provider
-
-Only add files under `src/background/providers/`, register it in `providers/index.js`, then expose configuration in Options. Do not add provider-specific branches to content/cache modules.
-
-### Selection translation
-
-Create a dedicated content module. Reuse runtime messaging/provider routing. Do not put selection UI into `dom.js` if it has independent state/lifecycle.
-
-### PDF
-
-Treat PDF extraction/rendering as a separate surface. Reuse provider and cache primitives where identities remain meaningful; do not force PDF DOM behavior into the webpage scanner.
-
-### Cache schema change
-
-Require a migration plan, version change, rollback consideration and tests before changing persistent storage.
+- text normalization
+- provider identity
+- Provider endpoint 是否参与 cache fingerprint
+- Runtime message value
+- site profile storage shape
