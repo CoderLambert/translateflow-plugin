@@ -23,6 +23,10 @@
       <label for="prompt">默认翻译 Prompt</label>
       <textarea id="prompt" rows="10"></textarea>
       <p class="hint">站点级 Prompt 留空时继承这里。Prompt 变化会形成新的缓存版本。</p>
+
+      <label for="targetLanguage">默认目标语言</label>
+      <input id="targetLanguage" type="text" placeholder="Simplified Chinese" />
+      <p class="hint">站点级目标语言留空时继承这里。目标语言变化会形成新的缓存版本。</p>
     </section>
 
     <section>
@@ -81,6 +85,9 @@
 
       <label for="sitePrompt">Prompt 覆盖</label>
       <textarea id="sitePrompt" rows="6" placeholder="留空继承默认 Prompt"></textarea>
+
+      <label for="siteTargetLanguage">目标语言覆盖</label>
+      <input id="siteTargetLanguage" type="text" placeholder="留空继承默认目标语言" />
 
       <div class="actions">
         <button id="saveSiteProfile" class="primary">保存站点配置</button>

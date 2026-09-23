@@ -72,7 +72,9 @@ export function resolveTranslationConfig(config = DEFAULT_CONFIG, pageUrl = "") 
     ...base,
     model: String(siteProfile?.model || base.model || "").trim(),
     prompt: String(siteProfile?.prompt || globalConfig.prompt || DEFAULT_CONFIG.prompt).trim() || DEFAULT_CONFIG.prompt,
-    targetLanguage: String(globalConfig.targetLanguage || DEFAULT_CONFIG.targetLanguage).trim(),
+    targetLanguage: String(
+      siteProfile?.targetLanguage || globalConfig.targetLanguage || DEFAULT_CONFIG.targetLanguage
+    ).trim() || DEFAULT_CONFIG.targetLanguage,
     siteOrigin: siteProfile?.origin || ""
   };
 }
@@ -86,6 +88,9 @@ export function normalizeSiteProfile(rawProfile = {}) {
 
   const prompt = String(rawProfile.prompt || "").trim();
   if (prompt) profile.prompt = prompt;
+
+  const targetLanguage = String(rawProfile.targetLanguage || "").trim();
+  if (targetLanguage) profile.targetLanguage = targetLanguage;
 
   return profile;
 }

@@ -15,6 +15,7 @@ const $ = (id) => document.getElementById(id);
 
 const defaultProvider = $("defaultProvider");
 const prompt = $("prompt");
+const targetLanguage = $("targetLanguage");
 const deepseekApiKey = $("deepseekApiKey");
 const deepseekModel = $("deepseekModel");
 const revealDeepSeek = $("revealDeepSeek");
@@ -31,6 +32,7 @@ const siteOrigin = $("siteOrigin");
 const siteProvider = $("siteProvider");
 const siteModel = $("siteModel");
 const sitePrompt = $("sitePrompt");
+const siteTargetLanguage = $("siteTargetLanguage");
 const saveSiteProfile = $("saveSiteProfile");
 const clearSiteEditor = $("clearSiteEditor");
 const siteProfilesList = $("siteProfilesList");
@@ -48,7 +50,7 @@ save.addEventListener("click", async () => {
   save.disabled = true;
   try {
     await saveGlobalConfig({ requestPermission: true });
-    setStatus("全局设置已保存。Provider、模型、Prompt 或 Base URL 变化后会使用新的缓存版本。");
+    setStatus("全局设置已保存。Provider、模型、Prompt、目标语言或 Base URL 变化后会使用新的缓存版本。");
   } catch (error) {
     setStatus(error.message || String(error), true);
   } finally {
@@ -106,7 +108,8 @@ saveSiteProfile.addEventListener("click", async () => {
     const profile = normalizeSiteProfile({
       provider: siteProvider.value,
       model: siteModel.value,
-      prompt: sitePrompt.value
+      prompt: sitePrompt.value,
+      targetLanguage: siteTargetLanguage.value
     });
 
     const provider = profile.provider || defaultProvider.value || PROVIDER_IDS.DEEPSEEK;
@@ -136,6 +139,7 @@ async function load() {
     "apiKey",
     "model",
     "prompt",
+    "targetLanguage",
     "cacheMaxMB",
     "openAICompatible"
   ]);
@@ -145,6 +149,7 @@ async function load() {
   deepseekApiKey.value = config.apiKey || "";
   deepseekModel.value = config.model || DEFAULT_CONFIG.model;
   prompt.value = config.prompt || DEFAULT_CONFIG.prompt;
+  targetLanguage.value = config.targetLanguage || DEFAULT_CONFIG.targetLanguage;
   cacheMaxMB.value = Number(config.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB);
   openaiBaseUrl.value = openAI.baseUrl || "";
   openaiApiKey.value = openAI.apiKey || "";
@@ -166,6 +171,7 @@ async function saveGlobalConfig({ requestPermission }) {
     apiKey: deepseekApiKey.value.trim(),
     model: deepseekModel.value.trim() || DEFAULT_CONFIG.model,
     prompt: prompt.value.trim() || DEFAULT_CONFIG.prompt,
+    targetLanguage: targetLanguage.value.trim() || DEFAULT_CONFIG.targetLanguage,
     cacheMaxMB: maxMB,
     openAICompatible: {
       baseUrl,
@@ -209,7 +215,8 @@ async function refreshSiteProfiles() {
       detail.textContent = [
         profile.provider ? `Provider: ${profile.provider}` : "Provider: 继承",
         profile.model ? `Model: ${profile.model}` : "Model: 继承",
-        profile.prompt ? "Prompt: 自定义" : "Prompt: 继承"
+        profile.prompt ? "Prompt: 自定义" : "Prompt: 继承",
+        profile.targetLanguage ? `目标语言: ${profile.targetLanguage}` : "目标语言: 继承"
       ].join(" · ");
       summary.append(title, detail);
 
@@ -224,6 +231,7 @@ async function refreshSiteProfiles() {
         siteProvider.value = profile.provider || "";
         siteModel.value = profile.model || "";
         sitePrompt.value = profile.prompt || "";
+        siteTargetLanguage.value = profile.targetLanguage || "";
         siteOrigin.scrollIntoView({ behavior: "smooth", block: "center" });
       });
 
@@ -337,6 +345,7 @@ function clearProfileEditor() {
   siteProvider.value = "";
   siteModel.value = "";
   sitePrompt.value = "";
+  siteTargetLanguage.value = "";
 }
 
 function formatBytes(bytes) {

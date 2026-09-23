@@ -1,3 +1,23 @@
+export function buildTranslationPrompt(config, fallbackPrompt = "") {
+  const prompt = String(config?.prompt || fallbackPrompt || "").trim();
+  const targetLanguage = String(config?.targetLanguage || "").trim();
+  if (!targetLanguage) return prompt;
+  if (!prompt) return `Translate to ${targetLanguage}.`;
+
+  const defaultLanguageInstruction =
+    "Translate the provided English web-page segments into natural Simplified Chinese.";
+  if (prompt.includes(defaultLanguageInstruction)) {
+    return prompt.replaceAll(
+      defaultLanguageInstruction,
+      `Translate the provided English web-page segments into natural ${targetLanguage}.`
+    );
+  }
+
+  const promptText = prompt.toLocaleLowerCase();
+  if (promptText.includes(targetLanguage.toLocaleLowerCase())) return prompt;
+  return `${prompt}\nTarget language: ${targetLanguage}.`;
+}
+
 export async function requestChatCompletions({
   url,
   apiKey,

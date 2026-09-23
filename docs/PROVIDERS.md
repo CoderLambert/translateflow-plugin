@@ -48,6 +48,7 @@ resolveTranslationConfig(globalConfig, pageUrl)
 - provider
 - model
 - prompt
+- targetLanguage
 
 凭据和 Base URL 仍属于 Provider 全局配置。
 

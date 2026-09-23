@@ -1,4 +1,4 @@
-import { requestChatCompletions, parseTranslationResult } from "./shared.js";
+import { buildTranslationPrompt, requestChatCompletions, parseTranslationResult } from "./shared.js";
 
 const API_URL = "https://api.deepseek.com/chat/completions";
 
@@ -20,7 +20,7 @@ export const deepSeekProvider = Object.freeze({
       body: {
         model: config.model?.trim() || "deepseek-flash",
         messages: [
-          { role: "system", content: config.prompt?.trim() || "Translate to Simplified Chinese." },
+          { role: "system", content: buildTranslationPrompt(config, "Translate to Simplified Chinese.") },
           { role: "user", content: JSON.stringify(payload) }
         ],
         response_format: { type: "json_object" },

@@ -2,7 +2,7 @@ import {
   buildChatCompletionsUrl,
   getProviderHostPermissionPattern
 } from "../../shared/provider-config.js";
-import { parseTranslationResult, requestChatCompletions } from "./shared.js";
+import { buildTranslationPrompt, parseTranslationResult, requestChatCompletions } from "./shared.js";
 
 export const openAICompatibleProvider = Object.freeze({
   id: "openai-compatible",
@@ -23,7 +23,10 @@ export const openAICompatibleProvider = Object.freeze({
       body: {
         model,
         messages: [
-          { role: "system", content: config.prompt?.trim() || "Translate to Simplified Chinese and return JSON only." },
+          {
+            role: "system",
+            content: buildTranslationPrompt(config, "Translate to Simplified Chinese and return JSON only.")
+          },
           { role: "user", content: JSON.stringify(payload) }
         ],
         stream: false,

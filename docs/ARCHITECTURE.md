@@ -45,7 +45,7 @@ content scripts -> messages -> background router
 
 解析成一次翻译真正使用的配置。
 
-站点 Profile 只覆盖 Provider / Model / Prompt，不复制 API Key。
+站点 Profile 只覆盖 Provider / Model / Prompt / Target Language，不复制 API Key。
 
 ## Background
 
