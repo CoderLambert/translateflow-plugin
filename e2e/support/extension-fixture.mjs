@@ -60,6 +60,7 @@ export const test = base.extend({
     const userDataDir = join(tempRoot, "profile");
     const context = await chromium.launchPersistentContext(userDataDir, {
       headless: true,
+      channel: "chromium",
       args: [
         `--disable-extensions-except=${extensionDir}`,
         `--load-extension=${extensionDir}`
