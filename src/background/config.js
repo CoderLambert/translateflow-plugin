@@ -4,7 +4,7 @@ import {
   DEFAULT_OPENAI_COMPATIBLE
 } from "../shared/constants.js";
 import { resolveTranslationConfig } from "../shared/provider-config.js";
-import { composeGlossaryPrompt, normalizeGlossary, resolveEffectiveGlossary } from "../shared/glossary.js";
+import { composeGlossaryPrompt, glossaryIdentity, normalizeGlossary, resolveEffectiveGlossary } from "../shared/glossary.js";
 
 export async function getConfig() {
   const stored = await chrome.storage.local.get(CONFIG_KEYS);
@@ -16,7 +16,12 @@ export async function getEffectiveConfig(pageUrl = "") {
   const resolved = resolveTranslationConfig(stored, pageUrl);
   const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
   if (!glossary.length) return resolved;
-  return { ...resolved, glossary, prompt: composeGlossaryPrompt(resolved.prompt, glossary) };
+  return {
+    ...resolved,
+    glossary,
+    glossaryIdentity: glossaryIdentity(glossary),
+    prompt: composeGlossaryPrompt(resolved.prompt, glossary)
+  };
 }
 
 export async function ensureConfigDefaults() {
