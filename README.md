@@ -61,7 +61,7 @@ cache-db        providers/
 - IndexedDB
 - DeepSeek / OpenAI-compatible Chat Completions
 
-Node.js 只用于开发校验和 `node:test`，不参与扩展运行。
+Node.js 只用于开发校验；单元测试使用 `node:test`，浏览器 E2E 使用 Playwright。Playwright 仅为开发依赖，不进入扩展运行时。
 
 ## 仓库结构
 
@@ -116,6 +116,12 @@ translateflow-plugin/
 │           └── controller.js
 │
 ├── tests/
+├── e2e/
+│   ├── support/
+│   │   ├── extension-fixture.mjs
+│   │   └── mock-server.mjs
+│   └── translateflow.spec.mjs
+├── playwright.config.mjs
 ├── scripts/check.mjs
 ├── docs/
 └── .github/workflows/quality.yml
@@ -135,6 +141,16 @@ cd translateflow-plugin
 ```bash
 npm run validate
 ```
+
+真实 Chromium 扩展 E2E：
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+E2E 使用临时 unpacked 扩展副本、本地 fixture 页面和本地 OpenAI-compatible mock server，不需要真实 API Key。生产 `manifest.json` 不会因为测试而扩大 Host Permission；测试副本运行时才临时加入 localhost 权限。
 
 ## Chrome 本地安装
 
@@ -422,7 +438,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - `background.js` / `content.js` 保持薄入口
 - 旧根目录 `cache-db.js` 不允许重新出现
 
-GitHub Actions 在 PR 和 main push 时执行同一套 `npm run validate`。
+GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run validate`；独立 `e2e` workflow 在相关运行时代码变化时安装 Playwright Chromium 并执行 `npm run test:e2e`。
 
 ## 当前限制
 
