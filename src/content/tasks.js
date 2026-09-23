@@ -12,6 +12,7 @@
     pageUrl = location.href,
     total = 0
   } = {}) {
+    pruneTerminalTasks();
     const taskId = String(id || crypto.randomUUID());
     const now = Date.now();
     const task = {
@@ -55,28 +56,22 @@
   }
 
   function completeTask(taskOrId, patch = {}) {
-    const task = transition(taskOrId, "completed", patch);
-    scheduleCleanup(task);
-    return task;
+    return transition(taskOrId, "completed", patch);
   }
 
   function failTask(taskOrId, error) {
     const task = resolveTask(taskOrId);
     if (!task) return null;
     if (isCancelledError(error) || task.state === "cancelled") {
-      const cancelled = transition(task, "cancelled", {
+      return transition(task, "cancelled", {
         error: "翻译已取消。",
         errorCode: "CANCELLED"
       });
-      scheduleCleanup(cancelled);
-      return cancelled;
     }
-    const failed = transition(task, "failed", {
+    return transition(task, "failed", {
       error: error?.message || String(error || "翻译失败"),
       errorCode: error?.code || ""
     });
-    scheduleCleanup(failed);
-    return failed;
   }
 
   async function cancelTask(taskOrId) {
@@ -89,7 +84,6 @@
       error: "翻译已取消。",
       errorCode: "CANCELLED"
     });
-    scheduleCleanup(task);
 
     try {
       await sendRuntimeMessage({
@@ -111,6 +105,7 @@
   }
 
   function getTaskStatus(taskOrId) {
+    pruneTerminalTasks();
     return serializeTask(resolveTask(taskOrId));
   }
 
@@ -161,14 +156,13 @@
     };
   }
 
-  function scheduleCleanup(task) {
-    if (!task) return;
-    setTimeout(() => {
-      const current = tasks.get(task.id);
-      if (current === task && TERMINAL_STATES.has(current.state)) {
-        tasks.delete(task.id);
+  function pruneTerminalTasks(now = Date.now()) {
+    const cutoff = now - (5 * 60 * 1000);
+    for (const [id, task] of tasks) {
+      if (TERMINAL_STATES.has(task.state) && task.updatedAt < cutoff) {
+        tasks.delete(id);
       }
-    }, 5 * 60 * 1000);
+    }
   }
 
   function createCancelledError() {
