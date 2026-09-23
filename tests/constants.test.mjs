@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   BACKGROUND_MESSAGES,
   CONTENT_MESSAGES,
@@ -17,6 +18,19 @@ test("default config remains compatible with existing DeepSeek cache version", (
 test("message values stay unique inside each channel", () => {
   assert.equal(new Set(Object.values(BACKGROUND_MESSAGES)).size, Object.keys(BACKGROUND_MESSAGES).length);
   assert.equal(new Set(Object.values(CONTENT_MESSAGES)).size, Object.keys(CONTENT_MESSAGES).length);
+});
+
+test("build-free content runtime mirrors Quick Control message values", () => {
+  const source = readFileSync(new URL("../src/content/runtime.js", import.meta.url), "utf8");
+  const required = [
+    CONTENT_MESSAGES.QUICK_CONTROL_SHOW,
+    BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT,
+    BACKGROUND_MESSAGES.TEMP_PRESET_SET,
+    BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE,
+    BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE,
+    BACKGROUND_MESSAGES.OPEN_OPTIONS
+  ];
+  for (const value of required) assert.ok(source.includes(`"${value}"`), `${value} missing from content runtime`);
 });
 
 test("task runtime is loaded before content processors", () => {
