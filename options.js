@@ -1,37 +1,69 @@
-import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "./src/shared/constants.js";
+import {
+  BACKGROUND_MESSAGES,
+  DEFAULT_CONFIG,
+  DEFAULT_OPENAI_COMPATIBLE,
+  PROVIDER_IDS
+} from "./src/shared/constants.js";
+import {
+  getProviderHostPermissionPattern,
+  normalizeOpenAIBaseUrl,
+  normalizeSiteProfile
+} from "./src/shared/provider-config.js";
+import { normalizeOrigin } from "./src/shared/url.js";
 
-const apiKey = document.getElementById("apiKey");
-const model = document.getElementById("model");
-const prompt = document.getElementById("prompt");
-const cacheMaxMB = document.getElementById("cacheMaxMB");
-const save = document.getElementById("save");
-const test = document.getElementById("test");
-const reveal = document.getElementById("reveal");
-const status = document.getElementById("status");
-const cacheStats = document.getElementById("cacheStats");
-const refreshCache = document.getElementById("refreshCache");
-const pruneCache = document.getElementById("pruneCache");
-const clearAllCache = document.getElementById("clearAllCache");
-const autoSitesList = document.getElementById("autoSitesList");
-const refreshAutoSites = document.getElementById("refreshAutoSites");
+const $ = (id) => document.getElementById(id);
 
-load();
-refreshCacheStats();
-refreshAutoSiteList();
+const defaultProvider = $("defaultProvider");
+const prompt = $("prompt");
+const deepseekApiKey = $("deepseekApiKey");
+const deepseekModel = $("deepseekModel");
+const revealDeepSeek = $("revealDeepSeek");
+const openaiBaseUrl = $("openaiBaseUrl");
+const openaiApiKey = $("openaiApiKey");
+const openaiModel = $("openaiModel");
+const revealOpenAI = $("revealOpenAI");
+const cacheMaxMB = $("cacheMaxMB");
+const save = $("save");
+const test = $("test");
+const status = $("status");
+
+const siteOrigin = $("siteOrigin");
+const siteProvider = $("siteProvider");
+const siteModel = $("siteModel");
+const sitePrompt = $("sitePrompt");
+const saveSiteProfile = $("saveSiteProfile");
+const clearSiteEditor = $("clearSiteEditor");
+const siteProfilesList = $("siteProfilesList");
+
+const cacheStats = $("cacheStats");
+const refreshCache = $("refreshCache");
+const pruneCache = $("pruneCache");
+const clearAllCache = $("clearAllCache");
+const autoSitesList = $("autoSitesList");
+const refreshAutoSites = $("refreshAutoSites");
+
+await Promise.allSettled([load(), refreshCacheStats(), refreshAutoSiteList(), refreshSiteProfiles()]);
 
 save.addEventListener("click", async () => {
-  await saveConfig();
-  setStatus("设置已保存。模型或 Prompt 变化后将自动使用新的缓存版本。", false);
+  save.disabled = true;
+  try {
+    await saveGlobalConfig({ requestPermission: true });
+    setStatus("全局设置已保存。Provider、模型、Prompt 或 Base URL 变化后会使用新的缓存版本。");
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  } finally {
+    save.disabled = false;
+  }
 });
 
 test.addEventListener("click", async () => {
   test.disabled = true;
-  setStatus("正在测试 API…", false);
   try {
-    await saveConfig();
+    setStatus("正在保存并测试当前默认 Provider…");
+    await saveGlobalConfig({ requestPermission: true });
     const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.TEST_API });
     if (!response?.ok) throw new Error(response?.error || "API 测试失败");
-    setStatus(`连接成功。模型返回：${response.result}`, false);
+    setStatus(`连接成功。模型返回：${response.result}`);
   } catch (error) {
     setStatus(error.message || String(error), true);
   } finally {
@@ -39,49 +71,181 @@ test.addEventListener("click", async () => {
   }
 });
 
-reveal.addEventListener("click", () => {
-  const visible = apiKey.type === "text";
-  apiKey.type = visible ? "password" : "text";
-  reveal.textContent = visible ? "显示" : "隐藏";
-});
+bindPasswordToggle(revealDeepSeek, deepseekApiKey);
+bindPasswordToggle(revealOpenAI, openaiApiKey);
 
 refreshCache.addEventListener("click", refreshCacheStats);
 refreshAutoSites.addEventListener("click", refreshAutoSiteList);
+clearSiteEditor.addEventListener("click", clearProfileEditor);
 
 pruneCache.addEventListener("click", async () => {
-  await saveConfig();
-  setStatus("正在清理缓存…", false);
-  const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE });
-  if (!response?.ok) return setStatus(response?.error || "缓存清理失败", true);
-  setStatus(`清理完成，删除 ${response.deleted || 0} 条旧记录。`, false);
-  await refreshCacheStats();
+  try {
+    await saveGlobalConfig({ requestPermission: false });
+    setStatus("正在清理缓存…");
+    const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE });
+    if (!response?.ok) throw new Error(response?.error || "缓存清理失败");
+    setStatus(`清理完成，删除 ${response.deleted || 0} 条旧记录。`);
+    await refreshCacheStats();
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  }
 });
 
 clearAllCache.addEventListener("click", async () => {
   if (!confirm("确定清空全部网页翻译缓存？API Key 和设置不会删除。")) return;
   const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_CLEAR_ALL });
   if (!response?.ok) return setStatus(response?.error || "清空缓存失败", true);
-  setStatus("全部翻译缓存已清空。", false);
+  setStatus("全部翻译缓存已清空。");
   await refreshCacheStats();
 });
 
+saveSiteProfile.addEventListener("click", async () => {
+  saveSiteProfile.disabled = true;
+  try {
+    const origin = normalizeOrigin(siteOrigin.value);
+    const profile = normalizeSiteProfile({
+      provider: siteProvider.value,
+      model: siteModel.value,
+      prompt: sitePrompt.value
+    });
+
+    const provider = profile.provider || defaultProvider.value || PROVIDER_IDS.DEEPSEEK;
+    if (provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
+      await ensureOpenAIPermission(openaiBaseUrl.value);
+    }
+
+    const { siteProfiles = {} } = await chrome.storage.local.get(["siteProfiles"]);
+    const next = { ...(siteProfiles || {}) };
+    if (Object.keys(profile).length) next[origin] = profile;
+    else delete next[origin];
+
+    await chrome.storage.local.set({ siteProfiles: next });
+    setStatus(Object.keys(profile).length ? `已保存 ${origin} 的站点配置。` : `已移除 ${origin} 的站点覆盖。`);
+    clearProfileEditor();
+    await refreshSiteProfiles();
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  } finally {
+    saveSiteProfile.disabled = false;
+  }
+});
+
 async function load() {
-  const config = await chrome.storage.local.get(["apiKey", "model", "prompt", "cacheMaxMB"]);
-  apiKey.value = config.apiKey || DEFAULT_CONFIG.apiKey;
-  model.value = config.model || DEFAULT_CONFIG.model;
+  const config = await chrome.storage.local.get([
+    "provider",
+    "apiKey",
+    "model",
+    "prompt",
+    "cacheMaxMB",
+    "openAICompatible"
+  ]);
+  const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...(config.openAICompatible || {}) };
+
+  defaultProvider.value = config.provider || DEFAULT_CONFIG.provider;
+  deepseekApiKey.value = config.apiKey || "";
+  deepseekModel.value = config.model || DEFAULT_CONFIG.model;
   prompt.value = config.prompt || DEFAULT_CONFIG.prompt;
   cacheMaxMB.value = Number(config.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB);
+  openaiBaseUrl.value = openAI.baseUrl || "";
+  openaiApiKey.value = openAI.apiKey || "";
+  openaiModel.value = openAI.model || "";
 }
 
-async function saveConfig() {
+async function saveGlobalConfig({ requestPermission }) {
+  const provider = defaultProvider.value || PROVIDER_IDS.DEEPSEEK;
+  const baseUrl = normalizeOpenAIBaseUrl(openaiBaseUrl.value);
   const maxMB = Math.min(2048, Math.max(20, Number(cacheMaxMB.value) || DEFAULT_CONFIG.cacheMaxMB));
   cacheMaxMB.value = maxMB;
+
+  if (requestPermission && provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
+    await ensureOpenAIPermission(baseUrl);
+  }
+
   await chrome.storage.local.set({
-    apiKey: apiKey.value.trim(),
-    model: model.value.trim() || DEFAULT_CONFIG.model,
+    provider,
+    apiKey: deepseekApiKey.value.trim(),
+    model: deepseekModel.value.trim() || DEFAULT_CONFIG.model,
     prompt: prompt.value.trim() || DEFAULT_CONFIG.prompt,
-    cacheMaxMB: maxMB
+    cacheMaxMB: maxMB,
+    openAICompatible: {
+      baseUrl,
+      apiKey: openaiApiKey.value.trim(),
+      model: openaiModel.value.trim()
+    }
   });
+}
+
+async function ensureOpenAIPermission(rawBaseUrl) {
+  const pattern = getProviderHostPermissionPattern(rawBaseUrl);
+  if (!pattern) throw new Error("请先填写 OpenAI-compatible Base URL。");
+
+  const granted = await chrome.permissions.request({ origins: [pattern] });
+  if (!granted) throw new Error(`未授予 API 地址权限：${pattern}`);
+  return pattern;
+}
+
+async function refreshSiteProfiles() {
+  siteProfilesList.textContent = "正在读取站点配置…";
+  try {
+    const { siteProfiles = {} } = await chrome.storage.local.get(["siteProfiles"]);
+    const entries = Object.entries(siteProfiles || {}).sort(([a], [b]) => a.localeCompare(b));
+    siteProfilesList.replaceChildren();
+
+    if (!entries.length) {
+      siteProfilesList.textContent = "暂无站点级覆盖。";
+      return;
+    }
+
+    for (const [origin, rawProfile] of entries) {
+      const profile = normalizeSiteProfile(rawProfile);
+      const row = document.createElement("div");
+      row.className = "site-row";
+
+      const summary = document.createElement("div");
+      summary.className = "site-summary";
+      const title = document.createElement("strong");
+      title.textContent = origin;
+      const detail = document.createElement("small");
+      detail.textContent = [
+        profile.provider ? `Provider: ${profile.provider}` : "Provider: 继承",
+        profile.model ? `Model: ${profile.model}` : "Model: 继承",
+        profile.prompt ? "Prompt: 自定义" : "Prompt: 继承"
+      ].join(" · ");
+      summary.append(title, detail);
+
+      const actions = document.createElement("div");
+      actions.className = "site-actions";
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.textContent = "编辑";
+      edit.addEventListener("click", () => {
+        siteOrigin.value = origin;
+        siteProvider.value = profile.provider || "";
+        siteModel.value = profile.model || "";
+        sitePrompt.value = profile.prompt || "";
+        siteOrigin.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "删除";
+      remove.addEventListener("click", async () => {
+        const { siteProfiles: latest = {} } = await chrome.storage.local.get(["siteProfiles"]);
+        const next = { ...(latest || {}) };
+        delete next[origin];
+        await chrome.storage.local.set({ siteProfiles: next });
+        setStatus(`已删除 ${origin} 的站点配置。`);
+        await refreshSiteProfiles();
+      });
+
+      actions.append(edit, remove);
+      row.append(summary, actions);
+      siteProfilesList.appendChild(row);
+    }
+  } catch (error) {
+    siteProfilesList.textContent = `读取站点配置失败：${error.message || error}`;
+  }
 }
 
 async function refreshCacheStats() {
@@ -110,11 +274,17 @@ async function refreshAutoSiteList() {
     for (const site of sites) {
       const row = document.createElement("div");
       row.className = "site-row";
-      const text = document.createElement("span");
-      text.textContent = site;
+      const summary = document.createElement("div");
+      summary.className = "site-summary";
+      const title = document.createElement("strong");
+      title.textContent = site;
+      summary.append(title);
+
+      const actions = document.createElement("div");
+      actions.className = "site-actions";
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.textContent = "移除";
+      remove.textContent = "关闭";
       remove.addEventListener("click", async () => {
         remove.disabled = true;
         try {
@@ -123,20 +293,50 @@ async function refreshAutoSiteList() {
             origin: site
           });
           if (!response?.ok) throw new Error(response?.error || "移除站点失败");
-          await chrome.permissions.remove({ origins: [`${site}/*`] });
-          setStatus(`已关闭 ${site} 的自动翻译。`, false);
+
+          const pattern = `${site}/*`;
+          if (!(await isProviderPermission(pattern))) {
+            await chrome.permissions.remove({ origins: [pattern] });
+          }
+
+          setStatus(`已关闭 ${site} 的自动翻译。`);
           await refreshAutoSiteList();
         } catch (error) {
           setStatus(error.message || String(error), true);
           remove.disabled = false;
         }
       });
-      row.append(text, remove);
+      actions.append(remove);
+      row.append(summary, actions);
       autoSitesList.appendChild(row);
     }
   } catch (error) {
     autoSitesList.textContent = `读取站点失败：${error.message || error}`;
   }
+}
+
+async function isProviderPermission(pattern) {
+  const { openAICompatible = {} } = await chrome.storage.local.get(["openAICompatible"]);
+  try {
+    return getProviderHostPermissionPattern(openAICompatible.baseUrl) === pattern;
+  } catch {
+    return false;
+  }
+}
+
+function bindPasswordToggle(button, input) {
+  button.addEventListener("click", () => {
+    const visible = input.type === "text";
+    input.type = visible ? "password" : "text";
+    button.textContent = visible ? "显示" : "隐藏";
+  });
+}
+
+function clearProfileEditor() {
+  siteOrigin.value = "";
+  siteProvider.value = "";
+  siteModel.value = "";
+  sitePrompt.value = "";
 }
 
 function formatBytes(bytes) {
@@ -146,7 +346,7 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 
-function setStatus(message, isError) {
+function setStatus(message, isError = false) {
   status.textContent = message;
   status.style.color = isError ? "#c62828" : "";
 }

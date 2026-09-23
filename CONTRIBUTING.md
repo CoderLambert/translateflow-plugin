@@ -1,59 +1,73 @@
 # Contributing to TranslateFlow
 
-## Before coding
-
-- Keep permissions minimal.
-- Prefer extending an existing module boundary over cross-layer calls.
-- Never commit API keys, `.env`, Chrome signing keys (`.pem`) or captured private page data.
-- Avoid mixing feature behavior, broad formatting changes and storage migrations in one PR.
-
 ## Required validation
+
+提交前：
 
 ```bash
 npm run validate
 ```
 
-There are no npm runtime/dev dependencies. The command uses Node built-ins for syntax checks, architecture guards and unit tests.
+项目没有第三方 npm 运行依赖；校验使用 Node 内置能力。
 
-## Module rules
+## Module ownership
 
-- Pure shared contracts/helpers: `src/shared/`
-- Provider/network code: `src/background/providers/`
-- IndexedDB: `src/background/cache-db.js` only
-- Dynamic site registration: `src/background/auto-sites.js` only
-- DOM extraction/rendering: `src/content/dom.js`
-- Grouping/batching: `src/content/batch.js`
-- Cache-first translation flow: `src/content/processor.js`
-- Automatic scrolling/dynamic-content behavior: `src/content/auto.js`
+- shared contracts/pure helpers: `src/shared/`
+- Provider/network: `src/background/providers/`
+- effective config: `src/background/config.js` + `src/shared/provider-config.js`
+- IndexedDB: `src/background/cache-db.js`
+- dynamic site scripts: `src/background/auto-sites.js`
+- DOM extraction/render: `src/content/dom.js`
+- batching: `src/content/batch.js`
+- cache-first orchestration: `src/content/processor.js`
+- observers/auto queue: `src/content/auto.js`
 
-Keep entry files thin. If `background.js` or `content.js` starts accumulating business logic, extract it.
+## Provider changes
 
-## Message protocol
+新增 Provider 必须明确：
 
-Add new message identifiers to the shared contract first. Avoid new ad-hoc strings across Popup, Options and background code.
+- credential storage
+- endpoint format
+- Host Permission strategy
+- cache fingerprint fields
+- JSON response behavior
+- tests
 
-The content-script runtime currently mirrors message values because content modules are classic scripts with no build step. Treat this mirror as compatibility-sensitive.
+不要在 Content Script 中添加 Provider 分支。
+
+## Site profiles
+
+站点配置应尽量只存“覆盖值”，不要复制完整全局配置。
+
+当前允许覆盖：
+
+- Provider
+- Model
+- Prompt
+
+新增站点配置字段时，需要确认它是否影响缓存 identity。
 
 ## Cache changes
 
-The translation cache is user data. Do not bump `DB_VERSION`, rename stores/indexes, or alter cache-key semantics in an unrelated change.
+缓存是用户数据。不要在无关 PR 中修改：
 
-A cache migration requires:
+- DB version
+- stores/indexes
+- cache schema
+- URL/text normalization
+- Provider fingerprint
 
-1. migration strategy
-2. rollback/backward compatibility consideration
-3. explicit schema/version update
-4. tests for URL/text/config identity
+需要修改时必须增加兼容/迁移测试。
 
 ## Permissions
 
-Adding a required host permission must include rationale in the PR. Prefer optional per-site permissions whenever possible.
+新增 required host permission 必须有明确理由。优先使用 optional host permission，并在用户操作时按 Origin 申请。
 
 ## Commits
 
-Use focused conventional-style messages:
+使用聚焦的 conventional-style message，例如：
 
+- `feat: add site translation profiles`
 - `feat: add openai-compatible provider`
-- `refactor: isolate content batching`
-- `fix: preserve cache across whitespace changes`
-- `docs: document cache migration rules`
+- `fix: preserve provider host permission`
+- `refactor: isolate provider config resolution`

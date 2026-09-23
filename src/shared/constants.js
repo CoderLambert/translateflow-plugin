@@ -7,14 +7,27 @@ export const DEFAULT_PROMPT = [
   "Every input id must appear exactly once in the output."
 ].join("\n");
 
+export const PROVIDER_IDS = Object.freeze({
+  DEEPSEEK: "deepseek",
+  OPENAI_COMPATIBLE: "openai-compatible"
+});
+
+export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({
+  apiKey: "",
+  baseUrl: "",
+  model: ""
+});
+
 export const DEFAULT_CONFIG = Object.freeze({
   apiKey: "",
-  provider: "deepseek",
+  provider: PROVIDER_IDS.DEEPSEEK,
   model: "deepseek-flash",
   targetLanguage: "Simplified Chinese",
   cacheMaxMB: 200,
   autoSites: [],
-  prompt: DEFAULT_PROMPT
+  prompt: DEFAULT_PROMPT,
+  openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
+  siteProfiles: {}
 });
 
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));

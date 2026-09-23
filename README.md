@@ -1,22 +1,46 @@
-# TranslateFlow v0.4
+# TranslateFlow v0.5
 
-轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；使用自己的 DeepSeek API Key，并按“规范化 URL + 翻译配置 + 原文指纹”将结果缓存在扩展 IndexedDB 中。
+轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
-v0.4 是一次**架构版本**：用户行为和已有缓存保持兼容，代码拆分为明确模块，并加入可执行的项目规范、单元测试和 GitHub Actions。
+## v0.5 重点
 
-## 功能
+- DeepSeek Provider
+- OpenAI-compatible Provider
+- 自定义 OpenAI-compatible Base URL / API Key / Model
+- 支持无 API Key 的本地兼容服务
+- 按 API Origin 动态申请 Host Permission
+- 站点级 Provider / Model / Prompt 覆盖
+- Provider Base URL 纳入 OpenAI-compatible 缓存版本
+- DeepSeek v0.3/v0.4 缓存继续兼容
 
-- 英文原文 + 简体中文双语展示
-- DeepSeek BYOK
-- URL 感知的 IndexedDB 段落缓存
-- 再次访问可 0 API 恢复缓存
-- 页面局部变化只补译变化段落
-- 按站点授权的自动增量翻译
-- IntersectionObserver 近视口处理
-- MutationObserver 动态内容补译
-- SPA / Hash Router 页面身份处理
-- LRU 缓存清理
-- 模型 / Prompt / 目标语言变化自动切换缓存版本
+## 架构
+
+```text
+Web Page
+   │
+   ▼
+content/
+   │
+   │ pageUrl + segments
+   ▼
+background/router
+   │
+   ▼
+resolveTranslationConfig(pageUrl)
+   │
+   ├── global provider config
+   └── site profile override
+   │
+   ├───────────────┐
+   ▼               ▼
+cache-db        providers/
+                   ├── deepseek
+                   └── openai-compatible
+```
+
+关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖不会绕过缓存层，也不会另起翻译流程。
+
+详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 和 [docs/PROVIDERS.md](docs/PROVIDERS.md)。
 
 ## 技术栈
 
@@ -27,53 +51,53 @@ v0.4 是一次**架构版本**：用户行为和已有缓存保持兼容，代�
 - 原生 HTML / CSS
 - chrome.storage.local
 - IndexedDB
-- DeepSeek Chat Completions API
+- DeepSeek / OpenAI-compatible Chat Completions
 
-开发质量工具也不依赖第三方 npm 包，Node.js 只用于执行内置语法检查和 `node:test`。
+Node.js 只用于开发校验和 `node:test`，不参与扩展运行。
 
 ## 仓库结构
 
 ```text
 translateflow-plugin/
 ├── manifest.json
-├── background.js                 # Service Worker 薄入口
-├── content.js                    # Content Script 薄入口
-├── popup.html / popup.js / popup.css
-├── options.html / options.js / options.css
+├── background.js
+├── content.js
+├── popup.*
+├── options.*
 ├── content.css
 │
 ├── src/
 │   ├── shared/
-│   │   ├── constants.js          # 默认配置、消息协议、脚本清单
+│   │   ├── constants.js
+│   │   ├── provider-config.js
 │   │   ├── hash.js
 │   │   ├── text.js
 │   │   └── url.js
 │   │
 │   ├── background/
-│   │   ├── index.js              # Service Worker 生命周期
-│   │   ├── router.js             # Runtime message 路由
+│   │   ├── index.js
+│   │   ├── router.js
 │   │   ├── config.js
-│   │   ├── cache-db.js           # IndexedDB 唯一访问层
-│   │   ├── auto-sites.js         # 站点权限 / 动态 Content Script
+│   │   ├── cache-db.js
+│   │   ├── auto-sites.js
 │   │   └── providers/
-│   │       ├── index.js          # Provider registry
-│   │       └── deepseek.js
+│   │       ├── index.js
+│   │       ├── shared.js
+│   │       ├── deepseek.js
+│   │       └── openai-compatible.js
 │   │
 │   └── content/
-│       ├── runtime.js            # Content 环境状态 / 页面身份 / 消息
-│       ├── dom.js                # DOM 扫描、文本提取、译文渲染
-│       ├── batch.js              # 去重、分组、批处理
-│       ├── processor.js          # cache-first 翻译流程
-│       └── auto.js               # 自动增量队列 / Observer / backoff
+│       ├── runtime.js
+│       ├── dom.js
+│       ├── batch.js
+│       ├── processor.js
+│       └── auto.js
 │
 ├── tests/
 ├── scripts/check.mjs
-├── docs/ARCHITECTURE.md
-├── CONTRIBUTING.md
+├── docs/
 └── .github/workflows/quality.yml
 ```
-
-详细架构边界见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，开发约束见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 获取代码
 
@@ -82,24 +106,12 @@ git clone https://github.com/CoderLambert/translateflow-plugin.git
 cd translateflow-plugin
 ```
 
-当前没有第三方 npm 依赖，因此运行扩展**不需要** `npm install`、`npm run build` 或本地 Web Server。
+不需要安装运行时依赖，也没有 build 步骤。
 
-如果本机有 Node.js 18+，建议开发前执行：
+开发校验：
 
 ```bash
 npm run validate
-```
-
-它会执行：
-
-```text
-JavaScript 语法检查
-        +
-Manifest 检查
-        +
-架构边界检查
-        +
-node:test 单元测试
 ```
 
 ## Chrome 本地安装
@@ -107,205 +119,192 @@ node:test 单元测试
 1. 打开 `chrome://extensions/`
 2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
-4. 选择仓库根目录（包含 `manifest.json`）
-5. 固定 TranslateFlow 到工具栏
-6. 打开设置页，填入 DeepSeek API Key
-7. 点击“测试 API”
-8. 在普通 http/https 英文网页上测试翻译
+4. 选择仓库根目录
+5. 打开 TranslateFlow 设置页
+6. 配置 Provider
+7. 测试 API
+8. 刷新目标英文网页后测试
 
-Chrome 加载的是源码目录，不是 ZIP。
-
-## 本地开发循环
+开发循环：
 
 ```text
 修改代码
   ↓
 npm run validate
   ↓
-chrome://extensions/
-  ↓
-重新加载 TranslateFlow
+chrome://extensions/ → 重新加载
   ↓
 刷新目标网页
-  ↓
-验证功能
 ```
 
-注意：
+## Provider 配置
 
-- 修改 Service Worker / Manifest / shared / background：重新加载扩展。
-- 修改 Content Script：重新加载扩展后还要刷新目标网页。
-- 修改 Popup / Options：重新加载后重新打开对应页面。
-- 已开启自动翻译的站点如果仍运行旧脚本，可关闭该站自动翻译，再重新开启一次。
+### DeepSeek
 
-## 开发约束
-
-`npm run check` 会自动执行关键架构规则：
-
-- `src/shared/` 不允许依赖 `chrome.*`
-- 外部 `fetch()` 只能位于 `src/background/providers/`
-- IndexedDB 只能由 `src/background/cache-db.js` 访问
-- 动态 `registerContentScripts()` 只能由 `src/background/auto-sites.js` 调用
-- build-free Content Script 模块禁止使用 ESM import/export
-- 单个 `src/` JS 文件超过 420 行会失败
-- `background.js` / `content.js` 必须保持薄入口
-- 根目录旧 `cache-db.js` 不允许重新出现
-
-PR 和 push 到 main 时 GitHub Actions 会执行相同的 `npm run validate`。
-
-## 模块设计
-
-### Background
+配置：
 
 ```text
-background.js
-    ↓
-src/background/index.js
-    ↓
-router.js
- ├─ config.js
- ├─ cache-db.js
- ├─ auto-sites.js
- └─ providers/
+Provider: DeepSeek
+API Key: sk-...
+Model: deepseek-flash
 ```
 
-Provider 层已经抽象。以后增加 OpenAI-compatible / OpenRouter / Ollama 等 Provider 时，不需要修改缓存层或 DOM 层。
-
-### Content Script
-
-为了保持“零 build”，Content Script 不使用 ESM，而是按固定顺序加载多个经典脚本，并挂在扩展隔离世界内的私有命名空间：
+API Origin 固定为：
 
 ```text
-runtime
-  ↓
-dom
-  ↓
-batch
-  ↓
-processor
-  ↓
-auto
-  ↓
-content.js bootstrap
+https://api.deepseek.com
 ```
 
-加载顺序只定义在 `CONTENT_SCRIPT_FILES`，手动注入与自动站点注册共用同一清单。
+### OpenAI-compatible
 
-## 缓存兼容
+配置示例：
 
-v0.4 **不修改**：
+```text
+Provider: OpenAI-compatible
+Base URL: https://api.example.com/v1
+API Key:   sk-...        # 本地服务可留空
+Model:     your-model
+```
 
-- IndexedDB 名称：`ai_bilingual_translator`
-- DB version：`1`
-- object stores：`pages` / `translations`
-- cache schema：`2`
-- 既有 DeepSeek 配置的 cache-key 语义
+插件会自动请求：
 
-因此从 v0.3 升级后，已有翻译缓存继续可用。
+```text
+<Base URL>/chat/completions
+```
+
+如果 Base URL 已经以 `/chat/completions` 结尾，则不会重复追加。
+
+首次保存/测试 OpenAI-compatible Provider 时，Chrome 会请求该 API Origin 的访问权限。插件不会因为配置了通用 Provider 就在安装时直接获得所有 API 地址权限。
+
+例如 Ollama/OpenAI-compatible 网关：
+
+```text
+http://localhost:11434/v1
+```
+
+Host Permission 会按浏览器 Match Pattern 申请，因此 localhost 不按端口精细隔离。
+
+## 站点级配置
+
+设置页可以针对站点覆盖：
+
+- Provider
+- Model
+- Prompt
+
+例如：
+
+```text
+https://github.com
+Provider: OpenAI-compatible
+Model: qwen-coder
+Prompt: 技术文档翻译 Prompt
+```
+
+而新闻网站可继续继承默认 DeepSeek 配置。
+
+站点配置只保存覆盖项，API 凭据仍由 Provider 全局配置统一管理，避免每个站点重复保存密钥。
+
+解析顺序：
+
+```text
+Provider 全局配置
+      +
+默认 Prompt / Target Language
+      ↓
+站点 Provider / Model / Prompt 覆盖
+      ↓
+Effective Translation Config
+```
+
+## 缓存
+
+IndexedDB 名称和数据结构保持不变：
+
+```text
+ai_bilingual_translator
+├── pages
+└── translations
+```
 
 缓存身份：
 
 ```text
-page = normalized URL
+page:
+normalized URL
 
-config =
-provider
+config:
+cache schema
++ provider
 + model
 + target language
 + prompt
-+ cache schema
++ OpenAI-compatible endpoint（仅通用 Provider）
 
-segment =
+segment:
 SHA-256(normalized source text)
 ```
 
-URL 规范化：
+DeepSeek 不把固定 API Base URL 放进指纹，因此 v0.3/v0.4 DeepSeek 缓存继续命中。
 
-- 删除 `utm_*`、`fbclid`、`gclid` 等跟踪参数
-- 保留业务 Query
-- Query 参数排序
-- 普通 `#section` 忽略
-- `#/route` / `#!/route` 保留
+OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容服务使用同一模型名时误复用译文。
 
 ## 权限
 
-必需：
+必需权限：
 
 - `storage`
 - `activeTab`
 - `scripting`
 - `https://api.deepseek.com/*`
 
-可选：
+可选 Host Permission 声明：
 
 - `http://*/*`
 - `https://*/*`
 
-可选 Host Permission 只用于用户主动开启的站点自动翻译，不代表安装时获得全站读取权限。
+该声明是“允许用户以后授权的最大范围”，不是安装时直接授予。
 
-## 调试
+实际运行中：
 
-### Service Worker
+- 自动翻译：用户按站点授权
+- OpenAI-compatible：用户按 API Origin 授权
 
-`chrome://extensions/` → TranslateFlow → Service Worker → Inspect
+如果某个 Origin 同时是自动翻译站点和 API Provider 地址，关闭自动翻译时不会误撤销 Provider 仍需要的 Host Permission。
 
-主要看：
+## 自动增量翻译
 
-- Provider 请求
-- IndexedDB
-- Runtime messages
-- 自动站点注册
-- chrome.storage.local
+自动模式保持原有机制：
 
-### Content Script
+- IntersectionObserver：只处理近视口内容
+- MutationObserver：动态新增内容进入队列
+- IndexedDB：缓存优先
+- API：只翻译未命中段落
+- SPA 路由变化：重新计算页面身份
+- API 错误：退避重试
 
-目标网页 DevTools：
+修改全局 Provider、OpenAI-compatible 配置或当前站点 Profile 时，自动模式会清理当前页面译文并按新配置重新处理。
 
-- Console
-- Elements
-- Sources → Content scripts
+## 开发约束
 
-### Popup / Options
+`npm run check` 自动执行：
 
-右键对应扩展页面 → Inspect。
+- `src/shared/` 禁止依赖 `chrome.*`
+- 外部 `fetch()` 只能位于 `src/background/providers/`
+- IndexedDB 只能由 `src/background/cache-db.js` 访问
+- 动态 Content Script 注册只能由 `src/background/auto-sites.js` 调用
+- Content Script 模块禁止 ESM import/export
+- `src/` 单文件超过 420 行失败
+- `background.js` / `content.js` 保持薄入口
+- 旧根目录 `cache-db.js` 不允许重新出现
 
-## 发布打包
-
-当前无 build 步骤，源码即运行产物。
-
-macOS / Linux：
-
-```bash
-zip -r translateflow-plugin-v0.4.zip translateflow-plugin \
-  -x "*/.git/*" \
-  -x "*/.DS_Store" \
-  -x "*/node_modules/*"
-```
-
-Chrome 本地安装仍需要解压后加载目录。
-
-## 贡献
-
-提交前：
-
-```bash
-npm run validate
-```
-
-涉及以下变化时不要当作普通重构：
-
-- IndexedDB schema / version
-- cache-key 语义
-- Runtime message value
-- required / optional permissions
-- 自动站点注册 ID
-
-详细规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+GitHub Actions 在 PR 和 main push 时执行同一套 `npm run validate`。
 
 ## 当前限制
 
-- 主要面向正文、文章、文档和 Feed；复杂 Web App UI 不保证所有文本都适合自动翻译。
+- OpenAI-compatible 当前基于 Chat Completions 接口，不是 Responses API。
+- 不同兼容服务对 JSON 输出能力差异较大，当前通过严格 Prompt + 容错 JSON 解析适配。
+- Provider 额外 Header 尚未开放配置；OpenRouter 等需要特殊 Header 的场景后续可扩展。
 - PDF、视频双语字幕、划词翻译尚未实现。
-- 自动授权按 scheme + hostname 管理，localhost 多端口场景会共享主机授权范围。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
-- API Key 保存在 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
+- API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
