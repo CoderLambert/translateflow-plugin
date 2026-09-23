@@ -9,7 +9,7 @@
 - 自定义 OpenAI-compatible Base URL / API Key / Model
 - 支持无 API Key 的本地兼容服务
 - 按 API Origin 动态申请 Host Permission
-- 站点级 Provider / Model / Prompt 覆盖
+- 站点级 Provider / Model / Prompt / Target Language 覆盖
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
 
@@ -191,6 +191,7 @@ Host Permission 会按浏览器 Match Pattern 申请，因此 localhost 不按�
 - Provider
 - Model
 - Prompt
+- Target Language
 
 例如：
 
@@ -199,6 +200,7 @@ https://github.com
 Provider: OpenAI-compatible
 Model: qwen-coder
 Prompt: 技术文档翻译 Prompt
+Target Language: English
 ```
 
 而新闻网站可继续继承默认 DeepSeek 配置。
@@ -212,7 +214,7 @@ Provider 全局配置
       +
 默认 Prompt / Target Language
       ↓
-站点 Provider / Model / Prompt 覆盖
+站点 Provider / Model / Prompt / Target Language 覆盖
       ↓
 Effective Translation Config
 ```

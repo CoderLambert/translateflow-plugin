@@ -44,6 +44,7 @@ npm run validate
 - Provider
 - Model
 - Prompt
+- Target Language
 
 新增站点配置字段时，需要确认它是否影响缓存 identity。
 

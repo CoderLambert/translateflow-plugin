@@ -73,7 +73,8 @@ test("site profile overrides provider, model and prompt without duplicating cred
       "https://github.com": {
         provider: "openai-compatible",
         model: "github-model",
-        prompt: "technical prompt"
+        prompt: "technical prompt",
+        targetLanguage: "English"
       }
     }
   }, "https://github.com/org/repo?tab=readme");
@@ -82,5 +83,38 @@ test("site profile overrides provider, model and prompt without duplicating cred
   assert.equal(config.apiKey, "sk-openai");
   assert.equal(config.model, "github-model");
   assert.equal(config.prompt, "technical prompt");
+  assert.equal(config.targetLanguage, "English");
   assert.equal(config.siteOrigin, "https://github.com");
+});
+
+test("non-matching and deleted site profiles fall back to global settings", () => {
+  const config = {
+    provider: "deepseek",
+    apiKey: "sk-deepseek",
+    model: "global-model",
+    prompt: "global prompt",
+    targetLanguage: "Japanese",
+    siteProfiles: {
+      "https://github.com": {
+        provider: "openai-compatible",
+        model: "github-model",
+        prompt: "github prompt",
+        targetLanguage: "English"
+      }
+    }
+  };
+
+  const nonMatching = resolveTranslationConfig(config, "https://news.ycombinator.com/item?id=1");
+  assert.equal(nonMatching.provider, "deepseek");
+  assert.equal(nonMatching.model, "global-model");
+  assert.equal(nonMatching.prompt, "global prompt");
+  assert.equal(nonMatching.targetLanguage, "Japanese");
+  assert.equal(nonMatching.siteOrigin, "");
+
+  const deleted = resolveTranslationConfig({ ...config, siteProfiles: {} }, "https://github.com/org/repo");
+  assert.equal(deleted.provider, "deepseek");
+  assert.equal(deleted.model, "global-model");
+  assert.equal(deleted.prompt, "global prompt");
+  assert.equal(deleted.targetLanguage, "Japanese");
+  assert.equal(deleted.siteOrigin, "");
 });
