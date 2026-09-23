@@ -1,12 +1,12 @@
+import { CACHE_SCHEMA_VERSION } from "../shared/constants.js";
+import { byteLength, sha256 } from "../shared/hash.js";
+import { normalizeSourceText } from "../shared/text.js";
+import { normalizeUrl } from "../shared/url.js";
+
 const DB_NAME = "ai_bilingual_translator";
 const DB_VERSION = 1;
 const TRANSLATIONS = "translations";
 const PAGES = "pages";
-
-const TRACKING_PARAMS = new Set([
-  "fbclid", "gclid", "dclid", "msclkid", "mc_cid", "mc_eid",
-  "igshid", "yclid", "_hsenc", "_hsmi", "vero_conv", "vero_id"
-]);
 
 let dbPromise;
 
@@ -43,10 +43,10 @@ export async function lookupTranslations({ pageUrl, segments, config }) {
   }));
   const records = await Promise.all(lookups.map(({ cacheKey }) => requestAsPromise(store.get(cacheKey))));
 
-  for (let i = 0; i < lookups.length; i++) {
+  for (let i = 0; i < lookups.length; i += 1) {
     const { segment } = lookups[i];
     const record = records[i];
-    if (!record || !record.translation) continue;
+    if (!record?.translation) continue;
     if (normalizeSourceText(record.sourceText) !== normalizeSourceText(segment.text)) continue;
 
     hits.push({ id: segment.id, text: record.translation });
@@ -90,6 +90,7 @@ export async function storeTranslations({ pageUrl, pageTitle = "", items, config
   const tx = db.transaction([TRANSLATIONS, PAGES], "readwrite");
   const translations = tx.objectStore(TRANSLATIONS);
   const pages = tx.objectStore(PAGES);
+  let stored = 0;
 
   for (const record of prepared) {
     if (!record.sourceText || !record.translation) continue;
@@ -100,6 +101,7 @@ export async function storeTranslations({ pageUrl, pageTitle = "", items, config
       createdAt: existing?.createdAt || now,
       lastAccessedAt: now
     });
+    stored += 1;
   }
 
   const existingPage = await requestAsPromise(pages.get(ctx.pageKey));
@@ -113,7 +115,7 @@ export async function storeTranslations({ pageUrl, pageTitle = "", items, config
   });
 
   await transactionDone(tx);
-  return { stored: prepared.length, pageKey: ctx.pageKey, normalizedUrl: ctx.normalizedUrl };
+  return { stored, pageKey: ctx.pageKey, normalizedUrl: ctx.normalizedUrl };
 }
 
 export async function getPageCacheStatus({ pageUrl, config }) {
@@ -160,7 +162,7 @@ export async function clearAllCache() {
   tx.objectStore(TRANSLATIONS).clear();
   tx.objectStore(PAGES).clear();
   await transactionDone(tx);
-  return { ok: true };
+  return { cleared: true };
 }
 
 export async function getCacheStats() {
@@ -206,48 +208,15 @@ export async function pruneCache(maxBytes) {
   return { ...finalStats, deleted };
 }
 
-export function normalizeUrl(rawUrl) {
-  const url = new URL(rawUrl);
-  if (!/^https?:$/.test(url.protocol)) throw new Error("仅支持 http/https 网页缓存。");
-  if (!isRouteLikeHash(url.hash)) url.hash = "";
-
-  for (const key of [...url.searchParams.keys()]) {
-    const lower = key.toLowerCase();
-    if (lower.startsWith("utm_") || TRACKING_PARAMS.has(lower)) {
-      url.searchParams.delete(key);
-    }
-  }
-  url.searchParams.sort();
-  return url.toString();
-}
-
 async function getConfigHash(config) {
   const payload = {
-    cacheSchema: 2,
-    provider: "deepseek",
+    cacheSchema: CACHE_SCHEMA_VERSION,
+    provider: String(config?.provider || "deepseek").trim(),
     model: String(config?.model || "").trim(),
     targetLanguage: String(config?.targetLanguage || "").trim(),
     prompt: String(config?.prompt || "").trim()
   };
   return sha256(JSON.stringify(payload));
-}
-
-function normalizeSourceText(text) {
-  return String(text || "").replace(/\s+/g, " ").trim();
-}
-
-function isRouteLikeHash(hash) {
-  return /^#(?:!\/|\/)/.test(hash || "");
-}
-
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(String(value));
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function byteLength(value) {
-  return new TextEncoder().encode(String(value || "")).byteLength;
 }
 
 async function removeOrphanPages(pageKeys) {
