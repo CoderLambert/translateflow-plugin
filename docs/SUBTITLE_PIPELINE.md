@@ -120,9 +120,11 @@ page identity
 + subtitle media/track/cue identity
 ```
 
-Repeated identical text at materially different cue positions does not collapse because timing/sequence participates in the subtitle identity.
+Repeated identical text at materially different cue positions does not collapse. Timestamped cues use timing/id rather than queue sequence so the same timed cue can hit cache across sessions; sequence participates only when the source provides no timing.
 
 The synthetic identity is used only for cache lookup/store. Provider requests receive only the real subtitle text.
+
+After an API-backed subtitle batch, the content pipeline requests the existing global `CACHE_PRUNE` path at most once every five minutes. This keeps subtitle entries inside the same `cacheMaxMB` budget without adding a second eviction policy.
 
 ## Task / retry reuse
 
