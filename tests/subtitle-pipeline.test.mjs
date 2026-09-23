@@ -82,11 +82,13 @@ function loadPipeline({ runtimeHandler } = {}) {
         runtime: {
           messages: {
             background: {
-              SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH"
+              SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH",
+              CACHE_PRUNE: "CACHE_PRUNE"
             }
           },
           async sendRuntimeMessage(message) {
             calls.push(message);
+            if (message.type === "CACHE_PRUNE") return { ok: true };
             if (runtimeHandler) return runtimeHandler(message);
             return {
               ok: true,
@@ -245,6 +247,29 @@ test("media switch cancels active work and discards a late result from the previ
   assert.equal(delivered.length, 1);
   assert.equal(delivered[0].translation, "NEW");
   assert.equal(delivered[0].unit.mediaId, "youtube:new");
+});
+
+test("API subtitle batches request cache pruning at most once per five-minute window", async () => {
+  const { pipelineModule, calls } = loadPipeline();
+  let clock = 400000;
+  const pipeline = pipelineModule.createSubtitlePipeline({
+    setTimer: () => 1,
+    clearTimer() {},
+    now: () => clock
+  });
+
+  await pipeline.ingest(snapshot("youtube:prune", [
+    { startTime: 1, endTime: 2, text: "First translated cue" }
+  ], { observedAt: clock }));
+  await pipeline.flush({ force: true });
+  assert.equal(calls.filter((call) => call.type === "CACHE_PRUNE").length, 1);
+
+  clock += 100;
+  await pipeline.ingest(snapshot("youtube:prune", [
+    { startTime: 3, endTime: 4, text: "Second translated cue" }
+  ], { observedAt: clock }));
+  await pipeline.flush({ force: true });
+  assert.equal(calls.filter((call) => call.type === "CACHE_PRUNE").length, 1);
 });
 
 test("live queue stays bounded before a delayed batch is flushed", async () => {
