@@ -14,10 +14,10 @@
   let statusNode;
   let copyButton;
   let retryButton;
-  let closeButton;
   let activeSnapshot;
   let translateHandler;
   let retryHandler;
+  let copyHandler;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -41,9 +41,11 @@
 
     const header = document.createElement("div");
     header.className = "tf-selection-header";
+
     const title = document.createElement("strong");
     title.textContent = "TranslateFlow";
-    closeButton = document.createElement("button");
+
+    const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.className = "tf-selection-icon-button";
     closeButton.textContent = "×";
@@ -67,9 +69,7 @@
     copyButton = document.createElement("button");
     copyButton.type = "button";
     copyButton.textContent = "复制";
-    copyButton.addEventListener("click", () => {
-      root.dispatchEvent(new CustomEvent("tf-selection-copy", { bubbles: false }));
-    });
+    copyButton.addEventListener("click", () => copyHandler?.());
 
     retryButton = document.createElement("button");
     retryButton.type = "button";
@@ -87,6 +87,7 @@
     activeSnapshot = snapshot;
     translateHandler = onTranslate;
     retryHandler = null;
+    copyHandler = null;
     panel.hidden = true;
     chip.hidden = false;
     position(snapshot, chip);
@@ -107,9 +108,11 @@
     position(snapshot, panel);
   }
 
-  function showResult(snapshot, translation) {
+  function showResult(snapshot, translation, onCopy) {
     ensureUi();
     activeSnapshot = snapshot;
+    copyHandler = onCopy;
+    retryHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -126,6 +129,7 @@
     ensureUi();
     activeSnapshot = snapshot;
     retryHandler = onRetry;
+    copyHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -144,9 +148,15 @@
     root = null;
     chip = null;
     panel = null;
+    sourceNode = null;
+    resultNode = null;
+    statusNode = null;
+    copyButton = null;
+    retryButton = null;
     activeSnapshot = null;
     translateHandler = null;
     retryHandler = null;
+    copyHandler = null;
   }
 
   function contains(target) {
@@ -157,15 +167,6 @@
     if (!root || !activeSnapshot) return;
     const target = !panel?.hidden ? panel : chip;
     if (target) position(activeSnapshot, target);
-  }
-
-  function getTranslationText() {
-    return resultNode?.textContent || "";
-  }
-
-  function onCopy(handler) {
-    ensureUi();
-    root.addEventListener("tf-selection-copy", handler, { once: true });
   }
 
   function position(snapshot, element) {
@@ -201,8 +202,6 @@
     showError,
     hide,
     contains,
-    reposition,
-    getTranslationText,
-    onCopy
+    reposition
   };
 })();

@@ -21,3 +21,16 @@ test("message values stay unique inside each channel", () => {
 test("content bootstrap is loaded last", () => {
   assert.equal(CONTENT_SCRIPT_FILES.at(-1), "content.js");
 });
+
+test("selection modules are loaded before the content bootstrap", () => {
+  const selectionFiles = [
+    "src/content/selection/selection.js",
+    "src/content/selection/popover.js",
+    "src/content/selection/controller.js"
+  ];
+
+  for (const file of selectionFiles) {
+    assert.ok(CONTENT_SCRIPT_FILES.includes(file), `${file} should be injected`);
+    assert.ok(CONTENT_SCRIPT_FILES.indexOf(file) < CONTENT_SCRIPT_FILES.indexOf("content.js"));
+  }
+});

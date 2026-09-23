@@ -115,24 +115,12 @@
   }
 
   function showResult(snapshot, translation) {
-    popover.showResult(snapshot, translation);
-    popover.onCopy(async () => {
+    popover.showResult(snapshot, translation, async () => {
       try {
         await copyText(translation);
         showToast("译文已复制", "success");
       } catch (error) {
         showToast(`复制失败：${error?.message || error}`, "error");
-      } finally {
-        if (snapshot === activeSnapshot) {
-          popover.onCopy(async () => {
-            try {
-              await copyText(translation);
-              showToast("译文已复制", "success");
-            } catch (error) {
-              showToast(`复制失败：${error?.message || error}`, "error");
-            }
-          });
-        }
       }
     });
   }

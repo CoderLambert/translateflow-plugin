@@ -307,6 +307,6 @@ GitHub Actions 在 PR 和 main push 时执行同一套 `npm run validate`。
 - OpenAI-compatible 当前基于 Chat Completions 接口，不是 Responses API。
 - 不同兼容服务对 JSON 输出能力差异较大，当前通过严格 Prompt + 容错 JSON 解析适配。
 - Provider 额外 Header 尚未开放配置；OpenRouter 等需要特殊 Header 的场景后续可扩展。
-- PDF、视频双语字幕、划词翻译尚未实现。
+- PDF、视频双语字幕尚未实现。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
 - API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
