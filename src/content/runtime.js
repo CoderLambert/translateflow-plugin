@@ -10,6 +10,7 @@
   const constants = Object.freeze({
     TRANSLATION_CLASS: "abt-translation",
     TRANSLATED_ATTR: "data-abt-translated",
+    EXTENSION_UI_ATTR: "data-tf-extension-ui",
     CANDIDATE_SELECTOR: "p, blockquote, dd, dt, figcaption, h1, h2, h3, h4, h5, h6, li",
     BATCH_MAX_CHARS: 7000,
     BATCH_MAX_ITEMS: 18,
@@ -103,6 +104,7 @@
     if (!toast) {
       toast = document.createElement("div");
       toast.id = "abt-toast";
+      toast.setAttribute(constants.EXTENSION_UI_ATTR, "toast");
       document.documentElement.appendChild(toast);
     }
     toast.dataset.kind = kind;

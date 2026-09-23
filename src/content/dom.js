@@ -3,7 +3,13 @@
   if (!app?.modules.runtime || app.modules.dom) return;
 
   const { constants, state, cleanText } = app.modules.runtime;
-  const { TRANSLATION_CLASS, TRANSLATED_ATTR, CANDIDATE_SELECTOR, MIN_TEXT_LENGTH } = constants;
+  const {
+    TRANSLATION_CLASS,
+    TRANSLATED_ATTR,
+    EXTENSION_UI_ATTR,
+    CANDIDATE_SELECTOR,
+    MIN_TEXT_LENGTH
+  } = constants;
 
   function collectElements() {
     const root = document.querySelector("main, [role='main']") || document.body;
@@ -14,6 +20,7 @@
   function isCandidateElement(el) {
     if (!(el instanceof Element) || !isVisible(el)) return false;
     if (el.matches(`.${TRANSLATION_CLASS}`) || el.closest(`.${TRANSLATION_CLASS}`)) return false;
+    if (el.closest(`[${EXTENSION_UI_ATTR}]`)) return false;
     if (el.closest("pre, code, script, style, textarea, input, select, option, button, nav, footer, header, [contenteditable='true']")) return false;
     if (el.tagName === "LI" && el.querySelector(":scope > ul, :scope > ol, p, blockquote")) return false;
     if (el.tagName === "BLOCKQUOTE" && el.querySelector("p, li")) return false;
@@ -34,7 +41,7 @@
       acceptNode(node) {
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest(`.${TRANSLATION_CLASS}, script, style, code, pre, textarea`)) {
+        if (parent.closest(`.${TRANSLATION_CLASS}, [${EXTENSION_UI_ATTR}], script, style, code, pre, textarea`)) {
           return NodeFilter.FILTER_REJECT;
         }
         return NodeFilter.FILTER_ACCEPT;
@@ -82,8 +89,10 @@
   }
 
   function isTranslationNode(node) {
-    if (!(node instanceof Element)) return false;
-    return node.matches(`.${TRANSLATION_CLASS}`) || Boolean(node.closest(`.${TRANSLATION_CLASS}`));
+    const el = node instanceof Element ? node : node?.parentElement;
+    if (!el) return false;
+    return el.matches(`.${TRANSLATION_CLASS}, [${EXTENSION_UI_ATTR}]`)
+      || Boolean(el.closest(`.${TRANSLATION_CLASS}, [${EXTENSION_UI_ATTR}]`));
   }
 
   app.modules.dom = {

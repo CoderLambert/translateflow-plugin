@@ -1,6 +1,12 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.dom || !app?.modules.processor || !app?.modules.auto) {
+  if (
+    !app?.modules.runtime
+    || !app?.modules.dom
+    || !app?.modules.processor
+    || !app?.modules.auto
+    || !app?.modules.selectionController
+  ) {
     throw new Error("TranslateFlow content modules were not loaded in the expected order.");
   }
   if (app.loaded) return;
@@ -10,6 +16,7 @@
   const { clearTranslations } = app.modules.dom;
   const { processPage } = app.modules.processor;
   const { enableAutoMode, disableAutoMode, rescanAutoPage, maybeStartAutoMode, scheduleAutoDrain } = app.modules.auto;
+  const { start: startSelectionTranslation } = app.modules.selectionController;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
@@ -95,5 +102,6 @@
     }
   });
 
+  startSelectionTranslation();
   maybeStartAutoMode();
 })();

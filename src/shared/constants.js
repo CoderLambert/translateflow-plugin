@@ -65,6 +65,9 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/batch.js",
   "src/content/processor.js",
   "src/content/auto.js",
+  "src/content/selection/selection.js",
+  "src/content/selection/popover.js",
+  "src/content/selection/controller.js",
   "content.js"
 ]);
 
