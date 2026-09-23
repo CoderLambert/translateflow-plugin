@@ -22,6 +22,7 @@ const CONTENT_SCRIPTS = [
   "src/content/selection/selection.js",
   "src/content/selection/popover.js",
   "src/content/selection/controller.js",
+  "src/content/quick-control-view.js",
   "src/content/quick-control.js",
   "content.js"
 ];
