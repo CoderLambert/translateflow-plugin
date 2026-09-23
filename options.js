@@ -1,11 +1,4 @@
-const DEFAULT_PROMPT = [
-  "You are a professional translator.",
-  "Translate the provided English web-page segments into natural Simplified Chinese.",
-  "Preserve technical terms, product names, API names, variable names, URLs, Markdown-like symbols and code-like tokens when appropriate.",
-  "Do not add explanations.",
-  "Return valid JSON only, exactly in this shape: {\"translations\":[{\"id\":\"...\",\"text\":\"...\"}] }.",
-  "Every input id must appear exactly once in the output."
-].join("\n");
+import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "./src/shared/constants.js";
 
 const apiKey = document.getElementById("apiKey");
 const model = document.getElementById("model");
@@ -36,7 +29,7 @@ test.addEventListener("click", async () => {
   setStatus("正在测试 API…", false);
   try {
     await saveConfig();
-    const response = await chrome.runtime.sendMessage({ type: "TEST_API" });
+    const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.TEST_API });
     if (!response?.ok) throw new Error(response?.error || "API 测试失败");
     setStatus(`连接成功。模型返回：${response.result}`, false);
   } catch (error) {
@@ -53,21 +46,20 @@ reveal.addEventListener("click", () => {
 });
 
 refreshCache.addEventListener("click", refreshCacheStats);
+refreshAutoSites.addEventListener("click", refreshAutoSiteList);
 
 pruneCache.addEventListener("click", async () => {
   await saveConfig();
   setStatus("正在清理缓存…", false);
-  const response = await chrome.runtime.sendMessage({ type: "CACHE_PRUNE" });
+  const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE });
   if (!response?.ok) return setStatus(response?.error || "缓存清理失败", true);
   setStatus(`清理完成，删除 ${response.deleted || 0} 条旧记录。`, false);
   await refreshCacheStats();
 });
 
-refreshAutoSites.addEventListener("click", refreshAutoSiteList);
-
 clearAllCache.addEventListener("click", async () => {
   if (!confirm("确定清空全部网页翻译缓存？API Key 和设置不会删除。")) return;
-  const response = await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" });
+  const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_CLEAR_ALL });
   if (!response?.ok) return setStatus(response?.error || "清空缓存失败", true);
   setStatus("全部翻译缓存已清空。", false);
   await refreshCacheStats();
@@ -75,19 +67,19 @@ clearAllCache.addEventListener("click", async () => {
 
 async function load() {
   const config = await chrome.storage.local.get(["apiKey", "model", "prompt", "cacheMaxMB"]);
-  apiKey.value = config.apiKey || "";
-  model.value = config.model || "deepseek-flash";
-  prompt.value = config.prompt || DEFAULT_PROMPT;
-  cacheMaxMB.value = Number(config.cacheMaxMB || 200);
+  apiKey.value = config.apiKey || DEFAULT_CONFIG.apiKey;
+  model.value = config.model || DEFAULT_CONFIG.model;
+  prompt.value = config.prompt || DEFAULT_CONFIG.prompt;
+  cacheMaxMB.value = Number(config.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB);
 }
 
 async function saveConfig() {
-  const maxMB = Math.min(2048, Math.max(20, Number(cacheMaxMB.value) || 200));
+  const maxMB = Math.min(2048, Math.max(20, Number(cacheMaxMB.value) || DEFAULT_CONFIG.cacheMaxMB));
   cacheMaxMB.value = maxMB;
   await chrome.storage.local.set({
     apiKey: apiKey.value.trim(),
-    model: model.value.trim() || "deepseek-flash",
-    prompt: prompt.value.trim() || DEFAULT_PROMPT,
+    model: model.value.trim() || DEFAULT_CONFIG.model,
+    prompt: prompt.value.trim() || DEFAULT_CONFIG.prompt,
     cacheMaxMB: maxMB
   });
 }
@@ -95,26 +87,13 @@ async function saveConfig() {
 async function refreshCacheStats() {
   cacheStats.textContent = "正在读取缓存统计…";
   try {
-    const response = await chrome.runtime.sendMessage({ type: "CACHE_STATS" });
+    const response = await chrome.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_STATS });
     if (!response?.ok) throw new Error(response?.error || "读取失败");
     cacheStats.textContent = `${response.pageCount || 0} 个网页 · ${response.segmentCount || 0} 个翻译段落 · 约 ${formatBytes(response.bytes || 0)}`;
   } catch (error) {
     cacheStats.textContent = `读取缓存统计失败：${error.message || error}`;
   }
 }
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
-}
-
-function setStatus(message, isError) {
-  status.textContent = message;
-  status.style.color = isError ? "#c62828" : "";
-}
-
 
 async function refreshAutoSiteList() {
   autoSitesList.textContent = "正在读取已授权站点…";
@@ -139,7 +118,10 @@ async function refreshAutoSiteList() {
       remove.addEventListener("click", async () => {
         remove.disabled = true;
         try {
-          const response = await chrome.runtime.sendMessage({ type: "AUTO_SITE_UNREGISTER", origin: site });
+          const response = await chrome.runtime.sendMessage({
+            type: BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER,
+            origin: site
+          });
           if (!response?.ok) throw new Error(response?.error || "移除站点失败");
           await chrome.permissions.remove({ origins: [`${site}/*`] });
           setStatus(`已关闭 ${site} 的自动翻译。`, false);
@@ -155,4 +137,16 @@ async function refreshAutoSiteList() {
   } catch (error) {
     autoSitesList.textContent = `读取站点失败：${error.message || error}`;
   }
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+}
+
+function setStatus(message, isError) {
+  status.textContent = message;
+  status.style.color = isError ? "#c62828" : "";
 }

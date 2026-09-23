@@ -1,3 +1,11 @@
+import {
+  BACKGROUND_MESSAGES,
+  CONTENT_MESSAGES,
+  CONTENT_SCRIPT_FILES,
+  CONTENT_STYLE_FILES
+} from "./src/shared/constants.js";
+import { getOriginMatchPattern, normalizeOrigin } from "./src/shared/url.js";
+
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
 const translateBtn = $("translate");
@@ -18,22 +26,29 @@ autoBtn.addEventListener("click", async () => {
   try {
     const site = currentSite;
     if (!site) throw new Error("当前页面不支持站点自动翻译。");
+
     if (currentAutoEnabled) {
-      try { await sendToActiveTab("ABT_DISABLE_AUTO"); } catch {}
-      const response = await chrome.runtime.sendMessage({ type: "AUTO_SITE_UNREGISTER", origin: site.origin });
+      try { await sendToActiveTab(CONTENT_MESSAGES.DISABLE_AUTO); } catch {}
+      const response = await chrome.runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER,
+        origin: site.origin
+      });
       if (!response?.ok) throw new Error(response?.error || "关闭自动翻译失败");
       await chrome.permissions.remove({ origins: [site.match] });
-      setStatus("已关闭本站自动增量翻译；已有 IndexedDB 缓存仍保留。 ");
+      setStatus("已关闭本站自动增量翻译；已有 IndexedDB 缓存仍保留。");
     } else {
       const granted = await chrome.permissions.request({ origins: [site.match] });
       if (!granted) throw new Error("未授予本站权限，自动翻译未开启。");
 
-      const response = await chrome.runtime.sendMessage({ type: "AUTO_SITE_REGISTER", origin: site.origin });
+      const response = await chrome.runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.AUTO_SITE_REGISTER,
+        origin: site.origin
+      });
       if (!response?.ok) throw new Error(response?.error || "自动翻译注册失败");
       await ensureInjected(site.tab.id);
-      const started = await chrome.tabs.sendMessage(site.tab.id, { type: "ABT_ENABLE_AUTO" });
+      const started = await chrome.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.ENABLE_AUTO });
       if (!started?.ok) throw new Error(started?.error || "当前页面自动翻译启动失败");
-      setStatus("本站已开启自动增量翻译。以后进入该站会自动恢复缓存并补译新增内容。 ");
+      setStatus("本站已开启自动增量翻译。以后进入该站会自动恢复缓存并补译新增内容。");
     }
   } catch (error) {
     setStatus(error.message || String(error), true);
@@ -45,24 +60,16 @@ autoBtn.addEventListener("click", async () => {
 });
 
 translateBtn.addEventListener("click", async () => {
-  await runOnActiveTab("ABT_TRANSLATE_PAGE", true);
+  await runOnActiveTab(CONTENT_MESSAGES.TRANSLATE_PAGE, true);
   await refreshCacheStatus();
 });
 
-restoreBtn.addEventListener("click", async () => {
-  await runOnActiveTab("ABT_RESTORE_CACHE", true);
-});
-
-toggleBtn.addEventListener("click", async () => {
-  await runOnActiveTab("ABT_TOGGLE_TRANSLATIONS", false);
-});
-
-clearBtn.addEventListener("click", async () => {
-  await runOnActiveTab("ABT_CLEAR_TRANSLATIONS", false);
-});
+restoreBtn.addEventListener("click", () => runOnActiveTab(CONTENT_MESSAGES.RESTORE_CACHE, true));
+toggleBtn.addEventListener("click", () => runOnActiveTab(CONTENT_MESSAGES.TOGGLE_TRANSLATIONS, false));
+clearBtn.addEventListener("click", () => runOnActiveTab(CONTENT_MESSAGES.CLEAR_TRANSLATIONS, false));
 
 clearCacheBtn.addEventListener("click", async () => {
-  const response = await runOnActiveTab("ABT_CLEAR_PAGE_CACHE", false, { silentSuccess: true });
+  const response = await runOnActiveTab(CONTENT_MESSAGES.CLEAR_PAGE_CACHE, false, { silentSuccess: true });
   if (response?.ok) {
     setStatus(`已删除本页 ${response.deleted || 0} 条缓存记录。`);
     await refreshCacheStatus();
@@ -70,7 +77,6 @@ clearCacheBtn.addEventListener("click", async () => {
 });
 
 settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
-
 Promise.allSettled([refreshCacheStatus(), refreshAutoStatus()]);
 
 async function refreshAutoStatus() {
@@ -99,11 +105,12 @@ async function refreshAutoStatus() {
 
 async function refreshCacheStatus() {
   try {
-    const result = await sendToActiveTab("ABT_CACHE_STATUS");
+    const result = await sendToActiveTab(CONTENT_MESSAGES.CACHE_STATUS);
     if (!result?.ok) throw new Error(result?.error || "无法读取缓存状态");
     const current = Number(result.count || 0);
     const total = Number(result.totalCount || 0);
     const time = result.lastAccessedAt ? formatTime(result.lastAccessedAt) : "";
+
     if (current > 0) {
       const oldVersions = Math.max(0, total - current);
       cacheInfo.textContent = `当前配置 ${current} 条${oldVersions ? ` · 历史版本 ${oldVersions} 条` : ""}${time ? ` · ${time}` : ""}`;
@@ -126,10 +133,10 @@ async function runOnActiveTab(type, longRunning, options = {}) {
     if (!response?.ok) throw new Error(response?.error || "操作失败");
 
     if (!options.silentSuccess) {
-      if (type === "ABT_TOGGLE_TRANSLATIONS") {
+      if (type === CONTENT_MESSAGES.TOGGLE_TRANSLATIONS) {
         setStatus(response.hidden ? "译文已隐藏" : "译文已显示");
-      } else if (type === "ABT_CLEAR_TRANSLATIONS") {
-        setStatus("已从页面移除译文；IndexedDB 缓存仍保留。 ");
+      } else if (type === CONTENT_MESSAGES.CLEAR_TRANSLATIONS) {
+        setStatus("已从页面移除译文；IndexedDB 缓存仍保留。");
       } else {
         setStatus(response.message || `已处理 ${response.count || 0} 个段落`);
       }
@@ -155,19 +162,18 @@ async function getActiveSite() {
   if (!/^https?:/i.test(tab.url || "")) {
     throw new Error("Chrome 内部页面、扩展页等受保护页面无法注入脚本。请在普通 http/https 网页上使用。");
   }
-  const url = new URL(tab.url);
-  const origin = `${url.protocol}//${url.hostname}`;
-  return { tab, origin, match: `${origin}/*` };
+  const origin = normalizeOrigin(tab.url);
+  return { tab, origin, match: getOriginMatchPattern(origin) };
 }
 
 async function ensureInjected(tabId) {
   try {
-    await chrome.tabs.sendMessage(tabId, { type: "ABT_STATUS" });
+    await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.STATUS });
     return;
   } catch {}
 
-  await chrome.scripting.insertCSS({ target: { tabId }, files: ["content.css"] });
-  await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+  await chrome.scripting.insertCSS({ target: { tabId }, files: [...CONTENT_STYLE_FILES] });
+  await chrome.scripting.executeScript({ target: { tabId }, files: [...CONTENT_SCRIPT_FILES] });
 }
 
 function setBusy(busy, message) {
