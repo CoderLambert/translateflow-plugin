@@ -18,7 +18,7 @@ New content controls should consume the `--tf-*` variables rather than hard-code
 
 ## Primitives
 
-`src/content/ui/primitives.js` provides small DOM helpers for buttons, surfaces, and status regions. These are deliberately framework-free and do not own product behavior.
+`src/content/ui/primitives.js` provides framework-free DOM helpers for surfaces, buttons/icon-buttons, select controls, menu shells, live status regions, status badges, and progress indicators. These primitives own structure/accessibility defaults only; product behavior stays in the feature modules that consume them.
 
 ## Toasts
 
