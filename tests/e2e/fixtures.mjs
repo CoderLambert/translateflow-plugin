@@ -17,7 +17,7 @@ export const test = base.extend({
     const bundle = await prepareTestExtension();
     const launched = await launchExtension(bundle.path);
 
-    await configureExtension(launched.serviceWorker, {
+    await configureExtension(launched.controlPage, {
       apiBaseUrl: server.apiBaseUrl
     });
 
@@ -27,26 +27,26 @@ export const test = base.extend({
       async openFixture(suffix = "") {
         const page = await launched.context.newPage();
         await page.goto(server.fixtureUrl(suffix));
-        await injectExtension(launched.serviceWorker, page);
+        await injectExtension(launched.controlPage, page);
         return page;
       },
       async send(page, message) {
-        return sendContentMessage(launched.serviceWorker, page, message);
+        return sendContentMessage(launched.controlPage, page, message);
       },
       async translatePage(page, taskId = crypto.randomUUID()) {
-        return sendContentMessage(launched.serviceWorker, page, {
+        return sendContentMessage(launched.controlPage, page, {
           type: "ABT_TRANSLATE_PAGE",
           taskId
         });
       },
       async contextFor(pageUrl) {
-        return getEffectiveContext(launched.serviceWorker, pageUrl);
+        return getEffectiveContext(launched.controlPage, pageUrl);
       },
       async setConfig(patch) {
-        return setLocalConfig(launched.serviceWorker, patch);
+        return setLocalConfig(launched.controlPage, patch);
       },
       async getConfig(keys) {
-        return getLocalConfig(launched.serviceWorker, keys);
+        return getLocalConfig(launched.controlPage, keys);
       }
     };
 

@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import {
+  BACKGROUND_MESSAGES,
+  CONTENT_SCRIPT_FILES,
+  CONTENT_STYLE_FILES
+} from "../../../src/shared/constants.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "../../..");
@@ -34,6 +39,10 @@ export async function prepareTestExtension() {
     "http://127.0.0.1/*"
   ])];
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFile(
+    join(root, "e2e-control.html"),
+    "<!doctype html><meta charset=\"utf-8\"><title>TranslateFlow E2E Control</title>\n"
+  );
 
   return {
     path: root,
@@ -56,20 +65,25 @@ export async function launchExtension(extensionPath) {
   let [serviceWorker] = context.serviceWorkers();
   if (!serviceWorker) serviceWorker = await context.waitForEvent("serviceworker");
 
+  const extensionId = serviceWorker.url().split("/")[2];
+  const controlPage = await context.newPage();
+  await controlPage.goto(`chrome-extension://${extensionId}/e2e-control.html`);
+
   return {
     context,
     serviceWorker,
-    extensionId: serviceWorker.url().split("/")[2]
+    extensionId,
+    controlPage
   };
 }
 
-export async function configureExtension(serviceWorker, {
+export async function configureExtension(controlPage, {
   apiBaseUrl,
   siteProfiles = {},
   glossary = { version: 1, entries: [] },
   siteGlossaries = { version: 1, sites: {} }
 }) {
-  await serviceWorker.evaluate(async (config) => {
+  await controlPage.evaluate(async (config) => {
     await chrome.storage.local.clear();
     await chrome.storage.session.clear();
     await chrome.storage.local.set({
@@ -90,32 +104,33 @@ export async function configureExtension(serviceWorker, {
   }, { apiBaseUrl, siteProfiles, glossary, siteGlossaries });
 }
 
-export async function injectExtension(serviceWorker, page) {
+export async function injectExtension(controlPage, page) {
   const url = page.url();
-  return serviceWorker.evaluate(async (targetUrl) => {
-    const { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } = await import(
-      chrome.runtime.getURL("src/shared/constants.js")
-    );
+  return controlPage.evaluate(async ({ targetUrl, scriptFiles, styleFiles }) => {
     const tabs = await chrome.tabs.query({});
     const tab = tabs.find((item) => item.url === targetUrl);
     if (!tab?.id) throw new Error(`fixture tab not found: ${targetUrl}`);
 
     await chrome.scripting.insertCSS({
       target: { tabId: tab.id },
-      files: [...CONTENT_STYLE_FILES]
+      files: styleFiles
     });
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: [...CONTENT_SCRIPT_FILES]
+      files: scriptFiles
     });
 
     return tab.id;
-  }, url);
+  }, {
+    targetUrl: url,
+    scriptFiles: [...CONTENT_SCRIPT_FILES],
+    styleFiles: [...CONTENT_STYLE_FILES]
+  });
 }
 
-export async function sendContentMessage(serviceWorker, page, message) {
+export async function sendContentMessage(controlPage, page, message) {
   const url = page.url();
-  return serviceWorker.evaluate(async ({ targetUrl, message }) => {
+  return controlPage.evaluate(async ({ targetUrl, message }) => {
     const tabs = await chrome.tabs.query({});
     const tab = tabs.find((item) => item.url === targetUrl);
     if (!tab?.id) throw new Error(`fixture tab not found: ${targetUrl}`);
@@ -123,23 +138,26 @@ export async function sendContentMessage(serviceWorker, page, message) {
   }, { targetUrl: url, message });
 }
 
-export async function getEffectiveContext(serviceWorker, pageUrl) {
-  return serviceWorker.evaluate(async (targetUrl) => {
-    const { getEffectiveContext } = await import(
-      chrome.runtime.getURL("src/background/config.js")
-    );
-    return getEffectiveContext(targetUrl);
-  }, pageUrl);
+export async function getEffectiveContext(controlPage, pageUrl) {
+  const response = await controlPage.evaluate(async ({ pageUrl, type }) => (
+    chrome.runtime.sendMessage({ type, pageUrl })
+  ), {
+    pageUrl,
+    type: BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT
+  });
+
+  if (!response?.ok) throw new Error(response?.error || "failed to resolve effective context");
+  return response.context;
 }
 
-export async function setLocalConfig(serviceWorker, patch) {
-  await serviceWorker.evaluate(async (value) => {
+export async function setLocalConfig(controlPage, patch) {
+  await controlPage.evaluate(async (value) => {
     await chrome.storage.local.set(value);
   }, patch);
 }
 
-export async function getLocalConfig(serviceWorker, keys) {
-  return serviceWorker.evaluate(async (requestedKeys) => (
+export async function getLocalConfig(controlPage, keys) {
+  return controlPage.evaluate(async (requestedKeys) => (
     chrome.storage.local.get(requestedKeys)
   ), keys);
 }
