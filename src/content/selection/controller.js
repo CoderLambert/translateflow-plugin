@@ -19,6 +19,7 @@
   function start() {
     if (started) return;
     started = true;
+    popover.setCloseHandler(dismiss);
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -140,13 +141,15 @@
   function handleOutsidePointerDown(event) {
     if (popover.contains(event.target)) return;
     if (!activeSnapshot) return;
-    activeSnapshot = null;
-    requestVersion += 1;
-    popover.hide();
+    dismiss();
   }
 
   function handleKeyDown(event) {
     if (event.key !== "Escape") return;
+    dismiss();
+  }
+
+  function dismiss() {
     activeSnapshot = null;
     requestVersion += 1;
     popover.hide();

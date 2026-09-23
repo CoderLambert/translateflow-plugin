@@ -18,6 +18,7 @@
   let translateHandler;
   let retryHandler;
   let copyHandler;
+  let closeHandler;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -50,7 +51,7 @@
     closeButton.className = "tf-selection-icon-button";
     closeButton.textContent = "×";
     closeButton.setAttribute("aria-label", "关闭");
-    closeButton.addEventListener("click", hide);
+    closeButton.addEventListener("click", () => closeHandler?.());
     header.append(title, closeButton);
 
     sourceNode = document.createElement("div");
@@ -159,6 +160,10 @@
     copyHandler = null;
   }
 
+  function setCloseHandler(handler) {
+    closeHandler = typeof handler === "function" ? handler : null;
+  }
+
   function contains(target) {
     return Boolean(root && target instanceof Node && root.contains(target));
   }
@@ -201,6 +206,7 @@
     showResult,
     showError,
     hide,
+    setCloseHandler,
     contains,
     reposition
   };

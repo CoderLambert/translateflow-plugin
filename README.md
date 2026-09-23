@@ -10,6 +10,7 @@
 - 支持无 API Key 的本地兼容服务
 - 按 API Origin 动态申请 Host Permission
 - 站点级 Provider / Model / Prompt / Target Language 覆盖
+- 划词翻译浮层：选择文本后按需翻译、复制、失败重试，并复用站点配置与 IndexedDB 缓存
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
 
@@ -91,7 +92,11 @@ translateflow-plugin/
 │       ├── dom.js
 │       ├── batch.js
 │       ├── processor.js
-│       └── auto.js
+│       ├── auto.js
+│       └── selection/
+│           ├── selection.js
+│           ├── popover.js
+│           └── controller.js
 │
 ├── tests/
 ├── scripts/check.mjs
@@ -273,6 +278,18 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - OpenAI-compatible：用户按 API Origin 授权
 
 如果某个 Origin 同时是自动翻译站点和 API Provider 地址，关闭自动翻译时不会误撤销 Provider 仍需要的 Host Permission。
+
+## 划词翻译
+
+在普通 http/https 网页中选择 2–2000 字符的英文文本后，会出现轻量“译”按钮。仅在用户点击后才检查 IndexedDB 缓存并调用 Provider；翻译使用当前站点的 Effective Translation Config。
+
+支持：
+
+- 缓存命中时 0 API 恢复；
+- Copy；
+- Escape、右上角关闭按钮或点击外部关闭；
+- Provider 失败后 Retry；
+- 与自动增量翻译同时启用时，划词 UI 不会进入 MutationObserver 翻译队列。
 
 ## 自动增量翻译
 
