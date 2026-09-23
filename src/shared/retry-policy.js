@@ -50,7 +50,7 @@ export function computeRetryDelayMs({
   maxDelayMs = DEFAULT_RETRY_POLICY.maxDelayMs
 }) {
   const serverDelay = Math.max(0, Number(retryAfterMs) || 0);
-  if (serverDelay > 0) return Math.min(serverDelay, maxDelayMs);
+  if (serverDelay > 0) return serverDelay;
   const exponent = Math.max(0, Number(attempt || 1) - 1);
   return Math.min(maxDelayMs, baseDelayMs * (2 ** exponent));
 }

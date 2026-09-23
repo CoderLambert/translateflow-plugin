@@ -55,22 +55,28 @@
   }
 
   function completeTask(taskOrId, patch = {}) {
-    return transition(taskOrId, "completed", patch);
+    const task = transition(taskOrId, "completed", patch);
+    scheduleCleanup(task);
+    return task;
   }
 
   function failTask(taskOrId, error) {
     const task = resolveTask(taskOrId);
     if (!task) return null;
     if (isCancelledError(error) || task.state === "cancelled") {
-      return transition(task, "cancelled", {
+      const cancelled = transition(task, "cancelled", {
         error: "翻译已取消。",
         errorCode: "CANCELLED"
       });
+      scheduleCleanup(cancelled);
+      return cancelled;
     }
-    return transition(task, "failed", {
+    const failed = transition(task, "failed", {
       error: error?.message || String(error || "翻译失败"),
       errorCode: error?.code || ""
     });
+    scheduleCleanup(failed);
+    return failed;
   }
 
   async function cancelTask(taskOrId) {
@@ -83,6 +89,7 @@
       error: "翻译已取消。",
       errorCode: "CANCELLED"
     });
+    scheduleCleanup(task);
 
     try {
       await sendRuntimeMessage({
@@ -152,6 +159,16 @@
       error: task.error,
       errorCode: task.errorCode
     };
+  }
+
+  function scheduleCleanup(task) {
+    if (!task) return;
+    setTimeout(() => {
+      const current = tasks.get(task.id);
+      if (current === task && TERMINAL_STATES.has(current.state)) {
+        tasks.delete(task.id);
+      }
+    }, 5 * 60 * 1000);
   }
 
   function createCancelledError() {

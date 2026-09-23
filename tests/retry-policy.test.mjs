@@ -28,7 +28,7 @@ test("retry delay uses exponential backoff and honors Retry-After", () => {
     attempt: 1,
     retryAfterMs: 3000,
     baseDelayMs: 500,
-    maxDelayMs: 5000
+    maxDelayMs: 1000
   }), 3000);
 });
 
