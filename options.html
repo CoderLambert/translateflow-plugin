@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TranslateFlow 设置</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main>
+    <h1>TranslateFlow</h1>
+    <p class="lead">DeepSeek Key 与普通设置保存在 Chrome 扩展本地存储；网页翻译结果保存在扩展自身的 IndexedDB 中。</p>
+
+    <label for="apiKey">DeepSeek API Key</label>
+    <div class="password-row">
+      <input id="apiKey" type="password" autocomplete="off" placeholder="sk-..." />
+      <button id="reveal" type="button">显示</button>
+    </div>
+
+    <label for="model">模型</label>
+    <input id="model" type="text" value="deepseek-flash" />
+    <p class="hint">模型或 Prompt 修改后会形成新的缓存版本，旧缓存不会误复用。</p>
+
+    <label for="prompt">翻译 Prompt</label>
+    <textarea id="prompt" rows="10"></textarea>
+
+    <label for="cacheMaxMB">缓存软上限（MB）</label>
+    <input id="cacheMaxMB" type="number" min="20" max="2048" step="10" value="200" />
+    <p class="hint">默认 200 MB。每次产生新翻译后按最近最少使用（LRU）策略清理超额缓存。</p>
+
+    <div class="actions">
+      <button id="save" class="primary">保存设置</button>
+      <button id="test">测试 API</button>
+    </div>
+    <div id="status" class="status"></div>
+
+
+    <section>
+      <h2>自动翻译站点</h2>
+      <div id="autoSitesList" class="site-list">正在读取已授权站点…</div>
+      <div class="actions">
+        <button id="refreshAutoSites">刷新站点列表</button>
+      </div>
+      <p class="hint">自动翻译按站点单独授权。扩展仅在你主动开启的站点注册持久化 Content Script；关闭站点后会撤销对应站点权限，但不会删除翻译缓存。</p>
+    </section>
+
+    <section>
+      <h2>翻译缓存</h2>
+      <div id="cacheStats" class="cache-card">正在读取缓存统计…</div>
+      <div class="actions">
+        <button id="refreshCache">刷新统计</button>
+        <button id="pruneCache">按上限立即清理</button>
+        <button id="clearAllCache" class="danger">清空全部翻译缓存</button>
+      </div>
+      <p class="hint">缓存按“规范化 URL + 模型/Prompt/目标语言 + 原文 SHA-256”区分。移除 utm_*、fbclid、gclid 等常见跟踪参数，但保留业务查询参数。</p>
+    </section>
+
+    <section>
+      <h2>使用方法</h2>
+      <ol>
+        <li>填写 API Key 并保存。</li>
+        <li>打开英文网页，点击扩展。</li>
+        <li>“翻译 / 更新”会先命中缓存，只把缺失或变化的段落发送到 DeepSeek。</li>
+        <li>再次进入网页时可点击“仅恢复本页缓存”，全程不调用 API。</li>
+        <li>需要自动化时，在插件弹窗开启“此站自动增量翻译”；以后进入该站会自动恢复缓存并只补译近视口的新内容。</li>
+      </ol>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

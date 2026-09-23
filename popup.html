@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TranslateFlow</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main>
+    <div class="title">TranslateFlow</div>
+    <div class="subtitle">DeepSeek · 双语翻译 · IndexedDB 缓存</div>
+
+    <div id="cacheInfo" class="cache-info">正在检查本页缓存…</div>
+    <div id="autoInfo" class="auto-info">正在检查本站自动翻译…</div>
+
+    <button id="autoSite" class="auto-btn" disabled>开启此站自动增量翻译</button>
+    <button id="translate" class="primary">翻译 / 更新当前页面</button>
+    <button id="restore">仅恢复本页缓存（不调用 API）</button>
+
+    <div class="row">
+      <button id="toggle">显示 / 隐藏译文</button>
+      <button id="clear">移除页面译文</button>
+    </div>
+
+    <button id="clearCache" class="danger-lite">删除本页全部缓存版本</button>
+    <button id="settings" class="link-btn">⚙ 设置 API / 模型 / 缓存</button>
+
+    <div id="status" class="status">准备就绪</div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
