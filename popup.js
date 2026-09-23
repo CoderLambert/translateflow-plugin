@@ -6,6 +6,7 @@ import {
 } from "./src/shared/constants.js";
 import { getProviderHostPermissionPattern } from "./src/shared/provider-config.js";
 import { getOriginMatchPattern, normalizeOrigin } from "./src/shared/url.js";
+import { initializePresetUi } from "./src/popup/preset-ui.js";
 
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
@@ -24,6 +25,13 @@ let currentAutoEnabled = false;
 let currentSite = null;
 let activePageTask = null;
 let taskPollTimer = null;
+
+const presetUi = initializePresetUi({
+  getActiveSite,
+  translateCurrentPage: runPageTranslation,
+  refreshCacheStatus,
+  setStatus
+});
 
 autoBtn.addEventListener("click", async () => {
   setBusy(true, currentAutoEnabled ? "正在关闭本站自动翻译…" : "正在申请本站权限…");
@@ -81,7 +89,11 @@ clearCacheBtn.addEventListener("click", async () => {
 });
 
 settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
-Promise.allSettled([refreshCacheStatus(), refreshAutoStatus()]);
+Promise.allSettled([
+  refreshCacheStatus(),
+  refreshAutoStatus(),
+  presetUi.refresh()
+]);
 
 async function runPageTranslation() {
   setBusy(true, "正在准备翻译…");
@@ -273,6 +285,7 @@ function setBusy(busy, message) {
   toggleBtn.disabled = busy;
   clearBtn.disabled = busy;
   clearCacheBtn.disabled = busy;
+  presetUi.setDisabled(busy);
   if (message) setStatus(message);
 }
 

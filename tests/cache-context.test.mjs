@@ -100,3 +100,32 @@ test("empty glossary preserves cache identity while effective glossary changes i
   assert.notEqual(empty.pageConfigKey, a.pageConfigKey);
   assert.notEqual(a.pageConfigKey, changed.pageConfigKey);
 });
+
+
+test("preset style changes cache identity and switching back reuses the previous version", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+
+  const technical = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: { "https://example.com": { preset: "technical" } }
+  }, pageUrl));
+
+  const news = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: { "https://example.com": { preset: "news" } }
+  }, pageUrl));
+
+  const technicalAgain = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: { "https://example.com": { preset: "technical" } }
+  }, pageUrl));
+
+  assert.notEqual(technical.pageConfigKey, news.pageConfigKey);
+  assert.equal(technical.pageConfigKey, technicalAgain.pageConfigKey);
+});

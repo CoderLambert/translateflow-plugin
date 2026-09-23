@@ -144,3 +144,32 @@ normalize + resolveEffectiveGlossary(pageUrl)
 - 同 effective key 的站点术语覆盖全局术语；
 - 设置页只操作 versioned normalized store；
 - glossary UI 位于 `src/options/glossary-ui.js`，Provider/cache/content 不依赖 Options DOM。
+
+
+## Preset resolution boundary
+
+Preset 定义位于 `src/shared/presets.js`，只描述翻译风格，不包含 Provider、凭据或模型配置。
+
+```text
+Site Profile preset ─────┐
+                         ├─> resolveTranslationConfig()
+storage.session override ┘          |
+                                    v
+                      resolved prompt/style
+                                    |
+Glossary ----------------------------+
+                                    |
+                                    v
+                           Provider + Cache
+```
+
+临时 Preset 存在 `chrome.storage.session`，由 `src/background/preset-session.js` 管理；Content Script 不直接读取 session storage。Popup 通过 Background message 设置临时模式，并触发当前页重新翻译。
+
+优先级：
+
+1. Site Profile 显式 Prompt；
+2. session 临时 Preset 或 Site Profile 保存的 Preset；
+3. 全局 Prompt；
+4. 项目默认 Prompt。
+
+Preset 不单独进入 cache fingerprint，最终解析 Prompt 才是缓存行为的一部分，因此恢复相同有效配置会恢复相同缓存版本。

@@ -72,3 +72,12 @@ npm run validate
 - `feat: add openai-compatible provider`
 - `fix: preserve provider host permission`
 - `refactor: isolate provider config resolution`
+
+
+## Presets
+
+- 内置 Preset 只放在 `src/shared/presets.js`，不要在 Popup/Options 复制 prompt 文本。
+- Preset 不得包含 API Key、Provider 凭据或 endpoint。
+- 临时模式必须使用 session 状态，不得写入永久用户配置。
+- 新增/修改 Preset 必须覆盖 prompt precedence 与 cache identity 测试。
+- Site Profile 自定义 Prompt 的优先级高于 Preset。

@@ -9,10 +9,27 @@
 <body>
   <main>
     <div class="title">TranslateFlow</div>
-    <div class="subtitle">DeepSeek · 双语翻译 · IndexedDB 缓存</div>
+    <div class="subtitle">Provider · Preset · 双语翻译 · IndexedDB</div>
 
     <div id="cacheInfo" class="cache-info">正在检查本页缓存…</div>
     <div id="autoInfo" class="auto-info">正在检查本站自动翻译…</div>
+
+    <section id="effectiveContext" class="context-card" hidden>
+      <div class="context-grid">
+        <span>站点</span><strong id="contextSite">—</strong>
+        <span>模式</span><strong id="contextMode">—</strong>
+        <span>Provider</span><strong id="contextProvider">—</strong>
+        <span>Model</span><strong id="contextModel">—</strong>
+      </div>
+
+      <label class="preset-label" for="presetSelect">快速切换翻译模式</label>
+      <select id="presetSelect"></select>
+      <div class="row preset-actions">
+        <button id="applyPreset">临时应用</button>
+        <button id="savePreset">保存到本站</button>
+      </div>
+      <div id="presetHint" class="preset-hint"></div>
+    </section>
 
     <button id="autoSite" class="auto-btn" disabled>开启此站自动增量翻译</button>
     <button id="translate" class="primary">翻译 / 更新当前页面</button>
