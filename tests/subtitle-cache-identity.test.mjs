@@ -40,6 +40,22 @@ test("subtitle cache source separates repeated text by cue position", () => {
   assert.notEqual(early, later);
 });
 
+test("timestamped subtitle identity ignores queue sequence while untimed identity uses it", () => {
+  const timedA = buildSubtitleCacheSource(unit({ sequence: 1 }));
+  const timedB = buildSubtitleCacheSource(unit({ sequence: 99 }));
+  assert.equal(timedA, timedB);
+
+  const untimedA = buildSubtitleCacheSource(unit({
+    cue: { id: "", startTime: null, endTime: null },
+    sequence: 1
+  }));
+  const untimedB = buildSubtitleCacheSource(unit({
+    cue: { id: "", startTime: null, endTime: null },
+    sequence: 2
+  }));
+  assert.notEqual(untimedA, untimedB);
+});
+
 test("subtitle cache source separates media identity and source language", () => {
   const base = buildSubtitleCacheSource(unit());
   const otherVideo = buildSubtitleCacheSource(unit({ mediaId: "youtube:video-b" }));
