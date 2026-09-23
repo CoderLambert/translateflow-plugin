@@ -81,9 +81,12 @@
     updateVisibility();
   }
 
+  function shouldRender() {
+    return (tabVisible || persistentVisible) && !hiddenForSite;
+  }
+
   function updateVisibility() {
-    const shouldRender = (tabVisible || persistentVisible) && !hiddenForSite;
-    if (!shouldRender) {
+    if (!shouldRender()) {
       view.destroy();
       return;
     }
@@ -115,7 +118,7 @@
   function handleTaskEvent(task) {
     if (!task || task.surface !== "page") return;
     latestTask = task;
-    view.setTask(task, WORKING_STATES);
+    if (shouldRender()) view.setTask(task, WORKING_STATES);
   }
 
   async function runTranslation() {
@@ -235,8 +238,10 @@
     if (changes.quickControlSites || changes.quickControlHiddenSites) {
       refreshSiteVisibility().catch(() => {});
     }
-    if (changes.siteProfiles || changes.appearance) refreshContext().catch(() => {});
-    if (changes.autoSites) view.setAuto(state.auto);
+    if ((changes.siteProfiles || changes.appearance) && shouldRender()) {
+      refreshContext().catch(() => {});
+    }
+    if (changes.autoSites && shouldRender()) view.setAuto(state.auto);
   }
 
   app.modules.quickControl = {
