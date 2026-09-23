@@ -22,6 +22,7 @@
       rich = true;
       const id = descriptors.length;
       const descriptor = { tag };
+      if (tag === "code" || tag === "kbd") descriptor.protectedText = String(node.textContent || "");
       if (tag === "a") {
         const href = safeHref(node.getAttribute("href"));
         if (href) descriptor.href = href;
@@ -64,7 +65,10 @@
         stack.push({ id, node });
       } else {
         if (stack.length < 2 || stack.at(-1).id !== id) throw new Error("unbalanced marker");
-        stack.pop();
+        const current = stack.pop();
+        if (descriptor.protectedText != null) {
+          current.node.replaceChildren(document.createTextNode(descriptor.protectedText));
+        }
       }
       last = MARKER_RE.lastIndex;
     }
