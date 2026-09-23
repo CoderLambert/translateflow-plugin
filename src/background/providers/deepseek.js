@@ -1,22 +1,27 @@
-import { buildTranslationPrompt, requestChatCompletions, parseTranslationResult } from "./shared.js";
+import {
+  buildTranslationPrompt,
+  requestChatCompletions,
+  requestParsedTranslation
+} from "./shared.js";
 
 const API_URL = "https://api.deepseek.com/chat/completions";
 
 export const deepSeekProvider = Object.freeze({
   id: "deepseek",
 
-  async translateBatch(segments, config) {
+  async translateBatch(segments, config, { signal } = {}) {
     if (!Array.isArray(segments) || segments.length === 0) return [];
 
     const payload = {
       segments: segments.map((item) => ({ id: String(item.id), text: String(item.text) }))
     };
 
-    const data = await requestChatCompletions({
+    const request = () => requestChatCompletions({
       url: API_URL,
       apiKey: config.apiKey,
       providerLabel: "DeepSeek",
       requireApiKey: true,
+      signal,
       body: {
         model: config.model?.trim() || "deepseek-flash",
         messages: [
@@ -30,7 +35,11 @@ export const deepSeekProvider = Object.freeze({
       }
     });
 
-    return parseTranslationResult(data, segments, "DeepSeek");
+    return requestParsedTranslation({
+      request,
+      segments,
+      providerLabel: "DeepSeek"
+    });
   },
 
   async test(config) {

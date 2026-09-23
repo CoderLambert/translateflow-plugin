@@ -2,12 +2,16 @@ import {
   buildChatCompletionsUrl,
   getProviderHostPermissionPattern
 } from "../../shared/provider-config.js";
-import { buildTranslationPrompt, parseTranslationResult, requestChatCompletions } from "./shared.js";
+import {
+  buildTranslationPrompt,
+  requestChatCompletions,
+  requestParsedTranslation
+} from "./shared.js";
 
 export const openAICompatibleProvider = Object.freeze({
   id: "openai-compatible",
 
-  async translateBatch(segments, config) {
+  async translateBatch(segments, config, { signal } = {}) {
     if (!Array.isArray(segments) || segments.length === 0) return [];
     await assertEndpointPermission(config.apiBaseUrl);
     const model = requireModel(config.model);
@@ -15,11 +19,12 @@ export const openAICompatibleProvider = Object.freeze({
       segments: segments.map((item) => ({ id: String(item.id), text: String(item.text) }))
     };
 
-    const data = await requestChatCompletions({
+    const request = () => requestChatCompletions({
       url: buildChatCompletionsUrl(config.apiBaseUrl),
       apiKey: config.apiKey,
       providerLabel: "OpenAI-compatible",
       requireApiKey: false,
+      signal,
       body: {
         model,
         messages: [
@@ -34,7 +39,11 @@ export const openAICompatibleProvider = Object.freeze({
       }
     });
 
-    return parseTranslationResult(data, segments, "OpenAI-compatible");
+    return requestParsedTranslation({
+      request,
+      segments,
+      providerLabel: "OpenAI-compatible"
+    });
   },
 
   async test(config) {
@@ -60,15 +69,25 @@ export const openAICompatibleProvider = Object.freeze({
 
 async function assertEndpointPermission(baseUrl) {
   const pattern = getProviderHostPermissionPattern(baseUrl);
-  if (!pattern) throw new Error("请先配置 OpenAI-compatible Base URL。");
+  if (!pattern) {
+    const error = new Error("请先配置 OpenAI-compatible Base URL。");
+    error.code = "CONFIG";
+    throw error;
+  }
   const granted = await chrome.permissions.contains({ origins: [pattern] });
   if (!granted) {
-    throw new Error("尚未授权访问 OpenAI-compatible API 地址，请在设置页保存配置并授权后重试。");
+    const error = new Error("尚未授权访问 OpenAI-compatible API 地址，请在设置页保存配置并授权后重试。");
+    error.code = "PERMISSION";
+    throw error;
   }
 }
 
 function requireModel(value) {
   const model = String(value || "").trim();
-  if (!model) throw new Error("请先配置 OpenAI-compatible Model。");
+  if (!model) {
+    const error = new Error("请先配置 OpenAI-compatible Model。");
+    error.code = "CONFIG";
+    throw error;
+  }
   return model;
 }

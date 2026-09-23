@@ -35,6 +35,10 @@ button:disabled { opacity: .5; cursor: default; }
 .primary { font-weight: 650; }
 .auto-btn { font-weight: 650; }
 .auto-btn.enabled { border-style: dashed; }
+.cancel-task {
+  background: rgba(190, 40, 40, .08);
+  border-color: rgba(190, 40, 40, .35);
+}
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .link-btn { background: transparent; }
 .danger-lite { background: transparent; font-size: 12px; opacity: .82; }

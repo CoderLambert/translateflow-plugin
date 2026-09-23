@@ -14,8 +14,8 @@ export function getProvider(config) {
   return provider;
 }
 
-export async function translateBatch(segments, config) {
-  return getProvider(config).translateBatch(segments, config);
+export async function translateBatch(segments, config, options = {}) {
+  return getProvider(config).translateBatch(segments, config, options);
 }
 
 export async function testProvider(config) {

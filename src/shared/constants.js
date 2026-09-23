@@ -35,6 +35,7 @@ export const CACHE_SCHEMA_VERSION = 2;
 
 export const BACKGROUND_MESSAGES = Object.freeze({
   TRANSLATE_BATCH: "TRANSLATE_BATCH",
+  CANCEL_TRANSLATION: "CANCEL_TRANSLATION",
   TEST_API: "TEST_API",
   CACHE_LOOKUP: "CACHE_LOOKUP",
   CACHE_STORE: "CACHE_STORE",
@@ -56,11 +57,14 @@ export const CONTENT_MESSAGES = Object.freeze({
   CLEAR_PAGE_CACHE: "ABT_CLEAR_PAGE_CACHE",
   TOGGLE_TRANSLATIONS: "ABT_TOGGLE_TRANSLATIONS",
   CLEAR_TRANSLATIONS: "ABT_CLEAR_TRANSLATIONS",
-  STATUS: "ABT_STATUS"
+  STATUS: "ABT_STATUS",
+  TASK_STATUS: "TF_TASK_STATUS",
+  CANCEL_TASK: "TF_CANCEL_TASK"
 });
 
 export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/runtime.js",
+  "src/content/tasks.js",
   "src/content/dom.js",
   "src/content/batch.js",
   "src/content/processor.js",

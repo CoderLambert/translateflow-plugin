@@ -50,7 +50,8 @@ content scripts -> messages -> background router
 ## Background
 
 - `config.js`: 持久配置 + effective config
-- `providers/`: 网络 Provider adapter
+- `providers/`: 网络 Provider adapter；统一接收 AbortSignal，并由 shared 层负责 timeout/retry
+- `translation-requests.js`: requestId / in-flight coalescing / background AbortController
 - `cache-db.js`: cache identity / IndexedDB / LRU
 - `auto-sites.js`: optional site permission + persistent script registration
 - `router.js`: message dispatch
@@ -61,11 +62,13 @@ content scripts -> messages -> background router
 Content Script 继续保持 build-free classic script modules：
 
 1. runtime
-2. dom
-3. batch
-4. processor
-5. auto
-6. bootstrap
+2. tasks
+3. dom
+4. batch
+5. processor
+6. auto
+7. selection modules
+8. bootstrap
 
 `processor.js` 会把 pageUrl 同时传给缓存和翻译请求，因此 Background 可以为当前站点解析同一份有效配置。
 
@@ -82,3 +85,28 @@ Content Script 继续保持 build-free classic script modules：
 - Provider endpoint 是否参与 cache fingerprint
 - Runtime message value
 - site profile storage shape
+
+
+## Translation task lifecycle
+
+用户主动翻译与自动增量翻译共享统一任务状态：
+
+```text
+queued
+→ cache_lookup
+→ translating
+→ storing
+→ completed
+
+failed / cancelled
+```
+
+职责分层：
+
+- `src/content/tasks.js`: 页面侧状态、进度、取消意图；
+- `src/background/translation-requests.js`: requestId、in-flight coalescing、后台 AbortController；
+- `src/background/providers/shared.js`: 网络 timeout、429/5xx/network retry、Retry-After；
+- Provider adapter: 请求体和 Provider 特有协议；
+- Popup/Selection: 只展示任务状态，不实现自己的 retry/backoff 算法。
+
+取消后 content 层会在写缓存前再次检查任务状态，因此被取消的 Provider 结果不会写入 IndexedDB。

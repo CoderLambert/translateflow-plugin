@@ -1,8 +1,16 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.dom || !app?.modules.batch || !app?.modules.processor || app.modules.auto) return;
+  if (
+    !app?.modules.runtime
+    || !app?.modules.tasks
+    || !app?.modules.dom
+    || !app?.modules.batch
+    || !app?.modules.processor
+    || app.modules.auto
+  ) return;
 
   const { constants, state, getPageIdentity, showToast } = app.modules.runtime;
+  const tasks = app.modules.tasks;
   const {
     collectElements,
     isCandidateElement,
@@ -22,9 +30,7 @@
       if (Array.isArray(autoSites) && autoSites.includes(app.modules.runtime.getSiteScope(location.href))) {
         await enableAutoMode({ announce: false });
       }
-    } catch {
-      // Manual translation remains available even if auto-site state cannot be read.
-    }
+    } catch {}
   }
 
   async function enableAutoMode({ announce = false } = {}) {
@@ -104,7 +110,7 @@
       return;
     }
     if (!(node instanceof Element)) return;
-    if (node.closest(`.${TRANSLATION_CLASS}`)) return;
+    if (isTranslationNode(node)) return;
 
     if (node.matches(CANDIDATE_SELECTOR) && isCandidateElement(node)) observeAutoCandidate(node);
     for (const el of node.querySelectorAll(CANDIDATE_SELECTOR)) {
@@ -151,11 +157,10 @@
     if (!state.auto) return;
     clearTimeout(state.autoTimer);
     const backoffDelay = Math.max(0, state.autoBackoffUntil - Date.now());
-    const effectiveDelay = Math.max(delay, backoffDelay);
     state.autoTimer = setTimeout(() => {
       state.autoTimer = null;
-      drainAutoQueue().catch((error) => handleAutoError(error));
-    }, effectiveDelay);
+      drainAutoQueue().catch(handleAutoError);
+    }, Math.max(delay, backoffDelay));
   }
 
   async function drainAutoQueue() {
@@ -183,11 +188,36 @@
         try {
           for (const batch of batches) {
             if (!state.auto || getPageIdentity(location.href) !== pageIdentity) break;
-            await processGroupBatch(batch, { cacheOnly: false, pageUrl, auto: true });
+
+            const task = tasks.createTask({
+              surface: "auto",
+              pageUrl,
+              total: batch.reduce((sum, group) => sum + group.elements.length, 0)
+            });
+            try {
+              const result = await processGroupBatch(batch, {
+                cacheOnly: false,
+                pageUrl,
+                auto: true,
+                task
+              });
+              tasks.completeTask(task, {
+                done: task.total,
+                cacheHits: result.cacheHits,
+                apiTranslated: result.apiTranslated
+              });
+            } catch (error) {
+              tasks.failTask(task, error);
+              throw error;
+            } finally {
+              tasks.releaseTask(task);
+            }
           }
         } catch (error) {
           for (const entry of entries) {
-            if (document.contains(entry.el) && !entry.el.hasAttribute(TRANSLATED_ATTR)) state.pending.add(entry.el);
+            if (document.contains(entry.el) && !entry.el.hasAttribute(TRANSLATED_ATTR)) {
+              state.pending.add(entry.el);
+            }
           }
           throw error;
         }
@@ -201,7 +231,10 @@
   function handleAutoError(error) {
     const now = Date.now();
     const message = error?.message || String(error);
-    state.autoBackoffUntil = now + (/API Key/i.test(message) ? 5 * 60 * 1000 : 15 * 1000);
+    const code = error?.code || "";
+    const longBackoff = ["CONFIG", "AUTH", "PERMISSION"].includes(code) || /API Key/i.test(message);
+    state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
+
     if (now - state.lastAutoErrorAt > 5000) {
       showToast(`自动翻译暂停：${message}`, "error");
       state.lastAutoErrorAt = now;

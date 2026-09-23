@@ -10,6 +10,7 @@ import { getOriginMatchPattern, normalizeOrigin } from "./src/shared/url.js";
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
 const translateBtn = $("translate");
+const cancelTaskBtn = $("cancelTask");
 const restoreBtn = $("restore");
 const toggleBtn = $("toggle");
 const clearBtn = $("clear");
@@ -21,6 +22,8 @@ const autoInfo = $("autoInfo");
 
 let currentAutoEnabled = false;
 let currentSite = null;
+let activePageTask = null;
+let taskPollTimer = null;
 
 autoBtn.addEventListener("click", async () => {
   setBusy(true, currentAutoEnabled ? "正在关闭本站自动翻译…" : "正在申请本站权限…");
@@ -62,10 +65,8 @@ autoBtn.addEventListener("click", async () => {
   }
 });
 
-translateBtn.addEventListener("click", async () => {
-  await runOnActiveTab(CONTENT_MESSAGES.TRANSLATE_PAGE, true);
-  await refreshCacheStatus();
-});
+translateBtn.addEventListener("click", runPageTranslation);
+cancelTaskBtn.addEventListener("click", cancelPageTranslation);
 
 restoreBtn.addEventListener("click", () => runOnActiveTab(CONTENT_MESSAGES.RESTORE_CACHE, true));
 toggleBtn.addEventListener("click", () => runOnActiveTab(CONTENT_MESSAGES.TOGGLE_TRANSLATIONS, false));
@@ -81,6 +82,92 @@ clearCacheBtn.addEventListener("click", async () => {
 
 settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
 Promise.allSettled([refreshCacheStatus(), refreshAutoStatus()]);
+
+async function runPageTranslation() {
+  setBusy(true, "正在准备翻译…");
+  try {
+    const site = await getActiveSite();
+    await ensureInjected(site.tab.id);
+
+    const taskId = crypto.randomUUID();
+    activePageTask = { id: taskId, tabId: site.tab.id };
+    cancelTaskBtn.hidden = false;
+    cancelTaskBtn.disabled = false;
+    startTaskPolling();
+
+    const response = await chrome.tabs.sendMessage(site.tab.id, {
+      type: CONTENT_MESSAGES.TRANSLATE_PAGE,
+      taskId
+    });
+    if (!response?.ok) throw new Error(response?.error || "翻译失败");
+
+    if (response.cancelled) {
+      setStatus("翻译已取消。");
+    } else {
+      setStatus(response.message || `已处理 ${response.count || 0} 个段落`);
+    }
+    await refreshCacheStatus();
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  } finally {
+    stopTaskPolling();
+    activePageTask = null;
+    cancelTaskBtn.hidden = true;
+    cancelTaskBtn.disabled = false;
+    setBusy(false);
+  }
+}
+
+async function cancelPageTranslation() {
+  if (!activePageTask) return;
+  cancelTaskBtn.disabled = true;
+  setStatus("正在取消翻译…");
+  try {
+    await chrome.tabs.sendMessage(activePageTask.tabId, {
+      type: CONTENT_MESSAGES.CANCEL_TASK,
+      taskId: activePageTask.id
+    });
+  } catch (error) {
+    setStatus(`取消失败：${error.message || error}`, true);
+    cancelTaskBtn.disabled = false;
+  }
+}
+
+function startTaskPolling() {
+  stopTaskPolling();
+  const poll = async () => {
+    if (!activePageTask) return;
+    try {
+      const response = await chrome.tabs.sendMessage(activePageTask.tabId, {
+        type: CONTENT_MESSAGES.TASK_STATUS,
+        taskId: activePageTask.id
+      });
+      if (response?.task) renderTaskStatus(response.task);
+    } catch {}
+    if (activePageTask) taskPollTimer = setTimeout(poll, 250);
+  };
+  taskPollTimer = setTimeout(poll, 100);
+}
+
+function stopTaskPolling() {
+  clearTimeout(taskPollTimer);
+  taskPollTimer = null;
+}
+
+function renderTaskStatus(task) {
+  const progress = task.total > 0 ? ` ${Math.min(task.done, task.total)}/${task.total}` : "";
+  const labels = {
+    queued: "准备翻译…",
+    cache_lookup: `正在检查缓存…${progress}`,
+    translating: `正在调用模型翻译…${progress}`,
+    storing: `正在保存译文…${progress}`,
+    completed: `翻译完成${progress}`,
+    failed: task.error || "翻译失败",
+    cancelled: "翻译已取消"
+  };
+  setStatus(labels[task.state] || "正在处理…", task.state === "failed");
+  cancelTaskBtn.disabled = ["completed", "failed", "cancelled"].includes(task.state);
+}
 
 async function refreshAutoStatus() {
   try {
@@ -204,7 +291,6 @@ function formatTime(timestamp) {
     minute: "2-digit"
   }).format(date);
 }
-
 
 async function isProviderPermission(pattern) {
   const { openAICompatible = {} } = await chrome.storage.local.get(["openAICompatible"]);
