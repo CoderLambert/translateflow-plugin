@@ -136,6 +136,50 @@ cd translateflow-plugin
 npm run validate
 ```
 
+
+## 浏览器 E2E
+
+纯逻辑和架构检查继续使用：
+
+```bash
+npm run validate
+```
+
+真实 Chrome 扩展行为使用 Playwright E2E：
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+CI/Linux 首次安装浏览器和系统依赖可使用：
+
+```bash
+npx playwright install --with-deps chromium
+```
+
+E2E 使用 Playwright bundled Chromium，以 persistent context 加载未打包 MV3 扩展。测试运行时会生成临时扩展副本，并仅给该副本追加 `http://127.0.0.1/*` Host Permission；生产 Manifest 不增加测试权限。
+
+测试同时启动随机本地端口：
+
+- fixture article server；
+- OpenAI-compatible mock `/v1/chat/completions`；
+- 不需要 DeepSeek/OpenAI 等真实 API Key。
+
+当前 smoke flow：
+
+1. 手动页面翻译 + 双语 DOM；
+2. IndexedDB 缓存恢复且不发生第二次 Provider 调用；
+3. 动态新增段落只发送新增内容；
+4. Site Profile 的有效配置；
+5. 划词翻译 + 第二次缓存命中；
+6. 401 可操作错误，以及 429/500 自动重试恢复；
+7. rich inline `strong/a/code` 语义安全重建；
+8. Glossary + Preset 的 Prompt 组合和缓存版本复用。
+
+GitHub Actions 中 `quality` 与 `e2e` 分开运行，避免让快速单元检查承担浏览器下载成本。
+
 ## Chrome 本地安装
 
 1. 打开 `chrome://extensions/`

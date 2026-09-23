@@ -173,3 +173,22 @@ Glossary ----------------------------+
 4. 项目默认 Prompt。
 
 Preset 不单独进入 cache fingerprint，最终解析 Prompt 才是缓存行为的一部分，因此恢复相同有效配置会恢复相同缓存版本。
+
+
+## E2E test boundary
+
+浏览器 smoke tests 位于 `tests/e2e/`，与生产运行时完全分离。
+
+```text
+Playwright Test
+   |
+   +-- temporary extension copy
+   |      +-- production source
+   |      `-- test-only localhost host permission
+   |
+   +-- local fixture page
+   |
+   `-- local OpenAI-compatible mock
+```
+
+生产 Manifest 不包含 localhost 测试权限，生产模块不 import E2E 代码。E2E 通过真实 MV3 service worker、`chrome.scripting`、Content Script、IndexedDB 和 Provider fetch 验证端到端行为。

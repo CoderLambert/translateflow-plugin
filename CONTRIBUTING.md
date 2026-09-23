@@ -81,3 +81,27 @@ npm run validate
 - 临时模式必须使用 session 状态，不得写入永久用户配置。
 - 新增/修改 Preset 必须覆盖 prompt precedence 与 cache identity 测试。
 - Site Profile 自定义 Prompt 的优先级高于 Preset。
+
+
+## Browser E2E
+
+涉及以下能力的 PR 应运行 `npm run test:e2e`：
+
+- Content Script DOM/observer/rendering；
+- Provider/network/retry；
+- IndexedDB cache flow；
+- Site Profile / Preset / Glossary effective config；
+- Selection translation；
+- permissions / injection / MV3 service-worker behavior。
+
+E2E 依赖只允许出现在 `devDependencies`；生产扩展不得 import Playwright 或测试 helper。
+
+本地首次运行：
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+测试必须使用本地 deterministic fixture/mock，不得依赖真实 API Key 或公网 Provider。
