@@ -21,6 +21,7 @@ import {
   cancelTranslationRequest,
   runTranslationRequest
 } from "./translation-requests.js";
+import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -47,6 +48,13 @@ export async function handleBackgroundMessage(message) {
         })
       };
     }
+    case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
+      return runSubtitleTranslationBatch({
+        requestId: message.requestId,
+        pageUrl: message.pageUrl,
+        pageTitle: message.pageTitle,
+        units: message.units
+      });
     case BACKGROUND_MESSAGES.CANCEL_TRANSLATION:
       return cancelTranslationRequest(message.requestId);
     case BACKGROUND_MESSAGES.TEST_API: {
