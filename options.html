@@ -9,7 +9,7 @@
 <body>
   <main>
     <h1>TranslateFlow</h1>
-    <p class="lead">支持 DeepSeek 与 OpenAI-compatible Provider；全局配置和站点覆盖都会参与缓存版本计算。</p>
+    <p class="lead">支持 DeepSeek 与 OpenAI-compatible Provider；全局配置、站点覆盖和术语表都会参与有效翻译配置与缓存版本计算。</p>
 
     <section>
       <h2>默认翻译配置</h2>
@@ -95,6 +95,56 @@
       </div>
 
       <div id="siteProfilesList" class="site-list">正在读取站点配置…</div>
+    </section>
+
+
+    <section>
+      <h2>翻译术语表</h2>
+      <p class="hint">全局术语应用于所有网页；站点术语仅应用于指定 Origin，并可覆盖同名全局术语。</p>
+
+      <div class="profile-grid">
+        <div>
+          <label for="glossaryScope">作用范围</label>
+          <select id="glossaryScope">
+            <option value="global">全局</option>
+            <option value="site">指定站点</option>
+          </select>
+        </div>
+        <div>
+          <label for="glossaryOrigin">站点 Origin</label>
+          <input id="glossaryOrigin" type="text" placeholder="https://github.com" disabled />
+        </div>
+      </div>
+
+      <div class="profile-grid">
+        <div>
+          <label for="glossarySource">来源术语</label>
+          <input id="glossarySource" type="text" placeholder="pull request" />
+        </div>
+        <div>
+          <label for="glossaryTarget">目标译法</label>
+          <input id="glossaryTarget" type="text" placeholder="拉取请求" />
+        </div>
+      </div>
+
+      <div class="inline-checks">
+        <label class="checkbox-label">
+          <input id="glossaryCaseSensitive" type="checkbox" />
+          区分大小写
+        </label>
+        <label class="checkbox-label">
+          <input id="glossaryEnabled" type="checkbox" checked />
+          启用
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="saveGlossaryEntry" class="primary">保存术语</button>
+        <button id="clearGlossaryEditor">清空编辑器</button>
+      </div>
+
+      <div id="glossaryList" class="site-list">正在读取术语表…</div>
+      <p class="hint">修改、停用或删除有效术语会生成新的相关缓存版本；空术语表保持旧缓存兼容。</p>
     </section>
 
     <section>

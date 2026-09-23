@@ -10,6 +10,7 @@ import {
   normalizeSiteProfile
 } from "./src/shared/provider-config.js";
 import { normalizeOrigin } from "./src/shared/url.js";
+import { initializeGlossaryUi } from "./src/options/glossary-ui.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,7 +45,13 @@ const clearAllCache = $("clearAllCache");
 const autoSitesList = $("autoSitesList");
 const refreshAutoSites = $("refreshAutoSites");
 
-await Promise.allSettled([load(), refreshCacheStats(), refreshAutoSiteList(), refreshSiteProfiles()]);
+await Promise.allSettled([
+  load(),
+  refreshCacheStats(),
+  refreshAutoSiteList(),
+  refreshSiteProfiles(),
+  initializeGlossaryUi({ setStatus })
+]);
 
 save.addEventListener("click", async () => {
   save.disabled = true;

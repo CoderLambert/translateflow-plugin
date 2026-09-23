@@ -1,8 +1,8 @@
-# TranslateFlow v0.5
+# TranslateFlow v0.6
 
 轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
-## v0.5 重点
+## v0.6 重点
 
 - DeepSeek Provider
 - OpenAI-compatible Provider
@@ -15,6 +15,7 @@
 - 结构化双语渲染：保留链接、强调、code/kbd/mark 等安全内联语义，不注入模型 HTML
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
+- 全局 + 站点术语表：支持覆盖、启停、大小写规则，并纳入有效缓存身份
 
 ## 架构
 
@@ -30,9 +31,11 @@ background/router
    │
    ▼
 resolveTranslationConfig(pageUrl)
+   +
+resolveEffectiveGlossary(pageUrl)
    │
-   ├── global provider config
-   └── site profile override
+   ├── global provider/site profile
+   └── global glossary/site glossary
    │
    ├───────────────┐
    ▼               ▼
@@ -41,7 +44,7 @@ cache-db        providers/
                    └── openai-compatible
 ```
 
-关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖不会绕过缓存层，也不会另起翻译流程。
+关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖和术语表先在共享配置层解析，Provider adapter 不读取术语存储。
 
 详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 和 [docs/PROVIDERS.md](docs/PROVIDERS.md)。
 
@@ -73,6 +76,7 @@ translateflow-plugin/
 │   ├── shared/
 │   │   ├── constants.js
 │   │   ├── provider-config.js
+│   │   ├── glossary.js
 │   │   ├── hash.js
 │   │   ├── text.js
 │   │   ├── url.js
@@ -90,6 +94,9 @@ translateflow-plugin/
 │   │       ├── shared.js
 │   │       ├── deepseek.js
 │   │       └── openai-compatible.js
+│   │
+│   ├── options/
+│   │   └── glossary-ui.js
 │   │
 │   └── content/
 │       ├── runtime.js
@@ -229,6 +236,41 @@ Provider 全局配置
 Effective Translation Config
 ```
 
+
+## 术语表
+
+设置页支持全局和站点级术语，例如：
+
+```text
+repository   -> 仓库
+pull request -> 拉取请求
+middleware   -> 中间件
+```
+
+每条术语包含：
+
+- 来源术语与目标译法；
+- 是否区分大小写；
+- 启用/停用状态；
+- 稳定 ID，便于编辑和后续迁移。
+
+存储使用 versioned shape：
+
+```text
+glossary:
+  version: 1
+  entries: [...]
+
+siteGlossaries:
+  version: 1
+  sites:
+    https://github.com: [...]
+```
+
+运行时会先规范化术语。相同 scope 下重复的有效 source key 只保留一个，最新保存值生效；匹配站点的术语会扩展并覆盖同 key 的全局术语。站点术语只影响对应规范化 Origin。
+
+术语在共享配置层被组合进最终 Prompt，DeepSeek/OpenAI-compatible Provider 本身不感知 glossary 数据结构。
+
 ## 缓存
 
 IndexedDB 名称和数据结构保持不变：
@@ -252,14 +294,17 @@ cache schema
 + target language
 + prompt
 + OpenAI-compatible endpoint（仅通用 Provider）
++ effective glossary identity（仅非空术语表）
 
 segment:
 SHA-256(normalized source text)
 ```
 
-普通纯文本段落继续使用原有规范化文本作为缓存身份，因此既有缓存继续命中。包含受支持内联结构的段落使用带 TranslateFlow 结构标记的确定性 source fingerprint，首次可能 miss 一次，但不会提升全局缓存 schema。\n\nDeepSeek 不把固定 API Base URL 放进指纹，因此 v0.3/v0.4 DeepSeek 缓存继续命中。
+普通纯文本段落继续使用原有规范化文本作为缓存身份，因此既有缓存继续命中。包含受支持内联结构的段落使用带 TranslateFlow 结构标记的确定性 source fingerprint，首次可能 miss 一次，但不会提升全局缓存 schema。
 
-OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容服务使用同一模型名时误复用译文。
+DeepSeek 不把固定 API Base URL 放进指纹，因此 v0.3/v0.4 DeepSeek 缓存继续命中。
+
+OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容服务使用同一模型名时误复用译文。非空有效术语表也会以确定性 identity 参与缓存；空术语表不会增加字段，因此保持既有缓存兼容。修改无关站点的术语不会使当前站点缓存失效。
 
 ## 权限
 
@@ -325,7 +370,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - SPA 路由变化：重新计算页面身份
 - API 错误：退避重试
 
-修改全局 Provider、OpenAI-compatible 配置或当前站点 Profile 时，自动模式会清理当前页面译文并按新配置重新处理。
+修改全局 Provider、OpenAI-compatible 配置、当前站点 Profile 或有效术语表时，自动模式会清理当前页面译文并按新配置重新处理。
 
 ## 开发约束
 

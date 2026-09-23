@@ -79,3 +79,24 @@ test("unchanged effective config keeps cache identity despite site metadata", as
 
   assert.equal(global.pageConfigKey, profileResolved.pageConfigKey);
 });
+
+test("empty glossary preserves cache identity while effective glossary changes it deterministically", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = { ...legacyCompatibleConfig };
+
+  const empty = await getCacheContext(pageUrl, base);
+  const explicitEmpty = await getCacheContext(pageUrl, { ...base, glossaryIdentity: [] });
+  assert.equal(empty.pageConfigKey, explicitEmpty.pageConfigKey);
+
+  const identity = [{ source: "repository", target: "仓库", caseSensitive: false }];
+  const a = await getCacheContext(pageUrl, { ...base, glossaryIdentity: identity });
+  const b = await getCacheContext(pageUrl, { ...base, glossaryIdentity: identity });
+  const changed = await getCacheContext(pageUrl, {
+    ...base,
+    glossaryIdentity: [{ source: "repository", target: "代码库", caseSensitive: false }]
+  });
+
+  assert.equal(a.pageConfigKey, b.pageConfigKey);
+  assert.notEqual(empty.pageConfigKey, a.pageConfigKey);
+  assert.notEqual(a.pageConfigKey, changed.pageConfigKey);
+});

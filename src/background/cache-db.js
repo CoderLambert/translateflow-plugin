@@ -223,6 +223,10 @@ async function getConfigHash(config) {
     payload.endpoint = normalizeOpenAIBaseUrl(config?.apiBaseUrl || "");
   }
 
+  if (Array.isArray(config?.glossaryIdentity) && config.glossaryIdentity.length) {
+    payload.glossary = config.glossaryIdentity;
+  }
+
   return sha256(JSON.stringify(payload));
 }
 

@@ -10,6 +10,15 @@ h1 { margin-bottom: 6px; }
 h2 { font-size: 18px; margin: 0 0 12px; }
 .lead { opacity: .75; margin-top: 0; }
 label { display: block; margin: 16px 0 7px; font-weight: 650; }
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-weight: 500;
+}
+.checkbox-label input { width: auto; margin: 0; }
+.inline-checks { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; }
 input, textarea, select, button { font: inherit; }
 input, textarea, select {
   width: 100%;
@@ -54,7 +63,7 @@ section { border-top: 1px solid rgba(127,127,127,.25); margin-top: 28px; padding
 .site-summary { min-width: 0; }
 .site-summary strong, .site-summary small { display: block; overflow-wrap: anywhere; }
 .site-summary small { opacity: .66; margin-top: 2px; }
-.site-actions { display: flex; gap: 6px; }
+.site-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .site-actions button { padding: 5px 9px; }
 .danger { opacity: .84; }
 .sticky-actions {

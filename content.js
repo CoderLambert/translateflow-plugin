@@ -104,6 +104,8 @@
       || changes.targetLanguage
       || changes.openAICompatible
       || changes.siteProfiles
+      || changes.glossary
+      || changes.siteGlossaries
     )) {
       state.autoBackoffUntil = 0;
       clearTranslations();

@@ -3,6 +3,13 @@ import {
   DEFAULT_CONFIG,
   DEFAULT_OPENAI_COMPATIBLE
 } from "../shared/constants.js";
+import {
+  composeGlossaryPrompt,
+  glossaryIdentity,
+  normalizeGlossaryStore,
+  normalizeSiteGlossaryStore,
+  resolveEffectiveGlossary
+} from "../shared/glossary.js";
 import { resolveTranslationConfig } from "../shared/provider-config.js";
 
 export async function getConfig() {
@@ -11,7 +18,17 @@ export async function getConfig() {
 }
 
 export async function getEffectiveConfig(pageUrl = "") {
-  return resolveTranslationConfig(await getConfig(), pageUrl);
+  const stored = await getConfig();
+  const resolved = resolveTranslationConfig(stored, pageUrl);
+  const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
+
+  if (!glossary.length) return resolved;
+
+  return {
+    ...resolved,
+    glossaryIdentity: glossaryIdentity(glossary),
+    prompt: composeGlossaryPrompt(resolved.prompt, glossary)
+  };
 }
 
 export async function ensureConfigDefaults() {
@@ -40,6 +57,8 @@ function normalizeStoredConfig(config) {
     },
     siteProfiles: config?.siteProfiles && typeof config.siteProfiles === "object" && !Array.isArray(config.siteProfiles)
       ? config.siteProfiles
-      : {}
+      : {},
+    glossary: normalizeGlossaryStore(config?.glossary),
+    siteGlossaries: normalizeSiteGlossaryStore(config?.siteGlossaries)
   };
 }

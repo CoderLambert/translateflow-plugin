@@ -18,6 +18,16 @@ export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({
   model: ""
 });
 
+export const GLOSSARY_STORAGE_VERSION = 1;
+export const DEFAULT_GLOSSARY_STORE = Object.freeze({
+  version: GLOSSARY_STORAGE_VERSION,
+  entries: Object.freeze([])
+});
+export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({
+  version: GLOSSARY_STORAGE_VERSION,
+  sites: Object.freeze({})
+});
+
 export const DEFAULT_CONFIG = Object.freeze({
   apiKey: "",
   provider: PROVIDER_IDS.DEEPSEEK,
@@ -27,7 +37,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   autoSites: [],
   prompt: DEFAULT_PROMPT,
   openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
-  siteProfiles: {}
+  siteProfiles: {},
+  glossary: DEFAULT_GLOSSARY_STORE,
+  siteGlossaries: DEFAULT_SITE_GLOSSARY_STORE
 });
 
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
