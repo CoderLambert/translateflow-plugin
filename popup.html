@@ -8,46 +8,81 @@
 </head>
 <body>
   <main>
-    <div class="title">TranslateFlow</div>
-    <div class="subtitle">Provider · Preset · 双语翻译 · IndexedDB</div>
+    <header class="popup-header">
+      <div>
+        <div class="eyebrow">TRANSLATEFLOW</div>
+        <div class="title">当前页面</div>
+      </div>
+      <button id="settings" class="icon-btn" aria-label="打开高级设置" title="高级设置">⚙</button>
+    </header>
 
-    <div id="cacheInfo" class="cache-info">正在检查本页缓存…</div>
-    <div id="autoInfo" class="auto-info">正在检查本站自动翻译…</div>
-    <div id="quickControlInfo" class="quick-info">正在检查 Quick Control…</div>
-
-    <section id="effectiveContext" class="context-card" hidden>
+    <section id="effectiveContext" class="context-card" hidden aria-label="当前翻译配置">
+      <div class="site-line">
+        <strong id="contextSite">—</strong>
+        <span id="status" class="status" role="status" aria-live="polite">准备就绪</span>
+      </div>
       <div class="context-grid">
-        <span>站点</span><strong id="contextSite">—</strong>
-        <span>模式</span><strong id="contextMode">—</strong>
-        <span>Provider</span><strong id="contextProvider">—</strong>
-        <span>Model</span><strong id="contextModel">—</strong>
+        <span>翻译模式</span><strong id="contextMode">—</strong>
+        <span>模型服务</span><strong><span id="contextProvider">—</span> · <span id="contextModel">—</span></strong>
       </div>
-
-      <label class="preset-label" for="presetSelect">快速切换翻译模式</label>
-      <select id="presetSelect"></select>
-      <div class="row preset-actions">
-        <button id="applyPreset">临时应用</button>
-        <button id="savePreset">保存到本站</button>
-      </div>
-      <div id="presetHint" class="preset-hint"></div>
     </section>
 
-    <button id="autoSite" class="auto-btn" disabled>开启此站自动增量翻译</button>
-    <button id="quickControlSite" class="quick-btn" disabled>以后在本站自动显示 Quick Control</button>
     <button id="translate" class="primary">翻译 / 更新当前页面</button>
     <button id="cancelTask" class="cancel-task" hidden>取消当前翻译</button>
-    <button id="restore">仅恢复本页缓存（不调用 API）</button>
 
-    <div class="row">
-      <button id="toggle">显示 / 隐藏译文</button>
-      <button id="clear">移除页面译文</button>
-    </div>
+    <section class="control-card" aria-label="页面偏好">
+      <div class="control-row">
+        <div>
+          <strong>自动翻译</strong>
+          <div id="autoInfo" class="supporting">正在检查本站设置…</div>
+        </div>
+        <button id="autoSite" class="compact-btn auto-btn" disabled>开启</button>
+      </div>
 
-    <button id="clearCache" class="danger-lite">删除本页全部缓存版本</button>
-    <button id="settings" class="link-btn">⚙ 设置 API / 模型 / 缓存</button>
+      <label class="field-row" for="appearanceSelect">
+        <span>
+          <strong>阅读外观</strong>
+          <small>仅改变译文排版</small>
+        </span>
+        <select id="appearanceSelect" aria-label="本站阅读外观"></select>
+      </label>
+    </section>
 
-    <div id="status" class="status">准备就绪</div>
+    <details class="secondary-card">
+      <summary>翻译模式与页面控制</summary>
+      <div class="secondary-content">
+        <label class="preset-label" for="presetSelect">翻译模式</label>
+        <select id="presetSelect"></select>
+        <div class="row preset-actions">
+          <button id="applyPreset">临时应用</button>
+          <button id="savePreset">保存到本站</button>
+        </div>
+        <div id="presetHint" class="preset-hint"></div>
+
+        <div class="row">
+          <button id="toggle">显示 / 隐藏译文</button>
+          <button id="clear">移除页面译文</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="secondary-card">
+      <summary>Quick Control 与缓存</summary>
+      <div class="secondary-content">
+        <div id="quickControlInfo" class="supporting">正在检查 Quick Control…</div>
+        <button id="quickControlSite" class="quick-btn" disabled>以后在本站自动显示 Quick Control</button>
+        <div id="cacheInfo" class="supporting">正在检查本页缓存…</div>
+        <button id="restore">仅恢复本页缓存（不调用 API）</button>
+        <button id="clearCache" class="danger-lite">删除本页全部缓存版本</button>
+      </div>
+    </details>
+
+    <button id="settingsLink" class="link-btn">高级设置</button>
   </main>
   <script type="module" src="popup.js"></script>
+  <script type="module" src="popup-appearance.js"></script>
+  <script type="module">
+    document.getElementById("settingsLink")?.addEventListener("click", () => chrome.runtime.openOptionsPage());
+  </script>
 </body>
 </html>
