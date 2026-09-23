@@ -12,10 +12,21 @@ export const PROVIDER_IDS = Object.freeze({
   OPENAI_COMPATIBLE: "openai-compatible"
 });
 
-export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({ apiKey: "", baseUrl: "", model: "" });
+export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({
+  apiKey: "",
+  baseUrl: "",
+  model: ""
+});
+
 export const GLOSSARY_STORAGE_VERSION = 1;
-export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, entries: Object.freeze([]) });
-export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });
+export const DEFAULT_GLOSSARY_STORE = Object.freeze({
+  version: GLOSSARY_STORAGE_VERSION,
+  entries: Object.freeze([])
+});
+export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({
+  version: GLOSSARY_STORAGE_VERSION,
+  sites: Object.freeze({})
+});
 
 export const DEFAULT_CONFIG = Object.freeze({
   apiKey: "",
@@ -36,6 +47,7 @@ export const CACHE_SCHEMA_VERSION = 2;
 
 export const BACKGROUND_MESSAGES = Object.freeze({
   TRANSLATE_BATCH: "TRANSLATE_BATCH",
+  SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH",
   CANCEL_TRANSLATION: "CANCEL_TRANSLATION",
   TEST_API: "TEST_API",
   CACHE_LOOKUP: "CACHE_LOOKUP",
