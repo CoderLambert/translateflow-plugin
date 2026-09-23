@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TranslateFlow",
-  "version": "0.5.0",
-  "description": "AI web translation with DeepSeek and OpenAI-compatible providers, site profiles, URL-aware IndexedDB cache and automatic incremental translation.",
+  "version": "0.6.0",
+  "description": "AI web translation with DeepSeek/OpenAI-compatible providers, site profiles, glossary, IndexedDB cache and incremental translation.",
   "permissions": [
     "storage",
     "activeTab",

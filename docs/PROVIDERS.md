@@ -90,3 +90,10 @@ Provider 调用前再次通过 `chrome.permissions.contains()` 验证权限，�
 4. 明确哪些字段进入 cache fingerprint。
 5. 增加 Provider/缓存兼容测试。
 6. 如需新 Host Permission，优先使用 optional permission。
+
+
+## Glossary composition
+
+Provider adapters remain glossary-agnostic. Global/site glossary entries are normalized and resolved before provider selection, then composed into the effective system prompt.
+
+A non-empty effective glossary also contributes a deterministic glossary identity to the cache fingerprint. Empty glossary state does not change legacy cache identity.

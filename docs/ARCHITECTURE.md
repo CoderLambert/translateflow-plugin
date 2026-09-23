@@ -6,7 +6,7 @@
 UI (popup/options)
         |
         v
-shared contracts / config normalization
+shared contracts / config + glossary normalization
         |
         +--------------------------+
         |                          |
@@ -15,6 +15,7 @@ content scripts -> messages -> background router
                                 |
                                 v
                     getEffectiveConfig(pageUrl)
+                    + effective glossary
                          /      |       \
                         v       v        v
                      cache   providers  auto-sites
@@ -117,3 +118,29 @@ failed / cancelled
 Page translation encodes supported inline elements (a, strong/b, em/i, code, kbd, mark) into TranslateFlow-controlled markers before the Provider request. Provider adapters remain format-agnostic; the request coordinator adds the marker-preservation protocol only when structured markers are present. Rendering never uses model-produced HTML or innerHTML: it rebuilds DOM from a fixed tag whitelist and preserves only the original safe link href/title attributes. code/kbd text is restored from the original DOM.
 
 Plain paragraphs retain their existing normalized source identity. Rich paragraphs use the deterministic marker-encoded source as their segment identity, so only those paragraphs can incur a one-time cache miss; the IndexedDB schema and global cache schema version remain unchanged.
+
+
+## Glossary boundary
+
+术语表属于 Effective Translation Config 的组成部分，但 Provider adapter 不直接读取术语存储。
+
+```text
+chrome.storage.local
+  ├─ glossary { version, entries }
+  └─ siteGlossaries { version, sites }
+            |
+            v
+normalize + resolveEffectiveGlossary(pageUrl)
+            |
+            +--> composeGlossaryPrompt()
+            |
+            +--> glossaryIdentity -> cache fingerprint
+```
+
+规则：
+
+- 空有效术语表保持原有 Prompt 和 cache identity；
+- 站点术语只在匹配 Origin 时参与解析；
+- 同 effective key 的站点术语覆盖全局术语；
+- 设置页只操作 versioned normalized store；
+- glossary UI 位于 `src/options/glossary-ui.js`，Provider/cache/content 不依赖 Options DOM。

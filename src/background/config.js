@@ -3,8 +3,14 @@ import {
   DEFAULT_CONFIG,
   DEFAULT_OPENAI_COMPATIBLE
 } from "../shared/constants.js";
+import {
+  composeGlossaryPrompt,
+  glossaryIdentity,
+  normalizeGlossaryStore,
+  normalizeSiteGlossaryStore,
+  resolveEffectiveGlossary
+} from "../shared/glossary.js";
 import { resolveTranslationConfig } from "../shared/provider-config.js";
-import { composeGlossaryPrompt, glossaryIdentity, normalizeGlossary, resolveEffectiveGlossary } from "../shared/glossary.js";
 
 export async function getConfig() {
   const stored = await chrome.storage.local.get(CONFIG_KEYS);
@@ -15,10 +21,11 @@ export async function getEffectiveConfig(pageUrl = "") {
   const stored = await getConfig();
   const resolved = resolveTranslationConfig(stored, pageUrl);
   const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
+
   if (!glossary.length) return resolved;
+
   return {
     ...resolved,
-    glossary,
     glossaryIdentity: glossaryIdentity(glossary),
     prompt: composeGlossaryPrompt(resolved.prompt, glossary)
   };
@@ -51,9 +58,7 @@ function normalizeStoredConfig(config) {
     siteProfiles: config?.siteProfiles && typeof config.siteProfiles === "object" && !Array.isArray(config.siteProfiles)
       ? config.siteProfiles
       : {},
-    glossary: normalizeGlossary(config?.glossary),
-    siteGlossaries: config?.siteGlossaries && typeof config.siteGlossaries === "object" && !Array.isArray(config.siteGlossaries)
-      ? Object.fromEntries(Object.entries(config.siteGlossaries).map(([origin, entries]) => [origin, normalizeGlossary(entries)]))
-      : {}
+    glossary: normalizeGlossaryStore(config?.glossary),
+    siteGlossaries: normalizeSiteGlossaryStore(config?.siteGlossaries)
   };
 }
