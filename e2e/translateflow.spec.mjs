@@ -9,9 +9,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const page = await harness.open("/article");
     await harness.inject(page);
 
-    const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", {
-      taskId: "e2e-manual"
-    });
+    const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-manual" });
     expect(translated.ok).toBe(true);
     expect(translated.apiTranslated).toBe(3);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
@@ -37,7 +35,6 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   test("automatic mode translates incremental content and sends only the new paragraph to the provider", async ({ harness }) => {
     const page = await harness.open("/incremental");
     await harness.inject(page);
-
     const enabled = await harness.sendContent(page, "ABT_ENABLE_AUTO");
     expect(enabled.ok).toBe(true);
     await expect(page.locator("#initial .abt-translation")).toBeVisible();
@@ -55,47 +52,27 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(2);
     expect(harness.server.calls[1].segments).toHaveLength(1);
     expect(harness.server.calls[1].segments[0].text).toContain("dynamically appended English paragraph");
-
     await harness.sendContent(page, "ABT_DISABLE_AUTO");
   });
 
   test("site profile resolves the expected provider, model, target language and preset", async ({ harness }) => {
     const page = await harness.open("/article");
-    await harness.setStorage({
-      siteProfiles: {
-        "http://127.0.0.1": {
-          provider: "openai-compatible",
-          model: "site-mock-model",
-          targetLanguage: "Japanese",
-          preset: "technical"
-        }
-      }
-    });
-
-    const response = await harness.runtime({
-      type: "EFFECTIVE_CONTEXT",
-      pageUrl: page.url()
-    });
-
+    await harness.setStorage({ siteProfiles: { "http://127.0.0.1": { provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", preset: "technical" } } });
+    const response = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(response.ok).toBe(true);
-    expect(response.context).toMatchObject({
-      hostname: "127.0.0.1",
-      provider: "openai-compatible",
-      model: "site-mock-model",
-      targetLanguage: "Japanese",
-      presetId: "technical",
-      presetLabel: "Technical",
-      presetSource: "site"
-    });
+    expect(response.context).toMatchObject({ hostname: "127.0.0.1", provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", presetId: "technical", presetLabel: "Technical", presetSource: "site" });
   });
 
-  test("selection translation shows a popover and the second invocation is served from cache", async ({ harness }) => {
+  test("selection controls are isolated from hostile page CSS and cache repeated translation", async ({ harness }) => {
     const page = await harness.open("/selection");
+    await page.addStyleTag({ content: `button, .tf-selection-chip, .tf-selection-panel { display: none !important; color: rgb(255, 0, 0) !important; font-size: 1px !important; }` });
     await harness.inject(page);
 
     await selectElementText(page, "#selectable");
-    await expect(page.locator(".tf-selection-chip")).toBeVisible();
-    await page.locator(".tf-selection-chip").click();
+    const chip = page.locator(".tf-selection-chip");
+    await expect(chip).toBeVisible();
+    expect(await chip.evaluate((node) => getComputedStyle(node).fontSize)).not.toBe("1px");
+    await chip.click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
     expect(harness.server.calls).toHaveLength(1);
 
@@ -111,7 +88,6 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   test("selection failure is actionable and transient 429/500 failures recover without a stuck state", async ({ harness }) => {
     const page = await harness.open("/failure");
     await harness.inject(page);
-
     harness.server.setFailures([401]);
     await selectElementText(page, "#auth");
     await page.locator(".tf-selection-chip").click();
@@ -123,7 +99,6 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await page.getByRole("button", { name: "重试" }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
     expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200]);
-
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
 
@@ -137,26 +112,9 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   test("glossary and preset change effective behavior while switching back reuses the prior cache version", async ({ harness }) => {
     const page = await harness.open("/glossary");
     await harness.inject(page);
+    await harness.setStorage({ siteProfiles: { "http://127.0.0.1": { preset: "technical" } }, glossary: { version: 1, entries: [{ id: "repository", source: "repository", target: "仓库", caseSensitive: false, enabled: true }] } });
 
-    await harness.setStorage({
-      siteProfiles: {
-        "http://127.0.0.1": { preset: "technical" }
-      },
-      glossary: {
-        version: 1,
-        entries: [{
-          id: "repository",
-          source: "repository",
-          target: "仓库",
-          caseSensitive: false,
-          enabled: true
-        }]
-      }
-    });
-
-    let response = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", {
-      taskId: "e2e-tech"
-    });
+    let response = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-tech" });
     expect(response.ok).toBe(true);
     await expect(page.locator("#glossary .abt-translation")).toContainText("[TECH|GLOSSARY]");
     await expect(page.locator("#glossary .abt-translation")).toContainText("仓库");
@@ -165,29 +123,15 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls[0].systemPrompt).toContain("Terminology glossary");
 
     await harness.sendContent(page, "ABT_CLEAR_TRANSLATIONS");
-    await harness.setStorage({
-      siteProfiles: {
-        "http://127.0.0.1": { preset: "news" }
-      }
-    });
-
-    response = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", {
-      taskId: "e2e-news"
-    });
+    await harness.setStorage({ siteProfiles: { "http://127.0.0.1": { preset: "news" } } });
+    response = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-news" });
     expect(response.ok).toBe(true);
     await expect(page.locator("#glossary .abt-translation")).toContainText("[NEWS|GLOSSARY]");
     expect(harness.server.calls).toHaveLength(2);
 
     await harness.sendContent(page, "ABT_CLEAR_TRANSLATIONS");
-    await harness.setStorage({
-      siteProfiles: {
-        "http://127.0.0.1": { preset: "technical" }
-      }
-    });
-
-    response = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", {
-      taskId: "e2e-tech-again"
-    });
+    await harness.setStorage({ siteProfiles: { "http://127.0.0.1": { preset: "technical" } } });
+    response = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-tech-again" });
     expect(response.ok).toBe(true);
     expect(response.cacheHits).toBe(1);
     expect(response.apiTranslated).toBe(0);
@@ -203,11 +147,7 @@ async function selectElementText(page, selector) {
     range.selectNodeContents(element);
     selection.removeAllRanges();
     selection.addRange(range);
-    element.dispatchEvent(new MouseEvent("mouseup", {
-      bubbles: true,
-      cancelable: true,
-      view: window
-    }));
+    element.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
   });
 }
 

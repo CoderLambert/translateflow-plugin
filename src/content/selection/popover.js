@@ -1,10 +1,16 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.selection || app.modules.selectionPopover) return;
+  if (
+    !app?.modules.runtime
+    || !app?.modules.selection
+    || !app?.modules.uiHost
+    || !app?.modules.uiPrimitives
+    || app.modules.selectionPopover
+  ) return;
 
-  const { constants } = app.modules.runtime;
   const { refreshRect } = app.modules.selection;
-  const { EXTENSION_UI_ATTR } = constants;
+  const { getLayer, ownsNode } = app.modules.uiHost;
+  const { button, surface, status, setStatus } = app.modules.uiPrimitives;
 
   let root;
   let chip;
@@ -27,19 +33,12 @@
 
     root = document.createElement("div");
     root.className = "tf-selection-ui";
-    root.setAttribute(EXTENSION_UI_ATTR, "selection");
 
-    chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "tf-selection-chip";
-    chip.textContent = "译";
-    chip.setAttribute("aria-label", "翻译所选文本");
+    chip = button({ text: "译", label: "翻译所选文本", className: "tf-selection-chip" });
     chip.addEventListener("pointerdown", (event) => event.preventDefault());
     chip.addEventListener("click", () => translateHandler?.());
 
-    panel = document.createElement("section");
-    panel.className = "tf-selection-panel";
-    panel.setAttribute("role", "dialog");
+    panel = surface({ className: "tf-selection-panel", role: "dialog" });
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
 
     const header = document.createElement("div");
@@ -47,20 +46,14 @@
     const title = document.createElement("strong");
     title.textContent = "TranslateFlow";
 
-    const closeButton = document.createElement("button");
-    closeButton.type = "button";
-    closeButton.className = "tf-selection-icon-button";
-    closeButton.textContent = "×";
-    closeButton.setAttribute("aria-label", "关闭");
+    const closeButton = button({ text: "×", label: "关闭", icon: true, className: "tf-selection-icon-button" });
     closeButton.addEventListener("click", () => closeHandler?.());
     header.append(title, closeButton);
 
     sourceNode = document.createElement("div");
     sourceNode.className = "tf-selection-source";
 
-    statusNode = document.createElement("div");
-    statusNode.className = "tf-selection-status";
-    statusNode.setAttribute("aria-live", "polite");
+    statusNode = status({ className: "tf-selection-status" });
 
     resultNode = document.createElement("div");
     resultNode.className = "tf-selection-result";
@@ -68,25 +61,17 @@
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
 
-    cancelButton = document.createElement("button");
-    cancelButton.type = "button";
-    cancelButton.textContent = "取消";
+    cancelButton = button({ text: "取消" });
     cancelButton.addEventListener("click", () => cancelHandler?.());
-
-    copyButton = document.createElement("button");
-    copyButton.type = "button";
-    copyButton.textContent = "复制";
+    copyButton = button({ text: "复制" });
     copyButton.addEventListener("click", () => copyHandler?.());
-
-    retryButton = document.createElement("button");
-    retryButton.type = "button";
-    retryButton.textContent = "重试";
+    retryButton = button({ text: "重试" });
     retryButton.addEventListener("click", () => retryHandler?.());
 
     actions.append(cancelButton, copyButton, retryButton);
     panel.append(header, sourceNode, statusNode, resultNode, actions);
     root.append(chip, panel);
-    document.documentElement.appendChild(root);
+    getLayer("selection").appendChild(root);
   }
 
   function showChip(snapshot, onTranslate) {
@@ -108,8 +93,7 @@
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
-    statusNode.textContent = "正在检查缓存…";
-    statusNode.dataset.kind = "loading";
+    setStatus(statusNode, "正在检查缓存…", "loading");
     resultNode.textContent = "";
     resultNode.hidden = true;
     cancelButton.hidden = false;
@@ -121,8 +105,7 @@
 
   function setLoadingStatus(message) {
     if (!statusNode || panel?.hidden) return;
-    statusNode.textContent = message;
-    statusNode.dataset.kind = "loading";
+    setStatus(statusNode, message, "loading");
   }
 
   function showResult(snapshot, translation, onCopy) {
@@ -134,8 +117,7 @@
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
-    statusNode.textContent = "";
-    statusNode.dataset.kind = "success";
+    setStatus(statusNode, "", "success");
     resultNode.textContent = translation;
     resultNode.hidden = false;
     cancelButton.hidden = true;
@@ -153,8 +135,7 @@
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
-    statusNode.textContent = message || "翻译失败，请重试。";
-    statusNode.dataset.kind = "error";
+    setStatus(statusNode, message || "翻译失败，请重试。", "error");
     resultNode.textContent = "";
     resultNode.hidden = true;
     cancelButton.hidden = true;
@@ -187,7 +168,7 @@
   }
 
   function contains(target) {
-    return Boolean(root && target instanceof Node && root.contains(target));
+    return ownsNode(target);
   }
 
   function reposition() {
@@ -209,9 +190,7 @@
 
       if (left + box.width > window.innerWidth - margin) left = window.innerWidth - box.width - margin;
       if (left < margin) left = margin;
-      if (top + box.height > window.innerHeight - margin) {
-        top = Math.max(margin, rect.top - box.height - 8);
-      }
+      if (top + box.height > window.innerHeight - margin) top = Math.max(margin, rect.top - box.height - 8);
       if (top < margin) top = margin;
 
       element.style.left = `${Math.round(left)}px`;

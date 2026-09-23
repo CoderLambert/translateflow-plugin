@@ -80,6 +80,10 @@ export const CONTENT_MESSAGES = Object.freeze({
 
 export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/runtime.js",
+  "src/content/ui/tokens.js",
+  "src/content/ui/host.js",
+  "src/content/ui/primitives.js",
+  "src/content/ui/toast.js",
   "src/content/tasks.js",
   "src/content/structured.js",
   "src/content/dom.js",
