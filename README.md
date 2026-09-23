@@ -12,6 +12,7 @@
 - 站点级 Provider / Model / Prompt / Target Language 覆盖
 - 划词翻译浮层：选择文本后按需翻译、复制、取消、失败重试，并复用站点配置与 IndexedDB 缓存
 - 统一 Translation Task：阶段进度、用户取消、Provider timeout/retry 与 in-flight 请求去重
+- 结构化双语渲染：保留链接、强调、code/kbd/mark 等安全内联语义，不注入模型 HTML
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
 
@@ -256,7 +257,7 @@ segment:
 SHA-256(normalized source text)
 ```
 
-DeepSeek 不把固定 API Base URL 放进指纹，因此 v0.3/v0.4 DeepSeek 缓存继续命中。
+普通纯文本段落继续使用原有规范化文本作为缓存身份，因此既有缓存继续命中。包含受支持内联结构的段落使用带 TranslateFlow 结构标记的确定性 source fingerprint，首次可能 miss 一次，但不会提升全局缓存 schema。\n\nDeepSeek 不把固定 API Base URL 放进指纹，因此 v0.3/v0.4 DeepSeek 缓存继续命中。
 
 OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容服务使用同一模型名时误复用译文。
 
