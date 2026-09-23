@@ -10,7 +10,8 @@
 - 支持无 API Key 的本地兼容服务
 - 按 API Origin 动态申请 Host Permission
 - 站点级 Provider / Model / Prompt / Target Language 覆盖
-- 划词翻译浮层：选择文本后按需翻译、复制、失败重试，并复用站点配置与 IndexedDB 缓存
+- 划词翻译浮层：选择文本后按需翻译、复制、取消、失败重试，并复用站点配置与 IndexedDB 缓存
+- 统一 Translation Task：阶段进度、用户取消、Provider timeout/retry 与 in-flight 请求去重
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
 
@@ -81,6 +82,7 @@ translateflow-plugin/
 │   │   ├── config.js
 │   │   ├── cache-db.js
 │   │   ├── auto-sites.js
+│   │   ├── translation-requests.js
 │   │   └── providers/
 │   │       ├── index.js
 │   │       ├── shared.js
@@ -89,6 +91,7 @@ translateflow-plugin/
 │   │
 │   └── content/
 │       ├── runtime.js
+│       ├── tasks.js
 │       ├── dom.js
 │       ├── batch.js
 │       ├── processor.js
@@ -290,6 +293,24 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - Escape、右上角关闭按钮或点击外部关闭；
 - Provider 失败后 Retry；
 - 与自动增量翻译同时启用时，划词 UI 不会进入 MutationObserver 翻译队列。
+
+## 翻译任务与错误恢复
+
+正文翻译、划词翻译和自动增量翻译共享同一套任务/请求基础设施。用户主动翻译会展示：
+
+```text
+检查缓存 → 调用模型 → 保存译文 → 完成
+```
+
+支持：
+
+- Popup 显示当前阶段和段落进度；
+- 正文翻译和划词翻译可取消；
+- 取消后不会写入未完成的缓存；
+- 网络错误、HTTP 429 与 5xx 使用有界重试；
+- HTTP 429 尊重 `Retry-After`；
+- API Key、权限和配置错误立即失败，不自动重试；
+- 相同 in-flight Provider 请求在安全条件下复用同一次调用。
 
 ## 自动增量翻译
 

@@ -50,7 +50,8 @@ content scripts -> messages -> background router
 ## Background
 
 - `config.js`: 持久配置 + effective config
-- `providers/`: 网络 Provider adapter
+- `providers/`: 网络 Provider adapter；统一接收 AbortSignal，并由 shared 层负责 timeout/retry
+- `translation-requests.js`: requestId / in-flight coalescing / background AbortController
 - `cache-db.js`: cache identity / IndexedDB / LRU
 - `auto-sites.js`: optional site permission + persistent script registration
 - `router.js`: message dispatch
@@ -61,11 +62,13 @@ content scripts -> messages -> background router
 Content Script 继续保持 build-free classic script modules：
 
 1. runtime
-2. dom
-3. batch
-4. processor
-5. auto
-6. bootstrap
+2. tasks
+3. dom
+4. batch
+5. processor
+6. auto
+7. selection modules
+8. bootstrap
 
 `processor.js` 会把 pageUrl 同时传给缓存和翻译请求，因此 Background 可以为当前站点解析同一份有效配置。
 
