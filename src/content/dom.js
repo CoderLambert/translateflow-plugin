@@ -1,8 +1,9 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || app.modules.dom) return;
+  if (!app?.modules.runtime || !app?.modules.structured || app.modules.dom) return;
 
   const { constants, state, cleanText } = app.modules.runtime;
+  const structured = app.modules.structured;
   const {
     TRANSLATION_CLASS,
     TRANSLATED_ATTR,
@@ -53,6 +54,12 @@
     return cleanText(parts.join(" "));
   }
 
+  function extractSourceSegment(el) {
+    const encoded = structured.encodeElement(el);
+    if (!encoded.rich) return { text: extractSourceText(el), rich: false, descriptors: [] };
+    return encoded;
+  }
+
   function shouldTranslate(text) {
     if (!text || text.length < MIN_TEXT_LENGTH || text.length > 5000) return false;
     if (/^(https?:\/\/|www\.)/i.test(text)) return false;
@@ -68,7 +75,8 @@
     const node = document.createElement("span");
     node.className = TRANSLATION_CLASS;
     node.setAttribute("aria-hidden", "false");
-    node.textContent = translation;
+    const source = structured.encodeElement(el);
+    node.appendChild(structured.renderTranslation(translation, source));
     el.appendChild(node);
     el.setAttribute(TRANSLATED_ATTR, "1");
     return true;
@@ -99,6 +107,7 @@
     collectElements,
     isCandidateElement,
     extractSourceText,
+    extractSourceSegment,
     shouldTranslate,
     insertTranslation,
     removeTranslationFromElement,
