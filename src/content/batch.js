@@ -3,7 +3,7 @@
   if (!app?.modules.runtime || !app?.modules.dom || app.modules.batch) return;
 
   const { constants, normalizeSourceText } = app.modules.runtime;
-  const { extractSourceText, shouldTranslate } = app.modules.dom;
+  const { extractSourceSegment, shouldTranslate } = app.modules.dom;
   const { TRANSLATED_ATTR, BATCH_MAX_ITEMS, BATCH_MAX_CHARS } = constants;
 
   function buildEntries(elements) {
@@ -11,9 +11,17 @@
     let nextId = 1;
     for (const el of elements) {
       if (!document.contains(el) || el.hasAttribute(TRANSLATED_ATTR)) continue;
-      const text = extractSourceText(el);
-      if (!shouldTranslate(text)) continue;
-      entries.push({ id: String(nextId++), el, text, normalizedText: normalizeSourceText(text) });
+      const source = extractSourceSegment(el);
+      const text = source.text;
+      const visibleText = source.rich ? text.replace(/⟦TF:[^⟧]*⟧/g, "") : text;
+      if (!shouldTranslate(visibleText)) continue;
+      entries.push({
+        id: String(nextId++),
+        el,
+        text,
+        rich: source.rich,
+        normalizedText: normalizeSourceText(text)
+      });
     }
     return entries;
   }
@@ -27,6 +35,7 @@
           id: String(byText.size + 1),
           text: entry.text,
           normalizedText: entry.normalizedText,
+          rich: entry.rich,
           elements: []
         };
         byText.set(entry.normalizedText, group);
