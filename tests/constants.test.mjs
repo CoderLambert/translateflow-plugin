@@ -23,6 +23,23 @@ test("task runtime is loaded before content processors", () => {
   assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/tasks.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/processor.js"));
 });
 
+test("shared UI foundation loads after runtime and before extension-owned controls", () => {
+  const uiFiles = [
+    "src/content/ui/tokens.js",
+    "src/content/ui/host.js",
+    "src/content/ui/primitives.js",
+    "src/content/ui/toast.js"
+  ];
+  const runtimeIndex = CONTENT_SCRIPT_FILES.indexOf("src/content/runtime.js");
+  const popoverIndex = CONTENT_SCRIPT_FILES.indexOf("src/content/selection/popover.js");
+
+  for (const file of uiFiles) {
+    const index = CONTENT_SCRIPT_FILES.indexOf(file);
+    assert.ok(index > runtimeIndex, `${file} should load after runtime`);
+    assert.ok(index < popoverIndex, `${file} should load before selection controls`);
+  }
+});
+
 test("content bootstrap is loaded last", () => {
   assert.equal(CONTENT_SCRIPT_FILES.at(-1), "content.js");
 });
