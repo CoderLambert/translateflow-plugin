@@ -88,6 +88,56 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     });
   });
 
+  test("Quick Control is Shadow-isolated, reuses task state, supports retry/cancel and yields to selection UI", async ({ harness }) => {
+    const page = await harness.open("/article");
+    await page.addStyleTag({ content: `button, select, .tf-quick-trigger, .tf-quick-panel { display: none !important; font-size: 1px !important; }` });
+    await harness.inject(page);
+    const shown = await harness.sendContent(page, "TF_QUICK_CONTROL_SHOW");
+    expect(shown.ok).toBe(true);
+
+    const trigger = page.getByRole("button", { name: "TranslateFlow Quick Control" });
+    await expect(trigger).toBeVisible();
+    expect(await trigger.evaluate((node) => getComputedStyle(node).fontSize)).not.toBe("1px");
+    await trigger.click();
+
+    await expect(page.getByRole("dialog", { name: "TranslateFlow Quick Control" })).toBeVisible();
+    await expect(page.getByLabel("翻译模式")).toContainText("Technical");
+    await expect(page.getByLabel("阅读外观")).toContainText("Reading");
+
+    harness.server.setFailures([401]);
+    await page.getByRole("button", { name: "翻译 / 重翻" }).click();
+    await expect(page.locator(".tf-quick-status")).toContainText("mock failure 401");
+    await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
+
+    harness.server.setFailures([]);
+    await page.getByRole("button", { name: "重试" }).click();
+    await expect(page.locator(".tf-quick-status")).toContainText("翻译完成");
+    await expect(page.locator(".abt-translation")).toHaveCount(3);
+    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200]);
+
+    await page.getByLabel("阅读外观").selectOption("reading");
+    await expect.poll(() => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-line-height").trim()
+    )).toBe("1.8");
+    expect(harness.server.calls).toHaveLength(2);
+
+    await harness.sendContent(page, "ABT_CLEAR_PAGE_CACHE");
+    await harness.sendContent(page, "ABT_CLEAR_TRANSLATIONS");
+    harness.server.setDelay(700);
+    await page.getByRole("button", { name: "翻译 / 重翻" }).click();
+    await expect(page.getByRole("button", { name: "取消" })).toBeVisible();
+    await page.getByRole("button", { name: "取消" }).click();
+    await expect(page.locator(".tf-quick-status")).toContainText("翻译已取消");
+
+    harness.server.setDelay(0);
+    await page.getByRole("button", { name: "关闭 Quick Control" }).click();
+    await selectElementText(page, "#intro");
+    await expect(page.locator(".tf-selection-chip")).toBeVisible();
+    await expect(trigger).not.toBeVisible();
+    await page.locator("body").click({ position: { x: 4, y: 4 } });
+    await expect(trigger).toBeVisible();
+  });
+
   test("automatic mode translates incremental content and sends only the new paragraph to the provider", async ({ harness }) => {
     const page = await harness.open("/incremental");
     await harness.inject(page);

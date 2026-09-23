@@ -1,5 +1,9 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
+test.beforeEach(async ({ harness }) => {
+  await harness.reset();
+});
+
 function unit({
   id,
   text,

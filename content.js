@@ -8,6 +8,7 @@
     || !app?.modules.processor
     || !app?.modules.auto
     || !app?.modules.selectionController
+    || !app?.modules.quickControl
   ) {
     throw new Error("TranslateFlow content modules were not loaded in the expected order.");
   }
@@ -21,6 +22,7 @@
   const { processPage } = app.modules.processor;
   const { enableAutoMode, disableAutoMode, rescanAutoPage, maybeStartAutoMode, scheduleAutoDrain } = app.modules.auto;
   const { start: startSelectionTranslation } = app.modules.selectionController;
+  const quickControl = app.modules.quickControl;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
@@ -41,6 +43,11 @@
         tasks.cancelTask(message.taskId)
           .then((result) => sendResponse({ ok: true, ...result }))
           .catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" }));
+        return true;
+      case messages.content.QUICK_CONTROL_SHOW:
+        quickControl.showForTab()
+          .then(() => sendResponse({ ok: true, visible: quickControl.isVisible() }))
+          .catch((error) => sendResponse({ ok: false, error: error.message }));
         return true;
       case messages.content.ENABLE_AUTO:
         enableAutoMode({ announce: true })
@@ -133,6 +140,7 @@
   }
 
   appearance.start();
+  quickControl.start();
   startSelectionTranslation();
   maybeStartAutoMode();
 })();

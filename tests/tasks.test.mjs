@@ -83,3 +83,30 @@ test("content task cancellation is immediate and forwards background cancellatio
   assert.equal(sent[0].requestId, "cancel-1");
   assert.throws(() => tasks.assertActive(task), (error) => error?.code === "CANCELLED");
 });
+
+
+test("task subscribers receive the same page lifecycle used by external controls", () => {
+  const { tasks } = loadTasksModule();
+  const events = [];
+  const unsubscribe = tasks.subscribe((task, event) => {
+    events.push({ state: task?.state, surface: task?.surface, event });
+  });
+
+  const task = tasks.createTask({ id: "shared-page", surface: "page", total: 2 });
+  tasks.transition(task, "cache_lookup");
+  tasks.updateProgress(task, { done: 1 });
+  tasks.completeTask(task, { done: 2 });
+
+  assert.deepEqual(events.map((item) => item.state), [
+    "queued",
+    "cache_lookup",
+    "cache_lookup",
+    "completed"
+  ]);
+  assert.equal(tasks.getLatestTask("page").id, "shared-page");
+  assert.equal(tasks.getLatestTask("page").state, "completed");
+
+  unsubscribe();
+  tasks.transition(task, "completed", { done: 2 });
+  assert.equal(events.length, 4);
+});

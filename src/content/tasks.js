@@ -5,6 +5,7 @@
   const { messages, sendRuntimeMessage } = app.modules.runtime;
   const TERMINAL_STATES = new Set(["completed", "failed", "cancelled"]);
   const tasks = new Map();
+  const listeners = new Set();
 
   function createTask({
     id = "",
@@ -30,6 +31,7 @@
       errorCode: ""
     };
     tasks.set(taskId, task);
+    notify(task);
     return task;
   }
 
@@ -44,6 +46,7 @@
       state,
       updatedAt: Date.now()
     });
+    notify(task);
     return task;
   }
 
@@ -52,6 +55,7 @@
     if (!task) return null;
     if (task.state === "cancelled") throw createCancelledError();
     Object.assign(task, patch, { updatedAt: Date.now() });
+    notify(task);
     return task;
   }
 
@@ -112,7 +116,33 @@
   function releaseTask(taskOrId) {
     const task = resolveTask(taskOrId);
     if (!task) return false;
-    return tasks.delete(task.id);
+    const removed = tasks.delete(task.id);
+    if (removed) notify(task, "released");
+    return removed;
+  }
+
+  function subscribe(listener) {
+    if (typeof listener !== "function") return () => {};
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  function getLatestTask(surface = "") {
+    let latest = null;
+    for (const task of tasks.values()) {
+      if (surface && task.surface !== surface) continue;
+      if (!latest || task.updatedAt > latest.updatedAt) latest = task;
+    }
+    return serializeTask(latest);
+  }
+
+  function notify(task, event = "updated") {
+    const snapshot = serializeTask(task);
+    for (const listener of [...listeners]) {
+      try {
+        listener(snapshot, event);
+      } catch {}
+    }
   }
 
   function isTerminal(taskOrId) {
@@ -184,6 +214,8 @@
     releaseTask,
     isTerminal,
     isCancelledError,
-    responseError
+    responseError,
+    subscribe,
+    getLatestTask
   };
 })();

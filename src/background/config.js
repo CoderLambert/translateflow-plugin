@@ -13,14 +13,17 @@ import {
 import {
   getSiteProfile,
   resolveTranslationConfig,
+  updateSiteProfileAppearance,
   updateSiteProfilePreset
 } from "../shared/provider-config.js";
 import {
+  TRANSLATION_PRESETS,
   getPresetLabel,
   normalizePresetId
 } from "../shared/presets.js";
 import {
   DEFAULT_APPEARANCE_ID,
+  TRANSLATION_APPEARANCES,
   normalizeAppearanceId,
   resolveAppearance
 } from "../shared/appearance.js";
@@ -74,8 +77,17 @@ export async function getEffectiveContext(pageUrl) {
     appearanceId: appearance.id,
     appearanceLabel: appearance.label,
     appearanceSource: appearance.source,
-    appearanceVariables: appearance.variables
+    appearanceVariables: appearance.variables,
+    availablePresets: TRANSLATION_PRESETS.map(({ id, label, description }) => ({ id, label, description })),
+    availableAppearances: TRANSLATION_APPEARANCES.map(({ id, label, description }) => ({ id, label, description }))
   };
+}
+
+export async function saveSiteAppearance(pageUrl, value) {
+  const { siteProfiles = {} } = await chrome.storage.local.get(["siteProfiles"]);
+  const updated = updateSiteProfileAppearance(siteProfiles, pageUrl, value);
+  await chrome.storage.local.set({ siteProfiles: updated.siteProfiles });
+  return getEffectiveContext(pageUrl);
 }
 
 export async function saveSitePreset(pageUrl, value) {

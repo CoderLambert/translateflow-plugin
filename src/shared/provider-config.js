@@ -126,6 +126,26 @@ export function normalizeSiteProfile(rawProfile = {}) {
   return profile;
 }
 
+export function updateSiteProfileAppearance(siteProfiles, pageUrl, value) {
+  const origin = normalizeOrigin(pageUrl);
+  const nextProfiles = isPlainObject(siteProfiles) ? { ...siteProfiles } : {};
+  const profile = normalizeSiteProfile(nextProfiles[origin] || {});
+  const normalizedValue = String(value ?? "").trim().toLowerCase();
+
+  if (!normalizedValue || normalizedValue === "inherit") {
+    delete profile.appearance;
+  } else {
+    const appearance = normalizeAppearanceId(normalizedValue);
+    if (!appearance) throw new Error(`未知阅读外观：${value}`);
+    profile.appearance = appearance;
+  }
+
+  if (Object.keys(profile).length) nextProfiles[origin] = profile;
+  else delete nextProfiles[origin];
+
+  return { origin, siteProfiles: nextProfiles };
+}
+
 export function updateSiteProfilePreset(siteProfiles, pageUrl, value) {
   const origin = normalizeOrigin(pageUrl);
   const nextProfiles = isPlainObject(siteProfiles) ? { ...siteProfiles } : {};
