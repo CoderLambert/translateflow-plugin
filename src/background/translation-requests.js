@@ -5,7 +5,8 @@ const requestsById = new Map();
 
 export async function runTranslationRequest({ requestId, segments, config }) {
   const id = String(requestId || crypto.randomUUID());
-  const key = buildTranslationRequestKey(segments, config);
+  const requestConfig = withStructuredMarkerInstruction(segments, config);
+  const key = buildTranslationRequestKey(segments, requestConfig);
 
   let entry = inflightByKey.get(key);
   if (!entry) {
@@ -17,7 +18,7 @@ export async function runTranslationRequest({ requestId, segments, config }) {
       settled: false,
       promise: null
     };
-    entry.promise = translateBatch(segments, config, { signal: controller.signal })
+    entry.promise = translateBatch(segments, requestConfig, { signal: controller.signal })
       .finally(() => {
         entry.settled = true;
         inflightByKey.delete(key);
@@ -70,4 +71,18 @@ function createCancelledError() {
   const error = new Error("翻译请求已取消。");
   error.code = "CANCELLED";
   return error;
+}
+
+
+function withStructuredMarkerInstruction(segments, config) {
+  const hasMarkers = (Array.isArray(segments) ? segments : [])
+    .some((item) => /⟦TF:\d+:[SE]⟧/.test(String(item?.text || "")));
+  if (!hasMarkers) return config;
+  const protocol = [
+    "TranslateFlow structured-marker protocol:",
+    "Preserve every marker matching ⟦TF:<number>:S⟧ or ⟦TF:<number>:E⟧ exactly,",
+    "keep marker pairs balanced and nested, and do not add, remove, reorder, or translate marker text.",
+    "Text inside code or kbd marker pairs is technical content and should remain unchanged."
+  ].join(" ");
+  return { ...config, prompt: `${String(config?.prompt || "").trim()}\n${protocol}`.trim() };
 }
