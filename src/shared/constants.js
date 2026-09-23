@@ -12,21 +12,10 @@ export const PROVIDER_IDS = Object.freeze({
   OPENAI_COMPATIBLE: "openai-compatible"
 });
 
-export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({
-  apiKey: "",
-  baseUrl: "",
-  model: ""
-});
-
+export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({ apiKey: "", baseUrl: "", model: "" });
 export const GLOSSARY_STORAGE_VERSION = 1;
-export const DEFAULT_GLOSSARY_STORE = Object.freeze({
-  version: GLOSSARY_STORAGE_VERSION,
-  entries: Object.freeze([])
-});
-export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({
-  version: GLOSSARY_STORAGE_VERSION,
-  sites: Object.freeze({})
-});
+export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, entries: Object.freeze([]) });
+export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });
 
 export const DEFAULT_CONFIG = Object.freeze({
   apiKey: "",
@@ -79,6 +68,10 @@ export const CONTENT_MESSAGES = Object.freeze({
 
 export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/runtime.js",
+  "src/content/ui/tokens.js",
+  "src/content/ui/host.js",
+  "src/content/ui/primitives.js",
+  "src/content/ui/toast.js",
   "src/content/tasks.js",
   "src/content/structured.js",
   "src/content/dom.js",
