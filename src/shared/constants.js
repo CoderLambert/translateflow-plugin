@@ -27,7 +27,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   autoSites: [],
   prompt: DEFAULT_PROMPT,
   openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
-  siteProfiles: {}
+  siteProfiles: {},
+  glossary: [],
+  siteGlossaries: {}
 });
 
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
