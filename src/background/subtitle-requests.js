@@ -23,7 +23,7 @@ export function buildSubtitleCacheSource(unit) {
       id: String(cue.id || "").trim(),
       startTime: finiteTime(cue.startTime),
       endTime: finiteTime(cue.endTime),
-      sequence: positiveInteger(unit?.sequence)
+      sequence: cueHasTiming(cue) ? null : positiveInteger(unit?.sequence)
     },
     text: normalizeSourceText(unit?.text)
   };
@@ -116,6 +116,7 @@ function normalizeUnits(units) {
     const text = normalizeSourceText(raw?.text);
     const mediaId = String(raw?.mediaId || "").trim();
     if (!id || !text || !mediaId) continue;
+    if (text.length > MAX_TEXT_CHARS) continue;
     if (chars + text.length > MAX_TEXT_CHARS && output.length) break;
     chars += text.length;
     output.push({
@@ -130,6 +131,10 @@ function normalizeUnits(units) {
   }
 
   return output;
+}
+
+function cueHasTiming(cue) {
+  return finiteTime(cue?.startTime) !== null || finiteTime(cue?.endTime) !== null;
 }
 
 function finiteTime(value) {
