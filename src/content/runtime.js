@@ -103,6 +103,12 @@
   }
 
   function showToast(message, kind = "info") {
+    if (app.modules.uiToast?.show) {
+      app.modules.uiToast.show(message, kind);
+      return;
+    }
+
+    // Compatibility fallback for the short bootstrap window before UI modules load.
     let toast = document.getElementById("abt-toast");
     if (!toast) {
       toast = document.createElement("div");
