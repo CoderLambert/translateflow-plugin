@@ -68,7 +68,7 @@ test("renderer restores whitelisted structure and original safe link attributes"
   ]);
   const encoded = structured.encodeElement(source);
   const rendered = structured.renderTranslation(
-    "阅读⟦TF:0:S⟧文档⟦TF:0:E⟧并调用⟦TF:1:S⟧fetch()⟦TF:1:E⟧",
+    "阅读⟦TF:0:S⟧文档⟦TF:0:E⟧并调用⟦TF:1:S⟧获取()⟦TF:1:E⟧",
     encoded
   );
   assert.equal(rendered.childNodes[1].tagName, "A");
