@@ -19,6 +19,7 @@ class ElementNode {
   getAttribute(name) { return this.attrs[name] ?? null; }
   setAttribute(name, value) { this.attrs[name] = String(value); }
   appendChild(node) { this.childNodes.push(node); node.parentElement = this; return node; }
+  replaceChildren(...nodes) { this.childNodes = nodes; for (const node of nodes) node.parentElement = this; }
   get textContent() { return this.childNodes.map((n) => n.textContent).join(""); }
 }
 class FragmentNode extends ElementNode { constructor() { super("#fragment"); } }
