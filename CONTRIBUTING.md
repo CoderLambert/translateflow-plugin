@@ -81,3 +81,24 @@ npm run validate
 - 临时模式必须使用 session 状态，不得写入永久用户配置。
 - 新增/修改 Preset 必须覆盖 prompt precedence 与 cache identity 测试。
 - Site Profile 自定义 Prompt 的优先级高于 Preset。
+
+
+## Browser E2E
+
+运行：
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+约束：
+
+- E2E 依赖只能放在 `devDependencies`；扩展生产运行时继续保持零第三方依赖、零打包。
+- 使用 Playwright bundled Chromium 的 persistent context 加载 unpacked MV3 扩展。
+- 不使用真实 Provider/API Key；统一走 `e2e/support/mock-server.mjs`。
+- fixture 与 mock 必须确定性，缓存断言优先检查 Provider 调用次数，不用固定 sleep 猜测。
+- 测试需要额外 Host Permission 时，只修改测试临时副本的 manifest，不扩大生产 manifest 权限。
+- `npm run validate` 保持快速，不包含浏览器启动；`npm run test:e2e` 由独立 CI workflow 运行。
+- 新增核心用户流程时，优先在 E2E 中覆盖“成功、缓存命中、错误恢复”至少一个真实 MV3 路径。
