@@ -82,3 +82,28 @@ Content Script 继续保持 build-free classic script modules：
 - Provider endpoint 是否参与 cache fingerprint
 - Runtime message value
 - site profile storage shape
+
+
+## Translation task lifecycle
+
+用户主动翻译与自动增量翻译共享统一任务状态：
+
+```text
+queued
+→ cache_lookup
+→ translating
+→ storing
+→ completed
+
+failed / cancelled
+```
+
+职责分层：
+
+- `src/content/tasks.js`: 页面侧状态、进度、取消意图；
+- `src/background/translation-requests.js`: requestId、in-flight coalescing、后台 AbortController；
+- `src/background/providers/shared.js`: 网络 timeout、429/5xx/network retry、Retry-After；
+- Provider adapter: 请求体和 Provider 特有协议；
+- Popup/Selection: 只展示任务状态，不实现自己的 retry/backoff 算法。
+
+取消后 content 层会在写缓存前再次检查任务状态，因此被取消的 Provider 结果不会写入 IndexedDB。

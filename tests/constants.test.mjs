@@ -18,6 +18,11 @@ test("message values stay unique inside each channel", () => {
   assert.equal(new Set(Object.values(CONTENT_MESSAGES)).size, Object.keys(CONTENT_MESSAGES).length);
 });
 
+test("task runtime is loaded before content processors", () => {
+  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/tasks.js") > CONTENT_SCRIPT_FILES.indexOf("src/content/runtime.js"));
+  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/tasks.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/processor.js"));
+});
+
 test("content bootstrap is loaded last", () => {
   assert.equal(CONTENT_SCRIPT_FILES.at(-1), "content.js");
 });

@@ -2,17 +2,20 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.tasks
     || !app?.modules.selection
     || !app?.modules.selectionPopover
     || app.modules.selectionController
   ) return;
 
   const { messages, getPageIdentity, sendRuntimeMessage, showToast } = app.modules.runtime;
+  const tasks = app.modules.tasks;
   const { readSelection, isExtensionOwnedNode } = app.modules.selection;
   const popover = app.modules.selectionPopover;
 
   let started = false;
   let activeSnapshot = null;
+  let activeTask = null;
   let requestVersion = 0;
   let selectionTimer = null;
 
@@ -58,6 +61,7 @@
       return;
     }
 
+    cancelActiveTask({ showCancelled: false });
     requestVersion += 1;
     activeSnapshot = snapshot;
     popover.showChip(snapshot, () => translateSnapshot(snapshot));
@@ -66,52 +70,79 @@
   async function translateSnapshot(snapshot) {
     if (!snapshot || snapshot !== activeSnapshot) return;
 
+    if (activeTask && !tasks.isTerminal(activeTask)) {
+      await tasks.cancelTask(activeTask);
+    }
+
+    const task = tasks.createTask({
+      surface: "selection",
+      pageUrl: snapshot.pageUrl,
+      total: 1
+    });
+    activeTask = task;
+
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
-    popover.showLoading(snapshot);
+    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
 
     try {
+      tasks.transition(task, "cache_lookup");
+      popover.setLoadingStatus("正在检查缓存…");
       const lookup = await sendRuntimeMessage({
         type: messages.background.CACHE_LOOKUP,
         pageUrl: snapshot.pageUrl,
         segments: [{ id: "selection", text: snapshot.text }]
       });
-      assertCurrent(version, snapshot, expectedPage);
-      if (!lookup?.ok) throw new Error(lookup?.error || "缓存查询失败");
+      assertCurrent(version, snapshot, expectedPage, task);
+      if (!lookup?.ok) throw tasks.responseError(lookup, "缓存查询失败");
 
       const cached = (lookup.hits || []).find((item) => String(item.id) === "selection")?.text;
       if (cached) {
+        tasks.completeTask(task, { done: 1, cacheHits: 1 });
         showResult(snapshot, cached);
         return;
       }
 
+      tasks.transition(task, "translating");
+      popover.setLoadingStatus("正在翻译…");
       const translated = await sendRuntimeMessage({
         type: messages.background.TRANSLATE_BATCH,
+        requestId: task.id,
         pageUrl: snapshot.pageUrl,
         segments: [{ id: "selection", text: snapshot.text }]
       });
-      assertCurrent(version, snapshot, expectedPage);
-      if (!translated?.ok) throw new Error(translated?.error || "翻译失败");
+      assertCurrent(version, snapshot, expectedPage, task);
+      if (!translated?.ok) throw tasks.responseError(translated, "翻译失败");
 
       const translation = (translated.translations || [])
         .find((item) => String(item.id) === "selection")?.text?.trim();
       if (!translation) throw new Error("模型没有返回可用译文。");
 
+      tasks.assertActive(task);
+      tasks.transition(task, "storing");
+      popover.setLoadingStatus("正在保存译文…");
       const stored = await sendRuntimeMessage({
         type: messages.background.CACHE_STORE,
         pageUrl: snapshot.pageUrl,
         pageTitle: document.title,
         items: [{ sourceText: snapshot.text, translation }]
       });
-      assertCurrent(version, snapshot, expectedPage);
-      if (!stored?.ok) throw new Error(stored?.error || "译文缓存失败");
+      assertCurrent(version, snapshot, expectedPage, task);
+      if (!stored?.ok) throw tasks.responseError(stored, "译文缓存失败");
 
+      tasks.completeTask(task, { done: 1, apiTranslated: 1 });
       showResult(snapshot, translation);
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
+      tasks.failTask(task, error);
       if (snapshot !== activeSnapshot) return;
-      const message = error?.message || String(error);
-      popover.showError(snapshot, message, () => translateSnapshot(snapshot));
+
+      const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
+      popover.showError(
+        snapshot,
+        cancelled ? "翻译已取消。" : (error?.message || String(error)),
+        () => translateSnapshot(snapshot)
+      );
     }
   }
 
@@ -126,7 +157,8 @@
     });
   }
 
-  function assertCurrent(version, snapshot, expectedPage) {
+  function assertCurrent(version, snapshot, expectedPage, task) {
+    tasks.assertActive(task);
     if (
       version !== requestVersion
       || snapshot !== activeSnapshot
@@ -134,6 +166,7 @@
     ) {
       const error = new Error("selection superseded");
       error.name = "SelectionSupersededError";
+      error.code = "CANCELLED";
       throw error;
     }
   }
@@ -150,9 +183,20 @@
   }
 
   function dismiss() {
+    cancelActiveTask({ showCancelled: false });
     activeSnapshot = null;
     requestVersion += 1;
     popover.hide();
+  }
+
+  function cancelActiveTask({ showCancelled }) {
+    const task = activeTask;
+    if (!task || tasks.isTerminal(task)) return;
+    tasks.cancelTask(task).catch(() => {});
+    if (showCancelled && activeSnapshot) {
+      const snapshot = activeSnapshot;
+      popover.showError(snapshot, "翻译已取消。", () => translateSnapshot(snapshot));
+    }
   }
 
   async function copyText(text) {

@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.tasks
     || !app?.modules.dom
     || !app?.modules.processor
     || !app?.modules.auto
@@ -13,6 +14,7 @@
   app.loaded = true;
 
   const { constants, messages, state, getSiteScope, getPageIdentity, sendRuntimeMessage } = app.modules.runtime;
+  const tasks = app.modules.tasks;
   const { clearTranslations } = app.modules.dom;
   const { processPage } = app.modules.processor;
   const { enableAutoMode, disableAutoMode, rescanAutoPage, maybeStartAutoMode, scheduleAutoDrain } = app.modules.auto;
@@ -21,14 +23,22 @@
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
       case messages.content.TRANSLATE_PAGE:
-        processPage({ cacheOnly: false })
+        processPage({ cacheOnly: false, taskId: message.taskId })
           .then((result) => sendResponse({ ok: true, ...result }))
-          .catch((error) => sendResponse({ ok: false, error: error.message }));
+          .catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" }));
         return true;
       case messages.content.RESTORE_CACHE:
         processPage({ cacheOnly: true })
           .then((result) => sendResponse({ ok: true, ...result }))
-          .catch((error) => sendResponse({ ok: false, error: error.message }));
+          .catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" }));
+        return true;
+      case messages.content.TASK_STATUS:
+        sendResponse({ ok: true, task: tasks.getTaskStatus(message.taskId) });
+        return false;
+      case messages.content.CANCEL_TASK:
+        tasks.cancelTask(message.taskId)
+          .then((result) => sendResponse({ ok: true, ...result }))
+          .catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" }));
         return true;
       case messages.content.ENABLE_AUTO:
         enableAutoMode({ announce: true })

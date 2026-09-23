@@ -14,10 +14,12 @@
   let statusNode;
   let copyButton;
   let retryButton;
+  let cancelButton;
   let activeSnapshot;
   let translateHandler;
   let retryHandler;
   let copyHandler;
+  let cancelHandler;
   let closeHandler;
 
   function ensureUi() {
@@ -42,7 +44,6 @@
 
     const header = document.createElement("div");
     header.className = "tf-selection-header";
-
     const title = document.createElement("strong");
     title.textContent = "TranslateFlow";
 
@@ -67,6 +68,11 @@
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
 
+    cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.textContent = "取消";
+    cancelButton.addEventListener("click", () => cancelHandler?.());
+
     copyButton = document.createElement("button");
     copyButton.type = "button";
     copyButton.textContent = "复制";
@@ -77,7 +83,7 @@
     retryButton.textContent = "重试";
     retryButton.addEventListener("click", () => retryHandler?.());
 
-    actions.append(copyButton, retryButton);
+    actions.append(cancelButton, copyButton, retryButton);
     panel.append(header, sourceNode, statusNode, resultNode, actions);
     root.append(chip, panel);
     document.documentElement.appendChild(root);
@@ -89,24 +95,34 @@
     translateHandler = onTranslate;
     retryHandler = null;
     copyHandler = null;
+    cancelHandler = null;
     panel.hidden = true;
     chip.hidden = false;
     position(snapshot, chip);
   }
 
-  function showLoading(snapshot) {
+  function showLoading(snapshot, onCancel) {
     ensureUi();
     activeSnapshot = snapshot;
+    cancelHandler = onCancel;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
-    statusNode.textContent = "正在翻译…";
+    statusNode.textContent = "正在检查缓存…";
     statusNode.dataset.kind = "loading";
     resultNode.textContent = "";
     resultNode.hidden = true;
+    cancelButton.hidden = false;
+    cancelButton.disabled = false;
     copyButton.hidden = true;
     retryButton.hidden = true;
     position(snapshot, panel);
+  }
+
+  function setLoadingStatus(message) {
+    if (!statusNode || panel?.hidden) return;
+    statusNode.textContent = message;
+    statusNode.dataset.kind = "loading";
   }
 
   function showResult(snapshot, translation, onCopy) {
@@ -114,6 +130,7 @@
     activeSnapshot = snapshot;
     copyHandler = onCopy;
     retryHandler = null;
+    cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -121,6 +138,7 @@
     statusNode.dataset.kind = "success";
     resultNode.textContent = translation;
     resultNode.hidden = false;
+    cancelButton.hidden = true;
     copyButton.hidden = false;
     retryButton.hidden = true;
     position(snapshot, panel);
@@ -131,6 +149,7 @@
     activeSnapshot = snapshot;
     retryHandler = onRetry;
     copyHandler = null;
+    cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -138,6 +157,7 @@
     statusNode.dataset.kind = "error";
     resultNode.textContent = "";
     resultNode.hidden = true;
+    cancelButton.hidden = true;
     copyButton.hidden = true;
     retryButton.hidden = false;
     position(snapshot, panel);
@@ -154,10 +174,12 @@
     statusNode = null;
     copyButton = null;
     retryButton = null;
+    cancelButton = null;
     activeSnapshot = null;
     translateHandler = null;
     retryHandler = null;
     copyHandler = null;
+    cancelHandler = null;
   }
 
   function setCloseHandler(handler) {
@@ -185,11 +207,8 @@
       let left = rect.left;
       let top = rect.bottom + 8;
 
-      if (left + box.width > window.innerWidth - margin) {
-        left = window.innerWidth - box.width - margin;
-      }
+      if (left + box.width > window.innerWidth - margin) left = window.innerWidth - box.width - margin;
       if (left < margin) left = margin;
-
       if (top + box.height > window.innerHeight - margin) {
         top = Math.max(margin, rect.top - box.height - 8);
       }
@@ -203,6 +222,7 @@
   app.modules.selectionPopover = {
     showChip,
     showLoading,
+    setLoadingStatus,
     showResult,
     showError,
     hide,

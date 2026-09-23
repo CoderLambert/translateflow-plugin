@@ -10,13 +10,21 @@ import {
 } from "./cache-db.js";
 import { getConfig, getEffectiveConfig } from "./config.js";
 import { registerAutoSite, unregisterAutoSite } from "./auto-sites.js";
-import { testProvider, translateBatch } from "./providers/index.js";
+import { testProvider } from "./providers/index.js";
+import {
+  cancelTranslationRequest,
+  runTranslationRequest
+} from "./translation-requests.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     handleBackgroundMessage(message)
       .then((result) => sendResponse({ ok: true, ...result }))
-      .catch((error) => sendResponse({ ok: false, error: error?.message || String(error) }));
+      .catch((error) => sendResponse({
+        ok: false,
+        error: error?.message || String(error),
+        errorCode: error?.code || ""
+      }));
     return true;
   });
 }
@@ -25,8 +33,16 @@ export async function handleBackgroundMessage(message) {
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
       const config = await getEffectiveConfig(message.pageUrl);
-      return { translations: await translateBatch(message.segments, config) };
+      return {
+        translations: await runTranslationRequest({
+          requestId: message.requestId,
+          segments: message.segments,
+          config
+        })
+      };
     }
+    case BACKGROUND_MESSAGES.CANCEL_TRANSLATION:
+      return cancelTranslationRequest(message.requestId);
     case BACKGROUND_MESSAGES.TEST_API: {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
