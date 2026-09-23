@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TranslateFlow",
+  "name": "AI Bilingual Translator",
   "version": "0.3.0",
-  "description": "AI web translation with DeepSeek, URL-aware IndexedDB cache and per-site automatic incremental translation.",
+  "description": "Bilingual web translation with DeepSeek, URL-aware IndexedDB cache and per-site automatic incremental translation.",
   "permissions": [
     "storage",
     "activeTab",
@@ -20,7 +20,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "TranslateFlow",
+    "default_title": "AI Bilingual Translator",
     "default_popup": "popup.html"
   },
   "options_page": "options.html",
