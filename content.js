@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.appearance
     || !app?.modules.tasks
     || !app?.modules.dom
     || !app?.modules.processor
@@ -14,6 +15,7 @@
   app.loaded = true;
 
   const { constants, messages, state, getSiteScope, getPageIdentity, sendRuntimeMessage } = app.modules.runtime;
+  const appearance = app.modules.appearance;
   const tasks = app.modules.tasks;
   const { clearTranslations } = app.modules.dom;
   const { processPage } = app.modules.processor;
@@ -85,6 +87,10 @@
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
 
+    if (changes.appearance || changes.siteProfiles) {
+      appearance.refresh().catch(() => {});
+    }
+
     if (changes.autoSites) {
       const enabled = Array.isArray(changes.autoSites.newValue)
         && changes.autoSites.newValue.includes(getSiteScope(location.href));
@@ -97,13 +103,17 @@
       if (state.pending.size) scheduleAutoDrain(120);
     }
 
+    const translationProfileChanged = changes.siteProfiles
+      ? siteProfileAffectsTranslation(changes.siteProfiles)
+      : false;
+
     if (state.auto && (
       changes.provider
       || changes.model
       || changes.prompt
       || changes.targetLanguage
       || changes.openAICompatible
-      || changes.siteProfiles
+      || translationProfileChanged
       || changes.glossary
       || changes.siteGlossaries
     )) {
@@ -114,6 +124,15 @@
     }
   });
 
+  function siteProfileAffectsTranslation(change) {
+    const origin = getSiteScope(location.href);
+    const before = change?.oldValue?.[origin] || {};
+    const after = change?.newValue?.[origin] || {};
+    const fields = ["provider", "model", "prompt", "targetLanguage", "preset"];
+    return fields.some((field) => String(before?.[field] ?? "") !== String(after?.[field] ?? ""));
+  }
+
+  appearance.start();
   startSelectionTranslation();
   maybeStartAutoMode();
 })();

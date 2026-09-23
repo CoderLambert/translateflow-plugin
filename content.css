@@ -1,22 +1,22 @@
 .abt-translation {
   display: block !important;
   box-sizing: border-box !important;
-  margin: 0.35em 0 0.85em 0 !important;
-  padding: 0.45em 0.7em !important;
-  border-left: 3px solid rgba(34, 113, 177, 0.55) !important;
-  border-radius: 3px !important;
-  background: rgba(127, 127, 127, 0.08) !important;
+  margin: 0.35em 0 var(--tf-translation-gap, 0.85em) 0 !important;
+  padding: var(--tf-translation-padding, 0.45em 0.7em) !important;
+  border-left: var(--tf-translation-border-width, 3px) solid var(--tf-translation-border-color, rgba(34, 113, 177, 0.55)) !important;
+  border-radius: var(--tf-translation-radius, 3px) !important;
+  background: var(--tf-translation-background, rgba(127, 127, 127, 0.08)) !important;
   color: inherit !important;
   font: inherit !important;
-  font-size: 0.96em !important;
+  font-size: var(--tf-translation-font-scale, 0.96em) !important;
   font-style: normal !important;
   font-weight: 400 !important;
-  line-height: 1.65 !important;
+  line-height: var(--tf-translation-line-height, 1.65) !important;
   letter-spacing: normal !important;
   text-align: left !important;
   text-decoration: none !important;
   white-space: normal !important;
-  opacity: 0.92 !important;
+  opacity: var(--tf-translation-opacity, 0.92) !important;
 }
 
 li > .abt-translation {

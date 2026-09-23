@@ -10,6 +10,12 @@ import {
   normalizeSiteProfile
 } from "./src/shared/provider-config.js";
 import { TRANSLATION_PRESETS, getPresetLabel } from "./src/shared/presets.js";
+import {
+  DEFAULT_APPEARANCE_ID,
+  TRANSLATION_APPEARANCES,
+  getAppearanceLabel,
+  normalizeAppearanceId
+} from "./src/shared/appearance.js";
 import { normalizeOrigin } from "./src/shared/url.js";
 import { initializeGlossaryUi } from "./src/options/glossary-ui.js";
 
@@ -18,6 +24,7 @@ const $ = (id) => document.getElementById(id);
 const defaultProvider = $("defaultProvider");
 const prompt = $("prompt");
 const targetLanguage = $("targetLanguage");
+const defaultAppearance = $("defaultAppearance");
 const deepseekApiKey = $("deepseekApiKey");
 const deepseekModel = $("deepseekModel");
 const revealDeepSeek = $("revealDeepSeek");
@@ -33,6 +40,7 @@ const status = $("status");
 const siteOrigin = $("siteOrigin");
 const siteProvider = $("siteProvider");
 const sitePreset = $("sitePreset");
+const siteAppearance = $("siteAppearance");
 const siteModel = $("siteModel");
 const sitePrompt = $("sitePrompt");
 const siteTargetLanguage = $("siteTargetLanguage");
@@ -48,6 +56,8 @@ const autoSitesList = $("autoSitesList");
 const refreshAutoSites = $("refreshAutoSites");
 
 populateSitePresetOptions();
+populateAppearanceOptions(defaultAppearance);
+populateAppearanceOptions(siteAppearance, { includeInherit: true });
 
 await Promise.allSettled([
   load(),
@@ -61,7 +71,7 @@ save.addEventListener("click", async () => {
   save.disabled = true;
   try {
     await saveGlobalConfig({ requestPermission: true });
-    setStatus("全局设置已保存。Provider、模型、Prompt、目标语言或 Base URL 变化后会使用新的缓存版本。");
+    setStatus("全局设置已保存。翻译配置变化会使用新的缓存版本；阅读外观只改变显示，不影响缓存版本。");
   } catch (error) {
     setStatus(error.message || String(error), true);
   } finally {
@@ -119,6 +129,7 @@ saveSiteProfile.addEventListener("click", async () => {
     const profile = normalizeSiteProfile({
       provider: siteProvider.value,
       preset: sitePreset.value,
+      appearance: siteAppearance.value,
       model: siteModel.value,
       prompt: sitePrompt.value,
       targetLanguage: siteTargetLanguage.value
@@ -152,6 +163,7 @@ async function load() {
     "model",
     "prompt",
     "targetLanguage",
+    "appearance",
     "cacheMaxMB",
     "openAICompatible"
   ]);
@@ -162,6 +174,7 @@ async function load() {
   deepseekModel.value = config.model || DEFAULT_CONFIG.model;
   prompt.value = config.prompt || DEFAULT_CONFIG.prompt;
   targetLanguage.value = config.targetLanguage || DEFAULT_CONFIG.targetLanguage;
+  defaultAppearance.value = normalizeAppearanceId(config.appearance) || DEFAULT_APPEARANCE_ID;
   cacheMaxMB.value = Number(config.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB);
   openaiBaseUrl.value = openAI.baseUrl || "";
   openaiApiKey.value = openAI.apiKey || "";
@@ -184,6 +197,7 @@ async function saveGlobalConfig({ requestPermission }) {
     model: deepseekModel.value.trim() || DEFAULT_CONFIG.model,
     prompt: prompt.value.trim() || DEFAULT_CONFIG.prompt,
     targetLanguage: targetLanguage.value.trim() || DEFAULT_CONFIG.targetLanguage,
+    appearance: normalizeAppearanceId(defaultAppearance.value) || DEFAULT_APPEARANCE_ID,
     cacheMaxMB: maxMB,
     openAICompatible: {
       baseUrl,
@@ -227,6 +241,7 @@ async function refreshSiteProfiles() {
       detail.textContent = [
         profile.provider ? `Provider: ${profile.provider}` : "Provider: 继承",
         profile.preset ? `Mode: ${getPresetLabel(profile.preset)}` : "Mode: 无",
+        profile.appearance ? `外观: ${getAppearanceLabel(profile.appearance)}` : "外观: 继承",
         profile.model ? `Model: ${profile.model}` : "Model: 继承",
         profile.prompt ? "Prompt: 自定义" : "Prompt: 继承",
         profile.targetLanguage ? `目标语言: ${profile.targetLanguage}` : "目标语言: 继承"
@@ -243,6 +258,7 @@ async function refreshSiteProfiles() {
         siteOrigin.value = origin;
         siteProvider.value = profile.provider || "";
         sitePreset.value = profile.preset || "";
+        siteAppearance.value = profile.appearance || "";
         siteModel.value = profile.model || "";
         sitePrompt.value = profile.prompt || "";
         siteTargetLanguage.value = profile.targetLanguage || "";
@@ -358,6 +374,7 @@ function clearProfileEditor() {
   siteOrigin.value = "";
   siteProvider.value = "";
   sitePreset.value = "";
+  siteAppearance.value = "";
   siteModel.value = "";
   sitePrompt.value = "";
   siteTargetLanguage.value = "";
@@ -369,6 +386,21 @@ function populateSitePresetOptions() {
     option.value = preset.id;
     option.textContent = `${preset.label} · ${preset.description}`;
     sitePreset.appendChild(option);
+  }
+}
+
+function populateAppearanceOptions(select, { includeInherit = false } = {}) {
+  if (includeInherit) {
+    const inherit = document.createElement("option");
+    inherit.value = "";
+    inherit.textContent = "继承默认外观";
+    select.appendChild(inherit);
+  }
+  for (const appearance of TRANSLATION_APPEARANCES) {
+    const option = document.createElement("option");
+    option.value = appearance.id;
+    option.textContent = `${appearance.label} · ${appearance.description}`;
+    select.appendChild(option);
   }
 }
 

@@ -4,6 +4,7 @@ import {
   buildChatCompletionsUrl,
   getProviderHostPermissionPattern,
   normalizeOpenAIBaseUrl,
+  normalizeSiteProfile,
   resolveTranslationConfig,
   updateSiteProfilePreset
 } from "../src/shared/provider-config.js";
@@ -191,4 +192,39 @@ test("site preset persistence helper preserves other profile fields", () => {
   const removed = updateSiteProfilePreset(saved.siteProfiles, "https://example.com", "none");
   assert.equal(removed.siteProfiles["https://example.com"].preset, undefined);
   assert.equal(removed.siteProfiles["https://example.com"].model, "site-model");
+});
+
+
+test("site appearance is normalized but excluded from translation runtime config", () => {
+  const profile = normalizeSiteProfile({
+    appearance: " Reading ",
+    provider: "deepseek"
+  });
+  assert.equal(profile.appearance, "reading");
+
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    apiKey: "key",
+    model: "deepseek-flash",
+    prompt: "same prompt",
+    targetLanguage: "Simplified Chinese"
+  };
+  const globalAppearance = resolveTranslationConfig({
+    ...base,
+    appearance: "compact"
+  }, pageUrl);
+  const siteAppearance = resolveTranslationConfig({
+    ...base,
+    appearance: "minimal",
+    siteProfiles: {
+      "https://example.com": { appearance: "reading" }
+    }
+  }, pageUrl);
+
+  for (const key of ["provider", "apiKey", "model", "prompt", "targetLanguage", "presetId"]) {
+    assert.equal(siteAppearance[key], globalAppearance[key]);
+  }
+  assert.equal(siteAppearance.appearance, undefined);
+  assert.equal(globalAppearance.appearance, undefined);
 });
