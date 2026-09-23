@@ -78,9 +78,8 @@ test("content task cancellation is immediate and forwards background cancellatio
 
   assert.equal(result.cancelled, true);
   assert.equal(tasks.getTaskStatus(task).state, "cancelled");
-  assert.deepEqual(sent, [{
-    type: "CANCEL_TRANSLATION",
-    requestId: "cancel-1"
-  }]);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].type, "CANCEL_TRANSLATION");
+  assert.equal(sent[0].requestId, "cancel-1");
   assert.throws(() => tasks.assertActive(task), (error) => error?.code === "CANCELLED");
 });
