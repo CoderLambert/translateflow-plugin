@@ -1,4 +1,4 @@
-# AI Bilingual Translator v0.3
+# TranslateFlow v0.3
 
 轻量 Chrome Manifest V3 双语网页翻译扩展：保留英文原文，插入简体中文译文，使用自己的 DeepSeek API Key，并将翻译结果按网页 URL 与正文内容缓存在扩展 IndexedDB 中。
 
@@ -30,7 +30,7 @@
 ## 仓库结构
 
 ```text
-ai-bilingual-translator/
+translateflow-plugin/
 ├── manifest.json       # Chrome Manifest V3 配置
 ├── background.js       # Extension Service Worker；API、缓存、站点权限与自动注入
 ├── cache-db.js         # IndexedDB 缓存实现
@@ -68,11 +68,10 @@ background.js
 从 Git 仓库开发时：
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
-cd ai-bilingual-translator
+git clone https://github.com/CoderLambert/translateflow-plugin.git
+cd translateflow-plugin
 ```
 
-> `<YOUR_REPOSITORY_URL>` 替换成实际仓库地址。
 
 ### 安装依赖
 
@@ -104,7 +103,7 @@ chrome://extensions/
 5. 选择项目根目录，即包含 `manifest.json` 的目录：
 
 ```text
-ai-bilingual-translator/
+translateflow-plugin/
 ```
 
 不要选择 ZIP 文件，也不要选择它的上一级目录。
@@ -195,7 +194,7 @@ chrome.storage.local
 chrome://extensions/
 ```
 
-找到 AI Bilingual Translator，在扩展卡片中进入详情并点击 Service Worker 的 **检查 / Inspect**。
+找到 TranslateFlow，在扩展卡片中进入详情并点击 Service Worker 的 **检查 / Inspect**。
 
 这里主要调试：
 
@@ -308,13 +307,13 @@ npm run build
 假设当前目录的上一级包含：
 
 ```text
-ai-bilingual-translator/
+translateflow-plugin/
 ```
 
 ### macOS / Linux
 
 ```bash
-zip -r ai-bilingual-translator-v0.3.zip ai-bilingual-translator \
+zip -r translateflow-plugin-v0.3.zip translateflow-plugin \
   -x "*/.git/*" \
   -x "*/.DS_Store" \
   -x "*/node_modules/*"
@@ -323,15 +322,15 @@ zip -r ai-bilingual-translator-v0.3.zip ai-bilingual-translator \
 检查 ZIP：
 
 ```bash
-unzip -l ai-bilingual-translator-v0.3.zip
+unzip -l translateflow-plugin-v0.3.zip
 ```
 
 ### Windows PowerShell
 
 ```powershell
 Compress-Archive \
-  -Path .\ai-bilingual-translator\* \
-  -DestinationPath .\ai-bilingual-translator-v0.3.zip \
+  -Path .\translateflow-plugin\* \
+  -DestinationPath .\translateflow-plugin-v0.3.zip \
   -Force
 ```
 
