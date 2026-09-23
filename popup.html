@@ -38,12 +38,8 @@
         </div>
         <button id="autoSite" class="compact-btn auto-btn" disabled>开启</button>
       </div>
-
       <label class="field-row" for="appearanceSelect">
-        <span>
-          <strong>阅读外观</strong>
-          <small>仅改变译文排版</small>
-        </span>
+        <span><strong>阅读外观</strong><small>仅改变译文排版</small></span>
         <select id="appearanceSelect" aria-label="本站阅读外观"></select>
       </label>
     </section>
@@ -58,7 +54,6 @@
           <button id="savePreset">保存到本站</button>
         </div>
         <div id="presetHint" class="preset-hint"></div>
-
         <div class="row">
           <button id="toggle">显示 / 隐藏译文</button>
           <button id="clear">移除页面译文</button>
@@ -76,13 +71,8 @@
         <button id="clearCache" class="danger-lite">删除本页全部缓存版本</button>
       </div>
     </details>
-
-    <button id="settingsLink" class="link-btn">高级设置</button>
   </main>
   <script type="module" src="popup.js"></script>
   <script type="module" src="popup-appearance.js"></script>
-  <script type="module">
-    document.getElementById("settingsLink")?.addEventListener("click", () => chrome.runtime.openOptionsPage());
-  </script>
 </body>
 </html>
