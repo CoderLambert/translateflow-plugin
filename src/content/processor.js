@@ -10,7 +10,7 @@
 
   const { constants, messages, state, getPageIdentity, normalizeSourceText, sendRuntimeMessage, showToast } = app.modules.runtime;
   const tasks = app.modules.tasks;
-  const { collectElements, extractSourceText, insertTranslation, clearTranslations } = app.modules.dom;
+  const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
   const { TRANSLATED_ATTR } = constants;
 
@@ -203,7 +203,7 @@
     let inserted = 0;
     for (const el of group.elements) {
       if (!document.contains(el)) continue;
-      const currentText = extractSourceText(el);
+      const currentText = extractSourceSegment(el).text;
       if (normalizeSourceText(currentText) !== group.normalizedText) {
         if (state.auto) app.modules.auto?.invalidateAndObserve(el);
         continue;
