@@ -19,6 +19,11 @@ import {
   getPresetLabel,
   normalizePresetId
 } from "../shared/presets.js";
+import {
+  DEFAULT_APPEARANCE_ID,
+  normalizeAppearanceId,
+  resolveAppearance
+} from "../shared/appearance.js";
 import { normalizeOrigin } from "../shared/url.js";
 import {
   clearTemporaryPresetOverride,
@@ -48,6 +53,7 @@ export async function getEffectiveContext(pageUrl) {
   const origin = normalizeOrigin(pageUrl);
   const siteProfile = getSiteProfile(stored.siteProfiles, pageUrl);
   const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
+  const appearance = resolveAppearance(stored.appearance, siteProfile?.appearance);
 
   return {
     origin,
@@ -64,7 +70,11 @@ export async function getEffectiveContext(pageUrl) {
     temporaryPresetId: normalizePresetId(temporaryPreset?.presetId),
     hasSiteProfile: Boolean(siteProfile),
     hasSitePromptOverride: Boolean(resolved.hasSitePromptOverride),
-    glossaryCount: glossary.length
+    glossaryCount: glossary.length,
+    appearanceId: appearance.id,
+    appearanceLabel: appearance.label,
+    appearanceSource: appearance.source,
+    appearanceVariables: appearance.variables
   };
 }
 
@@ -117,6 +127,7 @@ function normalizeStoredConfig(config) {
       ...DEFAULT_OPENAI_COMPATIBLE,
       ...(config?.openAICompatible || {})
     },
+    appearance: normalizeAppearanceId(config?.appearance) || DEFAULT_APPEARANCE_ID,
     siteProfiles: config?.siteProfiles && typeof config.siteProfiles === "object" && !Array.isArray(config.siteProfiles)
       ? config.siteProfiles
       : {},

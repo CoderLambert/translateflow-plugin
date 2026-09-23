@@ -7,6 +7,7 @@ import {
   composePresetPrompt,
   normalizePresetId
 } from "./presets.js";
+import { normalizeAppearanceId } from "./appearance.js";
 import { normalizeOrigin } from "./url.js";
 
 export function normalizeProviderId(value) {
@@ -115,6 +116,9 @@ export function normalizeSiteProfile(rawProfile = {}) {
 
   const targetLanguage = String(rawProfile.targetLanguage || "").trim();
   if (targetLanguage) profile.targetLanguage = targetLanguage;
+
+  const appearance = normalizeAppearanceId(rawProfile.appearance);
+  if (appearance) profile.appearance = appearance;
 
   const preset = normalizePresetId(rawProfile.preset);
   if (preset) profile.preset = preset;

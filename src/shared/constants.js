@@ -1,3 +1,5 @@
+import { DEFAULT_APPEARANCE_ID } from "./appearance.js";
+
 export const DEFAULT_PROMPT = [
   "You are a professional translator.",
   "Translate the provided English web-page segments into natural Simplified Chinese.",
@@ -33,6 +35,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   provider: PROVIDER_IDS.DEEPSEEK,
   model: "deepseek-flash",
   targetLanguage: "Simplified Chinese",
+  appearance: DEFAULT_APPEARANCE_ID,
   cacheMaxMB: 200,
   autoSites: [],
   prompt: DEFAULT_PROMPT,
@@ -84,6 +87,7 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/ui/host.js",
   "src/content/ui/primitives.js",
   "src/content/ui/toast.js",
+  "src/content/appearance.js",
   "src/content/tasks.js",
   "src/content/structured.js",
   "src/content/dom.js",

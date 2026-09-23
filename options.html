@@ -9,7 +9,7 @@
 <body>
   <main>
     <h1>TranslateFlow</h1>
-    <p class="lead">支持 DeepSeek 与 OpenAI-compatible Provider；全局配置、站点覆盖和术语表都会参与有效翻译配置与缓存版本计算。</p>
+    <p class="lead">支持 DeepSeek 与 OpenAI-compatible Provider；翻译配置与术语表参与缓存版本计算，阅读外观独立控制双语显示。</p>
 
     <section>
       <h2>默认翻译配置</h2>
@@ -27,6 +27,14 @@
       <label for="targetLanguage">默认目标语言</label>
       <input id="targetLanguage" type="text" placeholder="Simplified Chinese" />
       <p class="hint">站点级目标语言留空时继承这里。目标语言变化会形成新的缓存版本。</p>
+    </section>
+
+    <section>
+      <h2>阅读外观</h2>
+
+      <label for="defaultAppearance">默认阅读外观</label>
+      <select id="defaultAppearance"></select>
+      <p class="hint">Standard / Compact / Reading / Minimal 只改变译文排版与视觉层级，不改变翻译 Prompt、Provider 或缓存版本。</p>
     </section>
 
     <section>
@@ -85,6 +93,10 @@
         <option value="">无 Preset / 使用 Prompt</option>
       </select>
       <p class="hint">Preset 只贡献翻译风格；如果本站填写了自定义 Prompt，则自定义 Prompt 优先。</p>
+
+      <label for="siteAppearance">阅读外观覆盖</label>
+      <select id="siteAppearance"></select>
+      <p class="hint">留空继承默认阅读外观。外观覆盖只改变本站译文显示，不影响 Provider 请求或缓存 identity。</p>
 
       <label for="siteModel">模型覆盖</label>
       <input id="siteModel" type="text" placeholder="留空继承 Provider 默认模型" />

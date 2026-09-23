@@ -129,3 +129,29 @@ test("preset style changes cache identity and switching back reuses the previous
   assert.notEqual(technical.pageConfigKey, news.pageConfigKey);
   assert.equal(technical.pageConfigKey, technicalAgain.pageConfigKey);
 });
+
+
+test("reading appearance does not change translation cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+
+  const compact = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    appearance: "compact"
+  }, pageUrl));
+
+  const readingSiteOverride = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    appearance: "minimal",
+    siteProfiles: {
+      "https://example.com": { appearance: "reading" }
+    }
+  }, pageUrl));
+
+  assert.equal(compact.pageConfigKey, readingSiteOverride.pageConfigKey);
+});

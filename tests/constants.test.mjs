@@ -11,6 +11,7 @@ test("default config remains compatible with existing DeepSeek cache version", (
   assert.equal(DEFAULT_CONFIG.provider, "deepseek");
   assert.equal(DEFAULT_CONFIG.model, "deepseek-flash");
   assert.equal(DEFAULT_CONFIG.targetLanguage, "Simplified Chinese");
+  assert.equal(DEFAULT_CONFIG.appearance, "standard");
 });
 
 test("message values stay unique inside each channel", () => {
@@ -21,6 +22,14 @@ test("message values stay unique inside each channel", () => {
 test("task runtime is loaded before content processors", () => {
   assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/tasks.js") > CONTENT_SCRIPT_FILES.indexOf("src/content/runtime.js"));
   assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/tasks.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/processor.js"));
+});
+
+test("appearance runtime loads after core runtime and before translation tasks", () => {
+  const runtimeIndex = CONTENT_SCRIPT_FILES.indexOf("src/content/runtime.js");
+  const appearanceIndex = CONTENT_SCRIPT_FILES.indexOf("src/content/appearance.js");
+  const tasksIndex = CONTENT_SCRIPT_FILES.indexOf("src/content/tasks.js");
+  assert.ok(appearanceIndex > runtimeIndex);
+  assert.ok(appearanceIndex < tasksIndex);
 });
 
 test("shared UI foundation loads after runtime and before extension-owned controls", () => {

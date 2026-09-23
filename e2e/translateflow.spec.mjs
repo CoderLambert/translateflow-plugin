@@ -32,6 +32,62 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(1);
   });
 
+  test("reading appearance changes presentation without rebuilding translated DOM or calling the Provider", async ({ harness }) => {
+    const page = await harness.open("/article");
+    await harness.inject(page);
+
+    const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-appearance" });
+    expect(translated.ok).toBe(true);
+    expect(harness.server.calls).toHaveLength(1);
+    await expect(page.locator(".abt-translation")).toHaveCount(3);
+
+    await expect.poll(() => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-line-height").trim()
+    )).toBe("1.65");
+
+    const rich = page.locator("#rich .abt-translation");
+    await rich.evaluate((node) => { node.dataset.appearanceIdentity = "preserve"; });
+
+    await harness.setStorage({ appearance: "compact" });
+    await expect.poll(() => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-line-height").trim()
+    )).toBe("1.45");
+    const compactMetrics = await rich.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { paddingTop: style.paddingTop, lineHeight: style.lineHeight, borderLeftWidth: style.borderLeftWidth };
+    });
+    expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
+    expect(harness.server.calls).toHaveLength(1);
+
+    await harness.setStorage({
+      siteProfiles: {
+        "http://127.0.0.1": { appearance: "reading" }
+      }
+    });
+    await expect.poll(() => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-line-height").trim()
+    )).toBe("1.8");
+    const readingMetrics = await rich.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { paddingTop: style.paddingTop, lineHeight: style.lineHeight, borderLeftWidth: style.borderLeftWidth };
+    });
+
+    expect(readingMetrics.paddingTop).not.toBe(compactMetrics.paddingTop);
+    expect(readingMetrics.lineHeight).not.toBe(compactMetrics.lineHeight);
+    expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
+    await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
+    await expect(rich.locator("code")).toHaveText("npm test");
+    expect(harness.server.calls).toHaveLength(1);
+
+    const context = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
+    expect(context.ok).toBe(true);
+    expect(context.context).toMatchObject({
+      appearanceId: "reading",
+      appearanceLabel: "Reading",
+      appearanceSource: "site"
+    });
+  });
+
   test("automatic mode translates incremental content and sends only the new paragraph to the provider", async ({ harness }) => {
     const page = await harness.open("/incremental");
     await harness.inject(page);
