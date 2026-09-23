@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 export async function startMockServer() {
   let calls = [];
   let failures = [];
+  let delayMs = 0;
 
   const server = createServer(async (request, response) => {
     try {
@@ -35,6 +36,8 @@ export async function startMockServer() {
             text: String(item?.text || "")
           }))
         });
+
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (plannedStatus !== 200) {
           response.statusCode = plannedStatus;
@@ -96,9 +99,13 @@ export async function startMockServer() {
     reset() {
       calls = [];
       failures = [];
+      delayMs = 0;
     },
     setFailures(statuses) {
       failures = [...(Array.isArray(statuses) ? statuses : [])].map(Number);
+    },
+    setDelay(ms) {
+      delayMs = Math.max(0, Number(ms) || 0);
     },
     close() {
       return new Promise((resolve, reject) => {

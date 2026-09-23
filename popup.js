@@ -10,6 +10,7 @@ import { initializePresetUi } from "./src/popup/preset-ui.js";
 
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
+const quickControlBtn = $("quickControlSite");
 const translateBtn = $("translate");
 const cancelTaskBtn = $("cancelTask");
 const restoreBtn = $("restore");
@@ -20,8 +21,11 @@ const settingsBtn = $("settings");
 const status = $("status");
 const cacheInfo = $("cacheInfo");
 const autoInfo = $("autoInfo");
+const quickControlInfo = $("quickControlInfo");
 
 let currentAutoEnabled = false;
+let currentQuickControlPersistent = false;
+let currentQuickControlHidden = false;
 let currentSite = null;
 let activePageTask = null;
 let taskPollTimer = null;
@@ -46,9 +50,7 @@ autoBtn.addEventListener("click", async () => {
         origin: site.origin
       });
       if (!response?.ok) throw new Error(response?.error || "关闭自动翻译失败");
-      if (!(await isProviderPermission(site.match))) {
-        await chrome.permissions.remove({ origins: [site.match] });
-      }
+      await maybeReleaseOriginPermission(site);
       setStatus("已关闭本站自动增量翻译；已有 IndexedDB 缓存仍保留。");
     } else {
       const granted = await chrome.permissions.request({ origins: [site.match] });
@@ -73,6 +75,8 @@ autoBtn.addEventListener("click", async () => {
   }
 });
 
+quickControlBtn.addEventListener("click", toggleQuickControlSite);
+
 translateBtn.addEventListener("click", runPageTranslation);
 cancelTaskBtn.addEventListener("click", cancelPageTranslation);
 
@@ -92,6 +96,7 @@ settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
 Promise.allSettled([
   refreshCacheStatus(),
   refreshAutoStatus(),
+  refreshQuickControlStatus(),
   presetUi.refresh()
 ]);
 
@@ -205,6 +210,83 @@ async function refreshAutoStatus() {
   }
 }
 
+async function toggleQuickControlSite() {
+  setBusy(true, "正在更新 Quick Control…");
+  try {
+    const site = await getActiveSite();
+
+    if (currentQuickControlHidden) {
+      const response = await chrome.runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_SHOW,
+        origin: site.origin
+      });
+      if (!response?.ok) throw new Error(response?.error || "恢复 Quick Control 失败");
+      await ensureInjected(site.tab.id);
+      setStatus("已允许 Quick Control 在当前页显示；尚未开启本站持久显示。");
+      return;
+    }
+
+    if (currentQuickControlPersistent) {
+      const response = await chrome.runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_UNREGISTER,
+        origin: site.origin
+      });
+      if (!response?.ok) throw new Error(response?.error || "关闭持久 Quick Control 失败");
+      await maybeReleaseOriginPermission(site);
+      setStatus("已关闭本站持久 Quick Control；当前标签页仍可继续使用。");
+      return;
+    }
+
+    const granted = await chrome.permissions.request({ origins: [site.match] });
+    if (!granted) throw new Error("未授予本站权限，Quick Control 不会持久显示。");
+
+    const response = await chrome.runtime.sendMessage({
+      type: BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_REGISTER,
+      origin: site.origin
+    });
+    if (!response?.ok) throw new Error(response?.error || "Quick Control 注册失败");
+    await ensureInjected(site.tab.id);
+    setStatus("本站 Quick Control 已开启持久显示。");
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  } finally {
+    setBusy(false);
+    await refreshQuickControlStatus();
+  }
+}
+
+async function refreshQuickControlStatus() {
+  try {
+    const site = await getActiveSite();
+    const stored = await chrome.storage.local.get(["quickControlSites", "quickControlHiddenSites"]);
+    const permitted = await chrome.permissions.contains({ origins: [site.match] });
+    currentQuickControlPersistent = Array.isArray(stored.quickControlSites)
+      && stored.quickControlSites.includes(site.origin)
+      && permitted;
+    currentQuickControlHidden = Array.isArray(stored.quickControlHiddenSites)
+      && stored.quickControlHiddenSites.includes(site.origin);
+
+    quickControlInfo.textContent = currentQuickControlHidden
+      ? "Quick Control：本站已隐藏"
+      : currentQuickControlPersistent
+        ? `Quick Control：本站持久显示（${site.origin}）`
+        : "Quick Control：仅在主动使用 TranslateFlow 的当前标签页显示";
+    quickControlBtn.textContent = currentQuickControlHidden
+      ? "在当前页重新显示 Quick Control"
+      : currentQuickControlPersistent
+        ? "关闭本站持久 Quick Control"
+        : "以后在本站自动显示 Quick Control";
+    quickControlBtn.classList.toggle("enabled", currentQuickControlPersistent);
+    quickControlBtn.disabled = false;
+  } catch {
+    currentQuickControlPersistent = false;
+    currentQuickControlHidden = false;
+    quickControlInfo.textContent = "当前页面不支持 Quick Control";
+    quickControlBtn.textContent = "以后在本站自动显示 Quick Control";
+    quickControlBtn.disabled = true;
+  }
+}
+
 async function refreshCacheStatus() {
   try {
     const result = await sendToActiveTab(CONTENT_MESSAGES.CACHE_STATUS);
@@ -269,17 +351,25 @@ async function getActiveSite() {
 }
 
 async function ensureInjected(tabId) {
+  let injected = false;
   try {
-    await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.STATUS });
-    return;
+    const status = await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.STATUS });
+    injected = Boolean(status?.ok);
   } catch {}
 
-  await chrome.scripting.insertCSS({ target: { tabId }, files: [...CONTENT_STYLE_FILES] });
-  await chrome.scripting.executeScript({ target: { tabId }, files: [...CONTENT_SCRIPT_FILES] });
+  if (!injected) {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: [...CONTENT_STYLE_FILES] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: [...CONTENT_SCRIPT_FILES] });
+  }
+
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.QUICK_CONTROL_SHOW });
+  } catch {}
 }
 
 function setBusy(busy, message) {
   autoBtn.disabled = busy;
+  quickControlBtn.disabled = busy;
   translateBtn.disabled = busy;
   restoreBtn.disabled = busy;
   toggleBtn.disabled = busy;
@@ -303,6 +393,21 @@ function formatTime(timestamp) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
+}
+
+async function maybeReleaseOriginPermission(site) {
+  if (await isOriginPermissionStillNeeded(site)) return false;
+  return chrome.permissions.remove({ origins: [site.match] });
+}
+
+async function isOriginPermissionStillNeeded(site) {
+  if (await isProviderPermission(site.match)) return true;
+  const { autoSites = [], quickControlSites = [] } = await chrome.storage.local.get([
+    "autoSites",
+    "quickControlSites"
+  ]);
+  return (Array.isArray(autoSites) && autoSites.includes(site.origin))
+    || (Array.isArray(quickControlSites) && quickControlSites.includes(site.origin));
 }
 
 async function isProviderPermission(pattern) {

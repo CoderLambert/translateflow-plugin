@@ -38,6 +38,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   appearance: DEFAULT_APPEARANCE_ID,
   cacheMaxMB: 200,
   autoSites: [],
+  quickControlSites: [],
+  quickControlHiddenSites: [],
   prompt: DEFAULT_PROMPT,
   openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
   siteProfiles: {},
@@ -62,6 +64,12 @@ export const BACKGROUND_MESSAGES = Object.freeze({
   CACHE_PRUNE: "CACHE_PRUNE",
   AUTO_SITE_REGISTER: "AUTO_SITE_REGISTER",
   AUTO_SITE_UNREGISTER: "AUTO_SITE_UNREGISTER",
+  QUICK_CONTROL_SITE_REGISTER: "QUICK_CONTROL_SITE_REGISTER",
+  QUICK_CONTROL_SITE_UNREGISTER: "QUICK_CONTROL_SITE_UNREGISTER",
+  QUICK_CONTROL_SITE_HIDE: "QUICK_CONTROL_SITE_HIDE",
+  QUICK_CONTROL_SITE_SHOW: "QUICK_CONTROL_SITE_SHOW",
+  SITE_APPEARANCE_SAVE: "SITE_APPEARANCE_SAVE",
+  OPEN_OPTIONS: "OPEN_OPTIONS",
   EFFECTIVE_CONTEXT: "EFFECTIVE_CONTEXT",
   TEMP_PRESET_SET: "TEMP_PRESET_SET",
   SITE_PRESET_SAVE: "SITE_PRESET_SAVE"
@@ -78,7 +86,8 @@ export const CONTENT_MESSAGES = Object.freeze({
   CLEAR_TRANSLATIONS: "ABT_CLEAR_TRANSLATIONS",
   STATUS: "ABT_STATUS",
   TASK_STATUS: "TF_TASK_STATUS",
-  CANCEL_TASK: "TF_CANCEL_TASK"
+  CANCEL_TASK: "TF_CANCEL_TASK",
+  QUICK_CONTROL_SHOW: "TF_QUICK_CONTROL_SHOW"
 });
 
 export const CONTENT_SCRIPT_FILES = Object.freeze([
@@ -97,9 +106,10 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/selection/selection.js",
   "src/content/selection/popover.js",
   "src/content/selection/controller.js",
+  "src/content/quick-control.js",
   "content.js"
 ]);
 
 export const CONTENT_STYLE_FILES = Object.freeze(["content.css"]);
-export const AUTO_SCRIPT_PREFIX = "tf_auto_";
-export const LEGACY_AUTO_SCRIPT_PREFIXES = Object.freeze(["abt_auto_"]);
+export const SITE_SCRIPT_PREFIX = "tf_site_";
+export const LEGACY_SITE_SCRIPT_PREFIXES = Object.freeze(["tf_auto_", "abt_auto_"]);

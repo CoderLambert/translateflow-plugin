@@ -1,6 +1,6 @@
 import { ensureConfigDefaults, removeLegacyV1Cache } from "./config.js";
 import { registerMessageRouter } from "./router.js";
-import { syncAutoSiteRegistrations } from "./auto-sites.js";
+import { syncSiteRegistrations } from "./auto-sites.js";
 
 export function initializeBackground() {
   registerMessageRouter();
@@ -8,10 +8,10 @@ export function initializeBackground() {
   chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     await ensureConfigDefaults();
     if (reason === "update" || reason === "install") await removeLegacyV1Cache();
-    await syncAutoSiteRegistrations();
+    await syncSiteRegistrations();
   });
 
   chrome.runtime.onStartup.addListener(() => {
-    syncAutoSiteRegistrations().catch(() => {});
+    syncSiteRegistrations().catch(() => {});
   });
 }

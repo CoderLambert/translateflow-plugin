@@ -12,9 +12,17 @@ import {
   getConfig,
   getEffectiveConfig,
   getEffectiveContext,
+  saveSiteAppearance,
   saveSitePreset
 } from "./config.js";
-import { registerAutoSite, unregisterAutoSite } from "./auto-sites.js";
+import {
+  hideQuickControlSite,
+  registerAutoSite,
+  registerQuickControlSite,
+  showQuickControlSite,
+  unregisterAutoSite,
+  unregisterQuickControlSite
+} from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
 import {
@@ -93,6 +101,19 @@ export async function handleBackgroundMessage(message) {
       return registerAutoSite(message.origin);
     case BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER:
       return unregisterAutoSite(message.origin);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_REGISTER:
+      return registerQuickControlSite(message.origin);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_UNREGISTER:
+      return unregisterQuickControlSite(message.origin);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE:
+      return hideQuickControlSite(message.origin);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_SHOW:
+      return showQuickControlSite(message.origin);
+    case BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE:
+      return { context: await saveSiteAppearance(message.pageUrl, message.appearance) };
+    case BACKGROUND_MESSAGES.OPEN_OPTIONS:
+      await chrome.runtime.openOptionsPage();
+      return { opened: true };
     case BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT:
       return { context: await getEffectiveContext(message.pageUrl) };
     case BACKGROUND_MESSAGES.TEMP_PRESET_SET:

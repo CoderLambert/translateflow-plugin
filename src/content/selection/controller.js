@@ -46,7 +46,10 @@
   function refreshSelectionUi() {
     const snapshot = readSelection();
     if (!snapshot) {
-      if (!activeSnapshot) popover.hide();
+      if (!activeSnapshot) {
+        popover.hide();
+        setQuickControlSelectionActive(false);
+      }
       return;
     }
 
@@ -64,6 +67,7 @@
     cancelActiveTask({ showCancelled: false });
     requestVersion += 1;
     activeSnapshot = snapshot;
+    setQuickControlSelectionActive(true);
     popover.showChip(snapshot, () => translateSnapshot(snapshot));
   }
 
@@ -187,6 +191,7 @@
     activeSnapshot = null;
     requestVersion += 1;
     popover.hide();
+    setQuickControlSelectionActive(false);
   }
 
   function cancelActiveTask({ showCancelled }) {
@@ -197,6 +202,10 @@
       const snapshot = activeSnapshot;
       popover.showError(snapshot, "翻译已取消。", () => translateSnapshot(snapshot));
     }
+  }
+
+  function setQuickControlSelectionActive(active) {
+    app.modules.quickControl?.setSelectionActive(Boolean(active));
   }
 
   async function copyText(text) {

@@ -22,6 +22,7 @@ const CONTENT_SCRIPTS = [
   "src/content/selection/selection.js",
   "src/content/selection/popover.js",
   "src/content/selection/controller.js",
+  "src/content/quick-control.js",
   "content.js"
 ];
 const CONTENT_STYLES = ["content.css"];
@@ -108,6 +109,8 @@ function createHarness({ context, driver, extensionId, server }) {
           appearance: "standard",
           cacheMaxMB: 50,
           autoSites: [],
+          quickControlSites: [],
+          quickControlHiddenSites: [],
           siteProfiles: {},
           glossary: { version: 1, entries: [] },
           siteGlossaries: { version: 1, sites: {} },
