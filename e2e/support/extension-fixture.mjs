@@ -8,6 +8,10 @@ import { startMockServer } from "./mock-server.mjs";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CONTENT_SCRIPTS = [
   "src/content/runtime.js",
+  "src/content/ui/tokens.js",
+  "src/content/ui/host.js",
+  "src/content/ui/primitives.js",
+  "src/content/ui/toast.js",
   "src/content/tasks.js",
   "src/content/structured.js",
   "src/content/dom.js",
