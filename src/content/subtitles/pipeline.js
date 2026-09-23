@@ -42,6 +42,7 @@
     let activeTask = null;
     let blockedByError = false;
     let lastUntimedText = "";
+    let lastPruneAt = 0;
 
     async function ingest(input) {
       if (stopped) return getState();
@@ -217,6 +218,13 @@
       return unit?.cue?.startTime === null && unit?.cue?.endTime === null;
     }
 
+    function maybePruneCache(response) {
+      const current = now();
+      if (Number(response?.apiTranslated || 0) <= 0 || current - lastPruneAt < 5 * 60 * 1000) return;
+      lastPruneAt = current;
+      sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
+    }
+
     function scheduleBatch() {
       if (!pending.length || processing || stopped || blockedByError) return;
       clearTimer(batchTimer);
@@ -287,6 +295,7 @@
               cacheHits: Number(response.cacheHits || 0),
               apiTranslated: Number(response.apiTranslated || 0)
             });
+            maybePruneCache(response);
           } catch (error) {
             tasks.failTask(activeTask, error);
             if (!tasks.isCancelledError(error) && batchGeneration === generation && !stopped) {
