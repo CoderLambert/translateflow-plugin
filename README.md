@@ -1,8 +1,8 @@
-# TranslateFlow v0.6
+# TranslateFlow v0.7
 
 轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
-## v0.6 重点
+## v0.7 重点
 
 - DeepSeek Provider
 - OpenAI-compatible Provider
@@ -16,6 +16,8 @@
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
 - 全局 + 站点术语表：支持覆盖、启停、大小写规则，并纳入有效缓存身份
+- Technical / Academic / News / Natural 四种内置翻译模式
+- Popup 展示当前站点 / 模式 / Provider / Model，并支持临时切换或保存到本站
 
 ## 架构
 
@@ -77,6 +79,7 @@ translateflow-plugin/
 │   │   ├── constants.js
 │   │   ├── provider-config.js
 │   │   ├── glossary.js
+│   │   ├── presets.js
 │   │   ├── hash.js
 │   │   ├── text.js
 │   │   ├── url.js
@@ -97,6 +100,8 @@ translateflow-plugin/
 │   │
 │   ├── options/
 │   │   └── glossary-ui.js
+│   ├── popup/
+│   │   └── preset-ui.js
 │   │
 │   └── content/
 │       ├── runtime.js
@@ -237,6 +242,36 @@ Effective Translation Config
 ```
 
 
+
+## 翻译模式 / Preset
+
+v0.7 内置四种只描述“翻译风格”的模式：
+
+- **Technical**：技术文档、API、工程内容，优先术语精确与标识符保真。
+- **Academic**：论文、研究、学术内容，保留限定语、逻辑关系和正式语体。
+- **News**：新闻报道，强调中性、姓名/日期/数字/归因准确。
+- **Natural**：日常阅读，强调流畅自然但不丢失事实细节。
+
+Preset 不保存 API Key、Provider 或模型参数，也不会改写用户的全局 Prompt。
+
+Prompt 解析优先级：
+
+```text
+本站自定义 Prompt
+      ↓（若不存在）
+临时 / 本站保存的 Preset 风格
+      +
+全局自定义 / 默认 Prompt
+      ↓
+有效 Prompt
+      +
+有效 Glossary
+```
+
+Popup 可以临时切换当前站点模式，也可以明确“保存到本站”。临时模式使用 `chrome.storage.session`，只保存在当前浏览器会话的内存中；浏览器重启、扩展重载/更新后自动清除。由于 `storage.session` 从 Chrome 102 起提供，v0.7 的最低 Chrome 版本调整为 102。
+
+如果站点 Profile 已经填写自定义 Prompt，则该 Prompt 优先，Popup 会显示 **Custom Prompt**；选择 Preset 不会覆盖这个自定义 Prompt。
+
 ## 术语表
 
 设置页支持全局和站点级术语，例如：
@@ -295,6 +330,8 @@ cache schema
 + prompt
 + OpenAI-compatible endpoint（仅通用 Provider）
 + effective glossary identity（仅非空术语表）
+
+Preset 不额外写入 cache fingerprint；它通过最终解析出的 Prompt 进入缓存身份。因此切回曾经使用过的同一有效模式，会复用之前的缓存版本。
 
 segment:
 SHA-256(normalized source text)
@@ -370,7 +407,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - SPA 路由变化：重新计算页面身份
 - API 错误：退避重试
 
-修改全局 Provider、OpenAI-compatible 配置、当前站点 Profile 或有效术语表时，自动模式会清理当前页面译文并按新配置重新处理。
+修改全局 Provider、OpenAI-compatible 配置、当前站点 Profile 或有效术语表时，自动模式会清理当前页面译文并按新配置重新处理。Popup 的临时 Preset 会立即重新翻译当前页面，之后新增内容继续使用该 session 模式。
 
 ## 开发约束
 

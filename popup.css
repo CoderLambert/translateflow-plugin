@@ -51,3 +51,50 @@ button:disabled { opacity: .5; cursor: default; }
   min-height: 28px;
   word-break: break-word;
 }
+
+.context-card {
+  margin-top: 9px;
+  padding: 10px;
+  border: 1px solid rgba(127,127,127,.25);
+  border-radius: 8px;
+  background: rgba(127,127,127,.06);
+}
+.context-card[hidden] { display: none; }
+.context-grid {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 4px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.context-grid span { opacity: .62; }
+.context-grid strong {
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preset-label {
+  display: block;
+  margin-top: 9px;
+  font-size: 11px;
+  opacity: .72;
+}
+#presetSelect {
+  width: 100%;
+  margin-top: 5px;
+  padding: 7px 8px;
+  border: 1px solid rgba(127,127,127,.35);
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+.preset-actions button { margin-top: 7px; font-size: 12px; }
+.preset-hint {
+  min-height: 16px;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: .66;
+}

@@ -3,6 +3,10 @@ import {
   DEFAULT_OPENAI_COMPATIBLE,
   PROVIDER_IDS
 } from "./constants.js";
+import {
+  composePresetPrompt,
+  normalizePresetId
+} from "./presets.js";
 import { normalizeOrigin } from "./url.js";
 
 export function normalizeProviderId(value) {
@@ -40,7 +44,11 @@ export function getProviderHostPermissionPattern(rawBaseUrl) {
   return `${url.protocol}//${url.hostname}/*`;
 }
 
-export function resolveTranslationConfig(config = DEFAULT_CONFIG, pageUrl = "") {
+export function resolveTranslationConfig(
+  config = DEFAULT_CONFIG,
+  pageUrl = "",
+  temporaryPresetOverride = null
+) {
   const globalConfig = {
     ...DEFAULT_CONFIG,
     ...config,
@@ -68,14 +76,30 @@ export function resolveTranslationConfig(config = DEFAULT_CONFIG, pageUrl = "") 
         model: String(globalConfig.model || DEFAULT_CONFIG.model).trim() || DEFAULT_CONFIG.model
       };
 
+  const sitePrompt = String(siteProfile?.prompt || "").trim();
+  const globalPrompt = String(globalConfig.prompt || DEFAULT_CONFIG.prompt).trim() || DEFAULT_CONFIG.prompt;
+  const savedPresetId = normalizePresetId(siteProfile?.preset);
+  const temporaryPresetActive = Boolean(temporaryPresetOverride?.active);
+  const temporaryPresetId = normalizePresetId(temporaryPresetOverride?.presetId);
+  const selectedPresetId = temporaryPresetActive ? temporaryPresetId : savedPresetId;
+  const effectivePresetId = sitePrompt ? "" : selectedPresetId;
+  const basePrompt = sitePrompt || globalPrompt;
+
   return {
     ...base,
     model: String(siteProfile?.model || base.model || "").trim(),
-    prompt: String(siteProfile?.prompt || globalConfig.prompt || DEFAULT_CONFIG.prompt).trim() || DEFAULT_CONFIG.prompt,
+    prompt: effectivePresetId ? composePresetPrompt(basePrompt, effectivePresetId) : basePrompt,
     targetLanguage: String(
       siteProfile?.targetLanguage || globalConfig.targetLanguage || DEFAULT_CONFIG.targetLanguage
     ).trim() || DEFAULT_CONFIG.targetLanguage,
-    siteOrigin: siteProfile?.origin || ""
+    siteOrigin: siteProfile?.origin || "",
+    presetId: effectivePresetId,
+    selectedPresetId,
+    savedPresetId,
+    presetSource: sitePrompt
+      ? "site-prompt"
+      : (temporaryPresetActive ? "temporary" : (savedPresetId ? "site" : "none")),
+    hasSitePromptOverride: Boolean(sitePrompt)
   };
 }
 
@@ -92,7 +116,30 @@ export function normalizeSiteProfile(rawProfile = {}) {
   const targetLanguage = String(rawProfile.targetLanguage || "").trim();
   if (targetLanguage) profile.targetLanguage = targetLanguage;
 
+  const preset = normalizePresetId(rawProfile.preset);
+  if (preset) profile.preset = preset;
+
   return profile;
+}
+
+export function updateSiteProfilePreset(siteProfiles, pageUrl, value) {
+  const origin = normalizeOrigin(pageUrl);
+  const nextProfiles = isPlainObject(siteProfiles) ? { ...siteProfiles } : {};
+  const profile = normalizeSiteProfile(nextProfiles[origin] || {});
+  const presetValue = String(value ?? "").trim().toLowerCase();
+
+  if (!presetValue || presetValue === "none" || presetValue === "inherit") {
+    delete profile.preset;
+  } else {
+    const presetId = normalizePresetId(presetValue);
+    if (!presetId) throw new Error(`未知翻译模式：${value}`);
+    profile.preset = presetId;
+  }
+
+  if (Object.keys(profile).length) nextProfiles[origin] = profile;
+  else delete nextProfiles[origin];
+
+  return { origin, siteProfiles: nextProfiles };
 }
 
 export function getSiteProfile(siteProfiles, pageUrl) {

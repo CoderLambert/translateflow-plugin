@@ -4,7 +4,8 @@ import {
   buildChatCompletionsUrl,
   getProviderHostPermissionPattern,
   normalizeOpenAIBaseUrl,
-  resolveTranslationConfig
+  resolveTranslationConfig,
+  updateSiteProfilePreset
 } from "../src/shared/provider-config.js";
 
 test("OpenAI-compatible base URL is normalized and chat endpoint is appended", () => {
@@ -117,4 +118,77 @@ test("non-matching and deleted site profiles fall back to global settings", () =
   assert.equal(deleted.prompt, "global prompt");
   assert.equal(deleted.targetLanguage, "Japanese");
   assert.equal(deleted.siteOrigin, "");
+});
+
+
+test("saved and temporary presets follow deterministic precedence", () => {
+  const base = {
+    provider: "deepseek",
+    prompt: "global prompt",
+    siteProfiles: {
+      "https://example.com": { preset: "technical" }
+    }
+  };
+
+  const saved = resolveTranslationConfig(base, "https://example.com/docs");
+  assert.equal(saved.presetId, "technical");
+  assert.equal(saved.presetSource, "site");
+  assert.match(saved.prompt, /Translation style preset: Technical/);
+
+  const temporary = resolveTranslationConfig(base, "https://example.com/docs", {
+    active: true,
+    presetId: "news"
+  });
+  assert.equal(temporary.presetId, "news");
+  assert.equal(temporary.presetSource, "temporary");
+  assert.match(temporary.prompt, /Translation style preset: News/);
+  assert.doesNotMatch(temporary.prompt, /Translation style preset: Technical/);
+
+  const disabled = resolveTranslationConfig(base, "https://example.com/docs", {
+    active: true,
+    presetId: ""
+  });
+  assert.equal(disabled.presetId, "");
+  assert.equal(disabled.prompt, "global prompt");
+});
+
+test("explicit site prompt wins over selected preset", () => {
+  const resolved = resolveTranslationConfig({
+    prompt: "global prompt",
+    siteProfiles: {
+      "https://example.com": {
+        prompt: "site custom prompt",
+        preset: "academic"
+      }
+    }
+  }, "https://example.com/docs", {
+    active: true,
+    presetId: "natural"
+  });
+
+  assert.equal(resolved.prompt, "site custom prompt");
+  assert.equal(resolved.presetId, "");
+  assert.equal(resolved.selectedPresetId, "natural");
+  assert.equal(resolved.presetSource, "site-prompt");
+  assert.equal(resolved.hasSitePromptOverride, true);
+});
+
+test("site preset persistence helper preserves other profile fields", () => {
+  const original = {
+    "https://example.com": {
+      provider: "deepseek",
+      model: "site-model",
+      targetLanguage: "Japanese"
+    }
+  };
+
+  const saved = updateSiteProfilePreset(original, "https://example.com/docs", "technical");
+  assert.equal(saved.origin, "https://example.com");
+  assert.equal(saved.siteProfiles["https://example.com"].preset, "technical");
+  assert.equal(saved.siteProfiles["https://example.com"].model, "site-model");
+  assert.equal(original["https://example.com"].preset, undefined);
+
+  const removed = updateSiteProfilePreset(saved.siteProfiles, "https://example.com", "none");
+  assert.equal(removed.siteProfiles["https://example.com"].preset, undefined);
+  assert.equal(removed.siteProfiles["https://example.com"].model, "site-model");
 });

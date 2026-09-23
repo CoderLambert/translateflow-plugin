@@ -9,6 +9,7 @@ import {
   normalizeOpenAIBaseUrl,
   normalizeSiteProfile
 } from "./src/shared/provider-config.js";
+import { TRANSLATION_PRESETS, getPresetLabel } from "./src/shared/presets.js";
 import { normalizeOrigin } from "./src/shared/url.js";
 import { initializeGlossaryUi } from "./src/options/glossary-ui.js";
 
@@ -31,6 +32,7 @@ const status = $("status");
 
 const siteOrigin = $("siteOrigin");
 const siteProvider = $("siteProvider");
+const sitePreset = $("sitePreset");
 const siteModel = $("siteModel");
 const sitePrompt = $("sitePrompt");
 const siteTargetLanguage = $("siteTargetLanguage");
@@ -44,6 +46,8 @@ const pruneCache = $("pruneCache");
 const clearAllCache = $("clearAllCache");
 const autoSitesList = $("autoSitesList");
 const refreshAutoSites = $("refreshAutoSites");
+
+populateSitePresetOptions();
 
 await Promise.allSettled([
   load(),
@@ -114,6 +118,7 @@ saveSiteProfile.addEventListener("click", async () => {
     const origin = normalizeOrigin(siteOrigin.value);
     const profile = normalizeSiteProfile({
       provider: siteProvider.value,
+      preset: sitePreset.value,
       model: siteModel.value,
       prompt: sitePrompt.value,
       targetLanguage: siteTargetLanguage.value
@@ -221,6 +226,7 @@ async function refreshSiteProfiles() {
       const detail = document.createElement("small");
       detail.textContent = [
         profile.provider ? `Provider: ${profile.provider}` : "Provider: 继承",
+        profile.preset ? `Mode: ${getPresetLabel(profile.preset)}` : "Mode: 无",
         profile.model ? `Model: ${profile.model}` : "Model: 继承",
         profile.prompt ? "Prompt: 自定义" : "Prompt: 继承",
         profile.targetLanguage ? `目标语言: ${profile.targetLanguage}` : "目标语言: 继承"
@@ -236,6 +242,7 @@ async function refreshSiteProfiles() {
       edit.addEventListener("click", () => {
         siteOrigin.value = origin;
         siteProvider.value = profile.provider || "";
+        sitePreset.value = profile.preset || "";
         siteModel.value = profile.model || "";
         sitePrompt.value = profile.prompt || "";
         siteTargetLanguage.value = profile.targetLanguage || "";
@@ -350,9 +357,19 @@ function bindPasswordToggle(button, input) {
 function clearProfileEditor() {
   siteOrigin.value = "";
   siteProvider.value = "";
+  sitePreset.value = "";
   siteModel.value = "";
   sitePrompt.value = "";
   siteTargetLanguage.value = "";
+}
+
+function populateSitePresetOptions() {
+  for (const preset of TRANSLATION_PRESETS) {
+    const option = document.createElement("option");
+    option.value = preset.id;
+    option.textContent = `${preset.label} · ${preset.description}`;
+    sitePreset.appendChild(option);
+  }
 }
 
 function formatBytes(bytes) {

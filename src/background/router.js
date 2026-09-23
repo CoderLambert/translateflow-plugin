@@ -8,8 +8,14 @@ import {
   pruneCache,
   storeTranslations
 } from "./cache-db.js";
-import { getConfig, getEffectiveConfig } from "./config.js";
+import {
+  getConfig,
+  getEffectiveConfig,
+  getEffectiveContext,
+  saveSitePreset
+} from "./config.js";
 import { registerAutoSite, unregisterAutoSite } from "./auto-sites.js";
+import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
 import {
   cancelTranslationRequest,
@@ -79,6 +85,13 @@ export async function handleBackgroundMessage(message) {
       return registerAutoSite(message.origin);
     case BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER:
       return unregisterAutoSite(message.origin);
+    case BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT:
+      return { context: await getEffectiveContext(message.pageUrl) };
+    case BACKGROUND_MESSAGES.TEMP_PRESET_SET:
+      await setTemporaryPresetOverride(message.pageUrl, message.preset);
+      return { context: await getEffectiveContext(message.pageUrl) };
+    case BACKGROUND_MESSAGES.SITE_PRESET_SAVE:
+      return { context: await saveSitePreset(message.pageUrl, message.preset) };
     default:
       throw new Error("未知扩展消息。");
   }
