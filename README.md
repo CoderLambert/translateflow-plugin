@@ -74,7 +74,8 @@ translateflow-plugin/
 │   │   ├── provider-config.js
 │   │   ├── hash.js
 │   │   ├── text.js
-│   │   ├── url.js\n│   │   └── retry-policy.js
+│   │   ├── url.js
+│   │   └── retry-policy.js
 │   │
 │   ├── background/
 │   │   ├── index.js
