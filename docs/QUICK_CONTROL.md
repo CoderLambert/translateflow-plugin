@@ -2,6 +2,21 @@
 
 Quick Control is TranslateFlow's low-intrusion in-page control surface. It reuses the shared Shadow DOM host from #19 and the Reading Appearance contract from #20.
 
+## Visual contract
+
+Quick Control follows the shared TranslateFlow sage/beige design system.
+
+- Collapsed state is a 52px sage FAB with restrained opacity and elevation.
+- Expanded state is a non-modal cream/sage popover capped at 356px wide.
+- The panel emphasizes one primary action: **翻译 / 重翻**.
+- Retry and cancel appear only when task state requires them.
+- Auto translation is expressed as an accessible pressed-state control with a switch-like visual, not a second primary CTA.
+- Translation preset and Reading Appearance are grouped as lower-emphasis reading preferences.
+- Settings and per-site hide remain footer actions.
+- Escape closes the panel and restores focus to the FAB; pointer interaction outside the panel dismisses it without stealing focus.
+- Nonessential transitions are disabled when the user requests reduced motion.
+- Selection UI still takes visual precedence and suppresses Quick Control while active.
+
 ## Visibility and permission model
 
 Quick Control has two visibility paths:
