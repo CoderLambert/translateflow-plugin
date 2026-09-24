@@ -4,6 +4,9 @@
 
   const { constants } = app.modules.runtime;
   const { css } = app.modules.uiTokens;
+  const featureCss = [
+    app.modules.uiQuickControlStyles?.css
+  ].filter(Boolean).join("\n");
   let host;
   let shadow;
   let layers;
@@ -22,7 +25,7 @@
 
     shadow = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
-    style.textContent = `${css}\n.tf-ui-layer { position: fixed; inset: 0; pointer-events: none; }\n.tf-ui-layer > * { pointer-events: auto; }`;
+    style.textContent = `${css}\n${featureCss}\n.tf-ui-layer { position: fixed; inset: 0; pointer-events: none; }\n.tf-ui-layer > * { pointer-events: auto; }`;
     shadow.appendChild(style);
     document.documentElement.appendChild(host);
     layers = new Map();
