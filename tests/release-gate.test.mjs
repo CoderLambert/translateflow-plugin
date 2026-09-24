@@ -30,5 +30,5 @@ test("release checklist maps automated and manual certification surfaces", () =>
   ]) assert.match(release, new RegExp(phrase));
   assert.match(release, /PENDING manual/);
   assert.match(release, /Do not mark Issue #28 audited\/release-ready/);
-  assert.match(e2eDoc, /current v0\.8 smoke flows/i);
+  assert.match(e2eDoc, /v0\.8 smoke flows/i);
 });
