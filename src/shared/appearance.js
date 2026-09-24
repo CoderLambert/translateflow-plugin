@@ -36,13 +36,13 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
     {
       "--tf-translation-font-scale": "0.96em",
       "--tf-translation-line-height": "1.65",
-      "--tf-translation-gap": "0.85em",
-      "--tf-translation-padding": "0.45em 0.7em",
-      "--tf-translation-background": "rgba(127, 127, 127, 0.08)",
-      "--tf-translation-border-width": "3px",
-      "--tf-translation-border-color": "rgba(34, 113, 177, 0.55)",
-      "--tf-translation-opacity": "0.92",
-      "--tf-translation-radius": "3px"
+      "--tf-translation-gap": "0.78em",
+      "--tf-translation-padding": "0.24em 0 0.24em 0.72em",
+      "--tf-translation-background": "rgba(237, 243, 232, 0.32)",
+      "--tf-translation-border-width": "1px",
+      "--tf-translation-border-color": "rgba(111, 150, 104, 0.34)",
+      "--tf-translation-opacity": "0.94",
+      "--tf-translation-radius": "1px"
     }
   ),
   preset(
@@ -52,13 +52,13 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
     {
       "--tf-translation-font-scale": "0.92em",
       "--tf-translation-line-height": "1.45",
-      "--tf-translation-gap": "0.5em",
-      "--tf-translation-padding": "0.28em 0.5em",
-      "--tf-translation-background": "rgba(127, 127, 127, 0.05)",
+      "--tf-translation-gap": "0.46em",
+      "--tf-translation-padding": "0.12em 0 0.12em 0.58em",
+      "--tf-translation-background": "rgba(237, 243, 232, 0.16)",
       "--tf-translation-border-width": "2px",
-      "--tf-translation-border-color": "rgba(34, 113, 177, 0.5)",
-      "--tf-translation-opacity": "0.88",
-      "--tf-translation-radius": "2px"
+      "--tf-translation-border-color": "rgba(111, 150, 104, 0.28)",
+      "--tf-translation-opacity": "0.90",
+      "--tf-translation-radius": "0px"
     }
   ),
   preset(
@@ -68,13 +68,13 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
     {
       "--tf-translation-font-scale": "1em",
       "--tf-translation-line-height": "1.8",
-      "--tf-translation-gap": "1.05em",
-      "--tf-translation-padding": "0.65em 0.85em",
-      "--tf-translation-background": "rgba(127, 127, 127, 0.1)",
+      "--tf-translation-gap": "1em",
+      "--tf-translation-padding": "0.38em 0 0.38em 0.88em",
+      "--tf-translation-background": "rgba(246, 241, 232, 0.46)",
       "--tf-translation-border-width": "3px",
-      "--tf-translation-border-color": "rgba(34, 113, 177, 0.58)",
-      "--tf-translation-opacity": "0.98",
-      "--tf-translation-radius": "6px"
+      "--tf-translation-border-color": "rgba(111, 150, 104, 0.40)",
+      "--tf-translation-opacity": "0.97",
+      "--tf-translation-radius": "2px"
     }
   ),
   preset(
@@ -84,12 +84,12 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
     {
       "--tf-translation-font-scale": "0.96em",
       "--tf-translation-line-height": "1.6",
-      "--tf-translation-gap": "0.55em",
+      "--tf-translation-gap": "0.52em",
       "--tf-translation-padding": "0.08em 0",
       "--tf-translation-background": "transparent",
       "--tf-translation-border-width": "0px",
       "--tf-translation-border-color": "transparent",
-      "--tf-translation-opacity": "0.9",
+      "--tf-translation-opacity": "0.90",
       "--tf-translation-radius": "0px"
     }
   )
