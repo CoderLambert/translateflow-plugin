@@ -113,24 +113,67 @@ export async function requestParsedTranslation({
 }
 
 export function parseTranslationResult(data, segments, providerLabel) {
-  const content = data?.choices?.[0]?.message?.content;
+  const content = extractAssistantText(data?.choices?.[0]?.message?.content);
   if (!content) {
     throw new ProviderRequestError(`${providerLabel} 没有返回翻译内容。`, {
       code: "MALFORMED_RESPONSE"
     });
   }
 
-  const parsed = parseJsonObject(content, providerLabel);
-  if (!Array.isArray(parsed.translations)) {
-    throw new ProviderRequestError(`${providerLabel} 返回格式不正确：缺少 translations 数组。`, {
-      code: "MALFORMED_RESPONSE"
-    });
+  const parsed = parseJsonValue(content, providerLabel);
+  const translations = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.translations)
+      ? parsed.translations
+      : Array.isArray(parsed?.segments)
+        ? parsed.segments
+        : null;
+
+  if (!translations) {
+    throw new ProviderRequestError(
+      `${providerLabel} 返回格式不正确：缺少 translations 数组。`,
+      { code: "MALFORMED_RESPONSE" }
+    );
   }
 
-  const validIds = new Set(segments.map((item) => String(item.id)));
-  return parsed.translations
-    .filter((item) => validIds.has(String(item.id)) && typeof item.text === "string")
-    .map((item) => ({ id: String(item.id), text: item.text.trim() }));
+  const sourceSegments = Array.isArray(segments) ? segments : [];
+  const validIds = new Set(sourceSegments.map((item) => String(item.id)));
+  const byId = new Map();
+
+  for (const item of translations) {
+    if (!item || typeof item !== "object") continue;
+    const id = String(item.id ?? "");
+    if (!validIds.has(id)) continue;
+    if (byId.has(id)) {
+      throw new ProviderRequestError(
+        `${providerLabel} 返回格式不正确：id ${id} 重复。`,
+        { code: "MALFORMED_RESPONSE" }
+      );
+    }
+    if (typeof item.text !== "string") {
+      throw new ProviderRequestError(
+        `${providerLabel} 返回格式不正确：id ${id} 缺少文本。`,
+        { code: "MALFORMED_RESPONSE" }
+      );
+    }
+    byId.set(id, item.text.trim());
+  }
+
+  const missingIds = sourceSegments
+    .map((item) => String(item.id))
+    .filter((id) => !byId.has(id));
+
+  if (missingIds.length > 0) {
+    throw new ProviderRequestError(
+      `${providerLabel} 返回格式不完整：缺少 ${missingIds.length} 个翻译片段。`,
+      { code: "MALFORMED_RESPONSE" }
+    );
+  }
+
+  return sourceSegments.map((item) => ({
+    id: String(item.id),
+    text: byId.get(String(item.id))
+  }));
 }
 
 async function performRequest({ url, headers, body, providerLabel, signal, timeoutMs }) {
@@ -204,7 +247,23 @@ function normalizeProviderError(error, providerLabel) {
   );
 }
 
-function parseJsonObject(content, providerLabel) {
+function extractAssistantText(content) {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (!part || typeof part !== "object") return "";
+      if (typeof part.text === "string") return part.text;
+      if (typeof part.content === "string") return part.content;
+      return "";
+    })
+    .join("")
+    .trim();
+}
+
+function parseJsonValue(content, providerLabel) {
   const trimmed = String(content || "").trim();
   const unfenced = trimmed
     .replace(/^\s*```(?:json)?\s*/i, "")
@@ -215,11 +274,19 @@ function parseJsonObject(content, providerLabel) {
     return JSON.parse(unfenced);
   } catch {}
 
-  const first = unfenced.indexOf("{");
-  const last = unfenced.lastIndexOf("}");
-  if (first >= 0 && last > first) {
+  const objectStart = unfenced.indexOf("{");
+  const objectEnd = unfenced.lastIndexOf("}");
+  if (objectStart >= 0 && objectEnd > objectStart) {
     try {
-      return JSON.parse(unfenced.slice(first, last + 1));
+      return JSON.parse(unfenced.slice(objectStart, objectEnd + 1));
+    } catch {}
+  }
+
+  const arrayStart = unfenced.indexOf("[");
+  const arrayEnd = unfenced.lastIndexOf("]");
+  if (arrayStart >= 0 && arrayEnd > arrayStart) {
+    try {
+      return JSON.parse(unfenced.slice(arrayStart, arrayEnd + 1));
     } catch {}
   }
 

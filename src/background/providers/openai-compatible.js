@@ -18,26 +18,40 @@ export const openAICompatibleProvider = Object.freeze({
     const payload = {
       segments: segments.map((item) => ({ id: String(item.id), text: String(item.text) }))
     };
+    const translationPrompt = buildTranslationPrompt(
+      config,
+      "Translate to Simplified Chinese and return JSON only."
+    );
+    const preferInlinePrompt = isTranslationOptimizedModel(model);
+    let malformedAttempt = 0;
 
-    const request = () => requestChatCompletions({
-      url: buildChatCompletionsUrl(config.apiBaseUrl),
-      apiKey: config.apiKey,
-      providerLabel: "OpenAI-compatible",
-      requireApiKey: false,
-      signal,
-      body: {
-        model,
-        messages: [
-          {
-            role: "system",
-            content: buildTranslationPrompt(config, "Translate to Simplified Chinese and return JSON only.")
-          },
-          { role: "user", content: JSON.stringify(payload) }
-        ],
-        stream: false,
-        temperature: 0.2
-      }
-    });
+    const request = () => {
+      malformedAttempt += 1;
+      const useInlinePrompt = preferInlinePrompt || malformedAttempt > 1;
+      return requestChatCompletions({
+        url: buildChatCompletionsUrl(config.apiBaseUrl),
+        apiKey: config.apiKey,
+        providerLabel: "OpenAI-compatible",
+        requireApiKey: false,
+        signal,
+        body: {
+          model,
+          messages: useInlinePrompt
+            ? [
+                {
+                  role: "user",
+                  content: buildInlineTranslationRequest(translationPrompt, payload)
+                }
+              ]
+            : [
+                { role: "system", content: translationPrompt },
+                { role: "user", content: JSON.stringify(payload) }
+              ],
+          stream: false,
+          temperature: 0.2
+        }
+      });
+    };
 
     return requestParsedTranslation({
       request,
@@ -66,6 +80,25 @@ export const openAICompatibleProvider = Object.freeze({
     return data?.choices?.[0]?.message?.content?.trim() || "OK";
   }
 });
+
+function buildInlineTranslationRequest(translationPrompt, payload) {
+  return [
+    translationPrompt,
+    "",
+    "Translate only each segments[].text value in the input JSON.",
+    "Keep every id exactly unchanged and include every input id exactly once.",
+    'Return valid JSON only, exactly in this shape: {"translations":[{"id":"...","text":"..."}]}.',
+    "Do not add explanations or Markdown code fences.",
+    "",
+    "Input JSON:",
+    JSON.stringify(payload)
+  ].join("\n");
+}
+
+function isTranslationOptimizedModel(model) {
+  const normalized = String(model || "").trim().toLowerCase();
+  return /(^|[\/_:. -])(hy[-_]?mt(?:2)?|translategemma)(?=$|[\/_:. -])/.test(normalized);
+}
 
 async function assertEndpointPermission(baseUrl) {
   const pattern = getProviderHostPermissionPattern(baseUrl);
