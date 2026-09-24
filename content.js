@@ -14,7 +14,8 @@
       case messages.content.RESTORE_CACHE: processPage({ cacheOnly: true }).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.TASK_STATUS: sendResponse({ ok: true, task: tasks.getTaskStatus(message.taskId) }); return false;
       case messages.content.CANCEL_TASK: tasks.cancelTask(message.taskId).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
-      case messages.content.QUICK_CONTROL_SHOW: quickControl.showForTab().then(() => sendResponse({ ok: true, visible: quickControl.isVisible() })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
+      case messages.content.QUICK_CONTROL_SHOW:
+      case messages.content.QUICK_CONTROL_TOGGLE: quickControl.showForTab().then(() => sendResponse({ ok: true, visible: quickControl.isVisible() })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.ENABLE_AUTO: enableAutoMode({ announce: true }).then(() => sendResponse({ ok: true, auto: true })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.DISABLE_AUTO: disableAutoMode({ announce: true }); sendResponse({ ok: true, auto: false }); return false;
       case messages.content.CACHE_STATUS: sendRuntimeMessage({ type: messages.background.CACHE_PAGE_STATUS, pageUrl: location.href }).then(sendResponse).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
