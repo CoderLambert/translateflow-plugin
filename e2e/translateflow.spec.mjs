@@ -98,11 +98,34 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const trigger = page.getByRole("button", { name: "TranslateFlow Quick Control" });
     await expect(trigger).toBeVisible();
     expect(await trigger.evaluate((node) => getComputedStyle(node).fontSize)).not.toBe("1px");
+    const triggerBox = await trigger.boundingBox();
+    expect(triggerBox?.width).toBeGreaterThanOrEqual(48);
+    expect(triggerBox?.width).toBeLessThanOrEqual(56);
+    expect(triggerBox?.height).toBeGreaterThanOrEqual(48);
+    expect(triggerBox?.height).toBeLessThanOrEqual(56);
+
     await trigger.click();
 
-    await expect(page.getByRole("dialog", { name: "TranslateFlow Quick Control" })).toBeVisible();
+    const dialog = page.getByRole("dialog", { name: "TranslateFlow Quick Control" });
+    await expect(dialog).toBeVisible();
+    const dialogBox = await dialog.boundingBox();
+    expect(dialogBox?.width).toBeGreaterThanOrEqual(320);
+    expect(dialogBox?.width).toBeLessThanOrEqual(360);
     await expect(page.getByLabel("翻译模式")).toContainText("Technical");
     await expect(page.getByLabel("阅读外观")).toContainText("Reading");
+    await expect(page.getByRole("button", { name: "切换本页自动翻译" })).toHaveAttribute("aria-pressed", "false");
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await expect(dialog).toBeVisible();
+    await page.locator("main").click({ position: { x: 4, y: 4 } });
+    await expect(dialog).toBeHidden();
+
+    await trigger.click();
+    await expect(dialog).toBeVisible();
 
     harness.server.setFailures([401]);
     await page.getByRole("button", { name: "翻译 / 重翻" }).click();
