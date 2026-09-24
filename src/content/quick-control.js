@@ -1,253 +1,31 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (
-    !app?.modules.runtime
-    || !app?.modules.quickControlView
-    || !app?.modules.tasks
-    || !app?.modules.processor
-    || !app?.modules.auto
-    || !app?.modules.appearance
-    || app.modules.quickControl
-  ) return;
-
+  if (!app?.modules.runtime || !app?.modules.quickControlView || !app?.modules.tasks || !app?.modules.processor || !app?.modules.auto || !app?.modules.appearance || app.modules.quickControl) return;
   const { messages, state, getSiteScope, sendRuntimeMessage } = app.modules.runtime;
-  const tasks = app.modules.tasks;
-  const { processPage } = app.modules.processor;
-  const { enableAutoMode, disableAutoMode } = app.modules.auto;
-  const appearance = app.modules.appearance;
+  const tasks = app.modules.tasks, { processPage } = app.modules.processor, { enableAutoMode, disableAutoMode } = app.modules.auto, appearance = app.modules.appearance;
   const WORKING_STATES = new Set(["queued", "cache_lookup", "translating", "storing"]);
-
-  let started = false;
-  let tabVisible = false;
-  let persistentVisible = false;
-  let hiddenForSite = false;
-  let selectionActive = false;
-  let latestTask = null;
-  let context = null;
-
-  const view = app.modules.quickControlView.create({
-    onToggle: togglePanel,
-    onClose: () => view.closePanel(),
-    onTranslate: runTranslation,
-    onRetry: runTranslation,
-    onCancel: cancelTranslation,
-    onToggleAuto: toggleAuto,
-    onPresetChange: changePreset,
-    onAppearanceChange: changeAppearance,
-    onSettings: openSettings,
-    onHideSite: hideOnSite
-  });
-
-  function start() {
-    if (started) return;
-    started = true;
-    tasks.subscribe(handleTaskEvent);
-    latestTask = tasks.getLatestTask("page");
-    document.addEventListener("pointerdown", handleOutsidePointerDown, true);
-    document.addEventListener("keydown", handleKeyDown, true);
-    chrome.storage.onChanged.addListener(handleStorageChange);
-    refreshSiteVisibility().catch(() => {});
-  }
-
-  async function showForTab() {
-    tabVisible = true;
-    await refreshSiteVisibility();
-    if (!hiddenForSite) {
-      view.ensure();
-      view.setSuppressed(selectionActive);
-      view.setTask(latestTask, WORKING_STATES);
-      view.setAuto(state.auto);
-      await refreshContext().catch(() => {});
-    }
-  }
-
-  function isVisible() {
-    return view.isVisible();
-  }
-
-  function setSelectionActive(active) {
-    selectionActive = Boolean(active);
-    if (selectionActive) view.closePanel({ restoreFocus: false });
-    view.setSuppressed(selectionActive);
-  }
-
-  async function refreshSiteVisibility() {
-    const origin = getSiteScope(location.href);
-    const stored = await chrome.storage.local.get(["quickControlSites", "quickControlHiddenSites"]);
-    persistentVisible = Array.isArray(stored.quickControlSites)
-      && stored.quickControlSites.includes(origin);
-    hiddenForSite = Array.isArray(stored.quickControlHiddenSites)
-      && stored.quickControlHiddenSites.includes(origin);
-    updateVisibility();
-  }
-
-  function shouldRender() {
-    return (tabVisible || persistentVisible) && !hiddenForSite;
-  }
-
-  function updateVisibility() {
-    if (!shouldRender()) {
-      view.destroy();
-      return;
-    }
-    view.ensure();
-    view.setSuppressed(selectionActive);
-    view.setTask(latestTask, WORKING_STATES);
-    view.setAuto(state.auto);
-  }
-
-  async function togglePanel() {
-    const opened = view.togglePanel();
-    if (!opened) return;
-    await refreshContext().catch((error) => {
-      view.setMessage(error?.message || "无法读取当前配置。", "error");
-    });
-  }
-
-  function handleOutsidePointerDown(event) {
-    if (!view.isOpen() || view.containsEvent(event)) return;
-    view.closePanel({ restoreFocus: false });
-  }
-
-  function handleKeyDown(event) {
-    if (event.key !== "Escape" || !view.isOpen()) return;
-    event.stopPropagation();
-    view.closePanel();
-  }
-
-  function handleTaskEvent(task) {
-    if (!task || task.surface !== "page") return;
-    latestTask = task;
-    if (shouldRender()) view.setTask(task, WORKING_STATES);
-  }
-
-  async function runTranslation() {
-    if (latestTask && WORKING_STATES.has(latestTask.state)) return;
-    view.setMessage("正在准备翻译…", "info");
-    try {
-      const result = await processPage({ cacheOnly: false, taskId: crypto.randomUUID() });
-      if (!tasks.getLatestTask("page") && result?.message) {
-        view.setMessage(result.message, "info");
-      }
-      await refreshContext().catch(() => {});
-    } catch (error) {
-      if (!latestTask || latestTask.state !== "failed") {
-        view.setMessage(error?.message || String(error), "error");
-      }
-    }
-  }
-
-  async function cancelTranslation() {
-    if (!latestTask || !WORKING_STATES.has(latestTask.state)) return;
-    await tasks.cancelTask(latestTask.id).catch((error) => {
-      view.setMessage(error?.message || "取消失败。", "error");
-    });
-  }
-
-  async function toggleAuto() {
-    view.setAutoDisabled(true);
-    try {
-      if (state.auto) disableAutoMode({ announce: false });
-      else await enableAutoMode({ announce: false });
-      view.setAuto(state.auto);
-      view.setMessage(state.auto ? "本页自动翻译已开启。" : "本页自动翻译已关闭。", "info");
-    } catch (error) {
-      view.setMessage(error?.message || "自动翻译切换失败。", "error");
-    } finally {
-      view.setAutoDisabled(false);
-    }
-  }
-
-  async function refreshContext() {
-    const response = await sendRuntimeMessage({
-      type: messages.background.EFFECTIVE_CONTEXT,
-      pageUrl: location.href
-    });
-    if (!response?.ok) throw new Error(response?.error || "读取当前翻译配置失败。");
-    context = response.context || {};
-    view.setContext(context);
-    return context;
-  }
-
-  async function changePreset(value) {
-    view.setPresetDisabled(true);
-    try {
-      const response = await sendRuntimeMessage({
-        type: messages.background.TEMP_PRESET_SET,
-        pageUrl: location.href,
-        preset: value
-      });
-      if (!response?.ok) throw new Error(response?.error || "翻译模式切换失败。");
-      context = response.context || context;
-      view.setContext(context);
-      view.setMessage(
-        context?.hasSitePromptOverride
-          ? "本站自定义 Prompt 优先，模式已记录但当前不生效。"
-          : "翻译模式已切换；点击“翻译 / 重翻”应用到页面。",
-        "info"
-      );
-    } catch (error) {
-      view.setMessage(error?.message || String(error), "error");
-    } finally {
-      view.setPresetDisabled(false);
-    }
-  }
-
-  async function changeAppearance(value) {
-    view.setAppearanceDisabled(true);
-    try {
-      const response = await sendRuntimeMessage({
-        type: messages.background.SITE_APPEARANCE_SAVE,
-        pageUrl: location.href,
-        appearance: value
-      });
-      if (!response?.ok) throw new Error(response?.error || "阅读外观切换失败。");
-      context = response.context || context;
-      appearance.applyContext(context || {});
-      view.setContext(context);
-      view.setMessage("阅读外观已应用到本站；不会重新调用翻译模型。", "success");
-    } catch (error) {
-      view.setMessage(error?.message || String(error), "error");
-    } finally {
-      view.setAppearanceDisabled(false);
-    }
-  }
-
-  async function openSettings() {
-    const response = await sendRuntimeMessage({ type: messages.background.OPEN_OPTIONS });
-    if (!response?.ok) view.setMessage(response?.error || "无法打开设置。", "error");
-  }
-
-  async function hideOnSite() {
-    const response = await sendRuntimeMessage({
-      type: messages.background.QUICK_CONTROL_SITE_HIDE,
-      origin: getSiteScope(location.href)
-    });
-    if (!response?.ok) {
-      view.setMessage(response?.error || "隐藏 Quick Control 失败。", "error");
-      return;
-    }
-    hiddenForSite = true;
-    tabVisible = false;
-    persistentVisible = false;
-    view.destroy();
-  }
-
-  function handleStorageChange(changes, areaName) {
-    if (areaName !== "local") return;
-    if (changes.quickControlSites || changes.quickControlHiddenSites) {
-      refreshSiteVisibility().catch(() => {});
-    }
-    if ((changes.siteProfiles || changes.appearance) && shouldRender()) {
-      refreshContext().catch(() => {});
-    }
-    if (changes.autoSites && shouldRender()) view.setAuto(state.auto);
-  }
-
-  app.modules.quickControl = {
-    start,
-    showForTab,
-    isVisible,
-    setSelectionActive
-  };
+  let started = false, tabVisible = false, persistentVisible = false, hiddenForSite = false, selectionActive = false, latestTask = null, context = null;
+  const view = app.modules.quickControlView.create({ onToggle: togglePanel, onClose: () => view.closePanel(), onTranslate: runTranslation, onRetry: runTranslation, onCancel: cancelTranslation, onToggleAuto: toggleAuto, onPresetChange: changePreset, onAppearanceChange: changeAppearance, onSettings: openSettings, onHideSite: hideOnSite });
+  function start() { if (started) return; started = true; tasks.subscribe(handleTaskEvent); latestTask = tasks.getLatestTask("page"); document.addEventListener("pointerdown", handleOutsidePointerDown, true); document.addEventListener("keydown", handleKeyDown, true); chrome.storage.onChanged.addListener(handleStorageChange); refreshSiteVisibility().catch(() => {}); }
+  async function showForTab() { tabVisible = true; await refreshSiteVisibility(); if (!hiddenForSite) { view.ensure(); view.setSuppressed(selectionActive); view.setTask(latestTask, WORKING_STATES); view.setAuto(state.auto); await refreshContext().catch(() => {}); } }
+  async function toggleForTab() { if (view.isVisible()) { tabVisible = false; persistentVisible = false; view.destroy(); return false; } await showForTab(); return view.isVisible(); }
+  function isVisible() { return view.isVisible(); }
+  function setSelectionActive(active) { selectionActive = Boolean(active); if (selectionActive) view.closePanel({ restoreFocus: false }); view.setSuppressed(selectionActive); }
+  async function refreshSiteVisibility() { const origin = getSiteScope(location.href); const stored = await chrome.storage.local.get(["quickControlSites", "quickControlHiddenSites"]); persistentVisible = Array.isArray(stored.quickControlSites) && stored.quickControlSites.includes(origin); hiddenForSite = Array.isArray(stored.quickControlHiddenSites) && stored.quickControlHiddenSites.includes(origin); updateVisibility(); }
+  function shouldRender() { return (tabVisible || persistentVisible) && !hiddenForSite; }
+  function updateVisibility() { if (!shouldRender()) { view.destroy(); return; } view.ensure(); view.setSuppressed(selectionActive); view.setTask(latestTask, WORKING_STATES); view.setAuto(state.auto); }
+  async function togglePanel() { const opened = view.togglePanel(); if (!opened) return; await refreshContext().catch((error) => view.setMessage(error?.message || "无法读取当前配置。", "error")); }
+  function handleOutsidePointerDown(event) { if (!view.isOpen() || view.containsEvent(event)) return; view.closePanel({ restoreFocus: false }); }
+  function handleKeyDown(event) { if (event.key !== "Escape" || !view.isOpen()) return; event.stopPropagation(); view.closePanel(); }
+  function handleTaskEvent(task) { if (!task || task.surface !== "page") return; latestTask = task; if (shouldRender()) view.setTask(task, WORKING_STATES); }
+  async function runTranslation() { if (latestTask && WORKING_STATES.has(latestTask.state)) return; view.setMessage("正在准备翻译…", "info"); try { const result = await processPage({ cacheOnly: false, taskId: crypto.randomUUID() }); if (!tasks.getLatestTask("page") && result?.message) view.setMessage(result.message, "info"); await refreshContext().catch(() => {}); } catch (error) { if (!latestTask || latestTask.state !== "failed") view.setMessage(error?.message || String(error), "error"); } }
+  async function cancelTranslation() { if (!latestTask || !WORKING_STATES.has(latestTask.state)) return; await tasks.cancelTask(latestTask.id).catch((error) => view.setMessage(error?.message || "取消失败。", "error")); }
+  async function toggleAuto() { view.setAutoDisabled(true); try { if (state.auto) disableAutoMode({ announce: false }); else await enableAutoMode({ announce: false }); view.setAuto(state.auto); view.setMessage(state.auto ? "本页自动翻译已开启。" : "本页自动翻译已关闭。", "info"); } catch (error) { view.setMessage(error?.message || "自动翻译切换失败。", "error"); } finally { view.setAutoDisabled(false); } }
+  async function refreshContext() { const response = await sendRuntimeMessage({ type: messages.background.EFFECTIVE_CONTEXT, pageUrl: location.href }); if (!response?.ok) throw new Error(response?.error || "读取当前翻译配置失败。"); context = response.context || {}; view.setContext(context); return context; }
+  async function changePreset(value) { view.setPresetDisabled(true); try { const response = await sendRuntimeMessage({ type: messages.background.TEMP_PRESET_SET, pageUrl: location.href, preset: value }); if (!response?.ok) throw new Error(response?.error || "翻译模式切换失败。"); context = response.context || context; view.setContext(context); view.setMessage(context?.hasSitePromptOverride ? "本站自定义 Prompt 优先，模式已记录但当前不生效。" : "翻译模式已切换；点击“翻译 / 重翻”应用到页面。", "info"); } catch (error) { view.setMessage(error?.message || String(error), "error"); } finally { view.setPresetDisabled(false); } }
+  async function changeAppearance(value) { view.setAppearanceDisabled(true); try { const response = await sendRuntimeMessage({ type: messages.background.SITE_APPEARANCE_SAVE, pageUrl: location.href, appearance: value }); if (!response?.ok) throw new Error(response?.error || "阅读外观切换失败。"); context = response.context || context; appearance.applyContext(context || {}); view.setContext(context); view.setMessage("阅读外观已应用到本站；不会重新调用翻译模型。", "success"); } catch (error) { view.setMessage(error?.message || String(error), "error"); } finally { view.setAppearanceDisabled(false); } }
+  async function openSettings() { const response = await sendRuntimeMessage({ type: messages.background.OPEN_OPTIONS }); if (!response?.ok) view.setMessage(response?.error || "无法打开设置。", "error"); }
+  async function hideOnSite() { const response = await sendRuntimeMessage({ type: messages.background.QUICK_CONTROL_SITE_HIDE, origin: getSiteScope(location.href) }); if (!response?.ok) { view.setMessage(response?.error || "隐藏 Quick Control 失败。", "error"); return; } hiddenForSite = true; tabVisible = false; persistentVisible = false; view.destroy(); }
+  function handleStorageChange(changes, areaName) { if (areaName !== "local") return; if (changes.quickControlSites || changes.quickControlHiddenSites) refreshSiteVisibility().catch(() => {}); if ((changes.siteProfiles || changes.appearance) && shouldRender()) refreshContext().catch(() => {}); if (changes.autoSites && shouldRender()) view.setAuto(state.auto); }
+  app.modules.quickControl = { start, showForTab, toggleForTab, isVisible, setSelectionActive };
 })();
