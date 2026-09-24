@@ -5,6 +5,12 @@ test.describe("Chrome Commands MV3 routing", () => {
     await harness.reset();
   });
 
+  test.afterEach(async ({ harness }) => {
+    for (const page of harness.context.pages()) {
+      if (page !== harness.driver && !page.isClosed()) await page.close();
+    }
+  });
+
   test("first-use translate injects the shipped bundle and the remaining commands toggle page state", async ({ harness }) => {
     const page = await harness.open("/article");
 
@@ -34,11 +40,29 @@ test.describe("Chrome Commands MV3 routing", () => {
     await expect(page.getByRole("button", { name: "TranslateFlow Quick Control" })).toHaveCount(0);
   });
 
-  test("protected Chrome pages are rejected before content injection", async ({ harness }) => {
-    const page = await harness.context.newPage();
-    await page.goto("chrome://extensions/");
-    const result = await routeCommand(harness, page, "translate-page");
-    expect(result).toEqual({ ok: false, unsupported: true });
+  test("protected pages are rejected before send or content injection", async ({ harness }) => {
+    const evidence = await harness.driver.evaluate(async ({ extensionId }) => {
+      const module = await import(`chrome-extension://${extensionId}/src/background/commands.js`);
+      let sends = 0;
+      let injections = 0;
+      const route = module.createCommandRouter({
+        queryActiveTab: async () => ({ id: 9001, url: "chrome://extensions/" }),
+        sendContentMessage: async () => {
+          sends += 1;
+          return { ok: true };
+        },
+        injectContent: async () => {
+          injections += 1;
+        }
+      });
+      return { result: await route("translate-page"), sends, injections };
+    }, { extensionId: harness.extensionId });
+
+    expect(evidence).toEqual({
+      result: { ok: false, unsupported: true },
+      sends: 0,
+      injections: 0
+    });
   });
 });
 
