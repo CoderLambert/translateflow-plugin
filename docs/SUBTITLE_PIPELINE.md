@@ -1,6 +1,6 @@
 # Subtitle Translation Pipeline
 
-Issue #25 builds the Provider-agnostic translation pipeline on top of the normalized SubtitleSource snapshots introduced in #24. It still does not render bilingual subtitles or add YouTube player controls; those belong to #26.
+Issue #25 builds the Provider-agnostic translation pipeline on top of the normalized SubtitleSource snapshots introduced in #24. Issue #26 layers the YouTube controller and player-local bilingual renderer on top of that pipeline without changing the Provider/cache boundary.
 
 ## Boundary
 
@@ -140,9 +140,9 @@ failed / cancelled
 
 The background batch coordinator uses the existing `runTranslationRequest()` implementation, so Provider retry/backoff, in-flight coalescing, AbortController cancellation and Provider protocol behavior are not duplicated.
 
-## #26 handoff
+## #26 renderer/controller integration
 
-The renderer should consume translated-unit callbacks shaped like:
+The YouTube controller consumes translated-unit callbacks shaped like:
 
 ```js
 {
@@ -161,4 +161,4 @@ The renderer should consume translated-unit callbacks shaped like:
 }
 ```
 
-#26 should not read YouTube caption selectors, call Providers, or access IndexedDB directly. It should attach a SubtitleSource to this pipeline and render the translated-unit stream through the shared UI/player layer.
+The #26 controller does not call Providers or access IndexedDB directly. YouTube DOM assumptions remain isolated in the source adapter. The player-local renderer reuses the shared UI token/select contract, exposes bilingual/original/off mode, effective translation preset, and translated-size controls, while the controller resolves preset state through the existing Effective Context / temporary preset path. Changing the player preset rebuilds the content pipeline so the current cue can be translated under the new effective config; cache identity continues to include the resolved prompt/preset and glossary identity in the background layer.
