@@ -125,9 +125,11 @@ export function parseTranslationResult(data, segments, providerLabel) {
     ? parsed
     : Array.isArray(parsed?.translations)
       ? parsed.translations
-      : Array.isArray(parsed?.segments)
-        ? parsed.segments
-        : null;
+      : isStringMap(parsed?.translations)
+        ? Object.entries(parsed.translations).map(([id, text]) => ({ id, text }))
+        : Array.isArray(parsed?.segments)
+          ? parsed.segments
+          : null;
 
   if (!translations) {
     throw new ProviderRequestError(
@@ -261,6 +263,11 @@ function extractAssistantText(content) {
     })
     .join("")
     .trim();
+}
+
+function isStringMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.values(value).every((item) => typeof item === "string");
 }
 
 function parseJsonValue(content, providerLabel) {
