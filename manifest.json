@@ -3,49 +3,16 @@
   "name": "TranslateFlow",
   "version": "0.8.0",
   "description": "AI web translation with providers, site profiles, presets, glossary, IndexedDB cache and incremental translation.",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://api.deepseek.com/*"
-  ],
-  "optional_host_permissions": [
-    "http://*/*",
-    "https://*/*"
-  ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
-  "action": {
-    "default_title": "TranslateFlow",
-    "default_popup": "popup.html"
-  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["https://api.deepseek.com/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {"default_title": "TranslateFlow", "default_popup": "popup.html"},
   "options_page": "options.html",
   "commands": {
-    "translate-page": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+Y",
-        "mac": "MacCtrl+Shift+Y"
-      },
-      "description": "Translate or update the current page"
-    },
-    "toggle-translations": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+K",
-        "mac": "MacCtrl+Shift+K"
-      },
-      "description": "Show or hide translated content"
-    },
-    "toggle-quick-control": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+Period",
-        "mac": "MacCtrl+Shift+Period"
-      },
-      "description": "Toggle TranslateFlow Quick Control"
-    }
+    "translate-page": {"suggested_key": {"default": "Ctrl+Shift+Y", "mac": "MacCtrl+Shift+Y"}, "description": "Translate or update the current page"},
+    "toggle-translations": {"suggested_key": {"default": "Ctrl+Shift+K", "mac": "MacCtrl+Shift+K"}, "description": "Show or hide translated content"},
+    "toggle-quick-control": {"suggested_key": {"default": "Ctrl+Shift+Period", "mac": "MacCtrl+Shift+Period"}, "description": "Toggle TranslateFlow Quick Control"}
   },
   "minimum_chrome_version": "102"
 }
