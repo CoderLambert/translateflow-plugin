@@ -27,6 +27,11 @@
     ".ytp-caption-window-container"
   ]);
   const CAPTION_SEGMENT_SELECTOR = ".ytp-caption-segment";
+  const CAPTION_TOGGLE_SELECTORS = Object.freeze([
+    ".ytp-subtitles-button",
+    "button[aria-label*=\"subtitles\" i]",
+    "button[aria-label*=\"captions\" i]"
+  ]);
   const NAVIGATION_EVENTS = Object.freeze([
     "yt-navigate-finish",
     "yt-page-data-updated"
@@ -60,6 +65,7 @@
     let videoElement = null;
     let textTrackSource = null;
     let observer = null;
+    let captionActivationMediaId = "";
 
     const onMutation = () => refresh("dom-mutation");
     const onNavigation = () => refresh("spa-navigation", true);
@@ -137,7 +143,24 @@
       return [];
     }
 
+    function ensureNativeCaptionsAvailable() {
+      const currentMediaId = resolveMediaId();
+      if (!currentMediaId || captionActivationMediaId === currentMediaId) return false;
+      const button = queryFirst(playerRoot || doc, CAPTION_TOGGLE_SELECTORS) || queryFirst(doc, CAPTION_TOGGLE_SELECTORS);
+      if (!button || button.disabled) return false;
+      const pressed = String(button.getAttribute?.("aria-pressed") || "").toLowerCase();
+      const title = cleanCueText(button.getAttribute?.("title") || button.getAttribute?.("aria-label")).toLowerCase();
+      const unavailable = /unavailable|不可用|無法使用/.test(title);
+      if (unavailable) return false;
+      captionActivationMediaId = currentMediaId;
+      if (pressed === "true") return false;
+      button.click?.();
+      return true;
+    }
+
     function emitDomSnapshot(reason, force = false) {
+      const cues = readDomCues();
+      if (!cues.length) ensureNativeCaptionsAvailable();
       return emitter.emit({
         source: SOURCE_KINDS.YOUTUBE_DOM,
         reason,
@@ -149,7 +172,7 @@
           language: "",
           mode: "showing"
         },
-        cues: readDomCues()
+        cues
       }, { force });
     }
 
@@ -192,6 +215,7 @@
       textTrackSource = null;
       previousSource?.stop?.();
       videoElement = null;
+      captionActivationMediaId = "";
     }
 
     function getSnapshot() {
@@ -231,6 +255,7 @@
     VIDEO_SELECTORS,
     CAPTION_CONTAINER_SELECTORS,
     CAPTION_SEGMENT_SELECTOR,
+    CAPTION_TOGGLE_SELECTORS,
     parseYouTubeVideoId,
     createYouTubeSubtitleSource
   };
