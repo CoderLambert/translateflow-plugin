@@ -39,7 +39,7 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
       "--tf-translation-gap": "0.78em",
       "--tf-translation-padding": "0.24em 0 0.24em 0.72em",
       "--tf-translation-background": "rgba(237, 243, 232, 0.32)",
-      "--tf-translation-border-width": "1px",
+      "--tf-translation-border-width": "2px",
       "--tf-translation-border-color": "rgba(111, 150, 104, 0.34)",
       "--tf-translation-opacity": "0.94",
       "--tf-translation-radius": "1px"
@@ -55,7 +55,7 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
       "--tf-translation-gap": "0.46em",
       "--tf-translation-padding": "0.12em 0 0.12em 0.58em",
       "--tf-translation-background": "rgba(237, 243, 232, 0.16)",
-      "--tf-translation-border-width": "2px",
+      "--tf-translation-border-width": "1px",
       "--tf-translation-border-color": "rgba(111, 150, 104, 0.28)",
       "--tf-translation-opacity": "0.90",
       "--tf-translation-radius": "0px"
@@ -71,7 +71,7 @@ export const TRANSLATION_APPEARANCES = Object.freeze([
       "--tf-translation-gap": "1em",
       "--tf-translation-padding": "0.38em 0 0.38em 0.88em",
       "--tf-translation-background": "rgba(246, 241, 232, 0.46)",
-      "--tf-translation-border-width": "3px",
+      "--tf-translation-border-width": "2px",
       "--tf-translation-border-color": "rgba(111, 150, 104, 0.40)",
       "--tf-translation-opacity": "0.97",
       "--tf-translation-radius": "2px"
