@@ -12,9 +12,23 @@ Do not move translated paragraphs into the Shadow DOM and do not create addition
 
 ## Tokens
 
-`src/content/ui/tokens.js` is the content-surface source of truth for typography, spacing, radii, elevation, semantic colors, and control states. It also supplies dark values through `prefers-color-scheme`.
+TranslateFlow uses one semantic token vocabulary across extension pages and content-owned controls.
 
-New content controls should consume the `--tf-*` variables rather than hard-code duplicate colors and spacing. Popup and Options work should use the same token names/semantics when those surfaces are migrated; the content script does not inject Shadow CSS into extension pages.
+- `src/ui/styles/tokens.css` is the extension-page source of truth used by Popup, Options and future extension-owned pages.
+- `src/content/ui/tokens.js` mirrors the same semantic names inside the shared Shadow DOM host.
+- `src/ui/styles/components.css` contains framework-free extension-page primitives for buttons, fields/selects, cards, badges, switches, accordions and toast surfaces.
+
+The approved visual direction is calm and low-distraction: sage/forest greens, warm beige/cream surfaces, restrained elevation and low-motion interactions. New controls should consume `--tf-*` variables rather than hard-code duplicate colors and spacing.
+
+Compatibility aliases such as `--tf-color-accent` remain temporarily available while existing surfaces migrate, but new work should prefer semantic tokens such as `--tf-green-700`, `--tf-bg-card`, `--tf-text-main`, `--tf-border-main` and `--tf-focus-ring`.
+
+### Motion and focus
+
+All interactive primitives must provide a visible `:focus-visible` state. Nonessential transitions are disabled under `prefers-reduced-motion: reduce`.
+
+### Surface migration
+
+Popup, Quick Control, Options and reading presentation are migrated independently. The shared token/primitives layer must not change Provider, cache, permission or translation behavior.
 
 ## Primitives
 
