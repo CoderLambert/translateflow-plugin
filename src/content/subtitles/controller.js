@@ -7,7 +7,7 @@
   const { createSubtitlePipeline } = app.modules.subtitlePipeline;
   const { createSubtitleRenderer, MODES, SIZES } = app.modules.subtitleRenderer;
 
-  function isYouTubePage() { return /(^|\\.)youtube\\.com$/i.test(location.hostname) && /^\\/(?:watch|shorts\\/)/.test(location.pathname); }
+  function isYouTubePage() { return /(^|\.)youtube\.com$/i.test(location.hostname) && /^\/(?:watch|shorts\/)/.test(location.pathname); }
 
   function createController({
     isSupportedPage = isYouTubePage,
