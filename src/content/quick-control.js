@@ -61,6 +61,17 @@
     }
   }
 
+  async function toggleForTab() {
+    if (view.isVisible()) {
+      tabVisible = false;
+      persistentVisible = false;
+      view.destroy();
+      return false;
+    }
+    await showForTab();
+    return view.isVisible();
+  }
+
   function isVisible() {
     return view.isVisible();
   }
@@ -247,6 +258,7 @@
   app.modules.quickControl = {
     start,
     showForTab,
+    toggleForTab,
     isVisible,
     setSelectionActive
   };

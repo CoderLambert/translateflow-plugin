@@ -18,24 +18,36 @@ export function registerCommandRouter() {
   });
 }
 
-export async function routeCommand(command) {
-  const type = COMMAND_MESSAGE[command];
-  if (!type) return { ok: false, ignored: true };
+export function createCommandRouter({
+  queryActiveTab = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    return tab;
+  },
+  sendContentMessage = (tabId, message) => chrome.tabs.sendMessage(tabId, message),
+  injectContent = injectTranslateFlow,
+  createTaskId = () => crypto.randomUUID()
+} = {}) {
+  return async function route(command) {
+    const type = COMMAND_MESSAGE[command];
+    if (!type) return { ok: false, ignored: true };
 
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (!tab?.id || !isSupportedPage(tab.url)) return { ok: false, unsupported: true };
+    const tab = await queryActiveTab();
+    if (!tab?.id || !isSupportedPage(tab.url)) return { ok: false, unsupported: true };
 
-  const message = type === CONTENT_MESSAGES.TRANSLATE_PAGE
-    ? { type, taskId: crypto.randomUUID() }
-    : { type };
+    const message = type === CONTENT_MESSAGES.TRANSLATE_PAGE
+      ? { type, taskId: createTaskId() }
+      : { type };
 
-  try {
-    return await chrome.tabs.sendMessage(tab.id, message);
-  } catch {
-    await injectTranslateFlow(tab.id);
-    return chrome.tabs.sendMessage(tab.id, message);
-  }
+    try {
+      return await sendContentMessage(tab.id, message);
+    } catch {
+      await injectContent(tab.id);
+      return sendContentMessage(tab.id, message);
+    }
+  };
 }
+
+export const routeCommand = createCommandRouter();
 
 export function isSupportedPage(url) {
   try {

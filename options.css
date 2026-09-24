@@ -79,3 +79,14 @@ section { border-top: 1px solid rgba(127,127,127,.25); margin-top: 28px; padding
 @media (max-width: 640px) {
   .profile-grid { grid-template-columns: 1fr; }
 }
+
+.shortcut-list { display: grid; gap: 8px; margin-top: 14px; }
+.shortcut-list > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid rgba(127,127,127,.22); border-radius: 8px; }
+.shortcut-list span { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.shortcut-list small { opacity: .68; }
+kbd, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+kbd { padding: 2px 6px; border: 1px solid rgba(127,127,127,.38); border-radius: 5px; background: rgba(127,127,127,.08); }
+@media (max-width: 640px) {
+  .shortcut-list > div { align-items: flex-start; flex-direction: column; }
+  .shortcut-list span { justify-content: flex-start; }
+}
