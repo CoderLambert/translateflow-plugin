@@ -41,6 +41,20 @@ test.describe("v0.8 release-gate browser flows", () => {
     expect(harness.server.calls).toHaveLength(1);
   });
 
+  test("Popup keeps primary preference controls readable without vertical label collapse", async ({ harness }) => {
+    const popup = await harness.context.newPage();
+    await popup.setViewportSize({ width: 400, height: 700 });
+    await popup.goto(`chrome-extension://${harness.extensionId}/popup.html`);
+    const row = popup.locator(".control-row").first();
+    const label = row.locator("strong");
+    const button = row.locator(".compact-btn");
+    await expect(row).toBeVisible();
+    const [labelBox, buttonBox] = await Promise.all([label.boundingBox(), button.boundingBox()]);
+    expect(labelBox.width).toBeGreaterThan(80);
+    expect(buttonBox.width).toBeGreaterThanOrEqual(120);
+    await expect(popup.locator("#appearanceSelect")).toBeVisible();
+  });
+
   test("Quick Control supports keyboard dismissal, click-outside and dark-mode readable controls", async ({ harness }) => {
     const page = await harness.open("/release-ui");
     await page.emulateMedia({ colorScheme: "dark" });
