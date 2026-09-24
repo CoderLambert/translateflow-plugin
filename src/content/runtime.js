@@ -48,13 +48,15 @@
       SITE_APPEARANCE_SAVE: "SITE_APPEARANCE_SAVE",
       OPEN_OPTIONS: "OPEN_OPTIONS",
       EFFECTIVE_CONTEXT: "EFFECTIVE_CONTEXT",
-      TEMP_PRESET_SET: "TEMP_PRESET_SET"
+      TEMP_PRESET_SET: "TEMP_PRESET_SET",
+      YOUTUBE_BRIDGE_INSTALL: "YOUTUBE_BRIDGE_INSTALL"
     })
   });
 
   const state = {
     manualRunning: false,
     auto: false,
+    cacheRestore: false,
     autoDrainRunning: false,
     hidden: false,
     pending: new Set(),
@@ -64,7 +66,8 @@
     currentPageIdentity: getPageIdentity(location.href),
     lastAutoErrorAt: 0,
     autoBackoffUntil: 0,
-    lastAutoPruneAt: 0
+    lastAutoPruneAt: 0,
+    startupRestorePromise: null
   };
 
   function cleanText(text) {
