@@ -9,6 +9,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CONTENT_SCRIPTS = [
   "src/content/runtime.js",
   "src/content/ui/tokens.js",
+  "src/content/ui/quick-control-styles.js",
   "src/content/ui/host.js",
   "src/content/ui/primitives.js",
   "src/content/ui/toast.js",
