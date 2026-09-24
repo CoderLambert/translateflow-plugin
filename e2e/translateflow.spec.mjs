@@ -79,11 +79,35 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(rich.locator("code")).toHaveText("npm test");
     expect(harness.server.calls).toHaveLength(1);
 
-    const context = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
-    expect(context.ok).toBe(true);
-    expect(context.context).toMatchObject({
+    const readingContext = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
+    expect(readingContext.ok).toBe(true);
+    expect(readingContext.context).toMatchObject({
       appearanceId: "reading",
       appearanceLabel: "Reading",
+      appearanceSource: "site"
+    });
+
+    await harness.setStorage({
+      siteProfiles: {
+        "http://127.0.0.1": { appearance: "minimal" }
+      }
+    });
+    await expect.poll(() => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-border-width").trim()
+    )).toBe("0px");
+    await expect.poll(() => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-background").trim()
+    )).toBe("transparent");
+    expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
+    await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
+    await expect(rich.locator("code")).toHaveText("npm test");
+    expect(harness.server.calls).toHaveLength(1);
+
+    const minimalContext = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
+    expect(minimalContext.ok).toBe(true);
+    expect(minimalContext.context).toMatchObject({
+      appearanceId: "minimal",
+      appearanceLabel: "Minimal",
       appearanceSource: "site"
     });
   });
