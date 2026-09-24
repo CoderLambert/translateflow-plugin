@@ -7,7 +7,7 @@ import {
 import { sha256 } from "../shared/hash.js";
 import { getOriginMatchPattern, normalizeOrigin } from "../shared/url.js";
 
-const STORAGE_KEYS = ["autoSites", "quickControlSites", "quickControlHiddenSites"];
+const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites"];
 
 export async function registerAutoSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
@@ -23,6 +23,25 @@ export async function unregisterAutoSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
   const state = await readState();
   state.autoSites = removeOrigin(state.autoSites, origin);
+  await writeState(state);
+  await syncOriginRegistration(origin);
+  return { origin, enabled: false };
+}
+
+export async function registerCacheRestoreSite(rawOrigin) {
+  const origin = normalizeOrigin(rawOrigin);
+  await assertOriginPermission(origin, "尚未获得此站点的自动恢复缓存权限。");
+  const state = await readState();
+  state.cacheRestoreSites = addOrigin(state.cacheRestoreSites, origin);
+  await writeState(state);
+  await syncOriginRegistration(origin);
+  return { origin, enabled: true };
+}
+
+export async function unregisterCacheRestoreSite(rawOrigin) {
+  const origin = normalizeOrigin(rawOrigin);
+  const state = await readState();
+  state.cacheRestoreSites = removeOrigin(state.cacheRestoreSites, origin);
   await writeState(state);
   await syncOriginRegistration(origin);
   return { origin, enabled: false };
@@ -69,10 +88,11 @@ export async function showQuickControlSite(rawOrigin) {
 export async function syncSiteRegistrations() {
   const state = await readState();
   const hidden = new Set(normalizeOrigins(state.quickControlHiddenSites));
+  const validRestore = await permittedOrigins(state.cacheRestoreSites);
   const validAuto = await permittedOrigins(state.autoSites);
   const validQuick = (await permittedOrigins(state.quickControlSites))
     .filter((origin) => !hidden.has(origin));
-  const desiredOrigins = [...new Set([...validAuto, ...validQuick])].sort();
+  const desiredOrigins = [...new Set([...validRestore, ...validAuto, ...validQuick])].sort();
   const desiredIds = new Set();
 
   for (const origin of desiredOrigins) {
@@ -92,6 +112,7 @@ export async function syncSiteRegistrations() {
   if (staleIds.length) await chrome.scripting.unregisterContentScripts({ ids: staleIds });
 
   const next = {
+    cacheRestoreSites: validRestore,
     autoSites: validAuto,
     quickControlSites: validQuick,
     quickControlHiddenSites: [...hidden].sort()
@@ -105,7 +126,8 @@ export const syncAutoSiteRegistrations = syncSiteRegistrations;
 async function syncOriginRegistration(origin) {
   const state = await readState();
   const hidden = new Set(normalizeOrigins(state.quickControlHiddenSites));
-  const desired = normalizeOrigins(state.autoSites).includes(origin)
+  const desired = normalizeOrigins(state.cacheRestoreSites).includes(origin)
+    || normalizeOrigins(state.autoSites).includes(origin)
     || (normalizeOrigins(state.quickControlSites).includes(origin) && !hidden.has(origin));
   const match = getOriginMatchPattern(origin);
   const permitted = await chrome.permissions.contains({ origins: [match] });
@@ -159,6 +181,7 @@ async function permittedOrigins(values) {
 async function readState() {
   const stored = await chrome.storage.local.get(STORAGE_KEYS);
   return {
+    cacheRestoreSites: normalizeOrigins(stored.cacheRestoreSites),
     autoSites: normalizeOrigins(stored.autoSites),
     quickControlSites: normalizeOrigins(stored.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(stored.quickControlHiddenSites)
@@ -167,6 +190,7 @@ async function readState() {
 
 async function writeState(state) {
   await chrome.storage.local.set({
+    cacheRestoreSites: normalizeOrigins(state.cacheRestoreSites),
     autoSites: normalizeOrigins(state.autoSites),
     quickControlSites: normalizeOrigins(state.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(state.quickControlHiddenSites)
@@ -193,10 +217,12 @@ function removeOrigin(values, origin) {
 
 function sameState(a, b) {
   return JSON.stringify({
+    cacheRestoreSites: normalizeOrigins(a.cacheRestoreSites),
     autoSites: normalizeOrigins(a.autoSites),
     quickControlSites: normalizeOrigins(a.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(a.quickControlHiddenSites)
   }) === JSON.stringify({
+    cacheRestoreSites: normalizeOrigins(b.cacheRestoreSites),
     autoSites: normalizeOrigins(b.autoSites),
     quickControlSites: normalizeOrigins(b.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(b.quickControlHiddenSites)
