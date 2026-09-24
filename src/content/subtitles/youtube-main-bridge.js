@@ -280,10 +280,21 @@
 
   function selectedNudgeTrack() {
     const selected = state.selectedRaw;
-    const language = clean(selected?.languageCode || selected?.language || selected?.srclang).toLowerCase();
-    const sameLanguage = state.rawTracks.filter((track) => clean(track?.languageCode || track?.language || track?.srclang).toLowerCase() === language);
-    const human = sameLanguage.find((track) => !/\basr\b|auto[- ]?generated|automatic captions?/i.test(`${track?.kind || ""} ${track?.vssId || ""} ${track?.name?.simpleText || track?.label || ""}`));
-    return human || selected || sameLanguage[0] || state.rawTracks[0] || null;
+    if (selected) return selected;
+
+    const inferred = state.rawTracks[0] || null;
+    const language = clean(inferred?.languageCode || inferred?.language || inferred?.srclang).toLowerCase();
+    if (!language) return inferred;
+
+    const sameLanguage = state.rawTracks.filter((track) => (
+      clean(track?.languageCode || track?.language || track?.srclang).toLowerCase() === language
+    ));
+    const human = sameLanguage.find((track) => (
+      !/\basr\b|auto[- ]?generated|automatic captions?/i.test(
+        `${track?.kind || ""} ${track?.vssId || ""} ${track?.name?.simpleText || track?.label || ""}`
+      )
+    ));
+    return human || sameLanguage[0] || inferred;
   }
 
   function nudgeOnce() {
