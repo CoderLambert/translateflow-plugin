@@ -144,7 +144,33 @@
 
   function trackIdentity(track) { return normalizeTrackMetadata(track).id; }
 
-  const api = Object.freeze({ MAX_PAYLOAD_BYTES, clean, byteLength, parseTimedtext, parseJson3, normalizeTrackMetadata, trackIdentity });
+  function selectNudgeTrack(selected, tracks = []) {
+    if (selected) return selected;
+    const candidates = Array.isArray(tracks) ? tracks : [];
+    const inferred = candidates[0] || null;
+    const language = clean(inferred?.languageCode ?? inferred?.language ?? inferred?.srclang).toLowerCase();
+    if (!language) return inferred;
+    const sameLanguage = candidates.filter((track) => (
+      clean(track?.languageCode ?? track?.language ?? track?.srclang).toLowerCase() === language
+    ));
+    const human = sameLanguage.find((track) => (
+      !/\basr\b|auto[- ]?generated|automatic captions?/i.test(
+        `${track?.kind || ""} ${track?.vssId || ""} ${track?.name?.simpleText || track?.label || ""}`
+      )
+    ));
+    return human || sameLanguage[0] || inferred;
+  }
+
+  const api = Object.freeze({
+    MAX_PAYLOAD_BYTES,
+    clean,
+    byteLength,
+    parseTimedtext,
+    parseJson3,
+    normalizeTrackMetadata,
+    trackIdentity,
+    selectNudgeTrack
+  });
   globalThis[GLOBAL] = api;
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (app) app.modules.youtubeTimedtext = api;
