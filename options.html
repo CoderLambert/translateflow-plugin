@@ -49,18 +49,6 @@
       <p class="hint">字幕翻译继续复用当前站点 Profile / Preset / Glossary / Provider 有效配置。</p>
     </section>
 
-    <section id="provider" tabindex="-1">
-      <h2>Provider</h2>
-      <p class="section-summary">高级配置。API Key 仅保存在扩展本地存储中。</p>
-
-
-
-      <label for="defaultAppearance">默认阅读外观</label>
-      <select id="defaultAppearance"></select>
-      <p class="hint">Standard / Compact / Reading / Minimal 只改变译文排版与视觉层级，不改变翻译 Prompt、Provider 或缓存版本。</p>
-    </section>
-
-
     <section id="keyboard-shortcuts">
       <h2>键盘快捷键</h2>
       <p>TranslateFlow 提供三个浏览器内快捷操作。Chrome 最终绑定以 <code>chrome://extensions/shortcuts</code> 为准，你可以在那里查看、修改或清除任意绑定。</p>
@@ -72,8 +60,9 @@
       <p class="hint">快捷键只在 Chrome 获得焦点时工作。浏览器或操作系统保留的快捷键优先级更高；如某个组合在你的系统上不可用，请在 Chrome 的扩展快捷键页面重新绑定。Chrome 内部页等受保护页面不会注入 TranslateFlow。</p>
     </section>
 
-    <section>
-      <h2>DeepSeek</h2>
+    <section id="provider" class="advanced" tabindex="-1">
+      <h2>Provider · DeepSeek</h2>
+      <p class="section-summary">高级配置。API Key 仅保存在扩展本地存储中。</p>
 
       <label for="deepseekApiKey">API Key</label>
       <div class="password-row">
@@ -86,8 +75,8 @@
       <p class="hint">DeepSeek API 地址固定为 https://api.deepseek.com。</p>
     </section>
 
-    <section>
-      <h2>OpenAI-compatible</h2>
+    <section class="advanced">
+      <h2>Provider · OpenAI-compatible</h2>
 
       <label for="openaiBaseUrl">Base URL</label>
       <input id="openaiBaseUrl" type="url" placeholder="https://api.openai.com/v1" />
