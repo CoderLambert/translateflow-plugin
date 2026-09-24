@@ -25,6 +25,8 @@ const defaultProvider = $("defaultProvider");
 const prompt = $("prompt");
 const targetLanguage = $("targetLanguage");
 const defaultAppearance = $("defaultAppearance");
+const youtubeSubtitleMode = $("youtubeSubtitleMode");
+const youtubeSubtitleSize = $("youtubeSubtitleSize");
 const deepseekApiKey = $("deepseekApiKey");
 const deepseekModel = $("deepseekModel");
 const revealDeepSeek = $("revealDeepSeek");
@@ -36,6 +38,8 @@ const cacheMaxMB = $("cacheMaxMB");
 const save = $("save");
 const test = $("test");
 const status = $("status");
+const extensionVersion = $("extensionVersion");
+if (extensionVersion) extensionVersion.textContent = `v${chrome.runtime.getManifest().version}`;
 
 const siteOrigin = $("siteOrigin");
 const siteProvider = $("siteProvider");
@@ -165,7 +169,9 @@ async function load() {
     "targetLanguage",
     "appearance",
     "cacheMaxMB",
-    "openAICompatible"
+    "openAICompatible",
+    "youtubeSubtitleMode",
+    "youtubeSubtitleSize"
   ]);
   const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...(config.openAICompatible || {}) };
 
@@ -179,6 +185,8 @@ async function load() {
   openaiBaseUrl.value = openAI.baseUrl || "";
   openaiApiKey.value = openAI.apiKey || "";
   openaiModel.value = openAI.model || "";
+  youtubeSubtitleMode.value = ["bilingual", "original", "off"].includes(config.youtubeSubtitleMode) ? config.youtubeSubtitleMode : "bilingual";
+  youtubeSubtitleSize.value = ["small", "standard", "large"].includes(config.youtubeSubtitleSize) ? config.youtubeSubtitleSize : "standard";
 }
 
 async function saveGlobalConfig({ requestPermission }) {
@@ -203,7 +211,9 @@ async function saveGlobalConfig({ requestPermission }) {
       baseUrl,
       apiKey: openaiApiKey.value.trim(),
       model: openaiModel.value.trim()
-    }
+    },
+    youtubeSubtitleMode: ["bilingual", "original", "off"].includes(youtubeSubtitleMode.value) ? youtubeSubtitleMode.value : "bilingual",
+    youtubeSubtitleSize: ["small", "standard", "large"].includes(youtubeSubtitleSize.value) ? youtubeSubtitleSize.value : "standard"
   });
 }
 
@@ -414,4 +424,16 @@ function formatBytes(bytes) {
 function setStatus(message, isError = false) {
   status.textContent = message;
   status.style.color = isError ? "#c62828" : "";
+}
+
+
+for (const link of document.querySelectorAll(".settings-nav a[href^='#']")) {
+  link.addEventListener("click", (event) => {
+    const target = document.querySelector(link.getAttribute("href"));
+    if (!target) return;
+    event.preventDefault();
+    history.replaceState(null, "", link.getAttribute("href"));
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.focus({ preventScroll: true });
+  });
 }
