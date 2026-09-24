@@ -198,8 +198,12 @@ button { color: inherit; }
   z-index: 2147483647;
   right: 18px;
   bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
   max-width: 320px;
-  padding: 10px 14px;
+  padding: 10px 13px;
+  border: 1px solid rgba(255, 255, 255, .08);
   border-radius: var(--tf-radius-sm);
   background: rgba(45, 58, 47, 0.94);
   color: #fff;
@@ -207,10 +211,27 @@ button { color: inherit; }
   line-height: 1.45;
   box-shadow: var(--tf-shadow-md);
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(6px);
   pointer-events: none;
   transition: opacity var(--tf-transition), transform var(--tf-transition);
 }
+.tf-toast[data-kind="error"] { background: rgba(76, 52, 48, .95); }
+.tf-toast[data-kind="warning"] { background: rgba(73, 64, 45, .95); }
+.tf-toast-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  border: 1px solid rgba(255,255,255,.26);
+  border-radius: var(--tf-radius-pill);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+.tf-toast-message { min-width: 0; overflow-wrap: anywhere; }
 .tf-toast[data-visible="true"] { opacity: 1; transform: translateY(0); }
 
 @media (prefers-color-scheme: dark) {
