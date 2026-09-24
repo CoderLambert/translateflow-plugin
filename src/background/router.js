@@ -18,9 +18,11 @@ import {
 import {
   hideQuickControlSite,
   registerAutoSite,
+  registerCacheRestoreSite,
   registerQuickControlSite,
   showQuickControlSite,
   unregisterAutoSite,
+  unregisterCacheRestoreSite,
   unregisterQuickControlSite
 } from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
@@ -98,6 +100,10 @@ export async function handleBackgroundMessage(message, sender) {
       const { cacheMaxMB } = await getConfig();
       return pruneCache(Number(cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB) * 1024 * 1024);
     }
+    case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_REGISTER:
+      return registerCacheRestoreSite(message.origin);
+    case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER:
+      return unregisterCacheRestoreSite(message.origin);
     case BACKGROUND_MESSAGES.AUTO_SITE_REGISTER:
       return registerAutoSite(message.origin);
     case BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER:

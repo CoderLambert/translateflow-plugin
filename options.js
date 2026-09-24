@@ -342,10 +342,7 @@ async function refreshAutoSiteList() {
           });
           if (!response?.ok) throw new Error(response?.error || "移除站点失败");
 
-          const pattern = `${site}/*`;
-          if (!(await isProviderPermission(pattern))) {
-            await chrome.permissions.remove({ origins: [pattern] });
-          }
+          await maybeReleaseSitePermission(site);
 
           setStatus(`已关闭 ${site} 的自动翻译。`);
           await refreshAutoSiteList();
@@ -361,6 +358,23 @@ async function refreshAutoSiteList() {
   } catch (error) {
     autoSitesList.textContent = `读取站点失败：${error.message || error}`;
   }
+}
+
+async function maybeReleaseSitePermission(site) {
+  const pattern = `${site}/*`;
+  const {
+    cacheRestoreSites = [],
+    autoSites = [],
+    quickControlSites = []
+  } = await chrome.storage.local.get([
+    "cacheRestoreSites",
+    "autoSites",
+    "quickControlSites"
+  ]);
+  const stillNeeded = [cacheRestoreSites, autoSites, quickControlSites]
+    .some((values) => Array.isArray(values) && values.includes(site));
+  if (stillNeeded || await isProviderPermission(pattern)) return false;
+  return chrome.permissions.remove({ origins: [pattern] });
 }
 
 async function isProviderPermission(pattern) {

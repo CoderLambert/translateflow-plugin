@@ -6,6 +6,7 @@ if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 function createChromeMock({ permitted = false } = {}) {
   const storage = {
+    cacheRestoreSites: [],
     autoSites: [],
     quickControlSites: [],
     quickControlHiddenSites: []
@@ -58,6 +59,18 @@ async function loadCoordinator(mock) {
   return import(`../src/background/auto-sites.js?test=${Math.random()}`);
 }
 
+test("cache restore refuses registration without an explicit Origin permission", async () => {
+  const mock = createChromeMock({ permitted: false });
+  const coordinator = await loadCoordinator(mock);
+
+  await assert.rejects(
+    () => coordinator.registerCacheRestoreSite("https://example.com"),
+    /自动恢复缓存权限/
+  );
+  assert.deepEqual(mock.storage.cacheRestoreSites, []);
+  assert.equal(mock.registered.size, 0);
+});
+
 test("persistent Quick Control refuses registration without an explicit Origin permission", async () => {
   const mock = createChromeMock({ permitted: false });
   const coordinator = await loadCoordinator(mock);
@@ -70,9 +83,13 @@ test("persistent Quick Control refuses registration without an explicit Origin p
   assert.equal(mock.registered.size, 0);
 });
 
-test("auto translation and Quick Control share one registration and release it only after both are disabled", async () => {
+test("cache restore, auto translation and Quick Control share one registration until all are disabled", async () => {
   const mock = createChromeMock({ permitted: true });
   const coordinator = await loadCoordinator(mock);
+
+  await coordinator.registerCacheRestoreSite("https://example.com/docs");
+  assert.deepEqual(mock.storage.cacheRestoreSites, ["https://example.com"]);
+  assert.equal(mock.registered.size, 1);
 
   await coordinator.registerQuickControlSite("https://example.com/docs");
   assert.deepEqual(mock.storage.quickControlSites, ["https://example.com"]);
@@ -88,6 +105,10 @@ test("auto translation and Quick Control share one registration and release it o
 
   await coordinator.unregisterAutoSite("https://example.com");
   assert.deepEqual(mock.storage.autoSites, []);
+  assert.equal(mock.registered.size, 1);
+
+  await coordinator.unregisterCacheRestoreSite("https://example.com");
+  assert.deepEqual(mock.storage.cacheRestoreSites, []);
   assert.equal(mock.registered.size, 0);
 });
 

@@ -10,6 +10,7 @@ import { initializePresetUi } from "./src/popup/preset-ui.js";
 
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
+const cacheRestoreBtn = $("cacheRestoreSite");
 const quickControlBtn = $("quickControlSite");
 const translateBtn = $("translate");
 const cancelTaskBtn = $("cancelTask");
@@ -20,10 +21,12 @@ const clearCacheBtn = $("clearCache");
 const settingsBtn = $("settings");
 const status = $("status");
 const cacheInfo = $("cacheInfo");
+const cacheRestoreInfo = $("cacheRestoreInfo");
 const autoInfo = $("autoInfo");
 const quickControlInfo = $("quickControlInfo");
 
 let currentAutoEnabled = false;
+let currentCacheRestoreEnabled = false;
 let currentQuickControlPersistent = false;
 let currentQuickControlHidden = false;
 let currentSite = null;
@@ -75,6 +78,7 @@ autoBtn.addEventListener("click", async () => {
   }
 });
 
+cacheRestoreBtn.addEventListener("click", toggleCacheRestoreSite);
 quickControlBtn.addEventListener("click", toggleQuickControlSite);
 
 translateBtn.addEventListener("click", runPageTranslation);
@@ -96,6 +100,7 @@ settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
 Promise.allSettled([
   refreshCacheStatus(),
   refreshAutoStatus(),
+  refreshCacheRestoreStatus(),
   refreshQuickControlStatus(),
   presetUi.refresh()
 ]);
@@ -207,6 +212,69 @@ async function refreshAutoStatus() {
     autoInfo.textContent = "当前页面不支持站点自动翻译";
     autoBtn.textContent = "开启此站自动增量翻译";
     autoBtn.disabled = true;
+  }
+}
+
+async function toggleCacheRestoreSite() {
+  setBusy(true, currentCacheRestoreEnabled ? "正在关闭本站自动缓存恢复…" : "正在申请本站缓存恢复权限…");
+  try {
+    const site = await getActiveSite();
+
+    if (currentCacheRestoreEnabled) {
+      const response = await chrome.runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER,
+        origin: site.origin
+      });
+      if (!response?.ok) throw new Error(response?.error || "关闭自动缓存恢复失败");
+      await maybeReleaseOriginPermission(site);
+      setStatus("已关闭本站自动缓存恢复；已有 IndexedDB 缓存仍保留。");
+    } else {
+      const granted = await chrome.permissions.request({ origins: [site.match] });
+      if (!granted) throw new Error("未授予本站权限，自动缓存恢复未开启。");
+
+      const response = await chrome.runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_REGISTER,
+        origin: site.origin
+      });
+      if (!response?.ok) throw new Error(response?.error || "自动缓存恢复注册失败");
+
+      await ensureInjected(site.tab.id);
+      try {
+        await chrome.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.RESTORE_CACHE });
+      } catch {}
+      setStatus("本站已开启自动缓存恢复。以后进入本站会优先从 IndexedDB 还原译文，不会因此调用 API。");
+    }
+  } catch (error) {
+    setStatus(error.message || String(error), true);
+  } finally {
+    setBusy(false);
+    await refreshCacheRestoreStatus();
+    await refreshCacheStatus();
+  }
+}
+
+async function refreshCacheRestoreStatus() {
+  try {
+    const site = await getActiveSite();
+    const { cacheRestoreSites = [] } = await chrome.storage.local.get(["cacheRestoreSites"]);
+    const permitted = await chrome.permissions.contains({ origins: [site.match] });
+    currentCacheRestoreEnabled = Array.isArray(cacheRestoreSites)
+      && cacheRestoreSites.includes(site.origin)
+      && permitted;
+
+    cacheRestoreInfo.textContent = currentCacheRestoreEnabled
+      ? `本站自动缓存恢复：已开启（${site.origin}）`
+      : "本站自动缓存恢复：未开启";
+    cacheRestoreBtn.textContent = currentCacheRestoreEnabled
+      ? "关闭本站自动缓存恢复"
+      : "以后进入本站自动恢复缓存";
+    cacheRestoreBtn.classList.toggle("enabled", currentCacheRestoreEnabled);
+    cacheRestoreBtn.disabled = false;
+  } catch {
+    currentCacheRestoreEnabled = false;
+    cacheRestoreInfo.textContent = "当前页面不支持自动缓存恢复";
+    cacheRestoreBtn.textContent = "以后进入本站自动恢复缓存";
+    cacheRestoreBtn.disabled = true;
   }
 }
 
@@ -369,6 +437,7 @@ async function ensureInjected(tabId) {
 
 function setBusy(busy, message) {
   autoBtn.disabled = busy;
+  cacheRestoreBtn.disabled = busy;
   quickControlBtn.disabled = busy;
   translateBtn.disabled = busy;
   restoreBtn.disabled = busy;
@@ -402,11 +471,17 @@ async function maybeReleaseOriginPermission(site) {
 
 async function isOriginPermissionStillNeeded(site) {
   if (await isProviderPermission(site.match)) return true;
-  const { autoSites = [], quickControlSites = [] } = await chrome.storage.local.get([
+  const {
+    cacheRestoreSites = [],
+    autoSites = [],
+    quickControlSites = []
+  } = await chrome.storage.local.get([
+    "cacheRestoreSites",
     "autoSites",
     "quickControlSites"
   ]);
-  return (Array.isArray(autoSites) && autoSites.includes(site.origin))
+  return (Array.isArray(cacheRestoreSites) && cacheRestoreSites.includes(site.origin))
+    || (Array.isArray(autoSites) && autoSites.includes(site.origin))
     || (Array.isArray(quickControlSites) && quickControlSites.includes(site.origin));
 }
 
