@@ -432,28 +432,6 @@ test("YouTube source uses TextTrack as secondary fallback and rendered DOM as fi
     player.id = "movie_player";
     const video = document.createElement("video");
     video.className = "html5-main-video";
-    video.currentTime = 1;
-
-    const cue = { id: "tt-1", startTime: 0, endTime: 10, text: "TextTrack fallback cue" };
-    const activeCues = { 0: cue, length: 1, item: (index) => activeCues[index] || null };
-    const track = {
-      kind: "captions",
-      mode: "showing",
-      language: "en",
-      label: "English",
-      activeCues,
-      addEventListener() {},
-      removeEventListener() {}
-    };
-    const trackList = {
-      0: track,
-      length: 1,
-      item: (index) => trackList[index] || null,
-      addEventListener() {},
-      removeEventListener() {}
-    };
-    Object.defineProperty(video, "textTracks", { configurable: true, value: trackList });
-    window.__tfFallbackTrack = track;
 
     const captions = document.createElement("div");
     captions.id = "ytp-caption-window-container";
@@ -471,6 +449,29 @@ test("YouTube source uses TextTrack as secondary fallback and rendered DOM as fi
     await chrome.scripting.executeScript({
       target: { tabId },
       func: async () => {
+        const video = document.querySelector("video.html5-main-video");
+        // The source runs in the isolated world, so keep its TextTrack mock here too.
+        const cue = { id: "tt-1", startTime: 0, endTime: 10, text: "TextTrack fallback cue" };
+        const activeCues = { 0: cue, length: 1, item: (index) => activeCues[index] || null };
+        const track = {
+          kind: "captions",
+          mode: "showing",
+          language: "en",
+          label: "English",
+          activeCues,
+          addEventListener() {},
+          removeEventListener() {}
+        };
+        const trackList = {
+          0: track,
+          length: 1,
+          item: (index) => trackList[index] || null,
+          addEventListener() {},
+          removeEventListener() {}
+        };
+        Object.defineProperty(video, "textTracks", { configurable: true, value: trackList });
+        globalThis.__tfFallbackTrack = track;
+
         globalThis.__tfFallbackEvents = [];
         globalThis.__tfFallbackSource = globalThis.__TRANSLATE_FLOW_CONTENT__.modules.youtubeSubtitleSource.createYouTubeSubtitleSource({
           installBridge: () => Promise.resolve({ ok: true }),
@@ -486,10 +487,15 @@ test("YouTube source uses TextTrack as secondary fallback and rendered DOM as fi
     return (current?.source || "") + "|" + (current?.cues?.[0]?.text || "");
   }).toBe("text-track|TextTrack fallback cue");
 
-  await page.evaluate(() => {
-    window.__tfFallbackTrack.mode = "disabled";
-    document.querySelector("video.html5-main-video").dispatchEvent(new Event("timeupdate"));
-  });
+  await harness.driver.evaluate(async ({ tabId }) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        globalThis.__tfFallbackTrack.mode = "disabled";
+        document.querySelector("video.html5-main-video").dispatchEvent(new Event("timeupdate"));
+      }
+    });
+  }, { tabId });
   await expect.poll(async () => {
     const current = (await readBridgeEvents(harness, tabId, "__tfFallbackEvents")).at(-1);
     return (current?.source || "") + "|" + (current?.cues?.[0]?.text || "");
