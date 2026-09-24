@@ -1,0 +1,291 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.tf-button,
+.tf-icon-button,
+.tf-field,
+.tf-select,
+.tf-textarea {
+  font: inherit;
+}
+
+.tf-button {
+  appearance: none;
+  min-height: 42px;
+  padding: 0 var(--tf-space-4);
+  border: 1px solid var(--tf-border-main);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-bg-card);
+  color: var(--tf-text-main);
+  cursor: pointer;
+  font-weight: 600;
+  transition:
+    transform var(--tf-transition-fast),
+    background-color var(--tf-transition),
+    border-color var(--tf-transition),
+    box-shadow var(--tf-transition),
+    opacity var(--tf-transition);
+}
+
+.tf-button:hover:not(:disabled) {
+  background: var(--tf-green-50);
+  border-color: color-mix(in srgb, var(--tf-green-600) 32%, var(--tf-border-main));
+}
+
+.tf-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.tf-button:disabled {
+  opacity: .48;
+  cursor: default;
+}
+
+.tf-button--primary {
+  min-height: 48px;
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--tf-green-600), var(--tf-green-800));
+  color: #fff;
+  box-shadow: 0 7px 18px rgba(65, 101, 62, .18);
+}
+
+.tf-button--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #789f71, var(--tf-green-700));
+  border-color: transparent;
+  transform: translateY(-1px);
+}
+
+.tf-button--secondary {
+  background: color-mix(in srgb, var(--tf-bg-panel) 82%, transparent);
+}
+
+.tf-button--ghost {
+  min-height: 36px;
+  padding-inline: var(--tf-space-3);
+  border-color: transparent;
+  background: transparent;
+  color: var(--tf-text-secondary);
+  box-shadow: none;
+}
+
+.tf-icon-button {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--tf-radius-sm);
+  background: transparent;
+  color: var(--tf-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--tf-transition),
+    color var(--tf-transition),
+    border-color var(--tf-transition);
+}
+
+.tf-icon-button:hover {
+  background: var(--tf-green-50);
+  color: var(--tf-green-900);
+}
+
+.tf-card {
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-bg-card);
+  color: var(--tf-text-main);
+  box-shadow: var(--tf-shadow-xs);
+}
+
+.tf-card--panel {
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-bg-panel);
+  box-shadow: var(--tf-shadow-md);
+}
+
+.tf-field,
+.tf-select,
+.tf-textarea {
+  width: 100%;
+  border: 1px solid var(--tf-border-main);
+  border-radius: var(--tf-radius-sm);
+  background: color-mix(in srgb, var(--tf-bg-panel) 84%, transparent);
+  color: var(--tf-text-main);
+  transition:
+    border-color var(--tf-transition),
+    box-shadow var(--tf-transition),
+    background-color var(--tf-transition);
+}
+
+.tf-field,
+.tf-select {
+  min-height: 42px;
+  padding: 0 var(--tf-space-3);
+}
+
+.tf-select {
+  padding-right: 32px;
+}
+
+.tf-textarea {
+  min-height: 120px;
+  padding: var(--tf-space-3);
+  line-height: var(--tf-line-height);
+  resize: vertical;
+}
+
+.tf-field:hover,
+.tf-select:hover,
+.tf-textarea:hover {
+  border-color: color-mix(in srgb, var(--tf-green-600) 32%, var(--tf-border-main));
+}
+
+.tf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-pill);
+  background: var(--tf-green-100);
+  color: var(--tf-green-800);
+  font-size: var(--tf-font-size-xs);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tf-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .88;
+}
+
+.tf-badge[data-kind="neutral"] {
+  background: var(--tf-bg-subtle);
+  color: var(--tf-text-secondary);
+}
+
+.tf-badge[data-kind="warning"] {
+  background: color-mix(in srgb, var(--tf-warning) 12%, var(--tf-bg-card));
+  color: var(--tf-warning);
+}
+
+.tf-badge[data-kind="error"] {
+  background: color-mix(in srgb, var(--tf-danger) 12%, var(--tf-bg-card));
+  color: var(--tf-danger);
+}
+
+.tf-switch {
+  appearance: none;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 0;
+  border-radius: var(--tf-radius-pill);
+  background: #d8d9d1;
+  cursor: pointer;
+  transition: background-color var(--tf-transition);
+}
+
+.tf-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 2px 6px rgba(36, 56, 40, .16);
+  transition: transform var(--tf-transition);
+}
+
+.tf-switch:checked,
+.tf-switch[aria-checked="true"] {
+  background: var(--tf-green-500);
+}
+
+.tf-switch:checked::after,
+.tf-switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+}
+
+.tf-accordion {
+  overflow: clip;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-bg-card);
+}
+
+.tf-accordion > summary {
+  min-height: 46px;
+  padding: 0 var(--tf-space-4);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--tf-text-main);
+  font-weight: 600;
+  list-style: none;
+}
+
+.tf-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tf-accordion > summary::after {
+  content: "⌄";
+  margin-left: auto;
+  color: var(--tf-text-muted);
+  transition: transform var(--tf-transition);
+}
+
+.tf-accordion[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.tf-toast-surface {
+  max-width: 320px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: var(--tf-radius-sm);
+  background: rgba(45, 58, 47, .94);
+  color: #fff;
+  box-shadow: var(--tf-shadow-md);
+  line-height: 1.45;
+}
+
+.tf-button:focus-visible,
+.tf-icon-button:focus-visible,
+.tf-field:focus-visible,
+.tf-select:focus-visible,
+.tf-textarea:focus-visible,
+.tf-switch:focus-visible,
+.tf-accordion > summary:focus-visible {
+  outline: none;
+  border-color: var(--tf-green-500);
+  box-shadow: var(--tf-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-button,
+  .tf-icon-button,
+  .tf-field,
+  .tf-select,
+  .tf-textarea,
+  .tf-switch,
+  .tf-switch::after,
+  .tf-accordion > summary::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
