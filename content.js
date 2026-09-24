@@ -5,22 +5,9 @@
   app.loaded = true;
 
   const { constants, messages, state, getSiteScope, getPageIdentity, sendRuntimeMessage } = app.modules.runtime;
-  const appearance = app.modules.appearance;
-  const tasks = app.modules.tasks;
-  const { clearTranslations } = app.modules.dom;
-  const { processPage } = app.modules.processor;
-  const {
-    enableAutoMode,
-    disableAutoMode,
-    enableCacheRestoreMode,
-    disableCacheRestoreMode,
-    rescanAutoPage,
-    maybeStartPersistentModes,
-    scheduleAutoDrain
-  } = app.modules.auto;
-  const { start: startSelectionTranslation } = app.modules.selectionController;
-  const quickControl = app.modules.quickControl;
-  const subtitleController = app.modules.subtitleController;
+  const appearance = app.modules.appearance, tasks = app.modules.tasks, { clearTranslations } = app.modules.dom, { processPage } = app.modules.processor;
+  const { enableAutoMode, disableAutoMode, enableCacheRestoreMode, disableCacheRestoreMode, rescanAutoPage, maybeStartPersistentModes, scheduleAutoDrain } = app.modules.auto;
+  const { start: startSelectionTranslation } = app.modules.selectionController, quickControl = app.modules.quickControl, subtitleController = app.modules.subtitleController;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
