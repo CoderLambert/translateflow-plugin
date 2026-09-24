@@ -16,7 +16,7 @@ test("message values stay unique inside each channel", () => {
 
 test("build-free content runtime mirrors Quick Control message values", () => {
   const source = readFileSync(new URL("../src/content/runtime.js", import.meta.url), "utf8");
-  const required = [CONTENT_MESSAGES.QUICK_CONTROL_SHOW, CONTENT_MESSAGES.QUICK_CONTROL_TOGGLE, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT, BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE, BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS];
+  const required = [CONTENT_MESSAGES.QUICK_CONTROL_SHOW, CONTENT_MESSAGES.QUICK_CONTROL_TOGGLE, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT, BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE, BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
   for (const value of required) assert.ok(source.includes(`"${value}"`), `${value} missing from content runtime`);
 });
 
@@ -42,6 +42,8 @@ test("YouTube subtitle stack is injected in dependency order before bootstrap", 
   for (const file of files) assert.ok(CONTENT_SCRIPT_FILES.includes(file), `${file} should be injected`);
   for (let index = 1; index < files.length; index += 1) assert.ok(CONTENT_SCRIPT_FILES.indexOf(files[index]) > CONTENT_SCRIPT_FILES.indexOf(files[index - 1]), `${files[index]} should follow ${files[index - 1]}`);
   assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/subtitles/controller.js") < CONTENT_SCRIPT_FILES.indexOf("content.js"));
+  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/subtitles/youtube-bridge-protocol.js") > CONTENT_SCRIPT_FILES.indexOf("src/content/subtitles/sources/text-track.js"));
+  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/subtitles/youtube-timedtext.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/subtitles/sources/youtube.js"));
 });
 
 test("content bootstrap is loaded last", () => assert.equal(CONTENT_SCRIPT_FILES.at(-1), "content.js"));

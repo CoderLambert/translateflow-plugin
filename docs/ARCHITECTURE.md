@@ -31,6 +31,7 @@ content scripts -> messages -> background router
 6. Runtime message value 必须集中定义。
 7. 权限属于公共 API，不能在普通重构中扩大。
 8. API 调用和缓存读写必须基于同一个 Effective Translation Config。
+9. YouTube MAIN-world code may observe only the page player's own timedtext response; it must not refetch signed caption URLs or expose privileged extension operations through `window.postMessage`.
 
 ## Configuration
 
@@ -72,6 +73,28 @@ Content Script 继续保持 build-free classic script modules：
 8. bootstrap
 
 `processor.js` 会把 pageUrl 同时传给缓存和翻译请求，因此 Background 可以为当前站点解析同一份有效配置。
+
+### YouTube acquisition boundary
+
+```text
+Background youtube-bridge.js
+  -> chrome.scripting.executeScript({ world: "MAIN", files: [...] })
+        |
+        v
+MAIN youtube-main-bridge.js
+  player/private metadata + fetch/XHR response observation
+  + pure youtube-timedtext parser
+        |
+        | versioned validated window.postMessage
+        v
+ISOLATED sources/youtube.js
+  source arbitration + active-cue scheduling + visual suppression
+        |
+        v
+existing #25 subtitle pipeline -> Background Provider/cache
+```
+
+The bridge owns a monotonic `videoId + generation` identity. The isolated source independently rejects mismatched envelopes before ingestion. The fallback order is current-generation MAIN timedtext, real active HTML TextTrack cues, then rendered YouTube caption DOM. The player-local renderer remains responsible for bilingual/original/off presentation.
 
 ## Migration-sensitive boundaries
 

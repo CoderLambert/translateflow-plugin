@@ -22,6 +22,8 @@ const CONTENT_SCRIPTS = [
   "src/content/auto.js",
   "src/content/subtitles/source.js",
   "src/content/subtitles/sources/text-track.js",
+  "src/content/subtitles/youtube-bridge-protocol.js",
+  "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/sources/youtube.js",
   "src/content/subtitles/pipeline.js",
   "src/content/subtitles/renderer.js",
@@ -34,6 +36,11 @@ const CONTENT_SCRIPTS = [
   "content.js"
 ];
 const CONTENT_STYLES = ["content.css"];
+const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
+  "src/content/subtitles/youtube-bridge-protocol.js",
+  "src/content/subtitles/youtube-timedtext.js",
+  "src/content/subtitles/youtube-main-bridge.js"
+];
 
 export const test = base.extend({
   harness: [async ({}, use) => {
@@ -73,6 +80,8 @@ export const test = base.extend({
     const extensionId = new URL(serviceWorker.url()).host;
     const driver = await context.newPage();
     await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+    const tabTokens = new WeakMap();
+    let nextTabToken = 1;
 
     const harness = {
       context,
@@ -103,21 +112,38 @@ export const test = base.extend({
               model: "mock-model"
             }
           });
+          await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" });
         }, { baseUrl: server.baseUrl });
       },
 
       async open(pathname) {
         const page = await context.newPage();
         await page.goto(`${server.baseUrl}${pathname}`);
+        const token = `translateflow-harness-${nextTabToken++}`;
+        tabTokens.set(page, token);
+        await page.evaluate((value) => document.documentElement.setAttribute("data-tf-harness-tab", value), token);
         return page;
       },
 
       async tabId(page) {
         const url = page.url();
-        const id = await driver.evaluate(async ({ url }) => {
+        const token = tabTokens.get(page) || "";
+        const id = await driver.evaluate(async ({ url, token }) => {
           const tabs = await chrome.tabs.query({});
-          return tabs.find((tab) => tab.url === url)?.id || null;
-        }, { url });
+          const candidates = tabs.filter((tab) => tab.url === url && tab.id !== undefined);
+          if (!token) return candidates.at(-1)?.id || null;
+          for (const tab of candidates) {
+            try {
+              const [result] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                args: [token],
+                func: (expected) => document.documentElement?.getAttribute("data-tf-harness-tab") === expected
+              });
+              if (result?.result) return tab.id;
+            } catch {}
+          }
+          return null;
+        }, { url, token });
         if (!id) throw new Error(`Could not resolve Chrome tab id for ${url}`);
         return id;
       },
@@ -143,6 +169,14 @@ export const test = base.extend({
           scripts: CONTENT_SCRIPTS,
           styles: CONTENT_STYLES
         });
+        return tabId;
+      },
+
+      async installYouTubeMainBridge(page) {
+        const tabId = await this.tabId(page);
+        await driver.evaluate(async ({ tabId, files }) => {
+          await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", files });
+        }, { tabId, files: YOUTUBE_MAIN_BRIDGE_SCRIPTS });
         return tabId;
       },
 
