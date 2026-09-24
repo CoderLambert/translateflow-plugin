@@ -157,12 +157,29 @@
       .some((field) => String(before?.[field] ?? "") !== String(after?.[field] ?? ""));
   }
 
+  function refreshIncrementalRoute() {
+    if (!state.auto && !state.cacheRestore) return;
+    const nextIdentity = getPageIdentity(location.href);
+    if (nextIdentity === state.currentPageIdentity) return;
+    state.currentPageIdentity = nextIdentity;
+    state.pending.clear();
+    clearTranslations();
+    rescanAutoPage();
+  }
+
   appearance.start();
   quickControl.start();
   startSelectionTranslation();
   maybeStartPersistentModes();
   subtitleController.start().catch(() => {});
 
-  document.addEventListener("yt-navigate-finish", () => subtitleController.refreshRoute().catch(() => {}));
-  window.addEventListener("popstate", () => subtitleController.refreshRoute().catch(() => {}));
+  document.addEventListener("yt-navigate-finish", () => {
+    refreshIncrementalRoute();
+    subtitleController.refreshRoute().catch(() => {});
+  });
+  window.addEventListener("popstate", () => {
+    refreshIncrementalRoute();
+    subtitleController.refreshRoute().catch(() => {});
+  });
+  window.addEventListener("hashchange", refreshIncrementalRoute);
 })();

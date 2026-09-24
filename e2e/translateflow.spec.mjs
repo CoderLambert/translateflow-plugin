@@ -32,11 +32,107 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(1);
 
     await page.close();
+    await harness.setStorage({ cacheRestoreSites: ["http://127.0.0.1"] });
     const reopened = await harness.open("/article");
     await harness.inject(reopened);
     await expect(reopened.locator(".abt-translation")).toHaveCount(3);
     expect(harness.server.calls).toHaveLength(1);
     await reopened.close();
+  });
+
+  test("Quick-Control-only persistent injection does not auto-restore cached page translations", async ({ harness }) => {
+    const page = await harness.open("/article");
+    await harness.inject(page);
+
+    const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-quick-only-seed" });
+    expect(translated.ok).toBe(true);
+    await expect(page.locator(".abt-translation")).toHaveCount(3);
+    expect(harness.server.calls).toHaveLength(1);
+    await page.close();
+
+    await harness.setStorage({
+      cacheRestoreSites: [],
+      autoSites: [],
+      quickControlSites: ["http://127.0.0.1"]
+    });
+
+    const reopened = await harness.open("/article");
+    await harness.inject(reopened);
+    await reopened.waitForTimeout(600);
+
+    await expect(reopened.locator(".abt-translation")).toHaveCount(0);
+    expect(harness.server.calls).toHaveLength(1);
+    await reopened.close();
+  });
+
+  test("restore-only mode incrementally restores dynamic cache hits and never translates misses", async ({ harness }) => {
+    const dynamicText = "A dynamically appended English paragraph should be restored from cache without contacting the translation provider.";
+    const missingText = "This brand new paragraph is intentionally absent from the translation cache and must remain untranslated.";
+
+    const seed = await harness.open("/incremental");
+    await harness.inject(seed);
+
+    let response = await harness.sendContent(seed, "ABT_TRANSLATE_PAGE", { taskId: "e2e-cache-restore-seed-initial" });
+    expect(response.ok).toBe(true);
+    expect(harness.server.calls).toHaveLength(1);
+
+    await seed.evaluate((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.id = "seed-dynamic";
+      paragraph.textContent = text;
+      document.querySelector("main").appendChild(paragraph);
+    }, dynamicText);
+
+    response = await harness.sendContent(seed, "ABT_TRANSLATE_PAGE", { taskId: "e2e-cache-restore-seed-dynamic" });
+    expect(response.ok).toBe(true);
+    expect(response.cacheHits).toBeGreaterThanOrEqual(1);
+    expect(response.apiTranslated).toBe(1);
+    expect(harness.server.calls).toHaveLength(2);
+    await seed.close();
+
+    await harness.setStorage({
+      cacheRestoreSites: ["http://127.0.0.1"],
+      autoSites: []
+    });
+
+    const page = await harness.open("/incremental");
+    await harness.inject(page);
+    await expect(page.locator("#initial .abt-translation")).toBeVisible();
+    expect(harness.server.calls).toHaveLength(2);
+
+    await page.evaluate((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.id = "restored-dynamic";
+      paragraph.textContent = text;
+      document.querySelector("main").appendChild(paragraph);
+    }, dynamicText);
+
+    await expect(page.locator("#restored-dynamic .abt-translation")).toBeVisible();
+    expect(harness.server.calls).toHaveLength(2);
+
+    await page.evaluate((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.id = "restore-miss";
+      paragraph.textContent = text;
+      document.querySelector("main").appendChild(paragraph);
+    }, missingText);
+
+    await page.waitForTimeout(800);
+    await expect(page.locator("#restore-miss .abt-translation")).toHaveCount(0);
+    expect(harness.server.calls).toHaveLength(2);
+
+    await harness.setStorage({ cacheRestoreSites: [] });
+    await page.waitForTimeout(100);
+    await page.evaluate((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.id = "restore-disabled";
+      paragraph.textContent = text;
+      document.querySelector("main").appendChild(paragraph);
+    }, dynamicText);
+
+    await page.waitForTimeout(800);
+    await expect(page.locator("#restore-disabled .abt-translation")).toHaveCount(0);
+    expect(harness.server.calls).toHaveLength(2);
   });
 
   test("reading appearance changes presentation without rebuilding translated DOM or calling the Provider", async ({ harness }) => {

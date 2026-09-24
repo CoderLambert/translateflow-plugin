@@ -239,9 +239,6 @@ async function toggleCacheRestoreSite() {
       if (!response?.ok) throw new Error(response?.error || "自动缓存恢复注册失败");
 
       await ensureInjected(site.tab.id);
-      try {
-        await chrome.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.RESTORE_CACHE });
-      } catch {}
       setStatus("本站已开启自动缓存恢复。以后进入本站会优先从 IndexedDB 还原译文，不会因此调用 API。");
     }
   } catch (error) {

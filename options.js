@@ -56,6 +56,7 @@ const cacheStats = $("cacheStats");
 const refreshCache = $("refreshCache");
 const pruneCache = $("pruneCache");
 const clearAllCache = $("clearAllCache");
+const cacheRestoreSitesList = $("cacheRestoreSitesList");
 const autoSitesList = $("autoSitesList");
 const refreshAutoSites = $("refreshAutoSites");
 
@@ -66,7 +67,7 @@ populateAppearanceOptions(siteAppearance, { includeInherit: true });
 await Promise.allSettled([
   load(),
   refreshCacheStats(),
-  refreshAutoSiteList(),
+  refreshSiteBehaviorLists(),
   refreshSiteProfiles(),
   initializeGlossaryUi({ setStatus })
 ]);
@@ -102,7 +103,7 @@ bindPasswordToggle(revealDeepSeek, deepseekApiKey);
 bindPasswordToggle(revealOpenAI, openaiApiKey);
 
 refreshCache.addEventListener("click", refreshCacheStats);
-refreshAutoSites.addEventListener("click", refreshAutoSiteList);
+refreshAutoSites.addEventListener("click", refreshSiteBehaviorLists);
 clearSiteEditor.addEventListener("click", clearProfileEditor);
 
 pruneCache.addEventListener("click", async () => {
@@ -307,21 +308,59 @@ async function refreshCacheStats() {
   }
 }
 
+async function refreshSiteBehaviorLists() {
+  await Promise.all([
+    refreshCacheRestoreSiteList(),
+    refreshAutoSiteList()
+  ]);
+}
+
+async function refreshCacheRestoreSiteList() {
+  return renderPersistentSiteList({
+    element: cacheRestoreSitesList,
+    storageKey: "cacheRestoreSites",
+    emptyText: "暂无自动恢复缓存站点。请在目标网页的插件弹窗中开启。",
+    messageType: BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER,
+    removeError: "移除自动恢复缓存站点失败",
+    successText: (site) => `已关闭 ${site} 的自动缓存恢复。`
+  });
+}
+
 async function refreshAutoSiteList() {
-  autoSitesList.textContent = "正在读取已授权站点…";
+  return renderPersistentSiteList({
+    element: autoSitesList,
+    storageKey: "autoSites",
+    emptyText: "暂无自动翻译站点。请在目标网页的插件弹窗中开启。",
+    messageType: BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER,
+    removeError: "移除自动翻译站点失败",
+    successText: (site) => `已关闭 ${site} 的自动翻译。`
+  });
+}
+
+async function renderPersistentSiteList({
+  element,
+  storageKey,
+  emptyText,
+  messageType,
+  removeError,
+  successText
+}) {
+  element.textContent = "正在读取已授权站点…";
   try {
-    const { autoSites = [] } = await chrome.storage.local.get(["autoSites"]);
-    const sites = Array.isArray(autoSites) ? [...new Set(autoSites)].sort() : [];
-    autoSitesList.replaceChildren();
+    const stored = await chrome.storage.local.get([storageKey]);
+    const rawSites = stored?.[storageKey];
+    const sites = Array.isArray(rawSites) ? [...new Set(rawSites)].sort() : [];
+    element.replaceChildren();
 
     if (!sites.length) {
-      autoSitesList.textContent = "暂无自动翻译站点。请在目标网页的插件弹窗中开启。";
+      element.textContent = emptyText;
       return;
     }
 
     for (const site of sites) {
       const row = document.createElement("div");
       row.className = "site-row";
+
       const summary = document.createElement("div");
       summary.className = "site-summary";
       const title = document.createElement("strong");
@@ -337,26 +376,26 @@ async function refreshAutoSiteList() {
         remove.disabled = true;
         try {
           const response = await chrome.runtime.sendMessage({
-            type: BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER,
+            type: messageType,
             origin: site
           });
-          if (!response?.ok) throw new Error(response?.error || "移除站点失败");
+          if (!response?.ok) throw new Error(response?.error || removeError);
 
           await maybeReleaseSitePermission(site);
-
-          setStatus(`已关闭 ${site} 的自动翻译。`);
-          await refreshAutoSiteList();
+          setStatus(successText(site));
+          await refreshSiteBehaviorLists();
         } catch (error) {
           setStatus(error.message || String(error), true);
           remove.disabled = false;
         }
       });
+
       actions.append(remove);
       row.append(summary, actions);
-      autoSitesList.appendChild(row);
+      element.appendChild(row);
     }
   } catch (error) {
-    autoSitesList.textContent = `读取站点失败：${error.message || error}`;
+    element.textContent = `读取站点失败：${error.message || error}`;
   }
 }
 

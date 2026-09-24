@@ -100,6 +100,7 @@ export const test = base.extend({
             prompt: "Translate the segments and return JSON only.",
             appearance: "standard",
             cacheMaxMB: 50,
+            cacheRestoreSites: [],
             autoSites: [],
             quickControlSites: [],
             quickControlHiddenSites: [],
