@@ -30,6 +30,13 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(restored.cacheHits).toBe(3);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
     expect(harness.server.calls).toHaveLength(1);
+
+    await page.close();
+    const reopened = await harness.open("/article");
+    await harness.inject(reopened);
+    await expect(reopened.locator(".abt-translation")).toHaveCount(3);
+    expect(harness.server.calls).toHaveLength(1);
+    await reopened.close();
   });
 
   test("reading appearance changes presentation without rebuilding translated DOM or calling the Provider", async ({ harness }) => {

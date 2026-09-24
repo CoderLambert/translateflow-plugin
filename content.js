@@ -46,7 +46,21 @@
     return ["provider", "model", "prompt", "targetLanguage", "preset"].some((field) => String(before?.[field] ?? "") !== String(after?.[field] ?? ""));
   }
 
-  appearance.start(); quickControl.start(); startSelectionTranslation(); maybeStartAutoMode(); subtitleController.start().catch(() => {});
+  function startStartupCacheRestore() {
+    const restorePromise = processPage({
+      cacheOnly: true,
+      silent: true,
+      startup: true
+    }).catch(() => null);
+
+    state.startupRestorePromise = restorePromise;
+    restorePromise.finally(() => {
+      if (state.startupRestorePromise === restorePromise) state.startupRestorePromise = null;
+      maybeStartAutoMode();
+    });
+  }
+
+  appearance.start(); quickControl.start(); startSelectionTranslation(); startStartupCacheRestore(); subtitleController.start().catch(() => {});
   document.addEventListener("yt-navigate-finish", () => subtitleController.refreshRoute().catch(() => {}));
   window.addEventListener("popstate", () => subtitleController.refreshRoute().catch(() => {}));
 })();

@@ -14,7 +14,10 @@
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
   const { TRANSLATED_ATTR } = constants;
 
-  async function processPage({ cacheOnly, taskId = "" }) {
+  async function processPage({ cacheOnly, taskId = "", silent = false, startup = false }) {
+    if (!startup && state.startupRestorePromise) {
+      try { await state.startupRestorePromise; } catch {}
+    }
     if (state.manualRunning || state.autoDrainRunning) return { message: "正在处理中…" };
     state.manualRunning = true;
     let task = null;
@@ -43,10 +46,12 @@
       let done = 0;
       const pageUrl = location.href;
 
-      showToast(
-        cacheOnly ? `正在恢复本页缓存（${entries.length} 个段落）…` : `发现 ${entries.length} 个英文段落，正在检查缓存…`,
-        "info"
-      );
+      if (!silent) {
+        showToast(
+          cacheOnly ? `正在恢复本页缓存（${entries.length} 个段落）…` : `发现 ${entries.length} 个英文段落，正在检查缓存…`,
+          "info"
+        );
+      }
 
       for (let i = 0; i < batches.length; i += 1) {
         tasks.assertActive(task || { state: "queued" });
@@ -78,7 +83,7 @@
         const message = cacheHits
           ? `已恢复 ${cacheHits} 个缓存段落；${missing} 个段落暂无缓存。`
           : "当前网页内容没有可恢复的缓存。";
-        showToast(message, cacheHits ? "success" : "info");
+        if (!silent) showToast(message, cacheHits ? "success" : "info");
         return { count, cacheHits, apiTranslated: 0, missing, message };
       }
 
@@ -88,7 +93,7 @@
         cacheHits,
         apiTranslated
       });
-      showToast(message, "success");
+      if (!silent) showToast(message, "success");
       return {
         count,
         cacheHits,
@@ -100,7 +105,7 @@
     } catch (error) {
       if (task) tasks.failTask(task, error);
       if (tasks.isCancelledError(error)) {
-        showToast("翻译已取消。", "info");
+        if (!silent) showToast("翻译已取消。", "info");
         return {
           cancelled: true,
           message: "已取消翻译",

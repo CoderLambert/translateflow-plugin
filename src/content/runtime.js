@@ -65,7 +65,8 @@
     currentPageIdentity: getPageIdentity(location.href),
     lastAutoErrorAt: 0,
     autoBackoffUntil: 0,
-    lastAutoPruneAt: 0
+    lastAutoPruneAt: 0,
+    startupRestorePromise: null
   };
 
   function cleanText(text) {
