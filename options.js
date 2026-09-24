@@ -38,6 +38,8 @@ const cacheMaxMB = $("cacheMaxMB");
 const save = $("save");
 const test = $("test");
 const status = $("status");
+const extensionVersion = $("extensionVersion");
+if (extensionVersion) extensionVersion.textContent = `v${chrome.runtime.getManifest().version}`;
 
 const siteOrigin = $("siteOrigin");
 const siteProvider = $("siteProvider");
