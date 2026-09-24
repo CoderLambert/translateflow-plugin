@@ -26,7 +26,12 @@
     "#ytp-caption-window-container",
     ".ytp-caption-window-container"
   ]);
-  const CAPTION_SEGMENT_SELECTOR = ".ytp-caption-segment";
+  const CAPTION_SEGMENT_SELECTORS = Object.freeze([
+    ".ytp-caption-segment",
+    ".caption-visual-line",
+    ".captions-text span"
+  ]);
+  const CAPTION_SEGMENT_SELECTOR = CAPTION_SEGMENT_SELECTORS[0];
   const CAPTION_TOGGLE_SELECTORS = Object.freeze([
     ".ytp-subtitles-button",
     "button[aria-label*=\"subtitles\" i]",
@@ -134,9 +139,13 @@
       for (const selector of CAPTION_CONTAINER_SELECTORS) {
         const container = doc.querySelector?.(selector);
         if (!container) continue;
-        const segments = Array.from(container.querySelectorAll?.(CAPTION_SEGMENT_SELECTOR) || [])
-          .map((node) => cleanCueText(node?.textContent))
-          .filter(Boolean);
+        const nodes = [];
+        for (const segmentSelector of CAPTION_SEGMENT_SELECTORS) {
+          for (const node of Array.from(container.querySelectorAll?.(segmentSelector) || [])) {
+            if (!nodes.includes(node)) nodes.push(node);
+          }
+        }
+        const segments = nodes.map((node) => cleanCueText(node?.textContent)).filter(Boolean);
         const text = cleanCueText(segments.join(" "));
         if (text) return [{ text }];
       }
@@ -255,6 +264,7 @@
     VIDEO_SELECTORS,
     CAPTION_CONTAINER_SELECTORS,
     CAPTION_SEGMENT_SELECTOR,
+    CAPTION_SEGMENT_SELECTORS,
     CAPTION_TOGGLE_SELECTORS,
     parseYouTubeVideoId,
     createYouTubeSubtitleSource
