@@ -56,6 +56,7 @@
   const state = {
     manualRunning: false,
     auto: false,
+    cacheRestore: false,
     autoDrainRunning: false,
     hidden: false,
     pending: new Set(),

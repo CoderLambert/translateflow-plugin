@@ -115,7 +115,7 @@
       throw error;
     } finally {
       state.manualRunning = false;
-      if (state.auto && state.pending.size) app.modules.auto?.scheduleAutoDrain(120);
+      if ((state.auto || state.cacheRestore) && state.pending.size) app.modules.auto?.scheduleAutoDrain(120);
     }
   }
 
@@ -210,7 +210,7 @@
       if (!document.contains(el)) continue;
       const currentText = extractSourceSegment(el).text;
       if (normalizeSourceText(currentText) !== group.normalizedText) {
-        if (state.auto) app.modules.auto?.invalidateAndObserve(el);
+        if (state.auto || state.cacheRestore) app.modules.auto?.invalidateAndObserve(el);
         continue;
       }
       if (!el.hasAttribute(TRANSLATED_ATTR) && insertTranslation(el, translation)) inserted += 1;
