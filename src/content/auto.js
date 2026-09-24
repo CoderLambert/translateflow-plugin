@@ -9,7 +9,7 @@
     || app.modules.auto
   ) return;
 
-  const { constants, state, getPageIdentity, showToast } = app.modules.runtime;
+  const { constants, state, getPageIdentity, getSiteScope, showToast } = app.modules.runtime;
   const tasks = app.modules.tasks;
   const {
     collectElements,
@@ -21,20 +21,90 @@
     clearTranslations
   } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
-  const { processGroupBatch } = app.modules.processor;
+  const { processPage, processGroupBatch } = app.modules.processor;
   const { TRANSLATION_CLASS, TRANSLATED_ATTR, CANDIDATE_SELECTOR, AUTO_DEBOUNCE_MS, AUTO_ROOT_MARGIN } = constants;
 
-  async function maybeStartAutoMode() {
+  function isIncrementalActive() {
+    return state.auto || state.cacheRestore;
+  }
+
+  async function maybeStartPersistentModes() {
     try {
-      const { autoSites = [] } = await chrome.storage.local.get(["autoSites"]);
-      if (Array.isArray(autoSites) && autoSites.includes(app.modules.runtime.getSiteScope(location.href))) {
+      const origin = getSiteScope(location.href);
+      const {
+        cacheRestoreSites = [],
+        autoSites = []
+      } = await chrome.storage.local.get(["cacheRestoreSites", "autoSites"]);
+
+      const autoEnabled = Array.isArray(autoSites) && autoSites.includes(origin);
+      const restoreEnabled = Array.isArray(cacheRestoreSites) && cacheRestoreSites.includes(origin);
+
+      if (restoreEnabled) {
+        await enableCacheRestoreMode({
+          announce: false,
+          initialRestore: !autoEnabled
+        });
+      }
+
+      if (autoEnabled) {
         await enableAutoMode({ announce: false });
       }
     } catch {}
   }
 
+  async function maybeStartAutoMode() {
+    try {
+      const { autoSites = [] } = await chrome.storage.local.get(["autoSites"]);
+      if (Array.isArray(autoSites) && autoSites.includes(getSiteScope(location.href))) {
+        await enableAutoMode({ announce: false });
+      }
+    } catch {}
+  }
+
+  async function enableCacheRestoreMode({ announce = false, initialRestore = true } = {}) {
+    const wasEnabled = state.cacheRestore;
+    state.cacheRestore = true;
+    state.currentPageIdentity = getPageIdentity(location.href);
+
+    if (!wasEnabled && initialRestore && !state.auto) {
+      const restorePromise = processPage({
+        cacheOnly: true,
+        silent: true,
+        startup: true
+      }).catch(() => null);
+
+      state.startupRestorePromise = restorePromise;
+      try {
+        await restorePromise;
+      } finally {
+        if (state.startupRestorePromise === restorePromise) {
+          state.startupRestorePromise = null;
+        }
+      }
+    }
+
+    ensureAutoObservers();
+    rescanAutoPage();
+    if (announce) showToast("已开启本站自动缓存恢复；只恢复已有缓存，不会调用翻译 API。", "success");
+  }
+
+  function disableCacheRestoreMode({ announce = false } = {}) {
+    state.cacheRestore = false;
+    if (state.auto) {
+      state.pending.clear();
+      rescanAutoPage();
+    } else {
+      stopIncrementalObservers();
+    }
+    if (announce) showToast("已关闭本站自动缓存恢复。", "info");
+  }
+
   async function enableAutoMode({ announce = false } = {}) {
     if (state.auto) return;
+    if (state.startupRestorePromise) {
+      try { await state.startupRestorePromise; } catch {}
+    }
+
     state.auto = true;
     state.currentPageIdentity = getPageIdentity(location.href);
     ensureAutoObservers();
@@ -44,6 +114,19 @@
 
   function disableAutoMode({ announce = false } = {}) {
     state.auto = false;
+    state.autoBackoffUntil = 0;
+
+    if (state.cacheRestore) {
+      state.pending.clear();
+      rescanAutoPage();
+    } else {
+      stopIncrementalObservers();
+    }
+
+    if (announce) showToast("已关闭此站自动增量翻译。", "info");
+  }
+
+  function stopIncrementalObservers() {
     state.pending.clear();
     clearTimeout(state.autoTimer);
     state.autoTimer = null;
@@ -51,10 +134,11 @@
     state.mutationObserver?.disconnect();
     state.intersectionObserver = null;
     state.mutationObserver = null;
-    if (announce) showToast("已关闭此站自动增量翻译。", "info");
   }
 
   function ensureAutoObservers() {
+    if (!isIncrementalActive()) return;
+
     if (!state.intersectionObserver) {
       state.intersectionObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
@@ -76,7 +160,7 @@
   }
 
   function handleMutations(records) {
-    if (!state.auto) return;
+    if (!isIncrementalActive()) return;
     checkPageIdentityChange();
 
     for (const record of records) {
@@ -128,13 +212,13 @@
   }
 
   function rescanAutoPage() {
-    if (!state.auto) return;
+    if (!isIncrementalActive()) return;
     ensureAutoObservers();
     for (const el of collectElements()) observeAutoCandidate(el);
   }
 
   function observeAutoCandidate(el) {
-    if (!state.auto || !document.contains(el) || !isCandidateElement(el)) return;
+    if (!isIncrementalActive() || !document.contains(el) || !isCandidateElement(el)) return;
     if (el.hasAttribute(TRANSLATED_ATTR)) return;
     state.intersectionObserver?.observe(el);
   }
@@ -145,7 +229,7 @@
   }
 
   function enqueueAutoElement(el) {
-    if (!state.auto || !document.contains(el) || !isCandidateElement(el)) return;
+    if (!isIncrementalActive() || !document.contains(el) || !isCandidateElement(el)) return;
     if (el.hasAttribute(TRANSLATED_ATTR)) return;
     const text = extractSourceText(el);
     if (!shouldTranslate(text)) return;
@@ -154,9 +238,12 @@
   }
 
   function scheduleAutoDrain(delay = AUTO_DEBOUNCE_MS) {
-    if (!state.auto) return;
+    if (!isIncrementalActive()) return;
     clearTimeout(state.autoTimer);
-    const backoffDelay = Math.max(0, state.autoBackoffUntil - Date.now());
+    const backoffDelay = state.auto
+      ? Math.max(0, state.autoBackoffUntil - Date.now())
+      : 0;
+
     state.autoTimer = setTimeout(() => {
       state.autoTimer = null;
       drainAutoQueue().catch(handleAutoError);
@@ -164,7 +251,7 @@
   }
 
   async function drainAutoQueue() {
-    if (!state.auto) return;
+    if (!isIncrementalActive()) return;
     if (state.manualRunning || state.autoDrainRunning) {
       scheduleAutoDrain(350);
       return;
@@ -175,7 +262,7 @@
     const pageIdentity = getPageIdentity(pageUrl);
 
     try {
-      while (state.auto && state.pending.size) {
+      while (isIncrementalActive() && state.pending.size) {
         if (getPageIdentity(location.href) !== pageIdentity) break;
 
         const elements = [...state.pending].slice(0, 72);
@@ -187,30 +274,37 @@
         const batches = makeBatches(groups);
         try {
           for (const batch of batches) {
-            if (!state.auto || getPageIdentity(location.href) !== pageIdentity) break;
+            if (!isIncrementalActive() || getPageIdentity(location.href) !== pageIdentity) break;
 
-            const task = tasks.createTask({
-              surface: "auto",
-              pageUrl,
-              total: batch.reduce((sum, group) => sum + group.elements.length, 0)
-            });
+            const allowProvider = state.auto;
+            const task = allowProvider
+              ? tasks.createTask({
+                  surface: "auto",
+                  pageUrl,
+                  total: batch.reduce((sum, group) => sum + group.elements.length, 0)
+                })
+              : null;
+
             try {
               const result = await processGroupBatch(batch, {
-                cacheOnly: false,
+                cacheOnly: !allowProvider,
                 pageUrl,
-                auto: true,
+                auto: allowProvider,
                 task
               });
-              tasks.completeTask(task, {
-                done: task.total,
-                cacheHits: result.cacheHits,
-                apiTranslated: result.apiTranslated
-              });
+
+              if (task) {
+                tasks.completeTask(task, {
+                  done: task.total,
+                  cacheHits: result.cacheHits,
+                  apiTranslated: result.apiTranslated
+                });
+              }
             } catch (error) {
-              tasks.failTask(task, error);
+              if (task) tasks.failTask(task, error);
               throw error;
             } finally {
-              tasks.releaseTask(task);
+              if (task) tasks.releaseTask(task);
             }
           }
         } catch (error) {
@@ -224,26 +318,33 @@
       }
     } finally {
       state.autoDrainRunning = false;
-      if (state.auto && state.pending.size) scheduleAutoDrain(120);
+      if (isIncrementalActive() && state.pending.size) scheduleAutoDrain(120);
     }
   }
 
   function handleAutoError(error) {
     const now = Date.now();
     const message = error?.message || String(error);
-    const code = error?.code || "";
-    const longBackoff = ["CONFIG", "AUTH", "PERMISSION"].includes(code) || /API Key/i.test(message);
-    state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
 
-    if (now - state.lastAutoErrorAt > 5000) {
-      showToast(`自动翻译暂停：${message}`, "error");
-      state.lastAutoErrorAt = now;
+    if (state.auto) {
+      const code = error?.code || "";
+      const longBackoff = ["CONFIG", "AUTH", "PERMISSION"].includes(code) || /API Key/i.test(message);
+      state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
+
+      if (now - state.lastAutoErrorAt > 5000) {
+        showToast(`自动翻译暂停：${message}`, "error");
+        state.lastAutoErrorAt = now;
+      }
     }
-    if (state.auto && state.pending.size) scheduleAutoDrain(1000);
+
+    if (isIncrementalActive() && state.pending.size) scheduleAutoDrain(state.auto ? 1000 : 750);
   }
 
   app.modules.auto = {
+    maybeStartPersistentModes,
     maybeStartAutoMode,
+    enableCacheRestoreMode,
+    disableCacheRestoreMode,
     enableAutoMode,
     disableAutoMode,
     rescanAutoPage,
