@@ -1,8 +1,8 @@
-# TranslateFlow v0.7
+# TranslateFlow v0.8
 
 轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
-## v0.7 重点
+## v0.8 重点
 
 - DeepSeek Provider
 - OpenAI-compatible Provider
@@ -18,6 +18,12 @@
 - 全局 + 站点术语表：支持覆盖、启停、大小写规则，并纳入有效缓存身份
 - Technical / Academic / News / Natural 四种内置翻译模式
 - Popup 展示当前站点 / 模式 / Provider / Model，并支持临时切换或保存到本站
+- Shared Shadow DOM UI foundation：统一 tokens / primitives / toast，避免宿主页 CSS 污染扩展控件
+- Reading Appearance：Standard / Compact / Reading / Minimal 四种双语阅读外观
+- Quick Control：页内低干扰翻译、重试/取消、Preset、阅读外观、自动翻译与 Settings 入口
+- 三个 Chrome Commands：翻译/更新页面、显示/隐藏译文、切换 Quick Control
+- YouTube 双语字幕：TextTrack 优先 + DOM fallback、稳定化/批处理/缓存、双语/原文/关闭模式、大小与 Preset 控制
+- Settings IA：General / Appearance / YouTube / Sites / Glossary + Advanced Provider / Cache / Developer
 
 ## 架构
 
@@ -261,7 +267,7 @@ Effective Translation Config
 
 ## 翻译模式 / Preset
 
-v0.7 内置四种只描述“翻译风格”的模式：
+v0.8 内置四种只描述“翻译风格”的模式：
 
 - **Technical**：技术文档、API、工程内容，优先术语精确与标识符保真。
 - **Academic**：论文、研究、学术内容，保留限定语、逻辑关系和正式语体。
@@ -284,7 +290,7 @@ Prompt 解析优先级：
 有效 Glossary
 ```
 
-Popup 可以临时切换当前站点模式，也可以明确“保存到本站”。临时模式使用 `chrome.storage.session`，只保存在当前浏览器会话的内存中；浏览器重启、扩展重载/更新后自动清除。由于 `storage.session` 从 Chrome 102 起提供，v0.7 的最低 Chrome 版本调整为 102。
+Popup 可以临时切换当前站点模式，也可以明确“保存到本站”。临时模式使用 `chrome.storage.session`，只保存在当前浏览器会话的内存中；浏览器重启、扩展重载/更新后自动清除。由于 `storage.session` 从 Chrome 102 起提供，v0.8 的最低 Chrome 版本调整为 102。
 
 如果站点 Profile 已经填写自定义 Prompt，则该 Prompt 优先，Popup 会显示 **Custom Prompt**；选择 Preset 不会覆盖这个自定义 Prompt。
 
@@ -378,6 +384,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 实际运行中：
 
 - 自动翻译：用户按站点授权
+- Quick Control 持久显示：用户在 Popup 明确操作后按站点授权
 - OpenAI-compatible：用户按 API Origin 授权
 
 如果某个 Origin 同时是自动翻译站点和 API Provider 地址，关闭自动翻译时不会误撤销 Provider 仍需要的 Host Permission。
@@ -445,6 +452,6 @@ GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run va
 - OpenAI-compatible 当前基于 Chat Completions 接口，不是 Responses API。
 - 不同兼容服务对 JSON 输出能力差异较大，当前通过严格 Prompt + 容错 JSON 解析适配。
 - Provider 额外 Header 尚未开放配置；OpenRouter 等需要特殊 Header 的场景后续可扩展。
-- PDF、视频双语字幕尚未实现。
+- PDF、Side Panel、非 YouTube 视频站点的双语字幕尚未实现；v0.8 视频体验首发支持 YouTube。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
 - API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。

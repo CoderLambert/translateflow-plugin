@@ -173,3 +173,12 @@ Glossary ----------------------------+
 4. 项目默认 Prompt。
 
 Preset 不单独进入 cache fingerprint，最终解析 Prompt 才是缓存行为的一部分，因此恢复相同有效配置会恢复相同缓存版本。
+
+
+## v0.8 UI / access surfaces
+
+Extension-owned in-page controls use the shared Shadow DOM foundation under `src/content/ui/`. Page translations remain in the real page DOM. Quick Control reuses the page task lifecycle, while YouTube uses a separate SubtitleSource → subtitle pipeline → player-local renderer path.
+
+Chrome Commands are routed in `src/background/commands.js` and reuse existing Content messages. First-use invocation uses `activeTab` + `scripting`; it does not add a broad required Host Permission.
+
+Settings remains native HTML/CSS/JS and reuses the existing `chrome.storage.local` keys. The v0.8 IA exposes General / Appearance / YouTube / Sites / Glossary, with Provider / Cache / Developer under Advanced.

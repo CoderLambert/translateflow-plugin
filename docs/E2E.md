@@ -65,16 +65,22 @@ mock server 解析真实 Chat Completions request：
 
 因此缓存测试可以直接断言 Provider 调用次数，而不是根据 UI 时间推断是否命中缓存。
 
-## 当前 smoke flows
+## 当前 v0.8 smoke flows
 
-1. 手动正文翻译 + 双语 DOM。
-2. 富文本 link/code 安全语义保留。
-3. 清除 DOM 后 IndexedDB cache-only 恢复，Provider 不二次调用。
-4. 自动增量翻译只发送新增段落。
-5. Site Profile 有效 Provider/Model/Target/Preset。
-6. 划词翻译与第二次缓存命中。
-7. 401 可见错误 + Retry；429/500 自动重试恢复。
-8. Glossary + Preset 行为与缓存版本回切。
+Playwright suite 现在覆盖：
+
+1. 正文手动翻译、富文本安全语义、cache-only 恢复与 Provider 调用次数。
+2. 自动增量翻译、Appearance 切换、Site Profile / Preset / Glossary。
+3. 划词翻译、错误反馈、Retry、取消与 Quick Control 共存。
+4. Quick Control Shadow isolation、任务状态、Preset/Appearance、Escape/click-outside 与暗色可读性。
+5. Popup 针对当前活动网页的翻译、译文显隐、移除与 cache-only 恢复。
+6. Chrome Commands 首次注入、翻译、译文显隐、Quick Control toggle 与受保护页拒绝。
+7. Settings 分类导航、键盘焦点与 YouTube 默认设置 save → reload。
+8. SubtitleSource 的 TextTrack/YouTube DOM fallback、SPA 切换与 teardown。
+9. 字幕稳定化、批处理、缓存 identity 与 Provider 调用次数。
+10. YouTube controller → pipeline → renderer 双语显示、Preset/大小、cache reuse、失败 fallback 与 stale video rejection。
+
+真实 YouTube 的 live DOM、theater/fullscreen 和账号/地区差异不作为稳定 CI 依赖；这些项目记录在 `docs/RELEASE_V0.8.md` 的人工 smoke checklist。
 
 ## CI
 

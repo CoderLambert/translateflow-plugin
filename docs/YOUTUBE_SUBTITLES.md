@@ -1,6 +1,6 @@
-# YouTube Subtitle Source Spike
+# YouTube Subtitle Source and v0.8 Fallback Contract
 
-Issue #24 establishes the source boundary for the v0.8 YouTube subtitle pipeline. It deliberately stops before Provider translation, batching/cache orchestration, bilingual rendering, or player controls.
+Issue #24 establishes the source boundary for the v0.8 YouTube subtitle pipeline. The shipped #25/#26 layers now add stabilization/batching/cache plus the player-local bilingual renderer and controls while keeping this source boundary intact.
 
 ## Contract
 
@@ -100,7 +100,7 @@ The DOM fallback cannot reliably recover source language or whether the visible 
 
 The repository CI environment can deterministically verify MV3 isolated-world DOM extraction, MutationObserver behavior, SPA identity changes, player replacement, and teardown, but it cannot make live YouTube DOM a stable CI dependency. Live YouTube markup is remotely controlled, region/account dependent, and can change without a TranslateFlow commit.
 
-Accordingly, #24 treats live YouTube selectors as a documented fallback limitation rather than a stable contract. Before #26 ships, perform a manual smoke check on real YouTube for:
+Accordingly, live YouTube selectors remain a documented fallback limitation rather than a stable contract. For each v0.8 release candidate, perform a manual smoke check on real YouTube for:
 
 1. captions off -> no false cue stream;
 2. human subtitle track;
@@ -121,3 +121,13 @@ The stabilization/batching/cache pipeline should consume only normalized snapsho
 - keep Provider/cache work outside the source adapters.
 
 No IndexedDB schema, cache fingerprint, Provider path, manifest permission, or production UI changes are introduced by #24.
+
+
+## Shipped v0.8 integration
+
+The source feeds `src/content/subtitles/pipeline.js`, which owns stabilization, bounded batching, media-generation reset and task state. Background subtitle requests reuse the normal Effective Translation Config and IndexedDB cache layer. The player-local renderer exposes bilingual/original/off modes, translated subtitle size, and the effective translation preset while retaining the original subtitle as the failure fallback.
+
+See also:
+- `docs/SUBTITLE_PIPELINE.md`
+- `docs/UI_FOUNDATION.md`
+- `docs/RELEASE_V0.8.md`
