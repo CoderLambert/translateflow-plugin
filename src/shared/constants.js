@@ -35,7 +35,7 @@ export const CONTENT_MESSAGES = Object.freeze({
   QUICK_CONTROL_SHOW: "TF_QUICK_CONTROL_SHOW", QUICK_CONTROL_TOGGLE: "TF_QUICK_CONTROL_TOGGLE"
 });
 export const CONTENT_SCRIPT_FILES = Object.freeze([
-  "src/content/runtime.js", "src/content/ui/tokens.js", "src/content/ui/host.js", "src/content/ui/primitives.js", "src/content/ui/toast.js",
+  "src/content/runtime.js", "src/content/ui/tokens.js", "src/content/ui/quick-control-styles.js", "src/content/ui/host.js", "src/content/ui/primitives.js", "src/content/ui/toast.js",
   "src/content/appearance.js", "src/content/tasks.js", "src/content/structured.js", "src/content/dom.js", "src/content/batch.js",
   "src/content/processor.js", "src/content/auto.js", "src/content/subtitles/source.js", "src/content/subtitles/sources/text-track.js",
   "src/content/subtitles/sources/youtube.js", "src/content/subtitles/pipeline.js", "src/content/subtitles/renderer.js", "src/content/subtitles/controller.js",

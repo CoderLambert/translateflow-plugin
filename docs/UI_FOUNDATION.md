@@ -47,9 +47,10 @@ The host itself resets inherited styling with `all: initial`; internal styles ar
 The injection order is:
 
 1. content runtime;
-2. UI tokens / host / primitives / toast;
-3. task and translation modules;
-4. selection modules;
-5. `content.js` bootstrap.
+2. UI tokens and feature style modules;
+3. shared Shadow host / primitives / toast;
+4. task and translation modules;
+5. selection modules;
+6. `content.js` bootstrap.
 
 Tests in `tests/constants.test.mjs` enforce this dependency order.
