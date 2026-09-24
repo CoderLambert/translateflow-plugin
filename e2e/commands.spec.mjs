@@ -5,18 +5,12 @@ test.describe("Chrome Commands MV3 routing", () => {
     await harness.reset();
   });
 
-  test.afterEach(async ({ harness }) => {
-    for (const page of harness.context.pages()) {
-      if (page !== harness.driver && !page.isClosed()) await page.close();
-    }
-  });
-
   test("first-use translate injects the shipped bundle and the remaining commands toggle page state", async ({ harness }) => {
-    const page = await harness.open("/article");
+    const page = await harness.open("/commands");
 
     const translated = await routeCommand(harness, page, "translate-page");
     expect(translated?.ok).toBe(true);
-    await expect(page.locator(".abt-translation")).toHaveCount(3);
+    await expect(page.locator(".abt-translation")).toHaveCount(1);
     expect(harness.server.calls).toHaveLength(1);
 
     let hidden = await routeCommand(harness, page, "toggle-translations");
@@ -40,26 +34,25 @@ test.describe("Chrome Commands MV3 routing", () => {
     await expect(page.getByRole("button", { name: "TranslateFlow Quick Control" })).toHaveCount(0);
   });
 
-  test("protected pages are rejected before send or content injection", async ({ harness }) => {
-    const evidence = await harness.driver.evaluate(async ({ extensionId }) => {
+  test("production router rejects protected tabs before send or injection", async ({ harness }) => {
+    const result = await harness.driver.evaluate(async ({ extensionId }) => {
       const module = await import(`chrome-extension://${extensionId}/src/background/commands.js`);
       let sends = 0;
       let injections = 0;
       const route = module.createCommandRouter({
-        queryActiveTab: async () => ({ id: 9001, url: "chrome://extensions/" }),
-        sendContentMessage: async () => {
-          sends += 1;
-          return { ok: true };
-        },
-        injectContent: async () => {
-          injections += 1;
-        }
+        queryActiveTab: async () => ({ id: 99, url: "chrome://extensions/" }),
+        sendContentMessage: async () => { sends += 1; return { ok: true }; },
+        injectContent: async () => { injections += 1; }
       });
-      return { result: await route("translate-page"), sends, injections };
+      return {
+        response: await route(module.COMMANDS.TRANSLATE_PAGE),
+        sends,
+        injections
+      };
     }, { extensionId: harness.extensionId });
 
-    expect(evidence).toEqual({
-      result: { ok: false, unsupported: true },
+    expect(result).toEqual({
+      response: { ok: false, unsupported: true },
       sends: 0,
       injections: 0
     });
