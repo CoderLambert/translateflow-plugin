@@ -7,30 +7,53 @@
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
+  <div class="settings-shell">
+    <nav class="settings-nav" aria-label="设置分类">
+      <strong>TranslateFlow</strong>
+      <a href="#general">通用</a><a href="#appearance">外观</a><a href="#youtube">YouTube</a><a href="#sites">站点</a><a href="#glossary">术语表</a>
+      <span>高级</span><a href="#provider">Provider</a><a href="#cache">缓存</a><a href="#developer">开发者 / 关于</a>
+    </nav>
   <main>
     <h1>TranslateFlow</h1>
     <p class="lead">支持 DeepSeek 与 OpenAI-compatible Provider；翻译配置与术语表参与缓存版本计算，阅读外观独立控制双语显示。</p>
 
-    <section>
-      <h2>默认翻译配置</h2>
+    <section id="general" tabindex="-1">
+      <h2>通用</h2>
+      <p class="section-summary">设置默认翻译行为。Provider 凭据和缓存维护已移到高级区域。</p>
 
       <label for="defaultProvider">默认 Provider</label>
-      <select id="defaultProvider">
-        <option value="deepseek">DeepSeek</option>
-        <option value="openai-compatible">OpenAI-compatible</option>
-      </select>
-
-      <label for="prompt">默认翻译 Prompt</label>
-      <textarea id="prompt" rows="10"></textarea>
-      <p class="hint">站点级 Prompt 留空时继承这里。Prompt 变化会形成新的缓存版本。</p>
+      <select id="defaultProvider"><option value="deepseek">DeepSeek</option><option value="openai-compatible">OpenAI-compatible</option></select>
 
       <label for="targetLanguage">默认目标语言</label>
       <input id="targetLanguage" type="text" placeholder="Simplified Chinese" />
-      <p class="hint">站点级目标语言留空时继承这里。目标语言变化会形成新的缓存版本。</p>
+
+      <label for="prompt">默认翻译 Prompt</label>
+      <textarea id="prompt" rows="6"></textarea>
+      <p class="hint">站点级设置可覆盖这些默认值；翻译配置变化会形成新的缓存版本。</p>
     </section>
 
-    <section>
-      <h2>阅读外观</h2>
+    <section id="appearance" tabindex="-1">
+      <h2>外观</h2>
+      <label for="defaultAppearance">默认阅读外观</label>
+      <select id="defaultAppearance"></select>
+      <p class="hint">Standard / Compact / Reading / Minimal 只改变译文排版与视觉层级，不改变翻译缓存 identity。</p>
+    </section>
+
+    <section id="youtube" tabindex="-1">
+      <h2>YouTube</h2>
+      <p class="section-summary">TranslateFlow 双语字幕在 YouTube 播放器中使用这些默认显示设置；播放器内仍可临时调整 Preset。</p>
+      <label for="youtubeSubtitleMode">默认字幕模式</label>
+      <select id="youtubeSubtitleMode"><option value="bilingual">双语</option><option value="original">仅原字幕</option><option value="off">关闭 TranslateFlow 字幕</option></select>
+      <label for="youtubeSubtitleSize">译文字幕大小</label>
+      <select id="youtubeSubtitleSize"><option value="small">小</option><option value="standard">标准</option><option value="large">大</option></select>
+      <p class="hint">字幕翻译继续复用当前站点 Profile / Preset / Glossary / Provider 有效配置。</p>
+    </section>
+
+    <section id="provider" tabindex="-1">
+      <h2>Provider</h2>
+      <p class="section-summary">高级配置。API Key 仅保存在扩展本地存储中。</p>
+
+
 
       <label for="defaultAppearance">默认阅读外观</label>
       <select id="defaultAppearance"></select>
@@ -81,8 +104,8 @@
       <p class="hint">首次使用某个 API Origin 时，Chrome 会单独询问访问权限。</p>
     </section>
 
-    <section>
-      <h2>站点级覆盖</h2>
+    <section id="sites" tabindex="-1">
+      <h2>站点</h2>
       <p class="hint">用于 GitHub、文档站、新闻站等不同场景。未填写的字段继承默认配置。</p>
 
       <div class="profile-grid">
@@ -128,8 +151,8 @@
     </section>
 
 
-    <section>
-      <h2>翻译术语表</h2>
+    <section id="glossary" tabindex="-1">
+      <h2>术语表</h2>
       <p class="hint">全局术语应用于所有网页；站点术语仅应用于指定 Origin，并可覆盖同名全局术语。</p>
 
       <div class="profile-grid">
@@ -177,7 +200,7 @@
       <p class="hint">修改、停用或删除有效术语会生成新的相关缓存版本；空术语表保持旧缓存兼容。</p>
     </section>
 
-    <section>
+    <section id="cache" class="advanced destructive-zone" tabindex="-1">
       <h2>缓存</h2>
 
       <label for="cacheMaxMB">缓存软上限（MB）</label>
@@ -192,7 +215,7 @@
       </div>
     </section>
 
-    <section>
+    <section id="auto-sites" tabindex="-1">
       <h2>自动翻译站点</h2>
       <div id="autoSitesList" class="site-list">正在读取已授权站点…</div>
       <div class="actions">
@@ -201,12 +224,19 @@
       <p class="hint">关闭自动翻译时会撤销不再需要的站点权限；如果该 Origin 同时被用作 OpenAI-compatible API 地址，则会保留权限。</p>
     </section>
 
+    <section id="developer" class="advanced" tabindex="-1">
+      <h2>开发者 / 关于</h2>
+      <p>TranslateFlow v0.8 · 原生 HTML/CSS/JS，无运行时框架依赖。</p>
+      <p class="hint">键盘快捷键管理、Provider 调试与缓存维护均保留在本页对应区域。</p>
+    </section>
+
     <div class="sticky-actions">
       <button id="save" class="primary">保存全局设置</button>
       <button id="test">测试当前默认 Provider</button>
     </div>
     <div id="status" class="status"></div>
   </main>
+  </div>
   <script type="module" src="options.js"></script>
 </body>
 </html>
