@@ -203,14 +203,15 @@ async function refreshAutoStatus() {
     autoInfo.textContent = currentAutoEnabled
       ? `本站自动增量翻译：已开启（${site.origin}）`
       : "本站自动增量翻译：未开启";
-    autoBtn.textContent = currentAutoEnabled ? "关闭此站自动增量翻译" : "开启此站自动增量翻译";
-    autoBtn.classList.toggle("enabled", currentAutoEnabled);
+    autoBtn.setAttribute("aria-checked", currentAutoEnabled ? "true" : "false");
+    autoBtn.setAttribute("aria-label", currentAutoEnabled ? "关闭本站自动翻译" : "开启本站自动翻译");
     autoBtn.disabled = false;
   } catch {
     currentSite = null;
     currentAutoEnabled = false;
     autoInfo.textContent = "当前页面不支持站点自动翻译";
-    autoBtn.textContent = "开启此站自动增量翻译";
+    autoBtn.setAttribute("aria-checked", "false");
+    autoBtn.setAttribute("aria-label", "开启本站自动翻译");
     autoBtn.disabled = true;
   }
 }
@@ -447,7 +448,7 @@ function setBusy(busy, message) {
 
 function setStatus(message, isError = false) {
   status.textContent = message;
-  status.style.color = isError ? "#c62828" : "";
+  status.classList.toggle("error", Boolean(isError));
 }
 
 function formatTime(timestamp) {
