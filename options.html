@@ -11,13 +11,24 @@
 <body>
   <div class="settings-shell">
     <nav class="settings-nav" aria-label="设置分类">
-      <strong>TranslateFlow</strong>
-      <a href="#general">通用</a><a href="#appearance">外观</a><a href="#youtube">YouTube</a><a href="#sites">站点</a><a href="#glossary">术语表</a>
-      <span>高级</span><a href="#provider">Provider</a><a href="#cache">缓存</a><a href="#developer">开发者 / 关于</a>
+      <div class="nav-brand"><span class="nav-brand-mark" aria-hidden="true">译</span><strong>TranslateFlow</strong></div>
+      <a data-settings-nav href="#general" aria-current="page">通用</a>
+      <a data-settings-nav href="#appearance">外观</a>
+      <a data-settings-nav href="#youtube">YouTube</a>
+      <a data-settings-nav href="#sites">站点</a>
+      <a data-settings-nav href="#auto-sites">自动行为</a>
+      <a data-settings-nav href="#glossary">术语表</a>
+      <span>高级</span>
+      <a data-settings-nav href="#provider">Provider</a>
+      <a data-settings-nav href="#cache">缓存</a>
+      <a data-settings-nav href="#developer">开发者 / 关于</a>
     </nav>
   <main>
-    <h1>TranslateFlow</h1>
-    <p class="lead">支持 DeepSeek 与 OpenAI-compatible Provider；翻译配置与术语表参与缓存版本计算，阅读外观独立控制双语显示。</p>
+    <header class="settings-intro">
+      <span class="section-kicker">TRANSLATEFLOW SETTINGS</span>
+      <h1>设置</h1>
+      <p class="lead">管理翻译行为、阅读外观、Provider、站点规则与本地缓存。高级配置保持可见，但不会抢占日常设置。</p>
+    </header>
 
     <section id="general" tabindex="-1">
       <h2>通用</h2>

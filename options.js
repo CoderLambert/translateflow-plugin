@@ -476,17 +476,27 @@ function formatBytes(bytes) {
 
 function setStatus(message, isError = false) {
   status.textContent = message;
-  status.style.color = isError ? "#c62828" : "";
+  status.classList.toggle("error", Boolean(isError));
 }
 
-
-for (const link of document.querySelectorAll(".settings-nav a[href^='#']")) {
+const settingsNavLinks = [...document.querySelectorAll(".settings-nav a[href^='#']")];
+for (const link of settingsNavLinks) {
   link.addEventListener("click", (event) => {
     const target = document.querySelector(link.getAttribute("href"));
     if (!target) return;
     event.preventDefault();
     history.replaceState(null, "", link.getAttribute("href"));
+    setActiveSettingsNav(link.getAttribute("href"));
     target.scrollIntoView({ behavior: "smooth", block: "start" });
     target.focus({ preventScroll: true });
   });
+}
+window.addEventListener("hashchange", () => setActiveSettingsNav(location.hash));
+setActiveSettingsNav(location.hash || "#general");
+
+function setActiveSettingsNav(hash) {
+  for (const link of settingsNavLinks) {
+    if (link.getAttribute("href") === hash) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
 }
