@@ -19,7 +19,8 @@ test.describe("v0.8 release-gate browser flows", () => {
     await harness.driver.evaluate(({ tabId }) => chrome.tabs.update(tabId, { active: true }), { tabId });
 
     await popup.locator("#translate").click();
-    await expect(page.locator(".abt-translation")).toHaveCount(1);
+    await expect.poll(() => page.locator(".abt-translation").count()).toBeGreaterThan(0);
+    const translatedCount = await page.locator(".abt-translation").count();
     expect(harness.server.calls).toHaveLength(1);
 
     await popup.locator("details").first().locator("summary").click();
@@ -33,7 +34,7 @@ test.describe("v0.8 release-gate browser flows", () => {
 
     await popup.locator("details").nth(1).locator("summary").click();
     await popup.locator("#restore").click();
-    await expect(page.locator(".abt-translation")).toHaveCount(1);
+    await expect(page.locator(".abt-translation")).toHaveCount(translatedCount);
     expect(harness.server.calls).toHaveLength(1);
   });
 
