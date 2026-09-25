@@ -18,7 +18,11 @@ export async function runTranslationRequest({ requestId, segments, config }) {
       settled: false,
       promise: null
     };
-    entry.promise = executeTranslation({\n      segments,\n      config: requestConfig,\n      signal: controller.signal\n    })
+    entry.promise = executeTranslation({
+      segments,
+      config: requestConfig,
+      signal: controller.signal
+    })
       .finally(() => {
         entry.settled = true;
         inflightByKey.delete(key);
