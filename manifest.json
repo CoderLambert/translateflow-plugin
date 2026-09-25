@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TranslateFlow",
-  "version": "0.7.0",
-  "description": "AI web translation with providers, site profiles, presets, glossary, IndexedDB cache and incremental translation.",
+  "version": "0.8.0",
+  "description": "Calm bilingual web translation with local/cloud providers, cache restore, Quick Control and YouTube subtitles.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["https://api.deepseek.com/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],

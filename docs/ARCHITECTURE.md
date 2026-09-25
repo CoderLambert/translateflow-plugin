@@ -196,3 +196,12 @@ Glossary ----------------------------+
 4. 项目默认 Prompt。
 
 Preset 不单独进入 cache fingerprint，最终解析 Prompt 才是缓存行为的一部分，因此恢复相同有效配置会恢复相同缓存版本。
+
+
+## v0.8 UI / access surfaces
+
+Extension-owned controls share the sage/beige design system and Shadow DOM foundation under `src/content/ui/`. Page translations remain in the real page DOM. Quick Control reuses the page task lifecycle, while YouTube uses the separate SubtitleSource → subtitle pipeline → player-local renderer path.
+
+Chrome Commands are routed through Background and reuse existing Content messages. First-use invocation uses `activeTab` + `scripting`; it does not add a broad required Host Permission.
+
+Settings remains native HTML/CSS/JS and reuses existing storage contracts. Automatic cache restore is an explicit per-site mode: cache hits restore from IndexedDB and cache misses do not fall through to Provider translation.

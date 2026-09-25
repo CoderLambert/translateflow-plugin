@@ -1,8 +1,8 @@
-# TranslateFlow v0.7
+# TranslateFlow v0.8
 
 轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
-## v0.7 重点
+## v0.8 重点
 
 - DeepSeek Provider
 - OpenAI-compatible Provider
@@ -18,6 +18,16 @@
 - 全局 + 站点术语表：支持覆盖、启停、大小写规则，并纳入有效缓存身份
 - Technical / Academic / News / Natural 四种内置翻译模式
 - Popup 展示当前站点 / 模式 / Provider / Model，并支持临时切换或保存到本站
+
+## v0.8 体验更新
+
+- **Calm UI**：Popup、Quick Control、Settings 与状态反馈统一使用柔和鼠尾草绿 / 暖米色设计系统。
+- **Reading Appearance**：Standard / Compact / Reading / Minimal 四种双语阅读外观。
+- **Quick Control**：低干扰页内翻译、任务状态、重试/取消、Preset、阅读外观、自动翻译与 Settings 入口。
+- **Persistent cache restore**：可按站点自动恢复 IndexedDB 已有译文；cache miss 不触发 Provider。
+- **Chrome Commands**：翻译/更新页面、显示/隐藏译文、切换 Quick Control。
+- **YouTube subtitles**：MAIN-world player-owned timedtext 主路径，TextTrack 与 rendered DOM 作为 fallback；支持双语/原文/off、ASR、人类字幕、SPA 切换与缓存复用。
+- **Settings IA**：General / Appearance / YouTube / Sites / Automatic behavior / Glossary + Advanced Provider / Cache / Developer。
 
 ## 架构
 
@@ -261,7 +271,7 @@ Effective Translation Config
 
 ## 翻译模式 / Preset
 
-v0.7 内置四种只描述“翻译风格”的模式：
+v0.8 内置四种只描述“翻译风格”的模式：
 
 - **Technical**：技术文档、API、工程内容，优先术语精确与标识符保真。
 - **Academic**：论文、研究、学术内容，保留限定语、逻辑关系和正式语体。
@@ -284,7 +294,7 @@ Prompt 解析优先级：
 有效 Glossary
 ```
 
-Popup 可以临时切换当前站点模式，也可以明确“保存到本站”。临时模式使用 `chrome.storage.session`，只保存在当前浏览器会话的内存中；浏览器重启、扩展重载/更新后自动清除。由于 `storage.session` 从 Chrome 102 起提供，v0.7 的最低 Chrome 版本调整为 102。
+Popup 可以临时切换当前站点模式，也可以明确“保存到本站”。临时模式使用 `chrome.storage.session`，只保存在当前浏览器会话的内存中；浏览器重启、扩展重载/更新后自动清除。由于 `storage.session` 从 Chrome 102 起提供，v0.8 的最低 Chrome 版本调整为 102。
 
 如果站点 Profile 已经填写自定义 Prompt，则该 Prompt 优先，Popup 会显示 **Custom Prompt**；选择 Preset 不会覆盖这个自定义 Prompt。
 
@@ -445,6 +455,6 @@ GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run va
 - OpenAI-compatible 当前基于 Chat Completions 接口，不是 Responses API。
 - 不同兼容服务对 JSON 输出能力差异较大，当前通过严格 Prompt + 容错 JSON 解析适配。
 - Provider 额外 Header 尚未开放配置；OpenRouter 等需要特殊 Header 的场景后续可扩展。
-- PDF、视频双语字幕尚未实现。
+- PDF、Side Panel、非 YouTube 视频站点的双语字幕尚未实现；v0.8 视频体验首发支持 YouTube。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
 - API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
