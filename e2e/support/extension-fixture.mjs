@@ -22,6 +22,8 @@ const CONTENT_SCRIPTS = [
   "src/content/auto.js",
   "src/content/subtitles/source.js",
   "src/content/subtitles/sources/text-track.js",
+  "src/content/subtitles/youtube-bridge-protocol.js",
+  "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/sources/youtube.js",
   "src/content/subtitles/pipeline.js",
   "src/content/subtitles/renderer.js",
@@ -34,6 +36,11 @@ const CONTENT_SCRIPTS = [
   "content.js"
 ];
 const CONTENT_STYLES = ["content.css"];
+const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
+  "src/content/subtitles/youtube-bridge-protocol.js",
+  "src/content/subtitles/youtube-timedtext.js",
+  "src/content/subtitles/youtube-main-bridge.js"
+];
 
 export const test = base.extend({
   harness: [async ({}, use) => {
@@ -165,6 +172,14 @@ export const test = base.extend({
           scripts: CONTENT_SCRIPTS,
           styles: CONTENT_STYLES
         });
+        return tabId;
+      },
+
+      async installYouTubeMainBridge(page) {
+        const tabId = await this.tabId(page);
+        await driver.evaluate(async ({ tabId, files }) => {
+          await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", files });
+        }, { tabId, files: YOUTUBE_MAIN_BRIDGE_SCRIPTS });
         return tabId;
       },
 

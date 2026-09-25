@@ -1,6 +1,6 @@
-# YouTube Subtitle Source Spike
+# YouTube Bilingual Subtitle Source
 
-Issue #24 establishes the source boundary for the v0.8 YouTube subtitle pipeline. It deliberately stops before Provider translation, batching/cache orchestration, bilingual rendering, or player controls.
+Issue #24 establishes the source boundary for the v0.8 YouTube subtitle pipeline. Issue #26 adds the current live-YouTube acquisition path without changing Provider translation, batching/cache orchestration, bilingual rendering, or player controls.
 
 ## Contract
 
@@ -9,9 +9,13 @@ Content-side source modules live under:
 ```text
 src/content/subtitles/
 ├── source.js
+├── youtube-bridge-protocol.js
+├── youtube-timedtext.js
+├── youtube-main-bridge.js       # MAIN world, injected by Background only
 └── sources/
     ├── text-track.js
     └── youtube.js
+src/background/youtube-bridge.js # validates sender/tab and installs MAIN files
 ```
 
 A source emits normalized **cue snapshots**:
@@ -19,7 +23,7 @@ A source emits normalized **cue snapshots**:
 ```js
 {
   type: "cues",
-  source: "text-track" | "youtube-dom",
+  source: "youtube-timedtext" | "text-track" | "youtube-dom",
   reason: "cuechange" | "spa-navigation" | "dom-mutation" | "...",
   mediaId: "youtube:<video-id>" | "<media-url>",
   mediaTime: 12.34 | null,
@@ -47,7 +51,24 @@ A source emits normalized **cue snapshots**:
 
 ## Source selection
 
-### 1. Standards-first TextTrack
+### 1. MAIN-world player/timedtext bridge
+
+The primary live-YouTube path runs in the page MAIN world because YouTube's player metadata and page fetch/XHR response objects are available there. The bridge:
+
+- resolves the current player, video id, selected track and `getAudioTrack().captionTracks` metadata;
+- observes page `fetch` and XHR calls whose URL path matches `/api/timedtext`; it reads the response body, but does not establish cryptographically that a matching request came from YouTube's player;
+- parses only `response.clone()` / completed response data and returns YouTube's original request/response unchanged;
+- uses Resource Timing only to notice matching requests and refresh player metadata; it never reads cue bodies from Resource Timing or refetches a caption URL;
+- binds every response to `videoId + generation` and rejects late responses after SPA/player changes;
+- after a one-second wait without a captured body, can call the YouTube player's caption module and select a track once for that video generation. Current YouTube Web subtitle requests may require a video-bound `pot`, so TranslateFlow passes only stable selection metadata (language plus ASR kind when applicable) to `setOption` and deliberately does not pass a captured/unsigned `baseUrl`; the YouTube player remains responsible for constructing the actual signed timedtext request. TranslateFlow does not author a timedtext fetch, manufacture a PO token, or nudge while subtitle mode is `off`.
+
+The Background validates the sender tab and YouTube video-page URL before installing the bridge with `chrome.scripting.executeScript({ world: "MAIN" })`. The MAIN/ISOLATED channel uses a versioned, schema-validated `window.postMessage` envelope, with a 2 MiB serialized-payload limit. This is not an authenticated channel: page scripts can observe and forge page messages, so the isolated source treats all envelopes as untrusted input. The bridge exposes no callable `chrome.*`, Provider, cache, storage, or extension network capability to page scripts.
+
+`TIMEDTEXT` currently includes normalized cues and track metadata plus a `requestUrl` string truncated to 2,048 characters. The URL may contain rotating signatures or PO-token query parameters. It is not copied into normalized snapshots, subtitle requests, cache identity, or Provider input; the parser's stable track identity ignores signed URL parameters. Do not log or persist the raw request URL.
+
+`youtube-timedtext.js` is pure and supports JSON3, XML and srv3. Track identity uses stable language/kind/vss-id fields and ignores rotating signed URL / PO-token parameters.
+
+### 2. Standards-first TextTrack fallback
 
 `HTMLMediaElement.textTracks` is the preferred source. The adapter:
 
@@ -64,29 +85,33 @@ Reference: MDN documents `HTMLMediaElement.textTracks` as a live `TextTrackList`
 - https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/textTracks
 - https://developer.mozilla.org/en-US/docs/Web/API/TextTrackList
 
-### 2. YouTube DOM fallback
+### 3. YouTube DOM fallback
 
-YouTube frequently renders captions in its own player DOM rather than exposing a usable active `TextTrack`. Public 2025–2026 browser observations and scripts still reference the player caption container / segment structure, including `.ytp-caption-window-container` and `.ytp-caption-segment`.
+The arbitration order is: a successfully parsed current-generation MAIN timedtext body, then non-empty active cues from an enabled TextTrack, then rendered YouTube caption DOM. Once a timedtext body is accepted it remains the selected source even when no cue is active at the current media time; in that case the emitted snapshot has no active cues instead of switching to a lower-priority source. TextTrack tracks are limited to `captions` / `subtitles` in `hidden` or `showing` mode, with preferred-language match first, then `showing`, then track-list order. Disabled tracks are not enabled. If TextTrack has no active cues, the DOM is used.
 
-The adapter therefore keeps these heuristics local to `sources/youtube.js`:
+YouTube's rendered caption DOM remains the final compatibility fallback. The adapter keeps these heuristics local to `sources/youtube.js`:
 
 - player root: `#movie_player` / `.html5-video-player`;
 - video: `video.html5-main-video` with generic `video` fallback;
 - caption container: `#ytp-caption-window-container` / `.ytp-caption-window-container`;
-- caption text: `.ytp-caption-segment` descendants.
+- caption text: `.ytp-caption-segment`, current visual-line and captions-text descendants.
 
-These are **private YouTube implementation details**, not a stable API. A selector change must be fixed only in the YouTube adapter; #25/#26 must not depend on them.
+These are **private YouTube implementation details**, not the primary acquisition API. A selector change must be fixed only in the YouTube adapter; #25/#26 must not depend on them for network acquisition.
+
+When a source is active and mode is not `off`, the adapter hides the caption container's native visual layer while TranslateFlow renders its cue layer. The change is limited to CSS visibility and is restored on off/stop/teardown; it is never used to acquire cues.
+
+For a captured timedtext track, the isolated source stores the complete normalized track but emits only cues active at `video.currentTime`. It updates on `timeupdate`, seeking, play/pause and rate changes, with one timer for the next cue boundary; it never renders the whole transcript.
 
 ## SPA and teardown behavior
 
-YouTube changes videos without a full document reload. The adapter therefore:
+YouTube changes videos without a full document reload. The source and bridge therefore:
 
 - listens to `yt-navigate-finish` and `yt-page-data-updated`;
 - listens to browser `popstate` as a generic route-change signal;
 - re-resolves the player/video on each refresh;
 - tears down the previous TextTrack listeners when the `<video>` element is replaced;
-- rebinds the MutationObserver when the player root is replaced;
-- disconnects all listeners/observers on `stop()`.
+- rebinds its player-root MutationObserver when a refresh detects a new root;
+- removes its fetch/XHR wrappers and disconnects listeners/observers when the bridge receives `STOP`.
 
 YouTube video identity is derived from `?v=`, `/shorts/<id>`, `/embed/<id>`, `/live/<id>`, or `youtu.be/<id>`. If no YouTube id is available, the current media URL is used as a fallback identity.
 
@@ -94,20 +119,31 @@ YouTube video identity is derived from `?v=`, `/shorts/<id>`, `/embed/<id>`, `/l
 
 Standard `TextTrack` gives us `language`, `label`, `kind`, `id`, and `mode`. The source normalizer marks `autoGenerated: true` only when the track id/label contains an explicit auto/ASR hint; otherwise the value is `null`, not `false`.
 
-The DOM fallback cannot reliably recover source language or whether the visible caption is auto-generated from the rendered text alone. It therefore reports empty language and unknown auto-generation metadata. Downstream code must not invent these values.
+The MAIN bridge reports stable player track metadata, including `autoGenerated: true` for ASR/auto-generated tracks when YouTube exposes that hint. The DOM fallback cannot reliably recover source language or whether the visible caption is auto-generated from rendered text alone. It therefore reports empty language and unknown auto-generation metadata. Downstream code must not invent these values.
 
-## Current limitation / blocker statement
+## Verification
 
-The repository CI environment can deterministically verify MV3 isolated-world DOM extraction, MutationObserver behavior, SPA identity changes, player replacement, and teardown, but it cannot make live YouTube DOM a stable CI dependency. Live YouTube markup is remotely controlled, region/account dependent, and can change without a TranslateFlow commit.
+The deterministic unit tests cover JSON3/XML/srv3 parsing, envelope validation and size limits, YouTube-tab installation, fetch/XHR wrapper preservation and teardown, nudge behavior, stale-video rejection, active-cue scheduling, source fallback ordering and SPA refresh. The Playwright cases run the real extension against local fixture pages and mock responses; they do not connect to live YouTube.
 
-Accordingly, #24 treats live YouTube selectors as a documented fallback limitation rather than a stable contract. Before #26 ships, perform a manual smoke check on real YouTube for:
+Run the repository checks and focused YouTube browser cases with:
 
-1. captions off -> no false cue stream;
-2. human subtitle track;
-3. auto-generated subtitle track;
-4. language switch;
-5. watch-page SPA navigation;
-6. theater/fullscreen player replacement or relocation.
+```bash
+npm run validate
+npm run test:e2e -- e2e/subtitles.spec.mjs
+```
+
+GitHub Actions runs `npm run validate` for PRs and main pushes. The separate Chromium E2E workflow runs `npm run test:e2e` when runtime, E2E, or related configuration files change. Since fixture tests cannot cover YouTube's live player, manually smoke-check the candidate SHA on real YouTube before release; results can vary by account, region and player rollout.
+
+Before #26 ships, perform a manual smoke check on real YouTube for:
+
+1. human subtitle track and original/bilingual render;
+2. auto-generated/ASR subtitle track;
+3. language/track switch;
+4. captions off -> native behavior restored and no nudge;
+5. watch-page SPA A -> B with no stale cue/translation;
+6. theater/fullscreen player replacement or relocation;
+7. Provider failure keeps the original cue visible;
+8. repeat/cache path makes no unnecessary Provider request.
 
 ## Contract for #25
 

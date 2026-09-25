@@ -32,10 +32,11 @@ import {
   runTranslationRequest
 } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
+import { installYouTubeMainBridge } from "./youtube-bridge.js";
 
 export function registerMessageRouter() {
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    handleBackgroundMessage(message)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    handleBackgroundMessage(message, sender)
       .then((result) => sendResponse({ ok: true, ...result }))
       .catch((error) => sendResponse({
         ok: false,
@@ -46,7 +47,7 @@ export function registerMessageRouter() {
   });
 }
 
-export async function handleBackgroundMessage(message) {
+export async function handleBackgroundMessage(message, sender) {
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
       const config = await getEffectiveConfig(message.pageUrl);
@@ -127,6 +128,8 @@ export async function handleBackgroundMessage(message) {
       return { context: await getEffectiveContext(message.pageUrl) };
     case BACKGROUND_MESSAGES.SITE_PRESET_SAVE:
       return { context: await saveSitePreset(message.pageUrl, message.preset) };
+    case BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL:
+      return installYouTubeMainBridge(sender);
     default:
       throw new Error("未知扩展消息。");
   }
