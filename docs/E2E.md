@@ -8,6 +8,7 @@ TranslateFlow 的浏览器 E2E 使用 Playwright 驱动真实 Chromium，并以 
 
 - MV3 service worker 消息路由；
 - `chrome.scripting` 注入；
+- YouTube MAIN-world bridge installation, player-owned timedtext observation and isolated-world cue delivery；
 - Content Script 隔离世界和 DOM 渲染；
 - IndexedDB 缓存；
 - MutationObserver / IntersectionObserver 自动增量翻译；
@@ -75,6 +76,7 @@ mock server 解析真实 Chat Completions request：
 6. 划词翻译与第二次缓存命中。
 7. 401 可见错误 + Retry；429/500 自动重试恢复。
 8. Glossary + Preset 行为与缓存版本回切。
+9. YouTube late injection performs one player nudge, active timedtext cues switch at media boundaries, native caption suppression restores on teardown, and stale generation data is rejected.
 
 ## Test isolation requirements
 
