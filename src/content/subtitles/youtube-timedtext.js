@@ -144,10 +144,32 @@
 
   function trackIdentity(track) { return normalizeTrackMetadata(track).id; }
 
+  function trackRequestUrl(track) {
+    return clean(track?.baseUrl ?? track?.url);
+  }
+
+  function hasPoToken(track) {
+    const rawUrl = trackRequestUrl(track);
+    if (!rawUrl) return false;
+    try {
+      const url = new URL(rawUrl, "https://www.youtube.com/");
+      return Boolean(clean(url.searchParams.get("pot")));
+    } catch {
+      return /(?:^|[?&])pot=[^&#]+/i.test(rawUrl);
+    }
+  }
+
   function selectNudgeTrack(selected, tracks = []) {
-    if (selected) return selected;
-    const candidates = Array.isArray(tracks) ? tracks : [];
-    const inferred = candidates[0] || null;
+    const candidates = Array.isArray(tracks) ? tracks.filter(Boolean) : [];
+    const selectedId = selected ? trackIdentity(selected) : "";
+    if (selected && hasPoToken(selected)) return selected;
+    if (selectedId) {
+      const signedEquivalent = candidates.find((track) => trackIdentity(track) === selectedId && hasPoToken(track));
+      if (signedEquivalent) return signedEquivalent;
+    }
+    const signedCandidates = candidates.filter(hasPoToken);
+    const inferred = signedCandidates[0] || null;
+    if (!inferred) return null;
     const language = clean(inferred?.languageCode ?? inferred?.language ?? inferred?.srclang).toLowerCase();
     if (!language) return inferred;
     const sameLanguage = candidates.filter((track) => (
@@ -169,6 +191,8 @@
     parseJson3,
     normalizeTrackMetadata,
     trackIdentity,
+    trackRequestUrl,
+    hasPoToken,
     selectNudgeTrack
   });
   globalThis[GLOBAL] = api;
