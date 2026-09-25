@@ -1,4 +1,4 @@
-import { translateBatch } from "./providers/index.js";
+import { executeTranslation } from "./translation-gateway.js";
 
 const inflightByKey = new Map();
 const requestsById = new Map();
@@ -18,7 +18,11 @@ export async function runTranslationRequest({ requestId, segments, config }) {
       settled: false,
       promise: null
     };
-    entry.promise = translateBatch(segments, requestConfig, { signal: controller.signal })
+    entry.promise = executeTranslation({
+      segments,
+      config: requestConfig,
+      signal: controller.signal
+    })
       .finally(() => {
         entry.settled = true;
         inflightByKey.delete(key);
