@@ -51,3 +51,5 @@ test("Provider and cache destructive controls remain visually distinct without h
   assert.match(css, /\.advanced[\s\S]*var\(--tf-green/);
   assert.match(css, /\.destructive-zone[\s\S]*var\(--tf-danger/);
 });
+
+// Exact-head CI marker for #50 redesign.
