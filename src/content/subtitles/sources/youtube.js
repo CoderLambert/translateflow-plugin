@@ -211,7 +211,8 @@
             if (!nodes.includes(node)) nodes.push(node);
           }
         }
-        const text = cleanCueText(nodes.map((node) => node?.textContent).filter(Boolean).join(" "));
+        const segmentText = cleanCueText(nodes.map((node) => node?.textContent).filter(Boolean).join(" "));
+        const text = segmentText || cleanCueText(container.textContent || "");
         if (text) return [{ id: "yt:dom:0", startTime: null, endTime: null, text }];
       }
       return [];
