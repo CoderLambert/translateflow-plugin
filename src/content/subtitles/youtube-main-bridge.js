@@ -64,6 +64,13 @@
   }
 
   function findPlayer() {
+    const pathname = String(page.location?.pathname || "");
+    if (/^\/shorts\//i.test(pathname)) {
+      return page.document?.querySelector?.("#shorts-player")
+        || page.document?.querySelector?.("ytd-reel-video-renderer[is-active] .html5-video-player")
+        || page.document?.querySelector?.(".html5-video-player")
+        || null;
+    }
     return page.document?.querySelector?.("#movie_player")
       || page.document?.querySelector?.(".html5-video-player")
       || null;
@@ -286,14 +293,30 @@
     if (!state.active || state.mode === "off" || state.nudged || state.captured) return false;
     state.nudged = true;
     const player = state.player || findPlayer();
-    const applyTrack = () => {
+    const startedAt = Date.now();
+
+    const applyTrackWhenReady = () => {
+      if (!state.active || state.mode === "off" || state.captured) return;
       resolveState("nudge");
       const track = selectedNudgeTrack();
-      if (track && typeof player?.setOption === "function") safeCall(player.setOption, player, "captions", "track", track);
+      if (track && typeof player?.setOption === "function") {
+        safeCall(player.setOption, player, "captions", "track", track);
+        return;
+      }
+      if (Date.now() - startedAt < 1200) {
+        clearTimeout(state.nudgeTimer);
+        state.nudgeTimer = setTimeout(applyTrackWhenReady, 200);
+      } else {
+        post("ERROR", {
+          code: "po-token-unavailable",
+          message: "YouTube caption track is not signed with a current subtitle PO token."
+        });
+      }
     };
+
     const loaded = safeCall(player?.loadModule, player, "captions");
-    if (loaded && typeof loaded.then === "function") loaded.then(applyTrack, applyTrack);
-    else applyTrack();
+    if (loaded && typeof loaded.then === "function") loaded.then(applyTrackWhenReady, applyTrackWhenReady);
+    else applyTrackWhenReady();
     return true;
   }
 
