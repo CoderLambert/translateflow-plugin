@@ -285,21 +285,14 @@
   function nudgeOnce() {
     if (!state.active || state.mode === "off" || state.nudged || state.captured) return false;
     state.nudged = true;
-    const player = state.player || findPlayer(), startedAt = Date.now();
-    const applyTrackWhenReady = () => {
-      if (!state.active || state.mode === "off" || state.captured) return;
+    const player = state.player || findPlayer();
+    const applyTrack = () => {
       resolveState("nudge");
-      const track = selectedNudgeTrack();
-      if (track && typeof player?.setOption === "function") return void safeCall(player.setOption, player, "captions", "track", track);
-      if (Date.now() - startedAt < 1200) {
-        clearTimeout(state.nudgeTimer);
-        state.nudgeTimer = setTimeout(applyTrackWhenReady, 200);
-        return;
-      }
-      post("ERROR", { code: "po-token-unavailable", message: "YouTube caption track is not signed with a current subtitle PO token." });
+      const selection = timedtext.nudgeTrackSelection(selectedNudgeTrack());
+      if (selection && typeof player?.setOption === "function") safeCall(player.setOption, player, "captions", "track", selection);
     };
     const loaded = safeCall(player?.loadModule, player, "captions");
-    if (loaded && typeof loaded.then === "function") loaded.then(applyTrackWhenReady, applyTrackWhenReady); else applyTrackWhenReady();
+    if (loaded && typeof loaded.then === "function") loaded.then(applyTrack, applyTrack); else applyTrack();
     return true;
   }
 
