@@ -26,7 +26,7 @@ export const BACKGROUND_MESSAGES = Object.freeze({
   AUTO_SITE_REGISTER: "AUTO_SITE_REGISTER", AUTO_SITE_UNREGISTER: "AUTO_SITE_UNREGISTER", QUICK_CONTROL_SITE_REGISTER: "QUICK_CONTROL_SITE_REGISTER",
   QUICK_CONTROL_SITE_UNREGISTER: "QUICK_CONTROL_SITE_UNREGISTER", QUICK_CONTROL_SITE_HIDE: "QUICK_CONTROL_SITE_HIDE", QUICK_CONTROL_SITE_SHOW: "QUICK_CONTROL_SITE_SHOW",
   SITE_APPEARANCE_SAVE: "SITE_APPEARANCE_SAVE", OPEN_OPTIONS: "OPEN_OPTIONS", EFFECTIVE_CONTEXT: "EFFECTIVE_CONTEXT",
-  TEMP_PRESET_SET: "TEMP_PRESET_SET", SITE_PRESET_SAVE: "SITE_PRESET_SAVE"
+  TEMP_PRESET_SET: "TEMP_PRESET_SET", SITE_PRESET_SAVE: "SITE_PRESET_SAVE", YOUTUBE_BRIDGE_INSTALL: "YOUTUBE_BRIDGE_INSTALL"
 });
 export const CONTENT_MESSAGES = Object.freeze({
   TRANSLATE_PAGE: "ABT_TRANSLATE_PAGE", RESTORE_CACHE: "ABT_RESTORE_CACHE", ENABLE_AUTO: "ABT_ENABLE_AUTO", DISABLE_AUTO: "ABT_DISABLE_AUTO",
@@ -38,6 +38,7 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/runtime.js", "src/content/ui/tokens.js", "src/content/ui/quick-control-styles.js", "src/content/ui/host.js", "src/content/ui/primitives.js", "src/content/ui/toast.js",
   "src/content/appearance.js", "src/content/tasks.js", "src/content/structured.js", "src/content/dom.js", "src/content/batch.js",
   "src/content/processor.js", "src/content/auto.js", "src/content/subtitles/source.js", "src/content/subtitles/sources/text-track.js",
+  "src/content/subtitles/youtube-bridge-protocol.js", "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/sources/youtube.js", "src/content/subtitles/pipeline.js", "src/content/subtitles/renderer.js", "src/content/subtitles/controller.js",
   "src/content/selection/selection.js", "src/content/selection/popover.js", "src/content/selection/controller.js",
   "src/content/quick-control-view.js", "src/content/quick-control.js", "content.js"

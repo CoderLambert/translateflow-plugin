@@ -4,6 +4,7 @@
 
   const SOURCE_KINDS = Object.freeze({
     TEXT_TRACK: "text-track",
+    YOUTUBE_TIMEDTEXT: "youtube-timedtext",
     YOUTUBE_DOM: "youtube-dom"
   });
 
