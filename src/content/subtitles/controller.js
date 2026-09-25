@@ -87,7 +87,8 @@
         await loadSettings();
         renderer.mount(findPlayer());
         pipeline = createPipeline();
-        source = sourceFactory({ onSnapshot: consumeSnapshot }); source.start();
+        source = sourceFactory({ onSnapshot: consumeSnapshot, subtitleMode: mode });
+        await source.start();
         return true;
       } catch (error) {
         started = false;
@@ -113,6 +114,7 @@
     async function setMode(next, { persist = true } = {}) {
       mode = renderer.setMode(next);
       if (persist) await chrome.storage.local.set({ youtubeSubtitleMode: mode });
+      source?.setMode?.(mode);
       if (mode === "off") renderer.setStatus(""); else source?.refresh("mode-change", true);
       return mode;
     }
