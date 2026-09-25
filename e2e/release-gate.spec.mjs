@@ -12,12 +12,11 @@ test.describe("v0.8 release-gate browser flows", () => {
   });
 
   test("Popup drives translate, visibility, removal and cache-only restore on the active page", async ({ harness }) => {
+    const popup = await harness.context.newPage();
+    await popup.goto(`chrome-extension://${harness.extensionId}/popup.html`);
     const page = await harness.open("/article");
     const tabId = await harness.tabId(page);
     await harness.driver.evaluate(({ tabId }) => chrome.tabs.update(tabId, { active: true }), { tabId });
-
-    const popup = await harness.context.newPage();
-    await popup.goto(`chrome-extension://${harness.extensionId}/popup.html`);
 
     await popup.locator("#translate").click();
     await expect(page.locator(".abt-translation")).toHaveCount(1);
