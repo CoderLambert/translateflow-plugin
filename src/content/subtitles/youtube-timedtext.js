@@ -144,32 +144,10 @@
 
   function trackIdentity(track) { return normalizeTrackMetadata(track).id; }
 
-  function trackRequestUrl(track) {
-    return clean(track?.baseUrl ?? track?.url);
-  }
-
-  function hasPoToken(track) {
-    const rawUrl = trackRequestUrl(track);
-    if (!rawUrl) return false;
-    try {
-      const url = new URL(rawUrl, "https://www.youtube.com/");
-      return Boolean(clean(url.searchParams.get("pot")));
-    } catch {
-      return /(?:^|[?&])pot=[^&#]+/i.test(rawUrl);
-    }
-  }
-
   function selectNudgeTrack(selected, tracks = []) {
-    const candidates = Array.isArray(tracks) ? tracks.filter(Boolean) : [];
-    const selectedId = selected ? trackIdentity(selected) : "";
-    if (selected && hasPoToken(selected)) return selected;
-    if (selectedId) {
-      const signedEquivalent = candidates.find((track) => trackIdentity(track) === selectedId && hasPoToken(track));
-      if (signedEquivalent) return signedEquivalent;
-    }
-    const signedCandidates = candidates.filter(hasPoToken);
-    const inferred = signedCandidates[0] || null;
-    if (!inferred) return null;
+    if (selected) return selected;
+    const candidates = Array.isArray(tracks) ? tracks : [];
+    const inferred = candidates[0] || null;
     const language = clean(inferred?.languageCode ?? inferred?.language ?? inferred?.srclang).toLowerCase();
     if (!language) return inferred;
     const sameLanguage = candidates.filter((track) => (
@@ -183,6 +161,15 @@
     return human || sameLanguage[0] || inferred;
   }
 
+  function nudgeTrackSelection(track) {
+    if (!track) return null;
+    const languageCode = clean(track.languageCode ?? track.language ?? track.srclang);
+    if (!languageCode) return null;
+    const selection = { languageCode };
+    if (clean(track.kind).toLowerCase() === "asr") selection.kind = "asr";
+    return selection;
+  }
+
   const api = Object.freeze({
     MAX_PAYLOAD_BYTES,
     clean,
@@ -191,9 +178,8 @@
     parseJson3,
     normalizeTrackMetadata,
     trackIdentity,
-    trackRequestUrl,
-    hasPoToken,
-    selectNudgeTrack
+    selectNudgeTrack,
+    nudgeTrackSelection
   });
   globalThis[GLOBAL] = api;
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
