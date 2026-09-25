@@ -97,14 +97,15 @@ export async function requestParsedTranslation({
   request,
   segments,
   providerLabel,
-  maxAttempts = DEFAULT_RETRY_POLICY.malformedMaxAttempts
+  maxAttempts = DEFAULT_RETRY_POLICY.malformedMaxAttempts,
+  parseResult = parseTranslationResult
 }) {
   let attempt = 0;
   while (true) {
     attempt += 1;
-    const data = await request();
     try {
-      return parseTranslationResult(data, segments, providerLabel);
+      const data = await request();
+      return parseResult(data, segments, providerLabel);
     } catch (error) {
       const normalized = normalizeProviderError(error, providerLabel);
       if (normalized.code !== "MALFORMED_RESPONSE" || attempt >= maxAttempts) throw normalized;
