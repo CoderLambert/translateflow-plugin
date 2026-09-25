@@ -207,12 +207,19 @@
     </section>
 
     <section id="auto-sites" tabindex="-1">
-      <h2>自动翻译站点</h2>
-      <div id="autoSitesList" class="site-list">正在读取已授权站点…</div>
+      <h2>站点自动行为</h2>
+      <p class="section-summary">持久站点权限按功能共享。自动恢复缓存只读取 IndexedDB；自动翻译才会在缓存缺失时调用 Provider。</p>
+
+      <h3>自动恢复缓存</h3>
+      <div id="cacheRestoreSitesList" class="site-list">正在读取自动缓存恢复站点…</div>
+
+      <h3>自动翻译</h3>
+      <div id="autoSitesList" class="site-list">正在读取自动翻译站点…</div>
+
       <div class="actions">
         <button id="refreshAutoSites">刷新站点列表</button>
       </div>
-      <p class="hint">关闭自动翻译时会撤销不再需要的站点权限；如果该 Origin 同时被用作 OpenAI-compatible API 地址，则会保留权限。</p>
+      <p class="hint">关闭某项功能只会在没有其他站点功能或 OpenAI-compatible endpoint 继续需要该 Origin 时释放权限。</p>
     </section>
 
     <section id="developer" class="advanced" tabindex="-1">

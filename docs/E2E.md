@@ -76,6 +76,16 @@ mock server 解析真实 Chat Completions request：
 7. 401 可见错误 + Retry；429/500 自动重试恢复。
 8. Glossary + Preset 行为与缓存版本回切。
 
+## Test isolation requirements
+
+The Playwright extension fixture uses a worker-scoped persistent Chromium profile, so tests must reset both extension storage and IndexedDB-backed translation cache between cases.
+
+`harness.reset()` therefore clears cache through the public `CACHE_CLEAR_ALL` background route before restoring baseline `chrome.storage.local` values. Clearing storage alone is insufficient because IndexedDB survives and can create order-dependent cache hits.
+
+Multiple test pages may also remain open at the same URL. URL-only tab lookup is ambiguous, so `harness.open()` stamps each page with a unique test token and `tabId(page)` resolves the exact Chrome tab by checking that token through `chrome.scripting.executeScript`.
+
+These fixture rules prevent false cache/provider assertions without changing production behavior.
+
 ## CI
 
 `.github/workflows/e2e.yml` 与快速的 `quality` workflow 分离。E2E workflow：

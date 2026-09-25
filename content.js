@@ -3,9 +3,10 @@
   if (!app?.modules.runtime || !app?.modules.appearance || !app?.modules.tasks || !app?.modules.dom || !app?.modules.processor || !app?.modules.auto || !app?.modules.selectionController || !app?.modules.quickControl || !app?.modules.subtitleController) throw new Error("TranslateFlow content modules were not loaded in the expected order.");
   if (app.loaded) return;
   app.loaded = true;
+
   const { constants, messages, state, getSiteScope, getPageIdentity, sendRuntimeMessage } = app.modules.runtime;
   const appearance = app.modules.appearance, tasks = app.modules.tasks, { clearTranslations } = app.modules.dom, { processPage } = app.modules.processor;
-  const { enableAutoMode, disableAutoMode, rescanAutoPage, maybeStartAutoMode, scheduleAutoDrain } = app.modules.auto;
+  const { enableAutoMode, disableAutoMode, enableCacheRestoreMode, disableCacheRestoreMode, rescanAutoPage, maybeStartPersistentModes, scheduleAutoDrain } = app.modules.auto;
   const { start: startSelectionTranslation } = app.modules.selectionController, quickControl = app.modules.quickControl, subtitleController = app.modules.subtitleController;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -22,7 +23,7 @@
       case messages.content.CLEAR_PAGE_CACHE: sendRuntimeMessage({ type: messages.background.CACHE_CLEAR_PAGE, pageUrl: location.href }).then(sendResponse).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.TOGGLE_TRANSLATIONS: state.hidden = !state.hidden; document.documentElement.classList.toggle("abt-hide-translations", state.hidden); sendResponse({ ok: true, hidden: state.hidden }); return false;
       case messages.content.CLEAR_TRANSLATIONS: clearTranslations(); sendResponse({ ok: true }); return false;
-      case messages.content.STATUS: sendResponse({ ok: true, running: state.manualRunning || state.autoDrainRunning, hidden: state.hidden, auto: state.auto, count: document.querySelectorAll(`.${constants.TRANSLATION_CLASS}`).length }); return false;
+      case messages.content.STATUS: sendResponse({ ok: true, running: state.manualRunning || state.autoDrainRunning, hidden: state.hidden, auto: state.auto, cacheRestore: state.cacheRestore, count: document.querySelectorAll(`.${constants.TRANSLATION_CLASS}`).length }); return false;
       default: return false;
     }
   });
@@ -32,13 +33,28 @@
     if (changes.appearance || changes.siteProfiles) appearance.refresh().catch(() => {});
     if (changes.youtubeSubtitleMode) subtitleController.setMode(changes.youtubeSubtitleMode.newValue, { persist: false }).catch(() => {});
     if (changes.youtubeSubtitleSize) subtitleController.setSize(changes.youtubeSubtitleSize.newValue, { persist: false }).catch(() => {});
+
+    const origin = getSiteScope(location.href);
+    if (changes.cacheRestoreSites) {
+      const enabled = Array.isArray(changes.cacheRestoreSites.newValue) && changes.cacheRestoreSites.newValue.includes(origin);
+      if (enabled && !state.cacheRestore) enableCacheRestoreMode({ announce: false, initialRestore: !state.auto }).catch(() => {});
+      if (!enabled && state.cacheRestore) disableCacheRestoreMode({ announce: false });
+    }
     if (changes.autoSites) {
-      const enabled = Array.isArray(changes.autoSites.newValue) && changes.autoSites.newValue.includes(getSiteScope(location.href));
-      if (enabled && !state.auto) enableAutoMode({ announce: false }).catch(() => {}); if (!enabled && state.auto) disableAutoMode({ announce: false });
+      const enabled = Array.isArray(changes.autoSites.newValue) && changes.autoSites.newValue.includes(origin);
+      if (enabled && !state.auto) enableAutoMode({ announce: false }).catch(() => {});
+      if (!enabled && state.auto) disableAutoMode({ announce: false });
     }
     if ((changes.apiKey || changes.openAICompatible) && state.auto) { state.autoBackoffUntil = 0; if (state.pending.size) scheduleAutoDrain(120); }
+
     const translationProfileChanged = changes.siteProfiles ? siteProfileAffectsTranslation(changes.siteProfiles) : false;
-    if (state.auto && (changes.provider || changes.model || changes.prompt || changes.targetLanguage || changes.openAICompatible || translationProfileChanged || changes.glossary || changes.siteGlossaries)) { state.autoBackoffUntil = 0; clearTranslations(); state.currentPageIdentity = getPageIdentity(location.href); rescanAutoPage(); }
+    const translationConfigChanged = Boolean(changes.provider || changes.model || changes.prompt || changes.targetLanguage || changes.openAICompatible || translationProfileChanged || changes.glossary || changes.siteGlossaries);
+    if ((state.auto || state.cacheRestore) && translationConfigChanged) {
+      state.autoBackoffUntil = 0;
+      clearTranslations();
+      state.currentPageIdentity = getPageIdentity(location.href);
+      rescanAutoPage();
+    }
   });
 
   function siteProfileAffectsTranslation(change) {
@@ -46,7 +62,29 @@
     return ["provider", "model", "prompt", "targetLanguage", "preset"].some((field) => String(before?.[field] ?? "") !== String(after?.[field] ?? ""));
   }
 
-  appearance.start(); quickControl.start(); startSelectionTranslation(); maybeStartAutoMode(); subtitleController.start().catch(() => {});
-  document.addEventListener("yt-navigate-finish", () => subtitleController.refreshRoute().catch(() => {}));
-  window.addEventListener("popstate", () => subtitleController.refreshRoute().catch(() => {}));
+  function refreshIncrementalRoute() {
+    if (!state.auto && !state.cacheRestore) return;
+    const nextIdentity = getPageIdentity(location.href);
+    if (nextIdentity === state.currentPageIdentity) return;
+    state.currentPageIdentity = nextIdentity;
+    state.pending.clear();
+    clearTranslations();
+    rescanAutoPage();
+  }
+
+  appearance.start();
+  quickControl.start();
+  startSelectionTranslation();
+  maybeStartPersistentModes();
+  subtitleController.start().catch(() => {});
+
+  document.addEventListener("yt-navigate-finish", () => {
+    refreshIncrementalRoute();
+    subtitleController.refreshRoute().catch(() => {});
+  });
+  window.addEventListener("popstate", () => {
+    refreshIncrementalRoute();
+    subtitleController.refreshRoute().catch(() => {});
+  });
+  window.addEventListener("hashchange", refreshIncrementalRoute);
 })();
