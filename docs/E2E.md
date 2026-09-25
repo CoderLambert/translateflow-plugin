@@ -66,17 +66,22 @@ mock server 解析真实 Chat Completions request：
 
 因此缓存测试可以直接断言 Provider 调用次数，而不是根据 UI 时间推断是否命中缓存。
 
-## 当前 smoke flows
+## 当前 v0.8 smoke flows
 
-1. 手动正文翻译 + 双语 DOM。
-2. 富文本 link/code 安全语义保留。
-3. 清除 DOM 后 IndexedDB cache-only 恢复，Provider 不二次调用。
-4. 自动增量翻译只发送新增段落。
-5. Site Profile 有效 Provider/Model/Target/Preset。
-6. 划词翻译与第二次缓存命中。
-7. 401 可见错误 + Retry；429/500 自动重试恢复。
-8. Glossary + Preset 行为与缓存版本回切。
-9. YouTube late injection performs one player nudge, active timedtext cues switch at media boundaries, native caption suppression restores on teardown, and stale generation data is rejected.
+Playwright suite covers:
+
+1. Manual/automatic/selection translation, structured inline safety and Provider call-count cache assertions.
+2. Persistent cache restore, cache-miss Provider isolation and Quick-Control-only non-restore behavior.
+3. Reading Appearance, Site Profile / Preset / Glossary and translation task retry/cancel.
+4. Popup active-page translate/show-hide/remove/cache restore and the redesigned 360px layout.
+5. Quick Control Shadow isolation, task state, Escape/click-outside, dark mode and reduced motion.
+6. Chrome Commands first-use injection, translate, visibility, Quick Control toggle and protected-page rejection.
+7. Settings navigation, responsive layout, focus behavior and save/reload persistence.
+8. YouTube MAIN-world bridge installation, player-owned timedtext observation, human/ASR metadata, cue timing, track changes and A→B stale-response rejection.
+9. YouTube TextTrack/DOM fallback ordering, native-caption restoration and reinjection idempotence.
+10. Subtitle stabilization/batching/cache, bilingual renderer, preset/size, Provider failure fallback and stale Provider-result rejection.
+
+Real public YouTube and OS/browser chrome are not stable CI dependencies; live evidence is tracked separately in `docs/RELEASE_V0.8.md`.
 
 ## Test isolation requirements
 

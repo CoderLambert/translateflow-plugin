@@ -70,7 +70,7 @@ The Background validates the sender tab and YouTube video-page URL before instal
 
 ### 2. Standards-first TextTrack fallback
 
-`HTMLMediaElement.textTracks` is the preferred source. The adapter:
+`HTMLMediaElement.textTracks` is the preferred standards-based fallback when the current-generation MAIN timedtext path is unavailable. The adapter:
 
 - considers only `captions` / `subtitles` tracks;
 - consumes tracks already in `hidden` or `showing` mode;
@@ -134,7 +134,7 @@ npm run test:e2e -- e2e/subtitles.spec.mjs
 
 GitHub Actions runs `npm run validate` for PRs and main pushes. The separate Chromium E2E workflow runs `npm run test:e2e` when runtime, E2E, or related configuration files change. Since fixture tests cannot cover YouTube's live player, manually smoke-check the candidate SHA on real YouTube before release; results can vary by account, region and player rollout.
 
-Before #26 ships, perform a manual smoke check on real YouTube for:
+Before each v0.8 release candidate ships, perform a manual smoke check on real YouTube for:
 
 1. human subtitle track and original/bilingual render;
 2. auto-generated/ASR subtitle track;
