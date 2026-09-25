@@ -38,3 +38,5 @@ test("migrated UI surfaces do not restore the legacy saturated blue accent", () 
   const combined = [popupCss, optionsCss, contentTokens, quickStyles].join("\n");
   assert.doesNotMatch(combined, /#1769aa|#2878d0|#58a6ff|#7ab8ff/i);
 });
+
+// Exact-head certification marker.
