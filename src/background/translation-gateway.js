@@ -2,7 +2,7 @@ import { translateBatch } from "./providers/index.js";
 
 const CAPABILITIES = Object.freeze({
   completionMode: "final",
-  streaming: false,
+  streaming: true,
   partialResults: false
 });
 
@@ -26,7 +26,13 @@ export async function executeTranslation({
   });
 
   try {
-    const translations = await translateBatch(input, config, { signal });
+    const translations = await translateBatch(input, config, {
+      signal,
+      onProgress: (event) => emitProgress(onProgress, {
+        ...event,
+        completionMode: CAPABILITIES.completionMode
+      })
+    });
     emitProgress(onProgress, {
       type: "completed",
       completionMode: CAPABILITIES.completionMode,
