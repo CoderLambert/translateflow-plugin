@@ -184,10 +184,8 @@ test("late MAIN bridge waits for a pot-bearing player track before the single nu
     };
   });
 
-  await harness.inject(page);
-  const tabId = await harness.tabId(page);
-  const installed = await harness.runtimeForTab(tabId, { type: "YOUTUBE_BRIDGE_INSTALL" });
-  expect(installed.ok).toBe(true);
+  await harness.installYouTubeMainBridge(page);
+  const tabId = await harness.inject(page);
 
   await page.evaluate(() => {
     const protocol = window.__TRANSLATE_FLOW_YOUTUBE_BRIDGE_PROTOCOL__;
@@ -216,7 +214,13 @@ test("late MAIN bridge injection nudges YouTube once, while off mode never nudge
     video.className = "html5-main-video";
     video.currentTime = 0;
     video.textTracks = [];
-    const track = { languageCode: "en", kind: "captions", vssId: "en", name: { simpleText: "English" } };
+    const track = {
+      languageCode: "en",
+      kind: "captions",
+      vssId: "en",
+      name: { simpleText: "English" },
+      baseUrl: "https://www.youtube.com/api/timedtext?v=e2e-late-bridge&lang=en&pot=e2e-token"
+    };
     player.getVideoData = () => ({ video_id: "e2e-late-bridge" });
     player.getOption = () => track;
     player.getAudioTrack = () => ({ captionTracks: [track] });
@@ -330,14 +334,14 @@ test("MAIN bridge preserves selected ASR metadata before inferred human fallback
       kind: "captions",
       vssId: "en-human",
       name: { simpleText: "English" },
-      baseUrl: "https://www.youtube.com/api/timedtext?track=human"
+      baseUrl: "https://www.youtube.com/api/timedtext?track=human&pot=human-token"
     };
     const asr = {
       languageCode: "en",
       kind: "asr",
       vssId: "a.en",
       name: { simpleText: "English (auto-generated)" },
-      baseUrl: "https://www.youtube.com/api/timedtext?track=asr"
+      baseUrl: "https://www.youtube.com/api/timedtext?track=asr&pot=asr-token"
     };
 
     window.__tfTracks = { human, asr };
