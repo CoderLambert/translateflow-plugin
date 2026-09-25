@@ -150,6 +150,62 @@ test("MAIN-world player-owned timedtext becomes active cues and native caption s
   expect(await page.locator("#ytp-caption-window-container").evaluate((node) => node.style.visibility)).toBe("visible");
 });
 
+test("late MAIN bridge waits for a pot-bearing player track before the single nudge", async ({ harness }) => {
+  const page = await harness.open("/youtube?video=bridge-pot-ready");
+  await page.evaluate(() => {
+    const player = document.createElement("div");
+    player.id = "movie_player";
+    const video = document.createElement("video");
+    video.className = "html5-main-video";
+    Object.defineProperty(video, "currentTime", { value: 0, writable: true });
+    player.appendChild(video);
+    document.body.appendChild(player);
+
+    const unsigned = {
+      languageCode: "en",
+      kind: "captions",
+      vssId: ".en",
+      name: { simpleText: "English" },
+      baseUrl: "https://www.youtube.com/api/timedtext?v=bridge-pot-ready&lang=en"
+    };
+    const signed = { ...unsigned, baseUrl: unsigned.baseUrl + "&pot=fresh-token" };
+    window.__tfPotTrack = unsigned;
+    window.__tfPotSetCount = 0;
+    player.getVideoData = () => ({ video_id: "bridge-pot-ready" });
+    player.getOption = () => unsigned;
+    player.getAudioTrack = () => ({ captionTracks: [window.__tfPotTrack] });
+    player.loadModule = () => {
+      setTimeout(() => { window.__tfPotTrack = signed; }, 120);
+      return Promise.resolve();
+    };
+    player.setOption = (_module, _key, track) => {
+      window.__tfPotSetCount += 1;
+      window.__tfPotSelectedUrl = track?.baseUrl || "";
+    };
+  });
+
+  await harness.inject(page);
+  const tabId = await harness.tabId(page);
+  const installed = await harness.runtimeForTab(tabId, { type: "YOUTUBE_BRIDGE_INSTALL" });
+  expect(installed.ok).toBe(true);
+
+  await page.evaluate(() => {
+    const protocol = window.__TRANSLATE_FLOW_YOUTUBE_BRIDGE_PROTOCOL__;
+    protocol.post(window, {
+      direction: protocol.DIRECTIONS.ISOLATED_TO_MAIN,
+      type: "HELLO",
+      videoId: "bridge-pot-ready",
+      generation: 0,
+      observedAt: Date.now(),
+      payload: { mode: "bilingual" }
+    });
+  });
+
+  await expect.poll(() => page.evaluate(() => window.__tfPotSetCount || 0), { timeout: 4000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__tfPotSelectedUrl || "")).toContain("pot=fresh-token");
+  await page.close();
+});
+
 test("late MAIN bridge injection nudges YouTube once, while off mode never nudges", async ({ harness }) => {
   const page = await harness.open("/article");
   await page.evaluate(() => {
