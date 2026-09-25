@@ -103,6 +103,13 @@
 
       <label for="openaiModel">模型</label>
       <input id="openaiModel" type="text" placeholder="gpt-4.1-mini / qwen / local-model ..." />
+      <div class="inline-checks">
+        <label class="checkbox-label" for="openaiStreaming">
+          <input id="openaiStreaming" type="checkbox" />
+          启用 SSE streaming（兼容时）
+        </label>
+      </div>
+      <p class="hint">仅用于通用 OpenAI-compatible 模型；Hy-MT2 / TranslateGemma 等结构化本地模型继续使用非流式请求。服务端明确不支持 streaming 时会安全回退到非流式请求。</p>
       <p class="hint">首次使用某个 API Origin 时，Chrome 会单独询问访问权限。</p>
     </section>
 

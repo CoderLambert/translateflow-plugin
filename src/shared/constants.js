@@ -7,7 +7,7 @@ export const DEFAULT_PROMPT = [
   "Every input id must appear exactly once in the output."
 ].join("\n");
 export const PROVIDER_IDS = Object.freeze({ DEEPSEEK: "deepseek", OPENAI_COMPATIBLE: "openai-compatible" });
-export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({ apiKey: "", baseUrl: "", model: "" });
+export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({ apiKey: "", baseUrl: "", model: "", streaming: false });
 export const GLOSSARY_STORAGE_VERSION = 1;
 export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, entries: Object.freeze([]) });
 export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });

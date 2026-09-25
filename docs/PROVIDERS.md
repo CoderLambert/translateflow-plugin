@@ -66,6 +66,8 @@ API Key 可以为空，以支持本地兼容服务。
 
 与 DeepSeek 不同，OpenAI-compatible 的 Base URL 会进入缓存配置指纹，因为同一模型名可能指向完全不同的后端。
 
+OpenAI-compatible 高级配置可显式开启 SSE streaming。该开关默认关闭，只改变传输方式，不改变翻译语义，因此不进入缓存指纹。流式响应仅在 Background Provider/Gateway 内组装；只有收到完整 `[DONE]`、并通过既有翻译结果校验后才返回给上层。服务端明确拒绝 streaming 时，会在产生可用流式结果之前回退到非流式请求。Hy-MT2 / TranslateGemma 等结构化本地翻译模型保持非流式请求。
+
 ## Permissions
 
 通用 Provider 不能依赖固定 Manifest host permission。

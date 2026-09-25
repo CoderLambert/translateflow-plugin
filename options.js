@@ -33,6 +33,7 @@ const revealDeepSeek = $("revealDeepSeek");
 const openaiBaseUrl = $("openaiBaseUrl");
 const openaiApiKey = $("openaiApiKey");
 const openaiModel = $("openaiModel");
+const openaiStreaming = $("openaiStreaming");
 const revealOpenAI = $("revealOpenAI");
 const cacheMaxMB = $("cacheMaxMB");
 const save = $("save");
@@ -186,6 +187,7 @@ async function load() {
   openaiBaseUrl.value = openAI.baseUrl || "";
   openaiApiKey.value = openAI.apiKey || "";
   openaiModel.value = openAI.model || "";
+  openaiStreaming.checked = Boolean(openAI.streaming);
   youtubeSubtitleMode.value = ["bilingual", "original", "off"].includes(config.youtubeSubtitleMode) ? config.youtubeSubtitleMode : "bilingual";
   youtubeSubtitleSize.value = ["small", "standard", "large"].includes(config.youtubeSubtitleSize) ? config.youtubeSubtitleSize : "standard";
 }
@@ -211,7 +213,8 @@ async function saveGlobalConfig({ requestPermission }) {
     openAICompatible: {
       baseUrl,
       apiKey: openaiApiKey.value.trim(),
-      model: openaiModel.value.trim()
+      model: openaiModel.value.trim(),
+      streaming: Boolean(openaiStreaming.checked)
     },
     youtubeSubtitleMode: ["bilingual", "original", "off"].includes(youtubeSubtitleMode.value) ? youtubeSubtitleMode.value : "bilingual",
     youtubeSubtitleSize: ["small", "standard", "large"].includes(youtubeSubtitleSize.value) ? youtubeSubtitleSize.value : "standard"
