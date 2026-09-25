@@ -28,6 +28,8 @@ test("release docs describe the final YouTube acquisition architecture", () => {
   assert.match(youtube, /MAIN-world player\/timedtext bridge/);
   assert.match(youtube, /does not author a timedtext fetch/i);
   assert.match(youtube, /TextTrack fallback/);
-  assert.match(release, /PENDING manual/);
+  assert.match(release, /WAIVED by maintainer/);
+  assert.match(release, /quality #140: \*\*PASS\*\*/);
+  assert.match(release, /E2E #111: \*\*PASS\*\*/);
   assert.doesNotMatch(readme, /PDF、视频双语字幕尚未实现/);
 });

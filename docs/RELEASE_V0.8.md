@@ -47,26 +47,28 @@ The maintainer reported the requested live validation groups as normal:
 
 These PASS rows are based on maintainer-provided real-browser results, not fixture substitution.
 
-## Remaining interactive release rows
+## Remaining interactive release rows — maintainer waiver
 
-The following rows have **not** been explicitly evidenced in this release record and therefore remain manual release checks:
+The following rows were **not executed as explicit release evidence**. The maintainer explicitly authorized skipping the remaining manual/interactive rows and proceeding once the automated release gate was healthy.
+
+These rows are therefore recorded as **WAIVED by maintainer**, not PASS. No fixture result is being represented as live-browser evidence.
 
 | Check | Result |
 | --- | --- |
-| Popup + Settings open normally in unpacked Chrome | PENDING manual |
-| Normal page hide/show + remove/restore + selection/Quick Control coexistence in one live session | PENDING manual |
-| Persistent Quick Control Origin permission prompt occurs only after explicit Popup action | PENDING manual |
-| Protected Chrome page shows actionable unsupported behavior without injection | PENDING manual |
-| Popup visual smoke in normal light mode | PENDING manual |
-| Popup visual smoke in dark mode | PENDING manual |
-| YouTube original-only and TranslateFlow off restore expected native behavior | PENDING manual |
-| YouTube language/track switch | PENDING manual |
-| YouTube theater mode | PENDING manual |
-| YouTube fullscreen | PENDING manual |
-| YouTube Provider failure keeps original caption visible | PENDING manual |
-| YouTube repeat/cache path creates no unnecessary Provider call | PENDING manual |
+| Popup + Settings open normally in unpacked Chrome | WAIVED by maintainer |
+| Normal page hide/show + remove/restore + selection/Quick Control coexistence in one live session | WAIVED by maintainer |
+| Persistent Quick Control Origin permission prompt occurs only after explicit Popup action | WAIVED by maintainer |
+| Protected Chrome page shows actionable unsupported behavior without injection | WAIVED by maintainer |
+| Popup visual smoke in normal light mode | WAIVED by maintainer |
+| Popup visual smoke in dark mode | WAIVED by maintainer |
+| YouTube original-only and TranslateFlow off restore expected native behavior | WAIVED by maintainer |
+| YouTube language/track switch | WAIVED by maintainer |
+| YouTube theater mode | WAIVED by maintainer |
+| YouTube fullscreen | WAIVED by maintainer |
+| YouTube Provider failure keeps original caption visible | WAIVED by maintainer |
+| YouTube repeat/cache path creates no unnecessary Provider call | WAIVED by maintainer |
 
-Do not convert a PENDING manual row to PASS from deterministic fixtures alone.
+The waiver applies to v0.8 release certification only. It does not convert unexecuted manual checks into verified product behavior.
 
 ## Permissions/privacy
 
@@ -80,12 +82,24 @@ Production `manifest.json` remains intentionally narrow:
 - no third-party subtitle service;
 - API keys remain local/BYOK.
 
-## Merge gate
+## Final release evidence
 
-Before PR #43 can merge:
+- Final PR #43 head: `c69cae28be6100328c942116cd80a5f361635412`
+- Exact-head quality #140: **PASS**
+- Exact-head Chromium E2E #110: **PASS**
+- Squash merge to main: `fa71bce26179d29de8c52c22591f6453a240bc30`
+- Post-merge main quality #141: **PASS**
+- Post-merge main E2E #111: **PASS**
+- Maintainer authorization: remaining manual/interactive rows explicitly waived for the v0.8 merge after automated gate health was confirmed.
+- Production required permissions remain `storage`, `activeTab`, `scripting`.
+- Production required Host Permission remains DeepSeek API only; site origins remain optional/user-triggered.
 
-1. `npm run validate` passes on the exact final PR head.
-2. `npm run test:e2e` passes on the exact final PR head.
-3. All required interactive rows above are either supported by real-browser evidence and marked PASS, or the release remains Draft/PENDING.
-4. The PR diff contains only #28-owned release metadata/docs/tests and small release regressions.
-5. After merge, main quality + E2E must pass.
+## Merge gate — completed
+
+PR #43 satisfied the effective v0.8 merge gate under the documented maintainer waiver:
+
+1. `npm run validate` passed on the exact final PR head.
+2. `npm run test:e2e` passed on the exact final PR head.
+3. Remaining unexecuted interactive rows were explicitly waived by the maintainer and are recorded as WAIVED, not PASS.
+4. The final PR diff contained only #28-owned release metadata/docs/tests and small release regressions.
+5. Post-merge main quality + E2E passed.
