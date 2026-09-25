@@ -73,6 +73,8 @@ export const test = base.extend({
     const extensionId = new URL(serviceWorker.url()).host;
     const driver = await context.newPage();
     await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+    const pageTokens = new WeakMap();
+    let pageTokenCounter = 0;
 
     const harness = {
       context,
@@ -83,6 +85,7 @@ export const test = base.extend({
       async reset() {
         server.reset();
         await driver.evaluate(async ({ baseUrl }) => {
+          await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" });
           await chrome.storage.local.clear();
           await chrome.storage.local.set({
             provider: "openai-compatible",
@@ -110,15 +113,33 @@ export const test = base.extend({
       async open(pathname) {
         const page = await context.newPage();
         await page.goto(`${server.baseUrl}${pathname}`);
+        const token = `tf-e2e-${++pageTokenCounter}`;
+        pageTokens.set(page, token);
+        await page.evaluate((token) => {
+          document.documentElement.dataset.tfE2ePageToken = token;
+        }, token);
         return page;
       },
 
       async tabId(page) {
         const url = page.url();
-        const id = await driver.evaluate(async ({ url }) => {
+        const token = pageTokens.get(page);
+        const id = await driver.evaluate(async ({ url, token }) => {
           const tabs = await chrome.tabs.query({});
-          return tabs.find((tab) => tab.url === url)?.id || null;
-        }, { url });
+          const candidates = tabs.filter((tab) => tab.url === url && Number.isInteger(tab.id));
+          if (!token) return candidates[0]?.id || null;
+
+          for (const tab of candidates) {
+            try {
+              const [result] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => document.documentElement.dataset.tfE2ePageToken || ""
+              });
+              if (result?.result === token) return tab.id;
+            } catch {}
+          }
+          return null;
+        }, { url, token });
         if (!id) throw new Error(`Could not resolve Chrome tab id for ${url}`);
         return id;
       },
