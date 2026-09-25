@@ -64,16 +64,9 @@
   }
 
   function findPlayer() {
-    const pathname = String(page.location?.pathname || "");
-    if (/^\/shorts\//i.test(pathname)) {
-      return page.document?.querySelector?.("#shorts-player")
-        || page.document?.querySelector?.("ytd-reel-video-renderer[is-active] .html5-video-player")
-        || page.document?.querySelector?.(".html5-video-player")
-        || null;
-    }
-    return page.document?.querySelector?.("#movie_player")
-      || page.document?.querySelector?.(".html5-video-player")
-      || null;
+    const query = page.document?.querySelector?.bind(page.document);
+    if (/^\/shorts\//i.test(String(page.location?.pathname || ""))) return query?.("#shorts-player") || query?.("ytd-reel-video-renderer[is-active] .html5-video-player") || query?.(".html5-video-player") || null;
+    return query?.("#movie_player") || query?.(".html5-video-player") || null;
   }
 
   function findVideo(player) {
@@ -292,31 +285,21 @@
   function nudgeOnce() {
     if (!state.active || state.mode === "off" || state.nudged || state.captured) return false;
     state.nudged = true;
-    const player = state.player || findPlayer();
-    const startedAt = Date.now();
-
+    const player = state.player || findPlayer(), startedAt = Date.now();
     const applyTrackWhenReady = () => {
       if (!state.active || state.mode === "off" || state.captured) return;
       resolveState("nudge");
       const track = selectedNudgeTrack();
-      if (track && typeof player?.setOption === "function") {
-        safeCall(player.setOption, player, "captions", "track", track);
-        return;
-      }
+      if (track && typeof player?.setOption === "function") return void safeCall(player.setOption, player, "captions", "track", track);
       if (Date.now() - startedAt < 1200) {
         clearTimeout(state.nudgeTimer);
         state.nudgeTimer = setTimeout(applyTrackWhenReady, 200);
-      } else {
-        post("ERROR", {
-          code: "po-token-unavailable",
-          message: "YouTube caption track is not signed with a current subtitle PO token."
-        });
+        return;
       }
+      post("ERROR", { code: "po-token-unavailable", message: "YouTube caption track is not signed with a current subtitle PO token." });
     };
-
     const loaded = safeCall(player?.loadModule, player, "captions");
-    if (loaded && typeof loaded.then === "function") loaded.then(applyTrackWhenReady, applyTrackWhenReady);
-    else applyTrackWhenReady();
+    if (loaded && typeof loaded.then === "function") loaded.then(applyTrackWhenReady, applyTrackWhenReady); else applyTrackWhenReady();
     return true;
   }
 
