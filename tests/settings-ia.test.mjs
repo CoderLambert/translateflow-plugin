@@ -16,11 +16,12 @@ test("Settings exposes the task-oriented information architecture including auto
 });
 
 test("Settings preserves finalized controls and automatic cache restore management", () => {
-  for (const id of ["defaultProvider","prompt","targetLanguage","defaultAppearance","deepseekApiKey","openaiBaseUrl","siteOrigin","glossaryScope","cacheMaxMB","youtubeSubtitleMode","youtubeSubtitleSize","cacheRestoreSitesList"]) {
+  for (const id of ["defaultProvider","prompt","targetLanguage","defaultAppearance","deepseekApiKey","openaiBaseUrl","openaiStreaming","siteOrigin","glossaryScope","cacheMaxMB","youtubeSubtitleMode","youtubeSubtitleSize","cacheRestoreSitesList"]) {
     assert.match(html, new RegExp(`id=["']${id}["']`));
   }
   assert.match(html, /chrome:\/\/extensions\/shortcuts/);
   assert.match(js, /youtubeSubtitleMode/);
+  assert.match(js, /openaiStreaming\.checked/);
   assert.match(js, /youtubeSubtitleSize/);
   assert.match(js, /cacheRestoreSites/);
   assert.match(js, /chrome\.storage\.local\.get/);
