@@ -22,6 +22,16 @@ The approved visual direction is calm and low-distraction: sage/forest greens, w
 
 Compatibility aliases such as `--tf-color-accent` remain temporarily available while existing surfaces migrate, but new work should prefer semantic tokens such as `--tf-green-700`, `--tf-bg-card`, `--tf-text-main`, `--tf-border-main` and `--tf-focus-ring`.
 
+### Dark mode
+
+TranslateFlow follows the browser/OS color scheme through `prefers-color-scheme`. There is no persisted Light/Dark preference: extension pages and the content Shadow UI consume the same semantic `--tf-*` token contract and switch automatically.
+
+Dark mode must override both surface/text semantics and control semantics. In particular, do not pair the light-theme dark-green `--tf-green-900/800` foregrounds with dark sage surfaces, and do not hard-code white text on the light-sage primary gradient. Use `--tf-primary-foreground`, `--tf-control-track`, `--tf-control-thumb`, `--tf-control-thumb-shadow`, `--tf-primary-hover-start` and `--tf-accent-shadow`.
+
+Host-page content is not recolored or forced into dark mode. Translated text remains in the real page DOM and inherits host-page typography/color as before; only TranslateFlow-owned extension and Shadow-DOM controls follow this UI token path.
+
+The Chromium release gate emulates `colorScheme: "dark"` and checks representative computed foreground/background pairs for WCAG AA ordinary-text contrast (>= 4.5:1).
+
 ### Motion and focus
 
 All interactive primitives must provide a visible `:focus-visible` state. Nonessential transitions are disabled under `prefers-reduced-motion: reduce`.
