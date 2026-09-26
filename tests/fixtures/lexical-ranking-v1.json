@@ -1,0 +1,775 @@
+{
+  "version": 1,
+  "policyVersion": 1,
+  "purpose": "Deterministic project-authored Selection v2 Phase B ranking/sufficiency corpus",
+  "candidates": {
+    "glossary-persistent": {
+      "id": "user-glossary:persistent",
+      "kind": "user-glossary",
+      "headword": "persistent",
+      "aliases": [],
+      "matchedBy": "user-glossary",
+      "queryForm": "persistent",
+      "exactCaseMatch": true,
+      "translations": [
+        "持久连接"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "user-glossary",
+        "packVersion": "1",
+        "fingerprint": "",
+        "sourceRefs": [
+          {
+            "sourceId": "user-glossary",
+            "recordId": "persistent"
+          }
+        ]
+      }
+    },
+    "core-persistent": {
+      "id": "core:persistent:a",
+      "kind": "lexical",
+      "headword": "persistent",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "persistent",
+      "exactCaseMatch": true,
+      "partOfSpeech": "adjective",
+      "translations": [
+        "持久的"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "pwn-3.0",
+            "recordId": "fixture-persistent"
+          }
+        ]
+      }
+    },
+    "core-session-general": {
+      "id": "core:session:general",
+      "kind": "lexical",
+      "headword": "session",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "session",
+      "exactCaseMatch": true,
+      "partOfSpeech": "noun",
+      "translations": [
+        "会议"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "pwn-3.0",
+            "recordId": "fixture-session"
+          }
+        ]
+      }
+    },
+    "tech-session": {
+      "id": "technical:Q932410",
+      "kind": "technical-concept",
+      "headword": "session",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "session",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "protocol"
+      ],
+      "typeLabels": [
+        "context",
+        "communication protocol",
+        "process",
+        "statefulness"
+      ],
+      "provenance": {
+        "packId": "technical-wikidata",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:tech",
+        "sourceRefs": [
+          {
+            "sourceId": "wikidata",
+            "recordId": "Q932410@fixture"
+          }
+        ]
+      }
+    },
+    "tech-tmux": {
+      "id": "technical:Q1935361",
+      "kind": "technical-entity",
+      "headword": "tmux",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "tmux",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "developer-tool"
+      ],
+      "typeLabels": [
+        "terminal multiplexer",
+        "free software"
+      ],
+      "provenance": {
+        "packId": "technical-wikidata",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:tech",
+        "sourceRefs": [
+          {
+            "sourceId": "wikidata",
+            "recordId": "Q1935361@fixture"
+          }
+        ]
+      }
+    },
+    "core-docker-noun": {
+      "id": "core:docker:noun",
+      "kind": "lexical",
+      "headword": "docker",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "docker",
+      "exactCaseMatch": true,
+      "partOfSpeech": "noun",
+      "translations": [
+        "码头工人"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "pwn-3.0",
+            "recordId": "fixture-docker"
+          }
+        ]
+      }
+    },
+    "tech-docker-lower": {
+      "id": "technical:Q15206305",
+      "kind": "technical-entity",
+      "headword": "Docker",
+      "aliases": [
+        "Docker Engine"
+      ],
+      "matchedBy": "exact",
+      "queryForm": "docker",
+      "exactCaseMatch": false,
+      "translations": [],
+      "domains": [
+        "container-platform"
+      ],
+      "typeLabels": [
+        "container runtime",
+        "free and open-source software"
+      ],
+      "provenance": {
+        "packId": "technical-wikidata",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:tech",
+        "sourceRefs": [
+          {
+            "sourceId": "wikidata",
+            "recordId": "Q15206305@fixture"
+          }
+        ]
+      }
+    },
+    "core-react-verb": {
+      "id": "core:react:verb",
+      "kind": "lexical",
+      "headword": "react",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "React",
+      "exactCaseMatch": false,
+      "partOfSpeech": "verb",
+      "translations": [
+        "反应"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "pwn-3.0",
+            "recordId": "fixture-react"
+          }
+        ]
+      }
+    },
+    "tech-react": {
+      "id": "technical:Q19399674",
+      "kind": "technical-entity",
+      "headword": "React",
+      "aliases": [
+        "React.js",
+        "Reactjs"
+      ],
+      "matchedBy": "exact",
+      "queryForm": "React",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "framework"
+      ],
+      "typeLabels": [
+        "JavaScript library",
+        "web framework"
+      ],
+      "provenance": {
+        "packId": "technical-wikidata",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:tech",
+        "sourceRefs": [
+          {
+            "sourceId": "wikidata",
+            "recordId": "Q19399674@fixture"
+          }
+        ]
+      }
+    },
+    "core-terminal-multiplexer": {
+      "id": "core:terminal-multiplexer",
+      "kind": "lexical",
+      "headword": "terminal multiplexer",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "terminal multiplexer",
+      "exactCaseMatch": true,
+      "partOfSpeech": "noun",
+      "translations": [
+        "终端复用器"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "fixture",
+            "recordId": "terminal-multiplexer"
+          }
+        ]
+      }
+    },
+    "core-go-lemma": {
+      "id": "core:go",
+      "kind": "lexical",
+      "headword": "go",
+      "aliases": [],
+      "matchedBy": "lemma",
+      "queryForm": "go",
+      "exactCaseMatch": true,
+      "partOfSpeech": "verb",
+      "translations": [
+        "去"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "fixture",
+            "recordId": "go"
+          }
+        ]
+      }
+    },
+    "core-session-morphology": {
+      "id": "core:session:morph",
+      "kind": "lexical",
+      "headword": "session",
+      "aliases": [],
+      "matchedBy": "morphology",
+      "queryForm": "session",
+      "exactCaseMatch": true,
+      "partOfSpeech": "noun",
+      "translations": [
+        "会话"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "fixture",
+            "recordId": "session"
+          }
+        ]
+      }
+    },
+    "tech-k8s": {
+      "id": "technical:Q22661306",
+      "kind": "technical-entity",
+      "headword": "Kubernetes",
+      "aliases": [
+        "K8s"
+      ],
+      "matchedBy": "alias",
+      "queryForm": "K8s",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "container-platform"
+      ],
+      "typeLabels": [
+        "free and open-source software"
+      ],
+      "provenance": {
+        "packId": "technical-wikidata",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:tech",
+        "sourceRefs": [
+          {
+            "sourceId": "wikidata",
+            "recordId": "Q22661306@fixture"
+          }
+        ]
+      }
+    },
+    "alias-alpha": {
+      "id": "technical:alpha",
+      "kind": "technical-entity",
+      "headword": "AlphaTool",
+      "aliases": [
+        "shared-tool"
+      ],
+      "matchedBy": "alias",
+      "queryForm": "shared-tool",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "developer-tool"
+      ],
+      "typeLabels": [
+        "free software"
+      ],
+      "provenance": {
+        "packId": "technical-fixture",
+        "packVersion": "1",
+        "fingerprint": "sha256:a",
+        "sourceRefs": [
+          {
+            "sourceId": "fixture",
+            "recordId": "alpha"
+          }
+        ]
+      }
+    },
+    "alias-beta": {
+      "id": "technical:beta",
+      "kind": "technical-entity",
+      "headword": "BetaTool",
+      "aliases": [
+        "shared-tool"
+      ],
+      "matchedBy": "alias",
+      "queryForm": "shared-tool",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "developer-tool"
+      ],
+      "typeLabels": [
+        "free software"
+      ],
+      "provenance": {
+        "packId": "technical-fixture",
+        "packVersion": "1",
+        "fingerprint": "sha256:b",
+        "sourceRefs": [
+          {
+            "sourceId": "fixture",
+            "recordId": "beta"
+          }
+        ]
+      }
+    },
+    "optional-persistent": {
+      "id": "optional:persistent",
+      "kind": "lexical",
+      "headword": "persistent",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "persistent",
+      "exactCaseMatch": true,
+      "partOfSpeech": "adjective",
+      "translations": [
+        "持久的"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "optional-dictionary",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:optional",
+        "sourceRefs": [
+          {
+            "sourceId": "optional-fixture",
+            "recordId": "persistent"
+          }
+        ]
+      }
+    },
+    "tech-runtime-system": {
+      "id": "technical:Q1004415",
+      "kind": "technical-concept",
+      "headword": "run-time system",
+      "aliases": [
+        "runtime system",
+        "runtime environment"
+      ],
+      "matchedBy": "exact",
+      "queryForm": "runtime system",
+      "exactCaseMatch": true,
+      "translations": [],
+      "domains": [
+        "runtime"
+      ],
+      "typeLabels": [
+        "abstraction layer",
+        "software",
+        "computing platform"
+      ],
+      "provenance": {
+        "packId": "technical-wikidata",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:tech",
+        "sourceRefs": [
+          {
+            "sourceId": "wikidata",
+            "recordId": "Q1004415@fixture"
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "glossary-override",
+      "query": "persistent",
+      "context": "Use our persistent transport.",
+      "lookup": {
+        "status": "candidates",
+        "override": true,
+        "matchedBy": "user-glossary",
+        "candidateIds": [
+          "glossary-persistent"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "user-glossary:persistent"
+      }
+    },
+    {
+      "id": "ordinary-single",
+      "query": "persistent",
+      "context": "The value remains persistent between restarts.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-persistent"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "core:persistent:a"
+      }
+    },
+    {
+      "id": "session-tech-ambiguous",
+      "query": "session",
+      "context": "A tmux session remains after the terminal closes.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-session-general",
+          "tech-session"
+        ]
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "topCandidateId": "technical:Q932410"
+      }
+    },
+    {
+      "id": "session-technical-decisive",
+      "query": "session",
+      "context": "The communication protocol keeps statefulness across the session.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-session-general",
+          "tech-session"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "technical:Q932410"
+      }
+    },
+    {
+      "id": "docker-general-context",
+      "query": "docker",
+      "context": "A docker unloaded cargo from the ship.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-docker-noun",
+          "tech-docker-lower"
+        ]
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "topCandidateId": "core:docker:noun"
+      },
+      "falsePositiveCandidateIds": [
+        "technical:Q15206305"
+      ]
+    },
+    {
+      "id": "docker-technical-context",
+      "query": "docker",
+      "context": "The server runs each application in a container.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-docker-noun",
+          "tech-docker-lower"
+        ]
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "topCandidateId": "technical:Q15206305"
+      }
+    },
+    {
+      "id": "react-technical-context",
+      "query": "React",
+      "context": "The JavaScript component renders the user interface.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-react-verb",
+          "tech-react"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "technical:Q19399674"
+      }
+    },
+    {
+      "id": "tmux-entity",
+      "query": "tmux",
+      "context": "Open a terminal with tmux.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "tech-tmux"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "technical:Q1935361"
+      }
+    },
+    {
+      "id": "phrase-exact",
+      "query": "terminal multiplexer",
+      "context": "tmux is a terminal multiplexer.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-terminal-multiplexer"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "core:terminal-multiplexer"
+      }
+    },
+    {
+      "id": "lemma-irregular",
+      "query": "went",
+      "context": "The process went away.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "lemma",
+        "candidateIds": [
+          "core-go-lemma"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "core:go"
+      }
+    },
+    {
+      "id": "morphology-plural",
+      "query": "sessions",
+      "context": "The sessions remain available.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "morphology",
+        "candidateIds": [
+          "core-session-morphology"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "core:session:morph"
+      }
+    },
+    {
+      "id": "k8s-alias",
+      "query": "K8s",
+      "context": "The cluster is managed with Kubernetes.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "alias",
+        "candidateIds": [
+          "tech-k8s"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "technical:Q22661306"
+      }
+    },
+    {
+      "id": "ambiguous-alias",
+      "query": "shared-tool",
+      "context": "Install shared-tool.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "alias",
+        "candidateIds": [
+          "alias-alpha",
+          "alias-beta"
+        ]
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "topCandidateId": "technical:alpha"
+      }
+    },
+    {
+      "id": "cross-source-same-translation",
+      "query": "persistent",
+      "context": "A persistent connection.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-persistent",
+          "optional-persistent"
+        ]
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "topCandidateId": "core:persistent:a"
+      }
+    },
+    {
+      "id": "runtime-untranslated",
+      "query": "runtime system",
+      "context": "The JavaScript runtime executes code.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "tech-runtime-system"
+        ]
+      },
+      "expected": {
+        "outcome": "sufficient",
+        "topCandidateId": "technical:Q1004415"
+      }
+    },
+    {
+      "id": "no-hit-project-token",
+      "query": "TFQualityNoHit",
+      "context": "TFQualityNoHit is a deliberate project-owned miss.",
+      "lookup": {
+        "status": "no-hit",
+        "candidateIds": []
+      },
+      "expected": {
+        "outcome": "no-hit",
+        "topCandidateId": null
+      }
+    },
+    {
+      "id": "code-like-no-hit",
+      "query": "foo.bar()",
+      "context": "Call foo.bar() after initialization.",
+      "lookup": {
+        "status": "no-hit",
+        "candidateIds": []
+      },
+      "expected": {
+        "outcome": "no-hit",
+        "topCandidateId": null
+      }
+    },
+    {
+      "id": "unsupported-language",
+      "query": "セッション",
+      "context": "",
+      "lookup": {
+        "status": "unsupported",
+        "candidateIds": []
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "topCandidateId": null
+      }
+    }
+  ]
+}
