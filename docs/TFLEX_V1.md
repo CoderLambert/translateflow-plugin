@@ -30,6 +30,7 @@ Every pack has a manifest containing at least:
   "sourceLanguage": "en",
   "targetLanguage": "zh-CN",
   "profile": "bundled-sharded-v1",
+  "profileOptions": { "maxShardBytes": 524288 },
   "fingerprint": "sha256:...",
   "sources": [
     {
@@ -54,7 +55,8 @@ Rules:
 
 - unknown `formatVersion` is rejected;
 - a reader lower than `readerMinVersion` rejects the pack;
-- `fingerprint` changes whenever lookup-visible data, normalization behavior, source identity or pack version changes;
+- the effective physical build options that change emitted bytes (including `profileOptions.maxShardBytes`) are recorded in the manifest and fingerprint payload;
+- `fingerprint` changes whenever lookup-visible data, normalization behavior, source identity, pack version or byte-affecting build-profile options change;
 - `fingerprint` is SHA-256 over a deterministic fingerprint payload containing format/normalization versions, pack id/version, locked source identities and the ordered file-role/path/size/SHA-256 list; the `fingerprint` field itself and presentation-only metadata are excluded to avoid circular hashing;
 - source licenses remain separate; a combined pack does not invent a new umbrella license;
 - release builds consume locked/checksummed source artifacts, never live endpoints.
@@ -65,7 +67,8 @@ The exact byte encoding is profile-specific. Once decoded, records expose this l
 
 ```text
 record
-  lookupKey
+  lookupKey             # canonical case-folded key
+  exactLookupKeys[]     # normalized case-preserving keys
   displayForm
   kind: lexical | technical-concept | technical-entity
   aliases[]
@@ -116,7 +119,7 @@ User Glossary is the only v1 source allowed to express an explicit user override
 
 Lookup normalization and display normalization are separate.
 
-Lookup normalization v1:
+Lookup normalization v1 stores both a normalized exact-case form and a case-folded canonical form:
 
 1. Unicode NFKC;
 2. trim leading/trailing whitespace;
@@ -162,6 +165,7 @@ Rules:
 
 - build selects prefix/range subdivisions deterministically;
 - target maximum compressed/uncompressed read unit is **512 KiB**; an oversized prefix is subdivided;
+- the compiler records the effective `maxShardBytes` value in `profileOptions` so non-default test/build profiles remain reproducible and auditable;
 - one lookup should not require materializing the whole pack;
 - a small bounded directory/index may be cached in memory;
 - decoded shard/entry caches are bounded LRU state and are disposable when the MV3 worker stops.
