@@ -103,7 +103,7 @@ test.describe("Selection v2 Design Freeze vertical slice", () => {
     expect(ambiguous.context).toContain("tmux session");
     expect(ambiguous.fallback?.ok).toBe(true);
     expect(harness.server.calls).toHaveLength(1);
-    expect(harness.server.calls[0].body).toContain("poc:session-computing");
+    expect(harness.server.calls[0].segments[0]?.text).toContain("poc:session-computing");
 
     const sentence = await runSelection(harness, page, {
       requestId: "sentence-fallback",
