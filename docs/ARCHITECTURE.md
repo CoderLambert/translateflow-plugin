@@ -59,6 +59,21 @@ content scripts -> messages -> background router
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
 
+## Lexical Gateway
+
+Selection lexical lookup is a separate local-only Background boundary:
+
+```text
+Content/Selection (later #79)
+  -> LEXICAL_LOOKUP
+  -> background/lexical/gateway.js
+       -> effective User Glossary override
+       -> bundled/active TFLex readers
+       -> attributable candidates
+```
+
+`background/lexical/tflex-reader.js` performs bounded shard reads and byte-accounted LRU caching; it does not use IndexedDB or Provider APIs. `background/lexical/package-assets.js` is the narrowly scoped exception to the source-level `fetch` rule: it reads only extension-package URLs produced by `chrome.runtime.getURL`, never external HTTP origins. Local lexical results do not enter translation cache.
+
 ## Content
 
 Content Script 继续保持 build-free classic script modules：
