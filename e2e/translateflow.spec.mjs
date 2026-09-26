@@ -420,6 +420,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     });
     expect(alias.ok).toBe(true);
     expect(alias.status).toBe("candidates");
+    expect(alias.matchedBy).toBe("alias");
     expect([...new Set(alias.candidates.map((candidate) => candidate.headword))]).toEqual(["persistent", "session"]);
     expect(alias.candidates).toHaveLength(3);
     expect(alias.candidates.every((candidate) => candidate.matchedBy === "alias")).toBe(true);
