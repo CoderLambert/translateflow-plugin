@@ -90,13 +90,12 @@ export function createLexicalGateway({
         query: makeQuery(queryText, sourceLanguage, targetLanguage)
       };
     } catch (error) {
+      if (!Object.values(LEXICAL_ERROR_CODES).includes(error?.code)) throw error;
       return {
         status: LEXICAL_RESULT_STATUS.ERROR,
         query: makeQuery(queryText, sourceLanguage, targetLanguage),
         error: {
-          code: Object.values(LEXICAL_ERROR_CODES).includes(error?.code)
-            ? error.code
-            : LEXICAL_ERROR_CODES.STORAGE,
+          code: error.code,
           message: error?.message || String(error),
           packId: error?.packId || "",
           path: error?.path || ""
@@ -230,12 +229,12 @@ export function conservativeMorphologyForms(value) {
 
   if (value.endsWith("ing") && value.length > 5) {
     const stem = value.slice(0, -3);
-    forms.push(stem, stem + "e", undoubleFinalConsonant(stem));
+    forms.push(undoubleFinalConsonant(stem), stem + "e", stem);
   }
 
   if (value.endsWith("ed") && value.length > 4) {
     const stem = value.slice(0, -2);
-    forms.push(stem, stem + "e", undoubleFinalConsonant(stem));
+    forms.push(undoubleFinalConsonant(stem), stem + "e", stem);
   }
 
   if (/(?:sses|xes|zes|ches|shes|oes)$/.test(value) && value.length > 4) forms.push(value.slice(0, -2));
