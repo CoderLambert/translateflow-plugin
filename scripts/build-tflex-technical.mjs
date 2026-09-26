@@ -205,7 +205,7 @@ export function buildTechnicalRecords(extract, policy, lockedEntities = []) {
       });
     }
 
-    const translations = [displayForm];
+    const translations = [];
     const category = locked?.category || "";
 
     records.push({
