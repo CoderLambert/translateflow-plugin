@@ -305,7 +305,7 @@ select {
   width: 44px;
   height: 26px;
   border-radius: var(--tf-radius-pill);
-  background: #d8d9d1;
+  background: var(--tf-control-track);
   transition: background-color var(--tf-transition);
 }
 
@@ -317,8 +317,8 @@ select {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fffdf8;
-  box-shadow: 0 2px 6px rgba(36, 56, 40, .16);
+  background: var(--tf-control-thumb);
+  box-shadow: var(--tf-control-thumb-shadow);
   transition: transform var(--tf-transition);
 }
 
@@ -445,10 +445,6 @@ select {
     background:
       radial-gradient(circle at 100% 0%, rgba(140, 175, 130, .08), transparent 34%),
       var(--tf-bg-app);
-  }
-
-  .toggle-track {
-    background: #4a534a;
   }
 }
 
