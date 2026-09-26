@@ -59,7 +59,10 @@ export function createLexicalGateway({
       }
 
       const exact = await lookupAcrossPacks(queryText, "exact");
-      if (exact.length) return candidateResult(queryText, sourceLanguage, targetLanguage, "exact", exact);
+      if (exact.length) {
+        const resultMatch = exact.every((candidate) => candidate.matchedBy === "alias") ? "alias" : "exact";
+        return candidateResult(queryText, sourceLanguage, targetLanguage, resultMatch, exact);
+      }
 
       if (isLexicalPhrase(queryText)) {
         const evidence = await collectPhraseEvidence(queryText, maxPhraseEvidenceTokens);
