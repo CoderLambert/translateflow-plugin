@@ -106,6 +106,21 @@ test("case-sensitive aliases only match declared exact casing", () => {
   assert.equal(findTflexAlias(directory, "react.js", "react.js"), null);
 });
 
+test("TFLex integrity accepts attributable technical records without target translations", async () => {
+  const { validateTflexRecord } = await import("../src/background/lexical/tflex-integrity.js");
+  assert.doesNotThrow(() => validateTflexRecord({
+    lookupKey: "runtime system",
+    exactLookupKeys: ["runtime system"],
+    displayForm: "runtime system",
+    kind: "technical-concept",
+    aliases: [],
+    translations: [],
+    typeLabels: ["computing platform"],
+    domains: ["runtime"],
+    sourceRefs: [{ sourceId: "wikidata", recordId: "Q1004415@2474305309" }]
+  }, "technical-fixture", "shards/0000.jsonl"));
+});
+
 test("TFLex shard cache is bounded and repeated lookup reuses the decoded shard", async () => {
   const { reader, reads } = fixtureReader({ cacheMaxEntries: 1, cacheMaxBytes: 4096 });
   await reader.lookup("persistent");
