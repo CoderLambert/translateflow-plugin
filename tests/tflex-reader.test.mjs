@@ -74,6 +74,18 @@ test("TFLex reader fails closed on corrupted shard bytes", async () => {
   );
 });
 
+test("TFLex reader detects manifest fingerprint drift", async () => {
+  const { reader } = fixtureReader({
+    mutateManifest(manifest) {
+      manifest.packVersion = "tampered";
+    }
+  });
+  await assert.rejects(
+    reader.lookup("persistent"),
+    (error) => error?.code === LEXICAL_ERROR_CODES.CORRUPT && /fingerprint mismatch/.test(error.message)
+  );
+});
+
 test("TFLex reader returns typed storage and compatibility errors", async () => {
   const storageReader = createTflexReader({
     packBasePath: "fixture",
