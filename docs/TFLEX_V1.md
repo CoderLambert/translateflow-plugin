@@ -101,6 +101,8 @@ technical record
   sourceRevision?  # locked source revision when available
 ```
 
+These fields are source-dependent and optional unless a pack-specific contract says otherwise. In particular, a technical record may have an empty `translations[]` when no verified target-language label exists. The #78 Wikidata pack deliberately omits `description` and does not substitute sitelink titles or source-language display names as Simplified-Chinese translations.
+
 No record field is trusted as an instruction when used by an AI request. Pack strings are serialized as bounded data.
 
 ## 4. Provenance rules
