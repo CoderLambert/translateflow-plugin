@@ -51,6 +51,11 @@ export async function getEffectiveConfig(pageUrl = "") {
   };
 }
 
+export async function getEffectiveGlossary(pageUrl = "") {
+  const stored = await getConfig();
+  return resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
+}
+
 export async function getEffectiveContext(pageUrl) {
   const { stored, resolved, temporaryPreset } = await resolveBaseConfig(pageUrl);
   const origin = normalizeOrigin(pageUrl);
