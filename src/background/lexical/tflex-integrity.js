@@ -225,6 +225,11 @@ export async function verifyTflexManifestFingerprint(manifest, cryptoProvider) {
         version: source.version,
         provenance: source.provenance,
         dataSha256: source.dataSha256,
+        snapshot: source.snapshot ? {
+          kind: source.snapshot.kind,
+          version: source.snapshot.version,
+          extractRuleVersion: source.snapshot.extractRuleVersion
+        } : undefined,
         licenseId: source.license?.id
       })),
     files: [...manifest.files]
