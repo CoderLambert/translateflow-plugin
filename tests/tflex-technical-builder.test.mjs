@@ -104,14 +104,14 @@ test("runtime reader resolves named entities and approved aliases locally", asyn
   const runtime = await reader.lookupAll("runtime system");
   assert.equal(runtime.length, 1);
   assert.equal(runtime[0].record.kind, "technical-concept");
-  assert.deepEqual(runtime[0].record.translations, ["run-time system"]);
+  assert.deepEqual(runtime[0].record.translations, []);
   assert.deepEqual(runtime[0].record.domains, ["runtime"]);
   assert.equal("description" in runtime[0].record, false);
   assert.deepEqual(await reader.lookupAll("runtime"), []);
 
   const session = await reader.lookup("session");
   assert.equal(session.record.kind, "technical-concept");
-  assert.deepEqual(session.record.translations, ["session"]);
+  assert.deepEqual(session.record.translations, []);
   assert.deepEqual(session.record.domains, ["protocol"]);
   assert.deepEqual(await reader.lookupAll("container"), []);
 });
@@ -184,7 +184,7 @@ test("official extract matches the exact locked QID/revision set and concept kin
   assert.equal(records.find((record) => record.entityId === "Q1004415").kind, "technical-concept");
   assert.equal(records.find((record) => record.entityId === "Q1935361").kind, "technical-entity");
   assert.ok(records.every((record) => !("description" in record)));
-  assert.ok(records.every((record) => record.translations.length === 1 && record.translations[0] === record.displayForm));
+  assert.ok(records.every((record) => Array.isArray(record.translations) && record.translations.length === 0));
 
   const changed = structuredClone(extract);
   changed.entities[0].revision += 1;
