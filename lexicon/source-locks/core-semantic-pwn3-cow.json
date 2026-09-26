@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "packId": "core-semantic-en-zh",
+  "packVersion": "pwn3-cow-omw-406bf83b3c50",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "sources": [
+    {
+      "id": "pwn-3.0",
+      "version": "3.0",
+      "provenance": "omwn/omw-data@406bf83b3c507a3d1f26e88252d5d66893fd36bf; blob 4ddc0bdeba3323afc6e264243a17bba7bbf0b07a",
+      "data": {
+        "url": "https://raw.githubusercontent.com/omwn/omw-data/406bf83b3c507a3d1f26e88252d5d66893fd36bf/wns/eng/wn-data-eng.tab",
+        "sha256": "d1409d88addcdb890b1606dd280b558cca4258b1f33bd580d54ed949daad1ede"
+      },
+      "license": {
+        "id": "wordnet-3.0",
+        "name": "WordNet 3.0 License",
+        "source": "https://raw.githubusercontent.com/omwn/omw-data/406bf83b3c507a3d1f26e88252d5d66893fd36bf/wns/eng/LICENSE",
+        "notice": "WordNet® is unencumbered, and may be used in commercial applications\nin accordance with the following license agreement. An attorney\nrepresenting the commercial interest should review this WordNet\nlicense with respect to the intended use.  WordNet License\n\nThis license is available as the file LICENSE in any downloaded version of WordNet.\n\nWordNet 3.0 license: (Download)\n\nWordNet Release 3.0 This software and database is being provided to\nyou, the LICENSEE, by Princeton University under the following\nlicense. By obtaining, using and/or copying this software and\ndatabase, you agree that you have read, understood, and will comply\nwith these terms and conditions.: Permission to use, copy, modify and\ndistribute this software and database and its documentation for any\npurpose and without fee or royalty is hereby granted, provided that\nyou agree to comply with the following copyright notice and\nstatements, including the disclaimer, and that the same appear on ALL\ncopies of the software, database and documentation, including\nmodifications that you make for internal use or for\ndistribution. WordNet 3.0 Copyright 2006 by Princeton University. All\nrights reserved. THIS SOFTWARE AND DATABASE IS PROVIDED \"AS IS\" AND\nPRINCETON UNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS\nOR IMPLIED. BY WAY OF EXAMPLE, BUT NOT LIMITATION, PRINCETON\nUNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES OF MERCHANT- ABILITY\nOR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE LICENSED\nSOFTWARE, DATABASE OR DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY\nPATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS. The name of Princeton\nUniversity or Princeton may not be used in advertising or publicity\npertaining to distribution of the software and/or database. Title to\ncopyright in this software, database and any associated documentation\nshall at all times remain with Princeton University and LICENSEE\nagrees to preserve same."
+      }
+    },
+    {
+      "id": "chinese-open-wordnet",
+      "version": "omw-data@406bf83b3c507a3d1f26e88252d5d66893fd36bf",
+      "provenance": "omwn/omw-data@406bf83b3c507a3d1f26e88252d5d66893fd36bf; blob 66e1993d2580281e2e5b41a2a1e76173a9aa75e6",
+      "data": {
+        "url": "https://raw.githubusercontent.com/omwn/omw-data/406bf83b3c507a3d1f26e88252d5d66893fd36bf/wns/cow/wn-data-cmn.tab",
+        "sha256": "379fd2e41d3e1395f9f27cf23a39c6181849ffb4020c14a07ed2a4d4dd651122"
+      },
+      "license": {
+        "id": "chinese-open-wordnet-license",
+        "name": "Chinese Open Wordnet License",
+        "source": "https://raw.githubusercontent.com/omwn/omw-data/406bf83b3c507a3d1f26e88252d5d66893fd36bf/wns/cow/LICENSE",
+        "notice": "Copyright: 2013, 2014 Francis Bond, Shan Wang\n\nChinese Open WordNet\n\nThis software and database is being provided to you, the LICENSEE\nunder the following license.  By obtaining, using and/or copying this\nsoftware and database, you agree that you have read, understood, and\nwill comply with these terms and conditions:\n  \n  Permission to use, copy, modify and distribute this software and\n  database and its documentation for any purpose and without fee or\n  royalty is hereby granted, provided that you agree to comply with\n  the following copyright notice and statements, including the\n  disclaimer, and that the same appear on ALL copies of the software,\n  database and documentation, including modifications that you make\n  for internal use or for distribution.\n  \nChinese Open Wordnet Copyright 2013,2014 by Francis Bond and Shan\nWang.  All rights reserved.\n  \nTHIS SOFTWARE AND DATABASE IS PROVIDED \"AS IS\" AND WE MAKE NO\nREPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED.  BY WAY OF EXAMPLE,\nBUT NOT LIMITATION, WE MAKE NO REPRESENTATIONS OR WARRANTIES OF\nMERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE\nOF THE LICENSED SOFTWARE, DATABASE OR DOCUMENTATION WILL NOT INFRINGE\nANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.\n  \nTitle to copyright in this software, database and any associated\ndocumentation shall at all times remain with the copyright holders and\nLICENSEE agrees to preserve same."
+      }
+    }
+  ]
+}
