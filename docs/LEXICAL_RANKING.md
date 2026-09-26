@@ -95,6 +95,19 @@ npm run evaluate:lexical
 
 The evaluator reports outcome accuracy, top-candidate accuracy, coverage and entity false-positive-top rate separately. It exits non-zero on any expected outcome/top-candidate regression.
 
+### Frozen v1 baseline
+
+On corpus v1 (18 cases), the initial frozen policy baseline is:
+
+| Metric | Baseline |
+|---|---:|
+| outcome accuracy | 1.000 |
+| expected top-candidate accuracy | 1.000 |
+| expected-hit coverage | 1.000 |
+| measured entity false-positive top rate | 0.000 |
+
+This is the **pre-tuning baseline** for later policy changes. Expanding the corpus may change the denominator; any weight/threshold change must record before/after metrics rather than silently rewriting expected outcomes.
+
 ## Change control
 
 Material ranking changes require:
