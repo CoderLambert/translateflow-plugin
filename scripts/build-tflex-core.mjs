@@ -83,22 +83,16 @@ export async function compileTflexCore({
       }
     }));
 
-  const fingerprintPayload = {
+  const fingerprintPayload = makeFingerprintPayload({
     formatVersion: TFLEX_FORMAT_VERSION,
     normalizationVersion: TFLEX_NORMALIZATION_VERSION,
     packId: sourceLock.packId,
     packVersion: sourceLock.packVersion,
     profile: TFLEX_BUNDLED_PROFILE,
     profileOptions: { maxShardBytes },
-    sources: sources.map((source) => ({
-      id: source.id,
-      version: source.version,
-      provenance: source.provenance,
-      dataSha256: source.dataSha256,
-      licenseId: source.license.id
-    })),
-    files: files.map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
-  };
+    sources,
+    files
+  });
 
   const manifest = {
     format: "tflex",
@@ -324,6 +318,12 @@ export async function validateTflexCoreOutput({
 
   if (manifest.format !== "tflex") throw new Error("invalid TFLex manifest format");
   if (manifest.formatVersion !== TFLEX_FORMAT_VERSION) throw new Error("incompatible TFLex formatVersion");
+  requireNonEmptyString(manifest.packId, "manifest packId");
+  requireNonEmptyString(manifest.packVersion, "manifest packVersion");
+  if (manifest.sourceLanguage !== "en") throw new Error("incompatible TFLex sourceLanguage");
+  if (manifest.targetLanguage !== "zh-CN") throw new Error("incompatible TFLex targetLanguage");
+  assertPositiveInteger(manifest.compilerVersion, "manifest compilerVersion");
+  assertPositiveInteger(manifest.recordCount, "manifest recordCount");
   if (!Number.isSafeInteger(manifest.readerMinVersion) || manifest.readerMinVersion > readerVersion) {
     throw new Error("incompatible TFLex reader version");
   }
@@ -352,6 +352,9 @@ export async function validateTflexCoreOutput({
   const files = new Map();
   for (const descriptor of manifest.files) {
     requireNonEmptyString(descriptor?.role, "manifest file role");
+    if (!["lookup-index", "lexical-data", "license-notice"].includes(descriptor.role)) {
+      throw new Error("unsupported TFLex file role: " + descriptor.role);
+    }
     requireNonEmptyString(descriptor?.path, "manifest file path");
     assertSafePackPath(descriptor.path);
     assertPositiveInteger(descriptor.size, "manifest file size");
@@ -363,6 +366,18 @@ export async function validateTflexCoreOutput({
     if (actualHash !== descriptor.sha256.toLowerCase()) throw new Error("TFLex file hash mismatch: " + descriptor.path);
     files.set(descriptor.path, { descriptor, bytes });
   }
+
+  const expectedFingerprint = "sha256:" + sha256Text(stableStringify(makeFingerprintPayload({
+    formatVersion: manifest.formatVersion,
+    normalizationVersion: manifest.normalizationVersion,
+    packId: manifest.packId,
+    packVersion: manifest.packVersion,
+    profile: manifest.profile,
+    profileOptions: manifest.profileOptions,
+    sources: manifest.sources,
+    files: manifest.files
+  })));
+  if (manifest.fingerprint !== expectedFingerprint) throw new Error("TFLex manifest fingerprint mismatch");
 
   const directoryFile = files.get("directory.json");
   if (!directoryFile || directoryFile.descriptor.role !== "lookup-index") throw new Error("TFLex directory descriptor is missing");
@@ -513,6 +528,39 @@ function makeFileDescriptor(role, path, text) {
 function compareFileDescriptor(a, b) {
   return compareText(a.path, b.path) || compareText(a.role, b.role);
 }
+
+function makeFingerprintPayload({
+  formatVersion,
+  normalizationVersion,
+  packId,
+  packVersion,
+  profile,
+  profileOptions,
+  sources,
+  files
+}) {
+  return {
+    formatVersion,
+    normalizationVersion,
+    packId,
+    packVersion,
+    profile,
+    profileOptions: { maxShardBytes: profileOptions?.maxShardBytes },
+    sources: [...sources]
+      .sort((a, b) => compareText(a.id, b.id))
+      .map((source) => ({
+        id: source.id,
+        version: source.version,
+        provenance: source.provenance,
+        dataSha256: source.dataSha256,
+        licenseId: source.license.id
+      })),
+    files: [...files]
+      .sort(compareFileDescriptor)
+      .map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
+  };
+}
+
 
 function dedupeSourceRefs(refs) {
   const map = new Map();
