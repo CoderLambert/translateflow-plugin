@@ -7,6 +7,7 @@ import { webcrypto } from "node:crypto";
 import { LEXICAL_ERROR_CODES } from "../src/shared/lexical.js";
 import { ByteBoundedLru } from "../src/background/lexical/lru.js";
 import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
+import { validateTflexDirectory } from "../src/background/lexical/tflex-integrity.js";
 
 const fixtureRoot = fileURLToPath(new URL("./fixtures/tflex-runtime-pack/", import.meta.url));
 
@@ -68,6 +69,22 @@ test("TFLex reader resolves one-to-one and ambiguous aliases without full-pack s
   assert.deepEqual(ambiguous.map((hit) => hit.record.lookupKey), ["persistent", "session"]);
   assert.ok(ambiguous.every((hit) => hit.matchedAlias));
   assert.ok(reads() <= 3, "manifest + directory + one decoded shard should satisfy both alias queries");
+});
+
+test("TFLex directory rejects alias targets outside every shard range", async () => {
+  const manifest = JSON.parse(await readFile(join(fixtureRoot, "manifest.json"), "utf8"));
+  const directory = JSON.parse(await readFile(join(fixtureRoot, "directory.json"), "utf8"));
+  directory.aliases = [{
+    key: "broken",
+    caseSensitive: false,
+    exactLookupKeys: ["broken"],
+    targets: ["zzzz-not-in-any-shard"]
+  }];
+
+  assert.throws(
+    () => validateTflexDirectory(directory, manifest),
+    /alias target falls outside all shard ranges/
+  );
 });
 
 test("TFLex shard cache is bounded and repeated lookup reuses the decoded shard", async () => {
