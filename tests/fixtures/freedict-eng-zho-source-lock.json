@@ -14,12 +14,53 @@
     "generatorRepository": "https://github.com/karlb/wikdict-gen",
     "generatorCommitEvidence": "f30228da482e74b06956ef55dcf23ae2757f9812",
     "releaseTimeTemplateLicense": "CC-BY-SA-3.0",
-    "baseData": "Wiktionary via DBnary"
+    "baseData": "Wiktionary via DBnary",
+    "exactArchiveCorroboration": {
+      "repository": "antunishdPursuit/linguaread",
+      "commit": "0008ac22e09baab7529648c14c4f1e30c8f644ed",
+      "builderBlob": "19160574e3fba354b7be3bc917ac30e516d60438",
+      "copyingBlob": "009c996edf922c3ab1a25beb648149013f523404",
+      "metadataBlob": "b310b5231c3ae27059760618646b312326ad7ec3",
+      "note": "The builder pins the same official FreeDict URL and SHA-512, extracts COPYING from that archive, and records CC BY-SA 3.0 in generated metadata."
+    }
   },
   "licenseAudit": {
     "exactTeiHeaderArchived": false,
     "exactTeiLicense": null,
     "approvedForOfficialPack": false,
-    "note": "Release-time generator evidence points to CC BY-SA 3.0, but the exact 2025.11.23 TEI header must be archived and compared before approval."
+    "note": "The exact archive COPYING is strongly corroborated as CC BY-SA 3.0 by an independent reproducible build pinned to the same official URL/SHA-512. The exact 2025.11.23 TEI header/attribution fields still require archival before official-pack approval.",
+    "exactArchiveCopyingLicense": "CC-BY-SA-3.0"
+  },
+  "qualitySample": {
+    "source": "independent generated shards built from the same pinned archive",
+    "observed": {
+      "usefulTechnical": [
+        "cache",
+        "dependency",
+        "commit",
+        "state"
+      ],
+      "weakOrWrong": [
+        "portable",
+        "issue"
+      ],
+      "generalOnly": [
+        "container",
+        "repository",
+        "session",
+        "react"
+      ],
+      "absent": [
+        "persistent",
+        "runtime",
+        "tmux",
+        "kubernetes",
+        "redis",
+        "postgresql",
+        "oauth"
+      ]
+    },
+    "roleDecision": "optional-complement-only",
+    "rationale": "Coverage is useful as a complementary bilingual candidate source, but quality/coverage is too inconsistent to make it the canonical Core source."
   }
 }
