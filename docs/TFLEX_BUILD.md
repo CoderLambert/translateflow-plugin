@@ -40,7 +40,7 @@ node scripts/build-tflex-core.mjs \
   --out /tmp/translateflow-core
 ```
 
-The source lock also pins `formatVersion`, `readerMinVersion`, and `normalizationVersion`. The compiler rejects incompatible locks and verifies both SHA-256 digests **before parsing**. Source drift fails closed. The emitted manifest records `compilerVersion`.
+The source lock also pins `formatVersion`, `readerMinVersion`, and `normalizationVersion`. The compiler rejects incompatible locks and verifies both SHA-256 digests **before parsing**. Source drift fails closed. The emitted manifest records `compilerVersion`. Before returning success, the compiler re-opens the generated manifest/directory/shards and validates file sizes/hashes, shard ranges, duplicate lookup keys, reader compatibility, record structure and the pack fingerprint.
 
 A successful output contains:
 
