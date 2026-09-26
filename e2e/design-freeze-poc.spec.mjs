@@ -110,6 +110,11 @@ test("Design Freeze POC: MV3 OPFS persists across browser restart and catalog si
       const monolithUrl = chrome.runtime.getURL("e2e-poc-assets/monolith.dat");
       const shardUrl = chrome.runtime.getURL("e2e-poc-assets/pe.dat");
 
+      const fullStart = performance.now();
+      const full = await fetch(monolithUrl);
+      const fullText = await full.text();
+      const fullMs = performance.now() - fullStart;
+
       const rangeStart = performance.now();
       const ranged = await fetch(monolithUrl, {
         headers: { Range: `bytes=${markerOffset}-${markerOffset + marker.length - 1}` }
@@ -127,6 +132,10 @@ test("Design Freeze POC: MV3 OPFS persists across browser restart and catalog si
         opfsSupported: true,
         signatureValid,
         tamperedRejected,
+        fullStatus: full.status,
+        fullBytesReceived: fullText.length,
+        fullContainsMarker: fullText.includes(marker),
+        fullMs: Math.round(fullMs * 1000) / 1000,
         rangeStatus: ranged.status,
         rangeContentRange: ranged.headers.get("content-range"),
         rangeBytesReceived: rangeText.length,
@@ -150,8 +159,12 @@ test("Design Freeze POC: MV3 OPFS persists across browser restart and catalog si
     expect(first.signatureValid).toBe(true);
     expect(first.tamperedRejected).toBe(true);
     expect(first.opfsSupported).toBe(true);
+    expect(first.fullContainsMarker).toBe(true);
     expect(first.rangeContainsMarker).toBe(true);
     expect(first.shardContainsMarker).toBe(true);
+    expect(first.fullBytesReceived).toBeGreaterThan(500_000);
+    expect(first.rangeBytesReceived).toBe(MARKER.length);
+    expect(first.rangeBytesReceived).toBeLessThan(first.fullBytesReceived);
     expect([200, 206]).toContain(first.rangeStatus);
 
     await context.close();
