@@ -28,6 +28,8 @@ The same lock contains the exact source-license notices used to generate `THIRD_
 
 Download the two raw files from the exact URLs in the source lock into a local source cache. Do not substitute the repository default branch.
 
+The output directory must be new or empty. The compiler deliberately refuses to recursively delete a non-empty directory; cleanup is an explicit caller/release-engineer action.
+
 Then run:
 
 ```bash
@@ -51,7 +53,7 @@ shards/0001.jsonl
 ...
 ```
 
-The bundled profile guarantees each lexical shard stays within the Design Freeze read-unit budget of 512 KiB. An oversized individual record is rejected.
+The bundled profile guarantees each lexical shard stays within the Design Freeze read-unit budget of 512 KiB. An oversized individual record is rejected. The manifest records the effective `profileOptions.maxShardBytes`, and that value participates in the pack fingerprint.
 
 ## Determinism
 
