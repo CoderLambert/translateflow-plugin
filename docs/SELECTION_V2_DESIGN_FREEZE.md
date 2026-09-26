@@ -182,15 +182,17 @@ Real service-worker WebCrypto POC proved ECDSA P-256 verification and tamper rej
 
 v1 policy:
 
-- extension ships accepted catalog public keys/key IDs;
+- extension ships accepted catalog public keys/key IDs plus a minimum accepted catalog-sequence baseline;
 - remote data cannot introduce a new trust root;
-- signed catalog binds monotonic sequence, pack id/version, format/reader compatibility, file sizes and SHA-256 values;
+- detached ECDSA P-256/SHA-256 verifies the exact downloaded UTF-8 catalog bytes **before parsing/reserialization**;
+- signed catalog binds monotonic sequence, pack id/version, format/reader compatibility, normalized relative file paths, file sizes and SHA-256 values;
 - highest accepted catalog sequence is persisted and lower sequences are rejected as replay/downgrade;
+- after complete local-state loss, the extension-shipped sequence baseline still prevents rollback below the version known to that extension release;
 - SHA-256 is checked only after catalog authenticity succeeds;
 - key rotation/revocation is delivered by an extension update;
 - a transition extension may trust old+new keys simultaneously.
 
-This deliberately avoids remote trust-root delegation in v1.
+This deliberately avoids remote trust-root delegation in v1. The local high-water mark is not treated as indestructible state; replay protection after a full local-data clear falls back to the baseline shipped with the installed extension version.
 
 ## 8. Frozen permission UX
 
