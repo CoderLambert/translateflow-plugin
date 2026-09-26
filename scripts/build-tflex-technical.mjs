@@ -66,6 +66,7 @@ export async function compileTflexTechnical({
     provenance: "revision-locked Wikidata structured extract",
     dataSha256: lock.source.extractSha256,
     dataUrl: lock.source.extractPath,
+    snapshot: { ...lock.source.snapshot },
     license: {
       id: lock.source.license.id,
       name: lock.source.license.name,
@@ -123,6 +124,10 @@ export function validateTechnicalSourceLock(lock) {
   requireText(source.extractPath, "source extractPath");
   requireSha256(source.extractSha256, "source extractSha256");
   assertPositiveInteger(source.extractSize, "source extractSize");
+  if (!source.snapshot || source.snapshot.kind !== "qid-revision-set") throw new Error("technical source snapshot kind is incompatible");
+  requireText(source.snapshot.version, "source snapshot version");
+  requireText(source.snapshot.lockedAt, "source snapshot lockedAt");
+  assertPositiveInteger(source.snapshot.extractRuleVersion, "source snapshot extractRuleVersion");
   if (source.license?.id !== "CC0-1.0") throw new Error("Wikidata structured extract must be locked as CC0-1.0");
   for (const key of ["name", "source", "notice"]) requireText(source.license?.[key], "source license " + key);
 
@@ -131,7 +136,6 @@ export function validateTechnicalSourceLock(lock) {
   if (!Array.isArray(policy.blockedAliases) || !Array.isArray(policy.caseSensitiveAliases)) throw new Error("technical alias policy is incomplete");
   assertPositiveInteger(policy.maxAliasesPerEntity, "maxAliasesPerEntity");
   assertPositiveInteger(policy.maxTypeLabelsPerEntity, "maxTypeLabelsPerEntity");
-  assertPositiveInteger(policy.maxDescriptionChars, "maxDescriptionChars");
 
   if (!Array.isArray(lock.entities) || !lock.entities.length) throw new Error("technical source lock entities are required");
   const seenQids = new Set();
@@ -154,6 +158,10 @@ export function validateTechnicalExtract(extract) {
   if (extract.schemaVersion !== 1) throw new Error("technical extract schemaVersion must be 1");
   if (extract.source !== "Wikidata main namespace structured data") throw new Error("technical extract source namespace is incompatible");
   if (extract.license !== "CC0-1.0") throw new Error("technical extract license is incompatible");
+  if (!extract.snapshot || extract.snapshot.kind !== "qid-revision-set") throw new Error("technical extract snapshot metadata is required");
+  requireText(extract.snapshot.version, "technical extract snapshot version");
+  requireText(extract.snapshot.lockedAt, "technical extract snapshot lockedAt");
+  assertPositiveInteger(extract.snapshot.extractRuleVersion, "technical extract rule version");
   if (!Array.isArray(extract.entities) || !extract.entities.length) throw new Error("technical extract entities are required");
   return extract;
 }
@@ -197,11 +205,7 @@ export function buildTechnicalRecords(extract, policy, lockedEntities = []) {
       });
     }
 
-    const targetTranslations = uniqueSorted([
-      entity.zhLabel,
-      ...(Array.isArray(entity.zhAliases) ? entity.zhAliases : [])
-    ].filter(Boolean).map(normalizeTargetDisplay));
-    const translations = targetTranslations.length ? targetTranslations : [displayForm];
+    const translations = [displayForm];
     const category = locked?.category || "";
 
     records.push({
@@ -214,7 +218,6 @@ export function buildTechnicalRecords(extract, policy, lockedEntities = []) {
       translations,
       typeLabels: approvedTypes,
       domains: category ? [category] : [],
-      description: normalizeDescription(entity.description || ""),
       sourceRevision: entity.revision,
       sourceRefs: [{ sourceId: SOURCE_ID, recordId: entity.qid + "@" + entity.revision }],
       _aliasPolicy: aliases
@@ -261,8 +264,7 @@ export function buildTechnicalAliasIndex(records, policy) {
 function validateEntity(entity, policy) {
   if (!entity || typeof entity !== "object" || Array.isArray(entity)) throw new Error("malformed Wikidata entity");
   const allowedFields = new Set([
-    "qid", "revision", "label", "aliases", "zhLabel", "zhAliases",
-    "description", "types", "permanentUrl"
+    "qid", "revision", "label", "aliases", "types", "permanentUrl"
   ]);
   for (const key of Object.keys(entity)) {
     if (!allowedFields.has(key)) throw new Error("unsupported Wikidata extract field: " + key);
@@ -272,16 +274,12 @@ function validateEntity(entity, policy) {
   assertPositiveInteger(entity.revision, "Wikidata revision");
   requireText(entity.label, "Wikidata label");
   assertDataOnly(entity.label, "Wikidata label");
-  if (!Array.isArray(entity.aliases) || !Array.isArray(entity.types) || !Array.isArray(entity.zhAliases)) {
-    throw new Error("Wikidata aliases/zhAliases/types are required");
+  if (!Array.isArray(entity.aliases) || !Array.isArray(entity.types)) {
+    throw new Error("Wikidata aliases/types are required");
   }
   if (entity.aliases.length > policy.maxAliasesPerEntity) throw new Error("Wikidata entity exceeds alias limit");
   if (entity.types.length > policy.maxTypeLabelsPerEntity) throw new Error("Wikidata entity exceeds type-label limit");
-  if (entity.zhLabel !== null && entity.zhLabel !== undefined) {
-    requireText(entity.zhLabel, "Wikidata zhLabel");
-    assertDataOnly(entity.zhLabel, "Wikidata zhLabel");
-  }
-  for (const alias of [...entity.aliases, ...entity.zhAliases]) {
+  for (const alias of entity.aliases) {
     requireText(alias, "Wikidata alias");
     assertDataOnly(alias, "Wikidata alias");
   }
@@ -289,10 +287,6 @@ function validateEntity(entity, policy) {
     requireText(type, "Wikidata type");
     assertDataOnly(type, "Wikidata type");
   }
-
-  const description = String(entity.description || "");
-  if (description.length > policy.maxDescriptionChars) throw new Error("Wikidata description exceeds limit");
-  assertDataOnly(description, "Wikidata description");
 
   requireText(entity.permanentUrl, "Wikidata permanentUrl");
   const expected = "https://www.wikidata.org/w/index.php?title=" + entity.qid + "&oldid=" + entity.revision;
@@ -312,14 +306,6 @@ function validateExtractAgainstLock(entities, lockedByQid) {
   for (const qid of lockedByQid.keys()) {
     if (!seen.has(qid)) throw new Error("locked Wikidata entity missing from extract: " + qid);
   }
-}
-
-function normalizeTargetDisplay(value) {
-  return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ");
-}
-
-function normalizeDescription(value) {
-  return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ");
 }
 
 async function validateEmittedPack({ output, records, aliases }) {
@@ -386,6 +372,11 @@ function makeFingerprintPayload({ formatVersion, normalizationVersion, packId, p
       version: source.version,
       provenance: source.provenance,
       dataSha256: source.dataSha256,
+      snapshot: source.snapshot ? {
+        kind: source.snapshot.kind,
+        version: source.snapshot.version,
+        extractRuleVersion: source.snapshot.extractRuleVersion
+      } : undefined,
       licenseId: source.license.id
     })),
     files: [...files].sort(compareFile).map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
@@ -396,6 +387,8 @@ function buildNotice(lock) {
   return [
     "=== Wikidata structured data ===",
     "Source extract: " + lock.source.extractPath,
+    "Snapshot: " + lock.source.snapshot.kind + " / " + lock.source.snapshot.version,
+    "Extract rule version: " + lock.source.snapshot.extractRuleVersion,
     "License: " + lock.source.license.name + " [" + lock.source.license.id + "]",
     "License source: " + lock.source.license.source,
     "",
