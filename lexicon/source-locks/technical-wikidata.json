@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "formatVersion": 1,
+  "readerMinVersion": 1,
+  "normalizationVersion": 1,
+  "packId": "technical-wikidata-en-zh",
+  "packVersion": "wikidata-revision-set-2026-04",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "source": {
+    "id": "wikidata",
+    "version": "revision-locked-structured-extract",
+    "namespace": "Wikidata main namespace structured data",
+    "extractPath": "lexicon/sources/wikidata-tech-entities.json",
+    "extractSha256": "3d653d0b7ac276cb12dac62bd678b53a94a574e3511906b502869b1ac7411721",
+    "extractSize": 2467,
+    "license": {
+      "id": "CC0-1.0",
+      "name": "Creative Commons CC0 1.0 Universal",
+      "source": "https://www.wikidata.org/wiki/Wikidata:Copyright",
+      "notice": "Wikidata structured data in the main namespace is available under CC0 1.0. TranslateFlow preserves QID/revision provenance and does not import Wikipedia prose, Commons media, logos, or arbitrary external descriptions."
+    }
+  },
+  "policy": {
+    "allowedTypes": [
+      "authentication protocol",
+      "container runtime",
+      "database management system",
+      "free and open-source software",
+      "free software",
+      "JavaScript library",
+      "key–value database system",
+      "open-source software",
+      "open standard",
+      "relational database management system",
+      "software library",
+      "SQL server",
+      "terminal multiplexer",
+      "web framework"
+    ],
+    "excludeGenericLowercaseMultiwordAliases": true,
+    "maxAliasesPerEntity": 16,
+    "maxTypeLabelsPerEntity": 16
+  }
+}
