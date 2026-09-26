@@ -107,9 +107,15 @@ export function createLexicalGateway({
   async function lookupAcrossPacks(text, matchedBy) {
     const candidates = [];
     for (const reader of packReaders) {
-      const hit = await reader.lookup(text);
-      if (!hit) continue;
-      candidates.push(...candidatesFromHit(hit, { matchedBy, queryForm: text }));
+      const hits = typeof reader.lookupAll === "function"
+        ? await reader.lookupAll(text)
+        : [await reader.lookup(text)].filter(Boolean);
+      for (const hit of hits) {
+        candidates.push(...candidatesFromHit(hit, {
+          matchedBy: hit.matchedAlias ? "alias" : matchedBy,
+          queryForm: text
+        }));
+      }
     }
     return candidates;
   }
