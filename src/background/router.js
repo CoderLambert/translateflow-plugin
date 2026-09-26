@@ -33,6 +33,7 @@ import {
 } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
+import { runLexicalLookup } from "./lexical/index.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -72,6 +73,13 @@ export async function handleBackgroundMessage(message, sender) {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
+    case BACKGROUND_MESSAGES.LEXICAL_LOOKUP:
+      return runLexicalLookup({
+        text: message.text,
+        pageUrl: message.pageUrl || "",
+        sourceLanguage: message.sourceLanguage || "en",
+        targetLanguage: message.targetLanguage || "zh-CN"
+      });
     case BACKGROUND_MESSAGES.CACHE_LOOKUP:
       return lookupTranslations({
         pageUrl: message.pageUrl,

@@ -1,5 +1,5 @@
 import { test as base, chromium, expect } from "@playwright/test";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,6 +56,13 @@ export const test = base.extend({
         return ![".git", "node_modules", "playwright-report", "test-results"].includes(first);
       }
     });
+
+    await mkdir(join(extensionDir, "assets", "lexicon"), { recursive: true });
+    await cp(
+      join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),
+      join(extensionDir, "assets", "lexicon", "core"),
+      { recursive: true }
+    );
 
     const manifestPath = join(extensionDir, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));

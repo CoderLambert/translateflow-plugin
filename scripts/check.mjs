@@ -42,6 +42,7 @@ if (manifest) {
 }
 
 const sourceFiles = jsFiles.filter((file) => relative(root, file).split(sep)[0] === "src");
+const allowedLocalFetchFiles = new Set(["src/background/lexical/package-assets.js"]);
 for (const file of sourceFiles) {
   const rel = relative(root, file).replaceAll(sep, "/");
   const code = readFileSync(file, "utf8");
@@ -54,8 +55,8 @@ for (const file of sourceFiles) {
   if (rel.startsWith("src/content/") && /^\s*(?:import|export)\s/m.test(code)) {
     failures.push(`${rel} 作为 build-free Content Script 模块，不允许使用 ESM import/export`);
   }
-  if (/\bfetch\s*\(/.test(code) && !rel.startsWith("src/background/providers/")) {
-    failures.push(`${rel} 直接使用 fetch；外部网络请求必须封装在 src/background/providers/`);
+  if (/\bfetch\s*\(/.test(code) && !rel.startsWith("src/background/providers/") && !allowedLocalFetchFiles.has(rel)) {
+    failures.push(`${rel} 直接使用 fetch；外部网络请求必须封装在 src/background/providers/，扩展包本地资源读取仅允许 lexical/package-assets.js`);
   }
   if (/\bindexedDB\b/.test(code) && rel !== "src/background/cache-db.js") {
     failures.push(`${rel} 直接访问 IndexedDB；缓存访问必须收口到 src/background/cache-db.js`);
