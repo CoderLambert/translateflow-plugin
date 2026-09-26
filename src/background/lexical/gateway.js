@@ -238,7 +238,7 @@ export function conservativeMorphologyForms(value) {
     forms.push(stem, stem + "e", undoubleFinalConsonant(stem));
   }
 
-  if (value.endsWith("es") && value.length > 4) forms.push(value.slice(0, -2));
+  if (/(?:sses|xes|zes|ches|shes|oes)$/.test(value) && value.length > 4) forms.push(value.slice(0, -2));
   if (
     value.endsWith("s") &&
     value.length > 3 &&
