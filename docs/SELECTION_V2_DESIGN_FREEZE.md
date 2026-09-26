@@ -289,8 +289,8 @@ The POC is deliberately not the production #77/#79 implementation.
 - [x] Source composition frozen.
 - [x] `unlimitedStorage` rejected by default.
 - [x] SQLite/WASM remains deferred.
-- [ ] Final exact-head quality PASS recorded.
-- [ ] Final exact-head Chromium E2E PASS recorded.
-- [ ] Independent audit has no Design Freeze blocker.
+- [x] Final pre-close exact-head quality PASS recorded: quality #177 on `482e2cc7f68a2394e4d3ce6dc82e6d8ba8fe280d`.
+- [x] Final pre-close exact-head Chromium E2E PASS recorded: e2e #146 on `482e2cc7f68a2394e4d3ce6dc82e6d8ba8fe280d`.
+- [x] Design Freeze audit review found no architecture/implementation blocker; final merge still requires CI PASS on the documentation-only closure commit.
 
-Once the final three rows are complete, #75 may be marked **DESIGN FROZEN v1** and #76 may start.
+**Gate decision:** DESIGN FROZEN v1. The documentation-only closure commit must remain green before merge; #76 may start only after #86 merges and #75 closes.
