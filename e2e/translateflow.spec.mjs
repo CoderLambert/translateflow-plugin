@@ -413,6 +413,18 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(phrase.candidates[0].translations).toEqual(["终端复用器"]);
     expect(harness.server.calls).toHaveLength(0);
 
+    const alias = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "stateful",
+      pageUrl: page.url()
+    });
+    expect(alias.ok).toBe(true);
+    expect(alias.status).toBe("candidates");
+    expect([...new Set(alias.candidates.map((candidate) => candidate.headword))]).toEqual(["persistent", "session"]);
+    expect(alias.candidates).toHaveLength(3);
+    expect(alias.candidates.every((candidate) => candidate.matchedBy === "alias")).toBe(true);
+    expect(harness.server.calls).toHaveLength(0);
+
     const unsupported = await harness.runtime({
       type: "LEXICAL_LOOKUP",
       text: "persistent",
