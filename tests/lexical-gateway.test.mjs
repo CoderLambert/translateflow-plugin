@@ -86,6 +86,26 @@ test("exact phrase wins while phrase misses expose evidence without token concat
   assert.ok(miss.evidence.every((item) => item.candidates.length > 0));
 });
 
+test("alias lookup returns one or many attributable candidates instead of choosing a winner", async () => {
+  const gateway = createLexicalGateway({ packReaders: [coreReader()] });
+
+  const single = await gateway.lookup({ text: "term mux" });
+  assert.equal(single.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+  assert.equal(single.matchedBy, "exact");
+  assert.equal(single.candidates.length, 1);
+  assert.equal(single.candidates[0].matchedBy, "alias");
+  assert.equal(single.candidates[0].headword, "terminal multiplexer");
+
+  const ambiguous = await gateway.lookup({ text: "stateful" });
+  assert.equal(ambiguous.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+  assert.deepEqual(
+    [...new Set(ambiguous.candidates.map((candidate) => candidate.headword))],
+    ["persistent", "session"]
+  );
+  assert.equal(ambiguous.candidates.length, 3);
+  assert.ok(ambiguous.candidates.every((candidate) => candidate.matchedBy === "alias"));
+});
+
 test("glossary override short-circuits local pack candidates", async () => {
   let packCalls = 0;
   const reader = {
