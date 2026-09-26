@@ -355,7 +355,7 @@ test("Design Freeze POC: optional host access can be requested for one trusted o
     context = launched.context;
     const extensionId = new URL(launched.worker.url()).host;
     const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/popup.html`);
+    await page.goto(`chrome-extension://${extensionId}/options.html`);
 
     await page.evaluate(() => {
       const button = document.createElement("button");
