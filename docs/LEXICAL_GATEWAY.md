@@ -51,6 +51,10 @@ Official release packaging places the #76-generated Core pack under:
 
 Tests use a project-authored TFLex fixture and do not require live network data.
 
+## Ranking and sufficiency
+
+Candidate collection does not choose a semantic winner. #85 owns deterministic ranking/sufficiency in [LEXICAL_RANKING.md](./LEXICAL_RANKING.md). User Glossary is the only explicit override; all other local sources remain attributable candidates.
+
 ## Privacy/cache
 
 Lexical lookup receives only the selected lexical text plus local page URL for resolving site glossary settings. It does not send the URL or lexical data to a Provider. Deterministic local results are not persisted to translation cache.
