@@ -1,5 +1,8 @@
 {
   "schemaVersion": 1,
+  "formatVersion": 1,
+  "readerMinVersion": 1,
+  "normalizationVersion": 1,
   "packId": "core-semantic-en-zh",
   "packVersion": "pwn3-cow-omw-406bf83b3c50",
   "sourceLanguage": "en",
