@@ -61,6 +61,12 @@ test("technical TFLex build is deterministic, source-locked and bounded", async 
   assert.equal(first.result.manifest.sources.length, 1);
   assert.equal(first.result.manifest.sources[0].id, "wikidata");
   assert.equal(first.result.manifest.sources[0].license.id, "CC0-1.0");
+  assert.deepEqual(first.result.manifest.sources[0].snapshot, {
+    kind: "qid-revision-set",
+    version: "2026-09-26",
+    lockedAt: "2026-09-26T14:38:56Z",
+    extractRuleVersion: 1
+  });
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.ok(first.result.directory.shards.length >= 2);
   assert.ok(first.result.directory.shards.every((shard) => shard.size <= 1200));
@@ -98,14 +104,16 @@ test("runtime reader resolves named entities and approved aliases locally", asyn
   const runtime = await reader.lookupAll("runtime system");
   assert.equal(runtime.length, 1);
   assert.equal(runtime[0].record.kind, "technical-concept");
-  assert.deepEqual(runtime[0].record.translations, ["运行时系统"]);
+  assert.deepEqual(runtime[0].record.translations, ["run-time system"]);
   assert.deepEqual(runtime[0].record.domains, ["runtime"]);
-  assert.match(runtime[0].record.description, /running code/);
+  assert.equal("description" in runtime[0].record, false);
+  assert.deepEqual(await reader.lookupAll("runtime"), []);
 
   const session = await reader.lookup("session");
   assert.equal(session.record.kind, "technical-concept");
-  assert.deepEqual(session.record.translations, ["会话(计算机科学)"]);
+  assert.deepEqual(session.record.translations, ["session"]);
   assert.deepEqual(session.record.domains, ["protocol"]);
+  assert.deepEqual(await reader.lookupAll("container"), []);
 });
 
 test("generic source aliases are explicitly excluded from lookup index", async () => {
@@ -129,9 +137,6 @@ test("ambiguous aliases retain multiple canonical targets", async () => {
         revision: 1,
         label: "AlphaTool",
         aliases: ["shared-tool"],
-        zhLabel: null,
-        zhAliases: [],
-        description: "project-authored ambiguity fixture",
         types: ["free software"],
         permanentUrl: "https://www.wikidata.org/w/index.php?title=Q1&oldid=1"
       },
@@ -140,9 +145,6 @@ test("ambiguous aliases retain multiple canonical targets", async () => {
         revision: 2,
         label: "BetaTool",
         aliases: ["shared-tool"],
-        zhLabel: null,
-        zhAliases: [],
-        description: "project-authored ambiguity fixture",
         types: ["free software"],
         permanentUrl: "https://www.wikidata.org/w/index.php?title=Q2&oldid=2"
       }
@@ -167,9 +169,6 @@ test("non-technical types are excluded by the explicit allowlist", async () => {
       revision: 3,
       label: "NotATool",
       aliases: [],
-      zhLabel: null,
-      zhAliases: [],
-      description: "project-authored non-technical fixture",
       types: ["human"],
       permanentUrl: "https://www.wikidata.org/w/index.php?title=Q3&oldid=3"
     }]
@@ -184,6 +183,8 @@ test("official extract matches the exact locked QID/revision set and concept kin
   assert.equal(records.length, lock.entities.length);
   assert.equal(records.find((record) => record.entityId === "Q1004415").kind, "technical-concept");
   assert.equal(records.find((record) => record.entityId === "Q1935361").kind, "technical-entity");
+  assert.ok(records.every((record) => !("description" in record)));
+  assert.ok(records.every((record) => record.translations.length === 1 && record.translations[0] === record.displayForm));
 
   const changed = structuredClone(extract);
   changed.entities[0].revision += 1;
@@ -198,9 +199,6 @@ test("official extract matches the exact locked QID/revision set and concept kin
     revision: 1,
     label: "Unexpected",
     aliases: [],
-    zhLabel: null,
-    zhAliases: [],
-    description: "not locked",
     types: ["free software"],
     permanentUrl: "https://www.wikidata.org/w/index.php?title=Q999999999&oldid=1"
   });
@@ -210,23 +208,22 @@ test("official extract matches the exact locked QID/revision set and concept kin
   );
 });
 
-test("technical extract rejects media/prose schema expansion and oversized descriptions", async () => {
+test("technical extract rejects media, prose and unproven target-label schema expansion", async () => {
   const lock = validateTechnicalSourceLock(JSON.parse(await readFile(lockPath, "utf8")));
   const extract = JSON.parse(await readFile(extractPath, "utf8"));
 
-  const withLogo = structuredClone(extract);
-  withLogo.entities[0].logo = "SomeLogo.svg";
-  assert.throws(
-    () => buildTechnicalRecords(withLogo, lock.policy, lock.entities),
-    /unsupported Wikidata extract field: logo/
-  );
-
-  const verbose = structuredClone(extract);
-  verbose.entities[0].description = "x".repeat(lock.policy.maxDescriptionChars + 1);
-  assert.throws(
-    () => buildTechnicalRecords(verbose, lock.policy, lock.entities),
-    /description exceeds limit/
-  );
+  for (const [field, value] of [
+    ["logo", "SomeLogo.svg"],
+    ["description", "prose must not enter the release extract"],
+    ["zhLabel", "未锁定来源的中文标签"]
+  ]) {
+    const changed = structuredClone(extract);
+    changed.entities[0][field] = value;
+    assert.throws(
+      () => buildTechnicalRecords(changed, lock.policy, lock.entities),
+      new RegExp("unsupported Wikidata extract field: " + field)
+    );
+  }
 });
 
 test("technical builder fails closed on source drift", async () => {
@@ -249,6 +246,12 @@ test("technical source lock requires Wikidata CC0 evidence", async () => {
   assert.throws(() => validateTechnicalSourceLock(lock), /CC0-1\.0/);
 });
 
+test("technical source lock requires explicit revision-set snapshot metadata", async () => {
+  const lock = JSON.parse(await readFile(lockPath, "utf8"));
+  delete lock.source.snapshot.extractRuleVersion;
+  assert.throws(() => validateTechnicalSourceLock(lock), /extractRuleVersion/);
+});
+
 test("technical entity strings remain data-only", async () => {
   const lock = validateTechnicalSourceLock(JSON.parse(await readFile(lockPath, "utf8")));
   assert.throws(
@@ -261,9 +264,6 @@ test("technical entity strings remain data-only", async () => {
         revision: 4,
         label: "<img src=x>",
         aliases: [],
-        zhLabel: null,
-        zhAliases: [],
-        description: "project-authored unsafe fixture",
         types: ["free software"],
         permanentUrl: "https://www.wikidata.org/w/index.php?title=Q4&oldid=4"
       }]
