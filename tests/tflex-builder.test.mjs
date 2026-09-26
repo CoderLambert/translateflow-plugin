@@ -130,6 +130,18 @@ test("TFLex output validator rejects a reader below readerMinVersion", async () 
   );
 });
 
+test("TFLex output validator detects manifest fingerprint corruption", async () => {
+  const built = await build("fingerprint-corruption");
+  const manifestPath = join(built.outDir, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.packVersion += "-tampered";
+  await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+  await assert.rejects(
+    validateTflexCoreOutput({ outDir: built.outDir, readerVersion: 1 }),
+    /TFLex manifest fingerprint mismatch/
+  );
+});
+
 test("TFLex output validator detects corrupted shard bytes", async () => {
   const built = await build("corruption");
   const shardPath = join(built.outDir, built.result.directory.shards[0].path);
