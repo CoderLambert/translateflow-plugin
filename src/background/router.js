@@ -34,6 +34,7 @@ import {
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
 import { runLexicalLookup } from "./lexical/index.js";
+import { resolveSelectionRequest } from "./selection/resolve.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -73,6 +74,12 @@ export async function handleBackgroundMessage(message, sender) {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
+    case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
+      return resolveSelectionRequest({
+        text: message.text,
+        pageUrl: message.pageUrl || "",
+        context: message.context || null
+      });
     case BACKGROUND_MESSAGES.LEXICAL_LOOKUP:
       return runLexicalLookup({
         text: message.text,
