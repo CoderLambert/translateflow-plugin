@@ -45,6 +45,7 @@ test("TFLex compiler is deterministic and emits bounded attributable artifacts",
   assert.equal(first.result.manifest.format, "tflex");
   assert.equal(first.result.manifest.formatVersion, 1);
   assert.equal(first.result.manifest.readerMinVersion, 1);
+  assert.equal(first.result.manifest.compilerVersion, 1);
   assert.equal(first.result.manifest.normalizationVersion, 1);
   assert.equal(first.result.manifest.profile, "bundled-sharded-v1");
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
@@ -92,6 +93,9 @@ test("source-lock validation fails closed on missing license evidence", () => {
   assert.throws(
     () => validateSourceLock({
       schemaVersion: 1,
+      formatVersion: 1,
+      readerMinVersion: 1,
+      normalizationVersion: 1,
       packId: "x",
       packVersion: "1",
       sourceLanguage: "en",
@@ -117,6 +121,9 @@ test("compiler rejects executable markup in lexical source strings", async () =>
   await Promise.all([writeFile(engPath, engText), writeFile(cmnPath, cmnText)]);
   await writeFile(lockPath, JSON.stringify({
     schemaVersion: 1,
+    formatVersion: 1,
+    readerMinVersion: 1,
+    normalizationVersion: 1,
     packId: "fixture",
     packVersion: "1",
     sourceLanguage: "en",
@@ -130,4 +137,22 @@ test("compiler rejects executable markup in lexical source strings", async () =>
     compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, sourceLockPath: lockPath, outDir: join(root, "out") }),
     /executable\/renderable markup/
   );
+});
+
+test("source-lock validation rejects incompatible TFLex versions", () => {
+  const base = {
+    schemaVersion: 1,
+    formatVersion: 2,
+    readerMinVersion: 1,
+    normalizationVersion: 1,
+    packId: "x",
+    packVersion: "1",
+    sourceLanguage: "en",
+    targetLanguage: "zh-CN",
+    sources: [
+      { id: "pwn-3.0", version: "3", provenance: "x", data: { url: "x", sha256: "a".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+      { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+    ]
+  };
+  assert.throws(() => validateSourceLock(base), /formatVersion is incompatible/);
 });
