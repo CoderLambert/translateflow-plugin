@@ -104,7 +104,7 @@ test("runtime reader resolves named entities and approved aliases locally", asyn
 
   const session = await reader.lookup("session");
   assert.equal(session.record.kind, "technical-concept");
-  assert.deepEqual(session.record.translations, ["会话（计算机科学）"]);
+  assert.deepEqual(session.record.translations, ["会话(计算机科学)"]);
   assert.deepEqual(session.record.domains, ["protocol"]);
 });
 
