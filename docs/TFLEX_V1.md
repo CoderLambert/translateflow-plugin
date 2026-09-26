@@ -55,6 +55,7 @@ Rules:
 - unknown `formatVersion` is rejected;
 - a reader lower than `readerMinVersion` rejects the pack;
 - `fingerprint` changes whenever lookup-visible data, normalization behavior, source identity or pack version changes;
+- `fingerprint` is SHA-256 over a deterministic fingerprint payload containing format/normalization versions, pack id/version, locked source identities and the ordered file-role/path/size/SHA-256 list; the `fingerprint` field itself and presentation-only metadata are excluded to avoid circular hashing;
 - source licenses remain separate; a combined pack does not invent a new umbrella license;
 - release builds consume locked/checksummed source artifacts, never live endpoints.
 
@@ -197,15 +198,20 @@ Missing/corrupt active data must fall back to the previous verified version when
 
 v1 trust policy:
 
-- extension code ships the accepted catalog public-key IDs/public keys;
+- extension code ships the accepted catalog public-key IDs/public keys and a minimum accepted catalog sequence baseline;
 - remote metadata cannot introduce a new trust root;
-- signed catalog binds monotonic catalog sequence, pack id/version, TFLex compatibility, file sizes and SHA-256 values;
+- the detached ECDSA P-256/SHA-256 signature is verified against the **exact UTF-8 catalog bytes as downloaded, before JSON parsing or reserialization**; this avoids canonical-JSON ambiguity;
+- signed catalog binds monotonic catalog sequence, pack id/version, TFLex compatibility, file paths, file sizes and SHA-256 values;
+- catalog file paths must be relative, normalized, inside the pack root, and must not contain traversal/absolute-path forms;
 - highest accepted catalog sequence is persisted; lower sequence is rejected as replay/downgrade;
+- after local state loss, the extension-shipped minimum catalog sequence still prevents rollback below the baseline bundled with that extension version;
 - signing-key rotation/revocation is delivered through an extension update which adds/removes trusted keys;
 - a transition release may trust old+new keys simultaneously;
 - pack SHA-256 validates bytes after catalog authenticity succeeds.
 
 This deliberately avoids remote trust-root delegation in v1.
+
+The remaining replay window after complete local-state loss is bounded by the extension-shipped sequence baseline. A future design may add stronger remotely revocable trust if dictionary-pack risk justifies that complexity; v1 does not pretend that a cleared local high-water mark is permanent state.
 
 ## 10. Optional-origin permissions
 
