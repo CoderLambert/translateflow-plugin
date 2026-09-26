@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "dictionary": "eng-zho",
+  "edition": "2025.11.23",
+  "releaseDate": "2025-11-23",
+  "headwords": 26660,
+  "source": {
+    "url": "https://download.freedict.org/dictionaries/eng-zho/2025.11.23/freedict-eng-zho-2025.11.23.src.tar.xz",
+    "sha512": "25aed0f1d7de68919aa9da1ba92d67f566ae4ea81660f42071c81fc21e56d4b210d61df379315678648c45ca7e52c4a0ba2eec009fbaab7c72e7472489e1fc4c",
+    "sizeBytes": 1600448
+  },
+  "provenance": {
+    "generator": "WikDict / wikdict-gen",
+    "generatorRepository": "https://github.com/karlb/wikdict-gen",
+    "generatorCommitEvidence": "f30228da482e74b06956ef55dcf23ae2757f9812",
+    "releaseTimeTemplateLicense": "CC-BY-SA-3.0",
+    "baseData": "Wiktionary via DBnary"
+  },
+  "licenseAudit": {
+    "exactTeiHeaderArchived": false,
+    "exactTeiLicense": null,
+    "approvedForOfficialPack": false,
+    "note": "Release-time generator evidence points to CC BY-SA 3.0, but the exact 2025.11.23 TEI header must be archived and compared before approval."
+  }
+}
