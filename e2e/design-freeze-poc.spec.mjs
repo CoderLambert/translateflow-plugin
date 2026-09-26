@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MARKER = "TF_DESIGN_FREEZE_MARKER";
-const MARKER_OFFSET = 256 * 1024;
+const MONOLITH_BYTES = 8 * 1024 * 1024;
+const MARKER_OFFSET = 4 * 1024 * 1024;
 
 async function prepareExtension() {
   const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-design-freeze-"));
@@ -24,7 +25,8 @@ async function prepareExtension() {
 
   const assetDir = join(extensionDir, "e2e-poc-assets");
   await mkdir(assetDir, { recursive: true });
-  const monolith = "A".repeat(MARKER_OFFSET) + MARKER + "\n" + "B".repeat(256 * 1024);
+  const tailBytes = MONOLITH_BYTES - MARKER_OFFSET - MARKER.length - 1;
+  const monolith = "A".repeat(MARKER_OFFSET) + MARKER + "\n" + "B".repeat(tailBytes);
   await writeFile(join(assetDir, "monolith.dat"), monolith);
   await writeFile(join(assetDir, "pe.dat"), `persistent\t持久的；持续存在的\n${MARKER}\n`);
   return { tempRoot, extensionDir, userDataDir: join(tempRoot, "profile") };
@@ -146,7 +148,10 @@ test("Design Freeze POC: MV3 OPFS persists across browser restart and catalog si
         shardMs: Math.round(shardMs * 1000) / 1000,
         quota: estimate.quota || 0,
         usage: estimate.usage || 0,
-        persisted: navigator.storage.persisted ? await navigator.storage.persisted() : null
+        persisted: navigator.storage.persisted ? await navigator.storage.persisted() : null,
+        syntheticCoreBytes: fullText.length,
+        performanceMemoryAvailable: Boolean(performance.memory),
+        usedJsHeapBytes: Number(performance.memory?.usedJSHeapSize || 0) || null
       };
     }, { catalog, publicJwk, signature, marker: MARKER, markerOffset: MARKER_OFFSET });
 
@@ -162,7 +167,7 @@ test("Design Freeze POC: MV3 OPFS persists across browser restart and catalog si
     expect(first.fullContainsMarker).toBe(true);
     expect(first.rangeContainsMarker).toBe(true);
     expect(first.shardContainsMarker).toBe(true);
-    expect(first.fullBytesReceived).toBeGreaterThan(500_000);
+    expect(first.fullBytesReceived).toBeGreaterThanOrEqual(8 * 1024 * 1024);
     expect(first.rangeBytesReceived).toBe(MARKER.length);
     expect(first.rangeBytesReceived).toBeLessThan(first.fullBytesReceived);
     expect([200, 206]).toContain(first.rangeStatus);
@@ -186,6 +191,84 @@ test("Design Freeze POC: MV3 OPFS persists across browser restart and catalog si
     console.log("[design-freeze:after-restart]", JSON.stringify(afterRestart));
     expect(afterRestart.text).toContain("persistent=持久的");
     expect(afterRestart.text).toContain("tmux=终端复用器");
+
+    const recovery = await launched.worker.evaluate(async () => {
+      const encoder = new TextEncoder();
+      const toHex = (bytes) => [...new Uint8Array(bytes)].map((value) => value.toString(16).padStart(2, "0")).join("");
+      const digestText = async (text) => toHex(await crypto.subtle.digest("SHA-256", encoder.encode(text)));
+      const root = await navigator.storage.getDirectory();
+      const dir = await root.getDirectoryHandle("tf-design-freeze", { create: true });
+
+      const writeText = async (name, text) => {
+        const handle = await dir.getFileHandle(name, { create: true });
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+      };
+      const inspect = async (name, expectedSha256) => {
+        try {
+          const handle = await dir.getFileHandle(name);
+          const file = await handle.getFile();
+          const text = await file.text();
+          const actualSha256 = await digestText(text);
+          return { status: actualSha256 === expectedSha256 ? "healthy" : "corrupt", actualSha256 };
+        } catch (error) {
+          if (error?.name === "NotFoundError") return { status: "missing" };
+          throw error;
+        }
+      };
+
+      const activeText = "persistent=持久的\ntmux=终端复用器\n";
+      const fallbackText = "persistent=持久的\n";
+      const activeSha256 = await digestText(activeText);
+      const fallbackSha256 = await digestText(fallbackText);
+      await writeText("pack-v2.dat", activeText);
+      await writeText("pack-v1.dat", fallbackText);
+      await chrome.storage.local.set({
+        tfDesignFreezePackState: {
+          active: { file: "pack-v2.dat", sha256: activeSha256, version: "2" },
+          fallback: { file: "pack-v1.dat", sha256: fallbackSha256, version: "1" }
+        }
+      });
+
+      await writeText("pack-v2.dat", "tampered");
+      const state = (await chrome.storage.local.get("tfDesignFreezePackState")).tfDesignFreezePackState;
+      const activeInspection = await inspect(state.active.file, state.active.sha256);
+      const fallbackInspection = await inspect(state.fallback.file, state.fallback.sha256);
+      let recoveredTo = null;
+      if (activeInspection.status !== "healthy" && fallbackInspection.status === "healthy") {
+        recoveredTo = state.fallback.version;
+        await chrome.storage.local.set({
+          tfDesignFreezePackState: {
+            active: state.fallback,
+            fallback: null,
+            recoveryReason: activeInspection.status
+          }
+        });
+      }
+
+      await dir.removeEntry("pack-v1.dat");
+      const recoveredState = (await chrome.storage.local.get("tfDesignFreezePackState")).tfDesignFreezePackState;
+      const missingInspection = await inspect(recoveredState.active.file, recoveredState.active.sha256);
+      const terminalState = missingInspection.status === "healthy" ? "healthy" : "needs-reinstall";
+
+      return {
+        activeInspection,
+        fallbackInspection,
+        recoveredTo,
+        persistedActiveVersion: recoveredState.active.version,
+        missingInspection,
+        terminalState
+      };
+    });
+
+    console.log("[design-freeze:opfs-recovery]", JSON.stringify(recovery));
+    expect(recovery.activeInspection.status).toBe("corrupt");
+    expect(recovery.fallbackInspection.status).toBe("healthy");
+    expect(recovery.recoveredTo).toBe("1");
+    expect(recovery.persistedActiveVersion).toBe("1");
+    expect(recovery.missingInspection.status).toBe("missing");
+    expect(recovery.terminalState).toBe("needs-reinstall");
   } finally {
     await context?.close().catch(() => {});
     await rm(tempRoot, { recursive: true, force: true });
@@ -261,4 +344,56 @@ test("Design Freeze POC: visible context crosses inline nodes but editable conte
     selectedText: "persistent",
     context: "persistent"
   });
+});
+
+
+test("Design Freeze POC: optional host access can be requested for one trusted origin only", async () => {
+  const { tempRoot, extensionDir, userDataDir } = await prepareExtension();
+  let context;
+  try {
+    const launched = await launchExtension(extensionDir, userDataDir);
+    context = launched.context;
+    const extensionId = new URL(launched.worker.url()).host;
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/popup.html`);
+
+    await page.evaluate(() => {
+      const button = document.createElement("button");
+      button.id = "tf-design-freeze-permission";
+      button.textContent = "Grant test pack origin";
+      globalThis.__tfPermissionResult = null;
+      button.addEventListener("click", async () => {
+        try {
+          const granted = await chrome.permissions.request({
+            origins: ["https://packs.translateflow.example/*"]
+          });
+          const all = await chrome.permissions.getAll();
+          globalThis.__tfPermissionResult = { granted, origins: all.origins || [] };
+        } catch (error) {
+          globalThis.__tfPermissionResult = { granted: false, error: error?.message || String(error), origins: [] };
+        }
+      });
+      document.body.appendChild(button);
+    });
+
+    await page.locator("#tf-design-freeze-permission").click();
+    await expect.poll(() => page.evaluate(() => globalThis.__tfPermissionResult)).not.toBeNull();
+    const permission = await page.evaluate(() => globalThis.__tfPermissionResult);
+    console.log("[design-freeze:optional-origin]", JSON.stringify(permission));
+
+    expect(permission.granted, permission.error || "optional host request was denied").toBe(true);
+    expect(permission.origins).toContain("https://packs.translateflow.example/*");
+    expect(permission.origins).not.toContain("https://*/*");
+
+    const removed = await page.evaluate(async () => chrome.permissions.remove({
+      origins: ["https://packs.translateflow.example/*"]
+    }));
+    expect(removed).toBe(true);
+    const remains = await page.evaluate(async () => (await chrome.permissions.getAll()).origins || []);
+    expect(remains).not.toContain("https://packs.translateflow.example/*");
+    await page.close();
+  } finally {
+    await context?.close().catch(() => {});
+    await rm(tempRoot, { recursive: true, force: true });
+  }
 });
