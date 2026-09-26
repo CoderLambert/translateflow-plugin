@@ -141,6 +141,8 @@ async function runCacheScenario(fixture) {
     assertTranslatedCount(warm.value.result, fixture.segments.length);
 
     return {
+      adapter: "in-memory benchmark cache",
+      storageLatencyIncluded: false,
       cold: {
         providerRequests: coldRequests,
         cacheHits: cold.value.fromCache ? fixture.segments.length : 0,
