@@ -5,7 +5,7 @@ test.describe("UI redesign release gate", () => {
     await harness.reset();
   });
 
-  test("Popup is width-bounded, non-overflowing and keeps advanced controls collapsed", async ({ harness }) => {
+  test("Popup keeps a 360px intrinsic width without internal horizontal overflow", async ({ harness }) => {
     const popup = harness.driver;
     await popup.setViewportSize({ width: 420, height: 720 });
     await popup.reload();
@@ -23,6 +23,25 @@ test.describe("UI redesign release gate", () => {
     await expect(popup.locator("details[open]")).toHaveCount(0);
     await expect(popup.locator(".tf-button--primary")).toHaveCount(1);
     await expect(popup.getByRole("switch", { name: /本站自动翻译/ })).toHaveAttribute("role", "switch");
+
+    // Chrome action popups are intrinsically sized. Simulate the provisional narrow
+    // viewport used during toolbar-popup negotiation and ensure the document still
+    // advertises the intended minimum width instead of collapsing to that viewport.
+    await popup.setViewportSize({ width: 80, height: 720 });
+    await popup.reload();
+
+    const intrinsic = await popup.evaluate(() => ({
+      rootWidth: document.documentElement.getBoundingClientRect().width,
+      bodyWidth: document.body.getBoundingClientRect().width,
+      rootScrollWidth: document.documentElement.scrollWidth,
+      rootMinWidth: getComputedStyle(document.documentElement).minWidth,
+      bodyMinWidth: getComputedStyle(document.body).minWidth
+    }));
+    expect(intrinsic.rootWidth).toBeGreaterThanOrEqual(360);
+    expect(intrinsic.bodyWidth).toBeGreaterThanOrEqual(360);
+    expect(intrinsic.rootScrollWidth).toBeGreaterThanOrEqual(360);
+    expect(intrinsic.rootMinWidth).toBe("360px");
+    expect(intrinsic.bodyMinWidth).toBe("360px");
   });
 
   test("Settings keeps active navigation, bounded desktop content and a usable narrow layout", async ({ harness }) => {

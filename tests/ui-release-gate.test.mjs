@@ -18,8 +18,10 @@ test("redesigned extension surfaces keep visible keyboard focus and reduced-moti
   assert.match(quickStyles, /prefers-reduced-motion:\s*reduce/);
 });
 
-test("Popup remains constrained and advanced controls are collapsed by default", () => {
+test("Popup advertises a stable intrinsic width and keeps advanced controls collapsed by default", () => {
   assert.match(popupCss, /width:\s*360px/);
+  assert.match(popupCss, /min-width:\s*360px/);
+  assert.doesNotMatch(popupCss, /max-width:\s*100vw/);
   assert.match(popupCss, /overflow-x:\s*hidden/);
   assert.equal((popupHtml.match(/<details class="secondary-card tf-accordion">/g) || []).length, 2);
   assert.doesNotMatch(popupHtml, /<details[^>]*\sopen[\s>]/);
