@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -49,6 +49,7 @@ test("TFLex compiler is deterministic and emits bounded attributable artifacts",
   assert.equal(first.result.manifest.compilerVersion, 1);
   assert.equal(first.result.manifest.normalizationVersion, 1);
   assert.equal(first.result.manifest.profile, "bundled-sharded-v1");
+  assert.deepEqual(first.result.manifest.profileOptions, { maxShardBytes: 900 });
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.ok(first.result.directory.shards.length >= 2);
   assert.ok(first.result.directory.shards.every((shard) => shard.size <= 900));
@@ -75,6 +76,33 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   assert.equal(normalizeEnglishDisplay(" Terminal_Multiplexer "), "Terminal Multiplexer");
   assert.equal(normalizeExactLookupKey("  C#   Runtime  "), "C# Runtime");
   assert.equal(normalizeLookupKey("  C#   Runtime  "), "c# runtime");
+});
+
+test("TFLex compiler records the effective shard budget in build identity", async () => {
+  const small = await build("budget-small", { maxShardBytes: 900 });
+  const large = await build("budget-large", { maxShardBytes: 64 * 1024 });
+  assert.deepEqual(small.result.manifest.profileOptions, { maxShardBytes: 900 });
+  assert.deepEqual(large.result.manifest.profileOptions, { maxShardBytes: 64 * 1024 });
+  assert.notEqual(small.result.manifest.fingerprint, large.result.manifest.fingerprint);
+});
+
+test("TFLex compiler refuses to delete a non-empty output directory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translateflow-tflex-safe-out-"));
+  const outDir = join(root, "out");
+  const sentinel = join(outDir, "keep.txt");
+  await mkdir(outDir, { recursive: true });
+  await writeFile(sentinel, "do not delete", "utf8");
+
+  await assert.rejects(
+    compileTflexCore({
+      englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
+      chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
+      outDir
+    }),
+    /output directory must be empty/
+  );
+  assert.equal(await readFile(sentinel, "utf8"), "do not delete");
 });
 
 test("TFLex compiler rejects source drift before parsing", async () => {
@@ -112,9 +140,21 @@ test("source-lock validation fails closed on missing license evidence", () => {
   );
 });
 
-test("compiler rejects executable markup in lexical source strings", async () => {
+test("source-lock validation rejects unverified extra Core sources", async () => {
+  const lock = JSON.parse(await readFile(new URL("./fixtures/tflex-core/source-lock.json", import.meta.url), "utf8"));
+  lock.sources.push({
+    id: "unexpected-source",
+    version: "1",
+    provenance: "fixture",
+    data: { url: "fixture://unexpected", sha256: "c".repeat(64) },
+    license: { id: "fixture", name: "Fixture", source: "fixture://license", notice: "fixture" }
+  });
+  assert.throws(() => validateSourceLock(lock), /unsupported source id for core pack: unexpected-source/);
+});
+
+test("compiler rejects generic HTML-like markup in lexical source strings", async () => {
   const root = await mkdtemp(join(tmpdir(), "translateflow-tflex-markup-"));
-  const engText = "00000001-n\tlemma\t<script>alert(1)</script>\n";
+  const engText = "00000001-n\tlemma\t<b>unsafe display markup</b>\n";
   const cmnText = "00000001-n\tcmn:lemma\t测试\n";
   const engPath = join(root, "eng.tab");
   const cmnPath = join(root, "cmn.tab");
@@ -138,7 +178,7 @@ test("compiler rejects executable markup in lexical source strings", async () =>
   }));
   await assert.rejects(
     compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, sourceLockPath: lockPath, outDir: join(root, "out") }),
-    /executable\/renderable markup/
+    /HTML-like markup or an executable scheme/
   );
 });
 
