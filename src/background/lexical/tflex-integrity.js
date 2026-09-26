@@ -83,7 +83,7 @@ export function validateTflexDirectory(directory, manifest) {
   if (totalRecords !== manifest.recordCount) {
     throw corrupt(manifest.packId, "directory.json", "TFLex directory record count mismatch");
   }
-  validateAliasIndex(directory.aliases, manifest.packId);
+  validateAliasIndex(directory.aliases, directory.shards, manifest.packId);
 }
 
 export function validateTflexRecord(record, packId, path) {
@@ -141,7 +141,7 @@ export function findTflexAlias(directory, normalizedKey, exactKey) {
   return null;
 }
 
-function validateAliasIndex(aliases, packId) {
+function validateAliasIndex(aliases, shards, packId) {
   if (aliases === undefined) return;
   if (!Array.isArray(aliases)) throw corrupt(packId, "directory.json", "Malformed TFLex alias index");
 
@@ -185,10 +185,26 @@ function validateAliasIndex(aliases, packId) {
       ) {
         throw corrupt(packId, "directory.json", "TFLex alias targets must be unique and sorted");
       }
+      if (!directoryTargetCanExist(target, shards)) {
+        throw corrupt(packId, "directory.json", "TFLex alias target falls outside all shard ranges");
+      }
       previousTarget = target;
     }
     previousKey = alias.key;
   }
+}
+
+function directoryTargetCanExist(target, shards) {
+  let low = 0;
+  let high = shards.length - 1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const shard = shards[middle];
+    if (target < shard.firstKey) high = middle - 1;
+    else if (target > shard.lastKey) low = middle + 1;
+    else return true;
+  }
+  return false;
 }
 
 export async function verifyTflexManifestFingerprint(manifest, cryptoProvider) {
