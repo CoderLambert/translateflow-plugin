@@ -111,6 +111,11 @@ test("glossary override short-circuits local pack candidates", async () => {
   assert.equal(packCalls, 0);
 });
 
+test("Lexical Gateway has no Provider/network dependency", async () => {
+  const source = await readFile(new URL("../src/background/lexical/gateway.js", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /providers\/|runTranslationRequest|\bfetch\s*\(/);
+});
+
 test("irregular lemma lookup precedes conservative suffix morphology", async () => {
   const gateway = createLexicalGateway({ packReaders: [coreReader()] });
 
@@ -124,6 +129,7 @@ test("irregular lemma lookup precedes conservative suffix morphology", async () 
   assert.equal(running.matchedBy, "morphology");
   assert.equal(running.resolvedForm, "run");
   assert.ok(conservativeMorphologyForms("running").includes("run"));
+  assert.deepEqual(conservativeMorphologyForms("uses"), ["use"]);
 });
 
 test("unsupported and no-hit are distinct typed outcomes", async () => {
