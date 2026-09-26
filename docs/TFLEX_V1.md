@@ -65,7 +65,8 @@ The exact byte encoding is profile-specific. Once decoded, records expose this l
 
 ```text
 record
-  lookupKey
+  lookupKey             # canonical case-folded key
+  exactLookupKeys[]     # normalized case-preserving keys
   displayForm
   kind: lexical | technical-concept | technical-entity
   aliases[]
@@ -116,7 +117,7 @@ User Glossary is the only v1 source allowed to express an explicit user override
 
 Lookup normalization and display normalization are separate.
 
-Lookup normalization v1:
+Lookup normalization v1 stores both a normalized exact-case form and a case-folded canonical form:
 
 1. Unicode NFKC;
 2. trim leading/trailing whitespace;
