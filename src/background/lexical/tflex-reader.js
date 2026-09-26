@@ -67,8 +67,9 @@ export function createTflexReader({
       }
       hits.push({
         record,
-        exactCaseMatch: Array.isArray(record.exactLookupKeys) &&
-          record.exactLookupKeys.includes(exactKey),
+        exactCaseMatch: target.matchedAlias
+          ? target.aliasExactCaseMatch
+          : Array.isArray(record.exactLookupKeys) && record.exactLookupKeys.includes(exactKey),
         matchedAlias: target.matchedAlias,
         aliasKey: target.matchedAlias ? key : "",
         pack: {
@@ -189,9 +190,10 @@ function resolveLookupTargets(directory, key, exactKey) {
 
   const alias = findTflexAlias(directory, key, exactKey);
   if (alias) {
+    const aliasExactCaseMatch = alias.exactLookupKeys.includes(exactKey);
     for (const lookupKey of alias.targets) {
       if (seen.has(lookupKey)) continue;
-      targets.push({ lookupKey, matchedAlias: true });
+      targets.push({ lookupKey, matchedAlias: true, aliasExactCaseMatch });
       seen.add(lookupKey);
     }
   }
