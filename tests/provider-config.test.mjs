@@ -50,7 +50,8 @@ test("OpenAI-compatible global provider resolves separate credentials", () => {
     openAICompatible: {
       baseUrl: "https://api.example.com/v1/",
       apiKey: "sk-openai",
-      model: "demo-model"
+      model: "demo-model",
+      streaming: true
     }
   });
 
@@ -58,6 +59,7 @@ test("OpenAI-compatible global provider resolves separate credentials", () => {
   assert.equal(config.apiBaseUrl, "https://api.example.com/v1");
   assert.equal(config.apiKey, "sk-openai");
   assert.equal(config.model, "demo-model");
+  assert.equal(config.streaming, true);
 });
 
 test("site profile overrides provider, model and prompt without duplicating credentials", () => {
@@ -227,4 +229,16 @@ test("site appearance is normalized but excluded from translation runtime config
   }
   assert.equal(siteAppearance.appearance, undefined);
   assert.equal(globalAppearance.appearance, undefined);
+});
+
+
+test("OpenAI-compatible streaming defaults off", () => {
+  const config = resolveTranslationConfig({
+    provider: "openai-compatible",
+    openAICompatible: {
+      baseUrl: "https://api.example.com/v1",
+      model: "demo-model"
+    }
+  });
+  assert.equal(config.streaming, false);
 });

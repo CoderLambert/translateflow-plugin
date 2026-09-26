@@ -155,3 +155,18 @@ test("reading appearance does not change translation cache identity", async () =
 
   assert.equal(compact.pageConfigKey, readingSiteOverride.pageConfigKey);
 });
+
+
+test("OpenAI-compatible streaming transport does not change cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "openai-compatible",
+    apiBaseUrl: "https://api.example.com/v1",
+    model: "demo-model",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+  const nonStreaming = await getCacheContext(pageUrl, { ...base, streaming: false });
+  const streaming = await getCacheContext(pageUrl, { ...base, streaming: true });
+  assert.equal(nonStreaming.pageConfigKey, streaming.pageConfigKey);
+});

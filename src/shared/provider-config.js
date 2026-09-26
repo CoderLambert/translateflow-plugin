@@ -68,7 +68,8 @@ export function resolveTranslationConfig(
         provider,
         apiKey: String(globalConfig.openAICompatible.apiKey || "").trim(),
         apiBaseUrl: normalizeOpenAIBaseUrl(globalConfig.openAICompatible.baseUrl),
-        model: String(globalConfig.openAICompatible.model || "").trim()
+        model: String(globalConfig.openAICompatible.model || "").trim(),
+        streaming: Boolean(globalConfig.openAICompatible.streaming)
       }
     : {
         provider,

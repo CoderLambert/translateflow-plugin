@@ -8,6 +8,10 @@ import {
   requestParsedTranslation
 } from "./shared.js";
 import {
+  isUnsupportedStreamingError,
+  requestChatCompletionsStream
+} from "./openai-sse.js";
+import {
   buildLocalTranslationRequestBody,
   isLocalTranslationModel,
   isUnsupportedStructuredOutputError,
@@ -20,7 +24,7 @@ const PROVIDER_LABEL = "OpenAI-compatible";
 export const openAICompatibleProvider = Object.freeze({
   id: "openai-compatible",
 
-  async translateBatch(segments, config, { signal } = {}) {
+  async translateBatch(segments, config, { signal, onProgress } = {}) {
     if (!Array.isArray(segments) || segments.length === 0) return [];
     await assertEndpointPermission(config.apiBaseUrl);
     const model = requireModel(config.model);
@@ -28,7 +32,7 @@ export const openAICompatibleProvider = Object.freeze({
     if (isLocalTranslationModel(model)) {
       return translateLocalBatches(segments, config, model, signal);
     }
-    return translateGenericBatch(segments, config, model, signal);
+    return translateGenericBatch(segments, config, model, signal, onProgress);
   },
 
   async test(config) {
@@ -56,35 +60,66 @@ export const openAICompatibleProvider = Object.freeze({
   }
 });
 
-async function translateGenericBatch(segments, config, model, signal) {
-  const payload = {
-    segments: segments.map((item) => ({ id: String(item.id), text: String(item.text) }))
-  };
-  const request = () => requestChatCompletions({
-    url: buildChatCompletionsUrl(config.apiBaseUrl),
-    apiKey: config.apiKey,
-    providerLabel: PROVIDER_LABEL,
-    requireApiKey: false,
-    signal,
-    body: {
-      model,
-      messages: [
-        {
-          role: "system",
-          content: buildTranslationPrompt(config, "Translate to Simplified Chinese and return JSON only.")
-        },
-        { role: "user", content: JSON.stringify(payload) }
-      ],
-      stream: false,
-      temperature: 0.2
-    }
-  });
+async function translateGenericBatch(segments, config, model, signal, onProgress) {
+  const body = buildGenericRequestBody(segments, config, model);
+  const request = () => config.streaming
+    ? requestGenericStreaming(body, config, signal, onProgress)
+    : requestChatCompletions({
+        url: buildChatCompletionsUrl(config.apiBaseUrl),
+        apiKey: config.apiKey,
+        providerLabel: PROVIDER_LABEL,
+        requireApiKey: false,
+        signal,
+        body: { ...body, stream: false }
+      });
 
   return requestParsedTranslation({
     request,
     segments,
     providerLabel: PROVIDER_LABEL
   });
+}
+
+async function requestGenericStreaming(body, config, signal, onProgress) {
+  const request = {
+    url: buildChatCompletionsUrl(config.apiBaseUrl),
+    apiKey: config.apiKey,
+    providerLabel: PROVIDER_LABEL,
+    requireApiKey: false,
+    signal
+  };
+
+  try {
+    return await requestChatCompletionsStream({
+      ...request,
+      body,
+      onProgress
+    });
+  } catch (error) {
+    if (!isUnsupportedStreamingError(error)) throw error;
+    notify(onProgress, { type: "streaming-fallback", reason: "unsupported" });
+    return requestChatCompletions({
+      ...request,
+      body: { ...body, stream: false }
+    });
+  }
+}
+
+function buildGenericRequestBody(segments, config, model) {
+  const payload = {
+    segments: segments.map((item) => ({ id: String(item.id), text: String(item.text) }))
+  };
+  return {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: buildTranslationPrompt(config, "Translate to Simplified Chinese and return JSON only.")
+      },
+      { role: "user", content: JSON.stringify(payload) }
+    ],
+    temperature: 0.2
+  };
 }
 
 async function translateLocalBatches(segments, config, model, signal) {
@@ -165,4 +200,11 @@ function createCancelledError() {
   const error = new Error("翻译请求已取消。");
   error.code = "CANCELLED";
   return error;
+}
+
+function notify(listener, event) {
+  if (typeof listener !== "function") return;
+  try {
+    listener(Object.freeze({ ...event }));
+  } catch {}
 }
