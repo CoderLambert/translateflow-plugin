@@ -9,7 +9,8 @@
     "validate": "npm run check && npm test",
     "benchmark:translation": "node scripts/benchmark-translation.mjs",
     "test:e2e": "playwright test",
-    "build:tflex:core": "node scripts/build-tflex-core.mjs"
+    "build:tflex:core": "node scripts/build-tflex-core.mjs",
+    "build:tflex:technical": "node scripts/build-tflex-technical.mjs"
   },
   "engines": {
     "node": ">=18"

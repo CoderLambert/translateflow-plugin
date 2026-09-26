@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "formatVersion": 1,
+  "readerMinVersion": 1,
+  "normalizationVersion": 1,
+  "packId": "technical-wikidata-en-zh",
+  "packVersion": "wikidata-revision-set-2026-09",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "source": {
+    "id": "wikidata",
+    "version": "revision-locked-structured-extract",
+    "namespace": "Wikidata main namespace structured data",
+    "extractPath": "lexicon/sources/wikidata-tech-entities.json",
+    "extractSha256": "38ed14cdb278b8e46d28b6d2ef0060aa5b4e932165653b9e1c0de86df1b96ba6",
+    "extractSize": 3739,
+    "license": {
+      "id": "CC0-1.0",
+      "name": "Creative Commons CC0 1.0 Universal",
+      "source": "https://www.wikidata.org/wiki/Wikidata:Copyright",
+      "notice": "Wikidata structured data in the main namespace is available under CC0 1.0. TranslateFlow preserves QID/revision provenance and does not import Wikipedia prose, Commons media, logos, or arbitrary external descriptions."
+    },
+    "snapshot": {
+      "kind": "qid-revision-set",
+      "version": "2026-09-26",
+      "lockedAt": "2026-09-26T14:38:56Z",
+      "extractRuleVersion": 1
+    }
+  },
+  "policy": {
+    "allowedTypes": [
+      "JavaScript library",
+      "SQL server",
+      "abstraction layer",
+      "authentication protocol",
+      "communication protocol",
+      "computing platform",
+      "container runtime",
+      "context",
+      "database management system",
+      "free and open-source software",
+      "free software",
+      "key–value database system",
+      "open standard",
+      "open-source software",
+      "operating system",
+      "process",
+      "relational database management system",
+      "software",
+      "software library",
+      "statefulness",
+      "terminal multiplexer",
+      "type of system",
+      "virtualization",
+      "web framework"
+    ],
+    "blockedAliases": [
+      "container orchestrator"
+    ],
+    "caseSensitiveAliases": [
+      "React.js",
+      "Reactjs"
+    ],
+    "maxAliasesPerEntity": 16,
+    "maxTypeLabelsPerEntity": 16
+  },
+  "entities": [
+    {
+      "qid": "Q1004415",
+      "revision": 2474305309,
+      "kind": "technical-concept",
+      "category": "runtime"
+    },
+    {
+      "qid": "Q15206305",
+      "revision": 2547641252,
+      "kind": "technical-entity",
+      "category": "container-platform"
+    },
+    {
+      "qid": "Q192490",
+      "revision": 2484609035,
+      "kind": "technical-entity",
+      "category": "database"
+    },
+    {
+      "qid": "Q1935361",
+      "revision": 2532735398,
+      "kind": "technical-entity",
+      "category": "developer-tool"
+    },
+    {
+      "qid": "Q19399674",
+      "revision": 2531086275,
+      "kind": "technical-entity",
+      "category": "framework"
+    },
+    {
+      "qid": "Q2079320",
+      "revision": 2486271782,
+      "kind": "technical-concept",
+      "category": "virtualization"
+    },
+    {
+      "qid": "Q2136322",
+      "revision": 2535677803,
+      "kind": "technical-entity",
+      "category": "database"
+    },
+    {
+      "qid": "Q22661306",
+      "revision": 2537061327,
+      "kind": "technical-entity",
+      "category": "container-platform"
+    },
+    {
+      "qid": "Q743238",
+      "revision": 2474831081,
+      "kind": "technical-concept",
+      "category": "protocol"
+    },
+    {
+      "qid": "Q932410",
+      "revision": 2479436915,
+      "kind": "technical-concept",
+      "category": "protocol"
+    }
+  ]
+}

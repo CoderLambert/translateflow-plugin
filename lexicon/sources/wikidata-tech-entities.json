@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "source": "Wikidata main namespace structured data",
+  "license": "CC0-1.0",
+  "entities": [
+    {
+      "qid": "Q1935361",
+      "revision": 2532735398,
+      "label": "tmux",
+      "aliases": [],
+      "types": [
+        "terminal multiplexer",
+        "free software"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q1935361&oldid=2532735398"
+    },
+    {
+      "qid": "Q15206305",
+      "revision": 2547641252,
+      "label": "Docker",
+      "aliases": [
+        "Docker Engine"
+      ],
+      "types": [
+        "free and open-source software",
+        "container runtime"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q15206305&oldid=2547641252"
+    },
+    {
+      "qid": "Q22661306",
+      "revision": 2537061327,
+      "label": "Kubernetes",
+      "aliases": [
+        "K8s",
+        "container orchestrator"
+      ],
+      "types": [
+        "free and open-source software"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q22661306&oldid=2537061327"
+    },
+    {
+      "qid": "Q19399674",
+      "revision": 2531086275,
+      "label": "React",
+      "aliases": [
+        "React.js",
+        "Reactjs"
+      ],
+      "types": [
+        "web framework",
+        "software library",
+        "JavaScript library",
+        "open-source software"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q19399674&oldid=2531086275"
+    },
+    {
+      "qid": "Q2136322",
+      "revision": 2535677803,
+      "label": "Redis",
+      "aliases": [],
+      "types": [
+        "free and open-source software",
+        "database management system",
+        "key–value database system"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q2136322&oldid=2535677803"
+    },
+    {
+      "qid": "Q743238",
+      "revision": 2474831081,
+      "label": "OAuth",
+      "aliases": [],
+      "types": [
+        "open standard",
+        "authentication protocol"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q743238&oldid=2474831081"
+    },
+    {
+      "qid": "Q192490",
+      "revision": 2484609035,
+      "label": "PostgreSQL",
+      "aliases": [
+        "Postgres"
+      ],
+      "types": [
+        "relational database management system",
+        "SQL server",
+        "free software"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q192490&oldid=2484609035"
+    },
+    {
+      "qid": "Q1004415",
+      "revision": 2474305309,
+      "label": "run-time system",
+      "aliases": [
+        "runtime system",
+        "runtime environment"
+      ],
+      "types": [
+        "abstraction layer",
+        "type of system",
+        "software",
+        "computing platform"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q1004415&oldid=2474305309"
+    },
+    {
+      "qid": "Q2079320",
+      "revision": 2486271782,
+      "label": "containerization",
+      "aliases": [
+        "operating system-level virtualization",
+        "OS-level virtualisation"
+      ],
+      "types": [
+        "virtualization",
+        "operating system"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q2079320&oldid=2486271782"
+    },
+    {
+      "qid": "Q932410",
+      "revision": 2479436915,
+      "label": "session",
+      "aliases": [],
+      "types": [
+        "context",
+        "communication protocol",
+        "process",
+        "statefulness"
+      ],
+      "permanentUrl": "https://www.wikidata.org/w/index.php?title=Q932410&oldid=2479436915"
+    }
+  ],
+  "snapshot": {
+    "kind": "qid-revision-set",
+    "version": "2026-09-26",
+    "lockedAt": "2026-09-26T14:38:56Z",
+    "extractRuleVersion": 1
+  }
+}

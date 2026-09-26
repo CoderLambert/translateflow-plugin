@@ -100,15 +100,24 @@ export function validateTflexRecord(record, packId, path) {
 
   const senses = Array.isArray(record.senses) ? record.senses : [];
   const directTranslations = Array.isArray(record.translations) ? record.translations : [];
-  if (!senses.length && !directTranslations.length) {
-    throw corrupt(packId, path, "TFLex record has no lexical content");
+  const isTechnical = record.kind === "technical-concept" || record.kind === "technical-entity";
+  if (record.kind === "lexical" && !senses.length) {
+    throw corrupt(packId, path, "Lexical TFLex record has no senses");
+  }
+  if (isTechnical) {
+    if (!Array.isArray(record.typeLabels) || !record.typeLabels.length) {
+      throw corrupt(packId, path, "Technical TFLex record has no structured type labels");
+    }
+    for (const typeLabel of record.typeLabels) {
+      if (typeof typeLabel !== "string" || !typeLabel) throw corrupt(packId, path, "Malformed TFLex type label");
+    }
+    validateSourceRefs(record.sourceRefs, packId, path);
   }
   for (const translation of directTranslations) {
     if (typeof translation !== "string" || !translation) {
       throw corrupt(packId, path, "Malformed TFLex translation");
     }
   }
-  if (directTranslations.length) validateSourceRefs(record.sourceRefs, packId, path);
 
   for (const sense of senses) {
     if (
@@ -225,6 +234,11 @@ export async function verifyTflexManifestFingerprint(manifest, cryptoProvider) {
         version: source.version,
         provenance: source.provenance,
         dataSha256: source.dataSha256,
+        snapshot: source.snapshot ? {
+          kind: source.snapshot.kind,
+          version: source.snapshot.version,
+          extractRuleVersion: source.snapshot.extractRuleVersion
+        } : undefined,
         licenseId: source.license?.id
       })),
     files: [...manifest.files]
