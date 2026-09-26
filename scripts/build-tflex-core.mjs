@@ -179,6 +179,7 @@ export function buildCoreRecords({ englishTab, chineseTab }) {
       if (!record) {
         record = {
           lookupKey,
+          exactLookupKeys: [],
           displayForm,
           kind: "lexical",
           aliases: [],
@@ -190,6 +191,7 @@ export function buildCoreRecords({ englishTab, chineseTab }) {
       }
 
       record.sourceForms.push(rawEnglish);
+      record.exactLookupKeys.push(normalizeExactLookupKey(displayForm));
       if (displayForm !== record.displayForm) record.aliases.push(displayForm);
       record.sourceRefs.push({ sourceId: SOURCE_IDS.english, recordId: synset });
 
@@ -212,6 +214,7 @@ export function buildCoreRecords({ englishTab, chineseTab }) {
     .map((record) => ({
       ...record,
       aliases: uniqueSorted(record.aliases),
+      exactLookupKeys: uniqueSorted(record.exactLookupKeys),
       sourceForms: uniqueSorted(record.sourceForms),
       senses: [...record.senses].sort((a, b) => compareText(a.id, b.id)),
       sourceRefs: dedupeSourceRefs(record.sourceRefs)
@@ -236,8 +239,12 @@ export function parseOmwRows(text, relation) {
   return bySynset;
 }
 
+export function normalizeExactLookupKey(value) {
+  return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ");
+}
+
 export function normalizeLookupKey(value) {
-  return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
+  return normalizeExactLookupKey(value).toLowerCase();
 }
 
 export function normalizeEnglishDisplay(value) {
