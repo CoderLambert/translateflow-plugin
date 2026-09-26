@@ -180,6 +180,14 @@ function validateManifest(manifest, readerVersion) {
   if (manifest.sourceLanguage !== "en" || manifest.targetLanguage !== "zh-CN") {
     throw incompatible(manifest.packId, "manifest.json", "Unsupported TFLex language pair");
   }
+  if (!Array.isArray(manifest.sources) || !manifest.sources.length) {
+    throw corrupt(manifest.packId, "manifest.json", "TFLex source metadata is missing");
+  }
+  for (const source of manifest.sources) {
+    if (!source?.id || !source?.version || !source?.provenance || !source?.license?.id) {
+      throw corrupt(manifest.packId, "manifest.json", "Malformed TFLex source provenance");
+    }
+  }
   if (!Array.isArray(manifest.files) || !manifest.files.length) {
     throw corrupt(manifest.packId, "manifest.json", "TFLex file descriptors are missing");
   }
@@ -265,17 +273,26 @@ function validateRecord(record, packId, path) {
   for (const translation of directTranslations) {
     if (typeof translation !== "string" || !translation) throw corrupt(packId, path, "Malformed TFLex translation");
   }
+  if (directTranslations.length) validateSourceRefs(record.sourceRefs, packId, path);
   for (const sense of senses) {
     if (
       !sense ||
       typeof sense.id !== "string" ||
       !sense.id ||
       !Array.isArray(sense.translations) ||
-      !sense.translations.length ||
-      !Array.isArray(sense.sourceRefs) ||
-      !sense.sourceRefs.length
+      !sense.translations.length
     ) {
       throw corrupt(packId, path, "Malformed TFLex lexical sense");
+    }
+    validateSourceRefs(sense.sourceRefs, packId, path);
+  }
+}
+
+function validateSourceRefs(refs, packId, path) {
+  if (!Array.isArray(refs) || !refs.length) throw corrupt(packId, path, "TFLex sourceRefs are required");
+  for (const ref of refs) {
+    if (!ref || typeof ref.sourceId !== "string" || !ref.sourceId || typeof ref.recordId !== "string" || !ref.recordId) {
+      throw corrupt(packId, path, "Malformed TFLex sourceRef");
     }
   }
 }
