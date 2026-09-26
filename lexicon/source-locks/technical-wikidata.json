@@ -38,7 +38,14 @@
       "terminal multiplexer",
       "web framework"
     ],
-    "excludeGenericLowercaseMultiwordAliases": true,
+    "blockedAliases": [
+      "container orchestrator"
+    ],
+    "caseSensitiveAliases": [
+      "K8s",
+      "React.js",
+      "Reactjs"
+    ],
     "maxAliasesPerEntity": 16,
     "maxTypeLabelsPerEntity": 16
   }
