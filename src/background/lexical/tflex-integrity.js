@@ -83,6 +83,7 @@ export function validateTflexDirectory(directory, manifest) {
   if (totalRecords !== manifest.recordCount) {
     throw corrupt(manifest.packId, "directory.json", "TFLex directory record count mismatch");
   }
+  validateAliasIndex(directory.aliases, manifest.packId);
 }
 
 export function validateTflexRecord(record, packId, path) {
@@ -120,6 +121,73 @@ export function validateTflexRecord(record, packId, path) {
       throw corrupt(packId, path, "Malformed TFLex lexical sense");
     }
     validateSourceRefs(sense.sourceRefs, packId, path);
+  }
+}
+
+export function findTflexAlias(directory, normalizedKey, exactKey) {
+  const aliases = Array.isArray(directory?.aliases) ? directory.aliases : [];
+  let low = 0;
+  let high = aliases.length - 1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const alias = aliases[middle];
+    if (normalizedKey < alias.key) high = middle - 1;
+    else if (normalizedKey > alias.key) low = middle + 1;
+    else {
+      if (alias.caseSensitive && !alias.exactLookupKeys.includes(exactKey)) return null;
+      return alias;
+    }
+  }
+  return null;
+}
+
+function validateAliasIndex(aliases, packId) {
+  if (aliases === undefined) return;
+  if (!Array.isArray(aliases)) throw corrupt(packId, "directory.json", "Malformed TFLex alias index");
+
+  let previousKey = null;
+  for (const alias of aliases) {
+    if (
+      !alias ||
+      typeof alias.key !== "string" ||
+      !alias.key ||
+      normalizeLexicalKey(alias.key) !== alias.key ||
+      typeof alias.caseSensitive !== "boolean" ||
+      !Array.isArray(alias.exactLookupKeys) ||
+      !Array.isArray(alias.targets) ||
+      !alias.targets.length ||
+      alias.targets.length > 16
+    ) {
+      throw corrupt(packId, "directory.json", "Malformed TFLex alias entry");
+    }
+    if (previousKey !== null && previousKey >= alias.key) {
+      throw corrupt(packId, "directory.json", "TFLex aliases must be strictly ordered");
+    }
+
+    const exactSeen = new Set();
+    for (const exactKey of alias.exactLookupKeys) {
+      if (typeof exactKey !== "string" || !exactKey || exactSeen.has(exactKey)) {
+        throw corrupt(packId, "directory.json", "Malformed TFLex exact alias key");
+      }
+      exactSeen.add(exactKey);
+    }
+    if (alias.caseSensitive && !alias.exactLookupKeys.length) {
+      throw corrupt(packId, "directory.json", "Case-sensitive TFLex alias requires exact keys");
+    }
+
+    let previousTarget = null;
+    for (const target of alias.targets) {
+      if (
+        typeof target !== "string" ||
+        !target ||
+        normalizeLexicalKey(target) !== target ||
+        (previousTarget !== null && previousTarget >= target)
+      ) {
+        throw corrupt(packId, "directory.json", "TFLex alias targets must be unique and sorted");
+      }
+      previousTarget = target;
+    }
+    previousKey = alias.key;
   }
 }
 
