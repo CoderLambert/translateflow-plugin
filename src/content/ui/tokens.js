@@ -35,6 +35,12 @@
   --tf-bg-panel: rgba(253, 250, 244, 0.96);
   --tf-bg-card: #fbf8f2;
   --tf-bg-subtle: #f1ece2;
+  --tf-control-track: #d8d9d1;
+  --tf-control-thumb: #fffdf8;
+  --tf-control-thumb-shadow: 0 2px 6px rgba(36, 56, 40, 0.16);
+  --tf-primary-foreground: #ffffff;
+  --tf-primary-hover-start: #789f71;
+  --tf-accent-shadow: 0 7px 18px rgba(65, 101, 62, 0.18);
 
   --tf-text-strong: #273128;
   --tf-text-main: #3c463d;
@@ -252,10 +258,17 @@ button { color: inherit; }
     --tf-green-500: #8caf82;
     --tf-green-100: #344535;
     --tf-green-50: #2f3d30;
+    --tf-control-track: #4a534a;
+    --tf-control-thumb: #eef4eb;
+    --tf-control-thumb-shadow: 0 2px 7px rgba(0, 0, 0, 0.34);
+    --tf-primary-foreground: #172017;
+    --tf-primary-hover-start: #8caf82;
+    --tf-accent-shadow: 0 7px 20px rgba(0, 0, 0, 0.28);
     --tf-success: #9db993;
     --tf-warning: #d2ad69;
     --tf-danger: #d58b82;
     --tf-info: #9bb2b2;
+    --tf-focus-ring: 0 0 0 3px rgba(174, 198, 165, 0.28);
   }
 }
 

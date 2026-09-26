@@ -19,7 +19,7 @@
   border: 1px solid rgba(255, 255, 255, .30);
   border-radius: var(--tf-radius-pill);
   background: linear-gradient(180deg, var(--tf-green-600), var(--tf-green-800));
-  color: #fff;
+  color: var(--tf-primary-foreground);
   box-shadow:
     0 10px 26px rgba(55, 80, 54, .20),
     0 0 0 7px rgba(111, 150, 104, .07);
@@ -205,15 +205,15 @@
   border-color: transparent;
   border-radius: var(--tf-radius-sm);
   background: linear-gradient(180deg, var(--tf-green-600), var(--tf-green-800));
-  color: #fff;
-  box-shadow: 0 7px 18px rgba(65, 101, 62, .16);
+  color: var(--tf-primary-foreground);
+  box-shadow: var(--tf-accent-shadow);
   font-size: var(--tf-font-size-sm);
   font-weight: 720;
 }
 
 .tf-quick-translate:hover:not(:disabled) {
   border-color: transparent;
-  background: linear-gradient(180deg, #789f71, var(--tf-green-700));
+  background: linear-gradient(180deg, var(--tf-primary-hover-start), var(--tf-green-700));
   transform: translateY(-1px);
 }
 
@@ -304,7 +304,7 @@
   flex: 0 0 auto;
   margin-left: var(--tf-space-3);
   border-radius: var(--tf-radius-pill);
-  background: #d8d9d1;
+  background: var(--tf-control-track);
   transition: background-color var(--tf-transition);
 }
 
@@ -316,8 +316,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fffdf8;
-  box-shadow: 0 2px 6px rgba(36, 56, 40, .15);
+  background: var(--tf-control-thumb);
+  box-shadow: var(--tf-control-thumb-shadow);
   transition: transform var(--tf-transition);
 }
 
