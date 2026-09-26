@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "packId": "core-semantic-en-zh-fixture",
+  "packVersion": "fixture-1",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "sources": [
+    {
+      "id": "pwn-3.0",
+      "version": "fixture",
+      "provenance": "project-owned test fixture",
+      "data": {
+        "url": "fixture://wn-data-eng.tab",
+        "sha256": "bf7a486a12001ea7191b8cff9924c3c5928db564285a049f62fb7925cec54d21"
+      },
+      "license": {
+        "id": "fixture-permissive",
+        "name": "Project fixture notice",
+        "source": "tests/fixtures/tflex-core",
+        "notice": "Project-authored fixture data for TranslateFlow tests."
+      }
+    },
+    {
+      "id": "chinese-open-wordnet",
+      "version": "fixture",
+      "provenance": "project-owned test fixture",
+      "data": {
+        "url": "fixture://wn-data-cmn.tab",
+        "sha256": "5df7e779843ac43edb61e1ed8fc2874d1e0326a482a30f3aae88bd6234ee3298"
+      },
+      "license": {
+        "id": "fixture-permissive",
+        "name": "Project fixture notice",
+        "source": "tests/fixtures/tflex-core",
+        "notice": "Project-authored fixture data for TranslateFlow tests."
+      }
+    }
+  ]
+}

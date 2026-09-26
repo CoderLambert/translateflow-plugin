@@ -1,0 +1,64 @@
+.abt-translation {
+  display: block !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  margin: 0.28em 0 var(--tf-translation-gap, 0.78em) 0 !important;
+  padding: var(--tf-translation-padding, 0.24em 0 0.24em 0.72em) !important;
+  border: 0 !important;
+  border-left: var(--tf-translation-border-width, 2px) solid var(--tf-translation-border-color, rgba(111, 150, 104, 0.34)) !important;
+  border-radius: var(--tf-translation-radius, 1px) !important;
+  background: var(--tf-translation-background, rgba(237, 243, 232, 0.32)) !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: inherit !important;
+  font-size: var(--tf-translation-font-scale, 0.96em) !important;
+  font-style: normal !important;
+  font-weight: 400 !important;
+  line-height: var(--tf-translation-line-height, 1.65) !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+  text-decoration: none !important;
+  white-space: normal !important;
+  opacity: var(--tf-translation-opacity, 0.94) !important;
+}
+
+li > .abt-translation {
+  margin-bottom: 0.28em !important;
+}
+
+.abt-hide-translations .abt-translation {
+  display: none !important;
+}
+
+/* Bootstrap-only fallback. Normal TranslateFlow controls and toasts live in the shared Shadow DOM host. */
+#abt-toast {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  max-width: 320px !important;
+  padding: 10px 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  background: rgba(45, 58, 47, 0.94) !important;
+  color: #fff !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  box-shadow: 0 8px 24px rgba(36, 56, 40, 0.16) !important;
+  opacity: 0 !important;
+  transform: translateY(6px) !important;
+  pointer-events: none !important;
+  transition: opacity .18s ease, transform .18s ease !important;
+}
+
+#abt-toast.abt-toast-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #abt-toast {
+    transition: none !important;
+  }
+}

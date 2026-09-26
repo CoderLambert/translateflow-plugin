@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TranslateFlow 设置</title>
+  <link rel="stylesheet" href="src/ui/styles/tokens.css" />
+  <link rel="stylesheet" href="src/ui/styles/components.css" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="settings-shell">
+    <nav class="settings-nav" aria-label="设置分类">
+      <div class="nav-brand"><span class="nav-brand-mark" aria-hidden="true">译</span><strong>TranslateFlow</strong></div>
+      <a data-settings-nav href="#general" aria-current="page">通用</a>
+      <a data-settings-nav href="#appearance">外观</a>
+      <a data-settings-nav href="#youtube">YouTube</a>
+      <a data-settings-nav href="#sites">站点</a>
+      <a data-settings-nav href="#auto-sites">自动行为</a>
+      <a data-settings-nav href="#glossary">术语表</a>
+      <span>高级</span>
+      <a data-settings-nav href="#provider">Provider</a>
+      <a data-settings-nav href="#cache">缓存</a>
+      <a data-settings-nav href="#developer">开发者 / 关于</a>
+    </nav>
+  <main>
+    <header class="settings-intro">
+      <span class="section-kicker">TRANSLATEFLOW SETTINGS</span>
+      <h1>设置</h1>
+      <p class="lead">管理翻译行为、阅读外观、Provider、站点规则与本地缓存。高级配置保持可见，但不会抢占日常设置。</p>
+    </header>
+
+    <section id="general" tabindex="-1">
+      <h2>通用</h2>
+      <p class="section-summary">设置默认翻译行为。Provider 凭据和缓存维护已移到高级区域。</p>
+
+      <label for="defaultProvider">默认 Provider</label>
+      <select id="defaultProvider"><option value="deepseek">DeepSeek</option><option value="openai-compatible">OpenAI-compatible</option></select>
+
+      <label for="targetLanguage">默认目标语言</label>
+      <input id="targetLanguage" type="text" placeholder="Simplified Chinese" />
+
+      <label for="prompt">默认翻译 Prompt</label>
+      <textarea id="prompt" rows="6"></textarea>
+      <p class="hint">站点级设置可覆盖这些默认值；翻译配置变化会形成新的缓存版本。</p>
+    </section>
+
+    <section id="appearance" tabindex="-1">
+      <h2>外观</h2>
+      <label for="defaultAppearance">默认阅读外观</label>
+      <select id="defaultAppearance"></select>
+      <p class="hint">Standard / Compact / Reading / Minimal 只改变译文排版与视觉层级，不改变翻译缓存 identity。</p>
+    </section>
+
+    <section id="youtube" tabindex="-1">
+      <h2>YouTube</h2>
+      <p class="section-summary">TranslateFlow 双语字幕在 YouTube 播放器中使用这些默认显示设置；播放器内仍可临时调整 Preset。</p>
+      <label for="youtubeSubtitleMode">默认字幕模式</label>
+      <select id="youtubeSubtitleMode"><option value="bilingual">双语</option><option value="original">仅原字幕</option><option value="off">关闭 TranslateFlow 字幕</option></select>
+      <label for="youtubeSubtitleSize">译文字幕大小</label>
+      <select id="youtubeSubtitleSize"><option value="small">小</option><option value="standard">标准</option><option value="large">大</option></select>
+      <p class="hint">字幕翻译继续复用当前站点 Profile / Preset / Glossary / Provider 有效配置。</p>
+    </section>
+
+    <section id="keyboard-shortcuts">
+      <h2>键盘快捷键</h2>
+      <p>TranslateFlow 提供三个浏览器内快捷操作。Chrome 最终绑定以 <code>chrome://extensions/shortcuts</code> 为准，你可以在那里查看、修改或清除任意绑定。</p>
+      <div class="shortcut-list">
+        <div><strong>翻译 / 更新当前页</strong><span><kbd>Ctrl+Shift+Y</kbd><small>macOS: Control+Shift+Y</small></span></div>
+        <div><strong>显示 / 隐藏译文</strong><span><kbd>Ctrl+Shift+K</kbd><small>macOS: Control+Shift+K</small></span></div>
+        <div><strong>切换 Quick Control</strong><span><kbd>Ctrl+Shift+.</kbd><small>macOS: Control+Shift+.</small></span></div>
+      </div>
+      <p class="hint">快捷键只在 Chrome 获得焦点时工作。浏览器或操作系统保留的快捷键优先级更高；如某个组合在你的系统上不可用，请在 Chrome 的扩展快捷键页面重新绑定。Chrome 内部页等受保护页面不会注入 TranslateFlow。</p>
+    </section>
+
+    <section id="provider" class="advanced" tabindex="-1">
+      <h2>Provider · DeepSeek</h2>
+      <p class="section-summary">高级配置。API Key 仅保存在扩展本地存储中。</p>
+
+      <label for="deepseekApiKey">API Key</label>
+      <div class="password-row">
+        <input id="deepseekApiKey" type="password" autocomplete="off" placeholder="sk-..." />
+        <button id="revealDeepSeek" type="button">显示</button>
+      </div>
+
+      <label for="deepseekModel">模型</label>
+      <input id="deepseekModel" type="text" value="deepseek-flash" />
+      <p class="hint">DeepSeek API 地址固定为 https://api.deepseek.com。</p>
+    </section>
+
+    <section class="advanced">
+      <h2>Provider · OpenAI-compatible</h2>
+
+      <label for="openaiBaseUrl">Base URL</label>
+      <input id="openaiBaseUrl" type="url" placeholder="https://api.openai.com/v1" />
+      <p class="hint">填写到 API 根路径即可；插件会自动追加 /chat/completions。也可直接填写完整 /chat/completions 地址。</p>
+
+      <label for="openaiApiKey">API Key</label>
+      <div class="password-row">
+        <input id="openaiApiKey" type="password" autocomplete="off" placeholder="可选；本地模型可留空" />
+        <button id="revealOpenAI" type="button">显示</button>
+      </div>
+
+      <label for="openaiModel">模型</label>
+      <input id="openaiModel" type="text" placeholder="gpt-4.1-mini / qwen / local-model ..." />
+      <div class="inline-checks">
+        <label class="checkbox-label" for="openaiStreaming">
+          <input id="openaiStreaming" type="checkbox" />
+          启用 SSE streaming（兼容时）
+        </label>
+      </div>
+      <p class="hint">仅用于通用 OpenAI-compatible 模型；Hy-MT2 / TranslateGemma 等结构化本地模型继续使用非流式请求。服务端明确不支持 streaming 时会安全回退到非流式请求。</p>
+      <p class="hint">首次使用某个 API Origin 时，Chrome 会单独询问访问权限。</p>
+    </section>
+
+    <section id="sites" tabindex="-1">
+      <h2>站点</h2>
+      <p class="hint">用于 GitHub、文档站、新闻站等不同场景。未填写的字段继承默认配置。</p>
+
+      <div class="profile-grid">
+        <div>
+          <label for="siteOrigin">站点</label>
+          <input id="siteOrigin" type="text" placeholder="https://github.com" />
+        </div>
+        <div>
+          <label for="siteProvider">Provider</label>
+          <select id="siteProvider">
+            <option value="">继承默认</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai-compatible">OpenAI-compatible</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="sitePreset">翻译模式</label>
+      <select id="sitePreset">
+        <option value="">无 Preset / 使用 Prompt</option>
+      </select>
+      <p class="hint">Preset 只贡献翻译风格；如果本站填写了自定义 Prompt，则自定义 Prompt 优先。</p>
+
+      <label for="siteAppearance">阅读外观覆盖</label>
+      <select id="siteAppearance"></select>
+      <p class="hint">留空继承默认阅读外观。外观覆盖只改变本站译文显示，不影响 Provider 请求或缓存 identity。</p>
+
+      <label for="siteModel">模型覆盖</label>
+      <input id="siteModel" type="text" placeholder="留空继承 Provider 默认模型" />
+
+      <label for="sitePrompt">Prompt 覆盖</label>
+      <textarea id="sitePrompt" rows="6" placeholder="留空继承默认 Prompt"></textarea>
+
+      <label for="siteTargetLanguage">目标语言覆盖</label>
+      <input id="siteTargetLanguage" type="text" placeholder="留空继承默认目标语言" />
+
+      <div class="actions">
+        <button id="saveSiteProfile" class="primary">保存站点配置</button>
+        <button id="clearSiteEditor">清空编辑器</button>
+      </div>
+
+      <div id="siteProfilesList" class="site-list">正在读取站点配置…</div>
+    </section>
+
+
+    <section id="glossary" tabindex="-1">
+      <h2>术语表</h2>
+      <p class="hint">全局术语应用于所有网页；站点术语仅应用于指定 Origin，并可覆盖同名全局术语。</p>
+
+      <div class="profile-grid">
+        <div>
+          <label for="glossaryScope">作用范围</label>
+          <select id="glossaryScope">
+            <option value="global">全局</option>
+            <option value="site">指定站点</option>
+          </select>
+        </div>
+        <div>
+          <label for="glossaryOrigin">站点 Origin</label>
+          <input id="glossaryOrigin" type="text" placeholder="https://github.com" disabled />
+        </div>
+      </div>
+
+      <div class="profile-grid">
+        <div>
+          <label for="glossarySource">来源术语</label>
+          <input id="glossarySource" type="text" placeholder="pull request" />
+        </div>
+        <div>
+          <label for="glossaryTarget">目标译法</label>
+          <input id="glossaryTarget" type="text" placeholder="拉取请求" />
+        </div>
+      </div>
+
+      <div class="inline-checks">
+        <label class="checkbox-label">
+          <input id="glossaryCaseSensitive" type="checkbox" />
+          区分大小写
+        </label>
+        <label class="checkbox-label">
+          <input id="glossaryEnabled" type="checkbox" checked />
+          启用
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="saveGlossaryEntry" class="primary">保存术语</button>
+        <button id="clearGlossaryEditor">清空编辑器</button>
+      </div>
+
+      <div id="glossaryList" class="site-list">正在读取术语表…</div>
+      <p class="hint">修改、停用或删除有效术语会生成新的相关缓存版本；空术语表保持旧缓存兼容。</p>
+    </section>
+
+    <section id="cache" class="advanced destructive-zone" tabindex="-1">
+      <h2>缓存</h2>
+
+      <label for="cacheMaxMB">缓存软上限（MB）</label>
+      <input id="cacheMaxMB" type="number" min="20" max="2048" step="10" value="200" />
+      <p class="hint">默认 200 MB，按最近最少使用（LRU）策略清理超额缓存。</p>
+
+      <div id="cacheStats" class="cache-card">正在读取缓存统计…</div>
+      <div class="actions">
+        <button id="refreshCache">刷新统计</button>
+        <button id="pruneCache">按上限立即清理</button>
+        <button id="clearAllCache" class="danger">清空全部翻译缓存</button>
+      </div>
+    </section>
+
+    <section id="auto-sites" tabindex="-1">
+      <h2>站点自动行为</h2>
+      <p class="section-summary">持久站点权限按功能共享。自动恢复缓存只读取 IndexedDB；自动翻译才会在缓存缺失时调用 Provider。</p>
+
+      <h3>自动恢复缓存</h3>
+      <div id="cacheRestoreSitesList" class="site-list">正在读取自动缓存恢复站点…</div>
+
+      <h3>自动翻译</h3>
+      <div id="autoSitesList" class="site-list">正在读取自动翻译站点…</div>
+
+      <div class="actions">
+        <button id="refreshAutoSites">刷新站点列表</button>
+      </div>
+      <p class="hint">关闭某项功能只会在没有其他站点功能或 OpenAI-compatible endpoint 继续需要该 Origin 时释放权限。</p>
+    </section>
+
+    <section id="developer" class="advanced" tabindex="-1">
+      <h2>开发者 / 关于</h2>
+      <p>TranslateFlow <span id="extensionVersion"></span> · 原生 HTML/CSS/JS，无运行时框架依赖。</p>
+      <p class="hint">键盘快捷键管理、Provider 调试与缓存维护均保留在本页对应区域。</p>
+    </section>
+
+    <div class="sticky-actions">
+      <button id="save" class="primary">保存全局设置</button>
+      <button id="test">测试当前默认 Provider</button>
+    </div>
+    <div id="status" class="status"></div>
+  </main>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

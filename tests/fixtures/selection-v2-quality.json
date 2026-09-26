@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "purpose": "Selection v2 Design Freeze lexical source feasibility corpus",
+  "cases": [
+    {
+      "id": "ordinary-portable",
+      "term": "portable",
+      "category": "ordinary",
+      "context": "A portable tool can run from a removable drive."
+    },
+    {
+      "id": "ordinary-persistent",
+      "term": "persistent",
+      "category": "ordinary",
+      "context": "The application keeps a persistent connection."
+    },
+    {
+      "id": "ordinary-reliable",
+      "term": "reliable",
+      "category": "ordinary",
+      "context": "The service should remain reliable under load."
+    },
+    {
+      "id": "ordinary-resume",
+      "term": "resume",
+      "category": "ordinary",
+      "context": "You can resume the task later."
+    },
+    {
+      "id": "poly-session",
+      "term": "session",
+      "category": "polysemous",
+      "context": "A tmux session can survive after the terminal closes."
+    },
+    {
+      "id": "poly-process",
+      "term": "process",
+      "category": "polysemous",
+      "context": "The server process continues running in the background."
+    },
+    {
+      "id": "poly-state",
+      "term": "state",
+      "category": "polysemous",
+      "context": "The component stores state between renders."
+    },
+    {
+      "id": "poly-issue",
+      "term": "issue",
+      "category": "polysemous",
+      "context": "Open an issue in the repository when you find a bug."
+    },
+    {
+      "id": "poly-branch",
+      "term": "branch",
+      "category": "polysemous",
+      "context": "Create a new Git branch before changing the code."
+    },
+    {
+      "id": "poly-commit",
+      "term": "commit",
+      "category": "polysemous",
+      "context": "Commit the changes after the tests pass."
+    },
+    {
+      "id": "tech-container",
+      "term": "container",
+      "category": "technical",
+      "context": "Docker runs the application inside a container."
+    },
+    {
+      "id": "tech-runtime",
+      "term": "runtime",
+      "category": "technical",
+      "context": "The JavaScript runtime executes the program."
+    },
+    {
+      "id": "tech-cache",
+      "term": "cache",
+      "category": "technical",
+      "context": "The browser cache stores reusable responses."
+    },
+    {
+      "id": "tech-dependency",
+      "term": "dependency",
+      "category": "technical",
+      "context": "Install the project dependency before building."
+    },
+    {
+      "id": "tech-repository",
+      "term": "repository",
+      "category": "technical",
+      "context": "Clone the Git repository to your machine."
+    },
+    {
+      "id": "tech-terminal",
+      "term": "terminal",
+      "category": "technical",
+      "context": "Open a terminal and run the command."
+    },
+    {
+      "id": "entity-tmux",
+      "term": "tmux",
+      "category": "entity",
+      "context": "With tmux, you can create multiple terminal sessions."
+    },
+    {
+      "id": "entity-docker",
+      "term": "docker",
+      "category": "entity",
+      "context": "Docker packages applications into containers."
+    },
+    {
+      "id": "entity-kubernetes",
+      "term": "kubernetes",
+      "category": "entity",
+      "context": "Kubernetes orchestrates containerized workloads."
+    },
+    {
+      "id": "entity-redis",
+      "term": "redis",
+      "category": "entity",
+      "context": "Redis is used as an in-memory data store."
+    },
+    {
+      "id": "entity-postgresql",
+      "term": "postgresql",
+      "category": "entity",
+      "context": "PostgreSQL stores relational data."
+    },
+    {
+      "id": "entity-react",
+      "term": "react",
+      "category": "entity",
+      "context": "React renders the user interface."
+    },
+    {
+      "id": "entity-oauth",
+      "term": "oauth",
+      "category": "entity",
+      "context": "OAuth is used to authorize access."
+    },
+    {
+      "id": "phrase-terminal-multiplexer",
+      "term": "terminal multiplexer",
+      "category": "phrase",
+      "context": "tmux is a terminal multiplexer."
+    },
+    {
+      "id": "inflection-sessions",
+      "term": "sessions",
+      "category": "inflection",
+      "context": "The sessions remain available after reconnecting."
+    },
+    {
+      "id": "nohit-project-token",
+      "term": "TFDesignFreezeNoHit",
+      "category": "no-hit",
+      "context": "TFDesignFreezeNoHit is a project-owned deliberate miss fixture."
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { getCacheContext } from "../src/background/cache-db.js";
+import { resolveTranslationConfig } from "../src/shared/provider-config.js";
+
+const legacyCompatibleConfig = {
+  provider: "deepseek",
+  model: "deepseek-flash",
+  targetLanguage: "Simplified Chinese",
+  prompt: "same prompt"
+};
+
+test("adding the default provider field does not invalidate v0.3 cache identity", async () => {
+  const before = await getCacheContext("https://example.com/docs?utm_source=x&id=1", {
+    model: "deepseek-flash",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  });
+  const after = await getCacheContext("https://example.com/docs?id=1", legacyCompatibleConfig);
+  assert.equal(before.pageConfigKey, after.pageConfigKey);
+});
+
+test("OpenAI-compatible endpoints have separate cache versions", async () => {
+  const base = {
+    provider: "openai-compatible",
+    model: "demo-model",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+
+  const a = await getCacheContext("https://example.com/docs", {
+    ...base,
+    apiBaseUrl: "https://api-a.example/v1"
+  });
+  const b = await getCacheContext("https://example.com/docs", {
+    ...base,
+    apiBaseUrl: "https://api-b.example/v1"
+  });
+
+  assert.notEqual(a.pageConfigKey, b.pageConfigKey);
+});
+
+test("effective target language has a separate cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    prompt: "same prompt",
+    targetLanguage: "Simplified Chinese"
+  };
+
+  const chinese = await getCacheContext(pageUrl, resolveTranslationConfig(base, pageUrl));
+  const english = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: {
+      "https://example.com": { targetLanguage: "English" }
+    }
+  }, pageUrl));
+
+  assert.notEqual(chinese.pageConfigKey, english.pageConfigKey);
+});
+
+test("unchanged effective config keeps cache identity despite site metadata", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+
+  const global = await getCacheContext(pageUrl, resolveTranslationConfig(base, pageUrl));
+  const profileResolved = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: {
+      "https://example.com": { targetLanguage: "Simplified Chinese" }
+    }
+  }, pageUrl));
+
+  assert.equal(global.pageConfigKey, profileResolved.pageConfigKey);
+});
+
+test("empty glossary preserves cache identity while effective glossary changes it deterministically", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = { ...legacyCompatibleConfig };
+
+  const empty = await getCacheContext(pageUrl, base);
+  const explicitEmpty = await getCacheContext(pageUrl, { ...base, glossaryIdentity: [] });
+  assert.equal(empty.pageConfigKey, explicitEmpty.pageConfigKey);
+
+  const identity = [{ source: "repository", target: "仓库", caseSensitive: false }];
+  const a = await getCacheContext(pageUrl, { ...base, glossaryIdentity: identity });
+  const b = await getCacheContext(pageUrl, { ...base, glossaryIdentity: identity });
+  const changed = await getCacheContext(pageUrl, {
+    ...base,
+    glossaryIdentity: [{ source: "repository", target: "代码库", caseSensitive: false }]
+  });
+
+  assert.equal(a.pageConfigKey, b.pageConfigKey);
+  assert.notEqual(empty.pageConfigKey, a.pageConfigKey);
+  assert.notEqual(a.pageConfigKey, changed.pageConfigKey);
+});
+
+
+test("preset style changes cache identity and switching back reuses the previous version", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+
+  const technical = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: { "https://example.com": { preset: "technical" } }
+  }, pageUrl));
+
+  const news = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: { "https://example.com": { preset: "news" } }
+  }, pageUrl));
+
+  const technicalAgain = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    siteProfiles: { "https://example.com": { preset: "technical" } }
+  }, pageUrl));
+
+  assert.notEqual(technical.pageConfigKey, news.pageConfigKey);
+  assert.equal(technical.pageConfigKey, technicalAgain.pageConfigKey);
+});
+
+
+test("reading appearance does not change translation cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+
+  const compact = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    appearance: "compact"
+  }, pageUrl));
+
+  const readingSiteOverride = await getCacheContext(pageUrl, resolveTranslationConfig({
+    ...base,
+    appearance: "minimal",
+    siteProfiles: {
+      "https://example.com": { appearance: "reading" }
+    }
+  }, pageUrl));
+
+  assert.equal(compact.pageConfigKey, readingSiteOverride.pageConfigKey);
+});
+
+
+test("OpenAI-compatible streaming transport does not change cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = {
+    provider: "openai-compatible",
+    apiBaseUrl: "https://api.example.com/v1",
+    model: "demo-model",
+    targetLanguage: "Simplified Chinese",
+    prompt: "same prompt"
+  };
+  const nonStreaming = await getCacheContext(pageUrl, { ...base, streaming: false });
+  const streaming = await getCacheContext(pageUrl, { ...base, streaming: true });
+  assert.equal(nonStreaming.pageConfigKey, streaming.pageConfigKey);
+});
