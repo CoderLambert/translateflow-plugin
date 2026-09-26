@@ -8,6 +8,7 @@ export const TFLEX_FORMAT_VERSION = 1;
 export const TFLEX_READER_MIN_VERSION = 1;
 export const TFLEX_NORMALIZATION_VERSION = 1;
 export const TFLEX_BUNDLED_PROFILE = "bundled-sharded-v1";
+export const TFLEX_COMPILER_VERSION = 1;
 export const DEFAULT_MAX_SHARD_BYTES = 512 * 1024;
 
 const SOURCE_IDS = Object.freeze({
@@ -103,6 +104,7 @@ export async function compileTflexCore({
     format: "tflex",
     formatVersion: TFLEX_FORMAT_VERSION,
     readerMinVersion: TFLEX_READER_MIN_VERSION,
+    compilerVersion: TFLEX_COMPILER_VERSION,
     normalizationVersion: TFLEX_NORMALIZATION_VERSION,
     packId: sourceLock.packId,
     packVersion: sourceLock.packVersion,
@@ -121,6 +123,9 @@ export async function compileTflexCore({
 export function validateSourceLock(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("source lock must be an object");
   if (input.schemaVersion !== 1) throw new Error("source lock schemaVersion must be 1");
+  if (input.formatVersion !== TFLEX_FORMAT_VERSION) throw new Error("source lock formatVersion is incompatible");
+  if (input.readerMinVersion !== TFLEX_READER_MIN_VERSION) throw new Error("source lock readerMinVersion is incompatible");
+  if (input.normalizationVersion !== TFLEX_NORMALIZATION_VERSION) throw new Error("source lock normalizationVersion is incompatible");
   for (const key of ["packId", "packVersion", "sourceLanguage", "targetLanguage"]) {
     requireNonEmptyString(input[key], "source lock " + key);
   }
