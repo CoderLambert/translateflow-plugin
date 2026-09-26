@@ -91,13 +91,14 @@ test("alias lookup returns one or many attributable candidates instead of choosi
 
   const single = await gateway.lookup({ text: "term mux" });
   assert.equal(single.status, LEXICAL_RESULT_STATUS.CANDIDATES);
-  assert.equal(single.matchedBy, "exact");
+  assert.equal(single.matchedBy, "alias");
   assert.equal(single.candidates.length, 1);
   assert.equal(single.candidates[0].matchedBy, "alias");
   assert.equal(single.candidates[0].headword, "terminal multiplexer");
 
   const ambiguous = await gateway.lookup({ text: "stateful" });
   assert.equal(ambiguous.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+  assert.equal(ambiguous.matchedBy, "alias");
   assert.deepEqual(
     [...new Set(ambiguous.candidates.map((candidate) => candidate.headword))],
     ["persistent", "session"]
