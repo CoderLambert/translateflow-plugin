@@ -9,7 +9,9 @@ import {
   normalizeEnglishDisplay,
   normalizeExactLookupKey,
   normalizeLookupKey,
-  validateSourceLock
+  validateCoreRecords,
+  validateSourceLock,
+  validateTflexCoreOutput
 } from "../scripts/build-tflex-core.mjs";
 
 const fixtureRoot = new URL("./fixtures/tflex-core/", import.meta.url);
@@ -55,6 +57,8 @@ test("TFLex compiler is deterministic and emits bounded attributable artifacts",
   assert.ok(first.result.directory.shards.every((shard) => shard.size <= 900));
   assert.ok(first.result.manifest.files.some((file) => file.role === "license-notice"));
   assert.ok(first.result.manifest.sources.every((source) => source.dataSha256));
+  const validated = await validateTflexCoreOutput({ outDir: first.outDir, readerVersion: 1 });
+  assert.equal(validated.recordCount, first.result.manifest.recordCount);
 });
 
 test("TFLex compiler preserves polysemy, source forms and display normalization", async () => {
@@ -103,6 +107,37 @@ test("TFLex compiler refuses to delete a non-empty output directory", async () =
     /output directory must be empty/
   );
   assert.equal(await readFile(sentinel, "utf8"), "do not delete");
+});
+
+test("TFLex record validator rejects duplicate lookup keys", async () => {
+  const { result } = await build("duplicate-key");
+  const record = result.records[0];
+  assert.throws(
+    () => validateCoreRecords([record, structuredClone(record)]),
+    /duplicate TFLex lookup key/
+  );
+});
+
+test("TFLex output validator rejects a reader below readerMinVersion", async () => {
+  const built = await build("reader-version");
+  const manifestPath = join(built.outDir, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.readerMinVersion = 2;
+  await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+  await assert.rejects(
+    validateTflexCoreOutput({ outDir: built.outDir, readerVersion: 1 }),
+    /incompatible TFLex reader version/
+  );
+});
+
+test("TFLex output validator detects corrupted shard bytes", async () => {
+  const built = await build("corruption");
+  const shardPath = join(built.outDir, built.result.directory.shards[0].path);
+  await writeFile(shardPath, (await readFile(shardPath, "utf8")) + " ", "utf8");
+  await assert.rejects(
+    validateTflexCoreOutput({ outDir: built.outDir, readerVersion: 1 }),
+    /TFLex file size mismatch|TFLex file hash mismatch/
+  );
 });
 
 test("TFLex compiler rejects source drift before parsing", async () => {
@@ -180,6 +215,12 @@ test("compiler rejects generic HTML-like markup in lexical source strings", asyn
     compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, sourceLockPath: lockPath, outDir: join(root, "out") }),
     /HTML-like markup or an executable scheme/
   );
+});
+
+test("source-lock validation rejects incompatible language metadata", async () => {
+  const lock = JSON.parse(await readFile(new URL("./fixtures/tflex-core/source-lock.json", import.meta.url), "utf8"));
+  lock.targetLanguage = "fr";
+  assert.throws(() => validateSourceLock(lock), /targetLanguage is incompatible/);
 });
 
 test("source-lock validation rejects incompatible TFLex versions", () => {
