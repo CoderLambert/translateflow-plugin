@@ -1,0 +1,48 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { validateTechLock } from "../scripts/audit-wikidata-tech-lock.mjs";
+
+const base = {
+  version: 1,
+  license: "CC0-1.0",
+  entities: [
+    {
+      qid: "Q1935361",
+      revision: 2532735398,
+      label: "tmux",
+      description: "terminal multiplexer",
+      aliases: [],
+      types: ["terminal multiplexer", "free software"],
+      permanentUrl: "https://www.wikidata.org/w/index.php?title=Q1935361&oldid=2532735398"
+    },
+    {
+      qid: "Q19399674",
+      revision: 2531086275,
+      label: "React",
+      description: "JavaScript library for building user interfaces",
+      aliases: ["React.js"],
+      types: ["JavaScript library"],
+      permanentUrl: "https://www.wikidata.org/w/index.php?title=Q19399674&oldid=2531086275"
+    }
+  ]
+};
+
+test("Wikidata tech lock requires revision-pinned attributable structured entities", () => {
+  assert.deepEqual(validateTechLock(base), {
+    entityCount: 2,
+    qids: ["Q1935361", "Q19399674"],
+    ambiguousAliases: []
+  });
+});
+
+test("Wikidata tech lock rejects non-structured/executable media fields", () => {
+  const bad = structuredClone(base);
+  bad.entities[0].logo = "Tmux logo.svg";
+  assert.throws(() => validateTechLock(bad), /Disallowed field logo/);
+});
+
+test("Wikidata tech lock rejects a permanent URL that does not bind the exact revision", () => {
+  const bad = structuredClone(base);
+  bad.entities[0].permanentUrl = "https://www.wikidata.org/wiki/Q1935361";
+  assert.throws(() => validateTechLock(bad), /does not bind QID \+ revision/);
+});
