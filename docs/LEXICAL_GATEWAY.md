@@ -34,6 +34,7 @@ The bundled reader:
 
 - loads only `manifest.json` + `directory.json` metadata initially;
 - locates the bounded shard by sorted key range;
+- resolves optional directory aliases to one-or-more canonical keys before shard reads; ambiguous aliases remain multiple candidates rather than a first-hit winner;
 - verifies shard size/SHA-256 before decoding;
 - rejects corrupt, overlapping or incompatible metadata with typed errors;
 - caches decoded shards in a byte-accounted LRU.
