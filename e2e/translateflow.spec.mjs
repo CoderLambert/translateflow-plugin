@@ -386,6 +386,52 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator("#glossary .abt-translation")).toContainText("[TECH|GLOSSARY]");
     expect(harness.server.calls).toHaveLength(2);
   });
+  test("lexical gateway reads bundled TFLex locally without Provider calls", async ({ harness }) => {
+    const page = await harness.open("/article");
+    expect(harness.server.calls).toHaveLength(0);
+
+    const word = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "persistent",
+      pageUrl: page.url(),
+      sourceLanguage: "en",
+      targetLanguage: "zh-CN"
+    });
+    expect(word.ok).toBe(true);
+    expect(word.status).toBe("candidates");
+    expect(word.candidates).toHaveLength(2);
+    expect(word.candidates[0].provenance.packId).toBe("core-semantic-en-zh-runtime-fixture");
+    expect(harness.server.calls).toHaveLength(0);
+
+    const phrase = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "terminal multiplexer",
+      pageUrl: page.url()
+    });
+    expect(phrase.ok).toBe(true);
+    expect(phrase.status).toBe("candidates");
+    expect(phrase.candidates[0].translations).toEqual(["终端复用器"]);
+    expect(harness.server.calls).toHaveLength(0);
+
+    const unsupported = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "persistent",
+      pageUrl: page.url(),
+      sourceLanguage: "ja",
+      targetLanguage: "zh-CN"
+    });
+    expect(unsupported.status).toBe("unsupported");
+
+    const miss = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "TFNoSuchLexeme",
+      pageUrl: page.url()
+    });
+    expect(miss.status).toBe("no-hit");
+    expect(harness.server.calls).toHaveLength(0);
+    await page.close();
+  });
+
 });
 
 async function selectElementText(page, selector) {
