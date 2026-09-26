@@ -145,7 +145,7 @@ export function validateTechnicalExtract(extract) {
 
 export function buildTechnicalRecords(extract, policy) {
   const allowedTypes = new Set(policy.allowedTypes);
-  const blockedAliases = new Set(policy.blockedAliases.map(normalizeExactLookupKey));
+  const blockedAliases = new Set(policy.blockedAliases.map(normalizeLookupKey));
   const caseSensitiveAliases = new Set(policy.caseSensitiveAliases.map(normalizeExactLookupKey));
   const records = [];
   const seenKeys = new Set();
@@ -166,7 +166,7 @@ export function buildTechnicalRecords(extract, policy) {
     const exactLookupKeys = new Set([displayForm]);
     for (const aliasValue of entity.aliases.slice(0, policy.maxAliasesPerEntity)) {
       const alias = normalizeExactLookupKey(aliasValue);
-      if (!alias || blockedAliases.has(alias)) continue;
+      if (!alias || blockedAliases.has(normalizeLookupKey(alias))) continue;
       assertDataOnly(alias, "technical alias");
       if (normalizeLookupKey(alias) === lookupKey) {
         exactLookupKeys.add(alias);
