@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve, sep } from "node:path";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const TFLEX_FORMAT_VERSION = 1;
@@ -43,8 +43,7 @@ export async function compileTflexCore({
   });
   if (!records.length) throw new Error("TFLex core build produced no bilingual records");
 
-  await rm(output, { recursive: true, force: true });
-  await mkdir(output, { recursive: true });
+  await prepareOutputDir(output);
 
   const shardFiles = await writeShards({ output, records, maxShardBytes });
   const directory = {
@@ -90,6 +89,7 @@ export async function compileTflexCore({
     packId: sourceLock.packId,
     packVersion: sourceLock.packVersion,
     profile: TFLEX_BUNDLED_PROFILE,
+    profileOptions: { maxShardBytes },
     sources: sources.map((source) => ({
       id: source.id,
       version: source.version,
@@ -111,6 +111,7 @@ export async function compileTflexCore({
     sourceLanguage: sourceLock.sourceLanguage,
     targetLanguage: sourceLock.targetLanguage,
     profile: TFLEX_BUNDLED_PROFILE,
+    profileOptions: { maxShardBytes },
     fingerprint: "sha256:" + sha256Text(stableStringify(fingerprintPayload)),
     recordCount: records.length,
     sources,
@@ -150,7 +151,11 @@ export function validateSourceLock(input) {
     return source;
   });
 
-  for (const required of Object.values(SOURCE_IDS)) {
+  const requiredSourceIds = new Set(Object.values(SOURCE_IDS));
+  for (const source of sources) {
+    if (!requiredSourceIds.has(source.id)) throw new Error("unsupported source id for core pack: " + source.id);
+  }
+  for (const required of requiredSourceIds) {
     if (!seen.has(required)) throw new Error("source lock missing required source: " + required);
   }
   return { ...input, sources };
@@ -350,8 +355,8 @@ function compareText(a, b) {
 
 function assertDataOnlyString(value, label) {
   const text = String(value || "");
-  if (/<\s*(?:script|style|iframe|object|embed|link|img)\b/iu.test(text) || /javascript\s*:/iu.test(text)) {
-    throw new Error(label + " contains executable/renderable markup");
+  if (/<\/?[A-Za-z][^>]*>/u.test(text) || /<!--|<!DOCTYPE\b|<\?/iu.test(text) || /javascript\s*:/iu.test(text)) {
+    throw new Error(label + " contains HTML-like markup or an executable scheme");
   }
 }
 
@@ -374,8 +379,16 @@ function resolveRequiredPath(value, label) {
 
 function assertSafeOutputDir(path) {
   const cwd = resolve(process.cwd());
-  if (path === cwd || path === resolve("/") || path.split(sep).filter(Boolean).length < 2) {
+  if (path === cwd || path === resolve("/")) {
     throw new Error("refusing unsafe output directory: " + path);
+  }
+}
+
+async function prepareOutputDir(path) {
+  await mkdir(path, { recursive: true });
+  const entries = await readdir(path);
+  if (entries.length) {
+    throw new Error("output directory must be empty; refusing to delete existing files: " + path);
   }
 }
 
