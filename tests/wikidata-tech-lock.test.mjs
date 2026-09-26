@@ -38,11 +38,26 @@ test("Wikidata tech lock requires revision-pinned attributable structured entiti
 test("Wikidata tech lock rejects non-structured/executable media fields", () => {
   const bad = structuredClone(base);
   bad.entities[0].logo = "Tmux logo.svg";
-  assert.throws(() => validateTechLock(bad), /Disallowed field logo/);
+  assert.throws(() => validateTechLock(bad), /Unexpected field logo/);
 });
 
 test("Wikidata tech lock rejects a permanent URL that does not bind the exact revision", () => {
   const bad = structuredClone(base);
   bad.entities[0].permanentUrl = "https://www.wikidata.org/wiki/Q1935361";
   assert.throws(() => validateTechLock(bad), /does not bind QID \+ revision/);
+});
+
+
+test("Wikidata tech lock rejects a lookalike non-Wikidata permanent URL", () => {
+  const bad = structuredClone(base);
+  bad.entities[0].permanentUrl = "https://example.invalid/w/index.php?title=Q1935361&oldid=2532735398";
+  assert.throws(() => validateTechLock(bad), /strictly bind Wikidata QID \+ revision/);
+});
+
+test("Wikidata tech lock validates optional Chinese structured labels without opening arbitrary fields", () => {
+  const enriched = structuredClone(base);
+  enriched.entities[0].zhLabel = "tmux";
+  enriched.entities[0].zhAliases = ["终端复用器"];
+  enriched.entities[0].zhTypes = ["自由软件"];
+  assert.equal(validateTechLock(enriched).entityCount, 2);
 });
