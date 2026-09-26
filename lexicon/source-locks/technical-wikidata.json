@@ -12,8 +12,8 @@
     "version": "revision-locked-structured-extract",
     "namespace": "Wikidata main namespace structured data",
     "extractPath": "lexicon/sources/wikidata-tech-entities.json",
-    "extractSha256": "c41018365330a774e42d67f84a751f6125378f88eaaefaa738dd64f039ed98ae",
-    "extractSize": 4929,
+    "extractSha256": "738fb2162a2b86f0a7c1a80e7c66cef98e707b92dd66e553df5daff1646d240c",
+    "extractSize": 3714,
     "license": {
       "id": "CC0-1.0",
       "name": "Creative Commons CC0 1.0 Universal",
