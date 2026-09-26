@@ -23,7 +23,7 @@ The fixtures are intentionally below the local-model 3200-character sub-batch ca
 
 ## Metrics
 
-The JSON report records:
+The cache scenario uses an in-memory benchmark adapter keyed by the production translation request identity. It measures the behavioral difference between a cold translation and a warm cache bypass, but intentionally does **not** claim to benchmark IndexedDB storage latency.\n\nThe JSON report records:
 
 - provider request count;
 - observed Provider batch sizes;
