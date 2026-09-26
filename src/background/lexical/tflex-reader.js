@@ -170,6 +170,12 @@ function validateManifest(manifest, readerVersion) {
   if (manifest.normalizationVersion !== 1 || manifest.profile !== "bundled-sharded-v1") {
     throw incompatible(manifest.packId, "manifest.json", "Unsupported TFLex normalization/profile");
   }
+  if (!Number.isSafeInteger(manifest.profileOptions?.maxShardBytes) || manifest.profileOptions.maxShardBytes <= 0) {
+    throw corrupt(manifest.packId, "manifest.json", "Invalid TFLex shard budget");
+  }
+  if (!Number.isSafeInteger(manifest.recordCount) || manifest.recordCount <= 0) {
+    throw corrupt(manifest.packId, "manifest.json", "Invalid TFLex record count");
+  }
   if (manifest.sourceLanguage !== "en" || manifest.targetLanguage !== "zh-CN") {
     throw incompatible(manifest.packId, "manifest.json", "Unsupported TFLex language pair");
   }
@@ -197,7 +203,8 @@ function validateDirectory(directory, manifest) {
     directory.format !== "tflex-directory" ||
     directory.formatVersion !== manifest.formatVersion ||
     directory.normalizationVersion !== manifest.normalizationVersion ||
-    !Array.isArray(directory.shards)
+    !Array.isArray(directory.shards) ||
+    !directory.shards.length
   ) {
     throw corrupt(manifest.packId, "directory.json", "Malformed TFLex directory");
   }
@@ -221,6 +228,9 @@ function validateDirectory(directory, manifest) {
       throw corrupt(manifest.packId, "directory.json", "Malformed TFLex shard descriptor");
     }
     if (seen.has(shard.path)) throw corrupt(manifest.packId, shard.path, "Duplicate TFLex shard path");
+    if (shard.size > manifest.profileOptions.maxShardBytes) {
+      throw corrupt(manifest.packId, shard.path, "TFLex shard exceeds declared cache/read budget");
+    }
     if (shard.firstKey > shard.lastKey || (previousLast !== null && previousLast >= shard.firstKey)) {
       throw corrupt(manifest.packId, shard.path, "TFLex shard ranges overlap or are unordered");
     }
