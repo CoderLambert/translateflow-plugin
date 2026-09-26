@@ -167,6 +167,9 @@ Rules:
 - target maximum compressed/uncompressed read unit is **512 KiB**; an oversized prefix is subdivided;
 - the compiler records the effective `maxShardBytes` value in `profileOptions` so non-default test/build profiles remain reproducible and auditable;
 - one lookup should not require materializing the whole pack;
+- `directory.json` may carry an optional sorted `aliases[]` index; each normalized alias key maps to one-or-more sorted canonical `lookupKey` targets, allowing ambiguous aliases to return multiple candidates without scanning lexical shards;
+- case-sensitive aliases retain exact-case keys in the alias entry; a case-sensitive alias does not match other casing;
+- alias-index bytes are covered by the `directory.json` descriptor hash and therefore by the pack fingerprint;
 - a small bounded directory/index may be cached in memory;
 - decoded shard/entry caches are bounded LRU state and are disposable when the MV3 worker stops.
 
