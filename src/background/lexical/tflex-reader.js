@@ -82,6 +82,7 @@ async function loadMetadata({ base, readBytes, cryptoProvider, readerVersion }) 
   const manifestBytes = await safeRead(readBytes, joinPackPath(base, "manifest.json"), "");
   const manifest = parseJson(manifestBytes, "manifest.json");
   validateManifest(manifest, readerVersion);
+  await verifyManifestFingerprint(manifest, cryptoProvider);
 
   const directoryDescriptor = manifest.files.find(
     (file) => file.role === "lookup-index" && file.path === "directory.json"
@@ -210,6 +211,7 @@ function validateDirectory(directory, manifest) {
   }
 
   let previousLast = null;
+  let totalRecords = 0;
   const seen = new Set();
   for (const shard of directory.shards) {
     if (
@@ -236,6 +238,10 @@ function validateDirectory(directory, manifest) {
     }
     seen.add(shard.path);
     previousLast = shard.lastKey;
+    totalRecords += shard.count;
+  }
+  if (totalRecords !== manifest.recordCount) {
+    throw corrupt(manifest.packId, "directory.json", "TFLex directory record count mismatch");
   }
 }
 
@@ -285,6 +291,57 @@ function findShard(shards, key) {
     else return shard;
   }
   return null;
+}
+
+async function verifyManifestFingerprint(manifest, cryptoProvider) {
+  if (typeof manifest.fingerprint !== "string" || !/^sha256:[a-f0-9]{64}$/i.test(manifest.fingerprint)) {
+    throw corrupt(manifest.packId, "manifest.json", "Malformed TFLex fingerprint");
+  }
+  const payload = {
+    formatVersion: manifest.formatVersion,
+    normalizationVersion: manifest.normalizationVersion,
+    packId: manifest.packId,
+    packVersion: manifest.packVersion,
+    profile: manifest.profile,
+    profileOptions: { maxShardBytes: manifest.profileOptions.maxShardBytes },
+    sources: [...(Array.isArray(manifest.sources) ? manifest.sources : [])]
+      .sort((a, b) => compareText(a?.id, b?.id))
+      .map((source) => ({
+        id: source.id,
+        version: source.version,
+        provenance: source.provenance,
+        dataSha256: source.dataSha256,
+        licenseId: source.license?.id
+      })),
+    files: [...manifest.files]
+      .sort((a, b) => compareText(a.path, b.path) || compareText(a.role, b.role))
+      .map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
+  };
+  const actual = "sha256:" + await sha256Hex(
+    new TextEncoder().encode(stableStringify(payload)),
+    cryptoProvider
+  );
+  if (actual !== manifest.fingerprint.toLowerCase()) {
+    throw corrupt(manifest.packId, "manifest.json", "TFLex manifest fingerprint mismatch");
+  }
+}
+
+function stableStringify(value) {
+  return JSON.stringify(sortJson(value));
+}
+
+function sortJson(value) {
+  if (Array.isArray(value)) return value.map(sortJson);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value).sort(compareText).map((key) => [key, sortJson(value[key])])
+  );
+}
+
+function compareText(a, b) {
+  const left = String(a ?? "");
+  const right = String(b ?? "");
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 async function verifyDescriptor(descriptor, bytes, cryptoProvider, packId) {
