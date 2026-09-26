@@ -12,9 +12,18 @@ test("FreeDict source lock pins exact edition and official source checksum", () 
   assert.equal(lock.source.sizeBytes, 1600448);
 });
 
-test("FreeDict cannot be approved from generator-template evidence alone", () => {
+test("FreeDict exact archive license is corroborated but official pack still requires TEI attribution audit", () => {
   assert.equal(lock.provenance.releaseTimeTemplateLicense, "CC-BY-SA-3.0");
+  assert.equal(lock.licenseAudit.exactArchiveCopyingLicense, "CC-BY-SA-3.0");
+  assert.match(lock.provenance.exactArchiveCorroboration.copyingBlob, /^[a-f0-9]{40}$/);
   assert.equal(lock.licenseAudit.exactTeiHeaderArchived, false);
   assert.equal(lock.licenseAudit.exactTeiLicense, null);
   assert.equal(lock.licenseAudit.approvedForOfficialPack, false);
+});
+
+test("FreeDict remains an optional complementary source after Phase-A quality sampling", () => {
+  assert.equal(lock.qualitySample.roleDecision, "optional-complement-only");
+  assert.ok(lock.qualitySample.observed.usefulTechnical.includes("cache"));
+  assert.ok(lock.qualitySample.observed.weakOrWrong.includes("portable"));
+  assert.ok(lock.qualitySample.observed.absent.includes("tmux"));
 });
