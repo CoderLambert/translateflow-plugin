@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   compileTflexCore,
   normalizeEnglishDisplay,
+  normalizeExactLookupKey,
   normalizeLookupKey,
   validateSourceLock
 } from "../scripts/build-tflex-core.mjs";
@@ -60,6 +61,7 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   const persistent = result.records.find((record) => record.lookupKey === "persistent");
   assert.ok(persistent);
   assert.equal(persistent.displayForm, "Persistent");
+  assert.deepEqual(persistent.exactLookupKeys, ["Persistent"]);
   assert.deepEqual(persistent.sourceForms, ["Persistent"]);
   assert.deepEqual(persistent.senses.map((sense) => sense.id), [
     "pwn3:00000001-a",
@@ -71,6 +73,7 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   assert.equal(phrase.displayForm, "terminal multiplexer");
   assert.equal(phrase.senses[0].partOfSpeech, "noun");
   assert.equal(normalizeEnglishDisplay(" Terminal_Multiplexer "), "Terminal Multiplexer");
+  assert.equal(normalizeExactLookupKey("  C#   Runtime  "), "C# Runtime");
   assert.equal(normalizeLookupKey("  C#   Runtime  "), "c# runtime");
 });
 
