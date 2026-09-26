@@ -35,7 +35,7 @@ export async function compileTflexTechnical({
   verifyLockedExtract(lock, extractBytes);
 
   const extract = validateTechnicalExtract(JSON.parse(extractBytes.toString("utf8")));
-  const records = buildTechnicalRecords(extract, lock.policy);
+  const records = buildTechnicalRecords(extract, lock.policy, lock.entities);
   if (!records.length) throw new Error("technical pack build produced no approved records");
   const aliases = buildTechnicalAliasIndex(records, lock.policy);
 
@@ -131,6 +131,21 @@ export function validateTechnicalSourceLock(lock) {
   if (!Array.isArray(policy.blockedAliases) || !Array.isArray(policy.caseSensitiveAliases)) throw new Error("technical alias policy is incomplete");
   assertPositiveInteger(policy.maxAliasesPerEntity, "maxAliasesPerEntity");
   assertPositiveInteger(policy.maxTypeLabelsPerEntity, "maxTypeLabelsPerEntity");
+  assertPositiveInteger(policy.maxDescriptionChars, "maxDescriptionChars");
+
+  if (!Array.isArray(lock.entities) || !lock.entities.length) throw new Error("technical source lock entities are required");
+  const seenQids = new Set();
+  let previousQid = "";
+  for (const entity of lock.entities) {
+    if (!entity || !/^Q[1-9][0-9]*$/.test(entity.qid || "")) throw new Error("invalid locked Wikidata QID");
+    if (seenQids.has(entity.qid)) throw new Error("duplicate locked Wikidata QID: " + entity.qid);
+    if (previousQid && previousQid >= entity.qid) throw new Error("locked Wikidata entities must be sorted by QID");
+    assertPositiveInteger(entity.revision, "locked Wikidata revision");
+    if (!["technical-concept", "technical-entity"].includes(entity.kind)) throw new Error("invalid locked technical kind: " + entity.kind);
+    requireText(entity.category, "locked technical category");
+    seenQids.add(entity.qid);
+    previousQid = entity.qid;
+  }
   return lock;
 }
 
@@ -143,15 +158,19 @@ export function validateTechnicalExtract(extract) {
   return extract;
 }
 
-export function buildTechnicalRecords(extract, policy) {
+export function buildTechnicalRecords(extract, policy, lockedEntities = []) {
   const allowedTypes = new Set(policy.allowedTypes);
   const blockedAliases = new Set(policy.blockedAliases.map(normalizeLookupKey));
   const caseSensitiveAliases = new Set(policy.caseSensitiveAliases.map(normalizeExactLookupKey));
+  const lockedByQid = new Map((Array.isArray(lockedEntities) ? lockedEntities : []).map((item) => [item.qid, item]));
+  if (lockedByQid.size) validateExtractAgainstLock(extract.entities, lockedByQid);
+
   const records = [];
   const seenKeys = new Set();
 
   for (const entity of extract.entities) {
-    validateEntity(entity);
+    validateEntity(entity, policy);
+    const locked = lockedByQid.get(entity.qid);
     const approvedTypes = uniqueSorted(entity.types.filter((type) => allowedTypes.has(type)))
       .slice(0, policy.maxTypeLabelsPerEntity);
     if (!approvedTypes.length) continue;
@@ -178,15 +197,25 @@ export function buildTechnicalRecords(extract, policy) {
       });
     }
 
+    const targetTranslations = uniqueSorted([
+      entity.zhLabel,
+      ...(Array.isArray(entity.zhAliases) ? entity.zhAliases : [])
+    ].filter(Boolean).map(normalizeTargetDisplay));
+    const translations = targetTranslations.length ? targetTranslations : [displayForm];
+    const category = locked?.category || "";
+
     records.push({
       lookupKey,
       exactLookupKeys: [...exactLookupKeys].sort(compareText),
       displayForm,
-      kind: "technical-entity",
+      kind: locked?.kind || "technical-entity",
       aliases: uniqueSorted(aliases.map((item) => item.value)),
       entityId: entity.qid,
-      translations: [displayForm],
+      translations,
       typeLabels: approvedTypes,
+      domains: category ? [category] : [],
+      description: normalizeDescription(entity.description || ""),
+      sourceRevision: entity.revision,
       sourceRefs: [{ sourceId: SOURCE_ID, recordId: entity.qid + "@" + entity.revision }],
       _aliasPolicy: aliases
     });
@@ -229,14 +258,30 @@ export function buildTechnicalAliasIndex(records, policy) {
     .sort((a, b) => compareText(a.key, b.key));
 }
 
-function validateEntity(entity) {
-  if (!entity || typeof entity !== "object") throw new Error("malformed Wikidata entity");
+function validateEntity(entity, policy) {
+  if (!entity || typeof entity !== "object" || Array.isArray(entity)) throw new Error("malformed Wikidata entity");
+  const allowedFields = new Set([
+    "qid", "revision", "label", "aliases", "zhLabel", "zhAliases",
+    "description", "types", "permanentUrl"
+  ]);
+  for (const key of Object.keys(entity)) {
+    if (!allowedFields.has(key)) throw new Error("unsupported Wikidata extract field: " + key);
+  }
+
   if (!/^Q[1-9][0-9]*$/.test(entity.qid || "")) throw new Error("invalid Wikidata QID");
   assertPositiveInteger(entity.revision, "Wikidata revision");
   requireText(entity.label, "Wikidata label");
   assertDataOnly(entity.label, "Wikidata label");
-  if (!Array.isArray(entity.aliases) || !Array.isArray(entity.types)) throw new Error("Wikidata aliases/types are required");
-  for (const alias of entity.aliases) {
+  if (!Array.isArray(entity.aliases) || !Array.isArray(entity.types) || !Array.isArray(entity.zhAliases)) {
+    throw new Error("Wikidata aliases/zhAliases/types are required");
+  }
+  if (entity.aliases.length > policy.maxAliasesPerEntity) throw new Error("Wikidata entity exceeds alias limit");
+  if (entity.types.length > policy.maxTypeLabelsPerEntity) throw new Error("Wikidata entity exceeds type-label limit");
+  if (entity.zhLabel !== null && entity.zhLabel !== undefined) {
+    requireText(entity.zhLabel, "Wikidata zhLabel");
+    assertDataOnly(entity.zhLabel, "Wikidata zhLabel");
+  }
+  for (const alias of [...entity.aliases, ...entity.zhAliases]) {
     requireText(alias, "Wikidata alias");
     assertDataOnly(alias, "Wikidata alias");
   }
@@ -244,10 +289,37 @@ function validateEntity(entity) {
     requireText(type, "Wikidata type");
     assertDataOnly(type, "Wikidata type");
   }
+
+  const description = String(entity.description || "");
+  if (description.length > policy.maxDescriptionChars) throw new Error("Wikidata description exceeds limit");
+  assertDataOnly(description, "Wikidata description");
+
   requireText(entity.permanentUrl, "Wikidata permanentUrl");
-  if (!entity.permanentUrl.includes("title=" + entity.qid) || !entity.permanentUrl.includes("oldid=" + entity.revision)) {
-    throw new Error("Wikidata permanentUrl does not match QID/revision");
+  const expected = "https://www.wikidata.org/w/index.php?title=" + entity.qid + "&oldid=" + entity.revision;
+  if (entity.permanentUrl !== expected) throw new Error("Wikidata permanentUrl does not match QID/revision");
+}
+
+function validateExtractAgainstLock(entities, lockedByQid) {
+  if (entities.length !== lockedByQid.size) throw new Error("Wikidata extract entity set does not match source lock");
+  const seen = new Set();
+  for (const entity of entities) {
+    const locked = lockedByQid.get(entity?.qid);
+    if (!locked) throw new Error("unexpected Wikidata entity in extract: " + String(entity?.qid || ""));
+    if (seen.has(entity.qid)) throw new Error("duplicate Wikidata entity in extract: " + entity.qid);
+    if (entity.revision !== locked.revision) throw new Error("Wikidata revision mismatch for " + entity.qid);
+    seen.add(entity.qid);
   }
+  for (const qid of lockedByQid.keys()) {
+    if (!seen.has(qid)) throw new Error("locked Wikidata entity missing from extract: " + qid);
+  }
+}
+
+function normalizeTargetDisplay(value) {
+  return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ");
+}
+
+function normalizeDescription(value) {
+  return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ");
 }
 
 async function validateEmittedPack({ output, records, aliases }) {
