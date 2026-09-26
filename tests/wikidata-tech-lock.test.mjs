@@ -44,7 +44,7 @@ test("Wikidata tech lock rejects non-structured/executable media fields", () => 
 test("Wikidata tech lock rejects a permanent URL that does not bind the exact revision", () => {
   const bad = structuredClone(base);
   bad.entities[0].permanentUrl = "https://www.wikidata.org/wiki/Q1935361";
-  assert.throws(() => validateTechLock(bad), /strictly bind Wikidata QID \\+ revision/);
+  assert.throws(() => validateTechLock(bad), /Permanent URL does not strictly bind Wikidata QID [+] revision/);
 });
 
 
