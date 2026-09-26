@@ -7,6 +7,7 @@ import { ByteBoundedLru } from "./lru.js";
 import {
   TflexReaderError,
   corrupt,
+  findTflexAlias,
   isSafeTflexPackPath,
   validateTflexDirectory,
   validateTflexManifest,
@@ -40,31 +41,55 @@ export function createTflexReader({
     return metadataPromise;
   }
 
-  async function lookup(text) {
+  async function lookupAll(text) {
     const key = normalizeLexicalKey(text);
-    if (!key) return null;
+    if (!key) return [];
+    const exactKey = normalizeLexicalExactKey(text);
     const meta = await metadata();
-    const shard = findShard(meta.directory.shards, key);
-    if (!shard) return null;
-    const records = await loadShard({ base, shard, meta, readBytes, cryptoProvider, cache });
-    const record = records.get(key);
-    if (!record) return null;
-    return {
-      record,
-      exactCaseMatch: Array.isArray(record.exactLookupKeys) &&
-        record.exactLookupKeys.includes(normalizeLexicalExactKey(text)),
-      pack: {
-        packId: meta.manifest.packId,
-        packVersion: meta.manifest.packVersion,
-        fingerprint: meta.manifest.fingerprint,
-        sourceLanguage: meta.manifest.sourceLanguage,
-        targetLanguage: meta.manifest.targetLanguage
+    const targets = resolveLookupTargets(meta.directory, key, exactKey);
+    const hits = [];
+
+    for (const target of targets) {
+      const shard = findShard(meta.directory.shards, target.lookupKey);
+      if (!shard) {
+        if (target.matchedAlias) {
+          throw corrupt(meta.manifest.packId, "directory.json", "TFLex alias target is missing");
+        }
+        continue;
       }
-    };
+      const records = await loadShard({ base, shard, meta, readBytes, cryptoProvider, cache });
+      const record = records.get(target.lookupKey);
+      if (!record) {
+        if (target.matchedAlias) {
+          throw corrupt(meta.manifest.packId, shard.path, "TFLex alias target record is missing");
+        }
+        continue;
+      }
+      hits.push({
+        record,
+        exactCaseMatch: Array.isArray(record.exactLookupKeys) &&
+          record.exactLookupKeys.includes(exactKey),
+        matchedAlias: target.matchedAlias,
+        aliasKey: target.matchedAlias ? key : "",
+        pack: {
+          packId: meta.manifest.packId,
+          packVersion: meta.manifest.packVersion,
+          fingerprint: meta.manifest.fingerprint,
+          sourceLanguage: meta.manifest.sourceLanguage,
+          targetLanguage: meta.manifest.targetLanguage
+        }
+      });
+    }
+    return hits;
+  }
+
+  async function lookup(text) {
+    return (await lookupAll(text))[0] || null;
   }
 
   return {
     lookup,
+    lookupAll,
     clearCache() {
       cache.clear();
     },
@@ -151,6 +176,26 @@ async function loadShard({ base, shard, meta, readBytes, cryptoProvider, cache }
   }
   cache.set(shard.path, records, bytes.byteLength);
   return records;
+}
+
+function resolveLookupTargets(directory, key, exactKey) {
+  const targets = [];
+  const seen = new Set();
+
+  if (findShard(directory.shards, key)) {
+    targets.push({ lookupKey: key, matchedAlias: false });
+    seen.add(key);
+  }
+
+  const alias = findTflexAlias(directory, key, exactKey);
+  if (alias) {
+    for (const lookupKey of alias.targets) {
+      if (seen.has(lookupKey)) continue;
+      targets.push({ lookupKey, matchedAlias: true });
+      seen.add(lookupKey);
+    }
+  }
+  return targets;
 }
 
 function findShard(shards, key) {
