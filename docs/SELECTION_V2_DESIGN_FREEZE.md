@@ -72,6 +72,21 @@ Official CI does not fetch live dictionary sources. Release data inputs must be 
 
 ## 3. Browser/MV3 POC
 
+Exact-head evidence at `33ef962f8e6777c82c07940d450e0fb73a27197a`:
+
+- quality #159 — PASS
+- Chromium E2E #128 — PASS
+- MV3 service worker: `navigator.storage.getDirectory()` available.
+- OPFS fixture survived full persistent-browser-context close/relaunch with the same extension profile.
+- WebCrypto ECDSA P-256 signature verification succeeded; a one-byte-equivalent catalog mutation was rejected.
+- storage estimate in CI: quota 10,737,520,784 bytes; test usage 102,544 bytes; `navigator.storage.persisted()` returned `false`.
+- bundled asset ordinary fetch: 524,312 bytes.
+- byte-range read from the same `chrome-extension://` asset: 23 bytes, exactly the requested marker, despite status 200/no `Content-Range` header.
+- tiny prefix shard fixture: 45 bytes.
+- CI timing on this synthetic fixture was low-single-digit milliseconds and is **not** treated as a production performance budget.
+
+This proves that byte-range access to a monolithic bundled asset is technically viable in the tested Chromium runtime. It does **not** prove that monolithic storage is always preferable; #75 still needs realistic pack-size/index measurements.
+
 Status: **in progress**.
 
 The POC must prove in the real extension runtime:
@@ -107,15 +122,48 @@ Provisional policy pending browser POC:
 - automatic downgrade/replay is rejected;
 - `unlimitedStorage` is not added unless quota/eviction evidence proves it necessary.
 
-## 6. Open Design Freeze rows
+## 6. Wikidata locked-extract strategy
+
+The repository now contains a CC0 structured-data sample lock for:
+
+- tmux — Q1935361 @ revision 2532735398
+- Docker software — Q15206305 @ revision 2547641252
+- Kubernetes — Q22661306 @ revision 2537061327
+- React — Q19399674 @ revision 2531086275
+- Redis software — Q2136322 @ revision 2535677803
+- OAuth — Q743238 @ revision 2474831081
+
+The design intentionally separates **discovery** from **release inputs**:
+
+1. SPARQL or other live discovery may identify candidate QIDs during source refresh.
+2. The refresh job records exact QID + Wikidata revision and emits a restricted structured-data extract.
+3. The extract is versioned/checksummed.
+4. Official TFLex builds consume only that frozen extract, never live SPARQL results.
+
+`scripts/audit-wikidata-tech-lock.mjs` rejects missing revisions, unbound permanent URLs and disallowed fields such as logos/media/HTML/JS/WASM. This demonstrates a practical reproducibility model without making every release build process the complete Wikidata dump.
+
+## 7. FreeDict early audit
+
+Official FreeDict metadata for `eng-zho` edition `2025.11.23` is locked in `tests/fixtures/freedict-eng-zho-source-lock.json`:
+
+- 26,660 headwords;
+- source archive size: 1,600,448 bytes;
+- exact official source URL;
+- exact SHA-512: `25aed0f1d7de68919aa9da1ba92d67f566ae4ea81660f42071c81fc21e56d4b210d61df379315678648c45ca7e52c4a0ba2eec009fbaab7c72e7472489e1fc4c`.
+
+WikDict generator evidence at commit `f30228da482e74b06956ef55dcf23ae2757f9812`, which predates this release, emits a TEI header declaring CC BY-SA 3.0 and identifies Wiktionary via DBnary as its base data.
+
+**This is not enough to approve the pack.** The exact 2025.11.23 TEI header/source archive must still be archived/inspected before approval. The test suite explicitly keeps `approvedForOfficialPack=false` until that happens.
+
+## 8. Open Design Freeze rows
 
 - [x] Real PWN3/COW feasibility sample shows a mandatory technical-data gap.
 - [ ] Exact FreeDict eng-zho TEI license archived and quality sampled.
-- [ ] Reproducible locked Wikidata technical extract demonstrated.
-- [ ] Bundled monolithic-vs-sharded asset POC measured.
-- [ ] OPFS restart/recovery POC passed.
+- [x] Reproducible revision-locked Wikidata technical extract strategy demonstrated on six representative entities.
+- [x] Bundled full-vs-byte-range-vs-tiny-shard transfer behavior measured on a synthetic asset; realistic pack-size benchmark still required before final physical-profile freeze.
+- [x] OPFS write/read survives browser/service-worker restart; missing/corrupt active-file recovery policy POC still pending.
 - [ ] Package-size / cold-warm latency / peak-memory budgets recorded.
-- [ ] Catalog signature/trust-root POC passed.
+- [x] WebCrypto ECDSA P-256 pinned-key verification/tamper-rejection POC passed; key-rotation/revocation policy still pending.
 - [ ] Narrow optional-origin permission flow proven.
 - [ ] Context extraction + editable privacy POC passed.
 - [ ] Disposable Selection vertical slice passed.
