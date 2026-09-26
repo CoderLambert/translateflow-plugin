@@ -7,6 +7,7 @@ import { webcrypto } from "node:crypto";
 import { LEXICAL_ERROR_CODES } from "../src/shared/lexical.js";
 import { ByteBoundedLru } from "../src/background/lexical/lru.js";
 import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
+import { findTflexAlias } from "../src/background/lexical/tflex-integrity.js";
 import { validateTflexDirectory } from "../src/background/lexical/tflex-integrity.js";
 
 const fixtureRoot = fileURLToPath(new URL("./fixtures/tflex-runtime-pack/", import.meta.url));
@@ -64,6 +65,11 @@ test("TFLex reader resolves one-to-one and ambiguous aliases without full-pack s
   assert.equal(single[0].matchedAlias, true);
   assert.equal(single[0].record.lookupKey, "terminal multiplexer");
   assert.equal(single[0].aliasKey, "term mux");
+  assert.equal(single[0].exactCaseMatch, true);
+
+  const differentlyCased = await reader.lookupAll("TERM MUX");
+  assert.equal(differentlyCased.length, 1);
+  assert.equal(differentlyCased[0].exactCaseMatch, false);
 
   const ambiguous = await reader.lookupAll("stateful");
   assert.deepEqual(ambiguous.map((hit) => hit.record.lookupKey), ["persistent", "session"]);
@@ -85,6 +91,19 @@ test("TFLex directory rejects alias targets outside every shard range", async ()
     () => validateTflexDirectory(directory, manifest),
     /alias target falls outside all shard ranges/
   );
+});
+
+test("case-sensitive aliases only match declared exact casing", () => {
+  const directory = {
+    aliases: [{
+      key: "react.js",
+      caseSensitive: true,
+      exactLookupKeys: ["React.js"],
+      targets: ["react"]
+    }]
+  };
+  assert.ok(findTflexAlias(directory, "react.js", "React.js"));
+  assert.equal(findTflexAlias(directory, "react.js", "react.js"), null);
 });
 
 test("TFLex shard cache is bounded and repeated lookup reuses the decoded shard", async () => {
