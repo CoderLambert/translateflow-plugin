@@ -11,6 +11,14 @@ export const LEXICAL_ERROR_CODES = Object.freeze({
   INCOMPATIBLE: "LEXICON_INCOMPATIBLE"
 });
 
+export const LEXICAL_DECISION_OUTCOME = Object.freeze({
+  SUFFICIENT: "sufficient",
+  AMBIGUOUS: "ambiguous",
+  NO_HIT: "no-hit",
+  UNSUPPORTED: "unsupported",
+  ERROR: "error"
+});
+
 export function normalizeLexicalExactKey(value) {
   return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ");
 }
