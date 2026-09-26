@@ -12,7 +12,7 @@
     "version": "revision-locked-structured-extract",
     "namespace": "Wikidata main namespace structured data",
     "extractPath": "lexicon/sources/wikidata-tech-entities.json",
-    "extractSha256": "17613d0aa7282be1d45487f1a1b15753cff39a9c94775ac83c0613a0b8ef28b4",
+    "extractSha256": "38ed14cdb278b8e46d28b6d2ef0060aa5b4e932165653b9e1c0de86df1b96ba6",
     "extractSize": 3739,
     "license": {
       "id": "CC0-1.0",
@@ -23,7 +23,7 @@
     "snapshot": {
       "kind": "qid-revision-set",
       "version": "2026-09-26",
-      "lockedAt": "2026-09-26T13:39:03Z",
+      "lockedAt": "2026-09-26T14:38:56Z",
       "extractRuleVersion": 1
     }
   },
