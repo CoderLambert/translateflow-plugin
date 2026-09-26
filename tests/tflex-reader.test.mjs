@@ -55,6 +55,21 @@ test("TFLex reader loads exact words/phrases and preserves polysemy", async () =
   assert.equal(await reader.lookup("not-in-pack"), null);
 });
 
+test("TFLex reader resolves one-to-one and ambiguous aliases without full-pack scanning", async () => {
+  const { reader, reads } = fixtureReader();
+
+  const single = await reader.lookupAll("term mux");
+  assert.equal(single.length, 1);
+  assert.equal(single[0].matchedAlias, true);
+  assert.equal(single[0].record.lookupKey, "terminal multiplexer");
+  assert.equal(single[0].aliasKey, "term mux");
+
+  const ambiguous = await reader.lookupAll("stateful");
+  assert.deepEqual(ambiguous.map((hit) => hit.record.lookupKey), ["persistent", "session"]);
+  assert.ok(ambiguous.every((hit) => hit.matchedAlias));
+  assert.ok(reads() <= 3, "manifest + directory + one decoded shard should satisfy both alias queries");
+});
+
 test("TFLex shard cache is bounded and repeated lookup reuses the decoded shard", async () => {
   const { reader, reads } = fixtureReader({ cacheMaxEntries: 1, cacheMaxBytes: 4096 });
   await reader.lookup("persistent");
