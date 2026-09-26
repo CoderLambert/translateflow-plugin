@@ -96,6 +96,9 @@ technical record
   typeLabels[]
   aliases[]
   translations[]
+  domains[]        # curated technical category/domain
+  description?     # bounded structured-source description
+  sourceRevision?  # locked source revision when available
 ```
 
 No record field is trusted as an instruction when used by an AI request. Pack strings are serialized as bounded data.
