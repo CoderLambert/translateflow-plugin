@@ -236,12 +236,20 @@ function validateRecord(record, packId, path) {
     normalizeLexicalKey(record.lookupKey) !== record.lookupKey ||
     typeof record.displayForm !== "string" ||
     !record.displayForm ||
-    !Array.isArray(record.senses) ||
-    !record.senses.length
+    !["lexical", "technical-concept", "technical-entity"].includes(record.kind)
   ) {
-    throw corrupt(packId, path, "Malformed TFLex lexical record");
+    throw corrupt(packId, path, "Malformed TFLex record");
   }
-  for (const sense of record.senses) {
+
+  const senses = Array.isArray(record.senses) ? record.senses : [];
+  const directTranslations = Array.isArray(record.translations) ? record.translations : [];
+  if (!senses.length && !directTranslations.length) {
+    throw corrupt(packId, path, "TFLex record has no lexical content");
+  }
+  for (const translation of directTranslations) {
+    if (typeof translation !== "string" || !translation) throw corrupt(packId, path, "Malformed TFLex translation");
+  }
+  for (const sense of senses) {
     if (
       !sense ||
       typeof sense.id !== "string" ||
