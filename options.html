@@ -19,6 +19,7 @@
       <a data-settings-nav href="#sites">站点</a>
       <a data-settings-nav href="#auto-sites">自动行为</a>
       <a data-settings-nav href="#glossary">术语表</a>
+      <a data-settings-nav href="#dictionary-packs">可选词典</a>
       <span>高级</span>
       <a data-settings-nav href="#provider">Provider</a>
       <a data-settings-nav href="#cache">缓存</a>
@@ -69,6 +70,16 @@
         <p>Core 词典使用锁定版本的 Princeton WordNet / Chinese Open Wordnet；技术词条使用已审核的结构化来源。每个词典包保持独立来源与许可记录。</p>
         <a href="assets/lexicon/core/THIRD_PARTY_NOTICES.txt" target="_blank" rel="noopener">查看当前 Core Pack 第三方许可与来源</a>
       </div>
+    </section>
+
+    <section id="dictionary-packs" tabindex="-1">
+      <h2>可选词典包</h2>
+      <p class="section-summary">可选词典以独立版本存储在浏览器 OPFS 中。安装时只请求对应受信任下载源的精确 Origin 权限；更新失败不会替换最后一个健康版本。</p>
+      <div id="dictionaryPacksList" class="site-list">正在读取可选词典包状态…</div>
+      <div class="actions">
+        <button id="refreshDictionaryPacks" type="button">刷新词典包状态</button>
+      </div>
+      <p class="hint">若文件被浏览器回收或校验失败，状态会变为需要重新安装；有健康的上一版本时可回滚。</p>
     </section>
 
     <section id="appearance" tabindex="-1">
