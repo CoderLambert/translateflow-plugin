@@ -179,6 +179,95 @@ test("Selection explanation cache hit bypasses Provider and revalidates candidat
   assert.equal(providerCalls, 0);
 });
 
+test("tmux explanation is grounded in attributable local technical facts", async () => {
+  let providerPayload;
+  const technical = {
+    route: "needs-explanation",
+    routeReason: "ambiguous-needs-explanation",
+    depth: "standard",
+    contextPolicy: { sensitive: false, source: "visible-local", truncated: false, chars: 45 },
+    decision: {
+      outcome: "ambiguous",
+      reason: "candidate-gap-too-small",
+      topCandidateId: "technical-wikidata:Q1935361",
+      candidates: [{
+        id: "technical-wikidata:Q1935361",
+        kind: "technical-entity",
+        headword: "tmux",
+        aliases: ["tmux"],
+        matchedBy: "exact",
+        queryForm: "tmux",
+        exactCaseMatch: true,
+        entityId: "Q1935361",
+        partOfSpeech: null,
+        translations: [],
+        domains: ["developer-tool"],
+        typeLabels: ["terminal multiplexer", "free software"],
+        provenance: {
+          packId: "technical-wikidata",
+          packVersion: "2026-09",
+          fingerprint: "sha256:tmux",
+          sourceRefs: [{ sourceId: "wikidata", recordId: "Q1935361@12345" }]
+        },
+        ranking: { score: 90, signals: [], policyVersion: 1 }
+      }]
+    },
+    explanationInput: {
+      selectionText: "tmux",
+      contextText: "Open tmux in the terminal and attach to a session.",
+      sensitive: false,
+      depth: "standard",
+      candidates: [{
+        id: "technical-wikidata:Q1935361",
+        kind: "technical-entity",
+        headword: "tmux",
+        aliases: ["tmux"],
+        matchedBy: "exact",
+        queryForm: "tmux",
+        exactCaseMatch: true,
+        entityId: "Q1935361",
+        partOfSpeech: null,
+        translations: [],
+        domains: ["developer-tool"],
+        typeLabels: ["terminal multiplexer", "free software"],
+        provenance: {
+          packId: "technical-wikidata",
+          packVersion: "2026-09",
+          fingerprint: "sha256:tmux",
+          sourceRefs: [{ sourceId: "wikidata", recordId: "Q1935361@12345" }]
+        },
+        ranking: { score: 90, signals: [], policyVersion: 1 }
+      }]
+    }
+  };
+
+  const result = await runSelectionExplanationRequest({
+    requestId: "tmux-explain",
+    text: "tmux",
+    pageUrl: "https://example.test/docs"
+  }, {
+    resolveSelectionRequest: async () => technical,
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => ({ hit: null }),
+    storeSelectionExplanation: async () => ({ stored: 1 }),
+    completeJson: async (input) => {
+      providerPayload = input.payload;
+      return input.parseResult({
+        selectedCandidateIds: ["technical-wikidata:Q1935361"],
+        explanation: "tmux 是用于管理多个终端会话的终端复用器。",
+        translation: ""
+      });
+    }
+  });
+
+  assert.equal(result.route, "explained");
+  assert.deepEqual(result.generated.selectedCandidateIds, ["technical-wikidata:Q1935361"]);
+  assert.deepEqual(providerPayload.candidates[0].typeLabels, ["terminal multiplexer", "free software"]);
+  assert.equal(providerPayload.candidates[0].provenance.packId, "technical-wikidata");
+  assert.equal(providerPayload.candidates[0].provenance.sourceRefs[0].sourceId, "wikidata");
+  assert.equal(result.local.candidates[0].provenance.fingerprint, "sha256:tmux");
+});
+
 test("Selection explanation cancellation aborts the Provider signal", async () => {
   let observedAbort = false;
   let providerStartedResolve;
