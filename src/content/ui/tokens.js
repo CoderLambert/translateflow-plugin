@@ -176,28 +176,153 @@ button { color: inherit; }
 }
 .tf-selection-panel {
   position: fixed;
-  width: min(380px, calc(100vw - 20px));
-  max-height: min(430px, calc(100vh - 20px));
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 20px));
+  max-height: min(520px, calc(100vh - 20px));
+  overflow: hidden;
   margin: 0;
   padding: var(--tf-space-3);
 }
-.tf-selection-header { display: flex; align-items: center; justify-content: space-between; gap: var(--tf-space-2); margin-bottom: var(--tf-space-2); }
+.tf-selection-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
+  margin-bottom: var(--tf-space-2);
+}
 .tf-selection-header strong { color: var(--tf-color-accent); font-size: var(--tf-font-size-sm); font-weight: 700; }
 .tf-selection-source {
-  max-height: 110px;
+  flex: 0 0 auto;
+  max-height: 84px;
   overflow: auto;
-  margin-bottom: 10px;
-  padding: 8px 9px;
+  margin-bottom: 8px;
+  padding: 7px 9px;
   border-radius: var(--tf-radius-md);
   background: var(--tf-color-surface-muted);
   color: var(--tf-color-muted);
+  font-size: var(--tf-font-size-xs);
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
-.tf-selection-status { margin: var(--tf-space-2) 0; }
-.tf-selection-result { margin: var(--tf-space-2) 0 10px; color: var(--tf-color-text); font-size: var(--tf-font-size-md); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-.tf-selection-actions { display: flex; justify-content: flex-end; gap: var(--tf-space-2); margin-top: 10px; }
+.tf-selection-status {
+  flex: 0 0 auto;
+  margin: var(--tf-space-1) 0 var(--tf-space-2);
+  font-size: var(--tf-font-size-xs);
+}
+.tf-selection-result {
+  min-height: 0;
+  max-height: min(330px, calc(100vh - 180px));
+  overflow: auto;
+  margin: 0;
+  padding: 2px 2px 6px;
+  color: var(--tf-color-text);
+  font-size: var(--tf-font-size-md);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.tf-selection-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tf-selection-result-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 8px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-pill);
+  background: var(--tf-green-100);
+  color: var(--tf-green-800);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.tf-selection-result-badge[data-kind="ai"] {
+  background: color-mix(in srgb, var(--tf-info) 12%, var(--tf-bg-card));
+  color: var(--tf-info);
+}
+.tf-selection-result-badge[data-kind="translation"] {
+  background: var(--tf-bg-subtle);
+  color: var(--tf-text-secondary);
+}
+.tf-selection-headword-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px 10px;
+  margin-bottom: 5px;
+}
+.tf-selection-headword {
+  color: var(--tf-text-strong);
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.tf-selection-headword-meta {
+  color: var(--tf-text-muted);
+  font-size: var(--tf-font-size-xs);
+}
+.tf-selection-primary {
+  color: var(--tf-text-strong);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.tf-selection-senses {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  color: var(--tf-text-main);
+}
+.tf-selection-senses > div::before {
+  content: "·";
+  margin-right: 7px;
+  color: var(--tf-text-muted);
+}
+.tf-selection-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 7px;
+  margin-top: 9px;
+}
+.tf-selection-facts span {
+  padding: 2px 7px;
+  border-radius: var(--tf-radius-pill);
+  background: var(--tf-bg-subtle);
+  color: var(--tf-text-secondary);
+  font-size: 11px;
+}
+.tf-selection-generated {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--tf-border-soft);
+}
+.tf-selection-generated-label {
+  margin-bottom: 4px;
+  color: var(--tf-info);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.tf-selection-generated-body {
+  color: var(--tf-text-main);
+  white-space: pre-wrap;
+}
+.tf-selection-actions {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: var(--tf-space-2);
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tf-border-soft);
+}
+
 
 .tf-toast {
   position: fixed;
