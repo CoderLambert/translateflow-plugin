@@ -358,6 +358,25 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
   });
 
+  test("selection context stays selection-only inside nested editable surfaces", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+    await selectElementText(page, "#editable-word");
+
+    const context = await page.evaluate(() => {
+      const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
+      const snapshot = app.modules.selection.readSelection();
+      return app.modules.selectionContext.captureSelectionContext(snapshot);
+    });
+
+    expect(context).toEqual({
+      text: "",
+      sensitive: true,
+      source: "selection-only",
+      truncated: false
+    });
+  });
+
   test("selection failure is actionable and transient 429/500 failures recover without a stuck state", async ({ harness }) => {
     const page = await harness.open("/failure");
     await harness.inject(page);
