@@ -309,6 +309,11 @@ button { color: inherit; }
   font-weight: 700;
   letter-spacing: .02em;
 }
+.tf-selection-generated-meaning {
+  margin-bottom: 4px;
+  color: var(--tf-text-strong);
+  font-weight: 650;
+}
 .tf-selection-generated-body {
   color: var(--tf-text-main);
   white-space: pre-wrap;
