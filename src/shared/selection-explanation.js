@@ -3,6 +3,7 @@ import { normalizeLexicalExactKey } from "./lexical.js";
 import { normalizeSelectionDepth } from "./selection.js";
 
 export const SELECTION_EXPLAIN_PROTOCOL_VERSION = "selection-explain-v1";
+export const SELECTION_EXPLAIN_PROMPT_VERSION = "selection-explain-prompt-v1";
 export const SELECTION_EXPLAIN_SCHEMA_VERSION = 1;
 export const SELECTION_EXPLAIN_LIMITS = Object.freeze({
   selectionChars: 2000,
@@ -78,6 +79,7 @@ export async function buildSelectionExplainCacheIdentity({
 
   const identity = {
     protocolVersion: SELECTION_EXPLAIN_PROTOCOL_VERSION,
+    promptVersion: SELECTION_EXPLAIN_PROMPT_VERSION,
     schemaVersion: SELECTION_EXPLAIN_SCHEMA_VERSION,
     provider: String(provider || "").trim(),
     model: String(model || "").trim(),
@@ -86,6 +88,7 @@ export async function buildSelectionExplainCacheIdentity({
     depth: normalized.depth,
     selectionDigest: await sha256(normalizeLexicalExactKey(normalized.selectionText)),
     contextDigest: await sha256(normalized.contextText),
+    candidateDigest: await sha256(JSON.stringify(normalized.candidates)),
     lexicalPacks
   };
   return {
