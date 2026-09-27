@@ -18,6 +18,14 @@ export async function translateBatch(segments, config, options = {}) {
   return getProvider(config).translateBatch(segments, config, options);
 }
 
+export async function completeJson(input, config, options = {}) {
+  const provider = getProvider(config);
+  if (typeof provider.completeJson !== "function") {
+    throw new Error(`Provider 不支持结构化 Selection explanation：${provider.id}`);
+  }
+  return provider.completeJson(input, config, options);
+}
+
 export async function testProvider(config) {
   return getProvider(config).test(config);
 }

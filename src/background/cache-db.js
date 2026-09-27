@@ -5,9 +5,11 @@ import { normalizeSourceText } from "../shared/text.js";
 import { normalizeUrl } from "../shared/url.js";
 
 const DB_NAME = "ai_bilingual_translator";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const TRANSLATIONS = "translations";
 const PAGES = "pages";
+const SELECTION_EXPLANATIONS = "selection_explanations";
+const MAX_SELECTION_EXPLANATIONS = 256;
 
 let dbPromise;
 
@@ -119,6 +121,50 @@ export async function storeTranslations({ pageUrl, pageTitle = "", items, config
   return { stored, pageKey: ctx.pageKey, normalizedUrl: ctx.normalizedUrl };
 }
 
+export async function lookupSelectionExplanation({ cacheKey }) {
+  const key = String(cacheKey || "");
+  if (!key) return { hit: null };
+
+  const db = await openDb();
+  const tx = db.transaction(SELECTION_EXPLANATIONS, "readwrite");
+  const store = tx.objectStore(SELECTION_EXPLANATIONS);
+  const record = await requestAsPromise(store.get(key));
+  if (record) {
+    record.lastAccessedAt = Date.now();
+    store.put(record);
+  }
+  await transactionDone(tx);
+  return {
+    hit: record?.result || null,
+    createdAt: record?.createdAt || null
+  };
+}
+
+export async function storeSelectionExplanation({ cacheKey, result }) {
+  const key = String(cacheKey || "");
+  if (!key || !result || typeof result !== "object" || Array.isArray(result)) {
+    return { stored: 0 };
+  }
+
+  const db = await openDb();
+  const serialized = JSON.stringify(result);
+  const now = Date.now();
+  const tx = db.transaction(SELECTION_EXPLANATIONS, "readwrite");
+  const store = tx.objectStore(SELECTION_EXPLANATIONS);
+  const existing = await requestAsPromise(store.get(key));
+  store.put({
+    ...existing,
+    cacheKey: key,
+    result,
+    bytes: byteLength(key) + byteLength(serialized) + 256,
+    createdAt: existing?.createdAt || now,
+    lastAccessedAt: now
+  });
+  await transactionDone(tx);
+  await pruneSelectionExplanationCount(db);
+  return { stored: 1 };
+}
+
 export async function getPageCacheStatus({ pageUrl, config }) {
   const db = await openDb();
   const ctx = await getCacheContext(pageUrl, config);
@@ -159,26 +205,34 @@ export async function clearPageCache({ pageUrl }) {
 
 export async function clearAllCache() {
   const db = await openDb();
-  const tx = db.transaction([TRANSLATIONS, PAGES], "readwrite");
+  const tx = db.transaction([TRANSLATIONS, PAGES, SELECTION_EXPLANATIONS], "readwrite");
   tx.objectStore(TRANSLATIONS).clear();
   tx.objectStore(PAGES).clear();
+  tx.objectStore(SELECTION_EXPLANATIONS).clear();
   await transactionDone(tx);
   return { cleared: true };
 }
 
 export async function getCacheStats() {
   const db = await openDb();
-  const tx = db.transaction([TRANSLATIONS, PAGES], "readonly");
+  const tx = db.transaction([TRANSLATIONS, PAGES, SELECTION_EXPLANATIONS], "readonly");
   const translations = tx.objectStore(TRANSLATIONS);
-  const segmentCount = await requestAsPromise(translations.count());
-  const pageCount = await requestAsPromise(tx.objectStore(PAGES).count());
+  const explanations = tx.objectStore(SELECTION_EXPLANATIONS);
+  const [segmentCount, pageCount, selectionExplanationCount] = await Promise.all([
+    requestAsPromise(translations.count()),
+    requestAsPromise(tx.objectStore(PAGES).count()),
+    requestAsPromise(explanations.count())
+  ]);
   let bytes = 0;
 
   await iterateCursor(translations.openCursor(), (cursor) => {
     bytes += Number(cursor.value?.bytes || 0);
   });
+  await iterateCursor(explanations.openCursor(), (cursor) => {
+    bytes += Number(cursor.value?.bytes || 0);
+  });
   await transactionDone(tx);
-  return { pageCount, segmentCount, bytes };
+  return { pageCount, segmentCount, selectionExplanationCount, bytes };
 }
 
 export async function pruneCache(maxBytes) {
@@ -260,12 +314,34 @@ function openDb() {
         const store = db.createObjectStore(PAGES, { keyPath: "pageKey" });
         store.createIndex("lastAccessedAt", "lastAccessedAt", { unique: false });
       }
+      if (!db.objectStoreNames.contains(SELECTION_EXPLANATIONS)) {
+        const store = db.createObjectStore(SELECTION_EXPLANATIONS, { keyPath: "cacheKey" });
+        store.createIndex("lastAccessedAt", "lastAccessedAt", { unique: false });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error("无法打开 IndexedDB。"));
     request.onblocked = () => reject(new Error("IndexedDB 升级被其他扩展页面阻塞，请关闭扩展设置页后重试。"));
   });
   return dbPromise;
+}
+
+async function pruneSelectionExplanationCount(db) {
+  const countTx = db.transaction(SELECTION_EXPLANATIONS, "readonly");
+  const count = await requestAsPromise(countTx.objectStore(SELECTION_EXPLANATIONS).count());
+  await transactionDone(countTx);
+  let excess = count - MAX_SELECTION_EXPLANATIONS;
+  if (excess <= 0) return;
+
+  const pruneTx = db.transaction(SELECTION_EXPLANATIONS, "readwrite");
+  const index = pruneTx.objectStore(SELECTION_EXPLANATIONS).index("lastAccessedAt");
+  await iterateCursor(index.openCursor(), (cursor) => {
+    if (excess <= 0) return false;
+    cursor.delete();
+    excess -= 1;
+    return true;
+  });
+  await transactionDone(pruneTx);
 }
 
 function requestAsPromise(request) {

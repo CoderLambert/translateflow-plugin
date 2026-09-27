@@ -113,6 +113,44 @@ export async function requestParsedTranslation({
   }
 }
 
+export async function requestParsedJson({
+  request,
+  providerLabel,
+  parseResult = (value) => value,
+  maxAttempts = DEFAULT_RETRY_POLICY.malformedMaxAttempts
+}) {
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    try {
+      const data = await request();
+      const message = data?.choices?.[0]?.message;
+      const raw = message?.parsed ?? message?.content;
+      if (raw === undefined || raw === null || raw === "") {
+        throw new ProviderRequestError(`${providerLabel} 没有返回结构化内容。`, {
+          code: "MALFORMED_RESPONSE"
+        });
+      }
+
+      const parsed = typeof raw === "string"
+        ? parseJsonObject(raw, providerLabel)
+        : raw;
+      try {
+        return parseResult(parsed);
+      } catch (error) {
+        if (error instanceof ProviderRequestError) throw error;
+        throw new ProviderRequestError(
+          `${providerLabel} 返回的结构化内容不符合 Selection 协议：${error?.message || error}`,
+          { code: "MALFORMED_RESPONSE", cause: error }
+        );
+      }
+    } catch (error) {
+      const normalized = normalizeProviderError(error, providerLabel);
+      if (normalized.code !== "MALFORMED_RESPONSE" || attempt >= maxAttempts) throw normalized;
+    }
+  }
+}
+
 export function parseTranslationResult(data, segments, providerLabel) {
   const content = data?.choices?.[0]?.message?.content;
   if (!content) {

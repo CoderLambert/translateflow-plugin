@@ -5,6 +5,7 @@ import {
 import {
   buildTranslationPrompt,
   requestChatCompletions,
+  requestParsedJson,
   requestParsedTranslation
 } from "./shared.js";
 import {
@@ -35,6 +36,10 @@ export const openAICompatibleProvider = Object.freeze({
     return translateGenericBatch(segments, config, model, signal, onProgress);
   },
 
+  async completeJson(input, config, { signal } = {}) {
+    return completeStructuredJson(input, config, signal);
+  },
+
   async test(config) {
     await assertEndpointPermission(config.apiBaseUrl);
     const model = requireModel(config.model);
@@ -59,6 +64,68 @@ export const openAICompatibleProvider = Object.freeze({
     return data?.choices?.[0]?.message?.content?.trim() || "OK";
   }
 });
+
+async function completeStructuredJson({ systemPrompt, payload, parseResult } = {}, config, signal) {
+  await assertEndpointPermission(config.apiBaseUrl);
+  const model = requireModel(config.model);
+  const localModel = isLocalTranslationModel(model);
+  let structuredOutputSupported = true;
+
+  const request = async () => {
+    if (!structuredOutputSupported) {
+      return requestStructuredCompletion({ systemPrompt, payload, config, model, signal, localModel, structured: false });
+    }
+    try {
+      return await requestStructuredCompletion({ systemPrompt, payload, config, model, signal, localModel, structured: true });
+    } catch (error) {
+      if (!isUnsupportedStructuredOutputError(error)) throw error;
+      structuredOutputSupported = false;
+      return requestStructuredCompletion({ systemPrompt, payload, config, model, signal, localModel, structured: false });
+    }
+  };
+
+  return requestParsedJson({
+    request,
+    providerLabel: PROVIDER_LABEL,
+    parseResult
+  });
+}
+
+function requestStructuredCompletion({
+  systemPrompt,
+  payload,
+  config,
+  model,
+  signal,
+  localModel,
+  structured
+}) {
+  const prompt = String(systemPrompt || "").trim();
+  const userPayload = JSON.stringify(payload || {});
+  const messages = localModel
+    ? [{ role: "user", content: [prompt, "Input JSON:", userPayload].filter(Boolean).join("\n\n") }]
+    : [
+        { role: "system", content: prompt },
+        { role: "user", content: userPayload }
+      ];
+
+  const body = {
+    model,
+    messages,
+    stream: false,
+    temperature: 0.1
+  };
+  if (structured) body.response_format = { type: "json_object" };
+
+  return requestChatCompletions({
+    url: buildChatCompletionsUrl(config.apiBaseUrl),
+    apiKey: config.apiKey,
+    providerLabel: PROVIDER_LABEL,
+    requireApiKey: false,
+    signal,
+    body
+  });
+}
 
 async function translateGenericBatch(segments, config, model, signal, onProgress) {
   const body = buildGenericRequestBody(segments, config, model);

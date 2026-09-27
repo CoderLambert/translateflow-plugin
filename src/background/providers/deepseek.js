@@ -1,6 +1,7 @@
 import {
   buildTranslationPrompt,
   requestChatCompletions,
+  requestParsedJson,
   requestParsedTranslation
 } from "./shared.js";
 
@@ -39,6 +40,33 @@ export const deepSeekProvider = Object.freeze({
       request,
       segments,
       providerLabel: "DeepSeek"
+    });
+  },
+
+  async completeJson({ systemPrompt, payload, parseResult }, config, { signal } = {}) {
+    const request = () => requestChatCompletions({
+      url: API_URL,
+      apiKey: config.apiKey,
+      providerLabel: "DeepSeek",
+      requireApiKey: true,
+      signal,
+      body: {
+        model: config.model?.trim() || "deepseek-flash",
+        messages: [
+          { role: "system", content: String(systemPrompt || "") },
+          { role: "user", content: JSON.stringify(payload || {}) }
+        ],
+        response_format: { type: "json_object" },
+        thinking: { type: "disabled" },
+        stream: false,
+        temperature: 0.1
+      }
+    });
+
+    return requestParsedJson({
+      request,
+      providerLabel: "DeepSeek",
+      parseResult
     });
   },
 

@@ -358,6 +358,46 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
   });
 
+  test("ambiguous Selection uses grounded explain prompt, bounded context and isolated explanation cache", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+
+    await selectElementText(page, "#ambiguous");
+    await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-result")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result")).toContainText("持续存在或保持有效");
+    expect(harness.server.calls).toHaveLength(1);
+
+    const call = harness.server.calls[0];
+    expect(call.systemPrompt).toContain("Selection Explain");
+    expect(call.systemPrompt).not.toContain("Translate the segments and return JSON only.");
+    expect(call.userContent).not.toContain(page.url());
+    expect(call.userContent).not.toContain("TranslateFlow E2E Fixture");
+    expect(call.userContent).not.toContain("UNRELATED_SECRET_PAGE_TEXT");
+
+    const payload = JSON.parse(call.userContent);
+    expect(payload.selectionText).toBe("persistent");
+    expect(payload.contextText.length).toBeLessThanOrEqual(900);
+    expect(payload.contextText).toContain("persistent connection");
+    expect(payload.candidates).toHaveLength(2);
+    expect(payload.candidates.every((candidate) => candidate.provenance?.packId)).toBe(true);
+
+    await page.getByRole("button", { name: "关闭" }).click();
+    await clearSelection(page);
+    await selectElementText(page, "#ambiguous");
+    await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-result")).toContainText("持续存在或保持有效");
+    expect(harness.server.calls).toHaveLength(1);
+
+    const pageCache = await harness.runtime({
+      type: "CACHE_LOOKUP",
+      pageUrl: page.url(),
+      segments: [{ id: "selection", text: "persistent" }]
+    });
+    expect(pageCache.ok).toBe(true);
+    expect(pageCache.hits).toEqual([]);
+  });
+
   test("selection context stays selection-only inside nested editable surfaces", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);

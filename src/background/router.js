@@ -35,6 +35,10 @@ import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
 import { runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
+import {
+  cancelSelectionExplanationRequest,
+  runSelectionExplanationRequest
+} from "./selection/explain.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -68,14 +72,25 @@ export async function handleBackgroundMessage(message, sender) {
         pageTitle: message.pageTitle,
         units: message.units
       });
-    case BACKGROUND_MESSAGES.CANCEL_TRANSLATION:
-      return cancelTranslationRequest(message.requestId);
+    case BACKGROUND_MESSAGES.CANCEL_TRANSLATION: {
+      const translation = cancelTranslationRequest(message.requestId);
+      const explanation = cancelSelectionExplanationRequest(message.requestId);
+      return { cancelled: Boolean(translation.cancelled || explanation.cancelled) };
+    }
     case BACKGROUND_MESSAGES.TEST_API: {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
       return resolveSelectionRequest({
+        text: message.text,
+        pageUrl: message.pageUrl || "",
+        context: message.context || null,
+        depth: message.depth
+      });
+    case BACKGROUND_MESSAGES.SELECTION_EXPLAIN:
+      return runSelectionExplanationRequest({
+        requestId: message.requestId,
         text: message.text,
         pageUrl: message.pageUrl || "",
         context: message.context || null,
