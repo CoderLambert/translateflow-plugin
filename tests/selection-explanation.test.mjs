@@ -127,6 +127,8 @@ test("Selection explain cache identity changes across provider, depth, context a
   const a = await buildSelectionExplainCacheIdentity(base);
   const same = await buildSelectionExplainCacheIdentity(base);
   assert.equal(a.cacheKey, same.cacheKey);
+  assert.equal(a.identity.promptVersion, "selection-explain-prompt-v1");
+  assert.ok(a.identity.candidateDigest);
 
   const changes = [
     { ...base, provider: "openai-compatible" },
@@ -145,6 +147,13 @@ test("Selection explain cache identity changes across provider, depth, context a
             sourceRefs: [{ sourceId: "cedict", recordId: "persistent:1" }]
           }
         })]
+      }
+    },
+    {
+      ...base,
+      payload: {
+        ...base.payload,
+        candidates: [candidate({ translations: ["持续的"] })]
       }
     }
   ];
