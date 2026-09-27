@@ -48,6 +48,20 @@ export function createOpfsPackStore({
     }
   }
 
+  async function listPacks() {
+    try {
+      const dictionaries = await getDictionariesDir(false);
+      const packs = [];
+      for await (const [name, handle] of dictionaries.entries()) {
+        if (handle.kind === "directory" && isSafePackIdentifier(name)) packs.push(name);
+      }
+      return packs.sort(compareText);
+    } catch (error) {
+      if (error?.name === "NotFoundError") return [];
+      throw storageError("Unable to list dictionary packs.", { cause: error });
+    }
+  }
+
   async function listVersions(packId) {
     validatePackId(packId);
     try {
@@ -116,6 +130,7 @@ export function createOpfsPackStore({
   return Object.freeze({
     writeFile,
     readFile,
+    listPacks,
     listVersions,
     removeVersion,
     removePack,
