@@ -50,7 +50,7 @@ test("YouTube subtitle stack is injected in dependency order before bootstrap", 
 test("content bootstrap is loaded last", () => assert.equal(CONTENT_SCRIPT_FILES.at(-1), "content.js"));
 
 test("selection modules are loaded before the content bootstrap", () => {
-  for (const file of ["src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/popover.js", "src/content/selection/controller.js"]) {
+  for (const file of ["src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/popover.js", "src/content/selection/controller.js"]) {
     assert.ok(CONTENT_SCRIPT_FILES.includes(file), `${file} should be injected`); assert.ok(CONTENT_SCRIPT_FILES.indexOf(file) < CONTENT_SCRIPT_FILES.indexOf("content.js"));
   }
 });
