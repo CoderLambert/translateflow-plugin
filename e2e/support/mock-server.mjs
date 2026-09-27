@@ -50,21 +50,34 @@ export async function startMockServer() {
         }
 
         const isConnectionTest = systemPrompt.includes("Reply with exactly: OK");
-        const content = isConnectionTest
-          ? "OK"
-          : JSON.stringify({
-              translations: segments.map((item) => ({
-                id: String(item.id),
-                text: translateDeterministically(String(item.text || ""), systemPrompt)
-              }))
-            });
+        const isSelectionExplain = systemPrompt.includes("Selection Explain");
+        let completionContent;
+        if (isConnectionTest) {
+          completionContent = "OK";
+        } else if (isSelectionExplain) {
+          let explainPayload = {};
+          try { explainPayload = JSON.parse(userContent); } catch {}
+          const firstCandidateId = String(explainPayload?.candidates?.[0]?.id || "");
+          completionContent = JSON.stringify({
+            selectedCandidateIds: firstCandidateId ? [firstCandidateId] : [],
+            explanation: "这里表示所选词在当前上下文中持续存在或保持有效。",
+            translation: "持久的"
+          });
+        } else {
+          completionContent = JSON.stringify({
+            translations: segments.map((item) => ({
+              id: String(item.id),
+              text: translateDeterministically(String(item.text || ""), systemPrompt)
+            }))
+          });
+        }
 
         json(response, 200, {
           id: "chatcmpl-translateflow-e2e",
           object: "chat.completion",
           choices: [{
             index: 0,
-            message: { role: "assistant", content },
+            message: { role: "assistant", content: completionContent },
             finish_reason: "stop"
           }]
         });
@@ -151,6 +164,7 @@ function renderFixture(pathname) {
     "/selection": `
       <p id="selectable">Selection translation should reuse the same provider configuration while keeping Selection v2 cache identity separate.</p>
       <p id="lexical-context">tmux is a <span id="lexical">terminal multiplexer</span> used to manage terminal sessions.</p>
+      <p id="ambiguous-context">A <span id="ambiguous">persistent</span> connection remains available across reconnects while unrelated account details stay elsewhere on the page.</p>
       <div id="editable" contenteditable="true">Private draft <span contenteditable="false"><span id="editable-word">persistent</span></span> account token</div>
     `,
     "/failure": `
