@@ -7,6 +7,7 @@ test("default config remains compatible with existing DeepSeek cache version", (
   assert.equal(DEFAULT_CONFIG.provider, "deepseek"); assert.equal(DEFAULT_CONFIG.model, "deepseek-flash");
   assert.equal(DEFAULT_CONFIG.targetLanguage, "Simplified Chinese"); assert.equal(DEFAULT_CONFIG.appearance, "standard");
   assert.equal(DEFAULT_CONFIG.youtubeSubtitleMode, "bilingual"); assert.equal(DEFAULT_CONFIG.youtubeSubtitleSize, "standard");
+  assert.equal(DEFAULT_CONFIG.selectionExplanationDepth, "auto");
 });
 
 test("message values stay unique inside each channel", () => {
@@ -16,7 +17,7 @@ test("message values stay unique inside each channel", () => {
 
 test("build-free content runtime mirrors Quick Control message values", () => {
   const source = readFileSync(new URL("../src/content/runtime.js", import.meta.url), "utf8");
-  const required = [CONTENT_MESSAGES.QUICK_CONTROL_SHOW, CONTENT_MESSAGES.QUICK_CONTROL_TOGGLE, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT, BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE, BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
+  const required = [CONTENT_MESSAGES.QUICK_CONTROL_SHOW, CONTENT_MESSAGES.QUICK_CONTROL_TOGGLE, BACKGROUND_MESSAGES.SELECTION_RESOLVE, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT, BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE, BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
   for (const value of required) assert.ok(source.includes(`"${value}"`), `${value} missing from content runtime`);
 });
 
@@ -49,7 +50,7 @@ test("YouTube subtitle stack is injected in dependency order before bootstrap", 
 test("content bootstrap is loaded last", () => assert.equal(CONTENT_SCRIPT_FILES.at(-1), "content.js"));
 
 test("selection modules are loaded before the content bootstrap", () => {
-  for (const file of ["src/content/selection/selection.js", "src/content/selection/popover.js", "src/content/selection/controller.js"]) {
+  for (const file of ["src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/popover.js", "src/content/selection/controller.js"]) {
     assert.ok(CONTENT_SCRIPT_FILES.includes(file), `${file} should be injected`); assert.ok(CONTENT_SCRIPT_FILES.indexOf(file) < CONTENT_SCRIPT_FILES.indexOf("content.js"));
   }
 });
