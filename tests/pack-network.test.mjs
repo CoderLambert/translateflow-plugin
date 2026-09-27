@@ -65,22 +65,26 @@ test("pack download cancels an undeclared oversized streamed response before ful
 test("declared oversized response is rejected before reading the body", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
-  let pulled = false;
-  globalThis.fetch = async () => new Response(
-    new ReadableStream({
-      pull(controller) {
-        pulled = true;
-        controller.enqueue(new Uint8Array([1]));
-        controller.close();
+  let bodyReaderRequested = false;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: new Headers({ "content-length": "9" }),
+    body: {
+      getReader() {
+        bodyReaderRequested = true;
+        throw new Error("body must not be read");
       }
-    }),
-    { status: 200, headers: { "content-length": "9" } }
-  );
+    },
+    async arrayBuffer() {
+      throw new Error("body must not be materialized");
+    }
+  });
 
   await assert.rejects(
     fetchTrustedPackFile(source, descriptor(4)),
     (error) => error?.code === PACK_ERROR_CODES.DOWNLOAD &&
       error?.declared === 9
   );
-  assert.equal(pulled, false);
+  assert.equal(bodyReaderRequested, false);
 });
