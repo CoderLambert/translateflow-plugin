@@ -398,6 +398,45 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(pageCache.hits).toEqual([]);
   });
 
+  test("Selection card exposes provenance, survives narrow viewport, retries and copies", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await page.setViewportSize({ width: 360, height: 260 });
+    await harness.inject(page);
+
+    harness.server.setFailures([401]);
+    await page.locator("#ambiguous").scrollIntoViewIfNeeded();
+    await selectElementText(page, "#ambiguous");
+    await page.locator(".tf-selection-chip").focus();
+    await page.keyboard.press("Enter");
+
+    const panel = page.getByRole("dialog", { name: "TranslateFlow 划词翻译" });
+    await expect(panel).toBeVisible();
+    await expect(page.getByRole("button", { name: "关闭" })).toBeFocused();
+    await expect(panel).toHaveAttribute("aria-modal", "false");
+    await expect(page.locator(".tf-selection-status")).toContainText("AI 辅助暂不可用");
+    await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
+
+    harness.server.setFailures([]);
+    await page.getByRole("button", { name: "重试" }).click();
+
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-generated")).toContainText("持续存在或保持有效");
+    await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典", "AI 辅助"]);
+
+    const box = await panel.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(360);
+    expect(box.y + box.height).toBeLessThanOrEqual(260);
+
+    await page.getByRole("button", { name: "复制" }).click();
+    await expect(page.locator(".tf-toast")).toContainText("解释已复制");
+
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+  });
+
   test("selection context stays selection-only inside nested editable surfaces", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);

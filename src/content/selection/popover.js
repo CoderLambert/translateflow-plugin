@@ -21,6 +21,7 @@
   let copyButton;
   let retryButton;
   let cancelButton;
+  let closeButton;
   let activeSnapshot;
   let translateHandler;
   let retryHandler;
@@ -40,13 +41,14 @@
 
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
+    panel.setAttribute("aria-modal", "false");
 
     const header = document.createElement("div");
     header.className = "tf-selection-header";
     const title = document.createElement("strong");
     title.textContent = "TranslateFlow";
 
-    const closeButton = button({ text: "×", label: "关闭", icon: true, className: "tf-selection-icon-button" });
+    closeButton = button({ text: "×", label: "关闭", icon: true, className: "tf-selection-icon-button" });
     closeButton.addEventListener("click", () => closeHandler?.());
     header.append(title, closeButton);
 
@@ -54,9 +56,11 @@
     sourceNode.className = "tf-selection-source";
 
     statusNode = status({ className: "tf-selection-status" });
+    statusNode.setAttribute("aria-live", "polite");
 
     resultNode = document.createElement("div");
     resultNode.className = "tf-selection-result";
+    resultNode.setAttribute("aria-live", "polite");
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
@@ -94,21 +98,23 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "正在检查缓存…", "loading");
-    resultNode.textContent = "";
+    resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = false;
     cancelButton.disabled = false;
     copyButton.hidden = true;
     retryButton.hidden = true;
     position(snapshot, panel);
+    focusPanelEntry();
   }
 
   function setLoadingStatus(message) {
     if (!statusNode || panel?.hidden) return;
     setStatus(statusNode, message, "loading");
+    reposition();
   }
 
-  function showResult(snapshot, translation, onCopy) {
+  function showResult(snapshot, result, onCopy) {
     ensureUi();
     activeSnapshot = snapshot;
     copyHandler = onCopy;
@@ -118,7 +124,7 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "", "success");
-    resultNode.textContent = translation;
+    renderResult(result);
     resultNode.hidden = false;
     cancelButton.hidden = true;
     copyButton.hidden = false;
@@ -136,12 +142,139 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, message || "翻译失败，请重试。", "error");
-    resultNode.textContent = "";
+    resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = true;
     copyButton.hidden = true;
     retryButton.hidden = false;
     position(snapshot, panel);
+  }
+
+  function renderResult(input) {
+    resultNode.replaceChildren();
+    const result = typeof input === "string"
+      ? { kind: "translation", primaryMeaning: input }
+      : (input || {});
+
+    resultNode.dataset.resultKind = String(result.kind || "translation");
+
+    const meta = document.createElement("div");
+    meta.className = "tf-selection-result-meta";
+
+    for (const item of Array.isArray(result.badges) ? result.badges : []) {
+      const label = String(item?.label || "").trim();
+      if (!label) continue;
+      const badge = document.createElement("span");
+      badge.className = "tf-selection-result-badge";
+      badge.dataset.kind = String(item?.kind || "local");
+      badge.textContent = label;
+      meta.appendChild(badge);
+    }
+    if (meta.childElementCount) resultNode.appendChild(meta);
+
+    const headword = String(result.headword || "").trim();
+    const pronunciation = String(result.pronunciation || "").trim();
+    const partOfSpeech = String(result.partOfSpeech || "").trim();
+    if (headword || pronunciation || partOfSpeech) {
+      const heading = document.createElement("div");
+      heading.className = "tf-selection-headword-row";
+      if (headword) {
+        const strong = document.createElement("strong");
+        strong.className = "tf-selection-headword";
+        strong.textContent = headword;
+        heading.appendChild(strong);
+      }
+      const details = [pronunciation, partOfSpeech].filter(Boolean);
+      if (details.length) {
+        const secondary = document.createElement("span");
+        secondary.className = "tf-selection-headword-meta";
+        secondary.textContent = details.join(" · ");
+        heading.appendChild(secondary);
+      }
+      resultNode.appendChild(heading);
+    }
+
+    const primary = String(result.primaryMeaning || "").trim();
+    if (primary) {
+      const node = document.createElement("div");
+      node.className = "tf-selection-primary";
+      node.textContent = primary;
+      resultNode.appendChild(node);
+    }
+
+    const senses = uniqueText(result.senses);
+    if (senses.length) {
+      const list = document.createElement("div");
+      list.className = "tf-selection-senses";
+      for (const sense of senses.slice(0, 5)) {
+        const row = document.createElement("div");
+        row.textContent = sense;
+        list.appendChild(row);
+      }
+      resultNode.appendChild(list);
+    }
+
+    const facts = uniqueText([
+      ...(Array.isArray(result.domains) ? result.domains : []),
+      ...(Array.isArray(result.typeLabels) ? result.typeLabels : [])
+    ]);
+    if (facts.length) {
+      const factRow = document.createElement("div");
+      factRow.className = "tf-selection-facts";
+      for (const fact of facts.slice(0, 6)) {
+        const item = document.createElement("span");
+        item.textContent = fact;
+        factRow.appendChild(item);
+      }
+      resultNode.appendChild(factRow);
+    }
+
+    const generatedMeaning = String(result.generatedMeaning || "").trim();
+    const explanation = String(result.explanation || "").trim();
+    if (generatedMeaning || explanation) {
+      const generated = document.createElement("section");
+      generated.className = "tf-selection-generated";
+      const label = document.createElement("div");
+      label.className = "tf-selection-generated-label";
+      label.textContent = "这里的意思";
+      generated.appendChild(label);
+      if (generatedMeaning) {
+        const meaning = document.createElement("div");
+        meaning.className = "tf-selection-generated-meaning";
+        meaning.textContent = generatedMeaning;
+        generated.appendChild(meaning);
+      }
+      if (explanation) {
+        const body = document.createElement("div");
+        body.className = "tf-selection-generated-body";
+        body.textContent = explanation;
+        generated.appendChild(body);
+      }
+      resultNode.appendChild(generated);
+    }
+
+    if (!resultNode.childElementCount) {
+      const empty = document.createElement("div");
+      empty.className = "tf-selection-primary";
+      empty.textContent = "暂无可展示结果。";
+      resultNode.appendChild(empty);
+    }
+  }
+
+  function uniqueText(values) {
+    return [...new Set(
+      (Array.isArray(values) ? values : [])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )];
+  }
+
+  function focusPanelEntry() {
+    requestAnimationFrame(() => {
+      if (!panel?.hidden && closeButton?.isConnected) {
+        closeButton.focus({ preventScroll: true });
+      }
+    });
   }
 
   function hide() {
@@ -156,6 +289,7 @@
     copyButton = null;
     retryButton = null;
     cancelButton = null;
+    closeButton = null;
     activeSnapshot = null;
     translateHandler = null;
     retryHandler = null;
@@ -185,12 +319,18 @@
       if (!element?.isConnected) return;
       const box = element.getBoundingClientRect();
       const margin = 10;
+      const maxWidth = Math.max(0, window.innerWidth - margin * 2);
       let left = rect.left;
       let top = rect.bottom + 8;
 
-      if (left + box.width > window.innerWidth - margin) left = window.innerWidth - box.width - margin;
+      if (box.width > maxWidth) left = margin;
+      else if (left + box.width > window.innerWidth - margin) left = window.innerWidth - box.width - margin;
       if (left < margin) left = margin;
-      if (top + box.height > window.innerHeight - margin) top = Math.max(margin, rect.top - box.height - 8);
+
+      if (top + box.height > window.innerHeight - margin) {
+        const above = rect.top - box.height - 8;
+        top = above >= margin ? above : margin;
+      }
       if (top < margin) top = margin;
 
       element.style.left = `${Math.round(left)}px`;

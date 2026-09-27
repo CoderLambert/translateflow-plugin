@@ -17,6 +17,7 @@ import {
   normalizeAppearanceId
 } from "./src/shared/appearance.js";
 import { normalizeOrigin } from "./src/shared/url.js";
+import { normalizeSelectionDepth } from "./src/shared/selection.js";
 import { initializeGlossaryUi } from "./src/options/glossary-ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -27,6 +28,7 @@ const targetLanguage = $("targetLanguage");
 const defaultAppearance = $("defaultAppearance");
 const youtubeSubtitleMode = $("youtubeSubtitleMode");
 const youtubeSubtitleSize = $("youtubeSubtitleSize");
+const selectionExplanationDepth = $("selectionExplanationDepth");
 const deepseekApiKey = $("deepseekApiKey");
 const deepseekModel = $("deepseekModel");
 const revealDeepSeek = $("revealDeepSeek");
@@ -173,7 +175,8 @@ async function load() {
     "cacheMaxMB",
     "openAICompatible",
     "youtubeSubtitleMode",
-    "youtubeSubtitleSize"
+    "youtubeSubtitleSize",
+    "selectionExplanationDepth"
   ]);
   const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...(config.openAICompatible || {}) };
 
@@ -190,6 +193,7 @@ async function load() {
   openaiStreaming.checked = Boolean(openAI.streaming);
   youtubeSubtitleMode.value = ["bilingual", "original", "off"].includes(config.youtubeSubtitleMode) ? config.youtubeSubtitleMode : "bilingual";
   youtubeSubtitleSize.value = ["small", "standard", "large"].includes(config.youtubeSubtitleSize) ? config.youtubeSubtitleSize : "standard";
+  selectionExplanationDepth.value = normalizeSelectionDepth(config.selectionExplanationDepth);
 }
 
 async function saveGlobalConfig({ requestPermission }) {
@@ -217,7 +221,8 @@ async function saveGlobalConfig({ requestPermission }) {
       streaming: Boolean(openaiStreaming.checked)
     },
     youtubeSubtitleMode: ["bilingual", "original", "off"].includes(youtubeSubtitleMode.value) ? youtubeSubtitleMode.value : "bilingual",
-    youtubeSubtitleSize: ["small", "standard", "large"].includes(youtubeSubtitleSize.value) ? youtubeSubtitleSize.value : "standard"
+    youtubeSubtitleSize: ["small", "standard", "large"].includes(youtubeSubtitleSize.value) ? youtubeSubtitleSize.value : "standard",
+    selectionExplanationDepth: normalizeSelectionDepth(selectionExplanationDepth.value)
   });
 }
 

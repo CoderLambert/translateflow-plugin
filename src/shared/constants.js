@@ -44,7 +44,7 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/processor.js", "src/content/auto.js", "src/content/subtitles/source.js", "src/content/subtitles/sources/text-track.js",
   "src/content/subtitles/youtube-bridge-protocol.js", "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/sources/youtube.js", "src/content/subtitles/pipeline.js", "src/content/subtitles/renderer.js", "src/content/subtitles/controller.js",
-  "src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/popover.js", "src/content/selection/controller.js",
+  "src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/popover.js", "src/content/selection/controller.js",
   "src/content/quick-control-view.js", "src/content/quick-control.js", "content.js"
 ]);
 export const CONTENT_STYLE_FILES = Object.freeze(["content.css"]);

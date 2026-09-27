@@ -13,6 +13,7 @@
     <nav class="settings-nav" aria-label="设置分类">
       <div class="nav-brand"><span class="nav-brand-mark" aria-hidden="true">译</span><strong>TranslateFlow</strong></div>
       <a data-settings-nav href="#general" aria-current="page">通用</a>
+      <a data-settings-nav href="#selection">划词翻译</a>
       <a data-settings-nav href="#appearance">外观</a>
       <a data-settings-nav href="#youtube">YouTube</a>
       <a data-settings-nav href="#sites">站点</a>
@@ -43,6 +44,31 @@
       <label for="prompt">默认翻译 Prompt</label>
       <textarea id="prompt" rows="6"></textarea>
       <p class="hint">站点级设置可覆盖这些默认值；翻译配置变化会形成新的缓存版本。</p>
+    </section>
+
+    <section id="selection" tabindex="-1">
+      <h2>划词翻译</h2>
+      <p class="section-summary">控制词典结果与上下文解释的详细程度。充分的本地结果会优先使用本地数据，只有需要消歧或解释时才调用 AI。</p>
+
+      <label for="selectionExplanationDepth">解释深度</label>
+      <select id="selectionExplanationDepth">
+        <option value="auto">Auto · 自动</option>
+        <option value="concise">Concise · 精简</option>
+        <option value="standard">Standard · 标准</option>
+        <option value="professional">Professional · 专业</option>
+      </select>
+      <div class="setting-choice-help" aria-label="解释深度说明">
+        <div><strong>Auto</strong><span>根据选段类型与本地结果质量自动选择；推荐。</span></div>
+        <div><strong>Concise</strong><span>只给核心含义；本地结果不足时也不主动调用 AI。</span></div>
+        <div><strong>Standard</strong><span>核心含义 + 必要的短上下文说明。</span></div>
+        <div><strong>Professional</strong><span>保留专业术语，并允许更完整的领域上下文说明。</span></div>
+      </div>
+
+      <div class="data-source-card">
+        <strong>本地词典与数据来源</strong>
+        <p>Core 词典使用锁定版本的 Princeton WordNet / Chinese Open Wordnet；技术词条使用已审核的结构化来源。每个词典包保持独立来源与许可记录。</p>
+        <a href="assets/lexicon/core/THIRD_PARTY_NOTICES.txt" target="_blank" rel="noopener">查看当前 Core Pack 第三方许可与来源</a>
+      </div>
     </section>
 
     <section id="appearance" tabindex="-1">

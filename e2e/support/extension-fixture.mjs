@@ -30,6 +30,7 @@ const CONTENT_SCRIPTS = [
   "src/content/subtitles/controller.js",
   "src/content/selection/selection.js",
   "src/content/selection/context.js",
+  "src/content/selection/result-model.js",
   "src/content/selection/popover.js",
   "src/content/selection/controller.js",
   "src/content/quick-control-view.js",

@@ -6,6 +6,7 @@
     || !app?.modules.selection
     || !app?.modules.selectionContext
     || !app?.modules.selectionPopover
+    || !app?.modules.selectionResultModel
     || app.modules.selectionController
   ) return;
 
@@ -14,6 +15,7 @@
   const { readSelection, isExtensionOwnedNode } = app.modules.selection;
   const { captureSelectionContext } = app.modules.selectionContext;
   const popover = app.modules.selectionPopover;
+  const { buildLocalResult, buildExplainedResult, buildTranslationResult, copyTextForCard } = app.modules.selectionResultModel;
 
   let started = false;
   let activeSnapshot = null;
@@ -91,11 +93,12 @@
     const expectedPage = getPageIdentity(snapshot.pageUrl);
     popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
 
+    let resolved = null;
     try {
       tasks.transition(task, "translating");
       popover.setLoadingStatus("正在解析所选内容…");
       const selectionContext = captureSelectionContext(snapshot);
-      const resolved = await sendRuntimeMessage({
+      resolved = await sendRuntimeMessage({
         type: messages.background.SELECTION_RESOLVE,
         text: snapshot.text,
         pageUrl: snapshot.pageUrl,
@@ -105,10 +108,10 @@
       if (!resolved?.ok) throw tasks.responseError(resolved, "划词解析失败");
 
       if (resolved.route === "local") {
-        const localText = formatLocalResult(resolved);
-        if (!localText) throw new Error("本地词典没有可展示结果。");
+        const card = buildLocalResult(resolved);
+        if (!card?.primaryMeaning) throw new Error("本地词典没有可展示结果。");
         tasks.completeTask(task, { done: 1 });
-        showResult(snapshot, localText, "结果已复制");
+        showResult(snapshot, card, copyTextForCard(card), "结果已复制");
         return;
       }
 
@@ -136,7 +139,7 @@
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
       popover.showError(
         snapshot,
-        cancelled ? "翻译已取消。" : (error?.message || String(error)),
+        cancelled ? "翻译已取消。" : failureMessage(error, resolved),
         () => translateSnapshot(snapshot)
       );
     }
@@ -157,10 +160,10 @@
     if (!explained?.ok) throw tasks.responseError(explained, "划词解释失败");
 
     if (explained.route === "local" && explained.resolved) {
-      const localText = formatLocalResult(explained.resolved);
-      if (!localText) throw new Error("本地词典没有可展示结果。");
+      const card = buildLocalResult(explained.resolved);
+      if (!card?.primaryMeaning) throw new Error("本地词典没有可展示结果。");
       tasks.completeTask(task, { done: 1 });
-      showResult(snapshot, localText, "结果已复制");
+      showResult(snapshot, card, copyTextForCard(card), "结果已复制");
       return;
     }
 
@@ -173,13 +176,13 @@
       throw new Error("模型没有返回可用的划词解释。");
     }
 
-    const displayText = formatGeneratedExplanation(explained.generated);
+    const card = buildExplainedResult(explained);
     tasks.completeTask(task, {
       done: 1,
       cacheHits: explained.cacheHit ? 1 : 0,
       apiTranslated: explained.cacheHit ? 0 : 1
     });
-    showResult(snapshot, displayText, "解释已复制");
+    showResult(snapshot, card, copyTextForCard(card), "解释已复制");
   }
 
   async function translateSelection(snapshot, task, version, expectedPage) {
@@ -197,7 +200,8 @@
       .find((item) => String(item.id) === "selection")?.text?.trim();
     if (cached) {
       tasks.completeTask(task, { done: 1, cacheHits: 1 });
-      showResult(snapshot, cached, "译文已复制");
+      const card = buildTranslationResult(cached);
+      showResult(snapshot, card, copyTextForCard(card), "译文已复制");
       return;
     }
 
@@ -228,38 +232,8 @@
     if (!stored?.ok) throw tasks.responseError(stored, "译文缓存失败");
 
     tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-    showResult(snapshot, translation, "译文已复制");
-  }
-
-  function formatLocalResult(resolved) {
-    const candidates = Array.isArray(resolved?.decision?.candidates)
-      ? resolved.decision.candidates
-      : (Array.isArray(resolved?.lookup?.candidates) ? resolved.lookup.candidates : []);
-    if (!candidates.length) return "";
-
-    const topId = resolved?.decision?.topCandidateId;
-    const candidate = candidates.find((item) => item?.id === topId) || candidates[0];
-    const translations = uniqueText(candidate?.translations);
-    if (translations.length) return translations.slice(0, 3).join("；");
-
-    const labels = uniqueText(candidate?.typeLabels);
-    const headword = String(candidate?.headword || "").trim();
-    if (headword && labels.length) return headword + " · " + labels.slice(0, 2).join(" / ");
-    return headword || labels.slice(0, 2).join(" / ");
-  }
-
-  function formatGeneratedExplanation(generated) {
-    const translation = String(generated?.translation || "").trim();
-    const explanation = String(generated?.explanation || "").trim();
-    return [translation, explanation].filter(Boolean).join("\n");
-  }
-
-  function uniqueText(values) {
-    return [...new Set(
-      (Array.isArray(values) ? values : [])
-        .map((value) => String(value || "").trim())
-        .filter(Boolean)
-    )];
+    const card = buildTranslationResult(translation);
+    showResult(snapshot, card, copyTextForCard(card), "译文已复制");
   }
 
   function unresolvedMessage(resolved) {
@@ -275,10 +249,21 @@
     return "暂时无法确定该选段的含义。";
   }
 
-  function showResult(snapshot, text, copiedMessage) {
-    popover.showResult(snapshot, text, async () => {
+  function failureMessage(error, resolved) {
+    const detail = error?.message || String(error);
+    if (resolved?.routeReason === "no-hit-needs-explanation") {
+      return `本地词典未找到可靠结果，且 AI 辅助暂不可用：${detail}`;
+    }
+    if (resolved?.routeReason === "ambiguous-needs-explanation") {
+      return `本地词典存在多个候选含义，且 AI 辅助暂不可用：${detail}`;
+    }
+    return detail;
+  }
+
+  function showResult(snapshot, card, copyText, copiedMessage) {
+    popover.showResult(snapshot, card, async () => {
       try {
-        await copyText(text);
+        await copyTextValue(copyText);
         showToast(copiedMessage, "success");
       } catch (error) {
         showToast("复制失败：" + (error?.message || error), "error");
@@ -333,7 +318,7 @@
     app.modules.quickControl?.setSelectionActive(Boolean(active));
   }
 
-  async function copyText(text) {
+  async function copyTextValue(text) {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return;
