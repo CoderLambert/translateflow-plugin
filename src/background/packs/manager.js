@@ -297,8 +297,16 @@ export function createDictionaryPackManager({
 
   async function recoverAll() {
     const initial = await stateStore.read();
+    const known = new Set(Object.keys(initial.packs));
+    for (const packId of await store.listPacks()) {
+      if (!known.has(packId) && !operationsByPack.has(packId)) {
+        await store.removePack(packId);
+      }
+    }
+
     let latest = initial;
     for (const packId of Object.keys(initial.packs)) {
+      if (operationsByPack.has(packId)) continue;
       latest = (await recoverPack(packId)).state;
     }
     return publicState(latest);
