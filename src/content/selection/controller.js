@@ -4,6 +4,7 @@
     !app?.modules.runtime
     || !app?.modules.tasks
     || !app?.modules.selection
+    || !app?.modules.selectionContext
     || !app?.modules.selectionPopover
     || app.modules.selectionController
   ) return;
@@ -11,6 +12,7 @@
   const { messages, getPageIdentity, sendRuntimeMessage, showToast } = app.modules.runtime;
   const tasks = app.modules.tasks;
   const { readSelection, isExtensionOwnedNode } = app.modules.selection;
+  const { captureSelectionContext } = app.modules.selectionContext;
   const popover = app.modules.selectionPopover;
 
   let started = false;
@@ -90,52 +92,46 @@
     popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
 
     try {
-      tasks.transition(task, "cache_lookup");
-      popover.setLoadingStatus("正在检查缓存…");
-      const lookup = await sendRuntimeMessage({
-        type: messages.background.CACHE_LOOKUP,
+      tasks.transition(task, "translating");
+      popover.setLoadingStatus("正在解析所选内容…");
+      const resolved = await sendRuntimeMessage({
+        type: messages.background.SELECTION_RESOLVE,
+        text: snapshot.text,
         pageUrl: snapshot.pageUrl,
-        segments: [{ id: "selection", text: snapshot.text }]
+        context: captureSelectionContext(snapshot)
       });
       assertCurrent(version, snapshot, expectedPage, task);
-      if (!lookup?.ok) throw tasks.responseError(lookup, "缓存查询失败");
+      if (!resolved?.ok) throw tasks.responseError(resolved, "划词解析失败");
 
-      const cached = (lookup.hits || []).find((item) => String(item.id) === "selection")?.text;
-      if (cached) {
-        tasks.completeTask(task, { done: 1, cacheHits: 1 });
-        showResult(snapshot, cached);
+      if (resolved.route === "local") {
+        const localText = formatLocalResult(resolved);
+        if (!localText) throw new Error("本地词典没有可展示结果。");
+        tasks.completeTask(task, { done: 1 });
+        showResult(snapshot, localText, "结果已复制");
         return;
       }
 
-      tasks.transition(task, "translating");
-      popover.setLoadingStatus("正在翻译…");
-      const translated = await sendRuntimeMessage({
-        type: messages.background.TRANSLATE_BATCH,
-        requestId: task.id,
-        pageUrl: snapshot.pageUrl,
-        segments: [{ id: "selection", text: snapshot.text }]
-      });
-      assertCurrent(version, snapshot, expectedPage, task);
-      if (!translated?.ok) throw tasks.responseError(translated, "翻译失败");
+      if (resolved.route === "translation") {
+        await translateSelection(snapshot, task, version, expectedPage);
+        return;
+      }
 
-      const translation = (translated.translations || [])
-        .find((item) => String(item.id) === "selection")?.text?.trim();
-      if (!translation) throw new Error("模型没有返回可用译文。");
+      if (resolved.route === "needs-explanation") {
+        tasks.completeTask(task, { done: 1 });
+        popover.showError(
+          snapshot,
+          "本地词典存在多个可能含义，需要结合上下文进一步解释。",
+          () => translateSnapshot(snapshot)
+        );
+        return;
+      }
 
-      tasks.assertActive(task);
-      tasks.transition(task, "storing");
-      popover.setLoadingStatus("正在保存译文…");
-      const stored = await sendRuntimeMessage({
-        type: messages.background.CACHE_STORE,
-        pageUrl: snapshot.pageUrl,
-        pageTitle: document.title,
-        items: [{ sourceText: snapshot.text, translation }]
-      });
-      assertCurrent(version, snapshot, expectedPage, task);
-      if (!stored?.ok) throw tasks.responseError(stored, "译文缓存失败");
-
-      tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-      showResult(snapshot, translation);
+      tasks.completeTask(task, { done: 1 });
+      popover.showError(
+        snapshot,
+        unresolvedMessage(resolved),
+        () => translateSnapshot(snapshot)
+      );
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
       tasks.failTask(task, error);
@@ -150,13 +146,70 @@
     }
   }
 
-  function showResult(snapshot, translation) {
-    popover.showResult(snapshot, translation, async () => {
+  async function translateSelection(snapshot, task, version, expectedPage) {
+    popover.setLoadingStatus("正在翻译…");
+    const translated = await sendRuntimeMessage({
+      type: messages.background.TRANSLATE_BATCH,
+      requestId: task.id,
+      pageUrl: snapshot.pageUrl,
+      segments: [{ id: "selection", text: snapshot.text }]
+    });
+    assertCurrent(version, snapshot, expectedPage, task);
+    if (!translated?.ok) throw tasks.responseError(translated, "翻译失败");
+
+    const translation = (translated.translations || [])
+      .find((item) => String(item.id) === "selection")?.text?.trim();
+    if (!translation) throw new Error("模型没有返回可用译文。");
+
+    tasks.completeTask(task, { done: 1, apiTranslated: 1 });
+    showResult(snapshot, translation, "译文已复制");
+  }
+
+  function formatLocalResult(resolved) {
+    const candidates = Array.isArray(resolved?.decision?.candidates)
+      ? resolved.decision.candidates
+      : (Array.isArray(resolved?.lookup?.candidates) ? resolved.lookup.candidates : []);
+    if (!candidates.length) return "";
+
+    const topId = resolved?.decision?.topCandidateId;
+    const candidate = candidates.find((item) => item?.id === topId) || candidates[0];
+    const translations = uniqueText(candidate?.translations);
+    if (translations.length) return translations.slice(0, 3).join("；");
+
+    const labels = uniqueText(candidate?.typeLabels);
+    const headword = String(candidate?.headword || "").trim();
+    if (headword && labels.length) return headword + " · " + labels.slice(0, 2).join(" / ");
+    return headword || labels.slice(0, 2).join(" / ");
+  }
+
+  function uniqueText(values) {
+    return [...new Set(
+      (Array.isArray(values) ? values : [])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )];
+  }
+
+  function unresolvedMessage(resolved) {
+    if (resolved?.routeReason === "ambiguous-concise") {
+      return "本地词典存在多个可能含义；精简模式不会调用 AI。";
+    }
+    if (resolved?.routeReason === "no-hit-concise") {
+      return "本地词典未找到可靠结果；精简模式不会调用 AI。";
+    }
+    if (resolved?.routeReason === "local-error") {
+      return "本地词典暂时不可用，请重试。";
+    }
+    return "暂时无法确定该选段的含义。";
+  }
+
+  function showResult(snapshot, text, copiedMessage) {
+    popover.showResult(snapshot, text, async () => {
       try {
-        await copyText(translation);
-        showToast("译文已复制", "success");
+        await copyText(text);
+        showToast(copiedMessage, "success");
       } catch (error) {
-        showToast(`复制失败：${error?.message || error}`, "error");
+        showToast("复制失败：" + (error?.message || error), "error");
       }
     });
   }
