@@ -29,6 +29,7 @@ const CONTENT_SCRIPTS = [
   "src/content/subtitles/renderer.js",
   "src/content/subtitles/controller.js",
   "src/content/selection/selection.js",
+  "src/content/selection/context.js",
   "src/content/selection/popover.js",
   "src/content/selection/controller.js",
   "src/content/quick-control-view.js",
@@ -196,6 +197,21 @@ export const test = base.extend({
           ({ tabId, message }) => chrome.tabs.sendMessage(tabId, message),
           { tabId, message: { type, ...payload } }
         );
+      },
+
+      async captureSelectionContext(page) {
+        const tabId = await this.tabId(page);
+        return driver.evaluate(async (tabId) => {
+          const [result] = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => {
+              const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
+              const snapshot = app?.modules?.selection?.readSelection?.();
+              return app?.modules?.selectionContext?.captureSelectionContext?.(snapshot) || null;
+            }
+          });
+          return result?.result || null;
+        }, tabId);
       },
 
       async runtime(message) {

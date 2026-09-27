@@ -28,6 +28,7 @@ import {
   resolveAppearance
 } from "../shared/appearance.js";
 import { normalizeOrigin } from "../shared/url.js";
+import { normalizeSelectionDepth } from "../shared/selection.js";
 import {
   clearTemporaryPresetOverride,
   getTemporaryPresetOverride
@@ -145,6 +146,7 @@ function normalizeStoredConfig(config) {
       ...(config?.openAICompatible || {})
     },
     appearance: normalizeAppearanceId(config?.appearance) || DEFAULT_APPEARANCE_ID,
+    selectionExplanationDepth: normalizeSelectionDepth(config?.selectionExplanationDepth),
     siteProfiles: config?.siteProfiles && typeof config.siteProfiles === "object" && !Array.isArray(config.siteProfiles)
       ? config.siteProfiles
       : {},

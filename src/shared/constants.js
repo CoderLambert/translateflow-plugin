@@ -1,4 +1,5 @@
 import { DEFAULT_APPEARANCE_ID } from "./appearance.js";
+import { SELECTION_EXPLANATION_DEPTH } from "./selection.js";
 
 export const DEFAULT_PROMPT = [
   "You are a professional translator.", "Translate the provided English web-page segments into natural Simplified Chinese.",
@@ -14,14 +15,15 @@ export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STO
 export const DEFAULT_CONFIG = Object.freeze({
   apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", targetLanguage: "Simplified Chinese",
   appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
-  youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", prompt: DEFAULT_PROMPT, openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
+  youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", selectionExplanationDepth: SELECTION_EXPLANATION_DEPTH.AUTO,
+  prompt: DEFAULT_PROMPT, openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
   siteProfiles: {}, glossary: DEFAULT_GLOSSARY_STORE, siteGlossaries: DEFAULT_SITE_GLOSSARY_STORE
 });
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
 export const CACHE_SCHEMA_VERSION = 2;
 export const BACKGROUND_MESSAGES = Object.freeze({
   TRANSLATE_BATCH: "TRANSLATE_BATCH", SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH", CANCEL_TRANSLATION: "CANCEL_TRANSLATION",
-  TEST_API: "TEST_API", LEXICAL_LOOKUP: "LEXICAL_LOOKUP", CACHE_LOOKUP: "CACHE_LOOKUP", CACHE_STORE: "CACHE_STORE", CACHE_PAGE_STATUS: "CACHE_PAGE_STATUS",
+  TEST_API: "TEST_API", LEXICAL_LOOKUP: "LEXICAL_LOOKUP", SELECTION_RESOLVE: "SELECTION_RESOLVE", CACHE_LOOKUP: "CACHE_LOOKUP", CACHE_STORE: "CACHE_STORE", CACHE_PAGE_STATUS: "CACHE_PAGE_STATUS",
   CACHE_CLEAR_PAGE: "CACHE_CLEAR_PAGE", CACHE_CLEAR_ALL: "CACHE_CLEAR_ALL", CACHE_STATS: "CACHE_STATS", CACHE_PRUNE: "CACHE_PRUNE",
   CACHE_RESTORE_SITE_REGISTER: "CACHE_RESTORE_SITE_REGISTER", CACHE_RESTORE_SITE_UNREGISTER: "CACHE_RESTORE_SITE_UNREGISTER",
   AUTO_SITE_REGISTER: "AUTO_SITE_REGISTER", AUTO_SITE_UNREGISTER: "AUTO_SITE_UNREGISTER", QUICK_CONTROL_SITE_REGISTER: "QUICK_CONTROL_SITE_REGISTER",
@@ -41,7 +43,7 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/processor.js", "src/content/auto.js", "src/content/subtitles/source.js", "src/content/subtitles/sources/text-track.js",
   "src/content/subtitles/youtube-bridge-protocol.js", "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/sources/youtube.js", "src/content/subtitles/pipeline.js", "src/content/subtitles/renderer.js", "src/content/subtitles/controller.js",
-  "src/content/selection/selection.js", "src/content/selection/popover.js", "src/content/selection/controller.js",
+  "src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/popover.js", "src/content/selection/controller.js",
   "src/content/quick-control-view.js", "src/content/quick-control.js", "content.js"
 ]);
 export const CONTENT_STYLE_FILES = Object.freeze(["content.css"]);

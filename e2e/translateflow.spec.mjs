@@ -311,7 +311,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(response.context).toMatchObject({ hostname: "127.0.0.1", provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", presetId: "technical", presetLabel: "Technical", presetSource: "site" });
   });
 
-  test("selection controls are isolated from hostile page CSS and cache repeated translation", async ({ harness }) => {
+  test("selection controls are isolated, avoid page-cache reuse, and resolve local lexicon without Provider calls", async ({ harness }) => {
     const page = await harness.open("/selection");
     await page.addStyleTag({ content: `button, .tf-selection-chip, .tf-selection-panel { display: none !important; color: rgb(255, 0, 0) !important; font-size: 1px !important; }` });
     await harness.inject(page);
@@ -331,6 +331,46 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
     expect(harness.server.calls).toHaveLength(1);
+
+    const seeded = await harness.runtime({
+      type: "CACHE_STORE",
+      pageUrl: page.url(),
+      pageTitle: "Selection cache poison fixture",
+      items: [{ sourceText: "terminal multiplexer", translation: "WRONG PAGE CACHE" }]
+    });
+    expect(seeded.ok).toBe(true);
+
+    await page.getByRole("button", { name: "关闭" }).click();
+    await clearSelection(page);
+    await selectElementText(page, "#lexical");
+    await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-result")).toContainText("终端复用器");
+    await expect(page.locator(".tf-selection-result")).not.toContainText("WRONG PAGE CACHE");
+    expect(harness.server.calls).toHaveLength(1);
+
+    const cache = await harness.runtime({
+      type: "CACHE_LOOKUP",
+      pageUrl: page.url(),
+      segments: [{ id: "selection", text: "terminal multiplexer" }]
+    });
+    expect(cache.ok).toBe(true);
+    expect(cache.hits).toHaveLength(1);
+    expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
+  });
+
+  test("selection context stays selection-only inside nested editable surfaces", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+    await selectElementText(page, "#editable-word");
+
+    const context = await harness.captureSelectionContext(page);
+
+    expect(context).toEqual({
+      text: "",
+      sensitive: true,
+      source: "selection-only",
+      truncated: false
+    });
   });
 
   test("selection failure is actionable and transient 429/500 failures recover without a stuck state", async ({ harness }) => {
