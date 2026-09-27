@@ -406,10 +406,12 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     harness.server.setFailures([401]);
     await page.locator("#ambiguous").scrollIntoViewIfNeeded();
     await selectElementText(page, "#ambiguous");
-    await page.locator(".tf-selection-chip").click();
+    await page.locator(".tf-selection-chip").focus();
+    await page.keyboard.press("Enter");
 
     const panel = page.getByRole("dialog", { name: "TranslateFlow 划词翻译" });
     await expect(panel).toBeVisible();
+    await expect(page.getByRole("button", { name: "关闭" })).toBeFocused();
     await expect(panel).toHaveAttribute("aria-modal", "false");
     await expect(page.locator(".tf-selection-status")).toContainText("AI 辅助暂不可用");
     await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
