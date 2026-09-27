@@ -199,6 +199,21 @@ export const test = base.extend({
         );
       },
 
+      async captureSelectionContext(page) {
+        const tabId = await this.tabId(page);
+        return driver.evaluate(async (tabId) => {
+          const [result] = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => {
+              const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
+              const snapshot = app?.modules?.selection?.readSelection?.();
+              return app?.modules?.selectionContext?.captureSelectionContext?.(snapshot) || null;
+            }
+          });
+          return result?.result || null;
+        }, tabId);
+      },
+
       async runtime(message) {
         return driver.evaluate((message) => chrome.runtime.sendMessage(message), message);
       },
