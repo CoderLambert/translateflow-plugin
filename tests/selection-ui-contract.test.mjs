@@ -37,7 +37,7 @@ test("Selection popover keeps a non-modal structured result region", async () =>
 });
 
 test("Selection controller separates local provenance and AI explanation", async () => {
-  const controller = await source("src/content/selection/controller.js");
+  const [controller, resultModel] = await Promise.all([\n    source("src/content/selection/controller.js"),\n    source("src/content/selection/result-model.js")\n  ]);
 
   assert.match(controller, /技术词条/);
   assert.match(controller, /本地词典/);
