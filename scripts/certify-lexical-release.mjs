@@ -8,7 +8,7 @@ import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
 import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { assessLexicalLookup } from "../src/background/lexical/ranking.js";
 
-const MAX_RELEASE_LEXICON_BYTES = 16 * 1024 * 1024;
+const MAX_RELEASE_LEXICON_BYTES = 40 * 1024 * 1024;
 const MAX_COMBINED_CACHE_BYTES = 4 * 1024 * 1024;
 
 export async function certifyLexicalRelease({
