@@ -164,7 +164,8 @@ function renderFixture(pathname) {
     "/selection": `
       <p id="selectable">Selection translation should reuse the same provider configuration while keeping Selection v2 cache identity separate.</p>
       <p id="lexical-context">tmux is a <span id="lexical">terminal multiplexer</span> used to manage terminal sessions.</p>
-      <p id="ambiguous-context">A <span id="ambiguous">persistent</span> connection remains available across reconnects while unrelated account details stay elsewhere on the page.</p>
+      <p id="ambiguous-context">A <span id="ambiguous">persistent</span> connection remains available across reconnects.</p>
+      <p id="unrelated">UNRELATED_SECRET_PAGE_TEXT should never be sent for the nearby selection.</p>
       <div id="editable" contenteditable="true">Private draft <span contenteditable="false"><span id="editable-word">persistent</span></span> account token</div>
     `,
     "/failure": `
