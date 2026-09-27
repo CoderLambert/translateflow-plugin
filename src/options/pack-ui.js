@@ -14,7 +14,8 @@ export async function requestDictionaryPackOriginPermission(
   const isLocalhost = ["127.0.0.1", "localhost", "[::1]"].includes(originUrl.hostname);
   const allowedProtocol = originUrl.protocol === "https:" ||
     (source?.allowInsecureLocalhost === true && isLocalhost && originUrl.protocol === "http:");
-  if (!allowedProtocol || pattern !== `${originUrl.origin}/*`) {
+  const exactHost = Boolean(originUrl.hostname) && !originUrl.hostname.includes("*");
+  if (!allowedProtocol || !exactHost || pattern !== `${originUrl.origin}/*`) {
     throw new Error("Dictionary pack source permission must be one exact trusted origin.");
   }
   if (!permissions?.request) {
