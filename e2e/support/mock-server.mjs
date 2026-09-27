@@ -151,6 +151,7 @@ function renderFixture(pathname) {
     "/selection": `
       <p id="selectable">Selection translation should reuse the same provider configuration while keeping Selection v2 cache identity separate.</p>
       <p id="lexical-context">tmux is a <span id="lexical">terminal multiplexer</span> used to manage terminal sessions.</p>
+      <div id="editable" contenteditable="true">Private draft <span contenteditable="false"><span id="editable-word">persistent</span></span> account token</div>
     `,
     "/failure": `
       <p id="auth">Authentication failures should produce a visible retry action instead of leaving the translation UI stuck.</p>
