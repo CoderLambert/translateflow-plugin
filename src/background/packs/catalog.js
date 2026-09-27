@@ -153,13 +153,14 @@ export function validateCatalog(catalog, {
 }
 
 export function resolvePackDownloadUrl(source, descriptor) {
-  if (!isSafePackPath(descriptor?.downloadPath)) {
-    throw packError(PACK_ERROR_CODES.CATALOG_SCHEMA, "Dictionary file download path is unsafe.");
+  if (!isSafePackPath(descriptor?.downloadPath) || descriptor.downloadPath.includes("%")) {
+    throw packError(PACK_ERROR_CODES.CATALOG_SCHEMA, "Dictionary file download path is unsafe or non-normalized.");
   }
-  const url = new URL(descriptor.downloadPath, source.downloadBaseUrl);
   const base = new URL(source.downloadBaseUrl);
-  if (url.origin !== base.origin) {
-    throw packError(PACK_ERROR_CODES.CATALOG_SCHEMA, "Dictionary file escaped the trusted download origin.");
+  const basePath = base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`;
+  const url = new URL(descriptor.downloadPath, `${base.origin}${basePath}`);
+  if (url.origin !== base.origin || !url.pathname.startsWith(basePath)) {
+    throw packError(PACK_ERROR_CODES.CATALOG_SCHEMA, "Dictionary file escaped the trusted download root.");
   }
   return url.href;
 }
