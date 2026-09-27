@@ -276,7 +276,10 @@
     return {
       ...base,
       kind: "explained",
-      primaryMeaning: generatedTranslation || base.primaryMeaning,
+      primaryMeaning: base.primaryMeaning || generatedTranslation,
+      generatedMeaning: base.primaryMeaning && generatedTranslation && generatedTranslation !== base.primaryMeaning
+        ? generatedTranslation
+        : "",
       explanation: String(explained?.generated?.explanation || "").trim(),
       badges: dedupeBadges([
         ...(Array.isArray(base.badges) ? base.badges : []),
@@ -339,6 +342,7 @@
     return uniqueText([
       card?.primaryMeaning,
       ...(Array.isArray(card?.senses) ? card.senses : []),
+      card?.generatedMeaning,
       card?.explanation
     ]).join("\n");
   }
