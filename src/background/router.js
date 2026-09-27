@@ -78,7 +78,8 @@ export async function handleBackgroundMessage(message, sender) {
       return resolveSelectionRequest({
         text: message.text,
         pageUrl: message.pageUrl || "",
-        context: message.context || null
+        context: message.context || null,
+        depth: message.depth
       });
     case BACKGROUND_MESSAGES.LEXICAL_LOOKUP:
       return runLexicalLookup({
