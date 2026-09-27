@@ -404,6 +404,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await harness.inject(page);
 
     harness.server.setFailures([401]);
+    await page.locator("#ambiguous").scrollIntoViewIfNeeded();
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
 
