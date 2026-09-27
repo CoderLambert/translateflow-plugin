@@ -227,17 +227,27 @@
       resultNode.appendChild(factRow);
     }
 
+    const generatedMeaning = String(result.generatedMeaning || "").trim();
     const explanation = String(result.explanation || "").trim();
-    if (explanation) {
+    if (generatedMeaning || explanation) {
       const generated = document.createElement("section");
       generated.className = "tf-selection-generated";
       const label = document.createElement("div");
       label.className = "tf-selection-generated-label";
       label.textContent = "这里的意思";
-      const body = document.createElement("div");
-      body.className = "tf-selection-generated-body";
-      body.textContent = explanation;
-      generated.append(label, body);
+      generated.appendChild(label);
+      if (generatedMeaning) {
+        const meaning = document.createElement("div");
+        meaning.className = "tf-selection-generated-meaning";
+        meaning.textContent = generatedMeaning;
+        generated.appendChild(meaning);
+      }
+      if (explanation) {
+        const body = document.createElement("div");
+        body.className = "tf-selection-generated-body";
+        body.textContent = explanation;
+        generated.appendChild(body);
+      }
       resultNode.appendChild(generated);
     }
 
