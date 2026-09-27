@@ -60,9 +60,17 @@
 
   function isSensitiveElement(element) {
     if (!(element instanceof Element)) return false;
-    if (element.closest("input, textarea, select")) return true;
-    const editable = element.closest("[contenteditable]");
-    return Boolean(editable && editable.getAttribute("contenteditable") !== "false");
+
+    let current = element;
+    while (current instanceof Element) {
+      if (current.matches("input, textarea, select")) return true;
+      if (current.hasAttribute("contenteditable")) {
+        const value = String(current.getAttribute("contenteditable") || "").toLowerCase();
+        if (value !== "false") return true;
+      }
+      current = current.parentElement;
+    }
+    return false;
   }
 
   function contextRoot(range) {
