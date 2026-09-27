@@ -147,6 +147,112 @@ test("single-flight cancellation rejects concurrent install and preserves the la
   assert.equal(await env.store.hasVersion(env.packId, "2.0.0"), false);
 });
 
+test("cancellation during staged health verification cannot activate the cancelled version", async () => {
+  const env = await createEnvironment();
+  await env.setRelease({ packVersion: "1.0.0", catalogSequence: 1, releaseSequence: 1 });
+  await env.manager.install({
+    sourceId: env.source.id,
+    packId: env.packId,
+    requestId: "base"
+  });
+
+  await env.setRelease({ packVersion: "2.0.0", catalogSequence: 2, releaseSequence: 2 });
+
+  const originalReadFile = env.store.readFile;
+  let releaseBlockedRead;
+  let signalBlockedRead;
+  const blockedRead = new Promise((resolve) => { signalBlockedRead = resolve; });
+  env.store.readFile = async (...args) => {
+    if (args[1] === "2.0.0") {
+      signalBlockedRead();
+      await new Promise((resolve) => { releaseBlockedRead = resolve; });
+      env.store.readFile = originalReadFile;
+    }
+    return originalReadFile(...args);
+  };
+
+  const update = env.manager.install({
+    sourceId: env.source.id,
+    packId: env.packId,
+    requestId: "cancel-at-activation"
+  });
+  await blockedRead;
+
+  assert.deepEqual(env.manager.cancel("cancel-at-activation"), { cancelled: true });
+  releaseBlockedRead();
+  await assert.rejects(update, (error) => error?.code === PACK_ERROR_CODES.CANCELLED);
+
+  const status = await env.manager.status();
+  assert.equal(status.state.packs[env.packId].active.packVersion, "1.0.0");
+  assert.equal(await env.store.hasVersion(env.packId, "2.0.0"), false);
+});
+
+test("post-activation orphan cleanup failure never deletes the committed active version", async () => {
+  const env = await createEnvironment();
+  await env.setRelease({ packVersion: "1.0.0", catalogSequence: 1, releaseSequence: 1 });
+  await env.manager.install({
+    sourceId: env.source.id,
+    packId: env.packId,
+    requestId: "base"
+  });
+
+  await env.store.writeFile(env.packId, "orphan", "junk.dat", encoder.encode("orphan"));
+  await env.setRelease({ packVersion: "2.0.0", catalogSequence: 2, releaseSequence: 2 });
+
+  const originalCleanupPack = env.store.cleanupPack;
+  let failCleanupOnce = true;
+  env.store.cleanupPack = async (...args) => {
+    if (failCleanupOnce) {
+      failCleanupOnce = false;
+      throw new Error("fixture cleanup failure");
+    }
+    return originalCleanupPack(...args);
+  };
+
+  const updated = await env.manager.install({
+    sourceId: env.source.id,
+    packId: env.packId,
+    requestId: "cleanup-failure"
+  });
+  assert.equal(updated.status, "updated");
+  assert.equal(updated.pack.active.packVersion, "2.0.0");
+  assert.equal(await env.store.hasVersion(env.packId, "2.0.0"), true);
+
+  const recovered = await env.manager.status({ recover: true });
+  assert.equal(recovered.state.packs[env.packId].active.packVersion, "2.0.0");
+  assert.equal(await env.store.hasVersion(env.packId, "orphan"), false);
+});
+
+test("uninstall metadata failure leaves the installed pack files and pointer intact", async () => {
+  const env = await createEnvironment();
+  await env.setRelease({ packVersion: "1.0.0", catalogSequence: 1, releaseSequence: 1 });
+  await env.manager.install({
+    sourceId: env.source.id,
+    packId: env.packId,
+    requestId: "base"
+  });
+
+  const originalUpdate = env.stateStore.update;
+  let failUpdateOnce = true;
+  env.stateStore.update = async (...args) => {
+    if (failUpdateOnce) {
+      failUpdateOnce = false;
+      env.stateStore.update = originalUpdate;
+      throw new Error("fixture metadata persistence failure");
+    }
+    return originalUpdate(...args);
+  };
+
+  await assert.rejects(
+    env.manager.uninstall(env.packId),
+    /fixture metadata persistence failure/
+  );
+
+  const status = await env.manager.status();
+  assert.equal(status.state.packs[env.packId].active.packVersion, "1.0.0");
+  assert.equal(await env.store.hasVersion(env.packId, "1.0.0"), true);
+});
+
 test("recovery removes orphan staging, rolls back missing active data and reaches needs-reinstall deterministically", async () => {
   const env = await createEnvironment();
   await env.setRelease({ packVersion: "1.0.0", catalogSequence: 1, releaseSequence: 1 });
