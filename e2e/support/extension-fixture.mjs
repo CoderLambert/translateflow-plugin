@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startMockServer } from "./mock-server.mjs";
+import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CONTENT_SCRIPTS = [
@@ -65,6 +66,11 @@ export const test = base.extend({
       join(extensionDir, "assets", "lexicon", "core"),
       { recursive: true }
     );
+    await compileTflexTechnical({
+      extractPath: join(repoRoot, "lexicon", "sources", "wikidata-tech-entities.json"),
+      sourceLockPath: join(repoRoot, "lexicon", "source-locks", "technical-wikidata.json"),
+      outDir: join(extensionDir, "assets", "lexicon", "technical")
+    });
 
     const manifestPath = join(extensionDir, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
