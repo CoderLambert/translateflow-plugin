@@ -21,6 +21,7 @@
   let copyButton;
   let retryButton;
   let cancelButton;
+  let closeButton;
   let activeSnapshot;
   let translateHandler;
   let retryHandler;
@@ -47,7 +48,7 @@
     const title = document.createElement("strong");
     title.textContent = "TranslateFlow";
 
-    const closeButton = button({ text: "×", label: "关闭", icon: true, className: "tf-selection-icon-button" });
+    closeButton = button({ text: "×", label: "关闭", icon: true, className: "tf-selection-icon-button" });
     closeButton.addEventListener("click", () => closeHandler?.());
     header.append(title, closeButton);
 
@@ -104,6 +105,7 @@
     copyButton.hidden = true;
     retryButton.hidden = true;
     position(snapshot, panel);
+    focusPanelEntry();
   }
 
   function setLoadingStatus(message) {
@@ -267,6 +269,14 @@
     )];
   }
 
+  function focusPanelEntry() {
+    requestAnimationFrame(() => {
+      if (!panel?.hidden && closeButton?.isConnected) {
+        closeButton.focus({ preventScroll: true });
+      }
+    });
+  }
+
   function hide() {
     if (!root) return;
     root.remove();
@@ -279,6 +289,7 @@
     copyButton = null;
     retryButton = null;
     cancelButton = null;
+    closeButton = null;
     activeSnapshot = null;
     translateHandler = null;
     retryHandler = null;
