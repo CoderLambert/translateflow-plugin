@@ -6,7 +6,7 @@ import {
   LEXICAL_DECISION_OUTCOME
 } from "../src/shared/lexical.js";
 import {
-  LEXICAL_RANKING_POLICY_V1,
+  LEXICAL_RANKING_POLICY_V2,
   assessLexicalLookup
 } from "../src/background/lexical/ranking.js";
 import {
@@ -22,12 +22,23 @@ async function fixture() {
 
 test("Phase B corpus matches the frozen ranking/sufficiency baseline", async () => {
   const report = await evaluateLexicalRanking({ fixturePath });
-  assert.equal(report.totalCases, 18);
+  assert.equal(report.totalCases, 19);
   assert.equal(report.outcomeAccuracy, 1);
   assert.equal(report.topCandidateAccuracy, 1);
   assert.equal(report.coverage, 1);
   assert.equal(report.falsePositiveTopRate, 0);
   assert.deepEqual(report.failures, []);
+});
+
+test("known technical source gaps never become sufficient from generic-only evidence", async () => {
+  const data = await fixture();
+  const testCase = data.cases.find((item) => item.id === "container-known-technical-gap");
+  const lookup = materializeLookup(testCase, data.candidates);
+  const result = assessLexicalLookup(lookup, { contextText: testCase.context });
+
+  assert.equal(result.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
+  assert.equal(result.reason, "known-technical-source-gap");
+  assert.equal(result.topCandidateId, "core:container:general");
 });
 
 test("technical context can outrank a generic sense without suppressing it", async () => {
@@ -53,7 +64,7 @@ test("strong structured context can make the same technical candidate sufficient
 
   assert.equal(result.outcome, LEXICAL_DECISION_OUTCOME.SUFFICIENT);
   assert.equal(result.topCandidateId, "technical:Q932410");
-  assert.ok(result.scoreGap >= LEXICAL_RANKING_POLICY_V1.thresholds.decisiveGap);
+  assert.ok(result.scoreGap >= LEXICAL_RANKING_POLICY_V2.thresholds.decisiveGap);
   assert.equal(result.candidates.length, 2);
 });
 
