@@ -36,13 +36,16 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(tokens, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("Selection controller separates local provenance and AI explanation", async () => {
-  const [controller, resultModel] = await Promise.all([\n    source("src/content/selection/controller.js"),\n    source("src/content/selection/result-model.js")\n  ]);
+test("Selection result model separates local provenance and AI explanation", async () => {
+  const [controller, resultModel] = await Promise.all([
+    source("src/content/selection/controller.js"),
+    source("src/content/selection/result-model.js")
+  ]);
 
-  assert.match(controller, /技术词条/);
-  assert.match(controller, /本地词典/);
-  assert.match(controller, /AI 辅助/);
-  assert.match(controller, /词典包 ·/);
+  assert.match(resultModel, /技术词条/);
+  assert.match(resultModel, /本地词典/);
+  assert.match(resultModel, /AI 辅助/);
+  assert.match(resultModel, /词典包 ·/);
   assert.match(controller, /本地词典未找到可靠结果，且 AI 辅助暂不可用/);
   assert.match(controller, /copyTextForCard/);
 });
