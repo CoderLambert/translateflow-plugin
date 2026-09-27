@@ -267,3 +267,92 @@ test("Sensitive ambiguous Selection explanation input never includes surrounding
   assert.equal(JSON.stringify(result.explanationInput).includes("private.example"), false);
   assert.equal(JSON.stringify(result.explanationInput).includes("password"), false);
 });
+
+test("Selection resolver preserves competing Core/Technical candidates for #85 ranking", async () => {
+  const core = {
+    id: "core:container",
+    kind: "lexical",
+    headword: "container",
+    translations: ["容器"],
+    matchedBy: "exact",
+    exactCaseMatch: true,
+    domains: [],
+    provenance: { packId: "core", packVersion: "1", fingerprint: "sha256:core" }
+  };
+  const technical = {
+    id: "technical:container",
+    kind: "technical-concept",
+    headword: "container",
+    translations: [],
+    matchedBy: "exact",
+    exactCaseMatch: true,
+    domains: ["runtime"],
+    typeLabels: ["runtime isolation", "namespace"],
+    provenance: { packId: "technical", packVersion: "1", fingerprint: "sha256:technical" }
+  };
+
+  const result = await resolveSelectionRequest({
+    text: "container",
+    pageUrl: "https://example.test/",
+    context: {
+      text: "The runtime uses isolation and a namespace for each container.",
+      source: "visible-local",
+      sensitive: false
+    }
+  }, {
+    getConfig: async () => ({
+      selectionExplanationDepth: "auto",
+      targetLanguage: "Simplified Chinese"
+    }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => ({
+      status: "candidates",
+      query: { text: "container", normalized: "container", sourceLanguage: "en", targetLanguage: "zh-CN" },
+      matchedBy: "exact",
+      candidates: [core, technical]
+    })
+  });
+
+  assert.equal(result.lookup.candidates.length, 2);
+  assert.equal(result.decision.topCandidateId, technical.id);
+  assert.equal(result.route, SELECTION_ROUTE.LOCAL);
+});
+
+test("Selection resolver can use an untranslated tmux technical entity locally when the pack supplies it", async () => {
+  const result = await resolveSelectionRequest({
+    text: "tmux",
+    pageUrl: "https://example.test/",
+    context: {
+      text: "Open tmux in the terminal and attach to the session.",
+      source: "visible-local",
+      sensitive: false
+    }
+  }, {
+    getConfig: async () => ({
+      selectionExplanationDepth: "auto",
+      targetLanguage: "Simplified Chinese"
+    }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => ({
+      status: "candidates",
+      query: { text: "tmux", normalized: "tmux", sourceLanguage: "en", targetLanguage: "zh-CN" },
+      matchedBy: "exact",
+      candidates: [{
+        id: "technical:Q1935361",
+        kind: "technical-entity",
+        headword: "tmux",
+        translations: [],
+        matchedBy: "exact",
+        exactCaseMatch: true,
+        domains: ["developer-tool"],
+        typeLabels: ["terminal multiplexer", "free software"],
+        provenance: { packId: "technical-wikidata", packVersion: "fixture", fingerprint: "sha256:tech" }
+      }]
+    })
+  });
+
+  assert.equal(result.route, SELECTION_ROUTE.LOCAL);
+  assert.equal(result.decision.topCandidateId, "technical:Q1935361");
+  assert.equal(result.decision.candidates[0].typeLabels[0], "terminal multiplexer");
+});
+
