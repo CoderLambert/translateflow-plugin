@@ -140,6 +140,7 @@ export function createDictionaryPackManager({
         assertActive(controller.signal);
         await verifyDownloadedFile(descriptor, bytes, cryptoProvider);
         await store.writeFile(packId, pack.packVersion, descriptor.path, bytes);
+        assertActive(controller.signal);
       }
 
       const snapshot = snapshotFromPack(pack, source.id, catalog.sequence);
@@ -151,6 +152,7 @@ export function createDictionaryPackManager({
           inspection: stagedInspection
         });
       }
+      assertActive(controller.signal);
 
       const nextState = await stateStore.update((state) => {
         const previous = state.packs[packId] || null;
@@ -169,7 +171,12 @@ export function createDictionaryPackManager({
       });
 
       const installed = nextState.packs[packId];
-      await store.cleanupPack(packId, [...versionsInState(installed)]);
+
+      // The active pointer is committed at this point. Orphan cleanup is best-effort:
+      // a cleanup failure must never turn a successful activation back into staging
+      // cleanup that deletes the newly active version. Recovery retries orphan cleanup.
+      stagedVersion = "";
+      await store.cleanupPack(packId, [...versionsInState(installed)]).catch(() => {});
       return {
         status: current?.active ? "updated" : "installed",
         pack: publicPackState(installed),
@@ -200,11 +207,14 @@ export function createDictionaryPackManager({
     if (operationsByPack.has(id)) {
       throw packError(PACK_ERROR_CODES.BUSY, "Dictionary pack is busy.", { packId: id });
     }
-    await store.removePack(id);
+    // Remove the active pointer before destructive OPFS cleanup. If metadata
+    // persistence fails, the currently installed files remain usable. If OPFS cleanup
+    // later fails, recovery can safely remove the now-unreferenced orphan directory.
     const state = await stateStore.update((current) => {
       delete current.packs[id];
       return current;
     });
+    await store.removePack(id);
     return { uninstalled: true, state: publicState(state) };
   }
 
