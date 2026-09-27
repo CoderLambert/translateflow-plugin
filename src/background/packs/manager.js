@@ -15,7 +15,6 @@ import { createOpfsPackStore } from "./opfs-store.js";
 import { createPackStateStore } from "./state.js";
 import {
   inspectInstalledPack,
-  validateInstalledManifest,
   verifyDownloadedFile
 } from "./health.js";
 import {
@@ -144,7 +143,14 @@ export function createDictionaryPackManager({
       }
 
       const snapshot = snapshotFromPack(pack, source.id, catalog.sequence);
-      await validateInstalledManifest({ store, snapshot });
+      const stagedInspection = await inspectInstalledPack({ store, snapshot, cryptoProvider });
+      if (stagedInspection.status !== "healthy") {
+        throw packError(PACK_ERROR_CODES.CORRUPT, "Staged dictionary pack failed post-write health check.", {
+          packId,
+          packVersion: pack.packVersion,
+          inspection: stagedInspection
+        });
+      }
 
       const nextState = await stateStore.update((state) => {
         const previous = state.packs[packId] || null;
