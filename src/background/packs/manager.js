@@ -98,6 +98,30 @@ export function createDictionaryPackManager({
         }
       }
 
+      if (current?.fallback?.packVersion === pack.packVersion) {
+        if (
+          current.fallback.releaseSequence !== pack.releaseSequence ||
+          current.fallback.fingerprint !== pack.fingerprint
+        ) {
+          throw packError(PACK_ERROR_CODES.CATALOG_SCHEMA, "Protected rollback version conflicts with signed catalog metadata.");
+        }
+        const inspection = await inspectInstalledPack({ store, snapshot: current.fallback, cryptoProvider });
+        if (inspection.status === "healthy") {
+          const promoted = await stateStore.update((state) => {
+            const entry = state.packs[packId];
+            const previousActive = entry.active;
+            entry.active = entry.fallback;
+            entry.fallback = previousActive;
+            entry.status = "healthy";
+            entry.recoveryReason = "catalog-promote-verified-fallback";
+            entry.lastError = null;
+            return state;
+          });
+          return { status: "updated", pack: publicPackState(promoted.packs[packId]), catalogSequence: catalog.sequence };
+        }
+        throw packError(PACK_ERROR_CODES.CORRUPT, "Protected rollback version is corrupt and cannot be overwritten.");
+      }
+
       await preflightQuota(pack.totalBytes);
       stagedVersion = pack.packVersion;
       if (!protectedVersions.has(stagedVersion)) {
@@ -176,7 +200,7 @@ export function createDictionaryPackManager({
     if (operationsByPack.has(id)) {
       throw packError(PACK_ERROR_CODES.BUSY, "Dictionary pack is busy.", { packId: id });
     }
-    const current = await stateStore.read();
+    const current = (await recoverPack(id)).state;
     const entry = current.packs[id];
     if (!entry?.fallback) {
       throw packError(PACK_ERROR_CODES.NOT_FOUND, "No verified rollback version is available.", { packId: id });
@@ -213,6 +237,23 @@ export function createDictionaryPackManager({
       cryptoProvider
     });
     if (activeInspection.status === "healthy") {
+      if (entry.fallback) {
+        const fallbackInspection = await inspectInstalledPack({
+          store,
+          snapshot: entry.fallback,
+          cryptoProvider
+        });
+        if (fallbackInspection.status !== "healthy") {
+          const updated = await stateStore.update((current) => {
+            const pack = current.packs[id];
+            pack.fallback = null;
+            pack.recoveryReason = "discarded-unhealthy-fallback";
+            return current;
+          });
+          await store.cleanupPack(id, [...versionsInState(updated.packs[id])]).catch(() => {});
+          return { state: updated, result: "healthy-fallback-discarded", inspection: fallbackInspection };
+        }
+      }
       await store.cleanupPack(id, [...versionsInState(entry)]).catch(() => {});
       return { state, result: "healthy" };
     }
