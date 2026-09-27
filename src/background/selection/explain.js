@@ -62,16 +62,19 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     const payload = cache.payload;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);
 
-    const cached = await lookupCache({ cacheKey: cache.cacheKey });
-    assertActive(controller.signal);
-    if (cached?.hit) {
-      const generated = parseSelectionExplainResult(cached.hit, { candidateIds });
-      return response({
-        resolved,
-        generated,
-        cacheHit: true,
-        cacheKey: cache.cacheKey
-      });
+    const allowPersistentCache = !payload.sensitive;
+    if (allowPersistentCache) {
+      const cached = await lookupCache({ cacheKey: cache.cacheKey });
+      assertActive(controller.signal);
+      if (cached?.hit) {
+        const generated = parseSelectionExplainResult(cached.hit, { candidateIds });
+        return response({
+          resolved,
+          generated,
+          cacheHit: true,
+          cacheKey: cache.cacheKey
+        });
+      }
     }
 
     const generated = await runCompletion({
@@ -84,15 +87,17 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     }, config, { signal: controller.signal });
     assertActive(controller.signal);
 
-    await storeCache({
-      cacheKey: cache.cacheKey,
-      result: {
-        selectedCandidateIds: [...generated.selectedCandidateIds],
-        explanation: generated.explanation,
-        translation: generated.translation
-      }
-    });
-    assertActive(controller.signal);
+    if (allowPersistentCache) {
+      await storeCache({
+        cacheKey: cache.cacheKey,
+        result: {
+          selectedCandidateIds: [...generated.selectedCandidateIds],
+          explanation: generated.explanation,
+          translation: generated.translation
+        }
+      });
+      assertActive(controller.signal);
+    }
 
     return response({
       resolved,
