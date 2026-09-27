@@ -8,7 +8,6 @@ import { resolveSelectionRequest } from "./resolve.js";
 import { buildSelectionExplainPrompt } from "./explain-prompt.js";
 import {
   buildSelectionExplainCacheIdentity,
-  buildSelectionExplainPayload,
   parseSelectionExplainResult
 } from "../../shared/selection-explanation.js";
 import { SELECTION_ROUTE } from "../../shared/selection.js";
@@ -50,17 +49,17 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     const config = await getPageConfig(input.pageUrl || "");
     assertActive(controller.signal);
 
-    const payload = buildSelectionExplainPayload({
-      ...resolved.explanationInput,
-      targetLanguage: config.targetLanguage
-    });
     const cache = await buildSelectionExplainCacheIdentity({
       provider: config.provider,
       model: config.model,
       endpoint: config.apiBaseUrl || "",
       targetLanguage: config.targetLanguage,
-      payload
+      payload: {
+        ...resolved.explanationInput,
+        targetLanguage: config.targetLanguage
+      }
     });
+    const payload = cache.payload;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);
 
     const cached = await lookupCache({ cacheKey: cache.cacheKey });
