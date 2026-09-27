@@ -179,6 +179,68 @@ test("Selection explanation cache hit bypasses Provider and revalidates candidat
   assert.equal(providerCalls, 0);
 });
 
+
+test("sensitive Selection explanations bypass persistent cache", async () => {
+  let lookupCalls = 0;
+  let storeCalls = 0;
+  let providerCalls = 0;
+  const sensitive = ambiguousResolved();
+  sensitive.contextPolicy = { sensitive: true, source: "selection-only", truncated: false, chars: 10 };
+  sensitive.explanationInput = {
+    ...sensitive.explanationInput,
+    contextText: "",
+    sensitive: true
+  };
+
+  const deps = {
+    resolveSelectionRequest: async () => sensitive,
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => {
+      lookupCalls += 1;
+      return {
+        hit: {
+          selectedCandidateIds: ["core:persistent:1"],
+          explanation: "must not be reused",
+          translation: "cached"
+        }
+      };
+    },
+    storeSelectionExplanation: async () => {
+      storeCalls += 1;
+      return { stored: 1 };
+    },
+    completeJson: async (input) => {
+      providerCalls += 1;
+      return input.parseResult({
+        selectedCandidateIds: ["core:persistent:1"],
+        explanation: "fresh sensitive explanation",
+        translation: "持久的"
+      });
+    }
+  };
+
+  const first = await runSelectionExplanationRequest({
+    requestId: "sensitive-1",
+    text: "persistent",
+    pageUrl: "https://example.test/private",
+    context: { text: "persistent", source: "selection-only", sensitive: true }
+  }, deps);
+  const second = await runSelectionExplanationRequest({
+    requestId: "sensitive-2",
+    text: "persistent",
+    pageUrl: "https://example.test/private",
+    context: { text: "persistent", source: "selection-only", sensitive: true }
+  }, deps);
+
+  assert.equal(first.cacheHit, false);
+  assert.equal(second.cacheHit, false);
+  assert.equal(first.generated.explanation, "fresh sensitive explanation");
+  assert.equal(second.generated.explanation, "fresh sensitive explanation");
+  assert.equal(providerCalls, 2);
+  assert.equal(lookupCalls, 0);
+  assert.equal(storeCalls, 0);
+});
+
 test("tmux explanation is grounded in attributable local technical facts", async () => {
   let providerPayload;
   const technical = {
