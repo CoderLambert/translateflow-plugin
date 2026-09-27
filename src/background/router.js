@@ -39,6 +39,13 @@ import {
   cancelSelectionExplanationRequest,
   runSelectionExplanationRequest
 } from "./selection/explain.js";
+import {
+  cancelDictionaryPackOperation,
+  getDictionaryPackStatus,
+  installDictionaryPack,
+  rollbackDictionaryPack,
+  uninstallDictionaryPack
+} from "./packs/manager.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -161,7 +168,36 @@ export async function handleBackgroundMessage(message, sender) {
       return { context: await saveSitePreset(message.pageUrl, message.preset) };
     case BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL:
       return installYouTubeMainBridge(sender);
+    case BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS:
+      assertOptionsSender(sender);
+      return getDictionaryPackStatus({ recover: true });
+    case BACKGROUND_MESSAGES.DICTIONARY_PACK_INSTALL:
+      assertOptionsSender(sender);
+      return installDictionaryPack({
+        sourceId: message.sourceId,
+        packId: message.packId,
+        requestId: message.requestId
+      });
+    case BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL:
+      assertOptionsSender(sender);
+      return cancelDictionaryPackOperation(message.requestId);
+    case BACKGROUND_MESSAGES.DICTIONARY_PACK_UNINSTALL:
+      assertOptionsSender(sender);
+      return uninstallDictionaryPack(message.packId);
+    case BACKGROUND_MESSAGES.DICTIONARY_PACK_ROLLBACK:
+      assertOptionsSender(sender);
+      return rollbackDictionaryPack(message.packId);
     default:
       throw new Error("未知扩展消息。");
+  }
+}
+
+function assertOptionsSender(sender) {
+  const expected = chrome.runtime.getURL("options.html");
+  const actual = String(sender?.url || "");
+  if (actual !== expected && !actual.startsWith(expected + "#")) {
+    const error = new Error("Dictionary pack lifecycle actions are only available from Settings.");
+    error.code = "PACK_SETTINGS_ONLY";
+    throw error;
   }
 }

@@ -19,6 +19,7 @@ import {
 import { normalizeOrigin } from "./src/shared/url.js";
 import { normalizeSelectionDepth } from "./src/shared/selection.js";
 import { initializeGlossaryUi } from "./src/options/glossary-ui.js";
+import { initializePackUi } from "./src/options/pack-ui.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -72,7 +73,8 @@ await Promise.allSettled([
   refreshCacheStats(),
   refreshSiteBehaviorLists(),
   refreshSiteProfiles(),
-  initializeGlossaryUi({ setStatus })
+  initializeGlossaryUi({ setStatus }),
+  initializePackUi({ setStatus })
 ]);
 
 save.addEventListener("click", async () => {
