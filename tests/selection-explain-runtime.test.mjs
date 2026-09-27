@@ -181,6 +181,11 @@ test("Selection explanation cache hit bypasses Provider and revalidates candidat
 
 test("Selection explanation cancellation aborts the Provider signal", async () => {
   let observedAbort = false;
+  let providerStartedResolve;
+  const providerStarted = new Promise((resolve) => {
+    providerStartedResolve = resolve;
+  });
+
   const promise = runSelectionExplanationRequest({
     requestId: "cancel-me",
     text: "persistent",
@@ -198,11 +203,14 @@ test("Selection explanation cancellation aborts the Provider signal", async () =
         reject(error);
       };
       if (signal.aborted) onAbort();
-      else signal.addEventListener("abort", onAbort, { once: true });
+      else {
+        signal.addEventListener("abort", onAbort, { once: true });
+        providerStartedResolve();
+      }
     })
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await providerStarted;
   assert.deepEqual(cancelSelectionExplanationRequest("cancel-me"), { cancelled: true });
   await assert.rejects(promise, (error) => error?.code === "CANCELLED");
   assert.equal(observedAbort, true);
