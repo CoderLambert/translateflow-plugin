@@ -117,7 +117,7 @@ export function materializeLookup(testCase, catalog) {
 }
 
 function validateFixture(fixture) {
-  if (!fixture || fixture.version !== 1 || fixture.policyVersion !== 1) {
+  if (!fixture || fixture.version !== 1 || fixture.policyVersion !== 2) {
     throw new Error("unsupported lexical ranking fixture version");
   }
   if (!fixture.candidates || typeof fixture.candidates !== "object" || Array.isArray(fixture.candidates)) {
