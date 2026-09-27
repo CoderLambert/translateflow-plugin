@@ -330,14 +330,23 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-chip")).toBeVisible();
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
-    expect(harness.server.calls).toHaveLength(2);
+    expect(harness.server.calls).toHaveLength(1);
+
+    const seeded = await harness.runtime({
+      type: "CACHE_STORE",
+      pageUrl: page.url(),
+      pageTitle: "Selection cache poison fixture",
+      items: [{ sourceText: "terminal multiplexer", translation: "WRONG PAGE CACHE" }]
+    });
+    expect(seeded.ok).toBe(true);
 
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
     await selectElementText(page, "#lexical");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("终端复用器");
-    expect(harness.server.calls).toHaveLength(2);
+    await expect(page.locator(".tf-selection-result")).not.toContainText("WRONG PAGE CACHE");
+    expect(harness.server.calls).toHaveLength(1);
 
     const cache = await harness.runtime({
       type: "CACHE_LOOKUP",
@@ -345,7 +354,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
       segments: [{ id: "selection", text: "terminal multiplexer" }]
     });
     expect(cache.ok).toBe(true);
-    expect(cache.hits).toEqual([]);
+    expect(cache.hits).toHaveLength(1);
+    expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
   });
 
   test("selection failure is actionable and transient 429/500 failures recover without a stuck state", async ({ harness }) => {
