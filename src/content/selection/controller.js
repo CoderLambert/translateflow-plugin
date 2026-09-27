@@ -94,11 +94,12 @@
     try {
       tasks.transition(task, "translating");
       popover.setLoadingStatus("正在解析所选内容…");
+      const selectionContext = captureSelectionContext(snapshot);
       const resolved = await sendRuntimeMessage({
         type: messages.background.SELECTION_RESOLVE,
         text: snapshot.text,
         pageUrl: snapshot.pageUrl,
-        context: captureSelectionContext(snapshot)
+        context: selectionContext
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!resolved?.ok) throw tasks.responseError(resolved, "划词解析失败");
@@ -117,12 +118,7 @@
       }
 
       if (resolved.route === "needs-explanation") {
-        tasks.completeTask(task, { done: 1 });
-        popover.showError(
-          snapshot,
-          "本地词典存在多个可能含义，需要结合上下文进一步解释。",
-          () => translateSnapshot(snapshot)
-        );
+        await explainSelection(snapshot, task, version, expectedPage, selectionContext, resolved.depth);
         return;
       }
 
@@ -144,6 +140,46 @@
         () => translateSnapshot(snapshot)
       );
     }
+  }
+
+  async function explainSelection(snapshot, task, version, expectedPage, context, depth) {
+    tasks.transition(task, "translating");
+    popover.setLoadingStatus("正在结合上下文解释…");
+    const explained = await sendRuntimeMessage({
+      type: messages.background.SELECTION_EXPLAIN,
+      requestId: task.id,
+      text: snapshot.text,
+      pageUrl: snapshot.pageUrl,
+      context,
+      depth
+    });
+    assertCurrent(version, snapshot, expectedPage, task);
+    if (!explained?.ok) throw tasks.responseError(explained, "划词解释失败");
+
+    if (explained.route === "local" && explained.resolved) {
+      const localText = formatLocalResult(explained.resolved);
+      if (!localText) throw new Error("本地词典没有可展示结果。");
+      tasks.completeTask(task, { done: 1 });
+      showResult(snapshot, localText, "结果已复制");
+      return;
+    }
+
+    if (explained.route === "translation") {
+      await translateSelection(snapshot, task, version, expectedPage);
+      return;
+    }
+
+    if (explained.route !== "explained" || !explained.generated?.explanation) {
+      throw new Error("模型没有返回可用的划词解释。");
+    }
+
+    const displayText = formatGeneratedExplanation(explained.generated);
+    tasks.completeTask(task, {
+      done: 1,
+      cacheHits: explained.cacheHit ? 1 : 0,
+      apiTranslated: explained.cacheHit ? 0 : 1
+    });
+    showResult(snapshot, displayText, "解释已复制");
   }
 
   async function translateSelection(snapshot, task, version, expectedPage) {
@@ -210,6 +246,12 @@
     const headword = String(candidate?.headword || "").trim();
     if (headword && labels.length) return headword + " · " + labels.slice(0, 2).join(" / ");
     return headword || labels.slice(0, 2).join(" / ");
+  }
+
+  function formatGeneratedExplanation(generated) {
+    const translation = String(generated?.translation || "").trim();
+    const explanation = String(generated?.explanation || "").trim();
+    return [translation, explanation].filter(Boolean).join("\n");
   }
 
   function uniqueText(values) {
