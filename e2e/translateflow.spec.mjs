@@ -363,11 +363,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await harness.inject(page);
     await selectElementText(page, "#editable-word");
 
-    const context = await page.evaluate(() => {
-      const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-      const snapshot = app.modules.selection.readSelection();
-      return app.modules.selectionContext.captureSelectionContext(snapshot);
-    });
+    const context = await harness.captureSelectionContext(page);
 
     expect(context).toEqual({
       text: "",
