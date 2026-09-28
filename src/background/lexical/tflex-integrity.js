@@ -129,6 +129,12 @@ export function validateTflexRecord(record, packId, path) {
     ) {
       throw corrupt(packId, path, "Malformed TFLex lexical sense");
     }
+    if (sense.senseNumber !== undefined && (!Number.isSafeInteger(sense.senseNumber) || sense.senseNumber <= 0)) {
+      throw corrupt(packId, path, "Malformed TFLex senseNumber");
+    }
+    if (sense.tagCount !== undefined && (!Number.isSafeInteger(sense.tagCount) || sense.tagCount < 0)) {
+      throw corrupt(packId, path, "Malformed TFLex tagCount");
+    }
     validateSourceRefs(sense.sourceRefs, packId, path);
   }
 }
