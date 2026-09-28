@@ -288,6 +288,7 @@ function explicitLemmaForms(value, irregularLemmas) {
 
 export function conservativeMorphologyForms(value) {
   if (!/^[a-z][a-z'-]{2,}$/i.test(value)) return [];
+  if (/(?:'s|s')$/i.test(value)) return [];
   const forms = [];
 
   if (value.endsWith("ies") && value.length > 4) forms.push(value.slice(0, -3) + "y");
