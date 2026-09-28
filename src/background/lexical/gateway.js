@@ -273,6 +273,8 @@ function candidatesFromHit(hit, { matchedBy, queryForm }) {
       id: pack.packId + ":" + sense.id,
       senseId: sense.id,
       partOfSpeech: sense.partOfSpeech || null,
+      senseNumber: Number.isSafeInteger(sense.senseNumber) ? sense.senseNumber : null,
+      tagCount: Number.isSafeInteger(sense.tagCount) ? sense.tagCount : null,
       translations: [...sense.translations],
       domains: Array.isArray(sense.domains) ? [...sense.domains] : [],
       provenance: {
