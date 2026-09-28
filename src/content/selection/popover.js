@@ -107,6 +107,7 @@
     cancelHandler = onCancel;
     chip.hidden = true;
     panel.hidden = false;
+    clearPageSelection();
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "正在检查缓存…", "loading");
     aiDetail?.reset();
