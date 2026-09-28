@@ -303,29 +303,6 @@ button { color: inherit; }
   border-top: 1px solid var(--tf-border-soft);
 }
 .tf-selection-generated-label {
-  margin-bottom: 0;
-}
-.tf-selection-ai-status {
-  color: var(--tf-text-secondary);
-  font-size: var(--tf-font-size-sm);
-  line-height: 1.5;
-}
-.tf-selection-ai-status[data-kind="error"] {
-  color: var(--tf-danger);
-}
-.tf-selection-ai-status[data-kind="cancelled"] {
-  color: var(--tf-text-muted);
-}
-.tf-selection-ai-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 8px;
-}
-.tf-selection-ai-actions .tf-ui-button {
-  padding: 7px 10px;
-}
-.tf-selection-generated-label {
   margin-bottom: 4px;
   color: var(--tf-info);
   font-size: 11px;
