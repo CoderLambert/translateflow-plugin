@@ -7,6 +7,7 @@
     || !app?.modules.selectionContext
     || !app?.modules.selectionPopover
     || !app?.modules.selectionResultModel
+    || !app?.modules.selectionClipboard
     || app.modules.selectionController
   ) return;
 
@@ -15,6 +16,7 @@
   const { readSelection, isExtensionOwnedNode } = app.modules.selection;
   const { captureSelectionContext } = app.modules.selectionContext;
   const popover = app.modules.selectionPopover;
+  const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { buildLocalResult, buildExplainedResult, buildTranslationResult, copyTextForCard } = app.modules.selectionResultModel;
 
   let started = false;
@@ -350,7 +352,7 @@
   function copyAction(copyText, copiedMessage) {
     return async () => {
       try {
-        await copyTextValue(copyText);
+        await writeSelectionText(copyText);
         showToast(copiedMessage, "success");
       } catch (error) {
         showToast("复制失败：" + (error?.message || error), "error");
@@ -409,25 +411,6 @@
 
   function setQuickControlSelectionActive(active) {
     app.modules.quickControl?.setSelectionActive(Boolean(active));
-  }
-
-  async function copyTextValue(text) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "");
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    textarea.setAttribute("data-tf-extension-ui", "selection-copy");
-    document.documentElement.appendChild(textarea);
-    textarea.select();
-    const copied = document.execCommand("copy");
-    textarea.remove();
-    if (!copied) throw new Error("浏览器拒绝复制操作");
   }
 
   app.modules.selectionController = { start };
