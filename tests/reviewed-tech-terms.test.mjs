@@ -9,7 +9,6 @@ import {
   verifyReviewedLockedExtract,
   verifyReviewedTechnicalSourceLockBytes
 } from "../scripts/reviewed-tech-terms.mjs";
-import { buildTechnicalAliasIndex } from "../scripts/build-tflex-technical.mjs";
 
 const sourceUrl = new URL("../lexicon/sources/reviewed-tech-terms.json", import.meta.url);
 const lockUrl = new URL("../lexicon/source-locks/technical-reviewed-terms.json", import.meta.url);
@@ -92,8 +91,8 @@ test("reviewed terms reject executable data and normalized alias collisions", as
   );
 });
 
-test("reviewed alias policy independently enforces blocked and exact-case aliases", async () => {
-  const { extract, lock, wikidataPolicy } = await official();
+test("reviewed source records retain audit policy without entering production alias indexing", async () => {
+  const { extract, lock } = await official();
   const changedExtract = structuredClone(extract);
   changedExtract.terms.find((term) => term.id === "branch.git").aliases = ["run"];
   changedExtract.terms.find((term) => term.id === "repository.git").aliases = ["Repo"];
@@ -103,37 +102,15 @@ test("reviewed alias policy independently enforces blocked and exact-case aliase
 
   const records = buildReviewedTechnicalRecords(changedExtract, changedLock);
   assert.deepEqual(records.find((record) => record.lookupKey === "branch").aliases, []);
-  const aliases = buildTechnicalAliasIndex(records, wikidataPolicy, changedLock.policy);
-  const repo = aliases.find((entry) => entry.key === "repo");
-  assert.deepEqual(repo, {
-    key: "repo",
-    caseSensitive: true,
-    exactLookupKeys: ["Repo"],
-    targets: ["repository"]
-  });
+  assert.deepEqual(records.find((record) => record.lookupKey === "repository").aliases, ["Repo"]);
 });
 
-test("reviewed collision policy rejects aliases crossing either source boundary", async () => {
-  const { lock, wikidataPolicy } = await official();
-  const wikidata = {
-    lookupKey: "base-tool",
-    aliases: ["reviewed tool"],
-    entityId: "Q1",
-    sourceRefs: [{ sourceId: "wikidata", recordId: "Q1@1" }]
-  };
-  const reviewed = {
-    lookupKey: "reviewed tool",
-    aliases: [],
-    entityId: "reviewed:tool.test",
-    sourceRefs: [{
-      sourceId: "translateflow-reviewed-technical-terms",
-      recordId: "tool.test"
-    }]
-  };
-  assert.throws(
-    () => buildTechnicalAliasIndex([wikidata, reviewed], wikidataPolicy, lock.policy),
-    /reviewed alias collides with a technical headword/
+test("reviewed terminology compiler is validation-only and not imported by the production Technical builder", async () => {
+  const productionBuilder = await readFile(
+    new URL("../scripts/build-tflex-technical.mjs", import.meta.url),
+    "utf8"
   );
+  assert.doesNotMatch(productionBuilder, /reviewed-tech-terms|REVIEWED_TECH_SOURCE_ID|reviewedTermsPath|reviewedSourceLockPath/);
 });
 
 test("reviewed policy rejects undeclared fields and unsafe collision-policy drift", async () => {
