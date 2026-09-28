@@ -273,7 +273,6 @@
     aiDetail?.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
-    resultNode.dataset.resultKind = "empty";
     resultNode.hidden = false;
     hideActionButtons();
     emptyState.show({ title, message, onExplain, onTranslate });
