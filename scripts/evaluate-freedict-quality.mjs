@@ -4,15 +4,20 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { certifyFreeDictPack } from "./certify-freedict-pack.mjs";
 
-export async function evaluateFreeDictQuality({ packDir, sourceLockPath }) {
-  const lock = JSON.parse(await readFile(resolveRequired(sourceLockPath, "sourceLockPath"), "utf8"));
-  const decision = lock.qualityDecision;
+export async function evaluateFreeDictQuality({ packDir, decisionPath }) {
+  const decision = JSON.parse(await readFile(
+    resolveRequired(decisionPath, "decisionPath"),
+    "utf8"
+  ));
   if (
+    decision?.schemaVersion !== 1 ||
     decision?.status !== "no-ship" ||
     decision?.approvedForProductDistribution !== false ||
-    lock.qualityRole !== "research-only-no-ship"
+    decision?.qualityRole !== "research-only-no-ship" ||
+    !decision?.packId ||
+    !decision?.packVersion
   ) {
-    throw new Error("FreeDict quality lock must explicitly require no-ship");
+    throw new Error("FreeDict quality decision must explicitly require no-ship");
   }
 
   const terms = unique([
@@ -21,6 +26,13 @@ export async function evaluateFreeDictQuality({ packDir, sourceLockPath }) {
     ...decision.absentTechnical
   ]);
   const certification = await certifyFreeDictPack({ packDir, terms });
+  if (
+    certification.packId !== decision.packId ||
+    certification.packVersion !== decision.packVersion
+  ) {
+    throw new Error("FreeDict quality decision does not match the evaluated pack");
+  }
+
   const translationsByTerm = Object.fromEntries(
     Object.entries(certification.terms).map(([term, hits]) => [
       term,
@@ -93,7 +105,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const result = await evaluateFreeDictQuality({
     packDir: args.pack,
-    sourceLockPath: args["source-lock"]
+    decisionPath: args.decision
   });
   const text = JSON.stringify(result, null, 2) + "\n";
   if (args.out) await writeFile(resolve(args.out), text, "utf8");
