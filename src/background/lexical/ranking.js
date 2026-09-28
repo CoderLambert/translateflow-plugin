@@ -24,10 +24,6 @@ const TECH_CONTEXT_MARKERS = new Set([
   "linux"
 ]);
 
-// Design Freeze source audit found these Core terms are unsafe as a
-// sufficient technical-context answer without corroborating technical data.
-const KNOWN_TECHNICAL_SOURCE_GAPS = new Set(["cache", "container", "repository"]);
-
 const LEXICAL_TOKEN_RE = /[\p{L}\p{M}\p{N}+#]+(?:[.'’‘ʼʻ-][\p{L}\p{M}\p{N}+#]+)*/gu;
 
 export const LEXICAL_RANKING_POLICY_V2 = Object.freeze({
@@ -96,24 +92,17 @@ export function assessLexicalLookup(lookupResult, { contextText = "" } = {}) {
   const top = ranked[0];
   const second = ranked[1] || null;
 
-  const sourceGapKey = normalizeLexicalKey(
-    lookupResult.resolvedForm || top?.headword || queryText
-  );
-  if (
-    KNOWN_TECHNICAL_SOURCE_GAPS.has(sourceGapKey) &&
-    hasTechnicalContext(queryText, contextText) &&
-    !ranked.some(isTechnicalCandidate)
-  ) {
+  if (hasUnresolvedTechnicalSense(lookupResult, ranked, { queryText, contextText })) {
     return decision(
       LEXICAL_DECISION_OUTCOME.AMBIGUOUS,
-      "known-technical-source-gap",
+      "technical-context-missing-structured-sense",
       lookupResult,
       ranked,
       second ? top.ranking.score - second.ranking.score : null,
       {
         sourceGap: {
-          key: sourceGapKey,
-          kind: "technical-context-missing-structured-sense"
+          kind: "technical-context-missing-structured-sense",
+          candidateId: top.id || null
         }
       }
     );
@@ -180,6 +169,26 @@ function hasTechnicalContext(queryText, contextText) {
   return tokenize(contextText)
     .filter((token) => !queryTokens.has(token))
     .some((token) => TECH_CONTEXT_MARKERS.has(token));
+}
+
+function hasUnresolvedTechnicalSense(lookupResult, ranked, { queryText, contextText }) {
+  if (ranked.length !== 1 || tokenize(queryText).length !== 1) return false;
+
+  const candidate = ranked[0];
+  const matchedBy = candidate?.matchedBy || lookupResult?.matchedBy;
+  if (
+    candidate?.kind !== "lexical" ||
+    candidate?.partOfSpeech !== "noun" ||
+    !["exact", "normalized"].includes(matchedBy)
+  ) {
+    return false;
+  }
+  if (!hasTechnicalContext(queryText, contextText)) return false;
+
+  const hasStructuredSenseMetadata =
+    (Array.isArray(candidate.domains) && candidate.domains.length > 0) ||
+    (Array.isArray(candidate.typeLabels) && candidate.typeLabels.length > 0);
+  return !hasStructuredSenseMetadata;
 }
 
 function isTechnicalCandidate(candidate) {
