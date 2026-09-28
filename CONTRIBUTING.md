@@ -106,6 +106,51 @@ TranslateFlow 的开发任务以 GitHub Issue 为执行单元。开始编码前�
 - cache-first orchestration: `src/content/processor.js`
 - observers/auto queue: `src/content/auto.js`
 
+## Lexical data changes
+
+Lexical work must first classify the change as **runtime algorithm** or **dictionary content**.
+
+Architecture rule:
+
+```text
+Source-driven data
+→ Rule-driven retrieval
+→ Context-driven ranking
+→ User-driven AI
+```
+
+Requirements:
+
+- do not increase dictionary coverage by continuously adding project-authored word/translation rows;
+- do not encode word-specific sense tables as ranking conditionals;
+- validation/regression words belong in `tests/**` / benchmark fixtures, not runtime packs;
+- dictionary facts should enter through reviewed, attributable source/import pipelines;
+- project-authored overrides are temporary exceptions only and need evidence plus a replacement/removal path;
+- AI detail remains explicit and is not authoritative dictionary data;
+- large dictionaries belong in downloadable/imported packs, not the base extension.
+
+For lexical PRs, include the answers to:
+
+1. Which source owns the lexical fact?
+2. Does this add bundled bytes?
+3. Could this be a validation fixture instead of runtime data?
+4. Is any query-specific rule acting as hidden dictionary content?
+5. How will a temporary override be removed?
+
+See `docs/LEXICAL_DATA_BOUNDARIES.md`.
+
+## Production extension packaging
+
+The repository root is a development workspace, not the release artifact.
+
+`npm run validate` builds and audits the allowlisted `dist/extension` tree. A release build with generated bundled dictionaries uses:
+
+```bash
+npm run build:extension:release
+```
+
+Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, source locks, benchmark corpora or import-security samples to the production allowlist just to make runtime tests pass.
+
 ## Provider changes
 
 新增 Provider 必须明确：
