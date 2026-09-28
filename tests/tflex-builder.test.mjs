@@ -77,7 +77,11 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   assert.deepEqual(persistent.senses[0].rawTranslations, ["持久+的", "持续+的"]);
   assert.equal(persistent.senses[0].senseNumber, 1);
   assert.equal(persistent.senses[0].tagCount, 5);
-  assert.ok(persistent.senses[0].sourceRefs.some((ref) => ref.sourceId === "pwn-3.0-sense-index"));
+  assert.deepEqual(
+    persistent.senses[0].sourceRefs.map((ref) => ref.sourceId).sort(),
+    ["chinese-open-wordnet", "pwn-3.0"]
+  );
+  assert.ok(result.manifest.sources.some((source) => source.id === "pwn-3.0-sense-index"));
   const phrase = result.records.find((record) => record.lookupKey === "terminal multiplexer");
   assert.equal(phrase.displayForm, "terminal multiplexer");
   assert.equal(phrase.senses[0].partOfSpeech, "noun");
