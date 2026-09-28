@@ -66,5 +66,80 @@
     ],
     "semanticRewriting": false
   },
-  "qualityRole": "optional-complement-only"
+  "qualityRole": "research-only-no-ship",
+  "qualityDecision": {
+    "status": "no-ship",
+    "approvedForProductDistribution": false,
+    "evaluatedAgainst": "FreeDict eng-zho 2025.11.23 exact generated TFLex pack",
+    "positiveCoverage": [
+      {
+        "term": "dependency",
+        "observed": [
+          "依赖性"
+        ]
+      }
+    ],
+    "misleadingOrWrong": [
+      {
+        "term": "cache",
+        "observed": [
+          "快取"
+        ],
+        "reason": "not Simplified-Chinese zh-CN terminology"
+      },
+      {
+        "term": "portable",
+        "observed": [
+          "手机"
+        ],
+        "reason": "misleading for ordinary adjective fixture"
+      },
+      {
+        "term": "issue",
+        "observed": [
+          "出口"
+        ],
+        "reason": "misleading for software/ordinary issue usage"
+      },
+      {
+        "term": "commit",
+        "observed": [
+          "修改",
+          "错"
+        ],
+        "reason": "does not provide the Git/software sense 提交"
+      },
+      {
+        "term": "container",
+        "observed": [
+          "集装箱"
+        ],
+        "reason": "generic sense only; unsafe for technical context"
+      },
+      {
+        "term": "repository",
+        "observed": [
+          "保险柜"
+        ],
+        "reason": "does not provide software repository sense 仓库/代码仓库"
+      },
+      {
+        "term": "session",
+        "observed": [
+          "开会"
+        ],
+        "reason": "does not provide computing 会话 sense"
+      }
+    ],
+    "absentTechnical": [
+      "persistent",
+      "runtime",
+      "tmux",
+      "kubernetes",
+      "redis",
+      "postgresql",
+      "oauth"
+    ],
+    "rationale": "The exact release is legally packageable but does not meet the v1 English-to-Simplified-Chinese quality bar as an official optional source. Keep build/reader/lifecycle support for reproducible evaluation, but do not register a production download source for this release."
+  }
 }
