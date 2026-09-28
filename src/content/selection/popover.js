@@ -5,19 +5,21 @@
     || !app?.modules.selection
     || !app?.modules.uiHost
     || !app?.modules.uiPrimitives
+    || !app?.modules.selectionAiDetail
     || app.modules.selectionPopover
   ) return;
 
   const { refreshRect } = app.modules.selection;
   const { getLayer, ownsNode } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
+  const { create: createAiDetail } = app.modules.selectionAiDetail;
 
   let root;
   let chip;
   let panel;
   let sourceNode;
   let resultNode;
-  let aiDetailNode;
+  let aiDetail;
   let statusNode;
   let copyButton;
   let explainButton;
@@ -64,6 +66,7 @@
     resultNode = document.createElement("div");
     resultNode.className = "tf-selection-result";
     resultNode.setAttribute("aria-live", "polite");
+    aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
@@ -104,7 +107,7 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "正在检查缓存…", "loading");
-    aiDetailNode = null;
+    aiDetail?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = false;
@@ -153,7 +156,7 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, message || "翻译失败，请重试。", "error");
-    aiDetailNode = null;
+    aiDetail?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = true;
@@ -164,7 +167,7 @@
   }
 
   function renderResult(input) {
-    aiDetailNode = null;
+    aiDetail?.reset();
     resultNode.replaceChildren();
     const result = typeof input === "string"
       ? { kind: "translation", primaryMeaning: input }
@@ -253,13 +256,9 @@
       resultNode.appendChild(empty);
     }
 
-    ensureAiDetailNode();
+    aiDetail.ensure();
     if (generatedMeaning || explanation) {
-      renderAiDetail({
-        state: "success",
-        generatedMeaning,
-        explanation
-      });
+      aiDetail.success({ generatedMeaning, explanation });
     }
   }
 
@@ -268,12 +267,7 @@
     if (!resultNode || resultNode.hidden) return;
     explainHandler = null;
     explainButton.hidden = true;
-    renderAiDetail({
-      state: "loading",
-      message: "正在结合上下文解释…",
-      onCancel
-    });
-    reposition();
+    aiDetail.loading(onCancel);
   }
 
   function showAiDetailResult(result, onCopy) {
@@ -282,12 +276,7 @@
     if (typeof onCopy === "function") copyHandler = onCopy;
     explainHandler = null;
     explainButton.hidden = true;
-    renderAiDetail({
-      state: "success",
-      generatedMeaning: String(result?.generatedMeaning || "").trim(),
-      explanation: String(result?.explanation || "").trim()
-    });
-    reposition();
+    aiDetail.success(result);
   }
 
   function showAiDetailError(message, onRetry) {
@@ -295,12 +284,7 @@
     if (!resultNode || resultNode.hidden) return;
     explainHandler = null;
     explainButton.hidden = true;
-    renderAiDetail({
-      state: "error",
-      message: message || "AI 详解暂不可用。",
-      onRetry
-    });
-    reposition();
+    aiDetail.error(message, onRetry);
   }
 
   function showAiDetailCancelled(onRetry) {
@@ -308,92 +292,7 @@
     if (!resultNode || resultNode.hidden) return;
     explainHandler = null;
     explainButton.hidden = true;
-    renderAiDetail({
-      state: "cancelled",
-      message: "AI 详解已取消。",
-      onRetry
-    });
-    reposition();
-  }
-
-  function ensureAiDetailNode() {
-    if (aiDetailNode?.isConnected) return aiDetailNode;
-    aiDetailNode = document.createElement("section");
-    aiDetailNode.className = "tf-selection-generated tf-selection-ai-detail";
-    aiDetailNode.setAttribute("aria-live", "polite");
-    aiDetailNode.hidden = true;
-    resultNode.appendChild(aiDetailNode);
-    return aiDetailNode;
-  }
-
-  function renderAiDetail({
-    state = "idle",
-    message = "",
-    generatedMeaning = "",
-    explanation = "",
-    onRetry = null,
-    onCancel = null
-  } = {}) {
-    const node = ensureAiDetailNode();
-    node.replaceChildren();
-    node.hidden = state === "idle";
-    node.dataset.state = state;
-    node.setAttribute("aria-busy", state === "loading" ? "true" : "false");
-    if (node.hidden) return;
-
-    const header = document.createElement("div");
-    header.className = "tf-selection-ai-header";
-    const label = document.createElement("div");
-    label.className = "tf-selection-generated-label";
-    label.textContent = "AI 详解";
-    header.appendChild(label);
-
-    if (state === "success") {
-      const badge = document.createElement("span");
-      badge.className = "tf-selection-result-badge";
-      badge.dataset.kind = "ai";
-      badge.textContent = "AI 辅助";
-      header.appendChild(badge);
-    }
-    node.appendChild(header);
-
-    if (state === "success") {
-      if (generatedMeaning) {
-        const meaning = document.createElement("div");
-        meaning.className = "tf-selection-generated-meaning";
-        meaning.textContent = generatedMeaning;
-        node.appendChild(meaning);
-      }
-      if (explanation) {
-        const body = document.createElement("div");
-        body.className = "tf-selection-generated-body";
-        body.textContent = explanation;
-        node.appendChild(body);
-      }
-      return;
-    }
-
-    const statusNode = document.createElement("div");
-    statusNode.className = "tf-selection-ai-status";
-    statusNode.dataset.kind = state;
-    statusNode.textContent = message;
-    node.appendChild(statusNode);
-
-    if (typeof onRetry === "function" || typeof onCancel === "function") {
-      const actions = document.createElement("div");
-      actions.className = "tf-selection-ai-actions";
-      if (typeof onRetry === "function") {
-        const retry = button({ text: "重试", label: "重新请求 AI 详解" });
-        retry.addEventListener("click", () => onRetry());
-        actions.appendChild(retry);
-      }
-      if (typeof onCancel === "function") {
-        const cancel = button({ text: "取消", label: "取消 AI 详解" });
-        cancel.addEventListener("click", () => onCancel());
-        actions.appendChild(cancel);
-      }
-      node.appendChild(actions);
-    }
+    aiDetail.cancelled(onRetry);
   }
 
   function uniqueText(values) {
@@ -419,8 +318,9 @@
     chip = null;
     panel = null;
     sourceNode = null;
+    aiDetail?.reset();
     resultNode = null;
-    aiDetailNode = null;
+    aiDetail = null;
     statusNode = null;
     copyButton = null;
     explainButton = null;
