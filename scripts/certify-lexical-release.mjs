@@ -7,6 +7,7 @@ import { webcrypto } from "node:crypto";
 import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
 import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { assessLexicalLookup } from "../src/background/lexical/ranking.js";
+import { resolveSelectionRequest } from "../src/background/selection/resolve.js";
 
 const MAX_RELEASE_LEXICON_BYTES = 40 * 1024 * 1024;
 const MAX_COMBINED_CACHE_BYTES = 4 * 1024 * 1024;
@@ -30,6 +31,18 @@ export async function certifyLexicalRelease({
   const tmux = await timedLookup(gateway, "tmux", "Open tmux in the terminal and attach to the session.");
   const session = await timedLookup(gateway, "session", "A tmux session remains after the terminal closes.");
   const container = await timedLookup(gateway, "container", "Docker runs the application inside a container.");
+  const descendant = await resolveSelectionRequest({
+    text: "descendant",
+    pageUrl: "https://release.translateflow.invalid/css",
+    context: {
+      text: "The nested rule is related to the outer rule as a descendant combinator.",
+      source: "visible-local",
+      sensitive: false,
+      truncated: false
+    },
+    depth: "auto",
+    explainRequested: false
+  }, resolverDeps(gateway));
   const phrase = await gateway.lookup({ text: "runtime system" });
   const phraseMiss = await gateway.lookup({ text: "persistent session" });
   const inflection = await gateway.lookup({ text: "sessions" });
@@ -61,10 +74,24 @@ export async function certifyLexicalRelease({
     "session must expose the production Technical candidate alongside general lexical evidence",
     failures
   );
+  const containerTop = topCandidate(container.decision);
   requireCondition(
-    !(container.decision.outcome === "sufficient" &&
-      !container.decision.candidates.some((candidate) => candidate.kind === "technical-concept" || candidate.kind === "technical-entity")),
-    "technical-context container must not be declared sufficient from generic-only local evidence",
+    Boolean(containerTop) &&
+      ["technical-concept", "technical-entity"].includes(containerTop.kind) &&
+      Array.isArray(containerTop.translations) &&
+      containerTop.translations.includes("容器"),
+    "Docker container context must rank the reviewed local technical sense first",
+    failures
+  );
+  const descendantTop = topCandidate(descendant.decision);
+  requireCondition(
+    descendant.lookup?.matchedBy === "context-phrase" &&
+      descendant.lookup?.matchedPhrase === "descendant combinator" &&
+      Boolean(descendantTop) &&
+      ["technical-concept", "technical-entity"].includes(descendantTop.kind) &&
+      Array.isArray(descendantTop.translations) &&
+      (descendantTop.translations.includes("后代组合器") || descendantTop.translations.includes("后代关系")),
+    "CSS descendant combinator must recover the approved local phrase sense",
     failures
   );
   requireCondition(phrase.status === "candidates", "phrase-first release lookup must resolve runtime system", failures);
@@ -111,6 +138,13 @@ export async function certifyLexicalRelease({
       tmux: summarize(tmux),
       session: summarize(session),
       container: summarize(container),
+      descendant: {
+        route: descendant.route,
+        matchedBy: descendant.lookup?.matchedBy || null,
+        matchedPhrase: descendant.lookup?.matchedPhrase || null,
+        decision: descendant.decision?.outcome || null,
+        topCandidateId: descendant.decision?.topCandidateId || null
+      },
       phraseStatus: phrase.status,
       phraseMissStatus: phraseMiss.status,
       inflectionStatus: inflection.status,
@@ -139,6 +173,27 @@ function createReleaseGateway(readBytes) {
       })
     ]
   });
+}
+
+function resolverDeps(gateway) {
+  return {
+    getConfig: async () => ({
+      selectionExplanationDepth: "auto",
+      targetLanguage: "Simplified Chinese"
+    }),
+    getEffectiveConfig: async () => ({
+      targetLanguage: "Simplified Chinese"
+    }),
+    runLexicalLookup: (input) => gateway.lookup(input),
+    assessLexicalLookup
+  };
+}
+
+function topCandidate(decision) {
+  const candidates = Array.isArray(decision?.candidates) ? decision.candidates : [];
+  return candidates.find((candidate) => candidate.id === decision?.topCandidateId)
+    || candidates[0]
+    || null;
 }
 
 function createReadTracker(root) {
