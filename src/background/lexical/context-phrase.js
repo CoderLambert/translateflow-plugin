@@ -1,4 +1,5 @@
 import {
+  LEXICAL_RESULT_STATUS,
   normalizeLexicalKey,
   normalizeLexicalLookupForm
 } from "../../shared/lexical.js";
@@ -68,6 +69,73 @@ export function extractContextPhraseCandidates({
   }
 
   return candidates;
+}
+
+
+export async function resolveContextPhraseMatch({
+  selectionText,
+  contextText,
+  glossary = [],
+  findGlossaryOverride,
+  lookupPhrase
+} = {}) {
+  if (typeof findGlossaryOverride !== "function") {
+    throw new Error("findGlossaryOverride is required");
+  }
+  if (typeof lookupPhrase !== "function") {
+    throw new Error("lookupPhrase is required");
+  }
+
+  const phrases = extractContextPhraseCandidates({ selectionText, contextText });
+  for (const phrase of phrases) {
+    const glossaryOverride = findGlossaryOverride(phrase.text, glossary);
+    if (glossaryOverride) {
+      return {
+        phrase,
+        phraseMatchedBy: "user-glossary",
+        override: true,
+        glossaryOverride,
+        candidates: []
+      };
+    }
+
+    const candidates = await lookupPhrase(phrase.text);
+    if (!Array.isArray(candidates) || !candidates.length) continue;
+    return {
+      phrase,
+      phraseMatchedBy: candidates.every((candidate) => candidate.matchedBy === "alias")
+        ? "alias"
+        : "exact",
+      override: false,
+      glossaryOverride: null,
+      candidates
+    };
+  }
+  return null;
+}
+
+export function buildContextPhraseLookupResult({ query, match, candidates } = {}) {
+  if (!match?.phrase || !query) throw new Error("context phrase match and query are required");
+  return {
+    status: LEXICAL_RESULT_STATUS.CANDIDATES,
+    query,
+    override: match.override === true,
+    matchedBy: "context-phrase",
+    resolvedForm: match.phrase.text,
+    matchedPhrase: match.phrase.text,
+    contextPhrase: {
+      text: match.phrase.text,
+      normalized: match.phrase.normalized,
+      tokenCount: match.phrase.tokenCount,
+      spanStart: match.phrase.spanStart,
+      spanEnd: match.phrase.spanEnd,
+      selectionTokenOffset: match.phrase.selectionTokenOffset,
+      confidence: "high",
+      provenance: match.phrase.provenance,
+      matchedBy: match.phraseMatchedBy
+    },
+    candidates: Array.isArray(candidates) ? candidates : []
+  };
 }
 
 function tokenizeContext(value) {
