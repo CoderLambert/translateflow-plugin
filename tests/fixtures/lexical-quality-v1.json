@@ -88,8 +88,16 @@
         "top": {
           "translationAny": [
             "状态"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -120,8 +128,16 @@
           "translationAny": [
             "问题",
             "议题"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -136,8 +152,16 @@
           "translationAny": [
             "提交",
             "提交记录"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -151,8 +175,16 @@
         "top": {
           "translationAny": [
             "分支"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -166,8 +198,16 @@
         "top": {
           "translationAny": [
             "进程"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -183,8 +223,16 @@
             "运行",
             "运转",
             "执行"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -201,6 +249,10 @@
             "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -215,8 +267,16 @@
           "translationAny": [
             "缓存",
             "高速缓存"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -231,8 +291,16 @@
           "translationAny": [
             "仓库",
             "代码仓库"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-sense-absent",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -247,8 +315,16 @@
           "translationAny": [
             "依赖",
             "依赖项"
+          ],
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "valid-wrong-context",
+        "fixLayer": "technical-data"
       }
     },
     {
@@ -601,6 +677,10 @@
             "运转"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "sense-prior-error",
+        "fixLayer": "weak-source-prior"
       }
     },
     {
@@ -618,6 +698,10 @@
             "写成文字的"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "sense-prior-error",
+        "fixLayer": "weak-source-prior"
       }
     },
     {
@@ -761,6 +845,10 @@
             "后代关系"
           ]
         }
+      },
+      "audit": {
+        "baselineErrorClass": "phrase-data-absent",
+        "fixLayer": "technical-phrase-data"
       }
     },
     {
@@ -838,6 +926,169 @@
         "mode": "phrase-context",
         "hit": true,
         "phrase": "state management"
+      }
+    },
+    {
+      "id": "negative-branch-ordinary",
+      "group": "negative-control",
+      "query": "branch",
+      "context": "A bird landed on the tree branch.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "tree branch",
+        "top": {
+          "translationAny": ["树枝", "树叉", "分枝", "支"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "valid-wrong-context",
+        "fixLayer": "context-phrase"
+      }
+    },
+    {
+      "id": "negative-state-government",
+      "group": "negative-control",
+      "query": "state",
+      "context": "The state announced a new policy.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["国家", "州", "省", "省份"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "pos-mismatch",
+        "fixLayer": "ranking-context"
+      }
+    },
+    {
+      "id": "negative-state-material",
+      "group": "negative-control",
+      "query": "state",
+      "context": "Water changes state when it freezes.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["物质状态"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "valid-wrong-context",
+        "fixLayer": "rich-context-evidence"
+      }
+    },
+    {
+      "id": "negative-run-ordinary",
+      "group": "negative-control",
+      "query": "run",
+      "context": "She went for a five-kilometer run.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["跑", "跑步", "赛跑"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "pos-mismatch",
+        "fixLayer": "ranking-context"
+      }
+    },
+    {
+      "id": "negative-process-ordinary",
+      "group": "negative-control",
+      "query": "process",
+      "context": "The application process takes several weeks.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["过程", "程序", "手续"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "technical-ranking-lost",
+        "fixLayer": "ranking-context"
+      }
+    },
+    {
+      "id": "negative-container-ordinary",
+      "group": "negative-control",
+      "query": "container",
+      "context": "Store the food in a sealed container.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["容器", "器皿"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "core-bilingual-gap",
+        "fixLayer": "core-data"
+      }
+    },
+    {
+      "id": "negative-issue-ordinary",
+      "group": "negative-control",
+      "query": "issue",
+      "context": "This is an important social issue.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["问题", "议题", "争议中的事", "待解决的事"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "pos-mismatch",
+        "fixLayer": "ranking-context"
+      }
+    },
+    {
+      "id": "negative-commit-ordinary",
+      "group": "negative-control",
+      "query": "commit",
+      "context": "Do not commit the same mistake again.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["做错事", "犯", "犯罪"],
+          "partOfSpeechAny": ["verb"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "sense-prior-error",
+        "fixLayer": "weak-source-prior"
+      }
+    },
+    {
+      "id": "negative-descendant-ordinary",
+      "group": "negative-control",
+      "query": "descendant",
+      "context": "He is a descendant of the original family.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": ["后代", "后裔", "子孙", "后嗣"],
+          "partOfSpeechAny": ["noun"]
+        }
+      },
+      "audit": {
+        "baselineErrorClass": "core-bilingual-gap",
+        "fixLayer": "core-data"
       }
     },
     {

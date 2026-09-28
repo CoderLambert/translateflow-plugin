@@ -112,7 +112,13 @@ export function validateLexicalQualityFixture(fixture) {
   const allowedModes = new Set(["exact", "normalized", "inflection", "phrase-context", "no-hit"]);
   const requiredGroups = new Set([
     "general", "polysemy", "technical", "entity", "contrastive",
-    "normalization", "inflection", "phrase-context", "no-hit"
+    "normalization", "inflection", "phrase-context", "negative-control", "no-hit"
+  ]);
+  const allowedErrorClasses = new Set([
+    "bad-source-mapping", "core-bilingual-gap", "technical-sense-absent",
+    "valid-wrong-context", "sense-prior-error", "pos-mismatch",
+    "phrase-data-absent", "phrase-should-beat-word", "technical-ranking-lost",
+    "locale-quality"
   ]);
   const seenGroups = new Set();
   const ids = new Set();
@@ -133,6 +139,14 @@ export function validateLexicalQualityFixture(fixture) {
     }
     if (testCase.expected.mode === "phrase-context" && !testCase.expected.phrase) {
       throw new Error("expected phrase is required for case " + testCase.id);
+    }
+    if (testCase.audit !== undefined) {
+      if (!allowedErrorClasses.has(testCase.audit?.baselineErrorClass)) {
+        throw new Error("unknown baseline error class for case " + testCase.id);
+      }
+      if (typeof testCase.audit?.fixLayer !== "string" || !testCase.audit.fixLayer.trim()) {
+        throw new Error("audit fixLayer is required for case " + testCase.id);
+      }
     }
   }
   const missingGroups = [...requiredGroups].filter((group) => !seenGroups.has(group));
@@ -226,6 +240,8 @@ function evaluateCase(testCase, result, elapsedMs) {
     noHitCorrect,
     coreHit: candidates.some(isCoreCandidate),
     technicalHit: candidates.some(isTechnicalCandidate),
+    baselineErrorClass: testCase.audit?.baselineErrorClass || null,
+    fixLayer: testCase.audit?.fixLayer || null,
     elapsedMs: round(elapsedMs)
   };
 }
@@ -277,10 +293,41 @@ function summarizeMetrics(cases) {
     topExpectationCoverageMissCaseIds: topCoverageMisses.map((item) => item.id),
     ambiguousButCandidatesPresentCount: ambiguous.length,
     ambiguousButCandidatesPresentCaseIds: ambiguous.map((item) => item.id),
+    baselineErrorClasses: countBy(
+      cases.filter((item) => item.baselineErrorClass),
+      (item) => item.baselineErrorClass
+    ),
+    fixLayers: countBy(cases.filter((item) => item.fixLayer), (item) => item.fixLayer),
+    byGroup: summarizeGroupMetrics(cases),
     coreHit: metricCount(expectedHits, (item) => item.coreHit),
     technicalHit: metricCount(expectedHits, (item) => item.technicalHit),
     combinedHit: metricCount(expectedHits, (item) => item.hit)
   };
+}
+
+function summarizeGroupMetrics(cases) {
+  const result = {};
+  for (const group of [...new Set(cases.map((item) => item.group))].sort()) {
+    const selected = cases.filter((item) => item.group === group);
+    const topMeasured = selected.filter((item) => item.topCorrect !== null && item.hit);
+    const phraseMeasured = selected.filter((item) => item.phraseRecovered !== null);
+    const noHitMeasured = selected.filter((item) => item.noHitCorrect !== null);
+    result[group] = {
+      cases: selected.length,
+      hitExpectationRate: ratio(selected.filter((item) => item.hitCorrect).length, selected.length),
+      top1CorrectRate: ratio(topMeasured.filter((item) => item.topCorrect === true).length, topMeasured.length),
+      wrongSenseTop1Count: topMeasured.filter((item) => item.topCorrect === false).length,
+      phraseContextRecoveryRate: ratio(
+        phraseMeasured.filter((item) => item.phraseRecovered === true).length,
+        phraseMeasured.length
+      ),
+      trueNoHitRate: ratio(
+        noHitMeasured.filter((item) => item.noHitCorrect === true).length,
+        noHitMeasured.length
+      )
+    };
+  }
+  return result;
 }
 
 async function auditLockedSourceCoverage({ sourceRoot, expected }) {

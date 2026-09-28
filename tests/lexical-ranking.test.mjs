@@ -7,7 +7,8 @@ import {
 } from "../src/shared/lexical.js";
 import {
   LEXICAL_RANKING_POLICY_V2,
-  assessLexicalLookup
+  assessLexicalLookup,
+  rankLexicalCandidates
 } from "../src/background/lexical/ranking.js";
 import {
   evaluateLexicalRanking,
@@ -106,6 +107,99 @@ test("ranking is deterministic and does not mutate Gateway candidates", async ()
   assert.deepEqual(lookup, before);
   assert.deepEqual(first, second);
   assert.deepEqual(first.candidates.map((candidate) => candidate.id), ["technical:alpha", "technical:beta"]);
+});
+
+test("WordNet sense metadata stays a weak prior below match and structured context evidence", () => {
+  const common = {
+    kind: "lexical",
+    headword: "issue",
+    aliases: [],
+    exactCaseMatch: true,
+    translations: ["议题"],
+    domains: [],
+    provenance: { packId: "core", packVersion: "1", fingerprint: "sha256:core" }
+  };
+  const exact = { ...common, id: "core:exact", matchedBy: "exact" };
+  const normalizedWithPrior = {
+    ...common,
+    id: "core:normalized-prior",
+    matchedBy: "normalized",
+    senseNumber: 1,
+    tagCount: 999
+  };
+  const matchRanked = rankLexicalCandidates([normalizedWithPrior, exact], {
+    queryText: "issue"
+  });
+  assert.equal(matchRanked[0].id, exact.id);
+
+  const coreWithPrior = {
+    ...common,
+    id: "core:prior",
+    matchedBy: "exact",
+    senseNumber: 1,
+    tagCount: 999
+  };
+  const technical = {
+    ...common,
+    id: "technical:issue",
+    kind: "technical-concept",
+    matchedBy: "exact",
+    domains: ["repository"],
+    typeLabels: ["issue tracker concept"]
+  };
+  const contextRanked = rankLexicalCandidates([coreWithPrior, technical], {
+    queryText: "issue",
+    contextText: "Open an issue in the repository."
+  });
+  assert.equal(contextRanked[0].id, technical.id);
+  assert.ok(contextRanked[0].ranking.signals.some((item) => item.name === "technical-context"));
+  const priorPoints = coreWithPrior.senseNumber
+    ? contextRanked[1].ranking.signals
+      .filter((item) => item.name.startsWith("pwn-"))
+      .reduce((sum, item) => sum + item.points, 0)
+    : 0;
+  assert.ok(priorPoints <= 3);
+});
+
+test("technical ranking requires candidate-specific evidence and preserves ordinary controls", () => {
+  const core = {
+    id: "core:process",
+    kind: "lexical",
+    headword: "process",
+    matchedBy: "exact",
+    exactCaseMatch: true,
+    partOfSpeech: "noun",
+    senseNumber: 1,
+    tagCount: 63,
+    translations: ["过程"],
+    domains: [],
+    aliases: []
+  };
+  const technical = {
+    id: "technical:process",
+    kind: "technical-concept",
+    headword: "process",
+    matchedBy: "exact",
+    exactCaseMatch: true,
+    translations: ["进程"],
+    domains: ["linux", "runtime"],
+    typeLabels: ["operating system process"],
+    aliases: []
+  };
+
+  const ordinary = rankLexicalCandidates([technical, core], {
+    queryText: "process",
+    contextText: "The application process takes several weeks."
+  });
+  assert.equal(ordinary[0].id, core.id);
+  assert.equal(ordinary[1].ranking.signals.some((item) => item.name === "technical-context"), false);
+
+  const technicalContext = rankLexicalCandidates([core, technical], {
+    queryText: "process",
+    contextText: "The Linux process is still running."
+  });
+  assert.equal(technicalContext[0].id, technical.id);
+  assert.ok(technicalContext[0].ranking.signals.some((item) => item.name === "technical-context"));
 });
 
 test("ranking/evaluation has no Provider or network dependency", async () => {
