@@ -113,6 +113,7 @@ export function validateLexicalQualityFixture(fixture) {
     "general", "polysemy", "technical", "entity",
     "normalization", "inflection", "phrase-context", "no-hit"
   ]);
+  const seenGroups = new Set();
   const ids = new Set();
   for (const testCase of fixture.cases) {
     if (!testCase?.id || ids.has(testCase.id)) {
@@ -122,6 +123,7 @@ export function validateLexicalQualityFixture(fixture) {
     if (!testCase.group || !requiredGroups.has(testCase.group)) {
       throw new Error("unknown lexical quality group: " + String(testCase.group));
     }
+    seenGroups.add(testCase.group);
     if (!testCase.query || typeof testCase.query !== "string") {
       throw new Error("query is required for case " + testCase.id);
     }
@@ -131,10 +133,10 @@ export function validateLexicalQualityFixture(fixture) {
     if (testCase.expected.mode === "phrase-context" && !testCase.expected.phrase) {
       throw new Error("expected phrase is required for case " + testCase.id);
     }
-    requiredGroups.delete(testCase.group);
   }
-  if (requiredGroups.size) {
-    throw new Error("lexical quality corpus is missing groups: " + [...requiredGroups].join(", "));
+  const missingGroups = [...requiredGroups].filter((group) => !seenGroups.has(group));
+  if (missingGroups.length) {
+    throw new Error("lexical quality corpus is missing groups: " + missingGroups.join(", "));
   }
   return true;
 }
