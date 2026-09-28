@@ -62,11 +62,32 @@
     return Boolean(el?.closest?.(`[${EXTENSION_UI_ATTR}]`));
   }
 
+  function installInteractionIsolation(node) {
+    if (!(node instanceof EventTarget)) return;
+    for (const type of ["pointerdown", "mousedown", "click"]) {
+      node.addEventListener(type, clearPageSelection, true);
+    }
+    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click"]) {
+      node.addEventListener(type, stopInteractionPropagation);
+    }
+  }
+
+  function clearPageSelection() {
+    const selection = window.getSelection?.();
+    if (selection?.rangeCount) selection.removeAllRanges();
+  }
+
+  function stopInteractionPropagation(event) {
+    event.stopPropagation();
+  }
+
   app.modules.selection = {
     readSelection,
     isEligibleText,
     getRangeRect,
     refreshRect,
-    isExtensionOwnedNode
+    isExtensionOwnedNode,
+    installInteractionIsolation,
+    clearPageSelection
   };
 })();
