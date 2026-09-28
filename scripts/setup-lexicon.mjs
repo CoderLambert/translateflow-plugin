@@ -93,6 +93,7 @@ export async function ensureLockedSource({ source, targetPath, fetchImpl }) {
   const tempPath = targetPath + ".tmp";
   await rm(tempPath, { force: true });
   await writeFile(tempPath, bytes);
+  await rm(targetPath, { force: true });
   await rename(tempPath, targetPath);
   return targetPath;
 }
