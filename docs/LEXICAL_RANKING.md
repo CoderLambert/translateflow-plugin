@@ -24,7 +24,7 @@ Core, Technical and optional packs are never first-hit overrides. They contribut
 
 ## Ranking signals
 
-Policy version: **1**
+Policy version: **2**
 
 Base match scores:
 
@@ -59,6 +59,8 @@ Candidate-specific evidence is limited to attributable structured fields already
 - `domains[]`
 - `typeLabels[]`
 - `aliases[]`
+
+Policy v2 also carries forward the Design Freeze source audit: `container`, `cache` and `repository` are known Core technical-context gaps. If one of those queries appears in technical context and the integrated local result has no attributable Technical candidate, local evidence remains `ambiguous` even when the generic Core match is exact. This prevents a shipping-container/storehouse sense from becoming a confident technical answer; Standard/Auto may request grounded explanation while Concise avoids fabricating a technical sense.
 
 No LLM-derived feature is used.
 
@@ -97,7 +99,7 @@ The evaluator reports outcome accuracy, top-candidate accuracy, coverage and ent
 
 ### Frozen v1 baseline
 
-On corpus v1 (18 cases), the initial frozen policy baseline is:
+On corpus v1 / policy v2 (19 cases), the initial frozen policy baseline is:
 
 | Metric | Baseline |
 |---|---:|

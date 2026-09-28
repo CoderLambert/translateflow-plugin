@@ -1,0 +1,80 @@
+name: lexicon-release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/background/lexical/**"
+      - "scripts/build-tflex-*.mjs"
+      - "scripts/build-release-lexicon.mjs"
+      - "scripts/certify-lexical-release.mjs"
+      - "lexicon/**"
+      - "e2e/**"
+      - "package.json"
+      - ".github/workflows/lexicon-release.yml"
+  pull_request:
+    paths:
+      - "src/background/lexical/**"
+      - "scripts/build-tflex-*.mjs"
+      - "scripts/build-release-lexicon.mjs"
+      - "scripts/certify-lexical-release.mjs"
+      - "lexicon/**"
+      - "e2e/**"
+      - "package.json"
+      - ".github/workflows/lexicon-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout locked OMW source
+        uses: actions/checkout@v4
+        with:
+          repository: omwn/omw-data
+          ref: 406bf83b3c507a3d1f26e88252d5d66893fd36bf
+          path: .release-sources/omw-data
+          sparse-checkout: |
+            wns/eng/wn-data-eng.tab
+            wns/cow/wn-data-cmn.tab
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Build locked release lexical packs
+        run: >-
+          npm run build:lexicon:release -- 
+          --eng .release-sources/omw-data/wns/eng/wn-data-eng.tab
+          --cmn .release-sources/omw-data/wns/cow/wn-data-cmn.tab
+
+      - name: Certify real release packs
+        run: npm run certify:lexicon
+
+      - name: Validate generated release tree
+        run: npm run validate
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Chromium E2E with real release packs
+        env:
+          REQUIRE_RELEASE_LEXICON_PACKS: "1"
+        run: npm run test:e2e
+
+      - name: Upload release lexical packs
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-lexicon-packs
+          path: assets/lexicon/
+          if-no-files-found: error
+          retention-days: 7

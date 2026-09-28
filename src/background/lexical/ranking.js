@@ -21,8 +21,12 @@ const TECH_CONTEXT_MARKERS = new Set([
   "runtime", "server", "session", "terminal", "tmux"
 ]);
 
-export const LEXICAL_RANKING_POLICY_V1 = Object.freeze({
-  version: 1,
+// Design Freeze source audit found these Core terms are unsafe as a
+// sufficient technical-context answer without corroborating technical data.
+const KNOWN_TECHNICAL_SOURCE_GAPS = new Set(["cache", "container", "repository"]);
+
+export const LEXICAL_RANKING_POLICY_V2 = Object.freeze({
+  version: 2,
   scores: Object.freeze({
     exactCase: 5,
     targetTranslation: 3,
@@ -80,9 +84,24 @@ export function assessLexicalLookup(lookupResult, { contextText = "" } = {}) {
 
   const top = ranked[0];
   const second = ranked[1] || null;
+
+  if (
+    KNOWN_TECHNICAL_SOURCE_GAPS.has(normalizeLexicalKey(queryText)) &&
+    hasTechnicalContext(queryText, contextText) &&
+    !ranked.some(isTechnicalCandidate)
+  ) {
+    return decision(
+      LEXICAL_DECISION_OUTCOME.AMBIGUOUS,
+      "known-technical-source-gap",
+      lookupResult,
+      ranked,
+      second ? top.ranking.score - second.ranking.score : null
+    );
+  }
+
   if (!second) {
     const highEnough =
-      top.ranking.score >= LEXICAL_RANKING_POLICY_V1.thresholds.singleCandidate &&
+      top.ranking.score >= LEXICAL_RANKING_POLICY_V2.thresholds.singleCandidate &&
       top.matchedBy !== "token-evidence";
     return decision(
       highEnough ? LEXICAL_DECISION_OUTCOME.SUFFICIENT : LEXICAL_DECISION_OUTCOME.AMBIGUOUS,
@@ -94,8 +113,8 @@ export function assessLexicalLookup(lookupResult, { contextText = "" } = {}) {
 
   const gap = top.ranking.score - second.ranking.score;
   const decisive =
-    top.ranking.score >= LEXICAL_RANKING_POLICY_V1.thresholds.multiCandidateTop &&
-    gap >= LEXICAL_RANKING_POLICY_V1.thresholds.decisiveGap;
+    top.ranking.score >= LEXICAL_RANKING_POLICY_V2.thresholds.multiCandidateTop &&
+    gap >= LEXICAL_RANKING_POLICY_V2.thresholds.decisiveGap;
 
   return decision(
     decisive ? LEXICAL_DECISION_OUTCOME.SUFFICIENT : LEXICAL_DECISION_OUTCOME.AMBIGUOUS,
@@ -123,7 +142,7 @@ export function rankLexicalCandidates(candidates, { queryText = "", contextText 
         ...candidate,
         ranking: {
           ...ranking,
-          policyVersion: LEXICAL_RANKING_POLICY_V1.version
+          policyVersion: LEXICAL_RANKING_POLICY_V2.version
         },
         _stableIndex: index
       };
@@ -136,6 +155,17 @@ export function rankLexicalCandidates(candidates, { queryText = "", contextText 
     .map(({ _stableIndex: _ignored, ...candidate }) => candidate);
 }
 
+function hasTechnicalContext(queryText, contextText) {
+  const queryTokens = new Set(tokenize(queryText));
+  return tokenize(contextText)
+    .filter((token) => !queryTokens.has(token))
+    .some((token) => TECH_CONTEXT_MARKERS.has(token));
+}
+
+function isTechnicalCandidate(candidate) {
+  return candidate?.kind === "technical-concept" || candidate?.kind === "technical-entity";
+}
+
 function scoreCandidate(candidate, { technicalContext, contextTokenSet }) {
   const matchedBy = candidate?.matchedBy || "exact";
   let score = MATCH_SCORES[matchedBy] ?? 0;
@@ -144,19 +174,18 @@ function scoreCandidate(candidate, { technicalContext, contextTokenSet }) {
   signals.push(signal("match:" + matchedBy, MATCH_SCORES[matchedBy] ?? 0));
 
   if (candidate?.exactCaseMatch) {
-    score += LEXICAL_RANKING_POLICY_V1.scores.exactCase;
-    signals.push(signal("exact-case", LEXICAL_RANKING_POLICY_V1.scores.exactCase));
+    score += LEXICAL_RANKING_POLICY_V2.scores.exactCase;
+    signals.push(signal("exact-case", LEXICAL_RANKING_POLICY_V2.scores.exactCase));
   }
 
   if (Array.isArray(candidate?.translations) && candidate.translations.length) {
-    score += LEXICAL_RANKING_POLICY_V1.scores.targetTranslation;
-    signals.push(signal("target-translation", LEXICAL_RANKING_POLICY_V1.scores.targetTranslation));
+    score += LEXICAL_RANKING_POLICY_V2.scores.targetTranslation;
+    signals.push(signal("target-translation", LEXICAL_RANKING_POLICY_V2.scores.targetTranslation));
   }
 
-  const isTechnical = candidate?.kind === "technical-concept" || candidate?.kind === "technical-entity";
-  if (isTechnical && technicalContext) {
-    score += LEXICAL_RANKING_POLICY_V1.scores.technicalContext;
-    signals.push(signal("technical-context", LEXICAL_RANKING_POLICY_V1.scores.technicalContext));
+  if (isTechnicalCandidate(candidate) && technicalContext) {
+    score += LEXICAL_RANKING_POLICY_V2.scores.technicalContext;
+    signals.push(signal("technical-context", LEXICAL_RANKING_POLICY_V2.scores.technicalContext));
   }
 
   const evidenceTokens = candidateEvidenceTokens(candidate);
@@ -166,8 +195,8 @@ function scoreCandidate(candidate, { technicalContext, contextTokenSet }) {
   }
   if (overlap) {
     const points = Math.min(
-      overlap * LEXICAL_RANKING_POLICY_V1.scores.contextEvidencePerToken,
-      LEXICAL_RANKING_POLICY_V1.scores.maxContextEvidence
+      overlap * LEXICAL_RANKING_POLICY_V2.scores.contextEvidencePerToken,
+      LEXICAL_RANKING_POLICY_V2.scores.maxContextEvidence
     );
     score += points;
     signals.push(signal("context-evidence:" + overlap, points));

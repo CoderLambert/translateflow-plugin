@@ -3,15 +3,24 @@ import { createLexicalGateway } from "./gateway.js";
 import { readPackageBytes } from "./package-assets.js";
 import { createTflexReader } from "./tflex-reader.js";
 
-const coreReader = createTflexReader({
-  packBasePath: "assets/lexicon/core",
+const READER_OPTIONS = Object.freeze({
   readBytes: readPackageBytes,
   cacheMaxEntries: 4,
   cacheMaxBytes: 2 * 1024 * 1024
 });
 
+const coreReader = createTflexReader({
+  ...READER_OPTIONS,
+  packBasePath: "assets/lexicon/core"
+});
+
+const technicalReader = createTflexReader({
+  ...READER_OPTIONS,
+  packBasePath: "assets/lexicon/technical"
+});
+
 const gateway = createLexicalGateway({
-  packReaders: [coreReader],
+  packReaders: [coreReader, technicalReader],
   resolveGlossary: getEffectiveGlossary
 });
 

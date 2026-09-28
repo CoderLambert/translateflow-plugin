@@ -64,7 +64,63 @@ async function fetchBounded(url, maxBytes, { signal, label }) {
     });
   }
 
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  return readBoundedBody(response, maxBytes, { url, label });
+}
+
+async function readBoundedBody(response, maxBytes, { url, label }) {
+  const reader = response.body?.getReader?.();
+  if (!reader) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return validateBoundedBytes(bytes, maxBytes, { url, label });
+  }
+
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value || 0);
+      if (!chunk.byteLength) continue;
+      total += chunk.byteLength;
+      if (total > maxBytes) {
+        try { await reader.cancel("dictionary response exceeds signed size limit"); } catch {}
+        throw packError(PACK_ERROR_CODES.DOWNLOAD, `Dictionary ${label} is empty or oversized.`, {
+          url,
+          actualSize: total,
+          maxBytes
+        });
+      }
+      chunks.push(chunk);
+    }
+  } catch (error) {
+    if (error?.code === PACK_ERROR_CODES.DOWNLOAD || error?.name === "AbortError") throw error;
+    throw packError(PACK_ERROR_CODES.DOWNLOAD, `Unable to read dictionary ${label} response.`, {
+      url,
+      cause: error
+    });
+  } finally {
+    try { reader.releaseLock(); } catch {}
+  }
+
+  if (!total) {
+    throw packError(PACK_ERROR_CODES.DOWNLOAD, `Dictionary ${label} is empty or oversized.`, {
+      url,
+      actualSize: 0,
+      maxBytes
+    });
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function validateBoundedBytes(bytes, maxBytes, { url, label }) {
   if (!bytes.byteLength || bytes.byteLength > maxBytes) {
     throw packError(PACK_ERROR_CODES.DOWNLOAD, `Dictionary ${label} is empty or oversized.`, {
       url,

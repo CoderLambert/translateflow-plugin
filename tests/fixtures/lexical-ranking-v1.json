@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "policyVersion": 1,
+  "policyVersion": 2,
   "purpose": "Deterministic project-authored Selection v2 Phase B ranking/sufficiency corpus",
   "candidates": {
     "glossary-persistent": {
@@ -464,6 +464,31 @@
           }
         ]
       }
+    },
+    "core-container-general": {
+      "id": "core:container:general",
+      "kind": "lexical",
+      "headword": "container",
+      "aliases": [],
+      "matchedBy": "exact",
+      "queryForm": "container",
+      "exactCaseMatch": true,
+      "partOfSpeech": "noun",
+      "translations": [
+        "集装箱"
+      ],
+      "domains": [],
+      "provenance": {
+        "packId": "core-semantic",
+        "packVersion": "fixture",
+        "fingerprint": "sha256:core",
+        "sourceRefs": [
+          {
+            "sourceId": "pwn-3.0",
+            "recordId": "fixture-container-general"
+          }
+        ]
+      }
     }
   },
   "cases": [
@@ -499,6 +524,23 @@
       "expected": {
         "outcome": "sufficient",
         "topCandidateId": "core:persistent:a"
+      }
+    },
+    {
+      "id": "container-known-technical-gap",
+      "query": "container",
+      "context": "Docker runs the application inside a container.",
+      "lookup": {
+        "status": "candidates",
+        "override": false,
+        "matchedBy": "exact",
+        "candidateIds": [
+          "core-container-general"
+        ]
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "topCandidateId": "core:container:general"
       }
     },
     {

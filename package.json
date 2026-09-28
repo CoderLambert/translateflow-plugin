@@ -11,7 +11,9 @@
     "test:e2e": "playwright test",
     "build:tflex:core": "node scripts/build-tflex-core.mjs",
     "build:tflex:technical": "node scripts/build-tflex-technical.mjs",
-    "evaluate:lexical": "node scripts/evaluate-lexical-ranking.mjs"
+    "evaluate:lexical": "node scripts/evaluate-lexical-ranking.mjs",
+    "build:lexicon:release": "node scripts/build-release-lexicon.mjs",
+    "certify:lexicon": "node scripts/certify-lexical-release.mjs"
   },
   "engines": {
     "node": ">=18"

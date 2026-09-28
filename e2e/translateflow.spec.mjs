@@ -522,6 +522,20 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(word.candidates[0].provenance.packId).toBe("core-semantic-en-zh-runtime-fixture");
     expect(harness.server.calls).toHaveLength(0);
 
+    const tmux = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "tmux",
+      pageUrl: page.url(),
+      sourceLanguage: "en",
+      targetLanguage: "zh-CN"
+    });
+    expect(tmux.ok).toBe(true);
+    expect(tmux.status).toBe("candidates");
+    expect(tmux.candidates.some((candidate) =>
+      candidate.provenance?.packId === "technical-wikidata-en-zh"
+    )).toBe(true);
+    expect(harness.server.calls).toHaveLength(0);
+
     const phrase = await harness.runtime({
       type: "LEXICAL_LOOKUP",
       text: "terminal multiplexer",
