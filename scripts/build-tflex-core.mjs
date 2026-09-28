@@ -13,12 +13,14 @@ export const DEFAULT_MAX_SHARD_BYTES = 512 * 1024;
 
 const SOURCE_IDS = Object.freeze({
   english: "pwn-3.0",
-  chinese: "chinese-open-wordnet"
+  chinese: "chinese-open-wordnet",
+  senseIndex: "pwn-3.0-sense-index"
 });
 
 export async function compileTflexCore({
   englishPath,
   chinesePath,
+  senseIndexPath,
   sourceLockPath,
   outDir,
   maxShardBytes = DEFAULT_MAX_SHARD_BYTES
@@ -27,19 +29,22 @@ export async function compileTflexCore({
   assertSafeOutputDir(output);
   assertPositiveInteger(maxShardBytes, "maxShardBytes");
 
-  const [englishBytes, chineseBytes, sourceLockText] = await Promise.all([
+  const [englishBytes, chineseBytes, senseIndexBytes, sourceLockText] = await Promise.all([
     readFile(resolveRequiredPath(englishPath, "englishPath")),
     readFile(resolveRequiredPath(chinesePath, "chinesePath")),
+    readFile(resolveRequiredPath(senseIndexPath, "senseIndexPath")),
     readFile(resolveRequiredPath(sourceLockPath, "sourceLockPath"), "utf8")
   ]);
 
   const sourceLock = validateSourceLock(JSON.parse(sourceLockText));
   verifyLockedBytes(sourceLock.sources.find((item) => item.id === SOURCE_IDS.english), englishBytes);
   verifyLockedBytes(sourceLock.sources.find((item) => item.id === SOURCE_IDS.chinese), chineseBytes);
+  verifyLockedBytes(sourceLock.sources.find((item) => item.id === SOURCE_IDS.senseIndex), senseIndexBytes);
 
   const records = buildCoreRecords({
     englishTab: englishBytes.toString("utf8"),
-    chineseTab: chineseBytes.toString("utf8")
+    chineseTab: chineseBytes.toString("utf8"),
+    senseIndexText: senseIndexBytes.toString("utf8")
   });
   if (!records.length) throw new Error("TFLex core build produced no bilingual records");
 
@@ -158,9 +163,10 @@ export function validateSourceLock(input) {
   return { ...input, sources };
 }
 
-export function buildCoreRecords({ englishTab, chineseTab }) {
+export function buildCoreRecords({ englishTab, chineseTab, senseIndexText = "" }) {
   const english = parseOmwRows(englishTab, "lemma");
   const chinese = parseOmwRows(chineseTab, "cmn:lemma");
+  const senseIndex = parseWordNetSenseIndex(senseIndexText);
   const records = new Map();
 
   for (const [synset, englishForms] of english) {
@@ -198,15 +204,24 @@ export function buildCoreRecords({ englishTab, chineseTab }) {
       record.sourceRefs.push({ sourceId: SOURCE_IDS.english, recordId: synset });
 
       if (!record.senses.some((sense) => sense.id === "pwn3:" + synset)) {
+        const prior = sensePriorFor(senseIndex, lookupKey, synset);
+        const sourceRefs = [
+          { sourceId: SOURCE_IDS.english, recordId: synset },
+          { sourceId: SOURCE_IDS.chinese, recordId: synset }
+        ];
+        if (prior?.senseKey) {
+          sourceRefs.push({ sourceId: SOURCE_IDS.senseIndex, recordId: prior.senseKey });
+        }
         record.senses.push({
           id: "pwn3:" + synset,
           partOfSpeech: partOfSpeechFromSynset(synset),
           translations: displayTranslations,
           rawTranslations,
-          sourceRefs: [
-            { sourceId: SOURCE_IDS.english, recordId: synset },
-            { sourceId: SOURCE_IDS.chinese, recordId: synset }
-          ]
+          ...(prior ? {
+            senseNumber: prior.senseNumber,
+            tagCount: prior.tagCount
+          } : {}),
+          sourceRefs
         });
       }
     }
@@ -239,6 +254,50 @@ export function parseOmwRows(text, relation) {
   }
   for (const [synset, forms] of bySynset) bySynset.set(synset, uniqueSorted(forms));
   return bySynset;
+}
+
+export function parseWordNetSenseIndex(text) {
+  const result = new Map();
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const fields = line.split(/\s+/);
+    if (fields.length !== 4) throw new Error("invalid WordNet index.sense row");
+    const [senseKey, offset, senseNumberText, tagCountText] = fields;
+    const match = senseKey.match(/^(.+)%([1-5]):/);
+    if (!match || !/^[0-9]{8}$/.test(offset)) {
+      throw new Error("invalid WordNet index.sense key");
+    }
+    const senseNumber = Number(senseNumberText);
+    const tagCount = Number(tagCountText);
+    if (!Number.isSafeInteger(senseNumber) || senseNumber <= 0) {
+      throw new Error("invalid WordNet sense number");
+    }
+    if (!Number.isSafeInteger(tagCount) || tagCount < 0) {
+      throw new Error("invalid WordNet tag count");
+    }
+    const lemma = normalizeLookupKey(match[1].replaceAll("_", " "));
+    const pos = { "1": "n", "2": "v", "3": "a", "4": "r", "5": "a" }[match[2]];
+    const key = lemma + "\u0000" + offset + "-" + pos;
+    const previous = result.get(key);
+    const item = { senseKey, senseNumber, tagCount };
+    if (
+      !previous ||
+      senseNumber < previous.senseNumber ||
+      (senseNumber === previous.senseNumber && tagCount > previous.tagCount)
+    ) {
+      result.set(key, item);
+    }
+  }
+  return result;
+}
+
+function sensePriorFor(index, lookupKey, synset) {
+  if (!(index instanceof Map) || !index.size) return null;
+  const canonical = String(synset || "").endsWith("-s")
+    ? String(synset).slice(0, -1) + "a"
+    : String(synset);
+  return index.get(lookupKey + "\u0000" + canonical) || null;
 }
 
 export function normalizeExactLookupKey(value) {
@@ -294,6 +353,12 @@ export function validateCoreRecords(records) {
       for (const translation of sense.translations) {
         requireNonEmptyString(translation, "sense translation");
         assertDataOnlyString(translation, "sense translation");
+      }
+      if (sense.senseNumber !== undefined && (!Number.isSafeInteger(sense.senseNumber) || sense.senseNumber <= 0)) {
+        throw new Error("invalid senseNumber: " + sense.id);
+      }
+      if (sense.tagCount !== undefined && (!Number.isSafeInteger(sense.tagCount) || sense.tagCount < 0)) {
+        throw new Error("invalid tagCount: " + sense.id);
       }
       if (!Array.isArray(sense.sourceRefs) || !sense.sourceRefs.length) throw new Error("sense sourceRefs are required: " + sense.id);
     }
@@ -647,6 +712,7 @@ async function main() {
   const result = await compileTflexCore({
     englishPath: args.eng,
     chinesePath: args.cmn,
+    senseIndexPath: args["sense-index"],
     sourceLockPath: args["source-lock"],
     outDir: args.out,
     maxShardBytes: args["max-shard-bytes"] ? Number(args["max-shard-bytes"]) : DEFAULT_MAX_SHARD_BYTES
