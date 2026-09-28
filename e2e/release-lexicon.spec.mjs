@@ -62,5 +62,16 @@ test("production extension resolves the built Core and Technical packs without P
   expect((await lookup("sessions")).status).toBe("candidates");
   expect((await lookup("persistent", { sourceLanguage: "ja" })).status).toBe("unsupported");
   expect(harness.server.calls).toHaveLength(0);
+
+  const settings = await harness.context.newPage();
+  await settings.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+  await expect(settings.locator("#bundledLexiconList .site-row")).toHaveCount(2);
+  await expect(settings.locator("#bundledLexiconList")).toContainText("Core Semantic");
+  await expect(settings.locator("#bundledLexiconList")).toContainText("Technical Concepts");
+  await expect(settings.locator("#bundledLexiconList")).toContainText("已就绪");
+  await expect(settings.locator("#dictionaryPacksList")).toContainText("当前版本没有通过产品质量门");
+  await settings.close();
+
+  expect(harness.server.calls).toHaveLength(0);
   await page.close();
 });
