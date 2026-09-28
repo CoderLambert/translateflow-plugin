@@ -21,12 +21,13 @@ export function parseFreeDictTeiHeader(teiText) {
     /<respStmt\b[^>]*>[\s\S]*?<resp\b[^>]*>\s*Maintainer\s*<\/resp>[\s\S]*?<name\b[^>]*>([\s\S]*?)<\/name>[\s\S]*?<\/respStmt>/i,
     "maintainer"
   );
-  const availability = matchText(
-    header,
-    /<availability\b[^>]*>([\s\S]*?)<\/availability>/i,
-    "availability"
+  const availabilityMatch = header.match(
+    /<availability\b[^>]*>([\s\S]*?)<\/availability>/i
   );
-  const licenseRef = availability.match(/<ref\b[^>]*\btarget=["']([^"']+)["'][^>]*>([\s\S]*?)<\/ref>/i);
+  if (!availabilityMatch) throw new Error("FreeDict TEI availability is missing");
+  const licenseRef = availabilityMatch[1].match(
+    /<ref\b[^>]*\btarget=["']([^"']+)["'][^>]*>([\s\S]*?)<\/ref>/i
+  );
   if (!licenseRef) throw new Error("FreeDict TEI license reference is missing");
   const publicationDate = matchText(
     header,
