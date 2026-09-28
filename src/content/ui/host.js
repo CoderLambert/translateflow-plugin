@@ -6,7 +6,8 @@
   const { css } = app.modules.uiTokens;
   const featureCss = [
     app.modules.uiQuickControlStyles?.css,
-    app.modules.uiSelectionAiDetailStyles?.css
+    app.modules.uiSelectionAiDetailStyles?.css,
+    app.modules.uiSelectionEmptyStateStyles?.css
   ].filter(Boolean).join("\n");
   let host;
   let shadow;
