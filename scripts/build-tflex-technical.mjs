@@ -15,21 +15,12 @@ import {
   stableStringify
 } from "./build-tflex-core.mjs";
 import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
-import {
-  isReviewedTechnicalRecord,
-  loadReviewedTechnicalTerms,
-  mergeReviewedTechnicalRecords,
-  reviewedTechnicalManifestSource,
-  reviewedTechnicalNotice
-} from "./reviewed-tech-terms.mjs";
 
 const SOURCE_ID = "wikidata";
 
 export async function compileTflexTechnical({
   extractPath,
   sourceLockPath,
-  reviewedTermsPath = resolve("lexicon/sources/reviewed-tech-terms.json"),
-  reviewedSourceLockPath = resolve("lexicon/source-locks/technical-reviewed-terms.json"),
   outDir,
   maxShardBytes = DEFAULT_MAX_SHARD_BYTES
 }) {
@@ -44,17 +35,9 @@ export async function compileTflexTechnical({
   verifyLockedExtract(lock, extractBytes);
 
   const extract = validateTechnicalExtract(JSON.parse(extractBytes.toString("utf8")));
-  const reviewed = await loadReviewedTechnicalTerms({
-    extractPath: reviewedTermsPath,
-    sourceLockPath: reviewedSourceLockPath
-  });
-  const records = mergeReviewedTechnicalRecords(
-    buildTechnicalRecords(extract, lock.policy, lock.entities),
-    reviewed.records,
-    reviewed.lock.policy
-  );
+  const records = buildTechnicalRecords(extract, lock.policy, lock.entities);
   if (!records.length) throw new Error("technical pack build produced no approved records");
-  const aliases = buildTechnicalAliasIndex(records, lock.policy, reviewed.lock.policy);
+  const aliases = buildTechnicalAliasIndex(records, lock.policy);
 
   await prepareOutputDir(output);
   const shards = await writeShards(output, records, maxShardBytes);
@@ -68,7 +51,7 @@ export async function compileTflexTechnical({
   const directoryText = stableStringify(directory) + "\n";
   await writeTextFile(output, "directory.json", directoryText);
 
-  const noticesText = buildWikidataNotice(lock) + reviewedTechnicalNotice(reviewed.lock);
+  const noticesText = buildNotice(lock);
   await writeTextFile(output, "THIRD_PARTY_NOTICES.txt", noticesText);
 
   const files = [
@@ -89,8 +72,7 @@ export async function compileTflexTechnical({
       name: lock.source.license.name,
       source: lock.source.license.source
     }
-  }, reviewedTechnicalManifestSource(reviewed.lock)]
-    .sort((a, b) => compareText(a.id, b.id));
+  }];
 
   const fingerprintPayload = makeFingerprintPayload({
     formatVersion: TFLEX_FORMAT_VERSION,
@@ -247,47 +229,23 @@ export function buildTechnicalRecords(extract, policy, lockedEntities = []) {
     .map(({ _aliasPolicy: _hidden, ...record }) => record);
 }
 
-export function buildTechnicalAliasIndex(records, policy, reviewedPolicy = null) {
-  const wikidataCaseSensitive = new Set(policy.caseSensitiveAliases.map(normalizeExactLookupKey));
-  const reviewedCaseSensitive = new Set(
-    (reviewedPolicy?.caseSensitiveAliases || []).map(normalizeExactLookupKey)
-  );
-  const canonicalKeys = new Set(records.map((record) => record.lookupKey));
-  const reviewedCanonicalKeys = new Set(
-    records.filter(isReviewedTechnicalRecord).map((record) => record.lookupKey)
-  );
+export function buildTechnicalAliasIndex(records, policy) {
+  const caseSensitive = new Set(policy.caseSensitiveAliases.map(normalizeExactLookupKey));
   const index = new Map();
 
   for (const record of records) {
-    const reviewed = isReviewedTechnicalRecord(record);
-    if (reviewed && !reviewedPolicy) {
-      throw new Error("reviewed technical alias policy is required");
-    }
-    const caseSensitive = reviewed ? reviewedCaseSensitive : wikidataCaseSensitive;
     for (const alias of record.aliases || []) {
       const exact = normalizeExactLookupKey(alias);
       const key = normalizeLookupKey(exact);
       if (!key || key === record.lookupKey) continue;
-      if (canonicalKeys.has(key) && (reviewed || reviewedCanonicalKeys.has(key))) {
-        throw new Error("reviewed alias collides with a technical headword: " + key);
-      }
       const sensitive = caseSensitive.has(exact);
       let entry = index.get(key);
       if (!entry) {
-        entry = {
-          key,
-          caseSensitive: sensitive,
-          exactLookupKeys: new Set(),
-          targets: new Set(),
-          hasReviewedSource: reviewed
-        };
+        entry = { key, caseSensitive: sensitive, exactLookupKeys: new Set(), targets: new Set() };
         index.set(key, entry);
       } else if (entry.caseSensitive !== sensitive) {
         throw new Error("mixed case-sensitivity policy for alias: " + key);
-      } else if ((reviewed || entry.hasReviewedSource) && !entry.targets.has(record.lookupKey)) {
-        throw new Error("reviewed alias collides across technical records: " + key);
       }
-      entry.hasReviewedSource ||= reviewed;
       entry.exactLookupKeys.add(exact);
       entry.targets.add(record.lookupKey);
     }
@@ -425,7 +383,7 @@ function makeFingerprintPayload({ formatVersion, normalizationVersion, packId, p
   };
 }
 
-function buildWikidataNotice(lock) {
+function buildNotice(lock) {
   return [
     "=== Wikidata structured data ===",
     "Source extract: " + lock.source.extractPath,
@@ -524,8 +482,6 @@ async function main() {
   const result = await compileTflexTechnical({
     extractPath: args.extract,
     sourceLockPath: args["source-lock"],
-    reviewedTermsPath: args.reviewed || resolve("lexicon/sources/reviewed-tech-terms.json"),
-    reviewedSourceLockPath: args["reviewed-source-lock"] || resolve("lexicon/source-locks/technical-reviewed-terms.json"),
     outDir: args.out,
     maxShardBytes: args["max-shard-bytes"] ? Number(args["max-shard-bytes"]) : DEFAULT_MAX_SHARD_BYTES
   });
