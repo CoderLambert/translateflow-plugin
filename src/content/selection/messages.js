@@ -22,12 +22,5 @@
     return "暂时无法确定该选段的含义。";
   }
 
-  function hasDictionaryDiagnostic(resolved) {
-    return resolved?.routeReason === "local-error";
-  }
-
-  app.modules.selectionMessages = Object.freeze({
-    unresolvedMessage,
-    hasDictionaryDiagnostic
-  });
+  app.modules.selectionMessages = Object.freeze({ unresolvedMessage });
 })();
