@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "formatVersion": 1,
+  "readerMinVersion": 1,
+  "normalizationVersion": 1,
+  "packId": "freedict-eng-zho",
+  "packVersion": "2025.11.23",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "source": {
+    "id": "freedict-eng-zho",
+    "dictionary": "eng-zho",
+    "edition": "2025.11.23",
+    "url": "https://download.freedict.org/dictionaries/eng-zho/2025.11.23/freedict-eng-zho-2025.11.23.src.tar.xz",
+    "archiveSha512": "25aed0f1d7de68919aa9da1ba92d67f566ae4ea81660f42071c81fc21e56d4b210d61df379315678648c45ca7e52c4a0ba2eec009fbaab7c72e7472489e1fc4c",
+    "archiveSizeBytes": 1600448,
+    "tei": {
+      "filename": "eng-zho.tei",
+      "sha256": "76e15cbc8497b479ebd3834259d52366f051e16eca44c3b50fced7a78f191fb3",
+      "sizeBytes": 13913829,
+      "title": "English-中文 (Zhōngwén) FreeDict+WikDict dictionary",
+      "edition": "2025.11.23",
+      "publicationDate": "2025-11-23",
+      "headwords": 26660,
+      "publisher": "Karl Bartel",
+      "maintainer": "Karl Bartel",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/legalcode",
+      "licenseName": "Creative Commons Attribution-ShareAlike 3.0 Unported",
+      "sourceDescription": "Automatic creation of this bilingual dictionary by WikDict . Base data from Wiktionary.org via DBnary ."
+    },
+    "copying": {
+      "filename": "COPYING",
+      "sha256": "41a8f57655bae359bea4a7e99c7a2aed171687d3dfb49614214538ba6dcbe75b",
+      "sizeBytes": 22459
+    }
+  },
+  "provenance": {
+    "generator": "WikDict / wikdict-gen",
+    "generatorRepository": "https://github.com/karlb/wikdict-gen",
+    "corroboratingGeneratorCommit": "f30228da482e74b06956ef55dcf23ae2757f9812",
+    "baseData": "Wiktionary via DBnary",
+    "freeDictImporterRepository": "https://github.com/freedict/tools",
+    "freeDictImporterPath": "importers/wikdict/import_wikdict.py"
+  },
+  "license": {
+    "id": "CC-BY-SA-3.0",
+    "name": "Creative Commons Attribution-ShareAlike 3.0 Unported",
+    "source": "https://creativecommons.org/licenses/by-sa/3.0/legalcode",
+    "adaptationLicense": "CC-BY-SA-3.0",
+    "notice": "The optional TFLex pack is an adapted data distribution of FreeDict eng-zho / WikDict data. Preserve source attribution, the CC BY-SA 3.0 license notice and modification records. TranslateFlow extension code remains separately licensed.",
+    "licenseGatePassed": true
+  },
+  "modificationPolicy": {
+    "retain": [
+      "headword",
+      "part-of-speech",
+      "direct Chinese translations",
+      "inflected-form aliases",
+      "source provenance"
+    ],
+    "recordOmissions": [
+      "pronunciation",
+      "grammatical gender",
+      "nested source-language gloss text",
+      "FreeDict presentation/build files not required by the TFLex runtime"
+    ],
+    "semanticRewriting": false
+  }
+}

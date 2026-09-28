@@ -1,0 +1,100 @@
+name: freedict-source-audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/freedict-source-audit.yml"
+      - "scripts/audit-freedict-source.mjs"
+      - "tests/freedict-source-audit.test.mjs"
+      - "lexicon/source-locks/freedict-eng-zho.json"
+      - "lexicon/quality-decisions/freedict-eng-zho-2025.11.23.json"
+      - "scripts/build-tflex-freedict.mjs"
+      - "tests/tflex-freedict-builder.test.mjs"
+      - "tests/freedict-source-lock.test.mjs"
+      - "scripts/certify-freedict-pack.mjs"
+      - "scripts/evaluate-freedict-quality.mjs"
+      - "tests/freedict-product-gate.test.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run deterministic FreeDict gate tests
+        run: node --test tests/freedict-source-audit.test.mjs tests/freedict-source-lock.test.mjs tests/freedict-product-gate.test.mjs tests/tflex-freedict-builder.test.mjs
+      - name: Download exact FreeDict source archive
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/freedict-eng-zho.src.tar.xz \
+            'https://download.freedict.org/dictionaries/eng-zho/2025.11.23/freedict-eng-zho-2025.11.23.src.tar.xz'
+      - name: Extract exact source archive
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/freedict-eng-zho-src
+          mkdir -p /tmp/freedict-eng-zho-src
+          tar -xJf /tmp/freedict-eng-zho.src.tar.xz -C /tmp/freedict-eng-zho-src
+          mapfile -t TEI_FILES < <(find /tmp/freedict-eng-zho-src -type f -name 'eng-zho.tei' -print)
+          mapfile -t COPYING_FILES < <(find /tmp/freedict-eng-zho-src -type f -name 'COPYING' -print)
+          test "${#TEI_FILES[@]}" -eq 1
+          test "${#COPYING_FILES[@]}" -eq 1
+          printf '%s\n' "${TEI_FILES[0]}" > /tmp/freedict-tei-path
+          printf '%s\n' "${COPYING_FILES[0]}" > /tmp/freedict-copying-path
+      - name: Audit exact TEI header, archive and license
+        run: |
+          set -euo pipefail
+          node scripts/audit-freedict-source.mjs \
+            --archive /tmp/freedict-eng-zho.src.tar.xz \
+            --tei "$(cat /tmp/freedict-tei-path)" \
+            --copying "$(cat /tmp/freedict-copying-path)" \
+            --lock lexicon/source-locks/freedict-eng-zho.json \
+            --out /tmp/freedict-source-audit.json
+      - name: Build exact FreeDict evaluation TFLex pack
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/freedict-tflex
+          node scripts/build-tflex-freedict.mjs \
+            --archive /tmp/freedict-eng-zho.src.tar.xz \
+            --tei "$(cat /tmp/freedict-tei-path)" \
+            --copying "$(cat /tmp/freedict-copying-path)" \
+            --source-lock lexicon/source-locks/freedict-eng-zho.json \
+            --out /tmp/freedict-tflex
+          du -ah /tmp/freedict-tflex
+      - name: Certify representative real-pack lookup
+        run: |
+          set -euo pipefail
+          node scripts/certify-freedict-pack.mjs \
+            --pack /tmp/freedict-tflex \
+            --out /tmp/freedict-pack-certification.json
+      - name: Evaluate exact FreeDict semantic quality
+        run: |
+          set -euo pipefail
+          node scripts/evaluate-freedict-quality.mjs \
+            --pack /tmp/freedict-tflex \
+            --decision lexicon/quality-decisions/freedict-eng-zho-2025.11.23.json \
+            --out /tmp/freedict-quality-decision.json
+      - name: Upload exact source and quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freedict-eng-zho-audit-evidence
+          path: |
+            /tmp/freedict-source-audit.json
+            /tmp/freedict-pack-certification.json
+            /tmp/freedict-quality-decision.json
+          if-no-files-found: warn
+      - name: Upload FreeDict evaluation TFLex pack
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freedict-eng-zho-evaluation-tflex
+          path: /tmp/freedict-tflex
+          if-no-files-found: warn
