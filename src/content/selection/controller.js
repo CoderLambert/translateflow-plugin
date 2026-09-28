@@ -111,7 +111,13 @@
         const card = buildLocalResult(resolved);
         if (!card?.primaryMeaning) throw new Error("本地词典没有可展示结果。");
         tasks.completeTask(task, { done: 1 });
-        showResult(snapshot, card, copyTextForCard(card), "结果已复制");
+        showResult(
+          snapshot,
+          card,
+          copyTextForCard(card),
+          "结果已复制",
+          resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth) : null
+        );
         return;
       }
 
@@ -120,16 +126,12 @@
         return;
       }
 
-      if (resolved.route === "needs-explanation") {
-        await explainSelection(snapshot, task, version, expectedPage, selectionContext, resolved.depth);
-        return;
-      }
-
       tasks.completeTask(task, { done: 1 });
       popover.showError(
         snapshot,
         unresolvedMessage(resolved),
-        () => translateSnapshot(snapshot)
+        () => translateSnapshot(snapshot),
+        resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth) : null
       );
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
@@ -141,6 +143,41 @@
         snapshot,
         cancelled ? "翻译已取消。" : failureMessage(error, resolved),
         () => translateSnapshot(snapshot)
+      );
+    }
+  }
+
+  async function explainSnapshot(snapshot, depth) {
+    if (!snapshot || snapshot !== activeSnapshot) return;
+
+    if (activeTask && !tasks.isTerminal(activeTask)) {
+      await tasks.cancelTask(activeTask);
+    }
+
+    const task = tasks.createTask({
+      surface: "selection",
+      pageUrl: snapshot.pageUrl,
+      total: 1
+    });
+    activeTask = task;
+
+    const version = ++requestVersion;
+    const expectedPage = getPageIdentity(snapshot.pageUrl);
+    const context = captureSelectionContext(snapshot);
+    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+
+    try {
+      await explainSelection(snapshot, task, version, expectedPage, context, depth);
+    } catch (error) {
+      if (error?.name === "SelectionSupersededError") return;
+      tasks.failTask(task, error);
+      if (snapshot !== activeSnapshot) return;
+
+      const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
+      popover.showError(
+        snapshot,
+        cancelled ? "AI 详解已取消。" : `AI 详解失败：${error?.message || error}`,
+        () => explainSnapshot(snapshot, depth)
       );
     }
   }
@@ -237,11 +274,11 @@
   }
 
   function unresolvedMessage(resolved) {
-    if (resolved?.routeReason === "ambiguous-concise") {
-      return "本地词典存在多个可能含义；精简模式不会调用 AI。";
+    if (resolved?.routeReason === "no-hit-local") {
+      return "本地词典未找到可靠结果；如需进一步判断，可点击“AI 详解”。";
     }
-    if (resolved?.routeReason === "no-hit-concise") {
-      return "本地词典未找到可靠结果；精简模式不会调用 AI。";
+    if (resolved?.routeReason === "ambiguous-local-unresolved") {
+      return "本地词典无法确定可靠候选；如需进一步判断，可点击“AI 详解”。";
     }
     if (resolved?.routeReason === "local-error") {
       const code = resolved?.decision?.error?.code || "";
@@ -259,18 +296,11 @@
     return "暂时无法确定该选段的含义。";
   }
 
-  function failureMessage(error, resolved) {
-    const detail = error?.message || String(error);
-    if (resolved?.routeReason === "no-hit-needs-explanation") {
-      return `本地词典未找到可靠结果，且 AI 辅助暂不可用：${detail}`;
-    }
-    if (resolved?.routeReason === "ambiguous-needs-explanation") {
-      return `本地词典存在多个候选含义，且 AI 辅助暂不可用：${detail}`;
-    }
-    return detail;
+  function failureMessage(error) {
+    return error?.message || String(error);
   }
 
-  function showResult(snapshot, card, copyText, copiedMessage) {
+  function showResult(snapshot, card, copyText, copiedMessage, onExplain = null) {
     popover.showResult(snapshot, card, async () => {
       try {
         await copyTextValue(copyText);
@@ -278,7 +308,7 @@
       } catch (error) {
         showToast("复制失败：" + (error?.message || error), "error");
       }
-    });
+    }, onExplain);
   }
 
   function assertCurrent(version, snapshot, expectedPage, task) {
