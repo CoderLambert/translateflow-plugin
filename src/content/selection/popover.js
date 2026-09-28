@@ -51,7 +51,6 @@
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
     panel.setAttribute("aria-modal", "false");
     installInteractionIsolation(panel);
-
     const header = document.createElement("div");
     header.className = "tf-selection-header";
     const title = document.createElement("strong");
