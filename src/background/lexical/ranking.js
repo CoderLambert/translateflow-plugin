@@ -39,9 +39,9 @@ export const LEXICAL_RANKING_POLICY_V2 = Object.freeze({
     technicalContext: 14,
     contextEvidencePerToken: 5,
     maxContextEvidence: 15,
-    senseRankMax: 8,
-    senseRankStep: 2,
-    senseTagMax: 10
+    senseRankMax: 4,
+    senseRankStep: 1,
+    senseTagMax: 4
   }),
   thresholds: Object.freeze({
     singleCandidate: 55,
