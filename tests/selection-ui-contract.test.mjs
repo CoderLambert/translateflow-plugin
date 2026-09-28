@@ -23,19 +23,40 @@ test("Selection settings expose all explanation-depth modes and license path", a
 });
 
 test("Selection popover keeps a non-modal structured result region", async () => {
-  const [popover, tokens] = await Promise.all([
+  const [popover, tokens, aiStyles] = await Promise.all([
     source("src/content/selection/popover.js"),
-    source("src/content/ui/tokens.js")
+    source("src/content/ui/tokens.js"),
+    source("src/content/ui/selection-ai-detail-styles.js")
   ]);
 
   assert.match(popover, /aria-modal", "false"/);
   assert.match(popover, /tf-selection-result-badge/);
-  assert.match(popover, /tf-selection-generated/);
+  assert.match(popover, /showAiDetailResult/);
   assert.match(popover, /AI 详解/);
   assert.match(popover, /function reposition\(\)/);
   assert.match(tokens, /\.tf-selection-panel[\s\S]*max-height:[^;]+;/);
   assert.match(tokens, /\.tf-selection-result[\s\S]*overflow:\s*auto;/);
   assert.match(tokens, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(aiStyles, /\.tf-selection-ai-detail/);
+  assert.match(aiStyles, /\.tf-selection-ai-actions/);
+});
+
+test("Selection AI detail preserves the local card across loading, failure and cancellation", async () => {
+  const [controller, popover, aiDetail] = await Promise.all([
+    source("src/content/selection/controller.js"),
+    source("src/content/selection/popover.js"),
+    source("src/content/selection/ai-detail.js")
+  ]);
+
+  assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card\)/);
+  assert.match(controller, /popover\.showAiDetailLoading/);
+  assert.match(controller, /popover\.showAiDetailError/);
+  assert.match(controller, /popover\.showAiDetailCancelled/);
+  assert.match(controller, /isCurrentSelection\(version, snapshot, expectedPage\)/);
+  assert.match(popover, /showAiDetailResult/);
+  assert.match(aiDetail, /aria-busy/);
+  assert.match(aiDetail, /重新请求 AI 详解/);
+  assert.match(aiDetail, /取消 AI 详解/);
 });
 
 test("Selection result model separates local provenance and AI explanation", async () => {

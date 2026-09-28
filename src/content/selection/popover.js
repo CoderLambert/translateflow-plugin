@@ -5,18 +5,21 @@
     || !app?.modules.selection
     || !app?.modules.uiHost
     || !app?.modules.uiPrimitives
+    || !app?.modules.selectionAiDetail
     || app.modules.selectionPopover
   ) return;
 
   const { refreshRect } = app.modules.selection;
   const { getLayer, ownsNode } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
+  const { create: createAiDetail } = app.modules.selectionAiDetail;
 
   let root;
   let chip;
   let panel;
   let sourceNode;
   let resultNode;
+  let aiDetail;
   let statusNode;
   let copyButton;
   let explainButton;
@@ -63,6 +66,7 @@
     resultNode = document.createElement("div");
     resultNode.className = "tf-selection-result";
     resultNode.setAttribute("aria-live", "polite");
+    aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
@@ -103,6 +107,7 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "正在检查缓存…", "loading");
+    aiDetail?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = false;
@@ -151,6 +156,7 @@
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, message || "翻译失败，请重试。", "error");
+    aiDetail?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = true;
@@ -161,6 +167,7 @@
   }
 
   function renderResult(input) {
+    aiDetail?.reset();
     resultNode.replaceChildren();
     const result = typeof input === "string"
       ? { kind: "translation", primaryMeaning: input }
@@ -241,34 +248,51 @@
 
     const generatedMeaning = String(result.generatedMeaning || "").trim();
     const explanation = String(result.explanation || "").trim();
-    if (generatedMeaning || explanation) {
-      const generated = document.createElement("section");
-      generated.className = "tf-selection-generated";
-      const label = document.createElement("div");
-      label.className = "tf-selection-generated-label";
-      label.textContent = "这里的意思";
-      generated.appendChild(label);
-      if (generatedMeaning) {
-        const meaning = document.createElement("div");
-        meaning.className = "tf-selection-generated-meaning";
-        meaning.textContent = generatedMeaning;
-        generated.appendChild(meaning);
-      }
-      if (explanation) {
-        const body = document.createElement("div");
-        body.className = "tf-selection-generated-body";
-        body.textContent = explanation;
-        generated.appendChild(body);
-      }
-      resultNode.appendChild(generated);
-    }
 
-    if (!resultNode.childElementCount) {
+    if (!resultNode.childElementCount && !generatedMeaning && !explanation) {
       const empty = document.createElement("div");
       empty.className = "tf-selection-primary";
       empty.textContent = "暂无可展示结果。";
       resultNode.appendChild(empty);
     }
+
+    aiDetail.ensure();
+    if (generatedMeaning || explanation) {
+      aiDetail.success({ generatedMeaning, explanation });
+    }
+  }
+
+  function showAiDetailLoading(onCancel) {
+    ensureUi();
+    if (!resultNode || resultNode.hidden) return;
+    explainHandler = null;
+    explainButton.hidden = true;
+    aiDetail.loading(onCancel);
+  }
+
+  function showAiDetailResult(result, onCopy) {
+    ensureUi();
+    if (!resultNode || resultNode.hidden) return;
+    if (typeof onCopy === "function") copyHandler = onCopy;
+    explainHandler = null;
+    explainButton.hidden = true;
+    aiDetail.success(result);
+  }
+
+  function showAiDetailError(message, onRetry) {
+    ensureUi();
+    if (!resultNode || resultNode.hidden) return;
+    explainHandler = null;
+    explainButton.hidden = true;
+    aiDetail.error(message, onRetry);
+  }
+
+  function showAiDetailCancelled(onRetry) {
+    ensureUi();
+    if (!resultNode || resultNode.hidden) return;
+    explainHandler = null;
+    explainButton.hidden = true;
+    aiDetail.cancelled(onRetry);
   }
 
   function uniqueText(values) {
@@ -294,7 +318,9 @@
     chip = null;
     panel = null;
     sourceNode = null;
+    aiDetail?.reset();
     resultNode = null;
+    aiDetail = null;
     statusNode = null;
     copyButton = null;
     explainButton = null;
@@ -356,6 +382,10 @@
     setLoadingStatus,
     showResult,
     showError,
+    showAiDetailLoading,
+    showAiDetailResult,
+    showAiDetailError,
+    showAiDetailCancelled,
     hide,
     setCloseHandler,
     contains,
