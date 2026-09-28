@@ -6,7 +6,7 @@
   "scripts": {
     "check": "node scripts/check.mjs",
     "test": "node --test tests/*.test.mjs",
-    "validate": "npm run check && npm test",
+    "validate": "npm run check && npm test && npm run build:extension",
     "benchmark:translation": "node scripts/benchmark-translation.mjs",
     "test:e2e": "playwright test",
     "build:tflex:core": "node scripts/build-tflex-core.mjs",
@@ -16,7 +16,9 @@
     "certify:lexicon": "node scripts/certify-lexical-release.mjs",
     "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs",
     "setup:lexicon": "node scripts/setup-lexicon.mjs",
-    "benchmark:lexical": "node scripts/benchmark-lexical-quality.mjs"
+    "benchmark:lexical": "node scripts/benchmark-lexical-quality.mjs",
+    "build:extension": "node scripts/build-extension.mjs",
+    "build:extension:release": "node scripts/build-extension.mjs --require-lexicon"
   },
   "engines": {
     "node": ">=18"
