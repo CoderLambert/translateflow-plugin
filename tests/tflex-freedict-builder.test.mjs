@@ -121,12 +121,7 @@ async function fixture(name, { licenseVersion = "3.0" } = {}) {
       retain: ["headword", "part-of-speech", "direct Chinese translations", "inflected-form aliases", "source provenance"],
       recordOmissions: ["pronunciation", "grammatical gender"],
       semanticRewriting: false
-    },
-    qualityDecision: {
-      status: "no-ship",
-      approvedForProductDistribution: false
-    },
-    qualityRole: "research-only-no-ship"
+    }
   };
   await Promise.all([
     writeFile(archivePath, archive),
@@ -157,6 +152,7 @@ test("FreeDict compiler emits deterministic opfs-indexed TFLex with separate lic
   const second = await build("b");
   assert.deepEqual(await snapshot(first.outDir), await snapshot(second.outDir));
   assert.equal(first.result.manifest.profile, "opfs-indexed-v1");
+  assert.equal(first.result.manifest.distributionStatus, "evaluation-only");
   assert.equal(first.result.manifest.license.id, "CC-BY-SA-3.0");
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.ok(first.result.manifest.files.some((file) => file.path === "LICENSE_CC_BY_SA_3.0.txt"));
