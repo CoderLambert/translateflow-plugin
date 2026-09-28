@@ -49,6 +49,7 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
   const lookup = await lexicalLookup({
     text,
     pageUrl,
+    contextText: context.text,
     sourceLanguage: intent.sourceLanguage,
     targetLanguage: "zh-CN"
   });
