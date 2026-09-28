@@ -68,6 +68,13 @@ export function validateReviewedTechnicalSourceLock(lock) {
   ]) {
     assertPositiveInteger(policy[key], "reviewed policy " + key);
   }
+  if (!Array.isArray(policy.blockedAliases) || !Array.isArray(policy.caseSensitiveAliases)) {
+    throw new Error("reviewed technical alias policy is incomplete");
+  }
+  for (const alias of [...policy.blockedAliases, ...policy.caseSensitiveAliases]) {
+    requireText(alias, "reviewed alias policy value");
+    assertDataOnly(alias, "reviewed alias policy value");
+  }
 
   if (!Array.isArray(lock.termIds) || !lock.termIds.length) {
     throw new Error("reviewed technical termIds are required");
@@ -118,15 +125,23 @@ export function validateReviewedTechnicalExtract(extract, lock) {
 
 export function buildReviewedTechnicalRecords(extract, lock) {
   validateReviewedTechnicalExtract(extract, lock);
+  const blockedAliases = new Set(
+    lock.policy.blockedAliases.map(normalizeLookupKey).filter(Boolean)
+  );
   return extract.terms.map((term) => {
     const displayForm = normalizeExactLookupKey(term.headword);
     const lookupKey = normalizeLookupKey(displayForm);
+    const aliases = uniqueSorted(
+      term.aliases
+        .map(normalizeExactLookupKey)
+        .filter((alias) => alias && !blockedAliases.has(normalizeLookupKey(alias)))
+    );
     return {
       lookupKey,
       exactLookupKeys: [displayForm],
       displayForm,
       kind: "technical-concept",
-      aliases: uniqueSorted(term.aliases.map(normalizeExactLookupKey).filter(Boolean)),
+      aliases,
       entityId: "reviewed:" + term.id,
       translations: uniqueSorted(term.translations.map(normalizeExactLookupKey).filter(Boolean)),
       typeLabels: uniqueSorted(term.typeLabels.map(normalizeExactLookupKey).filter(Boolean)),
@@ -136,36 +151,15 @@ export function buildReviewedTechnicalRecords(extract, lock) {
   }).sort((a, b) => compareText(a.lookupKey, b.lookupKey));
 }
 
+// A reviewed term replaces an older same-key Wikidata concept instead of
+// flattening fields from two sources into one record. This keeps record-level
+// provenance truthful for translations/domains/type labels.
 export function mergeReviewedTechnicalRecords(baseRecords, reviewedRecords) {
   const merged = new Map();
   for (const record of baseRecords) merged.set(record.lookupKey, cloneRecord(record));
-
   for (const reviewed of reviewedRecords) {
-    const current = merged.get(reviewed.lookupKey);
-    if (!current) {
-      merged.set(reviewed.lookupKey, cloneRecord(reviewed));
-      continue;
-    }
-    current.exactLookupKeys = uniqueSorted([
-      ...(current.exactLookupKeys || []),
-      ...(reviewed.exactLookupKeys || [])
-    ]);
-    current.aliases = uniqueSorted([...(current.aliases || []), ...(reviewed.aliases || [])]);
-    current.translations = uniqueSorted([
-      ...(current.translations || []),
-      ...(reviewed.translations || [])
-    ]);
-    current.domains = uniqueSorted([...(current.domains || []), ...(reviewed.domains || [])]);
-    current.typeLabels = uniqueSorted([
-      ...(current.typeLabels || []),
-      ...(reviewed.typeLabels || [])
-    ]);
-    current.sourceRefs = dedupeSourceRefs([
-      ...(current.sourceRefs || []),
-      ...(reviewed.sourceRefs || [])
-    ]);
+    merged.set(reviewed.lookupKey, cloneRecord(reviewed));
   }
-
   return [...merged.values()].sort((a, b) => compareText(a.lookupKey, b.lookupKey));
 }
 
@@ -270,20 +264,6 @@ function cloneRecord(record) {
     typeLabels: [...(record.typeLabels || [])],
     sourceRefs: (record.sourceRefs || []).map((ref) => ({ ...ref }))
   };
-}
-
-function dedupeSourceRefs(values) {
-  const seen = new Set();
-  const result = [];
-  for (const ref of values) {
-    const key = String(ref?.sourceId || "") + "\u0000" + String(ref?.recordId || "");
-    if (!ref?.sourceId || !ref?.recordId || seen.has(key)) continue;
-    seen.add(key);
-    result.push({ sourceId: ref.sourceId, recordId: ref.recordId });
-  }
-  return result.sort((a, b) =>
-    compareText(a.sourceId, b.sourceId) || compareText(a.recordId, b.recordId)
-  );
 }
 
 function uniqueSorted(values) {
