@@ -32,6 +32,8 @@ content scripts -> messages -> background router
 7. 权限属于公共 API，不能在普通重构中扩大。
 8. API 调用和缓存读写必须基于同一个 Effective Translation Config。
 9. YouTube MAIN-world code may observe only the page player's own timedtext response; it must not refetch signed caption URLs or expose privileged extension operations through `window.postMessage`.
+10. Lexical content follows **Source-driven data → Rule-driven retrieval → Context-driven ranking → User-driven AI**. Project-authored word/translation rows and query-specific sense hacks are not a long-term coverage mechanism.
+11. Production extension packaging is allowlist-based. Build inputs, source locks, tests, E2E fixtures and benchmark assets stay outside the installed extension.
 
 ## Configuration
 
@@ -58,6 +60,21 @@ content scripts -> messages -> background router
 - `auto-sites.js`: optional site permission + persistent script registration
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
+
+## Lexical data ownership and package boundary
+
+TranslateFlow owns the lexical **engine**, not the ongoing authorship of dictionary content.
+
+- dictionary facts should come from attributable source pipelines;
+- generic normalization/morphology/phrase/ranking algorithms belong in runtime code;
+- validation words belong in test/benchmark fixtures;
+- a local no-hit remains an honest no-hit until a real dictionary source or explicit user-triggered Provider action supplies more information;
+- AI output is never silently promoted into authoritative local dictionary data;
+- large dictionaries should be downloadable/imported rather than increasing the base extension artifact.
+
+The current project-authored reviewed technical terms are a transitional compatibility layer after #115, not a source to keep expanding for coverage. See [LEXICAL_DATA_BOUNDARIES.md](./LEXICAL_DATA_BOUNDARIES.md).
+
+Production builds are created from an explicit allowlist into `dist/extension`. The repository may contain large source/validation corpora without those bytes becoming user installation cost.
 
 ## Lexical Gateway
 
