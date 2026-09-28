@@ -10,7 +10,7 @@ import {
   verifySourceBytes
 } from "../scripts/setup-lexicon.mjs";
 
-test("lexicon bootstrap derives both exact HTTPS sources from the reviewed source lock", async () => {
+test("lexicon bootstrap derives all exact HTTPS sources from the reviewed source lock", async () => {
   const lock = JSON.parse(await readFile(
     new URL("../lexicon/source-locks/core-semantic-pwn3-cow.json", import.meta.url),
     "utf8"
@@ -18,12 +18,14 @@ test("lexicon bootstrap derives both exact HTTPS sources from the reviewed sourc
   const sources = resolveLockedSources(lock);
   assert.deepEqual(sources.map((source) => source.id), [
     "pwn-3.0",
-    "chinese-open-wordnet"
+    "chinese-open-wordnet",
+    "pwn-3.0-sense-index"
   ]);
   assert.ok(sources.every((source) => source.url.startsWith("https://")));
   assert.ok(sources.every((source) => /^[a-f0-9]{64}$/.test(source.sha256)));
   assert.match(sources[0].url, /406bf83b3c507a3d1f26e88252d5d66893fd36bf/);
   assert.match(sources[1].url, /406bf83b3c507a3d1f26e88252d5d66893fd36bf/);
+  assert.match(sources[2].url, /ce91915ae38a341ae845be4d825ef6003cddf395/);
 });
 
 test("lexicon bootstrap fails closed on source checksum drift", () => {
