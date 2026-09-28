@@ -321,6 +321,7 @@ export function makeFreeDictFingerprintPayload({ packId, packVersion, sources, f
     packId,
     packVersion,
     profile: TFLEX_OPFS_INDEXED_PROFILE,
+    distributionStatus: "evaluation-only",
     sources: [...sources]
       .sort((a, b) => compareText(a.id, b.id))
       .map((source) => ({
@@ -345,6 +346,7 @@ export async function validateFreeDictPackOutput({ outDir }) {
     manifest.formatVersion !== TFLEX_FORMAT_VERSION ||
     manifest.normalizationVersion !== TFLEX_NORMALIZATION_VERSION ||
     manifest.profile !== TFLEX_OPFS_INDEXED_PROFILE ||
+    manifest.distributionStatus !== "evaluation-only" ||
     manifest.packId !== "freedict-eng-zho" ||
     manifest.license?.id !== "CC-BY-SA-3.0"
   ) {
