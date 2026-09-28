@@ -430,6 +430,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(detail).toHaveAttribute("data-state", "loading");
     await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect.poll(() => harness.server.calls.length).toBe(1);
 
     await page.getByRole("button", { name: "取消 AI 详解" }).click();
     await expect(detail).toHaveAttribute("data-state", "cancelled");
