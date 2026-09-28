@@ -31,7 +31,7 @@ test("Selection popover keeps a non-modal structured result region", async () =>
 
   assert.match(popover, /aria-modal", "false"/);
   assert.match(popover, /tf-selection-result-badge/);
-  assert.match(popover, /tf-selection-generated/);
+  assert.match(popover, /showAiDetailResult/);
   assert.match(popover, /AI 详解/);
   assert.match(popover, /function reposition\(\)/);
   assert.match(tokens, /\.tf-selection-panel[\s\S]*max-height:[^;]+;/);
