@@ -31,15 +31,39 @@ test("Phase B corpus matches the frozen ranking/sufficiency baseline", async () 
   assert.deepEqual(report.failures, []);
 });
 
-test("known technical source gaps never become sufficient from generic-only evidence", async () => {
+test("generic nouns in technical context require structured sense evidence", async () => {
   const data = await fixture();
   const testCase = data.cases.find((item) => item.id === "container-known-technical-gap");
   const lookup = materializeLookup(testCase, data.candidates);
   const result = assessLexicalLookup(lookup, { contextText: testCase.context });
 
   assert.equal(result.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
-  assert.equal(result.reason, "known-technical-source-gap");
+  assert.equal(result.reason, "technical-context-missing-structured-sense");
   assert.equal(result.topCandidateId, "core:container:general");
+  assert.deepEqual(result.sourceGap, {
+    kind: "technical-context-missing-structured-sense",
+    candidateId: "core:container:general"
+  });
+
+  const ordinary = assessLexicalLookup(lookup, {
+    contextText: "Store the food in a sealed container."
+  });
+  assert.equal(ordinary.outcome, LEXICAL_DECISION_OUTCOME.SUFFICIENT);
+  assert.equal(ordinary.reason, "single-high-confidence");
+
+  const syntheticLookup = structuredClone(lookup);
+  syntheticLookup.query = { ...syntheticLookup.query, text: "widget", normalized: "widget" };
+  syntheticLookup.candidates[0] = {
+    ...syntheticLookup.candidates[0],
+    id: "core:widget:general",
+    headword: "widget",
+    queryForm: "widget"
+  };
+  const synthetic = assessLexicalLookup(syntheticLookup, {
+    contextText: "The server runtime loads the widget."
+  });
+  assert.equal(synthetic.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
+  assert.equal(synthetic.reason, "technical-context-missing-structured-sense");
 });
 
 test("technical context can outrank a generic sense without suppressing it", async () => {
