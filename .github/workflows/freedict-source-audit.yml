@@ -11,6 +11,8 @@ on:
       - "scripts/build-tflex-freedict.mjs"
       - "tests/tflex-freedict-builder.test.mjs"
       - "scripts/certify-freedict-pack.mjs"
+      - "scripts/certify-freedict-lifecycle.mjs"
+      - "src/background/packs/health.js"
       - "src/background/lexical/opfs-tflex-reader.js"
       - "src/background/packs/opfs-store.js"
       - "src/background/lexical/gateway.js"
@@ -78,6 +80,11 @@ jobs:
           node scripts/certify-freedict-pack.mjs \
             --pack /tmp/freedict-tflex \
             --out /tmp/freedict-pack-certification.json
+      - name: Certify signed install, active lookup and uninstall
+        run: |
+          set -euo pipefail
+          node scripts/certify-freedict-lifecycle.mjs \
+            --pack /tmp/freedict-tflex | tee /tmp/freedict-lifecycle-certification.json
       - name: Upload exact source audit
         uses: actions/upload-artifact@v4
         with:
@@ -85,6 +92,7 @@ jobs:
           path: |
             /tmp/freedict-source-audit.json
             /tmp/freedict-pack-certification.json
+            /tmp/freedict-lifecycle-certification.json
           if-no-files-found: error
       - name: Upload FreeDict TFLex pack
         uses: actions/upload-artifact@v4
