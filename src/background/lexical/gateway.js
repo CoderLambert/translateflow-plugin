@@ -6,7 +6,10 @@ import {
   normalizeLexicalKey,
   normalizeLexicalLookupForm
 } from "../../shared/lexical.js";
-import { extractContextPhraseCandidates } from "./context-phrase.js";
+import {
+  buildContextPhraseLookupResult,
+  resolveContextPhraseMatch
+} from "./context-phrase.js";
 
 const DEFAULT_IRREGULAR_LEMMAS = Object.freeze({
   became: ["become"],
@@ -129,15 +132,23 @@ export function createLexicalGateway({
         };
       }
 
-      const contextPhrase = await lookupContextPhrase({
-        queryText,
-        lexicalText,
+      const contextPhraseMatch = await resolveContextPhraseMatch({
+        selectionText: lexicalText,
         contextText,
         glossary,
-        sourceLanguage,
-        targetLanguage
+        findGlossaryOverride,
+        lookupPhrase: (phrase) => lookupAcrossPacks(phrase, "exact")
       });
-      if (contextPhrase) return contextPhrase;
+      if (contextPhraseMatch) {
+        const candidates = contextPhraseMatch.glossaryOverride
+          ? [glossaryCandidate(contextPhraseMatch.glossaryOverride)]
+          : contextPhraseMatch.candidates;
+        return buildContextPhraseLookupResult({
+          query: makeQuery(queryText, sourceLanguage, targetLanguage),
+          match: contextPhraseMatch,
+          candidates
+        });
+      }
 
       const exact = await lookupAcrossPacks(queryText, "exact");
       if (exact.length) {
@@ -201,51 +212,6 @@ export function createLexicalGateway({
         }
       };
     }
-  }
-
-  async function lookupContextPhrase({
-    queryText,
-    lexicalText,
-    contextText,
-    glossary,
-    sourceLanguage,
-    targetLanguage
-  }) {
-    const phrases = extractContextPhraseCandidates({
-      selectionText: lexicalText,
-      contextText
-    });
-
-    for (const phrase of phrases) {
-      const phraseOverride = findGlossaryOverride(phrase.text, glossary);
-      if (phraseOverride) {
-        return contextPhraseResult({
-          queryText,
-          sourceLanguage,
-          targetLanguage,
-          phrase,
-          phraseMatchedBy: "user-glossary",
-          candidates: [glossaryCandidate(phraseOverride)],
-          override: true
-        });
-      }
-
-      const candidates = await lookupAcrossPacks(phrase.text, "exact");
-      if (!candidates.length) continue;
-      const phraseMatchedBy = candidates.every((candidate) => candidate.matchedBy === "alias")
-        ? "alias"
-        : "exact";
-      return contextPhraseResult({
-        queryText,
-        sourceLanguage,
-        targetLanguage,
-        phrase,
-        phraseMatchedBy,
-        candidates
-      });
-    }
-
-    return null;
   }
 
   async function lookupAcrossPacks(text, matchedBy) {
@@ -411,37 +377,6 @@ function undoubleFinalConsonant(value) {
 
 function uniqueForms(values) {
   return [...new Set(values.map(normalizeLexicalKey).filter(Boolean))];
-}
-
-function contextPhraseResult({
-  queryText,
-  sourceLanguage,
-  targetLanguage,
-  phrase,
-  phraseMatchedBy,
-  candidates,
-  override = false
-}) {
-  return {
-    status: LEXICAL_RESULT_STATUS.CANDIDATES,
-    query: makeQuery(queryText, sourceLanguage, targetLanguage),
-    override,
-    matchedBy: "context-phrase",
-    resolvedForm: phrase.text,
-    matchedPhrase: phrase.text,
-    contextPhrase: {
-      text: phrase.text,
-      normalized: phrase.normalized,
-      tokenCount: phrase.tokenCount,
-      spanStart: phrase.spanStart,
-      spanEnd: phrase.spanEnd,
-      selectionTokenOffset: phrase.selectionTokenOffset,
-      confidence: "high",
-      provenance: phrase.provenance,
-      matchedBy: phraseMatchedBy
-    },
-    candidates
-  };
 }
 
 function candidateResult(
