@@ -3,9 +3,10 @@
   "source": "TranslateFlow reviewed technical terminology",
   "license": "LicenseRef-TranslateFlow-Reviewed-Terms",
   "snapshot": {
+    "kind": "reviewed-term-set",
     "version": "2026-09-28",
-    "reviewedAt": "2026-09-28",
-    "reviewPolicyVersion": 1
+    "lockedAt": "2026-09-28T15:20:00Z",
+    "extractRuleVersion": 1
   },
   "terms": [
     {
