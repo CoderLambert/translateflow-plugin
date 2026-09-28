@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "formatVersion": 1,
+  "readerMinVersion": 1,
+  "normalizationVersion": 1,
+  "source": {
+    "id": "translateflow-reviewed-technical-terms",
+    "version": "reviewed-terms-2026-09-28",
+    "extractPath": "lexicon/sources/reviewed-tech-terms.json",
+    "extractSha256": "6369403c442183a746a76be06cfbd8a1b3cebdc3a69f00a6179a0a13199a4eb0",
+    "extractSize": 7820,
+    "snapshot": {
+      "kind": "reviewed-term-set",
+      "version": "2026-09-28",
+      "lockedAt": "2026-09-28T15:20:00Z",
+      "extractRuleVersion": 1
+    },
+    "license": {
+      "id": "LicenseRef-TranslateFlow-Reviewed-Terms",
+      "name": "TranslateFlow project-reviewed factual terminology data",
+      "source": "lexicon/sources/reviewed-tech-terms.json",
+      "notice": "Project-authored factual terminology mappings. Evidence URLs are review references only; no third-party prose, media, scripts, or remote content is redistributed in the TFLex pack."
+    }
+  },
+  "policy": {
+    "maxAliasesPerTerm": 8,
+    "maxTranslationsPerTerm": 4,
+    "maxDomainsPerTerm": 4,
+    "maxTypeLabelsPerTerm": 4,
+    "maxEvidenceUrlsPerTerm": 4
+  },
+  "termIds": [
+    "branch.git",
+    "cache.computing",
+    "commit.git",
+    "container-image.docker",
+    "container.docker",
+    "dependency-injection.software",
+    "dependency.software",
+    "descendant-combinator.css",
+    "event-loop.javascript",
+    "garbage-collection.runtime",
+    "issue.github",
+    "process.linux",
+    "repository.git",
+    "run.software",
+    "runtime-system.software",
+    "session.computing",
+    "state-management.software",
+    "state.software",
+    "terminal-multiplexer.terminal"
+  ]
+}
