@@ -189,7 +189,7 @@ function hasUnresolvedTechnicalSense(lookupResult, ranked, { queryText, contextT
   const matchedBy = candidate?.matchedBy || lookupResult?.matchedBy;
   if (
     candidate?.kind !== "lexical" ||
-    !["exact", "normalized", "lemma", "morphology"].includes(matchedBy)
+    !["exact", "normalized", "morphology"].includes(matchedBy)
   ) {
     return false;
   }
