@@ -183,3 +183,50 @@ test("typed reader corruption is returned as a lexical error result", async () =
   assert.equal(result.error.code, "LEXICON_CORRUPT");
   assert.equal(result.error.packId, "broken-pack");
 });
+
+
+test("Lexical Gateway resolves active pack readers once per lookup and aggregates optional candidates", async () => {
+  let resolutions = 0;
+  const optionalReader = {
+    async lookup(text) {
+      if (text !== "cache") return null;
+      return {
+        exactCaseMatch: true,
+        matchedAlias: false,
+        pack: {
+          packId: "freedict-eng-zho",
+          packVersion: "2025.11.23",
+          fingerprint: "sha256:freedict",
+          sourceLanguage: "en",
+          targetLanguage: "zh-CN"
+        },
+        record: {
+          lookupKey: "cache",
+          exactLookupKeys: ["cache"],
+          displayForm: "cache",
+          kind: "lexical",
+          aliases: [],
+          senses: [{
+            id: "freedict:cache",
+            partOfSpeech: "noun",
+            translations: ["缓存"],
+            domains: [],
+            sourceRefs: [{ sourceId: "freedict-eng-zho", recordId: "entry:1:sense:1" }]
+          }]
+        }
+      };
+    }
+  };
+  const gateway = createLexicalGateway({
+    packReaders: [],
+    resolvePackReaders: async () => {
+      resolutions += 1;
+      return [optionalReader];
+    }
+  });
+  const result = await gateway.lookup({ text: "cache" });
+  assert.equal(result.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+  assert.equal(resolutions, 1);
+  assert.equal(result.candidates[0].provenance.packId, "freedict-eng-zho");
+  assert.deepEqual(result.candidates[0].translations, ["缓存"]);
+});
