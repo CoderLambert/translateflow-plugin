@@ -10,6 +10,13 @@ on:
       - "lexicon/source-locks/freedict-eng-zho.json"
       - "scripts/build-tflex-freedict.mjs"
       - "tests/tflex-freedict-builder.test.mjs"
+      - "scripts/certify-freedict-pack.mjs"
+      - "src/background/lexical/opfs-tflex-reader.js"
+      - "src/background/packs/opfs-store.js"
+      - "src/background/lexical/gateway.js"
+      - "src/background/lexical/index.js"
+      - "tests/tflex-opfs-reader.test.mjs"
+      - "tests/lexical-gateway.test.mjs"
 
 permissions:
   contents: read
@@ -63,13 +70,21 @@ jobs:
             --source-lock lexicon/source-locks/freedict-eng-zho.json \
             --out /tmp/freedict-tflex
           du -ah /tmp/freedict-tflex
-      - name: Run FreeDict compiler tests
-        run: node --test tests/tflex-freedict-builder.test.mjs
+      - name: Run FreeDict compiler and indexed-reader tests
+        run: node --test tests/tflex-freedict-builder.test.mjs tests/tflex-opfs-reader.test.mjs
+      - name: Certify representative real-pack lookup
+        run: |
+          set -euo pipefail
+          node scripts/certify-freedict-pack.mjs \
+            --pack /tmp/freedict-tflex \
+            --out /tmp/freedict-pack-certification.json
       - name: Upload exact source audit
         uses: actions/upload-artifact@v4
         with:
           name: freedict-eng-zho-source-audit
-          path: /tmp/freedict-source-audit.json
+          path: |
+            /tmp/freedict-source-audit.json
+            /tmp/freedict-pack-certification.json
           if-no-files-found: error
       - name: Upload FreeDict TFLex pack
         uses: actions/upload-artifact@v4
