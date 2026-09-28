@@ -46,7 +46,8 @@ const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
 ];
 
 export const test = base.extend({
-  harness: [async ({}, use) => {
+  lexiconPacks: ["fixture", { option: true, scope: "worker" }],
+  harness: [async ({ lexiconPacks }, use) => {
     const server = await startMockServer();
     const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-e2e-"));
     const extensionDir = join(tempRoot, "extension");
@@ -56,21 +57,27 @@ export const test = base.extend({
         const rel = relative(repoRoot, source);
         if (!rel) return true;
         const first = rel.split(sep)[0];
-        return ![".git", "node_modules", "playwright-report", "test-results"].includes(first);
+        if ([".git", "node_modules", "playwright-report", "test-results"].includes(first)) return false;
+        return rel !== join("assets", "lexicon") && !rel.startsWith(join("assets", "lexicon") + sep);
       }
     });
 
-    await mkdir(join(extensionDir, "assets", "lexicon"), { recursive: true });
-    await cp(
-      join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),
-      join(extensionDir, "assets", "lexicon", "core"),
-      { recursive: true }
-    );
-    await compileTflexTechnical({
-      extractPath: join(repoRoot, "lexicon", "sources", "wikidata-tech-entities.json"),
-      sourceLockPath: join(repoRoot, "lexicon", "source-locks", "technical-wikidata.json"),
-      outDir: join(extensionDir, "assets", "lexicon", "technical")
-    });
+    const lexiconDir = join(extensionDir, "assets", "lexicon");
+    if (lexiconPacks === "release") {
+      await cp(join(repoRoot, "assets", "lexicon"), lexiconDir, { recursive: true });
+    } else {
+      await mkdir(lexiconDir, { recursive: true });
+      await cp(
+        join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),
+        join(lexiconDir, "core"),
+        { recursive: true }
+      );
+      await compileTflexTechnical({
+        extractPath: join(repoRoot, "lexicon", "sources", "wikidata-tech-entities.json"),
+        sourceLockPath: join(repoRoot, "lexicon", "source-locks", "technical-wikidata.json"),
+        outDir: join(lexiconDir, "technical")
+      });
+    }
 
     const manifestPath = join(extensionDir, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
