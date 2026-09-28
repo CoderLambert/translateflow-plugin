@@ -233,8 +233,10 @@ function summarizeMetrics(cases) {
   const phrase = cases.filter((item) => item.mode === "phrase-context");
   const noHit = cases.filter((item) => item.mode === "no-hit");
   const expectedHits = cases.filter((item) => item.expectedHit);
-  const topMeasured = cases.filter((item) => item.topCorrect !== null);
+  const topExpected = cases.filter((item) => item.topCorrect !== null);
+  const topMeasured = topExpected.filter((item) => item.hit);
   const wrongTop = topMeasured.filter((item) => item.topCorrect === false);
+  const topCoverageMisses = topExpected.filter((item) => !item.hit);
   const ambiguous = cases.filter((item) =>
     item.outcome === "ambiguous" && item.candidateCount > 0
   );
@@ -256,8 +258,11 @@ function summarizeMetrics(cases) {
     ),
     trueNoHitRate: ratio(noHit.filter((item) => item.noHitCorrect === true).length, noHit.length),
     top1CorrectRate: ratio(topMeasured.filter((item) => item.topCorrect === true).length, topMeasured.length),
+    top1MeasuredCaseCount: topMeasured.length,
     wrongSenseTop1Count: wrongTop.length,
     wrongSenseTop1CaseIds: wrongTop.map((item) => item.id),
+    topExpectationCoverageMissCount: topCoverageMisses.length,
+    topExpectationCoverageMissCaseIds: topCoverageMisses.map((item) => item.id),
     ambiguousButCandidatesPresentCount: ambiguous.length,
     ambiguousButCandidatesPresentCaseIds: ambiguous.map((item) => item.id),
     coreHit: metricCount(expectedHits, (item) => item.coreHit),
