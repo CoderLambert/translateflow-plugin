@@ -884,6 +884,166 @@
         "mode": "no-hit",
         "hit": false
       }
+    },
+    {
+      "id": "contrastive-state-government",
+      "group": "contrastive",
+      "query": "state",
+      "context": "The state announced a new public policy.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-branch-tree",
+      "group": "contrastive",
+      "query": "branch",
+      "context": "A bird landed on the tree branch.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-process-hiring",
+      "group": "contrastive",
+      "query": "process",
+      "context": "The hiring process takes several weeks.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-run-river",
+      "group": "contrastive",
+      "query": "run",
+      "context": "The river runs through the valley.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-container-food",
+      "group": "contrastive",
+      "query": "container",
+      "context": "Store the food in a sealed container.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-issue-social",
+      "group": "contrastive",
+      "query": "issue",
+      "context": "This remains an important social issue.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-commit-crime",
+      "group": "contrastive",
+      "query": "commit",
+      "context": "He refused to commit a crime.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-repository-archive",
+      "group": "contrastive",
+      "query": "repository",
+      "context": "The archive is a repository for historical documents.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-dependency-territory",
+      "group": "contrastive",
+      "query": "dependency",
+      "context": "The territory remained a dependency of the empire.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contrastive-descendant-family",
+      "group": "contrastive",
+      "query": "descendant",
+      "context": "He is a descendant of the original family.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindNot": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
     }
   ]
 }
