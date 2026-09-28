@@ -8,10 +8,11 @@ import { compileTflexTechnical } from "./build-tflex-technical.mjs";
 export async function buildReleaseLexicon({
   englishPath,
   chinesePath,
+  senseIndexPath,
   outRoot = "assets/lexicon"
 }) {
-  if (!englishPath || !chinesePath) {
-    throw new Error("englishPath and chinesePath are required locked source artifacts");
+  if (!englishPath || !chinesePath || !senseIndexPath) {
+    throw new Error("englishPath, chinesePath and senseIndexPath are required locked source artifacts");
   }
 
   const root = resolve(outRoot);
@@ -23,6 +24,7 @@ export async function buildReleaseLexicon({
   const core = await compileTflexCore({
     englishPath,
     chinesePath,
+    senseIndexPath,
     sourceLockPath: resolve("lexicon/source-locks/core-semantic-pwn3-cow.json"),
     outDir: coreOut
   });
@@ -78,6 +80,7 @@ async function main() {
   const report = await buildReleaseLexicon({
     englishPath: args.eng,
     chinesePath: args.cmn,
+    senseIndexPath: args["sense-index"],
     outRoot: args.out || "assets/lexicon"
   });
   process.stdout.write(JSON.stringify(report, null, 2) + "\n");
