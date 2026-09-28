@@ -100,6 +100,7 @@ export async function compileTflexFreeDict({
     sourceLanguage: lock.sourceLanguage,
     targetLanguage: lock.targetLanguage,
     profile: TFLEX_OPFS_INDEXED_PROFILE,
+    distributionStatus: "research-only-no-ship",
     fingerprint: "sha256:" + sha256Text(stableStringify(fingerprintPayload)),
     recordCount: records.length,
     sourceEntryCount: audit.tei.headwords,
@@ -165,8 +166,12 @@ export function validateFreeDictSourceLock(lock) {
   }
   requireText(lock.license.name, "FreeDict license name");
   requireText(lock.license.notice, "FreeDict license notice");
-  if (lock.qualityRole !== "optional-complement-only") {
-    throw new Error("FreeDict source must remain optional-complement-only");
+  if (
+    lock.qualityRole !== "research-only-no-ship" ||
+    lock.qualityDecision?.status !== "no-ship" ||
+    lock.qualityDecision?.approvedForProductDistribution !== false
+  ) {
+    throw new Error("FreeDict source must remain research-only until a reviewed quality decision changes");
   }
   return lock;
 }
