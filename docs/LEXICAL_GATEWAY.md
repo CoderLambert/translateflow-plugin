@@ -5,6 +5,8 @@ Contract: [TFLEX_V1.md](./TFLEX_V1.md)
 
 The Lexical Gateway is a Background-only local lookup boundary. It is intentionally separate from the Translation Gateway and Provider stack.
 
+Its content model is source-driven: TranslateFlow should not grow lexical coverage by continuously authoring its own word/translation database. The runtime owns lookup/ranking behavior; dictionary facts come from attributable packs or the User Glossary. See [LEXICAL_DATA_BOUNDARIES.md](./LEXICAL_DATA_BOUNDARIES.md).
+
 ## Request/result contract
 
 `LEXICAL_LOOKUP` accepts selected text plus local language metadata and returns one of:
@@ -49,7 +51,20 @@ Official release packaging places the #76-generated Core pack under:
 
 `assets/lexicon/core/`
 
-Tests use a project-authored TFLex fixture and do not require live network data.
+Tests use project-authored fixtures and do not require live network data. Those fixtures are validation assets only and must not be copied into the production extension. Production packaging is allowlist-based and may include generated `assets/lexicon/**` only when the pack itself is an approved runtime asset.
+
+## Dictionary facts vs runtime rules
+
+Valid runtime rules are generic operations such as Unicode normalization, conservative morphology, phrase matching, source/POS/domain evidence and deterministic ranking.
+
+The following are not acceptable long-term coverage mechanisms:
+
+- adding more project-authored headword → translation rows;
+- adding brand/entity names one by one;
+- query-specific ranking branches that encode a hidden sense table;
+- using benchmark fixtures as runtime data.
+
+A small evidenced compatibility override may exist temporarily, but it must remain bounded and have a source-driven replacement path. The current reviewed technical terminology source is transitional and must not become the primary Technical dictionary.
 
 ## Ranking and sufficiency
 

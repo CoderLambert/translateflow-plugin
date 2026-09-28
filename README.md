@@ -58,11 +58,13 @@ cache-db        providers/
 
 关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖和术语表先在共享配置层解析，Provider adapter 不读取术语存储。
 
-详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 和 [docs/PROVIDERS.md](docs/PROVIDERS.md)。
+词典/划词能力遵循另一条硬边界：**Source-driven data → Rule-driven retrieval → Context-driven ranking → User-driven AI**。TranslateFlow 负责查询、排序、来源追踪和展示，不把持续人工维护单词释义当作 coverage 方案。测试/benchmark 词条属于验证资产，不应为了通过测试进入运行时词典；大型辞典通过可下载/本地导入机制提供，而不是塞进基础扩展包。
+
+详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、[docs/LEXICAL_DATA_BOUNDARIES.md](docs/LEXICAL_DATA_BOUNDARIES.md) 和 [docs/PROVIDERS.md](docs/PROVIDERS.md)。
 
 ## 技术栈
 
-运行时保持零第三方依赖、零打包：
+运行时保持零第三方依赖、零 bundler；发布阶段只做 allowlist 文件打包：
 
 - Chrome Manifest V3
 - 原生 JavaScript
@@ -144,7 +146,7 @@ git clone https://github.com/CoderLambert/translateflow-plugin.git
 cd translateflow-plugin
 ```
 
-扩展运行时仍然零第三方依赖、零 bundler；但 Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git。
+扩展运行时仍然零第三方依赖、零 bundler；发布使用 `npm run build:extension` 生成 allowlist `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
 
 首次源码安装或清理过词典产物后，先执行：
 
@@ -152,6 +154,7 @@ cd translateflow-plugin
 npm install
 npm run setup:lexicon
 npm run validate
+npm run build:extension:release
 ```
 
 `setup:lexicon` 会读取已审核的 source lock，使用锁定的 OMW revision/source URL，校验下载文件 SHA-256，再生成并认证 `assets/lexicon/core` 与 `assets/lexicon/technical`。校验不通过时会 fail closed，不会继续构建。
@@ -181,7 +184,7 @@ npm run validate
 1. 打开 `chrome://extensions/`
 2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
-4. 选择仓库根目录（不是 `src/`，也没有 `dist/`）
+4. 选择 `dist/extension/`。仓库根目录只用于开发调试，不作为正式发布包
 5. 打开 TranslateFlow 设置页 → **本地词典**
 6. 确认 **Core Semantic** 与 **Technical Concepts** 均显示“已就绪”
 7. 配置 Provider 并测试 API
@@ -463,6 +466,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - `src/` 单文件超过 420 行失败
 - `background.js` / `content.js` 保持薄入口
 - 旧根目录 `cache-db.js` 不允许重新出现
+- 生产扩展使用 allowlist `dist/extension`；测试、E2E、构建脚本、raw/source-lock/benchmark 资产不得进入发布包
 
 GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run validate`；独立 `e2e` workflow 在相关运行时代码变化时安装 Playwright Chromium 并执行 `npm run test:e2e`。
 

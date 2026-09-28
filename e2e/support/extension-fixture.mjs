@@ -1,9 +1,10 @@
 import { test as base, chromium, expect } from "@playwright/test";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startMockServer } from "./mock-server.mjs";
+import { buildExtension } from "../../scripts/build-extension.mjs";
 import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -57,18 +58,13 @@ export const test = base.extend({
     const server = await startMockServer();
     const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-e2e-"));
     const extensionDir = join(tempRoot, "extension");
-    await cp(repoRoot, extensionDir, {
-      recursive: true,
-      filter: (source) => {
-        const rel = relative(repoRoot, source);
-        if (!rel) return true;
-        const first = rel.split(sep)[0];
-        if ([".git", "node_modules", "playwright-report", "test-results"].includes(first)) return false;
-        return rel !== join("assets", "lexicon") && !rel.startsWith(join("assets", "lexicon") + sep);
-      }
+    await buildExtension({
+      outDir: extensionDir,
+      allowExternalOutput: true
     });
 
     const lexiconDir = join(extensionDir, "assets", "lexicon");
+    await rm(lexiconDir, { recursive: true, force: true });
     if (lexiconPacks === "release") {
       await cp(join(repoRoot, "assets", "lexicon"), lexiconDir, { recursive: true });
     } else if (lexiconPacks !== "missing") {
