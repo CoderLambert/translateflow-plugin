@@ -22,6 +22,7 @@ async function build(name, options = {}) {
   const result = await compileTflexCore({
     englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
     chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+    senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
     sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
     outDir,
     maxShardBytes: options.maxShardBytes || 900
@@ -74,6 +75,9 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   ]);
   assert.deepEqual(persistent.senses[0].translations, ["持久的", "持续的"]);
   assert.deepEqual(persistent.senses[0].rawTranslations, ["持久+的", "持续+的"]);
+  assert.equal(persistent.senses[0].senseNumber, 1);
+  assert.equal(persistent.senses[0].tagCount, 5);
+  assert.ok(persistent.senses[0].sourceRefs.some((ref) => ref.sourceId === "pwn-3.0-sense-index"));
   const phrase = result.records.find((record) => record.lookupKey === "terminal multiplexer");
   assert.equal(phrase.displayForm, "terminal multiplexer");
   assert.equal(phrase.senses[0].partOfSpeech, "noun");
@@ -101,6 +105,7 @@ test("TFLex compiler refuses to delete a non-empty output directory", async () =
     compileTflexCore({
       englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
       chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
       sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
       outDir
     }),
@@ -160,6 +165,7 @@ test("TFLex compiler rejects source drift before parsing", async () => {
     compileTflexCore({
       englishPath: changed,
       chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
       sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
       outDir: join(root, "out")
     }),
@@ -180,7 +186,8 @@ test("source-lock validation fails closed on missing license evidence", () => {
       targetLanguage: "zh-CN",
       sources: [
         { id: "pwn-3.0", version: "3", provenance: "x", data: { url: "x", sha256: "a".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "" } },
-        { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+        { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+        { id: "pwn-3.0-sense-index", version: "3", provenance: "x", data: { url: "x", sha256: "c".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
       ]
     }),
     /license notice/
@@ -205,10 +212,16 @@ test("compiler rejects generic HTML-like markup in lexical source strings", asyn
   const cmnText = "00000001-n\tcmn:lemma\t测试\n";
   const engPath = join(root, "eng.tab");
   const cmnPath = join(root, "cmn.tab");
+  const senseText = "unsafe%1:06:00:: 00000001 1 1\n";
+  const sensePath = join(root, "index.sense");
   const lockPath = join(root, "lock.json");
   const { createHash } = await import("node:crypto");
   const digest = (text) => createHash("sha256").update(text).digest("hex");
-  await Promise.all([writeFile(engPath, engText), writeFile(cmnPath, cmnText)]);
+  await Promise.all([
+    writeFile(engPath, engText),
+    writeFile(cmnPath, cmnText),
+    writeFile(sensePath, senseText)
+  ]);
   await writeFile(lockPath, JSON.stringify({
     schemaVersion: 1,
     formatVersion: 1,
@@ -220,11 +233,12 @@ test("compiler rejects generic HTML-like markup in lexical source strings", asyn
     targetLanguage: "zh-CN",
     sources: [
       { id: "pwn-3.0", version: "x", provenance: "x", data: { url: "fixture://eng", sha256: digest(engText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
-      { id: "chinese-open-wordnet", version: "x", provenance: "x", data: { url: "fixture://cmn", sha256: digest(cmnText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+      { id: "chinese-open-wordnet", version: "x", provenance: "x", data: { url: "fixture://cmn", sha256: digest(cmnText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+      { id: "pwn-3.0-sense-index", version: "x", provenance: "x", data: { url: "fixture://sense", sha256: digest(senseText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
     ]
   }));
   await assert.rejects(
-    compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, sourceLockPath: lockPath, outDir: join(root, "out") }),
+    compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, senseIndexPath: sensePath, sourceLockPath: lockPath, outDir: join(root, "out") }),
     /HTML-like markup or an executable scheme/
   );
 });
@@ -247,7 +261,8 @@ test("source-lock validation rejects incompatible TFLex versions", () => {
     targetLanguage: "zh-CN",
     sources: [
       { id: "pwn-3.0", version: "3", provenance: "x", data: { url: "x", sha256: "a".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
-      { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+      { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+      { id: "pwn-3.0-sense-index", version: "3", provenance: "x", data: { url: "x", sha256: "c".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
     ]
   };
   assert.throws(() => validateSourceLock(base), /formatVersion is incompatible/);
