@@ -90,7 +90,7 @@ test("Selection no-hit is neutral while local lexicon failures keep diagnostic e
 
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(popover, /setStatus\(statusNode, "", "info"\)/);
-  assert.match(popover, /resultNode\.dataset\.resultKind = "empty"/);
+  assert.match(emptyState, /container\.dataset\.resultKind = "empty"/);
   assert.match(emptyState, /本地词典暂未收录/);
   assert.match(emptyState, /使用 AI 进一步解释这个词/);
   assert.match(emptyState, /使用普通翻译处理这个词/);
