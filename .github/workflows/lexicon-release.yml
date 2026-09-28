@@ -9,6 +9,8 @@ on:
       - "scripts/build-release-lexicon.mjs"
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
+      - "scripts/benchmark-lexical-quality.mjs"
+      - "tests/fixtures/lexical-quality-v1.json"
       - "lexicon/**"
       - "e2e/**"
       - "package.json"
@@ -20,6 +22,8 @@ on:
       - "scripts/build-release-lexicon.mjs"
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
+      - "scripts/benchmark-lexical-quality.mjs"
+      - "tests/fixtures/lexical-quality-v1.json"
       - "lexicon/**"
       - "e2e/**"
       - "package.json"
@@ -57,6 +61,9 @@ jobs:
       - name: Bootstrap locked release lexical packs
         run: npm run setup:lexicon
 
+      - name: Record lexical quality baseline
+        run: npm run benchmark:lexical -- --out lexical-quality-report.json
+
       - name: Re-certify real release packs
         run: npm run certify:lexicon
 
@@ -69,6 +76,14 @@ jobs:
         env:
           REQUIRE_RELEASE_LEXICON_PACKS: "1"
         run: npm run test:e2e
+
+      - name: Upload lexical quality report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lexical-quality-report
+          path: lexical-quality-report.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload release lexical packs
         uses: actions/upload-artifact@v4
