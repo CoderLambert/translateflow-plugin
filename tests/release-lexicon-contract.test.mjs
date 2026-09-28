@@ -20,11 +20,12 @@ test("release lexicon CI builds from the exact Design Freeze OMW revision", asyn
   ]);
   assert.match(workflow, /omwn\/omw-data/);
   assert.match(workflow, /406bf83b3c507a3d1f26e88252d5d66893fd36bf/);
-  assert.match(workflow, /npm run build:lexicon:release/);
+  assert.match(workflow, /npm run setup:lexicon/);
   assert.match(workflow, /npm run certify:lexicon/);
   assert.match(workflow, /npm run test:e2e/);
 
   const pkg = JSON.parse(packageJson);
   assert.equal(pkg.scripts["build:lexicon:release"], "node scripts/build-release-lexicon.mjs");
+  assert.equal(pkg.scripts["setup:lexicon"], "node scripts/setup-lexicon.mjs");
   assert.equal(pkg.scripts["certify:lexicon"], "node scripts/certify-lexical-release.mjs");
 });
