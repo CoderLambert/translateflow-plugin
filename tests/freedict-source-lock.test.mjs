@@ -7,7 +7,7 @@ const lock = JSON.parse(await readFile(
   "utf8"
 ));
 
-test("FreeDict production source lock pins exact edition and audited archive evidence", () => {
+test("FreeDict source lock pins exact edition and audited archive evidence", () => {
   assert.equal(lock.source.dictionary, "eng-zho");
   assert.equal(lock.source.edition, "2025.11.23");
   assert.equal(lock.source.tei.headwords, 26660);
@@ -17,19 +17,12 @@ test("FreeDict production source lock pins exact edition and audited archive evi
   assert.match(lock.source.copying.sha256, /^[a-f0-9]{64}$/);
 });
 
-test("FreeDict legal packaging gate is exact and separate from product distribution", () => {
+test("FreeDict legal packaging gate is exact and product-neutral", () => {
   assert.equal(lock.license.id, "CC-BY-SA-3.0");
-  assert.equal(lock.license.approvedForOfficialPack, true);
+  assert.equal(lock.license.licenseGatePassed, true);
   assert.equal(lock.license.adaptationLicense, "CC-BY-SA-3.0");
   assert.equal(lock.source.tei.licenseName, "Creative Commons Attribution-ShareAlike 3.0 Unported");
-  assert.equal(lock.qualityDecision.status, "no-ship");
-  assert.equal(lock.qualityDecision.approvedForProductDistribution, false);
-  assert.equal(lock.qualityRole, "research-only-no-ship");
-});
-
-test("FreeDict exact quality evidence records both complementary coverage and release blockers", () => {
-  assert.ok(lock.qualityDecision.positiveCoverage.some((item) => item.term === "dependency"));
-  assert.ok(lock.qualityDecision.misleadingOrWrong.some((item) => item.term === "portable"));
-  assert.ok(lock.qualityDecision.misleadingOrWrong.some((item) => item.term === "repository"));
-  assert.ok(lock.qualityDecision.absentTechnical.includes("tmux"));
+  assert.equal("approvedForOfficialPack" in lock.license, false);
+  assert.equal("qualityDecision" in lock, false);
+  assert.equal("qualityRole" in lock, false);
 });
