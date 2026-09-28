@@ -302,17 +302,7 @@ button { color: inherit; }
   padding-top: 10px;
   border-top: 1px solid var(--tf-border-soft);
 }
-.tf-selection-ai-detail[aria-busy="true"] {
-  opacity: .92;
-}
-.tf-selection-ai-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.tf-selection-ai-header .tf-selection-generated-label {
+.tf-selection-generated-label {
   margin-bottom: 0;
 }
 .tf-selection-ai-status {
