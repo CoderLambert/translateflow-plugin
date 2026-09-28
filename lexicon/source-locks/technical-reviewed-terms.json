@@ -23,6 +23,8 @@
     }
   },
   "policy": {
+    "blockedAliases": [],
+    "caseSensitiveAliases": [],
     "maxAliasesPerTerm": 8,
     "maxTranslationsPerTerm": 4,
     "maxDomainsPerTerm": 4,
