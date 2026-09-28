@@ -15,6 +15,8 @@ import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
 
 const extractPath = fileURLToPath(new URL("../lexicon/sources/wikidata-tech-entities.json", import.meta.url));
 const lockPath = fileURLToPath(new URL("../lexicon/source-locks/technical-wikidata.json", import.meta.url));
+const reviewedPath = fileURLToPath(new URL("../lexicon/sources/reviewed-tech-terms.json", import.meta.url));
+const reviewedLockPath = fileURLToPath(new URL("../lexicon/source-locks/technical-reviewed-terms.json", import.meta.url));
 
 async function build(name, maxShardBytes = 1200) {
   const root = await mkdtemp(join(tmpdir(), "translateflow-tech-pack-" + name + "-"));
@@ -56,15 +58,30 @@ test("technical TFLex build is deterministic, source-locked and bounded", async 
   assert.deepEqual(await snapshotDir(first.outDir), await snapshotDir(second.outDir));
 
   assert.equal(first.result.manifest.packId, "technical-wikidata-en-zh");
-  assert.equal(first.result.manifest.packVersion, "wikidata-revision-set-2026-09");
-  assert.equal(first.result.manifest.recordCount, 10);
-  assert.equal(first.result.manifest.sources.length, 1);
-  assert.equal(first.result.manifest.sources[0].id, "wikidata");
-  assert.equal(first.result.manifest.sources[0].license.id, "CC0-1.0");
-  assert.deepEqual(first.result.manifest.sources[0].snapshot, {
+  assert.equal(
+    first.result.manifest.packVersion,
+    "wikidata-revision-set-2026-09+reviewed-2026-09-28"
+  );
+  assert.equal(first.result.manifest.recordCount, 27);
+  assert.equal(first.result.manifest.sources.length, 2);
+  const wikidataSource = first.result.manifest.sources.find((source) => source.id === "wikidata");
+  const reviewedSource = first.result.manifest.sources.find(
+    (source) => source.id === "translateflow-reviewed-technical-terms"
+  );
+  assert.ok(wikidataSource);
+  assert.ok(reviewedSource);
+  assert.equal(wikidataSource.license.id, "CC0-1.0");
+  assert.deepEqual(wikidataSource.snapshot, {
     kind: "qid-revision-set",
     version: "2026-09-26",
     lockedAt: "2026-09-26T14:38:56Z",
+    extractRuleVersion: 1
+  });
+  assert.equal(reviewedSource.license.id, "LicenseRef-TranslateFlow-Reviewed-Terms");
+  assert.deepEqual(reviewedSource.snapshot, {
+    kind: "reviewed-term-set",
+    version: "2026-09-28",
+    lockedAt: "2026-09-28T15:20:00Z",
     extractRuleVersion: 1
   });
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
@@ -104,16 +121,39 @@ test("runtime reader resolves named entities and approved aliases locally", asyn
   const runtime = await reader.lookupAll("runtime system");
   assert.equal(runtime.length, 1);
   assert.equal(runtime[0].record.kind, "technical-concept");
-  assert.deepEqual(runtime[0].record.translations, []);
+  assert.deepEqual(runtime[0].record.translations, ["运行时环境", "运行时系统"]);
   assert.deepEqual(runtime[0].record.domains, ["runtime"]);
+  assert.deepEqual(runtime[0].record.sourceRefs, [{
+    sourceId: "translateflow-reviewed-technical-terms",
+    recordId: "runtime-system.software"
+  }]);
   assert.equal("description" in runtime[0].record, false);
   assert.deepEqual(await reader.lookupAll("runtime"), []);
 
   const session = await reader.lookup("session");
   assert.equal(session.record.kind, "technical-concept");
-  assert.deepEqual(session.record.translations, []);
-  assert.deepEqual(session.record.domains, ["protocol"]);
-  assert.deepEqual(await reader.lookupAll("container"), []);
+  assert.deepEqual(session.record.translations, ["会话"]);
+  assert.deepEqual(session.record.domains, ["protocol", "terminal"]);
+  assert.deepEqual(session.record.sourceRefs, [{
+    sourceId: "translateflow-reviewed-technical-terms",
+    recordId: "session.computing"
+  }]);
+
+  const container = await reader.lookup("container");
+  assert.equal(container.record.kind, "technical-concept");
+  assert.deepEqual(container.record.translations, ["容器"]);
+  assert.deepEqual(container.record.sourceRefs, [{
+    sourceId: "translateflow-reviewed-technical-terms",
+    recordId: "container.docker"
+  }]);
+
+  const descendant = await reader.lookup("descendant combinator");
+  assert.deepEqual(descendant.record.translations, ["后代关系", "后代组合器"]);
+
+  const repository = await reader.lookupAll("repo");
+  assert.equal(repository.length, 1);
+  assert.equal(repository[0].record.displayForm, "repository");
+  assert.deepEqual(repository[0].record.translations, ["仓库", "代码仓库"]);
 });
 
 test("generic source aliases are explicitly excluded from lookup index", async () => {
@@ -237,6 +277,22 @@ test("technical builder fails closed on source drift", async () => {
       outDir: join(root, "out")
     }),
     /extract size mismatch|extract SHA-256 mismatch/
+  );
+});
+
+test("technical builder fails closed on reviewed terminology drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translateflow-reviewed-tech-drift-"));
+  const changed = join(root, "reviewed.json");
+  await writeFile(changed, (await readFile(reviewedPath, "utf8")) + "\n", "utf8");
+  await assert.rejects(
+    compileTflexTechnical({
+      extractPath,
+      sourceLockPath: lockPath,
+      reviewedTermsPath: changed,
+      reviewedSourceLockPath: reviewedLockPath,
+      outDir: join(root, "out")
+    }),
+    /reviewed technical extract size mismatch|reviewed technical extract SHA-256 mismatch/
   );
 });
 
