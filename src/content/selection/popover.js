@@ -50,6 +50,7 @@
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
     panel.setAttribute("aria-modal", "false");
+    installPanelInteractionIsolation(panel);
 
     const header = document.createElement("div");
     header.className = "tf-selection-header";
@@ -310,6 +311,24 @@
     explainHandler = null;
     explainButton.hidden = true;
     aiDetail.cancelled(onRetry);
+  }
+
+  function installPanelInteractionIsolation(node) {
+    for (const type of ["pointerdown", "mousedown", "click"]) {
+      node.addEventListener(type, clearPageSelection, true);
+    }
+    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click"]) {
+      node.addEventListener(type, stopPanelInteractionPropagation);
+    }
+  }
+
+  function clearPageSelection() {
+    const selection = window.getSelection?.();
+    if (selection?.rangeCount) selection.removeAllRanges();
+  }
+
+  function stopPanelInteractionPropagation(event) {
+    event.stopPropagation();
   }
 
   function uniqueText(values) {
