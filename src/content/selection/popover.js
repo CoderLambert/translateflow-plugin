@@ -10,7 +10,7 @@
     || app.modules.selectionPopover
   ) return;
 
-  const { refreshRect } = app.modules.selection;
+  const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
   const { getLayer, ownsNode } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
@@ -50,7 +50,7 @@
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
     panel.setAttribute("aria-modal", "false");
-    installPanelInteractionIsolation(panel);
+    installInteractionIsolation(panel);
 
     const header = document.createElement("div");
     header.className = "tf-selection-header";
@@ -312,24 +312,6 @@
     explainHandler = null;
     explainButton.hidden = true;
     aiDetail.cancelled(onRetry);
-  }
-
-  function installPanelInteractionIsolation(node) {
-    for (const type of ["pointerdown", "mousedown", "click"]) {
-      node.addEventListener(type, clearPageSelection, true);
-    }
-    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click"]) {
-      node.addEventListener(type, stopPanelInteractionPropagation);
-    }
-  }
-
-  function clearPageSelection() {
-    const selection = window.getSelection?.();
-    if (selection?.rangeCount) selection.removeAllRanges();
-  }
-
-  function stopPanelInteractionPropagation(event) {
-    event.stopPropagation();
   }
 
   function uniqueText(values) {
