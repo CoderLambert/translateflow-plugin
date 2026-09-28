@@ -4,7 +4,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webcrypto } from "node:crypto";
-import { LEXICAL_RESULT_STATUS } from "../src/shared/lexical.js";
+import {
+  LEXICAL_RESULT_STATUS,
+  normalizeLexicalLookupForm
+} from "../src/shared/lexical.js";
 import {
   conservativeMorphologyForms,
   createLexicalGateway
@@ -21,6 +24,53 @@ function coreReader() {
       await readFile(join(fixtureRoot, path.replace(/^fixture\//, "")))
     )
   });
+}
+
+
+function normalizationReader() {
+  const translations = new Map([
+    ["persistent", ["持久的"]],
+    ["developer", ["开发者"]],
+    ["user", ["用户"]],
+    ["run-time system", ["运行时系统"]],
+    ["node.js", ["Node.js"]],
+    ["c++", ["C++"]],
+    ["c#", ["C#"]],
+    ["build", ["构建"]],
+    ["write", ["写"]],
+    ["good", ["好的"]],
+    ["bad", ["坏的"]]
+  ]);
+  return {
+    async lookup(text) {
+      const key = String(text || "").toLowerCase();
+      const values = translations.get(key);
+      if (!values) return null;
+      return {
+        exactCaseMatch: String(text) === key,
+        pack: {
+          packId: "normalization-fixture",
+          packVersion: "1",
+          fingerprint: "sha256:normalization",
+          sourceLanguage: "en",
+          targetLanguage: "zh-CN"
+        },
+        record: {
+          lookupKey: key,
+          displayForm: text,
+          kind: "lexical",
+          aliases: [],
+          senses: [{
+            id: "fixture:" + key,
+            partOfSpeech: "noun",
+            translations: values,
+            sourceRefs: [{ sourceId: "fixture", recordId: key }]
+          }],
+          sourceRefs: [{ sourceId: "fixture", recordId: key }]
+        }
+      };
+    }
+  };
 }
 
 function technicalSessionReader() {
@@ -151,6 +201,85 @@ test("irregular lemma lookup precedes conservative suffix morphology", async () 
   assert.equal(running.resolvedForm, "run");
   assert.ok(conservativeMorphologyForms("running").includes("run"));
   assert.deepEqual(conservativeMorphologyForms("uses"), ["use"]);
+});
+
+
+test("safe lexical normalization recovers copied prose artifacts without rewriting code-like tokens", () => {
+  const recovered = new Map([
+    ["persistent,", "persistent"],
+    ["persistent.", "persistent"],
+    ["persistent:", "persistent"],
+    ["session)", "session"],
+    ["“persistent”", "persistent"],
+    ["developer’s", "developer"],
+    ["users'", "users"],
+    ["per\u00adsistent", "persistent"],
+    ["run‑time system", "run-time system"]
+  ]);
+  for (const [input, expected] of recovered) {
+    assert.equal(normalizeLexicalLookupForm(input), expected, input);
+  }
+
+  for (const value of ["Node.js", "C++", "C#", "foo.bar()", "alpha::beta"]) {
+    assert.equal(normalizeLexicalLookupForm(value), value, value);
+  }
+});
+
+test("normalized lookup keeps explicit provenance and remains conservative for code identifiers", async () => {
+  const gateway = createLexicalGateway({ packReaders: [normalizationReader()] });
+
+  for (const [input, expected] of [
+    ["persistent,", "persistent"],
+    ["“persistent”", "persistent"],
+    ["developer’s", "developer"],
+    ["per\u00adsistent", "persistent"],
+    ["run‑time system", "run-time system"]
+  ]) {
+    const result = await gateway.lookup({ text: input });
+    assert.equal(result.status, LEXICAL_RESULT_STATUS.CANDIDATES, input);
+    assert.equal(result.matchedBy, "normalized", input);
+    assert.equal(result.resolvedForm, expected, input);
+    assert.equal(result.normalizedForm, expected, input);
+    assert.ok(result.candidates.every((candidate) => candidate.matchedBy === "normalized"), input);
+  }
+
+  const possessivePlural = await gateway.lookup({ text: "users'" });
+  assert.equal(possessivePlural.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+  assert.equal(possessivePlural.matchedBy, "morphology");
+  assert.equal(possessivePlural.normalizedForm, "users");
+  assert.equal(possessivePlural.resolvedForm, "user");
+
+  for (const exact of ["Node.js", "C++", "C#"]) {
+    const result = await gateway.lookup({ text: exact });
+    assert.equal(result.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+    assert.equal(result.matchedBy, "exact");
+  }
+
+  for (const unsafe of ["foo.bar()", "alpha::beta"]) {
+    const result = await gateway.lookup({ text: unsafe });
+    assert.equal(result.status, LEXICAL_RESULT_STATUS.NO_HIT, unsafe);
+  }
+});
+
+test("deterministic irregular forms recover common verb and adjective lemmas when no surface entry exists", async () => {
+  const gateway = createLexicalGateway({ packReaders: [normalizationReader()] });
+  for (const [input, lemma] of [
+    ["built", "build"],
+    ["written", "write"],
+    ["better", "good"],
+    ["best", "good"],
+    ["worse", "bad"],
+    ["worst", "bad"]
+  ]) {
+    const result = await gateway.lookup({ text: input });
+    assert.equal(result.status, LEXICAL_RESULT_STATUS.CANDIDATES, input);
+    assert.equal(result.matchedBy, "lemma", input);
+    assert.equal(result.resolvedForm, lemma, input);
+  }
+
+  assert.ok(conservativeMorphologyForms("configured").includes("configure"));
+  assert.ok(conservativeMorphologyForms("dependencies").includes("dependency"));
+  assert.ok(conservativeMorphologyForms("repositories").includes("repository"));
 });
 
 test("unsupported and no-hit are distinct typed outcomes", async () => {
