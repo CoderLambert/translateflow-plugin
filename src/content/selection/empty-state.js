@@ -11,6 +11,7 @@
     function reset() {
       node?.remove();
       node = null;
+      delete container.dataset.resultKind;
     }
 
     function show({
