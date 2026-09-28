@@ -10,7 +10,8 @@ test("production lexical gateway registers both bundled Core and Technical packs
   const code = await source("src/background/lexical/index.js");
   assert.match(code, /assets\/lexicon\/core/);
   assert.match(code, /assets\/lexicon\/technical/);
-  assert.match(code, /packReaders:\s*\[coreReader, technicalReader\]/);
+  assert.match(code, /BUNDLED_PACKS/);
+  assert.match(code, /packReaders:\s*BUNDLED_PACKS\.map/);
 });
 
 test("release lexicon CI builds from the exact Design Freeze OMW revision", async () => {
