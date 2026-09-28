@@ -32,33 +32,72 @@ export function initializePackUi({
   permissions = globalThis.chrome?.permissions,
   cryptoProvider = globalThis.crypto
 } = {}) {
-  const list = document.getElementById("dictionaryPacksList");
+  const bundledList = document.getElementById("bundledLexiconList");
+  const optionalList = document.getElementById("dictionaryPacksList");
   const refreshButton = document.getElementById("refreshDictionaryPacks");
-  if (!list) return Promise.resolve();
+  if (!bundledList && !optionalList) return Promise.resolve();
 
   const pendingByPack = new Map();
   refreshButton?.addEventListener("click", () => refresh());
 
   async function refresh() {
-    list.textContent = "正在读取可选词典包状态…";
-    const response = await runtime.sendMessage({
-      type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS
-    });
-    if (!response?.ok) {
-      list.textContent = `读取词典包状态失败：${response?.error || "未知错误"}`;
-      return;
+    if (bundledList) bundledList.textContent = "正在检查内置词典…";
+    if (optionalList) optionalList.textContent = "正在读取可选词典包状态…";
+
+    const [bundledResponse, optionalResponse] = await Promise.all([
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS }),
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS })
+    ]);
+
+    if (bundledList) {
+      if (!bundledResponse?.ok) {
+        bundledList.textContent = `读取内置词典状态失败：${bundledResponse?.error || "未知错误"}`;
+      } else {
+        renderBundled(bundledResponse.packs || []);
+      }
     }
-    render(response.state || { packs: {} });
+
+    if (optionalList) {
+      if (!optionalResponse?.ok) {
+        optionalList.textContent = `读取可选词典包状态失败：${optionalResponse?.error || "未知错误"}`;
+      } else {
+        renderOptional(optionalResponse.state || { packs: {} });
+      }
+    }
   }
 
-  function render(state) {
-    list.replaceChildren();
+  function renderBundled(packs) {
+    bundledList.replaceChildren();
+    if (!Array.isArray(packs) || !packs.length) {
+      bundledList.textContent = "当前版本没有声明内置词典。";
+      return;
+    }
+
+    for (const pack of packs) {
+      const row = document.createElement("div");
+      row.className = "site-row";
+
+      const summary = document.createElement("div");
+      summary.className = "site-summary";
+      const title = document.createElement("strong");
+      title.textContent = pack.label || pack.packId || pack.id;
+      const detail = document.createElement("small");
+      detail.textContent = describeBundledPackState(pack);
+      summary.append(title, detail);
+
+      row.append(summary);
+      bundledList.appendChild(row);
+    }
+  }
+
+  function renderOptional(state) {
+    optionalList.replaceChildren();
     const declared = (Array.isArray(sources) ? sources : [])
       .flatMap((source) => (Array.isArray(source?.packs) ? source.packs : [])
         .map((pack) => ({ source, pack })));
 
     if (!declared.length) {
-      list.textContent = "当前版本没有已通过来源/许可审核的可选词典包。";
+      optionalList.textContent = "当前版本没有通过产品质量门并注册为可下载来源的可选词典包。";
       return;
     }
 
@@ -105,7 +144,7 @@ export function initializePackUi({
             const requestId = cryptoProvider?.randomUUID?.() ||
               `pack-${Date.now()}-${Math.random().toString(16).slice(2)}`;
             pendingByPack.set(packId, requestId);
-            render(state);
+            renderOptional(state);
 
             const response = await runtime.sendMessage({
               type: BACKGROUND_MESSAGES.DICTIONARY_PACK_INSTALL,
@@ -168,7 +207,7 @@ export function initializePackUi({
       }
 
       row.append(summary, actions);
-      list.appendChild(row);
+      optionalList.appendChild(row);
     }
   }
 
@@ -181,6 +220,25 @@ export function initializePackUi({
   }
 
   return refresh();
+}
+
+export function describeBundledPackState(pack) {
+  if (pack?.status === "ready") {
+    return `已就绪 · ${pack.packVersion || "版本未知"} · ${Number(pack.recordCount || 0).toLocaleString()} 条记录`;
+  }
+  if (pack?.status === "unavailable") {
+    return "资源缺失或不可读。源码开发安装请运行 npm run setup:lexicon，然后重新加载扩展。";
+  }
+  if (pack?.status === "corrupt") {
+    return "资源校验失败或已损坏。请重新生成/安装后再试。";
+  }
+  if (pack?.status === "incompatible") {
+    return "词典格式与当前扩展版本不兼容。";
+  }
+  if (pack?.status === "unhealthy") {
+    return "健康检查未通过，缺少必要的基准词条。";
+  }
+  return `状态异常：${pack?.message || "未知错误"}`;
 }
 
 function describePackState(source, entry) {
