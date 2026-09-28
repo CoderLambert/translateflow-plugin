@@ -5,7 +5,8 @@
   const { constants } = app.modules.runtime;
   const { css } = app.modules.uiTokens;
   const featureCss = [
-    app.modules.uiQuickControlStyles?.css
+    app.modules.uiQuickControlStyles?.css,
+    app.modules.uiSelectionAiDetailStyles?.css
   ].filter(Boolean).join("\n");
   let host;
   let shadow;
