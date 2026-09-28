@@ -20,6 +20,13 @@ test("production extension resolves the built Core and Technical packs without P
     readFile(technicalManifestPath, "utf8").then(JSON.parse)
   ]);
   const page = await harness.open("/article");
+  const bundledStatus = await harness.runtime({
+    type: "BUNDLED_LEXICON_STATUS"
+  });
+  expect(bundledStatus.packs).toHaveLength(2);
+  expect(bundledStatus.packs.map((pack) => pack.status)).toEqual(["ready", "ready"]);
+  expect(bundledStatus.packs.map((pack) => pack.packId)).toEqual([core.packId, technical.packId]);
+
   const lookup = (text, extra = {}) => harness.runtime({
     type: "LEXICAL_LOOKUP",
     text,
