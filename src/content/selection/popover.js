@@ -355,7 +355,6 @@
   function clearActionHandlers() {
     retryHandler = copyHandler = explainHandler = cancelHandler = null;
   }
-
   function hideActionButtons() {
     cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
   }
