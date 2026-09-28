@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { createHash, webcrypto } from "node:crypto";
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createOpfsTflexReader } from "../src/background/lexical/opfs-tflex-reader.js";
+import { normalizeLookupKey } from "./build-tflex-core.mjs";
+import { validateFreeDictPackOutput } from "./build-tflex-freedict.mjs";
 
 const DEFAULT_TERMS = Object.freeze([
   "cache",
@@ -29,61 +30,58 @@ export async function certifyFreeDictPack({
   terms = DEFAULT_TERMS
 }) {
   const root = resolveRequired(packDir, "packDir");
-  const manifestBytes = new Uint8Array(await readFile(resolve(root, "manifest.json")));
-  const manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
-  const snapshot = {
-    packId: manifest.packId,
-    packVersion: manifest.packVersion,
-    fingerprint: manifest.fingerprint,
-    files: [
-      {
-        role: "manifest",
-        path: "manifest.json",
-        size: manifestBytes.byteLength,
-        sha256: sha256(manifestBytes)
-      },
-      ...manifest.files
-    ]
-  };
-  const store = createFsStore(root);
-  const reader = createOpfsTflexReader({
-    store,
-    snapshot,
-    cryptoProvider: webcrypto
-  });
+  const { manifest, index } = await validateFreeDictPackOutput({ outDir: root });
+  const entriesBytes = await readFile(resolve(root, "entries.dat"));
+
   const results = {};
   for (const term of terms) {
-    const hits = await reader.lookupAll(term);
-    results[term] = hits.map((hit) => ({
-      headword: hit.record.displayForm,
-      matchedAlias: hit.matchedAlias,
-      senses: (hit.record.senses || []).map((sense) => ({
-        partOfSpeech: sense.partOfSpeech || null,
-        translations: sense.translations,
-        sourceRefs: sense.sourceRefs
-      }))
-    }));
+    const key = normalizeLookupKey(term);
+    const item = findIndexEntry(index.entries, key);
+    const hits = [];
+    for (const target of item?.targets || []) {
+      const bytes = entriesBytes.subarray(target.offset, target.offset + target.length);
+      if (bytes.byteLength !== target.length || sha256(bytes) !== target.sha256) {
+        throw new Error("FreeDict certification record slice failed integrity verification");
+      }
+      const record = JSON.parse(bytes.toString("utf8").trim());
+      if (record.lookupKey !== target.lookupKey) {
+        throw new Error("FreeDict certification index/record key mismatch");
+      }
+      hits.push({
+        headword: record.displayForm,
+        matchedAlias: Boolean(target.matchedAlias),
+        senses: (record.senses || []).map((sense) => ({
+          partOfSpeech: sense.partOfSpeech || null,
+          translations: sense.translations,
+          sourceRefs: sense.sourceRefs
+        }))
+      });
+    }
+    results[term] = hits;
   }
+
   return {
     packId: manifest.packId,
     packVersion: manifest.packVersion,
     fingerprint: manifest.fingerprint,
     recordCount: manifest.recordCount,
     sourceEntryCount: manifest.sourceEntryCount,
+    distributionStatus: manifest.distributionStatus,
     terms: results
   };
 }
 
-function createFsStore(root) {
-  return {
-    async readFile(_packId, _version, path) {
-      return new Uint8Array(await readFile(resolve(root, path)));
-    },
-    async readFileSlice(_packId, _version, path, offset, length) {
-      const bytes = await readFile(resolve(root, path));
-      return new Uint8Array(bytes.subarray(offset, offset + length));
-    }
-  };
+function findIndexEntry(entries, key) {
+  let low = 0;
+  let high = entries.length - 1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const item = entries[middle];
+    if (key < item.key) high = middle - 1;
+    else if (key > item.key) low = middle + 1;
+    else return item;
+  }
+  return null;
 }
 
 function sha256(bytes) {
