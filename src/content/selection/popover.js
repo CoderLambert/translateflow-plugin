@@ -10,7 +10,7 @@
     || app.modules.selectionPopover
   ) return;
 
-  const { refreshRect } = app.modules.selection;
+  const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
   const { getLayer, ownsNode } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
@@ -50,7 +50,7 @@
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
     panel.setAttribute("aria-modal", "false");
-
+    installInteractionIsolation(panel);
     const header = document.createElement("div");
     header.className = "tf-selection-header";
     const title = document.createElement("strong");
@@ -106,6 +106,7 @@
     cancelHandler = onCancel;
     chip.hidden = true;
     panel.hidden = false;
+    clearPageSelection();
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "正在检查缓存…", "loading");
     aiDetail?.reset();
