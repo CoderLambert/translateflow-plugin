@@ -36,11 +36,14 @@ const FORBIDDEN_SEGMENTS = new Set([
 
 export async function buildExtension({
   outDir = DEFAULT_OUT,
-  requireLexicon = false
+  requireLexicon = false,
+  allowExternalOutput = false
 } = {}) {
   const output = resolve(outDir);
-  if (output === ROOT || !relative(ROOT, output).startsWith("dist")) {
-    throw new Error("extension output must stay under dist/");
+  const relativeOutput = relative(ROOT, output);
+  const insideDist = relativeOutput === "dist" || relativeOutput.startsWith("dist/");
+  if (output === ROOT || output === resolve("/") || (!allowExternalOutput && !insideDist)) {
+    throw new Error("extension output must stay under dist/ unless explicitly used by a test harness");
   }
 
   await rm(output, { recursive: true, force: true });
