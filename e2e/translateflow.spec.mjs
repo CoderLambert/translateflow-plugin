@@ -358,7 +358,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
   });
 
-  test("ambiguous Selection stays dictionary-first until explicit grounded AI detail", async ({ harness }) => {
+  test("ambiguous Selection keeps dictionary content visible through explicit AI detail", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -368,9 +368,19 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
     expect(harness.server.calls).toHaveLength(0);
 
+    harness.server.setDelay(250);
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
-    await expect(page.locator(".tf-selection-result")).toContainText("持续存在或保持有效");
+    const detail = page.locator(".tf-selection-ai-detail");
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(detail).toHaveAttribute("data-state", "loading");
+    await expect(detail).toContainText("正在结合上下文解释");
+    await expect(page.getByRole("button", { name: "取消 AI 详解" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "复制" })).toBeVisible();
+
+    await expect(detail).toHaveAttribute("data-state", "success");
+    await expect(detail).toContainText("持续存在或保持有效");
     expect(harness.server.calls).toHaveLength(1);
+    harness.server.setDelay(0);
 
     const call = harness.server.calls[0];
     expect(call.systemPrompt).toContain("Selection Explain");
@@ -394,7 +404,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(1);
 
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
-    await expect(page.locator(".tf-selection-result")).toContainText("持续存在或保持有效");
+    await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+    await expect(page.locator(".tf-selection-ai-detail")).toContainText("持续存在或保持有效");
     expect(harness.server.calls).toHaveLength(1);
 
     const pageCache = await harness.runtime({
@@ -404,6 +415,37 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     });
     expect(pageCache.ok).toBe(true);
     expect(pageCache.hits).toEqual([]);
+  });
+
+  test("Selection AI detail cancel preserves local content and stale completion cannot overwrite retry", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+
+    await selectElementText(page, "#ambiguous");
+    await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+
+    harness.server.setDelay(300);
+    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    const detail = page.locator(".tf-selection-ai-detail");
+    await expect(detail).toHaveAttribute("data-state", "loading");
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+
+    await page.getByRole("button", { name: "取消 AI 详解" }).click();
+    await expect(detail).toHaveAttribute("data-state", "cancelled");
+    await expect(detail).toContainText("AI 详解已取消");
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    expect(harness.server.calls).toHaveLength(1);
+
+    harness.server.setDelay(0);
+    await page.getByRole("button", { name: "重新请求 AI 详解" }).click();
+    await expect(detail).toHaveAttribute("data-state", "success");
+    await expect(detail).toContainText("持续存在或保持有效");
+    expect(harness.server.calls).toHaveLength(2);
+
+    await page.waitForTimeout(350);
+    await expect(detail).toHaveAttribute("data-state", "success");
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
   });
 
   test("Selection card exposes provenance, explicit AI retry, narrow viewport and copy", async ({ harness }) => {
@@ -425,14 +467,19 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(0);
 
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
-    await expect(page.locator(".tf-selection-status")).toContainText("AI 详解失败");
-    await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
+    const detail = page.locator(".tf-selection-ai-detail");
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(detail).toHaveAttribute("data-state", "error");
+    await expect(detail).toContainText("AI 详解失败");
+    await expect(page.locator(".tf-selection-status")).toHaveText("");
+    await expect(page.getByRole("button", { name: "重新请求 AI 详解" })).toBeVisible();
 
     harness.server.setFailures([]);
-    await page.getByRole("button", { name: "重试" }).click();
+    await page.getByRole("button", { name: "重新请求 AI 详解" }).click();
 
     await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
-    await expect(page.locator(".tf-selection-generated")).toContainText("持续存在或保持有效");
+    await expect(detail).toHaveAttribute("data-state", "success");
+    await expect(detail).toContainText("持续存在或保持有效");
     await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典", "AI 辅助"]);
 
     const box = await panel.boundingBox();
