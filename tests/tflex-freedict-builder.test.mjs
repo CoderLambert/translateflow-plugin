@@ -113,7 +113,7 @@ async function fixture(name, { licenseVersion = "3.0" } = {}) {
       id: "CC-BY-SA-3.0",
       name: "Creative Commons Attribution-ShareAlike 3.0 Unported",
       source: "https://creativecommons.org/licenses/by-sa/3.0/legalcode",
-      approvedForOfficialPack: true,
+      licenseGatePassed: true,
       adaptationLicense: "CC-BY-SA-3.0",
       notice: "Fixture attribution and ShareAlike notice."
     },
@@ -179,7 +179,7 @@ test("FreeDict compiler groups headword senses and indexes inflected aliases wit
 test("FreeDict source lock fails closed when official-pack license approval is absent", async () => {
   const env = await fixture("license-approval");
   const changed = structuredClone(env.lock);
-  changed.license.approvedForOfficialPack = false;
+  changed.license.licenseGatePassed = false;
   assert.throws(() => validateFreeDictSourceLock(changed), /license approval/);
 });
 
