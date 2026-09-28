@@ -21,6 +21,7 @@
       onTranslate = null
     } = {}) {
       reset();
+      container.dataset.resultKind = "empty";
       node = document.createElement("section");
       node.className = "tf-selection-empty";
       node.dataset.state = "empty";
