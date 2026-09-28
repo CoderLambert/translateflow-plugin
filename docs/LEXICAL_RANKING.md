@@ -81,7 +81,7 @@ This intentionally keeps cases such as a tmux-context `session` ambiguous when t
 - technical-vs-general context;
 - named technical entities;
 - phrase exact matches;
-- irregular lemma and morphology;
+- source-provided lemma candidates and generic morphology;
 - case/alias ambiguity;
 - deliberate entity false-positive pressure;
 - same-translation cross-source conflicts;

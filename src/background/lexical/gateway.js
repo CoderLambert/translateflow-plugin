@@ -11,51 +11,10 @@ import {
   resolveContextPhraseMatch
 } from "./context-phrase.js";
 
-const DEFAULT_IRREGULAR_LEMMAS = Object.freeze({
-  became: ["become"],
-  best: ["good"],
-  better: ["good"],
-  brought: ["bring"],
-  built: ["build"],
-  children: ["child"],
-  chosen: ["choose"],
-  drove: ["drive"],
-  driven: ["drive"],
-  feet: ["foot"],
-  found: ["find"],
-  gave: ["give"],
-  geese: ["goose"],
-  given: ["give"],
-  gone: ["go"],
-  grew: ["grow"],
-  grown: ["grow"],
-  held: ["hold"],
-  kept: ["keep"],
-  knew: ["know"],
-  known: ["know"],
-  left: ["leave"],
-  made: ["make"],
-  men: ["man"],
-  mice: ["mouse"],
-  ran: ["run"],
-  said: ["say"],
-  saw: ["see"],
-  taken: ["take"],
-  teeth: ["tooth"],
-  thought: ["think"],
-  told: ["tell"],
-  took: ["take"],
-  went: ["go"],
-  women: ["woman"],
-  worse: ["bad"],
-  worst: ["bad"],
-  written: ["write"]
-});
 
 export function createLexicalGateway({
   packReaders = [],
   resolveGlossary = async () => [],
-  irregularLemmas = DEFAULT_IRREGULAR_LEMMAS,
   maxPhraseEvidenceTokens = 4
 } = {}) {
   if (!Array.isArray(packReaders)) throw new Error("packReaders must be an array");
@@ -175,16 +134,6 @@ export function createLexicalGateway({
       }
 
       const canonical = normalizeLexicalKey(lexicalText);
-      for (const lemma of explicitLemmaForms(canonical, irregularLemmas)) {
-        const candidates = await lookupAcrossPacks(lemma, "lemma");
-        if (candidates.length) {
-          return candidateResult(
-            queryText, sourceLanguage, targetLanguage, "lemma", candidates, lemma,
-            normalizationApplied ? normalizedText : ""
-          );
-        }
-      }
-
       for (const lemma of conservativeMorphologyForms(canonical)) {
         const candidates = await lookupAcrossPacks(lemma, "morphology");
         if (candidates.length) {
@@ -332,11 +281,6 @@ function findGlossaryOverride(text, entries) {
     }
   }
   return null;
-}
-
-function explicitLemmaForms(value, irregularLemmas) {
-  const forms = irregularLemmas?.[value];
-  return uniqueForms(Array.isArray(forms) ? forms : []);
 }
 
 export function conservativeMorphologyForms(value) {

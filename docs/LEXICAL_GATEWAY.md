@@ -24,11 +24,12 @@ A local hit never invokes a translation Provider and is never written to transla
 User Glossary exact override
   -> exact phrase/headword across every active local pack
   -> for phrase miss: token evidence only (never concatenated as a translation)
-  -> explicit irregular lemma/exception forms
-  -> conservative morphology fallback
+  -> conservative rule-based morphology fallback
 ```
 
 Except for an explicit User Glossary override, a generic Core hit does not short-circuit Technical or optional-pack candidates. Ranking and sufficiency are owned by #85.
+
+The runtime does not carry a project-authored irregular word→lemma table. Irregular forms such as `went`, `children`, `better` or `written` remain measurable source gaps unless an attributable dictionary/morphology source supplies the relation. Generic suffix rules remain valid runtime algorithms because they do not encode per-word lexical facts.
 
 ## TFLex bundled reader
 

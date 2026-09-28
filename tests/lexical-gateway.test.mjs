@@ -241,13 +241,11 @@ test("Lexical Gateway has no Provider/network dependency", async () => {
   assert.doesNotMatch(source, /providers\/|runTranslationRequest|\bfetch\s*\(/);
 });
 
-test("irregular lemma lookup precedes conservative suffix morphology", async () => {
+test("gateway uses generic morphology without a hand-authored irregular vocabulary", async () => {
   const gateway = createLexicalGateway({ packReaders: [coreReader()] });
 
   const went = await gateway.lookup({ text: "went" });
-  assert.equal(went.status, LEXICAL_RESULT_STATUS.CANDIDATES);
-  assert.equal(went.matchedBy, "lemma");
-  assert.equal(went.resolvedForm, "go");
+  assert.equal(went.status, LEXICAL_RESULT_STATUS.NO_HIT);
 
   const running = await gateway.lookup({ text: "running" });
   assert.equal(running.status, LEXICAL_RESULT_STATUS.CANDIDATES);
@@ -255,6 +253,12 @@ test("irregular lemma lookup precedes conservative suffix morphology", async () 
   assert.equal(running.resolvedForm, "run");
   assert.ok(conservativeMorphologyForms("running").includes("run"));
   assert.deepEqual(conservativeMorphologyForms("uses"), ["use"]);
+
+  const source = await readFile(
+    new URL("../src/background/lexical/gateway.js", import.meta.url),
+    "utf8"
+  );
+  assert.doesNotMatch(source, /DEFAULT_IRREGULAR_LEMMAS|irregularLemmas|explicitLemmaForms/);
 });
 
 
@@ -314,20 +318,11 @@ test("normalized lookup keeps explicit provenance and remains conservative for c
   }
 });
 
-test("deterministic irregular forms recover common verb and adjective lemmas when no surface entry exists", async () => {
+test("irregular forms remain source gaps until an attributable morphology source provides them", async () => {
   const gateway = createLexicalGateway({ packReaders: [normalizationReader()] });
-  for (const [input, lemma] of [
-    ["built", "build"],
-    ["written", "write"],
-    ["better", "good"],
-    ["best", "good"],
-    ["worse", "bad"],
-    ["worst", "bad"]
-  ]) {
+  for (const input of ["built", "written", "better", "best", "worse", "worst"]) {
     const result = await gateway.lookup({ text: input });
-    assert.equal(result.status, LEXICAL_RESULT_STATUS.CANDIDATES, input);
-    assert.equal(result.matchedBy, "lemma", input);
-    assert.equal(result.resolvedForm, lemma, input);
+    assert.equal(result.status, LEXICAL_RESULT_STATUS.NO_HIT, input);
   }
 
   assert.ok(conservativeMorphologyForms("configured").includes("configure"));
