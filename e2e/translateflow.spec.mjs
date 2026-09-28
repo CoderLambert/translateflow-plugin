@@ -385,12 +385,27 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
     await selectElementText(page, "#nohit");
+    expect(await page.evaluate(() => window.getSelection()?.toString().trim())).toBe("TFNoSuchLexeme");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-empty")).toBeVisible();
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
     expect(harness.server.calls).toHaveLength(1);
+
+    await page.evaluate(() => {
+      window.__tfCompetingSelectionEvents = [];
+      for (const type of ["pointerup", "mouseup", "click"]) {
+        document.addEventListener(type, () => {
+          window.__tfCompetingSelectionEvents.push({
+            type,
+            selection: window.getSelection()?.toString() || ""
+          });
+        });
+      }
+    });
 
     await page.getByRole("button", { name: "使用普通翻译处理这个词" }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN] TFNoSuchLexeme");
+    expect(await page.evaluate(() => window.__tfCompetingSelectionEvents)).toEqual([]);
     expect(harness.server.calls).toHaveLength(2);
     expect(harness.server.calls[1].systemPrompt).toContain("Translate the segments and return JSON only.");
     expect(harness.server.calls[1].systemPrompt).not.toContain("Selection Explain");
