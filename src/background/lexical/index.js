@@ -22,13 +22,12 @@ const technicalReader = createTflexReader({
   packBasePath: "assets/lexicon/technical"
 });
 
-const bundledReaders = Object.freeze([coreReader, technicalReader]);
-const optionalStore = createOpfsPackStore();
-const optionalStateStore = createPackStateStore();
 const optionalReaderCache = new Map();
+let optionalStore = null;
+let optionalStateStore = null;
 
 const gateway = createLexicalGateway({
-  packReaders: bundledReaders,
+  packReaders: [coreReader, technicalReader],
   resolvePackReaders: resolveActivePackReaders,
   resolveGlossary: getEffectiveGlossary
 });
@@ -42,12 +41,16 @@ export function getLexicalGatewayStats() {
 }
 
 async function resolveActivePackReaders() {
+  const bundledReaders = [coreReader, technicalReader];
+  const dependencies = getOptionalPackDependencies();
+  if (!dependencies) return bundledReaders;
+
   let state;
   try {
-    state = await optionalStateStore.read();
+    state = await dependencies.stateStore.read();
   } catch (error) {
     console.warn("TranslateFlow optional dictionary state is unavailable; using bundled lexicons only.", error);
-    return [...bundledReaders];
+    return bundledReaders;
   }
 
   const readers = [...bundledReaders];
@@ -66,7 +69,7 @@ async function resolveActivePackReaders() {
     let reader = optionalReaderCache.get(cacheKey);
     if (!reader) {
       reader = guardOptionalReader(
-        createOpfsTflexReader({ store: optionalStore, snapshot }),
+        createOpfsTflexReader({ store: dependencies.store, snapshot }),
         packId
       );
       optionalReaderCache.set(cacheKey, reader);
@@ -78,6 +81,19 @@ async function resolveActivePackReaders() {
     if (!liveKeys.has(key)) optionalReaderCache.delete(key);
   }
   return readers;
+}
+
+function getOptionalPackDependencies() {
+  if (
+    !globalThis.chrome?.storage?.local?.get ||
+    !globalThis.chrome?.storage?.local?.set ||
+    !globalThis.navigator?.storage?.getDirectory
+  ) {
+    return null;
+  }
+  optionalStore ||= createOpfsPackStore();
+  optionalStateStore ||= createPackStateStore();
+  return { store: optionalStore, stateStore: optionalStateStore };
 }
 
 function guardOptionalReader(reader, packId) {
