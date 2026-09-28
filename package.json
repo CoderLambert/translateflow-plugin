@@ -13,7 +13,8 @@
     "build:tflex:technical": "node scripts/build-tflex-technical.mjs",
     "evaluate:lexical": "node scripts/evaluate-lexical-ranking.mjs",
     "build:lexicon:release": "node scripts/build-release-lexicon.mjs",
-    "certify:lexicon": "node scripts/certify-lexical-release.mjs"
+    "certify:lexicon": "node scripts/certify-lexical-release.mjs",
+    "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs"
   },
   "engines": {
     "node": ">=18"
