@@ -92,7 +92,13 @@ export function resolveSelectionDepth(requestedDepth, { intent, decision } = {})
   return SELECTION_EXPLANATION_DEPTH.STANDARD;
 }
 
-export function chooseSelectionRoute({ intent, decision, depth, text } = {}) {
+export function chooseSelectionRoute({
+  intent,
+  decision,
+  depth,
+  text,
+  explainRequested = false
+} = {}) {
   if (!intent || intent.kind === SELECTION_INTENT.TRANSLATION) {
     return {
       route: SELECTION_ROUTE.TRANSLATION,
@@ -103,16 +109,10 @@ export function chooseSelectionRoute({ intent, decision, depth, text } = {}) {
   }
 
   const effectiveDepth = resolveSelectionDepth(depth, { intent, decision });
-  if (decision?.outcome === "sufficient") {
-    return {
-      route: SELECTION_ROUTE.LOCAL,
-      reason: "local-sufficient",
-      depth: effectiveDepth,
-      explanationAllowed: false
-    };
-  }
+  const outcome = decision?.outcome;
+  const hasLocalCandidates = Array.isArray(decision?.candidates) && decision.candidates.length > 0;
 
-  if (decision?.outcome === "unsupported") {
+  if (outcome === "unsupported") {
     return {
       route: SELECTION_ROUTE.TRANSLATION,
       reason: "local-unsupported",
@@ -121,7 +121,7 @@ export function chooseSelectionRoute({ intent, decision, depth, text } = {}) {
     };
   }
 
-  if (decision?.outcome === "no-hit" && isMultiWord(text)) {
+  if (outcome === "no-hit" && isMultiWord(text)) {
     return {
       route: SELECTION_ROUTE.TRANSLATION,
       reason: "unknown-phrase-translation",
@@ -130,21 +130,38 @@ export function chooseSelectionRoute({ intent, decision, depth, text } = {}) {
     };
   }
 
-  if (decision?.outcome === "ambiguous" || decision?.outcome === "no-hit") {
-    const explanationAllowed = effectiveDepth !== SELECTION_EXPLANATION_DEPTH.CONCISE;
+  if (outcome === "sufficient") {
     return {
-      route: explanationAllowed ? SELECTION_ROUTE.NEEDS_EXPLANATION : SELECTION_ROUTE.UNRESOLVED,
-      reason: decision.outcome === "ambiguous"
-        ? (explanationAllowed ? "ambiguous-needs-explanation" : "ambiguous-concise")
-        : (explanationAllowed ? "no-hit-needs-explanation" : "no-hit-concise"),
+      route: explainRequested ? SELECTION_ROUTE.NEEDS_EXPLANATION : SELECTION_ROUTE.LOCAL,
+      reason: explainRequested ? "local-sufficient-explicit-explanation" : "local-sufficient",
       depth: effectiveDepth,
-      explanationAllowed
+      explanationAllowed: true
+    };
+  }
+
+  if (outcome === "ambiguous" && hasLocalCandidates) {
+    return {
+      route: explainRequested ? SELECTION_ROUTE.NEEDS_EXPLANATION : SELECTION_ROUTE.LOCAL,
+      reason: explainRequested ? "ambiguous-explicit-explanation" : "local-ambiguous",
+      depth: effectiveDepth,
+      explanationAllowed: true
+    };
+  }
+
+  if (outcome === "ambiguous" || outcome === "no-hit") {
+    return {
+      route: explainRequested ? SELECTION_ROUTE.NEEDS_EXPLANATION : SELECTION_ROUTE.UNRESOLVED,
+      reason: outcome === "ambiguous"
+        ? (explainRequested ? "ambiguous-explicit-explanation" : "ambiguous-local-unresolved")
+        : (explainRequested ? "no-hit-explicit-explanation" : "no-hit-local"),
+      depth: effectiveDepth,
+      explanationAllowed: true
     };
   }
 
   return {
     route: SELECTION_ROUTE.UNRESOLVED,
-    reason: decision?.outcome === "error" ? "local-error" : "unresolved",
+    reason: outcome === "error" ? "local-error" : "unresolved",
     depth: effectiveDepth,
     explanationAllowed: false
   };
