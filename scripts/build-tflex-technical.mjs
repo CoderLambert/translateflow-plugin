@@ -15,12 +15,20 @@ import {
   stableStringify
 } from "./build-tflex-core.mjs";
 import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
+import {
+  loadReviewedTechnicalTerms,
+  mergeReviewedTechnicalRecords,
+  reviewedTechnicalManifestSource,
+  reviewedTechnicalNotice
+} from "./reviewed-tech-terms.mjs";
 
 const SOURCE_ID = "wikidata";
 
 export async function compileTflexTechnical({
   extractPath,
   sourceLockPath,
+  reviewedTermsPath = resolve("lexicon/sources/reviewed-tech-terms.json"),
+  reviewedSourceLockPath = resolve("lexicon/source-locks/technical-reviewed-terms.json"),
   outDir,
   maxShardBytes = DEFAULT_MAX_SHARD_BYTES
 }) {
@@ -35,7 +43,14 @@ export async function compileTflexTechnical({
   verifyLockedExtract(lock, extractBytes);
 
   const extract = validateTechnicalExtract(JSON.parse(extractBytes.toString("utf8")));
-  const records = buildTechnicalRecords(extract, lock.policy, lock.entities);
+  const reviewed = await loadReviewedTechnicalTerms({
+    extractPath: reviewedTermsPath,
+    sourceLockPath: reviewedSourceLockPath
+  });
+  const records = mergeReviewedTechnicalRecords(
+    buildTechnicalRecords(extract, lock.policy, lock.entities),
+    reviewed.records
+  );
   if (!records.length) throw new Error("technical pack build produced no approved records");
   const aliases = buildTechnicalAliasIndex(records, lock.policy);
 
@@ -51,7 +66,7 @@ export async function compileTflexTechnical({
   const directoryText = stableStringify(directory) + "\n";
   await writeTextFile(output, "directory.json", directoryText);
 
-  const noticesText = buildNotice(lock);
+  const noticesText = buildWikidataNotice(lock) + reviewedTechnicalNotice(reviewed.lock);
   await writeTextFile(output, "THIRD_PARTY_NOTICES.txt", noticesText);
 
   const files = [
@@ -72,7 +87,8 @@ export async function compileTflexTechnical({
       name: lock.source.license.name,
       source: lock.source.license.source
     }
-  }];
+  }, reviewedTechnicalManifestSource(reviewed.lock)]
+    .sort((a, b) => compareText(a.id, b.id));
 
   const fingerprintPayload = makeFingerprintPayload({
     formatVersion: TFLEX_FORMAT_VERSION,
@@ -383,7 +399,7 @@ function makeFingerprintPayload({ formatVersion, normalizationVersion, packId, p
   };
 }
 
-function buildNotice(lock) {
+function buildWikidataNotice(lock) {
   return [
     "=== Wikidata structured data ===",
     "Source extract: " + lock.source.extractPath,
@@ -482,6 +498,8 @@ async function main() {
   const result = await compileTflexTechnical({
     extractPath: args.extract,
     sourceLockPath: args["source-lock"],
+    reviewedTermsPath: args.reviewed || resolve("lexicon/sources/reviewed-tech-terms.json"),
+    reviewedSourceLockPath: args["reviewed-source-lock"] || resolve("lexicon/source-locks/technical-reviewed-terms.json"),
     outDir: args.out,
     maxShardBytes: args["max-shard-bytes"] ? Number(args["max-shard-bytes"]) : DEFAULT_MAX_SHARD_BYTES
   });
