@@ -132,6 +132,36 @@ test("Lexical Gateway preserves optional source-locked sense priors", async () =
   assert.equal(result.candidates[0].tagCount, 7);
 });
 
+test("Lexical Gateway preserves sense-level Technical metadata without flattening provenance", async () => {
+  const reader = {
+    async lookupAll() {
+      return [{
+        pack: { packId: "technical", packVersion: "1", fingerprint: "sha256:technical" },
+        record: {
+          lookupKey: "session",
+          displayForm: "session",
+          kind: "technical-concept",
+          aliases: [],
+          senses: [{
+            id: "reviewed:session.computing",
+            translations: ["会话"],
+            domains: ["protocol", "terminal"],
+            typeLabels: ["computing session"],
+            sourceRefs: [{ sourceId: "translateflow-reviewed-technical-terms", recordId: "session.computing" }]
+          }]
+        },
+        exactCaseMatch: true
+      }];
+    }
+  };
+  const result = await createLexicalGateway({ packReaders: [reader] }).lookup({ text: "session" });
+  assert.deepEqual(result.candidates[0].typeLabels, ["computing session"]);
+  assert.deepEqual(result.candidates[0].provenance.sourceRefs, [{
+    sourceId: "translateflow-reviewed-technical-terms",
+    recordId: "session.computing"
+  }]);
+});
+
 test("exact phrase wins while phrase misses expose evidence without token concatenation", async () => {
   const gateway = createLexicalGateway({ packReaders: [coreReader()] });
   const exact = await gateway.lookup({ text: "terminal multiplexer" });

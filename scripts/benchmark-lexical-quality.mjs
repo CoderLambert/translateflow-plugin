@@ -111,7 +111,7 @@ export function validateLexicalQualityFixture(fixture) {
 
   const allowedModes = new Set(["exact", "normalized", "inflection", "phrase-context", "no-hit"]);
   const requiredGroups = new Set([
-    "general", "polysemy", "technical", "entity", "contrastive",
+    "ordinary", "polysemy", "technical", "entity", "contrastive",
     "normalization", "inflection", "phrase-context", "negative-control", "no-hit"
   ]);
   const allowedErrorClasses = new Set([
@@ -225,6 +225,7 @@ function evaluateCase(testCase, result, elapsedMs) {
     mode: testCase.expected.mode,
     query: testCase.query,
     expectedHit,
+    expected: structuredClone(testCase.expected),
     hit,
     hitCorrect: expectedHit ? hit : !hit,
     matchedBy: lookup?.matchedBy || null,
@@ -234,6 +235,7 @@ function evaluateCase(testCase, result, elapsedMs) {
     candidateCount: candidates.length,
     topCandidateId: decision?.topCandidateId || null,
     topCandidate: summarizeCandidate(top),
+    candidates: candidates.map(summarizeCandidate),
     topCorrect,
     expectedPhrase: testCase.expected.phrase || null,
     phraseRecovered: phraseCorrect,
@@ -541,6 +543,9 @@ function summarizeCandidate(candidate) {
     domains: Array.isArray(candidate.domains) ? candidate.domains : [],
     typeLabels: Array.isArray(candidate.typeLabels) ? candidate.typeLabels : [],
     packId: candidate.provenance?.packId || null,
+    sourceRefs: Array.isArray(candidate.provenance?.sourceRefs)
+      ? candidate.provenance.sourceRefs.map((ref) => ({ ...ref }))
+      : [],
     score: candidate.ranking?.score ?? null
   };
 }

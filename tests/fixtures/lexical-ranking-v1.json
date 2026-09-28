@@ -87,7 +87,8 @@
       "exactCaseMatch": true,
       "translations": [],
       "domains": [
-        "protocol"
+        "protocol",
+        "terminal"
       ],
       "typeLabels": [
         "context",

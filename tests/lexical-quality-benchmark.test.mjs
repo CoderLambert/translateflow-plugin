@@ -16,7 +16,7 @@ test("lexical quality corpus is broad, versioned and structurally valid", async 
 
   const groups = new Set(fixture.cases.map((item) => item.group));
   for (const group of [
-    "general", "polysemy", "technical", "entity",
+    "ordinary", "polysemy", "technical", "entity",
     "normalization", "inflection", "phrase-context", "negative-control", "no-hit"
   ]) {
     assert.ok(groups.has(group), `missing benchmark group: ${group}`);

@@ -48,6 +48,13 @@ export function validateTflexManifest(manifest, readerVersion) {
     if (!source?.id || !source?.version || !source?.provenance || !source?.license?.id) {
       throw corrupt(manifest.packId, "manifest.json", "Malformed TFLex source provenance");
     }
+    if (source.providesFields !== undefined && (
+      !Array.isArray(source.providesFields) ||
+      !source.providesFields.length ||
+      source.providesFields.some((field) => typeof field !== "string" || !field)
+    )) {
+      throw corrupt(manifest.packId, "manifest.json", "Malformed TFLex source field provenance");
+    }
   }
   if (!Array.isArray(manifest.files) || !manifest.files.length) {
     throw corrupt(manifest.packId, "manifest.json", "TFLex file descriptors are missing");
@@ -136,6 +143,8 @@ export function validateTflexRecord(record, packId, path) {
       throw corrupt(packId, path, "Malformed TFLex tagCount");
     }
     validateSourceRefs(sense.sourceRefs, packId, path);
+    validateOptionalTextArray(sense.domains, packId, path, "sense domain");
+    validateOptionalTextArray(sense.typeLabels, packId, path, "sense type label");
   }
 }
 
@@ -240,6 +249,9 @@ export async function verifyTflexManifestFingerprint(manifest, cryptoProvider) {
         version: source.version,
         provenance: source.provenance,
         dataSha256: source.dataSha256,
+        providesFields: Array.isArray(source.providesFields)
+          ? [...source.providesFields]
+          : undefined,
         snapshot: source.snapshot ? {
           kind: source.snapshot.kind,
           version: source.snapshot.version,
@@ -324,6 +336,13 @@ function validateSourceRefs(refs, packId, path) {
     ) {
       throw corrupt(packId, path, "Malformed TFLex sourceRef");
     }
+  }
+}
+
+function validateOptionalTextArray(values, packId, path, label) {
+  if (values === undefined) return;
+  if (!Array.isArray(values) || values.some((value) => typeof value !== "string" || !value)) {
+    throw corrupt(packId, path, "Malformed TFLex " + label);
   }
 }
 

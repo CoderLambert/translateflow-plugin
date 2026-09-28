@@ -14,7 +14,7 @@
   "cases": [
     {
       "id": "ordinary-persistent",
-      "group": "general",
+      "group": "ordinary",
       "query": "persistent",
       "context": "The setting remains persistent after restart.",
       "expected": {
@@ -30,7 +30,7 @@
     },
     {
       "id": "ordinary-reliable",
-      "group": "general",
+      "group": "ordinary",
       "query": "reliable",
       "context": "Use a reliable connection for the request.",
       "expected": {
@@ -46,7 +46,7 @@
     },
     {
       "id": "ordinary-portable",
-      "group": "general",
+      "group": "ordinary",
       "query": "portable",
       "context": "The tool is portable across systems.",
       "expected": {
@@ -62,7 +62,7 @@
     },
     {
       "id": "ordinary-descendant",
-      "group": "general",
+      "group": "ordinary",
       "query": "descendant",
       "context": "A descendant belongs to a later generation.",
       "expected": {
