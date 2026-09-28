@@ -85,6 +85,28 @@ test("generic lexical senses in technical context require structured sense evide
   });
   assert.equal(derivedMarker.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
   assert.equal(derivedMarker.reason, "technical-context-missing-structured-sense");
+
+  const recoveredLookup = structuredClone(lookup);
+  recoveredLookup.query = { ...recoveredLookup.query, text: "repositories", normalized: "repositories" };
+  recoveredLookup.matchedBy = "morphology";
+  recoveredLookup.resolvedForm = "repository";
+  recoveredLookup.candidates[0] = {
+    ...recoveredLookup.candidates[0],
+    id: "core:repository:general",
+    headword: "repository",
+    queryForm: "repository",
+    matchedBy: "morphology"
+  };
+  const recoveredTechnical = assessLexicalLookup(recoveredLookup, {
+    contextText: "Clone the Git repositories before building."
+  });
+  assert.equal(recoveredTechnical.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
+  assert.equal(recoveredTechnical.reason, "technical-context-missing-structured-sense");
+
+  const recoveredOrdinary = assessLexicalLookup(recoveredLookup, {
+    contextText: "The archives are repositories for historical documents."
+  });
+  assert.equal(recoveredOrdinary.outcome, LEXICAL_DECISION_OUTCOME.SUFFICIENT);
 });
 
 test("technical context can outrank a generic sense without suppressing it", async () => {
