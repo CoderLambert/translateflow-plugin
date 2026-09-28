@@ -116,7 +116,7 @@
           card,
           copyTextForCard(card),
           "结果已复制",
-          resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth) : null
+          resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth, card) : null
         );
         return;
       }
@@ -147,7 +147,7 @@
     }
   }
 
-  async function explainSnapshot(snapshot, depth) {
+  async function explainSnapshot(snapshot, depth, baseCard = null) {
     if (!snapshot || snapshot !== activeSnapshot) return;
 
     if (activeTask && !tasks.isTerminal(activeTask)) {
@@ -164,16 +164,34 @@
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
     const context = captureSelectionContext(snapshot);
-    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+    const preserveLocal = Boolean(baseCard?.primaryMeaning);
+
+    if (preserveLocal) {
+      popover.showAiDetailLoading(() => cancelAiDetail(snapshot, depth, baseCard));
+    } else {
+      popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+    }
 
     try {
-      await explainSelection(snapshot, task, version, expectedPage, context, depth);
+      await explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard);
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
       tasks.failTask(task, error);
-      if (snapshot !== activeSnapshot) return;
+      if (!isCurrentSelection(version, snapshot, expectedPage)) return;
 
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
+      if (preserveLocal) {
+        if (cancelled) {
+          popover.showAiDetailCancelled(() => explainSnapshot(snapshot, depth, baseCard));
+        } else {
+          popover.showAiDetailError(
+            `AI 详解失败：${error?.message || error}`,
+            () => explainSnapshot(snapshot, depth, baseCard)
+          );
+        }
+        return;
+      }
+
       popover.showError(
         snapshot,
         cancelled ? "AI 详解已取消。" : `AI 详解失败：${error?.message || error}`,
@@ -182,9 +200,18 @@
     }
   }
 
-  async function explainSelection(snapshot, task, version, expectedPage, context, depth) {
+  function cancelAiDetail(snapshot, depth, baseCard) {
+    const task = activeTask;
+    if (!task || tasks.isTerminal(task)) return;
+    tasks.cancelTask(task).catch(() => {});
+    if (snapshot === activeSnapshot) {
+      popover.showAiDetailCancelled(() => explainSnapshot(snapshot, depth, baseCard));
+    }
+  }
+
+  async function explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard = null) {
     tasks.transition(task, "translating");
-    popover.setLoadingStatus("正在结合上下文解释…");
+    if (!baseCard) popover.setLoadingStatus("正在结合上下文解释…");
     const explained = await sendRuntimeMessage({
       type: messages.background.SELECTION_EXPLAIN,
       requestId: task.id,
@@ -197,6 +224,7 @@
     if (!explained?.ok) throw tasks.responseError(explained, "划词解释失败");
 
     if (explained.route === "local" && explained.resolved) {
+      if (baseCard) throw new Error("当前本地结果没有可用的 AI 详解。");
       const card = buildLocalResult(explained.resolved);
       if (!card?.primaryMeaning) throw new Error("本地词典没有可展示结果。");
       tasks.completeTask(task, { done: 1 });
@@ -205,6 +233,7 @@
     }
 
     if (explained.route === "translation") {
+      if (baseCard) throw new Error("当前选段已不再适合本地词典详解，请重新选择。");
       await translateSelection(snapshot, task, version, expectedPage);
       return;
     }
@@ -219,6 +248,20 @@
       cacheHits: explained.cacheHit ? 1 : 0,
       apiTranslated: explained.cacheHit ? 0 : 1
     });
+
+    if (baseCard) {
+      const combinedCard = {
+        ...baseCard,
+        generatedMeaning: card.generatedMeaning,
+        explanation: card.explanation
+      };
+      popover.showAiDetailResult(
+        card,
+        copyAction(copyTextForCard(combinedCard), "解释已复制")
+      );
+      return;
+    }
+
     showResult(snapshot, card, copyTextForCard(card), "解释已复制");
   }
 
@@ -301,14 +344,24 @@
   }
 
   function showResult(snapshot, card, copyText, copiedMessage, onExplain = null) {
-    popover.showResult(snapshot, card, async () => {
+    popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain);
+  }
+
+  function copyAction(copyText, copiedMessage) {
+    return async () => {
       try {
         await copyTextValue(copyText);
         showToast(copiedMessage, "success");
       } catch (error) {
         showToast("复制失败：" + (error?.message || error), "error");
       }
-    }, onExplain);
+    };
+  }
+
+  function isCurrentSelection(version, snapshot, expectedPage) {
+    return version === requestVersion
+      && snapshot === activeSnapshot
+      && getPageIdentity(location.href) === expectedPage;
   }
 
   function assertCurrent(version, snapshot, expectedPage, task) {
