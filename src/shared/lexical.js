@@ -6,8 +6,6 @@ const SAFE_LEXICAL_LOOKUP_RE = new RegExp(
   `^${SAFE_LEXICAL_ATOM}(?:\\s+${SAFE_LEXICAL_ATOM}){0,3}$`,
   "u"
 );
-const POSSESSIVE_RE = /^([\p{L}\p{M}][\p{L}\p{M}\p{N}-]*)(?:'s|')$/iu;
-
 export const LEXICAL_RESULT_STATUS = Object.freeze({
   UNSUPPORTED: "unsupported",
   NO_HIT: "no-hit",
@@ -50,9 +48,6 @@ export function normalizeLexicalLookupForm(value) {
 
   const withoutTrailing = candidate.replace(/[.,:;!?)}\]]+$/u, "").trim();
   if (withoutTrailing) candidate = withoutTrailing;
-
-  const possessive = candidate.match(POSSESSIVE_RE);
-  if (possessive) candidate = possessive[1];
 
   candidate = normalizeLexicalExactKey(candidate);
   return SAFE_LEXICAL_LOOKUP_RE.test(candidate) ? candidate : original;
