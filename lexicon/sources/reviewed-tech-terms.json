@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "source": "TranslateFlow reviewed technical terminology",
+  "license": "LicenseRef-TranslateFlow-Reviewed-Terms",
+  "snapshot": {
+    "kind": "reviewed-term-set",
+    "version": "2026-09-28",
+    "lockedAt": "2026-09-28T15:20:00Z",
+    "extractRuleVersion": 1
+  },
+  "terms": [
+    {
+      "id": "branch.git",
+      "headword": "branch",
+      "aliases": [],
+      "translations": [
+        "分支"
+      ],
+      "domains": [
+        "git",
+        "repository"
+      ],
+      "typeLabels": [
+        "version control concept"
+      ],
+      "evidenceUrls": [
+        "https://git-scm.com/docs/gitglossary"
+      ]
+    },
+    {
+      "id": "cache.computing",
+      "headword": "cache",
+      "aliases": [],
+      "translations": [
+        "缓存",
+        "高速缓存"
+      ],
+      "domains": [
+        "browser",
+        "web"
+      ],
+      "typeLabels": [
+        "computing concept"
+      ],
+      "evidenceUrls": [
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching"
+      ]
+    },
+    {
+      "id": "commit.git",
+      "headword": "commit",
+      "aliases": [],
+      "translations": [
+        "提交",
+        "提交记录"
+      ],
+      "domains": [
+        "git",
+        "repository"
+      ],
+      "typeLabels": [
+        "version control concept"
+      ],
+      "evidenceUrls": [
+        "https://git-scm.com/docs/gitglossary"
+      ]
+    },
+    {
+      "id": "container-image.docker",
+      "headword": "container image",
+      "aliases": [],
+      "translations": [
+        "容器镜像"
+      ],
+      "domains": [
+        "container",
+        "docker"
+      ],
+      "typeLabels": [
+        "container image"
+      ],
+      "evidenceUrls": [
+        "https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-an-image/"
+      ]
+    },
+    {
+      "id": "container.docker",
+      "headword": "container",
+      "aliases": [],
+      "translations": [
+        "容器"
+      ],
+      "domains": [
+        "container",
+        "docker"
+      ],
+      "typeLabels": [
+        "container concept"
+      ],
+      "evidenceUrls": [
+        "https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-container/"
+      ]
+    },
+    {
+      "id": "dependency-injection.software",
+      "headword": "dependency injection",
+      "aliases": [],
+      "translations": [
+        "依赖注入"
+      ],
+      "domains": [
+        "framework",
+        "software"
+      ],
+      "typeLabels": [
+        "software design pattern"
+      ],
+      "evidenceUrls": [
+        "https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection"
+      ]
+    },
+    {
+      "id": "dependency.software",
+      "headword": "dependency",
+      "aliases": [],
+      "translations": [
+        "依赖",
+        "依赖项"
+      ],
+      "domains": [
+        "package",
+        "software"
+      ],
+      "typeLabels": [
+        "software dependency"
+      ],
+      "evidenceUrls": [
+        "https://docs.npmjs.com/specifying-dependencies-and-devdependencies-in-a-package-json-file"
+      ]
+    },
+    {
+      "id": "descendant-combinator.css",
+      "headword": "descendant combinator",
+      "aliases": [],
+      "translations": [
+        "后代组合器",
+        "后代关系"
+      ],
+      "domains": [
+        "css",
+        "web"
+      ],
+      "typeLabels": [
+        "CSS combinator"
+      ],
+      "evidenceUrls": [
+        "https://developer.mozilla.org/en-US/docs/Web/CSS/Descendant_combinator"
+      ]
+    },
+    {
+      "id": "event-loop.javascript",
+      "headword": "event loop",
+      "aliases": [
+        "message loop"
+      ],
+      "translations": [
+        "事件循环"
+      ],
+      "domains": [
+        "javascript",
+        "runtime"
+      ],
+      "typeLabels": [
+        "runtime mechanism"
+      ],
+      "evidenceUrls": [
+        "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Event_loop"
+      ]
+    },
+    {
+      "id": "garbage-collection.runtime",
+      "headword": "garbage collection",
+      "aliases": [],
+      "translations": [
+        "垃圾回收"
+      ],
+      "domains": [
+        "memory",
+        "runtime"
+      ],
+      "typeLabels": [
+        "automatic memory management"
+      ],
+      "evidenceUrls": [
+        "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Memory_management"
+      ]
+    },
+    {
+      "id": "issue.github",
+      "headword": "issue",
+      "aliases": [],
+      "translations": [
+        "议题",
+        "问题"
+      ],
+      "domains": [
+        "git",
+        "repository"
+      ],
+      "typeLabels": [
+        "issue tracker concept"
+      ],
+      "evidenceUrls": [
+        "https://docs.github.com/en/issues/tracking-your-work-with-issues/about-issues"
+      ]
+    },
+    {
+      "id": "process.linux",
+      "headword": "process",
+      "aliases": [],
+      "translations": [
+        "进程"
+      ],
+      "domains": [
+        "linux",
+        "runtime"
+      ],
+      "typeLabels": [
+        "operating system process"
+      ],
+      "evidenceUrls": [
+        "https://man7.org/linux/man-pages/man7/signal.7.html"
+      ]
+    },
+    {
+      "id": "repository.git",
+      "headword": "repository",
+      "aliases": [
+        "repo"
+      ],
+      "translations": [
+        "仓库",
+        "代码仓库"
+      ],
+      "domains": [
+        "git",
+        "repository"
+      ],
+      "typeLabels": [
+        "version control repository"
+      ],
+      "evidenceUrls": [
+        "https://git-scm.com/docs/gitglossary"
+      ]
+    },
+    {
+      "id": "run.software",
+      "headword": "run",
+      "aliases": [],
+      "translations": [
+        "运行",
+        "执行"
+      ],
+      "domains": [
+        "javascript",
+        "runtime"
+      ],
+      "typeLabels": [
+        "software execution"
+      ],
+      "evidenceUrls": [
+        "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
+      ]
+    },
+    {
+      "id": "runtime-system.software",
+      "headword": "run-time system",
+      "aliases": [
+        "runtime environment",
+        "runtime system"
+      ],
+      "translations": [
+        "运行时环境",
+        "运行时系统"
+      ],
+      "domains": [
+        "runtime"
+      ],
+      "typeLabels": [
+        "computing platform"
+      ],
+      "evidenceUrls": [
+        "https://www.wikidata.org/wiki/Q1004415"
+      ]
+    },
+    {
+      "id": "session.computing",
+      "headword": "session",
+      "aliases": [],
+      "translations": [
+        "会话"
+      ],
+      "domains": [
+        "protocol",
+        "terminal"
+      ],
+      "typeLabels": [
+        "computing session"
+      ],
+      "evidenceUrls": [
+        "https://www.wikidata.org/wiki/Q932410"
+      ]
+    },
+    {
+      "id": "state-management.software",
+      "headword": "state management",
+      "aliases": [],
+      "translations": [
+        "状态管理"
+      ],
+      "domains": [
+        "component",
+        "software"
+      ],
+      "typeLabels": [
+        "programming concept"
+      ],
+      "evidenceUrls": [
+        "https://www.wikidata.org/wiki/Q7603711"
+      ]
+    },
+    {
+      "id": "state.software",
+      "headword": "state",
+      "aliases": [],
+      "translations": [
+        "状态"
+      ],
+      "domains": [
+        "component",
+        "software"
+      ],
+      "typeLabels": [
+        "program state"
+      ],
+      "evidenceUrls": [
+        "https://react.dev/learn/state-a-components-memory"
+      ]
+    },
+    {
+      "id": "terminal-multiplexer.terminal",
+      "headword": "terminal multiplexer",
+      "aliases": [],
+      "translations": [
+        "终端复用器"
+      ],
+      "domains": [
+        "terminal"
+      ],
+      "typeLabels": [
+        "developer tool concept"
+      ],
+      "evidenceUrls": [
+        "https://github.com/tmux/tmux/wiki"
+      ]
+    }
+  ]
+}

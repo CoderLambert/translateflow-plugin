@@ -22,9 +22,10 @@ async function build(name, options = {}) {
   const result = await compileTflexCore({
     englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
     chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+    senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
     sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
     outDir,
-    maxShardBytes: options.maxShardBytes || 900
+    maxShardBytes: options.maxShardBytes || 1100
   });
   return { root, outDir, result };
 }
@@ -51,10 +52,10 @@ test("TFLex compiler is deterministic and emits bounded attributable artifacts",
   assert.equal(first.result.manifest.compilerVersion, 1);
   assert.equal(first.result.manifest.normalizationVersion, 1);
   assert.equal(first.result.manifest.profile, "bundled-sharded-v1");
-  assert.deepEqual(first.result.manifest.profileOptions, { maxShardBytes: 900 });
+  assert.deepEqual(first.result.manifest.profileOptions, { maxShardBytes: 1100 });
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.ok(first.result.directory.shards.length >= 2);
-  assert.ok(first.result.directory.shards.every((shard) => shard.size <= 900));
+  assert.ok(first.result.directory.shards.every((shard) => shard.size <= 1100));
   assert.ok(first.result.manifest.files.some((file) => file.role === "license-notice"));
   assert.ok(first.result.manifest.sources.every((source) => source.dataSha256));
   const validated = await validateTflexCoreOutput({ outDir: first.outDir, readerVersion: 1 });
@@ -74,6 +75,18 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   ]);
   assert.deepEqual(persistent.senses[0].translations, ["持久的", "持续的"]);
   assert.deepEqual(persistent.senses[0].rawTranslations, ["持久+的", "持续+的"]);
+  assert.equal(persistent.senses[0].senseNumber, 1);
+  assert.equal(persistent.senses[0].tagCount, 5);
+  assert.deepEqual(persistent.senses[0].sourceRefs, [
+    { sourceId: "pwn-3.0", recordId: "00000001-a" },
+    { sourceId: "chinese-open-wordnet", recordId: "00000001-a" }
+  ]);
+  assert.ok(!JSON.stringify(result.records).includes("persistent%3:00:00::"));
+  const senseIndexSource = result.manifest.sources.find(
+    (source) => source.id === "pwn-3.0-sense-index"
+  );
+  assert.match(senseIndexSource.provenance, /provides TFLex senseNumber and tagCount fields/);
+  assert.deepEqual(senseIndexSource.providesFields, ["senseNumber", "tagCount"]);
   const phrase = result.records.find((record) => record.lookupKey === "terminal multiplexer");
   assert.equal(phrase.displayForm, "terminal multiplexer");
   assert.equal(phrase.senses[0].partOfSpeech, "noun");
@@ -83,9 +96,9 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
 });
 
 test("TFLex compiler records the effective shard budget in build identity", async () => {
-  const small = await build("budget-small", { maxShardBytes: 900 });
+  const small = await build("budget-small", { maxShardBytes: 1100 });
   const large = await build("budget-large", { maxShardBytes: 64 * 1024 });
-  assert.deepEqual(small.result.manifest.profileOptions, { maxShardBytes: 900 });
+  assert.deepEqual(small.result.manifest.profileOptions, { maxShardBytes: 1100 });
   assert.deepEqual(large.result.manifest.profileOptions, { maxShardBytes: 64 * 1024 });
   assert.notEqual(small.result.manifest.fingerprint, large.result.manifest.fingerprint);
 });
@@ -101,6 +114,7 @@ test("TFLex compiler refuses to delete a non-empty output directory", async () =
     compileTflexCore({
       englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
       chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
       sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
       outDir
     }),
@@ -160,10 +174,29 @@ test("TFLex compiler rejects source drift before parsing", async () => {
     compileTflexCore({
       englishPath: changed,
       chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
       sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
       outDir: join(root, "out")
     }),
     /SHA-256 mismatch for pwn-3\.0/
+  );
+});
+
+test("TFLex compiler rejects locked sense-index byte-size drift before parsing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translateflow-tflex-size-drift-"));
+  const lock = JSON.parse(await readFile(new URL("source-lock.json", fixtureRoot), "utf8"));
+  lock.sources.find((source) => source.id === "pwn-3.0-sense-index").data.size += 1;
+  const lockPath = join(root, "source-lock.json");
+  await writeFile(lockPath, JSON.stringify(lock), "utf8");
+  await assert.rejects(
+    compileTflexCore({
+      englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
+      chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
+      sourceLockPath: lockPath,
+      outDir: join(root, "out")
+    }),
+    /byte size mismatch for pwn-3\.0-sense-index/
   );
 });
 
@@ -180,7 +213,8 @@ test("source-lock validation fails closed on missing license evidence", () => {
       targetLanguage: "zh-CN",
       sources: [
         { id: "pwn-3.0", version: "3", provenance: "x", data: { url: "x", sha256: "a".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "" } },
-        { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+        { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+        { id: "pwn-3.0-sense-index", version: "3", provenance: "x", data: { url: "x", sha256: "c".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
       ]
     }),
     /license notice/
@@ -199,16 +233,31 @@ test("source-lock validation rejects unverified extra Core sources", async () =>
   assert.throws(() => validateSourceLock(lock), /unsupported source id for core pack: unexpected-source/);
 });
 
+test("source-lock validation requires an exact sense-index byte size", async () => {
+  const lock = JSON.parse(await readFile(new URL("./fixtures/tflex-core/source-lock.json", import.meta.url), "utf8"));
+  delete lock.sources.find((source) => source.id === "pwn-3.0-sense-index").data.size;
+  assert.throws(
+    () => validateSourceLock(lock),
+    /pwn-3\.0-sense-index data size/
+  );
+});
+
 test("compiler rejects generic HTML-like markup in lexical source strings", async () => {
   const root = await mkdtemp(join(tmpdir(), "translateflow-tflex-markup-"));
   const engText = "00000001-n\tlemma\t<b>unsafe display markup</b>\n";
   const cmnText = "00000001-n\tcmn:lemma\t测试\n";
   const engPath = join(root, "eng.tab");
   const cmnPath = join(root, "cmn.tab");
+  const senseText = "unsafe%1:06:00:: 00000001 1 1\n";
+  const sensePath = join(root, "index.sense");
   const lockPath = join(root, "lock.json");
   const { createHash } = await import("node:crypto");
   const digest = (text) => createHash("sha256").update(text).digest("hex");
-  await Promise.all([writeFile(engPath, engText), writeFile(cmnPath, cmnText)]);
+  await Promise.all([
+    writeFile(engPath, engText),
+    writeFile(cmnPath, cmnText),
+    writeFile(sensePath, senseText)
+  ]);
   await writeFile(lockPath, JSON.stringify({
     schemaVersion: 1,
     formatVersion: 1,
@@ -220,11 +269,12 @@ test("compiler rejects generic HTML-like markup in lexical source strings", asyn
     targetLanguage: "zh-CN",
     sources: [
       { id: "pwn-3.0", version: "x", provenance: "x", data: { url: "fixture://eng", sha256: digest(engText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
-      { id: "chinese-open-wordnet", version: "x", provenance: "x", data: { url: "fixture://cmn", sha256: digest(cmnText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+      { id: "chinese-open-wordnet", version: "x", provenance: "x", data: { url: "fixture://cmn", sha256: digest(cmnText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+      { id: "pwn-3.0-sense-index", version: "x", provenance: "x", data: { url: "fixture://sense", sha256: digest(senseText), size: Buffer.byteLength(senseText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
     ]
   }));
   await assert.rejects(
-    compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, sourceLockPath: lockPath, outDir: join(root, "out") }),
+    compileTflexCore({ englishPath: engPath, chinesePath: cmnPath, senseIndexPath: sensePath, sourceLockPath: lockPath, outDir: join(root, "out") }),
     /HTML-like markup or an executable scheme/
   );
 });
@@ -247,7 +297,8 @@ test("source-lock validation rejects incompatible TFLex versions", () => {
     targetLanguage: "zh-CN",
     sources: [
       { id: "pwn-3.0", version: "3", provenance: "x", data: { url: "x", sha256: "a".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
-      { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+      { id: "chinese-open-wordnet", version: "1", provenance: "x", data: { url: "x", sha256: "b".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
+      { id: "pwn-3.0-sense-index", version: "3", provenance: "x", data: { url: "x", sha256: "c".repeat(64) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
     ]
   };
   assert.throws(() => validateSourceLock(base), /formatVersion is incompatible/);

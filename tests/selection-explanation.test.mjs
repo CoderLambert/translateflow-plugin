@@ -18,6 +18,8 @@ function candidate(overrides = {}) {
     senseId: "persistent:1",
     entityId: null,
     partOfSpeech: "adjective",
+    senseNumber: 1,
+    tagCount: 9,
     translations: ["持久的"],
     domains: ["computing"],
     typeLabels: [],
@@ -47,6 +49,8 @@ test("Selection explain payload exposes only bounded structured candidate facts"
   assert.equal(payload.candidates[0].rankScore, 88);
   assert.equal("aliases" in payload.candidates[0], false);
   assert.equal("queryForm" in payload.candidates[0], false);
+  assert.equal("senseNumber" in payload.candidates[0], false);
+  assert.equal("tagCount" in payload.candidates[0], false);
   assert.deepEqual(payload.candidates[0].provenance.sourceRefs, [
     { sourceId: "cedict", recordId: "persistent:1" }
   ]);

@@ -33,3 +33,14 @@ test("release lexicon CI builds from the exact Design Freeze OMW revision", asyn
   assert.equal(pkg.scripts["certify:lexicon"], "node scripts/certify-lexical-release.mjs");
   assert.equal(pkg.scripts["benchmark:lexical"], "node scripts/benchmark-lexical-quality.mjs");
 });
+
+test("release certification keeps the 40 MiB lexical asset gate", async () => {
+  const [certifier, setup] = await Promise.all([
+    source("scripts/certify-lexical-release.mjs"),
+    source("scripts/setup-lexicon.mjs")
+  ]);
+  assert.match(certifier, /MAX_RELEASE_LEXICON_BYTES\s*=\s*40\s*\*\s*1024\s*\*\s*1024/);
+  assert.match(certifier, /assets\.bytes\s*<=\s*MAX_RELEASE_LEXICON_BYTES/);
+  assert.match(setup, /certifyLexicalRelease/);
+  assert.match(setup, /certification\.failures\.length/);
+});

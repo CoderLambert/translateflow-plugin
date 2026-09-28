@@ -13,12 +13,14 @@ export const DEFAULT_MAX_SHARD_BYTES = 512 * 1024;
 
 const SOURCE_IDS = Object.freeze({
   english: "pwn-3.0",
-  chinese: "chinese-open-wordnet"
+  chinese: "chinese-open-wordnet",
+  senseIndex: "pwn-3.0-sense-index"
 });
 
 export async function compileTflexCore({
   englishPath,
   chinesePath,
+  senseIndexPath,
   sourceLockPath,
   outDir,
   maxShardBytes = DEFAULT_MAX_SHARD_BYTES
@@ -27,19 +29,22 @@ export async function compileTflexCore({
   assertSafeOutputDir(output);
   assertPositiveInteger(maxShardBytes, "maxShardBytes");
 
-  const [englishBytes, chineseBytes, sourceLockText] = await Promise.all([
+  const [englishBytes, chineseBytes, senseIndexBytes, sourceLockText] = await Promise.all([
     readFile(resolveRequiredPath(englishPath, "englishPath")),
     readFile(resolveRequiredPath(chinesePath, "chinesePath")),
+    readFile(resolveRequiredPath(senseIndexPath, "senseIndexPath")),
     readFile(resolveRequiredPath(sourceLockPath, "sourceLockPath"), "utf8")
   ]);
 
   const sourceLock = validateSourceLock(JSON.parse(sourceLockText));
   verifyLockedBytes(sourceLock.sources.find((item) => item.id === SOURCE_IDS.english), englishBytes);
   verifyLockedBytes(sourceLock.sources.find((item) => item.id === SOURCE_IDS.chinese), chineseBytes);
+  verifyLockedBytes(sourceLock.sources.find((item) => item.id === SOURCE_IDS.senseIndex), senseIndexBytes);
 
   const records = buildCoreRecords({
     englishTab: englishBytes.toString("utf8"),
-    chineseTab: chineseBytes.toString("utf8")
+    chineseTab: chineseBytes.toString("utf8"),
+    senseIndexText: senseIndexBytes.toString("utf8")
   });
   if (!records.length) throw new Error("TFLex core build produced no bilingual records");
 
@@ -76,6 +81,9 @@ export async function compileTflexCore({
       provenance: source.provenance,
       dataSha256: source.data.sha256,
       dataUrl: source.data.url,
+      ...(source.id === SOURCE_IDS.senseIndex ? {
+        providesFields: ["senseNumber", "tagCount"]
+      } : {}),
       license: {
         id: source.license.id,
         name: source.license.name,
@@ -140,6 +148,9 @@ export function validateSourceLock(input) {
     if (!source.data || typeof source.data !== "object") throw new Error("source " + source.id + " data descriptor is required");
     requireNonEmptyString(source.data.url, "source " + source.id + " data url");
     requireSha256(source.data.sha256, "source " + source.id + " data sha256");
+    if (source.data.size !== undefined) {
+      assertPositiveInteger(source.data.size, "source " + source.id + " data size");
+    }
     if (!source.license || typeof source.license !== "object") throw new Error("source " + source.id + " license descriptor is required");
     requireNonEmptyString(source.license.id, "source " + source.id + " license id");
     requireNonEmptyString(source.license.name, "source " + source.id + " license name");
@@ -155,12 +166,15 @@ export function validateSourceLock(input) {
   for (const required of requiredSourceIds) {
     if (!seen.has(required)) throw new Error("source lock missing required source: " + required);
   }
+  const senseIndexSource = sources.find((source) => source.id === SOURCE_IDS.senseIndex);
+  assertPositiveInteger(senseIndexSource.data.size, "source " + SOURCE_IDS.senseIndex + " data size");
   return { ...input, sources };
 }
 
-export function buildCoreRecords({ englishTab, chineseTab }) {
+export function buildCoreRecords({ englishTab, chineseTab, senseIndexText = "" }) {
   const english = parseOmwRows(englishTab, "lemma");
   const chinese = parseOmwRows(chineseTab, "cmn:lemma");
+  const senseIndex = parseWordNetSenseIndex(senseIndexText);
   const records = new Map();
 
   for (const [synset, englishForms] of english) {
@@ -198,15 +212,21 @@ export function buildCoreRecords({ englishTab, chineseTab }) {
       record.sourceRefs.push({ sourceId: SOURCE_IDS.english, recordId: synset });
 
       if (!record.senses.some((sense) => sense.id === "pwn3:" + synset)) {
+        const prior = sensePriorFor(senseIndex, lookupKey, synset);
+        const sourceRefs = [
+          { sourceId: SOURCE_IDS.english, recordId: synset },
+          { sourceId: SOURCE_IDS.chinese, recordId: synset }
+        ];
         record.senses.push({
           id: "pwn3:" + synset,
           partOfSpeech: partOfSpeechFromSynset(synset),
           translations: displayTranslations,
           rawTranslations,
-          sourceRefs: [
-            { sourceId: SOURCE_IDS.english, recordId: synset },
-            { sourceId: SOURCE_IDS.chinese, recordId: synset }
-          ]
+          ...(prior ? {
+            senseNumber: prior.senseNumber,
+            tagCount: prior.tagCount
+          } : {}),
+          sourceRefs
         });
       }
     }
@@ -239,6 +259,50 @@ export function parseOmwRows(text, relation) {
   }
   for (const [synset, forms] of bySynset) bySynset.set(synset, uniqueSorted(forms));
   return bySynset;
+}
+
+export function parseWordNetSenseIndex(text) {
+  const result = new Map();
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const fields = line.split(/\s+/);
+    if (fields.length !== 4) throw new Error("invalid WordNet index.sense row");
+    const [senseKey, offset, senseNumberText, tagCountText] = fields;
+    const match = senseKey.match(/^(.+)%([1-5]):/);
+    if (!match || !/^[0-9]{8}$/.test(offset)) {
+      throw new Error("invalid WordNet index.sense key");
+    }
+    const senseNumber = Number(senseNumberText);
+    const tagCount = Number(tagCountText);
+    if (!Number.isSafeInteger(senseNumber) || senseNumber <= 0) {
+      throw new Error("invalid WordNet sense number");
+    }
+    if (!Number.isSafeInteger(tagCount) || tagCount < 0) {
+      throw new Error("invalid WordNet tag count");
+    }
+    const lemma = normalizeLookupKey(match[1].replaceAll("_", " "));
+    const pos = { "1": "n", "2": "v", "3": "a", "4": "r", "5": "a" }[match[2]];
+    const key = lemma + "\u0000" + offset + "-" + pos;
+    const previous = result.get(key);
+    const item = { senseNumber, tagCount };
+    if (
+      !previous ||
+      senseNumber < previous.senseNumber ||
+      (senseNumber === previous.senseNumber && tagCount > previous.tagCount)
+    ) {
+      result.set(key, item);
+    }
+  }
+  return result;
+}
+
+function sensePriorFor(index, lookupKey, synset) {
+  if (!(index instanceof Map) || !index.size) return null;
+  const canonical = String(synset || "").endsWith("-s")
+    ? String(synset).slice(0, -1) + "a"
+    : String(synset);
+  return index.get(lookupKey + "\u0000" + canonical) || null;
 }
 
 export function normalizeExactLookupKey(value) {
@@ -295,6 +359,12 @@ export function validateCoreRecords(records) {
         requireNonEmptyString(translation, "sense translation");
         assertDataOnlyString(translation, "sense translation");
       }
+      if (sense.senseNumber !== undefined && (!Number.isSafeInteger(sense.senseNumber) || sense.senseNumber <= 0)) {
+        throw new Error("invalid senseNumber: " + sense.id);
+      }
+      if (sense.tagCount !== undefined && (!Number.isSafeInteger(sense.tagCount) || sense.tagCount < 0)) {
+        throw new Error("invalid tagCount: " + sense.id);
+      }
       if (!Array.isArray(sense.sourceRefs) || !sense.sourceRefs.length) throw new Error("sense sourceRefs are required: " + sense.id);
     }
   }
@@ -343,6 +413,10 @@ export async function validateTflexCoreOutput({
     manifestSourceIds.add(source.id);
     requireNonEmptyString(source.version, "manifest source version");
     requireSha256(source.dataSha256, "manifest source dataSha256");
+    if (source.id === SOURCE_IDS.senseIndex &&
+        JSON.stringify(source.providesFields) !== JSON.stringify(["senseNumber", "tagCount"])) {
+      throw new Error("sense-index manifest field provenance is incomplete");
+    }
     requireNonEmptyString(source.license?.id, "manifest source license id");
     requireNonEmptyString(source.license?.name, "manifest source license name");
     requireNonEmptyString(source.license?.source, "manifest source license source");
@@ -515,6 +589,11 @@ function buildThirdPartyNotices(sources) {
 
 function verifyLockedBytes(source, bytes) {
   if (!source) throw new Error("missing locked source");
+  if (source.data.size !== undefined && bytes.byteLength !== source.data.size) {
+    throw new Error(
+      "byte size mismatch for " + source.id + ": expected " + source.data.size + ", got " + bytes.byteLength
+    );
+  }
   const actual = sha256Bytes(bytes);
   if (actual !== source.data.sha256.toLowerCase()) {
     throw new Error("SHA-256 mismatch for " + source.id + ": expected " + source.data.sha256 + ", got " + actual);
@@ -553,6 +632,9 @@ function makeFingerprintPayload({
         version: source.version,
         provenance: source.provenance,
         dataSha256: source.dataSha256,
+        ...(Array.isArray(source.providesFields) ? {
+          providesFields: [...source.providesFields]
+        } : {}),
         licenseId: source.license.id
       })),
     files: [...files]
@@ -647,6 +729,7 @@ async function main() {
   const result = await compileTflexCore({
     englishPath: args.eng,
     chinesePath: args.cmn,
+    senseIndexPath: args["sense-index"],
     sourceLockPath: args["source-lock"],
     outDir: args.out,
     maxShardBytes: args["max-shard-bytes"] ? Number(args["max-shard-bytes"]) : DEFAULT_MAX_SHARD_BYTES

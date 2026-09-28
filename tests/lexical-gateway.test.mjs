@@ -33,6 +33,7 @@ function normalizationReader() {
     ["developer", ["开发者"]],
     ["user", ["用户"]],
     ["run-time system", ["运行时系统"]],
+    ["descendant combinator", ["后代组合器"]],
     ["node.js", ["Node.js"]],
     ["c++", ["C++"]],
     ["c#", ["C#"]],
@@ -63,6 +64,8 @@ function normalizationReader() {
           senses: [{
             id: "fixture:" + key,
             partOfSpeech: "noun",
+            senseNumber: 1,
+            tagCount: 7,
             translations: values,
             sourceRefs: [{ sourceId: "fixture", recordId: key }]
           }],
@@ -122,6 +125,43 @@ test("Lexical Gateway returns separate attributable senses and aggregates non-us
   );
 });
 
+test("Lexical Gateway preserves optional source-locked sense priors", async () => {
+  const gateway = createLexicalGateway({ packReaders: [normalizationReader()] });
+  const result = await gateway.lookup({ text: "persistent" });
+  assert.equal(result.candidates[0].senseNumber, 1);
+  assert.equal(result.candidates[0].tagCount, 7);
+});
+
+test("Lexical Gateway preserves sense-level Technical metadata without flattening provenance", async () => {
+  const reader = {
+    async lookupAll() {
+      return [{
+        pack: { packId: "technical", packVersion: "1", fingerprint: "sha256:technical" },
+        record: {
+          lookupKey: "session",
+          displayForm: "session",
+          kind: "technical-concept",
+          aliases: [],
+          senses: [{
+            id: "reviewed:session.computing",
+            translations: ["会话"],
+            domains: ["protocol", "terminal"],
+            typeLabels: ["computing session"],
+            sourceRefs: [{ sourceId: "translateflow-reviewed-technical-terms", recordId: "session.computing" }]
+          }]
+        },
+        exactCaseMatch: true
+      }];
+    }
+  };
+  const result = await createLexicalGateway({ packReaders: [reader] }).lookup({ text: "session" });
+  assert.deepEqual(result.candidates[0].typeLabels, ["computing session"]);
+  assert.deepEqual(result.candidates[0].provenance.sourceRefs, [{
+    sourceId: "translateflow-reviewed-technical-terms",
+    recordId: "session.computing"
+  }]);
+});
+
 test("exact phrase wins while phrase misses expose evidence without token concatenation", async () => {
   const gateway = createLexicalGateway({ packReaders: [coreReader()] });
   const exact = await gateway.lookup({ text: "terminal multiplexer" });
@@ -134,6 +174,20 @@ test("exact phrase wins while phrase misses expose evidence without token concat
   assert.equal("candidates" in miss, false);
   assert.deepEqual(miss.evidence.map((item) => item.token), ["persistent", "session"]);
   assert.ok(miss.evidence.every((item) => item.candidates.length > 0));
+});
+
+test("CSS descendant selection resolves the exact local context phrase before word ranking", async () => {
+  const gateway = createLexicalGateway({ packReaders: [normalizationReader()] });
+  const result = await gateway.lookup({
+    text: "descendant",
+    contextText: "The nested rule will by default be related to the outer rule as a descendant combinator."
+  });
+
+  assert.equal(result.status, LEXICAL_RESULT_STATUS.CANDIDATES);
+  assert.equal(result.matchedBy, "context-phrase");
+  assert.equal(result.resolvedForm, "descendant combinator");
+  assert.equal(result.contextPhrase.provenance, "bounded-contiguous-context");
+  assert.deepEqual(result.candidates[0].translations, ["后代组合器"]);
 });
 
 test("alias lookup returns one or many attributable candidates instead of choosing a winner", async () => {

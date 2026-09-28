@@ -19,12 +19,16 @@ const TECH_CONTEXT_MARKERS = new Set([
   "component", "container", "database", "dependency", "deploy", "docker", "framework",
   "git", "github", "javascript", "kubernetes", "library", "package", "process",
   "protocol", "redis", "render", "renders", "repository", "request", "response",
-  "runtime", "server", "session", "terminal", "tmux"
+  "runtime", "server", "session", "terminal", "tmux",
+  "css", "combinator", "selector", "selectors", "specificity", "nested", "stylesheet",
+  "linux"
 ]);
 
 // Design Freeze source audit found these Core terms are unsafe as a
 // sufficient technical-context answer without corroborating technical data.
 const KNOWN_TECHNICAL_SOURCE_GAPS = new Set(["cache", "container", "repository"]);
+
+const LEXICAL_TOKEN_RE = /[\p{L}\p{M}\p{N}+#]+(?:[.'’‘ʼʻ-][\p{L}\p{M}\p{N}+#]+)*/gu;
 
 export const LEXICAL_RANKING_POLICY_V2 = Object.freeze({
   version: 2,
@@ -33,7 +37,13 @@ export const LEXICAL_RANKING_POLICY_V2 = Object.freeze({
     targetTranslation: 3,
     technicalContext: 14,
     contextEvidencePerToken: 5,
-    maxContextEvidence: 15
+    maxContextEvidence: 15,
+    // WordNet ordering is a corpus prior, not context evidence. Keep the
+    // combined sense-number/tag-count contribution below the four-point gap
+    // between adjacent exact/normalized/alias match classes.
+    senseRankMax: 2,
+    senseRankStep: 1,
+    senseTagMax: 1
   }),
   thresholds: Object.freeze({
     singleCandidate: 55,
@@ -86,8 +96,11 @@ export function assessLexicalLookup(lookupResult, { contextText = "" } = {}) {
   const top = ranked[0];
   const second = ranked[1] || null;
 
+  const sourceGapKey = normalizeLexicalKey(
+    lookupResult.resolvedForm || top?.headword || queryText
+  );
   if (
-    KNOWN_TECHNICAL_SOURCE_GAPS.has(normalizeLexicalKey(queryText)) &&
+    KNOWN_TECHNICAL_SOURCE_GAPS.has(sourceGapKey) &&
     hasTechnicalContext(queryText, contextText) &&
     !ranked.some(isTechnicalCandidate)
   ) {
@@ -96,7 +109,13 @@ export function assessLexicalLookup(lookupResult, { contextText = "" } = {}) {
       "known-technical-source-gap",
       lookupResult,
       ranked,
-      second ? top.ranking.score - second.ranking.score : null
+      second ? top.ranking.score - second.ranking.score : null,
+      {
+        sourceGap: {
+          key: sourceGapKey,
+          kind: "technical-context-missing-structured-sense"
+        }
+      }
     );
   }
 
@@ -131,12 +150,12 @@ export function rankLexicalCandidates(candidates, { queryText = "", contextText 
   const queryTokens = new Set(tokenize(queryText));
   const contextTokens = tokenize(contextText).filter((token) => !queryTokens.has(token));
   const contextTokenSet = new Set(contextTokens);
-  const technicalContext = contextTokens.some((token) => TECH_CONTEXT_MARKERS.has(token));
+  const technicalMarkerCount = contextTokens.filter((token) => TECH_CONTEXT_MARKERS.has(token)).length;
 
   return candidates
     .map((candidate, index) => {
       const ranking = scoreCandidate(candidate, {
-        technicalContext,
+        technicalMarkerCount,
         contextTokenSet
       });
       return {
@@ -167,7 +186,7 @@ function isTechnicalCandidate(candidate) {
   return candidate?.kind === "technical-concept" || candidate?.kind === "technical-entity";
 }
 
-function scoreCandidate(candidate, { technicalContext, contextTokenSet }) {
+function scoreCandidate(candidate, { technicalMarkerCount, contextTokenSet }) {
   const matchedBy = candidate?.matchedBy || "exact";
   let score = MATCH_SCORES[matchedBy] ?? 0;
   const signals = [];
@@ -184,15 +203,23 @@ function scoreCandidate(candidate, { technicalContext, contextTokenSet }) {
     signals.push(signal("target-translation", LEXICAL_RANKING_POLICY_V2.scores.targetTranslation));
   }
 
-  if (isTechnicalCandidate(candidate) && technicalContext) {
-    score += LEXICAL_RANKING_POLICY_V2.scores.technicalContext;
-    signals.push(signal("technical-context", LEXICAL_RANKING_POLICY_V2.scores.technicalContext));
+  const sensePrior = scoreSensePrior(candidate);
+  if (sensePrior.points) {
+    score += sensePrior.points;
+    signals.push(...sensePrior.signals);
   }
 
   const evidenceTokens = candidateEvidenceTokens(candidate);
   let overlap = 0;
   for (const token of evidenceTokens) {
     if (contextTokenSet.has(token)) overlap += 1;
+  }
+  // A generic page word such as "application" is not enough to promote every
+  // Technical candidate. Require the candidate's own structured metadata to
+  // corroborate the surrounding technical marker.
+  if (isTechnicalCandidate(candidate) && technicalMarkerCount > 0 && overlap > 0) {
+    score += LEXICAL_RANKING_POLICY_V2.scores.technicalContext;
+    signals.push(signal("technical-context", LEXICAL_RANKING_POLICY_V2.scores.technicalContext));
   }
   if (overlap) {
     const points = Math.min(
@@ -206,6 +233,36 @@ function scoreCandidate(candidate, { technicalContext, contextTokenSet }) {
   return { score, signals };
 }
 
+function scoreSensePrior(candidate) {
+  const signals = [];
+  let points = 0;
+
+  if (Number.isSafeInteger(candidate?.senseNumber) && candidate.senseNumber > 0) {
+    const rankPoints = Math.max(
+      0,
+      LEXICAL_RANKING_POLICY_V2.scores.senseRankMax -
+        (candidate.senseNumber - 1) * LEXICAL_RANKING_POLICY_V2.scores.senseRankStep
+    );
+    if (rankPoints) {
+      points += rankPoints;
+      signals.push(signal("pwn-sense-number:" + candidate.senseNumber, rankPoints));
+    }
+  }
+
+  if (Number.isSafeInteger(candidate?.tagCount) && candidate.tagCount > 0) {
+    const tagPoints = Math.min(
+      Math.floor(Math.log2(candidate.tagCount + 1)) * 2,
+      LEXICAL_RANKING_POLICY_V2.scores.senseTagMax
+    );
+    if (tagPoints) {
+      points += tagPoints;
+      signals.push(signal("pwn-tag-count:" + candidate.tagCount, tagPoints));
+    }
+  }
+
+  return { points, signals };
+}
+
 function candidateEvidenceTokens(candidate) {
   const values = [
     ...(Array.isArray(candidate?.domains) ? candidate.domains : []),
@@ -216,17 +273,14 @@ function candidateEvidenceTokens(candidate) {
 }
 
 function tokenize(value) {
-  return normalizeLexicalKey(value)
-    .split(/[^\p{L}\p{N}+#.-]+/u)
-    .map((token) => token.trim())
-    .filter(Boolean);
+  return normalizeLexicalKey(value).match(LEXICAL_TOKEN_RE) || [];
 }
 
 function signal(name, points) {
   return { name, points };
 }
 
-function decision(outcome, reason, lookupResult, candidates, scoreGap = null) {
+function decision(outcome, reason, lookupResult, candidates, scoreGap = null, details = {}) {
   return {
     outcome,
     reason,
@@ -235,7 +289,8 @@ function decision(outcome, reason, lookupResult, candidates, scoreGap = null) {
     override: lookupResult.override === true,
     topCandidateId: candidates[0]?.id || null,
     scoreGap,
-    candidates
+    candidates,
+    ...details
   };
 }
 
