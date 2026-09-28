@@ -122,7 +122,11 @@ async function fixture(name, { licenseVersion = "3.0" } = {}) {
       recordOmissions: ["pronunciation", "grammatical gender"],
       semanticRewriting: false
     },
-    qualityRole: "optional-complement-only"
+    qualityDecision: {
+      status: "no-ship",
+      approvedForProductDistribution: false
+    },
+    qualityRole: "research-only-no-ship"
   };
   await Promise.all([
     writeFile(archivePath, archive),
