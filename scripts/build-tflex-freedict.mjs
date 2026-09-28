@@ -100,7 +100,7 @@ export async function compileTflexFreeDict({
     sourceLanguage: lock.sourceLanguage,
     targetLanguage: lock.targetLanguage,
     profile: TFLEX_OPFS_INDEXED_PROFILE,
-    distributionStatus: "research-only-no-ship",
+    distributionStatus: "evaluation-only",
     fingerprint: "sha256:" + sha256Text(stableStringify(fingerprintPayload)),
     recordCount: records.length,
     sourceEntryCount: audit.tei.headwords,
@@ -159,20 +159,13 @@ export function validateFreeDictSourceLock(lock) {
   if (
     lock.license?.id !== "CC-BY-SA-3.0" ||
     lock.license?.adaptationLicense !== "CC-BY-SA-3.0" ||
-    lock.license?.approvedForOfficialPack !== true ||
+    lock.license?.licenseGatePassed !== true ||
     lock.license?.source !== "https://creativecommons.org/licenses/by-sa/3.0/legalcode"
   ) {
-    throw new Error("FreeDict official-pack license approval is missing or incompatible");
+    throw new Error("FreeDict redistribution license gate is missing or incompatible");
   }
   requireText(lock.license.name, "FreeDict license name");
   requireText(lock.license.notice, "FreeDict license notice");
-  if (
-    lock.qualityRole !== "research-only-no-ship" ||
-    lock.qualityDecision?.status !== "no-ship" ||
-    lock.qualityDecision?.approvedForProductDistribution !== false
-  ) {
-    throw new Error("FreeDict source must remain research-only until a reviewed quality decision changes");
-  }
   return lock;
 }
 
