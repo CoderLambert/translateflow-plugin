@@ -8,7 +8,7 @@ import {
 function ambiguousResolved() {
   return {
     route: "needs-explanation",
-    routeReason: "ambiguous-needs-explanation",
+    routeReason: "ambiguous-explicit-explanation",
     depth: "standard",
     contextPolicy: { sensitive: false, source: "visible-local", truncated: false, chars: 44 },
     decision: {
@@ -74,34 +74,42 @@ const config = {
   prompt: "PAGE PROMPT: Do not add explanations."
 };
 
-test("Selection explanation does not call Provider when recomputed local decision is sufficient", async () => {
+test("Selection explanation marks recompute as explicit and can enhance a sufficient local hit", async () => {
+  let resolvedInput;
   let providerCalls = 0;
-  const local = {
-    route: "local",
-    routeReason: "local-sufficient",
-    depth: "concise",
-    decision: { outcome: "sufficient", candidates: [] },
-    contextPolicy: { sensitive: false, source: "visible-local", truncated: false, chars: 10 }
-  };
+  const explicit = ambiguousResolved();
+  explicit.routeReason = "local-sufficient-explicit-explanation";
+  explicit.depth = "concise";
+  explicit.decision.outcome = "sufficient";
+  explicit.explanationInput.depth = "concise";
 
   const result = await runSelectionExplanationRequest({
-    requestId: "local-only",
+    requestId: "explicit-local-detail",
     text: "persistent",
     pageUrl: "https://example.test/",
     context: { text: "persistent connection", source: "visible-local", sensitive: false }
   }, {
-    resolveSelectionRequest: async () => local,
-    getEffectiveConfig: async () => {
-      throw new Error("config should not be needed");
+    resolveSelectionRequest: async (input) => {
+      resolvedInput = input;
+      return explicit;
     },
-    completeJson: async () => {
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => ({ hit: null }),
+    storeSelectionExplanation: async () => ({ stored: 1 }),
+    completeJson: async (input) => {
       providerCalls += 1;
+      return input.parseResult({
+        selectedCandidateIds: ["core:persistent:1"],
+        explanation: "这里表示连接会持续保持。",
+        translation: "持久的"
+      });
     }
   });
 
-  assert.equal(result.route, "local");
-  assert.equal(result.generated, null);
-  assert.equal(providerCalls, 0);
+  assert.equal(resolvedInput.explainRequested, true);
+  assert.equal(result.route, "explained");
+  assert.equal(result.depth, "concise");
+  assert.equal(providerCalls, 1);
 });
 
 test("Selection explanation uses its own prompt and stores only generated fields", async () => {
@@ -245,7 +253,7 @@ test("tmux explanation is grounded in attributable local technical facts", async
   let providerPayload;
   const technical = {
     route: "needs-explanation",
-    routeReason: "ambiguous-needs-explanation",
+    routeReason: "ambiguous-explicit-explanation",
     depth: "standard",
     contextPolicy: { sensitive: false, source: "visible-local", truncated: false, chars: 45 },
     decision: {

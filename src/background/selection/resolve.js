@@ -30,7 +30,12 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
   const context = sanitizeSelectionContext(input.context);
 
   if (intent.kind === "translation") {
-    const route = chooseSelectionRoute({ intent, depth: requestedDepth, text });
+    const route = chooseSelectionRoute({
+      intent,
+      depth: requestedDepth,
+      text,
+      explainRequested: input.explainRequested === true
+    });
     return response({
       text,
       intent,
@@ -52,7 +57,8 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
     intent,
     decision,
     depth: requestedDepth,
-    text
+    text,
+    explainRequested: input.explainRequested === true
   });
 
   return response({ text, intent, route, context, lookup, decision });

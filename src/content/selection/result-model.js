@@ -10,9 +10,17 @@
 
     const topId = resolved?.decision?.topCandidateId;
     const candidate = candidates.find((item) => item?.id === topId) || candidates[0];
-    return cardFromCandidate(candidate, {
+    const card = cardFromCandidate(candidate, {
       kind: candidate?.kind === "technical-entity" ? "technical" : "local"
     });
+    const alternatives = candidates
+      .filter((item) => item !== candidate)
+      .flatMap((item) => uniqueText(item?.translations));
+    return {
+      ...card,
+      senses: uniqueText([...(card.senses || []), ...alternatives])
+        .filter((value) => value !== card.primaryMeaning)
+    };
   }
 
   function buildExplainedResult(explained) {

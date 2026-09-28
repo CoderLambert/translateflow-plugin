@@ -358,13 +358,17 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
   });
 
-  test("ambiguous Selection uses grounded explain prompt, bounded context and isolated explanation cache", async ({ harness }) => {
+  test("ambiguous Selection stays dictionary-first until explicit grounded AI detail", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);
 
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
+    await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
+    expect(harness.server.calls).toHaveLength(0);
+
+    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("持续存在或保持有效");
     expect(harness.server.calls).toHaveLength(1);
 
@@ -386,6 +390,10 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await clearSelection(page);
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-result")).toContainText("持久的");
+    expect(harness.server.calls).toHaveLength(1);
+
+    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("持续存在或保持有效");
     expect(harness.server.calls).toHaveLength(1);
 
@@ -398,7 +406,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(pageCache.hits).toEqual([]);
   });
 
-  test("Selection card exposes provenance, survives narrow viewport, retries and copies", async ({ harness }) => {
+  test("Selection card exposes provenance, explicit AI retry, narrow viewport and copy", async ({ harness }) => {
     const page = await harness.open("/selection");
     await page.setViewportSize({ width: 360, height: 260 });
     await harness.inject(page);
@@ -413,7 +421,11 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(panel).toBeVisible();
     await expect(page.getByRole("button", { name: "关闭" })).toBeFocused();
     await expect(panel).toHaveAttribute("aria-modal", "false");
-    await expect(page.locator(".tf-selection-status")).toContainText("AI 辅助暂不可用");
+    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    expect(harness.server.calls).toHaveLength(0);
+
+    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await expect(page.locator(".tf-selection-status")).toContainText("AI 详解失败");
     await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
 
     harness.server.setFailures([]);

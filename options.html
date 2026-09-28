@@ -49,7 +49,7 @@
 
     <section id="selection" tabindex="-1">
       <h2>划词翻译</h2>
-      <p class="section-summary">控制词典结果与上下文解释的详细程度。充分的本地结果会优先使用本地数据，只有需要消歧或解释时才调用 AI。</p>
+      <p class="section-summary">划词默认先查询本地词典并直接显示结果；AI 仅在你点击“AI 详解”后用于结合上下文解释。</p>
 
       <label for="selectionExplanationDepth">解释深度</label>
       <select id="selectionExplanationDepth">
@@ -59,8 +59,8 @@
         <option value="professional">Professional · 专业</option>
       </select>
       <div class="setting-choice-help" aria-label="解释深度说明">
-        <div><strong>Auto</strong><span>根据选段类型与本地结果质量自动选择；推荐。</span></div>
-        <div><strong>Concise</strong><span>只给核心含义；本地结果不足时也不主动调用 AI。</span></div>
+        <div><strong>Auto</strong><span>点击 AI 详解后，根据选段类型与本地结果质量选择解释深度；推荐。</span></div>
+        <div><strong>Concise</strong><span>AI 详解保持精简；默认查词仍不会自动调用 AI。</span></div>
         <div><strong>Standard</strong><span>核心含义 + 必要的短上下文说明。</span></div>
         <div><strong>Professional</strong><span>保留专业术语，并允许更完整的领域上下文说明。</span></div>
       </div>
