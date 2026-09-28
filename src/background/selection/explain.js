@@ -32,7 +32,8 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
       text: input.text,
       pageUrl: input.pageUrl || "",
       context: input.context || null,
-      depth: input.depth
+      depth: input.depth,
+      explainRequested: true
     });
     assertActive(controller.signal);
 
