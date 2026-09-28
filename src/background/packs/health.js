@@ -85,7 +85,7 @@ export async function validateInstalledManifest({
   }
 
   const expected = snapshot.files
-    .filter((file) => file.role !== "manifest")
+    .filter((file) => file.role === "lookup-index" || file.role === "lexical-data")
     .map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
     .sort(compareDescriptor);
   const actual = (Array.isArray(manifest.files) ? manifest.files : [])
