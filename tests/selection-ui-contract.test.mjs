@@ -23,10 +23,11 @@ test("Selection settings expose all explanation-depth modes and license path", a
 });
 
 test("Selection popover keeps a non-modal structured result region", async () => {
-  const [popover, tokens, aiStyles] = await Promise.all([
+  const [popover, tokens, aiStyles, emptyStyles] = await Promise.all([
     source("src/content/selection/popover.js"),
     source("src/content/ui/tokens.js"),
-    source("src/content/ui/selection-ai-detail-styles.js")
+    source("src/content/ui/selection-ai-detail-styles.js"),
+    source("src/content/ui/selection-empty-state-styles.js")
   ]);
 
   assert.match(popover, /aria-modal", "false"/);
@@ -39,6 +40,8 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(tokens, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(aiStyles, /\.tf-selection-ai-detail/);
   assert.match(aiStyles, /\.tf-selection-ai-actions/);
+  assert.match(emptyStyles, /\.tf-selection-empty/);
+  assert.match(emptyStyles, /\.tf-selection-empty-actions/);
 });
 
 test("Selection AI detail preserves the local card across loading, failure and cancellation", async () => {
@@ -69,19 +72,32 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(resultModel, /本地词典/);
   assert.match(resultModel, /AI 辅助/);
   assert.match(resultModel, /词典包 ·/);
-  assert.match(controller, /本地词典未找到可靠结果；如需进一步判断，可点击“AI 详解”/);
+  assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
+  assert.match(controller, /popover\.showEmpty/);
+  assert.match(controller, /forceTranslation: true/);
   assert.match(controller, /explainSnapshot/);
   assert.doesNotMatch(controller, /resolved\.route === "needs-explanation"/);
   assert.match(controller, /copyTextForCard/);
 });
 
-test("Selection local lexicon failures direct users to bundled health diagnostics", async () => {
-  const controller = await readFile(
-    new URL("../src/content/selection/controller.js", import.meta.url),
-    "utf8"
-  );
-  assert.match(controller, /LEXICON_STORAGE/);
-  assert.match(controller, /设置 > 本地词典/);
-  assert.match(controller, /LEXICON_CORRUPT/);
-  assert.match(controller, /LEXICON_INCOMPATIBLE/);
+test("Selection no-hit is neutral while local lexicon failures keep diagnostic error copy", async () => {
+  const [controller, popover, emptyState, messages] = await Promise.all([
+    source("src/content/selection/controller.js"),
+    source("src/content/selection/popover.js"),
+    source("src/content/selection/empty-state.js"),
+    source("src/content/selection/messages.js")
+  ]);
+
+  assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
+  assert.match(popover, /setStatus\(statusNode, "", "info"\)/);
+  assert.match(emptyState, /container\.dataset\.resultKind = "empty"/);
+  assert.match(emptyState, /本地词典暂未收录/);
+  assert.match(emptyState, /使用 AI 进一步解释这个词/);
+  assert.match(emptyState, /使用普通翻译处理这个词/);
+
+  assert.match(messages, /LEXICON_STORAGE/);
+  assert.match(messages, /设置 > 本地词典/);
+  assert.match(messages, /LEXICON_CORRUPT/);
+  assert.match(messages, /LEXICON_INCOMPATIBLE/);
+  assert.match(controller, /popover\.showError/);
 });

@@ -12,6 +12,7 @@ const CONTENT_SCRIPTS = [
   "src/content/ui/tokens.js",
   "src/content/ui/quick-control-styles.js",
   "src/content/ui/selection-ai-detail-styles.js",
+  "src/content/ui/selection-empty-state-styles.js",
   "src/content/ui/host.js",
   "src/content/ui/primitives.js",
   "src/content/ui/toast.js",
@@ -34,7 +35,9 @@ const CONTENT_SCRIPTS = [
   "src/content/selection/context.js",
   "src/content/selection/result-model.js",
   "src/content/selection/clipboard.js",
+  "src/content/selection/messages.js",
   "src/content/selection/ai-detail.js",
+  "src/content/selection/empty-state.js",
   "src/content/selection/popover.js",
   "src/content/selection/controller.js",
   "src/content/quick-control-view.js",
@@ -68,7 +71,7 @@ export const test = base.extend({
     const lexiconDir = join(extensionDir, "assets", "lexicon");
     if (lexiconPacks === "release") {
       await cp(join(repoRoot, "assets", "lexicon"), lexiconDir, { recursive: true });
-    } else {
+    } else if (lexiconPacks !== "missing") {
       await mkdir(lexiconDir, { recursive: true });
       await cp(
         join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),

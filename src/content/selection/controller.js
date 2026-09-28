@@ -8,6 +8,7 @@
     || !app?.modules.selectionPopover
     || !app?.modules.selectionResultModel
     || !app?.modules.selectionClipboard
+    || !app?.modules.selectionMessages
     || app.modules.selectionController
   ) return;
 
@@ -17,6 +18,7 @@
   const { captureSelectionContext } = app.modules.selectionContext;
   const popover = app.modules.selectionPopover;
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
+  const { unresolvedMessage } = app.modules.selectionMessages;
   const { buildLocalResult, buildExplainedResult, buildTranslationResult, copyTextForCard } = app.modules.selectionResultModel;
 
   let started = false;
@@ -77,7 +79,7 @@
     popover.showChip(snapshot, () => translateSnapshot(snapshot));
   }
 
-  async function translateSnapshot(snapshot) {
+  async function translateSnapshot(snapshot, { forceTranslation = false } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
 
     if (activeTask && !tasks.isTerminal(activeTask)) {
@@ -97,6 +99,11 @@
 
     let resolved = null;
     try {
+      if (forceTranslation) {
+        await translateSelection(snapshot, task, version, expectedPage);
+        return;
+      }
+
       tasks.transition(task, "translating");
       popover.setLoadingStatus("正在解析所选内容…");
       const selectionContext = captureSelectionContext(snapshot);
@@ -125,6 +132,19 @@
 
       if (resolved.route === "translation") {
         await translateSelection(snapshot, task, version, expectedPage);
+        return;
+      }
+
+      if (resolved.routeReason === "no-hit-local") {
+        tasks.completeTask(task, { done: 1 });
+        popover.showEmpty(snapshot, {
+          title: "本地词典暂未收录",
+          message: "没有找到可靠的本地词典结果。你可以选择进一步解释或普通翻译。",
+          onExplain: resolved.explanationAllowed
+            ? () => explainSnapshot(snapshot, resolved.depth)
+            : null,
+          onTranslate: () => translateSnapshot(snapshot, { forceTranslation: true })
+        });
         return;
       }
 
@@ -316,29 +336,6 @@
     tasks.completeTask(task, { done: 1, apiTranslated: 1 });
     const card = buildTranslationResult(translation);
     showResult(snapshot, card, copyTextForCard(card), "译文已复制");
-  }
-
-  function unresolvedMessage(resolved) {
-    if (resolved?.routeReason === "no-hit-local") {
-      return "本地词典未找到可靠结果；如需进一步判断，可点击“AI 详解”。";
-    }
-    if (resolved?.routeReason === "ambiguous-local-unresolved") {
-      return "本地词典无法确定可靠候选；如需进一步判断，可点击“AI 详解”。";
-    }
-    if (resolved?.routeReason === "local-error") {
-      const code = resolved?.decision?.error?.code || "";
-      if (code === "LEXICON_STORAGE") {
-        return "内置本地词典资源缺失或不可读。请在 TranslateFlow 设置 > 本地词典检查状态。";
-      }
-      if (code === "LEXICON_CORRUPT") {
-        return "内置本地词典校验失败。请在 TranslateFlow 设置 > 本地词典检查状态。";
-      }
-      if (code === "LEXICON_INCOMPATIBLE") {
-        return "内置本地词典与当前扩展版本不兼容。请更新或重新安装词典资源。";
-      }
-      return "本地词典暂时不可用，请重试。";
-    }
-    return "暂时无法确定该选段的含义。";
   }
 
   function failureMessage(error) {

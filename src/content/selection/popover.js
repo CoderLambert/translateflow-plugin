@@ -6,6 +6,7 @@
     || !app?.modules.uiHost
     || !app?.modules.uiPrimitives
     || !app?.modules.selectionAiDetail
+    || !app?.modules.selectionEmptyState
     || app.modules.selectionPopover
   ) return;
 
@@ -13,6 +14,7 @@
   const { getLayer, ownsNode } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
+  const { create: createEmptyState } = app.modules.selectionEmptyState;
 
   let root;
   let chip;
@@ -20,6 +22,7 @@
   let sourceNode;
   let resultNode;
   let aiDetail;
+  let emptyState;
   let statusNode;
   let copyButton;
   let explainButton;
@@ -67,6 +70,7 @@
     resultNode.className = "tf-selection-result";
     resultNode.setAttribute("aria-live", "polite");
     aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
+    emptyState = createEmptyState({ container: resultNode, onResize: reposition });
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
@@ -90,10 +94,7 @@
     ensureUi();
     activeSnapshot = snapshot;
     translateHandler = onTranslate;
-    retryHandler = null;
-    copyHandler = null;
-    explainHandler = null;
-    cancelHandler = null;
+    clearActionHandlers();
     panel.hidden = true;
     chip.hidden = false;
     position(snapshot, chip);
@@ -108,13 +109,12 @@
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, "正在检查缓存…", "loading");
     aiDetail?.reset();
+    emptyState?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
+    hideActionButtons();
     cancelButton.hidden = false;
     cancelButton.disabled = false;
-    copyButton.hidden = true;
-    explainButton.hidden = true;
-    retryButton.hidden = true;
     position(snapshot, panel);
     focusPanelEntry();
   }
@@ -128,10 +128,9 @@
   function showResult(snapshot, result, onCopy, onExplain) {
     ensureUi();
     activeSnapshot = snapshot;
+    clearActionHandlers();
     copyHandler = onCopy;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
-    retryHandler = null;
-    cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -148,15 +147,15 @@
   function showError(snapshot, message, onRetry, onExplain) {
     ensureUi();
     activeSnapshot = snapshot;
+    clearActionHandlers();
     retryHandler = onRetry;
-    copyHandler = null;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
-    cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
     setStatus(statusNode, message || "翻译失败，请重试。", "error");
     aiDetail?.reset();
+    emptyState?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
     cancelButton.hidden = true;
@@ -168,6 +167,7 @@
 
   function renderResult(input) {
     aiDetail?.reset();
+    emptyState?.reset();
     resultNode.replaceChildren();
     const result = typeof input === "string"
       ? { kind: "translation", primaryMeaning: input }
@@ -262,6 +262,23 @@
     }
   }
 
+  function showEmpty(snapshot, { title, message, onExplain, onTranslate } = {}) {
+    ensureUi();
+    activeSnapshot = snapshot;
+    clearActionHandlers();
+    chip.hidden = true;
+    panel.hidden = false;
+    sourceNode.textContent = snapshot.text;
+    setStatus(statusNode, "", "info");
+    aiDetail?.reset();
+    emptyState?.reset();
+    resultNode.replaceChildren();
+    resultNode.hidden = false;
+    hideActionButtons();
+    emptyState.show({ title, message, onExplain, onTranslate });
+    position(snapshot, panel);
+  }
+
   function showAiDetailLoading(onCancel) {
     ensureUi();
     if (!resultNode || resultNode.hidden) return;
@@ -319,8 +336,10 @@
     panel = null;
     sourceNode = null;
     aiDetail?.reset();
+    emptyState?.reset();
     resultNode = null;
     aiDetail = null;
+    emptyState = null;
     statusNode = null;
     copyButton = null;
     explainButton = null;
@@ -329,10 +348,14 @@
     closeButton = null;
     activeSnapshot = null;
     translateHandler = null;
-    retryHandler = null;
-    copyHandler = null;
-    explainHandler = null;
-    cancelHandler = null;
+    clearActionHandlers();
+  }
+
+  function clearActionHandlers() {
+    retryHandler = copyHandler = explainHandler = cancelHandler = null;
+  }
+  function hideActionButtons() {
+    cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
   }
 
   function setCloseHandler(handler) {
@@ -382,6 +405,7 @@
     setLoadingStatus,
     showResult,
     showError,
+    showEmpty,
     showAiDetailLoading,
     showAiDetailResult,
     showAiDetailError,
