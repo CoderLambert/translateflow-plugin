@@ -16,6 +16,7 @@ test("Selection settings expose all explanation-depth modes and license path", a
   for (const value of ["auto", "concise", "standard", "professional"]) {
     assert.match(html, new RegExp(`value="${value}"`));
   }
+  assert.match(html, /点击“AI 详解”/);
   assert.match(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
   assert.match(js, /normalizeSelectionDepth\(config\.selectionExplanationDepth\)/);
   assert.match(js, /selectionExplanationDepth:\s*normalizeSelectionDepth\(selectionExplanationDepth\.value\)/);
@@ -30,6 +31,7 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(popover, /aria-modal", "false"/);
   assert.match(popover, /tf-selection-result-badge/);
   assert.match(popover, /tf-selection-generated/);
+  assert.match(popover, /AI 详解/);
   assert.match(popover, /function reposition\(\)/);
   assert.match(tokens, /\.tf-selection-panel[\s\S]*max-height:[^;]+;/);
   assert.match(tokens, /\.tf-selection-result[\s\S]*overflow:\s*auto;/);
@@ -46,7 +48,9 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(resultModel, /本地词典/);
   assert.match(resultModel, /AI 辅助/);
   assert.match(resultModel, /词典包 ·/);
-  assert.match(controller, /本地词典未找到可靠结果，且 AI 辅助暂不可用/);
+  assert.match(controller, /本地词典未找到可靠结果；如需进一步判断，可点击“AI 详解”/);
+  assert.match(controller, /explainSnapshot/);
+  assert.doesNotMatch(controller, /resolved\.route === "needs-explanation"/);
   assert.match(controller, /copyTextForCard/);
 });
 
