@@ -60,7 +60,7 @@ Candidate-specific evidence is limited to attributable structured fields already
 - `typeLabels[]`
 - `aliases[]`
 
-Policy v2 also carries forward the Design Freeze source audit: `container`, `cache` and `repository` are known Core technical-context gaps. If one of those queries appears in technical context and the integrated local result has no attributable Technical candidate, local evidence remains `ambiguous` even when the generic Core match is exact. This prevents a shipping-container/storehouse sense from becoming a confident technical answer; Standard/Auto may request grounded explanation while Concise avoids fabricating a technical sense.
+Policy v2 does not keep a headword-specific source-gap table. Instead, a single exact/normalized **generic noun** remains `ambiguous` in technical context when the candidate has no attributable structured sense metadata in `domains[]` or `typeLabels[]`. The selected query token is still excluded from technical-context detection, so this rule is driven by surrounding context and candidate metadata rather than a hidden vocabulary list. Multi-word exact phrases, morphology/lemma matches, non-nouns, and source candidates with structured sense metadata continue through the normal sufficiency thresholds.
 
 No LLM-derived feature is used.
 
