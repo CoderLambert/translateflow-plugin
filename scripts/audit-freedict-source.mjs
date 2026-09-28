@@ -76,7 +76,9 @@ export async function auditFreeDictSource({
     readFile(requiredPath(lockPath, "lockPath"), "utf8")
   ]);
   const lock = JSON.parse(lockText);
-  const expectedSha512 = String(lock?.source?.sha512 || "").toLowerCase();
+  const expectedSha512 = String(
+    lock?.source?.archiveSha512 || lock?.source?.sha512 || ""
+  ).toLowerCase();
   if (!/^[a-f0-9]{128}$/.test(expectedSha512)) {
     throw new Error("FreeDict source lock SHA-512 is invalid");
   }
@@ -84,15 +86,18 @@ export async function auditFreeDictSource({
   if (actualSha512 !== expectedSha512) {
     throw new Error("FreeDict archive SHA-512 mismatch");
   }
-  if (archiveBytes.byteLength !== Number(lock?.source?.sizeBytes)) {
+  const expectedArchiveSize = Number(
+    lock?.source?.archiveSizeBytes ?? lock?.source?.sizeBytes
+  );
+  if (archiveBytes.byteLength !== expectedArchiveSize) {
     throw new Error("FreeDict archive size mismatch");
   }
 
   const header = parseFreeDictTeiHeader(teiText);
   const licenseId = classifyFreeDictLicense(header, copyingText);
   const result = {
-    dictionary: lock.dictionary,
-    releaseEdition: lock.edition,
+    dictionary: lock.dictionary || lock?.source?.dictionary,
+    releaseEdition: lock.edition || lock?.source?.edition,
     archive: {
       url: lock.source.url,
       sizeBytes: archiveBytes.byteLength,
