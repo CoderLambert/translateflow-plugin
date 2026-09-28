@@ -38,10 +38,10 @@ test("Selection v2 classifier keeps lexical, sentence and unsupported-local rout
   assert.equal(unsupportedTarget.reason, "unsupported-local-target");
 });
 
-test("Selection v2 explanation depths are deterministic for sufficient and ambiguous lexical decisions", () => {
+test("Selection v2 keeps dictionary lookup first and AI explanation explicit", () => {
   const intent = classifySelectionIntent({ text: "persistent", targetLanguage: "Simplified Chinese" });
-  const sufficient = { outcome: "sufficient" };
-  const ambiguous = { outcome: "ambiguous" };
+  const sufficient = { outcome: "sufficient", candidates: [{ id: "core:persistent:1" }] };
+  const ambiguous = { outcome: "ambiguous", candidates: [{ id: "core:persistent:1" }, { id: "core:persistent:2" }] };
 
   const expectedSufficientDepth = new Map([
     [SELECTION_EXPLANATION_DEPTH.AUTO, SELECTION_EXPLANATION_DEPTH.CONCISE],
@@ -54,27 +54,60 @@ test("Selection v2 explanation depths are deterministic for sufficient and ambig
     const route = chooseSelectionRoute({ intent, decision: sufficient, depth, text: "persistent" });
     assert.equal(route.route, SELECTION_ROUTE.LOCAL);
     assert.equal(route.depth, expected);
+    assert.equal(route.explanationAllowed, true);
   }
 
   assert.deepEqual(
     chooseSelectionRoute({ intent, decision: ambiguous, depth: "auto", text: "persistent" }),
     {
-      route: SELECTION_ROUTE.NEEDS_EXPLANATION,
-      reason: "ambiguous-needs-explanation",
+      route: SELECTION_ROUTE.LOCAL,
+      reason: "local-ambiguous",
       depth: SELECTION_EXPLANATION_DEPTH.STANDARD,
       explanationAllowed: true
     }
   );
+
+  for (const depth of ["concise", "standard", "professional"]) {
+    assert.equal(
+      chooseSelectionRoute({ intent, decision: ambiguous, depth, text: "persistent" }).route,
+      SELECTION_ROUTE.LOCAL
+    );
+  }
+
   assert.equal(
-    chooseSelectionRoute({ intent, decision: ambiguous, depth: "concise", text: "persistent" }).route,
-    SELECTION_ROUTE.UNRESOLVED
-  );
-  assert.equal(
-    chooseSelectionRoute({ intent, decision: ambiguous, depth: "standard", text: "persistent" }).route,
+    chooseSelectionRoute({
+      intent,
+      decision: sufficient,
+      depth: "auto",
+      text: "persistent",
+      explainRequested: true
+    }).route,
     SELECTION_ROUTE.NEEDS_EXPLANATION
   );
   assert.equal(
-    chooseSelectionRoute({ intent, decision: ambiguous, depth: "professional", text: "persistent" }).route,
+    chooseSelectionRoute({
+      intent,
+      decision: ambiguous,
+      depth: "concise",
+      text: "persistent",
+      explainRequested: true
+    }).route,
+    SELECTION_ROUTE.NEEDS_EXPLANATION
+  );
+
+  const noHit = { outcome: "no-hit", candidates: [] };
+  const initialMiss = chooseSelectionRoute({ intent, decision: noHit, depth: "auto", text: "foobar" });
+  assert.equal(initialMiss.route, SELECTION_ROUTE.UNRESOLVED);
+  assert.equal(initialMiss.reason, "no-hit-local");
+  assert.equal(initialMiss.explanationAllowed, true);
+  assert.equal(
+    chooseSelectionRoute({
+      intent,
+      decision: noHit,
+      depth: "auto",
+      text: "foobar",
+      explainRequested: true
+    }).route,
     SELECTION_ROUTE.NEEDS_EXPLANATION
   );
 });
@@ -151,7 +184,7 @@ test("Selection resolver returns sufficient local lexical results without enteri
   assert.equal(lexicalCalls, 1);
   assert.equal(result.route, SELECTION_ROUTE.LOCAL);
   assert.equal(result.depth, SELECTION_EXPLANATION_DEPTH.PROFESSIONAL);
-  assert.equal(result.explanationAllowed, false);
+  assert.equal(result.explanationAllowed, true);
   assert.equal("explanationInput" in result, false);
   assert.deepEqual(result.contextPolicy, {
     sensitive: false,
@@ -237,6 +270,7 @@ test("Sensitive ambiguous Selection explanation input never includes surrounding
     text: "persistent",
     pageUrl: "https://private.example/account?token=secret",
     depth: "standard",
+    explainRequested: true,
     context: {
       text: "account password and private editable content",
       source: "visible-local",
