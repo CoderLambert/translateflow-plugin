@@ -20,11 +20,15 @@ const DEFAULT_IRREGULAR_LEMMAS = Object.freeze({
 
 export function createLexicalGateway({
   packReaders = [],
+  resolvePackReaders = null,
   resolveGlossary = async () => [],
   irregularLemmas = DEFAULT_IRREGULAR_LEMMAS,
   maxPhraseEvidenceTokens = 4
 } = {}) {
   if (!Array.isArray(packReaders)) throw new Error("packReaders must be an array");
+  if (resolvePackReaders !== null && typeof resolvePackReaders !== "function") {
+    throw new Error("resolvePackReaders must be a function when provided");
+  }
   if (typeof resolveGlossary !== "function") throw new Error("resolveGlossary must be a function");
 
   async function lookup({
@@ -58,14 +62,15 @@ export function createLexicalGateway({
         };
       }
 
-      const exact = await lookupAcrossPacks(queryText, "exact");
+      const readers = await activeReaders();
+      const exact = await lookupAcrossPacks(queryText, "exact", readers);
       if (exact.length) {
         const resultMatch = exact.every((candidate) => candidate.matchedBy === "alias") ? "alias" : "exact";
         return candidateResult(queryText, sourceLanguage, targetLanguage, resultMatch, exact);
       }
 
       if (isLexicalPhrase(queryText)) {
-        const evidence = await collectPhraseEvidence(queryText, maxPhraseEvidenceTokens);
+        const evidence = await collectPhraseEvidence(queryText, maxPhraseEvidenceTokens, readers);
         return {
           status: LEXICAL_RESULT_STATUS.NO_HIT,
           query: makeQuery(queryText, sourceLanguage, targetLanguage),
@@ -75,14 +80,14 @@ export function createLexicalGateway({
 
       const canonical = normalizeLexicalKey(queryText);
       for (const lemma of explicitLemmaForms(canonical, irregularLemmas)) {
-        const candidates = await lookupAcrossPacks(lemma, "lemma");
+        const candidates = await lookupAcrossPacks(lemma, "lemma", readers);
         if (candidates.length) {
           return candidateResult(queryText, sourceLanguage, targetLanguage, "lemma", candidates, lemma);
         }
       }
 
       for (const lemma of conservativeMorphologyForms(canonical)) {
-        const candidates = await lookupAcrossPacks(lemma, "morphology");
+        const candidates = await lookupAcrossPacks(lemma, "morphology", readers);
         if (candidates.length) {
           return candidateResult(queryText, sourceLanguage, targetLanguage, "morphology", candidates, lemma);
         }
@@ -107,9 +112,15 @@ export function createLexicalGateway({
     }
   }
 
-  async function lookupAcrossPacks(text, matchedBy) {
+  async function activeReaders() {
+    const readers = resolvePackReaders ? await resolvePackReaders() : packReaders;
+    if (!Array.isArray(readers)) throw new Error("resolved packReaders must be an array");
+    return readers;
+  }
+
+  async function lookupAcrossPacks(text, matchedBy, readers) {
     const candidates = [];
-    for (const reader of packReaders) {
+    for (const reader of readers) {
       const hits = typeof reader.lookupAll === "function"
         ? await reader.lookupAll(text)
         : [await reader.lookup(text)].filter(Boolean);
@@ -123,11 +134,11 @@ export function createLexicalGateway({
     return candidates;
   }
 
-  async function collectPhraseEvidence(text, limit) {
+  async function collectPhraseEvidence(text, limit, readers) {
     const tokens = [...new Set(normalizeLexicalKey(text).split(" ").filter(Boolean))].slice(0, limit);
     const evidence = [];
     for (const token of tokens) {
-      const candidates = await lookupAcrossPacks(token, "token-evidence");
+      const candidates = await lookupAcrossPacks(token, "token-evidence", readers);
       if (candidates.length) evidence.push({ token, candidates });
     }
     return evidence;
