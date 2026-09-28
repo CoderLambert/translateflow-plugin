@@ -7,7 +7,9 @@ on:
       - ".github/workflows/freedict-source-audit.yml"
       - "scripts/audit-freedict-source.mjs"
       - "tests/freedict-source-audit.test.mjs"
-      - "tests/fixtures/freedict-eng-zho-source-lock.json"
+      - "lexicon/source-locks/freedict-eng-zho.json"
+      - "scripts/build-tflex-freedict.mjs"
+      - "tests/tflex-freedict-builder.test.mjs"
 
 permissions:
   contents: read
@@ -48,11 +50,30 @@ jobs:
             --archive /tmp/freedict-eng-zho.src.tar.xz \
             --tei "$(cat /tmp/freedict-tei-path)" \
             --copying "$(cat /tmp/freedict-copying-path)" \
-            --lock tests/fixtures/freedict-eng-zho-source-lock.json \
+            --lock lexicon/source-locks/freedict-eng-zho.json \
             --out /tmp/freedict-source-audit.json
+      - name: Build exact FreeDict optional TFLex pack
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/freedict-tflex
+          node scripts/build-tflex-freedict.mjs \
+            --archive /tmp/freedict-eng-zho.src.tar.xz \
+            --tei "$(cat /tmp/freedict-tei-path)" \
+            --copying "$(cat /tmp/freedict-copying-path)" \
+            --source-lock lexicon/source-locks/freedict-eng-zho.json \
+            --out /tmp/freedict-tflex
+          du -ah /tmp/freedict-tflex
+      - name: Run FreeDict compiler tests
+        run: node --test tests/tflex-freedict-builder.test.mjs
       - name: Upload exact source audit
         uses: actions/upload-artifact@v4
         with:
           name: freedict-eng-zho-source-audit
           path: /tmp/freedict-source-audit.json
+          if-no-files-found: error
+      - name: Upload FreeDict TFLex pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: freedict-eng-zho-tflex
+          path: /tmp/freedict-tflex
           if-no-files-found: error
