@@ -19,6 +19,7 @@
   let resultNode;
   let statusNode;
   let copyButton;
+  let explainButton;
   let retryButton;
   let cancelButton;
   let closeButton;
@@ -26,6 +27,7 @@
   let translateHandler;
   let retryHandler;
   let copyHandler;
+  let explainHandler;
   let cancelHandler;
   let closeHandler;
 
@@ -69,10 +71,12 @@
     cancelButton.addEventListener("click", () => cancelHandler?.());
     copyButton = button({ text: "复制" });
     copyButton.addEventListener("click", () => copyHandler?.());
+    explainButton = button({ text: "AI 详解", label: "使用 AI 结合上下文详解" });
+    explainButton.addEventListener("click", () => explainHandler?.());
     retryButton = button({ text: "重试" });
     retryButton.addEventListener("click", () => retryHandler?.());
 
-    actions.append(cancelButton, copyButton, retryButton);
+    actions.append(cancelButton, copyButton, explainButton, retryButton);
     panel.append(header, sourceNode, statusNode, resultNode, actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
@@ -84,6 +88,7 @@
     translateHandler = onTranslate;
     retryHandler = null;
     copyHandler = null;
+    explainHandler = null;
     cancelHandler = null;
     panel.hidden = true;
     chip.hidden = false;
@@ -103,6 +108,7 @@
     cancelButton.hidden = false;
     cancelButton.disabled = false;
     copyButton.hidden = true;
+    explainButton.hidden = true;
     retryButton.hidden = true;
     position(snapshot, panel);
     focusPanelEntry();
@@ -114,10 +120,11 @@
     reposition();
   }
 
-  function showResult(snapshot, result, onCopy) {
+  function showResult(snapshot, result, onCopy, onExplain) {
     ensureUi();
     activeSnapshot = snapshot;
     copyHandler = onCopy;
+    explainHandler = typeof onExplain === "function" ? onExplain : null;
     retryHandler = null;
     cancelHandler = null;
     chip.hidden = true;
@@ -128,15 +135,17 @@
     resultNode.hidden = false;
     cancelButton.hidden = true;
     copyButton.hidden = false;
+    explainButton.hidden = !explainHandler;
     retryButton.hidden = true;
     position(snapshot, panel);
   }
 
-  function showError(snapshot, message, onRetry) {
+  function showError(snapshot, message, onRetry, onExplain) {
     ensureUi();
     activeSnapshot = snapshot;
     retryHandler = onRetry;
     copyHandler = null;
+    explainHandler = typeof onExplain === "function" ? onExplain : null;
     cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
@@ -146,6 +155,7 @@
     resultNode.hidden = true;
     cancelButton.hidden = true;
     copyButton.hidden = true;
+    explainButton.hidden = !explainHandler;
     retryButton.hidden = false;
     position(snapshot, panel);
   }
@@ -287,6 +297,7 @@
     resultNode = null;
     statusNode = null;
     copyButton = null;
+    explainButton = null;
     retryButton = null;
     cancelButton = null;
     closeButton = null;
@@ -294,6 +305,7 @@
     translateHandler = null;
     retryHandler = null;
     copyHandler = null;
+    explainHandler = null;
     cancelHandler = null;
   }
 
