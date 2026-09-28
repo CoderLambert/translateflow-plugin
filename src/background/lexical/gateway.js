@@ -3,19 +3,49 @@ import {
   LEXICAL_RESULT_STATUS,
   isLexicalPhrase,
   normalizeLexicalExactKey,
-  normalizeLexicalKey
+  normalizeLexicalKey,
+  normalizeLexicalLookupForm
 } from "../../shared/lexical.js";
 
 const DEFAULT_IRREGULAR_LEMMAS = Object.freeze({
+  became: ["become"],
+  best: ["good"],
+  better: ["good"],
+  brought: ["bring"],
+  built: ["build"],
   children: ["child"],
+  chosen: ["choose"],
+  drove: ["drive"],
+  driven: ["drive"],
   feet: ["foot"],
+  found: ["find"],
+  gave: ["give"],
   geese: ["goose"],
+  given: ["give"],
   gone: ["go"],
+  grew: ["grow"],
+  grown: ["grow"],
+  held: ["hold"],
+  kept: ["keep"],
+  knew: ["know"],
+  known: ["know"],
+  left: ["leave"],
+  made: ["make"],
   men: ["man"],
   mice: ["mouse"],
+  ran: ["run"],
+  said: ["say"],
+  saw: ["see"],
+  taken: ["take"],
   teeth: ["tooth"],
+  thought: ["think"],
+  told: ["tell"],
+  took: ["take"],
   went: ["go"],
-  women: ["woman"]
+  women: ["woman"],
+  worse: ["bad"],
+  worst: ["bad"],
+  written: ["write"]
 });
 
 export function createLexicalGateway({
@@ -64,8 +94,29 @@ export function createLexicalGateway({
         return candidateResult(queryText, sourceLanguage, targetLanguage, resultMatch, exact);
       }
 
-      if (isLexicalPhrase(queryText)) {
-        const evidence = await collectPhraseEvidence(queryText, maxPhraseEvidenceTokens);
+      const normalizedText = normalizeLexicalLookupForm(queryText);
+      const normalizationApplied = normalizedText && normalizedText !== queryText;
+      if (normalizationApplied) {
+        const normalized = await lookupAcrossPacks(normalizedText, "normalized");
+        if (normalized.length) {
+          const resultMatch = normalized.every((candidate) => candidate.matchedBy === "alias")
+            ? "alias"
+            : "normalized";
+          return candidateResult(
+            queryText,
+            sourceLanguage,
+            targetLanguage,
+            resultMatch,
+            normalized,
+            normalizedText,
+            normalizedText
+          );
+        }
+      }
+
+      const lexicalText = normalizedText || queryText;
+      if (isLexicalPhrase(lexicalText)) {
+        const evidence = await collectPhraseEvidence(lexicalText, maxPhraseEvidenceTokens);
         return {
           status: LEXICAL_RESULT_STATUS.NO_HIT,
           query: makeQuery(queryText, sourceLanguage, targetLanguage),
@@ -73,18 +124,24 @@ export function createLexicalGateway({
         };
       }
 
-      const canonical = normalizeLexicalKey(queryText);
+      const canonical = normalizeLexicalKey(lexicalText);
       for (const lemma of explicitLemmaForms(canonical, irregularLemmas)) {
         const candidates = await lookupAcrossPacks(lemma, "lemma");
         if (candidates.length) {
-          return candidateResult(queryText, sourceLanguage, targetLanguage, "lemma", candidates, lemma);
+          return candidateResult(
+            queryText, sourceLanguage, targetLanguage, "lemma", candidates, lemma,
+            normalizationApplied ? normalizedText : ""
+          );
         }
       }
 
       for (const lemma of conservativeMorphologyForms(canonical)) {
         const candidates = await lookupAcrossPacks(lemma, "morphology");
         if (candidates.length) {
-          return candidateResult(queryText, sourceLanguage, targetLanguage, "morphology", candidates, lemma);
+          return candidateResult(
+            queryText, sourceLanguage, targetLanguage, "morphology", candidates, lemma,
+            normalizationApplied ? normalizedText : ""
+          );
         }
       }
 
@@ -231,6 +288,7 @@ function explicitLemmaForms(value, irregularLemmas) {
 
 export function conservativeMorphologyForms(value) {
   if (!/^[a-z][a-z'-]{2,}$/i.test(value)) return [];
+  if (/(?:'s|s')$/i.test(value)) return [];
   const forms = [];
 
   if (value.endsWith("ies") && value.length > 4) forms.push(value.slice(0, -3) + "y");
@@ -271,8 +329,16 @@ function uniqueForms(values) {
   return [...new Set(values.map(normalizeLexicalKey).filter(Boolean))];
 }
 
-function candidateResult(text, sourceLanguage, targetLanguage, matchedBy, candidates, resolvedForm = text) {
-  return {
+function candidateResult(
+  text,
+  sourceLanguage,
+  targetLanguage,
+  matchedBy,
+  candidates,
+  resolvedForm = text,
+  normalizedForm = ""
+) {
+  const result = {
     status: LEXICAL_RESULT_STATUS.CANDIDATES,
     query: makeQuery(text, sourceLanguage, targetLanguage),
     override: false,
@@ -280,6 +346,8 @@ function candidateResult(text, sourceLanguage, targetLanguage, matchedBy, candid
     resolvedForm,
     candidates
   };
+  if (normalizedForm) result.normalizedForm = normalizedForm;
+  return result;
 }
 
 function makeQuery(text, sourceLanguage, targetLanguage) {
