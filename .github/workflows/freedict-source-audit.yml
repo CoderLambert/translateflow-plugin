@@ -12,6 +12,8 @@ on:
       - "tests/tflex-freedict-builder.test.mjs"
       - "scripts/certify-freedict-pack.mjs"
       - "scripts/certify-freedict-lifecycle.mjs"
+      - "scripts/evaluate-freedict-quality.mjs"
+      - "tests/freedict-product-gate.test.mjs"
       - "src/background/packs/health.js"
       - "src/background/lexical/opfs-tflex-reader.js"
       - "src/background/packs/opfs-store.js"
@@ -80,6 +82,13 @@ jobs:
           node scripts/certify-freedict-pack.mjs \
             --pack /tmp/freedict-tflex \
             --out /tmp/freedict-pack-certification.json
+      - name: Evaluate exact FreeDict semantic quality
+        run: |
+          set -euo pipefail
+          node scripts/evaluate-freedict-quality.mjs \
+            --pack /tmp/freedict-tflex \
+            --source-lock lexicon/source-locks/freedict-eng-zho.json \
+            --out /tmp/freedict-quality-decision.json
       - name: Certify signed install, active lookup and uninstall
         run: |
           set -euo pipefail
@@ -93,6 +102,7 @@ jobs:
             /tmp/freedict-source-audit.json
             /tmp/freedict-pack-certification.json
             /tmp/freedict-lifecycle-certification.json
+            /tmp/freedict-quality-decision.json
           if-no-files-found: error
       - name: Upload FreeDict TFLex pack
         uses: actions/upload-artifact@v4
