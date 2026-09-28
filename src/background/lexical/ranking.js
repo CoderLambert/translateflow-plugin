@@ -7,6 +7,7 @@ import {
 const MATCH_SCORES = Object.freeze({
   "user-glossary": 1000,
   exact: 72,
+  normalized: 68,
   alias: 64,
   lemma: 56,
   morphology: 50,
