@@ -132,7 +132,7 @@ test("Lexical Gateway preserves optional source-locked sense priors", async () =
   assert.equal(result.candidates[0].tagCount, 7);
 });
 
-test("Lexical Gateway preserves sense-level Technical metadata without flattening provenance", async () => {
+test("Lexical Gateway preserves source-provided Technical sense metadata without flattening provenance", async () => {
   const reader = {
     async lookupAll() {
       return [{
@@ -143,11 +143,11 @@ test("Lexical Gateway preserves sense-level Technical metadata without flattenin
           kind: "technical-concept",
           aliases: [],
           senses: [{
-            id: "reviewed:session.computing",
+            id: "source-fixture:session.computing",
             translations: ["会话"],
             domains: ["protocol", "terminal"],
             typeLabels: ["computing session"],
-            sourceRefs: [{ sourceId: "translateflow-reviewed-technical-terms", recordId: "session.computing" }]
+            sourceRefs: [{ sourceId: "technical-source-fixture", recordId: "session.computing" }]
           }]
         },
         exactCaseMatch: true
@@ -157,7 +157,7 @@ test("Lexical Gateway preserves sense-level Technical metadata without flattenin
   const result = await createLexicalGateway({ packReaders: [reader] }).lookup({ text: "session" });
   assert.deepEqual(result.candidates[0].typeLabels, ["computing session"]);
   assert.deepEqual(result.candidates[0].provenance.sourceRefs, [{
-    sourceId: "translateflow-reviewed-technical-terms",
+    sourceId: "technical-source-fixture",
     recordId: "session.computing"
   }]);
 });

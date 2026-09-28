@@ -64,7 +64,7 @@ The following are not acceptable long-term coverage mechanisms:
 - query-specific ranking branches that encode a hidden sense table;
 - using benchmark fixtures as runtime data.
 
-A small evidenced compatibility override may exist temporarily, but it must remain bounded and have a source-driven replacement path. The current reviewed technical terminology source is transitional and must not become the primary Technical dictionary.
+A small evidenced compatibility override may exist temporarily, but it must remain bounded and have a source-driven replacement path. The former `reviewed-tech-terms` dataset is retained only as validation/audit history; the production Technical builder does not import it. New technical coverage must come from attributable source pipelines such as #116/#121/#126.
 
 ## Ranking and sufficiency
 

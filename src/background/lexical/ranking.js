@@ -139,7 +139,7 @@ export function rankLexicalCandidates(candidates, { queryText = "", contextText 
   const queryTokens = new Set(tokenize(queryText));
   const contextTokens = tokenize(contextText).filter((token) => !queryTokens.has(token));
   const contextTokenSet = new Set(contextTokens);
-  const technicalMarkerCount = contextTokens.filter((token) => TECH_CONTEXT_MARKERS.has(token)).length;
+  const technicalMarkerCount = contextTokens.filter(isTechnicalContextToken).length;
 
   return candidates
     .map((candidate, index) => {
@@ -168,7 +168,18 @@ function hasTechnicalContext(queryText, contextText) {
   const queryTokens = new Set(tokenize(queryText));
   return tokenize(contextText)
     .filter((token) => !queryTokens.has(token))
-    .some((token) => TECH_CONTEXT_MARKERS.has(token));
+    .some(isTechnicalContextToken);
+}
+
+function isTechnicalContextToken(token) {
+  if (TECH_CONTEXT_MARKERS.has(token)) return true;
+  if (token.endsWith("ies") && TECH_CONTEXT_MARKERS.has(token.slice(0, -3) + "y")) return true;
+
+  for (const suffix of ["s", "es", "ed", "ing", "ment", "ments"]) {
+    if (!token.endsWith(suffix) || token.length <= suffix.length + 3) continue;
+    if (TECH_CONTEXT_MARKERS.has(token.slice(0, -suffix.length))) return true;
+  }
+  return false;
 }
 
 function hasUnresolvedTechnicalSense(lookupResult, ranked, { queryText, contextText }) {
@@ -178,8 +189,7 @@ function hasUnresolvedTechnicalSense(lookupResult, ranked, { queryText, contextT
   const matchedBy = candidate?.matchedBy || lookupResult?.matchedBy;
   if (
     candidate?.kind !== "lexical" ||
-    candidate?.partOfSpeech !== "noun" ||
-    !["exact", "normalized"].includes(matchedBy)
+    !["exact", "normalized", "morphology"].includes(matchedBy)
   ) {
     return false;
   }

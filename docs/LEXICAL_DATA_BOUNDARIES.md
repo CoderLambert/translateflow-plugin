@@ -120,7 +120,7 @@ A small project-authored override layer may exist only when all of the following
 
 The override set must remain small and must not become a dictionary project.
 
-The current `reviewed-tech-terms` source is therefore **transitional compatibility/regression support**. It must not grow as the primary solution for future coverage. New coverage should come from #116/#121/#124/#126 source pipelines.
+The former `reviewed-tech-terms` dataset is retained only as **validation/audit history**. It is not compiled into the production Technical pack. New coverage should come from #116/#121/#124/#126 source pipelines; any future temporary override must be separately approved against the exception criteria above.
 
 Regression words remain in validation fixtures even after their runtime data source changes.
 

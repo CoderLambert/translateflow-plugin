@@ -31,7 +31,7 @@ test("Phase B corpus matches the frozen ranking/sufficiency baseline", async () 
   assert.deepEqual(report.failures, []);
 });
 
-test("generic nouns in technical context require structured sense evidence", async () => {
+test("generic lexical senses in technical context require structured sense evidence", async () => {
   const data = await fixture();
   const testCase = data.cases.find((item) => item.id === "container-known-technical-gap");
   const lookup = materializeLookup(testCase, data.candidates);
@@ -64,6 +64,49 @@ test("generic nouns in technical context require structured sense evidence", asy
   });
   assert.equal(synthetic.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
   assert.equal(synthetic.reason, "technical-context-missing-structured-sense");
+
+  const adjectiveLookup = structuredClone(lookup);
+  adjectiveLookup.query = { ...adjectiveLookup.query, text: "descendant", normalized: "descendant" };
+  adjectiveLookup.candidates[0] = {
+    ...adjectiveLookup.candidates[0],
+    id: "core:descendant:general",
+    headword: "descendant",
+    queryForm: "descendant",
+    partOfSpeech: "adjective"
+  };
+  const adjective = assessLexicalLookup(adjectiveLookup, {
+    contextText: "Use a descendant combinator in the stylesheet."
+  });
+  assert.equal(adjective.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
+  assert.equal(adjective.reason, "technical-context-missing-structured-sense");
+
+  const derivedMarker = assessLexicalLookup(lookup, {
+    contextText: "Build the container image before deployment."
+  });
+  assert.equal(derivedMarker.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
+  assert.equal(derivedMarker.reason, "technical-context-missing-structured-sense");
+
+  const recoveredLookup = structuredClone(lookup);
+  recoveredLookup.query = { ...recoveredLookup.query, text: "repositories", normalized: "repositories" };
+  recoveredLookup.matchedBy = "morphology";
+  recoveredLookup.resolvedForm = "repository";
+  recoveredLookup.candidates[0] = {
+    ...recoveredLookup.candidates[0],
+    id: "core:repository:general",
+    headword: "repository",
+    queryForm: "repository",
+    matchedBy: "morphology"
+  };
+  const recoveredTechnical = assessLexicalLookup(recoveredLookup, {
+    contextText: "Clone the Git repositories before building."
+  });
+  assert.equal(recoveredTechnical.outcome, LEXICAL_DECISION_OUTCOME.AMBIGUOUS);
+  assert.equal(recoveredTechnical.reason, "technical-context-missing-structured-sense");
+
+  const recoveredOrdinary = assessLexicalLookup(recoveredLookup, {
+    contextText: "The archives are repositories for historical documents."
+  });
+  assert.equal(recoveredOrdinary.outcome, LEXICAL_DECISION_OUTCOME.SUFFICIENT);
 });
 
 test("technical context can outrank a generic sense without suppressing it", async () => {
