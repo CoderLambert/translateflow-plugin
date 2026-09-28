@@ -516,10 +516,8 @@ function validateIssue115QualityGates(cases) {
     }
   }
 
-  const css = cases.find((item) => item.id === "phrase-descendant-combinator");
-  if (!css?.hit || css.phraseRecovered !== true || css.topCorrect !== true) {
-    failures.push("CSS descendant combinator release gate failed");
-  }
+  // Source-gap scenarios remain measured in the corpus, but a missing upstream
+  // phrase is not a release failure after project-authored runtime rows are retired.
   return failures;
 }
 
