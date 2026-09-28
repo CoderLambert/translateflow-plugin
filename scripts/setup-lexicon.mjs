@@ -7,10 +7,11 @@ import { buildReleaseLexicon } from "./build-release-lexicon.mjs";
 import { certifyLexicalRelease } from "./certify-lexical-release.mjs";
 
 const LOCK_PATH = resolve("lexicon/source-locks/core-semantic-pwn3-cow.json");
-const SOURCE_ROOT = resolve(".release-sources/omw-data");
+const SOURCE_ROOT = resolve(".release-sources");
 const SOURCE_PATHS = Object.freeze({
-  "pwn-3.0": "wns/eng/wn-data-eng.tab",
-  "chinese-open-wordnet": "wns/cow/wn-data-cmn.tab"
+  "pwn-3.0": "omw-data/wns/eng/wn-data-eng.tab",
+  "chinese-open-wordnet": "omw-data/wns/cow/wn-data-cmn.tab",
+  "pwn-3.0-sense-index": "wordnet/wn/data/wordnet-3.0/index.sense"
 });
 
 export async function setupLexicon({
@@ -37,6 +38,7 @@ export async function setupLexicon({
   const build = await buildReleaseLexicon({
     englishPath: downloaded["pwn-3.0"],
     chinesePath: downloaded["chinese-open-wordnet"],
+    senseIndexPath: downloaded["pwn-3.0-sense-index"],
     outRoot
   });
   const certification = await certifyLexicalRelease({ root: resolve(outRoot) });
