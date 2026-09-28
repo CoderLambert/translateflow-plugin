@@ -384,7 +384,7 @@
         "hit": true,
         "top": {
           "kindAny": [
-            "technical-entity"
+            "technical-concept"
           ],
           "headwordAny": [
             "OAuth"
