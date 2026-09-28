@@ -94,10 +94,7 @@
     ensureUi();
     activeSnapshot = snapshot;
     translateHandler = onTranslate;
-    retryHandler = null;
-    copyHandler = null;
-    explainHandler = null;
-    cancelHandler = null;
+    clearActionHandlers();
     panel.hidden = true;
     chip.hidden = false;
     position(snapshot, chip);
@@ -115,11 +112,9 @@
     emptyState?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = true;
+    hideActionButtons();
     cancelButton.hidden = false;
     cancelButton.disabled = false;
-    copyButton.hidden = true;
-    explainButton.hidden = true;
-    retryButton.hidden = true;
     position(snapshot, panel);
     focusPanelEntry();
   }
@@ -133,10 +128,9 @@
   function showResult(snapshot, result, onCopy, onExplain) {
     ensureUi();
     activeSnapshot = snapshot;
+    clearActionHandlers();
     copyHandler = onCopy;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
-    retryHandler = null;
-    cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -153,10 +147,9 @@
   function showError(snapshot, message, onRetry, onExplain) {
     ensureUi();
     activeSnapshot = snapshot;
+    clearActionHandlers();
     retryHandler = onRetry;
-    copyHandler = null;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
-    cancelHandler = null;
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -272,10 +265,7 @@
   function showEmpty(snapshot, { title, message, onExplain, onTranslate } = {}) {
     ensureUi();
     activeSnapshot = snapshot;
-    retryHandler = null;
-    copyHandler = null;
-    explainHandler = null;
-    cancelHandler = null;
+    clearActionHandlers();
     chip.hidden = true;
     panel.hidden = false;
     sourceNode.textContent = snapshot.text;
@@ -285,10 +275,7 @@
     resultNode.replaceChildren();
     resultNode.dataset.resultKind = "empty";
     resultNode.hidden = false;
-    cancelButton.hidden = true;
-    copyButton.hidden = true;
-    explainButton.hidden = true;
-    retryButton.hidden = true;
+    hideActionButtons();
     emptyState.show({ title, message, onExplain, onTranslate });
     position(snapshot, panel);
   }
@@ -362,10 +349,15 @@
     closeButton = null;
     activeSnapshot = null;
     translateHandler = null;
-    retryHandler = null;
-    copyHandler = null;
-    explainHandler = null;
-    cancelHandler = null;
+    clearActionHandlers();
+  }
+
+  function clearActionHandlers() {
+    retryHandler = copyHandler = explainHandler = cancelHandler = null;
+  }
+
+  function hideActionButtons() {
+    cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
   }
 
   function setCloseHandler(handler) {
