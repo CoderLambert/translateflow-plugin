@@ -71,7 +71,7 @@ export const test = base.extend({
     const lexiconDir = join(extensionDir, "assets", "lexicon");
     if (lexiconPacks === "release") {
       await cp(join(repoRoot, "assets", "lexicon"), lexiconDir, { recursive: true });
-    } else {
+    } else if (lexiconPacks !== "missing") {
       await mkdir(lexiconDir, { recursive: true });
       await cp(
         join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),
