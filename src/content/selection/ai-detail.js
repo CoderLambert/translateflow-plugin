@@ -49,7 +49,6 @@
       if (node?.isConnected) return node;
       node = document.createElement("section");
       node.className = "tf-selection-generated tf-selection-ai-detail";
-      node.setAttribute("aria-live", "polite");
       node.hidden = true;
       container.appendChild(node);
       return node;
