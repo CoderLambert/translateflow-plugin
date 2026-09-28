@@ -68,7 +68,8 @@ export async function benchmarkLexicalQuality({
   const cache = summarizeCache(runtime.gateway.stats());
   const structuralFailures = [
     ...sourceCoverage.mismatches,
-    ...validateReleasePackSummary(packs)
+    ...validateReleasePackSummary(packs),
+    ...validateIssue115QualityGates(cases)
   ];
 
   return {
@@ -110,7 +111,7 @@ export function validateLexicalQualityFixture(fixture) {
 
   const allowedModes = new Set(["exact", "normalized", "inflection", "phrase-context", "no-hit"]);
   const requiredGroups = new Set([
-    "general", "polysemy", "technical", "entity",
+    "general", "polysemy", "technical", "entity", "contrastive",
     "normalization", "inflection", "phrase-context", "no-hit"
   ]);
   const seenGroups = new Set();
@@ -151,6 +152,9 @@ export function matchesTopExpectation(candidate, expectation) {
   }
   if (Array.isArray(expectation.kindAny)) {
     checks.push(expectation.kindAny.includes(candidate.kind));
+  }
+  if (Array.isArray(expectation.kindNot)) {
+    checks.push(!expectation.kindNot.includes(candidate.kind));
   }
   if (Array.isArray(expectation.headwordAny)) {
     checks.push(includesNormalized(expectation.headwordAny, candidate.headword));
@@ -232,6 +236,7 @@ function summarizeMetrics(cases) {
   const inflection = cases.filter((item) => item.mode === "inflection");
   const phrase = cases.filter((item) => item.mode === "phrase-context");
   const noHit = cases.filter((item) => item.mode === "no-hit");
+  const contrastive = cases.filter((item) => item.group === "contrastive");
   const expectedHits = cases.filter((item) => item.expectedHit);
   const topExpected = cases.filter((item) => item.topCorrect !== null);
   const topMeasured = topExpected.filter((item) => item.hit);
@@ -257,6 +262,13 @@ function summarizeMetrics(cases) {
       phrase.length
     ),
     trueNoHitRate: ratio(noHit.filter((item) => item.noHitCorrect === true).length, noHit.length),
+    contrastiveSafeTopRate: ratio(
+      contrastive.filter((item) => item.hit && item.topCorrect === true).length,
+      contrastive.length
+    ),
+    contrastiveFailureCaseIds: contrastive
+      .filter((item) => !item.hit || item.topCorrect !== true)
+      .map((item) => item.id),
     top1CorrectRate: ratio(topMeasured.filter((item) => item.topCorrect === true).length, topMeasured.length),
     top1MeasuredCaseCount: topMeasured.length,
     wrongSenseTop1Count: wrongTop.length,
@@ -444,6 +456,21 @@ function validateReleasePackSummary(packs) {
   if (!technical) failures.push("release Technical pack is missing");
   if (core && core.recordCount <= 0) failures.push("release Core pack is empty");
   if (technical && technical.recordCount <= 0) failures.push("release Technical pack is empty");
+  return failures;
+}
+
+function validateIssue115QualityGates(cases) {
+  const failures = [];
+  for (const item of cases.filter((entry) => entry.group === "contrastive")) {
+    if (!item.hit || item.topCorrect !== true) {
+      failures.push(`contrastive ordinary-context regression: ${item.id}`);
+    }
+  }
+
+  const css = cases.find((item) => item.id === "phrase-descendant-combinator");
+  if (!css?.hit || css.phraseRecovered !== true || css.topCorrect !== true) {
+    failures.push("CSS descendant combinator release gate failed");
+  }
   return failures;
 }
 
