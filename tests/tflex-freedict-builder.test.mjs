@@ -176,11 +176,11 @@ test("FreeDict compiler groups headword senses and indexes inflected aliases wit
   assert.deepEqual(cache.senses[0].translations, ["缓存"]);
 });
 
-test("FreeDict source lock fails closed when official-pack license approval is absent", async () => {
+test("FreeDict source lock fails closed when redistribution license gate is absent", async () => {
   const env = await fixture("license-approval");
   const changed = structuredClone(env.lock);
   changed.license.licenseGatePassed = false;
-  assert.throws(() => validateFreeDictSourceLock(changed), /license approval/);
+  assert.throws(() => validateFreeDictSourceLock(changed), /redistribution license gate/);
 });
 
 test("FreeDict compiler rejects exact TEI license drift even when fixture hash is updated", async () => {
