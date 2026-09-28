@@ -6,6 +6,7 @@ import {
   normalizeLexicalKey,
   normalizeLexicalLookupForm
 } from "../../shared/lexical.js";
+import { extractContextPhraseCandidates } from "./context-phrase.js";
 
 const DEFAULT_IRREGULAR_LEMMAS = Object.freeze({
   became: ["become"],
@@ -60,6 +61,7 @@ export function createLexicalGateway({
   async function lookup({
     text,
     pageUrl = "",
+    contextText = "",
     sourceLanguage = "en",
     targetLanguage = "zh-CN"
   } = {}) {
@@ -88,14 +90,61 @@ export function createLexicalGateway({
         };
       }
 
+      const normalizedText = normalizeLexicalLookupForm(queryText);
+      const normalizationApplied = normalizedText && normalizedText !== queryText;
+      const lexicalText = normalizedText || queryText;
+
+      // A phrase explicitly selected by the user remains authoritative. Context
+      // expansion is only for one lexical token selected inside a local phrase.
+      if (isLexicalPhrase(lexicalText)) {
+        const exactPhrase = await lookupAcrossPacks(queryText, "exact");
+        if (exactPhrase.length) {
+          const resultMatch = exactPhrase.every((candidate) => candidate.matchedBy === "alias") ? "alias" : "exact";
+          return candidateResult(queryText, sourceLanguage, targetLanguage, resultMatch, exactPhrase);
+        }
+
+        if (normalizationApplied) {
+          const normalizedPhrase = await lookupAcrossPacks(normalizedText, "normalized");
+          if (normalizedPhrase.length) {
+            const resultMatch = normalizedPhrase.every((candidate) => candidate.matchedBy === "alias")
+              ? "alias"
+              : "normalized";
+            return candidateResult(
+              queryText,
+              sourceLanguage,
+              targetLanguage,
+              resultMatch,
+              normalizedPhrase,
+              normalizedText,
+              normalizedText
+            );
+          }
+        }
+
+        const evidence = await collectPhraseEvidence(lexicalText, maxPhraseEvidenceTokens);
+        return {
+          status: LEXICAL_RESULT_STATUS.NO_HIT,
+          query: makeQuery(queryText, sourceLanguage, targetLanguage),
+          evidence
+        };
+      }
+
+      const contextPhrase = await lookupContextPhrase({
+        queryText,
+        lexicalText,
+        contextText,
+        glossary,
+        sourceLanguage,
+        targetLanguage
+      });
+      if (contextPhrase) return contextPhrase;
+
       const exact = await lookupAcrossPacks(queryText, "exact");
       if (exact.length) {
         const resultMatch = exact.every((candidate) => candidate.matchedBy === "alias") ? "alias" : "exact";
         return candidateResult(queryText, sourceLanguage, targetLanguage, resultMatch, exact);
       }
 
-      const normalizedText = normalizeLexicalLookupForm(queryText);
-      const normalizationApplied = normalizedText && normalizedText !== queryText;
       if (normalizationApplied) {
         const normalized = await lookupAcrossPacks(normalizedText, "normalized");
         if (normalized.length) {
@@ -112,16 +161,6 @@ export function createLexicalGateway({
             normalizedText
           );
         }
-      }
-
-      const lexicalText = normalizedText || queryText;
-      if (isLexicalPhrase(lexicalText)) {
-        const evidence = await collectPhraseEvidence(lexicalText, maxPhraseEvidenceTokens);
-        return {
-          status: LEXICAL_RESULT_STATUS.NO_HIT,
-          query: makeQuery(queryText, sourceLanguage, targetLanguage),
-          evidence
-        };
       }
 
       const canonical = normalizeLexicalKey(lexicalText);
@@ -162,6 +201,51 @@ export function createLexicalGateway({
         }
       };
     }
+  }
+
+  async function lookupContextPhrase({
+    queryText,
+    lexicalText,
+    contextText,
+    glossary,
+    sourceLanguage,
+    targetLanguage
+  }) {
+    const phrases = extractContextPhraseCandidates({
+      selectionText: lexicalText,
+      contextText
+    });
+
+    for (const phrase of phrases) {
+      const phraseOverride = findGlossaryOverride(phrase.text, glossary);
+      if (phraseOverride) {
+        return contextPhraseResult({
+          queryText,
+          sourceLanguage,
+          targetLanguage,
+          phrase,
+          phraseMatchedBy: "user-glossary",
+          candidates: [glossaryCandidate(phraseOverride)],
+          override: true
+        });
+      }
+
+      const candidates = await lookupAcrossPacks(phrase.text, "exact");
+      if (!candidates.length) continue;
+      const phraseMatchedBy = candidates.every((candidate) => candidate.matchedBy === "alias")
+        ? "alias"
+        : "exact";
+      return contextPhraseResult({
+        queryText,
+        sourceLanguage,
+        targetLanguage,
+        phrase,
+        phraseMatchedBy,
+        candidates
+      });
+    }
+
+    return null;
   }
 
   async function lookupAcrossPacks(text, matchedBy) {
@@ -327,6 +411,37 @@ function undoubleFinalConsonant(value) {
 
 function uniqueForms(values) {
   return [...new Set(values.map(normalizeLexicalKey).filter(Boolean))];
+}
+
+function contextPhraseResult({
+  queryText,
+  sourceLanguage,
+  targetLanguage,
+  phrase,
+  phraseMatchedBy,
+  candidates,
+  override = false
+}) {
+  return {
+    status: LEXICAL_RESULT_STATUS.CANDIDATES,
+    query: makeQuery(queryText, sourceLanguage, targetLanguage),
+    override,
+    matchedBy: "context-phrase",
+    resolvedForm: phrase.text,
+    matchedPhrase: phrase.text,
+    contextPhrase: {
+      text: phrase.text,
+      normalized: phrase.normalized,
+      tokenCount: phrase.tokenCount,
+      spanStart: phrase.spanStart,
+      spanEnd: phrase.spanEnd,
+      selectionTokenOffset: phrase.selectionTokenOffset,
+      confidence: "high",
+      provenance: phrase.provenance,
+      matchedBy: phraseMatchedBy
+    },
+    candidates
+  };
 }
 
 function candidateResult(
