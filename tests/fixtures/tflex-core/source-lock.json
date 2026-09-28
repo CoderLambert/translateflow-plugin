@@ -41,10 +41,11 @@
     {
       "id": "pwn-3.0-sense-index",
       "version": "fixture",
-      "provenance": "project-owned test fixture",
+      "provenance": "project-owned test fixture; provides TFLex senseNumber and tagCount fields",
       "data": {
         "url": "fixture://index.sense",
-        "sha256": "886c427aa3e544bfc532c97c056e1257328fb5b552403c819616b6292d67c65c"
+        "sha256": "886c427aa3e544bfc532c97c056e1257328fb5b552403c819616b6292d67c65c",
+        "size": 265
       },
       "license": {
         "id": "fixture-permissive",

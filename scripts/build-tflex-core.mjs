@@ -81,6 +81,9 @@ export async function compileTflexCore({
       provenance: source.provenance,
       dataSha256: source.data.sha256,
       dataUrl: source.data.url,
+      ...(source.id === SOURCE_IDS.senseIndex ? {
+        providesFields: ["senseNumber", "tagCount"]
+      } : {}),
       license: {
         id: source.license.id,
         name: source.license.name,
@@ -145,6 +148,9 @@ export function validateSourceLock(input) {
     if (!source.data || typeof source.data !== "object") throw new Error("source " + source.id + " data descriptor is required");
     requireNonEmptyString(source.data.url, "source " + source.id + " data url");
     requireSha256(source.data.sha256, "source " + source.id + " data sha256");
+    if (source.data.size !== undefined) {
+      assertPositiveInteger(source.data.size, "source " + source.id + " data size");
+    }
     if (!source.license || typeof source.license !== "object") throw new Error("source " + source.id + " license descriptor is required");
     requireNonEmptyString(source.license.id, "source " + source.id + " license id");
     requireNonEmptyString(source.license.name, "source " + source.id + " license name");
@@ -160,6 +166,8 @@ export function validateSourceLock(input) {
   for (const required of requiredSourceIds) {
     if (!seen.has(required)) throw new Error("source lock missing required source: " + required);
   }
+  const senseIndexSource = sources.find((source) => source.id === SOURCE_IDS.senseIndex);
+  assertPositiveInteger(senseIndexSource.data.size, "source " + SOURCE_IDS.senseIndex + " data size");
   return { ...input, sources };
 }
 
@@ -277,7 +285,7 @@ export function parseWordNetSenseIndex(text) {
     const pos = { "1": "n", "2": "v", "3": "a", "4": "r", "5": "a" }[match[2]];
     const key = lemma + "\u0000" + offset + "-" + pos;
     const previous = result.get(key);
-    const item = { senseKey, senseNumber, tagCount };
+    const item = { senseNumber, tagCount };
     if (
       !previous ||
       senseNumber < previous.senseNumber ||
@@ -405,6 +413,10 @@ export async function validateTflexCoreOutput({
     manifestSourceIds.add(source.id);
     requireNonEmptyString(source.version, "manifest source version");
     requireSha256(source.dataSha256, "manifest source dataSha256");
+    if (source.id === SOURCE_IDS.senseIndex &&
+        JSON.stringify(source.providesFields) !== JSON.stringify(["senseNumber", "tagCount"])) {
+      throw new Error("sense-index manifest field provenance is incomplete");
+    }
     requireNonEmptyString(source.license?.id, "manifest source license id");
     requireNonEmptyString(source.license?.name, "manifest source license name");
     requireNonEmptyString(source.license?.source, "manifest source license source");
@@ -577,6 +589,11 @@ function buildThirdPartyNotices(sources) {
 
 function verifyLockedBytes(source, bytes) {
   if (!source) throw new Error("missing locked source");
+  if (source.data.size !== undefined && bytes.byteLength !== source.data.size) {
+    throw new Error(
+      "byte size mismatch for " + source.id + ": expected " + source.data.size + ", got " + bytes.byteLength
+    );
+  }
   const actual = sha256Bytes(bytes);
   if (actual !== source.data.sha256.toLowerCase()) {
     throw new Error("SHA-256 mismatch for " + source.id + ": expected " + source.data.sha256 + ", got " + actual);
@@ -615,6 +632,9 @@ function makeFingerprintPayload({
         version: source.version,
         provenance: source.provenance,
         dataSha256: source.dataSha256,
+        ...(Array.isArray(source.providesFields) ? {
+          providesFields: [...source.providesFields]
+        } : {}),
         licenseId: source.license.id
       })),
     files: [...files]

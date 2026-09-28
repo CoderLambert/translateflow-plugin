@@ -16,6 +16,7 @@ import {
 } from "./build-tflex-core.mjs";
 import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
 import {
+  isReviewedTechnicalRecord,
   loadReviewedTechnicalTerms,
   mergeReviewedTechnicalRecords,
   reviewedTechnicalManifestSource,
@@ -49,13 +50,11 @@ export async function compileTflexTechnical({
   });
   const records = mergeReviewedTechnicalRecords(
     buildTechnicalRecords(extract, lock.policy, lock.entities),
-    reviewed.records
+    reviewed.records,
+    reviewed.lock.policy
   );
   if (!records.length) throw new Error("technical pack build produced no approved records");
-  const aliases = buildTechnicalAliasIndex(records, lock.policy, {
-    additionalCaseSensitiveAliases: reviewed.lock.policy.caseSensitiveAliases
-  });
-  const packVersion = lock.packVersion + "+reviewed-" + reviewed.lock.source.snapshot.version;
+  const aliases = buildTechnicalAliasIndex(records, lock.policy, reviewed.lock.policy);
 
   await prepareOutputDir(output);
   const shards = await writeShards(output, records, maxShardBytes);
@@ -97,7 +96,7 @@ export async function compileTflexTechnical({
     formatVersion: TFLEX_FORMAT_VERSION,
     normalizationVersion: TFLEX_NORMALIZATION_VERSION,
     packId: lock.packId,
-    packVersion,
+    packVersion: lock.packVersion,
     profile: TFLEX_BUNDLED_PROFILE,
     profileOptions: { maxShardBytes },
     sources,
@@ -111,7 +110,7 @@ export async function compileTflexTechnical({
     compilerVersion: TFLEX_COMPILER_VERSION,
     normalizationVersion: TFLEX_NORMALIZATION_VERSION,
     packId: lock.packId,
-    packVersion,
+    packVersion: lock.packVersion,
     sourceLanguage: lock.sourceLanguage,
     targetLanguage: lock.targetLanguage,
     profile: TFLEX_BUNDLED_PROFILE,
@@ -248,31 +247,47 @@ export function buildTechnicalRecords(extract, policy, lockedEntities = []) {
     .map(({ _aliasPolicy: _hidden, ...record }) => record);
 }
 
-export function buildTechnicalAliasIndex(
-  records,
-  policy,
-  { additionalCaseSensitiveAliases = [] } = {}
-) {
-  const caseSensitive = new Set(
-    [...policy.caseSensitiveAliases, ...additionalCaseSensitiveAliases]
-      .map(normalizeExactLookupKey)
-      .filter(Boolean)
+export function buildTechnicalAliasIndex(records, policy, reviewedPolicy = null) {
+  const wikidataCaseSensitive = new Set(policy.caseSensitiveAliases.map(normalizeExactLookupKey));
+  const reviewedCaseSensitive = new Set(
+    (reviewedPolicy?.caseSensitiveAliases || []).map(normalizeExactLookupKey)
+  );
+  const canonicalKeys = new Set(records.map((record) => record.lookupKey));
+  const reviewedCanonicalKeys = new Set(
+    records.filter(isReviewedTechnicalRecord).map((record) => record.lookupKey)
   );
   const index = new Map();
 
   for (const record of records) {
+    const reviewed = isReviewedTechnicalRecord(record);
+    if (reviewed && !reviewedPolicy) {
+      throw new Error("reviewed technical alias policy is required");
+    }
+    const caseSensitive = reviewed ? reviewedCaseSensitive : wikidataCaseSensitive;
     for (const alias of record.aliases || []) {
       const exact = normalizeExactLookupKey(alias);
       const key = normalizeLookupKey(exact);
       if (!key || key === record.lookupKey) continue;
+      if (canonicalKeys.has(key) && (reviewed || reviewedCanonicalKeys.has(key))) {
+        throw new Error("reviewed alias collides with a technical headword: " + key);
+      }
       const sensitive = caseSensitive.has(exact);
       let entry = index.get(key);
       if (!entry) {
-        entry = { key, caseSensitive: sensitive, exactLookupKeys: new Set(), targets: new Set() };
+        entry = {
+          key,
+          caseSensitive: sensitive,
+          exactLookupKeys: new Set(),
+          targets: new Set(),
+          hasReviewedSource: reviewed
+        };
         index.set(key, entry);
       } else if (entry.caseSensitive !== sensitive) {
         throw new Error("mixed case-sensitivity policy for alias: " + key);
+      } else if ((reviewed || entry.hasReviewedSource) && !entry.targets.has(record.lookupKey)) {
+        throw new Error("reviewed alias collides across technical records: " + key);
       }
+      entry.hasReviewedSource ||= reviewed;
       entry.exactLookupKeys.add(exact);
       entry.targets.add(record.lookupKey);
     }

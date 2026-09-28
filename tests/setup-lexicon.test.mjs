@@ -26,6 +26,7 @@ test("lexicon bootstrap derives all exact HTTPS sources from the reviewed source
   assert.match(sources[0].url, /406bf83b3c507a3d1f26e88252d5d66893fd36bf/);
   assert.match(sources[1].url, /406bf83b3c507a3d1f26e88252d5d66893fd36bf/);
   assert.match(sources[2].url, /ce91915ae38a341ae845be4d825ef6003cddf395/);
+  assert.equal(sources[2].size, 7294043);
 });
 
 test("lexicon bootstrap fails closed on source checksum drift", () => {
@@ -35,6 +36,18 @@ test("lexicon bootstrap fails closed on source checksum drift", () => {
       sha256: "0".repeat(64)
     }),
     /checksum mismatch/
+  );
+});
+
+test("lexicon bootstrap fails closed on locked source byte-size drift", () => {
+  const bytes = new TextEncoder().encode("locked");
+  assert.throws(
+    () => verifySourceBytes(bytes, {
+      id: "pwn-3.0-sense-index",
+      size: bytes.byteLength + 1,
+      sha256: createHash("sha256").update(bytes).digest("hex")
+    }),
+    /size mismatch/
   );
 });
 

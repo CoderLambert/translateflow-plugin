@@ -66,12 +66,17 @@ export function resolveLockedSources(lock) {
     if (!source?.data?.url || !/^[a-f0-9]{64}$/i.test(source?.data?.sha256 || "")) {
       throw new Error("Locked lexical source metadata is missing or invalid: " + id);
     }
+    if (id === "pwn-3.0-sense-index" &&
+        (!Number.isSafeInteger(source.data.size) || source.data.size <= 0)) {
+      throw new Error("Locked lexical source byte size is missing or invalid: " + id);
+    }
     const url = new URL(source.data.url);
     if (url.protocol !== "https:") throw new Error("Locked lexical source must use HTTPS: " + id);
     return {
       id,
       url: url.href,
-      sha256: source.data.sha256.toLowerCase()
+      sha256: source.data.sha256.toLowerCase(),
+      ...(Number.isSafeInteger(source.data.size) ? { size: source.data.size } : {})
     };
   });
   return resolved;
@@ -83,7 +88,7 @@ export async function ensureLockedSource({ source, targetPath, fetchImpl }) {
     verifySourceBytes(existing, source);
     return targetPath;
   } catch (error) {
-    if (error?.code !== "ENOENT" && !/checksum mismatch/.test(error?.message || "")) throw error;
+    if (error?.code !== "ENOENT" && !/(?:checksum|size) mismatch/.test(error?.message || "")) throw error;
   }
 
   const response = await fetchImpl(source.url, { redirect: "follow" });
@@ -101,6 +106,9 @@ export async function ensureLockedSource({ source, targetPath, fetchImpl }) {
 }
 
 export function verifySourceBytes(bytes, source) {
+  if (Number.isSafeInteger(source.size) && bytes.byteLength !== source.size) {
+    throw new Error(`Locked lexical source size mismatch for ${source.id}: expected ${source.size}, got ${bytes.byteLength}`);
+  }
   const actual = createHash("sha256").update(bytes).digest("hex");
   if (actual !== source.sha256) {
     throw new Error(`Locked lexical source checksum mismatch for ${source.id}: expected ${source.sha256}, got ${actual}`);

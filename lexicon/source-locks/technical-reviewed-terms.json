@@ -23,8 +23,40 @@
     }
   },
   "policy": {
-    "blockedAliases": [],
+    "normalization": {
+      "unicode": "NFKC",
+      "whitespace": "trim-collapse",
+      "lookupCase": "lowercase"
+    },
+    "blockedAliases": [
+      "di",
+      "gc",
+      "image",
+      "js",
+      "process",
+      "run",
+      "state"
+    ],
     "caseSensitiveAliases": [],
+    "collisionPolicy": {
+      "aliasToHeadword": "reject",
+      "aliasToAlias": "reject",
+      "headwordToHeadword": "reject-unless-allowlisted",
+      "allowedHeadwordCollisions": [
+        {
+          "lookupKey": "run-time system",
+          "baseSourceId": "wikidata",
+          "baseRecordId": "Q1004415",
+          "strategy": "attach-reviewed-sense"
+        },
+        {
+          "lookupKey": "session",
+          "baseSourceId": "wikidata",
+          "baseRecordId": "Q932410",
+          "strategy": "attach-reviewed-sense"
+        }
+      ]
+    },
     "maxAliasesPerTerm": 8,
     "maxTranslationsPerTerm": 4,
     "maxDomainsPerTerm": 4,

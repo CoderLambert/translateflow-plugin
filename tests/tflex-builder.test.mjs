@@ -77,11 +77,16 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
   assert.deepEqual(persistent.senses[0].rawTranslations, ["持久+的", "持续+的"]);
   assert.equal(persistent.senses[0].senseNumber, 1);
   assert.equal(persistent.senses[0].tagCount, 5);
-  assert.deepEqual(
-    persistent.senses[0].sourceRefs.map((ref) => ref.sourceId).sort(),
-    ["chinese-open-wordnet", "pwn-3.0"]
+  assert.deepEqual(persistent.senses[0].sourceRefs, [
+    { sourceId: "pwn-3.0", recordId: "00000001-a" },
+    { sourceId: "chinese-open-wordnet", recordId: "00000001-a" }
+  ]);
+  assert.ok(!JSON.stringify(result.records).includes("persistent%3:00:00::"));
+  const senseIndexSource = result.manifest.sources.find(
+    (source) => source.id === "pwn-3.0-sense-index"
   );
-  assert.ok(result.manifest.sources.some((source) => source.id === "pwn-3.0-sense-index"));
+  assert.match(senseIndexSource.provenance, /provides TFLex senseNumber and tagCount fields/);
+  assert.deepEqual(senseIndexSource.providesFields, ["senseNumber", "tagCount"]);
   const phrase = result.records.find((record) => record.lookupKey === "terminal multiplexer");
   assert.equal(phrase.displayForm, "terminal multiplexer");
   assert.equal(phrase.senses[0].partOfSpeech, "noun");
@@ -177,6 +182,24 @@ test("TFLex compiler rejects source drift before parsing", async () => {
   );
 });
 
+test("TFLex compiler rejects locked sense-index byte-size drift before parsing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translateflow-tflex-size-drift-"));
+  const lock = JSON.parse(await readFile(new URL("source-lock.json", fixtureRoot), "utf8"));
+  lock.sources.find((source) => source.id === "pwn-3.0-sense-index").data.size += 1;
+  const lockPath = join(root, "source-lock.json");
+  await writeFile(lockPath, JSON.stringify(lock), "utf8");
+  await assert.rejects(
+    compileTflexCore({
+      englishPath: fileURLToPath(new URL("wn-data-eng.tab", fixtureRoot)),
+      chinesePath: fileURLToPath(new URL("wn-data-cmn.tab", fixtureRoot)),
+      senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
+      sourceLockPath: lockPath,
+      outDir: join(root, "out")
+    }),
+    /byte size mismatch for pwn-3\.0-sense-index/
+  );
+});
+
 test("source-lock validation fails closed on missing license evidence", () => {
   assert.throws(
     () => validateSourceLock({
@@ -210,6 +233,15 @@ test("source-lock validation rejects unverified extra Core sources", async () =>
   assert.throws(() => validateSourceLock(lock), /unsupported source id for core pack: unexpected-source/);
 });
 
+test("source-lock validation requires an exact sense-index byte size", async () => {
+  const lock = JSON.parse(await readFile(new URL("./fixtures/tflex-core/source-lock.json", import.meta.url), "utf8"));
+  delete lock.sources.find((source) => source.id === "pwn-3.0-sense-index").data.size;
+  assert.throws(
+    () => validateSourceLock(lock),
+    /pwn-3\.0-sense-index data size/
+  );
+});
+
 test("compiler rejects generic HTML-like markup in lexical source strings", async () => {
   const root = await mkdtemp(join(tmpdir(), "translateflow-tflex-markup-"));
   const engText = "00000001-n\tlemma\t<b>unsafe display markup</b>\n";
@@ -238,7 +270,7 @@ test("compiler rejects generic HTML-like markup in lexical source strings", asyn
     sources: [
       { id: "pwn-3.0", version: "x", provenance: "x", data: { url: "fixture://eng", sha256: digest(engText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
       { id: "chinese-open-wordnet", version: "x", provenance: "x", data: { url: "fixture://cmn", sha256: digest(cmnText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } },
-      { id: "pwn-3.0-sense-index", version: "x", provenance: "x", data: { url: "fixture://sense", sha256: digest(senseText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
+      { id: "pwn-3.0-sense-index", version: "x", provenance: "x", data: { url: "fixture://sense", sha256: digest(senseText), size: Buffer.byteLength(senseText) }, license: { id: "x", name: "x", source: "x", notice: "ok" } }
     ]
   }));
   await assert.rejects(
