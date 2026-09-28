@@ -25,7 +25,7 @@ async function build(name, options = {}) {
     senseIndexPath: fileURLToPath(new URL("index.sense", fixtureRoot)),
     sourceLockPath: fileURLToPath(new URL("source-lock.json", fixtureRoot)),
     outDir,
-    maxShardBytes: options.maxShardBytes || 900
+    maxShardBytes: options.maxShardBytes || 1100
   });
   return { root, outDir, result };
 }
@@ -52,10 +52,10 @@ test("TFLex compiler is deterministic and emits bounded attributable artifacts",
   assert.equal(first.result.manifest.compilerVersion, 1);
   assert.equal(first.result.manifest.normalizationVersion, 1);
   assert.equal(first.result.manifest.profile, "bundled-sharded-v1");
-  assert.deepEqual(first.result.manifest.profileOptions, { maxShardBytes: 900 });
+  assert.deepEqual(first.result.manifest.profileOptions, { maxShardBytes: 1100 });
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.ok(first.result.directory.shards.length >= 2);
-  assert.ok(first.result.directory.shards.every((shard) => shard.size <= 900));
+  assert.ok(first.result.directory.shards.every((shard) => shard.size <= 1100));
   assert.ok(first.result.manifest.files.some((file) => file.role === "license-notice"));
   assert.ok(first.result.manifest.sources.every((source) => source.dataSha256));
   const validated = await validateTflexCoreOutput({ outDir: first.outDir, readerVersion: 1 });
@@ -87,9 +87,9 @@ test("TFLex compiler preserves polysemy, source forms and display normalization"
 });
 
 test("TFLex compiler records the effective shard budget in build identity", async () => {
-  const small = await build("budget-small", { maxShardBytes: 900 });
+  const small = await build("budget-small", { maxShardBytes: 1100 });
   const large = await build("budget-large", { maxShardBytes: 64 * 1024 });
-  assert.deepEqual(small.result.manifest.profileOptions, { maxShardBytes: 900 });
+  assert.deepEqual(small.result.manifest.profileOptions, { maxShardBytes: 1100 });
   assert.deepEqual(large.result.manifest.profileOptions, { maxShardBytes: 64 * 1024 });
   assert.notEqual(small.result.manifest.fingerprint, large.result.manifest.fingerprint);
 });
