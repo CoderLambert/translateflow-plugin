@@ -209,9 +209,6 @@ export function buildCoreRecords({ englishTab, chineseTab, senseIndexText = "" }
           { sourceId: SOURCE_IDS.english, recordId: synset },
           { sourceId: SOURCE_IDS.chinese, recordId: synset }
         ];
-        if (prior?.senseKey) {
-          sourceRefs.push({ sourceId: SOURCE_IDS.senseIndex, recordId: prior.senseKey });
-        }
         record.senses.push({
           id: "pwn3:" + synset,
           partOfSpeech: partOfSpeechFromSynset(synset),
