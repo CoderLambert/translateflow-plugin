@@ -358,6 +358,44 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(cache.hits[0].text).toBe("WRONG PAGE CACHE");
   });
 
+  test("single-word lexical no-hit is neutral and provider-free until an explicit action", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+
+    await selectElementText(page, "#nohit");
+    await page.locator(".tf-selection-chip").click();
+
+    const empty = page.locator(".tf-selection-empty");
+    await expect(empty).toHaveAttribute("data-state", "empty");
+    await expect(empty).toContainText("本地词典暂未收录");
+    await expect(empty).toContainText("没有找到可靠的本地词典结果");
+    await expect(page.locator(".tf-selection-result")).toHaveAttribute("data-result-kind", "empty");
+    await expect(page.locator(".tf-selection-status")).toHaveAttribute("data-kind", "info");
+    await expect(page.locator(".tf-selection-status")).toHaveText("");
+    await expect(page.getByRole("button", { name: "使用 AI 进一步解释这个词" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "使用普通翻译处理这个词" })).toBeVisible();
+    expect(harness.server.calls).toHaveLength(0);
+
+    await page.getByRole("button", { name: "使用 AI 进一步解释这个词" }).click();
+    await expect(page.locator(".tf-selection-result")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-ai-detail")).toContainText("持续存在或保持有效");
+    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls[0].systemPrompt).toContain("Selection Explain");
+
+    await page.getByRole("button", { name: "关闭" }).click();
+    await clearSelection(page);
+    await selectElementText(page, "#nohit");
+    await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-empty")).toBeVisible();
+    expect(harness.server.calls).toHaveLength(1);
+
+    await page.getByRole("button", { name: "使用普通翻译处理这个词" }).click();
+    await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN] TFNoSuchLexeme");
+    expect(harness.server.calls).toHaveLength(2);
+    expect(harness.server.calls[1].systemPrompt).toContain("Translate the segments and return JSON only.");
+    expect(harness.server.calls[1].systemPrompt).not.toContain("Selection Explain");
+  });
+
   test("ambiguous Selection keeps dictionary content visible through explicit AI detail", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);
