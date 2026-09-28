@@ -18,8 +18,8 @@ export const SELECTION_EXPLAIN_LIMITS = Object.freeze({
 
 const CANDIDATE_KEYS = new Set([
   "id", "kind", "headword", "aliases", "matchedBy", "queryForm", "exactCaseMatch",
-  "provenance", "senseId", "entityId", "partOfSpeech", "translations", "domains",
-  "typeLabels", "ranking"
+  "provenance", "senseId", "entityId", "partOfSpeech", "senseNumber", "tagCount",
+  "translations", "domains", "typeLabels", "ranking"
 ]);
 const PROVENANCE_KEYS = new Set(["packId", "packVersion", "fingerprint", "sourceRefs"]);
 const SOURCE_REF_KEYS = new Set(["sourceId", "recordId"]);
