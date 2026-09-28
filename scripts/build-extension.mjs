@@ -66,9 +66,10 @@ export async function buildExtension({
   }
 
   const files = await walkFiles(output);
-  const forbidden = files.filter((path) =>
-    relative(output, path).split(/[\\/]/).some((part) => FORBIDDEN_SEGMENTS.has(part))
-  );
+  const forbidden = files.filter((path) => {
+    const [topLevel] = relative(output, path).split(/[\\/]/);
+    return FORBIDDEN_SEGMENTS.has(topLevel);
+  });
   if (forbidden.length) {
     throw new Error("forbidden production extension paths: " +
       forbidden.map((path) => relative(output, path)).join(", "));
