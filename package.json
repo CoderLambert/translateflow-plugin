@@ -14,7 +14,8 @@
     "evaluate:lexical": "node scripts/evaluate-lexical-ranking.mjs",
     "build:lexicon:release": "node scripts/build-release-lexicon.mjs",
     "certify:lexicon": "node scripts/certify-lexical-release.mjs",
-    "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs"
+    "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs",
+    "setup:lexicon": "node scripts/setup-lexicon.mjs"
   },
   "engines": {
     "node": ">=18"

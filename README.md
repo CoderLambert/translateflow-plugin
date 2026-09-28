@@ -144,13 +144,17 @@ git clone https://github.com/CoderLambert/translateflow-plugin.git
 cd translateflow-plugin
 ```
 
-不需要安装运行时依赖，也没有 build 步骤。
+扩展运行时仍然零第三方依赖、零 bundler；但 Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git。
 
-开发校验：
+首次源码安装或清理过词典产物后，先执行：
 
 ```bash
+npm install
+npm run setup:lexicon
 npm run validate
 ```
+
+`setup:lexicon` 会读取已审核的 source lock，使用锁定的 OMW revision/source URL，校验下载文件 SHA-256，再生成并认证 `assets/lexicon/core` 与 `assets/lexicon/technical`。校验不通过时会 fail closed，不会继续构建。
 
 真实 Chromium 扩展 E2E：
 
@@ -164,16 +168,26 @@ E2E 使用临时 unpacked 扩展副本、本地 fixture 页面和本地 OpenAI-c
 
 ## Chrome 本地安装
 
+首次安装或更新到包含词典格式/数据变更的版本：
+
+```bash
+npm install
+npm run setup:lexicon
+npm run validate
+```
+
+然后：
+
 1. 打开 `chrome://extensions/`
 2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
-4. 选择仓库根目录
-5. 打开 TranslateFlow 设置页
-6. 配置 Provider
-7. 测试 API
+4. 选择仓库根目录（不是 `src/`，也没有 `dist/`）
+5. 打开 TranslateFlow 设置页 → **本地词典**
+6. 确认 **Core Semantic** 与 **Technical Concepts** 均显示“已就绪”
+7. 配置 Provider 并测试 API
 8. 刷新目标英文网页后测试
 
-开发循环：
+日常开发循环：
 
 ```text
 修改代码
@@ -184,6 +198,8 @@ chrome://extensions/ → 重新加载
   ↓
 刷新目标网页
 ```
+
+如果 Settings 显示内置词典“资源缺失或不可读”，重新运行 `npm run setup:lexicon` 后再重新加载扩展。可选 OPFS 词典与内置 Core / Technical 是两套独立机制；当前没有通过产品质量门并注册为可下载来源的可选词典包。
 
 ## Provider 配置
 

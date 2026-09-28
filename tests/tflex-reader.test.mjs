@@ -57,6 +57,18 @@ test("TFLex reader loads exact words/phrases and preserves polysemy", async () =
   assert.equal(await reader.lookup("not-in-pack"), null);
 });
 
+test("TFLex reader exposes validated immutable pack metadata for health reporting", async () => {
+  const { reader } = fixtureReader();
+  const metadata = await reader.inspect();
+  assert.equal(metadata.packId, "core-semantic-en-zh-runtime-fixture");
+  assert.ok(metadata.packVersion);
+  assert.match(metadata.fingerprint, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(metadata.sourceLanguage, "en");
+  assert.equal(metadata.targetLanguage, "zh-CN");
+  assert.ok(metadata.recordCount > 0);
+  assert.ok(metadata.sources.length > 0);
+});
+
 test("TFLex reader resolves one-to-one and ambiguous aliases without full-pack scanning", async () => {
   const { reader, reads } = fixtureReader();
 

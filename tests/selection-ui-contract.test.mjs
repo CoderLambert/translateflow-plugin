@@ -49,3 +49,14 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(controller, /本地词典未找到可靠结果，且 AI 辅助暂不可用/);
   assert.match(controller, /copyTextForCard/);
 });
+
+test("Selection local lexicon failures direct users to bundled health diagnostics", async () => {
+  const controller = await readFile(
+    new URL("../src/content/selection/controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.match(controller, /LEXICON_STORAGE/);
+  assert.match(controller, /设置 > 本地词典/);
+  assert.match(controller, /LEXICON_CORRUPT/);
+  assert.match(controller, /LEXICON_INCOMPATIBLE/);
+});

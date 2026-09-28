@@ -33,7 +33,7 @@ import {
 } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
-import { runLexicalLookup } from "./lexical/index.js";
+import { getBundledLexiconStatus, runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
 import {
   cancelSelectionExplanationRequest,
@@ -168,6 +168,8 @@ export async function handleBackgroundMessage(message, sender) {
       return { context: await saveSitePreset(message.pageUrl, message.preset) };
     case BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL:
       return installYouTubeMainBridge(sender);
+    case BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS:
+      return getBundledLexiconStatus();
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS:
       assertOptionsSender(sender);
       return getDictionaryPackStatus({ recover: true });

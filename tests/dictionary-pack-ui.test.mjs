@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { requestDictionaryPackOriginPermission } from "../src/options/pack-ui.js";
+import { describeBundledPackState, requestDictionaryPackOriginPermission } from "../src/options/pack-ui.js";
 
 test("Settings requests only the exact trusted optional-pack origin", async () => {
   const calls = [];
@@ -64,4 +64,22 @@ test("pack Settings surface keeps permission request on the options user-gesture
   assert.match(source, /DICTIONARY_PACK_UNINSTALL/);
   assert.match(options, /initializePackUi\(\{ setStatus \}\)/);
   assert.match(html, /id="dictionary-packs"/);
+});
+
+test("Settings distinguishes bundled lexicon health from optional OPFS packs", async () => {
+  assert.match(describeBundledPackState({
+    status: "ready",
+    packVersion: "locked-v1",
+    recordCount: 1234
+  }), /已就绪.*locked-v1/);
+  assert.match(describeBundledPackState({ status: "unavailable" }), /npm run setup:lexicon/);
+  assert.match(describeBundledPackState({ status: "corrupt" }), /校验失败/);
+
+  const source = await readFile(new URL("../src/options/pack-ui.js", import.meta.url), "utf8");
+  const html = await readFile(new URL("../options.html", import.meta.url), "utf8");
+  assert.match(source, /BUNDLED_LEXICON_STATUS/);
+  assert.match(html, /id="bundledLexiconList"/);
+  assert.match(html, /内置词典/);
+  assert.match(html, /可选下载词典/);
+  assert.match(html, /npm run setup:lexicon/);
 });

@@ -88,9 +88,27 @@ export function createTflexReader({
     return (await lookupAll(text))[0] || null;
   }
 
+  async function inspect() {
+    const meta = await metadata();
+    return {
+      packId: meta.manifest.packId,
+      packVersion: meta.manifest.packVersion,
+      fingerprint: meta.manifest.fingerprint,
+      sourceLanguage: meta.manifest.sourceLanguage,
+      targetLanguage: meta.manifest.targetLanguage,
+      recordCount: meta.manifest.recordCount,
+      sources: meta.manifest.sources.map((source) => ({
+        id: source.id,
+        version: source.version,
+        licenseId: source.license?.id || ""
+      }))
+    };
+  }
+
   return {
     lookup,
     lookupAll,
+    inspect,
     clearCache() {
       cache.clear();
     },
