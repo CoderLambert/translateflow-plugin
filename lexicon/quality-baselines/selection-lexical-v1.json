@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "baselineId": "selection-lexical-v1",
+  "capturedAt": "2026-09-28",
+  "baseMainSha": "ad3842a4986dc605e302faa930501a82c4fa57db",
+  "benchmarkHeadSha": "1b20c214c501ae2c7a9cdf94943e28800e144d94",
+  "ci": {
+    "workflow": "lexicon-release",
+    "runId": 36433913271,
+    "quality": "success",
+    "e2e": "success",
+    "lexiconRelease": "success"
+  },
+  "note": "Pre-algorithm-change baseline. The benchmark PR changes measurement/CI only; lexical normalization, morphology, phrase detection, ranking, Selection UI and AI routing remain identical to base main.",
+  "sourceCoverage": {
+    "sourceRevision": "406bf83b3c507a3d1f26e88252d5d66893fd36bf",
+    "pwnSynsets": 117659,
+    "pwnNormalizedHeadwords": 147306,
+    "cowSynsets": 42300,
+    "bilingualSynsets": 42300,
+    "bilingualNormalizedHeadwords": 61340,
+    "unmappedPwnHeadwords": 85966,
+    "mappedHeadwordRate": 0.4164120945514779,
+    "unmappedHeadwordRate": 0.5835879054485221
+  },
+  "releasePacks": {
+    "core": {
+      "packId": "core-semantic-en-zh",
+      "recordCount": 61340
+    },
+    "technical": {
+      "packId": "technical-wikidata-en-zh",
+      "recordCount": 10
+    }
+  },
+  "corpus": {
+    "totalCases": 58,
+    "expectedHitCases": 54,
+    "expectedNoHitCases": 4,
+    "groups": {
+      "general": 4,
+      "polysemy": 7,
+      "technical": 4,
+      "entity": 7,
+      "normalization": 10,
+      "inflection": 14,
+      "phrase-context": 8,
+      "no-hit": 4
+    }
+  },
+  "metrics": {
+    "exactHitRate": 1,
+    "normalizedHitRate": 0.1,
+    "lemmaMorphologyRecoveryRate": 0.5,
+    "inflectionHitRate": 0.7142857142857143,
+    "phraseContextRecoveryRate": 0,
+    "trueNoHitRate": 1,
+    "top1CorrectRate": 0.40625,
+    "top1MeasuredCaseCount": 32,
+    "wrongSenseTop1Count": 19,
+    "topExpectationCoverageMissCount": 10,
+    "ambiguousButCandidatesPresentCount": 26,
+    "coreHit": {
+      "count": 34,
+      "total": 54,
+      "rate": 0.6296296296296297
+    },
+    "technicalHit": {
+      "count": 9,
+      "total": 54,
+      "rate": 0.16666666666666666
+    },
+    "combinedHit": {
+      "count": 40,
+      "total": 54,
+      "rate": 0.7407407407407407
+    }
+  },
+  "byGroup": {
+    "general": {
+      "hitRate": 1,
+      "top1CorrectRate": 0.75
+    },
+    "polysemy": {
+      "hitRate": 1,
+      "top1CorrectRate": 0.14285714285714285
+    },
+    "technical": {
+      "hitRate": 1,
+      "top1CorrectRate": 0
+    },
+    "entity": {
+      "hitRate": 1,
+      "top1CorrectRate": 1
+    },
+    "normalization": {
+      "hitRate": 0.1,
+      "top1CorrectRateAmongHits": 1
+    },
+    "inflection": {
+      "hitRate": 0.7142857142857143,
+      "top1CorrectRateAmongMeasuredHits": 0.1111111111111111
+    },
+    "phraseContext": {
+      "selectedTokenHitRate": 0.875,
+      "phraseRecoveryRate": 0
+    },
+    "noHit": {
+      "trueNoHitRate": 1
+    }
+  },
+  "wrongSenseTop1CaseIds": [
+    "ordinary-descendant",
+    "polysemy-state",
+    "polysemy-issue",
+    "polysemy-commit",
+    "polysemy-branch",
+    "polysemy-process",
+    "polysemy-run",
+    "technical-container",
+    "technical-cache",
+    "technical-repository",
+    "technical-dependency",
+    "inflection-dependencies",
+    "inflection-repositories",
+    "inflection-nested",
+    "inflection-running",
+    "inflection-written",
+    "inflection-better",
+    "inflection-went",
+    "inflection-gone"
+  ],
+  "topExpectationCoverageMissCaseIds": [
+    "normalize-comma",
+    "normalize-period",
+    "normalize-colon",
+    "normalize-smart-quotes",
+    "normalize-soft-hyphen",
+    "normalize-unicode-hyphen",
+    "inflection-configured",
+    "inflection-best",
+    "inflection-worse",
+    "inflection-built"
+  ],
+  "performanceObservation": {
+    "coldLookupMs": 9.603,
+    "warmLookupMs": 0.029,
+    "phraseLookupMs": 5.08,
+    "morphologyFallbackMs": 5.182,
+    "contextPhraseSelectionMs": 5.192,
+    "warmReadDelta": {
+      "reads": 0,
+      "bytes": 0
+    },
+    "cacheBytes": 2099943,
+    "cacheMaxBytes": 4194304,
+    "timingThresholdEnforced": false,
+    "note": "Single GitHub-hosted CI observation; compare directionally, not as a deterministic latency threshold."
+  }
+}

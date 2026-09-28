@@ -1,0 +1,889 @@
+{
+  "schemaVersion": 1,
+  "benchmarkVersion": 1,
+  "purpose": "Project-authored Selection lexical quality corpus. Stores terms, short phrases and minimal context only.",
+  "sourceRevision": "406bf83b3c507a3d1f26e88252d5d66893fd36bf",
+  "expectedSourceBaseline": {
+    "pwnSynsets": 117659,
+    "pwnNormalizedHeadwords": 147306,
+    "cowSynsets": 42300,
+    "bilingualSynsets": 42300,
+    "bilingualNormalizedHeadwords": 61340,
+    "unmappedPwnHeadwords": 85966
+  },
+  "cases": [
+    {
+      "id": "ordinary-persistent",
+      "group": "general",
+      "query": "persistent",
+      "context": "The setting remains persistent after restart.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的",
+            "持续地保存的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ordinary-reliable",
+      "group": "general",
+      "query": "reliable",
+      "context": "Use a reliable connection for the request.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "可靠的",
+            "可信赖的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ordinary-portable",
+      "group": "general",
+      "query": "portable",
+      "context": "The tool is portable across systems.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "便携式的",
+            "可搬运的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ordinary-descendant",
+      "group": "general",
+      "query": "descendant",
+      "context": "A descendant belongs to a later generation.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "后代",
+            "后裔",
+            "子孙"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-state",
+      "group": "polysemy",
+      "query": "state",
+      "context": "The component state changes after the update.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "状态"
+          ],
+          "partOfSpeechAny": [
+            "noun"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-session",
+      "group": "polysemy",
+      "query": "session",
+      "context": "The tmux session stays alive in the terminal.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-issue",
+      "group": "polysemy",
+      "query": "issue",
+      "context": "Open an issue in the Git repository.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "问题",
+            "议题"
+          ],
+          "partOfSpeechAny": [
+            "noun"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-commit",
+      "group": "polysemy",
+      "query": "commit",
+      "context": "Create a Git commit after reviewing the change.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "提交",
+            "提交记录"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-branch",
+      "group": "polysemy",
+      "query": "branch",
+      "context": "Switch to another Git branch before merging.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "分支"
+          ],
+          "partOfSpeechAny": [
+            "noun"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-process",
+      "group": "polysemy",
+      "query": "process",
+      "context": "The Linux process is still running.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "进程"
+          ],
+          "partOfSpeechAny": [
+            "noun"
+          ]
+        }
+      }
+    },
+    {
+      "id": "polysemy-run",
+      "group": "polysemy",
+      "query": "run",
+      "context": "Run the JavaScript code in the browser runtime.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "运行",
+            "运转",
+            "执行"
+          ],
+          "partOfSpeechAny": [
+            "verb"
+          ]
+        }
+      }
+    },
+    {
+      "id": "technical-container",
+      "group": "technical",
+      "query": "container",
+      "context": "Docker starts the application inside a container.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-concept",
+            "technical-entity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "technical-cache",
+      "group": "technical",
+      "query": "cache",
+      "context": "The browser cache stores the response locally.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "缓存",
+            "高速缓存"
+          ]
+        }
+      }
+    },
+    {
+      "id": "technical-repository",
+      "group": "technical",
+      "query": "repository",
+      "context": "Clone the Git repository before building.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "仓库",
+            "代码仓库"
+          ]
+        }
+      }
+    },
+    {
+      "id": "technical-dependency",
+      "group": "technical",
+      "query": "dependency",
+      "context": "Install the package dependency before the build.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "依赖",
+            "依赖项"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-tmux",
+      "group": "entity",
+      "query": "tmux",
+      "context": "Open tmux in the terminal.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-entity"
+          ],
+          "headwordAny": [
+            "tmux"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-docker",
+      "group": "entity",
+      "query": "Docker",
+      "context": "Docker runs the container image.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-entity"
+          ],
+          "headwordAny": [
+            "Docker"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-kubernetes",
+      "group": "entity",
+      "query": "Kubernetes",
+      "context": "Kubernetes schedules workloads in the cluster.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-entity"
+          ],
+          "headwordAny": [
+            "Kubernetes"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-redis",
+      "group": "entity",
+      "query": "Redis",
+      "context": "Redis stores data in memory.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-entity"
+          ],
+          "headwordAny": [
+            "Redis"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-postgresql",
+      "group": "entity",
+      "query": "PostgreSQL",
+      "context": "PostgreSQL stores relational data.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-entity"
+          ],
+          "headwordAny": [
+            "PostgreSQL"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-react",
+      "group": "entity",
+      "query": "React",
+      "context": "React renders the JavaScript component.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-entity"
+          ],
+          "headwordAny": [
+            "React"
+          ]
+        }
+      }
+    },
+    {
+      "id": "entity-oauth",
+      "group": "entity",
+      "query": "OAuth",
+      "context": "OAuth authorizes access to the API.",
+      "expected": {
+        "mode": "exact",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-concept"
+          ],
+          "headwordAny": [
+            "OAuth"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-comma",
+      "group": "normalization",
+      "query": "persistent,",
+      "context": "The value is persistent, even after restart.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-period",
+      "group": "normalization",
+      "query": "persistent.",
+      "context": "The value is persistent.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-colon",
+      "group": "normalization",
+      "query": "persistent:",
+      "context": "The property is persistent: enabled.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-close-paren",
+      "group": "normalization",
+      "query": "session)",
+      "context": "The command targets a session).",
+      "expected": {
+        "mode": "normalized",
+        "hit": true
+      }
+    },
+    {
+      "id": "normalize-smart-quotes",
+      "group": "normalization",
+      "query": "“persistent”",
+      "context": "The documentation calls it “persistent”.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-smart-possessive",
+      "group": "normalization",
+      "query": "user’s",
+      "context": "The user’s session is active.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true
+      }
+    },
+    {
+      "id": "normalize-straight-possessive",
+      "group": "normalization",
+      "query": "users'",
+      "context": "The users' sessions are active.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true
+      }
+    },
+    {
+      "id": "normalize-soft-hyphen",
+      "group": "normalization",
+      "query": "per­sistent",
+      "context": "The copied word is persistent.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-unicode-hyphen",
+      "group": "normalization",
+      "query": "run‑time system",
+      "context": "The run‑time system executes the code.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "kindAny": [
+            "technical-concept"
+          ]
+        }
+      }
+    },
+    {
+      "id": "normalize-nbsp",
+      "group": "normalization",
+      "query": "persistent ",
+      "context": "The copied word has trailing spacing.",
+      "expected": {
+        "mode": "normalized",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "持久的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-sessions",
+      "group": "inflection",
+      "query": "sessions",
+      "context": "The terminal sessions remain available.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true
+      }
+    },
+    {
+      "id": "inflection-dependencies",
+      "group": "inflection",
+      "query": "dependencies",
+      "context": "Install the package dependencies.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "依赖",
+            "依赖项"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-repositories",
+      "group": "inflection",
+      "query": "repositories",
+      "context": "Clone the Git repositories.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "仓库",
+            "代码仓库"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-configured",
+      "group": "inflection",
+      "query": "configured",
+      "context": "The service is configured for production.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "配置",
+            "已配置",
+            "设定"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-nested",
+      "group": "inflection",
+      "query": "nested",
+      "context": "The nested CSS rule is inside the outer rule.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "嵌套",
+            "嵌套的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-running",
+      "group": "inflection",
+      "query": "running",
+      "context": "The process is running in the container.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "运行",
+            "运转"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-written",
+      "group": "inflection",
+      "query": "written",
+      "context": "Follow the written documentation.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "书面的",
+            "成文的",
+            "写成文字的"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-children",
+      "group": "inflection",
+      "query": "children",
+      "context": "The children are reading.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "孩子",
+            "小孩",
+            "小孩子"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-better",
+      "group": "inflection",
+      "query": "better",
+      "context": "A better result has lower latency.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "更好的",
+            "较好的",
+            "更好"
+          ],
+          "partOfSpeechAny": [
+            "adjective"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-best",
+      "group": "inflection",
+      "query": "best",
+      "context": "Choose the best result.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "最好的",
+            "最佳"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-worse",
+      "group": "inflection",
+      "query": "worse",
+      "context": "The new path has worse latency.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "更差的",
+            "更坏的",
+            "较差"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-went",
+      "group": "inflection",
+      "query": "went",
+      "context": "The process went to the next state.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "去",
+            "前往",
+            "移动",
+            "行进"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-gone",
+      "group": "inflection",
+      "query": "gone",
+      "context": "The process is gone now.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "离开",
+            "消失",
+            "不见"
+          ]
+        }
+      }
+    },
+    {
+      "id": "inflection-built",
+      "group": "inflection",
+      "query": "built",
+      "context": "The image was built locally.",
+      "expected": {
+        "mode": "inflection",
+        "hit": true,
+        "top": {
+          "translationAny": [
+            "构建",
+            "建造",
+            "建"
+          ]
+        }
+      }
+    },
+    {
+      "id": "phrase-descendant-combinator",
+      "group": "phrase-context",
+      "query": "descendant",
+      "context": "The nested rule is related to the outer rule as a descendant combinator.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "descendant combinator"
+      }
+    },
+    {
+      "id": "phrase-terminal-multiplexer",
+      "group": "phrase-context",
+      "query": "terminal",
+      "context": "tmux is a terminal multiplexer used for terminal sessions.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "terminal multiplexer"
+      }
+    },
+    {
+      "id": "phrase-dependency-injection",
+      "group": "phrase-context",
+      "query": "dependency",
+      "context": "The framework supports dependency injection for services.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "dependency injection"
+      }
+    },
+    {
+      "id": "phrase-event-loop",
+      "group": "phrase-context",
+      "query": "event",
+      "context": "The JavaScript event loop schedules callbacks.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "event loop"
+      }
+    },
+    {
+      "id": "phrase-garbage-collection",
+      "group": "phrase-context",
+      "query": "garbage",
+      "context": "Automatic garbage collection reclaims memory.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "garbage collection"
+      }
+    },
+    {
+      "id": "phrase-runtime-environment",
+      "group": "phrase-context",
+      "query": "runtime",
+      "context": "The runtime environment executes the application.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "runtime environment"
+      }
+    },
+    {
+      "id": "phrase-container-image",
+      "group": "phrase-context",
+      "query": "container",
+      "context": "Build the container image before deployment.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "container image"
+      }
+    },
+    {
+      "id": "phrase-state-management",
+      "group": "phrase-context",
+      "query": "state",
+      "context": "The library provides state management for components.",
+      "expected": {
+        "mode": "phrase-context",
+        "hit": true,
+        "phrase": "state management"
+      }
+    },
+    {
+      "id": "nohit-project-token",
+      "group": "no-hit",
+      "query": "TFQualityNoHit",
+      "context": "TFQualityNoHit is a project-owned deliberate miss.",
+      "expected": {
+        "mode": "no-hit",
+        "hit": false
+      }
+    },
+    {
+      "id": "nohit-project-token-2",
+      "group": "no-hit",
+      "query": "TFNoSuchLexeme",
+      "context": "TFNoSuchLexeme is intentionally absent.",
+      "expected": {
+        "mode": "no-hit",
+        "hit": false
+      }
+    },
+    {
+      "id": "nohit-code-call",
+      "group": "no-hit",
+      "query": "foo.bar()",
+      "context": "Call foo.bar() after initialization.",
+      "expected": {
+        "mode": "no-hit",
+        "hit": false
+      }
+    },
+    {
+      "id": "nohit-code-namespace",
+      "group": "no-hit",
+      "query": "alpha::beta",
+      "context": "The fixture uses alpha::beta as an invented identifier.",
+      "expected": {
+        "mode": "no-hit",
+        "hit": false
+      }
+    }
+  ]
+}
