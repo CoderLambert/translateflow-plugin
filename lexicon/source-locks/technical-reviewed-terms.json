@@ -7,12 +7,13 @@
     "id": "translateflow-reviewed-technical-terms",
     "version": "reviewed-terms-2026-09-28",
     "extractPath": "lexicon/sources/reviewed-tech-terms.json",
-    "extractSha256": "6ac7fbb786a6bfee68377f52315a054a31b3f99fc497321258b27d13069bdb14",
-    "extractSize": 7780,
+    "extractSha256": "6369403c442183a746a76be06cfbd8a1b3cebdc3a69f00a6179a0a13199a4eb0",
+    "extractSize": 7820,
     "snapshot": {
+      "kind": "reviewed-term-set",
       "version": "2026-09-28",
-      "reviewedAt": "2026-09-28",
-      "reviewPolicyVersion": 1
+      "lockedAt": "2026-09-28T15:20:00Z",
+      "extractRuleVersion": 1
     },
     "license": {
       "id": "LicenseRef-TranslateFlow-Reviewed-Terms",
