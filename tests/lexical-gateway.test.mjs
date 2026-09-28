@@ -211,8 +211,7 @@ test("safe lexical normalization recovers copied prose artifacts without rewriti
     ["persistent:", "persistent"],
     ["session)", "session"],
     ["“persistent”", "persistent"],
-    ["developer’s", "developer"],
-    ["users'", "users"],
+    ["developer’s", "developer's"],
     ["per\u00adsistent", "persistent"],
     ["run‑time system", "run-time system"]
   ]);
@@ -231,7 +230,6 @@ test("normalized lookup keeps explicit provenance and remains conservative for c
   for (const [input, expected] of [
     ["persistent,", "persistent"],
     ["“persistent”", "persistent"],
-    ["developer’s", "developer"],
     ["per\u00adsistent", "persistent"],
     ["run‑time system", "run-time system"]
   ]) {
@@ -243,11 +241,12 @@ test("normalized lookup keeps explicit provenance and remains conservative for c
     assert.ok(result.candidates.every((candidate) => candidate.matchedBy === "normalized"), input);
   }
 
-  const possessivePlural = await gateway.lookup({ text: "users'" });
-  assert.equal(possessivePlural.status, LEXICAL_RESULT_STATUS.CANDIDATES);
-  assert.equal(possessivePlural.matchedBy, "morphology");
-  assert.equal(possessivePlural.normalizedForm, "users");
-  assert.equal(possessivePlural.resolvedForm, "user");
+  for (const possessive of ["developer’s", "users'"]) {
+    const result = await gateway.lookup({ text: possessive });
+    assert.equal(result.status, LEXICAL_RESULT_STATUS.NO_HIT, possessive);
+  }
+  assert.deepEqual(conservativeMorphologyForms("developer's"), []);
+  assert.deepEqual(conservativeMorphologyForms("users'"), []);
 
   for (const exact of ["Node.js", "C++", "C#"]) {
     const result = await gateway.lookup({ text: exact });
