@@ -121,7 +121,8 @@ export function createStarDictImportController({
         type:
           BACKGROUND_MESSAGES.DICTIONARY_LOCAL_IMPORT_COMMIT,
         token: ready.token,
-        requestId: commitRequestId
+        requestId: commitRequestId,
+        displayMetadata: input.displayMetadata
       });
       if (!commit?.ok) {
         throw responseError(
