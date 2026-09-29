@@ -11,6 +11,7 @@ on:
       - "scripts/certify-lexical-release.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
       - "scripts/evaluate-core-bootstrap.mjs"
+      - "scripts/measure-extension-footprint.mjs"
       - "tests/fixtures/lexical-quality-v1.json"
       - "lexicon/**"
       - "e2e/**"
@@ -25,6 +26,7 @@ on:
       - "scripts/certify-lexical-release.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
       - "scripts/evaluate-core-bootstrap.mjs"
+      - "scripts/measure-extension-footprint.mjs"
       - "tests/fixtures/lexical-quality-v1.json"
       - "lexicon/**"
       - "e2e/**"
@@ -80,6 +82,9 @@ jobs:
       - name: Evaluate source-derived Core bootstrap profiles
         run: npm run evaluate:bootstrap -- --out core-bootstrap-evaluation.json
 
+      - name: Measure production extension footprint cost
+        run: npm run measure:extension-footprint -- --out extension-footprint-report.json
+
       - name: Re-certify real release packs
         run: npm run certify:lexicon
 
@@ -106,6 +111,14 @@ jobs:
         with:
           name: core-bootstrap-evaluation
           path: core-bootstrap-evaluation.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload extension footprint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-footprint-report
+          path: extension-footprint-report.json
           if-no-files-found: error
           retention-days: 30
 
