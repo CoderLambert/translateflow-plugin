@@ -3,6 +3,9 @@ import {
   normalizeLexicalKey
 } from "../../../shared/lexical.js";
 import {
+  assertSafeLocalDataText
+} from "../local-import-integrity.js";
+import {
   parseCsvChunks
 } from "./ecdict-csv-stream.js";
 
@@ -47,7 +50,8 @@ export async function projectEcdictCuratedCsv({
     sourceRows: 0,
     translatedRows: 0,
     eligibleRows: 0,
-    skippedOversize: 0
+    skippedOversize: 0,
+    skippedUnsafe: 0
   };
   let sawHeader = false;
   let nextProgressBytes = 8 * 1024 * 1024;
@@ -165,6 +169,13 @@ function projectCandidate(
   const lookupKey = normalizeLexicalKey(word);
   const exact = normalizeLexicalExactKey(word);
   if (!lookupKey || !exact) return null;
+
+  try {
+    assertSafeLocalDataText(translation, "translation");
+  } catch {
+    stats.skippedUnsafe += 1;
+    return null;
+  }
 
   const collins = positiveInteger(fields[5]);
   const oxford = positiveInteger(fields[6]) === 1;
