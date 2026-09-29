@@ -89,8 +89,8 @@ test.describe("StarDict visible local import product flow", () => {
       page.locator(".tf-selection-result")
     ).toContainText(fixture.translation);
     await expect(
-      page.locator(".tf-selection-dictionary-entry")
-    ).toHaveCount(1);
+      page.locator(".tf-selection-primary")
+    ).toContainText(fixture.translation);
     expect(harness.server.calls).toHaveLength(0);
 
     const lookupBefore = await harness.runtime({
@@ -142,8 +142,8 @@ test.describe("StarDict visible local import product flow", () => {
     await selectElementText(page, "#issue-165-local-word");
     await page.locator(".tf-selection-chip").click();
     await expect(
-      page.locator(".tf-selection-dictionary-entry")
-    ).toHaveCount(0);
+      page.locator(".tf-selection-result")
+    ).not.toContainText(fixture.translation);
     expect(harness.server.calls).toHaveLength(0);
   });
 });
