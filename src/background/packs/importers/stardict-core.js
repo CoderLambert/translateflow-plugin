@@ -13,10 +13,10 @@ import {
   starDictUtf8Bytes
 } from "./stardict-contract.js";
 import {
-  parseStarDictDictzipHeader,
   parseStarDictIndex,
   parseStarDictSynonyms
 } from "./stardict-binary.js";
+import { parseStarDictDictzipHeader } from "./stardict-dictzip.js";
 
 const IFO_HEADER = "StarDict's dict ifo file";
 const SUPPORTED_VERSIONS = new Set(["2.4.2", "3.0.0"]);
