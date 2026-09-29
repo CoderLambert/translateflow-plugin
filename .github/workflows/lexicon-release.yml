@@ -10,6 +10,7 @@ on:
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
+      - "scripts/evaluate-core-bootstrap.mjs"
       - "tests/fixtures/lexical-quality-v1.json"
       - "lexicon/**"
       - "e2e/**"
@@ -23,6 +24,7 @@ on:
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
+      - "scripts/evaluate-core-bootstrap.mjs"
       - "tests/fixtures/lexical-quality-v1.json"
       - "lexicon/**"
       - "e2e/**"
@@ -75,6 +77,9 @@ jobs:
       - name: Record lexical quality baseline
         run: npm run benchmark:lexical -- --out lexical-quality-report.json
 
+      - name: Evaluate source-derived Core bootstrap profiles
+        run: npm run evaluate:bootstrap -- --out core-bootstrap-evaluation.json
+
       - name: Re-certify real release packs
         run: npm run certify:lexicon
 
@@ -93,6 +98,14 @@ jobs:
         with:
           name: lexical-quality-report
           path: lexical-quality-report.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Core bootstrap evaluation
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-bootstrap-evaluation
+          path: core-bootstrap-evaluation.json
           if-no-files-found: error
           retention-days: 30
 
