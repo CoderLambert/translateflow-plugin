@@ -1,4 +1,3 @@
-import { importLocalDictionaryTflex } from "../api.js";
 import {
   STARDICT_IMPORT_ERROR,
   STARDICT_IMPORT_LIMITS,
@@ -115,9 +114,13 @@ export async function importStarDictPlainDictionary({
   requestId,
   limits = STARDICT_IMPORT_LIMITS,
   cryptoProvider = globalThis.crypto,
-  importTflex = importLocalDictionaryTflex
+  importTflex
 } = {}) {
-  if (typeof importTflex !== "function") {
+  const transaction =
+    typeof importTflex === "function"
+      ? importTflex
+      : (await import("../api.js")).importLocalDictionaryTflex;
+  if (typeof transaction !== "function") {
     throw new Error(
       "StarDict import requires a local TFLex transaction"
     );
@@ -131,7 +134,7 @@ export async function importStarDictPlainDictionary({
     limits,
     cryptoProvider
   });
-  const result = await importTflex({
+  const result = await transaction({
     files: built.files,
     requestId
   });
