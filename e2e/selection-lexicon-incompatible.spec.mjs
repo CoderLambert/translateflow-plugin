@@ -11,7 +11,7 @@ test("incompatible bundled lexicon stays diagnostic, actionable and Provider-fre
 
   const status = page.locator(".tf-selection-status");
   await expect(status).toHaveAttribute("data-kind", "error");
-  await expect(status).toContainText("词典格式不兼容");
+  await expect(status).toContainText("与当前扩展版本不兼容");
   await expect(status).toContainText("设置 > 本地词典");
   await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
