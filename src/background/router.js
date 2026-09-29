@@ -185,7 +185,8 @@ export async function handleBackgroundMessage(message, sender) {
       assertOptionsSender(sender);
       return importLocalDictionaryTflexFromQuarantine({
         token: message.token,
-        requestId: message.requestId
+        requestId: message.requestId,
+        displayMetadata: message.displayMetadata
       });
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL:
       assertOptionsSender(sender);
