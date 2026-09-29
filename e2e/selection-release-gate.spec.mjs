@@ -38,7 +38,8 @@ test.describe("Selection UX release gate", () => {
     await expect(result).toContainText("session");
 
     const provenance = page.locator(".tf-selection-entry-provenance");
-    await expect(provenance).toContainText(["技术词条", "本地词典"]);
+    await expect(provenance).toHaveCount(2);
+    expect(new Set(await provenance.allTextContents())).toEqual(new Set(["本地词典", "技术词条"]));
     await expect(page.locator(".tf-selection-source")).toBeHidden();
     expect(harness.server.calls).toHaveLength(0);
   });
@@ -67,6 +68,7 @@ test.describe("Selection UX release gate", () => {
     await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     await harness.inject(page);
 
+    await page.locator("#ambiguous").scrollIntoViewIfNeeded();
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").focus();
     await page.keyboard.press("Enter");
@@ -166,7 +168,11 @@ test.describe("Selection UX release gate", () => {
     await expect(page.locator(".tf-selection-result")).toContainText("tmux");
     await expect(page.locator(".tf-selection-result")).not.toContainText("持续存在或保持有效");
 
-    await page.locator("#unrelated").click({ position: { x: 2, y: 2 } });
+    await page.locator("#unrelated").dispatchEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      composed: true
+    });
     await expect(page.getByRole("dialog", { name: "TranslateFlow 划词翻译" })).toBeHidden();
     harness.server.setDelay(0);
   });
