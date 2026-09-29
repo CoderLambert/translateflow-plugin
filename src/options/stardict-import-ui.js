@@ -10,11 +10,7 @@ import {
 
 const UTF8 = new TextDecoder("utf-8", { fatal: true });
 const SUPPORTED_EXTENSIONS = Object.freeze([
-  ".ifo",
-  ".idx",
-  ".dict",
-  ".dict.dz",
-  ".syn"
+  ".ifo", ".idx", ".dict", ".dict.dz", ".syn"
 ]);
 
 export function collectStarDictFileSet(files) {
