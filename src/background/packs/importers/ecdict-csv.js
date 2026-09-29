@@ -3,6 +3,10 @@ import {
   normalizeLexicalKey
 } from "../../../shared/lexical.js";
 import {
+  CURATED_IMPORTER_TYPES,
+  CURATED_RECIPE_SCHEMA_VERSION
+} from "../../../shared/curated-dictionaries.js";
+import {
   assertSafeLocalDataText
 } from "../local-import-integrity.js";
 import {
@@ -346,7 +350,11 @@ function normalizeText(value) {
 function validateSource(source) {
   if (
     !source ||
+    source.schemaVersion !==
+      CURATED_RECIPE_SCHEMA_VERSION ||
     source.trustClass !== "curated-upstream" ||
+    source.importerType !==
+      CURATED_IMPORTER_TYPES.ECDICT_CSV_V1 ||
     source.sourceFormat !== "ECDICT CSV" ||
     !source.output?.packId ||
     !source.output?.sourceId ||
