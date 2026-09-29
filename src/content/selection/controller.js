@@ -95,7 +95,7 @@
 
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
-    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }), initialSelectionLoading(snapshot));
+    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
 
     let resolved = null;
     try {
@@ -336,13 +336,6 @@
     tasks.completeTask(task, { done: 1, apiTranslated: 1 });
     const card = buildTranslationResult(translation);
     showResult(snapshot, card, copyTextForCard(card), "译文已复制");
-  }
-
-  function initialSelectionLoading(snapshot) {
-    const text = String(snapshot?.text || "").trim();
-    return /^[A-Za-z][A-Za-z’'-]*$/u.test(text)
-      ? "正在查词…"
-      : "正在处理所选内容…";
   }
 
   function failureMessage(error) {
