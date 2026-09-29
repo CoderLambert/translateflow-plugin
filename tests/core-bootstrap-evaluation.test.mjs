@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   BOOTSTRAP_TAG_COUNT_THRESHOLDS,
+  deriveCommonWordSample,
   filterCoreRecordsByMinTagCount,
   projectCorePack,
-  recordMaxTagCount
+  recordMaxTagCount,
+  tokenizeOrdinaryBrowsingSample
 } from "../scripts/evaluate-core-bootstrap.mjs";
 
 function record(lookupKey, tagCounts) {
@@ -148,4 +150,52 @@ test("bootstrap threshold validation rejects zero or non-integer gates", () => {
   const records = [record("alpha", [1])];
   assert.throws(() => filterCoreRecordsByMinTagCount(records, 0), /positive integer/);
   assert.throws(() => filterCoreRecordsByMinTagCount(records, 1.5), /positive integer/);
+});
+
+
+test("common-word sample is derived from locked source frequency rather than benchmark membership", () => {
+  const senseIndex = [
+    "common%1:00:00:: 00000001 1 12",
+    "common%2:00:00:: 00000002 2 3",
+    "alpha%1:00:00:: 00000003 1 7",
+    "beta%1:00:00:: 00000004 1 2",
+    "multi_word%1:00:00:: 00000005 1 100",
+    "zero%1:00:00:: 00000006 1 0"
+  ].join("\n");
+
+  assert.deepEqual(deriveCommonWordSample(senseIndex, 3), ["common", "alpha", "beta"]);
+  assert.throws(() => deriveCommonWordSample(senseIndex, 4), /smaller than requested limit/);
+});
+
+test("ordinary browsing sample tokenization is deterministic and validation-only", () => {
+  const fixture = {
+    schemaVersion: 1,
+    source: "fixture",
+    purpose: "validation only",
+    paragraphs: [
+      "Reliable systems keep working during ordinary browsing.",
+      "Working systems should recover after temporary failures.",
+      "Users read documentation before changing configuration."
+    ]
+  };
+  assert.deepEqual(tokenizeOrdinaryBrowsingSample(fixture), [
+    "after",
+    "before",
+    "browsing",
+    "changing",
+    "configuration",
+    "documentation",
+    "during",
+    "failures",
+    "keep",
+    "ordinary",
+    "read",
+    "recover",
+    "reliable",
+    "should",
+    "systems",
+    "temporary",
+    "users",
+    "working"
+  ]);
 });

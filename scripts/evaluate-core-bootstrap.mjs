@@ -23,17 +23,33 @@ const DEFAULT_FIXTURE = fileURLToPath(
   new URL("../tests/fixtures/lexical-quality-v1.json", import.meta.url)
 );
 const DEFAULT_RELEASE_ROOT = resolve("assets/lexicon");
+const DEFAULT_SENSE_INDEX = resolve(".release-sources/wordnet/wn/data/wordnet-3.0/index.sense");
+const DEFAULT_ORDINARY_FIXTURE = fileURLToPath(
+  new URL("../tests/fixtures/ordinary-browsing-v1.json", import.meta.url)
+);
 
 export const BOOTSTRAP_TAG_COUNT_THRESHOLDS = Object.freeze([1, 2, 5, 10]);
+export const COMMON_WORD_SAMPLE_SIZE = 250;
 
 export async function evaluateCoreBootstrap({
   fixturePath = DEFAULT_FIXTURE,
   releaseRoot = DEFAULT_RELEASE_ROOT,
+  senseIndexPath = DEFAULT_SENSE_INDEX,
+  ordinaryFixturePath = DEFAULT_ORDINARY_FIXTURE,
   thresholds = BOOTSTRAP_TAG_COUNT_THRESHOLDS
 } = {}) {
   validateThresholds(thresholds);
-  const fixture = JSON.parse(await readFile(resolve(fixturePath), "utf8"));
+  const [fixtureText, senseIndexText, ordinaryFixtureText] = await Promise.all([
+    readFile(resolve(fixturePath), "utf8"),
+    readFile(resolve(senseIndexPath), "utf8"),
+    readFile(resolve(ordinaryFixturePath), "utf8")
+  ]);
+  const fixture = JSON.parse(fixtureText);
+  const ordinaryFixture = JSON.parse(ordinaryFixtureText);
   validateLexicalQualityFixture(fixture);
+  validateOrdinaryBrowsingFixture(ordinaryFixture);
+  const commonWords = deriveCommonWordSample(senseIndexText, COMMON_WORD_SAMPLE_SIZE);
+  const ordinaryWords = tokenizeOrdinaryBrowsingSample(ordinaryFixture);
 
   const pack = await loadCorePack(releaseRoot);
   const originalBytes = pack.manifestBytes + pack.manifest.files
@@ -80,6 +96,10 @@ export async function evaluateCoreBootstrap({
     }
 
     const metrics = summarizeMetrics(cases);
+    const usageSamples = {
+      commonWords: await measureLookupSample(gateway, commonWords),
+      ordinaryBrowsing: await measureLookupSample(gateway, ordinaryWords)
+    };
     profiles.push({
       id: definition.id,
       policy: definition.minimumTagCount === null ? {
@@ -107,6 +127,7 @@ export async function evaluateCoreBootstrap({
         shardCount: projection.shards.length
       },
       metrics,
+      usageSamples,
       projection: {
         fingerprint: projection.manifest.fingerprint
       },
@@ -140,7 +161,13 @@ export async function evaluateCoreBootstrap({
         profile.metrics.phraseContextRecoveryRate - fullMetrics.phraseContextRecoveryRate
       ),
       top1CorrectRate: round(profile.metrics.top1CorrectRate - fullMetrics.top1CorrectRate),
-      trueNoHitRate: round(profile.metrics.trueNoHitRate - fullMetrics.trueNoHitRate)
+      trueNoHitRate: round(profile.metrics.trueNoHitRate - fullMetrics.trueNoHitRate),
+      commonWordHitRate: round(
+        profile.usageSamples.commonWords.hitRate - full.usageSamples.commonWords.hitRate
+      ),
+      ordinaryBrowsingHitRate: round(
+        profile.usageSamples.ordinaryBrowsing.hitRate - full.usageSamples.ordinaryBrowsing.hitRate
+      )
     };
   }
 
@@ -162,6 +189,21 @@ export async function evaluateCoreBootstrap({
       bytes: originalBytes
     },
     sourcePrior,
+    validationSamples: {
+      commonWords: {
+        source: "locked WordNet 3.0 index.sense tagCount aggregate",
+        selection: "top " + COMMON_WORD_SAMPLE_SIZE + " single-token alphabetic lemmas with positive tagCount",
+        membershipIndependent: true,
+        count: commonWords.length
+      },
+      ordinaryBrowsing: {
+        source: ordinaryFixture.source,
+        purpose: ordinaryFixture.purpose,
+        membershipIndependent: true,
+        paragraphs: ordinaryFixture.paragraphs.length,
+        uniqueTokens: ordinaryWords.length
+      }
+    },
     profiles,
     structuralFailures
   };
@@ -184,6 +226,47 @@ export function filterCoreRecordsByMinTagCount(records, minimumTagCount) {
   return (Array.isArray(records) ? records : []).filter(
     (record) => recordMaxTagCount(record) >= minimumTagCount
   );
+}
+
+export function deriveCommonWordSample(senseIndexText, limit = COMMON_WORD_SAMPLE_SIZE) {
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
+    throw new Error("common word sample limit must be a positive integer");
+  }
+  const counts = new Map();
+  for (const rawLine of String(senseIndexText || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const fields = line.split(/\s+/);
+    if (fields.length !== 4) throw new Error("invalid WordNet index.sense row");
+    const [senseKey, _offset, _senseNumber, tagCountText] = fields;
+    const match = senseKey.match(/^(.+)%[1-5]:/);
+    const tagCount = Number(tagCountText);
+    if (!match || !Number.isSafeInteger(tagCount) || tagCount < 0) {
+      throw new Error("invalid WordNet common-word sample row");
+    }
+    const lemma = normalizeLexicalKey(match[1].replaceAll("_", " "));
+    if (!/^[a-z]{3,}$/.test(lemma) || tagCount === 0) continue;
+    counts.set(lemma, (counts.get(lemma) || 0) + tagCount);
+  }
+  const sample = [...counts]
+    .sort((a, b) => b[1] - a[1] || compareText(a[0], b[0]))
+    .slice(0, limit)
+    .map(([lemma]) => lemma);
+  if (sample.length < limit) {
+    throw new Error("WordNet common-word sample is smaller than requested limit");
+  }
+  return sample;
+}
+
+export function tokenizeOrdinaryBrowsingSample(fixture) {
+  validateOrdinaryBrowsingFixture(fixture);
+  const tokens = new Set();
+  for (const paragraph of fixture.paragraphs) {
+    for (const token of paragraph.normalize("NFKC").toLowerCase().match(/[a-z][a-z'-]{2,}/g) || []) {
+      tokens.add(token);
+    }
+  }
+  return [...tokens].sort(compareText);
 }
 
 export function projectCorePack({ manifest, records }) {
@@ -459,6 +542,51 @@ function summarizeMetrics(cases) {
   };
 }
 
+async function measureLookupSample(gateway, terms) {
+  let hits = 0;
+  const misses = [];
+  const matchedBy = {};
+  for (const term of terms) {
+    const result = await gateway.lookup({ text: term });
+    if (result?.status === LEXICAL_RESULT_STATUS.CANDIDATES) {
+      hits += 1;
+      const key = result.matchedBy || "unknown";
+      matchedBy[key] = (matchedBy[key] || 0) + 1;
+    } else {
+      misses.push(term);
+    }
+  }
+  return {
+    hits,
+    total: terms.length,
+    hitRate: ratio(hits, terms.length),
+    missCount: misses.length,
+    sampleMisses: misses.slice(0, 25),
+    matchedBy
+  };
+}
+
+function validateOrdinaryBrowsingFixture(fixture) {
+  if (!fixture || typeof fixture !== "object" || Array.isArray(fixture)) {
+    throw new Error("ordinary browsing fixture must be an object");
+  }
+  if (fixture.schemaVersion !== 1) throw new Error("ordinary browsing fixture schemaVersion must be 1");
+  if (typeof fixture.source !== "string" || !fixture.source.trim()) {
+    throw new Error("ordinary browsing fixture source is required");
+  }
+  if (typeof fixture.purpose !== "string" || !fixture.purpose.trim()) {
+    throw new Error("ordinary browsing fixture purpose is required");
+  }
+  if (!Array.isArray(fixture.paragraphs) || fixture.paragraphs.length < 3) {
+    throw new Error("ordinary browsing fixture requires at least three paragraphs");
+  }
+  for (const paragraph of fixture.paragraphs) {
+    if (typeof paragraph !== "string" || !paragraph.trim()) {
+      throw new Error("ordinary browsing paragraphs must be non-empty strings");
+    }
+  }
+}
+
 function summarizeSourcePrior(records, thresholds) {
   const tagged = records.filter((record) => recordMaxTagCount(record) > 0);
   const withPrior = records.filter((record) => recordMaxTagCount(record) >= 0);
@@ -571,7 +699,9 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const report = await evaluateCoreBootstrap({
     fixturePath: args.fixture || undefined,
-    releaseRoot: args.root || undefined
+    releaseRoot: args.root || undefined,
+    senseIndexPath: args["sense-index"] || undefined,
+    ordinaryFixturePath: args["ordinary-fixture"] || undefined
   });
   const output = JSON.stringify(report, null, 2) + "\n";
   if (args.out) await writeFile(resolve(args.out), output);

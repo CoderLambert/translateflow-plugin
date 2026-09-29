@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "source": "project-authored ordinary prose mirrored from existing E2E fixture pages",
+  "purpose": "Validation-only browsing coverage sample; never used to choose bundled dictionary membership.",
+  "paragraphs": [
+    "TranslateFlow keeps the original English paragraph while showing a bilingual translation directly below it.",
+    "Read API documentation and run tests before merging the change.",
+    "Caching should avoid repeated model requests when the source text and effective translation configuration are unchanged.",
+    "Automatic translation should process visible English content and preserve cached results for later visits.",
+    "Authentication failures should produce a visible retry action instead of leaving the translation interface stuck.",
+    "Rate limits and temporary server failures should retry automatically and eventually recover.",
+    "The repository contains technical documentation that should follow the configured terminology and translation mode."
+  ]
+}

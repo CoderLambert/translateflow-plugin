@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  BUNDLED_LEXICON_RAW_BUDGET_BYTES,
+  BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES,
+  assessBundledLexiconBudget,
   categorizeEntries,
   zipDeflateProxy
 } from "../scripts/measure-extension-footprint.mjs";
@@ -64,4 +67,21 @@ test("ZIP/deflate proxy rejects malformed entries instead of guessing", () => {
     () => zipDeflateProxy([{ path: "a.txt", compressedBytes: 1.5 }]),
     /non-negative integer/
   );
+});
+
+
+test("bundled lexical budget freezes current bootstrap growth", () => {
+  assert.equal(BUNDLED_LEXICON_RAW_BUDGET_BYTES, 37_000_000);
+  assert.equal(BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES, 4_000_000);
+  assert.deepEqual(assessBundledLexiconBudget({
+    rawBytes: 36_900_000,
+    zipProxyBytes: 3_950_000
+  }), []);
+  assert.deepEqual(assessBundledLexiconBudget({
+    rawBytes: 37_000_001,
+    zipProxyBytes: 4_000_001
+  }), [
+    "bundled lexical raw budget exceeded: 37000001 > 37000000",
+    "bundled lexical ZIP/deflate proxy budget exceeded: 4000001 > 4000000"
+  ]);
 });
