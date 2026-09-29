@@ -19,7 +19,7 @@ import {
   sanitizeMdictRecord
 } from "../src/background/packs/importers/mdict-metadata.js";
 import {
-  projectMdictV2PlainText
+  projectMdictV2PlainText as projectMdictV2PlainTextCore
 } from "../src/background/packs/importers/mdict-core.js";
 
 export const MDICT_POC_LIMITS = MDICT_IMPORT_LIMITS;
@@ -27,9 +27,20 @@ export {
   MDICT_IMPORT_ERROR,
   MDictImportError,
   adler32,
-  projectMdictV2PlainText,
   sanitizeMdictRecord
 };
+
+export async function projectMdictV2PlainText(options = {}) {
+  const result = await projectMdictV2PlainTextCore(options);
+  return {
+    ...result,
+    policy: {
+      ...result.policy,
+      runtimeStatus: "build-test-only",
+      tflexMapping: "not-yet-approved"
+    }
+  };
+}
 
 export async function projectMdictPoc({
   mdxPath,
