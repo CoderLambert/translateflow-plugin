@@ -128,6 +128,34 @@ test("OPFS indexed reader classifies hash-valid malformed manifest JSON as corru
   );
 });
 
+test("OPFS indexed reader rejects non-object manifests and exact-key drift", async () => {
+  const manifestEnv = await fixtureEnvironment();
+  const nullManifest = encoder.encode("null");
+  manifestEnv.files["manifest.json"] = nullManifest;
+  const descriptor = manifestEnv.snapshot.files.find((file) => file.role === "manifest");
+  descriptor.size = nullManifest.byteLength;
+  descriptor.sha256 = sha256(nullManifest);
+
+  const reader = createOpfsIndexedTflexReader({
+    store: manifestEnv.store,
+    snapshot: manifestEnv.snapshot,
+    cryptoProvider: webcrypto
+  });
+  await assert.rejects(
+    reader.lookup("run"),
+    (error) => error?.code === LEXICAL_ERROR_CODES.CORRUPT
+  );
+
+  const indexEnv = await fixtureEnvironment();
+  const malformed = structuredClone(indexEnv.index);
+  const run = malformed.entries.find((item) => item.key === "run");
+  run.exactLookupKeys = ["Different"];
+  assert.throws(
+    () => validateIndexedIndex(malformed, indexEnv.manifest, indexEnv.entriesDescriptor),
+    /index entry is malformed/
+  );
+});
+
 test("OPFS indexed reader maps pack compatibility/storage failures to lexical errors", async () => {
   const incompatibleEnv = await fixtureEnvironment({ readerMinVersion: 2 });
   const incompatibleReader = createOpfsIndexedTflexReader({
