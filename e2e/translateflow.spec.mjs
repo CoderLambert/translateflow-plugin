@@ -418,6 +418,12 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
+    const senses = page.locator(".tf-selection-dictionary-entry");
+    await expect(senses).toHaveCount(2);
+    await expect(senses.nth(0)).toContainText("持久的");
+    await expect(senses.nth(0)).toContainText("持续存在的");
+    await expect(senses.nth(1)).toContainText("顽强的");
+    await expect(senses.nth(0)).toContainText("adjective");
     await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
     expect(harness.server.calls).toHaveLength(0);
 
@@ -468,6 +474,22 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     });
     expect(pageCache.ok).toBe(true);
     expect(pageCache.hits).toEqual([]);
+  });
+
+  test("technical entity Selection stays compact and preserves supplied identity metadata", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+
+    await selectElementText(page, "#entity");
+    await page.locator(".tf-selection-chip").click();
+
+    const result = page.locator(".tf-selection-result");
+    await expect(result).toHaveAttribute("data-result-kind", "technical");
+    await expect(result).toContainText("tmux");
+    await expect(result).toContainText("技术词条");
+    await expect(result).toContainText("terminal multiplexer");
+    await expect(page.locator(".tf-selection-dictionary-entry")).toHaveCount(0);
+    expect(harness.server.calls).toHaveLength(0);
   });
 
   test("Selection AI detail cancel preserves local content and stale completion cannot overwrite retry", async ({ harness }) => {

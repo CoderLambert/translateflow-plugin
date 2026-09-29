@@ -7,6 +7,7 @@
     || !app?.modules.uiPrimitives
     || !app?.modules.selectionAiDetail
     || !app?.modules.selectionEmptyState
+    || !app?.modules.selectionResultRenderer
     || app.modules.selectionPopover
   ) return;
 
@@ -15,6 +16,7 @@
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
+  const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
 
   let root;
   let chip;
@@ -169,94 +171,7 @@
   function renderResult(input) {
     aiDetail?.reset();
     emptyState?.reset();
-    resultNode.replaceChildren();
-    const result = typeof input === "string"
-      ? { kind: "translation", primaryMeaning: input }
-      : (input || {});
-
-    resultNode.dataset.resultKind = String(result.kind || "translation");
-
-    const meta = document.createElement("div");
-    meta.className = "tf-selection-result-meta";
-
-    for (const item of Array.isArray(result.badges) ? result.badges : []) {
-      const label = String(item?.label || "").trim();
-      if (!label) continue;
-      const badge = document.createElement("span");
-      badge.className = "tf-selection-result-badge";
-      badge.dataset.kind = String(item?.kind || "local");
-      badge.textContent = label;
-      meta.appendChild(badge);
-    }
-    if (meta.childElementCount) resultNode.appendChild(meta);
-
-    const headword = String(result.headword || "").trim();
-    const pronunciation = String(result.pronunciation || "").trim();
-    const partOfSpeech = String(result.partOfSpeech || "").trim();
-    if (headword || pronunciation || partOfSpeech) {
-      const heading = document.createElement("div");
-      heading.className = "tf-selection-headword-row";
-      if (headword) {
-        const strong = document.createElement("strong");
-        strong.className = "tf-selection-headword";
-        strong.textContent = headword;
-        heading.appendChild(strong);
-      }
-      const details = [pronunciation, partOfSpeech].filter(Boolean);
-      if (details.length) {
-        const secondary = document.createElement("span");
-        secondary.className = "tf-selection-headword-meta";
-        secondary.textContent = details.join(" · ");
-        heading.appendChild(secondary);
-      }
-      resultNode.appendChild(heading);
-    }
-
-    const primary = String(result.primaryMeaning || "").trim();
-    if (primary) {
-      const node = document.createElement("div");
-      node.className = "tf-selection-primary";
-      node.textContent = primary;
-      resultNode.appendChild(node);
-    }
-
-    const senses = uniqueText(result.senses);
-    if (senses.length) {
-      const list = document.createElement("div");
-      list.className = "tf-selection-senses";
-      for (const sense of senses.slice(0, 5)) {
-        const row = document.createElement("div");
-        row.textContent = sense;
-        list.appendChild(row);
-      }
-      resultNode.appendChild(list);
-    }
-
-    const facts = uniqueText([
-      ...(Array.isArray(result.domains) ? result.domains : []),
-      ...(Array.isArray(result.typeLabels) ? result.typeLabels : [])
-    ]);
-    if (facts.length) {
-      const factRow = document.createElement("div");
-      factRow.className = "tf-selection-facts";
-      for (const fact of facts.slice(0, 6)) {
-        const item = document.createElement("span");
-        item.textContent = fact;
-        factRow.appendChild(item);
-      }
-      resultNode.appendChild(factRow);
-    }
-
-    const generatedMeaning = String(result.generatedMeaning || "").trim();
-    const explanation = String(result.explanation || "").trim();
-
-    if (!resultNode.childElementCount && !generatedMeaning && !explanation) {
-      const empty = document.createElement("div");
-      empty.className = "tf-selection-primary";
-      empty.textContent = "暂无可展示结果。";
-      resultNode.appendChild(empty);
-    }
-
+    const { generatedMeaning, explanation } = renderStructuredResult(resultNode, input);
     aiDetail.ensure();
     if (generatedMeaning || explanation) {
       aiDetail.success({ generatedMeaning, explanation });
