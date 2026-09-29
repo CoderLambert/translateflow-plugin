@@ -34,8 +34,19 @@ test("browser dictzip decompressor validates RA metadata and inflates gzip bytes
 
 test("browser dictzip rejects ordinary gzip before decompression", async () => {
   const gzip = gzipSync(Buffer.from("ordinary gzip"));
+  let decompressorCreated = false;
   await assert.rejects(
-    decompressStarDictDictzip(new Blob([gzip])),
+    decompressStarDictDictzip(
+      new Blob([gzip]),
+      {
+        decompressionStreamFactory() {
+          decompressorCreated = true;
+          throw new Error(
+            "ordinary gzip must fail before decompression"
+          );
+        }
+      }
+    ),
     (error) =>
       error instanceof StarDictImportError &&
       error.code === STARDICT_IMPORT_ERROR.CORRUPT &&
@@ -43,6 +54,7 @@ test("browser dictzip rejects ordinary gzip before decompression", async () => {
         error.message
       )
   );
+  assert.equal(decompressorCreated, false);
 });
 
 test("browser dictzip enforces compressed and decompressed byte ceilings", async () => {
