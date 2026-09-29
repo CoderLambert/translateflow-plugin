@@ -58,8 +58,6 @@ export function createStarDictImportController({
       );
     }
 
-    await reclaimQuarantine().catch(() => {});
-
     const requestId = makeRequestId(cryptoProvider);
     const worker = new WorkerCtor(
       workerUrl,
@@ -76,6 +74,8 @@ export function createStarDictImportController({
     active = current;
 
     try {
+      await reclaimQuarantine().catch(() => {});
+      assertCurrent(current);
       emitProgress(onProgress, requestId, "read");
       const prepared =
         await prepareStarDictWorkerInput(input);
