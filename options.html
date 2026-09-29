@@ -51,18 +51,18 @@
       <h2>划词翻译</h2>
       <p class="section-summary">划词默认先查询本地词典并直接显示结果；AI 仅在你点击“AI 详解”后用于结合上下文解释。</p>
 
-      <label for="selectionExplanationDepth">解释深度</label>
+      <label for="selectionExplanationDepth">AI 详解深度</label>
       <select id="selectionExplanationDepth">
         <option value="auto">Auto · 自动</option>
         <option value="concise">Concise · 精简</option>
         <option value="standard">Standard · 标准</option>
         <option value="professional">Professional · 专业</option>
       </select>
-      <div class="setting-choice-help" aria-label="解释深度说明">
+      <div class="setting-choice-help" aria-label="AI 详解深度说明">
         <div><strong>Auto</strong><span>点击 AI 详解后，根据选段类型与本地结果质量选择解释深度；推荐。</span></div>
         <div><strong>Concise</strong><span>AI 详解保持精简；默认查词仍不会自动调用 AI。</span></div>
-        <div><strong>Standard</strong><span>核心含义 + 必要的短上下文说明。</span></div>
-        <div><strong>Professional</strong><span>保留专业术语，并允许更完整的领域上下文说明。</span></div>
+        <div><strong>Standard</strong><span>点击 AI 详解后，给出核心含义与必要的短上下文说明。</span></div>
+        <div><strong>Professional</strong><span>点击 AI 详解后，保留专业术语并提供更完整的领域上下文说明。</span></div>
       </div>
 
       <div class="data-source-card">
@@ -74,18 +74,22 @@
 
     <section id="dictionary-packs" tabindex="-1">
       <h2>本地词典</h2>
-      <p class="section-summary">内置 Core / Technical 词典随扩展资源加载；可选词典则以独立版本存储在浏览器 OPFS 中。两类词典使用不同的生命周期与校验路径。</p>
+      <p class="section-summary">内置词典随扩展提供，可离线使用；可选词典只有在完成质量与许可审核后才会提供单独下载。</p>
 
       <h3>内置词典</h3>
-      <div id="bundledLexiconList" class="site-list">正在检查内置词典…</div>
-      <p class="hint">源码开发安装需要先生成被 git 忽略的真实词典资源：<code>npm run setup:lexicon</code>，完成后在 chrome://extensions 重新加载扩展。</p>
+      <div id="bundledLexiconList" class="site-list dictionary-health-list" aria-live="polite">正在检查内置词典…</div>
+
+      <details class="dictionary-repair-help">
+        <summary>源码开发安装修复说明</summary>
+        <p>从源码加载扩展时，真实词典资源不会提交到 Git。若状态显示资源缺失，请运行 <code>npm run setup:lexicon</code>，完成后在 <code>chrome://extensions</code> 重新加载扩展。</p>
+      </details>
 
       <h3>可选下载词典</h3>
-      <div id="dictionaryPacksList" class="site-list">正在读取可选词典包状态…</div>
-      <p class="hint">可选词典安装时只请求对应受信任下载源的精确 Origin 权限；更新失败不会替换最后一个健康版本。FreeDict eng-zho 2025.11.23 已完成审核但未通过产品质量门，因此不会出现在此列表。</p>
+      <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取可选词典包状态…</div>
+      <p class="hint">可选词典只会请求对应受信任下载源的精确 Origin 权限；更新失败不会替换最后一个健康版本。</p>
 
       <div class="actions">
-        <button id="refreshDictionaryPacks" type="button">刷新词典状态</button>
+        <button id="refreshDictionaryPacks" type="button">重新检查词典状态</button>
       </div>
       <p class="hint">若可选包文件被浏览器回收或校验失败，状态会变为需要重新安装；有健康的上一版本时可回滚。</p>
     </section>
