@@ -25,7 +25,7 @@ export function renderInstalledPackList({
 
   if (!entries.length) {
     container.textContent =
-      "暂无额外安装词典。你可以从下方导入本地 StarDict 文件。";
+      "暂无额外安装词典。可从上方下载精选上游词典，或从下方导入本地 StarDict / MDict 文件。";
     return;
   }
 

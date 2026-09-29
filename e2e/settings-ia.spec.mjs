@@ -28,4 +28,64 @@ test.describe("Settings information architecture", () => {
     expect(stored).toEqual({ youtubeSubtitleMode: "original", youtubeSubtitleSize: "large" });
     await page.close();
   });
+
+  test("dictionary library separates trust classes and stays usable at narrow width", async ({ harness }) => {
+    const page = await harness.context.newPage();
+    await page.setViewportSize({ width: 390, height: 780 });
+    await page.goto(
+      `chrome-extension://${harness.extensionId}/options.html#dictionary-packs`
+    );
+
+    const nav = page.getByRole("navigation", { name: "设置分类" });
+    const dictionaryNav = nav.getByRole("link", { name: "词典库" });
+    await expect(dictionaryNav).toBeVisible();
+    await dictionaryNav.click();
+    await expect(page.locator("#dictionary-packs")).toBeFocused();
+
+    const library = page.locator("#dictionary-packs");
+    await expect(library.getByRole("heading", { name: "词典库", exact: true })).toBeVisible();
+    await expect(
+      library.locator("h3").allTextContents()
+    ).resolves.toEqual([
+      "内置词典",
+      "下载词典",
+      "已安装",
+      "本地导入"
+    ]);
+    await expect(
+      library.getByRole("heading", { name: "官方推荐", exact: true })
+    ).toBeVisible();
+    await expect(
+      library.getByRole("heading", { name: "精选上游", exact: true })
+    ).toBeVisible();
+
+    await expect(page.locator("#dictionaryPacksList"))
+      .toContainText("暂无官方推荐词典");
+    const curated = page
+      .locator("#curatedDictionaryList .site-row")
+      .filter({ hasText: "ECDICT 高频英汉" });
+    await expect(curated).toBeVisible();
+    await expect(curated).toContainText("上游 / 社区");
+    await expect(
+      curated.getByRole("link", { name: "上游项目" })
+    ).toBeVisible();
+    await expect(
+      curated.getByRole("link", { name: "许可" })
+    ).toBeVisible();
+
+    await expect(page.locator("#stardictFiles")).toBeVisible();
+    await expect(page.locator("#mdictFile")).toBeVisible();
+    await expect(library).not.toContainText("OPFS");
+
+    const overflow = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth
+    }));
+    expect(overflow.scroll).toBeLessThanOrEqual(overflow.viewport);
+
+    await page.locator("#refreshDictionaryPacks").focus();
+    await expect(page.locator("#refreshDictionaryPacks")).toBeFocused();
+    await page.close();
+  });
+
 });
