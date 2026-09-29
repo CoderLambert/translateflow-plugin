@@ -108,6 +108,26 @@ test("OPFS indexed reader verifies manifest and index bytes against the active s
   );
 });
 
+test("OPFS indexed reader classifies hash-valid malformed manifest JSON as corrupt", async () => {
+  const env = await fixtureEnvironment();
+  const malformed = encoder.encode("{");
+  env.files["manifest.json"] = malformed;
+  const descriptor = env.snapshot.files.find((file) => file.role === "manifest");
+  descriptor.size = malformed.byteLength;
+  descriptor.sha256 = sha256(malformed);
+
+  const reader = createOpfsIndexedTflexReader({
+    store: env.store,
+    snapshot: env.snapshot,
+    cryptoProvider: webcrypto
+  });
+  await assert.rejects(
+    reader.lookup("run"),
+    (error) => error?.code === LEXICAL_ERROR_CODES.CORRUPT &&
+      /manifest JSON is malformed/.test(error.message)
+  );
+});
+
 test("OPFS indexed reader maps pack compatibility/storage failures to lexical errors", async () => {
   const incompatibleEnv = await fixtureEnvironment({ readerMinVersion: 2 });
   const incompatibleReader = createOpfsIndexedTflexReader({
