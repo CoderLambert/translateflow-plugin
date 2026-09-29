@@ -89,11 +89,78 @@ npm run project:mdict -- \
   --source-version local-v1
 ```
 
+
+
+## Explicit bilingual semantic mapping POC
+
+The semantic projection remains neutral until a separate local import recipe explicitly declares that the selected dictionary is an English -> Simplified Chinese plain-text translation source.
+
+Required recipe shape:
+
+```json
+{
+  "schemaVersion": 1,
+  "semanticProfile": "en-zh-plain-text-translation-v1",
+  "packId": "local-my-mdict",
+  "packVersion": "local-v1",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "dictionary": {
+    "title": "Exact MDict title",
+    "generatedByEngineVersion": "2.0",
+    "encoding": "UTF-8",
+    "format": "Text",
+    "sourceId": "local-source-id",
+    "sourceVersion": "local-v1",
+    "mdxSha256": "<exact lowercase sha256 of the selected .mdx>"
+  },
+  "assertions": {
+    "plainTextRepresentsTargetTranslation": true,
+    "localUseOnly": true
+  }
+}
+```
+
+The recipe is bound to both the parser-visible dictionary metadata and the exact selected MDX bytes. A same-title dictionary with a different SHA-256 fails closed.
+
+Run:
+
+```bash
+npm run build:tflex:mdict-import -- \
+  --mdx dictionary.mdx \
+  --recipe import-recipe.json \
+  --out /tmp/local-mdict-tflex \
+  --report /tmp/local-mdict-report.json
+```
+
+The output contains:
+
+```text
+manifest.json
+index.dat
+entries.dat
+```
+
+Properties:
+
+- TFLex v1 physical profile `opfs-indexed-v1`;
+- distribution status `user-import-only`;
+- English -> zh-CN only for this semantic profile;
+- one accepted MDict source row becomes one attributable TFLex sense;
+- duplicate headwords preserve separate source-row provenance;
+- no aliases are synthesized because `@@@LINK=` redirects remain rejected;
+- no POS/domain/example metadata is invented;
+- the exact MDX SHA-256 is retained in source provenance and the manifest;
+- source license remains `USER-PROVIDED-UNVERIFIED`;
+- output satisfies the existing optional-pack manifest health contract;
+- the POC reader participates in the existing Lexical Gateway candidate/provenance model.
+
+This compiler does not activate the imported pack in the production extension. Runtime registration and storage lifecycle remain separate #124 work.
+
 ## Next #124 units
 
 1. validate the MDict parser against representative real user-owned dictionaries before widening format support;
-2. define an explicit semantic recipe before converting approved MDict profiles into local TFLex;
-3. decide a safe `.mdd` resource policy; do not render arbitrary resource-backed presentation content;
-4. connect converted local TFLex to the production OPFS reader/storage lifecycle;
-5. add cancellation, failure cleanup and isolation;
-6. measure import time, output bytes and lookup cost before production commitment.
+2. decide a safe `.mdd` resource policy; do not render arbitrary resource-backed presentation content;
+3. connect converted local TFLex to the production OPFS reader/storage lifecycle;
+4. add cancellation, failure cleanup and isolation;
+5. measure import time, output bytes and lookup cost before production commitment.
