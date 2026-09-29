@@ -3,17 +3,70 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { gzipSync } from "node:zlib";
 import {
   STARDICT_IMPORT_ERROR,
   STARDICT_POC_LIMITS,
   StarDictImportError,
+  parseStarDictDictzipHeader,
   parseStarDictIfo,
   parseStarDictIndex,
   parseStarDictSynonyms,
   projectStarDictPlainText,
   projectStarDictPoc,
+  readStarDictDictionaryFile,
   sanitizePlainText
 } from "../scripts/project-stardict-import.mjs";
+
+test("StarDict dictzip header parser accepts RA metadata and rejects non-dictzip gzip", () => {
+  const payload = Buffer.from("dictionary payload", "utf8");
+  const dictzip = makeDictzip(payload);
+  const parsed = parseStarDictDictzipHeader(dictzip);
+
+  assert.deepEqual(parsed, {
+    version: 1,
+    chunkLength: 65535,
+    chunkCount: 1,
+    compressedChunkBytes: dictzip.compressedChunkBytes
+  });
+  assertCode(
+    () => parseStarDictDictzipHeader(gzipSync(payload)),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictDictzipHeader(makeDictzip(payload, { duplicateRa: true })),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+
+  const malformed = Buffer.from(dictzip);
+  malformed[16] = 2;
+  malformed[17] = 0;
+  assertCode(
+    () => parseStarDictDictzipHeader(malformed),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+});
+
+test("StarDict dictzip decompression is output-bounded before lexical parsing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translateflow-stardict-dictzip-limit-"));
+  try {
+    const path = join(root, "bomb.dict.dz");
+    await writeFile(path, makeDictzip(Buffer.alloc(1024, 0x61)));
+    await assert.rejects(
+      readStarDictDictionaryFile(path, {
+        limits: {
+          ...STARDICT_POC_LIMITS,
+          dictArchiveBytes: 1024 * 1024,
+          dictBytes: 32
+        }
+      }),
+      (error) => error instanceof StarDictImportError &&
+        error.code === STARDICT_IMPORT_ERROR.LIMIT
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("StarDict POC projects deterministic UTF-8 plain-text entries as build-only source facts", () => {
   const fixture = makeFixture([
@@ -308,7 +361,7 @@ test("StarDict POC requires index size/count consistency and never guesses rich 
   assert.equal(result.entries[0].plainText, "definition");
 });
 
-test("StarDict file POC writes deterministic JSONL/report and rejects .dict.dz before reading", async () => {
+test("StarDict file POC writes deterministic output and accepts bounded .dict.dz", async () => {
   const root = await mkdtemp(join(tmpdir(), "translateflow-stardict-"));
   try {
     const fixture = makeFixture([
@@ -318,15 +371,19 @@ test("StarDict file POC writes deterministic JSONL/report and rejects .dict.dz b
     const ifo = join(root, "safe.ifo");
     const idx = join(root, "safe.idx");
     const dict = join(root, "safe.dict");
+    const dictzip = join(root, "safe.dict.dz");
     const outA = join(root, "a.jsonl");
     const reportA = join(root, "a-report.json");
     const outB = join(root, "b.jsonl");
     const reportB = join(root, "b-report.json");
+    const outDz = join(root, "dz.jsonl");
+    const reportDz = join(root, "dz-report.json");
 
     await Promise.all([
       writeFile(ifo, fixture.ifoText),
       writeFile(idx, fixture.idxBytes),
-      writeFile(dict, fixture.dictBytes)
+      writeFile(dict, fixture.dictBytes),
+      writeFile(dictzip, makeDictzip(fixture.dictBytes))
     ]);
 
     await projectStarDictPoc({
@@ -347,27 +404,80 @@ test("StarDict file POC writes deterministic JSONL/report and rejects .dict.dz b
       sourceId: "fixture",
       sourceVersion: "v1"
     });
+    await projectStarDictPoc({
+      ifoPath: ifo,
+      idxPath: idx,
+      dictPath: dictzip,
+      outPath: outDz,
+      reportPath: reportDz,
+      sourceId: "fixture",
+      sourceVersion: "v1"
+    });
 
     assert.equal(await readFile(outA, "utf8"), await readFile(outB, "utf8"));
+    assert.equal(await readFile(outA, "utf8"), await readFile(outDz, "utf8"));
     assert.equal(await readFile(reportA, "utf8"), await readFile(reportB, "utf8"));
     const report = JSON.parse(await readFile(reportA, "utf8"));
     assert.equal(report.output.entries, 2);
     assert.equal(report.policy.runtimeStatus, "build-test-only");
     assert.equal(report.policy.tflexMapping, "not-yet-approved");
 
+    const dzReport = JSON.parse(await readFile(reportDz, "utf8"));
+    assert.equal(dzReport.input.dictCompression, "dictzip");
+    assert.equal(dzReport.input.dictBytes, fixture.dictBytes.byteLength);
+    assert.equal(dzReport.input.dictzip.chunkCount, 1);
+    assert.equal(dzReport.input.dictzip.version, 1);
+
+    const fakeDictzip = join(root, "fake.dict.dz");
+    await writeFile(fakeDictzip, gzipSync(fixture.dictBytes));
     await assert.rejects(
       projectStarDictPoc({
         ifoPath: ifo,
         idxPath: idx,
-        dictPath: join(root, "safe.dict.dz")
+        dictPath: fakeDictzip
       }),
       (error) => error instanceof StarDictImportError &&
-        error.code === STARDICT_IMPORT_ERROR.UNSUPPORTED
+        error.code === STARDICT_IMPORT_ERROR.CORRUPT
     );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+function makeDictzip(input, { duplicateRa = false } = {}) {
+  const payload = Buffer.from(input);
+  const gzip = gzipSync(payload);
+  const compressedChunkBytes = gzip.byteLength - 18;
+  if (compressedChunkBytes <= 0 || compressedChunkBytes > 0xffff) {
+    throw new Error("dictzip test fixture compressed chunk does not fit uint16");
+  }
+
+  const raPayload = Buffer.alloc(8);
+  raPayload.writeUInt16LE(1, 0);
+  raPayload.writeUInt16LE(0xffff, 2);
+  raPayload.writeUInt16LE(1, 4);
+  raPayload.writeUInt16LE(compressedChunkBytes, 6);
+
+  const makeRa = () => {
+    const length = Buffer.alloc(2);
+    length.writeUInt16LE(raPayload.byteLength, 0);
+    return Buffer.concat([Buffer.from("RA", "ascii"), length, raPayload]);
+  };
+  const extras = duplicateRa ? Buffer.concat([makeRa(), makeRa()]) : makeRa();
+  const extraLength = Buffer.alloc(2);
+  extraLength.writeUInt16LE(extras.byteLength, 0);
+  const header = Buffer.from(gzip.subarray(0, 10));
+  header[3] |= 0x04;
+
+  const result = Buffer.concat([
+    header,
+    extraLength,
+    extras,
+    gzip.subarray(10)
+  ]);
+  result.compressedChunkBytes = compressedChunkBytes;
+  return result;
+}
 
 function makeFixture(entries, synonyms = []) {
   const sorted = [...entries].sort((a, b) => Buffer.compare(Buffer.from(a[0]), Buffer.from(b[0])));
