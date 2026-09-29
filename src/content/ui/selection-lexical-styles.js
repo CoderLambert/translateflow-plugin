@@ -3,6 +3,25 @@
   if (!app?.modules.runtime || app.modules.uiSelectionLexicalStyles) return;
 
   const css = `
+.tf-selection-action-primary {
+  border-color: color-mix(in srgb, var(--tf-color-accent) 48%, transparent);
+  background: var(--tf-green-700);
+  color: var(--tf-primary-foreground);
+  box-shadow: var(--tf-accent-shadow);
+}
+.tf-selection-action-primary:hover {
+  background: var(--tf-primary-hover-start);
+}
+.tf-selection-action-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--tf-text-secondary);
+  box-shadow: none;
+}
+.tf-selection-action-quiet:hover {
+  border-color: var(--tf-border-soft);
+  background: var(--tf-bg-subtle);
+}
 .tf-selection-dictionary-entries {
   display: grid;
   gap: 7px;
@@ -69,6 +88,12 @@
   background: var(--tf-bg-subtle);
   color: var(--tf-text-secondary);
   font-size: 11px;
+}
+.tf-selection-entry-provenance {
+  margin-top: 6px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
 }
 .tf-selection-more-entries {
   padding: 3px 2px 0;
