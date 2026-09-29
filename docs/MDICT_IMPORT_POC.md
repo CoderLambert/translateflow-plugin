@@ -11,7 +11,8 @@ The initial parser deliberately accepts only a narrow MDict v2 profile:
 - `.mdx` files generated as MDict engine version 2.0;
 - unencrypted dictionaries only;
 - UTF-8 and UTF-16 text encodings;
-- uncompressed blocks and zlib-compressed blocks;
+- the v2 key-block-info section using its required zlib block;
+- uncompressed or zlib-compressed key-data and record blocks;
 - v2 keyword index, keyword blocks, record index and record blocks;
 - Adler32 validation for the header and every decoded block;
 - plain-text record payloads only.
