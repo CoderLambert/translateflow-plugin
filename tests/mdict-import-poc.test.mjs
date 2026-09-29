@@ -65,7 +65,7 @@ test("MDict v2 POC accepts UTF-16 text with uncompressed key and record blocks",
     ["词条", "第二"]
   ], {
     encoding: "UTF-16",
-    keyIndexCompression: "none",
+    keyIndexCompression: "zlib",
     keyBlockCompression: "none",
     recordCompression: "none"
   });
@@ -74,8 +74,19 @@ test("MDict v2 POC accepts UTF-16 text with uncompressed key and record blocks",
   assert.equal(result.dictionary.encoding, "UTF-16");
   assert.deepEqual(result.entries.map((entry) => entry.displayForm), ["alpha", "词条"]);
   assert.deepEqual(result.entries.map((entry) => entry.plainText), ["第一", "第二"]);
-  assert.deepEqual(result.blocks.keyCompression, ["none"]);
+  assert.deepEqual(result.blocks.keyCompression, ["none", "zlib"]);
   assert.deepEqual(result.blocks.recordCompression, ["none"]);
+});
+
+test("MDict v2 POC requires zlib-compressed key block info", async () => {
+  await assertRejectCode(
+    () => projectMdictV2PlainText({
+      mdxBytes: makeMdx([["alpha", "definition"]], {
+        keyIndexCompression: "none"
+      })
+    }),
+    MDICT_IMPORT_ERROR.UNSUPPORTED
+  );
 });
 
 test("MDict v2 POC rejects encrypted dictionaries, LZO blocks and presentation transforms", async () => {
