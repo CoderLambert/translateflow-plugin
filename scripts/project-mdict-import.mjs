@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { stat, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Readable } from "node:stream";
@@ -77,7 +78,8 @@ export async function projectMdictPoc({
     sourceId,
     sourceVersion,
     input: {
-      fileBytes: inputBytes
+      fileBytes: inputBytes,
+      sha256: createHash("sha256").update(bytes).digest("hex")
     },
     dictionary: result.dictionary,
     blocks: result.blocks,
