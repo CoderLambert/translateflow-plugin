@@ -34,26 +34,39 @@ export function createActiveOpfsPackReader({
       return [];
     }
 
-    const entries = Object.entries(state?.packs || {})
-      .filter(([, entry]) => entry?.status === "healthy" && entry?.active)
-      .map(([packId, entry]) => ({
-        packId,
-        snapshot: entry.active
-      }))
-      .filter(({ packId, snapshot }) =>
-        snapshot?.packId === packId &&
-        snapshot?.packVersion &&
-        snapshot?.fingerprint &&
-        Array.isArray(snapshot?.files)
-      )
-      .sort((a, b) => compareText(a.packId, b.packId));
+    const entries = [];
+    const observedPackIds = new Set();
+    for (const [packId, entry] of Object.entries(state?.packs || {})) {
+      if (entry?.status !== "healthy") continue;
+      observedPackIds.add(packId);
+      const snapshot = entry?.active;
+      if (
+        !snapshot ||
+        snapshot.packId !== packId ||
+        !snapshot.packVersion ||
+        !snapshot.fingerprint ||
+        !Array.isArray(snapshot.files)
+      ) {
+        lastErrors.set(packId, {
+          packId,
+          code: LEXICAL_ERROR_CODES.CORRUPT,
+          message: "Healthy dictionary pack has malformed active snapshot metadata.",
+          path: "manifest.json"
+        });
+        continue;
+      }
+      entries.push({ packId, snapshot });
+    }
+    entries.sort((a, b) => compareText(a.packId, b.packId));
 
     const liveKeys = new Set(entries.map(({ snapshot }) => snapshotKey(snapshot)));
-    for (const key of readers.keys()) {
-      if (!liveKeys.has(key)) readers.delete(key);
+    for (const [key, reader] of readers) {
+      if (liveKeys.has(key)) continue;
+      reader.clearCache?.();
+      readers.delete(key);
     }
     for (const packId of lastErrors.keys()) {
-      if (!entries.some((entry) => entry.packId === packId)) lastErrors.delete(packId);
+      if (!observedPackIds.has(packId)) lastErrors.delete(packId);
     }
     return entries;
   }
