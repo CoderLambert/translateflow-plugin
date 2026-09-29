@@ -69,6 +69,30 @@ test.describe("curated ECDICT product flow", () => {
       )
     ).toBe(true);
     expect(harness.server.calls).toHaveLength(0);
+
+    await installed
+      .getByRole("button", { name: "删除" })
+      .click();
+    await expect(installed).toHaveCount(0);
+
+    const afterDelete = await harness.runtime({
+      type: "LEXICAL_LOOKUP",
+      text: "hello",
+      pageUrl: page.url(),
+      sourceLanguage: "en",
+      targetLanguage: "zh-CN"
+    });
+    expect(afterDelete.ok).toBe(true);
+    expect(
+      (afterDelete.candidates || []).some((candidate) =>
+        candidate.senses?.some((sense) =>
+          sense.sourceRefs?.some(
+            (sourceRef) => sourceRef.sourceId === "ecdict"
+          )
+        )
+      )
+    ).toBe(false);
+    expect(harness.server.calls).toHaveLength(0);
   });
 });
 
