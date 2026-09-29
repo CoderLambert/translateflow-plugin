@@ -6,10 +6,15 @@ See [../docs/LEXICAL_DATA_BOUNDARIES.md](../docs/LEXICAL_DATA_BOUNDARIES.md).
 
 ## Directory roles
 
+- `source-candidates/**` — reviewed upstream snapshot metadata that is **not** an exact source lock yet.
 - `source-locks/**` — reproducibility/provenance metadata for approved build inputs.
 - `sources/**` — reviewed source extracts or project-authored transitional source material consumed by compilers.
 - `quality-baselines/**` — benchmark baselines.
 - `quality-decisions/**` — source/product quality decisions.
+
+A moving upstream URL or advertised size is never a source lock. Candidate metadata may move to
+`source-locks/**` only after the exact acquired artifact bytes have an independently recorded
+cryptographic digest and byte size.
 
 None of these directories should be copied directly into `dist/extension`.
 
