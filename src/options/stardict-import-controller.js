@@ -239,11 +239,15 @@ function emitProgress(
   phase,
   details = {}
 ) {
-  onProgress({
-    requestId,
-    phase,
-    ...details
-  });
+  try {
+    onProgress({
+      requestId,
+      phase,
+      ...details
+    });
+  } catch {
+    // Progress observers must never control import correctness.
+  }
 }
 
 function responseError(response, fallback) {
