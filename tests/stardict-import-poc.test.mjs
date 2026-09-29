@@ -161,6 +161,30 @@ test("StarDict synonym parser accepts bounded sorted aliases and validates targe
     }),
     STARDICT_IMPORT_ERROR.CORRUPT
   );
+  assertCode(
+    () => parseStarDictSynonyms(encodeSynonyms([["<b>alias</b>", 0]]), {
+      synonymCount: 1,
+      wordCount: 1
+    }),
+    STARDICT_IMPORT_ERROR.UNSAFE_CONTENT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(Buffer.from([0xc3, 0x28, 0, 0, 0, 0, 0]), {
+      synonymCount: 1,
+      wordCount: 1
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(Buffer.concat([
+      Buffer.from("alias\0", "utf8"),
+      Buffer.from([0, 0, 0])
+    ]), {
+      synonymCount: 1,
+      wordCount: 1
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
 
   const tinyLimits = { ...STARDICT_POC_LIMITS, synonymCount: 1 };
   assertCode(
