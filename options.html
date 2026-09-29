@@ -87,6 +87,10 @@
       <h3>已安装</h3>
       <div id="installedDictionaryList" class="site-list" aria-live="polite">正在读取已安装词典…</div>
 
+      <h3>精选词典</h3>
+      <p class="hint">精选词典直接从固定的上游版本下载，由 TranslateFlow 在本机按审核规则转换；属于上游 / 社区内容，不等同于 TranslateFlow 官方词典。</p>
+      <div id="curatedDictionaryList" class="site-list" aria-live="polite">正在读取精选词典状态…</div>
+
       <h3>可选下载词典</h3>
       <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取可选词典包状态…</div>
       <p class="hint">可选词典只会请求对应受信任下载源的精确 Origin 权限；更新失败不会替换最后一个健康版本。</p>
@@ -328,5 +332,6 @@
   </div>
   <script type="module" src="options.js"></script>
   <script type="module" src="src/options/stardict-import-ui.js"></script>
+  <script type="module" src="src/options/curated-dictionary-ui.js"></script>
 </body>
 </html>
