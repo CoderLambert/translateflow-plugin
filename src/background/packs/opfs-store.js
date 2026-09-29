@@ -48,6 +48,40 @@ export function createOpfsPackStore({
     }
   }
 
+  async function readFileRange(packId, version, path, offset, length) {
+    validateLocation(packId, version, path);
+    if (
+      !Number.isSafeInteger(offset) ||
+      offset < 0 ||
+      !Number.isSafeInteger(length) ||
+      length <= 0
+    ) {
+      throw packError(PACK_ERROR_CODES.STORAGE, "Invalid dictionary pack byte range.");
+    }
+    try {
+      const versionDir = await getVersionDir(packId, version, false);
+      const { directory, name } = await descendToParent(versionDir, path, false);
+      const handle = await directory.getFileHandle(name);
+      const file = await handle.getFile();
+      if (offset > file.size || length > file.size - offset) {
+        throw packError(PACK_ERROR_CODES.STORAGE, "Dictionary pack byte range exceeds the file.", {
+          packId, version, path, offset, length, fileBytes: file.size
+        });
+      }
+      return new Uint8Array(await file.slice(offset, offset + length).arrayBuffer());
+    } catch (error) {
+      throw storageError("Unable to read dictionary pack byte range.", {
+        packId,
+        version,
+        path,
+        offset,
+        length,
+        missing: error?.name === "NotFoundError",
+        cause: error
+      });
+    }
+  }
+
   async function listPacks() {
     try {
       const dictionaries = await getDictionariesDir(false);
@@ -130,6 +164,7 @@ export function createOpfsPackStore({
   return Object.freeze({
     writeFile,
     readFile,
+    readFileRange,
     listPacks,
     listVersions,
     removeVersion,
