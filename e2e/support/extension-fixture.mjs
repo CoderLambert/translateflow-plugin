@@ -81,6 +81,20 @@ export const test = base.extend({
         sourceLockPath: join(repoRoot, "lexicon", "source-locks", "technical-wikidata.json"),
         outDir: join(lexiconDir, "technical")
       });
+
+      if (lexiconPacks === "corrupt") {
+        const shardPath = join(lexiconDir, "core", "shards", "0000.jsonl");
+        const bytes = new Uint8Array(await readFile(shardPath));
+        const corruptBytes = new Uint8Array(bytes.byteLength + 1);
+        corruptBytes.set(bytes);
+        corruptBytes[corruptBytes.length - 1] = 10;
+        await writeFile(shardPath, corruptBytes);
+      } else if (lexiconPacks === "incompatible") {
+        const coreManifestPath = join(lexiconDir, "core", "manifest.json");
+        const manifest = JSON.parse(await readFile(coreManifestPath, "utf8"));
+        manifest.formatVersion = 2;
+        await writeFile(coreManifestPath, JSON.stringify(manifest) + "\n", "utf8");
+      }
     }
 
     const manifestPath = join(extensionDir, "manifest.json");

@@ -15,7 +15,7 @@
         return "内置本地词典校验失败。请在 TranslateFlow 设置 > 本地词典检查状态。";
       }
       if (code === "LEXICON_INCOMPATIBLE") {
-        return "内置本地词典与当前扩展版本不兼容。请更新或重新安装词典资源。";
+        return "内置本地词典与当前扩展版本不兼容。请在 TranslateFlow 设置 > 本地词典检查状态，并更新扩展或重新安装词典资源。";
       }
       return "本地词典暂时不可用，请重试。";
     }
