@@ -25,6 +25,18 @@ export async function prepareStarDictWorkerInput({
     dictFile,
     format === "dictzip" ? "DICT.DZ" : "DICT"
   );
+  if (
+    format === "dictzip" &&
+    (
+      typeof dictFile.slice !== "function" ||
+      typeof dictFile.stream !== "function"
+    )
+  ) {
+    throw ioError(
+      "STARDICT_IMPORT_INPUT",
+      "DICT.DZ file must support Blob streaming."
+    );
+  }
   if (synFile !== undefined && synFile !== null) {
     assertBlob(synFile, "SYN");
   }
