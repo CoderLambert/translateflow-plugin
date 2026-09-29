@@ -4,7 +4,7 @@ import {
   normalizeLexicalKey
 } from "../../shared/lexical.js";
 import { PACK_ERROR_CODES } from "../../shared/pack-manager.js";
-import { validateInstalledManifest } from "../packs/health.js";
+import { validateInstalledManifestValue } from "../packs/health.js";
 import { ByteBoundedLru } from "./lru.js";
 import {
   TflexReaderError,
@@ -159,10 +159,29 @@ async function loadMetadata({
   cryptoProvider,
   readerVersion
 }) {
+  const manifestDescriptor = snapshot.files.find(
+    (file) => file.role === "manifest" && file.path === "manifest.json"
+  );
+  if (!manifestDescriptor) {
+    throw corrupt(snapshot.packId, "manifest.json", "Installed TFLex manifest descriptor is missing");
+  }
+  const manifestBytes = await safeReadFile({
+    store,
+    snapshot,
+    path: manifestDescriptor.path
+  });
+  await verifyFileDescriptor(
+    manifestDescriptor,
+    manifestBytes,
+    cryptoProvider,
+    snapshot.packId
+  );
+
   let manifest;
   try {
-    manifest = await validateInstalledManifest({
-      store,
+    manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
+    manifest = validateInstalledManifestValue({
+      manifest,
       snapshot,
       readerVersion
     });
