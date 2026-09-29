@@ -5,6 +5,9 @@ import {
   createOpfsImportQuarantine
 } from "../shared/opfs-import-quarantine.js";
 import {
+  reclaimStaleImportQuarantine
+} from "./import-quarantine-reclaimer.js";
+import {
   prepareStarDictWorkerInput,
   waitForStarDictWorkerReady
 } from "./stardict-import-controller-io.js";
@@ -17,6 +20,8 @@ export function createStarDictImportController({
   WorkerCtor = globalThis.Worker,
   cryptoProvider = globalThis.crypto,
   quarantine = createOpfsImportQuarantine(),
+  reclaimQuarantine = () =>
+    reclaimStaleImportQuarantine({ quarantine }),
   onProgress = () => {},
   workerUrl = runtime?.getURL?.(
     "src/options/workers/stardict-import-worker.js"
@@ -52,6 +57,8 @@ export function createStarDictImportController({
         "Another StarDict import is already running."
       );
     }
+
+    await reclaimQuarantine().catch(() => {});
 
     const requestId = makeRequestId(cryptoProvider);
     const worker = new WorkerCtor(
