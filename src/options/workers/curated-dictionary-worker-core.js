@@ -11,6 +11,9 @@ import {
   buildEcdictCuratedLocalTflex
 } from "../../background/packs/importers/ecdict-local-adapter.js";
 import {
+  fetchCuratedDictionarySource
+} from "../../background/providers/curated-dictionary-network.js";
+import {
   responseByteChunks
 } from "../../background/packs/importers/ecdict-csv.js";
 import {
@@ -26,15 +29,19 @@ const STAGE_ORDER = Object.freeze([
 export function createCuratedDictionaryWorkerHandler({
   postMessage,
   quarantine = createOpfsImportQuarantine(),
-  fetchImpl = globalThis.fetch,
+  network = {
+    fetchSource: fetchCuratedDictionarySource
+  },
   cryptoProvider = globalThis.crypto,
   tokenFactory = makeImportQuarantineToken
 } = {}) {
   if (typeof postMessage !== "function") {
     throw new Error("Curated dictionary worker requires postMessage.");
   }
-  if (typeof fetchImpl !== "function") {
-    throw new Error("Curated dictionary worker requires fetch.");
+  if (typeof network?.fetchSource !== "function") {
+    throw new Error(
+      "Curated dictionary worker requires a network provider."
+    );
   }
 
   let active = null;
@@ -74,10 +81,7 @@ export function createCuratedDictionaryWorkerHandler({
         expectedBytes: source.downloadBytes
       });
 
-      const response = await fetchImpl(source.downloadUrl, {
-        method: "GET",
-        cache: "no-store",
-        redirect: "error",
+      const response = await network.fetchSource(source, {
         signal: controller.signal
       });
       validateResponse(response, source);
