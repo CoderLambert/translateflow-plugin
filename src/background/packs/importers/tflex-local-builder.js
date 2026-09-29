@@ -9,7 +9,7 @@ import {
   LOCAL_IMPORT_SEMANTIC_PROFILE,
   LOCAL_IMPORT_SOURCE_ID,
   makeLocalImportFingerprintPayload,
-  validateLocalTflexImport
+  validateOwnedLocalTflexBuild
 } from "../local-import.js";
 
 const encoder = new TextEncoder();
@@ -93,7 +93,7 @@ export async function buildLocalIndexedTflex({
     "index.dat": indexed.indexBytes,
     "entries.dat": indexed.entriesBytes
   };
-  const validated = await validateLocalTflexImport({
+  const validated = await validateOwnedLocalTflexBuild({
     files: output,
     cryptoProvider
   });

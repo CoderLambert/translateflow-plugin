@@ -205,9 +205,9 @@ function normalizePlainInputs({
   }
 
   return {
-    ifoBytes: new Uint8Array(ifo),
-    idxBytes: new Uint8Array(idx),
-    dictBytes: new Uint8Array(dict),
-    ...(syn ? { synBytes: new Uint8Array(syn) } : {})
+    ifoBytes: ifo,
+    idxBytes: idx,
+    dictBytes: dict,
+    ...(syn ? { synBytes: syn } : {})
   };
 }
