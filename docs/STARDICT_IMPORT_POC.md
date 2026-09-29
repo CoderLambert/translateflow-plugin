@@ -26,7 +26,7 @@ Each projected row contains:
 - optional source-provided aliases;
 - source reference.
 
-It deliberately does **not** label arbitrary StarDict plain text as a translation, definition, sense or example. Semantic mapping into TFLex is a later #124 unit and must be justified by source metadata/user import configuration.
+It deliberately does **not** label arbitrary StarDict plain text as a translation, definition, sense or example. The projection remains semantic-neutral; conversion into TFLex is a separate explicit-recipe stage described below and requires source metadata/user import configuration.
 
 ## Fail-closed security policy
 
@@ -76,7 +76,7 @@ These are parser safety ceilings, not product quota promises.
 
 ## Explicit bilingual semantic mapping POC
 
-The next POC stage may convert the safe plain-text projection into TFLex **only** when a separate import recipe explicitly declares the dictionary semantics.
+The semantic-mapping POC converts the safe plain-text projection into TFLex **only** when a separate import recipe explicitly declares the dictionary semantics.
 
 Required recipe shape:
 
