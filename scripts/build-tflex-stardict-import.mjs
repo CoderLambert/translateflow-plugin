@@ -21,6 +21,7 @@ import {
   validateStarDictImportRecipe
 } from "../src/background/packs/importers/stardict-semantic.js";
 import { validateTflexRecord } from "../src/background/lexical/tflex-integrity.js";
+import { makeLocalImportFingerprintPayload } from "../src/background/packs/local-import.js";
 import { isSafePackIdentifier } from "../src/shared/pack-manager.js";
 
 export {
@@ -290,27 +291,13 @@ export function makeStarDictFingerprintPayload({
   sources,
   files
 }) {
-  return {
-    formatVersion: TFLEX_FORMAT_VERSION,
-    normalizationVersion: TFLEX_NORMALIZATION_VERSION,
+  return makeLocalImportFingerprintPayload({
     packId,
     packVersion,
-    profile: TFLEX_OPFS_INDEXED_PROFILE,
-    distributionStatus: "user-import-only",
     semanticProfile,
-    sources: [...sources]
-      .sort((a, b) => compareText(a.id, b.id))
-      .map((source) => ({
-        id: source.id,
-        version: source.version,
-        provenance: source.provenance,
-        semanticProfile: source.semanticProfile,
-        licenseId: source.license?.id
-      })),
-    files: [...files]
-      .sort(compareFile)
-      .map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
-  };
+    sources,
+    files
+  });
 }
 
 function findIndexEntry(entries, key) {
@@ -376,10 +363,6 @@ function compareText(a, b) {
   const left = String(a ?? "");
   const right = String(b ?? "");
   return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function compareFile(a, b) {
-  return compareText(a.path, b.path) || compareText(a.role, b.role);
 }
 
 function parseArgs(argv) {
