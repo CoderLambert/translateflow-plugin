@@ -35,6 +35,7 @@ The parser rejects:
 - unsupported versions or rich field types;
 - malformed/non-DEFLATE `.dict.dz` gzip headers;
 - `.dict.dz` files without a structurally valid dictzip `RA` extra subfield;
+- dictzip `RA` versions other than v1;
 - inconsistent/duplicate dictzip chunk metadata;
 - compressed `.dict.dz` files above the input ceiling or decompressed output above the DICT ceiling;
 - 64-bit offsets until explicitly implemented and tested;
