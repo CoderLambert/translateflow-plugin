@@ -84,7 +84,10 @@ export function createCuratedDictionaryWorkerHandler({
       const response = await network.fetchSource(source, {
         signal: controller.signal
       });
-      validateResponse(response, source);
+      validateCuratedDictionaryResponse(
+        response,
+        source
+      );
 
       token = tokenFactory();
       await assertFreshToken(quarantine, token);
@@ -194,7 +197,10 @@ export function createCuratedDictionaryWorkerHandler({
   });
 }
 
-function validateResponse(response, source) {
+export function validateCuratedDictionaryResponse(
+  response,
+  source
+) {
   if (!response?.ok) {
     throw workerError(
       "CURATED_DOWNLOAD",
@@ -205,19 +211,6 @@ function validateResponse(response, source) {
     throw workerError(
       "CURATED_DOWNLOAD_REDIRECT",
       "Curated dictionary download did not remain on the locked artifact URL."
-    );
-  }
-  const length = Number(
-    response.headers?.get?.("content-length")
-  );
-  if (
-    Number.isFinite(length) &&
-    length > 0 &&
-    length !== source.downloadBytes
-  ) {
-    throw workerError(
-      "CURATED_DOWNLOAD_SIZE",
-      `ECDICT content length mismatch: expected ${source.downloadBytes}, got ${length}.`
     );
   }
 }
