@@ -3,13 +3,20 @@ import {
   expect
 } from "./support/extension-fixture.mjs";
 
-test("Dedicated StarDict worker stages OPFS quarantine and background revalidates before activation", async ({ harness }) => {
+test("Settings StarDict controller transfers into a Dedicated Worker and activates only after background revalidation", async ({ harness }) => {
   const page = await harness.context.newPage();
   await page.goto(
     `chrome-extension://${harness.extensionId}/options.html`
   );
 
   const result = await page.evaluate(async () => {
+    const {
+      createStarDictImportController
+    } = await import(
+      chrome.runtime.getURL(
+        "src/options/stardict-import-controller.js"
+      )
+    );
     const encoder = new TextEncoder();
 
     function concatBytes(chunks) {
@@ -26,7 +33,7 @@ test("Dedicated StarDict worker stages OPFS quarantine and background revalidate
       return output;
     }
 
-    function makeFixture() {
+    function makeFixtureFiles() {
       const word = "workerlexeme";
       const translation = "工作词条";
       const wordBytes = encoder.encode(word);
@@ -51,88 +58,57 @@ test("Dedicated StarDict worker stages OPFS quarantine and background revalidate
       ].join("\n");
 
       return {
-        ifoBytes: encoder.encode(ifoText),
-        idxBytes,
-        dictBytes,
-        recipe: {
-          schemaVersion: 1,
-          semanticProfile:
-            "en-zh-plain-text-translation-v1",
-          packId: "local-worker-e2e",
-          packVersion: "fixture-v1",
-          sourceLanguage: "en",
-          targetLanguage: "zh-CN",
-          dictionary: {
-            bookname: "Worker E2E",
-            sourceId: "worker-e2e",
-            sourceVersion: "fixture-v1"
-          },
-          assertions: {
-            plainTextRepresentsTargetTranslation: true,
-            localUseOnly: true
-          }
-        }
+        ifoFile: new File(
+          [encoder.encode(ifoText)],
+          "fixture.ifo"
+        ),
+        idxFile: new File(
+          [idxBytes],
+          "fixture.idx"
+        ),
+        dictFile: new File(
+          [dictBytes],
+          "fixture.dict"
+        )
       };
     }
 
-    const worker = new Worker(
-      chrome.runtime.getURL(
-        "src/options/workers/stardict-import-worker.js"
-      ),
-      { type: "module" }
-    );
-    const requestId = crypto.randomUUID();
     const progress = [];
+    const controller =
+      createStarDictImportController({
+        onProgress(event) {
+          progress.push({
+            phase: event.phase,
+            path: event.path || ""
+          });
+        }
+      });
 
     try {
-      const ready = await new Promise((resolve, reject) => {
-        const timer = setTimeout(
-          () => reject(new Error("StarDict worker timed out")),
-          15_000
-        );
-        worker.addEventListener("message", (event) => {
-          const message = event.data;
-          if (message?.requestId !== requestId) return;
-          if (message.type === "stardict-import:progress") {
-            progress.push({
-              phase: message.phase,
-              path: message.path || ""
-            });
-            return;
-          }
-          if (message.type === "stardict-import:ready") {
-            clearTimeout(timer);
-            resolve(message);
-            return;
-          }
-          if (message.type === "stardict-import:error") {
-            clearTimeout(timer);
-            reject(
-              new Error(
-                message.errorCode
-                  ? message.error + " (" + message.errorCode + ")"
-                  : message.error
-              )
-            );
+      const imported =
+        await controller.importDictionary({
+          format: "plain",
+          ...makeFixtureFiles(),
+          recipe: {
+            schemaVersion: 1,
+            semanticProfile:
+              "en-zh-plain-text-translation-v1",
+            packId: "local-worker-e2e",
+            packVersion: "fixture-v1",
+            sourceLanguage: "en",
+            targetLanguage: "zh-CN",
+            dictionary: {
+              bookname: "Worker E2E",
+              sourceId: "worker-e2e",
+              sourceVersion: "fixture-v1"
+            },
+            assertions: {
+              plainTextRepresentsTargetTranslation: true,
+              localUseOnly: true
+            }
           }
         });
 
-        worker.postMessage({
-          type: "stardict-import:start",
-          requestId,
-          input: {
-            format: "plain",
-            ...makeFixture()
-          }
-        });
-      });
-
-      const commitRequestId = crypto.randomUUID();
-      const commit = await chrome.runtime.sendMessage({
-        type: "DICTIONARY_LOCAL_IMPORT_COMMIT",
-        token: ready.token,
-        requestId: commitRequestId
-      });
       const lookup = await chrome.runtime.sendMessage({
         type: "LEXICAL_LOOKUP",
         text: "workerlexeme",
@@ -148,26 +124,33 @@ test("Dedicated StarDict worker stages OPFS quarantine and background revalidate
           await root.getDirectoryHandle(
             "dictionary-import-quarantine"
           );
-        await quarantine.getDirectoryHandle(ready.token);
+        await quarantine.getDirectoryHandle(
+          imported.ready.token
+        );
         tokenStillExists = true;
       } catch (error) {
-        if (error?.name !== "NotFoundError") throw error;
+        if (error?.name !== "NotFoundError") {
+          throw error;
+        }
       }
 
       return {
         ready: {
-          token: ready.token,
-          packId: ready.packId,
-          packVersion: ready.packVersion,
-          fingerprint: ready.fingerprint
+          token: imported.ready.token,
+          packId: imported.ready.packId,
+          packVersion: imported.ready.packVersion,
+          fingerprint: imported.ready.fingerprint
         },
         progress,
-        commit,
+        commit: imported.commit,
         lookup,
-        tokenStillExists
+        tokenStillExists,
+        finalPhase: controller.phase,
+        activeRequestId:
+          controller.activeRequestId
       };
     } finally {
-      worker.terminate();
+      controller.dispose();
     }
   });
 
@@ -177,10 +160,16 @@ test("Dedicated StarDict worker stages OPFS quarantine and background revalidate
     /^sha256:[a-f0-9]{64}$/
   );
   expect(
-    result.progress.some(
-      (item) => item.phase === "convert"
-    )
-  ).toBe(true);
+    result.progress.map((item) => item.phase)
+  ).toEqual([
+    "read",
+    "convert",
+    "stage",
+    "stage",
+    "stage",
+    "commit",
+    "done"
+  ]);
   expect(
     result.progress.filter(
       (item) => item.phase === "stage"
@@ -194,6 +183,8 @@ test("Dedicated StarDict worker stages OPFS quarantine and background revalidate
   expect(result.commit.ok).toBe(true);
   expect(result.commit.status).toBe("imported");
   expect(result.tokenStillExists).toBe(false);
+  expect(result.finalPhase).toBe("");
+  expect(result.activeRequestId).toBe("");
 
   expect(result.lookup.ok).toBe(true);
   expect(result.lookup.status).toBe("candidates");
