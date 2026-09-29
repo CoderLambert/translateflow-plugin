@@ -112,6 +112,12 @@ export async function compileTflexStarDictImport({
     packVersion: manifest.packVersion,
     semanticProfile: manifest.semanticProfile,
     dictionary: projection.dictionary,
+    importInput: {
+      dictFileBytes: projection.report.input.dictFileBytes,
+      dictBytes: projection.report.input.dictBytes,
+      dictCompression: projection.report.input.dictCompression,
+      dictzip: projection.report.input.dictzip
+    },
     sourceEntryCount: projection.entries.length,
     sourceAliasCount: manifest.sourceAliasCount,
     recordCount: records.length,
