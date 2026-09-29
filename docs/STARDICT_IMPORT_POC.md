@@ -88,10 +88,11 @@ Other boundaries remain unchanged:
 
 ## Next #124 units
 
-1. add the browser-side StarDict file-set adapter that feeds validated plain `.dict` bytes into the existing semantic recipe/TFLex/local-import transaction;
+1. place large StarDict conversion behind a cancellable browser execution boundary with progress reporting so synchronous parsing does not block the options UI/service worker;
 2. implement separately bounded browser `.dict.dz` decompression with cancellation and decompressed-output ceilings before enabling compressed StarDict import;
-3. extract the approved MDict v2 parser into the same browser-safe/shared-core shape;
-4. validate representative real user-owned dictionaries and measure import time/output bytes/cold-warm lookup cost before production commitment.
+3. add file-set/recipe UX that validates matching `.ifo/.idx/.dict/.syn` selections before starting conversion;
+4. extract the approved MDict v2 parser/converter into the same browser-safe/shared-core shape;
+5. validate representative real user-owned dictionaries and measure import time/output bytes/cold-warm lookup cost before production commitment.
 
 
 ## Explicit bilingual semantic mapping POC
@@ -159,4 +160,8 @@ Properties:
 - output satisfies the existing optional-pack manifest health contract;
 - a POC indexed reader verifies the output can participate in the existing Lexical Gateway candidate/provenance model.
 
-The build-side POC reader remains validation infrastructure only. The emitted three-file TFLex pack is now compatible with the production local-import transaction and dynamic active-pack reader. The remaining StarDict product gap is the browser-side parser/converter adapter that feeds those validated bytes into the transaction; imported content is never activated before that transaction succeeds.
+The build-side POC reader remains validation infrastructure only. The browser-safe plain-StarDict adapter now accepts bounded `.ifo/.idx/.dict/.syn` bytes, applies the shared semantic recipe, builds the same `manifest.json/index.dat/entries.dat` bytes as the Node compiler, revalidates them through the production local-import trust boundary, and can forward them into the atomic local-import transaction.
+
+The Node compiler and browser adapter share the same semantic mapping and indexed TFLex builder; parity tests require byte-identical output for the same plain StarDict fixture.
+
+Compressed `.dict.dz` remains intentionally disabled in the browser adapter until a bounded/cancellable browser decompression layer is certified. Imported content is never activated before the local transaction succeeds.
