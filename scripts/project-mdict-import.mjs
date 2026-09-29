@@ -13,9 +13,11 @@ import {
   MDictImportError,
   adler32,
   mdictFail,
-  requireMdictAtMost,
-  sanitizeMdictRecord
+  requireMdictAtMost
 } from "../src/background/packs/importers/mdict-contract.js";
+import {
+  sanitizeMdictRecord
+} from "../src/background/packs/importers/mdict-metadata.js";
 import {
   projectMdictV2PlainText
 } from "../src/background/packs/importers/mdict-core.js";
