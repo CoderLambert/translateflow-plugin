@@ -4,7 +4,7 @@ import { createPackStateStore } from "../packs/state.js";
 import { createOpfsIndexedTflexReader } from "./opfs-indexed-reader.js";
 
 export function createActiveOpfsPackReader({
-  stateStore = createPackStateStore(),
+  stateStore,
   store = createOpfsPackStore(),
   readerFactory = createOpfsIndexedTflexReader,
   cryptoProvider = globalThis.crypto,
@@ -12,7 +12,8 @@ export function createActiveOpfsPackReader({
   cacheMaxEntries = 64,
   cacheMaxBytes = 2 * 1024 * 1024
 } = {}) {
-  if (!stateStore?.read) throw new Error("active OPFS reader requires a pack state store");
+  const resolvedStateStore = stateStore || createDefaultStateStore();
+  if (!resolvedStateStore?.read) throw new Error("active OPFS reader requires a pack state store");
   if (!store?.readFile || !store?.readFileRange) {
     throw new Error("active OPFS reader requires an OPFS pack store");
   }
@@ -27,7 +28,7 @@ export function createActiveOpfsPackReader({
   async function activeEntries() {
     let state;
     try {
-      state = await stateStore.read();
+      state = await resolvedStateStore.read();
       lastStateError = null;
     } catch (error) {
       lastStateError = makeDiagnostic("", error, LEXICAL_ERROR_CODES.STORAGE);
@@ -146,6 +147,22 @@ export function createActiveOpfsPackReader({
             key,
             ...(typeof reader.stats === "function" ? reader.stats() : {})
           }))
+      };
+    }
+  });
+}
+
+function createDefaultStateStore() {
+  const storageArea = globalThis.chrome?.storage?.local;
+  if (storageArea?.get && storageArea?.set) {
+    return createPackStateStore({ storageArea });
+  }
+  return Object.freeze({
+    async read() {
+      return {
+        version: 1,
+        catalogSequences: {},
+        packs: {}
       };
     }
   });
