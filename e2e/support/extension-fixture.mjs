@@ -101,7 +101,8 @@ export const test = base.extend({
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     manifest.host_permissions = [
       "http://127.0.0.1/*",
-      "https://api.deepseek.com/*"
+      "https://api.deepseek.com/*",
+      "https://raw.githubusercontent.com/*"
     ];
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 

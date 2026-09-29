@@ -119,6 +119,17 @@ export function installedPackMeta(entry) {
     if (display.formatLabel) {
       result.push(display.formatLabel);
     }
+  } else if (display?.kind === "curated-upstream") {
+    result.push("精选上游", "上游 / 社区");
+    if (display.formatLabel) {
+      result.push(display.formatLabel);
+    }
+    if (display.sourceLabel) {
+      result.push(`来源 ${display.sourceLabel}`);
+    }
+    if (display.licenseLabel) {
+      result.push(`许可 ${display.licenseLabel}`);
+    }
   }
   if (active.packVersion) {
     result.push(
