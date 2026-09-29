@@ -322,6 +322,10 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(await chip.evaluate((node) => getComputedStyle(node).fontSize)).not.toBe("1px");
     await chip.click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
+    await expect(page.locator(".tf-selection-source")).toBeVisible();
+    await expect(page.locator(".tf-selection-source")).toContainText(
+      "Selection translation should reuse the same provider configuration"
+    );
     expect(harness.server.calls).toHaveLength(1);
 
     await page.getByRole("button", { name: "关闭" }).click();
@@ -345,6 +349,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await selectElementText(page, "#lexical");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("终端复用器");
+    await expect(page.locator(".tf-selection-source")).toBeHidden();
     await expect(page.locator(".tf-selection-result")).not.toContainText("WRONG PAGE CACHE");
     expect(harness.server.calls).toHaveLength(1);
 
@@ -424,7 +429,10 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(senses.nth(0)).toContainText("持续存在的");
     await expect(senses.nth(1)).toContainText("顽强的");
     await expect(senses.nth(0)).toContainText("adjective");
+    await expect(page.locator(".tf-selection-source")).toBeHidden();
     await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
+    const visibleActions = page.locator(".tf-selection-actions button:visible");
+    await expect(visibleActions).toHaveText(["AI 详解", "复制"]);
     expect(harness.server.calls).toHaveLength(0);
 
     harness.server.setDelay(250);
