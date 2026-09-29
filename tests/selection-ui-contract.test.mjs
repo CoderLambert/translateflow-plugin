@@ -39,6 +39,10 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(popover, /renderStructuredResult/);
   assert.match(popover, /showAiDetailResult/);
   assert.match(popover, /AI 详解/);
+  assert.match(popover, /label: "处理所选文本"/);
+  assert.match(popover, /duplicatesHeadword/);
+  assert.match(popover, /tf-selection-action-primary/);
+  assert.match(popover, /tf-selection-action-quiet/);
   assert.match(popover, /function reposition\(\)/);
   assert.match(tokens, /\.tf-selection-panel[\s\S]*max-height:[^;]+;/);
   assert.match(tokens, /\.tf-selection-result[\s\S]*overflow:\s*auto;/);
@@ -48,7 +52,10 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(emptyStyles, /\.tf-selection-empty/);
   assert.match(emptyStyles, /\.tf-selection-empty-actions/);
   assert.match(lexicalStyles, /\.tf-selection-dictionary-entry/);
+  assert.match(lexicalStyles, /\.tf-selection-entry-provenance/);
   assert.match(lexicalStyles, /\.tf-selection-more-entries/);
+  assert.match(lexicalStyles, /\.tf-selection-action-primary/);
+  assert.match(lexicalStyles, /\.tf-selection-action-quiet/);
 });
 
 test("Selection AI detail preserves the local card across loading, failure and cancellation", async () => {
@@ -70,15 +77,18 @@ test("Selection AI detail preserves the local card across loading, failure and c
 });
 
 test("Selection result model separates local provenance and AI explanation", async () => {
-  const [controller, resultModel] = await Promise.all([
+  const [controller, resultModel, popover] = await Promise.all([
     source("src/content/selection/controller.js"),
-    source("src/content/selection/result-model.js")
+    source("src/content/selection/result-model.js"),
+    source("src/content/selection/popover.js")
   ]);
 
   assert.match(resultModel, /技术词条/);
   assert.match(resultModel, /本地词典/);
   assert.match(resultModel, /AI 辅助/);
   assert.match(resultModel, /词典包 ·/);
+  assert.match(popover, /正在查词/);
+  assert.match(controller, /正在结合上下文解释/);
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(controller, /popover\.showEmpty/);
   assert.match(controller, /forceTranslation: true/);
@@ -107,4 +117,14 @@ test("Selection no-hit is neutral while local lexicon failures keep diagnostic e
   assert.match(messages, /LEXICON_CORRUPT/);
   assert.match(messages, /LEXICON_INCOMPATIBLE/);
   assert.match(controller, /popover\.showError/);
+});
+
+test("Selection result hierarchy renders dictionary content before provenance", async () => {
+  const renderer = await source("src/content/selection/result-renderer.js");
+
+  const headwordIndex = renderer.indexOf("renderHeadword(container, result)");
+  const compactIndex = renderer.indexOf("renderCompactMeaning(container, result)");
+  const badgesIndex = renderer.indexOf("renderBadges(container, result.badges)");
+  assert.ok(headwordIndex >= 0 && compactIndex > headwordIndex && badgesIndex > compactIndex);
+  assert.match(renderer, /tf-selection-entry-provenance/);
 });
