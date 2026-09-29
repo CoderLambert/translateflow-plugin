@@ -150,8 +150,8 @@ test("StarDict worker refuses to overwrite an existing quarantine token", async 
     result.errorCode,
     "STARDICT_WORKER_TOKEN_COLLISION"
   );
-  assert.equal(quarantine.removed.length, 1);
-  assert.equal(quarantine.tokens.has(token), false);
+  assert.equal(quarantine.removed.length, 0);
+  assert.equal(quarantine.tokens.has(token), true);
 });
 
 function recipeFixture() {
