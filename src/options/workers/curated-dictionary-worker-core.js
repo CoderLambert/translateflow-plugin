@@ -8,14 +8,11 @@ import {
   createOpfsImportQuarantine
 } from "../../shared/opfs-import-quarantine.js";
 import {
-  buildEcdictCuratedLocalTflex
-} from "../../background/packs/importers/ecdict-local-adapter.js";
+  buildCuratedDictionaryLocalTflex
+} from "../../background/packs/importers/curated-local-adapter.js";
 import {
   fetchCuratedDictionarySource
 } from "../../background/providers/curated-dictionary-network.js";
-import {
-  responseByteChunks
-} from "../../background/packs/importers/ecdict-csv.js";
 import {
   CURATED_WORKER_MESSAGES
 } from "./curated-dictionary-worker-protocol.js";
@@ -93,10 +90,8 @@ export function createCuratedDictionaryWorkerHandler({
       await assertFreshToken(quarantine, token);
       ownsToken = true;
 
-      const built = await buildEcdictCuratedLocalTflex({
-        chunks: responseByteChunks(response, {
-          signal: controller.signal
-        }),
+      const built = await buildCuratedDictionaryLocalTflex({
+        response,
         source,
         signal: controller.signal,
         cryptoProvider,
@@ -204,7 +199,7 @@ export function validateCuratedDictionaryResponse(
   if (!response?.ok) {
     throw workerError(
       "CURATED_DOWNLOAD",
-      `ECDICT download failed with HTTP ${response?.status || "error"}.`
+      `${source?.label || "Curated dictionary"} download failed with HTTP ${response?.status || "error"}.`
     );
   }
   if (response.url && response.url !== source.downloadUrl) {
