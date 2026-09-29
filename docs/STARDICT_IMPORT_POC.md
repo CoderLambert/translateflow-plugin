@@ -66,6 +66,19 @@ For `.dict.dz`, TranslateFlow validates the dictzip gzip/RA header first and the
 
 ## Runtime/package boundary
 
+The reviewed StarDict parser/security rules now live in browser-safe production modules under `src/background/packs/importers/`:
+
+- `stardict-contract.js` — limits, typed errors and Web byte helpers;
+- `stardict-binary.js` — bounded `.idx` and `.syn` parsing;
+- `stardict-dictzip.js` — strict dictzip gzip/RA header validation;
+- `stardict-core.js` — `.ifo` validation plus semantic-neutral plain-text projection.
+
+These modules use Web-standard `TextDecoder`, `TextEncoder`, `Uint8Array`, `ArrayBuffer` and `DataView` inputs only. They do not import `node:*`, use `Buffer`, or touch the filesystem/network.
+
+The Node POC is now only an adapter for file I/O, bounded Node gzip streaming and CLI/report output. It re-exports the exact browser parser functions, so Node validation and extension runtime cannot drift into two parser implementations.
+
+Other boundaries remain unchanged:
+
 - no imported dictionary content enters the base extension;
 - no fixture or POC output is copied by production packaging;
 - no imported HTML/CSS/JS is rendered or executed;
@@ -75,10 +88,10 @@ For `.dict.dz`, TranslateFlow validates the dictzip gzip/RA header first and the
 
 ## Next #124 units
 
-1. implement the MDict metadata/content POC with equivalent fail-closed limits;
-2. connect converted local TFLex to the existing pack storage/lifecycle only after parser/security review;
-3. add explicit import cancellation / failure cleanup and isolation;
-4. measure import time, output bytes and lookup cost before production commitment.
+1. add the browser-side StarDict file-set adapter that feeds validated plain `.dict` bytes into the existing semantic recipe/TFLex/local-import transaction;
+2. implement separately bounded browser `.dict.dz` decompression with cancellation and decompressed-output ceilings before enabling compressed StarDict import;
+3. extract the approved MDict v2 parser into the same browser-safe/shared-core shape;
+4. validate representative real user-owned dictionaries and measure import time/output bytes/cold-warm lookup cost before production commitment.
 
 
 ## Explicit bilingual semantic mapping POC
