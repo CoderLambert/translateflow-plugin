@@ -54,8 +54,8 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(lexicalStyles, /\.tf-selection-dictionary-entry/);
   assert.match(lexicalStyles, /\.tf-selection-entry-provenance/);
   assert.match(lexicalStyles, /\.tf-selection-more-entries/);
-  assert.match(tokens, /\.tf-selection-action-primary/);
-  assert.match(tokens, /\.tf-selection-action-quiet/);
+  assert.match(lexicalStyles, /\.tf-selection-action-primary/);
+  assert.match(lexicalStyles, /\.tf-selection-action-quiet/);
 });
 
 test("Selection AI detail preserves the local card across loading, failure and cancellation", async () => {
@@ -86,7 +86,7 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(resultModel, /本地词典/);
   assert.match(resultModel, /AI 辅助/);
   assert.match(resultModel, /词典包 ·/);
-  assert.match(controller, /正在查词/);
+  assert.match(popover, /正在查词/);
   assert.match(controller, /正在结合上下文解释/);
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(controller, /popover\.showEmpty/);
