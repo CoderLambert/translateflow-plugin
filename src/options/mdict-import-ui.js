@@ -1,8 +1,10 @@
 import {
   MDICT_IMPORT_ERROR,
-  MDICT_IMPORT_LIMITS,
-  parseMdictHeader
+  MDICT_IMPORT_LIMITS
 } from "../background/packs/importers/mdict-contract.js";
+import {
+  parseMdictHeader
+} from "../background/packs/importers/mdict-metadata.js";
 import {
   createMdictImportController
 } from "./mdict-import-controller.js";
