@@ -5,8 +5,11 @@ import {
   starDictFail
 } from "./stardict-contract.js";
 
-export function parseStarDictDictzipHeader(input) {
-  const bytes = starDictBytes(input, "DICT.DZ header");
+export function inspectStarDictDictzipHeaderPrefix(input) {
+  const bytes = starDictBytes(
+    input,
+    "DICT.DZ header prefix"
+  );
   if (bytes.byteLength < 12) {
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
@@ -39,7 +42,18 @@ export function parseStarDictDictzipHeader(input) {
   }
 
   const extraLength = readStarDictUint16Le(bytes, 10);
-  const extraEnd = 12 + extraLength;
+  return {
+    extraLength,
+    headerBytes: 12 + extraLength
+  };
+}
+
+export function parseStarDictDictzipHeader(input) {
+  const bytes = starDictBytes(input, "DICT.DZ header");
+  const {
+    extraLength,
+    headerBytes: extraEnd
+  } = inspectStarDictDictzipHeaderPrefix(bytes);
   if (
     extraLength < 4 ||
     bytes.byteLength < extraEnd
