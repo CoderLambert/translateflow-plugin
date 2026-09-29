@@ -15,6 +15,7 @@
     "build:lexicon:release": "node scripts/build-release-lexicon.mjs",
     "certify:lexicon": "node scripts/certify-lexical-release.mjs",
     "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs",
+    "lock:kaikki": "node scripts/lock-kaikki-source.mjs",
     "setup:lexicon": "node scripts/setup-lexicon.mjs",
     "benchmark:lexical": "node scripts/benchmark-lexical-quality.mjs",
     "build:extension": "node scripts/build-extension.mjs",

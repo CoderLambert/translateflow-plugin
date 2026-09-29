@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-unlocked",
+  "sourceId": "kaikki-enwiktionary-raw",
+  "role": "rich-en-zh-poc-input",
+  "edition": "enwiktionary",
+  "dumpDate": "2026-09-02",
+  "extractedAt": "2026-09-25",
+  "rawDataUrl": "https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz",
+  "rawDataUrlMutable": true,
+  "format": "wiktextract-jsonl-gzip",
+  "advertisedSize": {
+    "compressed": "2.8 GB",
+    "uncompressed": "23.9 GB"
+  },
+  "extractor": {
+    "wiktextractRepository": "https://github.com/tatuylonen/wiktextract",
+    "wiktextractCommit": "1a05e46f9efbccda6a2b2f8e21b30a9c0c46513a",
+    "wikitextprocessorRepository": "https://github.com/tatuylonen/wikitextprocessor",
+    "wikitextprocessorCommit": "e3d6d4edb77618f4d6680edc66e3f774bea59820"
+  },
+  "evidence": {
+    "snapshotMetadata": "https://kaikki.org/dictionary/rawdata.html",
+    "wiktionaryCopyright": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights"
+  },
+  "license": {
+    "sourceLicenses": [
+      "CC-BY-SA-4.0",
+      "GFDL-1.1-or-later"
+    ],
+    "pocReuseLicense": "CC-BY-SA-4.0",
+    "attributionRequired": true,
+    "shareAlikeRequired": true,
+    "legalReviewStatus": "pending-field-projection-audit"
+  },
+  "packaging": {
+    "rawInputRole": "build-only",
+    "productionExtensionEligible": false,
+    "downloadablePackDecision": "pending-poc"
+  }
+}
