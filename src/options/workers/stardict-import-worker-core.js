@@ -5,6 +5,9 @@ import {
   createOpfsImportQuarantine
 } from "../../shared/opfs-import-quarantine.js";
 import {
+  acquireImportQuarantineLease
+} from "../../shared/import-quarantine-lock.js";
+import {
   buildStarDictDictzipLocalTflex,
   buildStarDictPlainLocalTflex
 } from "../../background/packs/importers/stardict-local-adapter.js";
@@ -24,6 +27,7 @@ export function createStarDictImportWorkerHandler({
   postMessage,
   quarantine = createOpfsImportQuarantine(),
   cryptoProvider = globalThis.crypto,
+  lockManager = globalThis.navigator?.locks,
   tokenFactory = makeImportQuarantineToken,
   buildPlain = buildStarDictPlainLocalTflex,
   buildDictzip = buildStarDictDictzipLocalTflex
@@ -72,11 +76,16 @@ export function createStarDictImportWorkerHandler({
     active = { requestId, controller };
     let token = "";
     let ownsToken = false;
+    let lease = null;
 
     try {
       const input = validateStartInput(message.input);
       token = tokenFactory();
       await assertFreshToken(quarantine, token);
+      lease = await acquireImportQuarantineLease(
+        token,
+        { lockManager }
+      );
       ownsToken = true;
       emitProgress(postMessage, requestId, "convert");
 
@@ -171,6 +180,7 @@ export function createStarDictImportWorkerHandler({
       postMessage(payload);
       return payload;
     } finally {
+      lease?.release?.();
       if (active?.requestId === requestId) {
         active = null;
       }
