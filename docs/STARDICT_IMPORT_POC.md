@@ -146,4 +146,4 @@ Properties:
 - output satisfies the existing optional-pack manifest health contract;
 - a POC indexed reader verifies the output can participate in the existing Lexical Gateway candidate/provenance model.
 
-The POC reader is validation infrastructure only. Production activation of local/imported `opfs-indexed-v1` readers is still a separate dictionary-pack lifecycle unit; this stage does not silently register imported content into the running extension.
+The build-side POC reader remains validation infrastructure only. The emitted three-file TFLex pack is now compatible with the production local-import transaction and dynamic active-pack reader. The remaining StarDict product gap is the browser-side parser/converter adapter that feeds those validated bytes into the transaction; imported content is never activated before that transaction succeeds.
