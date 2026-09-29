@@ -198,3 +198,118 @@ test("Settings StarDict controller transfers into a Dedicated Worker and activat
 
   await page.close();
 });
+
+
+test("stale quarantine reclaim respects real cross-context Web Locks", async ({ harness }) => {
+  const page = await harness.context.newPage();
+  await page.goto(
+    `chrome-extension://${harness.extensionId}/options.html`
+  );
+
+  const result = await page.evaluate(async () => {
+    const [
+      { createOpfsImportQuarantine },
+      {
+        reclaimStaleImportQuarantine
+      },
+      {
+        makeImportQuarantineLockName
+      }
+    ] = await Promise.all([
+      import(
+        chrome.runtime.getURL(
+          "src/shared/opfs-import-quarantine.js"
+        )
+      ),
+      import(
+        chrome.runtime.getURL(
+          "src/options/import-quarantine-reclaimer.js"
+        )
+      ),
+      import(
+        chrome.runtime.getURL(
+          "src/shared/import-quarantine-lock.js"
+        )
+      )
+    ]);
+
+    const quarantine = createOpfsImportQuarantine();
+    const token =
+      "import-923e4567-e89b-42d3-a456-426614174000";
+    const empty =
+      "import-a23e4567-e89b-42d3-a456-426614174000";
+
+    await quarantine.writeFile(
+      token,
+      "manifest.json",
+      new TextEncoder().encode("{}")
+    );
+    const root = await navigator.storage.getDirectory();
+    const quarantineRoot =
+      await root.getDirectoryHandle(
+        "dictionary-import-quarantine",
+        { create: true }
+      );
+    await quarantineRoot.getDirectoryHandle(
+      empty,
+      { create: true }
+    );
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 10)
+    );
+
+    let releaseLock;
+    let signalAcquired;
+    const acquired = new Promise((resolve) => {
+      signalAcquired = resolve;
+    });
+    const held = navigator.locks.request(
+      makeImportQuarantineLockName(token),
+      { mode: "exclusive" },
+      async () => {
+        signalAcquired();
+        await new Promise((resolve) => {
+          releaseLock = resolve;
+        });
+      }
+    );
+    await acquired;
+
+    const whileHeld =
+      await reclaimStaleImportQuarantine({
+        quarantine,
+        lockManager: navigator.locks,
+        staleMs: 1
+      });
+
+    releaseLock();
+    await held;
+
+    const afterRelease =
+      await reclaimStaleImportQuarantine({
+        quarantine,
+        lockManager: navigator.locks,
+        staleMs: 1
+      });
+
+    return {
+      whileHeld,
+      afterRelease,
+      remaining: await quarantine.listTokens()
+    };
+  });
+
+  expect(result.whileHeld.active).toEqual([
+    "import-923e4567-e89b-42d3-a456-426614174000"
+  ]);
+  expect(result.whileHeld.removed).toEqual([
+    "import-a23e4567-e89b-42d3-a456-426614174000"
+  ]);
+  expect(result.afterRelease.removed).toEqual([
+    "import-923e4567-e89b-42d3-a456-426614174000"
+  ]);
+  expect(result.remaining).toEqual([]);
+
+  await page.close();
+});
