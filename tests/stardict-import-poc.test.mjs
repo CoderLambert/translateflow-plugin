@@ -84,6 +84,7 @@ test("StarDict browser parser modules have no Node runtime dependency", async ()
     "../src/background/packs/importers/stardict-contract.js",
     "../src/background/packs/importers/stardict-binary.js",
     "../src/background/packs/importers/stardict-dictzip.js",
+    "../src/background/packs/importers/stardict-browser-dictzip.js",
     "../src/background/packs/importers/stardict-core.js",
     "../src/background/packs/importers/stardict-semantic.js",
     "../src/background/packs/importers/tflex-local-builder.js",
