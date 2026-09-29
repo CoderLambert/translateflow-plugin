@@ -48,6 +48,38 @@ test.describe("curated ECDICT product flow", () => {
       .filter({ hasText: "ECDICT 高频英汉" });
     await expect(installed).toBeVisible();
     await expect(installed).toContainText("上游 / 社区");
+    await expect(
+      row.getByRole("button", { name: "重新安装" })
+    ).toBeVisible();
+    await expect(row).toContainText("当前版本");
+
+    const syntheticUpdate = await options.evaluate(async () => {
+      const [{ getCuratedInstallPresentation }, recipes] =
+        await Promise.all([
+          import(
+            chrome.runtime.getURL(
+              "src/options/curated-dictionary-ui.js"
+            )
+          ),
+          import(
+            chrome.runtime.getURL(
+              "src/shared/curated-dictionaries.js"
+            )
+          )
+        ]);
+      return getCuratedInstallPresentation(
+        recipes.CURATED_DICTIONARIES[0],
+        {
+          status: "healthy",
+          active: {
+            packVersion: "2024-older-reviewed"
+          }
+        }
+      );
+    });
+    expect(syntheticUpdate.status).toBe("update-available");
+    expect(syntheticUpdate.badgeLabel).toBe("可更新");
+    expect(syntheticUpdate.actionLabel).toBe("更新");
 
     const page = await harness.open("/selection");
     await page.evaluate(() => {

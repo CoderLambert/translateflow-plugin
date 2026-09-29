@@ -10,6 +10,15 @@ import {
 import {
   CURATED_WORKER_MESSAGES
 } from "./workers/curated-dictionary-worker-protocol.js";
+import {
+  curatedSourceMeta,
+  describeCuratedProgress,
+  formatCuratedBytes,
+  getCuratedInstallPresentation,
+  shortCuratedRevision
+} from "./curated-dictionary-presentation.js";
+
+export { getCuratedInstallPresentation };
 
 export function initializeCuratedDictionaryUi({
   runtime = globalThis.chrome?.runtime,
@@ -48,8 +57,10 @@ export function initializeCuratedDictionaryUi({
     container.replaceChildren();
     for (const source of CURATED_DICTIONARIES) {
       const local = stateBySource.get(source.id) || {};
-      const installed =
-        Boolean(packs[source.output.packId]?.active);
+      const entry =
+        packs[source.output.packId] || null;
+      const presentation =
+        getCuratedInstallPresentation(source, entry);
 
       const row = document.createElement("div");
       row.className = "site-row dictionary-pack-row";
@@ -62,8 +73,8 @@ export function initializeCuratedDictionaryUi({
       title.textContent = source.label;
       const badge = document.createElement("span");
       badge.className = "dictionary-health-badge";
-      badge.dataset.kind = installed ? "success" : "warning";
-      badge.textContent = installed ? "已安装" : "上游 / 社区";
+      badge.dataset.kind = presentation.kind;
+      badge.textContent = presentation.badgeLabel;
       heading.append(title, badge);
       summary.appendChild(heading);
 
@@ -73,7 +84,7 @@ export function initializeCuratedDictionaryUi({
 
       const meta = document.createElement("div");
       meta.className = "dictionary-pack-meta";
-      for (const item of sourceMeta(source)) {
+      for (const item of curatedSourceMeta(source)) {
         const value = document.createElement("span");
         value.textContent = item;
         meta.appendChild(value);
@@ -92,7 +103,7 @@ export function initializeCuratedDictionaryUi({
       progress.className = "dictionary-pack-detail";
       progress.setAttribute("aria-live", "polite");
       progress.textContent =
-        local.message || defaultStateText(source, installed);
+        local.message || presentation.detail;
       summary.appendChild(progress);
 
       const actions = document.createElement("div");
@@ -106,7 +117,7 @@ export function initializeCuratedDictionaryUi({
       } else {
         const install = document.createElement("button");
         install.type = "button";
-        install.textContent = installed ? "重新安装" : "下载并安装";
+        install.textContent = presentation.actionLabel;
         install.addEventListener("click", () =>
           installSource(source, install)
         );
@@ -129,7 +140,7 @@ export function initializeCuratedDictionaryUi({
         );
       if (!granted) {
         throw new Error(
-          "未授予 ECDICT 上游下载权限。"
+          `未授予 ${source.label} 上游下载权限。`
         );
       }
 
@@ -157,7 +168,7 @@ export function initializeCuratedDictionaryUi({
         (message) => {
           setLocal(
             source.id,
-            describeProgress(message, source)
+            describeCuratedProgress(message, source)
           );
           renderCurrent().catch(() => {});
         }
@@ -181,9 +192,9 @@ export function initializeCuratedDictionaryUi({
         displayMetadata: {
           kind: "curated-upstream",
           name: source.label,
-          format: "ecdict-csv",
+          format: source.displayFormat,
           sourceLabel: source.publisher,
-          sourceVersion: shortRevision(
+          sourceVersion: shortCuratedRevision(
             source.upstreamRevision
           ),
           licenseLabel: source.sourceLicenseLabel
@@ -198,7 +209,7 @@ export function initializeCuratedDictionaryUi({
 
       setLocal(
         source.id,
-        `安装完成：${ready.stats.retainedRecords.toLocaleString()} 个词条 · 输出 ${formatBytes(ready.stats.outputBytes)}。`
+        `安装完成：${ready.stats.retainedRecords.toLocaleString()} 个词条 · 输出 ${formatCuratedBytes(ready.stats.outputBytes)}。`
       );
       document.dispatchEvent(
         new CustomEvent(
@@ -300,39 +311,6 @@ function waitForWorker(
   });
 }
 
-function sourceMeta(source) {
-  return [
-    `来源：${source.publisher}`,
-    `格式：${source.sourceFormat}`,
-    `方向：${source.languageDirection}`,
-    `固定版本：${shortRevision(source.upstreamRevision)}`,
-    `上游下载：${formatBytes(source.downloadBytes)}`,
-    `本地最多保留 ${source.selection.maxRecords.toLocaleString()} 条`,
-    "信任：上游 / 社区，非 TranslateFlow 官方词典"
-  ];
-}
-
-function defaultStateText(source, installed) {
-  return installed
-    ? "已安装；重新安装仍从同一固定上游版本下载并重新验证。"
-    : "点击后直接从上游下载；TranslateFlow 不镜像该词典内容。";
-}
-
-function describeProgress(message, source) {
-  if (message.phase === "download") {
-    const loaded = Number(message.inputBytes || 0);
-    return loaded
-      ? `正在下载/筛选：${formatBytes(loaded)} / ${formatBytes(source.downloadBytes)}`
-      : "正在连接固定上游版本…";
-  }
-  if (message.phase === "convert") {
-    return `正在转换：已保留 ${Number(message.retainedRecords || 0).toLocaleString()} 个词条…`;
-  }
-  if (message.phase === "stage") {
-    return "正在写入隔离区并准备完整性验证…";
-  }
-  return "正在处理…";
-}
 
 function makeLink(label, href) {
   const link = document.createElement("a");
@@ -375,17 +353,7 @@ function responseError(response, fallback) {
   return error;
 }
 
-function shortRevision(value) {
-  return String(value || "").slice(0, 12);
-}
 
-function formatBytes(bytes) {
-  const value = Number(bytes || 0);
-  if (value < 1024) return value + " B";
-  if (value < 1024 * 1024) {
-    return (value / 1024).toFixed(1) + " KiB";
-  }
-  return (value / (1024 * 1024)).toFixed(1) + " MiB";
+if (typeof document !== "undefined") {
+  initializeCuratedDictionaryUi();
 }
-
-initializeCuratedDictionaryUi();

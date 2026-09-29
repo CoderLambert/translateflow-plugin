@@ -10,6 +10,10 @@ import {
 import {
   validateCuratedDictionaryResponse
 } from "../src/options/workers/curated-dictionary-worker-core.js";
+import {
+  CURATED_IMPORTER_TYPES,
+  CURATED_RECIPE_SCHEMA_VERSION
+} from "../src/shared/curated-dictionaries.js";
 
 const encoder = new TextEncoder();
 const header =
@@ -17,7 +21,9 @@ const header =
 
 function sourceFor(csv, overrides = {}) {
   return {
+    schemaVersion: CURATED_RECIPE_SCHEMA_VERSION,
     trustClass: "curated-upstream",
+    importerType: CURATED_IMPORTER_TYPES.ECDICT_CSV_V1,
     sourceFormat: "ECDICT CSV",
     downloadBytes: encoder.encode(csv).byteLength,
     selection: {
@@ -91,7 +97,7 @@ test("curated network provider rejects non-approved origins before fetch", async
     fetchCuratedDictionarySource({
       downloadUrl: "https://example.com/ecdict.csv"
     }),
-    /not an approved HTTPS upstream/
+    /not an extension-declared recipe/
   );
 });
 
