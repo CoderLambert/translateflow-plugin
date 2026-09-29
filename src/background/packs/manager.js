@@ -55,6 +55,11 @@ export function createDictionaryPackManager({
       throw packError(PACK_ERROR_CODES.NOT_FOUND, "Dictionary pack is not declared by this trusted source.");
     }
     const id = String(requestId || crypto.randomUUID());
+    if (controllersByRequest.has(id)) {
+      throw packError(PACK_ERROR_CODES.BUSY, "Dictionary pack requestId is already in use.", {
+        requestId: id
+      });
+    }
     if (operationsByPack.has(packId)) {
       throw packError(PACK_ERROR_CODES.BUSY, "Another dictionary pack operation is already running.", { packId });
     }
