@@ -24,6 +24,8 @@ test("release lexicon CI builds from the exact Design Freeze OMW revision", asyn
   assert.match(workflow, /npm run setup:lexicon/);
   assert.match(workflow, /npm run benchmark:lexical/);
   assert.match(workflow, /lexical-quality-report\.json/);
+  assert.match(workflow, /npm run certify:selection-lexical/);
+  assert.match(workflow, /integrated-lexical-certification\.json/);
   assert.match(workflow, /npm run certify:lexicon/);
   assert.match(workflow, /npm run test:e2e/);
 
@@ -31,6 +33,10 @@ test("release lexicon CI builds from the exact Design Freeze OMW revision", asyn
   assert.equal(pkg.scripts["build:lexicon:release"], "node scripts/build-release-lexicon.mjs");
   assert.equal(pkg.scripts["setup:lexicon"], "node scripts/setup-lexicon.mjs");
   assert.equal(pkg.scripts["certify:lexicon"], "node scripts/certify-lexical-release.mjs");
+  assert.equal(
+    pkg.scripts["certify:selection-lexical"],
+    "node scripts/certify-integrated-lexical-quality.mjs"
+  );
   assert.equal(pkg.scripts["benchmark:lexical"], "node scripts/benchmark-lexical-quality.mjs");
 });
 
