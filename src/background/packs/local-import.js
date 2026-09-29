@@ -4,12 +4,12 @@ import {
   isSafePackIdentifier,
   packError
 } from "../../shared/pack-manager.js";
-import {
-  normalizeLexicalKey
-} from "../../shared/lexical.js";
 import { validateInstalledManifestValue } from "./health.js";
+import {
+  assertSafeLocalDataText,
+  validateLocalIndexedRecords
+} from "./local-import-integrity.js";
 import { validateIndexedIndex } from "../lexical/opfs-indexed-reader.js";
-import { validateTflexRecord } from "../lexical/tflex-integrity.js";
 
 export const LOCAL_IMPORT_SOURCE_ID = "local-user-import";
 export const LOCAL_IMPORT_DISTRIBUTION_STATUS = "user-import-only";
@@ -63,7 +63,7 @@ export async function validateLocalTflexImport({
   const index = parseJson(normalizedFiles["index.dat"], "index.dat");
   const entriesDescriptor = descriptors.get("entries.dat");
   validateIndexedIndex(index, manifest, entriesDescriptor);
-  await validateAllIndexedRecords({
+  await validateLocalIndexedRecords({
     index,
     entriesBytes: normalizedFiles["entries.dat"],
     manifest,
@@ -219,9 +219,9 @@ function validateLocalManifestIdentity(manifest) {
       throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary source IDs must be unique.");
     }
     sourceIds.add(source.id);
-    assertSafeDataText(source.id, "source id");
-    assertSafeDataText(source.version, "source version");
-    assertSafeDataText(source.provenance, "source provenance");
+    assertSafeLocalDataText(source.id, "source id");
+    assertSafeLocalDataText(source.version, "source version");
+    assertSafeLocalDataText(source.provenance, "source provenance");
   }
 }
 
@@ -256,138 +256,6 @@ function validateLocalDescriptors(manifest, files) {
     throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary file descriptors are incomplete.");
   }
   return descriptors;
-}
-
-async function validateAllIndexedRecords({
-  index,
-  entriesBytes,
-  manifest,
-  cryptoProvider,
-  sourceIds
-}) {
-  const validated = new Map();
-  const canonicalRanges = [];
-
-  for (const item of index.entries) {
-    for (const target of item.targets) {
-      const key = [
-        target.offset,
-        target.length,
-        target.sha256,
-        target.lookupKey
-      ].join(":");
-      let record = validated.get(key);
-      if (!record) {
-        const slice = entriesBytes.subarray(
-          target.offset,
-          target.offset + target.length
-        );
-        const actual = await sha256Hex(slice, cryptoProvider);
-        if (actual !== target.sha256) {
-          throw packError(PACK_ERROR_CODES.HASH, "Local dictionary indexed record SHA-256 failed verification.", {
-            lookupKey: target.lookupKey,
-            offset: target.offset
-          });
-        }
-        record = parseJson(slice, "entries.dat");
-        try {
-          validateTflexRecord(record, manifest.packId, "entries.dat");
-        } catch (error) {
-          throw packError(PACK_ERROR_CODES.CORRUPT, error?.message || "Local dictionary record is malformed.", {
-            lookupKey: target.lookupKey,
-            cause: error
-          });
-        }
-        if (record.lookupKey !== target.lookupKey) {
-          throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary index/record key mismatch.", {
-            indexKey: target.lookupKey,
-            recordKey: record.lookupKey
-          });
-        }
-        validateLocalRecordStrings(record, sourceIds);
-        validated.set(key, record);
-      }
-
-      if (target.matchedAlias) {
-        if (
-          item.key === target.lookupKey ||
-          !Array.isArray(record.aliases) ||
-          !record.aliases.some((alias) => normalizeLexicalKey(alias) === item.key)
-        ) {
-          throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary alias target is inconsistent.");
-        }
-      } else {
-        canonicalRanges.push({
-          lookupKey: target.lookupKey,
-          offset: target.offset,
-          length: target.length
-        });
-      }
-    }
-  }
-
-  canonicalRanges.sort((a, b) => a.offset - b.offset || compareText(a.lookupKey, b.lookupKey));
-  if (canonicalRanges.length !== manifest.recordCount) {
-    throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary canonical record count mismatch.");
-  }
-  let expectedOffset = 0;
-  for (const range of canonicalRanges) {
-    if (range.offset !== expectedOffset) {
-      throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary entries.dat contains gaps, overlaps or hidden trailing payload.");
-    }
-    expectedOffset += range.length;
-  }
-  if (expectedOffset !== entriesBytes.byteLength) {
-    throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary entries.dat contains unindexed trailing payload.");
-  }
-}
-
-function validateLocalRecordStrings(record, sourceIds) {
-  if (record.kind !== "lexical") {
-    throw packError(PACK_ERROR_CODES.INCOMPATIBLE, "Local bilingual import profile only accepts lexical records.");
-  }
-  if (!Array.isArray(record.exactLookupKeys) || !Array.isArray(record.aliases)) {
-    throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary lookup metadata is malformed.");
-  }
-  assertSafeDataText(record.displayForm, "display form");
-  for (const value of record.exactLookupKeys) {
-    if (typeof value !== "string" || normalizeLexicalKey(value) !== record.lookupKey) {
-      throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary exact lookup key is malformed.");
-    }
-    assertSafeDataText(value, "exact lookup key");
-  }
-  for (const alias of record.aliases) {
-    if (typeof alias !== "string" || !normalizeLexicalKey(alias)) {
-      throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary alias is malformed.");
-    }
-    assertSafeDataText(alias, "alias");
-  }
-  for (const sense of record.senses || []) {
-    assertSafeDataText(sense.id, "sense id");
-    for (const value of sense.translations || []) assertSafeDataText(value, "translation");
-    for (const value of sense.domains || []) assertSafeDataText(value, "domain");
-    for (const value of sense.typeLabels || []) assertSafeDataText(value, "type label");
-    for (const ref of sense.sourceRefs || []) {
-      if (!sourceIds.has(ref.sourceId)) {
-        throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary sourceRef references an undeclared source.");
-      }
-      assertSafeDataText(ref.sourceId, "sourceRef sourceId");
-      assertSafeDataText(ref.recordId, "sourceRef recordId");
-    }
-  }
-}
-
-function assertSafeDataText(value, label) {
-  const text = String(value || "");
-  if (
-    !text ||
-    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text) ||
-    /<\/?[A-Za-z][^>]*>/u.test(text) ||
-    /<!--|<!DOCTYPE\b|<\?/iu.test(text) ||
-    /javascript\s*:/iu.test(text)
-  ) {
-    throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary " + label + " contains unsafe renderable/control content.");
-  }
 }
 
 function parseJson(bytes, path) {
