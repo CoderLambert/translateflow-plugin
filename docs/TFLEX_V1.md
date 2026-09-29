@@ -215,6 +215,23 @@ download version N to inactive directory
 
 Missing/corrupt active data must fall back to the previous verified version when available; otherwise the pack enters a typed `needs-reinstall` state.
 
+Local user imports use the same lifecycle shape, but without pretending to have signed-catalog trust:
+
+```text
+untrusted converter output
+ -> validate exact manifest/index/entries file set
+ -> verify descriptor SHA-256 + every indexed record slice
+ -> recompute user-import-only fingerprint
+ -> quota preflight
+ -> write inactive version
+ -> full post-write health check
+ -> atomically switch active metadata pointer
+ -> retain previous healthy active as fallback
+ -> best-effort orphan cleanup
+```
+
+A local import must use a safe `local-*` pack ID, `distributionStatus=user-import-only`, the explicit supported semantic profile, and `USER-PROVIDED-UNVERIFIED` provenance. Local import cannot overwrite a same-version active/fallback directory with conflicting bytes. Cancellation before the pointer commit removes unprotected staging and leaves the previous active version intact.
+
 Production lookup registration is dynamic and state-driven:
 
 - bundled Core/Technical readers remain first in gateway order;
