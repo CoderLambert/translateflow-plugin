@@ -11,6 +11,7 @@ import {
   validateTrustedSource,
   verifyTrustedCatalog
 } from "./catalog.js";
+import { createOpfsImportQuarantine } from "../../shared/opfs-import-quarantine.js";
 import { createOpfsPackStore } from "./opfs-store.js";
 import {
   assertPackOperationActive,
@@ -37,6 +38,7 @@ import {
 export function createDictionaryPackManager({
   sources = OPTIONAL_PACK_SOURCES,
   store = createOpfsPackStore(),
+  quarantine = createOpfsImportQuarantine(),
   stateStore = createPackStateStore(),
   permissions = globalThis.chrome?.permissions,
   storageManager = globalThis.navigator?.storage,
@@ -206,7 +208,6 @@ export function createDictionaryPackManager({
     const controller = controllersByRequest.get(id);
     if (!controller) return { cancelled: false };
     controller.abort();
-    controllersByRequest.delete(id);
     return { cancelled: true };
   }
 
@@ -370,8 +371,9 @@ export function createDictionaryPackManager({
     }
   }
 
-  const importLocalTflex = createLocalTflexImportTransaction({
+  const localImport = createLocalTflexImportTransaction({
     store,
+    quarantine,
     stateStore,
     cryptoProvider,
     operationsByPack,
@@ -381,10 +383,15 @@ export function createDictionaryPackManager({
     normalizeOperationError: normalizePackOperationError,
     assertActive: assertPackOperationActive
   });
+  const {
+    importLocalTflex,
+    importLocalTflexFromQuarantine
+  } = localImport;
 
   return Object.freeze({
     install,
     importLocalTflex,
+    importLocalTflexFromQuarantine,
     cancel,
     uninstall,
     rollback,
