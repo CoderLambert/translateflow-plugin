@@ -96,7 +96,7 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   const css = await readFile(new URL("../options.css", import.meta.url), "utf8");
   assert.match(source, /BUNDLED_LEXICON_STATUS/);
   assert.match(source, /dictionary-health-badge/);
-  assert.match(source, /暂无可选词典/);
+  assert.match(source, /暂无官方推荐词典/);
   assert.match(html, /AI 详解深度/);
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /dictionary-repair-help/);
