@@ -3,6 +3,25 @@
   if (!app?.modules.runtime || app.modules.uiSelectionLexicalStyles) return;
 
   const css = `
+.tf-selection-action-primary {
+  border-color: color-mix(in srgb, var(--tf-color-accent) 48%, transparent);
+  background: var(--tf-green-700);
+  color: var(--tf-primary-foreground);
+  box-shadow: var(--tf-accent-shadow);
+}
+.tf-selection-action-primary:hover {
+  background: var(--tf-primary-hover-start);
+}
+.tf-selection-action-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--tf-text-secondary);
+  box-shadow: none;
+}
+.tf-selection-action-quiet:hover {
+  border-color: var(--tf-border-soft);
+  background: var(--tf-bg-subtle);
+}
 .tf-selection-dictionary-entries {
   display: grid;
   gap: 7px;
