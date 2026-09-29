@@ -106,7 +106,7 @@
     position(snapshot, chip);
   }
 
-  function showLoading(snapshot, onCancel, loadingMessage = "正在处理所选内容…") {
+  function showLoading(snapshot, onCancel, loadingMessage = defaultLoadingMessage(snapshot)) {
     ensureUi();
     activeSnapshot = snapshot;
     cancelHandler = onCancel;
@@ -130,6 +130,13 @@
     if (!statusNode || panel?.hidden) return;
     setStatus(statusNode, message, "loading");
     reposition();
+  }
+
+  function defaultLoadingMessage(snapshot) {
+    const text = String(snapshot?.text || "").trim();
+    return /^[A-Za-z][A-Za-z’'-]*$/u.test(text)
+      ? "正在查词…"
+      : "正在处理所选内容…";
   }
 
   function showResult(snapshot, result, onCopy, onExplain) {
