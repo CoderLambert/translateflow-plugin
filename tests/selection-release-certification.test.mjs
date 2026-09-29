@@ -52,7 +52,7 @@ test("#107 Selection release gate keeps every required fixture family in CI", as
   assert.match(corrupt, /lexiconPacks: "corrupt"/);
   assert.match(corrupt, /内置本地词典校验失败/);
   assert.match(incompatible, /lexiconPacks: "incompatible"/);
-  assert.match(incompatible, /词典格式不兼容/);
+  assert.match(incompatible, /与当前扩展版本不兼容/);
 
   assert.match(fixture, /buildExtension\(/);
   assert.match(fixture, /lexiconPacks === "corrupt"/);
@@ -78,7 +78,7 @@ test("#107 hard assertions remain explicit in browser evidence", async () => {
   assert.match(integrated, /aria-modal/);
   assert.match(integrated, /toBeFocused\(\)/);
 
-  assert.match(releaseGate, /data-result-kind", "technical"/);
+  assert.match(releaseGate, /technical-concept/);
   assert.match(releaseGate, /data-result-kind", "translation"/);
   assert.match(releaseGate, /transitionDuration\)\.toBe\("0s"\)/);
   assert.match(releaseGate, /scrollWidth - document\.documentElement\.clientWidth/);
