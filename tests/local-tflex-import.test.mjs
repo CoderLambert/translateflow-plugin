@@ -7,11 +7,80 @@ import { createDictionaryPackManager } from "../src/background/packs/manager.js"
 import {
   LOCAL_IMPORT_LICENSE_ID,
   LOCAL_IMPORT_SEMANTIC_PROFILE,
-  makeLocalImportFingerprintPayload
+  makeLocalImportFingerprintPayload,
+  validateLocalTflexImport,
+  validateOwnedLocalTflexBuild
 } from "../src/background/packs/local-import.js";
 import { PACK_ERROR_CODES } from "../src/shared/pack-manager.js";
 
 const encoder = new TextEncoder();
+
+test("public local TFLex validation snapshots caller-owned bytes before async verification", async () => {
+  const files = await makePack({
+    packId: "local-defensive-copy",
+    packVersion: "v1",
+    translation: "运行"
+  });
+  const original = new Uint8Array(files["entries.dat"]);
+  let releaseDigest;
+  let signalDigest;
+  const digestStarted = new Promise((resolve) => {
+    signalDigest = resolve;
+  });
+  const digestGate = new Promise((resolve) => {
+    releaseDigest = resolve;
+  });
+  let blockedOnce = false;
+  const cryptoProvider = {
+    subtle: {
+      async digest(algorithm, bytes) {
+        if (!blockedOnce) {
+          blockedOnce = true;
+          signalDigest();
+          await digestGate;
+        }
+        return webcrypto.subtle.digest(algorithm, bytes);
+      }
+    }
+  };
+
+  const validating = validateLocalTflexImport({
+    files,
+    cryptoProvider
+  });
+  await digestStarted;
+  files["entries.dat"][0] ^= 1;
+  releaseDigest();
+
+  const validated = await validating;
+  assert.deepEqual(
+    validated.files.find((file) =>
+      file.path === "entries.dat"
+    ).bytes,
+    original
+  );
+  assert.notDeepEqual(files["entries.dat"], original);
+});
+
+test("owned local TFLex build validation reuses trusted builder buffers", async () => {
+  const files = await makePack({
+    packId: "local-owned-build",
+    packVersion: "v1",
+    translation: "运行"
+  });
+  const validated = await validateOwnedLocalTflexBuild({
+    files,
+    cryptoProvider: webcrypto
+  });
+
+  for (const file of validated.files) {
+    assert.equal(
+      file.bytes,
+      files[file.path],
+      file.path + " should not be cloned"
+    );
+  }
+});
 
 test("local TFLex import stages, health-checks and activates a queryable OPFS pack", async () => {
   const env = createEnvironment();
