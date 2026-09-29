@@ -51,7 +51,7 @@ export function initializePackUi({
   async function refresh() {
     if (bundledList) bundledList.textContent = "正在检查内置词典…";
     if (installedList) installedList.textContent = "正在读取已安装词典…";
-    if (optionalList) optionalList.textContent = "正在读取可选词典包状态…";
+    if (optionalList) optionalList.textContent = "正在读取官方推荐词典状态…";
 
     const [bundledResponse, optionalResponse] = await Promise.all([
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS }),
@@ -72,7 +72,7 @@ export function initializePackUi({
         installedList.textContent = `读取已安装词典失败：${message}`;
       }
       if (optionalList) {
-        optionalList.textContent = `读取可选词典包状态失败：${message}`;
+        optionalList.textContent = `读取官方推荐词典状态失败：${message}`;
       }
     } else {
       const state = optionalResponse.state || { packs: {} };
@@ -151,7 +151,7 @@ export function initializePackUi({
         .map((pack) => ({ source, pack })));
 
     if (!declared.length) {
-      optionalList.textContent = "暂无可选词典。当前版本仅使用随扩展提供的内置词典；新的可选词典会在完成质量与许可审核后出现在这里。";
+      optionalList.textContent = "暂无官方推荐词典。只有完成来源、许可、质量与发布审核的 TranslateFlow 词典包才会出现在这里。";
       return;
     }
 
@@ -186,7 +186,7 @@ export function initializePackUi({
           }
         }));
       } else {
-        actions.append(makeButton(entry?.active ? "检查更新 / 重装" : "安装", async (button) => {
+        actions.append(makeButton(entry?.active ? "更新 / 重装" : "安装", async (button) => {
           button.disabled = true;
           try {
             const granted = await requestDictionaryPackOriginPermission(source, permissions);
@@ -243,15 +243,15 @@ export function initializePackUi({
       }
 
       if (entry && !pendingRequestId) {
-        actions.append(makeButton("卸载", async (button) => {
+        actions.append(makeButton("删除", async (button) => {
           button.disabled = true;
           try {
             const response = await runtime.sendMessage({
               type: BACKGROUND_MESSAGES.DICTIONARY_PACK_UNINSTALL,
               packId
             });
-            if (!response?.ok) throw new Error(response?.error || "词典包卸载失败。");
-            setStatus?.(`${pack.label || packId} 已卸载。`);
+            if (!response?.ok) throw new Error(response?.error || "词典包删除失败。");
+            setStatus?.(`${pack.label || packId} 已删除。`);
           } catch (error) {
             setStatus?.(error?.message || String(error), true);
           } finally {
