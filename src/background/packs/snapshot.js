@@ -2,6 +2,9 @@ import {
   PACK_ERROR_CODES,
   packError
 } from "../../shared/pack-manager.js";
+import {
+  publicLocalImportDisplayMetadata
+} from "./local-import-display.js";
 
 export function enforceNoAutomaticDowngrade(active, candidate) {
   if (!active) return;
@@ -58,6 +61,7 @@ export function publicPackState(entry) {
     status: entry.status || "unknown",
     active: publicSnapshot(entry.active),
     fallback: publicSnapshot(entry.fallback),
+    display: publicLocalImportDisplayMetadata(entry.display),
     recoveryReason: entry.recoveryReason || null,
     lastError: entry.lastError || null
   };

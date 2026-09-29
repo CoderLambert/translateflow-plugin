@@ -1,5 +1,6 @@
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { OPTIONAL_PACK_SOURCES } from "../shared/pack-sources.js";
+import { renderInstalledPackList } from "./installed-pack-ui.js";
 
 export async function requestDictionaryPackOriginPermission(
   source,
@@ -33,15 +34,23 @@ export function initializePackUi({
   cryptoProvider = globalThis.crypto
 } = {}) {
   const bundledList = document.getElementById("bundledLexiconList");
+  const installedList = document.getElementById("installedDictionaryList");
   const optionalList = document.getElementById("dictionaryPacksList");
   const refreshButton = document.getElementById("refreshDictionaryPacks");
-  if (!bundledList && !optionalList) return Promise.resolve();
+  if (!bundledList && !installedList && !optionalList) {
+    return Promise.resolve();
+  }
 
   const pendingByPack = new Map();
   refreshButton?.addEventListener("click", () => refresh());
+  document.addEventListener(
+    "translateflow:dictionary-state-changed",
+    () => refresh()
+  );
 
   async function refresh() {
     if (bundledList) bundledList.textContent = "正在检查内置词典…";
+    if (installedList) installedList.textContent = "正在读取已安装词典…";
     if (optionalList) optionalList.textContent = "正在读取可选词典包状态…";
 
     const [bundledResponse, optionalResponse] = await Promise.all([
@@ -57,12 +66,18 @@ export function initializePackUi({
       }
     }
 
-    if (optionalList) {
-      if (!optionalResponse?.ok) {
-        optionalList.textContent = `读取可选词典包状态失败：${optionalResponse?.error || "未知错误"}`;
-      } else {
-        renderOptional(optionalResponse.state || { packs: {} });
+    if (!optionalResponse?.ok) {
+      const message = optionalResponse?.error || "未知错误";
+      if (installedList) {
+        installedList.textContent = `读取已安装词典失败：${message}`;
       }
+      if (optionalList) {
+        optionalList.textContent = `读取可选词典包状态失败：${message}`;
+      }
+    } else {
+      const state = optionalResponse.state || { packs: {} };
+      if (installedList) renderInstalled(state);
+      if (optionalList) renderOptional(state);
     }
   }
 
@@ -114,6 +129,19 @@ export function initializePackUi({
       row.append(summary);
       bundledList.appendChild(row);
     }
+  }
+
+  function renderInstalled(state) {
+    renderInstalledPackList({
+      container: installedList,
+      state,
+      runtime,
+      setStatus,
+      sources,
+      onChanged() {
+        refresh();
+      }
+    });
   }
 
   function renderOptional(state) {
