@@ -118,6 +118,36 @@ test("corrupt optional pack is isolated and cannot suppress bundled lexical cand
   );
 });
 
+test("healthy state with malformed active snapshot is isolated and diagnosed as corrupt", async () => {
+  const state = packState({
+    malformed: {
+      sourceId: "fixture-source",
+      status: "healthy",
+      active: {
+        packId: "different-pack",
+        packVersion: "v1",
+        fingerprint: "sha256:x",
+        files: []
+      },
+      fallback: null
+    }
+  });
+  const reader = createActiveOpfsPackReader({
+    stateStore: memoryStateStore(() => state),
+    store: fakeStore(),
+    readerFactory() {
+      throw new Error("malformed snapshot must not reach reader factory");
+    },
+    cryptoProvider: fakeCrypto()
+  });
+
+  assert.deepEqual(await reader.lookupAll("word"), []);
+  assert.deepEqual(
+    reader.stats().errors.map((item) => [item.packId, item.code]),
+    [["malformed", LEXICAL_ERROR_CODES.CORRUPT]]
+  );
+});
+
 test("optional state-store failure degrades to bundled-only lookup instead of lexical ERROR", async () => {
   const optionalReader = createActiveOpfsPackReader({
     stateStore: {
