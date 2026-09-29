@@ -83,7 +83,10 @@ export async function measureExtensionFootprint({
         packageReads: cert.reads.cold.reads,
         packageReadBytes: cert.reads.cold.bytes,
         warmPersistentMs: cert.timingMs.warmPersistent,
-        warmReadDelta: cert.reads.warm,
+        warmReadDelta: {
+          reads: cert.reads.warm.reads - cert.reads.cold.reads,
+          bytes: cert.reads.warm.bytes - cert.reads.cold.bytes
+        },
         decodedCacheBytes: cert.cache.bytes,
         decodedCacheBudgetBytes: cert.cache.maxBytes,
         heapDeltaObservedBytes: cert.heapObservation.deltaBytes,
