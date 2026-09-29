@@ -24,6 +24,7 @@ export async function buildStarDictPlainLocalTflex({
   synBytes,
   recipe,
   limits = STARDICT_IMPORT_LIMITS,
+  signal,
   cryptoProvider = globalThis.crypto
 } = {}) {
   const normalized = normalizePlainInputs({
@@ -33,6 +34,7 @@ export async function buildStarDictPlainLocalTflex({
     synBytes,
     limits
   });
+  assertImportActive(signal);
   const checkedRecipe =
     validateStarDictImportRecipe(recipe);
   const projection = projectStarDictPlainText({
@@ -48,9 +50,11 @@ export async function buildStarDictPlainLocalTflex({
       checkedRecipe.dictionary.sourceVersion,
     limits
   });
+  assertImportActive(signal);
   return buildStarDictLocalTflexFromProjection({
     projection,
     recipe: checkedRecipe,
+    signal,
     cryptoProvider
   });
 }
@@ -90,6 +94,7 @@ export async function buildStarDictDictzipLocalTflex({
     synBytes,
     recipe,
     limits,
+    signal,
     cryptoProvider
   });
   return {
@@ -106,8 +111,10 @@ export async function buildStarDictDictzipLocalTflex({
 export async function buildStarDictLocalTflexFromProjection({
   projection,
   recipe,
+  signal,
   cryptoProvider = globalThis.crypto
 } = {}) {
+  assertImportActive(signal);
   const checkedRecipe =
     validateStarDictImportRecipe(recipe);
   const source = makeStarDictLocalSource(
@@ -118,6 +125,7 @@ export async function buildStarDictLocalTflexFromProjection({
     projection?.entries,
     checkedRecipe
   );
+  assertImportActive(signal);
   if (!records.length) {
     throw new Error(
       "StarDict TFLex import produced no records"
@@ -144,6 +152,7 @@ export async function buildStarDictLocalTflexFromProjection({
           : 0),
       0
     ),
+    signal,
     cryptoProvider
   });
 
@@ -210,4 +219,13 @@ function normalizePlainInputs({
     dictBytes: dict,
     ...(syn ? { synBytes: syn } : {})
   };
+}
+
+
+function assertImportActive(signal) {
+  if (!signal?.aborted) return;
+  throw new DOMException(
+    "StarDict dictionary import cancelled.",
+    "AbortError"
+  );
 }

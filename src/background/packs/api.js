@@ -15,6 +15,10 @@ export function importLocalDictionaryTflex(input) {
   return getDictionaryPackManager().importLocalTflex(input);
 }
 
+export function importLocalDictionaryTflexFromQuarantine(input) {
+  return getDictionaryPackManager().importLocalTflexFromQuarantine(input);
+}
+
 export function cancelDictionaryPackOperation(requestId) {
   return getDictionaryPackManager().cancel(requestId);
 }

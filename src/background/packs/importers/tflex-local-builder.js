@@ -24,8 +24,10 @@ export async function buildLocalIndexedTflex({
   sources,
   sourceEntryCount,
   sourceAliasCount,
+  signal,
   cryptoProvider = globalThis.crypto
 } = {}) {
+  assertBuildActive(signal);
   if (!cryptoProvider?.subtle) {
     throw new Error("WebCrypto is required to build local TFLex");
   }
@@ -46,19 +48,27 @@ export async function buildLocalIndexedTflex({
   }
 
   const normalizedRecords = validateRecords(records, packId);
-  const indexed = await buildIndexedData(normalizedRecords, cryptoProvider);
+  assertBuildActive(signal);
+  const indexed = await buildIndexedData(
+    normalizedRecords,
+    cryptoProvider,
+    signal
+  );
+  assertBuildActive(signal);
   const entriesDescriptor = await descriptor(
     "lexical-data",
     "entries.dat",
     indexed.entriesBytes,
     cryptoProvider
   );
+  assertBuildActive(signal);
   const indexDescriptor = await descriptor(
     "lookup-index",
     "index.dat",
     indexed.indexBytes,
     cryptoProvider
   );
+  assertBuildActive(signal);
   const files = [entriesDescriptor, indexDescriptor].sort(compareDescriptor);
 
   const manifest = {
@@ -87,6 +97,7 @@ export async function buildLocalIndexedTflex({
     encoder.encode(stableStringify(fingerprintPayload)),
     cryptoProvider
   );
+  assertBuildActive(signal);
 
   const output = {
     "manifest.json": encoder.encode(stableStringify(manifest) + "\n"),
@@ -97,6 +108,7 @@ export async function buildLocalIndexedTflex({
     files: output,
     cryptoProvider
   });
+  assertBuildActive(signal);
   return {
     files: output,
     manifest: validated.manifest,
@@ -105,12 +117,17 @@ export async function buildLocalIndexedTflex({
   };
 }
 
-async function buildIndexedData(records, cryptoProvider) {
+async function buildIndexedData(
+  records,
+  cryptoProvider,
+  signal
+) {
   const indexMap = new Map();
   const entryChunks = [];
   let offset = 0;
 
   for (const record of records) {
+    assertBuildActive(signal);
     const bytes = encoder.encode(stableStringify(record) + "\n");
     const target = {
       lookupKey: record.lookupKey,
@@ -119,6 +136,7 @@ async function buildIndexedData(records, cryptoProvider) {
       sha256: await sha256Hex(bytes, cryptoProvider),
       matchedAlias: false
     };
+    assertBuildActive(signal);
     entryChunks.push(bytes);
     addIndexTarget(
       indexMap,
@@ -275,4 +293,13 @@ function compareText(a, b) {
   const left = String(a ?? "");
   const right = String(b ?? "");
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+
+function assertBuildActive(signal) {
+  if (!signal?.aborted) return;
+  throw new DOMException(
+    "Local TFLex build cancelled.",
+    "AbortError"
+  );
 }
