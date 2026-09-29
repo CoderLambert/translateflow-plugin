@@ -17,6 +17,111 @@ import {
 import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { validateInstalledManifest } from "../src/background/packs/health.js";
 import { validateLocalTflexImport } from "../src/background/packs/local-import.js";
+import {
+  buildStarDictPlainLocalTflex,
+  importStarDictPlainDictionary
+} from "../src/background/packs/importers/stardict-local-adapter.js";
+import {
+  buildStarDictTflexRecords as browserBuildStarDictTflexRecords,
+  validateStarDictImportRecipe as browserValidateStarDictImportRecipe
+} from "../src/background/packs/importers/stardict-semantic.js";
+import {
+  STARDICT_IMPORT_ERROR,
+  StarDictImportError
+} from "../src/background/packs/importers/stardict-core.js";
+
+test("StarDict Node compiler re-exports shared browser semantic mapping", () => {
+  assert.equal(
+    buildStarDictTflexRecords,
+    browserBuildStarDictTflexRecords
+  );
+  assert.equal(
+    validateStarDictImportRecipe,
+    browserValidateStarDictImportRecipe
+  );
+});
+
+test("browser plain StarDict adapter is byte-identical to the Node compiler output", async () => {
+  const env = await buildFixture("browser-byte-parity");
+  try {
+    const browser = await buildStarDictPlainLocalTflex({
+      ifoBytes: new TextEncoder().encode(env.encoded.ifoText),
+      idxBytes: copyArrayBuffer(env.encoded.idxBytes),
+      dictBytes: new DataView(copyArrayBuffer(env.encoded.dictBytes)),
+      synBytes: new Uint8Array(copyArrayBuffer(env.encoded.synBytes)),
+      recipe: recipeFixture(),
+      cryptoProvider: webcrypto
+    });
+
+    for (const name of ["manifest.json", "index.dat", "entries.dat"]) {
+      assert.deepEqual(
+        Buffer.from(browser.files[name]),
+        await readFile(join(env.outDir, name)),
+        name + " must match byte-for-byte"
+      );
+    }
+    assert.deepEqual(browser.manifest, env.result.manifest);
+    assert.deepEqual(browser.index, env.result.index);
+    assert.deepEqual(browser.records, env.result.records);
+  } finally {
+    await cleanup(env);
+  }
+});
+
+test("browser StarDict adapter rejects dictzip bytes until bounded browser decompression is enabled", async () => {
+  const encoded = makeStarDict([
+    ["alpha", "第一"]
+  ]);
+  await assert.rejects(
+    buildStarDictPlainLocalTflex({
+      ifoBytes: new TextEncoder().encode(encoded.ifoText),
+      idxBytes: encoded.idxBytes,
+      dictBytes: makeDictzip(encoded.dictBytes),
+      synBytes: encoded.synBytes,
+      recipe: recipeFixture(),
+      cryptoProvider: webcrypto
+    }),
+    (error) =>
+      error instanceof StarDictImportError &&
+      error.code === STARDICT_IMPORT_ERROR.UNSUPPORTED &&
+      /separate bounded browser decompression adapter/.test(error.message)
+  );
+});
+
+test("browser StarDict import adapter forwards verified TFLex bytes into the local transaction", async () => {
+  const encoded = makeStarDict([
+    ["hello", "你好"],
+    ["run", "运行"]
+  ], [
+    ["running", 1]
+  ]);
+  let received = null;
+  const result = await importStarDictPlainDictionary({
+    ifoBytes: new TextEncoder().encode(encoded.ifoText),
+    idxBytes: encoded.idxBytes,
+    dictBytes: encoded.dictBytes,
+    synBytes: encoded.synBytes,
+    recipe: recipeFixture(),
+    requestId: "browser-import-1",
+    cryptoProvider: webcrypto,
+    async importTflex(input) {
+      received = input;
+      return { status: "imported" };
+    }
+  });
+
+  assert.equal(received.requestId, "browser-import-1");
+  const validated = await validateLocalTflexImport({
+    files: received.files,
+    cryptoProvider: webcrypto
+  });
+  assert.equal(validated.manifest.packId, "local-stardict-fixture");
+  assert.equal(result.status, "imported");
+  assert.equal(result.packId, "local-stardict-fixture");
+  assert.equal(result.packVersion, "fixture-v1");
+  assert.equal(result.sourceEntryCount, 2);
+  assert.equal(result.sourceAliasCount, 1);
+});
 
 test("declared bilingual StarDict compiles deterministically to user-import-only opfs-indexed TFLex", async () => {
   const first = await buildFixture("deterministic-a");
@@ -377,6 +482,16 @@ function makeDictzip(input) {
   const header = Buffer.from(gzip.subarray(0, 10));
   header[3] |= 0x04;
   return Buffer.concat([header, extraLength, extra, gzip.subarray(10)]);
+}
+
+function copyArrayBuffer(value) {
+  const bytes = value instanceof Uint8Array
+    ? value
+    : new Uint8Array(value);
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  );
 }
 
 function fileDescriptor(role, path, bytes) {
