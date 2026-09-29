@@ -8,14 +8,11 @@ import {
   buildStarDictDictzipLocalTflex,
   buildStarDictPlainLocalTflex
 } from "../../background/packs/importers/stardict-local-adapter.js";
+import {
+  STARDICT_WORKER_MESSAGES
+} from "./stardict-import-worker-protocol.js";
 
-export const STARDICT_WORKER_MESSAGES = Object.freeze({
-  START: "stardict-import:start",
-  CANCEL: "stardict-import:cancel",
-  PROGRESS: "stardict-import:progress",
-  READY: "stardict-import:ready",
-  ERROR: "stardict-import:error"
-});
+export { STARDICT_WORKER_MESSAGES };
 
 const STAGE_ORDER = Object.freeze([
   "entries.dat",
