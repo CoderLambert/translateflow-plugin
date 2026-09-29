@@ -19,7 +19,7 @@
       <a data-settings-nav href="#sites">站点</a>
       <a data-settings-nav href="#auto-sites">自动行为</a>
       <a data-settings-nav href="#glossary">术语表</a>
-      <a data-settings-nav href="#dictionary-packs">本地词典</a>
+      <a data-settings-nav href="#dictionary-packs">词典库</a>
       <span>高级</span>
       <a data-settings-nav href="#provider">Provider</a>
       <a data-settings-nav href="#cache">缓存</a>
@@ -73,71 +73,86 @@
     </section>
 
     <section id="dictionary-packs" tabindex="-1">
-      <h2>本地词典</h2>
-      <p class="section-summary">内置词典随扩展提供，可离线使用；可选词典只有在完成质量与许可审核后才会提供单独下载。</p>
+      <h2>词典库</h2>
+      <p class="section-summary">本地查词始终优先于 AI。内置词典随扩展提供；下载词典和本地导入只会在你主动操作后保存到浏览器中。</p>
 
-      <h3>内置词典</h3>
-      <div id="bundledLexiconList" class="site-list dictionary-health-list" aria-live="polite">正在检查内置词典…</div>
+      <div class="dictionary-library-group" aria-labelledby="dictionaryBuiltInHeading">
+        <h3 id="dictionaryBuiltInHeading">内置词典</h3>
+        <p class="hint">随扩展提供的小型离线词典。这里显示版本、记录数和健康状态。</p>
+        <div id="bundledLexiconList" class="site-list dictionary-health-list" aria-live="polite">正在检查内置词典…</div>
 
-      <details class="dictionary-repair-help">
-        <summary>源码开发安装修复说明</summary>
-        <p>从源码加载扩展时，真实词典资源不会提交到 Git。若状态显示资源缺失，请运行 <code>npm run setup:lexicon</code>，完成后在 <code>chrome://extensions</code> 重新加载扩展。</p>
-      </details>
-
-      <h3>已安装</h3>
-      <div id="installedDictionaryList" class="site-list" aria-live="polite">正在读取已安装词典…</div>
-
-      <h3>精选词典</h3>
-      <p class="hint">精选词典直接从固定的上游版本下载，由 TranslateFlow 在本机按审核规则转换；属于上游 / 社区内容，不等同于 TranslateFlow 官方词典。</p>
-      <div id="curatedDictionaryList" class="site-list" aria-live="polite">正在读取精选词典状态…</div>
-
-      <h3>可选下载词典</h3>
-      <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取可选词典包状态…</div>
-      <p class="hint">可选词典只会请求对应受信任下载源的精确 Origin 权限；更新失败不会替换最后一个健康版本。</p>
-
-      <div class="actions">
-        <button id="refreshDictionaryPacks" type="button">重新检查词典状态</button>
+        <details class="dictionary-repair-help">
+          <summary>源码开发安装修复说明</summary>
+          <p>从源码加载扩展时，真实词典资源不会提交到 Git。若状态显示资源缺失，请运行 <code>npm run setup:lexicon</code>，完成后在 <code>chrome://extensions</code> 重新加载扩展。</p>
+        </details>
       </div>
-      <p class="hint">若可选包文件被浏览器回收或校验失败，状态会变为需要重新安装；有健康的上一版本时可回滚。</p>
 
-      <h3>本地导入</h3>
-      <div class="data-source-card">
-        <strong>StarDict</strong>
-        <p>当前支持英文词头 → 简体中文纯文本释义的 StarDict 2.4.2 / 3.0.0。一次选择同一套 <code>.ifo</code>、<code>.idx</code>、<code>.dict</code> 或 <code>.dict.dz</code>，以及可选 <code>.syn</code> 文件。</p>
-        <label for="stardictFiles">选择 StarDict 文件</label>
-        <input id="stardictFiles" type="file" multiple accept=".ifo,.idx,.dict,.dict.dz,.syn" />
+      <div class="dictionary-library-group" aria-labelledby="dictionaryDownloadHeading">
+        <h3 id="dictionaryDownloadHeading">下载词典</h3>
+        <p class="hint">下载项不会进入扩展基础安装包。官方推荐与上游 / 社区词典使用不同的信任标识。</p>
 
-        <div id="stardictInspection" class="setting-choice-help" hidden>
-          <div id="stardictInspectionMeta" aria-live="polite">等待检测…</div>
-          <label class="checkbox-label" for="stardictSemanticConfirmation">
-            <input id="stardictSemanticConfirmation" type="checkbox" disabled />
-            我确认这是“英文词头 → 简体中文纯文本释义”词典。TranslateFlow 不会根据 StarDict 纯文本格式自动猜测语义方向。
-          </label>
-          <div class="actions">
-            <button id="stardictImportButton" class="primary" type="button" disabled>导入词典</button>
-            <button id="stardictCancelButton" type="button" hidden>取消</button>
-          </div>
-          <p id="stardictImportProgress" class="hint" aria-live="polite"></p>
+        <h4>官方推荐</h4>
+        <p class="hint">只有完成来源、许可和质量审核的 TranslateFlow 官方词典包才会显示在这里。</p>
+        <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取官方推荐词典状态…</div>
+
+        <h4>精选上游</h4>
+        <p class="hint">直接从固定的上游版本下载，并由 TranslateFlow 在本机按审核规则转换。内容属于上游 / 社区，不代表 TranslateFlow 官方背书或重新授权。</p>
+        <div id="curatedDictionaryList" class="site-list" aria-live="polite">正在读取精选上游词典状态…</div>
+
+        <div class="actions">
+          <button id="refreshDictionaryPacks" type="button">重新检查词典状态</button>
         </div>
+        <p class="hint">下载或更新失败不会替换最后一个健康版本；文件缺失、损坏和版本不兼容会显示为不同状态。</p>
       </div>
 
-      <div class="data-source-card">
-        <strong>MDict (.mdx)</strong>
-        <p>当前仅支持未加密的 MDX 2.0、UTF-8 / UTF-16、Text 数据，以及 none/zlib 数据块。不会执行或渲染词典中的 HTML/CSS/JS；不支持 .mdd、LZO、GBK/Big5、Compact/StyleSheet。</p>
-        <label for="mdictFile">选择 MDX 文件</label>
-        <input id="mdictFile" type="file" accept=".mdx" />
+      <div class="dictionary-library-group" aria-labelledby="dictionaryInstalledHeading">
+        <h3 id="dictionaryInstalledHeading">已安装</h3>
+        <p class="hint">这里列出你主动下载或导入的额外词典，并显示来源、版本 / 导入标识和占用空间。可随时删除。</p>
+        <div id="installedDictionaryList" class="site-list" aria-live="polite">正在读取已安装词典…</div>
+      </div>
 
-        <div id="mdictInspection" class="setting-choice-help" hidden>
-          <div id="mdictInspectionMeta" aria-live="polite">等待检测…</div>
-          <label class="checkbox-label" for="mdictSemanticConfirmation">
-            <input id="mdictSemanticConfirmation" type="checkbox" disabled />
-            我确认这个词典的纯文本记录表示“英文词头 → 简体中文释义”。TranslateFlow 不会根据 MDX 格式自动猜测语义方向。
-          </label>
-          <div class="actions">
-            <button id="mdictImportButton" class="primary" type="button" disabled>导入词典</button>
-            <button id="mdictCancelButton" type="button" hidden>取消</button>
+      <div class="dictionary-library-group" aria-labelledby="dictionaryImportHeading">
+        <h3 id="dictionaryImportHeading">本地导入</h3>
+        <p class="hint">本地文件按不可信数据处理；导入不会赋予或暗示任何再分发权利，也不会自动调用 Provider / AI。</p>
+
+        <div class="data-source-card">
+          <strong>StarDict</strong>
+          <p>当前支持英文词头 → 简体中文纯文本释义的 StarDict 2.4.2 / 3.0.0。一次选择同一套 <code>.ifo</code>、<code>.idx</code>、<code>.dict</code> 或 <code>.dict.dz</code>，以及可选 <code>.syn</code> 文件。</p>
+          <label for="stardictFiles">选择 StarDict 文件</label>
+          <input id="stardictFiles" type="file" multiple accept=".ifo,.idx,.dict,.dict.dz,.syn" />
+
+          <div id="stardictInspection" class="setting-choice-help" hidden>
+            <div id="stardictInspectionMeta" aria-live="polite">等待检测…</div>
+            <label class="checkbox-label" for="stardictSemanticConfirmation">
+              <input id="stardictSemanticConfirmation" type="checkbox" disabled />
+              我确认这是“英文词头 → 简体中文纯文本释义”词典。TranslateFlow 不会根据 StarDict 纯文本格式自动猜测语义方向。
+            </label>
+            <div class="actions">
+              <button id="stardictImportButton" class="primary" type="button" disabled>导入词典</button>
+              <button id="stardictCancelButton" type="button" hidden>取消</button>
+            </div>
+            <p id="stardictImportProgress" class="hint" aria-live="polite"></p>
           </div>
-          <p id="mdictImportProgress" class="hint" aria-live="polite"></p>
+        </div>
+
+        <div class="data-source-card">
+          <strong>MDict (.mdx)</strong>
+          <p>当前仅支持未加密的 MDX 2.0、UTF-8 / UTF-16、Text 数据，以及 none/zlib 数据块。不会执行或渲染词典中的 HTML/CSS/JS；不支持 .mdd、LZO、GBK/Big5、Compact/StyleSheet。</p>
+          <label for="mdictFile">选择 MDX 文件</label>
+          <input id="mdictFile" type="file" accept=".mdx" />
+
+          <div id="mdictInspection" class="setting-choice-help" hidden>
+            <div id="mdictInspectionMeta" aria-live="polite">等待检测…</div>
+            <label class="checkbox-label" for="mdictSemanticConfirmation">
+              <input id="mdictSemanticConfirmation" type="checkbox" disabled />
+              我确认这个词典的纯文本记录表示“英文词头 → 简体中文释义”。TranslateFlow 不会根据 MDX 格式自动猜测语义方向。
+            </label>
+            <div class="actions">
+              <button id="mdictImportButton" class="primary" type="button" disabled>导入词典</button>
+              <button id="mdictCancelButton" type="button" hidden>取消</button>
+            </div>
+            <p id="mdictImportProgress" class="hint" aria-live="polite"></p>
+          </div>
         </div>
       </div>
     </section>
