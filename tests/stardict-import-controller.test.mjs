@@ -254,6 +254,58 @@ test("Settings controller removes a completed worker token when cancellation win
   assert.deepEqual(runtime.messages, []);
 });
 
+test("Settings controller reserves busy state before best-effort stale reclaim finishes", async () => {
+  const runtime = new FakeRuntime();
+  let releaseReclaim;
+  let signalReclaim;
+  const reclaimStarted = new Promise((resolve) => {
+    signalReclaim = resolve;
+  });
+  const reclaimGate = new Promise((resolve) => {
+    releaseReclaim = resolve;
+  });
+  const controller = createStarDictImportController({
+    runtime,
+    reclaimQuarantine: async () => {
+      signalReclaim();
+      await reclaimGate;
+    },
+    WorkerCtor: FakeWorker,
+    cryptoProvider: {
+      randomUUID: () =>
+        "00000000-0000-4000-8000-000000000005"
+    }
+  });
+
+  const first = controller.importDictionary({
+    format: "plain",
+    ifoFile: blob("ifo"),
+    idxFile: blob("idx"),
+    dictFile: blob("dict"),
+    recipe: { fixture: true }
+  });
+  await reclaimStarted;
+
+  await assert.rejects(
+    controller.importDictionary({
+      format: "plain",
+      ifoFile: blob("ifo"),
+      idxFile: blob("idx"),
+      dictFile: blob("dict"),
+      recipe: { fixture: true }
+    }),
+    (error) =>
+      error?.code === "STARDICT_IMPORT_BUSY"
+  );
+
+  await controller.cancel();
+  releaseReclaim();
+  await assert.rejects(
+    first,
+    (error) => error?.name === "AbortError"
+  );
+});
+
 function blob(value) {
   return new Blob([encoder.encode(value)]);
 }
