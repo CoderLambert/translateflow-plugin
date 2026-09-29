@@ -22,7 +22,8 @@
     "build:extension:release": "node scripts/build-extension.mjs --require-lexicon",
     "evaluate:bootstrap": "node scripts/evaluate-core-bootstrap.mjs",
     "measure:extension-footprint": "node scripts/measure-extension-footprint.mjs",
-    "project:kaikki": "node scripts/project-kaikki-rich.mjs"
+    "project:kaikki": "node scripts/project-kaikki-rich.mjs",
+    "certify:selection-lexical": "node scripts/certify-integrated-lexical-quality.mjs"
   },
   "engines": {
     "node": ">=18"
