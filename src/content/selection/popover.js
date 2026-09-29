@@ -106,7 +106,7 @@
     position(snapshot, chip);
   }
 
-  function showLoading(snapshot, onCancel) {
+  function showLoading(snapshot, onCancel, loadingMessage = "正在处理所选内容…") {
     ensureUi();
     activeSnapshot = snapshot;
     cancelHandler = onCancel;
@@ -114,7 +114,7 @@
     panel.hidden = false;
     clearPageSelection();
     updateSource(snapshot);
-    setStatus(statusNode, "正在处理所选内容…", "loading");
+    setStatus(statusNode, loadingMessage, "loading");
     aiDetail?.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
