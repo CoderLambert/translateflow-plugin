@@ -105,51 +105,6 @@ export async function buildStarDictLocalTflexFromProjection({
   };
 }
 
-export async function importStarDictPlainDictionary({
-  ifoBytes,
-  idxBytes,
-  dictBytes,
-  synBytes,
-  recipe,
-  requestId,
-  limits = STARDICT_IMPORT_LIMITS,
-  cryptoProvider = globalThis.crypto,
-  importTflex
-} = {}) {
-  const transaction =
-    typeof importTflex === "function"
-      ? importTflex
-      : (await import("../api.js")).importLocalDictionaryTflex;
-  if (typeof transaction !== "function") {
-    throw new Error(
-      "StarDict import requires a local TFLex transaction"
-    );
-  }
-  const built = await buildStarDictPlainLocalTflex({
-    ifoBytes,
-    idxBytes,
-    dictBytes,
-    synBytes,
-    recipe,
-    limits,
-    cryptoProvider
-  });
-  const result = await transaction({
-    files: built.files,
-    requestId
-  });
-  return {
-    ...result,
-    packId: built.manifest.packId,
-    packVersion: built.manifest.packVersion,
-    fingerprint: built.manifest.fingerprint,
-    sourceEntryCount:
-      built.manifest.sourceEntryCount,
-    sourceAliasCount:
-      built.manifest.sourceAliasCount
-  };
-}
-
 function normalizePlainInputs({
   ifoBytes,
   idxBytes,
