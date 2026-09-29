@@ -122,6 +122,16 @@ test("StarDict synonym parser accepts bounded sorted aliases and validates targe
     { word: "shared", targetIndex: 0 },
     { word: "shared", targetIndex: 1 }
   ]);
+  assert.deepEqual(parseStarDictSynonyms(encodeSynonyms([
+    ["apple alias", 0],
+    ["Zebra alias", 1]
+  ]), {
+    synonymCount: 2,
+    wordCount: 2
+  }), [
+    { word: "apple alias", targetIndex: 0 },
+    { word: "Zebra alias", targetIndex: 1 }
+  ]);
 
   assertCode(
     () => parseStarDictSynonyms(encodeSynonyms([["bad", 2]]), {
@@ -193,6 +203,14 @@ test("StarDict index rejects truncation, unsorted keys, out-of-bounds slices and
     { word: "alpha", offset: 0, size: 2 },
     { word: "beta", offset: 2, size: 2 }
   ]);
+  const stardictSorted = encodeIndex([
+    ["apple", 0, 1],
+    ["Zebra", 1, 1]
+  ]);
+  assert.deepEqual(parseStarDictIndex(stardictSorted, {
+    wordCount: 2,
+    dictBytes: 2
+  }).map((entry) => entry.word), ["apple", "Zebra"]);
 
   assertCode(
     () => parseStarDictIndex(good.subarray(0, good.length - 2), { wordCount: 2, dictBytes: 4 }),
