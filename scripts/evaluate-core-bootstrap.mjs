@@ -107,6 +107,9 @@ export async function evaluateCoreBootstrap({
         shardCount: projection.shards.length
       },
       metrics,
+      projection: {
+        fingerprint: projection.manifest.fingerprint
+      },
       cases
     });
   }
@@ -119,8 +122,11 @@ export async function evaluateCoreBootstrap({
       ", projected " + full.size.projectedCoreBytes
     );
   }
-  if (full.projectionFingerprint && full.projectionFingerprint !== pack.manifest.fingerprint) {
-    structuralFailures.push("full Core fingerprint projection drift");
+  if (full.projection.fingerprint !== pack.manifest.fingerprint) {
+    structuralFailures.push(
+      "full Core fingerprint projection drift: expected " + pack.manifest.fingerprint +
+      ", projected " + full.projection.fingerprint
+    );
   }
 
   for (const profile of profiles.slice(1)) {
