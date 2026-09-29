@@ -14,6 +14,7 @@ import {
   makeStarDictLocalSource,
   validateStarDictImportRecipe
 } from "./stardict-semantic.js";
+import { decompressStarDictDictzip } from "./stardict-browser-dictzip.js";
 import { buildLocalIndexedTflex } from "./tflex-local-builder.js";
 
 export async function buildStarDictPlainLocalTflex({
@@ -52,6 +53,54 @@ export async function buildStarDictPlainLocalTflex({
     recipe: checkedRecipe,
     cryptoProvider
   });
+}
+
+export async function buildStarDictDictzipLocalTflex({
+  ifoBytes,
+  idxBytes,
+  dictzipBlob,
+  synBytes,
+  recipe,
+  limits = STARDICT_IMPORT_LIMITS,
+  signal,
+  cryptoProvider = globalThis.crypto,
+  decompressionStreamFactory
+} = {}) {
+  const decompressed = await decompressStarDictDictzip(
+    dictzipBlob,
+    {
+      limits,
+      signal,
+      ...(decompressionStreamFactory
+        ? { decompressionStreamFactory }
+        : {})
+    }
+  );
+  if (signal?.aborted) {
+    throw new DOMException(
+      "StarDict dictionary import cancelled.",
+      "AbortError"
+    );
+  }
+
+  const built = await buildStarDictPlainLocalTflex({
+    ifoBytes,
+    idxBytes,
+    dictBytes: decompressed.bytes,
+    synBytes,
+    recipe,
+    limits,
+    cryptoProvider
+  });
+  return {
+    ...built,
+    compression: {
+      type: "dictzip",
+      inputBytes: decompressed.inputBytes,
+      outputBytes: decompressed.bytes.byteLength,
+      metadata: decompressed.dictzip
+    }
+  };
 }
 
 export async function buildStarDictLocalTflexFromProjection({
