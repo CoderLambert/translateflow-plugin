@@ -9,6 +9,7 @@ on:
       - "scripts/build-release-lexicon.mjs"
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
+      - "scripts/certify-integrated-lexical-quality.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
       - "scripts/evaluate-core-bootstrap.mjs"
       - "scripts/measure-extension-footprint.mjs"
@@ -25,6 +26,7 @@ on:
       - "scripts/build-release-lexicon.mjs"
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
+      - "scripts/certify-integrated-lexical-quality.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
       - "scripts/evaluate-core-bootstrap.mjs"
       - "scripts/measure-extension-footprint.mjs"
@@ -87,6 +89,14 @@ jobs:
       - name: Measure production extension footprint cost
         run: npm run measure:extension-footprint -- --out extension-footprint-report.json
 
+      - name: Certify integrated Selection lexical quality
+        run: >-
+          npm run certify:selection-lexical --
+          --quality lexical-quality-report.json
+          --bootstrap core-bootstrap-evaluation.json
+          --footprint extension-footprint-report.json
+          --out integrated-lexical-certification.json
+
       - name: Re-certify real release packs
         run: npm run certify:lexicon
 
@@ -121,6 +131,14 @@ jobs:
         with:
           name: extension-footprint-report
           path: extension-footprint-report.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload integrated lexical certification
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-lexical-certification
+          path: integrated-lexical-certification.json
           if-no-files-found: error
           retention-days: 30
 
