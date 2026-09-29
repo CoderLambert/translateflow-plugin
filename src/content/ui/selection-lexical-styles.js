@@ -70,6 +70,12 @@
   color: var(--tf-text-secondary);
   font-size: 11px;
 }
+.tf-selection-entry-provenance {
+  margin-top: 6px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
 .tf-selection-more-entries {
   padding: 3px 2px 0;
   color: var(--tf-text-muted);
