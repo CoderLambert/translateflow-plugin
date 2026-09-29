@@ -20,14 +20,30 @@ const REQUIRED_FILES = Object.freeze(["entries.dat", "index.dat", "manifest.json
 const decoder = new TextDecoder("utf-8", { fatal: true });
 const encoder = new TextEncoder();
 
-export async function validateLocalTflexImport({
+export function validateLocalTflexImport(input = {}) {
+  return validateLocalTflexFiles(input, {
+    copyInputFiles: true
+  });
+}
+
+export function validateOwnedLocalTflexBuild(input = {}) {
+  return validateLocalTflexFiles(input, {
+    copyInputFiles: false
+  });
+}
+
+async function validateLocalTflexFiles({
   files,
   cryptoProvider = globalThis.crypto
+} = {}, {
+  copyInputFiles
 } = {}) {
   if (!cryptoProvider?.subtle) {
     throw packError(PACK_ERROR_CODES.HASH, "WebCrypto is unavailable for local dictionary verification.");
   }
-  const normalizedFiles = normalizeInputFiles(files);
+  const normalizedFiles = normalizeInputFiles(files, {
+    copyInputFiles
+  });
   const totalBytes = REQUIRED_FILES.reduce(
     (sum, path) => sum + normalizedFiles[path].byteLength,
     0
@@ -139,7 +155,9 @@ export function makeLocalImportFingerprintPayload(manifest) {
   };
 }
 
-function normalizeInputFiles(files) {
+function normalizeInputFiles(files, {
+  copyInputFiles = true
+} = {}) {
   if (!files || typeof files !== "object" || Array.isArray(files)) {
     throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary import requires exactly three TFLex files.");
   }
@@ -155,9 +173,13 @@ function normalizeInputFiles(files) {
   for (const path of REQUIRED_FILES) {
     const value = files[path];
     const bytes = value instanceof Uint8Array
-      ? new Uint8Array(value)
+      ? copyInputFiles
+        ? new Uint8Array(value)
+        : value
       : value instanceof ArrayBuffer
-        ? new Uint8Array(value.slice(0))
+        ? copyInputFiles
+          ? new Uint8Array(value.slice(0))
+          : new Uint8Array(value)
         : null;
     if (!bytes?.byteLength) {
       throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary import file is empty or invalid.", { path });
