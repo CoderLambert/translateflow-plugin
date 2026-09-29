@@ -120,6 +120,26 @@
           <p id="stardictImportProgress" class="hint" aria-live="polite"></p>
         </div>
       </div>
+
+      <div class="data-source-card">
+        <strong>MDict (.mdx)</strong>
+        <p>当前仅支持未加密的 MDX 2.0、UTF-8 / UTF-16、Text 数据，以及 none/zlib 数据块。不会执行或渲染词典中的 HTML/CSS/JS；不支持 .mdd、LZO、GBK/Big5、Compact/StyleSheet。</p>
+        <label for="mdictFile">选择 MDX 文件</label>
+        <input id="mdictFile" type="file" accept=".mdx" />
+
+        <div id="mdictInspection" class="setting-choice-help" hidden>
+          <div id="mdictInspectionMeta" aria-live="polite">等待检测…</div>
+          <label class="checkbox-label" for="mdictSemanticConfirmation">
+            <input id="mdictSemanticConfirmation" type="checkbox" disabled />
+            我确认这个词典的纯文本记录表示“英文词头 → 简体中文释义”。TranslateFlow 不会根据 MDX 格式自动猜测语义方向。
+          </label>
+          <div class="actions">
+            <button id="mdictImportButton" class="primary" type="button" disabled>导入词典</button>
+            <button id="mdictCancelButton" type="button" hidden>取消</button>
+          </div>
+          <p id="mdictImportProgress" class="hint" aria-live="polite"></p>
+        </div>
+      </div>
     </section>
 
     <section id="appearance" tabindex="-1">
@@ -332,6 +352,7 @@
   </div>
   <script type="module" src="options.js"></script>
   <script type="module" src="src/options/stardict-import-ui.js"></script>
+  <script type="module" src="src/options/mdict-import-ui.js"></script>
   <script type="module" src="src/options/curated-dictionary-ui.js"></script>
 </body>
 </html>
