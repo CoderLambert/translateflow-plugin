@@ -48,12 +48,26 @@ export async function buildStarDictPlainLocalTflex({
       checkedRecipe.dictionary.sourceVersion,
     limits
   });
+  return buildStarDictLocalTflexFromProjection({
+    projection,
+    recipe: checkedRecipe,
+    cryptoProvider
+  });
+}
+
+export async function buildStarDictLocalTflexFromProjection({
+  projection,
+  recipe,
+  cryptoProvider = globalThis.crypto
+} = {}) {
+  const checkedRecipe =
+    validateStarDictImportRecipe(recipe);
   const source = makeStarDictLocalSource(
     checkedRecipe,
-    projection.dictionary
+    projection?.dictionary
   );
   const records = buildStarDictTflexRecords(
-    projection.entries,
+    projection?.entries,
     checkedRecipe
   );
   if (!records.length) {
