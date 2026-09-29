@@ -77,9 +77,10 @@ test("Selection AI detail preserves the local card across loading, failure and c
 });
 
 test("Selection result model separates local provenance and AI explanation", async () => {
-  const [controller, resultModel] = await Promise.all([
+  const [controller, resultModel, popover] = await Promise.all([
     source("src/content/selection/controller.js"),
-    source("src/content/selection/result-model.js")
+    source("src/content/selection/result-model.js"),
+    source("src/content/selection/popover.js")
   ]);
 
   assert.match(resultModel, /技术词条/);
