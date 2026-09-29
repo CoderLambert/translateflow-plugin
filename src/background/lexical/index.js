@@ -1,4 +1,5 @@
 import { getEffectiveGlossary } from "../config.js";
+import { createActiveOpfsPackReader } from "./active-opfs-reader.js";
 import { createLexicalGateway } from "./gateway.js";
 import { readPackageBytes } from "./package-assets.js";
 import { createTflexReader } from "./tflex-reader.js";
@@ -33,8 +34,13 @@ const readers = Object.fromEntries(BUNDLED_PACKS.map((pack) => [
   })
 ]));
 
+const activeOpfsReader = createActiveOpfsPackReader();
+
 const gateway = createLexicalGateway({
-  packReaders: BUNDLED_PACKS.map((pack) => readers[pack.id]),
+  packReaders: [
+    ...BUNDLED_PACKS.map((pack) => readers[pack.id]),
+    activeOpfsReader
+  ],
   resolveGlossary: getEffectiveGlossary
 });
 

@@ -215,6 +215,16 @@ download version N to inactive directory
 
 Missing/corrupt active data must fall back to the previous verified version when available; otherwise the pack enters a typed `needs-reinstall` state.
 
+Production lookup registration is dynamic and state-driven:
+
+- bundled Core/Technical readers remain first in gateway order;
+- healthy active `opfs-indexed-v1` snapshots are discovered from persisted pack state on lookup and appended after bundled readers;
+- active pack IDs are processed in stable lexical order for deterministic candidate ordering;
+- changing the active version or uninstalling a pack takes effect without a service-worker restart;
+- a typed corrupt/incompatible/storage error from one optional pack is isolated to that pack and recorded as a diagnostic rather than suppressing healthy bundled/optional candidates;
+- malformed `healthy` snapshot metadata is treated as corrupt;
+- lexical lookup never performs recovery state mutation; recovery/rollback remains owned by the dictionary-pack lifecycle manager.
+
 ## 9. Optional-pack catalog trust
 
 v1 trust policy:
