@@ -191,7 +191,7 @@
     if (preserveLocal) {
       popover.showAiDetailLoading(() => cancelAiDetail(snapshot, depth, baseCard));
     } else {
-      popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+      popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }), "正在结合上下文解释…");
     }
 
     try {
