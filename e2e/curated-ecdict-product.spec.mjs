@@ -74,8 +74,7 @@ test.describe("curated ECDICT product flow", () => {
         page.url(),
         sample.word
       );
-      const translations = candidate.senses
-        .flatMap((sense) => sense.translations || [])
+      const translations = (candidate.translations || [])
         .join("\n");
       expect(translations).toMatch(sample.expected);
       qualitySamples.push({
@@ -147,10 +146,8 @@ async function lookupEcdictCandidate(
   expect(lookup.status).toBe("candidates");
   const candidate = (lookup.candidates || []).find(
     (item) =>
-      item.senses?.some((sense) =>
-        sense.sourceRefs?.some(
-          (sourceRef) => sourceRef.sourceId === "ecdict"
-        )
+      item.provenance?.sourceRefs?.some(
+        (sourceRef) => sourceRef.sourceId === "ecdict"
       )
   );
   expect(candidate, text + " should have an ECDICT candidate")
