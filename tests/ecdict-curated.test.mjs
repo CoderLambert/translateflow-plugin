@@ -7,6 +7,9 @@ import {
 import {
   fetchCuratedDictionarySource
 } from "../src/background/providers/curated-dictionary-network.js";
+import {
+  validateCuratedDictionaryResponse
+} from "../src/options/workers/curated-dictionary-worker-core.js";
 
 const encoder = new TextEncoder();
 const header =
@@ -89,5 +92,40 @@ test("curated network provider rejects non-approved origins before fetch", async
       downloadUrl: "https://example.com/ecdict.csv"
     }),
     /not an approved HTTPS upstream/
+  );
+});
+
+
+test("curated response accepts encoded transport length while decoded stream remains exact-checked", () => {
+  const source = {
+    downloadUrl:
+      "https://raw.githubusercontent.com/skywind3000/ECDICT/locked/ecdict.csv"
+  };
+  const response = {
+    ok: true,
+    status: 200,
+    url: source.downloadUrl,
+    headers: {
+      get(name) {
+        return String(name).toLowerCase() === "content-length"
+          ? "22671434"
+          : null;
+      }
+    }
+  };
+
+  assert.doesNotThrow(() =>
+    validateCuratedDictionaryResponse(response, source)
+  );
+  assert.throws(
+    () => validateCuratedDictionaryResponse(
+      {
+        ...response,
+        url:
+          "https://raw.githubusercontent.com/skywind3000/ECDICT/other/ecdict.csv"
+      },
+      source
+    ),
+    /locked artifact URL/
   );
 });
