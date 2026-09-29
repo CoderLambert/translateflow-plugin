@@ -206,6 +206,43 @@ export function createOpfsImportQuarantine({
     }
   }
 
+  async function inspectTokenActivity(token) {
+    assertImportQuarantineToken(token);
+    try {
+      const directory = await getTokenDir(token, false);
+      let entryCount = 0;
+      let fileCount = 0;
+      let lastModified = 0;
+      for await (
+        const [, handle] of directory.entries()
+      ) {
+        entryCount += 1;
+        if (handle.kind !== "file") continue;
+        fileCount += 1;
+        const file = await handle.getFile();
+        const modified = Number(file.lastModified || 0);
+        if (
+          Number.isFinite(modified) &&
+          modified > lastModified
+        ) {
+          lastModified = modified;
+        }
+      }
+      return {
+        token,
+        entryCount,
+        fileCount,
+        lastModified
+      };
+    } catch (error) {
+      if (error?.name === "NotFoundError") return null;
+      throw storageError(
+        "Unable to inspect import quarantine token activity.",
+        { token, cause: error }
+      );
+    }
+  }
+
   async function remove(token) {
     assertImportQuarantineToken(token);
     try {
@@ -288,6 +325,7 @@ export function createOpfsImportQuarantine({
     readFileRange,
     listFiles,
     listTokens,
+    inspectTokenActivity,
     remove,
     cleanup
   });
