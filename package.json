@@ -25,6 +25,7 @@
     "project:kaikki": "node scripts/project-kaikki-rich.mjs",
     "certify:selection-lexical": "node scripts/certify-integrated-lexical-quality.mjs",
     "project:stardict": "node scripts/project-stardict-import.mjs",
+    "project:mdict": "node scripts/project-mdict-import.mjs",
     "build:tflex:stardict-import": "node scripts/build-tflex-stardict-import.mjs"
   },
   "engines": {
