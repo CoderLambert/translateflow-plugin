@@ -387,3 +387,5 @@ function formatBytes(bytes) {
   }
   return (value / (1024 * 1024)).toFixed(1) + " MiB";
 }
+
+initializeCuratedDictionaryUi();
