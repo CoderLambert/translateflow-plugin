@@ -95,7 +95,7 @@
 
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
-    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }), initialSelectionLoading(snapshot));
 
     let resolved = null;
     try {
@@ -191,7 +191,7 @@
     if (preserveLocal) {
       popover.showAiDetailLoading(() => cancelAiDetail(snapshot, depth, baseCard));
     } else {
-      popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+      popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }), "正在结合上下文解释…");
     }
 
     try {
@@ -336,6 +336,13 @@
     tasks.completeTask(task, { done: 1, apiTranslated: 1 });
     const card = buildTranslationResult(translation);
     showResult(snapshot, card, copyTextForCard(card), "译文已复制");
+  }
+
+  function initialSelectionLoading(snapshot) {
+    const text = String(snapshot?.text || "").trim();
+    return /^[A-Za-z][A-Za-z’'-]*$/u.test(text)
+      ? "正在查词…"
+      : "正在处理所选内容…";
   }
 
   function failureMessage(error) {
