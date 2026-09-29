@@ -103,10 +103,8 @@ test.describe("curated ECDICT product flow", () => {
     expect(afterDelete.ok).toBe(true);
     expect(
       (afterDelete.candidates || []).some((candidate) =>
-        candidate.senses?.some((sense) =>
-          sense.sourceRefs?.some(
-            (sourceRef) => sourceRef.sourceId === "ecdict"
-          )
+        candidate.provenance?.sourceRefs?.some(
+          (sourceRef) => sourceRef.sourceId === "ecdict"
         )
       )
     ).toBe(false);
