@@ -200,7 +200,12 @@ export function parseStarDictDictzipHeader(input) {
   const version = readUint16Le(randomAccess, 0);
   const chunkLength = readUint16Le(randomAccess, 2);
   const chunkCount = readUint16Le(randomAccess, 4);
-  if (!version || !chunkLength || !chunkCount) {
+  if (version !== 1) {
+    fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "Unsupported StarDict dictzip RA format version.", {
+      version
+    });
+  }
+  if (!chunkLength || !chunkCount) {
     fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz RA metadata contains zero-valued required fields.");
   }
   const expectedBytes = 6 + chunkCount * 2;
