@@ -4,6 +4,24 @@ import { createActiveOpfsPackReader } from "../src/background/lexical/active-opf
 import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { LEXICAL_ERROR_CODES } from "../src/shared/lexical.js";
 
+test("active OPFS reader treats non-extension runtimes as having no optional pack state", async () => {
+  const originalChrome = globalThis.chrome;
+  try {
+    globalThis.chrome = undefined;
+    const reader = createActiveOpfsPackReader({
+      store: fakeStore(),
+      readerFactory() {
+        throw new Error("reader factory must not run without active state");
+      },
+      cryptoProvider: fakeCrypto()
+    });
+    assert.deepEqual(await reader.lookupAll("word"), []);
+    assert.equal(reader.stats().stateError, null);
+  } finally {
+    globalThis.chrome = originalChrome;
+  }
+});
+
 test("active OPFS reader follows healthy active state without worker restart", async () => {
   let state = packState({
     alpha: activeEntry("alpha", "v1", "a")
