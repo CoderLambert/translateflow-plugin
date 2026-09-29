@@ -1,20 +1,23 @@
+import {
+  assertDeclaredCuratedDictionary
+} from "../../shared/curated-dictionaries.js";
+
 export async function fetchCuratedDictionarySource(
   source,
-  { signal } = {}
+  {
+    signal,
+    fetchImpl = globalThis.fetch
+  } = {}
 ) {
-  if (
-    !source ||
-    typeof source.downloadUrl !== "string" ||
-    !source.downloadUrl.startsWith(
-      "https://raw.githubusercontent.com/"
-    )
-  ) {
+  const declared =
+    assertDeclaredCuratedDictionary(source);
+  if (typeof fetchImpl !== "function") {
     throw new Error(
-      "Curated dictionary source URL is not an approved HTTPS upstream."
+      "Curated dictionary network provider requires fetch."
     );
   }
 
-  return fetch(source.downloadUrl, {
+  return fetchImpl(declared.downloadUrl, {
     method: "GET",
     cache: "no-store",
     redirect: "error",
