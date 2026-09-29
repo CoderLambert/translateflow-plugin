@@ -12,6 +12,7 @@ import {
   validateOwnedLocalTflexBuild
 } from "../src/background/packs/local-import.js";
 import { PACK_ERROR_CODES } from "../src/shared/pack-manager.js";
+import { makeImportQuarantineToken } from "../src/shared/import-quarantine-contract.js";
 
 const encoder = new TextEncoder();
 
@@ -364,17 +365,205 @@ test("re-importing identical healthy local version is idempotent", async () => {
   assert.equal(again.pack.active.packVersion, "v1");
 });
 
+test("quarantined TFLex is re-opened, revalidated and atomically activated", async () => {
+  const env = createEnvironment();
+  const token = quarantineToken(101);
+  const files = await makePack({
+    packId: "local-quarantine",
+    packVersion: "v1",
+    translation: "运行"
+  });
+  env.quarantine.stage(token, files);
+
+  const result =
+    await env.manager.importLocalTflexFromQuarantine({
+      token,
+      requestId: "quarantine-success"
+    });
+
+  assert.equal(result.status, "imported");
+  assert.equal(
+    result.pack.active.packVersion,
+    "v1"
+  );
+  assert.equal(env.quarantine.has(token), false);
+
+  const state = await env.stateStore.read();
+  assert.equal(
+    state.packs["local-quarantine"].sourceId,
+    "local-user-import"
+  );
+
+  const reader = createActiveOpfsPackReader({
+    stateStore: env.stateStore,
+    store: env.store,
+    cryptoProvider: webcrypto
+  });
+  const hit = await reader.lookup("run");
+  assert.deepEqual(
+    hit.record.senses[0].translations,
+    ["运行"]
+  );
+});
+
+test("tampered quarantine bytes fail before activation and are cleaned up", async () => {
+  const env = createEnvironment();
+  const token = quarantineToken(102);
+  const files = await makePack({
+    packId: "local-quarantine-tampered",
+    packVersion: "v1",
+    translation: "运行"
+  });
+  files["entries.dat"] =
+    new Uint8Array(files["entries.dat"]);
+  files["entries.dat"][0] ^= 1;
+  env.quarantine.stage(token, files);
+
+  await assert.rejects(
+    env.manager.importLocalTflexFromQuarantine({
+      token,
+      requestId: "quarantine-tampered"
+    }),
+    (error) =>
+      error?.code === PACK_ERROR_CODES.HASH
+  );
+
+  assert.equal(env.quarantine.has(token), false);
+  assert.deepEqual(
+    (await env.stateStore.read()).packs,
+    {}
+  );
+  assert.deepEqual(
+    await env.store.listPacks(),
+    []
+  );
+});
+
+test("cancelling a bounded quarantine read reserves requestId until unwind", async () => {
+  const env = createEnvironment();
+  const token = quarantineToken(103);
+  env.quarantine.stage(
+    token,
+    await makePack({
+      packId: "local-quarantine-cancel",
+      packVersion: "v1",
+      translation: "运行"
+    })
+  );
+  const blocked =
+    env.quarantine.blockNextRead("entries.dat");
+
+  const importing =
+    env.manager.importLocalTflexFromQuarantine({
+      token,
+      requestId: "quarantine-cancel"
+    });
+  await blocked.started;
+
+  assert.deepEqual(
+    env.manager.cancel("quarantine-cancel"),
+    { cancelled: true }
+  );
+
+  await assert.rejects(
+    env.manager.importLocalTflex({
+      files: await makePack({
+        packId: "local-requestid-race",
+        packVersion: "v1",
+        translation: "竞态"
+      }),
+      requestId: "quarantine-cancel"
+    }),
+    (error) =>
+      error?.code === PACK_ERROR_CODES.BUSY
+  );
+
+  blocked.release();
+  await assert.rejects(
+    importing,
+    (error) =>
+      error?.code === PACK_ERROR_CODES.CANCELLED
+  );
+
+  assert.equal(env.quarantine.has(token), false);
+  assert.deepEqual(
+    (await env.stateStore.read()).packs,
+    {}
+  );
+  assert.deepEqual(
+    await env.store.listPacks(),
+    []
+  );
+
+  const after = await env.manager.importLocalTflex({
+    files: await makePack({
+      packId: "local-requestid-reused",
+      packVersion: "v1",
+      translation: "可复用"
+    }),
+    requestId: "quarantine-cancel"
+  });
+  assert.equal(after.status, "imported");
+});
+
+test("one quarantine token cannot be committed by concurrent requests", async () => {
+  const env = createEnvironment();
+  const token = quarantineToken(104);
+  env.quarantine.stage(
+    token,
+    await makePack({
+      packId: "local-quarantine-busy",
+      packVersion: "v1",
+      translation: "运行"
+    })
+  );
+  const blocked =
+    env.quarantine.blockNextRead("entries.dat");
+
+  const first =
+    env.manager.importLocalTflexFromQuarantine({
+      token,
+      requestId: "quarantine-owner"
+    });
+  await blocked.started;
+
+  await assert.rejects(
+    env.manager.importLocalTflexFromQuarantine({
+      token,
+      requestId: "quarantine-contender"
+    }),
+    (error) =>
+      error?.code === PACK_ERROR_CODES.BUSY &&
+      /token/i.test(error.message)
+  );
+
+  assert.deepEqual(
+    env.manager.cancel("quarantine-owner"),
+    { cancelled: true }
+  );
+  blocked.release();
+  await assert.rejects(
+    first,
+    (error) =>
+      error?.code === PACK_ERROR_CODES.CANCELLED
+  );
+  assert.equal(env.quarantine.has(token), false);
+});
+
 function createEnvironment({
-  estimate = { quota: 1024 ** 3, usage: 1024 }
+  estimate = { quota: 1024 ** 3, usage: 1024 },
+  quarantine = createMemoryQuarantine()
 } = {}) {
   const store = createMemoryStore();
   const stateStore = createMemoryStateStore();
   return {
     store,
     stateStore,
+    quarantine,
     manager: createDictionaryPackManager({
       sources: [],
       store,
+      quarantine,
       stateStore,
       permissions: null,
       storageManager: {
@@ -476,6 +665,122 @@ async function makePack({
     "index.dat": indexBytes,
     "entries.dat": entriesBytes
   };
+}
+
+function quarantineToken(index) {
+  return makeImportQuarantineToken(
+    () =>
+      "123e4567-e89b-42d3-a456-" +
+      String(index).padStart(12, "0")
+  );
+}
+
+function createMemoryQuarantine() {
+  const tokens = new Map();
+  let blocker = null;
+
+  return {
+    stage(token, files) {
+      tokens.set(
+        token,
+        new Map(
+          Object.entries(files).map(
+            ([path, bytes]) => [
+              path,
+              new Uint8Array(bytes)
+            ]
+          )
+        )
+      );
+    },
+    has(token) {
+      return tokens.has(token);
+    },
+    blockNextRead(path) {
+      let signalStarted;
+      let releaseRead;
+      const started = new Promise((resolve) => {
+        signalStarted = resolve;
+      });
+      const gate = new Promise((resolve) => {
+        releaseRead = resolve;
+      });
+      blocker = {
+        path,
+        started: signalStarted,
+        gate,
+        used: false
+      };
+      return {
+        started,
+        release: releaseRead
+      };
+    },
+    async listFiles(token) {
+      const files = requireQuarantineToken(
+        tokens,
+        token
+      );
+      return [...files.entries()]
+        .map(([path, bytes]) => ({
+          path,
+          size: bytes.byteLength
+        }))
+        .sort((left, right) =>
+          compareText(left.path, right.path)
+        );
+    },
+    async readFileRange(
+      token,
+      path,
+      offset,
+      length
+    ) {
+      const files = requireQuarantineToken(
+        tokens,
+        token
+      );
+      const bytes = files.get(path);
+      if (!bytes) throw notFoundError();
+      if (
+        blocker &&
+        !blocker.used &&
+        blocker.path === path
+      ) {
+        blocker.used = true;
+        blocker.started();
+        await blocker.gate;
+      }
+      if (
+        offset < 0 ||
+        length <= 0 ||
+        offset + length > bytes.byteLength
+      ) {
+        const error = new Error("range");
+        error.code = PACK_ERROR_CODES.STORAGE;
+        throw error;
+      }
+      return bytes.slice(
+        offset,
+        offset + length
+      );
+    },
+    async remove(token) {
+      return tokens.delete(token);
+    }
+  };
+}
+
+function requireQuarantineToken(tokens, token) {
+  const files = tokens.get(token);
+  if (!files) throw notFoundError();
+  return files;
+}
+
+function notFoundError() {
+  const error = new Error("missing");
+  error.name = "NotFoundError";
+  return error;
 }
 
 function createMemoryStore() {
