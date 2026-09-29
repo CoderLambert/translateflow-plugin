@@ -12,6 +12,10 @@ import {
   verifyTrustedCatalog
 } from "./catalog.js";
 import { createOpfsPackStore } from "./opfs-store.js";
+import {
+  assertPackOperationActive,
+  normalizePackOperationError
+} from "./operation.js";
 import { createPackStateStore } from "./state.js";
 import {
   inspectInstalledPack,
@@ -70,7 +74,7 @@ export function createDictionaryPackManager({
       const { catalogBytes, signatureBytes } = await network.fetchCatalog(source, {
         signal: controller.signal
       });
-      assertActive(controller.signal);
+      assertPackOperationActive(controller.signal);
 
       const highestSequence = Number(before.catalogSequences[source.id] || 0);
       const catalog = await verifyTrustedCatalog({
@@ -136,12 +140,12 @@ export function createDictionaryPackManager({
       }
 
       for (const descriptor of pack.files) {
-        assertActive(controller.signal);
+        assertPackOperationActive(controller.signal);
         const bytes = await network.fetchFile(source, descriptor, { signal: controller.signal });
-        assertActive(controller.signal);
+        assertPackOperationActive(controller.signal);
         await verifyDownloadedFile(descriptor, bytes, cryptoProvider);
         await store.writeFile(packId, pack.packVersion, descriptor.path, bytes);
-        assertActive(controller.signal);
+        assertPackOperationActive(controller.signal);
       }
 
       const snapshot = snapshotFromPack(pack, source.id, catalog.sequence);
@@ -153,7 +157,7 @@ export function createDictionaryPackManager({
           inspection: stagedInspection
         });
       }
-      assertActive(controller.signal);
+      assertPackOperationActive(controller.signal);
 
       const nextState = await stateStore.update((state) => {
         const previous = state.packs[packId] || null;
@@ -185,7 +189,7 @@ export function createDictionaryPackManager({
       if (stagedVersion && !protectedVersions.has(stagedVersion)) {
         await store.removeVersion(packId, stagedVersion).catch(() => {});
       }
-      throw normalizeOperationError(error);
+      throw normalizePackOperationError(error);
     } finally {
       if (operationsByPack.get(packId) === id) operationsByPack.delete(packId);
       if (controllersByRequest.get(id) === controller) controllersByRequest.delete(id);
@@ -369,8 +373,8 @@ export function createDictionaryPackManager({
     controllersByRequest,
     recoverPack,
     preflightQuota,
-    normalizeOperationError,
-    assertActive
+    normalizeOperationError: normalizePackOperationError,
+    assertActive: assertPackOperationActive
   });
 
   return Object.freeze({
@@ -418,18 +422,4 @@ export function recoverDictionaryPacks() {
 
 export function getDictionaryPackStatus(options) {
   return getDictionaryPackManager().status(options);
-}
-
-function assertActive(signal) {
-  if (!signal?.aborted) return;
-  const error = new DOMException("Dictionary pack operation cancelled.", "AbortError");
-  throw error;
-}
-
-function normalizeOperationError(error) {
-  if (error?.code && String(error.code).startsWith("PACK_")) return error;
-  if (error?.name === "AbortError") {
-    return packError(PACK_ERROR_CODES.CANCELLED, "Dictionary pack operation was cancelled.");
-  }
-  return packError(PACK_ERROR_CODES.STORAGE, error?.message || "Dictionary pack operation failed.", { cause: error });
 }
