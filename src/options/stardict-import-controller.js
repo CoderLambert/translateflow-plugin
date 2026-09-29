@@ -2,8 +2,9 @@ import {
   BACKGROUND_MESSAGES
 } from "../shared/constants.js";
 import {
-  STARDICT_IMPORT_LIMITS
-} from "../background/packs/importers/stardict-contract.js";
+  prepareStarDictWorkerInput,
+  waitForStarDictWorkerReady
+} from "./stardict-import-controller-io.js";
 import {
   STARDICT_WORKER_MESSAGES
 } from "./workers/stardict-import-worker-protocol.js";
@@ -40,14 +41,7 @@ export function createStarDictImportController({
 
   let active = null;
 
-  async function importDictionary({
-    format,
-    ifoFile,
-    idxFile,
-    dictFile,
-    synFile,
-    recipe
-  } = {}) {
+  async function importDictionary(input = {}) {
     if (active) {
       throw controllerError(
         "STARDICT_IMPORT_BUSY",
@@ -71,30 +65,22 @@ export function createStarDictImportController({
     active = current;
 
     try {
-      emitProgress(
-        onProgress,
-        requestId,
-        "read"
-      );
-      const prepared = await prepareWorkerInput({
-        format,
-        ifoFile,
-        idxFile,
-        dictFile,
-        synFile,
-        recipe
-      });
+      emitProgress(onProgress, requestId, "read");
+      const prepared =
+        await prepareStarDictWorkerInput(input);
       assertCurrent(current);
 
       current.phase = "worker";
-      const readyPromise = waitForWorkerReady({
-        worker,
-        requestId,
-        onProgress,
-        setReject(reject) {
-          current.workerReject = reject;
-        }
-      });
+      const readyPromise =
+        waitForStarDictWorkerReady({
+          worker,
+          requestId,
+          onProgress,
+          setReject(reject) {
+            current.workerReject = reject;
+          }
+        });
+
       worker.postMessage(
         {
           type: STARDICT_WORKER_MESSAGES.START,
@@ -237,199 +223,6 @@ export function createStarDictImportController({
   }
 }
 
-async function prepareWorkerInput({
-  format,
-  ifoFile,
-  idxFile,
-  dictFile,
-  synFile,
-  recipe
-}) {
-  if (!["plain", "dictzip"].includes(format)) {
-    throw controllerError(
-      "STARDICT_IMPORT_INPUT",
-      "StarDict format must be plain or dictzip."
-    );
-  }
-  assertBlob(ifoFile, "IFO");
-  assertBlob(idxFile, "IDX");
-  assertBlob(dictFile, format === "dictzip"
-    ? "DICT.DZ"
-    : "DICT");
-  if (synFile !== undefined && synFile !== null) {
-    assertBlob(synFile, "SYN");
-  }
-
-  assertSize(
-    ifoFile.size,
-    STARDICT_IMPORT_LIMITS.ifoBytes,
-    "IFO"
-  );
-  assertSize(
-    idxFile.size,
-    STARDICT_IMPORT_LIMITS.idxBytes,
-    "IDX"
-  );
-  assertSize(
-    dictFile.size,
-    format === "dictzip"
-      ? STARDICT_IMPORT_LIMITS.dictArchiveBytes
-      : STARDICT_IMPORT_LIMITS.dictBytes,
-    format === "dictzip" ? "DICT.DZ" : "DICT"
-  );
-  if (synFile) {
-    assertSize(
-      synFile.size,
-      STARDICT_IMPORT_LIMITS.synBytes,
-      "SYN"
-    );
-  }
-
-  const [ifoBytes, idxBytes, synBytes] =
-    await Promise.all([
-      ifoFile.arrayBuffer(),
-      idxFile.arrayBuffer(),
-      synFile
-        ? synFile.arrayBuffer()
-        : Promise.resolve(null)
-    ]);
-
-  const transfer = [
-    ifoBytes,
-    idxBytes,
-    ...(synBytes ? [synBytes] : [])
-  ];
-  const input = {
-    format,
-    ifoBytes,
-    idxBytes,
-    ...(synBytes
-      ? { synBytes }
-      : {}),
-    recipe
-  };
-
-  if (format === "plain") {
-    const dictBytes = await dictFile.arrayBuffer();
-    input.dictBytes = dictBytes;
-    transfer.push(dictBytes);
-  } else {
-    input.dictzipBlob = dictFile;
-  }
-
-  return {
-    input,
-    transfer
-  };
-}
-
-function waitForWorkerReady({
-  worker,
-  requestId,
-  onProgress,
-  setReject
-}) {
-  return new Promise((resolve, reject) => {
-    setReject(reject);
-
-    const cleanup = () => {
-      worker.removeEventListener?.(
-        "message",
-        onMessage
-      );
-      worker.removeEventListener?.(
-        "error",
-        onError
-      );
-    };
-
-    const onMessage = (event) => {
-      const message = event?.data;
-      if (message?.requestId !== requestId) {
-        return;
-      }
-      if (
-        message.type ===
-        STARDICT_WORKER_MESSAGES.PROGRESS
-      ) {
-        emitProgress(
-          onProgress,
-          requestId,
-          message.phase,
-          {
-            ...(message.path
-              ? { path: message.path }
-              : {})
-          }
-        );
-        return;
-      }
-      if (
-        message.type ===
-        STARDICT_WORKER_MESSAGES.READY
-      ) {
-        cleanup();
-        resolve(message);
-        return;
-      }
-      if (
-        message.type ===
-        STARDICT_WORKER_MESSAGES.ERROR
-      ) {
-        cleanup();
-        reject(workerResponseError(message));
-      }
-    };
-
-    const onError = (event) => {
-      cleanup();
-      reject(
-        controllerError(
-          "STARDICT_WORKER_FAILURE",
-          event?.message ||
-            "StarDict import Worker failed."
-        )
-      );
-    };
-
-    worker.addEventListener(
-      "message",
-      onMessage
-    );
-    worker.addEventListener(
-      "error",
-      onError
-    );
-  });
-}
-
-function assertBlob(value, label) {
-  if (
-    !value ||
-    !Number.isSafeInteger(value.size) ||
-    value.size <= 0 ||
-    typeof value.arrayBuffer !== "function"
-  ) {
-    throw controllerError(
-      "STARDICT_IMPORT_INPUT",
-      label + " file is invalid."
-    );
-  }
-}
-
-function assertSize(actual, maximum, label) {
-  if (
-    !Number.isSafeInteger(actual) ||
-    actual <= 0 ||
-    actual > maximum
-  ) {
-    throw controllerError(
-      "STARDICT_IMPORT_LIMIT",
-      label + " file exceeds the import safety limit."
-    );
-  }
-}
-
 function makeRequestId(cryptoProvider) {
   const id = cryptoProvider?.randomUUID?.();
   if (!id) {
@@ -458,16 +251,6 @@ function responseError(response, fallback) {
     response?.errorCode || "STARDICT_IMPORT_COMMIT",
     response?.error || fallback
   );
-}
-
-function workerResponseError(message) {
-  const error = controllerError(
-    message?.errorCode || "STARDICT_WORKER_FAILURE",
-    message?.error || "StarDict import Worker failed."
-  );
-  error.name =
-    message?.errorName || error.name;
-  return error;
 }
 
 function controllerError(code, message) {
