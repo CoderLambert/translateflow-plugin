@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
+import { createHash, webcrypto } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  TFLEX_COMPILER_VERSION,
   TFLEX_FORMAT_VERSION,
   TFLEX_NORMALIZATION_VERSION,
   TFLEX_READER_MIN_VERSION,
@@ -12,16 +11,25 @@ import {
   normalizeLookupKey,
   stableStringify
 } from "./build-tflex-core.mjs";
-import {
-  TFLEX_OPFS_INDEXED_PROFILE,
-  buildIndexedData
-} from "./build-tflex-freedict.mjs";
+import { TFLEX_OPFS_INDEXED_PROFILE } from "./build-tflex-freedict.mjs";
 import { projectStarDictPoc } from "./project-stardict-import.mjs";
+import { buildStarDictLocalTflexFromProjection } from "../src/background/packs/importers/stardict-local-adapter.js";
+import {
+  STARDICT_BILINGUAL_PROFILE,
+  STARDICT_LOCAL_IMPORT_LICENSE_ID,
+  buildStarDictTflexRecords,
+  validateStarDictImportRecipe
+} from "../src/background/packs/importers/stardict-semantic.js";
 import { validateTflexRecord } from "../src/background/lexical/tflex-integrity.js";
+import { makeLocalImportFingerprintPayload } from "../src/background/packs/local-import.js";
 import { isSafePackIdentifier } from "../src/shared/pack-manager.js";
 
-export const STARDICT_BILINGUAL_PROFILE = "en-zh-plain-text-translation-v1";
-export const STARDICT_LOCAL_IMPORT_LICENSE_ID = "USER-PROVIDED-UNVERIFIED";
+export {
+  STARDICT_BILINGUAL_PROFILE,
+  STARDICT_LOCAL_IMPORT_LICENSE_ID,
+  buildStarDictTflexRecords,
+  validateStarDictImportRecipe
+};
 
 export async function compileTflexStarDictImport({
   ifoPath,
@@ -44,66 +52,23 @@ export async function compileTflexStarDictImport({
     sourceVersion: recipe.dictionary.sourceVersion
   });
 
-  if (projection.dictionary.bookname !== recipe.dictionary.bookname) {
-    throw new Error(
-      "StarDict recipe bookname mismatch: expected " +
-      recipe.dictionary.bookname + ", got " + projection.dictionary.bookname
-    );
-  }
-
-  const records = buildStarDictTflexRecords(projection.entries, recipe);
-  if (!records.length) throw new Error("StarDict TFLex import produced no records");
+  const built = await buildStarDictLocalTflexFromProjection({
+    projection,
+    recipe,
+    cryptoProvider: webcrypto
+  });
 
   const output = requiredPath(outDir, "outDir");
   await prepareOutputDir(output);
-  const indexed = buildIndexedData(records);
-  await writeFile(resolve(output, "entries.dat"), indexed.entriesText, "utf8");
-  await writeFile(resolve(output, "index.dat"), indexed.indexText, "utf8");
+  await Promise.all(
+    Object.entries(built.files).map(([name, bytes]) =>
+      writeFile(resolve(output, name), bytes)
+    )
+  );
 
-  const files = [
-    descriptor("lookup-index", "index.dat", indexed.indexText),
-    descriptor("lexical-data", "entries.dat", indexed.entriesText)
-  ].sort(compareFile);
-
-  const source = makeSource(recipe, projection.dictionary);
-  const sources = [source];
-  const fingerprintPayload = makeStarDictFingerprintPayload({
-    packId: recipe.packId,
-    packVersion: recipe.packVersion,
-    semanticProfile: recipe.semanticProfile,
-    sources,
-    files
-  });
-  const manifest = {
-    format: "tflex",
-    formatVersion: TFLEX_FORMAT_VERSION,
-    readerMinVersion: TFLEX_READER_MIN_VERSION,
-    compilerVersion: TFLEX_COMPILER_VERSION,
-    normalizationVersion: TFLEX_NORMALIZATION_VERSION,
-    packId: recipe.packId,
-    packVersion: recipe.packVersion,
-    sourceLanguage: recipe.sourceLanguage,
-    targetLanguage: recipe.targetLanguage,
-    profile: TFLEX_OPFS_INDEXED_PROFILE,
-    distributionStatus: "user-import-only",
-    semanticProfile: recipe.semanticProfile,
-    fingerprint: "sha256:" + sha256Text(stableStringify(fingerprintPayload)),
-    recordCount: records.length,
-    sourceEntryCount: projection.entries.length,
-    sourceAliasCount: projection.entries.reduce(
-      (count, entry) => count + (Array.isArray(entry.aliases) ? entry.aliases.length : 0),
-      0
-    ),
-    license: {
-      id: STARDICT_LOCAL_IMPORT_LICENSE_ID,
-      name: "User-provided dictionary; redistribution rights are not verified",
-      source: "local-user-import"
-    },
-    sources,
-    files: files.map(({ text: _text, ...file }) => file)
-  };
-  await writeFile(resolve(output, "manifest.json"), stableStringify(manifest) + "\n", "utf8");
-
+  const manifest = built.manifest;
+  const records = built.records;
+  const index = built.index;
   const validation = await validateStarDictTflexPackOutput({ outDir: output });
   const report = {
     schemaVersion: 1,
@@ -138,132 +103,7 @@ export async function compileTflexStarDictImport({
   if (reportPath) {
     await writeFile(resolve(reportPath), JSON.stringify(report, null, 2) + "\n", "utf8");
   }
-  return { manifest, records, index: indexed.index, report, projection };
-}
-
-export function validateStarDictImportRecipe(input) {
-  if (!plainObject(input)) throw new Error("StarDict import recipe must be an object");
-  if (input.schemaVersion !== 1) throw new Error("StarDict import recipe schemaVersion must be 1");
-  if (input.semanticProfile !== STARDICT_BILINGUAL_PROFILE) {
-    throw new Error("StarDict import recipe semanticProfile is unsupported");
-  }
-  if (input.sourceLanguage !== "en" || input.targetLanguage !== "zh-CN") {
-    throw new Error("StarDict import recipe must explicitly declare en -> zh-CN");
-  }
-  if (!isSafePackIdentifier(input.packId) || !String(input.packId).startsWith("local-")) {
-    throw new Error("StarDict local import packId must be a safe local-* identifier");
-  }
-  if (!isSafePackIdentifier(input.packVersion, 120)) {
-    throw new Error("StarDict local import packVersion is invalid");
-  }
-
-  const dictionary = input.dictionary;
-  if (!plainObject(dictionary)) throw new Error("StarDict import recipe dictionary metadata is required");
-  requireText(dictionary.bookname, "StarDict recipe bookname");
-  if (!isSafePackIdentifier(dictionary.sourceId)) {
-    throw new Error("StarDict recipe sourceId is invalid");
-  }
-  requireText(dictionary.sourceVersion, "StarDict recipe sourceVersion");
-
-  const assertions = input.assertions;
-  if (
-    !plainObject(assertions) ||
-    assertions.plainTextRepresentsTargetTranslation !== true ||
-    assertions.localUseOnly !== true
-  ) {
-    throw new Error(
-      "StarDict import recipe requires explicit plain-text translation and local-use assertions"
-    );
-  }
-
-  return {
-    schemaVersion: 1,
-    semanticProfile: STARDICT_BILINGUAL_PROFILE,
-    packId: input.packId,
-    packVersion: input.packVersion,
-    sourceLanguage: "en",
-    targetLanguage: "zh-CN",
-    dictionary: {
-      bookname: dictionary.bookname,
-      sourceId: dictionary.sourceId,
-      sourceVersion: dictionary.sourceVersion
-    },
-    assertions: {
-      plainTextRepresentsTargetTranslation: true,
-      localUseOnly: true
-    }
-  };
-}
-
-export function buildStarDictTflexRecords(entries, recipeInput) {
-  const recipe = validateStarDictImportRecipe(recipeInput);
-  const grouped = new Map();
-
-  for (const entry of Array.isArray(entries) ? entries : []) {
-    if (
-      !entry ||
-      typeof entry.lookupKey !== "string" ||
-      normalizeLookupKey(entry.lookupKey) !== entry.lookupKey ||
-      typeof entry.displayForm !== "string" ||
-      !entry.displayForm ||
-      typeof entry.plainText !== "string" ||
-      !entry.plainText ||
-      entry.sourceRef?.sourceId !== recipe.dictionary.sourceId ||
-      typeof entry.sourceRef?.recordId !== "string" ||
-      !entry.sourceRef.recordId
-    ) {
-      throw new Error("Malformed StarDict projection row");
-    }
-
-    let record = grouped.get(entry.lookupKey);
-    if (!record) {
-      record = {
-        lookupKey: entry.lookupKey,
-        exactLookupKeys: new Set(),
-        displayForm: entry.displayForm,
-        kind: "lexical",
-        aliases: new Set(),
-        senses: []
-      };
-      grouped.set(entry.lookupKey, record);
-    }
-    const exact = normalizeExactLookupKey(entry.displayForm);
-    if (exact) record.exactLookupKeys.add(exact);
-    if (entry.aliases !== undefined && !Array.isArray(entry.aliases)) {
-      throw new Error("Malformed StarDict projection aliases");
-    }
-    for (const alias of entry.aliases || []) {
-      if (typeof alias !== "string" || !alias || !normalizeLookupKey(alias)) {
-        throw new Error("Malformed StarDict projection alias");
-      }
-      if (normalizeLookupKey(alias) !== entry.lookupKey) record.aliases.add(alias);
-    }
-    record.senses.push({
-      id: "stardict:" + entry.sourceRef.recordId,
-      translations: [entry.plainText],
-      domains: [],
-      sourceRefs: [{ ...entry.sourceRef }]
-    });
-  }
-
-  const records = [...grouped.values()]
-    .map((record) => ({
-      ...record,
-      exactLookupKeys: [...record.exactLookupKeys].sort(compareText),
-      aliases: [...record.aliases].sort(compareText),
-      senses: [...record.senses]
-    }))
-    .sort((a, b) => compareText(a.lookupKey, b.lookupKey));
-
-  let previous = "";
-  for (const record of records) {
-    if (previous && previous >= record.lookupKey) {
-      throw new Error("StarDict TFLex lookup keys must be strictly ordered");
-    }
-    validateTflexRecord(record, recipe.packId, "entries.dat");
-    previous = record.lookupKey;
-  }
-  return records;
+  return { manifest, records, index, report, projection };
 }
 
 export async function validateStarDictTflexPackOutput({ outDir } = {}) {
@@ -451,45 +291,13 @@ export function makeStarDictFingerprintPayload({
   sources,
   files
 }) {
-  return {
-    formatVersion: TFLEX_FORMAT_VERSION,
-    normalizationVersion: TFLEX_NORMALIZATION_VERSION,
+  return makeLocalImportFingerprintPayload({
     packId,
     packVersion,
-    profile: TFLEX_OPFS_INDEXED_PROFILE,
-    distributionStatus: "user-import-only",
     semanticProfile,
-    sources: [...sources]
-      .sort((a, b) => compareText(a.id, b.id))
-      .map((source) => ({
-        id: source.id,
-        version: source.version,
-        provenance: source.provenance,
-        semanticProfile: source.semanticProfile,
-        licenseId: source.license?.id
-      })),
-    files: [...files]
-      .sort(compareFile)
-      .map(({ role, path, size, sha256 }) => ({ role, path, size, sha256 }))
-  };
-}
-
-function makeSource(recipe, dictionary) {
-  return {
-    id: recipe.dictionary.sourceId,
-    version: recipe.dictionary.sourceVersion,
-    provenance: [
-      "User-selected StarDict: " + dictionary.bookname,
-      "StarDict format " + dictionary.version,
-      "semantic profile explicitly declared by local import recipe"
-    ].join("; "),
-    semanticProfile: recipe.semanticProfile,
-    license: {
-      id: STARDICT_LOCAL_IMPORT_LICENSE_ID,
-      name: "User-provided dictionary; redistribution rights are not verified",
-      source: "local-user-import"
-    }
-  };
+    sources,
+    files
+  });
 }
 
 function findIndexEntry(entries, key) {
@@ -532,16 +340,6 @@ function verifyDescriptor(descriptorValue, bytes, role) {
   }
 }
 
-function descriptor(role, path, text) {
-  return {
-    role,
-    path,
-    size: Buffer.byteLength(text),
-    sha256: sha256Text(text),
-    text
-  };
-}
-
 async function prepareOutputDir(path) {
   await mkdir(path, { recursive: true });
   if ((await readdir(path)).length) throw new Error("output directory must be empty");
@@ -551,14 +349,6 @@ function requiredPath(value, label) {
   const text = String(value || "").trim();
   if (!text) throw new Error(label + " is required");
   return text;
-}
-
-function requireText(value, label) {
-  if (typeof value !== "string" || !value.trim()) throw new Error(label + " is required");
-}
-
-function plainObject(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function sha256Bytes(bytes) {
@@ -573,10 +363,6 @@ function compareText(a, b) {
   const left = String(a ?? "");
   const right = String(b ?? "");
   return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function compareFile(a, b) {
-  return compareText(a.path, b.path) || compareText(a.role, b.role);
 }
 
 function parseArgs(argv) {
