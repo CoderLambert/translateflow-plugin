@@ -42,6 +42,7 @@ import {
 import {
   cancelDictionaryPackOperation,
   getDictionaryPackStatus,
+  importLocalDictionaryTflexFromQuarantine,
   installDictionaryPack,
   rollbackDictionaryPack,
   uninstallDictionaryPack
@@ -178,6 +179,12 @@ export async function handleBackgroundMessage(message, sender) {
       return installDictionaryPack({
         sourceId: message.sourceId,
         packId: message.packId,
+        requestId: message.requestId
+      });
+    case BACKGROUND_MESSAGES.DICTIONARY_LOCAL_IMPORT_COMMIT:
+      assertOptionsSender(sender);
+      return importLocalDictionaryTflexFromQuarantine({
+        token: message.token,
         requestId: message.requestId
       });
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL:
