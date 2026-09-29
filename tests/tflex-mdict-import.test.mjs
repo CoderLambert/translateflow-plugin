@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, webcrypto } from "node:crypto";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -17,6 +17,7 @@ import {
 import { adler32 } from "../scripts/project-mdict-import.mjs";
 import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { validateInstalledManifest } from "../src/background/packs/health.js";
+import { validateLocalTflexImport } from "../src/background/packs/local-import.js";
 
 test("declared bilingual MDict compiles deterministically to user-import-only opfs-indexed TFLex", async () => {
   const first = await buildFixture("deterministic-a");
@@ -44,6 +45,21 @@ test("declared bilingual MDict compiles deterministically to user-import-only op
     );
   } finally {
     await cleanup(first, second);
+  }
+});
+
+test("MDict compiler output passes the production local-import trust boundary", async () => {
+  const env = await buildFixture("production-local-import");
+  try {
+    const validated = await validateLocalTflexImport({
+      files: await readLocalTflexFiles(env.outDir),
+      cryptoProvider: webcrypto
+    });
+    assert.equal(validated.manifest.packId, "local-mdict-fixture");
+    assert.equal(validated.snapshot.packVersion, "fixture-v1");
+    assert.equal(validated.snapshot.files.length, 3);
+  } finally {
+    await cleanup(env);
   }
 });
 
@@ -405,6 +421,14 @@ function fileDescriptor(role, path, bytes) {
 
 function sha256Bytes(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+async function readLocalTflexFiles(root) {
+  return {
+    "manifest.json": new Uint8Array(await readFile(join(root, "manifest.json"))),
+    "index.dat": new Uint8Array(await readFile(join(root, "index.dat"))),
+    "entries.dat": new Uint8Array(await readFile(join(root, "entries.dat")))
+  };
 }
 
 async function snapshot(root) {

@@ -45,7 +45,7 @@ import {
   installDictionaryPack,
   rollbackDictionaryPack,
   uninstallDictionaryPack
-} from "./packs/manager.js";
+} from "./packs/api.js";
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

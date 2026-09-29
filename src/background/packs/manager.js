@@ -12,11 +12,16 @@ import {
   verifyTrustedCatalog
 } from "./catalog.js";
 import { createOpfsPackStore } from "./opfs-store.js";
+import {
+  assertPackOperationActive,
+  normalizePackOperationError
+} from "./operation.js";
 import { createPackStateStore } from "./state.js";
 import {
   inspectInstalledPack,
   verifyDownloadedFile
 } from "./health.js";
+import { createLocalTflexImportTransaction } from "./local-import-transaction.js";
 import {
   fetchTrustedPackCatalog,
   fetchTrustedPackFile
@@ -50,6 +55,11 @@ export function createDictionaryPackManager({
       throw packError(PACK_ERROR_CODES.NOT_FOUND, "Dictionary pack is not declared by this trusted source.");
     }
     const id = String(requestId || crypto.randomUUID());
+    if (controllersByRequest.has(id)) {
+      throw packError(PACK_ERROR_CODES.BUSY, "Dictionary pack requestId is already in use.", {
+        requestId: id
+      });
+    }
     if (operationsByPack.has(packId)) {
       throw packError(PACK_ERROR_CODES.BUSY, "Another dictionary pack operation is already running.", { packId });
     }
@@ -69,7 +79,7 @@ export function createDictionaryPackManager({
       const { catalogBytes, signatureBytes } = await network.fetchCatalog(source, {
         signal: controller.signal
       });
-      assertActive(controller.signal);
+      assertPackOperationActive(controller.signal);
 
       const highestSequence = Number(before.catalogSequences[source.id] || 0);
       const catalog = await verifyTrustedCatalog({
@@ -135,12 +145,12 @@ export function createDictionaryPackManager({
       }
 
       for (const descriptor of pack.files) {
-        assertActive(controller.signal);
+        assertPackOperationActive(controller.signal);
         const bytes = await network.fetchFile(source, descriptor, { signal: controller.signal });
-        assertActive(controller.signal);
+        assertPackOperationActive(controller.signal);
         await verifyDownloadedFile(descriptor, bytes, cryptoProvider);
         await store.writeFile(packId, pack.packVersion, descriptor.path, bytes);
-        assertActive(controller.signal);
+        assertPackOperationActive(controller.signal);
       }
 
       const snapshot = snapshotFromPack(pack, source.id, catalog.sequence);
@@ -152,7 +162,7 @@ export function createDictionaryPackManager({
           inspection: stagedInspection
         });
       }
-      assertActive(controller.signal);
+      assertPackOperationActive(controller.signal);
 
       const nextState = await stateStore.update((state) => {
         const previous = state.packs[packId] || null;
@@ -184,7 +194,7 @@ export function createDictionaryPackManager({
       if (stagedVersion && !protectedVersions.has(stagedVersion)) {
         await store.removeVersion(packId, stagedVersion).catch(() => {});
       }
-      throw normalizeOperationError(error);
+      throw normalizePackOperationError(error);
     } finally {
       if (operationsByPack.get(packId) === id) operationsByPack.delete(packId);
       if (controllersByRequest.get(id) === controller) controllersByRequest.delete(id);
@@ -360,8 +370,21 @@ export function createDictionaryPackManager({
     }
   }
 
+  const importLocalTflex = createLocalTflexImportTransaction({
+    store,
+    stateStore,
+    cryptoProvider,
+    operationsByPack,
+    controllersByRequest,
+    recoverPack,
+    preflightQuota,
+    normalizeOperationError: normalizePackOperationError,
+    assertActive: assertPackOperationActive
+  });
+
   return Object.freeze({
     install,
+    importLocalTflex,
     cancel,
     uninstall,
     rollback,
@@ -369,49 +392,4 @@ export function createDictionaryPackManager({
     recoverAll,
     status
   });
-}
-
-let defaultManager;
-
-export function getDictionaryPackManager() {
-  if (!defaultManager) defaultManager = createDictionaryPackManager();
-  return defaultManager;
-}
-
-export function installDictionaryPack(input) {
-  return getDictionaryPackManager().install(input);
-}
-
-export function cancelDictionaryPackOperation(requestId) {
-  return getDictionaryPackManager().cancel(requestId);
-}
-
-export function uninstallDictionaryPack(packId) {
-  return getDictionaryPackManager().uninstall(packId);
-}
-
-export function rollbackDictionaryPack(packId) {
-  return getDictionaryPackManager().rollback(packId);
-}
-
-export function recoverDictionaryPacks() {
-  return getDictionaryPackManager().recoverAll();
-}
-
-export function getDictionaryPackStatus(options) {
-  return getDictionaryPackManager().status(options);
-}
-
-function assertActive(signal) {
-  if (!signal?.aborted) return;
-  const error = new DOMException("Dictionary pack operation cancelled.", "AbortError");
-  throw error;
-}
-
-function normalizeOperationError(error) {
-  if (error?.code && String(error.code).startsWith("PACK_")) return error;
-  if (error?.name === "AbortError") {
-    return packError(PACK_ERROR_CODES.CANCELLED, "Dictionary pack operation was cancelled.");
-  }
-  return packError(PACK_ERROR_CODES.STORAGE, error?.message || "Dictionary pack operation failed.", { cause: error });
 }

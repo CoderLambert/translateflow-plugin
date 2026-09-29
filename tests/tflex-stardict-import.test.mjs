@@ -16,6 +16,7 @@ import {
 } from "../scripts/build-tflex-stardict-import.mjs";
 import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { validateInstalledManifest } from "../src/background/packs/health.js";
+import { validateLocalTflexImport } from "../src/background/packs/local-import.js";
 
 test("declared bilingual StarDict compiles deterministically to user-import-only opfs-indexed TFLex", async () => {
   const first = await buildFixture("deterministic-a");
@@ -43,6 +44,21 @@ test("declared bilingual StarDict compiles deterministically to user-import-only
   );
 
   await cleanup(first, second);
+});
+
+test("StarDict compiler output passes the production local-import trust boundary", async () => {
+  const env = await buildFixture("production-local-import");
+  try {
+    const validated = await validateLocalTflexImport({
+      files: await readLocalTflexFiles(env.outDir),
+      cryptoProvider: webcrypto
+    });
+    assert.equal(validated.manifest.packId, "local-stardict-fixture");
+    assert.equal(validated.snapshot.packVersion, "fixture-v1");
+    assert.equal(validated.snapshot.files.length, 3);
+  } finally {
+    await cleanup(env);
+  }
 });
 
 test("StarDict dictzip and plain bodies compile to identical local TFLex output", async () => {
@@ -369,6 +385,14 @@ function fileDescriptor(role, path, bytes) {
     path,
     size: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex")
+  };
+}
+
+async function readLocalTflexFiles(root) {
+  return {
+    "manifest.json": new Uint8Array(await readFile(join(root, "manifest.json"))),
+    "index.dat": new Uint8Array(await readFile(join(root, "index.dat"))),
+    "entries.dat": new Uint8Array(await readFile(join(root, "entries.dat")))
   };
 }
 
