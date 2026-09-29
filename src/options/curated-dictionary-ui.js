@@ -48,8 +48,10 @@ export function initializeCuratedDictionaryUi({
     container.replaceChildren();
     for (const source of CURATED_DICTIONARIES) {
       const local = stateBySource.get(source.id) || {};
-      const installed =
-        Boolean(packs[source.output.packId]?.active);
+      const entry =
+        packs[source.output.packId] || null;
+      const presentation =
+        getCuratedInstallPresentation(source, entry);
 
       const row = document.createElement("div");
       row.className = "site-row dictionary-pack-row";
@@ -62,8 +64,8 @@ export function initializeCuratedDictionaryUi({
       title.textContent = source.label;
       const badge = document.createElement("span");
       badge.className = "dictionary-health-badge";
-      badge.dataset.kind = installed ? "success" : "warning";
-      badge.textContent = installed ? "已安装" : "上游 / 社区";
+      badge.dataset.kind = presentation.kind;
+      badge.textContent = presentation.badgeLabel;
       heading.append(title, badge);
       summary.appendChild(heading);
 
@@ -92,7 +94,7 @@ export function initializeCuratedDictionaryUi({
       progress.className = "dictionary-pack-detail";
       progress.setAttribute("aria-live", "polite");
       progress.textContent =
-        local.message || defaultStateText(source, installed);
+        local.message || presentation.detail;
       summary.appendChild(progress);
 
       const actions = document.createElement("div");
@@ -106,7 +108,7 @@ export function initializeCuratedDictionaryUi({
       } else {
         const install = document.createElement("button");
         install.type = "button";
-        install.textContent = installed ? "重新安装" : "下载并安装";
+        install.textContent = presentation.actionLabel;
         install.addEventListener("click", () =>
           installSource(source, install)
         );
@@ -129,7 +131,7 @@ export function initializeCuratedDictionaryUi({
         );
       if (!granted) {
         throw new Error(
-          "未授予 ECDICT 上游下载权限。"
+          `未授予 ${source.label} 上游下载权限。`
         );
       }
 
@@ -181,7 +183,7 @@ export function initializeCuratedDictionaryUi({
         displayMetadata: {
           kind: "curated-upstream",
           name: source.label,
-          format: "ecdict-csv",
+          format: source.displayFormat,
           sourceLabel: source.publisher,
           sourceVersion: shortRevision(
             source.upstreamRevision
@@ -312,10 +314,54 @@ function sourceMeta(source) {
   ];
 }
 
-function defaultStateText(source, installed) {
-  return installed
-    ? "已安装；重新安装仍从同一固定上游版本下载并重新验证。"
-    : "点击后直接从上游下载；TranslateFlow 不镜像该词典内容。";
+export function getCuratedInstallPresentation(
+  source,
+  entry
+) {
+  const active = entry?.active || null;
+  if (!active) {
+    return {
+      status: "not-installed",
+      kind: "warning",
+      badgeLabel: "上游 / 社区",
+      actionLabel: "下载并安装",
+      detail:
+        "点击后直接从上游下载；TranslateFlow 不镜像该词典内容。"
+    };
+  }
+
+  if (entry?.status === "needs-reinstall") {
+    return {
+      status: "needs-reinstall",
+      kind: "warning",
+      badgeLabel: "需重装",
+      actionLabel: "重新安装",
+      detail:
+        "本地文件缺失或损坏；重新安装会从审核锁定的上游版本重新下载并验证。"
+    };
+  }
+
+  if (
+    active.packVersion === source?.output?.packVersion
+  ) {
+    return {
+      status: "current",
+      kind: "success",
+      badgeLabel: "当前版本",
+      actionLabel: "重新安装",
+      detail:
+        "已安装当前审核版本；重新安装仍会重新下载并完整验证。"
+    };
+  }
+
+  return {
+    status: "update-available",
+    kind: "warning",
+    badgeLabel: "可更新",
+    actionLabel: "更新",
+    detail:
+      `已安装 ${String(active.packVersion || "未知版本")}；当前审核版本 ${String(source?.output?.packVersion || "未知")}。更新会先验证新版本，再替换当前版本。`
+  };
 }
 
 function describeProgress(message, source) {
