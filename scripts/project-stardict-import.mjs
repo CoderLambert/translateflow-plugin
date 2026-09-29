@@ -120,10 +120,12 @@ export async function readStarDictDictionaryFile(path, {
 } = {}) {
   const selected = requiredPath(path, "dictPath");
   if (!/\.dict\.dz$/i.test(selected)) {
-    const inputBytes = await checkedFileSize(selected, limits.dictBytes, "DICT");
+    await checkedFileSize(selected, limits.dictBytes, "DICT");
+    const bytes = await readFile(resolve(selected));
+    requireAtMost(bytes.byteLength, limits.dictBytes, "DICT bytes");
     return {
-      bytes: await readFile(resolve(selected)),
-      inputBytes,
+      bytes,
+      inputBytes: bytes.byteLength,
       compression: "none",
       dictzip: null
     };
@@ -136,7 +138,7 @@ export async function readStarDictDictionaryFile(path, {
   );
   const headerBytes = await readDictzipHeaderPrefix(selected, inputBytes);
   const dictzip = parseStarDictDictzipHeader(headerBytes);
-  const bytes = await gunzipBounded(selected, limits.dictBytes);
+  const bytes = await gunzipBounded(selected, limits.dictBytes, inputBytes);
   return {
     bytes,
     inputBytes,
@@ -248,8 +250,11 @@ async function readDictzipHeaderPrefix(path, fileBytes) {
   }
 }
 
-async function gunzipBounded(path, maximumBytes) {
-  const source = createReadStream(resolve(path));
+async function gunzipBounded(path, maximumBytes, inputBytes) {
+  const source = createReadStream(resolve(path), {
+    start: 0,
+    end: Math.max(0, inputBytes - 1)
+  });
   const gunzip = createGunzip();
   source.pipe(gunzip);
   const chunks = [];
