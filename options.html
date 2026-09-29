@@ -84,6 +84,9 @@
         <p>从源码加载扩展时，真实词典资源不会提交到 Git。若状态显示资源缺失，请运行 <code>npm run setup:lexicon</code>，完成后在 <code>chrome://extensions</code> 重新加载扩展。</p>
       </details>
 
+      <h3>已安装</h3>
+      <div id="installedDictionaryList" class="site-list" aria-live="polite">正在读取已安装词典…</div>
+
       <h3>可选下载词典</h3>
       <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取可选词典包状态…</div>
       <p class="hint">可选词典只会请求对应受信任下载源的精确 Origin 权限；更新失败不会替换最后一个健康版本。</p>
@@ -92,6 +95,27 @@
         <button id="refreshDictionaryPacks" type="button">重新检查词典状态</button>
       </div>
       <p class="hint">若可选包文件被浏览器回收或校验失败，状态会变为需要重新安装；有健康的上一版本时可回滚。</p>
+
+      <h3>本地导入</h3>
+      <div class="data-source-card">
+        <strong>StarDict</strong>
+        <p>当前支持英文词头 → 简体中文纯文本释义的 StarDict 2.4.2 / 3.0.0。一次选择同一套 <code>.ifo</code>、<code>.idx</code>、<code>.dict</code> 或 <code>.dict.dz</code>，以及可选 <code>.syn</code> 文件。</p>
+        <label for="stardictFiles">选择 StarDict 文件</label>
+        <input id="stardictFiles" type="file" multiple accept=".ifo,.idx,.dict,.dict.dz,.syn" />
+
+        <div id="stardictInspection" class="setting-choice-help" hidden>
+          <div id="stardictInspectionMeta" aria-live="polite">等待检测…</div>
+          <label class="checkbox-label" for="stardictSemanticConfirmation">
+            <input id="stardictSemanticConfirmation" type="checkbox" disabled />
+            我确认这是“英文词头 → 简体中文纯文本释义”词典。TranslateFlow 不会根据 StarDict 纯文本格式自动猜测语义方向。
+          </label>
+          <div class="actions">
+            <button id="stardictImportButton" class="primary" type="button" disabled>导入词典</button>
+            <button id="stardictCancelButton" type="button" hidden>取消</button>
+          </div>
+          <p id="stardictImportProgress" class="hint" aria-live="polite"></p>
+        </div>
+      </div>
     </section>
 
     <section id="appearance" tabindex="-1">
@@ -303,5 +327,6 @@
   </main>
   </div>
   <script type="module" src="options.js"></script>
+  <script type="module" src="src/options/stardict-import-ui.js"></script>
 </body>
 </html>
