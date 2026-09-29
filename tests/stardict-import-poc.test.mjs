@@ -17,6 +17,81 @@ import {
   readStarDictDictionaryFile,
   sanitizePlainText
 } from "../scripts/project-stardict-import.mjs";
+import * as browserStarDict from "../src/background/packs/importers/stardict-core.js";
+
+test("StarDict Node POC re-exports the exact browser-safe parser core", async () => {
+  assert.equal(
+    projectStarDictPlainText,
+    browserStarDict.projectStarDictPlainText
+  );
+  assert.equal(
+    parseStarDictIfo,
+    browserStarDict.parseStarDictIfo
+  );
+  assert.equal(
+    parseStarDictIndex,
+    browserStarDict.parseStarDictIndex
+  );
+  assert.equal(
+    parseStarDictSynonyms,
+    browserStarDict.parseStarDictSynonyms
+  );
+  assert.equal(
+    parseStarDictDictzipHeader,
+    browserStarDict.parseStarDictDictzipHeader
+  );
+  assert.equal(
+    sanitizePlainText,
+    browserStarDict.sanitizePlainText
+  );
+  assert.equal(
+    StarDictImportError,
+    browserStarDict.StarDictImportError
+  );
+  assert.equal(
+    STARDICT_IMPORT_ERROR,
+    browserStarDict.STARDICT_IMPORT_ERROR
+  );
+});
+
+test("StarDict browser core accepts Web byte types and matches Node Buffer projection", () => {
+  const fixture = makeFixture([
+    ["alpha", "第一"],
+    ["beta", "第二"]
+  ], [
+    ["alpha alias", 0],
+    ["shared", 0],
+    ["shared", 1]
+  ]);
+  const expected = projectStarDictPlainText({
+    ...fixture,
+    sourceId: "fixture-browser",
+    sourceVersion: "v1"
+  });
+  const actual = browserStarDict.projectStarDictPlainText({
+    ifoText: fixture.ifoText,
+    idxBytes: copyArrayBuffer(fixture.idxBytes),
+    dictBytes: new DataView(copyArrayBuffer(fixture.dictBytes)),
+    synBytes: new Uint8Array(copyArrayBuffer(fixture.synBytes)),
+    sourceId: "fixture-browser",
+    sourceVersion: "v1"
+  });
+  assert.deepEqual(actual, expected);
+});
+
+test("StarDict browser parser modules have no Node runtime dependency", async () => {
+  for (const relative of [
+    "../src/background/packs/importers/stardict-contract.js",
+    "../src/background/packs/importers/stardict-binary.js",
+    "../src/background/packs/importers/stardict-dictzip.js",
+    "../src/background/packs/importers/stardict-core.js"
+  ]) {
+    const source = await readFile(new URL(relative, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /from\s+["']node:/);
+    assert.doesNotMatch(source, /\bBuffer\b/);
+    assert.doesNotMatch(source, /\bprocess\b/);
+  }
+});
 
 test("StarDict dictzip header parser accepts RA metadata and rejects non-dictzip gzip", () => {
   const payload = Buffer.from("dictionary payload", "utf8");
@@ -551,6 +626,16 @@ function encodeSynonyms(rows) {
     chunks.push(wordBytes, Buffer.from([0]), target);
   }
   return Buffer.concat(chunks);
+}
+
+function copyArrayBuffer(value) {
+  const bytes = value instanceof Uint8Array
+    ? value
+    : new Uint8Array(value);
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  );
 }
 
 function assertCode(fn, code) {
