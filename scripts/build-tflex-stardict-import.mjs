@@ -27,6 +27,7 @@ export async function compileTflexStarDictImport({
   ifoPath,
   idxPath,
   dictPath,
+  synPath,
   recipePath,
   outDir,
   reportPath
@@ -38,6 +39,7 @@ export async function compileTflexStarDictImport({
     ifoPath: requiredPath(ifoPath, "ifoPath"),
     idxPath: requiredPath(idxPath, "idxPath"),
     dictPath: requiredPath(dictPath, "dictPath"),
+    synPath,
     sourceId: recipe.dictionary.sourceId,
     sourceVersion: recipe.dictionary.sourceVersion
   });
@@ -88,6 +90,10 @@ export async function compileTflexStarDictImport({
     fingerprint: "sha256:" + sha256Text(stableStringify(fingerprintPayload)),
     recordCount: records.length,
     sourceEntryCount: projection.entries.length,
+    sourceAliasCount: projection.entries.reduce(
+      (count, entry) => count + (Array.isArray(entry.aliases) ? entry.aliases.length : 0),
+      0
+    ),
     license: {
       id: STARDICT_LOCAL_IMPORT_LICENSE_ID,
       name: "User-provided dictionary; redistribution rights are not verified",
@@ -107,6 +113,7 @@ export async function compileTflexStarDictImport({
     semanticProfile: manifest.semanticProfile,
     dictionary: projection.dictionary,
     sourceEntryCount: projection.entries.length,
+    sourceAliasCount: manifest.sourceAliasCount,
     recordCount: records.length,
     files: manifest.files,
     fingerprint: manifest.fingerprint,
@@ -209,13 +216,22 @@ export function buildStarDictTflexRecords(entries, recipeInput) {
         exactLookupKeys: new Set(),
         displayForm: entry.displayForm,
         kind: "lexical",
-        aliases: [],
+        aliases: new Set(),
         senses: []
       };
       grouped.set(entry.lookupKey, record);
     }
     const exact = normalizeExactLookupKey(entry.displayForm);
     if (exact) record.exactLookupKeys.add(exact);
+    if (entry.aliases !== undefined && !Array.isArray(entry.aliases)) {
+      throw new Error("Malformed StarDict projection aliases");
+    }
+    for (const alias of entry.aliases || []) {
+      if (typeof alias !== "string" || !alias || !normalizeLookupKey(alias)) {
+        throw new Error("Malformed StarDict projection alias");
+      }
+      if (normalizeLookupKey(alias) !== entry.lookupKey) record.aliases.add(alias);
+    }
     record.senses.push({
       id: "stardict:" + entry.sourceRef.recordId,
       translations: [entry.plainText],
@@ -228,6 +244,7 @@ export function buildStarDictTflexRecords(entries, recipeInput) {
     .map((record) => ({
       ...record,
       exactLookupKeys: [...record.exactLookupKeys].sort(compareText),
+      aliases: [...record.aliases].sort(compareText),
       senses: [...record.senses]
     }))
     .sort((a, b) => compareText(a.lookupKey, b.lookupKey));
@@ -312,8 +329,6 @@ export async function validateStarDictTflexPackOutput({ outDir } = {}) {
 
     for (const target of item.targets) {
       validateIndexTarget(target, entriesBytes.byteLength);
-      if (target.matchedAlias) throw new Error("StarDict local TFLex POC does not emit aliases");
-      if (canonical.has(target.lookupKey)) continue;
       const bytes = entriesBytes.subarray(target.offset, target.offset + target.length);
       if (sha256Bytes(bytes) !== target.sha256) {
         throw new Error("StarDict local TFLex record hash mismatch");
@@ -323,6 +338,18 @@ export async function validateStarDictTflexPackOutput({ outDir } = {}) {
       if (record.lookupKey !== target.lookupKey) {
         throw new Error("StarDict local TFLex index/record key mismatch");
       }
+      if (target.matchedAlias) {
+        if (
+          item.key === target.lookupKey ||
+          !Array.isArray(record.aliases) ||
+          !record.aliases.some((alias) => normalizeLookupKey(alias) === item.key)
+        ) {
+          throw new Error("StarDict local TFLex alias index/record mismatch");
+        }
+      } else if (item.key !== target.lookupKey) {
+        throw new Error("StarDict local TFLex canonical index target mismatch");
+      }
+      if (canonical.has(target.lookupKey)) continue;
       canonical.add(target.lookupKey);
       validatedRecords += 1;
     }
@@ -365,10 +392,10 @@ export async function createStarDictTflexPocReader({ packDir } = {}) {
       const record = JSON.parse(bytes.toString("utf8").trim());
       hits.push({
         record,
-        exactCaseMatch: Array.isArray(record.exactLookupKeys) &&
-          record.exactLookupKeys.includes(exactKey),
-        matchedAlias: false,
-        aliasKey: "",
+        exactCaseMatch: Array.isArray(item.exactLookupKeys) &&
+          item.exactLookupKeys.includes(exactKey),
+        matchedAlias: target.matchedAlias,
+        aliasKey: target.matchedAlias ? item.key : "",
         pack: {
           packId: manifest.packId,
           packVersion: manifest.packVersion,
@@ -554,7 +581,7 @@ function parseArgs(argv) {
     if (!key?.startsWith("--") || value === undefined || value.startsWith("--")) {
       throw new Error(
         "usage: build-tflex-stardict-import.mjs --ifo PATH --idx PATH --dict PATH " +
-        "--recipe PATH --out DIR [--report PATH]"
+        "[--syn PATH] --recipe PATH --out DIR [--report PATH]"
       );
     }
     result[key.slice(2)] = value;
@@ -571,6 +598,7 @@ async function main() {
     ifoPath: args.ifo,
     idxPath: args.idx,
     dictPath: args.dict,
+    synPath: args.syn,
     recipePath: args.recipe,
     outDir: args.out,
     reportPath: args.report

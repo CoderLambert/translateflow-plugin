@@ -12,9 +12,11 @@ import {
 export const STARDICT_POC_LIMITS = Object.freeze({
   ifoBytes: 64 * 1024,
   idxBytes: 64 * 1024 * 1024,
+  synBytes: 32 * 1024 * 1024,
   dictBytes: 128 * 1024 * 1024,
   entryBytes: 512 * 1024,
   entryCount: 1_000_000,
+  synonymCount: 1_000_000,
   headwordBytes: 1024
 });
 
@@ -44,6 +46,7 @@ export async function projectStarDictPoc({
   ifoPath,
   idxPath,
   dictPath,
+  synPath,
   outPath,
   reportPath,
   sourceId = "user-stardict",
@@ -53,21 +56,24 @@ export async function projectStarDictPoc({
   const paths = {
     ifo: requiredPath(ifoPath, "ifoPath"),
     idx: requiredPath(idxPath, "idxPath"),
-    dict: requiredPath(dictPath, "dictPath")
+    dict: requiredPath(dictPath, "dictPath"),
+    syn: optionalPath(synPath)
   };
   if (/\.dict\.dz$/i.test(paths.dict)) {
     fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "StarDict .dict.dz compression is not supported by this POC.");
   }
 
-  const [ifoSize, idxSize, dictSize] = await Promise.all([
+  const [ifoSize, idxSize, dictSize, synSize] = await Promise.all([
     checkedFileSize(paths.ifo, limits.ifoBytes, "IFO"),
     checkedFileSize(paths.idx, limits.idxBytes, "IDX"),
-    checkedFileSize(paths.dict, limits.dictBytes, "DICT")
+    checkedFileSize(paths.dict, limits.dictBytes, "DICT"),
+    paths.syn ? checkedFileSize(paths.syn, limits.synBytes, "SYN") : Promise.resolve(0)
   ]);
-  const [ifoBytes, idxBytes, dictBytes] = await Promise.all([
+  const [ifoBytes, idxBytes, dictBytes, synBytes] = await Promise.all([
     readFile(paths.ifo),
     readFile(paths.idx),
-    readFile(paths.dict)
+    readFile(paths.dict),
+    paths.syn ? readFile(paths.syn) : Promise.resolve(undefined)
   ]);
 
   const ifoText = decodeUtf8(ifoBytes, "IFO");
@@ -75,6 +81,7 @@ export async function projectStarDictPoc({
     ifoText,
     idxBytes,
     dictBytes,
+    synBytes,
     sourceId,
     sourceVersion,
     limits
@@ -89,7 +96,8 @@ export async function projectStarDictPoc({
     input: {
       ifoBytes: ifoSize,
       idxBytes: idxSize,
-      dictBytes: dictSize
+      dictBytes: dictSize,
+      synBytes: synSize
     },
     dictionary: result.dictionary,
     output: {
@@ -109,6 +117,7 @@ export function projectStarDictPlainText({
   ifoText,
   idxBytes,
   dictBytes,
+  synBytes,
   sourceId = "user-stardict",
   sourceVersion = "local-import",
   limits = STARDICT_POC_LIMITS
@@ -133,15 +142,28 @@ export function projectStarDictPlainText({
     dictBytes: dict.byteLength,
     limits
   });
+  const aliases = parseStarDictSynonyms(synBytes, {
+    synonymCount: dictionary.synwordcount,
+    wordCount: dictionary.wordcount,
+    limits
+  });
+  const aliasesByTarget = new Map();
+  for (const alias of aliases) {
+    const list = aliasesByTarget.get(alias.targetIndex) || [];
+    list.push(alias.word);
+    aliasesByTarget.set(alias.targetIndex, list);
+  }
 
   const entries = index.map((item, indexPosition) => {
     const payload = dict.subarray(item.offset, item.offset + item.size);
     const plainText = sanitizePlainText(decodeUtf8(payload, "dictionary entry"), limits, item.word);
+    const entryAliases = aliasesByTarget.get(indexPosition) || [];
     return {
       lookupKey: normalizeLookupKey(item.word),
       exactLookupKey: normalizeExactLookupKey(item.word),
       displayForm: item.word,
       plainText,
+      ...(entryAliases.length ? { aliases: [...entryAliases] } : {}),
       sourceRef: {
         sourceId,
         recordId: "idx:" + (indexPosition + 1)
@@ -155,6 +177,7 @@ export function projectStarDictPlainText({
       version: dictionary.version,
       wordcount: dictionary.wordcount,
       idxfilesize: dictionary.idxfilesize,
+      synwordcount: dictionary.synwordcount,
       sametypesequence: dictionary.sametypesequence
     },
     entries,
@@ -168,7 +191,6 @@ export function projectStarDictPlainText({
     },
     unsupportedFeatures: [
       "dict.dz compression",
-      ".syn aliases",
       "64-bit index offsets",
       "rich StarDict field types",
       "embedded/renderable markup",
@@ -212,9 +234,10 @@ export function parseStarDictIfo(input, limits = STARDICT_POC_LIMITS) {
   if (fields.idxoffsetbits !== undefined && fields.idxoffsetbits !== "32") {
     fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "64-bit StarDict index offsets are not supported by this POC.");
   }
-  if (fields.synwordcount !== undefined && Number(fields.synwordcount) > 0) {
-    fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "StarDict .syn aliases are not supported by this POC.");
-  }
+  const synwordcount = fields.synwordcount === undefined
+    ? 0
+    : nonNegativeInteger(fields.synwordcount, "StarDict synwordcount");
+  requireAtMost(synwordcount, limits.synonymCount, "StarDict synwordcount");
   if (fields.sametypesequence !== "m") {
     fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "Only UTF-8 plain-text StarDict sametypesequence=m is supported.", {
       sametypesequence: fields.sametypesequence || null
@@ -226,6 +249,7 @@ export function parseStarDictIfo(input, limits = STARDICT_POC_LIMITS) {
     bookname: fields.bookname,
     wordcount,
     idxfilesize,
+    synwordcount,
     sametypesequence: fields.sametypesequence
   };
 }
@@ -257,8 +281,8 @@ export function parseStarDictIndex(input, {
     const word = decodeUtf8(wordBytes, "IDX headword");
     validateHeadword(word);
 
-    if (previousWordBytes && Buffer.compare(Buffer.from(previousWordBytes), Buffer.from(wordBytes)) > 0) {
-      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .idx headwords are not byte-sorted.");
+    if (previousWordBytes && compareStarDictWordBytes(previousWordBytes, wordBytes) > 0) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .idx headwords are not StarDict-sorted.");
     }
     previousWordBytes = Uint8Array.from(wordBytes);
 
@@ -285,6 +309,74 @@ export function parseStarDictIndex(input, {
   if (result.length !== wordCount) {
     fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict wordcount does not match .idx entries.", {
       expected: wordCount,
+      actual: result.length
+    });
+  }
+  return result;
+}
+
+export function parseStarDictSynonyms(input, {
+  synonymCount = 0,
+  wordCount,
+  limits = STARDICT_POC_LIMITS
+} = {}) {
+  if (!Number.isSafeInteger(synonymCount) || synonymCount < 0) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict synonymCount must be a non-negative integer.");
+  }
+  requireAtMost(synonymCount, limits.synonymCount, "StarDict synonym count");
+  if (!Number.isSafeInteger(wordCount) || wordCount <= 0) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict wordCount must be a positive integer.");
+  }
+
+  if (input === undefined || input === null) {
+    if (synonymCount === 0) return [];
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .ifo declares synonyms but no .syn bytes were supplied.");
+  }
+
+  const bytes = toBytes(input, "SYN");
+  requireAtMost(bytes.byteLength, limits.synBytes, "SYN bytes");
+  if (synonymCount === 0) {
+    if (bytes.byteLength === 0) return [];
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn bytes were supplied without a positive synwordcount.");
+  }
+
+  const result = [];
+  let cursor = 0;
+  let previousWordBytes = null;
+  while (cursor < bytes.byteLength) {
+    const end = findNul(bytes, cursor, limits.headwordBytes);
+    if (end < 0) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn headword is unterminated or exceeds the headword limit.");
+    }
+    const wordBytes = bytes.subarray(cursor, end);
+    if (!wordBytes.byteLength) fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn contains an empty alias.");
+    const word = decodeUtf8(wordBytes, "SYN alias");
+    validateHeadword(word);
+
+    if (previousWordBytes && compareStarDictWordBytes(previousWordBytes, wordBytes) > 0) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn aliases are not StarDict-sorted.");
+    }
+    previousWordBytes = Uint8Array.from(wordBytes);
+
+    cursor = end + 1;
+    if (cursor + 4 > bytes.byteLength) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn record is truncated.");
+    }
+    const targetIndex = readUint32Be(bytes, cursor);
+    cursor += 4;
+    if (targetIndex >= wordCount) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn target index is outside the .idx word list.", {
+        word, targetIndex, wordCount
+      });
+    }
+
+    result.push({ word, targetIndex });
+    requireAtMost(result.length, limits.synonymCount, "StarDict synonym entries");
+  }
+
+  if (result.length !== synonymCount) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict synwordcount does not match .syn entries.", {
+      expected: synonymCount,
       actual: result.length
     });
   }
@@ -319,6 +411,27 @@ function findNul(bytes, start, maxBytes) {
     if (bytes[index] === 0) return index;
   }
   return -1;
+}
+
+function compareStarDictWordBytes(left, right) {
+  const folded = compareAsciiCaseInsensitiveBytes(left, right);
+  if (folded !== 0) return folded;
+  return Buffer.compare(Buffer.from(left), Buffer.from(right));
+}
+
+function compareAsciiCaseInsensitiveBytes(left, right) {
+  const length = Math.min(left.byteLength, right.byteLength);
+  for (let index = 0; index < length; index += 1) {
+    const a = foldAsciiByte(left[index]);
+    const b = foldAsciiByte(right[index]);
+    if (a !== b) return a < b ? -1 : 1;
+  }
+  if (left.byteLength === right.byteLength) return 0;
+  return left.byteLength < right.byteLength ? -1 : 1;
+}
+
+function foldAsciiByte(value) {
+  return value >= 0x41 && value <= 0x5a ? value + 0x20 : value;
 }
 
 function readUint32Be(bytes, offset) {
@@ -357,6 +470,11 @@ function requiredPath(value, label) {
   return text;
 }
 
+function optionalPath(value) {
+  const text = String(value || "").trim();
+  return text || "";
+}
+
 function requireSafeSourceId(value) {
   const text = String(value || "");
   if (!/^[a-z0-9](?:[a-z0-9._-]{0,78}[a-z0-9])?$/i.test(text)) {
@@ -382,6 +500,17 @@ function positiveInteger(value, label) {
   return number;
 }
 
+function nonNegativeInteger(value, label) {
+  if (!/^\d+$/.test(String(value ?? ""))) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, label + " must be a non-negative integer.");
+  }
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 0) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, label + " must be a non-negative safe integer.");
+  }
+  return number;
+}
+
 function requireAtMost(actual, maximum, label) {
   if (!Number.isSafeInteger(actual) || actual < 0 || !Number.isSafeInteger(maximum) || actual > maximum) {
     fail(STARDICT_IMPORT_ERROR.LIMIT, label + " exceeds the POC safety limit.", {
@@ -402,7 +531,7 @@ function parseArgs(argv) {
     if (!key?.startsWith("--") || value === undefined || value.startsWith("--")) {
       throw new Error(
         "usage: project-stardict-import.mjs --ifo PATH --idx PATH --dict PATH " +
-        "--out PATH --report PATH [--source-id ID] [--source-version VERSION]"
+        "[--syn PATH] --out PATH --report PATH [--source-id ID] [--source-version VERSION]"
       );
     }
     result[key.slice(2)] = value;
@@ -419,6 +548,7 @@ async function main() {
     ifoPath: args.ifo,
     idxPath: args.idx,
     dictPath: args.dict,
+    synPath: args.syn,
     outPath: args.out,
     reportPath: args.report,
     sourceId: args["source-id"] || "user-stardict",

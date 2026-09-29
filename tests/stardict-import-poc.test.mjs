@@ -9,6 +9,7 @@ import {
   StarDictImportError,
   parseStarDictIfo,
   parseStarDictIndex,
+  parseStarDictSynonyms,
   projectStarDictPlainText,
   projectStarDictPoc,
   sanitizePlainText
@@ -30,6 +31,7 @@ test("StarDict POC projects deterministic UTF-8 plain-text entries as build-only
     version: "2.4.2",
     wordcount: 2,
     idxfilesize: fixture.idxBytes.byteLength,
+    synwordcount: 0,
     sametypesequence: "m"
   });
   assert.deepEqual(result.entries, [
@@ -60,10 +62,9 @@ test("StarDict POC projects deterministic UTF-8 plain-text entries as build-only
   assert.ok(result.unsupportedFeatures.includes("rich StarDict field types"));
 });
 
-test("StarDict IFO fails closed on unsupported rich fields, synonyms and 64-bit offsets", () => {
+test("StarDict IFO fails closed on unsupported rich fields and 64-bit offsets", () => {
   for (const extra of [
     "sametypesequence=h",
-    "sametypesequence=m\nsynwordcount=1",
     "sametypesequence=m\nidxoffsetbits=64"
   ]) {
     const ifo = [
@@ -105,6 +106,115 @@ test("StarDict IFO rejects duplicate metadata, unsupported versions and declared
   assertCode(() => parseStarDictIfo(tooMany, limits), STARDICT_IMPORT_ERROR.LIMIT);
 });
 
+test("StarDict synonym parser accepts bounded sorted aliases and validates target indexes", () => {
+  const bytes = encodeSynonyms([
+    ["alpha alias", 0],
+    ["beta alias", 1],
+    ["shared", 0],
+    ["shared", 1]
+  ]);
+  assert.deepEqual(parseStarDictSynonyms(bytes, {
+    synonymCount: 4,
+    wordCount: 2
+  }), [
+    { word: "alpha alias", targetIndex: 0 },
+    { word: "beta alias", targetIndex: 1 },
+    { word: "shared", targetIndex: 0 },
+    { word: "shared", targetIndex: 1 }
+  ]);
+  assert.deepEqual(parseStarDictSynonyms(encodeSynonyms([
+    ["apple alias", 0],
+    ["Zebra alias", 1]
+  ]), {
+    synonymCount: 2,
+    wordCount: 2
+  }), [
+    { word: "apple alias", targetIndex: 0 },
+    { word: "Zebra alias", targetIndex: 1 }
+  ]);
+
+  assertCode(
+    () => parseStarDictSynonyms(encodeSynonyms([["bad", 2]]), {
+      synonymCount: 1,
+      wordCount: 2
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(encodeSynonyms([["beta", 0], ["alpha", 1]]), {
+      synonymCount: 2,
+      wordCount: 2
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(encodeSynonyms([["alpha", 0]]), {
+      synonymCount: 2,
+      wordCount: 2
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(undefined, {
+      synonymCount: 1,
+      wordCount: 2
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(encodeSynonyms([["<b>alias</b>", 0]]), {
+      synonymCount: 1,
+      wordCount: 1
+    }),
+    STARDICT_IMPORT_ERROR.UNSAFE_CONTENT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(Buffer.from([0xc3, 0x28, 0, 0, 0, 0, 0]), {
+      synonymCount: 1,
+      wordCount: 1
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+  assertCode(
+    () => parseStarDictSynonyms(Buffer.concat([
+      Buffer.from("alias\0", "utf8"),
+      Buffer.from([0, 0, 0])
+    ]), {
+      synonymCount: 1,
+      wordCount: 1
+    }),
+    STARDICT_IMPORT_ERROR.CORRUPT
+  );
+
+  const tinyLimits = { ...STARDICT_POC_LIMITS, synonymCount: 1 };
+  assertCode(
+    () => parseStarDictSynonyms(bytes, {
+      synonymCount: 4,
+      wordCount: 2,
+      limits: tinyLimits
+    }),
+    STARDICT_IMPORT_ERROR.LIMIT
+  );
+});
+
+test("StarDict projection attaches .syn aliases to their source rows without inventing senses", () => {
+  const fixture = makeFixture([
+    ["alpha", "第一"],
+    ["beta", "第二"]
+  ], [
+    ["alpha alias", 0],
+    ["shared", 0],
+    ["shared", 1]
+  ]);
+  const result = projectStarDictPlainText(fixture);
+
+  assert.equal(result.dictionary.synwordcount, 3);
+  assert.deepEqual(result.entries[0].aliases, ["alpha alias", "shared"]);
+  assert.deepEqual(result.entries[1].aliases, ["shared"]);
+  assert.equal("senses" in result.entries[0], false);
+  assert.equal(result.unsupportedFeatures.includes(".syn aliases"), false);
+});
+
 test("StarDict index rejects truncation, unsorted keys, out-of-bounds slices and oversized entries", () => {
   const good = encodeIndex([
     ["alpha", 0, 2],
@@ -117,6 +227,14 @@ test("StarDict index rejects truncation, unsorted keys, out-of-bounds slices and
     { word: "alpha", offset: 0, size: 2 },
     { word: "beta", offset: 2, size: 2 }
   ]);
+  const stardictSorted = encodeIndex([
+    ["apple", 0, 1],
+    ["Zebra", 1, 1]
+  ]);
+  assert.deepEqual(parseStarDictIndex(stardictSorted, {
+    wordCount: 2,
+    dictBytes: 2
+  }).map((entry) => entry.word), ["apple", "Zebra"]);
 
   assertCode(
     () => parseStarDictIndex(good.subarray(0, good.length - 2), { wordCount: 2, dictBytes: 4 }),
@@ -251,7 +369,7 @@ test("StarDict file POC writes deterministic JSONL/report and rejects .dict.dz b
   }
 });
 
-function makeFixture(entries) {
+function makeFixture(entries, synonyms = []) {
   const sorted = [...entries].sort((a, b) => Buffer.compare(Buffer.from(a[0]), Buffer.from(b[0])));
   const dictChunks = [];
   const indexRows = [];
@@ -266,10 +384,12 @@ function makeFixture(entries) {
   return {
     ifoText: baseIfo({
       wordcount: sorted.length,
-      idxfilesize: idxBytes.byteLength
+      idxfilesize: idxBytes.byteLength,
+      synwordcount: synonyms.length
     }),
     idxBytes,
-    dictBytes: Buffer.concat(dictChunks)
+    dictBytes: Buffer.concat(dictChunks),
+    ...(synonyms.length ? { synBytes: encodeSynonyms(synonyms) } : {})
   };
 }
 
@@ -277,6 +397,7 @@ function baseIfo({
   version = "2.4.2",
   wordcount,
   idxfilesize,
+  synwordcount = 0,
   bookname = "Safe Fixture"
 }) {
   return [
@@ -285,6 +406,7 @@ function baseIfo({
     "bookname=" + bookname,
     "wordcount=" + wordcount,
     "idxfilesize=" + idxfilesize,
+    ...(synwordcount ? ["synwordcount=" + synwordcount] : []),
     "sametypesequence=m",
     ""
   ].join("\n");
@@ -298,6 +420,17 @@ function encodeIndex(rows) {
     numbers.writeUInt32BE(offset, 0);
     numbers.writeUInt32BE(size, 4);
     chunks.push(wordBytes, Buffer.from([0]), numbers);
+  }
+  return Buffer.concat(chunks);
+}
+
+function encodeSynonyms(rows) {
+  const chunks = [];
+  for (const [word, targetIndex] of rows) {
+    const wordBytes = Buffer.from(word, "utf8");
+    const target = Buffer.alloc(4);
+    target.writeUInt32BE(targetIndex, 0);
+    chunks.push(wordBytes, Buffer.from([0]), target);
   }
   return Buffer.concat(chunks);
 }

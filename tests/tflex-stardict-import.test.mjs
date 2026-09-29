@@ -27,6 +27,7 @@ test("declared bilingual StarDict compiles deterministically to user-import-only
   assert.equal(first.result.manifest.license.id, STARDICT_LOCAL_IMPORT_LICENSE_ID);
   assert.equal(first.result.manifest.recordCount, 3);
   assert.equal(first.result.manifest.sourceEntryCount, 4);
+  assert.equal(first.result.manifest.sourceAliasCount, 2);
   assert.match(first.result.manifest.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.deepEqual(
     first.result.manifest.files.map((file) => [file.role, file.path]),
@@ -46,8 +47,8 @@ test("declared bilingual StarDict compiles deterministically to user-import-only
 test("StarDict semantic mapping preserves duplicate source rows as attributable lexical senses", () => {
   const recipe = recipeFixture();
   const records = buildStarDictTflexRecords([
-    projectionRow("run", "跑", "idx:1"),
-    projectionRow("run", "运行", "idx:2"),
+    projectionRow("run", "跑", "idx:1", ["running"]),
+    projectionRow("run", "运行", "idx:2", ["execute"]),
     projectionRow("session", "会话", "idx:3")
   ], recipe);
 
@@ -57,7 +58,7 @@ test("StarDict semantic mapping preserves duplicate source rows as attributable 
   assert.deepEqual(run.senses.map((sense) => sense.translations), [["跑"], ["运行"]]);
   assert.deepEqual(run.senses.map((sense) => sense.sourceRefs[0].recordId), ["idx:1", "idx:2"]);
   assert.ok(run.senses.every((sense) => sense.sourceRefs[0].sourceId === "fixture-stardict"));
-  assert.deepEqual(run.aliases, []);
+  assert.deepEqual(run.aliases, ["execute", "running"]);
 });
 
 test("StarDict TFLex POC reader feeds the existing Lexical Gateway candidate/provenance model", async () => {
@@ -72,6 +73,13 @@ test("StarDict TFLex POC reader feeds the existing Lexical Gateway candidate/pro
     const direct = await reader.lookupAll("run");
     assert.equal(direct.length, 1);
     assert.equal(direct[0].record.senses.length, 2);
+    assert.equal(direct[0].matchedAlias, false);
+
+    const alias = await reader.lookupAll("running");
+    assert.equal(alias.length, 1);
+    assert.equal(alias[0].record.lookupKey, "run");
+    assert.equal(alias[0].matchedAlias, true);
+    assert.equal(alias[0].aliasKey, "running");
 
     const gateway = createLexicalGateway({ packReaders: [reader] });
     const result = await gateway.lookup({
@@ -165,6 +173,7 @@ test("StarDict TFLex compiler binds the recipe to the selected dictionary bookna
         ifoPath: env.ifoPath,
         idxPath: env.idxPath,
         dictPath: env.dictPath,
+        synPath: env.synPath,
         recipePath: env.recipePath,
         outDir: env.outDir
       }),
@@ -194,6 +203,7 @@ async function buildFixture(name) {
     ifoPath: env.ifoPath,
     idxPath: env.idxPath,
     dictPath: env.dictPath,
+    synPath: env.synPath,
     recipePath: env.recipePath,
     outDir: env.outDir,
     reportPath: env.reportPath
@@ -209,10 +219,14 @@ async function fixtureFiles(name) {
     ["run", "跑"],
     ["run", "运行"]
   ];
-  const encoded = makeStarDict(entries);
+  const encoded = makeStarDict(entries, [
+    ["lasting", 1],
+    ["running", 2]
+  ]);
   const ifoPath = join(root, "fixture.ifo");
   const idxPath = join(root, "fixture.idx");
   const dictPath = join(root, "fixture.dict");
+  const synPath = join(root, "fixture.syn");
   const recipePath = join(root, "recipe.json");
   const outDir = join(root, "out");
   const reportPath = join(root, "report.json");
@@ -221,9 +235,10 @@ async function fixtureFiles(name) {
     writeFile(ifoPath, encoded.ifoText),
     writeFile(idxPath, encoded.idxBytes),
     writeFile(dictPath, encoded.dictBytes),
+    writeFile(synPath, encoded.synBytes),
     writeFile(recipePath, JSON.stringify(recipeFixture()))
   ]);
-  return { root, ifoPath, idxPath, dictPath, recipePath, outDir, reportPath };
+  return { root, ifoPath, idxPath, dictPath, synPath, recipePath, outDir, reportPath };
 }
 
 function recipeFixture() {
@@ -246,12 +261,13 @@ function recipeFixture() {
   };
 }
 
-function projectionRow(word, translation, recordId) {
+function projectionRow(word, translation, recordId, aliases) {
   return {
     lookupKey: word,
     exactLookupKey: word,
     displayForm: word,
     plainText: translation,
+    ...(aliases?.length ? { aliases } : {}),
     sourceRef: {
       sourceId: "fixture-stardict",
       recordId
@@ -259,7 +275,7 @@ function projectionRow(word, translation, recordId) {
   };
 }
 
-function makeStarDict(entries) {
+function makeStarDict(entries, synonyms = []) {
   const sorted = [...entries].sort((a, b) => Buffer.compare(Buffer.from(a[0]), Buffer.from(b[0])));
   const dictChunks = [];
   const idxChunks = [];
@@ -282,12 +298,25 @@ function makeStarDict(entries) {
       "bookname=Fixture EN-ZH",
       "wordcount=" + sorted.length,
       "idxfilesize=" + idxBytes.byteLength,
+      ...(synonyms.length ? ["synwordcount=" + synonyms.length] : []),
       "sametypesequence=m",
       ""
     ].join("\n"),
     idxBytes,
-    dictBytes: Buffer.concat(dictChunks)
+    dictBytes: Buffer.concat(dictChunks),
+    synBytes: encodeSynonyms(synonyms)
   };
+}
+
+function encodeSynonyms(rows) {
+  const chunks = [];
+  for (const [word, targetIndex] of rows) {
+    const wordBytes = Buffer.from(word, "utf8");
+    const target = Buffer.alloc(4);
+    target.writeUInt32BE(targetIndex, 0);
+    chunks.push(wordBytes, Buffer.from([0]), target);
+  }
+  return Buffer.concat(chunks);
 }
 
 function fileDescriptor(role, path, bytes) {
