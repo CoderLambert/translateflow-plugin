@@ -10,7 +10,6 @@
       : (input || {});
 
     container.dataset.resultKind = String(result.kind || "translation");
-    renderBadges(container, result.badges);
     renderHeadword(container, result);
 
     const entries = Array.isArray(result.dictionaryEntries) ? result.dictionaryEntries : [];
@@ -19,6 +18,7 @@
     } else {
       renderCompactMeaning(container, result);
     }
+    renderBadges(container, result.badges);
 
     const generatedMeaning = String(result.generatedMeaning || "").trim();
     const explanation = String(result.explanation || "").trim();
@@ -117,8 +117,7 @@
       const labels = uniqueText([
         entryHeadword && entryHeadword !== String(primaryHeadword || "").trim() ? entryHeadword : "",
         entry?.pronunciation,
-        entry?.partOfSpeech,
-        entry?.provenanceLabel
+        entry?.partOfSpeech
       ]);
       for (const label of labels) {
         const meta = document.createElement("span");
@@ -142,6 +141,14 @@
         ...(Array.isArray(entry?.domains) ? entry.domains : []),
         ...(Array.isArray(entry?.typeLabels) ? entry.typeLabels : [])
       ], "tf-selection-entry-facts");
+
+      const provenance = String(entry?.provenanceLabel || "").trim();
+      if (provenance) {
+        const source = document.createElement("div");
+        source.className = "tf-selection-entry-provenance";
+        source.textContent = provenance;
+        item.appendChild(source);
+      }
       list.appendChild(item);
     }
 
