@@ -33,20 +33,19 @@ export async function compileTflexMdictImport({
   const recipe = validateMdictImportRecipe(JSON.parse(
     await readFile(requiredPath(recipePath, "recipePath"), "utf8")
   ));
-  const mdxBytes = await readFile(resolve(mdx));
-  const mdxSha256 = sha256Bytes(mdxBytes);
-  if (mdxSha256 !== recipe.dictionary.mdxSha256) {
-    throw new Error(
-      "MDict recipe mdxSha256 mismatch: expected " +
-      recipe.dictionary.mdxSha256 + ", got " + mdxSha256
-    );
-  }
 
   const projection = await projectMdictPoc({
     mdxPath: mdx,
     sourceId: recipe.dictionary.sourceId,
     sourceVersion: recipe.dictionary.sourceVersion
   });
+  const mdxSha256 = projection.report?.input?.sha256 || "";
+  if (mdxSha256 !== recipe.dictionary.mdxSha256) {
+    throw new Error(
+      "MDict recipe mdxSha256 mismatch: expected " +
+      recipe.dictionary.mdxSha256 + ", got " + mdxSha256
+    );
+  }
   assertRecipeDictionaryMatch(projection.dictionary, recipe.dictionary);
 
   const records = buildMdictTflexRecords(projection.entries, recipe);
