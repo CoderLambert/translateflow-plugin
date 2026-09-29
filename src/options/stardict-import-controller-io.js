@@ -132,13 +132,17 @@ export function waitForStarDictWorkerReady({
         message.type ===
         STARDICT_WORKER_MESSAGES.PROGRESS
       ) {
-        onProgress?.({
-          requestId,
-          phase: message.phase,
-          ...(message.path
-            ? { path: message.path }
-            : {})
-        });
+        try {
+          onProgress?.({
+            requestId,
+            phase: message.phase,
+            ...(message.path
+              ? { path: message.path }
+              : {})
+          });
+        } catch {
+          // Progress observers must never control import correctness.
+        }
         return;
       }
 
