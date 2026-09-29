@@ -24,7 +24,12 @@ export function createOpfsIndexedTflexReader({
   if (!store?.readFile || !store?.readFileRange) {
     throw new Error("OPFS indexed reader requires readFile and readFileRange");
   }
-  if (!snapshot?.packId || !snapshot?.packVersion || !snapshot?.fingerprint) {
+  if (
+    !snapshot?.packId ||
+    !snapshot?.packVersion ||
+    !snapshot?.fingerprint ||
+    !Array.isArray(snapshot.files)
+  ) {
     throw new Error("OPFS indexed reader requires an active pack snapshot");
   }
   if (!cryptoProvider?.subtle) throw new Error("WebCrypto subtle API is required");
@@ -180,6 +185,10 @@ async function loadMetadata({
   let manifest;
   try {
     manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
+  } catch (error) {
+    throw corrupt(snapshot.packId, "manifest.json", "Installed TFLex manifest JSON is malformed", error);
+  }
+  try {
     manifest = validateInstalledManifestValue({
       manifest,
       snapshot,
