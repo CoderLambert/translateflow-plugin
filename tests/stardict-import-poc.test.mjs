@@ -39,8 +39,8 @@ test("StarDict dictzip header parser accepts RA metadata and rejects non-dictzip
   );
 
   const malformed = Buffer.from(dictzip);
-  malformed[16] = 2;
-  malformed[17] = 0;
+  malformed[20] = 2;
+  malformed[21] = 0;
   assertCode(
     () => parseStarDictDictzipHeader(malformed),
     STARDICT_IMPORT_ERROR.CORRUPT
