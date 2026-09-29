@@ -155,12 +155,11 @@ Properties:
 - output satisfies the existing optional-pack manifest health contract;
 - the POC reader participates in the existing Lexical Gateway candidate/provenance model.
 
-This compiler does not activate the imported pack in the production extension. Runtime registration and storage lifecycle remain separate #124 work.
+This compiler remains build-side validation infrastructure. Its output is now compatible with the production local-TFLex transaction: untrusted output is revalidated, staged in OPFS, health-checked, atomically activated, and exposed through the dynamic active-pack reader. The browser-side MDX parser/converter adapter is still separate #124 work.
 
 ## Next #124 units
 
-1. validate the MDict parser against representative real user-owned dictionaries before widening format support;
-2. decide a safe `.mdd` resource policy; do not render arbitrary resource-backed presentation content;
-3. connect converted local TFLex to the production OPFS reader/storage lifecycle;
-4. add cancellation, failure cleanup and isolation;
-5. measure import time, output bytes and lookup cost before production commitment.
+1. move the approved MDict v2 plain-text parser/converter behind a browser-safe import adapter without widening the accepted format;
+2. validate the parser against representative real user-owned dictionaries before widening format support;
+3. decide a safe `.mdd` resource policy; do not render arbitrary resource-backed presentation content;
+4. measure import time, output bytes and lookup cost before production commitment.
