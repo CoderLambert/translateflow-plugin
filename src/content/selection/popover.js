@@ -45,7 +45,7 @@
     root = document.createElement("div");
     root.className = "tf-selection-ui";
 
-    chip = button({ text: "译", label: "翻译所选文本", className: "tf-selection-chip" });
+    chip = button({ text: "译", label: "处理所选文本", className: "tf-selection-chip" });
     chip.addEventListener("pointerdown", (event) => event.preventDefault());
     chip.addEventListener("click", () => translateHandler?.());
 
@@ -77,16 +77,20 @@
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
 
-    cancelButton = button({ text: "取消" });
-    cancelButton.addEventListener("click", () => cancelHandler?.());
-    copyButton = button({ text: "复制" });
-    copyButton.addEventListener("click", () => copyHandler?.());
-    explainButton = button({ text: "AI 详解", label: "使用 AI 结合上下文详解" });
+    explainButton = button({
+      text: "AI 详解",
+      label: "使用 AI 结合上下文详解",
+      className: "tf-selection-action-primary"
+    });
     explainButton.addEventListener("click", () => explainHandler?.());
-    retryButton = button({ text: "重试" });
+    copyButton = button({ text: "复制", className: "tf-selection-action-quiet" });
+    copyButton.addEventListener("click", () => copyHandler?.());
+    retryButton = button({ text: "重试", className: "tf-selection-action-primary" });
     retryButton.addEventListener("click", () => retryHandler?.());
+    cancelButton = button({ text: "取消", className: "tf-selection-action-quiet" });
+    cancelButton.addEventListener("click", () => cancelHandler?.());
 
-    actions.append(cancelButton, copyButton, explainButton, retryButton);
+    actions.append(explainButton, copyButton, retryButton, cancelButton);
     panel.append(header, sourceNode, statusNode, resultNode, actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
@@ -109,8 +113,8 @@
     chip.hidden = true;
     panel.hidden = false;
     clearPageSelection();
-    sourceNode.textContent = snapshot.text;
-    setStatus(statusNode, "正在检查缓存…", "loading");
+    updateSource(snapshot);
+    setStatus(statusNode, "正在处理所选内容…", "loading");
     aiDetail?.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
@@ -136,7 +140,7 @@
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     chip.hidden = true;
     panel.hidden = false;
-    sourceNode.textContent = snapshot.text;
+    updateSource(snapshot, result);
     setStatus(statusNode, "", "success");
     renderResult(result);
     resultNode.hidden = false;
@@ -155,7 +159,7 @@
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     chip.hidden = true;
     panel.hidden = false;
-    sourceNode.textContent = snapshot.text;
+    updateSource(snapshot);
     setStatus(statusNode, message || "翻译失败，请重试。", "error");
     aiDetail?.reset();
     emptyState?.reset();
@@ -178,13 +182,35 @@
     }
   }
 
+  function updateSource(snapshot, result = null) {
+    const sourceText = String(snapshot?.text || "").trim();
+    const headword = String(result?.headword || "").trim();
+    const resultKind = String(result?.kind || "");
+    const lexicalResult = ["local", "technical", "explained"].includes(resultKind);
+    const duplicatesHeadword = lexicalResult
+      && headword
+      && normalizeDisplayText(sourceText) === normalizeDisplayText(headword);
+
+    sourceNode.textContent = sourceText;
+    sourceNode.hidden = !sourceText || duplicatesHeadword;
+    sourceNode.dataset.role = lexicalResult ? "lexical-source" : "selection-source";
+  }
+
+  function normalizeDisplayText(value) {
+    return String(value || "")
+      .normalize("NFKC")
+      .replace(/\s+/gu, " ")
+      .trim()
+      .toLocaleLowerCase("en-US");
+  }
+
   function showEmpty(snapshot, { title, message, onExplain, onTranslate } = {}) {
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
     chip.hidden = true;
     panel.hidden = false;
-    sourceNode.textContent = snapshot.text;
+    updateSource(snapshot);
     setStatus(statusNode, "", "info");
     aiDetail?.reset();
     emptyState?.reset();
