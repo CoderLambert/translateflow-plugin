@@ -11,6 +11,9 @@ const ZIP_END_OF_CENTRAL_DIRECTORY_BYTES = 22;
 const ZIP_LOCAL_HEADER_BYTES = 30;
 const ZIP_CENTRAL_HEADER_BYTES = 46;
 
+export const BUNDLED_LEXICON_RAW_BUDGET_BYTES = 37_000_000;
+export const BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES = 4_000_000;
+
 export async function measureExtensionFootprint({
   releaseRoot = resolve("assets/lexicon")
 } = {}) {
@@ -46,6 +49,10 @@ export async function measureExtensionFootprint({
     if (cert.failures.length) {
       structuralFailures.push(...cert.failures.map((failure) => "release certifier: " + failure));
     }
+    structuralFailures.push(...assessBundledLexiconBudget({
+      rawBytes: rawLexical,
+      zipProxyBytes: zipDeflateProxy(categorized.lexical).totalBytes
+    }));
 
     return {
       schemaVersion: 1,
@@ -55,6 +62,13 @@ export async function measureExtensionFootprint({
         builder: "scripts/build-extension.mjs",
         allowlistAudited: true,
         validationAssetsIncluded: false
+      },
+      bundledPolicy: {
+        decision: "retain-current-full-core-as-bounded-bootstrap",
+        rawLexiconBudgetBytes: BUNDLED_LEXICON_RAW_BUDGET_BYTES,
+        zipDeflateProxyBudgetBytes: BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES,
+        growthPolicy: "fail CI above either ceiling; intentional growth requires explicit policy/evidence update",
+        richDictionaryPolicy: "high-coverage dictionaries remain downloadable/imported"
       },
       rawBytes: {
         total: rawTotal,
@@ -130,6 +144,29 @@ export function zipDeflateProxy(entries) {
     envelopeBytes,
     totalBytes: payloadBytes + envelopeBytes
   };
+}
+
+export function assessBundledLexiconBudget({ rawBytes, zipProxyBytes } = {}) {
+  const failures = [];
+  if (!Number.isSafeInteger(rawBytes) || rawBytes < 0) {
+    throw new Error("rawBytes must be a non-negative integer");
+  }
+  if (!Number.isSafeInteger(zipProxyBytes) || zipProxyBytes < 0) {
+    throw new Error("zipProxyBytes must be a non-negative integer");
+  }
+  if (rawBytes > BUNDLED_LEXICON_RAW_BUDGET_BYTES) {
+    failures.push(
+      "bundled lexical raw budget exceeded: " + rawBytes +
+      " > " + BUNDLED_LEXICON_RAW_BUDGET_BYTES
+    );
+  }
+  if (zipProxyBytes > BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES) {
+    failures.push(
+      "bundled lexical ZIP/deflate proxy budget exceeded: " + zipProxyBytes +
+      " > " + BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES
+    );
+  }
+  return failures;
 }
 
 export function categorizeEntries(entries) {
