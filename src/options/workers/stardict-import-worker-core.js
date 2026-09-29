@@ -86,6 +86,12 @@ export function createStarDictImportWorkerHandler({
         token,
         { lockManager }
       );
+      if (!lease.protected) {
+        throw workerError(
+          "STARDICT_WORKER_UNSUPPORTED",
+          "Web Locks are required for safe dictionary import ownership."
+        );
+      }
       ownsToken = true;
       emitProgress(postMessage, requestId, "convert");
 
