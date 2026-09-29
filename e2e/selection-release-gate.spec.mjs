@@ -86,6 +86,48 @@ test.describe("Selection UX release gate", () => {
     expect(harness.server.calls).toHaveLength(0);
   });
 
+  test("long lexical card remains inside the viewport at every selection edge", async ({ harness }) => {
+    const page = await harness.open("/selection");
+    await page.setViewportSize({ width: 420, height: 240 });
+    await harness.inject(page);
+
+    const positions = [
+      "top: 2px; left: 2px;",
+      "top: 2px; right: 2px;",
+      "bottom: 2px; left: 2px;",
+      "bottom: 2px; right: 2px;"
+    ];
+
+    for (const position of positions) {
+      await page.locator("#ambiguous").evaluate((element, position) => {
+        element.style.cssText = `position: fixed; ${position} z-index: 1;`;
+      }, position);
+
+      await selectElementText(page, "#ambiguous");
+      await page.locator(".tf-selection-chip").click();
+
+      const panel = page.getByRole("dialog", { name: "TranslateFlow 划词翻译" });
+      await expect(panel).toBeVisible();
+      await expect(page.locator(".tf-selection-dictionary-entry")).toHaveCount(2);
+
+      const box = await panel.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(420);
+      expect(box.y + box.height).toBeLessThanOrEqual(240);
+
+      await page.getByRole("button", { name: "关闭" }).click();
+      await expect(panel).toBeHidden();
+    }
+
+    const pageOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    );
+    expect(pageOverflow).toBeLessThanOrEqual(0);
+    expect(harness.server.calls).toHaveLength(0);
+  });
+
   test("new Selection supersedes in-flight AI detail and outside click dismisses the current card", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);
