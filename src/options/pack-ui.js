@@ -69,21 +69,47 @@ export function initializePackUi({
   function renderBundled(packs) {
     bundledList.replaceChildren();
     if (!Array.isArray(packs) || !packs.length) {
-      bundledList.textContent = "当前版本没有声明内置词典。";
+      bundledList.textContent = "当前版本没有可用的内置词典信息。";
       return;
     }
 
     for (const pack of packs) {
+      const view = getBundledPackPresentation(pack);
       const row = document.createElement("div");
-      row.className = "site-row";
+      row.className = "site-row dictionary-pack-row";
 
       const summary = document.createElement("div");
       summary.className = "site-summary";
+
+      const heading = document.createElement("div");
+      heading.className = "dictionary-pack-heading";
       const title = document.createElement("strong");
       title.textContent = pack.label || pack.packId || pack.id;
-      const detail = document.createElement("small");
-      detail.textContent = describeBundledPackState(pack);
-      summary.append(title, detail);
+      const badge = document.createElement("span");
+      badge.className = "dictionary-health-badge";
+      badge.dataset.kind = view.kind;
+      badge.textContent = view.label;
+      badge.setAttribute("aria-label", `词典状态：${view.label}`);
+      heading.append(title, badge);
+      summary.appendChild(heading);
+
+      if (view.meta.length) {
+        const meta = document.createElement("div");
+        meta.className = "dictionary-pack-meta";
+        for (const item of view.meta) {
+          const value = document.createElement("span");
+          value.textContent = item;
+          meta.appendChild(value);
+        }
+        summary.appendChild(meta);
+      }
+
+      if (view.detail) {
+        const detail = document.createElement("small");
+        detail.className = "dictionary-pack-detail";
+        detail.textContent = view.detail;
+        summary.appendChild(detail);
+      }
 
       row.append(summary);
       bundledList.appendChild(row);
@@ -97,7 +123,7 @@ export function initializePackUi({
         .map((pack) => ({ source, pack })));
 
     if (!declared.length) {
-      optionalList.textContent = "当前版本没有通过产品质量门并注册为可下载来源的可选词典包。";
+      optionalList.textContent = "暂无可选词典。当前版本仅使用随扩展提供的内置词典；新的可选词典会在完成质量与许可审核后出现在这里。";
       return;
     }
 
@@ -222,23 +248,65 @@ export function initializePackUi({
   return refresh();
 }
 
-export function describeBundledPackState(pack) {
+export function getBundledPackPresentation(pack) {
+  const version = String(pack?.packVersion || "").trim();
+  const count = Number(pack?.recordCount || 0);
+  const readyMeta = [
+    version ? `版本 ${version}` : "版本未知",
+    `${count.toLocaleString()} 条记录`
+  ];
+
   if (pack?.status === "ready") {
-    return `已就绪 · ${pack.packVersion || "版本未知"} · ${Number(pack.recordCount || 0).toLocaleString()} 条记录`;
+    return {
+      kind: "success",
+      label: "已就绪",
+      meta: readyMeta,
+      detail: ""
+    };
   }
   if (pack?.status === "unavailable") {
-    return "资源缺失或不可读。源码开发安装请运行 npm run setup:lexicon，然后重新加载扩展。";
+    return {
+      kind: "error",
+      label: "资源缺失",
+      meta: [],
+      detail: "内置词典资源不可用。请重新加载扩展；若仍未恢复，可查看下方修复说明。"
+    };
   }
   if (pack?.status === "corrupt") {
-    return "资源校验失败或已损坏。请重新生成/安装后再试。";
+    return {
+      kind: "error",
+      label: "校验失败",
+      meta: [],
+      detail: "词典资源校验失败或已损坏。请重新加载或重新安装词典资源。"
+    };
   }
   if (pack?.status === "incompatible") {
-    return "词典格式与当前扩展版本不兼容。";
+    return {
+      kind: "warning",
+      label: "版本不兼容",
+      meta: [],
+      detail: "词典格式与当前扩展版本不兼容。请更新扩展或重新安装对应资源。"
+    };
   }
   if (pack?.status === "unhealthy") {
-    return "健康检查未通过，缺少必要的基准词条。";
+    return {
+      kind: "warning",
+      label: "健康检查失败",
+      meta: [],
+      detail: "词典缺少必要的基准词条，当前不会作为正常可用资源。"
+    };
   }
-  return `状态异常：${pack?.message || "未知错误"}`;
+  return {
+    kind: "error",
+    label: "状态异常",
+    meta: [],
+    detail: pack?.message ? String(pack.message) : "无法确认词典状态。"
+  };
+}
+
+export function describeBundledPackState(pack) {
+  const view = getBundledPackPresentation(pack);
+  return [view.label, ...view.meta, view.detail].filter(Boolean).join(" · ");
 }
 
 function describePackState(source, entry) {
