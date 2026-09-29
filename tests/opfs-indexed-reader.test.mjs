@@ -78,6 +78,36 @@ test("OPFS indexed reader detects corrupted targeted record bytes", async () => 
   assert.equal(env.stats.fullEntryReads, 0);
 });
 
+test("OPFS indexed reader verifies manifest and index bytes against the active snapshot", async () => {
+  const manifestEnv = await fixtureEnvironment();
+  manifestEnv.files["manifest.json"] = new Uint8Array(manifestEnv.files["manifest.json"]);
+  manifestEnv.files["manifest.json"][0] ^= 1;
+  const manifestReader = createOpfsIndexedTflexReader({
+    store: manifestEnv.store,
+    snapshot: manifestEnv.snapshot,
+    cryptoProvider: webcrypto
+  });
+  await assert.rejects(
+    manifestReader.lookup("run"),
+    (error) => error?.code === LEXICAL_ERROR_CODES.CORRUPT &&
+      /file hash mismatch/.test(error.message)
+  );
+
+  const indexEnv = await fixtureEnvironment();
+  indexEnv.files["index.dat"] = new Uint8Array(indexEnv.files["index.dat"]);
+  indexEnv.files["index.dat"][0] ^= 1;
+  const indexReader = createOpfsIndexedTflexReader({
+    store: indexEnv.store,
+    snapshot: indexEnv.snapshot,
+    cryptoProvider: webcrypto
+  });
+  await assert.rejects(
+    indexReader.lookup("run"),
+    (error) => error?.code === LEXICAL_ERROR_CODES.CORRUPT &&
+      /file hash mismatch/.test(error.message)
+  );
+});
+
 test("OPFS indexed reader maps pack compatibility/storage failures to lexical errors", async () => {
   const incompatibleEnv = await fixtureEnvironment({ readerMinVersion: 2 });
   const incompatibleReader = createOpfsIndexedTflexReader({
@@ -210,6 +240,7 @@ async function fixtureEnvironment({
     snapshot,
     index: indexed.index,
     entriesDescriptor,
+    files,
     stats,
     corruptRanges: false,
     failReads: false
