@@ -420,6 +420,91 @@ label {
   color: var(--tf-text-muted);
 }
 
+.dictionary-pack-row {
+  align-items: flex-start;
+}
+
+.dictionary-pack-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dictionary-pack-heading strong {
+  min-width: 0;
+}
+
+.dictionary-health-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 1px 8px;
+  border: 1px solid var(--tf-border-main);
+  border-radius: var(--tf-radius-pill);
+  background: var(--tf-bg-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.dictionary-health-badge[data-kind="success"] {
+  border-color: color-mix(in srgb, var(--tf-success) 34%, var(--tf-border-main));
+  background: color-mix(in srgb, var(--tf-success) 10%, var(--tf-bg-card));
+  color: var(--tf-green-800);
+}
+
+.dictionary-health-badge[data-kind="warning"] {
+  border-color: color-mix(in srgb, var(--tf-warning) 38%, var(--tf-border-main));
+  background: color-mix(in srgb, var(--tf-warning) 10%, var(--tf-bg-card));
+  color: var(--tf-warning);
+}
+
+.dictionary-health-badge[data-kind="error"] {
+  border-color: color-mix(in srgb, var(--tf-danger) 38%, var(--tf-border-main));
+  background: color-mix(in srgb, var(--tf-danger) 9%, var(--tf-bg-card));
+  color: var(--tf-danger);
+}
+
+.dictionary-pack-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 5px;
+  color: var(--tf-text-muted);
+  font-size: 12px;
+}
+
+.dictionary-pack-detail {
+  margin-top: 6px !important;
+  line-height: 1.5;
+}
+
+.dictionary-repair-help {
+  max-width: 760px;
+  margin-top: 10px;
+  color: var(--tf-text-muted);
+  font-size: 12px;
+}
+
+.dictionary-repair-help summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--tf-text-secondary);
+  font-weight: 650;
+}
+
+.dictionary-repair-help summary:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--tf-focus-ring);
+}
+
+.dictionary-repair-help p {
+  margin: 7px 0 0;
+  line-height: 1.5;
+}
+
 .site-actions {
   display: flex;
   flex-wrap: wrap;
