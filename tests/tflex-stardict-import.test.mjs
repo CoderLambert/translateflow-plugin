@@ -18,9 +18,11 @@ import { createLexicalGateway } from "../src/background/lexical/gateway.js";
 import { validateInstalledManifest } from "../src/background/packs/health.js";
 import { validateLocalTflexImport } from "../src/background/packs/local-import.js";
 import {
-  buildStarDictPlainLocalTflex,
-  importStarDictPlainDictionary
+  buildStarDictPlainLocalTflex
 } from "../src/background/packs/importers/stardict-local-adapter.js";
+import {
+  importStarDictPlainDictionary
+} from "../src/background/packs/importers/stardict-import-action.js";
 import {
   buildStarDictTflexRecords as browserBuildStarDictTflexRecords,
   validateStarDictImportRecipe as browserValidateStarDictImportRecipe
