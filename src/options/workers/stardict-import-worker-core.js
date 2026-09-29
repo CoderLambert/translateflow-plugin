@@ -74,11 +74,13 @@ export function createStarDictImportWorkerHandler({
     const controller = new AbortController();
     active = { requestId, controller };
     let token = "";
+    let ownsToken = false;
 
     try {
       const input = validateStartInput(message.input);
       token = tokenFactory();
       await assertFreshToken(quarantine, token);
+      ownsToken = true;
       emitProgress(postMessage, requestId, "convert");
 
       const built = input.format === "dictzip"
@@ -161,7 +163,7 @@ export function createStarDictImportWorkerHandler({
       token = "";
       return result;
     } catch (error) {
-      if (token) {
+      if (token && ownsToken) {
         await quarantine.remove(token).catch(() => {});
       }
       const payload = {
