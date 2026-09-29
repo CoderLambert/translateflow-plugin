@@ -135,6 +135,12 @@ export async function projectMdictV2PlainText({
     limits,
     "MDict key index"
   );
+  if (keyIndexDecoded.compression !== "zlib") {
+    fail(
+      MDICT_IMPORT_ERROR.UNSUPPORTED,
+      "MDict v2 key block info must use zlib compression."
+    );
+  }
   const keyBlockDescriptors = parseKeyBlockIndex(
     keyIndexDecoded.bytes,
     numKeyBlocks,
