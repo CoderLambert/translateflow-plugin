@@ -257,7 +257,9 @@ export function validateIndexedIndex(index, manifest, entriesDescriptor) {
       normalizeLexicalKey(item.key) !== item.key ||
       (previousKey !== null && previousKey >= item.key) ||
       !Array.isArray(item.exactLookupKeys) ||
-      item.exactLookupKeys.some((value) => typeof value !== "string" || !value) ||
+      item.exactLookupKeys.some(
+        (value) => typeof value !== "string" || !value || normalizeLexicalKey(value) !== item.key
+      ) ||
       !Array.isArray(item.targets) ||
       !item.targets.length
     ) {
