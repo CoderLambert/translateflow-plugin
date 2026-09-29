@@ -10,7 +10,7 @@ Only the simplest deterministic StarDict profile is accepted:
 
 - `.ifo` version 2.4.2 or 3.0.0;
 - 32-bit `.idx` offsets;
-- uncompressed `.dict`;
+- uncompressed `.dict` or dictzip-compressed `.dict.dz`;
 - `sametypesequence=m` UTF-8 plain text;
 - optional bounded `.syn` aliases using 32-bit source-entry indexes;
 - no embedded resources;
@@ -33,7 +33,11 @@ It deliberately does **not** label arbitrary StarDict plain text as a translatio
 The parser rejects:
 
 - unsupported versions or rich field types;
-- `.dict.dz` until a bounded streaming decompressor exists;
+- malformed/non-DEFLATE `.dict.dz` gzip headers;
+- `.dict.dz` files without a structurally valid dictzip `RA` extra subfield;
+- dictzip `RA` versions other than v1;
+- inconsistent/duplicate dictzip chunk metadata;
+- compressed `.dict.dz` files above the input ceiling or decompressed output above the DICT ceiling;
 - 64-bit offsets until explicitly implemented and tested;
 - malformed/truncated/unsorted index or synonym records;
 - `.syn` targets outside the declared `.idx` word list;
@@ -49,13 +53,16 @@ Current default POC limits:
 - IFO: 64 KiB;
 - IDX: 64 MiB;
 - SYN: 32 MiB;
-- DICT: 128 MiB;
+- DICT.DZ compressed input: 128 MiB;
+- DICT decompressed bytes: 128 MiB;
 - one entry: 512 KiB;
 - entries: 1,000,000;
 - synonyms: 1,000,000;
 - headword/alias bytes: 1,024.
 
 These are parser safety ceilings, not product quota promises.
+
+For `.dict.dz`, TranslateFlow validates the dictzip gzip/RA header first and then performs bounded streaming decompression. The POC intentionally inflates the body once during import rather than implementing random-access chunk reads in the runtime; the decompressed buffer is still capped before lexical parsing, so a small compressed input cannot expand past the configured DICT ceiling.
 
 ## Runtime/package boundary
 
@@ -68,9 +75,9 @@ These are parser safety ceilings, not product quota promises.
 
 ## Next #124 units
 
-1. add bounded `.dict.dz` decompression;
-2. implement the MDict metadata/content POC with equivalent fail-closed limits;
-3. connect converted local TFLex to the existing pack storage/lifecycle only after parser/security review;
+1. implement the MDict metadata/content POC with equivalent fail-closed limits;
+2. connect converted local TFLex to the existing pack storage/lifecycle only after parser/security review;
+3. add explicit import cancellation / failure cleanup and isolation;
 4. measure import time, output bytes and lookup cost before production commitment.
 
 
@@ -110,7 +117,7 @@ Run:
 npm run build:tflex:stardict-import -- \
   --ifo dictionary.ifo \
   --idx dictionary.idx \
-  --dict dictionary.dict \
+  --dict dictionary.dict.dz \
   --syn dictionary.syn \
   --recipe import-recipe.json \
   --out /tmp/local-stardict-tflex \

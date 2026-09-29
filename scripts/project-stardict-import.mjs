@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import { stat, readFile, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { open, stat, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TextDecoder } from "node:util";
+import { createGunzip } from "node:zlib";
 import {
   normalizeExactLookupKey,
   normalizeLookupKey,
@@ -13,6 +15,7 @@ export const STARDICT_POC_LIMITS = Object.freeze({
   ifoBytes: 64 * 1024,
   idxBytes: 64 * 1024 * 1024,
   synBytes: 32 * 1024 * 1024,
+  dictArchiveBytes: 128 * 1024 * 1024,
   dictBytes: 128 * 1024 * 1024,
   entryBytes: 512 * 1024,
   entryCount: 1_000_000,
@@ -59,22 +62,18 @@ export async function projectStarDictPoc({
     dict: requiredPath(dictPath, "dictPath"),
     syn: optionalPath(synPath)
   };
-  if (/\.dict\.dz$/i.test(paths.dict)) {
-    fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "StarDict .dict.dz compression is not supported by this POC.");
-  }
-
-  const [ifoSize, idxSize, dictSize, synSize] = await Promise.all([
+  const [ifoSize, idxSize, synSize] = await Promise.all([
     checkedFileSize(paths.ifo, limits.ifoBytes, "IFO"),
     checkedFileSize(paths.idx, limits.idxBytes, "IDX"),
-    checkedFileSize(paths.dict, limits.dictBytes, "DICT"),
     paths.syn ? checkedFileSize(paths.syn, limits.synBytes, "SYN") : Promise.resolve(0)
   ]);
-  const [ifoBytes, idxBytes, dictBytes, synBytes] = await Promise.all([
+  const [ifoBytes, idxBytes, dictionaryFile, synBytes] = await Promise.all([
     readFile(paths.ifo),
     readFile(paths.idx),
-    readFile(paths.dict),
+    readStarDictDictionaryFile(paths.dict, { limits }),
     paths.syn ? readFile(paths.syn) : Promise.resolve(undefined)
   ]);
+  const dictBytes = dictionaryFile.bytes;
 
   const ifoText = decodeUtf8(ifoBytes, "IFO");
   const result = projectStarDictPlainText({
@@ -96,7 +95,10 @@ export async function projectStarDictPoc({
     input: {
       ifoBytes: ifoSize,
       idxBytes: idxSize,
-      dictBytes: dictSize,
+      dictFileBytes: dictionaryFile.inputBytes,
+      dictBytes: dictBytes.byteLength,
+      dictCompression: dictionaryFile.compression,
+      dictzip: dictionaryFile.dictzip,
       synBytes: synSize
     },
     dictionary: result.dictionary,
@@ -111,6 +113,178 @@ export async function projectStarDictPoc({
   if (outPath) await writeFile(resolve(outPath), output, "utf8");
   if (reportPath) await writeFile(resolve(reportPath), JSON.stringify(report, null, 2) + "\n", "utf8");
   return { ...result, report, output };
+}
+
+export async function readStarDictDictionaryFile(path, {
+  limits = STARDICT_POC_LIMITS
+} = {}) {
+  const selected = requiredPath(path, "dictPath");
+  if (!/\.dict\.dz$/i.test(selected)) {
+    await checkedFileSize(selected, limits.dictBytes, "DICT");
+    const bytes = await readFile(resolve(selected));
+    requireAtMost(bytes.byteLength, limits.dictBytes, "DICT bytes");
+    return {
+      bytes,
+      inputBytes: bytes.byteLength,
+      compression: "none",
+      dictzip: null
+    };
+  }
+
+  const inputBytes = await checkedFileSize(
+    selected,
+    limits.dictArchiveBytes,
+    "DICT.DZ"
+  );
+  const headerBytes = await readDictzipHeaderPrefix(selected, inputBytes);
+  const dictzip = parseStarDictDictzipHeader(headerBytes);
+  const bytes = await gunzipBounded(selected, limits.dictBytes, inputBytes);
+  return {
+    bytes,
+    inputBytes,
+    compression: "dictzip",
+    dictzip
+  };
+}
+
+export function parseStarDictDictzipHeader(input) {
+  const bytes = toBytes(input, "DICT.DZ header");
+  if (bytes.byteLength < 12) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz gzip header is truncated.");
+  }
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b || bytes[2] !== 8) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz is not a DEFLATE gzip stream.");
+  }
+  const flags = bytes[3];
+  if ((flags & 0xe0) !== 0) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz uses reserved gzip flags.");
+  }
+  if ((flags & 0x04) === 0) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz is missing the gzip extra field.");
+  }
+
+  const extraLength = readUint16Le(bytes, 10);
+  const extraEnd = 12 + extraLength;
+  if (extraLength < 4 || bytes.byteLength < extraEnd) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz gzip extra field is truncated.");
+  }
+
+  let cursor = 12;
+  let randomAccess = null;
+  while (cursor < extraEnd) {
+    if (cursor + 4 > extraEnd) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz extra subfield header is truncated.");
+    }
+    const id1 = bytes[cursor];
+    const id2 = bytes[cursor + 1];
+    const length = readUint16Le(bytes, cursor + 2);
+    cursor += 4;
+    if (cursor + length > extraEnd) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz extra subfield is truncated.");
+    }
+    if (id1 === 0x52 && id2 === 0x41) {
+      if (randomAccess) {
+        fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz contains duplicate RA metadata.");
+      }
+      randomAccess = bytes.subarray(cursor, cursor + length);
+    }
+    cursor += length;
+  }
+  if (cursor !== extraEnd || !randomAccess) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz is missing dictzip RA metadata.");
+  }
+  if (randomAccess.byteLength < 8) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz RA metadata is truncated.");
+  }
+
+  const version = readUint16Le(randomAccess, 0);
+  const chunkLength = readUint16Le(randomAccess, 2);
+  const chunkCount = readUint16Le(randomAccess, 4);
+  if (version !== 1) {
+    fail(STARDICT_IMPORT_ERROR.UNSUPPORTED, "Unsupported StarDict dictzip RA format version.", {
+      version
+    });
+  }
+  if (!chunkLength || !chunkCount) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz RA metadata contains zero-valued required fields.");
+  }
+  const expectedBytes = 6 + chunkCount * 2;
+  if (randomAccess.byteLength !== expectedBytes) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz RA chunk table length is inconsistent.", {
+      expected: expectedBytes,
+      actual: randomAccess.byteLength
+    });
+  }
+
+  let compressedChunkBytes = 0;
+  for (let index = 0; index < chunkCount; index += 1) {
+    const size = readUint16Le(randomAccess, 6 + index * 2);
+    if (!size) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz RA metadata contains an empty compressed chunk.");
+    }
+    compressedChunkBytes += size;
+  }
+
+  return {
+    version,
+    chunkLength,
+    chunkCount,
+    compressedChunkBytes
+  };
+}
+
+async function readDictzipHeaderPrefix(path, fileBytes) {
+  const handle = await open(resolve(path), "r");
+  try {
+    const fixed = Buffer.alloc(Math.min(fileBytes, 12));
+    const first = await handle.read(fixed, 0, fixed.byteLength, 0);
+    if (first.bytesRead < 12) return fixed.subarray(0, first.bytesRead);
+    const extraLength = readUint16Le(fixed, 10);
+    const headerBytes = 12 + extraLength;
+    if (headerBytes > fileBytes) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz declared extra header exceeds the file.");
+    }
+    const header = Buffer.alloc(headerBytes);
+    const read = await handle.read(header, 0, headerBytes, 0);
+    if (read.bytesRead !== headerBytes) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz gzip header is truncated.");
+    }
+    return header;
+  } finally {
+    await handle.close();
+  }
+}
+
+async function gunzipBounded(path, maximumBytes, inputBytes) {
+  const source = createReadStream(resolve(path), {
+    start: 0,
+    end: Math.max(0, inputBytes - 1)
+  });
+  const gunzip = createGunzip();
+  source.pipe(gunzip);
+  const chunks = [];
+  let total = 0;
+
+  try {
+    for await (const chunk of gunzip) {
+      total += chunk.byteLength;
+      if (total > maximumBytes) {
+        source.destroy();
+        gunzip.destroy();
+        fail(STARDICT_IMPORT_ERROR.LIMIT, "DICT decompressed bytes exceeds the POC safety limit.", {
+          actual: total,
+          maximum: maximumBytes
+        });
+      }
+      chunks.push(Buffer.from(chunk));
+    }
+  } catch (cause) {
+    source.destroy();
+    gunzip.destroy();
+    if (cause instanceof StarDictImportError) throw cause;
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .dict.dz decompression failed.", { cause });
+  }
+  return Buffer.concat(chunks, total);
 }
 
 export function projectStarDictPlainText({
@@ -190,7 +364,6 @@ export function projectStarDictPlainText({
       tflexMapping: "not-yet-approved"
     },
     unsupportedFeatures: [
-      "dict.dz compression",
       "64-bit index offsets",
       "rich StarDict field types",
       "embedded/renderable markup",
@@ -432,6 +605,13 @@ function compareAsciiCaseInsensitiveBytes(left, right) {
 
 function foldAsciiByte(value) {
   return value >= 0x41 && value <= 0x5a ? value + 0x20 : value;
+}
+
+function readUint16Le(bytes, offset) {
+  if (offset < 0 || offset + 2 > bytes.byteLength) {
+    fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict little-endian uint16 is truncated.");
+  }
+  return bytes[offset] + bytes[offset + 1] * 0x100;
 }
 
 function readUint32Be(bytes, offset) {

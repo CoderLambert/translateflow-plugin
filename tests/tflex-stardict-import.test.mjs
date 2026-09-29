@@ -4,6 +4,7 @@ import { createHash, webcrypto } from "node:crypto";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { gzipSync } from "node:zlib";
 import {
   STARDICT_BILINGUAL_PROFILE,
   STARDICT_LOCAL_IMPORT_LICENSE_ID,
@@ -42,6 +43,28 @@ test("declared bilingual StarDict compiles deterministically to user-import-only
   );
 
   await cleanup(first, second);
+});
+
+test("StarDict dictzip and plain bodies compile to identical local TFLex output", async () => {
+  const plain = await buildFixture("dictzip-plain");
+  const zipped = await buildFixture("dictzip-zipped", { dictzip: true });
+  try {
+    assert.deepEqual(await snapshot(zipped.outDir), await snapshot(plain.outDir));
+    assert.equal(zipped.result.projection.report.input.dictCompression, "dictzip");
+    assert.equal(
+      zipped.result.projection.report.input.dictBytes,
+      zipped.encoded.dictBytes.byteLength
+    );
+    assert.equal(zipped.result.projection.report.input.dictzip.chunkCount, 1);
+    assert.equal(zipped.result.report.importInput.dictCompression, "dictzip");
+    assert.equal(zipped.result.report.importInput.dictzip.chunkCount, 1);
+    assert.equal(
+      zipped.result.report.importInput.dictBytes,
+      zipped.encoded.dictBytes.byteLength
+    );
+  } finally {
+    await cleanup(plain, zipped);
+  }
 });
 
 test("StarDict semantic mapping preserves duplicate source rows as attributable lexical senses", () => {
@@ -197,8 +220,8 @@ test("StarDict local TFLex validation detects entry tampering", async () => {
   }
 });
 
-async function buildFixture(name) {
-  const env = await fixtureFiles(name);
+async function buildFixture(name, options) {
+  const env = await fixtureFiles(name, options);
   const result = await compileTflexStarDictImport({
     ifoPath: env.ifoPath,
     idxPath: env.idxPath,
@@ -211,7 +234,7 @@ async function buildFixture(name) {
   return { ...env, result };
 }
 
-async function fixtureFiles(name) {
+async function fixtureFiles(name, { dictzip = false } = {}) {
   const root = await mkdtemp(join(tmpdir(), "translateflow-stardict-tflex-" + name + "-"));
   const entries = [
     ["hello", "你好"],
@@ -225,7 +248,7 @@ async function fixtureFiles(name) {
   ]);
   const ifoPath = join(root, "fixture.ifo");
   const idxPath = join(root, "fixture.idx");
-  const dictPath = join(root, "fixture.dict");
+  const dictPath = join(root, dictzip ? "fixture.dict.dz" : "fixture.dict");
   const synPath = join(root, "fixture.syn");
   const recipePath = join(root, "recipe.json");
   const outDir = join(root, "out");
@@ -234,11 +257,11 @@ async function fixtureFiles(name) {
   await Promise.all([
     writeFile(ifoPath, encoded.ifoText),
     writeFile(idxPath, encoded.idxBytes),
-    writeFile(dictPath, encoded.dictBytes),
+    writeFile(dictPath, dictzip ? makeDictzip(encoded.dictBytes) : encoded.dictBytes),
     writeFile(synPath, encoded.synBytes),
     writeFile(recipePath, JSON.stringify(recipeFixture()))
   ]);
-  return { root, ifoPath, idxPath, dictPath, synPath, recipePath, outDir, reportPath };
+  return { root, ifoPath, idxPath, dictPath, synPath, recipePath, outDir, reportPath, encoded };
 }
 
 function recipeFixture() {
@@ -317,6 +340,27 @@ function encodeSynonyms(rows) {
     chunks.push(wordBytes, Buffer.from([0]), target);
   }
   return Buffer.concat(chunks);
+}
+
+function makeDictzip(input) {
+  const gzip = gzipSync(Buffer.from(input));
+  const compressedChunkBytes = gzip.byteLength - 18;
+  if (compressedChunkBytes <= 0 || compressedChunkBytes > 0xffff) {
+    throw new Error("dictzip test fixture compressed chunk does not fit uint16");
+  }
+  const raPayload = Buffer.alloc(8);
+  raPayload.writeUInt16LE(1, 0);
+  raPayload.writeUInt16LE(0xffff, 2);
+  raPayload.writeUInt16LE(1, 4);
+  raPayload.writeUInt16LE(compressedChunkBytes, 6);
+  const raLength = Buffer.alloc(2);
+  raLength.writeUInt16LE(raPayload.byteLength, 0);
+  const extra = Buffer.concat([Buffer.from("RA", "ascii"), raLength, raPayload]);
+  const extraLength = Buffer.alloc(2);
+  extraLength.writeUInt16LE(extra.byteLength, 0);
+  const header = Buffer.from(gzip.subarray(0, 10));
+  header[3] |= 0x04;
+  return Buffer.concat([header, extraLength, extra, gzip.subarray(10)]);
 }
 
 function fileDescriptor(role, path, bytes) {
