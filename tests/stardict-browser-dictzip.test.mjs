@@ -39,7 +39,9 @@ test("browser dictzip rejects ordinary gzip before decompression", async () => {
     (error) =>
       error instanceof StarDictImportError &&
       error.code === STARDICT_IMPORT_ERROR.CORRUPT &&
-      /missing dictzip RA metadata/.test(error.message)
+      /missing (?:the gzip extra field|dictzip RA metadata)/.test(
+        error.message
+      )
   );
 });
 
