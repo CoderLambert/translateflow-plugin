@@ -6,6 +6,8 @@ on:
     paths:
       - "src/background/lexical/**"
       - "scripts/build-tflex-*.mjs"
+      - "scripts/project-*-import.mjs"
+      - "tests/*-import-poc.test.mjs"
       - "scripts/build-release-lexicon.mjs"
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
@@ -23,6 +25,8 @@ on:
     paths:
       - "src/background/lexical/**"
       - "scripts/build-tflex-*.mjs"
+      - "scripts/project-*-import.mjs"
+      - "tests/*-import-poc.test.mjs"
       - "scripts/build-release-lexicon.mjs"
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
