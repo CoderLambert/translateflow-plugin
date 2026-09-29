@@ -87,7 +87,8 @@ test("StarDict browser parser modules have no Node runtime dependency", async ()
     "../src/background/packs/importers/stardict-core.js",
     "../src/background/packs/importers/stardict-semantic.js",
     "../src/background/packs/importers/tflex-local-builder.js",
-    "../src/background/packs/importers/stardict-local-adapter.js"
+    "../src/background/packs/importers/stardict-local-adapter.js",
+    "../src/background/packs/importers/stardict-import-action.js"
   ]) {
     const source = await readFile(new URL(relative, import.meta.url), "utf8");
     assert.doesNotMatch(source, /from\s+["']node:/);
