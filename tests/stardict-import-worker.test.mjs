@@ -21,6 +21,7 @@ test("StarDict worker stages exact local TFLex files into quarantine and returns
     "import-123e4567-e89b-42d3-a456-426614174000";
   const handler = createStarDictImportWorkerHandler({
     quarantine,
+    lockManager: new FakeLockManager(),
     cryptoProvider: webcrypto,
     tokenFactory: () => token,
     postMessage: (message) => messages.push(message)
