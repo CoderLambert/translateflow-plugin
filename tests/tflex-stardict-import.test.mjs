@@ -56,6 +56,12 @@ test("StarDict dictzip and plain bodies compile to identical local TFLex output"
       zipped.encoded.dictBytes.byteLength
     );
     assert.equal(zipped.result.projection.report.input.dictzip.chunkCount, 1);
+    assert.equal(zipped.result.report.importInput.dictCompression, "dictzip");
+    assert.equal(zipped.result.report.importInput.dictzip.chunkCount, 1);
+    assert.equal(
+      zipped.result.report.importInput.dictBytes,
+      zipped.encoded.dictBytes.byteLength
+    );
   } finally {
     await cleanup(plain, zipped);
   }
