@@ -281,8 +281,8 @@ export function parseStarDictIndex(input, {
     const word = decodeUtf8(wordBytes, "IDX headword");
     validateHeadword(word);
 
-    if (previousWordBytes && Buffer.compare(Buffer.from(previousWordBytes), Buffer.from(wordBytes)) > 0) {
-      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .idx headwords are not byte-sorted.");
+    if (previousWordBytes && compareStarDictWordBytes(previousWordBytes, wordBytes) > 0) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .idx headwords are not StarDict-sorted.");
     }
     previousWordBytes = Uint8Array.from(wordBytes);
 
@@ -353,8 +353,8 @@ export function parseStarDictSynonyms(input, {
     const word = decodeUtf8(wordBytes, "SYN alias");
     validateHeadword(word);
 
-    if (previousWordBytes && Buffer.compare(Buffer.from(previousWordBytes), Buffer.from(wordBytes)) > 0) {
-      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn aliases are not byte-sorted.");
+    if (previousWordBytes && compareStarDictWordBytes(previousWordBytes, wordBytes) > 0) {
+      fail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict .syn aliases are not StarDict-sorted.");
     }
     previousWordBytes = Uint8Array.from(wordBytes);
 
@@ -411,6 +411,27 @@ function findNul(bytes, start, maxBytes) {
     if (bytes[index] === 0) return index;
   }
   return -1;
+}
+
+function compareStarDictWordBytes(left, right) {
+  const folded = compareAsciiCaseInsensitiveBytes(left, right);
+  if (folded !== 0) return folded;
+  return Buffer.compare(Buffer.from(left), Buffer.from(right));
+}
+
+function compareAsciiCaseInsensitiveBytes(left, right) {
+  const length = Math.min(left.byteLength, right.byteLength);
+  for (let index = 0; index < length; index += 1) {
+    const a = foldAsciiByte(left[index]);
+    const b = foldAsciiByte(right[index]);
+    if (a !== b) return a < b ? -1 : 1;
+  }
+  if (left.byteLength === right.byteLength) return 0;
+  return left.byteLength < right.byteLength ? -1 : 1;
+}
+
+function foldAsciiByte(value) {
+  return value >= 0x41 && value <= 0x5a ? value + 0x20 : value;
 }
 
 function readUint32Be(bytes, offset) {
