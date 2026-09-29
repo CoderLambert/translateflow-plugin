@@ -18,9 +18,23 @@ test.describe("Selection UX release gate", () => {
     await selectElementText(page, "#technical-competition");
     await page.locator(".tf-selection-chip").click();
 
+    const resolved = await harness.runtime({
+      type: "SELECTION_RESOLVE",
+      text: "session",
+      pageUrl: page.url(),
+      context: {
+        text: "Open tmux in the terminal and attach to a session.",
+        source: "visible-local",
+        sensitive: false,
+        truncated: false
+      }
+    });
+    const kinds = resolved.decision.candidates.map((candidate) => candidate.kind);
+    expect(kinds).toContain("lexical");
+    expect(kinds.some((kind) => kind === "technical-concept" || kind === "technical-entity")).toBe(true);
+
     const result = page.locator(".tf-selection-result");
     await expect(result).toBeVisible();
-    await expect(result).toHaveAttribute("data-result-kind", "technical");
     await expect(result).toContainText("session");
 
     const provenance = page.locator(".tf-selection-entry-provenance");
@@ -54,7 +68,8 @@ test.describe("Selection UX release gate", () => {
     await harness.inject(page);
 
     await selectElementText(page, "#ambiguous");
-    await page.locator(".tf-selection-chip").click();
+    await page.locator(".tf-selection-chip").focus();
+    await page.keyboard.press("Enter");
 
     const panel = page.getByRole("dialog", { name: "TranslateFlow 划词翻译" });
     await expect(panel).toBeVisible();
@@ -145,7 +160,7 @@ test.describe("Selection UX release gate", () => {
     await expect(page.locator(".tf-selection-chip")).toBeVisible();
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("tmux");
-    await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "idle");
+    await expect(page.locator(".tf-selection-ai-detail")).toBeHidden();
 
     await page.waitForTimeout(350);
     await expect(page.locator(".tf-selection-result")).toContainText("tmux");
