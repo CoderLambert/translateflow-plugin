@@ -191,7 +191,16 @@ Optional downloaded packs use a versioned OPFS directory:
   entries.dat
 ```
 
-The reader uses `File.slice(offset, offset + length)` or equivalent bounded reads. Static dictionary rows are not imported into IndexedDB.
+The production indexed reader uses `File.slice(offset, offset + length)` or equivalent bounded reads. Static dictionary rows are not imported into IndexedDB.
+
+Runtime integrity rules:
+
+- the active snapshot's `manifest.json` bytes are verified against the persisted descriptor before parsing;
+- `index.dat` is verified as a whole and structurally validated before lookup;
+- `entries.dat` is not materialized as one runtime buffer;
+- each indexed record slice is range-read and verified against its per-record SHA-256 before JSON parsing;
+- canonical and alias targets must resolve to validated canonical records;
+- decoded record caching is byte-bounded and disposable with the MV3 worker.
 
 Activation is an atomic **metadata pointer switch**, not a filesystem-rename assumption:
 

@@ -57,7 +57,20 @@ export async function validateInstalledManifest({
     if (error?.code) throw error;
     throw packError(PACK_ERROR_CODES.CORRUPT, "Installed dictionary manifest is not valid JSON.", { cause: error });
   }
+  return validateInstalledManifestValue({ manifest, snapshot, readerVersion });
+}
 
+export function validateInstalledManifestValue({
+  manifest,
+  snapshot,
+  readerVersion = PACK_READER_VERSION
+} = {}) {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+    throw packError(PACK_ERROR_CODES.CORRUPT, "Installed dictionary manifest must be an object.");
+  }
+  if (!snapshot || !Array.isArray(snapshot.files)) {
+    throw packError(PACK_ERROR_CODES.CORRUPT, "Installed dictionary snapshot metadata is malformed.");
+  }
   if (
     manifest.format !== "tflex" ||
     manifest.formatVersion !== 1 ||
