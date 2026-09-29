@@ -69,3 +69,69 @@ These are parser safety ceilings, not product quota promises.
 3. implement the MDict metadata/content POC with equivalent fail-closed limits;
 4. connect converted local TFLex to the existing pack storage/lifecycle only after parser/security review;
 5. measure import time, output bytes and lookup cost before production commitment.
+
+
+## Explicit bilingual semantic mapping POC
+
+The next POC stage may convert the safe plain-text projection into TFLex **only** when a separate import recipe explicitly declares the dictionary semantics.
+
+Required recipe shape:
+
+```json
+{
+  "schemaVersion": 1,
+  "semanticProfile": "en-zh-plain-text-translation-v1",
+  "packId": "local-my-dictionary",
+  "packVersion": "local-v1",
+  "sourceLanguage": "en",
+  "targetLanguage": "zh-CN",
+  "dictionary": {
+    "bookname": "Exact StarDict bookname",
+    "sourceId": "local-source-id",
+    "sourceVersion": "local-v1"
+  },
+  "assertions": {
+    "plainTextRepresentsTargetTranslation": true,
+    "localUseOnly": true
+  }
+}
+```
+
+The recipe is intentionally external to the StarDict bytes. StarDict `sametypesequence=m` only says that the payload is plain text; it does **not** prove that the text is a Chinese translation. TranslateFlow therefore refuses to infer the language direction or semantic role.
+
+The compiler also binds the recipe to the exact `.ifo` `bookname`. Reusing a recipe for a different dictionary fails closed.
+
+Run:
+
+```bash
+npm run build:tflex:stardict-import -- \
+  --ifo dictionary.ifo \
+  --idx dictionary.idx \
+  --dict dictionary.dict \
+  --recipe import-recipe.json \
+  --out /tmp/local-stardict-tflex \
+  --report /tmp/local-stardict-report.json
+```
+
+The output is:
+
+```text
+manifest.json
+index.dat
+entries.dat
+```
+
+Properties:
+
+- TFLex v1;
+- physical profile `opfs-indexed-v1`;
+- distribution status `user-import-only`;
+- English → zh-CN only for this semantic profile;
+- one source StarDict row becomes one attributable TFLex sense;
+- duplicate StarDict headwords are grouped under one lexical record without discarding their source-row boundaries;
+- no POS/domain/example metadata is invented;
+- source license is recorded as `USER-PROVIDED-UNVERIFIED`: local import does not assert redistribution rights;
+- output satisfies the existing optional-pack manifest health contract;
+- a POC indexed reader verifies the output can participate in the existing Lexical Gateway candidate/provenance model.
+
+The POC reader is validation infrastructure only. Production activation of local/imported `opfs-indexed-v1` readers is still a separate dictionary-pack lifecycle unit; this stage does not silently register imported content into the running extension.
