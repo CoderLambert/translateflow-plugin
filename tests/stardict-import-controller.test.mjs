@@ -198,6 +198,62 @@ test("Settings controller routes worker cancellation without starting background
   assert.deepEqual(runtime.messages, []);
 });
 
+
+test("Settings controller removes a completed worker token when cancellation wins before commit", async () => {
+  const runtime = new FakeRuntime();
+  const workers = [];
+  const quarantine = {
+    removed: [],
+    async remove(token) {
+      this.removed.push(token);
+      return true;
+    }
+  };
+  const controller = createStarDictImportController({
+    runtime,
+    quarantine,
+    WorkerCtor: class extends FakeWorker {
+      constructor(url, options) {
+        super(url, options);
+        workers.push(this);
+      }
+    },
+    cryptoProvider: {
+      randomUUID: () =>
+        "00000000-0000-4000-8000-000000000004"
+    }
+  });
+
+  const importing = controller.importDictionary({
+    format: "plain",
+    ifoFile: blob("ifo"),
+    idxFile: blob("idx"),
+    dictFile: blob("dict"),
+    recipe: { fixture: true }
+  });
+
+  await waitFor(() => controller.phase === "worker");
+  await controller.cancel();
+  const start = workers[0].posted[0].message;
+  const token =
+    "import-423e4567-e89b-42d3-a456-426614174000";
+  workers[0].emitMessage({
+    type: "stardict-import:ready",
+    requestId: start.requestId,
+    token,
+    packId: "local-cancelled-ready",
+    packVersion: "v1",
+    fingerprint: "sha256:" + "c".repeat(64)
+  });
+
+  await assert.rejects(
+    importing,
+    (error) => error?.name === "AbortError"
+  );
+  assert.deepEqual(quarantine.removed, [token]);
+  assert.deepEqual(runtime.messages, []);
+});
+
 function blob(value) {
   return new Blob([encoder.encode(value)]);
 }
