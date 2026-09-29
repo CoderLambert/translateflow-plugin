@@ -71,6 +71,7 @@ The reviewed StarDict parser/security rules now live in browser-safe production 
 - `stardict-contract.js` — limits, typed errors and Web byte helpers;
 - `stardict-binary.js` — bounded `.idx` and `.syn` parsing;
 - `stardict-dictzip.js` — strict dictzip gzip/RA header validation;
+- `stardict-browser-dictzip.js` — bounded/cancellable Web gzip decompression for Blob/File input;
 - `stardict-core.js` — `.ifo` validation plus semantic-neutral plain-text projection.
 
 These modules use Web-standard `TextDecoder`, `TextEncoder`, `Uint8Array`, `ArrayBuffer` and `DataView` inputs only. They do not import `node:*`, use `Buffer`, or touch the filesystem/network.
@@ -88,11 +89,10 @@ Other boundaries remain unchanged:
 
 ## Next #124 units
 
-1. place large StarDict conversion behind a cancellable browser execution boundary with progress reporting so synchronous parsing does not block the options UI/service worker;
-2. implement separately bounded browser `.dict.dz` decompression with cancellation and decompressed-output ceilings before enabling compressed StarDict import;
-3. add file-set/recipe UX that validates matching `.ifo/.idx/.dict/.syn` selections before starting conversion;
-4. extract the approved MDict v2 parser/converter into the same browser-safe/shared-core shape;
-5. validate representative real user-owned dictionaries and measure import time/output bytes/cold-warm lookup cost before production commitment.
+1. place large StarDict parsing/TFLex construction behind a cancellable browser execution boundary with progress reporting so synchronous parsing does not block the options UI/service worker;
+2. add file-set/recipe UX that validates matching `.ifo/.idx/.dict(.dz)/.syn` selections before starting conversion;
+3. extract the approved MDict v2 parser/converter into the same browser-safe/shared-core shape;
+4. validate representative real user-owned dictionaries and measure import time/output bytes/cold-warm lookup cost before production commitment.
 
 
 ## Explicit bilingual semantic mapping POC
@@ -164,4 +164,6 @@ The build-side POC reader remains validation infrastructure only. The browser-sa
 
 The Node compiler and browser adapter share the same semantic mapping and indexed TFLex builder; parity tests require byte-identical output for the same plain StarDict fixture.
 
-Compressed `.dict.dz` remains intentionally disabled in the browser adapter until a bounded/cancellable browser decompression layer is certified. Imported content is never activated before the local transaction succeeds.
+Compressed `.dict.dz` is now accepted through a separate browser path that first validates dictzip RA metadata, then streams the Blob/File through `DecompressionStream("gzip")`. Compressed input and decompressed output use separate ceilings; output chunks are rejected before they can exceed the DICT ceiling; AbortSignal cancellation propagates to the stream reader. Ordinary gzip without dictzip metadata and corrupt gzip bodies fail closed.
+
+The decompressed bytes then enter the same shared StarDict parser, semantic recipe, TFLex builder and atomic local-import transaction as plain `.dict`. Tests require compressed and plain inputs for the same dictionary to produce byte-identical TFLex pack files. Imported content is never activated before the local transaction succeeds.
