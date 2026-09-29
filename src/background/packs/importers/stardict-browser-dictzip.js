@@ -2,11 +2,13 @@ import {
   STARDICT_IMPORT_ERROR,
   STARDICT_IMPORT_LIMITS,
   StarDictImportError,
-  readStarDictUint16Le,
   requireStarDictAtMost,
   starDictFail
 } from "./stardict-contract.js";
-import { parseStarDictDictzipHeader } from "./stardict-dictzip.js";
+import {
+  inspectStarDictDictzipHeaderPrefix,
+  parseStarDictDictzipHeader
+} from "./stardict-dictzip.js";
 
 export async function decompressStarDictDictzip(
   blob,
@@ -132,11 +134,8 @@ async function readDictzipHeader(blob) {
     return fixed;
   }
 
-  const extraLength = readStarDictUint16Le(
-    fixed,
-    10
-  );
-  const headerBytes = 12 + extraLength;
+  const { headerBytes } =
+    inspectStarDictDictzipHeaderPrefix(fixed);
   if (headerBytes > blob.size) {
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
