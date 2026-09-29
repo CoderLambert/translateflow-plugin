@@ -6,12 +6,15 @@ async function source(path) {
   return readFile(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("production lexical gateway registers both bundled Core and Technical packs", async () => {
+test("production lexical gateway registers bundled packs before active OPFS dictionaries", async () => {
   const code = await source("src/background/lexical/index.js");
   assert.match(code, /assets\/lexicon\/core/);
   assert.match(code, /assets\/lexicon\/technical/);
-  assert.match(code, /BUNDLED_PACKS/);
-  assert.match(code, /packReaders:\s*BUNDLED_PACKS\.map/);
+  assert.match(code, /createActiveOpfsPackReader/);
+  assert.match(
+    code,
+    /packReaders:\s*\[\s*\.\.\.BUNDLED_PACKS\.map\([\s\S]*?activeOpfsReader\s*\]/
+  );
 });
 
 test("release lexicon CI builds from the exact Design Freeze OMW revision", async () => {
