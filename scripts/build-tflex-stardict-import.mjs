@@ -4,7 +4,6 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  TFLEX_COMPILER_VERSION,
   TFLEX_FORMAT_VERSION,
   TFLEX_NORMALIZATION_VERSION,
   TFLEX_READER_MIN_VERSION,
