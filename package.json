@@ -27,7 +27,8 @@
     "project:stardict": "node scripts/project-stardict-import.mjs",
     "project:mdict": "node scripts/project-mdict-import.mjs",
     "build:tflex:mdict-import": "node scripts/build-tflex-mdict-import.mjs",
-    "build:tflex:stardict-import": "node scripts/build-tflex-stardict-import.mjs"
+    "build:tflex:stardict-import": "node scripts/build-tflex-stardict-import.mjs",
+    "measure:stardict-import": "node scripts/measure-stardict-import-cost.mjs"
   },
   "engines": {
     "node": ">=18"
