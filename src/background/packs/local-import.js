@@ -199,6 +199,7 @@ function validateLocalManifestIdentity(manifest) {
   }
   if (
     manifest.license?.id !== LOCAL_IMPORT_LICENSE_ID ||
+    manifest.license?.source !== LOCAL_IMPORT_SOURCE_ID ||
     !Array.isArray(manifest.sources) ||
     !manifest.sources.length
   ) {
@@ -211,7 +212,12 @@ function validateLocalManifestIdentity(manifest) {
       !source?.version ||
       !source?.provenance ||
       source?.semanticProfile !== LOCAL_IMPORT_SEMANTIC_PROFILE ||
-      source?.license?.id !== LOCAL_IMPORT_LICENSE_ID
+      source?.license?.id !== LOCAL_IMPORT_LICENSE_ID ||
+      source?.license?.source !== LOCAL_IMPORT_SOURCE_ID ||
+      (
+        source.sourceFileSha256 !== undefined &&
+        !/^[a-f0-9]{64}$/.test(source.sourceFileSha256)
+      )
     ) {
       throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary source provenance is malformed.");
     }
@@ -222,6 +228,12 @@ function validateLocalManifestIdentity(manifest) {
     assertSafeLocalDataText(source.id, "source id");
     assertSafeLocalDataText(source.version, "source version");
     assertSafeLocalDataText(source.provenance, "source provenance");
+    if (source.license?.name) {
+      assertSafeLocalDataText(source.license.name, "source license name");
+    }
+  }
+  if (manifest.license?.name) {
+    assertSafeLocalDataText(manifest.license.name, "pack license name");
   }
 }
 
