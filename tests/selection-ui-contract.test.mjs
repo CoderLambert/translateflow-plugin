@@ -23,15 +23,20 @@ test("Selection settings expose all explanation-depth modes and license path", a
 });
 
 test("Selection popover keeps a non-modal structured result region", async () => {
-  const [popover, tokens, aiStyles, emptyStyles] = await Promise.all([
+  const [popover, renderer, tokens, aiStyles, emptyStyles, lexicalStyles] = await Promise.all([
     source("src/content/selection/popover.js"),
+    source("src/content/selection/result-renderer.js"),
     source("src/content/ui/tokens.js"),
     source("src/content/ui/selection-ai-detail-styles.js"),
-    source("src/content/ui/selection-empty-state-styles.js")
+    source("src/content/ui/selection-empty-state-styles.js"),
+    source("src/content/ui/selection-lexical-styles.js")
   ]);
 
   assert.match(popover, /aria-modal", "false"/);
-  assert.match(popover, /tf-selection-result-badge/);
+  assert.match(renderer, /tf-selection-result-badge/);
+  assert.match(renderer, /tf-selection-dictionary-entries/);
+  assert.match(renderer, /tf-selection-entry-meaning/);
+  assert.match(popover, /renderStructuredResult/);
   assert.match(popover, /showAiDetailResult/);
   assert.match(popover, /AI 详解/);
   assert.match(popover, /function reposition\(\)/);
@@ -42,6 +47,8 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(aiStyles, /\.tf-selection-ai-actions/);
   assert.match(emptyStyles, /\.tf-selection-empty/);
   assert.match(emptyStyles, /\.tf-selection-empty-actions/);
+  assert.match(lexicalStyles, /\.tf-selection-dictionary-entry/);
+  assert.match(lexicalStyles, /\.tf-selection-more-entries/);
 });
 
 test("Selection AI detail preserves the local card across loading, failure and cancellation", async () => {

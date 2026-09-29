@@ -3,23 +3,21 @@
   if (!app || app.modules.selectionResultModel) return;
 
   function buildLocalResult(resolved) {
-    const candidates = Array.isArray(resolved?.decision?.candidates)
-      ? resolved.decision.candidates
-      : (Array.isArray(resolved?.lookup?.candidates) ? resolved.lookup.candidates : []);
+    const candidates = orderedCandidates(resolved);
     if (!candidates.length) return null;
 
-    const topId = resolved?.decision?.topCandidateId;
-    const candidate = candidates.find((item) => item?.id === topId) || candidates[0];
+    const candidate = candidates[0];
     const card = cardFromCandidate(candidate, {
-      kind: candidate?.kind === "technical-entity" ? "technical" : "local"
+      kind: isTechnicalCandidate(candidate) ? "technical" : "local"
     });
-    const alternatives = candidates
-      .filter((item) => item !== candidate)
-      .flatMap((item) => uniqueText(item?.translations));
+    const entries = candidates.slice(0, 5).map((item, index) =>
+      dictionaryEntryFromCandidate(item, { primary: index === 0 })
+    );
+
     return {
       ...card,
-      senses: uniqueText([...(card.senses || []), ...alternatives])
-        .filter((value) => value !== card.primaryMeaning)
+      dictionaryEntries: entries,
+      moreEntryCount: Math.max(0, candidates.length - entries.length)
     };
   }
 
@@ -36,7 +34,7 @@
       || null;
     const base = candidate
       ? cardFromCandidate(candidate, {
-          kind: candidate?.kind === "technical-entity" ? "technical" : "local"
+          kind: isTechnicalCandidate(candidate) ? "technical" : "local"
         })
       : {
           kind: "explained",
@@ -45,7 +43,9 @@
           senses: [],
           domains: [],
           typeLabels: [],
-          badges: []
+          badges: [],
+          dictionaryEntries: [],
+          moreEntryCount: 0
         };
 
     const generatedTranslation = String(explained?.generated?.translation || "").trim();
@@ -60,7 +60,9 @@
       badges: dedupeBadges([
         ...(Array.isArray(base.badges) ? base.badges : []),
         { label: "AI 辅助", kind: "ai" }
-      ])
+      ]),
+      dictionaryEntries: base.dictionaryEntries || [],
+      moreEntryCount: Number(base.moreEntryCount || 0)
     };
   }
 
@@ -96,6 +98,44 @@
     };
   }
 
+  function orderedCandidates(resolved) {
+    const candidates = Array.isArray(resolved?.decision?.candidates)
+      ? resolved.decision.candidates
+      : (Array.isArray(resolved?.lookup?.candidates) ? resolved.lookup.candidates : []);
+    if (!candidates.length) return [];
+
+    const topId = String(resolved?.decision?.topCandidateId || "");
+    if (!topId) return [...candidates];
+    const topIndex = candidates.findIndex((item) => String(item?.id || "") === topId);
+    if (topIndex <= 0) return [...candidates];
+    return [
+      candidates[topIndex],
+      ...candidates.slice(0, topIndex),
+      ...candidates.slice(topIndex + 1)
+    ];
+  }
+
+  function dictionaryEntryFromCandidate(candidate, { primary = false } = {}) {
+    return {
+      id: String(candidate?.id || ""),
+      kind: String(candidate?.kind || "lexical"),
+      headword: String(candidate?.headword || "").trim(),
+      pronunciation: String(candidate?.pronunciation || "").trim(),
+      partOfSpeech: String(candidate?.partOfSpeech || "").trim(),
+      translations: uniqueText(candidate?.translations),
+      domains: uniqueText(candidate?.domains),
+      typeLabels: uniqueText(candidate?.typeLabels),
+      provenanceLabel: provenanceLabel(candidate),
+      provenanceKind: isTechnicalCandidate(candidate) ? "technical" : "local",
+      primary: Boolean(primary)
+    };
+  }
+
+  function isTechnicalCandidate(candidate) {
+    return candidate?.kind === "technical-concept"
+      || candidate?.kind === "technical-entity";
+  }
+
   function provenanceLabel(candidate) {
     if (candidate?.kind === "technical-entity") return "技术词条";
     const packId = String(candidate?.provenance?.packId || "").trim();
@@ -105,12 +145,38 @@
   }
 
   function copyTextForCard(card) {
-    return uniqueText([
-      card?.primaryMeaning,
-      ...(Array.isArray(card?.senses) ? card.senses : []),
+    const entries = Array.isArray(card?.dictionaryEntries) ? card.dictionaryEntries : [];
+    const lexicalLines = entries.length > 1
+      ? entries.flatMap((entry, index) => {
+          const meta = uniqueText([
+            entry?.partOfSpeech,
+            entry?.provenanceLabel,
+            ...(Array.isArray(entry?.domains) ? entry.domains : []),
+            ...(Array.isArray(entry?.typeLabels) ? entry.typeLabels : [])
+          ]);
+          const heading = meta.length ? `${index + 1}. ${meta.join(" · ")}` : `${index + 1}.`;
+          return [
+            heading,
+            ...uniqueText(entry?.translations).map((value) => `   ${value}`)
+          ];
+        })
+      : uniqueText([
+          card?.primaryMeaning,
+          ...(Array.isArray(card?.senses) ? card.senses : [])
+        ]);
+
+    if (Number(card?.moreEntryCount || 0) > 0) {
+      lexicalLines.push(`… 还有 ${Number(card.moreEntryCount)} 个候选`);
+    }
+
+    return [
+      ...lexicalLines,
       card?.generatedMeaning,
       card?.explanation
-    ]).join("\n");
+    ]
+      .map((value) => String(value || "").trimEnd())
+      .filter((value) => value.trim())
+      .join("\n");
   }
 
   function dedupeBadges(values) {
