@@ -2,6 +2,9 @@ import {
   BACKGROUND_MESSAGES
 } from "../shared/constants.js";
 import {
+  createOpfsImportQuarantine
+} from "../shared/opfs-import-quarantine.js";
+import {
   prepareStarDictWorkerInput,
   waitForStarDictWorkerReady
 } from "./stardict-import-controller-io.js";
@@ -13,6 +16,7 @@ export function createStarDictImportController({
   runtime = globalThis.chrome?.runtime,
   WorkerCtor = globalThis.Worker,
   cryptoProvider = globalThis.crypto,
+  quarantine = createOpfsImportQuarantine(),
   onProgress = () => {},
   workerUrl = runtime?.getURL?.(
     "src/options/workers/stardict-import-worker.js"
@@ -94,6 +98,12 @@ export function createStarDictImportController({
       current.workerReject = null;
       worker.terminate();
       current.worker = null;
+      if (current.cancelRequested) {
+        await quarantine.remove(
+          ready.token
+        ).catch(() => {});
+        throw abortError();
+      }
       assertCurrent(current);
 
       const commitRequestId =
