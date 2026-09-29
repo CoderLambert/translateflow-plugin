@@ -8,6 +8,9 @@ import {
 import {
   validateLocalTflexImport
 } from "../src/background/packs/local-import.js";
+import {
+  makeImportQuarantineLockName
+} from "../src/shared/import-quarantine-lock.js";
 
 const encoder = new TextEncoder();
 
@@ -70,6 +73,9 @@ test("StarDict worker stages exact local TFLex files into quarantine and returns
 test("StarDict worker cancellation aborts active conversion and removes owned quarantine token", async () => {
   const quarantine = new MemoryQuarantine();
   const messages = [];
+  const locks = new FakeLockManager();
+  const token =
+    "import-223e4567-e89b-42d3-a456-426614174000";
   let signalBuild;
   const buildStarted = new Promise((resolve) => {
     signalBuild = resolve;
@@ -77,8 +83,8 @@ test("StarDict worker cancellation aborts active conversion and removes owned qu
 
   const handler = createStarDictImportWorkerHandler({
     quarantine,
-    tokenFactory: () =>
-      "import-223e4567-e89b-42d3-a456-426614174000",
+    lockManager: locks,
+    tokenFactory: () => token,
     postMessage: (message) => messages.push(message),
     buildPlain: async ({ signal }) => {
       signalBuild();
@@ -100,6 +106,12 @@ test("StarDict worker cancellation aborts active conversion and removes owned qu
     }
   });
   await buildStarted;
+  assert.equal(
+    locks.held.has(
+      makeImportQuarantineLockName(token)
+    ),
+    true
+  );
 
   assert.deepEqual(
     handler.cancel("cancel-me"),
@@ -118,6 +130,11 @@ test("StarDict worker cancellation aborts active conversion and removes owned qu
   assert.equal(
     messages.at(-1).type,
     STARDICT_WORKER_MESSAGES.ERROR
+  );
+  await waitFor(() =>
+    !locks.held.has(
+      makeImportQuarantineLockName(token)
+    )
   );
 });
 
@@ -279,5 +296,40 @@ class MemoryQuarantine {
           new Uint8Array(bytes)
         ])
     );
+  }
+}
+
+
+async function waitFor(predicate) {
+  for (let index = 0; index < 50; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) =>
+      setTimeout(resolve, 0)
+    );
+  }
+  throw new Error("condition not reached");
+}
+
+class FakeLockManager {
+  constructor() {
+    this.held = new Set();
+  }
+
+  async request(name, options, callback) {
+    if (
+      options?.ifAvailable &&
+      this.held.has(name)
+    ) {
+      return callback(null);
+    }
+    this.held.add(name);
+    try {
+      return await callback({
+        name,
+        mode: options?.mode || "exclusive"
+      });
+    } finally {
+      this.held.delete(name);
+    }
   }
 }
