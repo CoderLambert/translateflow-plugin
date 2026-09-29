@@ -19,7 +19,8 @@
     "setup:lexicon": "node scripts/setup-lexicon.mjs",
     "benchmark:lexical": "node scripts/benchmark-lexical-quality.mjs",
     "build:extension": "node scripts/build-extension.mjs",
-    "build:extension:release": "node scripts/build-extension.mjs --require-lexicon"
+    "build:extension:release": "node scripts/build-extension.mjs --require-lexicon",
+    "evaluate:bootstrap": "node scripts/evaluate-core-bootstrap.mjs"
   },
   "engines": {
     "node": ">=18"
