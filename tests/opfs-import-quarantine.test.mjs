@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createOpfsImportQuarantine } from "../src/shared/opfs-import-quarantine.js";
 import {
   IMPORT_QUARANTINE_RANGE_BYTES,
-  createOpfsImportQuarantine,
   isSafeImportQuarantineToken,
   makeImportQuarantineToken
-} from "../src/shared/opfs-import-quarantine.js";
+} from "../src/shared/import-quarantine-contract.js";
 import { PACK_ERROR_CODES } from "../src/shared/pack-manager.js";
 
 const encoder = new TextEncoder();
