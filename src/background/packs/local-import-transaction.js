@@ -17,6 +17,9 @@ import {
   publicPackState,
   versionsInState
 } from "./snapshot.js";
+import {
+  normalizeLocalImportDisplayMetadata
+} from "./local-import-display.js";
 
 export function createLocalTflexImportTransaction({
   store,
@@ -62,10 +65,12 @@ export function createLocalTflexImportTransaction({
 
   async function importLocalTflex({
     files,
-    requestId
+    requestId,
+    displayMetadata
   } = {}) {
     return runImport({
       requestId,
+      displayMetadata,
       prepareValidated: async (signal) => {
         assertActive(signal);
         const validated =
@@ -81,12 +86,14 @@ export function createLocalTflexImportTransaction({
 
   async function importLocalTflexFromQuarantine({
     token,
-    requestId
+    requestId,
+    displayMetadata
   } = {}) {
     assertImportQuarantineToken(token);
     return runImport({
       requestId,
       quarantineToken: token,
+      displayMetadata,
       prepareValidated: async (signal) => {
         const snapshot =
           await readImportQuarantineSnapshot({
@@ -110,8 +117,13 @@ export function createLocalTflexImportTransaction({
   async function runImport({
     requestId,
     prepareValidated,
-    quarantineToken = ""
+    quarantineToken = "",
+    displayMetadata
   }) {
+    const display =
+      normalizeLocalImportDisplayMetadata(
+        displayMetadata
+      );
     const id = String(
       requestId || requestIdFactory()
     );
@@ -241,6 +253,7 @@ export function createLocalTflexImportTransaction({
             status: "healthy",
             active: validated.snapshot,
             fallback,
+            display: display || previous?.display || null,
             recoveryReason: null,
             lastError: null
           };
