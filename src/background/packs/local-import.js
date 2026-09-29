@@ -67,7 +67,8 @@ export async function validateLocalTflexImport({
     index,
     entriesBytes: normalizedFiles["entries.dat"],
     manifest,
-    cryptoProvider
+    cryptoProvider,
+    sourceIds: new Set(manifest.sources.map((source) => source.id))
   });
 
   const actualFingerprint = "sha256:" + await sha256Hex(
@@ -180,6 +181,8 @@ function validateLocalManifestIdentity(manifest) {
     manifest.semanticProfile !== LOCAL_IMPORT_SEMANTIC_PROFILE ||
     manifest.sourceLanguage !== "en" ||
     manifest.targetLanguage !== "zh-CN" ||
+    typeof manifest.fingerprint !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(manifest.fingerprint) ||
     !Number.isSafeInteger(manifest.recordCount) ||
     manifest.recordCount <= 0
   ) {
@@ -201,6 +204,7 @@ function validateLocalManifestIdentity(manifest) {
   ) {
     throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary source/license boundary is invalid.");
   }
+  const sourceIds = new Set();
   for (const source of manifest.sources) {
     if (
       !source?.id ||
@@ -211,6 +215,10 @@ function validateLocalManifestIdentity(manifest) {
     ) {
       throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary source provenance is malformed.");
     }
+    if (sourceIds.has(source.id)) {
+      throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary source IDs must be unique.");
+    }
+    sourceIds.add(source.id);
     assertSafeDataText(source.id, "source id");
     assertSafeDataText(source.version, "source version");
     assertSafeDataText(source.provenance, "source provenance");
@@ -254,7 +262,8 @@ async function validateAllIndexedRecords({
   index,
   entriesBytes,
   manifest,
-  cryptoProvider
+  cryptoProvider,
+  sourceIds
 }) {
   const validated = new Map();
   const canonicalRanges = [];
@@ -295,7 +304,7 @@ async function validateAllIndexedRecords({
             recordKey: record.lookupKey
           });
         }
-        validateLocalRecordStrings(record);
+        validateLocalRecordStrings(record, sourceIds);
         validated.set(key, record);
       }
 
@@ -333,15 +342,21 @@ async function validateAllIndexedRecords({
   }
 }
 
-function validateLocalRecordStrings(record) {
+function validateLocalRecordStrings(record, sourceIds) {
+  if (record.kind !== "lexical") {
+    throw packError(PACK_ERROR_CODES.INCOMPATIBLE, "Local bilingual import profile only accepts lexical records.");
+  }
+  if (!Array.isArray(record.exactLookupKeys) || !Array.isArray(record.aliases)) {
+    throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary lookup metadata is malformed.");
+  }
   assertSafeDataText(record.displayForm, "display form");
-  for (const value of record.exactLookupKeys || []) {
+  for (const value of record.exactLookupKeys) {
     if (typeof value !== "string" || normalizeLexicalKey(value) !== record.lookupKey) {
       throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary exact lookup key is malformed.");
     }
     assertSafeDataText(value, "exact lookup key");
   }
-  for (const alias of record.aliases || []) {
+  for (const alias of record.aliases) {
     if (typeof alias !== "string" || !normalizeLexicalKey(alias)) {
       throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary alias is malformed.");
     }
@@ -353,6 +368,9 @@ function validateLocalRecordStrings(record) {
     for (const value of sense.domains || []) assertSafeDataText(value, "domain");
     for (const value of sense.typeLabels || []) assertSafeDataText(value, "type label");
     for (const ref of sense.sourceRefs || []) {
+      if (!sourceIds.has(ref.sourceId)) {
+        throw packError(PACK_ERROR_CODES.CORRUPT, "Local dictionary sourceRef references an undeclared source.");
+      }
       assertSafeDataText(ref.sourceId, "sourceRef sourceId");
       assertSafeDataText(ref.recordId, "sourceRef recordId");
     }
