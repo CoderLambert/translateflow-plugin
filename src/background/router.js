@@ -41,10 +41,17 @@ import {
 } from "./selection/explain.js";
 import {
   cancelDictionaryPackOperation,
+  cancelRichMdictImport,
+  abortRichMdictImport,
+  commitRichMdictImport,
   getDictionaryPackStatus,
+  listRichMdictDictionaries,
+  lookupRichMdictDictionaries,
+  preflightRichMdictImport,
   importLocalDictionaryTflexFromQuarantine,
   installDictionaryPack,
   rollbackDictionaryPack,
+  uninstallRichMdictDictionary,
   uninstallDictionaryPack
 } from "./packs/api.js";
 
@@ -197,6 +204,39 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_ROLLBACK:
       assertOptionsSender(sender);
       return rollbackDictionaryPack(message.packId);
+    case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_PREFLIGHT:
+      assertOptionsSender(sender);
+      await preflightRichMdictImport(Number(message.sourceBytes), {
+        requestId: message.requestId,
+        packId: message.packId,
+        packVersion: message.packVersion
+      });
+      return { ready: true };
+    case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_COMMIT:
+      assertOptionsSender(sender);
+      return commitRichMdictImport({
+        requestId: message.requestId,
+        packId: message.packId,
+        packVersion: message.packVersion,
+        metadata: message.metadata
+      });
+    case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_CANCEL:
+      assertOptionsSender(sender);
+      return cancelRichMdictImport(message.requestId);
+    case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_ABORT:
+      assertOptionsSender(sender);
+      return abortRichMdictImport({
+        packId: message.packId,
+        packVersion: message.packVersion
+      });
+    case BACKGROUND_MESSAGES.RICH_MDICT_LIST:
+      assertOptionsSender(sender);
+      return listRichMdictDictionaries();
+    case BACKGROUND_MESSAGES.RICH_MDICT_LOOKUP:
+      return lookupRichMdictDictionaries(message.text);
+    case BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL:
+      assertOptionsSender(sender);
+      return uninstallRichMdictDictionary(message.packId);
     default:
       throw new Error("未知扩展消息。");
   }

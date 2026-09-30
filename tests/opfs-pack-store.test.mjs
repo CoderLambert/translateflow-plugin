@@ -9,6 +9,7 @@ test("OPFS pack store reads bounded file ranges without materializing the whole 
   const bytes = new TextEncoder().encode("0123456789abcdef");
 
   await store.writeFile("local-fixture", "v1", "entries.dat", bytes);
+  assert.equal(await store.getFileSize("local-fixture", "v1", "entries.dat"), bytes.byteLength);
   assert.equal(
     new TextDecoder().decode(await store.readFileRange(
       "local-fixture",
@@ -32,6 +33,10 @@ test("OPFS pack store reads bounded file ranges without materializing the whole 
   await assert.rejects(
     store.readFileRange("local-fixture", "v1", "entries.dat", 0, 0),
     (error) => error?.code === PACK_ERROR_CODES.STORAGE
+  );
+  await assert.rejects(
+    store.getFileSize("local-fixture", "v1", "missing.dat"),
+    (error) => error?.code === PACK_ERROR_CODES.STORAGE && error?.missing === true
   );
 });
 

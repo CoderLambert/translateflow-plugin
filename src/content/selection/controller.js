@@ -9,6 +9,7 @@
     || !app?.modules.selectionResultModel
     || !app?.modules.selectionClipboard
     || !app?.modules.selectionMessages
+    || !app?.modules.selectionRichDetails
     || app.modules.selectionController
   ) return;
 
@@ -19,14 +20,13 @@
   const popover = app.modules.selectionPopover;
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
+  const { load: loadRichDictionaryDetails } = app.modules.selectionRichDetails;
   const { buildLocalResult, buildExplainedResult, buildTranslationResult, copyTextForCard } = app.modules.selectionResultModel;
-
   let started = false;
   let activeSnapshot = null;
   let activeTask = null;
   let requestVersion = 0;
   let selectionTimer = null;
-
   function start() {
     if (started) return;
     started = true;
@@ -127,6 +127,7 @@
           "结果已复制",
           resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth, card) : null
         );
+        void loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection);
         return;
       }
 
@@ -145,6 +146,7 @@
             : null,
           onTranslate: () => translateSnapshot(snapshot, { forceTranslation: true })
         });
+        void loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection);
         return;
       }
 
@@ -155,6 +157,9 @@
         () => translateSnapshot(snapshot),
         resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth) : null
       );
+      if (resolved.intent?.kind === "lexical") {
+        void loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection);
+      }
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
       tasks.failTask(task, error);

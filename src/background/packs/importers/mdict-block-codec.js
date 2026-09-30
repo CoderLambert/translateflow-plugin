@@ -1,11 +1,17 @@
 import {
   MDICT_IMPORT_ERROR,
+  MDictImportError,
   adler32,
   mdictBytes,
   mdictFail,
   readMdictUint32Be,
   requireMdictAtMost
 } from "./mdict-contract.js";
+import { ripemd128 } from "./mdict-ripemd128.js";
+
+const MDX_KEY_INFO_SALT = new Uint8Array([
+  0x95, 0x36, 0x00, 0x00
+]);
 
 export async function decodeMdictBlock({
   input,
@@ -96,6 +102,37 @@ export async function decodeMdictBlock({
   return { bytes, compression };
 }
 
+export function decryptMdictKeyInfoBlock(input) {
+  const block = mdictBytes(input, "MDict key info block");
+  if (
+    block.byteLength < 8 ||
+    block[0] !== 2 ||
+    block[1] !== 0 ||
+    block[2] !== 0 ||
+    block[3] !== 0
+  ) {
+    mdictFail(
+      MDICT_IMPORT_ERROR.UNSUPPORTED,
+      "Encrypted MDX v2 key info must use zlib compression."
+    );
+  }
+
+  const keyMaterial = new Uint8Array(8);
+  keyMaterial.set(block.subarray(4, 8));
+  keyMaterial.set(MDX_KEY_INFO_SALT, 4);
+  const key = ripemd128(keyMaterial);
+  const output = block.slice();
+  let previous = 0x36;
+  for (let index = 8; index < block.byteLength; index += 1) {
+    const cipher = block[index];
+    const swapped = ((cipher >>> 4) | (cipher << 4)) & 0xff;
+    output[index] =
+      swapped ^ previous ^ ((index - 8) & 0xff) ^ key[(index - 8) % key.length];
+    previous = cipher;
+  }
+  return output;
+}
+
 export function concatMdictBytes(chunks, totalBytes) {
   const output = new Uint8Array(totalBytes);
   let offset = 0;
@@ -148,7 +185,7 @@ async function inflateBounded(
       chunks.push(chunk);
     }
   } catch (cause) {
-    if (cause?.code) throw cause;
+    if (cause instanceof MDictImportError) throw cause;
     mdictFail(
       MDICT_IMPORT_ERROR.CORRUPT,
       label + " zlib decompression failed.",

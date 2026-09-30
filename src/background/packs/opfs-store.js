@@ -5,11 +5,16 @@ import {
   packError
 } from "../../shared/pack-manager.js";
 
-const ROOT_DIR = "dictionaries";
+const DEFAULT_ROOT_DIR = "dictionaries";
 
 export function createOpfsPackStore({
-  rootProvider = () => navigator.storage.getDirectory()
+  rootProvider = () => navigator.storage.getDirectory(),
+  rootDir = DEFAULT_ROOT_DIR
 } = {}) {
+  if (!isSafePackIdentifier(rootDir, 80)) {
+    throw packError(PACK_ERROR_CODES.STORAGE, "Unsafe dictionary pack root directory.");
+  }
+
   async function writeFile(packId, version, path, bytes) {
     validateLocation(packId, version, path);
     try {
@@ -39,6 +44,25 @@ export function createOpfsPackStore({
       return new Uint8Array(await file.arrayBuffer());
     } catch (error) {
       throw storageError("Unable to read dictionary pack file.", {
+        packId,
+        version,
+        path,
+        missing: error?.name === "NotFoundError",
+        cause: error
+      });
+    }
+  }
+
+  async function getFileSize(packId, version, path) {
+    validateLocation(packId, version, path);
+    try {
+      const versionDir = await getVersionDir(packId, version, false);
+      const { directory, name } = await descendToParent(versionDir, path, false);
+      const handle = await directory.getFileHandle(name);
+      const file = await handle.getFile();
+      return file.size;
+    } catch (error) {
+      throw storageError("Unable to inspect dictionary pack file.", {
         packId,
         version,
         path,
@@ -148,7 +172,7 @@ export function createOpfsPackStore({
 
   async function getDictionariesDir(create) {
     const root = await rootProvider();
-    return root.getDirectoryHandle(ROOT_DIR, { create });
+    return root.getDirectoryHandle(rootDir, { create });
   }
 
   async function getPackDir(packId, create) {
@@ -164,6 +188,7 @@ export function createOpfsPackStore({
   return Object.freeze({
     writeFile,
     readFile,
+    getFileSize,
     readFileRange,
     listPacks,
     listVersions,

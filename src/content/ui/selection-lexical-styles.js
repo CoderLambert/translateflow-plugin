@@ -100,6 +100,49 @@
   color: var(--tf-text-muted);
   font-size: var(--tf-font-size-xs);
 }
+.tf-selection-rich-details {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--tf-border-soft);
+}
+.tf-selection-rich-heading {
+  color: var(--tf-text-secondary);
+  font-size: var(--tf-font-size-xs);
+  letter-spacing: .02em;
+}
+.tf-selection-rich-record {
+  padding: 8px 9px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-sm);
+  background: color-mix(in srgb, var(--tf-bg-card) 88%, transparent);
+}
+.tf-selection-rich-title {
+  margin-bottom: 3px;
+  color: var(--tf-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.tf-selection-rich-headword {
+  margin-bottom: 4px;
+  color: var(--tf-text-strong);
+  font-size: var(--tf-font-size-sm);
+  font-weight: 700;
+}
+.tf-selection-rich-text {
+  max-height: 210px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  color: var(--tf-text-main);
+  font-size: var(--tf-font-size-sm);
+  line-height: 1.55;
+}
+.tf-selection-rich-error {
+  color: var(--tf-text-muted);
+  font-size: var(--tf-font-size-xs);
+}
 `;
 
   app.modules.uiSelectionLexicalStyles = Object.freeze({ css });
