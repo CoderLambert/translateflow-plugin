@@ -8,8 +8,8 @@
   "source": {
     "directoryUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/",
     "artifactUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/enwiktionary-20260901-pages-articles.xml.bz2",
-    "sha1sumsUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/sha1sums.txt",
-    "md5sumsUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/md5sums.txt",
+    "sha1sumsUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/enwiktionary-20260901-sha1sums.txt",
+    "md5sumsUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/enwiktionary-20260901-md5sums.txt",
     "dumpStatusUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/dumpstatus.json",
     "format": "mediawiki-pages-articles-xml-bzip2",
     "datedPath": true
