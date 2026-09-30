@@ -1,0 +1,115 @@
+name: wiktextract-ingest
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/wiktextract-ingest.yml"
+      - "scripts/run-pinned-wiktextract-ingest.py"
+      - "scripts/wiktextract_ingest_evidence.py"
+      - "scripts/audit-wikimedia-enwiktionary-source.mjs"
+      - "scripts/wikimedia-enwiktionary-contract.mjs"
+      - "scripts/wikimedia-enwiktionary-lock.mjs"
+      - "tests/wiktextract-ingest.test.mjs"
+      - "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json"
+      - "lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json"
+
+permissions:
+  contents: read
+
+jobs:
+  full-pinned-ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Inspect available build space
+        run: df -h /tmp .
+
+      - name: Remove unused hosted runner toolchains
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /tmp .
+
+      - name: Read locked source URLs
+        id: source
+        run: |
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from "node:fs/promises";
+          import { validateWikimediaSourceLock } from "./scripts/wikimedia-enwiktionary-contract.mjs";
+          const lock = JSON.parse(
+            await readFile("lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json", "utf8")
+          );
+          validateWikimediaSourceLock(lock);
+          const source = lock.source;
+          const artifact = lock.artifact;
+          console.log("artifact_url=" + source.artifactUrl);
+          console.log("sha1sums_url=" + source.sha1sumsUrl);
+          console.log("md5sums_url=" + source.md5sumsUrl);
+          console.log("filename=" + artifact.filename);
+          NODE
+
+      - name: Download dated Wikimedia checksums and dump
+        env:
+          ARTIFACT_URL: ${{ steps.source.outputs.artifact_url }}
+          SHA1SUMS_URL: ${{ steps.source.outputs.sha1sums_url }}
+          MD5SUMS_URL: ${{ steps.source.outputs.md5sums_url }}
+          SOURCE_FILENAME: ${{ steps.source.outputs.filename }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+            --output /tmp/enwiktionary-sha1sums.txt "$SHA1SUMS_URL"
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+            --output /tmp/enwiktionary-md5sums.txt "$MD5SUMS_URL"
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+            --output "/tmp/$SOURCE_FILENAME" "$ARTIFACT_URL"
+          test -s "/tmp/$SOURCE_FILENAME"
+          df -h /tmp .
+
+      - name: Run source-locked pinned Wiktextract first phase
+        env:
+          SOURCE_FILENAME: ${{ steps.source.outputs.filename }}
+        run: |
+          set -euo pipefail
+          python scripts/run-pinned-wiktextract-ingest.py \
+            --source "/tmp/$SOURCE_FILENAME" \
+            --sha1sums /tmp/enwiktionary-sha1sums.txt \
+            --md5sums /tmp/enwiktionary-md5sums.txt \
+            --lock lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json \
+            --candidate lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json \
+            --work-dir /tmp/wiktextract-ingest-work \
+            --evidence /tmp/wiktextract-ingest-work/evidence.json
+
+      - name: Verify and print bounded ingest evidence
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          evidence = json.loads(Path("/tmp/wiktextract-ingest-work/evidence.json").read_text())
+          assert evidence["source"]["sourceId"] == "wikimedia-enwiktionary-20260901"
+          assert evidence["extractor"]["wiktextractCommit"] == "1a05e46f9efbccda6a2b2f8e21b30a9c0c46513a"
+          assert evidence["extractor"]["wikitextprocessorCommit"] == "e3d6d4edb77618f4d6680edc66e3f774bea59820"
+          assert evidence["parserDb"]["bytes"] > 0
+          counts = evidence["parserDb"]["namespacePageCounts"]
+          assert counts["main"] > 0 and counts["template"] > 0 and counts["module"] > 0
+          assert Path("/tmp/wiktextract-ingest-work/evidence.json").stat().st_size <= 2048
+          print(json.dumps(evidence, sort_keys=True, separators=(",", ":")))
+          PY
+
+      - name: Upload bounded ingest evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wikimedia-enwiktionary-20260901-pinned-ingest-evidence
+          path: /tmp/wiktextract-ingest-work/evidence.json
+          if-no-files-found: error
