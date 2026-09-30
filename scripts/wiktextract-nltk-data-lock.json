@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/nltk/nltk_data",
+  "repositoryCommit": "550b6625bcef1f2abff2ff770a5a0d272c9c6b2a",
+  "indexPath": "index.xml",
+  "artifactPath": "packages/corpora/brown.zip",
+  "artifactUrl": "https://raw.githubusercontent.com/nltk/nltk_data/550b6625bcef1f2abff2ff770a5a0d272c9c6b2a/packages/corpora/brown.zip",
+  "sizeBytes": 3314357,
+  "sha256": "9b275f9b3b95d7bd66ccfb7cd259f445a13bbe5d1f4107aba09fd3e8364bafa6",
+  "uncompressedSizeBytes": 10117565,
+  "license": "May be used for non-commercial purposes.",
+  "use": "pinned Wiktextract build-only English word resource; not shipped or bundled"
+}

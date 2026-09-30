@@ -1,0 +1,60 @@
+{
+  "currentV1PartialDryRun": {
+    "failures": {
+      "hostileProjectionFailures": 0,
+      "malformedJsonRows": 0,
+      "malformedProjectionFailures": 0,
+      "otherProjectionFailures": 0,
+      "safetyLimitProjectionFailures": 47
+    },
+    "fullOutputBytes": null,
+    "fullOutputSha256": null,
+    "projectionVersion": "rich-en-zh-v1",
+    "projectorStatsOnSuccessfullyProcessedRows": {
+      "englishEntries": 2221,
+      "ignoredEntryLevelChineseTranslations": 1700,
+      "projectedEntries": 0,
+      "projectedSenses": 0,
+      "projectedTranslations": 0,
+      "skippedInvalidHeadwordEntries": 0,
+      "skippedNonEnglishEntries": 6,
+      "skippedWithoutSenseLevelChinese": 2221
+    }
+  },
+  "externalInputCacheRowsAfterStop": {
+    "interwiki_maps": 781,
+    "wiki_articles": 0,
+    "wikidata_items": 354,
+    "wikidata_properties": 0,
+    "wikidata_property_values": 0
+  },
+  "fullExtractionCompleted": false,
+  "kind": "wiktextract-partial-snapshot-schema-aggregate",
+  "requiredHeadwordValidation": {
+    "fullSourceCounts": null,
+    "observedInPartialRows": 0,
+    "requiredCount": 18
+  },
+  "schemaVersion": 1,
+  "scope": "Aggregate-only diagnostics for the stopped partial JSONL snapshot; not full-source compatibility evidence or dictionary-quality evidence.",
+  "snapshot": {
+    "bytes": 32520882,
+    "completeJsonRows": 2274,
+    "fileName": "full-en-partial.jsonl",
+    "sha256": "69303bcd2ec164e46b932295259c37a5b69734077b086d292ef242f2ade47279",
+    "trailingPartialLineBytes": 0
+  },
+  "sourceShapeInObservedRows": {
+    "definitionSenseCount": 6974,
+    "definitionSensesWithZhCmnTranslations": 0,
+    "englishEntriesWithEntryTranslations": 1340,
+    "englishEntriesWithNestedTranslations": 0,
+    "entryTranslationRows": 148493,
+    "entryZhCmnRows": 2269,
+    "entryZhCmnRowsWithSenseLabel": 2269,
+    "entryZhCmnRowsWithoutSenseLabel": 0,
+    "inputEnglish": 2268,
+    "inputRecords": 2274,
+    "nestedSenseTranslationRows": 0
+  }
+}

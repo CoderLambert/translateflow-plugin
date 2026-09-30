@@ -1,0 +1,125 @@
+{
+  "benchmarkMetrics": null,
+  "buildEnvironment": {
+    "host": {
+      "machine": "x86_64",
+      "release": "7.2.5-3-omarchy",
+      "sqliteVersion": "3.53.4",
+      "system": "Linux"
+    },
+    "nltkBrownCorpus": {
+      "archiveBytes": 3314357,
+      "archiveSha256": "9b275f9b3b95d7bd66ccfb7cd259f445a13bbe5d1f4107aba09fd3e8364bafa6",
+      "artifactPath": "packages/corpora/brown.zip",
+      "artifactUrl": "https://raw.githubusercontent.com/nltk/nltk_data/550b6625bcef1f2abff2ff770a5a0d272c9c6b2a/packages/corpora/brown.zip",
+      "indexSha256": "97dce5e72320cd9850b7c20130196006710c18f9c03134c822a37da330198bf6",
+      "license": "May be used for non-commercial purposes.",
+      "repository": "https://github.com/nltk/nltk_data",
+      "repositoryCommit": "550b6625bcef1f2abff2ff770a5a0d272c9c6b2a",
+      "uncompressedBytes": 10117565,
+      "use": "pinned Wiktextract build-only English word resource; not shipped or bundled"
+    },
+    "packageVersions": {
+      "annotated-types": "0.8.0",
+      "certifi": "2026.7.22",
+      "charset-normalizer": "3.5.2",
+      "click": "8.5.0",
+      "cloudpickle": "3.1.2",
+      "dateparser": "1.4.3",
+      "defusedxml": "0.7.1",
+      "idna": "3.20",
+      "joblib": "1.6.0",
+      "levenshtein": "0.27.5",
+      "lupa": "2.8",
+      "lxml": "6.1.3",
+      "mediawiki-langcodes": "0.2.25",
+      "nltk": "3.10.3",
+      "packaging": "26.3",
+      "psutil": "7.2.2",
+      "pydantic": "2.13.5",
+      "pydantic-core": "2.46.5",
+      "python-dateutil": "2.9.0.post0",
+      "pytz": "2026.4",
+      "rapidfuzz": "3.14.6",
+      "regex": "2026.9.29",
+      "requests": "2.34.2",
+      "setuptools": "84.0.0",
+      "six": "1.17.0",
+      "tqdm": "4.70.1",
+      "typing-extensions": "4.16.0",
+      "typing-inspection": "0.4.4",
+      "tzlocal": "5.4.4",
+      "urllib3": "2.8.0",
+      "wheel": "0.48.0"
+    },
+    "pythonHashSeed": 0,
+    "pythonVersion": "3.14.7",
+    "requirementsLockSha256": "9dad10151d5f6e3d4fb9fecc9bc53a16f4df67621a9cb0e64b470d4db459f034"
+  },
+  "externalInputs": {
+    "cacheTableRowsAfterStop": {
+      "interwiki_maps": 781,
+      "wiki_articles": 0,
+      "wikidata_items": 354,
+      "wikidata_properties": 0,
+      "wikidata_property_values": 0
+    },
+    "fullyInputLocked": false,
+    "qualification": "Live responses are not pinned or captured; this is an experimental measurement, not a fully reproducible build.",
+    "unlockedLiveInputs": [
+      "Pinned WikitextProcessor initializes interwiki siteinfo from a live network response during phase one.",
+      "Pinned Wiktextract may make conditional live Wikidata/SPARQL requests during phase two."
+    ]
+  },
+  "extractor": {
+    "wikitextprocessorCommit": "e3d6d4edb77618f4d6680edc66e3f774bea59820",
+    "wikitextprocessorScribuntoCommit": "d35ca1f8d5fd23f1a9915e497cc00cac238f28c4",
+    "wiktextractCommit": "1a05e46f9efbccda6a2b2f8e21b30a9c0c46513a"
+  },
+  "kind": "wiktextract-stopped-partial-extraction-observation",
+  "packMetrics": null,
+  "phaseOne": {
+    "completed": true,
+    "namespacePageCounts": {
+      "main": 9089618,
+      "module": 59936,
+      "template": 54144
+    },
+    "parserDbBytes": 5352067072
+  },
+  "phaseTwoAttempt": {
+    "durationToStopSeconds": 1342.906855,
+    "fullExtractionCompleted": false,
+    "fullOutput": {
+      "bytes": null,
+      "durationSeconds": null,
+      "recordCount": null,
+      "sha256": null
+    },
+    "languageCode": "en",
+    "numProcesses": 2,
+    "pageHandlerExceptionLogMarkersAtStop": 0,
+    "partialOutput": {
+      "bytes": 32520882,
+      "classification": "PARTIAL; immutable local snapshot, stopped before the full export completed.",
+      "completeJsonRows": 2274,
+      "fileName": "full-en-partial.jsonl",
+      "sha256": "69303bcd2ec164e46b932295259c37a5b69734077b086d292ef242f2ade47279",
+      "trailingPartialLineBytes": 0
+    },
+    "processExitCode": -15,
+    "pronunciations": true,
+    "rawDiagnosticsFileCompleted": false,
+    "status": "stopped-incomplete",
+    "stopReason": "Stopped by Sol after NO-GO source qualification; this run does not represent completed extraction.",
+    "translations": true
+  },
+  "schemaVersion": 1,
+  "scope": "Stopped partial build-only observation; not full extraction evidence, not a reproducible build, and not a dictionary quality claim.",
+  "source": {
+    "sha256": "06acca8138eacb3e8ae9c1d6232f836e37c3bf9b6d582a86693731fe0d336c20",
+    "sizeBytes": 1632298458,
+    "sourceId": "wikimedia-enwiktionary-20260901"
+  },
+  "sourceLockVerificationCompletedBeforeParserWork": true
+}
