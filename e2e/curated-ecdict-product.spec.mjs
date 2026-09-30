@@ -151,7 +151,6 @@ test.describe("curated ECDICT product flow", () => {
       window.__tfCuratedImportCommits = 0;
 
       const originalRequest = chrome.permissions.request;
-      const nativeRequest = originalRequest.bind(chrome.permissions);
       try {
         chrome.permissions.request = async (details) => {
           window.__tfCuratedPermissionRequests.push(details);
