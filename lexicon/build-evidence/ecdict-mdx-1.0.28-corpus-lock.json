@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/skywind3000/ECDICT",
+    "releaseTag": "1.0.28",
+    "releaseUrl": "https://github.com/skywind3000/ECDICT/releases/tag/1.0.28",
+    "publishedAt": "2017-09-20T10:28:39Z",
+    "releaseNotesClaim": "3.4 million entries; ecdict-mdx-28.zip is the pronunciation-bearing MDX variant.",
+    "assetName": "ecdict-mdx-28.zip",
+    "assetUrl": "https://github.com/skywind3000/ECDICT/releases/download/1.0.28/ecdict-mdx-28.zip",
+    "assetApiSizeBytes": 97755340,
+    "assetApiDigest": null,
+    "licenseEvidence": {
+      "repositorySpdx": "MIT",
+      "repositoryLicenseUrl": "https://github.com/skywind3000/ECDICT/blob/1.0.28/LICENSE",
+      "mdxDescriptionClaim": "开源英汉字典：MIT / CC 双协议",
+      "mdxDescriptionSource": "MDX header Description attribute",
+      "ccLicenseVersion": null,
+      "redistributionNote": "The upstream MDX description does not name a Creative Commons version. The asset is fetched for local user import and is not bundled or mirrored by this project."
+    }
+  },
+  "archive": {
+    "sha256": "b06a72a0cfc37485a0466ee62fb43137559ea75eea147d8b7715142faca2229f",
+    "bytes": 97755340,
+    "entries": 1,
+    "entryNameEncoding": "GBK (legacy ZIP filename bytes decoded from CP437 representation)",
+    "entryNameBytesHex": "bcf2c3f7d3a2babad7d6b5e4d4f6c7bfb0e62e6d6478",
+    "entryName": "简明英汉字典增强版.mdx",
+    "entryBytes": 97786525,
+    "entryCompressedBytes": 97755198,
+    "layout": "one root-level MDX file; no directories or other members"
+  },
+  "mdx": {
+    "sha256": "275e71b58fd359bfe649af1cbee533ea81770bdbc53ec4a34567f84720a5751b",
+    "bytes": 97786525,
+    "title": "简明英汉字典增强版",
+    "descriptionDate": "2017-06-03",
+    "generatedByEngineVersion": "2.0",
+    "requiredEngineVersion": "2.0",
+    "format": "Html",
+    "encoding": "UTF-8",
+    "keyCaseSensitive": false,
+    "stripKey": true,
+    "encrypted": 2,
+    "compact": true,
+    "compat": true,
+    "styleSheetRules": 4,
+    "recordBlockCompression": {
+      "zlib": 3768,
+      "none": 0,
+      "lzo": 0
+    },
+    "keyBlockCount": 2506,
+    "entryCount": 3402564,
+    "keyInfoDecompressedBytes": 153867,
+    "keyInfoCompressedBytes": 61253,
+    "compressedKeyBlockBytes": 27381638,
+    "recordBlockCount": 3768,
+    "recordIndexBytes": 60288,
+    "compressedRecordBlockBytes": 70281762,
+    "decompressedRecordBytes": 246598512,
+    "maximumDecompressedRecordBlockBytes": 65536,
+    "maximumObservedRecordBlockExpansionRatio": 8.04,
+    "trailingBytes": 0,
+    "aliasOccurrences": 0,
+    "compactMarkerOccurrences": {
+      "`1`": 3402564,
+      "`2`": 8034677,
+      "`3`": 353134,
+      "`4`": 303652
+    },
+    "htmlTagOccurrences": {
+      "br": 3908418
+    },
+    "keyOrderEvidence": {
+      "headerKeyCaseSensitive": false,
+      "referenceDecoderSequence": [
+        "00852",
+        "00853",
+        "00886",
+        "010",
+        "0/1 knapsack problem",
+        "0-1 programming",
+        "020"
+      ],
+      "comparator": "Use MDict's stored key order and key-block first/last boundaries. The observed order is not plain UTF-8 byte order or Unicode ordinal order for punctuation (for example, 010 precedes 0/1 knapsack problem). Do not re-sort source keys using a generic lexical comparator."
+    }
+  },
+  "independentDecode": {
+    "tool": "ffreemt/readmdict",
+    "version": "0.1.1",
+    "commit": "d9c53dc1515f99ae5a2d6b1d89212c9b680e0c59",
+    "purpose": "One-time independent decoding of pinned corpus for test expectations and observed key order; not a runtime or project dependency.",
+    "recordExcerpts": [
+      {
+        "query": "run",
+        "headword": "run",
+        "rawRecordIncludes": "n. 跑, 赛跑, 奔跑, 奔跑的路程"
+      },
+      {
+        "query": "state",
+        "headword": "state",
+        "rawRecordIncludes": "n. 州, 状态, 情形"
+      },
+      {
+        "query": "process",
+        "headword": "process",
+        "rawRecordIncludes": "n. 程序, 进行, 过程"
+      },
+      {
+        "query": "issue",
+        "headword": "issue",
+        "rawRecordIncludes": "n. 发行, 问题, 后果"
+      },
+      {
+        "query": "branch",
+        "headword": "branch",
+        "rawRecordIncludes": "n. 树枝, 支店, 支流"
+      },
+      {
+        "query": "container",
+        "headword": "container",
+        "rawRecordIncludes": "n. 容器, 集装箱"
+      },
+      {
+        "query": "cache",
+        "headword": "cache",
+        "rawRecordIncludes": "n. 隐藏所, 隐藏的粮食或物资, 贮藏物, 高速缓冲存储器"
+      }
+    ]
+  }
+}

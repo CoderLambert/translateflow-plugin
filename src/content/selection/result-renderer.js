@@ -32,6 +32,54 @@
     return { generatedMeaning, explanation };
   }
 
+  function appendRichDictionaryDetails(container, response) {
+    if (!container || !response || typeof response !== "object") return false;
+    const dictionaries = Array.isArray(response.dictionaries) ? response.dictionaries : [];
+    const errors = Array.isArray(response.errors) ? response.errors : [];
+    if (!dictionaries.length && !errors.length) return false;
+
+    const section = document.createElement("section");
+    section.className = "tf-selection-rich-details";
+    section.setAttribute("aria-label", "详细词典释义");
+    const heading = document.createElement("strong");
+    heading.className = "tf-selection-rich-heading";
+    heading.textContent = "详细词典";
+    section.appendChild(heading);
+
+    for (const dictionary of dictionaries.slice(0, 5)) {
+      const record = document.createElement("article");
+      record.className = "tf-selection-rich-record";
+      const title = document.createElement("div");
+      title.className = "tf-selection-rich-title";
+      title.textContent = `${String(dictionary?.title || "Rich MDict")} · 本地导入 · 用户提供 / 未验证 · MDX`;
+      record.appendChild(title);
+
+      const headword = String(dictionary?.headword || "").trim();
+      if (headword) {
+        const form = document.createElement("div");
+        form.className = "tf-selection-rich-headword";
+        form.textContent = headword;
+        record.appendChild(form);
+      }
+
+      const bodyText = String(dictionary?.text || "").trim();
+      const body = document.createElement("div");
+      body.className = "tf-selection-rich-text";
+      body.textContent = bodyText || "词典中有匹配记录，但没有可展示的纯文本内容。";
+      record.appendChild(body);
+      section.appendChild(record);
+    }
+
+    for (const error of errors.slice(0, 3)) {
+      const failure = document.createElement("div");
+      failure.className = "tf-selection-rich-error";
+      failure.textContent = `${String(error?.title || "详细词典")}：暂时无法读取（${String(error?.message || "索引或文件损坏")}）`;
+      section.appendChild(failure);
+    }
+    container.appendChild(section);
+    return true;
+  }
+
   function renderBadges(container, badges) {
     const meta = document.createElement("div");
     meta.className = "tf-selection-result-meta";
@@ -182,5 +230,5 @@
     )];
   }
 
-  app.modules.selectionResultRenderer = Object.freeze({ render });
+  app.modules.selectionResultRenderer = Object.freeze({ render, appendRichDictionaryDetails });
 })();

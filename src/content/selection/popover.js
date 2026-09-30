@@ -17,6 +17,7 @@
   const { create: createAiDetail } = app.modules.selectionAiDetail;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
   const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
+  const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
 
   let root;
   let chip;
@@ -189,6 +190,17 @@
     }
   }
 
+  function appendRichDictionaryDetails(response) {
+    ensureUi();
+    if (!resultNode || panel.hidden) return false;
+    const appended = appendRichDetails(resultNode, response);
+    if (appended) {
+      resultNode.hidden = false;
+      reposition();
+    }
+    return appended;
+  }
+
   function updateSource(snapshot, result = null) {
     const sourceText = String(snapshot?.text || "").trim();
     const headword = String(result?.headword || "").trim();
@@ -353,6 +365,7 @@
     showLoading,
     setLoadingStatus,
     showResult,
+    appendRichDictionaryDetails,
     showError,
     showEmpty,
     showAiDetailLoading,

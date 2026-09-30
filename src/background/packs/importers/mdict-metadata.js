@@ -106,6 +106,10 @@ export function parseMdictHeader(
   };
 }
 
+// The rich lane keeps source presentation metadata for the later safe viewer.
+// This parser intentionally accepts only MDX v2.0 and the unprotected record
+// path. Encrypted=2 protects only the key-block index and is handled by the
+// bounded rich index reader; Encrypted=1/3 would require record decryption.
 export function sanitizeMdictRecord(
   value,
   headword = "",
@@ -182,7 +186,7 @@ export function decodeMdictText(bytes, encoding, label) {
   }
 }
 
-function parseDictionaryAttributes(text) {
+export function parseDictionaryAttributes(text) {
   const match =
     /^<Dictionary\b([\s\S]*?)\/>\s*$/iu.exec(
       String(text || "")
@@ -261,7 +265,7 @@ function decodeXmlEntities(value) {
   );
 }
 
-function normalizeMdictEncoding(value) {
+export function normalizeMdictEncoding(value) {
   const text = String(value || "")
     .trim()
     .toUpperCase()
@@ -291,7 +295,7 @@ function normalizeMdictEncoding(value) {
   );
 }
 
-function parseEncryptedFlag(value) {
+export function parseEncryptedFlag(value) {
   const text = String(value ?? "0").trim();
   if (!text || /^no$/iu.test(text)) return 0;
   if (/^yes$/iu.test(text)) return 1;

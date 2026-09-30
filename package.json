@@ -31,7 +31,10 @@
     "project:mdict": "node scripts/project-mdict-import.mjs",
     "build:tflex:mdict-import": "node scripts/build-tflex-mdict-import.mjs",
     "build:tflex:stardict-import": "node scripts/build-tflex-stardict-import.mjs",
-    "measure:stardict-import": "node scripts/measure-stardict-import-cost.mjs"
+    "measure:stardict-import": "node scripts/measure-stardict-import-cost.mjs",
+    "certify:rich-mdict-corpus": "node scripts/certify-rich-mdict-corpus.mjs",
+    "test:rich-mdict-security": "node --test tests/rich-mdict-security.test.mjs",
+    "test:e2e:rich-mdict": "playwright test e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs"
   },
   "engines": {
     "node": ">=18"

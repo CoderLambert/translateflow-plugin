@@ -1,19 +1,23 @@
 import { PACK_MANAGER_STATE_KEY } from "../../shared/pack-manager.js";
 
 export function createPackStateStore({
-  storageArea = globalThis.chrome?.storage?.local
+  storageArea = globalThis.chrome?.storage?.local,
+  stateKey = PACK_MANAGER_STATE_KEY
 } = {}) {
   if (!storageArea?.get || !storageArea?.set) throw new Error("chrome.storage.local is required");
+  if (typeof stateKey !== "string" || !stateKey || stateKey.length > 120) {
+    throw new Error("dictionary state key is invalid");
+  }
   let mutationQueue = Promise.resolve();
 
   async function read() {
-    const stored = await storageArea.get([PACK_MANAGER_STATE_KEY]);
-    return normalizeState(stored?.[PACK_MANAGER_STATE_KEY]);
+    const stored = await storageArea.get([stateKey]);
+    return normalizeState(stored?.[stateKey]);
   }
 
   async function write(state) {
     const normalized = normalizeState(state);
-    await storageArea.set({ [PACK_MANAGER_STATE_KEY]: normalized });
+    await storageArea.set({ [stateKey]: normalized });
     return normalized;
   }
 
@@ -37,11 +41,15 @@ export function normalizeState(value) {
   const packs = value?.packs && typeof value.packs === "object"
     ? { ...value.packs }
     : {};
-  return {
+  const state = {
     version: 1,
     catalogSequences,
     packs
   };
+  if (value?.reservations && typeof value.reservations === "object") {
+    state.reservations = { ...value.reservations };
+  }
+  return state;
 }
 
 function clone(value) {
