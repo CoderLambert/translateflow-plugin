@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-unlocked",
+  "sourceId": "wikimedia-enwiktionary-20260901",
+  "role": "rich-en-zh-poc-raw-input",
+  "edition": "enwiktionary",
+  "dumpDate": "2026-09-01",
+  "source": {
+    "directoryUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/",
+    "artifactUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/enwiktionary-20260901-pages-articles.xml.bz2",
+    "sha1sumsUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/sha1sums.txt",
+    "md5sumsUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/md5sums.txt",
+    "dumpStatusUrl": "https://dumps.wikimedia.org/enwiktionary/20260901/dumpstatus.json",
+    "format": "mediawiki-pages-articles-xml-bzip2",
+    "datedPath": true
+  },
+  "extractor": {
+    "wiktextractRepository": "https://github.com/tatuylonen/wiktextract",
+    "wiktextractCommit": "1a05e46f9efbccda6a2b2f8e21b30a9c0c46513a",
+    "wikitextprocessorRepository": "https://github.com/tatuylonen/wikitextprocessor",
+    "wikitextprocessorCommit": "e3d6d4edb77618f4d6680edc66e3f774bea59820"
+  },
+  "evidence": {
+    "dumpIndex": "https://dumps.wikimedia.org/enwiktionary/",
+    "dumpDocumentation": "https://meta.wikimedia.org/wiki/Data_dumps",
+    "wiktionaryCopyright": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights"
+  },
+  "license": {
+    "sourceLicenses": [
+      "CC-BY-SA-4.0",
+      "GFDL-1.1-or-later"
+    ],
+    "pocReuseLicense": "CC-BY-SA-4.0",
+    "attributionRequired": true,
+    "shareAlikeRequired": true,
+    "legalReviewStatus": "pending-field-projection-audit"
+  },
+  "packaging": {
+    "rawInputRole": "build-only",
+    "productionExtensionEligible": false,
+    "downloadablePackDecision": "pending-poc"
+  }
+}
