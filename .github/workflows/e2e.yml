@@ -16,6 +16,7 @@ on:
       - "playwright.config.mjs"
       - "package.json"
       - ".github/workflows/e2e.yml"
+      - "docs/DICTIONARY_SOURCE_FREEZE.md"
 
 permissions:
   contents: read

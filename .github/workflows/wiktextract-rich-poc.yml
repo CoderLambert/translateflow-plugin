@@ -29,6 +29,7 @@ on:
       - "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json"
       - "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-compatibility.json"
       - "docs/WIKTIONARY_RICH_POC.md"
+      - "docs/DICTIONARY_SOURCE_FREEZE.md"
 
 permissions:
   contents: read
