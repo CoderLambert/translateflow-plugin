@@ -11,6 +11,10 @@
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
+      case messages.background.RICH_MDD_RESOURCES_CHANGED:
+        app.modules.richResourceResolver?.closeDictionary(message.dictionaryId);
+        sendResponse({ ok: true });
+        return false;
       case messages.content.TRANSLATE_PAGE: processPage({ cacheOnly: false, taskId: message.taskId }).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.RESTORE_CACHE: processPage({ cacheOnly: true }).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.TASK_STATUS: sendResponse({ ok: true, task: tasks.getTaskStatus(message.taskId) }); return false;

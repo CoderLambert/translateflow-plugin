@@ -1,5 +1,7 @@
 import { PACK_MANAGER_STATE_KEY } from "../../shared/pack-manager.js";
 
+const queuesByStorageArea = new WeakMap();
+
 export function createPackStateStore({
   storageArea = globalThis.chrome?.storage?.local,
   stateKey = PACK_MANAGER_STATE_KEY
@@ -8,7 +10,16 @@ export function createPackStateStore({
   if (typeof stateKey !== "string" || !stateKey || stateKey.length > 120) {
     throw new Error("dictionary state key is invalid");
   }
-  let mutationQueue = Promise.resolve();
+  let keyQueues = queuesByStorageArea.get(storageArea);
+  if (!keyQueues) {
+    keyQueues = new Map();
+    queuesByStorageArea.set(storageArea, keyQueues);
+  }
+  let queue = keyQueues.get(stateKey);
+  if (!queue) {
+    queue = { current: Promise.resolve() };
+    keyQueues.set(stateKey, queue);
+  }
 
   async function read() {
     const stored = await storageArea.get([stateKey]);
@@ -22,12 +33,12 @@ export function createPackStateStore({
   }
 
   function update(mutator) {
-    const operation = mutationQueue.then(async () => {
+    const operation = queue.current.then(async () => {
       const current = await read();
       const next = await mutator(clone(current));
       return write(next);
     });
-    mutationQueue = operation.catch(() => {});
+    queue.current = operation.catch(() => {});
     return operation;
   }
 
@@ -48,6 +59,9 @@ export function normalizeState(value) {
   };
   if (value?.reservations && typeof value.reservations === "object") {
     state.reservations = { ...value.reservations };
+  }
+  if (value?.resourceReservations && typeof value.resourceReservations === "object") {
+    state.resourceReservations = { ...value.resourceReservations };
   }
   return state;
 }

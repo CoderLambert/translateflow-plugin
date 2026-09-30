@@ -37,7 +37,10 @@ export const BACKGROUND_MESSAGES = Object.freeze({
   RICH_MDICT_IMPORT_PREFLIGHT: "RICH_MDICT_IMPORT_PREFLIGHT", RICH_MDICT_IMPORT_COMMIT: "RICH_MDICT_IMPORT_COMMIT",
   RICH_MDICT_IMPORT_CANCEL: "RICH_MDICT_IMPORT_CANCEL",
   RICH_MDICT_IMPORT_ABORT: "RICH_MDICT_IMPORT_ABORT", RICH_MDICT_LIST: "RICH_MDICT_LIST",
-  RICH_MDICT_LOOKUP: "RICH_MDICT_LOOKUP", RICH_MDICT_UNINSTALL: "RICH_MDICT_UNINSTALL"
+  RICH_MDICT_LOOKUP: "RICH_MDICT_LOOKUP", RICH_MDICT_UNINSTALL: "RICH_MDICT_UNINSTALL",
+  RICH_MDD_RESOURCE_PREFLIGHT: "RICH_MDD_RESOURCE_PREFLIGHT", RICH_MDD_RESOURCE_COMMIT: "RICH_MDD_RESOURCE_COMMIT",
+  RICH_MDD_RESOURCE_CANCEL: "RICH_MDD_RESOURCE_CANCEL", RICH_MDD_RESOURCE_ABORT: "RICH_MDD_RESOURCE_ABORT",
+  RICH_MDD_RESOURCE: "RICH_MDD_RESOURCE", RICH_MDD_RESOURCES_CHANGED: "RICH_MDD_RESOURCES_CHANGED"
 });
 export const CONTENT_MESSAGES = Object.freeze({
   TRANSLATE_PAGE: "ABT_TRANSLATE_PAGE", RESTORE_CACHE: "ABT_RESTORE_CACHE", ENABLE_AUTO: "ABT_ENABLE_AUTO", DISABLE_AUTO: "ABT_DISABLE_AUTO",
@@ -51,7 +54,7 @@ export const CONTENT_SCRIPT_FILES = Object.freeze([
   "src/content/processor.js", "src/content/auto.js", "src/content/subtitles/source.js", "src/content/subtitles/sources/text-track.js",
   "src/content/subtitles/youtube-bridge-protocol.js", "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/sources/youtube.js", "src/content/subtitles/pipeline.js", "src/content/subtitles/renderer.js", "src/content/subtitles/controller.js",
-  "src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/clipboard.js", "src/content/selection/messages.js", "src/content/selection/ai-detail.js", "src/content/selection/empty-state.js", "src/content/selection/rich-sanitizer-style.js", "src/content/selection/rich-sanitizer-tokenizer.js", "src/content/selection/rich-sanitizer.js", "src/content/selection/rich-viewer.js", "src/content/selection/result-renderer.js", "src/content/selection/popover.js", "src/content/selection/rich-details.js", "src/content/selection/controller.js",
+  "src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/clipboard.js", "src/content/selection/messages.js", "src/content/selection/ai-detail.js", "src/content/selection/empty-state.js", "src/content/selection/rich-sanitizer-style.js", "src/content/selection/rich-resource-path.js", "src/content/selection/rich-sanitizer-tokenizer.js", "src/content/selection/rich-sanitizer.js", "src/content/selection/rich-resource-resolver.js", "src/content/selection/rich-viewer.js", "src/content/selection/result-renderer.js", "src/content/selection/popover.js", "src/content/selection/rich-details.js", "src/content/selection/controller.js",
   "src/content/quick-control-view.js", "src/content/quick-control.js", "content.js"
 ]);
 export const CONTENT_STYLE_FILES = Object.freeze(["content.css"]);

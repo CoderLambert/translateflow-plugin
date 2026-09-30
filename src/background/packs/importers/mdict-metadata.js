@@ -186,15 +186,21 @@ export function decodeMdictText(bytes, encoding, label) {
   }
 }
 
-export function parseDictionaryAttributes(text) {
-  const match =
-    /^<Dictionary\b([\s\S]*?)\/>\s*$/iu.exec(
-      String(text || "")
+export function parseDictionaryAttributes(text, tagName = "Dictionary") {
+  if (!["Dictionary", "Library_Data"].includes(tagName)) {
+    mdictFail(
+      MDICT_IMPORT_ERROR.CORRUPT,
+      "Unsupported MDict header tag."
     );
+  }
+  const match = new RegExp(
+    "^<" + tagName + "\\b([\\s\\S]*?)\\/>\\s*$",
+    "iu"
+  ).exec(String(text || ""));
   if (!match) {
     mdictFail(
       MDICT_IMPORT_ERROR.CORRUPT,
-      "MDict header must contain one self-closing Dictionary tag."
+      "MDict header must contain one self-closing " + tagName + " tag."
     );
   }
 

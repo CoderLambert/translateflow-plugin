@@ -1,0 +1,83 @@
+name: mdd-resources
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/mdd-resources.yml"
+      - "docs/RICH_MDD_INTEROP_EVIDENCE.md"
+      - "scripts/certify-mdd-interop.mjs"
+      - "scripts/generate-mdd-interop-fixture.py"
+      - "tests/fixtures/mdd-interop/**"
+      - "tests/helpers/mdd-fixture.mjs"
+      - "tests/rich-mdict*.test.mjs"
+      - "tests/rich-dictionary-sanitizer.test.mjs"
+      - "tests/mdd-*.test.mjs"
+      - "e2e/mdd-resources.spec.mjs"
+      - "e2e/support/extension-fixture.mjs"
+      - "src/background/packs/**"
+      - "src/background/router.js"
+      - "src/options/rich-mdict-*.js"
+      - "src/options/mdd-resource-*.js"
+      - "src/options/workers/rich-mdict-*.js"
+      - "src/options/workers/mdd-resource-*.js"
+      - "src/content/selection/**"
+      - "src/content/runtime.js"
+      - "src/shared/constants.js"
+      - "content.js"
+      - "options.html"
+      - "package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  independent-mdd-resources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch locked independent MDict writer source
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/writemdict
+          git -C /tmp/writemdict init
+          git -C /tmp/writemdict remote add origin https://github.com/zhansliu/writemdict.git
+          git -C /tmp/writemdict fetch --depth=1 origin f0240b30cabd2f0470d3ee1a0641fc7f8c38dcf5
+          git -C /tmp/writemdict checkout --detach FETCH_HEAD
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Recreate and checksum independent interop artifacts
+        run: node scripts/certify-mdd-interop.mjs --writer-checkout /tmp/writemdict --regenerate --large-range-evidence --bulk-bytes 104857600
+        env:
+          MDD_INTEROP_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-mdd-184/evidence
+
+      - name: Run indexed MDD parser, storage, and security unit tests
+        run: node --test tests/mdd-format.test.mjs tests/rich-mdict-format.test.mjs tests/rich-mdict-security.test.mjs tests/rich-mdict-storage.test.mjs
+
+      - name: Install Chromium for the local resources product gate
+        run: npx playwright install --with-deps chromium
+
+      - name: Run local MDD resources browser gate
+        run: npx playwright test e2e/mdd-resources.spec.mjs
+        env:
+          MDD_INTEROP_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-mdd-184/evidence
+
+      - name: Upload bounded test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdd-local-resource-evidence
+          path: ${{ runner.temp }}/translateflow-mdd-184/evidence
+          if-no-files-found: ignore
+          retention-days: 30

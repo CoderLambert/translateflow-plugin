@@ -2,6 +2,7 @@ import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { MDICT_IMPORT_LIMITS } from "../background/packs/importers/mdict-contract.js";
 import { parseRichMdictHeader } from "../background/packs/importers/mdict-rich-metadata.js";
 import { createRichMdictImportController } from "./rich-mdict-import-controller.js";
+import { createMddResourceImportController } from "./mdd-resource-import-controller.js";
 
 export function initializeRichMdictImportUi({
   runtime = globalThis.chrome?.runtime,
@@ -24,6 +25,7 @@ export function initializeRichMdictImportUi({
   let selectedHeader = null;
   let inspectionSequence = 0;
   let busy = false;
+  let activeResourceProgress = null;
   const controller = createRichMdictImportController({
     runtime,
     WorkerCtor,
@@ -31,6 +33,14 @@ export function initializeRichMdictImportUi({
     onProgress(event) {
       progress.textContent = progressLabel(event.phase);
       progress.dataset.phase = String(event.phase || "");
+    }
+  });
+  const resourceController = createMddResourceImportController({
+    runtime,
+    WorkerCtor,
+    cryptoProvider,
+    onProgress(event) {
+      if (activeResourceProgress) activeResourceProgress.textContent = resourceProgressLabel(event.phase);
     }
   });
 
@@ -74,7 +84,7 @@ export function initializeRichMdictImportUi({
         metaLine("MDict 版本", header.generatedByEngineVersion),
         metaLine("词典来源", "本地导入 · 用户提供 / 未验证 · MDX"),
         metaLine("检查范围", "头部兼容性已检查；完整索引将在安装时校验"),
-        metaLine("显示方式", "安全纯文本预览，不运行词典内容")
+        metaLine("显示方式", "安全预览；安装后可附加同名 MDD 的本地媒体和受限样式")
       );
       importButton.disabled = false;
       setStatus("MDX 头部检查通过。安装后可在划词结果中查看该词典的释义。 ");
@@ -138,19 +148,25 @@ export function initializeRichMdictImportUi({
     try {
       const response = await runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST });
       if (!response?.ok) throw new Error(response?.error || "读取富文本词典失败。");
-      renderInstalled(installedList, response.dictionaries || [], { runtime, setStatus, refreshInstalled });
+      renderInstalled(installedList, response.dictionaries || [], {
+        runtime, setStatus, refreshInstalled, resourceController,
+        setProgressNode(node) { activeResourceProgress = node; }
+      });
     } catch (error) {
       installedList.textContent = "读取富文本词典失败：" + (error?.message || String(error));
     }
   }
 
   document.addEventListener("translateflow:dictionary-state-changed", refreshInstalled);
-  window.addEventListener("pagehide", () => controller.dispose(), { once: true });
+  window.addEventListener("pagehide", () => {
+    controller.dispose();
+    resourceController.dispose();
+  }, { once: true });
   refreshInstalled();
-  return Object.freeze({ controller, refresh: refreshInstalled });
+  return Object.freeze({ controller, resourceController, refresh: refreshInstalled });
 }
 
-function renderInstalled(container, dictionaries, { runtime, setStatus, refreshInstalled }) {
+function renderInstalled(container, dictionaries, { runtime, setStatus, refreshInstalled, resourceController, setProgressNode }) {
   container.replaceChildren();
   if (!Array.isArray(dictionaries) || !dictionaries.length) {
     container.textContent = "尚未安装富文本 MDict 词典。";
@@ -172,6 +188,7 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
       "本地导入 · 用户提供 / 未验证 · MDX",
       dictionary.status === "ready" ? "可查词" : `状态：${dictionary.status || "未知"}`,
       `${Number(dictionary.entryCount || 0).toLocaleString()} 条词目`,
+      `MDD 附件 ${Number(dictionary.resourceCount || 0)} 个`,
       formatBytes(dictionary.sourceSize)
     ].join(" · ");
     summary.appendChild(details);
@@ -184,6 +201,68 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
 
     const actions = document.createElement("div");
     actions.className = "site-actions";
+    const attachInput = document.createElement("input");
+    attachInput.type = "file";
+    attachInput.multiple = true;
+    attachInput.accept = ".mdd";
+    attachInput.hidden = true;
+    attachInput.dataset.action = "attach-mdd-resources";
+    const attach = document.createElement("button");
+    attach.type = "button";
+    attach.textContent = "添加/替换 MDD 资源";
+    attach.dataset.action = "attach-mdd-resources-button";
+    const resourceProgress = document.createElement("small");
+    resourceProgress.className = "dictionary-pack-detail";
+    resourceProgress.setAttribute("aria-live", "polite");
+    attach.addEventListener("click", () => attachInput.click());
+    attachInput.addEventListener("change", async () => {
+      const files = Array.from(attachInput.files || []);
+      if (!files.length) return;
+      attach.disabled = true;
+      remove.disabled = true;
+      cancelAttach.hidden = false;
+      resourceProgress.textContent = "准备导入 MDD 资源…";
+      setProgressNode(resourceProgress);
+      try {
+        const result = await resourceController.attachResources({
+          dictionaryId: dictionary.id,
+          mdxFileName: dictionary.fileName,
+          files
+        });
+        resourceProgress.textContent = `已附加 ${result.commit.dictionary.resourceCount} 个 MDD 文件。`;
+        setStatus(`${dictionary.title || "富文本词典"} 的本地资源已更新。`);
+        document.dispatchEvent(new CustomEvent("translateflow:dictionary-state-changed"));
+      } catch (error) {
+        const message = userMddMessage(error);
+        resourceProgress.textContent = error?.name === "AbortError" ? "已取消，原有资源保留。" : message;
+        setStatus(message, error?.name !== "AbortError");
+      } finally {
+        setProgressNode(null);
+        attachInput.value = "";
+        attach.disabled = false;
+        remove.disabled = false;
+        cancelAttach.hidden = true;
+        await refreshInstalled();
+      }
+    });
+    actions.append(attachInput, attach);
+    const cancelAttach = document.createElement("button");
+    cancelAttach.type = "button";
+    cancelAttach.textContent = "取消资源导入";
+    cancelAttach.hidden = true;
+    cancelAttach.dataset.action = "cancel-mdd-resources";
+    cancelAttach.addEventListener("click", async () => {
+      cancelAttach.disabled = true;
+      try {
+        await resourceController.cancel();
+        resourceProgress.textContent = "正在取消并清理临时文件…";
+      } finally {
+        cancelAttach.disabled = false;
+      }
+    });
+    actions.appendChild(cancelAttach);
+    resourceProgress.dataset.role = "mdd-resource-progress";
+    actions.appendChild(resourceProgress);
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "删除";
@@ -232,6 +311,14 @@ function userMessage(error) {
   return error?.message || "富文本 MDict 安装失败。";
 }
 
+function userMddMessage(error) {
+  if (error?.name === "AbortError") return "已取消 MDD 资源导入，原有附件继续可用。";
+  if (error?.code === "RICH_MDD_INPUT") return "MDD 文件名需与已安装 MDX 同名，并按 .1.mdd、.2.mdd 连续编号。";
+  if (error?.code === "RICH_MDD_LIMIT" || error?.code === "RICH_MDD_QUOTA") return "MDD 文件或本地空间超过当前安全上限，原有附件保留。";
+  if (["RICH_MDD_CORRUPT", "MDICT_CORRUPT"].includes(error?.code)) return "MDD 文件损坏、索引校验失败或资源类型不受支持，原有附件保留。";
+  return error?.message || "MDD 资源导入失败，原有附件保留。";
+}
+
 function progressLabel(phase) {
   if (phase === "preflight") return "检查本地空间";
   if (phase === "index") return "检查词典结构";
@@ -240,6 +327,16 @@ function progressLabel(phase) {
   if (phase === "commit") return "复核并启用词典";
   if (phase === "done") return "完成";
   return "处理中…";
+}
+
+function resourceProgressLabel(phase) {
+  if (phase === "preflight") return "检查词典匹配和本地空间…";
+  if (phase === "index") return "正在建立 MDD 索引…";
+  if (phase === "store-source") return "正在保存离线 MDD 文件…";
+  if (phase === "store-index") return "正在保存紧凑资源索引…";
+  if (phase === "commit") return "正在复核并启用 MDD 附件…";
+  if (phase === "done") return "MDD 附件已启用。";
+  return "正在处理 MDD 资源…";
 }
 
 function metaLine(label, value) {

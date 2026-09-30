@@ -38,7 +38,7 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     const installStarted = Date.now();
     await options.locator("#richMdictFile").setInputFiles(mdxPath);
     await expect(options.locator("#richMdictInspectionMeta")).toContainText("简明英汉字典增强版");
-    await expect(options.locator("#richMdictInspectionMeta")).toContainText("安全纯文本预览");
+    await expect(options.locator("#richMdictInspectionMeta")).toContainText("安全预览");
     await options.locator("#richMdictImportButton").click();
     await expect(options.locator("#richMdictImportProgress")).toContainText("完成", {
       timeout: 10 * 60 * 1000

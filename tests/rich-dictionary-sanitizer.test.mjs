@@ -6,9 +6,11 @@ import vm from "node:vm";
 const SOURCE = new URL("../src/content/selection/rich-sanitizer.js", import.meta.url);
 const STYLE_SOURCE = new URL("../src/content/selection/rich-sanitizer-style.js", import.meta.url);
 const TOKENIZER_SOURCE = new URL("../src/content/selection/rich-sanitizer-tokenizer.js", import.meta.url);
+const RESOURCE_PATH_SOURCE = new URL("../src/content/selection/rich-resource-path.js", import.meta.url);
 
 function sanitizer() {
   const context = vm.createContext({});
+  vm.runInContext(readFileSync(RESOURCE_PATH_SOURCE, "utf8"), context, { filename: "rich-resource-path.js" });
   vm.runInContext(readFileSync(STYLE_SOURCE, "utf8"), context, { filename: "rich-sanitizer-style.js" });
   vm.runInContext(readFileSync(TOKENIZER_SOURCE, "utf8"), context, { filename: "rich-sanitizer-tokenizer.js" });
   vm.runInContext(readFileSync(SOURCE, "utf8"), context, { filename: "rich-sanitizer.js" });
@@ -85,13 +87,14 @@ test("active markup, navigation, event handlers, unsafe CSS, and remote resource
   });
 
   assert.equal(result.truncated, false);
-  assert.equal(textContent(result.nodes), "safelink［图片：local］［音频：pronunciation］bold");
+  assert.equal(textContent(result.nodes), "safelinkbold");
   const elements = [];
   walk(result.nodes, (node) => { if (node.type === "element") elements.push(node); });
-  assert.deepEqual(elements.map((node) => node.tag), ["div", "span", "span", "b"]);
-  assert.deepEqual(local(elements[1].attrs), { "data-rich-placeholder": "image" });
-  assert.deepEqual(local(elements[2].attrs), { "data-rich-placeholder": "audio" });
-  assert.deepEqual(local(elements[3].style || {}), {});
+  assert.deepEqual(elements.map((node) => node.tag), ["div", "b"]);
+  const resources = [];
+  walk(result.nodes, (node) => { if (node.type === "resource") resources.push(node); });
+  assert.deepEqual(local(resources), [{ type: "resource", kind: "image", path: "images/local.png", label: "local" }]);
+  assert.deepEqual(local(elements[1].style || {}), {});
   assert.deepEqual(local(elements[0].style), { color: "red" });
   for (const element of elements) {
     assert.equal(Object.hasOwn(element.attrs || {}, "src"), false);

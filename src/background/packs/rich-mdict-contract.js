@@ -85,6 +85,9 @@ export function isValidSnapshot(packId, snapshot) {
 
 export function publicRichDictionary(entry) {
   const active = entry?.active || {};
+  const resourceSources = Array.isArray(active.resources?.sources) && active.resources.sources.length <= 16
+    ? active.resources.sources
+    : [];
   return {
     id: String(active.packId || ""),
     title: clampText(active.title || active.fileName || "Rich MDict", 200),
@@ -92,6 +95,8 @@ export function publicRichDictionary(entry) {
     format: clampText(active.format || "", 40),
     sourceSize: Number(active.sourceSize || 0),
     entryCount: Number(active.entryCount || 0),
+    resourceCount: resourceSources.length,
+    resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
     installedAt: Number(active.installedAt || 0),
     status: entry?.status || "unknown"
   };
