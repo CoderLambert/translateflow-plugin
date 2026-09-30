@@ -165,8 +165,11 @@ function checksumForFile(
   label
 ) {
   const escaped = String(filename).replace(
+    /[\\^$.*+?()[\]{}|]/gu,
+    "\\  const escaped = String(filename).replace(
     /[-/\\^$*+?.()|[\]{}]/gu,
     "\\$&"
+  );"
   );
   const pattern = new RegExp(
     "^([a-f0-9]{" + hexLength +
