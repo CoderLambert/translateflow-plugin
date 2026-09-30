@@ -98,11 +98,46 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     await selectElementText(page, "#rich-ecdict-word");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("运行");
-    await expect(page.locator(".tf-selection-rich-details .tf-selection-rich-text"))
+    const richViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    await expect(richViewer)
       .toContainText("n. 跑, 赛跑, 奔跑, 奔跑的路程", { timeout: 90_000 });
     await expect(page.locator(".tf-selection-rich-record")).toContainText("简明英汉字典增强版");
     expect(await page.locator(".tf-selection-result").getAttribute("data-result-kind")).toBe("local");
     expect(await page.locator(".tf-selection-result .tf-selection-primary").first().textContent()).toContain("运行");
+    expect(await page.locator(".tf-selection-rich-text").last().evaluate((host) => Boolean(host.shadowRoot))).toBe(true);
+    const compactPresentation = await richViewer.evaluate((root) => {
+      const nodes = [...root.querySelectorAll("[data-compact-id]")];
+      const forId = (id) => nodes.filter((node) => node.getAttribute("data-compact-id") === id);
+      const styleOf = (node) => {
+        const presentation = node?.querySelector("*") || node;
+        if (!presentation) return null;
+        const style = getComputedStyle(presentation);
+        return {
+          fontSize: Number.parseFloat(style.fontSize),
+          fontWeight: style.fontWeight,
+          color: style.color,
+          display: style.display
+        };
+      };
+      const headword = forId("1").find((node) => node.textContent.includes("run"));
+      const pronunciation = forId("3").find((node) => node.textContent.includes("[rʌn]"));
+      const note = forId("4").find((node) => node.textContent.includes("-K5"));
+      return {
+        ids: [...new Set(nodes.map((node) => node.getAttribute("data-compact-id")))].sort(),
+        headword: headword ? styleOf(headword) : null,
+        pronunciation: pronunciation ? styleOf(pronunciation) : null,
+        note: note ? styleOf(note) : null,
+        text: root.innerText || ""
+      };
+    });
+    expect(compactPresentation.ids).toEqual(expect.arrayContaining(["1", "2", "3", "4"]));
+    expect(compactPresentation.headword).toBeTruthy();
+    expect(compactPresentation.pronunciation).toBeTruthy();
+    expect(compactPresentation.note).toBeTruthy();
+    expect(compactPresentation.headword.fontSize).toBeGreaterThan(15);
+    expect(compactPresentation.headword.fontWeight).not.toBe("400");
+    expect(compactPresentation.pronunciation.color).toBe("rgb(30, 144, 255)");
+    expect(compactPresentation.note.color).toBe("rgb(119, 119, 119)");
     expect(harness.server.calls).toHaveLength(0);
     await page.locator(".tf-selection-panel").screenshot({
       path: resolve(evidenceDir, "ecdict-selection-panel.png")
@@ -128,6 +163,12 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       extensionPackageBytes: harness.buildReport.totalBytes,
       installMs,
       corpusLookups,
+      richViewer: {
+        shadowRoot: true,
+        structuredPrimary: "local",
+        compactPresentation,
+        providerCalls: harness.server.calls.length
+      },
       providerCalls: harness.server.calls.length,
       generatedAt: new Date().toISOString()
     };

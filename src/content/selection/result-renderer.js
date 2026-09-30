@@ -65,7 +65,27 @@
       const bodyText = String(dictionary?.text || "").trim();
       const body = document.createElement("div");
       body.className = "tf-selection-rich-text";
-      body.textContent = bodyText || "词典中有匹配记录，但没有可展示的纯文本内容。";
+      const fallback = bodyText || "词典中有匹配记录，但没有可展示的纯文本内容。";
+      const richRecord = dictionary?.richRecord;
+      const sanitizer = app.modules.selectionRichSanitizer;
+      const viewer = app.modules.selectionRichViewer;
+      let displayed = false;
+      if (richRecord && sanitizer?.sanitizeRichDictionaryRecord && viewer?.render) {
+        try {
+          const safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
+          if (safeTree && !safeTree.truncated) {
+            displayed = viewer.render(body, safeTree, fallback, {
+              preserveNewlines: String(richRecord.format || "").toLowerCase() === "text"
+            });
+          }
+        } catch {
+          displayed = false;
+        }
+      }
+      if (!displayed) {
+        if (viewer?.renderPlainText) viewer.renderPlainText(body, fallback);
+        else body.textContent = fallback;
+      }
       record.appendChild(body);
       section.appendChild(record);
     }
