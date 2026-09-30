@@ -10,11 +10,13 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  deriveWikimediaSourceLock,
   validateWikimediaCandidate,
-  validateWikimediaSourceLock,
+  validateWikimediaSourceLock
+} from "../scripts/wikimedia-enwiktionary-contract.mjs";
+import {
+  deriveWikimediaSourceLock,
   verifyWikimediaSourceBytes
-} from "../scripts/audit-wikimedia-enwiktionary-source.mjs";
+} from "../scripts/wikimedia-enwiktionary-lock.mjs";
 
 const candidateUrl = new URL(
   "../lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json",
