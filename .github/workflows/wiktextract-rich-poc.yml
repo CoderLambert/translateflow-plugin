@@ -1,0 +1,261 @@
+name: wiktextract-rich-poc
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_experimental_full_extraction:
+        description: Run the full experimental export after validating the NO-GO decision
+        type: boolean
+        required: false
+        default: false
+  pull_request:
+    paths:
+      - ".github/workflows/wiktextract-rich-poc.yml"
+      - "scripts/run-pinned-wiktextract-ingest.py"
+      - "scripts/wiktextract_ingest_evidence.py"
+      - "scripts/wiktextract_extraction_evidence.py"
+      - "scripts/wiktextract-python-requirements.lock"
+      - "scripts/wiktextract-nltk-data-lock.json"
+      - "scripts/audit-wiktextract-projection-compatibility.mjs"
+      - "scripts/project-kaikki-rich.mjs"
+      - "tests/wiktextract-extraction-evidence.test.mjs"
+      - "tests/wiktextract-rich-projection.test.mjs"
+      - "scripts/audit-wikimedia-enwiktionary-source.mjs"
+      - "scripts/wikimedia-enwiktionary-contract.mjs"
+      - "scripts/wikimedia-enwiktionary-lock.mjs"
+      - "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json"
+      - "lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json"
+      - "lexicon/quality-decisions/wikimedia-enwiktionary-20260901-rich.json"
+      - "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json"
+      - "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-compatibility.json"
+      - "docs/WIKTIONARY_RICH_POC.md"
+
+permissions:
+  contents: read
+
+jobs:
+  source-qualification-no-go:
+    name: source-qualification-no-go
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Test extraction evidence and projection safeguards
+        run: node --test tests/wiktextract-extraction-evidence.test.mjs tests/wiktextract-rich-projection.test.mjs
+
+      - name: Validate the checked-in NO-GO decision and stopped observation
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFile } from "node:fs/promises";
+          import { validateWikimediaSourceLock } from "./scripts/wikimedia-enwiktionary-contract.mjs";
+
+          const lock = JSON.parse(await readFile("lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json", "utf8"));
+          validateWikimediaSourceLock(lock);
+          const decision = JSON.parse(await readFile("lexicon/quality-decisions/wikimedia-enwiktionary-20260901-rich.json", "utf8"));
+          const observation = JSON.parse(await readFile("lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json", "utf8"));
+          const compatibility = JSON.parse(await readFile("lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-compatibility.json", "utf8"));
+          const scribuntoCommit = "d35ca1f8d5fd23f1a9915e497cc00cac238f28c4";
+          const source = {
+            sourceId: lock.sourceId,
+            sha256: lock.artifact.sha256,
+            sizeBytes: lock.artifact.sizeBytes,
+            wiktextractCommit: lock.extractor.wiktextractCommit,
+            wikitextprocessorCommit: lock.extractor.wikitextprocessorCommit,
+            wikitextprocessorScribuntoCommit: scribuntoCommit
+          };
+          assert.equal(decision.decisionId, "wikimedia-enwiktionary-20260901-rich");
+          assert.equal(decision.decision, "NO-GO");
+          assert.equal(decision.approval, false);
+          assert.deepEqual(decision.source, source);
+          assert.equal(observation.kind, "wiktextract-stopped-partial-extraction-observation");
+          assert.deepEqual(observation.source, {
+            sourceId: source.sourceId,
+            sha256: source.sha256,
+            sizeBytes: source.sizeBytes
+          });
+          assert.deepEqual(observation.extractor, {
+            wiktextractCommit: source.wiktextractCommit,
+            wikitextprocessorCommit: source.wikitextprocessorCommit,
+            wikitextprocessorScribuntoCommit: source.wikitextprocessorScribuntoCommit
+          });
+          assert.equal(observation.sourceLockVerificationCompletedBeforeParserWork, true);
+          assert.equal(observation.phaseOne.completed, true);
+          assert.ok(observation.phaseOne.parserDbBytes > 0);
+          assert.ok(Object.values(observation.phaseOne.namespacePageCounts).every(count => Number.isInteger(count) && count > 0));
+          assert.equal(observation.externalInputs.fullyInputLocked, false);
+          assert.equal(observation.phaseTwoAttempt.fullExtractionCompleted, false);
+          assert.equal(observation.phaseTwoAttempt.partialOutput.classification.startsWith("PARTIAL;"), true);
+          assert.ok(observation.phaseTwoAttempt.partialOutput.bytes > 0);
+          assert.ok(observation.phaseTwoAttempt.partialOutput.completeJsonRows > 0);
+          assert.match(observation.phaseTwoAttempt.partialOutput.sha256, /^[a-f0-9]{64}$/);
+          assert.equal(observation.phaseTwoAttempt.partialOutput.trailingPartialLineBytes, 0);
+          assert.equal(compatibility.kind, "wiktextract-partial-snapshot-schema-aggregate");
+          assert.equal(compatibility.fullExtractionCompleted, false);
+          assert.deepEqual(compatibility.snapshot, {
+            fileName: observation.phaseTwoAttempt.partialOutput.fileName,
+            bytes: observation.phaseTwoAttempt.partialOutput.bytes,
+            sha256: observation.phaseTwoAttempt.partialOutput.sha256,
+            completeJsonRows: observation.phaseTwoAttempt.partialOutput.completeJsonRows,
+            trailingPartialLineBytes: observation.phaseTwoAttempt.partialOutput.trailingPartialLineBytes
+          });
+          assert.equal(compatibility.currentV1PartialDryRun.fullOutputBytes, null);
+          assert.equal(compatibility.currentV1PartialDryRun.fullOutputSha256, null);
+          assert.deepEqual(observation.phaseTwoAttempt.fullOutput, {
+            sha256: null, bytes: null, recordCount: null, durationSeconds: null
+          });
+          assert.equal(observation.benchmarkMetrics, null);
+          assert.equal(observation.packMetrics, null);
+          assert.equal(observation.buildEnvironment.nltkBrownCorpus.license, "May be used for non-commercial purposes.");
+          assert.equal(observation.buildEnvironment.nltkBrownCorpus.archiveSha256, "9b275f9b3b95d7bd66ccfb7cd259f445a13bbe5d1f4107aba09fd3e8364bafa6");
+          assert.equal(decision.evidencePath, "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json");
+          console.log("SOURCE QUALIFICATION GATE PASSED: the checked-in NO-GO rejection is consistent; this validates rejection only and is not source approval.");
+          NODE
+
+  experimental-full-extraction:
+    name: experimental-full-extraction
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_experimental_full_extraction }}
+    needs: source-qualification-no-go
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.7"
+
+      - name: Inspect available build space
+        run: df -h /tmp .
+
+      - name: Make room for the locked dump, parser DB, and full JSONL
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /tmp .
+
+      - name: Read locked source URLs
+        id: source
+        run: |
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from "node:fs/promises";
+          import { validateWikimediaSourceLock } from "./scripts/wikimedia-enwiktionary-contract.mjs";
+          const lock = JSON.parse(
+            await readFile("lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json", "utf8")
+          );
+          validateWikimediaSourceLock(lock);
+          console.log("artifact_url=" + lock.source.artifactUrl);
+          console.log("sha1sums_url=" + lock.source.sha1sumsUrl);
+          console.log("md5sums_url=" + lock.source.md5sumsUrl);
+          console.log("filename=" + lock.artifact.filename);
+          NODE
+
+      - name: Download dated Wikimedia checksums and dump
+        env:
+          ARTIFACT_URL: ${{ steps.source.outputs.artifact_url }}
+          SHA1SUMS_URL: ${{ steps.source.outputs.sha1sums_url }}
+          MD5SUMS_URL: ${{ steps.source.outputs.md5sums_url }}
+          SOURCE_FILENAME: ${{ steps.source.outputs.filename }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+            --output /tmp/enwiktionary-sha1sums.txt "$SHA1SUMS_URL"
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+            --output /tmp/enwiktionary-md5sums.txt "$MD5SUMS_URL"
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+            --output "/tmp/$SOURCE_FILENAME" "$ARTIFACT_URL"
+          test -s "/tmp/$SOURCE_FILENAME"
+          df -h /tmp .
+
+      - name: Run opt-in full extraction for experimental measurement only
+        env:
+          SOURCE_FILENAME: ${{ steps.source.outputs.filename }}
+        run: |
+          set -euo pipefail
+          python scripts/run-pinned-wiktextract-ingest.py \
+            --source "/tmp/$SOURCE_FILENAME" \
+            --sha1sums /tmp/enwiktionary-sha1sums.txt \
+            --md5sums /tmp/enwiktionary-md5sums.txt \
+            --lock lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json \
+            --candidate lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json \
+            --work-dir /tmp/wiktextract-rich-work \
+            --evidence /tmp/wiktextract-rich-work/parser-evidence.json \
+            --extraction-output /tmp/wiktextract-rich-work/full-en.jsonl \
+            --extraction-errors /tmp/wiktextract-rich-work/full-en-errors.json \
+            --extraction-evidence /tmp/wiktextract-rich-work/full-en-evidence.json \
+            --extraction-processes 2
+
+      - name: Verify and print bounded extraction evidence
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          evidence_path = Path("/tmp/wiktextract-rich-work/full-en-evidence.json")
+          evidence = json.loads(evidence_path.read_text())
+          assert evidence["source"]["sourceId"] == "wikimedia-enwiktionary-20260901"
+          assert evidence["source"]["sha256"] == "06acca8138eacb3e8ae9c1d6232f836e37c3bf9b6d582a86693731fe0d336c20"
+          assert evidence["extractor"]["wiktextractCommit"] == "1a05e46f9efbccda6a2b2f8e21b30a9c0c46513a"
+          assert evidence["extractor"]["wikitextprocessorCommit"] == "e3d6d4edb77618f4d6680edc66e3f774bea59820"
+          assert evidence["extraction"]["recordCount"] > 0
+          assert evidence["extraction"]["langCodeRecordCounts"]["en"] > 0
+          assert evidence["extraction"]["langCodeRecordCounts"].get("other", 0) == 0
+          assert evidence["extraction"]["outputBytes"] > 0
+          assert evidence["buildEnvironment"]["nltkBrownCorpus"]["repositoryCommit"] == "550b6625bcef1f2abff2ff770a5a0d272c9c6b2a"
+          assert evidence["buildEnvironment"]["nltkBrownCorpus"]["archiveSha256"] == "9b275f9b3b95d7bd66ccfb7cd259f445a13bbe5d1f4107aba09fd3e8364bafa6"
+          assert evidence["buildEnvironment"]["nltkBrownCorpus"]["license"] == "May be used for non-commercial purposes."
+          assert evidence["buildEnvironment"]["wikitextprocessorScribuntoCommit"] == "d35ca1f8d5fd23f1a9915e497cc00cac238f28c4"
+          assert evidence["buildEnvironment"]["pythonHashSeed"] == 0
+          for key in ("system", "release", "machine", "sqliteVersion"):
+              assert evidence["buildEnvironment"]["host"][key]
+          assert evidence["externalInputs"]["fullyInputLocked"] is False
+          assert len(evidence["externalInputs"]["unlockedLiveInputs"]) == 2
+          assert "experimental measurement" in evidence["externalInputs"]["qualification"]
+          cache_rows = evidence["externalInputs"]["cacheTableRows"]
+          assert set(cache_rows) == {
+              "interwiki_maps", "wikidata_items", "wikidata_properties",
+              "wikidata_property_values", "wiki_articles"
+          }
+          assert all(value is None or (isinstance(value, int) and value >= 0) for value in cache_rows.values())
+          assert evidence_path.stat().st_size <= 8192
+          print(json.dumps(evidence, sort_keys=True, separators=(",", ":")))
+          PY
+
+      - name: Measure projection compatibility against the full JSONL
+        run: |
+          set -euo pipefail
+          node scripts/audit-wiktextract-projection-compatibility.mjs \
+            --input /tmp/wiktextract-rich-work/full-en.jsonl \
+            --evidence /tmp/wiktextract-rich-work/full-en-evidence.json \
+            --lock lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json \
+            --out /tmp/wiktextract-rich-work/projection-compatibility-evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("/tmp/wiktextract-rich-work/projection-compatibility-evidence.json")
+          report = json.loads(path.read_text())
+          assert report["kind"] == "wiktextract-rich-projection-compatibility-dry-run"
+          assert report["productQualityClaim"] is False
+          assert report["input"]["recordCount"] > 0
+          assert path.stat().st_size <= 8192
+          print(json.dumps(report, sort_keys=True, separators=(",", ":")))
+          PY
+
+      - name: Upload bounded experimental evidence (does not alter NO-GO decision)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wikimedia-enwiktionary-20260901-rich-experimental-evidence
+          path: |
+            /tmp/wiktextract-rich-work/full-en-evidence.json
+            /tmp/wiktextract-rich-work/projection-compatibility-evidence.json
+          if-no-files-found: error

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "decisionId": "wikimedia-enwiktionary-20260901-rich",
+  "decision": "NO-GO",
+  "decidedAt": "2026-09-30",
+  "scope": "The current locked Wikimedia English Wiktionary to Rich EN→ZH POC pipeline.",
+  "source": {
+    "sourceId": "wikimedia-enwiktionary-20260901",
+    "sha256": "06acca8138eacb3e8ae9c1d6232f836e37c3bf9b6d582a86693731fe0d336c20",
+    "sizeBytes": 1632298458,
+    "wiktextractCommit": "1a05e46f9efbccda6a2b2f8e21b30a9c0c46513a",
+    "wikitextprocessorCommit": "e3d6d4edb77618f4d6680edc66e3f774bea59820",
+    "wikitextprocessorScribuntoCommit": "d35ca1f8d5fd23f1a9915e497cc00cac238f28c4"
+  },
+  "blockers": [
+    {
+      "id": "unpinned-live-inputs",
+      "status": "BLOCKER",
+      "evidence": "The pinned WikitextProcessor fetches interwiki siteinfo during phase one; pinned Wiktextract may make conditional live Wikidata/SPARQL requests during phase two. These responses are not locked or captured, so the current pipeline is not fully input-locked."
+    },
+    {
+      "id": "translation-sense-association",
+      "status": "BLOCKER",
+      "evidence": "The current Wiktionary projection has no authoritative sense-level association for entry-level translations. It does not guess a definition-sense join."
+    },
+    {
+      "id": "brown-corpus-license",
+      "status": "UNRESOLVED",
+      "evidence": "Pinned Wiktextract requires the Brown corpus at build time. Its locked NLTK data index says it may be used for non-commercial purposes, so build-use approval and retained-field/license implications remain unresolved. The corpus is not shipped or bundled."
+    },
+    {
+      "id": "full-extraction-and-benchmark",
+      "status": "NOT-COMPLETED",
+      "evidence": "Sol stopped the experimental second phase after a partial observation. No full-export, benchmark, or pack-size claim is available."
+    }
+  ],
+  "evidencePath": "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json",
+  "approval": false,
+  "claim": "This decision rejects the current source pipeline. It does not approve a dictionary source, production pack, license, or product release."
+}
