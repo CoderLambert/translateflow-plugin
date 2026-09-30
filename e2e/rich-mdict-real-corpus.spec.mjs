@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,8 +12,27 @@ const lock = JSON.parse(await readFile(
 ));
 const mdxPath = process.env.RICH_MDICT_REAL_MDX ||
   "";
+const archiveCacheDir = process.env.RICH_MDICT_CACHE_DIR || "";
+const ecdictZipPath = process.env.RICH_MDICT_REAL_ARCHIVE ||
+  (archiveCacheDir ? resolve(archiveCacheDir, "ecdict-mdx-28.zip") : "");
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
   resolve(repoRoot, "test-results/rich-mdict-evidence");
+const ECDICT_RECIPE_ID = "ecdict-en-zh-mdx-curated";
+const ECDICT_PACK_ID = "rich-mdict-18500000-0000-4000-8000-000000000028";
+const ECDICT_PERMISSION_ORIGINS = [
+  "https://github.com/*",
+  "https://release-assets.githubusercontent.com/*"
+];
+
+// This compatibility file is the only E2E surface that grants release hosts.
+// Its test manifest pre-grants only this exact origin pair. When the certifier
+// cache is present, the temporary fixture worker bridges its real bytes locally.
+test.use({
+  ecdictMdxReleaseHostAccess: true,
+  ecdictMdxCachedArchivePath: ecdictZipPath && existsSync(ecdictZipPath)
+    ? ecdictZipPath
+    : ""
+});
 
 test.describe("pinned real ECDICT rich MDict product gate", () => {
   test.setTimeout(12 * 60 * 1000);
@@ -192,8 +213,311 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
   });
 });
 
+test.describe("curated ECDICT MDX one-click real archive gate", () => {
+  test.setTimeout(15 * 60 * 1000);
+  test.skip(
+    process.env.ECDICT_MDX_ONE_CLICK_GATE !== "1",
+    "Set ECDICT_MDX_ONE_CLICK_GATE=1 after the corpus certifier has cached ecdict-mdx-28.zip."
+  );
+
+  test.beforeEach(async ({ harness }) => {
+    await harness.reset();
+  });
+
+  test("the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes", async ({ harness }) => {
+    expect(ecdictZipPath, "Set RICH_MDICT_CACHE_DIR or RICH_MDICT_REAL_ARCHIVE.").not.toBe("");
+    expect(existsSync(ecdictZipPath), `Cached archive not found: ${ecdictZipPath}`).toBe(true);
+    const archiveBytes = await readFile(ecdictZipPath);
+    const archiveLock = lock.archive;
+    expect(archiveBytes.byteLength).toBe(archiveLock.bytes);
+    expect(createHash("sha256").update(archiveBytes).digest("hex")).toBe(archiveLock.sha256);
+
+    const options = await harness.context.newPage();
+    await options.addInitScript(() => {
+      const permissionStoreKey = "tfEcdictPermissionRequests";
+      let permissionRequests = [];
+      try {
+        permissionRequests = JSON.parse(sessionStorage.getItem(permissionStoreKey) || "[]");
+      } catch {}
+      window.__tfEcdictPermissionRequests = permissionRequests;
+      const nativeRequest = chrome.permissions.request.bind(chrome.permissions);
+      chrome.permissions.request = async (details) => {
+        const granted = await nativeRequest(details);
+        window.__tfEcdictPermissionRequests.push({ details, granted });
+        sessionStorage.setItem(permissionStoreKey, JSON.stringify(window.__tfEcdictPermissionRequests));
+        return granted;
+      };
+
+      window.__tfEcdictWorkerEvents = [];
+      const NativeWorker = window.Worker;
+      window.Worker = new Proxy(NativeWorker, {
+        construct(target, args) {
+          const worker = Reflect.construct(target, args);
+          const url = String(args[0] || "");
+          if (!url.endsWith("/src/options/workers/curated-ecdict-mdx-worker.js")) {
+            return worker;
+          }
+          const nativeAdd = worker.addEventListener.bind(worker);
+          const nativeRemove = worker.removeEventListener.bind(worker);
+          const wrappedListeners = new WeakMap();
+          worker.addEventListener = (type, listener, listenerOptions) => {
+            if (type !== "message" || typeof listener !== "function") {
+              return nativeAdd(type, listener, listenerOptions);
+            }
+            const wrapped = (event) => {
+              const message = event.data || {};
+              window.__tfEcdictWorkerEvents.push({
+                type: message.type || "",
+                phase: message.phase || "",
+                redirected: message.metadata?.redirected,
+                finalOrigin: message.metadata?.finalOrigin || "",
+                error: message.error || ""
+              });
+              if (window.__tfEcdictWorkerEvents.length > 60) {
+                window.__tfEcdictWorkerEvents.shift();
+              }
+              listener.call(worker, event);
+            };
+            wrappedListeners.set(listener, wrapped);
+            return nativeAdd(type, wrapped, listenerOptions);
+          };
+          worker.removeEventListener = (type, listener, listenerOptions) =>
+            nativeRemove(type, wrappedListeners.get(listener) || listener, listenerOptions);
+          return worker;
+        }
+      });
+    });
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const row = options.locator(
+      `#curatedDictionaryList [data-recipe-id="${ECDICT_RECIPE_ID}"]`
+    );
+    if (!(await row.count())) {
+      const diagnostics = await options.evaluate(async () => {
+        const recipes = await import(chrome.runtime.getURL("src/shared/curated-dictionaries.js"));
+        const [status, rich] = await Promise.all([
+          chrome.runtime.sendMessage({ type: "DICTIONARY_PACK_STATUS" }),
+          chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" })
+        ]);
+        return {
+          curatedIds: recipes.CURATED_DICTIONARIES.map((source) => source.id),
+          status,
+          rich,
+          listText: document.querySelector("#curatedDictionaryList")?.innerText || ""
+        };
+      });
+      throw new Error(`ECDICT card did not render: ${JSON.stringify(diagnostics)}`);
+    }
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("data-pack-id", ECDICT_PACK_ID);
+    await expect(row.locator("[data-action='install']")).toBeVisible();
+
+    const installStarted = Date.now();
+    await row.locator("[data-action='install']").click();
+    await waitForCuratedMdxInstall(options, row, "initial install");
+    const initialInstallMs = Date.now() - installStarted;
+    await expect(row.locator("[data-action='reinstall']")).toBeVisible();
+    await expect(row.locator("[data-action='delete']")).toBeVisible();
+
+    const initial = await listCuratedEcdict(options);
+    expect(initial).toBeTruthy();
+    expect(initial.status, JSON.stringify(initial)).toBe("ready");
+    expect(initial.curated?.recipeId).toBe(ECDICT_RECIPE_ID);
+    const initialVersion = initial.packVersion;
+    const afterInitialInstallPermissions = await readEcdictPermissionRequests(options);
+    expect(afterInitialInstallPermissions).toEqual([
+      { details: { origins: ECDICT_PERMISSION_ORIGINS }, granted: true }
+    ]);
+    const initialArchiveRequest = harness.server.ecdictMdxArchiveRequests[0];
+    expect(initialArchiveRequest?.path).toBe("/__e2e/ecdict-mdx-28.zip");
+    expect(initialArchiveRequest?.origin).toMatch(/^http:\/\/127\.0\.0\.1:/u);
+    expect(initialArchiveRequest?.mode).toBe("archive");
+    expect(initialArchiveRequest?.finishedAt).toBeTruthy();
+    const firstDownloaderReady = await options.evaluate(() =>
+      window.__tfEcdictWorkerEvents.find((event) => event.type === "curated-ecdict-mdx:ready") || null
+    );
+    expect(firstDownloaderReady).toMatchObject({
+      redirected: true,
+      finalOrigin: "https://release-assets.githubusercontent.com"
+    });
+
+    harness.server.setEcdictMdxArchiveMode("failure");
+    await row.locator("[data-action='reinstall']").click();
+    await expect(row.locator('[aria-live="polite"]')).toContainText(/HTTP 503|upstream unavailable|asset unavailable/iu, {
+      timeout: 30_000
+    });
+    await expect.poll(async () => (await listCuratedEcdict(options))?.packVersion)
+      .toBe(initialVersion);
+    await expect.poll(async () => (await lookupEcdict(options, "run"))?.found)
+      .toBe(true);
+
+    harness.server.setEcdictMdxArchiveMode("cancel");
+    await row.locator("[data-action='reinstall']").click();
+    await expect.poll(() => harness.server.ecdictMdxArchiveRequests.length)
+      .toBe(3);
+    expect(harness.server.ecdictMdxArchiveRequests.at(-1)?.mode).toBe("cancel");
+    await expect(row.locator("[data-action='cancel']")).toBeVisible();
+    await row.locator("[data-action='cancel']").click();
+    await expect(row.locator('[aria-live="polite"]')).toContainText("安装已取消", {
+      timeout: 30_000
+    });
+    await expect.poll(async () => (await listCuratedEcdict(options))?.packVersion)
+      .toBe(initialVersion);
+    await expect.poll(async () => (await lookupEcdict(options, "run"))?.found)
+      .toBe(true);
+
+    harness.server.setEcdictMdxArchiveMode("archive");
+    const reinstallStarted = Date.now();
+    const reinstallEventOffset = await options.evaluate(() =>
+      window.__tfEcdictWorkerEvents?.length || 0
+    );
+    await row.locator("[data-action='reinstall']").click();
+    await waitForCuratedMdxInstall(options, row, "reinstall", reinstallEventOffset);
+    const reinstallMs = Date.now() - reinstallStarted;
+    const afterReinstall = await listCuratedEcdict(options);
+    expect(afterReinstall?.status).toBe("ready");
+    expect(afterReinstall?.packVersion).not.toBe(initialVersion);
+    expect(afterReinstall?.curated?.mdxSha256).toBe(lock.mdx.sha256);
+    expect(harness.server.ecdictMdxArchiveRequests.map((item) => item.mode)).toEqual([
+      "archive",
+      "failure",
+      "cancel",
+      "archive"
+    ]);
+    const downloaderReadyMessages = await options.evaluate(() =>
+      (window.__tfEcdictWorkerEvents || []).filter((event) => event.type === "curated-ecdict-mdx:ready")
+    );
+    expect(downloaderReadyMessages.length).toBeGreaterThanOrEqual(1);
+    expect(downloaderReadyMessages.at(-1)?.type).toBe("curated-ecdict-mdx:ready");
+    expect(downloaderReadyMessages.every((event) =>
+      event.redirected === true &&
+      event.finalOrigin === "https://release-assets.githubusercontent.com"
+    )).toBe(true);
+
+    await options.reload();
+    const reloadedRow = options.locator(
+      `#curatedDictionaryList [data-recipe-id="${ECDICT_RECIPE_ID}"]`
+    );
+    await expect(reloadedRow.locator("[data-action='reinstall']")).toBeVisible();
+    const lookup = await lookupEcdict(options, "run");
+    expect(lookup.ok).toBe(true);
+    expect(lookup.found).toBe(true);
+    const runRecord = lookup.dictionaries.find((item) => item.headword.toLowerCase() === "run");
+    expect(runRecord?.text).toContain("n. 跑, 赛跑, 奔跑, 奔跑的路程");
+    expect(harness.server.calls).toHaveLength(0);
+
+    const selection = await harness.open("/selection");
+    await selection.evaluate(() => {
+      const word = document.createElement("p");
+      word.id = "curated-ecdict-mdx-word";
+      word.textContent = "run";
+      document.body.appendChild(word);
+    });
+    await harness.inject(selection);
+    await selectElementText(selection, "#curated-ecdict-mdx-word");
+    await selection.locator(".tf-selection-chip").click();
+    await expect(selection.locator(".tf-selection-result")).toContainText("运行", {
+      timeout: 90_000
+    });
+    await expect(selection.locator(".tf-selection-result .tf-selection-primary").first())
+      .toContainText("运行");
+    await expect(selection.locator(".tf-selection-rich-record"))
+      .toContainText("简明英汉字典增强版");
+    await expect(selection.locator(".tf-selection-rich-text .tf-rich-viewer").last())
+      .toContainText("n. 跑, 赛跑, 奔跑, 奔跑的路程", { timeout: 90_000 });
+    expect(await selection.locator(".tf-selection-result").getAttribute("data-result-kind"))
+      .toBe("local");
+    expect(harness.server.calls).toHaveLength(0);
+
+    const permissionRequests = await readEcdictPermissionRequests(options);
+    expect(permissionRequests).toEqual([
+      { details: { origins: ECDICT_PERMISSION_ORIGINS }, granted: true },
+      { details: { origins: ECDICT_PERMISSION_ORIGINS }, granted: true },
+      { details: { origins: ECDICT_PERMISSION_ORIGINS }, granted: true },
+      { details: { origins: ECDICT_PERMISSION_ORIGINS }, granted: true }
+    ]);
+
+    await reloadedRow.locator("[data-action='delete']").click();
+    await expect(reloadedRow.locator("[data-action='install']")).toBeVisible();
+    const afterDelete = await lookupEcdict(options, "run");
+    expect(afterDelete.ok).toBe(true);
+    expect(afterDelete.found).toBe(false);
+    expect(afterDelete.dictionaries).toEqual([]);
+    expect(harness.server.calls).toHaveLength(0);
+
+    const report = {
+      status: "PASS",
+      archiveBytes: archiveBytes.byteLength,
+      archiveSha256: archiveLock.sha256,
+      mdxBytes: lock.mdx.bytes,
+      mdxSha256: lock.mdx.sha256,
+      entryCount: lock.mdx.entryCount,
+      permissionOrigins: ECDICT_PERMISSION_ORIGINS,
+      permissionGrant: "The temporary Playwright manifest pregrants these two exact origins; chrome.permissions.request is still called and returns true.",
+      testOnlyArchiveBridge: {
+        localRequests: harness.server.ecdictMdxArchiveRequests.map(({ origin, path, mode }) => ({ origin, path, mode })),
+        pinnedFinalOrigin: "https://release-assets.githubusercontent.com"
+      },
+      initialInstallMs,
+      reinstallMs,
+      failedAndCancelledReinstallsPreservedVersion: true,
+      offlineLookup: "run",
+      providerCalls: harness.server.calls.length,
+      deleted: afterDelete.dictionaries.length === 0,
+      generatedAt: new Date().toISOString()
+    };
+    await mkdir(evidenceDir, { recursive: true });
+    await writeFile(resolve(evidenceDir, "ecdict-one-click-real-archive-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    console.log("[ECDICT_MDX_ONE_CLICK_REAL_ARCHIVE]", JSON.stringify(report));
+  });
+});
+
 async function sendOptionsRuntime(options, message) {
   return options.evaluate((input) => chrome.runtime.sendMessage(input), message);
+}
+
+async function listCuratedEcdict(options) {
+  const response = await sendOptionsRuntime(options, { type: "RICH_MDICT_LIST" });
+  return response.dictionaries?.find((item) => item.id === ECDICT_PACK_ID) || null;
+}
+
+async function lookupEcdict(options, text) {
+  return sendOptionsRuntime(options, { type: "RICH_MDICT_LOOKUP", text });
+}
+
+async function readEcdictPermissionRequests(options) {
+  return options.evaluate(() => window.__tfEcdictPermissionRequests || []);
+}
+
+async function waitForCuratedMdxInstall(options, row, phase, eventOffset = 0) {
+  const deadline = Date.now() + 10 * 60 * 1000;
+  let lastReport = "";
+  while (Date.now() < deadline) {
+    const [detail, permissions, events] = await Promise.all([
+      row.locator('[aria-live="polite"]').textContent(),
+      readEcdictPermissionRequests(options),
+      options.evaluate(() => window.__tfEcdictWorkerEvents || [])
+    ]);
+    const normalized = String(detail || "").trim();
+    const currentEvents = events.slice(eventOffset);
+    if (normalized.includes("已安装审核版本 1.0.28")) return;
+    if (
+      normalized.includes("未授予") ||
+      currentEvents.some((event) => event.type === "curated-ecdict-mdx:error")
+    ) {
+      throw new Error(`ECDICT ${phase} stopped before READY: ${JSON.stringify({ detail: normalized, permissions, events: currentEvents.slice(-12) })}`);
+    }
+    const report = JSON.stringify({ detail: normalized, permissions, events: currentEvents.slice(-12) });
+    if (report !== lastReport) {
+      console.log(`[ECDICT_MDX_GATE_PROGRESS:${phase}]`, report);
+      lastReport = report;
+    }
+    await options.waitForTimeout(5_000);
+  }
+  throw new Error(`ECDICT ${phase} timed out: ${JSON.stringify({
+    detail: await row.locator('[aria-live="polite"]').textContent(),
+    permissions: await readEcdictPermissionRequests(options),
+    events: await options.evaluate(() => (window.__tfEcdictWorkerEvents || []).slice(-12))
+  })}`);
 }
 
 async function listFiles(directory) {

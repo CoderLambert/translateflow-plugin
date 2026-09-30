@@ -1,5 +1,6 @@
 import {
-  assertDeclaredCuratedDictionary
+  assertDeclaredCuratedDictionary,
+  CURATED_IMPORTER_TYPES
 } from "../../shared/curated-dictionaries.js";
 
 export async function fetchCuratedDictionarySource(
@@ -20,7 +21,13 @@ export async function fetchCuratedDictionarySource(
   return fetchImpl(declared.downloadUrl, {
     method: "GET",
     cache: "no-store",
-    redirect: "error",
+    // The reviewed ECDICT release URL redirects to GitHub's release asset
+    // host. Its second exact origin is declared on that recipe and checked
+    // again by the pinned ZIP extractor. Other recipes keep redirects off.
+    redirect:
+      declared.importerType === CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1
+        ? "follow"
+        : "error",
     signal
   });
 }

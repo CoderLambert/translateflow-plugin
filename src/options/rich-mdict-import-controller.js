@@ -1,4 +1,8 @@
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
+import {
+  assertDeclaredCuratedDictionary,
+  CURATED_IMPORTER_TYPES
+} from "../shared/curated-dictionaries.js";
 import { RICH_MDICT_WORKER_MESSAGES } from "./workers/rich-mdict-import-worker-protocol.js";
 
 export function createRichMdictImportController({
@@ -19,10 +23,28 @@ export function createRichMdictImportController({
 
   let active = null;
 
-  async function importDictionary({ mdxFile, displayMetadata = {} } = {}) {
+  async function importDictionary({
+    mdxFile,
+    displayMetadata = {},
+    curatedRecipe = null,
+    expectedActiveVersion = ""
+  } = {}) {
     if (active) throw controllerError("RICH_MDICT_BUSY", "Another rich MDict import is already running.");
     validateFile(mdxFile);
-    const identity = createIdentity(cryptoProvider, now);
+    const declaredRecipe = curatedRecipe
+      ? assertCuratedMdxRecipe(curatedRecipe)
+      : null;
+    const identity = createIdentity(
+      cryptoProvider,
+      now,
+      declaredRecipe?.output?.packId || ""
+    );
+    const catalogReplacement = declaredRecipe
+      ? {
+          recipeId: declaredRecipe.id,
+          expectedActiveVersion: String(expectedActiveVersion || "")
+        }
+      : null;
     const requestId = "rich-dict-" + identity.uuid;
     const current = {
       requestId,
@@ -42,7 +64,8 @@ export function createRichMdictImportController({
         sourceBytes: mdxFile.size,
         requestId,
         packId: identity.packId,
-        packVersion: identity.packVersion
+        packVersion: identity.packVersion,
+        ...(catalogReplacement ? { catalogReplacement } : {})
       });
       if (!preflight?.ok) throw responseError(preflight, "Rich dictionary storage preflight failed.");
       assertCurrent(current);
@@ -65,7 +88,8 @@ export function createRichMdictImportController({
           file: mdxFile,
           packId: identity.packId,
           packVersion: identity.packVersion,
-          displayMetadata
+          displayMetadata,
+          ...(declaredRecipe ? { curatedRecipeId: declaredRecipe.id } : {})
         }
       });
 
@@ -82,7 +106,8 @@ export function createRichMdictImportController({
         requestId,
         packId: ready.packId,
         packVersion: ready.packVersion,
-        metadata: ready.metadata
+        metadata: ready.metadata,
+        ...(catalogReplacement ? { catalogReplacement } : {})
       });
       if (!commit?.ok) {
         if (current.cancelRequested) throw abortError();
@@ -182,7 +207,7 @@ function validateFile(file) {
   }
 }
 
-function createIdentity(cryptoProvider, now) {
+function createIdentity(cryptoProvider, now, stablePackId = "") {
   const uuid = String(cryptoProvider?.randomUUID?.() || "").toLowerCase();
   if (!/^[a-f0-9-]{36}$/u.test(uuid)) {
     throw controllerError("RICH_MDICT_STORAGE", "浏览器无法生成安全的本地词典标识。");
@@ -193,9 +218,21 @@ function createIdentity(cryptoProvider, now) {
   }
   return {
     uuid,
-    packId: "rich-mdict-" + uuid,
+    packId: stablePackId || "rich-mdict-" + uuid,
     packVersion: "import-" + timestamp.toString(36) + "-" + uuid.slice(0, 8)
   };
+}
+
+function assertCuratedMdxRecipe(recipe) {
+  const declared = assertDeclaredCuratedDictionary(recipe);
+  if (
+    declared.importerType !== CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1 ||
+    declared.output?.recipeId !== declared.id ||
+    !/^rich-mdict-[a-f0-9-]{36}$/u.test(String(declared.output?.packId || ""))
+  ) {
+    throw controllerError("RICH_MDICT_PROVENANCE", "Curated rich MDict recipe is not declared by this extension.");
+  }
+  return declared;
 }
 
 function waitForReady({ worker, requestId, onProgress, setReject }) {

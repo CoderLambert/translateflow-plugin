@@ -1,11 +1,20 @@
+import {
+  ECDICT_MDX_IMPORTER_TYPE,
+  ECDICT_MDX_RECIPE,
+  ECDICT_MDX_RECIPE_ID,
+  validateEcdictMdxRecipe
+} from "./curated-ecdict-mdx-recipe.js";
+
 export const CURATED_RECIPE_SCHEMA_VERSION = 1;
 
 export const CURATED_IMPORTER_TYPES = Object.freeze({
-  ECDICT_CSV_V1: "ecdict-csv-v1"
+  ECDICT_CSV_V1: "ecdict-csv-v1",
+  ECDICT_MDX_ZIP_V1: ECDICT_MDX_IMPORTER_TYPE
 });
 
 export const CURATED_DICTIONARY_IDS = Object.freeze({
-  ECDICT_EN_ZH: "ecdict-en-zh-curated"
+  ECDICT_EN_ZH: "ecdict-en-zh-curated",
+  ECDICT_EN_ZH_MDX: ECDICT_MDX_RECIPE_ID
 });
 
 const ECDICT_COMMIT =
@@ -50,7 +59,8 @@ const ECDICT_RECIPE = Object.freeze({
 });
 
 export const CURATED_DICTIONARIES = Object.freeze([
-  validateCuratedDictionaryRecipe(ECDICT_RECIPE)
+  validateCuratedDictionaryRecipe(ECDICT_RECIPE),
+  validateCuratedDictionaryRecipe(ECDICT_MDX_RECIPE)
 ]);
 
 export function getCuratedDictionary(id) {
@@ -148,20 +158,25 @@ export function validateCuratedDictionaryRecipe(source) {
     "display format"
   );
 
-  validateOutput(source.output);
   validateImporterOptions(source);
   return source;
 }
 
 function validateImporterOptions(source) {
-  if (
-    source.importerType !==
-      CURATED_IMPORTER_TYPES.ECDICT_CSV_V1
-  ) {
-    throw new Error(
-      "Curated dictionary importer has no extension-owned validator."
-    );
+  if (source.importerType === CURATED_IMPORTER_TYPES.ECDICT_CSV_V1) {
+    validateEcdictCsvRecipe(source);
+    return;
   }
+  if (source.importerType === CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1) {
+    validateEcdictMdxRecipe(source);
+    return;
+  }
+  throw new Error(
+    "Curated dictionary importer has no extension-owned validator."
+  );
+}
+
+function validateEcdictCsvRecipe(source) {
   if (
     source.sourceFormat !== "ECDICT CSV" ||
     source.displayFormat !== "ecdict-csv" ||
@@ -197,6 +212,7 @@ function validateImporterOptions(source) {
       "ECDICT locked download exceeds its source byte budget."
     );
   }
+  validateOutput(source.output);
 }
 
 function validateOutput(output) {

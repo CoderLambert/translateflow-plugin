@@ -11,7 +11,6 @@ import {
   RICH_MDICT_MAX_INDEX_BYTES,
   RICH_MDICT_MAX_RECORD_BYTES,
   RICH_MDICT_OPFS_ROOT,
-  RICH_MDICT_MAX_SOURCE_BYTES,
   RICH_MDICT_SOURCE_ID,
   RICH_MDICT_SOURCE_PATH,
   RICH_MDICT_STATE_KEY,
@@ -33,6 +32,16 @@ import {
   sha256,
   validateCommit
 } from "./rich-mdict-contract.js";
+import {
+  assertCatalogReplacementTarget,
+  cleanupCatalogVersions,
+  retainCatalogResources,
+  sameCatalogReplacement,
+  validateCatalogReplacement
+} from "./rich-mdict-catalog-replacement.js";
+import {
+  createRichMdictInstallPreflight
+} from "./rich-mdict-install-preflight.js";
 
 export {
   RICH_MDICT_INDEX_PATH,
@@ -71,9 +80,20 @@ export function createRichMdictManager({
 
   const indexCache = new Map();
   const operationsByRequest = new Map();
+  const preflightQuota = createRichMdictInstallPreflight({
+    store,
+    stateStore,
+    storageManager,
+    serialize
+  });
 
   function commit(input = {}) {
     const metadata = validateCommit(input);
+    const catalogReplacement = validateCatalogReplacement(
+      input.catalogReplacement,
+      metadata.packId,
+      metadata.curated
+    );
     const requestId = normalizeRequestId(input.requestId);
     if (operationsByRequest.has(requestId)) {
       throw richError("RICH_MDICT_BUSY", "Rich dictionary request ID is already active.");
@@ -82,6 +102,7 @@ export function createRichMdictManager({
       requestId,
       packId: metadata.packId,
       packVersion: metadata.packVersion,
+      catalogReplacement,
       controller: new AbortController(),
       phase: "verify",
       committed: false
@@ -91,28 +112,40 @@ export function createRichMdictManager({
       try {
         if (operation.controller.signal.aborted) throw richMdictAbortError();
         const state = await stateStore.read();
-        if (state.packs[metadata.packId]) {
-          throw richError("RICH_MDICT_EXISTS", "This rich dictionary identifier is already installed.");
-        }
+        assertCatalogReplacementTarget(
+          state.packs[metadata.packId],
+          catalogReplacement,
+          metadata.packVersion
+        );
         const reservation = state.reservations?.[requestId];
         if (
           reservation?.packId !== metadata.packId ||
-          reservation?.packVersion !== metadata.packVersion
+          reservation?.packVersion !== metadata.packVersion ||
+          !sameCatalogReplacement(reservation?.catalogReplacement, catalogReplacement)
         ) {
           throw richError("RICH_MDICT_RESERVATION", "Rich dictionary import reservation is missing or expired.");
         }
         const index = await assertStagedFiles(metadata, operation.controller.signal);
         if (operation.controller.signal.aborted) throw richMdictAbortError();
         const snapshot = makeRichMdictSnapshot(metadata, index);
+        const previousSnapshot = state.packs[metadata.packId]?.active || null;
+        const retainedResourceVersion = retainCatalogResources(
+          previousSnapshot,
+          snapshot,
+          catalogReplacement
+        );
         operation.phase = "commitpoint";
         const next = await stateStore.update((current) => {
-          if (current.packs[metadata.packId]) {
-            throw richError("RICH_MDICT_EXISTS", "This rich dictionary identifier is already installed.");
-          }
+          assertCatalogReplacementTarget(
+            current.packs[metadata.packId],
+            catalogReplacement,
+            metadata.packVersion
+          );
           const activeReservation = current.reservations?.[requestId];
           if (
             activeReservation?.packId !== metadata.packId ||
-            activeReservation?.packVersion !== metadata.packVersion
+            activeReservation?.packVersion !== metadata.packVersion ||
+            !sameCatalogReplacement(activeReservation?.catalogReplacement, catalogReplacement)
           ) {
             throw richError("RICH_MDICT_RESERVATION", "Rich dictionary import reservation is missing or expired.");
           }
@@ -127,8 +160,15 @@ export function createRichMdictManager({
         });
         operation.committed = true;
         indexCache.set(cacheKey(snapshot), index);
+        if (catalogReplacement) await cleanupCatalogVersions({
+          store,
+          indexCache,
+          packId: metadata.packId,
+          activeVersion: metadata.packVersion,
+          retainedResourceVersion
+        });
         return {
-          status: "installed",
+          status: catalogReplacement ? "replaced" : "installed",
           dictionary: publicRichDictionary(next.packs[metadata.packId])
         };
       } catch (error) {
@@ -264,7 +304,11 @@ export function createRichMdictManager({
     const version = normalizeVersion(packVersion);
     return serialize(id, async () => {
       const state = await stateStore.read();
-      if (state.packs[id]?.sourceId === RICH_MDICT_SOURCE_ID) {
+      const entry = state.packs[id];
+      if (
+        entry?.sourceId === RICH_MDICT_SOURCE_ID &&
+        entry.active?.packVersion === version
+      ) {
         return { removed: false, installed: true };
       }
       const removed = await store.removeVersion(id, version);
@@ -276,7 +320,7 @@ export function createRichMdictManager({
         }
         return current;
       });
-      return { removed, installed: false };
+      return { removed, installed: Boolean(entry?.sourceId === RICH_MDICT_SOURCE_ID) };
     });
   }
 
@@ -327,45 +371,6 @@ export function createRichMdictManager({
     assertIndexMatchesMetadata(index, snapshot);
     indexCache.set(key, index);
     return index;
-  }
-
-  async function preflightQuota(sourceBytes, identity = null) {
-    if (!Number.isSafeInteger(sourceBytes) || sourceBytes <= 0 || sourceBytes > RICH_MDICT_MAX_SOURCE_BYTES) {
-      throw richError("RICH_MDICT_LIMIT", "MDX file exceeds the current 128 MiB safety limit.");
-    }
-    if (storageManager?.estimate) {
-      const estimate = await storageManager.estimate();
-      const quota = Number(estimate?.quota);
-      const usage = Number(estimate?.usage);
-      if (
-        Number.isFinite(quota) && Number.isFinite(usage) &&
-        Math.max(0, quota - usage) < sourceBytes + 32 * 1024 * 1024
-      ) {
-        throw richError("RICH_MDICT_QUOTA", "There is not enough browser storage for this rich dictionary.");
-      }
-    }
-    if (identity) {
-      const requestId = normalizeRequestId(identity.requestId);
-      const packId = normalizePackId(identity.packId);
-      const packVersion = normalizeVersion(identity.packVersion);
-      await serialize(packId, async () => {
-        const existingVersions = await store.listVersions(packId);
-        await stateStore.update((current) => {
-          if (current.packs[packId]) {
-            throw richError("RICH_MDICT_EXISTS", "This rich dictionary identifier is already installed.");
-          }
-          const collision = Object.entries(current.reservations || {}).some(([otherId, reservation]) =>
-            reservation?.packId === packId
-          );
-          if (collision || current.reservations?.[requestId] || existingVersions.length) {
-            throw richError("RICH_MDICT_EXISTS", "This rich dictionary identifier is already in use.");
-          }
-          current.reservations ||= {};
-          current.reservations[requestId] = { packId, packVersion, createdAt: Date.now() };
-          return current;
-        });
-      });
-    }
   }
 
   async function releaseReservation(requestId, packId, packVersion) {

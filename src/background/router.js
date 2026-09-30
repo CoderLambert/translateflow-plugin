@@ -214,7 +214,8 @@ export async function handleBackgroundMessage(message, sender) {
       await preflightRichMdictImport(Number(message.sourceBytes), {
         requestId: message.requestId,
         packId: message.packId,
-        packVersion: message.packVersion
+        packVersion: message.packVersion,
+        catalogReplacement: message.catalogReplacement
       });
       return { ready: true };
     case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_COMMIT:
@@ -223,7 +224,8 @@ export async function handleBackgroundMessage(message, sender) {
         requestId: message.requestId,
         packId: message.packId,
         packVersion: message.packVersion,
-        metadata: message.metadata
+        metadata: message.metadata,
+        catalogReplacement: message.catalogReplacement
       });
     case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_CANCEL:
       assertOptionsSender(sender);
