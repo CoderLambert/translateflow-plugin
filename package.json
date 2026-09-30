@@ -23,6 +23,7 @@
     "evaluate:bootstrap": "node scripts/evaluate-core-bootstrap.mjs",
     "measure:extension-footprint": "node scripts/measure-extension-footprint.mjs",
     "project:kaikki": "node scripts/project-kaikki-rich.mjs",
+    "ingest:wiktextract": "python3 scripts/run-pinned-wiktextract-ingest.py",
     "certify:selection-lexical": "node scripts/certify-integrated-lexical-quality.mjs",
     "project:stardict": "node scripts/project-stardict-import.mjs",
     "project:mdict": "node scripts/project-mdict-import.mjs",
