@@ -39,6 +39,11 @@ test.describe("strict MDict visible local import", () => {
     await expect(
       options.locator("#mdictInspectionMeta")
     ).toContainText("不渲染 HTML/CSS/JS");
+    await expect(
+      options.locator(".data-source-card").filter({
+        hasText: "MDict (.mdx)"
+      })
+    ).toContainText("不支持 .mdd");
 
     await options
       .locator("#mdictSemanticConfirmation")
@@ -69,6 +74,13 @@ test.describe("strict MDict visible local import", () => {
     await expect(installed).toContainText("本地导入");
     await expect(installed).toContainText("MDict");
     await expect(installed).toContainText("用户提供 · 未验证");
+
+    await options.reload();
+    const reloadedInstalled = options
+      .locator("#installedDictionaryList .site-row")
+      .filter({ hasText: "Issue 167 MDict" });
+    await expect(reloadedInstalled).toBeVisible();
+    await expect(reloadedInstalled).toContainText("用户提供 · 未验证");
 
     const page = await harness.open("/selection");
     await page.evaluate(() => {
@@ -107,10 +119,10 @@ test.describe("strict MDict visible local import", () => {
     ).toBe(true);
     expect(harness.server.calls).toHaveLength(0);
 
-    await installed
+    await reloadedInstalled
       .getByRole("button", { name: "删除" })
       .click();
-    await expect(installed).toHaveCount(0);
+    await expect(reloadedInstalled).toHaveCount(0);
 
     const afterDelete = await harness.runtime({
       type: "LEXICAL_LOOKUP",

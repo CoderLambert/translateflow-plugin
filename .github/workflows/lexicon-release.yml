@@ -12,12 +12,15 @@ on:
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
       - "scripts/certify-integrated-lexical-quality.mjs"
+      - "scripts/certify-offline-dictionary-beta.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
       - "scripts/evaluate-core-bootstrap.mjs"
       - "scripts/measure-extension-footprint.mjs"
       - "scripts/measure-stardict-import-cost.mjs"
       - "tests/fixtures/lexical-quality-v1.json"
       - "tests/fixtures/ordinary-browsing-v1.json"
+      - "tests/offline-dictionary-beta-certification.test.mjs"
+      - "docs/OFFLINE_DICTIONARY_BETA_CERTIFICATION.md"
       - "lexicon/**"
       - "e2e/**"
       - "package.json"
@@ -32,17 +35,20 @@ on:
       - "scripts/setup-lexicon.mjs"
       - "scripts/certify-lexical-release.mjs"
       - "scripts/certify-integrated-lexical-quality.mjs"
+      - "scripts/certify-offline-dictionary-beta.mjs"
       - "scripts/benchmark-lexical-quality.mjs"
       - "scripts/evaluate-core-bootstrap.mjs"
       - "scripts/measure-extension-footprint.mjs"
       - "scripts/measure-stardict-import-cost.mjs"
       - "tests/fixtures/lexical-quality-v1.json"
       - "tests/fixtures/ordinary-browsing-v1.json"
+      - "tests/offline-dictionary-beta-certification.test.mjs"
       - "lexicon/**"
       - "e2e/**"
       - "package.json"
       - ".github/workflows/lexicon-release.yml"
       - "docs/DICTIONARY_SOURCE_FREEZE.md"
+      - "docs/OFFLINE_DICTIONARY_BETA_CERTIFICATION.md"
   workflow_dispatch:
 
 permissions:
@@ -118,7 +124,16 @@ jobs:
       - name: Chromium E2E with real release packs
         env:
           REQUIRE_RELEASE_LEXICON_PACKS: "1"
-        run: npm run test:e2e
+          PLAYWRIGHT_JSON_OUTPUT_FILE: offline-dictionary-beta-e2e.json
+        run: npm run test:e2e -- --reporter=line,json
+
+      - name: Certify integrated Offline Dictionary Library Beta
+        run: >-
+          npm run certify:offline-dictionary-beta --
+          --e2e offline-dictionary-beta-e2e.json
+          --lexical integrated-lexical-certification.json
+          --footprint extension-footprint-report.json
+          --out offline-dictionary-beta-certification.json
 
       - name: Upload lexical quality report
         uses: actions/upload-artifact@v4
@@ -167,3 +182,15 @@ jobs:
           path: assets/lexicon/
           if-no-files-found: error
           retention-days: 7
+
+      - name: Upload integrated Offline Dictionary Beta certification
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-dictionary-beta-certification
+          path: |
+            offline-dictionary-beta-certification.json
+            offline-dictionary-beta-e2e.json
+            integrated-lexical-certification.json
+            extension-footprint-report.json
+          if-no-files-found: error
+          retention-days: 30

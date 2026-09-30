@@ -8,8 +8,15 @@ import {
   fetchCuratedDictionarySource
 } from "../src/background/providers/curated-dictionary-network.js";
 import {
+  createCuratedDictionaryWorkerHandler,
   validateCuratedDictionaryResponse
 } from "../src/options/workers/curated-dictionary-worker-core.js";
+import {
+  CURATED_WORKER_MESSAGES
+} from "../src/options/workers/curated-dictionary-worker-protocol.js";
+import {
+  createOpfsImportQuarantine
+} from "../src/shared/opfs-import-quarantine.js";
 import {
   CURATED_IMPORTER_TYPES,
   CURATED_RECIPE_SCHEMA_VERSION
@@ -135,3 +142,199 @@ test("curated response accepts encoded transport length while decoded stream rem
     /locked artifact URL/
   );
 });
+
+test("curated ECDICT conversion failure cleans up before staging and never reports ready", async () => {
+  const opfsQuarantine = createOpfsImportQuarantine({
+    rootProvider: async () => missingQuarantineRoot()
+  });
+  const removedTokens = [];
+  const quarantine = {
+    ...opfsQuarantine,
+    async remove(value) {
+      removedTokens.push(value);
+      return opfsQuarantine.remove(value);
+    }
+  };
+  const messages = [];
+  const token = makeImportToken(1);
+  const handler = createCuratedDictionaryWorkerHandler({
+    postMessage(message) {
+      messages.push(message);
+    },
+    quarantine,
+    tokenFactory: () => token,
+    network: {
+      async fetchSource(source) {
+        return responseFor(source, [
+          "word,phonetic,definition,translation,pos,collins,oxford,tag,bnc,frq,exchange,detail,audio\n"
+        ]);
+      }
+    }
+  });
+
+  const result = await handler.handleMessage({
+    type: CURATED_WORKER_MESSAGES.START,
+    requestId: "ecdict-failed-conversion",
+    sourceId: "ecdict-en-zh-curated"
+  });
+
+  assert.equal(result.type, CURATED_WORKER_MESSAGES.ERROR);
+  assert.match(result.error, /source size mismatch/);
+  assert.equal(
+    messages.some((message) => message.type === CURATED_WORKER_MESSAGES.READY),
+    false
+  );
+  assert.deepEqual(await quarantine.listTokens(), []);
+  assert.deepEqual(removedTokens, [token]);
+});
+
+test("curated ECDICT cancellation during conversion reports AbortError without staged data or a ready token", async () => {
+  const opfsQuarantine = createOpfsImportQuarantine({
+    rootProvider: async () => missingQuarantineRoot()
+  });
+  const removedTokens = [];
+  const quarantine = {
+    ...opfsQuarantine,
+    async remove(value) {
+      removedTokens.push(value);
+      return opfsQuarantine.remove(value);
+    }
+  };
+  const messages = [];
+  const token = makeImportToken(2);
+  let reachedBlockedRead;
+  const blockedRead = new Promise((resolve) => {
+    reachedBlockedRead = resolve;
+  });
+  const handler = createCuratedDictionaryWorkerHandler({
+    postMessage(message) {
+      messages.push(message);
+    },
+    quarantine,
+    tokenFactory: () => token,
+    network: {
+      async fetchSource(source, { signal }) {
+        return responseFor(source, [
+          "word,phonetic,definition,translation,pos,collins,oxford,tag,bnc,frq,exchange,detail,audio\n"
+        ], {
+          async readNext() {
+            reachedBlockedRead();
+            await new Promise((resolve, reject) => {
+              const onAbort = () => reject(
+                new DOMException("Download cancelled.", "AbortError")
+              );
+              if (signal.aborted) {
+                onAbort();
+                return;
+              }
+              signal.addEventListener("abort", onAbort, { once: true });
+            });
+            return { done: true };
+          }
+        });
+      }
+    }
+  });
+
+  const conversion = handler.handleMessage({
+    type: CURATED_WORKER_MESSAGES.START,
+    requestId: "ecdict-cancelled-conversion",
+    sourceId: "ecdict-en-zh-curated"
+  });
+  await blockedRead;
+  assert.deepEqual(
+    await quarantine.listTokens(),
+    []
+  );
+  assert.deepEqual(
+    handler.cancel("ecdict-cancelled-conversion"),
+    { cancelled: true }
+  );
+
+  const result = await conversion;
+  assert.equal(result.type, CURATED_WORKER_MESSAGES.ERROR);
+  assert.equal(result.errorName, "AbortError");
+  assert.equal(
+    messages.some((message) => message.type === CURATED_WORKER_MESSAGES.READY),
+    false
+  );
+  assert.deepEqual(await quarantine.listTokens(), []);
+  assert.deepEqual(removedTokens, [token]);
+});
+
+function responseFor(source, chunks, { readNext } = {}) {
+  let index = 0;
+  return {
+    ok: true,
+    status: 200,
+    url: source.downloadUrl,
+    body: {
+      getReader() {
+        return {
+          async read() {
+            if (index < chunks.length) {
+              return {
+                done: false,
+                value: encoder.encode(chunks[index++])
+              };
+            }
+            if (readNext) return readNext();
+            return { done: true };
+          },
+          releaseLock() {}
+        };
+      }
+    }
+  };
+}
+
+function makeImportToken(index) {
+  return `import-123e4567-e89b-42d3-a456-${String(index).padStart(12, "0")}`;
+}
+
+class MemoryDirectory {
+  constructor() {
+    this.kind = "directory";
+    this.directories = new Map();
+    this.files = new Map();
+  }
+
+  async getDirectoryHandle(name, { create = false } = {}) {
+    let value = this.directories.get(name);
+    if (!value && create) {
+      value = new MemoryDirectory();
+      this.directories.set(name, value);
+    }
+    if (!value) throw notFound();
+    return value;
+  }
+
+  async removeEntry(name) {
+    if (!this.directories.delete(name) && !this.files.delete(name)) {
+      throw notFound();
+    }
+  }
+
+  async *entries() {
+    for (const [name, handle] of this.directories) {
+      yield [name, handle];
+    }
+    for (const [name, handle] of this.files) {
+      yield [name, handle];
+    }
+  }
+}
+
+function missingQuarantineRoot() {
+  return {
+    async getDirectoryHandle() {
+      throw notFound();
+    }
+  };
+}
+
+function notFound() {
+  return Object.assign(new Error("Not found"), {
+    name: "NotFoundError"
+  });
+}

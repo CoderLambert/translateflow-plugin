@@ -57,6 +57,9 @@ test("browser-safe MDict core parses the reviewed strict v2 subset", async () =>
     result.blocks.recordCompression,
     ["zlib"]
   );
+  assert.equal(result.policy.htmlRendering, "rejected");
+  assert.equal(result.policy.mddResources, "not-loaded");
+  assert.equal(result.policy.networkResources, "never-rendered");
 });
 
 test("browser MDict adapter emits validated local opfs-indexed-v1 TFLex", async () => {
