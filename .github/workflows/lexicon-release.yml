@@ -42,6 +42,7 @@ on:
       - "e2e/**"
       - "package.json"
       - ".github/workflows/lexicon-release.yml"
+      - "docs/DICTIONARY_SOURCE_FREEZE.md"
   workflow_dispatch:
 
 permissions:
