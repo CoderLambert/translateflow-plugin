@@ -350,4 +350,21 @@ test("workflow keeps the raw dump and parser DB outside CI artifacts and release
   assert.doesNotMatch(workflow, /parser\.sqlite3|pages-articles\.xml\.bz2/);
   assert.equal(files.some((path) => /(?:\.db|\.sqlite3?|pages-articles\.xml\.bz2)$/.test(path)), false);
   assert.equal(files.some((path) => path.startsWith("lexicon/") || path.startsWith("scripts/")), false);
+
+  const workflowSteps = workflow.split(/(?=^      - )/m);
+  const lockStep = workflowSteps.find((step) => step.includes("- name: Read locked source URLs"));
+  const downloadStep = workflowSteps.find((step) => step.includes("- name: Download dated Wikimedia checksums and dump"));
+  const ingestStep = workflowSteps.find((step) => step.includes("- name: Run source-locked pinned Wiktextract first phase"));
+  assert.ok(lockStep && downloadStep && ingestStep, "source lock, download, and ingest steps are required");
+  assert.match(lockStep, /validateWikimediaSourceLock/);
+  assert.ok(
+    lockStep.indexOf("validateWikimediaSourceLock") < lockStep.indexOf("artifact_url="),
+    "the lock must be validated before its URLs or filename are emitted"
+  );
+  assert.match(downloadStep, /SOURCE_FILENAME:\s*\$\{\{\s*steps\.source\.outputs\.filename\s*\}\}/);
+  assert.match(downloadStep, /--output "\/tmp\/\$SOURCE_FILENAME"/);
+  assert.doesNotMatch(downloadStep, /--output[^\n]*\$\{\{/);
+  assert.match(ingestStep, /SOURCE_FILENAME:\s*\$\{\{\s*steps\.source\.outputs\.filename\s*\}\}/);
+  assert.match(ingestStep, /--source "\/tmp\/\$SOURCE_FILENAME"/);
+  assert.doesNotMatch(ingestStep, /--source[^\n]*\$\{\{/);
 });

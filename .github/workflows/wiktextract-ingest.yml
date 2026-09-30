@@ -43,17 +43,20 @@ jobs:
       - name: Read locked source URLs
         id: source
         run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          from pathlib import Path
-          lock = json.loads(Path("lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json").read_text())
-          source = lock["source"]
-          artifact = lock["artifact"]
-          print("artifact_url=" + source["artifactUrl"])
-          print("sha1sums_url=" + source["sha1sumsUrl"])
-          print("md5sums_url=" + source["md5sumsUrl"])
-          print("filename=" + artifact["filename"])
-          PY
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from "node:fs/promises";
+          import { validateWikimediaSourceLock } from "./scripts/wikimedia-enwiktionary-contract.mjs";
+          const lock = JSON.parse(
+            await readFile("lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json", "utf8")
+          );
+          validateWikimediaSourceLock(lock);
+          const source = lock.source;
+          const artifact = lock.artifact;
+          console.log("artifact_url=" + source.artifactUrl);
+          console.log("sha1sums_url=" + source.sha1sumsUrl);
+          console.log("md5sums_url=" + source.md5sumsUrl);
+          console.log("filename=" + artifact.filename);
+          NODE
 
       - name: Download dated Wikimedia checksums and dump
         env:
@@ -73,10 +76,12 @@ jobs:
           df -h /tmp .
 
       - name: Run source-locked pinned Wiktextract first phase
+        env:
+          SOURCE_FILENAME: ${{ steps.source.outputs.filename }}
         run: |
           set -euo pipefail
           python scripts/run-pinned-wiktextract-ingest.py \
-            --source "/tmp/${{ steps.source.outputs.filename }}" \
+            --source "/tmp/$SOURCE_FILENAME" \
             --sha1sums /tmp/enwiktionary-sha1sums.txt \
             --md5sums /tmp/enwiktionary-md5sums.txt \
             --lock lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json \
