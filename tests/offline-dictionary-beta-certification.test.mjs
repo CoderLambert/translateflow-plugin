@@ -87,14 +87,17 @@ test("integrated Beta certification rejects missing Official-state evidence and 
   reports.e2eReport.suites = reports.e2eReport.suites.filter(
     (suite) => suite.file !== "release-lexicon.spec.mjs"
   );
+  reports.lexicalReport.policy.ai = "automatic Provider fallback enabled";
   reports.footprintReport.bundledPolicy.rawLexiconBudgetBytes = 38_000_000;
   reports.footprintReport.rawBytes.otherLexical = 1;
 
   const report = certifyOfflineDictionaryBeta(reports);
   assert.equal(report.status, "FAIL");
   assert.ok(report.failures.some((failure) => failure.includes("release-lexicon.spec.mjs")));
+  assert.equal(report.evidence.integratedLexical.status, "failed");
   assert.ok(report.failures.some((failure) => failure.includes("37,000,000 B / 4,000,000 B")));
   assert.ok(report.failures.some((failure) => failure.includes("unexpected bundled lexical categories")));
+  assert.equal(report.evidence.productionPackage.status, "failed");
 });
 
 test("integrated Beta certification rejects retried product tests and an uncertified package boundary", () => {

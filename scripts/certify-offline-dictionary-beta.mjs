@@ -181,6 +181,7 @@ function certifyLexicalReport(report, failures) {
     failures.push("integrated lexical certification report is missing or has an unsupported identity/schema");
     return { status: "missing" };
   }
+  const failureCountBefore = failures.length;
   if (!Array.isArray(report.failures) || report.failures.length) {
     failures.push("integrated lexical certification contains failures or no failure list");
   }
@@ -188,7 +189,7 @@ function certifyLexicalReport(report, failures) {
     failures.push("integrated lexical policy no longer states that automatic Provider/AI fallback is unauthorized");
   }
   return {
-    status: Array.isArray(report.failures) && report.failures.length === 0 ? "passed" : "failed",
+    status: failures.length === failureCountBefore ? "passed" : "failed",
     observed: report.observed || null,
     failures: report.failures || []
   };
@@ -199,6 +200,7 @@ function certifyFootprintReport(report, failures) {
     failures.push("production extension footprint report is missing or has an unsupported identity/schema");
     return { status: "missing" };
   }
+  const failureCountBefore = failures.length;
   if (!Array.isArray(report.structuralFailures) || report.structuralFailures.length) {
     failures.push("production package audit contains structural failures or no failure list");
   }
@@ -229,7 +231,7 @@ function certifyFootprintReport(report, failures) {
   }
 
   return {
-    status: Array.isArray(report.structuralFailures) && report.structuralFailures.length === 0 ? "passed" : "failed",
+    status: failures.length === failureCountBefore ? "passed" : "failed",
     packageBoundary: report.packageBoundary,
     bundledPolicy: report.bundledPolicy,
     rawBytes: report.rawBytes,
