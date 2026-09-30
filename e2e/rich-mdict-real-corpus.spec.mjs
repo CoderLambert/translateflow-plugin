@@ -45,7 +45,6 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     "Set RICH_MDICT_REAL_MDX in the dedicated pinned-corpus compatibility gate.");
 
   test("Settings install survives reload, Selection shows a real record with zero Provider calls, and delete removes it", async ({ harness }) => {
-    await mkdir(evidenceDir, { recursive: true });
     const packageFiles = await listFiles(harness.extensionDir);
     expect(packageFiles.filter((path) => /\.(?:mdx|mdd|zip)$/iu.test(path))).toEqual([]);
     expect(harness.buildReport.totalBytes).toBeLessThan(lock.mdx.bytes);
@@ -73,10 +72,6 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     await expect(installed).toContainText("3,402,564 条词目");
     await expect(installed).toContainText("可查词");
 
-    await options.locator("#richMdictInstalledList").screenshot({
-      path: resolve(evidenceDir, "ecdict-settings-card.png")
-    });
-    await options.screenshot({ path: resolve(evidenceDir, "ecdict-settings-installed.png"), fullPage: true });
     await options.reload();
     installed = options.locator("#richMdictInstalledList .site-row").filter({
       hasText: "简明英汉字典增强版"
@@ -97,13 +92,13 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       const record = lookup.dictionaries.find((item) =>
         item.headword.toLowerCase() === expected.headword.toLowerCase()
       );
-      expect(record, expected.query).toBeTruthy();
-      expect(record.text, expected.query).toContain(expected.rawRecordIncludes);
+      expect(Boolean(record), expected.query).toBe(true);
+      expect(record.text.includes(expected.rawRecordIncludes), expected.query).toBe(true);
       corpusLookups.push({
         query: expected.query,
         lookupMs,
         headword: record.headword,
-        excerpt: record.text.slice(0, 180),
+        recordVerified: record.text.includes(expected.rawRecordIncludes),
         metrics: record.debugMetrics || null
       });
     }
@@ -118,14 +113,23 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     await harness.inject(page);
     await selectElementText(page, "#rich-ecdict-word");
     await page.locator(".tf-selection-chip").click();
-    await expect(page.locator(".tf-selection-result")).toContainText("运行");
+    const primaryHasExpectedTranslation = await page.locator(".tf-selection-result .tf-selection-primary").first().evaluate(
+      (node) => (node.innerText || "").includes("运行")
+    );
+    expect(primaryHasExpectedTranslation).toBe(true);
     const richCard = page.locator(".tf-selection-rich-record")
       .filter({ hasText: "简明英汉字典增强版" });
     await expandRichCard(richCard);
     const richViewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
-    await expect(richViewer)
-      .toContainText("n. 跑, 赛跑, 奔跑, 奔跑的路程", { timeout: 90_000 });
-    await expect(page.locator(".tf-selection-rich-record")).toContainText("简明英汉字典增强版");
+    const viewerContainsPinnedRecord = await richViewer.evaluate(
+      (root, expectedText) => (root.innerText || "").includes(expectedText),
+      "n. 跑, 赛跑, 奔跑, 奔跑的路程"
+    );
+    expect(viewerContainsPinnedRecord).toBe(true);
+    const richCardShowsDictionaryTitle = await richCard.evaluate(
+      (node) => (node.innerText || "").includes("简明英汉字典增强版")
+    );
+    expect(richCardShowsDictionaryTitle).toBe(true);
     expect(await page.locator(".tf-selection-result").getAttribute("data-result-kind")).toBe("local");
     expect(await page.locator(".tf-selection-result .tf-selection-primary").first().textContent()).toContain("运行");
     expect(await page.locator(".tf-selection-rich-text").last().evaluate((host) => Boolean(host.shadowRoot))).toBe(true);
@@ -150,8 +154,7 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
         ids: [...new Set(nodes.map((node) => node.getAttribute("data-compact-id")))].sort(),
         headword: headword ? styleOf(headword) : null,
         pronunciation: pronunciation ? styleOf(pronunciation) : null,
-        note: note ? styleOf(note) : null,
-        text: root.innerText || ""
+        note: note ? styleOf(note) : null
       };
     });
     expect(compactPresentation.ids).toEqual(expect.arrayContaining(["1", "2", "3", "4"]));
@@ -163,11 +166,6 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     expect(compactPresentation.pronunciation.color).toBe("rgb(30, 144, 255)");
     expect(compactPresentation.note.color).toBe("rgb(119, 119, 119)");
     expect(harness.server.calls).toHaveLength(0);
-    await page.locator(".tf-selection-panel").screenshot({
-      path: resolve(evidenceDir, "ecdict-selection-panel.png")
-    });
-    await page.screenshot({ path: resolve(evidenceDir, "ecdict-selection-real-record.png"), fullPage: true });
-
     const listing = await sendOptionsRuntime(options, { type: "RICH_MDICT_LIST" });
     expect(listing.ok).toBe(true);
     const persisted = listing.dictionaries.find((item) => item.title === "简明英汉字典增强版");
@@ -190,7 +188,12 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       richViewer: {
         shadowRoot: true,
         structuredPrimary: "local",
-        compactPresentation,
+        compactPresentation: {
+          ids: compactPresentation.ids,
+          headword: compactPresentation.headword,
+          pronunciation: compactPresentation.pronunciation,
+          note: compactPresentation.note
+        },
         providerCalls: harness.server.calls.length
       },
       providerCalls: harness.server.calls.length,
@@ -405,7 +408,7 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     expect(lookup.ok).toBe(true);
     expect(lookup.found).toBe(true);
     const runRecord = lookup.dictionaries.find((item) => item.headword.toLowerCase() === "run");
-    expect(runRecord?.text).toContain("n. 跑, 赛跑, 奔跑, 奔跑的路程");
+    expect(Boolean(runRecord?.text?.includes("n. 跑, 赛跑, 奔跑, 奔跑的路程"))).toBe(true);
     expect(harness.server.calls).toHaveLength(0);
 
     const selection = await harness.open("/selection");
@@ -418,18 +421,25 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     await harness.inject(selection);
     await selectElementText(selection, "#curated-ecdict-mdx-word");
     await selection.locator(".tf-selection-chip").click();
-    await expect(selection.locator(".tf-selection-result")).toContainText("运行", {
-      timeout: 90_000
-    });
+    const curatedPrimaryHasExpectedTranslation = await selection.locator(".tf-selection-result .tf-selection-primary").first().evaluate(
+      (node) => (node.innerText || "").includes("运行")
+    );
+    expect(curatedPrimaryHasExpectedTranslation).toBe(true);
     await expect(selection.locator(".tf-selection-result .tf-selection-primary").first())
       .toContainText("运行");
     const richCard = selection.locator(".tf-selection-rich-record")
       .filter({ hasText: "简明英汉字典增强版" });
     await expandRichCard(richCard);
-    await expect(richCard)
-      .toContainText("简明英汉字典增强版");
-    await expect(richCard.locator(".tf-selection-rich-text .tf-rich-viewer"))
-      .toContainText("n. 跑, 赛跑, 奔跑, 奔跑的路程", { timeout: 90_000 });
+    const curatedRichCardShowsDictionaryTitle = await richCard.evaluate(
+      (node) => (node.innerText || "").includes("简明英汉字典增强版")
+    );
+    expect(curatedRichCardShowsDictionaryTitle).toBe(true);
+    const curatedViewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
+    const curatedViewerContainsPinnedRecord = await curatedViewer.evaluate(
+      (root, expectedText) => (root.innerText || "").includes(expectedText),
+      "n. 跑, 赛跑, 奔跑, 奔跑的路程"
+    );
+    expect(curatedViewerContainsPinnedRecord).toBe(true);
     expect(await selection.locator(".tf-selection-result").getAttribute("data-result-kind"))
       .toBe("local");
     expect(harness.server.calls).toHaveLength(0);
