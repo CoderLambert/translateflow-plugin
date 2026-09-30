@@ -14,9 +14,9 @@ export const WIKIMEDIA_ARTIFACT_URL =
   WIKIMEDIA_SOURCE.directoryUrl +
   WIKIMEDIA_SOURCE.artifactFilename;
 export const WIKIMEDIA_SHA1SUMS_URL =
-  WIKIMEDIA_SOURCE.directoryUrl + "sha1sums.txt";
+  WIKIMEDIA_SOURCE.directoryUrl + "enwiktionary-20260901-sha1sums.txt";
 export const WIKIMEDIA_MD5SUMS_URL =
-  WIKIMEDIA_SOURCE.directoryUrl + "md5sums.txt";
+  WIKIMEDIA_SOURCE.directoryUrl + "enwiktionary-20260901-md5sums.txt";
 export const WIKIMEDIA_DUMP_STATUS_URL =
   WIKIMEDIA_SOURCE.directoryUrl + "dumpstatus.json";
 
