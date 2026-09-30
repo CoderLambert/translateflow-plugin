@@ -1,0 +1,169 @@
+name: dictionary-library-vnext-certification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/dictionary-library-vnext-certification.yml"
+      - "docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md"
+      - "package.json"
+      - "package-lock.json"
+      - "manifest.json"
+      - "background.js"
+      - "content.js"
+      - "content.css"
+      - "options.js"
+      - "options.css"
+      - "options.html"
+      - "popup.*"
+      - "popup-appearance.js"
+      - "src/**"
+      - "scripts/**"
+      - "lexicon/**"
+      - "scripts/build-extension.mjs"
+      - "scripts/certify-rich-mdict-corpus.mjs"
+      - "scripts/certify-mdd-interop.mjs"
+      - "scripts/generate-mdd-interop-fixture.py"
+      - "scripts/certify-vnext-dictionary-library.mjs"
+      - "tests/**"
+      - "e2e/**"
+      - "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json"
+      - "tests/fixtures/mdd-interop/**"
+  pull_request:
+    paths:
+      - ".github/workflows/dictionary-library-vnext-certification.yml"
+      - "docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md"
+      - "package.json"
+      - "package-lock.json"
+      - "manifest.json"
+      - "background.js"
+      - "content.js"
+      - "content.css"
+      - "options.js"
+      - "options.css"
+      - "options.html"
+      - "popup.*"
+      - "popup-appearance.js"
+      - "src/**"
+      - "scripts/**"
+      - "lexicon/**"
+      - "scripts/build-extension.mjs"
+      - "scripts/certify-rich-mdict-corpus.mjs"
+      - "scripts/certify-mdd-interop.mjs"
+      - "scripts/generate-mdd-interop-fixture.py"
+      - "scripts/certify-vnext-dictionary-library.mjs"
+      - "tests/**"
+      - "e2e/**"
+      - "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json"
+      - "tests/fixtures/mdd-interop/**"
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    name: Dictionary Library vNext final certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout locked Open Multilingual Wordnet source
+        uses: actions/checkout@v4
+        with:
+          repository: omwn/omw-data
+          ref: 406bf83b3c507a3d1f26e88252d5d66893fd36bf
+          path: .release-sources/omw-data
+          sparse-checkout: |
+            wns/eng/wn-data-eng.tab
+            wns/cow/wn-data-cmn.tab
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Checkout locked WordNet 3.0 sense index
+        uses: actions/checkout@v4
+        with:
+          repository: nltk/wordnet
+          ref: ce91915ae38a341ae845be4d825ef6003cddf395
+          path: .release-sources/wordnet
+          sparse-checkout: |
+            wn/data/wordnet-3.0/index.sense
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies and prepare bounded evidence directories
+        run: |
+          npm install --no-audit --no-fund
+          mkdir -p "$RUNNER_TEMP/translateflow-vnext/cache" "$RUNNER_TEMP/translateflow-vnext/evidence-private" "$RUNNER_TEMP/translateflow-vnext/evidence-published" "$RUNNER_TEMP/translateflow-vnext/mdd-work" "$RUNNER_TEMP/writemdict"
+
+      - name: Rebuild the locked Core and Technical lexical lane
+        run: npm run setup:lexicon
+
+      - name: Validate source packs and run all unit checks
+        run: npm run validate
+
+      - name: Fetch locked independent MDict writer source
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writemdict"
+          git -C "$RUNNER_TEMP/writemdict" init
+          git -C "$RUNNER_TEMP/writemdict" remote add origin https://github.com/zhansliu/writemdict.git
+          git -C "$RUNNER_TEMP/writemdict" fetch --depth=1 origin f0240b30cabd2f0470d3ee1a0641fc7f8c38dcf5
+          git -C "$RUNNER_TEMP/writemdict" checkout --detach FETCH_HEAD
+
+      - name: Download, verify, and measure pinned ECDICT MDX ranges
+        run: node scripts/certify-rich-mdict-corpus.mjs
+        env:
+          RICH_MDICT_CACHE_DIR: ${{ runner.temp }}/translateflow-vnext/cache
+          RICH_MDICT_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
+
+      - name: Regenerate independent MDD evidence and measure the 100 MiB range case
+        run: node scripts/certify-mdd-interop.mjs --writer-checkout "$RUNNER_TEMP/writemdict" --regenerate --large-range-evidence --bulk-bytes 104857600 --out "$RUNNER_TEMP/translateflow-vnext/evidence-private/mdd-interop-certification.json"
+        env:
+          MDD_INTEROP_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/mdd-work
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run focused Dictionary Library vNext product E2E gates
+        run: >-
+          npx playwright test
+          e2e/rich-mdict-real-corpus.spec.mjs
+          e2e/rich-mdict-product.spec.mjs
+          e2e/mdd-resources.spec.mjs
+          e2e/multi-dictionary-viewer.spec.mjs
+          e2e/settings-ia.spec.mjs
+          e2e/rich-viewer-security.spec.mjs
+          e2e/dictionary-library-vnext-product.spec.mjs
+          --reporter=line,json
+          --output="$RUNNER_TEMP/translateflow-vnext/playwright-results"
+        env:
+          CI: "true"
+          ECDICT_MDX_ONE_CLICK_GATE: "1"
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/translateflow-vnext/evidence-private/playwright-vnext-report.json
+          RICH_MDICT_CACHE_DIR: ${{ runner.temp }}/translateflow-vnext/cache
+          RICH_MDICT_REAL_MDX: ${{ runner.temp }}/translateflow-vnext/cache/简明英汉字典增强版.mdx
+          RICH_MDICT_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
+          MDD_INTEROP_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
+          DICTIONARY_LIBRARY_VNEXT_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
+
+      - name: Certify all fresh product, package, and lexical-primary evidence
+        run: npm run certify:dictionary-library-vnext -- --evidence-dir "$RUNNER_TEMP/translateflow-vnext/evidence-private" --out "$RUNNER_TEMP/translateflow-vnext/evidence-published/dictionary-library-vnext-certification.json"
+
+      - name: Upload sanitized vNext certification summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dictionary-library-vnext-certification
+          path: ${{ runner.temp }}/translateflow-vnext/evidence-published/dictionary-library-vnext-certification.json
+          if-no-files-found: ignore
+          retention-days: 30

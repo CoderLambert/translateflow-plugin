@@ -15,6 +15,7 @@
     "build:lexicon:release": "node scripts/build-release-lexicon.mjs",
     "certify:lexicon": "node scripts/certify-lexical-release.mjs",
     "certify:offline-dictionary-beta": "node scripts/certify-offline-dictionary-beta.mjs",
+    "certify:dictionary-library-vnext": "node scripts/certify-vnext-dictionary-library.mjs",
     "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs",
     "lock:kaikki": "node scripts/lock-kaikki-source.mjs",
     "setup:lexicon": "node scripts/setup-lexicon.mjs",

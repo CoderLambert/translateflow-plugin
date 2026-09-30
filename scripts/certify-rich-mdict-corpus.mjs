@@ -93,6 +93,19 @@ for (const [name, expected] of Object.entries({
 if (!headerEvidence.styleSheet) {
   throw new Error("Pinned ECDICT MDX no longer has its reviewed StyleSheet.");
 }
+const styleSheetRuleCount = (headerEvidence.styleSheet.match(/(?:^|\n)\d+\n/gu) || []).length;
+assertEqual(styleSheetRuleCount, LOCK.mdx.styleSheetRules, "MDX StyleSheet rule count");
+const safeHeaderEvidence = {
+  title: headerEvidence.title,
+  generatedByEngineVersion: headerEvidence.generatedByEngineVersion,
+  requiredEngineVersion: headerEvidence.requiredEngineVersion,
+  format: headerEvidence.format,
+  encoding: headerEvidence.encoding,
+  encrypted: headerEvidence.encrypted,
+  compact: headerEvidence.compact,
+  compat: headerEvidence.compat,
+  styleSheetRuleCount
+};
 
 const parserEvidence = await inspectRealCorpusWithRanges(mdxPath);
 const report = {
@@ -100,7 +113,7 @@ const report = {
   source: LOCK.source.releaseUrl,
   archive: archiveEvidence,
   mdx: mdxEvidence,
-  header: headerEvidence,
+  header: safeHeaderEvidence,
   parserEvidence,
   lockPath: LOCK_PATH
 };
@@ -173,7 +186,6 @@ async function inspectRealCorpusWithRanges(path) {
         query: expected.query,
         headword: result.displayForm,
         lookupMs,
-        safeTextExcerpt: result.safeTextFallback.slice(0, 180),
         rangeIo: summarizeLookupRanges(lookupIo, index),
         lookupMetrics: apiMetrics
       });
