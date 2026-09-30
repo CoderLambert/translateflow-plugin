@@ -131,8 +131,7 @@
   font-weight: 700;
 }
 .tf-selection-rich-text {
-  max-height: 210px;
-  overflow: auto;
+  min-width: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   color: var(--tf-text-main);

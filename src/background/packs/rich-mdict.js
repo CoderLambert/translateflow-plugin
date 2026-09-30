@@ -9,6 +9,7 @@ import {
   RICH_MDICT_INDEX_PATH,
   RICH_MDICT_MAX_DISPLAY_CHARS,
   RICH_MDICT_MAX_INDEX_BYTES,
+  RICH_MDICT_MAX_RECORD_BYTES,
   RICH_MDICT_OPFS_ROOT,
   RICH_MDICT_MAX_SOURCE_BYTES,
   RICH_MDICT_SOURCE_ID,
@@ -197,6 +198,11 @@ export function createRichMdictManager({
             title: active.title,
             headword: clampText(result.displayForm, 300),
             text: clampText(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_CHARS),
+            richRecord: {
+              rawRecord: clampUtf8Text(result.rawRecord, RICH_MDICT_MAX_RECORD_BYTES),
+              format: clampText(index.header.format, 40),
+              styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end }))
+            },
             ...(result.aliasTarget ? { aliasTarget: clampText(result.aliasTarget, 300) } : {}),
             ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {})
           });
@@ -211,6 +217,14 @@ export function createRichMdictManager({
       }
     }
     return { found: dictionaries.length > 0, dictionaries, errors };
+  }
+
+  function clampUtf8Text(value, maxBytes) {
+    const text = String(value ?? "");
+    const encoder = new TextEncoder();
+    if (text.length <= maxBytes && encoder.encode(text).byteLength <= maxBytes) return text;
+    const { read } = encoder.encodeInto(text, new Uint8Array(maxBytes));
+    return text.slice(0, read);
   }
 
   async function uninstall(packId) {

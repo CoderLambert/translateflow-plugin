@@ -82,11 +82,12 @@ test.describe("Rich MDict local product and security behavior", () => {
     await selectElementText(page, "#rich-mdict-fixture-word");
     await expect(page.locator(".tf-selection-chip")).toBeVisible({ timeout: 10_000 });
     await page.locator(".tf-selection-chip").click();
-    await expect(page.locator(".tf-selection-rich-details .tf-selection-rich-text"))
+    const richViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    await expect(richViewer)
       .toContainText("Fixture gloss", { timeout: 30_000 });
-    await expect(page.locator(".tf-selection-rich-details .tf-selection-rich-text"))
+    await expect(richViewer)
       .toContainText("安全文本回退");
-    const fallback = await page.locator(".tf-selection-rich-details .tf-selection-rich-text").textContent();
+    const fallback = await richViewer.textContent();
     expect(fallback).not.toContain("window.__richFixtureExecuted");
     expect(fallback).not.toContain("attacker.invalid");
     expect(fallback).not.toContain("onerror");

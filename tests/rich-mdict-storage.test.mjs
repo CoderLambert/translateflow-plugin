@@ -39,6 +39,33 @@ test("Rich MDict commit rechecks the compact index and lookup uses OPFS ranges a
   assert.ok(env.store.ranges.every(({ length }) => length < SOURCE_BYTES.length));
 });
 
+test("rich lookup returns the bounded raw record with the validated rendering metadata", async () => {
+  const index = createIndex(SOURCE_BYTES.length);
+  index.header.styleSheet = "1\n<b>\n</b>";
+  index.header.styleSheetRules = [{ id: 1, begin: "<b>", end: "</b>" }];
+  const env = createEnvironment({
+    buildIndex: async ({ source }) => {
+      await source.read(0, 1);
+      return index;
+    },
+    lookup: async () => ({
+      found: true,
+      displayForm: "run",
+      safeTextFallback: "run — 运行",
+      rawRecord: "🦭".repeat(160_000)
+    })
+  });
+  const metadata = await stage(env, BASE_ID, index);
+  await env.manager.commit({ ...BASE_ID, metadata });
+
+  const response = await env.manager.lookup("run");
+  const richRecord = response.dictionaries[0].richRecord;
+  assert.equal(response.dictionaries[0].text, "run — 运行");
+  assert.equal(new TextEncoder().encode(richRecord.rawRecord).byteLength, 512 * 1024);
+  assert.equal(richRecord.format, "Html");
+  assert.deepEqual(richRecord.styleSheetRules, [{ id: 1, begin: "<b>", end: "</b>" }]);
+});
+
 test("a same-size persisted index that differs from the MDX source is rejected before activation", async () => {
   const env = createEnvironment();
   const index = createIndex(SOURCE_BYTES.length);
