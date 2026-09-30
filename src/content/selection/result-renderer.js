@@ -75,7 +75,8 @@
           const safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
           if (safeTree && !safeTree.truncated) {
             displayed = viewer.render(body, safeTree, fallback, {
-              preserveNewlines: String(richRecord.format || "").toLowerCase() === "text"
+              preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
+              dictionaryId: String(dictionary?.id || "")
             });
           }
         } catch {

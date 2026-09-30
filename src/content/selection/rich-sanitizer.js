@@ -14,6 +14,7 @@
     attributesPerTag: 32,
     stylesheetRules: 255,
     stylesheetBytes: 64 * 1024,
+    resourceCount: 8,
     fallbackBytes: 64 * 1024
   });
   const MARKER = /^`([0-9]{1,3})`/u;

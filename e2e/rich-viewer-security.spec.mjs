@@ -91,7 +91,7 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
         Number.parseFloat(getComputedStyle(element).fontSize) || 0
       ));
       const placeholders = [...root.querySelectorAll(".tf-rich-placeholder")].map((item) => ({
-        kind: item.getAttribute("aria-label") === "图片资源未导入" ? "image" : "audio",
+        kind: /^(?:图片|圖片)/u.test(item.getAttribute("aria-label") || "") ? "image" : "audio",
         text: item.textContent || "",
         attributes: [...item.attributes].map(({ name }) => name)
       }));
@@ -101,7 +101,7 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
         richDivPosition: richDivStyle?.position || "static",
         maxFontSize,
         unsafeElements: root.querySelectorAll(
-          "script, iframe, object, embed, form, input, button, link, style, a, img, audio, video, source"
+          "script, iframe, object, embed, form, input, button:not([data-action='load-mdd-audio']), link, style, a, img, audio, video, source"
         ).length,
         placeholders,
         text: root.innerText || ""
@@ -113,7 +113,7 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     expect(contentSafety.maxFontSize).toBeLessThanOrEqual(48);
     expect(contentSafety.unsafeElements).toBe(0);
     expect(contentSafety.placeholders).toHaveLength(2);
-    expect(contentSafety.placeholders.map(({ kind }) => kind).sort()).toEqual(["audio", "image"]);
+    expect(contentSafety.placeholders.map(({ kind }) => kind).sort(), JSON.stringify(contentSafety.placeholders)).toEqual(["audio", "image"]);
     expect(contentSafety.placeholders.every(({ attributes }) =>
       !attributes.some((name) => /^(?:src|href|on\w+)$/iu.test(name))
     )).toBe(true);

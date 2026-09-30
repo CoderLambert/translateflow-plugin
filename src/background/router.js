@@ -46,6 +46,11 @@ import {
   commitRichMdictImport,
   getDictionaryPackStatus,
   listRichMdictDictionaries,
+  preflightRichMddResourceImport,
+  commitRichMddResourceImport,
+  cancelRichMddResourceImport,
+  abortRichMddResourceImport,
+  lookupRichMddResource,
   lookupRichMdictDictionaries,
   preflightRichMdictImport,
   importLocalDictionaryTflexFromQuarantine,
@@ -236,10 +241,69 @@ export async function handleBackgroundMessage(message, sender) {
       return lookupRichMdictDictionaries(message.text);
     case BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL:
       assertOptionsSender(sender);
-      return uninstallRichMdictDictionary(message.packId);
+      {
+        const result = await uninstallRichMdictDictionary(message.packId);
+        if (result.uninstalled) {
+          await notifyRichMddResourcesChanged(message.packId);
+        }
+        return result;
+      }
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_PREFLIGHT:
+      assertOptionsSender(sender);
+      return preflightRichMddResourceImport({
+        dictionaryId: message.dictionaryId,
+        requestId: message.requestId,
+        resourceVersion: message.resourceVersion,
+        mdxFileName: message.mdxFileName,
+        files: message.files
+      });
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_COMMIT:
+      assertOptionsSender(sender);
+      {
+        const result = await commitRichMddResourceImport({
+          dictionaryId: message.dictionaryId,
+          requestId: message.requestId,
+          resourceVersion: message.resourceVersion,
+          metadata: message.metadata
+        });
+        await notifyRichMddResourcesChanged(message.dictionaryId);
+        return result;
+      }
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_CANCEL:
+      assertOptionsSender(sender);
+      return cancelRichMddResourceImport(message.requestId);
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_ABORT:
+      assertOptionsSender(sender);
+      return abortRichMddResourceImport({
+        dictionaryId: message.dictionaryId,
+        requestId: message.requestId,
+        resourceVersion: message.resourceVersion
+      });
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE:
+      return lookupRichMddResource({ dictionaryId: message.dictionaryId, path: message.path });
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED:
+      return { notified: true };
     default:
       throw new Error("未知扩展消息。");
   }
+}
+
+async function notifyRichMddResourcesChanged(dictionaryId) {
+  const tabsApi = globalThis.chrome?.tabs;
+  if (typeof tabsApi?.query !== "function" || typeof tabsApi?.sendMessage !== "function") return;
+  let tabs;
+  try { tabs = await tabsApi.query({}); } catch { return; }
+  await Promise.all((Array.isArray(tabs) ? tabs : []).map(async (tab) => {
+    if (!Number.isInteger(tab?.id)) return;
+    try {
+      await tabsApi.sendMessage(tab.id, {
+        type: BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED,
+        dictionaryId: String(dictionaryId || "")
+      });
+    } catch {
+      // Tabs without a TranslateFlow content script do not have a viewer session.
+    }
+  }));
 }
 
 function assertOptionsSender(sender) {

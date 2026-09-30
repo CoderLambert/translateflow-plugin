@@ -45,6 +45,9 @@
 .tf-rich-viewer td, .tf-rich-viewer th { border: 1px solid var(--tf-border-soft, rgba(58,75,59,.14)); padding: 2px 5px; vertical-align: top; }
 .tf-rich-viewer th { font-weight: 700; }
 .tf-rich-placeholder { display: inline-block; padding: 1px 5px; border: 1px dashed var(--tf-border-soft, #b9c2b4); border-radius: 4px; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
+.tf-rich-resource-image { display: block; max-width: min(100%, 320px); height: auto; object-fit: contain; }
+.tf-rich-resource-audio { display: block; max-width: 100%; margin: .25em 0; }
+.tf-rich-audio-load { font: inherit; cursor: pointer; background: transparent; }
 .tf-rich-truncated { margin-top: .35em; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
 @media (prefers-color-scheme: dark) {
   :host { --tf-rich-blue: #83bfff; --tf-rich-note: #aab3aa; color: var(--tf-text-main, #e1e9de); }
@@ -55,10 +58,11 @@
 }
 `;
 
-  function render(container, ast, fallbackText = "", { preserveNewlines = false } = {}) {
+  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "" } = {}) {
     if (!container) return false;
     const root = getShadowRoot(container);
     if (!root) return false;
+    app.modules.richResourceResolver?.close(container);
     root.replaceChildren();
 
     const style = document.createElement("style");
@@ -74,9 +78,10 @@
     root.appendChild(viewport);
 
     let count = { value: 0, truncated: Boolean(ast?.truncated) };
+    const resources = [];
     const nodes = Array.isArray(ast?.nodes) ? ast.nodes : [];
     for (const node of nodes) {
-      const rendered = renderNode(node, 0, count);
+      const rendered = renderNode(node, 0, count, resources);
       if (rendered) viewport.appendChild(rendered);
       if (count.value >= MAX_NODES) break;
     }
@@ -90,6 +95,9 @@
       viewport.appendChild(note);
     }
     container.replaceChildren(document.createTextNode(String(fallbackText || "").slice(0, 512 * 1024)));
+    if (resources.length && dictionaryId) {
+      app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId);
+    }
     return true;
   }
 
@@ -97,7 +105,7 @@
     return render(container, { nodes: [{ type: "text", text: String(text || "") }] }, text, { preserveNewlines: true });
   }
 
-  function renderNode(node, depth, count) {
+  function renderNode(node, depth, count, resources) {
     if (!node || typeof node !== "object" || depth > MAX_DEPTH || count.value >= MAX_NODES) {
       count.truncated = true;
       return null;
@@ -106,12 +114,24 @@
     if (node.type === "text") {
       return document.createTextNode(String(node.text || "").slice(0, 512 * 1024));
     }
+    if (node.type === "resource") {
+      const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
+      if (!path || path !== node.path || !["image", "audio", "stylesheet"].includes(node.kind)) return null;
+      const label = String(node.label || "").slice(0, 160);
+      const item = { kind: node.kind, path, label, element: null };
+      resources.push(item);
+      if (node.kind === "stylesheet") return null;
+      const placeholderNode = placeholder(node.kind === "image" ? "img" : "audio", label);
+      item.element = placeholderNode;
+      if (node.kind === "audio") placeholderNode.className += " tf-rich-audio-load";
+      return placeholderNode;
+    }
     if (node.type !== "element") return null;
 
     const tag = String(node.tag || "").toLowerCase();
     if (DROP_SUBTREE_TAGS.has(tag)) return null;
     if (tag === "img" || tag === "audio") return placeholder(tag);
-    if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count);
+    if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count, resources);
 
     const element = document.createElement(tag);
     element.className = `tf-rich-node-${tag}`;
@@ -121,22 +141,22 @@
       const wrapper = document.createElement("div");
       wrapper.className = "tf-rich-table-scroll";
       wrapper.appendChild(element);
-      appendChildren(element, node.children, depth, count);
+      appendChildren(element, node.children, depth, count, resources);
       return wrapper;
     }
-    appendChildren(element, node.children, depth, count);
+    appendChildren(element, node.children, depth, count, resources);
     return element;
   }
 
-  function renderChildren(children, depth, count) {
+  function renderChildren(children, depth, count, resources) {
     const fragment = document.createDocumentFragment();
-    appendChildren(fragment, children, depth, count);
+    appendChildren(fragment, children, depth, count, resources);
     return fragment.childNodes.length ? fragment : null;
   }
 
-  function appendChildren(parent, children, depth, count) {
+  function appendChildren(parent, children, depth, count, resources) {
     for (const child of Array.isArray(children) ? children : []) {
-      const rendered = renderNode(child, depth + 1, count);
+      const rendered = renderNode(child, depth + 1, count, resources);
       if (rendered) parent.appendChild(rendered);
       if (count.value >= MAX_NODES) {
         count.truncated = true;
@@ -151,6 +171,11 @@
     if (/^(?:[1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$/u.test(compactId)) {
       element.setAttribute("data-compact-id", compactId);
     }
+    const safeClasses = String(attrs.class || "")
+      .split(/\s+/u)
+      .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))
+      .slice(0, 4);
+    if (safeClasses.length) element.className += ` ${[...new Set(safeClasses)].join(" ")}`;
     const placeholderKind = String(attrs["data-rich-placeholder"] || "");
     if (placeholderKind === "image" || placeholderKind === "audio") {
       element.className += " tf-rich-placeholder";

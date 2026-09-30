@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "purpose": "synthetic-interoperability-fixture-not-dictionary-corpus",
+  "independentWriter": {
+    "name": "writemdict",
+    "repository": "https://github.com/zhansliu/writemdict",
+    "commit": "f0240b30cabd2f0470d3ee1a0641fc7f8c38dcf5",
+    "license": "MIT",
+    "licenseSha256": "050b25702f152882a65e1ec147009cc90abe0624c87918b34f771026419aa19e",
+    "writerFile": "writemdict.py",
+    "writerFileSha256": "f47452af9296b79d8f4fc39e0432d72278079857482bc6d74b1b5e35e4b65081"
+  },
+  "generation": {
+    "script": "scripts/generate-mdd-interop-fixture.py",
+    "scriptSha256": "84f48e36be9298746e970f3b9ccd8839712c563c97816725829cbe44fa844e74",
+    "pythonCompatibilityShim": "Python 3.13+ removed cgi.escape; generation supplies a stdlib html.escape alias under the legacy cgi name without changing the upstream checkout.",
+    "headerDate": "2026-09-30",
+    "mdx": {
+      "file": "interop.mdx",
+      "bytes": 1194,
+      "sha256": "b8996c8cd7449e67a5049ba0cd284fb1528385ff090c82af4113c67e050a8a82",
+      "entry": "mddinteropfixture"
+    },
+    "mdd": {
+      "file": "interop.mdd",
+      "bytes": 1723,
+      "sha256": "98adc93097939119d72d5d0257027099ab25d421b9df43d10867e29cc24fe4f5"
+    },
+    "resources": [
+      {
+        "path": "interop/fixture.css",
+        "bytes": 94,
+        "sha256": "33e74c93a0fb2a4d0696fc4b2537fa4709c57492f248c6c6b129329fcb6bf880",
+        "mime": "text/css"
+      },
+      {
+        "path": "interop/sample.png",
+        "bytes": 76,
+        "sha256": "620edd992210ef75c3db8d80aab7b51249446c5ac83eb465ab79ff328a44e4c5",
+        "mime": "image/png",
+        "dimensions": [
+          2,
+          2
+        ]
+      },
+      {
+        "path": "interop/tone.wav",
+        "bytes": 1964,
+        "sha256": "72d5eaa59b2265c56b6fc2bb8f7eb3b3438f2a90e00f1e47fe2581e210fb1108",
+        "mime": "audio/wav",
+        "format": "PCM16",
+        "channels": 1,
+        "sampleRateHz": 8000,
+        "sampleCount": 960
+      }
+    ],
+    "mdxResourceReferences": [
+      "interop/fixture.css",
+      "interop/sample.png",
+      "interop/tone.wav"
+    ]
+  }
+}

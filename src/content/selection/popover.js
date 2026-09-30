@@ -98,6 +98,7 @@
   }
 
   function showChip(snapshot, onTranslate) {
+    app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
     translateHandler = onTranslate;
@@ -108,6 +109,7 @@
   }
 
   function showLoading(snapshot, onCancel, loadingMessage = defaultLoadingMessage(snapshot)) {
+    app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
     cancelHandler = onCancel;
@@ -160,6 +162,7 @@
   }
 
   function showError(snapshot, message, onRetry, onExplain) {
+    app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
@@ -181,6 +184,7 @@
   }
 
   function renderResult(input) {
+    app.modules.richResourceResolver?.closeAll();
     aiDetail?.reset();
     emptyState?.reset();
     const { generatedMeaning, explanation } = renderStructuredResult(resultNode, input);
@@ -224,6 +228,7 @@
   }
 
   function showEmpty(snapshot, { title, message, onExplain, onTranslate } = {}) {
+    app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
@@ -291,6 +296,7 @@
 
   function hide() {
     if (!root) return;
+    app.modules.richResourceResolver?.closeAll();
     root.remove();
     root = null;
     chip = null;

@@ -41,6 +41,19 @@ export {
   RICH_MDICT_STATE_KEY
 };
 
+const sharedPackOperationQueues = new Map();
+
+export function serializeRichMdictPack(packId, action) {
+  const previous = sharedPackOperationQueues.get(packId) || Promise.resolve();
+  const run = previous.catch(() => {}).then(action);
+  let queued;
+  queued = run.finally(() => {
+    if (sharedPackOperationQueues.get(packId) === queued) sharedPackOperationQueues.delete(packId);
+  });
+  sharedPackOperationQueues.set(packId, queued);
+  return queued;
+}
+
 export function createRichMdictManager({
   store = createOpfsPackStore({ rootDir: RICH_MDICT_OPFS_ROOT }),
   stateStore = createPackStateStore({ stateKey: RICH_MDICT_STATE_KEY }),
@@ -57,7 +70,6 @@ export function createRichMdictManager({
   }
 
   const indexCache = new Map();
-  const operationQueues = new Map();
   const operationsByRequest = new Map();
 
   function commit(input = {}) {
@@ -237,6 +249,9 @@ export function createRichMdictManager({
       await store.removePack(id);
       await stateStore.update((current) => {
         delete current.packs[id];
+        for (const [requestId, reservation] of Object.entries(current.resourceReservations || {})) {
+          if (reservation?.packId === id) delete current.resourceReservations[requestId];
+        }
         return current;
       });
       if (isValidSnapshot(id, entry.active)) indexCache.delete(cacheKey(entry.active));
@@ -364,14 +379,7 @@ export function createRichMdictManager({
   }
 
   function serialize(id, action) {
-    const previous = operationQueues.get(id) || Promise.resolve();
-    const run = previous.catch(() => {}).then(action);
-    let queued;
-    queued = run.finally(() => {
-      if (operationQueues.get(id) === queued) operationQueues.delete(id);
-    });
-    operationQueues.set(id, queued);
-    return queued;
+    return serializeRichMdictPack(id, action);
   }
 
   function sourceReader(packId, snapshot, signal) {

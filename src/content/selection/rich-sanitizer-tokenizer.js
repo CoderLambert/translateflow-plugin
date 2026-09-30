@@ -23,10 +23,12 @@
 
   function parseHtml(source, limits) {
     const styleApi = app.modules.richDictionarySanitizerStyle;
+    const resourcePath = app.modules.richResourcePath;
     const root = { children: [] };
     const stack = [{ name: "", children: root.children }];
     const skipped = [];
     let nodeCount = 0;
+    let resourceCount = 0;
     let offset = 0;
     let invalid = false;
     let truncated = false;
@@ -99,22 +101,35 @@
       }
 
       if (token.name === "img") {
-        if (!isLocalRelativeResource(token.attrs.src || "", limits.attributeBytes)) continue;
-        const label = token.attrs.alt || token.attrs.title || "";
-        const content = label ? `［图片：${label}］` : "［图片］";
-        appendElement("span", { "data-rich-placeholder": "image" }, {}, [textNode(content)]);
+        const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
+        if (!path) continue;
+        const label = safeResourceLabel(token.attrs.alt || token.attrs.title || "");
+        if (resourceCount < (limits.resourceCount || 8)) {
+          appendResource("image", path, label);
+        } else {
+          appendElement("span", { "data-rich-placeholder": "image" }, {}, [textNode(label ? `［图片：${label}］` : "［图片资源未导入］")]);
+        }
         continue;
       }
       if (token.name === "audio") {
-        if (isLocalRelativeResource(token.attrs.src || "", limits.attributeBytes)) {
-          const label = token.attrs.title || token.attrs["aria-label"] || "";
-          const content = label ? `［音频：${label}］` : "［音频］";
-          appendElement("span", { "data-rich-placeholder": "audio" }, {}, [textNode(content)]);
+        const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
+        if (!path) {
+          if (!token.selfClosing && skipped.length < limits.depth) skipped.push("audio");
+          continue;
         }
+        const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
+        if (resourceCount < (limits.resourceCount || 8)) appendResource("audio", path, label);
+        else appendElement("span", { "data-rich-placeholder": "audio" }, {}, [textNode(label ? `［音频：${label}］` : "［音频资源未导入］")]);
         if (!token.selfClosing) {
           if (skipped.length >= limits.depth) truncated = true;
           else skipped.push("audio");
         }
+        continue;
+      }
+      if (token.name === "link") {
+        const rel = String(token.attrs.rel || "").trim().toLowerCase();
+        const path = rel === "stylesheet" ? resourcePath?.normalize?.(token.attrs.href || "") || "" : "";
+        if (path && resourceCount < (limits.resourceCount || 8)) appendResource("stylesheet", path, "");
         continue;
       }
       if (VOID_DISCARD_TAGS.has(token.name)) continue;
@@ -157,6 +172,20 @@
       }
     }
     return { nodes: root.children, invalid, truncated };
+
+    function appendResource(kind, path, label) {
+      if (nodeCount >= limits.outputNodes) {
+        truncated = true;
+        return;
+      }
+      stack[stack.length - 1].children.push({ type: "resource", kind, path, label });
+      nodeCount += 1;
+      resourceCount += 1;
+    }
+  }
+
+  function safeResourceLabel(value) {
+    return String(value || "").replace(/[\u0000-\u001f\u007f<>]/gu, " ").slice(0, 160).trim();
   }
 
   function scanTag(source, start, limits) {
@@ -269,13 +298,6 @@
       }
     }
     return true;
-  }
-
-  function isLocalRelativeResource(value, maxLength) {
-    const reference = String(value || "").trim();
-    if (!reference || reference.length > maxLength) return false;
-    if (/^[a-z][a-z0-9+.-]*:/iu.test(reference) || /^(?:\/|\\)/u.test(reference)) return false;
-    return !/[\\\u0000-\u001f\u007f]/u.test(reference);
   }
 
   function stripToPlainText(source, limits) {

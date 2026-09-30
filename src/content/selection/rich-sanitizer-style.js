@@ -22,6 +22,11 @@
 
   function safeAttributes(token) {
     const attrs = {};
+    const classes = String(token.attrs.class || "")
+      .split(/\s+/u)
+      .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))
+      .slice(0, 4);
+    if (classes.length) attrs.class = [...new Set(classes)].join(" ");
     for (const name of ["colspan", "rowspan"]) {
       const value = token.attrs[name];
       if (/^[1-9][0-9]{0,2}$/u.test(value || "")) {
