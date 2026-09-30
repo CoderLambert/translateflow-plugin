@@ -113,16 +113,65 @@
   letter-spacing: .02em;
 }
 .tf-selection-rich-record {
+  min-width: 0;
   padding: 8px 9px;
   border: 1px solid var(--tf-border-soft);
   border-radius: var(--tf-radius-sm);
   background: color-mix(in srgb, var(--tf-bg-card) 88%, transparent);
 }
+.tf-selection-rich-record[data-state="error"] {
+  border-color: color-mix(in srgb, var(--tf-color-danger, #bd5550) 42%, var(--tf-border-soft));
+}
+.tf-selection-rich-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.tf-selection-rich-summary::-webkit-details-marker { display: none; }
+.tf-selection-rich-order {
+  display: inline-grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tf-bg-subtle);
+  color: var(--tf-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+.tf-selection-rich-identity { display: grid; min-width: 0; gap: 3px; }
 .tf-selection-rich-title {
-  margin-bottom: 3px;
+  display: block;
+  margin: 0;
   color: var(--tf-text-muted);
   font-size: 11px;
   font-weight: 650;
+}
+.tf-selection-rich-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.tf-selection-rich-format { font-weight: 650; }
+.tf-selection-rich-card-status {
+  max-width: 92px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: right;
+}
+.tf-selection-rich-record[data-state="error"] .tf-selection-rich-card-status {
+  color: var(--tf-color-danger, #bd5550);
+}
+.tf-selection-rich-card-body {
+  min-width: 0;
+  padding-top: 8px;
 }
 .tf-selection-rich-headword {
   margin-bottom: 4px;
@@ -141,6 +190,28 @@
 .tf-selection-rich-error {
   color: var(--tf-text-muted);
   font-size: var(--tf-font-size-xs);
+}
+.tf-selection-rich-empty,
+.tf-selection-rich-deferred {
+  margin: 0;
+  color: var(--tf-text-muted);
+  font-size: var(--tf-font-size-xs);
+}
+.tf-selection-rich-retry {
+  margin-top: 7px;
+  padding: 4px 8px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-pill);
+  background: var(--tf-bg-card);
+  color: var(--tf-text-secondary);
+  font: inherit;
+  font-size: var(--tf-font-size-xs);
+  cursor: pointer;
+}
+.tf-selection-rich-retry:hover { border-color: var(--tf-green-600); }
+@media (max-width: 360px) {
+  .tf-selection-rich-summary { grid-template-columns: auto minmax(0, 1fr); }
+  .tf-selection-rich-card-status { grid-column: 2; max-width: none; text-align: left; }
 }
 `;
 

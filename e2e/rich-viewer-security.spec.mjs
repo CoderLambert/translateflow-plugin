@@ -68,7 +68,10 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     await expect(page.locator(".tf-selection-chip")).toBeVisible({ timeout: 10_000 });
     await page.locator(".tf-selection-chip").click({ timeout: 10_000 });
 
-    const viewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    const richCard = page.locator(".tf-selection-rich-record")
+      .filter({ hasText: "Rich Viewer Security Fixture" });
+    await expandRichCard(richCard);
+    const viewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
     await expect(viewer).toBeVisible({ timeout: 30_000 });
     await expect(viewer).toContainText("Safe dictionary hierarchy");
     await expect(viewer).toContainText(fixtureExpectations.safeMeaning);
@@ -175,7 +178,10 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     await expect(chip).toBeVisible({ timeout: 10_000 });
     await chip.scrollIntoViewIfNeeded({ timeout: 10_000 });
     await chip.click({ timeout: 10_000 });
-    const compactViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    const compactCard = page.locator(".tf-selection-rich-record")
+      .filter({ hasText: "Rich Viewer Security Fixture" });
+    await expandRichCard(compactCard);
+    const compactViewer = compactCard.locator(".tf-selection-rich-text .tf-rich-viewer");
     await expect(compactViewer).toBeVisible({ timeout: 30_000 });
     await expect(compactViewer).toContainText("COMPACT HEADWORD");
     await expect(compactViewer).toContainText("[pronunciation]");
@@ -253,4 +259,12 @@ async function selectElementText(page, selector) {
       view: window
     }));
   });
+}
+
+async function expandRichCard(card) {
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  if (!await card.evaluate((node) => node.open)) {
+    await card.locator("summary").click();
+  }
+  await expect(card).toHaveAttribute("data-state", "success", { timeout: 30_000 });
 }

@@ -82,7 +82,10 @@ test.describe("Rich MDict local product and security behavior", () => {
     await selectElementText(page, "#rich-mdict-fixture-word");
     await expect(page.locator(".tf-selection-chip")).toBeVisible({ timeout: 10_000 });
     await page.locator(".tf-selection-chip").click();
-    const richViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    const richCard = page.locator(".tf-selection-rich-record")
+      .filter({ hasText: "Rich Fixture Dictionary" });
+    await expandRichCard(richCard);
+    const richViewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
     await expect(richViewer)
       .toContainText("Fixture gloss", { timeout: 30_000 });
     await expect(richViewer)
@@ -146,4 +149,12 @@ async function selectElementText(page, selector) {
       view: window
     }));
   });
+}
+
+async function expandRichCard(card) {
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  if (!await card.evaluate((node) => node.open)) {
+    await card.locator("summary").click();
+  }
+  await expect(card).toHaveAttribute("data-state", "success", { timeout: 30_000 });
 }

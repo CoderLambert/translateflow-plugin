@@ -225,40 +225,37 @@ export function createRichMdictManager({
     return { dictionaries };
   }
 
-  async function lookupText(text) {
+  async function lookupText(text, dictionaryId) {
     const query = normalizeQuery(text);
     const state = await stateStore.read();
     const dictionaries = [];
     const errors = [];
-    for (const [packId, entry] of Object.entries(state.packs || {})) {
+    const targetId = dictionaryId === undefined ? "" : normalizePackId(dictionaryId);
+    const targetEntry = targetId ? state.packs?.[targetId] : null;
+    if (targetId && targetEntry?.sourceId !== RICH_MDICT_SOURCE_ID) {
+      return { found: false, dictionaries: [], errors: [{ id: targetId, title: "", code: "RICH_MDICT_NOT_INSTALLED", message: "Rich dictionary is not installed." }] };
+    }
+    if (targetId && targetEntry.status !== "healthy") {
+      return { found: false, dictionaries: [], errors: [{ id: targetId, title: clampText(targetEntry.active?.title || targetId, 200), code: "RICH_MDICT_UNAVAILABLE", message: "Rich dictionary is not available for lookup." }] };
+    }
+    const entries = targetId ? [[targetId, targetEntry]] : Object.entries(state.packs || {});
+    for (const [packId, entry] of entries) {
       if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || entry?.status !== "healthy") continue;
       const active = entry.active;
       try {
-        if (!isValidSnapshot(packId, active)) {
-          throw richError("RICH_MDICT_CORRUPT", "Rich dictionary metadata is malformed.");
-        }
+        if (!isValidSnapshot(packId, active)) throw richError("RICH_MDICT_CORRUPT", "Rich dictionary metadata is malformed.");
         await assertSourceSize(active);
         const index = await loadIndex(active);
-        const result = await lookup({
-          source: sourceReader(packId, active),
-          index,
-          text: query
+        const result = await lookup({ source: sourceReader(packId, active), index, text: query });
+        if (result?.found) dictionaries.push({
+          id: packId,
+          title: active.title,
+          headword: clampText(result.displayForm, 300),
+          text: clampText(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_CHARS),
+          richRecord: { rawRecord: clampUtf8Text(result.rawRecord, RICH_MDICT_MAX_RECORD_BYTES), format: clampText(index.header.format, 40), styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end })) },
+          ...(result.aliasTarget ? { aliasTarget: clampText(result.aliasTarget, 300) } : {}),
+          ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {})
         });
-        if (result?.found) {
-          dictionaries.push({
-            id: packId,
-            title: active.title,
-            headword: clampText(result.displayForm, 300),
-            text: clampText(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_CHARS),
-            richRecord: {
-              rawRecord: clampUtf8Text(result.rawRecord, RICH_MDICT_MAX_RECORD_BYTES),
-              format: clampText(index.header.format, 40),
-              styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end }))
-            },
-            ...(result.aliasTarget ? { aliasTarget: clampText(result.aliasTarget, 300) } : {}),
-            ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {})
-          });
-        }
       } catch (error) {
         errors.push({
           id: packId,
@@ -267,6 +264,7 @@ export function createRichMdictManager({
           message: clampText(error?.message || String(error), 300)
         });
       }
+      if (targetId) break;
     }
     return { found: dictionaries.length > 0, dictionaries, errors };
   }
@@ -403,7 +401,17 @@ export function createRichMdictManager({
     commit,
     cancel,
     list,
+    listMetadata: async () => { const state = await stateStore.read();
+      return { dictionaries: Object.entries(state.packs || {}).flatMap(([id, entry]) => {
+        try { normalizePackId(id); } catch { return []; } if (entry?.sourceId !== RICH_MDICT_SOURCE_ID) return [];
+        let valid = false;
+        try { valid = isValidSnapshot(id, entry.active); } catch { /* malformed metadata is shown as a corrupt card */ }
+        const status = valid && entry.status === "healthy" ? "ready" : entry.status === "missing" ? "missing" : "corrupt";
+        return [{ ...publicRichDictionary(entry), id, status, errorCode: status === "ready" ? "" : status === "missing" ? "RICH_MDICT_MISSING" : "RICH_MDICT_CORRUPT" }];
+      }) };
+    },
     lookup: lookupText,
+    lookupDictionary: lookupText,
     uninstall,
     abortImport,
     preflightQuota
