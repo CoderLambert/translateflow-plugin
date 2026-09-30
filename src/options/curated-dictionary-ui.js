@@ -2,7 +2,8 @@ import {
   BACKGROUND_MESSAGES
 } from "../shared/constants.js";
 import {
-  CURATED_DICTIONARIES
+  CURATED_DICTIONARIES,
+  CURATED_IMPORTER_TYPES
 } from "../shared/curated-dictionaries.js";
 import {
   requestDictionaryPackOriginPermission
@@ -10,6 +11,7 @@ import {
 import {
   CURATED_WORKER_MESSAGES
 } from "./workers/curated-dictionary-worker-protocol.js";
+import { createCuratedEcdictMdxUi } from "./curated-ecdict-mdx-ui.js";
 import {
   curatedSourceMeta,
   describeCuratedProgress,
@@ -37,6 +39,15 @@ export function initializeCuratedDictionaryUi({
 
   const stateBySource = new Map();
   let active = null;
+  const mdxUi = createCuratedEcdictMdxUi({
+    runtime,
+    permissions,
+    WorkerCtor,
+    cryptoProvider,
+    stateBySource,
+    refresh: () => refresh(),
+    setStatus
+  });
 
   document.addEventListener(
     "translateflow:dictionary-state-changed",
@@ -44,18 +55,29 @@ export function initializeCuratedDictionaryUi({
   );
 
   async function refresh() {
-    const response = await runtime.sendMessage({
-      type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS
-    });
+    const [response, richResponse] = await Promise.all([
+      runtime.sendMessage({
+        type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS
+      }),
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })
+    ]);
     const packs = response?.ok
       ? response.state?.packs || {}
       : {};
-    render(packs);
+    render(
+      packs,
+      richResponse?.ok ? richResponse.dictionaries || [] : [],
+      richResponse?.ok ? "" : richResponse?.error || "无法读取富文本词典状态。"
+    );
   }
 
-  function render(packs) {
+  function render(packs, richDictionaries, richMdictError = "") {
     container.replaceChildren();
     for (const source of CURATED_DICTIONARIES) {
+      if (source.importerType === CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1) {
+        mdxUi.render(container, source, richDictionaries, richMdictError);
+        continue;
+      }
       const local = stateBySource.get(source.id) || {};
       const entry =
         packs[source.output.packId] || null;
@@ -64,6 +86,7 @@ export function initializeCuratedDictionaryUi({
 
       const row = document.createElement("div");
       row.className = "site-row dictionary-pack-row";
+      row.dataset.recipeId = source.id;
 
       const summary = document.createElement("div");
       summary.className = "site-summary";
@@ -130,7 +153,7 @@ export function initializeCuratedDictionaryUi({
   }
 
   async function installSource(source, button) {
-    if (active) return;
+    if (active || mdxUi.isActive()) return;
     button.disabled = true;
     try {
       const granted =
@@ -236,6 +259,10 @@ export function initializeCuratedDictionaryUi({
   }
 
   async function cancelActive() {
+    if (mdxUi.isActive()) {
+      await mdxUi.cancelActive();
+      return;
+    }
     const current = active;
     if (!current) return;
     if (current.phase === "commit") {
@@ -252,18 +279,18 @@ export function initializeCuratedDictionaryUi({
   }
 
   async function renderCurrent() {
-    const response = await runtime.sendMessage({
-      type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS
-    });
-    render(
-      response?.ok ? response.state?.packs || {} : {}
-    );
+    await refresh();
   }
 
   function setLocal(sourceId, message) {
     stateBySource.set(sourceId, { message });
   }
 
+  const pagehide = () => {
+    active?.worker?.terminate?.();
+    mdxUi.dispose();
+  };
+  window.addEventListener("pagehide", pagehide, { once: true });
   return refresh();
 }
 
@@ -310,7 +337,6 @@ function waitForWorker(
     });
   });
 }
-
 
 function makeLink(label, href) {
   const link = document.createElement("a");

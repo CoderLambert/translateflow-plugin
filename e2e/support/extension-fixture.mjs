@@ -19,8 +19,16 @@ const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
 
 export const test = base.extend({
   lexiconPacks: ["fixture", { option: true, scope: "worker" }],
-  harness: [async ({ lexiconPacks }, use) => {
-    const server = await startMockServer();
+  ecdictMdxReleaseHostAccess: [false, { option: true, scope: "worker" }],
+  ecdictMdxCachedArchivePath: ["", { option: true, scope: "worker" }],
+  harness: [async ({
+    lexiconPacks,
+    ecdictMdxReleaseHostAccess,
+    ecdictMdxCachedArchivePath
+  }, use) => {
+    const server = await startMockServer({
+      ecdictMdxArchivePath: ecdictMdxCachedArchivePath
+    });
     const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-e2e-"));
     const extensionDir = join(tempRoot, "extension");
     const buildReport = await buildExtension({
@@ -67,7 +75,24 @@ export const test = base.extend({
       "https://api.deepseek.com/*",
       "https://raw.githubusercontent.com/*"
     ];
+    if (ecdictMdxReleaseHostAccess) {
+      manifest.host_permissions.push(
+        "https://github.com/*",
+        "https://release-assets.githubusercontent.com/*"
+      );
+    }
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    if (ecdictMdxCachedArchivePath) {
+      const mdxWorkerPath = join(
+        extensionDir,
+        "src",
+        "options",
+        "workers",
+        "curated-ecdict-mdx-worker.js"
+      );
+      await writeFile(mdxWorkerPath, makeCachedEcdictMdxTestWorker(server.baseUrl));
+    }
 
     const userDataDir = join(tempRoot, "profile");
     const context = await chromium.launchPersistentContext(userDataDir, {
@@ -234,3 +259,46 @@ export const test = base.extend({
 });
 
 export { expect };
+
+function makeCachedEcdictMdxTestWorker(baseUrl) {
+  return `import { createCuratedEcdictMdxWorkerHandler } from "./curated-ecdict-mdx-worker-core.js";
+
+const handler = createCuratedEcdictMdxWorkerHandler({
+  postMessage(message) { self.postMessage(message); },
+  network: {
+    async fetchSource(source, { signal } = {}) {
+      if (
+        source?.id !== "ecdict-en-zh-mdx-curated" ||
+        source?.downloadUrl !== "https://github.com/skywind3000/ECDICT/releases/download/1.0.28/ecdict-mdx-28.zip"
+      ) throw new Error("Test archive bridge only accepts the pinned ECDICT 1.0.28 recipe.");
+      const local = await fetch(${JSON.stringify(`${baseUrl}/__e2e/ecdict-mdx-28.zip`)}, {
+        method: "GET",
+        cache: "no-store",
+        signal
+      });
+      return {
+        ok: local.ok,
+        status: local.status,
+        url: "https://release-assets.githubusercontent.com/e2e-cached/ecdict-mdx-28.zip",
+        redirected: true,
+        headers: local.headers,
+        body: local.body,
+        arrayBuffer() { return local.arrayBuffer(); }
+      };
+    }
+  }
+});
+
+self.addEventListener("message", (event) => {
+  Promise.resolve(handler.handleMessage(event.data)).catch((error) => {
+    self.postMessage({
+      type: "curated-ecdict-mdx:error",
+      requestId: event.data?.requestId || "",
+      error: error?.message || String(error),
+      errorName: error?.name || "Error",
+      errorCode: error?.code || ""
+    });
+  });
+});
+`;
+}

@@ -1,13 +1,67 @@
 import { createServer } from "node:http";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { once } from "node:events";
 
-export async function startMockServer() {
+export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
   let calls = [];
   let failures = [];
   let delayMs = 0;
+  let ecdictMdxArchiveMode = "archive";
+  let ecdictMdxArchiveRequests = [];
 
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url || "/", "http://127.0.0.1");
+
+      if (
+        request.method === "GET" &&
+        url.pathname === "/__e2e/ecdict-mdx-28.zip" &&
+        ecdictMdxArchivePath
+      ) {
+        const requestMode = ecdictMdxArchiveMode;
+        const evidence = {
+          origin: `http://${request.headers.host}`,
+          path: url.pathname,
+          mode: requestMode,
+          startedAt: new Date().toISOString()
+        };
+        ecdictMdxArchiveRequests.push(evidence);
+        if (requestMode === "failure") {
+          response.statusCode = 503;
+          response.setHeader("Content-Type", "text/plain; charset=utf-8");
+          response.end("cached ECDICT test server failure");
+          return;
+        }
+        if (requestMode === "cancel") {
+          response.statusCode = 200;
+          response.setHeader("Content-Type", "application/zip");
+          response.setHeader("Content-Length", String((await stat(ecdictMdxArchivePath)).size));
+          await new Promise((resolve) => {
+            const timer = setTimeout(resolve, 30_000);
+            response.once("close", () => {
+              clearTimeout(timer);
+              resolve();
+            });
+          });
+          if (!response.destroyed) response.end();
+          evidence.finishedAt = new Date().toISOString();
+          return;
+        }
+
+        const { size } = await stat(ecdictMdxArchivePath);
+        response.statusCode = 200;
+        response.setHeader("Content-Type", "application/zip");
+        response.setHeader("Content-Length", String(size));
+        const stream = createReadStream(ecdictMdxArchivePath);
+        stream.on("error", (error) => response.destroy(error));
+        response.once("finish", () => {
+          evidence.finishedAt = new Date().toISOString();
+        });
+        stream.pipe(response);
+        await once(response, "finish").catch(() => {});
+        return;
+      }
 
       if (request.method === "POST" && url.pathname === "/v1/chat/completions") {
         const body = JSON.parse(await readBody(request));
@@ -109,16 +163,27 @@ export async function startMockServer() {
     get calls() {
       return calls;
     },
+    get ecdictMdxArchiveRequests() {
+      return ecdictMdxArchiveRequests;
+    },
     reset() {
       calls = [];
       failures = [];
       delayMs = 0;
+      ecdictMdxArchiveMode = "archive";
+      ecdictMdxArchiveRequests = [];
     },
     setFailures(statuses) {
       failures = [...(Array.isArray(statuses) ? statuses : [])].map(Number);
     },
     setDelay(ms) {
       delayMs = Math.max(0, Number(ms) || 0);
+    },
+    setEcdictMdxArchiveMode(mode) {
+      if (!["archive", "failure", "cancel"].includes(mode)) {
+        throw new Error("Unknown ECDICT E2E archive mode.");
+      }
+      ecdictMdxArchiveMode = mode;
     },
     close() {
       return new Promise((resolve, reject) => {

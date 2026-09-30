@@ -12,6 +12,13 @@ import {
 import {
   RICH_MDICT_WORKER_MESSAGES
 } from "./rich-mdict-import-worker-protocol.js";
+import {
+  makeCuratedRichMdictProvenance
+} from "../../background/packs/rich-mdict-contract.js";
+import {
+  CURATED_IMPORTER_TYPES,
+  getCuratedDictionary
+} from "../../shared/curated-dictionaries.js";
 
 const MAX_SOURCE_BYTES = 128 * 1024 * 1024;
 const MAX_INDEX_BYTES = 8 * 1024 * 1024;
@@ -52,7 +59,13 @@ export function createRichMdictImportWorkerHandler({
       throw workerError("RICH_MDICT_WORKER_BUSY", "Another rich MDict import is already running.");
     }
     const input = validateInput(message.input);
-    const { file, packId, packVersion, displayMetadata = {} } = input;
+    const {
+      file,
+      packId,
+      packVersion,
+      displayMetadata = {},
+      curatedRecipeId = ""
+    } = input;
     const controller = new AbortController();
     active = { requestId, controller };
 
@@ -89,7 +102,10 @@ export function createRichMdictImportWorkerHandler({
       const indexSha256 = await sha256(indexBytes, cryptoProvider);
 
       const existingVersions = await store.listVersions(packId);
-      if (existingVersions.length) {
+      if (
+        existingVersions.includes(packVersion) ||
+        (!curatedRecipeId && existingVersions.length)
+      ) {
         throw workerError("RICH_MDICT_EXISTS", "This rich dictionary identifier is already in use.");
       }
       emitProgress(postMessage, requestId, "store-source");
@@ -116,7 +132,10 @@ export function createRichMdictImportWorkerHandler({
         format: header.format || index.format || "Html",
         engineVersion: header.version || header.generatedByEngineVersion || "",
         encoding: header.encoding || "",
-        header
+        header,
+        ...(curatedRecipeId
+          ? { curated: makeCuratedRichMdictProvenance(curatedRecipeId) }
+          : {})
       };
       const result = {
         type: RICH_MDICT_WORKER_MESSAGES.READY,
@@ -164,7 +183,25 @@ function validateInput(input) {
   }
   const packId = normalizePackId(input.packId);
   const packVersion = normalizePackVersion(input.packVersion);
-  return { file, packId, packVersion, displayMetadata: input.displayMetadata || {} };
+  const curatedRecipeId = String(input.curatedRecipeId || "");
+  if (curatedRecipeId) {
+    const curated = makeCuratedRichMdictProvenance(curatedRecipeId);
+    const source = getCuratedDictionary(curatedRecipeId);
+    if (
+      curated.recipeId !== curatedRecipeId ||
+      source?.importerType !== CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1 ||
+      source?.output?.packId !== packId
+    ) {
+      throw workerError("RICH_MDICT_PROVENANCE", "Curated rich MDict identity does not match its declared recipe.");
+    }
+  }
+  return {
+    file,
+    packId,
+    packVersion,
+    displayMetadata: input.displayMetadata || {},
+    curatedRecipeId
+  };
 }
 
 async function sha256(bytes, cryptoProvider) {

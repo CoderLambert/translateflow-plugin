@@ -16,13 +16,24 @@ on:
       - "src/background/router.js"
       - "src/shared/constants.js"
       - "src/options/rich-mdict-*.js"
+      - "src/options/curated-dictionary-*.js"
+      - "src/options/curated-ecdict-mdx-ui.js"
       - "src/options/workers/rich-mdict-*.js"
+      - "src/options/workers/curated-ecdict-mdx-worker*.js"
+      - "src/shared/curated-dictionaries.js"
+      - "src/shared/curated-ecdict-mdx-recipe.js"
+      - "src/background/providers/curated-dictionary-network.js"
+      - "src/background/packs/importers/ecdict-mdx-*.js"
       - "src/content/selection/**"
       - "src/content/ui/selection-lexical-styles.js"
       - "e2e/rich-mdict*.spec.mjs"
+      - "e2e/curated-ecdict-mdx*.spec.mjs"
       - "e2e/rich-viewer-security.spec.mjs"
       - "e2e/support/extension-fixture.mjs"
+      - "e2e/support/mock-server.mjs"
       - "tests/rich-mdict*.test.mjs"
+      - "tests/ecdict-mdx-*.test.mjs"
+      - "tests/curated-ecdict-mdx-worker.test.mjs"
       - "tests/rich-dictionary-sanitizer.test.mjs"
       - "tests/rich-viewer-contract.test.mjs"
       - "tests/helpers/rich-viewer-security-fixture.mjs"
@@ -41,13 +52,24 @@ on:
       - "src/background/router.js"
       - "src/shared/constants.js"
       - "src/options/rich-mdict-*.js"
+      - "src/options/curated-dictionary-*.js"
+      - "src/options/curated-ecdict-mdx-ui.js"
       - "src/options/workers/rich-mdict-*.js"
+      - "src/options/workers/curated-ecdict-mdx-worker*.js"
+      - "src/shared/curated-dictionaries.js"
+      - "src/shared/curated-ecdict-mdx-recipe.js"
+      - "src/background/providers/curated-dictionary-network.js"
+      - "src/background/packs/importers/ecdict-mdx-*.js"
       - "src/content/selection/**"
       - "src/content/ui/selection-lexical-styles.js"
       - "e2e/rich-mdict*.spec.mjs"
+      - "e2e/curated-ecdict-mdx*.spec.mjs"
       - "e2e/rich-viewer-security.spec.mjs"
       - "e2e/support/extension-fixture.mjs"
+      - "e2e/support/mock-server.mjs"
       - "tests/rich-mdict*.test.mjs"
+      - "tests/ecdict-mdx-*.test.mjs"
+      - "tests/curated-ecdict-mdx-worker.test.mjs"
       - "tests/rich-dictionary-sanitizer.test.mjs"
       - "tests/rich-viewer-contract.test.mjs"
       - "tests/helpers/rich-viewer-security-fixture.mjs"
@@ -76,9 +98,11 @@ jobs:
       - name: Run MDict parser and sanitizer security tests
         run: node --test tests/rich-mdict-security.test.mjs tests/rich-dictionary-sanitizer.test.mjs tests/rich-viewer-contract.test.mjs
       - name: Run real ECDICT and hostile rich-viewer browser gates
-        run: npx playwright test e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs e2e/rich-viewer-security.spec.mjs
+        run: npx playwright test e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs e2e/curated-ecdict-mdx-product.spec.mjs e2e/rich-viewer-security.spec.mjs
         env:
           RICH_MDICT_REAL_MDX: ${{ runner.temp }}/translateflow-rich-mdict/简明英汉字典增强版.mdx
+          RICH_MDICT_CACHE_DIR: ${{ runner.temp }}/translateflow-rich-mdict
+          ECDICT_MDX_ONE_CLICK_GATE: "1"
           RICH_MDICT_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-rich-mdict/evidence
       - name: Upload reports and screenshots (never the corpus asset)
         if: always()

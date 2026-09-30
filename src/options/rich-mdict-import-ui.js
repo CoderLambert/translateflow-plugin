@@ -168,11 +168,14 @@ export function initializeRichMdictImportUi({
 
 function renderInstalled(container, dictionaries, { runtime, setStatus, refreshInstalled, resourceController, setProgressNode }) {
   container.replaceChildren();
-  if (!Array.isArray(dictionaries) || !dictionaries.length) {
-    container.textContent = "尚未安装富文本 MDict 词典。";
+  const localDictionaries = Array.isArray(dictionaries)
+    ? dictionaries.filter((dictionary) => !dictionary.curated)
+    : [];
+  if (!localDictionaries.length) {
+    container.textContent = "尚未安装本地导入的富文本 MDict 词典。";
     return;
   }
-  for (const dictionary of dictionaries) {
+  for (const dictionary of localDictionaries) {
     const row = document.createElement("div");
     row.className = "site-row dictionary-pack-row";
     row.dataset.dictionaryId = String(dictionary.id || "");

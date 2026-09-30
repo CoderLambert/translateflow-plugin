@@ -5,6 +5,15 @@ import { createDictionaryPackManager } from "../src/background/packs/manager.js"
 import { createOpfsPackStore } from "../src/background/packs/opfs-store.js";
 import { createRichMdictManager } from "../src/background/packs/rich-mdict.js";
 import {
+  hasExactJsonShapeAndValues,
+  makeCuratedRichMdictProvenance,
+  validateCuratedRichMdictProvenance
+} from "../src/background/packs/rich-mdict-contract.js";
+import { createRichMddResourceManager } from "../src/background/packs/rich-mdd-resources.js";
+import { createMddResourceImportWorkerHandler } from "../src/options/workers/mdd-resource-import-worker-core.js";
+import { MDD_RESOURCE_WORKER_MESSAGES } from "../src/options/workers/mdd-resource-import-worker-protocol.js";
+import { makeMdd } from "./helpers/mdd-fixture.mjs";
+import {
   RICH_MDICT_INDEX_PATH,
   RICH_MDICT_OPFS_ROOT,
   RICH_MDICT_SOURCE_PATH
@@ -19,6 +28,55 @@ const BASE_ID = {
   packId: "rich-mdict-123e4567-e89b-42d3-a456-426614174000",
   packVersion: "import-m1234-123e4567"
 };
+const CURATED_PACK_ID = "rich-mdict-18500000-0000-4000-8000-000000000028";
+const CURATED_RECIPE_ID = "ecdict-en-zh-mdx-curated";
+const CURATED_PROVENANCE = makeCuratedRichMdictProvenance(CURATED_RECIPE_ID);
+
+test("exact JSON comparison handles alphabetically reordered arrays longer than ten", () => {
+  const expected = { nested: { values: Array.from({ length: 12 }, (_, index) => index) } };
+  const reordered = { nested: { values: [...expected.nested.values] } };
+  assert.equal(hasExactJsonShapeAndValues(reordered, expected), true);
+  reordered.nested.values[10] = -1;
+  assert.equal(hasExactJsonShapeAndValues(reordered, expected), false);
+});
+
+test("curated provenance validation ignores Chrome storage key order but rejects shape or value changes", () => {
+  const chromeStored = Object.fromEntries(
+    Object.keys(CURATED_PROVENANCE)
+      .sort()
+      .map((key) => [key, CURATED_PROVENANCE[key]])
+  );
+  assert.deepEqual(
+    validateCuratedRichMdictProvenance(chromeStored, CURATED_PACK_ID),
+    CURATED_PROVENANCE
+  );
+
+  assert.throws(
+    () => validateCuratedRichMdictProvenance({ ...chromeStored, injected: true }, CURATED_PACK_ID),
+    (error) => error?.code === "RICH_MDICT_PROVENANCE"
+  );
+  const missingField = Object.fromEntries(
+    Object.entries(chromeStored).filter(([key]) => key !== "sourceLicenseNotice")
+  );
+  assert.throws(
+    () => validateCuratedRichMdictProvenance(missingField, CURATED_PACK_ID),
+    (error) => error?.code === "RICH_MDICT_PROVENANCE"
+  );
+  assert.throws(
+    () => validateCuratedRichMdictProvenance({
+      ...chromeStored,
+      knownLimitations: [...chromeStored.knownLimitations, "tampered"]
+    }, CURATED_PACK_ID),
+    (error) => error?.code === "RICH_MDICT_PROVENANCE"
+  );
+  assert.throws(
+    () => validateCuratedRichMdictProvenance({
+      ...chromeStored,
+      downloadBytes: chromeStored.downloadBytes + 1
+    }, CURATED_PACK_ID),
+    (error) => error?.code === "RICH_MDICT_PROVENANCE"
+  );
+});
 
 test("Rich MDict commit rechecks the compact index and lookup uses OPFS ranges after reload", async () => {
   const env = createEnvironment();
@@ -173,6 +231,192 @@ test("failed uninstall retains a visible row and a retry removes it cleanly", as
   assert.deepEqual(await env.manager.list(), { dictionaries: [] });
 });
 
+test("failed curated reinstall preserves the previous active ECDICT version and lookup", async () => {
+  let failNextBuild = false;
+  const env = createEnvironment({
+    buildIndex: async ({ source }) => {
+      await source.read(0, 1);
+      if (failNextBuild) throw new Error("fixture replacement index failure");
+      return createIndex(source.size);
+    }
+  });
+  const old = curatedIdentity("import-old-123e4567", "curated-old");
+  const oldMetadata = await stageCurated(env, old, CURATED_PROVENANCE);
+  await env.manager.commit({ ...old, metadata: oldMetadata });
+
+  const replacement = {
+    recipeId: CURATED_RECIPE_ID,
+    expectedActiveVersion: old.packVersion
+  };
+  const next = curatedIdentity("import-new-223e4567", "curated-failed-reinstall", replacement);
+  const nextMetadata = await stageCurated(env, next, CURATED_PROVENANCE);
+  failNextBuild = true;
+  await assert.rejects(
+    env.manager.commit({ ...next, metadata: nextMetadata, catalogReplacement: replacement }),
+    /fixture replacement index failure/u
+  );
+
+  const listed = await env.manager.list();
+  assert.equal(listed.dictionaries.length, 1);
+  assert.equal(listed.dictionaries[0].status, "ready");
+  assert.equal(listed.dictionaries[0].packVersion, old.packVersion);
+  assert.deepEqual(await env.store.listVersions(CURATED_PACK_ID), [old.packVersion]);
+  assert.deepEqual((await env.stateStore.read()).reservations, {});
+  assert.equal((await env.manager.lookup("run")).dictionaries[0].text, "run — 运行");
+});
+
+test("cancelled curated reinstall preserves the previous active ECDICT version and bytes", async () => {
+  let blockNextBuild = false;
+  let releaseBuild;
+  let signalBuildStarted;
+  const buildStarted = new Promise((resolve) => { signalBuildStarted = resolve; });
+  const env = createEnvironment({
+    buildIndex: async ({ source }) => {
+      await source.read(0, 1);
+      if (blockNextBuild) {
+        blockNextBuild = false;
+        signalBuildStarted();
+        await new Promise((resolve) => { releaseBuild = resolve; });
+      }
+      return createIndex(source.size);
+    }
+  });
+  const old = curatedIdentity("import-old-323e4567", "curated-old-cancel");
+  const oldMetadata = await stageCurated(env, old, CURATED_PROVENANCE);
+  await env.manager.commit({ ...old, metadata: oldMetadata });
+  const oldSource = await env.store.readFile(CURATED_PACK_ID, old.packVersion, RICH_MDICT_SOURCE_PATH);
+
+  const replacement = {
+    recipeId: CURATED_RECIPE_ID,
+    expectedActiveVersion: old.packVersion
+  };
+  const next = curatedIdentity("import-new-423e4567", "curated-cancelled-reinstall", replacement);
+  const nextMetadata = await stageCurated(env, next, CURATED_PROVENANCE);
+  blockNextBuild = true;
+  const commit = env.manager.commit({ ...next, metadata: nextMetadata, catalogReplacement: replacement });
+  await buildStarted;
+  assert.deepEqual(env.manager.cancel(next.requestId), { cancelled: true, phase: "verify" });
+  releaseBuild();
+  await assert.rejects(commit, (error) => error?.name === "AbortError");
+
+  const listed = await env.manager.list();
+  assert.equal(listed.dictionaries[0].packVersion, old.packVersion);
+  assert.deepEqual(await env.store.listVersions(CURATED_PACK_ID), [old.packVersion]);
+  assert.deepEqual(
+    await env.store.readFile(CURATED_PACK_ID, old.packVersion, RICH_MDICT_SOURCE_PATH),
+    oldSource
+  );
+  assert.deepEqual((await env.stateStore.read()).reservations, {});
+});
+
+test("successful curated MDX replacement retains a usable attached MDD version and cleans the prior MDX", async () => {
+  const env = createEnvironment();
+  const old = curatedIdentity("import-old-723e4567", "curated-old-with-mdd");
+  const oldMetadata = await stageCurated(env, old, CURATED_PROVENANCE);
+  await env.manager.commit({ ...old, metadata: oldMetadata });
+
+  const resourceManager = createRichMddResourceManager({
+    store: env.store,
+    stateStore: env.stateStore,
+    cryptoProvider: webcrypto
+  });
+  const resourceBytes = makeMdd([["\\ecdict\\probe.css", encoder.encode(".probe{color:#123;}")]]);
+  const resourceFile = new Blob([resourceBytes]);
+  Object.defineProperty(resourceFile, "name", {
+    value: "简明英汉字典增强版.mdd"
+  });
+  const resourceRequest = {
+    dictionaryId: CURATED_PACK_ID,
+    requestId: "curated-mdx-resource-attach",
+    resourceVersion: "import-resource-823e4567",
+    mdxFileName: "简明英汉字典增强版.mdx",
+    files: [{ fileName: resourceFile.name, size: resourceFile.size }]
+  };
+  await resourceManager.preflight(resourceRequest);
+  const resourceMessages = [];
+  const resourceWorker = createMddResourceImportWorkerHandler({
+    postMessage: (message) => resourceMessages.push(message),
+    store: env.store,
+    cryptoProvider: webcrypto
+  });
+  const ready = await resourceWorker.handleMessage({
+    type: MDD_RESOURCE_WORKER_MESSAGES.START,
+    requestId: resourceRequest.requestId,
+    input: { ...resourceRequest, files: [resourceFile] }
+  });
+  assert.equal(ready.type, MDD_RESOURCE_WORKER_MESSAGES.READY);
+  await resourceManager.commit({
+    dictionaryId: resourceRequest.dictionaryId,
+    requestId: resourceRequest.requestId,
+    resourceVersion: resourceRequest.resourceVersion,
+    metadata: ready.metadata
+  });
+  const resourceBefore = await resourceManager.lookupResource({
+    dictionaryId: CURATED_PACK_ID,
+    path: "ecdict/probe.css"
+  });
+  assert.equal(resourceBefore.found, true);
+  assert.equal(Buffer.from(resourceBefore.base64, "base64").toString("utf8"), ".probe{color:#123;}");
+
+  const replacement = {
+    recipeId: CURATED_RECIPE_ID,
+    expectedActiveVersion: old.packVersion
+  };
+  const next = curatedIdentity("import-new-923e4567", "curated-replace-with-mdd", replacement);
+  const nextMetadata = await stageCurated(env, next, CURATED_PROVENANCE);
+  const replaced = await env.manager.commit({
+    ...next,
+    metadata: nextMetadata,
+    catalogReplacement: replacement
+  });
+
+  assert.equal(replaced.status, "replaced");
+  assert.equal(replaced.dictionary.packVersion, next.packVersion);
+  const state = await env.stateStore.read();
+  assert.equal(state.packs[CURATED_PACK_ID].active.resources.packVersion, resourceRequest.resourceVersion);
+  assert.deepEqual(
+    (await env.store.listVersions(CURATED_PACK_ID)).sort(),
+    [next.packVersion, resourceRequest.resourceVersion].sort()
+  );
+  const resourceAfter = await resourceManager.lookupResource({
+    dictionaryId: CURATED_PACK_ID,
+    path: "ecdict/probe.css"
+  });
+  assert.equal(resourceAfter.found, true);
+  assert.equal(Buffer.from(resourceAfter.base64, "base64").toString("utf8"), ".probe{color:#123;}");
+
+  await env.manager.uninstall(CURATED_PACK_ID);
+  assert.deepEqual(await env.store.listVersions(CURATED_PACK_ID), []);
+  assert.deepEqual(await env.manager.list(), { dictionaries: [] });
+});
+
+test("successful curated reinstall atomically activates the new version and delete removes its data", async () => {
+  const env = createEnvironment();
+  const old = curatedIdentity("import-old-523e4567", "curated-old-success");
+  const oldMetadata = await stageCurated(env, old, CURATED_PROVENANCE);
+  await env.manager.commit({ ...old, metadata: oldMetadata });
+
+  const replacement = {
+    recipeId: CURATED_RECIPE_ID,
+    expectedActiveVersion: old.packVersion
+  };
+  const next = curatedIdentity("import-new-623e4567", "curated-successful-reinstall", replacement);
+  const nextMetadata = await stageCurated(env, next, CURATED_PROVENANCE);
+  const installed = await env.manager.commit({
+    ...next,
+    metadata: nextMetadata,
+    catalogReplacement: replacement
+  });
+
+  assert.equal(installed.status, "replaced");
+  assert.equal(installed.dictionary.packVersion, next.packVersion);
+  assert.deepEqual(await env.store.listVersions(CURATED_PACK_ID), [next.packVersion]);
+  assert.equal((await env.manager.lookup("run")).found, true);
+  assert.deepEqual(await env.manager.uninstall(CURATED_PACK_ID), { uninstalled: true });
+  assert.deepEqual(await env.manager.list(), { dictionaries: [] });
+  assert.deepEqual(await env.store.listVersions(CURATED_PACK_ID), []);
+});
+
 test("structured pack recovery does not delete active or staged rich data in the shared OPFS root", async () => {
   const root = new MemoryDirectory();
   const rootProvider = async () => root;
@@ -233,6 +477,33 @@ async function stage(env, identity, index = createIndex(SOURCE_BYTES.length)) {
     fileName: "english-filename.mdx",
     format: index.header.format,
     header: index.header
+  };
+}
+
+function curatedIdentity(packVersion, requestId, catalogReplacement = null) {
+  return {
+    requestId,
+    packId: CURATED_PACK_ID,
+    packVersion,
+    ...(catalogReplacement ? { catalogReplacement } : {})
+  };
+}
+
+async function stageCurated(env, identity, curated, index = createIndex(SOURCE_BYTES.length)) {
+  await env.manager.preflightQuota(SOURCE_BYTES.length, identity);
+  await env.store.writeFile(identity.packId, identity.packVersion, RICH_MDICT_SOURCE_PATH, SOURCE_BYTES);
+  const indexBytes = encoder.encode(JSON.stringify(index));
+  await env.store.writeFile(identity.packId, identity.packVersion, RICH_MDICT_INDEX_PATH, indexBytes);
+  return {
+    sourceSize: SOURCE_BYTES.length,
+    indexSize: indexBytes.length,
+    indexSha256: await sha256(indexBytes),
+    entryCount: index.entryCount,
+    title: "ECDICT 简明英汉增强版",
+    fileName: "简明英汉字典增强版.mdx",
+    format: index.header.format,
+    header: index.header,
+    curated
   };
 }
 

@@ -1,6 +1,10 @@
 import {
   validateRichMdictIndex
 } from "./importers/mdict-rich-validation.js";
+import {
+  CURATED_IMPORTER_TYPES,
+  getCuratedDictionary
+} from "../../shared/curated-dictionaries.js";
 
 export const RICH_MDICT_STATE_KEY = "tfRichMdictStateV1";
 export const RICH_MDICT_OPFS_ROOT = "rich-mdict-dictionaries";
@@ -35,6 +39,9 @@ export function validateCommit({ packId, packVersion, metadata } = {}) {
   if (!/^[a-f0-9]{64}$/u.test(indexSha256)) {
     throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index checksum is invalid.");
   }
+  const curated = metadata.curated === undefined
+    ? null
+    : validateCuratedRichMdictProvenance(metadata.curated, id);
   return {
     packId: id,
     packVersion: version,
@@ -47,8 +54,100 @@ export function validateCommit({ packId, packVersion, metadata } = {}) {
     format: clampText(metadata.format || "Html", 40),
     engineVersion: clampText(metadata.engineVersion || "", 40),
     encoding: clampText(metadata.encoding || "", 40),
-    header: sanitizeHeaderSummary(metadata.header)
+    header: sanitizeHeaderSummary(metadata.header),
+    ...(curated ? { curated } : {})
   };
+}
+
+export function makeCuratedRichMdictProvenance(recipe) {
+  const source = typeof recipe === "string"
+    ? getCuratedDictionary(recipe)
+    : getCuratedDictionary(recipe?.id);
+  if (
+    !source ||
+    source.importerType !== CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1 ||
+    source.output?.packId !== "rich-mdict-18500000-0000-4000-8000-000000000028" ||
+    source.output?.recipeId !== source.id
+  ) {
+    throw richError("RICH_MDICT_PROVENANCE", "Curated rich dictionary recipe is not declared by this extension.");
+  }
+  return {
+    recipeId: source.id,
+    trustClass: source.trustClass,
+    publisher: source.publisher,
+    upstreamRepository: source.upstreamRepository,
+    upstreamRevision: source.upstreamRevision,
+    sourceFormat: source.sourceFormat,
+    languageDirection: source.languageDirection,
+    sourceLicenseLabel: source.sourceLicenseLabel,
+    sourceLicenseUrl: source.sourceLicenseUrl,
+    sourceLicenseNotice: source.sourceLicenseNotice,
+    downloadUrl: source.downloadUrl,
+    downloadBytes: source.downloadBytes,
+    archiveSha256: source.downloadSha256,
+    mdxFileName: source.mdx.fileName,
+    mdxBytes: source.mdx.bytes,
+    mdxSha256: source.mdx.sha256,
+    entryCount: source.mdx.entryCount,
+    contentDate: source.mdx.descriptionDate,
+    knownLimitations: [...source.knownLimitations]
+  };
+}
+
+export function validateCuratedRichMdictProvenance(value, packId) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw richError("RICH_MDICT_PROVENANCE", "Curated rich dictionary provenance is invalid.");
+  }
+  const expected = makeCuratedRichMdictProvenance(value.recipeId);
+  if (
+    packId !== "rich-mdict-18500000-0000-4000-8000-000000000028" ||
+    !hasExactJsonShapeAndValues(value, expected)
+  ) {
+    throw richError("RICH_MDICT_PROVENANCE", "Curated rich dictionary provenance does not match its extension-declared recipe.");
+  }
+  return expected;
+}
+
+export function hasExactJsonShapeAndValues(actual, expected) {
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual) || actual.length !== expected.length) return false;
+    const expectedKeys = expected.map((_, index) => String(index)).sort();
+    const actualKeys = Object.keys(actual).sort();
+    if (!sameStrings(actualKeys, expectedKeys)) return false;
+    return expected.every((value, index) => hasExactJsonShapeAndValues(actual[index], value));
+  }
+  if (expected && typeof expected === "object") {
+    if (!actual || typeof actual !== "object" || Array.isArray(actual)) return false;
+    const expectedKeys = Object.keys(expected).sort();
+    const actualKeys = Object.keys(actual).sort();
+    if (!sameStrings(actualKeys, expectedKeys)) return false;
+    return expectedKeys.every((key) => hasExactJsonShapeAndValues(actual[key], expected[key]));
+  }
+  return Object.is(actual, expected);
+}
+
+function sameStrings(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+export function validateCuratedRichMdictReplacement(value, packId, curated) {
+  if (value === undefined || value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw richError("RICH_MDICT_PROVENANCE", "Curated rich dictionary replacement request is invalid.");
+  }
+  const recipeId = String(value.recipeId || "");
+  const source = getCuratedDictionary(recipeId);
+  if (
+    !source ||
+    source.importerType !== CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1 ||
+    source.output?.packId !== packId ||
+    curated?.recipeId !== recipeId
+  ) {
+    throw richError("RICH_MDICT_PROVENANCE", "Only the declared curated recipe can replace its own rich dictionary.");
+  }
+  const expectedActiveVersion = String(value.expectedActiveVersion || "");
+  if (expectedActiveVersion) normalizeVersion(expectedActiveVersion);
+  return { recipeId, expectedActiveVersion };
 }
 
 export function parseIndex(bytes) {
@@ -73,7 +172,7 @@ export function assertIndexMatchesMetadata(index, metadata) {
 }
 
 export function isValidSnapshot(packId, snapshot) {
-  return Boolean(
+  const valid = Boolean(
     snapshot && typeof snapshot === "object" &&
     snapshot.packId === packId && normalizePackId(snapshot.packId) === packId &&
     normalizeVersion(snapshot.packVersion) === snapshot.packVersion &&
@@ -81,6 +180,13 @@ export function isValidSnapshot(packId, snapshot) {
     Number.isSafeInteger(snapshot.indexSize) && snapshot.indexSize > 0 &&
     /^[a-f0-9]{64}$/u.test(String(snapshot.indexSha256 || ""))
   );
+  if (!valid || snapshot.curated === undefined) return valid;
+  try {
+    validateCuratedRichMdictProvenance(snapshot.curated, packId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function publicRichDictionary(entry) {
@@ -93,11 +199,13 @@ export function publicRichDictionary(entry) {
     title: clampText(active.title || active.fileName || "Rich MDict", 200),
     fileName: clampText(active.fileName || "", 200),
     format: clampText(active.format || "", 40),
+    packVersion: clampText(active.packVersion || "", 120),
     sourceSize: Number(active.sourceSize || 0),
     entryCount: Number(active.entryCount || 0),
     resourceCount: resourceSources.length,
     resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
     installedAt: Number(active.installedAt || 0),
+    ...(active.curated ? { curated: active.curated } : {}),
     status: entry?.status || "unknown"
   };
 }
@@ -116,7 +224,8 @@ export function makeRichMdictSnapshot(metadata, index) {
     engineVersion: index.header.generatedByEngineVersion,
     encoding: index.header.encoding,
     header: index.header,
-    installedAt: Date.now()
+    installedAt: Date.now(),
+    ...(metadata.curated ? { curated: metadata.curated } : {})
   };
 }
 
