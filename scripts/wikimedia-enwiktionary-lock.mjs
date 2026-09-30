@@ -164,26 +164,23 @@ function checksumForFile(
   hexLength,
   label
 ) {
-  const escaped = String(filename).replace(
-    /[\\^$.*+?()[\]{}|]/gu,
-    "\\  const escaped = String(filename).replace(
-    /[-/\\^$*+?.()|[\]{}]/gu,
-    "\\$&"
-  );"
-  );
-  const pattern = new RegExp(
-    "^([a-f0-9]{" + hexLength +
-      "})\\s+[*]?" + escaped + "$",
-    "imu"
-  );
-  const match = pattern.exec(String(text || ""));
-  if (!match) {
-    throw new Error(
-      "Wikimedia " + label +
-      " manifest does not contain the locked artifact"
-    );
+  for (const rawLine of String(text || "").split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match =
+      /^([a-f0-9]+)\s+[*]?(.+)$/iu.exec(line);
+    if (
+      match &&
+      match[1].length === hexLength &&
+      match[2] === filename
+    ) {
+      return match[1].toLowerCase();
+    }
   }
-  return match[1].toLowerCase();
+  throw new Error(
+    "Wikimedia " + label +
+    " manifest does not contain the locked artifact"
+  );
 }
 
 function requiredPath(value, label) {
