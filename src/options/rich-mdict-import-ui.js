@@ -3,6 +3,7 @@ import { MDICT_IMPORT_LIMITS } from "../background/packs/importers/mdict-contrac
 import { parseRichMdictHeader } from "../background/packs/importers/mdict-rich-metadata.js";
 import { createRichMdictImportController } from "./rich-mdict-import-controller.js";
 import { createMddResourceImportController } from "./mdd-resource-import-controller.js";
+import { appendRichMdictPreferencesControls } from "./rich-mdict-preferences-ui.js";
 
 export function initializeRichMdictImportUi({
   runtime = globalThis.chrome?.runtime,
@@ -168,14 +169,12 @@ export function initializeRichMdictImportUi({
 
 function renderInstalled(container, dictionaries, { runtime, setStatus, refreshInstalled, resourceController, setProgressNode }) {
   container.replaceChildren();
-  const localDictionaries = Array.isArray(dictionaries)
-    ? dictionaries.filter((dictionary) => !dictionary.curated)
-    : [];
-  if (!localDictionaries.length) {
-    container.textContent = "尚未安装本地导入的富文本 MDict 词典。";
+  const installedDictionaries = Array.isArray(dictionaries) ? dictionaries : [];
+  if (!installedDictionaries.length) {
+    container.textContent = "尚未安装富文本 MDict 词典。";
     return;
   }
-  for (const dictionary of localDictionaries) {
+  for (const [index, dictionary] of installedDictionaries.entries()) {
     const row = document.createElement("div");
     row.className = "site-row dictionary-pack-row";
     row.dataset.dictionaryId = String(dictionary.id || "");
@@ -188,7 +187,7 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
     const details = document.createElement("small");
     details.className = "dictionary-pack-detail";
     details.textContent = [
-      "本地导入 · 用户提供 / 未验证 · MDX",
+      dictionary.trustLabel || "本地导入 · 用户提供 / 未验证",
       dictionary.status === "ready" ? "可查词" : `状态：${dictionary.status || "未知"}`,
       `${Number(dictionary.entryCount || 0).toLocaleString()} 条词目`,
       `MDD 附件 ${Number(dictionary.resourceCount || 0)} 个`,
@@ -204,6 +203,10 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
 
     const actions = document.createElement("div");
     actions.className = "site-actions";
+    appendRichMdictPreferencesControls({
+      actions, dictionary, dictionaries: installedDictionaries, index, runtime, setStatus, refresh: refreshInstalled
+    });
+
     const attachInput = document.createElement("input");
     attachInput.type = "file";
     attachInput.multiple = true;
@@ -280,6 +283,7 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
         });
         if (!response?.ok) throw new Error(response?.error || "富文本词典删除失败。");
         setStatus(`${dictionary.title || "富文本词典"} 已删除。`);
+        document.dispatchEvent(new CustomEvent("translateflow:dictionary-state-changed"));
       } catch (error) {
         setStatus(error?.message || String(error), true);
       } finally {

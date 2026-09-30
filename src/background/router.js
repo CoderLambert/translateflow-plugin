@@ -46,6 +46,9 @@ import {
   commitRichMdictImport,
   getDictionaryPackStatus,
   listRichMdictDictionaries,
+  listRichMdictViewerDictionaries,
+  updateRichMdictPreferences,
+  reorderRichMdictDictionaries,
   preflightRichMddResourceImport,
   commitRichMddResourceImport,
   cancelRichMddResourceImport,
@@ -239,7 +242,23 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.RICH_MDICT_LIST:
       assertOptionsSender(sender);
       return listRichMdictDictionaries();
+    case BACKGROUND_MESSAGES.RICH_MDICT_VIEWER_LIST:
+      assertSelectionContentSender(sender);
+      return listRichMdictViewerDictionaries();
+    case BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_UPDATE:
+      assertOptionsSender(sender);
+      return updateRichMdictPreferences(message.dictionaryId, message.preferences);
+    case BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_REORDER:
+      assertOptionsSender(sender);
+      return reorderRichMdictDictionaries(message.dictionaryIds);
     case BACKGROUND_MESSAGES.RICH_MDICT_LOOKUP:
+      if (message.dictionaryId !== undefined) {
+        assertSelectionContentSender(sender);
+        return lookupRichMdictDictionaries({
+          text: message.text,
+          dictionaryId: message.dictionaryId
+        });
+      }
       return lookupRichMdictDictionaries(message.text);
     case BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL:
       assertOptionsSender(sender);
@@ -314,6 +333,27 @@ function assertOptionsSender(sender) {
   if (actual !== expected && !actual.startsWith(expected + "#")) {
     const error = new Error("Dictionary pack lifecycle actions are only available from Settings.");
     error.code = "PACK_SETTINGS_ONLY";
+    throw error;
+  }
+}
+
+function assertSelectionContentSender(sender) {
+  let pageUrl;
+  try {
+    pageUrl = new URL(String(sender?.url || ""));
+  } catch {
+    pageUrl = null;
+  }
+  const extensionId = globalThis.chrome?.runtime?.id;
+  if (
+    !extensionId ||
+    sender?.id !== extensionId ||
+    !Number.isInteger(sender?.tab?.id) ||
+    !pageUrl ||
+    !["http:", "https:"].includes(pageUrl.protocol)
+  ) {
+    const error = new Error("Rich dictionary viewer messages are only available to TranslateFlow page content.");
+    error.code = "RICH_MDICT_CONTENT_ONLY";
     throw error;
   }
 }

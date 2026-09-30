@@ -109,7 +109,9 @@ test.describe("local MDD resource product and security behavior", () => {
     await selectionChip.scrollIntoViewIfNeeded();
     await selectionChip.click({ timeout: 10_000 });
 
-    let richViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    let richCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+    await expandRichCard(richCard);
+    let richViewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
     await expect(richViewer).toContainText("Independent MDD resource fixture.", { timeout: 30_000 });
     const image = richViewer.locator("img.tf-rich-resource-image[src^='blob:']");
     await expect(image).toBeVisible({ timeout: 30_000 });
@@ -173,7 +175,9 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect(reopenedChip).toBeVisible({ timeout: 10_000 });
     await reopenedChip.scrollIntoViewIfNeeded();
     await reopenedChip.click({ timeout: 10_000 });
-    richViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    richCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+    await expandRichCard(richCard);
+    richViewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
     await expect(richViewer.locator("img.tf-rich-resource-image[src^='blob:']")).toBeVisible({ timeout: 30_000 });
 
     await row.getByRole("button", { name: "删除" }).click();
@@ -227,6 +231,14 @@ async function readMddResource(options, dictionaryId, path) {
     dictionaryId,
     path
   }), { dictionaryId, path });
+}
+
+async function expandRichCard(card) {
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  if (!await card.evaluate((node) => node.open)) {
+    await card.locator("summary").click();
+  }
+  await expect(card).toHaveAttribute("data-state", "success", { timeout: 30_000 });
 }
 
 async function activeObjectUrlCount(harness, page) {

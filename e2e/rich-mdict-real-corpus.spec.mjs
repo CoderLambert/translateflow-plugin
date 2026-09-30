@@ -119,7 +119,10 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     await selectElementText(page, "#rich-ecdict-word");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("运行");
-    const richViewer = page.locator(".tf-selection-rich-text .tf-rich-viewer").last();
+    const richCard = page.locator(".tf-selection-rich-record")
+      .filter({ hasText: "简明英汉字典增强版" });
+    await expandRichCard(richCard);
+    const richViewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
     await expect(richViewer)
       .toContainText("n. 跑, 赛跑, 奔跑, 奔跑的路程", { timeout: 90_000 });
     await expect(page.locator(".tf-selection-rich-record")).toContainText("简明英汉字典增强版");
@@ -420,9 +423,12 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     });
     await expect(selection.locator(".tf-selection-result .tf-selection-primary").first())
       .toContainText("运行");
-    await expect(selection.locator(".tf-selection-rich-record"))
+    const richCard = selection.locator(".tf-selection-rich-record")
+      .filter({ hasText: "简明英汉字典增强版" });
+    await expandRichCard(richCard);
+    await expect(richCard)
       .toContainText("简明英汉字典增强版");
-    await expect(selection.locator(".tf-selection-rich-text .tf-rich-viewer").last())
+    await expect(richCard.locator(".tf-selection-rich-text .tf-rich-viewer"))
       .toContainText("n. 跑, 赛跑, 奔跑, 奔跑的路程", { timeout: 90_000 });
     expect(await selection.locator(".tf-selection-result").getAttribute("data-result-kind"))
       .toBe("local");
@@ -528,6 +534,14 @@ async function listFiles(directory) {
     else if (entry.isFile()) result.push(path);
   }
   return result;
+}
+
+async function expandRichCard(card) {
+  await expect(card).toBeVisible({ timeout: 90_000 });
+  if (!await card.evaluate((node) => node.open)) {
+    await card.locator("summary").click();
+  }
+  await expect(card).toHaveAttribute("data-state", "success", { timeout: 90_000 });
 }
 
 async function selectElementText(page, selector) {

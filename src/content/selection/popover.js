@@ -18,6 +18,7 @@
   const { create: createEmptyState } = app.modules.selectionEmptyState;
   const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
+  const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
 
   let root;
   let chip;
@@ -205,6 +206,17 @@
     return appended;
   }
 
+  function appendRichDictionaryCards(dictionaries, onLookup) {
+    ensureUi();
+    if (!resultNode || panel.hidden) return false;
+    const cards = appendRichCards(resultNode, dictionaries, onLookup);
+    if (cards.length) {
+      resultNode.hidden = false;
+      reposition();
+    }
+    return cards.length > 0;
+  }
+
   function updateSource(snapshot, result = null) {
     const sourceText = String(snapshot?.text || "").trim();
     const headword = String(result?.headword || "").trim();
@@ -372,6 +384,7 @@
     setLoadingStatus,
     showResult,
     appendRichDictionaryDetails,
+    appendRichDictionaryCards,
     showError,
     showEmpty,
     showAiDetailLoading,
