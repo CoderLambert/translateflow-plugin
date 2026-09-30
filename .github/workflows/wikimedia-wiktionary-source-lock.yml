@@ -1,0 +1,112 @@
+name: wikimedia-wiktionary-source-lock
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/wikimedia-wiktionary-source-lock.yml"
+      - "scripts/audit-wikimedia-enwiktionary-source.mjs"
+      - "scripts/wikimedia-enwiktionary-contract.mjs"
+      - "scripts/wikimedia-enwiktionary-lock.mjs"
+      - "tests/wikimedia-enwiktionary-source-lock.test.mjs"
+      - "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json"
+      - "lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json"
+
+permissions:
+  contents: read
+
+jobs:
+  source-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run source-lock boundary tests
+        run: |
+          set -euo pipefail
+          node --test tests/wikimedia-enwiktionary-source-lock.test.mjs
+
+      - name: Read reviewed dated source candidate
+        id: source
+        run: |
+          set -euo pipefail
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("fs");
+          const candidate = JSON.parse(
+            fs.readFileSync(
+              "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json",
+              "utf8"
+            )
+          );
+          console.log("artifact_url=" + candidate.source.artifactUrl);
+          console.log("sha1sums_url=" + candidate.source.sha1sumsUrl);
+          console.log("md5sums_url=" + candidate.source.md5sumsUrl);
+          console.log("dump_status_url=" + candidate.source.dumpStatusUrl);
+          console.log(
+            "filename=" +
+            new URL(candidate.source.artifactUrl).pathname.split("/").at(-1)
+          );
+          NODE
+
+      - name: Fetch official checksum and dump metadata
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2             --retry 5 --retry-all-errors             --output /tmp/enwiktionary-sha1sums.txt             '${{ steps.source.outputs.sha1sums_url }}'
+          curl --fail --location --proto '=https' --tlsv1.2             --retry 5 --retry-all-errors             --output /tmp/enwiktionary-md5sums.txt             '${{ steps.source.outputs.md5sums_url }}'
+          curl --fail --location --proto '=https' --tlsv1.2             --retry 5 --retry-all-errors             --output /tmp/enwiktionary-dumpstatus.json             '${{ steps.source.outputs.dump_status_url }}'
+          grep -F '${{ steps.source.outputs.filename }}'             /tmp/enwiktionary-sha1sums.txt
+          grep -F '${{ steps.source.outputs.filename }}'             /tmp/enwiktionary-md5sums.txt
+          node <<'NODE'
+          const fs = require("fs");
+          const filename = process.env.SOURCE_FILENAME;
+          const status = fs.readFileSync(
+            "/tmp/enwiktionary-dumpstatus.json",
+            "utf8"
+          );
+          if (!status.includes(filename)) {
+            throw new Error(
+              "dated Wikimedia dump status does not mention locked artifact"
+            );
+          }
+          NODE
+        env:
+          SOURCE_FILENAME: ${{ steps.source.outputs.filename }}
+
+      - name: Download exact dated Wikimedia source bytes
+        run: |
+          set -euo pipefail
+          df -h .
+          curl --fail --location --proto '=https' --tlsv1.2             --retry 5 --retry-all-errors             --output "/tmp/${{ steps.source.outputs.filename }}"             '${{ steps.source.outputs.artifact_url }}'
+          test -s "/tmp/${{ steps.source.outputs.filename }}"
+          ls -lh "/tmp/${{ steps.source.outputs.filename }}"
+
+      - name: Derive observed source lock from real bytes
+        run: |
+          set -euo pipefail
+          node scripts/audit-wikimedia-enwiktionary-source.mjs             --derive-lock             --candidate lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json             --source "/tmp/${{ steps.source.outputs.filename }}"             --sha1sums /tmp/enwiktionary-sha1sums.txt             --md5sums /tmp/enwiktionary-md5sums.txt             --out /tmp/wikimedia-enwiktionary-observed-lock.json
+
+      - name: Verify committed source lock when present
+        run: |
+          set -euo pipefail
+          LOCK=lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json
+          if test -f "$LOCK"; then
+            node scripts/audit-wikimedia-enwiktionary-source.mjs               --verify-lock               --candidate lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json               --source "/tmp/${{ steps.source.outputs.filename }}"               --sha1sums /tmp/enwiktionary-sha1sums.txt               --md5sums /tmp/enwiktionary-md5sums.txt               --lock "$LOCK"
+          else
+            echo "Committed source lock is not present yet; observed lock is evidence-only."
+          fi
+
+      - name: Upload source identity evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wikimedia-enwiktionary-20260901-source-lock-evidence
+          path: |
+            /tmp/wikimedia-enwiktionary-observed-lock.json
+            /tmp/enwiktionary-sha1sums.txt
+            /tmp/enwiktionary-md5sums.txt
+            /tmp/enwiktionary-dumpstatus.json
+          if-no-files-found: warn
