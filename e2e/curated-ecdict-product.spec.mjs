@@ -142,6 +142,98 @@ test.describe("curated ECDICT product flow", () => {
     ).toBe(false);
     expect(harness.server.calls).toHaveLength(0);
   });
+
+  test("denied exact upstream permission stops before Worker download or import commit", async ({ harness }) => {
+    const options = await harness.context.newPage();
+    await options.addInitScript(() => {
+      window.__tfCuratedPermissionRequests = [];
+      window.__tfCuratedWorkerCreations = 0;
+      window.__tfCuratedImportCommits = 0;
+
+      const originalRequest = chrome.permissions.request;
+      const nativeRequest = originalRequest.bind(chrome.permissions);
+      try {
+        chrome.permissions.request = async (details) => {
+          window.__tfCuratedPermissionRequests.push(details);
+          return false;
+        };
+      } catch {
+        Object.defineProperty(chrome.permissions, "request", {
+          configurable: true,
+          value: async (details) => {
+            window.__tfCuratedPermissionRequests.push(details);
+            return false;
+          }
+        });
+      }
+      window.__tfCuratedPermissionStubInstalled =
+        chrome.permissions.request !== originalRequest;
+
+      const NativeWorker = window.Worker;
+      window.Worker = new Proxy(NativeWorker, {
+        construct(target, args) {
+          window.__tfCuratedWorkerCreations += 1;
+          return Reflect.construct(target, args);
+        }
+      });
+      window.__tfCuratedWorkerSpyInstalled =
+        window.Worker !== NativeWorker;
+
+      const originalSendMessage = chrome.runtime.sendMessage;
+      const nativeSendMessage = originalSendMessage.bind(
+        chrome.runtime
+      );
+      chrome.runtime.sendMessage = (...args) => {
+        if (args[0]?.type === "DICTIONARY_LOCAL_IMPORT_COMMIT") {
+          window.__tfCuratedImportCommits += 1;
+        }
+        return nativeSendMessage(...args);
+      };
+      window.__tfCuratedCommitSpyInstalled =
+        chrome.runtime.sendMessage !== originalSendMessage;
+    });
+
+    await options.goto(
+      `chrome-extension://${harness.extensionId}/options.html#dictionary-packs`
+    );
+    const row = options
+      .locator("#curatedDictionaryList .site-row")
+      .filter({ hasText: "ECDICT 高频英汉" });
+    await expect(row).toBeVisible();
+    await row
+      .getByRole("button", { name: "下载并安装" })
+      .click();
+
+    await expect(row).toContainText(
+      "未授予 ECDICT 高频英汉 上游下载权限。"
+    );
+    const denialEvidence = await options.evaluate(() => ({
+      permissionRequests: window.__tfCuratedPermissionRequests,
+      workerCreations: window.__tfCuratedWorkerCreations,
+      importCommits: window.__tfCuratedImportCommits,
+      permissionStubInstalled:
+        window.__tfCuratedPermissionStubInstalled,
+      workerSpyInstalled: window.__tfCuratedWorkerSpyInstalled,
+      commitSpyInstalled: window.__tfCuratedCommitSpyInstalled
+    }));
+    expect(denialEvidence.permissionRequests).toEqual([
+      { origins: ["https://raw.githubusercontent.com/*"] }
+    ]);
+    expect(denialEvidence.workerCreations).toBe(0);
+    expect(denialEvidence.importCommits).toBe(0);
+    expect(denialEvidence.permissionStubInstalled).toBe(true);
+    expect(denialEvidence.workerSpyInstalled).toBe(true);
+    expect(denialEvidence.commitSpyInstalled).toBe(true);
+
+    const status = await options.evaluate(() => chrome.runtime.sendMessage({
+      type: "DICTIONARY_PACK_STATUS"
+    }));
+    expect(status.ok).toBe(true);
+    expect(
+      status.state?.packs?.["local-curated-ecdict-en-zh"]
+    ).toBeUndefined();
+    expect(harness.server.calls).toHaveLength(0);
+  });
 });
 
 async function selectElementText(page, selector) {
