@@ -44,7 +44,7 @@
     }
     for (const resource of session.resources) {
       if (resource.kind === "audio") installAudioLoader(session, resource);
-      else void scheduleRead(() => loadResource(session, resource));
+      else void scheduleRead(session, () => loadResource(session, resource));
     }
     return session;
   }
@@ -118,7 +118,7 @@
       button.disabled = true;
       button.textContent = "正在載入本地音訊…";
       try {
-        const asset = await scheduleRead(() => fetchAsset(session, resource));
+        const asset = await scheduleRead(session, () => fetchAsset(session, resource));
         if (!isCurrent(session)) return;
         const url = createTrackedUrl(session, asset, 0);
         if (!url) throw new Error("Audio resource budget was exceeded.");
@@ -223,6 +223,7 @@
     session.closed = true;
     if (sessionsByContainer.get(session.container) === session) sessionsByContainer.delete(session.container);
     activeSessions.delete(session);
+    cancelQueuedReads(session);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();
@@ -236,21 +237,40 @@
     return !session.closed && sessionsByContainer.get(session.container) === session;
   }
 
-  function scheduleRead(action) {
+  function scheduleRead(session, action) {
     return new Promise((resolve, reject) => {
-      readQueue.push({ action, resolve, reject });
+      if (!isCurrent(session)) {
+        resolve(undefined);
+        return;
+      }
+      readQueue.push({ session, action, resolve, reject });
       drainReads();
     });
+  }
+
+  function cancelQueuedReads(session) {
+    for (let index = readQueue.length - 1; index >= 0; index -= 1) {
+      if (readQueue[index].session !== session) continue;
+      const [job] = readQueue.splice(index, 1);
+      job.resolve(undefined);
+    }
   }
 
   function drainReads() {
     while (runningReads < MAX_CONCURRENT_READS && readQueue.length) {
       const job = readQueue.shift();
+      if (!isCurrent(job.session)) {
+        job.resolve(undefined);
+        continue;
+      }
       runningReads += 1;
-      Promise.resolve().then(job.action).then(job.resolve, job.reject).finally(() => {
-        runningReads -= 1;
-        drainReads();
-      });
+      Promise.resolve()
+        .then(() => isCurrent(job.session) ? job.action() : undefined)
+        .then(job.resolve, job.reject)
+        .finally(() => {
+          runningReads -= 1;
+          drainReads();
+        });
     }
   }
 
@@ -332,6 +352,8 @@
     closeAll,
     closeDictionary,
     compileLocalStylesheet,
-    get activeObjectUrlCount() { return activeObjectUrlCount; }
+    get activeObjectUrlCount() { return activeObjectUrlCount; },
+    get pendingReadCount() { return readQueue.length; },
+    get runningReadCount() { return runningReads; }
   });
 })();
