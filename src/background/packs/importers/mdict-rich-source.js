@@ -6,7 +6,8 @@ import {
   requireMdictAtMost
 } from "./mdict-contract.js";
 
-export async function readSourceRange(source, offset, length) {
+export async function readSourceRange(source, offset, length, signal) {
+  throwIfAborted(signal);
   if (
     !source ||
     typeof source.read !== "function" ||
@@ -20,7 +21,8 @@ export async function readSourceRange(source, offset, length) {
   }
   let bytes;
   try {
-    bytes = mdictBytes(await source.read(offset, length), "MDict source range");
+    bytes = mdictBytes(await source.read(offset, length, signal), "MDict source range");
+    throwIfAborted(signal);
   } catch (cause) {
     if (cause instanceof MDictImportError) throw cause;
     if (cause?.name === "AbortError") throw cause;
@@ -42,7 +44,7 @@ export function withMdictAbortSignal(source, signal) {
     size: source.size,
     async read(offset, length) {
       assertNotAborted(signal);
-      const bytes = await source.read(offset, length);
+      const bytes = await source.read(offset, length, signal);
       assertNotAborted(signal);
       return bytes;
     }
@@ -65,4 +67,8 @@ function assertNotAborted(signal) {
   if (signal?.aborted) {
     throw new DOMException("MDX index construction cancelled.", "AbortError");
   }
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new DOMException("MDX lookup cancelled.", "AbortError");
 }

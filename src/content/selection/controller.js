@@ -20,7 +20,7 @@
   const popover = app.modules.selectionPopover;
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
-  const { load: loadRichDictionaryDetails } = app.modules.selectionRichDetails;
+  const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
   const { buildLocalResult, buildExplainedResult, buildTranslationResult, copyTextForCard } = app.modules.selectionResultModel;
   let started = false;
   let activeSnapshot = null;
@@ -39,6 +39,7 @@
     document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("scroll", () => popover.reposition(), true);
     window.addEventListener("resize", () => popover.reposition(), true);
+    app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: dismiss, onPageHide: dismiss });
   }
 
   function handlePotentialSelection(event) {
@@ -73,6 +74,7 @@
     }
 
     cancelActiveTask({ showCancelled: false });
+    void cancelRichDictionaryDetails();
     requestVersion += 1;
     activeSnapshot = snapshot;
     setQuickControlSelectionActive(true);
@@ -343,9 +345,7 @@
     showResult(snapshot, card, copyTextForCard(card), "译文已复制");
   }
 
-  function failureMessage(error) {
-    return error?.message || String(error);
-  }
+  function failureMessage(error) { return error?.message || String(error); }
 
   function showResult(snapshot, card, copyText, copiedMessage, onExplain = null) {
     popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain);
@@ -395,6 +395,7 @@
 
   function dismiss() {
     cancelActiveTask({ showCancelled: false });
+    void cancelRichDictionaryDetails();
     activeSnapshot = null;
     requestVersion += 1;
     popover.hide();
@@ -411,9 +412,7 @@
     }
   }
 
-  function setQuickControlSelectionActive(active) {
-    app.modules.quickControl?.setSelectionActive(Boolean(active));
-  }
+  function setQuickControlSelectionActive(active) { app.modules.quickControl?.setSelectionActive(Boolean(active)); }
 
   app.modules.selectionController = { start };
 })();
