@@ -11,6 +11,10 @@
   const MAX_CONCURRENT_LOOKUPS = 3;
 
   async function load(snapshot, version, expectedPage, isCurrentSelection) {
+    const lookupStates = new Map();
+    const lookupQueue = [];
+    let runningLookups = 0;
+
     try {
       const response = await sendRuntimeMessage({
         type: messages.background.RICH_MDICT_VIEWER_LIST
@@ -18,17 +22,14 @@
       if (!isCurrentSelection(version, snapshot, expectedPage) || !response?.ok) return;
 
       const dictionaries = Array.isArray(response.dictionaries) ? response.dictionaries : [];
-      const lookupStates = new Map();
-      const lookupQueue = [];
-      let runningLookups = 0;
       popover.appendRichDictionaryCards(dictionaries, (dictionary, card) => {
-        void lookupDictionary(dictionary, card, lookupStates, lookupQueue, () => runningLookups, (value) => { runningLookups = value; });
+        void lookupDictionary(dictionary, card);
       });
     } catch {
       // Detailed dictionary reads do not delay or replace the primary result.
     }
 
-    async function lookupDictionary(dictionary, card, lookupStates, lookupQueue, getRunningLookups, setRunningLookups) {
+    async function lookupDictionary(dictionary, card) {
       const dictionaryId = String(dictionary?.id || "");
       if (!isCurrentSelection(version, snapshot, expectedPage) || !dictionaryId) return;
 
@@ -59,7 +60,7 @@
         state.inFlight = true;
         card.setLoading();
         try {
-          const result = await scheduleLookup(lookupQueue, getRunningLookups, setRunningLookups, async () => {
+          const result = await scheduleLookup(async () => {
             if (!isCurrentSelection(version, snapshot, expectedPage)) return null;
             return sendRuntimeMessage({
               type: messages.background.RICH_MDICT_LOOKUP,
@@ -108,27 +109,27 @@
       void request();
     }
 
-    function scheduleLookup(queue, getRunning, setRunning, action) {
+    function scheduleLookup(action) {
       return new Promise((resolve, reject) => {
-        queue.push({ action, resolve, reject });
-        drainLookups(queue, getRunning, setRunning);
+        lookupQueue.push({ action, resolve, reject });
+        drainLookups();
       });
     }
 
-    function drainLookups(queue, getRunning, setRunning) {
-      while (getRunning() < MAX_CONCURRENT_LOOKUPS && queue.length) {
-        const job = queue.shift();
+    function drainLookups() {
+      while (runningLookups < MAX_CONCURRENT_LOOKUPS && lookupQueue.length) {
+        const job = lookupQueue.shift();
         if (!isCurrentSelection(version, snapshot, expectedPage)) {
           job.resolve(null);
           continue;
         }
-        setRunning(getRunning() + 1);
+        runningLookups += 1;
         Promise.resolve()
           .then(job.action)
           .then(job.resolve, job.reject)
           .finally(() => {
-            setRunning(Math.max(0, getRunning() - 1));
-            drainLookups(queue, getRunning, setRunning);
+            runningLookups = Math.max(0, runningLookups - 1);
+            drainLookups();
           });
       }
     }
