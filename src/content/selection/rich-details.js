@@ -8,6 +8,7 @@
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
   const popover = app.modules.selectionPopover;
+  const MAX_CONCURRENT_LOOKUPS = 3;
 
   async function load(snapshot, version, expectedPage, isCurrentSelection) {
     try {
@@ -18,14 +19,16 @@
 
       const dictionaries = Array.isArray(response.dictionaries) ? response.dictionaries : [];
       const lookupStates = new Map();
+      const lookupQueue = [];
+      let runningLookups = 0;
       popover.appendRichDictionaryCards(dictionaries, (dictionary, card) => {
-        void lookupDictionary(dictionary, card, lookupStates);
+        void lookupDictionary(dictionary, card, lookupStates, lookupQueue, () => runningLookups, (value) => { runningLookups = value; });
       });
     } catch {
       // Detailed dictionary reads do not delay or replace the primary result.
     }
 
-    async function lookupDictionary(dictionary, card, lookupStates) {
+    async function lookupDictionary(dictionary, card, lookupStates, lookupQueue, getRunningLookups, setRunningLookups) {
       const dictionaryId = String(dictionary?.id || "");
       if (!isCurrentSelection(version, snapshot, expectedPage) || !dictionaryId) return;
 
@@ -56,12 +59,15 @@
         state.inFlight = true;
         card.setLoading();
         try {
-          const result = await sendRuntimeMessage({
-            type: messages.background.RICH_MDICT_LOOKUP,
-            text: snapshot.text,
-            dictionaryId
+          const result = await scheduleLookup(lookupQueue, getRunningLookups, setRunningLookups, async () => {
+            if (!isCurrentSelection(version, snapshot, expectedPage)) return null;
+            return sendRuntimeMessage({
+              type: messages.background.RICH_MDICT_LOOKUP,
+              text: snapshot.text,
+              dictionaryId
+            });
           });
-          if (!isCurrentSelection(version, snapshot, expectedPage)) return;
+          if (!result || !isCurrentSelection(version, snapshot, expectedPage)) return;
 
           const lookupError = Array.isArray(result?.errors) ? result.errors[0] : null;
           if (!result?.ok || lookupError) {
@@ -100,6 +106,31 @@
       };
 
       void request();
+    }
+
+    function scheduleLookup(queue, getRunning, setRunning, action) {
+      return new Promise((resolve, reject) => {
+        queue.push({ action, resolve, reject });
+        drainLookups(queue, getRunning, setRunning);
+      });
+    }
+
+    function drainLookups(queue, getRunning, setRunning) {
+      while (getRunning() < MAX_CONCURRENT_LOOKUPS && queue.length) {
+        const job = queue.shift();
+        if (!isCurrentSelection(version, snapshot, expectedPage)) {
+          job.resolve(null);
+          continue;
+        }
+        setRunning(getRunning() + 1);
+        Promise.resolve()
+          .then(job.action)
+          .then(job.resolve, job.reject)
+          .finally(() => {
+            setRunning(Math.max(0, getRunning() - 1));
+            drainLookups(queue, getRunning, setRunning);
+          });
+      }
     }
   }
 
