@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-sanitized-mdict-compatibility-report",
+  "reportId": "ecdict-1.0.28",
+  "label": "ecdict-1.0.28",
+  "generatedBy": "scripts/inspect-mdict-compatibility.mjs",
+  "networkAccess": false,
+  "dictionaryContentExported": false,
+  "result": "supported",
+  "mdx": {
+    "file": {
+      "kind": "mdx",
+      "bytes": 97786525,
+      "sha256": "275e71b58fd359bfe649af1cbee533ea81770bdbc53ec4a34567f84720a5751b"
+    },
+    "metadata": {
+      "generatedByEngineVersion": "2.0",
+      "requiredEngineVersion": "2.0",
+      "encoding": "UTF-8",
+      "format": "HTML",
+      "encrypted": 2,
+      "compact": "yes",
+      "compat": "yes",
+      "styleSheet": {
+        "present": true,
+        "byteLength": 106,
+        "byteLengthOverBound": false,
+        "ruleCount": 4,
+        "ruleCountTruncated": false,
+        "withinRuntimeRuleLimit": true
+      }
+    },
+    "structure": {
+      "entryCount": 3402564,
+      "keyBlockCount": 2506,
+      "recordBlockCount": 3768,
+      "keyInfoCompression": "zlib",
+      "keyInfo": {
+        "compression": "zlib",
+        "compressedBytes": 61253,
+        "decompressedBytes": 153867,
+        "encrypted": true
+      },
+      "keyBlockCompression": {
+        "none": 0,
+        "zlib": 2506,
+        "lzo": 0,
+        "unknown": 0
+      },
+      "recordBlockCompression": {
+        "none": 0,
+        "zlib": 3768,
+        "lzo": 0,
+        "unknown": 0
+      },
+      "keyBlocks": {
+        "count": 2506,
+        "totalCompressedBytes": 27381638,
+        "totalDecompressedBytes": 82058819,
+        "maxCompressedBytes": 14402,
+        "maxDecompressedBytes": 32769
+      },
+      "recordBlocks": {
+        "count": 3768,
+        "totalCompressedBytes": 70281762,
+        "totalDecompressedBytes": 246598512,
+        "maxCompressedBytes": 24737,
+        "maxDecompressedBytes": 65536
+      },
+      "aliasLink": {
+        "sampledLookups": 12,
+        "observedRecords": 0,
+        "presence": false
+      },
+      "lookupNormalization": {
+        "keyCaseSensitive": false,
+        "stripKey": true,
+        "normalization": "NFKC; case fold when KeyCaseSensitive=No; strip Unicode punctuation/space when StripKey=Yes"
+      }
+    },
+    "parser": {
+      "importer": "rich-mdict",
+      "result": "supported",
+      "indexBuilt": true,
+      "unsupportedCapabilities": [],
+      "supportedCapabilities": [
+        "mdx.compact-records",
+        "mdx.compression.zlib",
+        "mdx.encoding.utf8",
+        "mdx.encryption.key-info-v2",
+        "mdx.engine.v2",
+        "mdx.key-info.compression-zlib",
+        "mdx.record.html",
+        "mdx.style-sheet"
+      ]
+    },
+    "featureSampling": {
+      "sampledRecords": 12,
+      "sampledLookups": 12,
+      "unreadableSampleRecords": 0,
+      "aliasLinkRecords": 0,
+      "commonHtmlTagFamilyRecords": {
+        "structure": 12,
+        "formatting": 0,
+        "headings": 0,
+        "lists": 0,
+        "tables": 0,
+        "links": 0,
+        "media": 0
+      },
+      "inlineStyleRecords": 0,
+      "styleSheetReferenceRecords": 0,
+      "compactStyleMarkerRecords": 12,
+      "imageReferenceRecords": 0,
+      "audioReferenceRecords": 0,
+      "localAnchorRecords": 0,
+      "entryReferenceRecords": 0,
+      "soundReferenceRecords": 0,
+      "relativeResourcePathRecords": 0,
+      "otherUriSchemeRecords": 0,
+      "otherUriSchemeKinds": {
+        "data": 0,
+        "javascript": 0,
+        "file": 0,
+        "ftp": 0,
+        "other": 0
+      },
+      "remoteUrlRecords": 0,
+      "unusualResourceExtensionReferences": 0,
+      "sampledPrefixTruncatedRecords": 0,
+      "observedCapabilities": [
+        "rich.compact-style-marker",
+        "rich.html-structure"
+      ],
+      "samplingPlan": "center entry from evenly spaced key blocks"
+    },
+    "evidenceScope": "Deterministic record sample; all counters describe sampled record hits, not corpus-wide totals. No record text or headwords are emitted."
+  },
+  "mdd": {
+    "count": 0,
+    "files": [],
+    "companionAssociation": "none-provided"
+  }
+}

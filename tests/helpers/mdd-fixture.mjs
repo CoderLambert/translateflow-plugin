@@ -24,6 +24,7 @@ export async function readMddInteropFixture() {
  */
 export function makeMdd(entries, {
   title = "MDD Security Fixture",
+  encrypted = 0,
   keyInfoCompression = "zlib",
   keyCompression = "zlib",
   recordCompression = "zlib",
@@ -93,7 +94,7 @@ export function makeMdd(entries, {
     "<Library_Data",
     ' GeneratedByEngineVersion="2.0"',
     ' RequiredEngineVersion="2.0"',
-    ' Encrypted="0"',
+    ` Encrypted="${encrypted}"`,
     ' Format=""',
     ' CreationDate="2026-09-30"',
     ' Compact="No"',
