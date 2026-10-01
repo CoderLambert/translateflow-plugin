@@ -69,8 +69,10 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       hasText: "简明英汉字典增强版"
     });
     await expect(installed).toBeVisible();
-    await expect(installed.locator("dt")).toContainText("词条");
-    await expect(installed.locator("dd")).toContainText("3,402,564");
+    const entryCount = installed.locator(".dictionary-v2-metadata-item").filter({ hasText: "词条" });
+    await expect(entryCount).toHaveCount(1);
+    await expect(entryCount.locator("dt")).toHaveText("词条");
+    await expect(entryCount.locator("dd")).toHaveText("3,402,564");
     await expect(installed).toContainText("可用");
 
     await options.reload();
@@ -351,7 +353,7 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
 
     harness.server.setEcdictMdxArchiveMode("failure");
     await row.locator("[data-action='reinstall']").click();
-    await expect(row.locator('[aria-live="polite"]')).toContainText(/HTTP 503|upstream unavailable|asset unavailable/iu, {
+    await expect(row.locator('[aria-live="polite"]')).toContainText(/暂时无法从上游下载词典.*当前已安装词典保持不变/u, {
       timeout: 30_000
     });
     await expect.poll(async () => (await listCuratedEcdict(options))?.packVersion)
