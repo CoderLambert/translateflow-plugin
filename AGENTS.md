@@ -48,16 +48,16 @@ If these disagree, do not silently choose one. Preserve repository invariants, a
 
 ## Skills
 
-Use a relevant project skill when the task matches it:
+Use a relevant project skill only when the task matches its workflow:
 
 - `translateflow-product-design`: feature definition, UX/state-flow design, Issue shaping.
 - `translateflow-benchmark-research`: competitor/open-source product and architecture research.
-- `translateflow-extension-engineering`: MV3 runtime, permissions, messaging, storage, translation/provider work.
+- `translateflow-extension-engineering`: cross-context or contract-sensitive MV3 runtime work such as permissions, messaging, provider/cache identity, task lifecycle, page bridges, or packaging.
 - `translateflow-dictionary-engineering`: lexical pipeline, TFLex, MDict/MDD, StarDict, OPFS, catalog/import/viewer work.
 - `translateflow-pr-audit`: independent implementation review against exact Issue scope and repository invariants.
 - `translateflow-release-certification`: release-scope freeze, evidence mapping, E2E/security/package certification.
 
-Do not force a skill when the task is a trivial edit outside its workflow.
+Do not force a Skill for routine isolated edits.
 
 ## Validation defaults
 
