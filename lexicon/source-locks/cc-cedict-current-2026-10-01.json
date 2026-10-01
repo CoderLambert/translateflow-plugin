@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "research-only-historical-artifact-observation",
+  "sourceId": "cc-cedict",
+  "lockPurpose": "Preserve the identity of the historical artifact observed during research, for audit only. This retrieval is not a qualified acquisition or source approval: MDBG states automated or scripted access is prohibited. Do not use this lock for app-side fetching, catalog registration, packaging, or presenting CC-CEDICT as an English-to-Chinese source.",
+  "retrievedOn": "2026-10-01",
+  "source": {
+    "project": "CC-CEDICT",
+    "publisherAndMaintainer": "MDBG with community editors",
+    "projectHome": "https://cc-cedict.org/wiki/",
+    "downloadInformation": "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
+    "formatDocumentation": "https://cc-cedict.org/wiki/syntax_v2",
+    "legacyV1FormatDocumentation": "https://cc-cedict.org/wiki/syntax",
+    "changeSubmission": "https://cc-cedict.org/editor/editor.php"
+  },
+  "release": {
+    "releaseId": null,
+    "releaseDate": null,
+    "releasePolicy": "MDBG presents a current downloadable CC-CEDICT file and says reviewed submissions are processed and released frequently; no immutable numbered release identifier is supplied for this endpoint.",
+    "contentDate": "2026-09-30",
+    "contentDateEvidence": "Historical Last-Modified header observed during the non-qualifying scripted retrieval; not a validated source release date."
+  },
+  "artifact": {
+    "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+    "redirectedUrl": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+    "contentType": "application/x-gzip",
+    "archiveBytes": 3977421,
+    "archiveSha256": "58c442d8f100a8a56852832fdd4555a233b6d802b0bf01a5bdddf01561c0a326",
+    "upstreamChecksumPublished": false,
+    "observedHttpDate": "2026-10-01T05:52:53Z",
+    "observedLastModified": "2026-09-30T09:16:04Z",
+    "observedETag": "3cb0cd-65cafbfa85881",
+    "decodedBytes": 9855907,
+    "decodedSha256": "4585efcc6cb11b57b216554efbb5c66f88e15ab5cc9136f6b0579910d30e89cb",
+    "entryCount": null,
+    "entryCountEvidence": "Not retained as a qualification metric because the downloaded artifact was accessed by a prohibited scripted method.",
+    "retrievalQualification": "Historical fingerprint only; the artifact retrieval was automated and is withdrawn. Do not reacquire by script or app-side fetch without explicit authorization.",
+    "auxiliaryDeletedArtifact": {
+      "temporaryFile": "cedict-editor-latest.gz",
+      "bytes": 3977745,
+      "sha256": "33a8f0f78cdda5600bd6eac5be79c85e5b9af8927b42c0df0e8b335e9684e504",
+      "disposition": "Deleted from /tmp after hashing; not used as a qualified source artifact."
+    }
+  },
+  "role": {
+    "sourceLanguage": "zh",
+    "targetLanguage": "en",
+    "sourceLocales": [
+      "zh-Hans",
+      "zh-Hant"
+    ],
+    "intendedRole": "Native Chinese-to-English dictionary; the data stores Traditional and Simplified headword forms, pinyin, and English gloss strings.",
+    "notApprovedRole": "English-to-Simplified-Chinese translation source"
+  },
+  "licenseAndProvenance": {
+    "artifactHeaderLicense": "CC BY-SA 4.0 International",
+    "artifactHeaderLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "currentDownloadPageLicense": "CC BY-SA 4.0 International",
+    "currentDownloadPageLicenseUrl": "https://cc-cedict.org/editor/editor.php?handler=Download",
+    "projectHomeLicense": "CC BY-SA 3.0",
+    "projectHomeLicenseUrl": "https://cc-cedict.org/wiki/",
+    "projectHomeLastModified": "2025-05-31T09:01:56Z",
+    "licenseVersionConflict": "The exact current MDBG artifact header and current editor download page both state CC BY-SA 4.0. The separate project home still states CC BY-SA 3.0 and was last modified 2025-05-31. That older date makes a stale notice plausible, but the project has not explicitly marked it superseded in the inspected evidence; preserve both observations and treat overall license history as unresolved until clarified.",
+    "provenance": "CC-CEDICT continuation of the CEDICT project started by Paul Andrew Denisowski in 1997; MDBG publishes the current downloadable export and says editor submissions are reviewed before release.",
+    "attributionAndAdaptationRequirements": "The stated CC BY-SA license requires attribution and share-alike for adapted material. Preserve source attribution, license URI, copyright notices and modification history if future distribution is considered.",
+    "redistributionGate": "unresolved; not approved for catalog, mirroring, packaging, or an Official trust class until the official license-version discrepancy and attribution implementation are reviewed",
+    "repositoryLicenseUsedAsEvidence": false
+  },
+  "technicalShape": {
+    "sourceFormat": "gzip-compressed CC-CEDICT text v1",
+    "observedHeader": "UTF-8, traditional and simplified forms, pinyin; slash-delimited English glosses",
+    "upstreamQualityAndFormatNotes": "The format notes below describe the historically observed payload and official CC-CEDICT format documentation only. The prior scripted payload inspection is withdrawn and is not an accepted compatibility or quality result. The official V2 syntax page describes V1 export conversion; the V1 page is marked historical and warns of data errors. No importer capability has been validated against an authorized acquisition.",
+    "minimumImporterCapabilities": [
+      "bounded gzip decompression",
+      "streaming UTF-8 line parsing",
+      "CC-CEDICT v1 record and delimiter parsing",
+      "Traditional/Simplified alias retention",
+      "pinyin retention",
+      "sense/gloss boundary retention",
+      "source attribution retention"
+    ],
+    "measuredLookupLatency": null,
+    "measuredBrowserMemory": null,
+    "currentTranslateFlowAdapter": null
+  },
+  "securityAndPrivacy": {
+    "accessPolicyUrl": "https://www.mdbg.net/chinese/dictionary?page=privacy",
+    "policy": "MDBG states automated or scripted access is prohibited.",
+    "acquisitionModelIfRevisited": "No app-side/scripted request, including one initiated after a user click, is qualified under the observed policy. Revisit only after MDBG provides an explicit authorization or a separately authorized acquisition route is established.",
+    "historicalRetrieval": "Initial scripted artifact retrieval preceded discovery of the restriction; it is withdrawn as qualification evidence and temporary files were deleted after hashes were recorded. No further artifact retrieval was performed by this research lane; the coordinator separately verified the official policy wording via one read-only page observation.",
+    "securityGate": "NO-GO-automated-access-prohibited; no production adapter or catalog entry is authorized."
+  },
+  "qualificationStatus": "WITHDRAWN-NOT-QUALIFIED-automated-access-prohibited",
+  "retrievalDisclosure": {
+    "discoveredPolicy": "https://www.mdbg.net/chinese/dictionary?page=privacy",
+    "policyObserved": "Automated or scripted access is prohibited.",
+    "history": "A scripted download and structural inspection were performed before this restriction was discovered. The retrieval and all quality observations from it are withdrawn as qualification evidence.",
+    "disposition": "Temporary MDBG files were deleted after preserving forensic hashes and byte counts. No CC-CEDICT payload or fixture remains in the repository or temporary research area. This research lane made no further artifact requests; the coordinator separately verified the policy wording through one read-only page observation."
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "research-only-exact-artifact-lock",
+  "sourceId": "open-english-wordnet",
+  "lockPurpose": "Identify the exact OEWN edition/artifact evaluated for Dictionary Ecosystem v2 qualification. This is not production registration or Official-pack approval.",
+  "source": {
+    "project": "Open English WordNet",
+    "publisher": "Open English WordNet Community / Global Wordnet Association",
+    "officialProject": "https://en-word.net/",
+    "officialDownloads": "https://en-word.net/downloads",
+    "upstreamRepository": "https://github.com/globalwordnet/english-wordnet",
+    "exactRevision": "2025-edition",
+    "exactCommit": "dc343f2683279ecbb13fab4e2fd778d7b162d287",
+    "commitUrl": "https://github.com/globalwordnet/english-wordnet/commit/dc343f2683279ecbb13fab4e2fd778d7b162d287"
+  },
+  "release": {
+    "releaseId": "2025",
+    "releaseDate": "2025-12-31",
+    "releaseUrl": "https://github.com/globalwordnet/english-wordnet/releases/tag/2025-edition",
+    "contentDate": "2025-12-31",
+    "edition": "2025 standard edition, excluding the separate 2025 Plus proper-name selection and the full Open English Namenet resource",
+    "projectReportedCoreCounts": {
+      "words": 135969,
+      "synsets": 107519,
+      "relations": 355064
+    }
+  },
+  "artifact": {
+    "format": "JSON export ZIP",
+    "url": "https://en-word.net/static/english-wordnet-2025-json.zip",
+    "observedFinalUrl": "https://en-word.net/downloads/english-wordnet-2025-json.zip",
+    "bytes": 9986555,
+    "sha256": "7d749f6e2c39e6970e4997839dcf6e42fd281f3c2fae0171d2192bae8cfa4b51",
+    "upstreamChecksumPublished": false,
+    "archiveFileCount": 73,
+    "archiveFilesAreJsonDataOnly": true,
+    "observedArchiveMembers": [
+      "entries-*.json",
+      "part-of-speech/synset JSON files",
+      "frames.json"
+    ],
+    "artifactIdentityMethod": "Versioned official filename and project download page, paired with exact Git tag commit plus locally observed size and SHA-256. The archive itself is not signed and the project does not publish a checksum on the download page."
+  },
+  "role": {
+    "sourceLanguage": "en",
+    "targetLanguage": "en",
+    "intendedRole": "English monolingual semantic/sense supplement; English lemmas, POS, senses, pronunciations and lexical relations.",
+    "notApprovedRole": "English-to-Chinese bilingual source or replacement for the existing EN-to-zh-CN Core"
+  },
+  "licenseAndProvenance": {
+    "upstreamLicenseStatement": "The exact tag's LICENSE.md states that the resource derives from Princeton WordNet under the WordNet License and OEWN's further development is CC BY 4.0.",
+    "oewnLicense": "CC BY 4.0 for Open English WordNet contributions",
+    "underlyingLicense": "Princeton WordNet 3.1 License terms continue to apply to underlying WordNet material; preserve the notice and disclaimer in WNDB_License.txt.",
+    "licenseFile": "https://github.com/globalwordnet/english-wordnet/blob/2025-edition/LICENSE.md",
+    "underlyingLicenseFile": "https://github.com/globalwordnet/english-wordnet/blob/2025-edition/WNDB_License.txt",
+    "provenance": "OEWN project describes the 2025 release as its community-developed English lexical network derived from Princeton WordNet; the 2025 release transfers the prior proper-name inventory to Open English Namenet and offers a separate curated Plus edition.",
+    "attributionAndModificationRequirements": "Retain attribution to Princeton WordNet and the Open English WordNet team, preserve the WordNet notice/disclaimer, link CC BY 4.0, and mark modifications. Do not imply endorsement.",
+    "redistributionGate": "source terms are published for the exact project revision; any distributable derivative must carry both the underlying WordNet notice and OEWN attribution/license obligations. No Official trust-root qualification is established.",
+    "repositoryLicenseUsedAsEvidence": true,
+    "repositoryLicenseEvidence": "Exact 2025-edition LICENSE.md and WNDB_License.txt, not the extension's license.",
+    "underlyingWordNetVersion": "3.1"
+  },
+  "technicalShape": {
+    "minimumImporterCapabilities": [
+      "bounded ZIP extraction or streaming access to 73 JSON members",
+      "schema-aware OEWN JSON parsing",
+      "lemma and POS indexing",
+      "sense and relation preservation",
+      "underlying WordNet attribution retention"
+    ],
+    "measuredLookupLatency": null,
+    "measuredBrowserMemory": null,
+    "currentTranslateFlowAdapter": null
+  },
+  "securityAndPrivacy": {
+    "acquisitionModelIfRevisited": "Explicit user-triggered fetch from the official en-word.net origin, then local-only bounded archive/JSON processing.",
+    "remoteResourcesAfterInstall": "None inherent in the JSON archive; no production integration or network capture was run.",
+    "remoteCode": "None identified in the JSON artifact.",
+    "securityGate": "not exercised; no production adapter or catalog entry is authorized by this research lock"
+  }
+}
