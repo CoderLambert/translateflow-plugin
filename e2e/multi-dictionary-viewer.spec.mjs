@@ -12,9 +12,11 @@ test.describe("multiple local rich dictionary cards", () => {
     await harness.reset();
   });
 
-  test("configured order and collapsed defaults survive reload beside the unchanged structured primary", async ({ harness }) => {
+  test("personal preference persists and opens first beside the unchanged structured primary", async ({ harness }) => {
     await mkdir(evidenceDir, { recursive: true });
     const options = await openOptions(harness);
+    await options.setViewportSize({ width: 390, height: 780 });
+    await options.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     const alpha = await installFixture(options, {
       title: "Fixture Alpha Rich",
       marker: "Alpha rich gloss",
@@ -31,9 +33,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await setDictionaryPreference(options, alpha.row, "enabled", true);
     await setDictionaryPreference(options, beta.row, "enabled", true);
     await setDictionaryPreference(options, alpha.row, "expandedByDefault", true);
-    await setDictionaryPreference(options, alpha.row, "expandedByDefault", false);
-    await setDictionaryPreference(options, beta.row, "expandedByDefault", true);
-    await moveDictionaryUp(options, beta.row);
+    await promoteDictionaryToPreferred(options, beta.row);
     await options.reload();
     const alphaRow = dictionaryRow(options, alpha.id);
     const betaRow = dictionaryRow(options, beta.id);
@@ -41,30 +41,63 @@ test.describe("multiple local rich dictionary cards", () => {
     await expect(betaRow).toBeVisible();
     await expect(dictionaryPreference(alphaRow, "enabled")).toBeChecked();
     await expect(dictionaryPreference(betaRow, "enabled")).toBeChecked();
-    await expect(dictionaryPreference(alphaRow, "expandedByDefault")).not.toBeChecked();
-    await expect(dictionaryPreference(betaRow, "expandedByDefault")).toBeChecked();
+    await expect(dictionaryPreference(alphaRow, "expandedByDefault")).toBeChecked();
+    await expect(dictionaryPreference(betaRow, "expandedByDefault")).not.toBeChecked();
+    await expect(betaRow.locator('[data-role="personal-preference"]')).toHaveText("你的个人首选");
+    await expect(alphaRow.locator('[data-role="personal-preference"]')).toHaveCount(0);
+    await expect(alphaRow.locator('[data-action="promote-preferred"]')).toBeVisible();
+    await expect(options.locator("#dictionaryInstalledHeading").locator(".."))
+      .toContainText("不代表 TranslateFlow 的推荐或官方背书");
+    const settingsLayout = await options.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      preferredButtonVisible: Boolean(document.querySelector('[data-action="promote-preferred"]'))
+    }));
+    expect(settingsLayout.scroll).toBeLessThanOrEqual(settingsLayout.viewport);
+    expect(settingsLayout.preferredButtonVisible).toBe(true);
 
     const page = await harness.open("/selection");
+    await page.setViewportSize({ width: 390, height: 780 });
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     const baseline = await resolveStructuredPrimary(harness, page.url());
     expect(baseline.route).toBe("local");
     expect(baseline.topCandidateId).toBeTruthy();
     await harness.inject(page);
+    await installRichViewerMessageProbe(harness, page);
     await selectElementText(page, "#ambiguous");
-    const primaryStarted = Date.now();
+    const selectionStarted = Date.now();
     await page.locator(".tf-selection-chip").click();
 
     const primary = page.locator(".tf-selection-primary").first();
     await expect(primary).toContainText("持久的");
-    const primaryVisibleMs = Date.now() - primaryStarted;
+    const primaryVisibleMs = Date.now() - selectionStarted;
     const cards = page.locator(".tf-selection-rich-record");
     await expect(cards).toHaveCount(2);
     const orderedIds = await cards.evaluateAll((nodes) => nodes.map((node) => node.dataset.dictionaryId));
     expect(orderedIds).toEqual([beta.id, alpha.id]);
     const cardById = (id) => page.locator(`.tf-selection-rich-record[data-dictionary-id="${id}"]`);
     await expect(cardById(beta.id)).toHaveJSProperty("open", true);
-    await expect(cardById(alpha.id)).toHaveJSProperty("open", false);
+    await expect(cardById(alpha.id)).toHaveJSProperty("open", true);
     await expect(cardById(beta.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(beta.id)).toContainText("Beta rich gloss");
+    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).toBeVisible();
+    const preferredVisibleMs = Date.now() - selectionStarted;
+    await expect(cardById(alpha.id)).toHaveAttribute("data-state", "success");
+    await expect(cardById(alpha.id)).toContainText("Alpha rich gloss");
+    const bothRichVisibleMs = Date.now() - selectionStarted;
+    const viewerRequests = await readRichViewerMessages(harness, page);
+    expect(viewerRequests.filter((message) => message.type === "RICH_MDICT_LOOKUP").map((message) => message.dictionaryId))
+      .toEqual([beta.id, alpha.id]);
+    const selectionLayout = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      dark: matchMedia("(prefers-color-scheme: dark)").matches,
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches
+    }));
+    expect(selectionLayout.scroll).toBeLessThanOrEqual(selectionLayout.viewport);
+    expect(selectionLayout.dark).toBe(true);
+    expect(selectionLayout.reducedMotion).toBe(true);
 
     // Reload Selection before opening either card to prove the stored defaults
     // are applied by the real viewer-list -> per-dictionary lookup flow.
@@ -82,11 +115,9 @@ test.describe("multiple local rich dictionary cards", () => {
     const reloadedIds = await reloadedCards.evaluateAll((nodes) => nodes.map((node) => node.dataset.dictionaryId));
     expect(reloadedIds).toEqual([beta.id, alpha.id]);
     await expect(cardById(beta.id)).toHaveJSProperty("open", true);
-    await expect(cardById(alpha.id)).toHaveJSProperty("open", false);
+    await expect(cardById(alpha.id)).toHaveJSProperty("open", true);
     await expect(cardById(beta.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(beta.id)).toContainText("Beta rich gloss");
-
-    await cardById(alpha.id).locator("summary").click();
     await expect(cardById(alpha.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(alpha.id)).toContainText("Alpha rich gloss");
 
@@ -99,8 +130,8 @@ test.describe("multiple local rich dictionary cards", () => {
     const evidence = {
       status: "PASS",
       dictionaries: [
-        { id: beta.id, title: "Fixture Beta Rich", order: 0, expandedByDefault: true },
-        { id: alpha.id, title: "Fixture Alpha Rich", order: 1, expandedByDefault: false }
+        { id: beta.id, title: "Fixture Beta Rich", order: 0, preferred: true, expandedByDefault: false },
+        { id: alpha.id, title: "Fixture Alpha Rich", order: 1, preferred: false, expandedByDefault: true }
       ],
       structuredPrimary: {
         route: baseline.route,
@@ -109,9 +140,12 @@ test.describe("multiple local rich dictionary cards", () => {
         meaning: await primary.textContent()
       },
       primaryVisibleMs,
+      preferredVisibleMs,
+      bothRichVisibleMs,
+      richLookupsStarted: viewerRequests.filter((message) => message.type === "RICH_MDICT_LOOKUP").length,
       providerCalls: harness.server.calls.length
     };
-    await page.screenshot({ path: resolve(evidenceDir, "beta-expanded-alpha-collapsed.png"), fullPage: true });
+    await page.screenshot({ path: resolve(evidenceDir, "beta-preferred-alpha-user-expanded.png"), fullPage: true });
     console.log("[MULTI_DICTIONARY_VIEWER]", JSON.stringify(evidence));
   });
 
@@ -128,6 +162,7 @@ test.describe("multiple local rich dictionary cards", () => {
       fileName: "fixture-disabled.mdx"
     });
     const disabledBytesBefore = await readInstalledSourceBytes(options, disabled.id);
+    await promoteDictionaryToPreferred(options, disabled.row);
     await setDictionaryPreference(options, disabled.row, "enabled", false);
     await options.reload();
 
@@ -148,6 +183,8 @@ test.describe("multiple local rich dictionary cards", () => {
     const cards = page.locator(".tf-selection-rich-record");
     await expect(cards).toHaveCount(1);
     await expect(cards.first()).toHaveAttribute("data-dictionary-id", enabled.id);
+    await expect(cards.first()).toHaveJSProperty("open", true);
+    await expect(cards.first().locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
     await cards.first().locator("summary").click();
     await expect(cards.first()).toHaveAttribute("data-state", "success");
     await expect(cards.first()).toContainText("Enabled rich gloss");
@@ -157,6 +194,54 @@ test.describe("multiple local rich dictionary cards", () => {
     expect(viewerRequests.filter((message) => message.type === "RICH_MDICT_LOOKUP").map((message) => message.dictionaryId))
       .toEqual([enabled.id]);
     expect(viewerRequests.some((message) => message.dictionaryId === disabled.id)).toBe(false);
+    expect(harness.server.calls).toHaveLength(0);
+  });
+
+  test("a preferred no-hit leaves the next dictionary visible and deleting it promotes the next enabled card", async ({ harness }) => {
+    const options = await openOptions(harness);
+    const alpha = await installFixture(options, {
+      title: "Fixture Fallback Rich",
+      marker: "Fallback rich gloss",
+      fileName: "fixture-fallback.mdx"
+    });
+    const beta = await installFixture(options, {
+      title: "Fixture Preferred No Hit",
+      marker: "No-hit rich gloss",
+      fileName: "fixture-preferred-no-hit.mdx",
+      lookupKey: "anotherword"
+    });
+    await setDictionaryPreference(options, alpha.row, "expandedByDefault", true);
+    await promoteDictionaryToPreferred(options, beta.row);
+
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+    await selectElementText(page, "#ambiguous");
+    await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-primary").first()).toContainText("持久的");
+    const preferredCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${beta.id}"]`);
+    const fallbackCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${alpha.id}"]`);
+    await expect(preferredCard).toHaveAttribute("data-state", "empty");
+    await expect(preferredCard).toContainText("这本词典没有匹配条目");
+    await expect(fallbackCard).toHaveAttribute("data-state", "success");
+    await expect(fallbackCard).toContainText("Fallback rich gloss");
+    await expect(fallbackCard.locator(".tf-selection-rich-preference")).not.toBeAttached();
+    expect(harness.server.calls).toHaveLength(0);
+
+    await deleteRichDictionary(options, dictionaryRow(options, beta.id));
+    const remainingRow = dictionaryRow(options, alpha.id);
+    await expect(remainingRow.locator('[data-role="personal-preference"]')).toHaveText("你的个人首选");
+    const pageToken = await page.locator("html").getAttribute("data-tf-e2e-page-token");
+    await page.reload();
+    await page.evaluate((token) => {
+      document.documentElement.dataset.tfE2ePageToken = token;
+    }, pageToken);
+    await harness.inject(page);
+    await selectElementText(page, "#ambiguous");
+    await page.locator(".tf-selection-chip").click();
+    const remainingCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${alpha.id}"]`);
+    await expect(remainingCard).toHaveJSProperty("open", true);
+    await expect(remainingCard.locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(remainingCard).toHaveAttribute("data-state", "success");
     expect(harness.server.calls).toHaveLength(0);
   });
 
@@ -184,6 +269,7 @@ test.describe("multiple local rich dictionary cards", () => {
     const corruptCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${corrupt.id}"]`);
     const healthyCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${healthy.id}"]`);
     await expect(corruptCard).toHaveAttribute("data-state", "error");
+    await expect(corruptCard.locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
     await expect(healthyCard).toHaveAttribute("data-state", "success");
     await expect(healthyCard).toContainText("Healthy rich gloss");
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
@@ -197,9 +283,9 @@ async function openOptions(harness) {
   return options;
 }
 
-async function installFixture(options, { title, marker, fileName }) {
+async function installFixture(options, { title, marker, fileName, lookupKey = "persistent" }) {
   const fixture = makeRichMdx([
-    ["persistent", `<p><b>${marker}</b><br>Bounded synthetic viewer fixture.</p>`]
+    [lookupKey, `<p><b>${marker}</b><br>Bounded synthetic viewer fixture.</p>`]
   ], { title, encrypted: 2, compact: "Yes", compat: "Yes" });
   await options.locator("#localDictionaryFiles").setInputFiles({
     name: fileName,
@@ -240,18 +326,23 @@ async function setDictionaryPreference(options, row, name, value) {
   }).toBe(value);
 }
 
-async function moveDictionaryUp(options, row) {
-  const button = row.locator('[data-action="move-up"]');
+async function promoteDictionaryToPreferred(options, row) {
+  const button = row.locator('[data-action="promote-preferred"]');
   await expect(button).toBeVisible();
-  await button.click();
+  await button.focus();
+  await button.press("Enter");
+  const rowId = await row.getAttribute("data-dictionary-id");
   await expect.poll(async () => {
     const state = await options.evaluate(() => chrome.storage.local.get("tfRichMdictPreferencesV1"));
     const preferences = state.tfRichMdictPreferencesV1?.dictionaries || {};
-    const currentId = await row.getAttribute("data-dictionary-id");
-    const currentOrder = preferences[currentId]?.order;
-    const orders = Object.values(preferences).map((item) => item?.order).filter(Number.isSafeInteger);
-    return Number.isSafeInteger(currentOrder) && currentOrder === Math.min(...orders);
-  }).toBe(true);
+    return [preferences[rowId]?.enabled, preferences[rowId]?.order];
+  }).toEqual([true, 0]);
+  await expect(row.locator('[data-role="personal-preference"]')).toHaveText("你的个人首选");
+}
+
+async function deleteRichDictionary(options, row) {
+  await row.locator('[data-action="uninstall"]').click();
+  await expect(row).toHaveCount(0);
 }
 
 async function readInstalledSourceBytes(options, dictionaryId) {

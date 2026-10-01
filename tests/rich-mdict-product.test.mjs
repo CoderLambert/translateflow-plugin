@@ -111,7 +111,7 @@ test("Settings and selection expose local rich details while preserving the stri
   const localImport = settings.slice(settings.indexOf('id="localDictionaryImport"'), settings.indexOf('id="appearance"'));
   assert.match(localImport, /id="localDictionaryFiles"/u);
   assert.match(localImport, /id="localDictionaryDropZone"/u);
-  assert.match(settings, /<h4>富文本词典<\/h4>\s*<div id="richMdictInstalledList"/u);
+  assert.match(settings, /<h4>富文本词典<\/h4>\s*<p class="hint">[^<]*个人首选[^<]*<\/p>\s*<div id="richMdictInstalledList"/u);
   assert.match(localImport, /支持 MDX \/ MDD/u);
   assert.doesNotMatch(localImport, /OPFS|quarantine|Worker/iu);
   assert.doesNotMatch(settings, /id="richMdictFile"/u);

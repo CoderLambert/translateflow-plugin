@@ -101,9 +101,10 @@ test("viewer metadata listing returns while OPFS reads would hang", async () => 
     stateStore: { async read() { return { packs: makeReadyPacks() }; }, async update() {} }
   });
   const storageArea = createStorageArea();
+  const preferencesStore = createRichMdictPreferencesStore({ storageArea });
   const listViewer = createRichMdictViewerDictionaryLister({
     manager,
-    preferencesStore: createRichMdictPreferencesStore({ storageArea })
+    preferencesStore
   });
 
   const response = await Promise.race([
@@ -116,8 +117,17 @@ test("viewer metadata listing returns while OPFS reads would hang", async () => 
     [SECOND_ID, "ready"],
     [THIRD_ID, "corrupt"]
   ]);
+  assert.deepEqual(response.dictionaries.map(({ preferred, expandedByDefault }) => [preferred, expandedByDefault]), [
+    [true, true], [false, false], [false, false]
+  ]);
   assert.equal(response.dictionaries[2].errorCode, "RICH_MDICT_CORRUPT");
   assert.deepEqual(ioCalls, { getFileSize: 0, readFile: 0, readFileRange: 0 });
+
+  await preferencesStore.update(FIRST_ID, { enabled: false });
+  const fallback = await listViewer();
+  assert.deepEqual(fallback.dictionaries.map(({ id, preferred, expandedByDefault }) => [id, preferred, expandedByDefault]), [
+    [SECOND_ID, true, true], [THIRD_ID, false, false]
+  ]);
 });
 
 test("reorder validates the installed ID set and writes the full order once", async () => {
@@ -145,6 +155,43 @@ test("reorder validates the installed ID set and writes the full order once", as
     (error) => error?.code === "RICH_MDICT_PREFERENCES_ORDER"
   );
   assert.equal(storageArea.writes, writesBeforeInvalidOrder);
+});
+
+test("promotion is one serialized write and stable-identity reconciliation preserves every other preference", async () => {
+  const storageArea = createStorageArea();
+  const preferences = createRichMdictPreferencesStore({ storageArea });
+  const installed = [FIRST_ID, SECOND_ID, THIRD_ID].map((id, index) => ({ id, title: id, installedAt: index + 1 }));
+  await preferences.reconcile(installed);
+  await preferences.update(FIRST_ID, { expandedByDefault: true });
+  await preferences.update(SECOND_ID, { enabled: false, expandedByDefault: true });
+  const writesBeforePromotion = storageArea.writes;
+
+  const promoted = await preferences.promote(SECOND_ID, [FIRST_ID, SECOND_ID, THIRD_ID]);
+  assert.equal(storageArea.writes - writesBeforePromotion, 1);
+  assert.deepEqual(promoted.dictionaryIds, [SECOND_ID, FIRST_ID, THIRD_ID]);
+  let stored = (await preferences.readAll()).dictionaries;
+  assert.deepEqual(stored[SECOND_ID], { enabled: true, order: 0, expandedByDefault: true });
+  assert.deepEqual(stored[FIRST_ID], { enabled: true, order: 1024, expandedByDefault: true });
+  assert.deepEqual(stored[THIRD_ID], { enabled: true, order: 2048, expandedByDefault: false });
+
+  await preferences.reconcile([
+    { ...installed[0], title: "Renamed Alpha", installedAt: 500 },
+    { ...installed[1], title: "Updated Beta", installedAt: 600 },
+    { ...installed[2], title: "Gamma", installedAt: 700 }
+  ]);
+  stored = (await createRichMdictPreferencesStore({ storageArea }).readAll()).dictionaries;
+  assert.deepEqual(stored, {
+    [SECOND_ID]: { enabled: true, order: 0, expandedByDefault: true },
+    [FIRST_ID]: { enabled: true, order: 1024, expandedByDefault: true },
+    [THIRD_ID]: { enabled: true, order: 2048, expandedByDefault: false }
+  });
+
+  const writesBeforeInvalidPromotion = storageArea.writes;
+  assert.throws(
+    () => preferences.promote("rich-mdict-123e4567-e89b-42d3-a456-426614174099", [FIRST_ID, SECOND_ID, THIRD_ID]),
+    (error) => error?.code === "RICH_MDICT_NOT_INSTALLED"
+  );
+  assert.equal(storageArea.writes, writesBeforeInvalidPromotion);
 });
 
 function makeReadyPacks() {

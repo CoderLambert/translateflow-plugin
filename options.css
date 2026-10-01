@@ -728,6 +728,13 @@ label {
   font-size: 12px;
 }
 
+.rich-mdict-personal-preference {
+  align-self: center;
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .advanced {
   background:
     linear-gradient(
