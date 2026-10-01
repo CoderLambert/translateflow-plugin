@@ -75,7 +75,9 @@ It does not turn feature copying into a roadmap.
 
 ### Extension engineering
 
-Owns normal MV3 runtime implementation: content/background boundaries, messaging, permissions, effective config, providers, cache/storage, task lifecycle, and package-safe code changes.
+Use only for cross-context or contract-sensitive MV3 runtime work: Content/Background boundaries, messaging, permissions, effective config, provider/cache identity, translation task lifecycle, page-world bridges, or packaging.
+
+Routine isolated UI/text/test edits should rely on `AGENTS.md` and the Issue instead of loading this Skill.
 
 It does not override dictionary-specific data/security policy.
 
