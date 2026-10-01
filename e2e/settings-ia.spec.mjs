@@ -73,8 +73,9 @@ test.describe("Settings information architecture", () => {
       curated.getByRole("link", { name: "查看上游许可说明" })
     ).toBeVisible();
 
-    await expect(page.locator("#stardictFiles")).toBeVisible();
-    await expect(page.locator("#mdictFile")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "本地导入", exact: true })).toBeVisible();
+    await expect(page.locator("#localDictionaryChooseFiles")).toBeVisible();
+    await expect(page.locator("#localDictionaryFiles")).toHaveAttribute("multiple", "");
     await expect(library).not.toContainText("OPFS");
 
     const overflow = await page.evaluate(() => ({

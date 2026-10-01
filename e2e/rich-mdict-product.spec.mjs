@@ -31,26 +31,26 @@ test.describe("Rich MDict local product and security behavior", () => {
       compat: "Yes"
     });
 
-    await options.locator("#richMdictFile").setInputFiles({
+    await options.locator("#localDictionaryFiles").setInputFiles({
       name: "rich-fixture.mdx",
       mimeType: "application/octet-stream",
       buffer: fixture
     });
-    await expect(options.locator("#richMdictInspectionMeta")).toContainText("Rich Fixture Dictionary");
-    await options.locator("#richMdictImportButton").click();
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("Rich Fixture Dictionary");
+    await options.locator("#localDictionaryImportButton").click();
     await expect.poll(
-      () => options.locator("#richMdictImportProgress").textContent(),
+      () => options.locator("#localDictionaryImportProgress").textContent(),
       { timeout: 90_000 }
     ).toMatch(/(?:完成|安装失败)/u);
     const importState = await options.evaluate(() => ({
-      progress: document.querySelector("#richMdictImportProgress")?.textContent || "",
+      progress: document.querySelector("#localDictionaryImportProgress")?.textContent || "",
       status: document.querySelector("#status")?.textContent || "",
       installed: document.querySelector("#richMdictInstalledList")?.textContent || ""
     }));
     if (importState.progress.includes("安装失败")) {
       throw new Error("Rich fixture install failed: " + JSON.stringify({ ...importState, browserErrors }));
     }
-    await expect(options.locator("#richMdictImportProgress")).toContainText("完成", {
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", {
       timeout: 5_000
     });
     let installed = options.locator("#richMdictInstalledList .site-row").filter({
@@ -122,15 +122,16 @@ test.describe("Rich MDict local product and security behavior", () => {
     const headerBytes = corrupt.readUInt32BE(0);
     corrupt[headerBytes + 8 + 40] ^= 0xff;
 
-    await options.locator("#richMdictFile").setInputFiles({
+    await options.locator("#localDictionaryFiles").setInputFiles({
       name: "corrupt-rich-fixture.mdx",
       mimeType: "application/octet-stream",
       buffer: corrupt
     });
-    await options.locator("#richMdictImportButton").click();
-    await expect(options.locator("#richMdictImportProgress")).toContainText("安装失败", {
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("文件无效", {
       timeout: 30_000
     });
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("MDX 文件损坏");
+    await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
     expect(harness.server.calls).toHaveLength(0);
   });

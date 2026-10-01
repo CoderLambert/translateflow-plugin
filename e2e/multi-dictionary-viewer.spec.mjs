@@ -201,14 +201,14 @@ async function installFixture(options, { title, marker, fileName }) {
   const fixture = makeRichMdx([
     ["persistent", `<p><b>${marker}</b><br>Bounded synthetic viewer fixture.</p>`]
   ], { title, encrypted: 2, compact: "Yes", compat: "Yes" });
-  await options.locator("#richMdictFile").setInputFiles({
+  await options.locator("#localDictionaryFiles").setInputFiles({
     name: fileName,
     mimeType: "application/octet-stream",
     buffer: fixture
   });
-  await expect(options.locator("#richMdictInspectionMeta")).toContainText(title);
-  await options.locator("#richMdictImportButton").click();
-  await expect(options.locator("#richMdictImportProgress")).toContainText("完成", { timeout: 90_000 });
+  await expect(options.locator("#localDictionaryPreflightSummary")).toContainText(title);
+  await options.locator("#localDictionaryImportButton").click();
+  await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 90_000 });
   const row = options.locator("#richMdictInstalledList .site-row").filter({ hasText: title });
   await expect(row).toBeVisible();
   const id = await row.getAttribute("data-dictionary-id");

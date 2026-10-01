@@ -4,6 +4,7 @@ import {
 } from "./pack-manager.js";
 import {
   IMPORT_QUARANTINE_FILES,
+  IMPORT_QUARANTINE_RANGE_BYTES,
   IMPORT_QUARANTINE_ROOT,
   assertImportQuarantineFileSize,
   assertImportQuarantinePath,
@@ -76,6 +77,54 @@ export function createOpfsImportQuarantine({
         "Unable to write import quarantine file.",
         { token, path, cause: error }
       );
+    }
+  }
+
+  async function writeBlob(token, path, blob, { signal, onProgress = () => {} } = {}) {
+    assertImportQuarantineToken(token);
+    assertImportQuarantinePath(path);
+    if (!blob || typeof blob.slice !== "function" || !Number.isSafeInteger(blob.size)) {
+      throw storageError("Import quarantine source must be a bounded Blob.", { token, path });
+    }
+    assertImportQuarantineFileSize(path, blob.size);
+
+    let writable;
+    try {
+      const directory = await getTokenDir(token, true);
+      const existing = await listFilesFromDirectory(token, directory);
+      const current = existing.find((item) => item.path === path);
+      const nextTotal = existing.reduce((sum, item) => sum + item.size, 0) - Number(current?.size || 0) + blob.size;
+      assertImportQuarantineTotalBytes(nextTotal);
+      const handle = await directory.getFileHandle(path, { create: true });
+      writable = await handle.createWritable();
+      const chunkBytes = Math.min(1024 * 1024, IMPORT_QUARANTINE_RANGE_BYTES);
+      for (let offset = 0; offset < blob.size; offset += chunkBytes) {
+        if (signal?.aborted) throw new DOMException("Import quarantine write was cancelled.", "AbortError");
+        const end = Math.min(blob.size, offset + chunkBytes);
+        const bytes = new Uint8Array(await blob.slice(offset, end).arrayBuffer());
+        if (signal?.aborted) throw new DOMException("Import quarantine write was cancelled.", "AbortError");
+        if (bytes.byteLength !== end - offset) {
+          throw packError(PACK_ERROR_CODES.CORRUPT, "Import quarantine source range was incomplete.", {
+            token, path, offset, expectedBytes: end - offset, actualBytes: bytes.byteLength
+          });
+        }
+        await writable.write(bytes);
+        try { onProgress({ path, bytesWritten: end, totalBytes: blob.size }); } catch {}
+      }
+      if (signal?.aborted) throw new DOMException("Import quarantine write was cancelled.", "AbortError");
+      await writable.close();
+      writable = null;
+      const stored = await handle.getFile();
+      if (stored.size !== blob.size) {
+        throw packError(PACK_ERROR_CODES.STORAGE, "Import quarantine staged file size does not match source.", {
+          token, path, expectedBytes: blob.size, actualBytes: stored.size
+        });
+      }
+      return { path, size: stored.size };
+    } catch (error) {
+      await writable?.abort?.().catch?.(() => {});
+      if (error?.name === "AbortError") throw error;
+      throw storageError("Unable to stream source into import quarantine.", { token, path, cause: error });
     }
   }
 
@@ -284,6 +333,7 @@ export function createOpfsImportQuarantine({
 
   return Object.freeze({
     writeFile,
+    writeBlob,
     statFile,
     readFileRange,
     listFiles,
