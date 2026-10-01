@@ -7,7 +7,8 @@ import {
   getCatalogDictionaryRows,
   getCuratedMdxErrorMessage,
   getDictionaryCompatibilityLabel,
-  getDictionaryHealthPresentation
+  getDictionaryHealthPresentation,
+  getLocalRichDictionaryRows
 } from "../src/options/dictionary-library-v2-presentation.js";
 
 const ecdict = getDictionaryCatalogEntryForRecipe("ecdict-en-zh-mdx-curated");
@@ -51,6 +52,19 @@ test("local compatibility and health states use user-facing explanations", () =>
   assert.equal(getDictionaryHealthPresentation("missing").label, "文件缺失");
   assert.equal(getDictionaryHealthPresentation("ready").label, "可用");
   assert.equal(formatDictionaryBytes(4_096), "4.0 KiB");
+});
+
+test("user-owned rich MDX keeps local version separate from installation date", () => {
+  const { rows } = getLocalRichDictionaryRows({
+    status: "ready",
+    packVersion: "import-mgj2xio0-12345678",
+    installedAt: Date.parse("2026-09-29T00:00:00Z")
+  }, 12_288);
+  const values = Object.fromEntries(rows.map(({ label, value }) => [label, value]));
+
+  assert.equal(values["本地安装版本"], "import-mgj2xio0-12345678");
+  assert.equal(values["本地安装日期"], "2026-09-29");
+  assert.equal(values["已安装大小"], "12.0 KiB");
 });
 
 test("curated install failures remain distinct and actionable", () => {

@@ -163,16 +163,29 @@ export function getDictionaryCompatibilityLabel(value) {
 }
 
 export function renderLocalRichDictionaryMetadata(container, dictionary, installedBytes) {
+  const { rows, detail: compatibilityDetail } = getLocalRichDictionaryRows(dictionary, installedBytes);
+  renderDictionaryMetadata(container, rows);
+  if (!compatibilityDetail) return null;
+  const detail = document.createElement("small");
+  detail.className = "dictionary-pack-detail";
+  detail.textContent = compatibilityDetail;
+  container.appendChild(detail);
+  return detail;
+}
+
+export function getLocalRichDictionaryRows(dictionary = {}, installedBytes = 0) {
   const compatibility = getDictionaryCompatibilityLabel(
     dictionary.compatibility || { status: dictionary.status === "ready" ? "supported" : "not-reviewed" }
   );
-  renderDictionaryMetadata(container, [
+  return {
+    rows: [
     { label: "信任与来源", value: dictionary.trustLabel || "本地导入 · 用户提供 / 未验证" },
     { label: "来源与使用权", value: "由你本机提供；请确认你有权使用。TranslateFlow 不会上传或重新分发。" },
     { label: "语言方向", value: "由你确认；TranslateFlow 尚未核验。" },
     { label: "格式", value: "MDX 富文本" },
     { label: "兼容性", value: compatibility.label },
-    { label: "本地版本", value: formatImportedVersion(dictionary.installedAt) },
+    { label: "本地安装版本", value: formatLocalDictionaryVersion(dictionary.packVersion) },
+    { label: "本地安装日期", value: formatLocalInstallDate(dictionary.installedAt) || "日期未知" },
     { label: "词条", value: Number(dictionary.entryCount || 0).toLocaleString() },
     { label: "已安装大小", value: formatDictionaryBytes(installedBytes) },
     {
@@ -181,13 +194,9 @@ export function renderLocalRichDictionaryMetadata(container, dictionary, install
         ? `${Number(dictionary.resourceCount).toLocaleString()} 个 MDD 文件 · ${formatDictionaryBytes(dictionary.resourceBytes)}`
         : "未附加本地 MDD 文件"
     }
-  ]);
-  if (!compatibility.detail) return null;
-  const detail = document.createElement("small");
-  detail.className = "dictionary-pack-detail";
-  detail.textContent = compatibility.detail;
-  container.appendChild(detail);
-  return detail;
+    ],
+    detail: compatibility.detail
+  };
 }
 
 export function getDictionaryHealthPresentation(status) {
@@ -222,12 +231,10 @@ export function formatDictionaryBytes(value) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
-export function formatImportedVersion(value) {
-  const timestamp = Number(value);
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return "用户提供版本 · 日期未知";
-  const date = new Date(timestamp);
-  if (!Number.isFinite(date.getTime())) return "用户提供版本 · 日期未知";
-  return `用户提供版本 · ${date.toISOString().slice(0, 10)}`;
+export function formatLocalDictionaryVersion(value) {
+  const version = String(value || "").trim();
+  if (!version || version.length > 120 || /[\u0000-\u001f\u007f]/u.test(version)) return "未记录";
+  return version;
 }
 
 export function formatLocalInstallDate(value) {

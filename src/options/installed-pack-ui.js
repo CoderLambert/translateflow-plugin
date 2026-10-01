@@ -7,6 +7,7 @@ import {
 import { getDictionaryCatalogEntry } from "../shared/dictionary-catalog-v2.js";
 import {
   formatDictionaryBytes,
+  formatLocalDictionaryVersion,
   formatLocalInstallDate,
   getCatalogDictionaryRows,
   getDictionaryHealthPresentation,
@@ -157,7 +158,9 @@ export function installedPackMeta(entry) {
       result.push(display.formatLabel);
     }
   }
-  const installedDate = formatLocalInstallDate(active.verifiedAt);
+  const installedVersion = formatLocalDictionaryVersion(active.packVersion);
+  if (installedVersion !== "未记录") result.push(`本地安装版本 ${installedVersion}`);
+  const installedDate = formatLocalInstallDate(display?.importedAt || active.verifiedAt);
   if (installedDate) result.push(`本机安装日期 ${installedDate}`);
   if (Number.isFinite(Number(active.totalBytes))) {
     result.push(`已安装大小 ${formatDictionaryBytes(Number(active.totalBytes))}`);

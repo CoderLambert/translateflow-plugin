@@ -49,6 +49,7 @@ test.describe("Dictionary Library v2 presentation", () => {
         fileName: "sample.mdx",
         format: "HTML",
         status: "ready",
+        packVersion: "user-mdx-v2",
         sourceSize: 4_096,
         indexSize: 1_024,
         installedBytes: 5_120,
@@ -125,6 +126,10 @@ test.describe("Dictionary Library v2 presentation", () => {
     await expect(partial).toContainText("本地导入 · 用户提供 / 未验证");
     await expect(partial).toContainText("由你本机提供；请确认你有权使用");
     await expect(partial).toContainText("语言方向");
+    await expect(partial).toContainText("本地安装版本");
+    await expect(partial).toContainText("user-mdx-v2");
+    await expect(partial).toContainText("本地安装日期");
+    await expect(partial).toContainText("2026-09-29");
     await expect(partial).toContainText("可使用 · 部分功能受限");
     await expect(partial).toContainText("LZO 压缩");
     await expect(partial).toContainText("2.0 KiB");
