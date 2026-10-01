@@ -108,9 +108,9 @@ test("Settings and selection expose local rich details while preserving the stri
     readFile(new URL("../src/shared/constants.js", import.meta.url), "utf8")
   ]);
 
-  const richCard = settings.slice(settings.indexOf("MDict 富文本词典"), settings.indexOf("<strong>MDict (.mdx)</strong>"));
+  const richCard = settings.slice(settings.indexOf("MDX 富文本词典"), settings.indexOf("<strong>MDict (.mdx)</strong>"));
   assert.match(richCard, /id="richMdictFile"/u);
-  assert.match(richCard, /id="richMdictInstalledList"/u);
+  assert.match(settings, /<h4>富文本词典<\/h4>\s*<div id="richMdictInstalledList"/u);
   assert.match(settings, /不支持 \.mdd/u);
   assert.doesNotMatch(richCard, /OPFS/u);
   assert.match(richUi, /用户提供 \/ 未验证 · MDX/u);

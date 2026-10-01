@@ -116,11 +116,13 @@ test("installed dictionary presentation uses human name, trust and size", () => 
     display: {
       kind: "local-import",
       name: "示例英汉词典",
-      formatLabel: "StarDict"
+      formatLabel: "StarDict",
+      importedAt: Date.parse("2026-09-29T00:00:00Z")
     },
     active: {
       packVersion: "import-v1",
-      totalBytes: 4096
+      totalBytes: 4096,
+      verifiedAt: Date.parse("2026-09-30T00:00:00Z")
     }
   };
   assert.equal(
@@ -128,10 +130,11 @@ test("installed dictionary presentation uses human name, trust and size", () => 
     "示例英汉词典"
   );
   assert.deepEqual(installedPackMeta(entry), [
-    "本地导入",
-    "用户提供 · 未验证",
+    "本地导入 · 用户提供 / 未验证",
+    "兼容性 当前版本可使用",
     "StarDict",
-    "版本 / 导入标识 import-v1",
-    "4.0 KiB"
+    "本地安装版本 import-v1",
+    "本机安装日期 2026-09-29",
+    "已安装大小 4.0 KiB"
   ]);
 });

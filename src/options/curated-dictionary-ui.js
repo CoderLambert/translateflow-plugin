@@ -6,6 +6,7 @@ import {
   CURATED_IMPORTER_TYPES
 } from "../shared/curated-dictionaries.js";
 import {
+  getDictionaryCatalogEntryForRecipe,
   makeInstalledCatalogMetadata
 } from "../shared/dictionary-catalog-v2.js";
 import {
@@ -16,12 +17,16 @@ import {
 } from "./workers/curated-dictionary-worker-protocol.js";
 import { createCuratedEcdictMdxUi } from "./curated-ecdict-mdx-ui.js";
 import {
-  curatedSourceMeta,
   describeCuratedProgress,
   formatCuratedBytes,
   getCuratedInstallPresentation,
   shortCuratedRevision
 } from "./curated-dictionary-presentation.js";
+import {
+  getCatalogDictionaryRows,
+  renderCatalogLimitations,
+  renderDictionaryMetadata
+} from "./dictionary-library-v2-presentation.js";
 
 export { getCuratedInstallPresentation };
 
@@ -86,6 +91,7 @@ export function initializeCuratedDictionaryUi({
         packs[source.output.packId] || null;
       const presentation =
         getCuratedInstallPresentation(source, entry);
+      const catalogEntry = getDictionaryCatalogEntryForRecipe(source.id);
 
       const row = document.createElement("div");
       row.className = "site-row dictionary-pack-row";
@@ -109,21 +115,12 @@ export function initializeCuratedDictionaryUi({
       summary.appendChild(description);
 
       const meta = document.createElement("div");
-      meta.className = "dictionary-pack-meta";
-      for (const item of curatedSourceMeta(source)) {
-        const value = document.createElement("span");
-        value.textContent = item;
-        meta.appendChild(value);
-      }
+      renderDictionaryMetadata(meta, getCatalogDictionaryRows(catalogEntry, {
+        installedCatalog: entry?.display?.catalog,
+        installedSize: entry?.active?.totalBytes
+      }));
       summary.appendChild(meta);
-
-      const links = document.createElement("div");
-      links.className = "dictionary-pack-meta";
-      links.append(
-        makeLink("上游项目", source.upstreamRepository),
-        makeLink("许可", source.sourceLicenseUrl)
-      );
-      summary.appendChild(links);
+      renderCatalogLimitations(summary, catalogEntry);
 
       const progress = document.createElement("small");
       progress.className = "dictionary-pack-detail";
@@ -340,15 +337,6 @@ function waitForWorker(
       sourceId: source.id
     });
   });
-}
-
-function makeLink(label, href) {
-  const link = document.createElement("a");
-  link.href = href;
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.textContent = label;
-  return link;
 }
 
 function makeRequestId(cryptoProvider) {

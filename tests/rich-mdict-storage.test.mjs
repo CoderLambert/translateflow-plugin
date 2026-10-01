@@ -373,7 +373,15 @@ test("successful curated MDX replacement retains a usable attached MDD version a
   assert.equal(replaced.status, "replaced");
   assert.equal(replaced.dictionary.packVersion, next.packVersion);
   const state = await env.stateStore.read();
-  assert.equal(state.packs[CURATED_PACK_ID].active.resources.packVersion, resourceRequest.resourceVersion);
+  const active = state.packs[CURATED_PACK_ID].active;
+  assert.equal(active.resources.packVersion, resourceRequest.resourceVersion);
+  assert.ok(active.resources.sources[0].indexSize > 0);
+  const installedWithResource = (await env.manager.list()).dictionaries[0];
+  assert.equal(
+    installedWithResource.installedBytes,
+    active.sourceSize + active.indexSize + active.resources.sources[0].sourceSize + active.resources.sources[0].indexSize
+  );
+  assert.equal(installedWithResource.resourceBytes, active.resources.sources[0].sourceSize);
   assert.deepEqual(
     (await env.store.listVersions(CURATED_PACK_ID)).sort(),
     [next.packVersion, resourceRequest.resourceVersion].sort()

@@ -4,6 +4,16 @@ import {
 import {
   OPTIONAL_PACK_SOURCES
 } from "../shared/pack-sources.js";
+import { getDictionaryCatalogEntry } from "../shared/dictionary-catalog-v2.js";
+import {
+  formatDictionaryBytes,
+  formatLocalDictionaryVersion,
+  formatLocalInstallDate,
+  getCatalogDictionaryRows,
+  getDictionaryHealthPresentation,
+  renderCatalogLimitations,
+  renderDictionaryMetadata
+} from "./dictionary-library-v2-presentation.js";
 
 export function renderInstalledPackList({
   container,
@@ -17,7 +27,7 @@ export function renderInstalledPackList({
   container.replaceChildren();
 
   const entries = Object.entries(state?.packs || {})
-    .filter(([, entry]) => entry?.active)
+    .filter(([, entry]) => entry && (entry.active || entry.display || entry.status === "needs-reinstall"))
     .sort((a, b) => compareText(
       installedPackName(a[0], a[1], sources),
       installedPackName(b[0], b[1], sources)
@@ -29,9 +39,11 @@ export function renderInstalledPackList({
     return;
   }
 
-  for (const [packId, entry] of entries) {
+  for (const [index, [packId, entry]] of entries.entries()) {
     const row = document.createElement("div");
     row.className = "site-row dictionary-pack-row";
+    row.setAttribute("role", "group");
+    row.dataset.packId = packId;
 
     const summary = document.createElement("div");
     summary.className = "site-summary";
@@ -40,29 +52,49 @@ export function renderInstalledPackList({
     const title = document.createElement("strong");
     title.textContent =
       installedPackName(packId, entry, sources);
+    title.id = `installed-dictionary-${index}`;
     const badge = document.createElement("span");
     badge.className = "dictionary-health-badge";
-    badge.dataset.kind =
-      entry.status === "healthy" ? "success" : "warning";
-    badge.textContent =
-      entry.status === "healthy" ? "可用" : "需检查";
+    const health = getDictionaryHealthPresentation(entry.status);
+    badge.dataset.kind = health.kind;
+    badge.textContent = health.label;
+    badge.setAttribute("aria-label", `词典状态：${health.label}`);
     heading.append(title, badge);
+    row.setAttribute("aria-labelledby", title.id);
     summary.appendChild(heading);
 
-    const meta = document.createElement("div");
-    meta.className = "dictionary-pack-meta";
-    for (const item of installedPackMeta(entry)) {
-      const value = document.createElement("span");
-      value.textContent = item;
-      meta.appendChild(value);
+    const catalog = entry?.display?.catalog;
+    const catalogEntry = catalog ? getDictionaryCatalogEntry(catalog.entryId) : null;
+    if (catalogEntry) {
+      renderDictionaryMetadata(summary, getCatalogDictionaryRows(catalogEntry, {
+        installedCatalog: catalog,
+        installedSize: entry.active?.totalBytes,
+        entryCount: entry.active?.recordCount
+      }));
+      renderCatalogLimitations(summary, catalogEntry);
+    } else {
+      const meta = document.createElement("div");
+      meta.className = "dictionary-pack-meta";
+      for (const item of installedPackMeta(entry)) {
+        const value = document.createElement("span");
+        value.textContent = item;
+        meta.appendChild(value);
+      }
+      summary.appendChild(meta);
     }
-    summary.appendChild(meta);
+    if (health.detail && health.kind !== "success") {
+      const detail = document.createElement("small");
+      detail.className = "dictionary-pack-detail";
+      detail.textContent = health.detail;
+      summary.appendChild(detail);
+    }
 
     const actions = document.createElement("div");
     actions.className = "site-actions";
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "删除";
+    remove.setAttribute("aria-label", `删除${installedPackName(packId, entry, sources)}`);
     remove.addEventListener("click", async () => {
       remove.disabled = true;
       try {
@@ -115,39 +147,25 @@ export function installedPackMeta(entry) {
   const display = entry?.display || null;
   const result = [];
   if (display?.kind === "local-import") {
-    result.push("本地导入", "用户提供 · 未验证");
+    result.push("本地导入 · 用户提供 / 未验证");
+    result.push("兼容性 当前版本可使用");
     if (display.formatLabel) {
       result.push(display.formatLabel);
     }
   } else if (display?.kind === "curated-upstream") {
-    result.push("精选上游", "上游 / 社区");
+    result.push("精选上游 · 非官方");
     if (display.formatLabel) {
       result.push(display.formatLabel);
     }
-    if (display.sourceLabel) {
-      result.push(`来源 ${display.sourceLabel}`);
-    }
-    if (display.licenseLabel) {
-      result.push(`许可 ${display.licenseLabel}`);
-    }
   }
-  if (active.packVersion) {
-    result.push(
-      `版本 / 导入标识 ${active.packVersion}`
-    );
-  }
+  const installedVersion = formatLocalDictionaryVersion(active.packVersion);
+  if (installedVersion !== "未记录") result.push(`本地安装版本 ${installedVersion}`);
+  const installedDate = formatLocalInstallDate(display?.importedAt || active.verifiedAt);
+  if (installedDate) result.push(`本机安装日期 ${installedDate}`);
   if (Number.isFinite(Number(active.totalBytes))) {
-    result.push(formatBytes(Number(active.totalBytes)));
+    result.push(`已安装大小 ${formatDictionaryBytes(Number(active.totalBytes))}`);
   }
   return result;
-}
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) {
-    return (bytes / 1024).toFixed(1) + " KiB";
-  }
-  return (bytes / (1024 * 1024)).toFixed(1) + " MiB";
 }
 
 function compareText(a, b) {

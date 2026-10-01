@@ -20,7 +20,7 @@ test.describe("curated ECDICT product flow", () => {
       .locator("#curatedDictionaryList .site-row")
       .filter({ hasText: "ECDICT 高频英汉" });
     await expect(row).toBeVisible();
-    await expect(row).toContainText("上游 / 社区");
+    await expect(row).toContainText("精选上游 · 非官方");
     await expect(row).toContainText("ECDICT");
     await row
       .getByRole("button", { name: "下载并安装" })
@@ -47,11 +47,11 @@ test.describe("curated ECDICT product flow", () => {
       .locator("#installedDictionaryList .site-row")
       .filter({ hasText: "ECDICT 高频英汉" });
     await expect(installed).toBeVisible();
-    await expect(installed).toContainText("上游 / 社区");
+    await expect(installed).toContainText("精选上游 · 非官方");
     await expect(
       row.getByRole("button", { name: "重新安装" })
     ).toBeVisible();
-    await expect(row).toContainText("当前版本");
+    await expect(row).toContainText("已安装 · 可用");
 
     const syntheticUpdate = await options.evaluate(async () => {
       const [{ getCuratedInstallPresentation }, recipes] =
@@ -78,7 +78,7 @@ test.describe("curated ECDICT product flow", () => {
       );
     });
     expect(syntheticUpdate.status).toBe("update-available");
-    expect(syntheticUpdate.badgeLabel).toBe("可更新");
+    expect(syntheticUpdate.badgeLabel).toBe("有已审核更新");
     expect(syntheticUpdate.actionLabel).toBe("更新");
 
     const page = await harness.open("/selection");

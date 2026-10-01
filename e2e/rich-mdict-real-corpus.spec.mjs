@@ -69,15 +69,18 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       hasText: "简明英汉字典增强版"
     });
     await expect(installed).toBeVisible();
-    await expect(installed).toContainText("3,402,564 条词目");
-    await expect(installed).toContainText("可查词");
+    const entryCount = installed.locator(".dictionary-v2-metadata-item").filter({ hasText: "词条" });
+    await expect(entryCount).toHaveCount(1);
+    await expect(entryCount.locator("dt")).toHaveText("词条");
+    await expect(entryCount.locator("dd")).toHaveText("3,402,564");
+    await expect(installed).toContainText("可用");
 
     await options.reload();
     installed = options.locator("#richMdictInstalledList .site-row").filter({
       hasText: "简明英汉字典增强版"
     });
     await expect(installed).toBeVisible({ timeout: 30_000 });
-    await expect(installed).toContainText("可查词");
+    await expect(installed).toContainText("可用");
 
     const corpusLookups = [];
     for (const expected of lock.independentDecode.recordExcerpts) {
@@ -320,6 +323,8 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     const installStarted = Date.now();
     await row.locator("[data-action='install']").click();
     await waitForCuratedMdxInstall(options, row, "initial install");
+    await expect(row.locator(".dictionary-pack-detail[aria-live='polite']"))
+      .toContainText("已安装上游版本 1.0.28");
     const initialInstallMs = Date.now() - installStarted;
     await expect(row.locator("[data-action='reinstall']")).toBeVisible();
     await expect(row.locator("[data-action='delete']")).toBeVisible();
@@ -348,7 +353,7 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
 
     harness.server.setEcdictMdxArchiveMode("failure");
     await row.locator("[data-action='reinstall']").click();
-    await expect(row.locator('[aria-live="polite"]')).toContainText(/HTTP 503|upstream unavailable|asset unavailable/iu, {
+    await expect(row.locator('[aria-live="polite"]')).toContainText(/暂时无法从上游下载词典.*当前已安装词典保持不变/u, {
       timeout: 30_000
     });
     await expect.poll(async () => (await listCuratedEcdict(options))?.packVersion)
@@ -378,6 +383,8 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     );
     await row.locator("[data-action='reinstall']").click();
     await waitForCuratedMdxInstall(options, row, "reinstall", reinstallEventOffset);
+    await expect(row.locator(".dictionary-pack-detail[aria-live='polite']"))
+      .toContainText("已安装上游版本 1.0.28");
     const reinstallMs = Date.now() - reinstallStarted;
     const afterReinstall = await listCuratedEcdict(options);
     expect(afterReinstall?.status).toBe("ready");
@@ -515,7 +522,11 @@ async function waitForCuratedMdxInstall(options, row, phase, eventOffset = 0) {
     ]);
     const normalized = String(detail || "").trim();
     const currentEvents = events.slice(eventOffset);
-    if (normalized.includes("已安装审核版本 1.0.28")) return;
+    const installedAction = row.locator("[data-action='reinstall']");
+    if (
+      normalized.includes("已安装上游版本 1.0.28") &&
+      await installedAction.isVisible().catch(() => false)
+    ) return;
     if (
       normalized.includes("未授予") ||
       currentEvents.some((event) => event.type === "curated-ecdict-mdx:error")

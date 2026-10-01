@@ -41,7 +41,7 @@ test.describe("curated ECDICT MDX Settings card", () => {
     await expect(row).toBeVisible();
     await row.locator("[data-action='install']").click();
     await expect(row.locator('[aria-live="polite"]')).toContainText(
-      "未授予 ECDICT GitHub Release 和其精确资产 CDN 的下载权限。"
+      "下载权限未获准，尚未开始下载。"
     );
 
     const evidence = await options.evaluate(async () => {

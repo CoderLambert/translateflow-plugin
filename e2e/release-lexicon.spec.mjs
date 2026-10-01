@@ -69,7 +69,7 @@ test("production extension resolves the built Core and Technical packs without P
   await expect(settings.locator("#bundledLexiconList")).toContainText("Core Semantic");
   await expect(settings.locator("#bundledLexiconList")).toContainText("Technical Concepts");
   await expect(settings.locator("#bundledLexiconList")).toContainText("已就绪");
-  await expect(settings.locator("#dictionaryPacksList")).toContainText("暂无官方推荐词典");
+  await expect(settings.locator("#dictionaryPacksList")).toContainText("当前没有符合发布条件的官方词典");
   await settings.close();
 
   expect(harness.server.calls).toHaveLength(0);
