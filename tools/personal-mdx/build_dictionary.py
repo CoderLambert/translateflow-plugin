@@ -21,6 +21,12 @@ import html
 import json
 import re
 from collections import defaultdict
+
+try:
+    from opencc import OpenCC
+    _OPENCC = OpenCC("t2s")
+except Exception:
+    _OPENCC = None
 from pathlib import Path
 from typing import Iterable
 
@@ -211,7 +217,8 @@ def build_examples(
 
 def split_lines(value: str, max_items: int = 12) -> list[str]:
     lines: list[str] = []
-    for raw in text(value).split("\n"):
+    normalized = text(value).replace("\\n", "\n")
+    for raw in normalized.split("\n"):
         line = raw.strip()
         if line and line not in lines:
             lines.append(line)
@@ -239,16 +246,24 @@ def parse_pos(value: str) -> list[tuple[str, int | None]]:
     return result[:8]
 
 
-def parse_exchange(value: str) -> list[tuple[str, str]]:
-    result: list[tuple[str, str]] = []
+def parse_exchange(value: str) -> list[tuple[str, str, bool]]:
+    result: list[tuple[str, str, bool]] = []
     for item in text(value).split("/"):
         if ":" not in item:
             continue
         kind, form = item.split(":", 1)
         kind = kind.strip()
         form = form.strip()
-        if form and SAFE_HEADWORD_RE.fullmatch(form):
-            result.append((EXCHANGE_LABELS.get(kind, kind), form))
+        if not form:
+            continue
+        if kind == "1":
+            labels = [EXCHANGE_LABELS.get(code, code) for code in form if code in EXCHANGE_LABELS and code not in {"0", "1"}]
+            label = " / ".join(dict.fromkeys(labels))
+            if label:
+                result.append(("当前词形", label, False))
+            continue
+        if SAFE_HEADWORD_RE.fullmatch(form):
+            result.append((EXCHANGE_LABELS.get(kind, kind), form, True))
     return result[:14]
 
 
@@ -327,8 +342,9 @@ def render_entry(row: dict[str, str], examples: list[tuple[str, str]]) -> str:
 
     if exchange:
         chunks.append('<section class="tf-section"><h2>词形变化</h2><div class="tf-forms">')
-        for label, form in exchange:
-            chunks.append(f'<span class="tf-form"><small>{h(label)}</small>{entry_link(form)}</span>')
+        for label, form, linked in exchange:
+            value_html = entry_link(form) if linked else h(form)
+            chunks.append(f'<span class="tf-form"><small>{h(label)}</small>{value_html}</span>')
         chunks.append('</div></section>')
 
     if bnc or frq:
