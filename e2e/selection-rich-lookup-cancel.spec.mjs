@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
@@ -7,13 +7,19 @@ import { lookupRichMdict } from "../src/background/packs/importers/mdict-rich-lo
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 
 const evidenceDir = process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || "";
-const baseline = Object.freeze({
-  mainSha: "acbfa12a079a73d6eab0a1c17e7a8f63d856295b",
-  samples: 30,
-  medianMs: 23.175,
-  p95Ms: 23.326,
-  derivedCeilingMs: Math.ceil(23.326 * 2)
-});
+const baselinePath = evidenceDir
+  ? resolve(evidenceDir, "rich-lookup-cancellation-baseline.json")
+  : resolve("tests/fixtures/rich-lookup-cancellation-baseline.json");
+const baselineEvidence = JSON.parse(await readFile(baselinePath, "utf8"));
+const baselineP95Ms = percentile(baselineEvidence.rawSamplesMs, 0.95);
+const baselineCeilingMs = Math.ceil(baselineP95Ms * 2);
+if (
+  baselineEvidence.status !== "PASS"
+  || baselineEvidence.baselineMainSha !== "acbfa12a079a73d6eab0a1c17e7a8f63d856295b"
+  || baselineEvidence.rawSamplesMs.length !== 30
+) {
+  throw new Error("Pinned Rich lookup cancellation baseline evidence is missing or invalid.");
+}
 
 test.describe("Selection change cancels stale Rich lookups and preserves fresh results", () => {
   test.setTimeout(180_000);
@@ -32,6 +38,7 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
     const fixture = makeRichMdx([
       ["cancelword", "<p>STALE_SECRET_OLD_GLOSS</p>"],
+      ["replaceword", "<p>STALE_SECRET_REPLACED_GLOSS</p>"],
       ["freshword", "<p>fresh lookup succeeded</p>"]
     ], { title: "Cancellation Fixture" });
     await options.locator("#localDictionaryFiles").setInputFiles({
@@ -45,7 +52,11 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
 
     const page = await harness.open("/selection-rich-lookup-cancel");
     await page.evaluate(() => {
-      for (const [id, text] of [["old-selection", "cancelword"], ["fresh-selection", "freshword"]]) {
+      for (const [id, text] of [
+        ["old-selection", "cancelword"],
+        ["replace-selection", "replaceword"],
+        ["fresh-selection", "freshword"]
+      ]) {
         const node = document.createElement("p");
         node.id = id;
         node.textContent = text;
@@ -54,22 +65,46 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
     });
     await injectWithLookupGate(harness, page);
 
-    await selectElementText(page, "#old-selection");
-    await expect(page.locator(".tf-selection-chip")).toBeVisible();
-    await page.locator(".tf-selection-chip").click();
-    const oldCard = page.locator(".tf-selection-rich-record").filter({ hasText: "Cancellation Fixture" });
-    await expect(oldCard).toBeVisible({ timeout: 15_000 });
-    await expect.poll(() => readGate(harness, page), { timeout: 15_000 }).toMatchObject({ delayedOldLookup: true });
-    const oldRequestId = (await readGate(harness, page)).trace.find((item) => item.kind === "lookup")?.requestId;
-    expect(oldRequestId).toMatch(/^selection-rich-lookup-[a-f0-9]{32}$/u);
+    const cancelledRequestIds = [];
+    const routeCancellationSamplesMs = [];
+    for (const [text, method, route] of [
+      ["cancelword", "pushState", "/spa-push-route"],
+      ["replaceword", "replaceState", "/spa-replace-route"]
+    ]) {
+      const selectionId = text === "cancelword" ? "old-selection" : "replace-selection";
+      await selectElementText(page, `#${selectionId}`);
+      await expect(page.locator(".tf-selection-chip")).toBeVisible();
+      await page.locator(".tf-selection-chip").click();
+      const card = page.locator(".tf-selection-rich-record").filter({ hasText: "Cancellation Fixture" });
+      await expect(card).toBeVisible({ timeout: 15_000 });
+      await expect.poll(async () => {
+        const gate = await readGate(harness, page);
+        return gate.delayedTexts.includes(text);
+      }, { timeout: 15_000 }).toBe(true);
+      const requestId = (await readGate(harness, page)).trace.find((item) =>
+        item.kind === "lookup" && item.text === text
+      )?.requestId;
+      expect(requestId).toMatch(/^selection-rich-lookup-[a-f0-9]{32}$/u);
+
+      const routeStartedAt = await page.evaluate(({ method, route }) => {
+        const startedAt = Date.now();
+        history[method]({}, "", route);
+        return startedAt;
+      }, { method, route });
+      await expect.poll(async () => {
+        const gate = await readGate(harness, page);
+        return gate.trace.some((item) => item.kind === "cancel" && item.requestId === requestId && item.cancelled);
+      }, { timeout: 10_000 }).toBe(true);
+      const cancelEvent = (await readGate(harness, page)).trace.find((item) =>
+        item.kind === "cancel" && item.requestId === requestId
+      );
+      routeCancellationSamplesMs.push(Math.max(0, cancelEvent.observedAtEpochMs - routeStartedAt));
+      cancelledRequestIds.push(requestId);
+      await releaseDelayedLookup(harness, page, text);
+    }
 
     await selectElementText(page, "#fresh-selection");
     await expect(page.locator(".tf-selection-chip")).toBeVisible();
-    await expect.poll(async () => {
-      const gate = await readGate(harness, page);
-      return gate.trace.some((item) => item.kind === "cancel" && item.requestId === oldRequestId && item.cancelled);
-    }, { timeout: 10_000 }).toBe(true);
-    await releaseDelayedLookup(harness, page);
 
     await page.locator(".tf-selection-chip").click();
     const freshCard = page.locator(".tf-selection-rich-record").filter({ hasText: "Cancellation Fixture" });
@@ -80,12 +115,12 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
 
     const gate = await readGate(harness, page);
     const lookups = gate.trace.filter((item) => item.kind === "lookup");
-    const cancel = gate.trace.find((item) => item.kind === "cancel" && item.requestId === oldRequestId);
+    const cancels = gate.trace.filter((item) => item.kind === "cancel" && cancelledRequestIds.includes(item.requestId));
     const freshLookup = lookups.find((item) => item.text === "freshword");
-    expect(cancel?.requestId).toBe(oldRequestId);
-    expect(cancel?.cancelled).toBe(true);
+    expect(cancels.map((item) => item.requestId)).toEqual(cancelledRequestIds);
+    expect(cancels.every((item) => item.cancelled)).toBe(true);
     expect(freshLookup?.requestId).toMatch(/^selection-rich-lookup-[a-f0-9]{32}$/u);
-    expect(freshLookup.requestId).not.toBe(oldRequestId);
+    expect(cancelledRequestIds).not.toContain(freshLookup.requestId);
 
     const rangeSamples = await measureCancellationSamples();
     const browserRequests = lookups.length;
@@ -95,7 +130,8 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
       spec: "e2e/selection-rich-lookup-cancel.spec.mjs",
       status: "PASS",
       requestCount: browserRequests,
-      browserCancellationPhase: "before-dispatch",
+      browserCancellationPhase: "same-document-history-before-dispatch",
+      spaNavigationMethods: ["pushState", "replaceState"],
       cancelledLookupCount: gate.trace.filter((item) => item.kind === "cancel" && item.cancelled === true).length,
       lateStaleResultsRendered: (await page.locator("body").textContent()).includes("STALE_SECRET_OLD_GLOSS") ? 1 : 0,
       freshResultsRendered: (await richViewer.textContent()).includes("fresh lookup succeeded") ? 1 : 0,
@@ -111,16 +147,30 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
         p50Ms: percentile(rangeSamples.samples, 0.5),
         p95Ms: percentile(rangeSamples.samples, 0.95),
         maxMs: Math.max(...rangeSamples.samples),
-        baselineP95Ms: baseline.p95Ms,
-        baselineSampleCount: baseline.samples,
-        baselineMainSha: baseline.mainSha,
-        baselineWorkload: "uncancelled synthetic bounded source-range gate",
-        derivedCeilingMs: baseline.derivedCeilingMs,
-        ceilingPassed: percentile(rangeSamples.samples, 0.95) <= baseline.derivedCeilingMs
+        baselineP95Ms,
+        baselineSampleCount: baselineEvidence.rawSamplesMs.length,
+        baselineMainSha: baselineEvidence.baselineMainSha,
+        baselineEvidenceFile: "rich-lookup-cancellation-baseline.json",
+        baselineLookupBlob: baselineEvidence.baselineLookupBlob,
+        baselineRunnerSha256: baselineEvidence.runnerSha256,
+        baselineWorkload: baselineEvidence.workload,
+        derivedCeilingMs: baselineCeilingMs,
+        ceilingPassed: percentile(rangeSamples.samples, 0.95) <= baselineCeilingMs
+      },
+      routeCancellationLatency: {
+        unit: "ms",
+        sampleCount: routeCancellationSamplesMs.length,
+        samplesMs: routeCancellationSamplesMs,
+        p50Ms: percentile(routeCancellationSamplesMs, 0.5),
+        p95Ms: percentile(routeCancellationSamplesMs, 0.95),
+        maxMs: Math.max(...routeCancellationSamplesMs),
+        baselineP95Ms,
+        derivedCeilingMs: baselineCeilingMs,
+        ceilingPassed: percentile(routeCancellationSamplesMs, 0.95) <= baselineCeilingMs
       }
     };
     expect(report.requestCount).toBeGreaterThanOrEqual(2);
-    expect(report.cancelledLookupCount).toBeGreaterThanOrEqual(1);
+    expect(report.cancelledLookupCount).toBeGreaterThanOrEqual(2);
     expect(report.lateStaleResultsRendered).toBe(0);
     expect(report.freshResultsRendered).toBe(1);
     expect(report.providerCalls).toBe(0);
@@ -130,6 +180,8 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
     expect(report.postCancelBlockDecodes).toBe(0);
     expect(rangeSamples.samples.length).toBeGreaterThanOrEqual(10);
     expect(report.cancellationLatency.ceilingPassed).toBe(true);
+    expect(routeCancellationSamplesMs).toHaveLength(2);
+    expect(report.routeCancellationLatency.ceilingPassed).toBe(true);
 
     if (evidenceDir) {
       await mkdir(evidenceDir, { recursive: true });
@@ -150,14 +202,19 @@ async function injectWithLookupGate(harness, page) {
         const original = runtime.sendRuntimeMessage.bind(runtime);
         const gate = {
           trace: [],
-          delayedOldLookup: false,
+          delayedTexts: [],
           maxConcurrency: 0,
           active: 0,
-          release: null
+          releases: Object.create(null)
         };
         runtime.sendRuntimeMessage = (message) => {
           if (message.type === runtime.messages.background.RICH_MDICT_LOOKUP_CANCEL) {
-            const event = { kind: "cancel", requestId: message.requestId, cancelled: false };
+            const event = {
+              kind: "cancel",
+              requestId: message.requestId,
+              observedAtEpochMs: Date.now(),
+              cancelled: false
+            };
             gate.trace.push(event);
             return original(message).then((response) => {
               event.cancelled = response?.ok === true && response?.cancelled === true;
@@ -166,10 +223,10 @@ async function injectWithLookupGate(harness, page) {
           }
           if (message.type !== runtime.messages.background.RICH_MDICT_LOOKUP) return original(message);
           gate.trace.push({ kind: "lookup", requestId: message.requestId, text: String(message.text || "") });
-          if (message.text === "cancelword" && !gate.delayedOldLookup) {
-            gate.delayedOldLookup = true;
+          if (["cancelword", "replaceword"].includes(message.text) && !gate.delayedTexts.includes(message.text)) {
+            gate.delayedTexts.push(message.text);
             return new Promise((resolve, reject) => {
-              gate.release = () => {
+              gate.releases[message.text] = () => {
                 gate.active += 1;
                 gate.maxConcurrency = Math.max(gate.maxConcurrency, gate.active);
                 original(message).then(resolve, reject).finally(() => { gate.active -= 1; });
@@ -195,8 +252,14 @@ async function readGate(harness, page) {
     func: () => {
       const gate = globalThis.__TF_RICH_LOOKUP_GATE__;
       return gate ? {
-        trace: gate.trace.map(({ kind, requestId, text, cancelled }) => ({ kind, requestId, text, cancelled })),
-        delayedOldLookup: gate.delayedOldLookup,
+        trace: gate.trace.map(({ kind, requestId, text, cancelled, observedAtEpochMs }) => ({
+          kind,
+          requestId,
+          text,
+          cancelled,
+          observedAtEpochMs
+        })),
+        delayedTexts: [...gate.delayedTexts],
         maxConcurrency: gate.maxConcurrency
       } : null;
     }
@@ -204,12 +267,13 @@ async function readGate(harness, page) {
   return result?.result;
 }
 
-async function releaseDelayedLookup(harness, page) {
+async function releaseDelayedLookup(harness, page, text) {
   const tabId = await harness.tabId(page);
-  await harness.driver.evaluate(({ tabId }) => chrome.scripting.executeScript({
+  await harness.driver.evaluate(({ tabId, text }) => chrome.scripting.executeScript({
     target: { tabId },
-    func: () => globalThis.__TF_RICH_LOOKUP_GATE__?.release?.()
-  }), { tabId });
+    func: ({ text }) => globalThis.__TF_RICH_LOOKUP_GATE__?.releases?.[text]?.(),
+    args: [{ text }]
+  }), { tabId, text });
 }
 
 async function selectElementText(page, selector) {

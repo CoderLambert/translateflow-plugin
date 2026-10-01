@@ -14,6 +14,9 @@
   let activeSession = null;
   let runningLookups = 0;
   let fallbackRequestCounter = 0;
+  let lifecycle = null;
+  let routeWatchTimer = null;
+  let nativeNavigationEvents = false;
 
   async function load(snapshot, version, expectedPage, isCurrentSelection) {
     if (activeSession) void cancelSession(activeSession);
@@ -30,6 +33,7 @@
       pendingJobs: new Set()
     };
     activeSession = session;
+    startRouteWatcher();
 
     try {
       const response = await sendRuntimeMessage({
@@ -194,7 +198,10 @@
   function cancelSession(session) {
     if (session.cancelPromise) return session.cancelPromise;
     session.cancelled = true;
-    if (activeSession === session) activeSession = null;
+    if (activeSession === session) {
+      activeSession = null;
+      stopRouteWatcher();
+    }
 
     const pendingJobs = [...session.pendingJobs];
     for (const job of [...session.queuedJobs]) {
@@ -218,14 +225,49 @@
     return session.cancelPromise;
   }
 
-  function bindLifecycle({ getActivePage, getPageIdentity, onRouteLeave, onPageHide } = {}) {
-    const checkRoute = () => {
-      const activePage = getActivePage?.();
-      if (activePage && getPageIdentity(location.href) !== getPageIdentity(activePage)) onRouteLeave?.();
+  function bindLifecycle(options = {}) {
+    lifecycle = options;
+    const checkRoute = (event) => {
+      const activePage = lifecycle?.getActivePage?.();
+      if (!activePage) {
+        stopRouteWatcher();
+        return;
+      }
+      const destinationUrl = event?.destination?.url || location.href;
+      if (lifecycle?.getPageIdentity?.(destinationUrl) !== lifecycle?.getPageIdentity?.(activePage)) {
+        lifecycle?.onRouteLeave?.();
+      }
     };
     window.addEventListener("popstate", checkRoute, true);
     window.addEventListener("hashchange", checkRoute, true);
-    window.addEventListener("pagehide", onPageHide, true);
+    window.addEventListener("pagehide", lifecycle?.onPageHide, true);
+    if (globalThis.navigation && typeof globalThis.navigation.addEventListener === "function") {
+      globalThis.navigation.addEventListener("navigate", checkRoute);
+      nativeNavigationEvents = true;
+    }
+    if (activeSession) startRouteWatcher();
+  }
+
+  function startRouteWatcher() {
+    if (!lifecycle || nativeNavigationEvents || routeWatchTimer !== null) return;
+    // Poll only on browsers without Navigation API support, and only while a
+    // Rich Selection session exists, to bound the compatibility fallback.
+    routeWatchTimer = window.setInterval(() => {
+      const activePage = lifecycle?.getActivePage?.();
+      if (!activePage) {
+        stopRouteWatcher();
+        return;
+      }
+      if (lifecycle?.getPageIdentity?.(location.href) !== lifecycle?.getPageIdentity?.(activePage)) {
+        lifecycle?.onRouteLeave?.();
+      }
+    }, 50);
+  }
+
+  function stopRouteWatcher() {
+    if (routeWatchTimer === null) return;
+    window.clearInterval(routeWatchTimer);
+    routeWatchTimer = null;
   }
 
   function createLookupRequestId() {
