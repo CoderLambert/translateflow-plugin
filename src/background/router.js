@@ -301,6 +301,7 @@ export async function handleBackgroundMessage(message, sender) {
         resourceVersion: message.resourceVersion
       });
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE:
+      assertSelectionContentSender(sender);
       return lookupRichMddResource({ dictionaryId: message.dictionaryId, path: message.path });
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED:
       return { notified: true };
