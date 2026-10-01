@@ -374,6 +374,8 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
     failures.push("required #224 in-flight Rich lookup cancellation report is missing or did not pass");
     return { status: isObject(report) ? "failed" : "missing" };
   }
+  requireEqual(report.browserCancellationPhase, "same-document-history-during-active-range", "#224 browser cancellation phase", failures);
+  requireSameJson(report.spaNavigationMethods, ["pushState", "replaceState"], "#224 SPA navigation methods", failures);
   const baselineResult = certifyRichLookupCancellationBaseline(baseline, runnerSha256, failures);
   const latency = report.cancellationLatency || {};
   if (!Number.isSafeInteger(latency.sampleCount) || latency.sampleCount < 10) failures.push("#224 active range cancellation latency requires at least 10 samples");
@@ -406,7 +408,9 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
   const routeDurations = Array.isArray(routeLatency.samplesMs) ? routeLatency.samplesMs : [];
   const routeSummary = summarizeNearestRankSamples(routeDurations);
   requireEqual(routeLatency.trigger, "same-document-history", "#224 route cancellation trigger", failures);
+  requireEqual(routeLatency.endpoint, "underlying-range-stop", "#224 route cancellation endpoint", failures);
   requireEqual(routeLatency.clock, "performance.now", "#224 route cancellation clock", failures);
+  requireEqual(routeLatency.metric, "milliseconds from route change to final active underlying range read stop", "#224 route cancellation metric", failures);
   if (!Number.isSafeInteger(routeLatency.sampleCount) || routeLatency.sampleCount < 10) failures.push("#224 route cancellation requires at least 10 route-triggered samples");
   if (routeRecords.length !== routeLatency.sampleCount || routeDurations.length !== routeLatency.sampleCount || routeRecords.length < 10) {
     failures.push("#224 route cancellation requires at least 10 sample records and durations matching sampleCount");
@@ -426,7 +430,7 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
       failures.push(`${label} must contain finite epoch-millisecond timestamps`);
     } else {
       const [rangeStarted, routeStarted, nativeCancelCompleted, rangeStopped] = timestamps;
-      if (!(rangeStarted <= routeStarted && routeStarted < nativeCancelCompleted && nativeCancelCompleted < rangeStopped)) {
+      if (!(rangeStarted <= routeStarted && routeStarted < nativeCancelCompleted && nativeCancelCompleted <= rangeStopped)) {
         failures.push(`${label} event order must be active range start, route start, completed native cancel, then final range stop`);
       }
       if (Math.abs((rangeStopped - routeStarted) - sample.durationMs) > 0.01) {
@@ -463,7 +467,7 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
   if (!Number.isSafeInteger(report.freshResultsRendered) || report.freshResultsRendered < 1) failures.push("#224 did not prove a fresh selection result was rendered");
   requireEqual(report.providerCalls, 0, "#224 Provider calls", failures);
   requireEqual(report.externalRequests, 0, "#224 external requests", failures);
-  return { status: failures.length === before ? "passed" : "failed", activeRangeCancellationSamples: report.activeRangeCancellationSamples ?? null, sampleCount: latency.sampleCount ?? null, baselineEvidence: baselineResult, baselineSampleCount: latency.baselineSampleCount ?? null, baselineP95Ms: latency.baselineP95Ms ?? null, p50Ms: latency.p50Ms ?? null, p95Ms: latency.p95Ms ?? null, maxMs: latency.maxMs ?? null, derivedCeilingMs: latency.derivedCeilingMs ?? null, routeCancellationLatency: { trigger: routeLatency.trigger ?? null, clock: routeLatency.clock ?? null, sampleCount: routeLatency.sampleCount ?? null, pushStateSamples: methodCounts.pushState, replaceStateSamples: methodCounts.replaceState, endpoint: routeRecords[0]?.endpoint ?? null, baselineMetric: routeLatency.baselineMetric ?? null, baselineInterpretation: routeLatency.baselineInterpretation ?? null, p50Ms: routeLatency.p50Ms ?? null, p95Ms: routeLatency.p95Ms ?? null, maxMs: routeLatency.maxMs ?? null, derivedCeilingMs: routeLatency.derivedCeilingMs ?? null, ceilingPassed: routeLatency.ceilingPassed ?? null }, maxConcurrentLookups: report.maxConcurrentLookups ?? null, postCancelRangeReads: report.postCancelRangeReads ?? null, postCancelBlockDecodes: report.postCancelBlockDecodes ?? null, lateStaleResultsRendered: report.lateStaleResultsRendered ?? null, freshResultsRendered: report.freshResultsRendered ?? null, providerCalls: report.providerCalls ?? null, externalRequests: report.externalRequests ?? null };
+  return { status: failures.length === before ? "passed" : "failed", browserCancellationPhase: report.browserCancellationPhase ?? null, spaNavigationMethods: Array.isArray(report.spaNavigationMethods) ? report.spaNavigationMethods : null, activeRangeCancellationSamples: report.activeRangeCancellationSamples ?? null, sampleCount: latency.sampleCount ?? null, baselineEvidence: baselineResult, baselineSampleCount: latency.baselineSampleCount ?? null, baselineP95Ms: latency.baselineP95Ms ?? null, p50Ms: latency.p50Ms ?? null, p95Ms: latency.p95Ms ?? null, maxMs: latency.maxMs ?? null, derivedCeilingMs: latency.derivedCeilingMs ?? null, routeCancellationLatency: { trigger: routeLatency.trigger ?? null, endpoint: routeLatency.endpoint ?? null, metric: routeLatency.metric ?? null, clock: routeLatency.clock ?? null, sampleCount: routeLatency.sampleCount ?? null, pushStateSamples: methodCounts.pushState, replaceStateSamples: methodCounts.replaceState, sampleEndpoint: routeRecords[0]?.endpoint ?? null, baselineMetric: routeLatency.baselineMetric ?? null, baselineInterpretation: routeLatency.baselineInterpretation ?? null, p50Ms: routeLatency.p50Ms ?? null, p95Ms: routeLatency.p95Ms ?? null, maxMs: routeLatency.maxMs ?? null, derivedCeilingMs: routeLatency.derivedCeilingMs ?? null, ceilingPassed: routeLatency.ceilingPassed ?? null }, maxConcurrentLookups: report.maxConcurrentLookups ?? null, postCancelRangeReads: report.postCancelRangeReads ?? null, postCancelBlockDecodes: report.postCancelBlockDecodes ?? null, lateStaleResultsRendered: report.lateStaleResultsRendered ?? null, freshResultsRendered: report.freshResultsRendered ?? null, providerCalls: report.providerCalls ?? null, externalRequests: report.externalRequests ?? null };
 }
 
 function certifyRichLookupCancellationBaseline(baseline, actualRunnerSha256, failures) {

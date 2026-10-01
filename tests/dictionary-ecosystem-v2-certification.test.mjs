@@ -150,6 +150,8 @@ function makeEvidence() {
     status: "PASS",
     spec: "e2e/selection-rich-lookup-cancel.spec.mjs",
     test: "Selection change cancels stale Rich lookups and preserves fresh results",
+    browserCancellationPhase: "same-document-history-during-active-range",
+    spaNavigationMethods: ["pushState", "replaceState"],
     activeRangeCancellationSamples: 12,
     cancellationLatency: {
       sampleCount: 12,
@@ -173,7 +175,9 @@ function makeEvidence() {
     },
     routeCancellationLatency: {
       trigger: "same-document-history",
+      endpoint: "underlying-range-stop",
       clock: "performance.now",
+      metric: "milliseconds from route change to final active underlying range read stop",
       sampleCount: 10,
       samples: makeRouteCancellationSamples(),
       samplesMs: makeRouteCancellationSamples().map((sample) => sample.durationMs),
@@ -240,6 +244,7 @@ test("certifies a frozen shipped scope against its exact declared run base and s
   assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.pushStateSamples, 5);
   assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.replaceStateSamples, 5);
   assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.clock, "performance.now");
+  assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.endpoint, "underlying-range-stop");
   assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.baselineInterpretation, "conservative-stop-latency-ceiling");
   const output = JSON.stringify(result);
   for (const sentinel of ["private-entry-sentinel", "private-test-console-sentinel", "private-performance-sentinel", "private-cancellation-sentinel"]) {
@@ -377,10 +382,14 @@ test("fails when required #224 cancellation evidence allows post-cancel reads", 
 
 test("binds #224 route latency and browser report metadata to the private pinned raw baseline and runner", () => {
   const mutations = [
+    (evidence) => { evidence.richLookupCancellation.browserCancellationPhase = "before-dispatch"; },
+    (evidence) => { evidence.richLookupCancellation.spaNavigationMethods = ["popstate"]; },
     (evidence) => { evidence.richLookupCancellation.cancellationLatency.baselineEvidenceFile = "untrusted.json"; },
     (evidence) => { evidence.richLookupCancellation.cancellationLatency.baselineWorkload.rangeGateDelayMs = 1; },
     (evidence) => { evidence.richLookupCancellation.cancellationLatency.baselineRunnerSha256 = "d".repeat(64); },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.sampleCount = 9; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.endpoint = "cancel-message-observed"; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.metric = "route changed to message sent"; },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.samples[0].endpoint = "cancel-message-observed"; },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.baselineMetric = "route changed to message sent"; },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.baselineInterpretation = "like-for-like-benchmark"; },
