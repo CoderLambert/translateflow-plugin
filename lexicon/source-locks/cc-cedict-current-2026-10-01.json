@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "research-only-exact-artifact-lock",
+  "sourceId": "cc-cedict",
+  "lockPurpose": "Identify the exact public artifact evaluated for Dictionary Ecosystem v2 source qualification. This lock is not source approval, catalog registration, or permission to present CC-CEDICT as an English-to-Chinese source.",
+  "retrievedOn": "2026-10-01",
+  "source": {
+    "project": "CC-CEDICT",
+    "publisherAndMaintainer": "MDBG with community editors",
+    "projectHome": "https://cc-cedict.org/wiki/",
+    "downloadInformation": "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
+    "formatDocumentation": "https://cc-cedict.org/wiki/syntax_v2",
+    "legacyV1FormatDocumentation": "https://cc-cedict.org/wiki/syntax",
+    "changeSubmission": "https://cc-cedict.org/editor/editor.php"
+  },
+  "release": {
+    "releaseId": null,
+    "releaseDate": null,
+    "releasePolicy": "MDBG presents a current downloadable CC-CEDICT file and says reviewed submissions are processed and released frequently; no immutable numbered release identifier is supplied for this endpoint.",
+    "contentDate": "2026-09-30",
+    "contentDateEvidence": "HTTP Last-Modified header on the exact MDBG artifact"
+  },
+  "artifact": {
+    "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+    "redirectedUrl": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+    "contentType": "application/x-gzip",
+    "archiveBytes": 3977421,
+    "archiveSha256": "58c442d8f100a8a56852832fdd4555a233b6d802b0bf01a5bdddf01561c0a326",
+    "upstreamChecksumPublished": false,
+    "observedHttpDate": "2026-10-01T05:52:53Z",
+    "observedLastModified": "2026-09-30T09:16:04Z",
+    "observedETag": "3cb0cd-65cafbfa85881",
+    "decodedBytes": 9855907,
+    "decodedSha256": "4585efcc6cb11b57b216554efbb5c66f88e15ab5cc9136f6b0579910d30e89cb",
+    "entryCount": 125149,
+    "entryCountEvidence": "Recounted decoded non-comment records; matches the entry count displayed on MDBG's download page."
+  },
+  "role": {
+    "sourceLanguage": "zh",
+    "targetLanguage": "en",
+    "sourceLocales": ["zh-Hans", "zh-Hant"],
+    "intendedRole": "Native Chinese-to-English dictionary; the data stores Traditional and Simplified headword forms, pinyin, and English gloss strings.",
+    "notApprovedRole": "English-to-Simplified-Chinese translation source"
+  },
+  "licenseAndProvenance": {
+    "artifactHeaderLicense": "CC BY-SA 4.0 International",
+    "artifactHeaderLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "currentDownloadPageLicense": "CC BY-SA 4.0 International",
+    "currentDownloadPageLicenseUrl": "https://cc-cedict.org/editor/editor.php?handler=Download",
+    "projectHomeLicense": "CC BY-SA 3.0",
+    "projectHomeLicenseUrl": "https://cc-cedict.org/wiki/",
+    "projectHomeLastModified": "2025-05-31T09:01:56Z",
+    "licenseVersionConflict": "The exact current MDBG artifact header and current editor download page both state CC BY-SA 4.0. The separate project home still states CC BY-SA 3.0 and was last modified 2025-05-31. That older date makes a stale notice plausible, but the project has not explicitly marked it superseded in the inspected evidence; preserve both observations and treat overall license history as unresolved until clarified.",
+    "provenance": "CC-CEDICT continuation of the CEDICT project started by Paul Andrew Denisowski in 1997; MDBG publishes the current downloadable export and says editor submissions are reviewed before release.",
+    "attributionAndAdaptationRequirements": "The stated CC BY-SA license requires attribution and share-alike for adapted material. Preserve source attribution, license URI, copyright notices and modification history if future distribution is considered.",
+    "redistributionGate": "unresolved; not approved for catalog, mirroring, packaging, or an Official trust class until the official license-version discrepancy and attribution implementation are reviewed",
+    "repositoryLicenseUsedAsEvidence": false
+  },
+  "technicalShape": {
+    "sourceFormat": "gzip-compressed CC-CEDICT text v1",
+    "observedHeader": "UTF-8, traditional and simplified forms, pinyin; slash-delimited English glosses",
+    "upstreamQualityAndFormatNotes": "The exact artifact header identifies format v1. The official V2 syntax page says the v1 edition converts v2 records back to v1, while the v1 syntax page is now marked historical. The official v1 syntax page also warns that the current database has infelicities, inaccuracies, omissions and errors. These are reasons to benchmark the exact release, not automatic disqualification of every entry.",
+    "minimumImporterCapabilities": [
+      "bounded gzip decompression",
+      "streaming UTF-8 line parsing",
+      "CC-CEDICT v1 record and delimiter parsing",
+      "Traditional/Simplified alias retention",
+      "pinyin retention",
+      "sense/gloss boundary retention",
+      "source attribution retention"
+    ],
+    "measuredLookupLatency": null,
+    "measuredBrowserMemory": null,
+    "currentTranslateFlowAdapter": null
+  },
+  "securityAndPrivacy": {
+    "acquisitionModelIfRevisited": "Explicit user-triggered request to the exact MDBG origin, followed by local-only bounded parsing and storage.",
+    "remoteResourcesAfterInstall": "None inherent in the text data; no integration was implemented or network-captured in this research task.",
+    "remoteCode": "None identified in the text artifact.",
+    "securityGate": "not exercised; no production adapter or catalog entry is authorized by this research lock"
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "decisionDate": "2026-10-01",
+  "parentIssue": 198,
+  "qualificationIssue": 205,
+  "decisionScope": "Additional maintained dictionary sources for the current Dictionary Ecosystem v2 delivery. This is not approval for future product cycles or user-owned local import.",
+  "summary": {
+    "qualifiedGoCount": 0,
+    "noGoCount": 2,
+    "newEcdictReleaseFound": false,
+    "newQualifiedMaintainedEnToZhCnSourceFound": false,
+    "officialPackApproved": false,
+    "conditionalDeliveryIssue206": "No source passed GO; do not activate #206 for a curated source in this cycle."
+  },
+  "decisions": [
+    {
+      "candidateId": "cc-cedict-current-2026-10-01",
+      "sourceLock": "../source-locks/cc-cedict-current-2026-10-01.json",
+      "source": "CC-CEDICT current MDBG release export",
+      "languageDirection": "zh-Hans/zh-Hant -> en",
+      "intendedRole": "Native Chinese-to-English dictionary for Chinese-text selection; it must not be reverse-indexed and described as authoritative EN-to-zh-CN data.",
+      "expectedUserBenefit": "Could add local Chinese lookup in English, with Simplified/Traditional forms, pinyin, and English glosses.",
+      "overlap": "Adds a direction absent from the current EN -> zh-CN-only structured lookup path; it does not improve English-to-Chinese recall.",
+      "exactArtifact": {
+        "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
+        "archiveBytes": 3977421,
+        "archiveSha256": "58c442d8f100a8a56852832fdd4555a233b6d802b0bf01a5bdddf01561c0a326",
+        "contentBytes": 9855907,
+        "contentSha256": "4585efcc6cb11b57b216554efbb5c66f88e15ab5cc9136f6b0579910d30e89cb",
+        "contentDate": "2026-09-30",
+        "entryCount": 125149,
+        "versioningLimitation": "The exact artifact is pinned by timestamp, ETag and observed hashes because MDBG supplies a mutable current URL without an immutable release ID or published checksum."
+      },
+      "legalProvenanceGate": {
+        "status": "NO-GO-license-history-clarification-pending",
+        "evidence": [
+          "The exact artifact header and current editor download page name CC BY-SA 4.0.",
+          "The official CC-CEDICT project home, last modified 2025-05-31, still names CC BY-SA 3.0. Its older revision date makes staleness plausible, but no explicit supersession statement was located.",
+          "The project identifies MDBG as publisher and says reviewed community edits are included in releases."
+        ],
+        "redistribution": "Not approved until the official license-version conflict is resolved and attribution/share-alike notices are designed for the intended derived pack.",
+        "directUpstreamAcquisition": "The public MDBG export is downloadable; this does not remove the license-version ambiguity or constitute TranslateFlow source approval."
+      },
+      "productQualityGate": {
+        "status": "NO-GO-formal-quality-gate-incomplete",
+        "smokeCorpus": {
+          "method": "Parse exact UTF-8 export; perform exact simplified-headword lookup for 20 named common Chinese fixture terms, check pinyin/dual-script fields, and inspect polyphonic/ambiguous-character row counts. No source text was copied into a fixture.",
+          "terms": ["中国", "软件", "电脑", "中文", "北京", "学生", "老师", "朋友", "时间", "现在", "今天", "工作", "语言", "自然", "银行", "书", "生活", "国家", "发展", "人民"],
+          "exactHits": 20,
+          "hitsWithPinyin": 20,
+          "hitsWithDifferentTraditionalForm": 12,
+          "polyphonicRows": {"行": 3, "重": 2, "乐": 5, "长": 2}
+        },
+        "upstreamQualityDisclosure": "The official syntax guidance describes v1 as historical and says the current database contains infelicities, inaccuracies, omissions and actual errors. The retrieved MDBG release identifies itself as v1; its entries are not accompanied by an independent TranslateFlow gold-quality signal.",
+        "interpretation": "The smoke sample confirms the advertised direction and useful form/pinyin structure. It is not a gold-labeled definition-quality benchmark: no independent zh->en correctness/top-result audit, contextual ambiguity scoring, or user-visible flow exists for this direction. TranslateFlow cannot infer accuracy from corpus size or pinyin/form coverage; this is insufficient for a product GO."
+      },
+      "technicalFitGate": {
+        "status": "NO-GO-current-runtime-direction-unsupported",
+        "evidence": "Current structured selection and TFLex builder/import recipes accept sourceLanguage=en and targetLanguage=zh-CN; no CC-CEDICT text importer or zh->en lookup contract exists.",
+        "requiredCapabilities": ["bounded gzip/text parsing", "CC-CEDICT record parser", "zh-Hans and zh-Hant aliases", "pinyin", "sense preservation", "zh->en TFLex/gateway contract"],
+        "size": "3,977,421 compressed bytes; 9,855,907 decoded bytes; 125,149 records",
+        "latencyMemoryAndUpdateCost": "Not measured; source endpoint is mutable and has no upstream checksum/version identifier."
+      },
+      "securityPrivacyGate": {
+        "status": "not-exercised",
+        "futureBoundary": "Would require explicit user-triggered acquisition from the MDBG origin and bounded local parsing. The text includes no identified executable/remote resources; no integrated network, parser, memory, or privacy test was performed."
+      },
+      "finalDecision": "NO-GO-for-current-catalog-cycle",
+      "allowedTrustClass": "research-only",
+      "knownLimitations": ["Official pages disagree on CC BY-SA version.", "No current zh->en structured lookup path or adapter.", "Smoke coverage does not establish definition correctness or sense ranking.", "No immutable upstream version/checksum is published.", "Not an EN->zh-CN source and not an Official pack."],
+      "revisitConditions": ["MDBG/CC-CEDICT resolves the applicable license for the exact artifact.", "A zh->en product slice is explicitly approved and benchmarked on a gold-labeled Chinese corpus.", "Catalog adapter, bounded parsing and browser/runtime budgets pass." ]
+    },
+    {
+      "candidateId": "oewn-2025-standard-json",
+      "sourceLock": "../source-locks/open-english-wordnet-2025-json.json",
+      "source": "Open English WordNet 2025 standard edition",
+      "languageDirection": "en -> en semantic/monolingual",
+      "intendedRole": "English semantic/sense supplement, not an EN->zh-CN bilingual replacement.",
+      "expectedUserBenefit": "Potentially improve local English sense structure, POS, pronunciation and semantic relations.",
+      "overlap": "The current Core semantic pack is already built from Princeton WordNet 3.0 aligned to Chinese Open Wordnet. OEWN derives from Princeton WordNet and therefore overlaps the existing semantic backbone; it contributes no Chinese translation field.",
+      "existingStructuredBaseline": {
+        "sourceLock": "../source-locks/core-semantic-pwn3-cow.json",
+        "packId": "core-semantic-en-zh",
+        "sourcePair": "PWN 3.0 + Chinese Open Wordnet (COW)",
+        "mappedPwnHeadwords": 61340,
+        "lockedPwnHeadwords": 147306,
+        "mappedHeadwordRate": 0.4164,
+        "baselineProductRole": "Existing English-to-Simplified-Chinese structured semantic bootstrap.",
+        "incrementalOewnComparison": "Not run. The mapped-rate figure describes the baseline only and is not evidence that OEWN would improve or worsen it."
+      },
+      "exactArtifact": {
+        "release": "2025",
+        "releaseDate": "2025-12-31",
+        "revision": "globalwordnet/english-wordnet@dc343f2683279ecbb13fab4e2fd778d7b162d287 (2025-edition)",
+        "url": "https://en-word.net/static/english-wordnet-2025-json.zip",
+        "bytes": 9986555,
+        "sha256": "7d749f6e2c39e6970e4997839dcf6e42fd281f3c2fae0171d2192bae8cfa4b51",
+        "archiveFiles": 73,
+        "publisherReportedCoreCounts": {"words": 135969, "synsets": 107519, "relations": 355064}
+      },
+      "legalProvenanceGate": {
+        "status": "terms-published-with-notice-obligations; product-specific-audit-pending",
+        "evidence": "The exact revision LICENSE.md says OEWN further development is CC BY 4.0 and the underlying Princeton WordNet terms continue to apply to WordNet data; WNDB_License.txt carries the WordNet notice. The selected JSON ZIP contains data JSON files only, so notices would need to be supplied separately.",
+        "redistribution": "Potentially compatible with a curated derivative only after preserving both WordNet and OEWN attribution/license notices. Does not satisfy #122 Official source/trust-root approval."
+      },
+      "productQualityGate": {
+        "status": "NO-GO-no-measured-incremental-user-value",
+        "upstreamQualityDisclosure": "The OEWN repository describes the project as derived from Princeton WordNet and says quality/veracity may differ from Princeton WordNet; it invites corrections and improvements. This requires comparison against the already-used PWN3/COW baseline rather than an assumption of superiority.",
+        "artifactShapeSample": {
+          "method": "Count exact 2025 JSON lemma/POS/sense objects for the project quality baseline's overloaded English words; do not infer Chinese translations from definitions.",
+          "termsFound": 14,
+          "posAndSenseCounts": {
+            "state": {"n": 7, "v": 3},
+            "session": {"n": 4},
+            "issue": {"n": 11, "v": 5},
+            "commit": {"v": 8},
+            "branch": {"n": 6, "v": 2},
+            "process": {"n": 6, "v-1": 6, "v-2": 1},
+            "run": {"n": 16, "v": 41},
+            "set": {"a": 7, "n": 12, "v": 25},
+            "container": {"n": 1},
+            "cache": {"n": 3, "v": 1},
+            "repository": {"n": 3},
+            "bank": {"n": 10, "v": 8},
+            "light": {"a": 25, "n": 14, "r": 1, "v": 7},
+            "good": {"a": 21, "n": 4, "r": 2}
+          }
+        },
+        "interpretation": "The export contains rich English sense/POS structure, as expected for an English WordNet. No head-to-head quality or incremental-coverage comparison against the existing PWN3/COW Core was run; the sample does not establish that OEWN improves this product's EN->zh-CN answer, and it supplies no Chinese translations. Product quality gate is not met."
+      },
+      "technicalFitGate": {
+        "status": "NO-GO-no-current-adapter-or-demonstrated-incremental-fit",
+        "requiredCapabilities": ["bounded ZIP handling", "73-member JSON schema parser", "POS/sense/relation indexing", "migration/alignment to existing WordNet-based Core", "preserved source-level license notices"],
+        "size": "9,986,555-byte JSON ZIP",
+        "latencyMemoryAndUpdateCost": "Not measured in TranslateFlow. Separate catalog pack would duplicate much of Core's PWN-derived semantic material and add a second WordNet index."
+      },
+      "securityPrivacyGate": {
+        "status": "not-exercised",
+        "futureBoundary": "Official origin is en-word.net; a future install would be explicit, verify exact bytes, parse locally with bounded ZIP/JSON limits, and make no runtime remote requests. No integration, network capture, memory, or parser test was performed."
+      },
+      "finalDecision": "NO-GO-for-current-catalog-cycle",
+      "allowedTrustClass": "research-only",
+      "knownLimitations": ["English-only semantics; no Chinese translations.", "Overlaps the existing PWN3/COW Core.", "No incremental quality/coverage benchmark or runtime cost measurement.", "Both OEWN CC BY 4.0 and underlying WordNet notices must be preserved.", "No Official trust-root approval."],
+      "revisitConditions": ["A measured PWN3-vs-OEWN incremental benchmark identifies user-visible value.", "The product has a user-facing English semantic/monolingual supplement role.", "A bounded adapter and dual-license attribution packaging are reviewed." ]
+    }
+  ],
+  "maintainedEnToZhCnSearch": {
+    "performedOn": "2026-10-01",
+    "queryScope": [
+      "maintained open English Simplified Chinese dictionary dataset source license",
+      "official release / exact artifact for ECDICT, CC-CEDICT, Open English WordNet and FreeDict eng-zho",
+      "current maintained Wiktionary/Kaikki English-to-Chinese extraction source"
+    ],
+    "findings": [
+      {
+        "source": "FreeDict eng-zho",
+        "currentUpstreamListing": "https://download.freedict.org/dictionaries/eng-zho/",
+        "newestListedRelease": "2025.11.23 (the listing also contains 2024.10.10)",
+        "decision": "Existing exact release remains NO-SHIP: the already committed source lock confirms identity/license and the quality decision documents misleading zh-CN/polysemy/technical results. No newer release or materially new quality evidence was found; do not re-review or revive it under a new name."
+      },
+      {
+        "source": "Wiktionary Rich via locked Wikimedia dump, pinned Wiktextract/WTP and rich-en-zh-v1 projection",
+        "existingDecision": "NO-GO for this exact source/extractor/projection in #121; see docs/WIKTIONARY_RICH_POC.md and lexicon/quality-decisions/wikimedia-enwiktionary-20260901-rich.json.",
+        "decision": "No materially new source/license/schema/quality evidence was found in this search. Preserve #121 decision and do not rename or re-register the same path."
+      },
+      {
+        "source": "Other maintained EN->zh-CN candidates",
+        "decision": "No additional exact upstream-owned source with a current immutable artifact, clear content provenance/license, and evidence of zh-CN product quality was qualified in this scoped primary-source search. Absence is acceptable; this is not a claim that no such source exists anywhere."
+      }
+    ],
+    "commercialDictionaryBoundary": "No Oxford, Longman, Collins, Cambridge or community MDX bytes were obtained or considered for curated redistribution. Commercial dictionaries remain user-owned compatibility targets unless the rights holder or authorized distributor offers a suitable exact artifact and rights."
+  },
+  "ecdictReleaseCheck": {
+    "upstreamRepository": "https://github.com/skywind3000/ECDICT",
+    "latestReleaseEndpoint": "https://api.github.com/repos/skywind3000/ECDICT/releases/latest",
+    "latestRelease": "1.0.28",
+    "publishedAt": "2017-09-20T10:28:39Z",
+    "latestReleasePage": "https://github.com/skywind3000/ECDICT/releases/tag/1.0.28",
+    "existingExactMdxLock": "../build-evidence/ecdict-mdx-1.0.28-corpus-lock.json",
+    "latestCsvRevisionAlreadyIntegrated": {
+      "commit": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+      "commitUrl": "https://github.com/skywind3000/ECDICT/commit/bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+      "commitDate": "2025-03-28T01:02:57Z",
+      "blob": "c4ade63ea08cf39d9c3475e96929036d64d94c94",
+      "artifactUrl": "https://raw.githubusercontent.com/skywind3000/ECDICT/bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b/ecdict.csv",
+      "dictionaryFileLastChangedAt": "2025-01-02T00:54:50Z",
+      "dictionaryFileLastChangeCommit": "82c9872576b23118d7c42e920c11beb77f510ae2",
+      "bytes": 65933428,
+      "existingRecipe": "../../src/shared/curated-dictionaries.js"
+    },
+    "decision": "No new ECDICT release/version/artifact beyond the already-reviewed 1.0.28 MDX and already-integrated exact 2025 CSV snapshot was found. Keep the current sourceVersion/contentDate distinctions and curated-upstream/local-acquisition boundary. Do not re-label the 2017 MDX as current content."
+  },
+  "catalogOutput": {
+    "productionCatalogRegistrations": [],
+    "conditional206Recommendation": "NO-GO: no source in this qualification passed all legal/provenance, product-quality, technical-fit and security/privacy gates.",
+    "officialPackRecommendation": "NO-GO: no candidate satisfies Official redistribution/provenance/quality/signing/trust-root requirements; #122 remains blocked."
+  },
+  "reproducibility": {
+    "exactArtifactDownloadAndHashCommands": [
+      "curl -fsSL https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz -o cedict.txt.gz; sha256sum cedict.txt.gz; gzip -cd cedict.txt.gz > cedict.txt; sha256sum cedict.txt; parse non-comment UTF-8 rows",
+      "curl -fsSL https://en-word.net/static/english-wordnet-2025-json.zip -o english-wordnet-2025-json.zip; sha256sum english-wordnet-2025-json.zip; unzip -l english-wordnet-2025-json.zip"
+    ],
+    "localArtifactStorage": "Research downloads were stored under /tmp/translateflow-205 only; source bytes are not committed or included in product/release packages.",
+    "benchmarkLimitation": "The CC-CEDICT fixture is a structural smoke sample, not an independent translation gold set. OEWN checks are artifact-shape counts, not a relative product-quality benchmark. Both final product-quality gates therefore remain NO-GO.",
+    "qualityReproduction": {
+      "ccCedict": "Decode the locked gzip as UTF-8; ignore blank/comment rows; parse `traditional simplified [pinyin] /glosses/`; look up each exact fixture term against the simplified field; count a pinyin hit when the bracket field is nonempty; count a distinct Traditional form when the first and second headword fields differ. Count row multiplicity for 行, 重, 乐 and 长. The committed fixture list and expected aggregates are in the CC-CEDICT decision record.",
+      "oewn": "Read each entries-*.json member of the locked 2025 JSON ZIP; for each named lemma count `sense` array length under each POS key. This measures schema shape only and deliberately makes no definition-quality or Chinese-translation claim."
+    }
+  }
+}
