@@ -243,6 +243,8 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
       renderDictionaryMetadata(summary, getCatalogDictionaryRows(catalogEntry, {
         installedCatalog: catalog,
         installedSize: installedBytes,
+        installedSourceFileName: dictionary.fileName,
+        installedSourceSize: dictionary.sourceSize,
         entryCount: dictionary.entryCount,
         resourceCount: dictionary.resourceCount,
         resourceBytes: dictionary.resourceBytes,

@@ -216,11 +216,10 @@ export function initializeLocalDictionaryImportUi({
     const semanticAllowed = !semanticRequired || semanticCheck.checked || mdxStructuredConfirmed;
     const partialAllowed = status !== "partial" || limitationsCheck.checked;
     const duplicate = findDuplicateCandidate(report, installedCandidates, selectedFiles);
-    const sameTflexId = duplicate && report.identity.family === "tflex" && duplicate.packId && duplicate.packId === tflexPackId(report);
     const tflexTooLarge = report.identity.family === "tflex" && isTflexOverInstallLimit(selectedFiles);
-    const duplicateAllowed = !duplicate || duplicateCheck.checked || sameTflexId;
+    const duplicateAllowed = !duplicate || duplicateCheck.checked;
     importButton.disabled = !statusCanImport || route === "none" || missingFiles || unrelatedFiles || unreadMdd || tflexTooLarge ||
-      !semanticAllowed || !partialAllowed || !duplicateAllowed || Boolean(sameTflexId);
+      !semanticAllowed || !partialAllowed || !duplicateAllowed;
   }
 
   async function importSelected() {
@@ -246,13 +245,20 @@ export function initializeLocalDictionaryImportUi({
           if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
           try {
             progress.textContent = "MDX 已安装，正在原子检查并添加已关联的 MDD…";
-            await mddController.attachResources({ dictionaryId, mdxFileName: mdxFile.name, files: attached });
+            await runImportWithCancel(mddController, () => mddController.attachResources({
+              dictionaryId, mdxFileName: mdxFile.name, files: attached
+            }));
           } catch (error) {
             retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached, title: preflightResult.identity.displayTitle };
             retryMddButton.hidden = false;
             retryMddButton.textContent = `重试为“${retryAttachment.title || "已安装词典"}”添加 MDD`;
-            progress.textContent = `MDX 已安装；MDD 未更改。${userMessage(error)}`;
-            setStatus("MDX 已安装，但 MDD 附件检查失败，原有附件保持不变。可检查文件后重试。", true);
+            const cancelled = error?.name === "AbortError";
+            progress.textContent = cancelled
+              ? "MDX 已安装；MDD 附件导入已取消，原有附件保持不变。"
+              : `MDX 已安装；MDD 未更改。${userMessage(error)}`;
+            setStatus(cancelled
+              ? "MDD 附件导入已取消，原有附件保持不变。可检查文件后重试。"
+              : "MDX 已安装，但 MDD 附件检查失败，原有附件保持不变。可检查文件后重试。", !cancelled);
             document.dispatchEvent(new CustomEvent("translateflow:dictionary-state-changed"));
             success = true;
             return;
@@ -359,12 +365,24 @@ export function initializeLocalDictionaryImportUi({
       ]);
       installedCandidates = [];
       for (const dictionary of richResponse?.dictionaries || []) {
-        if (dictionary?.title) installedCandidates.push({ name: dictionary.title, family: "mdict-rich", packId: dictionary.id, fileName: dictionary.fileName, size: dictionary.sourceSize });
+        if (dictionary?.title) installedCandidates.push({
+          name: dictionary.title,
+          family: "mdict-rich",
+          packId: dictionary.id,
+          fileName: dictionary.fileName,
+          sourceFiles: dictionary.fileName ? [dictionary.fileName] : [],
+          sourceSize: dictionary.sourceSize,
+          version: dictionary.packVersion
+        });
       }
       for (const [packId, entry] of Object.entries(packResponse?.state?.packs || {})) {
         if (!entry?.active) continue;
-        const name = String(entry.display?.name || packId);
-        installedCandidates.push({ name, family: entry.display?.format || "tflex", packId, version: entry.active.packVersion, format: entry.display?.formatLabel });
+        const name = String(entry.display?.name || packId), format = entry.display?.format || "";
+        installedCandidates.push({
+          name, family: format || "tflex", packId, version: entry.active.packVersion,
+          sourceFiles: format === "tflex" ? ["manifest.json", "index.dat", "entries.dat"] : [],
+          sourceSize: entry.active.totalBytes, format: entry.display?.formatLabel
+        });
       }
     } catch {
       installedCandidates = [];
@@ -398,5 +416,4 @@ export function initializeLocalDictionaryImportUi({
 
   return Object.freeze({ refreshInstalledCandidates, dispose });
 }
-
 if (typeof document !== "undefined") initializeLocalDictionaryImportUi();

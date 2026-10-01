@@ -215,13 +215,13 @@ export function renderLocalPreflight({ result, selectedFiles, installedCandidate
     const duplicate = findDuplicateCandidate(result, installedCandidates, selectedFiles);
     duplicateLabel.hidden = !duplicate;
     duplicateCheck.disabled = !duplicate;
-    duplicateText.textContent = duplicate
-      ? `可能与已安装的“${duplicate.name}”重复（依据名称/文件声明提示，未验证文件来源或完整身份）。如仍要安装，请明确选择作为另一份独立词典保留；不会覆盖已安装词典。`
-      : "";
     const sameTflexId = duplicate && result.identity.family === "tflex" && duplicate.packId && duplicate.packId === tflexPackId(result);
     if (sameTflexId) {
-      duplicateLabel.hidden = true;
-      appendSummaryLine(summary, "重复处理", "此 TFLex 声明了与已安装包相同的标识；当前安全流程不能证明内容相同或创建安全的独立副本。请先在已安装列表明确删除旧包，再重新选择此文件组。旧包不会被自动替换。备份后再操作。");
+      duplicateText.textContent = `确认更新已安装的同一 TFLex 包“${safeFileLabel(duplicate.name)}”？${describeDuplicateSources(duplicate, selectedFiles)} 更新前会完整校验所有文件；校验或保存失败时，当前已安装版本与查询会保持可用。文件声明身份尚未验证。`;
+    } else {
+      duplicateText.textContent = duplicate
+        ? `可能与已安装的“${safeFileLabel(duplicate.name)}”重复（依据名称/文件声明提示，文件身份未验证）。${describeDuplicateSources(duplicate, selectedFiles)} 如仍要安装，请明确选择作为另一份独立词典保留；不会覆盖已安装词典。`
+        : "";
     }
     updateImportEnabled();
   }
@@ -281,6 +281,21 @@ export function formatBytes(bytes) {
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KiB`;
   return `${(value / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
+function describeDuplicateSources(installed, selectedFiles) {
+  const incomingNames = Array.from(selectedFiles || []).slice(0, 16).map((file) => safeFileLabel(file?.name));
+  const incomingSize = Array.from(selectedFiles || []).reduce((sum, file) => sum + Math.max(0, Number(file?.size) || 0), 0);
+  const installedNames = Array.isArray(installed?.sourceFiles)
+    ? installed.sourceFiles.slice(0, 16).map(safeFileLabel)
+    : installed?.fileName ? [safeFileLabel(installed.fileName)] : [];
+  const installedDetails = [
+    installed?.version ? `版本 ${safeFileLabel(installed.version)}` : "",
+    installedNames.length ? `源文件 ${installedNames.join("、")}` : "源文件名称未知",
+    Number.isFinite(Number(installed?.sourceSize)) && Number(installed.sourceSize) > 0
+      ? `大小 ${formatBytes(installed.sourceSize)}` : "大小未知"
+  ].filter(Boolean).join(" · ");
+  return `已安装：${installedDetails}。当前选择：${incomingNames.join("、") || "文件名未知"} · ${formatBytes(incomingSize)}。`;
 }
 
 export function importProgressLabel(phase) {

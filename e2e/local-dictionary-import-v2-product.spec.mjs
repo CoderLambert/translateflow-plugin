@@ -45,6 +45,9 @@ test.describe("unified local dictionary import v2", () => {
     const installed = options.locator("#richMdictInstalledList .site-row").filter({ hasText: "Unified Rich Fixture" });
     await expect(installed).toBeVisible();
     await expect(installed).toContainText("2 个 MDD 文件");
+    await expect(installed).toContainText("本机源文件");
+    await expect(installed).toContainText("unified.mdx");
+    await expect(installed).toContainText("本机源文件大小");
     await expect(installed).toContainText("添加/替换 MDD 资源");
     expect(harness.server.calls).toHaveLength(0);
     expect(externalRequests).toEqual([]);
@@ -151,6 +154,10 @@ test.describe("unified local dictionary import v2", () => {
     await expect(options.locator("#localDictionaryDuplicateLabel")).toBeVisible();
     await expect(options.locator("#localDictionaryDuplicateText")).toContainText("未验证");
     await expect(options.locator("#localDictionaryDuplicateText")).toContainText("不会覆盖");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("first-copy.mdx");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("second-copy.mdx");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("版本");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("大小");
     await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
     await options.locator("#localDictionaryDuplicateConfirmation").check();
     await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
@@ -214,12 +221,137 @@ test.describe("unified local dictionary import v2", () => {
     await expect(options.locator("#installedDictionaryList")).not.toContainText("local-e2e-tflex-corrupt");
     expect(harness.server.calls).toHaveLength(0);
   });
+
+  test("same-packId TFLex replacement requires confirmation and a bad hash preserves the active version and lookup", async ({ harness }) => {
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const word = "localfixtureword";
+    const oldTranslation = "原版本仍然可用";
+    const replacementTranslation = "错误替换版本";
+    const installedPack = await makeTflexFixture("local-e2e-tflex-atomic-replace", {
+      packVersion: "fixture-v1",
+      translation: oldTranslation
+    });
+    await options.locator("#localDictionaryFiles").setInputFiles(tflexFiles(installedPack));
+    await options.locator("#localDictionaryLimitationsConfirmation").check();
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完整安装校验", { timeout: 90_000 });
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 90_000 });
+
+    const lookupBefore = await harness.runtime({
+      type: "LEXICAL_LOOKUP", text: word, pageUrl: "https://example.test/", sourceLanguage: "en", targetLanguage: "zh-CN"
+    });
+    expect(lookupBefore.candidates.some((candidate) => candidate.translations?.includes(oldTranslation))).toBe(true);
+    const beforeStatus = await options.evaluate(() => chrome.runtime.sendMessage({ type: "DICTIONARY_PACK_STATUS" }));
+    const beforeVersion = beforeStatus.state.packs[installedPack.manifest.packId].active.packVersion;
+    expect(beforeVersion).toBe("fixture-v1");
+
+    const badReplacement = await makeTflexFixture("local-e2e-tflex-atomic-replace", {
+      packVersion: "fixture-v2",
+      translation: replacementTranslation
+    });
+    badReplacement.files["entries.dat"] = new Uint8Array(badReplacement.files["entries.dat"]);
+    badReplacement.files["entries.dat"][0] ^= 1;
+    await options.locator("#localDictionaryFiles").setInputFiles(tflexFiles(badReplacement));
+    await expect(options.locator("#localDictionaryDuplicateLabel")).toBeVisible();
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("确认更新已安装");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("manifest.json");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("entries.dat");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("fixture-v1");
+    await expect(options.locator("#localDictionaryDuplicateText")).toContainText("校验或保存失败");
+    await expect(options.locator("#localDictionaryLimitationsLabel")).toBeVisible();
+    await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
+    await options.locator("#localDictionaryLimitationsConfirmation").check();
+    await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
+    await options.locator("#localDictionaryDuplicateConfirmation").check();
+    await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("安装失败", { timeout: 90_000 });
+
+    const afterStatus = await options.evaluate(() => chrome.runtime.sendMessage({ type: "DICTIONARY_PACK_STATUS" }));
+    expect(afterStatus.state.packs[installedPack.manifest.packId].active.packVersion).toBe(beforeVersion);
+    const lookupAfter = await harness.runtime({
+      type: "LEXICAL_LOOKUP", text: word, pageUrl: "https://example.test/", sourceLanguage: "en", targetLanguage: "zh-CN"
+    });
+    expect(lookupAfter.candidates.some((candidate) => candidate.translations?.includes(oldTranslation))).toBe(true);
+    expect(lookupAfter.candidates.some((candidate) => candidate.translations?.includes(replacementTranslation))).toBe(false);
+    expect(harness.server.calls).toHaveLength(0);
+  });
+
+  test("cancelling the initial MDD attachment keeps previously active MDD resources intact", async ({ harness }) => {
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const priorResourceBytes = Buffer.from(".prior { color: #123456; }");
+    const priorMdd = makeMdd([["\\media\\prior.css", new Uint8Array(priorResourceBytes)]]);
+    await options.locator("#localDictionaryFiles").setInputFiles([
+      { name: "prior-with-resource.mdx", mimeType: "application/octet-stream", buffer: makeRichMdx([["cancelpriorfixture", "prior rich gloss"]], { title: "Prior MDD Fixture", styleSheet: "" }) },
+      { name: "prior-with-resource.mdd", mimeType: "application/octet-stream", buffer: priorMdd }
+    ]);
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 90_000 });
+    const priorRow = options.locator("#richMdictInstalledList [data-dictionary-id]").filter({ hasText: "Prior MDD Fixture" });
+    await expect(priorRow).toContainText("1 个 MDD 文件");
+    const priorDictionaryId = await priorRow.getAttribute("data-dictionary-id");
+
+    const pendingMdd = makeMdd(Array.from({ length: 2048 }, (_, index) => [
+      `\\media\\pending-${String(index).padStart(4, "0")}.bin`,
+      Uint8Array.of(index & 0xff)
+    ]));
+    await options.locator("#localDictionaryFiles").setInputFiles([
+      { name: "cancel-attach.mdx", mimeType: "application/octet-stream", buffer: makeRichMdx([["cancelattachfixture", "new rich gloss"]], { title: "Cancelled Attach Fixture", styleSheet: "" }) },
+      { name: "cancel-attach.mdd", mimeType: "application/octet-stream", buffer: pendingMdd }
+    ]);
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("cancel-attach.mdd");
+    await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
+    await options.evaluate(() => {
+      const progress = document.getElementById("localDictionaryImportProgress");
+      window.__mddIndexCancelTriggered = false;
+      window.__mddIndexProgressObserved = "";
+      window.__mddCancelButtonVisible = false;
+      window.__mddAttachStarted = false;
+      const observer = new MutationObserver((records) => {
+        if (records.some((record) => Array.from(record.addedNodes || []).some((node) =>
+          String(node.textContent || "").includes("MDX 已安装，正在原子检查并添加已关联的 MDD")))) {
+          window.__mddAttachStarted = true;
+        }
+        if (!window.__mddAttachStarted || progress.dataset.phase !== "index") return;
+        if (!progress.textContent.includes("建立受限查询索引")) return;
+        window.__mddIndexProgressObserved = progress.textContent;
+        const cancel = document.getElementById("localDictionaryCancelButton");
+        window.__mddCancelButtonVisible = Boolean(cancel && !cancel.hidden && !cancel.disabled);
+        window.__mddIndexCancelTriggered = true;
+        observer.disconnect();
+        if (window.__mddCancelButtonVisible) cancel.click();
+      });
+      observer.observe(progress, { attributes: true, attributeFilter: ["data-phase"], childList: true, characterData: true, subtree: true });
+    });
+    await options.locator("#localDictionaryImportButton").click();
+    await expect.poll(() => options.evaluate(() => window.__mddIndexCancelTriggered)).toBe(true);
+    expect(await options.evaluate(() => window.__mddIndexProgressObserved)).toBe("建立受限查询索引");
+    expect(await options.evaluate(() => window.__mddCancelButtonVisible)).toBe(true);
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("MDD 附件导入已取消", { timeout: 90_000 });
+
+    await expect(priorRow).toContainText("1 个 MDD 文件");
+    const activeDictionaries = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
+    const prior = activeDictionaries.dictionaries.find((dictionary) => dictionary.id === priorDictionaryId);
+    expect(prior?.resourceCount).toBe(1);
+    const cancelled = activeDictionaries.dictionaries.find((dictionary) => dictionary.title === "Cancelled Attach Fixture");
+    expect(cancelled?.resourceCount || 0).toBe(0);
+    const resourceProbe = await harness.open("/selection");
+    await harness.inject(resourceProbe);
+    const priorResource = await readMddResource(harness, resourceProbe, priorDictionaryId, "media/prior.css");
+    expect(priorResource.ok).toBe(true);
+    expect(priorResource.found).toBe(true);
+    expect(Buffer.from(priorResource.base64, "base64")).toEqual(priorResourceBytes);
+    await resourceProbe.close();
+    expect(harness.server.calls).toHaveLength(0);
+  });
 });
 
-async function makeTflexFixture(packId) {
+async function makeTflexFixture(packId, { packVersion = "fixture-v1", translation = "本地测试释义" } = {}) {
   return buildLocalIndexedTflex({
     packId,
-    packVersion: "fixture-v1",
+    packVersion,
     records: [{
       lookupKey: "localfixtureword",
       exactLookupKeys: ["localfixtureword"],
@@ -228,7 +360,7 @@ async function makeTflexFixture(packId) {
       aliases: [],
       senses: [{
         id: "local:fixture:1",
-        translations: ["本地测试释义"],
+        translations: [translation],
         domains: [],
         sourceRefs: [{ sourceId: "e2e-fixture-source", recordId: "1" }]
       }]
@@ -245,4 +377,16 @@ function tflexFiles(pack) {
     mimeType: "application/octet-stream",
     buffer: Buffer.from(bytes)
   }));
+}
+
+async function readMddResource(harness, page, dictionaryId, path) {
+  const tabId = await harness.tabId(page);
+  return harness.driver.evaluate(async ({ tabId, dictionaryId, path }) => {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: async ({ dictionaryId, path }) => chrome.runtime.sendMessage({ type: "RICH_MDD_RESOURCE", dictionaryId, path }),
+      args: [{ dictionaryId, path }]
+    });
+    return result?.result;
+  }, { tabId, dictionaryId, path });
 }

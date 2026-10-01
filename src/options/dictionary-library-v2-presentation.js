@@ -33,6 +33,8 @@ export function getCatalogDictionaryRows(entry, {
   entryCount,
   resourceCount,
   resourceBytes,
+  installedSourceFileName = "",
+  installedSourceSize = 0,
   includeDownload = true
 } = {}) {
   if (!entry || typeof entry !== "object") return [];
@@ -76,6 +78,12 @@ export function getCatalogDictionaryRows(entry, {
   }
   if (Number.isSafeInteger(Number(installedSize)) && Number(installedSize) > 0) {
     rows.push({ label: "已安装大小", value: formatDictionaryBytes(Number(installedSize)) });
+  }
+  if (installedSourceFileName) {
+    rows.push({ label: "本机源文件", value: safeDictionaryFileName(installedSourceFileName) });
+  }
+  if (Number.isSafeInteger(Number(installedSourceSize)) && Number(installedSourceSize) > 0) {
+    rows.push({ label: "本机源文件大小", value: formatDictionaryBytes(Number(installedSourceSize)) });
   }
   if (resourceCount !== undefined) {
     const count = Math.max(0, Number(resourceCount) || 0);
@@ -186,6 +194,10 @@ export function getLocalRichDictionaryRows(dictionary = {}, installedBytes = 0) 
     { label: "兼容性", value: compatibility.label },
     { label: "本地安装版本", value: formatLocalDictionaryVersion(dictionary.packVersion) },
     { label: "本地安装日期", value: formatLocalInstallDate(dictionary.installedAt) || "日期未知" },
+    { label: "本机源文件", value: dictionary.fileName ? safeDictionaryFileName(dictionary.fileName) : "文件名未知" },
+    ...(Number(dictionary.sourceSize) > 0
+      ? [{ label: "本机源文件大小", value: formatDictionaryBytes(dictionary.sourceSize) }]
+      : []),
     { label: "词条", value: Number(dictionary.entryCount || 0).toLocaleString() },
     { label: "已安装大小", value: formatDictionaryBytes(installedBytes) },
     {
@@ -197,6 +209,16 @@ export function getLocalRichDictionaryRows(dictionary = {}, installedBytes = 0) 
     ],
     detail: compatibility.detail
   };
+}
+
+function safeDictionaryFileName(value) {
+  return String(value || "")
+    .normalize("NFC")
+    .replace(/[\\/]/gu, "_")
+    .replace(/[\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, 120) || "文件名未知";
 }
 
 export function getDictionaryHealthPresentation(status) {
