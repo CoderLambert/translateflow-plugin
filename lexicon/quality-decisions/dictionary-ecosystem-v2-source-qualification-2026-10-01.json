@@ -120,7 +120,7 @@
       },
       "legalProvenanceGate": {
         "status": "terms-published-with-notice-obligations; product-specific-audit-pending",
-        "evidence": "The exact revision LICENSE.md says OEWN further development is CC BY 4.0 and the underlying Princeton WordNet 3.1 terms continue to apply to WordNet data; WNDB_License.txt carries the WordNet notice. The selected JSON ZIP contains data JSON files only, so notices would need to be supplied separately.",
+        "evidence": "The exact revision LICENSE.md says OEWN further development is CC BY 4.0 and underlying WordNet terms continue to apply. The exact WNDB_License.txt identifies the underlying database as Princeton WordNet 3.1 and carries its license notice. The selected JSON ZIP contains data JSON files only, so notices would need to be supplied separately.",
         "redistribution": "Potentially compatible with a curated derivative only after preserving both WordNet and OEWN attribution/license notices. Does not satisfy #122 Official source/trust-root approval."
       },
       "productQualityGate": {
