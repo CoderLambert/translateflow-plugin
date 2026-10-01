@@ -49,6 +49,7 @@ import {
   listRichMdictViewerDictionaries,
   updateRichMdictPreferences,
   reorderRichMdictDictionaries,
+  promoteRichMdictDictionary,
   preflightRichMddResourceImport,
   commitRichMddResourceImport,
   cancelRichMddResourceImport,
@@ -251,6 +252,9 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_REORDER:
       assertOptionsSender(sender);
       return reorderRichMdictDictionaries(message.dictionaryIds);
+    case BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_PROMOTE:
+      assertOptionsSender(sender);
+      return promoteRichMdictDictionary(message.dictionaryId);
     case BACKGROUND_MESSAGES.RICH_MDICT_LOOKUP:
       if (message.dictionaryId !== undefined) {
         assertSelectionContentSender(sender);

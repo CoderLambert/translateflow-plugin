@@ -96,7 +96,7 @@
       details.className = "tf-selection-rich-record";
       details.dataset.dictionaryId = String(dictionary?.id || "");
       details.dataset.state = "idle";
-      details.open = Boolean(dictionary?.expandedByDefault);
+      details.open = Boolean(dictionary?.preferred || dictionary?.expandedByDefault);
 
       const summary = document.createElement("summary");
       summary.className = "tf-selection-rich-summary";
@@ -111,6 +111,9 @@
       title.className = "tf-selection-rich-title";
       title.textContent = String(dictionary?.title || "详细词典");
       identity.appendChild(title);
+      if (dictionary?.preferred) identity.appendChild(Object.assign(document.createElement("span"), {
+        className: "tf-selection-rich-preference", textContent: "你的首选 · 个人偏好"
+      }));
 
       const metadata = document.createElement("span");
       metadata.className = "tf-selection-rich-metadata";

@@ -156,6 +156,7 @@ test.describe("local MDD resource product and security behavior", () => {
     await audio.evaluate((node) => {
       node.addEventListener("play", () => node.dataset.e2ePlayEvent = "true", { once: true });
     });
+    await audio.scrollIntoViewIfNeeded();
     const audioBox = await audio.boundingBox();
     expect(audioBox).toBeTruthy();
     await page.mouse.click(audioBox.x + 16, audioBox.y + Math.max(16, audioBox.height / 2));

@@ -150,6 +150,12 @@
   font-size: 11px;
   font-weight: 650;
 }
+.tf-selection-rich-preference {
+  width: fit-content;
+  color: var(--tf-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
 .tf-selection-rich-metadata {
   display: flex;
   flex-wrap: wrap;

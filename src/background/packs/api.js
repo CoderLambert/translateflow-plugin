@@ -62,6 +62,8 @@ export async function listRichMdictDictionaries() {
     ...(preferences[dictionary.id] || defaultRichMdictPreference(dictionary))
   }));
   dictionaries.sort(compareRichDictionaryOrder);
+  const preferredId = dictionaries.find((dictionary) => dictionary.enabled !== false)?.id;
+  for (const dictionary of dictionaries) dictionary.preferred = dictionary.id === preferredId;
   return { ...result, dictionaries };
 }
 
@@ -77,21 +79,26 @@ export function createRichMdictViewerDictionaryLister({ manager, preferencesStor
     const metadata = await manager.listMetadata();
     const dictionaries = (metadata?.dictionaries || []).filter((dictionary) => isValidRichPackId(dictionary?.id));
     const preferences = await preferencesStore.reconcile(dictionaries);
+    const enabled = dictionaries
+      .filter((dictionary) => preferences[dictionary.id]?.enabled !== false)
+      .map((dictionary) => ({
+        id: dictionary.id,
+        title: dictionary.title,
+        enabled: preferences[dictionary.id]?.enabled !== false,
+        order: preferences[dictionary.id]?.order ?? 0,
+        expandedByDefault: preferences[dictionary.id]?.expandedByDefault === true,
+        trustLabel: richDictionaryTrustLabel(dictionary),
+        format: dictionary.format,
+        status: dictionary.status,
+        errorCode: clampPublicErrorCode(dictionary.errorCode)
+      }))
+      .sort(compareRichDictionaryOrder);
     return {
-      dictionaries: dictionaries
-        .filter((dictionary) => preferences[dictionary.id]?.enabled !== false)
-        .map((dictionary) => ({
-          id: dictionary.id,
-          title: dictionary.title,
-          enabled: preferences[dictionary.id]?.enabled !== false,
-          order: preferences[dictionary.id]?.order ?? 0,
-          expandedByDefault: preferences[dictionary.id]?.expandedByDefault === true,
-          trustLabel: richDictionaryTrustLabel(dictionary),
-          format: dictionary.format,
-          status: dictionary.status,
-          errorCode: clampPublicErrorCode(dictionary.errorCode)
-        }))
-        .sort(compareRichDictionaryOrder)
+      dictionaries: enabled.map((dictionary, index) => ({
+        ...dictionary,
+        preferred: index === 0,
+        expandedByDefault: dictionary.expandedByDefault || index === 0
+      }))
     };
   };
 }
@@ -119,6 +126,29 @@ export async function reorderRichMdictDictionaries(dictionaryIds) {
     return getRichMdictPreferencesStore().reorder(
       dictionaryIds,
       current.dictionaries.map(({ id }) => id)
+    );
+  });
+}
+
+export async function promoteRichMdictDictionary(dictionaryId) {
+  const id = normalizePackId(dictionaryId);
+  const manager = getRichMdictManager();
+  const initial = await manager.listMetadata();
+  const lockIds = initial.dictionaries
+    .filter((dictionary) => isValidRichPackId(dictionary?.id))
+    .map(({ id: packId }) => packId)
+    .sort();
+  return serializeRichMdictPacks(lockIds, async () => {
+    const state = await getRichMdictStateStore().read();
+    if (state.packs?.[id]?.sourceId !== RICH_MDICT_SOURCE_ID) {
+      const error = new Error("Rich MDict dictionary is not installed.");
+      error.code = "RICH_MDICT_NOT_INSTALLED";
+      throw error;
+    }
+    const current = await manager.listMetadata();
+    return getRichMdictPreferencesStore().promote(
+      id,
+      current.dictionaries.filter((dictionary) => isValidRichPackId(dictionary?.id)).map(({ id: packId }) => packId)
     );
   });
 }

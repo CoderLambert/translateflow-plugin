@@ -120,6 +120,40 @@ export function createRichMdictPreferencesStore({
     });
   }
 
+  function promote(dictionaryId, installedDictionaryIds) {
+    const id = normalizePackId(dictionaryId);
+    const installedIds = normalizeDictionaryIds(installedDictionaryIds);
+    if (!installedIds.includes(id)) {
+      throw preferenceError("RICH_MDICT_NOT_INSTALLED", "Only an installed rich dictionary can be made the personal preference.");
+    }
+    if (installedIds.length && (installedIds.length - 1) * 1024 > 1_000_000_000) {
+      throw preferenceError("RICH_MDICT_PREFERENCES_ORDER", "Rich dictionary order exceeds its storage limit.");
+    }
+    return serialize(async () => {
+      const state = await readStored();
+      const installedSet = new Set(installedIds);
+      const currentOrder = installedIds
+        .map((installedId) => ({ id: installedId, preference: normalizePreference(state.dictionaries[installedId]) }))
+        .sort((left, right) => left.preference.order - right.preference.order || installedIds.indexOf(left.id) - installedIds.indexOf(right.id))
+        .map(({ id: installedId }) => installedId);
+      const orderedIds = [id, ...currentOrder.filter((installedId) => installedId !== id)];
+      const nextDictionaries = Object.fromEntries(Object.entries(state.dictionaries)
+        .filter(([storedId]) => !installedSet.has(storedId)));
+      const promoted = {};
+      orderedIds.forEach((orderedId, index) => {
+        const preference = normalizePreference(state.dictionaries[orderedId]);
+        promoted[orderedId] = {
+          ...preference,
+          enabled: orderedId === id ? true : preference.enabled,
+          order: index * 1024
+        };
+      });
+      state.dictionaries = { ...nextDictionaries, ...promoted };
+      await writeStored(state);
+      return { dictionaryIds: orderedIds, preferences: clonePreferences(promoted) };
+    });
+  }
+
   async function readStored() {
     const stored = await storageArea.get([storageKey]);
     return normalizeState(stored?.[storageKey]);
@@ -135,7 +169,7 @@ export function createRichMdictPreferencesStore({
     return operation;
   }
 
-  return Object.freeze({ readAll, update, reconcile, remove, reorder });
+  return Object.freeze({ readAll, update, reconcile, remove, reorder, promote });
 }
 
 export function normalizeRichMdictPreferencesState(value) {

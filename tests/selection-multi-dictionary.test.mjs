@@ -37,6 +37,22 @@ test("rich dictionary cards keep configured order and lazily follow expandedByDe
   assert.equal(cards.length, 3);
 });
 
+test("derived personal preference opens first while preserving other expanded choices", async () => {
+  const { renderer, document } = await loadRenderer();
+  const container = document.createElement("div");
+  const opened = [];
+  renderer.appendRichDictionaryCards(container, [
+    { id: "preferred", title: "Preferred", order: 0, preferred: true, expandedByDefault: false },
+    { id: "also-expanded", title: "Also expanded", order: 1, preferred: false, expandedByDefault: true }
+  ], (dictionary) => opened.push(dictionary.id));
+
+  const cards = findClass(container, "tf-selection-rich-record");
+  assert.deepEqual(cards.map((card) => card.open), [true, true]);
+  assert.deepEqual(opened, ["preferred", "also-expanded"]);
+  assert.equal(findClass(cards[0], "tf-selection-rich-preference")[0].textContent, "你的首选 · 个人偏好");
+  assert.equal(findClass(cards[1], "tf-selection-rich-preference").length, 0);
+});
+
 test("rich card results pass through the reviewed sanitizer and keep resource lookup on that dictionary", async () => {
   const sanitizerCalls = [];
   const viewerCalls = [];
