@@ -24,6 +24,25 @@ export function parseStarDictIndex(input, {
     limits.idxBytes,
     "IDX bytes"
   );
+  return [...iterateStarDictIndex(bytes, { wordCount, dictBytes, limits })];
+}
+
+export async function validateStarDictIndex(input, {
+  wordCount,
+  dictBytes,
+  limits = STARDICT_IMPORT_LIMITS,
+  signal,
+  yieldControl = yieldToEventLoop,
+  yieldEvery = 2048
+} = {}) {
+  const bytes = starDictBytes(input, "IDX");
+  requireStarDictAtMost(bytes.byteLength, limits.idxBytes, "IDX bytes");
+  return validateEntries(iterateStarDictIndex(bytes, { wordCount, dictBytes, limits }), {
+    signal, yieldControl, yieldEvery
+  });
+}
+
+function* iterateStarDictIndex(bytes, { wordCount, dictBytes, limits }) {
   if (!Number.isSafeInteger(wordCount) || wordCount <= 0) {
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
@@ -37,8 +56,8 @@ export function parseStarDictIndex(input, {
     );
   }
 
-  const result = [];
   let cursor = 0;
+  let count = 0;
   let previousWordBytes = null;
   while (cursor < bytes.byteLength) {
     const end = findNul(
@@ -111,25 +130,25 @@ export function parseStarDictIndex(input, {
       );
     }
 
-    result.push({ word, offset, size });
+    yield { word, offset, size };
+    count += 1;
     requireStarDictAtMost(
-      result.length,
+      count,
       limits.entryCount,
       "StarDict index entries"
     );
   }
 
-  if (result.length !== wordCount) {
+  if (count !== wordCount) {
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
       "StarDict wordcount does not match .idx entries.",
       {
         expected: wordCount,
-        actual: result.length
+        actual: count
       }
     );
   }
-  return result;
 }
 
 export function parseStarDictSynonyms(input, {
@@ -158,29 +177,53 @@ export function parseStarDictSynonyms(input, {
     );
   }
 
+  const bytes = synonymBytes(input, synonymCount, limits);
+  return [...iterateStarDictSynonyms(bytes, { synonymCount, wordCount, limits })];
+}
+
+export async function validateStarDictSynonyms(input, {
+  synonymCount = 0,
+  wordCount,
+  limits = STARDICT_IMPORT_LIMITS,
+  signal,
+  yieldControl = yieldToEventLoop,
+  yieldEvery = 2048
+} = {}) {
+  if (!Number.isSafeInteger(synonymCount) || synonymCount < 0) {
+    starDictFail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict synonymCount must be a non-negative integer.");
+  }
+  requireStarDictAtMost(synonymCount, limits.synonymCount, "StarDict synonym count");
+  if (!Number.isSafeInteger(wordCount) || wordCount <= 0) {
+    starDictFail(STARDICT_IMPORT_ERROR.CORRUPT, "StarDict wordCount must be a positive integer.");
+  }
+  const bytes = synonymBytes(input, synonymCount, limits);
+  return validateEntries(iterateStarDictSynonyms(bytes, { synonymCount, wordCount, limits }), {
+    signal, yieldControl, yieldEvery
+  });
+}
+
+function synonymBytes(input, synonymCount, limits) {
   if (input === undefined || input === null) {
-    if (synonymCount === 0) return [];
+    if (synonymCount === 0) return new Uint8Array();
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
       "StarDict .ifo declares synonyms but no .syn bytes were supplied."
     );
   }
-
   const bytes = starDictBytes(input, "SYN");
-  requireStarDictAtMost(
-    bytes.byteLength,
-    limits.synBytes,
-    "SYN bytes"
-  );
-  if (synonymCount === 0) {
-    if (bytes.byteLength === 0) return [];
+  requireStarDictAtMost(bytes.byteLength, limits.synBytes, "SYN bytes");
+  if (synonymCount === 0 && bytes.byteLength !== 0) {
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
       "StarDict .syn bytes were supplied without a positive synwordcount."
     );
   }
+  return bytes;
+}
 
-  const result = [];
+function* iterateStarDictSynonyms(bytes, { synonymCount, wordCount, limits }) {
+  if (synonymCount === 0) return;
+  let count = 0;
   let cursor = 0;
   let previousWordBytes = null;
   while (cursor < bytes.byteLength) {
@@ -240,25 +283,54 @@ export function parseStarDictSynonyms(input, {
       );
     }
 
-    result.push({ word, targetIndex });
+    yield { word, targetIndex };
+    count += 1;
     requireStarDictAtMost(
-      result.length,
+      count,
       limits.synonymCount,
       "StarDict synonym entries"
     );
   }
 
-  if (result.length !== synonymCount) {
+  if (count !== synonymCount) {
     starDictFail(
       STARDICT_IMPORT_ERROR.CORRUPT,
       "StarDict synwordcount does not match .syn entries.",
       {
         expected: synonymCount,
-        actual: result.length
+        actual: count
       }
     );
   }
-  return result;
+}
+
+async function validateEntries(iterator, { signal, yieldControl, yieldEvery }) {
+  if (!Number.isSafeInteger(yieldEvery) || yieldEvery < 1) {
+    throw new TypeError("StarDict validation yield interval must be positive.");
+  }
+  let recordsProcessed = 0;
+  for (;;) {
+    assertNotAborted(signal);
+    let yielded = 0;
+    while (yielded < yieldEvery) {
+      assertNotAborted(signal);
+      const next = iterator.next();
+      if (next.done) return recordsProcessed;
+      recordsProcessed += 1;
+      yielded += 1;
+    }
+    await yieldControl({ recordsProcessed });
+    assertNotAborted(signal);
+  }
+}
+
+function assertNotAborted(signal) {
+  if (!signal?.aborted) return;
+  throw new DOMException("StarDict inspection was cancelled.", "AbortError");
+}
+
+function yieldToEventLoop() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function validateHeadword(word) {
