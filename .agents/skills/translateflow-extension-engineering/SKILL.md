@@ -1,9 +1,11 @@
 ---
 name: translateflow-extension-engineering
-description: Implement or review TranslateFlow Chrome MV3 runtime changes involving content/background messaging, permissions, providers, effective config, cache/storage, translation tasks, YouTube, or extension packaging. Use for normal extension engineering outside dictionary-specialist work.
+description: Implement or review high-risk TranslateFlow MV3 runtime changes that cross content/background boundaries or affect messaging, permissions, providers, effective config, cache/storage identity, translation task lifecycle, YouTube page bridges, or extension packaging. Do not load for routine isolated edits.
 ---
 
 # TranslateFlow extension engineering
+
+Use this Skill for cross-context or contract-sensitive runtime work. Routine isolated UI/text/test edits should normally rely on `AGENTS.md` and the Issue without loading this Skill.
 
 ## Read the governing contract
 
