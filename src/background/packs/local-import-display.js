@@ -6,6 +6,7 @@ import {
 const FORMAT_LABELS = Object.freeze({
   stardict: "StarDict",
   mdict: "MDict",
+  tflex: "TranslateFlow TFLex",
   "ecdict-csv": "ECDICT CSV"
 });
 

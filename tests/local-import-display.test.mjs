@@ -34,6 +34,15 @@ test("local import display metadata is bounded and product-facing", () => {
   );
 });
 
+test("local TFLex imports keep a clear supported format label", () => {
+  const display = normalizeLocalImportDisplayMetadata({
+    name: "Local TFLex Dictionary",
+    format: "tflex"
+  }, { now: () => 1_800_000_000_000 });
+  assert.equal(display.formatLabel, "TranslateFlow TFLex");
+  assert.deepEqual(publicLocalImportDisplayMetadata(display), display);
+});
+
 test("legacy ECDICT local display metadata migrates to catalog v2 without changing install identity", () => {
   const display = normalizeLocalImportDisplayMetadata({
     kind: "curated-upstream",

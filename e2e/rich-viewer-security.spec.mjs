@@ -20,16 +20,16 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     await mkdir(evidenceDir, { recursive: true });
     const options = await harness.context.newPage();
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
-    await options.locator("#richMdictFile").setInputFiles({
+    await options.locator("#localDictionaryFiles").setInputFiles({
       name: "rich-viewer-security-fixture.mdx",
       mimeType: "application/octet-stream",
       buffer: makeRichViewerSecurityFixture()
     });
-    await expect(options.locator("#richMdictInspectionMeta")).toContainText(
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText(
       "Rich Viewer Security Fixture"
     );
-    await options.locator("#richMdictImportButton").click();
-    await expect(options.locator("#richMdictImportProgress")).toContainText("完成", {
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", {
       timeout: 90_000
     });
 

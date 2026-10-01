@@ -130,6 +130,23 @@ test("OPFS import quarantine only exposes bounded exact-file staging primitives"
   );
 });
 
+test("OPFS import quarantine streams bounded Blob ranges without whole-file materialization", async () => {
+  const root = new MemoryDirectory();
+  const quarantine = createOpfsImportQuarantine({ rootProvider: async () => root });
+  const token = makeToken(8);
+  const source = new Blob([new Uint8Array(2 * 1024 * 1024 + 17).map((_, index) => index % 251)]);
+  const progress = [];
+
+  await quarantine.writeBlob(token, "entries.dat", source, {
+    onProgress(event) { progress.push(event); }
+  });
+
+  assert.equal(progress.length, 3);
+  assert.ok(progress.every((event) => event.bytesWritten <= event.totalBytes && event.totalBytes === source.size));
+  const stored = await quarantine.readFileRange(token, "entries.dat", 1024 * 1024, 64);
+  assert.deepEqual(stored, new Uint8Array(await source.slice(1024 * 1024, 1024 * 1024 + 64).arrayBuffer()));
+});
+
 test("import quarantine fails closed on unexpected staged entries", async () => {
   const root = new MemoryDirectory();
   const quarantine = createOpfsImportQuarantine({
@@ -314,17 +331,15 @@ class MemoryFile {
   }
 
   async createWritable() {
-    let pending = this.bytes;
+    let pending = new Uint8Array();
     return {
       write: async (value) => {
         if (value instanceof Uint8Array) {
-          pending = new Uint8Array(value);
+          pending = concatBytes(pending, value);
         } else if (value instanceof ArrayBuffer) {
-          pending = new Uint8Array(value.slice(0));
+          pending = concatBytes(pending, new Uint8Array(value.slice(0)));
         } else {
-          pending = new Uint8Array(
-            await new Blob([value]).arrayBuffer()
-          );
+          pending = concatBytes(pending, new Uint8Array(await new Blob([value]).arrayBuffer()));
         }
       },
       close: async () => {
@@ -337,6 +352,13 @@ class MemoryFile {
   async getFile() {
     return new Blob([this.bytes]);
   }
+}
+
+function concatBytes(left, right) {
+  const combined = new Uint8Array(left.byteLength + right.byteLength);
+  combined.set(left);
+  combined.set(right, left.byteLength);
+  return combined;
 }
 
 function notFound() {

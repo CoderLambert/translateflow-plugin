@@ -289,15 +289,16 @@ async function installRichDictionary(options, { title, fileName, records }) {
     compat: "Yes",
     styleSheet: "1\n<b>\n</b>"
   });
-  await options.locator("#richMdictFile").setInputFiles({
+  await options.locator("#localDictionaryFiles").setInputFiles({
     name: fileName,
     mimeType: "application/octet-stream",
     buffer: mdx
   });
-  await expect(options.locator("#richMdictInspectionMeta")).toContainText(title);
-  await expect(options.locator("#richMdictInspectionMeta")).toContainText("本地导入 · 用户提供 / 未验证");
-  await options.locator("#richMdictImportButton").click();
-  await expect(options.locator("#richMdictImportProgress")).toContainText("完成", { timeout: 90_000 });
+  await expect(options.locator("#localDictionaryPreflightSummary")).toContainText(title);
+  await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("来源与信任");
+  await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("用户选择的本机文件");
+  await options.locator("#localDictionaryImportButton").click();
+  await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 90_000 });
   const row = options.locator("#richMdictInstalledList .site-row").filter({ hasText: title });
   await expect(row).toBeVisible();
   await expect(row).toContainText(TRUST_LABEL);

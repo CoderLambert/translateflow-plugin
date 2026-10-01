@@ -117,60 +117,42 @@
       <div class="dictionary-library-group" aria-labelledby="dictionaryImportHeading">
         <h3 id="dictionaryImportHeading">本地导入</h3>
         <p class="hint">本地文件按不可信数据处理；导入不会赋予或暗示任何再分发权利，也不会自动调用 Provider / AI。</p>
-
-        <div class="data-source-card">
-          <strong>StarDict</strong>
-          <p>当前支持英文词头 → 简体中文纯文本释义的 StarDict 2.4.2 / 3.0.0。一次选择同一套 <code>.ifo</code>、<code>.idx</code>、<code>.dict</code> 或 <code>.dict.dz</code>，以及可选 <code>.syn</code> 文件。</p>
-          <label for="stardictFiles">选择 StarDict 文件</label>
-          <input id="stardictFiles" type="file" multiple accept=".ifo,.idx,.dict,.dict.dz,.syn" />
-
-          <div id="stardictInspection" class="setting-choice-help" hidden>
-            <div id="stardictInspectionMeta" aria-live="polite">等待检测…</div>
-            <label class="checkbox-label" for="stardictSemanticConfirmation">
-              <input id="stardictSemanticConfirmation" type="checkbox" disabled />
-              我确认这是“英文词头 → 简体中文纯文本释义”词典。TranslateFlow 不会根据 StarDict 纯文本格式自动猜测语义方向。
+        <div id="localDictionaryImport" class="data-source-card local-dictionary-import" data-status="empty">
+          <strong>从本地文件添加词典</strong>
+          <p>选择或拖入一套词典文件。TranslateFlow 会在本机检查格式并说明可用方式；格式本身不会证明词典的语义方向或来源。</p>
+          <label id="localDictionaryDropZone" class="local-dictionary-drop-zone" for="localDictionaryFiles" tabindex="0">
+            <span>拖放文件到这里，或选择文件</span>
+            <small>支持 MDX / MDD、StarDict、TranslateFlow TFLex 文件；文件只在本机处理</small>
+          </label>
+          <input id="localDictionaryFiles" class="visually-hidden-file-input" type="file" multiple accept=".mdx,.mdd,.ifo,.idx,.dict,.dict.dz,.syn,.json,.dat" aria-describedby="localDictionaryHelp" />
+          <p id="localDictionaryHelp" class="hint">可一次选择 MDX 与同名 MDD、编号 MDD，或同名 StarDict 文件组。TFLex 导入会由安装流程重新校验完整文件与记录。</p>
+          <ul id="localDictionaryFileList" class="local-dictionary-file-list" aria-label="已选择的词典文件"></ul>
+          <div class="actions">
+            <button id="localDictionaryChooseFiles" type="button">选择 / 重新选择文件</button>
+            <button id="localDictionaryClearFiles" type="button" disabled>清空文件</button>
+          </div>
+          <section id="localDictionaryPreflight" class="local-dictionary-preflight" aria-labelledby="localDictionaryPreflightHeading" hidden>
+            <h4 id="localDictionaryPreflightHeading">本机兼容性检查</h4>
+            <div id="localDictionaryPreflightSummary" class="local-dictionary-preflight-summary" aria-live="polite"></div>
+            <label id="localDictionarySemanticLabel" class="checkbox-label" for="localDictionarySemanticConfirmation" hidden>
+              <input id="localDictionarySemanticConfirmation" type="checkbox" disabled />
+              <span id="localDictionarySemanticText"></span>
+            </label>
+            <label id="localDictionaryLimitationsLabel" class="checkbox-label" for="localDictionaryLimitationsConfirmation" hidden>
+              <input id="localDictionaryLimitationsConfirmation" type="checkbox" disabled />
+              <span id="localDictionaryLimitationsText">我已阅读上述兼容说明，仍按显示的安装方式继续。</span>
+            </label>
+            <label id="localDictionaryDuplicateLabel" class="checkbox-label" for="localDictionaryDuplicateConfirmation" hidden>
+              <input id="localDictionaryDuplicateConfirmation" type="checkbox" disabled />
+              <span id="localDictionaryDuplicateText"></span>
             </label>
             <div class="actions">
-              <button id="stardictImportButton" class="primary" type="button" disabled>导入词典</button>
-              <button id="stardictCancelButton" type="button" hidden>取消</button>
+              <button id="localDictionaryImportButton" class="primary" type="button" disabled>安装词典</button>
+              <button id="localDictionaryCancelButton" type="button" hidden>取消</button>
+              <button id="localDictionaryRetryMddButton" type="button" hidden>重试添加 MDD</button>
             </div>
-            <p id="stardictImportProgress" class="hint" aria-live="polite"></p>
-          </div>
-        </div>
-
-        <div class="data-source-card">
-          <strong>MDX 富文本词典</strong>
-          <p>适用于 HTML 格式的 MDX 词典。设置安装后可附加同名 .mdd 与编号附件；只显示通过检查的本地图片、音频和受限样式，不运行脚本或加载远程资源。</p>
-          <label for="richMdictFile">选择富文本 MDX 文件</label>
-          <input id="richMdictFile" type="file" accept=".mdx" />
-          <div id="richMdictInspection" class="setting-choice-help" hidden>
-            <div id="richMdictInspectionMeta" aria-live="polite">等待检测…</div>
-            <div class="actions">
-              <button id="richMdictImportButton" class="primary" type="button" disabled>安装词典</button>
-              <button id="richMdictCancelButton" type="button" hidden>取消</button>
-            </div>
-            <p id="richMdictImportProgress" class="hint" aria-live="polite"></p>
-          </div>
-        </div>
-
-        <div class="data-source-card">
-          <strong>MDict (.mdx)</strong>
-          <p>如果词典是“英文词头 → 简体中文纯文本释义”，可以用此方式转换为可参与本地查词的词典。当前不支持 .mdd、LZO、GBK / Big5，也不支持部分 MDX 排版结构。若希望保留 HTML 富文本，请使用上方的 MDX 富文本方式。</p>
-          <label for="mdictFile">选择 MDX 文件</label>
-          <input id="mdictFile" type="file" accept=".mdx" />
-
-          <div id="mdictInspection" class="setting-choice-help" hidden>
-            <div id="mdictInspectionMeta" aria-live="polite">等待检测…</div>
-            <label class="checkbox-label" for="mdictSemanticConfirmation">
-              <input id="mdictSemanticConfirmation" type="checkbox" disabled />
-              我确认这个词典的纯文本记录表示“英文词头 → 简体中文释义”。TranslateFlow 不会根据 MDX 格式自动猜测语义方向。
-            </label>
-            <div class="actions">
-              <button id="mdictImportButton" class="primary" type="button" disabled>导入词典</button>
-              <button id="mdictCancelButton" type="button" hidden>取消</button>
-            </div>
-            <p id="mdictImportProgress" class="hint" aria-live="polite"></p>
-          </div>
+            <p id="localDictionaryImportProgress" class="hint" aria-live="polite"></p>
+          </section>
         </div>
       </div>
     </section>
@@ -384,9 +366,8 @@
   </main>
   </div>
   <script type="module" src="options.js"></script>
-  <script type="module" src="src/options/stardict-import-ui.js"></script>
-  <script type="module" src="src/options/mdict-import-ui.js"></script>
   <script type="module" src="src/options/rich-mdict-import-ui.js"></script>
   <script type="module" src="src/options/curated-dictionary-ui.js"></script>
+  <script type="module" src="src/options/local-dictionary-import-ui.js"></script>
 </body>
 </html>

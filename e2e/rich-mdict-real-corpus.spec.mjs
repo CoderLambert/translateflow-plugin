@@ -56,11 +56,17 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
 
     const installStarted = Date.now();
-    await options.locator("#richMdictFile").setInputFiles(mdxPath);
-    await expect(options.locator("#richMdictInspectionMeta")).toContainText("简明英汉字典增强版");
-    await expect(options.locator("#richMdictInspectionMeta")).toContainText("安全预览");
-    await options.locator("#richMdictImportButton").click();
-    await expect(options.locator("#richMdictImportProgress")).toContainText("完成", {
+    await options.locator("#localDictionaryFiles").setInputFiles(mdxPath);
+    // Building the bounded compatibility index for this 3.4M-entry corpus can
+    // take longer than the default assertion timeout on slower CI runners.
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText(
+      "简明英汉字典增强版",
+      { timeout: 60_000 }
+    );
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("MDX 富文本词典");
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("来源与信任");
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", {
       timeout: 10 * 60 * 1000
     });
     const installMs = Date.now() - installStarted;

@@ -13,6 +13,7 @@ import {
   renderDictionaryMetadata,
   renderLocalRichDictionaryMetadata
 } from "./dictionary-library-v2-presentation.js";
+import { fileBaseName, progressLabel, resourceProgressLabel, setPageStatus } from "./rich-mdict-import-copy.js";
 
 export function initializeRichMdictImportUi({
   runtime = globalThis.chrome?.runtime,
@@ -27,6 +28,34 @@ export function initializeRichMdictImportUi({
   const cancelButton = document.getElementById("richMdictCancelButton");
   const progress = document.getElementById("richMdictImportProgress");
   const installedList = document.getElementById("richMdictInstalledList");
+  if (!fileInput && installedList) {
+    let activeResourceProgress = null;
+    const resourceController = createMddResourceImportController({
+      runtime,
+      WorkerCtor,
+      cryptoProvider,
+      onProgress(event) {
+        if (activeResourceProgress) activeResourceProgress.textContent = resourceProgressLabel(event.phase);
+      }
+    });
+    const refreshInstalled = async () => {
+      installedList.textContent = "正在读取已安装的富文本词典…";
+      try {
+        const response = await runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST });
+        if (!response?.ok) throw new Error(response?.error || "读取富文本词典失败。");
+        renderInstalled(installedList, response.dictionaries || [], {
+          runtime, setStatus, refreshInstalled, resourceController,
+          setProgressNode(node) { activeResourceProgress = node; }
+        });
+      } catch (error) {
+        installedList.textContent = "读取富文本词典失败：" + (error?.message || String(error));
+      }
+    };
+    document.addEventListener("translateflow:dictionary-state-changed", refreshInstalled);
+    window.addEventListener("pagehide", () => resourceController.dispose(), { once: true });
+    refreshInstalled();
+    return Object.freeze({ resourceController, refresh: refreshInstalled });
+  }
   if (!fileInput || !inspection || !inspectionMeta || !importButton || !cancelButton || !progress || !installedList) {
     return null;
   }
@@ -214,6 +243,8 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
       renderDictionaryMetadata(summary, getCatalogDictionaryRows(catalogEntry, {
         installedCatalog: catalog,
         installedSize: installedBytes,
+        installedSourceFileName: dictionary.fileName,
+        installedSourceSize: dictionary.sourceSize,
         entryCount: dictionary.entryCount,
         resourceCount: dictionary.resourceCount,
         resourceBytes: dictionary.resourceBytes,
@@ -357,26 +388,6 @@ function userMddMessage(error) {
   return error?.message || "MDD 资源导入失败，原有附件保留。";
 }
 
-function progressLabel(phase) {
-  if (phase === "preflight") return "检查本地空间";
-  if (phase === "index") return "检查词典结构";
-  if (phase === "store-source") return "保存离线词典";
-  if (phase === "store-index") return "保存查询信息";
-  if (phase === "commit") return "复核并启用词典";
-  if (phase === "done") return "完成";
-  return "处理中…";
-}
-
-function resourceProgressLabel(phase) {
-  if (phase === "preflight") return "检查词典匹配和本地空间…";
-  if (phase === "index") return "正在检查附件…";
-  if (phase === "store-source") return "正在保存离线 MDD 文件…";
-  if (phase === "store-index") return "正在保存附件信息…";
-  if (phase === "commit") return "正在复核并启用 MDD 附件…";
-  if (phase === "done") return "MDD 附件已启用。";
-  return "正在处理 MDD 资源…";
-}
-
 function metaLine(label, value) {
   const line = document.createElement("div");
   const term = document.createElement("strong");
@@ -385,17 +396,6 @@ function metaLine(label, value) {
   text.textContent = String(value || "");
   line.append(term, text);
   return line;
-}
-
-function fileBaseName(value) {
-  return String(value || "dictionary.mdx").replace(/\.mdx$/iu, "");
-}
-
-function setPageStatus(message, isError = false) {
-  const target = document.getElementById("status");
-  if (!target) return;
-  target.textContent = message;
-  target.classList.toggle("error", Boolean(isError));
 }
 
 if (typeof document !== "undefined") initializeRichMdictImportUi();

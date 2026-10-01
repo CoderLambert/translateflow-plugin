@@ -58,12 +58,16 @@ test("user-owned rich MDX keeps local version separate from installation date", 
   const { rows } = getLocalRichDictionaryRows({
     status: "ready",
     packVersion: "import-mgj2xio0-12345678",
-    installedAt: Date.parse("2026-09-29T00:00:00Z")
+    installedAt: Date.parse("2026-09-29T00:00:00Z"),
+    fileName: "user-book.mdx",
+    sourceSize: 8_192
   }, 12_288);
   const values = Object.fromEntries(rows.map(({ label, value }) => [label, value]));
 
   assert.equal(values["本地安装版本"], "import-mgj2xio0-12345678");
   assert.equal(values["本地安装日期"], "2026-09-29");
+  assert.equal(values["本机源文件"], "user-book.mdx");
+  assert.equal(values["本机源文件大小"], "8.0 KiB");
   assert.equal(values["已安装大小"], "12.0 KiB");
 });
 

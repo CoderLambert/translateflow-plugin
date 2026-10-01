@@ -26,7 +26,7 @@ test.describe("StarDict visible local import product flow", () => {
     );
 
     const fixture = makeStarDictFixture();
-    await options.locator("#stardictFiles").setInputFiles([
+    await options.locator("#localDictionaryFiles").setInputFiles([
       {
         name: "issue165.ifo",
         mimeType: "text/plain",
@@ -45,20 +45,22 @@ test.describe("StarDict visible local import product flow", () => {
     ]);
 
     await expect(
-      options.locator("#stardictInspectionMeta")
+      options.locator("#localDictionaryPreflightSummary")
     ).toContainText("Issue 165 E2E Dictionary");
     await expect(
-      options.locator("#stardictInspectionMeta")
-    ).toContainText("支持导入");
+      options.locator("#localDictionaryPreflightSummary")
+    ).toContainText("StarDict 结构化词典");
 
-    await options
-      .locator("#stardictSemanticConfirmation")
-      .check();
-    await options.locator("#stardictImportButton").click();
+    await expect(options.locator("#localDictionarySemanticLabel")).toBeVisible();
+    await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
+    await options.locator("#localDictionarySemanticConfirmation").focus();
+    await options.locator("#localDictionarySemanticConfirmation").press("Space");
+    await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
+    await options.locator("#localDictionaryImportButton").click();
 
     await expect(
-      options.locator("#stardictImportProgress")
-    ).toHaveText("完成");
+      options.locator("#localDictionaryImportProgress")
+    ).toContainText("完成");
     const installed = options
       .locator("#installedDictionaryList .site-row")
       .filter({ hasText: "Issue 165 E2E Dictionary" });

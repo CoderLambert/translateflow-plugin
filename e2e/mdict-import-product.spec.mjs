@@ -25,37 +25,33 @@ test.describe("strict MDict visible local import", () => {
     ]);
     const started = Date.now();
 
-    await options.locator("#mdictFile").setInputFiles({
+    await options.locator("#localDictionaryFiles").setInputFiles({
       name: "issue167.mdx",
       mimeType: "application/octet-stream",
       buffer: Buffer.from(mdx)
     });
     await expect(
-      options.locator("#mdictInspectionMeta")
+      options.locator("#localDictionaryPreflightSummary")
     ).toContainText("Issue 167 MDict");
     await expect(
-      options.locator("#mdictInspectionMeta")
-    ).toContainText("MDX 引擎");
+      options.locator("#localDictionaryPreflightSummary")
+    ).toContainText("MDX 2");
     await expect(
-      options.locator("#mdictInspectionMeta")
-    ).toContainText("不渲染 HTML/CSS/JS");
-    await expect(
-      options.locator(".data-source-card").filter({
-        hasText: "MDict (.mdx)"
-      })
-    ).toContainText("不支持 .mdd");
+      options.locator("#localDictionaryPreflightSummary")
+    ).toContainText("安装方式MDX 富文本词典");
 
     await options
-      .locator("#mdictSemanticConfirmation")
+      .locator("#localDictionarySemanticConfirmation")
       .check();
-    await options.locator("#mdictImportButton").click();
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("安装方式MDX 结构化纯文本词典");
+    await options.locator("#localDictionaryImportButton").click();
     await expect(
-      options.locator("#mdictImportProgress")
+      options.locator("#localDictionaryImportProgress")
     ).toContainText("完成", { timeout: 90_000 });
 
     const progress = String(
       await options
-        .locator("#mdictImportProgress")
+        .locator("#localDictionaryImportProgress")
         .textContent()
     ).trim();
     console.log(

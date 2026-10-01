@@ -30,15 +30,15 @@ test.describe("local MDD resource product and security behavior", () => {
     });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
-    await options.locator("#richMdictFile").setInputFiles({
+    await options.locator("#localDictionaryFiles").setInputFiles({
       name: "interop.mdx",
       mimeType: "application/octet-stream",
       buffer: mdx
     });
-    await expect(options.locator("#richMdictInspectionMeta"))
+    await expect(options.locator("#localDictionaryPreflightSummary"))
       .toContainText("TranslateFlow MDD Interop Fixture");
-    await options.locator("#richMdictImportButton").click();
-    await expect(options.locator("#richMdictImportProgress")).toContainText("完成", {
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", {
       timeout: 60_000
     });
 
