@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "report": "dictionary-ecosystem-v2-preferred-lookup-baseline",
+  "recordId": "preferred-lookup-acbfa12-repeat10-20261001",
+  "sourceFile": "docs/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE.json",
+  "status": "PASS",
+  "mainSha": "acbfa12a079a73d6eab0a1c17e7a8f63d856295b",
+  "startedAt": "2026-10-01T14:59:03.136Z",
+  "durationMs": 66181.578,
+  "command": "CI=true npx playwright test e2e/multi-dictionary-viewer.spec.mjs --grep 'personal preference persists and opens first beside the unchanged structured primary' --repeat-each=10 --reporter=line,json",
+  "case": "e2e/multi-dictionary-viewer.spec.mjs :: personal preference persists and opens first beside the unchanged structured primary",
+  "outcomes": {
+    "passed": 10,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "workload": {
+    "fixtureProfile": "multi-dictionary-viewer-alpha-beta-one-entry-v1",
+    "selectionQuery": "persistent",
+    "entriesPerDictionary": 1,
+    "encryptedKeyInfo": true,
+    "baselineRecordId": "preferred-lookup-acbfa12-repeat10-20261001",
+    "baselineMainSha": "acbfa12a079a73d6eab0a1c17e7a8f63d856295b",
+    "freshInstallPerSample": true,
+    "uniquePackIds": 20,
+    "uniquePackVersions": 20,
+    "harnessResetBeforeEach": true,
+    "dictionaryRecordShape": "same bounded synthetic fixture markup from multi-dictionary-viewer.spec.mjs",
+    "cacheStatePerSample": "harness reset clears extension storage and translation cache; each repeat installs fresh random-ID Alpha/Beta dictionaries before the first measured Selection lookup; same local Chromium process",
+    "richLookupsPerSelection": 2
+  },
+  "samplesMs": {
+    "structuredPrimaryVisible": [278, 259, 255, 269, 267, 267, 283, 273, 281, 275],
+    "preferredRichVisible": [378, 337, 343, 363, 364, 375, 385, 370, 384, 371],
+    "bothRichComplete": [395, 350, 358, 384, 381, 392, 402, 388, 402, 388]
+  },
+  "summaryMs": {
+    "structuredPrimaryVisible": { "sampleCount": 10, "min": 255, "median": 271, "p95NearestRank": 283, "max": 283 },
+    "preferredRichVisible": { "sampleCount": 10, "min": 337, "median": 370.5, "p95NearestRank": 385, "max": 385 },
+    "bothRichComplete": { "sampleCount": 10, "min": 350, "median": 388, "p95NearestRank": 402, "max": 402 }
+  },
+  "providerCalls": 0,
+  "note": "Sanitized timings only. No dictionary bytes, record text, or installed identifiers are included."
+}

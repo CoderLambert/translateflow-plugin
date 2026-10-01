@@ -2,11 +2,19 @@ name: dictionary-library-vnext-certification
 
 on:
   workflow_dispatch:
+    inputs:
+      base_sha:
+        description: Exact main SHA used as the frozen Dictionary Ecosystem v2 scope base
+        required: true
+        type: string
   push:
     branches: [main]
     paths:
       - ".github/workflows/dictionary-library-vnext-certification.yml"
       - "docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md"
+      - "docs/DICTIONARY_ECOSYSTEM_V2_*.md"
+      - "docs/DICTIONARY_ECOSYSTEM_V2_RELEASE_SCOPE.json"
+      - "docs/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE.json"
       - "package.json"
       - "package-lock.json"
       - "manifest.json"
@@ -26,14 +34,19 @@ on:
       - "scripts/certify-mdd-interop.mjs"
       - "scripts/generate-mdd-interop-fixture.py"
       - "scripts/certify-vnext-dictionary-library.mjs"
+      - "scripts/certify-dictionary-ecosystem-v2.mjs"
       - "tests/**"
       - "e2e/**"
       - "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json"
       - "tests/fixtures/mdd-interop/**"
+      - "tests/dictionary-ecosystem-v2-certification.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/dictionary-library-vnext-certification.yml"
       - "docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md"
+      - "docs/DICTIONARY_ECOSYSTEM_V2_*.md"
+      - "docs/DICTIONARY_ECOSYSTEM_V2_RELEASE_SCOPE.json"
+      - "docs/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE.json"
       - "package.json"
       - "package-lock.json"
       - "manifest.json"
@@ -53,10 +66,12 @@ on:
       - "scripts/certify-mdd-interop.mjs"
       - "scripts/generate-mdd-interop-fixture.py"
       - "scripts/certify-vnext-dictionary-library.mjs"
+      - "scripts/certify-dictionary-ecosystem-v2.mjs"
       - "tests/**"
       - "e2e/**"
       - "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json"
       - "tests/fixtures/mdd-interop/**"
+      - "tests/dictionary-ecosystem-v2-certification.test.mjs"
 
 permissions:
   contents: read
@@ -68,6 +83,8 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Checkout locked Open Multilingual Wordnet source
         uses: actions/checkout@v4
@@ -104,12 +121,21 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           mkdir -p "$RUNNER_TEMP/translateflow-vnext/cache" "$RUNNER_TEMP/translateflow-vnext/evidence-private" "$RUNNER_TEMP/translateflow-vnext/evidence-published" "$RUNNER_TEMP/translateflow-vnext/mdd-work" "$RUNNER_TEMP/writemdict"
+          node -e 'process.stdout.write(String(Date.now()))' > "$RUNNER_TEMP/translateflow-vnext/evidence-private/run-started-at-ms"
 
       - name: Rebuild the locked Core and Technical lexical lane
         run: npm run setup:lexicon
 
       - name: Validate source packs and run all unit checks
         run: npm run validate
+
+      - name: Run focused active Rich lookup range and decode cancellation tests
+        if: ${{ hashFiles('tests/rich-mdict-lookup-cancellation.test.mjs') != '' }}
+        run: npm run test:rich-lookup-cancellation
+
+      - name: Report the required pending #224 cancellation follow-up
+        if: ${{ hashFiles('tests/rich-mdict-lookup-cancellation.test.mjs') == '' }}
+        run: echo "Focused #224 cancellation tests are pending the required runtime slice; the final ecosystem gate remains disabled until that slice is shipped."
 
       - name: Fetch locked independent MDict writer source
         run: |
@@ -134,18 +160,35 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Generate pinned #224 cancellation baseline evidence
+        if: ${{ hashFiles('scripts/measure-rich-lookup-cancellation-baseline.mjs') != '' }}
+        run: node scripts/measure-rich-lookup-cancellation-baseline.mjs
+        env:
+          DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
+
       - name: Run focused Dictionary Library vNext product E2E gates
-        run: >-
-          npx playwright test
+        shell: bash
+        run: |
+          test_paths=(
           e2e/rich-mdict-real-corpus.spec.mjs
           e2e/rich-mdict-product.spec.mjs
           e2e/mdd-resources.spec.mjs
           e2e/multi-dictionary-viewer.spec.mjs
           e2e/settings-ia.spec.mjs
           e2e/rich-viewer-security.spec.mjs
+          e2e/release-lexicon.spec.mjs
           e2e/dictionary-library-vnext-product.spec.mjs
-          --reporter=line,json
-          --output="$RUNNER_TEMP/translateflow-vnext/playwright-results"
+          e2e/dictionary-library-v2-product.spec.mjs
+          e2e/local-dictionary-import-v2-product.spec.mjs
+          e2e/local-dictionary-preflight-real-ecdict.spec.mjs
+          e2e/mdict-import-product.spec.mjs
+          e2e/stardict-import-product.spec.mjs
+          e2e/dictionary-ecosystem-v2-release.spec.mjs
+          )
+          if [[ -f e2e/selection-rich-lookup-cancel.spec.mjs ]]; then
+            test_paths+=(e2e/selection-rich-lookup-cancel.spec.mjs)
+          fi
+          npx playwright test "${test_paths[@]}" --reporter=line,json --output="$RUNNER_TEMP/translateflow-vnext/playwright-results"
         env:
           CI: "true"
           ECDICT_MDX_ONE_CLICK_GATE: "1"
@@ -155,15 +198,48 @@ jobs:
           RICH_MDICT_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
           MDD_INTEROP_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
           DICTIONARY_LIBRARY_VNEXT_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
+          DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-vnext/evidence-private
 
       - name: Certify all fresh product, package, and lexical-primary evidence
         run: npm run certify:dictionary-library-vnext -- --evidence-dir "$RUNNER_TEMP/translateflow-vnext/evidence-private" --out "$RUNNER_TEMP/translateflow-vnext/evidence-published/dictionary-library-vnext-certification.json"
 
-      - name: Upload sanitized vNext certification summary
+      - name: Check whether the frozen ecosystem scope is ready for final certification
+        id: ecosystem-scope
+        run: |
+          node --input-type=module -e '
+            import { readFile } from "node:fs/promises";
+            const scope = JSON.parse(await readFile("docs/DICTIONARY_ECOSYSTEM_V2_RELEASE_SCOPE.json", "utf8"));
+            const required = [199, 200, 202, 215, 203, 204, 224];
+            const slices = new Map((scope.requiredSlices || []).map((item) => [item.issue, item.status]));
+            const ready = scope.scopeStatus === "frozen-for-certification" &&
+              scope.scopeRevision?.issue === 224 && scope.scopeRevision?.status === "shipped" &&
+              required.every((issue) => slices.get(issue) === (issue === 215 ? "shipped-through-203" : "shipped"));
+            process.stdout.write(`ready=${ready ? "true" : "false"}\n`);
+          ' >> "$GITHUB_OUTPUT"
+
+      - name: Report the required pending follow-up before final certification
+        if: steps.ecosystem-scope.outputs.ready != 'true'
+        run: echo "Dictionary Ecosystem v2 final certification is not yet ready; the frozen scope still has a required pending slice. This workflow run performs its vNext sub-certification only."
+
+      - name: Certify frozen Dictionary Ecosystem v2 release scope and evidence
+        if: steps.ecosystem-scope.outputs.ready == 'true'
+        run: >-
+          npm run certify:dictionary-ecosystem-v2 --
+          --evidence-dir "$RUNNER_TEMP/translateflow-vnext/evidence-private"
+          --vnext-report "$RUNNER_TEMP/translateflow-vnext/evidence-published/dictionary-library-vnext-certification.json"
+          --run-marker "$RUNNER_TEMP/translateflow-vnext/evidence-private/run-started-at-ms"
+          --base-sha "$DICTIONARY_ECOSYSTEM_V2_BASE_SHA"
+          --out "$RUNNER_TEMP/translateflow-vnext/evidence-published/dictionary-ecosystem-v2-certification.json"
+        env:
+          DICTIONARY_ECOSYSTEM_V2_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base_sha }}
+
+      - name: Upload sanitized dictionary certification summaries
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dictionary-library-vnext-certification
-          path: ${{ runner.temp }}/translateflow-vnext/evidence-published/dictionary-library-vnext-certification.json
+          name: dictionary-ecosystem-v2-certification
+          path: |
+            ${{ runner.temp }}/translateflow-vnext/evidence-published/dictionary-library-vnext-certification.json
+            ${{ runner.temp }}/translateflow-vnext/evidence-published/dictionary-ecosystem-v2-certification.json
           if-no-files-found: ignore
           retention-days: 30
