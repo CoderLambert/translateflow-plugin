@@ -28,47 +28,63 @@
         "contentBytes": 9855907,
         "contentSha256": "4585efcc6cb11b57b216554efbb5c66f88e15ab5cc9136f6b0579910d30e89cb",
         "contentDate": "2026-09-30",
-        "entryCount": 125149,
-        "versioningLimitation": "The exact artifact is pinned by timestamp, ETag and observed hashes because MDBG supplies a mutable current URL without an immutable release ID or published checksum."
+        "entryCount": null,
+        "versioningLimitation": "The historical artifact fingerprint is pinned by observed timestamp, ETag and hashes, but was retrieved by a scripted request before discovery of MDBG's prohibition on automated/scripted access. This fingerprint is retained for audit only and is not an approved source lock or valid quality sample."
       },
       "legalProvenanceGate": {
         "status": "NO-GO-license-history-clarification-pending",
         "evidence": [
           "The exact artifact header and current editor download page name CC BY-SA 4.0.",
           "The official CC-CEDICT project home, last modified 2025-05-31, still names CC BY-SA 3.0. Its older revision date makes staleness plausible, but no explicit supersession statement was located.",
-          "The project identifies MDBG as publisher and says reviewed community edits are included in releases."
+          "The project identifies MDBG as publisher and says reviewed community edits are included in releases.",
+          "Separate access gate: MDBG's official privacy page states automated or scripted access is prohibited; this blocks the previously proposed app-side fetch, even if initiated by a user click, absent explicit authorization."
         ],
         "redistribution": "Not approved until the official license-version conflict is resolved and attribution/share-alike notices are designed for the intended derived pack.",
-        "directUpstreamAcquisition": "The public MDBG export is downloadable; this does not remove the license-version ambiguity or constitute TranslateFlow source approval."
+        "directUpstreamAcquisition": "The historical endpoint was reachable, but MDBG's official privacy policy prohibits automated/scripted access. No app-side fetch is qualified without explicit MDBG authorization or a separately authorized route."
       },
       "productQualityGate": {
-        "status": "NO-GO-formal-quality-gate-incomplete",
-        "smokeCorpus": {
-          "method": "Parse exact UTF-8 export; perform exact simplified-headword lookup for 20 named common Chinese fixture terms, check pinyin/dual-script fields, and inspect polyphonic/ambiguous-character row counts. No source text was copied into a fixture.",
-          "terms": ["中国", "软件", "电脑", "中文", "北京", "学生", "老师", "朋友", "时间", "现在", "今天", "工作", "语言", "自然", "银行", "书", "生活", "国家", "发展", "人民"],
-          "exactHits": 20,
-          "hitsWithPinyin": 20,
-          "hitsWithDifferentTraditionalForm": 12,
-          "polyphonicRows": {"行": 3, "重": 2, "乐": 5, "长": 2}
-        },
-        "upstreamQualityDisclosure": "The official syntax guidance describes v1 as historical and says the current database contains infelicities, inaccuracies, omissions and actual errors. The retrieved MDBG release identifies itself as v1; its entries are not accompanied by an independent TranslateFlow gold-quality signal.",
-        "interpretation": "The smoke sample confirms the advertised direction and useful form/pinyin structure. It is not a gold-labeled definition-quality benchmark: no independent zh->en correctness/top-result audit, contextual ambiguity scoring, or user-visible flow exists for this direction. TranslateFlow cannot infer accuracy from corpus size or pinyin/form coverage; this is insufficient for a product GO."
+        "status": "NOT-QUALIFIED-prior-smoke-withdrawn",
+        "withdrawal": "A 20-term structural inspection was performed on a scripted MDBG download before discovery of the official automated-access prohibition. The inspection is withdrawn as qualification evidence; no terms, counts, or payload-derived quality claims are retained.",
+        "upstreamQualityDisclosure": "Official CC-CEDICT format pages describe the v1 export as historical and warn of infelicities, inaccuracies, omissions and errors. No authorized acquisition or independent zh->en gold-quality benchmark is available for this decision.",
+        "interpretation": "There is no qualifying product-quality evidence. The candidate remains NO-GO; neither corpus size nor the withdrawn inspection can establish correctness, ranking, context handling, or user benefit."
       },
       "technicalFitGate": {
-        "status": "NO-GO-current-runtime-direction-unsupported",
+        "status": "NO-GO-current-runtime-direction-unsupported-and-source-acquisition-unqualified",
         "evidence": "Current structured selection and TFLex builder/import recipes accept sourceLanguage=en and targetLanguage=zh-CN; no CC-CEDICT text importer or zh->en lookup contract exists.",
-        "requiredCapabilities": ["bounded gzip/text parsing", "CC-CEDICT record parser", "zh-Hans and zh-Hant aliases", "pinyin", "sense preservation", "zh->en TFLex/gateway contract"],
-        "size": "3,977,421 compressed bytes; 9,855,907 decoded bytes; 125,149 records",
+        "requiredCapabilities": [
+          "bounded gzip/text parsing",
+          "CC-CEDICT record parser",
+          "zh-Hans and zh-Hant aliases",
+          "pinyin",
+          "sense preservation",
+          "zh->en TFLex/gateway contract"
+        ],
+        "size": "Historical bytes only: 3,977,421-byte gzip; 9,855,907 decoded bytes. These measurements identify the withdrawn artifact and are not runtime qualification evidence.",
         "latencyMemoryAndUpdateCost": "Not measured; source endpoint is mutable and has no upstream checksum/version identifier."
       },
       "securityPrivacyGate": {
-        "status": "not-exercised",
-        "futureBoundary": "Would require explicit user-triggered acquisition from the MDBG origin and bounded local parsing. The text includes no identified executable/remote resources; no integrated network, parser, memory, or privacy test was performed."
+        "status": "NO-GO-automated-access-prohibited",
+        "policyEvidence": "https://www.mdbg.net/chinese/dictionary?page=privacy",
+        "policy": "MDBG states automated or scripted access is prohibited.",
+        "futureBoundary": "A user click does not qualify an app-side scripted request under the observed policy. Do not request the MDBG origin from the app or scripts unless MDBG explicitly authorizes that access or a separately authorized route is established.",
+        "history": "The initial scripted retrieval preceded discovery of the prohibition; it is withdrawn, and downloaded temporary files were deleted after hashes were preserved. This research lane made no further artifact requests; the coordinator separately verified the policy wording via one read-only page observation."
       },
       "finalDecision": "NO-GO-for-current-catalog-cycle",
       "allowedTrustClass": "research-only",
-      "knownLimitations": ["Official pages disagree on CC BY-SA version.", "No current zh->en structured lookup path or adapter.", "Smoke coverage does not establish definition correctness or sense ranking.", "No immutable upstream version/checksum is published.", "Not an EN->zh-CN source and not an Official pack."],
-      "revisitConditions": ["MDBG/CC-CEDICT resolves the applicable license for the exact artifact.", "A zh->en product slice is explicitly approved and benchmarked on a gold-labeled Chinese corpus.", "Catalog adapter, bounded parsing and browser/runtime budgets pass." ]
+      "knownLimitations": [
+        "Official project pages state different CC BY-SA versions; supersession is unresolved.",
+        "MDBG prohibits automated or scripted access; an app-side fetch is unqualified absent explicit authorization.",
+        "The earlier 20-term smoke inspection is withdrawn and provides no valid quality evidence.",
+        "No current zh->en structured lookup path or adapter exists.",
+        "No immutable upstream version/checksum is published.",
+        "Not an EN->zh-CN source and not an Official pack."
+      ],
+      "revisitConditions": [
+        "MDBG explicitly authorizes the precise acquisition method or a separately authorized route is established.",
+        "MDBG/CC-CEDICT clarifies the applicable license for the exact artifact.",
+        "A zh->en product slice is explicitly approved and benchmarked using lawfully and permissibly obtained gold-quality data.",
+        "Catalog adapter, bounded parsing and browser/runtime budgets pass."
+      ]
     },
     {
       "candidateId": "oewn-2025-standard-json",
@@ -77,7 +93,7 @@
       "languageDirection": "en -> en semantic/monolingual",
       "intendedRole": "English semantic/sense supplement, not an EN->zh-CN bilingual replacement.",
       "expectedUserBenefit": "Potentially improve local English sense structure, POS, pronunciation and semantic relations.",
-      "overlap": "The current Core semantic pack is already built from Princeton WordNet 3.0 aligned to Chinese Open Wordnet. OEWN derives from Princeton WordNet and therefore overlaps the existing semantic backbone; it contributes no Chinese translation field.",
+      "overlap": "The current Core semantic pack uses Princeton WordNet 3.0 aligned to Chinese Open Wordnet. OEWN 2025 is based on Princeton WordNet 3.1, so it may contain meaningful version changes; the incremental overlap/value has not been measured. It contributes no Chinese translation field.",
       "existingStructuredBaseline": {
         "sourceLock": "../source-locks/core-semantic-pwn3-cow.json",
         "packId": "core-semantic-en-zh",
@@ -96,41 +112,94 @@
         "bytes": 9986555,
         "sha256": "7d749f6e2c39e6970e4997839dcf6e42fd281f3c2fae0171d2192bae8cfa4b51",
         "archiveFiles": 73,
-        "publisherReportedCoreCounts": {"words": 135969, "synsets": 107519, "relations": 355064}
+        "publisherReportedCoreCounts": {
+          "words": 135969,
+          "synsets": 107519,
+          "relations": 355064
+        }
       },
       "legalProvenanceGate": {
         "status": "terms-published-with-notice-obligations; product-specific-audit-pending",
-        "evidence": "The exact revision LICENSE.md says OEWN further development is CC BY 4.0 and the underlying Princeton WordNet terms continue to apply to WordNet data; WNDB_License.txt carries the WordNet notice. The selected JSON ZIP contains data JSON files only, so notices would need to be supplied separately.",
+        "evidence": "The exact revision LICENSE.md says OEWN further development is CC BY 4.0 and the underlying Princeton WordNet 3.1 terms continue to apply to WordNet data; WNDB_License.txt carries the WordNet notice. The selected JSON ZIP contains data JSON files only, so notices would need to be supplied separately.",
         "redistribution": "Potentially compatible with a curated derivative only after preserving both WordNet and OEWN attribution/license notices. Does not satisfy #122 Official source/trust-root approval."
       },
       "productQualityGate": {
         "status": "NO-GO-no-measured-incremental-user-value",
-        "upstreamQualityDisclosure": "The OEWN repository describes the project as derived from Princeton WordNet and says quality/veracity may differ from Princeton WordNet; it invites corrections and improvements. This requires comparison against the already-used PWN3/COW baseline rather than an assumption of superiority.",
+        "upstreamQualityDisclosure": "The OEWN 2025 release is based on Princeton WordNet 3.1, while the installed Core baseline uses Princeton WordNet 3.0 aligned to COW. The version change could be meaningful, but no head-to-head incremental coverage, sense alignment, or user-visible quality benchmark has been run. Do not infer an upgrade from the version number or upstream quality statements.",
         "artifactShapeSample": {
           "method": "Count exact 2025 JSON lemma/POS/sense objects for the project quality baseline's overloaded English words; do not infer Chinese translations from definitions.",
           "termsFound": 14,
           "posAndSenseCounts": {
-            "state": {"n": 7, "v": 3},
-            "session": {"n": 4},
-            "issue": {"n": 11, "v": 5},
-            "commit": {"v": 8},
-            "branch": {"n": 6, "v": 2},
-            "process": {"n": 6, "v-1": 6, "v-2": 1},
-            "run": {"n": 16, "v": 41},
-            "set": {"a": 7, "n": 12, "v": 25},
-            "container": {"n": 1},
-            "cache": {"n": 3, "v": 1},
-            "repository": {"n": 3},
-            "bank": {"n": 10, "v": 8},
-            "light": {"a": 25, "n": 14, "r": 1, "v": 7},
-            "good": {"a": 21, "n": 4, "r": 2}
+            "state": {
+              "n": 7,
+              "v": 3
+            },
+            "session": {
+              "n": 4
+            },
+            "issue": {
+              "n": 11,
+              "v": 5
+            },
+            "commit": {
+              "v": 8
+            },
+            "branch": {
+              "n": 6,
+              "v": 2
+            },
+            "process": {
+              "n": 6,
+              "v-1": 6,
+              "v-2": 1
+            },
+            "run": {
+              "n": 16,
+              "v": 41
+            },
+            "set": {
+              "a": 7,
+              "n": 12,
+              "v": 25
+            },
+            "container": {
+              "n": 1
+            },
+            "cache": {
+              "n": 3,
+              "v": 1
+            },
+            "repository": {
+              "n": 3
+            },
+            "bank": {
+              "n": 10,
+              "v": 8
+            },
+            "light": {
+              "a": 25,
+              "n": 14,
+              "r": 1,
+              "v": 7
+            },
+            "good": {
+              "a": 21,
+              "n": 4,
+              "r": 2
+            }
           }
         },
-        "interpretation": "The export contains rich English sense/POS structure, as expected for an English WordNet. No head-to-head quality or incremental-coverage comparison against the existing PWN3/COW Core was run; the sample does not establish that OEWN improves this product's EN->zh-CN answer, and it supplies no Chinese translations. Product quality gate is not met."
+        "interpretation": "The export contains English sense/POS structure, as expected for an English WordNet. OEWN 2025 is based on PWN 3.1, unlike the current PWN 3.0/COW baseline; the potentially meaningful delta has not been compared. The sample does not establish an improvement to EN->zh-CN answers, and OEWN supplies no Chinese translations. Product quality gate is not met."
       },
       "technicalFitGate": {
         "status": "NO-GO-no-current-adapter-or-demonstrated-incremental-fit",
-        "requiredCapabilities": ["bounded ZIP handling", "73-member JSON schema parser", "POS/sense/relation indexing", "migration/alignment to existing WordNet-based Core", "preserved source-level license notices"],
+        "requiredCapabilities": [
+          "bounded ZIP handling",
+          "73-member JSON schema parser",
+          "POS/sense/relation indexing",
+          "migration/alignment to existing WordNet-based Core",
+          "preserved source-level license notices"
+        ],
         "size": "9,986,555-byte JSON ZIP",
         "latencyMemoryAndUpdateCost": "Not measured in TranslateFlow. Separate catalog pack would duplicate much of Core's PWN-derived semantic material and add a second WordNet index."
       },
@@ -140,8 +209,18 @@
       },
       "finalDecision": "NO-GO-for-current-catalog-cycle",
       "allowedTrustClass": "research-only",
-      "knownLimitations": ["English-only semantics; no Chinese translations.", "Overlaps the existing PWN3/COW Core.", "No incremental quality/coverage benchmark or runtime cost measurement.", "Both OEWN CC BY 4.0 and underlying WordNet notices must be preserved.", "No Official trust-root approval."],
-      "revisitConditions": ["A measured PWN3-vs-OEWN incremental benchmark identifies user-visible value.", "The product has a user-facing English semantic/monolingual supplement role.", "A bounded adapter and dual-license attribution packaging are reviewed." ]
+      "knownLimitations": [
+        "English-only semantics; no Chinese translations.",
+        "OEWN 2025 is based on PWN 3.1 while the current Core uses PWN 3.0/COW; overlap and incremental value are not measured.",
+        "No incremental quality/coverage benchmark or runtime cost measurement.",
+        "Both OEWN CC BY 4.0 and underlying WordNet 3.1 notices must be preserved.",
+        "No Official trust-root approval."
+      ],
+      "revisitConditions": [
+        "A measured PWN3-vs-OEWN incremental benchmark identifies user-visible value.",
+        "The product has a user-facing English semantic/monolingual supplement role.",
+        "A bounded adapter and dual-license attribution packaging are reviewed."
+      ]
     }
   ],
   "maintainedEnToZhCnSearch": {
@@ -197,14 +276,13 @@
   },
   "reproducibility": {
     "exactArtifactDownloadAndHashCommands": [
-      "curl -fsSL https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz -o cedict.txt.gz; sha256sum cedict.txt.gz; gzip -cd cedict.txt.gz > cedict.txt; sha256sum cedict.txt; parse non-comment UTF-8 rows",
       "curl -fsSL https://en-word.net/static/english-wordnet-2025-json.zip -o english-wordnet-2025-json.zip; sha256sum english-wordnet-2025-json.zip; unzip -l english-wordnet-2025-json.zip"
     ],
-    "localArtifactStorage": "Research downloads were stored under /tmp/translateflow-205 only; source bytes are not committed or included in product/release packages.",
-    "benchmarkLimitation": "The CC-CEDICT fixture is a structural smoke sample, not an independent translation gold set. OEWN checks are artifact-shape counts, not a relative product-quality benchmark. Both final product-quality gates therefore remain NO-GO.",
+    "localArtifactStorage": "OEWN research bytes were stored under /tmp/translateflow-205 only. The withdrawn MDBG downloads and page capture were deleted after preserving artifact fingerprints; no MDBG payload or fixture is committed or retained. This research lane made no further artifact requests; the coordinator separately verified the policy wording via one read-only page observation.",
+    "benchmarkLimitation": "All CC-CEDICT payload inspection is withdrawn because the source was retrieved by script before discovery of MDBG's access prohibition; it is not qualification evidence. OEWN checks are artifact-shape counts only, not a relative product-quality benchmark. Both final product-quality gates remain NO-GO.",
     "qualityReproduction": {
-      "ccCedict": "Decode the locked gzip as UTF-8; ignore blank/comment rows; parse `traditional simplified [pinyin] /glosses/`; look up each exact fixture term against the simplified field; count a pinyin hit when the bracket field is nonempty; count a distinct Traditional form when the first and second headword fields differ. Count row multiplicity for 行, 重, 乐 and 长. The committed fixture list and expected aggregates are in the CC-CEDICT decision record.",
-      "oewn": "Read each entries-*.json member of the locked 2025 JSON ZIP; for each named lemma count `sense` array length under each POS key. This measures schema shape only and deliberately makes no definition-quality or Chinese-translation claim."
+      "ccCedict": "Not applicable: the prior smoke test is withdrawn due to MDBG's prohibition on automated/scripted access. No corpus or fixture remains.",
+      "oewn": "Read each entries-*.json member of the locked 2025 JSON ZIP; for each named lemma count sense-array length under each POS key. This measures schema shape only and deliberately makes no definition-quality or Chinese-translation claim."
     }
   }
 }

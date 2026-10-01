@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "recordKind": "research-only-exact-artifact-lock",
+  "recordKind": "research-only-historical-artifact-observation",
   "sourceId": "cc-cedict",
-  "lockPurpose": "Identify the exact public artifact evaluated for Dictionary Ecosystem v2 source qualification. This lock is not source approval, catalog registration, or permission to present CC-CEDICT as an English-to-Chinese source.",
+  "lockPurpose": "Preserve the identity of the historical artifact observed during research, for audit only. This retrieval is not a qualified acquisition or source approval: MDBG states automated or scripted access is prohibited. Do not use this lock for app-side fetching, catalog registration, packaging, or presenting CC-CEDICT as an English-to-Chinese source.",
   "retrievedOn": "2026-10-01",
   "source": {
     "project": "CC-CEDICT",
@@ -18,7 +18,7 @@
     "releaseDate": null,
     "releasePolicy": "MDBG presents a current downloadable CC-CEDICT file and says reviewed submissions are processed and released frequently; no immutable numbered release identifier is supplied for this endpoint.",
     "contentDate": "2026-09-30",
-    "contentDateEvidence": "HTTP Last-Modified header on the exact MDBG artifact"
+    "contentDateEvidence": "Historical Last-Modified header observed during the non-qualifying scripted retrieval; not a validated source release date."
   },
   "artifact": {
     "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz",
@@ -32,13 +32,23 @@
     "observedETag": "3cb0cd-65cafbfa85881",
     "decodedBytes": 9855907,
     "decodedSha256": "4585efcc6cb11b57b216554efbb5c66f88e15ab5cc9136f6b0579910d30e89cb",
-    "entryCount": 125149,
-    "entryCountEvidence": "Recounted decoded non-comment records; matches the entry count displayed on MDBG's download page."
+    "entryCount": null,
+    "entryCountEvidence": "Not retained as a qualification metric because the downloaded artifact was accessed by a prohibited scripted method.",
+    "retrievalQualification": "Historical fingerprint only; the artifact retrieval was automated and is withdrawn. Do not reacquire by script or app-side fetch without explicit authorization.",
+    "auxiliaryDeletedArtifact": {
+      "temporaryFile": "cedict-editor-latest.gz",
+      "bytes": 3977745,
+      "sha256": "33a8f0f78cdda5600bd6eac5be79c85e5b9af8927b42c0df0e8b335e9684e504",
+      "disposition": "Deleted from /tmp after hashing; not used as a qualified source artifact."
+    }
   },
   "role": {
     "sourceLanguage": "zh",
     "targetLanguage": "en",
-    "sourceLocales": ["zh-Hans", "zh-Hant"],
+    "sourceLocales": [
+      "zh-Hans",
+      "zh-Hant"
+    ],
     "intendedRole": "Native Chinese-to-English dictionary; the data stores Traditional and Simplified headword forms, pinyin, and English gloss strings.",
     "notApprovedRole": "English-to-Simplified-Chinese translation source"
   },
@@ -59,7 +69,7 @@
   "technicalShape": {
     "sourceFormat": "gzip-compressed CC-CEDICT text v1",
     "observedHeader": "UTF-8, traditional and simplified forms, pinyin; slash-delimited English glosses",
-    "upstreamQualityAndFormatNotes": "The exact artifact header identifies format v1. The official V2 syntax page says the v1 edition converts v2 records back to v1, while the v1 syntax page is now marked historical. The official v1 syntax page also warns that the current database has infelicities, inaccuracies, omissions and errors. These are reasons to benchmark the exact release, not automatic disqualification of every entry.",
+    "upstreamQualityAndFormatNotes": "The format notes below describe the historically observed payload and official CC-CEDICT format documentation only. The prior scripted payload inspection is withdrawn and is not an accepted compatibility or quality result. The official V2 syntax page describes V1 export conversion; the V1 page is marked historical and warns of data errors. No importer capability has been validated against an authorized acquisition.",
     "minimumImporterCapabilities": [
       "bounded gzip decompression",
       "streaming UTF-8 line parsing",
@@ -74,9 +84,17 @@
     "currentTranslateFlowAdapter": null
   },
   "securityAndPrivacy": {
-    "acquisitionModelIfRevisited": "Explicit user-triggered request to the exact MDBG origin, followed by local-only bounded parsing and storage.",
-    "remoteResourcesAfterInstall": "None inherent in the text data; no integration was implemented or network-captured in this research task.",
-    "remoteCode": "None identified in the text artifact.",
-    "securityGate": "not exercised; no production adapter or catalog entry is authorized by this research lock"
+    "accessPolicyUrl": "https://www.mdbg.net/chinese/dictionary?page=privacy",
+    "policy": "MDBG states automated or scripted access is prohibited.",
+    "acquisitionModelIfRevisited": "No app-side/scripted request, including one initiated after a user click, is qualified under the observed policy. Revisit only after MDBG provides an explicit authorization or a separately authorized acquisition route is established.",
+    "historicalRetrieval": "Initial scripted artifact retrieval preceded discovery of the restriction; it is withdrawn as qualification evidence and temporary files were deleted after hashes were recorded. No further artifact retrieval was performed by this research lane; the coordinator separately verified the official policy wording via one read-only page observation.",
+    "securityGate": "NO-GO-automated-access-prohibited; no production adapter or catalog entry is authorized."
+  },
+  "qualificationStatus": "WITHDRAWN-NOT-QUALIFIED-automated-access-prohibited",
+  "retrievalDisclosure": {
+    "discoveredPolicy": "https://www.mdbg.net/chinese/dictionary?page=privacy",
+    "policyObserved": "Automated or scripted access is prohibited.",
+    "history": "A scripted download and structural inspection were performed before this restriction was discovered. The retrieval and all quality observations from it are withdrawn as qualification evidence.",
+    "disposition": "Temporary MDBG files were deleted after preserving forensic hashes and byte counts. No CC-CEDICT payload or fixture remains in the repository or temporary research area. This research lane made no further artifact requests; the coordinator separately verified the policy wording through one read-only page observation."
   }
 }

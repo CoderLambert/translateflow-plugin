@@ -50,14 +50,15 @@
   "licenseAndProvenance": {
     "upstreamLicenseStatement": "The exact tag's LICENSE.md states that the resource derives from Princeton WordNet under the WordNet License and OEWN's further development is CC BY 4.0.",
     "oewnLicense": "CC BY 4.0 for Open English WordNet contributions",
-    "underlyingLicense": "Princeton WordNet 3.0 License continues to apply to underlying WordNet material; preserve its notice and disclaimer in WNDB_License.txt.",
+    "underlyingLicense": "Princeton WordNet 3.1 License terms continue to apply to underlying WordNet material; preserve the notice and disclaimer in WNDB_License.txt.",
     "licenseFile": "https://github.com/globalwordnet/english-wordnet/blob/2025-edition/LICENSE.md",
     "underlyingLicenseFile": "https://github.com/globalwordnet/english-wordnet/blob/2025-edition/WNDB_License.txt",
     "provenance": "OEWN project describes the 2025 release as its community-developed English lexical network derived from Princeton WordNet; the 2025 release transfers the prior proper-name inventory to Open English Namenet and offers a separate curated Plus edition.",
     "attributionAndModificationRequirements": "Retain attribution to Princeton WordNet and the Open English WordNet team, preserve the WordNet notice/disclaimer, link CC BY 4.0, and mark modifications. Do not imply endorsement.",
     "redistributionGate": "source terms are published for the exact project revision; any distributable derivative must carry both the underlying WordNet notice and OEWN attribution/license obligations. No Official trust-root qualification is established.",
     "repositoryLicenseUsedAsEvidence": true,
-    "repositoryLicenseEvidence": "Exact 2025-edition LICENSE.md and WNDB_License.txt, not the extension's license."
+    "repositoryLicenseEvidence": "Exact 2025-edition LICENSE.md and WNDB_License.txt, not the extension's license.",
+    "underlyingWordNetVersion": "3.1"
   },
   "technicalShape": {
     "minimumImporterCapabilities": [
