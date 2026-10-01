@@ -127,6 +127,7 @@ test("dictionary lookups carry dictionaryId and isolate loading, errors, and sta
 
   lookupHandler({ id: "alpha", status: "ready" }, cards.get("alpha"));
   lookupHandler({ id: "beta", status: "ready" }, cards.get("beta"));
+  await flushMicrotasks();
   assert.deepEqual(sent.slice(1).map((message) => message.dictionaryId), ["alpha", "beta"]);
   assert.deepEqual([...cards.values()].map((card) => card.state), ["loading", "loading"]);
 
