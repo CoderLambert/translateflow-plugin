@@ -177,6 +177,8 @@ def build_examples(
         if sentence_id not in needed_cmn_ids:
             continue
         sentence = text(parts[2], 300)
+        if _OPENCC is not None:
+            sentence = _OPENCC.convert(sentence)
         if 2 <= len(sentence) <= 220:
             cmn_text[sentence_id] = sentence
 
