@@ -23,12 +23,12 @@ local reports remain `NOT_TESTED`.
 | #187/#201 conditional scope | #199 report and compatibility document identify no promoted parser/container or rich semantic gaps; Issues are closed not-planned. | Freeze empty promoted capability arrays and have the gate reject a nonempty/changed list without corresponding measured evidence. |
 | #200 generic Catalog v2, origins, update and migration | `tests/dictionary-catalog-v2.test.mjs`, `tests/curated-dictionary-recipes.test.mjs`; `scripts/certify-vnext-dictionary-library.mjs` covers ECDICT install permission pair, failed/cancelled update preservation, exact lock and package boundary. | Aggregate must require the vNext certifier PASS in the same run and verify the Catalog v2 unit evidence ran. Existing tests cover contract-level origin/schema/migration behavior; no new product behavior is indicated. |
 | #202 source/release/content/review/install dates, trust and lifecycle | `e2e/dictionary-library-v2-product.spec.mjs`, `tests/dictionary-library-v2-presentation.test.mjs`; vNext Settings trust/narrow-width test and source metadata assertions. | Ecosystem gate must require the v2 Library case and assert the old ECDICT content date plus curated/user-owned/Official distinctions; Official remains absent. |
-| #203 unified import/preflight | `e2e/local-dictionary-import-v2-product.spec.mjs` covers MDX+base/numbered MDD, unrelated/ambiguous association, typed unsupported LZO, partial status, duplicate decision, cancellation, TFLex validation/reimport and atomic failure; `e2e/stardict-import-product.spec.mjs` covers StarDict semantic confirmation; `e2e/mdd-resources.spec.mjs` verifies persisted local resource access, replacement, reload, cleanup and zero external requests. | Missing unified MDX-only journey; explicit structured EN→zh-CN MDX route with preflight rerun and strict importer result; a failure→retry success path; a direct positive assertion that unified numbered MDD attachment resolves bytes after install. Required to ensure those paths are exercised by the ecosystem run, not inferred from helper tests. |
+| #203 unified import/preflight | `e2e/local-dictionary-import-v2-product.spec.mjs` covers MDX+base/numbered MDD, unrelated/ambiguous association, typed unsupported LZO, partial status, duplicate decision, cancellation, TFLex validation/reimport and atomic failure; `e2e/mdict-import-product.spec.mjs` proves explicit EN→zh-CN semantic confirmation, structured preflight rerun, strict importer result, Selection lookup and delete; `e2e/stardict-import-product.spec.mjs` covers unified-picker StarDict semantic confirmation, install/Selection/delete; `e2e/mdd-resources.spec.mjs` verifies persisted local resource access, replacement, reload, cleanup and zero external requests. | Missing unified MDX-only Rich journey; a failure/cancel→retry success path for MDD attachment; and a direct positive assertion that automatically associated numbered MDD attachment resolves actual bytes after unified install. Require existing structured MDX and StarDict cases rather than duplicating them. |
 | #204 preferred rich dictionary and structured lane coexistence | `e2e/multi-dictionary-viewer.spec.mjs` covers persisted order/preference, first/open state, unchanged structured primary, no-hit fallback, delete/disable fallback, corrupt-card isolation, narrow/dark/reduced motion; `tests/selection-multi-dictionary.test.mjs` checks max 3 concurrent lookups, stale queued work drops, and isolated responses. | Existing browser measurement is one selection sample, with timings that must be captured before waiting for the slower card. Add repeated preferred-first/total latency samples, observed concurrency and selection-change cancellation latency. Store a local sanitized report and enforce only measured-baseline bounds. |
 | Parser/MDD/Rich viewer security | `tests/mdd-security.test.mjs`, `tests/rich-mdict-security.test.mjs`, `e2e/rich-viewer-security.spec.mjs`, `e2e/mdd-resources.spec.mjs`; vNext requires sanitized hostile fixture report, inert script/remote URLs and object-URL cleanup. | Bind these subreports and zero remote request evidence into the same ecosystem report. No additional parser or viewer semantics are promoted. |
 | Network/privacy and explicit AI | Import, StarDict, MDD, real ECDICT and multi-dictionary E2Es assert zero Provider calls; security/MDD product tests capture external requests; local lookup runs without Provider. | Ecosystem-focused E2E must capture requests across preflight/import/index/lookup, assert zero external dictionary requests and zero Provider calls, and emit no dictionary contents. |
 | Production package/data boundary | `tests/ecdict-mdx-package-boundary.test.mjs`; vNext builds the production extension and scans package inventory/permissions against the pinned MDX size. Research/corpus workflows keep real assets in runner temporary paths and publish only sanitized summaries. | New gate must run or consume a fresh vNext package-boundary PASS and run an explicit ecosystem boundary scan that rejects MDX/MDD/ZIP/private report files in release/package artifacts. |
-| UX/accessibility | #202/#203/#204 Chromium coverage checks 390px, dark mode, reduced motion, keyboard selection/preference/import/cancel controls, and text-only reasons. | Require these product cases in the integrated E2E report; capture keyboard and visual mode assertions on the added route tests if they touch new controls. |
+| UX/accessibility | #202/#203/#204 Chromium coverage checks 390px, dark mode, reduced motion, keyboard selection/preference/import/cancel controls, and text-only reasons. | Require these product cases in the integrated E2E report; added route coverage will assert accessible button names, preflight/progress live regions, keyboard activation, and keyboard-accessible Selection dismissal. |
 | Performance and bounded I/O | vNext ECDICT cert fixes parser range counts/bytes and memory ceiling; MDD cert fixes 100 MiB synthetic range behavior; Selection unit caps concurrency at 3; StarDict cost tool measures synthetic imports. | Add repeated preference first-result/total lookup and cancellation latency report. Compare against the measured vNext browser observations and current concurrency contract; do not invent broader throughput claims. |
 | Optional new source / Official | `docs/DICTIONARY_SOURCE_QUALIFICATION_2026-10-01.md` and machine lock record all candidates NO-GO; #206 is not planned; #122 remains blocked. | Require the frozen #205 NO-GO/#206 not-planned/#122 absent records. No source is added. |
 
@@ -44,3 +44,30 @@ Commercial user-owned MDX/MDD assets are unavailable in this environment and
 are not necessary to exercise the public/synthetic baseline. Their status is
 `NOT_TESTED`, never an implied compatibility pass. No dictionary bytes or
 extracted record text will be written to this report.
+
+## Pre-change preferred-lookup performance baseline
+
+Before changing the E2E measurement, the existing vNext preference case was run
+10 times with Playwright `--repeat-each=10` on the same synthetic Alpha/Beta
+MDX pair and local Chromium. All 10 attempts passed, with zero retries,
+failures, flakes, Provider calls, and exactly two dictionary lookups per
+selection. Timings use the existing test's `Date.now()` points: from selection
+chip activation to the preferred rich result, and then until both rich cards
+finish.
+
+| Metric | Samples | Min | Median | Nearest-rank p95 | Max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Structured primary visible (ms) | 10 | 255 | 271 | 283 | 283 |
+| Preferred rich result visible (ms) | 10 | 337 | 370.5 | 385 | 385 |
+| Both rich cards complete (ms) | 10 | 350 | 388 | 402 | 402 |
+| Rich lookups per selection | 10 | 2 | 2 | 2 | 2 |
+
+The ecosystem certifier will set preferred-first and both-rich ceilings at 2×
+the measured nearest-rank p95: 770 ms and 804 ms. The observed maxima were 385
+and 402 ms, respectively. This explicit factor tolerates substantial runner
+variance while treating a doubling of the measured p95 as a release-visible
+regression; it is not a parser throughput or real-dictionary latency claim.
+The certification E2E will take 10 fresh selection samples with the same
+fixtures, record actual maximum simultaneous rich lookups, and separately
+measure selection-change invalidation latency. These synthetic measurements
+do not substitute for an unavailable lawful commercial corpus.
