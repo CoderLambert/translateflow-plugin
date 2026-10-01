@@ -47,6 +47,24 @@ function makeCancellationBaseline() {
   };
 }
 
+function makeRouteCancellationSamples() {
+  const epochBaseMs = 1_800_000_000_000;
+  return Array.from({ length: 10 }, (_, index) => {
+    const routeStartEpochMs = epochBaseMs + index * 100 + 10;
+    const durationMs = index + 5.25;
+    return {
+      method: index % 2 === 0 ? "pushState" : "replaceState",
+      rangeReadStartedAtEpochMs: routeStartEpochMs - 5,
+      routeStartEpochMs,
+      nativeCancelCompletedAtEpochMs: routeStartEpochMs + 2,
+      rangeStopEpochMs: routeStartEpochMs + durationMs,
+      endpoint: "opfs-readBlobRange-finally-after-native-cancel",
+      rangeReadActiveAtRoute: true,
+      durationMs
+    };
+  });
+}
+
 function makeEvidence() {
   const scope = structuredClone(scopeTemplate);
   scope.scopeStatus = "frozen-for-certification";
@@ -132,8 +150,6 @@ function makeEvidence() {
     status: "PASS",
     spec: "e2e/selection-rich-lookup-cancel.spec.mjs",
     test: "Selection change cancels stale Rich lookups and preserves fresh results",
-    browserCancellationPhase: "same-document-history-during-active-range",
-    spaNavigationMethods: ["pushState", "replaceState"],
     activeRangeCancellationSamples: 12,
     cancellationLatency: {
       sampleCount: 12,
@@ -157,14 +173,16 @@ function makeEvidence() {
     },
     routeCancellationLatency: {
       trigger: "same-document-history",
-      endpoint: "underlying-range-stop",
       clock: "performance.now",
-      metric: "milliseconds from route change to final active underlying range read stop",
       sampleCount: 10,
-      samplesMs: [1.25, 2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.25],
-      p50Ms: 5.25,
-      p95Ms: 10.25,
-      maxMs: 10.25,
+      samples: makeRouteCancellationSamples(),
+      samplesMs: makeRouteCancellationSamples().map((sample) => sample.durationMs),
+      methodSampleCounts: { pushState: 5, replaceState: 5 },
+      p50Ms: 9.25,
+      p95Ms: 14.25,
+      maxMs: 14.25,
+      baselineMetric: "milliseconds from cancellation request to the final bounded source range read completing",
+      baselineInterpretation: "conservative-stop-latency-ceiling",
       baselineP95Ms: 38,
       derivedCeilingMs: 76,
       ceilingPassed: true
@@ -218,6 +236,11 @@ test("certifies a frozen shipped scope against its exact declared run base and s
   const result = certifyDictionaryEcosystemV2(evidence);
   assert.equal(result.status, "PASS", result.failures.join("\n"));
   assert.equal(result.scope.mainBaseSha, baseSha);
+  assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.sampleCount, 10);
+  assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.pushStateSamples, 5);
+  assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.replaceStateSamples, 5);
+  assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.clock, "performance.now");
+  assert.equal(result.evidence.inFlightLookupCancellation.routeCancellationLatency.baselineInterpretation, "conservative-stop-latency-ceiling");
   const output = JSON.stringify(result);
   for (const sentinel of ["private-entry-sentinel", "private-test-console-sentinel", "private-performance-sentinel", "private-cancellation-sentinel"]) {
     assert.equal(output.includes(sentinel), false);
@@ -354,14 +377,18 @@ test("fails when required #224 cancellation evidence allows post-cancel reads", 
 
 test("binds #224 route latency and browser report metadata to the private pinned raw baseline and runner", () => {
   const mutations = [
-    (evidence) => { evidence.richLookupCancellation.browserCancellationPhase = "before-dispatch"; },
-    (evidence) => { evidence.richLookupCancellation.spaNavigationMethods = ["popstate"]; },
     (evidence) => { evidence.richLookupCancellation.cancellationLatency.baselineEvidenceFile = "untrusted.json"; },
     (evidence) => { evidence.richLookupCancellation.cancellationLatency.baselineWorkload.rangeGateDelayMs = 1; },
     (evidence) => { evidence.richLookupCancellation.cancellationLatency.baselineRunnerSha256 = "d".repeat(64); },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.sampleCount = 9; },
-    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.endpoint = "cancel-message-observed"; },
-    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.metric = "route changed to message sent"; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.samples[0].endpoint = "cancel-message-observed"; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.baselineMetric = "route changed to message sent"; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.baselineInterpretation = "like-for-like-benchmark"; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.samples[0].method = "popstate"; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.methodSampleCounts.pushState = 4; },
+    (evidence) => { evidence.richLookupCancellation.cancelledLookupCount = 9; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.samples[0].rangeReadActiveAtRoute = false; },
+    (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.samples[0].nativeCancelCompletedAtEpochMs += 100; },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.samplesMs[0] = Number.NaN; },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.p95Ms = 100; },
     (evidence) => { evidence.richLookupCancellation.routeCancellationLatency.ceilingPassed = false; },
@@ -374,7 +401,7 @@ test("binds #224 route latency and browser report metadata to the private pinned
     mutate(evidence);
     const result = certifyDictionaryEcosystemV2(evidence);
     assert.equal(result.status, "FAIL");
-    assert.ok(result.failures.some((failure) => failure.includes("#224 cancellation") || failure.includes("#224 route cancellation") || failure.includes("#224 browser cancellation") || failure.includes("#224 SPA navigation")), result.failures.join("\n"));
+    assert.ok(result.failures.some((failure) => failure.includes("#224")), result.failures.join("\n"));
   }
 });
 

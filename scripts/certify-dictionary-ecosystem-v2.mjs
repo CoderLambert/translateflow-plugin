@@ -374,8 +374,6 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
     failures.push("required #224 in-flight Rich lookup cancellation report is missing or did not pass");
     return { status: isObject(report) ? "failed" : "missing" };
   }
-  requireEqual(report.browserCancellationPhase, "same-document-history-during-active-range", "#224 browser cancellation phase", failures);
-  requireSameJson(report.spaNavigationMethods, ["pushState", "replaceState"], "#224 SPA navigation methods", failures);
   const baselineResult = certifyRichLookupCancellationBaseline(baseline, runnerSha256, failures);
   const latency = report.cancellationLatency || {};
   if (!Number.isSafeInteger(latency.sampleCount) || latency.sampleCount < 10) failures.push("#224 active range cancellation latency requires at least 10 samples");
@@ -404,25 +402,60 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
   if (isFiniteNumber(latency.maxMs) && isFiniteNumber(latency.derivedCeilingMs) && latency.maxMs > latency.derivedCeilingMs) failures.push("#224 cancellation maximum exceeds the measured ceiling");
   if (isFiniteNumber(latency.p95Ms) && isFiniteNumber(latency.derivedCeilingMs) && latency.p95Ms > latency.derivedCeilingMs) failures.push("#224 cancellation p95 exceeds the measured ceiling");
   const routeLatency = report.routeCancellationLatency || {};
-  const routeSamples = Array.isArray(routeLatency.samplesMs) ? routeLatency.samplesMs : [];
-  const routeSummary = summarizeNearestRankSamples(routeSamples);
+  const routeRecords = Array.isArray(routeLatency.samples) ? routeLatency.samples : [];
+  const routeDurations = Array.isArray(routeLatency.samplesMs) ? routeLatency.samplesMs : [];
+  const routeSummary = summarizeNearestRankSamples(routeDurations);
   requireEqual(routeLatency.trigger, "same-document-history", "#224 route cancellation trigger", failures);
-  requireEqual(routeLatency.endpoint, "underlying-range-stop", "#224 route cancellation endpoint", failures);
-  requireEqual(routeLatency.clock, "performance.now", "#224 route cancellation high-resolution clock", failures);
-  requireEqual(routeLatency.metric, "milliseconds from route change to final active underlying range read stop", "#224 route cancellation metric", failures);
+  requireEqual(routeLatency.clock, "performance.now", "#224 route cancellation clock", failures);
   if (!Number.isSafeInteger(routeLatency.sampleCount) || routeLatency.sampleCount < 10) failures.push("#224 route cancellation requires at least 10 route-triggered samples");
-  if (!routeSummary || routeSamples.length !== routeLatency.sampleCount || routeSamples.length < 10) failures.push("#224 route cancellation requires at least 10 finite timing samples matching sampleCount");
+  if (routeRecords.length !== routeLatency.sampleCount || routeDurations.length !== routeLatency.sampleCount || routeRecords.length < 10) {
+    failures.push("#224 route cancellation requires at least 10 sample records and durations matching sampleCount");
+  }
+  const methodCounts = { pushState: 0, replaceState: 0 };
+  for (const [index, sample] of routeRecords.entries()) {
+    const label = `#224 route cancellation sample ${index + 1}`;
+    if (sample?.method === "pushState" || sample?.method === "replaceState") methodCounts[sample.method] += 1;
+    else failures.push(`${label} method must be pushState or replaceState`);
+    const timestamps = [
+      sample?.rangeReadStartedAtEpochMs,
+      sample?.routeStartEpochMs,
+      sample?.nativeCancelCompletedAtEpochMs,
+      sample?.rangeStopEpochMs
+    ];
+    if (timestamps.some((value) => !isFiniteNumber(value) || value < 1_000_000_000_000)) {
+      failures.push(`${label} must contain finite epoch-millisecond timestamps`);
+    } else {
+      const [rangeStarted, routeStarted, nativeCancelCompleted, rangeStopped] = timestamps;
+      if (!(rangeStarted <= routeStarted && routeStarted < nativeCancelCompleted && nativeCancelCompleted < rangeStopped)) {
+        failures.push(`${label} event order must be active range start, route start, completed native cancel, then final range stop`);
+      }
+      if (Math.abs((rangeStopped - routeStarted) - sample.durationMs) > 0.01) {
+        failures.push(`${label} duration must equal route-start to final range-stop elapsed time`);
+      }
+    }
+    requireEqual(sample?.endpoint, "opfs-readBlobRange-finally-after-native-cancel", `${label} endpoint`, failures);
+    requireEqual(sample?.rangeReadActiveAtRoute, true, `${label} active range at route change`, failures);
+    if (!isFiniteNumber(sample?.durationMs) || sample.durationMs < 0) failures.push(`${label} durationMs must be a finite non-negative number`);
+    if (routeDurations[index] !== sample?.durationMs) failures.push(`${label} duration does not match its samplesMs vector entry`);
+  }
+  if (methodCounts.pushState < 5 || methodCounts.replaceState < 5) failures.push("#224 route cancellation requires at least five pushState and five replaceState samples");
+  requireEqual(routeLatency.methodSampleCounts?.pushState, methodCounts.pushState, "#224 reported pushState sample count", failures);
+  requireEqual(routeLatency.methodSampleCounts?.replaceState, methodCounts.replaceState, "#224 reported replaceState sample count", failures);
+  if (!routeSummary || routeDurations.length !== routeLatency.sampleCount || routeDurations.length < 10) failures.push("#224 route cancellation requires at least 10 finite duration samples matching sampleCount");
   else {
     requireEqual(routeLatency.p50Ms, routeSummary.p50Ms, "#224 route cancellation p50", failures);
     requireEqual(routeLatency.p95Ms, routeSummary.p95Ms, "#224 route cancellation p95", failures);
     requireEqual(routeLatency.maxMs, routeSummary.maxMs, "#224 route cancellation maximum", failures);
   }
+  requireEqual(routeLatency.baselineMetric, baseline?.metric, "#224 route cancellation baseline metric", failures);
+  requireEqual(routeLatency.baselineInterpretation, "conservative-stop-latency-ceiling", "#224 route cancellation baseline interpretation", failures);
   requireEqual(routeLatency.baselineP95Ms, baselineResult.p95Ms, "#224 route cancellation baseline p95", failures);
   requireEqual(routeLatency.derivedCeilingMs, baselineResult.derivedCeilingMs, "#224 route cancellation derived ceiling", failures);
   requireEqual(routeLatency.ceilingPassed, true, "#224 route cancellation ceiling result", failures);
   if (isFiniteNumber(routeLatency.p95Ms) && isFiniteNumber(routeLatency.derivedCeilingMs) && routeLatency.p95Ms > routeLatency.derivedCeilingMs) failures.push("#224 route cancellation p95 exceeds its pinned baseline ceiling");
   if (isFiniteNumber(routeLatency.maxMs) && isFiniteNumber(routeLatency.derivedCeilingMs) && routeLatency.maxMs > routeLatency.derivedCeilingMs) failures.push("#224 route cancellation maximum exceeds its pinned baseline ceiling");
   if (!Number.isSafeInteger(report.cancelledLookupCount) || report.cancelledLookupCount < 1) failures.push("#224 cancelled lookup count is missing or zero");
+  if (Number.isSafeInteger(routeLatency.sampleCount) && Number.isSafeInteger(report.cancelledLookupCount) && report.cancelledLookupCount < routeLatency.sampleCount) failures.push("#224 cancelled lookup count must cover every measured route sample");
   requireEqual(report.postCancelRangeReads, 0, "#224 post-cancel range reads", failures);
   requireEqual(report.postCancelBlockDecodes, 0, "#224 post-cancel block decode starts", failures);
   if (!Number.isSafeInteger(report.maxConcurrentLookups) || report.maxConcurrentLookups < 1 || report.maxConcurrentLookups > 3) failures.push("#224 lookup concurrency is missing or exceeds 3");
@@ -430,7 +463,7 @@ function certifyRichLookupCancellation(report, baseline, runnerSha256, failures)
   if (!Number.isSafeInteger(report.freshResultsRendered) || report.freshResultsRendered < 1) failures.push("#224 did not prove a fresh selection result was rendered");
   requireEqual(report.providerCalls, 0, "#224 Provider calls", failures);
   requireEqual(report.externalRequests, 0, "#224 external requests", failures);
-  return { status: failures.length === before ? "passed" : "failed", browserCancellationPhase: report.browserCancellationPhase ?? null, spaNavigationMethods: Array.isArray(report.spaNavigationMethods) ? report.spaNavigationMethods : null, activeRangeCancellationSamples: report.activeRangeCancellationSamples ?? null, sampleCount: latency.sampleCount ?? null, baselineEvidence: baselineResult, baselineSampleCount: latency.baselineSampleCount ?? null, baselineP95Ms: latency.baselineP95Ms ?? null, p50Ms: latency.p50Ms ?? null, p95Ms: latency.p95Ms ?? null, maxMs: latency.maxMs ?? null, derivedCeilingMs: latency.derivedCeilingMs ?? null, routeCancellationLatency: { trigger: routeLatency.trigger ?? null, endpoint: routeLatency.endpoint ?? null, clock: routeLatency.clock ?? null, sampleCount: routeLatency.sampleCount ?? null, p50Ms: routeLatency.p50Ms ?? null, p95Ms: routeLatency.p95Ms ?? null, maxMs: routeLatency.maxMs ?? null, derivedCeilingMs: routeLatency.derivedCeilingMs ?? null, ceilingPassed: routeLatency.ceilingPassed ?? null }, maxConcurrentLookups: report.maxConcurrentLookups ?? null, postCancelRangeReads: report.postCancelRangeReads ?? null, postCancelBlockDecodes: report.postCancelBlockDecodes ?? null, lateStaleResultsRendered: report.lateStaleResultsRendered ?? null, freshResultsRendered: report.freshResultsRendered ?? null, providerCalls: report.providerCalls ?? null, externalRequests: report.externalRequests ?? null };
+  return { status: failures.length === before ? "passed" : "failed", activeRangeCancellationSamples: report.activeRangeCancellationSamples ?? null, sampleCount: latency.sampleCount ?? null, baselineEvidence: baselineResult, baselineSampleCount: latency.baselineSampleCount ?? null, baselineP95Ms: latency.baselineP95Ms ?? null, p50Ms: latency.p50Ms ?? null, p95Ms: latency.p95Ms ?? null, maxMs: latency.maxMs ?? null, derivedCeilingMs: latency.derivedCeilingMs ?? null, routeCancellationLatency: { trigger: routeLatency.trigger ?? null, clock: routeLatency.clock ?? null, sampleCount: routeLatency.sampleCount ?? null, pushStateSamples: methodCounts.pushState, replaceStateSamples: methodCounts.replaceState, endpoint: routeRecords[0]?.endpoint ?? null, baselineMetric: routeLatency.baselineMetric ?? null, baselineInterpretation: routeLatency.baselineInterpretation ?? null, p50Ms: routeLatency.p50Ms ?? null, p95Ms: routeLatency.p95Ms ?? null, maxMs: routeLatency.maxMs ?? null, derivedCeilingMs: routeLatency.derivedCeilingMs ?? null, ceilingPassed: routeLatency.ceilingPassed ?? null }, maxConcurrentLookups: report.maxConcurrentLookups ?? null, postCancelRangeReads: report.postCancelRangeReads ?? null, postCancelBlockDecodes: report.postCancelBlockDecodes ?? null, lateStaleResultsRendered: report.lateStaleResultsRendered ?? null, freshResultsRendered: report.freshResultsRendered ?? null, providerCalls: report.providerCalls ?? null, externalRequests: report.externalRequests ?? null };
 }
 
 function certifyRichLookupCancellationBaseline(baseline, actualRunnerSha256, failures) {
