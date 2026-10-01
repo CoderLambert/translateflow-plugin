@@ -75,3 +75,25 @@ This baseline does not claim that already-dispatched worker RPCs are cancelled;
 that runtime gap is tracked by required pending #224 and must have independent
 cancellation evidence before #207 can pass. These synthetic measurements do
 not substitute for an unavailable lawful commercial corpus.
+
+## Pre-change selection-change invalidation/fresh-dispatch baseline
+
+On unchanged `main` at `acbfa12a079a73d6eab0a1c17e7a8f63d856295b`, the
+same synthetic Alpha/Beta fixture was measured in 10 fresh stale→fresh
+selection transitions. Each transition first dispatched two stale dictionary
+lookups. The harness delayed their callbacks by 1,200 ms and asserted that zero
+had returned at the selection-change point; after fresh lookups completed, both
+old callbacks were observed and their stale results remained suppressed. The
+measurement ends when both fresh lookups are dispatched. All 10 samples passed,
+with no retry, failure, or Provider call.
+
+| Metric | Samples | Min | Median | Nearest-rank p95 | Max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fresh lookup dispatch after selection change (ms) | 10 | 235 | 288.5 | 295 | 295 |
+
+Set the stale-invalidation/fresh-dispatch ceiling to 2× the measured p95:
+590 ms. The factor follows the preferred-first latency rule above and allows
+runner variance beyond the observed 60 ms range. This is a baseline for UI
+invalidation and fresh work scheduling while prior callbacks are pending. It
+does not show that the background worker or range reads were aborted; #224 is
+responsible for proving that separate runtime contract.
