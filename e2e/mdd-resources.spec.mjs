@@ -230,7 +230,7 @@ test.describe("local MDD resource product and security behavior", () => {
 });
 
 async function attachMddFile(row, file, { success }) {
-  await row.getByRole("button", { name: "添加/替换 MDD 资源" }).click();
+  await row.getByRole("button", { name: /添加或替换 MDD 附件/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles(file);
   const status = row.page().locator("#status");
   if (success) await expect(status).toContainText("本地资源已更新", { timeout: 60_000 });

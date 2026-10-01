@@ -1,37 +1,12 @@
-export function curatedSourceMeta(source) {
-  if (source?.importerType === "ecdict-mdx-zip-v1") {
-    return [
-      `来源：${source.publisher}`,
-      "方向：EN → 简体中文",
-      "格式：富文本 MDX（ZIP）",
-      `上游审核版本：${source.upstreamRevision}`,
-      `ZIP 下载：${formatCuratedBytes(source.downloadBytes)}`,
-      `MDX 安装：${formatCuratedBytes(source.mdx.bytes)} + 查询索引（最多 8 MiB）`,
-      `许可：${source.sourceLicenseLabel}`,
-      "Release 资产经 release-assets.githubusercontent.com 提供",
-      "信任：上游 / 社区；非 TranslateFlow 官方词典"
-    ];
-  }
-  return [
-    `来源：${source.publisher}`,
-    `格式：${source.sourceFormat}`,
-    `方向：${source.languageDirection}`,
-    `固定版本：${shortCuratedRevision(source.upstreamRevision)}`,
-    `上游下载：${formatCuratedBytes(source.downloadBytes)}`,
-    `本地最多保留 ${source.selection.maxRecords.toLocaleString()} 条`,
-    "信任：上游 / 社区，非 TranslateFlow 官方词典"
-  ];
-}
-
 export function getCuratedMdxInstallPresentation(source, dictionary) {
   if (!dictionary) {
     return {
       status: "not-installed",
       kind: "warning",
-      badgeLabel: "上游 / 社区",
+      badgeLabel: "精选上游",
       actionLabel: "安装",
       detail:
-        "点击后将从固定 GitHub Release 下载；Chrome 还会询问该 Release 使用的精确 GitHub 资产 CDN 权限。"
+        "点击后直接从已锁定的上游发行版本下载。版本来源、词典内容日期和兼容性审核日期会分别显示。"
     };
   }
 
@@ -50,10 +25,10 @@ export function getCuratedMdxInstallPresentation(source, dictionary) {
     return {
       status: "needs-reinstall",
       kind: "warning",
-      badgeLabel: "需修复",
+      badgeLabel: "需要修复",
       actionLabel: "重新安装",
       detail:
-        "本地 MDX 或索引缺失/损坏。重新安装会先检查新文件，再替换当前词典。"
+        "本地词典文件或查询信息无法正常读取。重新安装会先完成检查，再替换当前副本。"
     };
   }
 
@@ -66,20 +41,20 @@ export function getCuratedMdxInstallPresentation(source, dictionary) {
     return {
       status: "current",
       kind: "success",
-      badgeLabel: "当前审核版本",
+      badgeLabel: "已安装 · 可用",
       actionLabel: "重新安装",
       detail:
-        `已安装审核锁定版本 ${source.upstreamRevision}；此词典只会在新审核版本明确发布后显示更新。`
+        `已安装上游版本 ${source.upstreamRevision}。兼容性审核状态不代表词典内容仍在更新。`
     };
   }
 
   return {
     status: "update-available",
     kind: "warning",
-    badgeLabel: "可更新",
+    badgeLabel: "有已审核更新",
     actionLabel: "更新",
     detail:
-      `已安装 ${currentVersion || "未知版本"}；当前审核版本为 ${source?.upstreamRevision || "未知"}。新文件通过完整检查后才会替换当前词典。`
+      `已安装上游版本 ${currentVersion || "未知版本"}；可安装的已审核版本为 ${source?.upstreamRevision || "未知"}。检查通过后才会替换当前副本。`
   };
 }
 
@@ -92,10 +67,10 @@ export function getCuratedInstallPresentation(
     return {
       status: "not-installed",
       kind: "warning",
-      badgeLabel: "上游 / 社区",
+      badgeLabel: "精选上游",
       actionLabel: "下载并安装",
       detail:
-        "点击后直接从上游下载；TranslateFlow 不镜像该词典内容。"
+        "由你主动从已锁定的上游版本下载；TranslateFlow 不镜像该词典内容。"
     };
   }
 
@@ -103,10 +78,10 @@ export function getCuratedInstallPresentation(
     return {
       status: "needs-reinstall",
       kind: "warning",
-      badgeLabel: "需重装",
+      badgeLabel: "需要修复",
       actionLabel: "重新安装",
       detail:
-        "本地文件缺失或损坏；重新安装会从审核锁定的上游版本重新下载并验证。"
+        "本地词典文件或完整性检查异常；重新安装会重新下载并验证。"
     };
   }
 
@@ -116,20 +91,20 @@ export function getCuratedInstallPresentation(
     return {
       status: "current",
       kind: "success",
-      badgeLabel: "当前版本",
+      badgeLabel: "已安装 · 可用",
       actionLabel: "重新安装",
       detail:
-        "已安装当前审核版本；重新安装仍会重新下载并完整验证。"
+        "此目录版本已安装；词典内容日期与兼容性审核日期分别列出。"
     };
   }
 
   return {
     status: "update-available",
     kind: "warning",
-    badgeLabel: "可更新",
+    badgeLabel: "有已审核更新",
     actionLabel: "更新",
     detail:
-      `已安装 ${String(active.packVersion || "未知版本")}；当前审核版本 ${String(source?.output?.packVersion || "未知")}。更新会先验证新版本，再替换当前版本。`
+      "已安装版本与可安装的已审核目录版本不同。更新会先验证新版本，再替换当前副本。"
   };
 }
 
@@ -147,7 +122,7 @@ export function describeCuratedProgress(
     return `正在转换：已保留 ${Number(message.retainedRecords || 0).toLocaleString()} 个词条…`;
   }
   if (message.phase === "stage") {
-    return "正在写入隔离区并准备完整性验证…";
+    return "正在保存词典并检查文件完整性…";
   }
   return "正在处理…";
 }

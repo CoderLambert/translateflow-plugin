@@ -70,14 +70,14 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
     });
     await expect(installed).toBeVisible();
     await expect(installed).toContainText("3,402,564 条词目");
-    await expect(installed).toContainText("可查词");
+    await expect(installed).toContainText("可用");
 
     await options.reload();
     installed = options.locator("#richMdictInstalledList .site-row").filter({
       hasText: "简明英汉字典增强版"
     });
     await expect(installed).toBeVisible({ timeout: 30_000 });
-    await expect(installed).toContainText("可查词");
+    await expect(installed).toContainText("可用");
 
     const corpusLookups = [];
     for (const expected of lock.independentDecode.recordExcerpts) {

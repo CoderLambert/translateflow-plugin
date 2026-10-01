@@ -210,9 +210,12 @@ export function publicRichDictionary(entry) {
     format: clampText(active.format || "", 40),
     packVersion: clampText(active.packVersion || "", 120),
     sourceSize: Number(active.sourceSize || 0),
+    indexSize: Number(active.indexSize || 0),
     entryCount: Number(active.entryCount || 0),
     resourceCount: resourceSources.length,
     resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
+    installedBytes: Number(active.sourceSize || 0) + Number(active.indexSize || 0) +
+      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
     ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),

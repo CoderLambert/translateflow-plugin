@@ -88,12 +88,12 @@
       </div>
 
       <div class="dictionary-library-group" aria-labelledby="dictionaryDownloadHeading">
-        <h3 id="dictionaryDownloadHeading">下载词典</h3>
-        <p class="hint">下载项不会进入扩展基础安装包。官方推荐与上游 / 社区词典使用不同的信任标识。</p>
+        <h3 id="dictionaryDownloadHeading">精选上游与官方词典</h3>
+        <p class="hint">每项会分别标示上游版本、词典内容日期、TranslateFlow 兼容性审核与下载大小。下载只在你主动操作后进行。</p>
 
-        <h4>官方推荐</h4>
-        <p class="hint">只有完成来源、许可和质量审核的 TranslateFlow 官方词典包才会显示在这里。</p>
-        <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取官方推荐词典状态…</div>
+        <h4>官方词典</h4>
+        <p class="hint">只有通过来源、再分发许可、质量审核与发布签名的词典才会标为官方。当前没有符合条件的官方词典。</p>
+        <div id="dictionaryPacksList" class="site-list" aria-live="polite">正在读取官方词典状态…</div>
 
         <h4>精选上游</h4>
         <p class="hint">直接从固定的上游版本下载，并由 TranslateFlow 在本机按审核规则转换。内容属于上游 / 社区，不代表 TranslateFlow 官方背书或重新授权。</p>
@@ -107,8 +107,11 @@
 
       <div class="dictionary-library-group" aria-labelledby="dictionaryInstalledHeading">
         <h3 id="dictionaryInstalledHeading">已安装</h3>
-        <p class="hint">这里列出你主动下载或导入的额外词典，并显示来源、版本 / 导入标识和占用空间。可随时删除。</p>
+        <p class="hint">这里列出已安装的额外词典，包含来源、兼容状态、本地版本、占用空间和管理操作。</p>
+        <h4>词典包与本地词典</h4>
         <div id="installedDictionaryList" class="site-list" aria-live="polite">正在读取已安装词典…</div>
+        <h4>富文本词典</h4>
+        <div id="richMdictInstalledList" class="site-list" aria-live="polite">正在读取已安装的富文本词典…</div>
       </div>
 
       <div class="dictionary-library-group" aria-labelledby="dictionaryImportHeading">
@@ -136,7 +139,7 @@
         </div>
 
         <div class="data-source-card">
-          <strong>MDict 富文本词典（Rich Viewer）</strong>
+          <strong>MDX 富文本词典</strong>
           <p>适用于 HTML 格式的 MDX 词典。设置安装后可附加同名 .mdd 与编号附件；只显示通过检查的本地图片、音频和受限样式，不运行脚本或加载远程资源。</p>
           <label for="richMdictFile">选择富文本 MDX 文件</label>
           <input id="richMdictFile" type="file" accept=".mdx" />
@@ -148,12 +151,11 @@
             </div>
             <p id="richMdictImportProgress" class="hint" aria-live="polite"></p>
           </div>
-          <div id="richMdictInstalledList" class="site-list" aria-live="polite">正在读取已安装的富文本词典…</div>
         </div>
 
         <div class="data-source-card">
           <strong>MDict (.mdx)</strong>
-          <p>结构化导入通道仅接受可安全解释为“英文词头 → 简体中文释义”的纯文本 MDX。仍不支持 .mdd、LZO、GBK / Big5 与 Compact / StyleSheet 结构化转换。富文本或只想查看词典释义时，请使用上方 Rich Viewer。</p>
+          <p>如果词典是“英文词头 → 简体中文纯文本释义”，可以用此方式转换为可参与本地查词的词典。当前不支持 .mdd、LZO、GBK / Big5，也不支持部分 MDX 排版结构。若希望保留 HTML 富文本，请使用上方的 MDX 富文本方式。</p>
           <label for="mdictFile">选择 MDX 文件</label>
           <input id="mdictFile" type="file" accept=".mdx" />
 

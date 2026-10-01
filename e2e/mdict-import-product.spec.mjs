@@ -73,14 +73,14 @@ test.describe("strict MDict visible local import", () => {
     await expect(installed).toBeVisible();
     await expect(installed).toContainText("本地导入");
     await expect(installed).toContainText("MDict");
-    await expect(installed).toContainText("用户提供 · 未验证");
+    await expect(installed).toContainText("本地导入 · 用户提供 / 未验证");
 
     await options.reload();
     const reloadedInstalled = options
       .locator("#installedDictionaryList .site-row")
       .filter({ hasText: "Issue 167 MDict" });
     await expect(reloadedInstalled).toBeVisible();
-    await expect(reloadedInstalled).toContainText("用户提供 · 未验证");
+    await expect(reloadedInstalled).toContainText("本地导入 · 用户提供 / 未验证");
 
     const page = await harness.open("/selection");
     await page.evaluate(() => {

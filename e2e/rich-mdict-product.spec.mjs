@@ -63,7 +63,7 @@ test.describe("Rich MDict local product and security behavior", () => {
       hasText: "Rich Fixture Dictionary"
     });
     await expect(installed).toBeVisible();
-    await expect(installed).toContainText("可查词");
+    await expect(installed).toContainText("可用");
 
     const page = await harness.open("/selection");
     const remoteRequests = [];

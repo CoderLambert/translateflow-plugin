@@ -48,29 +48,29 @@ test.describe("Settings information architecture", () => {
       library.locator("h3").allTextContents()
     ).resolves.toEqual([
       "内置词典",
-      "下载词典",
+      "精选上游与官方词典",
       "已安装",
       "本地导入"
     ]);
     await expect(
-      library.getByRole("heading", { name: "官方推荐", exact: true })
+      library.getByRole("heading", { name: "官方词典", exact: true })
     ).toBeVisible();
     await expect(
       library.getByRole("heading", { name: "精选上游", exact: true })
     ).toBeVisible();
 
     await expect(page.locator("#dictionaryPacksList"))
-      .toContainText("暂无官方推荐词典");
+      .toContainText("当前没有符合发布条件的官方词典");
     const curated = page
       .locator("#curatedDictionaryList .site-row")
       .filter({ hasText: "ECDICT 高频英汉" });
     await expect(curated).toBeVisible();
-    await expect(curated).toContainText("上游 / 社区");
+    await expect(curated).toContainText("精选上游 · 非官方");
     await expect(
-      curated.getByRole("link", { name: "上游项目" })
+      curated.getByRole("link", { name: "访问上游项目" })
     ).toBeVisible();
     await expect(
-      curated.getByRole("link", { name: "许可" })
+      curated.getByRole("link", { name: "查看上游许可说明" })
     ).toBeVisible();
 
     await expect(page.locator("#stardictFiles")).toBeVisible();

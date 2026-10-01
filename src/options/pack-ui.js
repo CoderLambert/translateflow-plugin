@@ -75,7 +75,7 @@ export function initializePackUi({
   async function refresh() {
     if (bundledList) bundledList.textContent = "正在检查内置词典…";
     if (installedList) installedList.textContent = "正在读取已安装词典…";
-    if (optionalList) optionalList.textContent = "正在读取官方推荐词典状态…";
+    if (optionalList) optionalList.textContent = "正在读取官方词典状态…";
 
     const [bundledResponse, optionalResponse] = await Promise.all([
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS }),
@@ -175,7 +175,7 @@ export function initializePackUi({
         .map((pack) => ({ source, pack })));
 
     if (!declared.length) {
-      optionalList.textContent = "暂无官方推荐词典。只有完成来源、许可、质量与发布审核的 TranslateFlow 词典包才会出现在这里。";
+      optionalList.textContent = "当前没有符合发布条件的官方词典。精选上游和本地导入词典会分别显示在各自栏目中。";
       return;
     }
 

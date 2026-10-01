@@ -501,6 +501,69 @@ label {
   line-height: 1.5;
 }
 
+.dictionary-v2-metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 10px 0 4px;
+  color: var(--tf-text-secondary);
+}
+
+.dictionary-v2-metadata-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dictionary-v2-metadata-item dt {
+  color: var(--tf-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.dictionary-v2-metadata-item dd {
+  margin: 1px 0 0;
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.dictionary-v2-metadata-item a {
+  color: var(--tf-text-secondary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.dictionary-v2-metadata-item a:focus-visible,
+.dictionary-v2-limitations summary:focus-visible {
+  outline: none;
+  border-radius: 3px;
+  box-shadow: var(--tf-focus-ring);
+}
+
+.dictionary-v2-limitations {
+  margin-top: 8px;
+  color: var(--tf-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dictionary-v2-limitations summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--tf-text-secondary);
+  font-weight: 650;
+}
+
+.dictionary-v2-limitations ul {
+  margin: 6px 0 0;
+  padding-inline-start: 20px;
+}
+
+.dictionary-v2-limitations li + li {
+  margin-top: 4px;
+}
+
 .dictionary-repair-help {
   max-width: 760px;
   margin-top: 10px;
@@ -712,6 +775,19 @@ kbd {
 
   .site-actions {
     justify-content: flex-start;
+  }
+
+  .dictionary-v2-metadata {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dictionary-pack-row .site-actions {
+    width: 100%;
+  }
+
+  .dictionary-pack-row .site-actions button {
+    flex: 1 1 auto;
+    min-width: 120px;
   }
 }
 

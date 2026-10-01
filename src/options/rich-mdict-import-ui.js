@@ -4,6 +4,15 @@ import { parseRichMdictHeader } from "../background/packs/importers/mdict-rich-m
 import { createRichMdictImportController } from "./rich-mdict-import-controller.js";
 import { createMddResourceImportController } from "./mdd-resource-import-controller.js";
 import { appendRichMdictPreferencesControls } from "./rich-mdict-preferences-ui.js";
+import { getDictionaryCatalogEntry } from "../shared/dictionary-catalog-v2.js";
+import {
+  formatDictionaryBytes as formatBytes,
+  getCatalogDictionaryRows,
+  getDictionaryHealthPresentation,
+  renderCatalogLimitations,
+  renderDictionaryMetadata,
+  renderLocalRichDictionaryMetadata
+} from "./dictionary-library-v2-presentation.js";
 
 export function initializeRichMdictImportUi({
   runtime = globalThis.chrome?.runtime,
@@ -84,7 +93,7 @@ export function initializeRichMdictImportUi({
         metaLine("编码", header.encoding?.name || ""),
         metaLine("MDict 版本", header.generatedByEngineVersion),
         metaLine("词典来源", "本地导入 · 用户提供 / 未验证 · MDX"),
-        metaLine("检查范围", "头部兼容性已检查；完整索引将在安装时校验"),
+        metaLine("检查状态", "文件头已检查，安装时会再次核对完整词典"),
         metaLine("显示方式", "安全预览；安装后可附加同名 MDD 的本地媒体和受限样式")
       );
       importButton.disabled = false;
@@ -179,25 +188,45 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
     row.className = "site-row dictionary-pack-row";
     row.dataset.dictionaryId = String(dictionary.id || "");
     row.dataset.status = String(dictionary.status || "unknown");
+    row.setAttribute("role", "group");
     const summary = document.createElement("div");
     summary.className = "site-summary";
+    const heading = document.createElement("div");
+    heading.className = "dictionary-pack-heading";
     const title = document.createElement("strong");
     title.textContent = dictionary.title || dictionary.fileName || "Rich MDict";
-    summary.appendChild(title);
-    const details = document.createElement("small");
-    details.className = "dictionary-pack-detail";
-    details.textContent = [
-      dictionary.trustLabel || "本地导入 · 用户提供 / 未验证",
-      dictionary.status === "ready" ? "可查词" : `状态：${dictionary.status || "未知"}`,
-      `${Number(dictionary.entryCount || 0).toLocaleString()} 条词目`,
-      `MDD 附件 ${Number(dictionary.resourceCount || 0)} 个`,
-      formatBytes(dictionary.sourceSize)
-    ].join(" · ");
-    summary.appendChild(details);
-    if (dictionary.error) {
+    title.id = `rich-dictionary-${index}`;
+    row.setAttribute("aria-labelledby", title.id);
+    const health = getDictionaryHealthPresentation(dictionary.status);
+    const badge = document.createElement("span");
+    badge.className = "dictionary-health-badge";
+    badge.dataset.kind = health.kind;
+    badge.textContent = health.label;
+    badge.setAttribute("aria-label", `词典状态：${health.label}`);
+    heading.append(title, badge);
+    summary.appendChild(heading);
+
+    const catalog = dictionary.catalog || null;
+    const catalogEntry = catalog ? getDictionaryCatalogEntry(catalog.entryId) : null;
+    const installedBytes = Number(dictionary.installedBytes) ||
+      Number(dictionary.sourceSize || 0) + Number(dictionary.indexSize || 0) + Number(dictionary.resourceBytes || 0);
+    if (catalogEntry) {
+      renderDictionaryMetadata(summary, getCatalogDictionaryRows(catalogEntry, {
+        installedCatalog: catalog,
+        installedSize: installedBytes,
+        entryCount: dictionary.entryCount,
+        resourceCount: dictionary.resourceCount,
+        resourceBytes: dictionary.resourceBytes,
+        includeDownload: false
+      }));
+      renderCatalogLimitations(summary, catalogEntry);
+    } else {
+      renderLocalRichDictionaryMetadata(summary, dictionary, installedBytes);
+    }
+    if (health.detail && health.kind !== "success") {
       const failure = document.createElement("small");
       failure.className = "dictionary-pack-detail";
-      failure.textContent = dictionary.error;
+      failure.textContent = health.detail;
       summary.appendChild(failure);
     }
 
@@ -216,6 +245,7 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
     const attach = document.createElement("button");
     attach.type = "button";
     attach.textContent = "添加/替换 MDD 资源";
+    attach.setAttribute("aria-label", `为${title.textContent}添加或替换 MDD 附件`);
     attach.dataset.action = "attach-mdd-resources-button";
     const resourceProgress = document.createElement("small");
     resourceProgress.className = "dictionary-pack-detail";
@@ -272,6 +302,7 @@ function renderInstalled(container, dictionaries, { runtime, setStatus, refreshI
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "删除";
+    remove.setAttribute("aria-label", `删除${title.textContent}`);
     remove.dataset.action = "uninstall";
     remove.disabled = !dictionary.id;
     remove.addEventListener("click", async () => {
@@ -313,7 +344,7 @@ function userMessage(error) {
     return "该 MDX 使用当前富文本 Viewer 尚不支持的版本或压缩功能。";
   }
   if (["MDICT_CORRUPT", "RICH_MDICT_CORRUPT"].includes(error?.code)) {
-    return "MDX 文件损坏或索引校验失败，未安装。";
+    return "MDX 文件损坏或完整性检查失败，未安装。";
   }
   return error?.message || "富文本 MDict 安装失败。";
 }
@@ -322,7 +353,7 @@ function userMddMessage(error) {
   if (error?.name === "AbortError") return "已取消 MDD 资源导入，原有附件继续可用。";
   if (error?.code === "RICH_MDD_INPUT") return "MDD 文件名需与已安装 MDX 同名，并按 .1.mdd、.2.mdd 连续编号。";
   if (error?.code === "RICH_MDD_LIMIT" || error?.code === "RICH_MDD_QUOTA") return "MDD 文件或本地空间超过当前安全上限，原有附件保留。";
-  if (["RICH_MDD_CORRUPT", "MDICT_CORRUPT"].includes(error?.code)) return "MDD 文件损坏、索引校验失败或资源类型不受支持，原有附件保留。";
+  if (["RICH_MDD_CORRUPT", "MDICT_CORRUPT"].includes(error?.code)) return "MDD 文件损坏、附件检查失败或资源类型不受支持，原有附件保留。";
   return error?.message || "MDD 资源导入失败，原有附件保留。";
 }
 
@@ -338,9 +369,9 @@ function progressLabel(phase) {
 
 function resourceProgressLabel(phase) {
   if (phase === "preflight") return "检查词典匹配和本地空间…";
-  if (phase === "index") return "正在建立 MDD 索引…";
+  if (phase === "index") return "正在检查附件…";
   if (phase === "store-source") return "正在保存离线 MDD 文件…";
-  if (phase === "store-index") return "正在保存紧凑资源索引…";
+  if (phase === "store-index") return "正在保存附件信息…";
   if (phase === "commit") return "正在复核并启用 MDD 附件…";
   if (phase === "done") return "MDD 附件已启用。";
   return "正在处理 MDD 资源…";
@@ -354,12 +385,6 @@ function metaLine(label, value) {
   text.textContent = String(value || "");
   line.append(term, text);
   return line;
-}
-
-function formatBytes(value) {
-  const bytes = Number(value || 0);
-  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MiB";
-  return Math.ceil(bytes / 1024) + " KiB";
 }
 
 function fileBaseName(value) {

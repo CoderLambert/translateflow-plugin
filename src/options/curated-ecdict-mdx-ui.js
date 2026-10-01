@@ -1,5 +1,9 @@
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
-import { getCatalogPermissionOrigins } from "../shared/dictionary-catalog-v2.js";
+import {
+  getCatalogPermissionOrigins,
+  getDictionaryCatalogEntry,
+  getDictionaryCatalogEntryForRecipe
+} from "../shared/dictionary-catalog-v2.js";
 import {
   createRichMdictImportController
 } from "./rich-mdict-import-controller.js";
@@ -7,10 +11,15 @@ import {
   CURATED_ECDICT_MDX_WORKER_MESSAGES
 } from "./workers/curated-ecdict-mdx-worker-protocol.js";
 import {
-  curatedSourceMeta,
   formatCuratedBytes,
   getCuratedMdxInstallPresentation
 } from "./curated-dictionary-presentation.js";
+import {
+  getCatalogDictionaryRows,
+  getCuratedMdxErrorMessage,
+  renderCatalogLimitations,
+  renderDictionaryMetadata
+} from "./dictionary-library-v2-presentation.js";
 
 const WORKER_PATH = "src/options/workers/curated-ecdict-mdx-worker.js";
 
@@ -33,6 +42,7 @@ export function createCuratedEcdictMdxUi({
       (item) => item.id === source.output.packId
     ) || null;
     const presentation = getCuratedMdxInstallPresentation(source, dictionary);
+    const catalogEntry = getDictionaryCatalogEntryForRecipe(source.id);
     const row = document.createElement("div");
     row.className = "site-row dictionary-pack-row";
     row.dataset.recipeId = source.id;
@@ -56,39 +66,21 @@ export function createCuratedEcdictMdxUi({
     description.textContent = source.description;
     summary.appendChild(description);
     const meta = document.createElement("div");
-    meta.className = "dictionary-pack-meta";
-    for (const item of curatedSourceMeta(source)) {
-      const value = document.createElement("span");
-      value.textContent = item;
-      meta.appendChild(value);
-    }
+    const installedCatalog = dictionary?.catalog || null;
+    const installedEntry = installedCatalog
+      ? getDictionaryCatalogEntry(installedCatalog.entryId)
+      : catalogEntry;
+    renderDictionaryMetadata(meta, getCatalogDictionaryRows(installedEntry, {
+      installedCatalog,
+      installedSize: dictionary?.installedBytes,
+      entryCount: dictionary?.entryCount || source.mdx.entryCount,
+      ...(dictionary ? {
+        resourceCount: dictionary.resourceCount,
+        resourceBytes: dictionary.resourceBytes
+      } : {})
+    }));
     summary.appendChild(meta);
-
-    const links = document.createElement("div");
-    links.className = "dictionary-pack-meta";
-    links.append(
-      makeLink("ECDICT 上游项目", source.upstreamRepository),
-      makeLink("仓库许可证", source.sourceLicenseUrl)
-    );
-    summary.appendChild(links);
-
-    const licenseNotice = document.createElement("small");
-    licenseNotice.className = "dictionary-pack-license";
-    licenseNotice.textContent = source.sourceLicenseNotice;
-    summary.appendChild(licenseNotice);
-
-    const limitations = document.createElement("details");
-    limitations.className = "dictionary-pack-limitations";
-    const limitationsTitle = document.createElement("summary");
-    limitationsTitle.textContent = "来源限制与使用说明";
-    const limitationsList = document.createElement("ul");
-    for (const text of source.knownLimitations) {
-      const item = document.createElement("li");
-      item.textContent = text;
-      limitationsList.appendChild(item);
-    }
-    limitations.append(limitationsTitle, limitationsList);
-    summary.appendChild(limitations);
+    renderCatalogLimitations(summary, installedEntry);
 
     detailNode = document.createElement("small");
     detailNode.className = "dictionary-pack-detail";
@@ -99,19 +91,25 @@ export function createCuratedEcdictMdxUi({
     const actions = document.createElement("div");
     actions.className = "site-actions";
     if (active?.sourceId === source.id) {
-      actions.append(makeActionButton("取消", "cancel", () => cancelActive()));
+      const cancel = makeActionButton("取消", "cancel", () => cancelActive());
+      cancel.setAttribute("aria-label", `取消${source.label}安装`);
+      actions.append(cancel);
     } else if (!richMdictError && presentation.status !== "identity-conflict") {
-      actions.append(makeActionButton(
+      const installButton = makeActionButton(
         presentation.actionLabel,
         dictionary ? "reinstall" : "install",
         (button) => install(source, dictionary, button)
-      ));
+      );
+      installButton.setAttribute("aria-label", `${presentation.actionLabel} ${source.label}`);
+      actions.append(installButton);
       if (dictionary) {
-        actions.append(makeActionButton(
+        const remove = makeActionButton(
           "删除",
           "delete",
           (button) => uninstall(source, button)
-        ));
+        );
+        remove.setAttribute("aria-label", `删除${source.label}`);
+        actions.append(remove);
       }
     }
     row.append(summary, actions);
@@ -128,9 +126,9 @@ export function createCuratedEcdictMdxUi({
       }
       const granted = await permissions.request({ origins });
       if (!granted) {
-        throw new Error(
-          "未授予 ECDICT GitHub Release 和其精确资产 CDN 的下载权限。"
-        );
+        const error = new Error("下载权限未获准。");
+        error.code = "DICTIONARY_PERMISSION_DENIED";
+        throw error;
       }
 
       const requestId = makeRequestId(cryptoProvider);
@@ -142,7 +140,7 @@ export function createCuratedEcdictMdxUi({
         phase: "download",
         richController: null
       };
-      setLocal(source.id, "开始从固定 GitHub Release 下载…");
+      setLocal(source.id, "正在连接已审核的上游词典…");
       await refresh();
 
       const ready = await waitForEcdictMdxWorker(
@@ -160,7 +158,7 @@ export function createCuratedEcdictMdxUi({
       active.worker = null;
       active.phase = "rich-import";
       active.richController = getRichMdictController();
-      setLocal(source.id, "ZIP 校验通过，正在建立富文本 MDX 索引并保存离线词典…");
+      setLocal(source.id, "上游文件检查通过，正在保存并检查离线词典…");
       await refresh();
 
       const mdxFile = normalizeExtractedMdxFile(ready.file, source);
@@ -173,7 +171,7 @@ export function createCuratedEcdictMdxUi({
       const dictionary = installed.commit?.dictionary || {};
       setLocal(
         source.id,
-        `已安装审核版本 ${source.upstreamRevision} · ${formatCuratedBytes(installed.ready.metadata.sourceSize)} MDX · ${Number(installed.ready.metadata.entryCount || 0).toLocaleString()} 词条。`
+        `已安装上游版本 ${source.upstreamRevision} · ${formatCuratedBytes(installed.ready.metadata.sourceSize)} · ${Number(installed.ready.metadata.entryCount || 0).toLocaleString()} 词条。`
       );
       document.dispatchEvent(
         new CustomEvent("translateflow:dictionary-state-changed")
@@ -184,9 +182,9 @@ export function createCuratedEcdictMdxUi({
         source.id,
         error?.name === "AbortError"
           ? "安装已取消；原有健康版本保持可用。"
-          : error?.message || String(error)
+          : getCuratedMdxErrorMessage(error, active?.phase)
       );
-      setStatus?.(error?.message || String(error), error?.name !== "AbortError");
+      setStatus?.(getCuratedMdxErrorMessage(error, active?.phase), error?.name !== "AbortError");
     } finally {
       active?.worker?.terminate?.();
       active = null;
@@ -205,7 +203,7 @@ export function createCuratedEcdictMdxUi({
         throw responseError(response, "ECDICT 富文本词典删除失败。");
       }
       stateBySource.delete(source.id);
-      setStatus?.(`${source.label} 已删除，MDX 与索引文件已清理。`);
+      setStatus?.(`${source.label} 已删除。`);
       document.dispatchEvent(
         new CustomEvent("translateflow:dictionary-state-changed")
       );
@@ -337,10 +335,10 @@ function normalizeExtractedMdxFile(value, source) {
 
 function describeRichMdictProgress(phase) {
   if (phase === "preflight") return "检查本地空间并准备安全安装…";
-  if (phase === "index") return "正在检查 MDX 结构并建立查询索引…";
+  if (phase === "index") return "正在检查词典结构…";
   if (phase === "store-source") return "正在保存离线 MDX 文件…";
-  if (phase === "store-index") return "正在保存本地查询索引…";
-  if (phase === "commit") return "正在后台重建索引并启用词典…";
+  if (phase === "store-index") return "正在保存本地查询信息…";
+  if (phase === "commit") return "正在复核并启用词典…";
   if (phase === "done") return "富文本 MDX 已启用。";
   return "正在处理富文本 MDX…";
 }
@@ -349,13 +347,13 @@ function describeCuratedMdxProgress(message, source) {
   if (message.phase === "download") {
     const loaded = Number(message.inputBytes || 0);
     return loaded
-      ? `下载审核 Release：${formatCuratedBytes(loaded)} / ${formatCuratedBytes(source.downloadBytes)}`
-      : "正在连接固定 GitHub Release 与资产 CDN…";
+      ? `正在下载词典：${formatCuratedBytes(loaded)} / ${formatCuratedBytes(source.downloadBytes)}`
+      : "正在连接已审核的上游词典…";
   }
   if (message.phase === "extract") {
-    return `正在解压并校验 MDX：${formatCuratedBytes(message.outputBytes || 0)} / ${formatCuratedBytes(source.mdx.bytes)}`;
+    return `正在检查词典文件：${formatCuratedBytes(message.outputBytes || 0)} / ${formatCuratedBytes(source.mdx.bytes)}`;
   }
-  return "正在验证固定上游词典…";
+  return "正在检查上游词典…";
 }
 
 function makeActionButton(label, action, callback) {
@@ -365,15 +363,6 @@ function makeActionButton(label, action, callback) {
   button.dataset.action = action;
   button.addEventListener("click", () => callback(button));
   return button;
-}
-
-function makeLink(label, href) {
-  const link = document.createElement("a");
-  link.href = href;
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.textContent = label;
-  return link;
 }
 
 function makeRequestId(cryptoProvider) {

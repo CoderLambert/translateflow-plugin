@@ -121,10 +121,10 @@ test("curated install presentation distinguishes install, current, repair and up
     {
       status: "not-installed",
       kind: "warning",
-      badgeLabel: "上游 / 社区",
+      badgeLabel: "精选上游",
       actionLabel: "下载并安装",
       detail:
-        "点击后直接从上游下载；TranslateFlow 不镜像该词典内容。"
+        "由你主动从已锁定的上游版本下载；TranslateFlow 不镜像该词典内容。"
     }
   );
 
@@ -144,7 +144,7 @@ test("curated install presentation distinguishes install, current, repair and up
         packVersion: source.output.packVersion
       }
     }).badgeLabel,
-    "需重装"
+    "需要修复"
   );
 
   const update = getCuratedInstallPresentation(
@@ -157,10 +157,8 @@ test("curated install presentation distinguishes install, current, repair and up
     }
   );
   assert.equal(update.status, "update-available");
-  assert.equal(update.badgeLabel, "可更新");
+  assert.equal(update.badgeLabel, "有已审核更新");
   assert.equal(update.actionLabel, "更新");
-  assert.match(
-    update.detail,
-    /2024-older-reviewed.*2025-03-28-bc015ed2/u
-  );
+  assert.match(update.detail, /可安装的已审核目录版本不同/u);
+  assert.doesNotMatch(update.detail, /2024-older-reviewed/u);
 });

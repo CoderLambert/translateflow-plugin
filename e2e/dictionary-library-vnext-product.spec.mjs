@@ -368,10 +368,10 @@ async function readDictionaryIdentity(options, ids) {
 }
 
 async function attachMddFile(row, file) {
-  await row.getByRole("button", { name: "添加/替换 MDD 资源" }).click();
+  await row.getByRole("button", { name: /添加或替换 MDD 附件/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles(file);
   await expect(row.page().locator("#status")).toContainText("本地资源已更新", { timeout: 60_000 });
-  await expect(row).toContainText("MDD 附件 1 个");
+  await expect(row).toContainText("1 个 MDD 文件");
 }
 
 async function readMddResource(harness, page, dictionaryId, path) {

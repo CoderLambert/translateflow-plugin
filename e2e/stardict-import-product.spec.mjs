@@ -64,7 +64,7 @@ test.describe("StarDict visible local import product flow", () => {
       .filter({ hasText: "Issue 165 E2E Dictionary" });
     await expect(installed).toBeVisible();
     await expect(installed).toContainText("本地导入");
-    await expect(installed).toContainText("用户提供 · 未验证");
+    await expect(installed).toContainText("本地导入 · 用户提供 / 未验证");
     await expect(installed).toContainText("StarDict");
 
     await options.reload();
