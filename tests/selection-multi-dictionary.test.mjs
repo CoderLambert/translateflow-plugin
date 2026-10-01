@@ -226,9 +226,123 @@ test("rich dictionary lookup scheduler caps concurrency and drops stale queued w
   assert.equal(lookupMessages().length, 4, "stale queued selection work must not issue new background lookups");
 });
 
+test("Selection change cancels active lookup IDs, drops old queued work, and starts fresh work at the shared cap", async () => {
+  const dictionaries = Array.from({ length: 5 }, (_, index) => ({
+    id: `dict-${index + 1}`,
+    title: `Dictionary ${index + 1}`,
+    status: "ready"
+  }));
+  const pending = new Map();
+  const sent = [];
+  const generations = new Map();
+  let generation = 0;
+  let active = 0;
+  let maximumActive = 0;
+  const messages = {
+    background: {
+      RICH_MDICT_VIEWER_LIST: "RICH_MDICT_VIEWER_LIST",
+      RICH_MDICT_LOOKUP: "RICH_MDICT_LOOKUP",
+      RICH_MDICT_LOOKUP_CANCEL: "RICH_MDICT_LOOKUP_CANCEL"
+    }
+  };
+  const app = { modules: {
+    runtime: {
+      messages,
+      sendRuntimeMessage(message) {
+        sent.push(message);
+        if (message.type === messages.background.RICH_MDICT_VIEWER_LIST) {
+          return Promise.resolve({ ok: true, dictionaries });
+        }
+        if (message.type === messages.background.RICH_MDICT_LOOKUP_CANCEL) {
+          return Promise.resolve({ ok: true, cancelled: true });
+        }
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        return new Promise((resolve) => {
+          pending.set(message.requestId, {
+            message,
+            generation,
+            resolve(result) {
+              active -= 1;
+              resolve(result);
+            }
+          });
+        });
+      }
+    },
+    selectionPopover: {
+      appendRichDictionaryCards(items, onLookup) {
+        const cards = new Map(items.map((dictionary) => [dictionary.id, createCardState()]));
+        generations.set(generation, { cards, onLookup });
+      }
+    }
+  } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app });
+  vm.runInContext(await readFile(DETAILS, "utf8"), context);
+  const module = app.modules.selectionRichDetails;
+
+  generation = 1;
+  await module.load({ text: "old selection" }, 10, "page", () => true);
+  const old = generations.get(1);
+  for (const dictionary of dictionaries) old.onLookup(dictionary, old.cards.get(dictionary.id));
+  await flushMicrotasks();
+
+  const oldLookups = sent.filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP);
+  assert.equal(oldLookups.length, 3);
+  assert.match(oldLookups[0].ownerToken, /^[a-f0-9]{32}$/u);
+  assert.ok(oldLookups.every((message) => message.ownerToken === oldLookups[0].ownerToken));
+  assert.equal(active, 3);
+  await module.cancel();
+  const cancellationIds = sent
+    .filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP_CANCEL)
+    .map((message) => message.requestId);
+  assert.deepEqual(cancellationIds.sort(), oldLookups.map((message) => message.requestId).sort());
+  const cancellationMessages = sent.filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP_CANCEL);
+  assert.ok(cancellationMessages.every((message) => message.ownerToken === oldLookups[0].ownerToken));
+
+  generation = 2;
+  await module.load({ text: "fresh selection" }, 11, "page", () => true);
+  const fresh = generations.get(2);
+  for (const dictionary of dictionaries) fresh.onLookup(dictionary, fresh.cards.get(dictionary.id));
+  await flushMicrotasks();
+  assert.equal(
+    sent.filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP).length,
+    3,
+    "old queued lookups are discarded and fresh work waits for aborted active responses"
+  );
+
+  for (const message of oldLookups) {
+    pending.get(message.requestId).resolve({
+      ok: true,
+      found: true,
+      dictionaries: [{ id: message.dictionaryId, title: "Old", text: "stale selection result" }],
+      errors: []
+    });
+  }
+  await flushMicrotasks();
+  assert.equal(active, 3);
+  const freshLookups = sent.filter((message) =>
+    message.type === messages.background.RICH_MDICT_LOOKUP && message.text === "fresh selection"
+  );
+  assert.equal(freshLookups.length, 3);
+  assert.equal(maximumActive, 3);
+  assert.deepEqual([...old.cards.values()].map((card) => card.results.length), [0, 0, 0, 0, 0]);
+
+  pending.get(freshLookups[0].requestId).resolve({
+    ok: true,
+    found: true,
+    dictionaries: [{ id: freshLookups[0].dictionaryId, title: "Fresh", text: "fresh selection result" }],
+    errors: []
+  });
+  await flushMicrotasks();
+  assert.equal(fresh.cards.get(freshLookups[0].dictionaryId).state, "success");
+  assert.equal(fresh.cards.get(freshLookups[0].dictionaryId).results.length, 1);
+});
+
 test("content runtime exposes the independent viewer-list message", async () => {
   const source = await readFile(RUNTIME, "utf8");
   assert.match(source, /RICH_MDICT_VIEWER_LIST:\s*"RICH_MDICT_VIEWER_LIST"/u);
+  assert.match(source, /RICH_MDICT_LOOKUP_CANCEL:\s*"RICH_MDICT_LOOKUP_CANCEL"/u);
 });
 
 async function loadRenderer({

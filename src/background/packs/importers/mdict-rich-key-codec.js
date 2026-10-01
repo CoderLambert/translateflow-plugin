@@ -81,7 +81,8 @@ export function parseRecordBlockDescriptors(input, blockCount, dataOffset, limit
   return descriptors;
 }
 
-export function parseKeyBlock(input, descriptor, header) {
+export function parseKeyBlock(input, descriptor, header, { signal } = {}) {
+  throwIfAborted(signal);
   const encodingName = typeof header.encoding === "string"
     ? header.encoding
     : header.encoding?.name;
@@ -90,6 +91,7 @@ export function parseKeyBlock(input, descriptor, header) {
   const keys = [];
   let previousRecordOffset = -1;
   for (let index = 0; index < descriptor.entryCount; index += 1) {
+    if ((index & 0x3ff) === 0) throwIfAborted(signal);
     const recordOffset = cursor.readSafeUint64Be("MDict record offset");
     const displayForm = readNullTerminatedKey(cursor, encoding);
     validateMdictHeadword(displayForm);
@@ -99,6 +101,7 @@ export function parseKeyBlock(input, descriptor, header) {
     previousRecordOffset = recordOffset;
     keys.push({ recordOffset, displayForm });
   }
+  throwIfAborted(signal);
   if (
     cursor.remaining !== 0 ||
     normalizeRichMdictLookupKey(keys[0]?.displayForm || "", header) !== descriptor.firstKey ||
@@ -113,6 +116,10 @@ export function parseKeyBlock(input, descriptor, header) {
     });
   }
   return keys;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new DOMException("MDict lookup cancelled.", "AbortError");
 }
 
 function readSizedKey(cursor, encoding, limits, label) {

@@ -153,7 +153,7 @@ export async function promoteRichMdictDictionary(dictionaryId) {
   });
 }
 
-export async function lookupRichMdictDictionaries(request) {
+export async function lookupRichMdictDictionaries(request, selectionOwnerKey = "") {
   if (request && typeof request === "object" && !Array.isArray(request) && Object.hasOwn(request, "dictionaryId")) {
     const id = normalizePackId(request.dictionaryId);
     const preferences = await getRichMdictPreferencesStore().readAll();
@@ -164,9 +164,16 @@ export async function lookupRichMdictDictionaries(request) {
         errors: [{ id, title: "", code: "RICH_MDICT_DISABLED", message: "This rich dictionary is disabled in Settings." }]
       };
     }
-    return getRichMdictManager().lookupDictionary(request.text, id);
+    const lookupIdentity = selectionOwnerKey
+      ? { requestId: request.requestId, ownerKey: selectionOwnerKey }
+      : null;
+    return getRichMdictManager().lookupDictionary(request.text, id, lookupIdentity);
   }
   return getRichMdictManager().lookup(typeof request === "string" ? request : request?.text);
+}
+
+export function cancelRichMdictLookup(requestId, selectionOwnerKey) {
+  return getRichMdictManager().cancelLookup(requestId, selectionOwnerKey);
 }
 
 export function preflightRichMddResourceImport(input) {

@@ -72,7 +72,8 @@ export function createOpfsPackStore({
     }
   }
 
-  async function readFileRange(packId, version, path, offset, length) {
+  async function readFileRange(packId, version, path, offset, length, signal) {
+    throwIfAborted(signal);
     validateLocation(packId, version, path);
     if (
       !Number.isSafeInteger(offset) ||
@@ -92,8 +93,11 @@ export function createOpfsPackStore({
           packId, version, path, offset, length, fileBytes: file.size
         });
       }
-      return new Uint8Array(await file.slice(offset, offset + length).arrayBuffer());
+      const range = file.slice(offset, offset + length);
+      if (!signal) return new Uint8Array(await range.arrayBuffer());
+      return await readBlobRange(range, length, signal);
     } catch (error) {
+      if (error?.name === "AbortError") throw error;
       throw storageError("Unable to read dictionary pack byte range.", {
         packId,
         version,
@@ -196,6 +200,57 @@ export function createOpfsPackStore({
     removePack,
     cleanupPack
   });
+}
+
+async function readBlobRange(blob, expectedBytes, signal) {
+  throwIfAborted(signal);
+  if (typeof blob.stream !== "function") {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    throwIfAborted(signal);
+    if (bytes.byteLength !== expectedBytes) throw new Error("Dictionary pack range size changed while reading.");
+    return bytes;
+  }
+
+  const reader = blob.stream().getReader();
+  const chunks = [];
+  let total = 0;
+  const cancel = () => { void reader.cancel(abortError()).catch(() => {}); };
+  signal?.addEventListener("abort", cancel, { once: true });
+  try {
+    while (true) {
+      throwIfAborted(signal);
+      const { done, value } = await reader.read();
+      throwIfAborted(signal);
+      if (done) break;
+      const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+      total += bytes.byteLength;
+      if (total > expectedBytes) throw new Error("Dictionary pack range exceeded its requested size.");
+      chunks.push(bytes);
+    }
+  } catch (error) {
+    if (signal?.aborted || error?.name === "AbortError") throw abortError();
+    throw error;
+  } finally {
+    signal?.removeEventListener("abort", cancel);
+    reader.releaseLock?.();
+  }
+  if (total !== expectedBytes) throw new Error("Dictionary pack range returned a short read.");
+  const output = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    throwIfAborted(signal);
+    output.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return output;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError();
+}
+
+function abortError() {
+  return new DOMException("Dictionary pack range read cancelled.", "AbortError");
 }
 
 async function descendToParent(root, path, create) {

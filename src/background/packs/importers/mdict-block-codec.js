@@ -19,8 +19,10 @@ export async function decodeMdictBlock({
   limits,
   label,
   decompressionStreamFactory =
-    defaultDecompressionStream
+    defaultDecompressionStream,
+  signal
 }) {
+  throwIfAborted(signal);
   const block = mdictBytes(input, label);
   requireMdictAtMost(
     block.byteLength,
@@ -72,7 +74,8 @@ export async function decodeMdictBlock({
         limits.blockDecompressedBytes
       ),
       label,
-      decompressionStreamFactory
+      decompressionStreamFactory,
+      signal
     );
     compression = "zlib";
   } else {
@@ -83,6 +86,7 @@ export async function decodeMdictBlock({
     );
   }
 
+  throwIfAborted(signal);
   if (bytes.byteLength !== expectedBytes) {
     mdictFail(
       MDICT_IMPORT_ERROR.CORRUPT,
@@ -147,8 +151,10 @@ async function inflateBounded(
   input,
   maximumBytes,
   label,
-  decompressionStreamFactory
+  decompressionStreamFactory,
+  signal
 ) {
+  throwIfAborted(signal);
   let stream;
   try {
     stream = new Blob([input])
@@ -165,9 +171,15 @@ async function inflateBounded(
   const reader = stream.getReader();
   const chunks = [];
   let total = 0;
+  const cancelReader = () => {
+    void reader.cancel(abortError()).catch(() => {});
+  };
+  signal?.addEventListener("abort", cancelReader, { once: true });
   try {
     while (true) {
+      throwIfAborted(signal);
       const { done, value } = await reader.read();
+      throwIfAborted(signal);
       if (done) break;
       const chunk = mdictBytes(
         value,
@@ -185,6 +197,7 @@ async function inflateBounded(
       chunks.push(chunk);
     }
   } catch (cause) {
+    if (signal?.aborted || cause?.name === "AbortError") throw abortError();
     if (cause instanceof MDictImportError) throw cause;
     mdictFail(
       MDICT_IMPORT_ERROR.CORRUPT,
@@ -192,9 +205,19 @@ async function inflateBounded(
       { cause }
     );
   } finally {
+    signal?.removeEventListener("abort", cancelReader);
     reader.releaseLock?.();
   }
+  throwIfAborted(signal);
   return concatMdictBytes(chunks, total);
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError();
+}
+
+function abortError() {
+  return new DOMException("MDict lookup cancelled.", "AbortError");
 }
 
 function defaultDecompressionStream() {

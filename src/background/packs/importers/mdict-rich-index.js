@@ -44,6 +44,7 @@ export async function buildRichMdictIndex({
   signal
 } = {}) {
   const rangeSource = withMdictAbortSignal(source, signal);
+  throwIfAborted(signal);
   const sourceSize = validateMdictSource(rangeSource, limits);
   const headerSizeBytes = await readSourceRange(rangeSource, 0, 4);
   const headerBytesLength = readMdictUint32Be(headerSizeBytes, 0);
@@ -126,7 +127,8 @@ export async function buildRichMdictIndex({
     encrypted: header.encrypted,
     expectedBytes: keyInfoDecompressedBytes,
     limits,
-    decompressionStreamFactory
+    decompressionStreamFactory,
+    signal
   });
   const keyBlocksOffset = keyInfoOffset + keyInfoCompressedBytes;
   const keyBlocks = parseKeyBlockDescriptors(
@@ -205,7 +207,8 @@ export async function buildRichMdictIndex({
     header,
     totalRecordBytes,
     limits,
-    decompressionStreamFactory
+    decompressionStreamFactory,
+    signal
   });
   if (
     compressedRecordBytes !== recordBlocksBytes ||
@@ -259,21 +262,29 @@ export async function decodeRichKeyBlock({
   blockIndex,
   limits = RICH_MDICT_IMPORT_LIMITS,
   decompressionStreamFactory,
-  budget
+  budget,
+  signal
 }) {
+  throwIfAborted(signal);
   const descriptor = index.keyBlocks[blockIndex];
   if (!descriptor) {
     mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "Rich MDict key block index is missing.");
   }
   budget?.consumeKeyBlock(descriptor);
+  throwIfAborted(signal);
+  const compressed = await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes, signal);
+  throwIfAborted(signal);
   const decoded = await decodeMdictBlock({
-    input: await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes),
+    input: compressed,
     expectedBytes: descriptor.decompressedBytes,
     limits,
     label: "MDict key block",
-    decompressionStreamFactory
+    decompressionStreamFactory,
+    signal
   });
-  const entries = parseKeyBlock(decoded.bytes, descriptor, index.header);
+  throwIfAborted(signal);
+  const entries = parseKeyBlock(decoded.bytes, descriptor, index.header, { signal });
+  throwIfAborted(signal);
   if (
     Number.isSafeInteger(index.totalRecordBytes) &&
     entries.some((entry) => entry.recordOffset >= index.totalRecordBytes)
@@ -288,8 +299,10 @@ async function decodeMdictKeyInfo({
   encrypted,
   expectedBytes,
   limits,
-  decompressionStreamFactory
+  decompressionStreamFactory,
+  signal
 }) {
+  throwIfAborted(signal);
   const bytes = encrypted === 2
     ? decryptMdictKeyInfoBlock(input)
     : input;
@@ -298,7 +311,8 @@ async function decodeMdictKeyInfo({
     expectedBytes,
     limits,
     label: "MDict key index",
-    decompressionStreamFactory
+    decompressionStreamFactory,
+    signal
   });
   if (decoded.compression !== "zlib") {
     mdictFail(MDICT_IMPORT_ERROR.UNSUPPORTED, "MDict v2 key block info must use zlib compression.");
@@ -330,10 +344,12 @@ async function addKeyBlockLookupBounds({
   header,
   totalRecordBytes,
   limits,
-  decompressionStreamFactory
+  decompressionStreamFactory,
+  signal
 }) {
   let previousRecordOffset = -1;
   for (let blockIndex = 0; blockIndex < keyBlocks.length; blockIndex += 1) {
+    throwIfAborted(signal);
     const descriptor = keyBlocks[blockIndex];
     const entries = await decodeRichKeyBlock({
       source,
@@ -346,7 +362,8 @@ async function addKeyBlockLookupBounds({
       },
       blockIndex,
       limits,
-      decompressionStreamFactory
+      decompressionStreamFactory,
+      signal
     });
     if (!entries.length) {
       mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict key block is empty.");
@@ -370,6 +387,10 @@ async function addKeyBlockLookupBounds({
     descriptor.lastRecordOffset = entries.at(-1).recordOffset;
     previousRecordOffset = descriptor.lastRecordOffset;
   }
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new DOMException("MDict lookup cancelled.", "AbortError");
 }
 
 export function lookupSortKey(value, header) {

@@ -250,6 +250,14 @@ export function normalizeRequestId(value) {
   return id;
 }
 
+export function normalizeRichMdictLookupRequestId(value) {
+  const id = String(value || "");
+  if (!/^selection-rich-lookup-[a-f0-9]{32}$/u.test(id)) {
+    throw richError("RICH_MDICT_INPUT", "Rich MDict lookup request ID is invalid.");
+  }
+  return id;
+}
+
 export function sanitizeDebugMetrics(value) {
   const result = {};
   for (const key of ["keyBlockCountRead", "keyBytesRead", "recordBlockCountRead", "recordBytesRead", "lookupMs"]) {

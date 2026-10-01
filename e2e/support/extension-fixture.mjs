@@ -115,6 +115,7 @@ export const test = base.extend({
     const harness = {
       context,
       driver,
+      serviceWorker,
       extensionId,
       extensionDir,
       buildReport,

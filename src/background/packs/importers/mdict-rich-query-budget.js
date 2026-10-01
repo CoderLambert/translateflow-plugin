@@ -113,9 +113,9 @@ export function createRichMdictLookupBudget(onMetrics) {
 export function meterRichMdictRangeSource(source, budget) {
   return {
     size: source.size,
-    read(offset, length) {
+    read(offset, length, signal) {
       budget.consumeRange(length);
-      return source.read(offset, length);
+      return source.read(offset, length, signal);
     }
   };
 }

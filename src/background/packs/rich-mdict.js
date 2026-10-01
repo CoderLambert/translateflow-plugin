@@ -5,11 +5,10 @@ import {
   lookupRichMdict,
   validateRichMdictIndex
 } from "./importers/mdict-rich.js";
+import { createRichMdictLookupController } from "./rich-mdict-lookup-controller.js";
 import {
   RICH_MDICT_INDEX_PATH,
-  RICH_MDICT_MAX_DISPLAY_CHARS,
   RICH_MDICT_MAX_INDEX_BYTES,
-  RICH_MDICT_MAX_RECORD_BYTES,
   RICH_MDICT_OPFS_ROOT,
   RICH_MDICT_SOURCE_ID,
   RICH_MDICT_SOURCE_PATH,
@@ -22,13 +21,11 @@ import {
   makeRichMdictSnapshot,
   normalizeRequestId,
   normalizePackId,
-  normalizeQuery,
   normalizeVersion,
   parseIndex,
   publicRichDictionary,
   richError,
   richMdictAbortError,
-  sanitizeDebugMetrics,
   sha256,
   validateCommit
 } from "./rich-mdict-contract.js";
@@ -51,7 +48,6 @@ export {
 };
 
 const sharedPackOperationQueues = new Map();
-
 export function serializeRichMdictPack(packId, action) {
   const previous = sharedPackOperationQueues.get(packId) || Promise.resolve();
   const run = previous.catch(() => {}).then(action);
@@ -85,6 +81,14 @@ export function createRichMdictManager({
     stateStore,
     storageManager,
     serialize
+  });
+  const lookupController = createRichMdictLookupController({
+    stateStore,
+    lookup,
+    assertSourceSize,
+    loadIndex,
+    sourceReader,
+    clampUtf8Text
   });
 
   function commit(input = {}) {
@@ -225,48 +229,8 @@ export function createRichMdictManager({
     return { dictionaries };
   }
 
-  async function lookupText(text, dictionaryId) {
-    const query = normalizeQuery(text);
-    const state = await stateStore.read();
-    const dictionaries = [];
-    const errors = [];
-    const targetId = dictionaryId === undefined ? "" : normalizePackId(dictionaryId);
-    const targetEntry = targetId ? state.packs?.[targetId] : null;
-    if (targetId && targetEntry?.sourceId !== RICH_MDICT_SOURCE_ID) {
-      return { found: false, dictionaries: [], errors: [{ id: targetId, title: "", code: "RICH_MDICT_NOT_INSTALLED", message: "Rich dictionary is not installed." }] };
-    }
-    if (targetId && targetEntry.status !== "healthy") {
-      return { found: false, dictionaries: [], errors: [{ id: targetId, title: clampText(targetEntry.active?.title || targetId, 200), code: "RICH_MDICT_UNAVAILABLE", message: "Rich dictionary is not available for lookup." }] };
-    }
-    const entries = targetId ? [[targetId, targetEntry]] : Object.entries(state.packs || {});
-    for (const [packId, entry] of entries) {
-      if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || entry?.status !== "healthy") continue;
-      const active = entry.active;
-      try {
-        if (!isValidSnapshot(packId, active)) throw richError("RICH_MDICT_CORRUPT", "Rich dictionary metadata is malformed.");
-        await assertSourceSize(active);
-        const index = await loadIndex(active);
-        const result = await lookup({ source: sourceReader(packId, active), index, text: query });
-        if (result?.found) dictionaries.push({
-          id: packId,
-          title: active.title,
-          headword: clampText(result.displayForm, 300),
-          text: clampText(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_CHARS),
-          richRecord: { rawRecord: clampUtf8Text(result.rawRecord, RICH_MDICT_MAX_RECORD_BYTES), format: clampText(index.header.format, 40), styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end })) },
-          ...(result.aliasTarget ? { aliasTarget: clampText(result.aliasTarget, 300) } : {}),
-          ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {})
-        });
-      } catch (error) {
-        errors.push({
-          id: packId,
-          title: clampText(active?.title || packId, 200),
-          code: error?.code || "RICH_MDICT_STORAGE",
-          message: clampText(error?.message || String(error), 300)
-        });
-      }
-      if (targetId) break;
-    }
-    return { found: dictionaries.length > 0, dictionaries, errors };
+  function assertLookupNotAborted(signal) {
+    if (signal?.aborted) throw richMdictAbortError();
   }
 
   function clampUtf8Text(value, maxBytes) {
@@ -353,8 +317,10 @@ export function createRichMdictManager({
     }
   }
 
-  async function loadIndex(snapshot) {
+  async function loadIndex(snapshot, signal) {
+    assertLookupNotAborted(signal);
     const size = await store.getFileSize(snapshot.packId, snapshot.packVersion, RICH_MDICT_INDEX_PATH);
+    assertLookupNotAborted(signal);
     if (!Number.isSafeInteger(size) || size <= 0 || size > RICH_MDICT_MAX_INDEX_BYTES || size !== snapshot.indexSize) {
       throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index is missing or has an invalid size.");
     }
@@ -362,10 +328,14 @@ export function createRichMdictManager({
     const cached = indexCache.get(key);
     if (cached) return cached;
     const bytes = await store.readFile(snapshot.packId, snapshot.packVersion, RICH_MDICT_INDEX_PATH);
-    if (await sha256(bytes, cryptoProvider) !== snapshot.indexSha256) {
+    assertLookupNotAborted(signal);
+    const digest = await sha256(bytes, cryptoProvider);
+    assertLookupNotAborted(signal);
+    if (digest !== snapshot.indexSha256) {
       throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index checksum failed.");
     }
     const index = parseIndex(bytes);
+    assertLookupNotAborted(signal);
     assertIndexMatchesMetadata(index, snapshot);
     indexCache.set(key, index);
     return index;
@@ -388,10 +358,17 @@ export function createRichMdictManager({
   function sourceReader(packId, snapshot, signal) {
     return {
       size: snapshot.sourceSize,
-      async read(offset, length) {
-        if (signal?.aborted) throw richMdictAbortError();
-        const bytes = await store.readFileRange(packId, snapshot.packVersion, RICH_MDICT_SOURCE_PATH, offset, length);
-        if (signal?.aborted) throw richMdictAbortError();
+      async read(offset, length, requestSignal = signal) {
+        if (signal?.aborted || requestSignal?.aborted) throw richMdictAbortError();
+        const bytes = await store.readFileRange(
+          packId,
+          snapshot.packVersion,
+          RICH_MDICT_SOURCE_PATH,
+          offset,
+          length,
+          requestSignal
+        );
+        if (signal?.aborted || requestSignal?.aborted) throw richMdictAbortError();
         return bytes;
       }
     };
@@ -410,8 +387,9 @@ export function createRichMdictManager({
         return [{ ...publicRichDictionary(entry), id, status, errorCode: status === "ready" ? "" : status === "missing" ? "RICH_MDICT_MISSING" : "RICH_MDICT_CORRUPT" }];
       }) };
     },
-    lookup: lookupText,
-    lookupDictionary: lookupText,
+    lookup: lookupController.lookupText,
+    lookupDictionary: lookupController.lookupText,
+    cancelLookup: lookupController.cancelLookup,
     uninstall,
     abortImport,
     preflightQuota
