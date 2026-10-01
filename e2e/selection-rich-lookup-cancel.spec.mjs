@@ -64,30 +64,42 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
       }
     });
     await injectWithLookupGate(harness, page);
+    await installUnderlyingRangeStopGate(harness);
 
     const cancelledRequestIds = [];
     const routeCancellationSamplesMs = [];
-    for (const [text, method, route] of [
-      ["cancelword", "pushState", "/spa-push-route"],
-      ["replaceword", "replaceState", "/spa-replace-route"]
-    ]) {
+    const routeCancellationSamples = [];
+    const routeMethods = Array.from({ length: 10 }, (_, index) => index % 2 === 0 ? "pushState" : "replaceState");
+    for (let sampleIndex = 0; sampleIndex < routeMethods.length; sampleIndex += 1) {
+      const method = routeMethods[sampleIndex];
+      const text = sampleIndex % 2 === 0 ? "cancelword" : "replaceword";
+      const route = `/spa-${method}-${sampleIndex}`;
       const selectionId = text === "cancelword" ? "old-selection" : "replace-selection";
+      const lookupCountBefore = (await readGate(harness, page)).trace.filter((item) => item.kind === "lookup").length;
+      await armUnderlyingRangeStopGate(harness, `route-sample-${sampleIndex}`);
       await selectElementText(page, `#${selectionId}`);
       await expect(page.locator(".tf-selection-chip")).toBeVisible();
       await page.locator(".tf-selection-chip").click();
       const card = page.locator(".tf-selection-rich-record").filter({ hasText: "Cancellation Fixture" });
       await expect(card).toBeVisible({ timeout: 15_000 });
-      await expect.poll(async () => {
-        const gate = await readGate(harness, page);
-        return gate.delayedTexts.includes(text);
-      }, { timeout: 15_000 }).toBe(true);
-      const requestId = (await readGate(harness, page)).trace.find((item) =>
-        item.kind === "lookup" && item.text === text
-      )?.requestId;
+      await expect.poll(async () => (await readGate(harness, page)).trace.filter((item) => item.kind === "lookup").length, {
+        timeout: 15_000
+      }).toBeGreaterThan(lookupCountBefore);
+      const lookupEvent = (await readGate(harness, page)).trace
+        .filter((item) => item.kind === "lookup")
+        .at(-1);
+      expect(lookupEvent?.text).toBe(text);
+      const requestId = lookupEvent?.requestId;
       expect(requestId).toMatch(/^selection-rich-lookup-[a-f0-9]{32}$/u);
 
-      const routeStartedAt = await page.evaluate(({ method, route }) => {
-        const startedAt = Date.now();
+      if (lookupEvent.delayed) await releaseDelayedLookup(harness, page, text);
+      await expect.poll(async () => (await readUnderlyingRangeStopGate(harness)).active?.sampleId, {
+        timeout: 15_000
+      }).toBe(`route-sample-${sampleIndex}`);
+      const activeRange = await readUnderlyingRangeStopGate(harness);
+      expect(activeRange.active?.sampleId).toBe(`route-sample-${sampleIndex}`);
+      const routeStartedAtEpochMs = await page.evaluate(({ method, route }) => {
+        const startedAt = performance.timeOrigin + performance.now();
         history[method]({}, "", route);
         return startedAt;
       }, { method, route });
@@ -95,12 +107,34 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
         const gate = await readGate(harness, page);
         return gate.trace.some((item) => item.kind === "cancel" && item.requestId === requestId && item.cancelled);
       }, { timeout: 10_000 }).toBe(true);
+      await expect.poll(async () => {
+        const rangeGate = await readUnderlyingRangeStopGate(harness);
+        return rangeGate.samples.find((item) => item.sampleId === `route-sample-${sampleIndex}`)?.stoppedAtEpochMs || 0;
+      }, { timeout: 10_000 }).toBeGreaterThan(0);
+      const stopSample = (await readUnderlyingRangeStopGate(harness)).samples.find((item) =>
+        item.sampleId === `route-sample-${sampleIndex}`
+      );
+      expect(activeRange.active.startedAtEpochMs).toBeLessThanOrEqual(routeStartedAtEpochMs);
+      expect(stopSample.nativeCancelCompletedAtEpochMs).toBeGreaterThan(routeStartedAtEpochMs);
+      expect(stopSample.nativeCancelCompletedAtEpochMs).toBeLessThanOrEqual(stopSample.stoppedAtEpochMs);
+      const routeCancellationMs = stopSample.stoppedAtEpochMs - routeStartedAtEpochMs;
+      expect(routeCancellationMs).toBeGreaterThanOrEqual(0);
+      routeCancellationSamplesMs.push(routeCancellationMs);
+      routeCancellationSamples.push({
+        method,
+        rangeReadStartedAtEpochMs: activeRange.active.startedAtEpochMs,
+        routeStartEpochMs: routeStartedAtEpochMs,
+        rangeStopEpochMs: stopSample.stoppedAtEpochMs,
+        nativeCancelCompletedAtEpochMs: stopSample.nativeCancelCompletedAtEpochMs,
+        endpoint: "opfs-readBlobRange-finally-after-native-cancel",
+        rangeReadActiveAtRoute: true,
+        durationMs: routeCancellationMs
+      });
       const cancelEvent = (await readGate(harness, page)).trace.find((item) =>
         item.kind === "cancel" && item.requestId === requestId
       );
-      routeCancellationSamplesMs.push(Math.max(0, cancelEvent.observedAtEpochMs - routeStartedAt));
+      expect(cancelEvent?.cancelled).toBe(true);
       cancelledRequestIds.push(requestId);
-      await releaseDelayedLookup(harness, page, text);
     }
 
     await selectElementText(page, "#fresh-selection");
@@ -130,7 +164,7 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
       spec: "e2e/selection-rich-lookup-cancel.spec.mjs",
       status: "PASS",
       requestCount: browserRequests,
-      browserCancellationPhase: "same-document-history-before-dispatch",
+      browserCancellationPhase: "same-document-history-during-active-range",
       spaNavigationMethods: ["pushState", "replaceState"],
       cancelledLookupCount: gate.trace.filter((item) => item.kind === "cancel" && item.cancelled === true).length,
       lateStaleResultsRendered: (await page.locator("body").textContent()).includes("STALE_SECRET_OLD_GLOSS") ? 1 : 0,
@@ -158,9 +192,20 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
         ceilingPassed: percentile(rangeSamples.samples, 0.95) <= baselineCeilingMs
       },
       routeCancellationLatency: {
+        trigger: "same-document-history",
+        endpoint: "underlying-range-stop",
+        clock: "performance.now",
+        metric: "milliseconds from route change to final active underlying range read stop",
+        baselineInterpretation: "conservative-stop-latency-ceiling",
+        baselineMetric: baselineEvidence.metric,
         unit: "ms",
         sampleCount: routeCancellationSamplesMs.length,
         samplesMs: routeCancellationSamplesMs,
+        samples: routeCancellationSamples,
+        methodSampleCounts: {
+          pushState: routeCancellationSamples.filter((sample) => sample.method === "pushState").length,
+          replaceState: routeCancellationSamples.filter((sample) => sample.method === "replaceState").length
+        },
         p50Ms: percentile(routeCancellationSamplesMs, 0.5),
         p95Ms: percentile(routeCancellationSamplesMs, 0.95),
         maxMs: Math.max(...routeCancellationSamplesMs),
@@ -180,7 +225,10 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
     expect(report.postCancelBlockDecodes).toBe(0);
     expect(rangeSamples.samples.length).toBeGreaterThanOrEqual(10);
     expect(report.cancellationLatency.ceilingPassed).toBe(true);
-    expect(routeCancellationSamplesMs).toHaveLength(2);
+    expect(routeCancellationSamplesMs).toHaveLength(10);
+    expect(routeCancellationSamples.filter((sample) => sample.method === "pushState")).toHaveLength(5);
+    expect(routeCancellationSamples.filter((sample) => sample.method === "replaceState")).toHaveLength(5);
+    expect(routeCancellationSamples.every((sample) => sample.rangeReadActiveAtRoute && sample.rangeStopEpochMs >= sample.routeStartEpochMs)).toBe(true);
     expect(report.routeCancellationLatency.ceilingPassed).toBe(true);
 
     if (evidenceDir) {
@@ -222,9 +270,11 @@ async function injectWithLookupGate(harness, page) {
             });
           }
           if (message.type !== runtime.messages.background.RICH_MDICT_LOOKUP) return original(message);
-          gate.trace.push({ kind: "lookup", requestId: message.requestId, text: String(message.text || "") });
+          const lookupEvent = { kind: "lookup", requestId: message.requestId, text: String(message.text || ""), delayed: false };
+          gate.trace.push(lookupEvent);
           if (["cancelword", "replaceword"].includes(message.text) && !gate.delayedTexts.includes(message.text)) {
             gate.delayedTexts.push(message.text);
+            lookupEvent.delayed = true;
             return new Promise((resolve, reject) => {
               gate.releases[message.text] = () => {
                 gate.active += 1;
@@ -252,12 +302,13 @@ async function readGate(harness, page) {
     func: () => {
       const gate = globalThis.__TF_RICH_LOOKUP_GATE__;
       return gate ? {
-        trace: gate.trace.map(({ kind, requestId, text, cancelled, observedAtEpochMs }) => ({
+        trace: gate.trace.map(({ kind, requestId, text, cancelled, observedAtEpochMs, delayed }) => ({
           kind,
           requestId,
           text,
           cancelled,
-          observedAtEpochMs
+          observedAtEpochMs,
+          delayed
         })),
         delayedTexts: [...gate.delayedTexts],
         maxConcurrency: gate.maxConcurrency
@@ -265,6 +316,88 @@ async function readGate(harness, page) {
     }
   }), { tabId });
   return result?.result;
+}
+
+async function installUnderlyingRangeStopGate(harness) {
+  await harness.serviceWorker.evaluate(() => {
+    if (globalThis.__TF_E2E_RANGE_STOP_GATE__?.installed) return;
+    const originalStream = Blob.prototype.stream;
+    const state = {
+      installed: true,
+      armedSampleId: "",
+      active: null,
+      samples: []
+    };
+    Blob.prototype.stream = function (...args) {
+      const stream = originalStream.apply(this, args);
+      if (!state.armedSampleId) return stream;
+      const sampleId = state.armedSampleId;
+      state.armedSampleId = "";
+      const nativeReader = stream.getReader();
+      let holdFirstChunk = true;
+      let releaseHeldRead = null;
+      return {
+        getReader() {
+          return {
+            read() {
+              const read = nativeReader.read();
+              if (!holdFirstChunk) return read;
+              holdFirstChunk = false;
+              return read.then((result) => {
+                if (result.done) return result;
+                state.active = {
+                  sampleId,
+                  startedAtEpochMs: performance.timeOrigin + performance.now(),
+                  stoppedAtEpochMs: 0
+                };
+                return new Promise((resolve) => { releaseHeldRead = resolve; }).then(() => result);
+              });
+            },
+            async cancel(reason) {
+              const result = await nativeReader.cancel(reason);
+              const nativeCancelCompletedAtEpochMs = performance.timeOrigin + performance.now();
+              if (state.active?.sampleId === sampleId) state.active.nativeCancelCompletedAtEpochMs = nativeCancelCompletedAtEpochMs;
+              releaseHeldRead?.({ done: true, value: undefined });
+              releaseHeldRead = null;
+              return result;
+            },
+            releaseLock() {
+              nativeReader.releaseLock();
+              if (state.active?.sampleId === sampleId) {
+                const stoppedAtEpochMs = performance.timeOrigin + performance.now();
+                state.samples.push({
+                  sampleId,
+                  nativeCancelCompletedAtEpochMs: state.active.nativeCancelCompletedAtEpochMs || 0,
+                  stoppedAtEpochMs
+                });
+                state.active.stoppedAtEpochMs = stoppedAtEpochMs;
+                state.active = null;
+              }
+            }
+          };
+        }
+      };
+    };
+    globalThis.__TF_E2E_RANGE_STOP_GATE__ = state;
+  });
+}
+
+async function armUnderlyingRangeStopGate(harness, sampleId) {
+  await harness.serviceWorker.evaluate((sampleId) => {
+    const gate = globalThis.__TF_E2E_RANGE_STOP_GATE__;
+    if (!gate?.installed || gate.active || gate.armedSampleId) throw new Error("Range-stop gate is not idle.");
+    gate.armedSampleId = sampleId;
+  }, sampleId);
+}
+
+async function readUnderlyingRangeStopGate(harness) {
+  return harness.serviceWorker.evaluate(() => {
+    const gate = globalThis.__TF_E2E_RANGE_STOP_GATE__;
+    return gate ? {
+      active: gate.active ? { ...gate.active } : null,
+      samples: gate.samples.map((sample) => ({ ...sample }))
+    } : { active: null, samples: [] };
+  });
 }
 
 async function releaseDelayedLookup(harness, page, text) {
