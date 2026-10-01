@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "manifest": "dictionary-ecosystem-v2-release-scope",
+  "frozenAt": "2026-10-01T14:49:09Z",
+  "mainBaseSha": "acbfa12a079a73d6eab0a1c17e7a8f63d856295b",
+  "parentIssue": 198,
+  "certificationIssue": 207,
+  "scopeStatus": "frozen-for-certification",
+  "requiredSlices": [
+    { "issue": 199, "capability": "sanitized-mdx-mdd-compatibility-evidence", "status": "shipped", "mergedPr": 217 },
+    { "issue": 200, "capability": "generic-dictionary-catalog-v2", "status": "shipped", "mergedPr": 218 },
+    { "issue": 202, "capability": "dictionary-library-v2-trust-version-lifecycle", "status": "shipped", "mergedPr": 219 },
+    { "issue": 215, "capability": "local-dictionary-preflight", "status": "shipped-through-203", "mergedPr": 220 },
+    { "issue": 203, "capability": "unified-local-import-v2", "status": "shipped", "mergedPr": 221 },
+    { "issue": 204, "capability": "preferred-rich-dictionary-selection", "status": "shipped", "mergedPr": 223 }
+  ],
+  "promotedParserCapabilities": [],
+  "promotedRichSemantics": [],
+  "conditionalDecisions": {
+    "187": { "status": "not-planned", "reason": "#199 evidence showed no measured parser/container gap; no capability promoted." },
+    "201": { "status": "not-planned", "reason": "#199 evidence did not show a real-corpus need for entry navigation, sound links, or local-anchor semantics." },
+    "205": { "status": "no-go", "qualifiedCandidates": 0, "evidence": "docs/DICTIONARY_SOURCE_QUALIFICATION_2026-10-01.md" },
+    "206": { "status": "not-planned", "reason": "#205 qualified no additional source; no Catalog v2 source is added." },
+    "122": { "status": "open-blocked", "officialPack": "absent", "reason": "No independently approved Official source, signed catalog or trust root." }
+  },
+  "curatedCatalogSources": [
+    {
+      "id": "ecdict-en-zh-mdx-curated",
+      "trustClass": "curated-upstream",
+      "sourceVersion": "1.0.28",
+      "releaseDate": "2017-09-20",
+      "contentDate": "2017-06-03",
+      "compatibility": "reviewed-compatible",
+      "notes": ["User-triggered upstream install; MDX archive is not bundled.", "Reviewed compatibility does not imply fresh content or Official status."]
+    },
+    {
+      "id": "ecdict-en-zh-curated",
+      "trustClass": "curated-upstream",
+      "sourceVersion": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+      "releaseDate": null,
+      "contentDate": null,
+      "compatibility": "reviewed-compatible",
+      "notes": ["Fixed curated subset; upstream does not publish a separately verified content date for this entry."]
+    }
+  ],
+  "compatibilityClaims": {
+    "ecdictMdx": "reviewed-compatible",
+    "independentFixture": "MIT-licensed synthetic interoperability fixture from the locked independent writer; engineering evidence only",
+    "commercialUserOwnedDictionaries": "NOT_TESTED unless a sanitized lawful local report is present",
+    "unsupportedMeasuredAgainstRepresentativeCommercialCorpora": "NOT_TESTED"
+  },
+  "dataBoundary": {
+    "commercialDictionaryPayloadsInRepository": false,
+    "commercialDictionaryPayloadsInCiArtifacts": false,
+    "userOwnedDictionaryPayloadsInRepository": false,
+    "officialDictionaryPayloadsBundled": false
+  }
+}
