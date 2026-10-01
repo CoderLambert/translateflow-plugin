@@ -263,12 +263,12 @@ export async function handleBackgroundMessage(message, sender) {
           text: message.text,
           dictionaryId: message.dictionaryId,
           requestId: message.requestId
-        }, selectionContentOwnerKey(sender));
+        }, selectionContentOwnerKey(sender, message));
       }
       return lookupRichMdictDictionaries(message.text);
     case BACKGROUND_MESSAGES.RICH_MDICT_LOOKUP_CANCEL:
       assertSelectionContentSender(sender);
-      return cancelRichMdictLookup(message.requestId, selectionContentOwnerKey(sender));
+      return cancelRichMdictLookup(message.requestId, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL:
       assertOptionsSender(sender);
       {
@@ -368,12 +368,15 @@ function assertSelectionContentSender(sender) {
   }
 }
 
-function selectionContentOwnerKey(sender) {
+export function selectionContentOwnerKey(sender, message = {}) {
   const tabId = Number(sender?.tab?.id);
   const frameId = Number.isInteger(sender?.frameId) ? sender.frameId : 0;
   const documentId = String(sender?.documentId || "");
-  const url = String(sender?.url || "");
-  const identity = documentId || url.slice(0, 384);
+  const ownerToken = String(message?.ownerToken || "");
+  const documentOwnerToken = /^[a-f0-9]{32}$/iu.test(ownerToken) ? ownerToken.toLowerCase() : "";
+  const identity = documentId
+    ? `document:${documentId.slice(0, 256)}`
+    : documentOwnerToken ? `content:${documentOwnerToken}` : "";
   if (!Number.isInteger(tabId) || !identity) {
     const error = new Error("Rich dictionary lookup sender identity is unavailable.");
     error.code = "RICH_MDICT_CONTENT_ONLY";

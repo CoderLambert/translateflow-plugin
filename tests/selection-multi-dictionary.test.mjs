@@ -289,12 +289,16 @@ test("Selection change cancels active lookup IDs, drops old queued work, and sta
 
   const oldLookups = sent.filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP);
   assert.equal(oldLookups.length, 3);
+  assert.match(oldLookups[0].ownerToken, /^[a-f0-9]{32}$/u);
+  assert.ok(oldLookups.every((message) => message.ownerToken === oldLookups[0].ownerToken));
   assert.equal(active, 3);
   await module.cancel();
   const cancellationIds = sent
     .filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP_CANCEL)
     .map((message) => message.requestId);
   assert.deepEqual(cancellationIds.sort(), oldLookups.map((message) => message.requestId).sort());
+  const cancellationMessages = sent.filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP_CANCEL);
+  assert.ok(cancellationMessages.every((message) => message.ownerToken === oldLookups[0].ownerToken));
 
   generation = 2;
   await module.load({ text: "fresh selection" }, 11, "page", () => true);
