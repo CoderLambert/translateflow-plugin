@@ -2,7 +2,8 @@ import {
   STARDICT_IMPORT_ERROR, STARDICT_IMPORT_LIMITS, StarDictImportError,
   parseStarDictIfo
 } from "./importers/stardict-core.js";
-import { parseStarDictIndex, parseStarDictSynonyms } from "./importers/stardict-binary.js";
+import { validateStarDictIndex, validateStarDictSynonyms } from "./importers/stardict-binary.js";
+import { makeBoundedBytesIdentityHint } from "./local-dictionary-preflight-identity.js";
 import {
   inspectStarDictDictzipHeaderPrefix,
   parseStarDictDictzipHeader
@@ -106,18 +107,22 @@ export async function preflightStarDictFiles({ files, sourceBytes, signal }) {
     }
 
     const idxBytes = await readPreflightBytes(idx, signal, STARDICT_IMPORT_LIMITS.idxBytes);
-    parseStarDictIndex(idxBytes, {
+    await validateStarDictIndex(idxBytes, {
       wordCount: metadata.wordcount,
+      signal,
       // For DICT.DZ the uncompressed size is not known without extracting it.
       // Keep offset checks within the import ceiling and defer exact checks to import.
       dictBytes: dict?.size ?? STARDICT_IMPORT_LIMITS.dictBytes
     });
+    const identityHints = [await stardictIndexIdentityHint(idx, idxBytes, signal)].filter(Boolean);
     if (syn) {
       const synBytes = await readPreflightBytes(syn, signal, STARDICT_IMPORT_LIMITS.synBytes);
-      parseStarDictSynonyms(synBytes, {
+      await validateStarDictSynonyms(synBytes, {
         synonymCount: metadata.synwordcount,
-        wordCount: metadata.wordcount
+        wordCount: metadata.wordcount,
+        signal
       });
+      identityHints.push(await stardictIndexIdentityHint(syn, synBytes, signal));
     } else if (metadata.synwordcount > 0) {
       return basePreflightResult({
         family: "stardict",
@@ -129,7 +134,8 @@ export async function preflightStarDictFiles({ files, sourceBytes, signal }) {
         reason: reason("stardict.syn_missing"),
         route: { importer: "stardict", requiresSemanticConfirmation: true },
         unassociatedFiles: unassociated,
-        missingCompanionHints: [safeFileLabel(`${ifo.name.slice(0, -4)}.syn`)]
+        missingCompanionHints: [safeFileLabel(`${ifo.name.slice(0, -4)}.syn`)],
+        identity: { hints: identityHints.filter(Boolean) }
       });
     }
     if (dictzip) {
@@ -152,7 +158,8 @@ export async function preflightStarDictFiles({ files, sourceBytes, signal }) {
       reason: unassociated.length ? reason("stardict.unassociated_files") : null,
       warnings: [reason("stardict.semantic_recipe_required")],
       route: { importer: "stardict", requiresSemanticConfirmation: true },
-      unassociatedFiles: unassociated
+      unassociatedFiles: unassociated,
+      identity: { hints: identityHints.filter(Boolean) }
     });
   } catch (error) {
     if (isPreflightAbort(error, signal)) throw preflightAbortError();
@@ -178,6 +185,17 @@ function mapStarDictError(error) {
     if (error.code === STARDICT_IMPORT_ERROR.UNSAFE_CONTENT) return "stardict.unsafe_content";
   }
   return "stardict.corrupt_or_malformed";
+}
+
+async function stardictIndexIdentityHint(file, bytes, signal) {
+  const firstLength = Math.min(16 * 1024, bytes.byteLength);
+  const first = bytes.subarray(0, firstLength);
+  const tailStart = Math.max(firstLength, bytes.byteLength - 16 * 1024);
+  const ranges = [
+    { offset: 0, bytes: first },
+    ...(tailStart < bytes.byteLength ? [{ offset: tailStart, bytes: bytes.subarray(tailStart) }] : [])
+  ];
+  return makeBoundedBytesIdentityHint(file, ranges, file.size, signal);
 }
 
 function stardictExtension(name) {

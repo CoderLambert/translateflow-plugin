@@ -9,6 +9,7 @@ import {
   preflightLocalDictionaryFiles,
   LOCAL_DICTIONARY_PREFLIGHT_STATUS
 } from "../src/background/packs/local-dictionary-preflight.js";
+import { validateStarDictIndex, validateStarDictSynonyms } from "../src/background/packs/importers/stardict-binary.js";
 
 test("rich MDX plus base and numbered MDD companions is classified without reading resource bodies", async () => {
   const mdxBytes = makeRichMdx([["alpha", "<p>definition</p>"]]);
@@ -31,6 +32,10 @@ test("rich MDX plus base and numbered MDD companions is classified without readi
   ]);
   assert.equal(result.resources.associatedMdd.length, 2);
   assert.ok(result.compatibility.capabilitiesPresent.includes("mdx.record.html"));
+  assert.ok(result.identity.hints.every((hint) => hint.verified === false &&
+    hint.verification === "unverified"));
+  assert.ok(result.identity.hints.every((hint) => hint.ranges.every((range) =>
+    range.offset + range.length <= hint.readableEnd)));
   assert.ok(result.resources.associatedMdd[0].capabilities.includes("mdd.engine.v2"));
   assertNoRecordBodyReads(mdx.reads, mdxIndex.recordBlocksOffset, mdxIndex.recordBlocksBytes);
   for (const file of [mdd, numbered]) {
@@ -108,6 +113,8 @@ test("StarDict set validates metadata/index, distinguishes missing components an
   assert.equal(complete.route.requiresSemanticConfirmation, true);
   assert.equal(complete.estimates.entryCount, 1);
   assert.equal(files[2].reads.length, 0, "preflight must not read StarDict definition bytes");
+  assert.ok(complete.identity.hints.some((hint) => hint.fileName === "Sample.idx" &&
+    hint.kind === "bounded-byte-sample-sha256" && hint.verified === false));
   assert.equal(missingData.compatibility.status, "partial");
   assert.equal(missingData.compatibility.reasons[0].code, "stardict.dictionary_data_missing");
   assert.deepEqual(missingData.resources.missingCompanionHints, ["Sample.dict or Sample.dict.dz"]);
@@ -138,6 +145,7 @@ test("TFLex profile is recognized while full hashes and records stay with the im
     license: { id: "USER-PROVIDED-UNVERIFIED", source: "local-user-import" },
     packId: "local-fixture",
     packVersion: "v1",
+    fingerprint: `sha256:${"a".repeat(64)}`,
     recordCount: 1
   };
   const result = await preflightLocalDictionaryFiles({
@@ -153,8 +161,26 @@ test("TFLex profile is recognized while full hashes and records stay with the im
   assert.equal(result.route.importer, "tflex");
   assert.equal(result.compatibility.status, "partial");
   assert.equal(result.compatibility.reasons[0].code, "tflex.full_validation_deferred");
+  assert.deepEqual(result.identity.hints.map((hint) => hint.kind), [
+    "tflex-pack-identity",
+    "tflex-declared-fingerprint"
+  ]);
+  assert.ok(result.identity.hints.every((hint) => hint.verified === false &&
+    hint.verification === "unverified"));
   assert.equal(unknown.compatibility.status, "unsupported");
   assert.equal(unknown.route.importer, "none");
+});
+
+test("StarDict large index validation yields cooperatively and observes cancellation mid-scan", async () => {
+  const wordCount = 12000;
+  const index = makeLargeStarDictIndex(wordCount);
+  const synonyms = makeLargeStarDictSynonyms(wordCount);
+  await assertStarDictScanCancels((options) => validateStarDictIndex(index, {
+    ...options, wordCount, dictBytes: wordCount
+  }));
+  await assertStarDictScanCancels((options) => validateStarDictSynonyms(synonyms, {
+    ...options, synonymCount: wordCount, wordCount
+  }));
 });
 
 test("duplicate names, malformed MDD association and cancellation are explicit", async () => {
@@ -228,6 +254,37 @@ function u32(value) {
   const bytes = Buffer.alloc(4);
   bytes.writeUInt32BE(value);
   return bytes;
+}
+
+function makeLargeStarDictIndex(count) {
+  const records = [];
+  for (let index = 0; index < count; index += 1) {
+    const word = Buffer.from(`word${String(index).padStart(6, "0")}`);
+    records.push(word, Buffer.from([0]), u32(index), u32(1));
+  }
+  return Buffer.concat(records);
+}
+
+function makeLargeStarDictSynonyms(count) {
+  const records = [];
+  for (let index = 0; index < count; index += 1) {
+    records.push(Buffer.from(`alias${String(index).padStart(6, "0")}`), Buffer.from([0]), u32(0));
+  }
+  return Buffer.concat(records);
+}
+
+async function assertStarDictScanCancels(scan) {
+  const controller = new AbortController();
+  let processedAtCancellation = 0;
+  await assert.rejects(scan({
+    signal: controller.signal,
+    yieldEvery: 256,
+    async yieldControl({ recordsProcessed }) {
+      processedAtCancellation = recordsProcessed;
+      controller.abort();
+    }
+  }), (error) => error?.name === "AbortError");
+  assert.equal(processedAtCancellation, 256);
 }
 
 function makeDictzipHeader(chunkCount) {

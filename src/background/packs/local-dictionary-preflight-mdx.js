@@ -5,6 +5,7 @@ import {
 import { buildRichMdictIndex } from "./importers/mdict-rich.js";
 import { buildMddIndex } from "./importers/mdd.js";
 import { RICH_MDD_MAX_COMPANIONS, validateMddCompanions } from "./rich-mdd-contract.js";
+import { makeBoundedFileIdentityHint } from "./local-dictionary-preflight-identity.js";
 import { SHIPPED_CAPABILITIES, basePreflightResult, blobRangeSource,
   escapePreflightRegExp, isPreflightAbort, normalizePreflightLanguage,
   preflightAbortError, preflightExtension, reason, safeFileLabel,
@@ -173,6 +174,12 @@ export async function preflightMdxFiles({
     preflightReason ||= reason("mdx.capability_not_shipped", unsupportedCapabilities[0]);
   }
 
+  const mdxIdentityHint = await makeBoundedFileIdentityHint(
+    mdxFile,
+    index.recordBlocksOffset,
+    signal
+  );
+
   return basePreflightResult({
     family: structuredReady ? "mdict-structured" : "mdict-rich",
     files,
@@ -187,7 +194,8 @@ export async function preflightMdxFiles({
     warnings,
     route,
     associatedMdd,
-    unassociatedFiles
+    unassociatedFiles,
+    identity: { hints: mdxIdentityHint ? [mdxIdentityHint] : [] }
   });
 }
 

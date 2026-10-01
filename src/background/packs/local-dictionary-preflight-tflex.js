@@ -3,7 +3,7 @@ import {
   LOCAL_IMPORT_SOURCE_ID, LOCAL_IMPORT_LICENSE_ID
 } from "./local-import.js";
 import { basePreflightResult, LOCAL_DICTIONARY_PREFLIGHT_LIMITS,
-  isPreflightAbort, preflightAbortError, readPreflightBytes,
+  cleanDisplayText, isPreflightAbort, preflightAbortError, readPreflightBytes,
   reason } from "./local-dictionary-preflight-contract.js";
 
 const TFLEX_FILES = new Set(["manifest.json", "index.dat", "entries.dat"]);
@@ -80,6 +80,23 @@ export async function preflightTflexFiles({ files, sourceBytes, signal }) {
     });
   }
   const missing = ["index.dat", "entries.dat"].filter((name) => !names.has(name));
+  const identityHints = [
+    {
+      kind: "tflex-pack-identity",
+      packId: cleanDisplayText(manifest.packId).slice(0, 120),
+      packVersion: cleanDisplayText(manifest.packVersion).slice(0, 80),
+      verified: false,
+      verification: "unverified"
+    },
+    ...(typeof manifest.fingerprint === "string" && /^sha256:[a-f0-9]{64}$/iu.test(manifest.fingerprint)
+      ? [{
+        kind: "tflex-declared-fingerprint",
+        value: manifest.fingerprint.toLowerCase(),
+        verified: false,
+        verification: "unverified"
+      }]
+      : [])
+  ];
   return basePreflightResult({
     family: "tflex",
     files,
@@ -94,7 +111,8 @@ export async function preflightTflexFiles({ files, sourceBytes, signal }) {
     ],
     route: { importer: "tflex", requiresSemanticConfirmation: false },
     missingCompanionHints: missing,
-    unassociatedFiles
+    unassociatedFiles,
+    identity: { hints: identityHints }
   });
 }
 
