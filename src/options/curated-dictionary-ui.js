@@ -6,6 +6,9 @@ import {
   CURATED_IMPORTER_TYPES
 } from "../shared/curated-dictionaries.js";
 import {
+  makeInstalledCatalogMetadata
+} from "../shared/dictionary-catalog-v2.js";
+import {
   requestDictionaryPackOriginPermission
 } from "./pack-ui.js";
 import {
@@ -220,7 +223,8 @@ export function initializeCuratedDictionaryUi({
           sourceVersion: shortCuratedRevision(
             source.upstreamRevision
           ),
-          licenseLabel: source.sourceLicenseLabel
+          licenseLabel: source.sourceLicenseLabel,
+          catalog: makeInstalledCatalogMetadata(source)
         }
       });
       if (!committed?.ok) {

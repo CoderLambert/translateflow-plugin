@@ -1,11 +1,27 @@
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { OPTIONAL_PACK_SOURCES } from "../shared/pack-sources.js";
+import {
+  getCatalogPermissionOrigins,
+  getDictionaryCatalogEntryForRecipe
+} from "../shared/dictionary-catalog-v2.js";
 import { renderInstalledPackList } from "./installed-pack-ui.js";
 
 export async function requestDictionaryPackOriginPermission(
   source,
   permissions = globalThis.chrome?.permissions
 ) {
+  const catalogEntry = getDictionaryCatalogEntryForRecipe(source?.id);
+  if (catalogEntry) {
+    if (!permissions?.request) {
+      throw new Error("Chrome optional-origin permission API is unavailable.");
+    }
+    const origins = getCatalogPermissionOrigins(catalogEntry);
+    if (!origins.length || origins.some((origin) => !isExactHttpsOriginPattern(origin))) {
+      throw new Error("Dictionary catalog permission origins are invalid.");
+    }
+    return permissions.request({ origins });
+  }
+
   const pattern = String(source?.originPattern || "");
   if (!pattern.endsWith("/*")) {
     throw new Error("Dictionary pack source has an invalid origin permission.");
@@ -24,6 +40,14 @@ export async function requestDictionaryPackOriginPermission(
   }
 
   return permissions.request({ origins: [pattern] });
+}
+
+function isExactHttpsOriginPattern(pattern) {
+  if (!pattern.endsWith("/*")) return false;
+  let url;
+  try { url = new URL(pattern.slice(0, -1)); } catch { return false; }
+  return url.protocol === "https:" && Boolean(url.hostname) &&
+    !url.hostname.includes("*") && pattern === `${url.origin}/*`;
 }
 
 export function initializePackUi({

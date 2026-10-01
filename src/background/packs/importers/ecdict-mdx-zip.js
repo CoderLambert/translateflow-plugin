@@ -3,17 +3,16 @@ import {
   CURATED_IMPORTER_TYPES
 } from "../../../shared/curated-dictionaries.js";
 import {
+  assertCatalogArtifactResponseUrl,
+  getCatalogArtifactForRecipe
+} from "../../../shared/dictionary-catalog-v2.js";
+import {
   parseSingleRootMdxZipLayout,
   zipCrc32 as crc32,
   zipToBytes as toBytes
 } from "./ecdict-mdx-zip-layout.js";
 
 const READ_CHUNK_BYTES = 64 * 1024;
-const ALLOWED_RESPONSE_ORIGINS = new Set([
-  "https://github.com",
-  "https://release-assets.githubusercontent.com"
-]);
-
 /**
  * Bounded downloader and extractor for the extension-declared ECDICT 1.0.28
  * MDX ZIP recipe. The ZIP reader intentionally supports one root-level .mdx
@@ -175,14 +174,14 @@ function validateResponse(response, source) {
   if (typeof response.url !== "string" || !response.url) {
     throw zipError("ECDICT_DOWNLOAD_URL", "ECDICT download returned no final URL.");
   }
-  let origin;
   try {
-    origin = new URL(response.url).origin;
-  } catch {
-    throw zipError("ECDICT_DOWNLOAD_URL", "ECDICT download returned an invalid URL.");
-  }
-  if (!ALLOWED_RESPONSE_ORIGINS.has(origin)) {
-    throw zipError("ECDICT_DOWNLOAD_REDIRECT", "ECDICT download left the reviewed GitHub asset origins.");
+    const artifact = getCatalogArtifactForRecipe(source);
+    assertCatalogArtifactResponseUrl(source, response.url, {
+      redirected: Boolean(response.redirected),
+      artifactId: artifact.id
+    });
+  } catch (cause) {
+    throw zipError("ECDICT_DOWNLOAD_REDIRECT", cause?.message || "ECDICT download left its reviewed artifact origin allowlist.");
   }
   const contentLength = response.headers?.get?.("content-length");
   if (contentLength !== null && contentLength !== undefined && contentLength !== "") {

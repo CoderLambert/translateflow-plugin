@@ -2,6 +2,10 @@ import {
   getCuratedDictionary
 } from "../../shared/curated-dictionaries.js";
 import {
+  assertCatalogArtifactResponseUrl,
+  getCatalogArtifactForRecipe
+} from "../../shared/dictionary-catalog-v2.js";
+import {
   makeImportQuarantineToken
 } from "../../shared/import-quarantine-contract.js";
 import {
@@ -202,10 +206,16 @@ export function validateCuratedDictionaryResponse(
       `${source?.label || "Curated dictionary"} download failed with HTTP ${response?.status || "error"}.`
     );
   }
-  if (response.url && response.url !== source.downloadUrl) {
+  try {
+    const artifact = getCatalogArtifactForRecipe(source);
+    assertCatalogArtifactResponseUrl(source, response.url, {
+      redirected: Boolean(response.redirected),
+      artifactId: artifact.id
+    });
+  } catch (cause) {
     throw workerError(
       "CURATED_DOWNLOAD_REDIRECT",
-      "Curated dictionary download did not remain on the locked artifact URL."
+      cause?.message || "Curated dictionary download did not remain on the locked artifact URL."
     );
   }
 }

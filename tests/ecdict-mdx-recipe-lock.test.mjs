@@ -66,7 +66,7 @@ test("the download accepts the GitHub release and pinned CDN origins only", asyn
   for (const url of [recipe.downloadUrl, "https://release-assets.githubusercontent.com/release/test.zip"]) {
     let bytesRead = false;
     await assert.rejects(
-      extractPinnedEcdictMdx(responseAt(url, () => { bytesRead = true; }), { source: recipe }),
+      extractPinnedEcdictMdx(responseAt(url, () => { bytesRead = true; }, { redirected: url !== recipe.downloadUrl }), { source: recipe }),
       /size mismatch/u
     );
     assert.equal(bytesRead, true, "the exact reviewed origin should pass origin validation");
@@ -80,8 +80,8 @@ test("the download accepts the GitHub release and pinned CDN origins only", asyn
   ]) {
     let bytesRead = false;
     await assert.rejects(
-      extractPinnedEcdictMdx(responseAt(url, () => { bytesRead = true; }), { source: recipe }),
-      /reviewed GitHub asset origins/u
+      extractPinnedEcdictMdx(responseAt(url, () => { bytesRead = true; }, { redirected: true }), { source: recipe }),
+      /must use HTTPS|declared redirect origins/u
     );
     assert.equal(bytesRead, false, "an unapproved redirect must fail before consuming data");
   }
@@ -170,11 +170,12 @@ test("the MDX card distinguishes current, repair, reviewed update, and conflicti
   );
 });
 
-function responseAt(url, onRead) {
+function responseAt(url, onRead, { redirected = false } = {}) {
   return {
     ok: true,
     status: 200,
     url,
+    redirected,
     headers: { get: () => null },
     body: {
       getReader() {
