@@ -16,6 +16,7 @@
     "certify:lexicon": "node scripts/certify-lexical-release.mjs",
     "certify:offline-dictionary-beta": "node scripts/certify-offline-dictionary-beta.mjs",
     "certify:dictionary-library-vnext": "node scripts/certify-vnext-dictionary-library.mjs",
+    "certify:dictionary-ecosystem-v2": "node scripts/certify-dictionary-ecosystem-v2.mjs",
     "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs",
     "lock:kaikki": "node scripts/lock-kaikki-source.mjs",
     "setup:lexicon": "node scripts/setup-lexicon.mjs",
@@ -36,6 +37,7 @@
     "certify:rich-mdict-corpus": "node scripts/certify-rich-mdict-corpus.mjs",
     "inspect:mdict": "node scripts/inspect-mdict-compatibility.mjs",
     "test:rich-mdict-security": "node --test tests/rich-mdict-security.test.mjs",
+    "test:rich-lookup-cancellation": "node --test tests/rich-mdict-lookup-cancellation.test.mjs",
     "test:e2e:rich-mdict": "playwright test e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs"
   },
   "engines": {
