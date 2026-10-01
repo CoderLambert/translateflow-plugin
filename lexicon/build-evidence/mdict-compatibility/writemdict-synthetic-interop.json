@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-sanitized-mdict-compatibility-report",
+  "reportId": "writemdict-synthetic-interop",
+  "label": "writemdict-synthetic-interop",
+  "generatedBy": "scripts/inspect-mdict-compatibility.mjs",
+  "networkAccess": false,
+  "dictionaryContentExported": false,
+  "result": "supported",
+  "mdx": {
+    "file": {
+      "kind": "mdx",
+      "bytes": 1194,
+      "sha256": "b8996c8cd7449e67a5049ba0cd284fb1528385ff090c82af4113c67e050a8a82"
+    },
+    "metadata": {
+      "generatedByEngineVersion": "2.0",
+      "requiredEngineVersion": "2.0",
+      "encoding": "UTF-8",
+      "format": "HTML",
+      "encrypted": 0,
+      "compact": "no",
+      "compat": "no",
+      "styleSheet": {
+        "present": false,
+        "byteLength": 0,
+        "byteLengthOverBound": false,
+        "ruleCount": 0,
+        "ruleCountTruncated": false,
+        "withinRuntimeRuleLimit": true
+      }
+    },
+    "structure": {
+      "entryCount": 1,
+      "keyBlockCount": 1,
+      "recordBlockCount": 1,
+      "keyInfoCompression": "zlib",
+      "keyInfo": {
+        "compression": "zlib",
+        "compressedBytes": 47,
+        "decompressedBytes": 64,
+        "encrypted": false
+      },
+      "keyBlockCompression": {
+        "none": 0,
+        "zlib": 1,
+        "lzo": 0,
+        "unknown": 0
+      },
+      "recordBlockCompression": {
+        "none": 0,
+        "zlib": 1,
+        "lzo": 0,
+        "unknown": 0
+      },
+      "keyBlocks": {
+        "count": 1,
+        "totalCompressedBytes": 37,
+        "totalDecompressedBytes": 26,
+        "maxCompressedBytes": 37,
+        "maxDecompressedBytes": 26
+      },
+      "recordBlocks": {
+        "count": 1,
+        "totalCompressedBytes": 256,
+        "totalDecompressedBytes": 397,
+        "maxCompressedBytes": 256,
+        "maxDecompressedBytes": 397
+      },
+      "aliasLink": {
+        "sampledLookups": 1,
+        "observedRecords": 0,
+        "presence": false
+      },
+      "lookupNormalization": {
+        "keyCaseSensitive": false,
+        "stripKey": false,
+        "normalization": "NFKC; case fold when KeyCaseSensitive=No; strip Unicode punctuation/space when StripKey=Yes"
+      }
+    },
+    "parser": {
+      "importer": "rich-mdict",
+      "result": "supported",
+      "indexBuilt": true,
+      "unsupportedCapabilities": [],
+      "supportedCapabilities": [
+        "mdx.compression.zlib",
+        "mdx.encoding.utf8",
+        "mdx.engine.v2",
+        "mdx.key-info.compression-zlib",
+        "mdx.record.html"
+      ]
+    },
+    "featureSampling": {
+      "sampledRecords": 1,
+      "sampledLookups": 1,
+      "unreadableSampleRecords": 0,
+      "aliasLinkRecords": 0,
+      "commonHtmlTagFamilyRecords": {
+        "structure": 1,
+        "formatting": 0,
+        "headings": 0,
+        "lists": 0,
+        "tables": 0,
+        "links": 0,
+        "media": 1
+      },
+      "inlineStyleRecords": 0,
+      "styleSheetReferenceRecords": 1,
+      "compactStyleMarkerRecords": 0,
+      "imageReferenceRecords": 1,
+      "audioReferenceRecords": 1,
+      "localAnchorRecords": 0,
+      "entryReferenceRecords": 0,
+      "soundReferenceRecords": 0,
+      "relativeResourcePathRecords": 1,
+      "otherUriSchemeRecords": 0,
+      "otherUriSchemeKinds": {
+        "data": 0,
+        "javascript": 0,
+        "file": 0,
+        "ftp": 0,
+        "other": 0
+      },
+      "remoteUrlRecords": 1,
+      "unusualResourceExtensionReferences": 0,
+      "sampledPrefixTruncatedRecords": 0,
+      "observedCapabilities": [
+        "rich.audio-reference",
+        "rich.html-structure",
+        "rich.image-reference",
+        "rich.relative-resource-path",
+        "rich.remote-url",
+        "rich.style-sheet-reference"
+      ],
+      "samplingPlan": "center entry from evenly spaced key blocks"
+    },
+    "evidenceScope": "Deterministic record sample; all counters describe sampled record hits, not corpus-wide totals. No record text or headwords are emitted."
+  },
+  "mdd": {
+    "count": 1,
+    "files": [
+      {
+        "file": {
+          "kind": "mdd",
+          "bytes": 1723,
+          "sha256": "98adc93097939119d72d5d0257027099ab25d421b9df43d10867e29cc24fe4f5"
+        },
+        "namingPattern": "matching-stem",
+        "metadata": {
+          "generatedByEngineVersion": "2.0",
+          "requiredEngineVersion": "2.0",
+          "encoding": "UTF-16LE",
+          "encrypted": 0,
+          "compact": "no",
+          "compat": "no"
+        },
+        "structure": {
+          "resourceCount": 3,
+          "keyBlockCount": 2,
+          "recordBlockCount": 3,
+          "keyInfoCompression": "zlib",
+          "keyInfo": {
+            "compression": "zlib",
+            "compressedBytes": 106,
+            "decompressedBytes": 210,
+            "encrypted": false
+          },
+          "keyBlockCompression": {
+            "none": 0,
+            "zlib": 2,
+            "lzo": 0,
+            "unknown": 0
+          },
+          "recordBlockCompression": {
+            "none": 0,
+            "zlib": 3,
+            "lzo": 0,
+            "unknown": 0
+          },
+          "maxCompressedKeyBlockBytes": 73,
+          "maxDecompressedKeyBlockBytes": 98,
+          "maxCompressedRecordBlockBytes": 476,
+          "maxDecompressedRecordBlockBytes": 1964,
+          "resourceExtensionHistogram": {
+            "css": 1,
+            "png": 1,
+            "wav": 1
+          },
+          "resourceTypeHistogram": {
+            "image": 1,
+            "audio": 1,
+            "stylesheet": 1,
+            "other": 0
+          },
+          "maxObservedResourceBytes": 1964,
+          "resourcePathNormalizationChanges": 3,
+          "resourcePathNormalizationIssues": 0,
+          "unsupportedResourceForms": {
+            "unsafePath": 0,
+            "unknownExtension": 0
+          }
+        },
+        "parser": {
+          "importer": "mdd-resource",
+          "result": "supported",
+          "indexBuilt": true,
+          "unsupportedCapabilities": [],
+          "supportedCapabilities": [
+            "mdd.compression.zlib",
+            "mdd.encoding.utf16le",
+            "mdd.engine.v2"
+          ]
+        },
+        "evidenceScope": "Resource paths and aggregate sizes only; no resource bytes, paths, or file names are emitted."
+      }
+    ],
+    "companionAssociation": "explicit-inputs"
+  }
+}
