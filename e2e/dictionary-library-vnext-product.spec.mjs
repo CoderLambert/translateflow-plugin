@@ -74,10 +74,14 @@ test.describe("Dictionary Library vNext integrated product flow", () => {
     const alphaBytesBeforeDisable = await readInstalledSourceBytes(options, alpha.id);
     expect(betaBytesBeforeDisable).toBeGreaterThan(0);
     expect(alphaBytesBeforeDisable).toBeGreaterThan(0);
-    const matchingResource = await readMddResource(options, beta.id, "interop/sample.png");
-    const mismatchedResource = await readMddResource(options, alpha.id, "interop/sample.png");
+
+    const resourceProbe = await harness.open("/selection");
+    await harness.inject(resourceProbe);
+    const matchingResource = await readMddResource(harness, resourceProbe, beta.id, "interop/sample.png");
+    const mismatchedResource = await readMddResource(harness, resourceProbe, alpha.id, "interop/sample.png");
     expect(matchingResource).toMatchObject({ ok: true, found: true, mime: "image/png" });
     expect(mismatchedResource).toMatchObject({ ok: true, found: false });
+    await resourceProbe.close();
 
     // Disabling affects the viewer list while leaving the installed source in place.
     await setDictionaryPreference(options, alpha.row, "enabled", false);
@@ -207,7 +211,7 @@ test.describe("Dictionary Library vNext integrated product flow", () => {
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(0);
     await expect(page.locator("img.tf-rich-resource-image")).toHaveCount(0);
     expect(await readInstalledSourceBytes(options, beta.id)).toBe(0);
-    expect(await readMddResource(options, beta.id, "interop/sample.png")).toMatchObject({ ok: true, found: false });
+    expect(await readMddResource(harness, page, beta.id, "interop/sample.png")).toMatchObject({ ok: true, found: false });
     await expect.poll(() => preferenceExists(options, beta.id)).toBe(false);
 
     await dictionaryRow(options, alpha.id).getByRole("button", { name: "删除" }).click();
@@ -370,12 +374,20 @@ async function attachMddFile(row, file) {
   await expect(row).toContainText("MDD 附件 1 个");
 }
 
-async function readMddResource(options, dictionaryId, path) {
-  return options.evaluate(({ dictionaryId, path }) => chrome.runtime.sendMessage({
-    type: "RICH_MDD_RESOURCE",
-    dictionaryId,
-    path
-  }), { dictionaryId, path });
+async function readMddResource(harness, page, dictionaryId, path) {
+  const tabId = await harness.tabId(page);
+  return harness.driver.evaluate(async ({ tabId, dictionaryId, path }) => {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: async ({ dictionaryId, path }) => chrome.runtime.sendMessage({
+        type: "RICH_MDD_RESOURCE",
+        dictionaryId,
+        path
+      }),
+      args: [{ dictionaryId, path }]
+    });
+    return result?.result;
+  }, { tabId, dictionaryId, path });
 }
 
 async function readInstalledSourceBytes(options, dictionaryId) {

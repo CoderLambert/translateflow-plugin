@@ -127,6 +127,7 @@ test("dictionary lookups carry dictionaryId and isolate loading, errors, and sta
 
   lookupHandler({ id: "alpha", status: "ready" }, cards.get("alpha"));
   lookupHandler({ id: "beta", status: "ready" }, cards.get("beta"));
+  await flushMicrotasks();
   assert.deepEqual(sent.slice(1).map((message) => message.dictionaryId), ["alpha", "beta"]);
   assert.deepEqual([...cards.values()].map((card) => card.state), ["loading", "loading"]);
 
@@ -145,6 +146,68 @@ test("dictionary lookups carry dictionaryId and isolate loading, errors, and sta
   await flushMicrotasks();
   assert.equal(cards.get("alpha").state, "loading");
   assert.equal(cards.get("alpha").results.length, 0);
+});
+
+
+test("rich dictionary lookup scheduler caps concurrency and drops stale queued work", async () => {
+  const pending = new Map();
+  const sent = [];
+  const cards = new Map();
+  let lookupHandler;
+  let current = true;
+  const dictionaries = Array.from({ length: 8 }, (_, index) => ({
+    id: `dictionary-${index + 1}`,
+    title: `Dictionary ${index + 1}`,
+    order: index,
+    status: "ready"
+  }));
+  const messages = {
+    background: {
+      RICH_MDICT_VIEWER_LIST: "RICH_MDICT_VIEWER_LIST",
+      RICH_MDICT_LOOKUP: "RICH_MDICT_LOOKUP"
+    }
+  };
+  const app = { modules: {
+    runtime: {
+      messages,
+      sendRuntimeMessage(message) {
+        sent.push(message);
+        if (message.type === messages.background.RICH_MDICT_VIEWER_LIST) {
+          return Promise.resolve({ ok: true, dictionaries });
+        }
+        return new Promise((resolve) => pending.set(message.dictionaryId, resolve));
+      }
+    },
+    selectionPopover: {
+      appendRichDictionaryCards(items, onLookup) {
+        for (const dictionary of items) cards.set(dictionary.id, createCardState());
+        lookupHandler = onLookup;
+        return true;
+      }
+    }
+  } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app });
+  vm.runInContext(await readFile(DETAILS, "utf8"), context);
+  await app.modules.selectionRichDetails.load({ text: "word" }, 5, "page", () => current);
+
+  for (const dictionary of dictionaries) {
+    lookupHandler(dictionary, cards.get(dictionary.id));
+  }
+  await flushMicrotasks();
+
+  const lookupMessages = () => sent.filter((message) => message.type === messages.background.RICH_MDICT_LOOKUP);
+  assert.equal(lookupMessages().length, 3, "only three rich lookups may run concurrently");
+
+  pending.get("dictionary-1")({ ok: true, found: false, dictionaries: [], errors: [] });
+  await flushMicrotasks();
+  assert.equal(lookupMessages().length, 4, "one queued lookup starts when a slot is released");
+
+  current = false;
+  for (const id of ["dictionary-2", "dictionary-3", "dictionary-4"]) {
+    pending.get(id)({ ok: true, found: false, dictionaries: [], errors: [] });
+  }
+  await flushMicrotasks();
+  assert.equal(lookupMessages().length, 4, "stale queued selection work must not issue new background lookups");
 });
 
 test("content runtime exposes the independent viewer-list message", async () => {

@@ -54,8 +54,19 @@ test.describe("local MDD resource product and security behavior", () => {
       buffer: mdd
     }, { success: true });
 
+    const deniedSettingsRead = await readMddResourceFromOptions(
+      options,
+      dictionaryId,
+      "interop/sample.png"
+    );
+    expect(deniedSettingsRead.ok).toBe(false);
+    expect(deniedSettingsRead.errorCode).toBe("RICH_MDICT_CONTENT_ONLY");
+
+    const resourceProbe = await harness.open("/selection");
+    await harness.inject(resourceProbe);
+
     for (const expected of lock.generation.resources) {
-      const response = await readMddResource(options, dictionaryId, expected.path);
+      const response = await readMddResource(harness, resourceProbe, dictionaryId, expected.path);
       expect(response.ok, expected.path).toBe(true);
       expect(response.found, expected.path).toBe(true);
       expect(response.mime, expected.path).toBe(expected.mime);
@@ -68,7 +79,7 @@ test.describe("local MDD resource product and security behavior", () => {
       hasText: "TranslateFlow MDD Interop Fixture"
     });
     await expect(row).toBeVisible();
-    const afterReload = await readMddResource(options, dictionaryId, "interop/sample.png");
+    const afterReload = await readMddResource(harness, resourceProbe, dictionaryId, "interop/sample.png");
     expect(afterReload.ok).toBe(true);
     expect(afterReload.found).toBe(true);
     expect(afterReload.mime).toBe("image/png");
@@ -81,9 +92,10 @@ test.describe("local MDD resource product and security behavior", () => {
       mimeType: "application/octet-stream",
       buffer: corruptMdd
     }, { success: false });
-    const oldResourceSurvives = await readMddResource(options, dictionaryId, "interop/sample.png");
+    const oldResourceSurvives = await readMddResource(harness, resourceProbe, dictionaryId, "interop/sample.png");
     expect(oldResourceSurvives.ok).toBe(true);
     expect(oldResourceSurvives.found).toBe(true, "a corrupt replacement must not remove active resources");
+    await resourceProbe.close();
 
     await harness.setStorage({ appearance: "dark" });
     const page = await harness.open("/selection");
@@ -184,7 +196,7 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装", {
       timeout: 30_000
     });
-    const afterDelete = await readMddResource(options, dictionaryId, "interop/sample.png");
+    const afterDelete = await readMddResource(harness, page, dictionaryId, "interop/sample.png");
     expect(afterDelete.ok).toBe(true);
     expect(afterDelete.found).toBe(false);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(0);
@@ -225,12 +237,28 @@ async function attachMddFile(row, file, { success }) {
   else await expect(status).toContainText("MDD", { timeout: 60_000 });
 }
 
-async function readMddResource(options, dictionaryId, path) {
+async function readMddResourceFromOptions(options, dictionaryId, path) {
   return options.evaluate(({ dictionaryId, path }) => chrome.runtime.sendMessage({
     type: "RICH_MDD_RESOURCE",
     dictionaryId,
     path
   }), { dictionaryId, path });
+}
+
+async function readMddResource(harness, page, dictionaryId, path) {
+  const tabId = await harness.tabId(page);
+  return harness.driver.evaluate(async ({ tabId, dictionaryId, path }) => {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: async ({ dictionaryId, path }) => chrome.runtime.sendMessage({
+        type: "RICH_MDD_RESOURCE",
+        dictionaryId,
+        path
+      }),
+      args: [{ dictionaryId, path }]
+    });
+    return result?.result;
+  }, { tabId, dictionaryId, path });
 }
 
 async function expandRichCard(card) {
