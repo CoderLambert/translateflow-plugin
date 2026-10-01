@@ -66,7 +66,7 @@ const REQUIRED_E2E_CASES = Object.freeze([
   ["e2e/rich-mdict-real-corpus.spec.mjs", "Settings install survives reload, Selection shows a real record with zero Provider calls, and delete removes it"],
   ["e2e/rich-mdict-real-corpus.spec.mjs", "the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes"],
   ["e2e/mdd-resources.spec.mjs", "independent MDX/MDD pair restores image, gated audio, and safe CSS after reload"],
-  ["e2e/multi-dictionary-viewer.spec.mjs", "configured order and collapsed defaults survive reload beside the unchanged structured primary"],
+  ["e2e/multi-dictionary-viewer.spec.mjs", "personal preference persists and opens first beside the unchanged structured primary"],
   ["e2e/multi-dictionary-viewer.spec.mjs", "disabling a dictionary hides it from Selection while its installed bytes remain available"],
   ["e2e/multi-dictionary-viewer.spec.mjs", "a corrupted dictionary reports its own error while another card and the structured primary render"],
   ["e2e/settings-ia.spec.mjs", "dictionary library separates trust classes and stays usable at narrow width"],

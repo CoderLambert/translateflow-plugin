@@ -19,6 +19,11 @@ test("integrated vNext certification accepts the pinned corpus, fresh product re
   assert.equal(report.evidence.mddInteropAndResources.syntheticRangeIo.uncompressedPayloadBytes, 104_857_676);
   assert.equal(report.evidence.vnextProduct.cleanup.objectUrlsAfterResourceOwnerDeletion, 0);
   assert.equal(report.evidence.multiDictionary.newProductFile.status, "passed");
+  assert.ok(report.evidence.multiDictionary.requiredCases.some((item) =>
+    item.file === "e2e/multi-dictionary-viewer.spec.mjs" &&
+    item.title === "personal preference persists and opens first beside the unchanged structured primary" &&
+    item.status === "passed"
+  ));
   assert.equal(report.evidence.productionPackage.rawPayloads.length, 0);
   assert.equal(report.evidence.lexicalPrimaryLane.status, "passed");
   const serialized = JSON.stringify(report);
@@ -44,6 +49,21 @@ test("vNext certification fails closed for missing evidence and wrong corpus ide
   assert.equal(wrongReport.status, "FAIL");
   assert.ok(wrongReport.failures.some((failure) => failure.includes("browser ECDICT MDX SHA-256")));
   assert.ok(wrongReport.failures.some((failure) => failure.includes("independent MDict writer commit")));
+});
+
+test("vNext certification requires the current personal-preference Selection case identity", () => {
+  const evidence = passingEvidence();
+  const suite = evidence.playwright.suites.find((item) => item.file === "e2e/multi-dictionary-viewer.spec.mjs");
+  const current = suite.specs.find((item) => item.title ===
+    "personal preference persists and opens first beside the unchanged structured primary");
+  assert.ok(current);
+  current.title = "configured order and collapsed defaults survive reload beside the unchanged structured primary";
+
+  const report = certifyVnextDictionaryLibrary(evidence);
+  assert.equal(report.status, "FAIL");
+  assert.ok(report.failures.some((failure) => failure.includes(
+    "personal preference persists and opens first beside the unchanged structured primary (found 0)"
+  )));
 });
 
 test("vNext certification rejects skipped, failed, flaky, missing, and retried product E2E outcomes", () => {
@@ -128,7 +148,7 @@ function passingEvidence() {
     ["e2e/rich-mdict-real-corpus.spec.mjs", "Settings install survives reload, Selection shows a real record with zero Provider calls, and delete removes it"],
     ["e2e/rich-mdict-real-corpus.spec.mjs", "the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes"],
     ["e2e/mdd-resources.spec.mjs", "independent MDX/MDD pair restores image, gated audio, and safe CSS after reload"],
-    ["e2e/multi-dictionary-viewer.spec.mjs", "configured order and collapsed defaults survive reload beside the unchanged structured primary"],
+    ["e2e/multi-dictionary-viewer.spec.mjs", "personal preference persists and opens first beside the unchanged structured primary"],
     ["e2e/multi-dictionary-viewer.spec.mjs", "disabling a dictionary hides it from Selection while its installed bytes remain available"],
     ["e2e/multi-dictionary-viewer.spec.mjs", "a corrupted dictionary reports its own error while another card and the structured primary render"],
     ["e2e/settings-ia.spec.mjs", "dictionary library separates trust classes and stays usable at narrow width"],
