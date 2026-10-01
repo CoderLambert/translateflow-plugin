@@ -215,7 +215,7 @@ export function publicRichDictionary(entry) {
     resourceCount: resourceSources.length,
     resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
     installedBytes: Number(active.sourceSize || 0) + Number(active.indexSize || 0) +
-      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
+      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)) + Math.max(0, Number(source?.indexSize || 0)), 0),
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
     ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),

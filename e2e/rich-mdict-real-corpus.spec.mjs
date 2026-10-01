@@ -69,7 +69,8 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       hasText: "简明英汉字典增强版"
     });
     await expect(installed).toBeVisible();
-    await expect(installed).toContainText("3,402,564 条词目");
+    await expect(installed.locator("dt")).toContainText("词条");
+    await expect(installed.locator("dd")).toContainText("3,402,564");
     await expect(installed).toContainText("可用");
 
     await options.reload();
@@ -320,6 +321,8 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     const installStarted = Date.now();
     await row.locator("[data-action='install']").click();
     await waitForCuratedMdxInstall(options, row, "initial install");
+    await expect(row.locator(".dictionary-pack-detail[aria-live='polite']"))
+      .toContainText("已安装上游版本 1.0.28");
     const initialInstallMs = Date.now() - installStarted;
     await expect(row.locator("[data-action='reinstall']")).toBeVisible();
     await expect(row.locator("[data-action='delete']")).toBeVisible();
@@ -378,6 +381,8 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
     );
     await row.locator("[data-action='reinstall']").click();
     await waitForCuratedMdxInstall(options, row, "reinstall", reinstallEventOffset);
+    await expect(row.locator(".dictionary-pack-detail[aria-live='polite']"))
+      .toContainText("已安装上游版本 1.0.28");
     const reinstallMs = Date.now() - reinstallStarted;
     const afterReinstall = await listCuratedEcdict(options);
     expect(afterReinstall?.status).toBe("ready");
@@ -515,7 +520,11 @@ async function waitForCuratedMdxInstall(options, row, phase, eventOffset = 0) {
     ]);
     const normalized = String(detail || "").trim();
     const currentEvents = events.slice(eventOffset);
-    if (normalized.includes("已安装审核版本 1.0.28")) return;
+    const installedAction = row.locator("[data-action='reinstall']");
+    if (
+      normalized.includes("已安装上游版本 1.0.28") &&
+      await installedAction.isVisible().catch(() => false)
+    ) return;
     if (
       normalized.includes("未授予") ||
       currentEvents.some((event) => event.type === "curated-ecdict-mdx:error")
