@@ -37,8 +37,13 @@ resource extensions use common type names plus an `other` bucket.
 The report separates the rich MDX parser result from the overall compatibility
 result. For example, MDX can parse successfully while the overall result is
 `partially_supported` because sampled records reference relative resources
-without a supplied companion MDD. Results are evidence for the inspected
-artifact and current importer, not a safety endorsement for dictionary markup.
+without a supplied companion MDD. The top-level result is `unsupported` only
+when the required MDX parser route is unsupported. If MDX is supported but any
+supplied MDD is partial or unsupported, the set is `partially_supported`; each
+MDD keeps its own parser result in the per-file report. A top-level `supported`
+result requires supported MDX and all supplied MDDs, with no missing-companion
+signal. Results are evidence for the inspected artifact and current importer,
+not a safety endorsement for dictionary markup.
 
 ## Stable capability vocabulary
 
@@ -60,8 +65,11 @@ reasons remain in `parser.supportedCapabilities` and
 | Sampled rich semantics | `rich.html-structure`, `rich.inline-style`, `rich.style-sheet-reference`, `rich.compact-style-marker`, `rich.image-reference`, `rich.audio-reference`, `rich.local-anchor`, `rich.entry-reference`, `rich.sound-reference`, `rich.relative-resource-path`, `rich.other-uri-scheme`, `rich.remote-url`, `rich.unusual-resource-extension` |
 
 Parser result values are `supported`, `partially_supported`, or `unsupported`.
-The report separately labels malformed inputs as `failureClass: "invalid"`,
-policy or unsafe content rejections, and safety-limit failures. The matrix uses
+When headers pass but bounded index construction detects corrupt structure, the
+report uses `failureClass: "invalid"`; unsafe-content rejections and safety
+limits have separate failure classes. Missing/unreadable inputs and malformed
+or too-short headers fail inspection with a sanitized CLI error instead of a
+report. The matrix uses
 `PASS`, `PASS_WITH_LIMITATIONS`, `BLOCKED_BY_CAPABILITY`,
 `UNSUPPORTED_BY_POLICY`, and `NOT_TESTED`.
 

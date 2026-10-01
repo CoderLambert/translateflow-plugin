@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { open, stat, writeFile } from "node:fs/promises";
-import { basename, extname, resolve } from "node:path";
+import { open, realpath, stat, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   MDICT_IMPORT_ERROR,
@@ -86,7 +86,9 @@ export async function inspectMdictFiles({
   const missingCompanion = Boolean(mdx.featureSampling?.relativeResourcePathRecords) && mddInputs.length === 0;
   const result = mdx.parser.result === RESULT.UNSUPPORTED
     ? RESULT.UNSUPPORTED
-    : (mdx.parser.result === RESULT.PARTIALLY_SUPPORTED || missingCompanion)
+    : (mdx.parser.result !== RESULT.SUPPORTED ||
+      mddInputs.some((input) => input.parser.result !== RESULT.SUPPORTED) ||
+      missingCompanion)
       ? RESULT.PARTIALLY_SUPPORTED
       : RESULT.SUPPORTED;
 
@@ -1011,9 +1013,55 @@ export async function runCli(args = process.argv.slice(2)) {
   const [mdxPath, ...mddPaths] = positional;
   const report = await inspectMdictFiles({ mdxPath, mddPaths, label, includeHashes, sampleRecords });
   const serialized = JSON.stringify(report, null, 2) + "\n";
-  if (outputPath) await writeFile(resolve(outputPath), serialized, { encoding: "utf8" });
+  if (outputPath) {
+    await assertOutputDoesNotOverwriteInputs(outputPath, [mdxPath, ...mddPaths]);
+    await writeFile(resolve(outputPath), serialized, { encoding: "utf8" });
+  }
   else process.stdout.write(serialized);
   return 0;
+}
+
+async function assertOutputDoesNotOverwriteInputs(outputPath, inputPaths) {
+  const resolvedOutput = resolve(outputPath);
+  const inputFiles = await Promise.all(inputPaths.map(async (path) => {
+    const resolvedInput = resolve(path);
+    let info;
+    try {
+      info = await stat(resolvedInput, { bigint: true });
+    } catch {
+      throw new Error("Output cannot be checked against an unreadable input.");
+    }
+    let canonicalPath;
+    try {
+      canonicalPath = await realpath(resolvedInput);
+    } catch {
+      throw new Error("Output cannot be checked against an unreadable input.");
+    }
+    return { canonicalPath, device: info.dev, inode: info.ino };
+  }));
+
+  let outputInfo = null;
+  try {
+    outputInfo = await stat(resolvedOutput, { bigint: true });
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw new Error("Output path is not writable.");
+  }
+
+  let canonicalOutput;
+  try {
+    canonicalOutput = outputInfo
+      ? await realpath(resolvedOutput)
+      : resolve(await realpath(dirname(resolvedOutput)), basename(resolvedOutput));
+  } catch {
+    throw new Error("Output path is not writable.");
+  }
+
+  if (inputFiles.some((input) =>
+    canonicalOutput === input.canonicalPath ||
+    (outputInfo && outputInfo.dev === input.device && outputInfo.ino === input.inode)
+  )) {
+    throw new Error("Output must be distinct from every MDX/MDD input.");
+  }
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
@@ -1028,7 +1076,7 @@ if (isMain) {
 
 function sanitizeCliError(error) {
   const message = String(error?.message || "Inspection failed.");
-  if (/expected a \.mdx|expected a \.mdd|missing value|unknown inspector|input|required|safety limit|exceeds/iu.test(message)) {
+  if (/expected a \.mdx|expected a \.mdd|missing value|unknown inspector|input|required|output|safety limit|exceeds/iu.test(message)) {
     return message.replace(/[^\p{L}\p{N} .,:;_()-]/gu, "").slice(0, 180);
   }
   return "input is invalid, unreadable, unsupported, or exceeds a safety bound";

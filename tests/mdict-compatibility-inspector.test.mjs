@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { inspectMdictFiles } from "../scripts/inspect-mdict-compatibility.mjs";
+import { inspectMdictFiles, runCli } from "../scripts/inspect-mdict-compatibility.mjs";
 import { makeRichMdx } from "./helpers/rich-mdict-fixture.mjs";
 import { makeMdd, readMddInteropFixture } from "./helpers/mdd-fixture.mjs";
 
@@ -85,6 +85,7 @@ test("unsupported engine requirements return stable capability codes and corrupt
   await writeFile(mdxPath, makeRichMdx([["alpha", "private"]], { requiredEngineVersion: "3.0" }));
   const report = await inspectMdictFiles({ mdxPath, includeHashes: false });
   assert.equal(report.mdx.parser.result, "unsupported");
+  assert.equal(report.result, "unsupported");
   assert.equal(Object.hasOwn(report.mdx.file, "sha256"), false);
   assert.ok(report.mdx.parser.unsupportedCapabilities.includes("mdx.required-engine-version"));
   assert.doesNotMatch(JSON.stringify(report), /private/iu);
@@ -96,6 +97,56 @@ test("unsupported engine requirements return stable capability codes and corrupt
   const corruptPath = join(directory, "corrupt.mdx");
   await writeFile(corruptPath, Buffer.from("not an mdict").subarray(0, 12));
   await assert.rejects(inspectMdictFiles({ mdxPath: corruptPath }), /MDict header/iu);
+});
+
+test("overall result includes unsupported companion MDD parser outcomes", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "translateflow-mdict-inspector-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const mdxPath = join(directory, "supported.mdx");
+  const mddPath = join(directory, "password-protected.mdd");
+  await Promise.all([
+    writeFile(mdxPath, makeRichMdx([["alpha", "private definition"]])),
+    writeFile(mddPath, makeMdd([["asset.png", Buffer.from("resource bytes")]], { encrypted: 1 }))
+  ]);
+
+  const report = await inspectMdictFiles({ mdxPath, mddPaths: [mddPath] });
+  assert.equal(report.mdx.parser.result, "supported");
+  assert.equal(report.mdd.files[0].parser.result, "unsupported");
+  assert.ok(report.mdd.files[0].parser.unsupportedCapabilities.includes("mdd.encryption.password-protected"));
+  assert.equal(report.result, "partially_supported");
+});
+
+test("CLI refuses direct and symlink output collisions while preserving distinct output behavior", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "translateflow-mdict-inspector-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const mdxPath = join(directory, "safe.mdx");
+  const mddPath = join(directory, "safe.mdd");
+  const mdx = makeRichMdx([["alpha", "private definition"]]);
+  const mdd = makeMdd([["asset.png", Buffer.from("resource bytes")]]);
+  await Promise.all([writeFile(mdxPath, mdx), writeFile(mddPath, mdd)]);
+
+  await assert.rejects(
+    runCli([mdxPath, "--output", mdxPath]),
+    /Output must be distinct from every MDX\/MDD input/iu
+  );
+  assert.deepEqual(await readFile(mdxPath), mdx);
+  assert.deepEqual(await readFile(mddPath), mdd);
+
+  const mddAliasPath = join(directory, "mdd-output-alias.json");
+  await symlink(mddPath, mddAliasPath);
+  await assert.rejects(
+    runCli([mdxPath, mddPath, "--output", mddAliasPath]),
+    /Output must be distinct from every MDX\/MDD input/iu
+  );
+  assert.deepEqual(await readFile(mdxPath), mdx);
+  assert.deepEqual(await readFile(mddPath), mdd);
+
+  const safeOutputPath = join(directory, "report.json");
+  await runCli([mdxPath, mddPath, "--output", safeOutputPath]);
+  const report = JSON.parse(await readFile(safeOutputPath, "utf8"));
+  assert.equal(report.result, "supported");
+  assert.deepEqual(await readFile(mdxPath), mdx);
+  assert.deepEqual(await readFile(mddPath), mdd);
 });
 
 test("independent synthetic report is repeatable and stays tied to the writer lock", async () => {
