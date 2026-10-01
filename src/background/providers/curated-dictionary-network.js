@@ -1,33 +1,33 @@
 import {
-  assertDeclaredCuratedDictionary,
-  CURATED_IMPORTER_TYPES
+  assertDeclaredCuratedDictionary
 } from "../../shared/curated-dictionaries.js";
+import {
+  getCatalogArtifactForRecipe
+} from "../../shared/dictionary-catalog-v2.js";
 
 export async function fetchCuratedDictionarySource(
   source,
   {
     signal,
+    artifactId,
     fetchImpl = globalThis.fetch
   } = {}
 ) {
-  const declared =
-    assertDeclaredCuratedDictionary(source);
+  const declared = assertDeclaredCuratedDictionary(source);
+  const artifact = getCatalogArtifactForRecipe(declared, artifactId);
   if (typeof fetchImpl !== "function") {
     throw new Error(
       "Curated dictionary network provider requires fetch."
     );
   }
 
-  return fetchImpl(declared.downloadUrl, {
+  return fetchImpl(artifact.downloadUrl, {
     method: "GET",
     cache: "no-store",
-    // The reviewed ECDICT release URL redirects to GitHub's release asset
-    // host. Its second exact origin is declared on that recipe and checked
-    // again by the pinned ZIP extractor. Other recipes keep redirects off.
-    redirect:
-      declared.importerType === CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1
-        ? "follow"
-        : "error",
+    // Redirect behavior is data from the extension-owned Catalog entry. The
+    // final response URL is checked against the same closed origin policy by
+    // the worker/importer before any bytes are accepted.
+    redirect: artifact.redirectPolicy === "browser-limited-final-origin" ? "follow" : "error",
     signal
   });
 }

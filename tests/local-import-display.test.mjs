@@ -34,6 +34,39 @@ test("local import display metadata is bounded and product-facing", () => {
   );
 });
 
+test("legacy ECDICT local display metadata migrates to catalog v2 without changing install identity", () => {
+  const display = normalizeLocalImportDisplayMetadata({
+    kind: "curated-upstream",
+    name: "ECDICT 高频英汉",
+    format: "ecdict-csv",
+    sourceLabel: "ECDICT / skywind3000",
+    sourceVersion: "bc015ed2e24a",
+    licenseLabel: "MIT（上游仓库）；词条内容来源需按上游说明理解"
+  }, { now: () => 1_800_000_000_000 });
+
+  assert.equal(display.catalog.entryId, "ecdict-en-zh-curated");
+  assert.equal(display.catalog.sourceVersion, "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b");
+  assert.equal(display.catalog.installedVersion, "2025-03-28-bc015ed2");
+  assert.equal(display.catalog.contentDate, null);
+  assert.equal(display.catalog.reviewedAt, "2026-10-01");
+  assert.equal(display.catalog.trustClass, "curated-upstream");
+
+  const legacyState = {
+    kind: "curated-upstream",
+    name: "ECDICT 高频英汉",
+    format: "ecdict-csv",
+    formatLabel: "ECDICT CSV",
+    trust: "upstream-community",
+    sourceLabel: "ECDICT / skywind3000",
+    sourceVersion: "bc015ed2e24a",
+    licenseLabel: "MIT（上游仓库）；词条内容来源需按上游说明理解",
+    importedAt: 1_799_999_000_000
+  };
+  assert.equal(publicLocalImportDisplayMetadata(legacyState).catalog.entryId, display.catalog.entryId);
+  assert.equal(legacyState.sourceVersion, "bc015ed2e24a");
+  assert.equal(legacyState.importedAt, 1_799_999_000_000);
+});
+
 test("invalid local display metadata fails closed", () => {
   assert.throws(
     () => normalizeLocalImportDisplayMetadata({

@@ -21,6 +21,7 @@ import {
   CURATED_IMPORTER_TYPES,
   CURATED_RECIPE_SCHEMA_VERSION
 } from "../src/shared/curated-dictionaries.js";
+import { getCuratedDictionary } from "../src/shared/curated-dictionaries.js";
 
 const encoder = new TextEncoder();
 const header =
@@ -110,10 +111,7 @@ test("curated network provider rejects non-approved origins before fetch", async
 
 
 test("curated response accepts encoded transport length while decoded stream remains exact-checked", () => {
-  const source = {
-    downloadUrl:
-      "https://raw.githubusercontent.com/skywind3000/ECDICT/locked/ecdict.csv"
-  };
+  const source = getCuratedDictionary("ecdict-en-zh-curated");
   const response = {
     ok: true,
     status: 200,

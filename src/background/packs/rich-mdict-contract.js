@@ -5,6 +5,9 @@ import {
   CURATED_IMPORTER_TYPES,
   getCuratedDictionary
 } from "../../shared/curated-dictionaries.js";
+import {
+  migrateCuratedRecipeV1State
+} from "../../shared/dictionary-catalog-v2.js";
 
 export const RICH_MDICT_STATE_KEY = "tfRichMdictStateV1";
 export const RICH_MDICT_OPFS_ROOT = "rich-mdict-dictionaries";
@@ -191,6 +194,12 @@ export function isValidSnapshot(packId, snapshot) {
 
 export function publicRichDictionary(entry) {
   const active = entry?.active || {};
+  const migratedCatalog = active.curated
+    ? migrateCuratedRecipeV1State(active.curated, {
+        recipeId: active.curated.recipeId,
+        installedVersion: active.packVersion
+      })
+    : { migrated: false };
   const resourceSources = Array.isArray(active.resources?.sources) && active.resources.sources.length <= 16
     ? active.resources.sources
     : [];
@@ -206,6 +215,7 @@ export function publicRichDictionary(entry) {
     resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
+    ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),
     status: entry?.status || "unknown"
   };
 }

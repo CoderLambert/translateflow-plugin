@@ -61,7 +61,9 @@ export function publicPackState(entry) {
     status: entry.status || "unknown",
     active: publicSnapshot(entry.active),
     fallback: publicSnapshot(entry.fallback),
-    display: publicLocalImportDisplayMetadata(entry.display),
+    display: publicLocalImportDisplayMetadata(entry.display, {
+      installedVersion: entry.active?.packVersion
+    }),
     recoveryReason: entry.recoveryReason || null,
     lastError: entry.lastError || null
   };

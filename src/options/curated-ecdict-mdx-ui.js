@@ -1,5 +1,5 @@
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
-import { CURATED_DICTIONARY_IDS } from "../shared/curated-dictionaries.js";
+import { getCatalogPermissionOrigins } from "../shared/dictionary-catalog-v2.js";
 import {
   createRichMdictImportController
 } from "./rich-mdict-import-controller.js";
@@ -308,25 +308,9 @@ function waitForEcdictMdxWorker(worker, source, requestId, onProgress) {
 }
 
 function curatedMdxPermissionOrigins(source) {
-  if (
-    source?.id !== CURATED_DICTIONARY_IDS.ECDICT_EN_ZH_MDX ||
-    source?.originPattern !== "https://github.com/*" ||
-    source?.downloadRedirectOrigin !== "https://release-assets.githubusercontent.com"
-  ) {
-    throw new Error("ECDICT MDX recipe origin permission is not the reviewed host pair.");
-  }
-  const github = new URL(source.originPattern.slice(0, -1));
-  const redirect = new URL(source.downloadRedirectOrigin);
-  if (
-    github.protocol !== "https:" || github.hostname !== "github.com" ||
-    github.pathname !== "/" || github.search || github.hash ||
-    redirect.protocol !== "https:" ||
-    redirect.hostname !== "release-assets.githubusercontent.com" ||
-    redirect.pathname !== "/" || redirect.search || redirect.hash
-  ) {
-    throw new Error("ECDICT MDX recipe origin permission is not an exact HTTPS host.");
-  }
-  return [source.originPattern, `${redirect.origin}/*`];
+  const origins = getCatalogPermissionOrigins(source);
+  if (!origins.length) throw new Error("Curated MDX recipe has no reviewed origin permissions.");
+  return origins;
 }
 
 function normalizeExtractedMdxFile(value, source) {

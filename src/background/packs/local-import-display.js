@@ -1,3 +1,8 @@
+import {
+  migrateLegacyCuratedDisplayMetadata,
+  validateInstalledCatalogMetadata
+} from "../../shared/dictionary-catalog-v2.js";
+
 const FORMAT_LABELS = Object.freeze({
   stardict: "StarDict",
   mdict: "MDict",
@@ -32,6 +37,12 @@ export function normalizeLocalImportDisplayMetadata(
     if (format !== "ecdict-csv") {
       throw new Error("Curated dictionary display format is unsupported.");
     }
+    const catalog = input.catalog === undefined
+      ? migrateLegacyCuratedDisplayMetadata({ kind: input.kind, format })
+      : validateInstalledCatalogMetadata(input.catalog);
+    if (!catalog || catalog.entryId !== "ecdict-en-zh-curated") {
+      throw new Error("Curated dictionary catalog metadata is not extension-declared.");
+    }
     return Object.freeze({
       kind: "curated-upstream",
       name,
@@ -53,6 +64,7 @@ export function normalizeLocalImportDisplayMetadata(
         200,
         "Curated dictionary license label"
       ),
+      catalog,
       importedAt
     });
   }
@@ -71,7 +83,7 @@ export function normalizeLocalImportDisplayMetadata(
   });
 }
 
-export function publicLocalImportDisplayMetadata(value) {
+export function publicLocalImportDisplayMetadata(value, { installedVersion } = {}) {
   if (
     !value ||
     typeof value.name !== "string" ||
@@ -88,6 +100,15 @@ export function publicLocalImportDisplayMetadata(value) {
     typeof value.licenseLabel === "string" &&
     value.format === "ecdict-csv"
   ) {
+    let catalog;
+    try {
+      catalog = value.catalog
+        ? validateInstalledCatalogMetadata(value.catalog)
+        : migrateLegacyCuratedDisplayMetadata(value, { installedVersion });
+    } catch {
+      return null;
+    }
+    if (!catalog || catalog.entryId !== "ecdict-en-zh-curated") return null;
     return {
       kind: "curated-upstream",
       name: value.name,
@@ -97,6 +118,7 @@ export function publicLocalImportDisplayMetadata(value) {
       sourceLabel: value.sourceLabel,
       sourceVersion: value.sourceVersion,
       licenseLabel: value.licenseLabel,
+      catalog,
       importedAt: Number(value.importedAt || 0)
     };
   }
