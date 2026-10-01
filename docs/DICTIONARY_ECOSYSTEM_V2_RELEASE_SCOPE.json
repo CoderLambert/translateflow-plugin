@@ -1,15 +1,17 @@
 {
   "schemaVersion": 1,
   "manifest": "dictionary-ecosystem-v2-release-scope",
-  "frozenAt": "2026-10-01T14:49:09Z",
-  "mainBaseSha": "acbfa12a079a73d6eab0a1c17e7a8f63d856295b",
+  "frozenAt": "2026-10-01T19:19:35Z",
+  "mainBaseSha": "39b3bb4d8def18ad8332f6a807c2b8f3a6f63a0f",
   "parentIssue": 198,
   "certificationIssue": 207,
-  "scopeStatus": "frozen-with-required-runtime-follow-up",
+  "scopeStatus": "frozen-for-certification",
   "scopeRevision": {
     "issue": 224,
-    "reason": "Code review found that stale Rich MDX responses are suppressed but already-dispatched lookup RPCs are not cancelled. #224 is required before final certification.",
-    "status": "required-pending"
+    "reason": "PR #225 shipped active Rich lookup cancellation with a stable per-content-document owner token for Chrome 102–105 same-document SPA routes; exact-head audit and all post-merge main workflows passed.",
+    "status": "shipped",
+    "mergedPr": 225,
+    "mergeSha": "39b3bb4d8def18ad8332f6a807c2b8f3a6f63a0f"
   },
   "requiredSlices": [
     { "issue": 199, "capability": "sanitized-mdx-mdd-compatibility-evidence", "status": "shipped", "mergedPr": 217 },
@@ -18,7 +20,7 @@
     { "issue": 215, "capability": "local-dictionary-preflight", "status": "shipped-through-203", "mergedPr": 220 },
     { "issue": 203, "capability": "unified-local-import-v2", "status": "shipped", "mergedPr": 221 },
     { "issue": 204, "capability": "preferred-rich-dictionary-selection", "status": "shipped", "mergedPr": 223 },
-    { "issue": 224, "capability": "cancel-in-flight-stale-rich-dictionary-lookups", "status": "required-pending", "mergedPr": null }
+    { "issue": 224, "capability": "cancel-in-flight-stale-rich-dictionary-lookups", "status": "shipped", "mergedPr": 225 }
   ],
   "promotedParserCapabilities": [],
   "promotedRichSemantics": [],
