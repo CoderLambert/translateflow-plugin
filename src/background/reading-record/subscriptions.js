@@ -13,9 +13,15 @@ export function createReadingSubscriptions({ accessControl, repository } = {}) {
     try {
       if (port.name !== READING_INVALIDATION_PORT) fail(E.FORBIDDEN, "port.name");
       if (entries.size >= 128) fail(E.CAPACITY, "subscriptions");
-      const entry = { close, access: null, assertCurrent: null };
+      const senderTabId = port.sender?.tab?.id;
+      const entry = { close, access: null, assertCurrent: null, active: false,
+        tabId: Number.isInteger(senderTabId) && senderTabId >= 0 ? senderTabId : null, invalidatedTabs: new Set() };
       entries.set(port, entry); // Pending native/repository work consumes capacity before the first await.
       const access = await accessControl.authorize(port.sender, M.GET_RECORDING_STATE, {});
+      // A native extension sender can omit tab until getContexts resolves. Remember bounded
+      // navigation barriers during that await; never invent ownership or activate a revoked port.
+      if (!connected || entries.get(port) !== entry || entry.invalidatedTabs.has(access.tabId)) fail(E.STALE_OPERATION, "port.navigation");
+      entry.tabId = access.tabId; entry.invalidatedTabs.clear();
       if (!["content", "extension"].includes(access.scope)) fail(E.FORBIDDEN, "port.scope");
       if (typeof repository?.readInvalidationState !== "function") fail(E.NOT_READY, "repository");
       const assertCurrent = () => { if (!connected || entries.get(port) !== entry || !accessControl.isCurrent(access)) fail(E.STALE_OPERATION, "port.current"); };
@@ -23,7 +29,7 @@ export function createReadingSubscriptions({ accessControl, repository } = {}) {
       const state = await repository.readInvalidationState({ access, assertCurrent });
       assertCurrent();
       const message = validateReadingInvalidation(state, access.scope);
-      Object.assign(entry, { access, assertCurrent });
+      Object.assign(entry, { access, assertCurrent, active: true });
       port.postMessage(message);
     } catch (error) {
       const notify = connected;
@@ -36,7 +42,7 @@ export function createReadingSubscriptions({ accessControl, repository } = {}) {
   }
   async function publish() {
     // Called only after repository commit; each short read verifies current policy/revision again.
-    await Promise.all([...entries].filter(([, entry]) => entry.access).map(async ([port, entry]) => {
+    await Promise.all([...entries].filter(([, entry]) => entry.active).map(async ([port, entry]) => {
       try {
         const state = await repository.readInvalidationState(entry);
         entry.assertCurrent();
@@ -44,5 +50,17 @@ export function createReadingSubscriptions({ accessControl, repository } = {}) {
       } catch { entry.close(); try { port.disconnect(); } catch {} }
     }));
   }
-  return { connect, publish, close() { for (const [port, entry] of [...entries]) { entry.close(); try { port.disconnect(); } catch {} } }, get size() { return entries.size; } };
+  function disconnect(port, entry) { entry.close(); try { port.disconnect(); } catch {} }
+  return { connect, publish,
+    closeTab(tabId) {
+      if (!Number.isInteger(tabId) || tabId < 0) return;
+      for (const [port, entry] of [...entries]) {
+        if (entry.tabId === tabId) disconnect(port, entry);
+        else if (entry.tabId === null) {
+          if (entry.invalidatedTabs.size >= 128 && !entry.invalidatedTabs.has(tabId)) disconnect(port, entry);
+          else entry.invalidatedTabs.add(tabId); // At most 128 barriers per unresolved native owner.
+        }
+      }
+    },
+    close() { for (const [port, entry] of [...entries]) disconnect(port, entry); }, get size() { return entries.size; } };
 }
