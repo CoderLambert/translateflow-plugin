@@ -96,6 +96,7 @@ test("failed native storage write reports failure and keeps the committed langua
 
 test("failed native storage read is visible and retry restores an enabled control", async ({ localeHarness: h }) => {
   await h.context.addInitScript(() => {
+    if (location.protocol !== "chrome-extension:" || !chrome.storage?.local) return;
     const original = chrome.storage.local.get;
     globalThis.__tfFailLocaleRead = true;
     chrome.storage.local.get = async (keys) => {
@@ -118,6 +119,7 @@ test("the new control remains hidden while the initial stored language is pendin
   const first = await h.openOptions();
   await first.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
   await h.context.addInitScript(() => {
+    if (location.protocol !== "chrome-extension:" || !chrome.storage?.local) return;
     const original = chrome.storage.local.get;
     chrome.storage.local.get = async (keys) => {
       if (Array.isArray(keys) && keys.length === 1 && keys[0] === "uiLocale") {
