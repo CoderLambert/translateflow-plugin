@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,7 @@ import ts from "typescript";
 
 const check = fileURLToPath(new URL("../scripts/check.mjs", import.meta.url));
 const manifest = { manifest_version: 3, background: { service_worker: "background.js", type: "module" } };
+const approvedMainSource = readFileSync(new URL("../src/content/subtitles/youtube-main-bridge.js", import.meta.url), "utf8");
 function runFixture(files) {
   const root = mkdtempSync(join(tmpdir(), "translateflow-architecture-"));
   try {
@@ -43,6 +44,14 @@ const negatives = [
   ["MAIN Reflect.apply fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;Reflect.apply(page.fetch,page,["https://invalid.test"]);' }, /MAIN observer/u],
   ["MAIN Reflect.apply fetch alias", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const request=page.fetch;const apply=Reflect.apply;apply(request,page,["https://invalid.test"]);' }, /MAIN observer/u],
   ["MAIN callback receives fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const key="fetch";dispatch(globalThis[key]);' }, /MAIN observer/u],
+  ["MAIN object fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const box={request:page.fetch};Reflect.apply(box.request,page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN array fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const box=[page.fetch];Reflect.apply(box[0],page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN mutable fetch alias", { "src/content/subtitles/youtube-main-bridge.js": 'let request=fetch;request("https://invalid.test");' }, /MAIN observer/u],
+  ["MAIN delegation without an AST-recognized global API", { "src/content/subtitles/youtube-main-bridge.js": 'let root=globalThis;const box={request:root.fetch};Reflect.apply(box.request,root,["https://invalid.test"]);' }, /精确闭包/u],
+  ["runtime import of declaration file", { "src/background/bad.ts": 'import "./types.d.ts";', "src/background/types.d.ts": 'export declare const value: string;' }, /非 runtime/u],
+  ["runtime re-export of declaration file", { "src/background/bad.ts": 'export {value} from "./types.d.mts";', "src/background/types.d.mts": 'export declare const value: string;' }, /非 runtime/u],
+  ["runtime dynamic import of declaration file", { "src/background/bad.ts": 'import("./types.d.cts");', "src/background/types.d.cts": 'export declare const value: string;' }, /非 runtime/u],
+  ["MAIN appended container fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": approvedMainSource + '\nconst page=globalThis;const box={request:page.fetch};Reflect.apply(box.request,page,["https://invalid.test"]);' }, /MAIN observer/u],
   ["Content fetch TS", { "src/content/bad.ts": 'globalThis["fetch"]("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content fetch alias", { "src/content/bad.js": 'const request = globalThis.fetch; request("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content IDB TS", { "src/content/bad.ts": 'globalThis["indexedDB"].open("illegal");' }, /IndexedDB/u],
@@ -86,6 +95,17 @@ test("CLI excludes erased type-only imports and re-exports from the runtime grap
     "src/learning-center/View.tsx": 'import "react"; export const View=()=> <div/>;'
   });
   assert.equal(result.status, 0, result.output);
+});
+test("CLI checks declaration syntax without treating declaration-only imports as runtime edges", () => {
+  const result = runFixture({
+    "src/background/types.d.ts": 'import {type ReactNode} from "react"; export {type External} from "unapproved-type-package"; export declare const value: ReactNode;',
+    "src/shared/types.d.mts": 'import {type ReactNode} from "react"; export declare const value: ReactNode;',
+    "src/background/types.d.cts": 'export {type ReactNode} from "react";',
+    "entrypoints/types.d.ts": 'export {type ReactNode} from "react";'
+  });
+  assert.equal(result.status, 0, result.output);
+  const invalid = runFixture({ "src/background/types.d.ts": 'declare const value: = 1;' });
+  assert.equal(invalid.status, 1); assert.match(invalid.output, /syntax/u);
 });
 test("runtime type-specifier checks agree with emission under the actual inherited compiler config", () => {
   const configPath = fileURLToPath(new URL("../tsconfig.json", import.meta.url));
@@ -145,12 +165,7 @@ test("CLI preserves approved owners and the exact existing MAIN request forwarde
     "src/background/providers/network.js": 'const key="fetch";globalThis[key]("https://invalid.test");',
     "src/background/cache-db.js": 'const key="indexedDB";globalThis[key].open("cache");',
     "src/background/auto-sites.js": 'const sdk=chrome.scripting;const key="registerContentScripts";sdk[key]([]);',
-    "src/content/subtitles/youtube-main-bridge.js": `const page=globalThis;
-      const GLOBAL="__test_main_bridge__";page[GLOBAL]={};
-      function installFetch(){const original=page.fetch;
-        const wrapper=function translateFlowYouTubeFetchWrapper(...args){return original.apply(this,args);};
-        page.fetch=wrapper;
-      }`
+    "src/content/subtitles/youtube-main-bridge.js": approvedMainSource
   });
   assert.equal(result.status, 0, result.output);
 });
