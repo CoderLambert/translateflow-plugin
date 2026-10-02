@@ -238,12 +238,78 @@ preserves data; default switching remains gated on the merged stage-1 head's CI,
 independent verification/review, and the already merged #227 fix.
 
 Chromium **153.0.8010.12** native site-access testing exercises withheld access,
-specific-origin grant, revoke, denied scripting, registration union and restart
-pruning without stubbing `chrome.permissions`. Browser prompt interaction is
-**NOT RUN**. The management API is test instrumentation in the isolated profile,
-not a runtime product dependency. A true headless keyboard experiment failed to
-dispatch the configured Chrome shortcut; Commands E2E therefore reports the
-actual registered-callback probe, not native shortcut PASS.
+specific-origin grant, revoke, registration union and restart pruning without
+stubbing `chrome.permissions`. Independent review found that the original
+`61f45a2` scripting-denial assertion was invalid: after revocation, tab URLs were
+not visible, URL lookup returned no tab, and the broad catch accepted a
+`TypeError` before any native injection call. That historical PASS is not evidence
+of denied scripting. Browser prompt interaction is **NOT RUN**. The management
+API is test instrumentation in the isolated profile, not a runtime product
+dependency. A true headless keyboard experiment failed to dispatch the configured
+Chrome shortcut; Commands E2E therefore reports the actual registered-callback
+probe, not native shortcut PASS.
+
+The resumed permission test captures and validates a unique native tab ID while
+access is granted, retains it after revocation and document reload, and checks
+the native tab still exists. Each probe first records independently readable
+`nativeCalls: 0` / `NOT_STARTED` state in the service worker, then invokes the real
+`chrome.scripting.executeScript` once and attaches settlement observers without
+blocking the evaluator. Every control uses the same native function, whose result
+and DOM marker make actual execution observable. Tab lookup errors, invalid
+arguments, TypeErrors and timeouts cannot be accepted as host denial.
+
+Independent source review corrected the assumption that a withheld request must
+immediately reject. Current Chromium main/HEAD permits `kWithheld` through the
+programmatic precheck and the renderer can wait for permission; see the official
+[permission data implementation](https://raw.githubusercontent.com/chromium/chromium/main/extensions/common/permissions/permissions_data.cc)
+and [renderer injection state handling](https://chromium.googlesource.com/chromium/src/+/HEAD/extensions/renderer/script_injection.cc).
+That source analysis is not certification of a particular Chromium binary.
+The test therefore separates an origin never requested/granted from declared
+but withheld/revoked access. Only the first control must deliver an explicit host
+Error; a pending withheld/revoked promise is recorded as **PENDING**, not denied
+or successfully settled. The no-`tabs`-permission host error is checked exactly
+against the generic form in the official
+[scripting permission-error implementation](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/extensions/browser/scripting_utils.cc).
+
+One bounded actual contrast ran on Chromium **153.0.8010.12** against a freshly
+built, unmodified WXT artifact with tree SHA-256
+`7d727f5cdbc4d96465613100eca41e383edb53e69b297b7d4e480399a6938db1`.
+The purpose-built mock HTTP server served both `127.0.0.1` and `localhost` URLs;
+the latter had never been granted and no hard-denied host was added to the
+Manifest. The native-created `localhost` tab provided its ID directly.
+
+| Native control | Permission contains | Calls | Observed API state | Execution marker |
+| --- | --- | ---: | --- | ---: |
+| Never-granted `localhost` | false | 1 | REJECTED, exact host-permission Error | 0 |
+| Declared but withheld `127.0.0.1` | false | 1 | PENDING, 1,024 ms / 107 live samples | 0 |
+| Granted `127.0.0.1` | true | 1 | FULFILLED, actual frame result matches marker | 1 |
+| Revoked `127.0.0.1`, fresh document | false | 1 | PENDING, 1,015 ms / 149 live samples | 0 |
+
+The negative observations checked the live DOM throughout their explicit
+measurement window, zero extension UI/translated nodes, and absence of the
+production bootstrap receiver through native `tabs.sendMessage`. The grant
+control returned the marker from the actual injection and rendered that marker
+in the document. Registration commands were rejected while withheld/revoked.
+The exact registration union, zero Provider calls, same-profile browser restart,
+revoked permission, empty native registrations and all three pruned site arrays
+remained required and passed. The revised native contrast was **PASS (1 test,
+6.8 s)** for this scope. Pending-request completion through a human click-to-run
+action and browser permission-prompt interaction are **NOT RUN**; this result
+does not claim those pending promises settled or all Chromium versions behave
+identically. The 60-second test deadline was unchanged; no fixed sleep,
+permission expansion, mocked permissions or swallowed error produced this result.
+
+The original red counterexample was reproduced in the resumed directory:
+`contains: false`, `tabFound: false`, `nativeCalls: 0`, `errorName: TypeError`,
+while the old assertion returned true. The subsequent popup and service-worker
+attempts expecting immediate rejection each exceeded the unchanged deadline and
+remain **FAIL**. Their final call counter/denial receipt and restart-pruning steps
+were not returned. A separate read-only profile check found the extension
+ENABLED in all five phases with no disable reasons; Developer mode was not
+changed. These failures remain evidence of the incorrect earlier expectation,
+not accepted denial results. The red counterexample, failed traces, profile
+check and new native contrast log/report are under
+`/tmp/translateflow-release-a-resume-20261002/evidence/248-*`.
 
 Ten cold and ten warm injections per artifact use the same profile/path,
 1280×720 viewport and local `/article` fixture. Each cold sample measures native
@@ -254,10 +320,13 @@ The first measured medians were old cold 35.90 ms / warm 14.60 ms and WXT cold
 35.05 ms / warm 14.60 ms. Ranges and all 40 raw samples are recorded separately;
 there is no enforced speed threshold or speed-improvement claim.
 
-Detailed local evidence is under the session's `evidence/248-*`: unmodified
-inventories, source-lock rebuild and native release audit, same-ID snapshots,
-injection samples, each actual command/log, retained failed experiments and
-Playwright traces. Early failures include a shared-output trace collision,
+The original session's local `evidence/248-*` directory was removed with its
+temporary workspace. The artifact inventories, source-lock rebuild and native
+release audit, same-ID snapshots, injection samples, command results and traces
+summarized above are historical evidence; their old local files are no longer
+present. Committed documentation and GitHub CI remain historical references.
+Rebuilding the same artifact does not rerun the old upgrade profile. New resumed
+evidence is explicitly recorded separately. Early failures included a shared-output trace collision,
 source-module imports unavailable after compilation, an absent preference button,
 reload with Developer mode disabled, and a new scripting context incorrectly used
 to inspect an old message binding. These runs are not final-head PASS evidence.
