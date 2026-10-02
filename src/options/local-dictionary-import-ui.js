@@ -47,6 +47,7 @@ export function initializeLocalDictionaryImportUi({
   let selectedFiles = [];
   let report = null;
   let installedCandidates = [];
+  let installedStateKnown = { rich: false, packs: false };
   let preflightAbort = null;
   let preflightSequence = 0;
   let activeImport = null;
@@ -197,6 +198,9 @@ export function initializeLocalDictionaryImportUi({
 
   function renderPreflight(result) {
     renderLocalPreflight({ result, selectedFiles, installedCandidates, summary, semanticLabel, semanticCheck, semanticText, limitationsLabel, limitationsCheck, limitationsText, duplicateLabel, duplicateCheck, duplicateText, updateImportEnabled });
+    if (!isInstalledStateKnownForReport(result)) {
+      appendSummaryLine(summary, "重复检查", "暂时无法读取对应的已安装词典状态；为避免重复或误覆盖，安装已暂停。");
+    }
   }
 
   function updateImportEnabled() {
@@ -218,8 +222,9 @@ export function initializeLocalDictionaryImportUi({
     const duplicate = findDuplicateCandidate(report, installedCandidates, selectedFiles);
     const tflexTooLarge = report.identity.family === "tflex" && isTflexOverInstallLimit(selectedFiles);
     const duplicateAllowed = !duplicate || duplicateCheck.checked;
+    const duplicateStateKnown = isInstalledStateKnownForReport(report);
     importButton.disabled = !statusCanImport || route === "none" || missingFiles || unrelatedFiles || unreadMdd || tflexTooLarge ||
-      !semanticAllowed || !partialAllowed || !duplicateAllowed;
+      !semanticAllowed || !partialAllowed || !duplicateAllowed || !duplicateStateKnown;
   }
 
   async function importSelected() {
@@ -364,14 +369,18 @@ export function initializeLocalDictionaryImportUi({
   }
 
   async function refreshInstalledCandidates() {
-    try {
-      const [richResponse, packResponse] = await Promise.all([
-        runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST }),
-        runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS })
-      ]);
-      installedCandidates = [];
-      for (const dictionary of richResponse?.dictionaries || []) {
-        if (dictionary?.title) installedCandidates.push({
+    const [richResult, packResult] = await Promise.allSettled([
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST }),
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS })
+    ]);
+    const nextCandidates = [];
+    let richKnown = false;
+    let packsKnown = false;
+
+    if (richResult.status === "fulfilled" && Array.isArray(richResult.value?.dictionaries)) {
+      richKnown = true;
+      for (const dictionary of richResult.value.dictionaries) {
+        if (dictionary?.title) nextCandidates.push({
           name: dictionary.title,
           family: "mdict-rich",
           packId: dictionary.id,
@@ -381,19 +390,36 @@ export function initializeLocalDictionaryImportUi({
           version: dictionary.packVersion
         });
       }
-      for (const [packId, entry] of Object.entries(packResponse?.state?.packs || {})) {
+    }
+
+    if (
+      packResult.status === "fulfilled" &&
+      packResult.value?.state?.packs &&
+      typeof packResult.value.state.packs === "object" &&
+      !Array.isArray(packResult.value.state.packs)
+    ) {
+      packsKnown = true;
+      for (const [packId, entry] of Object.entries(packResult.value.state.packs)) {
         if (!entry?.active) continue;
         const name = String(entry.display?.name || packId), format = entry.display?.format || "";
-        installedCandidates.push({
+        nextCandidates.push({
           name, family: format || "tflex", packId, version: entry.active.packVersion,
           sourceFiles: format === "tflex" ? ["manifest.json", "index.dat", "entries.dat"] : [],
           sourceSize: entry.active.totalBytes, format: entry.display?.formatLabel
         });
       }
-    } catch {
-      installedCandidates = [];
     }
+
+    installedCandidates = nextCandidates;
+    installedStateKnown = { rich: richKnown, packs: packsKnown };
     if (report) renderPreflight(report);
+  }
+
+  function isInstalledStateKnownForReport(value) {
+    if (!value?.identity?.family) return false;
+    return value.identity.family === "mdict-rich"
+      ? installedStateKnown.rich
+      : installedStateKnown.packs;
   }
 
   function setBusy(value) {
