@@ -4,12 +4,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate } from "./support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, assertRecoveredDatabases } from "./support/upgrade-expectations.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { startClosedNetwork, startupNetworkControl, assertStartupNetworkControl } from "./support/closed-network.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
-import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { READING_METHOD, READING_ERROR } from "../src/shared/reading/constants.js";
 import { request } from "../tests/fixtures/reading/contract.mjs";
 
@@ -25,21 +24,13 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
   const root = await mkdtemp(join(tmpdir(), "translateflow-wxt-upgrade-"));
   const extensionDir = join(root, "extension");
   const profile = join(root, "profile");
-  const server = await startMockServer();
-  const network = await startClosedNetwork(server.baseUrl).catch(async error => {
-    await server.close(); await rm(root,{recursive:true,force:true}); throw error;
-  });
-  const oldControl = startupNetworkControl(`old-${scenario}`, server.baseUrl);
-  const newControl = startupNetworkControl(`wxt-${scenario}`, server.baseUrl);
+  let server, network, oldControl, newControl, oldManifest, newManifest, injectionMapping;
   const errors = [];
   let context;
   let driver;
   let extensionId;
   const phases = [];
   let failure;
-  const oldManifest=JSON.parse(await readFile(join(oldArtifact,"manifest.json"),"utf8"));
-  const newManifest=JSON.parse(await readFile(join(newArtifact,"manifest.json"),"utf8"));
-  expect(newManifest.version).toBe(oldManifest.version);
   async function startupProof(worker, control, fromAttempt) {
     await expect.poll(()=>worker.evaluate(()=>globalThis.__tfNetworkStartupProbe?.results.length)).toBe(3);
     const observed=await worker.evaluate(()=>globalThis.__tfNetworkStartupProbe);
@@ -71,7 +62,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
       try { if ((await chrome.tabs.sendMessage(id, {type: "ABT_STATUS"}))?.ok) return; } catch {}
       await chrome.scripting.insertCSS({target:{tabId:id},files:css});
       await chrome.scripting.executeScript({target:{tabId:id},files:js});
-    }, {id,js:[...CONTENT_SCRIPT_FILES],css:[...CONTENT_STYLE_FILES]});
+    }, {id,js:injectionMapping.contentScripts,css:injectionMapping.contentStyles});
     return id;
   }
   async function content(page, message) {
@@ -128,7 +119,15 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     return {id,row,sourceSha256:createHash("sha256").update(mdx).digest("hex")};
   }
   try {
-    const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,baseUrl:server.baseUrl,startupNetwork:oldControl});
+    server = await startMockServer();
+    network = await startClosedNetwork(server.baseUrl);
+    oldControl = startupNetworkControl(`old-${scenario}`, server.baseUrl);
+    newControl = startupNetworkControl(`wxt-${scenario}`, server.baseUrl);
+    oldManifest=JSON.parse(await readFile(join(oldArtifact,"manifest.json"),"utf8"));
+    newManifest=JSON.parse(await readFile(join(newArtifact,"manifest.json"),"utf8"));
+    expect(newManifest.version).toBe(oldManifest.version);
+    const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,generation:"pre-switch-19e",baseUrl:server.baseUrl,startupNetwork:oldControl});
+    injectionMapping=old.runtimeMapping;
     const oldWorker=await launch();
     const oldStartup=await startupProof(oldWorker,oldControl,0);
     await driver.locator("#defaultProvider").selectOption("openai-compatible");
@@ -169,6 +168,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await context.close(); context=null;
     await rm(extensionDir,{recursive:true,force:true});
     const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl,observeInstalled:true,startupNetwork:newControl});
+    injectionMapping=next.runtimeMapping;
     const replacementNetworkStart=network.snapshot().attempts.length;
     const initialWorker=await launch();
     const initialLifecycle=await initialWorker.evaluate(()=>globalThis.__tfInstalledObserver);
@@ -236,9 +236,12 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const afterRecovery=await snapshot();
     expect(afterRecovery.storage).toEqual(expectedReloadStorage); expect(afterRecovery.opfs).toEqual(before.opfs);
     expect(afterRecovery.registrations).toEqual(before.registrations);
-    // Cache read metadata is expected to change only after actual cache use.
+    // Only the cache owner's lastAccessedAt on existing translation/page rows
+    // may advance during real reads. Content/identity and all other stores stay exact.
+    assertRecoveredDatabases(before.databases,afterRecovery.databases);
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
-    phases.push({phase:"WXT-after-recovery",id:extensionId,snapshot:summary(afterRecovery)});
+    phases.push({phase:"WXT-after-recovery",id:extensionId,allDatabaseContentPreserved:true,
+      allowedReadMetadata:["ai_bilingual_translator.translations.lastAccessedAt","ai_bilingual_translator.pages.lastAccessedAt"],snapshot:summary(afterRecovery)});
     await context.close(); context=null;
     const restartNetworkStart=network.snapshot().attempts.length;
     const restartedWorker=await launch();
@@ -263,14 +266,21 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
   } catch(error) {
     failure={name:error.name,message:error.message};throw error;
   } finally {
+    try {
     if(failure) {
       await mkdir(reportDir,{recursive:true});
       const partial={schemaVersion:1,status:"FAIL",completeAcceptance:false,testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,scenario,extensionId,
-        phases,failure,observedProviderCalls:server.calls.length,network:network.snapshot()};
+        phases,failure,observedProviderCalls:server?.calls.length??0,network:network?.snapshot()??null};
       await writeFile(join(reportDir,`same-id-upgrade-${scenario}-failed.json`),JSON.stringify(partial,null,2)+"\n");
       await testInfo.attach("same-id-upgrade-failed.json",{body:Buffer.from(JSON.stringify(partial,null,2)),contentType:"application/json"});
     }
-    await context?.close().catch(()=>{}); await network.close(); await server.close(); await rm(root,{recursive:true,force:true});
+    } finally {
+    try { await context?.close(); }
+    finally {
+      try { await network?.close(); }
+      finally { try { await server?.close(); } finally { await rm(root,{recursive:true,force:true}); } }
+    }
+    }
   }
 });
 }

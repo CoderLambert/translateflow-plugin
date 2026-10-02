@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate } from "../e2e/support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
 
 test("same-version upgrade rejects implicit locale writes and loss of any persisted data",()=>{
   const before={storage:{targetLanguage:"Chinese",extra:{keep:true}},databases:[{version:2}],opfs:[{sha256:"old"}],registrations:[{id:"old"}]};
@@ -43,5 +43,48 @@ test("upgrade retains every existing UI-locale value including unknown and null 
     assert.throws(()=>assertUnchangedUpgradeSnapshot(before,removed),assert.AssertionError);
     const changed=structuredClone(before);changed.storage.uiLocale="replacement";
     assert.throws(()=>assertUnchangedUpgradeSnapshot(before,changed),assert.AssertionError);
+  }
+});
+
+function seededDatabases() {
+  return [{ name:"ai_bilingual_translator",version:2,stores:{
+    translations:[0,1,2].map(id=>({cacheKey:"key-"+id,pageKey:"page",sourceHash:"source-"+id,configHash:"config",
+      sourceText:"text-"+id,translation:"translation-"+id,createdAt:100,lastAccessedAt:200,bytes:123})),
+    pages:[{pageKey:"page",url:"https://fixture.invalid/article",title:"Fixture",createdAt:100,lastAccessedAt:200}],
+    selection_explanations:[{cacheKey:"selection",explanation:"preserved",lastAccessedAt:200}]
+  }}];
+}
+
+test("cache recovery compares all content/stores canonically and permits only valid read metadata",()=>{
+  const before=seededDatabases(),valid=structuredClone(before);
+  valid[0].stores.translations.reverse();
+  for(const row of [...valid[0].stores.translations,...valid[0].stores.pages])row.lastAccessedAt=300;
+  assert.doesNotThrow(()=>assertRecoveredDatabases(before,valid,400));
+  assert.deepEqual(before,seededDatabases());
+  const mutations=[
+    db=>{db[0].stores.translations[0].translation="corrupted";},
+    db=>{db[0].stores.translations[0].sourceText="corrupted";},
+    db=>{db[0].stores.translations[0].cacheKey="changed";},
+    db=>{db[0].stores.translations[0].configHash="changed";},
+    db=>{db[0].stores.translations[0].bytes=0;},
+    db=>{db[0].stores.translations[0].createdAt=999;},
+    db=>{db[0].stores.translations[0].lastAccessedAt=199;},
+    db=>{db[0].stores.translations[0].lastAccessedAt=401;},
+    db=>{delete db[0].stores.translations[0].lastAccessedAt;},
+    db=>{db[0].stores.pages=[];},
+    db=>{db[0].stores.pages[0].title="corrupted";},
+    db=>{db[0].stores.selection_explanations=[];},
+    db=>{db[0].stores.selection_explanations[0].lastAccessedAt=300;},
+    db=>{db[0].version=3;},
+    db=>{db[0].name="different";},
+    db=>{delete db[0].stores.selection_explanations;},
+    db=>{db[0].stores.extra=[];},
+    db=>{db.push({name:"unexpected",version:1,stores:{}});}
+  ];
+  for(const mutate of mutations){
+    const bad=structuredClone(before);mutate(bad);
+    // Every adversarial snapshot passes the superseded three-row guard.
+    assert.equal(bad[0].stores.translations.length,3);
+    assert.throws(()=>assertRecoveredDatabases(before,bad,400),assert.AssertionError);
   }
 });

@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/rich-lookup-cancellation.yml"
+      - "e2e/support/**"
       - "scripts/measure-rich-lookup-cancellation-baseline.mjs"
       - "e2e/selection-rich-lookup-cancel.spec.mjs"
       - "tests/helpers/rich-mdict-fixture.mjs"
@@ -18,6 +19,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/rich-lookup-cancellation.yml"
+      - "e2e/support/**"
       - "scripts/measure-rich-lookup-cancellation-baseline.mjs"
       - "e2e/selection-rich-lookup-cancel.spec.mjs"
       - "tests/helpers/rich-mdict-fixture.mjs"

@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/mdd-resources.yml"
+      - "e2e/support/**"
       - "docs/RICH_MDD_INTEROP_EVIDENCE.md"
       - "scripts/certify-mdd-interop.mjs"
       - "scripts/generate-mdd-interop-fixture.py"
@@ -14,7 +15,6 @@ on:
       - "tests/rich-dictionary-sanitizer.test.mjs"
       - "tests/mdd-*.test.mjs"
       - "e2e/mdd-resources.spec.mjs"
-      - "e2e/support/extension-fixture.mjs"
       - "src/background/packs/**"
       - "src/background/router.js"
       - "src/options/rich-mdict-*.js"

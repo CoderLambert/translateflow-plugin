@@ -35,6 +35,16 @@ const test = base.extend({
       return page;
     }
     try {
+      // A serviceworker target is not completion of its native install handler.
+      // Finish the fresh-profile defaults write before injecting read/write
+      // failures; a late uiLocale onChanged would otherwise recover/hide retry.
+      const initialLocale = await worker.evaluate(() => chrome.storage.local.get(["uiLocale"]));
+      let readinessReads = 0;
+      await expect.poll(async () => {
+        readinessReads++;
+        return worker.evaluate(() => chrome.storage.local.get(["uiLocale"]));
+      }).toEqual({ uiLocale: "auto" });
+      console.log("[I18N_NATIVE_DEFAULTS_READY]", JSON.stringify({ artifact, initialLocale, readinessReads, uiLocale: "auto", storageWritesByHarness: 0 }));
       await use({ context, openOptions, extensionId, errors, external });
       expect(external, "No Provider or external HTTP call").toEqual([]);
       expect(errors, "No uncaught page errors").toEqual([]);

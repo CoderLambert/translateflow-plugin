@@ -19,7 +19,8 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
   try {
     for(const [name,artifact] of [["old",oldArtifact],["WXT",newArtifact]]) {
       if(name!=="old")await rm(extension,{recursive:true,force:true});
-      const source=await prepareExtensionTestCopy({artifact,extensionDir:extension,baseUrl:server.baseUrl,executionProof:name==="WXT"});
+      const source=await prepareExtensionTestCopy({artifact,extensionDir:extension,baseUrl:server.baseUrl,
+        generation:name==="old" ? "pre-switch-19e" : "current",executionProof:name==="WXT"});
       context=await chromium.launchPersistentContext(profile,{headless:true,channel:"chromium",viewport:{width:1280,height:720},
         args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`]});
       let worker=context.serviceWorkers()[0]||await context.waitForEvent("serviceworker");
@@ -63,7 +64,7 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
             sameApp:globalThis.__tf248InitialApp===globalThis.__TRANSLATE_FLOW_CONTENT__,
             loaded:__TRANSLATE_FLOW_CONTENT__.loaded,modules:Object.keys(__TRANSLATE_FLOW_CONTENT__.modules).length})});
           return {coldMs,warmMs,coldStatus,warmStatus,before,after};
-        },{tabId,js:[...CONTENT_SCRIPT_FILES],css:[...CONTENT_STYLE_FILES]});
+        },{tabId,js:source.runtimeMapping.contentScripts,css:source.runtimeMapping.contentStyles});
         expect(result.coldStatus).toMatchObject({ok:true,running:false,count:0});
         expect(result.warmStatus).toMatchObject({ok:true,running:false,count:0});
         expect(result.before.loaded).toBe(true);expect(result.after).toEqual({...result.before,sameApp:true});
@@ -72,7 +73,9 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
           sameApp:true,translatedNodes:0,providerCalls:0});await page.close();
         expect(context.pages()).toHaveLength(pagesBefore);
       }
-      phases.push({phase:name,artifact:source.treeSha256,testCopy:{treeSha256:source.testCopy.treeSha256,changes:source.testCopy.changes},activation,browser:context.browser().version(),samples,
+      phases.push({phase:name,artifact:source.treeSha256,generation:source.generation,mappingSourceHead:source.sourceHead,
+        contentFiles:source.runtimeMapping.contentScripts,styleFiles:source.runtimeMapping.contentStyles,
+        testCopy:{treeSha256:source.testCopy.treeSha256,changes:source.testCopy.changes},activation,browser:context.browser().version(),samples,
         coldMs:distribution(samples.map(s=>s.coldMs)),warmMs:distribution(samples.map(s=>s.warmMs)),
         documentCleanup:true});await context.close();context=null;
     }

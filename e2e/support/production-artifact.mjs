@@ -5,12 +5,14 @@ import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 import { byteSummary } from "../../scripts/wxt-assets.mjs";
-import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../../src/shared/constants.js";
-import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../../src/shared/runtime-assets.js";
+import { WORKER_PATHS } from "../../src/shared/runtime-assets.js";
 import { startupNetworkControl } from "./closed-network.mjs";
+import { mappingForGeneration, assertRuntimeMapping } from "./runtime-mapping.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-export const defaultArtifact = resolve(repoRoot, process.env.TF_E2E_ARTIFACT || "dist/extension");
+const selectedArtifact = process.env.TF_E2E_ARTIFACT ?? ".output/chrome-mv3";
+assert(selectedArtifact.trim(), "TF_E2E_ARTIFACT must explicitly name an artifact");
+export const defaultArtifact = resolve(repoRoot, selectedArtifact);
 
 export async function inventoryArtifact(root) {
   const summary = await byteSummary(root);
@@ -21,7 +23,7 @@ export async function inventoryArtifact(root) {
   return {...summary, files, treeSha256};
 }
 
-export async function copyProductionArtifact(artifact, extensionDir) {
+export async function copyProductionArtifact(artifact, extensionDir, { generation = "current" } = {}) {
   const source = resolve(artifact);
   const destination = resolve(extensionDir);
   for (const [parent,child] of [[source,destination],[destination,source]]) {
@@ -33,8 +35,15 @@ export async function copyProductionArtifact(artifact, extensionDir) {
   const inventory = await inventoryArtifact(source);
   const paths = new Set(inventory.files.map((f) => f.path));
   const manifest = JSON.parse(await readFile(join(source, "manifest.json"), "utf8"));
+  const mapping = mappingForGeneration(generation);
+  if (generation === "pre-switch-19e") {
+    for (const input of mapping.sourceFiles) {
+      assert.equal(inventory.files.find(file => file.path === input.path)?.sha256, input.sha256,
+        `Fixed old mapping source changed: ${input.path}`);
+    }
+  }
   assert.equal(manifest.manifest_version, 3);
-  const flatRuntime=new Set(["manifest.json",manifest.background.service_worker,...Object.values(EXTENSION_PAGES),
+  const flatRuntime=new Set(["manifest.json",manifest.background.service_worker,...Object.values(mapping.extensionPages),
     "content.js","content.css","popup.js","popup.css","popup-appearance.js","options.js","options.css"]);
   for(const path of paths) {
     const top=path.split("/")[0];
@@ -42,21 +51,19 @@ export async function copyProductionArtifact(artifact, extensionDir) {
       `Non-production artifact path: ${path}`);
     assert(!/\.(?:[cm]?tsx?|map|pem|crx|zip)$/u.test(path),`Non-runtime artifact file: ${path}`);
   }
-  for (const path of ["manifest.json", manifest.background.service_worker, ...Object.values(EXTENSION_PAGES),
-    ...CONTENT_SCRIPT_FILES, ...CONTENT_STYLE_FILES, ...Object.values(WORKER_PATHS), ...YOUTUBE_MAIN_BRIDGE_FILES]) {
-    assert(paths.has(path), `Production artifact lacks runtime mapping: ${path}`);
-  }
+  assertRuntimeMapping(paths, manifest, mapping);
   await cp(source, extensionDir, {recursive: true, errorOnExist: true, force: false});
   assert.equal((await inventoryArtifact(extensionDir)).treeSha256, inventory.treeSha256, "Production copy changed bytes");
   return {...inventory, output: extensionDir, artifact: source,
-    sourceHead: process.env.TF_E2E_ARTIFACT_SOURCE_HEAD || null};
+    sourceHead: generation === "pre-switch-19e" ? mapping.sourceCommit : process.env.TF_E2E_ARTIFACT_SOURCE_HEAD || null,
+    generation, runtimeMapping: mapping};
 }
 
 export async function prepareExtensionTestCopy({artifact = defaultArtifact, extensionDir,
-  lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, baseUrl}) {
+  generation = "current", lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, baseUrl}) {
     assert(!(captureCommands && observeInstalled), "Lifecycle observation and Commands probing use separate test copies");
     assert(!(captureCommands && (executionProof || startupNetwork)), "Startup observation and Commands probing use separate test copies");
-    const sourceReport = await copyProductionArtifact(artifact, extensionDir);
+    const sourceReport = await copyProductionArtifact(artifact, extensionDir, { generation });
 
     const lexiconDir = join(extensionDir, "assets", "lexicon");
     await rm(lexiconDir, { recursive: true, force: true });

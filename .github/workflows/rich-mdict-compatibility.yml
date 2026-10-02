@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/rich-mdict-compatibility.yml"
+      - "e2e/support/**"
       - "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json"
       - "scripts/certify-rich-mdict-corpus.mjs"
       - "package.json"
@@ -31,8 +32,6 @@ on:
       - "e2e/local-dictionary-preflight-real-ecdict.spec.mjs"
       - "e2e/curated-ecdict-mdx*.spec.mjs"
       - "e2e/rich-viewer-security.spec.mjs"
-      - "e2e/support/extension-fixture.mjs"
-      - "e2e/support/mock-server.mjs"
       - "tests/rich-mdict*.test.mjs"
       - "tests/ecdict-mdx-*.test.mjs"
       - "tests/curated-ecdict-mdx-worker.test.mjs"
@@ -44,6 +43,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/rich-mdict-compatibility.yml"
+      - "e2e/support/**"
       - "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json"
       - "scripts/certify-rich-mdict-corpus.mjs"
       - "package.json"
@@ -69,8 +69,6 @@ on:
       - "e2e/local-dictionary-preflight-real-ecdict.spec.mjs"
       - "e2e/curated-ecdict-mdx*.spec.mjs"
       - "e2e/rich-viewer-security.spec.mjs"
-      - "e2e/support/extension-fixture.mjs"
-      - "e2e/support/mock-server.mjs"
       - "tests/rich-mdict*.test.mjs"
       - "tests/ecdict-mdx-*.test.mjs"
       - "tests/curated-ecdict-mdx-worker.test.mjs"

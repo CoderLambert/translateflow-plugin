@@ -1,0 +1,85 @@
+{
+  "sourceCommit": "19e89b65fd3600073410407392da82ffa666ffc8",
+  "sourceFiles": [
+    {
+      "path": "src/shared/constants.js",
+      "gitBlob": "7e5a25ffbc98cefda828c09dfc96006977b42eb8",
+      "sha256": "3ad18d71d16b899e8f18fa8684b8d34e24beb2f3cbcb28be82910c90206af591"
+    },
+    {
+      "path": "src/shared/runtime-assets.js",
+      "gitBlob": "0628bc76a82ecf2ca1b8c98be25fa236a44dea60",
+      "sha256": "83a4f2f375b422fbde63cb634a439398caef2240cbcfaa38ada3eecd376c2ca5"
+    }
+  ],
+  "contentScripts": [
+    "src/content/runtime.js",
+    "src/content/ui/tokens.js",
+    "src/content/ui/quick-control-styles.js",
+    "src/content/ui/selection-ai-detail-styles.js",
+    "src/content/ui/selection-empty-state-styles.js",
+    "src/content/ui/selection-lexical-styles.js",
+    "src/content/ui/host.js",
+    "src/content/ui/primitives.js",
+    "src/content/ui/toast.js",
+    "src/content/appearance.js",
+    "src/content/tasks.js",
+    "src/content/structured.js",
+    "src/content/dom.js",
+    "src/content/batch.js",
+    "src/content/processor.js",
+    "src/content/auto.js",
+    "src/content/subtitles/source.js",
+    "src/content/subtitles/sources/text-track.js",
+    "src/content/subtitles/youtube-bridge-protocol.js",
+    "src/content/subtitles/youtube-timedtext.js",
+    "src/content/subtitles/sources/youtube.js",
+    "src/content/subtitles/pipeline.js",
+    "src/content/subtitles/renderer.js",
+    "src/content/subtitles/controller.js",
+    "src/content/text-projection-policy.js",
+    "src/content/text-projection-builder.js",
+    "src/content/text-projection.js",
+    "src/content/selection/source-snapshot.js",
+    "src/content/selection/selection.js",
+    "src/content/selection/context.js",
+    "src/content/selection/result-model.js",
+    "src/content/selection/clipboard.js",
+    "src/content/selection/messages.js",
+    "src/content/selection/ai-detail.js",
+    "src/content/selection/empty-state.js",
+    "src/content/selection/rich-sanitizer-style.js",
+    "src/content/selection/rich-resource-path.js",
+    "src/content/selection/rich-sanitizer-tokenizer.js",
+    "src/content/selection/rich-sanitizer.js",
+    "src/content/selection/rich-resource-resolver.js",
+    "src/content/selection/rich-viewer.js",
+    "src/content/selection/result-renderer.js",
+    "src/content/selection/popover.js",
+    "src/content/selection/rich-details.js",
+    "src/content/selection/controller.js",
+    "src/content/quick-control-view.js",
+    "src/content/quick-control.js",
+    "content.js"
+  ],
+  "contentStyles": [
+    "content.css"
+  ],
+  "extensionPages": {
+    "popup": "popup.html",
+    "options": "options.html"
+  },
+  "workers": {
+    "curatedDictionary": "src/options/workers/curated-dictionary-worker.js",
+    "curatedEcdictMdx": "src/options/workers/curated-ecdict-mdx-worker.js",
+    "mdictImport": "src/options/workers/mdict-import-worker.js",
+    "stardictImport": "src/options/workers/stardict-import-worker.js",
+    "richMdictImport": "src/options/workers/rich-mdict-import-worker.js",
+    "mddResourceImport": "src/options/workers/mdd-resource-import-worker.js"
+  },
+  "mainFiles": [
+    "src/content/subtitles/youtube-bridge-protocol.js",
+    "src/content/subtitles/youtube-timedtext.js",
+    "src/content/subtitles/youtube-main-bridge.js"
+  ]
+}
