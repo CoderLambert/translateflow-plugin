@@ -23,7 +23,7 @@ content scripts -> messages -> background router
 
 ## Hard boundaries
 
-1. `src/shared/` 是纯合同/纯函数层，不访问 `chrome.*`。
+1. `src/shared/` 是纯合同/纯函数层，不访问 `chrome.*` 或 `browser.*`，也不能通过间接依赖引入它们。
 2. 外部 HTTP 只能位于 `src/background/providers/`。
 3. IndexedDB 只能位于 `src/background/cache-db.js`。
 4. 动态 Content Script 注册只能位于 `src/background/auto-sites.js`。
@@ -78,11 +78,19 @@ Production builds are created from an explicit allowlist into `dist/extension`. 
 
 ### Approved opt-in WXT build
 
-`build:extension:wxt` creates a separate production package at `.output/chrome-mv3/`. `entrypoints/background.js` statically imports the existing `initializeBackground()` and synchronously registers listeners in `main`; WXT build-time imports have no substitute Chrome/window globals. The root `popup.html` and `options.html` remain the unique UI source, registered through the WXT entrypoint hook and compiled by Vite. Their installed identities and full-tab `options_page` semantics stay unchanged.
+`build:extension:wxt` creates a separate production package at `.output/chrome-mv3/`. `entrypoints/background.ts` statically imports the existing `initializeBackground()` and synchronously registers listeners in `main`; WXT build-time imports have no substitute Chrome/window globals. The root `popup.html` and `options.html` remain the unique UI source, registered through the WXT entrypoint hook and compiled by Vite. Their installed identities and full-tab `options_page` semantics stay unchanged.
 
 `src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. `scripts/wxt-assets.mjs` derives the raw bridge from the current ordered Content lists plus mapped MAIN/Worker roots and their relative-import closure. Only those individual files and authenticated generated pack descriptors enter WXT public assets; the whole `src` tree is never copied. Generated source locks and corpora stay outside both packages. Bridge removal belongs to the authorized legacy migration slice, not an ad hoc rewrite here.
 
 Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. `auto-sites.js` remains the sole dynamic registration owner. React is reserved for the future learning-center extension page; it is absent from this compatibility build. The new compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. Provider, cache/OPFS, privacy and permission boundaries above remain unchanged. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for actual commands, asset audit and limited smoke evidence.
+
+### Approved type and test tooling
+
+TypeScript checks every new `src/**/*.ts(x)`, `entrypoints/**/*.ts(x)`, unit test/config and owned declaration under strict mode with `skipLibCheck:false`; legacy JS is not converted wholesale. Test discovery is disjoint: Node `tests/*.test.mjs`, Vitest `tests/unit/**/*.test.ts(x)`, Playwright `e2e/**/*.spec.mjs`. The only DOM environment is test-only jsdom; React interaction fixtures and all test libraries remain outside both production packages.
+
+`scripts/check.mjs` parses all actual JS/MJS/CJS/TS/TSX/JSX sources and walks runtime import/export/dynamic-import dependencies. React/JSX is allowed only under `entrypoints/learning-center/` and `src/learning-center/`; each non-UI source's transitive closure must remain React-free. Unregistered runtime packages, unresolvable/computed imports and runtime imports of tests/build sources fail. API ownership checks also cover TS and aliases/computed API access. The reviewed YouTube `page.fetch` observer may retain its wrapper reference but cannot directly initiate fetch. No new IndexedDB owner is approved here.
+
+The type-only WXT aliases and unused generated `import.meta` environment limitation are recorded in [TYPES_TESTS_V1.md](./TYPES_TESTS_V1.md). They do not install browser globals or replace runtime validation/authorization. Reading DTOs remain owned by the existing `src/shared/reading/` validators; consumers begin with unknown input and must validate before narrowing.
 
 ## Lexical Gateway
 

@@ -31,6 +31,7 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   for (const chunk of compiled) {
     for (const path of [...(chunk.imports || []), ...(chunk.dynamicImports || [])]) assert(present.has(path), `Missing compiled import: ${path}`);
     for (const module of chunk.modules || []) {
+      assert(!/(?:^|\/)(?:vitest|@vitest|@testing-library|jsdom|happy-dom|@webext-core\/fake-browser)(?:\/|$)/u.test(module), `Test dependency entered production: ${module}`);
       assert(!/(?:^|\/)(?:react|react-dom)\//u.test(module), `React entered legacy runtime: ${module}`);
       assert(!/(?:^|\/)(?:tests|e2e|scripts|docs|lexicon|\.release-sources|\.github)\//u.test(module), `Build/private source entered compiled output: ${module}`);
       assert(!/\/wxt\/dist\/client\/(?:websocket|dev-server|reload)/u.test(module), `Development helper entered production: ${module}`);

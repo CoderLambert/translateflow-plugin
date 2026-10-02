@@ -1,0 +1,285 @@
+{
+  "issue": 231,
+  "task": "Shared synchronous source capture slice repair",
+  "taskBaselineHead": "62ab0009d52cdc1007b0810037a6c74cba18454c",
+  "codeHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
+  "evidenceBinding": "The checks in this report ran at clean runtime/test head 588c34eeb85265e87074ba9a2bd841784463bc6b. Report-only commit 1c5ca39da2af987a0ae5d547fd6c24610cf401ea preserved those bytes. Later coordinator checks below are separately bound; the 13-case E2E result is not reassigned to a later test head.",
+  "scope": {
+    "files": [
+      {
+        "path": "src/content/text-projection-policy.js",
+        "bytes": 7217,
+        "sha256": "17c69a3527311e33969f6fe9c90120140b03dd51ba3419639d94aaa91e209c27"
+      },
+      {
+        "path": "src/content/text-projection.js",
+        "bytes": 7847,
+        "sha256": "aee72531b3418d54a4f6e984803183cf2e4fa6765a078146557d2f3b1b006bcd"
+      },
+      {
+        "path": "src/content/selection/source-snapshot.js",
+        "bytes": 7472,
+        "sha256": "8d5bd64404ab5da2968e7721ba332e71c76ff7143843d3ca726f27055c586af9"
+      }
+    ],
+    "budgetLimitsChanged": false,
+    "schemaChanged": false,
+    "globalConfigPackageWxtRouterPermissionsChanged": false,
+    "behavior": "One deadline and cumulative nodes/chars for range proof, local context/window and remaining full-page positioning; canonicalization shares its own first slice. Local context takes priority. Unknown private context still rejects; full-page budget exhaustion preserves legal local context and ordinary selected-text query."
+  },
+  "red": {
+    "command": "node /tmp/translateflow-release-a-20261002/evidence/231-review-final/budget-probe.mjs /tmp/translateflow-release-a-20261002/rl231",
+    "sourceHead": "62ab0009d52cdc1007b0810037a6c74cba18454c",
+    "sourceWasClean": true,
+    "status": "FAIL",
+    "exitCode": 1,
+    "synchronousMs": 11,
+    "phasesMs": {
+      "rangePolicy": 2.25,
+      "fullProject": 8,
+      "localProject": 0.75
+    },
+    "sliceMs": 8,
+    "method": "Independent reviewer script loads all four production classic modules; only deterministic DOM style cost .25ms and phase-recording wrappers. This is a controllable-clock failure, not real wall-clock latency."
+  },
+  "privacyRed": {
+    "command": "node --test tests/reading-source-position.test.mjs",
+    "checkerRuntimeHead": "2a2da4e4f756b077b7d95c208bb71dc53e19e911",
+    "sourceBinding": "Runtime code at clean 2a plus added test overlay; not an exact committed tests head",
+    "status": "FAIL",
+    "exitCode": 1,
+    "tests": 6,
+    "pass": 5,
+    "fail": 1,
+    "reason": "The first repair checked expiration before preserving an already returned sensitive closed-root denial. Two statement-order changes restore privacy priority; assertions were retained."
+  },
+  "checks": [
+    {
+      "command": "node --test tests/reading-source-position.test.mjs tests/reading-text-projection.test.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "tests": 20,
+      "durationMs": 132.424433,
+      "sourceBinding": "Same source/test bytes subsequently committed as codeHead, then included in the clean-head total validate"
+    },
+    {
+      "command": "npm run validate",
+      "sourceHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
+      "sourceWasClean": true,
+      "status": "PASS",
+      "exitCode": 0,
+      "sourceFiles": 441,
+      "nodeTests": 762,
+      "previousNodeTests": 756,
+      "newBudgetTests": 6,
+      "nodeDurationMs": 3290.806918,
+      "defaultBuild": {
+        "source": "Legacy allowlisted dist/extension",
+        "files": 237,
+        "bytes": 1508258
+      }
+    },
+    {
+      "command": "node /tmp/translateflow-release-a-20261002/evidence/231-review-final/budget-probe.mjs /tmp/translateflow-release-a-20261002/rl231",
+      "sourceHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
+      "sourceWasClean": true,
+      "status": "PASS",
+      "exitCode": 0,
+      "result": {
+        "continuousSynchronousCaptureMs": 8,
+        "sliceLimitMs": 8,
+        "phases": [
+          {
+            "phase": "rangePolicy",
+            "ms": 2.25
+          },
+          {
+            "phase": "localProject",
+            "ms": 0.75,
+            "status": "resolved"
+          },
+          {
+            "phase": "fullProject",
+            "ms": 5,
+            "status": "unsupported",
+            "reason": "time-budget"
+          }
+        ],
+        "inspections": 32,
+        "context": "PUBLIC session tail",
+        "capability": "unsupported"
+      }
+    },
+    {
+      "command": "npm run test:e2e -- e2e/reading-source-position.spec.mjs e2e/mdd-resources.spec.mjs e2e/selection-rich-lookup-cancel.spec.mjs e2e/local-import-cancellation-regression.spec.mjs --reporter=line --output=/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-final-e2e-results",
+      "sourceHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
+      "sourceWasClean": true,
+      "status": "PASS",
+      "exitCode": 0,
+      "tests": 13,
+      "durationSeconds": 42.5,
+      "browser": "Google Chrome for Testing 153.0.8010.12",
+      "package": "Actual legacy allowlisted production source build in an isolated test copy, synthetic dictionaries and localhost stub; no WXT package claim",
+      "coverage": {
+        "readingPosition": 8,
+        "mddResources": 1,
+        "localImportCancellation": 3,
+        "selectionRichCancellation": 1
+      },
+      "budgetFixture": {
+        "captureMs": 8,
+        "canonicalMs": 8,
+        "giantMs": 8,
+        "limitMs": 8,
+        "capturePhases": [
+          {
+            "ms": 3,
+            "phase": "range"
+          },
+          {
+            "ms": 1,
+            "phase": "local",
+            "stats": {
+              "chars": 19,
+              "elapsedMs": 1,
+              "nodes": 5
+            },
+            "status": "resolved"
+          },
+          {
+            "ms": 4,
+            "phase": "full",
+            "reason": "time-budget",
+            "stats": {
+              "chars": 48,
+              "elapsedMs": 4,
+              "nodes": 28
+            },
+            "status": "unsupported"
+          }
+        ],
+        "canonicalPhases": [
+          {
+            "ms": 3.75,
+            "phase": "range"
+          },
+          {
+            "ms": 4.25,
+            "phase": "local",
+            "reason": "time-budget",
+            "stats": {
+              "chars": 48,
+              "elapsedMs": 4.25,
+              "nodes": 29
+            },
+            "status": "unsupported"
+          }
+        ],
+        "giantWholeReads": 0,
+        "giantBoundedReads": 1,
+        "paidProviderCalls": 0
+      },
+      "method": "Real Chromium extension isolated-world DOM/native style and CharacterData calls with a temporary controllable clock/style cost; all wrappers restored before awaiting ready. Existing position/privacy/AI/cancellation cases retain real timing.",
+      "paidProviderCalls": 0
+    }
+  ],
+  "newRegressionCases": [
+    "capture first deadline and local-before-global ordering",
+    "canonicalize range+local deadline",
+    "giant bounded substring remaining deadline",
+    "shared500nodes/16kchars with standalone phase stats",
+    "second repeated word actual Range14..21",
+    "slow closed-root proof retains sensitive denial"
+  ],
+  "packageStatus": {
+    "newWxtBuildAuditSmoke": "NOT RUN by this assignee; coordinator owns final new-runtime package verification and must bind the exact source head before review/merge",
+    "intermediateWxt": "Coordinator reported a 2a WXT build; it is intermediate evidence and cannot certify the final 588 runtime"
+  },
+  "priorFailureRetained": {
+    "status": "FAIL",
+    "description": "Prior PR260 1d62 MDD CI failure is retained in coordinator evidence; the earlier caret-initial test setup fix was inherited from62ab and is unchanged by this repair",
+    "log": "/tmp/translateflow-release-a-20261002/evidence/231-ci-mdd-failure.log"
+  },
+  "notRun": [
+    "Full E2E suite outside the13 affected cases",
+    "Chrome102 runtime",
+    "Same-ID old→WXT upgrade/restart",
+    "Other browsers",
+    "Real paid Provider"
+  ],
+  "review": "Independent new-head review required; implementer does not approve its own code",
+  "logs": {
+    "231-slice-repair-before.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-before.log",
+      "sha256": "14c2d7f4b5186eed85419cd926aede4aa4822f5c7b3d600fdfbc997555225608"
+    },
+    "231-slice-repair-after-final.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-after-final.log",
+      "sha256": "452e90ffdc5f6a5505cb3e0e9d239ccf953c256caaf99ac0aa27d24ca2e1e67d"
+    },
+    "231-slice-sensitive-before.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-sensitive-before.log",
+      "sha256": "d5f7c25d50abcd70911cdf13423f6f158ec403513459ae649b66ca3861b4c4be"
+    },
+    "231-slice-repair-focused-final.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-focused-final.log",
+      "sha256": "8c1b9317816ab9ddc1ffb31451ee11bdf47494db0054ec51dfe66b14c916ce5c"
+    },
+    "231-slice-repair-validate-final.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-validate-final.log",
+      "sha256": "bc301972bb1f1808a87d80b3757462b965f840d50d4680b93a3ec8a32138919f"
+    },
+    "231-slice-repair-final-e2e.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-final-e2e.log",
+      "sha256": "af5e5a402494ef01407af0692c504a1c9267048b6b84298855841f421a5941c6"
+    },
+    "231-integrated-final-validate.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-integrated-final-validate.log",
+      "sha256": "dc1fbc2287f1e4d408ea8cbc98ffdcfde803f09ee8ec787286c6433f6241ce8a"
+    },
+    "231-security-final-e2e.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-security-final-e2e.log",
+      "sha256": "9e404c2cca9c55c4b371f112184af3b7c009a09492f92cec3c0e96f56ee45f7f"
+    },
+    "231-budget-final-wxt-build.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-budget-final-wxt-build.log",
+      "sha256": "c8b37dce658e526291dd93cfe706df680c319dd0d4dc4f9f46ef8a5e94ad29a5"
+    },
+    "231-budget-final-wxt-smoke.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-budget-final-wxt-smoke.log",
+      "sha256": "be56ee86625b40ae86e4991d9fd8e8e207f47d1d1a645b247df31ed741c0caa0"
+    }
+  },
+  "coordinatorChecks": {
+    "sourceHead": "4c70afcef4ded4664742937bb530f10744a1da41",
+    "incrementSinceCodeHead": "Report plus two caret: initial screenshot options in e2e/rich-viewer-security.spec.mjs; runtime and configuration bytes unchanged.",
+    "validate": {
+      "status": "PASS",
+      "nodeTests": 762,
+      "sourceFiles": 441,
+      "log": "231-integrated-final-validate.log"
+    },
+    "richViewerSecurity": {
+      "status": "PASS",
+      "tests": 1,
+      "durationSeconds": 7.0,
+      "log": "231-security-final-e2e.log",
+      "package": "Isolated legacy source build; no WXT full E2E claim"
+    },
+    "wxtBuild": {
+      "status": "PASS",
+      "sourceHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
+      "log": "231-budget-final-wxt-build.log",
+      "files": 147,
+      "bytes": 1392408
+    },
+    "wxtSmoke": {
+      "status": "PASS",
+      "log": "231-budget-final-wxt-smoke.log",
+      "package": "Actual WXT output from codeHead, byte-identical runtime at coordinator sourceHead",
+      "paidProviderCalls": 0,
+      "externalRequests": 0
+    },
+    "ci": "NOT RUN on this newer head; prior PR260 failures remain FAIL."
+  }
+}

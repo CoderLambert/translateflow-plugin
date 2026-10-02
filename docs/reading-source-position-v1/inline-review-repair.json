@@ -1,0 +1,114 @@
+{
+  "issue": 231,
+  "codeHead": "1c1c536fdbca43d0162a8c4e3f27a4487347c792",
+  "evidenceBinding": "All final commands below ran at clean codeHead. The containing commit adds this report only; historical reports retain their original heads.",
+  "fixes": {
+    "namespace": "Normalize localName/tagName once for excluded/host checks and BR boundary; XHTML native sensitive nodes excluded. Native SVG DOM proof remains unavailable, so context/position fail closed while ordinary selection query works. No expanded permission or mock native proof.",
+    "navigation": "watch/current/destination/poll use existing runtime.getPageIdentity. Ordinary hash/tracking-only changes preserve active AI query; route-like hash/path changes invalidate."
+  },
+  "red": {
+    "nodeRegression": {
+      "status": "FAIL",
+      "log": "231-inline-review-red.log",
+      "reason": "Both new cases fail against fd897 source: lowercase private text and canonical page identity."
+    },
+    "browserFixtureFailures": {
+      "first": "9/11 PASS, 2 FAIL",
+      "second": "2/3 PASS, 1 FAIL",
+      "logs": [
+        "231-inline-review-e2e.log",
+        "231-inline-review-e2e-repair.log",
+        "231-svg-diagnostic.log"
+      ],
+      "reason": "Initial tests assumed new AI retained prior query snapshot and SVG HTMLElement-only native proof supported SVG. Bind the freshly frozen AI snapshot before URL events and assert native SVG fails closed/ordinary query succeeds; XHTML resolved context strong checks remain."
+    }
+  },
+  "checks": {
+    "validate": {
+      "status": "PASS",
+      "nodeTests": 764,
+      "sourceFiles": 441,
+      "log": "231-inline-final-validate.log",
+      "defaultPackage": "Legacy dist/extension; strict/Vitest not yet on this feature baseline"
+    },
+    "affectedE2E": {
+      "status": "PASS",
+      "tests": 17,
+      "durationSeconds": 50.7,
+      "log": "231-inline-final-e2e.log",
+      "package": "Actual legacy source build in isolated test copy, synthetic dictionary and localhost stub; no WXT full-E2E claim"
+    },
+    "wxtBuildAudit": {
+      "status": "PASS",
+      "files": 147,
+      "bytes": 1392614,
+      "treeSha256": "b21235553d285ee2c1beae5b14b660cd1d60462e8fc7d65686041525356a0f90",
+      "contentThreeWayIdentity": 48,
+      "manifestDifferences": 0,
+      "log": "231-inline-final-wxt-build.log",
+      "identityEvidence": "231-inline-production-identity.json"
+    },
+    "wxtSmoke": {
+      "status": "PASS",
+      "log": "231-inline-final-wxt-smoke.log",
+      "productionJavaScriptUnpatched": true,
+      "syntheticDictionary": true,
+      "localMockPermissionOnly": true,
+      "paidProviderCalls": 0,
+      "externalRequests": 0
+    },
+    "ci": "NOT RUN on this newer head; remote PR260 old head has FAIL/CANCELLED retained."
+  },
+  "notRun": [
+    "Chrome102 runtime",
+    "Same-ID old→WXT→restart",
+    "Full WXT E2E",
+    "Release lexicon certification",
+    "Real YouTube timedtext",
+    "Real paid Provider",
+    "Other browsers",
+    "React learning center / Reading record persistence"
+  ],
+  "logs": {
+    "231-inline-review-red.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-review-red.log",
+      "sha256": "02078292edbd00e4a852c97e0e01216647c9445e8b095364da065f365f961db0"
+    },
+    "231-inline-review-focused.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-review-focused.log",
+      "sha256": "965a549b7e145ee605874179e6a6037231b132e1ee1c93d52f438943a401f835"
+    },
+    "231-inline-review-e2e.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-review-e2e.log",
+      "sha256": "58f2f7c83fd0f01d44a040c05d26b53607d8869e110e65415c17db910000c496"
+    },
+    "231-inline-review-e2e-repair.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-review-e2e-repair.log",
+      "sha256": "40a5497008a3db96982d7a0656b3af319e357bed9435fbc23429a5f476700d3f"
+    },
+    "231-svg-diagnostic.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-svg-diagnostic.log",
+      "sha256": "ae42e5e70fd3e7c0b7fa0baf31df93cb2cdf82fa1c9fd72022676bde12432f19"
+    },
+    "231-inline-review-e2e-corrected.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-review-e2e-corrected.log",
+      "sha256": "1aee323897a413f178cef906731ae3fb6aa57da152ef8c5b94bdc30d4996dad3"
+    },
+    "231-inline-final-validate.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-final-validate.log",
+      "sha256": "9153350881fa7c9ac9e7e0fdf197ab7736ad3798307f1a0e65f990322e0a12a3"
+    },
+    "231-inline-final-e2e.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-final-e2e.log",
+      "sha256": "98aa074ea30451a257eeee2b2e448db31f7cb58805cff0f5ab2d8a4658ef7210"
+    },
+    "231-inline-final-wxt-build.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-final-wxt-build.log",
+      "sha256": "c79b4b75b9dc0287a957ea62d9bf19f095a871929ee033e9903ace685689ec05"
+    },
+    "231-inline-final-wxt-smoke.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-inline-final-wxt-smoke.log",
+      "sha256": "f0a66877ba4d840e2a29faf5ae2b39e2c2008c076de5ab0533d4100517f643ca"
+    }
+  }
+}

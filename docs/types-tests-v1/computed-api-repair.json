@@ -1,0 +1,86 @@
+{
+  "issue": 247,
+  "codeHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
+  "baselineCheckerHead": "c516b815cf8800ecf5f1b748c6c8902798561770",
+  "red": {
+    "command": "node --test tests/source-boundaries.test.mjs",
+    "exitCode": 1,
+    "status": "FAIL",
+    "tests": 45,
+    "pass": 31,
+    "fail": 14,
+    "sourceBinding": "c516 checker/runtime plus new isolated CLI test overlays; this is real pre-fix execution, not an exact committed tests head",
+    "reason": "13 computed global/SDK key bypass negative cases and 1 unrelated-data false positive failed; the original 31 cases passed"
+  },
+  "green": {
+    "command": "node --test tests/source-boundaries.test.mjs",
+    "exitCode": 0,
+    "status": "PASS",
+    "tests": 48,
+    "pass": 48,
+    "fail": 0,
+    "durationMs": 20483.996555,
+    "sourceBinding": "Same code/tests bytes committed as codeHead; superseded by the clean-head total validation",
+    "expectedNonzeroArchitectureFixtures": 42,
+    "positiveProjects": 3,
+    "strictTypeDeclarationDtoFixtures": 3
+  },
+  "cleanHeadValidation": {
+    "command": "npm run validate",
+    "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
+    "sourceWasClean": true,
+    "exitCode": 0,
+    "status": "PASS",
+    "sourceFiles": 442,
+    "nodeTests": 790,
+    "originalNodeTests": 742,
+    "cliTests": 48,
+    "vitestTests": 3,
+    "skipLibCheck": false
+  },
+  "actualWxtBuild": {
+    "command": "npm run build:extension:wxt",
+    "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
+    "sourceWasClean": true,
+    "exitCode": 0,
+    "status": "PASS",
+    "files": 143,
+    "bytes": 1371155,
+    "manifestDifferences": [],
+    "forbiddenCompiledModules": [],
+    "allPathSizeHashesIdentical": true,
+    "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
+  },
+  "scope": {
+    "supported": "Real lexical symbols, same-source const string/numeric keys, const chains/concatenation/templates, const global/SDK/API aliases, object destructuring, block/parameter/import shadowing",
+    "unknown": "Unknown computed keys on proven global or browser SDK objects reject; ordinary local data properties are allowed",
+    "bounded": "Not a general interprocedural or mutable-alias dataflow platform; original API ownership paths and source/entry size bounds remain unchanged",
+    "mainCompatibility": "Only the existing named translateFlowYouTubeFetchWrapper rest-parameter original.apply(this,args) inside installFetch forwards the original request; active direct/function-alias/apply calls reject"
+  },
+  "notRun": [
+    "Browser rerun after checker-only repair (all actual production bytes equal the clean 29643c1 smoke tree)",
+    "Full E2E",
+    "Chrome 102",
+    "Same-ID upgrade/restart"
+  ],
+  "retainedFailure": "Complete generated WXT environment still FAIL exit2; current runtime has no import.meta.env dependency. No gate or assertion disabled.",
+  "review": "Independent incremental review pending; implementer does not approve its own changes",
+  "logs": {
+    "247-computed-before-fail.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/247-computed-before-fail.log",
+      "sha256": "35d3b753996eb7eeeebd4254e1ca0c9ed5f9c939b9dfaaed65d6ab5830fdc125"
+    },
+    "247-computed-final-cli.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/247-computed-final-cli.log",
+      "sha256": "7a5f4a49cedc5bedd547b8903c4f2235880b281091837965f55d77a217f4b0ac"
+    },
+    "247-repair-validate.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/247-repair-validate.log",
+      "sha256": "70547b781b0210fb4895c1e9d0a2470e6c8ff9d8b2367895d725aa465e0e1e8f"
+    },
+    "247-repair-wxt-build.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/247-repair-wxt-build.log",
+      "sha256": "05ac35776b9d5d0f70e25f8d9696ee5ade769b36bb5594d4ebf720c0b8cf2dab"
+    }
+  }
+}
