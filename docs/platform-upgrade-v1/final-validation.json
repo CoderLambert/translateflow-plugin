@@ -1,0 +1,22 @@
+{
+  "baselineCommit": "6c9347db79c538b2660e9009847ce362a3578261",
+  "command": "npm run validate",
+  "workingDirectory": "isolated task worktree",
+  "node": "v24.21.0",
+  "status": "PASS",
+  "exitCode": 0,
+  "sourceCheck": "PASS",
+  "nodeTests": {
+    "tests": 651,
+    "pass": 651,
+    "fail": 0
+  },
+  "build": {
+    "owner": "existing scripts/build-extension.mjs",
+    "fileCount": 221,
+    "totalBytes": 1433269,
+    "lexicalBytes": 0
+  },
+  "meaning": "required validation for PF-00 documentation/probe only; not WXT default-switch or product acceptance",
+  "independentReview": "PENDING"
+}

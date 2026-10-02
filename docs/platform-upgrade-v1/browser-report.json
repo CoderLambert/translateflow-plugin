@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "browser": "153.0.8010.12",
+  "extensionId": "dcfjjgilbkbkgnahaoajbligclpkcnkd",
+  "manifestEqual": true,
+  "popup": "PASS",
+  "options": "PASS",
+  "backgroundCacheStats": "PASS",
+  "workerInvalidInputResponses": [
+    {
+      "name": "curated-dictionary",
+      "type": "CURATED_DICTIONARY_ERROR",
+      "requestId": "pf00-synthetic-probe"
+    },
+    {
+      "name": "curated-ecdict-mdx",
+      "type": "curated-ecdict-mdx:error",
+      "requestId": "pf00-synthetic-probe"
+    },
+    {
+      "name": "mdict-import",
+      "type": "mdict-import:error",
+      "requestId": "pf00-synthetic-probe"
+    },
+    {
+      "name": "stardict-import",
+      "type": "stardict-import:error",
+      "requestId": "pf00-synthetic-probe"
+    },
+    {
+      "name": "rich-mdict-import",
+      "type": "rich-mdict-import:error",
+      "requestId": "pf00-synthetic-probe"
+    },
+    {
+      "name": "mdd-resource-import",
+      "type": "mdd-resource-import:error",
+      "requestId": "pf00-synthetic-probe"
+    }
+  ],
+  "reactMount": "PASS",
+  "capabilities": {
+    "opfs": true,
+    "decompression": true,
+    "structuredClone": true,
+    "storageSession": true,
+    "scripting": true
+  },
+  "pageErrors": [],
+  "externalRequests": [],
+  "notRun": [
+    "Chrome 102 runtime",
+    "Content/MAIN integration",
+    "same-ID upgrade/restart",
+    "release lexicon",
+    "real Provider"
+  ]
+}

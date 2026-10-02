@@ -1,0 +1,1270 @@
+{
+  "status": "PASS",
+  "baselineCodeBytes": 1433269,
+  "codeBudgetBytes": 1576595,
+  "productionProbeBytes": 1711169,
+  "platformCodeBytes": 1488230,
+  "uiProbeBytes": 222939,
+  "lexiconBytes": 0,
+  "lexiconGenerated": false,
+  "byteDelta": 54961,
+  "contentOrderedFiles": 44,
+  "contentPlusStylesBytes": 305486,
+  "mainFilesBytes": 30190,
+  "background": {
+    "file": "background.js",
+    "bytes": 306171,
+    "moduleCount": 99,
+    "reactModules": []
+  },
+  "uiFiles": [
+    "platform-smoke.html",
+    "chunks/platform-smoke-C85MS1Zg.js"
+  ],
+  "closures": [
+    {
+      "fileName": "background.js",
+      "isEntry": true,
+      "imports": [
+        "chunks/_virtual_wxt-plugins-CDnz5Vh6.js"
+      ],
+      "modules": [
+        "node_modules/wxt/dist/utils/define-background.mjs",
+        "legacy/src/shared/appearance.js",
+        "legacy/src/shared/lexical.js",
+        "legacy/src/shared/selection.js",
+        "legacy/src/shared/constants.js",
+        "legacy/src/shared/url.js",
+        "legacy/src/shared/glossary.js",
+        "legacy/src/shared/presets.js",
+        "legacy/src/shared/provider-config.js",
+        "legacy/src/background/preset-session.js",
+        "legacy/src/background/config.js",
+        "legacy/src/shared/hash.js",
+        "legacy/src/shared/text.js",
+        "legacy/src/background/cache-db.js",
+        "legacy/src/background/auto-sites.js",
+        "legacy/src/shared/retry-policy.js",
+        "legacy/src/background/providers/shared.js",
+        "legacy/src/background/providers/deepseek.js",
+        "legacy/src/background/providers/openai-sse.js",
+        "legacy/src/background/providers/local-translation.js",
+        "legacy/src/background/providers/openai-compatible.js",
+        "legacy/src/background/providers/index.js",
+        "legacy/src/background/translation-gateway.js",
+        "legacy/src/background/translation-requests.js",
+        "legacy/src/background/subtitle-requests.js",
+        "legacy/src/background/youtube-bridge.js",
+        "legacy/src/shared/pack-manager.js",
+        "legacy/src/background/packs/opfs-store.js",
+        "legacy/src/background/packs/state.js",
+        "legacy/src/background/packs/health.js",
+        "legacy/src/background/lexical/lru.js",
+        "legacy/src/background/lexical/tflex-integrity.js",
+        "legacy/src/background/lexical/opfs-indexed-reader.js",
+        "legacy/src/background/lexical/active-opfs-reader.js",
+        "legacy/src/background/lexical/context-phrase.js",
+        "legacy/src/background/lexical/gateway.js",
+        "legacy/src/background/lexical/package-assets.js",
+        "legacy/src/background/lexical/tflex-reader.js",
+        "legacy/src/background/lexical/index.js",
+        "legacy/src/background/lexical/ranking.js",
+        "legacy/src/background/selection/resolve.js",
+        "legacy/src/background/selection/explain-prompt.js",
+        "legacy/src/shared/selection-explanation.js",
+        "legacy/src/background/selection/explain.js",
+        "legacy/src/shared/pack-sources.js",
+        "legacy/src/background/packs/catalog.js",
+        "legacy/src/shared/import-quarantine-contract.js",
+        "legacy/src/shared/opfs-import-quarantine.js",
+        "legacy/src/background/packs/operation.js",
+        "legacy/src/background/packs/local-import-integrity.js",
+        "legacy/src/background/packs/local-import.js",
+        "legacy/src/background/packs/quarantine-import-loader.js",
+        "legacy/src/shared/dictionary-catalog-v2-utils.js",
+        "legacy/src/shared/dictionary-catalog-v2-artifacts.js",
+        "legacy/src/shared/dictionary-catalog-v2-schema.js",
+        "legacy/src/shared/curated-ecdict-mdx-recipe.js",
+        "legacy/src/shared/curated-dictionaries.js",
+        "legacy/src/shared/dictionary-catalog-v2-entries.js",
+        "legacy/src/shared/dictionary-catalog-v2.js",
+        "legacy/src/background/packs/local-import-display.js",
+        "legacy/src/background/packs/snapshot.js",
+        "legacy/src/background/packs/local-import-transaction.js",
+        "legacy/src/background/providers/pack-network.js",
+        "legacy/src/background/packs/manager.js",
+        "legacy/src/background/packs/importers/mdict-contract.js",
+        "legacy/src/background/packs/importers/mdict-ripemd128.js",
+        "legacy/src/background/packs/importers/mdict-block-codec.js",
+        "legacy/src/background/packs/importers/mdict-metadata.js",
+        "legacy/src/background/packs/importers/mdict-rich-metadata.js",
+        "legacy/src/background/packs/importers/mdict-rich-key-codec.js",
+        "legacy/src/background/packs/importers/mdict-rich-validation.js",
+        "legacy/src/background/packs/importers/mdict-rich-source.js",
+        "legacy/src/background/packs/importers/mdict-rich-index.js",
+        "legacy/src/background/packs/importers/mdict-rich-query-budget.js",
+        "legacy/src/background/packs/importers/mdict-rich-record-text.js",
+        "legacy/src/background/packs/importers/mdict-rich-lookup.js",
+        "legacy/src/background/packs/rich-mdict-contract.js",
+        "legacy/src/background/packs/rich-mdict-lookup-controller.js",
+        "legacy/src/background/packs/rich-mdict-catalog-replacement.js",
+        "legacy/src/background/packs/rich-mdict-install-preflight.js",
+        "legacy/src/background/packs/rich-mdict.js",
+        "legacy/src/background/packs/importers/mdd-metadata.js",
+        "legacy/src/background/packs/importers/mdd-resource-path.js",
+        "legacy/src/background/packs/importers/mdd-key-codec.js",
+        "legacy/src/background/packs/importers/mdd-validation.js",
+        "legacy/src/background/packs/importers/mdd-index.js",
+        "legacy/src/background/packs/importers/mdd-resource-policy.js",
+        "legacy/src/background/packs/importers/mdd-query-budget.js",
+        "legacy/src/background/packs/importers/mdd-lookup.js",
+        "legacy/src/background/packs/rich-mdd-contract.js",
+        "legacy/src/background/packs/rich-mdd-resources.js",
+        "legacy/src/background/packs/rich-mdict-preferences.js",
+        "legacy/src/background/packs/api.js",
+        "legacy/src/background/router.js",
+        "legacy/src/background/commands.js",
+        "legacy/src/background/index.js",
+        "entrypoints/background.ts",
+        "node_modules/@wxt-dev/browser/src/index.mjs",
+        "\u0000virtual:wxt-background-entrypoint?entrypoints/background.ts"
+      ]
+    },
+    {
+      "fileName": "chunks/platform-smoke-C85MS1Zg.js",
+      "isEntry": true,
+      "imports": [
+        "chunks/_virtual_wxt-plugins-CDnz5Vh6.js"
+      ],
+      "modules": [
+        "\u0000vite/modulepreload-polyfill.js",
+        "\u0000virtual:wxt-html-plugins",
+        "\u0000node_modules/react/jsx-runtime.js?commonjs-module",
+        "\u0000node_modules/react/cjs/react-jsx-runtime.production.js?commonjs-exports",
+        "node_modules/react/cjs/react-jsx-runtime.production.js",
+        "node_modules/react/jsx-runtime.js",
+        "\u0000node_modules/react/jsx-runtime.js?commonjs-es-import",
+        "\u0000node_modules/react-dom/client.js?commonjs-module",
+        "\u0000node_modules/react-dom/cjs/react-dom-client.production.js?commonjs-exports",
+        "\u0000node_modules/scheduler/index.js?commonjs-module",
+        "\u0000node_modules/scheduler/cjs/scheduler.production.js?commonjs-exports",
+        "node_modules/scheduler/cjs/scheduler.production.js",
+        "node_modules/scheduler/index.js",
+        "\u0000node_modules/react/index.js?commonjs-module",
+        "\u0000node_modules/react/cjs/react.production.js?commonjs-exports",
+        "node_modules/react/cjs/react.production.js",
+        "node_modules/react/index.js",
+        "\u0000node_modules/react-dom/index.js?commonjs-module",
+        "\u0000node_modules/react-dom/cjs/react-dom.production.js?commonjs-exports",
+        "node_modules/react-dom/cjs/react-dom.production.js",
+        "node_modules/react-dom/index.js",
+        "node_modules/react-dom/cjs/react-dom-client.production.js",
+        "node_modules/react-dom/client.js",
+        "\u0000node_modules/react-dom/client.js?commonjs-es-import",
+        "entrypoints/platform-smoke/main.tsx",
+        "entrypoints/platform-smoke/index.html"
+      ]
+    },
+    {
+      "fileName": "chunks/_virtual_wxt-plugins-CDnz5Vh6.js",
+      "isEntry": false,
+      "imports": [],
+      "modules": [
+        "\u0000virtual:wxt-plugins"
+      ]
+    }
+  ],
+  "inventory": [
+    {
+      "path": "background.js",
+      "bytes": 306171,
+      "deflateBytes": 89138,
+      "sha256": "100cf493f715329e0d93e71e10c9afac53bc8343000b32f64d170478c4c0a12a"
+    },
+    {
+      "path": "chunks/_virtual_wxt-plugins-CDnz5Vh6.js",
+      "bytes": 25,
+      "deflateBytes": 27,
+      "sha256": "0184c22a39b797e7bfc1dd166245ec71f20e32a4eb18ecfdc4380e4f9e4fc2df"
+    },
+    {
+      "path": "chunks/platform-smoke-C85MS1Zg.js",
+      "bytes": 222637,
+      "deflateBytes": 69354,
+      "sha256": "eeaa15385b7b9e604736c28b133fe62b18bb278f62bf45e43542a94bf7972080"
+    },
+    {
+      "path": "content.css",
+      "bytes": 2227,
+      "deflateBytes": 787,
+      "sha256": "8b4260cdc4380ac808837cca145e9d52696b287ea8292cbcdc65a0769d6159e8"
+    },
+    {
+      "path": "content.js",
+      "bytes": 7339,
+      "deflateBytes": 1907,
+      "sha256": "8a2a5bcc1b9076fe8690ac219960f868efc67fc4b7881e0112bcb2885385e103"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 988,
+      "deflateBytes": 460,
+      "sha256": "20d9fa3ed1ff604d4d17c54833681fbdc501c05e0aea58729a1279994415cb59"
+    },
+    {
+      "path": "options.css",
+      "bytes": 18592,
+      "deflateBytes": 3505,
+      "sha256": "251a9d6ebcefd2f18499e7c526dc8cf5c440f4c1dffeda4cabaed8e8db411411"
+    },
+    {
+      "path": "options.html",
+      "bytes": 21168,
+      "deflateBytes": 6779,
+      "sha256": "0d27e8674bf7ea31c4ec90d25430166889406b7407f5880b71557c45e9e2c6c4"
+    },
+    {
+      "path": "options.js",
+      "bytes": 19107,
+      "deflateBytes": 4998,
+      "sha256": "775e5e44616b851402109320494d006192d336632ebc587b3c43195ffa9d6f7d"
+    },
+    {
+      "path": "platform-smoke.html",
+      "bytes": 302,
+      "deflateBytes": 219,
+      "sha256": "f4fef74f6fa76ef9401b4eb91be6a5b912f1f4d6baf3134a104e59e99f048440"
+    },
+    {
+      "path": "popup-appearance.js",
+      "bytes": 2525,
+      "deflateBytes": 966,
+      "sha256": "67e0793192371bbb39f786725feba1fea0d084ff17162d0582f8b0f778a46de6"
+    },
+    {
+      "path": "popup.css",
+      "bytes": 7840,
+      "deflateBytes": 1866,
+      "sha256": "862ec3ab10ae2aaa21064763edbfec25ca15fd95ede9ee59d5172f9a04233085"
+    },
+    {
+      "path": "popup.html",
+      "bytes": 4866,
+      "deflateBytes": 1533,
+      "sha256": "ce3ce8741b57df983f50fc383fcf37f3e56472ba9541bfa86734423f43d6951b"
+    },
+    {
+      "path": "popup.js",
+      "bytes": 18463,
+      "deflateBytes": 4425,
+      "sha256": "28f083e9c77abeaaf6551c5af4c27db37d0fed364054cef091a0718ddde0f2a2"
+    },
+    {
+      "path": "src/background/lexical/lru.js",
+      "bytes": 1730,
+      "deflateBytes": 547,
+      "sha256": "e9caee7bc2d79ea40c498278eaf39a5636cf0bee610aca1d7d688b69bfc03bfd"
+    },
+    {
+      "path": "src/background/lexical/opfs-indexed-reader.js",
+      "bytes": 12750,
+      "deflateBytes": 3142,
+      "sha256": "4b9662a5a9bceb7df290d83aadf29fd21252553715ac6de365c03c9f97ed113f"
+    },
+    {
+      "path": "src/background/lexical/tflex-integrity.js",
+      "bytes": 13893,
+      "deflateBytes": 3424,
+      "sha256": "f42ac2ea0e84124db90ef21e2aeb1030933c50fce06eefef2ef76220548717d4"
+    },
+    {
+      "path": "src/background/packs/health.js",
+      "bytes": 5445,
+      "deflateBytes": 1524,
+      "sha256": "8ca687da10a0690ae0d33895f58553f4dcb79d1780331a77eca4d649a089810e"
+    },
+    {
+      "path": "src/background/packs/importers/curated-local-adapter.js",
+      "bytes": 837,
+      "deflateBytes": 404,
+      "sha256": "4bf0eade90f64cca7bd4cbe7cfb716a4fa5765bc222013bb580838da55085683"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv-stream.js",
+      "bytes": 3221,
+      "deflateBytes": 1062,
+      "sha256": "99e3c0f9a7409b117bebf3919ac75c840508e11cf6215fed2245c4f9b5d4a774"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv.js",
+      "bytes": 9001,
+      "deflateBytes": 2884,
+      "sha256": "11153c0307e449fdd2e0c5c5b81b9c8af40c1f5e158a88396a2f2b83c808a02b"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-local-adapter.js",
+      "bytes": 1762,
+      "deflateBytes": 749,
+      "sha256": "596e66103aa6a96b4f43922bf650345a5c1ba3dc57c6adc068d011adc8f8166e"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip-layout.js",
+      "bytes": 12541,
+      "deflateBytes": 3030,
+      "sha256": "9ec4ef2241e42398c91d7e90fd28acb3b95d980654d97f2e72616f6edf6a55cf"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip.js",
+      "bytes": 12159,
+      "deflateBytes": 3526,
+      "sha256": "2cc9bf9f209f548105ec7ec968b340ab62a2331f9269be0674fb462a6f2aff30"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-index.js",
+      "bytes": 9519,
+      "deflateBytes": 2200,
+      "sha256": "6d3473e95302f7e054ef85c7c82206c72f0f6420181070a50b0da572a1e23e1d"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-key-codec.js",
+      "bytes": 7122,
+      "deflateBytes": 1800,
+      "sha256": "0a2b84059674c8bf2eeea7895882387a4bfcaf7d1014cdf75ea95acc86e477c3"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-lookup.js",
+      "bytes": 7001,
+      "deflateBytes": 1926,
+      "sha256": "0e1c6f4c681911a62bb8d71ebcd924e4b38654ad1178410902dcf586832f507a"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-metadata.js",
+      "bytes": 2631,
+      "deflateBytes": 963,
+      "sha256": "7b7b5eb781aedea6a5cb9f5798b33e4d42faa72c2b88909c787bfe3141c60707"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-query-budget.js",
+      "bytes": 4212,
+      "deflateBytes": 1095,
+      "sha256": "715dabddaa65f9332d56619e2f85bf2d13bd91208fbd3090ea67519e62d63a2d"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-path.js",
+      "bytes": 2307,
+      "deflateBytes": 896,
+      "sha256": "027ad8be0194f61229fd72fb59e4f980f8e9f3fa5ed1d5db1629a971089e9bf7"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-policy.js",
+      "bytes": 13069,
+      "deflateBytes": 3353,
+      "sha256": "2fd5c586e0a06a60fe336d586ea73e8791a53e99f7dc531a1ed3501a64ac2ae2"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-validation.js",
+      "bytes": 9451,
+      "deflateBytes": 2087,
+      "sha256": "1fa6c41369cad865e111a9aa55a8e1f28e54c0a616e41a7c8f8a2efa3ae275f2"
+    },
+    {
+      "path": "src/background/packs/importers/mdd.js",
+      "bytes": 432,
+      "deflateBytes": 243,
+      "sha256": "b7578103b9702c5b0d2eda3ce4bc3d247d9b80a3bd9173709dc0df7b91b310dc"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-block-codec.js",
+      "bytes": 5454,
+      "deflateBytes": 1702,
+      "sha256": "9b21492785a5ff6df6e21bb14fd669e020832dd58647b37341b3956a16dfd7bb"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-contract.js",
+      "bytes": 4246,
+      "deflateBytes": 1366,
+      "sha256": "3461add9cfa4015c51fc936ca0a33f06190241fe8dced2ea637b1f739412e63d"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-core.js",
+      "bytes": 4434,
+      "deflateBytes": 1453,
+      "sha256": "b81e1c22713f093dc01f86eca6cf0866a7e29e61e04ed177c87abdc99868cf28"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-key-section.js",
+      "bytes": 8654,
+      "deflateBytes": 2003,
+      "sha256": "6e3c90dace1e40e763feaa0b9dc0d884f5c5793787e600941a0932effd007965"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-local-adapter.js",
+      "bytes": 2081,
+      "deflateBytes": 767,
+      "sha256": "2226c9f64de744212dec1988c3cfcfef576a0cfaf769c30d8ab7237858bcc7e7"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-metadata.js",
+      "bytes": 8358,
+      "deflateBytes": 2506,
+      "sha256": "62ca7c380b9c942b6d727c723603005286ea1a9036fa7a88b9540583fe005c14"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-record-section.js",
+      "bytes": 3339,
+      "deflateBytes": 890,
+      "sha256": "2aea4bbc59ad06eb210efd399999b8a7b0e8a8212b03e0ddab7598e5f525c7b4"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-index.js",
+      "bytes": 11353,
+      "deflateBytes": 2608,
+      "sha256": "61736d80f0a3a3d248e8c059157bfc2fb05459fd773ce30f4a4cf9540ae9bfc4"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-key-codec.js",
+      "bytes": 7195,
+      "deflateBytes": 1746,
+      "sha256": "b6c57c22202698b43b2686c84b142286cc6bc734f8e9475a3fe74a8f795e21f6"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-lookup.js",
+      "bytes": 10912,
+      "deflateBytes": 2813,
+      "sha256": "f1edd9187f94689313bf49290152ee439e11a5cb2de52ec53b42af6610cd6c70"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-metadata.js",
+      "bytes": 4986,
+      "deflateBytes": 1655,
+      "sha256": "39ae641d00af7abd29567ddf8e4040cf9cfa7934bbcb308ce298ac72e6c1db74"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-query-budget.js",
+      "bytes": 5582,
+      "deflateBytes": 1209,
+      "sha256": "d58c34ee69ae79deb17dfdc60c3beba0787a89fdf4f90968215a5f2146f3eec8"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-record-text.js",
+      "bytes": 5580,
+      "deflateBytes": 1992,
+      "sha256": "3114a55afd239a754ec00fe1b19fdb2a2bbb12d4f506039ea07a67f985f489c1"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-source.js",
+      "bytes": 2057,
+      "deflateBytes": 681,
+      "sha256": "04af783a733541bdabbd443059fd01d7674ed092459d0286b52d5fc4b77defec"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-validation.js",
+      "bytes": 9066,
+      "deflateBytes": 2171,
+      "sha256": "b9b1250d8ed78506a875dea8dc2297c4d277ad9102438b971bf462f3faa7e314"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich.js",
+      "bytes": 489,
+      "deflateBytes": 248,
+      "sha256": "9d4936f0d1feaf4c0e5b73c623302cb6ed422721375a7660910f77689220957b"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-ripemd128.js",
+      "bytes": 3263,
+      "deflateBytes": 1208,
+      "sha256": "8933b7ecefcf18681312a1fbc33fd5e195591b5e9e9c5db19a87efaae8af4305"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-semantic.js",
+      "bytes": 6163,
+      "deflateBytes": 1944,
+      "sha256": "25f6112dc421d83066d2327a10d4c40037741fc398be389040063c4b94516c6a"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-binary.js",
+      "bytes": 9431,
+      "deflateBytes": 1991,
+      "sha256": "18ead5764518390fa8fa07923ff44fe6ddad4f1a3a20550b0dcf86d3372dd060"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-browser-dictzip.js",
+      "bytes": 4411,
+      "deflateBytes": 1341,
+      "sha256": "64fae7efd85c2ce63243c319093f37cbc17913f70fabba7408c65c3aa0c54b75"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-contract.js",
+      "bytes": 3603,
+      "deflateBytes": 1155,
+      "sha256": "c94f7aab6d196b1e9395f768eda07cb2c9b13db2b83f056deb6072dc1542e524"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-core.js",
+      "bytes": 8277,
+      "deflateBytes": 2343,
+      "sha256": "de38e56d338d3b612223f2f428cac850545f0b09e79e945a8a87eab2169b82bc"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-dictzip.js",
+      "bytes": 4051,
+      "deflateBytes": 1018,
+      "sha256": "31a54d2743759044d2cf60c812927edd7bb3735a9950c6dba6289d999a4de0c5"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-local-adapter.js",
+      "bytes": 4976,
+      "deflateBytes": 1363,
+      "sha256": "a1237a209765c4677f6715af468aaa5eef1091da8fc3b5651314a05c654b410f"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-semantic.js",
+      "bytes": 6608,
+      "deflateBytes": 1914,
+      "sha256": "d261cf7c646993b6ded4063ace4c670379792aab2ec2df7064eb274e7b25b551"
+    },
+    {
+      "path": "src/background/packs/importers/tflex-local-builder.js",
+      "bytes": 8026,
+      "deflateBytes": 2399,
+      "sha256": "d34f1e83a6c1036c70add74eddd3ccab1c23638aa15814a0a9dc12565019f7c3"
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-contract.js",
+      "bytes": 6657,
+      "deflateBytes": 2064,
+      "sha256": "3e73480a9273c76645fafb332a46d55aeb638cfc0d56684355f95e9f620b4023"
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-identity.js",
+      "bytes": 2324,
+      "deflateBytes": 906,
+      "sha256": "33b3dbb1ff8d3ba3e21c4a0e1f22a7e3e6afe6fc9f8ec92bb324144b2b106691"
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-mdx.js",
+      "bytes": 12280,
+      "deflateBytes": 3005,
+      "sha256": "016a95bb5c9446e689a0eb7bb6ecc61dc508177bd7057c369b533dc0b399e179"
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-stardict.js",
+      "bytes": 8616,
+      "deflateBytes": 2227,
+      "sha256": "8cae3be2c581baa1d282c51977c83e28cc70adb7d23f1d7801344b46c02376d6"
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-tflex.js",
+      "bytes": 4881,
+      "deflateBytes": 1535,
+      "sha256": "5951873f7eb483fdef0e3bee48720c54158b4d7f5ffe71bed404002399dc25c9"
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight.js",
+      "bytes": 2452,
+      "deflateBytes": 708,
+      "sha256": "108785bb504431cccb199eb2286b94856eb947395ad924721dfa0a4a7f3782e2"
+    },
+    {
+      "path": "src/background/packs/local-import-integrity.js",
+      "bytes": 6612,
+      "deflateBytes": 1881,
+      "sha256": "8d503228ab8c95528fb69056ce65810a054c707fb44820beb200b4bbc01c5208"
+    },
+    {
+      "path": "src/background/packs/local-import.js",
+      "bytes": 11516,
+      "deflateBytes": 3127,
+      "sha256": "95ada6cb3955ac3a972621ed555fc160e1871d1e403e67882c476f86cdb75a65"
+    },
+    {
+      "path": "src/background/packs/opfs-store.js",
+      "bytes": 9537,
+      "deflateBytes": 2173,
+      "sha256": "48d26e8407176f2811d2d4e22326b4d84c1336e10e5ce178c0571457e8b424a3"
+    },
+    {
+      "path": "src/background/packs/rich-mdd-contract.js",
+      "bytes": 9240,
+      "deflateBytes": 2576,
+      "sha256": "8d886ddc4463bd427c5116111f690e40bab1e1fd2ec3b17b07109ac3361da1e1"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-catalog-replacement.js",
+      "bytes": 2925,
+      "deflateBytes": 966,
+      "sha256": "75d907615213a8e442e48f45198e5a9d992142ff4118610e4d6042310937faf7"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-contract.js",
+      "bytes": 13439,
+      "deflateBytes": 3586,
+      "sha256": "d4e7744614196ad565e0f32fbe30b75c34354df48c153f5efe9665cbc2cc2661"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-install-preflight.js",
+      "bytes": 2572,
+      "deflateBytes": 921,
+      "sha256": "9d307ac4f4716d614cab315ee0840bf7394fe3b5c24cdad6cc3b985fa6afac92"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-lookup-controller.js",
+      "bytes": 6354,
+      "deflateBytes": 1889,
+      "sha256": "95f8ddf98f9af75a0e9567bf6d86d4f1039a93fe40b2fa37e0ada2ebab7e08cf"
+    },
+    {
+      "path": "src/background/packs/rich-mdict.js",
+      "bytes": 15216,
+      "deflateBytes": 3685,
+      "sha256": "a0de1ba5026f7eff5e28d9c460b70eda827734a7c54b01b569c6d12aaa1c43eb"
+    },
+    {
+      "path": "src/background/packs/state.js",
+      "bytes": 2211,
+      "deflateBytes": 790,
+      "sha256": "f5fcedf26cf4082e2a76c030f4482906e3f143d83ae2a9c82cff4b1fb6829288"
+    },
+    {
+      "path": "src/background/providers/curated-dictionary-network.js",
+      "bytes": 994,
+      "deflateBytes": 507,
+      "sha256": "c94dfff2b9595abb28e5b76ce6cc1e77768458b3ad81ea2bebd462f3e732ef19"
+    },
+    {
+      "path": "src/content/appearance.js",
+      "bytes": 1831,
+      "deflateBytes": 796,
+      "sha256": "0864dc1b90b37961a88560f6b517bc3e7cf0736291af01e1a0bc7b556c06d70b"
+    },
+    {
+      "path": "src/content/auto.js",
+      "bytes": 11221,
+      "deflateBytes": 2995,
+      "sha256": "c135aa3c1e5487d7d800df7b4f3cd8552aacb797aa9c833782a05fc01361aaeb"
+    },
+    {
+      "path": "src/content/batch.js",
+      "bytes": 2047,
+      "deflateBytes": 757,
+      "sha256": "acd63c976aa8999deda782537ceebaec3d97be04e98769dc35597783367600c3"
+    },
+    {
+      "path": "src/content/dom.js",
+      "bytes": 4346,
+      "deflateBytes": 1522,
+      "sha256": "d2ea7e594d45c1dcfda8f455a77fd4dc74d10d0e5bf910edb68d314188363428"
+    },
+    {
+      "path": "src/content/processor.js",
+      "bytes": 7587,
+      "deflateBytes": 2434,
+      "sha256": "365df9f75d4d153c577078459f077cd2407d64f05c1ff07dc78d30c66a8d2550"
+    },
+    {
+      "path": "src/content/quick-control-view.js",
+      "bytes": 13181,
+      "deflateBytes": 3326,
+      "sha256": "8405ed26155fba256900a6bce1f04d5e14389f0c4f7bb326107b6507e110dd4c"
+    },
+    {
+      "path": "src/content/quick-control.js",
+      "bytes": 8392,
+      "deflateBytes": 2378,
+      "sha256": "1754d89b6c148f2aea9bf836d3dab46b3087fce556c1ceb2ae61c040d22f1ddc"
+    },
+    {
+      "path": "src/content/runtime.js",
+      "bytes": 4901,
+      "deflateBytes": 1846,
+      "sha256": "19825e55c6bcde15512a2dc473b98a1d6c7db8e43892dbf8f461632fcd4264d3"
+    },
+    {
+      "path": "src/content/selection/ai-detail.js",
+      "bytes": 4172,
+      "deflateBytes": 1229,
+      "sha256": "fa5dab53d2f09bea07a1fd8e6a6ae6e6d1300da8f35bb18a20784528ca6db37e"
+    },
+    {
+      "path": "src/content/selection/clipboard.js",
+      "bytes": 835,
+      "deflateBytes": 445,
+      "sha256": "308d899d9eea4b8ef422bdc80c0a3d68e410830e5b16cc3fc899a44fa6b676d4"
+    },
+    {
+      "path": "src/content/selection/context.js",
+      "bytes": 5411,
+      "deflateBytes": 1639,
+      "sha256": "9f151508cbd50ed22a0e6f13468e662ab9d54228f885dcbce72899d02a4d6fd5"
+    },
+    {
+      "path": "src/content/selection/controller.js",
+      "bytes": 15029,
+      "deflateBytes": 3437,
+      "sha256": "6af35ea30f74ded70dfca08ca3d6d7ece9a309b2041f1892655c1762e397fec6"
+    },
+    {
+      "path": "src/content/selection/empty-state.js",
+      "bytes": 2026,
+      "deflateBytes": 820,
+      "sha256": "6d2586c3d50e49fa7f5c1a76a50293551dd6531e5bf5bc6889e61e3ea3d51d14"
+    },
+    {
+      "path": "src/content/selection/messages.js",
+      "bytes": 1198,
+      "deflateBytes": 618,
+      "sha256": "7d5197e5455e6315beef9d05df8ffe76b95b66fb5b75e49612c65cc01e57dec0"
+    },
+    {
+      "path": "src/content/selection/popover.js",
+      "bytes": 12600,
+      "deflateBytes": 3089,
+      "sha256": "0a3e1ab9c64c04097591b27cf3ba4d839ead421dad51c5ef0dadeeadf766acfd"
+    },
+    {
+      "path": "src/content/selection/result-model.js",
+      "bytes": 7086,
+      "deflateBytes": 1878,
+      "sha256": "c43fa4b4f70d3f3c8531f69f6c0ee12693dbe221b7e80cdf9d29de22c9411fba"
+    },
+    {
+      "path": "src/content/selection/result-renderer.js",
+      "bytes": 16920,
+      "deflateBytes": 4054,
+      "sha256": "e815cb083ff9b31cc31906c08cb693b727797c40c15b0afd8829678b5c6fc262"
+    },
+    {
+      "path": "src/content/selection/rich-details.js",
+      "bytes": 10706,
+      "deflateBytes": 3117,
+      "sha256": "cbe65eb7df4695984e807ee5be0c5942ce95a1bc5b15f0142b2cd41cd467bcdd"
+    },
+    {
+      "path": "src/content/selection/rich-resource-path.js",
+      "bytes": 1127,
+      "deflateBytes": 534,
+      "sha256": "2904a8729673d84742a0d4af5a4e3bf292bbe1b0af0ebe31b940d71714cd27e8"
+    },
+    {
+      "path": "src/content/selection/rich-resource-resolver.js",
+      "bytes": 15489,
+      "deflateBytes": 4528,
+      "sha256": "2763203fa4fd3c0ff928d1141b32b21c6454e4c06effc96ea66b8346491fcc15"
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-style.js",
+      "bytes": 6859,
+      "deflateBytes": 2189,
+      "sha256": "28efe3e509437f35b847acca6c4e4b7d6469efe442d4e946d5f8ff24bed285cf"
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-tokenizer.js",
+      "bytes": 14531,
+      "deflateBytes": 3687,
+      "sha256": "14c7c1a436e582de9501d401708864f221b0b5de69532df7fb1bce59bf7d1fe4"
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer.js",
+      "bytes": 4976,
+      "deflateBytes": 1623,
+      "sha256": "d4e829f7c3bbdaf7948ed2d23b6e7cb873c40cc389e848fe5e801fedb0079123"
+    },
+    {
+      "path": "src/content/selection/rich-viewer.js",
+      "bytes": 10232,
+      "deflateBytes": 3380,
+      "sha256": "b8cd1308f65bb741f06e0ba3bced266716c4c4141b9581c0a1fbf7960f7f17b3"
+    },
+    {
+      "path": "src/content/selection/selection.js",
+      "bytes": 2810,
+      "deflateBytes": 1006,
+      "sha256": "fcbbbaa87d73c81e85bea46d17dfb5f978503a0c40dc82efbc914c1d14a8629d"
+    },
+    {
+      "path": "src/content/structured.js",
+      "bytes": 4033,
+      "deflateBytes": 1462,
+      "sha256": "4c42e1e0ee8f3490db5549aed7a65f52e9b46ce61f7c4dc1a58155351b16c70a"
+    },
+    {
+      "path": "src/content/subtitles/controller.js",
+      "bytes": 6346,
+      "deflateBytes": 1813,
+      "sha256": "47dcf9550f7176f9ec165000eb746adaeb776a16e3a452a7fb62d7dd12f8b10c"
+    },
+    {
+      "path": "src/content/subtitles/pipeline.js",
+      "bytes": 12022,
+      "deflateBytes": 3106,
+      "sha256": "221341927b09075262f354675a31cedbeb0055238334bb596692866bc6196b08"
+    },
+    {
+      "path": "src/content/subtitles/renderer.js",
+      "bytes": 7514,
+      "deflateBytes": 2482,
+      "sha256": "e6ec10517e3591e867e37ffd090cf5347fb50a09ba72ad3c1bc456a7350de244"
+    },
+    {
+      "path": "src/content/subtitles/source.js",
+      "bytes": 3844,
+      "deflateBytes": 1289,
+      "sha256": "6cecc7ea118f11bda4805b7685cbc8eb6af4fa87fc6c8dc308ec299e2516a1da"
+    },
+    {
+      "path": "src/content/subtitles/sources/text-track.js",
+      "bytes": 5401,
+      "deflateBytes": 1398,
+      "sha256": "9fcec962a138055c74f4ba5a2958e77ba9038632d8a428d7eeae3519d0002971"
+    },
+    {
+      "path": "src/content/subtitles/sources/youtube.js",
+      "bytes": 15153,
+      "deflateBytes": 4073,
+      "sha256": "4cffd11d63529bb0bb229c7d4952e1e6642007c888f0767c343e6dd4fc1fcae5"
+    },
+    {
+      "path": "src/content/subtitles/youtube-bridge-protocol.js",
+      "bytes": 6642,
+      "deflateBytes": 1925,
+      "sha256": "4bdbb5df0748dae124264ccaa72594cdab1d2d8df544beea063b11d84ed37d1b"
+    },
+    {
+      "path": "src/content/subtitles/youtube-main-bridge.js",
+      "bytes": 15010,
+      "deflateBytes": 4006,
+      "sha256": "6707d04d73fe5a2b20d7b5ea6dc5c0778b6d4016e8da015679e09e5e0074a76a"
+    },
+    {
+      "path": "src/content/subtitles/youtube-timedtext.js",
+      "bytes": 8538,
+      "deflateBytes": 2726,
+      "sha256": "c529ecdd04da8815cfe45fa95ee8f4661b99c83563c736dccbba06f5e218e8c0"
+    },
+    {
+      "path": "src/content/tasks.js",
+      "bytes": 5729,
+      "deflateBytes": 1663,
+      "sha256": "07ad9844615998e71414187b96a7ce0275084f3f6641ce33eb39b838a5ca3beb"
+    },
+    {
+      "path": "src/content/ui/host.js",
+      "bytes": 2166,
+      "deflateBytes": 832,
+      "sha256": "35ec3d804b4d733f5e0a6984ed63e7f826360b3e2ae07c7ea40941a293babe75"
+    },
+    {
+      "path": "src/content/ui/primitives.js",
+      "bytes": 3639,
+      "deflateBytes": 1021,
+      "sha256": "6a4c1a8c4881ca6e777b2edfcc25b0030a88991a60cf623fb037dd68aaa1c813"
+    },
+    {
+      "path": "src/content/ui/quick-control-styles.js",
+      "bytes": 8862,
+      "deflateBytes": 2097,
+      "sha256": "ef9ba4383dce29283b1858ec1e9fe24c3fc428c0856a564442b3226608e8ef65"
+    },
+    {
+      "path": "src/content/ui/selection-ai-detail-styles.js",
+      "bytes": 945,
+      "deflateBytes": 450,
+      "sha256": "552741c1584ba7d44943543e8b00562fc735b397e8654afbc193d6e9c2c1e5c4"
+    },
+    {
+      "path": "src/content/ui/selection-empty-state-styles.js",
+      "bytes": 648,
+      "deflateBytes": 339,
+      "sha256": "492867cd7a29425353eb790321282289f6319abcbfee7c10cfdb7572939bbeb9"
+    },
+    {
+      "path": "src/content/ui/selection-lexical-styles.js",
+      "bytes": 5804,
+      "deflateBytes": 1329,
+      "sha256": "18d19bd69e7e117f0d5b84af1432f0ff914aeeb6901a2e934d0829e6010d5d2d"
+    },
+    {
+      "path": "src/content/ui/toast.js",
+      "bytes": 1479,
+      "deflateBytes": 623,
+      "sha256": "dace3f296fe5f56636d5d5ada8e8129d8e5f4355aa24d2d0551183cecc314604"
+    },
+    {
+      "path": "src/content/ui/tokens.js",
+      "bytes": 11642,
+      "deflateBytes": 2973,
+      "sha256": "23756947686784371c1d2002759562f859f6e2173b5b934e20a7977dca384f2d"
+    },
+    {
+      "path": "src/options/curated-dictionary-presentation.js",
+      "bytes": 4171,
+      "deflateBytes": 1486,
+      "sha256": "75a1ed90fd444552aeca17a68aea5bca92a7d13eba69f6a23f34b2c5a316887e"
+    },
+    {
+      "path": "src/options/curated-dictionary-ui.js",
+      "bytes": 10713,
+      "deflateBytes": 3264,
+      "sha256": "36323a4248d9e04fa128f1cf1d007607a737efe5c7d464f3373f3be060324379"
+    },
+    {
+      "path": "src/options/curated-ecdict-mdx-ui.js",
+      "bytes": 13207,
+      "deflateBytes": 3991,
+      "sha256": "5c41bbf320f6f248cbaa4a638095d9d45165e753e5a199f20fc32ccdc1466e34"
+    },
+    {
+      "path": "src/options/dictionary-library-v2-presentation.js",
+      "bytes": 15629,
+      "deflateBytes": 4964,
+      "sha256": "e2b3653d0a5647cb1dd7ec245f85927cb6e255e1a7e5bfc99ece7aaf876abb2a"
+    },
+    {
+      "path": "src/options/glossary-ui.js",
+      "bytes": 7513,
+      "deflateBytes": 2110,
+      "sha256": "d9e5c4e1c1f4a254edf02f357acbdb962cbe0720ef0f8e000ca4c5d02d1ecc7c"
+    },
+    {
+      "path": "src/options/installed-pack-ui.js",
+      "bytes": 5922,
+      "deflateBytes": 2101,
+      "sha256": "cdca7e631ec8b9209a2728a77fd33bdf78a8047e59657730c0ec98cd9d661d98"
+    },
+    {
+      "path": "src/options/local-dictionary-import-presentation.js",
+      "bytes": 20893,
+      "deflateBytes": 6803,
+      "sha256": "69678b49503a3b0219f192104c56a48ce582c50492612daa28404c886621b365"
+    },
+    {
+      "path": "src/options/local-dictionary-import-ui.js",
+      "bytes": 20312,
+      "deflateBytes": 5065,
+      "sha256": "592e5f68b43cccc734f237d726f5138fc23191afcd4126d3ee3eddcaac8f9205"
+    },
+    {
+      "path": "src/options/mdd-resource-import-controller.js",
+      "bytes": 9249,
+      "deflateBytes": 2528,
+      "sha256": "d25e5dc7430fc2cb37ecdd5958673080f28101f3ebc265426a3527aeca652892"
+    },
+    {
+      "path": "src/options/mdict-import-controller-io.js",
+      "bytes": 2517,
+      "deflateBytes": 887,
+      "sha256": "7e0f154a4f92ba372bf6b6716c9fe4ba83353c6ad7b589f08d7894f6a1cd49c0"
+    },
+    {
+      "path": "src/options/mdict-import-controller.js",
+      "bytes": 5672,
+      "deflateBytes": 1680,
+      "sha256": "59097b943ede626288cf5637d3fbc0acccb90b738b34e2c2c0a85434387cd3ff"
+    },
+    {
+      "path": "src/options/mdict-import-ui.js",
+      "bytes": 9417,
+      "deflateBytes": 3360,
+      "sha256": "fc0b93e11f65cb0c85c302db610f6c10009b5dc09b4504f2f20bf407024a0fcf"
+    },
+    {
+      "path": "src/options/pack-ui.js",
+      "bytes": 13311,
+      "deflateBytes": 3829,
+      "sha256": "7358005c6c1837469ddfad65cd0fdbcc26a95a901bffe69000df12bab62a20af"
+    },
+    {
+      "path": "src/options/rich-mdict-import-controller.js",
+      "bytes": 9740,
+      "deflateBytes": 2803,
+      "sha256": "2a11f056a60a68c8a947a1ea75b0e51e9926710cb3e0a4f44ddd1cd51d933d0d"
+    },
+    {
+      "path": "src/options/rich-mdict-import-copy.js",
+      "bytes": 1224,
+      "deflateBytes": 522,
+      "sha256": "c89ec9e7ee6a5a25552f7a299afb9d5e7045ba172116f10e13c4e5014589b5c6"
+    },
+    {
+      "path": "src/options/rich-mdict-import-ui.js",
+      "bytes": 17687,
+      "deflateBytes": 4687,
+      "sha256": "d0a1c7ee25e59fa621d21508b04112da411dc6b52b135b8bfad9301dcce64743"
+    },
+    {
+      "path": "src/options/rich-mdict-preferences-ui.js",
+      "bytes": 4801,
+      "deflateBytes": 1551,
+      "sha256": "126a5adccdf53bbfa13e5b6ded0f8cfb1e99c3d17bfd4f0c939372e4fc8a27a1"
+    },
+    {
+      "path": "src/options/stardict-import-controller-io.js",
+      "bytes": 4561,
+      "deflateBytes": 1407,
+      "sha256": "94bca8cf6bd2bfa090298eeb4c546ca7e5bc8c502cc55bd7a7329ec6af24cc01"
+    },
+    {
+      "path": "src/options/stardict-import-controller.js",
+      "bytes": 6240,
+      "deflateBytes": 1768,
+      "sha256": "f4a0d6a3d185160f33bea9f419a4720b6ed0c7ca7f9111cf716f8ff543198eed"
+    },
+    {
+      "path": "src/options/stardict-import-ui.js",
+      "bytes": 12095,
+      "deflateBytes": 4150,
+      "sha256": "30aaa7d930eff0d366b7bd672f37f5318798d326b3f9dfa1e66863c90597f3d7"
+    },
+    {
+      "path": "src/options/tflex-local-import-controller.js",
+      "bytes": 5273,
+      "deflateBytes": 1786,
+      "sha256": "f29dc72bd7fa5da4bd21f6ada715bef81567fcb3a311f56c75003d13e83ca61d"
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-core.js",
+      "bytes": 7041,
+      "deflateBytes": 2215,
+      "sha256": "a2b9b0d964932931b945bc6d370f5bf3e093f1a3080bb1fd41908e242e2a832b"
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-protocol.js",
+      "bytes": 251,
+      "deflateBytes": 134,
+      "sha256": "3903738f414ba9ae97bb6dea1f72c38e4d128c5b7509dee48a0827a4cb176fc5"
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker.js",
+      "bytes": 591,
+      "deflateBytes": 297,
+      "sha256": "b663812aa1fd5fc869e0d1ef6dd35da00e2695a21c1b70dab631f1c282bb68d2"
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-core.js",
+      "bytes": 4885,
+      "deflateBytes": 1575,
+      "sha256": "b257a19c857d61304484c3d35e6ad767da8a5041956b5fa98a9d84e36c9692d0"
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-protocol.js",
+      "bytes": 262,
+      "deflateBytes": 160,
+      "sha256": "e62209e66c91bff26b934aa9df72e083f981b7d19f60fbea8fb3c003b5a1b43d"
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker.js",
+      "bytes": 580,
+      "deflateBytes": 282,
+      "sha256": "e2164b3cb03b99995cc826e98e0f24a627b668f744dd77740fce0ce09c34a2a7"
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-core.js",
+      "bytes": 8606,
+      "deflateBytes": 2535,
+      "sha256": "f419d947598a9df5560abbdd3671468a45f8cb3495c779fd01df113d44c8ea31"
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-protocol.js",
+      "bytes": 261,
+      "deflateBytes": 155,
+      "sha256": "2eef4a9f93c1cfd755af04cce007870dd2531ca105a32672ed5738821de7c342"
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker.js",
+      "bytes": 603,
+      "deflateBytes": 290,
+      "sha256": "dda6fdfea2dc126d420230663aea4d2d5c8fd7a95ab8934253adb5a8ad7981c5"
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-core.js",
+      "bytes": 5441,
+      "deflateBytes": 1807,
+      "sha256": "ccc8a5d32e3ff83315051bb8c614ebdb089e0c4573b64ea8e689f313f501b511"
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-protocol.js",
+      "bytes": 219,
+      "deflateBytes": 147,
+      "sha256": "92110481d286e63ecd10a917e88d171b392dcb46230e49faeb34acf2e63e548e"
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker.js",
+      "bytes": 587,
+      "deflateBytes": 287,
+      "sha256": "e1ef09616510fe4a5c0eeeec79a4cd01b7224e80048dc41ecf4258699c4d6c9a"
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-core.js",
+      "bytes": 8661,
+      "deflateBytes": 2608,
+      "sha256": "7e68042e0eee1f71a2739fdef8c12dc20f471aa2cb15064d1d52cb30710ddec2"
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-protocol.js",
+      "bytes": 249,
+      "deflateBytes": 154,
+      "sha256": "02b4f697fed44396eaef7237da48eca6cf9389b192765410ddd41262db7c5ebe"
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker.js",
+      "bytes": 597,
+      "deflateBytes": 290,
+      "sha256": "9fee473b584190abccedf201c16f37c1c98085593345a680747963467d0f9591"
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-core.js",
+      "bytes": 7164,
+      "deflateBytes": 2105,
+      "sha256": "e8a9f4220a79764c666ac1e468e2f1819c7814d85f7bb03f4a3195171581dbff"
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-protocol.js",
+      "bytes": 526,
+      "deflateBytes": 270,
+      "sha256": "c288611c47c34b16a7ba7d75061809ceb71e0306c563c5faca184820647bc5c3"
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker.js",
+      "bytes": 615,
+      "deflateBytes": 296,
+      "sha256": "a08602e87786ceba127d93f076e683d6ba1b15800e72d18bd1348c5c50589a9b"
+    },
+    {
+      "path": "src/popup/preset-ui.js",
+      "bytes": 5687,
+      "deflateBytes": 1902,
+      "sha256": "1b972de3f1a65ddd8f336c2d667a7bc8163a676dde4a555e97c89c9feff3254a"
+    },
+    {
+      "path": "src/shared/appearance.js",
+      "bytes": 4074,
+      "deflateBytes": 1092,
+      "sha256": "6b2fd5dcca68bb08a4545ce81c583f8a0204c15cc26103b0c5a0ec5d87d073c3"
+    },
+    {
+      "path": "src/shared/constants.js",
+      "bytes": 6902,
+      "deflateBytes": 2007,
+      "sha256": "fc888af5cb6ffde8ed490eca0a7f1c18747b09824283a9e3fd2334d1c77cf651"
+    },
+    {
+      "path": "src/shared/curated-dictionaries.js",
+      "bytes": 7962,
+      "deflateBytes": 2404,
+      "sha256": "ef20d116b1ced1a31c48e4ea024ce3df7fabfd32d749e40beb757554d0809c63"
+    },
+    {
+      "path": "src/shared/curated-ecdict-mdx-recipe.js",
+      "bytes": 6300,
+      "deflateBytes": 2301,
+      "sha256": "5ddf13cf89dee884c5ca227d9a6bcfe60e9a5bb167b46f5ee58608d453fba24e"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-artifacts.js",
+      "bytes": 5979,
+      "deflateBytes": 1651,
+      "sha256": "f0f1f74b80ef17b033e28013c8d60edd8944b719d9813d8b27418f517cfbc040"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-entries.js",
+      "bytes": 6375,
+      "deflateBytes": 1973,
+      "sha256": "d97946911e3d93b55ebfc7f8ef0d6f0b1d7daf7d3397347cd8f86846b5c99063"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-schema.js",
+      "bytes": 13186,
+      "deflateBytes": 3275,
+      "sha256": "e7d5b2ec6bf50116d50561e72946482defff204aebc6a9c04bc88b635d073971"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-utils.js",
+      "bytes": 4347,
+      "deflateBytes": 1239,
+      "sha256": "c64f255e6ffb7557a550f263d4560741801ef8e0a579dfc5a034bfcb549a76af"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2.js",
+      "bytes": 9934,
+      "deflateBytes": 2710,
+      "sha256": "30b8ae3927b20e7972c2efe37af1a62fbb026169edd125d983cd14b5f7be7704"
+    },
+    {
+      "path": "src/shared/glossary.js",
+      "bytes": 4113,
+      "deflateBytes": 1318,
+      "sha256": "1a212761d36a72c949703c5a80399a6dd84972c6025b4cc79e902ae2bccd01ea"
+    },
+    {
+      "path": "src/shared/import-quarantine-contract.js",
+      "bytes": 3657,
+      "deflateBytes": 1114,
+      "sha256": "f593d13f9658c494528e4c287d3a46c4f9240995222eeb1c62fadf40efbbb361"
+    },
+    {
+      "path": "src/shared/lexical.js",
+      "bytes": 2303,
+      "deflateBytes": 892,
+      "sha256": "ad3f01536fedb2c6aa9294a3b82f21741a9b05b46f0221e4e64fc401a298181e"
+    },
+    {
+      "path": "src/shared/opfs-import-quarantine.js",
+      "bytes": 10776,
+      "deflateBytes": 2376,
+      "sha256": "c97adc94f0004e5a9e45da7a254716a215ef52df960efc4b82b57e544a89c0dc"
+    },
+    {
+      "path": "src/shared/pack-manager.js",
+      "bytes": 2027,
+      "deflateBytes": 856,
+      "sha256": "00144f93b4164b47fd8c985fc0aa543a98cc251bd977a5d9800a82455da92b42"
+    },
+    {
+      "path": "src/shared/pack-sources.js",
+      "bytes": 375,
+      "deflateBytes": 251,
+      "sha256": "348ba88777201ed26e22d200b0bf64b938c5b49310894f44eecb5482c9e1dc90"
+    },
+    {
+      "path": "src/shared/presets.js",
+      "bytes": 2754,
+      "deflateBytes": 1209,
+      "sha256": "92817c300f3a0454891a2eb897b9072b3b71d665e32719019d98a6989164683b"
+    },
+    {
+      "path": "src/shared/provider-config.js",
+      "bytes": 6634,
+      "deflateBytes": 1770,
+      "sha256": "9a742c39b0702166eba82dd95aab59f36a326c4fb11fd02de1a2cdc673fae109"
+    },
+    {
+      "path": "src/shared/selection.js",
+      "bytes": 6473,
+      "deflateBytes": 1750,
+      "sha256": "67edf928a8bdcda2945f9ef2da736660f451a6b6364ef22facb887c874d04735"
+    },
+    {
+      "path": "src/shared/url.js",
+      "bytes": 1091,
+      "deflateBytes": 527,
+      "sha256": "abd5a55da5096158df804216744233ba0727b912d721e24c961e67b22e47d96d"
+    },
+    {
+      "path": "src/ui/styles/components.css",
+      "bytes": 6297,
+      "deflateBytes": 1473,
+      "sha256": "c7d40b6d8e7557083bb0bb822360177a53569e00778a281ce2e13e966408f18b"
+    },
+    {
+      "path": "src/ui/styles/tokens.css",
+      "bytes": 3953,
+      "deflateBytes": 1260,
+      "sha256": "caaabe0fbcf2ebe1435ca301f4c9f23141ed847908fd0b242cfa19fb59238b72"
+    }
+  ],
+  "notRun": [
+    "runtime injection timing distribution",
+    "real bundled dictionaries",
+    "Chrome 102 API runtime"
+  ]
+}
