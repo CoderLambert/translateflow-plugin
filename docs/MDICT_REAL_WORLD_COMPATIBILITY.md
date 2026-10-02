@@ -5,6 +5,11 @@ rich dictionary lane. It records observed compatibility; it does not approve a
 dictionary for redistribution or claim that every observed record feature is
 rendered by the product.
 
+Raw key-block boundary interoperability, sanitized preflight diagnostics and
+the separate large-file follow-up are documented in
+[MDICT_IMPORT_BOUNDARIES.md](MDICT_IMPORT_BOUNDARIES.md). Their synthetic cases
+do not add a real dictionary to the corpus matrix below.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,

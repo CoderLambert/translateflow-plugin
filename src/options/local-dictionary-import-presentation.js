@@ -26,9 +26,10 @@ export const REASON_LABELS = Object.freeze({
   "mdx.structured_profile_unsupported": "该 MDX 的排版或记录格式不适合结构化导入，可尝试富文本方式。",
   "mdx.capability_not_shipped": "词典包含当前版本尚未完整验证的 MDX 功能。",
   "mdx.capability_unsupported": "该 MDX 使用当前不支持的功能。",
-  "mdx.corrupt_or_malformed": "MDX 文件损坏或结构无法读取。",
+  "mdx.corrupt_or_malformed": "无法读取 MDX 文件结构；文件可能不完整，或使用了尚未兼容的结构。请保留原文件并核对来源。",
+  "mdx.key_block_boundary_mismatch": "MDX 词头索引与词条块的首尾不一致，当前无法安全读取。请保留原文件以便检查兼容性。",
   "mdx.unsafe_content": "MDX 含有当前安全策略禁止的内容。",
-  "mdx.file_too_large": "MDX 超过当前安全大小上限。",
+  "mdx.file_too_large": "MDX 超过当前单文件 128 MiB 大小上限。",
   "mdx.preflight_limit_exceeded": "MDX 检查超过当前安全资源上限。",
   "mdx.preflight_failed": "无法完成 MDX 检查。",
   "mdd.mdx_required": "MDD 需要与 MDX 一起选择，不能单独导入。",
@@ -38,7 +39,7 @@ export const REASON_LABELS = Object.freeze({
   "mdd.unassociated_files": "有 MDD 或其它文件无法关联到所选 MDX；请移除这些文件后再试。",
   "mdd.capability_unsupported": "某个 MDD 附件使用当前不支持的功能。",
   "mdd.corrupt_or_malformed": "某个 MDD 附件损坏或结构无法读取。",
-  "mdd.file_too_large": "MDD 附件超过当前安全大小上限。",
+  "mdd.file_too_large": "MDD 附件超过当前单文件 128 MiB 大小上限；可移除附件后单独检查 MDX，图片和音频可能缺失。",
   "mdd.preflight_limit_exceeded": "MDD 检查超过当前安全资源上限。",
   "mdd.preflight_failed": "无法完成 MDD 检查。",
   "stardict.ifo_missing": "缺少 StarDict .ifo 文件。",
@@ -193,7 +194,17 @@ export function renderLocalPreflight({ result, selectedFiles, installedCandidate
       ...(result.compatibility.reasons || []).map((item) => ({ ...item, warning: false })),
       ...(result.compatibility.warnings || []).map((item) => ({ ...item, warning: true }))
     ];
-    for (const item of reasons) appendSummaryLine(summary, item.warning ? "提示" : "原因", describeReason(item));
+    const stageLabels = {
+      header: "读取 MDX 文件头",
+      "key-index": "读取 MDX 词头索引",
+      "record-index": "读取 MDX 正文索引",
+      "key-blocks": "核对 MDX 词条块",
+      "index-validation": "校验 MDX 索引与文件布局"
+    };
+    for (const item of reasons) {
+      if (Object.hasOwn(stageLabels, item.stage)) appendSummaryLine(summary, "失败阶段", stageLabels[item.stage]);
+      appendSummaryLine(summary, item.warning ? "提示" : "原因", describeReason(item));
+    }
     const missingCapabilityLabels = (result.compatibility.unsupportedCapabilities || []).map((id) => CAPABILITY_LABELS[id] || "其他尚未支持的词典功能");
     if (missingCapabilityLabels.length) appendSummaryLine(summary, "未支持功能", missingCapabilityLabels.join("、"));
 

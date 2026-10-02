@@ -1,5 +1,6 @@
 import {
   MDICT_IMPORT_ERROR,
+  MDictImportError,
   MDictCursor,
   adler32,
   mdictFail,
@@ -37,12 +38,22 @@ export { readSourceRange } from "./mdict-rich-source.js";
 
 const STYLE_SHEET_RULES_MAX = 255;
 
-export async function buildRichMdictIndex({
+export async function buildRichMdictIndex(options = {}) {
+  const diagnostic = { stage: "header" };
+  try {
+    return await buildIndex(options, diagnostic);
+  } catch (error) {
+    if (error instanceof MDictImportError) error.stage = diagnostic.stage;
+    throw error;
+  }
+}
+
+async function buildIndex({
   source,
   limits = RICH_MDICT_IMPORT_LIMITS,
   decompressionStreamFactory,
   signal
-} = {}) {
+} = {}, diagnostic) {
   const rangeSource = withMdictAbortSignal(source, signal);
   throwIfAborted(signal);
   const sourceSize = validateMdictSource(rangeSource, limits);
@@ -62,6 +73,7 @@ export async function buildRichMdictIndex({
     headerAndLength,
     limits
   );
+  diagnostic.stage = "key-index";
   const keyPreambleOffset = headerBytesLength + 8;
   const preambleBytes = await readSourceRange(
     rangeSource,
@@ -151,6 +163,7 @@ export async function buildRichMdictIndex({
   }
 
   const recordSectionOffset = keyBlocksOffset + keyBlocksBytes;
+  diagnostic.stage = "record-index";
   const recordHeader = new MDictCursor(
     await readSourceRange(rangeSource, recordSectionOffset, 32)
   );
@@ -201,6 +214,7 @@ export async function buildRichMdictIndex({
     0
   );
   requireMdictAtMost(totalRecordBytes, limits.totalRecordBytes, "MDict total record bytes");
+  diagnostic.stage = "key-blocks";
   await addKeyBlockLookupBounds({
     source: rangeSource,
     keyBlocks,
@@ -210,6 +224,7 @@ export async function buildRichMdictIndex({
     decompressionStreamFactory,
     signal
   });
+  diagnostic.stage = "index-validation";
   if (
     compressedRecordBytes !== recordBlocksBytes ||
     recordBlocksOffset + recordBlocksBytes !== sourceSize

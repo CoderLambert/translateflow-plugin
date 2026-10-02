@@ -76,9 +76,12 @@ export function basePreflightResult({
   };
 }
 
-export function reason(code, capability = null) {
+export function reason(code, capability = null, stage = null) {
   const output = { code };
   if (CAPABILITIES.has(capability)) output.capability = capability;
+  if (["header", "key-index", "record-index", "key-blocks", "index-validation"].includes(stage)) {
+    output.stage = stage;
+  }
   return output;
 }
 

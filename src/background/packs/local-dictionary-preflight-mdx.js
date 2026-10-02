@@ -209,7 +209,8 @@ function mdxFailureResult({ files, sourceBytes, error, mdxFile }) {
     files,
     sourceBytes,
     status: unsupported || limited ? "unsupported" : "invalid",
-    reason: reason(mapMdxError(error), capability),
+    reason: reason(mapMdxError(error), capability,
+      error instanceof MDictImportError ? error.stage : null),
     unsupportedCapabilities: capability ? [capability] : [],
     route: { importer: "none", requiresSemanticConfirmation: false },
     identity: { displayTitle: safeFileLabel(mdxFile.name.replace(/\.mdx$/iu, "")) }
@@ -289,6 +290,9 @@ function encodingCapability(prefix, encoding) {
 function mapMdxError(error) {
   if (error?.preflightReason) return error.preflightReason;
   if (error instanceof MDictImportError) {
+    if (error.code === MDICT_IMPORT_ERROR.CORRUPT && error.check === "key-block-boundary") {
+      return "mdx.key_block_boundary_mismatch";
+    }
     if (error.code === MDICT_IMPORT_ERROR.CORRUPT) return "mdx.corrupt_or_malformed";
     if (error.code === MDICT_IMPORT_ERROR.LIMIT) return "mdx.preflight_limit_exceeded";
     if (error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT) return "mdx.unsafe_content";

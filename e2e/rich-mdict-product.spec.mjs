@@ -130,7 +130,8 @@ test.describe("Rich MDict local product and security behavior", () => {
     await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("文件无效", {
       timeout: 30_000
     });
-    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("MDX 文件损坏");
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("无法读取 MDX 文件结构");
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("失败阶段读取 MDX 词头索引");
     await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
     expect(harness.server.calls).toHaveLength(0);

@@ -102,16 +102,20 @@ export function parseKeyBlock(input, descriptor, header, { signal } = {}) {
     keys.push({ recordOffset, displayForm });
   }
   throwIfAborted(signal);
+  const first = keys[0]?.displayForm || "";
+  const last = keys.at(-1)?.displayForm || "";
+  // Standard writers store raw boundary keys. Older TranslateFlow fixtures
+  // used lookup-normalized boundaries; accept that complete pair as well.
+  // Never normalize descriptors or mix raw/normalized matches across ends.
+  const rawPair = first === descriptor.firstKey && last === descriptor.lastKey;
+  const legacyPair = normalizeRichMdictLookupKey(first, header) === descriptor.firstKey &&
+    normalizeRichMdictLookupKey(last, header) === descriptor.lastKey;
   if (
     cursor.remaining !== 0 ||
-    normalizeRichMdictLookupKey(keys[0]?.displayForm || "", header) !== descriptor.firstKey ||
-    normalizeRichMdictLookupKey(keys.at(-1)?.displayForm || "", header) !== descriptor.lastKey
+    (!rawPair && !legacyPair)
   ) {
     mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict key block boundary does not match its index.", {
-      expectedFirst: descriptor.firstKey,
-      actualFirst: normalizeRichMdictLookupKey(keys[0]?.displayForm || "", header),
-      expectedLast: descriptor.lastKey,
-      actualLast: normalizeRichMdictLookupKey(keys.at(-1)?.displayForm || "", header),
+      check: cursor.remaining ? "key-block-length" : "key-block-boundary",
       trailingBytes: cursor.remaining
     });
   }
