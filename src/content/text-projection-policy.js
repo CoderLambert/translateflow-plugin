@@ -14,6 +14,15 @@
   function inspect(element) {
     if (element.hasAttribute(EXTENSION_UI_ATTR) || element.classList.contains(TRANSLATION_CLASS)) return { excluded: true };
     if (element.assignedSlot || element.shadowRoot || element.tagName === "SLOT" || element.tagName.includes("-")) return { unsupported: true, sensitive: true, reason: "unsupported-host" };
+    // shadowRoot alone cannot prove that a native host has no closed root.
+    // Inspect only the presence of a root, never its private contents.
+    try {
+      const dom = globalThis.chrome?.dom;
+      if (typeof dom?.openOrClosedShadowRoot !== "function") return { unsupported: true, sensitive: true, reason: "shadow-proof-unavailable" };
+      const root = dom.openOrClosedShadowRoot(element);
+      if (root === undefined) return { unsupported: true, sensitive: true, reason: "shadow-proof-unavailable" };
+      if (root !== null) return { unsupported: true, sensitive: true, reason: "unsupported-host" };
+    } catch { return { unsupported: true, sensitive: true, reason: "shadow-proof-unavailable" }; }
     if (excludedTags.has(element.tagName) || element.isContentEditable || element.hasAttribute("data-tf-sensitive")) return { excluded: true, sensitive: true };
     if (element.hidden || element.getAttribute("aria-hidden") === "true") return { excluded: true };
     const style = getComputedStyle(element);
@@ -29,17 +38,20 @@
       }
     } catch { return { supported: false, sensitive: true, reason: "unsupported-root" }; }
     let supported = true, sensitive = false, reason = "";
+    const budget = { started: performance.now(), nodes: 0 };
+    const exhausted = () => budget.nodes >= limits.sliceNodes || performance.now() - budget.started >= limits.sliceMs;
     const deny = (decision) => { supported = false; sensitive ||= Boolean(decision.sensitive); reason ||= decision.reason || "excluded"; };
     for (const node of [range.startContainer, range.endContainer, range.commonAncestorContainer]) {
       if (node.assignedSlot) deny({ sensitive: true, reason: "unsupported-slot" });
       let element = node.nodeType === 1 ? node : node.parentElement;
-      let count = 0;
-      while (element && count++ < limits.sliceNodes) {
+      while (element) {
+        if (exhausted()) return { supported: false, sensitive: true, reason: "range-budget" };
+        budget.nodes++;
         const decision = inspect(element);
+        if (performance.now() - budget.started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
         if (decision.excluded || decision.unsupported) deny(decision);
         element = element.parentElement;
       }
-      if (element) deny({ sensitive: true, reason: "ancestor-budget" });
     }
     const active = document.activeElement;
     if (active?.matches?.("input,textarea") && Number(active.selectionEnd) > Number(active.selectionStart) &&
@@ -47,27 +59,27 @@
       deny({ sensitive: true, reason: "editable" });
     }
     if (supported) {
-      const interior = rangeInterior(range);
+      const interior = rangeInterior(range, budget);
       if (!interior.supported) deny(interior);
     }
     return { supported, sensitive, reason };
   }
-  function rangeInterior(range) {
+  function rangeInterior(range, budget) {
     const root = range.commonAncestorContainer;
     if (root.nodeType === 3) return { supported: true };
-    const started = performance.now(), stack = [{ node: root, entered: false }];
-    let nodes = 0;
+    const stack = [{ node: root, entered: false }];
     while (stack.length) {
-      if (nodes >= limits.sliceNodes || performance.now() - started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
+      if (budget.nodes >= limits.sliceNodes || performance.now() - budget.started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
       const frame = stack.at(-1), node = frame.node;
       if (!frame.entered) {
-        nodes++; frame.entered = true;
+        budget.nodes++; frame.entered = true;
         let intersects;
         try { intersects = range.intersectsNode(node); } catch { return { supported: false, sensitive: true, reason: "unknown-range" }; }
         if (intersects) {
           if (node.assignedSlot) return { supported: false, sensitive: true, reason: "unsupported-slot" };
           if (node.nodeType === 1) {
             const decision = inspect(node);
+            if (performance.now() - budget.started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
             if (decision.unsupported || decision.excluded) return { supported: false, sensitive: true, reason: decision.reason || "excluded-interior" };
           }
           frame.child = node.firstChild;

@@ -12,6 +12,7 @@ const sources = new Map(await Promise.all(files.map(async (file) => [file, await
 function load(extra = {}) {
   const document = {}, window = {}; window.top = window;
   const context = vm.createContext({ document, window, crypto: webcrypto, TextEncoder, performance: { now: () => 0 },
+    chrome: { dom: { openOrClosedShadowRoot: (node) => node.shadowRoot ?? null } },
     __TRANSLATE_FLOW_CONTENT__: { modules: { runtime: { constants: { EXTENSION_UI_ATTR: "data-tf-extension-ui", TRANSLATION_CLASS: "abt-translation" }, cleanText: (value) => value.trim() } } }, ...extra });
   for (const file of files.slice(0, 3)) vm.runInContext(sources.get(file), context);
   return { context, document, modules: context.__TRANSLATE_FLOW_CONTENT__.modules };
@@ -97,6 +98,26 @@ test("hidden exclusion does not hide a higher sensitive ancestor from range poli
   assert.equal(decision.supported, false); assert.equal(decision.sensitive, true);
 });
 
+test("native closed hosts require the extension DOM proof and never expose private light text", () => {
+  let host;
+  const state = load({ getComputedStyle: (node) => node.style,
+    chrome: { dom: { openOrClosedShadowRoot: (node) => node === host ? {} : null } } });
+  const secret = { nodeType: 3, length: 14, get nodeValue() { throw new Error("closed host text must not be read"); } };
+  host = element(state.document, [secret]);
+  assert.equal(host.shadowRoot, undefined);
+  const result = state.modules.textProjection.project(element(state.document, [host]));
+  assert.equal(result.status, "unsupported"); assert.equal(result.reason, "unsupported-host"); assert.equal(result.sensitive, true);
+});
+
+test("missing, failed or indeterminate closed-root proof is unknown rather than safe", () => {
+  for (const chrome of [undefined, { dom: {} }, { dom: { openOrClosedShadowRoot() { throw new Error("unavailable"); } } },
+    { dom: { openOrClosedShadowRoot() {} } }]) {
+    const state = load({ chrome, getComputedStyle: (node) => node.style });
+    const decision = state.modules.textProjectionPolicy.inspect(element(state.document));
+    assert.equal(decision.unsupported, true); assert.equal(decision.sensitive, true); assert.equal(decision.reason, "shadow-proof-unavailable");
+  }
+});
+
 test("Range interior privacy checks cover editable/sensitive/unknown nodes and fail closed on either budget", () => {
   for (const mode of ["editable", "sensitive", "host", "nodes", "time"]) {
     let ticks = 0;
@@ -112,6 +133,25 @@ test("Range interior privacy checks cover editable/sensitive/unknown nodes and f
     assert.equal(decision.supported, false, mode); assert.equal(decision.sensitive, true, mode);
     if (["nodes", "time"].includes(mode)) assert.equal(decision.reason, "range-budget");
   }
+});
+
+test("all Range ancestors and interior share the first time and node stop budget", () => {
+  let elapsed = 0, styles = 0;
+  const state = load({ performance: { now: () => elapsed }, getComputedStyle: (node) => { elapsed += 4; styles++; return node.style; } });
+  const node = { nodeType: 3, isConnected: true, getRootNode: () => state.document };
+  const p = element(state.document, [node]); element(state.document, [p]);
+  const timed = state.modules.textProjectionPolicy.rangePolicy({ startContainer: node, endContainer: node, commonAncestorContainer: node });
+  assert.equal(timed.supported, false); assert.equal(timed.sensitive, true); assert.equal(timed.reason, "range-budget");
+  assert.equal(elapsed, 8); assert.equal(styles, 2);
+
+  let inspections = 0;
+  const deep = load({ getComputedStyle: (value) => { inspections++; return value.style; } });
+  const endpoint = () => ({ nodeType: 3, isConnected: true, getRootNode: () => deep.document });
+  const start = endpoint(), end = endpoint(); let root = element(deep.document, [start, end]);
+  for (let count = 0; count < 180; count++) root = element(deep.document, [root]);
+  const counted = deep.modules.textProjectionPolicy.rangePolicy({ startContainer: start, endContainer: end, commonAncestorContainer: start.parentElement });
+  assert.equal(counted.supported, false); assert.equal(counted.sensitive, true); assert.equal(counted.reason, "range-budget");
+  assert.equal(inspections, 500);
 });
 
 test("giant text fallback reads only a bounded CharacterData window and enforces its time budget", async () => {

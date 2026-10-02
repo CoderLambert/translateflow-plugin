@@ -236,7 +236,7 @@ test("neighboring open/closed sensitive slots never become public selection cont
   const page = await prepare(harness, '<main><p id="normal">PUBLIC session</p><div data-tf-sensitive><p id="hidden" hidden>PRIVATE session</p></div></main>');
   const hidden = await probe(harness, page, "capture", { selector: "#hidden", text: "session" });
   expect(hidden.context.sensitive).toBe(true); expect(hidden.context.text).toBe("");
-  for (const [tagName, mode] of [["x-private", "open"], ["x-private", "closed"], ["div", "open"]]) {
+  for (const [tagName, mode] of [["x-private", "open"], ["x-private", "closed"], ["div", "open"], ["div", "closed"], ["span", "closed"]]) {
     await page.evaluate(({ tagName, mode }) => {
       const p = document.querySelector("#normal"); p.textContent = "PUBLIC session ";
       const host = document.createElement(tagName), light = document.createElement("span"); light.textContent = "SECRET_CONTEXT"; host.append(light);
@@ -257,7 +257,7 @@ test("neighboring open/closed sensitive slots never become public selection cont
   expect(giant.wholeReads).toBe(0); expect(giant.boundedReads).toBe(1); expect(giant.largestRead).toBeLessThanOrEqual(1207);
   expect(giant.snapshot.anchor.status).toBe("unsupported"); expect(giant.context.text).toContain("session END_CONTEXT");
   expect(giant.context.text.length).toBeLessThanOrEqual(900); expect(harness.server.calls).toHaveLength(0);
-  console.log("[READING_POSITION_PRIVACY]", JSON.stringify({ sensitiveAdjacentModes: 3, hiddenAncestorSensitive: true, wholeReads: giant.wholeReads, boundedReads: giant.boundedReads, largestRead: giant.largestRead, providerCalls: 0 }));
+  console.log("[READING_POSITION_PRIVACY]", JSON.stringify({ sensitiveAdjacentModes: 5, hiddenAncestorSensitive: true, wholeReads: giant.wholeReads, boundedReads: giant.boundedReads, largestRead: giant.largestRead, providerCalls: 0 }));
 });
 
 test("whole Ranges crossing interior private nodes or unknown hosts reject evidence without blocking ordinary queries", async ({ harness }) => {
