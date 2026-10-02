@@ -12,8 +12,9 @@
     return false;
   }
   function inspect(element) {
+    const tag = String(element.localName || element.tagName).toUpperCase();
     if (element.hasAttribute(EXTENSION_UI_ATTR) || element.classList.contains(TRANSLATION_CLASS)) return { excluded: true };
-    if (element.assignedSlot || element.shadowRoot || element.tagName === "SLOT" || element.tagName.includes("-")) return { unsupported: true, sensitive: true, reason: "unsupported-host" };
+    if (element.assignedSlot || element.shadowRoot || tag === "SLOT" || tag.includes("-")) return { unsupported: true, sensitive: true, reason: "unsupported-host" };
     // shadowRoot alone cannot prove that a native host has no closed root.
     // Inspect only the presence of a root, never its private contents.
     try {
@@ -23,7 +24,7 @@
       if (root === undefined) return { unsupported: true, sensitive: true, reason: "shadow-proof-unavailable" };
       if (root !== null) return { unsupported: true, sensitive: true, reason: "unsupported-host" };
     } catch { return { unsupported: true, sensitive: true, reason: "shadow-proof-unavailable" }; }
-    if (excludedTags.has(element.tagName) || element.isContentEditable || element.hasAttribute("data-tf-sensitive")) return { excluded: true, sensitive: true };
+    if (excludedTags.has(tag) || element.isContentEditable || element.hasAttribute("data-tf-sensitive")) return { excluded: true, sensitive: true };
     if (element.hidden || element.getAttribute("aria-hidden") === "true") return { excluded: true };
     const style = getComputedStyle(element);
     if (style.display === "none" || ["hidden", "collapse"].includes(style.visibility) || style.contentVisibility === "hidden" || Number(style.opacity) === 0) return { excluded: true };

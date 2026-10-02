@@ -16,15 +16,15 @@
     observer = new MutationObserver(consume);
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true,
       attributeOldValue: true, attributeFilter: ["class", "style", "hidden", "aria-hidden", "contenteditable", "data-tf-sensitive"] });
-    const route = (event) => { if (watchedPage && (event?.destination?.url || location.href) !== watchedPage) invalidate(); };
+    const route = (event) => { if (watchedPage && app.modules.runtime.getPageIdentity(event?.destination?.url || location.href) !== watchedPage) invalidate(); };
     window.addEventListener("popstate", route); window.addEventListener("hashchange", route);
     window.addEventListener("pagehide", invalidate);
     globalThis.navigation?.addEventListener?.("navigate", route);
   }
   function watchPage(pageUrl) {
-    watchedPage = pageUrl;
+    watchedPage = pageUrl ? app.modules.runtime.getPageIdentity(pageUrl) : null;
     if (routeTimer !== null) { clearInterval(routeTimer); routeTimer = null; }
-    if (pageUrl && !globalThis.navigation?.addEventListener) routeTimer = setInterval(() => { if (location.href !== watchedPage) invalidate(); }, 50);
+    if (pageUrl && !globalThis.navigation?.addEventListener) routeTimer = setInterval(() => { if (app.modules.runtime.getPageIdentity(location.href) !== watchedPage) invalidate(); }, 50);
   }
   function revision() { if (observer) consume(observer.takeRecords()); return sourceRevision; }
   function project(root, { clock = () => performance.now(), budget = null } = {}) {
@@ -69,7 +69,7 @@
             if (decision.unsupported) return fail(decision.reason, decision.sensitive);
             check();
             if (!decision.excluded) {
-              frame.block = decision.block || node.tagName === "BR";
+              frame.block = decision.block || String(node.localName || node.tagName).toUpperCase() === "BR";
               if (frame.block) builder.boundary();
               frame.child = node.firstChild;
             }

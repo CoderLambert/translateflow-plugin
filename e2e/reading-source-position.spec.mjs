@@ -33,6 +33,7 @@ async function probe(harness, page, command, args = {}) {
         return capture ? { snapshot: await capture.ready, revision: capture.sourceRevision, root: capture.root, capability: capture.capability, context: capture.context } : null;
       }
       if (command === "revision") return modules.textProjection.revision();
+      if (command === "namespace-inspection") return [...document.querySelectorAll("main,svg,text,script,style,textarea")].map((node) => ({ tag: node.tagName, whiteSpace: getComputedStyle(node).whiteSpace, decision: modules.textProjectionPolicy.inspect(node) }));
       if (command === "pending-mutation") {
         const before = modules.textProjection.revision(), p = document.createElement("p"); p.textContent = "AD_INSERTED"; document.querySelector("main").prepend(p);
         const current = modules.selectionController.getQuerySource(), after = modules.textProjection.revision();
@@ -140,6 +141,53 @@ async function select(page, selector, text, occurrence = 0) {
   await page.waitForTimeout(140);
   await expect(page.locator(".tf-selection-chip")).toBeVisible();
 }
+
+for (const format of ["SVG", "XHTML"]) test(`${format} native lowercase sensitive tags never enter frozen source or context`, async ({ harness }) => {
+  let page;
+  if (format === "SVG") {
+    page = await prepare(harness, '<main><svg xmlns="http://www.w3.org/2000/svg" style="white-space:normal"><text id="public">PUBLIC session tail</text><script type="application/json">SECRET_SCRIPT</script><style>/* SECRET_STYLE */</style><textarea>SECRET_FORM</textarea></svg></main>');
+  } else {
+    await harness.reset();
+    await harness.context.route("**/reading-xhtml", (route) => route.fulfill({ contentType: "application/xhtml+xml", body: '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Reading fixture</title></head><body><main><p id="public">PUBLIC session tail<script type="application/json">SECRET_SCRIPT</script><style>/* SECRET_STYLE */</style><textarea>SECRET_FORM</textarea></p></main></body></html>' }));
+    page = await harness.open("/reading-xhtml"); await harness.inject(page);
+  }
+  expect(await page.locator("script").evaluate((node) => node.tagName)).toBe("script");
+  console.log("[READING_NAMESPACE_POLICY]", format, JSON.stringify(await probe(harness, page, "namespace-inspection")));
+  const capture = await probe(harness, page, "capture", { selector: "#public", text: "session" });
+  expect(capture.snapshot.selectedText).toBe("session"); expect(capture.snapshot.contextText).not.toContain("SECRET_");
+  const projection = await probe(harness, page, "projection");
+  if (format === "SVG") {
+    // Native chrome.dom proves HTMLElement hosts only. Preserve the existing
+    // unsupported-context contract for SVG instead of mocking proof success.
+    expect(capture).toMatchObject({ root: "unsupported", context: { sensitive: true, text: "" }, snapshot: { contextMode: "selection-only", anchor: { status: "unsupported", position: null } } });
+    expect(projection).toMatchObject({ status: "unsupported", reason: "shadow-proof-unavailable" });
+    await query(harness, page, "#public", "session");
+    await expect(page.locator(".tf-selection-result")).toContainText("会话");
+    expect((await probe(harness, page, "current")).context).toMatchObject({ sensitive: true, text: "" });
+  } else {
+    expect(capture.snapshot.contextText).toContain("PUBLIC session tail"); expect(capture.context.sensitive).toBe(false);
+    expect(projection.status).toBe("resolved"); expect(projection.text).toContain("PUBLIC session tail"); expect(projection.text).not.toContain("SECRET_");
+  }
+  expect(harness.server.calls).toHaveLength(0);
+});
+
+test("ordinary anchors and tracking-only URLs preserve active query while route hashes invalidate it", async ({ harness }) => {
+  const page = await prepare(harness, '<main><p id="public">PUBLIC persistent connection remains.</p></main>');
+  harness.server.setDelay(700);
+  await query(harness, page, "#public", "persistent");
+  await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+  await expect.poll(() => harness.server.calls.length).toBe(1);
+  // Explicit AI starts a fresh frozen capture; bind the identity before URL events.
+  const before = await probe(harness, page, "current"), revision = await probe(harness, page, "revision");
+  await page.evaluate(() => { history.pushState({}, "", "#introduction"); history.replaceState({}, "", "?utm_source=fixture&gclid=123#details"); });
+  await expect(page.locator(".tf-selection-ai-detail[data-state='success']")).toBeVisible();
+  expect((await probe(harness, page, "current")).snapshot.sourceSnapshotId).toBe(before.snapshot.sourceSnapshotId);
+  expect(await probe(harness, page, "revision")).toBe(revision);
+  expect((await probe(harness, page, "trace")).filter((event) => event.type === "CANCEL_TRANSLATION")).toHaveLength(0);
+  await page.evaluate(() => history.pushState({}, "", "#/different-route"));
+  await expect.poll(async () => probe(harness, page, "current")).toBeNull();
+  expect(await probe(harness, page, "revision")).toBeGreaterThan(revision);
+});
 
 async function query(harness, page, selector, text, occurrence = 0) {
   await select(page, selector, text, occurrence);

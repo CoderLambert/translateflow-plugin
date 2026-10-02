@@ -9,6 +9,7 @@ import { READING_LIMITS, READING_PROJECTION_VERSION } from "../src/shared/readin
 
 const files = ["text-projection-policy.js", "text-projection-builder.js", "text-projection.js", "selection/source-snapshot.js"];
 const sources = new Map(await Promise.all(files.map(async (file) => [file, await readFile(new URL(`../src/content/${file}`, import.meta.url), "utf8")])));
+const runtimeSource = await readFile(new URL("../src/content/runtime.js", import.meta.url), "utf8");
 function load(extra = {}) {
   const document = {}, window = {}; window.top = window;
   const context = vm.createContext({ document, window, crypto: webcrypto, TextEncoder, performance: { now: () => 0 },
@@ -54,6 +55,42 @@ function element(document, children = [], style = {}) {
   children.forEach((child, index) => { child.parentElement = node; child.nextSibling = children[index + 1] || null; });
   return node;
 }
+
+test("lowercase SVG/XHTML sensitive tags are excluded before their text is read", () => {
+  const state = load({ getComputedStyle: (node) => node.style });
+  for (const tag of ["script", "style", "noscript", "template", "input", "textarea", "select", "option"]) {
+    const secret = { nodeType: 3, length: 6, get nodeValue() { throw new Error("private namespace text read"); } };
+    const hidden = Object.assign(element(state.document, [secret]), { tagName: tag, localName: tag });
+    const result = state.modules.textProjection.project(element(state.document, [hidden]));
+    assert.equal(result.status, "resolved", tag); assert.equal(result.text, "", tag);
+    assert.equal(state.modules.textProjectionPolicy.inspect(hidden).sensitive, true, tag);
+  }
+});
+
+test("route observer and legacy polling use the existing production page identity", () => {
+  for (const modern of [true, false]) {
+    const location = { href: "https://example.test/article?topic=one" }, callbacks = new Map();
+    const runtimeContext = vm.createContext({ location, URL });
+    vm.runInContext(runtimeSource, runtimeContext);
+    const window = { addEventListener(name, fn) { callbacks.set(name, fn); } }; window.top = window;
+    const state = load({ location, window, navigation: modern ? { addEventListener(name, fn) { callbacks.set(name, fn); } } : undefined,
+      MutationObserver: class { observe() {} takeRecords() { return []; } },
+      setInterval(fn) { callbacks.set("poll", fn); return 1; }, clearInterval() {},
+      __TRANSLATE_FLOW_CONTENT__: { modules: { runtime: runtimeContext.__TRANSLATE_FLOW_CONTENT__.modules.runtime } } });
+    const projection = state.modules.textProjection; projection.start(); projection.watchPage(location.href);
+    const revision = projection.revision();
+    for (const href of ["https://example.test/article?topic=one#introduction", "https://example.test/article?utm_source=test&topic=one&gclid=123#details"]) {
+      location.href = href;
+      (callbacks.get(modern ? "navigate" : "poll"))({ destination: { url: href } });
+      callbacks.get("hashchange")();
+      assert.equal(projection.revision(), revision, `${modern}:${href}`);
+    }
+    const destination = "https://example.test/article?topic=one#/another-route";
+    if (!modern) location.href = destination;
+    callbacks.get(modern ? "navigate" : "poll")({ destination: { url: destination } });
+    assert.ok(projection.revision() > revision, `actual route ${modern}`);
+  }
+});
 
 test("DOM adapter stops before reading an oversized text node or walking beyond its node slice", () => {
   const state = load({ getComputedStyle: (node) => node.style });
