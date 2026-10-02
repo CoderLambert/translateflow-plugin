@@ -1,4 +1,5 @@
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
 import {
   clearAllCache,
@@ -69,6 +70,12 @@ import {
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (isReadingMessage(message)) {
+      // Reading owns its protocol-v2 envelope and stable privacy-safe errors.
+      // The legacy response wrapper must not reshape it or expose exceptions.
+      void handleReadingMessage(message, sender).then(sendResponse);
+      return true;
+    }
     handleBackgroundMessage(message, sender)
       .then((result) => sendResponse({ ok: true, ...result }))
       .catch((error) => sendResponse({
