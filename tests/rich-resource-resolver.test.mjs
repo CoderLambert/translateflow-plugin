@@ -10,9 +10,15 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
   const pending = [];
   const app = { modules: {
     runtime: {
-      messages: { background: { RICH_MDD_RESOURCE: "RICH_MDD_RESOURCE" } },
+      messages: { background: {
+        RICH_MDD_RESOURCE: "RICH_MDD_RESOURCE",
+        RICH_MDD_RESOURCE_READ_CANCEL: "RICH_MDD_RESOURCE_READ_CANCEL"
+      } },
       sendRuntimeMessage(message) {
         calls.push(message);
+        if (message.type === "RICH_MDD_RESOURCE_READ_CANCEL") {
+          return Promise.resolve({ ok: true, cancelled: true });
+        }
         return new Promise((resolve) => pending.push(resolve));
       }
     },
@@ -47,11 +53,26 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
 
   resolver.close(container);
   assert.equal(resolver.pendingReadCount, 0, "closing the viewer should purge its queued reads");
+  await flushMicrotasks();
+
+  const reads = calls.filter((message) => message.type === "RICH_MDD_RESOURCE");
+  const cancels = calls.filter((message) => message.type === "RICH_MDD_RESOURCE_READ_CANCEL");
+  assert.equal(reads.length, 2, "only the two already-running resource reads may reach the background");
+  assert.equal(cancels.length, 2, "each running resource read must receive a cancellation");
+  assert.deepEqual(
+    cancels.map((message) => message.requestId).sort(),
+    reads.map((message) => message.requestId).sort(),
+    "cancellation must target exactly the running resource requests"
+  );
 
   for (const resolve of pending) resolve({ ok: false, found: false });
   await flushMicrotasks();
 
-  assert.equal(calls.length, 2, "purged stale reads must never reach the background");
+  assert.equal(
+    calls.filter((message) => message.type === "RICH_MDD_RESOURCE").length,
+    2,
+    "purged queued reads must never reach the background"
+  );
   assert.equal(resolver.runningReadCount, 0);
   assert.equal(resolver.pendingReadCount, 0);
 });

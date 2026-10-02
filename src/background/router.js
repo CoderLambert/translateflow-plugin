@@ -57,6 +57,7 @@ import {
   cancelRichMddResourceImport,
   abortRichMddResourceImport,
   lookupRichMddResource,
+  cancelRichMddResourceLookup,
   lookupRichMdictDictionaries,
   preflightRichMdictImport,
   importLocalDictionaryTflexFromQuarantine,
@@ -312,7 +313,14 @@ export async function handleBackgroundMessage(message, sender) {
       });
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE:
       assertSelectionContentSender(sender);
-      return lookupRichMddResource({ dictionaryId: message.dictionaryId, path: message.path });
+      return lookupRichMddResource({
+        dictionaryId: message.dictionaryId,
+        path: message.path,
+        requestId: message.requestId
+      }, selectionContentOwnerKey(sender, message));
+    case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_READ_CANCEL:
+      assertSelectionContentSender(sender);
+      return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED:
       return { notified: true };
     default:
