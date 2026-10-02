@@ -164,6 +164,7 @@ npm run build:extension:release
 ```bash
 npm install
 npx playwright install chromium
+npm run build:extension:wxt
 npm run test:e2e
 ```
 

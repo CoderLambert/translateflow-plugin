@@ -130,7 +130,7 @@ npm run validate
 | opt-in WXT 生产包及 Manifest/asset 检查 | `npm run build:extension:wxt` |
 | 实际 WXT 包有限 Chromium smoke | `npm run test:wxt:smoke`（先构建；只用临时 profile/测试副本） |
 | WXT 开发服务 | `npm run dev`（开发辅助资源不得进入生产包） |
-| Chromium/MV3/DOM/交互变化 | `npx playwright install chromium`，然后 `npm run test:e2e` |
+| Chromium/MV3/DOM/交互变化 | `npx playwright install chromium`，然后 `npm run build:extension:wxt`、`npm run test:e2e` |
 | 首次构建或缺失内置词典资源 | `npm run setup:lexicon`，按 README 核对生成结果 |
 | 带内置词典的发布安装包 | `npm run build:extension:release` |
 | 富文本词典输入与展示安全 | `npm run test:rich-mdict-security` |
