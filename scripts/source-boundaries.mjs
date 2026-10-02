@@ -8,6 +8,9 @@ export const SOURCE_EXTENSION = /\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/u;
 const UI = /^(?:entrypoints\/learning-center\/|src\/learning-center\/)/u;
 const PURE = /^src\/(?:shared|i18n)\//u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
+const READING_IDB = "src/background/reading-record/idb.js";
+const IDB_OWNERS = new Set(["src/background/cache-db.js", READING_IDB]);
+const isBackgroundSource = (path) => path.startsWith("src/background/") || path === "background.js" || /^entrypoints\/background\.(?:js|ts)$/u.test(path);
 export const isRuntimeSource = (path) => path.startsWith("src/") || path.startsWith("entrypoints/") || ROOT_RUNTIME.has(path);
 const isReact = (name) => /^(?:react|react-dom)(?:\/|$)/u.test(name);
 const MAIN_OBSERVER = "src/content/subtitles/youtube-main-bridge.js";
@@ -87,7 +90,7 @@ export function inspectSources(root, files) {
     if (path.startsWith("src/content/") && esm) failures.push(`${path} classic Content 不允许 ESM import/export/dynamic import`);
     if (effects.has("fetch") && !path.startsWith("src/background/providers/") &&
         path !== "src/background/lexical/package-assets.js" && path !== "src/content/subtitles/youtube-main-bridge.js") failures.push(`${path} 直接使用 fetch；网络只允许 Provider，包资源只允许 lexical/package-assets.js`);
-    if (effects.has("indexedDB") && path !== "src/background/cache-db.js") failures.push(`${path} 直接访问 IndexedDB；只能位于 src/background/cache-db.js`);
+    if (effects.has("indexedDB") && !IDB_OWNERS.has(path)) failures.push(`${path} 直接访问 IndexedDB；只能位于 ${[...IDB_OWNERS].join(" 或 ")}`);
     if (effects.has("registerContentScripts") && path !== "src/background/auto-sites.js") failures.push(`${path} 注册动态 Content Script；只能位于 src/background/auto-sites.js`);
     if (path === "src/content/subtitles/youtube-main-bridge.js" && api.fetchCalls.size) failures.push(`${path} MAIN observer 不允许主动 fetch`);
     for (const dependency of deps) {
@@ -111,6 +114,7 @@ export function inspectSources(root, files) {
       seen.add(path);
       const module = graph.get(path);
       if (!module) { failures.push(`${origin} runtime 依赖进入非 runtime 源码: ${chain.join(" → ")}`); return; }
+      if (path === READING_IDB && !isBackgroundSource(origin)) failures.push(`${origin} Reading IndexedDB 只能由后台访问；前端使用消息接口: ${chain.join(" → ")}`);
       if (!UI.test(origin) && (module.jsx || module.deps.some(({ specifier }) => specifier && isReact(specifier)))) failures.push(`${origin} React/JSX 泄漏到非学习中心运行环境: ${chain.join(" → ")}`);
       if (PURE.test(origin) && ["chrome", "browser", "fetch", "indexedDB", "registerContentScripts"].some((name) => module.effects.has(name))) failures.push(`${origin} ${origin.startsWith("src/i18n/") ? "i18n" : "shared"} 层不允许浏览器/网络/存储 API: ${chain.join(" → ")}`);
       for (const dependency of module.resolved) visit(dependency, [...chain, dependency]);
