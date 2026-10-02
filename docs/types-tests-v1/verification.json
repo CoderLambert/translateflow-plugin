@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 247,
-  "sourceHead": "b8252773bddf0ac4c8ebfc074416de82e1eece4f",
+  "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
   "mainBase": "b10c2b355896530f15f69ebad996afc490760ae7",
   "node": "24.21.0",
   "npm": "11.19.0",
@@ -37,19 +37,20 @@
       "status": "PASS",
       "exitCode": 0,
       "sourceFiles": 441,
-      "nodeTests": 771,
+      "nodeTests": 773,
       "originalNodeTests": 742,
-      "newCliTests": 29,
-      "nodeDurationMs": 11283.660412,
+      "newCliTests": 31,
+      "nodeDurationMs": 11977.479113,
       "vitestFiles": 2,
       "vitestTests": 3,
-      "vitestDurationMs": 597,
+      "vitestDurationMs": 671,
       "defaultBuild": {
         "source": "legacy allowlisted dist/extension",
         "fileCount": 233,
         "totalBytes": 1487046,
         "lexicalBytes": 0
-      }
+      },
+      "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3"
     },
     {
       "command": "npm run typecheck",
@@ -70,15 +71,16 @@
         "input": "unknown",
         "output": "string"
       },
-      "details": "no owned TS or declaration exclusion; paths/i18n generated API domain checked; unused generated globals not imported"
+      "details": "no owned TS or declaration exclusion; paths/i18n generated API domain checked; unused generated globals not imported",
+      "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3"
     },
     {
       "command": "Node source-boundaries.test.mjs CLI fixtures (within npm test)",
       "status": "PASS",
       "exitCode": 0,
-      "tests": 29,
+      "tests": 31,
       "expectedFailures": {
-        "architecture": 25,
+        "architecture": 27,
         "strictType": {
           "exitCode": 2
         },
@@ -118,16 +120,20 @@
       "lexicalMissing": [
         "assets/lexicon/core",
         "assets/lexicon/technical"
-      ]
+      ],
+      "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+      "identicalToSmoke": true
     },
     {
       "command": "npm run test:wxt:smoke",
       "status": "PASS",
       "exitCode": 0,
-      "sourceHead": "b8252773bddf0ac4c8ebfc074416de82e1eece4f",
+      "sourceHead": "29643c1a1edef5d3eda0c6045eaceedbff2cff7b",
       "browser": "153.0.8010.12",
       "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
-      "details": "isolated profile; 6 module Worker invalid-input probes; popup/options/background; 44 Content +3 MAIN files; 2 synthetic Core candidates; 3 body translations; restore 3 cache hits; localhost Provider called once; no page errors/external requests/unexpected registrations"
+      "details": "isolated profile; 6 module Worker invalid-input probes; popup/options/background; 44 Content +3 MAIN files; 2 synthetic Core candidates; 3 body translations; restore 3 cache hits; localhost Provider called once; no page errors/external requests/unexpected registrations",
+      "finalBuildSourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+      "finalBuildIdentical": true
     },
     {
       "command": "node node_modules/typescript/bin/tsc --noEmit --project docs/types-tests-v1/full-environment.tsconfig.json",
@@ -210,5 +216,15 @@
     "modelAndEffort": "Parent checked fixed Sol/xhigh role configuration; no independent runtime metadata exposed here; not self-attested",
     "toolsPermission": "danger-full-access; approval never; previously disclosed override; no global configuration changed"
   },
-  "evidence": "Raw command logs retained at /tmp/translateflow-release-a-20261002/evidence/247-*.log; tracked reports contain no credentials or personal configuration"
+  "evidence": "Raw command logs retained at /tmp/translateflow-release-a-20261002/evidence/247-*.log; tracked reports contain no credentials or personal configuration",
+  "evidenceBinding": {
+    "validatedCodeHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+    "actualBrowserSourceHead": "29643c1a1edef5d3eda0c6045eaceedbff2cff7b",
+    "actualBrowserSourceClean": true,
+    "actualBuildSourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+    "all143ProductionPathSizeHashesEqual": true,
+    "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+    "finalHead": "Containing evidence-only commit; code equals validatedCodeHead",
+    "priorB825Runs": "Early development worktree contained unstaged JSDoc; not claimed as exact committed source-head evidence. Superseded by clean296 smoke and cleanf505 total validation/build."
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "sourceHead": "b8252773bddf0ac4c8ebfc074416de82e1eece4f",
+  "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
   "mainBase": "b10c2b355896530f15f69ebad996afc490760ae7",
   "source": "actual WXT production .output/chrome-mv3",
   "algorithm": "sha256 of UTF-8 JSON.stringify(files), sorted by path; files use keys path,size,sha256",
@@ -725,5 +725,6 @@
       "size": 2027,
       "sha256": "00144f93b4164b47fd8c985fc0aa543a98cc251bd977a5d9800a82455da92b42"
     }
-  ]
+  ],
+  "smokeSourceHead": "29643c1a1edef5d3eda0c6045eaceedbff2cff7b"
 }
