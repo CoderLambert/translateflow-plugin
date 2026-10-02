@@ -1,0 +1,16 @@
+{
+  "node": "v24.21.0",
+  "platform": "linux",
+  "arch": "x64",
+  "fixture": "v1 minimal page-summary items: recordId, revision, saved anchor evidence",
+  "markers": {
+    "count": 200,
+    "dtoBytes": 64422,
+    "medianMs": 1.084,
+    "maxMs": 4.453
+  },
+  "limitations": [
+    "Only affected marker DTO construction/bytes remeasured; original full projection evidence is retained.",
+    "Saved anchor status is capture evidence, not current DOM resolution; no DOM/layout/IDB/E2E measured."
+  ]
+}
