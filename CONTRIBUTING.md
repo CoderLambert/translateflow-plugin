@@ -10,6 +10,10 @@ npm run validate
 
 使用 `package.json` 的 Node/npm 约束和 `npm ci` 安装锁定依赖；当前校验保留 Node 内置测试与旧默认构建。WXT 工程依赖只参与构建，现有业务仍复用原 JS 模块。
 
+`validate` 依次执行源码/架构检查、旧 Node 回归、严格 TypeScript、Vitest 单元测试和当前默认旧构建。可分别运行 `npm run typecheck`、`npm run test:unit`；两者先生成 WXT 类型。旧 Node 仅发现 `tests/*.test.mjs`，Vitest 仅发现 `tests/unit/**/*.test.ts(x)`，Playwright 仍仅发现 `e2e/**/*.spec.mjs`。纯函数默认 Node 环境；组件测试必须明确声明 jsdom 环境，组件 fixture 不进入生产包。
+
+新 TS/TSX 及本仓声明文件必须通过严格编译；旧 JS 保持 `allowJs`、`checkJs:false`，用真实 JSDoc 或 unknown 输入加现有运行时 validator 逐步互操作。完整 WXT `import.meta.env` 生成声明仍存在上游冲突，当前产品不使用它；未来使用必须先解决该边界，不能扩大本仓类型排除范围。实际编译域与失败证据见 [docs/TYPES_TESTS_V1.md](docs/TYPES_TESTS_V1.md)。
+
 WXT 迁移改动还必须实际运行：
 
 ```bash
@@ -231,7 +235,7 @@ npm run test:e2e
 
 约束：
 
-- E2E 依赖只能放在 `devDependencies`；扩展生产运行时继续保持零第三方依赖、零打包。
+- E2E/单测依赖只能放在 `devDependencies`，不得进入安装包；旧业务复用 JS，WXT 管构建，React 仅限批准的学习中心 UI，不能进入 Background、Content、MAIN、Worker 或 shared。当前 WXT 兼容产物仍没有 React。
 - 使用 Playwright bundled Chromium 的 persistent context 加载 unpacked MV3 扩展。
 - 不使用真实 Provider/API Key；统一走 `e2e/support/mock-server.mjs`。
 - fixture 与 mock 必须确定性，缓存断言优先检查 Provider 调用次数，不用固定 sleep 猜测。
