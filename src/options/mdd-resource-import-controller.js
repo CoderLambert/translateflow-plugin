@@ -1,3 +1,4 @@
+import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { RICH_MDD_MAX_SOURCE_BYTES, RICH_MDD_MAX_TOTAL_SOURCE_BYTES, validateMddCompanions } from "../background/packs/rich-mdd-contract.js";
 import { MDD_RESOURCE_WORKER_MESSAGES } from "./workers/mdd-resource-import-worker-protocol.js";
@@ -8,7 +9,7 @@ export function createMddResourceImportController({
   cryptoProvider = globalThis.crypto,
   now = Date.now,
   onProgress = () => {},
-  workerUrl = runtime?.getURL?.("src/options/workers/mdd-resource-import-worker.js")
+  workerUrl = runtime?.getURL?.(WORKER_PATHS.mddResourceImport)
 } = {}) {
   if (!runtime?.sendMessage || !runtime?.getURL) throw new Error("MDD resource controller requires chrome.runtime.");
   if (typeof WorkerCtor !== "function") throw new Error("MDD resource controller requires Web Worker support.");

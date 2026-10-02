@@ -1,3 +1,4 @@
+import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import {
   BACKGROUND_MESSAGES
 } from "../shared/constants.js";
@@ -170,7 +171,7 @@ export function initializeCuratedDictionaryUi({
       const requestId = makeRequestId(cryptoProvider);
       const worker = new WorkerCtor(
         runtime.getURL(
-          "src/options/workers/curated-dictionary-worker.js"
+          WORKER_PATHS.curatedDictionary
         ),
         { type: "module" }
       );

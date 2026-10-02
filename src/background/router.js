@@ -1,3 +1,4 @@
+import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
 import {
   clearAllCache,
@@ -346,7 +347,7 @@ async function notifyRichMddResourcesChanged(dictionaryId) {
 }
 
 function assertOptionsSender(sender) {
-  const expected = chrome.runtime.getURL("options.html");
+  const expected = chrome.runtime.getURL(EXTENSION_PAGES.options);
   const actual = String(sender?.url || "");
   if (actual !== expected && !actual.startsWith(expected + "#")) {
     const error = new Error("Dictionary pack lifecycle actions are only available from Settings.");

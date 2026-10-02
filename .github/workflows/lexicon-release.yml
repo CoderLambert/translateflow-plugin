@@ -24,6 +24,7 @@ on:
       - "lexicon/**"
       - "e2e/**"
       - "package.json"
+      - "package-lock.json"
       - ".github/workflows/lexicon-release.yml"
   pull_request:
     paths:
@@ -46,6 +47,7 @@ on:
       - "lexicon/**"
       - "e2e/**"
       - "package.json"
+      - "package-lock.json"
       - ".github/workflows/lexicon-release.yml"
       - "docs/DICTIONARY_SOURCE_FREEZE.md"
       - "docs/OFFLINE_DICTIONARY_BETA_CERTIFICATION.md"
@@ -86,9 +88,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "24.21.0"
 
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
 
       - name: Bootstrap locked release lexical packs
         run: npm run setup:lexicon

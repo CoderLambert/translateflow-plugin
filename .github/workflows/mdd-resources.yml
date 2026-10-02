@@ -27,6 +27,7 @@ on:
       - "content.js"
       - "options.html"
       - "package.json"
+      - "package-lock.json"
 
 permissions:
   contents: read
@@ -40,7 +41,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "24.21.0"
 
       - uses: actions/setup-python@v5
         with:
@@ -55,7 +56,7 @@ jobs:
           git -C /tmp/writemdict fetch --depth=1 origin f0240b30cabd2f0470d3ee1a0641fc7f8c38dcf5
           git -C /tmp/writemdict checkout --detach FETCH_HEAD
 
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
 
       - name: Recreate and checksum independent interop artifacts
         run: node scripts/certify-mdd-interop.mjs --writer-checkout /tmp/writemdict --regenerate --large-range-evidence --bulk-bytes 104857600

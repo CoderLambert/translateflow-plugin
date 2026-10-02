@@ -1,3 +1,4 @@
+import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import {
   BACKGROUND_MESSAGES
 } from "../shared/constants.js";
@@ -19,7 +20,7 @@ export function createStarDictImportController({
   quarantine = createOpfsImportQuarantine(),
   onProgress = () => {},
   workerUrl = runtime?.getURL?.(
-    "src/options/workers/stardict-import-worker.js"
+    WORKER_PATHS.stardictImport
   )
 } = {}) {
   if (!runtime?.sendMessage || !runtime?.getURL) {

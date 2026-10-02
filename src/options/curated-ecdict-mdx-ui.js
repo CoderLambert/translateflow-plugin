@@ -1,3 +1,4 @@
+import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import {
   getCatalogPermissionOrigins,
@@ -21,7 +22,7 @@ import {
   renderDictionaryMetadata
 } from "./dictionary-library-v2-presentation.js";
 
-const WORKER_PATH = "src/options/workers/curated-ecdict-mdx-worker.js";
+const WORKER_PATH = WORKER_PATHS.curatedEcdictMdx;
 
 export function createCuratedEcdictMdxUi({
   runtime,

@@ -1,0 +1,649 @@
+{
+  "status": "PASS",
+  "source": "WXT production .output/chrome-mv3",
+  "manifestDifferences": [],
+  "legacyFiles": 131,
+  "lexicalMissing": [
+    "assets/lexicon/core",
+    "assets/lexicon/technical"
+  ],
+  "fileCount": 143,
+  "totalBytes": 1371155,
+  "lexicalBytes": 0,
+  "codeBytes": 1371155,
+  "files": [
+    {
+      "path": "assets/components-CYc4TYaP.css",
+      "size": 8855
+    },
+    {
+      "path": "assets/options-CIWOVSQW.css",
+      "size": 15506
+    },
+    {
+      "path": "assets/popup-B-CBdjOq.css",
+      "size": 6464
+    },
+    {
+      "path": "background.js",
+      "size": 161209
+    },
+    {
+      "path": "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "size": 18678
+    },
+    {
+      "path": "chunks/components-ChXIppP8.js",
+      "size": 837
+    },
+    {
+      "path": "chunks/options-DAmZ4rmk.js",
+      "size": 175035
+    },
+    {
+      "path": "chunks/popup-Bltt_5TY.js",
+      "size": 17889
+    },
+    {
+      "path": "chunks/rich-mdd-contract-DfuDmg2s.js",
+      "size": 134473
+    },
+    {
+      "path": "content.css",
+      "size": 2227
+    },
+    {
+      "path": "content.js",
+      "size": 7339
+    },
+    {
+      "path": "manifest.json",
+      "size": 988
+    },
+    {
+      "path": "options.html",
+      "size": 21185
+    },
+    {
+      "path": "popup.html",
+      "size": 4979
+    },
+    {
+      "path": "src/background/lexical/lru.js",
+      "size": 1730
+    },
+    {
+      "path": "src/background/lexical/opfs-indexed-reader.js",
+      "size": 12750
+    },
+    {
+      "path": "src/background/lexical/tflex-integrity.js",
+      "size": 13893
+    },
+    {
+      "path": "src/background/packs/health.js",
+      "size": 5445
+    },
+    {
+      "path": "src/background/packs/importers/curated-local-adapter.js",
+      "size": 837
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv-stream.js",
+      "size": 3221
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv.js",
+      "size": 9001
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-local-adapter.js",
+      "size": 1762
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip-layout.js",
+      "size": 12541
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip.js",
+      "size": 12159
+    },
+    {
+      "path": "src/background/packs/importers/mdd-index.js",
+      "size": 9549
+    },
+    {
+      "path": "src/background/packs/importers/mdd-key-codec.js",
+      "size": 7122
+    },
+    {
+      "path": "src/background/packs/importers/mdd-lookup.js",
+      "size": 7100
+    },
+    {
+      "path": "src/background/packs/importers/mdd-metadata.js",
+      "size": 2631
+    },
+    {
+      "path": "src/background/packs/importers/mdd-query-budget.js",
+      "size": 4228
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-path.js",
+      "size": 2307
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-policy.js",
+      "size": 13069
+    },
+    {
+      "path": "src/background/packs/importers/mdd-validation.js",
+      "size": 9451
+    },
+    {
+      "path": "src/background/packs/importers/mdd.js",
+      "size": 432
+    },
+    {
+      "path": "src/background/packs/importers/mdict-block-codec.js",
+      "size": 5454
+    },
+    {
+      "path": "src/background/packs/importers/mdict-contract.js",
+      "size": 4246
+    },
+    {
+      "path": "src/background/packs/importers/mdict-core.js",
+      "size": 4434
+    },
+    {
+      "path": "src/background/packs/importers/mdict-key-section.js",
+      "size": 8654
+    },
+    {
+      "path": "src/background/packs/importers/mdict-local-adapter.js",
+      "size": 2081
+    },
+    {
+      "path": "src/background/packs/importers/mdict-metadata.js",
+      "size": 8358
+    },
+    {
+      "path": "src/background/packs/importers/mdict-record-section.js",
+      "size": 3339
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-index.js",
+      "size": 11353
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-key-codec.js",
+      "size": 7195
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-lookup.js",
+      "size": 10912
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-metadata.js",
+      "size": 4986
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-query-budget.js",
+      "size": 5582
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-record-text.js",
+      "size": 5580
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-source.js",
+      "size": 2057
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-validation.js",
+      "size": 9066
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich.js",
+      "size": 489
+    },
+    {
+      "path": "src/background/packs/importers/mdict-ripemd128.js",
+      "size": 3263
+    },
+    {
+      "path": "src/background/packs/importers/mdict-semantic.js",
+      "size": 6163
+    },
+    {
+      "path": "src/background/packs/importers/stardict-binary.js",
+      "size": 9431
+    },
+    {
+      "path": "src/background/packs/importers/stardict-browser-dictzip.js",
+      "size": 4411
+    },
+    {
+      "path": "src/background/packs/importers/stardict-contract.js",
+      "size": 3603
+    },
+    {
+      "path": "src/background/packs/importers/stardict-core.js",
+      "size": 8277
+    },
+    {
+      "path": "src/background/packs/importers/stardict-dictzip.js",
+      "size": 4051
+    },
+    {
+      "path": "src/background/packs/importers/stardict-local-adapter.js",
+      "size": 4976
+    },
+    {
+      "path": "src/background/packs/importers/stardict-semantic.js",
+      "size": 6608
+    },
+    {
+      "path": "src/background/packs/importers/tflex-local-builder.js",
+      "size": 8026
+    },
+    {
+      "path": "src/background/packs/local-import-integrity.js",
+      "size": 6612
+    },
+    {
+      "path": "src/background/packs/local-import.js",
+      "size": 11516
+    },
+    {
+      "path": "src/background/packs/opfs-store.js",
+      "size": 9537
+    },
+    {
+      "path": "src/background/packs/rich-mdd-contract.js",
+      "size": 9504
+    },
+    {
+      "path": "src/background/packs/rich-mdict-catalog-replacement.js",
+      "size": 2925
+    },
+    {
+      "path": "src/background/packs/rich-mdict-contract.js",
+      "size": 13439
+    },
+    {
+      "path": "src/background/packs/rich-mdict-install-preflight.js",
+      "size": 2572
+    },
+    {
+      "path": "src/background/packs/rich-mdict-lookup-controller.js",
+      "size": 6354
+    },
+    {
+      "path": "src/background/packs/rich-mdict.js",
+      "size": 15216
+    },
+    {
+      "path": "src/background/packs/state.js",
+      "size": 2211
+    },
+    {
+      "path": "src/background/providers/curated-dictionary-network.js",
+      "size": 994
+    },
+    {
+      "path": "src/content/appearance.js",
+      "size": 1831
+    },
+    {
+      "path": "src/content/auto.js",
+      "size": 11221
+    },
+    {
+      "path": "src/content/batch.js",
+      "size": 2047
+    },
+    {
+      "path": "src/content/dom.js",
+      "size": 4346
+    },
+    {
+      "path": "src/content/processor.js",
+      "size": 7587
+    },
+    {
+      "path": "src/content/quick-control-view.js",
+      "size": 13181
+    },
+    {
+      "path": "src/content/quick-control.js",
+      "size": 8392
+    },
+    {
+      "path": "src/content/runtime.js",
+      "size": 4971
+    },
+    {
+      "path": "src/content/selection/ai-detail.js",
+      "size": 4172
+    },
+    {
+      "path": "src/content/selection/clipboard.js",
+      "size": 835
+    },
+    {
+      "path": "src/content/selection/context.js",
+      "size": 5411
+    },
+    {
+      "path": "src/content/selection/controller.js",
+      "size": 15029
+    },
+    {
+      "path": "src/content/selection/empty-state.js",
+      "size": 2026
+    },
+    {
+      "path": "src/content/selection/messages.js",
+      "size": 1198
+    },
+    {
+      "path": "src/content/selection/popover.js",
+      "size": 12600
+    },
+    {
+      "path": "src/content/selection/result-model.js",
+      "size": 7086
+    },
+    {
+      "path": "src/content/selection/result-renderer.js",
+      "size": 16920
+    },
+    {
+      "path": "src/content/selection/rich-details.js",
+      "size": 10706
+    },
+    {
+      "path": "src/content/selection/rich-resource-path.js",
+      "size": 1127
+    },
+    {
+      "path": "src/content/selection/rich-resource-resolver.js",
+      "size": 17292
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-style.js",
+      "size": 6859
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-tokenizer.js",
+      "size": 14531
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer.js",
+      "size": 4976
+    },
+    {
+      "path": "src/content/selection/rich-viewer.js",
+      "size": 10232
+    },
+    {
+      "path": "src/content/selection/selection.js",
+      "size": 2810
+    },
+    {
+      "path": "src/content/structured.js",
+      "size": 4033
+    },
+    {
+      "path": "src/content/subtitles/controller.js",
+      "size": 6346
+    },
+    {
+      "path": "src/content/subtitles/pipeline.js",
+      "size": 12022
+    },
+    {
+      "path": "src/content/subtitles/renderer.js",
+      "size": 7514
+    },
+    {
+      "path": "src/content/subtitles/source.js",
+      "size": 3844
+    },
+    {
+      "path": "src/content/subtitles/sources/text-track.js",
+      "size": 5401
+    },
+    {
+      "path": "src/content/subtitles/sources/youtube.js",
+      "size": 15153
+    },
+    {
+      "path": "src/content/subtitles/youtube-bridge-protocol.js",
+      "size": 6642
+    },
+    {
+      "path": "src/content/subtitles/youtube-main-bridge.js",
+      "size": 15010
+    },
+    {
+      "path": "src/content/subtitles/youtube-timedtext.js",
+      "size": 8538
+    },
+    {
+      "path": "src/content/tasks.js",
+      "size": 5729
+    },
+    {
+      "path": "src/content/ui/host.js",
+      "size": 2166
+    },
+    {
+      "path": "src/content/ui/primitives.js",
+      "size": 3639
+    },
+    {
+      "path": "src/content/ui/quick-control-styles.js",
+      "size": 8862
+    },
+    {
+      "path": "src/content/ui/selection-ai-detail-styles.js",
+      "size": 945
+    },
+    {
+      "path": "src/content/ui/selection-empty-state-styles.js",
+      "size": 648
+    },
+    {
+      "path": "src/content/ui/selection-lexical-styles.js",
+      "size": 5804
+    },
+    {
+      "path": "src/content/ui/toast.js",
+      "size": 1479
+    },
+    {
+      "path": "src/content/ui/tokens.js",
+      "size": 11642
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-core.js",
+      "size": 7041
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-protocol.js",
+      "size": 251
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker.js",
+      "size": 591
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-core.js",
+      "size": 4885
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-protocol.js",
+      "size": 262
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker.js",
+      "size": 580
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-core.js",
+      "size": 8606
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-protocol.js",
+      "size": 261
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker.js",
+      "size": 603
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-core.js",
+      "size": 5441
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-protocol.js",
+      "size": 219
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker.js",
+      "size": 587
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-core.js",
+      "size": 8661
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-protocol.js",
+      "size": 249
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker.js",
+      "size": 597
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-core.js",
+      "size": 7164
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-protocol.js",
+      "size": 526
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker.js",
+      "size": 615
+    },
+    {
+      "path": "src/shared/curated-dictionaries.js",
+      "size": 7962
+    },
+    {
+      "path": "src/shared/curated-ecdict-mdx-recipe.js",
+      "size": 6300
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-artifacts.js",
+      "size": 5979
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-entries.js",
+      "size": 6375
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-schema.js",
+      "size": 13186
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-utils.js",
+      "size": 4347
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2.js",
+      "size": 9934
+    },
+    {
+      "path": "src/shared/import-quarantine-contract.js",
+      "size": 3657
+    },
+    {
+      "path": "src/shared/lexical.js",
+      "size": 2303
+    },
+    {
+      "path": "src/shared/opfs-import-quarantine.js",
+      "size": 10776
+    },
+    {
+      "path": "src/shared/pack-manager.js",
+      "size": 2027
+    }
+  ],
+  "codeBudgetBytes": 1576595,
+  "backgroundClosure": {
+    "files": [
+      "background.js",
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "chunks/rich-mdd-contract-DfuDmg2s.js"
+    ],
+    "bytes": 314360
+  },
+  "uiClosure": {
+    "files": [
+      "assets/components-CYc4TYaP.css",
+      "assets/options-CIWOVSQW.css",
+      "assets/popup-B-CBdjOq.css",
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "chunks/components-ChXIppP8.js",
+      "chunks/options-DAmZ4rmk.js",
+      "chunks/popup-Bltt_5TY.js",
+      "chunks/rich-mdd-contract-DfuDmg2s.js"
+    ],
+    "bytes": 403901,
+    "htmlBytes": 26164
+  },
+  "compiledOutputs": [
+    {
+      "fileName": "background.js",
+      "type": "chunk"
+    },
+    {
+      "fileName": "assets/options-CIWOVSQW.css",
+      "type": "asset"
+    },
+    {
+      "fileName": "assets/popup-B-CBdjOq.css",
+      "type": "asset"
+    },
+    {
+      "fileName": "assets/components-CYc4TYaP.css",
+      "type": "asset"
+    },
+    {
+      "fileName": "chunks/options-DAmZ4rmk.js",
+      "type": "chunk"
+    },
+    {
+      "fileName": "chunks/rich-mdd-contract-DfuDmg2s.js",
+      "type": "chunk"
+    },
+    {
+      "fileName": "chunks/popup-Bltt_5TY.js",
+      "type": "chunk"
+    },
+    {
+      "fileName": "chunks/components-ChXIppP8.js",
+      "type": "chunk"
+    },
+    {
+      "fileName": "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "type": "chunk"
+    }
+  ]
+}
