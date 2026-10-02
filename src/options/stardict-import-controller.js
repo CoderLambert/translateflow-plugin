@@ -167,19 +167,21 @@ export function createStarDictImportController({
       };
     }
 
-    current.cancelRequested = true;
-
     if (current.phase === "commit") {
       const response = await runtime.sendMessage({
         type:
           BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL,
         requestId: current.commitRequestId
       });
+      const cancelled = Boolean(response?.cancelled);
+      if (cancelled) current.cancelRequested = true;
       return {
-        cancelled: Boolean(response?.cancelled),
-        phase: "commit"
+        cancelled,
+        phase: cancelled ? "commit" : "commitpoint"
       };
     }
+
+    current.cancelRequested = true;
 
     if (current.phase === "worker") {
       if (hard) {
