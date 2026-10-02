@@ -32,8 +32,9 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
       const opened = await invoke("openExport", context);
       context.assertCurrent();
       if (sessions.get(exportId) !== session || session.state !== "starting" || now() >= expiresAt) fail(E.INTERRUPTED, "export.start");
-      Object.assign(session, { state: "active", exportRevision: opened.exportRevision, exportedAt: opened.exportedAt, position: opened.position });
-      return validateExportResponse(M.EXPORT_START, { exportId, exportRevision: session.exportRevision, expiresAt, nextCursor: session.nextCursor });
+      const response = validateExportResponse(M.EXPORT_START, { exportId, exportRevision: opened.exportRevision, expiresAt, nextCursor: session.nextCursor });
+      Object.assign(session, { state: "active", exportRevision: response.exportRevision, exportedAt: opened.exportedAt, position: opened.position });
+      return response;
     } catch (error) {
       if (sessions.get(exportId) === session && session.state === "starting") sessions.delete(exportId);
       throw error; // Keep an acknowledged concurrent cancellation receipt until its original TTL.

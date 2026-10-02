@@ -227,3 +227,19 @@ test("Unacknowledged export finish/cancel reserves per-owner and global export c
     assert.ok((await registry.start(limit === "owner" ? a : context(2))).exportId); // Terminal acknowledgement releases the active slot.
   });
 });
+
+test("Invalid export-start repository metadata releases its reservation before a valid retry", async () => {
+  let calls = 0, nonce = 0;
+  const registry = createExportRegistry({ now: () => 1000, randomId: () => `metadata-${nonce++}`,
+    repository: repositoryDouble({ async openExport({ assertCurrent }) {
+      assertCurrent(); calls++;
+      return calls === 1 ? { exportedAt: 1000, position: 0 } : { exportRevision: 1, exportedAt: 1000, position: 0 };
+    } }) });
+  const context = { access: { ownerKey: "native-owner", tabId: 9, navigationGeneration: 1 }, request: {}, assertCurrent() {} };
+  await assert.rejects(() => registry.start(context), (error) => error.code === E.BAD_DTO);
+  let opened;
+  await assert.doesNotReject(async () => { opened = await registry.start(context); },
+    `Valid retry must reach the repository after rejected metadata (calls=${calls}, retained sessions=${registry.size})`);
+  assert.equal(calls, 2); assert.equal(registry.size, 1);
+  assert.equal((await registry.next({ ...context, request: { exportId: opened.exportId, cursor: opened.nextCursor } })).sequence, 0);
+});
