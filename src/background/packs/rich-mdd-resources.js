@@ -15,7 +15,6 @@ import {
   RICH_MDD_MAX_TOTAL_SOURCE_BYTES,
   makeResourceSnapshot,
   normalizeResourceImportMetadata,
-  normalizeRichMddResourceLookupRequestId,
   parseMddIndex,
   resourceFilePaths,
   safeFileName,
@@ -39,9 +38,10 @@ import {
   sha256
 } from "./rich-mdict-contract.js";
 import { RICH_MDICT_STATE_KEY } from "./rich-mdict-contract.js";
-
-const LOOKUP_CANCEL_TTL_MS = 15_000;
-const LOOKUP_CANCEL_CACHE_LIMIT = 128;
+import {
+  assertRichMddLookupActive,
+  createRichMddLookupCancellation
+} from "./rich-mdd-lookup-cancellation.js";
 
 export function createRichMddResourceManager({
   store = createOpfsPackStore({ rootDir: RICH_MDICT_OPFS_ROOT }),
@@ -61,8 +61,7 @@ export function createRichMddResourceManager({
   }
 
   const operationsByRequest = new Map();
-  const lookupOperationsByRequest = new Map();
-  const cancelledLookupRequests = new Map();
+  const lookupCancellation = createRichMddLookupCancellation();
   const indexCache = new Map();
   let cachedIndexBytes = 0;
 
@@ -209,13 +208,13 @@ export function createRichMddResourceManager({
 
   async function lookupResource(input = {}, lookupIdentity = null) {
     const { packId, path } = validateResourceRequest(input);
-    const operation = lookupIdentity ? beginLookupOperation(lookupIdentity) : null;
+    const operation = lookupIdentity ? lookupCancellation.begin(lookupIdentity) : null;
     const signal = operation?.controller.signal;
     try {
       return await serializeRichMdictPack(packId, async () => {
-        assertLookupActive(signal);
+        assertRichMddLookupActive(signal);
         const state = await stateStore.read();
-        assertLookupActive(signal);
+        assertRichMddLookupActive(signal);
         const entry = state.packs?.[packId];
         const snapshot = entry?.active?.resources;
         if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || entry.status !== "healthy" || !isValidSnapshot(packId, entry.active)) {
@@ -228,13 +227,13 @@ export function createRichMddResourceManager({
         const budget = createLookupBudget();
         let match = null;
         for (let index = 0; index < snapshot.sources.length; index += 1) {
-          assertLookupActive(signal);
+          assertRichMddLookupActive(signal);
           const descriptor = snapshot.sources[index];
           const mddIndex = await loadResourceIndex(packId, snapshot, descriptor, signal);
-          assertLookupActive(signal);
+          assertRichMddLookupActive(signal);
           const source = resourceReader(store, packId, snapshot.packVersion, descriptor, signal);
           const result = await lookup({ source, index: mddIndex, path, budget, signal });
-          assertLookupActive(signal);
+          assertRichMddLookupActive(signal);
           if (!result?.found) continue;
           if (!(result.bytes instanceof Uint8Array) || result.bytes.byteLength > RICH_MDD_MAX_ASSET_BYTES) {
             throw richError("RICH_MDD_CORRUPT", "MDD resource result exceeds its 8 MiB safety limit.");
@@ -250,7 +249,7 @@ export function createRichMddResourceManager({
           }
           match = result;
         }
-        assertLookupActive(signal);
+        assertRichMddLookupActive(signal);
         if (!match) return { found: false, path };
         return {
           found: true,
@@ -263,61 +262,12 @@ export function createRichMddResourceManager({
         };
       });
     } finally {
-      if (operation && lookupOperationsByRequest.get(operation.requestId) === operation) {
-        lookupOperationsByRequest.delete(operation.requestId);
-      }
+      lookupCancellation.finish(operation);
     }
   }
 
   function cancelLookup(requestIdValue, ownerKeyValue) {
-    const requestId = normalizeRichMddResourceLookupRequestId(requestIdValue);
-    const ownerKey = normalizeLookupOwnerKey(ownerKeyValue);
-    pruneCancelledLookups();
-    const operation = lookupOperationsByRequest.get(requestId);
-    if (operation) {
-      if (operation.ownerKey !== ownerKey) return { cancelled: false, phase: "owner-mismatch" };
-      operation.controller.abort();
-      return { cancelled: true, phase: "active" };
-    }
-    const cancelled = cancelledLookupRequests.get(requestId);
-    if (cancelled && cancelled.ownerKey !== ownerKey) return { cancelled: false, phase: "owner-mismatch" };
-    rememberCancelledLookup(requestId, ownerKey);
-    return { cancelled: true, phase: "pending" };
-  }
-
-  function beginLookupOperation({ requestId: requestIdValue, ownerKey: ownerKeyValue } = {}) {
-    const requestId = normalizeRichMddResourceLookupRequestId(requestIdValue);
-    const ownerKey = normalizeLookupOwnerKey(ownerKeyValue);
-    pruneCancelledLookups();
-    const cancelled = cancelledLookupRequests.get(requestId);
-    if (cancelled) {
-      if (cancelled.ownerKey !== ownerKey) {
-        throw richError("RICH_MDD_INPUT", "MDD resource request ID belongs to another content sender.");
-      }
-      cancelledLookupRequests.delete(requestId);
-      throw richMdictAbortError();
-    }
-    if (lookupOperationsByRequest.has(requestId)) {
-      throw richError("RICH_MDD_BUSY", "MDD resource request ID is already active.");
-    }
-    const operation = { requestId, ownerKey, controller: new AbortController() };
-    lookupOperationsByRequest.set(requestId, operation);
-    return operation;
-  }
-
-  function rememberCancelledLookup(requestId, ownerKey) {
-    cancelledLookupRequests.delete(requestId);
-    cancelledLookupRequests.set(requestId, { ownerKey, expiresAt: Date.now() + LOOKUP_CANCEL_TTL_MS });
-    while (cancelledLookupRequests.size > LOOKUP_CANCEL_CACHE_LIMIT) {
-      cancelledLookupRequests.delete(cancelledLookupRequests.keys().next().value);
-    }
-  }
-
-  function pruneCancelledLookups() {
-    const now = Date.now();
-    for (const [requestId, item] of cancelledLookupRequests) {
-      if (item.expiresAt <= now) cancelledLookupRequests.delete(requestId);
-    }
+    return lookupCancellation.cancel(requestIdValue, ownerKeyValue);
   }
 
   async function assertStagedFiles({ packId, resourceVersion, resources }, signal) {
@@ -354,14 +304,14 @@ export function createRichMddResourceManager({
       indexCache.set(key, cached);
       return cached.index;
     }
-    assertLookupActive(signal);
+    assertRichMddLookupActive(signal);
     const size = await store.getFileSize(packId, snapshot.packVersion, descriptor.indexPath);
-    assertLookupActive(signal);
+    assertRichMddLookupActive(signal);
     if (size !== descriptor.indexSize || size <= 0 || size > RICH_MDD_MAX_INDEX_BYTES) {
       throw richError("RICH_MDD_CORRUPT", "Installed MDD resource index is missing or malformed.");
     }
     const bytes = await store.readFileRange(packId, snapshot.packVersion, descriptor.indexPath, 0, size, signal);
-    assertLookupActive(signal);
+    assertRichMddLookupActive(signal);
     if (await sha256(bytes, cryptoProvider) !== descriptor.indexSha256) {
       throw richError("RICH_MDD_CORRUPT", "Installed MDD resource index checksum failed.");
     }
@@ -442,24 +392,13 @@ function bytesToBase64(bytes, signal) {
   let binary = "";
   const chunkBytes = 0x6000;
   for (let offset = 0; offset < bytes.length; offset += chunkBytes) {
-    assertLookupActive(signal);
+    assertRichMddLookupActive(signal);
     const chunk = bytes.subarray(offset, Math.min(bytes.length, offset + chunkBytes));
     let part = "";
     for (let index = 0; index < chunk.length; index += 1) part += String.fromCharCode(chunk[index]);
     binary += part;
   }
-  assertLookupActive(signal);
+  assertRichMddLookupActive(signal);
   return btoa(binary);
 }
 
-function normalizeLookupOwnerKey(value) {
-  const ownerKey = String(value || "");
-  if (!ownerKey || ownerKey.length > 512 || /[\u0000-\u001f\u007f]/u.test(ownerKey)) {
-    throw richError("RICH_MDD_INPUT", "MDD resource lookup owner is invalid.");
-  }
-  return ownerKey;
-}
-
-function assertLookupActive(signal) {
-  if (signal?.aborted) throw richMdictAbortError();
-}
