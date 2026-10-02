@@ -3,11 +3,14 @@ import { cp, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkManifestLocales } from "./i18n-locales.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_OUT = resolve(ROOT, "dist/extension");
 const RUNTIME_FILES = Object.freeze([
   "manifest.json",
+  "_locales/en/messages.json",
+  "_locales/zh_CN/messages.json",
   "background.js",
   "content.js",
   "content.css",
@@ -45,6 +48,8 @@ export async function buildExtension({
   if (output === ROOT || output === resolve("/") || (!allowExternalOutput && !insideDist)) {
     throw new Error("extension output must stay under dist/ unless explicitly used by a test harness");
   }
+
+  await checkManifestLocales();
 
   await rm(output, { recursive: true, force: true });
   await mkdir(output, { recursive: true });
@@ -103,7 +108,7 @@ export async function buildExtension({
 async function copyRequired(path, output) {
   const source = resolve(ROOT, path);
   if (!existsSync(source)) throw new Error("missing runtime path: " + path);
-  await cp(source, resolve(output, path), { recursive: true });
+  await cp(source, resolve(output, path), { recursive: true, filter: (file) => !file.endsWith(".d.ts") });
 }
 
 async function walkFiles(root) {

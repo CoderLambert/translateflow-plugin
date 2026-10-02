@@ -1,0 +1,20 @@
+{
+  "extensionName": {
+    "message": "TranslateFlow"
+  },
+  "extensionDescription": {
+    "message": "Calm bilingual web translation with local/cloud providers, cache restore, Quick Control and YouTube subtitles."
+  },
+  "actionTitle": {
+    "message": "TranslateFlow"
+  },
+  "translatePage": {
+    "message": "Translate or update the current page"
+  },
+  "toggleTranslations": {
+    "message": "Show or hide translated content"
+  },
+  "toggleQuickControl": {
+    "message": "Toggle TranslateFlow Quick Control"
+  }
+}
