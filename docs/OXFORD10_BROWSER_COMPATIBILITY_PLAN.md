@@ -8,6 +8,9 @@
 
 ## 1 结论与实际验收对象
 
+**实现必读：[第5A节核心执行合同](#parse-render-contract)**。它把安装、网页查询入口、MDX索引/记录解压、HTML与CSS编译、MDD/外置资源、viewer动作、共同消息结构、重启恢复及最终制品验收串为同一条产品流程。T1–T6是实现分工，不是六个互相独立的产品。
+
+
 建议保留现有 OPFS 原文件存储、分块索引、按需解压和安全 AST 渲染链，围绕这份 Oxford10 补齐资源包关联、原布局和有限交互。拟采用成熟 CSS 解析依赖及扩展自有的 Oxford10 行为适配器；整套 reader 替换、WASM 迁移和通用词典脚本运行时均不进入本轮方案。
 
 **交付目标**是让用户手中的完整 Oxford10 在浏览器中呈现原词条布局、字体、图片、发音与已确认交互，并以欧路中的实际表现为参照。欧路应用外壳和任意 MDX 的通用脚本兼容不属于该目标。当前仅完成只读研究，实施须等额度重置后再开始。
@@ -28,7 +31,10 @@ MDX 头部为 v2、UTF-8、HTML、未加密，Stripkey=Yes、KeyCaseSensitive=No
 
 ## 2 当前实现与确定的阻塞
 
-以下代码结论固定在 main 的 d5e308a709c008acf6b277d466d020f13025bdca。现有链路已经用 File.slice 和 OPFS 范围读取，查询时定位相关块，并通过受控 AST 在闭合 Shadow DOM 内重建词条。应保留块校验、取消、资源并发限制、Blob URL 释放和附件替换失败保留旧版等能力。
+**本轮精读修正**：词条 viewer 实际使用 open Shadow DOM，安全性不能依赖其开放/封闭模式；实包头部精确写为 `Stripkey="Yes"`，当前代码仅查 `StripKey`，会漏读。第5A节明确属性兼容、索引语义版本与重建规则。当前一本词典只返回一个匹配正文，也需补同键多记录合同。字体/SVG还被后台资源分类拒绝，不能只改前台标签白名单。
+
+
+以下代码结论固定在 main 的 d5e308a709c008acf6b277d466d020f13025bdca。现有链路已经用 File.slice 和 OPFS 范围读取，查询时定位相关块，并通过受控 AST 在词条 viewer 的 open Shadow DOM 内重建词条。应保留块校验、取消、资源并发限制、Blob URL 释放和附件替换失败保留旧版等能力。
 
 ### 总量限制需要按语义调整
 
@@ -67,7 +73,7 @@ go 的正文已通过范围读取完整提取作静态分析：13,644 个元素�
 
 实包最大解压块分别为 MDX 778,100 字节、基础 MDD 842,168 字节、音频 MDD 175,147 字节。保留现有有界解压策略，先测实际取消延迟；MDD 已有块间 abort，无需先加新的 worker 层。
 
-[正文与索引合同](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict-contract.js#L16-L20) [安全偏移和跨块读取](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/mdict-rich-lookup.js#L270-L325)
+[正文与索引合同](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict-contract.js#L16-L20) [安全偏移和跨块读取](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdict-rich-lookup.js#L270-L325)
 
 ## 4 成熟实现的可借鉴范围
 
@@ -114,6 +120,271 @@ css-tree 的接入须同时兼容当前默认安装包与 opt-in WXT：Content �
 entry:// 转同词典查询，sound:// 转有用户手势的本地音频动作；片段导航先切换所属词性、展开目标，再滚动。使用明确的 entry 与 fragment 状态，替代原 JS 为欧路导航设置的 30 秒 localStorage 临时保存。图片、音频和字体按需加载，以并发、字节和缓存预算取代僵硬的总数量 8；切词取消旧请求并释放 URL。
 
 先用实际 arch 验证这一条路径。如受控 AST 和 CSS 在合理范围仍无法保留布局，再单独验证小型 iframe 方案的既定 CSP、Blob 资源和通信边界；不能默认执行词典 JS 或放宽 CSP。[Chrome sandbox 能力边界](https://developer.chrome.com/docs/extensions/reference/manifest/sandbox)
+
+<a id="parse-render-contract"></a>
+
+## 5A 从文件字节到插件交互的核心执行合同
+
+
+> 本节是完整产品交付的核心执行合同。现状源码固定于 `d5e308a709c008acf6b277d466d020f13025bdca`；本章的“拟新增”都是设计合同，不表示已有 API 或已实现功能。本次仅只读代码检查，未改业务代码，未运行浏览器验收。商业词典原文和下载地址不进入本章。
+
+### 5A.1 唯一产品闭环与集成责任
+
+用户在 Options 选择自己持有的完整六文件包，预检明确 MDX、基础 MDD、编号音频 MDD、外置 CSS/PNG 和仅诊断的 JS。导入显示真实复制、索引、校验进度。成功后网页选中 arch，点击现有查询入口，展开 Oxford10，看到完整词条、原有词性切换和插图；点发音可听，点词条链接可以继续查词并返回。再查 go，所有词性及末尾可达，526 个音频引用不会提前下载/创建音频对象。关闭弹层、重启扩展/浏览器后仍能使用，无须重选本地文件。中断、附件损坏、配额不足时能明确恢复，不能把“只有正文安装成功”显示成“完整 Oxford10 已就绪”。
+
+指定一个 integration owner 对这条旅程、共享合同、最终制品和证据负责。T3（解析/样式）、T4（viewer/actions）、T5（安装/资源）共同冻结第 5A.7 节的版本化合同及夹具，再并行实现；不允许各自定义另一份资源 key、articleId 或版本身份。任务独立提交可以保留，但局部 PASS 只说明局部，不代表完成。集成 owner 至少维护一条持续可运行的 arch 纵向切片，再把 go、多 records、恢复、安全纳入同一切片，不能到 T6 才第一次连接接口。
+
+### 5A.2 当前实际调用链：安装如何挂到网页 selection
+
+#### 2.1 安装及持久化
+
+1. `initializeLocalDictionaryImportUi(...)` 内的 `runPreflight()` 得到报告；`importSelected()` 对 `report.route.importer === "rich-mdict"` 找 MDX，`resolveAssociatedMddFiles(...)` 找关联 MDD。
+2. `createRichMdictImportController(...).importDictionary({mdxFile, displayMetadata, curatedRecipe, expectedActiveVersion})` 发送 `RICH_MDICT_IMPORT_PREFLIGHT`，启动 worker，等待 READY，再发送 `RICH_MDICT_IMPORT_COMMIT`，返回 `{requestId, ready, commit}`。
+3. `createRichMdictImportWorkerHandler(...).handleMessage(message)` 用 `File.slice` 实现 `{size, read(offset,length)}`；调用 `buildRichMdictIndex({source,signal})`，写原 MDX 和 compact index 到 OPFS，核对写入长度并生成索引摘要。不是将全部 HTML 展开保存。
+4. `createRichMdictManager(...).commit(input)` 验证 reservation、staged source/index 长度与索引哈希，通过 `assertStagedFiles` 从 OPFS 范围读取重建 compact descriptors，比对后才更新 active snapshot。
+5. UI 取得 `imported.commit.dictionary.id` 后另调 `mddController.attachResources({dictionaryId,mdxFileName,files})`。现状是 MDX 先提交、MDD 后提交的两段流程，不是六文件事务。MDD 失败已有 `retryAttachment`/`retryMddAttachment()`，保留已装 MDX 和旧附件；当前重试所用 File 引用只在这次 UI 会话内。
+
+**拟变更**：保留 OPFS 和 compact index。为六文件生成持久化 package manifest，给 MDX 与 resources 的不同完成状态单独展示。所有必需资源校验并激活后才显示 `ready`；只有 MDX 时显示 `text-only/resource-incomplete`。重启后从持久化状态恢复；若暂存文件已清理，则重试明确要求重新选附件，而不是保留不可用的内存 File 引用。附件版本切换继续失败保留旧版；不要宣称现有代码已实现全包原子提交。
+
+源码：[Options 安装流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/local-dictionary-import-ui.js#L235-L282) · [MDX controller](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/rich-mdict-import-controller.js#L27-L138) · [worker](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/workers/rich-mdict-import-worker-core.js#L49-L146) · [manager commit](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict.js#L95-L194)
+
+#### 2.2 查询时机，不另造一套入口
+
+`selection/controller.js` 的 `translateSnapshot(snapshot, {forceTranslation})` 先调用 `SELECTION_RESOLVE`。local 命中、no-hit-local、以及 unresolved 且 intent 为 lexical 时，调用 `loadRichDictionaryDetails(snapshot,version,expectedPage,isCurrentSelection)`。普通 translation/forceTranslation 分支目前不走此富词典加载。
+
+`selectionRichDetails.load(...)` 只发送 `RICH_MDICT_VIEWER_LIST`。后台 `createRichMdictViewerDictionaryLister({manager,preferencesStore})` 从 `listMetadata()` 取词典，合并持久化 enabled/order/expandedByDefault，滤掉禁用项并排序，第一本被标成 preferred 且默认展开。`appendRichDictionaryCards(...)` 对已展开卡立即调用 onLookup，其余等 toggle 展开才调用。
+
+`lookupDictionary(session,dictionary,card)` 通过最多 3 路队列发：
+
+```js
+{ type: RICH_MDICT_LOOKUP, requestId, ownerToken,
+  text: session.snapshot.text, dictionaryId }
+```
+
+router 验证 content sender，用实际 tab/frame/document 身份与 token 构造 owner key；`lookupRichMdictDictionaries(request,selectionOwnerKey)` 再查 enabled，然后 `manager.lookupDictionary(text,id,lookupIdentity)` → `createRichMdictLookupController(...).lookupText(text,dictionaryId,lookupIdentity)`。选择改变、页面离开、关闭会取消请求；新 adapter 的跨词导航必须复用该生命周期，不绕过 owner/cancel 校验。
+
+**拟变更**：在原卡片内接完整阅读模式与历史；跨词导航查询词来自受控 action，不再硬编码 `snapshot.text`，但请求仍绑定原 selection session 的版本/owner。只有词典导航状态改变，不把网页本身导航到 entry://。Options 修改 enabled/order 后新查询按现有列表重新读取；活动 viewer 收到资源变更须失效旧版本资源并重新加载。
+
+源码：[selection 路由](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/controller.js#L88-L165) · [延迟查询与取消](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-details.js#L22-L138) · [卡片展开](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/result-renderer.js#L130-L223) · [列表与查询 API](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/api.js#L70-L102) · [router](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/router.js#L253-L329)
+
+### 5A.3 MDX key → record span → HTML：现成能力与必须补齐的语义
+
+`buildRichMdictIndex({source,limits,...})` 持久化 header、entryCount、totalRecordBytes、keyBlocks 和 recordBlocks。key block descriptor 保留 lookupMinKey/lookupMaxKey 及 record-offset 边界；record block descriptor 保留 dataOffset、compressedBytes、uncompressedOffset、decompressedBytes。这里的 recordOffset 是解压后逻辑记录流地址，不是 MDX 文件内的物理地址。
+
+`lookupRichMdict({source,index,text,limits,decompressionStreamFactory,onMetrics,signal})` 的当前过程：
+
+1. 规范化查询并检查字节预算；`findExactEntry(...)` 按规范化 key 的 min/max 选择候选 key blocks，逐块 `decodeRichKeyBlock(...)`，比较 displayForm。
+2. 优先选择 normalizeLexicalExactKey 后匹配的 spelling，否则选择第一个 folded match。**当前最终只选一个 entry**，不是同键所有 records。
+3. `findNextRecordOffset(...)` 找后续第一个严格大于当前 offset 的地址，必要时跨 key block，最后一个用 `index.totalRecordBytes`。相同 offset 不代表两个正文，更不能用零长度作为 record。
+4. `readRecord({start,end,...})` 检查安全整数、范围和 entryBytes；二分 `findRecordBlock` 后读取所有相交 record blocks，用 `readSourceRange` 和 `decodeMdictBlock` 解压/校验，将每块的 overlap 拼接。已有跨块读取，不另写 reader。
+5. `decodeRichMdictRecordText(record,index.header.encoding,displayForm,limits)` 解码为原字符串。只有以 `@@@LINK=` 开始的记录走别名处理，目标会验证，最多 8 跳，visited 检测环，目标不存在报损坏；普通 HTML 内的 entry:// 是另一件事。
+6. 当前命中返回 `{found:true,requestedKey,displayForm,rawRecord,safeTextFallback,aliasTarget}`；未命中返回 `{found:false,requestedKey}`。
+
+后台 lookup controller 现状将其包装为 `{found,dictionaries,errors}`，每本一个 `{id,title,headword,text,richRecord:{rawRecord,format,styleSheetRules},aliasTarget?}`；router 再加 `{ok:true}`。这里 `dictionaries[]` 是多本词典，不能当作一本词典的多 articles。
+
+**拟变更：多记录精确合同**
+
+- 查询返回所有满足该 header 比较语义的匹配项，扫描全部候选 blocks，不因首个 spelling 命中提前结束。排序为原词典顺序；额外记录 exact/folded 类型，不把不同正文合并。
+- 每个唯一 `(start,end)` 生成稳定 articleId；同 offset 的多 key 保留 matchedKeys，但正文去重。每个不同 offset 的正文独立保存、独立挂载，不能先拼成一段 HTML 造成 ID/radio 冲突。
+- 别名按每条匹配记录解析；别名链有分支时保留所有唯一终点，环检测按路径、8 跳按路径，另有总展开数量/总工作预算。不得用全局 visited 把两条正常汇合的别名误判成环。保留 alias trace 元数据，不显示商业正文诊断。
+- 每条 span 的结尾仍必须取原 key 序列的下一个不同 offset，不是“下一条命中的 offset”。总条数超限须返回显式部分结果/错误和原因，禁止声称完整命中。
+
+#### Header 必须实测落到 parser 的值
+
+头部本身用 UTF-16LE 解码，正文 Encoding 为 UTF-8，两者不同。`parseRichMdictHeader` 当前要求 v2.0，支持 HTML/Text、Encrypted 0/2，解析 StyleSheet 三行一组 `{id,begin,end}`。这是 compact marker 的包裹规则，**不是外部 CSS**。
+
+`normalizeRichMdictLookupKey(value,header)` 为 NFKC，KeyCaseSensitive=false 时 lower-case，stripKey=true 时删除 Unicode 标点/分隔符/空白；索引边界和查询必须用同一个函数/同一个持久化 header。本次已从原始 UTF-16LE 头确认 Oxford10 精确写为 `Stripkey="Yes"`（小写 k）、`KeyCaseSensitive="No"`；两个 MDD 精确写为 `Stripkey="No"`。基线 `parseDictionaryAttributes` 保留属性名大小写，`parseRichMdictHeader` 读取 `attributes.StripKey`。所以当前 MDX 路径会把实际 Yes 默认成 false，这是确定的兼容缺口。T1 必须把原字段名和期望解析结果固化成回归夹具，明确支持该拼写；遇大小写等价重复且值冲突应拒绝，不静默挑一项。不能仅根据元数据报告写“现 reader 已正确支持这份包的 Stripkey”。
+
+MDX 总逻辑记录流 344,095,474 字节不是常驻内存。继续保留块校验和偏移检查，调整的是错误的累计流上限。arch 原始 18,923 字节；go 为 778,100 字节，超过当前 512 KiB entry/message/sanitizer 上限，因此所有层必须共用预算，且禁止 clamp 后冒充完整 HTML。
+
+源码：[compact index](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdict-rich-index.js#L40-L250) · [完整 lookup 与跨块读取](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdict-rich-lookup.js#L33-L370) · [实际响应包装](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict-lookup-controller.js#L28-L94) · [header 与 normalize](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdict-rich-metadata.js#L17-L122) · [属性大小写](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdict-metadata.js#L189-L243)
+
+### 5A.4 HTML、CSS、资源 key 必须一起编译，而不是“允许更多标签”
+
+当前 `sanitizeRichDictionaryRecord({rawRecord,format,styleSheetRules})` 先展开 compact markers，再调用 tokenizer.parseHtml，返回 `{nodes,truncated}`。节点是 text / element / resource。`renderRichDictionaryRecord` 只在 !truncated 时调用 viewer，否则回退纯文本。tokenizer 只识别 img/src、audio/src、link stylesheet/href 为资源，**sound:// 链接不是 audio/src，entry:// 也没有变成可执行 action**。input 被丢弃，SVG 整棵删除，label/id/for/checked 等未形成可用关联。
+
+**拟新增固定 Oxford10 编译流程（没有这套现成 API）**：
+
+1. 根据导入 manifest 的可信 profileVersion 选择扩展打包的固定 adapter；未知包只走通用安全视图，不能让正文中的 class 或 script 声明自己获得执行权限。
+2. 对每个 article 展开 compact marker，有界 token 化。收集 class、id、label-for、radio-name、片段目标以及 link/sound/entry；这一步生成数据，不运行文档脚本，不将原 HTML 直接插入 DOM。
+3. 优先用每个 article 的独立渲染根隔离原 ID/radio group；在同根合并且发生冲突时才统一映射。若采用全新 scope，必须一次生成完整 idMap/nameMap，并同步 HTML id、label-for、radio-name、片段目标、CSS ID selector/相关属性选择器、SVG 本地 href/xlink:href 与 url(#ref)、aria-labelledby/aria-describedby 等所有允许的 ID 引用；存在无法安全重写的引用则明确拒绝该结构并诊断，不能盲改 ID 后保留失效引用。保留真实布局所需的有限标签/属性，增加静态 SVG 白名单；SVG 禁 script、foreignObject、事件和外部引用。
+4. content 只做有界 HTML 安全 AST 与 idMap/nameMap，收集 stylesheet 引用；通过下述固定消息入口交后台资源处理边界（或其已有 worker）解析 CSS AST。css-tree 作为构建期审查并打包的本地依赖放在后台/worker，不在 content 闭包中执行 ESM/npm import，default/WXT 两套构建都须包含该入口。css-tree 只负责语法；自有策略决定允许的 selector/property/value/at-rule。支持本包实际用到的后代/兄弟/:checked/伪元素以及必要字体规则，拒绝危险部分并返回 diagnostics，不因一段注释将整份 CSS 清空。
+5. CSS URL 依赖统一进入 resourceRefs；@font-face 中字体引用也一样。styles 与 AST 使用同一 scope/idMap。CSS 不是独立地套一个前缀就算完成，必须保持 radio/label/:checked + sibling 的结构关系。@import 本轮默认禁止；若实包有必需导入，应另以同包、深度/去重/字节预算显式处理，不能网络回退。
+6. 输出安全 AST、sanitized styles、资源引用、action 引用、anchor 及 radio group 索引，交 viewer 二次验证后以 createElement/createTextNode 重建。
+
+arch 的验收不是“有文字”：默认词性、点击 label、:checked 关联区块、字体/图标/插图都必须与参照核对。go 的约 17,834 是原 HTML 节点数，不等于输出 AST 数；32,768 AST 节点/深度32仍是候选预算，必须测编译后数量与末尾可达。
+
+源码：[sanitizer](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-sanitizer.js#L7-L58) · [tokenizer](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-sanitizer-tokenizer.js#L7-L179) · [回退入口](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/result-renderer.js#L225-L262)
+
+### 5A.5 统一资源解析及消息边界
+
+#### 已有链
+
+viewer 收集 resource nodes 后调用 `richResourceResolver.attach(container,shadowRoot,viewport,resources,dictionaryId)`。当前最多取8个描述；图片/CSS立即排队、音频点击后读，最多2路。`fetchAsset` 发送 `{type:RICH_MDD_RESOURCE,requestId,ownerToken,dictionaryId,path}`。
+
+后台 `createRichMddResourceManager(...).lookupResource(input,lookupIdentity)` 查 active.resources 的每个 MDD index，按需 lookup；同一路径跨编号卷重复则报歧义，不是后卷覆盖前卷。成功返回 `{found,path,mime,kind,size,base64,width?,height?}`，不是 Blob URL。content 校验 MIME、base64 长度/解码后大小，再创建本地 Blob URL，关闭时 revoke。
+
+`normalizeMddResourcePath` 与 content `richResourcePath.normalize` 目前保留大小写，去掉一个起始斜杠、反斜杠变斜杠、解码一次；拒绝协议、驱动器、query/hash、空段、`.`/`..`、编码分隔符和残留 `%`。不能把 `sound://...` 直接送进去，也不能以网页 URL 为 base。
+
+#### 拟定资源解析合同
+
+- action URL 先分类：entry 的词条字符串/fragment、sound 的资源路径、纯 #fragment；只有资产路径交资源解析器。fragment 不属于 MDD key。
+- HTML 相对路径基于 manifest 的词条虚拟目录（本包通常根目录，须由夹具固定）；CSS 的 url() 基于**该 CSS 自己的虚拟目录**。例如 CSS 位于 styles/main.css，`../fonts/x.ttf` 解析到 fonts/x.ttf，先在虚拟根内消解点段，再交 canonicalizer；越出根立即拒绝。此 resolver 是新增，当前 normalize 函数会直接拒绝点段。
+- 所有输入只做一次规定的 percent decode；CSS escape 由 CSS parser 解码后再走同一策略，不重复 URL 解码。`%20` 可形成空格；`%2f`/`%5c`、混淆编码、协议相对 URL 不接受。不 lower-case 资源 key，不套 MDX stripKey。
+- 查找顺序由 manifest 固定：选入且校验过的同名外置资源优先，其次唯一 MDD 资源。外置与内嵌相同摘要可去重，不同摘要提示版本差异；MDD 之间重复仍报歧义。严禁同名 basename 全局模糊匹配或网络兜底。
+- 后台按 dictionaryId + packageVersion + canonicalPath 解析已激活 sources 内的实际 source/path，不接受 content 指定 OPFS 路径或 sourceId。resourceId 可由版本与规范路径确定，只作引用/一致性校验，hash 同样不是身份认证或访问权限凭据；权限来自 router 的 sender/owner 校验与后台当前安装状态。替换/卸载后旧版本请求返回 stale，不能把新包资源拼给旧词条。
+
+#### 不能漏掉的 MIME/传输缺口
+
+后台 `classifyMddResource` 目前只接受 CSS、PNG/JPEG/GIF/WebP、MP3/OGG/WAV；TTF 与 SVG 不是“改一下 viewer 即可”，后台分类和响应校验也要改。content 的 image MIME 正则同样不含 SVG，kind 不含 font。三层分类、transport、viewer 必须同批落地。
+
+本轮维持 JSON/base64 传输以最小化改动，新增 font 的受限 MIME/签名校验及大小限额，静态 SVG 经安全编译后再使用；不给 JS MIME 开洞。单项8 MiB意味着 base64约10.67 MiB，还有解码字符串/Uint8Array/Blob拷贝，不能把32 MiB Blob cap称为进程总内存。1024条去重资源描述与2路活跃读取/32MiB Blob预算分离；526音频保持惰性，图片视口加载，字体按需，去重缓存按 packageVersion/path/kind，释放时引用计数或明确所有权。
+
+当前 `compileLocalStylesheet(bytes)` 遇注释、@、反斜杠或url()返回空串；它只支持简单 tag/class selector，最多64条。Oxford10 CSS 61,996字节虽然低于64KiB，仍不能被当前编译器正确呈现。
+
+源码：[路径规范化](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdd-resource-path.js#L10-L51) · [后台 lookupResource](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdd-resources.js#L209-L266) · [资产类型限制](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/importers/mdd-resource-policy.js#L14-L28) · [content 消息、Blob 与 CSS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-resource-resolver.js#L165-L341)
+
+### 5A.6 Viewer 与 actions 执行合同
+
+当前 `selectionRichViewer.render(container,ast,fallbackText,{preserveNewlines,dictionaryId})` 用白名单重建DOM，最多8192节点、深度32、viewport max-height210px。`getShadowRoot` 实际使用 `attachShadow({mode:"open"})`，不能把词条 viewer 写成 closed。Shadow DOM 是样式封装手段，不是防恶意宿主页的安全边界；不论 open/closed，都必须依靠“不运行原脚本、不接受任意URL/事件”的策略。
+
+**拟新增**固定 action union，由 AST 中不可执行的 actionId 引用；viewer 只注册扩展自己的 listener：
+
+- `selectTab {groupId,optionId}`：只作用于当前 article 的 radio/label 关系；确需音标组同步时按已验证 adapter 映射同步，并更新键盘/ARIA状态。
+- `navigateEntry {query,fragment?}`：同本词典的新请求、新requestId；保持旧视图直到新结果或明确错误，支持后退。短语原样传递，不截第一个词。
+- `navigateFragment {targetId}`：先定位 article/所属词性、挂载长段落、激活目标tab，再滚动并移动焦点。不修改宿主页hash。
+- `playAudio {resourceId}`：在用户手势下读取目标资源，准备后受控播放；自动播放被浏览器拒绝时显示播放控件。切词时暂停旧音频并失效未完成请求，不让旧响应开始播放。
+- `toggleDisclosure / openPanel / closePanel`：固定实现已识别提示/unbox，Escape关闭、恢复触发点焦点。未知 onclick 或JS函数只诊断，不解释/执行。
+
+渲染侧二次校验 node/resource/action schema、命名空间和预算；radio/name/id全部限定在当前article。紧凑卡片可保留，但必须有完整阅读入口；长词条可分区挂载，导航索引能定位尚未挂载的目标。结果过长、安全过滤、媒体缺失必须显示具体状态，不能成功徽章下静默回退成不完整纯文本。
+
+源码：[viewer 签名与预算](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-viewer.js#L25-L116) · [真实 Shadow mode](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-viewer.js#L222-L226)
+
+### 5A.7 共同 DTO 草案（全部为拟新增，不是现有接口）
+
+下列名字是语义合同，实施时可合并到现有模块，不要求额外平台或通用插件系统。共享schema/validator/预算和合成fixture必须在T3/T4/T5动工前共同确认。
+
+```ts
+// 新增：安装状态持久化。sourceId/opfs内部路径仅后台使用。
+type PackageSnapshotV1 = {
+  schemaVersion: 1; dictionaryId: string; packageVersion: string;
+  profile: { id: 'oxford10'; version: string; evidenceDigest: string } | null;
+  status: 'ready' | 'resource-incomplete' | 'corrupt';
+  mdx: { sourceVersion: string; indexVersion: string };
+  // 文件级清单：两卷MDD各一项，外置文件各一项，不展开203285个资源key。
+  sources: { sourceId: string; sourceKind: 'external' | 'mdd';
+    sourceVersion: string; indexVersion?: string; fileSize: number;
+    digest?: string }[];
+  // 仅外置sidecar的小映射；MDD key继续依compact index按需定位。
+  sidecars: { canonicalPath: string; sourceId: string;
+    role: 'image'|'font'|'stylesheet'|'inert-script'; digest?: string }[];
+};
+
+// 新增：后台lookup边界，扩展当前一字典一richRecord结构；不直接发送AST。
+type EntryBundleV1 = {
+  schemaVersion: 1; requestId: string; dictionaryId: string;
+  packageVersion: string; profileVersion: string | null;
+  requestedKey: string; found: boolean; complete: boolean;
+  articles: { articleId: string; matchedKeys: string[]; displayForm: string;
+    span: { start: number; end: number }; aliasTrace: string[];
+    rawRecord: string; format: 'HTML' | 'Text';
+    styleSheetRules: { id: number; begin: string; end: string }[];
+    virtualBasePath: string; safeTextFallback: string }[];
+  diagnostics: { code: string; stage: string; articleId?: string }[];
+};
+
+// 新增：content内的compiler→viewer边界，原HTML不进入DOM。
+type SafeArticleV1 = {
+  schemaVersion: 1; dictionaryId: string; packageVersion: string;
+  articleId: string; scopeId: string;
+  nodes: SafeNode[]; // 实施时定义封闭tag/attr/style/node union与validator
+  styles: { cssText: string; dependencies: string[];
+    assetSlots: { start: number; end: number; resourceId: string }[] }[]; // 仅经过策略的CSS
+  resourceRefs: { resourceId: string; kind: 'image'|'audio'|'font'|'stylesheet';
+    canonicalPath: string; load: 'visible'|'gesture'|'required' }[];
+  actions: SafeAction[]; // 仅第5A.6节固定union，绝不带脚本文本
+  anchors: { targetId: string; sectionId: string; tabId?: string }[];
+  diagnostics: { code: string; stage: string }[];
+  complete: boolean;
+};
+
+// 新增字段扩展现有RICH_MDD_RESOURCE通道，或用版本化继任消息。
+type AssetRequestV1 = {
+  schemaVersion: 1; requestId: string; ownerToken: string;
+  dictionaryId: string; packageVersion: string;
+  resourceId: string; canonicalPath: string; // 只允许词典虚拟路径
+};
+type AssetResultV1 = {
+  schemaVersion: 1; requestId: string; packageVersion: string;
+  resourceId: string; found: boolean;
+  mime?: string; kind?: string; size?: number; base64?: string;
+  width?: number; height?: number; errorCode?: string;
+};
+```
+
+必须约束：packageVersion钉住整次读取，articleId由包版本与record span确定，不由displayForm单独决定；resourceId可由packageVersion与canonicalPath确定，不能当作访问凭据；后台重新规范化canonicalPath并只在激活的文件级sources中查找。MDD资源沿用compact index按需定位，不把20万条资源展开进常驻manifest；content不能发任意系统路径/sourceId。响应必须匹配requestId/版本/资源；失配直接丢弃。所有DTO只携带必要数据，diagnostics不写商业正文。需要分页多articles时另冻结 continuation/complete 语义，不能悄悄截断数组。代码实现前把 SafeNode/SafeAction 的封闭union补齐到共同schema，以上草案本身不算接口已冻结。
+
+#### CSS 固定处理消息（拟新增）
+
+沿用现有 router 的 content sender/owner 校验和取消生命周期，不建立独立运行平台。后台从已安装资源读取 CSS，content 不提交任意 CSS 程序或系统路径：
+
+```ts
+type CompileStylesRequestV1 = {
+  type: 'RICH_LOCAL_STYLES_COMPILE'; schemaVersion: 1;
+  requestId: string; ownerToken: string; dictionaryId: string;
+  packageVersion: string; articleId: string;
+  stylesheetPaths: string[]; // 去重规范虚拟路径，数目/总字节受预算限制
+  scope: { scopeId: string; idMap: [string,string][]; nameMap: [string,string][] };
+};
+type CompileStylesResultV1 = {
+  schemaVersion: 1; requestId: string; dictionaryId: string;
+  packageVersion: string; articleId: string; scopeId: string;
+  styles: { cssText: string; dependencies: string[];
+    assetSlots: { start: number; end: number; resourceId: string }[] }[];
+  resourceRefs: { resourceId: string; canonicalPath: string; kind: 'image'|'font' }[];
+  complete: boolean; diagnostics: { code: string; stage: string }[];
+};
+```
+
+后台验证scopeId字符集、映射数量/字节、键值唯一性与一对一关系，并自行生成selector语法，绝不把scopeId当原始CSS拼接；stylesheetPaths必须在当前dictionary/version内可解析，每个CSS的相对路径以自己的虚拟目录为base。内部资源依赖继续通过同一AssetRequestV1通道按需读取。返回的是已过白名单的CSS和规范路径依赖，不含可执行脚本或未经控制的URL；content还需核对响应身份、输出字节与依赖预算，只向对应article根装载。局部CSS无效返回diagnostics，预算/版本失败返回显式错误，不静默把空样式当完整成功。涉及SVG本地url(#ref)的重写必须使用同一idMap且限定本article；不得误判成MDD文件资源。
+
+
+#### 样式依赖落到浏览器的最后一步
+
+后台不能把原始 url(fonts/...) 原样返回后直接插入页面。CSS生成器把每个资源URL输出为明确的替换槽，assetSlots记录生成文本中的有界区间和resourceId；原始URL不得混入普通文本片段。content先用受控资源通道获取必需字体/背景资源，验证后生成自身可用的Blob URL，再按已验证的槽位组装样式；不可用资源对应规则不激活并显示缺失诊断。所有槽位需有序、不重叠、位于对应CSS输出边界内且资源身份一致，不能用不受控正则替换任意CSS。只有完成本地URL绑定的样式才可挂入词条根，不将未解析路径交给浏览器自动请求。样式生命周期持有依赖引用，关闭或换包后释放。是否允许Blob字体/图像、默认包与WXT的实际CSP兼容必须以真实安装产物验证，不能靠开发页成功替代。
+
+#### 已有索引的兼容迁移
+
+Stripkey属性修正会改变部分词典的规范化语义，不能用新查询规则直接读取按旧规则产生的min/max索引。实现需要给索引格式或规范化策略绑定版本，检测不兼容时从已经保存在OPFS的原文件重建受影响索引；新索引验证成功才激活，失败保留原文件并提供明确恢复状态。无需清空所有词典或迁移无关数据库。原本正确读取StripKey的词典若索引语义未变应复用；旧会话在版本切换时失效，原始文件缺失时明确要求重新导入。该迁移及其回归属于T2共同合同，不能留到发布后由用户偶然发现。
+
+
+### 5A.8 现有模块 → 拟变更与验收所有权
+
+| 现有模块 | 必要变化 | 集成验收责任 |
+|---|---|---|
+| local-dictionary-import-ui / preflight-mdx / controllers / workers | 六文件manifest、明确部分安装、外置资源持久化、恢复入口 | T5，integration owner验证重启后可用 |
+| rich-mdict / rich-mdd-resources / OPFS store | 保留compact index与范围IO；版本钉住、附件激活/旧版保留、资源定位 | T5与T2共同确认 |
+| mdict-rich-metadata/index/lookup | header实际拼写、同键多span、逐路径alias与边界、统一预算 | T2加T1夹具；T3消费同一EntryBundle |
+| rich-mdict-lookup-controller / packs/api / router | 新版本化结果、完整性标识、无静默clamp、版本验证、owner/cancel | integration owner负责两端同步 |
+| rich-sanitizer/tokenizer/style | content安全结构/ID关系/资源与action抽取；CSS AST交后台固定入口 | T3；与T4共验radio和导航 |
+| rich-resource-path/resolver + MDD policy + 后台固定styles入口 | 虚拟base解析、后台CSS AST白名单、字体/SVG策略、去重懒加载、消息限制 | T3与T5共同负责同一资源key |
+| rich-viewer / result-renderer / rich-details | 多article、完整阅读、固定adapter、历史/焦点/过期结果 | T4；直接使用T3共同SafeArticle |
+
+不新增通用JavaScript运行时，不放宽CSP/权限，不整体更换MDX reader，不把所有阈值一律取消。
+
+### 5A.9 最终交付门：必须提供可安装产物和真实操作证据
+
+交付必须绑定同一个 commit：可安装扩展构建产物、构建命令/版本、实际测试报告、已知缺口，另有用户真实六文件包的操作演示（商业内容仅私有保存/展示，不提交公开仓库）。顺序如下：
+
+1. 干净安装构建产物 → 选择1,533,010,812字节六文件组 → 全包ready；日志能解释复制/校验阶段而不是虚构百分比。
+2. 网页真实选择arch → 现有查询入口 → Oxford10卡 → 完整阅读 → 词性/音标/插图/发音/entry与fragment/返回，录屏连续呈现同一条链。
+3. go → 确认末尾/全部词性可达 → 点击远端例句发音；记录实际AST数量、读取字节、活跃Blob、音频请求数，不能预取526音频。
+4. 切词/关闭/导航中取消，旧音频不播、旧DOM不覆盖、Blob回收；资源变更/卸载后旧版本失效。
+5. 重启浏览器/扩展 → 不重新选文件再走arch/go；中断附件导入、配额失败、损坏资源后可恢复或准确要求重选，旧附件仍可读。
+6. 合成边界夹具验证多records、同offset、跨block、别名环/分支、大小写/Stripkey、CSS路径与恶意输入；真实包和安全回归同时通过。
+
+本次上述全部浏览器项目为 NOT_RUN。4GB数值边界fixture通过只证明数值处理，不证明真实4GB性能；arch局部截图、parser单测、导入元数据、构建成功均不能单独替代整包兼容的完成判定。
+
 
 ## 6 实施顺序与停止条件
 
