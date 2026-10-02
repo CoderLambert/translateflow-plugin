@@ -113,3 +113,39 @@ test("Owned collector challenge preserves explicit null identity fields through 
     assert.deepEqual(await readOwnedCollector(browser, contentSender(), challenge), challenge);
   } finally { globalThis.__TRANSLATE_FLOW_CONTENT__ = previous; }
 });
+
+test("Malformed scripting challenge parse is a stable refusal without content or stack leakage", async () => {
+  const previous = globalThis.__TRANSLATE_FLOW_CONTENT__;
+  globalThis.__TRANSLATE_FLOW_CONTENT__ = { modules: { readingAccessCollector: { read(input) { return input; } } } };
+  try {
+    const browser = nativeBrowser(); browser.scripting = { executeScript: async ({ func }) => func("malformed-synthetic-private-string") };
+    await assert.rejects(() => readOwnedCollector(browser, contentSender(), { nonce: "n", action: "inspect", recordId: null, operationId: null }),
+      (error) => error.code === E.FORBIDDEN && error.path === "collector" && !error.message.includes("synthetic-private"));
+  } finally { globalThis.__TRANSLATE_FLOW_CONTENT__ = previous; }
+});
+
+test("Legacy Content identity requires controlled frame0 session; navigation/restart do not accept a caller fallback", async () => {
+  const browser = nativeBrowser(), control = createReadingAccess({ browser, collector: collector() });
+  const sender = contentSender(); delete sender.documentId;
+  const registered = await control.authorize(sender, M.REGISTER_DOCUMENT, request(M.REGISTER_DOCUMENT));
+  assert.equal(registered.nativeDocumentId, null); assert.equal(control.isCurrent(registered), true);
+  control.invalidateTab(7);
+  await rejects(() => control.authorize(sender, M.GET_RECORD, request(M.GET_RECORD)), E.STALE_OPERATION);
+  const restarted = createReadingAccess({ browser, collector: collector() });
+  await rejects(() => restarted.authorize(sender, M.GET_RECORD, request(M.GET_RECORD)), E.STALE_OPERATION);
+  await rejects(() => restarted.authorize({ ...sender, frameId: 1 }, M.REGISTER_DOCUMENT, request(M.REGISTER_DOCUMENT)), E.FORBIDDEN);
+});
+
+test("A native Popup context with tabId -1 can fixed-open but closed context never stays current", async () => {
+  const browser = nativeBrowser(), context = (await browser.runtime.getContexts())[0];
+  const sender = extensionSender({ url: browser.runtime.getURL("popup.html") });
+  browser.runtime.getContexts = async () => [{ ...context, contextType: "POPUP", documentUrl: sender.url, tabId: -1 }];
+  const control = createReadingAccess({ browser }), access = await control.authorize(sender, M.OPEN_LEARNING_CENTER, request(M.OPEN_LEARNING_CENTER));
+  assert.equal(access.scope, "entry"); assert.equal(access.tabId, -1); assert.equal(control.isCurrent(access), true);
+  await control.validateCurrent(access);
+  const service = createReadingService({ browser, repository: repositoryDouble(), learningCenterAvailable: true });
+  assert.equal((await service.handle(request(M.OPEN_LEARNING_CENTER), sender)).ok, true);
+  assert.equal((await service.handle(request(M.LIST_RECORDS), sender)).error.code, E.FORBIDDEN);
+  browser.runtime.getContexts = async () => [];
+  await rejects(() => control.validateCurrent(access), E.FORBIDDEN);
+});

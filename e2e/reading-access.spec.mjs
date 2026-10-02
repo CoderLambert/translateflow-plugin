@@ -126,8 +126,8 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     const center = await context.newPage(); await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
     const list = await sendPage(center, request(M.LIST_RECORDS));
     const diagnostic = await worker.evaluate(async () => ({ proof: globalThis.__readingProofs.at(-1), contexts: await chrome.runtime.getContexts({}) }));
-    await writeFile(test.info().outputPath("extension-native.json"), JSON.stringify({ list, ...diagnostic }));
-    await test.info().attach("extension-native.json", { body: Buffer.from(JSON.stringify({ list, ...diagnostic })), contentType: "application/json" });
+    await writeFile(test.info().outputPath("extension-native.json"), JSON.stringify({ version, list, ...diagnostic }));
+    await test.info().attach("extension-native.json", { body: Buffer.from(JSON.stringify({ version, list, ...diagnostic })), contentType: "application/json" });
     expect(list).toMatchObject({ protocolVersion: 2, ok: true });
     const proof = await worker.evaluate(() => globalThis.__readingProofs.at(-1));
     const contexts = await worker.evaluate((documentId) => chrome.runtime.getContexts({ documentIds: [documentId] }), proof.documentId);
@@ -223,6 +223,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
       openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" } }), server.baseUrl);
     const lookup = await sendPage(driver, { type: "SELECTION_RESOLVE", text: "React", pageUrl: `${server.baseUrl}/article`, context: null, depth: "basic" });
     expect(lookup.ok).toBe(true); expect(lookup).not.toHaveProperty("protocolVersion");
+    expect(lookup.intent).toMatchObject({ kind: "lexical", text: "React" }); expect(lookup.lookup).toBeTruthy();
     expect(server.calls.every((call) => call.path?.startsWith("/v1") || call.requestId !== undefined)).toBe(true);
     test.info().annotations.push({ type: "provider", description: "Local mock only; paid provider calls=0. No Reading repository writes claimed." });
   });
