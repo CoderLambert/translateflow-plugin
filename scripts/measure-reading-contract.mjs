@@ -4,6 +4,7 @@ import { createReadingItemKey, createSourceDigest } from "../src/shared/reading/
 import { applicationBytes, checkWriteEligibility, checkHandoff } from "../src/shared/reading/lifecycle.js";
 import { validateRecordDetail } from "../src/shared/reading/record.js";
 import { projectSourceSegments } from "../src/shared/reading/source.js";
+import { validatePageSummaryItem } from "../src/shared/reading/response.js";
 import { artifact, handoff, PAGE_KEY, record, snapshot, token } from "../tests/fixtures/reading/contract.mjs";
 
 const repeat = (value, length) => value.repeat(Math.ceil(length / value.length)).slice(0, length);
@@ -35,6 +36,19 @@ function timed(fn, repeats = 5) {
   values.sort((a, b) => a - b);
   return { result, medianMs: Number(values[Math.floor(values.length / 2)].toFixed(3)), maxMs: Number(values.at(-1).toFixed(3)) };
 }
+const markerDTO = (value) => validatePageSummaryItem({ recordId: value.record.recordId,
+  revision: value.record.revision, anchor: value.record.anchor });
+if (process.argv.includes("--markers-only")) {
+  const sample = Array.from({ length: L.pageMarkers }, (_, index) => detail(index + 1));
+  const measured = timed(() => sample.map(markerDTO));
+  console.log(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch,
+    fixture: "v1 minimal page-summary items: recordId, revision, saved anchor evidence",
+    markers: { count: measured.result.length, dtoBytes: applicationBytes(measured.result), medianMs: measured.medianMs, maxMs: measured.maxMs },
+    limitations: ["Only affected marker DTO construction/bytes remeasured; original full projection evidence is retained.",
+      "Saved anchor status is capture evidence, not current DOM resolution; no DOM/layout/IDB/E2E measured."]
+  }, null, 2));
+  process.exit(0);
+}
 const samples = Array.from({ length: L.records }, (_, index) => detail(index + 1));
 await Promise.all(samples.map(async (value) => { value.snapshots[0].sourceDigest = await createSourceDigest(value.snapshots[0]); }));
 const rows = samples.flatMap((value) => [value.record, ...value.snapshots, ...value.artifacts]);
@@ -45,8 +59,7 @@ const slice = Array.from({ length: 500 }, (_, index) => ({ text: repeat("Inline 
 const sliceProjection = timed(() => projectSourceSegments(slice));
 const totalProjection = timed(() => projectSourceSegments(Array.from({ length: 25000 }, (_, index) =>
   ({ text: repeat("Synthetic text. ", 39), nodeKey: `node-${index}`, blockStart: index % 10 === 0, excluded: false }))), 3);
-const markers = timed(() => samples.slice(0, L.pageMarkers).map((value) => ({ recordId: value.record.recordId,
-  revision: value.record.revision, quote: value.record.anchor.quote, position: value.record.anchor.position })));
+const markers = timed(() => samples.slice(0, L.pageMarkers).map(markerDTO));
 const gate = timed(() => { for (let index = 0; index < 10000; index++) checkWriteEligibility(token(), { ...token(), enabled: true, deleted: false }, 1001); });
 const handoffGate = timed(() => { for (let index = 0; index < 10000; index++) checkHandoff(handoff(), { ...handoff(), deleted: false, incognito: false, permissionGranted: true }, 1001); });
 const first = samples[0].snapshots[0];

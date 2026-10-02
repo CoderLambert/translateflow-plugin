@@ -51,3 +51,28 @@ export function request(method, overrides = {}) {
   };
   return { schemaVersion: 1, method, ...bodies[method], ...overrides };
 }
+
+export function pageSummaryItem(overrides = {}) {
+  return { recordId: RECORD_ID, revision: 1, anchor: snapshot().anchor, ...overrides };
+}
+export function recordingState(scope = "extension", overrides = {}) {
+  const minimal = { enabled: true, consentGeneration: 1, capacityReached: false };
+  return { ...minimal, ...(scope === "extension" ? { dataGeneration: 1, recordCount: 1, totalBytes: 1024 } : {}), ...overrides };
+}
+export function response(method, scope = "extension", overrides = {}) {
+  const detail = { record: record(), snapshots: [snapshot()], artifacts: [artifact()] };
+  const saved = { state: "saved", recordId: RECORD_ID, revision: 1, artifactId: artifact().artifactId, duplicate: false };
+  const values = {
+    [M.BEGIN_QUERY]: { state: "ready", token: token() },
+    [M.SAVE_QUERY_RESULT]: saved, [M.APPEND_ASSISTANT]: saved,
+    [M.GET_PAGE_SUMMARY]: { items: [pageSummaryItem()], nextCursor: null },
+    [M.GET_RECORD]: detail,
+    [M.LIST_RECORDS]: { items: [record()], nextCursor: null },
+    [M.GET_RECORDING_STATE]: recordingState(scope), [M.SET_RECORDING]: recordingState(scope),
+    [M.DELETE_RECORD]: { deleted: true }, [M.DELETE_PAGE]: { deletedCount: 1, pageGeneration: 2 },
+    [M.CLEAR_RECORDS]: { deletedCount: 1, dataGeneration: 2 },
+    [M.EXPORT_JSON]: { format: "translateflow-reading", schemaVersion: 1, exportedAt: 2000, records: [detail] },
+    [M.CREATE_HANDOFF]: { state: "ready", handoff: handoff() }, [M.CONSUME_HANDOFF]: pageSummaryItem()
+  };
+  return { ok: true, data: values[method], ...overrides };
+}

@@ -8,6 +8,7 @@ export function validateAnchor(value, path = "anchor") {
   const position = nullable(value.position, validatePosition, `${path}.position`);
   const blockDigest = nullable(value.blockDigest, digest, `${path}.blockDigest`);
   if (status === "resolved" && (!position || !blockDigest)) fail(READING_ERROR.BAD_DTO, path);
+  if (position && position.end - position.start !== quote.exact.length) fail(READING_ERROR.BAD_DTO, `${path}.position`);
   return { status, quote, position, blockDigest };
 }
 function validateQuote(value, path) {
@@ -50,7 +51,10 @@ export function validateSourceSnapshot(value, path = "sourceSnapshot") {
 export function projectSourceSegments(segments) {
   const values = array(segments, L.scanTotalNodes, (segment, path) => {
     object(segment, ["text", "blockStart", "excluded", "nodeKey"], path);
-    return { text: text(segment.text, L.scanTotalChars, `${path}.text`, { empty: true }),
+    // Form-feed is projection whitespace only; keep original units for DOM offsets.
+    text(typeof segment.text === "string" ? segment.text.replace(/\f/gu, " ") : segment.text,
+      L.scanTotalChars, `${path}.text`, { empty: true });
+    return { text: segment.text,
       blockStart: bool(segment.blockStart, `${path}.blockStart`), excluded: bool(segment.excluded, `${path}.excluded`), nodeKey: id(segment.nodeKey, `${path}.nodeKey`) };
   }, "segments");
   if (values.reduce((count, segment) => count + segment.text.length, 0) > L.scanTotalChars) fail(READING_ERROR.LIMIT, "segments.text");

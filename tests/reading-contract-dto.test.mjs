@@ -88,3 +88,15 @@ test("Artifact UTF-8 byte boundary is exact independently of answer character co
   assert.equal(validateResultArtifact(exact).payload.assistantAnswer.length, 21000 + padding);
   rejects(() => validateResultArtifact({ ...exact, payload: { ...exact.payload, assistantAnswer: `${exact.payload.assistantAnswer}x` } }), E.LIMIT);
 });
+
+test("ReadingRecord and source anchors both reject spans inconsistent with UTF-16 quote length", () => {
+  const wrong = { ...snapshot().anchor, position: { start: 0, end: 1 } };
+  rejects(() => validateReadingRecord(record({ anchor: wrong })), E.BAD_DTO);
+  rejects(() => validateSourceSnapshot(snapshot({ anchor: wrong })), E.BAD_DTO);
+  const itemText = "😀e\u0301";
+  const anchor = { ...snapshot().anchor, quote: { exact: itemText, prefix: "", suffix: "" },
+    position: { start: 10, end: 10 + itemText.length } };
+  const value = record({ itemText, itemKey: `ri1:${JSON.stringify(["en", itemText.normalize("NFC")])}`, anchor });
+  assert.equal(validateReadingRecord(value).anchor.position.end, 14);
+  rejects(() => validateReadingRecord({ ...value, anchor: { ...anchor, position: { start: 10, end: 13 } } }), E.BAD_DTO);
+});

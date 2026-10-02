@@ -1,5 +1,5 @@
 import { byteLength } from "../hash.js";
-import { READING_ERROR, READING_LIMITS as L, READING_METHOD as M } from "./constants.js";
+import { READING_CONTENT_METHODS, READING_ERROR, READING_LIMITS as L, READING_METHOD as M } from "./constants.js";
 import { bool, choice, fail, id, integer, object, pageKey, recordId } from "./validation.js";
 
 export function validateOperationToken(value, path = "token") {
@@ -36,8 +36,7 @@ export function checkWriteEligibility(tokenValue, state, now) {
   return true;
 }
 
-const CONTENT_METHODS = new Set([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_PAGE_SUMMARY,
-  M.GET_RECORD, M.GET_RECORDING_STATE, M.CONSUME_HANDOFF]);
+const CONTENT_METHODS = new Set(READING_CONTENT_METHODS);
 const WRITE_METHODS = new Set([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT]);
 export function authorizeReadingMethod(method, access, resourcePageKey = null) {
   if (!Object.values(M).includes(method)) fail(READING_ERROR.BAD_DTO, "method");

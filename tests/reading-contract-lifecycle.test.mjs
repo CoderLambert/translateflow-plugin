@@ -129,3 +129,42 @@ test("Regeneration is a distinct branch, and cyclic turn references fail", () =>
   const b = { ...regenerated, createdAt: first.createdAt };
   rejects(() => validateRecordDetail({ ...base, artifacts: [a, b] }), E.BAD_DTO);
 });
+
+test("Independent assistant roots still bind every turn in a thread to one source snapshot", () => {
+  const first = artifact("assistant"), otherSource = snapshot({ sourceSnapshotId: "source-2", contextText: "Another synthetic paragraph." });
+  const second = artifact("assistant", { artifactId: "root-2", operationId: "op-2", sourceSnapshotId: "source-2",
+    payload: { ...first.payload, turnId: "turn-2" } });
+  const detail = { record: record(), snapshots: [snapshot(), otherSource], artifacts: [first, second] };
+  rejects(() => validateRecordDetail(detail), E.BAD_DTO);
+  rejects(() => validateRecordDetail({ ...detail, artifacts: [first, { ...second, payload: { ...second.payload, branchId: "branch-2" } }] }), E.BAD_DTO);
+  assert.equal(validateRecordDetail({ ...detail, artifacts: [first,
+    { ...second, payload: { ...second.payload, threadId: "thread-2", branchId: "branch-2" } }] }).artifacts.length, 2);
+  assert.equal(validateRecordDetail({ ...detail, artifacts: [artifact(), artifact("translation", { sourceSnapshotId: "source-2" })] }).artifacts.length, 2);
+});
+
+test("Projection alone accepts and maps form-feed; source DTOs retain the control-character boundary", () => {
+  const result = projectSourceSegments([
+    { text: "a\f", nodeKey: "first", blockStart: true, excluded: false },
+    { text: "\f b", nodeKey: "second", blockStart: false, excluded: false }
+  ]);
+  assert.equal(result.text, "a b");
+  assert.deepEqual(result.mapping[1], { start: { nodeKey: "first", offset: 1 }, end: { nodeKey: "second", offset: 2 } });
+  rejects(() => projectSourceSegments([{ text: "a\u000bb", nodeKey: "first", blockStart: true, excluded: false }]), E.BAD_DTO);
+  rejects(() => validateSourceSnapshot(snapshot({ contextText: "a\fb" })), E.BAD_DTO);
+});
+
+test("Proven-location equality fails closed for missing or malformed evidence on both sides", () => {
+  const valid = { ...snapshot(), pageKey: PAGE_KEY };
+  const malformed = [
+    { ...valid, pageKey: undefined }, { ...valid, documentGeneration: undefined },
+    { ...valid, anchor: { ...valid.anchor, position: undefined } },
+    { ...valid, anchor: { ...valid.anchor, position: null } },
+    { ...valid, anchor: { ...valid.anchor, position: { start: 0, end: 1 } } },
+    { ...valid, anchor: { ...valid.anchor, position: { start: NaN, end: 5 } } },
+    { ...valid, anchor: { ...valid.anchor, quote: { exact: "React" } } },
+    { ...valid, anchor: { ...valid.anchor, blockDigest: "not-a-sha256" } },
+    { ...valid, anchor: { ...valid.anchor, status: "missing" } }
+  ];
+  for (const value of malformed) assert.equal(sameProvenLocation(value, value), false);
+  assert.equal(sameProvenLocation(valid, { ...valid, anchor: { ...valid.anchor } }), true);
+});
