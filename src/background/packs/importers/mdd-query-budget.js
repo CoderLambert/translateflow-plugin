@@ -84,9 +84,9 @@ export function createMddLookupBudget({ limits = MDD_LOOKUP_BUDGETS, onMetrics }
 export function meterMddRangeSource(source, budget) {
   return {
     size: source.size,
-    read(offset, length) {
+    read(offset, length, signal) {
       budget.consumeRange(length);
-      return source.read(offset, length);
+      return source.read(offset, length, signal);
     }
   };
 }
