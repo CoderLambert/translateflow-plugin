@@ -12,10 +12,11 @@
     const range = current.getRangeAt(0);
     if (isExtensionOwnedNode(range.commonAncestorContainer)) return null;
 
-    const text = cleanText(current.toString());
+    const canonical = app.modules.selectionSourceSnapshot.canonicalize(range.cloneRange(), current.toString().replace(/[\t\n\r\f ]+/gu, " ").replace(/^ +| +$/gu, ""));
+    const text = canonical.text;
     if (!isEligibleText(text)) return null;
 
-    const clonedRange = range.cloneRange();
+    const clonedRange = canonical.range;
     const rect = getRangeRect(clonedRange);
     if (!rect) return null;
 
@@ -23,6 +24,7 @@
       text,
       range: clonedRange,
       rect,
+      sourceRevision: app.modules.textProjection.revision(),
       pageUrl: location.href
     };
   }
@@ -58,8 +60,11 @@
   }
 
   function isExtensionOwnedNode(node) {
-    const el = node instanceof Element ? node : node?.parentElement;
-    return Boolean(el?.closest?.(`[${EXTENSION_UI_ATTR}]`));
+    let el = node instanceof Element ? node : node?.parentElement;
+    for (let depth = 0; el && depth < 500; depth++, el = el.parentElement || el.getRootNode?.().host) {
+      if (el.hasAttribute?.(EXTENSION_UI_ATTR)) return true;
+    }
+    return false;
   }
 
   function installInteractionIsolation(node) {

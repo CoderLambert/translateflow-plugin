@@ -17,6 +17,7 @@
   const tasks = app.modules.tasks;
   const { readSelection, isExtensionOwnedNode } = app.modules.selection;
   const { captureSelectionContext } = app.modules.selectionContext;
+  const projection = app.modules.textProjection;
   const popover = app.modules.selectionPopover;
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
@@ -31,6 +32,7 @@
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
+    projection.start(() => { if (activeSnapshot) dismiss(); });
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -64,7 +66,7 @@
 
     if (
       activeSnapshot
-      && activeSnapshot.text === snapshot.text
+      && activeSnapshot.text === snapshot.text && projection.sameRange(activeSnapshot, snapshot)
       && getPageIdentity(activeSnapshot.pageUrl) === getPageIdentity(snapshot.pageUrl)
     ) {
       activeSnapshot.range = snapshot.range;
@@ -76,24 +78,22 @@
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
     requestVersion += 1;
+    snapshot.selectionGeneration = requestVersion;
     activeSnapshot = snapshot;
+    projection.watchPage(snapshot.pageUrl);
     setQuickControlSelectionActive(true);
     popover.showChip(snapshot, () => translateSnapshot(snapshot));
   }
 
   async function translateSnapshot(snapshot, { forceTranslation = false } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
-
+    const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
       await tasks.cancelTask(activeTask);
     }
 
-    const task = tasks.createTask({
-      surface: "selection",
-      pageUrl: snapshot.pageUrl,
-      total: 1
-    });
-    activeTask = task;
+    if (!isFrozenCurrent(snapshot, capture)) return;
+    const task = beginTask(snapshot);
 
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
@@ -178,17 +178,13 @@
 
   async function explainSnapshot(snapshot, depth, baseCard = null) {
     if (!snapshot || snapshot !== activeSnapshot) return;
-
+    const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
       await tasks.cancelTask(activeTask);
     }
 
-    const task = tasks.createTask({
-      surface: "selection",
-      pageUrl: snapshot.pageUrl,
-      total: 1
-    });
-    activeTask = task;
+    if (!isFrozenCurrent(snapshot, capture)) return;
+    const task = beginTask(snapshot);
 
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
@@ -365,16 +361,13 @@
   function isCurrentSelection(version, snapshot, expectedPage) {
     return version === requestVersion
       && snapshot === activeSnapshot
+      && snapshot.sourceRevision === projection.revision()
       && getPageIdentity(location.href) === expectedPage;
   }
 
   function assertCurrent(version, snapshot, expectedPage, task) {
     tasks.assertActive(task);
-    if (
-      version !== requestVersion
-      || snapshot !== activeSnapshot
-      || getPageIdentity(location.href) !== expectedPage
-    ) {
+    if (!isCurrentSelection(version, snapshot, expectedPage)) {
       const error = new Error("selection superseded");
       error.name = "SelectionSupersededError";
       error.code = "CANCELLED";
@@ -397,6 +390,7 @@
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
     activeSnapshot = null;
+    projection.watchPage(null);
     requestVersion += 1;
     popover.hide();
     setQuickControlSelectionActive(false);
@@ -414,5 +408,12 @@
 
   function setQuickControlSelectionActive(active) { app.modules.quickControl?.setSelectionActive(Boolean(active)); }
 
-  app.modules.selectionController = { start };
+  function freezeQuery(snapshot) {
+    const capture = app.modules.selectionSourceSnapshot.capture(snapshot);
+    snapshot.sourceCapture = capture; snapshot.text = capture.selectedText;
+    return capture;
+  }
+  function isFrozenCurrent(snapshot, capture) { return snapshot === activeSnapshot && snapshot.sourceCapture === capture && snapshot.sourceRevision === capture.sourceRevision && capture.sourceRevision === projection.revision(); }
+  function beginTask(snapshot) { return activeTask = tasks.createTask({ surface: "selection", pageUrl: snapshot.pageUrl, total: 1 }); }
+  app.modules.selectionController = { start, getQuerySource: () => activeSnapshot?.sourceCapture || null };
 })();
