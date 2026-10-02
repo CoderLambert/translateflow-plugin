@@ -95,5 +95,56 @@
     "Real paid Provider",
     "Other browsers",
     "Dev/HMR browser workflow"
-  ]
+  ],
+  "revisionVerification": {
+    "reviewedBaseHead": "14cdf04106ec15153b90016ad2550c8918a20f07",
+    "finding": "P2: Windows cross-drive relative() can return an absolute path; both copy guards must reject it",
+    "changes": "Both sourceClosure and lexicalAssetFiles use isInsideSourceRoot, which rejects empty, absolute, parent and parent-prefix relative results",
+    "checks": [
+      {
+        "command": "node --test tests/wxt-assets.test.mjs",
+        "status": "PASS",
+        "exitCode": 0,
+        "tests": 7,
+        "coverage": [
+          "path.win32 same-drive child and sibling",
+          "path.win32 cross-drive and UNC escape",
+          "path.posix child and sibling",
+          "actual sourceClosure symlink escape",
+          "actual lexicalAssetFiles symlink escape"
+        ]
+      },
+      {
+        "command": "npm run validate",
+        "status": "PASS",
+        "exitCode": 0,
+        "tests": 658,
+        "oldPackage": {
+          "files": 222,
+          "bytes": 1434502
+        }
+      },
+      {
+        "command": "npm run build:extension:wxt",
+        "status": "PASS",
+        "exitCode": 0,
+        "productionAuditEqualToOriginal": true,
+        "files": 143,
+        "bytes": 1365037
+      },
+      {
+        "command": "git diff --check",
+        "status": "PASS",
+        "exitCode": 0
+      }
+    ],
+    "browserSmoke": {
+      "status": "NOT RUN for this build-only repair; inherited evidence",
+      "testedHead": "14cdf04106ec15153b90016ad2550c8918a20f07",
+      "reason": "No runtime source, package/lock, Manifest or consumer path changes; actual rebuilt audit report equals original evidence"
+    },
+    "notRun": [
+      "Windows filesystem cross-drive symlink execution; pure path.win32 algorithm regression executed instead"
+    ]
+  }
 }

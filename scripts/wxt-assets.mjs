@@ -1,5 +1,5 @@
 import { readFile, realpath, readdir, stat } from "node:fs/promises";
-import { resolve, dirname, relative, sep } from "node:path";
+import platformPath, { resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webcrypto } from "node:crypto";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
@@ -7,6 +7,12 @@ import { WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES, BUNDLED_LEXICON_PATHS } from "
 import { validateTflexManifest, verifyTflexManifestFingerprint, verifyTflexDescriptor } from "../src/background/lexical/tflex-integrity.js";
 
 export const ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+export function isInsideSourceRoot(root, candidate, pathApi = platformPath) {
+  const within = pathApi.relative(root, candidate);
+  return Boolean(within) && !pathApi.isAbsolute(within)
+    && within !== ".." && !within.startsWith(`..${pathApi.sep}`);
+}
 
 export function assertAssetPath(path) {
   if (typeof path !== "string" || !path || path.includes("\\") || path.includes(":")
@@ -29,8 +35,7 @@ export async function sourceClosure(roots, root = ROOT) {
     assertAssetPath(path);
     if (files.has(path)) return;
     const source = await realpath(resolve(root, path));
-    const within = relative(canonicalRoot, source);
-    if (!within || within === ".." || within.startsWith(`..${sep}`)) throw new Error(`Asset escapes source root: ${path}`);
+    if (!isInsideSourceRoot(canonicalRoot, source)) throw new Error(`Asset escapes source root: ${path}`);
     files.add(path);
     const text = await readFile(source, "utf8");
     const matches = /\.[cm]?js$/u.test(path)
@@ -74,8 +79,7 @@ export async function lexicalAssetFiles({ root = ROOT, requireLexicon = false } 
       const asset = `${packRoot}/${path}`;
       // Verify existence and confinement; never copy an entire generated directory.
       const canonical = await realpath(resolve(root, asset));
-      const within = relative(canonicalRoot, canonical);
-      if (!within || within === ".." || within.startsWith(`..${sep}`)) throw new Error(`Asset escapes source root: ${asset}`);
+      if (!isInsideSourceRoot(canonicalRoot, canonical)) throw new Error(`Asset escapes source root: ${asset}`);
       if (!(await stat(canonical)).isFile()) throw new Error(`Asset must be a file: ${asset}`);
       if (path !== "manifest.json") await verifyTflexDescriptor(manifest.files.find((entry) => entry.path === path), await readFile(canonical), webcrypto, manifest.packId);
       files.push(asset);

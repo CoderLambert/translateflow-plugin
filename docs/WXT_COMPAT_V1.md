@@ -50,6 +50,12 @@ Browser verification copies the audited **WXT** package into a new temporary dir
 
 Corrected failures remain explicit: the first closure assertion used a nonexistent parser filename and was corrected to the actual importer; the first browser test lacked Technical data and received the existing gateway error; the first old regression run still expected path literals in the lexical source after those literals moved to the shared map. The final assertions retain exact paths, valid candidates, required bundled-before-OPFS ordering and Provider counts rather than accepting the failures.
 
+### Build-path review repair
+
+The independent review of `14cdf04106ec15153b90016ad2550c8918a20f07` found that Windows `relative()` can return an absolute path for a different drive. Both bridge and generated-lexicon copy entrypoints now use one pure `isInsideSourceRoot` guard that also rejects absolute relative results, without relaxing parent/root confinement. `path.win32` tests cover same-drive valid children, siblings, different drives and UNC shares; real POSIX symlink tests reject escapes through both copy entrypoints.
+
+Repair validation: seven affected tests **PASS**, aggregate `validate` **658/658 PASS**, and actual WXT rebuild/audit **PASS**. The complete production audit report is equal to the initial evidence: 143 files / 1,365,037 bytes, identical path/size/import-closure information and zero Manifest differences. Browser smoke was **NOT RUN again** for this build-only repair; the retained smoke is bound to `14cdf04106ec15153b90016ad2550c8918a20f07`, with no runtime source or dependency changes. Actual Windows filesystem symlink execution is **NOT RUN**; the shared algorithm was exercised using Node's real `path.win32` implementation. Revision details are recorded separately in `verification.json`.
+
 ## CI compatibility and remaining scope
 
 WXT prepare requires Node >=22. The six existing workflows that actually install root dependencies now use Node 24.21.0 and locked `npm ci`; relevant filters include the lockfile. The existing E2E workflow also exercises the separate WXT build and finite smoke before its retained old-package E2E. Data workflows that do not install root dependencies are unchanged. The quality workflow's expanded install/type/unit/default-artifact integration remains #247; this slice does not claim to have completed it.
