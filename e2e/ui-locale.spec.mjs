@@ -7,14 +7,16 @@ import { join, resolve } from "node:path";
 // Run separately for dist/extension and .output/chrome-mv3.
 const artifact = resolve(process.env.TF_I18N_ARTIFACT || "dist/extension");
 const test = base.extend({
-  localeHarness: async ({}, use) => {
+  browserUiLocale: ["en-US", { option: true }],
+  localeHarness: async ({ browserUiLocale }, use) => {
     await readFile(join(artifact, "manifest.json"), "utf8");
     const temporary = await mkdtemp(join(tmpdir(), "translateflow-i18n-"));
     const extension = join(temporary, "extension");
     await cp(artifact, extension, { recursive: true });
     const context = await chromium.launchPersistentContext(join(temporary, "profile"), {
-      headless: true, channel: "chromium", locale: "en-US",
-      args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
+      headless: true, channel: "chromium", locale: browserUiLocale,
+      env: { ...process.env, LANGUAGE: browserUiLocale.replaceAll("-", "_") },
+      args: [`--lang=${browserUiLocale}`, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
     });
     const external = [];
     const errors = [];
@@ -45,6 +47,7 @@ const test = base.extend({
 
 test("real Options stores only UI language, updates two pages and restores after reopening", async ({ localeHarness: h }) => {
   const page = await h.openOptions();
+  expect(await page.evaluate(() => chrome.i18n.getUILanguage())).toMatch(/^en/);
   await page.evaluate(() => chrome.storage.local.remove("uiLocale"));
   await page.reload();
   expect(await page.evaluate(() => chrome.storage.local.get(["uiLocale"]))).toEqual({});
@@ -132,4 +135,22 @@ test("the new control remains hidden while the initial stored language is pendin
   await page.evaluate(() => globalThis.__tfReleaseLocaleRead());
   await expect(page.locator("#uiLocaleControl")).toBeVisible();
   await expect(page.locator("#uiLocaleControl h2")).toHaveText("界面语言");
+});
+
+test.describe("Chinese browser with an explicit English interface", () => {
+  test.use({ browserUiLocale: "zh-CN" });
+  test("UI override preserves Chinese translation target and browser-selected Manifest", async ({ localeHarness: h }) => {
+    const page = await h.openOptions();
+    expect(await page.evaluate(() => chrome.i18n.getUILanguage())).toMatch(/^zh/);
+    await expect(page.locator("#uiLocaleControl h2")).toHaveText("界面语言");
+    await page.evaluate(() => chrome.storage.local.set({ targetLanguage: "Simplified Chinese" }));
+    const before = await page.evaluate(() => chrome.runtime.getManifest().description);
+    expect(before).toContain("双语");
+    await page.locator("#uiLocale").selectOption("en");
+    await expect(page.locator("#uiLocaleControl h2")).toHaveText("Interface language");
+    await expect(page.locator("#uiLocaleStatus")).toHaveText("Interface language saved.");
+    expect(await page.evaluate(() => chrome.storage.local.get(["uiLocale", "targetLanguage"])))
+      .toEqual({ uiLocale: "en", targetLanguage: "Simplified Chinese" });
+    expect(await page.evaluate(() => chrome.runtime.getManifest().description)).toBe(before);
+  });
 });
