@@ -11,7 +11,7 @@ import { READING_METHOD as M, READING_ERROR as E } from "../src/shared/reading/c
 // No fallback listener manufactures missing production Reading routing. Never a persisted-save/UI acceptance.
 const testRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = process.env.READING_ACCESS_SOURCE_ROOT || testRoot;
-let context, worker, driver, extensionId, server, temporary, version;
+let context, worker, driver, extensionId, server, temporary, version, extensionDir;
 const fixtureBootstrap = `
 import { initializeBackground } from './src/background/index.js';
 import { configureReadingRuntime } from './src/background/reading-record/runtime.js';
@@ -19,11 +19,15 @@ import { repositoryDouble } from './tests/fixtures/reading/access.mjs';
 import { ReadingContractError } from './src/shared/reading/validation.js';
 import { READING_ERROR as E, READING_METHOD as M } from './src/shared/reading/constants.js';
 import { response } from './tests/fixtures/reading/contract.mjs';
+import { validateReadingRequest } from './src/shared/reading/dto.js';
+import { createReadingAccess, readOwnedCollector } from './src/background/reading-record/access.js';
+import { validateOperationToken } from './src/shared/reading/lifecycle.js';
 globalThis.__readingClock = 1000;
 Date.now = () => globalThis.__readingClock;
 globalThis.__readingProofs = [];
 chrome.runtime.onMessage.addListener((message,sender) => {
   if (!message?.method?.startsWith('reading.')) return;
+  globalThis.__readingLastSender=sender; globalThis.__readingLastMessage=message;
   globalThis.__readingProofs.push({ method:message.method, id:sender.id, url:sender.url, documentId:sender.documentId,
     frameId:sender.frameId, documentLifecycle:sender.documentLifecycle, tab:sender.tab ? {id:sender.tab.id,incognito:sender.tab.incognito} : null });
   if (globalThis.__readingProofs.length>100) globalThis.__readingProofs.shift();
@@ -41,6 +45,18 @@ globalThis.__resetReadingFixture = () => {
   configureReadingRuntime({repository:repo,learningCenterAvailable:true});
 };
 globalThis.__resetReadingFixture();
+globalThis.__diagnoseReading = async (input) => {
+  const stages={};
+  try { stages.actualMessage=globalThis.__readingLastMessage; stages.dtoActual=validateReadingRequest(globalThis.__readingLastMessage); stages.dto=validateReadingRequest(input);
+    stages.rawProof=await readOwnedCollector(chrome,globalThis.__readingLastSender,{nonce:"diagnostic",action:"begin",recordId:null,operationId:input.operationId});
+    const control=createReadingAccess({browser:chrome});
+    await control.authorize(globalThis.__readingLastSender,M.REGISTER_DOCUMENT,{documentGeneration:input.sourceSnapshot.documentGeneration});
+    stages.access=await control.authorize(globalThis.__readingLastSender,input.method,stages.dto);
+    stages.prepared=await repositoryDouble().prepareOperation({request:stages.dto,access:stages.access,sourceSnapshot:stages.access.proof.sourceSnapshot,issuedAt:1000,expiresAt:601000,assertCurrent(){}});
+    stages.token=validateOperationToken(stages.prepared.token);
+  }catch(error){stages.error={code:error.code,path:error.path,message:error.message};}
+  return stages;
+};
 `;
 
 async function sendPage(page, message) { return page.evaluate((input) => chrome.runtime.sendMessage(input), message); }
@@ -65,7 +81,7 @@ async function installCollector(page, safety = { selection: "safe", context: "sa
 }
 async function sendContent(info, message) {
   const [result] = await driver.evaluate(async ({ tabId, message }) => chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, world: "ISOLATED",
-    args: [message], func: (input) => chrome.runtime.sendMessage(input) }), { tabId: info.tabId, message });
+    args: [JSON.stringify(message)], func: (input) => chrome.runtime.sendMessage(JSON.parse(input)) }), { tabId: info.tabId, message });
   return result.result;
 }
 async function openContent(path = "/article?id=1#section-2") {
@@ -82,7 +98,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
   test.setTimeout(60000);
   test.beforeAll(async () => {
     server = await startMockServer(); temporary = await mkdtemp(join(tmpdir(), "translateflow-reading-access-"));
-    const extension = join(temporary, "extension");
+    const extension = join(temporary, "extension"); extensionDir = extension;
     const { buildExtension } = await import(pathToFileURL(join(sourceRoot, "scripts/build-extension.mjs")).href);
     await buildExtension({ outDir: extension, allowExternalOutput: true });
     await mkdir(join(extension, "tests/fixtures/reading"), { recursive: true });
@@ -129,7 +145,9 @@ test.describe("Reading native authority (synthetic repository / owned collector 
   test("Actual Content sender/doc, cross-page and navigation failclosed; web world cannot forge isolated collector", async () => {
     const { page, info, registration } = await openContent();
     const begin = request(M.BEGIN_QUERY, { sourceSnapshot: info.snapshot, pageKey: registration.pageKey });
-    expect(await sendContent(info, begin)).toMatchObject({ protocolVersion: 2, ok: true, data: { state: "ready" } });
+    const beginResult = await sendContent(info, begin);
+    await writeFile(test.info().outputPath("begin-native.json"), JSON.stringify({ beginResult, proof: await worker.evaluate(() => globalThis.__readingProofs.at(-1)), stages: await worker.evaluate((input) => globalThis.__diagnoseReading(input), begin) }));
+    expect(beginResult).toMatchObject({ protocolVersion: 2, ok: true, data: { state: "ready" } });
     const proof = await worker.evaluate(() => globalThis.__readingProofs.at(-1));
     expect(proof.documentId).toBe(info.nativeDocumentId); expect(proof.tab.incognito).toBe(false); expect(proof.frameId).toBe(0);
     expect((await sendContent(info, request(M.LIST_RECORDS))).error.code).toBe(E.FORBIDDEN);
@@ -163,6 +181,42 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     expect((await sendContent(info, request(M.GET_SITE_RECORDING, { siteKey: "https://other.test" }))).error.code).toBe(E.FORBIDDEN);
     expect(server.calls).toHaveLength(0); await page.close();
   });
+
+  test("Native private extension context denies every history route; old native-context API absence is capability-limited", async () => {
+    const center = await context.newPage(); await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
+    await worker.evaluate(() => { globalThis.__originalGetContexts = chrome.runtime.getContexts; chrome.runtime.getContexts = undefined; });
+    try { expect((await sendPage(center, request(M.LIST_RECORDS))).error.code).toBe(E.CAPABILITY_LIMITED); }
+    finally { await worker.evaluate(() => { chrome.runtime.getContexts = globalThis.__originalGetContexts; }); }
+    // Change only this dedicated fixture profile's own extension-incognito preference, then restart.
+    // Chrome's native isAllowedIncognitoAccess/getContexts prove the effect; no user profile is opened.
+    await center.close(); await context.close();
+    const preferencePath = join(temporary, "isolated-profile", "Default", "Preferences");
+    const preferences = JSON.parse(await readFile(preferencePath, "utf8"));
+    expect(preferences.extensions.settings[extensionId]).toBeTruthy();
+    preferences.extensions.settings[extensionId].incognito = true;
+    await writeFile(preferencePath, JSON.stringify(preferences));
+    context = await chromium.launchPersistentContext(join(temporary, "isolated-profile"), { headless: true, channel: "chromium",
+      args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`] });
+    worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
+    driver = await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+    expect(await driver.evaluate(() => new Promise((done) => chrome.extension.isAllowedIncognitoAccess(done)))).toBe(true);
+    const privateWindow = await worker.evaluate((baseUrl) => chrome.windows.create({ incognito: true, url: `${baseUrl}/article?privatefixture=1` }), server.baseUrl);
+    try {
+      const requests = Object.values(M).map((method) => request(method));
+      const [injected] = await driver.evaluate(async ({ tabId, requests }) => chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED",
+        args: [JSON.stringify(requests)], func: async (serialized) => Promise.all(JSON.parse(serialized).map((input) => chrome.runtime.sendMessage(input))) }), { tabId: privateWindow.tabs[0].id, requests });
+      await writeFile(test.info().outputPath("native-private-results.json"), JSON.stringify(requests.map((req,i)=>({method:req.method,result:injected.result[i]}))));
+      expect(injected.result).toHaveLength(requests.length);
+      for (const result of injected.result) expect(result).toMatchObject({ protocolVersion: 2, ok: false, error: { code: E.FORBIDDEN } });
+      const proof = await worker.evaluate(() => globalThis.__readingProofs.at(-1));
+      expect(proof.tab.incognito).toBe(true);
+      const backgroundIncognito = await worker.evaluate(() => chrome.extension.inIncognitoContext);
+      expect(backgroundIncognito).toBe(false); // Actual spanning background is not private-page proof.
+      await writeFile(test.info().outputPath("native-private.json"), JSON.stringify({ proof, methodCount: requests.length,
+        result: "all forbidden", backgroundIncognito, extensionPageInSpanningIncognito: "browser blocked; no native extension context", realChrome102: "NOT RUN" }));
+    } finally { await worker.evaluate((id) => chrome.windows.remove(id), privateWindow.id); }
+  });
+
 
   test("Ordinary lookup keeps the production legacy router and uses only a local synthetic provider", async () => {
     await driver.evaluate(async (baseUrl) => chrome.storage.local.set({ provider: "openai-compatible", targetLanguage: "Simplified Chinese",

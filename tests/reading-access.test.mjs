@@ -98,3 +98,18 @@ test("Observed Chromium opaque 128bit-hex documentId retains exact native equali
   assert.equal((await control.authorize(contentSender({ documentId }), M.REGISTER_DOCUMENT, request(M.REGISTER_DOCUMENT))).nativeDocumentId, documentId);
   await rejects(() => control.authorize(extensionSender({ documentId: documentId.toLowerCase() }), M.LIST_RECORDS), E.FORBIDDEN);
 });
+
+test("Owned collector challenge preserves explicit null identity fields through scripting serialization", async () => {
+  const previous = globalThis.__TRANSLATE_FLOW_CONTENT__;
+  globalThis.__TRANSLATE_FLOW_CONTENT__ = { modules: { readingAccessCollector: { read(input) { return input; } } } };
+  try {
+    const browser = nativeBrowser();
+    browser.scripting = { async executeScript({ args, func, target, world }) {
+      assert.equal(world, "ISOLATED"); assert.equal(target.documentIds[0], contentSender().documentId);
+      assert.equal(typeof args[0], "string"); // Native object args dropping null must not weaken the proof DTO.
+      return [{ frameId: 0, documentId: contentSender().documentId, result: await func(args[0]) }];
+    } };
+    const challenge = { nonce: "native-nonce", action: "begin", recordId: null, operationId: "op-1" };
+    assert.deepEqual(await readOwnedCollector(browser, contentSender(), challenge), challenge);
+  } finally { globalThis.__TRANSLATE_FLOW_CONTENT__ = previous; }
+});
