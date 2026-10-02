@@ -135,7 +135,8 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     expect(pageErrors).toEqual([]);
     await page.screenshot({
       path: resolve(evidenceDir, "rich-viewer-security-light.png"),
-      fullPage: true
+      fullPage: true,
+      caret: "initial"
     });
 
     const lightColors = await viewer.evaluate((root) => ({
@@ -163,7 +164,8 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     expect(darkLayout.foreground).not.toBe(darkLayout.background);
     await page.screenshot({
       path: resolve(evidenceDir, "rich-viewer-security-dark-narrow.png"),
-      fullPage: true
+      fullPage: true,
+      caret: "initial"
     });
 
     await viewer.focus();
