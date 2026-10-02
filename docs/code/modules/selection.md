@@ -360,3 +360,7 @@
 
 源码模式断言不能代替用户交互；fake DOM 不能代替真实 Shadow DOM/CSP；合成字典不能替代私有真实词典；已存在测试不能代替本次执行。下一章继续导入、MDX/MDD 范围读取与安全资源，不回头重做启动，也不把 Oxford10 规划 commit `e525729` 算作当前 main 实现。
 
+
+## 后续详细说明
+
+本页局部引用的rich-sanitizer、rich-viewer、rich-resource-resolver已在[导入与展示模块](dictionary-import-render.md)提供完整文件说明；其他大型依赖仍以coverage状态为准。

@@ -7,8 +7,8 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/d5e308a709c008acf6b277d466d020f13025bdca?recursive=1",
   "denominator": 636,
   "counts": {
-    "已解释": 29,
-    "待解释": 607,
+    "已解释": 44,
+    "待解释": 592,
     "待复核": 0,
     "有理由排除": 0
   },
@@ -736,7 +736,9 @@
       "sourceBlob": "f503943dac8f6da29191269078b2ee7c4483ed59",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "e2e/local-dictionary-preflight-real-ecdict.spec.mjs",
@@ -757,7 +759,9 @@
       "sourceBlob": "45cee23c6ea982fdb08c96803ada44d4200e608c",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "e2e/mdict-import-product.spec.mjs",
@@ -834,7 +838,9 @@
       "sourceBlob": "8ca3ff546886be19422f77abde289bdd8b3e661f",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "e2e/selection-lexicon-corrupt.spec.mjs",
@@ -1123,7 +1129,9 @@
       "sourceBlob": "1b0098e12b515f22a4a9495180c9589c41689af6",
       "function": "Provider与设置",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-options",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "options.js",
@@ -1690,9 +1698,12 @@
       "sourceBlob": "d46ca9035d17cd0fd6735f1a70cc1bd743dabd3b",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": "modules/selection.md#partial-router",
+      "documentation": "modules/dictionary-import-render.md#partial-router",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/selection.md#partial-router"
+      ]
     },
     {
       "path": "src/background/packs/catalog.js",
@@ -1755,7 +1766,9 @@
       "sourceBlob": "37d84ace16349871604a34e90ec709880d484df0",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-parser",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/importers/mdd-key-codec.js",
@@ -1797,7 +1810,9 @@
       "sourceBlob": "552ad8bbf2b3e817aa0cf5e8b348590e7e7e0234",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-tokenizer",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/importers/mdd-validation.js",
@@ -1867,7 +1882,9 @@
       "sourceBlob": "d400c48499759fb56b1f58978732f9e27b1b36d0",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-parser",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-key-codec.js",
@@ -1881,14 +1898,18 @@
       "sourceBlob": "2d2bc011c5d1909730b755143508c760566d1c0c",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-parser",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-metadata.js",
       "sourceBlob": "95289e4b94c6146717a9a3c7f65ebdb6e60eb39b",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-parser",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-query-budget.js",
@@ -2005,23 +2026,26 @@
     {
       "path": "src/background/packs/local-dictionary-preflight-contract.js",
       "sourceBlob": "9f1e464c1c3e89dd3d52f1e2c43959e5334a60cb",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-preflight-contract",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/packs/local-dictionary-preflight-identity.js",
       "sourceBlob": "f0d36c0f3fcba71b2b6af3e595d7ac238ab6200f",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-preflight-identity",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/packs/local-dictionary-preflight-mdx.js",
       "sourceBlob": "2e83a9fee203ef59205872772046ab604f5ef5a5",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-preflight-mdx",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/packs/local-dictionary-preflight-stardict.js",
@@ -2040,9 +2064,10 @@
     {
       "path": "src/background/packs/local-dictionary-preflight.js",
       "sourceBlob": "03757655b400fa1e75c9701e2ccab3ebf5c06aa2",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-preflight",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/packs/local-import-display.js",
@@ -2091,7 +2116,9 @@
       "sourceBlob": "91def0803b76a249bb5f97f1193a315ecbdc6649",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-storage",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/quarantine-import-loader.js",
@@ -2105,42 +2132,53 @@
       "sourceBlob": "827bdac8ff978f63109641f0c834655839e713a6",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-mdd-manager",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/rich-mdd-lookup-cancellation.js",
       "sourceBlob": "13baaba00204ab82fc07162a9ea11b3cae641cad",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-mdd-manager",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/rich-mdd-resources.js",
       "sourceBlob": "5d7794d75ab9ae4fedc51aa125864631d5b5028f",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-mdd-manager",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/rich-mdict-catalog-replacement.js",
       "sourceBlob": "2abcf48bbe0c556983653bf02b909880f913147a",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-replacement",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/rich-mdict-contract.js",
       "sourceBlob": "a4b57f642633f3624c9c866d3c0ee6dd6333eff5",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-storage",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/rich-mdict-install-preflight.js",
       "sourceBlob": "d45ca662227b6b24a581722ed5c8e158930691bd",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-install-preflight",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/packs/rich-mdict-lookup-controller.js",
@@ -2162,9 +2200,12 @@
       "sourceBlob": "5ece857da72a76e13ed9f3e59cda4326a52ac8e0",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": "modules/selection.md#partial-router",
+      "documentation": "modules/dictionary-import-render.md#partial-storage",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/selection.md#partial-router"
+      ]
     },
     {
       "path": "src/background/packs/snapshot.js",
@@ -2178,7 +2219,9 @@
       "sourceBlob": "5d136cae2b973f4c64077f8b62129df6eca7b237",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-storage",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/preset-session.js",
@@ -2350,11 +2393,12 @@
       "sourceBlob": "31225c7b39bdbaba5bd64524a060623382cb6ef6",
       "function": "启动与共享基础",
       "status": "待解释",
-      "documentation": "modules/selection.md#partial-router",
+      "documentation": "modules/dictionary-import-render.md#partial-router",
       "reviewedAt": "2026-10-02",
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
       "relatedDocumentation": [
-        "modules/startup.md#partial-files"
+        "modules/startup.md#partial-files",
+        "modules/selection.md#partial-router"
       ]
     },
     {
@@ -2559,50 +2603,60 @@
     {
       "path": "src/content/selection/rich-resource-path.js",
       "sourceBlob": "31c1db2b5423e521619e524d0580d90c322e28c3",
-      "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-resource-path",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/rich-resource-resolver.js",
       "sourceBlob": "02da086b5a6306db0dc0db30bde7f63e140686e8",
-      "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": "modules/selection.md#partial-rich-rendering",
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-resource-resolver",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/selection.md#partial-rich-rendering"
+      ]
     },
     {
       "path": "src/content/selection/rich-sanitizer-style.js",
       "sourceBlob": "053ccb84eeef40e481cde38ae2ef52c621600a05",
-      "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-sanitizer-style",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/rich-sanitizer-tokenizer.js",
       "sourceBlob": "14ce38dbb0666b45dc99be1faf171d20cd5a4bde",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-tokenizer",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/selection/rich-sanitizer.js",
       "sourceBlob": "f45e86d2708f27bf3d72f9d13491a0b43816a304",
-      "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": "modules/selection.md#partial-rich-rendering",
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-sanitizer",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/selection.md#partial-rich-rendering"
+      ]
     },
     {
       "path": "src/content/selection/rich-viewer.js",
       "sourceBlob": "a3a4ff27483309d0e856b7fb12c45509f0cfa474",
-      "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": "modules/selection.md#partial-rich-rendering",
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-viewer",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/selection.md#partial-rich-rendering"
+      ]
     },
     {
       "path": "src/content/selection/selection.js",
@@ -2862,28 +2916,34 @@
       "sourceBlob": "946c3c13bd2c897a3e3cf18c714d6013384be40f",
       "function": "Provider与设置",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-options",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/local-dictionary-import-ui.js",
       "sourceBlob": "f700645ec6fa20bd12e772dd888eda60c9fad277",
-      "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-local-ui",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/options/local-dictionary-installed-state.js",
       "sourceBlob": "94ba83aa415d22d2f5862cd20212950b82d5cf61",
       "function": "Provider与设置",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-options",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/mdd-resource-import-controller.js",
       "sourceBlob": "b98b9e7ee37d61614e8adbc8ce48a5346bbf3c58",
-      "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-mdd-controller",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/options/mdict-import-controller-io.js",
@@ -2916,9 +2976,10 @@
     {
       "path": "src/options/rich-mdict-import-controller.js",
       "sourceBlob": "4c5939fac016358d5a00871b2e7928af06492b3a",
-      "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-mdx-controller",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/options/rich-mdict-import-copy.js",
@@ -2932,7 +2993,9 @@
       "sourceBlob": "0b4310d41db7a2a6718cad81701970e8d535fab1",
       "function": "Provider与设置",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-options",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/rich-mdict-preferences-ui.js",
@@ -3021,23 +3084,28 @@
     {
       "path": "src/options/workers/mdd-resource-import-worker-core.js",
       "sourceBlob": "b40fce7419c88fc220aafe4562c49e6cc242edb8",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-mdd-worker",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/options/workers/mdd-resource-import-worker-protocol.js",
       "sourceBlob": "e3327bfab58bcf5b8124c8816eea7b067be67e00",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-protocol",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/workers/mdd-resource-import-worker.js",
       "sourceBlob": "3f2a1c2cf18e68a86577fe74ad227e7c8fbe1478",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-protocol",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/workers/mdict-import-worker-core.js",
@@ -3063,23 +3131,28 @@
     {
       "path": "src/options/workers/rich-mdict-import-worker-core.js",
       "sourceBlob": "cdf48aa26ccc42a71f6993c3b8d0218f30df6e3c",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "词典导入与安全展示",
+      "status": "已解释",
+      "documentation": "modules/dictionary-import-render.md#file-mdx-worker",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/options/workers/rich-mdict-import-worker-protocol.js",
       "sourceBlob": "9a46cdb27e30c79077dbecb4d20b03c172fde73d",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-protocol",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/workers/rich-mdict-import-worker.js",
       "sourceBlob": "71963c47c939e82e48c27f1f3a45bf9a36eb2b4b",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#partial-protocol",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/options/workers/stardict-import-worker-core.js",
@@ -3845,7 +3918,9 @@
       "sourceBlob": "22766200a81e83ab0d02c687b1f1e9a54f9ffffb",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/local-import-display.test.mjs",
@@ -3873,14 +3948,18 @@
       "sourceBlob": "44cb9e2d4c8594b9e38e424fb0b8224b8951ce38",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/mdd-security.test.mjs",
       "sourceBlob": "f0bee9eedf9cec4e706097bd7a97aee458f4c11f",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/mdict-browser-import.test.mjs",
@@ -4141,7 +4220,9 @@
       "sourceBlob": "1499ab7f49b43c87c9cab4f18534c6a8592a4de0",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/rich-mdd-lookup-cancellation.test.mjs",
@@ -4178,7 +4259,9 @@
       "sourceBlob": "5b036f1f32b058b5dee976e320c7cd2201304a68",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/rich-mdict-security.test.mjs",
@@ -4192,21 +4275,27 @@
       "sourceBlob": "118f19a0c8f46b93e189974d3dbd328a715653c6",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/rich-resource-resolver.test.mjs",
       "sourceBlob": "f96490b3bec53da21318c9a394dbf91c2b7131d7",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/rich-viewer-contract.test.mjs",
       "sourceBlob": "d4ee9f137d77e70ad255fccee865fd6dbb7d4e5b",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/dictionary-import-render.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-content-owner.test.mjs",

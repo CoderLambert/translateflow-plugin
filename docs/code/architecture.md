@@ -2,7 +2,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动与划词查询功能切片；导入/安全渲染等内部仍待展开。
+源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询与MDX/MDD导入展示功能链；大型依赖的内部覆盖以清单为准。
 
 ## 先区分五种运行环境
 
@@ -44,7 +44,7 @@
 
 ## 当前缺口
 
-启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入、sanitizer/资源渲染内部、网页翻译与缓存、字幕、设置、Reading和构建测试仍待继续。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；parser/存储的局部依赖、网页翻译与缓存、字幕、设置、Reading和构建测试仍待继续。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -55,3 +55,11 @@
 Rich词典详情是独立支路：获取词典卡→按展开状态懒查询→后台校验owner并读取→Content清洗→viewer；不阻塞或替换结构化主卡。换词/关闭先使本地session失效，再尝试后台取消；不能将取消消息已发送或allSettled结束当成全部底层读取确认停止。
 
 SourceSnapshot只是本次查询的内存证据，尚不等于Reading记录保存。拟议Oxford10新消息/样式/快照合同不属于本页固定main的已实现能力。
+
+## 词典从文件到展示的实际提交边界
+
+[完整导入与展示链](features/local-dictionary-import.md) · [逐文件正文](modules/dictionary-import-render.md)
+
+当前统一入口先在Options做可取消预检，随后MDX worker暂存、后台重建核验并激活，再单独安装MDD附件。附件失败保留已安装MDX，界面允许重试；不能解释成整包回滚。MDD整组资源在验证后切换active.resources，旧附件在成功后才尽力清理。
+
+查询返回的不可信rawRecord还需有限AST、样式白名单和viewer重建；MDD字节走owner-scoped消息，音频点击时加载，关闭时回收Blob。现有容量与CSS/资源限制仍是当前行为，Oxford10规划并未落地。重启后可读取已激活OPFS数据，不代表未完成导入自动续传或所有孤立暂存已回收。

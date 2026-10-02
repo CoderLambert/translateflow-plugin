@@ -106,3 +106,7 @@ Escape、外部 pointerdown、关闭按钮、源投影修订、页面离开/page
 5. AI schema/缓存：selection-explanation → explain-prompt → explain；改变身份字段须一起复核旧缓存兼容与 Provider 参数。
 
 完整文件与部分边界的精确列表见 [selection 模块覆盖索引](../modules/selection.md#coverage-index)。下一切片应从 MDX/MDD 导入与安全渲染展开，不能仅凭本章把整个词典系统标成已解释。
+
+## 后续导读
+
+导入、AST/CSS、viewer与MDD资源生命周期已接续为[本地MDX/MDD导入与安全展示](local-dictionary-import.md)，沿用本篇查询与取消接口。
