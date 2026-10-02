@@ -109,6 +109,38 @@ test("SVG, HTML, unknown payloads, malformed images, and image bombs stay unavai
   );
 });
 
+
+test("in-flight MDD resource lookup aborts the active range read", async () => {
+  const { mdd } = await readMddInteropFixture();
+  const index = await buildMddIndex({ source: trackedSource(mdd) });
+  let startedResolve;
+  const started = new Promise((resolve) => { startedResolve = resolve; });
+  const source = {
+    size: mdd.byteLength,
+    async read(_offset, _length, signal) {
+      startedResolve();
+      await new Promise((resolve, reject) => {
+        if (signal?.aborted) {
+          reject(new DOMException("aborted", "AbortError"));
+          return;
+        }
+        signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+      });
+      return new Uint8Array();
+    }
+  };
+  const controller = new AbortController();
+  const lookup = lookupMddResource({
+    source,
+    index,
+    path: "interop/sample.png",
+    signal: controller.signal
+  });
+  await started;
+  controller.abort();
+  await assert.rejects(lookup, (error) => error?.name === "AbortError");
+});
+
 function trackedSource(input) {
   const bytes = Buffer.from(input);
   return {
