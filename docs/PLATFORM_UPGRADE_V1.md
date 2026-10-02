@@ -224,8 +224,11 @@ compares all original storage values, DB name/version/store rows, OPFS file size
 and SHA-256 hashes, active pointers, enabled/preferred state, and the exact native
 registration file order. Native extension management reload invalidates the old
 message channel; refreshing that document and reinjecting restores normal
-status. No Provider retry is automatic: one explicitly seeded localhost call,
-zero additional Provider calls and zero external requests.
+status. No Provider retry is automatic: one explicitly seeded localhost call
+and zero additional Provider calls. The original upgrade report's zero external
+counter came from late page routing and did not cover MV3 worker startup; it is
+not accepted as zero-egress proof. The #266 correction below replaces it with
+startup-inclusive proxy rejection evidence and explicitly reports attempts.
 
 For local unpacked upgrades, retain the original loading directory and ID.
 Loading a different directory or adding a new key can create a different origin;
@@ -318,7 +321,9 @@ the warm sample repeats those files on the same document and checks the same app
 object, unchanged module count, zero translation/provider calls, and page cleanup.
 The first measured medians were old cold 35.90 ms / warm 14.60 ms and WXT cold
 35.05 ms / warm 14.60 ms. Ranges and all 40 raw samples are recorded separately;
-there is no enforced speed threshold or speed-improvement claim.
+there is no enforced speed threshold or speed-improvement claim. These earlier
+reports did not prove execution of the replaced WXT background before sampling;
+they remain historical Content observations, with corrected activation below.
 
 The original session's local `evidence/248-*` directory was removed with its
 temporary workspace. The artifact inventories, source-lock rebuild and native
@@ -424,7 +429,9 @@ the exact ordered 48 classic files. Fixed old cold median/range was
 33.50 / 32.00–39.80 ms and warm was 13.25 / 12.40–18.40 ms. Every sample retained
 the app identity/module count, zero translation/Provider calls and document
 cleanup. These measurements have no new threshold or speed-improvement claim;
-the raw report is `248-5117dcf-upgrade/injection-samples.json`.
+the raw report is `248-5117dcf-upgrade/injection-samples.json`. Its WXT background
+activation was not proven by that sampler and is superseded by the bounded
+#266 activation/compiled-router comparison below, without deleting raw history.
 
 Locked public source inputs were copied read-only into the isolated source
 cache, and an offline rebuild explicitly rejected any download. Revision
@@ -575,9 +582,11 @@ registration union/rejection, same-profile startup pruning of all three site
 lists and zero Provider calls pass. Pending consent settlement remains NOT RUN.
 
 All 135 Content/MAIN/Worker raw closure files retain the earlier source SHA-256;
-the 48 ordered Content files and sampling test are unchanged. The original 40
-raw samples are retained by explicit input binding, without remeasurement or
-choosing favorable samples. Locale runtime/Manifest/generator inputs and every
+the 48 ordered Content files were unchanged at this input. The earlier 40 raw
+samples remain historical observations. Input equality alone did not prove
+which background Chrome executed at the same profile/path/version; the #266
+correction below performs a fresh comparison after actual new-worker activation.
+Locale runtime/Manifest/generator inputs and every
 non-background compiled developer file are unchanged, retaining earlier locale
 evidence precisely. The same 78 dictionary files, source locks and generators
 bind the earlier zero-failure certification to this release's data. Fresh
@@ -593,3 +602,127 @@ release-engine switching is not implemented, #248 is not closed and #235 is not
 unlocked. Previously listed Chrome 102, real public YouTube, other browsers,
 native keyboard/permission prompt/pending consent, paid Provider, private
 dictionary, ReadingRecord and React NOT RUN limits remain unchanged.
+
+### #266 current-head CI and automatic-review corrections
+
+PR #266 at input `8c03ca5f74ceb8151298b920bd5820d051e7c787` exposed
+two actual CI FAILs: MDD and real ECDICT workflows consumed a missing
+`dist/extension`, because the explicit production fixture no longer builds a
+package secretly. The logs remain `266-mdd-ci-fail.log` and
+`266-ecdict-ci-fail.log`. Automatic review also identified the same missing
+producer in rich-lookup cancellation, cached-old sampler execution, and late
+page routing's lack of worker-startup coverage
+([producer](https://github.com/CoderLambert/translateflow-plugin/pull/266#discussion_r4166976311),
+[sampler](https://github.com/CoderLambert/translateflow-plugin/pull/266#discussion_r4166976324),
+[network](https://github.com/CoderLambert/translateflow-plugin/pull/266#discussion_r4166976335)).
+Earlier independent approvals and test results retain their earlier exact
+inputs; they do not approve these corrections.
+
+The bounded correction was frozen before execution at
+`813d6479ab3a272687b026f52cb88a6633c1b7d0`. Only three workflows, dedicated
+migration tests/support and a dedicated Node failure-path test changed.
+Production sources, build scripts/configuration, package/lock, Manifest and
+permissions are unchanged from `8c03ca5`. The actual WXT developer package is
+the already audited `b9bc404` package, still 149 files / 1,457,777 code B /
+zero dictionary B, tree
+`132155ef917cec892d2a14ae903e0635a086e86722fabe687f26ea508ef22fbe`.
+The immutable old package remains
+`5714bb2fecfd86d5384ac0369f5cffe667804ba7733cccf6b76bdb48b0c92cce`.
+Fresh inventories and explicit production-input binding are recorded in
+`248-813d647-input-binding.json`; no old package is renamed as a new build.
+
+Each of `mdd-resources.yml`, `rich-mdict-compatibility.yml` and
+`rich-lookup-cancellation.yml` now explicitly runs `npm run build:extension`
+before its browser gate and passes `TF_E2E_ARTIFACT: dist/extension` with
+`TF_E2E_ARTIFACT_SOURCE_HEAD: github.sha`. This remains the stage-one legacy
+producer. Pinned independent writer regeneration, real upstream checksum/corpus
+checks, `ECDICT_MDX_ONE_CLICK_GATE: "1"`, cancellation/security assertions
+and job timeouts are retained. Other fixture workflow consumers already have an
+explicit build or `validate` producer. Existing PyYAML 6.0.3 parsed all three
+workflows and checked producer order and artifact inputs;
+`248-813d647-workflow-audit.json` records that PASS and the initial optional
+Node-parser FAIL (`yaml` package absent; no dependency added).
+
+The upgrade tests await an isolated HTTP proxy listener before launching
+Chromium. Only the exact mock `http://127.0.0.1:<port>` is forwarded to that
+fixed loopback destination. Other HTTP requests, every CONNECT and WebSocket
+upgrade are rejected; logs contain origins only. Listener failure prevents
+browser launch. Chromium receives a single fixed proxy with no DIRECT fallback,
+`proxy.bypass: "<-loopback>"` and QUIC disabled. The
+[Chromium manual-proxy documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md)
+documents subtracting the implicit loopback bypass and HTTPS CONNECT behavior.
+This affects only the isolated test profile, with no system network or real
+profile changes.
+
+Explicit old/new test copies prepend three native fetch controls to the worker
+entry: HTTP and HTTPS at a unique `.invalid` origin, plus the non-allowed
+`localhost` alias of the mock port. They neither mock APIs nor write extension
+storage, add permissions, or supply missing runtime files. Every old-start,
+cached-old replacement, management-reload and browser-restart worker must settle
+all three calls in the existing bounded assertion window; each corresponding
+origin must have a fresh proxy rejection after that phase's observation boundary.
+Both HTTP controls actually returned 403; HTTPS actually rejected after CONNECT
+was denied. Across both stories this verifies 24 native startup calls. Production
+artifacts stay unmodified; test-copy background before/after hashes, control
+metadata and lifecycle-observer changes are recorded in each report.
+
+| Upgrade scenario | Outside-mock attempts | Rejected | Outside-mock forwarding | Additional Provider calls |
+| --- | ---: | ---: | ---: | ---: |
+| Missing stored UI locale | 70 | 70 | 0 | 0 |
+| Existing stored `zh_CN` | 71 | 71 | 0 | 0 |
+
+Twelve attempts per story are deliberate startup controls. Other rejected
+origins include browser ambient traffic. Origin-only evidence cannot attribute
+every other attempt to Chrome or production code, and does not claim OS-level /
+all-protocol isolation or zero attempted external requests. Both stories retain
+the same ID/path/profile, all original storage, DB v2 stores/rows, all OPFS byte
+hashes and active pointers, enabled/preferred settings and native registrations.
+Management Reload still proves the real update event and new v2 runtime before
+recovery; restart proves the new runtime and exact recovered snapshot. The sole
+locale initialization exception requires the observed native update; existing
+`zh_CN` stays intact. One explicit localhost translation seeds three cache
+rows, with no later Provider call.
+
+The sampler also performs isolated management Reload before the WXT phase.
+The initial WXT marker was actually absent, confirming the cached-old hazard.
+Before any samples, the new worker must execute a test-copy marker equal to the
+selected production package tree and return the real compiled v2 fixed-open
+`READING_NOT_READY` response. A marker prefix alone cannot pass. Production
+background SHA stays
+`58298b000e722120b5b5cf986ae0c677dfa94a06d5cb46a6e6e28a0c87f394fb`;
+only this sampler copy's marker changes it to
+`571efee26cb43f123b3253736b3c8e88991ccb741b59b29ae1f7d5fcc6af0c0f`.
+
+| Fresh raw samples | Cold median / range (ms) | Warm median / range (ms) |
+| --- | --- | --- |
+| Fixed old: 10 cold + 10 warm | 19.20 / 17.70–23.20 | 8.55 / 6.40–9.90 |
+| Activated actual WXT: 10 cold + 10 warm | 19.60 / 16.80–22.20 | 8.25 / 6.70–9.50 |
+
+All 40 observations, native activation, package/test-copy hashes, same-app/module
+counts, zero translated nodes/Provider calls and document cleanup are retained
+in `248-813d647-upgrade/injection-samples.json`. Same profile/path/ID,
+viewport and ordered 48 raw files remain the comparison contract. No threshold,
+best-run selection or speed claim is introduced.
+
+| Command at frozen `813d647` test input | Actual result | Evidence |
+| --- | --- | --- |
+| `node --test tests/wxt-closed-network.test.mjs` | PASS: 3 tests; exact-origin forwarding, HTTP/CONNECT/alternate-loopback denial, origin-only logs, listener conflict, absent native results/late evidence/overflow/forwarding fail closed | Node output and full validate log |
+| `npm run build:extension` | PASS: actual legacy producer; existing generated dictionaries present, 332 files / 38,415,763 total B / 1,585,271 code B / 36,830,492 dictionary B | `248-813d647-explicit-legacy-build.log`, `-inventory.json` |
+| `npm run test:e2e -- e2e/wxt-upgrade.spec.mjs e2e/wxt-injection-samples.spec.mjs --reporter=line,json --output <unique>` with explicit immutable old/current WXT inputs | PASS: 3 stories / 21.1 s; two continuity stories, worker-startup controls and all 40 samples | `248-813d647-native.json`, `.log`, `-results/`, `-upgrade/` |
+| `npm run test:e2e -- e2e/mdd-resources.spec.mjs e2e/rich-mdict-product.spec.mjs e2e/selection-rich-lookup-cancel.spec.mjs --reporter=line,json --output <unique>` against the freshly frozen explicit legacy build | PASS: 4 stories / 24.1 s; native resources/import/security/cancellation assertions retained | `248-813d647-specialty.json`, `.log`, `-results/` |
+| `npm run validate` | PASS: 489 checked files, 953 Node tests, strict typecheck, 4 Vitest tests / 3 files, actual legacy build | `248-813d647-validate.log` |
+
+Fresh legacy tree is
+`7297d6e83f074d90171611d6f583def1f211c95a80ff85768b2c118ebaae2121`;
+its non-dictionary files equal the prior current legacy developer package.
+Fixture adapters replace only explicit synthetic dictionary assets and test
+Manifest host access; no production source is appended to a compiled package.
+Local specialty stories use existing synthetic independent-writer fixtures.
+Fresh locked-writer regeneration / 100 MiB evidence and real ECDICT corpus /
+one-click stories are **NOT RUN locally** for this correction; unchanged required
+workflow gates must pass on the new PR head. Ordinary full dual-artifact
+current-head CI, independent incremental review and verification remain
+coordinator gates. All earlier CI/full-suite FAILs, timeouts and sampling-proof
+limitations remain recorded, and prior NOT RUN limits remain. Default switching
+has not occurred; this is not #248 completion, #235 activation or
+React/ReadingRecord acceptance.
