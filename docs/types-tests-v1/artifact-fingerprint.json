@@ -1,5 +1,5 @@
 {
-  "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+  "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
   "mainBase": "b10c2b355896530f15f69ebad996afc490760ae7",
   "source": "actual WXT production .output/chrome-mv3",
   "algorithm": "sha256 of UTF-8 JSON.stringify(files), sorted by path; files use keys path,size,sha256",

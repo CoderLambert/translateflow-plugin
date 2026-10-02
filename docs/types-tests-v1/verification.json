@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": 247,
-  "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+  "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
   "mainBase": "b10c2b355896530f15f69ebad996afc490760ae7",
   "node": "24.21.0",
   "npm": "11.19.0",
@@ -36,21 +36,21 @@
       "command": "npm run validate",
       "status": "PASS",
       "exitCode": 0,
-      "sourceFiles": 441,
-      "nodeTests": 773,
+      "sourceFiles": 442,
+      "nodeTests": 790,
       "originalNodeTests": 742,
-      "newCliTests": 31,
-      "nodeDurationMs": 11977.479113,
+      "newCliTests": 48,
+      "nodeDurationMs": 18516.276494,
       "vitestFiles": 2,
       "vitestTests": 3,
-      "vitestDurationMs": 671,
+      "vitestDurationMs": 596,
       "defaultBuild": {
         "source": "legacy allowlisted dist/extension",
         "fileCount": 233,
         "totalBytes": 1487046,
         "lexicalBytes": 0
       },
-      "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3"
+      "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd"
     },
     {
       "command": "npm run typecheck",
@@ -72,15 +72,15 @@
         "output": "string"
       },
       "details": "no owned TS or declaration exclusion; paths/i18n generated API domain checked; unused generated globals not imported",
-      "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3"
+      "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd"
     },
     {
       "command": "Node source-boundaries.test.mjs CLI fixtures (within npm test)",
       "status": "PASS",
       "exitCode": 0,
-      "tests": 31,
+      "tests": 48,
       "expectedFailures": {
-        "architecture": 27,
+        "architecture": 42,
         "strictType": {
           "exitCode": 2
         },
@@ -92,7 +92,8 @@
           "code": "READING_BAD_DTO"
         }
       },
-      "positiveProjects": 1
+      "positiveProjects": 3,
+      "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd"
     },
     {
       "command": "node node_modules/vitest/vitest.mjs list --filesOnly --json; node node_modules/@playwright/test/cli.js test --list",
@@ -121,7 +122,7 @@
         "assets/lexicon/core",
         "assets/lexicon/technical"
       ],
-      "sourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+      "sourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
       "identicalToSmoke": true
     },
     {
@@ -131,8 +132,8 @@
       "sourceHead": "29643c1a1edef5d3eda0c6045eaceedbff2cff7b",
       "browser": "153.0.8010.12",
       "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
-      "details": "isolated profile; 6 module Worker invalid-input probes; popup/options/background; 44 Content +3 MAIN files; 2 synthetic Core candidates; 3 body translations; restore 3 cache hits; localhost Provider called once; no page errors/external requests/unexpected registrations",
-      "finalBuildSourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+      "details": "isolated profile; 6 module Worker invalid-input probes; popup/options/background; 44 Content +3 MAIN files; 2 synthetic Core candidates; 3 body translations; restore 3 cache hits; localhost Provider called once; no page errors/external requests/unexpected registrations; browser was not repeated after the checker-only repair: actual final WXT rebuild has identical path/size/SHA for all 143 production files",
+      "finalBuildSourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
       "finalBuildIdentical": true
     },
     {
@@ -200,7 +201,7 @@
   "notRun": [
     "Full browser E2E (discovery only)",
     "Chrome 102 runtime",
-    "Same-ID old→WXT upgrade/restart (#248)",
+    "Same-ID old\u2192WXT upgrade/restart (#248)",
     "Real YouTube timedtext",
     "Release lexicon certification/generated dictionary package",
     "Real paid Provider",
@@ -218,13 +219,23 @@
   },
   "evidence": "Raw command logs retained at /tmp/translateflow-release-a-20261002/evidence/247-*.log; tracked reports contain no credentials or personal configuration",
   "evidenceBinding": {
-    "validatedCodeHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+    "validatedCodeHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
     "actualBrowserSourceHead": "29643c1a1edef5d3eda0c6045eaceedbff2cff7b",
     "actualBrowserSourceClean": true,
-    "actualBuildSourceHead": "f505270ae7c721340fc82ccae7fccb005b3f9fd3",
+    "actualBuildSourceHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
     "all143ProductionPathSizeHashesEqual": true,
     "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
-    "finalHead": "Containing evidence-only commit; code equals validatedCodeHead",
-    "priorB825Runs": "Early development worktree contained unstaged JSDoc; not claimed as exact committed source-head evidence. Superseded by clean296 smoke and cleanf505 total validation/build."
+    "finalHead": "Containing evidence-only commit; runtime/checker/tests/config code equals validatedCodeHead",
+    "priorB825Runs": "Early development worktree contained unstaged JSDoc; not claimed as exact committed source-head evidence. Superseded by clean296 smoke and cleanf505 total validation/build.",
+    "repairBaseline": "c516b815cf8800ecf5f1b748c6c8902798561770"
+  },
+  "independentReviewRepair": {
+    "report": "computed-api-repair.json",
+    "finding": "P2 computed browser API property keys could bypass literal-only architecture detection",
+    "status": "IMPLEMENTED_AND_VALIDATED; independent incremental review pending",
+    "codeHead": "c1931bb75350db4f34fff61148f5377ae20bd0cd",
+    "ownerExceptionsChanged": false,
+    "runtimeSourcesChanged": false,
+    "packageWxtCiChanged": false
   }
 }
