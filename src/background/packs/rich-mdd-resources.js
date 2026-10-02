@@ -315,6 +315,7 @@ export function createRichMddResourceManager({
     if (await sha256(bytes, cryptoProvider) !== descriptor.indexSha256) {
       throw richError("RICH_MDD_CORRUPT", "Installed MDD resource index checksum failed.");
     }
+    assertRichMddLookupActive(signal);
     const index = parseMddIndex(bytes, descriptor.sourceSize, validateIndex);
     cacheIndex(key, index, bytes.byteLength);
     return index;
