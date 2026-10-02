@@ -9,6 +9,8 @@ import { startMockServer } from "./support/mock-server.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
+import { READING_METHOD, READING_ERROR } from "../src/shared/reading/constants.js";
+import { request } from "../tests/fixtures/reading/contract.mjs";
 
 const oldArtifact = process.env.TF_UPGRADE_OLD_ARTIFACT;
 const newArtifact = process.env.TF_UPGRADE_NEW_ARTIFACT;
@@ -143,6 +145,8 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
       expect(await runtime({type,origin})).toMatchObject({ok:true});
     await expect.poll(()=>driver.evaluate(async()=> (await chrome.scripting.getRegisteredContentScripts()).length)).toBe(1);
     const before=await snapshot();
+    const legacyRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
+    expect(legacyRuntime).toEqual({ok:false,error:"未知扩展消息。",errorCode:""});
     expect(before.storage.uiLocale).toBe(existingUiLocale);
     expect(Object.hasOwn(before.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
     expect(before.databases).toEqual([expect.objectContaining({name:"ai_bilingual_translator",version:2})]);
@@ -157,23 +161,26 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl,observeInstalled:true});
     const initialWorker=await launch();
     const initialLifecycle=await initialWorker.evaluate(()=>globalThis.__tfInstalledObserver);
-    expect(initialLifecycle).toEqual({events:[],capacity:4,overflow:false});
+    const initialRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
+    const cachedOldRuntime=initialLifecycle===undefined;
+    if(cachedOldRuntime) expect(initialRuntime).toEqual(legacyRuntime);
+    else {
+      expect(initialLifecycle).toEqual({events:[],capacity:4,overflow:false});
+      expect(initialRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
+    }
     const after=await snapshot(); assertUnchangedUpgradeSnapshot(before,after);
     await expect(driver.locator("#uiLocale")).toBeVisible();
     await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
     const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(before,afterLocaleDisplay);
     expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
-    phases.push({phase:"WXT",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,nativeLifecycle:initialLifecycle,snapshot:summary(after)});
+    phases.push({phase:cachedOldRuntime ? "PRE_UPGRADE_CACHED_OLD_RUNTIME" : "WXT-replacement-runtime",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,
+      observerExecuted:!cachedOldRuntime,nativeLifecycle:initialLifecycle??null,nativeRuntime:initialRuntime,snapshot:summary(after)});
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText("你的个人首选");
-    const reopened=await context.newPage(); await reopened.goto(`${server.baseUrl}/article`);
-    // Dynamic restore registration must work after browser restart, without fixture injection.
-    await expect(reopened.locator(".abt-translation")).toHaveCount(3); expect(server.calls).toHaveLength(1);
-    await reopened.reload(); await expect(reopened.locator(".abt-translation")).toHaveCount(3);
-    expect(server.calls).toHaveLength(1);
     const stale=await context.newPage(); await stale.goto(`${server.baseUrl}/selection`); await inject(stale);
     const staleId=await tabId(stale);
+    const beforeActivation=await snapshot(); assertUnchangedUpgradeSnapshot(before,beforeActivation);
     // Actual extension reload restarts the background and invalidates this existing
     // isolated world. Verify invalidation, then the supported refresh recovery.
     const manager = await context.newPage(); await manager.goto("chrome://extensions/");
@@ -191,6 +198,11 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const reloadedLifecycle=await reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
     expect(reloadedLifecycle.overflow).toBe(false);
     const expectedReloadStorage=expectedStorageAfterInstalledUpdate(before.storage,reloadedLifecycle.events[0],oldManifest.version);
+    const activatedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
+    expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
+    await expect.poll(()=>driver.evaluate(()=>chrome.storage.local.get(["uiLocale"]).then(x=>x.uiLocale))).toBe(expectedReloadStorage.uiLocale);
+    const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage});
+    phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
       catch(error){return {ok:false,invalidated:true,error:String(error)}}
@@ -198,6 +210,12 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     // A new scripting.executeScript creates a fresh extension context and is
     // unsuitable for checking an old binding. Probe the old registered channel.
     expect(invalidated).toMatchObject({ok:false,invalidated:true});
+    const reopened=await context.newPage(); await reopened.goto(`${server.baseUrl}/article`);
+    // These restore checks now run after actual new-WXT activation, not against
+    // the old background Chromium can retain at the same unpacked version.
+    await expect(reopened.locator(".abt-translation")).toHaveCount(3); expect(server.calls).toHaveLength(1);
+    await reopened.reload(); await expect(reopened.locator(".abt-translation")).toHaveCount(3);
+    expect(server.calls).toHaveLength(1);
     await stale.reload(); await expect(stale.locator(".tf-selection-chip")).toHaveCount(0);
     await inject(stale); expect(await content(stale,{type:"ABT_STATUS"})).toMatchObject({ok:true});
     expect(server.calls).toHaveLength(1);
@@ -206,14 +224,18 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(afterRecovery.registrations).toEqual(before.registrations);
     // Cache read metadata is expected to change only after actual cache use.
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
-    phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,nativeLifecycle:reloadedLifecycle,snapshot:summary(afterRecovery)});
-    await context.close(); context=null; await launch();
+    phases.push({phase:"WXT-after-recovery",id:extensionId,snapshot:summary(afterRecovery)});
+    await context.close(); context=null; const restartedWorker=await launch();
+    const restartedLifecycle=await restartedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
+    expect(restartedLifecycle).toEqual({events:[],capacity:4,overflow:false});
+    const restartedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
+    expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
-    phases.push({phase:"WXT-browser-restart",id:extensionId,snapshot:summary(restarted)});
+    phases.push({phase:"WXT-browser-restart",id:extensionId,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
     expect(server.calls).toHaveLength(1); expect(externalOrigins).toEqual([]); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
-      productionKeyChanged:false,phases,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
+      productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
       unauthorizedProviderCalls:0,externalRequests:0,backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
