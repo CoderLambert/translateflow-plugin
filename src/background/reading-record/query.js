@@ -23,8 +23,9 @@ export function* read(store, context, cursor, now, viewed = true) {
     if (!row) fail(E.NOT_FOUND, "record");
     if (access.scope === "content" && row.record.pageKey !== access.pageKey) fail(E.FORBIDDEN, "record.page");
     const data = yield* detail(store, request.recordId, row);
-    if (viewed && row.record.lastViewedAt !== Math.max(row.record.firstSeenAt, now)) {
-      const record = { ...data.record, lastViewedAt: Math.max(data.record.firstSeenAt, now), revision: data.record.revision + 1 };
+    const lastViewedAt = Math.max(row.record.firstSeenAt, row.record.lastViewedAt ?? 0, now);
+    if (viewed && row.record.lastViewedAt !== lastViewedAt) {
+      const record = { ...data.record, lastViewedAt, revision: data.record.revision + 1 };
       const bytes = row.bytes + applicationBytes([record]) - applicationBytes([data.record]);
       checkCapacity({ recordCount: meta.recordCount, totalBytes: meta.totalBytes, addedBytes: Math.max(0, bytes - row.bytes) });
       const page = yield* pageState(store, row.record.pageKey);

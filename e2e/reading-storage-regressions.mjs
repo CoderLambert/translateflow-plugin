@@ -3,6 +3,32 @@ import { READING_METHOD as M, READING_ERROR as E } from '../src/shared/reading/c
 import { request, artifact } from '../tests/fixtures/reading/contract.mjs';
 
 export function registerStorageRegressions(test, expect, environment) {
+  test('Native viewed timestamps and revisions remain unchanged when the clock moves backward', async () => {
+    const result = await environment().probeWorker.evaluate(async () => {
+      const p = __probe; await p.enable(p.repo); const saved = await p.save(p.repo, await p.begin(p.repo));
+      const get = () => p.repo.read(p.ctx(p.M.GET_RECORD, { recordId: saved.recordId }));
+      const capture = async () => ({ detail: await get(), meta: (await p.counts()).meta,
+        page: await p.repo.read(p.ctx(p.M.GET_PAGE_SUMMARY, {}, 'content')),
+        signal: await p.repo.readInvalidationState(p.ctx(p.M.GET_PAGE_SUMMARY, {}, 'content')) });
+      p.clock = 2000; const before = await capture();
+      p.clock = 1500; const rollback = await capture();
+      p.clock = 500; const beforeCreation = await capture();
+      p.clock = 2000; const unchanged = await capture();
+      p.clock = 2500; const forward = await capture();
+      return { before, rollback, beforeCreation, unchanged, forward };
+    });
+    expect(result.before.detail.record.lastViewedAt).toBe(2000);
+    expect(result.rollback).toEqual(result.before);
+    expect(result.beforeCreation).toEqual(result.before);
+    expect(result.unchanged).toEqual(result.before);
+    expect(result.forward.detail.record.lastViewedAt).toBe(2500);
+    expect(result.forward.detail.record.revision).toBe(result.before.detail.record.revision + 1);
+    expect(result.forward.page.pageRevision).toBe(result.before.page.pageRevision + 1);
+    expect(result.forward.meta.exportRevision).toBe(result.before.meta.exportRevision + 1);
+    expect(result.forward.meta.catalogRevision).toBe(result.before.meta.catalogRevision);
+    expect(result.forward.detail.record.lookupCount).toBe(1);
+  });
+
   test('Production viewed update advances the actual Content summary/port revision without changing catalog', async () => {
     const { driver, message, openContent } = environment();
     const state = await message(M.GET_RECORDING_STATE); expect((await message(M.SET_RECORDING, {expectedConsentGeneration:state.data.consentGeneration})).ok).toBe(true);
