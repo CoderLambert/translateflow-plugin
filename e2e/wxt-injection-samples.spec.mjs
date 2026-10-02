@@ -17,11 +17,25 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
   try {
     for(const [name,artifact] of [["old",oldArtifact],["WXT",newArtifact]]) {
       if(name!=="old")await rm(extension,{recursive:true,force:true});
-      const source=await prepareExtensionTestCopy({artifact,extensionDir:extension,baseUrl:server.baseUrl});
+      const source=await prepareExtensionTestCopy({artifact,extensionDir:extension,baseUrl:server.baseUrl,executionProof:name==="WXT"});
       context=await chromium.launchPersistentContext(profile,{headless:true,channel:"chromium",viewport:{width:1280,height:720},
         args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`]});
-      const worker=context.serviceWorkers()[0]||await context.waitForEvent("serviceworker");
+      let worker=context.serviceWorkers()[0]||await context.waitForEvent("serviceworker");
       const id=new URL(worker.url()).host;if(extensionId)expect(id).toBe(extensionId);else extensionId=id;
+      let activation=null;
+      if(name==="WXT") {
+        const initialProof=await worker.evaluate(()=>globalThis.__tfWxtExecutionProof??null);
+        const manager=await context.newPage();await manager.goto("chrome://extensions/");
+        await manager.evaluate(()=>chrome.developerPrivate.updateProfileConfiguration({inDeveloperMode:true}));
+        const previousWorker=worker;
+        [worker]=await Promise.all([context.waitForEvent("serviceworker"),
+          manager.evaluate(id=>chrome.developerPrivate.reload(id,{failQuietly:false}),id)]);
+        expect(worker).not.toBe(previousWorker);
+        const executedProof=await worker.evaluate(()=>globalThis.__tfWxtExecutionProof);
+        expect(executedProof).toBe(source.treeSha256);
+        activation={initialProof,managementReload:true,newWorkerObserved:true,executedProof,startupObserver:source.startupObserver};
+        await manager.close();
+      } else expect(await worker.evaluate(()=>globalThis.__tfWxtExecutionProof)).toBeUndefined();
       const driver=await context.newPage();await driver.goto(`chrome-extension://${id}/popup.html`);
       const pagesBefore=context.pages().length;const samples=[];
       for(let sample=0;sample<10;sample++) {
@@ -51,11 +65,11 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
           sameApp:true,translatedNodes:0,providerCalls:0});await page.close();
         expect(context.pages()).toHaveLength(pagesBefore);
       }
-      phases.push({phase:name,artifact:source.treeSha256,browser:context.browser().version(),samples,
+      phases.push({phase:name,artifact:source.treeSha256,testCopy:{treeSha256:source.testCopy.treeSha256,changes:source.testCopy.changes},activation,browser:context.browser().version(),samples,
         coldMs:distribution(samples.map(s=>s.coldMs)),warmMs:distribution(samples.map(s=>s.warmMs)),
         documentCleanup:true});await context.close();context=null;
     }
-    const report={schemaVersion:1,status:"PASS",sameUserDataDir:true,sameExtensionId:true,viewport:{width:1280,height:720},
+    const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,sameUserDataDir:true,sameExtensionId:true,viewport:{width:1280,height:720},
       method:"Per fresh /article document: insertCSS → ordered raw scripts → native status; repeat same file injection on same document for warm/idempotence. Measures scripting + bootstrap + message round trip with performance.now in the extension page. No speed threshold or performance claim.",
       contentFiles:[...CONTENT_SCRIPT_FILES],styleFiles:[...CONTENT_STYLE_FILES],providerCalls:0,phases};
     const dir=resolve(process.env.TF_UPGRADE_EVIDENCE_DIR||"test-results/wxt-upgrade-evidence");await mkdir(dir,{recursive:true});

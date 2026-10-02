@@ -7,6 +7,7 @@ import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 import { byteSummary } from "../../scripts/wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../../src/shared/runtime-assets.js";
+import { startupNetworkControl } from "./closed-network.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const defaultArtifact = resolve(repoRoot, process.env.TF_E2E_ARTIFACT || "dist/extension");
@@ -52,8 +53,9 @@ export async function copyProductionArtifact(artifact, extensionDir) {
 }
 
 export async function prepareExtensionTestCopy({artifact = defaultArtifact, extensionDir,
-  lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, baseUrl}) {
+  lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, baseUrl}) {
     assert(!(captureCommands && observeInstalled), "Lifecycle observation and Commands probing use separate test copies");
+    assert(!(captureCommands && (executionProof || startupNetwork)), "Startup observation and Commands probing use separate test copies");
     const sourceReport = await copyProductionArtifact(artifact, extensionDir);
 
     const lexiconDir = join(extensionDir, "assets", "lexicon");
@@ -128,19 +130,40 @@ export async function prepareExtensionTestCopy({artifact = defaultArtifact, exte
         beforeSha256:createHash("sha256").update(code).digest("hex"),
         afterSha256:createHash("sha256").update(observed).digest("hex")};
     }
+    let startupObserver = null;
+    if (executionProof || startupNetwork) {
+      const path = manifest.background.service_worker;
+      const background = join(extensionDir, path);
+      const code = await readFile(background, "utf8");
+      let prefix = executionProof ? `globalThis.__tfWxtExecutionProof = ${JSON.stringify(sourceReport.treeSha256)};\n` : "";
+      if (startupNetwork) {
+        assert.deepEqual(startupNetwork, startupNetworkControl(startupNetwork.token, baseUrl));
+        prefix += `globalThis.__tfNetworkStartupProbe = {token:${JSON.stringify(startupNetwork.token)},calls:3,results:[]};\n`;
+        prefix += `for (const origin of ${JSON.stringify(startupNetwork.origins)}) {\n`;
+        prefix += `  fetch(origin + "/startup-control", {cache:"no-store",credentials:"omit"}).then(\n`;
+        prefix += `    response => __tfNetworkStartupProbe.results.push({origin,state:"FULFILLED",status:response.status}),\n`;
+        prefix += `    () => __tfNetworkStartupProbe.results.push({origin,state:"REJECTED"})\n`;
+        prefix += `  );\n}\n`;
+      }
+      await writeFile(background, prefix + code);
+      startupObserver = {path,executionProof:executionProof ? sourceReport.treeSha256 : null,
+        networkControl:startupNetwork,storageWrites:0,apiMocks:0,
+        beforeSha256:createHash("sha256").update(code).digest("hex"),
+        afterSha256:createHash("sha256").update(prefix + code).digest("hex")};
+    }
     const after = await inventoryArtifact(extensionDir);
     const beforeFiles = new Map(sourceReport.files.map((f) => [f.path, f.sha256]));
     const afterFiles = new Map(after.files.map((f) => [f.path, f.sha256]));
     const changes = [...new Set([...beforeFiles.keys(), ...afterFiles.keys()])].filter((p) => beforeFiles.get(p) !== afterFiles.get(p)).sort();
     for (const path of changes) assert(path === "manifest.json" || path.startsWith("assets/lexicon/")
       || ecdictMdxCachedArchivePath && path === WORKER_PATHS.curatedEcdictMdx
-      || (captureCommands || observeInstalled) && path === manifest.background.service_worker,
+      || (captureCommands || observeInstalled || executionProof || startupNetwork) && path === manifest.background.service_worker,
       `Test adapter changed production runtime: ${path}`);
     const originalManifest = JSON.parse(await readFile(join(sourceReport.artifact, "manifest.json"), "utf8"));
     assert.deepEqual({...manifest, host_permissions: originalManifest.host_permissions}, originalManifest,
       "Test adapter changed Manifest beyond host_permissions");
     return {...sourceReport, testCopy: {...after, changes}, lexiconMode: lexiconPacks,
-      cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands,lifecycleObserver};
+      cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands,lifecycleObserver,startupObserver};
 }
 
 function makeCachedEcdictMdxTestWorker(baseUrl) {

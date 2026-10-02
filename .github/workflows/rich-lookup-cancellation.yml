@@ -53,9 +53,14 @@ jobs:
           DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR: ${{ runner.temp }}/rich-lookup-cancellation-evidence
         run: node scripts/measure-rich-lookup-cancellation-baseline.mjs
 
+      - name: Build the selected stage-one production artifact
+        run: npm run build:extension
+
       - name: Verify SPA cancellation and bounded range cancellation
         env:
           CI: "true"
+          TF_E2E_ARTIFACT: dist/extension
+          TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
           DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR: ${{ runner.temp }}/rich-lookup-cancellation-evidence
         run: npx playwright test e2e/selection-rich-lookup-cancel.spec.mjs --reporter=line
 

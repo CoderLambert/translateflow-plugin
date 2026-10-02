@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
 import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate } from "./support/upgrade-expectations.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
+import { startClosedNetwork, startupNetworkControl, assertStartupNetworkControl } from "./support/closed-network.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
@@ -25,8 +26,12 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
   const extensionDir = join(root, "extension");
   const profile = join(root, "profile");
   const server = await startMockServer();
+  const network = await startClosedNetwork(server.baseUrl).catch(async error => {
+    await server.close(); await rm(root,{recursive:true,force:true}); throw error;
+  });
+  const oldControl = startupNetworkControl(`old-${scenario}`, server.baseUrl);
+  const newControl = startupNetworkControl(`wxt-${scenario}`, server.baseUrl);
   const errors = [];
-  const externalOrigins = [];
   let context;
   let driver;
   let extensionId;
@@ -35,15 +40,18 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
   const oldManifest=JSON.parse(await readFile(join(oldArtifact,"manifest.json"),"utf8"));
   const newManifest=JSON.parse(await readFile(join(newArtifact,"manifest.json"),"utf8"));
   expect(newManifest.version).toBe(oldManifest.version);
+  async function startupProof(worker, control, fromAttempt) {
+    await expect.poll(()=>worker.evaluate(()=>globalThis.__tfNetworkStartupProbe?.results.length)).toBe(3);
+    const observed=await worker.evaluate(()=>globalThis.__tfNetworkStartupProbe);
+    const snapshot=network.snapshot();
+    assertStartupNetworkControl(observed,control,{...snapshot,attempts:snapshot.attempts.slice(fromAttempt)});
+    return observed;
+  }
   async function launch() {
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
-      args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`] });
+      proxy: network.launchProxy,
+      args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, "--disable-quic"] });
     context.on("page", (page) => page.on("pageerror", (error) => errors.push(error.message)));
-    await context.route(/^https?:/u, (route) => {
-      const origin = new URL(route.request().url()).origin;
-      if (origin === server.baseUrl) return route.continue();
-      externalOrigins.push(origin); return route.abort();
-    });
     const sw = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
     const id = new URL(sw.url()).host;
     if (extensionId) expect(id).toBe(extensionId); else extensionId = id;
@@ -120,8 +128,9 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     return {id,row,sourceSha256:createHash("sha256").update(mdx).digest("hex")};
   }
   try {
-    const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,baseUrl:server.baseUrl});
-    await launch();
+    const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,baseUrl:server.baseUrl,startupNetwork:oldControl});
+    const oldWorker=await launch();
+    const oldStartup=await startupProof(oldWorker,oldControl,0);
     await driver.locator("#defaultProvider").selectOption("openai-compatible");
     await driver.locator("#targetLanguage").fill("Simplified Chinese");
     await driver.locator("#openaiBaseUrl").fill(`${server.baseUrl}/v1`);
@@ -156,10 +165,11 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(before.opfs.find(f=>f.path.includes(alpha.id)&&f.path.endsWith("source.mdx"))?.sha256).toBe(alpha.sourceSha256);
     expect(before.opfs.find(f=>f.path.includes(beta.id)&&f.path.endsWith("source.mdx"))?.sha256).toBe(beta.sourceSha256);
     const browserVersion=context.browser().version();
-    phases.push({phase:"old",id:extensionId,artifact:old.treeSha256,testChanges:old.testCopy.changes,nativeRuntime:legacyRuntime,snapshot:summary(before)});
+    phases.push({phase:"old",id:extensionId,artifact:old.treeSha256,testChanges:old.testCopy.changes,startupObserver:old.startupObserver,networkStartup:oldStartup,nativeRuntime:legacyRuntime,snapshot:summary(before)});
     await context.close(); context=null;
     await rm(extensionDir,{recursive:true,force:true});
-    const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl,observeInstalled:true});
+    const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl,observeInstalled:true,startupNetwork:newControl});
+    const replacementNetworkStart=network.snapshot().attempts.length;
     const initialWorker=await launch();
     const initialLifecycle=await initialWorker.evaluate(()=>globalThis.__tfInstalledObserver);
     const initialRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
@@ -169,13 +179,14 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
       expect(initialLifecycle).toEqual({events:[],capacity:4,overflow:false});
       expect(initialRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
     }
+    const replacementStartup=await startupProof(initialWorker,cachedOldRuntime ? oldControl : newControl,replacementNetworkStart);
     const after=await snapshot(); assertUnchangedUpgradeSnapshot(before,after);
     await expect(driver.locator("#uiLocale")).toBeVisible();
     await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
     const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(before,afterLocaleDisplay);
     expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
     phases.push({phase:cachedOldRuntime ? "PRE_UPGRADE_CACHED_OLD_RUNTIME" : "WXT-replacement-runtime",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,
-      observerExecuted:!cachedOldRuntime,nativeLifecycle:initialLifecycle??null,nativeRuntime:initialRuntime,snapshot:summary(after)});
+      startupObserver:next.startupObserver,networkStartup:replacementStartup,observerExecuted:!cachedOldRuntime,nativeLifecycle:initialLifecycle??null,nativeRuntime:initialRuntime,snapshot:summary(after)});
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText("你的个人首选");
@@ -188,11 +199,13 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await manager.evaluate(()=>chrome.developerPrivate.updateProfileConfiguration({inDeveloperMode:true}));
     // Use Chromium's own unpacked-extension management reload in this isolated
     // profile. runtime.reload from a CLI-sideloaded package disables its pages.
+    const reloadNetworkStart=network.snapshot().attempts.length;
     const [reloadedWorker]=await Promise.all([
       context.waitForEvent("serviceworker"),
       manager.evaluate((id)=>chrome.developerPrivate.reload(id,{failQuietly:false}),extensionId)
     ]);
     expect(reloadedWorker).not.toBe(initialWorker);
+    const activatedStartup=await startupProof(reloadedWorker,newControl,reloadNetworkStart);
     driver=await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/options.html`);
     await expect(driver.locator("#save")).toBeVisible();
     await expect.poll(()=>reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver?.events.length)).toBe(1);
@@ -203,7 +216,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
     await expect.poll(()=>driver.evaluate(()=>chrome.storage.local.get(["uiLocale"]).then(x=>x.uiLocale))).toBe(expectedReloadStorage.uiLocale);
     const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage});
-    phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
+    phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,networkStartup:activatedStartup,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
       catch(error){return {ok:false,invalidated:true,error:String(error)}}
@@ -226,19 +239,23 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     // Cache read metadata is expected to change only after actual cache use.
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
     phases.push({phase:"WXT-after-recovery",id:extensionId,snapshot:summary(afterRecovery)});
-    await context.close(); context=null; const restartedWorker=await launch();
+    await context.close(); context=null;
+    const restartNetworkStart=network.snapshot().attempts.length;
+    const restartedWorker=await launch();
+    const restartedStartup=await startupProof(restartedWorker,newControl,restartNetworkStart);
     const restartedLifecycle=await restartedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
     expect(restartedLifecycle).toMatchObject({events:expect.any(Array),capacity:4,overflow:false});
     expect(restartedLifecycle.events.length).toBeLessThanOrEqual(restartedLifecycle.capacity);
     const restartedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
     expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
-    phases.push({phase:"WXT-browser-restart",id:extensionId,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
-    expect(server.calls).toHaveLength(1); expect(externalOrigins).toEqual([]); expect(errors).toEqual([]);
+    phases.push({phase:"WXT-browser-restart",id:extensionId,networkStartup:restartedStartup,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
+    expect(server.calls).toHaveLength(1); expect(network.snapshot().forwardedOutsideMock).toBe(0);
+    expect(network.snapshot().overflow).toBe(false); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
       productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
-      unauthorizedProviderCalls:0,externalRequests:0,backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
+      unauthorizedProviderCalls:0,network:network.snapshot(),backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
     await testInfo.attach("same-id-upgrade.json",{body:Buffer.from(JSON.stringify(report,null,2)),contentType:"application/json"});
@@ -249,11 +266,11 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     if(failure) {
       await mkdir(reportDir,{recursive:true});
       const partial={schemaVersion:1,status:"FAIL",completeAcceptance:false,testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,scenario,extensionId,
-        phases,failure,observedProviderCalls:server.calls.length};
+        phases,failure,observedProviderCalls:server.calls.length,network:network.snapshot()};
       await writeFile(join(reportDir,`same-id-upgrade-${scenario}-failed.json`),JSON.stringify(partial,null,2)+"\n");
       await testInfo.attach("same-id-upgrade-failed.json",{body:Buffer.from(JSON.stringify(partial,null,2)),contentType:"application/json"});
     }
-    await context?.close().catch(()=>{}); await server.close(); await rm(root,{recursive:true,force:true});
+    await context?.close().catch(()=>{}); await network.close(); await server.close(); await rm(root,{recursive:true,force:true});
   }
 });
 }
