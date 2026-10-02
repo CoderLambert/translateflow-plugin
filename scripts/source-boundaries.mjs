@@ -1,24 +1,21 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import ts from "typescript";
+import { createApiInspector } from "./source-api-boundaries.mjs";
 
 export const SOURCE_EXTENSION = /\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/u;
 const UI = /^(?:entrypoints\/learning-center\/|src\/learning-center\/)/u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
 export const isRuntimeSource = (path) => path.startsWith("src/") || path.startsWith("entrypoints/") || ROOT_RUNTIME.has(path);
 const isReact = (name) => /^(?:react|react-dom)(?:\/|$)/u.test(name);
-const memberName = (node) => ts.isPropertyAccessExpression(node) ? node.name.text
-  : ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : null;
-const named = (node, name) => (ts.isIdentifier(node) && node.text === name) || memberName(node) === name;
-
-function dependencies(tree) {
+function dependencies(tree, api) {
   const found = [];
   function visit(node) {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
       found.push({ specifier: node.moduleSpecifier.text, typeOnly: node.isTypeOnly || node.importClause?.isTypeOnly });
     } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
       found.push({ specifier: node.moduleReference.expression?.text, typeOnly: node.isTypeOnly });
-    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || named(node.expression, "require"))) {
+    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || api.moduleLoader(node.expression))) {
       found.push({ specifier: node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]) ? node.arguments[0].text : null, typeOnly: false });
     }
     ts.forEachChild(node, visit);
@@ -28,7 +25,6 @@ function dependencies(tree) {
 }
 
 function sourceEffects(tree) {
-  const effects = new Set();
   let esm = false, jsx = false;
   function visit(node) {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node) || ts.isExportAssignment(node) ||
@@ -36,14 +32,10 @@ function sourceEffects(tree) {
         (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) ||
         (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword)) esm = true;
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) jsx = true;
-    for (const name of ["chrome", "browser", "fetch", "indexedDB", "registerContentScripts"]) {
-      if (named(node, name)) effects.add(name);
-      if (ts.isBindingElement(node) && (node.propertyName?.text || node.name.text) === name) effects.add(name);
-    }
     ts.forEachChild(node, visit);
   }
   visit(tree);
-  return { effects, esm, jsx };
+  return { esm, jsx };
 }
 
 function resolveSource(root, owner, specifier) {
@@ -64,8 +56,11 @@ export function inspectSources(root, files) {
     const tree = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true);
     for (const error of tree.parseDiagnostics) failures.push(`${path}: syntax: ${ts.flattenDiagnosticMessageText(error.messageText, " ")}`);
     if (!isRuntimeSource(path)) continue;
-    const { effects, esm, jsx } = sourceEffects(tree);
-    const deps = dependencies(tree);
+    const { esm, jsx } = sourceEffects(tree);
+    const api = createApiInspector(tree);
+    const { effects } = api;
+    const deps = dependencies(tree, api);
+    for (const node of api.unknownComputed) failures.push(`${path} 无法审计的全局 API 计算属性: ${node.getText(tree)}`);
     if (jsx) {
       const pragmas = tree.pragmas.get("jsximportsource");
       const pragma = Array.isArray(pragmas) ? pragmas.at(-1) : pragmas;
@@ -79,14 +74,7 @@ export function inspectSources(root, files) {
         path !== "src/background/lexical/package-assets.js" && path !== "src/content/subtitles/youtube-main-bridge.js") failures.push(`${path} 直接使用 fetch；网络只允许 Provider，包资源只允许 lexical/package-assets.js`);
     if (effects.has("indexedDB") && path !== "src/background/cache-db.js") failures.push(`${path} 直接访问 IndexedDB；只能位于 src/background/cache-db.js`);
     if (effects.has("registerContentScripts") && path !== "src/background/auto-sites.js") failures.push(`${path} 注册动态 Content Script；只能位于 src/background/auto-sites.js`);
-    if (path === "src/content/subtitles/youtube-main-bridge.js") {
-      // The existing bridge wraps page.fetch but must never initiate another request.
-      function visit(node) {
-        if (ts.isCallExpression(node) && named(node.expression, "fetch")) failures.push(`${path} MAIN observer 不允许主动 fetch`);
-        ts.forEachChild(node, visit);
-      }
-      visit(tree);
-    }
+    if (path === "src/content/subtitles/youtube-main-bridge.js" && api.fetchCalls.size) failures.push(`${path} MAIN observer 不允许主动 fetch`);
     for (const dependency of deps) {
       const { specifier } = dependency;
       if (!specifier) { failures.push(`${path} 不允许无法审计的动态依赖`); continue; }

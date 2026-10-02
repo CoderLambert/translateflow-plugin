@@ -55,17 +55,62 @@ const negatives = [
   ["runtime test import", { "src/platform/bad.ts": 'import "../../tests/helper.js";', "tests/helper.js": "export const value=1;" }, /非 runtime/u],
   ["TS outside compiler include", { "src/new-area/bad.ts": 'indexedDB.open("illegal");' }, /IndexedDB/u],
   ["nested generated-name source", { "src/dist/bad.ts": 'fetch("https://invalid.test");' }, /直接使用 fetch/u],
-  ["MAIN observer initiates fetch", { "src/content/subtitles/youtube-main-bridge.js": 'page.fetch("https://invalid.test");' }, /MAIN observer/u],
+  ["MAIN observer initiates fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;page.fetch("https://invalid.test");' }, /MAIN observer/u],
   ["indirect shared API", { "src/shared/bad.ts": 'import "../background/api.js";', "src/background/api.js": 'chrome.runtime.getURL("x");' }, /shared 层/u],
   ["shared dependency on network owner", { "src/shared/bad.ts": 'import "../background/providers/api.js";', "src/background/providers/api.js": 'export const request=()=>fetch("https://invalid.test");' }, /shared 层/u],
   ["shared dependency on IDB owner", { "src/shared/bad.ts": 'import "../background/cache-db.js";', "src/background/cache-db.js": 'export const db=()=>indexedDB.open("cache");' }, /shared 层/u],
   ["non-UI JSX implicit React", { "src/background/bad.tsx": 'export const view = <div/>;' }, /React\/JSX/u],
   ["source TS syntax", { "src/platform/bad.ts": 'const value: = 1;' }, /syntax/u]
 ];
+const computedApiNegatives = [
+  ["const fetch key", { "src/content/bad.js": 'const api="fetch";globalThis[api]("https://invalid.test");' }, /直接使用 fetch/u],
+  ["const IndexedDB key", { "src/content/bad.js": 'const api="indexedDB";globalThis[api].open("illegal");' }, /IndexedDB/u],
+  ["const shared chrome key", { "src/shared/bad.js": 'const api="chrome";globalThis[api].runtime.getURL("x");' }, /shared 层/u],
+  ["const registration key", { "src/platform/bad.js": 'const api="registerContentScripts";chrome.scripting[api]([]);' }, /注册动态/u],
+  ["const MAIN fetch key", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const api="fetch";page[api]("https://invalid.test");' }, /MAIN observer/u],
+  ["global object and chained string aliases", { "src/content/bad.ts": 'const root=globalThis;const first="fet";const api=first+"ch";root[api]("https://invalid.test");' }, /直接使用 fetch/u],
+  ["SDK object alias", { "src/platform/bad.js": 'const sdk=chrome.scripting;const api="registerContentScripts";sdk[api]([]);' }, /注册动态/u],
+  ["computed destructuring alias", { "src/shared/bad.js": 'const key="chrome";const {[key]: sdk}=globalThis;sdk.runtime.getURL("x");' }, /shared 层/u],
+  ["MAIN fetch function alias", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const key="fetch";const request=page[key];request("https://invalid.test");' }, /MAIN observer/u],
+  ["unknown global computed key", { "src/content/bad.js": 'function read(key){return globalThis[key];}' }, /无法审计的全局 API/u],
+  ["shadowed key stays unknown", { "src/content/bad.js": 'const key="localMarker";function read(key){return globalThis[key];}' }, /无法审计的全局 API/u],
+  ["mutable SDK computed key", { "src/platform/bad.js": 'let key="runtime";chrome[key].getURL("x");' }, /无法审计的全局 API/u],
+  ["nested block restricted key", { "src/content/bad.js": 'const key="localMarker";{const key="fetch";globalThis[key]("https://invalid.test");}' }, /直接使用 fetch/u]
+];
+computedApiNegatives.push(
+  ["MAIN fetch apply alias", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const key="fetch";const original=page[key];original.apply(null,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["cyclic key aliases fail closed", { "src/content/bad.js": 'const first=second;const second=first;globalThis[first]("https://invalid.test");' }, /无法审计的全局 API/u]
+);
+negatives.push(...computedApiNegatives);
 for (const [name, files, expected] of negatives) test(`CLI rejects ${name} with exit 1`, () => {
   const result = runFixture(files);
   assert.equal(result.status, 1, result.output);
   assert.match(result.output, expected);
+});
+
+test("CLI allows unrelated data properties and shadowed local bindings", () => {
+  const result = runFixture({ "src/shared/data.js": `
+    const data={fetch(){return 1},indexedDB:{open(){return 2}},chrome:{runtime:1},browser:2,registerContentScripts(){return 3}};
+    const key="fetch";data[key]();data.indexedDB.open();data.chrome;data.browser;data.registerContentScripts();
+    function local(fetch,indexedDB,chrome,browser,globalThis){fetch();indexedDB.open();chrome.runtime;browser.runtime;globalThis[key]();}
+    const other="fetch";{const other="localMarker";globalThis[other]=1;}
+  ` });
+  assert.equal(result.status, 0, result.output);
+});
+
+test("CLI preserves approved owners and the exact existing MAIN request forwarder", () => {
+  const result = runFixture({
+    "src/background/providers/network.js": 'const key="fetch";globalThis[key]("https://invalid.test");',
+    "src/background/cache-db.js": 'const key="indexedDB";globalThis[key].open("cache");',
+    "src/background/auto-sites.js": 'const sdk=chrome.scripting;const key="registerContentScripts";sdk[key]([]);',
+    "src/content/subtitles/youtube-main-bridge.js": `const page=globalThis;
+      const GLOBAL="__test_main_bridge__";page[GLOBAL]={};
+      function installFetch(){const original=page.fetch;
+        const wrapper=function translateFlowYouTubeFetchWrapper(...args){return original.apply(this,args);};
+        page.fetch=wrapper;
+      }`
+  });
+  assert.equal(result.status, 0, result.output);
 });
 
 test("strict typecheck command rejects an actual type error", () => {
