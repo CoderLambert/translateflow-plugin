@@ -1,0 +1,729 @@
+{
+  "sourceHead": "b8252773bddf0ac4c8ebfc074416de82e1eece4f",
+  "mainBase": "b10c2b355896530f15f69ebad996afc490760ae7",
+  "source": "actual WXT production .output/chrome-mv3",
+  "algorithm": "sha256 of UTF-8 JSON.stringify(files), sorted by path; files use keys path,size,sha256",
+  "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+  "previousTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+  "fileCount": 143,
+  "totalBytes": 1371155,
+  "changed": [],
+  "removed": [],
+  "files": [
+    {
+      "path": "assets/components-CYc4TYaP.css",
+      "size": 8855,
+      "sha256": "6e22e82202514763f86ad80f1c8f74665a087ee3c58b269370804cd7754ef3d6"
+    },
+    {
+      "path": "assets/options-CIWOVSQW.css",
+      "size": 15506,
+      "sha256": "7d60c0e1aff09babc24c106de56ab178c2746928f6f95e5283dd0fd5caabe75b"
+    },
+    {
+      "path": "assets/popup-B-CBdjOq.css",
+      "size": 6464,
+      "sha256": "fda6364a5057ad6efc28e97af2d9e98cfbca5acb605b53dd260467fa3487472e"
+    },
+    {
+      "path": "background.js",
+      "size": 161209,
+      "sha256": "b758bdeac6be3b632f987c99d95018be6cc5b27942112528100c29373575ce03"
+    },
+    {
+      "path": "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "size": 18678,
+      "sha256": "58261331a67ca801a828175d74650f8b471849d2eb836e86aa406d40f358bc4b"
+    },
+    {
+      "path": "chunks/components-ChXIppP8.js",
+      "size": 837,
+      "sha256": "ea3c3e0d739d91b204472c5699ae0d9af59e1f50c76136f49359d22480454f39"
+    },
+    {
+      "path": "chunks/options-DAmZ4rmk.js",
+      "size": 175035,
+      "sha256": "1b751491657d550aefed36ed34ee4691add5fef810912b1cd8b708baa75be320"
+    },
+    {
+      "path": "chunks/popup-Bltt_5TY.js",
+      "size": 17889,
+      "sha256": "71db63e8872c91b5d24ba57d6f39e6819c31a91d4f770a7a1399e4239606b398"
+    },
+    {
+      "path": "chunks/rich-mdd-contract-DfuDmg2s.js",
+      "size": 134473,
+      "sha256": "f103fda6f73ff233c974cad6187889b65fb4d97a77913da0d2e4c457a40c22dd"
+    },
+    {
+      "path": "content.css",
+      "size": 2227,
+      "sha256": "8b4260cdc4380ac808837cca145e9d52696b287ea8292cbcdc65a0769d6159e8"
+    },
+    {
+      "path": "content.js",
+      "size": 7339,
+      "sha256": "8a2a5bcc1b9076fe8690ac219960f868efc67fc4b7881e0112bcb2885385e103"
+    },
+    {
+      "path": "manifest.json",
+      "size": 988,
+      "sha256": "20d9fa3ed1ff604d4d17c54833681fbdc501c05e0aea58729a1279994415cb59"
+    },
+    {
+      "path": "options.html",
+      "size": 21185,
+      "sha256": "825d66849ac10a4dbbbfabc8795acb7686eef5a8042001661003e400e41929cb"
+    },
+    {
+      "path": "popup.html",
+      "size": 4979,
+      "sha256": "267bdc63d7086ec8aa5be5c58012ef8cccdd793675b573551ac313c06f17df06"
+    },
+    {
+      "path": "src/background/lexical/lru.js",
+      "size": 1730,
+      "sha256": "e9caee7bc2d79ea40c498278eaf39a5636cf0bee610aca1d7d688b69bfc03bfd"
+    },
+    {
+      "path": "src/background/lexical/opfs-indexed-reader.js",
+      "size": 12750,
+      "sha256": "4b9662a5a9bceb7df290d83aadf29fd21252553715ac6de365c03c9f97ed113f"
+    },
+    {
+      "path": "src/background/lexical/tflex-integrity.js",
+      "size": 13893,
+      "sha256": "f42ac2ea0e84124db90ef21e2aeb1030933c50fce06eefef2ef76220548717d4"
+    },
+    {
+      "path": "src/background/packs/health.js",
+      "size": 5445,
+      "sha256": "8ca687da10a0690ae0d33895f58553f4dcb79d1780331a77eca4d649a089810e"
+    },
+    {
+      "path": "src/background/packs/importers/curated-local-adapter.js",
+      "size": 837,
+      "sha256": "4bf0eade90f64cca7bd4cbe7cfb716a4fa5765bc222013bb580838da55085683"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv-stream.js",
+      "size": 3221,
+      "sha256": "99e3c0f9a7409b117bebf3919ac75c840508e11cf6215fed2245c4f9b5d4a774"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv.js",
+      "size": 9001,
+      "sha256": "11153c0307e449fdd2e0c5c5b81b9c8af40c1f5e158a88396a2f2b83c808a02b"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-local-adapter.js",
+      "size": 1762,
+      "sha256": "596e66103aa6a96b4f43922bf650345a5c1ba3dc57c6adc068d011adc8f8166e"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip-layout.js",
+      "size": 12541,
+      "sha256": "9ec4ef2241e42398c91d7e90fd28acb3b95d980654d97f2e72616f6edf6a55cf"
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip.js",
+      "size": 12159,
+      "sha256": "2cc9bf9f209f548105ec7ec968b340ab62a2331f9269be0674fb462a6f2aff30"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-index.js",
+      "size": 9549,
+      "sha256": "15d8dd6f9ce2dbb46a0cb3aa7a58dbce9c5e3097474a738e9e2e4aa1fe152531"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-key-codec.js",
+      "size": 7122,
+      "sha256": "0a2b84059674c8bf2eeea7895882387a4bfcaf7d1014cdf75ea95acc86e477c3"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-lookup.js",
+      "size": 7100,
+      "sha256": "827738a5f929644f8ee29314021ecd4a8ce30538a779cda02d4e119a20b74803"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-metadata.js",
+      "size": 2631,
+      "sha256": "7b7b5eb781aedea6a5cb9f5798b33e4d42faa72c2b88909c787bfe3141c60707"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-query-budget.js",
+      "size": 4228,
+      "sha256": "ea561e7411ef08c01375917609e26f057f24b54108742b909003b628d40e4d51"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-path.js",
+      "size": 2307,
+      "sha256": "027ad8be0194f61229fd72fb59e4f980f8e9f3fa5ed1d5db1629a971089e9bf7"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-policy.js",
+      "size": 13069,
+      "sha256": "2fd5c586e0a06a60fe336d586ea73e8791a53e99f7dc531a1ed3501a64ac2ae2"
+    },
+    {
+      "path": "src/background/packs/importers/mdd-validation.js",
+      "size": 9451,
+      "sha256": "1fa6c41369cad865e111a9aa55a8e1f28e54c0a616e41a7c8f8a2efa3ae275f2"
+    },
+    {
+      "path": "src/background/packs/importers/mdd.js",
+      "size": 432,
+      "sha256": "b7578103b9702c5b0d2eda3ce4bc3d247d9b80a3bd9173709dc0df7b91b310dc"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-block-codec.js",
+      "size": 5454,
+      "sha256": "9b21492785a5ff6df6e21bb14fd669e020832dd58647b37341b3956a16dfd7bb"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-contract.js",
+      "size": 4246,
+      "sha256": "3461add9cfa4015c51fc936ca0a33f06190241fe8dced2ea637b1f739412e63d"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-core.js",
+      "size": 4434,
+      "sha256": "b81e1c22713f093dc01f86eca6cf0866a7e29e61e04ed177c87abdc99868cf28"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-key-section.js",
+      "size": 8654,
+      "sha256": "6e3c90dace1e40e763feaa0b9dc0d884f5c5793787e600941a0932effd007965"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-local-adapter.js",
+      "size": 2081,
+      "sha256": "2226c9f64de744212dec1988c3cfcfef576a0cfaf769c30d8ab7237858bcc7e7"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-metadata.js",
+      "size": 8358,
+      "sha256": "62ca7c380b9c942b6d727c723603005286ea1a9036fa7a88b9540583fe005c14"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-record-section.js",
+      "size": 3339,
+      "sha256": "2aea4bbc59ad06eb210efd399999b8a7b0e8a8212b03e0ddab7598e5f525c7b4"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-index.js",
+      "size": 11353,
+      "sha256": "61736d80f0a3a3d248e8c059157bfc2fb05459fd773ce30f4a4cf9540ae9bfc4"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-key-codec.js",
+      "size": 7195,
+      "sha256": "b6c57c22202698b43b2686c84b142286cc6bc734f8e9475a3fe74a8f795e21f6"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-lookup.js",
+      "size": 10912,
+      "sha256": "f1edd9187f94689313bf49290152ee439e11a5cb2de52ec53b42af6610cd6c70"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-metadata.js",
+      "size": 4986,
+      "sha256": "39ae641d00af7abd29567ddf8e4040cf9cfa7934bbcb308ce298ac72e6c1db74"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-query-budget.js",
+      "size": 5582,
+      "sha256": "d58c34ee69ae79deb17dfdc60c3beba0787a89fdf4f90968215a5f2146f3eec8"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-record-text.js",
+      "size": 5580,
+      "sha256": "3114a55afd239a754ec00fe1b19fdb2a2bbb12d4f506039ea07a67f985f489c1"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-source.js",
+      "size": 2057,
+      "sha256": "04af783a733541bdabbd443059fd01d7674ed092459d0286b52d5fc4b77defec"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-validation.js",
+      "size": 9066,
+      "sha256": "b9b1250d8ed78506a875dea8dc2297c4d277ad9102438b971bf462f3faa7e314"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich.js",
+      "size": 489,
+      "sha256": "9d4936f0d1feaf4c0e5b73c623302cb6ed422721375a7660910f77689220957b"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-ripemd128.js",
+      "size": 3263,
+      "sha256": "8933b7ecefcf18681312a1fbc33fd5e195591b5e9e9c5db19a87efaae8af4305"
+    },
+    {
+      "path": "src/background/packs/importers/mdict-semantic.js",
+      "size": 6163,
+      "sha256": "25f6112dc421d83066d2327a10d4c40037741fc398be389040063c4b94516c6a"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-binary.js",
+      "size": 9431,
+      "sha256": "18ead5764518390fa8fa07923ff44fe6ddad4f1a3a20550b0dcf86d3372dd060"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-browser-dictzip.js",
+      "size": 4411,
+      "sha256": "64fae7efd85c2ce63243c319093f37cbc17913f70fabba7408c65c3aa0c54b75"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-contract.js",
+      "size": 3603,
+      "sha256": "c94f7aab6d196b1e9395f768eda07cb2c9b13db2b83f056deb6072dc1542e524"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-core.js",
+      "size": 8277,
+      "sha256": "de38e56d338d3b612223f2f428cac850545f0b09e79e945a8a87eab2169b82bc"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-dictzip.js",
+      "size": 4051,
+      "sha256": "31a54d2743759044d2cf60c812927edd7bb3735a9950c6dba6289d999a4de0c5"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-local-adapter.js",
+      "size": 4976,
+      "sha256": "a1237a209765c4677f6715af468aaa5eef1091da8fc3b5651314a05c654b410f"
+    },
+    {
+      "path": "src/background/packs/importers/stardict-semantic.js",
+      "size": 6608,
+      "sha256": "d261cf7c646993b6ded4063ace4c670379792aab2ec2df7064eb274e7b25b551"
+    },
+    {
+      "path": "src/background/packs/importers/tflex-local-builder.js",
+      "size": 8026,
+      "sha256": "d34f1e83a6c1036c70add74eddd3ccab1c23638aa15814a0a9dc12565019f7c3"
+    },
+    {
+      "path": "src/background/packs/local-import-integrity.js",
+      "size": 6612,
+      "sha256": "8d503228ab8c95528fb69056ce65810a054c707fb44820beb200b4bbc01c5208"
+    },
+    {
+      "path": "src/background/packs/local-import.js",
+      "size": 11516,
+      "sha256": "95ada6cb3955ac3a972621ed555fc160e1871d1e403e67882c476f86cdb75a65"
+    },
+    {
+      "path": "src/background/packs/opfs-store.js",
+      "size": 9537,
+      "sha256": "48d26e8407176f2811d2d4e22326b4d84c1336e10e5ce178c0571457e8b424a3"
+    },
+    {
+      "path": "src/background/packs/rich-mdd-contract.js",
+      "size": 9504,
+      "sha256": "58e343ab87691940a92a0fe6296f977e1499c3172bc9cbaceb8baf5f68558908"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-catalog-replacement.js",
+      "size": 2925,
+      "sha256": "75d907615213a8e442e48f45198e5a9d992142ff4118610e4d6042310937faf7"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-contract.js",
+      "size": 13439,
+      "sha256": "d4e7744614196ad565e0f32fbe30b75c34354df48c153f5efe9665cbc2cc2661"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-install-preflight.js",
+      "size": 2572,
+      "sha256": "9d307ac4f4716d614cab315ee0840bf7394fe3b5c24cdad6cc3b985fa6afac92"
+    },
+    {
+      "path": "src/background/packs/rich-mdict-lookup-controller.js",
+      "size": 6354,
+      "sha256": "95f8ddf98f9af75a0e9567bf6d86d4f1039a93fe40b2fa37e0ada2ebab7e08cf"
+    },
+    {
+      "path": "src/background/packs/rich-mdict.js",
+      "size": 15216,
+      "sha256": "a0de1ba5026f7eff5e28d9c460b70eda827734a7c54b01b569c6d12aaa1c43eb"
+    },
+    {
+      "path": "src/background/packs/state.js",
+      "size": 2211,
+      "sha256": "f5fcedf26cf4082e2a76c030f4482906e3f143d83ae2a9c82cff4b1fb6829288"
+    },
+    {
+      "path": "src/background/providers/curated-dictionary-network.js",
+      "size": 994,
+      "sha256": "c94dfff2b9595abb28e5b76ce6cc1e77768458b3ad81ea2bebd462f3e732ef19"
+    },
+    {
+      "path": "src/content/appearance.js",
+      "size": 1831,
+      "sha256": "0864dc1b90b37961a88560f6b517bc3e7cf0736291af01e1a0bc7b556c06d70b"
+    },
+    {
+      "path": "src/content/auto.js",
+      "size": 11221,
+      "sha256": "c135aa3c1e5487d7d800df7b4f3cd8552aacb797aa9c833782a05fc01361aaeb"
+    },
+    {
+      "path": "src/content/batch.js",
+      "size": 2047,
+      "sha256": "acd63c976aa8999deda782537ceebaec3d97be04e98769dc35597783367600c3"
+    },
+    {
+      "path": "src/content/dom.js",
+      "size": 4346,
+      "sha256": "d2ea7e594d45c1dcfda8f455a77fd4dc74d10d0e5bf910edb68d314188363428"
+    },
+    {
+      "path": "src/content/processor.js",
+      "size": 7587,
+      "sha256": "365df9f75d4d153c577078459f077cd2407d64f05c1ff07dc78d30c66a8d2550"
+    },
+    {
+      "path": "src/content/quick-control-view.js",
+      "size": 13181,
+      "sha256": "8405ed26155fba256900a6bce1f04d5e14389f0c4f7bb326107b6507e110dd4c"
+    },
+    {
+      "path": "src/content/quick-control.js",
+      "size": 8392,
+      "sha256": "1754d89b6c148f2aea9bf836d3dab46b3087fce556c1ceb2ae61c040d22f1ddc"
+    },
+    {
+      "path": "src/content/runtime.js",
+      "size": 4971,
+      "sha256": "ce8c27194a16c48821c1e8b468133a6f9adbea02f59af66f8c8f0e94b2409221"
+    },
+    {
+      "path": "src/content/selection/ai-detail.js",
+      "size": 4172,
+      "sha256": "fa5dab53d2f09bea07a1fd8e6a6ae6e6d1300da8f35bb18a20784528ca6db37e"
+    },
+    {
+      "path": "src/content/selection/clipboard.js",
+      "size": 835,
+      "sha256": "308d899d9eea4b8ef422bdc80c0a3d68e410830e5b16cc3fc899a44fa6b676d4"
+    },
+    {
+      "path": "src/content/selection/context.js",
+      "size": 5411,
+      "sha256": "9f151508cbd50ed22a0e6f13468e662ab9d54228f885dcbce72899d02a4d6fd5"
+    },
+    {
+      "path": "src/content/selection/controller.js",
+      "size": 15029,
+      "sha256": "6af35ea30f74ded70dfca08ca3d6d7ece9a309b2041f1892655c1762e397fec6"
+    },
+    {
+      "path": "src/content/selection/empty-state.js",
+      "size": 2026,
+      "sha256": "6d2586c3d50e49fa7f5c1a76a50293551dd6531e5bf5bc6889e61e3ea3d51d14"
+    },
+    {
+      "path": "src/content/selection/messages.js",
+      "size": 1198,
+      "sha256": "7d5197e5455e6315beef9d05df8ffe76b95b66fb5b75e49612c65cc01e57dec0"
+    },
+    {
+      "path": "src/content/selection/popover.js",
+      "size": 12600,
+      "sha256": "0a3e1ab9c64c04097591b27cf3ba4d839ead421dad51c5ef0dadeeadf766acfd"
+    },
+    {
+      "path": "src/content/selection/result-model.js",
+      "size": 7086,
+      "sha256": "c43fa4b4f70d3f3c8531f69f6c0ee12693dbe221b7e80cdf9d29de22c9411fba"
+    },
+    {
+      "path": "src/content/selection/result-renderer.js",
+      "size": 16920,
+      "sha256": "e815cb083ff9b31cc31906c08cb693b727797c40c15b0afd8829678b5c6fc262"
+    },
+    {
+      "path": "src/content/selection/rich-details.js",
+      "size": 10706,
+      "sha256": "cbe65eb7df4695984e807ee5be0c5942ce95a1bc5b15f0142b2cd41cd467bcdd"
+    },
+    {
+      "path": "src/content/selection/rich-resource-path.js",
+      "size": 1127,
+      "sha256": "2904a8729673d84742a0d4af5a4e3bf292bbe1b0af0ebe31b940d71714cd27e8"
+    },
+    {
+      "path": "src/content/selection/rich-resource-resolver.js",
+      "size": 17292,
+      "sha256": "0da75284210fee4a791c580625638a098ab29d3fb37ce993177d04e67a5ed6cb"
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-style.js",
+      "size": 6859,
+      "sha256": "28efe3e509437f35b847acca6c4e4b7d6469efe442d4e946d5f8ff24bed285cf"
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-tokenizer.js",
+      "size": 14531,
+      "sha256": "14c7c1a436e582de9501d401708864f221b0b5de69532df7fb1bce59bf7d1fe4"
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer.js",
+      "size": 4976,
+      "sha256": "d4e829f7c3bbdaf7948ed2d23b6e7cb873c40cc389e848fe5e801fedb0079123"
+    },
+    {
+      "path": "src/content/selection/rich-viewer.js",
+      "size": 10232,
+      "sha256": "b8cd1308f65bb741f06e0ba3bced266716c4c4141b9581c0a1fbf7960f7f17b3"
+    },
+    {
+      "path": "src/content/selection/selection.js",
+      "size": 2810,
+      "sha256": "fcbbbaa87d73c81e85bea46d17dfb5f978503a0c40dc82efbc914c1d14a8629d"
+    },
+    {
+      "path": "src/content/structured.js",
+      "size": 4033,
+      "sha256": "4c42e1e0ee8f3490db5549aed7a65f52e9b46ce61f7c4dc1a58155351b16c70a"
+    },
+    {
+      "path": "src/content/subtitles/controller.js",
+      "size": 6346,
+      "sha256": "47dcf9550f7176f9ec165000eb746adaeb776a16e3a452a7fb62d7dd12f8b10c"
+    },
+    {
+      "path": "src/content/subtitles/pipeline.js",
+      "size": 12022,
+      "sha256": "221341927b09075262f354675a31cedbeb0055238334bb596692866bc6196b08"
+    },
+    {
+      "path": "src/content/subtitles/renderer.js",
+      "size": 7514,
+      "sha256": "e6ec10517e3591e867e37ffd090cf5347fb50a09ba72ad3c1bc456a7350de244"
+    },
+    {
+      "path": "src/content/subtitles/source.js",
+      "size": 3844,
+      "sha256": "6cecc7ea118f11bda4805b7685cbc8eb6af4fa87fc6c8dc308ec299e2516a1da"
+    },
+    {
+      "path": "src/content/subtitles/sources/text-track.js",
+      "size": 5401,
+      "sha256": "9fcec962a138055c74f4ba5a2958e77ba9038632d8a428d7eeae3519d0002971"
+    },
+    {
+      "path": "src/content/subtitles/sources/youtube.js",
+      "size": 15153,
+      "sha256": "4cffd11d63529bb0bb229c7d4952e1e6642007c888f0767c343e6dd4fc1fcae5"
+    },
+    {
+      "path": "src/content/subtitles/youtube-bridge-protocol.js",
+      "size": 6642,
+      "sha256": "4bdbb5df0748dae124264ccaa72594cdab1d2d8df544beea063b11d84ed37d1b"
+    },
+    {
+      "path": "src/content/subtitles/youtube-main-bridge.js",
+      "size": 15010,
+      "sha256": "6707d04d73fe5a2b20d7b5ea6dc5c0778b6d4016e8da015679e09e5e0074a76a"
+    },
+    {
+      "path": "src/content/subtitles/youtube-timedtext.js",
+      "size": 8538,
+      "sha256": "c529ecdd04da8815cfe45fa95ee8f4661b99c83563c736dccbba06f5e218e8c0"
+    },
+    {
+      "path": "src/content/tasks.js",
+      "size": 5729,
+      "sha256": "07ad9844615998e71414187b96a7ce0275084f3f6641ce33eb39b838a5ca3beb"
+    },
+    {
+      "path": "src/content/ui/host.js",
+      "size": 2166,
+      "sha256": "35ec3d804b4d733f5e0a6984ed63e7f826360b3e2ae07c7ea40941a293babe75"
+    },
+    {
+      "path": "src/content/ui/primitives.js",
+      "size": 3639,
+      "sha256": "6a4c1a8c4881ca6e777b2edfcc25b0030a88991a60cf623fb037dd68aaa1c813"
+    },
+    {
+      "path": "src/content/ui/quick-control-styles.js",
+      "size": 8862,
+      "sha256": "ef9ba4383dce29283b1858ec1e9fe24c3fc428c0856a564442b3226608e8ef65"
+    },
+    {
+      "path": "src/content/ui/selection-ai-detail-styles.js",
+      "size": 945,
+      "sha256": "552741c1584ba7d44943543e8b00562fc735b397e8654afbc193d6e9c2c1e5c4"
+    },
+    {
+      "path": "src/content/ui/selection-empty-state-styles.js",
+      "size": 648,
+      "sha256": "492867cd7a29425353eb790321282289f6319abcbfee7c10cfdb7572939bbeb9"
+    },
+    {
+      "path": "src/content/ui/selection-lexical-styles.js",
+      "size": 5804,
+      "sha256": "18d19bd69e7e117f0d5b84af1432f0ff914aeeb6901a2e934d0829e6010d5d2d"
+    },
+    {
+      "path": "src/content/ui/toast.js",
+      "size": 1479,
+      "sha256": "dace3f296fe5f56636d5d5ada8e8129d8e5f4355aa24d2d0551183cecc314604"
+    },
+    {
+      "path": "src/content/ui/tokens.js",
+      "size": 11642,
+      "sha256": "23756947686784371c1d2002759562f859f6e2173b5b934e20a7977dca384f2d"
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-core.js",
+      "size": 7041,
+      "sha256": "a2b9b0d964932931b945bc6d370f5bf3e093f1a3080bb1fd41908e242e2a832b"
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-protocol.js",
+      "size": 251,
+      "sha256": "3903738f414ba9ae97bb6dea1f72c38e4d128c5b7509dee48a0827a4cb176fc5"
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker.js",
+      "size": 591,
+      "sha256": "b663812aa1fd5fc869e0d1ef6dd35da00e2695a21c1b70dab631f1c282bb68d2"
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-core.js",
+      "size": 4885,
+      "sha256": "b257a19c857d61304484c3d35e6ad767da8a5041956b5fa98a9d84e36c9692d0"
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-protocol.js",
+      "size": 262,
+      "sha256": "e62209e66c91bff26b934aa9df72e083f981b7d19f60fbea8fb3c003b5a1b43d"
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker.js",
+      "size": 580,
+      "sha256": "e2164b3cb03b99995cc826e98e0f24a627b668f744dd77740fce0ce09c34a2a7"
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-core.js",
+      "size": 8606,
+      "sha256": "f419d947598a9df5560abbdd3671468a45f8cb3495c779fd01df113d44c8ea31"
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-protocol.js",
+      "size": 261,
+      "sha256": "2eef4a9f93c1cfd755af04cce007870dd2531ca105a32672ed5738821de7c342"
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker.js",
+      "size": 603,
+      "sha256": "dda6fdfea2dc126d420230663aea4d2d5c8fd7a95ab8934253adb5a8ad7981c5"
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-core.js",
+      "size": 5441,
+      "sha256": "ccc8a5d32e3ff83315051bb8c614ebdb089e0c4573b64ea8e689f313f501b511"
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-protocol.js",
+      "size": 219,
+      "sha256": "92110481d286e63ecd10a917e88d171b392dcb46230e49faeb34acf2e63e548e"
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker.js",
+      "size": 587,
+      "sha256": "e1ef09616510fe4a5c0eeeec79a4cd01b7224e80048dc41ecf4258699c4d6c9a"
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-core.js",
+      "size": 8661,
+      "sha256": "7e68042e0eee1f71a2739fdef8c12dc20f471aa2cb15064d1d52cb30710ddec2"
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-protocol.js",
+      "size": 249,
+      "sha256": "02b4f697fed44396eaef7237da48eca6cf9389b192765410ddd41262db7c5ebe"
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker.js",
+      "size": 597,
+      "sha256": "9fee473b584190abccedf201c16f37c1c98085593345a680747963467d0f9591"
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-core.js",
+      "size": 7164,
+      "sha256": "e8a9f4220a79764c666ac1e468e2f1819c7814d85f7bb03f4a3195171581dbff"
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-protocol.js",
+      "size": 526,
+      "sha256": "c288611c47c34b16a7ba7d75061809ceb71e0306c563c5faca184820647bc5c3"
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker.js",
+      "size": 615,
+      "sha256": "a08602e87786ceba127d93f076e683d6ba1b15800e72d18bd1348c5c50589a9b"
+    },
+    {
+      "path": "src/shared/curated-dictionaries.js",
+      "size": 7962,
+      "sha256": "ef20d116b1ced1a31c48e4ea024ce3df7fabfd32d749e40beb757554d0809c63"
+    },
+    {
+      "path": "src/shared/curated-ecdict-mdx-recipe.js",
+      "size": 6300,
+      "sha256": "5ddf13cf89dee884c5ca227d9a6bcfe60e9a5bb167b46f5ee58608d453fba24e"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-artifacts.js",
+      "size": 5979,
+      "sha256": "f0f1f74b80ef17b033e28013c8d60edd8944b719d9813d8b27418f517cfbc040"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-entries.js",
+      "size": 6375,
+      "sha256": "d97946911e3d93b55ebfc7f8ef0d6f0b1d7daf7d3397347cd8f86846b5c99063"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-schema.js",
+      "size": 13186,
+      "sha256": "e7d5b2ec6bf50116d50561e72946482defff204aebc6a9c04bc88b635d073971"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-utils.js",
+      "size": 4347,
+      "sha256": "c64f255e6ffb7557a550f263d4560741801ef8e0a579dfc5a034bfcb549a76af"
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2.js",
+      "size": 9934,
+      "sha256": "30b8ae3927b20e7972c2efe37af1a62fbb026169edd125d983cd14b5f7be7704"
+    },
+    {
+      "path": "src/shared/import-quarantine-contract.js",
+      "size": 3657,
+      "sha256": "f593d13f9658c494528e4c287d3a46c4f9240995222eeb1c62fadf40efbbb361"
+    },
+    {
+      "path": "src/shared/lexical.js",
+      "size": 2303,
+      "sha256": "ad3f01536fedb2c6aa9294a3b82f21741a9b05b46f0221e4e64fc401a298181e"
+    },
+    {
+      "path": "src/shared/opfs-import-quarantine.js",
+      "size": 10776,
+      "sha256": "c97adc94f0004e5a9e45da7a254716a215ef52df960efc4b82b57e544a89c0dc"
+    },
+    {
+      "path": "src/shared/pack-manager.js",
+      "size": 2027,
+      "sha256": "00144f93b4164b47fd8c985fc0aa543a98cc251bd977a5d9800a82455da92b42"
+    }
+  ]
+}
