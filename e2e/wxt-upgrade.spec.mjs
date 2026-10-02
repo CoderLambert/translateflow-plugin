@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
-import { expectedUpgradeSnapshot } from "./support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot } from "./support/upgrade-expectations.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
@@ -141,7 +141,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await expect.poll(()=>driver.evaluate(async()=> (await chrome.scripting.getRegisteredContentScripts()).length)).toBe(1);
     const before=await snapshot();
     expect(before.storage.uiLocale).toBe(existingUiLocale);
-    const expectedAfter=expectedUpgradeSnapshot(before);
+    expect(Object.hasOwn(before.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
     expect(before.databases).toEqual([expect.objectContaining({name:"ai_bilingual_translator",version:2})]);
     expect(Object.keys(before.databases[0].stores).sort()).toEqual(["pages","selection_explanations","translations"]);
     expect(before.databases[0].stores.translations).toHaveLength(3);
@@ -153,7 +153,11 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await rm(extensionDir,{recursive:true,force:true});
     const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl});
     await launch();
-    const after=await snapshot(); expect(after).toEqual(expectedAfter);
+    const after=await snapshot(); assertUnchangedUpgradeSnapshot(before,after);
+    await expect(driver.locator("#uiLocale")).toBeVisible();
+    await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
+    const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(before,afterLocaleDisplay);
+    expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
     phases.push({phase:"WXT",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,snapshot:summary(after)});
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
@@ -185,7 +189,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await inject(stale); expect(await content(stale,{type:"ABT_STATUS"})).toMatchObject({ok:true});
     expect(server.calls).toHaveLength(1);
     const afterRecovery=await snapshot();
-    expect(afterRecovery.storage).toEqual(expectedAfter.storage); expect(afterRecovery.opfs).toEqual(before.opfs);
+    expect(afterRecovery.storage).toEqual(before.storage); expect(afterRecovery.opfs).toEqual(before.opfs);
     expect(afterRecovery.registrations).toEqual(before.registrations);
     // Cache read metadata is expected to change only after actual cache use.
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
@@ -195,7 +199,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(server.calls).toHaveLength(1); expect(externalOrigins).toEqual([]); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
-      productionKeyChanged:false,phases,uiLocale:{before:existingUiLocale??"ABSENT",after:after.storage.uiLocale},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
+      productionKeyChanged:false,phases,uiLocale:{before:existingUiLocale??"ABSENT",after:after.storage.uiLocale??"ABSENT",uiValue:existingUiLocale??"auto",implicitStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
       unauthorizedProviderCalls:0,externalRequests:0,backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");

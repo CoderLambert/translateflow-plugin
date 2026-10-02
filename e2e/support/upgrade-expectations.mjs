@@ -1,6 +1,7 @@
-// #249 adds this one missing setting. Every existing value and all non-storage
-// snapshot fields remain subject to exact old→WXT equality.
-export function expectedUpgradeSnapshot(before) {
-  return {...before,storage:Object.hasOwn(before.storage,"uiLocale")
-    ? before.storage : {...before.storage,uiLocale:"auto"}};
+import assert from "node:assert/strict";
+
+// Replacing unpacked bytes at the same version does not observe an onInstalled
+// update. UI defaults must therefore not authorize any storage mutation.
+export function assertUnchangedUpgradeSnapshot(before, after) {
+  assert.deepEqual(after, before, "Same-version replacement must preserve the complete stored snapshot");
 }
