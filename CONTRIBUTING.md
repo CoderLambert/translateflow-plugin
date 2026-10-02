@@ -115,7 +115,8 @@ TranslateFlow 的开发任务以 GitHub Issue 为执行单元。开始编码前�
 - shared contracts/pure helpers: `src/shared/`
 - Provider/network: `src/background/providers/`
 - effective config: `src/background/config.js` + `src/shared/provider-config.js`
-- IndexedDB: `src/background/cache-db.js`
+- translation cache IndexedDB: `src/background/cache-db.js`
+- independent ReadingRecord IndexedDB: `src/background/reading-record/idb.js`; other Reading backend modules call this adapter, while Content and extension UI use the v2 background messages. Consent/exclusions live only in Reading meta; cache and dictionary OPFS remain separate. The source checker allows only these two exact direct IndexedDB owners and rejects frontend runtime dependency chains into the Reading adapter.
 - dynamic site scripts: `src/background/auto-sites.js`
 - DOM extraction/render: `src/content/dom.js`
 - batching: `src/content/batch.js`

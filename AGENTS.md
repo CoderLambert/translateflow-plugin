@@ -71,6 +71,7 @@ GitHub Issue 定义任务目标，代码与测试说明现有行为，架构文�
 | `src/background/` | 路由、有效配置、任务协调、持久化与扩展生命周期 |
 | `src/background/providers/` | Provider adapter、外部 HTTP、超时与重试 |
 | `src/background/cache-db.js` | IndexedDB、翻译缓存身份及兼容性 |
+| `src/background/reading-record/` | Reading 权限与会话、独立历史仓库；只有 `idb.js` 直接访问该库 |
 | `src/background/auto-sites.js` | 动态 Content Script 注册与站点权限 |
 | `src/background/lexical/` | 本地词典查询、来源与词典生命周期相关逻辑 |
 | `src/content/` | 页面提取、批处理、任务状态、缓存优先编排与增量观察 |
@@ -85,7 +86,7 @@ GitHub Issue 定义任务目标，代码与测试说明现有行为，架构文�
 
 - `src/shared/` 保持纯合同/纯函数，不访问 `chrome.*`，不承载 UI 或后台副作用。
 - 外部 HTTP 放在 `src/background/providers/`；现有 extension-package 读取是限定为 `chrome.runtime.getURL` 本地资源的例外，不可扩展为任意网络请求。
-- IndexedDB 访问只放在 `src/background/cache-db.js`；词典 OPFS 等已有存储通道继续遵循其独立契约，不混入翻译缓存。
+- 翻译缓存 IndexedDB 访问只放在 `src/background/cache-db.js`；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。Reading 的授权与站点排除只有该库 meta 一个事实来源，Content/Popup/Options/学习中心通过后台消息调用，不直接或间接引入存储 adapter。词典 OPFS 等已有存储通道继续遵循其独立契约，不混入翻译缓存或 Reading 历史。
 - 动态脚本注册只放在 `src/background/auto-sites.js`；根入口保持薄层。Content Script 保持现有 classic-script 加载方式，不直接引入模块导入或 bundler 假设。
 - Runtime message value 集中定义；新增消息同步更新发送方、路由、校验、响应和测试，不在多个 UI 中复制字符串或逻辑。
 - Provider 调用和缓存读写必须使用同一份 Effective Translation Config。站点配置只存覆盖值，凭据仍由 Provider 配置统一管理。
