@@ -1,0 +1,54 @@
+{
+  "node": "v24.21.0",
+  "platform": "linux",
+  "arch": "x64",
+  "fixture": {
+    "records": 10000,
+    "snapshotsPerRecord": 1,
+    "artifactsPerRecord": 3,
+    "contextUtf16": 900,
+    "definitions": "6 x 120 UTF-16 mixed-language",
+    "translationUtf16": 300,
+    "answerUtf16": 700
+  },
+  "storage": {
+    "totalBytes": 61324186,
+    "averageRecordAggregateBytes": 6132.4,
+    "largestArtifactBytes": 1479,
+    "capacityUtilization": 0.9138,
+    "countAtByteLimitForThisShape": 10943,
+    "accountingMedianMs": 502.268,
+    "validationMedianMs": 634.132
+  },
+  "projection": {
+    "sliceNodes": 500,
+    "sliceUtf16": 15549,
+    "sliceMedianMs": 2.505,
+    "sliceMaxMs": 4.715,
+    "totalNodes": 25000,
+    "totalUtf16": 977499,
+    "totalMedianMs": 339.94,
+    "timeBudgetMayStopBeforeCharLimit": true
+  },
+  "markers": {
+    "count": 200,
+    "dtoBytes": 42022,
+    "medianMs": 0.06
+  },
+  "validityChecks": {
+    "iterations": 10000,
+    "operationMedianMs": 21.786,
+    "handoffMedianMs": 16.672,
+    "operationTtlMs": 600000,
+    "handoffTtlMs": 60000
+  },
+  "digestCheck": {
+    "length": 64,
+    "pageKeyExampleFormat": "rp1"
+  },
+  "limitations": [
+    "Synthetic Node experiment; no DOM layout, browser timing, IDB transaction, browser quota or provider calls measured.",
+    "Time budget is a yield/stop rule, not a guarantee to finish the character/node ceiling.",
+    "TTL values are conservative policy windows; boundary rejection is executable, not browser lifetime evidence."
+  ]
+}

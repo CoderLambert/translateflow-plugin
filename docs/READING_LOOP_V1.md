@@ -1,0 +1,173 @@
+# Reading Loop v1 contract
+
+Code-side source of truth for #230 and Release A of #229. Product evidence and the B1–B7 review remain in [#229](https://github.com/CoderLambert/translateflow-plugin/issues/229). Platform ownership remains in #191/#245; this contract does not activate Releases B–D, #237–#244, or platform follow-ups.
+
+## Scope and compatibility
+
+Release A delivers explicit query → consent → committed local record → React learning center view/search/pause/delete/export (#236). Existing dictionary, Provider, cache, subtitles and Node regressions remain independent. Cache hits from a **current explicit query** may produce a record; scanning cache never creates history. Viewing history reads snapshots only: no Provider, dictionary reload or lookup increment.
+
+Shared modules under `src/shared/reading/` are pure ESM. Content remains classic scripts; #231/#234 use the existing loader/bridge rather than importing ESM into Content. #233 owns a separate ReadingRecord repository and its precise storage/check/documentation exception. This task does not open a database, change cache schema, add permissions or install a framework. Records are never put into the translation/selection cache.
+
+Schema version is integer `1`; source projection is `tf-source-utf16-v1`; item grouping is `ri1`. Unknown fields, unsupported versions and oversized values fail closed. v1 has no import operation. Future storage upgrades preserve old immutable snapshots/results and original projection versions; read adapters must understand a version before writing it. Unknown newer rows stay untouched and return `READING_UNSUPPORTED_VERSION`, rather than being deleted or rewritten. A failed upgrade leaves the old data intact. Downgrade must not clear an unfamiliar Reading store. Physical database name/version/store layout are #233's narrow responsibility, independent of cache migration.
+
+## Frozen models
+
+All timestamps are nonnegative safe-integer epoch milliseconds. All counters/generations are safe integers. `recordId` is a backend-generated UUID (new records use UUID v4). Other IDs are opaque, bounded to 120 ASCII identifier characters. Digests are lowercase SHA-256 hex. Limits are UTF-16 code units unless explicitly bytes. Nullable fields are explicit `null`, never silently omitted.
+
+| Model | Required v1 fields |
+| --- | --- |
+| ReadingRecord | `schemaVersion`, `recordId`, `revision` (≥1), `itemKey`, `itemText`, `sourceLanguage`, `pageKey`, `safeReturnUrl` (nullable), `pageTitle`, `anchor`, `firstSeenAt`, `lastLookupAt`, `lastViewedAt` (nullable), `lookupCount` (≥1) |
+| SourceSnapshot | `schemaVersion`, `sourceSnapshotId`, `selectedText`, `contextText`, `contextMode`, `sourceDigest`, `projectionVersion`, `documentGeneration`, `selectionGeneration` (≥1), `anchor`, `capturedAt` |
+| ResultArtifact | `schemaVersion`, `artifactId`, `recordId`, `operationId`, `sourceSnapshotId`, `kind`, `targetLanguage`, `createdAt`, `payload`, `provenance` |
+| Anchor | `status`, `quote: {exact,prefix,suffix}`, `position: {start,end}` (nullable), `blockDigest` (nullable) |
+
+Record timestamps describe actual committed queries, not cache creation time. `lastViewedAt` is separate and never increments `lookupCount`. Record metadata and current location evidence may advance revision; snapshots/artifacts are immutable rows. A snapshot row has a repository-owned record relationship, even though the public SourceSnapshot object does not carry a caller-controlled `recordId`.
+
+`itemKey = 'ri1:' + JSON.stringify([sourceLanguage.trim(), NFC(selectedText).ASCIIWhitespaceCollapse().trim()])`. It preserves case: US/us and React/react remain distinct. Item grouping is for aggregation/search, not record deduplication. `kind`, technical classification and target language are excluded; target language belongs to each artifact. Original `itemText`/`selectedText` retain the captured projection text.
+
+A stable recordId never derives from quote, position or anchor fingerprint. Same page/text at another Range increments selectionGeneration and captures another context. `sameProvenLocation` permits reuse only with the same controlled document generation, pageKey, resolved position, full quote evidence and block digest; undefined document identities cannot match. Across navigation or DOM movement, only a newly unique, fully verified anchor result may authorize reuse. Unknown/ambiguous location produces a distinct record rather than silently merging contexts. `recordId` plus expected revision does not itself authorize reuse.
+
+`sourceDigest = SHA256(JSON.stringify([projectionVersion, selectedText, contextMode, contextText]))`. Backend recomputes it against its registered immutable snapshot before commit; syntactic validation alone is insufficient. Snapshot capture occurs at **explicit query start**, never after a result arrives. `contextMode` is `selection-only` (empty context) or `bounded-context` (nonempty authorized context). Changing context scope creates a new snapshot/branch. Snapshot IDs cannot be overwritten with different content.
+
+| Artifact kind | Payload and provenance |
+| --- | --- |
+| dictionary | `payload: {outcome: 'hit'|'no-hit',headword,phonetic,partOfSpeech,definitions}`. A hit requires at least one bounded definition and attributable provenance. No-hit has an empty definition array. `provenance: [{sourceId,packId,packVersion,sourceEntryId}]`. No fabricated phonetic/POS. |
+| translation | `payload: {text}`; `provenance: {provider,model,promptVersion,providerConfigFingerprint}`. The fingerprint is opaque; no endpoint, credential or full config. |
+| assistant | `payload: {userQuestion,assistantAnswer,action,threadId,turnId,parentTurnId,branchId,regenerationOf,completionStatus}`; same bounded Provider provenance as translation. `action` is understand/analyze/usage/follow-up; completionStatus is `completed`. |
+
+Assistant question and answer are the **actual sent question and displayed complete answer**, tied to sourceSnapshotId. parentTurnId and regenerationOf reference turns in the same thread and snapshot; self references, missing references, cycles and changed source are invalid. Follow-ups keep their parent branch. Regeneration starts a new branch; old follow-ups remain attached to the old answer. Choosing current-page context starts a new snapshot and thread/branch instead of reparenting old answers. Release A saves the existing completed Explain result in this schema; it does not implement streaming or follow-up UI.
+
+Dictionary snapshots contain only reliable display summaries and minimal source/version identifiers. Raw MDX HTML, CSS, images/MDD resources and paths are excluded. If rich content has no reliable summary, do not invent structured candidates or AI evidence; keep the current query readable and return not-saved with a usable explanation. Errors/cancellation create no empty record. A truthful local no-hit may be saved. Partial/failed/cancelled AI remains in the current card and is not a completed history artifact. Any saved output remains untrusted text; HTML/Markdown scripts, dangerous schemes and automatic remote images are forbidden in views.
+
+`RecordDetail = {record,snapshots,artifacts}` is independently readable offline after the dictionary/Provider becomes unavailable. References, record identity and selected text must agree. It has ≤256 snapshots and ≤256 artifacts. Reaching either per-record ceiling rejects further append with `READING_CAPACITY`; it does not overwrite old answers. Full details are user-requested, not automatic page broadcasts.
+
+## Source Text Projection and anchors
+
+The pure `projectSourceSegments` is a reference contract for adapter tests. The DOM adapter in #231 supplies ordered visible source segments, exclusion decisions and node identities, with its own bounded/yielding walk. A production adapter must stop/yield before its slice/time/node budget; calling the reference projector for a whole unbounded document is not a production scanner.
+
+1. Use visible original light-DOM text in document order. Exclude TF UI/generated translations, script/style/noscript/template, form/editable/sensitive content, hidden/aria-hidden and computed nonvisible ancestors. Do not traverse hidden ancestors merely because a descendant looks visible.
+2. Inline boundaries add **no** implicit space (`Re<strong>act</strong>` → `React`). Collapse ASCII space/tab/CR/LF/form-feed runs into one ASCII space; trim at document/block edges. Preserve NBSP, case, combining marks and Unicode text exactly. Do not NFC-normalize projection text. A block boundary inserts one synthetic `\n`; `<br>` is treated as a boundary. Nested/consecutive boundaries do not add repeated separators. Rendered whitespace rules not representable by this v1 projection explicitly degrade rather than silently shifting offsets.
+3. Offsets are JavaScript/DOM UTF-16 units, end-exclusive. Emoji surrogate pairs use two units; combining characters retain separate units. These are **not W3C TextPositionSelector code-point offsets** and no W3C interoperability is claimed.
+4. The reference mapping has one entry per projected UTF-16 unit: `{start:{nodeKey,offset},end:{nodeKey,offset}}`; collapsed whitespace spans first-to-last consumed source offsets, including different nodes. Synthetic block separators map to `null`. DOM Range boundaries map through the adjacent real entries; a selection containing only unmapped separators is unsupported. The adapter keeps reverse node-offset → projection mapping (collapsed whitespace maps to the same projection unit); never reuse indexes from raw/cleaned strings.
+5. Capture TextQuote exact/prefix/suffix, optional position hint, block SHA-256 and snapshot version at query start. A resolved capture requires position and blockDigest, exact equals selectedText, and position span equals selectedText.length. When original mapping is unavailable (including generated translations), use unsupported with quote plus nullable hints; do not invent original coordinates.
+6. Recovery searches exact quote and validates available prefix/suffix/block evidence. Position is only a hint and must be revalidated. Only one trusted matching context resolves; duplicate matches are ambiguous. No automatic fuzzy matching or first-match shortcut. Node replacement/navigation invalidates an existing Range, then a bounded resolver may rebuild it without rewriting historical snapshots.
+
+Location states: `resolved / ambiguous / missing / not-loaded / unsupported / permission-required`. Scope is ordinary HTML/light DOM. Closed ShadowRoot, cross-origin frame, Canvas, PDF/video and virtual text not loaded are unsupported/not-loaded. Cross-ShadowRoot/slot sensitivity uncertainty is fail-closed for automatic persistence; it is not represented as reliably safe. Location failure does not erase a successfully queried summary.
+
+## Business DTOs and response contract
+
+Every request contains `{schemaVersion:1,method,...body}`. The canonical method values live in `src/shared/reading/constants.js`; #232's router wiring references these constants, not copied strings. Extra sender/identity/permission fields are rejected. `validateReadingRequest` returns a fresh validated object and never decides actual sender authority. The service validates every message and trusted runtime context separately.
+
+| Method | Request body | Success data |
+| --- | --- | --- |
+| begin-query | `operationId,purpose:'lookup'|'assistant',sourceSnapshot,pageKey,safeReturnUrl,pageTitle,itemText,sourceLanguage,recordId:null|UUID,recordRevision:null|≥1` | `{state:'ready',token}` or `{state:'disabled'}`; no record yet |
+| save-query-result | `token,artifact` (token purpose lookup) | `{state:'saved',recordId,revision,artifactId,duplicate}` after commit acknowledgement |
+| append-assistant | `token,artifact` (assistant kind/purpose) | same saved receipt; existing record count is unchanged |
+| get-page-summary | `cursor:null|string,limit:1..100` | `{items:[minimal page summaries],nextCursor}` using sender's page only |
+| get-record | `recordId` | RecordDetail, after record's actual page/access check |
+| list-records | `pageKey:null|key,query:'',cursor:null|string,limit:1..100` | `{items:[record metadata],nextCursor}`; recent/page/basic substring search |
+| get-recording-state | empty | `{enabled,consentGeneration,dataGeneration,recordCount,totalBytes,capacityReached}`; Content gets only enabled/capacity/consent state, never global counts |
+| set-recording | `enabled,expectedConsentGeneration` | updated state after committed consent change |
+| delete-record | `recordId,expectedRevision` | `{deleted:true}` after record/artifacts/snapshots invalidation commit |
+| delete-page | `pageKey` | `{deletedCount,pageGeneration}` after atomic page invalidation |
+| clear-records | `expectedDataGeneration` | `{deletedCount,dataGeneration}` after atomic global invalidation |
+| export-json | empty | `{format:'translateflow-reading',schemaVersion:1,exportedAt,records:[RecordDetail]}`; trusted extension only |
+| create-handoff | `recordId,expectedRevision` | `{state:'ready'|'permission-required'|'unsupported'}`; future B only |
+| consume-handoff | `handoffId` | page-scoped minimal location evidence for the matched tab/document; future B only |
+
+`token = {operationId,purpose,consentGeneration,dataGeneration,pageGeneration,pageKey,documentGeneration,selectionGeneration,recordId,recordRevision,issuedAt,expiresAt}`. New-record tokens use revision 0. Tokens are **backend-issued and registered**, not authorization merely because a caller submits valid syntax. Identical operationId begin retries must match immutable snapshot digest, purpose, page and sender; a conflicting reuse fails stale-operation. Query/AI execution itself remains independent of storage availability and consent.
+
+All service responses use `{ok:true,data}` or `{ok:false,error:{code}}`; paths may be included in local diagnostics without original content. User interfaces translate codes to actionable text and distinguish disabled/saving/saved/not-saved. Read paging is stable by `(lastLookupAt DESC,recordId ASC)`; cursors are opaque, bound to query/page/access plus data generation, ≤256 chars. A mutation invalidates old cursors so callers refresh instead of silently omitting items. Search is bounded literal case-insensitive text over selected text/page title/retained plain summaries; it has no regex execution, Provider call or dictionary read. Detail retrieval may update viewed metadata separately after access validation, never lookupCount.
+
+Export is a consistent committed snapshot of record/source/artifact rows, with no operation tokens, receipts, credentials or permissions. It stays local and warns that it contains private selected text/questions/answers. #233 must avoid a mixed-before/after-clear export; if a consistent snapshot cannot finish, fail/interrupted and offer retry. Worker interruption never reports a partial JSON file as successful. Browser profile deletion, uninstall or storage failure can lose local history; export is the user's backup, not an upload. Import/merge is deferred.
+
+Errors are `READING_BAD_DTO`, `READING_LIMIT`, `READING_UNSUPPORTED_VERSION`, `READING_FORBIDDEN`, `READING_DISABLED`, `READING_STALE_OPERATION`, `READING_REVISION_CONFLICT`, `READING_NOT_FOUND`, `READING_CAPACITY`, `READING_STORAGE`, `READING_QUOTA`, `READING_INTERRUPTED`, `READING_UNSAFE_URL`, `READING_HANDOFF_EXPIRED`. Capacity is an application policy; QuotaExceededError is a real storage failure even below policy limits. Neither becomes saved/no-hit. Unsupported location is a location state, not a reason to discard an otherwise safe result.
+
+## Consent, access and URL boundaries
+
+Three independent intentions: local query recording, site automatic markers (`readingMemorySites`), and each AI upload. Default recording is disabled; Enable/Not now are explicit. Refusal does not break lookup/translation/AI. Enable may save the still-current displayed result using a **fresh** token; it never backfills older queries. Pause retains history and invalidates in-flight writes; Resume issues a new consentGeneration. Closing site markers neither pauses records nor revokes shared site permissions.
+
+Background derives identity from actual sender tab/frame/document/URL/incognito, plus its controlled generations. Chrome documentId is available on 106+; for the current 102–105 compatibility floor use backend-owned main-frame generation invalidated by existing tabs.onUpdated loading/navigation events and a verified current-document handshake, never a page-supplied document identity. This fallback needs no new tabs/webNavigation permission; lower frames or uncertain navigation ownership are denied/unsupported. If generation ownership cannot be proved (including worker restart), reject stale operations and reestablish an explicit session. No missing field bypass. `ownerToken` used for rich dictionary cancellation is not a Reading authorization token.
+
+Content can begin/save/append, obtain its page summary, obtain a matching-page detail after explicit user action, inspect minimal recording state, and later consume its bound handoff. The actual stored record pageKey is checked, not just a message.pageKey. Content cannot list/export/enumerate other pages or mutate global consent/delete controls. The React learning center gets global capabilities only from the exact extension page `learning-center/index.html` and correct extension origin; another extension page/origin is not automatically trusted. If the approved WXT output changes this path, #248/#235/#232 must update that **exact** allowlist together. Popup opens the learning center rather than receiving full history.
+
+Incognito is forbidden for every history read/write/list/detail/page index/export/handoff, including trusted extension pages. Editable/sensitive selections are not persisted; surrounding AI context remains empty. Uncertain sensitivity across unsupported roots is not silently accepted. Known account/mail/chat/admin pages default to no automatic record/history body display. Site exclusions provide “do not record this site” and “do not automatically show history here”; heuristic detection is conservative, not a promise to identify all private content. Account changes at the same URL cannot establish identical context. Global manual learning-center review stays available in a normal window.
+
+`pageKey` and safeReturnUrl have separate jobs. #232 computes `rp1:` + SHA-256 of a versioned local canonical HTTP(S) page identity: origin/path plus meaningful sorted query and hash, without userinfo. Unknown credential-bearing query/hash may influence the **local digest**, but raw values are not persisted as a return URL or logged. Do not reuse cache normalizeUrl, blindly remove all query/hash, or merge different articles. `safeReturnUrl` is either a separately approved precise HTTP(S) locator or null. Its pure validator rejects userinfo, known credential/account/email parameters, malformed hash escapes and dangerous schemes; it is a defense-in-depth syntax check, **not** comprehensive URL classification. #232 rejects uncertain secret-bearing locators rather than assuming unknown parameters are safe. Unable to redact safely without losing exact routing → safeReturnUrl null, summary still readable. No private text/token is appended to a webpage URL.
+
+Persistent site markers require explicit site intention and existing optional-origin permission. activeTab is temporary and does not survive as permanent authorization. #237 extends auto-sites.js's existing union of registration needs; disabling Reading's need preserves translation/cache restore/Quick Control requirements. Revoked/denied permission retains local history and yields permission-required. New tabs from the learning center require site permission or the user invoking the extension; “runtime ready” alone is insufficient.
+
+Handoff is backend-held, one-shot, ≤60 seconds: `{handoffId,recordId,recordRevision,tabId,pageKey,documentGeneration,generation,issuedAt,expiresAt,consumed}`. It binds the actual created tab and expected page/document, not caller-supplied identity. Navigation, redirect, delete, consent/private change, permission loss, timeout or consumption invalidates it. Metadata refresh after tab creation is controlled by the backend; no history is delivered before all identity checks pass. Release A freezes this shape and supplies no automatic Return implementation.
+
+## Commit, idempotency and failure ordering
+
+#233 uses serializable readwrite commit boundaries for consent/data/page generations, operation receipts, record revision and child rows. Validation and final write occur in the **same transaction**; an earlier JS check alone is not sufficient. The first successful complete artifact creates its record/snapshot and sets lookupCount 1. Further save-query-result operations increment count once; append-assistant adds the complete answer without incrementing an existing record's lookup count. Empty/pending records are not exposed.
+
+The order for mutation is: actual sender/policy → registered operation + immutable snapshot/digest → current consent/global/page/document/selection/deletion generations + expiry (`checkOperationScope`) → matching idempotency receipt → revision check (`checkWriteEligibility`) → capacity + immutable row/reference checks → append/merge + receipt + metadata → **transaction commit ack**. A duplicate receipt is scoped to operationId, mutation method, artifactId and canonical validated artifact digest; changed payload cannot claim a prior success. Duplicate succeeds only while current authorization/generations remain valid; it never increments again. Expired operations are rejected even after receipt pruning. Do not reinterpret an expired retry as a new explicit query.
+
+A concurrent different operation with stale revision returns revision-conflict and may retry only the storage append after fetching the current revision and rechecking the same operation/snapshot/generations. It never reruns Provider or overwrites a whole old aggregate. Two independently valid appends must both survive; a storage retry does not increment twice. New-record creation races at a reliably proven same location are resolved transactionally; otherwise distinct records are safer than merged context.
+
+Delete increments/removes the target's generation/revision and invalidates registered operations/receipts before its commit. Page delete increments pageGeneration even for not-yet-created records. Clear increments dataGeneration even if the store is empty; a late first-save token cannot recreate old history. Pause/revoke increments consentGeneration; resume does not revive old tokens. Generations persist in metadata so worker restart does not reset them. Deleted IDs are never reused; bounded receipts can expire because surviving old tokens cannot pass generation/registration/expiry checks.
+
+If save commits first, it is a real saved result; a later delete removes it. If delete/clear/pause commits first, the old write is rejected. Closing a card after successful commit does not undo history. Closing/switching before commit invalidates document/selection operation state, and late responses cannot attach to a new location. Notification/view invalidation follows committed deletion, including detail panels/markers; UI refresh failure cannot recreate rows.
+
+Cache commit and Reading commit are separate. Cache failure leaves the answer visible; Reading failure leaves it readable/copyable with not-saved. IDB abort/quota/worker interruption returns no saved acknowledgement. On restart an unacknowledged operation can inspect a valid committed receipt or offer explicit retry; it must not automatically reissue a potentially paid Provider request. No clear-data fallback is allowed to pass migration/storage tests.
+
+## Frozen budgets and measured evidence
+
+All numbers below are centralized in `READING_LIMITS`. At a count/byte ceiling, stop the corresponding addition and show export/delete controls. Existing rows are retained; there is no LRU or age-based deletion. Application billing is the sum of UTF-8 `JSON.stringify` bytes of each canonical record, snapshot and artifact **once**. It excludes secondary indexes/engine overhead/operation receipts; #233 must separately bound receipts to the operation TTL and handle actual browser quota. Deletion subtracts actual canonical row bytes. This is not a claim of exact IndexedDB disk usage.
+
+| Budget | Frozen value / behavior |
+| --- | --- |
+| Records / canonical row bytes | 10,000 / 64 MiB. At record ceiling no new record; existing-record append still requires remaining byte/row capacity. At byte ceiling no new artifact/snapshot. No eviction. |
+| Per artifact / mutation request | 64 KiB / 128 KiB UTF-8 JSON; whole body checked before processing. |
+| Selection / authorized context | Existing 2,000 / 900 UTF-16 limits, reused from SELECTION_EXPLAIN_LIMITS. No expansion. |
+| Quote prefix/suffix / page title / URL | 120 each / 300 / 4,096 UTF-16. |
+| Question / answer / language / search | 2,000 / 24,000 / 80 / 200 UTF-16, also bounded by artifact bytes. |
+| Identifiers / cursor / model / Provider fingerprint | 120 ASCII identifier chars / 256 / 120 / 180 UTF-16; dictionary phonetic/POS/version/source-entry are 240/80/120/180. |
+| Dictionary facts / provenance | ≤8 definitions, ≤240 UTF-16 each; ≤4 source refs. |
+| Detail rows / pagination | ≤256 artifacts and snapshots each per record; ≤100 items/page. |
+| Projection scan slice | Yield at **first** of 16,000 UTF-16 units, 500 nodes or 8 ms. |
+| Projection total attempt | Stop at **first** of 1,000,000 UTF-16, 25,000 nodes or 250 ms cumulative work; report not-loaded/budget exhaustion and retain already resolved results. |
+| Dynamic retry | ≤3 attempts per document/source revision, 150 ms debounce; cancel on navigation/selection generation; only affected records, no full-history rescan on every mutation. |
+| Page markers | ≤200 candidate markers; excess remains available through paginated page list. Draw and hit-test capabilities detected separately; list/keyboard/touch and temporary locate fallback remain. |
+| Handoff / operation receipt validity | 60 seconds one-shot / 10 minutes for the same explicit operation. Expiry is inclusive: now ≥ expiresAt rejects. No TTL refresh by duplicate retries. |
+
+Run `node scripts/measure-reading-contract.mjs` to reproduce representative synthetic mixed-language data: 10,000 records, one 900-unit context snapshot and three artifacts each; 6×120-unit dictionary facts, 300-unit translation and 700-unit complete assistant answer. The script emits only counts/bytes/timings, not text/URLs/credentials. Node measurements calibrate application budgets and the pure projector; they do not measure real page layout, storage throughput, browser quota or all browser support. Detailed measured values are recorded below after execution.
+
+Measured on 2026-10-02, Node v24.21.0 / linux x64; reproducible numeric evidence is `tests/fixtures/reading/measurement.json`:
+
+| Synthetic measurement | Actual result |
+| --- | --- |
+| 10,000 record aggregates / mean | 61,324,186 bytes / 6,132.4 bytes; 91.38% of 64 MiB. For this shape the count ceiling arrives before the byte ceiling (10,943 estimated at byte ceiling). |
+| Largest representative artifact | 1,479 bytes. The separate boundary test accepts exactly 65,536 bytes and rejects one extra UTF-8 byte. |
+| Canonical byte accounting / model validation | Median 502.268 / 634.132 ms for all 10,000 aggregates; no IDB throughput claim. |
+| 500-node slice / 15,549 projected units | Median 2.505 ms, maximum 4.715 ms over five runs, below the 8 ms synthetic slice target. Real adapters must additionally account for DOM/style work and yield earlier. |
+| 25,000-node reference projection / 977,499 units | Median 339.94 ms, exceeding the 250 ms cumulative production budget. Therefore a production attempt must stop before finishing this shape and use not-loaded/list fallback; the character ceiling is not a completion guarantee. |
+| 200 minimal marker DTOs | 42,022 bytes; construction median 0.06 ms. No paint/hit-test/layout evidence. |
+| 10,000 operation / handoff validity checks | Median 21.786 / 16.672 ms. Tests reject exactly at 600,000 / 60,000 ms expiry; TTLs are policy windows, not measured worker lifetimes. |
+
+The first full-node experiment was FAIL because source text plus synthetic block separators exceeded 1,000,000 units; the generator was bounded without weakening the projection assertion. A subsequent large experiment exposed repeated string flattening; the reference implementation now uses linear unit-array joining. Final bounded measurement is PASS. Browser/DOM layout, IndexedDB transaction/quota, extension install/upgrade, Provider and React flow measurements are **NOT RUN** here.
+
+Browser capability downgrade is explicit: unavailable documentId uses controlled document generation; uncertain sender/root → forbidden/unsupported; missing CSS highlights → list/temporary locate; highlights without highlightsFromPoint → no assumed hover hit-test; unavailable host permission → permission-required. No permissions are broadened to make a test pass.
+
+## B1–B7 ownership and phased acceptance
+
+| Review requirement | Owner and executable acceptance |
+| --- | --- |
+| B1 site authorization/lifecycle | #232 policy; #237 auto-sites union/handoff; #240 authorized vs unauthorized restart, revoke/redirect, no Reading Provider calls. A promises no automatic site markers. |
+| B2 position identity/projection | #231 captures same-word distinct Ranges, repeated blocks, split inline words, emoji/combining text; #234 rejects old-location results; #238/#239 validate quote after movement/node replacement and return ambiguous instead of first match. |
+| B3 full Q/A/source | #233 immutable referenced rows; #234 dictionary/no-hit/translation/existing Explain; #235 offline detail; #242 new branches/regeneration. Old artifacts retain actual source and question. |
+| B4 data exit/capacity | #233 transaction/capacity/export; #235 Enable/Not now, pause/resume, one/page/all delete and export; #236 checks these in A, including quota and late results. |
+| B5 privacy/access/safe URL | #232 sender and exact page allowlist, private/account/site exclusions/URL policy; #234 no editable persistence or hidden AI context; #235 safe text UI; #236 cross-page/incognito denial and no surprise uploads. |
+| B6 engineering/runtime boundaries | #233 precise repository exception preserving forbidden examples; #248 actual WXT package/legacy continuity; #249 React stack; #241 narrow text stream via existing Provider infrastructure. No Content React/network/storage copies. |
+| B7 commit/idempotency/races | #233 atomic commit receipts, two-tab revision retry and delete wins; #234 truthful saving/saved/not-saved plus cancellation; #236 failure/restart and no lookup duplicate. |
+
+Release stories are gates, not declarations of completion:
+
+- **A / #236:** normal HTML explicit local hit (zero Provider), truthful no-hit, current cache hit, explicit sentence translation and current completed Explain → Enable/Not now → actual commit → learning-center recent/page/search/detail → pause/delete/page-delete/clear/export. Test storage abort/quota, worker interruption, duplicate commit, two concurrent appends, same-word different positions, incognito/cross-page rejection, deletion/clear before a late first save. Denial leaves original query readable. Use actual #248 WXT package, isolated browser profile, synthetic fixture/mock Provider only.
+- **B / #238 then #240 (NOT STARTED):** safe URL + user-approved host permission → one-shot target tab handoff → unique trusted exact Range; ambiguous/missing/not-loaded/redirect/denial gives readable history and clear fallback. No fuzzy location or paid query.
+- **C / #240 (NOT STARTED):** authorized site revisit/restart → bounded minimal summaries and ≤200 markers → read-only old detail. Permission revoke, another feature's registration, node replacement and large/mutation-heavy page keep list fallback and source interactions intact.
+- **D / #244 (NOT STARTED):** explicit context scope → actual Provider delta or clearly labeled unary fallback → Stop preserves incomplete current text → explicit retry/regenerate/new-source branch → committed complete Q/A/source. Port/worker loss interrupts honestly, never automatically recharges or resumes a lost stream.
+
+`npm run validate` is required for this pure contract. DOM/browser/MV3/IDB paths above are NOT RUN by #230 and belong to their actual implementing tasks. Shared tests do not prove a transaction, extension install, real URL policy classifier or React flow. Independent review must bind the exact commit; authors do not sign their own implementation as audited. `RL00_CONTRACT_READY` is recorded only after actual validation and independent review.
