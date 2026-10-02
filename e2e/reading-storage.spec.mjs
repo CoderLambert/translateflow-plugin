@@ -9,6 +9,7 @@ import { startMockServer } from './support/mock-server.mjs';
 import { READING_METHOD as M, READING_ERROR as E } from '../src/shared/reading/constants.js';
 import { request, snapshot, artifact } from '../tests/fixtures/reading/contract.mjs';
 import { createSourceDigest } from '../src/shared/reading/identity.js';
+import { registerStorageRegressions } from './reading-storage-regressions.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceRoot = process.env.READING_STORAGE_SOURCE_ROOT || root;
@@ -63,7 +64,7 @@ async function openContent() {
   const send = async (input) => { const [result] = await driver.evaluate(({ tabId, input }) => chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', args: [JSON.stringify(input)],
     func: (text) => chrome.runtime.sendMessage(JSON.parse(text)) }), { tabId, input }); return result.result; };
   const registration = await send(request(M.REGISTER_DOCUMENT, { documentGeneration: generation })); expect(registration.ok).toBe(true);
-  return { page, send, snap, registration: registration.data };
+  return { page, tabId, send, snap, registration: registration.data };
 }
 
 test.describe('Reading storage: actual compiled router/repository + separately labelled direct-source native IDB probes', () => {
@@ -89,6 +90,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
   });
   test.afterAll(async () => { await context?.close(); await server?.close(); if (temporary) await rm(temporary, { recursive: true, force: true }); });
   test.beforeEach(async () => { await reset(); server.reset(); });
+  registerStorageRegressions(test,expect,()=>({driver,message,openContent,probeWorker}));
 
   test('Compiled production messages persist consent and actual lookup / late Rich / idempotent artifacts; restart keeps exact rows', async () => {
     const disabled = await message(M.GET_RECORDING_STATE); expect(disabled).toMatchObject({ ok: true, data: { enabled: false, recordCount: 0 } });

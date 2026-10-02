@@ -5,7 +5,7 @@ import { safePrefix } from "../src/background/reading-record/export-reader.js";
 import { literalMatch, queryIdentity } from "../src/background/reading-record/query.js";
 import { createReadingRepository } from "../src/background/reading-record/repository.js";
 import { storageError, createReadingDatabase } from "../src/background/reading-record/idb.js";
-import { initialMeta, recordingState, validateMeta } from "../src/background/reading-record/storage-state.js";
+import { initialMeta, recordingState, validateMeta, state } from "../src/background/reading-record/storage-state.js";
 import { READING_ERROR as E, READING_LIMITS as L } from "../src/shared/reading/constants.js";
 
 test("Export prefix respects exact UTF8/escaped limits and never splits emoji", () => {
@@ -55,6 +55,18 @@ test("Corrupt/unknown persisted meta fails closed and never becomes default cons
   }
   const duplicate = {siteKey:"https://a.test",excluded:true,sitePolicyRevision:1,expiresAt:1000};
   assert.throws(() => validateMeta({...initialMeta(),sites:[duplicate,duplicate]}), {code:E.STORAGE});
+});
+
+test("Only a genuinely absent meta row can initialize state; persisted falsy values fail closed", () => {
+  const request = {};
+  function read(value) {
+    const flow = state((name) => { assert.equal(name, "meta"); return { get(key) { assert.equal(key, "state"); return request; } }; });
+    assert.equal(flow.next().value, request); return flow.next(value).value;
+  }
+  assert.deepEqual(read(undefined), initialMeta());
+  const valid = { ...initialMeta(), enabled: true, consentGeneration: 7, dataGeneration: 9, recordCount: 1, totalBytes: 3000 };
+  assert.equal(read(valid), valid);
+  for (const value of [false, null, 0, "", {}, []]) assert.throws(() => read(value), { code: E.STORAGE });
 });
 
 

@@ -27,10 +27,11 @@ export function* read(store, context, cursor, now, viewed = true) {
       const record = { ...data.record, lastViewedAt: Math.max(data.record.firstSeenAt, now), revision: data.record.revision + 1 };
       const bytes = row.bytes + applicationBytes([record]) - applicationBytes([data.record]);
       checkCapacity({ recordCount: meta.recordCount, totalBytes: meta.totalBytes, addedBytes: Math.max(0, bytes - row.bytes) });
-      meta.totalBytes += bytes - row.bytes; changed(meta, null, false);
+      const page = yield* pageState(store, row.record.pageKey);
+      meta.totalBytes += bytes - row.bytes; changed(meta, page, false);
       Object.assign(row.listItem, { revision: record.revision, lastViewedAt: record.lastViewedAt });
       Object.assign(row, { record, bytes }); data.record = record;
-      yield store("records").put(row); yield store("meta").put(meta, "state");
+      yield store("records").put(row); yield store("pages").put(page); yield store("meta").put(meta, "state");
       return { data, committed: true };
     }
     return { data };

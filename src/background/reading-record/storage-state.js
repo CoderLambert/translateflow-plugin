@@ -40,7 +40,10 @@ export function validateMeta(value) {
   if (exclusions > L.exclusionSites) fail(E.STORAGE, "meta.exclusions");
   return value;
 }
-export function* state(store) { return validateMeta((yield store("meta").get("state")) || initialMeta()); }
+export function* state(store) {
+  const value = yield store("meta").get("state");
+  return validateMeta(value === undefined ? initialMeta() : value);
+}
 export function* pageState(store, pageKey) {
   return (yield store("pages").get(pageKey)) || { pageKey, pageGeneration: 1, pageRevision: 1, recordCount: 0, lastLookupAt: 0 };
 }
