@@ -324,6 +324,12 @@ type AssetResultV1 = {
 
 必须约束：packageVersion钉住整次读取，articleId由包版本与record span确定，不由displayForm单独决定；resourceId可由packageVersion与canonicalPath确定，不能当作访问凭据；后台重新规范化canonicalPath并只在激活的文件级sources中查找。MDD资源沿用compact index按需定位，不把20万条资源展开进常驻manifest；content不能发任意系统路径/sourceId。响应必须匹配requestId/版本/资源；失配直接丢弃。所有DTO只携带必要数据，diagnostics不写商业正文。需要分页多articles时另冻结 continuation/complete 语义，不能悄悄截断数组。代码实现前把 SafeNode/SafeAction 的封闭union补齐到共同schema，以上草案本身不算接口已冻结。
 
+#### 已激活包快照的版本分配
+
+packageVersion 标识当前可读的组合快照，不能只复用 MDX 的文件版本。MDX、任一 MDD、sidecar、索引规范化语义或 profile 的已激活身份发生变化，都生成新的 packageVersion；即使 MDX 字节未变，附件成功替换也必须推进它。暂存、复制、校验、取消或失败不替换当前 packageVersion。沿用现有 MDX 已安装、附件可重试的产品状态：每次成功激活一个新的可读组合快照时统一更新版本，不要求重做全包原子事务。
+
+查询、CSS 编译、资源读取和 viewer 会话共同固定该版本。版本切换后失效旧响应、动作和资源引用；旧文件的回收遵循已有事务与读取生命周期，不允许仅因开始导入就提前删除当前健康资源。T2 负责查询/索引合同，T5 负责激活点，T3/T4 只消费同一身份。可复验标准：保持 MDX 不变，仅替换附件，旧版本请求必须被拒绝或标为 stale；替换失败/取消时旧快照仍可查询和读取资源。此项仍为设计合同，浏览器验证 NOT_RUN。
+
 #### CSS 固定处理消息（拟新增）
 
 沿用现有 router 的 content sender/owner 校验和取消生命周期，不建立独立运行平台。后台从已安装资源读取 CSS，content 不提交任意 CSS 程序或系统路径：
@@ -494,9 +500,9 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 
 ### 依赖顺序
 
-- T1 → T2 与 T3。
-- T3 → T4；T2 + T3 + T4 先完成真实词条小范围验证。
-- T1 + T2 → T5；T5 完整包验证后，T4 交互也必须在完整包下复验。
+- T1 → T2。
+- T1 + T2 → T3 与 T5，和对应 Issue #271、#273 的依赖一致。T3 的源码阅读或样式样本分析可以提前进行，但消费共同 EntryBundle/预算合同的实现不得越过 T2。
+- T3 → T4；T2 + T3 + T4 先完成 arch 纵向切片，T5 完整包验证后，T4 交互也必须在完整包下复验。
 - T2 + T3 + T4 + T5 → T6。
 - 现有独立 parser 修复 `8aceb7c` 单独审查和合入；本方案基于更新后的 main 开发，不把范围混在同一修复中。
 
