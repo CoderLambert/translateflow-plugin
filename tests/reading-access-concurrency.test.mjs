@@ -6,7 +6,7 @@ import { createReadingSubscriptions } from "../src/background/reading-record/sub
 import { createReadingService } from "../src/background/reading-record/service.js";
 import { createExportRegistry } from "../src/background/reading-record/exports.js";
 import { fail } from "../src/shared/reading/validation.js";
-import { request } from "./fixtures/reading/contract.mjs";
+import { recordingState, request } from "./fixtures/reading/contract.mjs";
 import { extensionSender, nativeBrowser, repositoryDouble } from "./fixtures/reading/access.mjs";
 
 function deferred() {
@@ -136,4 +136,94 @@ test("Buffered export retry cannot return a different cursor chunk after concurr
     const result = await outcome;
     if (change === "unchanged") assert.deepEqual(result, chunk0);
   }
+});
+
+test("Pending export start cannot revive after pause, cancel, owner navigation, removal, permission revoke or expiry", async (t) => {
+  for (const change of ["pause", "cancel", "navigation", "removal", "permission", "expiry", "unchanged"]) await t.test(change, async () => {
+    const entered = deferred(), release = deferred(); let now = 1000, nonce = 0;
+    const service = createReadingService({ browser: nativeBrowser(), now: () => now, randomId: () => `reserved-${++nonce}`,
+      repository: repositoryDouble({ async openExport({ assertCurrent }) {
+        entered.resolve(); await release.promise; assertCurrent(); return { exportRevision: 1, exportedAt: 1000, position: 0 };
+      }, async mutate({ request: input, assertCurrent }) {
+        assertCurrent(); assert.equal(input.method, M.SET_RECORDING);
+        return recordingState("extension", { enabled: input.enabled, consentGeneration: 2 });
+      } }) });
+    const starting = service.handle(request(M.EXPORT_START), extensionSender());
+    await entered.promise;
+    if (change === "pause") {
+      const paused = await service.handle(request(M.SET_RECORDING, { enabled: false }), extensionSender());
+      assert.equal(paused.ok, true); assert.equal(paused.data.enabled, false);
+    } else if (change === "cancel") {
+      const cancelled = await service.handle(request(M.EXPORT_CANCEL, { exportId: "reserved-1" }), extensionSender());
+      assert.equal(cancelled.ok, true); assert.equal(cancelled.data.state, "cancelled");
+    } else if (change === "navigation") service.invalidateTab(9);
+    else if (change === "removal") service.forgetTab(9);
+    else if (change === "permission") service.revoke();
+    else if (change === "expiry") now = 601000;
+    release.resolve();
+    const result = await starting;
+    if (change === "unchanged") {
+      assert.equal(result.ok, true);
+      assert.equal((await service.handle(request(M.EXPORT_NEXT, { exportId: result.data.exportId, cursor: result.data.nextCursor }), extensionSender())).data.sequence, 0);
+    } else {
+      assert.equal(result.ok, false, `${change} must not resurrect a starting export`);
+      assert.equal(result.error.code, ["navigation", "removal", "permission"].includes(change) ? E.STALE_OPERATION : E.INTERRUPTED);
+      if (change === "cancel") {
+        const retry = await service.handle(request(M.EXPORT_CANCEL, { exportId: "reserved-1" }), extensionSender());
+        assert.equal(retry.ok, true); assert.equal(retry.data.state, "cancelled");
+      }
+    }
+  });
+});
+
+test("Finish refuses cancellation while pending; revoked pre-commit finish cannot deliver and delivered receipt stays finished", async () => {
+  for (const interrupt of [true, false]) {
+    const entered = deferred(), release = deferred(); let nonce = 0;
+    const registry = createExportRegistry({ now: () => 1000, randomId: () => `finish-${nonce++}`,
+      repository: repositoryDouble({ async finishExport({ assertCurrent }) {
+        entered.resolve(); await release.promise; assertCurrent(); // Synthetic short-transaction commit boundary, not real IDB.
+      } }) });
+    const context = { access: { ownerKey: "native-owner", tabId: 9, navigationGeneration: 1 }, request: {}, assertCurrent() {} };
+    const opened = await registry.start(context);
+    const first = await registry.next({ ...context, request: { exportId: opened.exportId, cursor: opened.nextCursor } });
+    const last = await registry.next({ ...context, request: { exportId: opened.exportId, cursor: first.nextCursor } });
+    const finishContext = { ...context, request: { exportId: opened.exportId, sequence: last.sequence } };
+    const cancelContext = { ...context, request: { exportId: opened.exportId } };
+    const pending = registry.finish(finishContext);
+    const outcome = interrupt ? assert.rejects(pending, (error) => error.code === E.INTERRUPTED) : pending;
+    await entered.promise;
+    await assert.rejects(() => registry.cancel(cancelContext), (error) => error.code === E.INTERRUPTED);
+    if (interrupt) registry.revoke();
+    release.resolve(); const receipt = await outcome;
+    if (!interrupt) {
+      assert.equal(receipt.state, "finished"); registry.revoke();
+      assert.equal((await registry.cancel(cancelContext)).state, "finished");
+      assert.deepEqual(await registry.finish(finishContext), receipt);
+    }
+  }
+});
+
+test("Unacknowledged export finish/cancel reserves per-owner and global export capacity", async (t) => {
+  for (const phase of ["finishing", "cancelling"]) for (const limit of ["owner", "global"]) await t.test(`${phase}/${limit}`, async () => {
+    const entered = deferred(), release = deferred(); let nonce = 0;
+    const terminal = async ({ assertCurrent }) => { entered.resolve(); await release.promise; assertCurrent(); };
+    const registry = createExportRegistry({ now: () => 1000, randomId: () => `capacity-${nonce++}`,
+      repository: repositoryDouble({ [phase === "finishing" ? "finishExport" : "cancelExport"]: terminal }) });
+    const context = (owner) => ({ access: { ownerKey: `native-owner-${owner}`, tabId: 9 + owner, navigationGeneration: 1 }, request: {}, assertCurrent() {} });
+    const a = context(0), opened = await registry.start(a);
+    if (limit === "global") await registry.start(context(1));
+    let sequence = 0;
+    if (phase === "finishing") {
+      const first = await registry.next({ ...a, request: { exportId: opened.exportId, cursor: opened.nextCursor } });
+      const last = await registry.next({ ...a, request: { exportId: opened.exportId, cursor: first.nextCursor } }); sequence = last.sequence;
+    }
+    const endContext = { ...a, request: { exportId: opened.exportId, ...(phase === "finishing" ? { sequence } : {}) } };
+    const pending = phase === "finishing" ? registry.finish(endContext) : registry.cancel(endContext);
+    await entered.promise;
+    try {
+      await assert.rejects(() => registry.start(limit === "owner" ? a : context(2)), (error) => error.code === E.CAPACITY);
+      if (limit === "owner") assert.ok((await registry.start(context(1))).exportId);
+    } finally { release.resolve(); await pending; }
+    assert.ok((await registry.start(limit === "owner" ? a : context(2))).exportId); // Terminal acknowledgement releases the active slot.
+  });
 });

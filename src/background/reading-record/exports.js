@@ -22,7 +22,7 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
   };
   async function start(context) {
     prune();
-    const active = [...sessions.values()].filter((item) => ["starting", "active"].includes(item.state));
+    const active = [...sessions.values()].filter((item) => ["starting", "active", "finishing", "cancelling"].includes(item.state));
     if (active.length >= L.exportsGlobal || active.filter((item) => item.ownerKey === context.access.ownerKey).length >= L.exportsPerOwner || sessions.size >= L.operationsGlobal) fail(E.CAPACITY, "exports");
     const exportId = randomId(), expiresAt = now() + L.exportTtlMs;
     const session = { exportId, expiresAt, ownerKey: context.access.ownerKey, tabId: context.access.tabId, navigationGeneration: context.access.navigationGeneration,
@@ -31,10 +31,13 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     try {
       const opened = await invoke("openExport", context);
       context.assertCurrent();
-      if (sessions.get(exportId) !== session || now() >= expiresAt) fail(E.INTERRUPTED, "export.start");
+      if (sessions.get(exportId) !== session || session.state !== "starting" || now() >= expiresAt) fail(E.INTERRUPTED, "export.start");
       Object.assign(session, { state: "active", exportRevision: opened.exportRevision, exportedAt: opened.exportedAt, position: opened.position });
       return validateExportResponse(M.EXPORT_START, { exportId, exportRevision: session.exportRevision, expiresAt, nextCursor: session.nextCursor });
-    } catch (error) { sessions.delete(exportId); throw error; }
+    } catch (error) {
+      if (sessions.get(exportId) === session && session.state === "starting") sessions.delete(exportId);
+      throw error; // Keep an acknowledged concurrent cancellation receipt until its original TTL.
+    }
   }
   async function next(context) {
     const { request, access, assertCurrent } = context, session = get(request.exportId, access);
