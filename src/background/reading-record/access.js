@@ -6,6 +6,7 @@ import { classifyPage, derivePageIdentity, requireCaptureSafety } from "./policy
 
 const ENTRY_PATHS = new Set(["/popup.html", "/options.html"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const nativeDocumentId = (value) => typeof value === "string" && (UUID.test(value) || /^[0-9a-f]{32}$/iu.test(value));
 const ACTIONS = new Map([[M.BEGIN_QUERY, "begin"], [M.SAVE_QUERY_RESULT, "save"], [M.APPEND_ASSISTANT, "save"],
   [M.GET_RECORD, "detail"], [M.CANCEL_OPERATION, "cancel"]]);
 
@@ -63,7 +64,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
     try { url = new URL(sender.url); } catch { fail(E.FORBIDDEN, "sender.url"); }
     if (url.protocol === "chrome-extension:" && url.hostname === browser.runtime.id) {
       if (url.search || url.hash || (url.pathname !== `/${READING_LEARNING_CENTER_PATH}` && !ENTRY_PATHS.has(url.pathname))) fail(E.FORBIDDEN, "sender.path");
-      if (!UUID.test(sender.documentId || "") || typeof browser.runtime.getContexts !== "function") fail(E.CAPABILITY_LIMITED, "sender.context");
+      if (!nativeDocumentId(sender.documentId) || typeof browser.runtime.getContexts !== "function") fail(E.CAPABILITY_LIMITED, "sender.context");
       let contexts;
       try { contexts = await browser.runtime.getContexts({ documentIds: [sender.documentId] }); } catch { fail(E.CAPABILITY_LIMITED, "sender.context"); }
       if (!Array.isArray(contexts) || contexts.length !== 1) fail(E.FORBIDDEN, "sender.context");
@@ -78,7 +79,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
         sensitive: false, editable: false, accountPage: false, navigationGeneration: Number.isInteger(context.tabId) && context.tabId >= 0 ? track(context.tabId) : 1, tabId: context.tabId };
     }
     if (!/^https?:$/u.test(url.protocol) || !Number.isInteger(sender.tab?.id) || sender.tab.id < 0 || sender.tab.incognito !== false ||
-        sender.frameId !== 0 || (sender.documentId !== undefined && !UUID.test(sender.documentId)) ||
+        sender.frameId !== 0 || (sender.documentId !== undefined && !nativeDocumentId(sender.documentId)) ||
         (sender.documentLifecycle !== undefined && sender.documentLifecycle !== "active") ||
         (sender.tab.url && sender.tab.url !== sender.url)) fail(E.FORBIDDEN, "sender.content");
     const policy = classifyPage(sender.url);

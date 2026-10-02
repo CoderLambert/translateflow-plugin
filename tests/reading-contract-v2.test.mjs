@@ -75,3 +75,22 @@ test("D domain fixtures preserve root action and branch; follow-up regeneration 
     rejects(() => validateRecordDetail({ ...detail, artifacts: [root, follow, { ...regen, payload: { ...regen.payload, regenerationOf: "turn-2" } }] }), E.BAD_DTO);
   }
 });
+
+test("A legal maximum-cardinality escaped detail stays below the separate 32MiB message ceiling", () => {
+  const selected = `x${"\u0001".repeat(L.selectionChars - 1)}`;
+  const longSnapshot = snapshot({ selectedText: selected, contextText: `x${"\u0001".repeat(L.contextChars - 1)}`,
+    anchor: { ...snapshot().anchor, quote: { exact: selected, prefix: "\u0001".repeat(L.quoteContextChars), suffix: "\u0001".repeat(L.quoteContextChars) }, position: { start: 0, end: selected.length } } });
+  const r = record({ itemText: selected, itemKey: `ri1:${JSON.stringify(["en", selected])}`, anchor: longSnapshot.anchor });
+  const snapshots = Array.from({ length: L.snapshotsPerRecord }, (_, i) => ({ ...longSnapshot, sourceSnapshotId: `source-${i}` }));
+  const base = artifact("translation", { sourceSnapshotId: "source-0", payload: { text: `x${"\u0001".repeat(10000)}` } });
+  const artifacts = Array.from({ length: L.artifactsPerRecord }, (_, i) => {
+    const value = { ...base, artifactId: `artifact-${i}` }, current = new TextEncoder().encode(JSON.stringify(value)).length;
+    value.payload = { text: `${base.payload.text}${"x".repeat(L.artifactBytes - current)}` }; return value;
+  });
+  const envelope = { protocolVersion: 2, ok: true, data: { record: r, snapshots, artifacts } };
+  assert.ok(new TextEncoder().encode(JSON.stringify(envelope)).length < L.detailResponseBytes);
+  assert.equal(validateReadingResponse(M.GET_RECORD, envelope, "extension").data.artifacts.length, 256);
+  // List allocation is an independent bound; count≤100 alone does not permit >1MiB escaped text.
+  const items = Array.from({ length: 100 }, (_, i) => recordListItem({ recordId: `${i.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`, itemText: selected }));
+  rejects(() => validateReadingResponse(M.LIST_RECORDS, { protocolVersion: 2, ok: true, data: { items, nextCursor: null, catalogRevision: 1 } }, "extension"), E.LIMIT);
+});
