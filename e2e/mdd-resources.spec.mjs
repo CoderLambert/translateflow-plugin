@@ -253,6 +253,8 @@ async function readMddResource(harness, page, dictionaryId, path) {
       target: { tabId },
       func: async ({ dictionaryId, path }) => chrome.runtime.sendMessage({
         type: "RICH_MDD_RESOURCE",
+        requestId: `selection-mdd-resource-${crypto.randomUUID().replaceAll("-", "")}`,
+        ownerToken: crypto.randomUUID().replaceAll("-", ""),
         dictionaryId,
         path
       }),
