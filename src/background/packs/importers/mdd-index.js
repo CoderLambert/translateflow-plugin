@@ -173,18 +173,20 @@ export async function decodeMddKeyBlock({
   blockIndex,
   limits = MDD_IMPORT_LIMITS,
   decompressionStreamFactory,
-  budget
+  budget,
+  signal
 }) {
   const descriptor = index?.keyBlocks?.[blockIndex];
   if (!descriptor) mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDD key block index is missing.");
   budget?.consumeKeyBlock(descriptor);
-  const input = await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes);
+  const input = await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes, signal);
   const decoded = await decodeMdictBlock({
     input,
     expectedBytes: descriptor.decompressedBytes,
     limits,
     label: "MDD key block",
-    decompressionStreamFactory
+    decompressionStreamFactory,
+    signal
   });
   const parsed = parseMddKeyBlock(
     decoded.bytes,

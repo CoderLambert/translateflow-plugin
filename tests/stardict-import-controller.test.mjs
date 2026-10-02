@@ -254,6 +254,116 @@ test("Settings controller removes a completed worker token when cancellation win
   assert.deepEqual(runtime.messages, []);
 });
 
+
+test("StarDict commit cancellation is surfaced as AbortError when background cancellation wins", async () => {
+  let releaseCommit;
+  let commitStartedResolve;
+  const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
+  const runtime = new FakeRuntime();
+  runtime.sendMessage = async function sendMessage(message) {
+    this.messages.push(message);
+    if (message.type === "DICTIONARY_LOCAL_IMPORT_COMMIT") {
+      commitStartedResolve();
+      return new Promise((resolve) => { releaseCommit = resolve; });
+    }
+    if (message.type === "DICTIONARY_PACK_CANCEL") {
+      return { ok: true, cancelled: true };
+    }
+    throw new Error("unexpected message");
+  };
+  const workers = [];
+  const controller = createStarDictImportController({
+    runtime,
+    WorkerCtor: class extends FakeWorker {
+      constructor(url, options) {
+        super(url, options);
+        workers.push(this);
+      }
+    },
+    cryptoProvider: {
+      randomUUID: () => "00000000-0000-4000-8000-000000000006"
+    }
+  });
+  const importing = controller.importDictionary({
+    format: "plain",
+    ifoFile: blob("ifo"),
+    idxFile: blob("idx"),
+    dictFile: blob("dict"),
+    recipe: { fixture: true }
+  });
+  await waitFor(() => controller.phase === "worker");
+  const start = workers[0].posted[0].message;
+  workers[0].emitMessage({
+    type: "stardict-import:ready",
+    requestId: start.requestId,
+    token: "import-623e4567-e89b-42d3-a456-426614174000",
+    packId: "local-stardict-cancel-commit",
+    packVersion: "v1",
+    fingerprint: "sha256:" + "e".repeat(64)
+  });
+  await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: true, phase: "commit" });
+  releaseCommit({ ok: false, errorCode: "CANCELLED", error: "cancelled" });
+  await assert.rejects(importing, (error) => error?.name === "AbortError");
+});
+
+test("StarDict late cancel is rejected at commit point and import completes normally", async () => {
+  let cancelPhase = "";
+  let releaseCommit;
+  let commitStartedResolve;
+  const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
+  const runtime = new FakeRuntime();
+  runtime.sendMessage = async function sendMessage(message) {
+    this.messages.push(message);
+    if (message.type === "DICTIONARY_LOCAL_IMPORT_COMMIT") {
+      commitStartedResolve();
+      return new Promise((resolve) => { releaseCommit = resolve; });
+    }
+    if (message.type === "DICTIONARY_PACK_CANCEL") {
+      return { ok: true, cancelled: false, phase: cancelPhase };
+    }
+    throw new Error("unexpected message");
+  };
+  const workers = [];
+  const controller = createStarDictImportController({
+    runtime,
+    WorkerCtor: class extends FakeWorker {
+      constructor(url, options) {
+        super(url, options);
+        workers.push(this);
+      }
+    },
+    cryptoProvider: {
+      randomUUID: () => "00000000-0000-4000-8000-000000000005"
+    }
+  });
+  const importing = controller.importDictionary({
+    format: "plain",
+    ifoFile: blob("ifo"),
+    idxFile: blob("idx"),
+    dictFile: blob("dict"),
+    recipe: { fixture: true }
+  });
+  await waitFor(() => controller.phase === "worker");
+  const start = workers[0].posted[0].message;
+  workers[0].emitMessage({
+    type: "stardict-import:ready",
+    requestId: start.requestId,
+    token: "import-523e4567-e89b-42d3-a456-426614174000",
+    packId: "local-stardict-commitpoint",
+    packVersion: "v1",
+    fingerprint: "sha256:" + "d".repeat(64)
+  });
+  await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "" });
+  cancelPhase = "commitpoint";
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "commitpoint" });
+  controller.dispose(); // A closed view cannot undo a successful backend commit.
+  releaseCommit({ ok: true, status: "imported" });
+  const result = await importing;
+  assert.equal(result.commit.status, "imported");
+});
+
 function blob(value) {
   return new Blob([encoder.encode(value)]);
 }

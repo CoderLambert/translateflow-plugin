@@ -127,12 +127,13 @@ export function createStarDictImportController({
           : {})
       });
       if (!commit?.ok) {
+        if (current.cancelRequested) throw abortError();
         throw responseError(
           commit,
           "StarDict dictionary activation failed."
         );
       }
-      assertCurrent(current);
+      current.phase = "done";
 
       emitProgress(
         onProgress,
@@ -167,19 +168,22 @@ export function createStarDictImportController({
       };
     }
 
-    current.cancelRequested = true;
-
+    if (current.phase === "done") return { cancelled: false, phase: "done" };
     if (current.phase === "commit") {
       const response = await runtime.sendMessage({
         type:
           BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL,
         requestId: current.commitRequestId
       });
+      const cancelled = Boolean(response?.cancelled);
+      if (cancelled) current.cancelRequested = true;
       return {
-        cancelled: Boolean(response?.cancelled),
-        phase: "commit"
+        cancelled,
+        phase: cancelled ? "commit" : String(response?.phase || "")
       };
     }
+
+    current.cancelRequested = true;
 
     if (current.phase === "worker") {
       if (hard) {

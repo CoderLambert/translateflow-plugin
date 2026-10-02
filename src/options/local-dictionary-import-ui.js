@@ -8,6 +8,10 @@ import { createStarDictImportController } from "./stardict-import-controller.js"
 import { inspectStarDictFiles, createStarDictProductRecipe } from "./stardict-import-ui.js";
 import { createTflexLocalImportController } from "./tflex-local-import-controller.js";
 import {
+  isInstalledStateKnownForFamily,
+  readInstalledDictionaryState
+} from "./local-dictionary-installed-state.js";
+import {
   appendSummaryLine, fileBaseName, findDuplicateCandidate, formatBytes, importProgressLabel,
   isTflexOverInstallLimit, renderLocalPreflight, resolveAssociatedMddFiles, safeFileLabel,
   setPageStatus, tflexPackId, userMessage
@@ -47,6 +51,8 @@ export function initializeLocalDictionaryImportUi({
   let selectedFiles = [];
   let report = null;
   let installedCandidates = [];
+  let installedRefreshSequence = 0;
+  let installedStateKnown = { rich: false, packs: false };
   let preflightAbort = null;
   let preflightSequence = 0;
   let activeImport = null;
@@ -197,6 +203,9 @@ export function initializeLocalDictionaryImportUi({
 
   function renderPreflight(result) {
     renderLocalPreflight({ result, selectedFiles, installedCandidates, summary, semanticLabel, semanticCheck, semanticText, limitationsLabel, limitationsCheck, limitationsText, duplicateLabel, duplicateCheck, duplicateText, updateImportEnabled });
+    if (!isInstalledStateKnownForReport(result)) {
+      appendSummaryLine(summary, "重复检查", "暂时无法读取对应的已安装词典状态；为避免重复或误覆盖，安装已暂停。");
+    }
   }
 
   function updateImportEnabled() {
@@ -218,8 +227,9 @@ export function initializeLocalDictionaryImportUi({
     const duplicate = findDuplicateCandidate(report, installedCandidates, selectedFiles);
     const tflexTooLarge = report.identity.family === "tflex" && isTflexOverInstallLimit(selectedFiles);
     const duplicateAllowed = !duplicate || duplicateCheck.checked;
+    const duplicateStateKnown = isInstalledStateKnownForReport(report);
     importButton.disabled = !statusCanImport || route === "none" || missingFiles || unrelatedFiles || unreadMdd || tflexTooLarge ||
-      !semanticAllowed || !partialAllowed || !duplicateAllowed;
+      !semanticAllowed || !partialAllowed || !duplicateAllowed || !duplicateStateKnown;
   }
 
   async function importSelected() {
@@ -321,8 +331,14 @@ export function initializeLocalDictionaryImportUi({
     cancelButton.disabled = true;
     try {
       if (activeImport?.cancel) {
-        await activeImport.cancel();
-        progress.textContent = "正在取消并清理临时数据…";
+        const result = await activeImport.cancel();
+        if (result?.cancelled) {
+          progress.textContent = "正在取消并清理临时数据…";
+        } else if (result?.phase === "commitpoint") {
+          progress.textContent = "词典已进入最终提交阶段，当前已不能取消；正在完成保存…";
+        } else {
+          progress.textContent = "当前操作已经结束或无法取消。";
+        }
       } else if (preflightAbort) {
         preflightAbort.abort();
         progress.textContent = "已取消本机检查。";
@@ -358,36 +374,18 @@ export function initializeLocalDictionaryImportUi({
   }
 
   async function refreshInstalledCandidates() {
-    try {
-      const [richResponse, packResponse] = await Promise.all([
-        runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST }),
-        runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS })
-      ]);
-      installedCandidates = [];
-      for (const dictionary of richResponse?.dictionaries || []) {
-        if (dictionary?.title) installedCandidates.push({
-          name: dictionary.title,
-          family: "mdict-rich",
-          packId: dictionary.id,
-          fileName: dictionary.fileName,
-          sourceFiles: dictionary.fileName ? [dictionary.fileName] : [],
-          sourceSize: dictionary.sourceSize,
-          version: dictionary.packVersion
-        });
-      }
-      for (const [packId, entry] of Object.entries(packResponse?.state?.packs || {})) {
-        if (!entry?.active) continue;
-        const name = String(entry.display?.name || packId), format = entry.display?.format || "";
-        installedCandidates.push({
-          name, family: format || "tflex", packId, version: entry.active.packVersion,
-          sourceFiles: format === "tflex" ? ["manifest.json", "index.dat", "entries.dat"] : [],
-          sourceSize: entry.active.totalBytes, format: entry.display?.formatLabel
-        });
-      }
-    } catch {
-      installedCandidates = [];
-    }
+    const sequence = ++installedRefreshSequence;
+    installedStateKnown = { rich: false, packs: false };
+    updateImportEnabled();
+    const installed = await readInstalledDictionaryState(runtime);
+    if (sequence !== installedRefreshSequence) return;
+    installedCandidates = installed.candidates;
+    installedStateKnown = installed.known;
     if (report) renderPreflight(report);
+  }
+
+  function isInstalledStateKnownForReport(value) {
+    return isInstalledStateKnownForFamily(value?.identity?.family, installedStateKnown);
   }
 
   function setBusy(value) {
@@ -405,6 +403,7 @@ export function initializeLocalDictionaryImportUi({
   }
 
   function dispose() {
+    installedRefreshSequence++;
     preflightAbort?.abort();
     activeImport?.dispose?.();
     richController.dispose();

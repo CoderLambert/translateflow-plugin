@@ -9,6 +9,9 @@
   const MAX_STYLESHEET_BYTES = 64 * 1024;
   const MAX_BASE64_CHARS = Math.ceil(MAX_ASSET_BYTES / 3) * 4;
   const MAX_CONCURRENT_READS = 2;
+  const REQUEST_ID_PREFIX = "selection-mdd-resource-";
+  let fallbackRequestCounter = 0;
+  const CONTENT_DOCUMENT_OWNER_TOKEN = createContentDocumentOwnerToken();
   const sessionsByContainer = new WeakMap();
   const activeSessions = new Set();
   const readQueue = [];
@@ -27,6 +30,7 @@
       closed: false,
       resources: [],
       urls: new Map(),
+      inFlightRequests: new Set(),
       objectBytes: 0,
       imagePixels: 0
     };
@@ -153,11 +157,20 @@
 
   async function fetchAsset(session, resource) {
     if (!isCurrent(session)) throw new Error("Rich viewer is closed.");
-    const response = await sendRuntimeMessage({
-      type: messages.background.RICH_MDD_RESOURCE,
-      dictionaryId: session.dictionaryId,
-      path: resource.path
-    });
+    const requestId = createResourceRequestId();
+    session.inFlightRequests.add(requestId);
+    let response;
+    try {
+      response = await sendRuntimeMessage({
+        type: messages.background.RICH_MDD_RESOURCE,
+        requestId,
+        ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN,
+        dictionaryId: session.dictionaryId,
+        path: resource.path
+      });
+    } finally {
+      session.inFlightRequests.delete(requestId);
+    }
     if (!isCurrent(session) || !response?.ok || !response.found) throw new Error("MDD resource is unavailable.");
     const size = Number(response.size);
     const mime = String(response.mime || "");
@@ -224,6 +237,7 @@
     if (sessionsByContainer.get(session.container) === session) sessionsByContainer.delete(session.container);
     activeSessions.delete(session);
     cancelQueuedReads(session);
+    cancelRunningReads(session);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();
@@ -253,6 +267,18 @@
       if (readQueue[index].session !== session) continue;
       const [job] = readQueue.splice(index, 1);
       job.resolve(undefined);
+    }
+  }
+
+  function cancelRunningReads(session) {
+    const requestIds = [...session.inFlightRequests];
+    session.inFlightRequests.clear();
+    for (const requestId of requestIds) {
+      void sendRuntimeMessage({
+        type: messages.background.RICH_MDD_RESOURCE_READ_CANCEL,
+        requestId,
+        ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN
+      }).catch(() => {});
     }
   }
 
@@ -325,6 +351,32 @@
     if (!match || (!match[1] && !match[2])) return "";
     if (match[1] && !ALLOWED_STYLESHEET_TAGS.has(match[1].toLowerCase())) return "";
     return `${match[1] ? match[1].toLowerCase() : ""}${match[2] ? `.${match[2]}` : ""}`;
+  }
+
+  function createResourceRequestId() {
+    const bytes = new Uint8Array(16);
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(bytes);
+    } else {
+      for (let index = 0; index < bytes.length; index += 1) {
+        bytes[index] = Math.floor(Math.random() * 256);
+      }
+      fallbackRequestCounter += 1;
+      bytes[0] ^= fallbackRequestCounter & 0xff;
+    }
+    return REQUEST_ID_PREFIX + Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+  }
+
+  function createContentDocumentOwnerToken() {
+    const bytes = new Uint8Array(16);
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(bytes);
+    } else {
+      for (let index = 0; index < bytes.length; index += 1) {
+        bytes[index] = Math.floor(Math.random() * 256);
+      }
+    }
+    return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
   }
 
   function decodeBase64(base64, expectedSize) {

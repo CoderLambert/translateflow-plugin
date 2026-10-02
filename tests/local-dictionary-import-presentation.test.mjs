@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveAssociatedMddFiles } from "../src/options/local-dictionary-import-presentation.js";
+import {
+  isInstalledStateKnownForFamily,
+  readInstalledDictionaryState
+} from "../src/options/local-dictionary-installed-state.js";
 
 function namedBlob(name) {
   return Object.assign(new Blob(["synthetic MDD"]), { name });
@@ -24,4 +28,47 @@ test("MDD attachment refuses ambiguous sanitized filename matches", () => {
     null
   );
   assert.deepEqual(resolveAssociatedMddFiles([], [mdx]), []);
+});
+
+
+test("installed-state refresh preserves the healthy source and fails closed only for the unavailable family", async () => {
+  const state = await readInstalledDictionaryState({
+    async sendMessage(message) {
+      if (message.type === "RICH_MDICT_LIST") throw new Error("rich state unavailable");
+      if (message.type === "DICTIONARY_PACK_STATUS") {
+        return {
+          state: {
+            packs: {
+              "local-fixture": {
+                active: { packVersion: "v1", totalBytes: 12 },
+                display: { name: "Fixture", format: "tflex" }
+              }
+            }
+          }
+        };
+      }
+      throw new Error("unexpected message");
+    }
+  });
+
+  assert.equal(state.known.rich, false);
+  assert.equal(state.known.packs, true);
+  assert.equal(state.candidates.length, 1);
+  assert.equal(state.candidates[0].packId, "local-fixture");
+  assert.equal(isInstalledStateKnownForFamily("mdict-rich", state.known), false);
+  assert.equal(isInstalledStateKnownForFamily("stardict", state.known), true);
+  assert.equal(isInstalledStateKnownForFamily("tflex", state.known), true);
+});
+
+test("pack-state failure retains verified rich candidates and does not call them an empty installed set", async () => {
+  const state = await readInstalledDictionaryState({
+    async sendMessage({ type }) {
+      return type === "RICH_MDICT_LIST" ? { ok: true, dictionaries: [{ id: "rich-one", title: "Synthetic rich", fileName: "fixture.mdx" }] }
+        : { ok: false, state: { packs: {} } };
+    }
+  });
+  assert.deepEqual(state.known, { rich: true, packs: false });
+  assert.equal(state.candidates[0].packId, "rich-one");
+  assert.equal(isInstalledStateKnownForFamily("mdict-rich", state.known), true);
+  assert.equal(isInstalledStateKnownForFamily("tflex", state.known), false);
 });
