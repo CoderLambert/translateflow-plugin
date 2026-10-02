@@ -52,7 +52,8 @@ export async function lookupMddResource({
       blockIndex,
       limits,
       decompressionStreamFactory,
-      budget: lookupBudget
+      budget: lookupBudget,
+      signal
     });
     const matchIndex = findExactEntry(entries, normalizedPath);
     if (matchIndex < 0) return { found: false, path: normalizedPath };
@@ -82,7 +83,8 @@ export async function lookupMddResource({
       end,
       limits,
       decompressionStreamFactory,
-      budget: lookupBudget
+      budget: lookupBudget,
+      signal
     });
     const policy = classifyMddResource(normalizedPath, bytes, limits);
     return {
@@ -139,7 +141,8 @@ async function readRecordRange({
   end,
   limits,
   decompressionStreamFactory,
-  budget
+  budget,
+  signal
 }) {
   if (
     !Number.isSafeInteger(start) ||
@@ -161,12 +164,14 @@ async function readRecordRange({
     const overlapEnd = Math.min(end, blockEnd);
     if (overlapStart < overlapEnd) {
       budget.consumeRecordBlock(descriptor);
+      const compressed = await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes, signal);
       const decoded = await decodeMdictBlock({
-        input: await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes),
+        input: compressed,
         expectedBytes: descriptor.decompressedBytes,
         limits,
         label: "MDD resource block",
-        decompressionStreamFactory
+        decompressionStreamFactory,
+        signal
       });
       const from = overlapStart - descriptor.uncompressedOffset;
       const to = overlapEnd - descriptor.uncompressedOffset;

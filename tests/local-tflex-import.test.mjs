@@ -907,3 +907,129 @@ function compareText(a, b) {
   const right = String(b ?? "");
   return left < right ? -1 : left > right ? 1 : 0;
 }
+
+test("actual local import retains an explicit commitpoint during pointer update and cleanup", async () => {
+  const env = createEnvironment();
+  const files = await makePack({ packId: "local-commitpoint", packVersion: "v1", translation: "合成" });
+  const pointer = deferred(), pointerEntered = deferred(), cleanup = deferred(), cleanupEntered = deferred();
+  const originalUpdate = env.stateStore.update;
+  env.stateStore.update = (mutator) => originalUpdate(async (state) => {
+    const next = await mutator(state);
+    if (next.packs["local-commitpoint"]?.active) { pointerEntered.resolve(); await pointer.promise; }
+    return next;
+  });
+  const originalCleanup = env.store.cleanupPack;
+  env.store.cleanupPack = async (...args) => { cleanupEntered.resolve(); await cleanup.promise; return originalCleanup(...args); };
+  const importing = env.manager.importLocalTflex({ files, requestId: "real-commitpoint" });
+  await pointerEntered.promise;
+  assert.deepEqual(env.manager.cancel("real-commitpoint"), { cancelled: false, phase: "commitpoint" });
+  assert.deepEqual((await env.stateStore.read()).packs, {});
+  pointer.resolve();
+  await cleanupEntered.promise;
+  assert.equal((await env.stateStore.read()).packs["local-commitpoint"].active.packVersion, "v1");
+  assert.deepEqual(env.manager.cancel("real-commitpoint"), { cancelled: false, phase: "commitpoint" });
+  await assert.rejects(env.manager.importLocalTflex({ files, requestId: "real-commitpoint" }), (error) => error.code === PACK_ERROR_CODES.BUSY);
+  cleanup.resolve();
+  assert.equal((await importing).status, "imported");
+  assert.deepEqual(env.manager.cancel("real-commitpoint"), { cancelled: false, phase: "" });
+  assert.deepEqual(env.manager.cancel("unknown-request"), { cancelled: false, phase: "" });
+});
+
+test("pointer failure keeps staged cleanup protected and preserves the previous active version", async () => {
+  const env = createEnvironment();
+  await env.manager.importLocalTflex({ files: await makePack({ packId: "local-pointer-fail", packVersion: "v1", translation: "旧" }), requestId: "base" });
+  const originalUpdate = env.stateStore.update;
+  env.stateStore.update = (mutator) => originalUpdate(async (state) => {
+    const next = await mutator(state);
+    if (next.packs["local-pointer-fail"]?.active?.packVersion === "v2") throw new Error("synthetic pointer write failure");
+    return next;
+  });
+  const cleanup = deferred(), cleanupEntered = deferred();
+  const originalRemove = env.store.removeVersion;
+  let stagedExists = false;
+  const originalWrite = env.store.writeFile;
+  env.store.writeFile = async (...args) => { const result = await originalWrite(...args); if (args[1] === "v2") stagedExists = true; return result; };
+  env.store.removeVersion = async (...args) => {
+    if (args[1] === "v2" && stagedExists) { cleanupEntered.resolve(); await cleanup.promise; }
+    return originalRemove(...args);
+  };
+  const importing = env.manager.importLocalTflex({ files: await makePack({ packId: "local-pointer-fail", packVersion: "v2", translation: "新" }), requestId: "pointer-failure" });
+  const rejected = assert.rejects(importing, /synthetic pointer write failure/u);
+  await cleanupEntered.promise;
+  assert.deepEqual(env.manager.cancel("pointer-failure"), { cancelled: false, phase: "commitpoint" });
+  assert.equal((await env.stateStore.read()).packs["local-pointer-fail"].active.packVersion, "v1");
+  assert.equal(await env.store.hasVersion("local-pointer-fail", "v2"), true);
+  cleanup.resolve();
+  await rejected;
+  assert.equal(await env.store.hasVersion("local-pointer-fail", "v2"), false);
+  assert.equal((await env.stateStore.read()).packs["local-pointer-fail"].active.packVersion, "v1");
+  assert.deepEqual(env.manager.cancel("pointer-failure"), { cancelled: false, phase: "" });
+});
+
+function deferred() { let resolve; const promise = new Promise((done) => { resolve = done; }); return { resolve, promise }; }
+
+test("commitpoint and request/token ownership survive final quarantine cleanup", async () => {
+  const env = createEnvironment();
+  const token = quarantineToken(204);
+  env.quarantine.stage(token, await makePack({ packId: "local-final-cleanup", packVersion: "v1", translation: "合成" }));
+  const cleanup = deferred(), entered = deferred(), originalRemove = env.quarantine.remove;
+  env.quarantine.remove = async (value) => { entered.resolve(); await cleanup.promise; return originalRemove(value); };
+  const importing = env.manager.importLocalTflexFromQuarantine({ token, requestId: "final-cleanup" });
+  await entered.promise;
+  assert.equal((await env.stateStore.read()).packs["local-final-cleanup"].active.packVersion, "v1");
+  assert.deepEqual(env.manager.cancel("final-cleanup"), { cancelled: false, phase: "commitpoint" });
+  await assert.rejects(env.manager.importLocalTflexFromQuarantine({ token, requestId: "contender" }), (error) => error.code === PACK_ERROR_CODES.BUSY);
+  cleanup.resolve();
+  assert.equal((await importing).status, "imported");
+  assert.deepEqual(env.manager.cancel("final-cleanup"), { cancelled: false, phase: "" });
+  assert.equal(env.quarantine.has(token), false);
+});
+
+test("idempotent success is non-cancellable while final quarantine cleanup is pending", async () => {
+  const env = createEnvironment();
+  const files = await makePack({ packId: "local-idempotent-cleanup", packVersion: "v1", translation: "合成" });
+  await env.manager.importLocalTflex({ files, requestId: "idempotent-base" });
+  const before = await env.stateStore.read();
+  const token = quarantineToken(205);
+  env.quarantine.stage(token, files);
+  const cleanup = deferred(), entered = deferred(), originalRemove = env.quarantine.remove;
+  env.quarantine.remove = async (value) => { entered.resolve(); await cleanup.promise; return originalRemove(value); };
+  const importing = env.manager.importLocalTflexFromQuarantine({ token, requestId: "idempotent-cleanup" });
+  await entered.promise;
+  try {
+    assert.deepEqual(env.manager.cancel("idempotent-cleanup"), { cancelled: false, phase: "commitpoint" });
+    await assert.rejects(env.manager.importLocalTflexFromQuarantine({ token, requestId: "idempotent-contender" }), (error) => error.code === PACK_ERROR_CODES.BUSY);
+    assert.deepEqual(await env.stateStore.read(), before);
+  } finally {
+    cleanup.resolve();
+    await importing;
+  }
+  assert.equal((await importing).status, "already-imported");
+  assert.deepEqual(env.manager.cancel("idempotent-cleanup"), { cancelled: false, phase: "" });
+  assert.equal(env.quarantine.has(token), false);
+});
+
+test("cancellation before idempotent success is resolved cannot return already-imported", async () => {
+  const env = createEnvironment();
+  const files = await makePack({ packId: "local-idempotent-cancel", packVersion: "v1", translation: "合成" });
+  await env.manager.importLocalTflex({ files, requestId: "idempotent-base" });
+  const before = await env.stateStore.read();
+  const token = quarantineToken(206);
+  env.quarantine.stage(token, files);
+  const health = deferred(), entered = deferred(), originalRead = env.store.readFile;
+  let entryReads = 0;
+  env.store.readFile = async (...args) => {
+    // Recovery checks the active version first; block its second health inspection.
+    if (args[2] === "entries.dat" && ++entryReads === 2) { entered.resolve(); await health.promise; }
+    return originalRead(...args);
+  };
+  const importing = env.manager.importLocalTflexFromQuarantine({ token, requestId: "idempotent-cancel" });
+  await entered.promise;
+  assert.deepEqual(env.manager.cancel("idempotent-cancel"), { cancelled: true });
+  health.resolve();
+  await assert.rejects(importing, (error) => error.code === PACK_ERROR_CODES.CANCELLED);
+  assert.deepEqual(await env.stateStore.read(), before);
+  assert.equal(await env.store.hasVersion("local-idempotent-cancel", "v1"), true);
+  assert.equal(env.quarantine.has(token), false);
+  assert.deepEqual(env.manager.cancel("idempotent-cancel"), { cancelled: false, phase: "" });
+});

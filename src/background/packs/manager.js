@@ -206,7 +206,8 @@ export function createDictionaryPackManager({
   function cancel(requestId) {
     const id = String(requestId || "");
     const controller = controllersByRequest.get(id);
-    if (!controller) return { cancelled: false };
+    if (!controller) return { cancelled: false, phase: "" };
+    if (controller.localImportPhase === "commitpoint") return { cancelled: false, phase: "commitpoint" };
     controller.abort();
     return { cancelled: true };
   }

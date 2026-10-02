@@ -38,6 +38,10 @@ import {
   sha256
 } from "./rich-mdict-contract.js";
 import { RICH_MDICT_STATE_KEY } from "./rich-mdict-contract.js";
+import {
+  assertRichMddLookupActive,
+  createRichMddLookupCancellation
+} from "./rich-mdd-lookup-cancellation.js";
 
 export function createRichMddResourceManager({
   store = createOpfsPackStore({ rootDir: RICH_MDICT_OPFS_ROOT }),
@@ -57,6 +61,7 @@ export function createRichMddResourceManager({
   }
 
   const operationsByRequest = new Map();
+  const lookupCancellation = createRichMddLookupCancellation();
   const indexCache = new Map();
   let cachedIndexBytes = 0;
 
@@ -201,52 +206,68 @@ export function createRichMddResourceManager({
     });
   }
 
-  async function lookupResource(input = {}) {
+  async function lookupResource(input = {}, lookupIdentity = null) {
     const { packId, path } = validateResourceRequest(input);
-    return serializeRichMdictPack(packId, async () => {
-      const state = await stateStore.read();
-      const entry = state.packs?.[packId];
-      const snapshot = entry?.active?.resources;
-      if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || entry.status !== "healthy" || !isValidSnapshot(packId, entry.active)) {
-        return { found: false, path };
-      }
-      if (!snapshot) return { found: false, path };
-      if (!validateResourceSnapshot(packId, snapshot) || snapshot.mdxFileName !== entry.active.fileName) {
-        throw richError("RICH_MDD_CORRUPT", "Installed MDD resource metadata is malformed.");
-      }
-      const budget = createLookupBudget();
-      let match = null;
-      for (let index = 0; index < snapshot.sources.length; index += 1) {
-        const descriptor = snapshot.sources[index];
-        const mddIndex = await loadResourceIndex(packId, snapshot, descriptor);
-        const source = resourceReader(store, packId, snapshot.packVersion, descriptor);
-        const result = await lookup({ source, index: mddIndex, path, budget });
-        if (!result?.found) continue;
-        if (!(result.bytes instanceof Uint8Array) || result.bytes.byteLength > RICH_MDD_MAX_ASSET_BYTES) {
-          throw richError("RICH_MDD_CORRUPT", "MDD resource result exceeds its 8 MiB safety limit.");
+    const operation = lookupIdentity ? lookupCancellation.begin(lookupIdentity) : null;
+    const signal = operation?.controller.signal;
+    try {
+      return await serializeRichMdictPack(packId, async () => {
+        assertRichMddLookupActive(signal);
+        const state = await stateStore.read();
+        assertRichMddLookupActive(signal);
+        const entry = state.packs?.[packId];
+        const snapshot = entry?.active?.resources;
+        if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || entry.status !== "healthy" || !isValidSnapshot(packId, entry.active)) {
+          return { found: false, path };
         }
-        validateResourceMime(result);
-        if (result.kind === "stylesheet" && result.bytes.byteLength > 64 * 1024) {
-          throw richError("RICH_MDD_LIMIT", "Local MDD stylesheet exceeds its 64 KiB safety limit.");
+        if (!snapshot) return { found: false, path };
+        if (!validateResourceSnapshot(packId, snapshot) || snapshot.mdxFileName !== entry.active.fileName) {
+          throw richError("RICH_MDD_CORRUPT", "Installed MDD resource metadata is malformed.");
         }
-        if (match) {
-          match.bytes = null;
-          result.bytes = null;
-          throw richError("RICH_MDD_CORRUPT", "MDD resource path is ambiguous across numbered companions.");
+        const budget = createLookupBudget();
+        let match = null;
+        for (let index = 0; index < snapshot.sources.length; index += 1) {
+          assertRichMddLookupActive(signal);
+          const descriptor = snapshot.sources[index];
+          const mddIndex = await loadResourceIndex(packId, snapshot, descriptor, signal);
+          assertRichMddLookupActive(signal);
+          const source = resourceReader(store, packId, snapshot.packVersion, descriptor, signal);
+          const result = await lookup({ source, index: mddIndex, path, budget, signal });
+          assertRichMddLookupActive(signal);
+          if (!result?.found) continue;
+          if (!(result.bytes instanceof Uint8Array) || result.bytes.byteLength > RICH_MDD_MAX_ASSET_BYTES) {
+            throw richError("RICH_MDD_CORRUPT", "MDD resource result exceeds its 8 MiB safety limit.");
+          }
+          validateResourceMime(result);
+          if (result.kind === "stylesheet" && result.bytes.byteLength > 64 * 1024) {
+            throw richError("RICH_MDD_LIMIT", "Local MDD stylesheet exceeds its 64 KiB safety limit.");
+          }
+          if (match) {
+            match.bytes = null;
+            result.bytes = null;
+            throw richError("RICH_MDD_CORRUPT", "MDD resource path is ambiguous across numbered companions.");
+          }
+          match = result;
         }
-        match = result;
-      }
-      if (!match) return { found: false, path };
-      return {
-        found: true,
-        path,
-        mime: match.mime,
-        kind: match.kind,
-        ...(match.dimensions ? { width: match.dimensions.width, height: match.dimensions.height } : {}),
-        size: match.bytes.byteLength,
-        base64: bytesToBase64(match.bytes)
-      };
-    });
+        assertRichMddLookupActive(signal);
+        if (!match) return { found: false, path };
+        return {
+          found: true,
+          path,
+          mime: match.mime,
+          kind: match.kind,
+          ...(match.dimensions ? { width: match.dimensions.width, height: match.dimensions.height } : {}),
+          size: match.bytes.byteLength,
+          base64: bytesToBase64(match.bytes, signal)
+        };
+      });
+    } finally {
+      lookupCancellation.finish(operation);
+    }
+  }
+
+  function cancelLookup(requestIdValue, ownerKeyValue) {
+    return lookupCancellation.cancel(requestIdValue, ownerKeyValue);
   }
 
   async function assertStagedFiles({ packId, resourceVersion, resources }, signal) {
@@ -275,7 +296,7 @@ export function createRichMddResourceManager({
     }
   }
 
-  async function loadResourceIndex(packId, snapshot, descriptor) {
+  async function loadResourceIndex(packId, snapshot, descriptor, signal) {
     const key = `${packId}@${snapshot.packVersion}@${descriptor.indexSha256}`;
     const cached = indexCache.get(key);
     if (cached) {
@@ -283,14 +304,18 @@ export function createRichMddResourceManager({
       indexCache.set(key, cached);
       return cached.index;
     }
+    assertRichMddLookupActive(signal);
     const size = await store.getFileSize(packId, snapshot.packVersion, descriptor.indexPath);
+    assertRichMddLookupActive(signal);
     if (size !== descriptor.indexSize || size <= 0 || size > RICH_MDD_MAX_INDEX_BYTES) {
       throw richError("RICH_MDD_CORRUPT", "Installed MDD resource index is missing or malformed.");
     }
-    const bytes = await store.readFile(packId, snapshot.packVersion, descriptor.indexPath);
+    const bytes = await store.readFileRange(packId, snapshot.packVersion, descriptor.indexPath, 0, size, signal);
+    assertRichMddLookupActive(signal);
     if (await sha256(bytes, cryptoProvider) !== descriptor.indexSha256) {
       throw richError("RICH_MDD_CORRUPT", "Installed MDD resource index checksum failed.");
     }
+    assertRichMddLookupActive(signal);
     const index = parseMddIndex(bytes, descriptor.sourceSize, validateIndex);
     cacheIndex(key, index, bytes.byteLength);
     return index;
@@ -333,16 +358,17 @@ export function createRichMddResourceManager({
     }
   }
 
-  return Object.freeze({ preflight, commit, cancel, abortImport, lookupResource, forgetDictionary });
+  return Object.freeze({ preflight, commit, cancel, abortImport, lookupResource, cancelLookup, forgetDictionary });
 }
 
 function resourceReader(store, storePackId, version, descriptor, signal) {
   return {
     size: descriptor.sourceSize,
-    async read(offset, length) {
-      if (signal?.aborted) throw richMdictAbortError();
-      const bytes = await store.readFileRange(storePackId, version, descriptor.sourcePath, offset, length);
-      if (signal?.aborted) throw richMdictAbortError();
+    async read(offset, length, readSignal = signal) {
+      const activeSignal = readSignal || signal;
+      if (activeSignal?.aborted) throw richMdictAbortError();
+      const bytes = await store.readFileRange(storePackId, version, descriptor.sourcePath, offset, length, activeSignal);
+      if (activeSignal?.aborted) throw richMdictAbortError();
       return bytes;
     }
   };
@@ -363,14 +389,17 @@ function validateResourceMime(result) {
   }
 }
 
-function bytesToBase64(bytes) {
+function bytesToBase64(bytes, signal) {
   let binary = "";
   const chunkBytes = 0x6000;
   for (let offset = 0; offset < bytes.length; offset += chunkBytes) {
+    assertRichMddLookupActive(signal);
     const chunk = bytes.subarray(offset, Math.min(bytes.length, offset + chunkBytes));
     let part = "";
     for (let index = 0; index < chunk.length; index += 1) part += String.fromCharCode(chunk[index]);
     binary += part;
   }
+  assertRichMddLookupActive(signal);
   return btoa(binary);
 }
+

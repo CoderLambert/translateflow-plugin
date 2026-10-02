@@ -146,6 +146,7 @@ export function createLocalTflexImportTransaction({
     }
 
     const controller = new AbortController();
+    controller.localImportPhase = "prepare";
     controllersByRequest.set(id, controller);
     if (quarantineToken) {
       operationsByToken.set(quarantineToken, id);
@@ -186,7 +187,10 @@ export function createLocalTflexImportTransaction({
           store,
           cryptoProvider
         });
+      assertActive(controller.signal);
       if (alreadyImported) {
+        // A healthy idempotent result is final through quarantine cleanup.
+        controller.localImportPhase = "commitpoint";
         return alreadyImported;
       }
       assertNoFallbackCollision(
@@ -237,6 +241,9 @@ export function createLocalTflexImportTransaction({
         );
       }
       assertActive(controller.signal);
+
+      // Pointer commit is the cancellation boundary.
+      controller.localImportPhase = "commitpoint";
 
       const nextState =
         await stateStore.update((state) => {
@@ -289,31 +296,12 @@ export function createLocalTflexImportTransaction({
       }
       throw normalizeOperationError(error);
     } finally {
-      if (
-        ownsPackOperation &&
-        operationsByPack.get(packId) === id
-      ) {
-        operationsByPack.delete(packId);
+      if (quarantineToken && operationsByToken.get(quarantineToken) === id) {
+        await quarantine.remove(quarantineToken).catch(() => {});
+        operationsByToken.delete(quarantineToken);
       }
-      if (
-        controllersByRequest.get(id) ===
-        controller
-      ) {
-        controllersByRequest.delete(id);
-      }
-      if (
-        quarantineToken &&
-        operationsByToken.get(
-          quarantineToken
-        ) === id
-      ) {
-        operationsByToken.delete(
-          quarantineToken
-        );
-        await quarantine.remove(
-          quarantineToken
-        ).catch(() => {});
-      }
+      if (ownsPackOperation && operationsByPack.get(packId) === id) operationsByPack.delete(packId);
+      if (controllersByRequest.get(id) === controller) controllersByRequest.delete(id);
     }
   }
 

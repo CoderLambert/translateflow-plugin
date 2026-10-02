@@ -81,6 +81,84 @@ test("MDict controller removes a READY quarantine token when cancellation wins b
   assert.equal(controller.activeRequestId, "");
 });
 
+
+test("MDict commit cancellation is surfaced as AbortError when background cancellation wins", async () => {
+  let releaseCommit;
+  let commitStartedResolve;
+  const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
+  const runtime = new FakeRuntime();
+  runtime.sendMessage = async function sendMessage(message) {
+    this.messages.push(message);
+    if (message.type === "DICTIONARY_LOCAL_IMPORT_COMMIT") {
+      commitStartedResolve();
+      return new Promise((resolve) => { releaseCommit = resolve; });
+    }
+    if (message.type === "DICTIONARY_PACK_CANCEL") {
+      return { ok: true, cancelled: true };
+    }
+    throw new Error("unexpected message");
+  };
+  const workers = [];
+  const controller = createController(runtime, workers);
+  const importing = controller.importDictionary(input());
+  await waitFor(() => controller.phase === "worker");
+  const start = workers[0].posted[0].message;
+  workers[0].emitMessage({
+    type: "mdict-import:ready",
+    requestId: start.requestId,
+    token: "import-623e4567-e89b-42d3-a456-426614174000",
+    packId: "local-mdict-cancel-commit",
+    packVersion: "v1",
+    fingerprint: "sha256:" + "e".repeat(64),
+    metrics: { inputBytes: 7, outputBytes: 12 }
+  });
+  await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: true, phase: "commit" });
+  releaseCommit({ ok: false, errorCode: "CANCELLED", error: "cancelled" });
+  await assert.rejects(importing, (error) => error?.name === "AbortError");
+});
+
+test("MDict late cancel is rejected at commit point and does not turn a committed import into AbortError", async () => {
+  let cancelPhase = "";
+  let releaseCommit;
+  let commitStartedResolve;
+  const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
+  const runtime = new FakeRuntime();
+  runtime.sendMessage = async function sendMessage(message) {
+    this.messages.push(message);
+    if (message.type === "DICTIONARY_LOCAL_IMPORT_COMMIT") {
+      commitStartedResolve();
+      return new Promise((resolve) => { releaseCommit = resolve; });
+    }
+    if (message.type === "DICTIONARY_PACK_CANCEL") {
+      return { ok: true, cancelled: false, phase: cancelPhase };
+    }
+    throw new Error("unexpected message");
+  };
+  const workers = [];
+  const controller = createController(runtime, workers);
+  const importing = controller.importDictionary(input());
+  await waitFor(() => controller.phase === "worker");
+  const start = workers[0].posted[0].message;
+  workers[0].emitMessage({
+    type: "mdict-import:ready",
+    requestId: start.requestId,
+    token: "import-523e4567-e89b-42d3-a456-426614174000",
+    packId: "local-mdict-commitpoint",
+    packVersion: "v1",
+    fingerprint: "sha256:" + "d".repeat(64),
+    metrics: { inputBytes: 7, outputBytes: 12 }
+  });
+  await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "" });
+  cancelPhase = "commitpoint";
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "commitpoint" });
+  controller.dispose(); // A closed view cannot undo a successful backend commit.
+  releaseCommit({ ok: true, status: "imported" });
+  const result = await importing;
+  assert.equal(result.commit.status, "imported");
+});
+
 function createController(runtime, workers, quarantine) {
   let uuid = 0;
   return createMdictImportController({

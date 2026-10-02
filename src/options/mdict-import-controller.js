@@ -111,12 +111,13 @@ export function createMdictImportController({
           : {})
       });
       if (!commit?.ok) {
+        if (current.cancelRequested) throw abortError();
         throw responseError(
           commit,
           "MDict dictionary activation failed."
         );
       }
-      assertCurrent(current);
+      current.phase = "done";
       emitProgress(onProgress, requestId, "done", {
         packId: ready.packId,
         packVersion: ready.packVersion,
@@ -132,18 +133,21 @@ export function createMdictImportController({
   async function cancel({ hard = false } = {}) {
     const current = active;
     if (!current) return { cancelled: false, phase: "" };
-    current.cancelRequested = true;
-
+    if (current.phase === "done") return { cancelled: false, phase: "done" };
     if (current.phase === "commit") {
       const response = await runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL,
         requestId: current.commitRequestId
       });
+      const cancelled = Boolean(response?.cancelled);
+      if (cancelled) current.cancelRequested = true;
       return {
-        cancelled: Boolean(response?.cancelled),
-        phase: "commit"
+        cancelled,
+        phase: cancelled ? "commit" : String(response?.phase || "")
       };
     }
+
+    current.cancelRequested = true;
     if (current.phase === "worker") {
       if (hard) {
         current.worker?.terminate?.();
