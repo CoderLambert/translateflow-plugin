@@ -238,13 +238,8 @@ export function createLocalTflexImportTransaction({
       }
       assertActive(controller.signal);
 
-      // Crossing the active-pointer commit boundary is irreversible from the
-      // caller's perspective. Stop advertising this request as cancellable
-      // before the atomic state update so a late UI cancel cannot report
-      // success after the new version has already become active.
-      if (controllersByRequest.get(id) === controller) {
-        controllersByRequest.delete(id);
-      }
+      // Pointer commit is the cancellation boundary.
+      if (controllersByRequest.get(id) === controller) controllersByRequest.delete(id);
 
       const nextState =
         await stateStore.update((state) => {
