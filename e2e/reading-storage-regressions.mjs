@@ -1,9 +1,9 @@
-// Registered inside the existing storage suite: same actual WXT copy/profile/setup, no second fixture runtime.
+// Registered inside the existing storage suite: same selected production copy/profile/setup, no second fixture runtime.
 import { READING_METHOD as M, READING_ERROR as E } from '../src/shared/reading/constants.js';
 import { request, artifact } from '../tests/fixtures/reading/contract.mjs';
 
 export function registerStorageRegressions(test, expect, environment) {
-  test('Compiled viewed update advances the actual Content summary/port revision without changing catalog', async () => {
+  test('Production viewed update advances the actual Content summary/port revision without changing catalog', async () => {
     const { driver, message, openContent } = environment();
     const state = await message(M.GET_RECORDING_STATE); expect((await message(M.SET_RECORDING, {expectedConsentGeneration:state.data.consentGeneration})).ok).toBe(true);
     const content = await openContent(), operationId = crypto.randomUUID();

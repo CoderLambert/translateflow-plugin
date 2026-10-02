@@ -12,7 +12,12 @@ import { createSourceDigest } from '../src/shared/reading/identity.js';
 import { registerStorageRegressions } from './reading-storage-regressions.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const sourceRoot = process.env.READING_STORAGE_SOURCE_ROOT || root;
+const sourceRoot = resolve(process.env.READING_STORAGE_SOURCE_ROOT || root);
+const artifactVariable = ['READING_STORAGE_ARTIFACT', 'TF_E2E_ARTIFACT', 'TF_I18N_ARTIFACT']
+  .find((name) => process.env[name] !== undefined);
+const artifactPath = artifactVariable ? process.env[artifactVariable] : '.output/chrome-mv3';
+if (!artifactPath.trim()) throw new Error(`${artifactVariable} must name a production artifact directory`);
+const artifactRoot = resolve(root, artifactPath);
 let temporary, extension, context, worker, probeWorker, center, driver, server, origin, inventory;
 const hash = (data) => createHash('sha256').update(data).digest('hex');
 async function packageInventory(directory, prefix='') {
@@ -67,12 +72,12 @@ async function openContent() {
   return { page, tabId, send, snap, registration: registration.data };
 }
 
-test.describe('Reading storage: actual compiled router/repository + separately labelled direct-source native IDB probes', () => {
+test.describe('Reading storage: selected production router/repository + separately labelled direct-source native IDB probes', () => {
   test.setTimeout(120000);
   test.beforeAll(async () => {
+    const production=await packageInventory(artifactRoot);
     temporary = await mkdtemp(join(tmpdir(), 'translateflow-reading-storage-')); extension = join(temporary, 'extension'); server = await startMockServer();
-    const production=await packageInventory(join(sourceRoot,'.output/chrome-mv3'));
-    await cp(join(sourceRoot, '.output/chrome-mv3'), extension, { recursive: true });
+    await cp(artifactRoot, extension, { recursive: true });
     expect(await packageInventory(extension)).toEqual(production);
     inventory = []; await copyClosure('src/background/reading-record/repository.js'); await copyClosure('tests/fixtures/reading/storage.mjs');
     await writeFile(join(extension, 'storage-probe/worker.mjs'), `import {createReadingRepository as factory} from './src/background/reading-record/repository.js';
@@ -82,9 +87,11 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
     await writeFile(join(extension, 'learning-center.html'), '<!doctype html><title>Synthetic LC access fixture; not product UI</title>');
     const manifest = JSON.parse(await readFile(join(extension, 'manifest.json'), 'utf8')); manifest.host_permissions.push('http://127.0.0.1/*');
     await writeFile(join(extension, 'manifest.json'), JSON.stringify(manifest));
-    expect(hash(await readFile(join(extension, 'background.js')))).toBe(hash(await readFile(join(sourceRoot, '.output/chrome-mv3/background.js'))));
+    const productionBackgroundSha256=hash(await readFile(join(artifactRoot, 'background.js')));
+    expect(hash(await readFile(join(extension, 'background.js')))).toBe(productionBackgroundSha256);
     await launch();
-    await writeFile(test.info().outputPath('storage-copy-inventory.json'), JSON.stringify({ sourceRoot, productionBackgroundUnchanged: true, productionCopyBeforeChangesExact:true, production, browser: context.browser().version(), inventory,
+    await writeFile(test.info().outputPath('storage-copy-inventory.json'), JSON.stringify({ sourceRoot, artifactRoot, artifactVariable:artifactVariable || 'default WXT', productionBackgroundSha256,
+      productionBackgroundUnchanged: true, productionCopyBeforeChangesExact:true, production, browser: context.browser().version(), inventory,
       probeBootstrapSha256:hash(await readFile(join(extension,'storage-probe/worker.mjs'))),
       fixtureChanges: ['Synthetic LC HTML', 'ISOLATED owned collector', 'localhost permission', 'Separate direct-source native probe module closure; not compiled acceptance'] }, null, 2));
   });
@@ -92,7 +99,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
   test.beforeEach(async () => { await reset(); server.reset(); });
   registerStorageRegressions(test,expect,()=>({driver,message,openContent,probeWorker}));
 
-  test('Compiled production messages persist consent and actual lookup / late Rich / idempotent artifacts; restart keeps exact rows', async () => {
+  test('Production messages persist consent and actual lookup / late Rich / idempotent artifacts; restart keeps exact rows', async () => {
     const disabled = await message(M.GET_RECORDING_STATE); expect(disabled).toMatchObject({ ok: true, data: { enabled: false, recordCount: 0 } });
     expect((await driver.evaluate((input) => chrome.runtime.sendMessage(input), request(M.OPEN_LEARNING_CENTER))).error.code).toBe(E.NOT_READY);
     expect((await message(M.SET_RECORDING, { expectedConsentGeneration: disabled.data.consentGeneration })).ok).toBe(true);
@@ -114,7 +121,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
   });
 
 
-  test('Compiled two-tab snapshots, no-hit and completed assistant remain actual rows; Content gets only its minimal page projection', async () => {
+  test('Production two-tab snapshots, no-hit and completed assistant remain actual rows; Content gets only its minimal page projection', async () => {
     const state = await message(M.GET_RECORDING_STATE); await message(M.SET_RECORDING, { expectedConsentGeneration: state.data.consentGeneration });
     const first = await openContent(), second = await openContent();
     await center.evaluate(() => { globalThis.__notifications=[]; globalThis.__historyPort=chrome.runtime.connect({name:'reading.invalidate'}); __historyPort.onMessage.addListener((value)=>__notifications.push(value)); });
@@ -147,7 +154,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
     await center.evaluate(()=>__historyPort.disconnect()); expect(server.calls).toHaveLength(0); await first.page.close(); await second.page.close();
   });
 
-  test('Compiled digest barrier proves pause-before-write rejects actual late save while committed history stays readable', async () => {
+  test('Production digest barrier proves pause-before-write rejects actual late save while committed history stays readable', async () => {
     const state = await message(M.GET_RECORDING_STATE); await message(M.SET_RECORDING, { expectedConsentGeneration: state.data.consentGeneration });
     const content = await openContent(), operationId = crypto.randomUUID();
     const prepared = await content.send(request(M.BEGIN_QUERY, { operationId, pageKey: content.registration.pageKey, sourceSnapshot: content.snap })); expect(prepared.ok).toBe(true);
@@ -281,7 +288,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
     expect(result.firstRaw).toBeLessThanOrEqual(256 * 1024); expect(result.lookupCount).toBe(1);
   });
 
-  test('Compiled export retries exact chunk, rejects wrong cursors and interruption; EOF finish acknowledges actual revision only', async () => {
+  test('Production export retries exact chunk, rejects wrong cursors and interruption; EOF finish acknowledges actual revision only', async () => {
     await probeWorker.evaluate(async () => { await __probe.seedRecords(1, { answerChars: 23997, artifacts: 24 }); });
     const started = await message(M.EXPORT_START); expect(started.ok, JSON.stringify(started)).toBe(true);
     expect((await message(M.EXPORT_NEXT, { exportId: started.data.exportId, cursor: 'unknown-cursor' })).error.code).toBe(E.INTERRUPTED);
