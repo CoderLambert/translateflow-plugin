@@ -21,6 +21,7 @@ const scenario=existingUiLocale===undefined ? "missing-ui-locale" : "existing-ui
 test(`same profile and unpacked path preserve real settings, cache, OPFS, preferences and registrations through old → WXT → restart (${scenario})`, async ({}, testInfo) => {
   test.skip(!oldArtifact || !newArtifact, "Set both fixed old and actual WXT artifacts; no builder fallback.");
   test.setTimeout(180_000);
+  const listenerCountBefore = process.getActiveResourcesInfo().filter(type => type === "TCPServerWrap").length;
   const root = await mkdtemp(join(tmpdir(), "translateflow-wxt-upgrade-"));
   const extensionDir = join(root, "extension");
   const profile = join(root, "profile");
@@ -280,6 +281,12 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
       try { await network?.close(); }
       finally { try { await server?.close(); } finally { await rm(root,{recursive:true,force:true}); } }
     }
+    // Drain the completed close callbacks, then observe actual Node listener
+    // resources; this is not a timed wait for application behavior.
+    await new Promise(resolve => setImmediate(resolve));
+    const listenerCountAfter = process.getActiveResourcesInfo().filter(type => type === "TCPServerWrap").length;
+    console.log("[WXT_UPGRADE_CLEANUP]",JSON.stringify({scenario,failure:Boolean(failure),listenerCountBefore,listenerCountAfter}));
+    expect(listenerCountAfter).toBe(listenerCountBefore);
     }
   }
 });
