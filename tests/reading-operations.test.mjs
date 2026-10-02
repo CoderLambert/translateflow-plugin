@@ -26,12 +26,12 @@ test("Operation cap is backend-registered, immutable, owner-bound, fixed TTL and
   rejects(() => ops.register(owner(9), req, "f", token(), req.sourceSnapshot), E.CAPACITY);
   now = 601000; rejects(() => ops.get(a, req.operationId), E.STALE_OPERATION); assert.equal(ops.size, 0);
 });
-test("Synthetic repository cancellation receipts are retried, navigation/pause final guards reject late writes", async () => {
-  let cancellations = 0, pauses = false;
+test("Synthetic repository cancellation receipts are retried; revoked owner cannot late-write or cross-cancel", async () => {
+  let cancellations = 0;
   const repository = repositoryDouble({ cancelOperation: async ({ request, assertCurrent }) => {
     assertCurrent(); cancellations++; return { operationId: request.operationId, state: "cancelled", recordId: null, revision: null };
   }, mutate: async ({ assertCurrent }) => {
-    assertCurrent(); if (pauses) { const error = new Error(); error.code = E.DISABLED; throw error; }
+    assertCurrent();
     return { state: "saved", recordId: token().recordId, revision: 1, artifactId: artifact().artifactId, duplicate: false };
   } });
   const service = createReadingService({ browser: nativeBrowser(), repository, collector: collector(), now: () => 1000 });

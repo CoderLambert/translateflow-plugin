@@ -15,11 +15,11 @@ export async function readOwnedCollector(browser, sender, challenge) {
   const target = sender.documentId ? { tabId: sender.tab.id, documentIds: [sender.documentId] } : { tabId: sender.tab.id, frameIds: [0] };
   let results;
   try {
-    results = await browser.scripting.executeScript({ target, world: "ISOLATED", args: [challenge],
+    results = await browser.scripting.executeScript({ target, world: "ISOLATED", args: [JSON.stringify(challenge)],
       func: async (input) => {
         const collector = globalThis.__TRANSLATE_FLOW_CONTENT__?.modules?.readingAccessCollector;
         if (!collector || typeof collector.read !== "function") return null;
-        return collector.read(input);
+        return collector.read(JSON.parse(input));
       } });
   } catch { fail(E.FORBIDDEN, "collector"); }
   if (!Array.isArray(results) || results.length !== 1 || results[0].frameId !== 0 ||
