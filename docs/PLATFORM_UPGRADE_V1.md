@@ -340,3 +340,167 @@ contexts](https://playwright.dev/docs/chrome-extensions), [Chrome extension
 identity](https://developer.chrome.com/docs/extensions/reference/manifest/key),
 and [WXT migration](https://wxt.dev/guide/resources/migrate.html). The lock file,
 installed versions and actual artifact bytes remain the reproducibility contract.
+
+### Resumed integrated stage-1 evidence
+
+The resumed worktree merged actual main
+`20df027e41445c779485c5cdb1c709a10642709d` normally, including #249 and #232.
+Production artifacts were frozen at code input
+`5117dcf0cdb027790f276b23b6c62468c0c9575c`. Later commits change only the
+upgrade test, its opt-in fixture observer and dedicated Node assertions; the
+complete production runtime/build inputs remain identical. The final bounded
+upgrade and validation input is
+`ef046807f921d7128959daddbe6c42ad3af84249`. This documentation is a later
+evidence update, not a claim that earlier commands ran against a later head.
+The lock SHA-256 remains
+`917e568cc2f4cde346972f0297dda56241e1bec1e5a686222993a33425756c80`.
+
+All resumed evidence below exists under
+`/tmp/translateflow-release-a-resume-20261002/evidence/`; immutable packages are
+under `248-final-artifacts/`. The fixed old artifact was rebuilt from a detached
+worktree at the exact pre-switch commit, without a hidden fixture build.
+
+| Actual artifact | Files | Code bytes | Dictionary bytes | Tree SHA-256 |
+| --- | ---: | ---: | ---: | --- |
+| `fixed-old-19e89b6` | 237 | 1,508,511 | 0 | `5714bb2fecfd86d5384ac0369f5cffe667804ba7733cccf6b76bdb48b0c92cce` |
+| `current-legacy-5117dcf` | 254 | 1,582,442 | 0 | `2ba2e4c02655337b729451e35e573c81a857623acc516799cba90c9f910e9795` |
+| `current-wxt-5117dcf` | 149 | 1,456,604 | 0 | `075cf55d9a203aef5fe685b972688d4b8011792fe7576ded9dfca82d78cf8e3f` |
+| `current-wxt-release-1e955c7` | 227 | 1,456,604 | 36,830,492 | `7bd0fbb1d4aab14a7404d960efb88df76fc0cf3011cddc144004023ada97f8c7` |
+
+The unchanged WXT code ceiling is **1,576,595 B**. The current legacy comparison
+has grown with upstream locale/Reading code; its observed size is retained and
+does not raise the WXT ceiling. The WXT background closure is 366,557 B; Popup /
+Options compiled UI closure including 26,217 B HTML is 415,166 B. Release and
+development WXT non-dictionary files match byte for byte. Current legacy and
+WXT Manifests are semantically identical. Compared with fixed `19e89b6`, only #249's
+name/description/action-title/command-description placeholders and
+`default_locale: "en"` differ. Permissions, shortcuts, stable runtime paths,
+background type and declared Chrome 102 minimum do not change. File inventories
+and allowed Manifest differences are in `248-current-production-inventories.json`
+and `248-current-release-inventory.json`.
+
+The actual full runs discovered the same 118 cases. Their results remain
+separate from subsequent bounded corrections:
+
+| Executed command / input | Observed result | Evidence |
+| --- | --- | --- |
+| `npm run validate`, `5117dcf` | PASS: 486 checked source files, 926 Node tests, strict typecheck, 4 Vitest tests / 3 files, legacy build | `248-5117dcf-validate.log` |
+| `npm run build:extension:wxt`; `npm run test:wxt:smoke`, `5117dcf` | PASS: actual WXT production audit and limited native smoke | `248-5117dcf-wxt-build.log`, `248-5117dcf-wxt-smoke.log` |
+| `npm run test:e2e -- --reporter=line,json --output <unique-wxt-output>`, actual current WXT, `5117dcf` | **FAIL**: 113 PASS / 4 SKIP / 1 FAIL, 4.7 min; missing-locale upgrade initially expected an unobserved default write | `248-5117dcf-wxt-full.json`, `.log`, `-results/` |
+| Same full discovery with actual current legacy and matching locale artifact | PASS: 111 PASS / 7 SKIP, 5.2 min | `248-5117dcf-legacy-full.json`, `.log`, `-results/` |
+| Bounded upgrade corrections at `1e955c7`, `141dbab`, `16f4e7f` | **FAIL**: respectively 1 PASS / 1 FAIL, 2 FAIL, 2 FAIL; original reports/traces remain | corresponding `248-<head>-upgrade.*` and `-results/` |
+| `npm run test:e2e -- e2e/wxt-upgrade.spec.mjs --reporter=line,json --output <unique-output>`, `ef04680` | PASS: 2 real upgrade/restart scenarios, 27.2 s | `248-ef04680-upgrade.*`, `248-ef04680-upgrade/`, `248-current-upgrade-summary.json` |
+| `npm run validate`, `ef04680` | PASS: 486 checked source files, 927 Node tests, strict typecheck, 4 Vitest tests / 3 files, legacy build | `248-ef04680-validate.log` |
+| Native compiled-router probe against unmodified actual current WXT | PASS: valid v2 fixed-open NOT_READY; v1 UNSUPPORTED_VERSION; Options history request FORBIDDEN; package before/after hashes unchanged, zero external requests/page errors | `248-current-compiled-router/compiled-router.json` |
+| `npm run certify:lexicon`; `TRANSLATEFLOW_WXT_REQUIRE_LEXICON=1 npm run build:extension:wxt` | PASS: zero certification failures, actual production closure/descriptor/Manifest audit | `248-current-certify-lexicon.json`, `248-1e955c7-release-wxt-build.log`, `248-current-release-inventory.json` |
+| Actual release `npm run test:e2e -- e2e/release-lexicon.spec.mjs --reporter=line,json --output <unique-output>` | PASS: 1 native story, 3.1 s; only test Manifest changed; zero Provider calls | `248-1e955c7-release-e2e.json`, `.log` |
+
+Both full runs include five #232 native **source-oracle** stories using their
+explicit synthetic repository/collector fixture. Those are counted separately
+from actual WXT consumers and do not certify a persisted ReadingRecord or React
+learning center. The five locale stories select exactly the same artifact as
+their matrix entry through `TF_I18N_ARTIFACT`. The four common skips require
+unprovided real private/ECDICT corpus or the separately built release lexicon;
+the legacy run additionally skips the two explicitly opt-in upgrades and one
+40-sample comparison. No new skip, weakened business assertion, real paid
+Provider, or missing-source supplementation produced these results. The legacy
+full started at `5117dcf`; its three skipped upgrade-only files changed during
+that run. All applicable legacy story files and the immutable legacy package
+were unchanged. It is not mislabeled as a full test-source freeze at that SHA.
+
+The corrected permission control also passed in the actual current WXT full
+run: never-granted localhost was one native call with the exact host Error;
+withheld access was one PENDING call observed for 1,009 ms / 159 live samples;
+grant was one FULFILLED call with an actual frame result and marker; revocation
+was one PENDING call observed for 1,009 ms / 137 samples. Both negative windows
+had zero markers and absent production receivers. The native registration
+union, zero Provider calls and same-profile restart/pruning passed. PENDING
+still does not mean denial or settlement. The production tree is the current
+`075cf55…` artifact, not the earlier `7d727f…` input.
+
+The resumed 40-sample comparison retained every cold/warm observation against
+the exact ordered 48 classic files. Fixed old cold median/range was
+33.30 / 32.10–35.80 ms and warm was 13.55 / 12.50–14.30 ms; current WXT cold was
+33.50 / 32.00–39.80 ms and warm was 13.25 / 12.40–18.40 ms. Every sample retained
+the app identity/module count, zero translation/Provider calls and document
+cleanup. These measurements have no new threshold or speed-improvement claim;
+the raw report is `248-5117dcf-upgrade/injection-samples.json`.
+
+Locked public source inputs were copied read-only into the isolated source
+cache, and an offline rebuild explicitly rejected any download. Revision
+`406bf83b3c507a3d1f26e88252d5d66893fd36bf` rebuilt Core 61,340 records and
+Technical 10 records; all 78 generated files matched the reused cache, tree
+SHA-256 `34905ee08fd6f90bb9219bdef18e689f9ca80d570ba059f597d93e0a094e540e`.
+Certification used 2,100,111 B decoded cache within the existing 4 MiB bound;
+dictionary bytes remain within the existing 40 MiB bound. The separate isolated
+actual WXT validator controls explicitly reported development missing packs
+and rejected release missing packs, a damaged shard and an incompatible format.
+See `248-current-release-source-rebuild.json` and
+`248-current-lexical-failure-controls.json`; no directory-exists test is called
+release certification.
+
+### Same-ID activation and user upgrade procedure
+
+The resumed native experiment found a material unpacked-upgrade detail:
+replacing files at the same version/path and merely restarting the browser can
+retain the **old cached background**. Both initial workers lacked the new test
+observer and returned the exact fixed-old unknown-message response to a valid
+v2 fixed-open request. This phase is explicitly
+`PRE_UPGRADE_CACHED_OLD_RUNTIME`, not a new-WXT background PASS. Its full snapshot
+still exactly matches the old snapshot; a missing locale remains absent and
+Options displays auto without writing storage.
+
+The supported verified sequence is: retain the same unpacked directory and ID,
+replace its package bytes, use **Reload** on that extension in Chrome's
+extensions page with Developer mode enabled, then restart the browser. Do not
+uninstall, clear data, change the directory, or add a new key to perform this
+upgrade. Chrome's official
+[unpacked extension behavior](https://developer.chrome.com/docs/extensions/reference/api/runtime#unpacked-extension-behavior)
+describes reload as an update. The experiment independently observed this
+event on the genuinely new worker, with `reason: "update"` and
+`previousVersion: "0.8.0"`, and then observed the current compiled v2 NOT_READY
+response. Only that proven update authorizes exactly the new missing
+`uiLocale: "auto"` setting. Every other old setting, DB version/store/row,
+OPFS byte/hash/pointer, preference and registration is compared strictly.
+The existing zh_CN scenario preserves its value throughout.
+
+After actual activation, the new background restores all three seeded cache
+translations with no additional Provider calls. Management reload invalidates
+the old native message channel; a real document refresh and reinjection restore
+status. Browser restart then proves the new observer and current native v2
+response again and compares the full post-recovery snapshot exactly. Chromium's
+CLI-loaded profile reports an actual `install` event at that final restart;
+it is retained as observed, is not relabeled as update, and is not used to derive
+any expected data. The same extension ID, profile, OPFS files and database remain
+continuous.
+
+Lifecycle instrumentation is limited to the explicit WXT upgrade test copy.
+It adds one native read-only listener before the actual background entry,
+records at most four events in memory, and performs zero storage writes/API
+mocks. Production auditing remains unmodified. The recorded background SHA-256
+changes from `3d9dba21b9c5effd87d4d301875d92ac4e532ec5856614cdba4829e87c27b3a4`
+to `0fc675c8e1aca8a14d3444141efee197ba5586a88331a5c7073f19cb840c1ae7`
+only in that test copy. The report separately lists this `background.js`
+observation, explicit synthetic dictionary assets and test Manifest host access.
+Failure reports, when emitted by the final test, carry status FAIL and retained
+partial phases, never partial PASS.
+
+The code review input inventory is `248-ef04680-review-inputs.json`: it lists all
+18 changed files against main `20df027…`, with before/after Git blobs. The four
+upgrade/fixture/Node files changed since the original full-run input are listed
+separately; test inputs are explicitly not all identical. No production or build
+file changed between `5117dcf` and `ef04680`. Independent review must cover the
+whole candidate, with any later documentation delta reviewed precisely.
+
+The earlier failed assumptions remain visible: `5117dcf` required auto before
+any proven update; `1e955c7` wrongly required locale absence after management
+reload; `141dbab` assumed the initial worker executed replaced bytes;
+`16f4e7f` required an uncontracted empty restart event list. The final two
+bounded PASS results do not rewrite the original full WXT FAIL, the historical
+legacy page crash, or native keyboard/60-second permission expectation failures.
+Current-head CI, independent verification and independent review are still
+required before stage 1 can merge. Default switching is a later authorized
+phase. Chrome 102 binary, real public YouTube, other browsers, native keyboard
+shortcuts, browser permission prompts, human settlement of pending injections,
+paid Providers, arbitrary private dictionaries, ReadingRecord persistence and
+React learning-center flows remain **NOT RUN** in this scope.
