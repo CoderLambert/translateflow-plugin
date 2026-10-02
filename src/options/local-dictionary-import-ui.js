@@ -321,8 +321,14 @@ export function initializeLocalDictionaryImportUi({
     cancelButton.disabled = true;
     try {
       if (activeImport?.cancel) {
-        await activeImport.cancel();
-        progress.textContent = "正在取消并清理临时数据…";
+        const result = await activeImport.cancel();
+        if (result?.cancelled) {
+          progress.textContent = "正在取消并清理临时数据…";
+        } else if (result?.phase === "commitpoint") {
+          progress.textContent = "词典已进入最终提交阶段，当前已不能取消；正在完成保存…";
+        } else {
+          progress.textContent = "当前操作已经结束或无法取消。";
+        }
       } else if (preflightAbort) {
         preflightAbort.abort();
         progress.textContent = "已取消本机检查。";
