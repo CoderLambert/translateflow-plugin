@@ -58,7 +58,7 @@ export function* pruneAuxiliary(store, meta, now) {
 export function retainSite(meta, origin, expiresAt) {
   let site = meta.sites.find((item) => item.siteKey === origin);
   if (!site) {
-    if (meta.sites.length >= L.excludedSites + L.operationsGlobal) fail(E.CAPACITY, "site.metadata");
+    if (meta.sites.length >= L.exclusionSites + L.operationsGlobal) fail(E.CAPACITY, "site.metadata");
     site = { ...sitePolicy(meta, origin), expiresAt }; meta.sites.push(site);
   } else if (!site.excluded) site.expiresAt = Math.max(site.expiresAt || 0, expiresAt);
   return site;

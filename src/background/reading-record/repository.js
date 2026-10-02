@@ -11,35 +11,54 @@ import { open, exportState, chunk, finish } from "./export-reader.js";
 export function createReadingRepository({ now = Date.now, randomId = () => crypto.randomUUID(), onCommit = null } = {}) {
   const database = createReadingDatabase(), cursors = new Map(); let publisher = onCommit;
   function published() { if (publisher) { try { void Promise.resolve(publisher()).catch(() => {}); } catch {} } }
-  function prune() { for (const [key, value] of cursors) if (now() >= value.expiresAt) cursors.delete(key); }
+  function prune() { for (const [key, value] of cursors) if (!value.busy && now() >= value.expiresAt) cursors.delete(key); }
   const run = (mode, context, program) => database.run(mode, context.assertCurrent, program);
   async function readContext(context) {
     prune(); const { request } = context;
+    const listed = [M.LIST_RECORDS, M.LIST_PAGES, M.GET_PAGE_SUMMARY, M.LIST_RECORDING_EXCLUSIONS].includes(request.method);
     const cursor = request.cursor ? cursors.get(request.cursor) : null;
-    if (request.cursor && (!cursor || cursor.identity !== queryIdentity(context))) fail(E.STALE_OPERATION, "query.cursor");
-    let result;
-    try { result = await run(request.method === M.GET_RECORD ? "readwrite" : "readonly", context, (store) => read(store, context, cursor, now())); }
-    catch (error) {
-      if (request.method !== M.GET_RECORD || ![E.QUOTA, E.CAPACITY].includes(error.code)) throw error;
-      result = await run("readonly", context, (store) => read(store, context, cursor, now(), false));
-    }
-    if (result.committed) published();
-    if ("items" in result.data) {
-      let nextCursor = null;
-      if (result.more) {
-        prune(); if (cursors.size >= L.operationsGlobal) fail(E.CAPACITY, "query.cursors");
-        nextCursor = randomId(); cursors.set(nextCursor, { ...result.cursor, expiresAt: now() + L.operationTtlMs });
+    if (request.cursor && (!cursor || cursor.busy || cursor.identity !== queryIdentity(context))) fail(E.STALE_OPERATION, "query.cursor");
+    let name = request.cursor, reservation = cursor;
+    if (listed) {
+      if (!reservation) {
+        if (cursors.size >= L.operationsGlobal) fail(E.CAPACITY, "query.cursors");
+        name = randomId(); reservation = { identity: queryIdentity(context), expiresAt: now() + L.operationTtlMs };
+        cursors.set(name, reservation);
       }
-      result.data.nextCursor = nextCursor;
+      reservation.busy = true; // Reserve synchronously; concurrent consumption cannot fork a chain.
     }
-    return result.data;
+    try {
+      let result;
+      try { result = await run(request.method === M.GET_RECORD ? "readwrite" : "readonly", context, (store) => read(store, context, cursor, now())); }
+      catch (error) {
+        if (request.method !== M.GET_RECORD || ![E.QUOTA, E.CAPACITY].includes(error.code)) throw error;
+        result = await run("readonly", context, (store) => read(store, context, cursor, now(), false));
+      }
+      if (result.committed) published();
+      if (listed) {
+        if (cursors.get(name) !== reservation || now() >= reservation.expiresAt) fail(E.STALE_OPERATION, "query.cursor");
+        cursors.delete(name); // Successful pages consume the old token; one chain occupies one slot.
+        let nextCursor = null;
+        if (result.more) {
+          nextCursor = randomId(); cursors.set(nextCursor, { ...result.cursor, busy: false, expiresAt: reservation.expiresAt });
+        }
+        result.data.nextCursor = nextCursor;
+      }
+      return result.data;
+    } catch (error) {
+      if (listed && cursors.get(name) === reservation) {
+        if (!cursor || now() >= reservation.expiresAt) cursors.delete(name); else reservation.busy = false;
+      }
+      throw error;
+    }
   }
   return {
     setInvalidationPublisher(value) { if (value !== null && typeof value !== "function") throw new TypeError("publisher"); publisher = value; },
     close() { publisher = null; cursors.clear(); database.close(); },
     read: readContext,
     readPolicy(context) { return run("readonly", context, function* (store) {
-      const meta = yield* state(store); policy(meta, context, { siteRead: true });
+      // This is the internal preflight policy read, before service derives access.siteExcluded.
+      const meta = yield* state(store); policy(meta, { ...context, request: null }, { siteRead: true });
       return { siteExcluded: sitePolicy(meta, context.access.siteKey).excluded };
     }); },
     prepareOperation(context) { const candidateId = randomId(); return run("readwrite", context, (store) => prepare(store, context, now(), candidateId)); },

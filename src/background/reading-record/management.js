@@ -14,7 +14,7 @@ export function* manage(store, context, now) {
   if (request.method === M.SET_SITE_RECORDING) {
     const current = sitePolicy(meta, request.siteKey);
     if (request.expectedSitePolicyRevision !== current.sitePolicyRevision) fail(E.REVISION_CONFLICT, "site.revision");
-    if (request.excluded && !current.excluded && meta.sites.filter((site) => site.excluded).length >= L.excludedSites) fail(E.CAPACITY, "exclusions");
+    if (request.excluded && !current.excluded && meta.sites.filter((site) => site.excluded).length >= L.exclusionSites) fail(E.CAPACITY, "exclusions");
     const site = retainSite(meta, request.siteKey, now + L.operationTtlMs);
     site.sitePolicyRevision = ++meta.siteRevision; site.excluded = request.excluded;
     site.expiresAt = now + L.operationTtlMs; changed(meta);
