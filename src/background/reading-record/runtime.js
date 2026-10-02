@@ -28,7 +28,9 @@ export function handleReadingPort(port) {
   return true;
 }
 export function onReadingTabUpdated(tabId, changeInfo) {
-  if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) runtime().service.invalidateTab(tabId);
+  if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) {
+    const state = runtime(); state.service.invalidateTab(tabId); state.subscriptions.closeTab(tabId);
+  }
 }
-export function onReadingTabRemoved(tabId) { runtime().service.forgetTab(tabId); }
+export function onReadingTabRemoved(tabId) { const state = runtime(); state.service.forgetTab(tabId); state.subscriptions.closeTab(tabId); }
 export function onReadingPermissionsRemoved() { runtime().service.revoke(); runtime().subscriptions.close(); }

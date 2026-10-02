@@ -1,6 +1,6 @@
 import { READING_ERROR as E, READING_LIMITS as L } from "../../shared/reading/constants.js";
 import { validateOperationToken } from "../../shared/reading/lifecycle.js";
-import { fail } from "../../shared/reading/validation.js";
+import { fail, text } from "../../shared/reading/validation.js";
 
 // Transient backend registration only. Persisted receipts/meta/atomic mutations belong to #233.
 export function createOperationRegistry({ now = Date.now } = {}) {
@@ -44,6 +44,9 @@ export function createOperationRegistry({ now = Date.now } = {}) {
         (request.recordId !== null && (validated.recordId !== request.recordId || validated.recordRevision !== request.recordRevision)) ||
         (request.recordId === null && validated.recordRevision !== 0) || validated.issuedAt > now() || now() >= validated.expiresAt) fail(E.BAD_DTO, "operation.token");
     const value = { access, token: validated, fingerprint, sourceSnapshot, revoked: false };
+    // Validated BEGIN metadata is retained once, within the existing operation budget.
+    // SAVE has no source language field and must not infer one from provider output.
+    Object.defineProperty(value, "sourceLanguage", { value: text(request.sourceLanguage, L.languageChars, "operation.sourceLanguage"), enumerable: true });
     entries.set(key(access.ownerKey, request.operationId), value);
     return value;
   }
