@@ -61,10 +61,12 @@ npm run check:i18n
 npm run validate
 npm run build:extension:wxt
 TF_I18N_ARTIFACT=dist/extension npm run test:e2e -- e2e/ui-locale.spec.mjs
-TF_I18N_ARTIFACT=.output/chrome-mv3 npm run test:e2e -- e2e/ui-locale.spec.mjs
+npm run test:e2e -- e2e/ui-locale.spec.mjs
 ```
 
-The dedicated browser fixture consumes the chosen built package directly. It
+The dedicated browser fixture defaults to the actual WXT package built by CI;
+`TF_I18N_ARTIFACT=dist/extension` explicitly selects the built legacy comparison.
+It consumes the chosen built package directly. It
 copies the package to a temporary directory, adds no runtime source or
 permissions, and uses a separate synthetic profile. It checks missing-settings
 compatibility, language changes across two Options pages, preservation of all
@@ -85,6 +87,8 @@ browser UI locales, without mocking `getUILanguage()`: Chinese browser/English
 UI/Chinese translation target, English browser/Chinese UI/original dictionary
 languages, dual-page synchronization, reopening and storage failure recovery.
 Both the legacy and WXT artifacts passed all five browser cases with zero HTTP
-requests and zero page errors. Earlier fixture failures were preserved; the
-only test fix guarded fault injection against the initial non-extension page.
+requests and zero page errors. Earlier fixture failures were preserved:
+fault injection was guarded against the initial non-extension page, and a cold
+CI run exposed the implicit legacy-package prerequisite. The browser fixture
+now defaults to WXT without building or repairing a missing artifact itself.
 Manifest language selection on other operating systems remains unverified.

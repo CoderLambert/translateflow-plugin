@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 // Consume a real built artifact. No runtime source or permissions are added.
-// Run separately for dist/extension and .output/chrome-mv3.
-const artifact = resolve(process.env.TF_I18N_ARTIFACT || "dist/extension");
+// Default to the WXT artifact built by CI; select dist/extension explicitly for legacy comparison.
+const artifact = resolve(process.env.TF_I18N_ARTIFACT || ".output/chrome-mv3");
 const test = base.extend({
   browserUiLocale: ["en-US", { option: true }],
   localeHarness: async ({ browserUiLocale }, use) => {
