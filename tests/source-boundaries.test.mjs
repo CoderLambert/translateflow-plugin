@@ -170,6 +170,27 @@ test("CLI preserves approved owners and the exact existing MAIN request forwarde
   assert.equal(result.status, 0, result.output);
 });
 
+test("CLI accepts only Git CRLF conversion of the approved MAIN source", () => {
+  const source = approvedMainSource.replace(/\r?\n/gu, "\r\n");
+  const result = runFixture({ "src/content/subtitles/youtube-main-bridge.js": source });
+  assert.equal(result.status, 0, result.output);
+});
+
+test("CLI rejects CRLF MAIN source with unreviewed container delegation", () => {
+  const source = approvedMainSource.replace(/\r?\n/gu, "\r\n") +
+    '\r\nlet root=globalThis;const box={request:root.fetch};Reflect.apply(box.request,root,["https://invalid.test"]);';
+  const result = runFixture({ "src/content/subtitles/youtube-main-bridge.js": source });
+  assert.equal(result.status, 1, result.output);
+  assert.match(result.output, /精确闭包/u);
+});
+
+test("CLI rejects standalone CR in the approved MAIN source", () => {
+  const source = approvedMainSource.replace(/\r?\n/u, "\r");
+  const result = runFixture({ "src/content/subtitles/youtube-main-bridge.js": source });
+  assert.equal(result.status, 1, result.output);
+  assert.match(result.output, /精确闭包/u);
+});
+
 test("strict typecheck command rejects an actual type error", () => {
   const root = mkdtempSync(join(tmpdir(), "translateflow-type-error-"));
   try {

@@ -11,8 +11,10 @@ export const isRuntimeSource = (path) => path.startsWith("src/") || path.startsW
 const isReact = (name) => /^(?:react|react-dom)(?:\/|$)/u.test(name);
 const MAIN_OBSERVER = "src/content/subtitles/youtube-main-bridge.js";
 // A single reviewed legacy observer, not an interprocedural JS taint exemption.
-// Updating this fixed value requires authorized source changes, real subtitle
-// regressions and independent review; never derive it from the candidate file.
+// Only Git's CRLF conversion is canonicalized to LF, including old worktrees
+// predating .gitattributes. Updating any other source byte requires authorized
+// changes, real subtitle regressions and independent review; never derive the
+// fixed value from the candidate file.
 const APPROVED_MAIN_SHA256 = "6707d04d73fe5a2b20d7b5ea6dc5c0778b6d4016e8da015679e09e5e0074a76a";
 function dependencies(tree, api) {
   const found = [];
@@ -61,7 +63,7 @@ export function inspectSources(root, files) {
     const code = readFileSync(file, "utf8");
     const tree = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true);
     for (const error of tree.parseDiagnostics) failures.push(`${path}: syntax: ${ts.flattenDiagnosticMessageText(error.messageText, " ")}`);
-    if (path === MAIN_OBSERVER && createHash("sha256").update(code).digest("hex") !== APPROVED_MAIN_SHA256) {
+    if (path === MAIN_OBSERVER && createHash("sha256").update(code.replaceAll("\r\n", "\n")).digest("hex") !== APPROVED_MAIN_SHA256) {
       failures.push(`${path} MAIN observer 源码超出已审核的精确闭包；须独立审核后更新固定例外`);
     }
     if (!isRuntimeSource(path) || tree.isDeclarationFile) continue;
