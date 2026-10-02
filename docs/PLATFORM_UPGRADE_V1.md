@@ -726,3 +726,116 @@ coordinator gates. All earlier CI/full-suite FAILs, timeouts and sampling-proof
 limitations remain recorded, and prior NOT RUN limits remain. Default switching
 has not occurred; this is not #248 completion, #235 activation or
 React/ReadingRecord acceptance.
+
+### #266 second current-head correction and locale installation race
+
+The implementation freeze for this correction is
+`5ba585c3434e7989c3b82e7651ad0fe1bf8683ef`. Native execution below binds to
+`7481d254153b1ebc16602f72741d82e45c6f7802`; the only later implementation
+delta is five explicit artifact/source-head environment lines in
+`lexicon-release.yml` and `dictionary-library-vnext-certification.yml`.
+All native test/fixture inputs and production sources are byte-identical
+between those heads. The final evidence commit changes only this document.
+`248-5ba585c-input-binding.json` records Git input blobs, package inventories
+and report/log SHA256 values under the existing local evidence directory.
+This binding does not label a previous native run as a new-head execution.
+
+The five additional automatic-review findings at the previous `7be055b` head
+are addressed within the existing stage-one test/build-consumer boundary:
+
+- `4167584953`: `test:e2e` and `test:e2e:rich-mdict` now use the explicit
+  `scripts/run-e2e.mjs` wrapper. Its default is the documented actual
+  `.output/chrome-mv3` WXT package. An explicit `TF_E2E_ARTIFACT` selects a
+  legacy package; it also supplies the matching locale input unless
+  `TF_I18N_ARTIFACT` is explicitly provided. Empty/missing selected inputs
+  fail before execution; there is no builder, existence fallback or residual
+  `dist/extension` selection. Test discovery does not execute a package.
+- `4167584955`: all existing applicable event path filters in the three
+  specialty workflows cover `e2e/support/**`, including the production
+  adapter and frozen mapping. Their existing explicit legacy producers and
+  strong corpus/writer/security/cancellation gates remain. Both release
+  workflow consumers now explicitly select their existing `dist/extension`
+  producer with `TF_E2E_ARTIFACT_SOURCE_HEAD: github.sha` and matching locale
+  input. Default production build selection has not changed.
+- `4167584959`: server/proxy startup, manifest reads and version checks are
+  inside the upgrade test's protected region. Nested cleanup covers partial
+  startup and evidence-write failures. Native `TCPServerWrap` counts are
+  recorded before and after closure. Missing old/new manifests and version
+  conflict each actually fail and return to zero listeners without a browser
+  launch, Provider call or supervisor timeout.
+- `4167584963`: the immutable `19e89b6` package uses its own frozen mapping,
+  including both source-file SHA256 values and Git blob IDs. Current packages
+  still use the complete current mapping. The sampler uses each selected
+  generation's injection order. Future current-only resources cannot become
+  requirements for the old package; missing old workers still fail.
+  `19e89b6-runtime-mapping.json` has SHA256
+  `21eb874a9db5abf840537398dbf4fe9ed49b3338defed1b4e76ad1ed0dde1d35`.
+- `4167584969`: recovery now compares every database name/version,
+  store, row and field against the pre-upgrade snapshot before accepting the
+  restart baseline. Only valid monotonic `lastAccessedAt` updates on existing
+  translation/page rows are allowed within the observation time. The
+  three-translation assertion remains. Eighteen corrupt snapshots retaining
+  three translations are rejected, covering content, identity, configuration,
+  timestamps, pages, selection rows and database/store changes.
+
+The release locale CI FAIL at `7be055b` remains a FAIL
+(113 PASS / 6 SKIP / 1 FAIL). A bounded diagnostic copy of the unchanged
+actual WXT release package captures the native install event and defers its
+real defaults callback. Before releasing that callback, native storage is
+`{}` and the synthetic read failure shows the disabled UI and Retry button.
+After clearing the failure flag and releasing the real callback, native
+`onChanged` observes `uiLocale: auto`; the UI recovers and Retry disappears.
+The original retry-click visibility assertion actually fails.
+`248-locale-install-race-probe.json` records `REPRODUCED_FAIL`, zero probe
+storage writes, zero permission changes and production/test-copy hashes.
+This demonstrates the fixture race; it does not uniquely reconstruct the
+original CI scheduling and is not unmodified-package acceptance.
+
+The final locale fixture instead waits, before opening Options, for native
+installation defaults to reach `{ uiLocale: "auto" }` in the unmodified actual
+package. This ten-line readiness change retains the original read-error,
+disabled-control and retry assertions, existing timeout and production
+`onChanged` behavior. No production locale controller change was needed.
+
+| Executed command/input | Actual result | Local evidence |
+| --- | --- | --- |
+| Focused Node tests for entry selection, versioned mapping and upgrade expectations | PASS: 8 tests; residual legacy/missing WXT, future current resources, absent old workers and 18 same-count corrupt database controls | `tests/wxt-e2e-entry.test.mjs`, `tests/wxt-runtime-mapping.test.mjs`, `tests/wxt-upgrade-expectations.test.mjs`; validate logs |
+| `npm run test:e2e -- e2e/wxt-upgrade.spec.mjs e2e/wxt-injection-samples.spec.mjs e2e/ui-locale.spec.mjs --reporter=line,json --output <unique>` at `7481d25` with explicit immutable old/current WXT and release-locale inputs | PASS: 8 stories / 30.0 s / 0 SKIP / 0 FAIL; two same-ID continuity stories, all 40 samples and five release locale stories | `248-7481d25-native.json`, `.log`, `-results/`, `-upgrade/` |
+| Real upgrade CLI with missing old manifest / missing new manifest / conflicting version | Expected FAIL: exit 1 in 1161 / 1035 / 1072 ms; all listener counts 0 → 0, no timeout, no phase or Provider call | `248-7481d25-negative-cleanup.json` and three `-negative-*.log/json` reports |
+| `npm run validate` at `7481d25` and again at `5ba585c` | PASS at each: 493 checked files, 958 Node tests, strict typecheck, 4 Vitest tests / 3 files, actual legacy build | `248-7481d25-validate.log`, `248-5ba585c-validate.log` |
+| `npm run test:e2e:rich-mdict -- --grep 'corrupt key-info' --reporter=line,json --output <unique>` at `5ba585c`, artifact overrides unset | PASS: 1 native story / 1.6 s; wrapper actually selected WXT `.output/chrome-mv3` | `248-5ba585c-default-alias.log/json` |
+| Existing PyYAML checks at `5ba585c` | PASS: five workflow producer orders and explicit artifact/source-head inputs; all existing specialty path-filter events covered | `248-5ba585c-workflow-audit.json` |
+| First `npm run test:wxt:smoke` at `5ba585c` | FAIL before browser launch: developer output lacked generated lexicons while restored source assets required them | `248-5ba585c-wxt-smoke.log` |
+| Same `5ba585c` input, own generated assets temporarily preserved outside the source tree, `npm run build:extension:wxt` then `npm run test:wxt:smoke` | PASS: same-mode actual developer build, strict audit and native smoke; generated assets then restored intact | `248-5ba585c-dev-build.log`, `-dev-smoke.log`, `-browser-smoke.json` |
+
+The freshly built `5ba585c` developer package is frozen at
+`248-5ba585c-current-wxt-dev`: 149 files, 1,457,777 code/total bytes,
+zero dictionary bytes, tree
+`132155ef917cec892d2a14ae903e0635a086e86722fabe687f26ea508ef22fbe`.
+It equals the native-test WXT production package file for file. The unchanged
+release tree remains
+`67a55ff45a6224435c9bcc101f9cf7a8375f89d52d02c1ee2749925baa5dcbc1`:
+227 files, 38,288,269 total bytes, 1,457,777 code bytes and 36,830,492
+dictionary bytes. Own generated source assets were restored to tree
+`34905ee08fd6f90bb9219bdef18e689f9ca80d570ba059f597d93e0a094e540e`.
+The code ceiling stays 1,576,595 bytes; lockfile, production Manifest,
+permissions, Provider/cache/schema and runtime sources are unchanged.
+
+Both fresh continuity stories retain management Reload activation and current
+compiled v2 runtime proof before WXT recovery. They compare all database
+content, OPFS bytes/pointers, settings and registrations, then the complete
+recovered snapshot after browser restart. Each records 68 outside-mock attempts,
+all blocked, zero outside-mock forwarding and zero additional Provider calls.
+The native startup controls and origin-attribution limitations above remain.
+The new 40 observations use the correct old/current mappings and real WXT
+activation; all raw observations remain in the `7481d25` report. Earlier
+`813d647` timings and network counts describe only that earlier run.
+
+New-head cloud workflow execution, ordinary full dual-artifact E2E, pinned
+writer regeneration and real ECDICT corpus/one-click gates are **NOT RUN
+locally** in this bounded correction. Required current-head CI and independent
+review remain coordinator gates. Chrome 102, real YouTube, native keyboard
+commands, pending click-to-run recovery, other browsers and React/ReadingRecord
+product acceptance remain **NOT RUN**. Earlier failures, timeouts and partial
+evidence retain their original status. All local processes ended; no default
+switch, release publication or #248 completion is claimed.
