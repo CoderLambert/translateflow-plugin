@@ -126,14 +126,16 @@ test("Buffered export retry cannot return a different cursor chunk after concurr
     const oldRetry = registry.next(c0);
     const outcome = change === "unchanged" ? oldRetry : assert.rejects(oldRetry, (error) => error.code === E.INTERRUPTED);
     await entered.promise;
+    let cancellation;
     if (change === "advance") {
       const chunk1 = await registry.next({ ...c0, request: { ...c0.request, cursor: chunk0.nextCursor } });
       assert.equal(chunk1.sequence, 1); assert.notEqual(chunk1.jsonChunk, chunk0.jsonChunk);
-    } else if (change === "cancel") await registry.cancel({ ...context, request: { exportId: opened.exportId } });
+    } else if (change === "cancel") cancellation = registry.cancel({ ...context, request: { exportId: opened.exportId } });
     else if (change === "revoke") registry.revoke();
     else if (change === "revision") revision++;
     release.resolve();
     const result = await outcome;
+    if (cancellation) assert.equal((await cancellation).state, "cancelled");
     if (change === "unchanged") assert.deepEqual(result, chunk0);
   }
 });
