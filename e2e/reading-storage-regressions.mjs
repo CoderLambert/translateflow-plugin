@@ -53,16 +53,17 @@ export function registerStorageRegressions(test, expect, environment) {
     const result=await environment().probeWorker.evaluate(async()=> {
       const p=__probe;await p.enable(p.repo);await p.save(p.repo,await p.begin(p.repo));const original=await p.counts(), db=await p.rawDatabase();
       const put=(value)=>new Promise((resolve,reject)=>{const tx=db.transaction('meta','readwrite');tx.objectStore('meta').put(value,'state');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});
+      const key=()=>new Promise((resolve,reject)=>{const tx=db.transaction('meta','readonly'),request=tx.objectStore('meta').getKey('state');let value;request.onsuccess=()=>{value=request.result;};tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error);});
       const cases=[];
-      try { for(const value of [false,null,0,{}]) {
+      try { for(const value of [undefined,false,null,0,'',{}]) {
         await put(value);const before=await p.counts();let readError,writeError;
         try {await p.repo.read(p.ctx(p.M.GET_RECORDING_STATE));}catch(error){readError=error.code;}
         try {await p.repo.mutate(p.ctx(p.M.SET_RECORDING,{expectedConsentGeneration:original.meta.consentGeneration}));}catch(error){writeError=error.code;}
-        cases.push({value,readError,writeError,before,after:await p.counts()});
+        cases.push({value,type:value===null?'null':typeof value,readError,writeError,before,after:await p.counts(),key:await key()});
       }} finally {await put(original.meta);db.close();}
       p.repo.close();p.repo=p.factory({now:()=>p.clock});return {original,cases,recovered:await p.repo.read(p.ctx(p.M.GET_RECORDING_STATE)),after:await p.counts()};
     });
-    for(const item of result.cases){expect(item.readError).toBe(E.STORAGE);expect(item.writeError).toBe(E.STORAGE);expect(item.after).toEqual(item.before);expect(item.after.records).toBe(1);expect(item.after.meta).toEqual(item.value);}
+    for(const item of result.cases){expect(item.readError).toBe(E.STORAGE);expect(item.writeError).toBe(E.STORAGE);expect(item.after).toEqual(item.before);expect(item.after.records).toBe(1);expect(item.after.meta).toEqual(item.value);expect(item.key).toBe('state');}
     expect(result.after).toEqual(result.original);expect(result.recovered).toMatchObject({enabled:true,recordCount:1,dataGeneration:result.original.meta.dataGeneration,consentGeneration:result.original.meta.consentGeneration});
   });
 }

@@ -42,7 +42,9 @@ export function validateMeta(value) {
 }
 export function* state(store) {
   const value = yield store("meta").get("state");
-  return validateMeta(value === undefined ? initialMeta() : value);
+  // get() alone cannot distinguish a missing key from a persisted undefined value.
+  if (value === undefined && (yield store("meta").getKey("state")) === undefined) return initialMeta();
+  return validateMeta(value);
 }
 export function* pageState(store, pageKey) {
   return (yield store("pages").get(pageKey)) || { pageKey, pageGeneration: 1, pageRevision: 1, recordCount: 0, lastLookupAt: 0 };

@@ -58,12 +58,17 @@ test("Corrupt/unknown persisted meta fails closed and never becomes default cons
 });
 
 test("Only a genuinely absent meta row can initialize state; persisted falsy values fail closed", () => {
-  const request = {};
-  function read(value) {
-    const flow = state((name) => { assert.equal(name, "meta"); return { get(key) { assert.equal(key, "state"); return request; } }; });
-    assert.equal(flow.next().value, request); return flow.next(value).value;
+  const request = {}, keyRequest = {};
+  function read(value, key = undefined) {
+    const flow = state((name) => { assert.equal(name, "meta"); return {
+      get(key) { assert.equal(key, "state"); return request; }, getKey(key) { assert.equal(key, "state"); return keyRequest; }
+    }; });
+    assert.equal(flow.next().value, request); let next = flow.next(value);
+    if (!next.done) { assert.equal(next.value, keyRequest); next = flow.next(key); }
+    return next.value;
   }
   assert.deepEqual(read(undefined), initialMeta());
+  assert.throws(() => read(undefined, "state"), { code: E.STORAGE });
   const valid = { ...initialMeta(), enabled: true, consentGeneration: 7, dataGeneration: 9, recordCount: 1, totalBytes: 3000 };
   assert.equal(read(valid), valid);
   for (const value of [false, null, 0, "", {}, []]) assert.throws(() => read(value), { code: E.STORAGE });
