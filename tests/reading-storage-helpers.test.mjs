@@ -4,8 +4,8 @@ import { byteLength } from "../src/shared/hash.js";
 import { safePrefix } from "../src/background/reading-record/export-reader.js";
 import { literalMatch, queryIdentity } from "../src/background/reading-record/query.js";
 import { createReadingRepository } from "../src/background/reading-record/repository.js";
-import { storageError } from "../src/background/reading-record/idb.js";
-import { initialMeta, recordingState } from "../src/background/reading-record/storage-state.js";
+import { storageError, createReadingDatabase } from "../src/background/reading-record/idb.js";
+import { initialMeta, recordingState, validateMeta } from "../src/background/reading-record/storage-state.js";
 import { READING_ERROR as E, READING_LIMITS as L } from "../src/shared/reading/constants.js";
 
 test("Export prefix respects exact UTF8/escaped limits and never splits emoji", () => {
@@ -46,4 +46,30 @@ test("Capacity does not disable consent and Content state never returns library 
   assert.equal(recordingState(meta, "extension").recordCount, L.records);
   meta.recordCount--; meta.totalBytes = L.totalBytes - 1;
   assert.equal(recordingState(meta, "content").capacityReached, false); assert.equal(meta.enabled, true);
+});
+
+test("Corrupt/unknown persisted meta fails closed and never becomes default consent", () => {
+  assert.equal(validateMeta(initialMeta()).enabled, false);
+  for (const patch of [{enabled: "true"}, {recordCount: 10001}, {totalBytes:-1}, {catalogRevision:0}, {sites:[{siteKey:"https://a.test/path",excluded:true,sitePolicyRevision:1,expiresAt:1000}]}, {unknownFuture:true}]) {
+    assert.throws(() => validateMeta({...initialMeta(),...patch}), {code:E.STORAGE});
+  }
+  const duplicate = {siteKey:"https://a.test",excluded:true,sitePolicyRevision:1,expiresAt:1000};
+  assert.throws(() => validateMeta({...initialMeta(),sites:[duplicate,duplicate]}), {code:E.STORAGE});
+});
+
+
+test("Blocked native open refuses bounded retries until the uncancellable request settles", async () => {
+  const original = globalThis.indexedDB; const requests = [];
+  globalThis.indexedDB = {open() { const request = {}; requests.push(request); return request; }};
+  const database = createReadingDatabase();
+  try {
+    const first = database.run("readonly", () => {}, function* () {}); assert.equal(requests.length, 1); requests[0].onblocked();
+    await assert.rejects(first, {code:E.STORAGE});
+    const retry = await Promise.allSettled(Array.from({length:128}, () => database.run("readonly", () => {}, function* () {})));
+    assert.equal(requests.length, 1); assert.ok(retry.every((item) => item.status === "rejected" && item.reason.code === E.STORAGE));
+    let closed = 0; requests[0].result = {close(){closed++;}}; requests[0].onsuccess(); assert.equal(closed, 1);
+    const next = database.run("readonly", () => {}, function* () {}); assert.equal(requests.length, 2);
+    requests[1].error = new DOMException("synthetic version failure", "VersionError"); requests[1].onerror();
+    await assert.rejects(next, {code:E.UNSUPPORTED_VERSION});
+  } finally {database.close(); if (original === undefined) delete globalThis.indexedDB; else globalThis.indexedDB=original;}
 });

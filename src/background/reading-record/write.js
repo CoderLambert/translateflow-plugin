@@ -1,3 +1,4 @@
+import { bound } from "./idb.js";
 import { sha256 } from "../../shared/hash.js";
 import { createReadingItemKey, createSourceDigest, sameProvenLocation, assertArtifactSource } from "../../shared/reading/identity.js";
 import { validateOperationToken, checkCapacity } from "../../shared/reading/lifecycle.js";
@@ -96,8 +97,8 @@ export function* append(store, context, input, now) {
     bytes, sortTime: -record.lastLookupAt, listItem: projectRecordListItem(next, context.access.siteKey) });
   if (!row) page.recordCount++;
   delete page.expiresAt;
-  Object.assign(page, { siteKey: context.access.siteKey, pageTitle: record.pageTitle, safeReturnUrl: record.safeReturnUrl,
-    lastLookupAt: Math.max(page.lastLookupAt, record.lastLookupAt) });
+  const latest = (yield store("records").index("pageRecent").openCursor(bound([token.pageKey, -Number.MAX_SAFE_INTEGER, ""], [token.pageKey, 0, "\uffff"]))).value;
+  Object.assign(page, { siteKey: latest.siteKey, pageTitle: latest.record.pageTitle, safeReturnUrl: latest.record.safeReturnUrl, lastLookupAt: latest.record.lastLookupAt });
   page.sortTime = -page.lastLookupAt;
   Object.assign(meta, capacity); changed(meta, page);
   yield store("pages").put(page); yield store("meta").put(meta, "state");

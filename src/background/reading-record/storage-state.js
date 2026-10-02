@@ -1,6 +1,6 @@
 import { READING_ERROR as E, READING_LIMITS as L, READING_METHOD as M } from "../../shared/reading/constants.js";
 import { authorizeReadingMethod, applicationBytes } from "../../shared/reading/lifecycle.js";
-import { fail } from "../../shared/reading/validation.js";
+import { fail, siteKey as validateSiteKey } from "../../shared/reading/validation.js";
 import { validateRecordDetail } from "../../shared/reading/record.js";
 import { collect, only } from "./idb.js";
 
@@ -23,7 +23,24 @@ export function policy(meta, context, { write = false, siteRead = false } = {}) 
   if (write && !meta.enabled) fail(E.DISABLED, "recording.consent");
   return site;
 }
-export function* state(store) { return (yield store("meta").get("state")) || initialMeta(); }
+export function validateMeta(value) {
+  const counters = ["consentGeneration", "dataGeneration", "catalogRevision", "exportRevision", "siteRevision"];
+  const keys = ["enabled", ...counters, "sites", "recordCount", "totalBytes"];
+  if (!value || Object.keys(value).some((key) => !keys.includes(key)) || typeof value.enabled !== "boolean" ||
+      counters.some((key) => !Number.isSafeInteger(value[key]) || value[key] < 1) || !Number.isSafeInteger(value.recordCount) || value.recordCount < 0 || value.recordCount > L.records ||
+      !Number.isSafeInteger(value.totalBytes) || value.totalBytes < 0 || value.totalBytes > L.totalBytes || !Array.isArray(value.sites) || value.sites.length > L.exclusionSites + L.operationsGlobal) fail(E.STORAGE, "meta.schema");
+  const sites = new Set(); let exclusions = 0;
+  for (const site of value.sites) {
+    try { validateSiteKey(site.siteKey, "meta.siteKey"); } catch { fail(E.STORAGE, "meta.siteKey"); }
+    if (sites.has(site.siteKey) || Object.keys(site).some((key) => !["siteKey", "excluded", "sitePolicyRevision", "expiresAt"].includes(key)) || typeof site.excluded !== "boolean" ||
+        !Number.isSafeInteger(site.sitePolicyRevision) || site.sitePolicyRevision < 1 || site.sitePolicyRevision > value.siteRevision ||
+        !Number.isSafeInteger(site.expiresAt) || site.expiresAt < 0) fail(E.STORAGE, "meta.site");
+    sites.add(site.siteKey); if (site.excluded) exclusions++;
+  }
+  if (exclusions > L.exclusionSites) fail(E.STORAGE, "meta.exclusions");
+  return value;
+}
+export function* state(store) { return validateMeta((yield store("meta").get("state")) || initialMeta()); }
 export function* pageState(store, pageKey) {
   return (yield store("pages").get(pageKey)) || { pageKey, pageGeneration: 1, pageRevision: 1, recordCount: 0, lastLookupAt: 0 };
 }

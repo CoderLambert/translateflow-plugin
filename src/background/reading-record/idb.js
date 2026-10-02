@@ -10,18 +10,19 @@ export function storageError(error) {
 }
 // One lazy connection; no destructive recovery and no timer/network awaits in a transaction.
 export function createReadingDatabase() {
-  let connection = null, opening = null, generation = 0;
+  let connection = null, opening = null, pendingRequest = null, generation = 0;
   function close() { generation++; connection?.close(); connection = null; opening = null; }
   function open() {
     if (connection) return Promise.resolve(connection);
     if (opening) return opening;
+    if (pendingRequest) return Promise.reject(storageError(new Error("opening still pending")));
     const epoch = generation;
     opening = new Promise((resolve, reject) => {
       let request, settled = false;
       const refusal = (error) => { if (!settled) { settled = true; opening = null; reject(storageError(error)); } };
-      try { request = indexedDB.open(READING_DATABASE, READING_DATABASE_VERSION); } catch (error) { refusal(error); return; }
+      try { request = indexedDB.open(READING_DATABASE, READING_DATABASE_VERSION); pendingRequest = request; } catch (error) { refusal(error); return; }
       request.onblocked = () => refusal(new Error("blocked"));
-      request.onerror = () => refusal(request.error);
+      request.onerror = () => { if (pendingRequest === request) pendingRequest = null; refusal(request.error); };
       request.onupgradeneeded = (event) => {
         if (event.oldVersion !== 0 || settled || epoch !== generation) { request.transaction.abort(); return; }
         const db = request.result;
@@ -41,9 +42,24 @@ export function createReadingDatabase() {
         receipts.createIndex("expires", "expiresAt");
       };
       request.onsuccess = () => {
+        if (pendingRequest === request) pendingRequest = null;
         const db = request.result;
         if (settled || epoch !== generation) { db.close(); refusal(new Error("closed")); return; }
         if (READING_STORES.some((name) => !db.objectStoreNames.contains(name))) { db.close(); refusal(new Error("schema")); return; }
+        try {
+          const tx = db.transaction(READING_STORES, "readonly");
+          const indexes = { records: { recent: [["sortTime", "record.recordId"], true], page: ["record.pageKey", false], pageRecent: [["record.pageKey", "sortTime", "record.recordId"], true] },
+            snapshots: { record: ["recordId", false] }, artifacts: { record: ["recordId", false] }, pages: { expires: ["expiresAt", false], recent: [["sortTime", "pageKey"], true] }, receipts: { expires: ["expiresAt", false] } };
+          const keys = { meta: null, records: "record.recordId", snapshots: ["recordId", "value.sourceSnapshotId"], artifacts: ["recordId", "value.artifactId"], pages: "pageKey", receipts: "key" };
+          for (const name of READING_STORES) {
+            const store = tx.objectStore(name);
+            if (JSON.stringify(store.keyPath) !== JSON.stringify(keys[name]) || store.autoIncrement) throw new Error("schema");
+            for (const [key, [path, unique]] of Object.entries(indexes[name] || {})) {
+              const index = store.index(key);
+              if (JSON.stringify(index.keyPath) !== JSON.stringify(path) || index.unique !== unique || index.multiEntry) throw new Error("schema");
+            }
+          }
+        } catch (error) { db.close(); refusal(error); return; }
         settled = true; connection = db; opening = null;
         db.onversionchange = () => { db.close(); if (connection === db) { connection = null; generation++; } };
         db.onclose = () => { if (connection === db) { connection = null; generation++; } };
