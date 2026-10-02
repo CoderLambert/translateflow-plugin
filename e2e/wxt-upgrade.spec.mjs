@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
+import { expectedUpgradeSnapshot } from "./support/upgrade-expectations.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
@@ -13,7 +14,9 @@ const oldArtifact = process.env.TF_UPGRADE_OLD_ARTIFACT;
 const newArtifact = process.env.TF_UPGRADE_NEW_ARTIFACT;
 const reportDir = resolve(process.env.TF_UPGRADE_EVIDENCE_DIR || "test-results/wxt-upgrade-evidence");
 
-test("same profile and unpacked path preserve real settings, cache, OPFS, preferences and registrations through old → WXT → restart", async ({}, testInfo) => {
+for(const existingUiLocale of [undefined,"zh_CN"]) {
+const scenario=existingUiLocale===undefined ? "missing-ui-locale" : "existing-ui-locale";
+test(`same profile and unpacked path preserve real settings, cache, OPFS, preferences and registrations through old → WXT → restart (${scenario})`, async ({}, testInfo) => {
   test.skip(!oldArtifact || !newArtifact, "Set both fixed old and actual WXT artifacts; no builder fallback.");
   test.setTimeout(180_000);
   const root = await mkdtemp(join(tmpdir(), "translateflow-wxt-upgrade-"));
@@ -119,6 +122,7 @@ test("same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await driver.locator("#openaiModel").fill("migration-mock");
     await driver.locator("#save").click();
     await expect(driver.locator("#status")).toContainText("已保存");
+    if(existingUiLocale!==undefined)await driver.evaluate(uiLocale=>chrome.storage.local.set({uiLocale}),existingUiLocale);
     const alpha=await dictionary("Upgrade Alpha","upgrade-alpha",true);
     const beta=await dictionary("Upgrade Beta","upgrade-beta",true);
     await beta.row.locator('[data-action="promote-preferred"]').click();
@@ -136,6 +140,8 @@ test("same profile and unpacked path preserve real settings, cache, OPFS, prefer
       expect(await runtime({type,origin})).toMatchObject({ok:true});
     await expect.poll(()=>driver.evaluate(async()=> (await chrome.scripting.getRegisteredContentScripts()).length)).toBe(1);
     const before=await snapshot();
+    expect(before.storage.uiLocale).toBe(existingUiLocale);
+    const expectedAfter=expectedUpgradeSnapshot(before);
     expect(before.databases).toEqual([expect.objectContaining({name:"ai_bilingual_translator",version:2})]);
     expect(Object.keys(before.databases[0].stores).sort()).toEqual(["pages","selection_explanations","translations"]);
     expect(before.databases[0].stores.translations).toHaveLength(3);
@@ -147,7 +153,7 @@ test("same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await rm(extensionDir,{recursive:true,force:true});
     const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl});
     await launch();
-    const after=await snapshot(); expect(after).toEqual(before);
+    const after=await snapshot(); expect(after).toEqual(expectedAfter);
     phases.push({phase:"WXT",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,snapshot:summary(after)});
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
@@ -179,7 +185,7 @@ test("same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await inject(stale); expect(await content(stale,{type:"ABT_STATUS"})).toMatchObject({ok:true});
     expect(server.calls).toHaveLength(1);
     const afterRecovery=await snapshot();
-    expect(afterRecovery.storage).toEqual(before.storage); expect(afterRecovery.opfs).toEqual(before.opfs);
+    expect(afterRecovery.storage).toEqual(expectedAfter.storage); expect(afterRecovery.opfs).toEqual(before.opfs);
     expect(afterRecovery.registrations).toEqual(before.registrations);
     // Cache read metadata is expected to change only after actual cache use.
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
@@ -189,16 +195,17 @@ test("same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(server.calls).toHaveLength(1); expect(externalOrigins).toEqual([]); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
-      productionKeyChanged:false,phases,dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
+      productionKeyChanged:false,phases,uiLocale:{before:existingUiLocale??"ABSENT",after:after.storage.uiLocale},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
       unauthorizedProviderCalls:0,externalRequests:0,backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
-    await writeFile(join(reportDir,"same-id-upgrade.json"),JSON.stringify(report,null,2)+"\n");
+    await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
     await testInfo.attach("same-id-upgrade.json",{body:Buffer.from(JSON.stringify(report,null,2)),contentType:"application/json"});
     console.log("[WXT_SAME_ID_UPGRADE]",JSON.stringify(report));
   } finally {
     await context?.close().catch(()=>{}); await server.close(); await rm(root,{recursive:true,force:true});
   }
 });
+}
 
 function summary(snapshot) {
   return {storageSha256:createHash("sha256").update(JSON.stringify(stable(snapshot.storage))).digest("hex"),
