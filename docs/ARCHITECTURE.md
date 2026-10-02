@@ -76,6 +76,14 @@ The current project-authored reviewed technical terms are a transitional compati
 
 Production builds are created from an explicit allowlist into `dist/extension`. The repository may contain large source/validation corpora without those bytes becoming user installation cost.
 
+### Approved opt-in WXT build
+
+`build:extension:wxt` creates a separate production package at `.output/chrome-mv3/`. `entrypoints/background.js` statically imports the existing `initializeBackground()` and synchronously registers listeners in `main`; WXT build-time imports have no substitute Chrome/window globals. The root `popup.html` and `options.html` remain the unique UI source, registered through the WXT entrypoint hook and compiled by Vite. Their installed identities and full-tab `options_page` semantics stay unchanged.
+
+`src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. `scripts/wxt-assets.mjs` derives the raw bridge from the current ordered Content lists plus mapped MAIN/Worker roots and their relative-import closure. Only those individual files and authenticated generated pack descriptors enter WXT public assets; the whole `src` tree is never copied. Generated source locks and corpora stay outside both packages. Bridge removal belongs to the authorized legacy migration slice, not an ad hoc rewrite here.
+
+Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. `auto-sites.js` remains the sole dynamic registration owner. React is reserved for the future learning-center extension page; it is absent from this compatibility build. The new compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. Provider, cache/OPFS, privacy and permission boundaries above remain unchanged. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for actual commands, asset audit and limited smoke evidence.
+
 ## Lexical Gateway
 
 Selection lexical lookup is a separate local-only Background boundary:

@@ -13,6 +13,8 @@ on:
       - "src/content/selection/**"
       - "src/background/router.js"
       - "src/background/packs/**"
+      - "package.json"
+      - "package-lock.json"
   pull_request:
     paths:
       - ".github/workflows/rich-lookup-cancellation.yml"
@@ -23,6 +25,8 @@ on:
       - "src/content/selection/**"
       - "src/background/router.js"
       - "src/background/packs/**"
+      - "package.json"
+      - "package-lock.json"
 
 permissions:
   contents: read
@@ -39,9 +43,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "24.21.0"
 
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
 
       - name: Generate pinned-main raw baseline samples

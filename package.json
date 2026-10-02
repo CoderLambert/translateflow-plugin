@@ -38,12 +38,20 @@
     "inspect:mdict": "node scripts/inspect-mdict-compatibility.mjs",
     "test:rich-mdict-security": "node --test tests/rich-mdict-security.test.mjs",
     "test:rich-lookup-cancellation": "node --test tests/rich-mdict-lookup-cancellation.test.mjs",
-    "test:e2e:rich-mdict": "playwright test e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs"
+    "test:e2e:rich-mdict": "playwright test e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs",
+    "prepare": "wxt prepare",
+    "dev": "wxt -b chrome --mv3",
+    "build:extension:wxt": "wxt build -b chrome --mv3 && node scripts/audit-wxt-extension.mjs",
+    "test:wxt:smoke": "node scripts/smoke-wxt-extension.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=24.21.0 <25",
+    "npm": ">=11.19.0 <12"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0"
-  }
+    "@playwright/test": "1.63.0",
+    "wxt": "0.21.4",
+    "vite": "7.3.1"
+  },
+  "packageManager": "npm@11.19.0"
 }

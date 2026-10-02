@@ -1,3 +1,4 @@
+import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import {
   assertDeclaredCuratedDictionary,
@@ -11,7 +12,7 @@ export function createRichMdictImportController({
   cryptoProvider = globalThis.crypto,
   now = Date.now,
   onProgress = () => {},
-  workerUrl = runtime?.getURL?.("src/options/workers/rich-mdict-import-worker.js")
+  workerUrl = runtime?.getURL?.(WORKER_PATHS.richMdictImport)
 } = {}) {
   if (!runtime?.sendMessage || !runtime?.getURL) {
     throw new Error("Rich MDict controller requires chrome.runtime.");

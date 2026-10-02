@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { BUNDLED_LEXICON_PATHS } from "../src/shared/runtime-assets.js";
 
 async function source(path) {
   return readFile(new URL("../" + path, import.meta.url), "utf8");
@@ -8,8 +9,9 @@ async function source(path) {
 
 test("production lexical gateway registers bundled packs before active OPFS dictionaries", async () => {
   const code = await source("src/background/lexical/index.js");
-  assert.match(code, /assets\/lexicon\/core/);
-  assert.match(code, /assets\/lexicon\/technical/);
+  assert.deepEqual(BUNDLED_LEXICON_PATHS, { core: "assets/lexicon/core", technical: "assets/lexicon/technical" });
+  assert.match(code, /path:\s*BUNDLED_LEXICON_PATHS\.core/);
+  assert.match(code, /path:\s*BUNDLED_LEXICON_PATHS\.technical/);
   assert.match(code, /createActiveOpfsPackReader/);
   assert.match(
     code,

@@ -13,3 +13,5 @@ assets/lexicon/
 .release-sources/
 __pycache__/
 *.pyc
+.wxt/
+.output/
