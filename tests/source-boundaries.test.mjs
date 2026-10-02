@@ -55,6 +55,12 @@ const negatives = [
   ["Content fetch TS", { "src/content/bad.ts": 'globalThis["fetch"]("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content fetch alias", { "src/content/bad.js": 'const request = globalThis.fetch; request("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content IDB TS", { "src/content/bad.ts": 'globalThis["indexedDB"].open("illegal");' }, /IndexedDB/u],
+  ["Reading repository direct IDB", { "src/background/reading-record/repository.js": 'globalThis.indexedDB.open("illegal");' }, /IndexedDB/u],
+  ["Reading nested adapter direct IDB", { "src/background/reading-record/nested/idb.js": 'indexedDB.open("illegal");' }, /IndexedDB/u],
+  ["Reading lookalike TS adapter direct IDB", { "src/background/reading-record/idb.ts": 'indexedDB.open("illegal");' }, /IndexedDB/u],
+  ["Options Reading storage dependency", { "options.js": 'import "./src/background/reading-record/idb.js";', "src/background/reading-record/idb.js": 'export const open=()=>indexedDB.open("reading");' }, /Reading.*后台/u],
+  ["learning-center Reading storage dependency", { "src/learning-center/client.ts": 'import "../background/reading-record/idb.js";', "src/background/reading-record/idb.js": 'export const open=()=>indexedDB.open("reading");' }, /Reading.*后台/u],
+  ["learning-center indirect Reading storage dependency", { "src/learning-center/client.ts": 'import "../background/reading-record/repository.js";', "src/background/reading-record/repository.js": 'import "./idb.js";', "src/background/reading-record/idb.js": 'export const open=()=>indexedDB.open("reading");' }, /Reading.*后台/u],
   ["Content ESM", { "src/content/bad.ts": 'export const value = 1;' }, /classic Content/u],
   ["Content dynamic import", { "src/content/bad.js": 'import("../shared/ok.js");', "src/shared/ok.js": "export const value=1;" }, /classic Content/u],
   ["shared browser global", { "src/shared/bad.ts": 'globalThis["browser"].storage.local.get();' }, /shared 层/u],
@@ -164,6 +170,8 @@ test("CLI preserves approved owners and the exact existing MAIN request forwarde
   const result = runFixture({
     "src/background/providers/network.js": 'const key="fetch";globalThis[key]("https://invalid.test");',
     "src/background/cache-db.js": 'const key="indexedDB";globalThis[key].open("cache");',
+    "src/background/reading-record/idb.js": 'const key="indexedDB";export const open=()=>globalThis[key].open("reading");',
+    "src/background/reading-record/repository.js": 'import {open} from "./idb.js";export const repository=()=>open();',
     "src/background/auto-sites.js": 'const sdk=chrome.scripting;const key="registerContentScripts";sdk[key]([]);',
     "src/content/subtitles/youtube-main-bridge.js": approvedMainSource
   });
