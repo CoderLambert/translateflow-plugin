@@ -70,5 +70,12 @@
   ],
   "sourceHead": "d2e192c1c30ac025d9976d335084954bffb707db",
   "mainBase": "103e39cddfb0b816279e32310c1655bd6a4af25a",
-  "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
+  "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+  "identicalArtifactVerification": {
+    "sourceHead": "f955045b5782189f1f5d5a9463ffdfc1d000a817",
+    "mainBase": "f5ca42745a36aa70a6882b1b34753aa44ceb30ea",
+    "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+    "allInstalledFileSha256Equal": true,
+    "verification": "Actual WXT rebuild and all-file SHA comparison; browser not rerun because all production bytes match the tested sourceHead"
+  }
 }

@@ -209,5 +209,52 @@
       "#246 stable Worker/Options path imports"
     ],
     "artifactTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
+  },
+  "latestMainIntegration": {
+    "sourceHead": "f955045b5782189f1f5d5a9463ffdfc1d000a817",
+    "mainBase": "f5ca42745a36aa70a6882b1b34753aa44ceb30ea",
+    "mergeMethod": "normal merge; no conflicts; exactly 17 merged pure Reading contract files",
+    "changesTo246Runtime": "none",
+    "checks": [
+      {
+        "command": "npm run validate",
+        "status": "PASS",
+        "exitCode": 0,
+        "tests": 742,
+        "sourceChecks": 434,
+        "oldPackage": {
+          "files": 233,
+          "bytes": 1486999
+        }
+      },
+      {
+        "command": "npm run build:extension:wxt",
+        "status": "PASS",
+        "exitCode": 0,
+        "files": 143,
+        "bytes": 1371155,
+        "manifestDifferences": []
+      },
+      {
+        "command": "Actual WXT artifact all-file SHA256 comparison against previous verified package",
+        "status": "PASS",
+        "allInstalledFileSha256Equal": true,
+        "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+        "changedFiles": [],
+        "removedFiles": []
+      },
+      {
+        "command": "git diff f5ca42745a36aa70a6882b1b34753aa44ceb30ea HEAD --check",
+        "status": "PASS",
+        "exitCode": 0
+      }
+    ],
+    "browserSmoke": {
+      "status": "NOT RUN again; prior actual PASS evidence applies to identical installed bytes",
+      "testedSourceHead": "d2e192c1c30ac025d9976d335084954bffb707db",
+      "testedMainBase": "103e39cddfb0b816279e32310c1655bd6a4af25a",
+      "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
+    },
+    "remainingScopeUnchanged": true
   }
 }

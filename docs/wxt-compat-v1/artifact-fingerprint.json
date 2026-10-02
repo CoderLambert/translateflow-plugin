@@ -1,6 +1,6 @@
 {
-  "sourceHead": "d2e192c1c30ac025d9976d335084954bffb707db",
-  "mainBase": "103e39cddfb0b816279e32310c1655bd6a4af25a",
+  "sourceHead": "f955045b5782189f1f5d5a9463ffdfc1d000a817",
+  "mainBase": "f5ca42745a36aa70a6882b1b34753aa44ceb30ea",
   "source": "WXT production .output/chrome-mv3",
   "algorithm": "sha256 of UTF-8 JSON.stringify(files), sorted by path; files use keys path,size,sha256",
   "treeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
@@ -722,5 +722,14 @@
       "size": 2027,
       "sha256": "00144f93b4164b47fd8c985fc0aa543a98cc251bd977a5d9800a82455da92b42"
     }
-  ]
+  ],
+  "previousIdenticalSourceHead": "d2e192c1c30ac025d9976d335084954bffb707db",
+  "previousIdenticalMainBase": "103e39cddfb0b816279e32310c1655bd6a4af25a",
+  "fullFileShaComparison": {
+    "status": "PASS",
+    "againstTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453",
+    "exactlyEqual": true,
+    "changedFiles": [],
+    "removedFiles": []
+  }
 }
