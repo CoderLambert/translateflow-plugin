@@ -57,6 +57,7 @@ Use scripts actually defined by the current package:
 
 ```bash
 node --test tests/i18n.test.mjs
+npm run check:i18n
 npm run validate
 npm run build:extension:wxt
 TF_I18N_ARTIFACT=dist/extension npm run test:e2e -- e2e/ui-locale.spec.mjs
@@ -70,3 +71,20 @@ compatibility, language changes across two Options pages, preservation of all
 other settings, reopening, storage failures and recovery. HTTP attempts and
 uncaught page errors must remain zero. This does not test Chrome 102, browser
 Manifest locale selection across operating systems or a real user's profile.
+
+`npm run check` and therefore `validate` run the locale consistency command.
+To update generated Manifest messages after editing the owned catalog, run
+`node scripts/i18n-locales.mjs --generate`. Checks reject stale bytes, missing
+keys, changed placeholders and uncontrolled Manifest references. The source
+boundary checker treats `src/i18n/` as a pure domain, including transitive
+browser/network/storage effects. Runtime declaration files stay outside both
+installation artifacts.
+
+Isolated Chromium 153 on this Linux host has exercised actual en-US and zh-CN
+browser UI locales, without mocking `getUILanguage()`: Chinese browser/English
+UI/Chinese translation target, English browser/Chinese UI/original dictionary
+languages, dual-page synchronization, reopening and storage failure recovery.
+Both the legacy and WXT artifacts passed all five browser cases with zero HTTP
+requests and zero page errors. Earlier fixture failures were preserved; the
+only test fix guarded fault injection against the initial non-extension page.
+Manifest language selection on other operating systems remains unverified.

@@ -5,6 +5,7 @@ import { createApiInspector } from "./source-api-boundaries.mjs";
 
 export const SOURCE_EXTENSION = /\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/u;
 const UI = /^(?:entrypoints\/learning-center\/|src\/learning-center\/)/u;
+const PURE = /^src\/(?:shared|i18n)\//u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
 export const isRuntimeSource = (path) => path.startsWith("src/") || path.startsWith("entrypoints/") || ROOT_RUNTIME.has(path);
 const isReact = (name) => /^(?:react|react-dom)(?:\/|$)/u.test(name);
@@ -97,7 +98,7 @@ export function inspectSources(root, files) {
       const module = graph.get(path);
       if (!module) { failures.push(`${origin} runtime 依赖进入非 runtime 源码: ${chain.join(" → ")}`); return; }
       if (!UI.test(origin) && (module.jsx || module.deps.some(({ specifier }) => specifier && isReact(specifier)))) failures.push(`${origin} React/JSX 泄漏到非学习中心运行环境: ${chain.join(" → ")}`);
-      if (origin.startsWith("src/shared/") && ["chrome", "browser", "fetch", "indexedDB", "registerContentScripts"].some((name) => module.effects.has(name))) failures.push(`${origin} shared 层不允许浏览器/网络/存储 API: ${chain.join(" → ")}`);
+      if (PURE.test(origin) && ["chrome", "browser", "fetch", "indexedDB", "registerContentScripts"].some((name) => module.effects.has(name))) failures.push(`${origin} ${origin.startsWith("src/i18n/") ? "i18n" : "shared"} 层不允许浏览器/网络/存储 API: ${chain.join(" → ")}`);
       for (const dependency of module.resolved) visit(dependency, [...chain, dependency]);
     }
     visit(origin, [origin]);
