@@ -139,6 +139,19 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     expect((await sendPage(unknown, request(M.LIST_RECORDS))).error.code).toBe(E.FORBIDDEN);
     expect((await sendPage(driver, request(M.OPEN_LEARNING_CENTER, { url: "https://example.test/" }))).error.code).toBe(E.BAD_DTO);
     expect(await sendPage(driver, request(M.OPEN_LEARNING_CENTER))).toMatchObject({ protocolVersion: 2, ok: true, data: { opened: true } });
+    const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html#general`);
+    expect(await sendPage(options, request(M.OPEN_LEARNING_CENTER))).toMatchObject({ protocolVersion: 2, ok: true, data: { opened: true } });
+    const entry = await worker.evaluate(async () => {
+      const proof = globalThis.__readingProofs.at(-1);
+      return { proof, contexts: await chrome.runtime.getContexts({ documentIds: [proof.documentId] }) };
+    });
+    expect(entry.proof.url).toBe(`chrome-extension://${extensionId}/options.html#general`);
+    expect(entry.contexts).toHaveLength(1); expect(entry.contexts[0]).toMatchObject({ documentId: entry.proof.documentId, documentUrl: entry.proof.url, incognito: false });
+    await writeFile(test.info().outputPath("entry-hash-native.json"), JSON.stringify(entry));
+    expect((await sendPage(options, request(M.LIST_RECORDS))).error.code).toBe(E.FORBIDDEN);
+    await options.goto(`chrome-extension://${extensionId}/learning-center.html#general`);
+    expect((await sendPage(options, request(M.OPEN_LEARNING_CENTER))).error.code).toBe(E.FORBIDDEN);
+    await options.close();
     await center.close(); await unknown.close();
   });
 

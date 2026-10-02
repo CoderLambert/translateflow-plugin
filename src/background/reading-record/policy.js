@@ -24,7 +24,7 @@ export function classifyPage(rawUrl) {
   try { url = new URL(rawUrl); } catch { return { sensitive: true, accountPage: true }; }
   const host = url.hostname.toLowerCase(), path = url.pathname.toLowerCase();
   const sensitive = /^(?:mail|webmail|chat|messages)\./u.test(host) ||
-    ["mail.google.com", "outlook.live.com", "outlook.office.com", "teams.microsoft.com", "discord.com", "slack.com"].includes(host) ||
+    ["mail.google.com", "outlook.live.com", "outlook.office.com", "teams.microsoft.com", "discord.com", "slack.com", "app.slack.com"].includes(host) ||
     /\/(?:mail|inbox|chat|messages|account|accounts|login|signin|settings|admin)(?:\/|$)/u.test(path);
   return { sensitive, accountPage: sensitive };
 }

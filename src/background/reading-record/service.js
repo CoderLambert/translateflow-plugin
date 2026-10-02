@@ -1,5 +1,5 @@
 import { sha256 } from "../../shared/hash.js";
-import { READING_ERROR as E, READING_LIMITS as L, READING_LEARNING_CENTER_PATH, READING_METHOD as M, READING_PROTOCOL_VERSION as V } from "../../shared/reading/constants.js";
+import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_METHOD as M, READING_PROTOCOL_VERSION as V } from "../../shared/reading/constants.js";
 import { validateReadingRequest } from "../../shared/reading/dto.js";
 import { authorizeReadingMethod } from "../../shared/reading/lifecycle.js";
 import { validateReadingResponse } from "../../shared/reading/response.js";
@@ -52,19 +52,9 @@ export function createReadingService({ browser, repository = null, collector, no
       const sourceSnapshot = access.proof.sourceSnapshot;
       const fingerprint = await sha256(JSON.stringify([request.purpose, access.ownerKey, access.pageKey, request.recordId, request.recordRevision, request.sourceLanguage, sourceSnapshot]));
       assertAccess(access);
-      const previous = operations.retry(access, request, fingerprint);
-      // #233 must check live policy even for a registered retry; a pause must not return an old ready token.
-      const issuedAt = now();
-      const prepared = await repositoryMethod("prepareOperation")({ ...context, previous: previous?.token ?? null,
-        sourceSnapshot, issuedAt, expiresAt: issuedAt + L.operationTtlMs });
-      assertAccess(access);
-      if (prepared.state === "disabled") return { state: "disabled" };
-      if (previous) {
-        if (JSON.stringify(prepared.token) !== JSON.stringify(previous.token)) fail(E.STALE_OPERATION, "operation.retry");
-        return { state: "ready", token: previous.token };
-      }
-      const registration = operations.register(access, request, fingerprint, prepared.token, sourceSnapshot);
-      return { state: "ready", token: registration.token };
+      // #233 still checks live policy on registered retries; the registry reserves/coalesces before its await.
+      return operations.prepare(access, request, fingerprint, sourceSnapshot,
+        (reservation) => repositoryMethod("prepareOperation")({ ...context, ...reservation }), () => assertAccess(access));
     }
     if (WRITES.has(method)) {
       const registeredOperation = operations.get(access, request.token.operationId);
@@ -83,8 +73,8 @@ export function createReadingService({ browser, repository = null, collector, no
     }
     if (MANAGE.has(method)) {
       const result = await repositoryMethod("mutate")(context);
-      if (method === M.DELETE_RECORD) operations.revoke((entry) => entry.token.recordId === request.recordId);
-      else if (method === M.DELETE_PAGE) operations.revoke((entry) => entry.token.pageKey === request.pageKey);
+      if (method === M.DELETE_RECORD) operations.revoke((entry) => (entry.token?.recordId ?? entry.request?.recordId) === request.recordId);
+      else if (method === M.DELETE_PAGE) operations.revoke((entry) => entry.access.pageKey === request.pageKey);
       else if (method === M.SET_SITE_RECORDING) operations.revoke((entry) => entry.access.siteKey === request.siteKey);
       else operations.revoke();
       exports.revoke();

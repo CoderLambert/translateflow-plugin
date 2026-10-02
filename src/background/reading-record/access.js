@@ -63,13 +63,13 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
     let url;
     try { url = new URL(sender.url); } catch { fail(E.FORBIDDEN, "sender.url"); }
     if (url.protocol === "chrome-extension:" && url.hostname === browser.runtime.id) {
-      if (url.search || url.hash || (url.pathname !== `/${READING_LEARNING_CENTER_PATH}` && !ENTRY_PATHS.has(url.pathname))) fail(E.FORBIDDEN, "sender.path");
+      const learningCenter = url.pathname === `/${READING_LEARNING_CENTER_PATH}`;
+      if (url.search || (learningCenter ? sender.url !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH) : !ENTRY_PATHS.has(url.pathname))) fail(E.FORBIDDEN, "sender.path");
       if (!nativeDocumentId(sender.documentId) || typeof browser.runtime.getContexts !== "function") fail(E.CAPABILITY_LIMITED, "sender.context");
       let contexts;
       try { contexts = await browser.runtime.getContexts({ documentIds: [sender.documentId] }); } catch { fail(E.CAPABILITY_LIMITED, "sender.context"); }
       if (!Array.isArray(contexts) || contexts.length !== 1) fail(E.FORBIDDEN, "sender.context");
       const context = contexts[0];
-      const learningCenter = url.pathname === `/${READING_LEARNING_CENTER_PATH}`;
       if (!UUID.test(context.contextId || "") || context.documentId !== sender.documentId || context.documentUrl !== sender.url || context.incognito !== false ||
           !["TAB", "POPUP"].includes(context.contextType) || (learningCenter && context.contextType !== "TAB") ||
           (sender.tab && (sender.tab.id !== context.tabId || sender.tab.incognito !== false)) ||
