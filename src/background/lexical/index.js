@@ -1,3 +1,4 @@
+import { BUNDLED_LEXICON_PATHS } from "../../shared/runtime-assets.js";
 import { getEffectiveGlossary } from "../config.js";
 import { createActiveOpfsPackReader } from "./active-opfs-reader.js";
 import { createLexicalGateway } from "./gateway.js";
@@ -15,13 +16,13 @@ const BUNDLED_PACKS = Object.freeze([
   Object.freeze({
     id: "core",
     label: "Core Semantic",
-    path: "assets/lexicon/core",
+    path: BUNDLED_LEXICON_PATHS.core,
     probe: "persistent"
   }),
   Object.freeze({
     id: "technical",
     label: "Technical Concepts",
-    path: "assets/lexicon/technical",
+    path: BUNDLED_LEXICON_PATHS.technical,
     probe: "tmux"
   })
 ]);

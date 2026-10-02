@@ -1,0 +1,71 @@
+{
+  "status": "PASS",
+  "browser": "153.0.8010.12",
+  "extensionId": "kaeihjocnnleidlilkknnbbkjedbnbpd",
+  "productionSource": "WXT production .output/chrome-mv3",
+  "productionManifestDifferences": [],
+  "testCopyChanges": [
+    "Synthetic Core TFLex fixture",
+    "Technical pack built from existing reviewed local extract/source-lock",
+    "Required localhost host permission only in temporary test copy"
+  ],
+  "popup": "PASS",
+  "options": "PASS",
+  "backgroundCacheStats": "PASS",
+  "workerInvalidInputResponses": [
+    {
+      "name": "curatedDictionary",
+      "path": "src/options/workers/curated-dictionary-worker.js",
+      "type": "CURATED_DICTIONARY_ERROR",
+      "requestId": "wxt-synthetic-probe"
+    },
+    {
+      "name": "curatedEcdictMdx",
+      "path": "src/options/workers/curated-ecdict-mdx-worker.js",
+      "type": "curated-ecdict-mdx:error",
+      "requestId": "wxt-synthetic-probe"
+    },
+    {
+      "name": "mdictImport",
+      "path": "src/options/workers/mdict-import-worker.js",
+      "type": "mdict-import:error",
+      "requestId": "wxt-synthetic-probe"
+    },
+    {
+      "name": "stardictImport",
+      "path": "src/options/workers/stardict-import-worker.js",
+      "type": "stardict-import:error",
+      "requestId": "wxt-synthetic-probe"
+    },
+    {
+      "name": "richMdictImport",
+      "path": "src/options/workers/rich-mdict-import-worker.js",
+      "type": "rich-mdict-import:error",
+      "requestId": "wxt-synthetic-probe"
+    },
+    {
+      "name": "mddResourceImport",
+      "path": "src/options/workers/mdd-resource-import-worker.js",
+      "type": "mdd-resource-import:error",
+      "requestId": "wxt-synthetic-probe"
+    }
+  ],
+  "mainBridgeVersion": 1,
+  "contentOrderedScripts": 44,
+  "lexicalCandidates": 2,
+  "bodyTranslations": 3,
+  "restoredCacheHits": 3,
+  "localProviderCalls": 1,
+  "unexpectedRegistrations": [],
+  "pageErrors": [],
+  "externalRequests": [],
+  "notRun": [
+    "Chrome 102 runtime",
+    "Real YouTube timedtext",
+    "Full E2E",
+    "Same-ID old→WXT upgrade/restart",
+    "Release lexicon certification",
+    "Real paid Provider",
+    "Other browsers"
+  ]
+}

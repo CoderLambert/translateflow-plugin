@@ -1,9 +1,4 @@
-const YOUTUBE_MAIN_BRIDGE_FILES = Object.freeze([
-  "src/content/subtitles/youtube-bridge-protocol.js",
-  "src/content/subtitles/youtube-timedtext.js",
-  "src/content/subtitles/youtube-main-bridge.js"
-]);
-
+import { YOUTUBE_MAIN_BRIDGE_FILES } from "../shared/runtime-assets.js";
 export function isYouTubePageUrl(rawUrl) {
   try {
     const url = new URL(rawUrl || "");

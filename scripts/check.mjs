@@ -6,11 +6,12 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const failures = [];
 const ignored = new Set([".git", "node_modules"]);
+const generatedRootDirs = new Set([".wxt", ".output", "dist"]);
 
 function walk(dir) {
   const files = [];
   for (const name of readdirSync(dir)) {
-    if (ignored.has(name)) continue;
+    if (ignored.has(name) || (dir === root && generatedRootDirs.has(name))) continue;
     const full = join(dir, name);
     const stat = statSync(full);
     if (stat.isDirectory()) files.push(...walk(full));

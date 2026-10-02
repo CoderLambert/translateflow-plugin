@@ -8,7 +8,16 @@
 npm run validate
 ```
 
-项目没有第三方 npm 运行依赖；校验使用 Node 内置能力。
+使用 `package.json` 的 Node/npm 约束和 `npm ci` 安装锁定依赖；当前校验保留 Node 内置测试与旧默认构建。WXT 工程依赖只参与构建，现有业务仍复用原 JS 模块。
+
+WXT 迁移改动还必须实际运行：
+
+```bash
+npm run build:extension:wxt
+npm run test:wxt:smoke
+```
+
+新产物位于 `.output/chrome-mv3/`，旧默认产物保持 `dist/extension/`。有限 smoke 从实际 WXT 包制作临时测试副本，使用合成 Core 词典、本地审核 Technical 词典与确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
 
 涉及真实 Chrome/MV3/DOM/交互行为的改动还应运行适用的浏览器 E2E：
 

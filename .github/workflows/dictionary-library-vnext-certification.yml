@@ -111,7 +111,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "24.21.0"
 
       - uses: actions/setup-python@v5
         with:
@@ -119,7 +119,7 @@ jobs:
 
       - name: Install dependencies and prepare bounded evidence directories
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           mkdir -p "$RUNNER_TEMP/translateflow-vnext/cache" "$RUNNER_TEMP/translateflow-vnext/evidence-private" "$RUNNER_TEMP/translateflow-vnext/evidence-published" "$RUNNER_TEMP/translateflow-vnext/mdd-work" "$RUNNER_TEMP/writemdict"
           node -e 'process.stdout.write(String(Date.now()))' > "$RUNNER_TEMP/translateflow-vnext/evidence-private/run-started-at-ms"
 

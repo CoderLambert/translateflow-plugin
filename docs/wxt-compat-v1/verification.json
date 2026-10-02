@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "issue": 246,
+  "initialBase": "c458d894ea3e4f82b187ca053731ac97f08fd8b9",
+  "node": "24.21.0",
+  "npm": "11.19.0",
+  "directDependencies": {
+    "@playwright/test": "1.63.0",
+    "wxt": "0.21.4",
+    "vite": "7.3.1"
+  },
+  "rootLockSha256": "a96cae4823a7046692aad5920c21a380d9786621d9ad8e4eb980dad1e99d971a",
+  "checks": [
+    {
+      "command": "npm ci --no-audit --no-fund --no-update-notifier --prefer-offline --fetch-retries=0 --fetch-timeout=15000",
+      "status": "PASS",
+      "exitCode": 0,
+      "details": "131 packages; prepare passed; no force/legacy-peer-deps or global script-policy change"
+    },
+    {
+      "command": "node --test tests/wxt-assets.test.mjs",
+      "status": "PASS",
+      "exitCode": 0,
+      "tests": 6
+    },
+    {
+      "command": "npm run validate",
+      "status": "PASS",
+      "exitCode": 0,
+      "tests": 657,
+      "oldPackage": {
+        "files": 222,
+        "bytes": 1434502
+      }
+    },
+    {
+      "command": "npm run build:extension:wxt",
+      "status": "PASS",
+      "exitCode": 0,
+      "artifact": ".output/chrome-mv3"
+    },
+    {
+      "command": "npm run test:wxt:smoke",
+      "status": "PASS",
+      "exitCode": 0,
+      "browser": "153.0.8010.12"
+    },
+    {
+      "command": "git diff --check",
+      "status": "PASS",
+      "exitCode": 0
+    }
+  ],
+  "expectedFailures": [
+    {
+      "case": "Production artifact permission tamper",
+      "status": "PASS: REJECTED"
+    },
+    {
+      "case": "Production artifact unregistered synthetic file",
+      "status": "PASS: REJECTED"
+    },
+    {
+      "case": "Production artifact missing Worker",
+      "status": "PASS: REJECTED"
+    },
+    {
+      "command": "TRANSLATEFLOW_WXT_REQUIRE_LEXICON=1 node node_modules/wxt/bin/wxt.mjs build -b chrome --mv3",
+      "status": "PASS: EXPECTED FAIL",
+      "exitCode": 1,
+      "oldPackageUnchanged": true,
+      "oldPackageTreeSha256": "b8774c98b306581d28b13c2805e7db4bcede816a0ac20e09e5fdd42bc3f4637e"
+    }
+  ],
+  "correctedFailures": [
+    {
+      "case": "Initial closure unit assertion referred to nonexistent rich-mdict-parser.js",
+      "result": "Corrected to actual existing mdict-rich.js; 6/6 PASS"
+    },
+    {
+      "case": "Initial browser smoke supplied Core fixture only; existing gateway returned status:error for missing Technical pack",
+      "result": "Added existing approved local Technical compiler input to test copy; no product change or weakened assertion; PASS"
+    },
+    {
+      "case": "Initial validate failed old source-literal assertion for packaged lexicon paths after paths moved to shared mapping",
+      "result": "Assert exact shared paths plus each runtime consumer reference; bundled-before-OPFS order retained; 657/657 PASS"
+    }
+  ],
+  "notRun": [
+    "Chrome 102 runtime",
+    "Real YouTube timedtext",
+    "Full E2E on WXT",
+    "Same-ID old-to-WXT upgrade/restart",
+    "Release lexical certification and built-in Core release resources",
+    "Real paid Provider",
+    "Other browsers",
+    "Dev/HMR browser workflow"
+  ]
+}
