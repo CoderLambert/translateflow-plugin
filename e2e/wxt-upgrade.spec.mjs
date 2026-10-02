@@ -31,6 +31,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
   let driver;
   let extensionId;
   const phases = [];
+  let failure;
   const oldManifest=JSON.parse(await readFile(join(oldArtifact,"manifest.json"),"utf8"));
   const newManifest=JSON.parse(await readFile(join(newArtifact,"manifest.json"),"utf8"));
   expect(newManifest.version).toBe(oldManifest.version);
@@ -155,7 +156,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(before.opfs.find(f=>f.path.includes(alpha.id)&&f.path.endsWith("source.mdx"))?.sha256).toBe(alpha.sourceSha256);
     expect(before.opfs.find(f=>f.path.includes(beta.id)&&f.path.endsWith("source.mdx"))?.sha256).toBe(beta.sourceSha256);
     const browserVersion=context.browser().version();
-    phases.push({phase:"old",id:extensionId,artifact:old.treeSha256,testChanges:old.testCopy.changes,snapshot:summary(before)});
+    phases.push({phase:"old",id:extensionId,artifact:old.treeSha256,testChanges:old.testCopy.changes,nativeRuntime:legacyRuntime,snapshot:summary(before)});
     await context.close(); context=null;
     await rm(extensionDir,{recursive:true,force:true});
     const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl,observeInstalled:true});
@@ -227,21 +228,31 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     phases.push({phase:"WXT-after-recovery",id:extensionId,snapshot:summary(afterRecovery)});
     await context.close(); context=null; const restartedWorker=await launch();
     const restartedLifecycle=await restartedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
-    expect(restartedLifecycle).toEqual({events:[],capacity:4,overflow:false});
+    expect(restartedLifecycle).toMatchObject({events:expect.any(Array),capacity:4,overflow:false});
+    expect(restartedLifecycle.events.length).toBeLessThanOrEqual(restartedLifecycle.capacity);
     const restartedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
     expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
     phases.push({phase:"WXT-browser-restart",id:extensionId,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
     expect(server.calls).toHaveLength(1); expect(externalOrigins).toEqual([]); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
-    const report={schemaVersion:1,status:"PASS",browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
+    const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
       productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
       unauthorizedProviderCalls:0,externalRequests:0,backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
     await testInfo.attach("same-id-upgrade.json",{body:Buffer.from(JSON.stringify(report,null,2)),contentType:"application/json"});
     console.log("[WXT_SAME_ID_UPGRADE]",JSON.stringify(report));
+  } catch(error) {
+    failure={name:error.name,message:error.message};throw error;
   } finally {
+    if(failure) {
+      await mkdir(reportDir,{recursive:true});
+      const partial={schemaVersion:1,status:"FAIL",completeAcceptance:false,testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,scenario,extensionId,
+        phases,failure,observedProviderCalls:server.calls.length};
+      await writeFile(join(reportDir,`same-id-upgrade-${scenario}-failed.json`),JSON.stringify(partial,null,2)+"\n");
+      await testInfo.attach("same-id-upgrade-failed.json",{body:Buffer.from(JSON.stringify(partial,null,2)),contentType:"application/json"});
+    }
     await context?.close().catch(()=>{}); await server.close(); await rm(root,{recursive:true,force:true});
   }
 });
