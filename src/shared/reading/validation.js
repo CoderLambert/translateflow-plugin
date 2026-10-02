@@ -1,5 +1,5 @@
 import { byteLength } from "../hash.js";
-import { READING_ERROR, READING_LIMITS as L, READING_SCHEMA_VERSION } from "./constants.js";
+import { READING_ERROR, READING_LIMITS as L, READING_SCHEMA_VERSION, READING_PROTOCOL_VERSION } from "./constants.js";
 
 export class ReadingContractError extends Error {
   constructor(code, path) {
@@ -92,4 +92,18 @@ export function safeReturnUrl(value, path) {
 }
 function decodeFragment(value) {
   try { return decodeURIComponent(value); } catch { fail(READING_ERROR.UNSAFE_URL, "url.fragment"); }
+}
+
+export function protocolVersion(value, path) {
+  if (value !== READING_PROTOCOL_VERSION) fail(READING_ERROR.UNSUPPORTED_VERSION, path);
+  return value;
+}
+export function siteKey(value, path) {
+  text(value, L.urlChars, path);
+  let url;
+  try { url = new URL(value); } catch { fail(READING_ERROR.BAD_DTO, path); }
+  if (!/^https?:$/u.test(url.protocol) || url.username || url.password || value !== url.origin) {
+    fail(READING_ERROR.BAD_DTO, path);
+  }
+  return value;
 }

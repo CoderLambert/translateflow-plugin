@@ -3,7 +3,7 @@ import { READING_CONTENT_METHODS, READING_ERROR, READING_LIMITS as L, READING_ME
 import { bool, choice, fail, id, integer, object, pageKey, recordId } from "./validation.js";
 
 export function validateOperationToken(value, path = "token") {
-  const keys = ["operationId", "purpose", "consentGeneration", "dataGeneration", "pageGeneration", "pageKey", "documentGeneration",
+  const keys = ["operationId", "purpose", "consentGeneration", "sitePolicyRevision", "dataGeneration", "pageGeneration", "pageKey", "documentGeneration",
     "selectionGeneration", "recordId", "recordRevision", "issuedAt", "expiresAt"];
   object(value, keys, path);
   const issuedAt = integer(value.issuedAt, 0, Number.MAX_SAFE_INTEGER, `${path}.issuedAt`);
@@ -12,7 +12,7 @@ export function validateOperationToken(value, path = "token") {
   const result = { operationId: id(value.operationId, `${path}.operationId`), purpose: choice(value.purpose, ["lookup", "assistant"], `${path}.purpose`), pageKey: pageKey(value.pageKey, `${path}.pageKey`),
     documentGeneration: id(value.documentGeneration, `${path}.documentGeneration`),
     recordId: recordId(value.recordId, `${path}.recordId`), issuedAt, expiresAt };
-  for (const key of ["consentGeneration", "dataGeneration", "pageGeneration", "selectionGeneration", "recordRevision"]) {
+  for (const key of ["consentGeneration", "sitePolicyRevision", "dataGeneration", "pageGeneration", "selectionGeneration", "recordRevision"]) {
     result[key] = integer(value[key], key === "recordRevision" ? 0 : 1, Number.MAX_SAFE_INTEGER, `${path}.${key}`);
   }
   return result;
@@ -23,7 +23,7 @@ export function checkOperationScope(tokenValue, state, now) {
   const token = validateOperationToken(tokenValue);
   integer(now, 0, Number.MAX_SAFE_INTEGER, "now");
   if (!state?.enabled) fail(READING_ERROR.DISABLED, "recording");
-  for (const key of ["operationId", "purpose", "issuedAt", "expiresAt", "consentGeneration", "dataGeneration", "pageGeneration", "documentGeneration", "selectionGeneration"]) {
+  for (const key of ["operationId", "purpose", "issuedAt", "expiresAt", "consentGeneration", "sitePolicyRevision", "dataGeneration", "pageGeneration", "documentGeneration", "selectionGeneration"]) {
     if (state[key] !== token[key]) fail(READING_ERROR.STALE_OPERATION, `token.${key}`);
   }
   if (state.pageKey !== token.pageKey || state.recordId !== token.recordId || state.deleted ||
@@ -41,7 +41,9 @@ const WRITE_METHODS = new Set([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSI
 export function authorizeReadingMethod(method, access, resourcePageKey = null) {
   if (!Object.values(M).includes(method)) fail(READING_ERROR.BAD_DTO, "method");
   if (!access || access.incognito !== false) fail(READING_ERROR.FORBIDDEN, "access.incognito");
-  if (access.scope === "extension" && access.allowlisted === true) return true;
+  if (access.scope === "extension" && access.allowlisted === true && access.senderVerified === true &&
+      access.sensitive === false && access.editable === false && access.accountPage === false) return true;
+  if (access.scope === "entry" && access.senderVerified === true && method === M.OPEN_LEARNING_CENTER) return true;
   if (access.scope !== "content" || access.senderVerified !== true || !CONTENT_METHODS.has(method) ||
       !access.documentGeneration || !access.pageKey) fail(READING_ERROR.FORBIDDEN, "access.scope");
   if ([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF].includes(method) && resourcePageKey === null) fail(READING_ERROR.FORBIDDEN, "access.resource");
