@@ -7,8 +7,8 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/d5e308a709c008acf6b277d466d020f13025bdca?recursive=1",
   "denominator": 636,
   "counts": {
-    "已解释": 11,
-    "待解释": 625,
+    "已解释": 29,
+    "待解释": 607,
     "待复核": 0,
     "有理由排除": 0
   },
@@ -1575,7 +1575,9 @@
       "sourceBlob": "857771b2863e5c550611e985581541afd9ca52e1",
       "function": "网页翻译与缓存",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-provider-cache",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/commands.js",
@@ -1590,9 +1592,12 @@
       "sourceBlob": "67f9fc3d846b04d0e539247b7a8e4cf5672d2b9f",
       "function": "启动与共享基础",
       "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
+      "documentation": "modules/selection.md#partial-provider-cache",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/startup.md#partial-files"
+      ]
     },
     {
       "path": "src/background/index.js",
@@ -1614,21 +1619,27 @@
       "sourceBlob": "214e9254846627f09abe45f2770d2645dc62dd36",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-lexical",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/lexical/gateway.js",
       "sourceBlob": "526eb06b89b3d2bd92439a111db3b1155a0b176e",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-lexical",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/lexical/index.js",
       "sourceBlob": "5b109a102059abf6196dbf4ea78f800762fcaa8b",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-lexical",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/lexical/lru.js",
@@ -1656,7 +1667,9 @@
       "sourceBlob": "d42ebd5a2811e7660c59ac4d51113cd7cb28f512",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-lexical",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/lexical/tflex-integrity.js",
@@ -1677,7 +1690,9 @@
       "sourceBlob": "d46ca9035d17cd0fd6735f1a70cc1bd743dabd3b",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-router",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/catalog.js",
@@ -2130,9 +2145,10 @@
     {
       "path": "src/background/packs/rich-mdict-lookup-controller.js",
       "sourceBlob": "a881f64b928f32e1d030b4b6abd452bd88ff4c5f",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "划词与词典查询",
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-rich-lookup-controller",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/packs/rich-mdict-preferences.js",
@@ -2146,7 +2162,9 @@
       "sourceBlob": "5ece857da72a76e13ed9f3e59cda4326a52ac8e0",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-router",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/packs/snapshot.js",
@@ -2188,7 +2206,9 @@
       "sourceBlob": "6a661a38a52c7e820d21566fcf91da3e8d9885d6",
       "function": "Provider与设置",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-provider-cache",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/background/providers/local-translation.js",
@@ -2330,30 +2350,36 @@
       "sourceBlob": "31225c7b39bdbaba5bd64524a060623382cb6ef6",
       "function": "启动与共享基础",
       "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
+      "documentation": "modules/selection.md#partial-router",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/startup.md#partial-files"
+      ]
     },
     {
       "path": "src/background/selection/explain-prompt.js",
       "sourceBlob": "2c5246b352776dceddaf62d834d674dbc8008294",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-explain-prompt",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/selection/explain.js",
       "sourceBlob": "a7b0fad7a731795f53b76dc159d5e9322aa2c638",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-explain",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/selection/resolve.js",
       "sourceBlob": "30de62c1d0ef57dc2599e8421f16a1d5e6bd2cff",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-resolve",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/background/subtitle-requests.js",
@@ -2451,73 +2477,84 @@
       "path": "src/content/selection/ai-detail.js",
       "sourceBlob": "8a18513dc9a7163f8dfac773821275e07b2fdb83",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-ai-detail",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/clipboard.js",
       "sourceBlob": "0d381ee43615e20cb89e1272e6d04ef43ea5358e",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-clipboard",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/context.js",
       "sourceBlob": "a7a4b0be7c2e20f9661cbbc9c6ee7f2f448199ae",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-context",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/controller.js",
       "sourceBlob": "417461e57cf3e3500439ae9ec7d56ed77a45f58d",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-controller",
       "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/startup.md#partial-files"
+      ]
     },
     {
       "path": "src/content/selection/empty-state.js",
       "sourceBlob": "2376dd16a4c8feeddc589247ec4ec78e42426a14",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-empty-state",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/messages.js",
       "sourceBlob": "a77611784aaad58dddd5ad60c608dcb405ef2b1a",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-messages",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/popover.js",
       "sourceBlob": "ef0562efafac9900daecf2d2799cec21cdcdecdf",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-popover",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/result-model.js",
       "sourceBlob": "355fda9a8bfaac1044176ee99fb85b73e0bc67bc",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-result-model",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/result-renderer.js",
       "sourceBlob": "fee4ce3b096459853b2ce2053f945f4d89beafef",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-result-renderer",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/rich-details.js",
       "sourceBlob": "27ba4756574c7b2dd81d4d158cb1f88c9d6c57c7",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-rich-details",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/rich-resource-path.js",
@@ -2531,7 +2568,9 @@
       "sourceBlob": "02da086b5a6306db0dc0db30bde7f63e140686e8",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-rich-rendering",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/selection/rich-sanitizer-style.js",
@@ -2552,28 +2591,34 @@
       "sourceBlob": "f45e86d2708f27bf3d72f9d13491a0b43816a304",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-rich-rendering",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/selection/rich-viewer.js",
       "sourceBlob": "a3a4ff27483309d0e856b7fb12c45509f0cfa474",
       "function": "划词与词典查询",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-rich-rendering",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/selection/selection.js",
       "sourceBlob": "f20d1501595a574c425350b12bc55f79d62ae3a8",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-selection",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/selection/source-snapshot.js",
       "sourceBlob": "4c332bca620810beb389d2ef77d6710a05274e88",
       "function": "划词与词典查询",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-source-snapshot",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/content/structured.js",
@@ -2654,28 +2699,36 @@
       "sourceBlob": "4cd5e6b946c77ffbf575b244c5378039f1f8307e",
       "function": "网页翻译与缓存",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-source-and-tasks",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/text-projection-builder.js",
       "sourceBlob": "62ca887213aee5abb4aff313a9573ba1bf9ae5b9",
       "function": "网页翻译与缓存",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-source-and-tasks",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/text-projection-policy.js",
       "sourceBlob": "3cefac26737cabc9840e3f677d1a4364718ff6d0",
       "function": "网页翻译与缓存",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-source-and-tasks",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/text-projection.js",
       "sourceBlob": "7f8831b9f9aec2505d00b5ac1a4e05414385b2c8",
       "function": "网页翻译与缓存",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#partial-source-and-tasks",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "src/content/ui/host.js",
@@ -3294,16 +3347,18 @@
     {
       "path": "src/shared/selection-explanation.js",
       "sourceBlob": "9fa64645999e9fe19c36301f24adf97e8ad77997",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": null
+      "function": "划词与词典查询",
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-explanation-contract",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/shared/selection.js",
       "sourceBlob": "562e17e50b744c5f954fb8cf7230fcf08b1965d0",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": null
+      "function": "划词与词典查询",
+      "status": "已解释",
+      "documentation": "modules/selection.md#file-selection-contract",
+      "reviewedAt": "2026-10-02"
     },
     {
       "path": "src/shared/text.js",
@@ -3753,7 +3808,9 @@
       "sourceBlob": "df37c8a67910b02277b6c156fb66576e055712e9",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/lexical-quality-benchmark.test.mjs",
@@ -4033,7 +4090,9 @@
       "sourceBlob": "b85cd21082961fe20bf85aacbcb4a22ae6a7836a",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/reading-ui.test.mjs",
@@ -4103,7 +4162,9 @@
       "sourceBlob": "542b1c9d87c24911214e02c4e750e4f9666504d9",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/rich-mdict-preferences.test.mjs",
@@ -4152,28 +4213,36 @@
       "sourceBlob": "30bb5717254acdd2d8584c57e2664d134880ee4b",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-explain-runtime.test.mjs",
       "sourceBlob": "704b61504657e684114270127aefef3f273378b7",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-explanation.test.mjs",
       "sourceBlob": "36cfe154ed5f14d1c1a9bb74b83d1466b86710f0",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-multi-dictionary.test.mjs",
       "sourceBlob": "85d53698c934791b541d14ce54bfd142147aac42",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-release-certification.test.mjs",
@@ -4187,21 +4256,27 @@
       "sourceBlob": "2be2bfc905b436ca7c6aeac582afdaf0c2a50fe0",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-ui-contract.test.mjs",
       "sourceBlob": "69d3cf17aa90a798afdbf0a0079e0f3106f7da94",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/selection-v2.test.mjs",
       "sourceBlob": "2e09a477fd99609963b9fdda6b9525458642c7af",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/selection.md#test-boundaries",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
     },
     {
       "path": "tests/settings-ia.test.mjs",

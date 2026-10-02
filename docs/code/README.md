@@ -13,18 +13,19 @@
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
 - 本目录初始化的源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。
-- 当前状态：启动功能切片已形成，636个文件全部登记，11个完整解释、625个待解释（含17个仅解释启动边界）；运行验证 NOT_RUN。全仓导读仍未完成。
+- 当前状态：启动和划词查询功能切片已形成，636个文件全部登记，29个完整解释、607个待解释（含41个仅解释局部边界）；运行验证 NOT_RUN。全仓导读仍未完成。
 
 ## 已交付导航与推荐阅读顺序
 
 1. [运行时总览](architecture.md)：后台、扩展页面、Content、MAIN、Worker如何分工。
 2. [扩展启动完整流程](features/extension-startup.md)：从打开Popup/快捷键/持久站点到页面可交互，包含失败与重复注入。
 3. [启动模块逐文件说明](modules/startup.md)：11个完整文件与17个局部依赖的边界。
-4. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-5. [覆盖清单](coverage.json)：636个文件的固定blob、状态和正文位置。
-6. [更新记录](changes.md)：本轮证据与下一步。
+4. [划词、本地词典与显式AI完整流程](features/selection-and-dictionary.md)及[18个文件详解](modules/selection.md)。
+5. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
+6. [覆盖清单](coverage.json)：636个文件的固定blob、状态和正文位置。
+7. [更新记录](changes.md)：本轮证据与下一步。
 
-当前完整功能章只有启动。后续依次补齐：划词/词典查询 → MDX/MDD导入与渲染 → 网页翻译/缓存 → 字幕 → Provider与设置 → Reading → 构建测试。没有正文的章节不伪造链接。根README里部分旧概括未反映当前双构建/本地词典优先方向；本导读以固定源码和现行架构约束为据。
+当前已具备启动与划词查询功能章。后续依次补齐：MDX/MDD导入与渲染 → 网页翻译/缓存 → 字幕 → Provider与设置 → Reading → 构建测试。没有正文的章节不伪造链接。根README里部分旧概括未反映当前双构建/本地词典优先方向；本导读以固定源码和现行架构约束为据。
 
 ## 建议目录
 
@@ -113,7 +114,7 @@ docs/code/
 - 当前默认安装包与 opt-in WXT 路径并存；Content/MAIN/Worker 的加载边界需分别解释，不能假定全部已迁到同一bundler。
 - shared保持纯合同/纯函数，background协调消息和持久化，content负责页面/划词/字幕界面；根入口保持薄层。
 - 翻译缓存、独立ReadingRecord库、词典OPFS是不同数据边界。
-- 本地词典先查，AI详解由用户显式触发；MDX/MDD走范围读取与受控渲染，不执行词典JS。
+- 适合本地词汇检索的选段先查词典，AI详解显式触发；句子/不支持语言及无命中多词短语可走普通翻译。MDX/MDD走范围读取与受控渲染，不执行词典JS。
 - 现存测试数量和某个旧PR通过，不等于最新源码全部行为已验收。
 
 来源：[AGENTS.md](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)、[架构文档](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)、[贡献与验收流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/CONTRIBUTING.md)。

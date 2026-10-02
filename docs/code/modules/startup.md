@@ -327,3 +327,7 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 当入口或监听器变化时，优先复核本页的同步注册、重复注入、缺依赖与失败恢复语义；当 CONTENT_SCRIPT_FILES 变化时同时复核手动注入、动态注册、WXT raw bridge。修改业务模块不能仅凭本启动篇更新就把该模块全量 coverage 标记完成。
 
 事实优先级：本固定 commit 的实际代码与当前架构约束优先于旧 README 的概括或历史验收数字。本页不是迁移计划，也不声称默认发行已切 WXT。
+
+## 后续阅读
+
+启动后完整的查询、结果和取消流程见[划词功能章](../features/selection-and-dictionary.md)。本页局部解释的Selection controller现已有[完整文件说明](selection.md#file-controller)；全局覆盖状态以[coverage](../coverage.json)为准，不把两个章节重复计数。

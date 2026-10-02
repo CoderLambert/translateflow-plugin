@@ -1,8 +1,8 @@
 # 运行时总览与阅读地图
 
-[返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md)
+[返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。本轮完成启动切片，后续功能内部仍待展开。
+源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动与划词查询功能切片；导入/安全渲染等内部仍待展开。
 
 ## 先区分五种运行环境
 
@@ -44,4 +44,14 @@
 
 ## 当前缺口
 
-完整启动切片之外，划词词典、导入/富文本、网页翻译与缓存、字幕、设置、Reading和构建测试尚未完成逐文件导读。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入、sanitizer/资源渲染内部、网页翻译与缓存、字幕、设置、Reading和构建测试仍待继续。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+
+## 划词查询接上启动之后
+
+[完整功能章](features/selection-and-dictionary.md) · [逐文件正文](modules/selection.md)
+
+启动注册Selection监听后，用户有效选择先出现入口，点击才冻结snapshot并发送SELECTION_RESOLVE。适合本地英中词汇检索的分支走lexical gateway与结构化候选；句子/不支持语言以及无命中的多词短语可走普通翻译。单词无命中保留中性空态，AI详解另需显式点击。“本地优先”不能概括成所有选段永不调用Provider。
+
+Rich词典详情是独立支路：获取词典卡→按展开状态懒查询→后台校验owner并读取→Content清洗→viewer；不阻塞或替换结构化主卡。换词/关闭先使本地session失效，再尝试后台取消；不能将取消消息已发送或allSettled结束当成全部底层读取确认停止。
+
+SourceSnapshot只是本次查询的内存证据，尚不等于Reading记录保存。拟议Oxford10新消息/样式/快照合同不属于本页固定main的已实现能力。
