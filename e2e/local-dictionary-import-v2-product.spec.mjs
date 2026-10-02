@@ -470,7 +470,13 @@ async function readMddResource(harness, page, dictionaryId, path) {
   return harness.driver.evaluate(async ({ tabId, dictionaryId, path }) => {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: async ({ dictionaryId, path }) => chrome.runtime.sendMessage({ type: "RICH_MDD_RESOURCE", dictionaryId, path }),
+      func: async ({ dictionaryId, path }) => chrome.runtime.sendMessage({
+        type: "RICH_MDD_RESOURCE",
+        requestId: `selection-mdd-resource-${crypto.randomUUID().replaceAll("-", "")}`,
+        ownerToken: crypto.randomUUID().replaceAll("-", ""),
+        dictionaryId,
+        path
+      }),
       args: [{ dictionaryId, path }]
     });
     return result?.result;
