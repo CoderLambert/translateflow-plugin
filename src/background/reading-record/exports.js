@@ -9,7 +9,15 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     if (typeof repository?.[name] !== "function") fail(E.NOT_READY, "export.repository");
     return repository[name](value);
   };
-  function prune() { for (const [key, item] of sessions) if (now() >= item.expiresAt) sessions.delete(key); }
+  // Expiry/revocation prevents delivery, but cannot discard admission slots for work
+  // still running in the repository. Slots release only after those calls settle.
+  function prune() { for (const [key, item] of sessions) if (now() >= item.expiresAt && !item.work.size) sessions.delete(key); }
+  async function tracked(session, name, value) {
+    const promise = Promise.resolve().then(() => invoke(name, value));
+    session.work.add(promise);
+    if (name === "readExportChunk" || name === "checkExport") session.reads.add(promise);
+    try { return await promise; } finally { session.work.delete(promise); session.reads.delete(promise); }
+  }
   function get(exportId, access) {
     prune();
     const session = sessions.get(exportId);
@@ -22,14 +30,14 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
   };
   async function start(context) {
     prune();
-    const active = [...sessions.values()].filter((item) => ["starting", "active", "finishing", "cancelling"].includes(item.state));
+    const active = [...sessions.values()].filter((item) => item.work.size || ["starting", "active", "finishing", "cancelling"].includes(item.state));
     if (active.length >= L.exportsGlobal || active.filter((item) => item.ownerKey === context.access.ownerKey).length >= L.exportsPerOwner || sessions.size >= L.operationsGlobal) fail(E.CAPACITY, "exports");
     const exportId = randomId(), expiresAt = now() + L.exportTtlMs;
     const session = { exportId, expiresAt, ownerKey: context.access.ownerKey, tabId: context.access.tabId, navigationGeneration: context.access.navigationGeneration,
-      state: "starting", nextCursor: randomId(), sequence: 0, position: null, lastCursor: null, lastChunk: null, pending: null };
+      state: "starting", nextCursor: randomId(), sequence: 0, position: null, lastCursor: null, lastChunk: null, pending: null, work: new Set(), reads: new Set() };
     sessions.set(exportId, session); // Reserve before awaiting: parallel starts cannot exceed caps.
     try {
-      const opened = await invoke("openExport", context);
+      const opened = await tracked(session, "openExport", context);
       context.assertCurrent();
       if (sessions.get(exportId) !== session || session.state !== "starting" || now() >= expiresAt) fail(E.INTERRUPTED, "export.start");
       const response = validateExportResponse(M.EXPORT_START, { exportId, exportRevision: opened.exportRevision, expiresAt, nextCursor: session.nextCursor });
@@ -45,7 +53,7 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     assertLive(session, assertCurrent);
     if (request.cursor === session.lastCursor) {
       const chunk = session.lastChunk;
-      await invoke("checkExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision });
+      await tracked(session, "checkExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision });
       assertLive(session, assertCurrent);
       if (request.cursor !== session.lastCursor || session.lastChunk !== chunk) fail(E.INTERRUPTED, "export.retry");
       return chunk;
@@ -56,7 +64,7 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
       return session.pending.promise;
     }
     const promise = (async () => {
-      const result = await invoke("readExportChunk", { ...context, exportId: session.exportId, exportRevision: session.exportRevision,
+      const result = await tracked(session, "readExportChunk", { ...context, exportId: session.exportId, exportRevision: session.exportRevision,
         exportedAt: session.exportedAt, position: session.position, sequence: session.sequence, maxChunkBytes: L.exportChunkBytes,
         assertCurrent: () => assertLive(session, assertCurrent) });
       assertLive(session, assertCurrent);
@@ -83,7 +91,7 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     // Reserve delivery/finish; cancel cannot concurrently claim rollback of a delivered file.
     session.state = "finishing";
     try {
-      await invoke("finishExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision,
+      await tracked(session, "finishExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision,
         position: session.position, sequence: context.request.sequence,
         assertCurrent: () => {
           context.assertCurrent();
@@ -101,7 +109,18 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     if (["finished", "cancelled"].includes(session.state)) return { exportId: session.exportId, state: session.state };
     if (session.state === "finishing" || session.state === "cancelling") fail(E.INTERRUPTED, "export.pending");
     session.state = "cancelling";
-    try { await invoke("cancelExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision }); }
+    // Synchronously invalidate delivery, then wait for actual reads and cancellation
+    // acknowledgement. Do not await start/finish or the cancellation's own promise.
+    const reads = [...session.reads];
+    if (session.pending) reads.push(session.pending.promise);
+    try {
+      const [cancelled] = await Promise.allSettled([
+        tracked(session, "cancelExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision }), ...reads
+      ]);
+      if (cancelled.status === "rejected") throw cancelled.reason;
+      context.assertCurrent();
+      if (sessions.get(session.exportId) !== session || session.state !== "cancelling" || now() >= session.expiresAt) fail(E.INTERRUPTED, "export.cancel");
+    }
     catch (error) { session.state = "interrupted"; throw error; }
     session.state = "cancelled"; session.lastChunk = null;
     return { exportId: session.exportId, state: "cancelled" };
