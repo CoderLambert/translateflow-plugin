@@ -167,8 +167,9 @@ test.describe("local MDD resource product and security behavior", () => {
     expect(remoteRequests).toEqual([]);
     expect(browserErrors).toEqual([]);
 
-    await options.screenshot({ path: resolve(evidenceDir, "mdd-settings-attached.png"), fullPage: true });
-    await page.screenshot({ path: resolve(evidenceDir, "mdd-resources-dark-narrow.png"), fullPage: true });
+    // Capture evidence without mutating editable styles and invalidating source identity.
+    await options.screenshot({ path: resolve(evidenceDir, "mdd-settings-attached.png"), fullPage: true, caret: "initial" });
+    await page.screenshot({ path: resolve(evidenceDir, "mdd-resources-dark-narrow.png"), fullPage: true, caret: "initial" });
 
     await attachMddFile(row, {
       name: "interop.mdd",
