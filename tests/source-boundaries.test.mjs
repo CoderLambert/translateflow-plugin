@@ -34,6 +34,12 @@ test("CLI accepts approved TS UI and a pure JS/TS adapter, and excludes generate
 });
 
 const negatives = [
+  ["mixed type/value React import", { "src/background/bad.ts": 'import {type ReactNode, useState} from "react";' }, /React\/JSX/u],
+  ["mixed type/value React export", { "src/background/bad.ts": 'export {type ReactNode, useState} from "react";' }, /React\/JSX/u],
+  ["empty named React import remains runtime", { "src/background/bad.ts": 'import {} from "react";' }, /React\/JSX/u],
+  ["MAIN Reflect.apply fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;Reflect.apply(page.fetch,page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN Reflect.apply fetch alias", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const request=page.fetch;const apply=Reflect.apply;apply(request,page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN callback receives fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const key="fetch";dispatch(globalThis[key]);' }, /MAIN observer/u],
   ["Content fetch TS", { "src/content/bad.ts": 'globalThis["fetch"]("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content fetch alias", { "src/content/bad.js": 'const request = globalThis.fetch; request("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content IDB TS", { "src/content/bad.ts": 'globalThis["indexedDB"].open("illegal");' }, /IndexedDB/u],
@@ -62,6 +68,22 @@ const negatives = [
   ["non-UI JSX implicit React", { "src/background/bad.tsx": 'export const view = <div/>;' }, /React\/JSX/u],
   ["source TS syntax", { "src/platform/bad.ts": 'const value: = 1;' }, /syntax/u]
 ];
+test("CLI excludes erased type-only imports and re-exports from the runtime graph", () => {
+  const result = runFixture({
+    "src/background/types.ts": `
+      import type {ReactNode} from "react";
+      import {type External} from "unapproved-type-package";
+      import type {Helper} from "../../tests/helper.js";
+      export type {ReactNode} from "react";
+      export {type External} from "unapproved-type-package";
+      export type Alias = ReactNode | External | Helper;
+    `,
+    "tests/helper.js": 'export const Helper=()=>fetch("https://invalid.test");',
+    "src/shared/types.ts": 'import type {View} from "../learning-center/View"; export type Shape=typeof View;',
+    "src/learning-center/View.tsx": 'import "react"; export const View=()=> <div/>;'
+  });
+  assert.equal(result.status, 0, result.output);
+});
 const computedApiNegatives = [
   ["const fetch key", { "src/content/bad.js": 'const api="fetch";globalThis[api]("https://invalid.test");' }, /直接使用 fetch/u],
   ["type assertion global alias fetch", { "src/content/bad.ts": 'const root=<typeof globalThis>globalThis;const key="fetch";root[key]("https://invalid.test");' }, /直接使用 fetch/u],

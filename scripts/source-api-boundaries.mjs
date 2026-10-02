@@ -118,6 +118,13 @@ export function createApiInspector(tree) {
     if (ts.isCallExpression(node)) {
       const resolved = path(node.expression);
       if (resolved?.[0] === ROOT && resolved[1] === "fetch" && !reviewedMainForward(node)) fetchCalls.add(node);
+      // Passing fetch to Reflect.apply or another callback also delegates a
+      // request capability. The reviewed original.apply(this,args) forwarder
+      // passes only this/args, so its exact exception remains unchanged.
+      if (node.arguments.some((argument) => {
+        const value = path(argument);
+        return value?.[0] === ROOT && value[1] === "fetch";
+      })) fetchCalls.add(node);
     }
     ts.forEachChild(node, visit);
   }
