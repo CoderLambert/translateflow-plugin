@@ -24,7 +24,9 @@
     const from = Math.max(0, range.startOffset - 600), to = Math.min(node.length, range.endOffset + 600);
     if (to - from > 4000) return value;
     const builder = app.modules.textProjectionBuilder.createBuilder();
-    builder.append("local", node.nodeValue.slice(from, to), from);
+    const text = node.nodeValue.slice(from, to);
+    if (/[\u0000\u0008\u000b]/u.test(text)) return { status: "unsupported", reason: "unsupported-text" };
+    builder.append("local", text, from);
     return { status: "resolved", ...builder.finish(), domNodes: new Map([["local", node]]), localWindow: true };
   }
   function selectionPosition(value, range) {
@@ -61,13 +63,15 @@
       documentGeneration, selectionGeneration: snapshot.selectionGeneration || 1,
       anchor: { status, quote: { exact: selectedText, prefix, suffix }, position, blockDigest: null }, capturedAt: Date.now() };
     const result = { sourceRevision, selectedText, capability: status, context, sourceSnapshot: null };
-    result.ready = Promise.all([digest(JSON.stringify([frozen.projectionVersion, selectedText, frozen.contextMode, text])), blockText === null ? null : digest(blockText)])
+    const validText = selectedText?.trim() && selectedText.length <= 2000 && !/[\u0000\u0008\u000b\u000c]/u.test(selectedText);
+    result.ready = (validText ? Promise.all([digest(JSON.stringify([frozen.projectionVersion, selectedText, frozen.contextMode, text])), blockText === null ? null : digest(blockText)])
+      : Promise.reject(new Error("unsupported selected text")))
       .then(([sourceDigest, blockDigest]) => {
         frozen.sourceDigest = sourceDigest; frozen.anchor.blockDigest = blockDigest;
         Object.freeze(frozen.anchor.quote); if (position) Object.freeze(position); Object.freeze(frozen.anchor);
         result.sourceSnapshot = Object.freeze(frozen);
         return result.sourceSnapshot;
-      }).catch((error) => { result.capability = "unsupported"; result.reason = "digest-unavailable"; throw error; });
+      }).catch((error) => { result.capability = "unsupported"; result.reason = validText ? "digest-unavailable" : "unsupported-text"; throw error; });
     // Query UI remains usable if WebCrypto is unavailable on an insecure page.
     result.ready.catch(() => {});
     return result;

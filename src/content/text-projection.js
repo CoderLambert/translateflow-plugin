@@ -28,7 +28,7 @@
   }
   function revision() { if (observer) consume(observer.takeRecords()); return sourceRevision; }
   function project(root, { clock = () => performance.now() } = {}) {
-    const started = clock(), builder = createBuilder(), domNodes = new Map();
+    const started = clock(), builder = createBuilder({ maxUnits: Math.min(policy.limits.sliceChars, policy.limits.totalChars) }), domNodes = new Map();
     const stats = { nodes: 0, chars: 0, elapsedMs: 0 };
     const fail = (reason) => ({ status: "unsupported", reason, stats: { ...stats, elapsedMs: clock() - started } });
     const check = () => {
@@ -54,6 +54,7 @@
           if (node.nodeType === 3) {
             if (stats.chars + node.length > Math.min(policy.limits.sliceChars, policy.limits.totalChars)) return fail("char-budget");
             const key = `n${stats.nodes}`;
+            if (/[\u0000\u0008\u000b]/u.test(node.nodeValue)) return fail("unsupported-text");
             domNodes.set(key, node);
             stats.chars += node.length;
             builder.append(key, node.nodeValue, 0, check);

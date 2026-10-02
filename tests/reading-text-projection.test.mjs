@@ -117,3 +117,15 @@ test("missing digest capability rejects evidence without breaking ordinary selec
   assert.equal(capture.capability, "unsupported"); assert.equal(capture.reason, "digest-unavailable");
   assert.equal(capture.sourceSnapshot, null); assert.equal(capture.selectedText, "session"); assert.equal(capture.context.text, "");
 });
+
+test("unit allocation stops at its exact bound and forbidden capture text never forms an invalid DTO", async () => {
+  const state = load();
+  const builder = state.modules.textProjectionBuilder.createBuilder({ maxUnits: 2 });
+  assert.throws(() => builder.append("node", "abc"), /char-budget/u);
+  assert.equal(builder.size, 2);
+  state.modules.textProjectionPolicy.rangePolicy = () => ({ supported: false, sensitive: true });
+  vm.runInContext(sources.get(files[3]), state.context);
+  const capture = state.modules.selectionSourceSnapshot.capture({ text: "session\u0000", range: {}, selectionGeneration: 1 });
+  await assert.rejects(capture.ready, /unsupported selected text/u);
+  assert.equal(capture.reason, "unsupported-text"); assert.equal(capture.sourceSnapshot, null);
+});

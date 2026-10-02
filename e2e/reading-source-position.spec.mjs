@@ -35,8 +35,8 @@ async function probe(harness, page, command, args = {}) {
       if (command === "revision") return modules.textProjection.revision();
       if (command === "pending-mutation") {
         const before = modules.textProjection.revision(), p = document.createElement("p"); p.textContent = "AD_INSERTED"; document.querySelector("main").prepend(p);
-        const after = modules.textProjection.revision();
-        return { before, after, current: modules.selectionController.getQuerySource() };
+        const current = modules.selectionController.getQuerySource(), after = modules.textProjection.revision();
+        return { before, after, current };
       }
       if (command === "insert-translation") return modules.dom.insertTranslation(document.querySelector(args.selector), "合成译文 SECRET_TRANSLATION");
       if (command === "clear-translations") { modules.dom.clearTranslations(); return true; }
