@@ -42,7 +42,7 @@ function assistant(value, path) {
   const parentTurnId = nullable(value.parentTurnId, id, `${path}.parentTurnId`);
   const regenerationOf = nullable(value.regenerationOf, id, `${path}.regenerationOf`);
   if (parentTurnId === turnId || regenerationOf === turnId || (parentTurnId && regenerationOf) ||
-      (value.action === "follow-up" && !parentTurnId)) fail(READING_ERROR.BAD_DTO, path);
+      (value.action === "follow-up" && (!parentTurnId || regenerationOf)) || (value.action !== "follow-up" && parentTurnId)) fail(READING_ERROR.BAD_DTO, path);
   return { userQuestion: text(value.userQuestion, L.questionChars, `${path}.userQuestion`),
     assistantAnswer: text(value.assistantAnswer, L.answerChars, `${path}.assistantAnswer`),
     action: choice(value.action, ["understand", "analyze", "usage", "follow-up"], `${path}.action`),

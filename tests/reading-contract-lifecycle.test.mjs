@@ -15,7 +15,7 @@ function access(overrides = {}) { return { scope: "content", incognito: false, s
 
 test("Clear, page delete, pause, selection change and record delete defeat late writes", () => {
   assert.equal(checkWriteEligibility(token(), writeState(), 1001), true);
-  for (const key of ["consentGeneration", "dataGeneration", "pageGeneration", "documentGeneration", "selectionGeneration"]) {
+  for (const key of ["consentGeneration", "sitePolicyRevision", "dataGeneration", "pageGeneration", "documentGeneration", "selectionGeneration"]) {
     rejects(() => checkWriteEligibility(token(), writeState({ [key]: key === "documentGeneration" ? "doc-2" : 2 }), 1001), E.STALE_OPERATION);
   }
   rejects(() => checkWriteEligibility(token({ purpose: "assistant" }), writeState(), 1001), E.STALE_OPERATION);
@@ -35,11 +35,11 @@ test("Content is page-scoped; only a precise trusted extension page may list/exp
   assert.equal(authorizeReadingMethod(M.GET_RECORD, access(), PAGE_KEY), true);
   rejects(() => authorizeReadingMethod(M.GET_RECORD, access()), E.FORBIDDEN);
   rejects(() => authorizeReadingMethod(M.GET_RECORD, access(), `rp1:${"d".repeat(64)}`), E.FORBIDDEN);
-  for (const method of [M.EXPORT_JSON, M.LIST_RECORDS, M.CLEAR_RECORDS, M.DELETE_PAGE, M.DELETE_RECORD, M.SET_RECORDING]) {
+  for (const method of [M.EXPORT_START, M.LIST_RECORDS, M.CLEAR_RECORDS, M.DELETE_PAGE, M.DELETE_RECORD, M.SET_RECORDING]) {
     rejects(() => authorizeReadingMethod(method, access(), PAGE_KEY), E.FORBIDDEN);
-    assert.equal(authorizeReadingMethod(method, { scope: "extension", incognito: false, allowlisted: true }), true);
+    assert.equal(authorizeReadingMethod(method, { scope: "extension", senderVerified: true, sensitive: false, editable: false, accountPage: false, incognito: false, allowlisted: true }), true);
     rejects(() => authorizeReadingMethod(method, { scope: "extension", incognito: true, allowlisted: true }), E.FORBIDDEN);
-    rejects(() => authorizeReadingMethod(method, { scope: "extension", incognito: false, allowlisted: false }), E.FORBIDDEN);
+    rejects(() => authorizeReadingMethod(method, { scope: "extension", senderVerified: true, sensitive: false, editable: false, accountPage: false, incognito: false, allowlisted: false }), E.FORBIDDEN);
   }
   for (const flag of ["sensitive", "editable", "accountPage", "incognito"]) {
     rejects(() => authorizeReadingMethod(M.GET_PAGE_SUMMARY, access({ [flag]: true })), E.FORBIDDEN);

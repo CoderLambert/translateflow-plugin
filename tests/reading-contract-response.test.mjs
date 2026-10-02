@@ -13,7 +13,7 @@ const oversized = (method, valid) => {
   if (method === M.GET_RECORD) return { ...data, snapshots: Array(L.snapshotsPerRecord + 1).fill(data.snapshots[0]) };
   if ([M.GET_RECORDING_STATE, M.SET_RECORDING].includes(method)) return recordingState("extension", { recordCount: L.records + 1 });
   if ([M.DELETE_PAGE, M.CLEAR_RECORDS].includes(method)) return { ...data, deletedCount: L.records + 1 };
-  if (method === M.EXPORT_JSON) return { ...data, records: Array(L.records + 1).fill(data.records[0]) };
+
   if (method === M.CREATE_HANDOFF) return { ...data, handoff: { ...data.handoff, expiresAt: 61001 } };
   if (method === M.CONSUME_HANDOFF) return { ...data, anchor: { ...data.anchor, quote: { ...data.anchor.quote, exact: "x".repeat(L.selectionChars + 1) } } };
   return { ...data, unexpected: "x".repeat(L.totalBytes + 1024 * 1024) }; // Boolean-only deletion receipt still has a whole-envelope byte ceiling.
@@ -25,16 +25,16 @@ for (const method of Object.values(M)) {
     assert.deepEqual(validateReadingResponse(method, valid, "extension"), valid);
     rejects(() => validateReadingResponse(method, { ...valid, method }, "extension"), E.BAD_DTO);
     rejects(() => validateReadingResponse(method, { ...valid, data: { ...valid.data, extra: true } }, "extension"), E.BAD_DTO);
-    rejects(() => validateReadingResponse(method, { ok: true }, "extension"), E.BAD_DTO);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: true }, "extension"), E.BAD_DTO);
     rejects(() => validateReadingResponse(method, { ...valid, data: oversized(method, valid) }, "extension"), E.LIMIT);
     for (const code of Object.values(E)) {
-      const error = { ok: false, error: { code } };
+      const error = { protocolVersion: 2, ok: false, error: { code } };
       assert.deepEqual(validateReadingResponse(method, error, "extension"), error);
       assert.deepEqual(validateReadingResponse(method, error, "content"), error);
     }
-    rejects(() => validateReadingResponse(method, { ok: false, error: { code: "UNKNOWN" } }, "extension"), E.BAD_DTO);
-    rejects(() => validateReadingResponse(method, { ok: false, data: valid.data, error: { code: E.STORAGE } }, "extension"), E.BAD_DTO);
-    rejects(() => validateReadingResponse(method, { ok: false, error: { code: E.STORAGE, message: "private context" } }, "extension"), E.BAD_DTO);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: false, error: { code: "UNKNOWN" } }, "extension"), E.BAD_DTO);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: false, data: valid.data, error: { code: E.STORAGE } }, "extension"), E.BAD_DTO);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: false, error: { code: E.STORAGE, message: "private context" } }, "extension"), E.BAD_DTO);
   });
 }
 
@@ -61,23 +61,24 @@ test("Pagination accepts empty/final/full pages and rejects duplicates, oversize
     const item = response(method).data.items[0];
     const full = Array.from({ length: L.pageSize }, (_, index) => ({ ...item,
       recordId: `${index.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111` }));
-    for (const data of [{ items: [], nextCursor: null }, { items: full, nextCursor: "opaque-next-page" }]) {
-      assert.deepEqual(validateReadingResponse(method, { ok: true, data }, "extension").data, data);
+    const extra = method === M.GET_PAGE_SUMMARY ? { pageRecordCount: L.pageSize, pageRevision: 1 } : { catalogRevision: 1 };
+    for (const data of [{ items: [], nextCursor: null, ...extra }, { items: full, nextCursor: "opaque-next-page", ...extra }]) {
+      assert.deepEqual(validateReadingResponse(method, { protocolVersion: 2, ok: true, data }, "extension").data, data);
     }
-    rejects(() => validateReadingResponse(method, { ok: true, data: { items: [], nextCursor: "next" } }, "extension"), E.BAD_DTO);
-    rejects(() => validateReadingResponse(method, { ok: true, data: { items: [item, item], nextCursor: null } }, "extension"), E.BAD_DTO);
-    rejects(() => validateReadingResponse(method, { ok: true, data: { items: full, nextCursor: null } }, "extension", 20), E.LIMIT);
-    rejects(() => validateReadingResponse(method, { ok: true, data: { items: [item], nextCursor: "x".repeat(L.cursorChars + 1) } }, "extension"), E.LIMIT);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: true, data: { items: [], nextCursor: "next", ...extra } }, "extension"), E.BAD_DTO);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: true, data: { items: [item, item], nextCursor: null, ...extra } }, "extension"), E.BAD_DTO);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: true, data: { items: full, nextCursor: null, ...extra } }, "extension", 20), E.LIMIT);
+    rejects(() => validateReadingResponse(method, { protocolVersion: 2, ok: true, data: { items: [item], nextCursor: "x".repeat(L.cursorChars + 1), ...extra } }, "extension"), E.LIMIT);
   }
 });
 
 test("Disabled begin and future handoff branches have exact shapes, without exposing a token on failure", () => {
-  assert.deepEqual(validateReadingResponse(M.BEGIN_QUERY, { ok: true, data: { state: "disabled" } }, "content"), { ok: true, data: { state: "disabled" } });
-  rejects(() => validateReadingResponse(M.BEGIN_QUERY, { ok: true, data: { state: "disabled", token: token() } }, "content"), E.BAD_DTO);
+  assert.deepEqual(validateReadingResponse(M.BEGIN_QUERY, { protocolVersion: 2, ok: true, data: { state: "disabled" } }, "content"), { protocolVersion: 2, ok: true, data: { state: "disabled" } });
+  rejects(() => validateReadingResponse(M.BEGIN_QUERY, { protocolVersion: 2, ok: true, data: { state: "disabled", token: token() } }, "content"), E.BAD_DTO);
   for (const state of ["permission-required", "unsupported"]) {
-    assert.equal(validateReadingResponse(M.CREATE_HANDOFF, { ok: true, data: { state } }, "extension").data.state, state);
-    rejects(() => validateReadingResponse(M.CREATE_HANDOFF, { ok: true, data: { state, handoff: response(M.CREATE_HANDOFF).data.handoff } }, "extension"), E.BAD_DTO);
+    assert.equal(validateReadingResponse(M.CREATE_HANDOFF, { protocolVersion: 2, ok: true, data: { state } }, "extension").data.state, state);
+    rejects(() => validateReadingResponse(M.CREATE_HANDOFF, { protocolVersion: 2, ok: true, data: { state, handoff: response(M.CREATE_HANDOFF).data.handoff } }, "extension"), E.BAD_DTO);
   }
-  rejects(() => validateReadingResponse(M.DELETE_RECORD, { ok: true, data: { deleted: false } }, "extension"), E.BAD_DTO);
-  rejects(() => validateReadingResponse(M.GET_RECORDING_STATE, { ok: true, data: recordingState("extension", { capacityReached: true }) }, "extension"), E.BAD_DTO);
+  rejects(() => validateReadingResponse(M.DELETE_RECORD, { protocolVersion: 2, ok: true, data: { deleted: false } }, "extension"), E.BAD_DTO);
+  rejects(() => validateReadingResponse(M.GET_RECORDING_STATE, { protocolVersion: 2, ok: true, data: recordingState("extension", { capacityReached: true }) }, "extension"), E.BAD_DTO);
 });
