@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 // PF-00 probe only. This creates an isolated project, never a production package.
 import { copyFile, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
-import { resolve, dirname, relative } from "node:path";
+import { resolve, dirname, relative, basename, sep, isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const [sourceArg, outputArg] = process.argv.slice(2);
 if (!sourceArg || !outputArg) throw new Error("usage: node prepare-experiment.mjs <repo> <new-experiment-dir>");
 const source = await realpath(sourceArg);
-const output = resolve(outputArg);
-if (output === source || !relative(source, output).startsWith("..")) {
+const requested = resolve(outputArg);
+const parent = await realpath(dirname(requested));
+const output = resolve(parent, basename(requested));
+const distance = relative(source, output);
+if (!distance || (distance !== ".." && !distance.startsWith(`..${sep}`) && !isAbsolute(distance))) {
   throw new Error("experiment directory must be outside the repository");
 }
-await mkdir(output, { recursive: true });
+// Refuse existing paths, including symlinks, rather than overwriting an experiment.
+await mkdir(output);
+await mkdir(resolve(output, "logs"));
 const constants = await import(pathToFileURL(resolve(source, "src/shared/constants.js")));
 const youtube = await import(pathToFileURL(resolve(source, "src/background/youtube-bridge.js")));
 const workers = ["curated-dictionary", "curated-ecdict-mdx", "mdict-import", "stardict-import", "rich-mdict-import", "mdd-resource-import"]

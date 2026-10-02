@@ -40,7 +40,7 @@ The lock's SHA-256 is `08f125301771f4691d72b3d78dfe39e70cacce0e0a3f99042d8c912f5
 
 ## Reproduction
 
-Use Node 24.21.0 / npm 11.19.0 and a new directory outside the repository. Preparation writes only that directory and copies baseline source closure into build inputs; it does not alter root package.json/lock or use the user's browser profile.
+Use Node 24.21.0 / npm 11.19.0 and a new directory outside the repository, beneath an existing parent directory. Preparation refuses an existing destination (including symlinks), creates its own `logs` directory, and copies baseline source closure into build inputs; it does not alter root package.json/lock or use the user's browser profile.
 
 ```bash
 node docs/platform-upgrade-v1/prepare-experiment.mjs . /tmp/translateflow-pf00-reproduction
@@ -53,7 +53,9 @@ npm run typecheck
 npm test
 ```
 
-Then, from the repository, run `node docs/platform-upgrade-v1/browser-smoke.mjs /tmp/translateflow-pf00-reproduction`. This requires Playwright's Chromium for the pinned package. The reproduction commands above describe how to rerun; **`npm ci` itself was NOT RUN in the original probe**. Actual installation used the recorded install retry. No detached work continues after handoff.
+Then, from the repository, run `node docs/platform-upgrade-v1/browser-smoke.mjs /tmp/translateflow-pf00-reproduction`. This requires Playwright's Chromium for the pinned package. **`npm ci` was NOT RUN in the original probe**; actual installation used the recorded install retry. During independent review, the coordinator reproduced a fresh project at `/tmp/translateflow-release-a-20261002/pf245-reproduction`: `npm ci --offline --no-audit --no-fund` (191 packages), `npm run build`, `npm run typecheck`, and `npm test` (2 tests) all passed. This verifies the retained lock and newly created `logs` directory on a fresh destination. No detached work continues after handoff.
+
+Independent review found two preparation defects: missing `logs` creation and output containment that could accept an internal `..probe` name or a symlinked parent. Preparation now canonicalizes the existing parent, checks path segments, and refuses an existing destination before writing. A coordinator scratch check exercised a fresh destination, the internal dot-prefix case, symlinked parent and existing symlink; rejection left the original repository package unchanged. This fixes experiment reproduction, without changing production code or relaxing assertions.
 
 ## Not run / not verified
 
