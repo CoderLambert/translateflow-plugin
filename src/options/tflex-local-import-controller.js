@@ -65,14 +65,16 @@ export function createTflexLocalImportController({
   async function cancel() {
     const current = active;
     if (!current) return { cancelled: false, phase: "" };
-    current.controller.abort();
     if (current.phase === "commit") {
       const response = await runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL,
         requestId: current.requestId
       });
-      return { cancelled: Boolean(response?.cancelled), phase: "commit" };
+      const cancelled = Boolean(response?.cancelled);
+      if (cancelled) current.controller.abort();
+      return { cancelled, phase: cancelled ? "commit" : "commitpoint" };
     }
+    current.controller.abort();
     return { cancelled: true, phase: current.phase };
   }
 
