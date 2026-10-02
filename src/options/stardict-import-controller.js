@@ -127,6 +127,7 @@ export function createStarDictImportController({
           : {})
       });
       if (!commit?.ok) {
+        if (current.cancelRequested) throw abortError();
         throw responseError(
           commit,
           "StarDict dictionary activation failed."
