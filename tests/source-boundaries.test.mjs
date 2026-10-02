@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import ts from "typescript";
 
 const check = fileURLToPath(new URL("../scripts/check.mjs", import.meta.url));
 const manifest = { manifest_version: 3, background: { service_worker: "background.js", type: "module" } };
+const approvedMainSource = readFileSync(new URL("../src/content/subtitles/youtube-main-bridge.js", import.meta.url), "utf8");
 function runFixture(files) {
   const root = mkdtempSync(join(tmpdir(), "translateflow-architecture-"));
   try {
@@ -34,6 +36,22 @@ test("CLI accepts approved TS UI and a pure JS/TS adapter, and excludes generate
 });
 
 const negatives = [
+  ["inline type-only React import retains runtime edge", { "src/background/bad.ts": 'import {type ReactNode} from "react";' }, /React\/JSX/u],
+  ["inline type-only React export retains runtime edge", { "src/background/bad.ts": 'export {type ReactNode} from "react";' }, /React\/JSX/u],
+  ["mixed type/value React import", { "src/background/bad.ts": 'import {type ReactNode, useState} from "react";' }, /React\/JSX/u],
+  ["mixed type/value React export", { "src/background/bad.ts": 'export {type ReactNode, useState} from "react";' }, /React\/JSX/u],
+  ["empty named React import remains runtime", { "src/background/bad.ts": 'import {} from "react";' }, /React\/JSX/u],
+  ["MAIN Reflect.apply fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;Reflect.apply(page.fetch,page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN Reflect.apply fetch alias", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const request=page.fetch;const apply=Reflect.apply;apply(request,page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN callback receives fetch", { "src/content/subtitles/youtube-main-bridge.js": 'const key="fetch";dispatch(globalThis[key]);' }, /MAIN observer/u],
+  ["MAIN object fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const box={request:page.fetch};Reflect.apply(box.request,page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN array fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": 'const page=globalThis;const box=[page.fetch];Reflect.apply(box[0],page,["https://invalid.test"]);' }, /MAIN observer/u],
+  ["MAIN mutable fetch alias", { "src/content/subtitles/youtube-main-bridge.js": 'let request=fetch;request("https://invalid.test");' }, /MAIN observer/u],
+  ["MAIN delegation without an AST-recognized global API", { "src/content/subtitles/youtube-main-bridge.js": 'let root=globalThis;const box={request:root.fetch};Reflect.apply(box.request,root,["https://invalid.test"]);' }, /精确闭包/u],
+  ["runtime import of declaration file", { "src/background/bad.ts": 'import "./types.d.ts";', "src/background/types.d.ts": 'export declare const value: string;' }, /非 runtime/u],
+  ["runtime re-export of declaration file", { "src/background/bad.ts": 'export {value} from "./types.d.mts";', "src/background/types.d.mts": 'export declare const value: string;' }, /非 runtime/u],
+  ["runtime dynamic import of declaration file", { "src/background/bad.ts": 'import("./types.d.cts");', "src/background/types.d.cts": 'export declare const value: string;' }, /非 runtime/u],
+  ["MAIN appended container fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": approvedMainSource + '\nconst page=globalThis;const box={request:page.fetch};Reflect.apply(box.request,page,["https://invalid.test"]);' }, /MAIN observer/u],
   ["Content fetch TS", { "src/content/bad.ts": 'globalThis["fetch"]("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content fetch alias", { "src/content/bad.js": 'const request = globalThis.fetch; request("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content IDB TS", { "src/content/bad.ts": 'globalThis["indexedDB"].open("illegal");' }, /IndexedDB/u],
@@ -62,6 +80,48 @@ const negatives = [
   ["non-UI JSX implicit React", { "src/background/bad.tsx": 'export const view = <div/>;' }, /React\/JSX/u],
   ["source TS syntax", { "src/platform/bad.ts": 'const value: = 1;' }, /syntax/u]
 ];
+test("CLI excludes erased type-only imports and re-exports from the runtime graph", () => {
+  const result = runFixture({
+    "src/background/types.ts": `
+      import type {ReactNode} from "react";
+      import type {External} from "unapproved-type-package";
+      import type {Helper} from "../../tests/helper.js";
+      export type {ReactNode} from "react";
+      export type {External} from "unapproved-type-package";
+      export type Alias = ReactNode | External | Helper;
+    `,
+    "tests/helper.js": 'export const Helper=()=>fetch("https://invalid.test");',
+    "src/shared/types.ts": 'import type {View} from "../learning-center/View"; export type Shape=typeof View;',
+    "src/learning-center/View.tsx": 'import "react"; export const View=()=> <div/>;'
+  });
+  assert.equal(result.status, 0, result.output);
+});
+test("CLI checks declaration syntax without treating declaration-only imports as runtime edges", () => {
+  const result = runFixture({
+    "src/background/types.d.ts": 'import {type ReactNode} from "react"; export {type External} from "unapproved-type-package"; export declare const value: ReactNode;',
+    "src/shared/types.d.mts": 'import {type ReactNode} from "react"; export declare const value: ReactNode;',
+    "src/background/types.d.cts": 'export {type ReactNode} from "react";',
+    "entrypoints/types.d.ts": 'export {type ReactNode} from "react";'
+  });
+  assert.equal(result.status, 0, result.output);
+  const invalid = runFixture({ "src/background/types.d.ts": 'declare const value: = 1;' });
+  assert.equal(invalid.status, 1); assert.match(invalid.output, /syntax/u);
+});
+test("runtime type-specifier checks agree with emission under the actual inherited compiler config", () => {
+  const configPath = fileURLToPath(new URL("../tsconfig.json", import.meta.url));
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+  assert.equal(config.error, undefined);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(configPath));
+  assert.equal(parsed.options.verbatimModuleSyntax, true);
+  for (const source of ['import {type ReactNode} from "react";', 'export {type ReactNode} from "react";']) {
+    const emitted = ts.transpileModule(source, { compilerOptions: parsed.options, fileName: "bad.ts" }).outputText;
+    assert.match(emitted, /(?:import|export)\s*\{\s*\}\s*from\s*"react"/u);
+    for (const [extension, code] of [["ts", source], ["js", emitted]]) {
+      const result = runFixture({ [`src/background/bad.${extension}`]: code });
+      assert.equal(result.status, 1, result.output); assert.match(result.output, /React\/JSX/u);
+    }
+  }
+});
 const computedApiNegatives = [
   ["const fetch key", { "src/content/bad.js": 'const api="fetch";globalThis[api]("https://invalid.test");' }, /直接使用 fetch/u],
   ["type assertion global alias fetch", { "src/content/bad.ts": 'const root=<typeof globalThis>globalThis;const key="fetch";root[key]("https://invalid.test");' }, /直接使用 fetch/u],
@@ -105,14 +165,30 @@ test("CLI preserves approved owners and the exact existing MAIN request forwarde
     "src/background/providers/network.js": 'const key="fetch";globalThis[key]("https://invalid.test");',
     "src/background/cache-db.js": 'const key="indexedDB";globalThis[key].open("cache");',
     "src/background/auto-sites.js": 'const sdk=chrome.scripting;const key="registerContentScripts";sdk[key]([]);',
-    "src/content/subtitles/youtube-main-bridge.js": `const page=globalThis;
-      const GLOBAL="__test_main_bridge__";page[GLOBAL]={};
-      function installFetch(){const original=page.fetch;
-        const wrapper=function translateFlowYouTubeFetchWrapper(...args){return original.apply(this,args);};
-        page.fetch=wrapper;
-      }`
+    "src/content/subtitles/youtube-main-bridge.js": approvedMainSource
   });
   assert.equal(result.status, 0, result.output);
+});
+
+test("CLI accepts only Git CRLF conversion of the approved MAIN source", () => {
+  const source = approvedMainSource.replace(/\r?\n/gu, "\r\n");
+  const result = runFixture({ "src/content/subtitles/youtube-main-bridge.js": source });
+  assert.equal(result.status, 0, result.output);
+});
+
+test("CLI rejects CRLF MAIN source with unreviewed container delegation", () => {
+  const source = approvedMainSource.replace(/\r?\n/gu, "\r\n") +
+    '\r\nlet root=globalThis;const box={request:root.fetch};Reflect.apply(box.request,root,["https://invalid.test"]);';
+  const result = runFixture({ "src/content/subtitles/youtube-main-bridge.js": source });
+  assert.equal(result.status, 1, result.output);
+  assert.match(result.output, /精确闭包/u);
+});
+
+test("CLI rejects standalone CR in the approved MAIN source", () => {
+  const source = approvedMainSource.replace(/\r?\n/u, "\r");
+  const result = runFixture({ "src/content/subtitles/youtube-main-bridge.js": source });
+  assert.equal(result.status, 1, result.output);
+  assert.match(result.output, /精确闭包/u);
 });
 
 test("strict typecheck command rejects an actual type error", () => {
