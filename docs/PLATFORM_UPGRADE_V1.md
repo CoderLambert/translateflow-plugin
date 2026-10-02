@@ -348,8 +348,8 @@ The resumed worktree merged actual main
 Production artifacts were frozen at code input
 `5117dcf0cdb027790f276b23b6c62468c0c9575c`. Later commits change only the
 upgrade test, its opt-in fixture observer and dedicated Node assertions; the
-complete production runtime/build inputs remain identical. The final bounded
-upgrade and validation input is
+complete production runtime/build inputs remain identical. The bounded
+upgrade and validation input before the subsequent #265 integration is
 `ef046807f921d7128959daddbe6c42ad3af84249`. This documentation is a later
 evidence update, not a claim that earlier commands ran against a later head.
 The lock SHA-256 remains
@@ -504,3 +504,92 @@ phase. Chrome 102 binary, real public YouTube, other browsers, native keyboard
 shortcuts, browser permission prompts, human settlement of pending injections,
 paid Providers, arbitrary private dictionaries, ReadingRecord persistence and
 React learning-center flows remain **NOT RUN** in this scope.
+
+### #265 integration and affected-path revalidation
+
+The reviewed stage-1 candidate merged actual main
+`708d3a52c0ebce00fa6dabe4544e2a39acaaced5` normally, producing clean code input
+`b9bc404094186a9562a3e55b0cbcf995c12dabe6`. The previous `ef04680 → 7a8c4b7`
+delta is documentation only. New main contributes exactly eight approved files:
+the Reading access README/E2E, four background files (`exports`, `operations`,
+`runtime`, `subscriptions`), the concurrency test and new postmerge test. No
+unmerged #233 changes are included. Exact deltas and source hashes are in
+`248-b9bc404-input-binding.json`.
+
+Independent whole review passed for exact `ef04680`, recorded in
+`248-ef04680-independent-whole-review.json`. Independent verification then ran
+the corrected actual WXT full stories with **114 PASS / 4 SKIP / 0 FAIL** and
+the real release audit/certification/native story, recorded in
+`248-ef04680-verifier-independent/summary.json` and
+`248-ef04680-verifier-release/summary.json`. These are independent results for
+that earlier input, not author self-review or replacement of the original
+`5117dcf` FAIL. New background inputs require fresh packages and affected-path
+evidence; old `ef04680` packages do not certify the new input.
+
+The author's 78 generated dictionary files were verified against tree
+`34905ee…`, moved intact to an isolated backup, and restored after developer
+verification. No tracked file or user data was deleted. Developer packages have
+**zero dictionary bytes**, while release packages contain 36,830,492 B. Frozen
+packages have separate paths under `248-b9bc404-artifacts/`;
+`.output/chrome-mv3` currently contains the release build and must not be called
+the zero-dictionary developer package.
+
+| Actual package at `b9bc404` | Files | Code bytes | Dictionary bytes | Tree SHA-256 |
+| --- | ---: | ---: | ---: | --- |
+| `current-legacy-dev` | 254 | 1,585,271 | 0 | `4c59a75b584dce05013262b3851b4f9c523510ff6c6704d65c19d5908a0dc28e` |
+| `current-wxt-dev` | 149 | 1,457,777 | 0 | `132155ef917cec892d2a14ae903e0635a086e86722fabe687f26ea508ef22fbe` |
+| `current-wxt-release` | 227 | 1,457,777 | 36,830,492 | `67a55ff45a6224435c9bcc101f9cf7a8375f89d52d02c1ee2749925baa5dcbc1` |
+
+Only compiled `background.js` differs from the earlier developer WXT package,
+adding 1,173 B. The code ceiling stays 1,576,595 B; background closure is
+367,730 B and UI closure remains 415,166 B, including 26,217 B HTML. New legacy
+and WXT Manifests remain equal. The new release's 149 non-dictionary files are
+byte-for-byte equal to the new developer package. Complete audits are in
+`248-b9bc404-{dev,legacy,release}-inventory.json`.
+
+| Actual command at `b9bc404` | Result | Evidence |
+| --- | --- | --- |
+| `npm run validate` in developer mode | PASS: 487 checked files, 950 Node tests, strict typecheck, 4 Vitest tests / 3 files, legacy developer build | `248-b9bc404-validate.log` |
+| `npm run build:extension:wxt`; `npm run test:wxt:smoke` | PASS: actual unmodified developer package/audit and finite native smoke | `248-b9bc404-dev-wxt-build.log`, `248-b9bc404-wxt-smoke.log` |
+| Unmodified current compiled-router native probe | PASS: NOT_READY / UNSUPPORTED_VERSION / FORBIDDEN, all package bytes unchanged, zero external requests/page errors | `248-b9bc404-compiled-router/compiled-router.json` |
+| `npm run test:e2e -- e2e/reading-access.spec.mjs e2e/wxt-upgrade.spec.mjs e2e/wxt-platform-permissions.spec.mjs --reporter=line,json --output <unique-output>` | PASS: 10 stories / 31.5 s; seven native Reading source oracles, two actual new-WXT upgrades/restarts, one actual new-WXT permission contrast | `248-b9bc404-native-impact.json`, `.log`, `-results/` |
+| `TRANSLATEFLOW_WXT_REQUIRE_LEXICON=1 npm run build:extension:wxt` | PASS: actual new release closure/Manifest/descriptor audit, no missing packs | `248-b9bc404-release-wxt-build.log`, `248-b9bc404-release-inventory.json` |
+| Actual new release `npm run test:e2e -- e2e/release-lexicon.spec.mjs --reporter=line,json --output <unique-output>` | PASS: one native story / 3.1 s; test copy changes only Manifest, zero Provider calls | `248-b9bc404-release-e2e.json`, `.log` |
+| `npm run test:e2e -- --list` | 120 discovered stories / 39 files; not an execution PASS | `248-b9bc404-discovery.log` |
+
+Browser commands use the isolated downloaded Chromium 153.0.8010.12, task-owned
+XDG directories and fresh temporary profiles. Reading's seven source oracles
+explicitly use the current source, synthetic repository and owned-collector /
+learning-page fixtures; they are not WXT persisted-record or React acceptance.
+Actual compiled-package proof remains separate. Upgrade/permission consumers
+select frozen new developer package `132155ef…`; upgrades retain immutable fixed
+old `5714bb2…`, the same profile/path/ID, real UI settings/imports/cache seed,
+native update proof, exact storage/OPFS/registration continuity and new runtime
+after browser restart. Management Reload and the cached-old initial phase remain
+part of the verified upgrade procedure.
+
+`248-b9bc404-native-permission.json` again records one hard-denied native
+REJECTED call, one withheld PENDING call, one granted FULFILLED call and one
+revoked PENDING call. Negative windows have no marker or production receiver;
+registration union/rejection, same-profile startup pruning of all three site
+lists and zero Provider calls pass. Pending consent settlement remains NOT RUN.
+
+All 135 Content/MAIN/Worker raw closure files retain the earlier source SHA-256;
+the 48 ordered Content files and sampling test are unchanged. The original 40
+raw samples are retained by explicit input binding, without remeasurement or
+choosing favorable samples. Locale runtime/Manifest/generator inputs and every
+non-background compiled developer file are unchanged, retaining earlier locale
+evidence precisely. The same 78 dictionary files, source locks and generators
+bind the earlier zero-failure certification to this release's data. Fresh
+current release build, descriptor audit, developer/release code equality and
+native lookup nevertheless ran; the earlier release package is not substituted.
+
+Local ordinary full WXT/legacy reruns at `b9bc404` are **NOT RUN**. The
+current-head PR's required dual-artifact matrix will execute applicable stories
+from the 120-case discovery. New-head independent delta review/verification,
+automatic review, required CI and protected merge remain coordinator gates.
+Historical FAILs retain their exact inputs. This remains phase 1: default /
+release-engine switching is not implemented, #248 is not closed and #235 is not
+unlocked. Previously listed Chrome 102, real public YouTube, other browsers,
+native keyboard/permission prompt/pending consent, paid Provider, private
+dictionary, ReadingRecord and React NOT RUN limits remain unchanged.
