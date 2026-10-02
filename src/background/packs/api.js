@@ -192,8 +192,15 @@ export function abortRichMddResourceImport(input) {
   return getRichMddResourceManager().abortImport(input);
 }
 
-export function lookupRichMddResource(input) {
-  return getRichMddResourceManager().lookupResource(input);
+export function lookupRichMddResource(input, selectionOwnerKey = "") {
+  const lookupIdentity = selectionOwnerKey
+    ? { requestId: input?.requestId, ownerKey: selectionOwnerKey }
+    : null;
+  return getRichMddResourceManager().lookupResource(input, lookupIdentity);
+}
+
+export function cancelRichMddResourceLookup(requestId, selectionOwnerKey) {
+  return getRichMddResourceManager().cancelLookup(requestId, selectionOwnerKey);
 }
 
 export function uninstallRichMdictDictionary(packId) {
