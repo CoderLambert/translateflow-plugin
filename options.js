@@ -20,6 +20,7 @@ import { normalizeOrigin } from "./src/shared/url.js";
 import { normalizeSelectionDepth } from "./src/shared/selection.js";
 import { initializeGlossaryUi } from "./src/options/glossary-ui.js";
 import { initializePackUi } from "./src/options/pack-ui.js";
+import { initializeUiLocaleUi } from "./src/options/ui-locale-ui.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -74,7 +75,10 @@ await Promise.allSettled([
   refreshSiteBehaviorLists(),
   refreshSiteProfiles(),
   initializeGlossaryUi({ setStatus }),
-  initializePackUi({ setStatus })
+  initializePackUi({ setStatus }),
+  initializeUiLocaleUi({ container: $("uiLocaleControl"), storage: chrome.storage.local,
+    changes: chrome.storage.onChanged, browserLocale: chrome.i18n.getUILanguage() })
+    .then((dispose) => window.addEventListener("pagehide", (event) => { if (!event.persisted) dispose(); }))
 ]);
 
 save.addEventListener("click", async () => {

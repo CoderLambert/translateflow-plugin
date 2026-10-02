@@ -14,7 +14,7 @@ for (const method of Object.values(M)) {
     const input = request(method);
     assert.deepEqual(validateReadingRequest(input), input);
     rejects(() => validateReadingRequest({ ...input, tabId: 1 }), E.BAD_DTO);
-    rejects(() => validateReadingRequest({ ...input, schemaVersion: 2 }), E.UNSUPPORTED_VERSION);
+    rejects(() => validateReadingRequest({ ...input, protocolVersion: 3 }), E.UNSUPPORTED_VERSION);
     rejects(() => validateReadingRequest({ ...input, unknown: "x".repeat(L.requestBytes) }), E.LIMIT);
   });
 }
@@ -73,7 +73,7 @@ test("Provider and dictionary payloads never admit raw HTML, resources or creden
   for (const extra of ["html", "css", "resourceUrl", "apiKey", "endpoint"]) {
     rejects(() => validateResultArtifact(artifact("dictionary", { payload: { ...artifact().payload, [extra]: "synthetic" } })), E.BAD_DTO);
   }
-  rejects(() => validateReadingRequest({ schemaVersion: 1, method: M.EXPORT_JSON, callerScope: "extension" }), E.BAD_DTO);
+  rejects(() => validateReadingRequest({ protocolVersion: 2, method: M.EXPORT_START, callerScope: "extension" }), E.BAD_DTO);
   rejects(() => validateReadingRequest(undefined), E.BAD_DTO);
   const cyclic = {}; cyclic.self = cyclic;
   rejects(() => validateReadingRequest(cyclic), E.BAD_DTO);

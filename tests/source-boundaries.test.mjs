@@ -219,7 +219,7 @@ test("strict typecheck also checks local declaration files", () => {
 
 test("unknown Reading DTO with caller-declared scope is rejected by the existing validator CLI", () => {
   const dto = new URL("../src/shared/reading/dto.js", import.meta.url).href;
-  const code = `import {validateReadingRequest} from ${JSON.stringify(dto)}; validateReadingRequest({schemaVersion:1,method:"reading.get-recording-state",scope:"extension"});`;
+  const code = `import {validateReadingRequest} from ${JSON.stringify(dto)}; validateReadingRequest({protocolVersion:2,method:"reading.get-recording-state",scope:"extension"});`;
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", code], { encoding: "utf8", timeout: 10000 });
   assert.equal(result.error, undefined);
   assert.equal(result.status, 1);

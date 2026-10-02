@@ -37,17 +37,25 @@ export function validateRecordDetail(value, path = "detail") {
   }
   const turns = new Map(artifacts.filter((item) => item.kind === "assistant").map((item) => [item.payload.turnId, item]));
   if (turns.size !== artifacts.filter((item) => item.kind === "assistant").length) fail(READING_ERROR.BAD_DTO, `${path}.turns`);
-  const threadSources = new Map();
+  const threadSources = new Map(), threadActions = new Map();
   for (const artifact of turns.values()) {
     const threadId = artifact.payload.threadId;
     if (threadSources.has(threadId) && threadSources.get(threadId) !== artifact.sourceSnapshotId) {
       fail(READING_ERROR.BAD_DTO, `${path}.threadSource`);
     }
     threadSources.set(threadId, artifact.sourceSnapshotId);
+    if (artifact.payload.action !== "follow-up") {
+      const action = artifact.payload.action;
+      if (threadActions.has(threadId) && threadActions.get(threadId) !== action) fail(READING_ERROR.BAD_DTO, `${path}.threadAction`);
+      threadActions.set(threadId, action);
+    }
     for (const reference of [artifact.payload.parentTurnId, artifact.payload.regenerationOf].filter(Boolean)) {
       const parent = turns.get(reference);
       if (!parent || parent.payload.threadId !== artifact.payload.threadId || parent.sourceSnapshotId !== artifact.sourceSnapshotId ||
           parent.createdAt > artifact.createdAt) fail(READING_ERROR.BAD_DTO, `${path}.turns`);
+      if (reference === artifact.payload.regenerationOf && (parent.payload.parentTurnId !== null || artifact.payload.parentTurnId !== null)) {
+        fail(READING_ERROR.BAD_DTO, `${path}.regenerationRoot`);
+      }
       if ((reference === artifact.payload.parentTurnId && parent.payload.branchId !== artifact.payload.branchId) ||
           (reference === artifact.payload.regenerationOf && parent.payload.branchId === artifact.payload.branchId)) fail(READING_ERROR.BAD_DTO, `${path}.branch`);
     }

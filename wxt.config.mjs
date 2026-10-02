@@ -3,6 +3,7 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { ROOT, legacyAssetRoots, sourceClosure, lexicalAssetFiles } from "./scripts/wxt-assets.mjs";
 import { EXTENSION_PAGES } from "./src/shared/runtime-assets.js";
+import { checkManifestLocales } from "./scripts/i18n-locales.mjs";
 
 const { manifest_version: _version, ...manifest } = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
 const reportDir = resolve(ROOT, ".wxt/reports");
@@ -30,15 +31,22 @@ export default defineConfig({
       // Keep Chrome's existing full-tab options_page semantics, without options_ui.
       entries.push({ name: "options", type: "unlisted-page", inputPath: resolve(ROOT, EXTENSION_PAGES.options) });
     },
+    "entrypoints:resolved": (_wxt, entries) => {
+      const popup = entries.find((entry) => entry.type === "popup");
+      if (!popup) throw new Error("Missing popup entrypoint");
+      // The HTML title is separate from Chrome's localized action title.
+      popup.options.defaultTitle = manifest.action.default_title;
+    },
     "build:before": () => { compiledChunks.length = 0; },
     "build:publicAssets": async (_wxt, assets) => {
       if (assets.length) throw new Error("Unregistered public assets are forbidden; use the exact legacy bridge.");
       const legacy = await sourceClosure(legacyAssetRoots());
+      const locales = await sourceClosure((await checkManifestLocales()).files);
       const lexical = await lexicalAssetFiles({ requireLexicon: process.env.TRANSLATEFLOW_WXT_REQUIRE_LEXICON === "1" });
       if (lexical.missing.length) console.warn(`WXT development package missing generated dictionaries: ${lexical.missing.join(", ")}`);
-      for (const path of [...legacy, ...lexical.files]) assets.push({ absoluteSrc: resolve(ROOT, path), relativeDest: path });
+      for (const path of [...legacy, ...lexical.files, ...locales]) assets.push({ absoluteSrc: resolve(ROOT, path), relativeDest: path });
       await mkdir(reportDir, { recursive: true });
-      await writeFile(resolve(reportDir, "asset-map.json"), JSON.stringify({ legacy, lexical }, null, 2) + "\n");
+      await writeFile(resolve(reportDir, "asset-map.json"), JSON.stringify({ legacy, lexical, locales }, null, 2) + "\n");
     },
     "build:done": async () => {
       await mkdir(reportDir, { recursive: true });

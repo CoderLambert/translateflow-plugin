@@ -39,6 +39,8 @@ content scripts -> messages -> background router
 
 全局配置位于 `chrome.storage.local`。
 
+`uiLocale` (`auto` / `en` / `zh_CN`) is independent of translation targets and dictionary languages. The pure `src/i18n/` catalog, resolver and typed text/Intl API have no browser or storage access, including transitive dependencies. Options owns its existing storage adapter; it writes only this preference. UI locale does not enter Provider payloads, prompts or cache fingerprints. Controlled catalog projection generates the two allowlisted Manifest message files; browser-selected Manifest language and user-selected UI language remain separate. See [UI_LOCALE.md](./UI_LOCALE.md).
+
 `resolveTranslationConfig()` 负责把：
 
 - 默认 Provider
