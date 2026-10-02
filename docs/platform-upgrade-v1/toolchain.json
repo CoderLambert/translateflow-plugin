@@ -1,0 +1,231 @@
+{
+  "observedAt": "2026-10-02T06:34:31.267Z",
+  "node": "v24.21.0",
+  "npm": "11.19.0",
+  "packages": [
+    {
+      "name": "wxt",
+      "version": "0.21.4",
+      "engines": {
+        "node": ">=22",
+        "bun": ">=1.2.0"
+      },
+      "peerDependencies": {
+        "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
+        "vite": "^6.3.4 || ^7.0.0 || ^8.0.0-0",
+        "web-ext": ">=9.2.0",
+        "typescript": ">=5.4"
+      },
+      "peerDependenciesMeta": {
+        "eslint": {
+          "optional": true
+        },
+        "web-ext": {
+          "optional": true
+        },
+        "typescript": {
+          "optional": true
+        }
+      }
+    },
+    {
+      "name": "vite",
+      "version": "7.3.1",
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "peerDependencies": {
+        "@types/node": "^20.19.0 || >=22.12.0",
+        "jiti": ">=1.21.0",
+        "less": "^4.0.0",
+        "lightningcss": "^1.21.0",
+        "sass": "^1.70.0",
+        "sass-embedded": "^1.70.0",
+        "stylus": ">=0.54.8",
+        "sugarss": "^5.0.0",
+        "terser": "^5.16.0",
+        "tsx": "^4.8.1",
+        "yaml": "^2.4.2"
+      },
+      "peerDependenciesMeta": {
+        "@types/node": {
+          "optional": true
+        },
+        "jiti": {
+          "optional": true
+        },
+        "sass": {
+          "optional": true
+        },
+        "sass-embedded": {
+          "optional": true
+        },
+        "stylus": {
+          "optional": true
+        },
+        "less": {
+          "optional": true
+        },
+        "sugarss": {
+          "optional": true
+        },
+        "lightningcss": {
+          "optional": true
+        },
+        "terser": {
+          "optional": true
+        },
+        "tsx": {
+          "optional": true
+        },
+        "yaml": {
+          "optional": true
+        }
+      }
+    },
+    {
+      "name": "@wxt-dev/module-react",
+      "version": "1.2.2",
+      "engines": {},
+      "peerDependencies": {
+        "vite": "^5.4.19 || ^6.3.4 || ^7.0.0 || ^8.0.0-0",
+        "wxt": ">=0.19.16"
+      },
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "@vitejs/plugin-react",
+      "version": "5.1.4",
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "peerDependencies": {
+        "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0"
+      },
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "react",
+      "version": "19.3.0",
+      "engines": {
+        "node": ">=0.10.0"
+      },
+      "peerDependencies": {},
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.0",
+      "engines": {},
+      "peerDependencies": {
+        "react": "^19.3.0"
+      },
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "engines": {},
+      "peerDependencies": {},
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "engines": {},
+      "peerDependencies": {
+        "@types/react": "^19.3.0"
+      },
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "typescript",
+      "version": "5.9.3",
+      "engines": {
+        "node": ">=14.17"
+      },
+      "peerDependencies": {},
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "vitest",
+      "version": "5.0.3",
+      "engines": {
+        "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+      },
+      "peerDependencies": {
+        "@edge-runtime/vm": "*",
+        "@opentelemetry/api": "^1.9.0",
+        "@types/node": "^22.0.0 || >=24.0.0",
+        "@vitest/browser-playwright": "5.0.3",
+        "@vitest/browser-preview": "5.0.3",
+        "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0",
+        "@vitest/coverage-istanbul": "5.0.3",
+        "@vitest/coverage-v8": "5.0.3",
+        "@vitest/ui": "5.0.3",
+        "happy-dom": "*",
+        "jsdom": "*",
+        "vite": "^6.4.0 || ^7.0.0 || ^8.0.0"
+      },
+      "peerDependenciesMeta": {
+        "@edge-runtime/vm": {
+          "optional": true
+        },
+        "@opentelemetry/api": {
+          "optional": true
+        },
+        "@types/node": {
+          "optional": true
+        },
+        "@vitest/browser-playwright": {
+          "optional": true
+        },
+        "@vitest/browser-preview": {
+          "optional": true
+        },
+        "@vitest/browser-webdriverio": {
+          "optional": true
+        },
+        "@vitest/coverage-istanbul": {
+          "optional": true
+        },
+        "@vitest/coverage-v8": {
+          "optional": true
+        },
+        "@vitest/ui": {
+          "optional": true
+        },
+        "happy-dom": {
+          "optional": true
+        },
+        "jsdom": {
+          "optional": true
+        },
+        "vite": {
+          "optional": false
+        }
+      }
+    },
+    {
+      "name": "@types/node",
+      "version": "24.10.1",
+      "engines": {},
+      "peerDependencies": {},
+      "peerDependenciesMeta": {}
+    },
+    {
+      "name": "@playwright/test",
+      "version": "1.63.0",
+      "engines": {
+        "node": ">=20"
+      },
+      "peerDependencies": {},
+      "peerDependenciesMeta": {}
+    }
+  ],
+  "lockSha256": "08f125301771f4691d72b3d78dfe39e70cacce0e0a3f99042d8c912f5105e9cd",
+  "install": {
+    "initial": "FAIL: ERESOLVE with vite@undefined after metadata timeouts; not a proven peer conflict",
+    "retry": "PASS: 191 packages, no force/legacy-peer-deps; esbuild postinstall warning did not prevent successful build/type/unit smoke and no approval setting was changed"
+  }
+}
