@@ -21,7 +21,7 @@ Normal builds do not download lexical data. If Core/Technical resources have not
 
 | Input | Installed output | Loading contract |
 | --- | --- | --- |
-| `entrypoints/background.js` → existing `src/background/index.js` | `background.js` plus WXT-generated shared chunks | Static import; synchronous `initializeBackground()` in `defineBackground.main`; no fake globals, eval or delayed listener registration |
+| `entrypoints/background.ts` → existing `src/background/index.js` | `background.js` plus WXT-generated shared chunks | Current #247 thin TypeScript entry; static import and synchronous `initializeBackground()` in `defineBackground.main`; no fake globals, eval or delayed listener registration |
 | Existing root `popup.html` and its original modules/CSS | `popup.html`, compiled chunks/CSS | Registered directly through `entrypoints:found`; no copied second HTML template |
 | Existing root `options.html` and its original modules/CSS | `options.html`, compiled chunks/CSS | WXT unlisted-page compilation plus original Manifest `options_page`; no `options_ui` behavior change |
 | Current `CONTENT_SCRIPT_FILES` / `CONTENT_STYLE_FILES` | Identical source paths and source bytes | Existing classic-script order, manual injection, optional site grants and `auto-sites.js` single registration owner |

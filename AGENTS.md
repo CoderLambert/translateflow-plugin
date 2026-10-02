@@ -115,18 +115,18 @@ Source-driven data → Rule-driven retrieval → Context-driven ranking → User
 ## 8. 开发与验证命令
 
 命令以当前 [package.json](package.json) 和 `.github/workflows/` 为准，不假设存在 `npm run dev`、`lint` 或 `typecheck`。
-使用仓库现有 npm 工作流，按锁文件和 Node/npm 约束安装。已批准的 WXT opt-in 命令见下表；React/TS/Vitest 的正式接入仍需对应授权，不将框架引入 Content、MAIN、Worker 或后台业务。
+使用仓库现有 npm 工作流，按锁文件和 Node/npm 约束安装。已批准的 WXT opt-in 命令见下表；当前验证链包含严格 TypeScript 检查与 Vitest。React 仅允许已授权的学习中心 UI，不引入 Content、MAIN、Worker 或后台业务。
 
 ```bash
 npm ci
 npm run validate
 ```
 
-`validate` 实际运行 `check`、Node 测试和 `build:extension`，**不包含浏览器 E2E，也不等同于词典发布认证**。
+`validate` 实际依次运行 `check`、Node 测试（`test`）、严格类型检查（`typecheck`）、Vitest（`test:unit`）和 `build:extension`，**不包含浏览器 E2E，也不等同于词典发布认证**。
 
 | 场景 | 验证入口 |
 | --- | --- |
-| 静态检查、Node 测试、开发安装包 | `npm run validate` |
+| 静态检查、Node 测试、严格类型检查、Vitest、开发安装包 | `npm run validate` |
 | opt-in WXT 生产包及 Manifest/asset 检查 | `npm run build:extension:wxt` |
 | 实际 WXT 包有限 Chromium smoke | `npm run test:wxt:smoke`（先构建；只用临时 profile/测试副本） |
 | WXT 开发服务 | `npm run dev`（开发辅助资源不得进入生产包） |
