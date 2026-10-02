@@ -88,3 +88,13 @@ test("Navigation, worker restart, missing trusted intent and source mismatch def
   const mismatch = await service.handle(request(M.BEGIN_QUERY, { pageKey: access.pageKey, sourceSnapshot: snapshot({ capturedAt: 1001 }) }), contentSender());
   assert.equal(code(mismatch), E.STALE_OPERATION);
 });
+
+test("Observed Chromium opaque 128bit-hex documentId retains exact native equality without normalization", async () => {
+  const documentId = "F3CB5565B7C51621AB7D7A66791E0E33", browser = nativeBrowser();
+  const context = (await browser.runtime.getContexts())[0];
+  browser.runtime.getContexts = async ({ documentIds }) => documentIds[0] === documentId ? [{ ...context, documentId }] : [];
+  const control = createReadingAccess({ browser, collector: collector() });
+  assert.equal((await control.authorize(extensionSender({ documentId }), M.LIST_RECORDS)).nativeDocumentId, documentId);
+  assert.equal((await control.authorize(contentSender({ documentId }), M.REGISTER_DOCUMENT, request(M.REGISTER_DOCUMENT))).nativeDocumentId, documentId);
+  await rejects(() => control.authorize(extensionSender({ documentId: documentId.toLowerCase() }), M.LIST_RECORDS), E.FORBIDDEN);
+});
