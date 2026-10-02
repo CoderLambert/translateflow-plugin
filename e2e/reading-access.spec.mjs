@@ -182,7 +182,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     expect(server.calls).toHaveLength(0); await page.close();
   });
 
-  test("Native private extension context denies every history route; old native-context API absence is capability-limited", async () => {
+  test("Native private Content denies every history route; simulated missing getContexts is capability-limited", async () => {
     const center = await context.newPage(); await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
     await worker.evaluate(() => { globalThis.__originalGetContexts = chrome.runtime.getContexts; chrome.runtime.getContexts = undefined; });
     try { expect((await sendPage(center, request(M.LIST_RECORDS))).error.code).toBe(E.CAPABILITY_LIMITED); }
@@ -223,7 +223,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
       openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" } }), server.baseUrl);
     const lookup = await sendPage(driver, { type: "SELECTION_RESOLVE", text: "React", pageUrl: `${server.baseUrl}/article`, context: null, depth: "basic" });
     expect(lookup.ok).toBe(true); expect(lookup).not.toHaveProperty("protocolVersion");
-    expect(lookup.intent).toMatchObject({ kind: "lexical", text: "React" }); expect(lookup.lookup).toBeTruthy();
+    expect(lookup.intent).toMatchObject({ kind: "lexical", tokenCount: 1 }); expect(lookup.lookup).toBeTruthy();
     expect(server.calls.every((call) => call.path?.startsWith("/v1") || call.requestId !== undefined)).toBe(true);
     test.info().annotations.push({ type: "provider", description: "Local mock only; paid provider calls=0. No Reading repository writes claimed." });
   });
