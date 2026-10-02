@@ -1,0 +1,20 @@
+{
+  "extensionName": {
+    "message": "TranslateFlow"
+  },
+  "extensionDescription": {
+    "message": "轻松双语阅读，支持本地与云端翻译、缓存恢复、快捷控制和 YouTube 字幕。"
+  },
+  "actionTitle": {
+    "message": "TranslateFlow"
+  },
+  "translatePage": {
+    "message": "翻译或更新当前页面"
+  },
+  "toggleTranslations": {
+    "message": "显示或隐藏译文"
+  },
+  "toggleQuickControl": {
+    "message": "切换 TranslateFlow 快捷控制"
+  }
+}

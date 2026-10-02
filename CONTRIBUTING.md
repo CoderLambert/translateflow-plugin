@@ -26,8 +26,11 @@ npm run test:wxt:smoke
 涉及真实 Chrome/MV3/DOM/交互行为的改动还应运行适用的浏览器 E2E：
 
 ```bash
+npm run build:extension:wxt
 npm run test:e2e
 ```
+
+完整 E2E 包含直接读取 `.output/chrome-mv3` 的语言专项，运行前需显式构建 WXT 包；`validate` 当前生成的 `dist/extension` 不能替代它。语言专项的旧包对照先构建旧包，再显式设置 `TF_I18N_ARTIFACT=dist/extension`，见 [UI_LOCALE.md](docs/UI_LOCALE.md)。fixture 不会为缺失产物自动构建或补文件。
 
 ## Issue-driven development workflow
 
@@ -86,7 +89,7 @@ TranslateFlow 的开发任务以 GitHub Issue 为执行单元。开始编码前�
 ### Pull request and completion
 
 1. 完成 Issue acceptance criteria。
-2. 运行 `npm run validate` 和适用的 `npm run test:e2e`。
+2. 运行 `npm run validate`，按 Browser E2E 的产物前置要求构建后运行适用的 `npm run test:e2e`。
 3. PR 必须以 `main` 为 base，并在 body 中包含 `Closes #<issue>`。
 4. PR 说明 What changed、Architecture decisions / compatibility、Verification。
 5. Required CI 未通过时不得 merge。
@@ -230,6 +233,7 @@ Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, sour
 ```bash
 npm install
 npx playwright install chromium
+npm run build:extension:wxt
 npm run test:e2e
 ```
 

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROOT, legacyAssetRoots, sourceClosure, lexicalAssetFiles, byteSummary } from "./wxt-assets.mjs";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
+import { checkManifestLocales } from "./i18n-locales.mjs";
 
 export function assertProductionManifest(manifest, baseline) {
   assert.deepEqual(manifest, baseline, "Production WXT Manifest must equal the baseline exactly");
@@ -17,14 +18,15 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   assertProductionManifest(manifest, baseline);
   const legacy = await sourceClosure(legacyAssetRoots());
   const lexical = await lexicalAssetFiles();
+  const locales = await sourceClosure((await checkManifestLocales()).files);
   const assetMap = JSON.parse(await readFile(resolve(reportDir, "asset-map.json"), "utf8"));
-  assert.deepEqual(assetMap, { legacy, lexical }, "Build bridge must match current runtime sources");
+  assert.deepEqual(assetMap, { legacy, lexical, locales }, "Build bridge must match current runtime sources");
   const compiled = JSON.parse(await readFile(resolve(reportDir, "compiled-closures.json"), "utf8"));
   const summary = await byteSummary(output);
   const present = new Set(summary.files.map((entry) => entry.path));
-  const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...legacy, ...lexical.files, ...compiled.map((item) => item.fileName)]);
+  const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...legacy, ...lexical.files, ...locales, ...compiled.map((item) => item.fileName)]);
   assert.deepEqual([...present].sort(), [...expected].sort(), "Unregistered or missing production assets");
-  for (const path of [...legacy, ...lexical.files]) {
+  for (const path of [...legacy, ...lexical.files, ...locales]) {
     assert.deepEqual(await readFile(resolve(output, path)), await readFile(resolve(ROOT, path)), `Bridge changed source bytes: ${path}`);
   }
   for (const path of [...Object.values(WORKER_PATHS), ...YOUTUBE_MAIN_BRIDGE_FILES]) assert(present.has(path), `Missing runtime mapping: ${path}`);

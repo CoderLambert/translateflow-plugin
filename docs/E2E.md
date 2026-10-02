@@ -21,8 +21,11 @@ TranslateFlow 的浏览器 E2E 使用 Playwright 驱动真实 Chromium，并以 
 ```bash
 npm install
 npx playwright install chromium
+npm run build:extension:wxt
 npm run test:e2e
 ```
+
+完整套件包含直接消费 WXT 包的语言专项，必须先生成 `.output/chrome-mv3`；`test:e2e` 只启动 Playwright，缺失产物会明确失败。语言专项的显式旧包对照见 [UI_LOCALE.md](UI_LOCALE.md)。其余共享 fixture 的实际 WXT 产物迁移与同 ID 升级验收由 #248 完成。
 
 Linux 首次安装浏览器系统依赖时可使用：
 
@@ -97,9 +100,11 @@ These fixture rules prevent false cache/provider assertions without changing pro
 
 `.github/workflows/e2e.yml` 与快速的 `quality` workflow 分离。E2E workflow：
 
-1. `npm install`
+1. `npm ci --no-audit --no-fund`
 2. `npx playwright install --with-deps chromium`
-3. `npm run test:e2e`
-4. 失败时上传 Playwright report / trace artifacts
+3. `npm run build:extension:wxt`
+4. `npm run test:wxt:smoke`
+5. `npm run test:e2e`
+6. 失败时上传 Playwright report / trace artifacts
 
 生产运行时不依赖 Playwright。
