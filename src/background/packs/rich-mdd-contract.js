@@ -108,6 +108,14 @@ export function makeResourceSnapshot({ packId, packVersion, mdxFileName, resourc
   return snapshot;
 }
 
+export function normalizeRichMddResourceLookupRequestId(value) {
+  const id = String(value || "");
+  if (!/^selection-mdd-resource-[a-f0-9]{32}$/u.test(id)) {
+    throw richError("RICH_MDD_INPUT", "MDD resource lookup request ID is invalid.");
+  }
+  return id;
+}
+
 export function validateResourceRequest({ dictionaryId, path } = {}) {
   const packId = normalizePackId(dictionaryId);
   const normalizedPath = normalizeMddResourcePath(path);
