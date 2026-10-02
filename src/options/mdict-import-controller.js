@@ -111,6 +111,7 @@ export function createMdictImportController({
           : {})
       });
       if (!commit?.ok) {
+        if (current.cancelRequested) throw abortError();
         throw responseError(
           commit,
           "MDict dictionary activation failed."
