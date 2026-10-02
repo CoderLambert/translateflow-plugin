@@ -3,8 +3,8 @@
     "fileName": "background.js",
     "type": "chunk",
     "imports": [
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
-      "chunks/rich-mdd-contract-Dm53STrb.js"
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "chunks/rich-mdd-contract-DfuDmg2s.js"
     ],
     "dynamicImports": [],
     "modules": [
@@ -56,6 +56,7 @@
       "src/background/packs/rich-mdict.js",
       "src/background/packs/importers/mdd-query-budget.js",
       "src/background/packs/importers/mdd-lookup.js",
+      "src/background/packs/rich-mdd-lookup-cancellation.js",
       "src/background/packs/rich-mdd-resources.js",
       "src/background/packs/rich-mdict-preferences.js",
       "src/background/packs/api.js",
@@ -80,12 +81,12 @@
     "type": "asset"
   },
   {
-    "fileName": "chunks/options-C0vSmoQc.js",
+    "fileName": "chunks/options-DAmZ4rmk.js",
     "type": "chunk",
     "imports": [
-      "chunks/components-BN3QuZbu.js",
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
-      "chunks/rich-mdd-contract-Dm53STrb.js"
+      "chunks/components-ChXIppP8.js",
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "chunks/rich-mdd-contract-DfuDmg2s.js"
     ],
     "dynamicImports": [],
     "modules": [
@@ -126,16 +127,17 @@
       "src/options/stardict-import-controller.js",
       "src/options/stardict-import-ui.js",
       "src/options/tflex-local-import-controller.js",
+      "src/options/local-dictionary-installed-state.js",
       "src/options/local-dictionary-import-presentation.js",
       "src/options/local-dictionary-import-ui.js",
       "options.html"
     ]
   },
   {
-    "fileName": "chunks/rich-mdd-contract-Dm53STrb.js",
+    "fileName": "chunks/rich-mdd-contract-DfuDmg2s.js",
     "type": "chunk",
     "imports": [
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js"
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js"
     ],
     "dynamicImports": [],
     "modules": [
@@ -178,11 +180,11 @@
     ]
   },
   {
-    "fileName": "chunks/popup-DsgUUswu.js",
+    "fileName": "chunks/popup-Bltt_5TY.js",
     "type": "chunk",
     "imports": [
-      "chunks/components-BN3QuZbu.js",
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js"
+      "chunks/components-ChXIppP8.js",
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js"
     ],
     "dynamicImports": [],
     "modules": [
@@ -194,10 +196,10 @@
     ]
   },
   {
-    "fileName": "chunks/components-BN3QuZbu.js",
+    "fileName": "chunks/components-ChXIppP8.js",
     "type": "chunk",
     "imports": [
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js"
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js"
     ],
     "dynamicImports": [],
     "modules": [
@@ -208,7 +210,7 @@
     ]
   },
   {
-    "fileName": "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
+    "fileName": "chunks/_virtual_wxt-plugins-fi4alyjX.js",
     "type": "chunk",
     "imports": [],
     "dynamicImports": [],

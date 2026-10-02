@@ -8,9 +8,9 @@
     "assets/lexicon/technical"
   ],
   "fileCount": 143,
-  "totalBytes": 1365037,
+  "totalBytes": 1371155,
   "lexicalBytes": 0,
-  "codeBytes": 1365037,
+  "codeBytes": 1371155,
   "files": [
     {
       "path": "assets/components-CYc4TYaP.css",
@@ -26,27 +26,27 @@
     },
     {
       "path": "background.js",
-      "size": 159206
+      "size": 161209
     },
     {
-      "path": "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
-      "size": 18616
+      "path": "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "size": 18678
     },
     {
-      "path": "chunks/components-BN3QuZbu.js",
+      "path": "chunks/components-ChXIppP8.js",
       "size": 837
     },
     {
-      "path": "chunks/options-C0vSmoQc.js",
-      "size": 173463
+      "path": "chunks/options-DAmZ4rmk.js",
+      "size": 175035
     },
     {
-      "path": "chunks/popup-DsgUUswu.js",
+      "path": "chunks/popup-Bltt_5TY.js",
       "size": 17889
     },
     {
-      "path": "chunks/rich-mdd-contract-Dm53STrb.js",
-      "size": 134274
+      "path": "chunks/rich-mdd-contract-DfuDmg2s.js",
+      "size": 134473
     },
     {
       "path": "content.css",
@@ -110,7 +110,7 @@
     },
     {
       "path": "src/background/packs/importers/mdd-index.js",
-      "size": 9519
+      "size": 9549
     },
     {
       "path": "src/background/packs/importers/mdd-key-codec.js",
@@ -118,7 +118,7 @@
     },
     {
       "path": "src/background/packs/importers/mdd-lookup.js",
-      "size": 7001
+      "size": 7100
     },
     {
       "path": "src/background/packs/importers/mdd-metadata.js",
@@ -126,7 +126,7 @@
     },
     {
       "path": "src/background/packs/importers/mdd-query-budget.js",
-      "size": 4212
+      "size": 4228
     },
     {
       "path": "src/background/packs/importers/mdd-resource-path.js",
@@ -262,7 +262,7 @@
     },
     {
       "path": "src/background/packs/rich-mdd-contract.js",
-      "size": 9240
+      "size": 9504
     },
     {
       "path": "src/background/packs/rich-mdict-catalog-replacement.js",
@@ -322,7 +322,7 @@
     },
     {
       "path": "src/content/runtime.js",
-      "size": 4901
+      "size": 4971
     },
     {
       "path": "src/content/selection/ai-detail.js",
@@ -370,7 +370,7 @@
     },
     {
       "path": "src/content/selection/rich-resource-resolver.js",
-      "size": 15489
+      "size": 17292
     },
     {
       "path": "src/content/selection/rich-sanitizer-style.js",
@@ -589,23 +589,23 @@
   "backgroundClosure": {
     "files": [
       "background.js",
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
-      "chunks/rich-mdd-contract-Dm53STrb.js"
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "chunks/rich-mdd-contract-DfuDmg2s.js"
     ],
-    "bytes": 312096
+    "bytes": 314360
   },
   "uiClosure": {
     "files": [
       "assets/components-CYc4TYaP.css",
       "assets/options-CIWOVSQW.css",
       "assets/popup-B-CBdjOq.css",
-      "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
-      "chunks/components-BN3QuZbu.js",
-      "chunks/options-C0vSmoQc.js",
-      "chunks/popup-DsgUUswu.js",
-      "chunks/rich-mdd-contract-Dm53STrb.js"
+      "chunks/_virtual_wxt-plugins-fi4alyjX.js",
+      "chunks/components-ChXIppP8.js",
+      "chunks/options-DAmZ4rmk.js",
+      "chunks/popup-Bltt_5TY.js",
+      "chunks/rich-mdd-contract-DfuDmg2s.js"
     ],
-    "bytes": 402068,
+    "bytes": 403901,
     "htmlBytes": 26164
   },
   "compiledOutputs": [
@@ -626,23 +626,23 @@
       "type": "asset"
     },
     {
-      "fileName": "chunks/options-C0vSmoQc.js",
+      "fileName": "chunks/options-DAmZ4rmk.js",
       "type": "chunk"
     },
     {
-      "fileName": "chunks/rich-mdd-contract-Dm53STrb.js",
+      "fileName": "chunks/rich-mdd-contract-DfuDmg2s.js",
       "type": "chunk"
     },
     {
-      "fileName": "chunks/popup-DsgUUswu.js",
+      "fileName": "chunks/popup-Bltt_5TY.js",
       "type": "chunk"
     },
     {
-      "fileName": "chunks/components-BN3QuZbu.js",
+      "fileName": "chunks/components-ChXIppP8.js",
       "type": "chunk"
     },
     {
-      "fileName": "chunks/_virtual_wxt-plugins-Dca1x9Gr.js",
+      "fileName": "chunks/_virtual_wxt-plugins-fi4alyjX.js",
       "type": "chunk"
     }
   ]

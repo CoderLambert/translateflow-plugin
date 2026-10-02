@@ -146,5 +146,68 @@
     "notRun": [
       "Windows filesystem cross-drive symlink execution; pure path.win32 algorithm regression executed instead"
     ]
+  },
+  "integrationVerification": {
+    "sourceHead": "d2e192c1c30ac025d9976d335084954bffb707db",
+    "mainBase": "103e39cddfb0b816279e32310c1655bd6a4af25a",
+    "mergeMethod": "normal merge; no rebase/force",
+    "mergeConflicts": [],
+    "automaticMerges": [
+      ".github/workflows/dictionary-library-vnext-certification.yml",
+      "src/background/router.js",
+      "src/options/mdict-import-controller.js",
+      "src/options/stardict-import-controller.js"
+    ],
+    "checks": [
+      {
+        "command": "npm run validate",
+        "status": "PASS",
+        "exitCode": 0,
+        "tests": 686,
+        "sourceChecks": 420,
+        "oldPackage": {
+          "files": 224,
+          "bytes": 1444864
+        }
+      },
+      {
+        "command": "npm run build:extension:wxt",
+        "status": "PASS",
+        "exitCode": 0,
+        "artifact": ".output/chrome-mv3",
+        "files": 143,
+        "bytes": 1371155,
+        "lexicalBytes": 0,
+        "manifestDifferences": []
+      },
+      {
+        "command": "npm run test:wxt:smoke",
+        "status": "PASS",
+        "exitCode": 0,
+        "browser": "153.0.8010.12",
+        "testedHead": "d2e192c1c30ac025d9976d335084954bffb707db",
+        "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
+      },
+      {
+        "command": "git diff 103e39cddfb0b816279e32310c1655bd6a4af25a HEAD --check",
+        "status": "PASS",
+        "exitCode": 0
+      }
+    ],
+    "inheritedFullDiffCheck": {
+      "command": "git diff c458d894ea3e4f82b187ca053731ac97f08fd8b9 HEAD --check",
+      "status": "FAIL: inherited main formatting",
+      "exitCode": 2,
+      "file": "src/background/packs/rich-mdd-resources.js:405: new blank line at EOF.",
+      "verifiedAlsoPresentInMain": "103e39cddfb0b816279e32310c1655bd6a4af25a",
+      "action": "Unrelated inherited formatting untouched; scoped #246 diff passes"
+    },
+    "runtimeIntegrationPreserved": [
+      "main #227 local-import cancellation changes",
+      "main scope baseline resolver and frozen certification gate",
+      "#246 Node24/npmci segments",
+      "#246 stable Worker/Options path imports"
+    ],
+    "artifactTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
   }
 }

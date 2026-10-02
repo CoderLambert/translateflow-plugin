@@ -1,7 +1,7 @@
 {
   "status": "PASS",
   "browser": "153.0.8010.12",
-  "extensionId": "kaeihjocnnleidlilkknnbbkjedbnbpd",
+  "extensionId": "ehjgpdibdigmmopjcdmplhoojhjbdjce",
   "productionSource": "WXT production .output/chrome-mv3",
   "productionManifestDifferences": [],
   "testCopyChanges": [
@@ -67,5 +67,8 @@
     "Release lexicon certification",
     "Real paid Provider",
     "Other browsers"
-  ]
+  ],
+  "sourceHead": "d2e192c1c30ac025d9976d335084954bffb707db",
+  "mainBase": "103e39cddfb0b816279e32310c1655bd6a4af25a",
+  "productionTreeSha256": "a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453"
 }
