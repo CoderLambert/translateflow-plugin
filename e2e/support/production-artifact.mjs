@@ -52,7 +52,8 @@ export async function copyProductionArtifact(artifact, extensionDir) {
 }
 
 export async function prepareExtensionTestCopy({artifact = defaultArtifact, extensionDir,
-  lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, baseUrl}) {
+  lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, baseUrl}) {
+    assert(!(captureCommands && observeInstalled), "Lifecycle observation and Commands probing use separate test copies");
     const sourceReport = await copyProductionArtifact(artifact, extensionDir);
 
     const lexiconDir = join(extensionDir, "assets", "lexicon");
@@ -116,19 +117,30 @@ export async function prepareExtensionTestCopy({artifact = defaultArtifact, exte
       const code = await readFile(background, "utf8");
       await writeFile(background, commandProbePrefix + code + commandProbeSuffix);
     }
+    let lifecycleObserver = null;
+    if (observeInstalled) {
+      const path = manifest.background.service_worker;
+      const background = join(extensionDir, path);
+      const code = await readFile(background, "utf8");
+      const observed = installedObserverPrefix + code;
+      await writeFile(background, observed);
+      lifecycleObserver = {path,capacity:4,storageWrites:0,apiMocks:0,
+        beforeSha256:createHash("sha256").update(code).digest("hex"),
+        afterSha256:createHash("sha256").update(observed).digest("hex")};
+    }
     const after = await inventoryArtifact(extensionDir);
     const beforeFiles = new Map(sourceReport.files.map((f) => [f.path, f.sha256]));
     const afterFiles = new Map(after.files.map((f) => [f.path, f.sha256]));
     const changes = [...new Set([...beforeFiles.keys(), ...afterFiles.keys()])].filter((p) => beforeFiles.get(p) !== afterFiles.get(p)).sort();
     for (const path of changes) assert(path === "manifest.json" || path.startsWith("assets/lexicon/")
       || ecdictMdxCachedArchivePath && path === WORKER_PATHS.curatedEcdictMdx
-      || captureCommands && path === manifest.background.service_worker,
+      || (captureCommands || observeInstalled) && path === manifest.background.service_worker,
       `Test adapter changed production runtime: ${path}`);
     const originalManifest = JSON.parse(await readFile(join(sourceReport.artifact, "manifest.json"), "utf8"));
     assert.deepEqual({...manifest, host_permissions: originalManifest.host_permissions}, originalManifest,
       "Test adapter changed Manifest beyond host_permissions");
     return {...sourceReport, testCopy: {...after, changes}, lexiconMode: lexiconPacks,
-      cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands};
+      cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands,lifecycleObserver};
 }
 
 function makeCachedEcdictMdxTestWorker(baseUrl) {
@@ -197,4 +209,15 @@ for (const method of ["insertCSS", "executeScript"]) {
 `;
 const commandProbeSuffix = `
 chrome.commands.onCommand.addListener = __tfAddCommand;
+`;
+
+// Observe real lifecycle delivery only in the explicit upgrade test copy. This
+// listener neither changes production listeners nor writes extension storage.
+const installedObserverPrefix = `
+globalThis.__tfInstalledObserver = {events: [], capacity: 4, overflow: false};
+chrome.runtime.onInstalled.addListener(event => {
+  const observer = globalThis.__tfInstalledObserver;
+  if (observer.events.length < observer.capacity) observer.events.push({...event});
+  else observer.overflow = true;
+});
 `;

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertUnchangedUpgradeSnapshot } from "../e2e/support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate } from "../e2e/support/upgrade-expectations.mjs";
 
 test("same-version upgrade rejects implicit locale writes and loss of any persisted data",()=>{
   const before={storage:{targetLanguage:"Chinese",extra:{keep:true}},databases:[{version:2}],opfs:[{sha256:"old"}],registrations:[{id:"old"}]};
@@ -18,6 +18,21 @@ test("same-version upgrade rejects implicit locale writes and loss of any persis
     assert.throws(()=>assertUnchangedUpgradeSnapshot(before,after),assert.AssertionError);
   }
   assert.deepEqual(before,copy);
+});
+
+test("only an observed native update for the exact old version authorizes the new missing locale default",()=>{
+  const before={targetLanguage:"Chinese",extra:{keep:true}};
+  const event={reason:"update",previousVersion:"0.8.0"};
+  assert.deepEqual(expectedStorageAfterInstalledUpdate(before,event,"0.8.0"),{...before,uiLocale:"auto"});
+  assert.deepEqual(before,{targetLanguage:"Chinese",extra:{keep:true}});
+  for(const nativeEvent of [undefined,{reason:"install"},{reason:"chrome_update"},
+    {reason:"update"},{reason:"update",previousVersion:"0.7.0"}]) {
+    assert.throws(()=>expectedStorageAfterInstalledUpdate(before,nativeEvent,"0.8.0"),assert.AssertionError);
+  }
+  for(const uiLocale of ["auto","en","zh_CN","unknown-value",null]) {
+    const existing={...before,uiLocale};
+    assert.deepEqual(expectedStorageAfterInstalledUpdate(existing,event,"0.8.0"),existing);
+  }
 });
 
 test("upgrade retains every existing UI-locale value including unknown and null values",()=>{

@@ -1,10 +1,10 @@
 import { test, expect, chromium } from "@playwright/test";
-import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
-import { assertUnchangedUpgradeSnapshot } from "./support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate } from "./support/upgrade-expectations.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
@@ -29,6 +29,9 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
   let driver;
   let extensionId;
   const phases = [];
+  const oldManifest=JSON.parse(await readFile(join(oldArtifact,"manifest.json"),"utf8"));
+  const newManifest=JSON.parse(await readFile(join(newArtifact,"manifest.json"),"utf8"));
+  expect(newManifest.version).toBe(oldManifest.version);
   async function launch() {
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
       args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`] });
@@ -151,14 +154,16 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     phases.push({phase:"old",id:extensionId,artifact:old.treeSha256,testChanges:old.testCopy.changes,snapshot:summary(before)});
     await context.close(); context=null;
     await rm(extensionDir,{recursive:true,force:true});
-    const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl});
-    await launch();
+    const next=await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,baseUrl:server.baseUrl,observeInstalled:true});
+    const initialWorker=await launch();
+    const initialLifecycle=await initialWorker.evaluate(()=>globalThis.__tfInstalledObserver);
+    expect(initialLifecycle).toEqual({events:[],capacity:4,overflow:false});
     const after=await snapshot(); assertUnchangedUpgradeSnapshot(before,after);
     await expect(driver.locator("#uiLocale")).toBeVisible();
     await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
     const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(before,afterLocaleDisplay);
     expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
-    phases.push({phase:"WXT",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,snapshot:summary(after)});
+    phases.push({phase:"WXT",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,nativeLifecycle:initialLifecycle,snapshot:summary(after)});
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText("你的个人首选");
@@ -175,9 +180,17 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await manager.evaluate(()=>chrome.developerPrivate.updateProfileConfiguration({inDeveloperMode:true}));
     // Use Chromium's own unpacked-extension management reload in this isolated
     // profile. runtime.reload from a CLI-sideloaded package disables its pages.
-    await manager.evaluate((id)=>chrome.developerPrivate.reload(id,{failQuietly:false}),extensionId);
+    const [reloadedWorker]=await Promise.all([
+      context.waitForEvent("serviceworker"),
+      manager.evaluate((id)=>chrome.developerPrivate.reload(id,{failQuietly:false}),extensionId)
+    ]);
+    expect(reloadedWorker).not.toBe(initialWorker);
     driver=await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/options.html`);
     await expect(driver.locator("#save")).toBeVisible();
+    await expect.poll(()=>reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver?.events.length)).toBe(1);
+    const reloadedLifecycle=await reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
+    expect(reloadedLifecycle.overflow).toBe(false);
+    const expectedReloadStorage=expectedStorageAfterInstalledUpdate(before.storage,reloadedLifecycle.events[0],oldManifest.version);
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
       catch(error){return {ok:false,invalidated:true,error:String(error)}}
@@ -189,17 +202,18 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await inject(stale); expect(await content(stale,{type:"ABT_STATUS"})).toMatchObject({ok:true});
     expect(server.calls).toHaveLength(1);
     const afterRecovery=await snapshot();
-    expect(afterRecovery.storage).toEqual(before.storage); expect(afterRecovery.opfs).toEqual(before.opfs);
+    expect(afterRecovery.storage).toEqual(expectedReloadStorage); expect(afterRecovery.opfs).toEqual(before.opfs);
     expect(afterRecovery.registrations).toEqual(before.registrations);
     // Cache read metadata is expected to change only after actual cache use.
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
+    phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,nativeLifecycle:reloadedLifecycle,snapshot:summary(afterRecovery)});
     await context.close(); context=null; await launch();
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
     phases.push({phase:"WXT-browser-restart",id:extensionId,snapshot:summary(restarted)});
     expect(server.calls).toHaveLength(1); expect(externalOrigins).toEqual([]); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
-      productionKeyChanged:false,phases,uiLocale:{before:existingUiLocale??"ABSENT",after:after.storage.uiLocale??"ABSENT",uiValue:existingUiLocale??"auto",implicitStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
+      productionKeyChanged:false,phases,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
       unauthorizedProviderCalls:0,externalRequests:0,backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
