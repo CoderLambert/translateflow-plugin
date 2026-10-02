@@ -41,6 +41,8 @@ const WRITE_METHODS = new Set([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSI
 export function authorizeReadingMethod(method, access, resourcePageKey = null) {
   if (!Object.values(M).includes(method)) fail(READING_ERROR.BAD_DTO, "method");
   if (!access || access.incognito !== false) fail(READING_ERROR.FORBIDDEN, "access.incognito");
+  if (method === M.OPEN_LEARNING_CENTER && access.senderVerified === true &&
+      ["content", "extension", "entry"].includes(access.scope)) return true;
   if (access.scope === "extension" && access.allowlisted === true && access.senderVerified === true &&
       access.sensitive === false && access.editable === false && access.accountPage === false) return true;
   if (access.scope === "entry" && access.senderVerified === true && method === M.OPEN_LEARNING_CENTER) return true;

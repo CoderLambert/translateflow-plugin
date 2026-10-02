@@ -77,8 +77,8 @@ function data(method, value, scope, pageLimit) {
     return { opened: choice(value.opened, [true], "data.opened") };
   }
   if (method === M.REGISTER_DOCUMENT) {
-    object(value, ["documentGeneration", "pageGeneration", "pageKey", "siteKey"], "data");
-    return { documentGeneration: id(value.documentGeneration, "data.documentGeneration"), pageGeneration: revision(value.pageGeneration, "data.pageGeneration"),
+    object(value, ["documentGeneration", "navigationGeneration", "pageKey", "siteKey"], "data");
+    return { documentGeneration: id(value.documentGeneration, "data.documentGeneration"), navigationGeneration: revision(value.navigationGeneration, "data.navigationGeneration"),
       pageKey: pageKey(value.pageKey, "data.pageKey"), siteKey: siteKey(value.siteKey, "data.siteKey") };
   }
   if (method === M.CANCEL_OPERATION) {

@@ -85,7 +85,7 @@ export function response(method, scope = "extension", overrides = {}) {
     [M.GET_SITE_RECORDING]: { excluded: false, sitePolicyRevision: 1 }, [M.SET_SITE_RECORDING]: { excluded: true, sitePolicyRevision: 2 },
     [M.LIST_RECORDING_EXCLUSIONS]: { items: [{ siteKey: "https://example.test", excluded: true, sitePolicyRevision: 2 }], nextCursor: null },
     [M.CANCEL_OPERATION]: { operationId: "op-1", state: "cancelled", recordId: null, revision: null },
-    [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1", pageGeneration: 1, pageKey: PAGE_KEY, siteKey: "https://example.test" },
+    [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1", navigationGeneration: 1, pageKey: PAGE_KEY, siteKey: "https://example.test" },
     [M.CREATE_HANDOFF]: { state: "ready", handoff: handoff() }, [M.CONSUME_HANDOFF]: pageSummaryItem()
   };
   return { protocolVersion: 2, ok: true, data: values[method], ...overrides };

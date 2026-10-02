@@ -74,7 +74,7 @@ Every production request is `{protocolVersion:2,method,...body}`; every response
 | delete-record | `recordId,expectedRevision` | `{deleted:true}` after atomic invalidation; learning center only |
 | delete-page / clear-records | `pageKey` / `expectedDataGeneration` | `{deletedCount,pageGeneration}` / `{deletedCount,dataGeneration}`; learning center only |
 | cancel-operation | `operationId` | `{operationId,state:'cancelled'|'committed',recordId:null|UUID,revision:null|≥1}`; real atomic cancellation/previous committed state, owned Content session only; committed requires record/revision |
-| register-document | `documentGeneration` | `{documentGeneration,pageGeneration,pageKey,siteKey}` after controlled ISOLATED challenge; no caller identity proof |
+| register-document | `documentGeneration` | `{documentGeneration,navigationGeneration,pageKey,siteKey}` after controlled ISOLATED challenge; no caller identity proof |
 | open-learning-center | empty | `{opened:true}` after opening fixed extension `learning-center.html`; Content/Popup/Options permitted after native checks; no arbitrary URL or history access |
 | export-start | empty | `{exportId,exportRevision,expiresAt,nextCursor}`; learning center only |
 | export-next | `exportId,cursor` | `{sequence,jsonChunk,nextCursor,done,exportRevision}`; learning center owner only |
