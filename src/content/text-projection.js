@@ -30,7 +30,7 @@
   function project(root, { clock = () => performance.now() } = {}) {
     const started = clock(), builder = createBuilder({ maxUnits: Math.min(policy.limits.sliceChars, policy.limits.totalChars) }), domNodes = new Map();
     const stats = { nodes: 0, chars: 0, elapsedMs: 0 };
-    const fail = (reason) => ({ status: "unsupported", reason, stats: { ...stats, elapsedMs: clock() - started } });
+    const fail = (reason, sensitive = false) => ({ status: "unsupported", reason, sensitive, stats: { ...stats, elapsedMs: clock() - started } });
     const check = () => {
       if (clock() - started >= Math.min(policy.limits.sliceMs, policy.limits.totalMs)) throw new Error("time-budget");
       if (builder.size > Math.min(policy.limits.sliceChars, policy.limits.totalChars)) throw new Error("char-budget");
@@ -41,7 +41,7 @@
         check();
         if (++stats.nodes >= policy.limits.sliceNodes) return fail("node-budget");
         const decision = policy.inspect(parent);
-        if (decision.excluded || decision.unsupported) return fail(decision.reason || "excluded-ancestor");
+        if (decision.excluded || decision.unsupported) return fail(decision.reason || "excluded-ancestor", decision.sensitive);
       }
       const stack = [{ node: root, entered: false }];
       while (stack.length) {
@@ -60,7 +60,7 @@
             builder.append(key, node.nodeValue, 0, check);
           } else if (node.nodeType === 1) {
             const decision = policy.inspect(node);
-            if (decision.unsupported) return fail(decision.reason);
+            if (decision.unsupported) return fail(decision.reason, decision.sensitive);
             if (!decision.excluded) {
               frame.block = decision.block || node.tagName === "BR";
               if (frame.block) builder.boundary();

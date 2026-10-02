@@ -30,7 +30,7 @@ async function probe(harness, page, command, args = {}) {
       if (command === "trace") return globalThis.__tf231Trace;
       if (command === "current") {
         const capture = modules.selectionController.getQuerySource();
-        return capture ? { snapshot: await capture.ready, revision: capture.sourceRevision, capability: capture.capability, context: capture.context } : null;
+        return capture ? { snapshot: await capture.ready, revision: capture.sourceRevision, root: capture.root, capability: capture.capability, context: capture.context } : null;
       }
       if (command === "revision") return modules.textProjection.revision();
       if (command === "pending-mutation") {
@@ -58,7 +58,12 @@ async function probe(harness, page, command, args = {}) {
         const start = args.start ?? node.nodeValue.indexOf(args.text);
         range.setStart(node, start); range.setEnd(node, start + args.text.length);
         const capture = modules.selectionSourceSnapshot.capture({ text: args.text, range, selectionGeneration: 1 });
-        return { snapshot: await capture.ready, context: capture.context, capability: capture.capability };
+        return { snapshot: await capture.ready, root: capture.root, context: capture.context, capability: capture.capability };
+      }
+      if (command === "capture-whole") {
+        const range = document.createRange(); range.selectNodeContents(document.querySelector(args.selector));
+        const capture = modules.selectionSourceSnapshot.capture({ text: range.toString(), range, selectionGeneration: 1 });
+        return { snapshot: await capture.ready, root: capture.root, context: capture.context, capability: capture.capability };
       }
       if (command === "capture-closed-shadow") {
         const host = document.createElement("div"); document.querySelector("main").appendChild(host);
@@ -66,6 +71,17 @@ async function probe(harness, page, command, args = {}) {
         const range = document.createRange(); range.setStart(node, 14); range.setEnd(node, 21);
         const capture = modules.selectionSourceSnapshot.capture({ text: "session", range, selectionGeneration: 1 });
         return { snapshot: await capture.ready, context: capture.context };
+      }
+      if (command === "capture-bounded-text") {
+        const node = document.querySelector(args.selector).firstChild;
+        let wholeReads = 0, boundedReads = 0, largestRead = 0;
+        const nativeValue = Object.getOwnPropertyDescriptor(Node.prototype, "nodeValue").get;
+        const nativeSubstring = CharacterData.prototype.substringData;
+        Object.defineProperty(node, "nodeValue", { configurable: true, get() { wholeReads++; return nativeValue.call(this); } });
+        node.substringData = function(from, length) { boundedReads++; largestRead = Math.max(largestRead, length); return nativeSubstring.call(this, from, length); };
+        const range = document.createRange(); range.setStart(node, args.start); range.setEnd(node, args.start + 7);
+        const capture = modules.selectionSourceSnapshot.capture({ text: "session", range, selectionGeneration: 1 });
+        return { snapshot: await capture.ready, context: capture.context, wholeReads, boundedReads, largestRead };
       }
       throw new Error(`Unknown source-position test command: ${command}`);
     } });
@@ -209,8 +225,59 @@ test("editable, shadow, generated text and over-budget pages fail closed while o
   expect(projection.status).toBe("unsupported"); expect(projection.stats.nodes).toBeLessThanOrEqual(500); expect(projection.stats.chars).toBeLessThanOrEqual(16000);
   const captured = await query(harness, page, "#long", "session");
   expect(captured.capability).toBe("unsupported"); expect(captured.context.text).toContain("LATE_CONTEXT session END_CONTEXT");
+  expect(captured.root).toBe("document");
   expect(captured.context.text.length).toBeLessThanOrEqual(900);
   await expect(page.locator(".tf-selection-result")).toContainText("会话");
   expect(harness.server.calls).toHaveLength(0);
   console.log("[READING_POSITION_BUDGET]", JSON.stringify({ ...projection.stats, capability: captured.capability, contextChars: captured.context.text.length }));
+});
+
+test("neighboring open/closed sensitive slots never become public selection context, and giant-node reads stay bounded", async ({ harness }) => {
+  const page = await prepare(harness, '<main><p id="normal">PUBLIC session</p><div data-tf-sensitive><p id="hidden" hidden>PRIVATE session</p></div></main>');
+  const hidden = await probe(harness, page, "capture", { selector: "#hidden", text: "session" });
+  expect(hidden.context.sensitive).toBe(true); expect(hidden.context.text).toBe("");
+  for (const [tagName, mode] of [["x-private", "open"], ["x-private", "closed"], ["div", "open"]]) {
+    await page.evaluate(({ tagName, mode }) => {
+      const p = document.querySelector("#normal"); p.textContent = "PUBLIC session ";
+      const host = document.createElement(tagName), light = document.createElement("span"); light.textContent = "SECRET_CONTEXT"; host.append(light);
+      const root = host.attachShadow({ mode }), sensitive = document.createElement("span"), slot = document.createElement("slot");
+      sensitive.setAttribute("data-tf-sensitive", ""); sensitive.append(slot); root.append(sensitive); p.append(host);
+    }, { tagName, mode });
+    const capture = await probe(harness, page, "capture", { selector: "#normal", text: "session" });
+    expect(capture.context.sensitive).toBe(true); expect(capture.context.text).toBe("");
+    expect(capture.root).toBe("unsupported");
+    expect(capture.snapshot.anchor.status).toBe("unsupported"); expect(capture.snapshot.anchor.position).toBeNull();
+    expect(capture.snapshot.anchor.quote).toEqual({ exact: "session", prefix: "", suffix: "" });
+    expect(capture.snapshot.anchor.blockDigest).toBeNull();
+    const ordinary = await query(harness, page, "#normal", "session");
+    expect(ordinary.context.text).toBe(""); await expect(page.locator(".tf-selection-result")).toContainText("会话");
+  }
+  await page.evaluate(() => { const p = document.createElement("p"); p.id = "giant"; p.textContent = `${"x".repeat(2_000_000)} session END_CONTEXT`; document.querySelector("main").append(p); });
+  const giant = await probe(harness, page, "capture-bounded-text", { selector: "#giant", start: 2_000_001 });
+  expect(giant.wholeReads).toBe(0); expect(giant.boundedReads).toBe(1); expect(giant.largestRead).toBeLessThanOrEqual(1207);
+  expect(giant.snapshot.anchor.status).toBe("unsupported"); expect(giant.context.text).toContain("session END_CONTEXT");
+  expect(giant.context.text.length).toBeLessThanOrEqual(900); expect(harness.server.calls).toHaveLength(0);
+  console.log("[READING_POSITION_PRIVACY]", JSON.stringify({ sensitiveAdjacentModes: 3, hiddenAncestorSensitive: true, wholeReads: giant.wholeReads, boundedReads: giant.boundedReads, largestRead: giant.largestRead, providerCalls: 0 }));
+});
+
+test("whole Ranges crossing interior private nodes or unknown hosts reject evidence without blocking ordinary queries", async ({ harness }) => {
+  const page = await prepare(harness, '<main><p id="whole">PUBLIC <span>SECRET</span> tail</p></main>');
+  for (const middle of ['<span contenteditable="true">SECRET</span>', '<span data-tf-sensitive>SECRET</span>', '<x-private>SECRET</x-private>']) {
+    await page.evaluate((middle) => { document.querySelector("#whole").innerHTML = `PUBLIC ${middle} tail`; }, middle);
+    const capture = await probe(harness, page, "capture-whole", { selector: "#whole" });
+    expect(capture.snapshot.selectedText).toBe("PUBLIC SECRET tail"); expect(capture.root).toBe("unsupported");
+    expect(capture.context.sensitive).toBe(true); expect(capture.context.text).toBe("");
+    expect(capture.snapshot.contextMode).toBe("selection-only"); expect(capture.snapshot.anchor.status).toBe("unsupported");
+    expect(capture.snapshot.anchor.position).toBeNull(); expect(capture.snapshot.anchor.blockDigest).toBeNull();
+    expect(validateSourceSnapshot(capture.snapshot)).toEqual(capture.snapshot);
+    const ordinary = await query(harness, page, "#whole", null);
+    expect(ordinary.snapshot.selectedText).toBe("PUBLIC SECRET tail"); expect(ordinary.context.sensitive).toBe(true);
+    await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN] PUBLIC SECRET tail");
+  }
+  await page.evaluate(() => { document.querySelector("#whole").innerHTML = `PUBLIC ${'<span>x</span>'.repeat(600)}tail`; });
+  const large = await probe(harness, page, "capture-whole", { selector: "#whole" });
+  expect(large.root).toBe("unsupported"); expect(large.context.sensitive).toBe(true); expect(large.context.text).toBe("");
+  expect(large.snapshot.anchor.status).toBe("unsupported"); expect(harness.server.calls).toHaveLength(1);
+  expect(harness.server.calls[0].segments.map((item) => item.text)).toEqual(["PUBLIC SECRET tail"]);
+  console.log("[READING_RANGE_PRIVACY]", JSON.stringify({ privateInteriorModes: 3, nodeBudgetRejected: true, explicitLocalTranslationCalls: 1, cacheReused: true, paidProviderCalls: 0 }));
 });

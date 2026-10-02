@@ -19,15 +19,20 @@
   function localProjection(range) {
     const root = contextRoot(range), value = projection.project(root);
     if (value.status === "resolved") return value;
-    if (range.startContainer !== range.endContainer || range.startContainer.nodeType !== 3) return value;
+    if (!["char-budget", "node-budget", "time-budget"].includes(value.reason) || range.startContainer !== range.endContainer || range.startContainer.nodeType !== 3) return value;
     const node = range.startContainer;
     const from = Math.max(0, range.startOffset - 600), to = Math.min(node.length, range.endOffset + 600);
     if (to - from > 4000) return value;
-    const builder = app.modules.textProjectionBuilder.createBuilder();
-    const text = node.nodeValue.slice(from, to);
-    if (/[\u0000\u0008\u000b]/u.test(text)) return { status: "unsupported", reason: "unsupported-text" };
-    builder.append("local", text, from);
-    return { status: "resolved", ...builder.finish(), domNodes: new Map([["local", node]]), localWindow: true };
+    const started = performance.now(), check = () => { if (performance.now() - started >= policy.limits.sliceMs) throw new Error("time-budget"); };
+    try {
+      check();
+      const text = node.substringData(from, to - from);
+      check();
+      if (/[\u0000\u0008\u000b]/u.test(text)) return { status: "unsupported", reason: "unsupported-text" };
+      const builder = app.modules.textProjectionBuilder.createBuilder({ maxUnits: 4000 });
+      builder.append("local", text, from, check); check();
+      return { status: "resolved", ...builder.finish(), domNodes: new Map([["local", node]]), localWindow: true };
+    } catch { return value; }
   }
   function selectionPosition(value, range) {
     const position = projection.positionForRange(value, range);
@@ -44,6 +49,7 @@
     if (decision.supported) {
       const full = projection.project(document.body);
       const local = localProjection(snapshot.range), localPosition = selectionPosition(local, snapshot.range);
+      if (local.sensitive) decision.sensitive = true;
       const globalPosition = selectionPosition(full, snapshot.range);
       if (localPosition && comparable(local.text.slice(localPosition.start, localPosition.end)) === comparable(snapshot.text)) {
         selectedText = local.text.slice(localPosition.start, localPosition.end);
@@ -62,7 +68,7 @@
       contextMode: text ? "bounded-context" : "selection-only", projectionVersion: policy.projectionVersion,
       documentGeneration, selectionGeneration: snapshot.selectionGeneration || 1,
       anchor: { status, quote: { exact: selectedText, prefix, suffix }, position, blockDigest: null }, capturedAt: Date.now() };
-    const result = { sourceRevision, selectedText, capability: status, context, sourceSnapshot: null };
+    const result = { sourceRevision, root: decision.supported && !decision.sensitive ? "document" : "unsupported", selectedText, capability: status, context, sourceSnapshot: null };
     const validText = selectedText?.trim() && selectedText.length <= 2000 && !/[\u0000\u0008\u000b\u000c]/u.test(selectedText);
     result.ready = (validText ? Promise.all([digest(JSON.stringify([frozen.projectionVersion, selectedText, frozen.contextMode, text])), blockText === null ? null : digest(blockText)])
       : Promise.reject(new Error("unsupported selected text")))

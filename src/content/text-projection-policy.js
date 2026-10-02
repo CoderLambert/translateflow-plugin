@@ -13,6 +13,7 @@
   }
   function inspect(element) {
     if (element.hasAttribute(EXTENSION_UI_ATTR) || element.classList.contains(TRANSLATION_CLASS)) return { excluded: true };
+    if (element.assignedSlot || element.shadowRoot || element.tagName === "SLOT" || element.tagName.includes("-")) return { unsupported: true, sensitive: true, reason: "unsupported-host" };
     if (excludedTags.has(element.tagName) || element.isContentEditable || element.hasAttribute("data-tf-sensitive")) return { excluded: true, sensitive: true };
     if (element.hidden || element.getAttribute("aria-hidden") === "true") return { excluded: true };
     const style = getComputedStyle(element);
@@ -27,24 +28,55 @@
         return { supported: false, sensitive: true, reason: "unsupported-root" };
       }
     } catch { return { supported: false, sensitive: true, reason: "unsupported-root" }; }
+    let supported = true, sensitive = false, reason = "";
+    const deny = (decision) => { supported = false; sensitive ||= Boolean(decision.sensitive); reason ||= decision.reason || "excluded"; };
     for (const node of [range.startContainer, range.endContainer, range.commonAncestorContainer]) {
-      if (node.assignedSlot) return { supported: false, sensitive: true, reason: "unsupported-slot" };
+      if (node.assignedSlot) deny({ sensitive: true, reason: "unsupported-slot" });
       let element = node.nodeType === 1 ? node : node.parentElement;
       let count = 0;
       while (element && count++ < limits.sliceNodes) {
-        if (element.assignedSlot || element.tagName.includes("-")) return { supported: false, sensitive: true, reason: "unsupported-host" };
         const decision = inspect(element);
-        if (decision.excluded || decision.unsupported) return { supported: false, sensitive: Boolean(decision.sensitive), reason: decision.reason || "excluded" };
+        if (decision.excluded || decision.unsupported) deny(decision);
         element = element.parentElement;
       }
-      if (element) return { supported: false, sensitive: true, reason: "ancestor-budget" };
+      if (element) deny({ sensitive: true, reason: "ancestor-budget" });
     }
     const active = document.activeElement;
     if (active?.matches?.("input,textarea") && Number(active.selectionEnd) > Number(active.selectionStart) &&
       app.modules.runtime.cleanText(active.value.slice(active.selectionStart, active.selectionEnd)) === app.modules.runtime.cleanText(selectedText)) {
-      return { supported: false, sensitive: true, reason: "editable" };
+      deny({ sensitive: true, reason: "editable" });
     }
-    return { supported: true, sensitive: false, reason: "" };
+    if (supported) {
+      const interior = rangeInterior(range);
+      if (!interior.supported) deny(interior);
+    }
+    return { supported, sensitive, reason };
+  }
+  function rangeInterior(range) {
+    const root = range.commonAncestorContainer;
+    if (root.nodeType === 3) return { supported: true };
+    const started = performance.now(), stack = [{ node: root, entered: false }];
+    let nodes = 0;
+    while (stack.length) {
+      if (nodes >= limits.sliceNodes || performance.now() - started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
+      const frame = stack.at(-1), node = frame.node;
+      if (!frame.entered) {
+        nodes++; frame.entered = true;
+        let intersects;
+        try { intersects = range.intersectsNode(node); } catch { return { supported: false, sensitive: true, reason: "unknown-range" }; }
+        if (intersects) {
+          if (node.assignedSlot) return { supported: false, sensitive: true, reason: "unsupported-slot" };
+          if (node.nodeType === 1) {
+            const decision = inspect(node);
+            if (decision.unsupported || decision.excluded) return { supported: false, sensitive: true, reason: decision.reason || "excluded-interior" };
+          }
+          frame.child = node.firstChild;
+        }
+      }
+      if (frame.child) { const child = frame.child; frame.child = child.nextSibling; stack.push({ node: child, entered: false }); }
+      else stack.pop();
+    }
+    return { supported: true };
   }
   function sourceMutation(record) {
     if (owned(record.target)) return false;

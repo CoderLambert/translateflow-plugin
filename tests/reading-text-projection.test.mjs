@@ -76,6 +76,66 @@ test("hidden ancestors prune children even when descendants override visibility"
   assert.equal(state.modules.textProjection.project(visible).reason, "excluded-ancestor");
 });
 
+test("context traversal rejects neighboring custom hosts, open shadow roots and assigned slots", () => {
+  const state = load({ getComputedStyle: (node) => node.style });
+  for (const unknown of [{ tagName: "X-PRIVATE" }, { shadowRoot: {} }, { assignedSlot: {} }, { tagName: "SLOT" }]) {
+    const secret = { nodeType: 3, length: 14, get nodeValue() { throw new Error("unknown composed context must not be read"); } };
+    const host = Object.assign(element(state.document, [secret]), unknown);
+    const root = element(state.document, [{ nodeType: 3, length: 14, nodeValue: "PUBLIC session" }, host]);
+    const result = state.modules.textProjection.project(root);
+    assert.equal(result.status, "unsupported"); assert.equal(result.reason, "unsupported-host"); assert.equal(result.sensitive, true);
+  }
+});
+
+test("hidden exclusion does not hide a higher sensitive ancestor from range policy", () => {
+  const state = load({ getComputedStyle: (node) => node.style });
+  const node = { nodeType: 3, isConnected: true, getRootNode: () => state.document };
+  const hidden = element(state.document, [node], { display: "none" });
+  const sensitive = element(state.document, [hidden]);
+  sensitive.hasAttribute = (name) => name === "data-tf-sensitive";
+  const decision = state.modules.textProjectionPolicy.rangePolicy({ startContainer: node, endContainer: node, commonAncestorContainer: node }, "session");
+  assert.equal(decision.supported, false); assert.equal(decision.sensitive, true);
+});
+
+test("Range interior privacy checks cover editable/sensitive/unknown nodes and fail closed on either budget", () => {
+  for (const mode of ["editable", "sensitive", "host", "nodes", "time"]) {
+    let ticks = 0;
+    const state = load({ getComputedStyle: (node) => node.style, performance: { now: () => mode === "time" ? ticks++ * 5 : 0 } });
+    const endpoint = () => ({ nodeType: 3, isConnected: true, getRootNode: () => state.document });
+    const start = endpoint(), end = endpoint(), middle = element(state.document);
+    if (mode === "editable") middle.isContentEditable = true;
+    if (mode === "sensitive") middle.hasAttribute = (name) => name === "data-tf-sensitive";
+    if (mode === "host") middle.tagName = "X-PRIVATE";
+    const root = element(state.document, [start, ...(mode === "nodes" ? Array.from({ length: 600 }, () => element(state.document)) : [middle]), end]);
+    const range = { startContainer: start, endContainer: end, commonAncestorContainer: root, intersectsNode: () => true };
+    const decision = state.modules.textProjectionPolicy.rangePolicy(range, "PUBLIC SECRET tail");
+    assert.equal(decision.supported, false, mode); assert.equal(decision.sensitive, true, mode);
+    if (["nodes", "time"].includes(mode)) assert.equal(decision.reason, "range-budget");
+  }
+});
+
+test("giant text fallback reads only a bounded CharacterData window and enforces its time budget", async () => {
+  for (const timeout of [false, true]) {
+    let ticks = 0, wholeReads = 0, boundedReads = 0;
+    const state = load({ performance: { now: () => timeout ? ticks++ * 5 : 0 } });
+    const value = `${"x".repeat(2_000_000)} session END_CONTEXT`, start = 2_000_001;
+    const node = { nodeType: 3, length: value.length, get nodeValue() { wholeReads++; return value; },
+      substringData(from, length) { boundedReads++; assert.ok(length <= 1207); return value.slice(from, from + length); } };
+    const root = { closest: () => root }; node.parentElement = root;
+    const range = { commonAncestorContainer: node, startContainer: node, endContainer: node, startOffset: start, endOffset: start + 7 };
+    state.modules.textProjectionPolicy.rangePolicy = () => ({ supported: true, sensitive: false });
+    state.modules.textProjection.project = () => ({ status: "unsupported", reason: "char-budget" });
+    vm.runInContext(sources.get(files[3]), state.context);
+    const capture = state.modules.selectionSourceSnapshot.capture({ text: "session", range, selectionGeneration: 1 });
+    const frozen = await capture.ready;
+    assert.equal(wholeReads, 0); assert.equal(boundedReads, 1); assert.equal(frozen.selectedText, "session");
+    assert.equal(frozen.anchor.status, "unsupported");
+    if (timeout) assert.equal(frozen.contextText, "");
+    else { assert.ok(frozen.contextText.includes("session END_CONTEXT")); assert.ok(frozen.contextText.length <= 900); }
+    assert.deepEqual(validateSourceSnapshot(json(frozen)), json(frozen));
+  }
+});
+
 test("query evidence is synchronously frozen and hashes never re-read DOM after awaiting", async () => {
   const state = load();
   const block = {}, range = { commonAncestorContainer: { nodeType: 1, closest: () => block } };
