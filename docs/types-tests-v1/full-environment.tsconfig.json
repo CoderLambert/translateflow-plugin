@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "../../types/**/*.d.ts",
+    "../../entrypoints/**/*.ts",
+    "../../entrypoints/**/*.tsx",
+    "../../src/**/*.ts",
+    "../../src/**/*.tsx",
+    "../../tests/unit/**/*.ts",
+    "../../tests/unit/**/*.tsx",
+    "../../vitest.config.ts",
+    "../../.wxt/wxt.d.ts"
+  ]
+}
