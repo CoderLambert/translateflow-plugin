@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import ts from "typescript";
 
 const check = fileURLToPath(new URL("../scripts/check.mjs", import.meta.url));
 const manifest = { manifest_version: 3, background: { service_worker: "background.js", type: "module" } };
@@ -34,6 +35,8 @@ test("CLI accepts approved TS UI and a pure JS/TS adapter, and excludes generate
 });
 
 const negatives = [
+  ["inline type-only React import retains runtime edge", { "src/background/bad.ts": 'import {type ReactNode} from "react";' }, /React\/JSX/u],
+  ["inline type-only React export retains runtime edge", { "src/background/bad.ts": 'export {type ReactNode} from "react";' }, /React\/JSX/u],
   ["mixed type/value React import", { "src/background/bad.ts": 'import {type ReactNode, useState} from "react";' }, /React\/JSX/u],
   ["mixed type/value React export", { "src/background/bad.ts": 'export {type ReactNode, useState} from "react";' }, /React\/JSX/u],
   ["empty named React import remains runtime", { "src/background/bad.ts": 'import {} from "react";' }, /React\/JSX/u],
@@ -72,10 +75,10 @@ test("CLI excludes erased type-only imports and re-exports from the runtime grap
   const result = runFixture({
     "src/background/types.ts": `
       import type {ReactNode} from "react";
-      import {type External} from "unapproved-type-package";
+      import type {External} from "unapproved-type-package";
       import type {Helper} from "../../tests/helper.js";
       export type {ReactNode} from "react";
-      export {type External} from "unapproved-type-package";
+      export type {External} from "unapproved-type-package";
       export type Alias = ReactNode | External | Helper;
     `,
     "tests/helper.js": 'export const Helper=()=>fetch("https://invalid.test");',
@@ -83,6 +86,21 @@ test("CLI excludes erased type-only imports and re-exports from the runtime grap
     "src/learning-center/View.tsx": 'import "react"; export const View=()=> <div/>;'
   });
   assert.equal(result.status, 0, result.output);
+});
+test("runtime type-specifier checks agree with emission under the actual inherited compiler config", () => {
+  const configPath = fileURLToPath(new URL("../tsconfig.json", import.meta.url));
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+  assert.equal(config.error, undefined);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(configPath));
+  assert.equal(parsed.options.verbatimModuleSyntax, true);
+  for (const source of ['import {type ReactNode} from "react";', 'export {type ReactNode} from "react";']) {
+    const emitted = ts.transpileModule(source, { compilerOptions: parsed.options, fileName: "bad.ts" }).outputText;
+    assert.match(emitted, /(?:import|export)\s*\{\s*\}\s*from\s*"react"/u);
+    for (const [extension, code] of [["ts", source], ["js", emitted]]) {
+      const result = runFixture({ [`src/background/bad.${extension}`]: code });
+      assert.equal(result.status, 1, result.output); assert.match(result.output, /React\/JSX/u);
+    }
+  }
 });
 const computedApiNegatives = [
   ["const fetch key", { "src/content/bad.js": 'const api="fetch";globalThis[api]("https://invalid.test");' }, /直接使用 fetch/u],

@@ -12,12 +12,7 @@ function dependencies(tree, api) {
   const found = [];
   function visit(node) {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
-      const clause = ts.isImportDeclaration(node) ? node.importClause : node.exportClause;
-      const names = ts.isImportDeclaration(node) ? clause?.namedBindings : clause;
-      const namedTypesOnly = names && (ts.isNamedImports(names) || ts.isNamedExports(names)) &&
-        names.elements.length > 0 && names.elements.every((element) => element.isTypeOnly) &&
-        !(ts.isImportDeclaration(node) && clause?.name);
-      found.push({ specifier: node.moduleSpecifier.text, typeOnly: node.isTypeOnly || clause?.isTypeOnly || namedTypesOnly });
+      found.push({ specifier: node.moduleSpecifier.text, typeOnly: node.isTypeOnly || node.importClause?.isTypeOnly });
     } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
       found.push({ specifier: node.moduleReference.expression?.text, typeOnly: node.isTypeOnly });
     } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || api.moduleLoader(node.expression))) {
@@ -65,7 +60,8 @@ export function inspectSources(root, files) {
     const api = createApiInspector(tree);
     const { effects } = api;
     // Erased TS edges do not enter a runtime allowlist or runtime API/React graph.
-    // Empty, mixed and side-effect imports retain their runtime edges.
+    // With verbatimModuleSyntax, even import/export {type X} emits an empty
+    // runtime module edge. Only a whole import type/export type is erased.
     const deps = dependencies(tree, api).filter(({ typeOnly }) => !typeOnly);
     for (const node of api.unknownComputed) failures.push(`${path} 无法审计的全局 API 计算属性: ${node.getText(tree)}`);
     if (jsx) {
