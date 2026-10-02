@@ -10,6 +10,7 @@ const compiledChunks = [];
 
 export default defineConfig({
   imports: false,
+  modules: ["@wxt-dev/module-react"],
   manifest,
   vite: () => ({
     build: { target: "chrome102", cssTarget: "chrome102", sourcemap: false },

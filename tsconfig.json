@@ -1,0 +1,20 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": ["node", "react", "react-dom"],
+    "skipLibCheck": false,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": [".wxt/types/paths.d.ts", ".wxt/types/i18n.d.ts", "types/**/*.d.ts", "types/**/*.d.mts", "types/**/*.d.cts", "entrypoints/**/*.ts", "entrypoints/**/*.tsx", "entrypoints/**/*.mts", "entrypoints/**/*.cts", "src/**/*.ts", "src/**/*.tsx", "src/**/*.mts", "src/**/*.cts", "tests/unit/**/*.ts", "tests/unit/**/*.tsx", "vitest.config.ts"],
+  "exclude": ["node_modules", ".output", "dist", "e2e"]
+}
