@@ -57,6 +57,8 @@ const negatives = [
   ["nested generated-name source", { "src/dist/bad.ts": 'fetch("https://invalid.test");' }, /直接使用 fetch/u],
   ["MAIN observer initiates fetch", { "src/content/subtitles/youtube-main-bridge.js": 'page.fetch("https://invalid.test");' }, /MAIN observer/u],
   ["indirect shared API", { "src/shared/bad.ts": 'import "../background/api.js";', "src/background/api.js": 'chrome.runtime.getURL("x");' }, /shared 层/u],
+  ["shared dependency on network owner", { "src/shared/bad.ts": 'import "../background/providers/api.js";', "src/background/providers/api.js": 'export const request=()=>fetch("https://invalid.test");' }, /shared 层/u],
+  ["shared dependency on IDB owner", { "src/shared/bad.ts": 'import "../background/cache-db.js";', "src/background/cache-db.js": 'export const db=()=>indexedDB.open("cache");' }, /shared 层/u],
   ["non-UI JSX implicit React", { "src/background/bad.tsx": 'export const view = <div/>;' }, /React\/JSX/u],
   ["source TS syntax", { "src/platform/bad.ts": 'const value: = 1;' }, /syntax/u]
 ];

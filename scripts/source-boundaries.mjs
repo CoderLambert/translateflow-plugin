@@ -109,7 +109,7 @@ export function inspectSources(root, files) {
       const module = graph.get(path);
       if (!module) { failures.push(`${origin} runtime 依赖进入非 runtime 源码: ${chain.join(" → ")}`); return; }
       if (!UI.test(origin) && (module.jsx || module.deps.some(({ specifier }) => specifier && isReact(specifier)))) failures.push(`${origin} React/JSX 泄漏到非学习中心运行环境: ${chain.join(" → ")}`);
-      if (origin.startsWith("src/shared/") && (module.effects.has("chrome") || module.effects.has("browser"))) failures.push(`${origin} shared 层不允许 chrome/browser API: ${chain.join(" → ")}`);
+      if (origin.startsWith("src/shared/") && ["chrome", "browser", "fetch", "indexedDB", "registerContentScripts"].some((name) => module.effects.has(name))) failures.push(`${origin} shared 层不允许浏览器/网络/存储 API: ${chain.join(" → ")}`);
       for (const dependency of module.resolved) visit(dependency, [...chain, dependency]);
     }
     visit(origin, [origin]);
