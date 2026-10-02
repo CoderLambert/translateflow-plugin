@@ -24,7 +24,7 @@ function fixture({ styleMs = .25, substringMs = 0 } = {}) {
     return node;
   }
   const context = vm.createContext({ document, window, crypto: webcrypto, TextEncoder, performance: { now: () => elapsed },
-    chrome: { dom: { openOrClosedShadowRoot: () => null } }, getComputedStyle() { elapsed += styleMs; return { display: "block", visibility: "visible", opacity: "1", whiteSpace: "normal" }; },
+    chrome: { dom: { openOrClosedShadowRoot: (node) => { elapsed += node.proofMs || 0; return node.privateRoot ? {} : null; } } }, getComputedStyle() { elapsed += styleMs; return { display: "block", visibility: "visible", opacity: "1", whiteSpace: "normal" }; },
     __TRANSLATE_FLOW_CONTENT__: { modules: { runtime: { constants: { EXTENSION_UI_ATTR: "data-tf-extension-ui", TRANSLATION_CLASS: "abt-translation" }, cleanText: (s) => s.trim() } } } });
   for (const source of sources) vm.runInContext(source, context);
   const modules = context.__TRANSLATE_FLOW_CONTENT__.modules, phases = [], budgets = [];
@@ -103,4 +103,17 @@ test("a remaining-budget resolved capture maps the second repeated word, not its
   const frozen = await capture.ready;
   assert.equal(frozen.anchor.status, "resolved"); assert.deepEqual(json(frozen.anchor.position), { start: 14, end: 21 });
   assert.equal(frozen.anchor.quote.exact, frozen.selectedText); assert.deepEqual(validateSourceSnapshot(json(frozen)), json(frozen));
+});
+
+
+test("an over-budget closed-root proof preserves its sensitive rejection before time fallback", async () => {
+  const f = fixture({ styleMs: 0 }), selected = f.text("PUBLIC session tail"), privateLight = f.text("SECRET", true);
+  const host = f.element("DIV", [privateLight]); host.privateRoot = true; host.proofMs = 8;
+  f.document.body = f.element("BODY", [f.element("MAIN", [f.element("P", [selected, host])])]);
+  const capture = f.modules.selectionSourceSnapshot.capture({ text: "session", range: f.range(selected), selectionGeneration: 1 });
+  assert.equal(f.elapsed(), 8); assert.equal(capture.context.sensitive, true); assert.equal(capture.root, "unsupported");
+  assert.equal(capture.context.text, ""); assert.deepEqual(f.reads(), { wholeReads: 0, boundedReads: 0 });
+  const frozen = await capture.ready;
+  assert.equal(frozen.selectedText, "session"); assert.equal(frozen.anchor.status, "unsupported");
+  assert.deepEqual(validateSourceSnapshot(json(frozen)), json(frozen));
 });

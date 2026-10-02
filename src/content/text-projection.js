@@ -46,8 +46,8 @@
         if (budget.nodes >= policy.limits.sliceNodes) return fail("node-budget");
         stats.nodes++; budget.nodes++;
         const decision = policy.inspect(parent);
-        check();
         if (decision.excluded || decision.unsupported) return fail(decision.reason || "excluded-ancestor", decision.sensitive);
+        check();
       }
       const stack = [{ node: root, entered: false }];
       while (stack.length) {
@@ -66,8 +66,8 @@
             builder.append(key, node.nodeValue, 0, check);
           } else if (node.nodeType === 1) {
             const decision = policy.inspect(node);
-            check();
             if (decision.unsupported) return fail(decision.reason, decision.sensitive);
+            check();
             if (!decision.excluded) {
               frame.block = decision.block || node.tagName === "BR";
               if (frame.block) builder.boundary();
