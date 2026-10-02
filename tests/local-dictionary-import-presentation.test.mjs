@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import { resolveAssociatedMddFiles } from "../src/options/local-dictionary-import-presentation.js";
+import {
+  isInstalledStateKnownForFamily,
+  readInstalledDictionaryState
+} from "../src/options/local-dictionary-installed-state.js";
 
 function namedBlob(name) {
   return Object.assign(new Blob(["synthetic MDD"]), { name });
@@ -28,11 +31,31 @@ test("MDD attachment refuses ambiguous sanitized filename matches", () => {
 });
 
 
-test("local import duplicate protection fails closed when installed state is unavailable", async () => {
-  const source = await readFile(new URL("../src/options/local-dictionary-import-ui.js", import.meta.url), "utf8");
-  assert.match(source, /Promise\.allSettled/u);
-  assert.match(source, /installedStateKnown = \{ rich: richKnown, packs: packsKnown \}/u);
-  assert.match(source, /!duplicateStateKnown/u);
-  assert.match(source, /为避免重复或误覆盖，安装已暂停/u);
-  assert.doesNotMatch(source, /catch\s*\{\s*installedCandidates = \[\]/u);
+test("installed-state refresh preserves the healthy source and fails closed only for the unavailable family", async () => {
+  const state = await readInstalledDictionaryState({
+    async sendMessage(message) {
+      if (message.type === "RICH_MDICT_LIST") throw new Error("rich state unavailable");
+      if (message.type === "DICTIONARY_PACK_STATUS") {
+        return {
+          state: {
+            packs: {
+              "local-fixture": {
+                active: { packVersion: "v1", totalBytes: 12 },
+                display: { name: "Fixture", format: "tflex" }
+              }
+            }
+          }
+        };
+      }
+      throw new Error("unexpected message");
+    }
+  });
+
+  assert.equal(state.known.rich, false);
+  assert.equal(state.known.packs, true);
+  assert.equal(state.candidates.length, 1);
+  assert.equal(state.candidates[0].packId, "local-fixture");
+  assert.equal(isInstalledStateKnownForFamily("mdict-rich", state.known), false);
+  assert.equal(isInstalledStateKnownForFamily("stardict", state.known), true);
+  assert.equal(isInstalledStateKnownForFamily("tflex", state.known), true);
 });
