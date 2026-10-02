@@ -21,6 +21,8 @@ on:
       - "tests/unit/**"
       - "scripts/check.mjs"
       - "scripts/source-boundaries.mjs"
+      - "scripts/build-extension.mjs"
+      - "scripts/run-e2e.mjs"
       - "scripts/*wxt*.mjs"
       - "package.json"
       - "package-lock.json"
