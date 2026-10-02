@@ -33,6 +33,14 @@ export async function copyProductionArtifact(artifact, extensionDir) {
   const paths = new Set(inventory.files.map((f) => f.path));
   const manifest = JSON.parse(await readFile(join(source, "manifest.json"), "utf8"));
   assert.equal(manifest.manifest_version, 3);
+  const flatRuntime=new Set(["manifest.json",manifest.background.service_worker,...Object.values(EXTENSION_PAGES),
+    "content.js","content.css","popup.js","popup.css","popup-appearance.js","options.js","options.css"]);
+  for(const path of paths) {
+    const top=path.split("/")[0];
+    assert(flatRuntime.has(path) || ["src","assets","chunks","_locales"].includes(top),
+      `Non-production artifact path: ${path}`);
+    assert(!/\.(?:[cm]?tsx?|map|pem|crx|zip)$/u.test(path),`Non-runtime artifact file: ${path}`);
+  }
   for (const path of ["manifest.json", manifest.background.service_worker, ...Object.values(EXTENSION_PAGES),
     ...CONTENT_SCRIPT_FILES, ...CONTENT_STYLE_FILES, ...Object.values(WORKER_PATHS), ...YOUTUBE_MAIN_BRIDGE_FILES]) {
     assert(paths.has(path), `Production artifact lacks runtime mapping: ${path}`);

@@ -36,5 +36,7 @@ test("adapter copies exact supplied bytes and records deterministic production p
     await assert.rejects(copyProductionArtifact(artifact,artifact),/must be isolated/);
     await assert.rejects(copyProductionArtifact(artifact,join(artifact,"copy")),/must be isolated/);
     await assert.rejects(copyProductionArtifact(artifact,join(root,"copy")),/already exists|EEXIST/);
+    await mkdir(join(artifact,"tests"));await writeFile(join(artifact,"tests","fixture.js"),"private build input");
+    await assert.rejects(copyProductionArtifact(artifact,join(root,"bad-copy")),/Non-production artifact path/);
   } finally {await rm(root,{recursive:true,force:true});}
 });
