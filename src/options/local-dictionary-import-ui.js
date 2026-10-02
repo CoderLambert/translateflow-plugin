@@ -8,6 +8,10 @@ import { createStarDictImportController } from "./stardict-import-controller.js"
 import { inspectStarDictFiles, createStarDictProductRecipe } from "./stardict-import-ui.js";
 import { createTflexLocalImportController } from "./tflex-local-import-controller.js";
 import {
+  isInstalledStateKnownForFamily,
+  readInstalledDictionaryState
+} from "./local-dictionary-installed-state.js";
+import {
   appendSummaryLine, fileBaseName, findDuplicateCandidate, formatBytes, importProgressLabel,
   isTflexOverInstallLimit, renderLocalPreflight, resolveAssociatedMddFiles, safeFileLabel,
   setPageStatus, tflexPackId, userMessage
@@ -369,57 +373,14 @@ export function initializeLocalDictionaryImportUi({
   }
 
   async function refreshInstalledCandidates() {
-    const [richResult, packResult] = await Promise.allSettled([
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST }),
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS })
-    ]);
-    const nextCandidates = [];
-    let richKnown = false;
-    let packsKnown = false;
-
-    if (richResult.status === "fulfilled" && Array.isArray(richResult.value?.dictionaries)) {
-      richKnown = true;
-      for (const dictionary of richResult.value.dictionaries) {
-        if (dictionary?.title) nextCandidates.push({
-          name: dictionary.title,
-          family: "mdict-rich",
-          packId: dictionary.id,
-          fileName: dictionary.fileName,
-          sourceFiles: dictionary.fileName ? [dictionary.fileName] : [],
-          sourceSize: dictionary.sourceSize,
-          version: dictionary.packVersion
-        });
-      }
-    }
-
-    if (
-      packResult.status === "fulfilled" &&
-      packResult.value?.state?.packs &&
-      typeof packResult.value.state.packs === "object" &&
-      !Array.isArray(packResult.value.state.packs)
-    ) {
-      packsKnown = true;
-      for (const [packId, entry] of Object.entries(packResult.value.state.packs)) {
-        if (!entry?.active) continue;
-        const name = String(entry.display?.name || packId), format = entry.display?.format || "";
-        nextCandidates.push({
-          name, family: format || "tflex", packId, version: entry.active.packVersion,
-          sourceFiles: format === "tflex" ? ["manifest.json", "index.dat", "entries.dat"] : [],
-          sourceSize: entry.active.totalBytes, format: entry.display?.formatLabel
-        });
-      }
-    }
-
-    installedCandidates = nextCandidates;
-    installedStateKnown = { rich: richKnown, packs: packsKnown };
+    const installed = await readInstalledDictionaryState(runtime);
+    installedCandidates = installed.candidates;
+    installedStateKnown = installed.known;
     if (report) renderPreflight(report);
   }
 
   function isInstalledStateKnownForReport(value) {
-    if (!value?.identity?.family) return false;
-    return value.identity.family === "mdict-rich"
-      ? installedStateKnown.rich
-      : installedStateKnown.packs;
+    return isInstalledStateKnownForFamily(value?.identity?.family, installedStateKnown);
   }
 
   function setBusy(value) {
