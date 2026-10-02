@@ -171,3 +171,103 @@ The temporary bridge is owned by WXT from #246 and has an explicit exit task #25
 - [Chrome scripting API](https://developer.chrome.com/docs/extensions/reference/api/scripting): scripting permissions, file/world execution and dynamic registration semantics.
 
 Package-specific engine/peer facts come from actual installed package manifests, collected in toolchain.json after the registry-based install; optional peers are preserved in that report. The live documentation may describe newer major defaults, so this contract's exact installed versions/configuration and reproduced outputs are the implementation authority.
+
+## #248 stage 1: real artifact consumers and isolated upgrade evidence
+
+This stage retains the current default/release build engine. The E2E fixture no
+longer runs a builder: `TF_E2E_ARTIFACT` selects an already generated production
+package (`dist/extension` by default during this transition). Missing artifacts
+or Content/MAIN/Worker mappings fail before fixture augmentation. The adapter
+hashes every supplied file, copies exact bytes, then records every changed path.
+Normal test copies may change only host permissions and explicit lexicon
+fixtures. The optional cached ECDICT Worker and actual registered-command
+callback probe are separately identified test-copy overrides; they are neither
+unmodified-package certification nor native keyboard evidence.
+
+CI uses separate `legacy` and `wxt` matrix jobs with the same applicable stories,
+independent output directories, the existing 12-minute bound, and matching
+`TF_I18N_ARTIFACT`. Both artifacts are built explicitly before consumers run.
+The WXT job's upgrade comparison is built from fixed pre-switch commit
+`19e89b65fd3600073410407392da82ffa666ffc8` in a temporary detached worktree. That
+fixed comparison does not make the old engine a future formal build entry.
+`TF_UPGRADE_OLD_ARTIFACT` and `TF_UPGRADE_NEW_ARTIFACT` explicitly enable the
+upgrade and sampling stories; their absence is a reported SKIP, never an upgrade
+PASS. Unmodified WXT auditing remains independent of fixture copies.
+
+The baseline development artifacts at that fixed commit were measured with no
+bundled lexicon:
+
+| Artifact | Files | Platform bytes | Tree SHA-256 |
+| --- | ---: | ---: | --- |
+| Fixed legacy | 237 | 1,508,511 | `5714bb2fecfd86d5384ac0369f5cffe667804ba7733cccf6b76bdb48b0c92cce` |
+| Actual WXT | 147 | 1,392,614 | `7d727f5cdbc4d96465613100eca41e383edb53e69b297b7d4e480399a6938db1` |
+| Actual WXT with locked release packs | 225 | 1,392,614 | `0ea72f49e9e2191d65a9010485bcf461dd73b82bb177441b2cb59be9b35c91e6` |
+
+The release artifact has 36,830,492 dictionary bytes and 38,223,106 total bytes.
+Its generated packs were reproduced offline from the current locked original
+inputs and matched the reused cache byte for byte (zero downloads); the actual
+full descriptor/fingerprint/path audit and `certify:lexicon` ran, followed by the
+native release-lexicon E2E. That E2E changed only the Manifest's test host access,
+not dictionary bytes. This is generated bundled-pack evidence, not certification
+of arbitrary private MDX/MDD inputs or public distribution authorization.
+Manifest differences between the unmodified development legacy and WXT packages
+were empty. The platform ceiling remains **1,576,595 B**; dictionary budgets and
+future React closure accounting remain separate.
+
+The same-ID test uses one isolated `userDataDir` and one stable unpacked path,
+without adding a production key, uninstalling the extension, clearing storage,
+or touching a real browser profile. The old Options page actually saves the
+localhost Provider configuration, imports two synthetic MDX dictionaries with
+MDD attachments, disables one dictionary, chooses the other as personal preferred,
+and produces three translation cache rows. Old → actual WXT → browser restart
+compares all original storage values, DB name/version/store rows, OPFS file sizes
+and SHA-256 hashes, active pointers, enabled/preferred state, and the exact native
+registration file order. Native extension management reload invalidates the old
+message channel; refreshing that document and reinjecting restores normal
+status. No Provider retry is automatic: one explicitly seeded localhost call,
+zero additional Provider calls and zero external requests.
+
+For local unpacked upgrades, retain the original loading directory and ID.
+Loading a different directory or adding a new key can create a different origin;
+it cannot access the previous origin's data. Existing store IDs retain their
+original identity. The testing profile enables Developer mode through Chromium's
+own management interface so the unpacked extension remains supported after a
+reload. A stale tab needs a document refresh; hot replacement is not promised to
+keep every old script alive. Rollback keeps the fixed comparison artifact and
+preserves data; default switching remains gated on the merged stage-1 head's CI,
+independent verification/review, and the already merged #227 fix.
+
+Chromium **153.0.8010.12** native site-access testing exercises withheld access,
+specific-origin grant, revoke, denied scripting, registration union and restart
+pruning without stubbing `chrome.permissions`. Browser prompt interaction is
+**NOT RUN**. The management API is test instrumentation in the isolated profile,
+not a runtime product dependency. A true headless keyboard experiment failed to
+dispatch the configured Chrome shortcut; Commands E2E therefore reports the
+actual registered-callback probe, not native shortcut PASS.
+
+Ten cold and ten warm injections per artifact use the same profile/path,
+1280×720 viewport and local `/article` fixture. Each cold sample measures native
+CSS insertion → the 48 ordered classic files → bootstrap/status round trip;
+the warm sample repeats those files on the same document and checks the same app
+object, unchanged module count, zero translation/provider calls, and page cleanup.
+The first measured medians were old cold 35.90 ms / warm 14.60 ms and WXT cold
+35.05 ms / warm 14.60 ms. Ranges and all 40 raw samples are recorded separately;
+there is no enforced speed threshold or speed-improvement claim.
+
+Detailed local evidence is under the session's `evidence/248-*`: unmodified
+inventories, source-lock rebuild and native release audit, same-ID snapshots,
+injection samples, each actual command/log, retained failed experiments and
+Playwright traces. Early failures include a shared-output trace collision,
+source-module imports unavailable after compilation, an absent preference button,
+reload with Developer mode disabled, and a new scripting context incorrectly used
+to inspect an old message binding. These runs are not final-head PASS evidence.
+Minimum Chrome 102, real public YouTube, other browsers, real paid Providers,
+store upload/publication, ReadingRecord persistence and React learning-center
+flows are **NOT RUN** in this stage. The final accepted head and current CI are
+tracked on the task/PR; implementation alone does not mark #248 audited or complete.
+
+Official references rechecked for this stage: [Playwright persistent extension
+contexts](https://playwright.dev/docs/chrome-extensions), [Chrome extension
+identity](https://developer.chrome.com/docs/extensions/reference/manifest/key),
+and [WXT migration](https://wxt.dev/guide/resources/migrate.html). The lock file,
+installed versions and actual artifact bytes remain the reproducibility contract.
