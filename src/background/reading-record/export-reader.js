@@ -6,8 +6,12 @@ import { bound, lower } from "./idb.js";
 export function safePrefix(text, rawBudget, escapedBudget) {
   let low = 0, high = text.length;
   while (low < high) {
-    const middle = Math.ceil((low + high) / 2), value = text.slice(0, middle);
-    if (byteLength(value) <= rawBudget && byteLength(JSON.stringify(value)) - 2 <= escapedBudget) low = middle; else high = middle - 1;
+    let middle = Math.ceil((low + high) / 2);
+    const paired = /[\uD800-\uDBFF]/u.test(text[middle - 1]) && /[\uDC00-\uDFFF]/u.test(text[middle] || "");
+    if (paired) middle++;
+    const value = text.slice(0, middle);
+    if (byteLength(value) <= rawBudget && byteLength(JSON.stringify(value)) - 2 <= escapedBudget) low = middle;
+    else high = paired ? middle - 2 : middle - 1;
   }
   if (low && /[\uD800-\uDBFF]/u.test(text[low - 1]) && /[\uDC00-\uDFFF]/u.test(text[low] || "")) low--;
   return text.slice(0, low);
