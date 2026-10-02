@@ -51,6 +51,7 @@ export function initializeLocalDictionaryImportUi({
   let selectedFiles = [];
   let report = null;
   let installedCandidates = [];
+  let installedRefreshSequence = 0;
   let installedStateKnown = { rich: false, packs: false };
   let preflightAbort = null;
   let preflightSequence = 0;
@@ -373,7 +374,11 @@ export function initializeLocalDictionaryImportUi({
   }
 
   async function refreshInstalledCandidates() {
+    const sequence = ++installedRefreshSequence;
+    installedStateKnown = { rich: false, packs: false };
+    updateImportEnabled();
     const installed = await readInstalledDictionaryState(runtime);
+    if (sequence !== installedRefreshSequence) return;
     installedCandidates = installed.candidates;
     installedStateKnown = installed.known;
     if (report) renderPreflight(report);
@@ -398,6 +403,7 @@ export function initializeLocalDictionaryImportUi({
   }
 
   function dispose() {
+    installedRefreshSequence++;
     preflightAbort?.abort();
     activeImport?.dispose?.();
     richController.dispose();

@@ -72,7 +72,7 @@ export function createTflexLocalImportController({
       });
       const cancelled = Boolean(response?.cancelled);
       if (cancelled) current.controller.abort();
-      return { cancelled, phase: cancelled ? "commit" : "commitpoint" };
+      return { cancelled, phase: cancelled ? "commit" : String(response?.phase || "") };
     }
     current.controller.abort();
     return { cancelled: true, phase: current.phase };

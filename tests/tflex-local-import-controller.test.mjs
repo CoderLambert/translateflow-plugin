@@ -58,6 +58,7 @@ test("TFLex local UI controller aborts bounded staging and cleans its quarantine
 
 test("TFLex late cancel is rejected after the background commit point and import still succeeds", async () => {
   const quarantine = memoryQuarantine();
+  let cancelPhase = "";
   let releaseCommit;
   let commitStartedResolve;
   const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
@@ -68,7 +69,7 @@ test("TFLex late cancel is rejected after the background commit point and import
         return new Promise((resolve) => { releaseCommit = resolve; });
       }
       if (message.type === BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL) {
-        return { ok: true, cancelled: false };
+        return { ok: true, cancelled: false, phase: cancelPhase };
       }
       throw new Error("unexpected message");
     }
@@ -80,7 +81,10 @@ test("TFLex late cancel is rejected after the background commit point and import
   });
   const importing = controller.importDictionary({ files: files() });
   await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "" });
+  cancelPhase = "commitpoint";
   assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "commitpoint" });
+  controller.dispose(); // A closed view cannot undo a successful backend commit.
   releaseCommit({ ok: true, status: "imported" });
   const result = await importing;
   assert.equal(result.commit.status, "imported");

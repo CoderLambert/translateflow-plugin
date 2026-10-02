@@ -117,7 +117,7 @@ export function createMdictImportController({
           "MDict dictionary activation failed."
         );
       }
-      assertCurrent(current);
+      current.phase = "done";
       emitProgress(onProgress, requestId, "done", {
         packId: ready.packId,
         packVersion: ready.packVersion,
@@ -133,6 +133,7 @@ export function createMdictImportController({
   async function cancel({ hard = false } = {}) {
     const current = active;
     if (!current) return { cancelled: false, phase: "" };
+    if (current.phase === "done") return { cancelled: false, phase: "done" };
     if (current.phase === "commit") {
       const response = await runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_PACK_CANCEL,
@@ -142,7 +143,7 @@ export function createMdictImportController({
       if (cancelled) current.cancelRequested = true;
       return {
         cancelled,
-        phase: cancelled ? "commit" : "commitpoint"
+        phase: cancelled ? "commit" : String(response?.phase || "")
       };
     }
 

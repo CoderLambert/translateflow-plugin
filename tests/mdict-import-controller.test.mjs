@@ -119,6 +119,7 @@ test("MDict commit cancellation is surfaced as AbortError when background cancel
 });
 
 test("MDict late cancel is rejected at commit point and does not turn a committed import into AbortError", async () => {
+  let cancelPhase = "";
   let releaseCommit;
   let commitStartedResolve;
   const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
@@ -130,7 +131,7 @@ test("MDict late cancel is rejected at commit point and does not turn a committe
       return new Promise((resolve) => { releaseCommit = resolve; });
     }
     if (message.type === "DICTIONARY_PACK_CANCEL") {
-      return { ok: true, cancelled: false };
+      return { ok: true, cancelled: false, phase: cancelPhase };
     }
     throw new Error("unexpected message");
   };
@@ -149,7 +150,10 @@ test("MDict late cancel is rejected at commit point and does not turn a committe
     metrics: { inputBytes: 7, outputBytes: 12 }
   });
   await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "" });
+  cancelPhase = "commitpoint";
   assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "commitpoint" });
+  controller.dispose(); // A closed view cannot undo a successful backend commit.
   releaseCommit({ ok: true, status: "imported" });
   const result = await importing;
   assert.equal(result.commit.status, "imported");

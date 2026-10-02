@@ -2,14 +2,14 @@ import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
 export async function readInstalledDictionaryState(runtime) {
   const [richResult, packResult] = await Promise.allSettled([
-    runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST }),
-    runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS })
+    Promise.resolve().then(() => runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })),
+    Promise.resolve().then(() => runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }))
   ]);
   const candidates = [];
   let rich = false;
   let packs = false;
 
-  if (richResult.status === "fulfilled" && Array.isArray(richResult.value?.dictionaries)) {
+  if (richResult.status === "fulfilled" && richResult.value?.ok !== false && Array.isArray(richResult.value?.dictionaries)) {
     rich = true;
     for (const dictionary of richResult.value.dictionaries) {
       if (!dictionary?.title) continue;
@@ -25,7 +25,7 @@ export async function readInstalledDictionaryState(runtime) {
     }
   }
 
-  const packState = packResult.status === "fulfilled" ? packResult.value?.state?.packs : null;
+  const packState = packResult.status === "fulfilled" && packResult.value?.ok !== false ? packResult.value?.state?.packs : null;
   if (packState && typeof packState === "object" && !Array.isArray(packState)) {
     packs = true;
     for (const [packId, entry] of Object.entries(packState)) {

@@ -133,7 +133,7 @@ export function createStarDictImportController({
           "StarDict dictionary activation failed."
         );
       }
-      assertCurrent(current);
+      current.phase = "done";
 
       emitProgress(
         onProgress,
@@ -168,6 +168,7 @@ export function createStarDictImportController({
       };
     }
 
+    if (current.phase === "done") return { cancelled: false, phase: "done" };
     if (current.phase === "commit") {
       const response = await runtime.sendMessage({
         type:
@@ -178,7 +179,7 @@ export function createStarDictImportController({
       if (cancelled) current.cancelRequested = true;
       return {
         cancelled,
-        phase: cancelled ? "commit" : "commitpoint"
+        phase: cancelled ? "commit" : String(response?.phase || "")
       };
     }
 

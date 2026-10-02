@@ -59,3 +59,16 @@ test("installed-state refresh preserves the healthy source and fails closed only
   assert.equal(isInstalledStateKnownForFamily("stardict", state.known), true);
   assert.equal(isInstalledStateKnownForFamily("tflex", state.known), true);
 });
+
+test("pack-state failure retains verified rich candidates and does not call them an empty installed set", async () => {
+  const state = await readInstalledDictionaryState({
+    async sendMessage({ type }) {
+      return type === "RICH_MDICT_LIST" ? { ok: true, dictionaries: [{ id: "rich-one", title: "Synthetic rich", fileName: "fixture.mdx" }] }
+        : { ok: false, state: { packs: {} } };
+    }
+  });
+  assert.deepEqual(state.known, { rich: true, packs: false });
+  assert.equal(state.candidates[0].packId, "rich-one");
+  assert.equal(isInstalledStateKnownForFamily("mdict-rich", state.known), true);
+  assert.equal(isInstalledStateKnownForFamily("tflex", state.known), false);
+});

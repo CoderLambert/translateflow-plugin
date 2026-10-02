@@ -308,6 +308,7 @@ test("StarDict commit cancellation is surfaced as AbortError when background can
 });
 
 test("StarDict late cancel is rejected at commit point and import completes normally", async () => {
+  let cancelPhase = "";
   let releaseCommit;
   let commitStartedResolve;
   const commitStarted = new Promise((resolve) => { commitStartedResolve = resolve; });
@@ -319,7 +320,7 @@ test("StarDict late cancel is rejected at commit point and import completes norm
       return new Promise((resolve) => { releaseCommit = resolve; });
     }
     if (message.type === "DICTIONARY_PACK_CANCEL") {
-      return { ok: true, cancelled: false };
+      return { ok: true, cancelled: false, phase: cancelPhase };
     }
     throw new Error("unexpected message");
   };
@@ -354,7 +355,10 @@ test("StarDict late cancel is rejected at commit point and import completes norm
     fingerprint: "sha256:" + "d".repeat(64)
   });
   await commitStarted;
+  assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "" });
+  cancelPhase = "commitpoint";
   assert.deepEqual(await controller.cancel(), { cancelled: false, phase: "commitpoint" });
+  controller.dispose(); // A closed view cannot undo a successful backend commit.
   releaseCommit({ ok: true, status: "imported" });
   const result = await importing;
   assert.equal(result.commit.status, "imported");
