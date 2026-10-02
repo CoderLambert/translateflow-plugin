@@ -1,0 +1,2 @@
+# Keep the independently reviewed MAIN source bytes stable across Git checkouts.
+/src/content/subtitles/youtube-main-bridge.js text eol=lf
