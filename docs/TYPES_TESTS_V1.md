@@ -64,3 +64,19 @@ Rollback is a normal reviewed revert of this tooling slice: remove the new confi
 - [TypeScript gradual JS migration](https://www.typescriptlang.org/docs/handbook/migrating-from-javascript.html): retain JS with real JSDoc/type boundaries.
 - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/): assert interactions through user-visible controls.
 - Registry engine/peer checks used exact-version `npm view` for the versions above; the checked metadata is summarized in `verification.json`.
+# TypeScript assertion follow-up
+
+Independent review of `ae6fd95` found that a legal angle-bracket type assertion
+could hide a global API reference from the existing scoped alias inspector.
+Code commit `83fb8dec185ee220ca3fbb656fa21f404347e7a3` adds that transparent
+wrapper to the same unwrap path, with two actual CLI regression cases. It does
+not widen API owners or change production code, dependencies or permissions.
+
+At that clean code head, `npm run validate` passed: 792 Node tests, strict
+typecheck with `skipLibCheck:false`, three Vitest tests and the legacy build.
+An actual WXT build/audit passed: all 143 file paths, sizes and SHA256 equal the
+previous browser-tested artifact (`a1efd882ce51597284f08b1b7fef4edda425354d31ee8f549098e22647622453`).
+The browser was not rerun for this development-checker-only change. Prior
+CHANGES REQUESTED results and full generated-environment TS2430 remain
+recorded; this follow-up does not turn those results into PASS. Independent
+final-head review and CI are required before merge.
