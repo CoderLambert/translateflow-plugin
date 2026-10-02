@@ -25,7 +25,7 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     const active = [...sessions.values()].filter((item) => ["starting", "active"].includes(item.state));
     if (active.length >= L.exportsGlobal || active.filter((item) => item.ownerKey === context.access.ownerKey).length >= L.exportsPerOwner || sessions.size >= L.operationsGlobal) fail(E.CAPACITY, "exports");
     const exportId = randomId(), expiresAt = now() + L.exportTtlMs;
-    const session = { exportId, expiresAt, ownerKey: context.access.ownerKey, navigationGeneration: context.access.navigationGeneration,
+    const session = { exportId, expiresAt, ownerKey: context.access.ownerKey, tabId: context.access.tabId, navigationGeneration: context.access.navigationGeneration,
       state: "starting", nextCursor: randomId(), sequence: 0, position: null, lastCursor: null, lastChunk: null, pending: null };
     sessions.set(exportId, session); // Reserve before awaiting: parallel starts cannot exceed caps.
     try {
@@ -40,9 +40,11 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     const { request, access, assertCurrent } = context, session = get(request.exportId, access);
     assertLive(session, assertCurrent);
     if (request.cursor === session.lastCursor) {
+      const chunk = session.lastChunk;
       await invoke("checkExport", { ...context, exportId: session.exportId, exportRevision: session.exportRevision });
       assertLive(session, assertCurrent);
-      return session.lastChunk;
+      if (request.cursor !== session.lastCursor || session.lastChunk !== chunk) fail(E.INTERRUPTED, "export.retry");
+      return chunk;
     }
     if (request.cursor !== session.nextCursor) fail(E.INTERRUPTED, "export.cursor");
     if (session.pending) {
@@ -101,6 +103,6 @@ export function createExportRegistry({ repository, now = Date.now, randomId = ()
     return { exportId: session.exportId, state: "cancelled" };
   }
   return { start, next, finish, cancel,
-    revoke() { for (const session of sessions.values()) if (session.state !== "finished") { session.state = "interrupted"; session.lastChunk = null; } },
+    revoke(predicate = () => true) { for (const session of sessions.values()) if (predicate(session) && session.state !== "finished") { session.state = "interrupted"; session.lastChunk = null; } },
     get size() { prune(); return sessions.size; } };
 }

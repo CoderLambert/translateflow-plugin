@@ -118,7 +118,7 @@ export function createReadingService({ browser, repository = null, collector, no
     }
   }
   return { handle, accessControl, operations, exports,
-    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke((entry) => entry.access.tabId === tabId); exports.revoke(); },
-    invalidateTab(tabId) { accessControl.invalidateTab(tabId); operations.revoke((entry) => entry.access.tabId === tabId); exports.revoke(); },
+    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke((entry) => entry.access.tabId === tabId); exports.revoke((session) => session.tabId === tabId); },
+    invalidateTab(tabId) { accessControl.invalidateTab(tabId); operations.revoke((entry) => entry.access.tabId === tabId); exports.revoke((session) => session.tabId === tabId); },
     revoke() { accessControl.invalidateAll(); operations.revoke(); exports.revoke(); } };
 }
