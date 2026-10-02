@@ -187,7 +187,10 @@ export function createLocalTflexImportTransaction({
           store,
           cryptoProvider
         });
+      assertActive(controller.signal);
       if (alreadyImported) {
+        // A healthy idempotent result is final through quarantine cleanup.
+        controller.localImportPhase = "commitpoint";
         return alreadyImported;
       }
       assertNoFallbackCollision(

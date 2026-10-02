@@ -984,3 +984,52 @@ test("commitpoint and request/token ownership survive final quarantine cleanup",
   assert.deepEqual(env.manager.cancel("final-cleanup"), { cancelled: false, phase: "" });
   assert.equal(env.quarantine.has(token), false);
 });
+
+test("idempotent success is non-cancellable while final quarantine cleanup is pending", async () => {
+  const env = createEnvironment();
+  const files = await makePack({ packId: "local-idempotent-cleanup", packVersion: "v1", translation: "合成" });
+  await env.manager.importLocalTflex({ files, requestId: "idempotent-base" });
+  const before = await env.stateStore.read();
+  const token = quarantineToken(205);
+  env.quarantine.stage(token, files);
+  const cleanup = deferred(), entered = deferred(), originalRemove = env.quarantine.remove;
+  env.quarantine.remove = async (value) => { entered.resolve(); await cleanup.promise; return originalRemove(value); };
+  const importing = env.manager.importLocalTflexFromQuarantine({ token, requestId: "idempotent-cleanup" });
+  await entered.promise;
+  try {
+    assert.deepEqual(env.manager.cancel("idempotent-cleanup"), { cancelled: false, phase: "commitpoint" });
+    await assert.rejects(env.manager.importLocalTflexFromQuarantine({ token, requestId: "idempotent-contender" }), (error) => error.code === PACK_ERROR_CODES.BUSY);
+    assert.deepEqual(await env.stateStore.read(), before);
+  } finally {
+    cleanup.resolve();
+    await importing;
+  }
+  assert.equal((await importing).status, "already-imported");
+  assert.deepEqual(env.manager.cancel("idempotent-cleanup"), { cancelled: false, phase: "" });
+  assert.equal(env.quarantine.has(token), false);
+});
+
+test("cancellation before idempotent success is resolved cannot return already-imported", async () => {
+  const env = createEnvironment();
+  const files = await makePack({ packId: "local-idempotent-cancel", packVersion: "v1", translation: "合成" });
+  await env.manager.importLocalTflex({ files, requestId: "idempotent-base" });
+  const before = await env.stateStore.read();
+  const token = quarantineToken(206);
+  env.quarantine.stage(token, files);
+  const health = deferred(), entered = deferred(), originalRead = env.store.readFile;
+  let entryReads = 0;
+  env.store.readFile = async (...args) => {
+    // Recovery checks the active version first; block its second health inspection.
+    if (args[2] === "entries.dat" && ++entryReads === 2) { entered.resolve(); await health.promise; }
+    return originalRead(...args);
+  };
+  const importing = env.manager.importLocalTflexFromQuarantine({ token, requestId: "idempotent-cancel" });
+  await entered.promise;
+  assert.deepEqual(env.manager.cancel("idempotent-cancel"), { cancelled: true });
+  health.resolve();
+  await assert.rejects(importing, (error) => error.code === PACK_ERROR_CODES.CANCELLED);
+  assert.deepEqual(await env.stateStore.read(), before);
+  assert.equal(await env.store.hasVersion("local-idempotent-cancel", "v1"), true);
+  assert.equal(env.quarantine.has(token), false);
+  assert.deepEqual(env.manager.cancel("idempotent-cancel"), { cancelled: false, phase: "" });
+});
