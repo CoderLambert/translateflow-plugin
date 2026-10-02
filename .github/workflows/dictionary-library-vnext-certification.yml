@@ -221,6 +221,14 @@ jobs:
         if: steps.ecosystem-scope.outputs.ready != 'true'
         run: echo "Dictionary Ecosystem v2 final certification is not yet ready; the frozen scope still has a required pending slice. This workflow run performs its vNext sub-certification only."
 
+      - name: Resolve the frozen certification base from the trusted event base
+        id: ecosystem-base
+        if: steps.ecosystem-scope.outputs.ready == 'true'
+        run: node scripts/resolve-ecosystem-certification-base.mjs
+        env:
+          ECOSYSTEM_EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          ECOSYSTEM_MANUAL_BASE_SHA: ${{ inputs.base_sha }}
+
       - name: Certify frozen Dictionary Ecosystem v2 release scope and evidence
         if: steps.ecosystem-scope.outputs.ready == 'true'
         run: >-
@@ -231,7 +239,7 @@ jobs:
           --base-sha "$DICTIONARY_ECOSYSTEM_V2_BASE_SHA"
           --out "$RUNNER_TEMP/translateflow-vnext/evidence-published/dictionary-ecosystem-v2-certification.json"
         env:
-          DICTIONARY_ECOSYSTEM_V2_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base_sha }}
+          DICTIONARY_ECOSYSTEM_V2_BASE_SHA: ${{ steps.ecosystem-base.outputs.base_sha }}
 
       - name: Upload sanitized dictionary certification summaries
         if: always()
