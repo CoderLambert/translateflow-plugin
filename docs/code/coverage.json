@@ -1,0 +1,4516 @@
+{
+  "schemaVersion": 1,
+  "sourceRef": "main",
+  "sourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
+  "sourceTree": "9221813bd1e42fbf42ec2f2600b25428ebba751a",
+  "inventoryMethod": "Git Trees recursive=1; truncated=false; every type=blob entry, no file excluded",
+  "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/d5e308a709c008acf6b277d466d020f13025bdca?recursive=1",
+  "denominator": 636,
+  "counts": {
+    "已解释": 11,
+    "待解释": 625,
+    "待复核": 0,
+    "有理由排除": 0
+  },
+  "statusRules": "部分解释仍计入待解释；目录归类不等于正文覆盖；新增导读文档不属于所读main的636文件分母；静态走读不是测试通过；各记录继承顶层sourceCommit，sourceBlob逐项独立；未解释功能分组仅按目录归类",
+  "runtimeVerification": "NOT_RUN",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "sourceBlob": "1014ba78880c899e842b397cb89a878be4671f7d",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".gitattributes",
+      "sourceBlob": "a6b81d23059d41d892a8c71622a2f31a15b9b094",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/agent-task.md",
+      "sourceBlob": "fc5efa631ecbf323aee5cfdb456b7f3e725aae1c",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "sourceBlob": "f731adcad1b5e0c08d7f42931c5ac33094f410ad",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/dictionary-library-vnext-certification.yml",
+      "sourceBlob": "6d94e9931a385a1fb2f3591589ae0d536b895bfe",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/e2e.yml",
+      "sourceBlob": "6cdf147d41c8ee539136b628fc07865299d2c1f7",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/freedict-source-audit.yml",
+      "sourceBlob": "96b3a49a0d76c8ed48ef6472eb15c1bbbb6b5666",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/lexicon-release.yml",
+      "sourceBlob": "11074927b3d871ac4441d853a9dedab508bc177d",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/mdd-resources.yml",
+      "sourceBlob": "e4a5f7df74a47980bf6ed6bca927f205aeb7a4a8",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/quality.yml",
+      "sourceBlob": "6e363e3a685ffc7e439bc802ec6ec45826e1e2c2",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/rich-lookup-cancellation.yml",
+      "sourceBlob": "f4aab3f9c7189f1d7d9b47b28a9fce25840e4822",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/rich-mdict-compatibility.yml",
+      "sourceBlob": "93c3c980484bf296d4b65b081d1d05c953b60e30",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/wikimedia-wiktionary-source-lock.yml",
+      "sourceBlob": "b1dbb83ba671ed2cb7eaac6ef63a7833c174a1f9",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/wiktextract-ingest.yml",
+      "sourceBlob": "58d20aa89d3c02b6604d9fc5cf2929e67ce8e42b",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".github/workflows/wiktextract-rich-poc.yml",
+      "sourceBlob": "a0dc1dd959536ffcbb66600b581f81cb57ec00e0",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": ".gitignore",
+      "sourceBlob": "25fe4f77588d42999094cd82a4e4a5e23b48e9b9",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "AGENTS.md",
+      "sourceBlob": "cb3bffbdbc7bae9c2f84262dfdf9c6951d697b9f",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sourceBlob": "7b73264bbbc7a1856786583d0f78aea0c229759d",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "README.md",
+      "sourceBlob": "133e9888a60669e7c77a350b703776dbc3249ffc",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "_locales/en/messages.json",
+      "sourceBlob": "75a00966544703821308351cbe1c1e64098fadd8",
+      "function": "界面本地化",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "_locales/zh_CN/messages.json",
+      "sourceBlob": "949ed62dd68011ac2bf2a935cddbca82627389c9",
+      "function": "界面本地化",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "background.js",
+      "sourceBlob": "eb71470c3880b50ba91de15e2348169d4741c86d",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-background-entry",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "content.css",
+      "sourceBlob": "f26baa88c4195f30478796d02c553191a6c940c5",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "content.js",
+      "sourceBlob": "a864617556d4ea683b6a9d8a09ac142eff7e0ce6",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-content-entry",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "sourceBlob": "f36588d3596cb40595812463a940735a87f6f2d5",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/BUNDLED_LEXICON_POLICY.md",
+      "sourceBlob": "dae973b0ae77650547703ac845e2c676dd537811",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/CHROME_COMMANDS.md",
+      "sourceBlob": "bc1b22c333d0d58cdd0bac37646fcd56bd4798ac",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/DICTIONARY_ECOSYSTEM_V2_ACCEPTANCE_EVIDENCE.md",
+      "sourceBlob": "7c50b61f3045e9c91b5bd351c94ff8b7088540a5",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE.json",
+      "sourceBlob": "022b3c99919c2786f8805b63518b7e7480fe1ab7",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/DICTIONARY_ECOSYSTEM_V2_RELEASE_SCOPE.json",
+      "sourceBlob": "e8be177f7e9f02fab41d412996367d098a3a6e95",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md",
+      "sourceBlob": "f4926c688c718da893125a039cbc908b130b17f5",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/DICTIONARY_SOURCE_FREEZE.md",
+      "sourceBlob": "e06af556e586e1618471bf99e0062ec3da20f8cf",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/DICTIONARY_SOURCE_QUALIFICATION_2026-10-01.md",
+      "sourceBlob": "ed3dee7be8305b54fa5214b3c9c4f4a818692223",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/E2E.md",
+      "sourceBlob": "b12fa18671e47d91de7ace5ed300a9ba389b3553",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/LEXICAL_DATA_BOUNDARIES.md",
+      "sourceBlob": "7da2bf0dac3ebe127547b6c965d9963cb1f8fc34",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/LEXICAL_GATEWAY.md",
+      "sourceBlob": "790748b4d065815684ec718e161d0eaf81492de6",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/LEXICAL_RANKING.md",
+      "sourceBlob": "ed950615d22079e47c33f377f55fe0d023e54991",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/LOCAL_DICTIONARY_IMPORT_V2.md",
+      "sourceBlob": "345321ecdb0f59b69a57267169ab4a0aeec8a640",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/LOCAL_DICTIONARY_PREFLIGHT.md",
+      "sourceBlob": "037f61cf42395e34d76cf11ed65809c335a6e8e2",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/MDICT_IMPORT_POC.md",
+      "sourceBlob": "7521e0fa6260d3f55c4647f62c4e19ecc367d8f6",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/MDICT_REAL_WORLD_COMPATIBILITY.md",
+      "sourceBlob": "ddc72c207fb973cbe0248bbd5a10959e6ae11ea3",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/OFFLINE_DICTIONARY_BETA_CERTIFICATION.md",
+      "sourceBlob": "9e1a1caba905c195c6200d626e740f0c03cf271c",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/PERFORMANCE.md",
+      "sourceBlob": "d2ace7d5d03f3a73921f2a445613ac1d3a3389dc",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/PLATFORM_UPGRADE_V1.md",
+      "sourceBlob": "89d423f3f2e15ef521c9898e3c00fcd8d4774564",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/PROVIDERS.md",
+      "sourceBlob": "e52d72e6d95c56d8c9e57fc496c700e12c8e9e91",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/QUICK_CONTROL.md",
+      "sourceBlob": "3fd09e79d420e3629fca6d8c8d2fda5b9e25829b",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/READING_APPEARANCE.md",
+      "sourceBlob": "1abf87f20925494310d3fabe6bc4f2ad38c73ed6",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/READING_LOOP_V1.md",
+      "sourceBlob": "78ecc28f09f03b03a2892df4f3610b5b8f41b8b5",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/READING_STORAGE_V1.md",
+      "sourceBlob": "67de02421aa9923aa78d39a14db3ded8e420da39",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/RELEASE_V0.8.md",
+      "sourceBlob": "d2dc5ce509897e38d75ba7e329eb1ebc73ac518a",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/RICH_MDD_INTEROP_EVIDENCE.md",
+      "sourceBlob": "12536c3294b5dc96f8b61fbb048c92c8a76301b7",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/RICH_MDICT_EVIDENCE.md",
+      "sourceBlob": "c38ee060b1a73d367968b944d1c313bfb07ea07a",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/SELECTION_V2_DESIGN_FREEZE.md",
+      "sourceBlob": "30f0927aeb211d67a78af96ad33936120b2eeb99",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/STARDICT_IMPORT_POC.md",
+      "sourceBlob": "717324e258a3283468a21e6586ada19bb03b6838",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/SUBTITLE_PIPELINE.md",
+      "sourceBlob": "5c740fb05b5ef8b7461a423c63f23913b3c59175",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/TFLEX_BUILD.md",
+      "sourceBlob": "4f8bb44103f2b7670ac2cee426dad5dea132fb62",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/TFLEX_TECH_BUILD.md",
+      "sourceBlob": "7e7d455bda5bcf03adcf4db8feef8495211802cf",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/TFLEX_V1.md",
+      "sourceBlob": "b1f3d8010adc0be6a826e74325f9f0c2cbdf31d5",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/TYPES_TESTS_V1.md",
+      "sourceBlob": "641e2457cb73b37c13d09997e21de6d4dcd71412",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/UI_FOUNDATION.md",
+      "sourceBlob": "cf282b3b6e317bda9c58c96576f8e7469e022cc8",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/UI_LOCALE.md",
+      "sourceBlob": "6f56c05a3ccaf9b48e616e6b10c65bde0ca6ef0d",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/WIKTIONARY_RICH_POC.md",
+      "sourceBlob": "7faf5abf00028c83984c8b7dbfad93c8dd712588",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/WXT_COMPAT_V1.md",
+      "sourceBlob": "1d6982a4f550ac02ae95effc903515449c294aa1",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/YOUTUBE_SUBTITLES.md",
+      "sourceBlob": "246e0c392ce6a282a2d5fa8eb67afb9750689199",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/RESULTS.md",
+      "sourceBlob": "552523b76c77ed49001d8bf9c8ef586e0f19e871",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/baseline-inventory.json",
+      "sourceBlob": "c18fd7856cd5ace71912dacbae73f2f1b7999069",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/browser-report.json",
+      "sourceBlob": "e54303e9fa7963e940bf2658b9f0c1ed88caddd9",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/browser-smoke.mjs",
+      "sourceBlob": "c81238aa5d7d2013def7e2f43339be8b4c95a2e1",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/experiment-lock.json",
+      "sourceBlob": "4950c6415a765aca94a0bed558dd56bb43eafffe",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/experiment-report.json",
+      "sourceBlob": "49bf2293ed3f44f13f8f0d8938c44a8fd0ee5f9e",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/final-validation.json",
+      "sourceBlob": "d2914ad2cb2a5eb9acd45c579c80b66645943c4f",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/prepare-experiment.mjs",
+      "sourceBlob": "e8f69e994126398f00446ade8c08b3acdb56d1ae",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/platform-upgrade-v1/toolchain.json",
+      "sourceBlob": "66222887c61cec1da7add6ca4b50e7abe43d780e",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/reading-access-v1/README.md",
+      "sourceBlob": "976bfde64682afe9e2f4a328eb951eb24e09a550",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/reading-source-position-v1/inline-review-repair.json",
+      "sourceBlob": "4b5b947545e8ae114558b1686b6bd3f82e37ab05",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/reading-source-position-v1/shared-slice-repair.json",
+      "sourceBlob": "fa20d937603316a8dde2058920d349c6db823aa8",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/artifact-fingerprint.json",
+      "sourceBlob": "0a94e8f4604f16dcbaf70afc1ef6636e31b52719",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/asset-map.json",
+      "sourceBlob": "1b754b0baaa4f5befadbb809027d0e397999f60f",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/browser-smoke.json",
+      "sourceBlob": "76986569099266b9b3ee499a6dc90fb1bde36ddb",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/compiled-closures.json",
+      "sourceBlob": "f7b634838654c7141db8c73c312167ef69194ba5",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/computed-api-repair.json",
+      "sourceBlob": "ab23e98902c5933adcc364e05b8391596fcf48c7",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/full-environment-failure.txt",
+      "sourceBlob": "d2832e2aa38195d66be5c379d90d7724f72cf100",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/full-environment.tsconfig.json",
+      "sourceBlob": "79f3aa2f1940f5d5288987912585bb37f5baa4b4",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/production-audit.json",
+      "sourceBlob": "33c2c91ae457b133f54e913a9275dd7c42a5b71e",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/runner-discovery.json",
+      "sourceBlob": "37af4ad3913d187d4b175a0f4be7916f6292fbc7",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/types-tests-v1/verification.json",
+      "sourceBlob": "c348485ab2362228b260c02cd8fc294a06a5d5f8",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wiktextract-ingest.md",
+      "sourceBlob": "252647eb04fb78ccdf38a776e859ff00fd856fd0",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wxt-compat-v1/artifact-fingerprint.json",
+      "sourceBlob": "e3323a2c61f9b79713c84c10262ebe66f923f889",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wxt-compat-v1/asset-map.json",
+      "sourceBlob": "1b754b0baaa4f5befadbb809027d0e397999f60f",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wxt-compat-v1/browser-smoke.json",
+      "sourceBlob": "c0f9ff90a62f9b19ed3e1ca60dbfb211af7dd22b",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wxt-compat-v1/compiled-closures.json",
+      "sourceBlob": "4b6b91a4af5909b1d3a48c0012762940aa49d49b",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wxt-compat-v1/production-audit.json",
+      "sourceBlob": "33c2c91ae457b133f54e913a9275dd7c42a5b71e",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/wxt-compat-v1/verification.json",
+      "sourceBlob": "cc816587cffa9b6b5a10d5b4d887b00e5cfe2927",
+      "function": "现有规范与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/commands.spec.mjs",
+      "sourceBlob": "b1ac2f617dec82ba579d0ad0f779f9ef1203823d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/curated-ecdict-mdx-product.spec.mjs",
+      "sourceBlob": "aee14678fc4f961d8dd86135cc7488b4feda6cff",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/curated-ecdict-product.spec.mjs",
+      "sourceBlob": "e9ad53babec65a0b8dd882a00380bfa829d911b7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/dark-mode.spec.mjs",
+      "sourceBlob": "6aa0429e97293c9e90d704aeb0085fbb2c192477",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/design-freeze-poc.spec.mjs",
+      "sourceBlob": "b064486ba39562cc0da95faa29e3b56269444fbb",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/design-freeze-selection-slice.spec.mjs",
+      "sourceBlob": "2eb940b2f3568c31804b6e03e91b54cf91ca8fa2",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/dictionary-ecosystem-v2-release.spec.mjs",
+      "sourceBlob": "fb80fc0680f5759ed307e9cd5ba8b5051c24b5db",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/dictionary-library-v2-product.spec.mjs",
+      "sourceBlob": "c04af80f1c655e11b5a1f2be767f7db2e04a32bc",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/dictionary-library-vnext-product.spec.mjs",
+      "sourceBlob": "0da2df66f35cf2141000eab4f18e157c7bd00870",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/local-dictionary-import-v2-product.spec.mjs",
+      "sourceBlob": "f503943dac8f6da29191269078b2ee7c4483ed59",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/local-dictionary-preflight-real-ecdict.spec.mjs",
+      "sourceBlob": "dd55400e580e3e8b8308da58ba7dadb870b733b0",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/local-import-cancellation-regression.spec.mjs",
+      "sourceBlob": "5ed5600d2349b5f2814b19c6512b11b161fea25e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/mdd-resources.spec.mjs",
+      "sourceBlob": "45cee23c6ea982fdb08c96803ada44d4200e608c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/mdict-import-product.spec.mjs",
+      "sourceBlob": "25828bca0bd613b66c9d2e82590177163449bcaf",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/multi-dictionary-viewer.spec.mjs",
+      "sourceBlob": "c750d37644864545ad3627042d4cfc99bb0ac0d3",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/reading-access.spec.mjs",
+      "sourceBlob": "9df5bf5d7e9d4a7a8a2f566a685b2a0dd1301986",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/reading-source-position.spec.mjs",
+      "sourceBlob": "afaa3a22db9e49e314b94e41c5376781fe7a84c4",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/reading-storage-regressions.mjs",
+      "sourceBlob": "d633b85234488c741f868fda8211b34a6bc3221b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/reading-storage.spec.mjs",
+      "sourceBlob": "ec3e37be2a2a3533da23dde2d688e0f892d93ab9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/release-gate.spec.mjs",
+      "sourceBlob": "ca1d72fe3d11ec86f285649c65438a20009dd03b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/release-lexicon.spec.mjs",
+      "sourceBlob": "9fa77c58903321254e3f9b68274375f9a8542137",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/rich-mdict-product.spec.mjs",
+      "sourceBlob": "0d3a71cc95e0071f9db3975a50aeb0297cb9b9f2",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/rich-mdict-real-corpus.spec.mjs",
+      "sourceBlob": "de540466c4884651db1834b4580a568b70728e37",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/rich-viewer-security.spec.mjs",
+      "sourceBlob": "8ca3ff546886be19422f77abde289bdd8b3e661f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/selection-lexicon-corrupt.spec.mjs",
+      "sourceBlob": "b6a0985eae5eeed7b6c162a323ae041e72e5957f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/selection-lexicon-error.spec.mjs",
+      "sourceBlob": "a5a0ef46fb0f488040179297e995e17f57d7f296",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/selection-lexicon-incompatible.spec.mjs",
+      "sourceBlob": "45885ee1e55f113d5559c789ca245bf8bf96070d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/selection-release-gate.spec.mjs",
+      "sourceBlob": "3966136777983e2a6969a0e703392d35caa6e820",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "sourceBlob": "5f130d27fac3816e4e1770cc4024505495c0b1c9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/settings-ia.spec.mjs",
+      "sourceBlob": "41823838e5887604779d4c1f3b112a790211d0ae",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/stardict-import-product.spec.mjs",
+      "sourceBlob": "3d3503986bdd10710c970cc9fa4a330aacccd1db",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/stardict-import-worker.spec.mjs",
+      "sourceBlob": "bd9261e50fb63c63a5d4ee437255964897eac7e7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/subtitle-pipeline.spec.mjs",
+      "sourceBlob": "bef80d072bb23d7c67492859ae5fd550630f9734",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/subtitles.spec.mjs",
+      "sourceBlob": "544fa571fed4ab081c637a6b6cdef3cb0ab292dc",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/support/extension-fixture.mjs",
+      "sourceBlob": "900b1a6c95c2b25e054e806ec559f3fedad54f98",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/support/mock-server.mjs",
+      "sourceBlob": "bf84a78bc8900fa470aa81f52a4b38e8f27cab58",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/translateflow.spec.mjs",
+      "sourceBlob": "72cff511e368604a997a45131f1af24cfd3e4618",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/ui-locale.spec.mjs",
+      "sourceBlob": "dd5c34f117488741be94fb440dc141ba17aaa37e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/ui-redesign.spec.mjs",
+      "sourceBlob": "3c633c7eedd002820bd566e3531e25a717b2b9b8",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "e2e/youtube-subtitles.spec.mjs",
+      "sourceBlob": "83392eea630cc1e003fbcdf224d600d25df0d5f9",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "entrypoints/background.ts",
+      "sourceBlob": "777465b8e2649ef708d622d82ed26748c6ec485f",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-wxt-background-entry",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "lexicon/README.md",
+      "sourceBlob": "0a0913a9b5e521746ab108a4194bfbe002dd339a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/build-evidence/ecdict-mdx-1.0.28-corpus-lock.json",
+      "sourceBlob": "b0ed5e55d343ebf23c41cf73d802db7202302f35",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/build-evidence/mdict-compatibility/ecdict-1.0.28.json",
+      "sourceBlob": "539ab6403a1d70a636aeb9088a81f85386d20811",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/build-evidence/mdict-compatibility/writemdict-synthetic-interop.json",
+      "sourceBlob": "0b6fd635b7402bd532bffec9148123605e85d616",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-compatibility.json",
+      "sourceBlob": "64b9509a1a1cbdd96fdc550ea41f067586d8da30",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json",
+      "sourceBlob": "3c9dac1e6b6d10abbf0a2bccbf87f3caf5b3f796",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/quality-baselines/selection-lexical-v1.json",
+      "sourceBlob": "7b4fe03500351bcf015b4d713544aebf5863231e",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/quality-decisions/dictionary-ecosystem-v2-source-qualification-2026-10-01.json",
+      "sourceBlob": "c264045857561e3e873bd851bd8c242ff67c95e8",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/quality-decisions/freedict-eng-zho-2025.11.23.json",
+      "sourceBlob": "d14e6ac649822b77028bb7047292ed51fff1fb63",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/quality-decisions/wikimedia-enwiktionary-20260901-rich.json",
+      "sourceBlob": "2b60e94611b5ce90cc9c1d52c0c6cca81b36b483",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-candidates/kaikki-enwiktionary-2026-09-25.json",
+      "sourceBlob": "9fe69c8a39a35e86127644fdad75176d5793e445",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json",
+      "sourceBlob": "838091c28d984cdc681035d6d9d6a14af84552da",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/cc-cedict-current-2026-10-01.json",
+      "sourceBlob": "3d71553d6384483e659ea5bb7789cda1d8e8ef4f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/core-semantic-pwn3-cow.json",
+      "sourceBlob": "dad4412ee1046f12c89d3391c5fab8752491a08a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/freedict-eng-zho.json",
+      "sourceBlob": "a1c0d746740145de719fc3c472805cd5be7c5b6a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/open-english-wordnet-2025-json.json",
+      "sourceBlob": "2e8e8895fb44f1057b7ebdd02c2d6a33a7afd454",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/technical-reviewed-terms.json",
+      "sourceBlob": "48af19d822fe5ebb2c270278064c65387ba26528",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/technical-wikidata.json",
+      "sourceBlob": "216ef66070b4715706455edbfcf1392a8a1cb293",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json",
+      "sourceBlob": "f328042de5984d2e030585f4a3ad5b65c5505d6a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/sources/reviewed-tech-terms.json",
+      "sourceBlob": "45ff78885fa85f090f256270700d3da763fccf90",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "lexicon/sources/wikidata-tech-entities.json",
+      "sourceBlob": "1440650b73b4d2e956ed702abc0cd3682f16287d",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "manifest.json",
+      "sourceBlob": "aabd087d6c9ddcafa21948840523d575cc2e632c",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-manifest",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "options.css",
+      "sourceBlob": "69e8cf9b22e196ccf9a2354536a634ec718251f0",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "options.html",
+      "sourceBlob": "1b0098e12b515f22a4a9495180c9589c41689af6",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "options.js",
+      "sourceBlob": "7cffc2509a010eda8fdb620c36392ac71f71393c",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "package-lock.json",
+      "sourceBlob": "1baaec0e0b645789c5c0912812df0dd7487b2e90",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "package.json",
+      "sourceBlob": "6e79b226dcac76028e60dd5dd8354fba43b7e972",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "playwright.config.mjs",
+      "sourceBlob": "c025e62d0c740f056b3f061eb0da00a17d310516",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "popup-appearance.js",
+      "sourceBlob": "9039b39a7f0d28eddec299589eb94d90419f4369",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "popup.css",
+      "sourceBlob": "57b092e7ee523e79701c519af32ce90697f9fd98",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "popup.html",
+      "sourceBlob": "bd455eb0e41e936ddf572ff1b128ac6d0b2d84f6",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "popup.js",
+      "sourceBlob": "b83544b190f2dedccc1d7472413ec9216b472e4f",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "scripts/audit-freedict-source.mjs",
+      "sourceBlob": "7f981772e3057356bceeb665e98a99f3ba73d2f1",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/audit-lexicon-sources.mjs",
+      "sourceBlob": "a7ab477b0c0e87fdc2a885684b5425cdb16261a1",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/audit-wikidata-tech-lock.mjs",
+      "sourceBlob": "aec572944dab2ebee0d683f6b514b76a883da438",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/audit-wikimedia-enwiktionary-source.mjs",
+      "sourceBlob": "86619b223c96a2eb45d53812b276fbcfcaa7b183",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/audit-wiktextract-projection-compatibility.mjs",
+      "sourceBlob": "8b7087adecb1c4560f7abbaf8533482cfaa49165",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/audit-wxt-extension.mjs",
+      "sourceBlob": "e2daa7a5480d136a891f8f72e612b3ec737b37c5",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/benchmark-lexical-quality.mjs",
+      "sourceBlob": "b249725c6419be0d27bc4c0bea505b65189a8f5b",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/benchmark-translation.mjs",
+      "sourceBlob": "478992fe7cf2d7c5ece5ace235c36aff94fef5b8",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/build-extension.mjs",
+      "sourceBlob": "0c6cf0f6f3ca35932c95bef4667319f939901d0c",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "scripts/build-release-lexicon.mjs",
+      "sourceBlob": "425124e0b08a2ccd6f98f23465073f43d21d9416",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/build-tflex-core.mjs",
+      "sourceBlob": "f6dca5b4be7502bf2dc3b95e20355986ab4a5636",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/build-tflex-freedict.mjs",
+      "sourceBlob": "977cf8300d388b9be08e332f590f72cb53dde226",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/build-tflex-mdict-import.mjs",
+      "sourceBlob": "77bf55b93f5b8d1bcbca36197f408f45466b410b",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/build-tflex-stardict-import.mjs",
+      "sourceBlob": "12c7d78dae073e4f192b1bba4920e33d494ae42f",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/build-tflex-technical.mjs",
+      "sourceBlob": "fa1611a511fd32ab4dc97350d6fc917d4cf12f46",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-dictionary-ecosystem-v2.mjs",
+      "sourceBlob": "d4547f5ef7771395f8028137b9942786c10ea754",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-freedict-pack.mjs",
+      "sourceBlob": "da8aa677b34f31e52dbaac14cb7dd62c515f6ec3",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-integrated-lexical-quality.mjs",
+      "sourceBlob": "7f4f95e46db2d893c669677334450c30550777e1",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-lexical-release.mjs",
+      "sourceBlob": "f770a75b156bf84d30dea0fa47edcf75c61928cc",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-mdd-interop.mjs",
+      "sourceBlob": "9c7d45d68ccb2551a616780efb6541c32c51d9bd",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-offline-dictionary-beta.mjs",
+      "sourceBlob": "224fb4150d219f5177157773037808f9885e9d89",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-rich-mdict-corpus.mjs",
+      "sourceBlob": "0512fc1c9b5f5bafc4b7c12d0030a66bef82183e",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/certify-vnext-dictionary-library.mjs",
+      "sourceBlob": "509384191162dc452a14e6ba20630825fe3996c6",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/check.mjs",
+      "sourceBlob": "b3c6f3538d4ab75d1cca49b5bbe9f65943d3da0c",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/evaluate-core-bootstrap.mjs",
+      "sourceBlob": "e1a023456b4552feed88dd14ef6a808717f8c9e9",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/evaluate-freedict-quality.mjs",
+      "sourceBlob": "4058b83d07d02c3f9011eae90285e58daec6ed93",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/evaluate-lexical-ranking.mjs",
+      "sourceBlob": "479e02733952fe03c83bfe9173a5d4bf91fd570d",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/generate-mdd-interop-fixture.py",
+      "sourceBlob": "538baa8aa7498ee09088cedc59ce42f4ac1549db",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/i18n-locales.mjs",
+      "sourceBlob": "f28c31e218d6933156620ee9579dba0b0c7816e3",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/inspect-mdict-compatibility.mjs",
+      "sourceBlob": "1bc1a1dc2ef1051c7694bde53dce74c174a1ebc2",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/lock-kaikki-source.mjs",
+      "sourceBlob": "12b710dae3b636e9600ecee0a0d21579bec95ae8",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/mdict-compatibility-capabilities.mjs",
+      "sourceBlob": "39c8b74f7fcbfc532ac0dc76a6641f9dea4a9e3e",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/measure-extension-footprint.mjs",
+      "sourceBlob": "74624138100dd34676c6ddacb78b33dd619caa11",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/measure-reading-contract.mjs",
+      "sourceBlob": "4ae3a28eec00bf884e56e6c92fcd9d5a961b21c6",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/measure-rich-lookup-cancellation-baseline.mjs",
+      "sourceBlob": "50b3ab3704eb2b8281afb3f956fd4690a84bfce3",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/measure-stardict-import-cost.mjs",
+      "sourceBlob": "43983c20f60feb65c476dbdf5569339ff1b6181d",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/project-kaikki-rich.mjs",
+      "sourceBlob": "90b4dd735d1695f681358ebab5f5acfbdce451fd",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/project-mdict-import.mjs",
+      "sourceBlob": "f8e14ade2fa905133ca64799a1cc1982be72d941",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/project-stardict-import.mjs",
+      "sourceBlob": "9a2813645bc3ffada6542793adb5dde1644cf179",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/resolve-ecosystem-certification-base.mjs",
+      "sourceBlob": "aad6326a297b22abdfbc4a61acf081b9b620f911",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/reviewed-tech-terms.mjs",
+      "sourceBlob": "b92468f0f76dd4eda503eb89f76f98a4c1339f42",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/run-pinned-wiktextract-ingest.py",
+      "sourceBlob": "a69176e505a88c52245dd1874ee60f08f1d1633e",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/setup-lexicon.mjs",
+      "sourceBlob": "6d99d45a3f4b31590d949fda4398c5f4bf2bc1c6",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/smoke-wxt-extension.mjs",
+      "sourceBlob": "6aae188836a20ec38d14c764f8dee4fc503e8e9f",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/source-api-boundaries.mjs",
+      "sourceBlob": "6f0e1b54998ebbe7f2e58dd60900acb787c85ca6",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/source-boundaries.mjs",
+      "sourceBlob": "4c64f60cdccbbfac5dbf3d49c36cac568cd64c2c",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wikimedia-enwiktionary-contract.mjs",
+      "sourceBlob": "1e576a8b6eb10ffaf3d079ddad1eba5de5ce9557",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wikimedia-enwiktionary-lock.mjs",
+      "sourceBlob": "1693672cd220e08cee73fab0b73d8b76f199a582",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wiktextract-nltk-data-lock.json",
+      "sourceBlob": "ea2df45ab4f04728c7bfee61206f208d9ac888b4",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wiktextract-python-requirements.lock",
+      "sourceBlob": "369b0c61d41c5c923ab32389b29c39fdc97462c5",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wiktextract_extraction_evidence.py",
+      "sourceBlob": "e0e72682ae8ba2ff3225e504f098b8ace9dc8a51",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wiktextract_ingest_evidence.py",
+      "sourceBlob": "fb53b8afdb8f089a66bcff66acded1a56cc9f026",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "scripts/wxt-assets.mjs",
+      "sourceBlob": "f7869e19ca6e9858dacc2b3eaaa22dc5a2ca6c73",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/auto-sites.js",
+      "sourceBlob": "837b5cae6f1855a798adb3f9c77409d0a7f265f6",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-auto-sites",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "src/background/cache-db.js",
+      "sourceBlob": "857771b2863e5c550611e985581541afd9ca52e1",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/commands.js",
+      "sourceBlob": "1955c557585b764215e588b9a86dc98a5b680682",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-commands",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "src/background/config.js",
+      "sourceBlob": "67f9fc3d846b04d0e539247b7a8e4cf5672d2b9f",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/background/index.js",
+      "sourceBlob": "ed1670cff60eba5b7a411b07ec2b259746e7552b",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-background-index",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "src/background/lexical/active-opfs-reader.js",
+      "sourceBlob": "a150924704629d4c3181ed183e96f9811fef61b5",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/context-phrase.js",
+      "sourceBlob": "214e9254846627f09abe45f2770d2645dc62dd36",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/gateway.js",
+      "sourceBlob": "526eb06b89b3d2bd92439a111db3b1155a0b176e",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/index.js",
+      "sourceBlob": "5b109a102059abf6196dbf4ea78f800762fcaa8b",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/lru.js",
+      "sourceBlob": "edd21c851c088e76bc0c6cfe4879b1fcf2c37422",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/opfs-indexed-reader.js",
+      "sourceBlob": "b50b592862fb6a296e40e9be100c022936881ebe",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/package-assets.js",
+      "sourceBlob": "e8e8a9d041e7ddbcb982e5eec4483e2bafd6ac47",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/ranking.js",
+      "sourceBlob": "d42ebd5a2811e7660c59ac4d51113cd7cb28f512",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/tflex-integrity.js",
+      "sourceBlob": "066c9441749c3abebe5a307ef01ca5e218b383ad",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/lexical/tflex-reader.js",
+      "sourceBlob": "5a294c54b4a3e0f7d7f88cc20f991d59c1c5dc8c",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/api.js",
+      "sourceBlob": "d46ca9035d17cd0fd6735f1a70cc1bd743dabd3b",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/catalog.js",
+      "sourceBlob": "2700b7d83c17ff7dd6e0bd757de542d954ce71e9",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/health.js",
+      "sourceBlob": "1f99a915c4b0f8280469069abe79e681a5130651",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/curated-local-adapter.js",
+      "sourceBlob": "18ff6d02421d79d3448e228c3c862cf9fc974d11",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv-stream.js",
+      "sourceBlob": "bc5eb72cc6ad3376d0f547258d6c943856f7a498",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-csv.js",
+      "sourceBlob": "ff047fbcae7f608cbdf93429e127b7e57c8a4569",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-local-adapter.js",
+      "sourceBlob": "3a896facc11707529bc1c26200e7439e5316c5ad",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip-layout.js",
+      "sourceBlob": "0a46490c5fe66da7b3dd8b4ebc7c76437570a032",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/ecdict-mdx-zip.js",
+      "sourceBlob": "46d01dcc528598629c0de3f080c0cc6a996bcaa5",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-index.js",
+      "sourceBlob": "37d84ace16349871604a34e90ec709880d484df0",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-key-codec.js",
+      "sourceBlob": "18251c81fa0810ae70d1fe43aa4b3a1c08a68bd6",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-lookup.js",
+      "sourceBlob": "0bbc68a0b82e75ea891141da5fa641bd12bb133a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-metadata.js",
+      "sourceBlob": "f5a574be581c53ce82b22f429bccbd0c6ad2dc7a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-query-budget.js",
+      "sourceBlob": "494465374d89c1751ce7a2cf6280daec1899b149",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-path.js",
+      "sourceBlob": "253efd9c3d417f613e73e48e7298ba1459eca9c6",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-resource-policy.js",
+      "sourceBlob": "552ad8bbf2b3e817aa0cf5e8b348590e7e7e0234",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd-validation.js",
+      "sourceBlob": "90b6dec6d702abdac1f5d4a646a9a2d5d2e19314",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdd.js",
+      "sourceBlob": "7434ce9f90d14d738351d20a26734bc972d3f2a8",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-block-codec.js",
+      "sourceBlob": "cac7784ae5d3999458adfeca33e7fa2309529871",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-contract.js",
+      "sourceBlob": "384fb9dde6bc4c61cd82ae7880dd971fba887069",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-core.js",
+      "sourceBlob": "5e6b8563777f537e386afe2a51116a49d82ce978",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-key-section.js",
+      "sourceBlob": "2f0016b7801253cbee0f5bdf11df92fc9cd0b737",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-local-adapter.js",
+      "sourceBlob": "c60c6835877cb1138279c91926900920dba86f8b",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-metadata.js",
+      "sourceBlob": "7a454679a48d18442d57caf00f8cebd4feb2644f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-record-section.js",
+      "sourceBlob": "60e486899e03c32fc466ca51d4688c7ce1c5e2fb",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-index.js",
+      "sourceBlob": "d400c48499759fb56b1f58978732f9e27b1b36d0",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-key-codec.js",
+      "sourceBlob": "7ae5eebbf5d77b7f165fa8c478b389642efc3b7d",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-lookup.js",
+      "sourceBlob": "2d2bc011c5d1909730b755143508c760566d1c0c",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-metadata.js",
+      "sourceBlob": "95289e4b94c6146717a9a3c7f65ebdb6e60eb39b",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-query-budget.js",
+      "sourceBlob": "2c8748f86984874c9252717fd9d40f3dba8fdad7",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-record-text.js",
+      "sourceBlob": "85e924715f492367ae13f3a500a62ac22d476cf2",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-source.js",
+      "sourceBlob": "4bfeeeed2b3c8184a08f65e96b4f0db7ce060063",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich-validation.js",
+      "sourceBlob": "5029aab06acae31f8f620d4ba73168c36400a473",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-rich.js",
+      "sourceBlob": "037bdb0b7e26eee660cdbd2b752745480f866efc",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-ripemd128.js",
+      "sourceBlob": "28ede7586d9d629b918ce6bf1eb4880651068d21",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/mdict-semantic.js",
+      "sourceBlob": "4d8840d8b4ef571c3342fa00a9d40a432e48d611",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-binary.js",
+      "sourceBlob": "c7958d3ff347af30b670bcccdf67f3942a15916f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-browser-dictzip.js",
+      "sourceBlob": "79e6549ef58439f220d7a7a7ad0ffdca65f61cae",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-contract.js",
+      "sourceBlob": "a1939c19d4706b35809342c455fca88708797210",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-core.js",
+      "sourceBlob": "47dfe1f468aab07a8db50c9e92ba89c417ff7c41",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-dictzip.js",
+      "sourceBlob": "40c36d699eaa948575941dc35e4fa66d9fb36571",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-import-action.js",
+      "sourceBlob": "5e50c8e31a7b659f346cf027ba45498707ec0d90",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-local-adapter.js",
+      "sourceBlob": "ed763e4b5f2879cde6e21fba68ea7fb1c6e44263",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/stardict-semantic.js",
+      "sourceBlob": "4ce7879151d8d5b634c3dd1041ae7c966801d5cf",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/importers/tflex-local-builder.js",
+      "sourceBlob": "9cc6dab675794aea2a79c830c722e8daaeb19b5c",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-contract.js",
+      "sourceBlob": "9f1e464c1c3e89dd3d52f1e2c43959e5334a60cb",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-identity.js",
+      "sourceBlob": "f0d36c0f3fcba71b2b6af3e595d7ac238ab6200f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-mdx.js",
+      "sourceBlob": "2e83a9fee203ef59205872772046ab604f5ef5a5",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-stardict.js",
+      "sourceBlob": "19925e548a76f869e351683ac526292b226c026f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight-tflex.js",
+      "sourceBlob": "3d24a1b72af6b6affd70cea8a4e4491cce01b50a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-dictionary-preflight.js",
+      "sourceBlob": "03757655b400fa1e75c9701e2ccab3ebf5c06aa2",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-import-display.js",
+      "sourceBlob": "bb146e4a5a4e06e2bb80e38293cc54f5bd0877bc",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-import-integrity.js",
+      "sourceBlob": "3155525ea7d5fcad379f6281e600a2f41bafaa62",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-import-transaction.js",
+      "sourceBlob": "68ebdf3546db863aa5ab5cd30ccfee5bf1972d9b",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/local-import.js",
+      "sourceBlob": "af58d01f46664e3942a24068cf88dedaebf05863",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/manager.js",
+      "sourceBlob": "cfd7f7ecb0d78f40269908319e5d4b63a39c4065",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/operation.js",
+      "sourceBlob": "20c6aa7a47bf7dec3437dec8b723ebf3d22cab5f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/opfs-store.js",
+      "sourceBlob": "91def0803b76a249bb5f97f1193a315ecbdc6649",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/quarantine-import-loader.js",
+      "sourceBlob": "e0e8a3f7af63b85effb5111430bbfe4455a391bd",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdd-contract.js",
+      "sourceBlob": "827bdac8ff978f63109641f0c834655839e713a6",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdd-lookup-cancellation.js",
+      "sourceBlob": "13baaba00204ab82fc07162a9ea11b3cae641cad",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdd-resources.js",
+      "sourceBlob": "5d7794d75ab9ae4fedc51aa125864631d5b5028f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdict-catalog-replacement.js",
+      "sourceBlob": "2abcf48bbe0c556983653bf02b909880f913147a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdict-contract.js",
+      "sourceBlob": "a4b57f642633f3624c9c866d3c0ee6dd6333eff5",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdict-install-preflight.js",
+      "sourceBlob": "d45ca662227b6b24a581722ed5c8e158930691bd",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdict-lookup-controller.js",
+      "sourceBlob": "a881f64b928f32e1d030b4b6abd452bd88ff4c5f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdict-preferences.js",
+      "sourceBlob": "c5a44204d3b168d9a351d5edd2ddbd4e8b8451ca",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/rich-mdict.js",
+      "sourceBlob": "5ece857da72a76e13ed9f3e59cda4326a52ac8e0",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/snapshot.js",
+      "sourceBlob": "19722fb6dbd52f8dd2c96468d362ac5e74fb9d65",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/packs/state.js",
+      "sourceBlob": "5d136cae2b973f4c64077f8b62129df6eca7b237",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/preset-session.js",
+      "sourceBlob": "1571ee805b653b1c3421e246e8e1332c06af80d7",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/curated-dictionary-network.js",
+      "sourceBlob": "de0e155ae99ce8d1ee6452e90b55332ffc013c3a",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/deepseek.js",
+      "sourceBlob": "e09434cf835f45c727e0de90eab67d1a2f6286f7",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/index.js",
+      "sourceBlob": "6a661a38a52c7e820d21566fcf91da3e8d9885d6",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/local-translation.js",
+      "sourceBlob": "b9801db660ed8f8dc78d74c65b61354fcc5f9555",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/openai-compatible.js",
+      "sourceBlob": "db2c7f7fdc58247fa8289096fe31245351269010",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/openai-sse.js",
+      "sourceBlob": "838aa21d5aa52000495b65a3d4afe1db478afcd8",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/pack-network.js",
+      "sourceBlob": "f6125261ed699240b13cd8ac15eb711cba30fac3",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/providers/shared.js",
+      "sourceBlob": "22ed2a65b5d1dc367a916a4c0d9770131d7331e1",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/access.js",
+      "sourceBlob": "41acc833a8d560deb0f632ff710e689521aaa8b0",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/export-reader.js",
+      "sourceBlob": "3e5d9c1d7d65ec8a35f58865afcd22e332a41ce6",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/exports.js",
+      "sourceBlob": "10e7b81e0de3bf42728a7b74424c9541f95918fc",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/idb.js",
+      "sourceBlob": "6c9c2d71b40dcbb57c492e16a895a61fd06b9d81",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/management.js",
+      "sourceBlob": "ac07b7dd786b6c672a375dbc9fc8b18c2a48d5d4",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/operations.js",
+      "sourceBlob": "fbb8ebf8ff7e0ed69bb2d6ab60d0c4fb43bcca99",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/policy.js",
+      "sourceBlob": "590b38f09cc7529f0e72e7d8262795e2fdbda922",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/query.js",
+      "sourceBlob": "69edd066926f21096513783b2b9ac912b81c9ba8",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/repository.js",
+      "sourceBlob": "86818dfdd0409c3164ce39719d538879a6f1c39d",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/runtime.js",
+      "sourceBlob": "7d754367448ac1712ef90c7528bf05900f6759e7",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/background/reading-record/service.js",
+      "sourceBlob": "6c04cd87e3603f709a9f4b32098d14250710b7ff",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/storage-state.js",
+      "sourceBlob": "b5a082b63e5a41c8ac2568b4e5d1e5098603935d",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/subscriptions.js",
+      "sourceBlob": "063d43fac37f9eb4e0243b20a0b03441efefe930",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/reading-record/write.js",
+      "sourceBlob": "dd1028d52576a38c2fde7408b238f69224cba993",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/router.js",
+      "sourceBlob": "31225c7b39bdbaba5bd64524a060623382cb6ef6",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/background/selection/explain-prompt.js",
+      "sourceBlob": "2c5246b352776dceddaf62d834d674dbc8008294",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/selection/explain.js",
+      "sourceBlob": "a7b0fad7a731795f53b76dc159d5e9322aa2c638",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/selection/resolve.js",
+      "sourceBlob": "30de62c1d0ef57dc2599e8421f16a1d5e6bd2cff",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/subtitle-requests.js",
+      "sourceBlob": "f3a1267bc7bfc50c8748ed594ce735a3ad4b564c",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/translation-gateway.js",
+      "sourceBlob": "231ea1e225c954dafa6d235de9ee77ea67bb2f92",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/translation-requests.js",
+      "sourceBlob": "89166444edae1e7e730edb70cbd09cb4638e3fb5",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/background/youtube-bridge.js",
+      "sourceBlob": "26edbc1d5cf88f04d2fd836bf4eeb243334c8f16",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/content/appearance.js",
+      "sourceBlob": "2c4a33535f595cac8886d1e92cf906ca6c68e30e",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-content-appearance",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "src/content/auto.js",
+      "sourceBlob": "73c2a92491cf22a75897c5e4b79d16a98054ca92",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/content/batch.js",
+      "sourceBlob": "cde25b26a16aeb081ee95badbdf99cfb61eba657",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/dom.js",
+      "sourceBlob": "8131a6c6f35a0e0c202d674f8fae4e1240ede82f",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/processor.js",
+      "sourceBlob": "5b71c455ae960f3707fd8d1ff6fec41c28d170c9",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/quick-control-view.js",
+      "sourceBlob": "4ca730b1a9ad150fea874f3339b4ebed3559feb2",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/quick-control.js",
+      "sourceBlob": "3a14c37d8d2b6bceef1d795167b56586753fa7fc",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/content/runtime.js",
+      "sourceBlob": "6e898852074041868fd54c11b15b683be8f9494f",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-content-runtime",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "src/content/selection/ai-detail.js",
+      "sourceBlob": "8a18513dc9a7163f8dfac773821275e07b2fdb83",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/clipboard.js",
+      "sourceBlob": "0d381ee43615e20cb89e1272e6d04ef43ea5358e",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/context.js",
+      "sourceBlob": "a7a4b0be7c2e20f9661cbbc9c6ee7f2f448199ae",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/controller.js",
+      "sourceBlob": "417461e57cf3e3500439ae9ec7d56ed77a45f58d",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/content/selection/empty-state.js",
+      "sourceBlob": "2376dd16a4c8feeddc589247ec4ec78e42426a14",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/messages.js",
+      "sourceBlob": "a77611784aaad58dddd5ad60c608dcb405ef2b1a",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/popover.js",
+      "sourceBlob": "ef0562efafac9900daecf2d2799cec21cdcdecdf",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/result-model.js",
+      "sourceBlob": "355fda9a8bfaac1044176ee99fb85b73e0bc67bc",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/result-renderer.js",
+      "sourceBlob": "fee4ce3b096459853b2ce2053f945f4d89beafef",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-details.js",
+      "sourceBlob": "27ba4756574c7b2dd81d4d158cb1f88c9d6c57c7",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-resource-path.js",
+      "sourceBlob": "31c1db2b5423e521619e524d0580d90c322e28c3",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-resource-resolver.js",
+      "sourceBlob": "02da086b5a6306db0dc0db30bde7f63e140686e8",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-style.js",
+      "sourceBlob": "053ccb84eeef40e481cde38ae2ef52c621600a05",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer-tokenizer.js",
+      "sourceBlob": "14ce38dbb0666b45dc99be1faf171d20cd5a4bde",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-sanitizer.js",
+      "sourceBlob": "f45e86d2708f27bf3d72f9d13491a0b43816a304",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/rich-viewer.js",
+      "sourceBlob": "a3a4ff27483309d0e856b7fb12c45509f0cfa474",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/selection.js",
+      "sourceBlob": "f20d1501595a574c425350b12bc55f79d62ae3a8",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/selection/source-snapshot.js",
+      "sourceBlob": "4c332bca620810beb389d2ef77d6710a05274e88",
+      "function": "划词与词典查询",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/structured.js",
+      "sourceBlob": "0ba9e5c6c2e6aec0d12cabc533f2177dcf7fcfc1",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/controller.js",
+      "sourceBlob": "eda3a61954df1603ddd342c61ec127734c5795bd",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/content/subtitles/pipeline.js",
+      "sourceBlob": "b44aa7abe290f3d9c64fd2a0748f929c8c5d1e2c",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/renderer.js",
+      "sourceBlob": "7a526db3c2285175800b9aeaa2e1d6989a3d6fa2",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/source.js",
+      "sourceBlob": "16aa92c30acd08a720e60cb2e8d7dfae5c6343f1",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/sources/text-track.js",
+      "sourceBlob": "f14bd7051260216b17c14b0d094ea1e12576e4d7",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/sources/youtube.js",
+      "sourceBlob": "eba89eb17b12527313b7305fdf7ec3f96d31e33e",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/content/subtitles/youtube-bridge-protocol.js",
+      "sourceBlob": "f4c2819422524fd45b92d9b1ed1cd6a138dca7bd",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/youtube-main-bridge.js",
+      "sourceBlob": "eee4e399fb4352acd6313a8c6c2ac232be60577c",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/subtitles/youtube-timedtext.js",
+      "sourceBlob": "d97becd82a18becaed05692e6e61d3af589101e9",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/tasks.js",
+      "sourceBlob": "4cd5e6b946c77ffbf575b244c5378039f1f8307e",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/text-projection-builder.js",
+      "sourceBlob": "62ca887213aee5abb4aff313a9573ba1bf9ae5b9",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/text-projection-policy.js",
+      "sourceBlob": "3cefac26737cabc9840e3f677d1a4364718ff6d0",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/text-projection.js",
+      "sourceBlob": "7f8831b9f9aec2505d00b5ac1a4e05414385b2c8",
+      "function": "网页翻译与缓存",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/host.js",
+      "sourceBlob": "5075badf233d33c65d033825527aeb9fdd3aa848",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-ui-host",
+      "reviewedAt": "2026-10-02"
+    },
+    {
+      "path": "src/content/ui/primitives.js",
+      "sourceBlob": "acf26dffa51c01b3aa10ca2adb93a5ce1a40220f",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/quick-control-styles.js",
+      "sourceBlob": "d686678e44491becbcd01e3883cadd17c6a8b7c1",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/selection-ai-detail-styles.js",
+      "sourceBlob": "395b18ea2ea0adb3997b228d3dd63e807728f728",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/selection-empty-state-styles.js",
+      "sourceBlob": "b6cb2ce0f9ccc4d0c2f029d76420ca09b53773fb",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/selection-lexical-styles.js",
+      "sourceBlob": "ff68fe71a48e8c827d648ac079075cff74f9d058",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/toast.js",
+      "sourceBlob": "f21f263670ff6b34f4ffdf4c2cba62e52205dda0",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/content/ui/tokens.js",
+      "sourceBlob": "7b0bb74733f133281f34375ccf577ad2475ee922",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/i18n/catalog.js",
+      "sourceBlob": "972ae1cbd7656993f408b3995a4bf34c8767e74a",
+      "function": "界面本地化",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/i18n/index.d.ts",
+      "sourceBlob": "9ccdedd6e3f2ecd149cb4f6c5c479a66e16053d7",
+      "function": "界面本地化",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/i18n/index.js",
+      "sourceBlob": "970e4e1fc245819e93ee90b7d3cf668654c60919",
+      "function": "界面本地化",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/i18n/locale.js",
+      "sourceBlob": "4cfce6f118ebe21f0f85daf7e539553a0c58158f",
+      "function": "界面本地化",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/curated-dictionary-presentation.js",
+      "sourceBlob": "19b298bf57c1d5779b508ed392f58853f0ae840a",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/curated-dictionary-ui.js",
+      "sourceBlob": "2d72a6e10acd8abd1913a875ee577ed1b6aa5220",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/curated-ecdict-mdx-ui.js",
+      "sourceBlob": "733af662240d674582b4136c6fbf71b4c69043eb",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/dictionary-library-v2-presentation.js",
+      "sourceBlob": "55bbe527e0762a4176106537eeeaa8eb3cedda1d",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/glossary-ui.js",
+      "sourceBlob": "43ac502cb583a98126cc70facba2ff00a71b9b15",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/installed-pack-ui.js",
+      "sourceBlob": "fa9ba14921b6fbb45bb1da66926986f8df8ebd4e",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/local-dictionary-import-presentation.js",
+      "sourceBlob": "946c3c13bd2c897a3e3cf18c714d6013384be40f",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/local-dictionary-import-ui.js",
+      "sourceBlob": "f700645ec6fa20bd12e772dd888eda60c9fad277",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/local-dictionary-installed-state.js",
+      "sourceBlob": "94ba83aa415d22d2f5862cd20212950b82d5cf61",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/mdd-resource-import-controller.js",
+      "sourceBlob": "b98b9e7ee37d61614e8adbc8ce48a5346bbf3c58",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/mdict-import-controller-io.js",
+      "sourceBlob": "ccd265d85dcb0d25f298e10843c273d5bb3d24f4",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/mdict-import-controller.js",
+      "sourceBlob": "24d148ec3edcde1cebd05da31df6fc06c61b3d56",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/mdict-import-ui.js",
+      "sourceBlob": "b45f80b43ff58422d7730e20b97ca4e7ea254d38",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/pack-ui.js",
+      "sourceBlob": "b4f61542e935d63a431b639e0da488a15dbbf51a",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/rich-mdict-import-controller.js",
+      "sourceBlob": "4c5939fac016358d5a00871b2e7928af06492b3a",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/rich-mdict-import-copy.js",
+      "sourceBlob": "4e4b7067e5b7f5c8079144d399b214e6b404a12f",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/rich-mdict-import-ui.js",
+      "sourceBlob": "0b4310d41db7a2a6718cad81701970e8d535fab1",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/rich-mdict-preferences-ui.js",
+      "sourceBlob": "fd746038774f844a4e19adefa08f0260e6cd724e",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/stardict-import-controller-io.js",
+      "sourceBlob": "baef55613ca9ada96a85223a181817cef999e77a",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/stardict-import-controller.js",
+      "sourceBlob": "84a155cfff72e0720d0e3a3e8283478139d57721",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/stardict-import-ui.js",
+      "sourceBlob": "fd796efe3fdfcb3ea56bb229adb216a05312be8e",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/tflex-local-import-controller.js",
+      "sourceBlob": "466b011a4dc21006010bab8003dc64cfc06a8482",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/ui-locale-ui.js",
+      "sourceBlob": "763be65dd2e27ad955f2eb3e9e8e569c7fc33ead",
+      "function": "Provider与设置",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-core.js",
+      "sourceBlob": "22af0fd0c1c7465bc107830c75001fa1b296c66a",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker-protocol.js",
+      "sourceBlob": "e49e77e3712d65fb28ac9aaaf5d69acb762d4927",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/curated-dictionary-worker.js",
+      "sourceBlob": "f812c6b103db4efe57459dd36a8ca8135bf9a63f",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-core.js",
+      "sourceBlob": "7707593ca0c1064a7ba5e5a2dfd94818064bcbc3",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker-protocol.js",
+      "sourceBlob": "4ad2b24348d5aea2544a993894633f2b628e3db5",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/curated-ecdict-mdx-worker.js",
+      "sourceBlob": "820a9f307100097fcb64722451fe53c0700eb9ed",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-core.js",
+      "sourceBlob": "b40fce7419c88fc220aafe4562c49e6cc242edb8",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker-protocol.js",
+      "sourceBlob": "e3327bfab58bcf5b8124c8816eea7b067be67e00",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/mdd-resource-import-worker.js",
+      "sourceBlob": "3f2a1c2cf18e68a86577fe74ad227e7c8fbe1478",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-core.js",
+      "sourceBlob": "1b0f662c259dde0edd0751d70b1688669cb116ae",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker-protocol.js",
+      "sourceBlob": "53502cc14839ccbb731ecd235682c12ed750d788",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/mdict-import-worker.js",
+      "sourceBlob": "45181196a2c14f05f5ffce93e7567465be501ace",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-core.js",
+      "sourceBlob": "cdf48aa26ccc42a71f6993c3b8d0218f30df6e3c",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker-protocol.js",
+      "sourceBlob": "9a46cdb27e30c79077dbecb4d20b03c172fde73d",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/rich-mdict-import-worker.js",
+      "sourceBlob": "71963c47c939e82e48c27f1f3a45bf9a36eb2b4b",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-core.js",
+      "sourceBlob": "bfe847377ee103a2c586de10df3ec88d7cf34360",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker-protocol.js",
+      "sourceBlob": "1e7b8f964d64660a6a4735601955a4b2fa032761",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/options/workers/stardict-import-worker.js",
+      "sourceBlob": "fc5f0a06a7a7706a1ce0c6fafa0d00efd019840b",
+      "function": "词典导入与资源",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/popup/preset-ui.js",
+      "sourceBlob": "697e67062e3ead421d3901d9625356af7b30b842",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/shared/appearance.js",
+      "sourceBlob": "cfe7be2c1cdd7b4363d08a5320a93c76bade5f71",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/constants.js",
+      "sourceBlob": "189c0f691551c0e59ea1878da572be0f8827bb3f",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/shared/curated-dictionaries.js",
+      "sourceBlob": "b33268f2a788a4ff9518d7a4a2133019ae219896",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/curated-ecdict-mdx-recipe.js",
+      "sourceBlob": "2d417ca2b7cb9e9ea16a73e1b7747ab2f48971de",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-artifacts.js",
+      "sourceBlob": "202aef41dc0843ace0c42f18cbf5e3ada451064d",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-entries.js",
+      "sourceBlob": "d43929936f79fb49d9ef514dd1b298bfaeae2f84",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-schema.js",
+      "sourceBlob": "b251e1317102d53965460ed7062503d0d5a8ad98",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2-utils.js",
+      "sourceBlob": "5f610732110a038a1a917f9710549914d4840bfd",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/dictionary-catalog-v2.js",
+      "sourceBlob": "ca5ccb27b55106eb5740246ffcccebada255a6c7",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/glossary.js",
+      "sourceBlob": "48368af7d5bf45f359fd7ba415cdcfa289e557a6",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/hash.js",
+      "sourceBlob": "da7cd46de718ac44e7737d343bff77efa6098158",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/import-quarantine-contract.js",
+      "sourceBlob": "1d738537efbfa979521ee2787ff111be61159906",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/lexical.js",
+      "sourceBlob": "b12719870de4d5e1fd10fb96363049423433a915",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/opfs-import-quarantine.js",
+      "sourceBlob": "ace4340b011495b8898a650536fecc24645b5a96",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/pack-manager.js",
+      "sourceBlob": "bb0bca898380ee24d85eccfbdf0a88f1c8bc6c49",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/pack-sources.js",
+      "sourceBlob": "9137fb963ccb21883b8971bf8a3a8741cbf05c49",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/presets.js",
+      "sourceBlob": "f72382eb4277ef25be41d328940a475ecbfd0bdb",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/provider-config.js",
+      "sourceBlob": "e3da406d26fb881cafed340d0a6c124d2209a892",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/artifact.js",
+      "sourceBlob": "18353fe9063e70388a8e2f6057b63926349cffe4",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/constants.js",
+      "sourceBlob": "c166d53aa0a55611198c7c949dc1482401a872e9",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/dto.js",
+      "sourceBlob": "5ce3d97212bdb16da111fdc1cb27ec0713902859",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/export.js",
+      "sourceBlob": "c6196a640f129630823deeb33fb56ca501389aef",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/identity.js",
+      "sourceBlob": "aefa6132253ade059de341f7bcc42e1c9f2d8d4c",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/invalidations.js",
+      "sourceBlob": "e8ea3e242dc2cdbfe5383f74e104ded395e9618b",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/lifecycle.js",
+      "sourceBlob": "0daf499cdff894e21377df2e1fb19d970711df57",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/list.js",
+      "sourceBlob": "9a11885863c3a821cfa71596b3a700b076a860de",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/previews.js",
+      "sourceBlob": "dd3133180b00dabaf23bb61d9a61bb72bedbfa4e",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/record.js",
+      "sourceBlob": "48e8cbd49aa71b2f539d9de5337bee3a0e88a4aa",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/response.js",
+      "sourceBlob": "1a9dc09c4e7ab161871c1dc44b508ecc197695a3",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/source.js",
+      "sourceBlob": "ade9433ccc4398b0e82540108d023e2b00d944f8",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/reading/validation.js",
+      "sourceBlob": "033ca350eb729fb99da9bf61ee7733d05ca349d5",
+      "function": "Reading记录",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/retry-policy.js",
+      "sourceBlob": "4d1d93514a6a183a08912bd9cabc1b4c5f3ccedc",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/runtime-assets.js",
+      "sourceBlob": "b6d62efc34ff76592ace1de8b462646ceba1418d",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/selection-explanation.js",
+      "sourceBlob": "9fa64645999e9fe19c36301f24adf97e8ad77997",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/selection.js",
+      "sourceBlob": "562e17e50b744c5f954fb8cf7230fcf08b1965d0",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/text.js",
+      "sourceBlob": "de6a124986cbd2e8f6a805a5b3684e8d416c1701",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/shared/url.js",
+      "sourceBlob": "e7d0267bc979dcb2a39e82a31cac33fa04496c34",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": "modules/startup.md#partial-files",
+      "reviewedAt": "2026-10-02",
+      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+    },
+    {
+      "path": "src/ui/styles/components.css",
+      "sourceBlob": "ead9eb3c6b4947c2a5b42a13f0a11de57ef57556",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "src/ui/styles/tokens.css",
+      "sourceBlob": "3ce9c4c5d4f23ff85de224f412367bc53fae97cc",
+      "function": "界面基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/active-opfs-reader.test.mjs",
+      "sourceBlob": "37b4c62b0da44315b47739ee585f517659bd329d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/appearance.test.mjs",
+      "sourceBlob": "16447efd77f53889effab4977a3fb0f5acc0df3a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/benchmark-translation.test.mjs",
+      "sourceBlob": "69475277cb91abf0cbd0582617b8645803c543f7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/cache-context.test.mjs",
+      "sourceBlob": "c715844bb5b46e15809ffbbe4bcbc9684e77d3e2",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/cache-restore-mode.test.mjs",
+      "sourceBlob": "cb8ee0a24080ae4c2eb1b371d67cf25edec9c91c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/certify-vnext-dictionary-library.test.mjs",
+      "sourceBlob": "07b9934def41daa69bbf8caf596600b7a14dbc7a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/commands.test.mjs",
+      "sourceBlob": "927fecfee1791aa26aa0fc1ba58e7f4a11c2b5c7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/constants.test.mjs",
+      "sourceBlob": "ff54de26232bc8c4d3c7e1b9f2c9f33b5ae7a099",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/core-bootstrap-evaluation.test.mjs",
+      "sourceBlob": "0ce2f5fe6aa6afc15095500e4b8bcdd512ccb23c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/curated-dictionary-recipes.test.mjs",
+      "sourceBlob": "5e5cf94866cf44f33f3581a61c35ffd929c62617",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/curated-ecdict-mdx-worker.test.mjs",
+      "sourceBlob": "a201d7a106d2f39ebf22f33a4ef258efc30a4e17",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/dark-mode.test.mjs",
+      "sourceBlob": "cd29843d0d50a94e133403909866c24809872ce3",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/dictionary-catalog-v2.test.mjs",
+      "sourceBlob": "c2ee4d6ea7e728a8284803461fe57160b33d5a2a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/dictionary-ecosystem-v2-certification.test.mjs",
+      "sourceBlob": "702739845f979b26305633528ba55693ddc2b31b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/dictionary-library-v2-presentation.test.mjs",
+      "sourceBlob": "d1ef236605f198404788a6eb2496cb40837f9836",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/dictionary-pack-manager.test.mjs",
+      "sourceBlob": "75afffa11c59b3cfa3c0822cd5dfdf34e0793db6",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/dictionary-pack-ui.test.mjs",
+      "sourceBlob": "4db02e571f8be4f2770392110af513a1fbdd2ccd",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ecdict-curated.test.mjs",
+      "sourceBlob": "76f2356ff929bd93857eec2edec84430b1a8d205",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ecdict-mdx-package-boundary.test.mjs",
+      "sourceBlob": "06c85fc4a960bbd19eaef2663d8d9f0b51aaed3a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ecdict-mdx-recipe-lock.test.mjs",
+      "sourceBlob": "16f90255f26cbf92949f27d3a243728c8341ad45",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ecdict-mdx-zip.test.mjs",
+      "sourceBlob": "08abadf44a3ce1aa8449d94982315be391a94f4b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/extension-footprint-cost.test.mjs",
+      "sourceBlob": "1b2ed1b5900f171478021a34ad8f45ef0858c9e1",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/lexical-quality-v1.json",
+      "sourceBlob": "3f5d1111e3af52bb5e11e96bbe9addd5fbd49ccb",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/lexical-ranking-v1.json",
+      "sourceBlob": "9b6a9f420d6645cc58402cc479191900c5c00e1f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/mdd-interop/corpus-lock.json",
+      "sourceBlob": "904adde56bb410a65a865382bb444a0db1e56635",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/mdd-interop/interop.mdd",
+      "sourceBlob": "a989cd88c48e1744d0b4468ef5b6a3338d6aee74",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/mdd-interop/interop.mdx",
+      "sourceBlob": "c47005e3172046fbe93bfecd319af1d4f4fa569f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/ordinary-browsing-v1.json",
+      "sourceBlob": "2490f1fbdad92865c91f13d20aff236b72cd648b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/reading/access.mjs",
+      "sourceBlob": "6534a0eaeb526c2d3d9de48bae4322fc94ddcade",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/reading/contract.mjs",
+      "sourceBlob": "993a32ce3df19e74bb1725c6c88c8732431b8e8c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/reading/marker-measurement.json",
+      "sourceBlob": "dc11b69b5ce30fe15c4e6a427cbfab9bed8a3f24",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/reading/measurement.json",
+      "sourceBlob": "40077bf38cff03488d52688a16181f41c1640340",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/reading/storage.mjs",
+      "sourceBlob": "8595dd6ab171b8d677f4ac9aadbb36e340886956",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/rich-lookup-cancellation-baseline.json",
+      "sourceBlob": "029568dcc382adae1ba3a8fe30fc02585121e4d5",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/selection-v2-quality.json",
+      "sourceBlob": "169661feee3b7350272aa529cd6ca895ec562a16",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-core/index.sense",
+      "sourceBlob": "047e56d9a6e835eaaa167f9ddbe5dd852318d2f5",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-core/source-lock.json",
+      "sourceBlob": "e9ec0dacadca954bed740eaae3fb4db62f6358f8",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-core/wn-data-cmn.tab",
+      "sourceBlob": "018024067256e40b9d4f403cdb4fbbdb4fd1333b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-core/wn-data-eng.tab",
+      "sourceBlob": "f8adccede1c6b34c9c590a6b588d5fad4e326228",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-runtime-pack/THIRD_PARTY_NOTICES.txt",
+      "sourceBlob": "b76641a6613a6b885e6e43bc07560ce2157084e2",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-runtime-pack/directory.json",
+      "sourceBlob": "21a59f37eccc6436d57c0dc35ec46265bd224205",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-runtime-pack/manifest.json",
+      "sourceBlob": "5c403a9c7b551377689ff99ae211b9e500e2facd",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/tflex-runtime-pack/shards/0000.jsonl",
+      "sourceBlob": "6c45d56606088f80c0184fb7c4e06483fb44f65e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/fixtures/wikidata-tech-lock.json",
+      "sourceBlob": "dd4df7b13c64679ad0b69c6bc8ab10dfd903c92e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/freedict-product-gate.test.mjs",
+      "sourceBlob": "4ea3b9b3d7f41aa9ed45f44c90de3cca2f0106aa",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/freedict-source-audit.test.mjs",
+      "sourceBlob": "75446e8f1d9aa6bf9de59fd144d940af35845251",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/freedict-source-lock.test.mjs",
+      "sourceBlob": "2cf03fea741a3325b79f9c80fa938a993b790607",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/glossary.test.mjs",
+      "sourceBlob": "ff1186a8deeff031bdb5382d9e12b295c2d4b951",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/helpers/mdd-fixture.mjs",
+      "sourceBlob": "5df4a733916afdc11f07952bb7dea95696eb8607",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/helpers/mdict-fixture.mjs",
+      "sourceBlob": "5f9674b7dd1ba295b94d369767020d914c4f55ad",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/helpers/rich-mdict-fixture.mjs",
+      "sourceBlob": "e4bc9ec0bc4e8b3994fcfb3de2a24bbbfd674c43",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/helpers/rich-viewer-security-fixture.mjs",
+      "sourceBlob": "1305781ef5cc338d041bfb20882e8a0853ea8476",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/i18n-boundaries.test.mjs",
+      "sourceBlob": "57466353b4704074bc2d550d3c5d471c1e8256e4",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/i18n-locales.test.mjs",
+      "sourceBlob": "7b0b5b9b9eab339396691e237a4d6c59e2bddc61",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/i18n.test.mjs",
+      "sourceBlob": "2355bee5f005fa20283266faa01b9d9ac9ab9b7d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/integrated-lexical-certification.test.mjs",
+      "sourceBlob": "b076af3ac075e9108b10d498f6a9cb9e4e6764c6",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/kaikki-rich-projection.test.mjs",
+      "sourceBlob": "a16aa23e9424cf9c5faf88965832171f098a9439",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/kaikki-source-lock.test.mjs",
+      "sourceBlob": "c130aa6b1f59dfcf8d4ca08fd65a395a823d2734",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/lexical-context-phrase.test.mjs",
+      "sourceBlob": "462996e7b363a6e88dc1467d93b57a516082a0d9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/lexical-gateway.test.mjs",
+      "sourceBlob": "df37c8a67910b02277b6c156fb66576e055712e9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/lexical-quality-benchmark.test.mjs",
+      "sourceBlob": "c468fa8c9b36681883eddddcecbc28fcf2e53886",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/lexical-ranking.test.mjs",
+      "sourceBlob": "652c71b4806990d6e0e43c83f52bb2f1356f6fa4",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/lexicon-source-audit.test.mjs",
+      "sourceBlob": "f4f06951459f44650f427bf0038ba4d9fcd46856",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/local-dictionary-import-presentation.test.mjs",
+      "sourceBlob": "2924067603a4b2354f26650960abeebaad69cf57",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/local-dictionary-preflight.test.mjs",
+      "sourceBlob": "22766200a81e83ab0d02c687b1f1e9a54f9ffffb",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/local-import-display.test.mjs",
+      "sourceBlob": "92420c8d5a201808f29edd4619ec18e1c51342a5",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/local-tflex-import.test.mjs",
+      "sourceBlob": "7adad279876608814156abf155d1f0e5de7f3f7e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/local-translation.test.mjs",
+      "sourceBlob": "2f4347f0ab1b34ac2191be169b14d8f5f80f735f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/mdd-format.test.mjs",
+      "sourceBlob": "44cb9e2d4c8594b9e38e424fb0b8224b8951ce38",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/mdd-security.test.mjs",
+      "sourceBlob": "f0bee9eedf9cec4e706097bd7a97aee458f4c11f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/mdict-browser-import.test.mjs",
+      "sourceBlob": "0e5641a671e0df478333cbff950a3f0d21c9ebf6",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/mdict-compatibility-inspector.test.mjs",
+      "sourceBlob": "489fa7d6d2680137c594cc76c127565c4ff37c8f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/mdict-import-controller.test.mjs",
+      "sourceBlob": "1dcc97dc960fda1245af27f1cf799625d7b6ecda",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/mdict-import-poc.test.mjs",
+      "sourceBlob": "38322d5d4d3b09eb7b90c6dc4440377e67d0e808",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/multi-dictionary-viewer.test.mjs",
+      "sourceBlob": "ba80a94e1851a8466a31f7bd8e6115aca137a1c2",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/offline-dictionary-beta-certification.test.mjs",
+      "sourceBlob": "dad043b0cd98c076b58f197cc1be861f1a5422ce",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/openai-sse.test.mjs",
+      "sourceBlob": "e98d724a8aaebc6aab2ba073ae03403e88f6f780",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/opfs-import-quarantine.test.mjs",
+      "sourceBlob": "48d2f0d6a3dd771acccb3fdd84be370234655a76",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/opfs-indexed-reader.test.mjs",
+      "sourceBlob": "6a48220fbece4e259acd33d91d1f6e081aff0d4b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/opfs-pack-store.test.mjs",
+      "sourceBlob": "4cecec74c557f69bac46a5bdf1168c4f4b0a6ba9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/pack-network.test.mjs",
+      "sourceBlob": "cd2ab1a199c9dda048215ce61152d507179b8fd0",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/popup-ux.test.mjs",
+      "sourceBlob": "a01cbd6861d3b2f336faa017f69320dfe248efa4",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/presets.test.mjs",
+      "sourceBlob": "5edf8ef7095357a4477390a33c8bcf58dfafb037",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/provider-config.test.mjs",
+      "sourceBlob": "9a24af8aa14de60eecb0c1f5b281f8b0b81b5b9e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/provider-retry.test.mjs",
+      "sourceBlob": "cd7996c6dfe910f2191613fa7a34045872de2754",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/provider-structured-json.test.mjs",
+      "sourceBlob": "260305dd12a83ac19e7fe5c02b2ccf82f45e5625",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/providers.test.mjs",
+      "sourceBlob": "b44b03f948e5e66c35162f1449f1ea9dba376e3c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-access-concurrency.test.mjs",
+      "sourceBlob": "7d655ff7c9b771c918cf76cabe58f88e062f5872",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-access-inline.test.mjs",
+      "sourceBlob": "485931b9a7fe3bd0292c40400e78dce62a73b4e9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-access-postmerge.test.mjs",
+      "sourceBlob": "c675317d11e985ba7dcd0441f160dc75ce78949b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-access.test.mjs",
+      "sourceBlob": "200ff69921b4c93110564d6228ce555a4b2cf671",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-contract-dto.test.mjs",
+      "sourceBlob": "582ac9e74c286daa508d4ef34d5085076b8e3b86",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-contract-lifecycle.test.mjs",
+      "sourceBlob": "ff2d56f8c48eedd37c887d87b4705fc9c6f44d05",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-contract-response.test.mjs",
+      "sourceBlob": "e49f1c9f89a1b69295c9dc60899e9047f8c38721",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-contract-v2.test.mjs",
+      "sourceBlob": "45308fcbdfbdd0275d8bed8a5b115cdd69f689ba",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-operations.test.mjs",
+      "sourceBlob": "cb8e8c5ba69777d83ed528e69ae0a47361c1ec7a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-runtime-storage.test.mjs",
+      "sourceBlob": "16f5b80197160fdd717777dbd0efe719599c4025",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-source-position.test.mjs",
+      "sourceBlob": "3e8326637852ced718ac713364591922dfb26daa",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-storage-helpers.test.mjs",
+      "sourceBlob": "c3b75a44726b2181063844e896c4ff66a4e0d813",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-text-projection.test.mjs",
+      "sourceBlob": "b85cd21082961fe20bf85aacbcb4a22ae6a7836a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reading-ui.test.mjs",
+      "sourceBlob": "b882a9f81877ee23aa251a2f72bf04c34ae2d7c4",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/release-gate.test.mjs",
+      "sourceBlob": "6378ae5b2715884db20538c9a0b101ff6a0497e5",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/release-lexicon-contract.test.mjs",
+      "sourceBlob": "204ed31e906340c2a14c35e702d2f75b82a3a4f9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/resolve-ecosystem-certification-base.test.mjs",
+      "sourceBlob": "0704f134f1de9b5c6714590d15730f64c7295c27",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/retry-policy.test.mjs",
+      "sourceBlob": "4d2ec4f79b71c2748aaaa88ef7f1dbbeb9d209ac",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/reviewed-tech-terms.test.mjs",
+      "sourceBlob": "ab5eedeb3ebff59764fcf38c4f4d3fc0b1038f9d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-dictionary-sanitizer.test.mjs",
+      "sourceBlob": "1499ab7f49b43c87c9cab4f18534c6a8592a4de0",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdd-lookup-cancellation.test.mjs",
+      "sourceBlob": "22accfb4664af394cb2b9785f2193dffd065f8cf",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdict-format.test.mjs",
+      "sourceBlob": "fc5b51b5b04e51182ac1c779a0d7ee7398269ef2",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdict-lookup-cancellation.test.mjs",
+      "sourceBlob": "542b1c9d87c24911214e02c4e750e4f9666504d9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdict-preferences.test.mjs",
+      "sourceBlob": "2a035f0b3f1f4ae3e685dced31c3a12676651f9a",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdict-product.test.mjs",
+      "sourceBlob": "5b036f1f32b058b5dee976e320c7cd2201304a68",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdict-security.test.mjs",
+      "sourceBlob": "3ce61c95d5e1b7a93845a26e6569b96676b45391",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-mdict-storage.test.mjs",
+      "sourceBlob": "118f19a0c8f46b93e189974d3dbd328a715653c6",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-resource-resolver.test.mjs",
+      "sourceBlob": "f96490b3bec53da21318c9a394dbf91c2b7131d7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/rich-viewer-contract.test.mjs",
+      "sourceBlob": "d4ee9f137d77e70ad255fccee865fd6dbb7d4e5b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-content-owner.test.mjs",
+      "sourceBlob": "30bb5717254acdd2d8584c57e2664d134880ee4b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-explain-runtime.test.mjs",
+      "sourceBlob": "704b61504657e684114270127aefef3f273378b7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-explanation.test.mjs",
+      "sourceBlob": "36cfe154ed5f14d1c1a9bb74b83d1466b86710f0",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-multi-dictionary.test.mjs",
+      "sourceBlob": "85d53698c934791b541d14ce54bfd142147aac42",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-release-certification.test.mjs",
+      "sourceBlob": "e6c9c3e6f7bca626d54d5fb7909f719f275ed80e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-result-model.test.mjs",
+      "sourceBlob": "2be2bfc905b436ca7c6aeac582afdaf0c2a50fe0",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-ui-contract.test.mjs",
+      "sourceBlob": "69d3cf17aa90a798afdbf0a0079e0f3106f7da94",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/selection-v2.test.mjs",
+      "sourceBlob": "2e09a477fd99609963b9fdda6b9525458642c7af",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/settings-ia.test.mjs",
+      "sourceBlob": "01a963aa1d40799bfc12fb82a04c5cdd556b9523",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/setup-lexicon.test.mjs",
+      "sourceBlob": "0e458a244fa3fe687b3f8b44ac0813812c730579",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/site-registration.test.mjs",
+      "sourceBlob": "4cdc7d01a82d789eadb3ee66ae2f690a7040725e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/source-boundaries.test.mjs",
+      "sourceBlob": "9a35b8a15f37f67ff6671e32d2173edb47186387",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/stardict-browser-dictzip.test.mjs",
+      "sourceBlob": "f2a30071444dcd61e81b5bfa634c5f58a95544c5",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/stardict-import-controller.test.mjs",
+      "sourceBlob": "3d7066824de20cc1ccfa0045a9f4e2c16e92ee07",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/stardict-import-cost.test.mjs",
+      "sourceBlob": "d8183cd36be58544fe6eba2d6bfda0ad1581cc75",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/stardict-import-poc.test.mjs",
+      "sourceBlob": "5e80b4d18c6bff6fc32118b1bc1a7da70598567b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/stardict-import-ui.test.mjs",
+      "sourceBlob": "dcccbb19fa5f9ac73c58746be09d45d37e8bc591",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/stardict-import-worker.test.mjs",
+      "sourceBlob": "d53e4cd52dd788dc71e39086c5aded5ef8ef40b3",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/structured.test.mjs",
+      "sourceBlob": "4d992237cc404bc9eb92797ff5b5a98c0c0ddb6c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/subtitle-cache-identity.test.mjs",
+      "sourceBlob": "61c9be1eaeec384840526f5c9134a14ded9d9a4d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/subtitle-pipeline.test.mjs",
+      "sourceBlob": "0d18567b7121b5caa27cbf9739f994b528f0d8eb",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/subtitles.test.mjs",
+      "sourceBlob": "6e7a18343672f5134c8eea28143bdeb9adfed6b1",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tasks.test.mjs",
+      "sourceBlob": "9a09a7607cb9221c7cb21e396bc24fe10b23d262",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/text.test.mjs",
+      "sourceBlob": "b615ff9af98403c50df6380ec969c22348c970b9",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-builder.test.mjs",
+      "sourceBlob": "113a7cd22c7dcf4f5d3c72165fac22a2db769e0d",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-freedict-builder.test.mjs",
+      "sourceBlob": "e80a1c7b0d26a9c436ebf7defbb4d1a558a81221",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-local-import-controller.test.mjs",
+      "sourceBlob": "8bf9888ab8bf93abd5c8d5cf1de8083613bd61eb",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-mdict-import.test.mjs",
+      "sourceBlob": "c9ab05e3b18d378f7e94a69a49501515e369570b",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-reader.test.mjs",
+      "sourceBlob": "1e6543ebfc987ed057ccb28fd5876374b4a6e941",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-stardict-import.test.mjs",
+      "sourceBlob": "ea3e7745a04bb923244f48217f31cea4a4005d91",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/tflex-technical-builder.test.mjs",
+      "sourceBlob": "e06e87bf9266efc691860b5ec0060df341b6bdc4",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/translation-gateway.test.mjs",
+      "sourceBlob": "bd21098d49dcfe9a1a30dfce495f522e7f7c4426",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/translation-requests.test.mjs",
+      "sourceBlob": "7a67822fdb47590cf632864137870a12dd40dfa3",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ui-design-system.test.mjs",
+      "sourceBlob": "fcea5aee3984df6b7bde2d7d6e9d21d0ea1c5366",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ui-foundation.test.mjs",
+      "sourceBlob": "f14fb0f7612815ab540b25248be9fedb4b3197ef",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/ui-release-gate.test.mjs",
+      "sourceBlob": "fbcaec8d7ba885e7b9d344f08ebd4f121209f971",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/unit/consent-control.test.tsx",
+      "sourceBlob": "356e80715031f2a578a02af1f49d5df5099c3128",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/unit/fixtures/ConsentControl.tsx",
+      "sourceBlob": "90ab054c6645ffc11c33430d39844159017d4db8",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/unit/i18n.test.ts",
+      "sourceBlob": "5612c78596ae1ec25b4cb147ed9b471976b92b6f",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/unit/text.test.ts",
+      "sourceBlob": "a69eeadefbde981143c323ccc3f3efef2b38bedc",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/url.test.mjs",
+      "sourceBlob": "6c92e679d048a941eac27b643e23c8d830ec776e",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/wikidata-tech-lock.test.mjs",
+      "sourceBlob": "b4fbf96e0041febcd151db3bdae21f52b42ded7c",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/wikimedia-enwiktionary-source-lock.test.mjs",
+      "sourceBlob": "404c4ccd6f80c7497a753ad7e69b3034a1004246",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/wiktextract-extraction-evidence.test.mjs",
+      "sourceBlob": "239907d8b81a43d52cff78c02a320a96cdf8c721",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/wiktextract-ingest.test.mjs",
+      "sourceBlob": "198ffc1e6f916dbab61b80024e5b92504e648ad7",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/wiktextract-rich-projection.test.mjs",
+      "sourceBlob": "f8c7bf1e1291f4edca32c8fbee3ef5bb289c2cdd",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/wxt-assets.test.mjs",
+      "sourceBlob": "605b3ac67f1799df573a0882e4cb4ff723bfa7f5",
+      "function": "测试与验证",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tests/youtube-bridge.test.mjs",
+      "sourceBlob": "f2f1d65a365cee73f2415790dde4ad929fc20ffd",
+      "function": "字幕",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "tsconfig.json",
+      "sourceBlob": "3439e83619736dedfa783ac6fdcb6075d695836f",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "types/wxt-compat.d.ts",
+      "sourceBlob": "e85aea0c69704b405d641dc1090115f96d8e6f6f",
+      "function": "启动与共享基础",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "vitest.config.ts",
+      "sourceBlob": "5b4f30eb9750cc76078ab3466d2c6f4ee0034c37",
+      "function": "构建与开发流程",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "wxt.config.mjs",
+      "sourceBlob": "e14551643b0d87e9f0562606cbe18ea1c0e485c1",
+      "function": "扩展启动",
+      "status": "已解释",
+      "documentation": "modules/startup.md#file-wxt-config",
+      "reviewedAt": "2026-10-02"
+    }
+  ]
+}
