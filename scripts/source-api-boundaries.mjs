@@ -4,7 +4,7 @@ const ROOT = "$global";
 const GLOBALS = new Set(["globalThis", "window", "self"]);
 const APIS = new Set(["chrome", "browser", "fetch", "indexedDB", "registerContentScripts", "require"]);
 const unwrap = (node) => {
-  while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node))) node = node.expression;
+  while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node))) node = node.expression;
   return node;
 };
 

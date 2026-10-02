@@ -64,6 +64,8 @@ const negatives = [
 ];
 const computedApiNegatives = [
   ["const fetch key", { "src/content/bad.js": 'const api="fetch";globalThis[api]("https://invalid.test");' }, /直接使用 fetch/u],
+  ["type assertion global alias fetch", { "src/content/bad.ts": 'const root=<typeof globalThis>globalThis;const key="fetch";root[key]("https://invalid.test");' }, /直接使用 fetch/u],
+  ["type assertion IndexedDB access", { "src/content/bad.ts": '(<typeof globalThis>globalThis)["indexedDB"].open("illegal");' }, /IndexedDB/u],
   ["const IndexedDB key", { "src/content/bad.js": 'const api="indexedDB";globalThis[api].open("illegal");' }, /IndexedDB/u],
   ["const shared chrome key", { "src/shared/bad.js": 'const api="chrome";globalThis[api].runtime.getURL("x");' }, /shared 层/u],
   ["const registration key", { "src/platform/bad.js": 'const api="registerContentScripts";chrome.scripting[api]([]);' }, /注册动态/u],
