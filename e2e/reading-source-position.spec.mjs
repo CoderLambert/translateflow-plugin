@@ -72,6 +72,39 @@ async function probe(harness, page, command, args = {}) {
         const capture = modules.selectionSourceSnapshot.capture({ text: "session", range, selectionGeneration: 1 });
         return { snapshot: await capture.ready, context: capture.context };
       }
+      if (command === "capture-slice-budget") {
+        const node = document.querySelector(args.selector).firstChild, range = document.createRange();
+        range.setStart(node, args.start ?? 7); range.setEnd(node, (args.start ?? 7) + 7);
+        let elapsedMs = 0, wholeReads = 0, boundedReads = 0, capture, canonical;
+        const phases = [], style = globalThis.getComputedStyle;
+        const styleDescriptor = Object.getOwnPropertyDescriptor(globalThis, "getComputedStyle");
+        const nowDescriptor = Object.getOwnPropertyDescriptor(performance, "now");
+        const valueDescriptor = Object.getOwnPropertyDescriptor(node, "nodeValue");
+        const substringDescriptor = Object.getOwnPropertyDescriptor(node, "substringData");
+        const originalProject = modules.textProjection.project, originalPolicy = modules.textProjectionPolicy.rangePolicy;
+        const nativeValue = Object.getOwnPropertyDescriptor(Node.prototype, "nodeValue").get;
+        const nativeSubstring = CharacterData.prototype.substringData;
+        const restore = (object, name, descriptor) => descriptor ? Object.defineProperty(object, name, descriptor) : delete object[name];
+        try {
+          Object.defineProperty(performance, "now", { configurable: true, value: () => elapsedMs });
+          Object.defineProperty(globalThis, "getComputedStyle", { configurable: true, value: (element) => { const result = style(element); elapsedMs += .25; return result; } });
+          modules.textProjectionPolicy.rangePolicy = (...values) => { const started = elapsedMs, value = originalPolicy(...values); phases.push({ phase: "range", ms: elapsedMs - started }); return value; };
+          modules.textProjection.project = (root, ...values) => { const started = elapsedMs, value = originalProject(root, ...values); phases.push({ phase: root === document.body ? "full" : "local", ms: elapsedMs - started, status: value.status, reason: value.reason, stats: value.stats }); return value; };
+          if (args.substringMs) {
+            Object.defineProperty(node, "nodeValue", { configurable: true, get() { wholeReads++; return nativeValue.call(this); } });
+            Object.defineProperty(node, "substringData", { configurable: true, value(from, count) { boundedReads++; const result = nativeSubstring.call(this, from, count); elapsedMs += args.substringMs; return result; } });
+          }
+          if (args.canonical) canonical = modules.selectionSourceSnapshot.canonicalize(range, "session");
+          else capture = modules.selectionSourceSnapshot.capture({ text: "session", range, selectionGeneration: 1 });
+        } finally {
+          modules.textProjection.project = originalProject; modules.textProjectionPolicy.rangePolicy = originalPolicy;
+          restore(globalThis, "getComputedStyle", styleDescriptor); restore(performance, "now", nowDescriptor);
+          restore(node, "nodeValue", valueDescriptor); restore(node, "substringData", substringDescriptor);
+        }
+        return { elapsedMs, limitMs: modules.textProjectionPolicy.limits.sliceMs, phases, wholeReads, boundedReads,
+          canonical: canonical ? { unchanged: canonical.range === range, text: canonical.text } : null,
+          snapshot: capture ? await capture.ready : null, context: capture?.context, root: capture?.root };
+      }
       if (command === "capture-bounded-text") {
         const node = document.querySelector(args.selector).firstChild;
         let wholeReads = 0, boundedReads = 0, largestRead = 0;
@@ -280,4 +313,34 @@ test("whole Ranges crossing interior private nodes or unknown hosts reject evide
   expect(large.snapshot.anchor.status).toBe("unsupported"); expect(harness.server.calls).toHaveLength(1);
   expect(harness.server.calls[0].segments.map((item) => item.text)).toEqual(["PUBLIC SECRET tail"]);
   console.log("[READING_RANGE_PRIVACY]", JSON.stringify({ privateInteriorModes: 3, nodeBudgetRejected: true, explicitLocalTranslationCalls: 1, cacheReused: true, paidProviderCalls: 0 }));
+});
+
+
+test("real DOM capture, canonicalization and giant fallback share their first synchronous deadline", async ({ harness }) => {
+  const leading = '<p>safe</p>'.repeat(100);
+  const page = await prepare(harness, `<main>${leading}<p id="selected">PUBLIC session tail</p></main>`);
+  const capture = await probe(harness, page, "capture-slice-budget", { selector: "#selected" });
+  expect(capture.limitMs).toBe(8); expect(capture.elapsedMs).toBe(8);
+  expect(capture.phases.map((value) => value.phase)).toEqual(["range", "local", "full"]);
+  expect(capture.phases[2].reason).toBe("time-budget");
+  expect(capture.context).toMatchObject({ text: "PUBLIC session tail", sensitive: false }); expect(capture.root).toBe("document");
+  expect(capture.snapshot).toMatchObject({ selectedText: "session", anchor: { status: "unsupported", position: null } });
+  expect(validateSourceSnapshot(capture.snapshot)).toEqual(capture.snapshot);
+
+  await page.evaluate(() => { document.body.innerHTML = `<main><p>${'<span>safe</span>'.repeat(100)}<span id="selected">PUBLIC session tail</span></p></main>`; });
+  const canonical = await probe(harness, page, "capture-slice-budget", { selector: "#selected", canonical: true });
+  expect(canonical.limitMs).toBe(8); expect(canonical.elapsedMs).toBe(8);
+  expect(canonical.canonical).toEqual({ unchanged: true, text: "session" });
+  expect(canonical.phases.map((value) => value.phase)).toEqual(["range", "local"]);
+  expect(canonical.phases[1].reason).toBe("time-budget");
+
+  await page.evaluate(() => { document.body.innerHTML = '<main><p id="giant"></p></main>'; document.querySelector("#giant").textContent = `${"x".repeat(2_000_000)} session END_CONTEXT`; });
+  const giant = await probe(harness, page, "capture-slice-budget", { selector: "#giant", start: 2_000_001, substringMs: 4 });
+  expect(giant.limitMs).toBe(8); expect(giant.elapsedMs).toBe(8);
+  expect(giant.wholeReads).toBe(0); expect(giant.boundedReads).toBe(1);
+  expect(giant.context).toMatchObject({ text: "", sensitive: false }); expect(giant.root).toBe("document");
+  expect(giant.snapshot).toMatchObject({ selectedText: "session", contextMode: "selection-only", anchor: { status: "unsupported", position: null } });
+  expect(validateSourceSnapshot(giant.snapshot)).toEqual(giant.snapshot); expect(harness.server.calls).toHaveLength(0);
+  console.log("[READING_SHARED_SLICE]", JSON.stringify({ captureMs: capture.elapsedMs, canonicalMs: canonical.elapsedMs, giantMs: giant.elapsedMs, limitMs: giant.limitMs,
+    capturePhases: capture.phases, canonicalPhases: canonical.phases, giantWholeReads: giant.wholeReads, giantBoundedReads: giant.boundedReads, paidProviderCalls: 0 }));
 });

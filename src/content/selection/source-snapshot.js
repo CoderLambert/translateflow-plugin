@@ -16,16 +16,18 @@
     start = Math.max(0, end - maxChars);
     return { text: text.slice(start, end), truncated: start > 0 || end < text.length };
   }
-  function localProjection(range) {
-    const root = contextRoot(range), value = projection.project(root);
+  function localProjection(range, budget) {
+    const root = contextRoot(range), value = projection.project(root, { budget });
     if (value.status === "resolved") return value;
     if (!["char-budget", "node-budget", "time-budget"].includes(value.reason) || range.startContainer !== range.endContainer || range.startContainer.nodeType !== 3) return value;
-    const node = range.startContainer;
-    const from = Math.max(0, range.startOffset - 600), to = Math.min(node.length, range.endOffset + 600);
-    if (to - from > 4000) return value;
-    const started = performance.now(), check = () => { if (performance.now() - started >= policy.limits.sliceMs) throw new Error("time-budget"); };
+    const check = () => { if (policy.timeExpired(budget)) throw new Error("time-budget"); };
     try {
       check();
+      const node = range.startContainer;
+      const from = Math.max(0, range.startOffset - 600), to = Math.min(node.length, range.endOffset + 600);
+      if (to - from > 4000) return value;
+      if (budget.nodes >= policy.limits.sliceNodes || budget.chars + to - from > policy.limits.sliceChars) return value;
+      budget.nodes++; budget.chars += to - from;
       const text = node.substringData(from, to - from);
       check();
       if (/[\u0000\u0008\u000b]/u.test(text)) return { status: "unsupported", reason: "unsupported-text" };
@@ -34,8 +36,8 @@
       return { status: "resolved", ...builder.finish(), domNodes: new Map([["local", node]]), localWindow: true };
     } catch { return value; }
   }
-  function selectionPosition(value, range) {
-    const position = projection.positionForRange(value, range);
+  function selectionPosition(value, range, budget) {
+    const position = projection.positionForRange(value, range, { budget });
     if (!position) return null;
     while (position.start < position.end && /[\t\n\r\f ]/u.test(value.text[position.start])) position.start++;
     while (position.end > position.start && /[\t\n\r\f ]/u.test(value.text[position.end - 1])) position.end--;
@@ -43,14 +45,14 @@
   }
   const comparable = (text) => text.replace(/[\t\n\r\f ]+/gu, " ").replace(/^ +| +$/gu, "");
   function capture(snapshot, { maxChars = 900 } = {}) {
-    const sourceRevision = projection.revision(), decision = policy.rangePolicy(snapshot.range, snapshot.text);
+    const budget = policy.createSliceBudget();
+    const sourceRevision = projection.revision(), decision = policy.rangePolicy(snapshot.range, snapshot.text, { budget });
     let selectedText = snapshot.text, text = "", prefix = "", suffix = "", position = null, blockText = null;
     let status = "unsupported", truncated = false;
     if (decision.supported) {
-      const full = projection.project(document.body);
-      const local = localProjection(snapshot.range), localPosition = selectionPosition(local, snapshot.range);
+      // Preserve proven local context before spending the remaining slice on page coordinates.
+      const local = localProjection(snapshot.range, budget), localPosition = selectionPosition(local, snapshot.range, budget);
       if (local.sensitive) decision.sensitive = true;
-      const globalPosition = selectionPosition(full, snapshot.range);
       if (localPosition && comparable(local.text.slice(localPosition.start, localPosition.end)) === comparable(snapshot.text)) {
         selectedText = local.text.slice(localPosition.start, localPosition.end);
         const context = boundedText(local.text, localPosition, Math.min(900, Math.max(1, maxChars)));
@@ -59,8 +61,12 @@
         suffix = local.text.slice(localPosition.end, localPosition.end + 120);
         if (!local.localWindow) blockText = local.text;
       }
-      if (globalPosition && localPosition && full.text.slice(globalPosition.start, globalPosition.end) === selectedText && blockText !== null) {
-        status = "resolved"; position = globalPosition;
+      if (blockText !== null) {
+        const full = projection.project(document.body, { budget });
+        const globalPosition = selectionPosition(full, snapshot.range, budget);
+        if (globalPosition && localPosition && full.text.slice(globalPosition.start, globalPosition.end) === selectedText) {
+          status = "resolved"; position = globalPosition;
+        }
       }
     }
     const context = Object.freeze({ text, sensitive: decision.sensitive, source: text ? "visible-local" : "selection-only", truncated });
@@ -87,10 +93,12 @@
     return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   }
   function canonicalize(range, text) {
-    if (!policy.rangePolicy(range, text).supported) return { range, text };
-    const value = localProjection(range), position = selectionPosition(value, range);
-    return position && comparable(value.text.slice(position.start, position.end)) === comparable(text)
-      ? { range: projection.rangeForPosition(value, position), text: value.text.slice(position.start, position.end) } : { range, text };
+    const budget = policy.createSliceBudget();
+    if (!policy.rangePolicy(range, text, { budget }).supported) return { range, text };
+    const value = localProjection(range, budget), position = selectionPosition(value, range, budget);
+    if (!position || comparable(value.text.slice(position.start, position.end)) !== comparable(text)) return { range, text };
+    const canonicalRange = projection.rangeForPosition(value, position, { budget });
+    return canonicalRange ? { range: canonicalRange, text: value.text.slice(position.start, position.end) } : { range, text };
   }
   app.modules.selectionSourceSnapshot = { capture, contextRoot, canonicalize };
 })();

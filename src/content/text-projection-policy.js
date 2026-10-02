@@ -30,7 +30,13 @@
     if (!["normal", "nowrap"].includes(style.whiteSpace)) return { unsupported: true, reason: "white-space" };
     return { block: style.display !== "contents" && !style.display.startsWith("inline"), excluded: false };
   }
-  function rangePolicy(range, selectedText = "") {
+  function createSliceBudget(clock = () => performance.now()) {
+    const started = clock();
+    return { clock, started, deadline: started + limits.sliceMs, nodes: 0, chars: 0 };
+  }
+  const timeExpired = (budget) => budget.clock() >= budget.deadline;
+  function rangePolicy(range, selectedText = "", { budget = createSliceBudget() } = {}) {
+    if (budget.nodes >= limits.sliceNodes || timeExpired(budget)) return { supported: false, sensitive: true, reason: "range-budget" };
     if (!range || !range.startContainer?.isConnected || !range.endContainer?.isConnected) return { supported: false, sensitive: true, reason: "detached" };
     try {
       if (window.top !== window || [range.startContainer, range.endContainer].some((node) => node.getRootNode() !== document)) {
@@ -38,8 +44,7 @@
       }
     } catch { return { supported: false, sensitive: true, reason: "unsupported-root" }; }
     let supported = true, sensitive = false, reason = "";
-    const budget = { started: performance.now(), nodes: 0 };
-    const exhausted = () => budget.nodes >= limits.sliceNodes || performance.now() - budget.started >= limits.sliceMs;
+    const exhausted = () => budget.nodes >= limits.sliceNodes || timeExpired(budget);
     const deny = (decision) => { supported = false; sensitive ||= Boolean(decision.sensitive); reason ||= decision.reason || "excluded"; };
     for (const node of [range.startContainer, range.endContainer, range.commonAncestorContainer]) {
       if (node.assignedSlot) deny({ sensitive: true, reason: "unsupported-slot" });
@@ -48,7 +53,7 @@
         if (exhausted()) return { supported: false, sensitive: true, reason: "range-budget" };
         budget.nodes++;
         const decision = inspect(element);
-        if (performance.now() - budget.started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
+        if (timeExpired(budget)) return { supported: false, sensitive: true, reason: "range-budget" };
         if (decision.excluded || decision.unsupported) deny(decision);
         element = element.parentElement;
       }
@@ -69,7 +74,7 @@
     if (root.nodeType === 3) return { supported: true };
     const stack = [{ node: root, entered: false }];
     while (stack.length) {
-      if (budget.nodes >= limits.sliceNodes || performance.now() - budget.started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
+      if (budget.nodes >= limits.sliceNodes || timeExpired(budget)) return { supported: false, sensitive: true, reason: "range-budget" };
       const frame = stack.at(-1), node = frame.node;
       if (!frame.entered) {
         budget.nodes++; frame.entered = true;
@@ -79,7 +84,7 @@
           if (node.assignedSlot) return { supported: false, sensitive: true, reason: "unsupported-slot" };
           if (node.nodeType === 1) {
             const decision = inspect(node);
-            if (performance.now() - budget.started >= limits.sliceMs) return { supported: false, sensitive: true, reason: "range-budget" };
+            if (timeExpired(budget)) return { supported: false, sensitive: true, reason: "range-budget" };
             if (decision.unsupported || decision.excluded) return { supported: false, sensitive: true, reason: decision.reason || "excluded-interior" };
           }
           frame.child = node.firstChild;
@@ -100,5 +105,5 @@
     }
     return true;
   }
-  app.modules.textProjectionPolicy = { inspect, owned, rangePolicy, sourceMutation, limits, projectionVersion: "tf-source-utf16-v1" };
+  app.modules.textProjectionPolicy = { inspect, owned, rangePolicy, sourceMutation, createSliceBudget, timeExpired, limits, projectionVersion: "tf-source-utf16-v1" };
 })();
