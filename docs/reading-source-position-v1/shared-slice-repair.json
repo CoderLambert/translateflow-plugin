@@ -3,7 +3,7 @@
   "task": "Shared synchronous source capture slice repair",
   "taskBaselineHead": "62ab0009d52cdc1007b0810037a6c74cba18454c",
   "codeHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
-  "evidenceBinding": "All final commands ran on this clean code head; the containing final commit adds this report only and has identical runtime/tests/config bytes",
+  "evidenceBinding": "The checks in this report ran at clean runtime/test head 588c34eeb85265e87074ba9a2bd841784463bc6b. Report-only commit 1c5ca39da2af987a0ae5d547fd6c24610cf401ea preserved those bytes. Later coordinator checks below are separately bound; the 13-case E2E result is not reassigned to a later test head.",
   "scope": {
     "files": [
       {
@@ -203,7 +203,7 @@
   "notRun": [
     "Full E2E suite outside the13 affected cases",
     "Chrome102 runtime",
-    "Same-ID old\u2192WXT upgrade/restart",
+    "Same-ID old→WXT upgrade/restart",
     "Other browsers",
     "Real paid Provider"
   ],
@@ -232,6 +232,54 @@
     "231-slice-repair-final-e2e.log": {
       "path": "/tmp/translateflow-release-a-20261002/evidence/231-slice-repair-final-e2e.log",
       "sha256": "af5e5a402494ef01407af0692c504a1c9267048b6b84298855841f421a5941c6"
+    },
+    "231-integrated-final-validate.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-integrated-final-validate.log",
+      "sha256": "dc1fbc2287f1e4d408ea8cbc98ffdcfde803f09ee8ec787286c6433f6241ce8a"
+    },
+    "231-security-final-e2e.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-security-final-e2e.log",
+      "sha256": "9e404c2cca9c55c4b371f112184af3b7c009a09492f92cec3c0e96f56ee45f7f"
+    },
+    "231-budget-final-wxt-build.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-budget-final-wxt-build.log",
+      "sha256": "c8b37dce658e526291dd93cfe706df680c319dd0d4dc4f9f46ef8a5e94ad29a5"
+    },
+    "231-budget-final-wxt-smoke.log": {
+      "path": "/tmp/translateflow-release-a-20261002/evidence/231-budget-final-wxt-smoke.log",
+      "sha256": "be56ee86625b40ae86e4991d9fd8e8e207f47d1d1a645b247df31ed741c0caa0"
     }
+  },
+  "coordinatorChecks": {
+    "sourceHead": "4c70afcef4ded4664742937bb530f10744a1da41",
+    "incrementSinceCodeHead": "Report plus two caret: initial screenshot options in e2e/rich-viewer-security.spec.mjs; runtime and configuration bytes unchanged.",
+    "validate": {
+      "status": "PASS",
+      "nodeTests": 762,
+      "sourceFiles": 441,
+      "log": "231-integrated-final-validate.log"
+    },
+    "richViewerSecurity": {
+      "status": "PASS",
+      "tests": 1,
+      "durationSeconds": 7.0,
+      "log": "231-security-final-e2e.log",
+      "package": "Isolated legacy source build; no WXT full E2E claim"
+    },
+    "wxtBuild": {
+      "status": "PASS",
+      "sourceHead": "588c34eeb85265e87074ba9a2bd841784463bc6b",
+      "log": "231-budget-final-wxt-build.log",
+      "files": 147,
+      "bytes": 1392408
+    },
+    "wxtSmoke": {
+      "status": "PASS",
+      "log": "231-budget-final-wxt-smoke.log",
+      "package": "Actual WXT output from codeHead, byte-identical runtime at coordinator sourceHead",
+      "paidProviderCalls": 0,
+      "externalRequests": 0
+    },
+    "ci": "NOT RUN on this newer head; prior PR260 failures remain FAIL."
   }
 }
