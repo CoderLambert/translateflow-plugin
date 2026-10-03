@@ -1,10 +1,71 @@
 {
   "schema": 1,
   "task": "234",
-  "candidateHead": null,
-  "checks": [],
-  "artifact": null,
+  "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce",
+  "tree": "f431ae856572c1973dd62b9804d2f835db78fccd",
+  "inputTree": "31f542a222d485e916033a5878937c5cb42e8cae52bdff5ba76bd8c4d0b2d4ac",
+  "frozenAt": "2026-10-03T12:43:03.377Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 53304.705342,
+      "startedAt": "2026-10-03T12:43:03.716Z",
+      "log": "docs/task-execution/local/234/522f39a3-2583-45d8-97d2-439df4078f1d.log",
+      "logSha256": "26e31445086c9dc6c7b206280565e1001999b6ce78e00604fd1108da8dbf4816"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1865.992802,
+      "startedAt": "2026-10-03T12:44:10.116Z",
+      "log": "docs/task-execution/local/234/fb585519-7a17-4d63-9260-707421f4418b.log",
+      "logSha256": "ec3d234b93e3db66af22558e2e5f3ccb119e6181dbcad99224cdb7f7ae77925a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 257257.710269,
+      "startedAt": "2026-10-03T12:44:31.935Z",
+      "log": "docs/task-execution/local/234/c848dc4a-42f1-47a0-b1ff-9f5163a80db5.log",
+      "logSha256": "22e0210565e125c335f0dc172fa78cb4fdebbb57a1e2cb87e2532011128b61ef"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "18ccd8ff6df268bdc140c9d759ac75e070ed8d2b7e7ed35a2a22c469c32df151"
+  },
   "limitations": [
-    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
-  ]
+    "E2E: 140 PASS, 7 SKIPPED; skipped scenarios are not claimed as verified.",
+    "Learning center consent callback is synthetic for #234; React learning center #235 and complete cross-page Release A #236 remain incomplete.",
+    "Independent model review NOT RUN: reviewer stopped and mandatory role removed at explicit user request.",
+    "Native Windows/macOS and real paid Provider NOT RUN."
+  ],
+  "gatePolicyHead": "3001923a156242782ad0075cc052fed56c4640da"
 }

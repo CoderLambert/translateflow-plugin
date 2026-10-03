@@ -59,13 +59,13 @@
     },
     {
       "task": "234",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "231",
         "233"
       ],
       "branch": "feat/234-reading-selection",
-      "candidateHead": null
+      "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce"
     },
     {
       "task": "235",

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "234",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "231",
@@ -9,7 +9,7 @@
   ],
   "branch": "feat/234-reading-selection",
   "worktree": ".worktrees/issue-234",
-  "candidateHead": null,
+  "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -29,5 +29,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户已授权恢复PR279：保留已提交修复，冻结最新main候选，完整validate/实际WXT E2E和独审后同步。"
+  "nextAction": "本地validate、实际WXT构建、ChromiumE2E通过；用户取消强制reviewer，使用新验收gate后准确head同步。"
 }
