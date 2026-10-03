@@ -4,6 +4,9 @@
 
 源码固定在 `d5e308a709c008acf6b277d466d020f13025bdca`，2026-10-03 重新读取 main 确认未变。本章是静态源码走读；安装、构建、单测、浏览器及真实 YouTube 验证均 **NOT_RUN**。主流程实现已存在，不表示以下限制已经修复。
 
+
+> 2026-10-03 增量说明：本章运行时固定源码在main 86ed596中的blob未变。共享浏览器测试基础设施已切为复制预构建的明确产物，不再隐式构建；默认构建与默认本地E2E选择不同，实际运行请先读[构建与测试链](build-test-release.md)。旧测试链接只说明固定版本断言，不作为当前产物PASS；本轮运行NOT_RUN。
+
 ## 1. 用户入口及结果
 
 已注入的 Content 在启动时调用字幕 controller。默认 controller 只在 youtube.com 子域的 watch/shorts 路径启动；读取 `youtubeSubtitleMode`、`youtubeSubtitleSize`，默认 bilingual/standard，并查询当前有效 Preset。播放器内出现原字幕、译文、状态以及模式/Preset/字号控件。它不是网页正文翻译的 DOM 插入分支，也不是下载全片字幕后一次性翻译。

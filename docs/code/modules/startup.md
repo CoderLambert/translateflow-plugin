@@ -299,8 +299,8 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 | [src/content/subtitles/controller.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/subtitles/controller.js#L83) | 支持页面判定、start/stop/refreshRoute | 字幕请求/渲染/配置交互全链 |
 | [src/content/subtitles/sources/youtube.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/subtitles/sources/youtube.js#L40) | source 的 install bridge 回调 | MAIN/fallback/播放器事件完整链 |
 | [src/background/youtube-bridge.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/youtube-bridge.js) | sender tab 验证与专门 MAIN 注入 | 桥接协议安全与 MAIN 脚本 |
-| [scripts/build-extension.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/scripts/build-extension.mjs#L40) | 默认输出与 allowlist | 复制/输出路径/发布认证整体 |
-| [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | 当前构建/验证命令分工 | 词典构建/认证脚本全部含义 |
+| [scripts/build-extension.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/scripts/build-extension.mjs#L40) | 默认输出与allowlist；现已有[完整构建器说明](build-test-release.md#file-build-extension) | 本表保留启动切片历史范围，全局coverage以新正文为准 |
+| [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | 当前入口见[命令路由](build-test-release.md#package-routing)：test:e2e→run-e2e默认WXT，legacy需显式TF_E2E_ARTIFACT | 词典构建/认证脚本全部含义仍局部 |
 
 测试引用同样不自动视为逐文件完成。详见功能篇测试矩阵：Node mock/源码结构断言、真实 Chromium、WXT artifact smoke、发布认证是不同证据。本文没有执行任何运行时验证；所有命令为后续复现入口，均 **NOT_RUN**。
 
@@ -313,13 +313,13 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 | 文件 | 修改会影响什么 | 最近的已读测试 / 尚缺验证 |
 | --- | --- | --- |
 | manifest.json | 浏览器入口、权限、命令、页面身份与最低版本 | [wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/wxt-assets.test.mjs) 的 Manifest 等价/负例；浏览器安装仍需 smoke |
-| background.js | 默认包能否立即连上后台 listener | 无入口装载专门覆盖证据；默认包实际装载需浏览器验证，WXT smoke 不能替代这个原生入口 |
+| background.js | 默认包能否立即连上后台 listener | 现[e2e.yml](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/e2e.yml)的legacy/WXT矩阵分别加载明确产物；本轮NOT_RUN，WXT单包结果不能代替legacy |
 | entrypoints/background.ts | WXT worker 入口、module 类型、listener 注册时序 | npm run build:extension:wxt 与 npm run test:wxt:smoke；未见专门同步时序单测证据 |
 | src/background/index.js | 安装默认值、旧键清理、启动注册、Reading 生命周期接线 | [reading-runtime-storage.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-runtime-storage.test.mjs) 仅测下游懒存储；实际 onInstalled/onStartup 顺序和重复 initialize 需专门验证 |
 | src/background/commands.js | 快捷键投递、首次注入、taskId 保留与保护页行为 | [commands.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/commands.test.mjs)；真实快捷键权限另需 Chromium |
 | src/background/auto-sites.js | 三种模式共享注册、权限过滤、legacy 注销与站点偏好 | [site-registration.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/site-registration.test.mjs)；真实跨会话注册/失败中断需额外验证 |
 | src/content/runtime.js | 所有 Content 消息值、共享状态、页面身份、fallback toast | [translateflow.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/translateflow.spec.mjs) 间接覆盖注入后消息/缓存；重复 runtime 装载与 fallback toast 无本次专门覆盖证据 |
-| content.js | 组合启动、消息响应、storage/SPA 路由和根幂等 | 同一 E2E 的手动翻译、模式切换、外观/Selection 路径；根启动中途异常与重注入需专项验证 |
+| content.js | 组合启动、消息响应、storage/SPA 路由和根幂等 | 同一 E2E 的手动翻译、模式切换、外观/Selection 路径；新增[wxt-injection-samples](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/e2e/wxt-injection-samples.spec.mjs)含十次cold/warm sameApp断言，但不是性能门槛；根启动异常仍需对应证据 |
 | src/content/appearance.js | CSS 白名单变量、旧响应丢弃与 fallback | 同一 E2E 的 reading appearance 用例检查 DOM 保留与 Provider 次数；refreshVersion 乱序需专项验证 |
 | src/content/ui/host.js | Shadow 样式隔离、layer 复用、节点归属与 host 重建 | 同一 E2E 的 Quick Control Shadow-isolated 用例；宿主节点外部删除后重建需专项验证 |
 | wxt.config.mjs | entrypoint 身份、raw 资产闭包、构建 target 与审计报告 | [wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/wxt-assets.test.mjs) 加实际 WXT build/audit/smoke；helper 单测不能替代真实构建 hook |
@@ -333,3 +333,6 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 启动后完整的查询、结果和取消流程见[划词功能章](../features/selection-and-dictionary.md)。本页局部解释的Selection controller现已有[完整文件说明](selection.md#file-controller)；全局覆盖状态以[coverage](../coverage.json)为准，不把两个章节重复计数。
 
 网页启动后的正文任务与自动观察详见[网页翻译与缓存](../features/page-translation.md)；auto模块已有[完整说明](page-translation-cache.md#file-auto)。
+
+
+当前构建/测试共享基础设施的变动、实际包选择和未合入输出安全后续见[构建完整链](../features/build-test-release.md)。本页运行时旧固定引用的blob与main86ed596一致，不能由此推导新CI或浏览器已通过。之前列为局部的Provider、字幕与Reading模块已有后续正文，全局覆盖状态以coverage为准。

@@ -2,7 +2,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置与Reading已实现后台链；大型依赖的内部覆盖以清单为准。
+当前清单及构建验收基线：`86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d`。以下运行时固定链接保留`d5e308a709c008acf6b277d466d020f13025bdca`，已说明运行时源码blob未变；浏览器测试基础设施变化以[构建章](features/build-test-release.md)为准。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置与Reading已实现后台链；大型依赖的内部覆盖以清单为准。
 
 ## 先区分五种运行环境
 
@@ -98,3 +98,12 @@ Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；
 已冻结SourceSnapshot并不自动写历史。main已实现Reading v2原生身份授权、操作登记、独立IDB短事务、列表/管理/分块导出与失效Port；SAVE仅在真正commit后返回saved，取消ACK区分尚未保存与已提交事实。
 
 生产readingAccessCollector及完整begin/save点击链尚缺，learningCenterAvailable默认false，固定学习中心打开仍NOT_READY；handoff合同不等于已实现回原文。测试注入的collector/页面与真实产品入口分开，不能把后台及合成测试当用户可用闭环。旧规范开头repository absent已落后于main，导读按固定源码说明。此轮未运行测试，不修改业务。
+
+
+## 构建与验收消费的是哪份产物
+
+[完整链](features/build-test-release.md) · [逐文件正文](modules/build-test-release.md)
+
+main 86ed596仍以legacy作为默认构建/发行；本地test:e2e默认选已有WXT，两者不能混同。fixture不再自行build或fallback，先精确复制并记录原tree摘要，再允许列明的测试副本改动。sourceHead是声明而非构建证明；新包UI出现也不证明旧缓存Worker已替换，同ID升级需要实际激活及存储快照验证。
+
+共享fixture和CI变化已复核，前七章运行时固定源码仍一致；旧测试链接只说明当时断言，不代表当前包通过。构建输出包含递归清理，已知路径安全后续见本章，禁止将当前guard说成全面可靠。所有本轮运行、浏览器与发布均NOT_RUN。

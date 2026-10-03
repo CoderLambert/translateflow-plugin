@@ -4,6 +4,9 @@
 
 源码固定于 `d5e308a709c008acf6b277d466d020f13025bdca`；静态复核2026-10-03；运行、测试、真实网页/Provider验证均 **NOT_RUN**。这章从已注入完成的网页继续，不重复[启动](extension-startup.md)、[划词与显式AI](selection-and-dictionary.md)或[MDX/MDD](local-dictionary-import.md)。
 
+
+> 2026-10-03 增量说明：本章运行时固定源码在main 86ed596中的blob未变。共享浏览器测试基础设施已切为复制预构建的明确产物，不再隐式构建；默认构建与默认本地E2E选择不同，实际运行请先读[构建与测试链](build-test-release.md)。旧测试链接只说明固定版本断言，不作为当前产物PASS；本轮运行NOT_RUN。
+
 ## 1. 用户入口与可观察结果
 
 - Popup“翻译”或Quick Control“翻译 / 重翻”：清已有译文后扫描正文，先恢复命中，再为缺失组调用Provider；译文追加在原段落内，原文不替换。
