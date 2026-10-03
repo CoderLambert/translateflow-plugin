@@ -33,7 +33,7 @@ test("automatic translation is exposed as an accessible switch treatment", () =>
   assert.match(css, /toggle-button\[aria-checked="true"\]/);
 });
 
-test("Selection can request optional all-sites access for automatic page injection", () => {
+test("Selection exposes the default all-sites automatic-injection control", () => {
   assert.match(html, /id="selectionSite" class="toggle-button" role="switch" aria-checked="false"/);
   assert.match(html, /id="selectionInfo"/);
   assert.match(script, /SELECTION_ALL_SITES_ENABLE/);

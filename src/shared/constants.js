@@ -14,7 +14,7 @@ export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_
 export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });
 export const DEFAULT_CONFIG = Object.freeze({
   apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", targetLanguage: "Simplified Chinese", uiLocale: "auto",
-  appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], selectionAllSites: false, quickControlSites: [], quickControlHiddenSites: [],
+  appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], selectionAllSites: true, quickControlSites: [], quickControlHiddenSites: [],
   youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", selectionExplanationDepth: SELECTION_EXPLANATION_DEPTH.AUTO,
   prompt: DEFAULT_PROMPT, openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
   siteProfiles: {}, glossary: DEFAULT_GLOSSARY_STORE, siteGlossaries: DEFAULT_SITE_GLOSSARY_STORE

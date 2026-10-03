@@ -36,8 +36,8 @@ test("production package excludes reviewed ECDICT payloads and keeps required ho
       report.totalBytes < corpusLock.mdx.bytes,
       "the extension package must remain smaller than the reviewed MDX payload"
     );
-    assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*"]);
-    assert.ok(!manifest.host_permissions.some((pattern) => /(?:^<all_urls>$|\*\.\*|https?:\/\/\*\/\*)/iu.test(pattern)));
+    assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
+    assert.ok(!manifest.host_permissions.includes("<all_urls>"));
     assert.ok(!manifest.host_permissions.some((pattern) => /(?:github\.com|githubusercontent\.com)/iu.test(pattern)));
     assert.doesNotMatch(workerBootstrap, /__e2e\/ecdict-mdx-28\.zip|release-assets\.githubusercontent\.com\/e2e-cached/iu);
     assert.match(fixtureSource, /if \(ecdictMdxCachedArchivePath\)/u);

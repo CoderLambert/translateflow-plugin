@@ -72,12 +72,11 @@ The waiver applies to v0.8 release certification only. It does not convert unexe
 
 ## Permissions/privacy
 
-Production `manifest.json` remains intentionally narrow:
+Production `manifest.json` keeps privileged APIs narrow while granting ordinary-page access required for default Selection:
 
 - required permissions: `storage`, `activeTab`, `scripting`;
-- required host permission: DeepSeek API only;
-- site/API origins are declared optional and granted after user action;
-- no required `<all_urls>`;
+- required host permissions: DeepSeek API plus HTTP/HTTPS pages for automatic Selection injection;
+- no `<all_urls>` token and no Chrome-internal-page access;
 - no required YouTube host permission;
 - no third-party subtitle service;
 - API keys remain local/BYOK.
@@ -92,7 +91,7 @@ Production `manifest.json` remains intentionally narrow:
 - Post-merge main E2E #111: **PASS**
 - Maintainer authorization: remaining manual/interactive rows explicitly waived for the v0.8 merge after automated gate health was confirmed.
 - Production required permissions remain `storage`, `activeTab`, `scripting`.
-- Production required Host Permission remains DeepSeek API only; site origins remain optional/user-triggered.
+- Production required Host Permission now includes HTTP/HTTPS pages for default Selection; automatic translation remains an explicit per-site action.
 
 ## Merge gate — completed
 
