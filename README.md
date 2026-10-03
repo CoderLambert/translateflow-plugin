@@ -469,7 +469,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - 旧根目录 `cache-db.js` 不允许重新出现
 - 生产扩展使用 allowlist `dist/extension`；测试、E2E、构建脚本、raw/source-lock/benchmark 资产不得进入发布包
 
-GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run validate`；独立 `e2e` workflow 在相关运行时代码变化时安装 Playwright Chromium 并执行 `npm run test:e2e`。
+`npm run validate` 和受影响的 Chromium/MV3 E2E 在本地运行。GitHub Actions 的 quality/e2e 等工作流仅保留手动 workflow_dispatch 入口，不自动响应 PR 或 push。
 
 ## 当前限制
 

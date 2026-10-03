@@ -46,7 +46,7 @@
 
 候选必须先提交再测，避免“测过脏树但没有可审代码”。acceptance 生成后是元数据修改：它不可能同时包含自身未来 commit SHA。
 
-candidateHead 是实际测试/审核的提交，syncHead 是归档提交和远端 expected-head。两者必须有 Git 祖先关系，且完整输入指纹一致；只允许**当前任务**的 state.json、acceptance.json、review.md 以及生成 index.json 的差异。task.md、其它任务文件、源码、测试、package/lock、workflow、脚本、构建输入的任何变化都使旧候选失效。冻结后的机器验收要求另与候选 state 比较，不能通过改 state 削弱依赖或检查。
+candidateHead 是实际测试/审核的提交，syncHead 是归档提交和远端 expected-head。两者必须有 Git 祖先关系，且完整输入指纹一致；冻结、命令前后和 gate 逐文件校对真实磁盘输入与 Git blob，不依赖可被 assume-unchanged/skip-worktree 隐藏的 Git status。当前 Linux 使用精确字节和可执行位；CRLF 转换/Windows 该门槛 NOT VERIFIED，不能宣称跨平台。只允许**当前任务**的 state.json、acceptance.json、review.md 以及生成 index.json 的差异。task.md、其它任务文件、源码、测试、package/lock、workflow、脚本、构建输入的任何变化都使旧候选失效。冻结后的机器验收要求另与候选 state 比较，不能通过改 state 削弱依赖或检查。
 
 主 Agent 根据真实结果将当前 state 写为 ready_to_sync/candidateHead，生成索引，归档证据并提交，然后：
 
@@ -55,7 +55,7 @@ node scripts/local-task.mjs index
 node scripts/local-task.mjs gate workflow-local
 ```
 
-gate 核对源码/合同、干净输入、索引、已合入依赖、每项最新命令的 PASS/退出码/实测耗时/日志内容、包指纹和同候选独立审核。元数据本身仍须准确、脱敏，由协调者复核；归档之后源码有改动不能继续引用旧结果。全新 clone 缺本地日志/包时门槛不通过，需转移受控本地证据或重验，不能把仓库里的 PASS 文本当可信执行。
+gate 核对 state/acceptance/review 的同一候选、源码/合同、干净输入、索引、已合入依赖、每项最新命令的 PASS/退出码/实测耗时/日志内容、包指纹和同候选独立审核。元数据本身仍须准确、脱敏，由协调者复核；归档之后源码有改动不能继续引用旧结果。全新 clone 缺本地日志/包时门槛不通过，需转移受控本地证据或重验，不能把仓库里的 PASS 文本当可信执行。
 
 ## 代码同步与保护
 
@@ -69,4 +69,4 @@ gate 核对源码/合同、干净输入、索引、已合入依赖、每项最�
 
 现有 task-execution start/stage/finish 提供 task_start/stage_change/task_end，保留历史兼容；wrapper 提供 command_start/command_end。local-task 提供 candidate_frozen、实际验收 command_start/command_end，`mark` 提供 review_start/review_end/code_sync/task_complete/task_paused/task_blocked；每个事件只保留任务、声明角色、时间、branch/head、耗时/退出码和证据路径。
 
-`node scripts/local-task.mjs report <task>` 在任务完成/暂停或需要统计时输出验收运行耗时与失败次数；`task-execution.mjs report <task>` 汇总原生工具跨度和任务阶段。两者观察窗口/数据来源不同，不相加估算 token、模型调用或有效劳动。没有可靠 token 字段记 UNKNOWN。Hook 不联网、不调用大模型、不读取认证/完整会话、不注入原始日志、不决策任务状态。
+`node scripts/local-task.mjs report <task>` 在任务完成/暂停或需要统计时输出当前 acceptance 的验收运行耗时与失败次数（不冒充全部历史；历史事件保留在 local）；`task-execution.mjs report <task>` 汇总原生工具跨度和任务阶段。两者观察窗口/数据来源不同，不相加估算 token、模型调用或有效劳动。没有可靠 token 字段记 UNKNOWN。Hook 不联网、不调用大模型、不读取认证/完整会话、不注入原始日志、不决策任务状态。

@@ -16,5 +16,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "冻结、完整本地验收、具名独立审核、准确 head 代码同步。"
+  "nextAction": "修复门槛反例后冻结新候选；完整本地验收和同一独立 reviewer 增量审核。自动 PR Review 待用户关闭，当前不创建/更新 PR。"
 }

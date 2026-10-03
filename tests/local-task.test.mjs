@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -113,10 +114,49 @@ test("actual nonzero validation exit is FAIL, with measured duration and no pass
   const f = fixture(t);
   f.save("package.json", { scripts: { validate: "node -e \"process.exit(3)\"" } });
   f.git("add", "package.json"); f.git("commit", "-m", "failing validation input");
-  freeze(f.root, "234");
+  const a = freeze(f.root, "234");
   const result = await runCheck(f.root, "234", ["npm", "run", "validate"]);
   assert.equal(result.result, "FAIL"); assert.notEqual(result.exitCode, 0); assert.ok(result.durationMs > 0);
+  const s = f.load("docs/tasks/234/state.json"); s.candidateHead = a.candidateHead; f.save("docs/tasks/234/state.json", s);
+  f.save("docs/tasks/index.json", buildIndex(f.root));
   assert.throws(() => gate(f.root, "234"), /Missing passing check/u);
+});
+test("state and index cannot name a different candidate from acceptance and review", async (t) => {
+  const f = fixture(t); await ready(f);
+  const s = f.load("docs/tasks/234/state.json"); s.candidateHead = "0".repeat(40); f.save("docs/tasks/234/state.json", s);
+  f.save("docs/tasks/index.json", buildIndex(f.root));
+  assert.throws(() => gate(f.root, "234"), /State candidate/u);
+});
+test("dangling event links are rejected without creating a file outside the fixture", (t) => {
+  const f = fixture(t), outside = mkdtempSync(join(tmpdir(), "tf-local-outside-"));
+  t.after(() => rmSync(outside, { recursive: true, force: true }));
+  mkdirSync(join(f.root, "docs/task-execution/local/234"), { recursive: true });
+  const target = join(outside, "must-not-exist.jsonl");
+  symlinkSync(target, join(f.root, "docs/task-execution/local/234/events.jsonl"));
+  assert.throws(() => freeze(f.root, "234"), /Symlinked/u);
+  assert.equal(existsSync(target), false);
+});
+test("normalized log boundary cannot replace a missing log with a tracked task card", async (t) => {
+  const f = fixture(t); await ready(f);
+  const a = f.load("docs/tasks/234/acceptance.json"), c = a.checks[0]; rmSync(join(f.root, c.log));
+  assert.throws(() => gate(f.root, "234"), /ENOENT/u);
+  c.log = "docs/task-execution/local/234/../../../tasks/234/task.md";
+  c.logSha256 = createHash("sha256").update(readFileSync(join(f.root, "docs/tasks/234/task.md"))).digest("hex");
+  f.save("docs/tasks/234/acceptance.json", a);
+  assert.throws(() => gate(f.root, "234"), /Invalid evidence log boundary/u);
+});
+test("Git assume-unchanged and skip-worktree cannot conceal altered disk input at freeze or gate", async (t) => {
+  for (const flag of ["--assume-unchanged", "--skip-worktree"]) {
+    const f = fixture(t); writeFileSync(join(f.root, "source.txt"), "version1");
+    f.git("add", "source.txt"); f.git("commit", "-m", "source input");
+    f.git("update-index", flag, "source.txt"); writeFileSync(join(f.root, "source.txt"), "version2");
+    assert.equal(f.git("status", "--porcelain"), "");
+    assert.throws(() => freeze(f.root, "234"), /Disk input differs/u);
+    writeFileSync(join(f.root, "source.txt"), "version1"); await ready(f);
+    writeFileSync(join(f.root, "source.txt"), "version2");
+    await assert.rejects(() => runCheck(f.root, "234", ["npm", "run", "validate"]), /Disk input differs/u);
+    assert.throws(() => gate(f.root, "234"), /Disk input differs/u);
+  }
 });
 test("artifact fingerprint uses actual bytes and rejects symlink/root escape", (t) => {
   const f = fixture(t); mkdirSync(join(f.root, "dist/extension"), { recursive: true });
