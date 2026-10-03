@@ -104,7 +104,7 @@ test("Settings and selection expose local rich details while preserving the stri
     readFile(new URL("../options.html", import.meta.url), "utf8"),
     readFile(new URL("../src/options/rich-mdict-import-ui.js", import.meta.url), "utf8"),
     readFile(new URL("../src/content/selection/rich-details.js", import.meta.url), "utf8"),
-    readFile(new URL("../src/content/selection/result-renderer.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/content/selection/rich-result-renderer.js", import.meta.url), "utf8"),
     readFile(new URL("../src/shared/constants.js", import.meta.url), "utf8")
   ]);
 

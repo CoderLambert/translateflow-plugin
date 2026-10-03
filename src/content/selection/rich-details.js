@@ -19,13 +19,14 @@
   let routeWatchTimer = null;
   let nativeNavigationEvents = false;
 
-  async function load(snapshot, version, expectedPage, isCurrentSelection) {
+  async function load(snapshot, version, expectedPage, isCurrentSelection, onResult = null) {
     if (activeSession) void cancelSession(activeSession);
     const session = {
       snapshot,
       version,
       expectedPage,
       isCurrentSelection,
+      onResult,
       cancelled: false,
       cancelPromise: null,
       lookupStates: new Map(),
@@ -127,7 +128,9 @@
         }
 
         state.settled = true;
-        card.setResult(record, dictionaryId);
+        card.setResult(record, dictionaryId, (displayed) => {
+          if (isLiveSession(session)) session.onResult?.(displayed, dictionary);
+        });
       } catch {
         if (!isLiveSession(session)) return;
         state.settled = true;

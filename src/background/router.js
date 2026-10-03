@@ -1,4 +1,5 @@
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
 import {
@@ -96,7 +97,8 @@ export async function handleBackgroundMessage(message, sender) {
           requestId: message.requestId,
           segments: message.segments,
           config
-        })
+        }),
+        readingResult: await readingTranslationResult(message.pageUrl, config)
       };
     }
     case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
@@ -137,12 +139,15 @@ export async function handleBackgroundMessage(message, sender) {
         sourceLanguage: message.sourceLanguage || "en",
         targetLanguage: message.targetLanguage || "zh-CN"
       });
-    case BACKGROUND_MESSAGES.CACHE_LOOKUP:
-      return lookupTranslations({
+    case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
+      const config = await getEffectiveConfig(message.pageUrl);
+      const result = await lookupTranslations({
         pageUrl: message.pageUrl,
         segments: message.segments,
-        config: await getEffectiveConfig(message.pageUrl)
+        config
       });
+      return { ...result, readingResult: await readingTranslationResult(message.pageUrl, config) };
+    }
     case BACKGROUND_MESSAGES.CACHE_STORE:
       return storeTranslations({
         pageUrl: message.pageUrl,

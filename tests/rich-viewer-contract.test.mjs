@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 
 const VIEWER = new URL("../src/content/selection/rich-viewer.js", import.meta.url);
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
+const RICH_RENDERER = new URL("../src/content/selection/rich-result-renderer.js", import.meta.url);
 const SANITIZER_MODULES = [
   "../src/content/selection/rich-sanitizer-style.js",
   "../src/content/selection/rich-sanitizer-tokenizer.js",
@@ -99,6 +100,25 @@ test("viewer caps AST traversal and uses no network or HTML parser APIs", async 
   assert.match(source, /attachShadow\(\{ mode: "open" \}\)/u);
 });
 
+test("Rich display hook waits for expansion and exposes the visible sanitized text once", async () => {
+  const sanitizer = { sanitizeRichDictionaryRecord() {
+    return { nodes: [{ type: "text", text: "actual visible summary" }], truncated: false };
+  } };
+  const { renderer, document } = await loadModules({ sanitizer });
+  const container = document.createElement("div"), displayed = [];
+  const [card] = renderer.appendRichDictionaryCards(container, [{ id: "fixture", title: "Fixture" }]);
+  card.setResult({ id: "fixture", headword: "term", packVersion: "actual-v2", text: "different safe fallback",
+    richRecord: { rawRecord: "PRIVATE_RAW", format: "HTML", styleSheetRules: [] }, privatePath: "/home/private" },
+    "fixture", (value) => displayed.push(value));
+  assert.equal(displayed.length, 0, "a hidden preloaded result is not an observed result");
+  const details = findTag(container, "details");
+  details.open = true; details.dispatch("toggle"); details.dispatch("toggle");
+  assert.equal(displayed.length, 1);
+  assert.equal(displayed[0].text, "actual visible summary");
+  assert.equal(displayed[0].packVersion, "actual-v2");
+  assert.doesNotMatch(JSON.stringify(displayed[0]), /PRIVATE_RAW|\/home|richRecord/u);
+});
+
 test("nested dictionary font sizes each receive an independent pixel ceiling", async () => {
   const { viewer, document } = await loadModules();
   let node = { type: "text", text: "deep" };
@@ -148,6 +168,7 @@ async function loadModules({ sanitizer = { sanitizeRichDictionaryRecord: () => (
   const app = { modules: { selectionRichSanitizer: sanitizer } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
+  vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
   return { viewer: app.modules.selectionRichViewer, renderer: app.modules.selectionResultRenderer, document };
 }
@@ -216,6 +237,8 @@ class FakeNode {
     this.style = { values: new Map(), setProperty(name, value) { this.values.set(name, value); } };
     this.className = "";
     this.tabIndex = -1;
+    this.dataset = {};
+    this.listeners = new Map();
   }
   appendChild(node) {
     if (node.nodeType === 11) {
@@ -232,6 +255,10 @@ class FakeNode {
     for (const node of nodes) this.appendChild(node);
   }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  append(...nodes) { for (const node of nodes) this.appendChild(node); }
+  addEventListener(name, listener) { this.listeners.set(name, listener); }
+  dispatch(name) { this.listeners.get(name)?.(); }
+  querySelector(selector) { return selector.startsWith(".") ? findClass(this, selector.slice(1)) : findTag(this, selector); }
   get childElementCount() { return this.childNodes.filter((node) => node.nodeType === 1).length; }
   get textContent() { return this.nodeType === 3 ? this.data : this.childNodes.map((node) => node.textContent).join(""); }
   set textContent(value) { this.replaceChildren(this.ownerDocument.createTextNode(value)); }

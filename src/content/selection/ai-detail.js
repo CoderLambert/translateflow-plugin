@@ -116,7 +116,7 @@
         actions.className = "tf-selection-ai-actions";
         if (typeof onRetry === "function") {
           const retry = button({ text: "重试", label: "重新请求 AI 详解" });
-          retry.addEventListener("click", () => onRetry());
+          retry.addEventListener("click", (event) => onRetry(event));
           actions.appendChild(retry);
         }
         if (typeof onCancel === "function") {

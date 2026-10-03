@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "path-safety",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
-  "branch": "fix/build-output-path-safety",
-  "worktree": ".worktrees/issue-248-final",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3",
-  "mergeHead": null,
+  "mergeHead": "f8e7a5c978bc8cd729b24fdd6a6e488686e5e649",
   "validationCommands": [
     [
       "npm",
@@ -16,5 +16,7 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "候选验收和独审PASS；归档后gate，推送PR278并使用准确head squash。"
+  "nextAction": "路径安全修复已验收、独审并合入；后续WXT切换复用此合同。",
+  "syncHead": "a262fc0ddfe04a68aa6216a8cc084bbe659199e4",
+  "pr": 278
 }

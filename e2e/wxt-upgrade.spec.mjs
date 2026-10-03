@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, assertRecoveredDatabases } from "./support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases } from "./support/upgrade-expectations.mjs";
+import { mappingForGeneration } from "./support/runtime-mapping.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { startClosedNetwork, startupNetworkControl, assertStartupNetworkControl } from "./support/closed-network.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
@@ -43,7 +44,10 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
       proxy: network.launchProxy,
       args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, "--disable-quic"] });
-    context.on("page", (page) => page.on("pageerror", (error) => errors.push(error.message)));
+    context.on("page", (page) => page.on("pageerror", (error) => {
+      errors.push(error.message);
+      console.log("[WXT_UPGRADE_PAGE_ERROR]", JSON.stringify({url:page.url(),message:error.message,stack:error.stack}));
+    }));
     const sw = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
     const id = new URL(sw.url()).host;
     if (extensionId) expect(id).toBe(extensionId); else extensionId = id;
@@ -213,10 +217,12 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const reloadedLifecycle=await reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
     expect(reloadedLifecycle.overflow).toBe(false);
     const expectedReloadStorage=expectedStorageAfterInstalledUpdate(before.storage,reloadedLifecycle.events[0],oldManifest.version);
+    const expectedReloadRegistrations=expectedRegistrationsAfterInstalledUpdate(before.registrations,reloadedLifecycle.events[0],oldManifest.version,
+      mappingForGeneration("pre-switch-19e"),next.runtimeMapping);
     const activatedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
     expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
     await expect.poll(()=>driver.evaluate(()=>chrome.storage.local.get(["uiLocale"]).then(x=>x.uiLocale))).toBe(expectedReloadStorage.uiLocale);
-    const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage});
+    const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage,registrations:expectedReloadRegistrations});
     phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,networkStartup:activatedStartup,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
@@ -236,7 +242,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(server.calls).toHaveLength(1);
     const afterRecovery=await snapshot();
     expect(afterRecovery.storage).toEqual(expectedReloadStorage); expect(afterRecovery.opfs).toEqual(before.opfs);
-    expect(afterRecovery.registrations).toEqual(before.registrations);
+    expect(afterRecovery.registrations).toEqual(expectedReloadRegistrations);
     // Only the cache owner's lastAccessedAt on existing translation/page rows
     // may advance during real reads. Content/identity and all other stores stay exact.
     assertRecoveredDatabases(before.databases,afterRecovery.databases);

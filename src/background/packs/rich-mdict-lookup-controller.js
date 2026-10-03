@@ -59,6 +59,7 @@ export function createRichMdictLookupController({
           assertNotAborted(signal);
           if (result?.found) dictionaries.push({
             id: packId,
+            packVersion: active.packVersion,
             title: active.title,
             headword: clampText(result.displayForm, 300),
             text: clampText(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_CHARS),

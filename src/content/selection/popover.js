@@ -49,7 +49,7 @@
 
     chip = button({ text: "译", label: "处理所选文本", className: "tf-selection-chip" });
     chip.addEventListener("pointerdown", (event) => event.preventDefault());
-    chip.addEventListener("click", () => translateHandler?.());
+    chip.addEventListener("click", (event) => translateHandler?.(event));
 
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
     panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
@@ -84,11 +84,11 @@
       label: "使用 AI 结合上下文详解",
       className: "tf-selection-action-primary"
     });
-    explainButton.addEventListener("click", () => explainHandler?.());
+    explainButton.addEventListener("click", (event) => explainHandler?.(event));
     copyButton = button({ text: "复制", className: "tf-selection-action-quiet" });
     copyButton.addEventListener("click", () => copyHandler?.());
     retryButton = button({ text: "重试", className: "tf-selection-action-primary" });
-    retryButton.addEventListener("click", () => retryHandler?.());
+    retryButton.addEventListener("click", (event) => retryHandler?.(event));
     cancelButton = button({ text: "取消", className: "tf-selection-action-quiet" });
     cancelButton.addEventListener("click", () => cancelHandler?.());
 
