@@ -4,8 +4,9 @@ import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkManifestLocales } from "./i18n-locales.mjs";
+import { assertBuildOutputPaths } from "./path-boundaries.mjs";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DEFAULT_OUT = resolve(ROOT, "dist/extension");
 const RUNTIME_FILES = Object.freeze([
   "manifest.json",
@@ -42,15 +43,12 @@ export async function buildExtension({
   requireLexicon = false,
   allowExternalOutput = false
 } = {}) {
-  const output = resolve(outDir);
-  const relativeOutput = relative(ROOT, output);
-  const insideDist = relativeOutput === "dist" || relativeOutput.startsWith("dist/");
-  if (output === ROOT || output === resolve("/") || (!allowExternalOutput && !insideDist)) {
-    throw new Error("extension output must stay under dist/ unless explicitly used by a test harness");
-  }
+  const output = await assertBuildOutputPaths(ROOT, outDir, { allowExternalOutput });
 
   await checkManifestLocales();
 
+  // Recheck immediately before mutation, not merely at argument parsing.
+  await assertBuildOutputPaths(ROOT, output, { allowExternalOutput });
   await rm(output, { recursive: true, force: true });
   await mkdir(output, { recursive: true });
 

@@ -136,10 +136,10 @@
     },
     {
       "task": "path-safety",
-      "status": "paused",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/build-output-path-safety",
-      "candidateHead": null
+      "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
     },
     {
       "task": "workflow-local",
