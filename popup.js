@@ -8,6 +8,9 @@ import { getProviderHostPermissionPattern } from "./src/shared/provider-config.j
 import { getOriginMatchPattern, normalizeOrigin } from "./src/shared/url.js";
 import { initializePresetUi } from "./src/popup/preset-ui.js";
 
+import { READING_METHOD, READING_PROTOCOL_VERSION } from "./src/shared/reading/constants.js";
+import { createI18n } from "./src/i18n/index.js";
+
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
 const cacheRestoreBtn = $("cacheRestoreSite");
@@ -97,6 +100,16 @@ clearCacheBtn.addEventListener("click", async () => {
 });
 
 settingsBtn.addEventListener("click", () => chrome.runtime.openOptionsPage());
+const learningCenterBtn = $("learningCenter");
+chrome.storage.local.get("uiLocale").then(({ uiLocale }) => {
+  learningCenterBtn.textContent = createI18n({ uiLocale, browserLocale: chrome.i18n.getUILanguage() }).t("learning.title");
+}).catch(() => {});
+learningCenterBtn.addEventListener("click", async () => {
+  try {
+    const response = await chrome.runtime.sendMessage({ protocolVersion: READING_PROTOCOL_VERSION, method: READING_METHOD.OPEN_LEARNING_CENTER });
+    if (!response?.ok) throw new Error();
+  } catch { setStatus("无法打开学习中心，请重试。"); }
+});
 Promise.allSettled([
   refreshCacheStatus(),
   refreshAutoStatus(),

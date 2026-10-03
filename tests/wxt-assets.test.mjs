@@ -14,7 +14,7 @@ test("raw bridge follows runtime registration order and existing stable paths", 
   assert.deepEqual(roots.slice(0, CONTENT_SCRIPT_FILES.length), [...CONTENT_SCRIPT_FILES]);
   assert.deepEqual(roots.slice(CONTENT_SCRIPT_FILES.length, CONTENT_SCRIPT_FILES.length + CONTENT_STYLE_FILES.length), [...CONTENT_STYLE_FILES]);
   assert.strictEqual(runtimeMain, YOUTUBE_MAIN_BRIDGE_FILES);
-  assert.deepEqual(EXTENSION_PAGES, { popup: "popup.html", options: "options.html" });
+  assert.deepEqual(EXTENSION_PAGES, { popup: "popup.html", options: "options.html", learningCenter: "learning-center.html" });
   const files = await sourceClosure(roots);
   for (const path of Object.values(WORKER_PATHS)) assert(files.includes(path));
   assert(files.includes("src/background/packs/importers/mdict-rich.js"));

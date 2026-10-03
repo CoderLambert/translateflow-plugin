@@ -1,7 +1,7 @@
 import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_METHOD as M } from "../../shared/reading/constants.js";
 import { validateCaptureSafety } from "../../shared/reading/dto.js";
 import { validateSourceSnapshot } from "../../shared/reading/source.js";
-import { id, integer, nullable, object, fail } from "../../shared/reading/validation.js";
+import { id, integer, nullable, object, fail, recordId } from "../../shared/reading/validation.js";
 import { classifyPage, derivePageIdentity, requireCaptureSafety } from "./policy.js";
 
 const ENTRY_PATHS = new Set(["/popup.html", "/options.html"]);
@@ -64,18 +64,34 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
     try { url = new URL(sender.url); } catch { fail(E.FORBIDDEN, "sender.url"); }
     if (url.protocol === "chrome-extension:" && url.hostname === browser.runtime.id) {
       const learningCenter = url.pathname === `/${READING_LEARNING_CENTER_PATH}`;
-      if (url.search || (learningCenter ? sender.url !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH) : !ENTRY_PATHS.has(url.pathname))) fail(E.FORBIDDEN, "sender.path");
+      if (learningCenter && url.hash) {
+        if (!url.hash.startsWith("#record=")) fail(E.FORBIDDEN, "sender.hash");
+        recordId(url.hash.slice(8), "sender.hash");
+      }
+      if (url.search || (learningCenter ? sender.url.split("#")[0] !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH) : !ENTRY_PATHS.has(url.pathname))) fail(E.FORBIDDEN, "sender.path");
       if (!nativeDocumentId(sender.documentId) || typeof browser.runtime.getContexts !== "function") fail(E.CAPABILITY_LIMITED, "sender.context");
       let contexts;
       try { contexts = await browser.runtime.getContexts({ documentIds: [sender.documentId] }); } catch { fail(E.CAPABILITY_LIMITED, "sender.context"); }
       if (!Array.isArray(contexts) || contexts.length !== 1) fail(E.FORBIDDEN, "sender.context");
       const context = contexts[0];
-      if (!UUID.test(context.contextId || "") || context.documentId !== sender.documentId || context.documentUrl !== sender.url || context.incognito !== false ||
+      // Chromium sender.url can retain the original URL after same-document hash navigation,
+      // while getContexts returns the current URL. Both must still be this fixed native page.
+      if (learningCenter) {
+        let current;
+        try { current = new URL(context.documentUrl); } catch { fail(E.FORBIDDEN, "context.url"); }
+        if (current.search || context.documentUrl.split("#")[0] !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH)) fail(E.FORBIDDEN, "context.url");
+        if (current.hash) {
+          if (!current.hash.startsWith("#record=")) fail(E.FORBIDDEN, "context.hash");
+          recordId(current.hash.slice(8), "context.hash");
+        }
+      }
+      const samePage = learningCenter ? context.documentUrl.split("#")[0] === sender.url.split("#")[0] : context.documentUrl === sender.url;
+      if (!UUID.test(context.contextId || "") || context.documentId !== sender.documentId || !samePage || context.incognito !== false ||
           !["TAB", "POPUP"].includes(context.contextType) || (learningCenter && context.contextType !== "TAB") ||
           (sender.tab && (sender.tab.id !== context.tabId || sender.tab.incognito !== false)) ||
           (sender.frameId !== undefined && sender.frameId !== 0)) fail(E.FORBIDDEN, "sender.context");
       return { scope: learningCenter ? "extension" : "entry", ownerKey: `extension:${context.contextId}:${context.documentId}`,
-        documentGeneration: context.documentId, nativeDocumentId: context.documentId, nativeUrl: sender.url, authorityGeneration, senderVerified: true, allowlisted: learningCenter, incognito: false,
+        documentGeneration: context.documentId, nativeDocumentId: context.documentId, nativeUrl: context.documentUrl, authorityGeneration, senderVerified: true, allowlisted: learningCenter, incognito: false,
         sensitive: false, editable: false, accountPage: false, navigationGeneration: Number.isInteger(context.tabId) && context.tabId >= 0 ? track(context.tabId) : 1, tabId: context.tabId };
     }
     if (!/^https?:$/u.test(url.protocol) || !Number.isInteger(sender.tab?.id) || sender.tab.id < 0 || sender.tab.incognito !== false ||
@@ -93,7 +109,10 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
   }
   async function authorize(sender, method, request) {
     const access = await native(sender);
-    if (access.scope !== "content" || method === M.OPEN_LEARNING_CENTER) return access;
+    if (access.scope !== "content") return access;
+    // Fixed page opening grants no record access and needs no collector session.
+    // Keep the native tab/navigation guard even when a query already has a session.
+    if (method === M.OPEN_LEARNING_CENTER) return { ...access, nativeEntryOnly: true };
     const generation = access.navigationGeneration;
     const action = method === M.REGISTER_DOCUMENT ? "register" : ACTIONS.get(method) || "inspect";
     const nonce = randomId();
@@ -111,7 +130,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
         previous.navigationGeneration !== generation) fail(E.STALE_OPERATION, "document.session");
     return { ...access, documentGeneration: proof.documentGeneration, selectionGeneration: proof.selectionGeneration, proof };
   }
-  function isCurrent(access) { return access.authorityGeneration === authorityGeneration && (access.tabId < 0 || (navigation.has(access.tabId) && epoch(access.tabId) === access.navigationGeneration)) && (access.scope !== "content" || sessions.get(access.ownerKey)?.documentGeneration === access.documentGeneration); }
+  function isCurrent(access) { return access.authorityGeneration === authorityGeneration && (access.tabId < 0 || (navigation.has(access.tabId) && epoch(access.tabId) === access.navigationGeneration)) && (access.scope !== "content" || access.nativeEntryOnly === true || sessions.get(access.ownerKey)?.documentGeneration === access.documentGeneration); }
   return { authorize, invalidateTab, forgetTab(tabId) { invalidateTab(tabId); navigation.delete(tabId); },
     invalidateAll() { authorityGeneration++; sessions.clear(); navigation.clear(); },
     async validateCurrent(access) {

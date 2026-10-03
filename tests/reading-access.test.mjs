@@ -149,3 +149,36 @@ test("A native Popup context with tabId -1 can fixed-open but closed context nev
   browser.runtime.getContexts = async () => [];
   await rejects(() => control.validateCurrent(access), E.FORBIDDEN);
 });
+
+test("learning deep link contains only a record ID and retains native document/private authority", async () => {
+  const browser = nativeBrowser(), sender = extensionSender();
+  sender.url += "#record=11111111-1111-4111-8111-111111111111";
+  const [context] = await browser.runtime.getContexts();
+  browser.runtime.getContexts = async () => [{ ...context, documentUrl: sender.url }];
+  assert.equal((await createReadingAccess({ browser }).authorize(sender, M.GET_RECORD)).scope, "extension");
+  // Actual Chromium: sender URL lacks the hash even though native context has it.
+  const navigated = await createReadingAccess({ browser }).authorize(extensionSender(), M.GET_RECORD);
+  assert.equal(navigated.scope, "extension");
+  assert.equal(navigated.nativeUrl, sender.url);
+  for (const suffix of ["?record=11111111-1111-4111-8111-111111111111", "#record=private-text", "#token=secret", "#record=11111111-1111-4111-8111-111111111111&text=private"]) {
+    const changed = extensionSender(); changed.url += suffix;
+    browser.runtime.getContexts = async () => [{ ...context, documentUrl: changed.url }];
+    await assert.rejects(createReadingAccess({ browser }).authorize(changed, M.GET_RECORD));
+  }
+  browser.runtime.getContexts = async () => [{ ...context, documentUrl: sender.url, incognito: true }];
+  await rejects(() => createReadingAccess({ browser }).authorize(sender, M.GET_RECORD), E.FORBIDDEN);
+});
+
+test("Content fixed-open ACK works before and after registration without granting history", async () => {
+  const browser = nativeBrowser(); let opened = 0;
+  browser.tabs.create = async ({ url }) => { assert.equal(url, browser.runtime.getURL("learning-center.html")); opened++; return { id: 99 }; };
+  const service = createReadingService({ browser, repository: repositoryDouble(), collector: collector(), learningCenterAvailable: true });
+  assert.equal((await service.handle(request(M.OPEN_LEARNING_CENTER), contentSender())).ok, true);
+  assert.equal((await service.handle(request(M.REGISTER_DOCUMENT), contentSender())).ok, true);
+  assert.equal((await service.handle(request(M.OPEN_LEARNING_CENTER), contentSender())).ok, true);
+  assert.equal(opened, 2);
+  assert.equal(code(await service.handle(request(M.LIST_RECORDS), contentSender())), E.FORBIDDEN);
+  const access = await service.accessControl.authorize(contentSender(), M.OPEN_LEARNING_CENTER);
+  service.invalidateTab(7);
+  await rejects(() => service.accessControl.validateCurrent(access), E.STALE_OPERATION);
+});

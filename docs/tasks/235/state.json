@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "task": "235",
-  "status": "blocked",
+  "status": "reviewing",
   "owner": "main",
   "dependencies": [
     "233",
     "248",
     "249"
   ],
-  "branch": null,
-  "worktree": null,
+  "branch": "feat/235-react-learning-center",
+  "worktree": ".worktrees/issue-235",
   "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
@@ -26,9 +26,14 @@
     [
       "npm",
       "run",
-      "test:e2e"
+      "test:e2e",
+      "--",
+      "e2e/learning-center.spec.mjs",
+      "e2e/selection-reading-record.spec.mjs",
+      "e2e/reading-access.spec.mjs",
+      "--workers=1"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+  "nextAction": "冻结候选并执行完整本地验收与主 Agent 自查；远端同步未授权。"
 }

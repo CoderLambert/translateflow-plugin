@@ -36,6 +36,8 @@ content scripts -> messages -> background router
 10. Lexical content follows **Source-driven data → Rule-driven retrieval → Context-driven ranking → User-driven AI**. Project-authored word/translation rows and query-specific sense hacks are not a long-term coverage mechanism.
 11. Production extension packaging is allowlist-based. Build inputs, source locks, tests, E2E fixtures and benchmark assets stay outside the installed extension.
 
+The React learning center is a single unlisted WXT extension page at `learning-center.html`. Its typed message client consumes the Reading repository; it has no direct storage/dictionary/Provider path. See [Learning center v1](LEARNING_CENTER_V1.md) for navigation, consent, invalidation and chunked download boundaries.
+
 ## Configuration
 
 全局配置位于 `chrome.storage.local`。

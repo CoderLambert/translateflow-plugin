@@ -455,6 +455,10 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 
 修改全局 Provider、OpenAI-compatible 配置、当前站点 Profile 或有效术语表时，自动模式会清理当前页面译文并按新配置重新处理。Popup 的临时 Preset 会立即重新翻译当前页面，之后新增内容继续使用该 session 模式。
 
+## 学习中心
+
+从 Popup 的“学习中心”或划词结果卡进入独立页面，可找回最近记录、按页面浏览、搜索、阅读历史快照，以及暂停/恢复记录、管理排除站点、删除和导出 JSON。首次开启后只记录之后的查询；原网页仍有效的结果卡可显式“保存本次结果”。历史阅读无需重新查词或调用 Provider。完整操作与数据边界见 [Learning center v1](docs/LEARNING_CENTER_V1.md)。
+
 ## 开发约束
 
 `npm run check` 自动执行：
