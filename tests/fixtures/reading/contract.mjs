@@ -51,6 +51,7 @@ export function request(method, overrides = {}) {
     [M.EXPORT_CANCEL]: { exportId: "export-1" }, [M.OPEN_LEARNING_CENTER]: {},
     [M.LIST_PAGES]: { query: "", cursor: null, limit: 20 }, [M.GET_SITE_RECORDING]: {},
     [M.SET_SITE_RECORDING]: { siteKey: "https://example.test", excluded: true, expectedSitePolicyRevision: 1 },
+    [M.GET_SITE_MARKERS]: {}, [M.SET_SITE_MARKERS]: { siteKey: "https://example.test", enabled: true },
     [M.LIST_RECORDING_EXCLUSIONS]: { cursor: null, limit: 20 }, [M.CANCEL_OPERATION]: { operationId: "op-1" },
     [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1" },
     [M.CREATE_HANDOFF]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.CONSUME_HANDOFF]: { handoffId: "handoff-1" }
@@ -83,6 +84,7 @@ export function response(method, scope = "extension", overrides = {}) {
     [M.EXPORT_FINISH]: { exportId: "export-1", sequence: 0, exportRevision: 1, state: "finished" },
     [M.EXPORT_CANCEL]: { exportId: "export-1", state: "cancelled" }, [M.OPEN_LEARNING_CENTER]: { opened: true },
     [M.GET_SITE_RECORDING]: { excluded: false, sitePolicyRevision: 1 }, [M.SET_SITE_RECORDING]: { excluded: true, sitePolicyRevision: 2 },
+    [M.GET_SITE_MARKERS]: { state: "ready", enabled: false, permissionGranted: true }, [M.SET_SITE_MARKERS]: { state: "ready", enabled: true, permissionGranted: true },
     [M.LIST_RECORDING_EXCLUSIONS]: { items: [{ siteKey: "https://example.test", excluded: true, sitePolicyRevision: 2 }], nextCursor: null },
     [M.CANCEL_OPERATION]: { operationId: "op-1", state: "cancelled", recordId: null, revision: null },
     [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1", navigationGeneration: 1, pageKey: PAGE_KEY, siteKey: "https://example.test" },

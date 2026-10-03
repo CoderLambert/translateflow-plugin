@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import type { Detail as RecordDetail } from "../client/reading";
+import type { Detail as RecordDetail, ReadingClient } from "../client/reading";
 import type { I18n } from "../../i18n/index.js";
 import { Button } from "../components/common";
-export function Detail({ detail, i18n, onBack, onDelete, disabled }: { detail: RecordDetail; i18n: I18n; onBack: () => void; onDelete: () => void; disabled: boolean }) {
+import { ReturnToPage } from "./ReturnToPage";
+export function Detail({ detail, i18n, onBack, onDelete, disabled, client }: { detail: RecordDetail; i18n: I18n; onBack: () => void; onDelete: () => void; disabled: boolean; client?: ReadingClient }) {
   const [shown, setShown] = useState(5);
   const heading = useRef<HTMLHeadingElement>(null);
   const { record, snapshots, artifacts } = detail;
@@ -13,7 +14,7 @@ export function Detail({ detail, i18n, onBack, onDelete, disabled }: { detail: R
     <p className="eyebrow">{i18n.t("learning.snapshot")}</p>
     <p>{record.pageTitle}</p>
     <p>{i18n.t("learning.savedAt", { date: i18n.formatDateTime(record.firstSeenAt) })}</p>
-    {record.safeReturnUrl && <><a href={record.safeReturnUrl} target="_blank" rel="noopener noreferrer">{i18n.t("learning.openPage")}</a><p className="muted">{i18n.t("learning.openHelp")}</p></>}
+    <ReturnToPage record={record} i18n={i18n} disabled={disabled} {...(client ? { client } : {})} />
     {artifacts.slice(0, shown).map(artifact => {
       const source = snapshots.find(snapshot => snapshot.sourceSnapshotId === artifact.sourceSnapshotId);
       const payload = artifact.payload;

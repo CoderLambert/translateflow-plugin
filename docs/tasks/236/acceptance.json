@@ -37,14 +37,13 @@
     "treeSha256": "a4348aaa4e4775eb163fdb3cf55d6f55f7d960f1dbbda229f54da6c368d04eb9"
   },
   "limitations": [
-    "本地候选验收通过、ready_to_sync；尚未授权 #236 远端同步/合并，未记录 READING_LOOP_A_PASS 或 completed。",
     "149 PASS / 6 SKIPPED 是旧完整运行148 PASS加修复项1 PASS的证据汇总，并非当前候选重新运行完整155项；旧 quota FAIL 保留原 head/log。",
     "完整 validate 的1034 Node/15Vitest保持8a972fc原绑定；check/type/11项学习中心测试/WXT保持215759f原绑定；当前代码/生产包/fixture/其余场景输入未变。",
     "此前 renderer/worker-only quota reset 的失败由精确浏览器源码和完整重启对照解释，未直接读取内部 cache；不改变生产权限、存储预算，不伪造原生错误。",
     "6 skip是专用旧新包注入/升级3项及真实词典输入/one-click3项。Chrome102、其他浏览器、实际桌面IME/原生浏览器缩放、付费模型质量、文件对话框/磁盘结果和商店发布 NOT RUN。",
-    "主 Agent 自查不是独立模型审核；main整合与最终Release A认定仍待后续授权边界。"
+    "主线合入后仅按精确 tree 核对复用证据，没有重新运行全量测试；完成元数据保存在本地，待下一次已授权归档同步。A_PASS 不代表商店发布、其它浏览器或后续模块通过。"
   ],
-  "decision": "LOCAL_A_CANDIDATE_PASS",
+  "decision": "READING_LOOP_A_PASS",
   "reusedValidation": {
     "candidateHead": "8a972fc7546f39201e83606eb9e54738981c4018",
     "command": [
@@ -321,5 +320,17 @@
   "diagnosisSources": [
     "https://chromium.googlesource.com/chromium/src/+/153.0.8010.12/content/browser/indexed_db/instance/bucket_context.cc",
     "https://chromium.googlesource.com/chromium/src/+/153.0.8010.12/content/browser/indexed_db/instance/transaction.cc"
-  ]
+  ],
+  "mainRecognition": {
+    "mergeHead": "345d630c0f0e0040f39fd74b8ed0457e3d193fd4",
+    "syncHead": "24591029bddff0e59258b952d5f2c54925efc759",
+    "pr": 286,
+    "mainTree": "d15489bca1ebeb1d6a5b1de6bc78c5114af52917",
+    "syncTreeEqual": true,
+    "sourceTestsBuildContractInputsUnchanged": true,
+    "validatedArtifactFingerprint": "a4348aaa4e4775eb163fdb3cf55d6f55f7d960f1dbbda229f54da6c368d04eb9",
+    "method": "exact-head squash merge followed by fetched main tree equality; existing tests retained with original heads",
+    "review": "primary-agent self-check per current LOCAL_WORKFLOW; no independent model-review claim",
+    "scope": "Reading Loop Release A only; not store release or later modules"
+  }
 }

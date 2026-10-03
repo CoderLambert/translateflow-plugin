@@ -17,6 +17,7 @@ const fields = {
   [M.EXPORT_CANCEL]: ["exportId"], [M.OPEN_LEARNING_CENTER]: [],
   [M.GET_SITE_RECORDING]: ["siteKey"],
   [M.SET_SITE_RECORDING]: ["siteKey", "excluded", "expectedSitePolicyRevision"],
+  [M.GET_SITE_MARKERS]: ["siteKey"], [M.SET_SITE_MARKERS]: ["siteKey", "enabled"],
   [M.LIST_RECORDING_EXCLUSIONS]: ["cursor", "limit"], [M.CANCEL_OPERATION]: ["operationId"],
   [M.REGISTER_DOCUMENT]: ["documentGeneration"],
   [M.CREATE_HANDOFF]: ["recordId", "expectedRevision"], [M.CONSUME_HANDOFF]: ["handoffId"]
@@ -67,7 +68,8 @@ function body(method, value) {
   if (method === M.CONSUME_HANDOFF) return { handoffId: id(value.handoffId, "request.handoffId") };
   if (method === M.CANCEL_OPERATION) return { operationId: id(value.operationId, "request.operationId") };
   if (method === M.REGISTER_DOCUMENT) return { documentGeneration: id(value.documentGeneration, "request.documentGeneration") };
-  if (method === M.GET_SITE_RECORDING) return value.siteKey === undefined ? {} : { siteKey: siteKey(value.siteKey, "request.siteKey") };
+  if ([M.GET_SITE_RECORDING, M.GET_SITE_MARKERS].includes(method)) return value.siteKey === undefined ? {} : { siteKey: siteKey(value.siteKey, "request.siteKey") };
+  if (method === M.SET_SITE_MARKERS) return { siteKey: siteKey(value.siteKey, "request.siteKey"), enabled: bool(value.enabled, "request.enabled") };
   if (method === M.SET_SITE_RECORDING) return { siteKey: siteKey(value.siteKey, "request.siteKey"), excluded: bool(value.excluded, "request.excluded"),
     expectedSitePolicyRevision: integer(value.expectedSitePolicyRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedSitePolicyRevision") };
   if ([M.EXPORT_NEXT, M.EXPORT_FINISH, M.EXPORT_CANCEL].includes(method)) {

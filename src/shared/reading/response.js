@@ -62,6 +62,11 @@ function data(method, value, scope, pageLimit) {
     object(value, ["excluded", "sitePolicyRevision"], "data");
     return { excluded: bool(value.excluded, "data.excluded"), sitePolicyRevision: revision(value.sitePolicyRevision, "data.sitePolicyRevision") };
   }
+  if ([M.GET_SITE_MARKERS, M.SET_SITE_MARKERS].includes(method)) {
+    object(value, ["state", "enabled", "permissionGranted"], "data");
+    return { state: choice(value.state, ["ready", "permission-required"], "data.state"),
+      enabled: bool(value.enabled, "data.enabled"), permissionGranted: bool(value.permissionGranted, "data.permissionGranted") };
+  }
   if (method === M.DELETE_RECORD) {
     object(value, ["deleted"], "data");
     return { deleted: choice(value.deleted, [true], "data.deleted") };
@@ -77,9 +82,10 @@ function data(method, value, scope, pageLimit) {
     return { opened: choice(value.opened, [true], "data.opened") };
   }
   if (method === M.REGISTER_DOCUMENT) {
-    object(value, ["documentGeneration", "navigationGeneration", "pageKey", "siteKey"], "data");
+    object(value, ["documentGeneration", "navigationGeneration", "pageKey", "siteKey", "handoffId"], "data");
     return { documentGeneration: id(value.documentGeneration, "data.documentGeneration"), navigationGeneration: revision(value.navigationGeneration, "data.navigationGeneration"),
-      pageKey: pageKey(value.pageKey, "data.pageKey"), siteKey: siteKey(value.siteKey, "data.siteKey") };
+      pageKey: pageKey(value.pageKey, "data.pageKey"), siteKey: siteKey(value.siteKey, "data.siteKey"),
+      ...(value.handoffId === undefined ? {} : { handoffId: id(value.handoffId, "data.handoffId") }) };
   }
   if (method === M.CANCEL_OPERATION) {
     object(value, ["operationId", "state", "recordId", "revision"], "data");

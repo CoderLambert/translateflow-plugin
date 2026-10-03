@@ -37,6 +37,13 @@ export function repositoryDouble(overrides = {}) {
     },
     async mutate({ request, access, assertCurrent }) { assertCurrent(); return response(request.method, access.scope).data; },
     async cancelOperation({ request, assertCurrent }) { assertCurrent(); return { operationId: request.operationId, state: "cancelled", recordId: null, revision: null }; },
+    async readHandoffTarget({ request, handoffTarget, assertCurrent }) {
+      assertCurrent();
+      const value = handoffTarget || { recordId: request.recordId, recordRevision: request.expectedRevision, pageKey: record().pageKey,
+        siteKey: "https://example.test", safeReturnUrl: record().safeReturnUrl, consentGeneration: 1, dataGeneration: 1,
+        sitePolicyRevision: 1, pageGeneration: 1 };
+      return { ...value, summary: { recordId: value.recordId, revision: value.recordRevision, anchor: record().anchor, hasCompletedAssistant: false } };
+    },
     async openExport({ assertCurrent }) { assertCurrent(); return { exportRevision: 1, exportedAt: 1000, position: 0 }; },
     async checkExport({ assertCurrent }) { assertCurrent(); },
     async readExportChunk({ position, exportRevision, assertCurrent }) { assertCurrent(); return { exportRevision, position: position + 1, jsonChunk: position === 0 ? '{"records":[' : ']}' , done: position === 1 }; },

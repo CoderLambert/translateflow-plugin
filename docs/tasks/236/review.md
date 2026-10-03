@@ -19,3 +19,9 @@
 ## 授权与限制
 
 6 skip及实际桌面IME/Chrome102/其它浏览器/付费模型/文件保存结局/商店发布的未验证状态保持。没有下载或重新认证词典；没有第二次模型审核。Focus修复215759f与本次测试修复均在本地236分支；实际main交付需下一次明确同步/合并授权。无待解决的本地验收阻断，但不在当前授权外继续发布或后续任务。
+
+## 合入后核对
+
+PR #286 已使用 `--match-head-commit 24591029bddff0e59258b952d5f2c54925efc759` squash 合入。实际 mergeHead `345d630c0f0e0040f39fd74b8ed0457e3d193fd4` 已 fetch，并且 main tree 与 syncHead tree 完全相等。主工作区从旧 main 快进到此提交；原 #248 未提交完成元数据先备份并证明已被远端相同内容包含，字节保持一致，生成索引随 main 更新。旧安装包已备份，以准确已验收包复用到 dist/extension 与 .output/chrome-mv3，均核对原 fingerprint，未重编译/重跑。
+
+因此记录本任务当前范围 `READING_LOOP_A_PASS`、state completed。上文“未同步/未合入”是冻结候选时的历史状态，不改写旧测试/head/失败日志；主 Agent 合入后核对仍不称独立模型审核。此后的源码/合同输入没有变化，仅当前任务 state/acceptance/review 与生成 index 完成事实发生变化。完成元数据按 LOCAL_WORKFLOW 保留本地，随下一次已授权同步归档，不直接向 main 推送。

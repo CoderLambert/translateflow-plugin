@@ -80,13 +80,22 @@
     },
     {
       "task": "236",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "234",
         "235"
       ],
-      "branch": "test/236-reading-loop-release-a",
+      "branch": "main",
       "candidateHead": "d6cf346bdd7b7f06db784d61c6edc225ed8e52f5"
+    },
+    {
+      "task": "237",
+      "status": "working",
+      "dependencies": [
+        "236"
+      ],
+      "branch": "feat/237-reading-site-handoff",
+      "candidateHead": null
     },
     {
       "task": "245",

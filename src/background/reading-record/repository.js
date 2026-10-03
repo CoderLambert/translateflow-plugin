@@ -6,6 +6,7 @@ import { prepare, validatedWrite, append, cancel, cancellationInput } from "./wr
 import { manage } from "./management.js";
 import { read, queryIdentity } from "./query.js";
 import { open, exportState, chunk, finish } from "./export-reader.js";
+import { readHandoffTarget } from "./handoff-target.js";
 
 // Pure/lazy factory. Reading data has no relationship to cache-db, OPFS or chrome.storage.
 export function createReadingRepository({ now = Date.now, randomId = () => crypto.randomUUID(), onCommit = null } = {}) {
@@ -56,6 +57,7 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
     setInvalidationPublisher(value) { if (value !== null && typeof value !== "function") throw new TypeError("publisher"); publisher = value; },
     close() { publisher = null; cursors.clear(); database.close(); },
     read: readContext,
+    readHandoffTarget(context) { return run("readonly", context, (store) => readHandoffTarget(store, context)); },
     readPolicy(context) { return run("readonly", context, function* (store) {
       // This is the internal preflight policy read, before service derives access.siteExcluded.
       const meta = yield* state(store); policy(meta, { ...context, request: null }, { siteRead: true });

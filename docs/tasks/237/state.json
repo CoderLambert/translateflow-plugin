@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "task": "237",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [
+    "236"
+  ],
+  "branch": "feat/237-reading-site-handoff",
+  "worktree": ".worktrees/issue-237",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/reading-handoff.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "完成 handoff/站点意图实现与定向验证，补真实 WXT Chromium 流程后冻结候选。"
+}
