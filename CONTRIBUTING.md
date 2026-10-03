@@ -76,6 +76,8 @@ TranslateFlow 的开发任务以 GitHub Issue 为执行单元。开始编码前�
 
 ### Development log
 
+任务阶段和执行效率使用 [docs/TASK_EXECUTION.md](docs/TASK_EXECUTION.md) 的本地 command hook/计时 wrapper：任务开始、阶段变化和结束时在已有命令中附加标记，按需生成汇总。原始记录默认 Git 忽略，不逐事件提交、注入上下文或调用模型；缺失结果写 UNKNOWN，不替代下述 Issue 进度、验收证据或审查/合并条件。
+
 开发过程中的重要结果必须同步回 Issue，而不是只在 PR 结束时总结。至少记录适用的：
 
 - architecture / data-model decisions
