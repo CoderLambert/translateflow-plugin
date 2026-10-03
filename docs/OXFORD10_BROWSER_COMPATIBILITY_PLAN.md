@@ -180,7 +180,7 @@ router 验证 content sender，用实际 tab/frame/document 身份与 token 构�
 5. `decodeRichMdictRecordText(record,index.header.encoding,displayForm,limits)` 解码为原字符串。只有以 `@@@LINK=` 开始的记录走别名处理，目标会验证，最多 8 跳，visited 检测环，目标不存在报损坏；普通 HTML 内的 entry:// 是另一件事。
 6. 当前命中返回 `{found:true,requestedKey,displayForm,rawRecord,safeTextFallback,aliasTarget}`；未命中返回 `{found:false,requestedKey}`。
 
-后台 lookup controller 现状将其包装为 `{found,dictionaries,errors}`，每本一个 `{id,title,headword,text,richRecord:{rawRecord,format,styleSheetRules},aliasTarget?}`；router 再加 `{ok:true}`。这里 `dictionaries[]` 是多本词典，不能当作一本词典的多 articles。
+后台 lookup controller 现状将其包装为 `{found,dictionaries,errors}`，每本一个 `{id,title,headword,packVersion,text,richRecord:{rawRecord,format,styleSheetRules},aliasTarget?}`；router 再加 `{ok:true}`。这里 `dictionaries[]` 是多本词典，不能当作一本词典的多 articles。
 
 **拟变更：多记录精确合同**
 
@@ -330,6 +330,18 @@ packageVersion 标识当前可读的组合快照，不能只复用 MDX 的文件
 
 查询、CSS 编译、资源读取和 viewer 会话共同固定该版本。版本切换后失效旧响应、动作和资源引用；旧文件的回收遵循已有事务与读取生命周期，不允许仅因开始导入就提前删除当前健康资源。T2 负责查询/索引合同，T5 负责激活点，T3/T4 只消费同一身份。可复验标准：保持 MDX 不变，仅替换附件，旧版本请求必须被拒绝或标为 stale；替换失败/取消时旧快照仍可查询和读取资源。此项仍为设计合同，浏览器验证 NOT_RUN。
 
+#### 与已合入Reading记录链的兼容（main 19edb542 / #234）
+
+当前Rich结果已带实际MDX的`packVersion`，卡片主体已从result-renderer拆到[rich-result-renderer](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/rich-result-renderer.js#L157-L234)，在实际安全显示后通过onDisplay给出`{id,headword,packVersion,text}`；有效rich-details会话再交给原queryRecord的readingRich。新EntryBundle/SafeArticle、多article和按需挂载必须保留“当前有效查询→实际安全显示→有界纯文本摘要”的回调语义，不能因替换viewer丢掉保存能力。
+
+T1冻结转换器时，保留实际packId/MDX packVersion来源，并明确它与组合packageVersion的映射。组合版本会因MDD/sidecar/profile变化推进，不能直接重命名成Reading provenance的MDX版本。显示回调与持久摘要是单独的最小投影，Reading不保存rawRecord、样式、资源描述、Blob/文件路径或整份DTO；拿不到可靠摘要时保留不保存降级。Oxford完整显示预算与Reading现有最多8条、每条240字符的摘要预算分离，不扩大摘要来解决长词条显示。
+
+内部entry/fragment跳转、折叠展开、媒体与资源刷新不得改写原冻结网页source，不隐式新建Reading查询或重复计数；内部导航得到的其它词条不能冒充原始划词结果补存。沿用当前`rich:${dictionary.id}`的每查询去重语义，多article如何合成一次可靠摘要须在现有预算内明确，不能每次懒挂载追加一份。
+
+可复验标准：首次实际显示产生一次合法回调；重复回调/折叠展开不重复lookup计数；快切/关闭/导航后迟到结果不写；原始source不变；摘要携带真实MDX来源版本且无RAW/CSS/路径；附件版本切换与Reading provenance不串用。保留现有Reading合同验收，不新增学习中心或读取历史时的隐式词典/Provider调用。以上是Oxford适配要求，浏览器仍NOT_RUN，#235真实React学习中心不因#234合入而视为已交付。
+
+依据：[后台MDX版本](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/background/packs/rich-mdict-lookup-controller.js#L59-L70)、[session守卫](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/rich-details.js#L130-L132)、[原查询去重](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/controller.js#L337-L341)、[有界Reading投影](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/result-model.js#L225-L234)。
+
 #### CSS 固定处理消息（拟新增）
 
 沿用现有 router 的 content sender/owner 校验和取消生命周期，不建立独立运行平台。后台从已安装资源读取 CSS，content 不提交任意 CSS 程序或系统路径：
@@ -374,7 +386,7 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 | rich-mdict-lookup-controller / packs/api / router | 新版本化结果、完整性标识、无静默clamp、版本验证、owner/cancel | integration owner负责两端同步 |
 | rich-sanitizer/tokenizer/style | content安全结构/ID关系/资源与action抽取；CSS AST交后台固定入口 | T3；与T4共验radio和导航 |
 | rich-resource-path/resolver + MDD policy + 后台固定styles入口 | 虚拟base解析、后台CSS AST白名单、字体/SVG策略、去重懒加载、消息限制 | T3与T5共同负责同一资源key |
-| rich-viewer / result-renderer / rich-details | 多article、完整阅读、固定adapter、历史/焦点/过期结果 | T4；直接使用T3共同SafeArticle |
+| rich-viewer / rich-result-renderer / result-renderer / rich-details | 多article、完整阅读、固定adapter、历史/焦点/过期结果 | T4；直接使用T3共同SafeArticle |
 
 不新增通用JavaScript运行时，不放宽CSP/权限，不整体更换MDX reader，不把所有阈值一律取消。
 
