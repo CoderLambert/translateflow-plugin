@@ -1,10 +1,50 @@
 {
   "schema": 1,
   "task": "path-safety",
-  "candidateHead": null,
-  "checks": [],
+  "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3",
+  "tree": "8cba8138d7aea38777a87b49e26cffcced8a3015",
+  "inputTree": "3bae140320e659948bf962d903ba0c0d9bb2f537bec91b968197768c16bcd8e5",
+  "frozenAt": "2026-10-03T12:31:54.023Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 54016.278863,
+      "startedAt": "2026-10-03T12:31:54.359Z",
+      "log": "docs/task-execution/local/path-safety/d52d20ac-6b70-43de-a88a-5d3514eb9808.log",
+      "logSha256": "d327010d7eb8d278d44b14d7ec4db78c213edf7798357138c8c5f71f06d5c191"
+    }
+  ],
   "artifact": null,
   "limitations": [
-    "NOT RUN for current candidate."
+    "Native Windows/macOS filesystem NOT VERIFIED; POSIX temporary aliases and injected win32/UNC relations tested on current host.",
+    "Concurrent filesystem replacement is not atomic; build/test writers must own isolated workspaces.",
+    "Default WXT switch and browser product acceptance are outside this path-safety fix."
+  ],
+  "supplemental": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/path-boundaries.test.mjs",
+        "tests/production-artifact.test.mjs"
+      ],
+      "result": "PASS",
+      "count": 8,
+      "executedBy": "dev_specialist",
+      "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
+    }
   ]
 }
