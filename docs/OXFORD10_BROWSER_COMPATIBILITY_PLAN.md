@@ -338,7 +338,7 @@ T1冻结转换器时，保留实际packId/MDX packVersion来源，并明确它�
 
 内部entry/fragment跳转、折叠展开、媒体与资源刷新不得改写原冻结网页source，不隐式新建Reading查询或重复计数；内部导航得到的其它词条不能冒充原始划词结果补存。沿用当前`rich:${dictionary.id}`的每查询去重语义，多article如何合成一次可靠摘要须在现有预算内明确，不能每次懒挂载追加一份。
 
-可复验标准：首次实际显示产生一次合法回调；重复回调/折叠展开不重复lookup计数；快切/关闭/导航后迟到结果不写；原始source不变；摘要携带真实MDX来源版本且无RAW/CSS/路径；附件版本切换与Reading provenance不串用。保留现有Reading合同验收，不新增学习中心或读取历史时的隐式词典/Provider调用。以上是Oxford适配要求，浏览器仍NOT_RUN，#235真实React学习中心不因#234合入而视为已交付。
+可复验标准：首次实际显示产生一次合法回调；重复回调/折叠展开不重复lookup计数；快切/关闭/导航后迟到结果不写；原始source不变；摘要携带真实MDX来源版本且无RAW/CSS/路径；附件版本切换与Reading provenance不串用。保留现有Reading合同验收，不新增学习中心或读取历史时的隐式词典/Provider调用。以上是Oxford适配要求，浏览器仍NOT_RUN。#235真实React学习中心已由[#285](https://github.com/CoderLambert/translateflow-plugin/pull/285)合入main `b606cfd556792d9764d0b15461b7a142fcd99575`；[当前学习中心合同](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/LEARNING_CENTER_V1.md)规定历史页面只读取冻结快照及provenance，不重新调用词典或Provider。Oxford仍须保留实际显示后的有界摘要与MDX packVersion语义；#235的16项定向Chromium验证不等于Oxford实包或Release A #236通过。
 
 依据：[后台MDX版本](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/background/packs/rich-mdict-lookup-controller.js#L59-L70)、[session守卫](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/rich-details.js#L130-L132)、[原查询去重](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/controller.js#L337-L341)、[有界Reading投影](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/result-model.js#L225-L234)。
 
