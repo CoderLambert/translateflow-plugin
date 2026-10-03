@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "239",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["238"],
+  "branch": "feat/239-reading-page-markers",
+  "worktree": ".worktrees/issue-239",
+  "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-page-markers.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "候选完整验收与自查通过；提交归档、gate 后同步 PR。"
+}

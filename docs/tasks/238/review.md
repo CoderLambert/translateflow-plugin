@@ -23,3 +23,7 @@ PASS。目标 Content 对 237 handoff 的冻结 anchor 执行本地有界恢复�
 ## 已修失败与未验证
 
 开发期实际修复了：新 worktree 缺依赖、platform budget 超限、目标页测试 fixture 未覆盖 `tabs.create`、源 chip 未先滚入视口、旧 runtime-mapping 测试固定首个文件名。准确候选的三项正式检查均 0 FAIL。239、Chrome 102/其它浏览器、隐身与不支持页面类型的真实站点、商店/发布 NOT RUN；npm 未变化锁文件仍报告 1 low / 1 high audit 告警。
+
+## 合入后核对
+
+PR #289 已按准确远端 head `aa5064256964b47f9162cdf54f6e345e7eddc54d` squash 合入，mergeHead `7c97090284b1e06b038c13788f98da324ec4ed2f`。fetch 后 main 与 syncHead tree 均为 `45512f767344a786ab980ab4439435311516beda`；远端任务分支已删除，effective rules 为空且无人工 review 门槛。源码/合同/测试/构建输入未变，不重复验收；state completed，继续 239。

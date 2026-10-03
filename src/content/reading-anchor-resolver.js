@@ -130,5 +130,44 @@
     }
     return { status: "not-loaded", range: null, stats: { chars: 0, nodes: 0, ms: 0 }, retries: TOTAL.retries };
   }
-  app.modules.readingAnchorResolver = Object.freeze({ resolve });
+  async function resolvePage(items, { signal, retry = 0 } = {}) {
+    aborted(signal); projection.start();
+    const revision = projection.revision(), page = projection.project(document.body), results = new Map();
+    if (page.status !== "resolved") {
+      const status = ["char-budget", "node-budget", "time-budget"].includes(page.reason) ? "not-loaded" : "unsupported";
+      for (const item of items) results.set(item.recordId, { status, range: null }); return results;
+    }
+    const started = performance.now(), roots = new Map(), ids = new Map(); let nodes = page.stats?.nodes || 0, chars = page.text.length;
+    for (const item of items) {
+      aborted(signal); const matches = new Map(), anchor = item.anchor;
+      for (const start of exactOffsets(page.text, anchor.quote.exact)) {
+        if (performance.now() - started >= TOTAL.ms || nodes >= TOTAL.nodes || chars >= TOTAL.chars) break;
+        const range = projection.rangeForPosition(page, { start, end: start + anchor.quote.exact.length });
+        if (!range || range.toString() !== anchor.quote.exact) continue;
+        const root = contextRoot(range); let local = roots.get(root);
+        if (!local) {
+          const value = projection.project(root); nodes += value.stats?.nodes || 0; chars += value.text?.length || 0;
+          local = { value, digest: null }; roots.set(root, local);
+        }
+        if (local.value.status !== "resolved") continue;
+        const position = projection.positionForRange(local.value, range);
+        if (!position || !contextMatches(local.value.text, position.start, anchor)) continue;
+        if (anchor.blockDigest) {
+          local.digest ||= await digest(local.value.text);
+          if (local.digest !== anchor.blockDigest) continue;
+        }
+        if (projection.revision() !== revision) {
+          if (retry + 1 >= TOTAL.retries) { for (const pending of items) results.set(pending.recordId, { status: "not-loaded", range: null }); return results; }
+          await delay(TOTAL.debounceMs, signal); return resolvePage(items, { signal, retry: retry + 1 });
+        }
+        matches.set(rangeKey(range, ids), range); if (matches.size > 1) break;
+      }
+      const limited = performance.now() - started >= TOTAL.ms || nodes >= TOTAL.nodes || chars >= TOTAL.chars;
+      results.set(item.recordId, matches.size > 1 ? { status: "ambiguous", range: null } : matches.size === 1 ? { status: "resolved", range: [...matches.values()][0] } : { status: limited ? "not-loaded" : "missing", range: null });
+      if (limited) for (const pending of items) if (!results.has(pending.recordId)) results.set(pending.recordId, { status: "not-loaded", range: null });
+      if (limited) break;
+    }
+    return results;
+  }
+  app.modules.readingAnchorResolver = Object.freeze({ resolve, resolvePage });
 })();

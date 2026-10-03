@@ -69,12 +69,22 @@
     "Chrome 102、Edge、Firefox、Safari、隐身窗口、PDF/video/frame/shadow 实际站点和商店发布 NOT RUN；Manifest 权限、Reading DB、Provider/cache 均未修改。",
     "npm ci 使用未变化的锁文件成功安装，但 npm audit 报告 1 low / 1 high 既有依赖告警；未执行 audit fix 或 force，也未在本任务升级依赖。"
   ],
-  "decision": "LOCAL_CANDIDATE_PASS",
+  "decision": "TASK_238_PASS",
   "packageBudget": {
     "files": 162,
     "totalBytes": 1822230,
     "platformCodeBytes": 1574841,
     "platformCodeBudgetBytes": 1576595,
     "budgetRaised": false
+  },
+  "mainRecognition": {
+    "mergeHead": "7c97090284b1e06b038c13788f98da324ec4ed2f",
+    "syncHead": "aa5064256964b47f9162cdf54f6e345e7eddc54d",
+    "pr": 289,
+    "mainTree": "45512f767344a786ab980ab4439435311516beda",
+    "syncTreeEqual": true,
+    "sourceTestsBuildContractInputsUnchanged": true,
+    "method": "expected-head squash merge followed by fetched origin/main tree equality",
+    "scope": "task 238 exact return location only; task 239 remains separate"
   }
 }

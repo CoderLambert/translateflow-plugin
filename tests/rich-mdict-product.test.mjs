@@ -125,7 +125,7 @@ test("Settings and selection expose local rich details while preserving the stri
   assert.match(renderer, /viewer\.renderPlainText\(body, fallback\)/u);
   assert.match(renderer, /richRecord/u);
   assert.doesNotMatch(renderer, /innerHTML/u);
-  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/selection/rich-details.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/selection/controller.js"));
+  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/selection/rich-details.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/reading-record.js"));
   assert.match(constants, /RICH_MDICT_IMPORT_CANCEL/u);
 });
 

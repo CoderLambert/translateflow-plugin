@@ -1,21 +1,24 @@
 {
   "schema": 1,
   "task": "238",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "237",
     "231"
   ],
-  "branch": "feat/238-reading-return-location",
-  "worktree": ".worktrees/issue-238",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
-  "mergeHead": null,
+  "mergeHead": "7c97090284b1e06b038c13788f98da324ec4ed2f",
   "validationCommands": [
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:e2e", "--", "e2e/reading-return-location.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "候选 e02b7c0 完整验收与主 Agent 自查通过；提交归档并执行本地 gate 后推送 PR。"
+  "nextAction": "PR #289 已按准确 head squash 合入，main tree 与验收归档 tree 一致；继续依赖任务 239。",
+  "syncHead": "aa5064256964b47f9162cdf54f6e345e7eddc54d",
+  "pr": 289,
+  "result": "TASK_238_PASS"
 }

@@ -90,3 +90,11 @@ test("resolver never reads an oversized text node after its length already excee
   const result = await f.modules.readingAnchorResolver.resolve({ status: "unsupported", quote: { exact: "session", prefix: "", suffix: "" }, position: null, blockDigest: null });
   assert.equal(result.status, "not-loaded"); assert.equal(reads, 0);
 });
+
+test("page resolver shares one projection across summaries and keeps per-record ambiguity", async t => {
+  const f = fixture('<main><p id="one">alpha session tail</p><p id="two">beta record end</p><p>alpha session tail</p></main>'); t.after(() => f.dom.window.close());
+  const first = await anchorFor(f, "#one", "session", { prefix: "alpha ", suffix: " tail" });
+  const second = await anchorFor(f, "#two", "record", { prefix: "beta ", suffix: " end" });
+  const results = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "a", anchor: first }, { recordId: "b", anchor: second }]);
+  assert.equal(results.get("a").status, "ambiguous"); assert.equal(results.get("b").status, "resolved"); assert.equal(results.get("b").range.toString(), "record");
+});
