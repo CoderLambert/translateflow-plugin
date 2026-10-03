@@ -364,3 +364,5 @@
 ## 后续详细说明
 
 本页局部引用的rich-sanitizer、rich-viewer、rich-resource-resolver已在[导入与展示模块](dictionary-import-render.md)提供完整文件说明；其他大型依赖仍以coverage状态为准。
+
+共用task、缓存库、Provider注册与请求取消的完整解释已接入[网页翻译与缓存模块](page-translation-cache.md)，Selection分支仍以本章为准。

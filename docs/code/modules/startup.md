@@ -331,3 +331,5 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 ## 后续阅读
 
 启动后完整的查询、结果和取消流程见[划词功能章](../features/selection-and-dictionary.md)。本页局部解释的Selection controller现已有[完整文件说明](selection.md#file-controller)；全局覆盖状态以[coverage](../coverage.json)为准，不把两个章节重复计数。
+
+网页启动后的正文任务与自动观察详见[网页翻译与缓存](../features/page-translation.md)；auto模块已有[完整说明](page-translation-cache.md#file-auto)。
