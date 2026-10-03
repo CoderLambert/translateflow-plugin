@@ -1,10 +1,259 @@
 {
   "schema": 1,
   "task": "236",
-  "candidateHead": null,
-  "checks": [],
-  "artifact": null,
+  "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+  "tree": "c68719ed337563ce5ecf27022e7f11b90ec25ce2",
+  "inputTree": "4af00e09f3c6fae076f04302e7b691d1fe622d66eb162c08deddeca9a98c464e",
+  "frozenAt": "2026-10-03T15:28:09.279Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14813.815006,
+      "startedAt": "2026-10-03T15:28:09.467Z",
+      "log": "docs/task-execution/local/236/a4033b12-2013-4410-a531-17b5fdb71f1d.log",
+      "logSha256": "0303b541bf9ee26e15f64f348f139726fd72296f9b2c289c8e6a17b487f1c479"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5671.923118,
+      "startedAt": "2026-10-03T15:28:24.459Z",
+      "log": "docs/task-execution/local/236/978e9338-bafa-4382-8d3b-bf8bf64e48a7.log",
+      "logSha256": "eeb43e4f87078aafdc73c36c0332bb1cd9df5cfbb843a8069771477f3a96e8d1"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit",
+        "--",
+        "tests/unit/learning-center"
+      ],
+      "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1628.511909,
+      "startedAt": "2026-10-03T15:28:30.307Z",
+      "log": "docs/task-execution/local/236/96ab1d9b-9be4-4fd1-a41a-18611aacff45.log",
+      "logSha256": "a58ac090db4772ac7889251a20b94bdcb28aaedea9f54e53c9536e0ac3a155a1"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2562.415612,
+      "startedAt": "2026-10-03T15:28:32.116Z",
+      "log": "docs/task-execution/local/236/1778da9b-33e4-43a8-bff3-66a6da54d334.log",
+      "logSha256": "a516fe40ec45c93e9d9c15dbf47e476e0a7edecaba938812f6db4a42d1d87d9e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 292848.910138,
+      "startedAt": "2026-10-03T15:28:34.864Z",
+      "log": "docs/task-execution/local/236/3908895e-4038-4b13-851e-e2fb36612f2f.log",
+      "logSha256": "6c8a42a028a440b71718a6186be08f54a4d8bed584f2fa3cf7bf253f6567d792"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "a4348aaa4e4775eb163fdb3cf55d6f55f7d960f1dbbda229f54da6c368d04eb9"
+  },
   "limitations": [
-    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
-  ]
+    "READING_LOOP_A_PASS 未记录；#236 blocked，未推送/PR/合并/发布。",
+    "完整 E2E 148 PASS / 1 FAIL / 6 SKIPPED；physical extension Origin quota 断言未 skip、过滤或放宽。",
+    "quota-native.json 为 localhost 原生 IDB/源码 repository、合成 authority；显式注入 QuotaExceededError 的生产 UI 路径独立标记，均不替代 physical extension quota。",
+    "6 skip：固定 old/new WXT 注入与两项同 ID 升级未配置专用产物（3）；私有/固定真实词典 preflight、Rich MDX、one-click corpus gates 未配置（3）。词典源/格式未变，不重新获取素材或认证。",
+    "当前焦点修复仅本地分支，尚未合入 main；主 Agent 自查不是独立模型审核。",
+    "Chrome102、其他浏览器、真实桌面 IME、原生浏览器缩放 UI、真实付费模型质量、文件对话框/磁盘保存结果与商店发布 NOT RUN。CSS 200% 和浏览器 composition 事件有明确测试标签。"
+  ],
+  "decision": "NO-GO",
+  "e2eSummary": {
+    "passed": 148,
+    "failed": 1,
+    "skipped": 6,
+    "failure": "physical extension-origin quota refusal NOT VERIFIED"
+  },
+  "supplementaryEvidence": [
+    {
+      "path": "docs/task-execution/local/236/release-a-restarted-real-history.png",
+      "sha256": "d0e13fd8f45911dc1279390f24f6e90dc8b8249d61d5430051aa26d3112052bf"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-real-restart.json",
+      "sha256": "116658be56854283c81d45b22e0ecc27dc00032f1260d5405b8b15ec9afd2640"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-near-budget-export.json",
+      "sha256": "82dbd525db13ac68b883b76f3d132e8551bd20e7ffc1f89fcf0a9f1bb649cf34"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-worker-exit-capacity.json",
+      "sha256": "da5cdac39817d1e8e1a69bd737a5f4795409a90aa01c99e3ce4f52d35b075fdb"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-real-dom-timing.json",
+      "sha256": "7a9769902d933249eadbf4b5ef3018c4dfbe06fe6babd9fa46ae998f8b08df17"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-extension-quota.json",
+      "sha256": "d0b15eb554798d9955169e2997bc52adf57cdfa6593bc53e6afce99e6b513986"
+    },
+    {
+      "path": "docs/task-execution/local/236/error-context.md",
+      "sha256": "57199099b76bf947f019927af3026badeea3630052bd690cc61b0ec61ba51d2d"
+    },
+    {
+      "path": "docs/task-execution/local/236/trace.zip",
+      "sha256": "c0e544f670ae9e58e748b246f5f1ee9a385e3ddc36bbbbb648622dc258f90520"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-zh-dark-200-percent.png",
+      "sha256": "9da4a44bea85809aa390135b2b6350b177543405afad05c4c36fb6e67cfc3fd4"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-quota-boundary-safety.json",
+      "sha256": "628575600aef3d90621e43e561e3cc7e853d9441c8a02858c6c4e36116e54736"
+    },
+    {
+      "path": "docs/task-execution/local/236/near-capacity-native.json",
+      "sha256": "544fa1d338af1b964c79d85d4aed8ebc292d44b05dae1b065ec408630ae12b23"
+    },
+    {
+      "path": "docs/task-execution/local/236/quota-native.json",
+      "sha256": "d0e556450ba04189de56182c060d1ff4653146934d126b00a1147a1b8b6c7c39"
+    },
+    {
+      "path": "docs/task-execution/local/236/production-audit.json",
+      "sha256": "1a9ad6068b56173e040707a0a279f00f67f453f3fe5c3195efcabf702120259b"
+    },
+    {
+      "path": "docs/task-execution/local/236/compiled-closures.json",
+      "sha256": "45550970d86539ea70e5df747418a83c8ddd80674c184b49dabe42f9a2ab22c5"
+    },
+    {
+      "path": "docs/task-execution/local/236/asset-map.json",
+      "sha256": "13b425f28aebf260c6f28ae95ee57c3eb2fefe0b8176ebd7f17b1947861d47b6"
+    }
+  ],
+  "reusedValidation": {
+    "candidateHead": "8a972fc7546f39201e83606eb9e54738981c4018",
+    "command": [
+      "npm",
+      "run",
+      "validate"
+    ],
+    "result": "PASS",
+    "log": "docs/task-execution/local/236/1cf7fb13-64cc-4339-9fb5-70380a783a4e.log",
+    "logSha256": "83c12f7953c61b88afee9b5c4ef99cfefa788a0f8b3f5cc9c2ba02eeca0157d8",
+    "nodeTests": 1034,
+    "vitestTests": 15,
+    "reason": "完整 validate 已在焦点修复前执行。随后仅 App.tsx/useLibrary.ts 焦点恢复及任务验证策略变化；Node 合同/存储/Provider/Content/fixtures/package/manifest/build 输入未变化，原 PASS 保留原 head。当前候选重新执行 check/typecheck/学习中心11项单测/WXT/完整155项E2E，未把旧执行改写为当前完整 validate。"
+  },
+  "productEvidence": {
+    "realCreationRecords": 4,
+    "kinds": [
+      "assistant",
+      "dictionary",
+      "translation"
+    ],
+    "explicitMockProviderCalls": 2,
+    "historyProviderCalls": 0,
+    "historyResourceRequests": 0,
+    "restart": true,
+    "dictionaryAssetsRemoved": true,
+    "nearBudgetStoredBytes": 67031498,
+    "downloadedBytes": 67092027,
+    "downloadedRecords": 1439,
+    "exportChunks": 256,
+    "maxFullMessageBytes": 342508,
+    "everyRowAndSourceChecked": true,
+    "physicalQuota": {
+      "status": "FAIL / NOT VERIFIED",
+      "overrideActive": true,
+      "quota": 448205,
+      "usage": 945332,
+      "attemptedBytes": 524288,
+      "nativeTransactionCompleted": true,
+      "nativeRefusal": null,
+      "oldProductReadExportDeletePassed": true
+    }
+  },
+  "performanceEvidence": {
+    "samples": 10,
+    "input": {
+      "chars": 89,
+      "nodes": 4
+    },
+    "syncMedianMs": 0.3499999977648258,
+    "syncRangeMs": [
+      0.09999999403953552,
+      5.399999998509884
+    ],
+    "totalMedianMs": 0.3500000014901161,
+    "totalRangeMs": [
+      0.19999999552965164,
+      5.399999998509884
+    ],
+    "giant": {
+      "contextChars": 612,
+      "position": null,
+      "status": "unsupported",
+      "syncMs": 0.6000000014901161,
+      "totalMs": 0.6000000014901161
+    },
+    "dynamic": {
+      "contextChars": 27,
+      "position": {
+        "end": 14,
+        "start": 7
+      },
+      "status": "resolved",
+      "syncMs": 0.29999999701976776,
+      "totalMs": 0.29999999701976776
+    },
+    "runtimeSliceBudgetMs": 8,
+    "observedSyncWithinRuntimeBudget": true,
+    "machine": {
+      "cpu": "AMD Ryzen 5 7530U with Radeon Graphics",
+      "logicalCpus": 12,
+      "platform": "linux",
+      "arch": "x64"
+    },
+    "claimScope": "普通合成 DOM 89 chars / 4 nodes 的本机样本；不是全网站性能认证，未将100ms诊断守卫当作8ms运行时预算。"
+  }
 }

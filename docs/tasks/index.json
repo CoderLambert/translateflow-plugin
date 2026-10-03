@@ -80,13 +80,13 @@
     },
     {
       "task": "236",
-      "status": "reviewing",
+      "status": "blocked",
       "dependencies": [
         "234",
         "235"
       ],
       "branch": "test/236-reading-loop-release-a",
-      "candidateHead": null
+      "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141"
     },
     {
       "task": "245",

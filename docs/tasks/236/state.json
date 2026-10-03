@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "236",
-  "status": "reviewing",
+  "status": "blocked",
   "owner": "main",
   "dependencies": [
     "234",
@@ -9,7 +9,7 @@
   ],
   "branch": "test/236-reading-loop-release-a",
   "worktree": ".worktrees/issue-236",
-  "candidateHead": null,
+  "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -41,5 +41,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "焦点恢复最小修复已通过定向 E2E；复用 8a972fc 的完整 validate/1034 Node PASS，重验受影响 UI、类型、产物及必需全量 E2E；保留物理 quota FAIL。"
+  "nextAction": "NO-GO：当前 Chromium quota override 对 extension Origin 不产生真实原生拒写（唯一 E2E FAIL）；需可复现的原生 quota 拒写机制或明确的验收裁定。保留现有 PASS、焦点修复及失败证据；不合并 236/不发布/不启动后续任务。"
 }
