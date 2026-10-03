@@ -60,6 +60,7 @@ git rev-parse HEAD origin/main
 
 GitHub Issue 定义任务目标，代码与测试说明现有行为，架构文档约束实现方式。出现冲突时记录差异，不用其中一个静默覆盖另一个。
 用户明确给出的局部任务可直接作为本次范围；进入持续开发队列的任务按 CONTRIBUTING 补齐 Issue 契约。
+执行效率与暂停源码保全遵循 [docs/DEVELOPMENT_EFFICIENCY.md](docs/DEVELOPMENT_EFFICIENCY.md)：开工闭合受影响的入口/产物/消费者/CI 链，委派只传必要合同，复用可确认相同输入的证据；暂停前实际核对远端 ref 和未提交源码保全。不得以此跳过当前 head 的必需检查或独立审核。
 遇到无关缺陷记录后继续；只有影响正确性、安全性、授权或硬依赖的阻塞才暂停受影响的工作。
 
 ## 3. 模块导航与归属

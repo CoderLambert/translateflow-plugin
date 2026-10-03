@@ -34,6 +34,8 @@ npm run test:e2e
 
 ## Issue-driven development workflow
 
+执行中的影响面检查、精简委派、证据复用和暂停源码保全见 [开发流程效率约定](docs/DEVELOPMENT_EFFICIENCY.md)。这些约定减少重复工作，不改变下述任务状态、必需验证、独立审核与合并条件。
+
 TranslateFlow 的开发任务以 GitHub Issue 为执行单元。开始编码前，Issue 必须足够具体，至少包含：
 
 - Goal / Scope
