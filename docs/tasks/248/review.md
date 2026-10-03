@@ -1,15 +1,14 @@
 # 主 Agent 自查
 
-主体：本次主 Agent；没有启动 reviewer，不宣称独立审核。
-候选：`3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424`。
+主体：本次主 Agent，没有启动 reviewer，不宣称独立审核。
+最终候选：`e722652a1c5df3b73bb11c73602ab0b5534cc366`。
 
-对照任务合同、真实 diff 和调用路径检查：
+默认、发布、显式 WXT 入口及全部 buildExtension 消费者使用同一引擎。稳定安装目录保持 dist/extension；保留 Manifest 精确相等、认证词典 descriptor/哈希、代码预算以及既有路径/符号链接/嵌套 Git 工作区防护。没有修改生产 key、权限、Provider/cache 身份或 DB schema。发布包构建一次，受控复制到稳定目录；两份包 hash 相等。
 
-- 默认、发布、显式 WXT 入口及全部 `buildExtension()` 消费者使用同一 WXT 引擎；旧 allowlist-copy 引擎已删除，旧包仅取固定历史提交。
-- 稳定目录保持 `dist/extension`；构建使用独立临时 staging，审核完成后复用既有路径/符号链接/嵌套 Git 工作区防护发布到目标。
-- Manifest 精确相等、认证词典 descriptor/哈希和原代码预算保持有效；没有修改生产权限、key、Provider/cache 身份、DB schema 或业务源码。
-- Reading authority 的替换 worker 有明确测试标识，只注入其源码依赖闭包；Selection Reading 的合成词典先清理测试副本词典目录，不修改生产包或放宽断言。
-- 最初候选完整 E2E：137 PASS、1 FAIL、3 SKIP、6 NOT RUN。FAIL 是 Selection Reading 测试准备向非空发布词典目录编译 fixture，尚未启动其浏览器断言；已由本候选的一行测试副本清理修复。原失败日志完整保留在本地，不改写为 PASS。
-- 最初候选两种语言状态的真实 same-ID 旧→WXT→重启均 PASS，生产包源码/字节在本候选保持不变。最终候选重新验收结果绑定 acceptance.json；采用 4 个 Playwright workers 执行相同完整测试集，不减少任何用例或断言。
+此前 Selection 站点排除断言失败的原因已证实：policy 已读取 excluded=true，仍打开会被后台拒绝的状态订阅，错误回包被当作正常 invalidation 校验，覆盖正确的 disabled 卡片。修复仅在 excluded 站点跳过 connect，后台拒绝规则保持有效；后续显式查询和焦点刷新继续读取实时 policy。新增回归在修复前观察到 1 次连接，修复后连接、写入和 BEGIN_QUERY 都为零。没有放宽浏览器断言。
 
-WXT 构建、打包和同 ID 升级未发现剩余问题。最终整文件定向重验 6 PASS / 1 FAIL：站点排除卡片预期 disabled，实际 not-saved，单独用例曾 PASS 但整文件重验再次 FAIL；未解决，不合入。不得把此失败当作已消除的 flaky。真实 YouTube、Chrome 102、其他浏览器、真实付费 Provider、私有/外部真实词典认证及商店发布 NOT RUN；不以本次 mock/合成词典证据替代这些结论。#235/#236 尚未在本任务开发或验收。
+最终实际执行：29 项相关 Node 测试 PASS（Selection 13、本地流程 16）；静态/语言检查 PASS；一次真实 WXT 发布包与审计 PASS；smoke PASS；Selection 文件 7 个故事及同 ID 旧→WXT→重启 2 个故事全部 PASS（25.3 秒）。浏览器 Chromium 153.0.8010.12。完整输出、耗时、日志 hash、升级收据和包 fingerprint 见 acceptance.json。
+
+原完整 validate 和 E2E 保留原 testedHead/结果；原 E2E 是 143 PASS、3 SKIP、1 FAIL，未改写成全绿。最新 diff 的生产变化只有上述 classic Content 条件，已用定向回归替换其受影响覆盖；治理脚本变化由对应测试验证。无 TS/Vitest/lockfile、Provider/cache/storage、编译入口或其它浏览器流程变化，因此不重复全量验收，不重新编译未变化的词典。
+
+主 Agent 对照实际 diff、调用路径和任务逐项要求自查，未发现剩余阻断项。Chrome 102、真实 YouTube、其它浏览器、付费 Provider、外部/私有真实词典认证和商店发布 NOT RUN；本次证据不替代 #235/#236 产品验收。

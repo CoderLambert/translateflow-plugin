@@ -115,7 +115,7 @@
     },
     {
       "task": "248",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "246",
         "247",
@@ -123,7 +123,7 @@
         "path-safety"
       ],
       "branch": "build/248-default-switch",
-      "candidateHead": null
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366"
     },
     {
       "task": "249",
