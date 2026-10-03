@@ -7,9 +7,7 @@ import {
 import { sha256 } from "../shared/hash.js";
 import { getOriginMatchPattern, normalizeOrigin } from "../shared/url.js";
 
-const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "selectionAllSites", "quickControlSites", "quickControlHiddenSites"];
-const ALL_SITE_PATTERNS = Object.freeze(["http://*/*", "https://*/*"]);
-const GLOBAL_SELECTION_SCRIPT_ID = `${SITE_SCRIPT_PREFIX}selection_all_sites`;
+const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "selectionSites", "quickControlSites", "quickControlHiddenSites"];
 
 export async function registerAutoSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
@@ -30,22 +28,23 @@ export async function unregisterAutoSite(rawOrigin) {
   return { origin, enabled: false };
 }
 
-export async function enableSelectionAllSites() {
-  const permitted = await chrome.permissions.contains({ origins: [...ALL_SITE_PATTERNS] });
-  if (!permitted) throw new Error("尚未获得所有网站的划词权限。");
+export async function registerSelectionSite(rawOrigin) {
+  const origin = normalizeOrigin(rawOrigin);
+  await assertOriginPermission(origin, "尚未获得此站点的划词权限。");
   const state = await readState();
-  state.selectionAllSites = true;
+  state.selectionSites = addOrigin(state.selectionSites, origin);
   await writeState(state);
-  await syncSiteRegistrations();
-  return { enabled: true };
+  await syncOriginRegistration(origin);
+  return { origin, enabled: true };
 }
 
-export async function disableSelectionAllSites() {
+export async function unregisterSelectionSite(rawOrigin) {
+  const origin = normalizeOrigin(rawOrigin);
   const state = await readState();
-  state.selectionAllSites = false;
+  state.selectionSites = removeOrigin(state.selectionSites, origin);
   await writeState(state);
-  await syncSiteRegistrations();
-  return { enabled: false };
+  await syncOriginRegistration(origin);
+  return { origin, enabled: false };
 }
 
 export async function registerCacheRestoreSite(rawOrigin) {
@@ -110,17 +109,11 @@ export async function syncSiteRegistrations() {
   const hidden = new Set(normalizeOrigins(state.quickControlHiddenSites));
   const validRestore = await permittedOrigins(state.cacheRestoreSites);
   const validAuto = await permittedOrigins(state.autoSites);
-  const selectionPermission = await chrome.permissions.contains({ origins: [...ALL_SITE_PATTERNS] });
-  const selectionAllSites = state.selectionAllSites === true && selectionPermission;
+  const validSelection = await permittedOrigins(state.selectionSites);
   const validQuick = (await permittedOrigins(state.quickControlSites))
     .filter((origin) => !hidden.has(origin));
-  const desiredOrigins = selectionAllSites ? [] : [...new Set([...validRestore, ...validAuto, ...validQuick])].sort();
+  const desiredOrigins = [...new Set([...validRestore, ...validAuto, ...validSelection, ...validQuick])].sort();
   const desiredIds = new Set();
-
-  if (selectionAllSites) {
-    await registerGlobalSelectionScript();
-    desiredIds.add(GLOBAL_SELECTION_SCRIPT_ID);
-  }
 
   for (const origin of desiredOrigins) {
     try {
@@ -141,7 +134,7 @@ export async function syncSiteRegistrations() {
   const next = {
     cacheRestoreSites: validRestore,
     autoSites: validAuto,
-    selectionAllSites,
+    selectionSites: validSelection,
     quickControlSites: validQuick,
     quickControlHiddenSites: [...hidden].sort()
   };
@@ -153,13 +146,10 @@ export const syncAutoSiteRegistrations = syncSiteRegistrations;
 
 async function syncOriginRegistration(origin) {
   const state = await readState();
-  if (state.selectionAllSites) {
-    await syncSiteRegistrations();
-    return;
-  }
   const hidden = new Set(normalizeOrigins(state.quickControlHiddenSites));
   const desired = normalizeOrigins(state.cacheRestoreSites).includes(origin)
     || normalizeOrigins(state.autoSites).includes(origin)
+    || normalizeOrigins(state.selectionSites).includes(origin)
     || (normalizeOrigins(state.quickControlSites).includes(origin) && !hidden.has(origin));
   const match = getOriginMatchPattern(origin);
   const permitted = await chrome.permissions.contains({ origins: [match] });
@@ -193,19 +183,6 @@ async function registerSiteScript(origin) {
   }]);
 }
 
-async function registerGlobalSelectionScript() {
-  const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [GLOBAL_SELECTION_SCRIPT_ID] });
-  if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [GLOBAL_SELECTION_SCRIPT_ID] });
-  await chrome.scripting.registerContentScripts([{
-    id: GLOBAL_SELECTION_SCRIPT_ID,
-    matches: [...ALL_SITE_PATTERNS],
-    js: [...CONTENT_SCRIPT_FILES],
-    css: [...CONTENT_STYLE_FILES],
-    runAt: "document_idle",
-    persistAcrossSessions: true
-  }]);
-}
-
 async function assertOriginPermission(origin, message) {
   const permitted = await chrome.permissions.contains({
     origins: [getOriginMatchPattern(origin)]
@@ -228,7 +205,7 @@ async function readState() {
   return {
     cacheRestoreSites: normalizeOrigins(stored.cacheRestoreSites),
     autoSites: normalizeOrigins(stored.autoSites),
-    selectionAllSites: stored.selectionAllSites === true,
+    selectionSites: normalizeOrigins(stored.selectionSites),
     quickControlSites: normalizeOrigins(stored.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(stored.quickControlHiddenSites)
   };
@@ -238,7 +215,7 @@ async function writeState(state) {
   await chrome.storage.local.set({
     cacheRestoreSites: normalizeOrigins(state.cacheRestoreSites),
     autoSites: normalizeOrigins(state.autoSites),
-    selectionAllSites: state.selectionAllSites === true,
+    selectionSites: normalizeOrigins(state.selectionSites),
     quickControlSites: normalizeOrigins(state.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(state.quickControlHiddenSites)
   });
@@ -266,13 +243,13 @@ function sameState(a, b) {
   return JSON.stringify({
     cacheRestoreSites: normalizeOrigins(a.cacheRestoreSites),
     autoSites: normalizeOrigins(a.autoSites),
-    selectionAllSites: a.selectionAllSites === true,
+    selectionSites: normalizeOrigins(a.selectionSites),
     quickControlSites: normalizeOrigins(a.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(a.quickControlHiddenSites)
   }) === JSON.stringify({
     cacheRestoreSites: normalizeOrigins(b.cacheRestoreSites),
     autoSites: normalizeOrigins(b.autoSites),
-    selectionAllSites: b.selectionAllSites === true,
+    selectionSites: normalizeOrigins(b.selectionSites),
     quickControlSites: normalizeOrigins(b.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(b.quickControlHiddenSites)
   });

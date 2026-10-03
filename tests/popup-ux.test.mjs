@@ -33,12 +33,12 @@ test("automatic translation is exposed as an accessible switch treatment", () =>
   assert.match(css, /toggle-button\[aria-checked="true"\]/);
 });
 
-test("Selection can request optional all-sites access for automatic page injection", () => {
+test("Selection can be enabled persistently per site without broad install-time access", () => {
   assert.match(html, /id="selectionSite" class="toggle-button" role="switch" aria-checked="false"/);
   assert.match(html, /id="selectionInfo"/);
-  assert.match(script, /SELECTION_ALL_SITES_ENABLE/);
-  assert.match(script, /SELECTION_ALL_SITES_DISABLE/);
-  assert.match(script, /selectionAllSites/);
+  assert.match(script, /SELECTION_SITE_REGISTER/);
+  assert.match(script, /SELECTION_SITE_UNREGISTER/);
+  assert.match(script, /selectionSites/);
 });
 
 test("popup keeps advanced controls collapsed by default and keyboard focus visible", () => {

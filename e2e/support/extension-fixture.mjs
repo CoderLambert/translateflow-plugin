@@ -18,12 +18,10 @@ export const test = base.extend({
   commandCallbackProbe: [false, { option: true, scope: "worker" }],
   lexiconPacks: ["fixture", { option: true, scope: "worker" }],
   ecdictMdxReleaseHostAccess: [false, { option: true, scope: "worker" }],
-  allSitesHostAccess: [false, { option: true, scope: "worker" }],
   ecdictMdxCachedArchivePath: ["", { option: true, scope: "worker" }],
   harness: [async ({
     lexiconPacks,
     commandCallbackProbe,
-    allSitesHostAccess,
     ecdictMdxReleaseHostAccess,
     ecdictMdxCachedArchivePath
   }, use) => {
@@ -35,7 +33,7 @@ export const test = base.extend({
     let context;
     try {
     const buildReport = await prepareExtensionTestCopy({
-      extensionDir, lexiconPacks, ecdictMdxReleaseHostAccess, allSitesHostAccess,
+      extensionDir, lexiconPacks, ecdictMdxReleaseHostAccess,
       ecdictMdxCachedArchivePath, captureCommands: commandCallbackProbe, baseUrl: server.baseUrl
     });
 
