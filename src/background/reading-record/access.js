@@ -5,6 +5,7 @@ import { id, integer, nullable, object, fail, recordId } from "../../shared/read
 import { classifyPage, derivePageIdentity, requireCaptureSafety } from "./policy.js";
 
 const ENTRY_PATHS = new Set(["/popup.html", "/options.html"]);
+const TOOLBAR_POPUP_PATH = "/popup.html";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const nativeDocumentId = (value) => typeof value === "string" && (UUID.test(value) || /^[0-9a-f]{32}$/iu.test(value));
 const ACTIONS = new Map([[M.BEGIN_QUERY, "begin"], [M.SAVE_QUERY_RESULT, "save"], [M.APPEND_ASSISTANT, "save"],
@@ -58,12 +59,33 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
     if (navigation.has(tabId)) navigation.set(tabId, epoch(tabId) + 1);
     for (const [key, session] of sessions) if (session.tabId === tabId) sessions.delete(key);
   }
-  async function native(sender) {
+  async function native(sender, method) {
     if (!browser?.runtime?.id || sender?.id !== browser.runtime.id) fail(E.FORBIDDEN, "sender.id");
     let url;
     try { url = new URL(sender.url); } catch { fail(E.FORBIDDEN, "sender.url"); }
     if (url.protocol === "chrome-extension:" && url.hostname === browser.runtime.id) {
       const learningCenter = url.pathname === `/${READING_LEARNING_CENTER_PATH}`;
+      const toolbarPopupOpen = method === M.OPEN_LEARNING_CENTER && url.pathname === TOOLBAR_POPUP_PATH &&
+        sender.documentId === undefined && sender.tab === undefined && sender.frameId === undefined;
+      if (toolbarPopupOpen) {
+        if (sender.origin !== url.origin || url.search || url.hash || typeof browser.runtime.getContexts !== "function") {
+          fail(E.FORBIDDEN, "sender.popup");
+        }
+        let contexts;
+        try { contexts = await browser.runtime.getContexts({ contextTypes: ["POPUP"] }); }
+        catch { fail(E.CAPABILITY_LIMITED, "sender.context"); }
+        const matches = Array.isArray(contexts) ? contexts.filter((context) =>
+          context.contextType === "POPUP" && context.documentUrl === sender.url) : [];
+        if (matches.length !== 1) fail(E.FORBIDDEN, "sender.context");
+        const context = matches[0];
+        if (!UUID.test(context.contextId || "") || !nativeDocumentId(context.documentId) || context.incognito !== false) {
+          fail(E.FORBIDDEN, "sender.context");
+        }
+        return { scope: "entry", ownerKey: `extension:${context.contextId}:${context.documentId}`,
+          documentGeneration: context.documentId, nativeDocumentId: context.documentId, nativeUrl: context.documentUrl,
+          authorityGeneration, senderVerified: true, allowlisted: false, incognito: false, sensitive: false,
+          editable: false, accountPage: false, navigationGeneration: 1, tabId: -1, nativeEntryOnly: true };
+      }
       if (learningCenter && sender.url.includes("#") && !url.hash) fail(E.FORBIDDEN, "sender.hash");
       if (learningCenter && url.hash) {
         if (!url.hash.startsWith("#record=")) fail(E.FORBIDDEN, "sender.hash");
@@ -110,7 +132,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
       navigationGeneration, authorityGeneration: currentAuthority, ownerKey: `content:${sender.tab.id}:${sender.documentId || "frame0"}` };
   }
   async function authorize(sender, method, request) {
-    const access = await native(sender);
+    const access = await native(sender, method);
     if (access.scope !== "content") return access;
     // Fixed page opening grants no record access and needs no collector session.
     // Keep the native tab/navigation guard even when a query already has a session.

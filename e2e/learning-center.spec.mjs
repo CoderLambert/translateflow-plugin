@@ -21,6 +21,49 @@ async function trace(page) {
   });
 }
 
+test("real toolbar Popup reports success when opening the learning center closes it", async ({ harness }) => {
+  await harness.reset();
+  await harness.serviceWorker.evaluate(() => chrome.runtime.onMessage.addListener((request, sender) => {
+    if (request.method === "reading.open-learning-center") globalThis.__toolbarPopupSender = {
+      id: sender.id, url: sender.url, origin: sender.origin, documentId: sender.documentId,
+      documentLifecycle: sender.documentLifecycle, frameId: sender.frameId,
+      tab: sender.tab ? { id: sender.tab.id, incognito: sender.tab.incognito, url: sender.tab.url } : null
+    };
+  }));
+  const cdp = await harness.context.newCDPSession(harness.driver);
+  await cdp.send("Target.setDiscoverTargets", { discover: true });
+  await harness.driver.evaluate(() => {
+    const button = document.createElement("button");
+    button.id = "open-real-popup";
+    button.textContent = "Open real popup";
+    button.addEventListener("click", () => chrome.action.openPopup());
+    document.body.append(button);
+  });
+  await harness.driver.locator("#open-real-popup").click();
+  await expect.poll(() => harness.driver.evaluate(async () =>
+    (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] })).length)).toBe(1);
+  const popupContexts = await harness.driver.evaluate(() => chrome.runtime.getContexts({ contextTypes: ["POPUP"] }));
+  expect(popupContexts).toHaveLength(1);
+  const popupUrl = `chrome-extension://${harness.extensionId}/popup.html`;
+  const targets = await cdp.send("Target.getTargets");
+  const popupTarget = targets.targetInfos.find(target => target.url === popupUrl);
+  expect(popupTarget).toBeTruthy();
+  const { sessionId } = await cdp.send("Target.attachToTarget", { targetId: popupTarget.targetId });
+  const evaluateId = 1;
+  await cdp.send("Target.sendMessageToTarget", { sessionId,
+    message: JSON.stringify({ id: evaluateId, method: "Runtime.evaluate",
+      params: { expression: `chrome.runtime.sendMessage({
+        protocolVersion: 2, method: "reading.open-learning-center"
+      })`, awaitPromise: true, returnByValue: true } }) });
+  const centerUrl = `chrome-extension://${harness.extensionId}/learning-center.html`;
+  await expect.poll(() => harness.context.pages().filter(page => page.url() === centerUrl).length).toBe(1);
+  const sender = await harness.serviceWorker.evaluate(() => globalThis.__toolbarPopupSender);
+  expect(sender).toEqual({ id: harness.extensionId, url: popupUrl,
+    origin: `chrome-extension://${harness.extensionId}`, tab: null });
+  expect(await harness.driver.evaluate(async () => (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] })).length)).toBe(0);
+  await cdp.detach();
+});
+
 test("Actual React product: Popup/selection, consent, real save, history, site policy, delete and JSON download", async ({ harness }, info) => {
   test.setTimeout(120000);
   await harness.reset();

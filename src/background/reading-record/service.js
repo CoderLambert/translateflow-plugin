@@ -100,7 +100,10 @@ export function createReadingService({ browser, repository = null, collector, no
       if (access.scope !== "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_PAGE_SUMMARY, M.CANCEL_OPERATION, M.REGISTER_DOCUMENT, M.CONSUME_HANDOFF].includes(request.method)) fail(E.FORBIDDEN, "scope.content-only");
       authorizeReadingMethod(request.method, access, resourcePageKey);
       const data = await dispatch(request, access);
-      await accessControl.validateCurrent(access);
+      // Opening a tab closes the browser-action Popup as part of the successful
+      // operation. The sender was verified before dispatch; requiring it to
+      // remain alive afterwards would turn a committed open into a false error.
+      if (request.method !== M.OPEN_LEARNING_CENTER) await accessControl.validateCurrent(access);
       return validateReadingResponse(request.method, { protocolVersion: V, ok: true, data }, access.scope, request.limit);
     } catch (error) {
       // No raw URL/content/stack/error.message is sent or logged.
