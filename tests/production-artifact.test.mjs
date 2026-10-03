@@ -1,11 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, posix, win32 } from "node:path";
 import { tmpdir } from "node:os";
-import { copyProductionArtifact, inventoryArtifact } from "../e2e/support/production-artifact.mjs";
+import { assertIsolatedArtifactPaths, copyProductionArtifact, inventoryArtifact } from "../e2e/support/production-artifact.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
+
+test("artifact isolation handles Windows separators without accepting same or nested paths", () => {
+  for (const [api, source, sibling, child, parent] of [
+    [win32, "C:\\repo\\.output\\chrome-mv3", "C:\\Temp\\tf-upgrade\\extension", "C:\\repo\\.output\\chrome-mv3\\copy", "C:\\repo\\.output"],
+    [posix, "/repo/.output/chrome-mv3", "/tmp/tf-upgrade/extension", "/repo/.output/chrome-mv3/copy", "/repo/.output"]
+  ]) {
+    assert.doesNotThrow(() => assertIsolatedArtifactPaths(source, sibling, api));
+    for (const unsafe of [source, child, parent]) assert.throws(() => assertIsolatedArtifactPaths(source, unsafe, api), /must be isolated/);
+  }
+  assert.doesNotThrow(() => assertIsolatedArtifactPaths("C:\\repo\\artifact", "D:\\fixture\\copy", win32));
+  assert.doesNotThrow(() => assertIsolatedArtifactPaths("\\\\server\\share\\artifact", "\\\\server\\share\\temp\\copy", win32));
+  assert.throws(() => assertIsolatedArtifactPaths("C:\\repo\\artifact", "c:\\REPO\\ARTIFACT", win32), /must be isolated/);
+});
 
 test("artifact adapter fails before augmenting missing production runtime; it never invokes a builder", async () => {
   const root=await mkdtemp(join(tmpdir(),"tf-artifact-contract-"));

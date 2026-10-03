@@ -839,3 +839,13 @@ commands, pending click-to-run recovery, other browsers and React/ReadingRecord
 product acceptance remain **NOT RUN**. Earlier failures, timeouts and partial
 evidence retain their original status. All local processes ended; no default
 switch, release publication or #248 completion is claimed.
+
+## Resume review: platform path isolation
+
+The final independent integration review of `bc6ffd16322c5c440466fa30b22afef6a038ac51` found a test-adapter portability defect: the production/fixture isolation guard recognized only POSIX `../` and rejected normal same-drive Windows sibling paths. The repair uses the native path separator, with deterministic `path.win32`/`path.posix` cases covering sibling copies, identical/ancestor/descendant rejection, Windows case-equivalent paths, other drives and UNC. The old expression fails the retained Windows counterexample; the three artifact-adapter Node tests pass after repair. This does not claim an actual Windows browser run and changes no production extension bytes.
+
+The previously temporary fixed-old package was no longer present. It was rebuilt from immutable `19e89b65fd3600073410407392da82ffa666ffc8` in a persistent source worktree: 237 files / 1,508,511 bytes, inventory SHA-256 `5714bb2fecfd86d5384ac0369f5cffe667804ba7733cccf6b76bdb48b0c92cce`, exactly matching the old upgrade receipts. This is reproducible reconstruction, not preservation of the old temporary directory or a new browser upgrade run.
+
+Local evidence is retained in the repair worktree `dist/issue248-evidence/`. Initial full validation failed because the new worktree lacked WXT-generated inherited compiler configuration; that failure is retained as `validate-before-prepare.log`. Existing locked dependencies are shared from the isolated Reading worktree, and `npm run prepare` restores only generated configuration before revalidation. No assertion, permission or user data was changed to obtain a pass. The default/release build switch remains a separate second stage; this repair does not close #248 or release #235.
+
+After prepare, the complete local `npm run validate` passed: 975 Node tests, zero failures, strict TypeScript, 4 Vitest tests and legacy build. The repair remains confined to the adapter, its tests and this evidence note; independent incremental review and new-head remote CI are still required.

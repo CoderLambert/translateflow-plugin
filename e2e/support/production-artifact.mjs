@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { dirname, join, resolve, relative, isAbsolute } from "node:path";
+import path, { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 import { byteSummary } from "../../scripts/wxt-assets.mjs";
@@ -23,14 +23,19 @@ export async function inventoryArtifact(root) {
   return {...summary, files, treeSha256};
 }
 
-export async function copyProductionArtifact(artifact, extensionDir, { generation = "current" } = {}) {
-  const source = resolve(artifact);
-  const destination = resolve(extensionDir);
+export function assertIsolatedArtifactPaths(artifact, extensionDir, pathApi = path) {
+  const source = pathApi.resolve(artifact);
+  const destination = pathApi.resolve(extensionDir);
   for (const [parent,child] of [[source,destination],[destination,source]]) {
-    const rel=relative(parent,child);
-    assert(rel && (isAbsolute(rel) || rel === ".." || rel.startsWith("../")),
+    const rel = pathApi.relative(parent,child);
+    assert(rel && (pathApi.isAbsolute(rel) || rel === ".." || rel.startsWith(`..${pathApi.sep}`)),
       "Test copy must be isolated from the production artifact");
   }
+}
+
+export async function copyProductionArtifact(artifact, extensionDir, { generation = "current" } = {}) {
+  const source = resolve(artifact);
+  assertIsolatedArtifactPaths(artifact, extensionDir);
   // No builder fallback: callers must build/select the real production artifact first.
   const inventory = await inventoryArtifact(source);
   const paths = new Set(inventory.files.map((f) => f.path));
