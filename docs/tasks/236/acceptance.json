@@ -1,16 +1,65 @@
 {
   "schema": 1,
   "task": "236",
-  "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
-  "tree": "c68719ed337563ce5ecf27022e7f11b90ec25ce2",
-  "inputTree": "4af00e09f3c6fae076f04302e7b691d1fe622d66eb162c08deddeca9a98c464e",
-  "frozenAt": "2026-10-03T15:28:09.279Z",
+  "candidateHead": "d6cf346bdd7b7f06db784d61c6edc225ed8e52f5",
+  "tree": "6bced3cbd946c5cc15c83e71c8374491c7cee223",
+  "inputTree": "4b0287884df7c77a677680e1ad2572b4c37337b677f35a83acaf779f8abfcf99",
+  "frozenAt": "2026-10-03T16:42:12.404Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
     "browser": "153.0.8010.12"
   },
   "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-loop-release-a.spec.mjs",
+        "--grep",
+        "extension-origin physical quota",
+        "--workers=1"
+      ],
+      "candidateHead": "d6cf346bdd7b7f06db784d61c6edc225ed8e52f5",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4255.778664,
+      "startedAt": "2026-10-03T16:42:12.593Z",
+      "log": "docs/task-execution/local/236/793bec8d-9867-41e1-ba65-21ea53d2a18d.log",
+      "logSha256": "25d3fbf35d9caa6370884fa0e24c54e03f99ae0eefcf96b73dc23f86082f4bb0"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "a4348aaa4e4775eb163fdb3cf55d6f55f7d960f1dbbda229f54da6c368d04eb9"
+  },
+  "limitations": [
+    "本地候选验收通过、ready_to_sync；尚未授权 #236 远端同步/合并，未记录 READING_LOOP_A_PASS 或 completed。",
+    "149 PASS / 6 SKIPPED 是旧完整运行148 PASS加修复项1 PASS的证据汇总，并非当前候选重新运行完整155项；旧 quota FAIL 保留原 head/log。",
+    "完整 validate 的1034 Node/15Vitest保持8a972fc原绑定；check/type/11项学习中心测试/WXT保持215759f原绑定；当前代码/生产包/fixture/其余场景输入未变。",
+    "此前 renderer/worker-only quota reset 的失败由精确浏览器源码和完整重启对照解释，未直接读取内部 cache；不改变生产权限、存储预算，不伪造原生错误。",
+    "6 skip是专用旧新包注入/升级3项及真实词典输入/one-click3项。Chrome102、其他浏览器、实际桌面IME/原生浏览器缩放、付费模型质量、文件对话框/磁盘结果和商店发布 NOT RUN。",
+    "主 Agent 自查不是独立模型审核；main整合与最终Release A认定仍待后续授权边界。"
+  ],
+  "decision": "LOCAL_A_CANDIDATE_PASS",
+  "reusedValidation": {
+    "candidateHead": "8a972fc7546f39201e83606eb9e54738981c4018",
+    "command": [
+      "npm",
+      "run",
+      "validate"
+    ],
+    "result": "PASS",
+    "log": "docs/task-execution/local/236/1cf7fb13-64cc-4339-9fb5-70380a783a4e.log",
+    "logSha256": "83c12f7953c61b88afee9b5c4ef99cfefa788a0f8b3f5cc9c2ba02eeca0157d8",
+    "nodeTests": 1034,
+    "vitestTests": 15,
+    "reason": "完整 validate 已在焦点修复前执行。随后仅 App.tsx/useLibrary.ts 焦点恢复及任务验证策略变化；Node 合同/存储/Provider/Content/fixtures/package/manifest/build 输入未变化，原 PASS 保留原 head。当前候选重新执行 check/typecheck/学习中心11项单测/WXT/完整155项E2E，未把旧执行改写为当前完整 validate。"
+  },
+  "reusedChecks": [
     {
       "command": [
         "npm",
@@ -72,8 +121,10 @@
       "startedAt": "2026-10-03T15:28:32.116Z",
       "log": "docs/task-execution/local/236/1778da9b-33e4-43a8-bff3-66a6da54d334.log",
       "logSha256": "a516fe40ec45c93e9d9c15dbf47e476e0a7edecaba938812f6db4a42d1d87d9e"
-    },
-    {
+    }
+  ],
+  "priorFullE2E": {
+    "check": {
       "command": [
         "npm",
         "run",
@@ -87,26 +138,38 @@
       "startedAt": "2026-10-03T15:28:34.864Z",
       "log": "docs/task-execution/local/236/3908895e-4038-4b13-851e-e2fb36612f2f.log",
       "logSha256": "6c8a42a028a440b71718a6186be08f54a4d8bed584f2fa3cf7bf253f6567d792"
-    }
-  ],
-  "artifact": {
-    "path": ".output/chrome-mv3",
-    "treeSha256": "a4348aaa4e4775eb163fdb3cf55d6f55f7d960f1dbbda229f54da6c368d04eb9"
+    },
+    "originalSummary": {
+      "passed": 148,
+      "failed": 1,
+      "skipped": 6,
+      "failure": "physical extension-origin quota refusal NOT VERIFIED"
+    },
+    "resolvedFailure": "native quota case at exact new candidate passes after full browser/profile restart; original FAIL retained"
   },
-  "limitations": [
-    "READING_LOOP_A_PASS 未记录；#236 blocked，未推送/PR/合并/发布。",
-    "完整 E2E 148 PASS / 1 FAIL / 6 SKIPPED；physical extension Origin quota 断言未 skip、过滤或放宽。",
-    "quota-native.json 为 localhost 原生 IDB/源码 repository、合成 authority；显式注入 QuotaExceededError 的生产 UI 路径独立标记，均不替代 physical extension quota。",
-    "6 skip：固定 old/new WXT 注入与两项同 ID 升级未配置专用产物（3）；私有/固定真实词典 preflight、Rich MDX、one-click corpus gates 未配置（3）。词典源/格式未变，不重新获取素材或认证。",
-    "当前焦点修复仅本地分支，尚未合入 main；主 Agent 自查不是独立模型审核。",
-    "Chrome102、其他浏览器、真实桌面 IME、原生浏览器缩放 UI、真实付费模型质量、文件对话框/磁盘保存结果与商店发布 NOT RUN。CSS 200% 和浏览器 composition 事件有明确测试标签。"
-  ],
-  "decision": "NO-GO",
-  "e2eSummary": {
-    "passed": 148,
-    "failed": 1,
+  "coverage": {
+    "kind": "reconciliation of existing full run and targeted repaired case",
+    "passed": 149,
+    "unresolvedFailures": 0,
     "skipped": 6,
-    "failure": "physical extension-origin quota refusal NOT VERIFIED"
+    "newFullE2ERun": false,
+    "replacement": "e2e/reading-loop-release-a.spec.mjs / extension-origin physical quota"
+  },
+  "reuseProof": {
+    "sourceHead": "215759f8a050448287140efccd1f1f6918fb5141",
+    "productionSourceTestsFixturesBuildInputsUnchanged": true,
+    "checkedPaths": [
+      "src",
+      "entrypoints",
+      "manifest.json",
+      "package.json",
+      "package-lock.json",
+      "wxt.config.mjs",
+      "scripts",
+      "tests"
+    ],
+    "artifactFingerprintUnchanged": true,
+    "diffScope": "only quota E2E body and acceptance documentation/task metadata"
   },
   "supplementaryEvidence": [
     {
@@ -168,22 +231,12 @@
     {
       "path": "docs/task-execution/local/236/asset-map.json",
       "sha256": "13b425f28aebf260c6f28ae95ee57c3eb2fefe0b8176ebd7f17b1947861d47b6"
+    },
+    {
+      "path": "docs/task-execution/local/236/release-a-extension-quota-corrected.json",
+      "sha256": "2b78f8432fe204d064f2568597fb0a8783aa75535513a8f1d10b612f607a91b5"
     }
   ],
-  "reusedValidation": {
-    "candidateHead": "8a972fc7546f39201e83606eb9e54738981c4018",
-    "command": [
-      "npm",
-      "run",
-      "validate"
-    ],
-    "result": "PASS",
-    "log": "docs/task-execution/local/236/1cf7fb13-64cc-4339-9fb5-70380a783a4e.log",
-    "logSha256": "83c12f7953c61b88afee9b5c4ef99cfefa788a0f8b3f5cc9c2ba02eeca0157d8",
-    "nodeTests": 1034,
-    "vitestTests": 15,
-    "reason": "完整 validate 已在焦点修复前执行。随后仅 App.tsx/useLibrary.ts 焦点恢复及任务验证策略变化；Node 合同/存储/Provider/Content/fixtures/package/manifest/build 输入未变化，原 PASS 保留原 head。当前候选重新执行 check/typecheck/学习中心11项单测/WXT/完整155项E2E，未把旧执行改写为当前完整 validate。"
-  },
   "productEvidence": {
     "realCreationRecords": 4,
     "kinds": [
@@ -203,14 +256,23 @@
     "maxFullMessageBytes": 342508,
     "everyRowAndSourceChecked": true,
     "physicalQuota": {
-      "status": "FAIL / NOT VERIFIED",
-      "overrideActive": true,
-      "quota": 448205,
-      "usage": 945332,
+      "status": "PASS",
+      "nativeRefusal": "QuotaExceededError",
+      "nativeTransactionCompleted": false,
       "attemptedBytes": 524288,
-      "nativeTransactionCompleted": true,
-      "nativeRefusal": null,
-      "oldProductReadExportDeletePassed": true
+      "fullBrowserRestartBeforeOverride": true,
+      "actualProductReadExportDelete": true,
+      "compiledReadingNativeQuota": true,
+      "readingErrorReplies": [
+        {
+          "code": "READING_QUOTA",
+          "method": "reading.begin-query"
+        }
+      ],
+      "truthfulNotSaved": true,
+      "recordsBeforeRetry": 1,
+      "recordsAfterRetry": 2,
+      "retryProviderCalls": 0
     }
   },
   "performanceEvidence": {
@@ -255,5 +317,9 @@
       "arch": "x64"
     },
     "claimScope": "普通合成 DOM 89 chars / 4 nodes 的本机样本；不是全网站性能认证，未将100ms诊断守卫当作8ms运行时预算。"
-  }
+  },
+  "diagnosisSources": [
+    "https://chromium.googlesource.com/chromium/src/+/153.0.8010.12/content/browser/indexed_db/instance/bucket_context.cc",
+    "https://chromium.googlesource.com/chromium/src/+/153.0.8010.12/content/browser/indexed_db/instance/transaction.cc"
+  ]
 }

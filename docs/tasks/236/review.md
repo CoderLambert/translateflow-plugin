@@ -1,26 +1,21 @@
-# Release A 主 Agent 自查与 NO-GO
+# Release A 候选主 Agent 自查
 
-候选 `215759f8a050448287140efccd1f1f6918fb5141`，main 基线 `b606cfd556792d9764d0b15461b7a142fcd99575`（#235 / PR #285）。主 Agent 自查，不标为独立终审。仅本地验收/最小修复，#236 未推送、PR、合并或发布。
+候选 `d6cf346bdd7b7f06db784d61c6edc225ed8e52f5`，基线 main `b606cfd556792d9764d0b15461b7a142fcd99575`。主 Agent 自查，不标为独立终审。本地 ready_to_sync；#236 未推送/PR/合并/发布。主线整合前不记录 READING_LOOP_A_PASS 或 completed。
 
-## 结果
+## 本轮改动与结论
 
-当前候选 `check`、严格 TS、11 项学习中心 Vitest、实际 WXT 构建 PASS；完整 `npm run test:e2e` **148 PASS / 1 FAIL / 6 SKIPPED**。实际包 240 文件、38,634,174 B，其中既有词典 36,830,492 B；Manifest 无差异，React 只在学习中心。日志、耗时、精确包指纹、原始证据 hash 见 acceptance.json。
+仅修复物理 quota 用例的浏览器生命周期，并同步验收说明。生产源码、fixture、构建输入、其余场景未变，包 fingerprint 保持 `a4348aaa4e4775eb163fdb3cf55d6f55f7d960f1dbbda229f54da6c368d04eb9`。旧原生拒写断言没有放宽：仍要求 512KiB随机不可压缩 native IDB transaction abort/QuotaExceededError，且现在追加真实collector→compiled Reading 的原生 READING_QUOTA/恢复空间/显式重试路径（实际错误code为READING_QUOTA）。未覆盖IDB原型、未注入DOMException、未扩大权限或填宿主磁盘。
 
-完整 validate 在候选 `8a972fc7546f39201e83606eb9e54738981c4018` PASS（1034 Node、15 Vitest、TS、WXT），耗时 58.634 s。其后真实 Escape 测试发现焦点在 hash 导航/订阅重连期间恢复过早。只改 App.tsx/useLibrary.ts：列表暴露已完成读取状态，待连接、列表与详情请求稳定后一次恢复原记录/列表入口焦点。修复后原失败的真实键盘用例 PASS，完整 E2E 也 PASS；Node/底层合同输入未变化，旧完整验收保持原 head/log，不伪称当前 head 重新跑过完整 validate。当前 check/type/Vitest/build/E2E 全部重新绑定；没有修改后台、权限、数据库、消息 schema、缓存、Provider 或词典内容。
+精确153.0.8010.12 Chromium源码显示 BucketContext 可先消耗额度缓存，再询问quota manager；renderer/worker结束不保证重建该原生上下文。完整浏览器/profile重启后同额度/数据的事务发生实际QuotaExceededError。源码和重启对照支持这个解释，没有声称直接观测内部cache值；旧失败和初始NO-GO证据保留原head/hash。
 
-## 产品证据
+## 验收与证据复用
 
-- 真实 Selection → LC 信任点击开启 → 返回有效卡显式保存，以及新查询自动保存，创建 4 条真实记录：hit/no-hit/翻译/cache/完整 Explain。只有 2 次明确 mock Provider 操作，历史 0 次。完整 profile 重启后不可变快照/问答/source 保持一致；移除测试词典、Provider 配置并断网仍可读。
-- 合成 canonical corpus 1,439 条，实际持久化 67031498 B，UI 导出 67092027 B / 256 chunks；单个完整消息最大 342508 B（≤1MiB）。全部下载行、来源引用、Unicode/转义、序列和字节都核对，未用此 seed 替代真实创建故事。
-- 实际 worker 停机和页面退出没有残缺下载；10,000 条容量状态经真实 UI 删除恢复为 9,999，授权仍 enabled。恶意回答 script/img 按文本显示、0 外部请求；Escape焦点、双语不改历史、composition Enter、防溢出 CSS200%/暗色/reduced-motion 实际浏览器通过，截图已查看。
-- 原生 DOM 10 样本：89 chars / 4 nodes，sync 中位 0.350 ms、范围 0.100–5.400 ms；runtime deadline 8 ms，观测样本均在预算内。1.1M 字符巨节点 sync 0.600 ms、612字符合法上下文/无精确位置，动态小节点恢复 resolved。机器 AMD Ryzen5 7530U / 12逻辑CPU / Linux x64，非通用性能认证。
+当前冻结候选执行 `npm run test:e2e -- e2e/reading-loop-release-a.spec.mjs --grep 'extension-origin physical quota' --workers=1`：PASS（1项）。实际原生拒写后旧记录可读、可导出、可删除。quota=1阶段，真实Selection点击导致后台reading.begin-query返回READING_QUOTA，卡显示not-saved；原记录数1保持。恢复空间后点重试保存变成2条记录，Provider调用0，编译后台文件不变。
 
-## 唯一未满足项
+保留 `215759f8a050448287140efccd1f1f6918fb5141` 的 check/TS/11项Vitest/WXT PASS 与完整E2E **148 PASS / 1 FAIL / 6 SKIP**；本次通过替代其唯一失败，汇总证据为 **149 PASS / 0 未解决 FAIL / 6 SKIP**，不宣称当前head重新执行完整155项。完整validate（1034 Node/15Vitest）保留8a972fc原head/log。实际diff证明src/entrypoints/package/manifest/scripts/tests完全未变，只有quota场景和验收文档变化；其它PASS仍有效。gate配置只重验改变/失败项，没有把旧FAIL改成PASS或降低验收条件。
 
-**NO-GO / physical extension Origin quota NOT VERIFIED。** Chrome `153.0.8010.12` 的 overrideActive=true，报告 quota 448205 B，实际 usage 945332 B；512KiB 随机不可压缩 native IDB 事务仍 completed=true，没有 QuotaExceededError。已关原 Reading 页面并停止 worker，再设置 quota、重新打开连接；这不是仅压缩重复字符串没超过物理额度的假失败。旧产品 read/export/delete 均可用，但不能推导发生真实拒写后的恢复。
+既有真实创建/重启、词典卸载/断网/Provider未配置零历史调用、1,439条/67,092,027B/256chunk近预算导出、单消息342,508B、worker/页面退出、10k容量恢复、source/Unicode/安全/键盘/双语/缩放和DOM计时证据保持原绑定，详见acceptance.json的reused及supplementary字段。
 
-该断言保持 FAIL，不 skip/过滤/提高额度来宣称通过。localhost Native IDB quota PASS 和注入 QuotaExceededError 的真实 UI not-saved/retry PASS 分别保留标签，不能充当扩展 Origin 物理拒写。没有填满宿主磁盘、扩大权限、清空用户数据、改生产预算或用假的错误签发 A_PASS。
+## 授权与限制
 
-6 SKIPPED 为旧/新包专项注入/升级 3 项和真实词典专用输入/one-click 3 项；未变化的既有资源从235复用，不重新下载/编译/认证。Chrome102/其它浏览器/实际桌面IME/真实模型及文件保存结局未验证。
-
-任务状态 blocked，未记录 READING_LOOP_A_PASS。当前系统缺乏可观察的扩展 Origin quota 原生拒写，需可复现的环境机制或明确验收裁定后继续；其它 PASS 与准确 head/包/日志保留。主 Agent 自查不替代外部必需/人工验收。
+6 skip及实际桌面IME/Chrome102/其它浏览器/付费模型/文件保存结局/商店发布的未验证状态保持。没有下载或重新认证词典；没有第二次模型审核。Focus修复215759f与本次测试修复均在本地236分支；实际main交付需下一次明确同步/合并授权。无待解决的本地验收阻断，但不在当前授权外继续发布或后续任务。
