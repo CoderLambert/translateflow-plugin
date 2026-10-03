@@ -6,6 +6,8 @@ import { join, posix, resolve, win32 } from "node:path";
 import { pathRelation, assertBuildOutputLocation, assertBuildOutputPaths, assertDisjointPathsOnDisk } from "../scripts/path-boundaries.mjs";
 import { buildExtension } from "../scripts/build-extension.mjs";
 import { ROOT } from "../scripts/wxt-assets.mjs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 test("exported source root is normalized before any equality comparison", () => {
   assert.equal(ROOT, resolve(ROOT));
@@ -29,7 +31,8 @@ test("one relation handles equality, separators, parent segments, drives and UNC
       assert.throws(() => assertBuildOutputLocation(root, candidate, { pathApi: api, allowExternalOutput: true }), /Unsafe extension output/);
     }
     assert.doesNotThrow(() => assertBuildOutputLocation(root, child, { pathApi: api }));
-    assert.doesNotThrow(() => assertBuildOutputLocation(root, api.join(root, ".output/chrome-mv3"), { pathApi: api }));
+    assert.throws(() => assertBuildOutputLocation(root, api.join(root, ".output/chrome-mv3"), { pathApi: api }), /Unsafe extension output/);
+    assert.doesNotThrow(() => assertBuildOutputLocation(root, api.join(root, ".output/chrome-mv3"), { pathApi: api, allowWxtOutput: true }));
     assert.throws(() => assertBuildOutputLocation(root, sibling, { pathApi: api }), /Unsafe extension output/);
     assert.doesNotThrow(() => assertBuildOutputLocation(root, sibling, { pathApi: api, allowExternalOutput: true }));
   }
@@ -61,12 +64,47 @@ test("disk guard rejects links, missing descendants through links and other work
     await assert.rejects(assertBuildOutputPaths(source, join(nested, "missing/package")), /another Git workspace/);
     assert.equal(await readFile(join(nested, "keep"), "utf8"), "foreign source retained");
     assert.equal(await assertBuildOutputPaths(source, join(source, "dist", "package")), join(source, "dist", "package"));
+    const packagePath = join(source, "dist", "package");
+    await mkdir(join(packagePath, "deep", "foreign"), { recursive: true });
+    await writeFile(join(packagePath, "deep", "foreign", ".git"), "synthetic nested worktree");
+    await writeFile(join(packagePath, "deep", "foreign", "keep"), "nested source retained");
+    await assert.rejects(assertBuildOutputPaths(source, packagePath), /output tree contains a Git workspace/);
+    const copy = join(temp, "copy");
+    await mkdir(join(copy, "deep", "foreign"), { recursive: true });
+    await writeFile(join(copy, "deep", "foreign", ".git"), "synthetic nested worktree");
+    await assert.rejects(assertDisjointPathsOnDisk(source, copy), /output tree contains a Git workspace/);
+    assert.equal(await readFile(join(packagePath, "deep", "foreign", "keep"), "utf8"), "nested source retained");
     await symlink(foreign, join(source, "dist", "redirect"), process.platform === "win32" ? "junction" : "dir");
     await assert.rejects(assertBuildOutputPaths(source, join(source, "dist", "redirect", "new")), /symbolic link/);
     await writeFile(join(source, "dist", "file"), "not a directory");
     await assert.rejects(assertBuildOutputPaths(source, join(source, "dist", "file", "new")), /not a directory/);
     assert.equal(await readFile(join(source, "sentinel"), "utf8"), "source retained");
     assert.equal(await assertBuildOutputPaths(source, join(temp, "new/package"), { allowExternalOutput: true }), join(temp, "new/package"));
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test("trusted OS temporary root permits system aliases", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "tf-temp-root-alias-"));
+  try {
+    const real = join(temp, "real"); await mkdir(join(real, "folders"), { recursive: true });
+    await mkdir(join(temp, "source"));
+    await symlink(real, join(temp, "system-alias"), process.platform === "win32" ? "junction" : "dir");
+    const temporaryRoot = join(temp, "system-alias", "folders");
+    await symlink(join(temp, "source"), join(temporaryRoot, "redirect"), process.platform === "win32" ? "junction" : "dir");
+    const code = `import assert from "node:assert/strict";
+      import { join } from "node:path";
+      import { assertBuildOutputPaths, assertDisjointPathsOnDisk } from ${JSON.stringify(new URL("../scripts/path-boundaries.mjs", import.meta.url).href)};
+      const source = process.argv[1];
+      for (const root of process.argv.slice(2)) {
+        await assertBuildOutputPaths(source, join(root, "package"), {allowExternalOutput:true});
+        await assertDisjointPathsOnDisk(source, join(root, "copy"));
+        await assert.rejects(assertBuildOutputPaths(source, root, {allowExternalOutput:true}), /below the temporary directory/);
+        await assert.rejects(assertDisjointPathsOnDisk(source, root), /below the temporary directory/);
+        await assert.rejects(assertBuildOutputPaths(source, join(root, "redirect", "missing"), {allowExternalOutput:true}), /symbolic link/);
+        await assert.rejects(assertDisjointPathsOnDisk(source, join(root, "redirect", "missing")), /symbolic link/);
+      }`;
+    await promisify(execFile)(process.execPath, ["--input-type=module", "-e", code, join(temp, "source"), temporaryRoot, join(real, "folders")],
+      { env: { ...process.env, TMPDIR: temporaryRoot, TMP: temporaryRoot, TEMP: temporaryRoot } });
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
@@ -82,6 +120,19 @@ test("real builder writes only disposable output; alias rejection preserves a di
     const alias = join(temp, "alias");
     await symlink(victim, alias, process.platform === "win32" ? "junction" : "dir");
     await assert.rejects(buildExtension({ outDir: alias, allowExternalOutput: true }), /symbolic link/);
+    assert.equal(await readFile(join(victim, "keep"), "utf8"), "retained");
+    const nested = join(output, "deep", "foreign");
+    await mkdir(nested, { recursive: true });
+    await writeFile(join(nested, ".git"), "synthetic nested worktree");
+    await writeFile(join(nested, "keep"), "nested source retained");
+    await assert.rejects(buildExtension({ outDir: output, allowExternalOutput: true }), /output tree contains a Git workspace/);
+    await assert.rejects(assertDisjointPathsOnDisk(victim, output), /output tree contains a Git workspace/);
+    assert.equal(await readFile(join(nested, "keep"), "utf8"), "nested source retained");
+    await rm(join(nested, ".git"));
+    await symlink(victim, join(nested, "redirect"), process.platform === "win32" ? "junction" : "dir");
+    await assert.rejects(buildExtension({ outDir: output, allowExternalOutput: true }), /symbolic link in output tree/);
+    await assert.rejects(assertDisjointPathsOnDisk(victim, output), /symbolic link in output tree/);
+    assert.equal(await readFile(join(nested, "keep"), "utf8"), "nested source retained");
     assert.equal(await readFile(join(victim, "keep"), "utf8"), "retained");
   } finally { await rm(temp, { recursive: true, force: true }); }
 });

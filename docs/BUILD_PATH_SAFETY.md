@@ -12,7 +12,10 @@ it does not constitute a Windows filesystem or browser test.
 
 `assertBuildOutputLocation` rejects the source root, its ancestors, filesystem
 roots, and source children outside a package directory below `dist/` or the
-exact `.output/chrome-mv3` package. The whole `dist/` directory is not an output.
+exact `.output/chrome-mv3` package only with an explicit `allowWxtOutput` option
+reserved for a WXT writer. The legacy builder never enables that option, so it
+cannot overwrite a WXT package with raw output. The whole `dist/` directory is
+not an output.
 An external test opt-in does not bypass source protection.
 
 `assertBuildOutputPaths` additionally checks existing path components without
@@ -23,6 +26,13 @@ Git workspace below that temporary root. Internal outputs also reject a nested
 Git workspace below the owning source root. The temporary root itself cannot be
 replaced. Existing test/certification callers use their own `mkdtemp` directory.
 These callers remain responsible for owning the disposable destination.
+Existing output trees are recursively checked for nested `.git` markers and
+symlinks before replacement or test-copy mutation; checking only ancestors is
+insufficient. Source and OS temporary roots are trusted canonical boundaries,
+so system aliases above them (such as macOS `/var`) do not reject valid output.
+The temporary root's OS spelling and canonical spelling both permit descendant
+outputs; the root itself remains protected in either spelling. Links below the
+owning boundary remain forbidden.
 
 The legacy builder validates before setup and again immediately before deleting
 its output. The WXT raw resource bridge uses the same relation for confinement.
