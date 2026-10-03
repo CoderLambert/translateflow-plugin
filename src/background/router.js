@@ -23,10 +23,12 @@ import {
   registerAutoSite,
   registerCacheRestoreSite,
   registerQuickControlSite,
+  registerSelectionSite,
   showQuickControlSite,
   unregisterAutoSite,
   unregisterCacheRestoreSite,
-  unregisterQuickControlSite
+  unregisterQuickControlSite,
+  unregisterSelectionSite
 } from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
@@ -178,6 +180,10 @@ export async function handleBackgroundMessage(message, sender) {
       return registerAutoSite(message.origin);
     case BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER:
       return unregisterAutoSite(message.origin);
+    case BACKGROUND_MESSAGES.SELECTION_SITE_REGISTER:
+      return registerSelectionSite(message.origin);
+    case BACKGROUND_MESSAGES.SELECTION_SITE_UNREGISTER:
+      return unregisterSelectionSite(message.origin);
     case BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_REGISTER:
       return registerQuickControlSite(message.origin);
     case BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_UNREGISTER:

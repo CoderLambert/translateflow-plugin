@@ -76,6 +76,47 @@ test.describe("v0.8 release-gate browser flows", () => {
     await popup.screenshot({ path: testInfo.outputPath("popup-learning-center-layout.png"), fullPage: true });
   });
 
+  test("one site permission makes Selection available on newly opened pages", async ({ harness }) => {
+    const first = await harness.open("/selection");
+    const firstTabId = await harness.tabId(first);
+    await harness.driver.evaluate(tabId => chrome.tabs.update(tabId, { active: true }), firstTabId);
+    await harness.driver.reload();
+
+    const selectionSwitch = harness.driver.getByRole("switch", { name: "开启本站划词查询" });
+    await expect(selectionSwitch).toBeEnabled();
+    await selectionSwitch.click();
+    await expect(harness.driver.locator("#selectionSite")).toHaveAttribute("aria-checked", "true");
+
+    const second = await harness.open("/selection");
+    await second.evaluate(() => {
+      const node = document.querySelector("#lexical").firstChild;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await expect(second.locator(".tf-selection-chip")).toBeVisible();
+
+    const secondTabId = await harness.tabId(second);
+    await harness.driver.evaluate(tabId => chrome.tabs.update(tabId, { active: true }), secondTabId);
+    await harness.driver.reload();
+    const enabledSwitch = harness.driver.getByRole("switch", { name: "关闭本站划词查询" });
+    await enabledSwitch.click();
+    await expect(harness.driver.locator("#selectionSite")).toHaveAttribute("aria-checked", "false");
+
+    const third = await harness.open("/selection");
+    await third.evaluate(() => {
+      const node = document.querySelector("#lexical").firstChild;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await expect(third.locator(".tf-selection-chip")).toHaveCount(0);
+  });
+
   test("Quick Control remains dismissible and readable in dark mode", async ({ harness }) => {
     const page = await harness.open("/article");
     await page.emulateMedia({ colorScheme: "dark" });
