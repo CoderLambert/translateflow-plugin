@@ -31,7 +31,6 @@
   "limitations": [
     "Browser E2E and actual WXT build NOT RUN: workflow migration has no extension runtime changes.",
     "Native hook reload/current invocation NOT VERIFIED; changed SessionEnd/Interrupt definitions require CLI review and trust.",
-    "Remote PR/merge deferred: user confirmed automatic PR Review remains enabled and will disable it later.",
     "Windows/CRLF local input gate and Windows hook installation NOT VERIFIED.",
     "No real user profile, paid Provider, store publication or product task continuation."
   ],
@@ -73,5 +72,8 @@
     "approvalPolicy": "never",
     "sandbox": "danger-full-access",
     "readOnlyEnforcement": "behavior only; sandbox default overridden"
+  },
+  "externalSettings": {
+    "automaticPrReview": "DISABLED, user confirmed; no independent App API verification"
   }
 }

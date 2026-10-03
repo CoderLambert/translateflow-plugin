@@ -143,7 +143,7 @@
     },
     {
       "task": "workflow-local",
-      "status": "blocked",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "chore/local-task-workflow",
       "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21"
