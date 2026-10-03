@@ -9,7 +9,7 @@ const TOOLBAR_POPUP_PATH = "/popup.html";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const nativeDocumentId = (value) => typeof value === "string" && (UUID.test(value) || /^[0-9a-f]{32}$/iu.test(value));
 const ACTIONS = new Map([[M.BEGIN_QUERY, "begin"], [M.SAVE_QUERY_RESULT, "save"], [M.APPEND_ASSISTANT, "save"],
-  [M.GET_RECORD, "detail"], [M.CANCEL_OPERATION, "cancel"]]);
+  [M.GET_RECORD, "detail"], [M.CANCEL_OPERATION, "cancel"], [M.CONSUME_HANDOFF, "handoff"]]);
 
 export async function readOwnedCollector(browser, sender, challenge) {
   if (typeof browser?.scripting?.executeScript !== "function") fail(E.CAPABILITY_LIMITED, "collector");
@@ -37,7 +37,7 @@ function validateProof(value, nonce, action, requestedRecordId, operationId) {
     sourceSnapshot: nullable(value.sourceSnapshot, validateSourceSnapshot, "proof.sourceSnapshot") };
   if (proof.sourceSnapshot && (proof.sourceSnapshot.documentGeneration !== proof.documentGeneration ||
       proof.sourceSnapshot.selectionGeneration !== proof.selectionGeneration)) fail(E.FORBIDDEN, "proof.sourceSnapshot");
-  if (action !== "inspect" && action !== "register") {
+  if (!["inspect", "register", "handoff"].includes(action)) {
     object(value.intent, ["action", "recordId", "operationId"], "proof.intent");
     if (value.intent.action !== action || value.intent.recordId !== (requestedRecordId ?? null) || value.intent.operationId !== (operationId ?? null)) fail(E.FORBIDDEN, "proof.intent");
   } else if (value.intent !== null) fail(E.BAD_DTO, "proof.intent");

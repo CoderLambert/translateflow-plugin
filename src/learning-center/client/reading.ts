@@ -6,6 +6,7 @@ import type { validateRecordListItem, validatePageListItem, validateExclusionIte
 import type { validateReadingRecord } from "../../shared/reading/record.js";
 import type { validateSourceSnapshot } from "../../shared/reading/source.js";
 import type { validateResultArtifact } from "../../shared/reading/artifact.js";
+import type { validateHandoff } from "../../shared/reading/lifecycle.js";
 
 export type RecordItem = ReturnType<typeof validateRecordListItem>;
 export type PageItem = ReturnType<typeof validatePageListItem>;
@@ -16,6 +17,8 @@ export interface Page<T> { items: T[]; nextCursor: string | null; catalogRevisio
 export interface ExportStart { exportId: string; exportRevision: number; nextCursor: string; expiresAt: number }
 export interface ExportChunk { sequence: number; jsonChunk: string; nextCursor: string | null; done: boolean; exportRevision: number }
 export interface ExportFinish { exportId: string; sequence: number; exportRevision: number; state: "finished" }
+export interface SiteMarkers { state: "ready" | "permission-required"; enabled: boolean; permissionGranted: boolean }
+export type ReturnHandoff = { state: "ready"; handoff: ReturnType<typeof validateHandoff> } | { state: "permission-required" | "unsupported" };
 export type Send = (request: unknown) => Promise<unknown>;
 export class ReadingError extends Error {
   constructor(readonly code: string) { super(code); }
@@ -43,6 +46,11 @@ export class ReadingClient {
   setSite(siteKey: string, excluded: boolean, expectedSitePolicyRevision: number) {
     return this.request<{ excluded: boolean; sitePolicyRevision: number }>(M.SET_SITE_RECORDING, { siteKey, excluded, expectedSitePolicyRevision });
   }
+  markers(siteKey: string) { return this.request<SiteMarkers>(M.GET_SITE_MARKERS, { siteKey }); }
+  setMarkers(siteKey: string, enabled: boolean) { return this.request<SiteMarkers>(M.SET_SITE_MARKERS, { siteKey, enabled }); }
+  createHandoff(recordId: string, expectedRevision: number) { return this.request<ReturnHandoff>(M.CREATE_HANDOFF, { recordId, expectedRevision }); }
+  // Called directly by a trusted click, before any asynchronous work.
+  requestSitePermission(siteKey: string) { return chrome.permissions.request({ origins: [`${new URL(siteKey).origin}/*`] }); }
 }
 export const readingClient = new ReadingClient();
 export function subscribe(onChange: () => void, onDisconnect: () => void): () => void {

@@ -100,5 +100,5 @@
     const canonicalRange = projection.rangeForPosition(value, position, { budget });
     return canonicalRange ? { range: canonicalRange, text: value.text.slice(position.start, position.end) } : { range, text };
   }
-  app.modules.selectionSourceSnapshot = { capture, contextRoot, canonicalize };
+  app.modules.selectionSourceSnapshot = { capture, contextRoot, canonicalize, documentGeneration };
 })();

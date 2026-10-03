@@ -36,7 +36,7 @@ content scripts -> messages -> background router
 10. Lexical content follows **Source-driven data → Rule-driven retrieval → Context-driven ranking → User-driven AI**. Project-authored word/translation rows and query-specific sense hacks are not a long-term coverage mechanism.
 11. Production extension packaging is allowlist-based. Build inputs, source locks, tests, E2E fixtures and benchmark assets stay outside the installed extension.
 
-The React learning center is a single unlisted WXT extension page at `learning-center.html`. Its typed message client consumes the Reading repository; it has no direct storage/dictionary/Provider path. See [Learning center v1](LEARNING_CENTER_V1.md) for navigation, consent, invalidation and chunked download boundaries.
+The React learning center is a single unlisted WXT extension page at `learning-center.html`. Its typed message client consumes the Reading repository; it has no direct storage/dictionary/Provider path. Safe return uses a background-owned, worker-memory-only handoff bound to the new tab and controlled Content document; the page never puts a record/token in the web URL. See [Learning center v1](LEARNING_CENTER_V1.md) for navigation, consent, invalidation and chunked download boundaries.
 
 ## Configuration
 
@@ -62,7 +62,7 @@ The React learning center is a single unlisted WXT extension page at `learning-c
 - `providers/`: 网络 Provider adapter；统一接收 AbortSignal，并由 shared 层负责 timeout/retry
 - `translation-requests.js`: requestId / in-flight coalescing / background AbortController
 - `cache-db.js`: cache identity / IndexedDB / LRU
-- `auto-sites.js`: per-site auto/cache/Quick Control state + obsolete dynamic-registration cleanup
+- `auto-sites.js`: serialized per-site auto/cache/Quick Control/Reading-marker intent state + obsolete dynamic-registration cleanup; a feature intent is not a permission grant
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
 
@@ -87,7 +87,7 @@ Production builds are created from an explicit allowlist into `dist/extension`. 
 
 `src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. `scripts/wxt-assets.mjs` derives the raw bridge from the current ordered Content lists plus mapped MAIN/Worker roots and their relative-import closure. Only those individual files and authenticated generated pack descriptors enter WXT public assets; the whole `src` tree is never copied. Generated source locks and corpora stay outside both packages. Bridge removal belongs to the authorized legacy migration slice, not an ad hoc rewrite here.
 
-Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. The production Manifest loads the ordered Content list at `document_idle` on ordinary `http/https` pages, so Selection starts with the page. `auto-sites.js` keeps automatic translation, cache restoration and persistent Quick Control opt-in by site, and removes registrations left by older builds to prevent duplicate injection. The compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for the bridge and artifact audit.
+Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. The production Manifest loads the ordered Content list at `document_idle` on ordinary `http/https` pages, so Selection starts with the page. A small Content handoff client performs a document-only controlled registration and consumes a backend-bound minimal summary only when one exists; it does not enumerate history, locate DOM, or call a Provider. `auto-sites.js` keeps automatic translation, cache restoration, persistent Quick Control and independent Reading marker intent by site, and removes registrations left by older builds to prevent duplicate injection. The compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for the bridge and artifact audit.
 
 ### Approved type and test tooling
 

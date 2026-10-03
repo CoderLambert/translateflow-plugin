@@ -4,86 +4,105 @@ import {
 } from "../shared/constants.js";
 import { sha256 } from "../shared/hash.js";
 import { getOriginMatchPattern, normalizeOrigin } from "../shared/url.js";
+import { READING_ERROR as E, READING_LIMITS as L } from "../shared/reading/constants.js";
+import { fail } from "../shared/reading/validation.js";
 
-const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites"];
+const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "readingMemorySites"];
+let mutations = Promise.resolve();
+function serialize(operation) {
+  const result = mutations.then(operation);
+  mutations = result.catch(() => {});
+  return result;
+}
+async function patchState(origin, patch) {
+  return serialize(async () => {
+    const state = await readState(); patch(state);
+    await writeState(state); await syncOriginRegistration(origin);
+  });
+}
+
+// These are feature intentions, not grants. The current Manifest owns static
+// injection; serialized patches keep each feature's demand independent.
+export async function getReadingMemorySite(rawOrigin) {
+  const origin = normalizeReadingOrigin(rawOrigin), state = await readState();
+  const permissionGranted = await chrome.permissions.contains({ origins: [readingMatchPattern(origin)] }) === true;
+  const enabled = state.readingMemorySites.includes(origin);
+  return { state: enabled && !permissionGranted ? "permission-required" : "ready", enabled, permissionGranted };
+}
+export function setReadingMemorySite(rawOrigin, enabled) {
+  const origin = normalizeReadingOrigin(rawOrigin);
+  return serialize(async () => {
+    const state = await readState();
+    const permissionGranted = await chrome.permissions.contains({ origins: [readingMatchPattern(origin)] }) === true;
+    if (enabled && !permissionGranted) return { state: "permission-required", enabled: state.readingMemorySites.includes(origin), permissionGranted };
+    if (enabled && !state.readingMemorySites.includes(origin) && state.readingMemorySites.length >= L.exclusionSites) fail(E.CAPACITY, "site-markers");
+    state.readingMemorySites = enabled ? addReadingOrigin(state.readingMemorySites, origin) : removeReadingOrigin(state.readingMemorySites, origin);
+    await writeState(state); await syncOriginRegistration(origin);
+    return { state: "ready", enabled, permissionGranted };
+  });
+}
 
 export async function registerAutoSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
   await assertOriginPermission(origin, "尚未获得此站点的自动翻译权限。");
-  const state = await readState();
-  state.autoSites = addOrigin(state.autoSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => { state.autoSites = addOrigin(state.autoSites, origin); });
   return { origin, enabled: true };
 }
 
 export async function unregisterAutoSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
-  const state = await readState();
-  state.autoSites = removeOrigin(state.autoSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => { state.autoSites = removeOrigin(state.autoSites, origin); });
   return { origin, enabled: false };
 }
 
 export async function registerCacheRestoreSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
   await assertOriginPermission(origin, "尚未获得此站点的自动恢复缓存权限。");
-  const state = await readState();
-  state.cacheRestoreSites = addOrigin(state.cacheRestoreSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => { state.cacheRestoreSites = addOrigin(state.cacheRestoreSites, origin); });
   return { origin, enabled: true };
 }
 
 export async function unregisterCacheRestoreSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
-  const state = await readState();
-  state.cacheRestoreSites = removeOrigin(state.cacheRestoreSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => { state.cacheRestoreSites = removeOrigin(state.cacheRestoreSites, origin); });
   return { origin, enabled: false };
 }
 
 export async function registerQuickControlSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
   await assertOriginPermission(origin, "尚未获得此站点的 Quick Control 权限。");
-  const state = await readState();
-  state.quickControlSites = addOrigin(state.quickControlSites, origin);
-  state.quickControlHiddenSites = removeOrigin(state.quickControlHiddenSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => {
+    state.quickControlSites = addOrigin(state.quickControlSites, origin);
+    state.quickControlHiddenSites = removeOrigin(state.quickControlHiddenSites, origin);
+  });
   return { origin, enabled: true, hidden: false };
 }
 
 export async function unregisterQuickControlSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
-  const state = await readState();
-  state.quickControlSites = removeOrigin(state.quickControlSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => { state.quickControlSites = removeOrigin(state.quickControlSites, origin); });
   return { origin, enabled: false };
 }
 
 export async function hideQuickControlSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
-  const state = await readState();
-  state.quickControlSites = removeOrigin(state.quickControlSites, origin);
-  state.quickControlHiddenSites = addOrigin(state.quickControlHiddenSites, origin);
-  await writeState(state);
-  await syncOriginRegistration(origin);
+  await patchState(origin, state => {
+    state.quickControlSites = removeOrigin(state.quickControlSites, origin);
+    state.quickControlHiddenSites = addOrigin(state.quickControlHiddenSites, origin);
+  });
   return { origin, enabled: false, hidden: true };
 }
 
 export async function showQuickControlSite(rawOrigin) {
   const origin = normalizeOrigin(rawOrigin);
-  const state = await readState();
-  state.quickControlHiddenSites = removeOrigin(state.quickControlHiddenSites, origin);
-  await writeState(state);
+  await patchState(origin, state => { state.quickControlHiddenSites = removeOrigin(state.quickControlHiddenSites, origin); });
   return { origin, hidden: false };
 }
 
 export async function syncSiteRegistrations() {
+  return serialize(syncRegistrations);
+}
+async function syncRegistrations() {
   const state = await readState();
   const hidden = new Set(normalizeOrigins(state.quickControlHiddenSites));
   const validRestore = await permittedOrigins(state.cacheRestoreSites);
@@ -101,7 +120,10 @@ export async function syncSiteRegistrations() {
     cacheRestoreSites: validRestore,
     autoSites: validAuto,
     quickControlSites: validQuick,
-    quickControlHiddenSites: [...hidden].sort()
+    quickControlHiddenSites: [...hidden].sort(),
+    // Keep explicit Reading intent through a denial/revocation; effective access
+    // is computed live, and history/other feature preferences stay independent.
+    readingMemorySites: normalizeReadingOrigins(state.readingMemorySites)
   };
   if (!sameState(state, next)) await writeState(next);
   return next;
@@ -143,7 +165,8 @@ async function readState() {
     cacheRestoreSites: normalizeOrigins(stored.cacheRestoreSites),
     autoSites: normalizeOrigins(stored.autoSites),
     quickControlSites: normalizeOrigins(stored.quickControlSites),
-    quickControlHiddenSites: normalizeOrigins(stored.quickControlHiddenSites)
+    quickControlHiddenSites: normalizeOrigins(stored.quickControlHiddenSites),
+    readingMemorySites: normalizeReadingOrigins(stored.readingMemorySites)
   };
 }
 
@@ -152,7 +175,8 @@ async function writeState(state) {
     cacheRestoreSites: normalizeOrigins(state.cacheRestoreSites),
     autoSites: normalizeOrigins(state.autoSites),
     quickControlSites: normalizeOrigins(state.quickControlSites),
-    quickControlHiddenSites: normalizeOrigins(state.quickControlHiddenSites)
+    quickControlHiddenSites: normalizeOrigins(state.quickControlHiddenSites),
+    readingMemorySites: normalizeReadingOrigins(state.readingMemorySites)
   });
 }
 
@@ -164,6 +188,30 @@ function normalizeOrigins(values) {
     } catch {}
   }
   return [...new Set(result)].sort();
+}
+
+function normalizeReadingOrigin(rawOrigin) {
+  const url = new URL(String(rawOrigin ?? ""));
+  if (!/^https?:$/u.test(url.protocol) || url.username || url.password) throw new Error("仅支持 http/https 阅读站点。");
+  return url.origin;
+}
+
+function normalizeReadingOrigins(values) {
+  const result = [];
+  for (const raw of Array.isArray(values) ? values : []) {
+    try { result.push(normalizeReadingOrigin(raw)); } catch {}
+  }
+  return [...new Set(result)].sort();
+}
+
+function readingMatchPattern(origin) { return `${normalizeReadingOrigin(origin)}/*`; }
+
+function addReadingOrigin(values, origin) {
+  return [...new Set([...normalizeReadingOrigins(values), origin])].sort();
+}
+
+function removeReadingOrigin(values, origin) {
+  return normalizeReadingOrigins(values).filter(item => item !== origin);
 }
 
 function addOrigin(values, origin) {
@@ -179,12 +227,14 @@ function sameState(a, b) {
     cacheRestoreSites: normalizeOrigins(a.cacheRestoreSites),
     autoSites: normalizeOrigins(a.autoSites),
     quickControlSites: normalizeOrigins(a.quickControlSites),
-    quickControlHiddenSites: normalizeOrigins(a.quickControlHiddenSites)
+    quickControlHiddenSites: normalizeOrigins(a.quickControlHiddenSites),
+    readingMemorySites: normalizeReadingOrigins(a.readingMemorySites)
   }) === JSON.stringify({
     cacheRestoreSites: normalizeOrigins(b.cacheRestoreSites),
     autoSites: normalizeOrigins(b.autoSites),
     quickControlSites: normalizeOrigins(b.quickControlSites),
-    quickControlHiddenSites: normalizeOrigins(b.quickControlHiddenSites)
+    quickControlHiddenSites: normalizeOrigins(b.quickControlHiddenSites),
+    readingMemorySites: normalizeReadingOrigins(b.readingMemorySites)
   });
 }
 

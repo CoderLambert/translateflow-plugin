@@ -35,7 +35,7 @@ export function handleReadingPort(port) {
 }
 export function onReadingTabUpdated(tabId, changeInfo) {
   if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) {
-    const state = runtime(); state.service.invalidateTab(tabId); state.subscriptions.closeTab(tabId);
+    const state = runtime(); state.service.onTabUpdated(tabId, changeInfo); state.subscriptions.closeTab(tabId);
   }
 }
 export function onReadingTabRemoved(tabId) { const state = runtime(); state.service.forgetTab(tabId); state.subscriptions.closeTab(tabId); }

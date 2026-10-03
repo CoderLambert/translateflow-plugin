@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "task": "236",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "234",
     "235"
   ],
-  "branch": "test/236-reading-loop-release-a",
-  "worktree": ".worktrees/issue-236",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "d6cf346bdd7b7f06db784d61c6edc225ed8e52f5",
-  "mergeHead": null,
+  "mergeHead": "345d630c0f0e0040f39fd74b8ed0457e3d193fd4",
   "validationCommands": [
     [
       "npm",
@@ -24,5 +24,8 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地 Release A 候选通过；quota原生拒写与compiled Reading重试已补齐，旧PASS/日志复用，本地gate待/已核对。等待 #236 远端同步授权，合入main前不记录READING_LOOP_A_PASS，不启动后续任务。"
+  "nextAction": "PR #286 已按准确 head squash 合入；main tree 与验收归档 tree 一致，Release A 当前范围通过。完成元数据随下一次已授权同步归档；后续任务/商店发布需明确范围。",
+  "syncHead": "24591029bddff0e59258b952d5f2c54925efc759",
+  "pr": 286,
+  "releaseResult": "READING_LOOP_A_PASS"
 }

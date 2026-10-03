@@ -7,6 +7,8 @@ import { ReadingContractError, bool, fail } from "../../shared/reading/validatio
 import { createReadingAccess } from "./access.js";
 import { createOperationRegistry } from "./operations.js";
 import { createExportRegistry } from "./exports.js";
+import { createHandoffRegistry } from "./handoffs.js";
+import { getReadingMemorySite, setReadingMemorySite } from "../auto-sites.js";
 
 const READS = new Set([M.GET_PAGE_SUMMARY, M.GET_RECORD, M.LIST_RECORDS, M.LIST_PAGES, M.GET_RECORDING_STATE,
   M.GET_SITE_RECORDING, M.LIST_RECORDING_EXCLUSIONS]);
@@ -14,7 +16,8 @@ const WRITES = new Set([M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT]);
 const MANAGE = new Set([M.SET_RECORDING, M.SET_SITE_RECORDING, M.DELETE_RECORD, M.DELETE_PAGE, M.CLEAR_RECORDS]);
 
 // repository is an injected #233 owner. No default data, consent store, empty list or success receipt.
-export function createReadingService({ browser, repository = null, collector, now = Date.now, randomId = () => crypto.randomUUID(), learningCenterAvailable = false } = {}) {
+export function createReadingService({ browser, repository = null, collector, now = Date.now, randomId = () => crypto.randomUUID(), learningCenterAvailable = false,
+  siteMarkers = { get: getReadingMemorySite, set: setReadingMemorySite } } = {}) {
   const accessControl = createReadingAccess({ browser, collector, randomId });
   const operations = createOperationRegistry({ now });
   const exports = createExportRegistry({ repository, now, randomId });
@@ -22,6 +25,7 @@ export function createReadingService({ browser, repository = null, collector, no
     if (typeof repository?.[name] !== "function") fail(E.NOT_READY, "repository");
     return repository[name].bind(repository);
   }
+  const handoffs = createHandoffRegistry({ browser, now, randomId, readTarget: context => repositoryMethod("readHandoffTarget")(context) });
   const assertAccess = (access) => { if (!accessControl.isCurrent(access)) fail(E.STALE_OPERATION, "access.current"); };
   async function dispatch(request, access) {
     const method = request.method;
@@ -30,9 +34,24 @@ export function createReadingService({ browser, repository = null, collector, no
       await browser.tabs.create({ url: browser.runtime.getURL(READING_LEARNING_CENTER_PATH) });
       return { opened: true };
     }
-    if (method === M.REGISTER_DOCUMENT) return { documentGeneration: access.documentGeneration,
-      navigationGeneration: access.navigationGeneration, pageKey: access.pageKey, siteKey: access.siteKey };
+    if (method === M.REGISTER_DOCUMENT) {
+      const handoffId = await handoffs.bindDocument(access);
+      return { documentGeneration: access.documentGeneration, navigationGeneration: access.navigationGeneration,
+        pageKey: access.pageKey, siteKey: access.siteKey, ...(handoffId ? { handoffId } : {}) };
+    }
     const context = { request, access, assertCurrent: () => assertAccess(access) };
+    if ([M.GET_SITE_MARKERS, M.SET_SITE_MARKERS].includes(method)) {
+      if (access.scope === "content" && request.siteKey !== undefined) fail(E.FORBIDDEN, "siteKey");
+      if (access.scope === "extension" && request.siteKey === undefined) fail(E.BAD_DTO, "siteKey");
+      const origin = access.scope === "content" ? access.siteKey : request.siteKey;
+      if (method === M.GET_SITE_MARKERS) return siteMarkers.get(origin);
+      await accessControl.validateCurrent(access);
+      const result = await siteMarkers.set(origin, request.enabled);
+      if (!request.enabled) handoffs.revoke(entry => entry.target.siteKey === origin);
+      return result;
+    }
+    if (method === M.CREATE_HANDOFF) return handoffs.create(context);
+    if (method === M.CONSUME_HANDOFF) return handoffs.consume(context);
     if (READS.has(method)) {
       if (method === M.GET_SITE_RECORDING && access.scope === "content" && request.siteKey !== undefined) fail(E.FORBIDDEN, "siteKey");
       if (method === M.GET_SITE_RECORDING && access.scope === "extension" && request.siteKey === undefined) fail(E.BAD_DTO, "siteKey");
@@ -78,13 +97,17 @@ export function createReadingService({ browser, repository = null, collector, no
       else if (method === M.SET_SITE_RECORDING) operations.revoke((entry) => entry.access.siteKey === request.siteKey);
       else operations.revoke();
       exports.revoke();
+      if (method === M.DELETE_RECORD) handoffs.revoke(entry => entry.target.recordId === request.recordId);
+      else if (method === M.DELETE_PAGE) handoffs.revoke(entry => entry.target.pageKey === request.pageKey);
+      else if (method === M.SET_SITE_RECORDING) handoffs.revoke(entry => entry.target.siteKey === request.siteKey);
+      else handoffs.revoke();
       return result;
     }
     if (method === M.EXPORT_START) return exports.start(context);
     if (method === M.EXPORT_NEXT) return exports.next(context);
     if (method === M.EXPORT_FINISH) return exports.finish(context);
     if (method === M.EXPORT_CANCEL) return exports.cancel(context);
-    fail(E.NOT_READY, "future-handoff");
+    fail(E.NOT_READY, "reading.method");
   }
   async function handle(message, sender) {
     try {
@@ -110,8 +133,10 @@ export function createReadingService({ browser, repository = null, collector, no
       return { protocolVersion: V, ok: false, error: { code: error instanceof ReadingContractError ? error.code : E.STORAGE } };
     }
   }
-  return { handle, accessControl, operations, exports,
-    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke((entry) => entry.access.tabId === tabId); exports.revoke((session) => session.tabId === tabId); },
-    invalidateTab(tabId) { accessControl.invalidateTab(tabId); operations.revoke((entry) => entry.access.tabId === tabId); exports.revoke((session) => session.tabId === tabId); },
-    revoke() { accessControl.invalidateAll(); operations.revoke(); exports.revoke(); } };
+  function invalidateAccess(tabId) { accessControl.invalidateTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); }
+  return { handle, accessControl, operations, exports, handoffs,
+    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); handoffs.revoke(entry => entry.tabId === tabId); },
+    invalidateTab(tabId) { invalidateAccess(tabId); handoffs.revoke(entry => entry.tabId === tabId); },
+    onTabUpdated(tabId, changeInfo) { handoffs.onTabUpdated(tabId, changeInfo); invalidateAccess(tabId); },
+    revoke() { accessControl.invalidateAll(); operations.revoke(); exports.revoke(); handoffs.revoke(); } };
 }
