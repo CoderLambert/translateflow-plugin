@@ -7,7 +7,7 @@
 > 逐文件说明与覆盖边界见 [startup 模块](../modules/startup.md)。
 
 
-> 2026-10-03 增量说明：本章运行时固定源码在main 86ed596中的blob未变。共享浏览器测试基础设施已切为复制预构建的明确产物，不再隐式构建；默认构建与默认本地E2E选择不同，实际运行请先读[构建与测试链](build-test-release.md)。旧测试链接只说明固定版本断言，不作为当前产物PASS；本轮运行NOT_RUN。
+> 2026-10-03 增量说明：本章保留旧入口源码说明；当前 d5246ca 的构建和 Reading 接线已变化，以下第2节与 Reading 提示已更新。共享浏览器测试基础设施已切为复制预构建的明确产物，不再隐式构建；默认构建与默认本地E2E选择不同，实际运行请先读[构建与测试链](build-test-release.md)。旧测试链接只说明固定版本断言，不作为当前产物PASS；本轮运行NOT_RUN。
 
 ## 1. 先分清三个不同的“启动”
 
@@ -19,28 +19,13 @@
 
 ## 2. 构建路径决定入口，不改变运行时职责
 
-### 默认原生包
+### 当前默认 WXT 包
 
-[manifest.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/manifest.json) 声明 MV3 module service worker `background.js`、action 的 `popup.html`、全页 `options.html`、三个 commands，以及 Chrome 102 下限。没有静态 `content_scripts`，因此加载扩展不等于对所有网页立即注入。
+main `d5246cae6469e4a876fc122b229a2e0ddf115709` 的 `build:extension` 与 `validate` 输出 `dist/extension/`；`build:extension:wxt` 通过同一构建器输出 `.output/chrome-mv3/`。两者均为 WXT，不再是 legacy/WXT 双引擎。脚本先生成 staging、审计精确资源闭包与 Manifest，再安全复检并复制到目标。完整算法与命令见[构建链](build-test-release.md)。E2E 默认选择 `.output/chrome-mv3`，测试 `dist/extension` 必须显式 `TF_E2E_ARTIFACT`。
 
-[package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) 的默认 `build:extension` 调用 [buildExtension](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/scripts/build-extension.mjs#L40)，生成 `dist/extension/`。原生包拷贝 allowlist 根文件与 `src/`，不经过运行时 bundler；`.d.ts` 被复制过滤器排除，开发目录不作为顶层发行资产。这里只解释输出如何接到入口，不替代完整打包/词典认证走读。
+[entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/entrypoints/background.ts) 仍调用 `defineBackground({type:"module",main(){initializeBackground();}})`，没有延迟 import 或另一套业务初始化。根 `background.js` 保留薄入口源码，但不能把它当当前默认产物的复制入口。WXT 编译根 Popup/Options HTML；Content、YouTube MAIN、module Worker 通过精确 raw bridge 保留相应运行边界，Content 不因此变成 ESM。
 
-默认后台链为：
-
-```text
-manifest.background.service_worker
-  → background.js 的静态 import
-  → initializeBackground()
-  → 同步注册监听器
-```
-
-### opt-in WXT 包
-
-`build:extension:wxt` 是单独的 WXT build + artifact audit，输出 `.output/chrome-mv3/`。实际配置是 [wxt.config.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/wxt.config.mjs)，不是 `wxt.config.ts`。
-
-[entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/entrypoints/background.ts) 使用 `defineBackground({ type: "module", main() { initializeBackground(); } })`，没有延迟 import 或另写一套后台实现。`entrypoints:found` 直接把既有根 Popup/Options HTML 注册为入口；Options 是 unlisted-page，继续由 manifest 的 `options_page` 打开。Content、YouTube MAIN、module Worker 通过精确 raw asset bridge 保持路径和字节，不被迁移成 Content ESM。
-
-[兼容契约](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/WXT_COMPAT_V1.md) 记录 Manifest 等价要求与历史证据；其中历史 PASS 不能当成本次基线新跑的测试。当前 package 已包含 TS/Vitest/React 开发依赖，不能照抄旧阶段文档说“仓库没有 React”。本启动链也没有据此推导 Popup/Content 已 React 化。
+Manifest 来源仍声明 MV3、国际化 action/commands、Options 与 Chrome102 下限，无静态 content_scripts；实际产物 Manifest 经 WXT 与审计约束。安装扩展不等于立即对所有网页注入，React 依赖也不意味着 Content 已 React 化。历史兼容证据不能当本轮执行 PASS。
 
 ## 3. 后台：先把事件接好，再响应具体事件
 
@@ -64,7 +49,7 @@ manifest.background.service_worker
 
 ### Reading 为什么出现在启动里
 
-[Reading runtime](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/runtime.js) 的单例是懒创建；收到 Reading 请求/认可的 port 或相关浏览器事件才取得 service/subscriptions/repository。导航 invalidates tab，tab 删除 forgets tab，权限移除 revokes service 并关闭订阅。仅注册这些回调不等于开启阅读采集或创建学习中心；仓库自身注释也把 collector 与页面可用性留给后续接入。这里停在生命周期边界，不解释 Reading 数据库实现。
+[Reading runtime](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/runtime.js) 的单例是懒创建；收到 Reading 请求/认可的 port 或相关浏览器事件才取得 service/subscriptions/repository。导航 invalidates tab，tab 删除 forgets tab，权限移除 revokes service 并关闭订阅。仅注册这些回调不等于开启阅读采集或创建学习中心；旧注释不是当前产品接线依据：d5246ca 已接通 production collector 与显式保存，学习中心仍不可用；见[Reading当前完整链](reading-records.md)。这里仅解释未变的后台生命周期。
 
 ## 4. 手动入口：打开 Popup 已经可能注入 Content
 
@@ -194,3 +179,4 @@ Content 的 handler 则逐 case 决定同步响应/返回 false，或 Promise �
 | 聚合与 WXT 包 smoke | [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | `npm run validate`；`npm run build:extension:wxt`；`npm run test:wxt:smoke` | NOT_RUN；validate 不含 E2E |
 
 建议启动验收还要单独观察：首次安装与普通 worker 再唤醒、Popup 打开不点击、同文档两次注入、站点权限撤回后重启、Chrome 拒绝注入、UI start 中途失败、扩展更新后旧 tab 与新 tab 的区别。这是待验证检查表，不是已存在测试或已通过结论。
+

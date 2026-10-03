@@ -1,10 +1,19 @@
 # Reading：逐文件说明
 
-[功能完整链与产品断点](../features/reading-records.md) · [首页](../README.md) · [已解释的来源捕获](selection.md#file-source-snapshot)
+[功能完整链与交付边界](../features/reading-records.md) · [首页](../README.md) · [已解释的来源捕获](selection.md#file-source-snapshot)
 
-固定源码 `d5e308a709c008acf6b277d466d020f13025bdca`；2026-10-03复核。以下19个生产文件完整读取并逐一说明；其余共享合同、入口和测试仅本切片相关边界。本文不运行代码、测试、安装或构建，全部运行验证 **NOT_RUN**。计数不重复既有source-snapshot/controller/index，引用测试不计测试文件完整解释。
+2026-10-03 增量复核固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮完整复读并解释新增 `record-access.js`、`record-client.js`、`record-status.js`，以及原有 runtime/access/service/constants 四文件；Selection 的结果转换、实际 rich 展示摘要、翻译与 AI provenance 见[相邻模块](selection.md)。
+
+原有19文件章节来自 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整解释。除上述四文件外，本轮没有重新逐行读完，保留原 SHA/链接与历史覆盖身份，不把它们升级为当前完整审计。清单逐项 blob 比对确认 `src/background/reading-record/` 与 `src/shared/reading/` 的既有文件未变，但“blob 未变”不冒充本轮全文件复读。全部运行、测试、构建、浏览器和下载 **NOT_RUN**；测试主题引用仍为局部覆盖。
 
 ## 覆盖索引
+
+本轮新增完整解释：
+- [src/content/selection/record-access.js：可信动作与 production collector](#file-record-access)
+- [src/content/selection/record-client.js：冻结卡片到真实保存 ACK](#file-record-client)
+- [src/content/selection/record-status.js：保存状态与明确动作](#file-record-status)
+
+以下原有索引中 runtime/access/service/constants 已在当前 SHA 复读，其余保留历史章节身份：
 
 - [src/background/reading-record/runtime.js：运行时装配与所有权](#file-runtime)
 - [src/background/reading-record/policy.js：页面身份与有限隐私策略](#file-policy)
@@ -26,10 +35,56 @@
 - [src/shared/reading/export.js：分块传输响应校验](#file-shared-export)
 - [src/shared/reading/invalidations.js：无内容的 scope 专属失效合同](#file-invalidations)
 
+
+<a id="file-record-access"></a>
+## src/content/selection/record-access.js：可信动作与 production collector
+
+[固定源码 L1–L66](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/record-access.js#L1-L66)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
+
+**职责与装配。** classic IIFE 依赖 textProjection/uiHost，读取已加载 Reading 合同的 limits；向 `app.modules.readingAccessCollector` 安装只读 `read`，向 selectionRecordAccess 暴露 create/live/safety/bindToken/cancel/forget/trusted。这就是后台 ISOLATED challenge 的生产提供者，不接受页面 postMessage 作为授权。
+
+**操作状态。** operations Map 按 `reading-${crypto.randomUUID()}` 存操作，current 指最近建立者。create 先要求 `event.isTrusted===true` 且 uiHost.ownsNode(event.target)，prune TTL，再检查每 owner 16 个上限；持有 snapshot/capture/isCurrent/purpose/recordId/revision，token=null、cancelled=false，初始 TTL 十分钟。live 同时验证 Map 对象身份、未取消/到期、外层选择有效、capture 修订等于 projection.revision，以及 Range 两端仍连接。safety 根据 frozen capture 的 sensitive/root 给 safe/sensitive/unknown 与 light-dom/unsupported；未知不会升级为安全。
+
+**挑战输入输出。** inspect/register 用 current、intent=null；begin/save/cancel 按 operationId 寻找且精确核对 action/recordId。begin 使用待保存 recordId，save 要求已有 token 并用 token.recordId。等待 capture.ready 后再次 live 检查，返回 nonce、document/selection generation、captureSafety、冻结 sourceSnapshot 和匹配 intent。cancelled 操作仅对 cancel 挑战豁免普通 live，便于关闭后取得真实取消 ACK；后台仍验证 owner/session/代次。这里不实现 detail 挑战，不能据后台 GET_RECORD 路由存在就说 Selection 已有详情入口。
+
+**清理/失败/改动。** bindToken 只给仍活跃且 operationId 一致的操作绑定并更新 expiry；cancel 先标记，forget 删除并回退到最近 live 操作；prune 只在入口执行，不开 timer。非可信动作、过期、源变更、未知挑战或摘要失败返回 null，不伪造证据。它不访问存储/Provider，不宣称 JS 对象是密码学用户证明。改 challenge、TTL 或关闭顺序须联动后台 access、record-client 和 native sender 测试。
+
+<a id="file-record-client"></a>
+## src/content/selection/record-client.js：冻结卡片到真实保存 ACK
+
+[固定源码 L1–L286](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/record-client.js#L1-L286)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
+
+**合同与状态所有权。** send 在两端分别 validateReadingRequest/validateReadingResponse，强制 protocolVersion=2、content scope；普通传输失败转 INTERRUPTED，后台错误只用稳定 code。create 闭包拥有 current、declined、Port/invalidation、lastSaved/referenceGeneration；每张卡持有冻结 snapshot/capture、operations、最多八项 drafts、Promise queue、policyPromise、ref、blocked/manual/auto/view。live 要当前同一 ctx、未 close 且外层源仍有效。
+
+**先查政策，不先写空记录。** start 必须由 access.create 接受可信动作才继续；先关旧卡，记录 previousDone，同时等 capture.ready 后 REGISTER_DOCUMENT，再并行 GET_RECORDING_STATE/GET_SITE_RECORDING。非排除站点才接订阅。auto 只在这一明确查询开始时已 enabled 且未 excluded；未开启时可保留当前有界结果并显示 invite，但不 BEGIN、不写历史，也不从 Content 调 SET_RECORDING。
+
+**结果接收与保存。** accept 把 dictionary/translation/assistant draft 先转为受校验 artifact（临时 recordId/sourceSnapshotId），按 primary、rich:dictionaryId 或 assistant operation key 去重；无可保存结果显示 not-saved，超八项不继续收。queue 串行等待政策，auto/manual 才 flush。flush 逐项 prepare：等待旧卡取消完成，重查 live/blocked/access.live/政策，再取得原 source。新明确查询仅在同 pageUrl、同 consent/site revision/sourceLanguage 且 sameProvenLocation 时尝试复用 lastSaved；分页 GET_PAGE_SUMMARY 找到当前 record revision 后才建立 ref，await 后再防 referenceGeneration 过期。已有 ref 仍须同位置证明，unsupported 不变成 resolved。
+
+**BEGIN 与真实 ACK。** prepare 用原冻结 source、安全 proof、registration.pageKey 和 recordId/revision 发 BEGIN；title/return URL 交后台从 native sender取。ready token 缓存，同操作的并发 prepare 复用 promise；即使关闭时才到 token 也保留用于实际取消。flush 一次创建最终 artifact，按 kind 发 SAVE_QUERY_RESULT 或 APPEND_ASSISTANT；只有校验后 ACK 的 artifactId/recordId 精确匹配才标 item.saved、更新 ref/lastSaved 并显示 saved。基础结果和迟到 rich 各有不可变 artifact，共用 lookup operation；assistant 由另一可信点击建立独立 purpose=assistant operation。显示 saved 表示已收到保存响应，不是先点按钮就成功。
+
+**首次开启与重试。** refresh 发现首次开启只切 manual；用户需在仍有效的卡片明确点击“保存本次结果”。save 再读政策，为保留 drafts 建立该次点击的新 operations、换 operationId，撤旧操作后串行 flush；不重查词典或调用 Provider。retry 仅限可信点击复用原 operation/token/artifact，因此失 ACK 可幂等确认；STORAGE/QUOTA/INTERRUPTED 可重试，其余失败 blocked 并要求重新明确查询或刷新。关闭、选区/DOM/路由变化后不会把旧卡补存。
+
+**刷新、订阅与引用失效。** focus/重新可见/每次查询会读政策；Port 的最小失效消息触发 refresh(true)。consent/data/site 变化撤引用、cancel access 操作并 blocked；记录被删或 anchor 变化也撤引用。仅 viewed 等元数据令 revision 增大而 anchor 不变时更新 ref，不改旧 operation token；相同 unsupported anchor 只保留已保存快照，不授予同位置追加。Port disconnect 清本地 Port，不伪装永不丢通知；connect 只在 policy 阶段建立，后续 focus 的补偿是重读政策。
+
+**关闭与错误。** close 同步 closed、清 current/drafts、cancel 各 access 操作，再等待在途 BEGIN 结束并对到达 token 的操作发 CANCEL_OPERATION。若 ACK=committed，可保留真实已提交 ref，但受 referenceGeneration 和不倒退 revision 屏障限制；没有 ACK 不显示“已撤回”。最后 forget，当前无卡才断 Port。revoke 不删除已持久数据；晚到 rich 保存失败也不回滚先前基础 artifact。错误 UI 区分版本/陈旧/冲突/禁止/暂停/容量/未就绪/配额/存储/确认中断，结果仍可复制。decline 只保存在当前 client 的内存提示状态，不是永久禁用；open 只允许可信事件并请求固定 LC，NOT_READY 保留 invite 说明。
+
+**测试与改动。** 已完整阅读 selection-record-client.test 的 VM/service+repositoryDouble 场景，但这里只总结测试主题，测试覆盖仍标局部。重点是伪事件/伪 intent、首同意无 BEGIN、失 ACK 原 artifact 重试、late rich 去重、BEGIN 时关闭、引用失效、viewed revision、排除站点不连 Port。真实 native transaction 顺序另看 #234 E2E；本轮都 NOT_RUN。修改队列/清理/引用必须同时保持 artifact 幂等、可信动作、代次和保存/取消 ACK 语义。
+
+<a id="file-record-status"></a>
+## src/content/selection/record-status.js：保存状态与明确动作
+
+[固定源码 L1–L33](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/record-status.js#L1-L33)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
+
+**职责/输入输出。** 依赖 uiHost/uiPrimitives，导出 update(view,handlers)/clear。只持有一个 node；update 先移除旧节点，在现有可见 `.tf-selection-panel` 中追加 section，data-state 来自 view，用户文案以 textContent 写入 role=status、aria-live=polite 的节点。
+
+**动作映射与清理。** invite 显示“在学习中心开启阅读记录”和“暂不”；manual 显示“保存本次结果”；retryAvailable 显示“重试保存”。每次 click 将真实 event 原样交 handler，由 record-client/access 验证，不在视图层授予权限。保存中/saved/disabled/not-saved 主要依 view 文案；添加后 reposition。clear 移除 node 并置空；重复 update 不累积按钮/闭包。
+
+**边界。** 不调用后台、不写库、不调用 Provider、不把点击当 ACK；缺 panel、隐藏或无 view 直接不展示，处理函数缺失则可选调用。改变状态按钮需同步 client 的 invite/manual/retry 状态，不能在 UI 自行启用 consent 或伪造保存成功。E2E 用 data-state 与按钮验证行为，布局/无障碍实际运行仍 NOT_RUN。
+
 <a id="file-runtime"></a>
 ## src/background/reading-record/runtime.js：运行时装配与所有权
 
-blob `7d754367448ac1712ef90c7528bf05900f6759e7`；[完整源码 L1–L42](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/runtime.js#L1-L42)。
+blob `7d754367448ac1712ef90c7528bf05900f6759e7`；本轮全文件复读，[完整源码 L1–L42](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/reading-record/runtime.js#L1-L42)。
 
 **调用、输入输出。** router 将 Reading 消息交给 handleReadingMessage；background/index 同步注册 Port、tab 更新/删除与权限撤销监听。runtime() 首次使用才创建 repository/service/subscriptions；工厂本身不打开 IDB。默认 learningCenterAvailable=false，不能因路径常量存在就声称学习中心可打开。
 
@@ -39,6 +94,8 @@ blob `7d754367448ac1712ef90c7528bf05900f6759e7`；[完整源码 L1–L42](https:
 
 <a id="file-policy"></a>
 ## src/background/reading-record/policy.js：页面身份与有限隐私策略
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `590b38f09cc7529f0e72e7d8262795e2fdbda922`；[完整源码 L1–L34](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/policy.js#L1-L34)。
 
@@ -51,7 +108,7 @@ blob `590b38f09cc7529f0e72e7d8262795e2fdbda922`；[完整源码 L1–L34](https:
 <a id="file-access"></a>
 ## src/background/reading-record/access.js：浏览器原生身份与受控证明
 
-blob `41acc833a8d560deb0f632ff710e689521aaa8b0`；[完整源码 L1–L126](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/access.js#L1-L126)。
+blob `41acc833a8d560deb0f632ff710e689521aaa8b0`；本轮全文件复读，[完整源码 L1–L126](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/reading-record/access.js#L1-L126)。
 
 **职责与入口。** createReadingAccess 为 service/subscriptions 生成后台 access；输入 sender、已校验 method/request，输出 scope、ownerKey、tab/document/navigation/authority generation，以及 Content 的 page/site/安全回跳/标题/selection/proof。调用方 DTO 不能声明自身权限。
 
@@ -59,7 +116,7 @@ blob `41acc833a8d560deb0f632ff710e689521aaa8b0`；[完整源码 L1–L126](https
 
 Content 限 HTTP(S)、原生非隐身 tab、frame0、若提供则 active documentLifecycle 和有效 documentId，并要求 sender.tab.url 与 sender.url 一致；再做 policy 与 page identity。track 上限128；authority 在 hash 前捕获，随后用于过期检查。ownerKey 区分扩展原生 context/document，或 Content tab/document；legacy 无 documentId 使用受控 frame0 会话，不相信请求自报身份。
 
-**受控 collector。** readOwnedCollector 用 scripting.executeScript 的 ISOLATED world 定位具体 documentId 或 frame0，调用扩展自有 readingAccessCollector.read。challenge 序列化成 JSON 字符串保持显式 null；要求唯一 frame0 结果和匹配 document。缺 getter 返回 NOT_READY，执行异常/不匹配拒绝。validateProof 校验 nonce、document/selection generation、sourceSnapshot 一致和 captureSafety。register/inspect 的 intent 必须 null；begin/save/detail/cancel 必须精确绑定 action、recordId、operationId。这个接口不是人类点击的密码学证明；真正 trusted UI producer 在当前 main 尚缺。
+**受控 collector。** readOwnedCollector 用 scripting.executeScript 的 ISOLATED world 定位具体 documentId 或 frame0，调用扩展自有 readingAccessCollector.read。challenge 序列化成 JSON 字符串保持显式 null；要求唯一 frame0 结果和匹配 document。缺 getter 返回 NOT_READY，执行异常/不匹配拒绝。validateProof 校验 nonce、document/selection generation、sourceSnapshot 一致和 captureSafety。register/inspect 的 intent 必须 null；begin/save/detail/cancel 必须精确绑定 action、recordId、operationId。这个接口不是人类点击的密码学证明；当前 production producer 是下述 record-access：只接受扩展自有 UI 的 isTrusted 事件，并持有被冻结的操作证据；缺 collector 的 NOT_READY 仍用于未加载/旧脚本等异常路径，不能再概括为产品提供者不存在。
 
 **会话与竞态。** REGISTER_DOCUMENT 才创建 sessions（最多128），要求请求 generation 等于 proof；其它 Content 操作必须已有同 owner/document/page/navigation session。collector await 后重新比 navigation/authority。isCurrent 验当前 authority、tab epoch、session document；validateCurrent 在返回前对扩展页再次 getContexts。invalidateTab 增 epoch并删相应 session，forgetTab 同时删导航条目，invalidateAll 增 authority 并清 Map。worker 重启自然丢会话。
 
@@ -68,7 +125,7 @@ Content 限 HTTP(S)、原生非隐身 tab、frame0、若提供则 active documen
 <a id="file-service"></a>
 ## src/background/reading-record/service.js：v2 请求编排与隐私安全响应
 
-blob `6c04cd87e3603f709a9f4b32098d14250710b7ff`；[完整源码 L1–L114](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/service.js#L1-L114)。
+blob `6c04cd87e3603f709a9f4b32098d14250710b7ff`；本轮全文件复读，[完整源码 L1–L114](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/reading-record/service.js#L1-L114)。
 
 **完整调用顺序。** handle 先 validateReadingRequest，再 accessControl.authorize。Content 除注册/固定打开外读 repository policy，并复核时序；扩展页不能调用 content-only 的 begin/save/append/summary/cancel/register/consume。authorizeReadingMethod 检查 scope及资源页，dispatch 执行业务，完成后 validateCurrent 再校验响应。这既有入口预检，也保留事务内再验，不把预读 policy 当永久授权。
 
@@ -81,6 +138,8 @@ SAVE/APPEND 必须找到同 owner 的 registration；proof snapshot、完整 tok
 <a id="file-operations"></a>
 ## src/background/reading-record/operations.js：有界临时 operation 注册表
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `fbb8ebf8ff7e0ed69bb2d6ab60d0c4fb43bcca99`；[完整源码 L1–L93](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/operations.js#L1-L93)。
 
 **数据与算法。** entries/pending 按 JSON([ownerKey,operationId]) 分键。prune 删除已到期注册；usage 同时计算已注册与未重叠 pending，总128、每owner16。prepare 在任何 repository await前占位；相同 fingerprint/代次的并发 BEGIN 共享 promise，不再开一个 preparation；冲突 fingerprint 立即 STALE。已注册重试仍读 live policy，必须得到原 token，TTL不续期。
@@ -91,6 +150,8 @@ blob `fbb8ebf8ff7e0ed69bb2d6ab60d0c4fb43bcca99`；[完整源码 L1–L93](https:
 
 <a id="file-idb"></a>
 ## src/background/reading-record/idb.js：唯一直接 Reading IndexedDB adapter
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `6c9c2d71b40dcbb57c492e16a895a61fd06b9d81`；[完整源码 L1–L108](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/idb.js#L1-L108)。
 
@@ -105,6 +166,8 @@ blob `6c9c2d71b40dcbb57c492e16a895a61fd06b9d81`；[完整源码 L1–L108](https
 <a id="file-storage-state"></a>
 ## src/background/reading-record/storage-state.js：meta、代次与共享事务规则
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `b5a082b63e5a41c8ac2568b4e5d1e5098603935d`；[完整源码 L1–L121](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/storage-state.js#L1-L121)。
 
 **初始/校验。** initialMeta 默认enabled=false，consent/data/catalog/export/site代次都1、sites空、count/bytes0。state读取meta.state；只有get及getKey都undefined才视为不存在，存了undefined/false/null等损坏值不能恢复成默认授权。validateMeta拒额外字段、非法计数/代次、重复或不合法origin、排除超过200；保留非排除的短期site tombstone，合计最多200+128。
@@ -117,6 +180,8 @@ blob `b5a082b63e5a41c8ac2568b4e5d1e5098603935d`；[完整源码 L1–L121](https
 
 <a id="file-write"></a>
 ## src/background/reading-record/write.js：BEGIN、原子保存与真实取消收据
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `dd1028d52576a38c2fde7408b238f69224cba993`；[完整源码 L1–L120](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/write.js#L1-L120)。
 
@@ -133,6 +198,8 @@ blob `dd1028d52576a38c2fde7408b238f69224cba993`；[完整源码 L1–L120](https
 <a id="file-management"></a>
 ## src/background/reading-record/management.js：授权管理与删除代次
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `ac07b7dd786b6c672a375dbc9fc8b18c2a48d5d4`；[完整源码 L1–L51](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/management.js#L1-L51)。
 
 **输入/职责。** manage是repository.mutate调用的同步generator，只有service允许的extension管理请求能进；每次读meta、验policy、清辅助记录，返回严格DTO数据。SET_RECORDING比较expectedConsentGeneration，写enabled且无论开/关都增代次；SET_SITE_RECORDING比较该site revision、限制200个排除、提升全局siteRevision并给site tombstone TTL。暂停/恢复不清历史，却令旧token不能复活。
@@ -143,6 +210,8 @@ blob `ac07b7dd786b6c672a375dbc9fc8b18c2a48d5d4`；[完整源码 L1–L51](https:
 
 <a id="file-query"></a>
 ## src/background/reading-record/query.js：最小化读取、字面搜索与revision游标
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `69edd066926f21096513783b2b9ac912b81c9ba8`；[完整源码 L1–L71](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/query.js#L1-L71)。
 
@@ -157,6 +226,8 @@ blob `69edd066926f21096513783b2b9ac912b81c9ba8`；[完整源码 L1–L71](https:
 <a id="file-repository"></a>
 ## src/background/reading-record/repository.js：短事务门面与单链分页令牌
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `86818dfdd0409c3164ce39719d538879a6f1c39d`；[完整源码 L1–L82](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/repository.js#L1-L82)。
 
 **职责/依赖。** createReadingRepository纯惰性工厂，组合idb、state、write、manage、query、export-reader；依赖注入now/randomId/onCommit方便边界测试。每个公开方法将可信context.assertCurrent传给database.run。readPolicy用于Content预检；真正read/mutate/prepare/cancel/export/invalidation各自事务再验policy。close摘publisher、清cursor并关adapter，不清用户数据。
@@ -169,6 +240,8 @@ blob `86818dfdd0409c3164ce39719d538879a6f1c39d`；[完整源码 L1–L82](https:
 
 <a id="file-export-reader"></a>
 ## src/background/reading-record/export-reader.js：短事务的连续 JSON 流
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `3e5d9c1d7d65ec8a35f58865afcd22e332a41ce6`；[完整源码 L1–L83](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/export-reader.js#L1-L83)。
 
@@ -183,6 +256,8 @@ blob `3e5d9c1d7d65ec8a35f58865afcd22e332a41ce6`；[完整源码 L1–L83](https:
 <a id="file-exports"></a>
 ## src/background/reading-record/exports.js：导出背压、重试和结束确认
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `10e7b81e0de3bf42728a7b74424c9541f95918fc`；[完整源码 L1–L131](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/exports.js#L1-L131)。
 
 **准入/所有权。** createExportRegistry持有sessions，只有service授权后调用。start在openExport await前reserve，owner最多1、global2，含starting/active/finishing/cancelling以及仍有work的会话；总receipt≤128。10分钟TTL固定。tracked把每个repository promise记入work，chunk/check另入reads，settle才移除，因此撤销/过期不提前释放真实未完成工作的槽位。prune只删过期且无work。
@@ -196,6 +271,8 @@ blob `10e7b81e0de3bf42728a7b74424c9541f95918fc`；[完整源码 L1–L131](https
 <a id="file-subscriptions"></a>
 ## src/background/reading-record/subscriptions.js：只读 revision 失效端口
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `063d43fac37f9eb4e0243b20a0b03441efefe930`；[完整源码 L1–L66](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/subscriptions.js#L1-L66)。
 
 **connect。** Port只准reading.invalidate，不接受caller payload/scope；任何onMessage都会断开。先装disconnect清理，再按128上限reserve pending entry，之后authorize(GET_RECORDING_STATE)，仅content/extension可订阅。native sender有tab先记录，无tab的extension等待getContexts解析。授权后检查entry未被删/未被导航barrier命中，读取repository当前失效state并assertCurrent，严格校验后active+postMessage。
@@ -207,7 +284,7 @@ blob `063d43fac37f9eb4e0243b20a0b03441efefe930`；[完整源码 L1–L66](https:
 <a id="file-constants"></a>
 ## src/shared/reading/constants.js：协议、版本与资源预算
 
-blob `c166d53aa0a55611198c7c949dc1482401a872e9`；[完整源码 L1–L117](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/constants.js#L1-L117)。
+blob `c166d53aa0a55611198c7c949dc1482401a872e9`；本轮全文件复读，[完整源码 L1–L117](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/shared/reading/constants.js#L1-L117)。
 
 **合同。** schemaVersion=1与protocolVersion=2分开：存储模型版本未因分块传输而升成2。固定learning-center.html只是路径，注释明确还非built asset；reading.invalidate是专用Port；projection tf-source-utf16-v1、item key ri1。
 
@@ -217,6 +294,8 @@ blob `c166d53aa0a55611198c7c949dc1482401a872e9`；[完整源码 L1–L117](https
 
 <a id="file-identity"></a>
 ## src/shared/reading/identity.js：分组键、源摘要与同位置证明
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `aefa6132253ade059de341f7bcc42e1c9f2d8d4c`；[完整源码 L1–L38](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/identity.js#L1-L38)。
 
@@ -229,6 +308,8 @@ sameSelectionIdentity要求存在、正selectionGeneration和sourceDigest，比�
 <a id="file-previews"></a>
 ## src/shared/reading/previews.js：后台一次生成轻量列表投影
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `dd3133180b00dabaf23bb61d9a61bb72bedbfa4e`；[完整源码 L1–L28](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/previews.js#L1-L28)。
 
 **输入/算法/输出。** projectRecordListItem(detailValue,siteKey)先完整validateDetail，再去schemaVersion/itemKey/anchor主体，将artifacts复制排序（createdAt降序，同时间artifactId降序），选最新完成artifact。dictionary命中用definitions以分号拼接，无命中诚实显示No dictionary result；translation取text，assistant取assistantAnswer。resultPreview≤240 UTF-16单位，contextPreview≤160且来自同sourceSnapshotId的snapshot；prefix在边界是高代理时后退，避免拆emoji。
@@ -240,6 +321,8 @@ blob `dd3133180b00dabaf23bb61d9a61bb72bedbfa4e`；[完整源码 L1–L28](https:
 <a id="file-shared-export"></a>
 ## src/shared/reading/export.js：分块传输响应校验
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 blob `c6196a640f129630823deeb33fb56ca501389aef`；[完整源码 L1–L32](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/export.js#L1-L32)。
 
 **输入输出。** validateExportResponse按四个export方法白名单字段返回规范化数据。start要求exportId/revision/expiry/非空cursor；next要求sequence、jsonChunk、nextCursor、done、revision，同时限字符和UTF-8≤256KiB，正则拒不成对UTF-16代理，done必须等价于nextCursor=null。它有意不JSON.parse单chunk：一条record可跨块。
@@ -248,6 +331,8 @@ finish要求state=finished和精确ID/sequence/revision；cancel形状只许stat
 
 <a id="file-invalidations"></a>
 ## src/shared/reading/invalidations.js：无内容的 scope 专属失效合同
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 blob `e8ea3e242dc2cdbfe5383f74e104ded395e9618b`；[完整源码 L1–L14](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/invalidations.js#L1-L14)。
 
@@ -293,14 +378,16 @@ blob `e8ea3e242dc2cdbfe5383f74e104ded395e9618b`；[完整源码 L1–L14](https:
 
 index.js L14–18注册Reading各监听，router.js L71–79优先识别reading.*并保持异步sendResponse通道与v2原样envelope。其它background业务不由本轮解释；index/source-snapshot/controller已在前章完整解释，继续复用原覆盖，不覆盖其coverage文档锚点。
 
-controller.js L412–418同步freezeQuerySource并暴露getQuerySource；source-snapshot中的本地documentGeneration不是受信身份，ready后的snapshot也不会自行持久化。本轮读取的Popup/Options根脚本未包含Reading调用。runtime reader期待的readingAccessCollector在main生产内容脚本中尚无提供者；E2E注入不能补算产品实现。
+当前 [controller](selection.md#file-controller) 在点击时 freezeQuery，并由 `records.start` 建立可信操作；`record-access` 安装 production `readingAccessCollector`，`record-client` 实际调用 REGISTER/BEGIN/SAVE/APPEND。SourceSnapshot 自身仍只是证据对象，持久化职责在 client→service→repository 链。`src/shared/constants.js` 的当前 CONTENT_SCRIPT_FILES 已按 contract/model/renderer/access/client/status/controller 顺序装配这些 classic 文件；这里只核对装配条目，不据此把整个 constants 或构建链计为完整。
 
-reading-access-v1/README.md保留#232时期“repository absent”的旧开头，当前runtime默认createReadingRepository已不同；它描述#233的“未来接口”现在可与repository逐项对读，但产品collector/学习中心仍缺。它关于page delete清receipts的文字不是当前management代码事实，本章按代码说明代次/TTL防复活。不修改旧规范或业务，仅把分歧记录在导读。
+上方 index/source-snapshot/旧 router 链接是历史入口定位；controller 的当前完整解释和 router 的新 provenance 边界见 Selection 模块。Popup/Options“无 Reading 调用”的旧结论来自旧基线，本轮未重读这两根脚本，不将它用作当前广泛否定。当前 service/runtime 仍明确拒绝未启用的固定学习中心打开，真实 React 学习中心没有因此被补算交付。
+
+reading-access-v1/README.md保留#232时期“repository absent”的旧开头，当前runtime默认createReadingRepository已不同；它描述#233的“未来接口”现在可与repository逐项对读，其中 collector 已由 #234 实现，学习中心可用性仍受当前 runtime=false 限制。它关于page delete清receipts的文字不是当前management代码事实，本章按代码说明代次/TTL防复活。不修改旧规范或业务，仅把分歧记录在导读。
 
 <a id="test-boundaries"></a>
 ## 局部：测试设计能证明什么
 
-本轮静态阅读相关测试入口与重点断言；未逐一解释每个fixture/helper，因此这些测试全部保持局部。所有命令、浏览器、实际IDB/下载验证 **NOT_RUN**；不存在本轮PASS。后续获准验证应按package.json/CONTRIBUTING选择现有Node、构建、Playwright入口，不能假设validate含E2E。
+下面原有测试说明保留 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史静态断言边界；新增 #234 证据单独列于末尾。本轮并未重新完整读取所有旧测试；未逐一解释每个fixture/helper，因此这些测试全部保持局部。所有命令、浏览器、实际IDB/下载验证 **NOT_RUN**；不存在本轮PASS。后续获准验证应按package.json/CONTRIBUTING选择现有Node、构建、Playwright入口，不能假设validate含E2E。
 
 - [tests/reading-runtime-storage.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-runtime-storage.test.mjs)，blob `16f5b80197160fdd717777dbd0efe719599c4025`。
 - [tests/reading-storage-helpers.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-storage-helpers.test.mjs)，blob `c3b75a44726b2181063844e896c4ff66a4e0d813`。
@@ -333,3 +420,12 @@ reading-access-v1/README.md保留#232时期“repository absent”的旧开头�
 **最新回归（reading-storage-regressions）。** helper由storage spec注册，viewed时钟倒退不推进时间/revision；真实Content summary/Port pageRevision改变而catalog不变；viewed不毁global cursor；malformed meta拒绝且不修改canonical rows。只看测试标题不等于执行，这里仅记录所存在的断言目标。
 
 **容易误读的名字。** reading-ui.test检查sage/beige appearance、译文排版、toast CSS，不是历史记录/React学习中心验收。来源捕获正文复用Selection章，source-position/text-projection及相关E2E是来源定位证据，未在本章计为完整解释；它们也不等于Reading保存闭环。
+
+
+## #234 当前测试切片与历史验收的边界
+
+- [selection-record-client.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/selection-record-client.test.mjs)：VM 执行 production collector/client/model，实际 service 加 repositoryDouble；可解释协议和调度断言，不能代替真实 IDB。
+- [selection-reading-record.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/selection-reading-record.spec.mjs)：复制选定预构建 production artifact 并核 inventory/background bytes，运行随包 collector/UI 与实际后台仓库；仅测试副本替换合成词典、增加 localhost 权限及固定 synthetic LC HTML。Playwright 原生点击覆盖首同意返回、同/异位置、no-hit、翻译/缓存、completed AI、关闭/导航/拒绝/排除、真实 IDB abort 重试、暂停/删除与 rich 展示追加。不是 production React LC 验收；测试中的 source/trace 注入只作检查，不取代 production collector。
+- [#234 state](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/state.json) 记录 completed、PR #279、mergeHead 19edb542；[acceptance](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/acceptance.json) 记录 candidate 72fc8cdd 的 validate/build/E2E PASS 与 140 PASS/7 SKIPPED。这是既有受限证据，保留 synthetic consent、真实付费 Provider/原生 Windows/macOS NOT_RUN 的限制；不称本轮或当前 d5246ca 已重新测试通过。
+
+上述测试已读完源码，但本章未对每个 helper/fixture 作独立完整章节，所以测试文件仍局部覆盖；本轮所有命令与浏览器 **NOT_RUN**。

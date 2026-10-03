@@ -2,89 +2,104 @@
 
 [逐文件说明](../modules/build-test-release.md) · [启动链](extension-startup.md) · [首页](../README.md)
 
-本章构建/测试实现固定于 `86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d`；2026-10-03 按 main `9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0` 复核 Actions 触发语义，其余本章已完整解释的构建/测试源码字节未变。#266 合入的是产物消费/测试/CI证据链调整；不能由此推导默认发行切换。所有安装、构建、脚本、Node/Vitest、浏览器、CI和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS。
+本章固定于 main `d5246cae6469e4a876fc122b229a2e0ddf115709`，2026-10-03 复核；以当前源码重校 `docs/code-walkthrough` 的 `f7bf28b546a58ac7debe6dd951bb502434dd915a` 文档。当前默认构建已切换为 WXT，旧的“默认 legacy / WXT opt-in”与“#278 未合入”不再描述本基线。所有安装、构建、脚本、Node/Vitest、浏览器、CI 和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS；也不从历史记录推导 realOxford 通过。
 
-## 1. 用户入口与两种安装包
+## 1. 用户入口与两个输出目录
 
-开发者修改源码后，产物必须先构建，再交给指定消费者。安装用户加载产物目录，Chrome依 Manifest启动后台和扩展页面；Content/MAIN/Worker仍走[启动链](extension-startup.md)中的各自路径。
+开发者修改源码后，产物必须先构建，再交给指定消费者。安装用户加载产物目录，Chrome 依 Manifest 启动后台和扩展页面；Content/MAIN/Worker 仍走[启动链](extension-startup.md)的各自路径。
 
 | 入口 | 实际调用与输出 | 能证明/不能证明 |
 | --- | --- | --- |
-| `npm run validate` | check → Node `tests/*.test.mjs` → typecheck → Vitest → legacy build | 构建 `dist/extension`；不构建WXT、不跑E2E、不做完整词典发布认证 |
-| `npm run build:extension` | `scripts/build-extension.mjs` allowlist复制 | 默认旧包；允许缺少生成词典 |
-| `npm run build:extension:release` | 同脚本 `--require-lexicon` | 要求 `assets/lexicon` 目录被复制；不等于每个包的完整认证 |
-| `npm run build:extension:wxt` | WXT production build → audit | opt-in `.output/chrome-mv3`；Manifest和资源精确检查 |
-| `npm run test:wxt:smoke` | audit → WXT临时副本 →有限Chromium流程 | 不自动build；不等于完整E2E/升级/发布 |
-| `npm run test:e2e` | run-e2e → Playwright | 默认读已有WXT；可显式选legacy；缺包失败不回退 |
-| `npm run test:e2e:rich-mdict` | 同wrapper，限定两个spec | 同样默认WXT；不是另一个隐式构建入口 |
+| `npm run validate` | check → Node `tests/*.test.mjs` → typecheck → Vitest → build:extension | 最后经 WXT 构建并审计到 `dist/extension`；不包含浏览器 E2E 或完整词典发布认证 |
+| `npm run build:extension` | `scripts/build-extension.mjs` → 独立 staging WXT → audit → 复制 | 默认 WXT 安装包 `dist/extension`；开发构建可显式报告生成词典缺失 |
+| `npm run build:extension:release` | 同脚本 `--require-lexicon` | 同一 WXT 引擎；要求内置包齐备且通过 manifest/descriptor 完整性检查，不等于词典质量或发布认证 |
+| `npm run build:extension:wxt` | 同脚本 `--out .output/chrome-mv3` | 同一生产引擎和 audit，另输出该目录及 `.wxt/reports`；不是另一套 legacy/WXT 实现 |
+| `npm run test:wxt:smoke` | audit → `.output/chrome-mv3` 临时副本 → 有限 Chromium 流程 | 不自动 build，不自动选 `dist`；不等于完整 E2E/升级/发布 |
+| `npm run test:e2e` | run-e2e → Playwright | 默认消费已有 `.output/chrome-mv3`；显式选包，缺包失败不回退 |
+| `npm run test:e2e:rich-mdict` | 同 wrapper，限定两个 spec | 同样默认 `.output/chrome-mv3`，不是隐式构建入口 |
 
-这是两个不同的“默认”：**默认构建/发行仍是legacy，默认本地E2E选择WXT**。仅执行validate后直接跑test:e2e，可能因缺WXT失败；残留dist不能补这个缺口。旧根README“零bundler”的概括只适用于legacy路径，不能覆盖当前WXT配置。精确命令见[package及校验分工](../modules/build-test-release.md#package-routing)。
+需要区分的是**默认构建目录与默认 E2E 消费目录**，不是两个构建引擎。只执行 validate 不会更新 `.output/chrome-mv3`：该目录缺失时 E2E 失败；若残留旧包，E2E 可能仍消费旧字节。要验收刚生成的稳定安装包，明确用 `TF_E2E_ARTIFACT=dist/extension npm run test:e2e`；wrapper 会在未另设时令 `TF_I18N_ARTIFACT` 跟随。要用默认 E2E / standalone smoke，先构建显式 WXT 输出。路径存在或来源标签都不足以证明包为本候选，见[package 路由](../modules/build-test-release.md#package-routing)。
 
-## 2. 源码 → legacy / WXT 产物
+## 2. 源码 → 审计通过的 WXT 产物 → 安装目录
 
-legacy builder先验证Manifest locale，再清理输出并复制固定根文件、整个src（排除.d.ts）及可选assets/lexicon，最后检查顶层禁入目录并统计大小。默认路径检查要求输出在dist下；allowExternalOutput跳过该限制。当前raw ROOT等值判断存在规范化风险，也没有删除前的link/嵌套Git保护，不能把这项guard视为完整安全边界，见[已知未合入修复](../modules/build-test-release.md#output-safety-followup)。失败会留下未完成目录，不是事务式发布，调用者不能只凭目录存在判断完成。
+[buildExtension](../modules/build-test-release.md#file-build-extension)先执行[输出安全检查](../modules/build-test-release.md#file-path-boundaries)，再为每次调用分配独立 OS 临时 staging。子进程用当前 Node 调仓库 WXT CLI；`TF_WXT_BUILD_ROOT` 将构建输出和 reports 导向本次 staging，`TRANSLATEFLOW_WXT_REQUIRE_LEXICON` 由 requireLexicon 决定。构建完成后 audit staging 中的真实包；仅通过后再次检查目标，才 rm → mkdir → cp 到最终安装目录。显式 `.output/chrome-mv3` 输出还复制 reports 到 `.wxt/reports`；默认 dist 的 staging reports 随清理删除，不能假设它更新了 standalone smoke 使用的报告。
 
-WXT由已解释的[wxt.config.mjs](../modules/startup.md#file-wxt-config)配置：background.ts复用initializeBackground；Popup/Options直接注册现有HTML源，Vite编译，保留原安装路径/options_page语义。Content有序列表、MAIN及Worker roots经[raw资产闭包](../modules/build-test-release.md#file-wxt-assets)逐文件复制；构建没有把整个src变成public。资产文件集合排序用于打包，运行时脚本顺序仍由CONTENT_SCRIPT_FILES决定。
+构建或 audit 失败时尚未删除现有安装目录；但最终复制不是原子 rename/事务，rm 后发生 mkdir/cp/报告复制故障仍可能留下空/不完整目录，finally 清 staging 也不回滚最终输出。独立 staging 避免中间产物冲突，不等于对同一最终目录提供跨进程锁。不能仅凭目录存在宣称构建完成。
 
-生成词典不是源仓库覆盖分母中的现成可安装数据。WXT按TFLex manifest明确声明、指纹/descriptor hash、role和真实路径核验文件；开发缺包列出missing，TRANSLATEFLOW_WXT_REQUIRE_LEXICON=1才强制全部就绪。legacy的requireLexicon只验证目录被纳入，强度不同；都不能替代来源/质量/真实词典认证。
+WXT 由 [wxt.config.mjs](../modules/build-test-release.md#file-wxt-config)配置：background.ts 复用 initializeBackground，Popup/Options 注册原 HTML 源供 Vite 编译，保留安装路径、options_page 和 Manifest 语义。Content 的有序列表、MAIN 及 Worker roots 经 [raw 资产闭包](../modules/build-test-release.md#file-wxt-assets)逐文件复制；没有把整个 src 当 public。资产集合排序便于打包/比对，运行脚本顺序仍来自 CONTENT_SCRIPT_FILES。
 
-[audit](../modules/build-test-release.md#file-audit)检查Manifest与基线deepEqual、精确资产集合、raw/词典/locale源字节、编译依赖、禁入测试/React/开发资源、HTML本地引用和代码体积预算。报告在.wxt/reports，不是安装资源。build/audit成功也不证明Chrome102运行或真实网站兼容。
+生成词典不是 Git 内已有可安装数据。每个 TFLex 包按 manifest 明确声明、fingerprint、descriptor hash/size、role 和真实路径核验文件；开发缺包列入 missing，release 通过 requireLexicon 强制所有内置包就绪。它证明声明与字节完整性，不替代来源、词汇质量、真实词典兼容性或发行准入。
 
-## 3. 选中的实际包 → 可追溯的测试副本
+[audit](../modules/build-test-release.md#file-audit)检查 Manifest 与基线全部字段 deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/React/开发资源、HTML 本地引用及代码体积预算。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
 
-[run-e2e](../modules/build-test-release.md#file-run-e2e)设置TF_E2E_ARTIFACT，默认.output/chrome-mv3；TF_I18N_ARTIFACT未设置时跟随同包。显式空artifact报错；只检查manifest可访问才启动Playwright，具体资产由fixture继续验证。--list/help/version不执行产物检查。直接npx playwright绕过wrapper时，CI仍需显式环境变量，shared adapter自身默认仍为WXT。
+## 3. 输出删除和测试副本的安全边界
 
-[production-artifact](../modules/build-test-release.md#file-production-artifact)先inventory实际文件：每文件SHA-256、按路径排序的path+NUL+hash+换行组成treeSha256、总/词典/代码字节。copyProductionArtifact拒绝源/目标相同或嵌套，检查MV3及generation相应runtime mapping，拒绝非生产顶层/源码map/TS/归档等文件；复制后重新算树hash必须一致。缺包、缺映射、已有目标均失败，**不调用builder、不补源码、不回退旧包**。
+#278 对应的 [path-boundaries](../modules/build-test-release.md#file-path-boundaries)已在本 main 实现：先规范化，再区分 same/descendant/ancestor/disjoint；默认只允许 dist 的严格子目录，或 builder 显式许可的精确 `.output/chrome-mv3`。源码根、祖先、磁盘根、dist 自身和其它源码子目录均拒绝。allowExternalOutput 只为源码外且位于 OS 临时目录严格子级的输出开放，不能解释为可删除任意外部目录。
 
-current的sourceHead来自TF_E2E_ARTIFACT_SOURCE_HEAD，未设置是null。它是调用者提供的来源标签，既不查询git也不将每个包字节绑定到该提交；treeSha256证明被读取/复制的字节身份，也不是构建可信证明。报告必须同时保留artifact路径、generation、sourceHead、原树hash、testCopy hash/changes，以及构建/检查上下文。旧代mapping另固定19e89b6源码身份，但只对两个映射输入文件的SHA做比较，不能误称全旧包可复现证明。
+磁盘检查解析已存在祖先的 canonical path，检查受信任 source/temp 根以下的目标路径，拒绝符号链接、非目录、其它 Git 工作区；递归扫目标树时也拒绝任意深度 .git（大小写不敏感）及 symlink。测试副本还必须与源产物在词法和 canonical 两层不相交，且位于临时目录。OS temp 根本身可能是系统别名，只有受信任根允许这种情况。
 
-prepareExtensionTestCopy完成精确复制后才允许测试适配：
-- 替换词典为synthetic fixture、missing、corrupt、incompatible或repo生成release packs；
-- 只在临时Manifest加入mock/特定测试host permissions；
-- 可选本地ECDICT archive Worker适配，只接受固定recipe；
-- 可选Commands回调探针、onInstalled观察器、executionProof及native启动fetch对照，修改均进入diff。
+这些是调用删除/复制前的检查，未提供持锁/基于句柄的全程原子防竞态证明。[路径回归](../modules/build-test-release.md#test-path-boundaries)的危险根路径负例只调用纯判定；真实 builder 写入限定一次性临时目录。本文未执行任何破坏性负例，也不把旧风险记录当成当前实现。
 
-它最终重算副本inventory，逐路径约束变化，Manifest除host_permissions外必须保持一致。即使选择release，词典仍是从当前repo生成目录替换到副本，应读lexiconMode/testChanges，不能把整份测试副本称为未经改动的发行包。
+## 4. 选中的实际包 → 可追溯的测试副本
 
-[shared fixture](../modules/build-test-release.md#file-extension-fixture)再创建临时profile、启动Chromium、从真实SW URL取得extensionId、打开实际Popup driver，提供reset/open/tabId/inject/runtime/storage接口。reset清翻译缓存和local settings后设置mock；它不是清全部IDB/OPFS的万能隔离器。harness按worker scope复用，调用方有责任做用例隔离。finally按context→server→临时目录嵌套清理。
+[run-e2e](../modules/build-test-release.md#file-run-e2e)设置 TF_E2E_ARTIFACT，默认 `.output/chrome-mv3`；未设置 TF_I18N_ARTIFACT 时跟随。显式空 artifact 报错；只有 manifest 可访问才启动 Playwright，具体 runtime mapping 留给 adapter。--list/help/version 不执行产物检查。直接 npx playwright 会绕过 wrapper；shared adapter 自身仍默认相同 WXT 路径，专项消费者所需环境须明确设置。
 
-## 4. 测试跑到了哪一层
+[production-artifact](../modules/build-test-release.md#file-production-artifact)先 inventory 实际文件：每文件 SHA-256、按路径排序的 path+NUL+hash+换行组成 treeSha256、总/词典/代码字节。copyProductionArtifact 执行上述隔离检查，检查 MV3 和 generation 对应 runtime mapping，拒绝非生产顶层、源码 map/TS/归档等；cp 后重新算树 hash 必须一致。缺包、缺映射、已有冲突目标均失败，**不调用 builder、不补源码、不回退旧包**。
 
-- Node regression是独立tests/*.test.mjs；纯输入/文件系统/源码断言不能替代真实浏览器。Vitest仅tests/unit/**/*.test.ts(x)，默认node；DOM fixture需显式环境。strict TS开启noUncheckedIndexedAccess/exactOptionalPropertyTypes且skipLibCheck=false，但旧JS checkJs=false，不代表全JS已严格类型化。
-- 普通E2E实际消费指定产物的background/页面。需要补充测试模块的专项应单独披露，不能由shared fixture无fallback推导全仓所有spec都无注入。
-- Commands spec调用实际bundle注册的listener探针，仍然**不是用户原生快捷键/activeTab授予手势验收**。包装保留native API，但测试主动调用callback；[详解](../modules/build-test-release.md#file-commands)。
-- StarDict spec先在实际Options入口启动前包装native Worker和sendMessage，走UI选择合成文件、确认、导入、后台复核、查询，核对transfer后buffer长度0、token清理和worker终止；不是重新import控制器源码。纯旧版本展示断言已移到Node，[测试消费者变化](../modules/build-test-release.md#consumer-deltas)。
-- fake permission API、mock runtime、DOM fixture只证明所模拟的分支。native permission spec另用临时profile的Chrome管理API操作hard-denied/withheld/granted/revoked；withheld/revoked的一秒观测允许PENDING或真实拒绝，但不允许执行/DOM标记/receiver。不能把PENDING描述成最终拒绝，未验证权限弹窗和pending consent completion。
+current 的 sourceHead 来自 TF_E2E_ARTIFACT_SOURCE_HEAD，未设置是 null；它是调用者来源标签，既不查询 Git 也不证明包字节由该提交构建。treeSha256 证明被读取/复制的字节身份，不是构建可信证明。证据应同时保留 artifact 路径、generation、sourceHead、原树 hash、testCopy hash/changes 及实际构建/检查上下文。旧代 mapping 固定 19e89b6 来源，但仅对两个映射输入文件 SHA 做比较，不是全旧包可复现证明。
 
-## 5. 同ID升级、真正WXT激活、恢复与重启
+prepareExtensionTestCopy 完成精确复制后才作受限测试适配：
+- 替换词典为 synthetic fixture、missing、corrupt、incompatible，或从当前 repo 生成目录复制 release packs
+- 仅临时 Manifest 加 mock/指定测试 host permissions
+- 可选固定 ECDICT recipe 的本地 archive Worker 适配
+- 可选 Commands callback、onInstalled、executionProof、native 启动 fetch 探针
 
-[升级消费者](../modules/build-test-release.md#upgrade-consumers)只在TF_UPGRADE_OLD_ARTIFACT和TF_UPGRADE_NEW_ARTIFACT同时存在时运行；缺少时skip不是通过。旧包固定19e89b65fd3600073410407392da82ffa666ffc8，使用冻结48项Content顺序；新包用当前mapping。两者要求相同Manifest version，复用同unpacked路径、profile及ID，不改生产key。
+最终重算副本 inventory，逐路径约束 changes；Manifest 除 host_permissions 外必须不变。即使 lexiconMode=release，词典也是从 repo 生成目录替换，不应称整份测试副本未经修改。
 
-在旧包真实Options导入两个合成MDX/MDD，设置启停/个人首选/默认展开，翻译三段留下缓存，注册auto/restore/quick-control并集。快照比较storage所有键、全部数据库名称/版本/store/rows、OPFS路径/size/hash、所有动态注册。替换目录字节后同版本Chromium可能仍保留旧SW；测试用onInstalled观察器和Reading v2 NOT_READY运行时差异区分，不能只看新的Options UI就宣称后台已换。
+[shared fixture](../modules/build-test-release.md#file-extension-fixture)创建临时 profile、启动 Chromium，从真实 SW URL 得 extensionId，打开实际 Popup driver，提供 reset/open/tabId/inject/runtime/storage 接口。reset 清翻译缓存和 local settings 后设 mock，不是清全部 IDB/OPFS 的万能隔离。harness 按 worker scope 复用；用例仍负责隔离。finally 按 context→server→临时目录嵌套清理，初始化在 try 前的异常另有边界。
 
-替换阶段要求整个快照不变，UI显示默认auto不允许偷偷写uiLocale。随后Chrome管理reload必须观察新SW、native onInstalled update及正确previousVersion，才允许缺失uiLocale补auto；已有值必须保留。用旧内容世界已注册message channel检查失效，再刷新页面恢复；恢复缓存不新增Provider调用。数据库比较只允许现有v2 translations/pages行的lastAccessedAt在原值到观测时间内前进，不能只比较“三行还在”。最后重启同profile，快照继续相等。
+## 5. 测试跑到了哪一层
 
-闭网代理在浏览器启动前监听，精确允许mock origin，拒绝其他HTTP/CONNECT及替代loopback；probe原生fetch需三次都真实settle，并在代理记录找到对应拒绝。它证明此代理范围内没有对外转发，**不证明零外联尝试或OS级隔离**。有限smoke启动后设置page route，其externalRequests=[]也不能替代MV3启动闭网证明。
+- Node `tests/*.test.mjs`、Vitest `tests/unit/**/*.test.ts(x)` 和 Playwright `e2e/**/*.spec.mjs` 各自发现；Node 里也有明确调用真实 builder 的包边界/路径测试，不可把“Node”统称为纯静态检查。Vitest 默认 node，DOM fixture 需显式环境。
+- strict TS 开启 noUncheckedIndexedAccess/exactOptionalPropertyTypes、skipLibCheck=false；旧 JS checkJs=false，不表示全 JS 已严格类型化。
+- 普通 E2E 消费指定产物的 background/页面；专项自加素材或测试模块需单独披露，shared fixture 无 fallback 不等于所有 spec 都无注入。
+- Commands 调用实际 bundle 注册的 listener 探针，**不是用户原生快捷键或 activeTab 手势授权验收**。包装保留 native API，但测试主动调用 callback，见[Commands](../modules/build-test-release.md#file-commands)。
+- StarDict 在实际 Options 初始化前观察 native Worker/sendMessage，走 UI 合成文件选择、确认、导入、后台复核和查询，断言 transfer 后 buffer=0、token 清理、worker 终止；没有再 import 控制器源码。
+- fake permissions/mock runtime/DOM fixture 只证明模拟分支。native permission spec 另用临时 profile 的 Chrome 管理 API 操作 hard-denied/withheld/granted/revoked；withheld/revoked 的一秒观测允许 PENDING 或真实拒绝，但不能有执行、DOM marker 或 receiver。PENDING 不是最终拒绝，权限弹窗和 pending consent completion 仍未验证。
 
-十次cold/warm注入样本另在同profile/path/ID下比较旧/新；WXT显式reload并核对执行树hash，验证同app对象、模块数/DOM/零Provider调用和每次page清理。报告median/min/max，没有性能门槛，不能宣布加速。Chrome102、真实YouTube、付费Provider、真实用户数据升级仍非本轮证据。
+## 6. 同 ID 升级、真正激活、闭包更新、恢复与重启
 
-## 6. CI、安装和发布边界
+[升级消费者](../modules/build-test-release.md#upgrade-consumers)仅在 TF_UPGRADE_OLD_ARTIFACT / TF_UPGRADE_NEW_ARTIFACT 同时存在时运行；缺少是 skip，不是通过。旧包固定 `19e89b65fd3600073410407392da82ffa666ffc8`，冻结 48 项 Content 顺序；新包用 current mapping。两者要求相同 Manifest version，复用同 unpacked 路径、profile 和实际 extensionId，不改生产 key。
 
-[quality](../modules/build-test-release.md#file-quality-workflow)和[e2e.yml](../modules/build-test-release.md#file-e2e-workflow)现在都只由 workflow_dispatch 手动启动，不再响应 PR/main push。前者运行 validate；后者建立 legacy/wxt 矩阵，显式设置artifact、locale、github.sha标签。每一行先WXT build+smoke再legacy build；WXT行额外构建固定旧commit worktree并传升级两个包，最后跑test:e2e。失败上传Playwright/test-results七天；并非每次成功都上传完整升级证据。没有 PR 路径过滤触发可供推定；具体 run 必须有实际证据，不能仅凭 workflow 定义称 CI 通过。日常验收及候选绑定见[本地任务验收](local-task-acceptance.md)，真实远端保护仍有效。
+旧包真实 Options 导入两个合成 MDX/MDD，设启停/个人首选/默认展开，翻译三段留下缓存，注册 auto/restore/quick-control 并集。完整快照涵盖 storage 全键、所有数据库名称/版本/store/rows、OPFS 路径/size/hash 和全部动态注册。同版本替换目录字节后，Chromium 可能仍持有旧 SW；onInstalled 观察器和 Reading v2 NOT_READY 的真实响应区分运行代次，不能仅看新 Options UI 宣称后台已换。
 
-词典专项 Actions 同样只有手动入口，仍显式选 dist/extension：lexicon-release、vNext在validate后已有legacy；MDD、rich cancellation、rich compatibility在focused E2E前明确build。认证流水线下载锁定公开来源、合成互操作素材和脱敏报告；读到这些定义不等于本轮已下载/认证。见[专项CI边界](../modules/build-test-release.md#partial-ci)。
+替换阶段要求整个快照不变；UI 显示 auto 不允许偷偷写 uiLocale。随后 Chrome 管理 reload 必须观察新 SW、native onInstalled update 和正确 previousVersion，才容许两类明确变化：
+1. 仅原本缺少的 uiLocale 补 auto，已有值保留。
+2. 仅动态注册的 js/css 从精确旧闭包替换为新包精确闭包；注册 ID、matches 和权限/执行策略等其余字段保留。新增 reading-contract 等资源不能反向要求旧包具备，也不能把旧注册脚本数组原封保留当正确升级。
 
-安装路径仍是根README的dist/extension，WXT安装属opt-in。重新加载扩展后刷新已有网页才能获得新的Content context；同ID/profiles/storage兼容是独立验收，删除数据“重新安装成功”不能证明升级保留。源码中的build和CI没有自动商店上传/发布授权，本章也未执行安装、升级、上传或发布。
+旧 content world 通过原 message channel 检查失效，再刷新恢复；缓存恢复不新增 Provider 调用。数据库只允许既有 v2 translations/pages 的 lastAccessedAt 在原值到观测时间内前进，不能只比较“三行还在”。重启同 profile 后与恢复后完整快照继续相等。
 
-## 7. 失败定位和最小改动入口
+闭网 proxy 在浏览器启动前监听，只允许精确 mock origin，拒绝其它 HTTP/CONNECT 及替代 loopback；probe 的三次 native fetch 必须真实 settle，代理还要有匹配拒绝记录。这证明代理范围内没有向外转发，**不证明零外联尝试或 OS 级隔离**。smoke 的 page route 在 launch 后才设置，externalRequests=[] 不能替代该启动证据。
 
-1. 选错包/缺manifest：先看TF_E2E_ARTIFACT、run-e2e和CI build顺序，不能增加fallback掩盖。
-2. 缺Worker/MAIN/Content：看runtime-assets/constants、sourceClosure和generation mapping；不能复制整个src进WXT public救场。
-3. 新增包资产：同时审查精确descriptor、locale、audit集合/字节/预算以及测试copy变化列表。
-4. 用例“通过”却运行旧SW：保留same-ID/path，读真实激活/执行probe；不能以sourceHead或页面标题替代。
-5. 数据丢失/隐式写默认：看upgrade-expectations的完整快照、native lifecycle时序，不能放宽为计数比较。
-6. 用户体验改动：Node/类型检查只是起点，补实际产物浏览器断言；需要真实权限弹窗/真实网页时单列证据。
+注入采样在同 profile/path/ID 下比较旧/新，各十次 cold/warm；WXT 显式 reload 并核对执行树 hash，检查同 app 对象、模块数/DOM/零 Provider 和每次 page 清理。报告 median/min/max，没有性能门槛，不能宣布加速。Chrome 102、真实 YouTube、付费 Provider、真实用户数据升级及 realOxford 均没有本轮新证据。
 
-本轮没有运行以上步骤；没有把历史报告PASS、测试名称或test.skip当作新验收。后续逐文件待补：大型源边界分析器、mock server、专项认证脚本/来源链和各完整产品spec。
+## 7. CI、安装和发布边界
 
+[quality](../modules/build-test-release.md#file-quality-workflow)与[e2e.yml](../modules/build-test-release.md#file-e2e-workflow)均只由 workflow_dispatch 手动启动，不响应 PR/main push。quality 运行 validate，终点是 WXT dist。E2E 的 stable-wxt / wxt 矩阵分别选 dist 和 .output；每行先显式 WXT build+smoke，再默认 WXT build。两行都构建固定旧 commit 包并设置升级环境，但升级新包都明确指向 `.output/chrome-mv3`：不能称 stable-wxt 行的同 ID 升级测了 dist。失败上传 Playwright/test-results 七天，成功不保证上传完整报告。定义不是精确 head 的实际 run 结果。
+
+词典专项 Actions 也只有手动入口，显式选 dist：lexicon-release、vNext 在 validate 后已有默认 WXT 包；MDD、rich cancellation、rich compatibility 在 focused E2E 前明确 build:extension。旧 step 名称中的 stage-one 不改变当前脚本路由。这些来源下载/认证定义不能证明本轮已下载、认证或真实词典全通过，见[专项 CI](../modules/build-test-release.md#partial-ci)。日常候选、指纹与验收绑定见[本地任务验收](local-task-acceptance.md)。
+
+安装路径仍为 README 的 `dist/extension`，内容已是默认 WXT。重新加载扩展后刷新已有网页以获得新 Content context；删除数据后“重新安装成功”不能证明升级保留。代码中的 build/CI 没有自动商店上传或发布授权；本章未执行安装、升级、上传或发布。
+
+## 8. 失败定位和最小改动入口
+
+1. 选错/陈旧/缺包：查 TF_E2E_ARTIFACT、构建输出路径、源与副本树 hash，不增加 fallback 掩盖。
+2. 输出被拒绝：查 path-boundaries 的关系、temp 边界、symlink/.git；不要绕过保护或用真实源码根重现删除。
+3. 缺 Worker/MAIN/Content：查 runtime-assets/constants、sourceClosure/generation mapping，不能把整个 src 复制为 public。
+4. 新增包资产：联动 descriptor、locale、audit 集合/字节/预算及测试副本 changes。
+5. 用例似乎通过却跑旧 SW：保持 same-ID/path，读真实激活/执行 probe，不用 sourceHead/页面标题代替。
+6. 升级丢数据或保留旧脚本：查完整快照、native lifecycle 和注册资源窄例外，不放宽成计数比较。
+7. 用户体验改动：类型/Node 只是一层；补实际产物浏览器断言，真实权限弹窗/真实网页须单列证据。
+
+本轮只读源码与修订文档，没有运行以上步骤。大型边界分析器、mock server、专项认证脚本/来源链及未展开的产品 spec 仍保留局部覆盖。
 

@@ -1,17 +1,17 @@
 # 本地验收、执行记录与被动 hooks 逐文件说明
 
-源码基线：main `9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0`，2026-10-03。对应[完整工作流](../features/local-task-acceptance.md)。本章完整解释 17 个文件；其他迁入任务卡与大型规范/认证流水线只登记局部或待解释，不能因使用同一模板算完成。全部运行验证 **NOT_RUN**。
+清单基线：main `d5246cae6469e4a876fc122b229a2e0ddf115709`；本轮完整复核 local-task、其测试、LOCAL_WORKFLOW 与 index，其余未变 blob 保留旧固定引用。历史 workflow-local 归档按当时规则解释，不是当前必需门槛。原源码基线 `9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0`，2026-10-03。对应[完整工作流](../features/local-task-acceptance.md)。本章完整解释 17 个文件；其他迁入任务卡与大型规范/认证流水线只登记局部或待解释，不能因使用同一模板算完成。全部运行验证 **NOT_RUN**。
 
 <a id="file-local-task"></a>
 ## scripts/local-task.mjs：候选绑定、命令证据与同步门槛
 
-[完整源码 L1–L235](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/scripts/local-task.mjs#L1-L235)。
+[完整源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/scripts/local-task.mjs)。
 
 本地 CLI 依赖 Node child_process/crypto/fs/path/url 和已有 Git/npm，无网络或模型调用，也不自动修改 Git。导出 buildIndex、inputTree、freeze、runCheck、fingerprint、gate 供测试调用；CLI 通过 import.meta.url 判断直接入口，错误打印 local-task 前缀并退出 1。
 
 **路径与写入。** ID 限定字母数字开头、后续字母数字点下划线横线、长度最多 80；candidate SHA 限 40 位十六进制。safePath resolve/relative 拒绝 workspace 外路径及逐级 symlink；readEvidence 用 NOFOLLOW 文件描述符，必须普通文件且最多 64 MiB。save 以 UUID 临时文件 exclusive/0600 写入再 rename，不删除输出树。证据目录 0700；events 使用 append/NOFOLLOW、检查实际 fd 是文件。无恶意并发文件系统的全面隔离保证，尤其路径父层检查与后续打开并非单一原子动作。
 
-**输入和快照。** load 检查 schema/task、非空字符串 argv 数组、至少一项准确 npm run validate 及 dependencies 数组。archiveFiles 只排除当前任务 state/acceptance/review 和全局 index。inputTree 对 git ls-tree -r -z 的其余原始条目连接后 SHA-256，含路径/mode/type/blob 身份，不是包树 hash。assertWorkingInputs 不相信 status：只接受 tracked 普通 blob 模式 100644/100755，按 Git blob header 加磁盘 bytes 重建对象 hash，POSIX 另检查可执行位。Git symlink/submodule 输入不支持；Windows 不查可执行位，CRLF 工作树可能与 Git blob 不同，不能宣称跨平台验证完成。
+**输入和快照。** load 检查 schema/task、非空合法字符串 argv 列表及 dependencies 数组；不要求固定 validate 命令。archiveFiles 只排除当前任务 state/acceptance/review 和全局 index。inputTree 对 git ls-tree -r -z 的其余原始条目连接后 SHA-256，含路径/mode/type/blob 身份，不是包树 hash。assertWorkingInputs 不相信 status：只接受 tracked 普通 blob 模式 100644/100755，按 Git blob header 加磁盘 bytes 重建对象 hash，POSIX 另检查可执行位。Git symlink/submodule 输入不支持；Windows 不查可执行位，CRLF 工作树可能与 Git blob 不同，不能宣称跨平台验证完成。
 
 **冻结及失效。** freeze 要求整个 status clean、当前 HEAD 包含 origin/main，然后比对磁盘，记录 candidate/tree/inputTree、UTC frozenAt、Node/npm/browser NOT RUN、空 checks/artifact/limitations，并发 candidate_frozen 事件；不自动把 state.candidateHead 改成候选。ensureCandidate 检查 candidate SHA/task、origin/main→HEAD 与 candidate→HEAD 祖先、candidate tree/inputTree 及当前 inputTree；比较候选 state 的三项机器要求和当前 state，拒绝非归档 tracked diff/非 ignored untracked，最后再次查磁盘。未跟踪但 ignored 资源、工具版本/环境、外部输入不因这个 tree 成为可信源码。
 
@@ -19,11 +19,11 @@
 
 **索引。** buildIndex 枚举 docs/tasks 的合法目录，读取 task 匹配的 state，投影 task/status/dependencies/branch/candidateHead，缺省后两者 null，按 en numeric task 排序。它不复制 mergeHead、下一动作或全部验收要求；gate 再从依赖 state 读 mergeHead。index 子命令用 save 更新生成文件。
 
-**gate。** ensureCandidate 后要求 state.candidateHead=acceptance、当前 index 与 buildIndex JSON 顺序一致；每个依赖合法 ID、completed、真实格式 mergeHead 且为 origin/main 祖先。每条 validationCommand 用 findLast 找最后 check，必须 PASS、同候选、exit0、无 signal、有限非负 duration。log 必须是规范化的当前 task 证据目录内 .log，readEvidence/hash 一致。artifactRequired 要求 artifact；有 artifact 时无论是否必需都重算。review 解析独立行 HTML 注释 JSON，仅校验 task/candidate/result/role/independent；schema 字段不是这里的审核依据。最后 state 必须 ready_to_sync。返回 PASS/candidateHead/syncHead/inputTree 与“仅本地证据”的 note，不检测远端 PR head 或合并保护。
+**gate。** ensureCandidate 后要求 state.candidateHead=acceptance、当前 index 与 buildIndex JSON 顺序一致；每个依赖合法 ID、completed、真实格式 mergeHead 且为 origin/main 祖先。每条 validationCommand 用 findLast 找最后 check，必须 PASS、同候选、exit0、无 signal、有限非负 duration。log 必须是规范化的当前 task 证据目录内 .log，readEvidence/hash 一致。artifactRequired 要求 artifact；有 artifact 时无论是否必需都重算。当前 gate 不读取 review.md，也不检查 role/independent 或审核 PASS；review.md 可选记录主 Agent 自查或历史审核。最后 state 必须 ready_to_sync。返回 PASS/candidateHead/syncHead/inputTree 与“仅本地证据”的 note，不检测远端 PR head 或合并保护。
 
 **其他入口。** artifact 不构建，仅记录允许根的 fingerprint；mark 仅接受 review_start/review_end/code_sync/task_complete/task_paused/task_blocked 并写事件，不改 state。report 只读当前 acceptance，返回 checks 总数/FAIL 数、每项命令与耗时，modelRequests/tokens 字符串 UNKNOWN。freeze 重置 checks，原日志不删除；report 不聚合历史 events。
 
-**限制与影响。** check、review JSON/注释和环境仍是本地文件，hash 防止一般丢失/变更不构成防恶意伪造的签名系统。limitations/supplemental、人类验收、独立 reviewer 实际身份和权限不由 gate 验证。修改排除集、归档三项要求、路径/日志边界须联动 local-task.test.mjs 全组反例与 LOCAL_WORKFLOW；改命令/产物要求另查构建章。完整日志可能含命令输出中的私密信息，不能从旁路 hook 的“无 stdout”承诺推导它会自动脱敏。
+**限制与影响。** check、review JSON/注释和环境仍是本地文件，hash 防止一般丢失/变更不构成防恶意伪造的签名系统。limitations/supplemental、人类验收和主 Agent 自查不由 gate 自动验证。修改排除集、归档三项要求、路径/日志边界须联动 local-task.test.mjs 全组反例与 LOCAL_WORKFLOW；改命令/产物要求另查构建章。完整日志可能含命令输出中的私密信息，不能从旁路 hook 的“无 stdout”承诺推导它会自动脱敏。
 
 <a id="fingerprint-boundary"></a>
 ### 包 fingerprint 与 E2E hash 不是同一协议
@@ -115,29 +115,28 @@ markdown 输出 attempt/阶段/命令表和按工具总 wallMs 排名前十，nu
 <a id="file-local-workflow"></a>
 ## docs/tasks/LOCAL_WORKFLOW.md：合同到受保护同步的规范
 
-[完整源码](https://github.com/CoderLambert/translateflow-plugin/blob/2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503/docs/tasks/LOCAL_WORKFLOW.md)。
+[完整源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/LOCAL_WORKFLOW.md)。
 
-规定五类受控任务文件及单写所有权、状态/依赖语义、迁入范围与产品暂停；候选先提交、freeze/精确命令、需要实际包时 fingerprint、真实独立 reviewer 的候选注释；区分 candidateHead/syncHead，限制仅本任务归档差异，完整校验 inputs/本地日志；之后准确远端 head/squash、main tree核对与 mergeHead；最后说明 11 个手动备用 workflows、PR Review App 分离和两类 report。
+规定五类任务文件、主 Agent 单写 state、状态/依赖语义、准确候选与输入指纹、实际日志与可选包 fingerprint；review.md 是可选自查/历史记录，不再强制模型独审，历史任务卡的 dev_reviewer 执行条款由当前规范替换，外部必需审查和人工验收仍保留。
 
-机器脚本仅落实部分规范：不自动 fetch、不做远端保护检查、不验证 reviewer 实际独立或人工产品验收、不维护状态机。新 clone 没日志/包无法重演 gate，不能补造 PASS。文档迁入的历史合同/后续 epic 不是新启动授权；后续 #237–244/#250–256 等历史章节不因进入仓库自动执行。若文档描述与近期 archive 的设置/状态不同，查看准确 task state 和 limitations，不能以通用流程覆盖任务实际记录。
+开发/修复按最新 diff 定向验证，PR 后合入前一次适用完整验收；有效未变证据复用，失败只重验相应依赖。源码、测试、构建/fixture、词典输入分别选择对应检查，同一生产输入不重复构建，词典输入未变且完整性有效不重复编译。脚本允许 scoped validationCommands，但收窄要求必须有授权、依据和原覆盖，不可隐藏失败。
 
-修改流程需同步 CONTRIBUTING/AGENTS、local-task、tests，但不因此改业务任务或全局配置。本文只解释规范，不执行里面的命令。
+candidateHead/syncHead 分离；仅当前 task state/acceptance/review 与全局 index 可作归档差异。保留原候选/日志/包身份，合入后核对真实 merge tree/祖先；completed 不改回 ready_to_sync 骗 gate。脚本不自动 fetch、不验证远端保护或产品/人工验收，不维护状态机。新 clone 无日志/包无法重演 gate，不补造 PASS。
 
-
-最新2e7661补充：每次新增动作先确认未决问题及证据是否有效；小任务主Agent完成，禁止为状态搬运、会话恢复或归档重复启动模型。新实现候选完整validate仍必需；纯文档只做适用静态校对。当前任务state/acceptance/review/index的纯元数据归档满足输入及要求不变时复用原候选证据；主Agent校对，不重调reviewer、不改candidateHead、不改写独审、不降低机器/人工验收。合并前归档仍gate；合后completed归档核对sync/merge tree、祖先、输入与索引，不回改状态骗gate。缺证据/越白名单/新风险则恢复适用验证。这是规范分类，脚本自身未因此新增自动识别纯文档功能。
+文中“产品暂停、本轮仅 workflow-local”是迁入时历史范围说明；当前各产品事实须读准确状态与源码：234/path-safety 已 completed，248 默认切换已合入但 index 仍 ready_to_sync。后续 epic 不因入库得到执行授权。本导读不执行任何任务命令。修改流程应同步 CONTRIBUTING/AGENTS、local-task 与测试；保留实际保护。
 
 <a id="test-local-task"></a>
 ## tests/local-task.test.mjs：临时 Git 正反例
 
-[完整源码 L1–L181](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/tests/local-task.test.mjs#L1-L181)。
+[完整源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/local-task.test.mjs)。
 
-fixture 创建独立 tmp Git 仓库、合成 task 234、简化 npm validate、ignored local 与 origin/main，测试结束删除自己的临时目录。ready 执行真合成命令并写模拟审核注释；注释明确是 fixture，不能作真实 reviewer 批准。15 个测试完整覆盖：
+fixture 创建独立 tmp Git 仓库、合成 task 234、简化 npm validate、ignored local 与 origin/main，测试结束删除自己的临时目录。ready 执行真合成命令并设置 candidate/index，不写模拟 reviewer。16 个测试完整覆盖：
 
 1. 命令实际退出/单调耗时/log hash，允许仅 archive 提交且 candidate≠sync。
 2. 冻结拒未跟踪文件，gate 拒新增/已 stage/已提交代码。
 3. 即便 clean，缺当前 origin/main 提交仍拒 freeze。
-4. state 依赖/必需 validate/任务正文更改不可削弱旧验收。
-5. 缺 review、role main、independent false、旧 candidate、CHANGES_REQUESTED 均拒。
+4. state 依赖/冻结的命令要求/任务正文更改不可削弱旧验收。
+5. 删除 review.md 或写 NOT RUN 均不阻挡有效命令证据；清空 checks 仍拒，移除模型独审不等于取消真实验收。
 6. 未授权命令、缺 checks、篡改 log、陈旧 index 均拒。
 7. paused dependency 拒；8. completed dependency 仍须真实 main ancestry。
 9. validate 非零真实 FAIL，不能过 gate；10. state/acceptance 不同 candidate 拒。
@@ -146,7 +145,9 @@ fixture 创建独立 tmp Git 仓库、合成 task 234、简化 npm validate、ig
 14. 包 bytes 改变 hash，任意根/包内 symlink 拒。
 15. 11 个 yml 的 on 顶层仅 workflow_dispatch、jobs 存在，指定 base_sha/experimental input 仍存在。
 
-最后一项不逐字证明所有 job body 完全相同；标题中的“remain intact”要以具体断言为准。此测试也没有覆盖真正 reviewer 身份、远端保护、忽略生成输入全审计、Windows 或真实产品行为。修改脚本必须复查相应负例；本轮未执行，NOT_RUN。
+16. 合同使用合法非 validate 的 scoped argv 时允许 freeze/run/gate；测试调用实际合成进程，不是绕过空命令检查。
+
+第15项不逐字证明所有 job body 完全相同；标题中的“remain intact”要以具体断言为准。此测试也没有覆盖真正 reviewer 身份、远端保护、忽略生成输入全审计、Windows 或真实产品行为。修改脚本必须复查相应负例；本轮未执行，NOT_RUN。
 
 <a id="test-task-execution"></a>
 ## tests/task-execution.test.mjs：观察、隐私、时序与信号
@@ -160,11 +161,11 @@ fixture 为每 test 独立 temp root，CLI 用三脚本副本；合成 sentinel 
 <a id="file-task-index"></a>
 ## docs/tasks/index.json：17 项状态的生成投影
 
-[完整源码 L1–L152](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/docs/tasks/index.json#L1-L152)。
+[完整源码 L1–L152](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/index.json)。
 
 schema=1/source=`*/state.json`，每项只有 task/status/dependencies/branch/candidateHead；由 buildIndex 投影与排序，gate 用 JSON 相等检查陈旧。它不含完整合同、人工验收、mergeHead/本地 log，必须回源文件取证。
 
-本基线全部条目：191/229 paused epic 索引；227、230、231、232、233、245、246、247、249 completed；234 paused，依赖231/233；235 blocked，依赖233/248/249；236 blocked，依赖234/235；248 paused，依赖246/247/227/path-safety；path-safety paused；workflow-local completed。完成链中231/232依赖230，233依赖232，246依赖245，247/249依赖246。234 的 candidate 非空也不等于当前验收通过；workflow-local 保存实际受审候选，branch main。其他 null 字段不是推定工作区不存在，只是投影当前缺省。
+本基线全部条目：191/229 paused epic 索引；227、230、231、232、233、245、246、247、249 completed；234 completed，branch main，依赖231/233；235 blocked，依赖233/248/249；236 blocked，依赖234/235；248 ready_to_sync，branch build/248-default-switch，依赖246/247/227/path-safety；path-safety completed；workflow-local completed。完成链中231/232依赖230，233依赖232，246依赖245，247/249依赖246。234 的 candidate 为72fc8cdd，path-safety 为c77e52e9；248 为e722652a。#284已合入默认构建，索引保留ready_to_sync不能覆盖实际代码事实。candidate非空也不等于本轮验收通过；workflow-local 保存实际受审候选，branch main。其他 null 字段不是推定工作区不存在，只是投影当前缺省。
 
 修改某 task 状态后生成 index，不能只手填投影；本文只解释 index 这一个文件，不把全部17组 task.md/acceptance/review/state 自动计全覆盖。
 
@@ -173,7 +174,7 @@ schema=1/source=`*/state.json`，每项只有 task/status/dependencies/branch/ca
 
 [完整源码 L1–L13](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/docs/tasks/workflow-local/task.md#L1-L13)。
 
-范围为主 Agent 单写本地任务/证据工具、规范与11个Actions触发，复用 hooks，不改 runtime/依赖/全局配置；dev_reviewer 独立只读审准确候选，保留234与路径修复工作。验收要求完整 validate、门槛正反例、手动 inputs/jobs 保全、真实234卡缺证据拒绝；外部保护/自动审查只一次核对，无法变更须记录限制。非目标明确不恢复产品、不重配Agent/平台、不用模型统计/上传日志。它是 workflow-local 合同，不是其他任务恢复授权；实际执行结果看下面三个文件。
+历史合同范围为主 Agent 单写本地任务/证据工具、规范与11个Actions触发，复用 hooks，不改 runtime/依赖/全局配置；dev_reviewer 独立只读审准确候选，保留234与路径修复工作。验收要求完整 validate、门槛正反例、手动 inputs/jobs 保全、真实234卡缺证据拒绝；外部保护/自动审查只一次核对，无法变更须记录限制。非目标明确不恢复产品、不重配Agent/平台、不用模型统计/上传日志。它是 workflow-local 合同，不是其他任务恢复授权；实际执行结果看下面三个文件。
 
 <a id="file-workflow-state"></a>
 ## docs/tasks/workflow-local/state.json：completed 归档与精确 SHA
@@ -200,7 +201,7 @@ reviewerRuntime 保存具名角色/观测model effort和权限，明确 danger-f
 
 [完整源码 L1–L22](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/docs/tasks/workflow-local/review.md#L1-L22)。
 
-首行 local-review JSON 绑定workflow-local/926ab1e/PASS/dev_reviewer/independent true，供 gate 解析；正文说明baseline→初候选全量及后续8文件增量审核，角色权限仅行为只读。记录四项原反例修复：隐藏tracked磁盘差异、悬空event symlink、缺日志/穿越替代、state候选不符；同时保留正常归档成功。
+首行 local-review JSON 绑定workflow-local/926ab1e/PASS/dev_reviewer/independent true，是旧 gate 当时使用的历史绑定；当前 gate 已不读取此记录。正文说明baseline→初候选全量及后续8文件增量审核，角色权限仅行为只读。记录四项原反例修复：隐藏tracked磁盘差异、悬空event symlink、缺日志/穿越替代、state候选不符；同时保留正常归档成功。
 
 正文归档独立29测试/临时fixture、diff、workflow及依赖/真实234负例，核对主Agent新候选validate/log hash但 reviewer 未重跑完整 validate。浏览器、原生hook当前触发、远端保护/设置/同步未验证，PASS不等于合入或发布。最后协调者补充用户已关闭自动review但仅改元数据，不能倒推 reviewer 独立验证了该App。本文解释文件表达什么，不重新认证旧执行事实；修改审核绑定必须源于真实新审核，不能为 gate 绿灯手填。
 
@@ -209,7 +210,7 @@ reviewerRuntime 保存具名角色/观测model effort和权限，明确 danger-f
 
 全部11个workflow当前 on 只有 workflow_dispatch：quality、e2e、dictionary-library-vnext-certification、freedict-source-audit、lexicon-release、mdd-resources、rich-lookup-cancellation、rich-mdict-compatibility、wikimedia-wiktionary-source-lock、wiktextract-ingest、wiktextract-rich-poc。这里只解释触发变化，不把后三类来源流水线所有job算全文覆盖。quality/e2e完整内容见[构建章](build-test-release.md#file-quality-workflow)。
 
-vNext 保留必填 base_sha 的手动输入；rich-poc 保留 run_experimental_full_extraction。历史 event-base 表达式仍在vNext job内，不代表它还监听PR/push。五个既有 partial CI 的legacy产物消费/证据边界不因手动触发变化而改变；不能再用PR paths推定是否触发，也不能因没有自动run推定测试通过。源码链接与范围见构建章 partial-ci。
+vNext 保留必填 base_sha 的手动输入；rich-poc 保留 run_experimental_full_extraction。历史 event-base 表达式仍在vNext job内，不代表它还监听PR/push。五个既有 partial CI 的具体命令仍需按当前 package 别名解释；默认 build 已转 WXT，不能沿用 legacy 消费结论；不能再用PR paths推定是否触发，也不能因没有自动run推定测试通过。源码链接与范围见构建章 partial-ci。
 
 固定源码入口（这里只覆盖触发变化，未逐一解释完整 job）：
 
@@ -228,7 +229,7 @@ vNext 保留必填 base_sha 的手动输入；rich-poc 保留 run_experimental_f
 <a id="partial-policy"></a>
 ## 局部：现行仓库规范与认证源码断言
 
-AGENTS、CONTRIBUTING、README、docs/ARCHITECTURE 的本轮新增/变更部分统一把验收移到本地task/候选/独审，日志留ignored local、Actions只手动，真实合并保护仍有效；常规不查Issue/Review/CI API。#275导读自身的明确周期授权范围由该任务合同约束，不能把规范段落理解为任意额外远端写权限。上述大型文档其余产品/架构内容继续属于其他章节或待解释，本节不计全文覆盖。
+AGENTS、CONTRIBUTING、README、docs/ARCHITECTURE 的本轮新增/变更部分统一把验收移到本地task/候选；当前由主 Agent 自查，不自动模型独审，日志留ignored local、Actions只手动，真实合并保护仍有效；常规不查Issue/Review/CI API。#275导读自身的明确周期授权范围由该任务合同约束，不能把规范段落理解为任意额外远端写权限。上述大型文档其余产品/架构内容继续属于其他章节或待解释，本节不计全文覆盖。
 
 tests/selection-release-certification.test.mjs 的第一测试仍检查各Selection fixture名、missing/corrupt/incompatible消息、真实产物adapter及release词典门；新增断言lexicon-release只有workflow_dispatch、无push/pull_request、保留JSON E2E命令。第二测试检查浏览器源码硬断言/Provider零调用/焦点/窄屏/诊断重试等标记；是源码存在性检查，不执行浏览器。此处只复核手动入口消费语义，仍保持partial。
 
@@ -246,4 +247,4 @@ tests/dictionary-ecosystem-v2-certification.test.mjs 对手动vNext流程新增d
 - [tests/dictionary-ecosystem-v2-certification.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/tests/dictionary-ecosystem-v2-certification.test.mjs)
 
 
-本轮发布前复核2e7661的AGENTS/CONTRIBUTING/LOCAL_WORKFLOW三文件增量，补纯文档与元数据归档证据复用规则。其它脚本/测试/hook/归档对象与9bea2dd字节相同，保留其固定源码引用；新的流程分类不改变工具实现或产品授权。
+本轮按 d5246ca 完整重读四个变动文件并改写上述说明；其他旧源码固定引用只代表 blob 未变或历史归档。当前 AGENTS/CONTRIBUTING 的自查与定向复用部分已核对，大型规范其余内容仍按局部计。没有运行脚本或重新认证任何旧 PASS。

@@ -1,5 +1,8 @@
 # TranslateFlow 持续源码导读
 
+> 后续主线提醒：本文的完整清单与解释固定于 d5246ca。此后 main b606cfd556792d9764d0b15461b7a142fcd99575 已合入 [#285 学习中心（#235）](https://github.com/CoderLambert/translateflow-plugin/pull/285)；新增 React 学习中心留待下一轮逐文件复核。下文“学习中心未启用/未交付”仅描述 d5246ca 基线，不代表最新 main。
+
+
 ## 目标
 
 建立与当前实际源码同步的中文技术导读，让开发者能回答：插件如何启动、一个用户操作经过哪些模块、每个文件负责什么、修改功能应从哪里入手，以及哪些安全和生命周期约束不能破坏。
@@ -12,8 +15,9 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单与本地验收章源码基线：`2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503`；初始运行时章节保留`d5e308a709c008acf6b277d466d020f13025bdca`固定引用，运行时源码blob均未变；构建章的quality/E2E及局部CI入口已按新手动规则复核，旧实现固定引用另保留86ed596。
-- 当前状态：启动、划词、词典导入展示、网页翻译/缓存、YouTube字幕、Provider/设置、Reading已实现后台链及构建测试链已形成，732个文件全部登记，179个完整解释、553个待解释（含123个仅解释局部边界）；运行验证 NOT_RUN。全仓导读仍未完成。
+- 当前清单基线：`d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮优先复核 WXT 默认构建/产物安全/浏览器消费者、Reading 查询到显式保存与本地自查；未变文件保留旧固定引用，变动但未完整重读的文件一律待复核。
+- 当前状态：750 个文件全部登记；187 个完整解释、534 个待解释、29 个待复核；局部正文 129 个（待解释中 112、待复核中 17），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
+
 
 ## 已交付导航与推荐阅读顺序
 
@@ -25,14 +29,17 @@
 6. [网页翻译、缓存恢复与重访](features/page-translation.md)及[15个文件详解](modules/page-translation-cache.md)。
 7. [YouTube字幕完整流程](features/youtube-subtitles.md)及[11个文件详解](modules/youtube-subtitles.md)。
 8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个文件详解](modules/providers-and-settings.md)。
-9. [Reading已实现后台与产品入口断点](features/reading-records.md)及[19个文件详解](modules/reading-records.md)。
-10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[27个文件详解](modules/build-test-release.md)。
-11. [本地任务合同→冻结→验收→独审→同步](features/local-task-acceptance.md)及[17个新增完整说明](modules/local-task-acceptance.md)。
+9. [Reading真实查询→显式保存与学习中心边界](features/reading-records.md)及[逐文件详解](modules/reading-records.md)。
+10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[逐文件详解](modules/build-test-release.md)。
+11. [本地任务合同→冻结→验收→主Agent自查→同步](features/local-task-acceptance.md)及[逐文件说明](modules/local-task-acceptance.md)。
 12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-13. [覆盖清单](coverage.json)：732个文件的固定blob、状态和正文位置。
+13. [覆盖清单](coverage.json)：750个文件的固定blob、状态和正文位置。
 14. [更新记录](changes.md)：本轮证据与下一步。
 
-当前已具备启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置及Reading后台功能章；大型依赖仍有局部说明，后续逐文件补齐。Reading产品入口仍未交付，见对应章节；构建测试链与新本地任务/被动监控链已补齐；Rich MDX/MDD解析与存储内部链已补齐；后续继续普通pack/TFLex、旧MDX/StarDict投影、共享合同、界面大入口及各专项测试/脚本的未解释部分。没有正文的章节不伪造链接。根README里部分旧概括未反映当前双构建/本地词典优先方向；本导读以固定源码和现行架构约束为据。
+当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；学习中心入口仍未交付。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
+
+这轮先消除已交付文档与 main 的矛盾，不增加无关功能章。普通 pack/TFLex、旧 MDX/StarDict、共享合同、大界面入口及未解释测试/脚本继续留作缺口；仅提及名称或复核局部不计整文件完成。参考[变更记录](changes.md)和[覆盖清单](coverage.json)定位待复核文件。
+
 
 ## 建议目录
 
@@ -118,10 +125,11 @@ docs/code/
 
 下列信息来自当前仓库约定与架构文档，作为导读起点；不代表逐文件解读已完成。
 
-- 当前默认安装包与 opt-in WXT 路径并存；Content/MAIN/Worker 的加载边界需分别解释，不能假定全部已迁到同一bundler。
+- 当前默认安装包 dist/extension 与显式 .output/chrome-mv3 使用同一 WXT 引擎；Content/MAIN/Worker 仍精确 raw bridge，不能假定已变为普通 bundler ESM。
 - shared保持纯合同/纯函数，background协调消息和持久化，content负责页面/划词/字幕界面；根入口保持薄层。
 - 翻译缓存、独立ReadingRecord库、词典OPFS是不同数据边界。
 - 适合本地词汇检索的选段先查词典，AI详解显式触发；句子/不支持语言及无命中多词短语可走普通翻译。MDX/MDD走范围读取与受控渲染，不执行词典JS。
 - 现存测试数量和某个旧PR通过，不等于最新源码全部行为已验收。
 
-来源：[AGENTS.md](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)、[架构文档](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)、[贡献与验收流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/CONTRIBUTING.md)。
+来源：[AGENTS.md](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/AGENTS.md)、[架构文档](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/ARCHITECTURE.md)、[贡献与验收流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/CONTRIBUTING.md)。
+

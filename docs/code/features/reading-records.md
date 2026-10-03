@@ -1,35 +1,47 @@
-# Reading：冻结来源、可信授权与事务历史
+# Reading：明确查询、真实保存与事务历史
+
+> 后续主线提醒：本文的完整清单与解释固定于 d5246ca。此后 main b606cfd556792d9764d0b15461b7a142fcd99575 已合入 [#285 学习中心（#235）](https://github.com/CoderLambert/translateflow-plugin/pull/285)；新增 React 学习中心留待下一轮逐文件复核。下文“学习中心未启用/未交付”仅描述 d5246ca 基线，不代表最新 main。
+
 
 [首页](../README.md) · [逐文件说明](../modules/reading-records.md) · [已有划词来源链](selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`；2026-10-03 只读复核。运行、测试、构建、浏览器与实际下载全部 **NOT_RUN**。本章完成“已存在 Reading 后台能力”的解释闭环；不表示用户侧保存/学习中心已交付。
+当前产品链固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`；2026-10-03 只读复核。#234 已接通 Selection 的 production collector、结果存档与保存状态，不再是只有后台合同。真实学习中心 #235/跨页 Release A #236 与这一保存切片分开判断。
 
+本轮完整复读范围见[逐文件说明](../modules/reading-records.md)与[Selection 模块](../modules/selection.md)。下文后台事务/导出细节沿用 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整说明；清单逐项 blob 比对确认该后台目录既有文件未变，未重读部分仍保留旧源码身份，不冒充本轮审计。所有测试、构建、浏览器、实际下载 **NOT_RUN**。预构建产物选择见[构建与测试链](build-test-release.md)。
 
-> 2026-10-03 增量说明：本章运行时固定源码在main 86ed596中的blob未变。共享浏览器测试基础设施已切为复制预构建的明确产物，不再隐式构建；默认构建与默认本地E2E选择不同，实际运行请先读[构建与测试链](build-test-release.md)。旧测试链接只说明固定版本断言，不作为当前产物PASS；本轮运行NOT_RUN。
+## 1. 用户今天真正能走到哪里
 
-## 1. 先辨认用户今天真正能走到哪里
+- 仅选择文字/显示“译”chip 不产生 Reading BEGIN 或历史。用户点击自有 UI 后，controller 同步冻结来源并让 record-access 校验 isTrusted+uiHost 归属，production readingAccessCollector 现在实际存在。
+- 已开启且本站未排除：明确查询的可保存完成结果会自动进入 Reading 队列；基础本地命中/no-hit、普通翻译/缓存命中、已显示的 rich 摘要和 completed AI 有各自 artifact。
+- 尚未开启：只保留当前仍有效的一张有界结果卡，显示“在学习中心开启阅读记录/暂不”，不 BEGIN、不写历史。若后台政策已通过授权入口启用，focus/visible 重读后仅显示“保存本次结果”，还需本卡明确点击，使用新操作存现有结果，不重新调用 Provider。
+- 当前 runtime 默认 learningCenterAvailable=false，固定 learning-center.html 仍未启用；点击打开返回 NOT_READY，提示入口未就绪。#234 的首同意返回 E2E 使用 synthetic consent callback，不能声称真实新用户可在 production LC 完成开通。
+- CREATE_HANDOFF/CONSUME_HANDOFF 仍只有合同，service 最后返回 NOT_READY；Selection collector 也没有 detail intent 生产入口，不把后台可读方法等同已完成历史面板/回原文产品。
 
-普通划词已能冻结 SourceSnapshot、查本地词典及显式调用 AI；其来源与取消链复用[已有章节](../modules/selection.md#file-source-snapshot)。Reading 的 v2 路由、原生身份授权、独立 IDB 仓库、分页/管理/导出和失效通知已经在 main。用户侧到这些能力的产品连接仍有断点：
-
-- 当前 source-snapshot/controller 提供冻结来源/getQuerySource；没有 production `readingAccessCollector` 提供者，也没有完整 Reading begin/save 的 trusted 点击编排。missing collector 明确 NOT_READY，不偷偷记录普通查词。
-- Popup/Options 根脚本没有 Reading 消息调用。后台认可这两个固定页面的 entry scope，仅可请求“打开固定学习中心”，不能列库/导出/管理。
-- runtime 默认 `learningCenterAvailable=false`；`learning-center.html` 只有合同路径，不是已打包页面。因此固定打开仍 NOT_READY。
-- CREATE_HANDOFF/CONSUME_HANDOFF 已有 DTO/纯校验，但 service 没有完成对应 dispatch；不能称已具备“从学习中心回原文”的产品流程。
-- [#191 暂停检查点](https://github.com/CoderLambert/translateflow-plugin/issues/191#issuecomment-5965938250)及[#234 暂停说明](https://github.com/CoderLambert/translateflow-plugin/issues/234#issuecomment-5965941483)确认 #234/#235 未交付。旧局部组件记录和缺失未推源码不作为本章实施证据。
-
-这不是后台“空壳”：#267 对应的真实事务与分页导出源码已在main。但后台合同可用、合成入口能测、最终用户入口存在，是三件事。
+[#234 本地任务记录](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/state.json) 标 completed/PR #279/mergeHead 19edb542；旧暂停说明是历史状态，不再作为当前实现缺失的依据。source capture、可信动作、后台仓库和学习中心入口各有自己的交付边界。
 
 <a id="flow"></a>
-## 2. 从选择到记录的链路（在 UI 断点处分开）
+## 2. 从可信点击到保存 ACK 的实际链路
 
-1. **现有 source capture：** controller 点击时同步 capture Range、选文、bounded context与投影revision。snapshot.ready只对已经冻结的字符串计算source/block摘要，不在await后重读DOM。documentGeneration是本地证据标记，不能代替native sender。来源无法安全捕获/hash时可继续普通查词，不能因此把未知安全状态当可存。
-2. **尚缺 collector生产者：** 将受信用户动作、当前冻结source及已完成digest变成受控 pending intent。后台已有reader会用ISOLATED scripting定点挑战，检查nonce/action/record/operation；网页MAIN world自建同名对象或postMessage不能获得这一通道。
-3. **已有 v2入口：** router先截获所有reading.*（包括旧/未知）→runtime.service.handle→request schema→native access→Content policy预检→method scope→dispatch。它保留v2 envelope，不进旧router的普通错误包装。
-4. **已有注册/BEGIN：** REGISTER_DOCUMENT绑定native owner与受控documentGeneration。BEGIN核对page/source/safety，后台取真实title/安全回跳URL，hash请求身份；operation registry先占位再repository.prepareOperation。禁用返回disabled，启用才给ready/token。BEGIN不生成空ReadingRecord。
-5. **尚缺产品保存调用；已有保存处理：** 将完成的dictionary/translation或assistant artifact连token送SAVE/APPEND。service要求原source proof与registration一致，repository事务前hash；事务内再验consent/site/data/page/document/selection/record revision和TTL。
-6. **已有落盘/响应：** receipt、snapshot、artifact、record、page聚合、meta容量/代次在同一短事务提交。只有IDB oncomplete才算保存ACK；之后publish最小revision通知，service返回`{protocolVersion:2,ok:true,data:{state:"saved",recordId,revision,artifactId,duplicate}}`。最终UI保存反馈尚待#234，不能把这条响应臆写成当前按钮行为。
+1. **同步冻结与建立 intent。** controller 的 freezeQuery 捕获 Range/选文/bounded context/源 revision；source.ready 只对冻结字符串 hash。record-access.create 只接自有 UI 的可信 click，登记限时 operation。普通结果请求无需等待 digest；Reading 政策链则等 ready 再 REGISTER_DOCUMENT。
+2. **先注册、读政策。** record-client 并行读 GET_RECORDING_STATE/GET_SITE_RECORDING；未启用只 invite，排除站点 disabled 且不连失效 Port。production collector 在 ISOLATED challenge 返回匹配 nonce/action/record/operation 的冻结 proof；MAIN world 同名对象或 postMessage 没有此通道。
+3. **结果先可用，再存档。** model 把真实基础结果转 draft；translation-query 在缓存命中或 Provider→CACHE_STORE 完成并展示后回调；AI 仅保存 completed、实际发送的固定问题与显示答案。draft 校验、去重、最多八项，保存队列串行；结果展示与 Reading ACK 分别计状态。
+4. **BEGIN 延迟到真正 flush。** 已开启自动保存或显式 manual save 才 BEGIN。同位置明确重查可在 pageUrl/consent/site/sourceLanguage/位置证明都匹配时，经本页 summary 取当前 record revision 复用；不是只按单词合并。新位置新记录，BEGIN 本身不生成空 ReadingRecord。
+5. **后台授权与短事务。** reading.* 经 v2 DTO→native sender→collector proof→policy/scope→service dispatch；后台替换 caller title/return URL 为 native 值，operation registry 先占位，hash 在事务外。SAVE/APPEND 继续核同一 source/token，repository 事务末尾再查全部代次/TTL/record revision。
+6. **只在匹配 ACK 后显示 saved。** receipt/snapshot/artifact/record/page/meta 同一事务提交，IDB oncomplete 后才响应。client 校验响应及 artifactId/recordId，更新 saved/ref/revision；失 ACK 显示“保存确认中断”，可用原 token/artifact 重试，不能为重试再查词或再次调用 Provider。
 
-沿线核心文件：[access](../modules/reading-records.md#file-access) → [service](../modules/reading-records.md#file-service) → [operations](../modules/reading-records.md#file-operations) → [repository](../modules/reading-records.md#file-repository) → [write](../modules/reading-records.md#file-write) → [idb](../modules/reading-records.md#file-idb)。
+沿线：[record-access](../modules/reading-records.md#file-record-access) → [record-client](../modules/reading-records.md#file-record-client) → [access/service](../modules/reading-records.md#file-access) → [operations/write/idb](../modules/reading-records.md#file-operations) → [record-status](../modules/reading-records.md#file-record-status)。
+
+## 2.1 rich 显示摘要与 packVersion 为什么要一起追踪
+
+lookup controller 从实际 active pack 返回 packVersion。rich-details 的成功结果交 rich-result-renderer；折叠时只保留 pendingResult，真正展开并渲染后才 onDisplay。renderer 从安全 viewer 的 `.tf-rich-viewer` 取 textContent，纯文本退化取实际 fallback bodyText，输出 id/headword/packVersion/text，而非 rawRecord。
+
+model.readingRich 要求词典 id 匹配且有实际 packVersion，拒绝空/仅词头以及可疑 HTML、占位、资源 URL/路径模式，最后限制八行×240字符；provenance 标 local-rich-mdict、packId/packVersion/sourceEntryId。client 再严格校验整个 artifact。迟到 rich 以 rich:dictionaryId 去重，与基础结果用同一 lookup operation、不同 artifactId；它不是新查词计数，也不保存 MDX HTML、MDD、CSS 或文件路径。这里是有限安全投影，不承诺所有 PII 都能由正则识别。
+
+## 2.2 状态、用户恢复路径与取消
+
+invite→manual→saving→saved 分别表示未开通、已开通但还需本卡明确保存、等待保存、收到匹配 ACK；disabled/not-saved 不影响已有结果复制。版本不兼容提示刷新；陈旧 operation/record conflict/权限/容量等非可重试错误 blocked；STORAGE/QUOTA/INTERRUPTED 提供“重试保存”。已保存基础 artifact 后 rich 失败不会回滚基础记录，不能将 not-saved 文案解释为整个事务历史清空。
+
+关闭/新选择/源 mutation/离页会清临时 drafts、撤本地 intent；close 等在途 BEGIN 获得 token 后仍发实际 CANCEL_OPERATION。cancelled ACK 表示未提交，committed ACK 带已提交 record/revision，不能说关闭撤回了历史。晚 ACK 不得覆盖新卡或倒退已知 revision。focus/visible/失效通知重读政策；删除、暂停、站点排除或 source anchor 变化撤引用，viewed-only revision 可以前移而不改旧 token。unsupported anchor 保留已有快照也不会凭空获得同位置追加资格。
 
 ## 3. 三种身份与两种版本不能混为一谈
 
@@ -54,7 +66,7 @@ SourceSnapshot由snapshotId、选文、context、projectionVersion、sourceDiges
 
 ## 5. 一个失败与一个取消场景
 
-**暂停与迟到保存。** BEGIN成功→查词结果尚未到→管理页暂停（在未来产品入口或授权测试入口）提交consentGeneration+1→迟到SAVE进入。registration即使尚能查到，事务tokenCurrent也拒绝旧generation；没有半条snapshot/artifact或空record残留。普通查词Provider任务和Reading保存是不同取消域，本章没有声称Reading暂停自动取消原查询。
+**暂停与迟到保存。** BEGIN成功→查词结果尚未到→管理页暂停（当前后台管理调用；真实 LC UI 仍未启用）提交consentGeneration+1→迟到SAVE进入。registration即使尚能查到，事务tokenCurrent也拒绝旧generation；没有半条snapshot/artifact或空record残留。普通查词Provider任务和Reading保存是不同取消域，本章没有声称Reading暂停自动取消原查询。
 
 **取消与已提交结果竞争。** CANCEL_OPERATION进同一库readwrite序列，写receipt.cancelled。若此前没有commit，ACK为cancelled且record/revision为空；若此前保存已提交，ACK为committed并带原record/revision，不能显示“取消且已撤回记录”。service在真正ACK后才撤注册；失败或导航后的响应不能被UI当取消成功。按顺序取消后迟到写会被墓碑/代次挡住。
 
@@ -84,11 +96,13 @@ START同步占每owner1/global2的slot→仓库只读取得exportRevision与内�
 
 ## 8. 失效通知与隐私边界
 
-commit后publisher驱动reading.invalidate端口。每个消息发送前再读政策；Content只有pageRevision，学习中心是catalogRevision，另有data/consent代次，不含正文。导航立即断对应Port；pending native授权先reserve，导航barrier阻止迟到connect复活。通知发送失败不推翻已commit数据，未来消费者应focus/reconnect/restart时重读，而不能把Port当永不丢失事件日志。
+commit后publisher驱动reading.invalidate端口。每个消息发送前再读政策；Content只有pageRevision，学习中心是catalogRevision，另有data/consent代次，不含正文。导航立即断对应Port；pending native授权先reserve，导航barrier阻止迟到connect复活。通知发送失败不推翻已commit数据，消费者不能只信通知：当前 Selection 已在 focus/visible/每次明确查询重读政策，未来学习中心还需处理重连/重启重读，而不能把Port当永不丢失事件日志。
 
 “本地存储”不等于文本不敏感。Reading独立库保存选文、bounded context和完成答案；仅安全light DOM证据可入，private/未知身份拒绝，有限敏感host/path规则不能宣称识别所有私密页面。导出是可携带明文JSON，未来UI需清晰提示保存位置和共享影响。本章没有读取任何用户库、页面、词典私有正文或凭据。
 
 ## 9. 读代码得出的测试范围，不冒充本轮运行
+
+本轮新增静态证据是 production collector/client/model 的 VM 测试、translation-query/provenance/新旧注入列表测试，以及 selection-reading-record E2E。后者用真实随包 UI/collector 与后台 IDB，测试副本添加 synthetic LC、合成词典/localhost 权限；与下方旧合成 collector 的 native-access 测试不是同一层。#234 acceptance 记录 72fc8cdd 上的历史 PASS 与 7 SKIPPED，不能把它说成本轮 d5246ca PASS；[精确边界](../modules/reading-records.md#test-boundaries)。下方旧测试主题仍保留历史基线语义。
 
 - 纯合同/registry Node测试：DTO bounds、source/branch关系、代次、capacity、并发reservation/ACK，很多使用synthetic browser/repository。这证明断言设计，不替代真实IDB。
 - native access spec：真实浏览器sender/context、隔离world和Port导航；fixture注入collector/合成repository并启用测试页面，不证明产品trusted点击链。
@@ -98,13 +112,14 @@ commit后publisher驱动reading.invalidate端口。每个消息发送前再读�
 
 ## 10. 推荐阅读与最小修改入口
 
-先看[真实入口断点](#flow)和既有source-snapshot → policy/access/service → operations/write/idb → state/management/query/repository → exports/export-reader → subscriptions/shared契约。逐文件正文新增19个完整解释；其它共享合同、大入口和测试仍标局部，未据“被引用”算完整覆盖。
+先看[真实保存链](#flow)和既有source-snapshot → policy/access/service → operations/write/idb → state/management/query/repository → exports/export-reader → subscriptions/shared契约。原19文件历史解释保留；本轮新增三份 Reading Content 完整解释，并更新 Selection 的十三份当前文件节。其它共享合同、大入口和测试仍按实际复读/解释范围标局部或待复核，未据“被引用”算完整覆盖。
 
 - 记录为何拒绝：先定位稳定error code和access/policy/token generation，不放宽sender/incognito校验。
 - 保存计数/幂等：write + storage-state + operation registration，验证late rich/失ACK/删除竞态。
 - 列表和搜索：query + previews + index/cursor contract，避免UI拉全库detail。
 - 导出：先分清START/NEXT/EOF/FINISH/CANCEL，联动两种字节上限和真实消费者ACK。
-- 产品入口：#234/#235需独立已授权实现，不能在导读任务补代码；不得把本章“已有后台分支”改写为“点击即可完成”。
+- 产品入口：#234 保存切片已实现；#235 学习中心与 #236 跨页闭环仍不能凭该切片补算。本文只更新导读，不补业务代码。
 
 现有规范[reading-access-v1](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/reading-access-v1/README.md)开头仍写repository absent，是#232时期状态；main的runtime已默认装配真实repository，应以固定源码为当前事实。该规范也有旧的页删除receipt概述，当前management并未删receipts；已在逐文件节区分。
+
 

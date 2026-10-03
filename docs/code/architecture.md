@@ -1,12 +1,15 @@
 # 运行时总览与阅读地图
 
+> 后续主线提醒：本文的完整清单与解释固定于 d5246ca。此后 main b606cfd556792d9764d0b15461b7a142fcd99575 已合入 [#285 学习中心（#235）](https://github.com/CoderLambert/translateflow-plugin/pull/285)；新增 React 学习中心留待下一轮逐文件复核。下文“学习中心未启用/未交付”仅描述 d5246ca 基线，不代表最新 main。
+
+
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单及本地验收基线：`2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503`。以下运行时固定链接保留`d5e308a709c008acf6b277d466d020f13025bdca`，已说明运行时源码blob未变；浏览器测试基础设施变化以[构建章](features/build-test-release.md)为准。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置与Reading已实现后台链；大型依赖的内部覆盖以清单为准。
+当前清单固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮复核 Reading/划词增量、WXT 默认构建与本地自查流程；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
 
 ## 先区分五种运行环境
 
-1. **扩展后台 service worker**：默认 [background.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/background.js) 调用 [initializeBackground](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/index.js)；WXT [entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/entrypoints/background.ts) 复用同一函数。注册消息、快捷键、Reading端口/标签页/权限和安装启动事件。不能把浏览器启动事件当成每次 service worker 唤醒。
+1. **扩展后台 service worker**：仓库保留的 [background.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/background.js) 调用 [initializeBackground](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/index.js)；当前默认 WXT 包由 [entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/entrypoints/background.ts) 复用同一函数。注册消息、快捷键、Reading端口/标签页/权限和安装启动事件。不能把浏览器启动事件当成每次 service worker 唤醒。
 2. **扩展页面**：Popup/Options 是原生 HTML/CSS/JS；WXT 编译这些唯一源码。Popup负责用户入口；Options负责配置和导入。页面生命周期不同于后台，关闭Popup并不等于自动取消所有后台请求。
 3. **网页 ISOLATED Content**：classic脚本按清单顺序装配到 `globalThis.__TRANSLATE_FLOW_CONTENT__`；[content.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/content.js) 最后注册监听并启动界面功能。不能直接加入ESM import。
 4. **YouTube MAIN**：受限网页桥接，仅观察播放器自己的字幕响应；不承载任意后台能力。获取、仲裁、批处理和UI生命周期见[字幕功能章](features/youtube-subtitles.md)。
@@ -38,13 +41,13 @@
 ## 如何定位修改
 
 - “打开Popup或快捷键没有作用”：先读[启动功能章](features/extension-startup.md)，再检查注入、页面协议、受限URL和消息返回。
-- “新增Content模块”：按启动逐文件说明检查有序清单、bootstrap依赖与双构建产物；不要只创建文件。
+- “新增Content模块”：按启动逐文件说明检查有序清单、bootstrap依赖与同一 WXT 引擎的两个产物目录；不要只创建文件。
 - “改某个业务功能”：先从本页边界找到后台/Content/Worker归属，再进入对应功能章；尚未创建章节见首页待完成列表。
 - “源码更新了”：先用coverage中的固定blob比较；受影响文件标记待复核，连带复核调用方和返回UI，而非只改一个文件摘要。
 
 ## 当前缺口
 
-启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储、设置大入口和Reading共享合同局部依赖，以及构建测试仍待继续；Reading后台已有专章，但产品保存与学习中心入口仍缺。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+主要调用链已有正文；普通 pack/TFLex、设置大入口、Reading 共享合同局部依赖及专项测试/脚本仍待继续；Reading 显式保存已接通，学习中心入口仍未交付。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -54,7 +57,7 @@
 
 Rich词典详情是独立支路：获取词典卡→按展开状态懒查询→后台校验owner并读取→Content清洗→viewer；不阻塞或替换结构化主卡。换词/关闭先使本地session失效，再尝试后台取消；不能将取消消息已发送或allSettled结束当成全部底层读取确认停止。
 
-SourceSnapshot只是本次查询的内存证据，尚不等于Reading记录保存。拟议Oxford10新消息/样式/快照合同不属于本页固定main的已实现能力。
+SourceSnapshot 是查询内存证据，本身不自动保存；当前可信查询与显式保存另经 Reading 链处理，见[Reading](features/reading-records.md)。Rich 实际展示回调提供有界摘要与 packVersion，不能把未显示正文记为已展示。拟议Oxford10新消息/样式/快照合同不属于本页固定main的已实现能力。
 
 ## 词典从文件到展示的实际提交边界
 
@@ -91,23 +94,21 @@ Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；
 测试连接先保存表单，失败不回滚；测试成功不证明站点配置、翻译id完整性、流式和DOM可用。普通HTTP、SSE及本地模型分支的重试、格式检查和取消覆盖范围不同，不能用单一“自动重试/取消”概括。网页配置快照风险仍未修复；细节及测试缺口均为静态分析，NOT_RUN。
 
 
-## Reading后台合同与用户入口断点
+## Reading 从真实查询到显式保存
 
-[完整后台链与UI断点](features/reading-records.md) · [19个逐文件说明](modules/reading-records.md)
+[完整链](features/reading-records.md) · [逐文件说明](modules/reading-records.md)
 
-已冻结SourceSnapshot并不自动写历史。main已实现Reading v2原生身份授权、操作登记、独立IDB短事务、列表/管理/分块导出与失效Port；SAVE仅在真正commit后返回saved，取消ACK区分尚未保存与已提交事实。
+SourceSnapshot 不自动写历史。production readingAccessCollector 已接入可信查询，record-client 贯通 REGISTER/BEGIN/SAVE/APPEND，保存状态回到浮层；后台 v2 原生身份授权、操作登记、独立 IDB 短事务、列表/管理/分块导出与失效 Port 继续提供边界。SAVE 只有真正 commit 后返回 saved，取消 ACK 区分未保存和已提交。Rich 必须实际展示成功后生成有界摘要与 packVersion；AI/普通翻译和词典结果来源分别绑定，不能跨查询串写。
 
-生产readingAccessCollector及完整begin/save点击链尚缺，learningCenterAvailable默认false，固定学习中心打开仍NOT_READY；handoff合同不等于已实现回原文。测试注入的collector/页面与真实产品入口分开，不能把后台及合成测试当用户可用闭环。旧规范开头repository absent已落后于main，导读按固定源码说明。此轮未运行测试，不修改业务。
-
+learningCenterAvailable 默认仍 false；#235/#236 的学习中心/回原文产品不因 #234 保存链完成而自动交付。静态源码不是浏览器或 realOxford PASS，当前实现与待开发仍分开。
 
 ## 构建与验收消费的是哪份产物
 
 [完整链](features/build-test-release.md) · [逐文件正文](modules/build-test-release.md)
 
-main 86ed596仍以legacy作为默认构建/发行；本地test:e2e默认选已有WXT，两者不能混同。fixture不再自行build或fallback，先精确复制并记录原tree摘要，再允许列明的测试副本改动。sourceHead是声明而非构建证明；新包UI出现也不证明旧缓存Worker已替换，同ID升级需要实际激活及存储快照验证。
+默认 build:extension / validate 现由 WXT 生成、审计并复制到 dist/extension；build:extension:wxt 用同引擎输出 .output/chrome-mv3。E2E wrapper 默认仍选择已有 .output/chrome-mv3，测试默认安装包必须显式 TF_E2E_ARTIFACT=dist/extension。没有隐式 build/fallback，sourceHead 只是声明，须结合实际产物摘要与测试副本变动。
 
-共享fixture和CI变化已复核，前七章运行时固定源码仍一致；旧测试链接只说明当时断言，不代表当前包通过。构建输出包含递归清理，已知路径安全后续见本章，禁止将当前guard说成全面可靠。所有本轮运行、浏览器与发布均NOT_RUN。
-
+#278 路径安全已合入，staging/audit/输出边界复检不能简化为任意路径 rm。相同 ID 升级还需真实新 Worker 激活与存储连续性断言；本轮未运行构建或浏览器。所有限制和实际命令见构建章。
 
 ## Rich MDX/MDD持久读取内部链
 
@@ -122,9 +123,6 @@ MDX index Map无MDD式容量驱逐，MDD为序列化index字节LRU；不同层�
 
 [完整开发流程](features/local-task-acceptance.md) · [逐文件正文](modules/local-task-acceptance.md)
 
-新主线以docs/tasks中的合同/state/acceptance/review作为执行依据，11个Actions手动备用。freeze绑定候选，实际命令/日志与产物fingerprint、独审声明和依赖由gate核对；它不证明审核者独立、包必由该源码构建，也不替代产品/人工验收或实际分支保护。
+当前 docs/tasks 的合同/state/acceptance 是执行依据，review.md 可选记录自查或历史审核，11个 Actions 手动备用。freeze 绑定候选；gate 核对输入、依赖、真实命令日志和实际包指纹，不再强制模型独审，也不硬编码完整 validate。主 Agent 按真实 diff 自查，保留外部必需审查、人工验收和准确远端 head。
 
-Hook只记录有限事件，不自动改变状态、重试开发或确认完成。报告中命令/工具/阶段重叠不能相加当有效劳动，模型用量缺字段为UNKNOWN。当前workflow-local归档completed，产品234/248/path-safety仍paused、235/236blocked；静态状态描述不授予继续执行权限。新流程替代旧CI触发描述，浏览器与实际包安全要求不降低。
-
-
-本轮发布前同步主线2e7661文档增量：新实现候选仍做完整验收；纯文档和符合输入未变条件的元数据归档按新规范复用证据，不重复冻结/全量测试/模型审核，不降低任务或真实保护要求。
+Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效劳动，模型字段未知保留 UNKNOWN。index 中 workflow-local/234/path-safety completed，248 ready_to_sync，235/236 blocked；#284 默认切换代码已合入，归档索引不代表最新代码未落地。旧规范的暂停叙述按历史看待，不因此启动产品工作。本轮纯文档校对，不运行任何项目命令。

@@ -41,7 +41,7 @@
 调用者是浏览器与两个构建路径；输出是加载入口/权限能力约束。它不保证脚本一定能注入 Chrome 保护的页面。
 
 <a id="file-background-entry"></a>
-## background.js：默认包的薄 ESM 入口
+## background.js：保留的薄 ESM 入口源码
 
 [固定源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/background.js)
 
@@ -260,22 +260,11 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 该文件负责隔离容器，不决定 Quick Control 是否应显示，也不把正文译文放进 Shadow DOM。不能将开放 shadow 描述成安全沙箱或对页面完全不可见。
 
 <a id="file-wxt-config"></a>
-## wxt.config.mjs：opt-in 构建接线，不是第二套运行时
+## wxt.config.mjs：当前默认 WXT 接线（旧版细节以新章替换）
 
 [固定源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/wxt.config.mjs)
 
-顶部读取 root manifest，取出 manifest_version，其余传给 WXT；记录 reportDir 和 compiledChunks。导出 defineConfig：
-
-- imports:false 关闭自动 imports；modules 启用 WXT React 模块，但此配置本身不证明某 UI 已 React 化。
-- Vite build 的 JS/CSS target 都 chrome102，不输出 sourcemap。
-- 自定义 generateBundle 收集每个输出 fileName/type；chunk 额外记 imports、dynamicImports、去 ROOT 前缀后的 module id，供构建审计。
-- entrypoints:found 加入现有 Popup HTML 和 unlisted Options HTML，不复制第二份模板。
-- entrypoints:resolved 必须找到 popup，否则 throw；popup defaultTitle 取 manifest action 的本地化 title，与 HTML title 分开。
-- build:before 清 compiledChunks，避免上轮报告残留。
-- build:publicAssets 遇非空已有 assets 立即 throw；从 legacyAssetRoots/sourceClosure、Manifest locale 文件 closure、lexicalAssetFiles 取得精确允许列表。TRANSLATEFLOW_WXT_REQUIRE_LEXICON=1 传 requireLexicon；开发缺词典打印 warning。每项以 absoluteSrc/relativeDest 原路径加入 assets，再写 asset-map.json。
-- build:done 写 compiled-closures.json。
-
-文件操作只属于构建时间；不是在用户浏览器启动时扫描仓库。源码路径/lexical 描述符安全与 audit 的算法位于脚本 helper，本篇未完整解释，不能因为说明 config 就勾选那些脚本。也没有运行构建验证。
+本文件已经在 d5246ca 发生变化，旧启动版逐项说明已移交[当前完整构建配置说明](build-test-release.md#file-wxt-config)，不继续把旧 opt-in 配置当最新。当前 WXT 引擎同时服务 dist/extension 与 .output/chrome-mv3；读取 root manifest、编译 Popup/Options/后台、精确 raw bridge 与资源报告属于构建时行为，不在浏览器启动时扫描仓库。
 
 <a id="partial-files"></a>
 ## 只在启动边界解释的文件
@@ -300,7 +289,7 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 | [src/content/subtitles/sources/youtube.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/subtitles/sources/youtube.js#L40) | source 的 install bridge 回调 | MAIN/fallback/播放器事件完整链 |
 | [src/background/youtube-bridge.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/youtube-bridge.js) | sender tab 验证与专门 MAIN 注入 | 桥接协议安全与 MAIN 脚本 |
 | [scripts/build-extension.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/scripts/build-extension.mjs#L40) | 默认输出与allowlist；现已有[完整构建器说明](build-test-release.md#file-build-extension) | 本表保留启动切片历史范围，全局coverage以新正文为准 |
-| [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | 当前入口见[命令路由](build-test-release.md#package-routing)：test:e2e→run-e2e默认WXT，legacy需显式TF_E2E_ARTIFACT | 词典构建/认证脚本全部含义仍局部 |
+| [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | 当前入口见[命令路由](build-test-release.md#package-routing)：test:e2e→run-e2e默认WXT，dist/extension需显式TF_E2E_ARTIFACT | 词典构建/认证脚本全部含义仍局部 |
 
 测试引用同样不自动视为逐文件完成。详见功能篇测试矩阵：Node mock/源码结构断言、真实 Chromium、WXT artifact smoke、发布认证是不同证据。本文没有执行任何运行时验证；所有命令为后续复现入口，均 **NOT_RUN**。
 
@@ -313,7 +302,7 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 | 文件 | 修改会影响什么 | 最近的已读测试 / 尚缺验证 |
 | --- | --- | --- |
 | manifest.json | 浏览器入口、权限、命令、页面身份与最低版本 | [wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/wxt-assets.test.mjs) 的 Manifest 等价/负例；浏览器安装仍需 smoke |
-| background.js | 默认包能否立即连上后台 listener | 现[e2e.yml](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/e2e.yml)的legacy/WXT矩阵分别加载明确产物；本轮NOT_RUN，WXT单包结果不能代替legacy |
+| background.js | 保留入口能否立即连上后台 listener | 现[e2e.yml](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/e2e.yml)为旧历史矩阵；当前默认/显式输出均WXT，现行消费语义见构建章，本轮NOT_RUN |
 | entrypoints/background.ts | WXT worker 入口、module 类型、listener 注册时序 | npm run build:extension:wxt 与 npm run test:wxt:smoke；未见专门同步时序单测证据 |
 | src/background/index.js | 安装默认值、旧键清理、启动注册、Reading 生命周期接线 | [reading-runtime-storage.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-runtime-storage.test.mjs) 仅测下游懒存储；实际 onInstalled/onStartup 顺序和重复 initialize 需专门验证 |
 | src/background/commands.js | 快捷键投递、首次注入、taskId 保留与保护页行为 | [commands.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/commands.test.mjs)；真实快捷键权限另需 Chromium |
@@ -326,7 +315,7 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 
 当入口或监听器变化时，优先复核本页的同步注册、重复注入、缺依赖与失败恢复语义；当 CONTENT_SCRIPT_FILES 变化时同时复核手动注入、动态注册、WXT raw bridge。修改业务模块不能仅凭本启动篇更新就把该模块全量 coverage 标记完成。
 
-事实优先级：本固定 commit 的实际代码与当前架构约束优先于旧 README 的概括或历史验收数字。本页不是迁移计划，也不声称默认发行已切 WXT。
+事实优先级：本固定 commit 的实际代码与当前架构约束优先于旧 README 的概括或历史验收数字。本页保留未变入口的历史固定源码；默认发行现已切 WXT，当前构建配置以构建章为准。
 
 ## 后续阅读
 
@@ -336,3 +325,4 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 
 
 当前构建/测试共享基础设施的变动、实际包选择和未合入输出安全后续见[构建完整链](../features/build-test-release.md)。本页运行时旧固定引用的blob与main86ed596一致，不能由此推导新CI或浏览器已通过。之前列为局部的Provider、字幕与Reading模块已有后续正文，全局覆盖状态以coverage为准。
+

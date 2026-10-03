@@ -2,7 +2,8 @@
 
 导航：[阅读入口](../README.md) · [架构总览](../architecture.md) · [仓库地图](../repository-map.md) · [完整功能链](../features/selection-and-dictionary.md) · [前置启动模块](startup.md)
 
-> 固定 main 源码：`d5e308a709c008acf6b277d466d020f13025bdca`。2026-10-02 静态复核。代码、测试、真实 MV3/页面/词典/Provider 验证全部 **NOT_RUN**。
+> 2026-10-03 增量固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`：本轮完整复读 controller、popover、result-model、result-renderer、rich-details、ai-detail、empty-state、explain、explain-prompt、rich-mdict-lookup-controller，并新增 rich-result-renderer、translation-query、reading-result 三个完整文件节。Reading access/client/status 的完整解释在[Reading 模块](reading-records.md)。
+> 其余原有完整章节保留 `d5e308a709c008acf6b277d466d020f13025bdca` 历史源码身份；本轮未逐行重读，不能当当前完整审计。各节链接明确自己的 SHA，不统一重贴 main。代码、测试、真实 MV3/页面/词典/Provider 验证全部 **NOT_RUN**。
 > 完整解释按文件自身职责计算，不递归覆盖其子依赖；“读过/引用过测试名”不是测试文件完整解释。词典导入、sanitizer/CSS/资源、Provider/缓存全实现不在本章范围。
 
 <a id="coverage-index"></a>
@@ -10,9 +11,9 @@
 
 | 文件 | 锚点 | 状态 |
 | --- | --- | --- |
-| src/content/selection/selection.js | [file-selection](#file-selection) | 完整解释 |
-| src/content/selection/source-snapshot.js | [file-source-snapshot](#file-source-snapshot) | 完整解释 |
-| src/content/selection/context.js | [file-context](#file-context) | 完整解释 |
+| src/content/selection/selection.js | [file-selection](#file-selection) | 历史完整解释，未重读 |
+| src/content/selection/source-snapshot.js | [file-source-snapshot](#file-source-snapshot) | 历史完整解释，未重读 |
+| src/content/selection/context.js | [file-context](#file-context) | 历史完整解释，未重读 |
 | src/content/selection/controller.js | [file-controller](#file-controller) | 完整解释 |
 | src/content/selection/popover.js | [file-popover](#file-popover) | 完整解释 |
 | src/content/selection/result-model.js | [file-result-model](#file-result-model) | 完整解释 |
@@ -20,11 +21,11 @@
 | src/content/selection/rich-details.js | [file-rich-details](#file-rich-details) | 完整解释 |
 | src/content/selection/ai-detail.js | [file-ai-detail](#file-ai-detail) | 完整解释 |
 | src/content/selection/empty-state.js | [file-empty-state](#file-empty-state) | 完整解释 |
-| src/content/selection/messages.js | [file-messages](#file-messages) | 完整解释 |
-| src/content/selection/clipboard.js | [file-clipboard](#file-clipboard) | 完整解释 |
-| src/shared/selection.js | [file-selection-contract](#file-selection-contract) | 完整解释 |
-| src/shared/selection-explanation.js | [file-explanation-contract](#file-explanation-contract) | 完整解释 |
-| src/background/selection/resolve.js | [file-resolve](#file-resolve) | 完整解释 |
+| src/content/selection/messages.js | [file-messages](#file-messages) | 历史完整解释，未重读 |
+| src/content/selection/clipboard.js | [file-clipboard](#file-clipboard) | 历史完整解释，未重读 |
+| src/shared/selection.js | [file-selection-contract](#file-selection-contract) | 历史完整解释，未重读 |
+| src/shared/selection-explanation.js | [file-explanation-contract](#file-explanation-contract) | 历史完整解释，未重读 |
+| src/background/selection/resolve.js | [file-resolve](#file-resolve) | 历史完整解释，未重读 |
 | src/background/selection/explain.js | [file-explain](#file-explain) | 完整解释 |
 | src/background/selection/explain-prompt.js | [file-explain-prompt](#file-explain-prompt) | 完整解释 |
 | src/background/packs/rich-mdict-lookup-controller.js | [file-rich-lookup-controller](#file-rich-lookup-controller) | 完整解释 |
@@ -35,10 +36,20 @@
 | Provider/配置/缓存 | [partial-provider-cache](#partial-provider-cache) | 调用契约，仍待解释 |
 | 测试证据 | [test-boundaries](#test-boundaries) | 断言主题，仍待解释 |
 
-所有完整文件下方的源码链接绑定同一 commit、标明全文件行范围；函数名用于在该范围内定位。源码身份变更后需要复核，不以 main 浮动链接替换证据。
+本轮完整文件使用 d5246ca 固定链接，未重读的历史章节继续使用 d5e308a；函数名用于在全文件行范围内定位。完整解释仅计本文件职责，引用依赖不递归升为完整。
+
+| 本轮新增文件 | 锚点 | 状态 |
+| --- | --- | --- |
+| src/content/selection/rich-result-renderer.js | [file-rich-result-renderer](#file-rich-result-renderer) | 当前完整解释 |
+| src/content/selection/translation-query.js | [file-translation-query](#file-translation-query) | 当前完整解释 |
+| src/background/selection/reading-result.js | [file-reading-result](#file-reading-result) | 当前完整解释 |
+| src/content/selection/record-access.js、record-client.js、record-status.js | [Reading 产品模块](reading-records.md#file-record-access) | 当前完整解释，跨章不重复计数 |
+
 
 <a id="file-selection"></a>
 ## src/content/selection/selection.js
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 [固定源码 L1–L99](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/selection.js#L1-L99)。本节完整解释本文件；子依赖不随之计为完整。
 
@@ -52,6 +63,8 @@
 
 <a id="file-source-snapshot"></a>
 ## src/content/selection/source-snapshot.js
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 [固定源码 L1–L105](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/source-snapshot.js#L1-L105)。本节完整解释本文件；子依赖不随之计为完整。
 
@@ -68,6 +81,8 @@
 <a id="file-context"></a>
 ## src/content/selection/context.js
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 [固定源码 L1–L11](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/context.js#L1-L11)。本节完整解释本文件；子依赖不随之计为完整。
 
 **职责/API。** 极薄的 classic 兼容入口，要求 selectionSourceSnapshot 与 selection 已安装。captureSelectionContext(snapshot, options) 在无 range/text 时返回 {text:"", sensitive:false, source:"none", truncated:false}；正常优先返回 snapshot.sourceCapture.context，没有冻结捕获才现场调用 capture(snapshot,options).context。isSensitiveRange 委托 textProjectionPolicy.rangePolicy(...).sensitive。
@@ -78,6 +93,8 @@
 
 <a id="file-selection-contract"></a>
 ## src/shared/selection.js
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 [固定源码 L1–L216](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/selection.js#L1-L216)。本节完整解释本文件；子依赖不随之计为完整。
 
@@ -94,6 +111,8 @@
 <a id="file-resolve"></a>
 ## src/background/selection/resolve.js
 
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
+
 [固定源码 L1–L97](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/selection/resolve.js#L1-L97)。本节完整解释本文件；子依赖不随之计为完整。
 
 **职责/API。** resolveSelectionRequest(input={},deps={}) 是 SELECTION_RESOLVE 路由目标，也是 explanation 重新判定的入口。依赖可注入 getConfig/getEffectiveConfig/runLexicalLookup/assessLexicalLookup 便于纯测试；输入 text/pageUrl/context/depth/explainRequested，输出路由和可展示/解释的数据，不带 ok 包装（router 添加）。
@@ -107,26 +126,26 @@
 <a id="file-controller"></a>
 ## src/content/selection/controller.js
 
-[固定源码 L1–L420](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/controller.js#L1-L420)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L415](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/controller.js#L1-L415)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
-**职责/状态所有权。** selectionController.start 由 Content 组合启动；模块守卫检查 runtime/tasks/selection/context/popover/model/clipboard/messages/rich-details，只导出 start/getQuerySource。持有 started、activeSnapshot、activeTask、requestVersion、selectionTimer。start 幂等注册 mouseup/keyup/selectionchange、外部 pointerdown、Escape、scroll/resize，并连接 projection 与 rich lifecycle。常驻事件没有 stop API；dismiss 不是卸载模块。
+**职责/状态所有权。** selectionController.start 由 Content 组合启动；模块守卫检查 runtime/tasks/selection/context/popover/model/clipboard/messages/rich-details，只导出 start/getQuerySource。持有 started、activeSnapshot、activeTask、requestVersion、selectionTimer，以及 recordContext；可选创建 selectionRecordClient，并把其状态交 record-status。translation-query 工厂被注入 assertCurrent/showResult/onResult；旧注册列表缺新模块时只提示刷新，不偷偷走另一条翻译/记录路径。start 幂等注册 mouseup/keyup/selectionchange、外部 pointerdown、Escape、scroll/resize，并连接 projection 与 rich lifecycle；focus/visible 调 records.refresh，projection 改变和离页清 Reading reference，popstate/hashchange 还按完整 pageUrl 检查。常驻事件没有 stop API；dismiss 不是卸载模块。
 
-**从选择到任务。** 90 ms debounce 后 readSelection；没有新有效选择但已有快照时保留浮层。same text+sameRange+同页面只更新 rect；新选择取消旧 task/rich、增加版本、记录 selectionGeneration、watchPage，显示 chip。点击 freezeQuery 同步写 sourceCapture 与 selectedText；如果先 await 旧任务取消，再用 isFrozenCurrent 比对对象/捕获/修订，避免点击途中 DOM 改变还发新请求。beginTask 创建 total=1、surface=selection。
+**从选择到任务。** 90 ms debounce 后 readSelection；没有新有效选择但已有快照时保留浮层。same text+sameRange+同页面只更新 rect；新选择取消旧 task/rich、关闭旧 Reading context、清记录状态、增加版本、记录 selectionGeneration、watchPage，显示 chip。点击 freezeQuery 同步写 sourceCapture 与 selectedText；如果先 await 旧任务取消，再用 isFrozenCurrent 比对对象/捕获/修订，避免点击途中 DOM 改变还发新请求。beginTask 创建 total=1、surface=selection；可信 click event 原样传给 records.start，Reading 的 isCurrent 同时要求冻结 source 仍有效和完整 pageUrl 未变。只展示 chip 不 start Reading。
 
-**主分支与消息。** translateSnapshot 默认发 SELECTION_RESOLVE，local 需有 primaryMeaning，完成 task 后显示卡并异步 loadRich；translation 调 translateSelection；no-hit-local 显示 AI/普通翻译双动作空态并 loadRich；其他 unresolved 以 messages 显示错误，只有 lexical intent 才启动 rich。forceTranslation 直接普通翻译。translateSelection 以单项 id=selection 依次 CACHE_LOOKUP、TRANSLATE_BATCH、CACHE_STORE；缓存命中可结束，空译文/错误存储均失败。task 状态经过 translating/cache_lookup/storing，统计 cacheHits/apiTranslated。
+**主分支与消息。** translateSnapshot 默认发 SELECTION_RESOLVE，local 需有 primaryMeaning，完成 task 后显示卡并异步 loadRich；translation 调 translateSelection；no-hit-local 显示 AI/普通翻译双动作空态并 loadRich；其他 unresolved 以 messages 显示错误，只有 lexical intent 才启动 rich。forceTranslation 直接普通翻译。translateSelection 已提取到下述 translation-query，保留 cache→Provider→store 顺序。local/no-hit 分支在结果可用后把 model.readingDictionary 交 records.accept；ordinary translation 由 query 模块回调接入，基础查询与 Reading 保存互不冒充成功。loadRich 的 onDisplay 回调经 model.readingRich 后，以 rich:dictionaryId 为 key 追加。
 
-**AI 与复制。** explainSnapshot 再次冻结/建立 task、增加版本，取 context；baseCard 有 primaryMeaning 时只开 AI 附加区。SELECTION_EXPLAIN 返回 local/translation 且无 baseCard 时可显示对应结果；有 baseCard 时拒绝这种不再适配的增强。explained 必须有 generated.explanation；带 baseCard 仅合并 generatedMeaning/explanation 并更新复制动作，本地卡不覆写。copyAction 只在用户点击时 writeText，成功/失败 toast；结果出现不自动复制。
+**AI 与复制。** explainSnapshot 若当前 recordContext 与已冻结 source 仍匹配则复用 capture，否则重新冻结；建立 task、增加版本，取 context；baseCard 有 primaryMeaning 时只开 AI 附加区。SELECTION_EXPLAIN 返回 local/translation 且无 baseCard 时可显示对应结果；有 baseCard 时拒绝这种不再适配的增强。explained 必须有 generated.explanation；带 baseCard 仅合并 generatedMeaning/explanation 并更新复制动作，本地卡不覆写。已有卡由 records.assistant 用该次可信点击新建 assistant operation；无卡则 start(purpose=assistant)。只有真正 explained completion 才 model.readingAssistant→accept(APPEND)，本地结果和翻译回退不会伪装 assistant；之后 render 记录状态。copyAction 只在用户点击时 writeText，成功/失败 toast；结果出现不自动复制。
 
-**过期、取消与错误。** 每次后台 await 后 assertCurrent 先 tasks.assertActive，再验证 version、snapshot 引用、projection.revision 和页面身份；SelectionSupersededError 静默丢弃。explain catch 用完整 isCurrentSelection，主查询 catch 检查 snapshot 引用后显示失败。dismiss 取消 task/rich、清 activeSnapshot、watchPage(null)、递增版本、hide、恢复 quick-control。cancelActiveTask/cancelAiDetail 发取消但不等待返回就更新本地取消 UI；底层任务采取本地权威状态，不能据文案断言 Provider/缓存已回滚。rich 查询另有 session/request 屏障。
+**过期、取消与错误。** 每次后台 await 后 assertCurrent 先 tasks.assertActive，再验证 version、snapshot 引用、projection.revision 和页面身份；SelectionSupersededError 静默丢弃。explain catch 用完整 isCurrentSelection，主查询 catch 检查 snapshot 引用后显示失败。dismiss 取消 task/rich、close Reading context/清 record-status、清 activeSnapshot、watchPage(null)、递增版本、hide、恢复 quick-control。cancelActiveTask/cancelAiDetail 发取消但不等待返回就更新本地取消 UI；底层任务采取本地权威状态，不能据文案断言 Provider/缓存已回滚。rich 查询另有 session/request 屏障。
 
-**测试/改动。** selection-ui-contract 是源码模式断言，selection-multi-dictionary 是独立 rich 的 fake runtime，不能拼成整 controller 已浏览器通过。reading-text-projection 覆盖它依赖的源冻结/修订基础。改按钮触发、await 次序、版本号必须联动 task、projection、rich lifecycle；尤其 AI 增加 requestVersion 后旧 rich callback 也会过期。NOT_RUN。
+**测试/改动。** selection-ui-contract 是源码模式断言，selection-multi-dictionary 是独立 rich 的 fake runtime，不能拼成整 controller 已浏览器通过。reading-text-projection 覆盖它依赖的源冻结/修订基础。改按钮触发、await 次序、版本号必须联动 task、projection、rich lifecycle；尤其 AI 增加 requestVersion 后旧 rich callback 也会过期。缺 record client 时正常结果仍可显示，但状态提示阅读记录暂不可用；records.close 的保存取消 ACK 与普通 task 本地取消 UI 是独立语义。NOT_RUN。
 
 <a id="file-result-model"></a>
 ## src/content/selection/result-model.js
 
-[固定源码 L1–L207](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/result-model.js#L1-L207)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L244](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/result-model.js#L1-L244)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
-**职责/API。** 纯数据适配 classic 模块，导出 buildLocalResult/buildExplainedResult/buildTranslationResult/copyTextForCard；controller 消费，renderer 不负责挑选候选。
+**职责/API。** 纯数据适配 classic 模块，导出 buildLocalResult/buildExplainedResult/buildTranslationResult/copyTextForCard，以及 readingDictionary/readingTranslation/readingAssistant/readingRich；controller 消费，renderer 不负责挑选候选。
 
 **本地转换。** 优先 decision.candidates，否则 lookup.candidates；topCandidateId 只前移该候选，其余保持次序。无候选返回 null；本地 primary 从首 translation、最多两个 typeLabels、headword 依次退化。保留提供的 pronunciation/词性/domains/typeLabels 与其余 senses；最多五个 dictionaryEntries，每条保留 id/kind/事实/来源与 primary，moreEntryCount 记录余项。technical-concept/entity 标 technical。provenanceLabel 是简化显示标签（技术词条/本地词典/词典包 ID），不是新事实或信任认证。
 
@@ -134,29 +153,29 @@
 
 **复制与边界。** 多 dictionaryEntries 输出编号、词性/来源/领域/类型和逐条译法；单卡输出 primary+senses；随后附余项提示、generatedMeaning、explanation。uniqueText 去空去重，dedupeBadges 按 label 去重。没有异步/取消；输入缺失宽松退化，业务空卡错误由 controller 处理。
 
+**Reading artifact 适配。** readingDictionary 对明确 no-hit 保存 outcome=no-hit、空 definitions/provenance；hit 只取排名首候选，最多八条定义各240字符和四条 sourceRefs，要求 definitions/provenance 均非空。它不把 UI 最多五个候选全部存成同一权威结果。readingTranslation 只接受实际非空显示译文及后台 readingResult.provenance；没有结果来源则 null。readingAssistant 只取显示的 generatedMeaning/必要时 primaryMeaning 与 explanation，preserveLocal 避免把本地释义抄成 AI；固定 completed，新的 thread/turn/branch UUID、parent/regeneration=null，真实 userQuestion/action/targetLanguage/provenance 来自后台。这不是多轮 assistant 产品。
+
+readingRich 只消费 renderer 的实际已显示纯文本投影，要求 id 与 dictionary 相同、存在查询返回的 packVersion 和 string text。空摘要、仅词头、可疑 HTML/样式占位、file/sound/entry/http(s) 资源引用、Windows 路径或 /home/ 字样返回 null；最多八行×240字符，provenance 是 local-rich-mdict、dictionary.id、实际 packVersion、headword。不存 rawRecord/MDD/CSS/私有文件路径；这层模式过滤是有限防御，不能称全面 PII 检测。最后仍由 record-client 的 artifact validator 检查严格字段/容量。
+
 **测试/改动。** tests/selection-result-model.test.mjs 验证独立 senses、Core/Technical 分界、保留所给元数据、五项上限且不改排序。修改字段同时改 renderer/复制和解释合并逻辑，不能把 AI provenance 混入本地 badge。NOT_RUN。
 
 <a id="file-result-renderer"></a>
 ## src/content/selection/result-renderer.js
 
-[固定源码 L1–L420](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/result-renderer.js#L1-L420)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L205](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/result-renderer.js#L1-L205)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
 
-**职责/输出。** 注册 render/appendRichDictionaryDetails/appendRichDictionaryCards，由 popover 调用。render 清容器、接受字符串或结构化卡，设置 resultKind，先词头、再多候选或 compact meaning、最后来源 badges，返回 generatedMeaning/explanation 给独立 AI 区；全部普通字段以 textContent 构建。无任何内容时显示暂无结果。compact senses 最多五个，facts 最多六个，多候选保留编号、primary/kind、独立来源与未展开数量。
+**职责/输出。** 注册 render/appendRichDictionaryDetails/appendRichDictionaryCards，由 popover 调用。render 清容器、接受字符串或结构化卡，设置 resultKind，先词头/发音/词性，再多候选或 compact meaning、最后来源 badges，返回 generatedMeaning/explanation 给独立 AI 区。普通字段全用 textContent；无内容时显示暂无结果。compact senses 最多五个，facts 最多六个，多候选保持编号、primary/kind、独立来源和未展开数量；uniqueText 去空去重。无请求、存储或异步状态。
 
-**两种详情入口。** appendRichDictionaryDetails 是现存整批兼容入口，最多五本和三个错误。正常 controller 链使用 appendRichDictionaryCards：按有限数值 order 优先、再 sourceIndex 稳定排序，每本建立 details/summary/body；preferred 或 expandedByDefault 才默认 open。展示“你的首选·个人偏好”、独立 trustLabel/format。toggle 只在打开时回调 onLookup；模块本身不去重网络，由 rich-details 的 settled/inFlight 负责。
+**rich 分离与升级退化。** 两个 append 方法现在委托 selectionRichResultRenderer，不再拥有 rich card/sanitizer/viewer 逻辑。旧注册列表加载新字节但缺新 rich renderer 时，保留原结果并追加“扩展已更新，请刷新网页后查看详细词典释义”，分别返回 false/[]；不触碰 rawRecord，不自动请求词典，也不因缺模块使整个 Content 注册失败。
 
-**卡片状态。** 每张 card 暴露 isOpen/setLoading/setError/setEmpty/setResult；状态写 dataset、aria-live 文案。错误可有独立重试按钮并阻止冒泡。setResult 保存 pendingResult；关闭的卡仅显示已就绪，打开后 renderPendingResult，resultDisplayed 阻止重复 DOM 构建。这些节点/闭包随父容器移除释放；模块没有后台取消 API，关闭 details 本身不取消已经开始的读取。
-
-**不可信 rich 输入。** renderRichDictionaryRecord 从 raw richRecord 调 selectionRichSanitizer.sanitizeRichDictionaryRecord，仅 safeTree 存在且未 truncated 才 viewer.render，并传 dictionaryId 与 text 格式 preserveNewlines。任意异常/不支持/渲染未成功改用 viewer.renderPlainText 或 textContent fallback；不直接 innerHTML(rawRecord)。renderer 只负责调用这条边界，不能证明 sanitizer、CSS、资源与 viewer 全部实现安全，本章仍将这些依赖列为部分。
-
-**测试/改动。** selection-multi-dictionary 的 fake DOM 断言顺序/首选/展开、sanitizer 调用、resource dictionaryId、恶意标题保持文字；selection-ui-contract 对层级作源码断言。改延迟渲染、状态或 card 方法需同步 rich-details 与 popover，保持每本独立失败不覆盖主卡。NOT_RUN。
+**错误/清理/改动。** 缺 render 容器抛明确错误；容器清空负责释放当前 DOM，资源 closeAll 和请求取消归 popover/controller。不能把这个门面称为 sanitizer 全实现。selection-upgrade-registration 的 JSDOM 断言老列表/新字节与新列表两种能力窗口，selection-ui-contract 仍是源码模式；本轮 NOT_RUN。改字段同时复核 model、popover、split renderer 与新旧注入列表。
 
 <a id="file-popover"></a>
 ## src/content/selection/popover.js
 
-[固定源码 L1–L400](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/popover.js#L1-L400)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L399](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/popover.js#L1-L399)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
-**职责/依赖。** selectionPopover 管扩展自有 selection layer 的 DOM、按钮回调和位置；依赖 uiHost/uiPrimitives、selection、AiDetail、EmptyState、ResultRenderer。不是请求协调器。ensureUi 按需创建 chip 与非模态 role=dialog 面板，aria-modal=false；source/status/result/actions 分区，status/result aria-live=polite，close 将控制交给 controller。chip pointerdown.preventDefault 保住点击前选区；panel 安装交互隔离。
+**职责/依赖。** selectionPopover 管扩展自有 selection layer 的 DOM、按钮回调和位置；依赖 uiHost/uiPrimitives、selection、AiDetail、EmptyState、ResultRenderer。不是请求协调器。ensureUi 按需创建 chip 与非模态 role=dialog 面板，aria-modal=false；source/status/result/actions 分区，status/result aria-live=polite，close 将控制交给 controller。chip/explain/retry click 将原 event 交上层，Reading 才能验证 isTrusted 与 UI 归属；chip pointerdown.preventDefault 保住点击前选区；panel 安装交互隔离。
 
 **状态迁移。** showChip 绑定 translateHandler 并隐藏 panel；showLoading 清页面选区、清结果/AI/empty、显示 cancel、定位并下一帧 focus close；setLoadingStatus 只更新已有可见 panel。showResult 清旧动作，绑定 copy/可选 explain，调用结构化渲染，再交 AI 部分展示生成字段。showError 清结果、显示 retry/可选 explain；showEmpty 清按钮并委托 emptyState。showAiDetailLoading/Result/Error/Cancelled 只操作附加区，隐藏主 explain 按钮；成功可更新复制 handler，不重绘本地主卡。
 
@@ -167,11 +186,11 @@
 <a id="file-rich-details"></a>
 ## src/content/selection/rich-details.js
 
-[固定源码 L1–L315](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-details.js#L1-L315)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L317](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/rich-details.js#L1-L317)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
-**职责与状态。** 导出冻结的 load/cancel/dispose(cancel 别名)/bindLifecycle。持有模块级 lookupQueue、runningLookups（上限 3）、activeSession、文档 owner token、路由 watcher。session 包含 snapshot/version/expectedPage/isCurrentSelection、cancelled/cancelPromise、每词典 lookupStates 和 queued/inFlight/pending 集合。controller 在主结果完成后调用 load；新 session 先取消旧 session。
+**职责与状态。** 导出冻结的 load/cancel/dispose(cancel 别名)/bindLifecycle。持有模块级 lookupQueue、runningLookups（上限 3）、activeSession、文档 owner token、路由 watcher。session 包含 snapshot/version/expectedPage/isCurrentSelection/onResult、cancelled/cancelPromise、每词典 lookupStates 和 queued/inFlight/pending 集合。controller 在主结果完成后调用 load；新 session 先取消旧 session。
 
-**列表/延迟读取。** load 发 VIEWER_LIST，只在 isLiveSession（当前引用、未取消、外层选择仍有效）且 ok 时交 popover 建卡，失败静默以免覆盖主结果。card 展开调用 lookupDictionary：非 ready 的元数据立即独立报有限错误码；正常每词典 inFlight/settled 去重，显式 retry 可重新查。每次新 requestId，派发 LOOKUP 携带本次选文、dictionaryId 与固定 Content 文档 token。返回必须 ok/无 errors、found 且 dictionary record ID 对卡；不匹配报错，无命中 empty，异常可重试。每次 await 后再次检查 live。
+**列表/延迟读取。** load 发 VIEWER_LIST，只在 isLiveSession（当前引用、未取消、外层选择仍有效）且 ok 时交 popover 建卡，失败静默以免覆盖主结果。card 展开调用 lookupDictionary：非 ready 的元数据立即独立报有限错误码；正常每词典 inFlight/settled 去重，显式 retry 可重新查。每次新 requestId，派发 LOOKUP 携带本次选文、dictionaryId 与固定 Content 文档 token。返回必须 ok/无 errors、found 且 dictionary record ID 对卡；不匹配报错，无命中 empty，异常可重试。每次 await 后再次检查 live。成功 card.setResult 的 onDisplay 再查 live，只有卡片真正展示后才把 displayed projection 与 dictionary 元数据交 session.onResult；后台响应到达、折叠卡预备完成都不是可保存显示结果。
 
 **队列与取消。** scheduleLookup 创建 Promise/job 并登记，drainLookups 只在全模块运行数<3时派发；旧 session 排队项直接 settle null。slot 在真正 action Promise finally 才递减，cancel 不伪造空闲槽。cancelSession 幂等：标 cancelled、清 active 与路由 timer，移除队列、settle 全部待处理 Promise，卡片标停止，再对 inFlight requestIds 发 LOOKUP_CANCEL(ownerToken)。allSettled 后返回 cancelled=requestIds.length>0；它没有检查后台确认值，故这是本地失效/尝试取消的结果，不是每个底层 read 已被 abort 的证明。旧底层返回也无法再写 live 卡。
 
@@ -182,20 +201,20 @@
 <a id="file-ai-detail"></a>
 ## src/content/selection/ai-detail.js
 
-[固定源码 L1–L144](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/ai-detail.js#L1-L144)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L143](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/ai-detail.js#L1-L143)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
 **职责/API。** create({container,onResize}) 缺 container 抛错；返回 reset/ensure/loading/success/error/cancelled，供 popover 管局部 AI 区，保留本地主卡。闭包只持有当前 section node；ensureNode 在旧节点已断开时重建，reset 移除并清引用。
 
-**展示。** render 每次 replaceChildren，dataset.state 与 aria-busy 标加载，idle 隐藏；固定“AI 详解”标题，success 增 AI 辅助 badge，并将 generatedMeaning/explanation trim 后以 textContent 展示。loading/error/cancelled 用状态文字，可根据函数参数生成“重试”/“取消”按钮及明确 aria label，每次结束调用 onResize。没有 Provider、缓存或词典写入；状态由外层驱动，不确认取消是否实际完成。
+**展示。** render 每次 replaceChildren，dataset.state 与 aria-busy 标加载，idle 隐藏；固定“AI 详解”标题，success 增 AI 辅助 badge，并将 generatedMeaning/explanation trim 后以 textContent 展示。loading/error/cancelled 用状态文字，可根据函数参数生成“重试”/“取消”按钮及明确 aria label；重试保留原 click event，每次结束调用 onResize。没有 Provider、缓存或词典写入；状态由外层驱动，不确认取消是否实际完成。
 
 **测试/修改。** selection-ui-contract 仅从源代码确认 controller 保留本地卡、AI 方法及 aria-busy/按钮标签。异常/空文字宽松退化，无内部 retry 次数/异步请求。调整 AI DOM 不应修改本地主卡的来源或 copy 内容，须联动 popover/controller/result-model；真实键盘与布局 NOT_RUN。
 
 <a id="file-empty-state"></a>
 ## src/content/selection/empty-state.js
 
-[固定源码 L1–L61](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/empty-state.js#L1-L61)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L60](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/empty-state.js#L1-L60)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
-**职责/API。** create 要求 container，返回 reset/show；popover 用它区别“未收录”与错误。show 先 reset、设置 container.dataset.resultKind=empty，新建 section、标题和消息，缺省为本地暂未收录；只有传入函数才生成 AI 详解/普通翻译按钮。均用 textContent 与 uiPrimitives.button，回调由 controller 授予。
+**职责/API。** create 要求 container，返回 reset/show；popover 用它区别“未收录”与错误。show 先 reset、设置 container.dataset.resultKind=empty，新建 section、标题和消息，缺省为本地暂未收录；只有传入函数才生成 AI 详解/普通翻译按钮。均用 textContent 与 uiPrimitives.button，click 回调转发原 event，由 controller/access 执行可信动作校验。
 
 **状态/失败/安全。** 唯一 node 随 reset 移除，reset 同时删除 resultKind；show 最后 onResize。无后台、存储、自动 fallback、取消或自行重试。缺 container 抛错，缺动作时仍可显示中性解释；不能把 storage/corrupt 错误交这里装成 miss。
 
@@ -203,6 +222,8 @@
 
 <a id="file-messages"></a>
 ## src/content/selection/messages.js
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 [固定源码 L1–L27](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/messages.js#L1-L27)。本节完整解释本文件；子依赖不随之计为完整。
 
@@ -212,6 +233,8 @@
 
 <a id="file-clipboard"></a>
 ## src/content/selection/clipboard.js
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 [固定源码 L1–L26](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/clipboard.js#L1-L26)。本节完整解释本文件；子依赖不随之计为完整。
 
@@ -223,6 +246,8 @@
 
 <a id="file-explanation-contract"></a>
 ## src/shared/selection-explanation.js
+
+> 历史章节：以下解释绑定 d5e308a；本轮未逐行重读，不升级为 d5246ca 当前完整复核。
 
 [固定源码 L1–L193](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/selection-explanation.js#L1-L193)。本节完整解释本文件；子依赖不随之计为完整。
 
@@ -239,24 +264,24 @@
 <a id="file-explain-prompt"></a>
 ## src/background/selection/explain-prompt.js
 
-[固定源码 L1–L33](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/selection/explain-prompt.js#L1-L33)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L36](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/selection/explain-prompt.js#L1-L36)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
-**职责/API。** buildSelectionExplainPrompt({targetLanguage,depth}) 返回系统 prompt 字符串；explain.runCompletion 使用。目标语言 String/trim 后回退 Simplified Chinese，depth 由 shared normalize，depthRule 分别给 professional/standard/concise/auto 的长短与歧义解释要求。
+**职责/API。** 导出固定问题 SELECTION_EXPLAIN_QUESTION="这里是什么意思？"、SELECTION_READING_PROMPT_VERSION="selection-explain-reading-v2"，buildSelectionExplainPrompt({targetLanguage,depth}) 返回系统 prompt 字符串；explain.runCompletion 使用。目标语言 String/trim 后回退 Simplified Chinese，depth 由 shared normalize，depthRule 分别给 professional/standard/concise/auto 的长短与歧义解释要求。
 
-**信任边界。** 明确输入 JSON 只作引用数据，不能改变规则；只解释所选词/短语和有界上下文/本地候选，禁止伪造 ID、词义、source/provenance，要求 explanation 与 translation 分离，保留技术标识；只输出协议三个字段，ID 可空但不得新增。不是执行页面指令，也不使用页面翻译 config.prompt。
+**信任边界。** 明确输入 JSON 只作引用数据，不能改变规则；明确回答 payload.userQuestion 的固定 understand 问题；只解释所选词/短语和有界上下文/本地候选，禁止伪造 ID、词义、source/provenance，要求 explanation 与 translation 分离，保留技术标识；只输出协议三个字段，ID 可空但不得新增。不是执行页面指令，也不使用页面翻译 config.prompt。
 
-**状态/错误/测试/改动。** 纯函数无状态、缓存/取消/网络，不自行验证模型结果，严格验证在 shared selection-explanation。selection-explain-runtime 断言专用 prompt 且不含页面 prompt；文本变化可能改变生成语义，必须审 SELECTION_EXPLAIN_PROMPT_VERSION/cache identity，不能只改文案而忘记缓存。NOT_RUN。
+**状态/错误/测试/改动。** 纯函数无状态、缓存/取消/网络，不自行验证模型结果，严格验证在 shared selection-explanation。selection-explain-runtime 断言专用 prompt 且不含页面 prompt；文本变化可能改变生成语义，必须同时审共享解释身份和 SELECTION_READING_PROMPT_VERSION/cache identity，不能只改文案而忘记缓存。NOT_RUN。
 
 <a id="file-explain"></a>
 ## src/background/selection/explain.js
 
-[固定源码 L1–L150](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/selection/explain.js#L1-L150)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L157](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/selection/explain.js#L1-L157)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
 **职责/状态。** runSelectionExplanationRequest 为 SELECTION_EXPLAIN handler，cancelSelectionExplanationRequest 被 CANCEL_TRANSLATION 共用路由调用。模块 requestsById Map 持 AbortController；输入 requestId 缺省 UUID，同 ID 新请求先 abort 旧请求；finally 仅在 Map 仍指本 controller 时删除，防旧请求清掉新请求。支持依赖注入 resolver/config/completion/cache 做测试。
 
-**请求链。** 先 resolve({explainRequested:true}) 再 assertActive；不需要 explanation 则返回 route/resolved/cacheHit:false/generated:null，不调用 Provider。否则取得页面 EffectiveConfig，用其 provider/model/apiBaseUrl/targetLanguage 和 resolver explanationInput 构造规范 payload/cache identity。candidateIds 来自最终 payload。
+**请求链。** 先 resolve({explainRequested:true}) 再 assertActive；不需要 explanation 则返回 route/resolved/cacheHit:false/generated:null，不调用 Provider。否则取得页面 EffectiveConfig，用其 provider/model/apiBaseUrl/targetLanguage 和 resolver explanationInput 构造规范 payload/cache identity。当前还以 [selection-explain-reading-v2, 固定实际问题, 旧 cacheKey] 再 SHA-256，避免旧 prompt 结果冒充固定问题答案；把 userQuestion 真正放入发给 Provider 的 payload。构造专用 systemPrompt 后以该 prompt 替换 config.prompt 计算 readingTranslationResult，附 action=understand、真实问题、sourceLanguage，并将 promptVersion 改为 selection-explain-reading-v2。candidateIds 来自最终 payload。
 
-**缓存与 Provider。** !payload.sensitive 才 lookupCache；命中也 parseSelectionExplainResult 重新校验 ID。miss 或 sensitive 调 completeJson({systemPrompt,payload,parseResult}, config,{signal})，成功后只缓存 selectedCandidateIds/explanation/translation，不写本地词典事实/provenance。response 把 generated、cacheHit/key、local decision/candidates 和 contextPolicy 分开。任何配置/缓存/协议/Provider错误上抛 router；无此层自动重试，不能把缓存损坏擅自当 miss。外部 HTTP/重试和 IndexedDB 细节留给相邻模块。
+**缓存与 Provider。** !payload.sensitive 才 lookupCache；命中也 parseSelectionExplainResult 重新校验 ID。miss 或 sensitive 调 completeJson({systemPrompt,payload,parseResult}, config,{signal})，成功后只缓存 selectedCandidateIds/explanation/translation，不写本地词典事实/provenance。response 把 generated、cacheHit/key、local decision/candidates、contextPolicy 和 readingResult 分开；cache hit 也返回同一当次配置计算的 Reading provenance。任何配置/缓存/协议/Provider错误上抛 router；无此层自动重试，不能把缓存损坏擅自当 miss。外部 HTTP/重试和 IndexedDB 细节留给相邻模块。
 
 **取消与提交边界。** await resolver/config/cache lookup/Provider/store 后检查 AbortSignal；cancel 找不到 id 返回 false，找到则 abort、删 Map 返回 true。store 已开始后再 abort 不能撤销写入；assertActive 可阻止成功回包，但不是事务回滚。sensitive 禁止本解释缓存读写，却仍允许显式请求发送选文与有限候选；后台清周边，不把全部请求都称无敏感数据。
 
@@ -265,11 +290,11 @@
 <a id="file-rich-lookup-controller"></a>
 ## src/background/packs/rich-mdict-lookup-controller.js
 
-[固定源码 L1–L147](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict-lookup-controller.js#L1-L147)。本节完整解释本文件；子依赖不随之计为完整。
+[固定源码 L1–L147](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/packs/rich-mdict-lookup-controller.js#L1-L147)。本轮全文件复读并完整解释；子依赖不随之计为完整。
 
 **职责/注入。** createRichMdictLookupController 接收 stateStore、lookup、assertSourceSize、loadIndex、sourceReader、clampUtf8Text，返回 lookupText/cancelLookup；rich-mdict manager 将其暴露为 lookup/lookupDictionary/cancelLookup。完整解释的是查询协调器，不含注入的 MDX 索引、解压、OPFS 实现。
 
-**检索与输出。** lookupText 规范 query/可选 dictionaryId，有 lookupIdentity 才 beginOperation 得 signal。read state 前后检查 abort；指定词典非 rich source 返回 NOT_INSTALLED，非 healthy 返回 UNAVAILABLE。遍历健康 rich packs，核对 snapshot、源大小、加载索引，再以 sourceReader(...signal)、index、text、signal 调 lookup，每步检查 abort。found 记录返回限长 title/headword/text 与 richRecord(rawRecord 按 UTF-8 字节限额、format、styleSheetRules)，可带 aliasTarget、受限 metrics。单本异常收集为 errors 而不抹去其他结果；AbortError/已 abort 立即传播，最终 found 由 dictionaries 是否非空决定。
+**检索与输出。** lookupText 规范 query/可选 dictionaryId，有 lookupIdentity 才 beginOperation 得 signal。read state 前后检查 abort；指定词典非 rich source 返回 NOT_INSTALLED，非 healthy 返回 UNAVAILABLE。遍历健康 rich packs，核对 snapshot、源大小、加载索引，再以 sourceReader(...signal)、index、text、signal 调 lookup，每步检查 abort。found 记录从 active snapshot 带出 packVersion，并返回限长 title/headword/text 与 richRecord(rawRecord 按 UTF-8 字节限额、format、styleSheetRules)，可带 aliasTarget、受限 metrics。单本异常收集为 errors 而不抹去其他结果；AbortError/已 abort 立即传播，最终 found 由 dictionaries 是否非空决定。
 
 **状态与竞态。** operationsByRequest 存 requestId/ownerKey/controller；重复活跃 ID 报 BUSY，ownerKey 不能为空、≤512、不能含控制符。cancel active 只允许 owner 相等并 abort；尚未派发时记录 tombstone，15 秒 TTL、最多 128，后续同 ID/owner beginOperation 消耗 tombstone 并 AbortError，不匹配 owner 拒绝。prune 在 begin/cancel 时执行，无后台 timer。finally 仅移除仍为本 operation 的 Map 项。
 
@@ -278,8 +303,44 @@
 **测试/修改。** rich-mdict-lookup-cancellation.test.mjs 包含 owner 隔离、cancel-before-dispatch、key range、decompression reader 与 OPFS Blob stream abort 测试；selection-content-owner 验证上游 owner。改 TTL/ID/owner 或 abort 检查位置需联动队列、router/API 和 range read，尤其取消结果不可作为删除词典/回滚导入授权。NOT_RUN。
 
 
+
+<a id="file-rich-result-renderer"></a>
+## src/content/selection/rich-result-renderer.js
+
+[固定源码 L1–L239](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/rich-result-renderer.js#L1-L239)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
+
+**职责/入口。** classic 模块独立注册两个 append 方法。旧批量 details 入口最多展示五本和三个错误，正常 controller 经 appendRichDictionaryCards 创建逐词典卡。按有限 order、再原位置稳定排序；每张 details 显示顺序、title、个人首选、trustLabel 与 format，preferred/expandedByDefault 默认展开。文字用 textContent，不把偏好当信任证明。
+
+**局部状态与延迟展示。** card 暴露 isOpen/setLoading/setError/setEmpty/setResult；dataset.state 和 aria-live 描述 idle/loading/error/empty/success。错误可生成独立 retry，并阻止事件冒泡。setResult 只保存 pendingResult；折叠时显示已就绪提示，展开时 renderPendingResult，resultDisplayed 保证一次构建和一次 onDisplay。toggle 仅打开时触发 onLookup，去重归 rich-details；收起不自行取消后台读取。闭包随父容器清理，不持有全局请求状态。
+
+**安全树与实际投影。** renderRichDictionaryRecord 先展示 headword；若有 richRecord/sanitizer/viewer，sanitize 得未 truncated safeTree 才 viewer.render，传 dictionaryId 和 text 格式 preserveNewlines。失败/异常退回 viewer.renderPlainText 或 textContent fallback。完成后读 body.shadowRoot 中 `.tf-rich-viewer` 的 textContent；无富文本成功展示时可用纯文本 bodyText。返回 {id,headword,packVersion,text} 给 onDisplay，绝不把 rawRecord 直接交 Reading。成功 rich 但拿不到 viewport 时 text=""，后续 adapter 拒绝保存，不能猜正文。
+
+**数据边界/测试/改动。** 此处不直接截成 Reading 字段，最终八行×240字符及风险过滤在 model.readingRich、严格 DTO 在 record-client；因此“已显示投影→有界存档”是跨文件链。packVersion 来自 lookup 返回的 active pack，而不是 UI 偏好元数据猜测。appendRichDictionaryDetails 兼容入口没有 onDisplay，不据其存在宣称必然记录。rich-viewer-contract 新增显示时机/投影断言（本轮只读相关部分），upgrade-registration 与 Selection Reading E2E 覆盖新模块装配和实际 rich summary。全部运行 NOT_RUN；sanitizer、CSS、MDD/Blob 内部仍由相邻章解释。
+
+<a id="file-translation-query"></a>
+## src/content/selection/translation-query.js
+
+[固定源码 L1–L64](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/content/selection/translation-query.js#L1-L64)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
+
+**职责/依赖。** classic 模块要求 runtime/tasks/result-model，create 注入 assertCurrent、showResult、onResult，返回 translateSelection(snapshot,task,version,expectedPage,queryRecord)。它是从 controller 提出的普通翻译路径，不新增第二套任务系统；任务、UI 状态及取消由既有调用方负责。
+
+**顺序和数据。** 状态 cache_lookup→CACHE_LOOKUP 单项 id=selection；命中 trim 后 completeTask(cacheHits=1)，构造/展示实际译文，再 onResult(queryRecord,readingTranslation(cached,lookup.readingResult))。miss 切 translating，TRANSLATE_BATCH 带 task.id；找到非空对应译文才切 storing，CACHE_STORE 原文/译文和当时 document.title。缓存写 ACK 后 completeTask(apiTranslated=1)，显示，再用 translated.readingResult 保存 artifact 来源；不会拿后来 CACHE_STORE 的配置替换已生成答案 provenance。
+
+**过期/失败/取消。** 每次消息 await 后注入 assertCurrent，响应错误抛 tasks.responseError；无译文也抛错。旧选区、缓存提交失败时既不展示完成也不发 Reading completion。模块没有内部 Map、自动重试、AbortController 或 Reading 开关，更不因保存失败再调用 Provider；外层捕获并控制 UI，Reading 接收之后有独立队列。selection-translation-query 的 fake runtime 三场景覆盖缓存命中、miss 顺序与 stale/写失败；本轮仅读源码、NOT_RUN。
+
+<a id="file-reading-result"></a>
+## src/background/selection/reading-result.js
+
+[固定源码 L1–L9](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/selection/reading-result.js#L1-L9)。2026-10-03 全文件复读并完整解释；子依赖不随之计为完整，所有运行 **NOT_RUN**。
+
+**职责/输入输出。** readingTranslationResult(pageUrl,config) 调缓存模块 getCacheContext，取 configHash，返回 targetLanguage 与 {provider,model,promptVersion:"translation-prompt-v1",providerConfigFingerprint:configHash}。router 在同次 translation/cache lookup 使用同一 EffectiveConfig；explain 传入专用 system prompt 后再改 promptVersion。
+
+**边界/失败/影响。** 不返回 endpoint、prompt、API key，不接触 Reading IDB、不发 Provider 请求、无自有状态/取消/容错；配置身份计算失败直接上抛调用链。fingerprint 是关联配置的摘要，不是答案真实性签名。reading-result-provenance 测试断言私密设置值不出现在 JSON 且 prompt 变化会改摘要；本轮 NOT_RUN。改字段必须联动 artifact 的 provider provenance 合同，不能把 URL 或原始配置当便于调试的附加字段。
+
 <a id="partial-router"></a>
 ## 部分：消息、pack API 与 rich manager
+
+本轮只补读 [router.js 的 TRANSLATE_BATCH/CACHE_LOOKUP 分支](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/router.js#L90-L156)：每个分支先取一份 config，同一 config 用于实际翻译/缓存查找和 readingTranslationResult；回包包含 readingResult。CACHE_STORE 仍另取配置，不承诺跨消息配置原子冻结。router 的其余职责和下列 pack API/manager 保留历史局部说明，整文件仍 partial。
 
 - [src/background/router.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/router.js)
 - [src/background/packs/api.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/api.js)
@@ -345,7 +406,7 @@
 <a id="test-boundaries"></a>
 ## 测试证据的计数边界
 
-功能章列出本轮已读断言主题和固定源码链接；所有运行 NOT_RUN。这些文件的 harness、fixture 构造、mock 范围与全部断言还没有各自完整说明，覆盖清单应保留待解释/局部说明：
+功能章区分历史断言主题与当前新增测试；所有运行 NOT_RUN。旧链接保留原 SHA，不代表本轮重新完整阅读。这些文件的 harness、fixture 构造、mock 范围与全部断言还没有各自完整说明，覆盖清单应保留待解释/局部说明：
 
 - [tests/selection-v2.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/selection-v2.test.mjs)
 - [tests/reading-text-projection.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-text-projection.test.mjs)
@@ -366,3 +427,10 @@
 本页局部引用的rich-sanitizer、rich-viewer、rich-resource-resolver已在[导入与展示模块](dictionary-import-render.md)提供完整文件说明；其他大型依赖仍以coverage状态为准。
 
 共用task、缓存库、Provider注册与请求取消的完整解释已接入[网页翻译与缓存模块](page-translation-cache.md)，Selection分支仍以本章为准。
+
+
+## 当前 #234 证据补充（仍为局部测试说明）
+
+已读完整的 [selection-record-client](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/selection-record-client.test.mjs)、[selection-translation-query](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/selection-translation-query.test.mjs)、[reading-result-provenance](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/reading-result-provenance.test.mjs)、[selection-upgrade-registration](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/selection-upgrade-registration.test.mjs)、[reading-classic-contract](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/reading-classic-contract.test.mjs) 与 [selection-reading-record E2E](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/selection-reading-record.spec.mjs)，但这里未逐文件解释全部 fixture/harness，coverage 不升级为完整。rich-viewer-contract 只读新增显示回调相关部分。
+
+VM/fake runtime、JSDOM 与真实 Chromium/原生 IDB 是不同证据：classic test 比对生成桥和 canonical validators；upgrade test 覆盖旧列表加载新字节时提示刷新，新列表注册 split modules；E2E 使用生产 collector/UI/后台，但学习中心 consent callback、词典和 localhost 权限是合成夹具。既有 #234 acceptance PASS 绑定 72fc8cdd，不能冒充本轮 d5246ca 运行。详见[Reading 测试边界](reading-records.md#test-boundaries)。

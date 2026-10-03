@@ -6,6 +6,8 @@
 
 ## 阅读方式与共同契约
 
+当前 Reading 的富文本实际展示回调/摘要/packVersion 见[划词逐文件说明](selection.md)与[Reading链](../features/reading-records.md)，不从旧 renderer 消费者描述推定尚未接通。
+
 先读 Options 入口与 preflight，再读 MDX/MDD controller → worker → 后台提交，最后接上前篇已经解释的 rich-details/lookup controller，阅读 sanitizer → viewer → resource resolver。下文“测试”指现有断言覆盖方向，均未运行；测试本身只登记局部阅读，不能算完整文件解释。
 
 本地文件保留在浏览器上下文内：File 发给模块 Worker；后台消息传身份、大小、摘要和提交元数据，不把整个文件转成 runtime message。后台从 OPFS 再读取核验；Content 收到的是有界词条或单个资源。UI 的兼容性检查、Worker 的 READY 和后台 active 指针写入是三个不同的完成点。
@@ -126,7 +128,7 @@
 
 源码：[src/content/selection/rich-sanitizer.js L1–134](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/content/selection/rich-sanitizer.js#L1-L134)。
 
-- **职责/调用方**：classic IIFE 幂等注册 selectionRichSanitizer；必须先有 tokenizer/style 模块。result-renderer 将 rawRecord/format/styleSheetRules 交 sanitizeRichDictionaryRecord；输出普通对象 AST {nodes,truncated}，不是可插入 innerHTML 的字符串。
+- **职责/调用方**：classic IIFE 幂等注册 selectionRichSanitizer；必须先有 tokenizer/style 模块。当前 rich-result-renderer（由 result-renderer 组合）将 rawRecord/format/styleSheetRules 交 sanitizeRichDictionaryRecord；输出普通对象 AST {nodes,truncated}，不是可插入 innerHTML 的字符串。
 - **算法**：先有界计算 UTF-8；输入/Compact 展开均 ≤512 KiB。非 HTML 按字面 Text 返回最多 64 KiB。HTML 将合规的 1–255 Compact marker 包成 span+对应 begin/end，再交同一 tokenizer，规则内 HTML 一样不可信。未知 marker 保留字面；rules 数量/ID 重复/类型/单片 4096 字节/总 64 KiB 任一失格即用空规则。
 - **降级/状态**：输入不能转字符串返回空 fallback；超限、解析 invalid/truncated 或展开溢出时 stripToPlainText，再 UTF-8 裁剪，不返回半棵未经说明的富文本树。limits 还约束节点8192、深度32、标签4096、属性2048、每标签属性32、资源8。所有中间状态按次调用创建，无持久化，无 async cancellation；外层选择会话控制过期结果。
 - **修改/测试**：不能改成浏览器 HTML parser 来“修复显示”；Compact 展开不是执行样式脚本。rich-dictionary-sanitizer 与 rich-viewer-contract 检查恶意标记、实体、未知 Compact 和预算；NOT_RUN。
@@ -277,3 +279,4 @@ retainCatalogResources 仅当旧新 curated mdxSha256 相同且资源所记 mdxF
 ## 后续内部链
 
 前述局部Rich MDX/MDD parser、资源策略、OPFS与manager现在有[完整内部说明](mdict-storage-internals.md)及[功能链](../features/mdict-storage-internals.md)。本章原固定源码引用与当前main相关blob一致，历史“局部”只描述本章范围；全仓完整状态以coverage为准，不重复计数。未执行真实词典或浏览器验证。
+

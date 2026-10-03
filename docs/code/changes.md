@@ -129,3 +129,14 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 回到普通pack/TFLex active OPFS索引读取及通用pack生命周期，连到结构化词典主卡。若主线再有实际运行时变化，先作影响增量核对；不因新的任务归档数量扩大重复研究，也不启动产品开发。
 
 发布前增量：主线又到2e7661（#282），仅3个规范文件变化，清单仍732。已读取完整diff并更新规范解释及当前blob；纯文档/符合条件归档的证据复用与新实现完整验收分开，不为本导读启动业务测试。其余新章脚本保留9bea固定引用。
+
+
+## 2026-10-03 主线 d5246ca 增量复核
+
+- 固定最新 main `d5246cae6469e4a876fc122b229a2e0ddf115709`，先读取当前 AGENTS、#275、导读 README/coverage，再逐项比较完整 recursive tree；750 blobs，新增18、变更52、删除0。
+- 本轮不增加无关功能章，优先修正已交付内容：默认 WXT 的 staging→audit→安全复制→dist/extension、显式 .output/chrome-mv3、E2E 选包/副本/原生升级与注册闭包；#278 路径安全已合入，非事务复制和竞态边界仍说明。
+- Reading #234 的真实 collector、可信查询、BEGIN/SAVE/APPEND、结果摘要与版本和 ACK/UI 状态已接通；Rich 只在实际展示成功后保存有界摘要/packVersion，学习中心仍未交付。不再说 production collector 或保存入口不存在。
+- local-task gate 不再读取 review.md，不强制模型独审或硬编码 validate；保留候选、真实日志、依赖、产物与外部/人工门槛。当前 index 的248 ready_to_sync 与 #284 已合入代码分开说明。
+- 187 个完整解释、534 个待解释、29 个待复核；局部正文 129 个（待解释中 112、待复核中 17），不计完整覆盖。完整解释要求实际重读与正文；任何变动而未完成全文复核路径保留待复核，旧固定链接标记历史范围。
+- README、总架构、启动与相邻 renderer 描述、地图、coverage 和双向链接同步；提交仅 docs/code/。文档身份、路径/锚点、清单计数与远端内容静态核验，不运行安装、构建、测试、浏览器、freeze/run/gate 或发布；全部运行 **NOT_RUN**，无 realOxford PASS 声明。
+- 下一步先按 coverage 清理待复核余项，再继续原有普通pack/TFLex与共享合同缺口；本轮不改业务、不启动其它开发任务。

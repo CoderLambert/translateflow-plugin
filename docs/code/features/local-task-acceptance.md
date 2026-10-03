@@ -2,13 +2,13 @@
 
 [逐文件说明](../modules/local-task-acceptance.md) · [构建与测试](build-test-release.md) · [首页](../README.md)
 
-源码清单固定于 main `2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503`（2026-10-03）。#280 迁移本地验收流程，#281归档其合入状态，#282进一步明确证据复用；不是恢复 Reading、WXT 切换或路径修复。本文仅静态阅读，全部运行验证 **NOT_RUN**，没有执行 freeze/run/gate、安装 hooks、修改配置或重跑归档测试。
+源码清单固定于 main `d5246cae6469e4a876fc122b229a2e0ddf115709`（2026-10-03）。#283 已移除强制模型独审，#284 允许按合同选择 scoped commands；历史审核保留原绑定。本文仅静态阅读，全部运行验证 **NOT_RUN**，没有执行 freeze/run/gate、安装 hooks、修改配置或重跑归档测试。
 
 ## 入口、参与者与结果
 
-这是开发工作流，不是扩展用户的翻译 task。协调者从 `docs/tasks/<id>/task.md` 和 `state.json` 读取范围、依赖及命令，提交候选后调用 `scripts/local-task.mjs`。结果是与 candidateHead 关联的本地命令证据、实际包身份和审核绑定，最终允许协调者考虑代码同步；没有自动 PR、合并、发布或产品验收。
+这是开发工作流，不是扩展用户的翻译 task。协调者从 `docs/tasks/<id>/task.md` 和 `state.json` 读取范围、依赖及命令，提交候选后调用 `scripts/local-task.mjs`。结果是与 candidateHead 关联的本地命令证据和实际包身份，最终允许协调者考虑代码同步；没有自动 PR、合并、发布或产品验收。
 
-职责链：合同/状态 → 冻结候选 → 实际命令与日志 → 可选实际包指纹 → 真实独立审核 → 索引及 gate → 人工协调代码同步。旁路 `task-execution` 只观察阶段/工具和耗时；hook 不推进状态。
+职责链：合同/状态 → 冻结候选 → 实际命令与日志 → 可选实际包指纹 → 主 Agent 自查 → 索引及 gate → 人工协调代码同步。旁路 `task-execution` 只观察阶段/工具和耗时；hook 不推进状态。
 
 ## 1. 合同与状态只保留一个事实来源
 
@@ -16,7 +16,7 @@
 
 这里的箭头是协调规范，脚本没有自动状态机，也不验证所有中间转移。`finish pass` 是记录器的声明结果，`mark task_complete` 是生命周期事件；二者都不会把 state 变为 completed。completed 还要求真实 main 合入及任务所有要求完成，必须保留 mergeHead。
 
-[当前索引](../modules/local-task-acceptance.md#file-task-index)中 workflow-local 已 completed；234、248、path-safety 仍 paused，235/236 blocked。历史 completed 任务的导入记录不能等价为当前 main 的新验收。
+[当前索引](../modules/local-task-acceptance.md#file-task-index)中 workflow-local、234、path-safety 已 completed；248 的归档状态仍为 ready_to_sync（默认切换代码已在 #284 合入），235/236 blocked。索引状态可能晚于真实合入，不能只凭 ready_to_sync 否认已合入代码。历史 completed 任务的导入记录不能等价为当前 main 的新验收。
 
 ## 2. 为什么先提交再冻结
 
@@ -28,7 +28,7 @@ candidateHead 是待测源码；syncHead 是以后归档证据的提交。允许
 
 ## 3. 实际执行与失败证据
 
-`run <task> -- <argv>` 只允许与 state 中某条 argv 数组完全相同的命令，用 shell:false 启动，不能把任意 shell 文本当已批准命令。对新实现候选，完整 `npm run validate` 必需；浏览器/词典/升级测试按实际合同增加，validate 自身仍不包括它们。
+`run <task> -- <argv>` 只允许与 state 中某条 argv 数组完全相同的命令，用 shell:false 启动，不能把任意 shell 文本当已批准命令。`load` 只要求非空合法 argv 列表，不再硬编码完整 `npm run validate`。规范要求开发/修复按 diff 定向验证，PR 后合入前完成一次适用完整验收；已有有效结果仅补失败及受影响项，不因冻结/提交重跑。浏览器/词典/升级范围按合同，validate 自身仍不包括它们。
 
 stdout/stderr 同时转交终端并写入本地独立 UUID.log，hrtime.bigint 测单调耗时。只有 exitCode=0、无 signal、日志完整、执行前后输入未变，才记录 PASS；缺 executable、非零退出、信号终止、日志超过 64 MiB/写失败、命令中源码变化都不能成为 PASS。checks 追加记录，gate 对每种要求选最后一次，不能拿旧成功掩盖后一次失败。
 
@@ -36,17 +36,17 @@ stdout/stderr 同时转交终端并写入本地独立 UUID.log，hrtime.bigint �
 
 SIGINT/SIGTERM 在 POSIX 转发给该命令自己的进程组；Windows 仅直接子进程。转发信号是请求，不是保证任意程序退出；没有强杀升级，也不能靠记录一个 Interrupt 宣称已取消。最终 check 依真实进程结果，缺结束记录不能推定成功。
 
-## 4. 包与独立审核绑定同一候选
+## 4. 包绑定候选，自查与历史审核分开
 
 任务要求实际包时，构建后使用 artifact 子命令读取 `dist/extension` 或 `.output/chrome-mv3`。它递归排序文件、逐文件 SHA-256、拒绝符号链接/非普通文件并要求 manifest 存在，保存树 fingerprint；gate 重算一致才接受。它不构建、不清理、不验证 Manifest 全合同，也不证明包一定由 candidate 源码生成。两种产物根的含义见[构建章](build-test-release.md)。
 
 特别注意：local-task fingerprint 与 E2E inventoryArtifact 都叫 treeSha256，但串行化不同；local-task 用换行连接且末尾没有换行，E2E 每项末尾都有换行，遍历排序实现也独立，不能直接比较或互换。详见[指纹公式](../modules/local-task-acceptance.md#fingerprint-boundary)。
 
-真实未参与实现的 dev_reviewer 审查 candidate 和实际 diff，再写 review.md 机器注释。gate 只解析 task、candidateHead、PASS、role=dev_reviewer、independent=true；无法验证是谁写的、模型/权限是否正确或审核是否真的独立。人工产品验收、limitations、补充证据和 reviewer 真实运行记录仍须协调者核对，不能以 JSON 布尔值替代独审。
+当前 gate 不读取 review.md，不要求 role=dev_reviewer 或 independent=true。主 Agent 对照准确候选、实际 diff 和任务验收自查；review.md 可选保存自查或历史审核，不能把自查改称独审。#283 之前的真实审核归档保留原 candidateHead，不倒灌成新提交通过。实际远端必需审查、产品和人工验收仍须满足。
 
 ## 5. gate 成功之后仍要正确同步
 
-gate 要求 state/acceptance/review 同一候选、fresh index、每个 dependency completed 且 mergeHead 是本地 origin/main 祖先、全部最后一次命令通过且日志 hash 相等、所需实际包存在/一致、审核声明通过、当前 status=ready_to_sync。它返回 candidateHead 和当前 HEAD 作为 syncHead，只读 Git，不 push/merge。
+gate 要求 state/acceptance 同一候选、fresh index、每个 dependency completed 且 mergeHead 是本地 origin/main 祖先、全部最后一次命令通过且日志 hash 相等、所需实际包存在/一致、当前 status=ready_to_sync。它返回 candidateHead 和当前 HEAD 作为 syncHead，只读 Git，不 push/merge。
 
 协调规范接着要求：推送授权分支、核对准确远端 head=syncHead、受保护 squash 时绑定 expected head；真实保护/必需审查/人工验收不因本地 gate 消失。合并后 fetch，核对 main tree 与同步 tree，写真实 mergeHead/completed；状态归档走以后受审同步，不直接向 main 推元数据。
 
@@ -64,11 +64,11 @@ gate 要求 state/acceptance/review 同一候选、fresh index、每个 dependen
 
 ## 测试与最小修改入口
 
-[local-task tests](../modules/local-task-acceptance.md#test-local-task)用临时 Git 仓库覆盖候选/归档、隐藏磁盘变更、日志缺失/篡改、审核声明、依赖、包和手动入口；[记录器 tests](../modules/local-task-acceptance.md#test-task-execution)覆盖隐私、并发、迟到 Post、未知结果、时钟回退和 POSIX 后代进程中断。它们是源码断言，本轮 NOT_RUN，不是产品验收。
+[local-task tests](../modules/local-task-acceptance.md#test-local-task)用临时 Git 仓库覆盖候选/归档、隐藏磁盘变更、日志缺失/篡改、无强制审核记录、scoped commands、依赖、包和手动入口；[记录器 tests](../modules/local-task-acceptance.md#test-task-execution)覆盖隐私、并发、迟到 Post、未知结果、时钟回退和 POSIX 后代进程中断。它们是源码断言，本轮 NOT_RUN，不是产品验收。
 
 改任务要求从 state/合同入手并重新冻结；改门槛看 local-task 与负例；改观察字段同时看 recorder/report/hooks/privacy tests；改命令/产物查看 package、构建章与真实合同。不要为导读创建第二套 task card 或运行任何验收命令。
 
 
-## 发布前增量：纯文档和归档不重复整套实现流程
+## 当前复用边界
 
-main2e7661只修改AGENTS/CONTRIBUTING/LOCAL_WORKFLOW，没有修改脚本。当前规范要求先判断实际diff与有效证据：纯文档校对路径、命令、语义和交叉引用；符合当前任务四类元数据白名单且源码/合同/机器要求不变的归档复用原candidate验收与独审，不改绑旧结论。合并前归档仍走gate；合并后只更新completed记录时，核对原sync与真实merge tree、祖先与输入/index，不把completed改回ready_to_sync强行过门槛。白名单外变化、缺失证据或新风险停止复用。涉及安全/权限/验收规则的文档改变仍按影响审核，实际保护和人工门槛保留。
+纯文档只校对实际 diff、路径、命令、状态和交叉引用；符合当前任务四类元数据白名单且源码/合同/机器要求不变的归档复用原候选证据。主 Agent 自查，不自动调用第二轮模型。合并前归档仍走 gate；合后 completed 记录核对原 sync 与实际 merge tree/祖先/输入/index，不将 completed 改回 ready_to_sync 骗门槛。机器命令范围变化必须重新绑定合同，不能通过删要求隐藏 FAIL。本轮只写导读，没有运行上述命令。
