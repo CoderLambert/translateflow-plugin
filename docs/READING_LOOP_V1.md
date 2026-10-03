@@ -4,6 +4,10 @@ Code-side source of truth for #230 and Release A of #229. Product evidence and t
 
 ## Scope and compatibility
 
+Selection consumes the canonical `src/shared/reading/` contract through a generated, self-contained classic script (`src/content/reading-contract.js`). `node scripts/reading-contract-classic.mjs` regenerates it using the locked Vite toolchain; its Node regression compiles the canonical source again and rejects stale output. The Content runtime retains its ordered classic loading path, without ESM imports, React, external resources or a second handwritten schema. Only the build-time projection entry imports the shared modules.
+
+Translation/cache responses carry `readingResult` from the same Effective Translation Config as the actual result. Its provider fingerprint reuses the existing cache config digest; endpoint, prompt and credentials are not returned. Selection Explain records its actual fixed understand question and complete displayed answer. Its changed prompt/question uses a new cache namespace; prior cache rows are preserved and cannot masquerade as results of the changed prompt.
+
 Release A delivers explicit query → consent → committed local record → React learning center view/search/pause/delete/export (#236). Existing dictionary, Provider, cache, subtitles and Node regressions remain independent. Cache hits from a **current explicit query** may produce a record; scanning cache never creates history. Viewing history reads snapshots only: no Provider, dictionary reload or lookup increment.
 
 Shared modules under `src/shared/reading/` are pure ESM. Content remains classic scripts; #231/#234 use the existing loader/bridge rather than importing ESM into Content. #233 owns a separate ReadingRecord repository and its precise storage/check/documentation exception. This task does not open a database, change cache schema, add permissions or install a framework. Records are never put into the translation/selection cache.

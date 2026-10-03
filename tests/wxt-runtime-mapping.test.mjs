@@ -21,8 +21,11 @@ test("a legitimate new resource is required for new closure but cannot be demand
   const old = preSwitchRuntimeMapping;
   const paths = new Set(["manifest.json", "background.js", ...Object.values(old.extensionPages),
     ...old.contentScripts, ...old.contentStyles, ...Object.values(old.workers), ...old.mainFiles]);
-  const future = { ...mappingForGeneration("current"), contentScripts: [...mappingForGeneration("current").contentScripts, "src/content/new-approved-resource.js"] };
+  const current = mappingForGeneration("current");
+  const future = { ...current, contentScripts: [...current.contentScripts, "src/content/new-approved-resource.js"] };
   assert.doesNotThrow(() => assertRuntimeMapping(paths, manifest, old));
+  assert.throws(() => assertRuntimeMapping(paths, manifest, current), /reading-contract/u);
+  for (const resource of current.contentScripts) paths.add(resource);
   assert.throws(() => assertRuntimeMapping(paths, manifest, future), /new-approved-resource/u);
   paths.add("src/content/new-approved-resource.js");
   assert.doesNotThrow(() => assertRuntimeMapping(paths, manifest, future));

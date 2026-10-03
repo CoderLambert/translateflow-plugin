@@ -197,10 +197,48 @@
     )];
   }
 
+  function readingDictionary(resolved, selectedText) {
+    if (resolved?.routeReason === "no-hit-local") return { kind: "dictionary", targetLanguage: "zh-CN",
+      payload: { outcome: "no-hit", headword: selectedText, phonetic: "", partOfSpeech: "", definitions: [] }, provenance: [] };
+    const candidate = orderedCandidates(resolved)[0], limits = app.modules.readingContract?.READING_LIMITS;
+    if (!candidate || !limits) return null;
+    const definitions = uniqueText(candidate.translations).slice(0, limits.dictionaryEntries).map((s) => s.slice(0, limits.definitionChars));
+    const p = candidate.provenance;
+    const provenance = (p?.sourceRefs || []).slice(0, limits.provenanceEntries).map((ref) => ({
+      sourceId: ref.sourceId, packId: p.packId, packVersion: p.packVersion, sourceEntryId: ref.recordId }));
+    if (!definitions.length || !provenance.length) return null;
+    return { kind: "dictionary", targetLanguage: "zh-CN", payload: { outcome: "hit", headword: candidate.headword,
+      phonetic: String(candidate.pronunciation || ""), partOfSpeech: String(candidate.partOfSpeech || ""), definitions }, provenance };
+  }
+  function readingTranslation(text, result) {
+    if (!result?.provenance || !text) return null;
+    return { kind: "translation", targetLanguage: result.targetLanguage, payload: { text }, provenance: result.provenance };
+  }
+  function readingAssistant(card, result, { preserveLocal = false } = {}) {
+    if (!result?.userQuestion || !result.provenance || !card.explanation) return null;
+    const answer = [card.generatedMeaning || (!preserveLocal && !card.dictionaryEntries?.length ? card.primaryMeaning : ""), card.explanation].filter(Boolean).join("\n");
+    return { kind: "assistant", targetLanguage: result.targetLanguage, provenance: result.provenance,
+      payload: { userQuestion: result.userQuestion, assistantAnswer: answer, action: result.action,
+        threadId: crypto.randomUUID(), turnId: crypto.randomUUID(), parentTurnId: null, branchId: crypto.randomUUID(),
+        regenerationOf: null, completionStatus: "completed" } };
+  }
+  function readingRich(record, dictionary) {
+    const limits = app.modules.readingContract?.READING_LIMITS;
+    // The optional renderer hook projects actual displayed safe text, never the raw rich payload.
+    if (!limits || record?.id !== dictionary?.id || !record.packVersion || typeof record.text !== "string") return null;
+    const summary = record.text.trim();
+    if (!summary || summary === record.headword || /(?:<\/?[a-z]|`\d+`|(?:file|sound|entry|https?):\/\/|(?:[A-Za-z]:\\|\/home\/))/iu.test(summary)) return null;
+    const definitions = summary.split("\n").filter(Boolean).slice(0, limits.dictionaryEntries).map((s) => s.slice(0, limits.definitionChars));
+    return { kind: "dictionary", targetLanguage: "zh-CN", payload: { outcome: "hit", headword: record.headword,
+      phonetic: "", partOfSpeech: "", definitions }, provenance: [{ sourceId: "local-rich-mdict", packId: dictionary.id,
+        packVersion: record.packVersion, sourceEntryId: record.headword }] };
+  }
+
   app.modules.selectionResultModel = Object.freeze({
     buildLocalResult,
     buildExplainedResult,
     buildTranslationResult,
-    copyTextForCard
+    copyTextForCard,
+    readingDictionary, readingTranslation, readingAssistant, readingRich
   });
 })();

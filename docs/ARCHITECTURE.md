@@ -28,6 +28,7 @@ content scripts -> messages -> background router
 3. 翻译缓存 IndexedDB 仅由 `src/background/cache-db.js` 直接访问；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。其它 Reading 后台模块调用唯一 adapter，Content 与扩展 UI 只能走后台 v2 消息，不能直接或间接引入 adapter。两库不互相迁移或清空；词典 OPFS 独立。
 4. 动态 Content Script 注册只能位于 `src/background/auto-sites.js`。
 5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
+   Reading 的 Content 接口由 `scripts/reading-contract-entry.mjs` 从唯一纯共享合同生成 `src/content/reading-contract.js`，按现有 classic 顺序注册；生成一致性由 Node 回归检查，不在 Content 手写第二套 DTO/校验规则或运行时导入 ESM。构建投影不引入 React 或新的浏览器能力。
 6. Runtime message value 必须集中定义。
 7. 权限属于公共 API，不能在普通重构中扩大。
 8. API 调用和缓存读写必须基于同一个 Effective Translation Config。

@@ -110,6 +110,10 @@ test("Selection explanation marks recompute as explicit and can enhance a suffic
   assert.equal(result.route, "explained");
   assert.equal(result.depth, "concise");
   assert.equal(providerCalls, 1);
+  assert.equal(result.readingResult.userQuestion, "这里是什么意思？");
+  assert.equal(result.readingResult.action, "understand");
+  assert.equal(result.readingResult.provenance.promptVersion, "selection-explain-reading-v2");
+  assert.equal(JSON.stringify(result.readingResult).includes(config.apiKey), false);
 });
 
 test("Selection explanation uses its own prompt and stores only generated fields", async () => {
