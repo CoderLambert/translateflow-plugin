@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "workflow-local",
-  "status": "ready_to_sync",
+  "status": "blocked",
   "owner": "main",
   "dependencies": [],
   "branch": "chore/local-task-workflow",
@@ -16,5 +16,17 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "本地验收/独审通过。用户关闭仓库自动 PR Review 后，按本地 gate 与 expected-head 创建聚焦迁移 PR 并 squash；main tree 核对后更新 completed，替代旧流程 PR276/277。"
+  "nextAction": "用户关闭自动 PR Review 后，将本卡设 ready_to_sync、生成index、提交元数据并重跑gate；创建迁移PR，核对remote head后 guarded squash。fetch核对main tree与同步tree，记录mergeHead/completed。合入后处理被替代PR276/277，不启动产品任务。",
+  "blockers": [
+    {
+      "kind": "external_setting",
+      "reason": "用户确认仓库 Codex 自动 PR Review 尚未关闭；为避免额外模型审查，暂不创建或更新 PR。",
+      "requiredAction": "用户关闭该仓库自动 PR Review 后告知；无需修改全局 Codex 配置。"
+    }
+  ],
+  "localGate": {
+    "result": "PASS",
+    "syncHead": "b092c1fe3d0233a299d920267f16ab2e77d14e4c",
+    "evidence": "docs/task-execution/local/gate-pass.json"
+  }
 }
