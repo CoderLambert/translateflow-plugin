@@ -69,5 +69,15 @@
     "真实 Chromium 覆盖了有效 host access、目标 tab/Content 一次性消费、marker 开关和零 Provider 调用；权限拒绝/撤销、redirect、删除/暂停/排除、代际变化、TTL 与 worker restart 由生产服务/Node 测试覆盖，未通过浏览器站点控制 UI 逐项手工操作。",
     "Chrome 102、Edge、Firefox、Safari、隐身窗口和商店发布 NOT RUN；本任务没有修改最低版本、Manifest 权限或发布状态。"
   ],
-  "decision": "LOCAL_CANDIDATE_PASS"
+  "decision": "TASK_237_PASS",
+  "mainRecognition": {
+    "mergeHead": "c91f0e6d160e323f5a3a7504a919910107794885",
+    "syncHead": "44d53e6fad5731d431eaa05983a19c2d4315b331",
+    "pr": 288,
+    "mainTree": "d8892d8b2ce6fb8ae03cbc6a270f105a945c53c7",
+    "syncTreeEqual": true,
+    "sourceTestsBuildContractInputsUnchanged": true,
+    "method": "expected-head squash merge followed by fetched origin/main tree equality",
+    "scope": "task 237 handoff and site marker intent only; tasks 238 and 239 remain separate"
+  }
 }

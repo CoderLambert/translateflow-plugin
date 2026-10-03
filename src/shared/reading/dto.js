@@ -14,7 +14,7 @@ const fields = {
   [M.DELETE_RECORD]: ["recordId", "expectedRevision"], [M.DELETE_PAGE]: ["pageKey"],
   [M.CLEAR_RECORDS]: ["expectedDataGeneration"], [M.EXPORT_START]: [],
   [M.EXPORT_NEXT]: ["exportId", "cursor"], [M.EXPORT_FINISH]: ["exportId", "sequence"],
-  [M.EXPORT_CANCEL]: ["exportId"], [M.OPEN_LEARNING_CENTER]: [],
+  [M.EXPORT_CANCEL]: ["exportId"], [M.OPEN_LEARNING_CENTER]: ["recordId"],
   [M.GET_SITE_RECORDING]: ["siteKey"],
   [M.SET_SITE_RECORDING]: ["siteKey", "excluded", "expectedSitePolicyRevision"],
   [M.GET_SITE_MARKERS]: ["siteKey"], [M.SET_SITE_MARKERS]: ["siteKey", "enabled"],
@@ -66,6 +66,7 @@ function body(method, value) {
   if (method === M.DELETE_PAGE) return { pageKey: pageKey(value.pageKey, "request.pageKey") };
   if (method === M.CLEAR_RECORDS) return { expectedDataGeneration: integer(value.expectedDataGeneration, 1, Number.MAX_SAFE_INTEGER, "request.expectedDataGeneration") };
   if (method === M.CONSUME_HANDOFF) return { handoffId: id(value.handoffId, "request.handoffId") };
+  if (method === M.OPEN_LEARNING_CENTER) return value.recordId === undefined ? {} : { recordId: recordId(value.recordId, "request.recordId") };
   if (method === M.CANCEL_OPERATION) return { operationId: id(value.operationId, "request.operationId") };
   if (method === M.REGISTER_DOCUMENT) return { documentGeneration: id(value.documentGeneration, "request.documentGeneration") };
   if ([M.GET_SITE_RECORDING, M.GET_SITE_MARKERS].includes(method)) return value.siteKey === undefined ? {} : { siteKey: siteKey(value.siteKey, "request.siteKey") };

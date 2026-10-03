@@ -23,3 +23,7 @@ PASS。学习中心现在可以从已保存记录发起受控回访；后台重�
 ## 未验证
 
 任务 238/239、Chrome 102 与其它浏览器、真实站点控制 UI 的逐项拒绝/撤销操作、隐身窗口、商店/发布均 NOT RUN；这些不由本候选宣称通过。无已知任务内 FAIL/BLOCKED。
+
+## 合入后核对
+
+PR #288 已按远端准确 head `44d53e6fad5731d431eaa05983a19c2d4315b331` squash 合入；实际 mergeHead 为 `c91f0e6d160e323f5a3a7504a919910107794885`。fetch 后 `origin/main^{tree}` 与 syncHead tree 均为 `d8892d8b2ce6fb8ae03cbc6a270f105a945c53c7`，远端任务分支已删除。GitHub classic protection返回未保护且 effective rules 为空，没有必需人工审核门槛。源码、测试、任务合同与构建输入未变化，因此不重复完整验收；state 记录 completed，后续进入 238。

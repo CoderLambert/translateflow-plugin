@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "task": "237",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "236"
   ],
-  "branch": "feat/237-reading-site-handoff",
-  "worktree": ".worktrees/issue-237",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2",
-  "mergeHead": null,
+  "mergeHead": "c91f0e6d160e323f5a3a7504a919910107794885",
   "validationCommands": [
     [
       "npm",
@@ -30,5 +30,8 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "候选 8fa9e8a 完整验收与主 Agent 自查通过；提交验收归档、执行本地 gate 后推送并建立受保护 PR。"
+  "nextAction": "PR #288 已按准确 head squash 合入，main tree 与验收归档 tree 一致；继续依赖任务 238。",
+  "syncHead": "44d53e6fad5731d431eaa05983a19c2d4315b331",
+  "pr": 288,
+  "result": "TASK_237_PASS"
 }
