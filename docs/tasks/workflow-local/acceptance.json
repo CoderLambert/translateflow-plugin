@@ -1,10 +1,32 @@
 {
   "schema": 1,
   "task": "workflow-local",
-  "candidateHead": null,
-  "checks": [],
+  "candidateHead": "fa875420607f184bb85f4fc0da0732318a44d4ed",
+  "tree": "612d5b15ef7b354d607a517f407f7d38daefc147",
+  "inputTree": "7ec26dbadf75d5fa340fd8ec6ed9ffe0cf18480c149a6a4526eb83038a288448",
+  "frozenAt": "2026-10-03T09:02:04.347Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "fa875420607f184bb85f4fc0da0732318a44d4ed",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 44590.602854,
+      "startedAt": "2026-10-03T09:02:04.539Z",
+      "log": "docs/task-execution/local/workflow-local/6725974c-3ea6-47fa-b498-c7c29069f16c.log",
+      "logSha256": "96960560eb8112d23acdeb169d4064ee4dd3af39f36373fd2005793c3e5d6f6f"
+    }
+  ],
   "artifact": null,
-  "limitations": [
-    "NOT RUN for current candidate."
-  ]
+  "limitations": []
 }

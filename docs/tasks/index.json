@@ -143,7 +143,7 @@
     },
     {
       "task": "workflow-local",
-      "status": "working",
+      "status": "reviewing",
       "dependencies": [],
       "branch": "chore/local-task-workflow",
       "candidateHead": null

@@ -19,7 +19,7 @@
 
 1. 读本地任务卡，核对 Git 修改、分支、worktree、HEAD；按需要一次 fetch，不读取每日 GitHub 状态。独立工作区先确认，共享文件单一写入者；保留已有修改。
 2. 开发中运行受影响测试。已有记录工具的 start/stage/finish 继续使用，事件只是观测；不为每个普通步骤额外调用模型。实际命令不重复嵌套 wrapper。
-3. 将候选源码、任务合同和初始状态提交，工作区 clean，然后冻结：
+3. 将候选源码、任务合同和初始状态提交，工作区 clean，确认 HEAD 包含 origin/main，然后冻结（脚本拒绝遗漏 main 提交）：
 
    ```bash
    node scripts/local-task.mjs freeze workflow-local
@@ -63,7 +63,7 @@ gate 核对源码/合同、干净输入、索引、已合入依赖、每项最�
 2. 核对准确远端 head，与 syncHead 相等；使用 `gh pr merge --squash --match-head-commit <syncHead>`。不使用 admin bypass、强推或直接向 main 推实现。实际保护/必需审查/人工验收仍有效；若需远端 CI 的保护尚未正式迁移，合并 BLOCKED，不忽略失败或未运行检查。
 3. 合并后 fetch，确认 origin/main 的 tree 等于预期 syncHead tree，记录真实 mergeHead。completed 状态和归档记录在本地更新；随下一次受审代码同步提交，不能为写状态直接向 main 推送。
 
-11 个 Actions 保留为 workflow_dispatch 手动备用，现有 inputs/jobs/验证断言不变。手动运行由明确需求触发，不把普通开发回退成远端等待。自动 Codex/其它 PR review App 与 Actions 分离；GitHub 代码 API 不提供该 App 用户级开关。无法核对/关闭时明确 UNKNOWN/待用户在对应仓库 App 设置关闭自动 review，不修改全局 Codex 配置。
+11 个 Actions 保留为 workflow_dispatch 手动备用，现有 inputs/jobs/验证断言不变。手动运行由明确需求触发，不把普通开发回退成远端等待。自动 Codex/其它 PR review App 与 Actions 分离；本轮可用接口未核对到该 App 开关。无法核对/关闭时明确 UNKNOWN/待用户在对应仓库 App 设置关闭自动 review，不修改全局 Codex 配置。
 
 ## 事件与统计
 

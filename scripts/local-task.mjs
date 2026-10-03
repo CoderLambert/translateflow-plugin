@@ -60,6 +60,7 @@ function contract(root, task, head) {
 function ensureCandidate(root, task, acceptance, state) {
   requireValue(acceptance.task === task && SHA.test(acceptance.candidateHead), "Candidate not frozen");
   const head = git(root, "rev-parse", "HEAD");
+  git(root, "merge-base", "--is-ancestor", "origin/main", head);
   git(root, "merge-base", "--is-ancestor", acceptance.candidateHead, head);
   requireValue(acceptance.tree === git(root, "rev-parse", `${acceptance.candidateHead}^{tree}`), "Candidate tree mismatch");
   requireValue(acceptance.inputTree === inputTree(root, task, acceptance.candidateHead) && acceptance.inputTree === inputTree(root, task, head), "Code or task contract changed; freeze and verify again");
@@ -96,6 +97,7 @@ export function freeze(root, task) {
   const { p, state } = load(root, task);
   requireValue(!git(root, "status", "--porcelain"), "Commit the candidate before freezing");
   const head = git(root, "rev-parse", "HEAD");
+  git(root, "merge-base", "--is-ancestor", "origin/main", head);
   const acceptance = { schema: 1, task, candidateHead: head, tree: git(root, "rev-parse", `${head}^{tree}`), inputTree: inputTree(root, task, head), frozenAt: new Date().toISOString(), environment: { node: process.version, npm: execFileSync("npm", ["--version"], { cwd: root, encoding: "utf8" }).trim(), browser: "NOT RUN" }, checks: [], artifact: null, limitations: [] };
   save(root, relative(root, p.acceptance), acceptance);
   event(root, task, "candidate_frozen", { candidateHead: head });

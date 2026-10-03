@@ -56,6 +56,12 @@ test("candidate requires committed clean inputs; later tracked, staged and untra
   f.git("add", "scratch.js"); assert.throws(() => gate(f.root, "234"), /Uncommitted/u);
   f.git("commit", "-m", "new code"); assert.throws(() => gate(f.root, "234"), /Code or task contract changed/u);
 });
+test("freezing refuses a clean branch missing a real current main commit", (t) => {
+  const f = fixture(t);
+  const newMain = f.git("commit-tree", f.git("rev-parse", "HEAD^{tree}"), "-p", "HEAD", "-m", "main progressed");
+  f.git("update-ref", "refs/remotes/origin/main", newMain);
+  assert.throws(() => freeze(f.root, "234"));
+});
 test("task contract and frozen required checks cannot be weakened by metadata archive", async (t) => {
   const f = fixture(t); await ready(f);
   const s = f.load("docs/tasks/234/state.json"); s.dependencies = ["233"]; f.save("docs/tasks/234/state.json", s);

@@ -260,8 +260,10 @@ test("requires the authoritative #198 parent and #207 certification manifest ide
   assert.ok(wrongParent.failures.some((failure) => failure.includes("authoritative parent Issue")));
 });
 
-test("workflow runs the aggregate only for a ready scope and uploads sanitized summaries only", () => {
-  assert.match(certificationWorkflow, /docs\/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE\.json/u);
+test("manual workflow runs the aggregate only for a ready scope and uploads sanitized summaries only", () => {
+  assert.match(certificationWorkflow, /^  workflow_dispatch:/mu);
+  assert.doesNotMatch(certificationWorkflow, /^  (?:push|pull_request):/mu);
+  assert.match(certificationWorkflow, /base_sha:[\s\S]*?required: true/u);
   assert.match(certificationWorkflow, /if: steps\.ecosystem-scope\.outputs\.ready == 'true'/u);
   assert.match(certificationWorkflow, /hashFiles\('tests\/rich-mdict-lookup-cancellation\.test\.mjs'\)/u);
   assert.match(certificationWorkflow, /hashFiles\('scripts\/measure-rich-lookup-cancellation-baseline\.mjs'\)/u);

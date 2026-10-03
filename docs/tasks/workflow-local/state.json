@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "workflow-local",
-  "status": "working",
+  "status": "reviewing",
   "owner": "main",
   "dependencies": [],
   "branch": "chore/local-task-workflow",
