@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "238",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "237",
@@ -9,7 +9,7 @@
   ],
   "branch": "feat/238-reading-return-location",
   "worktree": ".worktrees/issue-238",
-  "candidateHead": null,
+  "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -17,5 +17,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/reading-return-location.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "实现唯一精确 anchor resolver、目标页历史卡与聚焦真实 Chromium 验收。"
+  "nextAction": "候选 e02b7c0 完整验收与主 Agent 自查通过；提交归档并执行本地 gate 后推送 PR。"
 }

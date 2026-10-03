@@ -99,13 +99,13 @@
     },
     {
       "task": "238",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "237",
         "231"
       ],
       "branch": "feat/238-reading-return-location",
-      "candidateHead": null
+      "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a"
     },
     {
       "task": "245",
