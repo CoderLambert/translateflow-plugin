@@ -64,6 +64,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
     try { url = new URL(sender.url); } catch { fail(E.FORBIDDEN, "sender.url"); }
     if (url.protocol === "chrome-extension:" && url.hostname === browser.runtime.id) {
       const learningCenter = url.pathname === `/${READING_LEARNING_CENTER_PATH}`;
+      if (learningCenter && sender.url.includes("#") && !url.hash) fail(E.FORBIDDEN, "sender.hash");
       if (learningCenter && url.hash) {
         if (!url.hash.startsWith("#record=")) fail(E.FORBIDDEN, "sender.hash");
         recordId(url.hash.slice(8), "sender.hash");
@@ -80,6 +81,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
         let current;
         try { current = new URL(context.documentUrl); } catch { fail(E.FORBIDDEN, "context.url"); }
         if (current.search || context.documentUrl.split("#")[0] !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH)) fail(E.FORBIDDEN, "context.url");
+        if (context.documentUrl.includes("#") && !current.hash) fail(E.FORBIDDEN, "context.hash");
         if (current.hash) {
           if (!current.hash.startsWith("#record=")) fail(E.FORBIDDEN, "context.hash");
           recordId(current.hash.slice(8), "context.hash");
