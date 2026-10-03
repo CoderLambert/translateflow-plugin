@@ -22,7 +22,16 @@
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
-  const { buildLocalResult, buildExplainedResult, buildTranslationResult, copyTextForCard } = app.modules.selectionResultModel;
+  const { buildLocalResult, buildExplainedResult, copyTextForCard } = app.modules.selectionResultModel;
+  const model = app.modules.selectionResultModel;
+  const records = app.modules.selectionRecordClient?.create({ onStatus: (view) => app.modules.selectionRecordStatus?.update(view, {
+    save: (event) => records.save(event), retry: (event) => records.retry(event),
+    open: (event) => records.open(event), decline: (event) => records.decline(event)
+  }) });
+  const runTranslation = app.modules.selectionTranslationQuery?.create({
+    assertCurrent, showResult, onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
+  }) || (() => Promise.reject(new Error("扩展已更新，请刷新网页后重新查询。")));
+  let recordContext = null;
   let started = false;
   let activeSnapshot = null;
   let activeTask = null;
@@ -32,7 +41,7 @@
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
-    projection.start(() => { if (activeSnapshot) dismiss(); });
+    projection.start(() => { if (activeSnapshot) { records?.invalidateReference(); dismiss(); } });
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -41,7 +50,13 @@
     document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("scroll", () => popover.reposition(), true);
     window.addEventListener("resize", () => popover.reposition(), true);
-    app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: dismiss, onPageHide: dismiss });
+    window.addEventListener("focus", () => { void records?.refresh(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void records?.refresh(); });
+    const checkReadingRoute = () => { records?.invalidateReference(); if (activeSnapshot && activeSnapshot.pageUrl !== location.href) dismiss(); };
+    window.addEventListener("popstate", checkReadingRoute, true);
+    window.addEventListener("hashchange", checkReadingRoute, true);
+    const leaveDocument = () => { records?.invalidateReference(); dismiss(); };
+    app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: leaveDocument, onPageHide: leaveDocument });
   }
 
   function handlePotentialSelection(event) {
@@ -77,15 +92,18 @@
 
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
+    void records?.close();
+    recordContext = null;
+    app.modules.selectionRecordStatus?.clear();
     requestVersion += 1;
     snapshot.selectionGeneration = requestVersion;
     activeSnapshot = snapshot;
     projection.watchPage(snapshot.pageUrl);
     setQuickControlSelectionActive(true);
-    popover.showChip(snapshot, () => translateSnapshot(snapshot));
+    popover.showChip(snapshot, (event) => translateSnapshot(snapshot, { event }));
   }
 
-  async function translateSnapshot(snapshot, { forceTranslation = false } = {}) {
+  async function translateSnapshot(snapshot, { forceTranslation = false, event } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
     const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
@@ -97,12 +115,14 @@
 
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
+    const queryRecord = recordContext = records?.start({ snapshot, capture, event,
+      isCurrent: () => isFrozenCurrent(snapshot, capture) && snapshot.pageUrl === location.href }) || null;
     popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
 
     let resolved = null;
     try {
       if (forceTranslation) {
-        await translateSelection(snapshot, task, version, expectedPage);
+        await translateSelection(snapshot, task, version, expectedPage, queryRecord);
         return;
       }
 
@@ -127,14 +147,16 @@
           card,
           copyTextForCard(card),
           "结果已复制",
-          resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth, card) : null
+          resolved.explanationAllowed ? (event) => explainSnapshot(snapshot, resolved.depth, card, event) : null
         );
-        void loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection);
+        records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
+        void loadRich(snapshot, version, expectedPage, queryRecord);
         return;
       }
 
       if (resolved.route === "translation") {
-        await translateSelection(snapshot, task, version, expectedPage);
+        if (queryRecord) queryRecord.sourceLanguage = resolved.intent?.sourceLanguage || "unknown";
+        await translateSelection(snapshot, task, version, expectedPage, queryRecord);
         return;
       }
 
@@ -144,11 +166,12 @@
           title: "本地词典暂未收录",
           message: "没有找到可靠的本地词典结果。你可以选择进一步解释或普通翻译。",
           onExplain: resolved.explanationAllowed
-            ? () => explainSnapshot(snapshot, resolved.depth)
+            ? (event) => explainSnapshot(snapshot, resolved.depth, null, event)
             : null,
-          onTranslate: () => translateSnapshot(snapshot, { forceTranslation: true })
+          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, event })
         });
-        void loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection);
+        records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
+        void loadRich(snapshot, version, expectedPage, queryRecord);
         return;
       }
 
@@ -156,11 +179,11 @@
       popover.showError(
         snapshot,
         unresolvedMessage(resolved),
-        () => translateSnapshot(snapshot),
-        resolved.explanationAllowed ? () => explainSnapshot(snapshot, resolved.depth) : null
+        (event) => translateSnapshot(snapshot, { event }),
+        resolved.explanationAllowed ? (event) => explainSnapshot(snapshot, resolved.depth, null, event) : null
       );
       if (resolved.intent?.kind === "lexical") {
-        void loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection);
+        void loadRich(snapshot, version, expectedPage, queryRecord);
       }
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
@@ -171,14 +194,15 @@
       popover.showError(
         snapshot,
         cancelled ? "翻译已取消。" : failureMessage(error, resolved),
-        () => translateSnapshot(snapshot)
+        (event) => translateSnapshot(snapshot, { event })
       );
     }
   }
 
-  async function explainSnapshot(snapshot, depth, baseCard = null) {
+  async function explainSnapshot(snapshot, depth, baseCard = null, event = null) {
     if (!snapshot || snapshot !== activeSnapshot) return;
-    const capture = freezeQuery(snapshot);
+    const existing = recordContext && isFrozenCurrent(snapshot, snapshot.sourceCapture);
+    const capture = existing ? snapshot.sourceCapture : freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
       await tasks.cancelTask(activeTask);
     }
@@ -188,6 +212,9 @@
 
     const version = ++requestVersion;
     const expectedPage = getPageIdentity(snapshot.pageUrl);
+    const queryRecord = existing ? recordContext : (recordContext = records?.start({ snapshot, capture, event, purpose: "assistant",
+      isCurrent: () => isFrozenCurrent(snapshot, capture) && snapshot.pageUrl === location.href }) || null);
+    const assistantOperation = existing ? records?.assistant(queryRecord, event) : queryRecord?.operations[0];
     const context = captureSelectionContext(snapshot);
     const preserveLocal = Boolean(baseCard?.primaryMeaning);
 
@@ -198,7 +225,7 @@
     }
 
     try {
-      await explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard);
+      await explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard, queryRecord, assistantOperation);
     } catch (error) {
       if (error?.name === "SelectionSupersededError") return;
       tasks.failTask(task, error);
@@ -207,11 +234,11 @@
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
       if (preserveLocal) {
         if (cancelled) {
-          popover.showAiDetailCancelled(() => explainSnapshot(snapshot, depth, baseCard));
+          popover.showAiDetailCancelled((event) => explainSnapshot(snapshot, depth, baseCard, event));
         } else {
           popover.showAiDetailError(
             `AI 详解失败：${error?.message || error}`,
-            () => explainSnapshot(snapshot, depth, baseCard)
+            (event) => explainSnapshot(snapshot, depth, baseCard, event)
           );
         }
         return;
@@ -220,7 +247,7 @@
       popover.showError(
         snapshot,
         cancelled ? "AI 详解已取消。" : `AI 详解失败：${error?.message || error}`,
-        () => explainSnapshot(snapshot, depth)
+        (event) => explainSnapshot(snapshot, depth, null, event)
       );
     }
   }
@@ -230,11 +257,11 @@
     if (!task || tasks.isTerminal(task)) return;
     tasks.cancelTask(task).catch(() => {});
     if (snapshot === activeSnapshot) {
-      popover.showAiDetailCancelled(() => explainSnapshot(snapshot, depth, baseCard));
+      popover.showAiDetailCancelled((event) => explainSnapshot(snapshot, depth, baseCard, event));
     }
   }
 
-  async function explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard = null) {
+  async function explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard = null, queryRecord = null, assistantOperation = null) {
     tasks.transition(task, "translating");
     if (!baseCard) popover.setLoadingStatus("正在结合上下文解释…");
     const explained = await sendRuntimeMessage({
@@ -284,67 +311,33 @@
         card,
         copyAction(copyTextForCard(combinedCard), "解释已复制")
       );
+      records?.accept(queryRecord, model.readingAssistant(card, explained.readingResult, { preserveLocal: true }),
+        { key: assistantOperation?.operationId, operation: assistantOperation, sourceLanguage: explained.readingResult?.sourceLanguage });
+      records?.render();
       return;
     }
 
     showResult(snapshot, card, copyTextForCard(card), "解释已复制");
+    records?.accept(queryRecord, model.readingAssistant(card, explained.readingResult),
+      { key: assistantOperation?.operationId, operation: assistantOperation, sourceLanguage: explained.readingResult?.sourceLanguage });
   }
 
-  async function translateSelection(snapshot, task, version, expectedPage) {
-    tasks.transition(task, "cache_lookup");
-    popover.setLoadingStatus("正在检查翻译缓存…");
-    const lookup = await sendRuntimeMessage({
-      type: messages.background.CACHE_LOOKUP,
-      pageUrl: snapshot.pageUrl,
-      segments: [{ id: "selection", text: snapshot.text }]
-    });
-    assertCurrent(version, snapshot, expectedPage, task);
-    if (!lookup?.ok) throw tasks.responseError(lookup, "缓存查询失败");
-
-    const cached = (lookup.hits || [])
-      .find((item) => String(item.id) === "selection")?.text?.trim();
-    if (cached) {
-      tasks.completeTask(task, { done: 1, cacheHits: 1 });
-      const card = buildTranslationResult(cached);
-      showResult(snapshot, card, copyTextForCard(card), "译文已复制");
-      return;
-    }
-
-    tasks.transition(task, "translating");
-    popover.setLoadingStatus("正在翻译…");
-    const translated = await sendRuntimeMessage({
-      type: messages.background.TRANSLATE_BATCH,
-      requestId: task.id,
-      pageUrl: snapshot.pageUrl,
-      segments: [{ id: "selection", text: snapshot.text }]
-    });
-    assertCurrent(version, snapshot, expectedPage, task);
-    if (!translated?.ok) throw tasks.responseError(translated, "翻译失败");
-
-    const translation = (translated.translations || [])
-      .find((item) => String(item.id) === "selection")?.text?.trim();
-    if (!translation) throw new Error("模型没有返回可用译文。");
-
-    tasks.transition(task, "storing");
-    popover.setLoadingStatus("正在保存译文…");
-    const stored = await sendRuntimeMessage({
-      type: messages.background.CACHE_STORE,
-      pageUrl: snapshot.pageUrl,
-      pageTitle: document.title,
-      items: [{ sourceText: snapshot.text, translation }]
-    });
-    assertCurrent(version, snapshot, expectedPage, task);
-    if (!stored?.ok) throw tasks.responseError(stored, "译文缓存失败");
-
-    tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-    const card = buildTranslationResult(translation);
-    showResult(snapshot, card, copyTextForCard(card), "译文已复制");
+  function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
+    return runTranslation(snapshot, task, version, expectedPage, queryRecord);
   }
 
   function failureMessage(error) { return error?.message || String(error); }
 
   function showResult(snapshot, card, copyText, copiedMessage, onExplain = null) {
     popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain);
+    records?.render();
+    if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", message: "阅读记录暂不可用，当前结果仍可使用。" });
+  }
+
+  function loadRich(snapshot, version, expectedPage, queryRecord) {
+    return loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection, (record, dictionary) => {
+      records?.accept(queryRecord, model.readingRich(record, dictionary), { key: `rich:${dictionary.id}` });
+    });
   }
 
   function copyAction(copyText, copiedMessage) {
@@ -389,6 +382,9 @@
   function dismiss() {
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
+    void records?.close();
+    recordContext = null;
+    app.modules.selectionRecordStatus?.clear();
     activeSnapshot = null;
     projection.watchPage(null);
     requestVersion += 1;
@@ -402,7 +398,7 @@
     tasks.cancelTask(task).catch(() => {});
     if (showCancelled && activeSnapshot) {
       const snapshot = activeSnapshot;
-      popover.showError(snapshot, "翻译已取消。", () => translateSnapshot(snapshot));
+      popover.showError(snapshot, "翻译已取消。", (event) => translateSnapshot(snapshot, { event }));
     }
   }
 

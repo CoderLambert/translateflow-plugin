@@ -39,12 +39,12 @@
       actions.className = "tf-selection-empty-actions";
       if (typeof onExplain === "function") {
         const explain = button({ text: "AI 详解", label: "使用 AI 进一步解释这个词" });
-        explain.addEventListener("click", () => onExplain());
+        explain.addEventListener("click", (event) => onExplain(event));
         actions.appendChild(explain);
       }
       if (typeof onTranslate === "function") {
         const translate = button({ text: "普通翻译", label: "使用普通翻译处理这个词" });
-        translate.addEventListener("click", () => onTranslate());
+        translate.addEventListener("click", (event) => onTranslate(event));
         actions.appendChild(translate);
       }
       if (actions.childElementCount) node.appendChild(actions);

@@ -5,7 +5,9 @@ import {
 } from "../cache-db.js";
 import { completeJson } from "../providers/index.js";
 import { resolveSelectionRequest } from "./resolve.js";
-import { buildSelectionExplainPrompt } from "./explain-prompt.js";
+import { buildSelectionExplainPrompt, SELECTION_EXPLAIN_QUESTION, SELECTION_READING_PROMPT_VERSION } from "./explain-prompt.js";
+import { readingTranslationResult } from "./reading-result.js";
+import { sha256 } from "../../shared/hash.js";
 import {
   buildSelectionExplainCacheIdentity,
   parseSelectionExplainResult
@@ -60,7 +62,13 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
         targetLanguage: config.targetLanguage
       }
     });
-    const payload = cache.payload;
+    // The actual sent question is part of this new cache identity; old prompt results cannot masquerade as this answer.
+    cache.cacheKey = "selection-explain:" + await sha256(JSON.stringify([SELECTION_READING_PROMPT_VERSION, SELECTION_EXPLAIN_QUESTION, cache.cacheKey]));
+    const payload = { ...cache.payload, userQuestion: SELECTION_EXPLAIN_QUESTION };
+    const systemPrompt = buildSelectionExplainPrompt({ targetLanguage: config.targetLanguage, depth: payload.depth });
+    const readingResult = { ...await readingTranslationResult(input.pageUrl || "", { ...config, prompt: systemPrompt }),
+      userQuestion: SELECTION_EXPLAIN_QUESTION, action: "understand", sourceLanguage: resolved.intent?.sourceLanguage || "en" };
+    readingResult.provenance.promptVersion = SELECTION_READING_PROMPT_VERSION;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);
 
     const allowPersistentCache = !payload.sensitive;
@@ -73,16 +81,14 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
           resolved,
           generated,
           cacheHit: true,
-          cacheKey: cache.cacheKey
+          cacheKey: cache.cacheKey,
+          readingResult
         });
       }
     }
 
     const generated = await runCompletion({
-      systemPrompt: buildSelectionExplainPrompt({
-        targetLanguage: config.targetLanguage,
-        depth: payload.depth
-      }),
+      systemPrompt,
       payload,
       parseResult: (value) => parseSelectionExplainResult(value, { candidateIds })
     }, config, { signal: controller.signal });
@@ -104,7 +110,8 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
       resolved,
       generated,
       cacheHit: false,
-      cacheKey: cache.cacheKey
+      cacheKey: cache.cacheKey,
+      readingResult
     });
   } finally {
     if (requestsById.get(requestId) === controller) requestsById.delete(requestId);
@@ -120,7 +127,7 @@ export function cancelSelectionExplanationRequest(requestId) {
   return { cancelled: true };
 }
 
-function response({ resolved, generated, cacheHit, cacheKey }) {
+function response({ resolved, generated, cacheHit, cacheKey, readingResult }) {
   const candidates = Array.isArray(resolved?.decision?.candidates)
     ? resolved.decision.candidates
     : [];
@@ -131,6 +138,7 @@ function response({ resolved, generated, cacheHit, cacheKey }) {
     cacheHit,
     cacheKey,
     generated,
+    readingResult,
     local: {
       decisionOutcome: resolved?.decision?.outcome || "",
       decisionReason: resolved?.decision?.reason || "",

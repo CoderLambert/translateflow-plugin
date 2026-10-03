@@ -92,6 +92,7 @@ test("Rich MDict commit rechecks the compact index and lookup uses OPFS ranges a
   const lookup = await restarted.lookup("run");
   assert.equal(lookup.found, true);
   assert.equal(lookup.dictionaries[0].text, "run — 运行");
+  assert.equal(lookup.dictionaries[0].packVersion, BASE_ID.packVersion);
   assert.ok(env.store.ranges.some(({ path }) => path === RICH_MDICT_SOURCE_PATH));
   assert.equal(env.store.fullReads.some(({ path }) => path === RICH_MDICT_SOURCE_PATH), false);
   assert.ok(env.store.ranges.every(({ length }) => length < SOURCE_BYTES.length));

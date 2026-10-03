@@ -65,7 +65,7 @@ test("Selection AI detail preserves the local card across loading, failure and c
     source("src/content/selection/ai-detail.js")
   ]);
 
-  assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card\)/);
+  assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card, event\)/);
   assert.match(controller, /popover\.showAiDetailLoading/);
   assert.match(controller, /popover\.showAiDetailError/);
   assert.match(controller, /popover\.showAiDetailCancelled/);
