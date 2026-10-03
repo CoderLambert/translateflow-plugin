@@ -2,19 +2,6 @@ name: freedict-source-audit
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/freedict-source-audit.yml"
-      - "scripts/audit-freedict-source.mjs"
-      - "tests/freedict-source-audit.test.mjs"
-      - "lexicon/source-locks/freedict-eng-zho.json"
-      - "lexicon/quality-decisions/freedict-eng-zho-2025.11.23.json"
-      - "scripts/build-tflex-freedict.mjs"
-      - "tests/tflex-freedict-builder.test.mjs"
-      - "tests/freedict-source-lock.test.mjs"
-      - "scripts/certify-freedict-pack.mjs"
-      - "scripts/evaluate-freedict-quality.mjs"
-      - "tests/freedict-product-gate.test.mjs"
 
 permissions:
   contents: read

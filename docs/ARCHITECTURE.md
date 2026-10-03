@@ -256,3 +256,7 @@ Extension-owned controls share the sage/beige design system and Shadow DOM found
 Chrome Commands are routed through Background and reuse existing Content messages. First-use invocation uses `activeTab` + `scripting`; it does not add a broad required Host Permission.
 
 Settings remains native HTML/CSS/JS and reuses existing storage contracts. Automatic cache restore is an explicit per-site mode: cache hits restore from IndexedDB and cache misses do not fall through to Provider translation.
+
+## Development task evidence
+
+`docs/tasks/` contains sanitized local task contracts and candidate-bound acceptance/review metadata. `scripts/local-task.mjs` verifies local evidence without network/model calls or automatic Git mutations; the coordinator owns state and integration. Raw logs, events and screenshots remain ignored under `docs/task-execution/local/`. These development files and `.codex` hooks are outside both production allowlists. See [tasks/LOCAL_WORKFLOW.md](tasks/LOCAL_WORKFLOW.md).

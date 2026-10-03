@@ -1,56 +1,6 @@
 name: lexicon-release
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "src/background/lexical/**"
-      - "scripts/build-tflex-*.mjs"
-      - "scripts/project-*-import.mjs"
-      - "tests/*-import*.test.mjs"
-      - "scripts/build-release-lexicon.mjs"
-      - "scripts/setup-lexicon.mjs"
-      - "scripts/certify-lexical-release.mjs"
-      - "scripts/certify-integrated-lexical-quality.mjs"
-      - "scripts/certify-offline-dictionary-beta.mjs"
-      - "scripts/benchmark-lexical-quality.mjs"
-      - "scripts/evaluate-core-bootstrap.mjs"
-      - "scripts/measure-extension-footprint.mjs"
-      - "scripts/measure-stardict-import-cost.mjs"
-      - "tests/fixtures/lexical-quality-v1.json"
-      - "tests/fixtures/ordinary-browsing-v1.json"
-      - "tests/offline-dictionary-beta-certification.test.mjs"
-      - "docs/OFFLINE_DICTIONARY_BETA_CERTIFICATION.md"
-      - "lexicon/**"
-      - "e2e/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/lexicon-release.yml"
-  pull_request:
-    paths:
-      - "src/background/lexical/**"
-      - "scripts/build-tflex-*.mjs"
-      - "scripts/project-*-import.mjs"
-      - "tests/*-import*.test.mjs"
-      - "scripts/build-release-lexicon.mjs"
-      - "scripts/setup-lexicon.mjs"
-      - "scripts/certify-lexical-release.mjs"
-      - "scripts/certify-integrated-lexical-quality.mjs"
-      - "scripts/certify-offline-dictionary-beta.mjs"
-      - "scripts/benchmark-lexical-quality.mjs"
-      - "scripts/evaluate-core-bootstrap.mjs"
-      - "scripts/measure-extension-footprint.mjs"
-      - "scripts/measure-stardict-import-cost.mjs"
-      - "tests/fixtures/lexical-quality-v1.json"
-      - "tests/fixtures/ordinary-browsing-v1.json"
-      - "tests/offline-dictionary-beta-certification.test.mjs"
-      - "lexicon/**"
-      - "e2e/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/lexicon-release.yml"
-      - "docs/DICTIONARY_SOURCE_FREEZE.md"
-      - "docs/OFFLINE_DICTIONARY_BETA_CERTIFICATION.md"
   workflow_dispatch:
 
 permissions:
