@@ -101,7 +101,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
 
   test('Production messages persist consent and actual lookup / late Rich / idempotent artifacts; restart keeps exact rows', async () => {
     const disabled = await message(M.GET_RECORDING_STATE); expect(disabled).toMatchObject({ ok: true, data: { enabled: false, recordCount: 0 } });
-    expect((await driver.evaluate((input) => chrome.runtime.sendMessage(input), request(M.OPEN_LEARNING_CENTER))).error.code).toBe(E.NOT_READY);
+    expect((await driver.evaluate((input) => chrome.runtime.sendMessage(input), request(M.OPEN_LEARNING_CENTER))).data).toEqual({ opened: true });
     expect((await message(M.SET_RECORDING, { expectedConsentGeneration: disabled.data.consentGeneration })).ok).toBe(true);
     const content = await openContent();
     const begin = request(M.BEGIN_QUERY, { operationId: crypto.randomUUID(), pageKey: content.registration.pageKey, sourceSnapshot: content.snap });

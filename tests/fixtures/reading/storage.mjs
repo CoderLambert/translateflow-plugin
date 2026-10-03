@@ -34,7 +34,7 @@ export async function enable(repo) { const current = await repo.read(ctx(M.GET_R
 export async function rawDatabase() {
   return new Promise((resolve, reject) => { const request = indexedDB.open('translateflow-reading-records', 1); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
 }
-export async function seedRecords(count, { answerChars = 0, artifacts = 1 } = {}) {
+export async function seedRecords(count, { answerChars = 0, artifacts = 1, answerText = null } = {}) {
   // Real canonical rows, exact application billing and list/page projections; no fake capacity counters.
   const previous = (await counts()).meta; const db = await rawDatabase();
   let totalBytes = 0;
@@ -44,7 +44,7 @@ export async function seedRecords(count, { answerChars = 0, artifacts = 1 } = {}
     const id = `00000000-0000-4000-8000-${String(n + 1).padStart(12, '0')}`;
     const rec = record({ recordId: id, lastLookupAt: 1000 + n });
     const values = Array.from({ length: artifacts }, (_, a) => artifact(answerChars ? 'assistant' : 'dictionary', { recordId: id,
-      artifactId: `artifact-${String(a).padStart(4, '0')}`, ...(answerChars ? { payload: { ...artifact('assistant').payload, turnId: `turn-${a}`, threadId: `thread-${a}`, assistantAnswer: '😀中'.repeat(Math.floor(answerChars / 3)) } } : {}) }));
+      artifactId: `artifact-${String(a).padStart(4, '0')}`, ...(answerChars ? { payload: { ...artifact('assistant').payload, turnId: `turn-${a}`, threadId: `thread-${a}`, assistantAnswer: answerText ?? '😀中'.repeat(Math.floor(answerChars / 3)) } } : {}) }));
     const bytes = applicationBytes([rec, snap, ...values]); totalBytes += bytes;
     rows.push({ record: rec, bytes, siteKey: 'https://example.test', documentGeneration: snap.documentGeneration, sortTime: -rec.lastLookupAt,
       listItem: projectRecordListItem({ record: rec, snapshots: [snap], artifacts: values }, 'https://example.test'), values });

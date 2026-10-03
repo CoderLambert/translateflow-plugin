@@ -7,7 +7,7 @@
 下方是迁入的产品/工程合同。历史合同中的 Issue 评论/标签、远端 CI、自动 GitHub Review 和旧状态流不再是日常执行动作；统一采用 [LOCAL_WORKFLOW.md](../LOCAL_WORKFLOW.md) 的本地完整验收、真实浏览器/产物要求、具名独立审核及受保护代码同步。安全、数据、硬依赖与人工验收保持有效。原有“规划待启动”限制以用户本轮授权和 state.json 为准。
 
 ## 执行卡
-Parent #229；Release A发布验收；硬依赖#234、#235合入main且阻断性审核问题已解决（传递含#232合同补丁、#233、#248、#249）。L3 QA设计/L2确定性执行；独立只读终审rl-reviewer，不由原实现者自签。2026-10-02本次只同步计划，不改变执行标签。
+Parent #229；Release A发布验收；硬依赖#234、#235合入main且阻断性审核问题已解决（传递含#232合同补丁、#233、#248、#249）。L3 QA设计/L2确定性执行；独立只读终审rl-reviewer，不由原实现者自签。2026-10-03 用户授权在 #235 受保护同步合入后开展本地 Release A 验收；不授权 #236 远端合并、商店发布或后续 Reading 任务。
 
 ## 产品完成定义
 真实查询→受信任学习中心明确授权→真实保存→重启后回顾当时词义/译文/完成问答与source→能暂停/排除站点/删除/导出。A不宣称已有精确回访/自动标记/新流式助手。
@@ -36,3 +36,9 @@ Parent #229；Release A发布验收；硬依赖#234、#235合入main且阻断性
 执行当前npm run validate、真实WXT相关Reading/Selection/缓存Chromium E2E；词典认证仅触及路径或required CI时执行。无真实API key不阻止mock产品流，但不能声称真实模型质量已验收。
 
 只有A真实main故事及独立review成立才记录READING_LOOP_A_PASS并按依赖释放后续任务；不关闭#229、不启动未经授权D/商店发布。原CONTRIBUTING的merged→implemented→auditing→audited语义继续有效。
+
+## 本轮验证与证据复用
+
+候选 `8a972fc7546f39201e83606eb9e54738981c4018` 已执行一次完整 `npm run validate`，1034 Node / 15 Vitest / TS / WXT 全部 PASS。随后真实 Escape 用例发现焦点恢复早于重连/列表完成；最小修复只改 `src/learning-center/App.tsx` 与 `useLibrary.ts`。按 LOCAL_WORKFLOW 复用未变化的 Node 合同/存储/fixture 结果，记录原 head 与日志 hash；新候选重验源码检查、严格类型、学习中心组件/导出测试、实际 WXT 产物和全量 E2E。必需物理 extension Origin quota 断言保留，未 skip 或降低阈值；旧全量失败记录不改写。
+
+2026-10-04 接续：已核对精确 Chromium153 源码及完整浏览器重启对照，修复唯一失败的 quota 探针生命周期。增加真实 collector→compiled Reading 原生 READING_QUOTA/not-saved→恢复空间→显式重试（零 Provider）证据。生产源码、fixture、构建输入均未变化；本候选仅重验 quota 场景，保留 215759f 上 148 项 PASS / 6 skip 及原 FAIL 的 head/log。不得称重新执行了全量 E2E；main 合入前不记录 READING_LOOP_A_PASS。

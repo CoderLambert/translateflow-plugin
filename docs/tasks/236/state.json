@@ -1,33 +1,28 @@
 {
   "schema": 1,
   "task": "236",
-  "status": "blocked",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "234",
     "235"
   ],
-  "branch": null,
-  "worktree": null,
-  "candidateHead": null,
+  "branch": "test/236-reading-loop-release-a",
+  "worktree": ".worktrees/issue-236",
+  "candidateHead": "d6cf346bdd7b7f06db784d61c6edc225ed8e52f5",
   "mergeHead": null,
   "validationCommands": [
     [
       "npm",
       "run",
-      "validate"
-    ],
-    [
-      "npm",
-      "run",
-      "build:extension:wxt"
-    ],
-    [
-      "npm",
-      "run",
-      "test:e2e"
+      "test:e2e",
+      "--",
+      "e2e/reading-loop-release-a.spec.mjs",
+      "--grep",
+      "extension-origin physical quota",
+      "--workers=1"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+  "nextAction": "本地 Release A 候选通过；quota原生拒写与compiled Reading重试已补齐，旧PASS/日志复用，本地gate待/已核对。等待 #236 远端同步授权，合入main前不记录READING_LOOP_A_PASS，不启动后续任务。"
 }
