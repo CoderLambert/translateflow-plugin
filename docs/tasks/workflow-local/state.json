@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "workflow-local",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "chore/local-task-workflow",
   "worktree": ".worktrees/local-task-workflow",
-  "candidateHead": null,
+  "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -16,5 +16,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "修复门槛反例后冻结新候选；完整本地验收和同一独立 reviewer 增量审核。自动 PR Review 待用户关闭，当前不创建/更新 PR。"
+  "nextAction": "本地验收/独审通过。用户关闭仓库自动 PR Review 后，按本地 gate 与 expected-head 创建聚焦迁移 PR 并 squash；main tree 核对后更新 completed，替代旧流程 PR276/277。"
 }
