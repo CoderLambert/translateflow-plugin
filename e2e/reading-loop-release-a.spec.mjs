@@ -250,10 +250,10 @@ test('Release A extension-origin physical quota refusal preserves actual product
     await env.fixture(); let center = await env.center();
     await center.evaluate(async () => (await import(chrome.runtime.getURL('tests/fixtures/reading/storage.mjs'))).seedRecords(1));
     await center.close();
-    const cdp = await env.context.newCDPSession(env.driver); let version;
-    cdp.on('ServiceWorker.workerVersionUpdated', ({ versions }) => { for (const candidate of versions) if (candidate.scriptURL === `chrome-extension://${env.id}/background.js` && candidate.runningStatus === 'running') version = candidate.versionId; });
-    await cdp.send('ServiceWorker.enable'); await expect.poll(() => version).toBeTruthy();
-    await cdp.send('ServiceWorker.stopWorker', { versionId: version });
+    // BucketContext caches available space independently of the renderer/worker.
+    // Reopen the full browser/profile before overriding quota, as in the native localhost probe.
+    await env.restart();
+    const cdp = await env.context.newCDPSession(env.driver);
     const origin = `chrome-extension://${env.id}`, beforeQuota = await cdp.send('Storage.getUsageAndQuota', { origin });
     await cdp.send('Storage.overrideQuotaForOrigin', { origin, quotaSize: Math.ceil(beforeQuota.usage) + 32768 });
     const native = await env.driver.evaluate(async () => {
@@ -274,9 +274,37 @@ test('Release A extension-origin physical quota refusal preserves actual product
     const exported = await downloadJson(center); expect(exported.data.records).toHaveLength(1);
     await center.locator('.record-list .record').click(); await center.getByRole('button', { name: 'Delete record', exact: true }).click();
     await center.getByRole('button', { name: 'Confirm', exact: true }).click(); await expect(center.locator('.record-list .record')).toHaveCount(0);
-    await env.report('release-a-extension-quota.json', { nativePhysicalQuota: native.refusal === 'QuotaExceededError' && !native.completed ? 'PASS' : 'NOT VERIFIED', beforeQuota, quota, ...native,
-      actualProductReadExportDelete: true, syntheticProbeDatabaseOnly: true });
     await cdp.send('Storage.overrideQuotaForOrigin', { origin }); await cdp.detach();
+    // Also exercise the shipped collector/router/repository under native quota, without throwing
+    // a forged DOMException or invoking a synthetic repository. Restore space for an explicit retry.
+    await center.evaluate(async () => (await import(chrome.runtime.getURL('tests/fixtures/reading/storage.mjs'))).seedRecords(1));
+    await center.close(); await env.restart();
+    const productCdp = await env.context.newCDPSession(env.driver);
+    await productCdp.send('Storage.overrideQuotaForOrigin', { origin, quotaSize: 1 });
+    center = await env.center(); await expect(center.locator('.record-list .record')).toHaveCount(1);
+    const content = await env.openContent();
+    await env.driver.evaluate(async tabId => chrome.scripting.executeScript({ target: { tabId }, func: () => {
+      globalThis.nativeQuotaReplies = [];
+      const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+      chrome.runtime.sendMessage = (request, callback) => send(request, response => {
+        if (request.method?.startsWith('reading.') && response?.ok === false) nativeQuotaReplies.push({ method: request.method, code: response.error?.code });
+        callback?.(response);
+      });
+    } }), content.tabId);
+    await query(content.page, '#first', 'session');
+    await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'not-saved');
+    await expect(content.page.getByText('本地空间不足，未确认保存；可整理空间后重试保存。')).toBeVisible();
+    expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(1); expect(env.server.calls).toHaveLength(0);
+    const replies = await env.driver.evaluate(async tabId => (await chrome.scripting.executeScript({ target: { tabId }, func: () => nativeQuotaReplies }))[0].result, content.tabId);
+    expect(replies.some(reply => reply.code === 'READING_QUOTA')).toBe(true);
+    await productCdp.send('Storage.overrideQuotaForOrigin', { origin });
+    await content.page.getByRole('button', { name: '重试保存', exact: true }).click();
+    await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
+    expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(2); expect(env.server.calls).toHaveLength(0);
+    await productCdp.detach();
+    await env.report('release-a-extension-quota.json', { nativePhysicalQuota: native.refusal === 'QuotaExceededError' && !native.completed ? 'PASS' : 'NOT VERIFIED', beforeQuota, quota, ...native,
+      actualProductReadExportDelete: true, syntheticProbeDatabaseOnly: true, fullBrowserRestartBeforeOverride: true,
+      compiledReadingNativeQuota: true, readingErrorReplies: replies, truthfulNotSaved: true, recordsBeforeRetry: 1, recordsAfterRetry: 2, retryProviderCalls: 0 });
     expect(native, 'Physical extension-origin quota must actually refuse an incompressible native IDB transaction; an accepted override alone is not quota evidence').toEqual({ refusal: 'QuotaExceededError', completed: false, incompressibleAttemptBytes: 16 * 32768 });
   } finally { await env.close(); }
 });

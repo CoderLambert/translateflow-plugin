@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "236",
-  "status": "blocked",
+  "status": "reviewing",
   "owner": "main",
   "dependencies": [
     "234",
@@ -9,37 +9,20 @@
   ],
   "branch": "test/236-reading-loop-release-a",
   "worktree": ".worktrees/issue-236",
-  "candidateHead": "215759f8a050448287140efccd1f1f6918fb5141",
+  "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
     [
       "npm",
       "run",
-      "check"
-    ],
-    [
-      "npm",
-      "run",
-      "typecheck"
-    ],
-    [
-      "npm",
-      "run",
-      "test:unit",
+      "test:e2e",
       "--",
-      "tests/unit/learning-center"
-    ],
-    [
-      "npm",
-      "run",
-      "build:extension:wxt"
-    ],
-    [
-      "npm",
-      "run",
-      "test:e2e"
+      "e2e/reading-loop-release-a.spec.mjs",
+      "--grep",
+      "extension-origin physical quota",
+      "--workers=1"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "NO-GO：当前 Chromium quota override 对 extension Origin 不产生真实原生拒写（唯一 E2E FAIL）；需可复现的原生 quota 拒写机制或明确的验收裁定。保留现有 PASS、焦点修复及失败证据；不合并 236/不发布/不启动后续任务。"
+  "nextAction": "quota 探针生命周期修复及真实 Reading native quota/retry 已通过；冻结新候选，仅重验这一失败项，复用未变生产包/其它 PASS；远端同步仍待授权。"
 }
