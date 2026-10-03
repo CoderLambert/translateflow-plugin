@@ -1,152 +1,61 @@
 #!/usr/bin/env node
-import { cp, mkdir, readdir, rm, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+// One production engine: WXT. Preserve the stable install path and caller contract.
+import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkManifestLocales } from "./i18n-locales.mjs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { assertBuildOutputPaths } from "./path-boundaries.mjs";
+import { auditWxtExtension } from "./audit-wxt-extension.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DEFAULT_OUT = resolve(ROOT, "dist/extension");
-const RUNTIME_FILES = Object.freeze([
-  "manifest.json",
-  "_locales/en/messages.json",
-  "_locales/zh_CN/messages.json",
-  "background.js",
-  "content.js",
-  "content.css",
-  "popup.html",
-  "popup.js",
-  "popup.css",
-  "popup-appearance.js",
-  "options.html",
-  "options.js",
-  "options.css"
-]);
-const RUNTIME_DIRS = Object.freeze(["src"]);
-const OPTIONAL_RUNTIME_DIRS = Object.freeze(["assets/lexicon"]);
-const FORBIDDEN_SEGMENTS = new Set([
-  "tests",
-  "e2e",
-  "scripts",
-  "docs",
-  ".github",
-  "lexicon",
-  ".release-sources",
-  "node_modules",
-  "playwright-report",
-  "test-results"
-]);
 
-export async function buildExtension({
-  outDir = DEFAULT_OUT,
-  requireLexicon = false,
-  allowExternalOutput = false
-} = {}) {
-  const output = await assertBuildOutputPaths(ROOT, outDir, { allowExternalOutput });
-
-  await checkManifestLocales();
-
-  // Recheck immediately before mutation, not merely at argument parsing.
-  await assertBuildOutputPaths(ROOT, output, { allowExternalOutput });
-  await rm(output, { recursive: true, force: true });
-  await mkdir(output, { recursive: true });
-
-  for (const path of RUNTIME_FILES) {
-    await copyRequired(path, output);
-  }
-  for (const path of RUNTIME_DIRS) {
-    await copyRequired(path, output);
-  }
-
-  let lexicalAssetsIncluded = false;
-  for (const path of OPTIONAL_RUNTIME_DIRS) {
-    const source = resolve(ROOT, path);
-    if (!existsSync(source)) continue;
-    await cp(source, resolve(output, path), { recursive: true });
-    lexicalAssetsIncluded = true;
-  }
-
-  if (requireLexicon && !lexicalAssetsIncluded) {
-    throw new Error("release extension build requires generated assets/lexicon");
-  }
-
-  const files = await walkFiles(output);
-  const forbidden = files.filter((path) => {
-    const [topLevel] = relative(output, path).split(/[\\/]/);
-    return FORBIDDEN_SEGMENTS.has(topLevel);
-  });
-  if (forbidden.length) {
-    throw new Error("forbidden production extension paths: " +
-      forbidden.map((path) => relative(output, path)).join(", "));
-  }
-
-  const entries = [];
-  let totalBytes = 0;
-  let lexicalBytes = 0;
-  for (const path of files) {
-    const size = (await stat(path)).size;
-    const rel = relative(output, path).replaceAll("\\", "/");
-    entries.push({ path: rel, size });
-    totalBytes += size;
-    if (rel.startsWith("assets/lexicon/")) lexicalBytes += size;
-  }
-  entries.sort((a, b) => b.size - a.size || a.path.localeCompare(b.path));
-
-  return {
-    output,
-    fileCount: entries.length,
-    totalBytes,
-    lexicalBytes,
-    lexicalAssetsIncluded,
-    largestFiles: entries.slice(0, 20)
-  };
-}
-
-async function copyRequired(path, output) {
-  const source = resolve(ROOT, path);
-  if (!existsSync(source)) throw new Error("missing runtime path: " + path);
-  await cp(source, resolve(output, path), { recursive: true, filter: (file) => !file.endsWith(".d.ts") });
-}
-
-async function walkFiles(root) {
-  const result = [];
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) result.push(...await walkFiles(path));
-    else if (entry.isFile()) result.push(path);
-  }
-  return result;
+export async function buildExtension({ outDir = DEFAULT_OUT, requireLexicon = false, allowExternalOutput = false } = {}) {
+  const options = { allowExternalOutput, allowWxtOutput: true };
+  const output = await assertBuildOutputPaths(ROOT, outDir, options);
+  // Each invocation builds in its own staging directory, including parallel Node
+  // tests/certifiers. Failed build/audit leaves the installed package untouched.
+  const staging = await mkdtemp(resolve(tmpdir(), "tf-wxt-build-"));
+  try {
+    const reportDir = resolve(staging, "reports");
+    const artifact = resolve(staging, "output/chrome-mv3");
+    await promisify(execFile)(process.execPath, [resolve(ROOT, "node_modules/wxt/bin/wxt.mjs"), "build", "-b", "chrome", "--mv3"], {
+      cwd: ROOT, maxBuffer: 4 * 1024 * 1024,
+      env: { ...process.env, TF_WXT_BUILD_ROOT: staging, TRANSLATEFLOW_WXT_REQUIRE_LEXICON: requireLexicon ? "1" : "0" }
+    });
+    const audit = await auditWxtExtension({ output: artifact, reportDir });
+    await assertBuildOutputPaths(ROOT, output, options);
+    await rm(output, { recursive: true, force: true });
+    await mkdir(output, { recursive: true });
+    await cp(artifact, output, { recursive: true });
+    // Standalone smoke consumes these reports with the explicit WXT output.
+    if (output === resolve(ROOT, ".output/chrome-mv3")) {
+      await mkdir(resolve(ROOT, ".wxt/reports"), { recursive: true });
+      await cp(reportDir, resolve(ROOT, ".wxt/reports"), { recursive: true });
+    }
+    return { output, builder: "WXT", fileCount: audit.fileCount, totalBytes: audit.totalBytes,
+      lexicalBytes: audit.lexicalBytes, lexicalAssetsIncluded: audit.lexicalBytes > 0,
+      largestFiles: [...audit.files].sort((a,b) => b.size - a.size || a.path.localeCompare(b.path)).slice(0,20) };
+  } finally { await rm(staging, { recursive: true, force: true }); }
 }
 
 function parseArgs(argv) {
   const args = { outDir: DEFAULT_OUT, requireLexicon: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === "--require-lexicon") {
-      args.requireLexicon = true;
-      continue;
-    }
+    if (arg === "--require-lexicon") { args.requireLexicon = true; continue; }
     if (arg === "--out") {
-      const value = argv[index + 1];
+      const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error("missing value for --out");
-      args.outDir = resolve(ROOT, value);
-      index += 1;
-      continue;
+      args.outDir = resolve(ROOT, value); continue;
     }
     throw new Error("unknown argument: " + arg);
   }
   return args;
 }
-
-async function main() {
-  const report = await buildExtension(parseArgs(process.argv.slice(2)));
-  process.stdout.write(JSON.stringify(report, null, 2) + "\n");
-}
-
-if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
-  main().catch((error) => {
-    console.error(error?.stack || error);
-    process.exitCode = 1;
-  });
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  buildExtension(parseArgs(process.argv.slice(2))).then(report => console.log(JSON.stringify(report,null,2)))
+    .catch(error => { console.error(error?.stack || error); process.exitCode = 1; });
 }

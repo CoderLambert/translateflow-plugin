@@ -1,3 +1,5 @@
+> #248 默认切换：`build:extension` 与 `build:extension:release` 现统一使用 WXT，稳定安装目录仍为 `dist/extension/`。`build:extension:wxt` 是同一引擎的显式输出入口（`.output/chrome-mv3/`）。下文 opt-in/旧默认描述为接入阶段的历史证据；最终升级与切换结果见 [PLATFORM_UPGRADE_V1.md](PLATFORM_UPGRADE_V1.md)。
+
 # WXT compatibility build v1
 
 This is the opt-in PF-01 / #246 implementation of the [tested migration contract](./PLATFORM_UPGRADE_V1.md). The default `build:extension`, release command, aggregate `validate`, old E2E builder and certification consumers still use the existing `dist/extension` package. Their final switch and same-ID upgrade proof belong to #248. This document records implementation evidence, not independent review or release approval.

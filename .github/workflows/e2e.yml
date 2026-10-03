@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - artifact: dist/extension
-            name: legacy
+            name: stable-wxt
           - artifact: .output/chrome-mv3
             name: wxt
     env:
@@ -33,7 +33,6 @@ jobs:
       - run: npm run test:wxt:smoke
       - run: npm run build:extension
       - name: Build the fixed pre-switch comparison artifact
-        if: matrix.name == 'wxt'
         env:
           TF_FIXED_OLD_ROOT: ${{ runner.temp }}/translateflow-pre-wxt
         run: |

@@ -10,9 +10,9 @@ npm run validate
 
 有效候选的纯元数据归档复用原验收证据，纯文档修改执行路径、命令、语义和 diff 校对；不为这两类修改重复全量测试。条件与限制见 [最小执行与证据复用](docs/tasks/LOCAL_WORKFLOW.md#最小执行与证据复用)。
 
-使用 `package.json` 的 Node/npm 约束和 `npm ci` 安装锁定依赖；当前校验保留 Node 内置测试与旧默认构建。WXT 工程依赖只参与构建，现有业务仍复用原 JS 模块。
+使用 `package.json` 的 Node/npm 约束和 `npm ci` 安装锁定依赖；当前校验保留 Node 内置测试与默认 WXT 构建。WXT 工程依赖只参与构建，现有业务仍复用原 JS 模块。
 
-`validate` 依次执行源码/架构检查、旧 Node 回归、严格 TypeScript、Vitest 单元测试和当前默认旧构建。可分别运行 `npm run typecheck`、`npm run test:unit`；两者先生成 WXT 类型。旧 Node 仅发现 `tests/*.test.mjs`，Vitest 仅发现 `tests/unit/**/*.test.ts(x)`，Playwright 仍仅发现 `e2e/**/*.spec.mjs`。纯函数默认 Node 环境；组件测试必须明确声明 jsdom 环境，组件 fixture 不进入生产包。
+`validate` 依次执行源码/架构检查、旧 Node 回归、严格 TypeScript、Vitest 单元测试和默认 WXT 构建。可分别运行 `npm run typecheck`、`npm run test:unit`；两者先生成 WXT 类型。旧 Node 仅发现 `tests/*.test.mjs`，Vitest 仅发现 `tests/unit/**/*.test.ts(x)`，Playwright 仍仅发现 `e2e/**/*.spec.mjs`。纯函数默认 Node 环境；组件测试必须明确声明 jsdom 环境，组件 fixture 不进入生产包。
 
 新 TS/TSX 及本仓声明文件必须通过严格编译；旧 JS 保持 `allowJs`、`checkJs:false`，用真实 JSDoc 或 unknown 输入加现有运行时 validator 逐步互操作。完整 WXT `import.meta.env` 生成声明仍存在上游冲突，当前产品不使用它；未来使用必须先解决该边界，不能扩大本仓类型排除范围。实际编译域与失败证据见 [docs/TYPES_TESTS_V1.md](docs/TYPES_TESTS_V1.md)。
 
@@ -23,7 +23,7 @@ npm run build:extension:wxt
 npm run test:wxt:smoke
 ```
 
-新产物位于 `.output/chrome-mv3/`，旧默认产物保持 `dist/extension/`。有限 smoke 从实际 WXT 包制作临时测试副本，使用合成 Core 词典、本地审核 Technical 词典与确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
+默认产物位于稳定安装目录 `dist/extension/`，显式 WXT 入口输出到 `.output/chrome-mv3/`；两者使用同一 WXT 引擎和产物审核。有限 smoke 从实际 WXT 包制作临时测试副本，使用合成 Core 词典、本地审核 Technical 词典与确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
 
 涉及真实 Chrome/MV3/DOM/交互行为的改动还应运行适用的浏览器 E2E：
 
@@ -32,7 +32,7 @@ npm run build:extension:wxt
 npm run test:e2e
 ```
 
-完整 E2E 包含直接读取 `.output/chrome-mv3` 的语言专项，运行前需显式构建 WXT 包；`validate` 当前生成的 `dist/extension` 不能替代它。语言专项的旧包对照先构建旧包，再显式设置 `TF_I18N_ARTIFACT=dist/extension`，见 [UI_LOCALE.md](docs/UI_LOCALE.md)。fixture 不会为缺失产物自动构建或补文件。
+完整 E2E 包含直接读取 `.output/chrome-mv3` 的语言专项，运行前需显式构建 WXT 包；`validate` 生成的 `dist/extension` 也是 WXT 包；仍需为显式消费者生成指定路径。旧包对照只能从固定提交 `19e89b65fd3600073410407392da82ffa666ffc8` 构建，再显式设置 `TF_I18N_ARTIFACT` 为其产物路径，见 [UI_LOCALE.md](docs/UI_LOCALE.md)。fixture 不会为缺失产物自动构建或补文件。
 
 ## Local task workflow
 

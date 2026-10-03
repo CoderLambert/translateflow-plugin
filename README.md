@@ -146,7 +146,7 @@ git clone https://github.com/CoderLambert/translateflow-plugin.git
 cd translateflow-plugin
 ```
 
-扩展运行时仍然零第三方依赖、零 bundler；发布使用 `npm run build:extension` 生成 allowlist `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
+默认构建由 WXT 编译后台、Popup 和 Options，Content/MAIN/Worker 继续复用精确源码桥；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
 
 首次源码安装或清理过词典产物后，先执行：
 

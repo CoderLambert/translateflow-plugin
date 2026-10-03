@@ -114,6 +114,9 @@ test("real builder writes only disposable output; alias rejection preserves a di
     const output = join(temp, "package");
     const report = await buildExtension({ outDir: output, allowExternalOutput: true });
     assert.equal(report.output, output);
+    assert.equal(report.builder, "WXT");
+    assert.doesNotMatch(await readFile(join(output, "background.js"), "utf8"), /from ["']\.\/src\/background\/index\.js/);
+    assert.match(await readFile(join(output, "options.html"), "utf8"), /chunks\/options-/);
     assert.equal(JSON.parse(await readFile(join(output, "manifest.json"), "utf8")).manifest_version, 3);
     const victim = join(temp, "sentinel-directory");
     await mkdir(victim); await writeFile(join(victim, "keep"), "retained");
