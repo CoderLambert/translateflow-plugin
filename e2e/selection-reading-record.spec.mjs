@@ -94,6 +94,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     const production = await inventory(artifact); await cp(artifact, extension, { recursive: true });
     expect(await inventory(extension)).toEqual(production);
     const backgroundSha256 = hash(await readFile(join(extension, "background.js")));
+    await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
     await mkdir(join(extension, "assets/lexicon"), { recursive: true });
     await cp(join(root, "tests/fixtures/tflex-runtime-pack"), join(extension, "assets/lexicon/core"), { recursive: true });
     await compileTflexTechnical({ extractPath: join(root, "lexicon/sources/wikidata-tech-entities.json"),

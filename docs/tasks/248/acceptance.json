@@ -1,10 +1,92 @@
 {
   "schema": 1,
   "task": "248",
-  "candidateHead": null,
-  "checks": [],
+  "candidateHead": "9bf352959fefa66407a89e80a62d4a8619c3fcc2",
+  "tree": "2e4fbe7b32ca125a4438a9e006620643b8f3b6a7",
+  "inputTree": "fcbc71baca44d6d7abe7db5108d75ad3f068a5aef572dfa06f8f0bbaca041e3a",
+  "frozenAt": "2026-10-03T13:14:41.349Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "9bf352959fefa66407a89e80a62d4a8619c3fcc2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 61221.037367,
+      "startedAt": "2026-10-03T13:14:41.572Z",
+      "log": "docs/task-execution/local/248/1ca91020-a6b3-4cfd-bf95-c4a89f67b5f4.log",
+      "logSha256": "0a3905b790e65454f750eaed5e6530f19984dfa0b2d936177173053f23faf4e7"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "9bf352959fefa66407a89e80a62d4a8619c3fcc2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2123.088948,
+      "startedAt": "2026-10-03T13:16:02.376Z",
+      "log": "docs/task-execution/local/248/3a251184-7a5d-4701-8287-6ebd77a090ee.log",
+      "logSha256": "f15addcd4b779c56fc680f4f0e84c40360671d54708b0de88c71664a37e69d56"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "9bf352959fefa66407a89e80a62d4a8619c3fcc2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1784.001251,
+      "startedAt": "2026-10-03T13:16:04.685Z",
+      "log": "docs/task-execution/local/248/e91e135f-4e51-42b9-87c9-98bb7159676a.log",
+      "logSha256": "222beee04c35d14542243ebd5b2cd9660ac367704ee50a86d0ae62978b3d8b1f"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:release"
+      ],
+      "candidateHead": "9bf352959fefa66407a89e80a62d4a8619c3fcc2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2122.4563,
+      "startedAt": "2026-10-03T13:16:06.655Z",
+      "log": "docs/task-execution/local/248/fb41d49c-3eb8-4032-b7ca-40eaab760226.log",
+      "logSha256": "3758054052186f95f4ae10fde3e07c0d602f25ec98057487b2ee42b3d5ec5ea0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "candidateHead": "9bf352959fefa66407a89e80a62d4a8619c3fcc2",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 268518.642452,
+      "startedAt": "2026-10-03T13:16:08.969Z",
+      "log": "docs/task-execution/local/248/d1b9d01a-d2c2-4d9f-ad43-9211e6f1ba11.log",
+      "logSha256": "5d0a6278fcd486744592971334aadd7f5386ea5edfc73d93b0b31d7855e5e7d4"
+    }
+  ],
   "artifact": null,
-  "limitations": [
-    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
-  ]
+  "limitations": []
 }
