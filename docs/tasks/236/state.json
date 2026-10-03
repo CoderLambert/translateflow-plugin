@@ -15,7 +15,19 @@
     [
       "npm",
       "run",
-      "validate"
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit",
+      "--",
+      "tests/unit/learning-center"
     ],
     [
       "npm",
@@ -29,5 +41,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "执行冻结候选的完整验收，保留物理 extension Origin quota 的 FAIL；不记录 READING_LOOP_A_PASS，不同步/合并 236。"
+  "nextAction": "焦点恢复最小修复已通过定向 E2E；复用 8a972fc 的完整 validate/1034 Node PASS，重验受影响 UI、类型、产物及必需全量 E2E；保留物理 quota FAIL。"
 }

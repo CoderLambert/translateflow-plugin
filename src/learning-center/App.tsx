@@ -25,7 +25,7 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
   const [notNow, setNotNow] = useState(false), [confirm, setConfirm] = useState<"record" | "page" | "all" | null>(null);
   const [exporting, setExporting] = useState(false), [bytes, setBytes] = useState(0);
   const active = useRef(false), readEpoch = useRef(0), detailEpoch = useRef(0), mutation = useRef(false), exportingRef = useRef<AbortController | null>(null);
-  const originFocus = useRef<HTMLElement | null>(null);
+  const originFocus = useRef<HTMLElement | null>(null), returnFocus = useRef(false);
   const library = useLibrary(client, mode, query, page?.pageKey ?? null, revision, !offline && !exporting && state !== null && localeReady && !id);
   const refresh = useCallback(() => { readEpoch.current++; detailEpoch.current++; setDetail(null); setRevision(value => value + 1); }, []);
   useEffect(() => {
@@ -72,17 +72,16 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
   function navigate(next: string | null) {
     detailEpoch.current++; setDetail(null); setId(next);
     history.pushState(null, "", next ? `#record=${next}` : location.pathname);
-    if (!next) requestAnimationFrame(() => {
-      const prior = originFocus.current;
-      const replacement = prior?.dataset.recordId ? document.querySelector<HTMLElement>(`[data-record-id="${prior.dataset.recordId}"]`) : null;
-      (prior?.isConnected ? prior : replacement ?? document.getElementById("recent-records"))?.focus();
-    });
+    returnFocus.current = next === null;
   }
   useEffect(() => {
-    if (id || library.loading || document.activeElement?.id !== "recent-records") return;
+    if (id || !returnFocus.current || !library.settled || offline || !state || detailLoading) return;
     const previousId = originFocus.current?.dataset.recordId;
-    if (previousId) document.querySelector<HTMLElement>(`[data-record-id="${previousId}"]`)?.focus();
-  }, [id, library.loading, library.records]);
+    const original = previousId ? document.querySelector<HTMLButtonElement>(`[data-record-id="${previousId}"]`) : null;
+    const target = original ?? document.querySelector<HTMLButtonElement>("#recent-records");
+    if (target && !target.disabled) { target.focus(); returnFocus.current = false; }
+  }, [id, library.settled, library.records, offline, state, detailLoading]);
+
   const blocked = busy || detailLoading || exporting || offline || state === null || !localeReady;
   async function action(operation: () => Promise<unknown>) {
     if (mutation.current || exportingRef.current || offline || !state) return;

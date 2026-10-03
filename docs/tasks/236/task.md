@@ -36,3 +36,7 @@ Parent #229；Release A发布验收；硬依赖#234、#235合入main且阻断性
 执行当前npm run validate、真实WXT相关Reading/Selection/缓存Chromium E2E；词典认证仅触及路径或required CI时执行。无真实API key不阻止mock产品流，但不能声称真实模型质量已验收。
 
 只有A真实main故事及独立review成立才记录READING_LOOP_A_PASS并按依赖释放后续任务；不关闭#229、不启动未经授权D/商店发布。原CONTRIBUTING的merged→implemented→auditing→audited语义继续有效。
+
+## 本轮验证与证据复用
+
+候选 `8a972fc7546f39201e83606eb9e54738981c4018` 已执行一次完整 `npm run validate`，1034 Node / 15 Vitest / TS / WXT 全部 PASS。随后真实 Escape 用例发现焦点恢复早于重连/列表完成；最小修复只改 `src/learning-center/App.tsx` 与 `useLibrary.ts`。按 LOCAL_WORKFLOW 复用未变化的 Node 合同/存储/fixture 结果，记录原 head 与日志 hash；新候选重验源码检查、严格类型、学习中心组件/导出测试、实际 WXT 产物和全量 E2E。必需物理 extension Origin quota 断言保留，未过滤、skip 或降低阈值，不记录 A_PASS。
