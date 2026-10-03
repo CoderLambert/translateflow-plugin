@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "task": "238",
+  "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
+  "tree": "ac4f840b8ff257c834b43e70de10dd4996912901",
+  "inputTree": "f69f418886d67b5aae217b1d2b47f081a68c1fa5898ff156ab78d2a8074db825",
+  "frozenAt": "2026-10-03T23:09:47.965Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56609.962869,
+      "startedAt": "2026-10-03T23:10:11.108Z",
+      "log": "docs/task-execution/local/238/48486e7f-dc28-4f6f-ad68-d41cc7285fa9.log",
+      "logSha256": "115d3387f15cf0110e08edd82ca6b2469d5fd45689c0e7b2199696627c0b5198"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2290.625799,
+      "startedAt": "2026-10-03T23:11:17.069Z",
+      "log": "docs/task-execution/local/238/0166d55e-27fb-41b4-8485-090098e2682d.log",
+      "logSha256": "c92805a0b3b9b448b1ce583ee572f3149ed76a635f8b8a2a610ca90721a6224d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-return-location.spec.mjs"
+      ],
+      "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3819.155486,
+      "startedAt": "2026-10-03T23:11:19.537Z",
+      "log": "docs/task-execution/local/238/05203c8f-6892-46c2-be65-c6a77766b7ba.log",
+      "logSha256": "9d6e836da438ea39e7a7e6274b5083f06cf3826985c08618bc9793a9a2054fd2"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "d5e3d9d2c4ac36694ec88306424c7ac0da6890d6b76329c46270f08e19f874f6"
+  },
+  "limitations": [
+    "任务 239 的持久再访 marker、本页历史列表与 SPA 自动恢复未实现；本任务只处理一次性回访后的精确定位和临时卡片/overlay。",
+    "真实 Chromium 覆盖 unique resolved、节点替换后重建、ambiguous、missing、Escape 清理和准确学习中心 deep link；unsupported、超大文本预算、revision 重试/abort 由生产 resolver 的 Node/DOM 测试覆盖。",
+    "Chrome 102、Edge、Firefox、Safari、隐身窗口、PDF/video/frame/shadow 实际站点和商店发布 NOT RUN；Manifest 权限、Reading DB、Provider/cache 均未修改。",
+    "npm ci 使用未变化的锁文件成功安装，但 npm audit 报告 1 low / 1 high 既有依赖告警；未执行 audit fix 或 force，也未在本任务升级依赖。"
+  ],
+  "decision": "LOCAL_CANDIDATE_PASS",
+  "packageBudget": {
+    "files": 162,
+    "totalBytes": 1822230,
+    "platformCodeBytes": 1574841,
+    "platformCodeBudgetBytes": 1576595,
+    "budgetRaised": false
+  }
+}

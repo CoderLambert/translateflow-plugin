@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "task": "238",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [
+    "237",
+    "231"
+  ],
+  "branch": "feat/238-reading-return-location",
+  "worktree": ".worktrees/issue-238",
+  "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a",
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-return-location.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "候选 e02b7c0 完整验收与主 Agent 自查通过；提交归档并执行本地 gate 后推送 PR。"
+}

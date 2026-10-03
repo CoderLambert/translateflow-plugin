@@ -9,6 +9,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
   let delayMs = 0;
   let ecdictMdxArchiveMode = "archive";
   let ecdictMdxArchiveRequests = [];
+  let customPages = new Map();
 
   const server = createServer(async (request, response) => {
     try {
@@ -139,7 +140,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       }
 
       if (request.method === "GET") {
-        html(response, renderFixture(url.pathname));
+        html(response, customPages.get(url.pathname) ?? renderFixture(url.pathname));
         return;
       }
 
@@ -172,12 +173,17 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       delayMs = 0;
       ecdictMdxArchiveMode = "archive";
       ecdictMdxArchiveRequests = [];
+      customPages = new Map();
     },
     setFailures(statuses) {
       failures = [...(Array.isArray(statuses) ? statuses : [])].map(Number);
     },
     setDelay(ms) {
       delayMs = Math.max(0, Number(ms) || 0);
+    },
+    setPage(pathname, body) {
+      const path = new URL(String(pathname), "http://fixture.invalid").pathname;
+      customPages.set(path, String(body));
     },
     setEcdictMdxArchiveMode(mode) {
       if (!["archive", "failure", "cancel"].includes(mode)) {

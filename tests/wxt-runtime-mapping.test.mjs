@@ -26,7 +26,7 @@ test("a legitimate new resource is required for new closure but cannot be demand
   assert.doesNotThrow(() => assertRuntimeMapping(paths, manifest, old));
   assert.throws(() => assertRuntimeMapping(paths, manifest, current), /learning-center/u);
   for (const resource of Object.values(current.extensionPages)) paths.add(resource);
-  assert.throws(() => assertRuntimeMapping(paths, manifest, current), /reading-contract/u);
+  assert.throws(() => assertRuntimeMapping(paths, manifest, current), /src\/content\//u);
   for (const resource of current.contentScripts) paths.add(resource);
   assert.throws(() => assertRuntimeMapping(paths, manifest, future), /new-approved-resource/u);
   paths.add("src/content/new-approved-resource.js");

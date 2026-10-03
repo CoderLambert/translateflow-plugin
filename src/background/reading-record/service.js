@@ -31,7 +31,8 @@ export function createReadingService({ browser, repository = null, collector, no
     const method = request.method;
     if (method === M.OPEN_LEARNING_CENTER) {
       if (!learningCenterAvailable || typeof browser?.tabs?.create !== "function") fail(E.NOT_READY, "learning-center");
-      await browser.tabs.create({ url: browser.runtime.getURL(READING_LEARNING_CENTER_PATH) });
+      const path = `${READING_LEARNING_CENTER_PATH}${request.recordId ? `#record=${request.recordId}` : ""}`;
+      await browser.tabs.create({ url: browser.runtime.getURL(path) });
       return { opened: true };
     }
     if (method === M.REGISTER_DOCUMENT) {

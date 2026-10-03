@@ -8,7 +8,8 @@
     app.modules.uiQuickControlStyles?.css,
     app.modules.uiSelectionAiDetailStyles?.css,
     app.modules.uiSelectionEmptyStateStyles?.css,
-    app.modules.uiSelectionLexicalStyles?.css
+    app.modules.uiSelectionLexicalStyles?.css,
+    app.modules.uiReadingReturnStyles?.css
   ].filter(Boolean).join("\n");
   let host;
   let shadow;

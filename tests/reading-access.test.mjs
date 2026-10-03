@@ -193,3 +193,14 @@ test("Content fixed-open ACK works before and after registration without grantin
   service.invalidateTab(7);
   await rejects(() => service.accessControl.validateCurrent(access), E.STALE_OPERATION);
 });
+
+test("Content can open only the fixed learning-center deep link carrying a validated record ID", async () => {
+  const browser = nativeBrowser(); let opened = null;
+  browser.tabs.create = async ({ url }) => { opened = url; return { id: 99, url }; };
+  const service = createReadingService({ browser, repository: repositoryDouble(), collector: collector(), learningCenterAvailable: true });
+  const recordId = "11111111-1111-4111-8111-111111111111";
+  assert.equal((await service.handle(request(M.OPEN_LEARNING_CENTER, { recordId }), contentSender())).ok, true);
+  assert.equal(opened, browser.runtime.getURL(`learning-center.html#record=${recordId}`));
+  assert.equal(code(await service.handle(request(M.OPEN_LEARNING_CENTER, { recordId: "private text" }), contentSender())), E.BAD_DTO);
+  assert.equal(code(await service.handle(request(M.OPEN_LEARNING_CENTER, { url: "https://evil.test" }), contentSender())), E.BAD_DTO);
+});
