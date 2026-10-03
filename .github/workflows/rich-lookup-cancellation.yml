@@ -2,33 +2,6 @@ name: rich-lookup-cancellation
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/rich-lookup-cancellation.yml"
-      - "e2e/support/**"
-      - "scripts/measure-rich-lookup-cancellation-baseline.mjs"
-      - "e2e/selection-rich-lookup-cancel.spec.mjs"
-      - "tests/helpers/rich-mdict-fixture.mjs"
-      - "tests/rich-mdict-lookup-cancellation.test.mjs"
-      - "src/content/selection/**"
-      - "src/background/router.js"
-      - "src/background/packs/**"
-      - "package.json"
-      - "package-lock.json"
-  pull_request:
-    paths:
-      - ".github/workflows/rich-lookup-cancellation.yml"
-      - "e2e/support/**"
-      - "scripts/measure-rich-lookup-cancellation-baseline.mjs"
-      - "e2e/selection-rich-lookup-cancel.spec.mjs"
-      - "tests/helpers/rich-mdict-fixture.mjs"
-      - "tests/rich-mdict-lookup-cancellation.test.mjs"
-      - "src/content/selection/**"
-      - "src/background/router.js"
-      - "src/background/packs/**"
-      - "package.json"
-      - "package-lock.json"
 
 permissions:
   contents: read

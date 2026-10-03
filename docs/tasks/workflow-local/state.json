@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "task": "workflow-local",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "main",
+  "worktree": ".",
+  "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21",
+  "mergeHead": "a02e000e80148f28dd2992cea45ee8dab9cc0afc",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "流程迁移已完成；产品任务保持原暂停/阻塞状态，等待用户明确恢复。",
+  "blockers": [],
+  "localGate": {
+    "result": "PASS",
+    "syncHead": "5d870f86b30c4ac524bf154513b01c5b06c3a28a",
+    "evidence": "docs/task-execution/local/gate-resumed.json"
+  },
+  "externalSettings": {
+    "automaticPrReview": "DISABLED, user confirmed in current session"
+  },
+  "syncHead": "5d870f86b30c4ac524bf154513b01c5b06c3a28a",
+  "implementationBranch": "chore/local-task-workflow",
+  "pr": 280,
+  "postmergeVerification": {
+    "result": "PASS",
+    "tree": "0915c1cfa7a1fa13c4f8485b8d0a58bf33e06ed8",
+    "manualOnlyWorkflows": 11
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "task": "230",
+  "candidateHead": null,
+  "checks": [],
+  "artifact": null,
+  "limitations": [
+    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
+  ]
+}

@@ -6,7 +6,7 @@ async function source(path) {
   return readFile(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("#107 Selection release gate keeps every required fixture family in CI", async () => {
+test("#107 Selection release gate keeps every required fixture family in manual verification", async () => {
   const [
     integrated,
     releaseGate,
@@ -58,7 +58,9 @@ test("#107 Selection release gate keeps every required fixture family in CI", as
   assert.doesNotMatch(fixture, /buildExtension\(/);
   assert.match(await source("e2e/support/production-artifact.mjs"), /lexiconPacks === "corrupt"/);
   assert.match(await source("e2e/support/production-artifact.mjs"), /lexiconPacks === "incompatible"/);
-  assert.match(workflow, /"e2e\/\*\*"/);
+  assert.match(workflow, /^  workflow_dispatch:/m);
+  assert.doesNotMatch(workflow, /^  (?:push|pull_request):/m);
+  assert.match(workflow, /npm run test:e2e -- --reporter=line,json/);
   assert.match(workflow, /REQUIRE_RELEASE_LEXICON_PACKS: "1"/);
 });
 

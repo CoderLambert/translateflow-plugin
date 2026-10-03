@@ -2,17 +2,6 @@ name: wiktextract-ingest
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/wiktextract-ingest.yml"
-      - "scripts/run-pinned-wiktextract-ingest.py"
-      - "scripts/wiktextract_ingest_evidence.py"
-      - "scripts/audit-wikimedia-enwiktionary-source.mjs"
-      - "scripts/wikimedia-enwiktionary-contract.mjs"
-      - "scripts/wikimedia-enwiktionary-lock.mjs"
-      - "tests/wiktextract-ingest.test.mjs"
-      - "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json"
-      - "lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json"
 
 permissions:
   contents: read

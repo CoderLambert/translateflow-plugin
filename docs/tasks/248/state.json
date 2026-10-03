@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "task": "248",
+  "status": "paused",
+  "owner": "main",
+  "dependencies": [
+    "246",
+    "247",
+    "227",
+    "path-safety"
+  ],
+  "branch": null,
+  "worktree": ".worktrees/issue-248-final",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:release"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "先完成 path-safety 独立闭环；恢复最终 WXT 默认切换需要用户授权。"
+}

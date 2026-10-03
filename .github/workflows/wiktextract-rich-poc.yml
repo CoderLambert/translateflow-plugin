@@ -8,28 +8,6 @@ on:
         type: boolean
         required: false
         default: false
-  pull_request:
-    paths:
-      - ".github/workflows/wiktextract-rich-poc.yml"
-      - "scripts/run-pinned-wiktextract-ingest.py"
-      - "scripts/wiktextract_ingest_evidence.py"
-      - "scripts/wiktextract_extraction_evidence.py"
-      - "scripts/wiktextract-python-requirements.lock"
-      - "scripts/wiktextract-nltk-data-lock.json"
-      - "scripts/audit-wiktextract-projection-compatibility.mjs"
-      - "scripts/project-kaikki-rich.mjs"
-      - "tests/wiktextract-extraction-evidence.test.mjs"
-      - "tests/wiktextract-rich-projection.test.mjs"
-      - "scripts/audit-wikimedia-enwiktionary-source.mjs"
-      - "scripts/wikimedia-enwiktionary-contract.mjs"
-      - "scripts/wikimedia-enwiktionary-lock.mjs"
-      - "lexicon/source-candidates/wikimedia-enwiktionary-2026-09-01.json"
-      - "lexicon/source-locks/wikimedia-enwiktionary-2026-09-01.json"
-      - "lexicon/quality-decisions/wikimedia-enwiktionary-20260901-rich.json"
-      - "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-stop.json"
-      - "lexicon/build-evidence/wikimedia-enwiktionary-20260901-rich-partial-compatibility.json"
-      - "docs/WIKTIONARY_RICH_POC.md"
-      - "docs/DICTIONARY_SOURCE_FREEZE.md"
 
 permissions:
   contents: read
