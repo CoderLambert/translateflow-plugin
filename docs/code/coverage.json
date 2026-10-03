@@ -7,8 +7,8 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/d5e308a709c008acf6b277d466d020f13025bdca?recursive=1",
   "denominator": 636,
   "counts": {
-    "已解释": 59,
-    "待解释": 577,
+    "已解释": 70,
+    "待解释": 566,
     "待复核": 0,
     "有理由排除": 0
   },
@@ -183,7 +183,10 @@
       "function": "扩展启动",
       "status": "已解释",
       "documentation": "modules/startup.md#file-content-entry",
-      "reviewedAt": "2026-10-02"
+      "reviewedAt": "2026-10-02",
+      "relatedDocumentation": [
+        "modules/youtube-subtitles.md#partial-entry-router"
+      ]
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -903,14 +906,18 @@
       "sourceBlob": "bef80d072bb23d7c67492859ae5fd550630f9734",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "e2e/subtitles.spec.mjs",
       "sourceBlob": "544fa571fed4ab081c637a6b6cdef3cb0ab292dc",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/extension-fixture.mjs",
@@ -954,7 +961,9 @@
       "sourceBlob": "83392eea630cc1e003fbcdf224d600d25df0d5f9",
       "function": "字幕",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "entrypoints/background.ts",
@@ -2418,7 +2427,8 @@
       "relatedDocumentation": [
         "modules/startup.md#partial-files",
         "modules/selection.md#partial-router",
-        "modules/dictionary-import-render.md#partial-router"
+        "modules/dictionary-import-render.md#partial-router",
+        "modules/youtube-subtitles.md#partial-entry-router"
       ]
     },
     {
@@ -2448,9 +2458,10 @@
     {
       "path": "src/background/subtitle-requests.js",
       "sourceBlob": "f3a1267bc7bfc50c8748ed594ce735a3ad4b564c",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-subtitle-requests",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/translation-gateway.js",
@@ -2471,11 +2482,10 @@
     {
       "path": "src/background/youtube-bridge.js",
       "sourceBlob": "26edbc1d5cf88f04d2fd836bf4eeb243334c8f16",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-installer",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/appearance.js",
@@ -2715,69 +2725,74 @@
     {
       "path": "src/content/subtitles/controller.js",
       "sourceBlob": "eda3a61954df1603ddd342c61ec127734c5795bd",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-controller",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/pipeline.js",
       "sourceBlob": "b44aa7abe290f3d9c64fd2a0748f929c8c5d1e2c",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-pipeline",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/renderer.js",
       "sourceBlob": "7a526db3c2285175800b9aeaa2e1d6989a3d6fa2",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-renderer",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/source.js",
       "sourceBlob": "16aa92c30acd08a720e60cb2e8d7dfae5c6343f1",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-source-contract",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/sources/text-track.js",
       "sourceBlob": "f14bd7051260216b17c14b0d094ea1e12576e4d7",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-text-track",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/sources/youtube.js",
       "sourceBlob": "eba89eb17b12527313b7305fdf7ec3f96d31e33e",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-youtube-source",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/youtube-bridge-protocol.js",
       "sourceBlob": "f4c2819422524fd45b92d9b1ed1cd6a138dca7bd",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-protocol",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/youtube-main-bridge.js",
       "sourceBlob": "eee4e399fb4352acd6313a8c6c2ac232be60577c",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-main",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/subtitles/youtube-timedtext.js",
       "sourceBlob": "d97becd82a18becaed05692e6e61d3af589101e9",
-      "function": "字幕",
-      "status": "待解释",
-      "documentation": null
+      "function": "YouTube字幕",
+      "status": "已解释",
+      "documentation": "modules/youtube-subtitles.md#file-parser",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/content/tasks.js",
@@ -3455,7 +3470,9 @@
       "sourceBlob": "b6d62efc34ff76592ace1de8b462646ceba1418d",
       "function": "启动与共享基础",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#partial-entry-router",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/selection-explanation.js",
@@ -4504,21 +4521,27 @@
       "sourceBlob": "61c9be1eaeec384840526f5c9134a14ded9d9a4d",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/subtitle-pipeline.test.mjs",
       "sourceBlob": "0d18567b7121b5caa27cbf9739f994b528f0d8eb",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/subtitles.test.mjs",
       "sourceBlob": "6e7a18343672f5134c8eea28143bdeb9adfed6b1",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/tasks.test.mjs",
@@ -4710,7 +4733,9 @@
       "sourceBlob": "f2f1d65a365cee73f2415790dde4ad929fc20ffd",
       "function": "字幕",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/youtube-subtitles.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tsconfig.json",

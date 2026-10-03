@@ -2,15 +2,15 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示和网页翻译/缓存功能链；大型依赖的内部覆盖以清单为准。
+源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存和YouTube字幕功能链；大型依赖的内部覆盖以清单为准。
 
 ## 先区分五种运行环境
 
 1. **扩展后台 service worker**：默认 [background.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/background.js) 调用 [initializeBackground](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/index.js)；WXT [entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/entrypoints/background.ts) 复用同一函数。注册消息、快捷键、Reading端口/标签页/权限和安装启动事件。不能把浏览器启动事件当成每次 service worker 唤醒。
 2. **扩展页面**：Popup/Options 是原生 HTML/CSS/JS；WXT 编译这些唯一源码。Popup负责用户入口；Options负责配置和导入。页面生命周期不同于后台，关闭Popup并不等于自动取消所有后台请求。
 3. **网页 ISOLATED Content**：classic脚本按清单顺序装配到 `globalThis.__TRANSLATE_FLOW_CONTENT__`；[content.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/content.js) 最后注册监听并启动界面功能。不能直接加入ESM import。
-4. **YouTube MAIN**：受限网页桥接，仅观察播放器自己的字幕响应；不承载任意后台能力。本轮只说明边界，字幕算法另行导读。
-5. **导入 Workers**：Options按固定路径启动的独立处理环境；不是后台 service worker 的别名，也不是每次扩展启动都会创建。具体导入协议仍待说明。
+4. **YouTube MAIN**：受限网页桥接，仅观察播放器自己的字幕响应；不承载任意后台能力。获取、仲裁、批处理和UI生命周期见[字幕功能章](features/youtube-subtitles.md)。
+5. **导入 Workers**：Options按固定路径启动的独立处理环境；不是后台 service worker 的别名，也不是每次扩展启动都会创建。实际导入协议见[词典导入章](features/local-dictionary-import.md)，底层大型依赖完整程度以覆盖清单为准。
 
 固定资源路径由 [runtime-assets.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/runtime-assets.js) 定义；Content脚本清单与注入规则见启动导读。构建允许清单控制真正进入安装包的文件，仓库存在的文件不等于可在扩展运行时访问。
 
@@ -33,7 +33,7 @@
 | 本地词典 | 独立OPFS与对应目录/索引 | 导入事务、版本/资源关联、恢复 |
 | Provider HTTP | background/providers/ | AbortSignal、timeout/retry、显式用户动作和费用 |
 
-后三项内部算法尚未逐文件讲解，在[覆盖清单](coverage.json)中仍为待解释。本页的数据所有权依据[现有架构约束](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)与[AGENTS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)，不宣称所有实现已完成独立安全审核。
+共享请求/缓存已在网页翻译章解释；Reading及词典存储大型依赖仍有未覆盖部分，见[覆盖清单](coverage.json)。本页的数据所有权依据[现有架构约束](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)与[AGENTS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)，不宣称所有实现已完成独立安全审核。
 
 ## 如何定位修改
 
@@ -44,7 +44,7 @@
 
 ## 当前缺口
 
-启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储的局部依赖、字幕、设置、Reading和构建测试仍待继续；网页翻译与缓存已有对应功能章。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储的局部依赖、设置、Reading和构建测试仍待继续；网页翻译/缓存与YouTube字幕已有对应功能章。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -71,3 +71,12 @@ SourceSnapshot只是本次查询的内存证据，尚不等于Reading记录保�
 DOM候选→有限行内marker→去重分批→缓存查询→缺失时Provider→当前页面/原文核对→受控DOM与缓存。cache-only在网络分支前返回，独立自动恢复的miss不会触发Provider。隐藏译文、清DOM、清持久缓存是不同操作。
 
 有效配置由同一解析规则得到，但lookup、translate、store各消息重新读取，尚非一次点击固定配置快照；网络期间变配置的缓存归属风险为静态分析，未复现。取消不撤销已发送的CACHE_STORE，关闭auto也不等于abort在途。本文边界不更改业务或宣称测试失败，详见功能章的可验证限制。
+
+
+## YouTube字幕接上共享请求与缓存
+
+[完整流程](features/youtube-subtitles.md) · [11个逐文件说明](modules/youtube-subtitles.md)
+
+播放器请求经MAIN旁路观察和有限协议进入ISOLATED，依次选择当前代MAIN timedtext、真实active TextTrack、DOM文本，再稳定化、去重、限队列分批。后台单批只解析一次有效配置，查缓存、调用Provider并写回；renderer使用textContent显示。签名字幕URL不重放。
+
+视频切换有媒体代与本地任务过期保护，但这不等于同视频所有cue/切轨时序均正确，也不等于后台缓存阶段可撤销。original模式仍进入翻译；off仅阻止新ingest，不能称队列及在途调用已取消。这些静态边界与现有合成测试范围均在功能章明确，实际网站与竞态验证NOT_RUN。
