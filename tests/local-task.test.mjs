@@ -35,7 +35,7 @@ async function ready(f) {
   const s = f.load("docs/tasks/234/state.json"); s.status = "ready_to_sync"; s.candidateHead = a.candidateHead;
   f.save("docs/tasks/234/state.json", s);
   f.save("docs/tasks/index.json", buildIndex(f.root));
-  writeFileSync(join(f.root, "docs/tasks/234/review.md"), `<!-- local-review ${JSON.stringify({ schema: 1, task: "234", candidateHead: a.candidateHead, result: "PASS", role: "dev_reviewer", independent: true })} -->\nSynthetic reviewer fixture, not a real approval.\n`);
+
   return a;
 }
 
@@ -73,13 +73,15 @@ test("task contract and frozen required checks cannot be weakened by metadata ar
   writeFileSync(join(f.root, "docs/tasks/234/task.md"), "Changed contract\n");
   assert.throws(() => gate(f.root, "234"), /Uncommitted/u);
 });
-test("missing, self-declared and stale reviewer records reject synchronization", async (t) => {
+test("actual passing acceptance does not require a model reviewer record", async (t) => {
   const f = fixture(t), a = await ready(f), path = join(f.root, "docs/tasks/234/review.md");
-  writeFileSync(path, "NOT RUN\n"); assert.throws(() => gate(f.root, "234"), /review is missing/u);
-  for (const fields of [{ role: "main" }, { independent: false }, { candidateHead: "0".repeat(40) }, { result: "CHANGES_REQUESTED" }]) {
-    writeFileSync(path, `<!-- local-review ${JSON.stringify({ task: "234", candidateHead: a.candidateHead, result: "PASS", role: "dev_reviewer", independent: true, ...fields })} -->\n`);
-    assert.throws(() => gate(f.root, "234"), /stale or not passing/u);
-  }
+  rmSync(path);
+  assert.equal(gate(f.root, "234").candidateHead, a.candidateHead);
+  writeFileSync(path, "NOT RUN: model review is disabled by user policy.\n");
+  assert.equal(gate(f.root, "234").result, "PASS");
+  const acceptance = f.load("docs/tasks/234/acceptance.json"); acceptance.checks = [];
+  f.save("docs/tasks/234/acceptance.json", acceptance);
+  assert.throws(() => gate(f.root, "234"), /Missing passing check/u);
 });
 test("missing checks, changed logs, stale index and unapproved commands reject", async (t) => {
   const f = fixture(t); await ready(f);

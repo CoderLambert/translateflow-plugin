@@ -206,10 +206,6 @@ export function gate(root, task) {
   }
   if (state.artifactRequired) requireValue(acceptance.artifact, "Actual package evidence is required");
   if (acceptance.artifact) requireValue(fingerprint(root, acceptance.artifact.path) === acceptance.artifact.treeSha256, "Artifact changed or missing");
-  const review = readFileSync(p.review, "utf8").match(/^<!-- local-review (.+) -->$/mu);
-  requireValue(review, "Independent review is missing");
-  const binding = JSON.parse(review[1]);
-  requireValue(binding.task === task && binding.candidateHead === acceptance.candidateHead && binding.result === "PASS" && binding.role === "dev_reviewer" && binding.independent === true, "Independent review is stale or not passing");
   requireValue(state.status === "ready_to_sync", "Task is not ready to sync");
   return { result: "PASS", task, candidateHead: acceptance.candidateHead, syncHead, inputTree: acceptance.inputTree, note: "Local evidence only; coordinator must honor remote protection and exact remote head." };
 }

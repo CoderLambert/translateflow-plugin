@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "task": "234",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "231",
     "233"
   ],
-  "branch": "feat/234-reading-selection",
-  "worktree": ".worktrees/issue-234",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "72fc8cdd689f35a2deedbe1f15f34bb044a94bce",
-  "mergeHead": null,
+  "mergeHead": "19edb5426381b4cfa9e0cec354541170abb2114d",
   "validationCommands": [
     [
       "npm",
@@ -29,5 +29,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地validate、实际WXT构建、ChromiumE2E通过；用户取消强制reviewer，使用新验收gate后准确head同步。"
+  "nextAction": "划词记录链路已通过本地验收并合入；后续依赖WXT默认切换和真实React学习中心。",
+  "syncHead": "25c9042197540968dad1b48577fab97ff939feb6",
+  "pr": 279
 }
