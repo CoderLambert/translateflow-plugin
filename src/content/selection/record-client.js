@@ -48,7 +48,8 @@
           if (port !== ownedPort || !current) return;
           try {
             const next = C.validateReadingInvalidation(value, "content"), active = current;
-            if (invalidation && (next.dataGeneration !== invalidation.dataGeneration || next.consentGeneration !== invalidation.consentGeneration)
+            if (invalidation && (next.dataGeneration !== invalidation.dataGeneration || (next.consentGeneration !== invalidation.consentGeneration
+              && next.consentGeneration !== active.policy?.consentGeneration))
               && active.policy?.enabled) revoke(active);
             invalidation = next;
             void refresh(true);
@@ -195,7 +196,17 @@
             cursor = summary.nextCursor;
           } while (!found && cursor && live(ctx));
           if (!live(ctx) || ctx.blocked || ctx.ref !== expected) return;
-          if (!found || found.revision !== expected.revision) { revoke(ctx); failure(ctx, error(E.STALE_OPERATION)); return; }
+          if (!found) { revoke(ctx); failure(ctx, error(E.STALE_OPERATION)); return; }
+          if (found.revision > expected.revision) {
+            const location = { pageKey: expected.pageKey, documentGeneration: expected.source.documentGeneration };
+            const unchanged = C.sameProvenLocation({ ...location, anchor: expected.source.anchor }, { ...location, anchor: found.anchor })
+              || (expected.source.anchor.status !== "resolved" && JSON.stringify(expected.source.anchor) === JSON.stringify(found.anchor));
+            if (!unchanged) { revoke(ctx); failure(ctx, error(E.STALE_OPERATION)); return; }
+            // Viewed metadata advances revision without removing an immutable saved artifact.
+            // An unchanged unsupported anchor remains unsupported; prepare still requires location proof.
+            ctx.ref = { ...expected, revision: found.revision };
+            if (ctx.referenceGeneration === referenceGeneration) lastSaved = ctx.ref;
+          }
         }
         if (!ctx.auto && !ctx.manual) showAvailable(ctx);
       } catch (caught) { failure(ctx, caught); }
@@ -245,7 +256,8 @@
           await op.preparing?.catch(() => {});
           if (!op.token) return;
           const ack = await send(M.CANCEL_OPERATION, { operationId: op.operationId });
-          if (ack.state === "committed" && ctx.referenceGeneration === referenceGeneration) {
+          if (ack.state === "committed" && ctx.referenceGeneration === referenceGeneration
+            && (!ctx.ref || ctx.ref.recordId !== ack.recordId || ack.revision >= ctx.ref.revision)) {
             ctx.ref = { recordId: ack.recordId, revision: ack.revision, pageKey: ctx.registration.pageKey,
               source: await ctx.capture.ready, sourceLanguage: ctx.sourceLanguage, pageUrl: ctx.snapshot.pageUrl,
               consentGeneration: ctx.policy.consentGeneration, sitePolicyRevision: ctx.policy.sitePolicyRevision };

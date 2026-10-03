@@ -1,7 +1,21 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.selectionRichResultRenderer || app.modules.selectionResultRenderer) return;
-  const { appendRichDictionaryDetails, appendRichDictionaryCards } = app.modules.selectionRichResultRenderer;
+  if (!app || app.modules.selectionResultRenderer) return;
+  function richUnavailable(container) {
+    if (!container) return;
+    const message = document.createElement("p");
+    message.className = "tf-selection-rich-error";
+    message.textContent = "扩展已更新，请刷新网页后查看详细词典释义。";
+    container.appendChild(message);
+  }
+  function appendRichDictionaryDetails(container, response) {
+    if (app.modules.selectionRichResultRenderer) return app.modules.selectionRichResultRenderer.appendRichDictionaryDetails(container, response);
+    richUnavailable(container); return false;
+  }
+  function appendRichDictionaryCards(container, dictionaries, onLookup) {
+    if (app.modules.selectionRichResultRenderer) return app.modules.selectionRichResultRenderer.appendRichDictionaryCards(container, dictionaries, onLookup);
+    richUnavailable(container); return [];
+  }
 
   function render(container, input) {
     if (!container) throw new Error("Selection result container is required.");

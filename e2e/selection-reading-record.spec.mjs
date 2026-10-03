@@ -8,10 +8,11 @@ import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constan
 import { READING_METHOD as M } from "../src/shared/reading/constants.js";
 import { compileTflexTechnical } from "../scripts/build-tflex-technical.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
+import { defaultArtifact } from "./support/production-artifact.mjs";
 
-// Actual compiled WXT background/repository and shipped collector/UI. The fixed LC HTML is an
+// Actual selected production background/repository and shipped collector/UI. The fixed LC HTML is an
 // explicitly synthetic #235 consent callback, not a production learning-center product claim.
-const root = resolve(import.meta.dirname, ".."), artifact = join(root, ".output/chrome-mv3");
+const root = resolve(import.meta.dirname, ".."), artifact = defaultArtifact;
 let temporary, context, worker, driver, center, server, extensionId, extension;
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 async function inventory(path, prefix = "") {
@@ -86,7 +87,7 @@ async function query(content, selector = "#first", text = "session", occurrence 
 }
 const status = (content) => content.page.locator(".tf-selection-record-status");
 
-test.describe("Selection → frozen trusted source → committed Reading records on actual WXT", () => {
+test.describe("Selection → frozen trusted source → committed Reading records on actual production artifact", () => {
   test.setTimeout(60000);
   test.beforeAll(async () => {
     server = await startMockServer(); temporary = await mkdtemp(join(tmpdir(), "translateflow-selection-reading-")); extension = join(temporary, "extension");
@@ -106,8 +107,8 @@ test.describe("Selection → frozen trusted source → committed Reading records
     worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"); extensionId = new URL(worker.url()).host;
     driver = await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/popup.html`);
     center = await context.newPage(); await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
-    await writeFile(test.info().outputPath("selection-reading-package.json"), JSON.stringify({ production, backgroundSha256,
-      productionCopyExactBeforeFixtures: true, compiledBackgroundUnchanged: true, browser: context.browser().version(),
+    await writeFile(test.info().outputPath("selection-reading-package.json"), JSON.stringify({ production, backgroundSha256, artifactPath: artifact,
+      productionCopyExactBeforeFixtures: true, backgroundUnchanged: true, browser: context.browser().version(),
       fixtureChanges: ["synthetic Core and existing local Technical fixture", "fixed synthetic LC HTML", "localhost test permission"], paidProviderCalls: 0 }, null, 2));
   });
   test.afterAll(async () => { await context?.close(); await server?.close(); if (temporary) await rm(temporary, { recursive: true, force: true }); });
@@ -149,7 +150,15 @@ test.describe("Selection → frozen trusted source → committed Reading records
     expect(server.calls).toHaveLength(0);
     const { trace } = await inspect(content, "trace"); expect(trace.filter((r) => r.method === M.BEGIN_QUERY)).toHaveLength(1);
     expect(trace.some((r) => r.method === M.SET_RECORDING)).toBe(false);
+    try { await expect(status(content)).toHaveAttribute("data-state", "saved"); }
+    catch (error) {
+      const state = await inspect(content, "trace");
+      await writeFile(test.info().outputPath("synthetic-final-state-failure.json"), JSON.stringify(state, null, 2));
+      await content.page.screenshot({ path: test.info().outputPath("synthetic-final-state-failure.png") });
+      console.log("SYNTHETIC_FINAL_READING_TRACE", JSON.stringify(state)); throw error;
+    }
     await content.page.screenshot({ path: test.info().outputPath("synthetic-saved-card.png") });
+    await expect(status(content)).toHaveAttribute("data-state", "saved");
   });
 
   test("same word at distinct Ranges has distinct source; same-location explicit requery counts once per operation", async () => {

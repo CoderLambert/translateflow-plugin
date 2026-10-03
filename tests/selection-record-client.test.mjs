@@ -13,13 +13,18 @@ const files = ["reading-contract.js", "selection/record-access.js", "selection/r
 const sources = await Promise.all(files.map((file) => readFile(new URL(`../src/content/${file}`, import.meta.url), "utf8")));
 const json = (value) => JSON.parse(JSON.stringify(value));
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
-async function harness({ enabled = true, summaryOfWrites = false, responseFilter = (value) => value } = {}) {
+async function harness({ enabled = true, summaryOfWrites = false, sourceOverrides = {}, withSubscription = false, responseFilter = (value) => value } = {}) {
   let revision = 1, valid = true, savedRevision = 0, state = { enabled, consentGeneration: 1, capacityReached: false }, excluded = false;
   const messages = [], writes = [], views = [];
   const realm = vm.createContext({ crypto: webcrypto, TextEncoder, URL, Date, chrome: { runtime: {} },
     __TRANSLATE_FLOW_CONTENT__: { modules: { textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
   const parse = vm.runInContext("JSON.parse", realm);
   const clone = (value) => parse(JSON.stringify(value));
+  let notify = null, disconnected = null;
+  if (withSubscription) realm.chrome.runtime.connect = () => ({
+    onMessage: { addListener(listener) { notify = listener; } },
+    onDisconnect: { addListener(listener) { disconnected = listener; } }, disconnect() { disconnected?.(); }
+  });
   const repo = repositoryDouble({
     async read({ request, assertCurrent }) { assertCurrent();
       if (request.method === M.GET_RECORDING_STATE) return state;
@@ -46,7 +51,7 @@ async function harness({ enabled = true, summaryOfWrites = false, responseFilter
   } };
   for (const source of sources) vm.runInContext(source, realm);
   const client = modules.selectionRecordClient.create({ onStatus: (view) => views.push(json(view)) });
-  const source = snapshot({ capturedAt: Date.now(), documentGeneration: "doc-test" }); source.sourceDigest = await createSourceDigest(source);
+  const source = snapshot({ capturedAt: Date.now(), documentGeneration: "doc-test", ...sourceOverrides }); source.sourceDigest = await createSourceDigest(source);
   const capture = { ready: Promise.resolve(clone(source)), sourceRevision: 1, root: "document", context: { sensitive: false }, selectedText: source.selectedText };
   const selected = { text: source.selectedText, pageUrl: contentSender().url, range: { startContainer: { isConnected: true }, endContainer: { isConnected: true } } };
   const event = { isTrusted: true, target: "owned-ui" };
@@ -55,6 +60,9 @@ async function harness({ enabled = true, summaryOfWrites = false, responseFilter
     phonetic: "", partOfSpeech: "", definitions: [] }, provenance: [] });
   return { modules, client, start, draft, event, capture, source, messages, writes, views,
     enable() { state = { ...state, enabled: true, consentGeneration: state.consentGeneration + 1 }; },
+    pause() { state = { ...state, enabled: false, consentGeneration: state.consentGeneration + 1 }; },
+    notify(overrides = {}) { notify?.(clone({ protocolVersion: 2, type: "reading.invalidate", pageRevision: 1,
+      dataGeneration: 1, consentGeneration: state.consentGeneration, ...overrides })); },
     invalidate() { valid = false; revision++; }, exclude() { excluded = true; }, clone };
 }
 
@@ -144,6 +152,64 @@ test("An invalidated saved reference and late page-summary reply cannot attach t
   assert.equal(h.messages.filter((value) => value.method === M.BEGIN_QUERY).at(-1).recordId, null);
   assert.equal(h.client.getCurrent(), current); assert.equal(h.views.at(-1).state, "saved");
   assert.equal(h.messages.filter((value) => value.method === M.BEGIN_QUERY).length, 2);
+});
+
+test("Committed snapshot remains saved across viewed metadata revisions without changing its operation token", async () => {
+  let revision = 2;
+  const h = await harness({ summaryOfWrites: true, responseFilter(value, request) {
+    if (request.method === M.GET_PAGE_SUMMARY) value.data.items[0].revision = revision;
+    return value;
+  } }), ctx = h.start(); h.client.accept(ctx, h.draft); await ctx.queue;
+  const originalToken = json(ctx.operations[0].token);
+  await h.client.refresh(true);
+  assert.equal(h.views.at(-1).state, "saved"); assert.equal(ctx.ref.revision, 2);
+  assert.deepEqual(json(ctx.operations[0].token), originalToken); assert.equal(h.writes.length, 1);
+  revision = 1; await h.client.refresh(true);
+  assert.equal(ctx.ref.revision, 2); assert.equal(h.views.at(-1).state, "saved");
+  const closed = await h.client.close(ctx);
+  assert.equal(closed.revision, 2, "a late committed cancellation ACK cannot reduce the known record revision");
+});
+
+test("A delayed first-enable notification agrees with the accepted policy; later pause still revokes", async () => {
+  const h = await harness({ enabled: false, summaryOfWrites: true, withSubscription: true }), ctx = h.start();
+  h.client.accept(ctx, h.draft); await ctx.queue; h.notify(); await h.client.refresh();
+  h.enable(); await h.client.refresh(); assert.equal(h.views.at(-1).state, "manual");
+  h.notify(); assert.equal(ctx.blocked, false, "the already accepted first consent is not a revocation");
+  await h.client.save(h.event); h.notify({ pageRevision: 2 }); await h.client.refresh(true);
+  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.writes.length, 1);
+  h.pause(); h.notify({ pageRevision: 3 }); await h.client.refresh(true);
+  assert.equal(ctx.blocked, true); assert.equal(ctx.ref, null); assert.equal(h.views.at(-1).state, "not-saved");
+});
+
+test("An unchanged unsupported anchor preserves its committed snapshot without becoming resolved", async () => {
+  const anchor = { ...snapshot().anchor, status: "unsupported", position: null, blockDigest: null };
+  const h = await harness({ summaryOfWrites: true, sourceOverrides: { anchor }, responseFilter(value, request) {
+    if (request.method === M.GET_PAGE_SUMMARY) value.data.items[0].revision = 2;
+    return value;
+  } }), ctx = h.start(); h.client.accept(ctx, h.draft); await ctx.queue;
+  const originalToken = json(ctx.operations[0].token);
+  await h.client.refresh(true);
+  assert.equal(h.views.at(-1).state, "saved"); assert.equal(ctx.ref.revision, 2);
+  assert.deepEqual(json(ctx.ref.source.anchor), anchor);
+  assert.equal(h.modules.readingContract.sameProvenLocation(
+    { pageKey: ctx.ref.pageKey, documentGeneration: h.source.documentGeneration, anchor },
+    { pageKey: ctx.ref.pageKey, documentGeneration: h.source.documentGeneration, anchor }), false);
+  assert.deepEqual(json(ctx.operations[0].token), originalToken); assert.equal(h.writes.length, 1);
+});
+
+test("Missing records and changed anchors still revoke the saved reference", async () => {
+  for (const deleted of [true, false]) {
+    const h = await harness({ summaryOfWrites: true, responseFilter(value, request) {
+      if (request.method === M.GET_PAGE_SUMMARY) {
+        if (deleted) { value.data.items = []; value.data.pageRecordCount = 0; }
+        else { value.data.items[0].revision = 2; value.data.items[0].anchor.blockDigest = "d".repeat(64); }
+      }
+      return value;
+    } }), ctx = h.start(); h.client.accept(ctx, h.draft); await ctx.queue;
+    await h.client.refresh(true);
+    assert.equal(ctx.ref, null); assert.equal(ctx.blocked, true);
+    assert.equal(h.views.at(-1).state, "not-saved"); assert.equal(h.writes.length, 1);
+  }
 });
 
 test("Result adapters preserve actual types and bounded provenance while dropping raw/private dictionary data", async () => {

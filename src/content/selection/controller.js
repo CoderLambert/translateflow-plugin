@@ -10,7 +10,6 @@
     || !app?.modules.selectionClipboard
     || !app?.modules.selectionMessages
     || !app?.modules.selectionRichDetails
-    || !app?.modules.selectionTranslationQuery
     || app.modules.selectionController
   ) return;
 
@@ -29,9 +28,9 @@
     save: (event) => records.save(event), retry: (event) => records.retry(event),
     open: (event) => records.open(event), decline: (event) => records.decline(event)
   }) });
-  const runTranslation = app.modules.selectionTranslationQuery.create({
+  const runTranslation = app.modules.selectionTranslationQuery?.create({
     assertCurrent, showResult, onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
-  });
+  }) || (() => Promise.reject(new Error("扩展已更新，请刷新网页后重新查询。")));
   let recordContext = null;
   let started = false;
   let activeSnapshot = null;
