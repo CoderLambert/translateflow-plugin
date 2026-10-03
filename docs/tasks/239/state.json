@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "239",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["238"],
+  "branch": "feat/239-reading-page-markers",
+  "worktree": ".worktrees/issue-239",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-page-markers.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "完成 marker/page-list/SPA 定向验证后冻结候选。"
+}

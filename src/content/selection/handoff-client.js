@@ -18,6 +18,7 @@
     const summary = await send(M.CONSUME_HANDOFF, { handoffId: registration.handoffId });
     return { state: "consumed", summary };
   }
-  const ready = consumePending().catch(caught => ({ state: "error", code: caught?.code || C.READING_ERROR.INTERRUPTED }));
-  app.modules.readingHandoff = Object.freeze({ ready });
+  const register = () => consumePending().catch(caught => ({ state: "error", code: caught?.code || C.READING_ERROR.INTERRUPTED }));
+  const ready = register();
+  app.modules.readingHandoff = Object.freeze({ ready, register });
 })();

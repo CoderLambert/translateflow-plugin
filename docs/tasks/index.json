@@ -99,13 +99,22 @@
     },
     {
       "task": "238",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "237",
         "231"
       ],
-      "branch": "feat/238-reading-return-location",
+      "branch": "main",
       "candidateHead": "e02b7c070d269d6bb004de9fd8bcd1f56734c12a"
+    },
+    {
+      "task": "239",
+      "status": "working",
+      "dependencies": [
+        "238"
+      ],
+      "branch": "feat/239-reading-page-markers",
+      "candidateHead": null
     },
     {
       "task": "245",

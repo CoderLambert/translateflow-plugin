@@ -34,9 +34,9 @@
   async function read(challenge) {
     prune();
     if (!challenge || typeof challenge.nonce !== "string") return null;
-    const passive = ["inspect", "register", "handoff"].includes(challenge.action);
+    const passive = ["inspect", "register", "handoff", "page"].includes(challenge.action);
     const operation = passive ? current : operations.get(challenge.operationId);
-    if (!operation && ["register", "handoff"].includes(challenge.action)) {
+    if (!operation && ["register", "handoff", "page"].includes(challenge.action)) {
       return { nonce: challenge.nonce, documentGeneration: app.modules.selectionSourceSnapshot.documentGeneration,
         selectionGeneration: 1, captureSafety: { selection: "safe", context: "safe", root: "light-dom" },
         sourceSnapshot: null, intent: null };
