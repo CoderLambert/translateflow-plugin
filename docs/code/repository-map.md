@@ -4,7 +4,7 @@
 
 固定main `b606cfd556792d9764d0b15461b7a142fcd99575`，Git tree `ae16411834ca7092ae6b3d2a6daa59e320290a1f`；recursive完整响应truncated=false，766 blobs无排除。相对d524基线750：新增16、变更20、删除0。文档分支docs/code不在main分母。
 
-198 个完整解释、525 个待解释、43 个待复核；局部正文 139 个（待解释中 108、待复核中 31），不计完整覆盖。本轮16个新增完整解释，runtime/access/constants三变动文件全文复核；其它变动文件即使有增量仍待复核。旧documentationSourceCommit仅绑定原文；blobVerifiedAt说明未变字节连续性，不是新运行PASS。全部运行NOT_RUN。
+206 个完整解释、525 个待解释、35 个待复核；局部正文 133 个（待解释中 108、待复核中 25），不计完整覆盖。本轮八份构建/规范文件全文复核，从待复核转已解释；未重计学习中心切片。其它变动文件即使有增量仍待复核。旧documentationSourceCommit仅绑定原文；blobVerifiedAt说明未变字节连续性，不是新运行PASS。全部运行NOT_RUN。
 
 ## .codex
 
@@ -90,7 +90,7 @@
 | [docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/DICTIONARY_LIBRARY_VNEXT_CERTIFICATION.md) | 现有规范与证据 | 待解释 |
 | [docs/DICTIONARY_SOURCE_FREEZE.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/DICTIONARY_SOURCE_FREEZE.md) | 现有规范与证据 | 待解释 |
 | [docs/DICTIONARY_SOURCE_QUALIFICATION_2026-10-01.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/DICTIONARY_SOURCE_QUALIFICATION_2026-10-01.md) | 现有规范与证据 | 待解释 |
-| [docs/E2E.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/E2E.md) | 现有规范与证据 | 待复核 |
+| [docs/E2E.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/E2E.md) | 现有规范与证据 | 已解释 · [逐文件说明](modules/build-test-release.md#file-e2e-doc) |
 | [docs/LEARNING_CENTER_V1.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/LEARNING_CENTER_V1.md) | 学习中心 | 已解释 · [逐文件说明](modules/learning-center.md#file-spec) |
 | [docs/LEXICAL_DATA_BOUNDARIES.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/LEXICAL_DATA_BOUNDARIES.md) | 现有规范与证据 | 待解释 |
 | [docs/LEXICAL_GATEWAY.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/LEXICAL_GATEWAY.md) | 现有规范与证据 | 待解释 |
@@ -121,7 +121,7 @@
 | [docs/UI_FOUNDATION.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/UI_FOUNDATION.md) | 现有规范与证据 | 待解释 |
 | [docs/UI_LOCALE.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/UI_LOCALE.md) | 现有规范与证据 | 待解释 |
 | [docs/WIKTIONARY_RICH_POC.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/WIKTIONARY_RICH_POC.md) | 现有规范与证据 | 待解释 |
-| [docs/WXT_COMPAT_V1.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/WXT_COMPAT_V1.md) | 现有规范与证据 | 待复核 |
+| [docs/WXT_COMPAT_V1.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/WXT_COMPAT_V1.md) | 现有规范与证据 | 已解释 · [逐文件说明](modules/build-test-release.md#file-wxt-compat-doc) |
 | [docs/YOUTUBE_SUBTITLES.md](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/YOUTUBE_SUBTITLES.md) | 现有规范与证据 | 待解释 |
 
 ## docs/platform-upgrade-v1
@@ -504,7 +504,7 @@
 | [options.html](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/options.html) | Provider与设置 | 待解释 · [旧/局部说明](modules/dictionary-import-render.md#partial-options) |
 | [options.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/options.js) | Provider与设置 | 待解释 · [旧/局部说明](modules/providers-and-settings.md#partial-entry-router) · [补充1](modules/reading-records.md#partial-entry-router) |
 | [package-lock.json](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/package-lock.json) | 构建与开发流程 | 待解释 |
-| [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/package.json) | 构建与开发流程 | 待复核 · [旧/局部说明](modules/build-test-release.md#package-routing) · [补充1](modules/startup.md#partial-files) |
+| [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/package.json) | 构建与开发流程 | 已解释 · [逐文件说明](modules/build-test-release.md#package-routing) · [补充1](modules/startup.md#partial-files) |
 | [playwright.config.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/playwright.config.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#file-playwright) |
 | [popup-appearance.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/popup-appearance.js) | 启动与共享基础 | 待解释 · [旧/局部说明](modules/startup.md#partial-files) |
 | [popup.css](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/popup.css) | 界面基础 | 待解释 |
@@ -520,7 +520,7 @@
 | [scripts/audit-wikidata-tech-lock.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wikidata-tech-lock.mjs) | 构建与开发流程 | 待解释 |
 | [scripts/audit-wikimedia-enwiktionary-source.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wikimedia-enwiktionary-source.mjs) | 构建与开发流程 | 待解释 |
 | [scripts/audit-wiktextract-projection-compatibility.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wiktextract-projection-compatibility.mjs) | 构建与开发流程 | 待解释 |
-| [scripts/audit-wxt-extension.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wxt-extension.mjs) | 构建与实际产物验证 | 待复核 · [旧/局部说明](modules/build-test-release.md#file-audit) · [补充1](modules/learning-center.md#integration-deltas) |
+| [scripts/audit-wxt-extension.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wxt-extension.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#file-audit) · [补充1](modules/learning-center.md#integration-deltas) |
 | [scripts/benchmark-lexical-quality.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/benchmark-lexical-quality.mjs) | 构建与开发流程 | 待解释 |
 | [scripts/benchmark-translation.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/benchmark-translation.mjs) | 构建与开发流程 | 待解释 |
 | [scripts/build-extension.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/build-extension.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#file-build-extension) · [补充1](modules/startup.md#partial-files) |
@@ -990,7 +990,7 @@
 | 文件（固定源码） | 功能分组 | 状态 / 正文 |
 | --- | --- | --- |
 | [src/shared/retry-policy.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/retry-policy.js) | 网页翻译与缓存 | 已解释 · [逐文件说明](modules/page-translation-cache.md#file-retry-policy) |
-| [src/shared/runtime-assets.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/runtime-assets.js) | 启动与共享基础 | 待复核 · [旧/局部说明](modules/youtube-subtitles.md#partial-entry-router) · [补充1](modules/learning-center.md#integration-deltas) |
+| [src/shared/runtime-assets.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/runtime-assets.js) | 启动与共享基础 | 已解释 · [逐文件说明](modules/build-test-release.md#file-runtime-assets) · [补充1](modules/learning-center.md#integration-deltas) |
 | [src/shared/selection-explanation.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/selection-explanation.js) | 划词与词典查询 | 已解释 · [逐文件说明](modules/selection.md#file-explanation-contract) |
 | [src/shared/selection.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/selection.js) | 划词与词典查询 | 已解释 · [逐文件说明](modules/selection.md#file-selection-contract) |
 | [src/shared/text.js](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/text.js) | 网页翻译与缓存 | 已解释 · [逐文件说明](modules/page-translation-cache.md#file-text) |
@@ -1271,10 +1271,10 @@
 | [tests/wiktextract-extraction-evidence.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wiktextract-extraction-evidence.test.mjs) | 测试与验证 | 待解释 |
 | [tests/wiktextract-ingest.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wiktextract-ingest.test.mjs) | 测试与验证 | 待解释 |
 | [tests/wiktextract-rich-projection.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wiktextract-rich-projection.test.mjs) | 测试与验证 | 待解释 |
-| [tests/wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-assets.test.mjs) | 构建与实际产物验证 | 待复核 · [旧/局部说明](modules/build-test-release.md#test-wxt-assets) · [补充1](modules/learning-center.md#integration-deltas) |
+| [tests/wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-assets.test.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#test-wxt-assets) · [补充1](modules/learning-center.md#integration-deltas) |
 | [tests/wxt-closed-network.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-closed-network.test.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#test-network) |
 | [tests/wxt-e2e-entry.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-e2e-entry.test.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#test-entry) |
-| [tests/wxt-runtime-mapping.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-runtime-mapping.test.mjs) | 构建与实际产物验证 | 待复核 · [旧/局部说明](modules/build-test-release.md#test-mapping) · [补充1](modules/learning-center.md#integration-deltas) |
+| [tests/wxt-runtime-mapping.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-runtime-mapping.test.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#test-mapping) · [补充1](modules/learning-center.md#integration-deltas) |
 | [tests/wxt-upgrade-expectations.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-upgrade-expectations.test.mjs) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#test-upgrade) |
 | [tests/youtube-bridge.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/youtube-bridge.test.mjs) | 字幕 | 待解释 · [旧/局部说明](modules/youtube-subtitles.md#test-boundaries) |
 
@@ -1295,4 +1295,4 @@
 | 文件（固定源码） | 功能分组 | 状态 / 正文 |
 | --- | --- | --- |
 | [vitest.config.ts](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/vitest.config.ts) | 构建与实际产物验证 | 已解释 · [逐文件说明](modules/build-test-release.md#file-vitest) |
-| [wxt.config.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/wxt.config.mjs) | 扩展启动 | 待复核 · [旧/局部说明](modules/build-test-release.md#file-wxt-config) · [补充1](modules/learning-center.md#integration-deltas) |
+| [wxt.config.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/wxt.config.mjs) | 扩展启动 | 已解释 · [逐文件说明](modules/build-test-release.md#file-wxt-config) · [补充1](modules/learning-center.md#integration-deltas) |

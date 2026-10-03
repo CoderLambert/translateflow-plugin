@@ -1,13 +1,17 @@
 # 构建与测试：逐文件说明
 
-> b606cfd增量：#235学习中心已加入产品；React仅允许其独占闭包，审计改用writeBundle最终输出/固定HTML映射，平台预算仍保留。下文d524细节是历史正文，涉及变动文件均在coverage待复核；本轮仅补[当前打包增量](../modules/learning-center.md#integration-deltas)，不将局部更新计完整。
+> 本轮将构建配置、审计、固定资源合同、两个回归测试、package 路由及两份规范全文复核到 b606cfd；旧引用仅在对应 blob 未变时沿用。React 学习中心产品行为见原产品章，不重复计数。
 
 [完整功能链](../features/build-test-release.md) · [首页](../README.md)
 
-固定源码 main `d5246cae6469e4a876fc122b229a2e0ddf115709`，2026-10-03复核；以当前源码重校 docs/code-walkthrough 的 f7bf28b546a58ac7debe6dd951bb502434dd915a 文档。本轮完整读取并解释下列30个文件；大型spec、专项CI、package脚本总路由与依赖分析器保留局部。wxt.config.mjs 当前实现移至本章完整说明；entrypoints/background.ts 仍由启动章负责。运行验证全部 **NOT_RUN**；本文只说明代码中的断言与输出，不继承历史PASS，也不推导 realOxford 通过。
+清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`。本章原30个完整文件中，四个变动构建/测试文件现已全文复核；新增 runtime-assets、package 与两份规范的完整说明。其余旧固定源码按清单 blob 连续性保留，大型 spec、专项 CI 与依赖分析器仍局部。wxt.config.mjs 当前实现移至本章完整说明；entrypoints/background.ts 仍由启动章负责。运行验证全部 **NOT_RUN**；本文只说明代码中的断言与输出，不继承历史PASS，也不推导 realOxford 通过。
 
 ## 完整文件索引
 
+- [src/shared/runtime-assets.js](#file-runtime-assets)
+- [package.json](#package-routing)
+- [docs/E2E.md](#file-e2e-doc)
+- [docs/WXT_COMPAT_V1.md](#file-wxt-compat-doc)
 - [scripts/build-extension.mjs](#file-build-extension)
 - [scripts/path-boundaries.mjs](#file-path-boundaries)
 - [tests/path-boundaries.test.mjs](#test-path-boundaries)
@@ -75,17 +79,17 @@ blob `c70e53d6ef533f0dfac8e01dff733e08d54461ff`；[完整源码 L1–L141](https
 posix/win32 pathApi 模拟词法规则，不代表各 OS 已实测；symlink/junction 按当前平台，真实 WXT builder 依赖调用环境。子进程临时环境不改父进程；实际目录 finally 删除。危险源码/盘根负例不调用 rm 型 builder。本文件含真实构建说明 npm test 不是纯静态检查；本轮不安装、不执行用例，NOT_RUN。
 
 <a id="file-wxt-config"></a>
-## wxt.config.mjs：编译入口、精确桥接与每次构建报告
+## wxt.config.mjs：最终编译输出、学习中心与精确桥接
 
-blob `e1fe3d14d9ebeaf291ff32b221ecd66bf49e18d6`；[完整源码 L1–L58](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/wxt.config.mjs#L1-L58)。
+blob `682b09df6a2b7f1e920c4aeaa353fc3b3b145590`；[完整源码 L1–L58](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/wxt.config.mjs#L1-L58)。
 
-**加载/输入。** 顶层读唯一 manifest.json，去掉 manifest_version 后交 WXT（CLI 指定 MV3）；runtime-assets 给页面路径，wxt-assets 给 raw/lexical 闭包，i18n-locales 给受控 locale。imports=false 不自动导入业务依赖；@wxt-dev/module-react 是工程模块，不能推导产品已用 React。Vite JS/CSS target=chrome102、sourcemap=false，是编译目标而非 Chrome 102 实测。
+**加载与入口。** 顶层读取唯一 manifest.json，移除 manifest_version 后交 WXT；imports=false，不给业务自动导入。@wxt-dev/module-react 服务实际学习中心，不能据此把 Popup/Options、Content、MAIN 或后台改作 React。Popup/Options 仍在 entrypoints:found 直接注册原 HTML，Options 使用 unlisted-page；resolved 查不到 Popup 即失败，action title 明确取 Manifest，保持 options_page 及本地化身份。学习中心由自身 entrypoints 目录提供，源码 HTML 不是根目录第二模板。
 
-**staging 与编译图。** 有 TF_WXT_BUILD_ROOT 时 outDir=该目录/output、reportDir=该目录/reports；否则 WXT 默认输出及 .wxt/reports。compiledChunks 是本配置加载内的可变数组；build:before 清空，generateBundle 记录每个 output 的 fileName/type，chunk 另记 imports/dynamicImports/modules（移除 ROOT 前缀）；build:done 写 compiled-closures.json。audit 消费此图，不是独立重编译或供应链签名。
+**编译与报告。** Vite JS/CSS target=chrome102、sourcemap=false，只是构建目标，不是最低版本浏览器实测。插件在 **writeBundle** 收集最终 fileName/type，chunk 另记 imports、dynamicImports 与去掉 ROOT 前缀的模块 ID；唯一特殊映射把 entrypoints/learning-center/index.html 记为安装名 learning-center.html。不能继续使用旧 generateBundle 描述。compiledChunks 由本配置加载持有，build:before 清空，build:done 写 compiled-closures.json；报告失败使构建失败，不提供重试/回滚。
 
-**HTML 与 Manifest。** entrypoints:found 直接注册原 popup.html 为 popup、options.html 为 unlisted-page，没有第二份 UI 模板；后者保留 options_page/full-tab 语义而非 options_ui。entrypoints:resolved 必须找到 popup，再设 defaultTitle=Manifest action.default_title，区分 HTML title 与 Chrome 本地化 action title。background TS 薄入口由 WXT 常规发现，见[启动章](startup.md#file-wxt-background-entry)。
+**输出与资产。** TF_WXT_BUILD_ROOT 存在时 outDir=staging/output、reports=staging/reports，否则保留 WXT 默认和 .wxt/reports。build:publicAssets 拒绝任何已有未登记 assets，再分别计算 raw、locale、词典闭包，只追加 absoluteSrc/relativeDest；locale 先校验，开发缺词典 warn，require=1 失败。asset-map.json 记录这三组输入供 audit 重算。配置不删除最终安装目录，不负责事务提交；外层 builder 才拥有 staging/最终复制生命周期。
 
-**public assets 与失败。** build:publicAssets 遇非空现成 assets 即 throw，禁止泛化 public 目录；按 Content/MAIN/Worker 的 sourceClosure、checkManifestLocales 后的 locale closure、lexicalAssetFiles descriptor 精确集合追加 absoluteSrc/relativeDest。开发缺词典 warn 并记录 missing；TRANSLATEFLOW_WXT_REQUIRE_LEXICON==="1" 时缺包失败。asset-map.json 写 raw/lexical/locale 清单，audit 与当前源码重算比对。资源失败不补拷整个 src；报告写盘失败中断构建。外层 builder 拥有 staging 生命周期和最终发布，本配置不清理最终目录。修改 hooks/命名/资源根须联动 audit、smoke、mapping；NOT_RUN。
+**修改与证据。** 改目录入口或 chunk/HTML 名，要同时改稳定路径合同、最终报告和 audit 页面可达性；改 raw 路径须走唯一清单及闭包，不复制整个 src。对应 wxt-assets/mapping 单测并不执行这个 hook；真正配置行为仍需实际 build/audit 才能验证。本轮均 NOT_RUN。
 
 <a id="file-wxt-assets"></a>
 ## scripts/wxt-assets.mjs：精确raw与生成词典资产闭包
@@ -99,15 +103,19 @@ blob `b9afabb9407bbfa7c1ca6dc9a333b816a11df2ea`；[完整源码 L1–L110](https
 **统计/测试/影响。** walkFiles拒绝非普通目录/文件的artifact entry；byteSummary排序文件并区分lexical/code字节，供audit和inventory。wxt-assets.test用真实临时文件、symlink及posix/win32路径测试约束，也检查缺包与corrupt；NOT_RUN。新资源要先更新唯一runtime mapping/真实源码依赖，再审查build hook和audit；roots顺序不能拿最终排序的资产集合替代。
 
 <a id="file-audit"></a>
-## scripts/audit-wxt-extension.mjs：生产WXT完整资产审计
+## scripts/audit-wxt-extension.mjs：页面可达性、React 隔离与两个体积口径
 
-blob `e2daa7a5480d136a891f8f72e612b3ec737b37c5`；[完整源码 L1–L86](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/scripts/audit-wxt-extension.mjs#L1-L86)。
+blob `b068510f955a21e3e56a5d6b3cb1330fab0b411d`；[完整源码 L1–L110](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wxt-extension.mjs#L1-L110)。
 
-**输入/步骤。** auditWxtExtension默认.output/chrome-mv3和.wxt/reports，读取输出与源码Manifest、asset-map、compiled-closures，重新推导raw/locale/lexical闭包与byteSummary。assertProductionManifest直接deepEqual全部字段，包括权限、版本、options语义；不是少数字段近似比较。present必须等于Manifest+页面+精确raw/词典/locale+所有记录的compiled输出，不允许缺项或多项；raw/locale/词典逐文件比源bytes，编译依赖路径必须实际存在。
+**输入与精确集合。** auditWxtExtension 默认 .output/chrome-mv3、.wxt/reports，也接 builder 的 staging 参数。先读取源/产物 Manifest，assertProductionManifest 对所有字段 deepEqual；重算 raw/locale/词典闭包，对 asset-map 整体比对。expected 是 Manifest、三页面、全部 raw/词典/locale 与 compiled 记录的并集；present 必须恰好相等。桥接文件逐个与源 bytes 相等，所有 Worker/MAIN 路径必须存在。
 
-**安全/输出。** 模块ID拒绝测试库、React、开发/私有源、WXT dev helper；安装树禁测试/构建/语料目录、map/pem/crx/zip、HMR和远端HTML资产。HTML script/link引用须在present。代码预算1576595字节不含lexical，统计background静态import闭包和UI chunks/assets+HTML；预算/报告不是延迟benchmark。报告status PASS仅在所有assert完成后写production-audit.json，本轮没有生成。output/reportDir 可由 builder 指向隔离 staging；报告 source 文案仍固定为 WXT production .output/chrome-mv3，不是实际输入路径证明，应使用调用上下文与 artifact inventory。
+**页面闭包。** pageRoots 从安装 HTML 的 script/link src/href 取本地根，去掉起始 /。第一个 closure 用 Set 防环，同时追 imports 和 dynamicImports。learningFiles 从学习页面根出发并加入 learning-center.html；legacyCompiled 从 background.js 与 Popup/Options 的 HTML 资源出发。每个 compiled import 必须存在；模块 ID 禁测试库、构建/私有目录及 WXT dev helper。遇 react/react-dom 模块，所在 chunk 必须学习可达且旧运行时不可达，不能再写成“全包禁止 React”，也不能把共享 React chunk 判为允许。
 
-**失败/修改。** 读文件或assert失败即终止；无补文件、取消、重试或回滚。compiled-closures是构建hook提供的清单，audit不是独立重编译验证，更不是供应链签名。wxt-assets.test对Manifest扩权限、静态注入、web-accessible、Chrome最低版本/options_ui/background差异设置负例；修改bundle命名/资产依赖需同步配置、预算和smoke。NOT_RUN。
+**安装树安全。** 禁顶层 tests/e2e/scripts/docs/lexicon/node_modules/.github/.release-sources，禁 map/pem/crx/zip。JS/HTML/CSS 扫 HMR/localhost 开发标记；HTML 禁远端 script 和含冒号资源，所有 script/link 引用须在 present。此为指定正则与构建报告的静态检查，不是任意 JS 网络行为证明或供应链签名。
+
+**预算与报告。** learningExclusive = 学习可达且旧运行时不可达的实际文件；包括 HTML/CSS/JS，按真实 size 求 learningBytes。platformCodeBytes = summary.codeBytes − learningBytes，只有此值受既有 **1,576,595B** 平台上限限制，共享 chunk 仍算平台。源码没有新增学习中心专属上限，不能把原预算说成整个 React 包总量门槛。报告的 backgroundClosure/uiClosure 是另一函数：只追静态 imports；uiClosure 从所有三页面根开始并加 HTML 大小。因此不能拿其数字替代上述含动态依赖的安全/预算闭包，两个展示闭包还可能重叠，不宜相加当包分区。
+
+**状态/失败/影响。** 所有集合只在调用内存在，任何读取/assert/write 失败传播；没有补文件、取消、重试、回滚。全部断言通过才写 production-audit.json/status PASS，本轮没有生成报告。report.source 文案仍固定 WXT production .output/chrome-mv3，调用 staging/dist 时须以参数及实际 fingerprint 识别产物，不能用文案当来源证明。改输出命名、React 共享依赖或预算归属应同时核对配置、HTML、mapping 与实际 audit；现有 Manifest 单测仅测 assertProductionManifest，不证明完整 React/audit 分支已执行。NOT_RUN。
 
 <a id="file-run-e2e"></a>
 ## scripts/run-e2e.mjs：明确选择产物的Playwright入口
@@ -293,11 +301,15 @@ blob `e87a514e7f5109bcd810be4b44283e6c1ce6c6b8`；[完整源码 L1–L29](https:
 第一例断言空env默认WXT且locale跟随、显式dist同步locale、自定义locale保留、空artifact throw。第二例临时造残留dist manifest，默认WXT仍ENOENT；显式dist返回路径；spawn当前Node运行真实wrapper配missing路径，要求status1、无spawn error、stderr ENOENT且未Running，finally删除目录。它不运行成功Playwright suite，不能当WXT浏览器验收；修改命令入口和CI env选择应保持此失败路径。NOT_RUN。
 
 <a id="test-mapping"></a>
-## tests/wxt-runtime-mapping.test.mjs：旧代合同固定与未来闭包隔离
+## tests/wxt-runtime-mapping.test.mjs：三页面新代与旧代不可倒灌
 
-blob `9b49ab80d16929e82eda16848365b431f15e92f8`；[完整源码 L1–L34](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/wxt-runtime-mapping.test.mjs#L1-L34)。
+blob `1a2ac087bf05822a51fb26a7276f81133f98bff5`；[完整源码 L1–L36](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-runtime-mapping.test.mjs#L1-L36)。
 
-读取冻结JSON，断言精确sourceCommit、两Git blobs、48Content最后content.js及完整文件SHA，mappingForGeneration必须返回相同内容，未知代次失败。另用Set构造旧映射路径，current新增reading-contract在旧闭包中缺失应失败；补入当前Content集合后，缺未来资源仍失败，补入才成功，删旧MDD worker旧代仍失败。纯内存/读文件，无Chromium/安装；守住“当前资源不能反向污染旧对照”，修改mapping需保留此独立性，NOT_RUN。
+两个 Node 用例。第一组读取固定 19e89b6 JSON，检查精确 sourceCommit、两个 Git blob、48 个 Content 文件及最后 content.js、整个 JSON 的 SHA-256；mappingForGeneration 返回同一内容，未知 generation 拒绝。不能因为当前新增页面而改旧快照。
+
+第二组只用 Set 模拟旧包资产：旧 mapping 成功，current 首先因缺 learning-center 失败；补齐当前页面后才因缺 reading-contract 失败；补齐当前 Content 后，future 的额外新资源仍失败，补入后成功。最后删旧 MDD worker，旧 mapping 也必须失败。这个顺序区分“页面新增”“Content 新增”“旧包自身缺资源”，避免只改预期错误掩盖遗漏。
+
+只有读 fixture/纯映射校验，无 browser/profile/build 或真实包执行；新增 future 路径是假想正负例，不是产品新能力。改页面/Content/Worker 映射需同步当前断言而保留旧身份；本轮 NOT_RUN。
 
 <a id="test-network"></a>
 ## tests/wxt-closed-network.test.mjs：代理真实socket与启动对照负例
@@ -318,13 +330,20 @@ blob `ee73bcc7f05aac74e28351ba31e35fdfc7923f04`；[完整源码 L1–L106](https
 没有数据库操作或升级安装，只检验期望比较器。改例外字段/版本必须连同cache owner语义和真实snapshot消费者复核；运行NOT_RUN。
 
 <a id="test-wxt-assets"></a>
-## tests/wxt-assets.test.mjs：raw桥、词典及Manifest负例
+## tests/wxt-assets.test.mjs：三个页面、raw 桥与 fail-closed 负例
 
-blob `605b3ac67f1799df573a0882e4cb4ff723bfa7f5`；[完整源码 L1–L101](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/tests/wxt-assets.test.mjs#L1-L101)。
+blob `392f560161c00a73b493e951dc7ca03e8d5ab9ca`；[完整源码 L1–L101](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-assets.test.mjs#L1-L101)。
 
-七组Node测试检查roots开头遵循Content/Style顺序、MAIN同一引用、页面路径、闭包含worker/importer且不包含编译页面/后台；拒traversal/绝对/远端/空段；分别用win32/posix验证跨盘UNC/父目录；临时relative import可闭包且symlink escape失败；missing词典开发显式报告、release拒绝；已认证fixture只四文件、忽略stray source-lock、symlink及corrupt shard拒绝；productionManifest deepEqual拒加权限/static scripts/WAR/升最低Chrome/options_ui/改变背景语义。
+七组 Node 测试，依赖真实常量/helper、fixture 与一次性临时目录：
+1. roots 前段严格按 Content JS/CSS 顺序，MAIN 与运行时同一引用；EXTENSION_PAGES 必须精确含 popup/options/learningCenter 三项。闭包包含全部 Worker 与 mdict-rich importer，不包含编译 Popup/Options/后台源。
+2. asset 路径拒空值、traversal、绝对、空段、点段、反斜杠和远端 URL，接受受控相对文件。
+3. win32 与 posix 的规范化 source guard 拒根自身、兄弟、跨盘和 UNC 越界，只接受真实子级；这是路径实现模拟，不是 Windows 磁盘实测。
+4. 临时 entry→child 相对 import 闭包成功，symlink 指向外部失败。
+5. 缺两个内置包返回显式 missing，release require 拒绝；含越界 descriptor 的假 manifest 也拒绝。
+6. 复制认证 fixture 仅取四个声明文件、忽略 stray source-lock；shard symlink escape、损坏后 size/hash 均拒绝。
+7. Manifest 先允许完全相同，再逐一拒绝新增 tabs/localhost、静态 Content、WAR、最低版本变化、options_ui 和失去 module 的 background。
 
-依赖真实源码常量、临时fs和fixture；finally删除所有temp目录。不会调用完整WXT构建hook/启动浏览器，故需要build audit/smoke独立证据；变更asset安全边界须保留负例而非只更新成功快照。NOT_RUN。
+真实临时 fs 全部 finally 清理，不调用 WXT build hook/完整 audit，也不启动 Chrome。React 独占可达性与报告写入并非这七组的直接断言，不能拿该文件存在当完整审计覆盖。修改 asset 或 Manifest 合同需保留这些负例并选择相邻 build/运行验证；本轮 NOT_RUN。
 
 <a id="test-presentation"></a>
 ## tests/curated-install-artifact-presentation.test.mjs：从浏览器源码import移出的纯展示合同
@@ -334,14 +353,28 @@ blob `1f59eff1326755dc7b37f2dfc332c5e2100dd792`；[完整源码 L1–L15](https:
 以CURATED_DICTIONARIES首来源和healthy旧packVersion调用真实纯getCuratedInstallPresentation，断言update-available、已审核更新badge及更新按钮文案。无DOM/浏览器、下载/安装/storage；这个synthetic旧版本展示不能冒充实际artifact安装升级。它承接curated-ecdict-product移出的browser-side source-module import检查，生产安装/display仍由native E2E负责。修改presentation规则、catalog首项或locale文案要重查此例与真实产品用例，NOT_RUN。
 
 <a id="package-routing"></a>
-## package.json：命令总路由（局部）
+## package.json：脚本分流、准备副作用与锁定工具链
 
-[package.json L1–L73](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/package.json#L1-L73)；blob `9e350ac3486e526f6588a71c899d5d844d6ba7a7`。private ESM package版本0.8.0，Node>=24.21.0<25、npm>=11.19.0<12、packageManager npm@11.19.0；依赖全部列devDependencies，固定WXT/Vite/React/TypeScript/Vitest/Playwright及test工具版本。依赖存在不证明React已进入产品页面。npm prepare执行wxt prepare；typecheck/test:unit也先prepare，dev是WXT Chrome MV3，build默认WXT到dist/extension；build:extension:wxt调用同一builder，只以--out换到.output/chrome-mv3。validate不更新另一个输出；E2E默认仍选.output，测试dist须显式TF_E2E_ARTIFACT=dist/extension，未另设时locale跟随。
+blob `9e350ac3486e526f6588a71c899d5d844d6ba7a7`；[完整源码 L1–L73](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/package.json#L1-L73)。
 
-本切片已完整解释check/check:i18n/test/validate/test:e2e、同引擎两个输出、smoke和test分域的路由。其他scripts分为词典setup/build/project/ingest、source audit、quality benchmark/evaluate、发布/产品certify、成本measure和富词典安全/取消focused tests；这些调用各自脚本，不等于validate自动包含它们。各来源下载、认证算法及锁文件解析尚未逐一讲解，因此package保留局部，不能以列出脚本名计全覆盖。更改任何script会影响对应CI，需查实际消费者。
+**包与依赖。** private ESM 包 translateflow-plugin@0.8.0；engines Node>=24.21.0<25、npm>=11.19.0<12，packageManager npm@11.19.0。全部直接依赖列 devDependencies 且精确版本：WXT/Vite/React module/plugin 负责构建；React/react-dom 可编译进获准学习中心，所以 devDependencies 不意味着运行包必定不含它们。TypeScript 与 Node/React 类型支持检查；Vitest/jsdom/Testing Library DOM、React、user-event 支持单测；Playwright 支持 Chromium。传递版本与完整性由 package-lock 管理，本文件不解释锁文件所有节点。
+
+**验证/构建路由。** check=check.mjs 成功后 i18n-locales --check；test 只发现 tests/*.test.mjs；validate 顺序 && 串起 check、Node、typecheck、test:unit、build:extension，前一步非零后停止，不包含 E2E/词典认证。prepare=wxt prepare 可在安装 lifecycle 运行；typecheck 与 test:unit 也各自先 prepare，随后 tsc --noEmit/vitest run，不能描述成绝不写生成元数据。dev=wxt Chrome MV3 服务。三 build 命令同调 build-extension：默认 dist、release 多 --require-lexicon、wxt 多 --out .output/chrome-mv3。smoke 调独立脚本不自动构建；两个 E2E 入口都调 run-e2e，rich-mdict 仅追加 product/real-corpus 两 spec，默认消费 .output。
+
+**其余每个脚本的职责入口。** 下列均是独立显式调用，不自动进入 validate；这里只解释 package 的路由职责，不给被调用的大脚本计完整覆盖。
+- benchmark:translation / benchmark:lexical / evaluate:lexical / evaluate:bootstrap：分别进入翻译 benchmark、词汇质量 benchmark、ranking 评估、Core bootstrap 评估。
+- build:tflex:core / technical / freedict / mdict-import / stardict-import：分别进入同名构建脚本；build:lexicon:release 交 build-release-lexicon；setup:lexicon 交 setup-lexicon。可能下载/生成资源，运行授权与结果不能由路由名推断。
+- lock:kaikki / project:kaikki：source lock 与 rich projection；ingest:wiktextract 唯一使用 python3 run-pinned-wiktextract-ingest.py；audit:wiktextract-rich 交 projection compatibility 审计。
+- project:stardict / project:mdict：各自 import projection；measure:stardict-import / measure:extension-footprint：导入成本与产物体积；inspect:mdict：兼容性检查入口。
+- certify:lexicon / offline-dictionary-beta / dictionary-library-vnext / dictionary-ecosystem-v2 / selection-lexical / rich-mdict-corpus：各自独立认证编排，不互相替代，更不代表商店发布。
+- test:rich-mdict-security / test:rich-lookup-cancellation：node --test 指定对应单一测试文件，没有浏览器步骤。
+
+本文件无应用会话/存储/取消状态，命令的副作用和失败恢复归子进程；退出码与 && 决定后续阶段，不回滚已成功阶段。改脚本/版本必须联动锁文件、消费者、CI 与对应实际验收，但纯导读不执行安装/prepare/任何项目脚本。全部 NOT_RUN。
 
 <a id="upgrade-consumers"></a>
 ## 升级与native平台专项消费者（局部）
+
+本节仍描述 d524 固定 spec；当前 wxt-upgrade 已变且未全文复核，因此 Reading NOT_READY probe 是历史断言，不能当 b606 新包结论。三页面映射的当前 Node 合同已在上文复核，升级运行本轮 NOT_RUN。
 
 - [e2e/wxt-upgrade.spec.mjs L1–L307](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/wxt-upgrade.spec.mjs#L1-L307)：两情景为缺失uiLocale/已有zh_CN；旧新artifact双环境缺任一skip。旧/新同version、同路径/profile/ID，旧package两mapping输入hash验证；真实Settings导入两个synthetic MDX/MDD、首选/启停、三翻译cache、站点注册并集后读取全部storage/DB/OPFS/registrations。替换后识别cached-old runtime并保持完整快照；管理reload才以native lifecycle和Reading v2 NOT_READY证明新runtime激活，允许仅缺locale默认写，以及动态注册只把js/css从精确oldMapping换为currentMapping，ID/matches/其它策略保留。旧world通过原消息channel失败证明失效，刷新后cache恢复Provider仍1次，DB只容许窄lastAccessedAt变化，注册采用newMapping期望，重启与恢复后全快照继续相等。报告含phase/原树hash/testChanges/probe/network/ID/浏览器、失败保存partial completeAcceptance=false；嵌套finally释放context/proxy/server/temp，setImmediate后比较真实TCP listener数量。这里解释证据链，未逐一展开dictionary/snapshot/stable/summary及所有UI断言，保持局部。
 - [e2e/wxt-injection-samples.spec.mjs L1–L90](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/wxt-injection-samples.spec.mjs#L1-L90)：旧/新明确输入，每代使用自身runtimeMapping，复用profile/path/ID；WXT强制管理reload、要求新worker和executionProof=原tree hash，再用native Reading响应区别旧runtime。各十次新article测cold insertCSS→scripts→status，原document再注入测warm；sameApp、loaded/module count不变，无译文/Provider，每次关page并核对pages数。报告原样本与median/min/max，没有性能阈值；不是单纯对source文本计时。未完整解释全部report字段/浏览器创建过程，局部、NOT_RUN。
@@ -387,3 +420,37 @@ blob `1f59eff1326755dc7b37f2dfc332c5e2100dd792`；[完整源码 L1–L15](https:
 
 build/audit先在独立staging完成，使两阶段失败不删除最终包；发布仍是rm→mkdir→cp，非原子/回滚事务，也无同目标互斥锁。检查不是竞态下的持锁原子边界。不要给allowExternalOutput任意外部删除含义，不要用真实源码/worktree根重现破坏性负例。本轮build/delete/安全回归全部NOT_RUN。
 
+<a id="file-runtime-assets"></a>
+## src/shared/runtime-assets.js：构建和运行时共用的纯安装路径合同
+
+blob `036056f9042aed5aaf76725b584a9e71d40b9f96`；[完整源码 L1–L19](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/runtime-assets.js#L1-L19)。
+
+五组 Object.freeze 常量，无 import、chrome API、IO、持久状态、异步/取消或错误处理。EXTENSION_PAGES 固定 popup.html、options.html、learning-center.html；MANIFEST_LOCALE_FILES 固定 en/zh_CN 两个 messages.json；WORKER_PATHS 固定 curatedDictionary、curatedEcdictMdx、mdictImport、stardictImport、richMdictImport、mddResourceImport 六个 Options module Worker；YOUTUBE_MAIN_BRIDGE_FILES 按 protocol→timedtext→main-bridge 排序；BUNDLED_LEXICON_PATHS 指向 assets/lexicon/core 与 technical。
+
+输入是 import 消费，输出是稳定字符串/数组；Object.freeze 阻止这些平面容器被改写，不代表磁盘文件存在。运行时页面/Worker/MAIN 调用者、构建 roots、locale/词典 helper 和 current mapping 共享合同；Content JS/CSS 有序列表仍在 constants.js，不迁入此文件。修改任一路径需同步调用者、真实文件、raw/编译产物和 mapping；不能把新页面要求反向加进冻结旧包映射。七组 assets 与两组 mapping 测试覆盖上述合同的主要消费者，本轮 NOT_RUN。
+
+<a id="file-e2e-doc"></a>
+## docs/E2E.md：实际产物的浏览器验证入口规范
+
+blob `3900e5caa29b143510aab32003c826ec2669fe7c`；[完整源码 L1–L112](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/E2E.md#L1-L112)。
+
+这是操作/隔离规范，无可执行函数或运行状态。开头明确默认 WXT/dist 与旧固定包对照；本地示例 npm install→安装 Chromium→build:extension:wxt→test:e2e 显式生成 .output，Linux 可安装系统依赖。与锁定环境复现时使用 AGENTS/package 约束，文档示例不构成本轮安装授权。
+
+架构把 Playwright worker、本地确定性 HTTP/mock Provider、临时扩展副本、persistent profile/SW/fixture tab/extension driver 连起来。driver 使用真实 chrome.*，但图中的 e2e-driver.html 是架构示意；当前共享 fixture 使用实际 Popup 页面作 driver，不能据图断言有新生产入口。mock 记录真实 Chat Completions system/segments，返回 markers 与按 preset/术语确定的结果，可模拟401/429/500，因此缓存要断言调用次数而非等待时间。
+
+列出的十类 v0.8 smoke 流程覆盖翻译/恢复/设置/Popup/Quick Control/Commands/YouTube主桥与fallback/字幕批处理；这是导航，不是最新所有 spec 清单，也非本轮 PASS。真实 YouTube/OS browser chrome 另有证据。worker-scoped profile 要经 CACHE_CLEAR_ALL 清翻译 IDB 再重设 local storage；不等于清 Reading/OPFS 全库。多个同URL标签页必须用独有 token 经 scripting 确认 tabId，不能只按URL选第一个。
+
+末尾 CI 给 install→browser→build→smoke→E2E→失败报告的流程摘要；准确手动触发、双目录矩阵、升级输入以本章 workflow 正文为准。修改 fixture/重置/目录或 E2E 路由需同步该规范；报告要分别标合成/真实API/实际产物/真实网站，全部运行 NOT_RUN。
+
+<a id="file-wxt-compat-doc"></a>
+## docs/WXT_COMPAT_V1.md：历史兼容证据怎样读而不冒充当前结论
+
+blob `573ad86dfdb5940be644248f96743701a470f264`；[完整源码 L1–L77](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/WXT_COMPAT_V1.md#L1-L77)。
+
+这是 #246/PF-01 的冻结实现与证据记录，开头新增 #248 默认切换提示；正文仍保留 opt-in、旧默认、React absent 和后续任务未交付的历史句子。它们只描述该文候选，不能覆盖 b606 的单一 WXT 引擎、真实 React 学习中心或当前 validate/类型检查。文档不包含可执行状态/重试逻辑。
+
+章节依次记录工具版本和复现命令、安装路径/唯一源码/raw bridge/精确 Manifest、缺词典 fail-closed、实际验证身份与证据链接、修复和后续集成、CI兼容及 NOT RUN。安装表解释后台薄TS入口、原生Popup/Options、Content/MAIN/六Worker、词典descriptor；学习中心不在当时表里，本轮合同以本章三页面为准。
+
+证据的关键是身份连续性：初始实现、路径guard修复、#227运行变更后重跑、最后17个Reading纯合同合入并逐文件验证143个安装字节不变，是不同阶段。文中742 Node、1,371,155B代码、Chromium153等数字都是归档观察，不能当今天构建结果；较早658测试、1,365,037B亦只属修复阶段。最后 f955 包与 d2 浏览器测试包字节相同的陈述是在解释为何未再跑 smoke，不是把未运行改成新 PASS。本轮仅阅读正文，未重新核验其所有证据附件或执行任何命令。
+
+冻结 smoke 是临时词典/localhost适配后的有限流程；其 extra-permission/extra-file/missing-worker、缺词典 gate 失败与保留原包等负例不等于完整产品认证。路径修复有 win32算法/POSIX symlink 证据，没有Windows磁盘实测；Chrome102、真实YouTube、完整当时WXT E2E、同ID升级、真实词典/付费Provider等未运行项仍属于当时范围。后续 #248/#235 是否交付应看当前源码与各自证据，不能从旧 NOT RUN 推断今天仍未实现，也不能跨候选挪用 PASS。修改构建说明时保留这些原绑定，仅在导读解释变化，不在本任务改写历史验收。

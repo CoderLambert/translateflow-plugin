@@ -150,3 +150,12 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 - #235归档候选的16 PASS只包含两个实际React故事，Selection旧首次同意仍synthetic；真实UIoffline reload不等同profile restart，大导出归档3,622,698B。旧storage确有同profile重启及>62/<64MiB native种子流测试，但其旧NOT_READY断言/预构建输入需要重新核验，不能继承成新UI近容量/重启PASS。#236无已核验综合PASS。
 - 只静态校对清单/源码身份/内部链接/正文，所有安装、构建、测试、浏览器、下载、freeze/run/gate、私有词典、发布运行NOT_RUN。仅docs/code分支文档，不改任何产品或任务状态。
 - 下一轮先按coverage复核变动旧入口/构建说明，再继续既有普通pack/TFLex和共享合同缺口；本次切片完成不代表全仓覆盖。
+
+## 2026-10-03 18:22 UTC 构建与产物消费待复核闭环
+
+- main 仍为 b606cfd556792d9764d0b15461b7a142fcd99575，树 ae16411834ca7092ae6b3d2a6daa59e320290a1f；清单766不变。目标文档由9fe7bfe固定树逐文件blob核对复用，仅改docs/code。
+- 完整重读八文件：wxt.config、audit-wxt-extension、runtime-assets、package、wxt-assets/mapping两测试、E2E与WXT_COMPAT两规范。206完整、525待解释、35待复核；133局部（108待解释、25待复核）不计完整。八项原待复核含六个partial和两个未有完整正文的规范，本轮以真实全文解释补齐，不仅改状态。
+- 修正generateBundle旧描述为writeBundle最终输出/固定HTML映射；解释React仅学习独占可达、共享chunk仍属平台、原预算只约束platformCodeBytes，以及安全动态闭包与报告静态闭包不相同。三页面映射负例与旧代冻结独立，构建两输出/消费者路径保持准确。
+- package所有命令分组明确入口和副作用边界；E2E规范图示与实际Popup driver区分；兼容报告的历史opt-in/React absent/PASS/NOT RUN只归原候选，不移植到当前。未复读的大型升级spec保留待复核并显著注明旧NOT_READY探针边界。
+- 静态自查：固定源码blob、766清单路径/计数、内部链接/锚点、文档diff范围和远端正文逐字核验。这里的脚本文本核对不是运行项目脚本。安装、构建、npm/Node/Vitest/浏览器/E2E/验收命令全部NOT_RUN；没有产品、权限、任务状态、合并或发布操作。
+- 剩余35待复核继续按用户入口/共享合同优先处理；普通pack/TFLex缺口仍在，不新增无关章，不宣称全仓完成。

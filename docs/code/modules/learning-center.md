@@ -2,7 +2,7 @@
 
 [Reading 完整产品链](../features/reading-records.md#learning-center) · [后台与保存模块](reading-records.md) · [首页](../README.md)
 
-本文固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`，2026-10-03 全文件静态复读。React 仅用于学习中心；本章完整解释 16 个新增文件。旧入口和构建依赖只解释相关增量，保持待复核，不以提及替代完整覆盖。安装、构建、测试、浏览器及下载均 **NOT_RUN**；归档 PASS 是已有任务证据，不是本轮执行。
+本文固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`，2026-10-03 全文件静态复读。React 仅用于学习中心；本章完整解释 16 个新增文件。本章对旧入口和构建依赖仅解释相关增量；后续构建切片已在[构建逐文件章](build-test-release.md)全文复核配置/audit/runtime-assets及相应测试，入口等剩余项以coverage为准。安装、构建、测试、浏览器及下载均 **NOT_RUN**；归档 PASS 是已有任务证据，不是本轮执行。
 
 阅读顺序：HTML/main → App → reading/useLibrary → Library/Detail/Management → export → common/locale/styles → 测试与规范。后台沿 [access/service](reading-records.md#file-access) → [repository/query](reading-records.md#file-repository) → [management](reading-records.md#file-management) / [exports](reading-records.md#file-exports) 返回。
 
@@ -178,7 +178,7 @@ controlled promise 明确排列竞态，断言实际 DOM 与 method，不是固�
 ## 相邻入口与打包增量：仅局部解释
 
 - Popup 的 popup.html 新增 learningCenter 按钮；popup.js 读 uiLocale 翻译标题，点击发送 OPEN_LEARNING_CENTER，错误显示“无法打开学习中心，请重试”。它仍是 entry scope，不能直接 LIST/导出/管理。Selection 的既有 record-client invitation 走同一个固定打开消息，开启后回旧卡仍要明确保存，见 [保存链](../features/reading-records.md#flow)。Popup 其余控制与全部代码未在本章重写，保留待复核。
-- src/shared/runtime-assets.js 在 EXTENSION_PAGES 增 learningCenter 固定名，原 worker/MAIN/locale/lexicon 路径不变；src/i18n/catalog.js 增中英文快照、站点排除、确认/删除、导出进度/隐私/交付限定文案。这里只解释此次增量，不能据此称两文件全部完成。
+- src/shared/runtime-assets.js 在 EXTENSION_PAGES 增 learningCenter 固定名，原 worker/MAIN/locale/lexicon 路径不变；src/i18n/catalog.js 增中英文快照、站点排除、确认/删除、导出进度/隐私/交付限定文案。本章只解释此次增量；runtime-assets 已在[完整路径合同](build-test-release.md#file-runtime-assets)全文说明，catalog 仍局部。
 - wxt.config.mjs 开 @wxt-dev/module-react；审计 hook 从最终 writeBundle 收集 fileName/imports/dynamicImports/modules，目录 HTML 名显式映射 learning-center.html，build:before 清报告数组，build:done 写 compiled closures。原精确 raw bridge 与 staged output 保留，详见 [构建链](../features/build-test-release.md)。
 - scripts/audit-wxt-extension.mjs 仍 exact Manifest/资产集合/原桥接 bytes 检查。新增从 HTML script/link 建学习页面闭包与 background/Popup/Options 闭包，沿静态+动态 import 检查 React 仅学习可达且旧运行时不可达；独占 learning bytes 从 platformCodeBytes扣除，共享 chunk仍计平台，原 1,576,595B门槛不提高。报告的另一个 compiledClosure只走静态 imports，不混淆两种统计。不是在后台“允许 React”；不能用审计报告存在证明实际打包通过。
 - tests/wxt-assets.test.mjs 对固定学习页面映射加断言；tests/wxt-runtime-mapping.test.mjs 先确认旧映射可用、当前映射缺 learning-center会拒绝，再补当前资源，保持旧 frozen mapping不可回写。tests/reading-access.test.mjs 新增合法ID deep-link、sender旧hash/current native context、非法hash/query/private拒绝，以及 Content 注册前/后固定打开均可ACK但不能全库读、导航后失效。三个大测试的其它分支保留原文/待复核，新增断言不自动升级全文件覆盖。

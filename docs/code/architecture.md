@@ -3,7 +3,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`。本轮复核#235实际React学习中心与相邻入口；保留此前Reading保存、WXT默认构建与本地自查说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
+当前清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`。本轮全文复核构建/产物与测试合同；保留#235实际React学习中心、Reading保存与本地自查说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
 
 ## 先区分五种运行环境
 
@@ -13,7 +13,7 @@
 4. **YouTube MAIN**：受限网页桥接，仅观察播放器自己的字幕响应；不承载任意后台能力。获取、仲裁、批处理和UI生命周期见[字幕功能章](features/youtube-subtitles.md)。
 5. **导入 Workers**：Options按固定路径启动的独立处理环境；不是后台 service worker 的别名，也不是每次扩展启动都会创建。实际导入协议见[词典导入章](features/local-dictionary-import.md)，底层大型依赖完整程度以覆盖清单为准。
 
-固定资源路径由 [runtime-assets.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/runtime-assets.js) 定义；Content脚本清单与注入规则见启动导读。构建允许清单控制真正进入安装包的文件，仓库存在的文件不等于可在扩展运行时访问。
+固定资源路径由 [runtime-assets.js 当前完整说明](modules/build-test-release.md#file-runtime-assets) 定义；Content脚本清单与注入规则见启动导读。构建允许清单控制真正进入安装包的文件，仓库存在的文件不等于可在扩展运行时访问。
 
 ## 入口如何连接成用户流程
 
@@ -106,6 +106,8 @@ SourceSnapshot 不自动写历史。production readingAccessCollector 已接入�
 [完整链](features/build-test-release.md) · [逐文件正文](modules/build-test-release.md)
 
 默认 build:extension / validate 现由 WXT 生成、审计并复制到 dist/extension；build:extension:wxt 用同引擎输出 .output/chrome-mv3。E2E wrapper 默认仍选择已有 .output/chrome-mv3，测试默认安装包必须显式 TF_E2E_ARTIFACT=dist/extension。没有隐式 build/fallback，sourceHead 只是声明，须结合实际产物摘要与测试副本变动。
+
+学习中心是第三个稳定页面；writeBundle 记录最终安装输出，audit 只允许学习中心独占闭包包含 React，旧后台/Popup/Options 可达的共享 React 仍被拒。原平台预算扣除学习中心独占文件，不是整个包总预算；报告静态 import 大小与安全检查静态+动态闭包要分开读。
 
 #278 路径安全已合入，staging/audit/输出边界复检不能简化为任意路径 rm。相同 ID 升级还需真实新 Worker 激活与存储连续性断言；本轮未运行构建或浏览器。所有限制和实际命令见构建章。
 

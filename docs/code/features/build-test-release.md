@@ -1,10 +1,10 @@
 # 构建、实际产物与测试到安装升级
 
-> b606cfd增量：#235学习中心已加入产品；React仅允许其独占闭包，审计改用writeBundle最终输出/固定HTML映射，平台预算仍保留。下文d524细节是历史正文，涉及变动文件均在coverage待复核；本轮仅补[当前打包增量](../modules/learning-center.md#integration-deltas)，不将局部更新计完整。
+> 已将构建配置/audit/固定路径/相关测试和操作规范全文复核到 b606cfd。下文未变实现保留旧固定来源；大型升级 spec 等尚未全文复核的局部说明继续明确标为历史边界。
 
 [逐文件说明](../modules/build-test-release.md) · [启动链](extension-startup.md) · [首页](../README.md)
 
-本章固定于 main `d5246cae6469e4a876fc122b229a2e0ddf115709`，2026-10-03 复核；以当前源码重校 `docs/code-walkthrough` 的 `f7bf28b546a58ac7debe6dd951bb502434dd915a` 文档。当前默认构建已切换为 WXT，旧的“默认 legacy / WXT opt-in”与“#278 未合入”不再描述本基线。所有安装、构建、脚本、Node/Vitest、浏览器、CI 和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS；也不从历史记录推导 realOxford 通过。
+本章当前清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`，2026-10-03 复核；本轮八份完整复读的文件与正文见[模块章](../modules/build-test-release.md)。其它旧引用仅按相同 blob 连续性沿用，不把未复读文件自动计完整。当前默认构建已切换为 WXT，旧的“默认 legacy / WXT opt-in”与“#278 未合入”不再描述本基线。所有安装、构建、脚本、Node/Vitest、浏览器、CI 和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS；也不从历史记录推导 realOxford 通过。
 
 ## 1. 用户入口与两个输出目录
 
@@ -30,9 +30,11 @@
 
 WXT 由 [wxt.config.mjs](../modules/build-test-release.md#file-wxt-config)配置：background.ts 复用 initializeBackground，Popup/Options 注册原 HTML 源供 Vite 编译，保留安装路径、options_page 和 Manifest 语义。Content 的有序列表、MAIN 及 Worker roots 经 [raw 资产闭包](../modules/build-test-release.md#file-wxt-assets)逐文件复制；没有把整个 src 当 public。资产集合排序便于打包/比对，运行脚本顺序仍来自 CONTENT_SCRIPT_FILES。
 
+学习中心沿 `entrypoints/learning-center/index.html → main.tsx → App` 编译为第三个固定页面 `learning-center.html`。配置在 **writeBundle** 记录最终输出，并把目录 HTML 名映射为安装名；运行时固定打开路径、current mapping、audit 的页面集合共用 [runtime-assets](../modules/build-test-release.md#file-runtime-assets)。缺页面会在产物 mapping/精确集合层失败，不应通过复制整仓资源修复。
+
 生成词典不是 Git 内已有可安装数据。每个 TFLex 包按 manifest 明确声明、fingerprint、descriptor hash/size、role 和真实路径核验文件；开发缺包列入 missing，release 通过 requireLexicon 强制所有内置包就绪。它证明声明与字节完整性，不替代来源、词汇质量、真实词典兼容性或发行准入。
 
-[audit](../modules/build-test-release.md#file-audit)检查 Manifest 与基线全部字段 deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/开发资源并限制React只在学习中心闭包、HTML 本地引用及代码体积预算。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
+[audit](../modules/build-test-release.md#file-audit)检查 Manifest 与基线全部字段 deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/开发资源并限制React只在学习中心闭包、HTML 本地引用及代码体积预算。React 允许范围由学习页面与 background/Popup/Options 的静态+动态可达闭包相减判定，共享给旧运行时的 React chunk 仍拒绝。平台上限只约束 `codeBytes − 学习中心独占 bytes`，共享 chunk 不扣除；没有新增学习中心专属上限。报告的 background/ui 展示统计另只追静态 imports，不能混作安全闭包或相加当互斥包分区。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
 
 ## 3. 输出删除和测试副本的安全边界
 
@@ -71,6 +73,8 @@ prepareExtensionTestCopy 完成精确复制后才作受限测试适配：
 
 ## 6. 同 ID 升级、真正激活、闭包更新、恢复与重启
 
+> 本节大型升级/平台 spec 的逐项叙述仍绑定 d524 旧固定源码；e2e/wxt-upgrade.spec.mjs 在当前树有变，coverage 保留待复核。本节提及 Reading NOT_READY 只记录旧 probe，不能据此声称 b606 学习中心仍未开启或当前新包用例已通过。当前页面映射的两组 Node 断言已全文复核，但不替代升级 spec。
+
 [升级消费者](../modules/build-test-release.md#upgrade-consumers)仅在 TF_UPGRADE_OLD_ARTIFACT / TF_UPGRADE_NEW_ARTIFACT 同时存在时运行；缺少是 skip，不是通过。旧包固定 `19e89b65fd3600073410407392da82ffa666ffc8`，冻结 48 项 Content 顺序；新包用 current mapping。两者要求相同 Manifest version，复用同 unpacked 路径、profile 和实际 extensionId，不改生产 key。
 
 旧包真实 Options 导入两个合成 MDX/MDD，设启停/个人首选/默认展开，翻译三段留下缓存，注册 auto/restore/quick-control 并集。完整快照涵盖 storage 全键、所有数据库名称/版本/store/rows、OPFS 路径/size/hash 和全部动态注册。同版本替换目录字节后，Chromium 可能仍持有旧 SW；onInstalled 观察器和 Reading v2 NOT_READY 的真实响应区分运行代次，不能仅看新 Options UI 宣称后台已换。
@@ -103,6 +107,6 @@ prepareExtensionTestCopy 完成精确复制后才作受限测试适配：
 6. 升级丢数据或保留旧脚本：查完整快照、native lifecycle 和注册资源窄例外，不放宽成计数比较。
 7. 用户体验改动：类型/Node 只是一层；补实际产物浏览器断言，真实权限弹窗/真实网页须单列证据。
 
-本轮只读源码与修订文档，没有运行以上步骤。大型边界分析器、mock server、专项认证脚本/来源链及未展开的产品 spec 仍保留局部覆盖。
+本轮只读源码与修订文档，没有运行以上步骤。大型边界分析器、mock server、专项认证脚本/来源链及未展开的产品 spec 仍保留局部覆盖。读历史兼容报告前参照[规范与证据身份](../modules/build-test-release.md#file-wxt-compat-doc)，日常命令/隔离参照[E2E 规范详解](../modules/build-test-release.md#file-e2e-doc)。
 
 

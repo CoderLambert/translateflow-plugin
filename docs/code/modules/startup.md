@@ -264,7 +264,7 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 
 [固定源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/wxt.config.mjs)
 
-本文件已经在 d5246ca 发生变化，旧启动版逐项说明已移交[当前完整构建配置说明](build-test-release.md#file-wxt-config)，不继续把旧 opt-in 配置当最新。当前 WXT 引擎同时服务 dist/extension 与 .output/chrome-mv3；读取 root manifest、编译 Popup/Options/后台、精确 raw bridge 与资源报告属于构建时行为，不在浏览器启动时扫描仓库。
+本文件当前已全文复核到 b606cfd，旧启动版逐项说明已移交[当前完整构建配置说明](build-test-release.md#file-wxt-config)，不继续把旧 opt-in 配置当最新。当前 WXT 引擎同时服务 dist/extension 与 .output/chrome-mv3；读取 root manifest、编译 Popup/Options/后台与独立 React 学习中心、精确 raw bridge 与资源报告属于构建时行为，不在浏览器启动时扫描仓库。
 
 <a id="partial-files"></a>
 ## 只在启动边界解释的文件

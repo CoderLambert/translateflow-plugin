@@ -7,9 +7,9 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/b606cfd556792d9764d0b15461b7a142fcd99575?recursive=1",
   "denominator": 766,
   "counts": {
-    "已解释": 198,
+    "已解释": 206,
     "待解释": 525,
-    "待复核": 43,
+    "待复核": 35,
     "有理由排除": 0
   },
   "statusRules": "所有 main type=blob 条目构成分母，无排除；部分解释不计已解释；sourceBlob 逐项对应当前树，documentationSourceCommit 对应正文固定版本；旧 blob 相同只证明字节身份，不是运行 PASS。已变旧路径未完成全文复核一律待复核，旧正文不可当最新完整说明；新增无充分正文者待解释。",
@@ -410,11 +410,13 @@
       "path": "docs/E2E.md",
       "sourceBlob": "3900e5caa29b143510aab32003c826ec2669fe7c",
       "function": "现有规范与证据",
-      "status": "待复核",
-      "documentation": null,
+      "status": "已解释",
+      "documentation": "modules/build-test-release.md#file-e2e-doc",
       "previousSourceBlob": "b12fa18671e47d91de7ace5ed300a9ba389b3553",
       "reviewReason": "main 源码 blob 已变化；本轮只校对关联事实或尚未完整重读，不计完整覆盖",
-      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575"
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575"
     },
     {
       "path": "docs/LEARNING_CENTER_V1.md",
@@ -671,11 +673,13 @@
       "path": "docs/WXT_COMPAT_V1.md",
       "sourceBlob": "573ad86dfdb5940be644248f96743701a470f264",
       "function": "现有规范与证据",
-      "status": "待复核",
-      "documentation": null,
+      "status": "已解释",
+      "documentation": "modules/build-test-release.md#file-wxt-compat-doc",
       "previousSourceBlob": "1d6982a4f550ac02ae95effc903515449c294aa1",
       "reviewReason": "main 源码 blob 已变化；本轮只校对关联事实或尚未完整重读，不计完整覆盖",
-      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575"
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575"
     },
     {
       "path": "docs/YOUTUBE_SUBTITLES.md",
@@ -2318,20 +2322,17 @@
       "path": "package.json",
       "sourceBlob": "9e350ac3486e526f6588a71c899d5d844d6ba7a7",
       "function": "构建与开发流程",
-      "status": "待复核",
+      "status": "已解释",
       "documentation": "modules/build-test-release.md#package-routing",
       "reviewedAt": "2026-10-03",
       "scopeNote": "仅启动边界已解释，完整文件仍待解释",
       "previousSourceBlob": "366e613a206b983c14b911c0fbb49527e527519c",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "relatedDocumentation": [
         "modules/startup.md#partial-files"
       ],
-      "partial": true,
       "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
-      "reviewReason": "main 源码 blob 已变化；本轮只校对关联事实或尚未完整重读，不计完整覆盖",
-      "partialReviewedAt": "2026-10-03",
-      "partialSourceCommit": "d5246cae6469e4a876fc122b229a2e0ddf115709"
+      "reviewReason": "main 源码 blob 已变化；本轮只校对关联事实或尚未完整重读，不计完整覆盖"
     },
     {
       "path": "playwright.config.mjs",
@@ -2448,16 +2449,13 @@
       "path": "scripts/audit-wxt-extension.mjs",
       "sourceBlob": "b068510f955a21e3e56a5d6b3cb1330fab0b411d",
       "function": "构建与实际产物验证",
-      "status": "待复核",
+      "status": "已解释",
       "documentation": "modules/build-test-release.md#file-audit",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "d5246cae6469e4a876fc122b229a2e0ddf115709",
-      "blobVerifiedAt": "d5246cae6469e4a876fc122b229a2e0ddf115709",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "previousSourceBlob": "e2daa7a5480d136a891f8f72e612b3ec737b37c5",
       "reviewReason": "b606cfd 源码已变；只复核关联增量或尚未完成全文解释，旧正文不是当前完整覆盖",
-      "partial": true,
-      "partialReviewedAt": "2026-10-03",
-      "partialSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "relatedDocumentation": [
         "modules/learning-center.md#integration-deltas"
       ]
@@ -5535,16 +5533,13 @@
       "path": "src/shared/runtime-assets.js",
       "sourceBlob": "036056f9042aed5aaf76725b584a9e71d40b9f96",
       "function": "启动与共享基础",
-      "status": "待复核",
-      "documentation": "modules/youtube-subtitles.md#partial-entry-router",
-      "partial": true,
+      "status": "已解释",
+      "documentation": "modules/build-test-release.md#file-runtime-assets",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "d5246cae6469e4a876fc122b229a2e0ddf115709",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "previousSourceBlob": "b6d62efc34ff76592ace1de8b462646ceba1418d",
       "reviewReason": "b606cfd 源码已变；只复核关联增量或尚未完成全文解释，旧正文不是当前完整覆盖",
-      "partialReviewedAt": "2026-10-03",
-      "partialSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "relatedDocumentation": [
         "modules/learning-center.md#integration-deltas"
       ]
@@ -7285,16 +7280,13 @@
       "path": "tests/wxt-assets.test.mjs",
       "sourceBlob": "392f560161c00a73b493e951dc7ca03e8d5ab9ca",
       "function": "构建与实际产物验证",
-      "status": "待复核",
+      "status": "已解释",
       "documentation": "modules/build-test-release.md#test-wxt-assets",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "d5246cae6469e4a876fc122b229a2e0ddf115709",
-      "blobVerifiedAt": "d5246cae6469e4a876fc122b229a2e0ddf115709",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "previousSourceBlob": "605b3ac67f1799df573a0882e4cb4ff723bfa7f5",
       "reviewReason": "b606cfd 源码已变；只复核关联增量或尚未完成全文解释，旧正文不是当前完整覆盖",
-      "partial": true,
-      "partialReviewedAt": "2026-10-03",
-      "partialSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "relatedDocumentation": [
         "modules/learning-center.md#integration-deltas"
       ]
@@ -7323,16 +7315,13 @@
       "path": "tests/wxt-runtime-mapping.test.mjs",
       "sourceBlob": "1a2ac087bf05822a51fb26a7276f81133f98bff5",
       "function": "构建与实际产物验证",
-      "status": "待复核",
+      "status": "已解释",
       "documentation": "modules/build-test-release.md#test-mapping",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "d5246cae6469e4a876fc122b229a2e0ddf115709",
-      "blobVerifiedAt": "d5246cae6469e4a876fc122b229a2e0ddf115709",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "previousSourceBlob": "9b49ab80d16929e82eda16848365b431f15e92f8",
       "reviewReason": "b606cfd 源码已变；只复核关联增量或尚未完成全文解释，旧正文不是当前完整覆盖",
-      "partial": true,
-      "partialReviewedAt": "2026-10-03",
-      "partialSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "relatedDocumentation": [
         "modules/learning-center.md#integration-deltas"
       ]
@@ -7391,24 +7380,20 @@
       "path": "wxt.config.mjs",
       "sourceBlob": "682b09df6a2b7f1e920c4aeaa353fc3b3b145590",
       "function": "扩展启动",
-      "status": "待复核",
+      "status": "已解释",
       "documentation": "modules/build-test-release.md#file-wxt-config",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "d5246cae6469e4a876fc122b229a2e0ddf115709",
-      "blobVerifiedAt": "d5246cae6469e4a876fc122b229a2e0ddf115709",
+      "documentationSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
+      "blobVerifiedAt": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "previousSourceBlob": "e1fe3d14d9ebeaf291ff32b221ecd66bf49e18d6",
       "reviewReason": "b606cfd 源码已变；只复核关联增量或尚未完成全文解释，旧正文不是当前完整覆盖",
-      "partial": true,
-      "partialReviewedAt": "2026-10-03",
-      "partialSourceCommit": "b606cfd556792d9764d0b15461b7a142fcd99575",
       "relatedDocumentation": [
         "modules/learning-center.md#integration-deltas"
       ]
     }
   ],
   "partialCounts": {
-    "total": 139,
     "待解释": 108,
-    "待复核": 31
+    "待复核": 25
   }
 }
