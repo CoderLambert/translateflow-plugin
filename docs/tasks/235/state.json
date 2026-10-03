@@ -1,17 +1,17 @@
 {
   "schema": 1,
   "task": "235",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "233",
     "248",
     "249"
   ],
-  "branch": "feat/235-react-learning-center",
-  "worktree": ".worktrees/issue-235",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
-  "mergeHead": null,
+  "mergeHead": "b606cfd556792d9764d0b15461b7a142fcd99575",
   "validationCommands": [
     [
       "npm",
@@ -35,5 +35,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地实现、完整 validate、16 项定向 Chromium E2E、产物审计及主 Agent 自查通过；等待明确远端同步授权，不启动 236。"
+  "nextAction": "PR #285 已按准确 head squash 合入；main tree 与验收归档 tree 一致。构建/UI 依赖解除，接续 236。",
+  "syncHead": "b9a49f303a37f66f0abb86c251dc4a17c050f627",
+  "pr": 285
 }

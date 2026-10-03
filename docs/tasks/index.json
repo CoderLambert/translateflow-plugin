@@ -69,23 +69,23 @@
     },
     {
       "task": "235",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "233",
         "248",
         "249"
       ],
-      "branch": "feat/235-react-learning-center",
+      "branch": "main",
       "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4"
     },
     {
       "task": "236",
-      "status": "blocked",
+      "status": "reviewing",
       "dependencies": [
         "234",
         "235"
       ],
-      "branch": null,
+      "branch": "test/236-reading-loop-release-a",
       "candidateHead": null
     },
     {
