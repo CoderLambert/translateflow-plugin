@@ -2,9 +2,9 @@
 
 [功能完整链与交付边界](../features/reading-records.md) · [首页](../README.md) · [已解释的来源捕获](selection.md#file-source-snapshot)
 
-2026-10-03 增量复核固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮完整复读并解释新增 `record-access.js`、`record-client.js`、`record-status.js`，以及原有 runtime/access/service/constants 四文件；Selection 的结果转换、实际 rich 展示摘要、翻译与 AI provenance 见[相邻模块](selection.md)。
+2026-10-03 最新清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`；本轮完整复读 runtime/access/constants，新增实际页面见[学习中心模块](learning-center.md)。以下保存切片原说明固定 `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮完整复读并解释新增 `record-access.js`、`record-client.js`、`record-status.js`，以及原有 runtime/access/service/constants 四文件；Selection 的结果转换、实际 rich 展示摘要、翻译与 AI provenance 见[相邻模块](selection.md)。
 
-原有19文件章节来自 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整解释。除上述四文件外，本轮没有重新逐行读完，保留原 SHA/链接与历史覆盖身份，不把它们升级为当前完整审计。清单逐项 blob 比对确认 `src/background/reading-record/` 与 `src/shared/reading/` 的既有文件未变，但“blob 未变”不冒充本轮全文件复读。全部运行、测试、构建、浏览器和下载 **NOT_RUN**；测试主题引用仍为局部覆盖。
+原有19文件章节来自 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整解释。除上述四文件外，本轮没有重新逐行读完，保留原 SHA/链接与历史覆盖身份，不把它们升级为当前完整审计。清单逐项 blob 比对确认除当前 runtime/access/constants 三个已更新文件外，其余历史 Reading 后台/共享文件字节未变，但“blob 未变”不冒充本轮全文件复读。全部运行、测试、构建、浏览器和下载 **NOT_RUN**；测试主题引用仍为局部覆盖。
 
 ## 覆盖索引
 
@@ -84,9 +84,9 @@
 <a id="file-runtime"></a>
 ## src/background/reading-record/runtime.js：运行时装配与所有权
 
-blob `7d754367448ac1712ef90c7528bf05900f6759e7`；本轮全文件复读，[完整源码 L1–L42](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/reading-record/runtime.js#L1-L42)。
+blob `0958f8df0bc0a0da1191d0f4e6f423f7fbfac401`；本轮全文件复读，[完整源码 L1–L42](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/background/reading-record/runtime.js#L1-L42)。
 
-**调用、输入输出。** router 将 Reading 消息交给 handleReadingMessage；background/index 同步注册 Port、tab 更新/删除与权限撤销监听。runtime() 首次使用才创建 repository/service/subscriptions；工厂本身不打开 IDB。默认 learningCenterAvailable=false，不能因路径常量存在就声称学习中心可打开。
+**调用、输入输出。** router 将 Reading 消息交给 handleReadingMessage；background/index 同步注册 Port、tab 更新/删除与权限撤销监听。runtime() 首次使用才创建 repository/service/subscriptions；工厂本身不打开 IDB。生产默认 createRuntime(..., true, true)，固定学习中心可打开；configureReadingRuntime 注入默认仍 false，便于受控测试，二者不能混同。实际UI见[App](learning-center.md#file-app)。
 
 **状态与清理。** 单例 current 拥有默认 repository；configureReadingRuntime 先关旧订阅、撤销 service 的会话/operation/export、摘 publisher，只 close 自己创建的 repository。注入 repository 属于调用方，不代为销毁。新配置返回 publishInvalidation，repository 在提交后调用它。isReadingMessage 只检查 reading. 前缀，因此旧/未知方法也进 v2 validator，获得显式错误。handleReadingPort 对其它名字返回 false。
 
@@ -108,13 +108,13 @@ blob `590b38f09cc7529f0e72e7d8262795e2fdbda922`；[完整源码 L1–L34](https:
 <a id="file-access"></a>
 ## src/background/reading-record/access.js：浏览器原生身份与受控证明
 
-blob `41acc833a8d560deb0f632ff710e689521aaa8b0`；本轮全文件复读，[完整源码 L1–L126](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/reading-record/access.js#L1-L126)。
+blob `5b2e92bdc6defaacd721d423dde497be8abedb9e`；本轮全文件复读，[完整源码 L1–L147](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/background/reading-record/access.js#L1-L147)。
 
 **职责与入口。** createReadingAccess 为 service/subscriptions 生成后台 access；输入 sender、已校验 method/request，输出 scope、ownerKey、tab/document/navigation/authority generation，以及 Content 的 page/site/安全回跳/标题/selection/proof。调用方 DTO 不能声明自身权限。
 
-**原生身份算法。** native 首先要求 sender.id=runtime.id。扩展 URL 仅固定 learning-center.html 得 extension scope，Popup/Options 为 entry；两者都必须通过 getContexts 按 documentId 找到唯一非隐身 TAB/POPUP、contextId、documentUrl、可选 sender.tab 与 frame0 匹配。学习中心 URL 必须精确无 query/hash；Popup/Options 可含受原生 context 核验的 hash、不能含 query。缺 documentId/getContexts 为 CAPABILITY_LIMITED。documentId 接受 UUID 或 32 位十六进制但原值严格比较，不做大小写归一。
+**原生身份算法。** native 首先要求 sender.id=runtime.id。扩展 URL 仅固定 learning-center.html 得 extension scope，Popup/Options 为 entry；两者都必须通过 getContexts 按 documentId 找到唯一非隐身 TAB/POPUP、contextId、documentUrl、可选 sender.tab 与 frame0 匹配。学习中心必须是精确固定路径、无 query；允许唯一 #record=有效UUID，拒绝空 #、其它片段或附带正文。sender和getContexts当前documentUrl各自校验；Chromium同文档hash导航可使sender保留旧URL，只有这个固定页面允许两者hash不同，且必须TAB。Popup/Options仍按完整URL核验、可有hash、无query。缺 documentId/getContexts 为 CAPABILITY_LIMITED。documentId 接受 UUID 或 32 位十六进制但原值严格比较，不做大小写归一。
 
-Content 限 HTTP(S)、原生非隐身 tab、frame0、若提供则 active documentLifecycle 和有效 documentId，并要求 sender.tab.url 与 sender.url 一致；再做 policy 与 page identity。track 上限128；authority 在 hash 前捕获，随后用于过期检查。ownerKey 区分扩展原生 context/document，或 Content tab/document；legacy 无 documentId 使用受控 frame0 会话，不相信请求自报身份。
+Content OPEN_LEARNING_CENTER 在原生身份校验后返回 nativeEntryOnly，不要求collector session，也不授予其它读写；isCurrent仅对此固定打开豁免session比较，仍核authority/tab epoch。Content其余方法限 HTTP(S)、原生非隐身 tab、frame0、若提供则 active documentLifecycle 和有效 documentId，并要求 sender.tab.url 与 sender.url 一致；再做 policy 与 page identity。track 上限128；authority 在 hash 前捕获，随后用于过期检查。ownerKey 区分扩展原生 context/document，或 Content tab/document；legacy 无 documentId 使用受控 frame0 会话，不相信请求自报身份。
 
 **受控 collector。** readOwnedCollector 用 scripting.executeScript 的 ISOLATED world 定位具体 documentId 或 frame0，调用扩展自有 readingAccessCollector.read。challenge 序列化成 JSON 字符串保持显式 null；要求唯一 frame0 结果和匹配 document。缺 getter 返回 NOT_READY，执行异常/不匹配拒绝。validateProof 校验 nonce、document/selection generation、sourceSnapshot 一致和 captureSafety。register/inspect 的 intent 必须 null；begin/save/detail/cancel 必须精确绑定 action、recordId、operationId。这个接口不是人类点击的密码学证明；当前 production producer 是下述 record-access：只接受扩展自有 UI 的 isTrusted 事件，并持有被冻结的操作证据；缺 collector 的 NOT_READY 仍用于未加载/旧脚本等异常路径，不能再概括为产品提供者不存在。
 
@@ -284,9 +284,9 @@ blob `063d43fac37f9eb4e0243b20a0b03441efefe930`；[完整源码 L1–L66](https:
 <a id="file-constants"></a>
 ## src/shared/reading/constants.js：协议、版本与资源预算
 
-blob `c166d53aa0a55611198c7c949dc1482401a872e9`；本轮全文件复读，[完整源码 L1–L117](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/shared/reading/constants.js#L1-L117)。
+blob `cf819aaf8f4825f504917c525aeaa7d06b1af0a4`；本轮全文件复读，[完整源码 L1–L117](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/shared/reading/constants.js#L1-L117)。
 
-**合同。** schemaVersion=1与protocolVersion=2分开：存储模型版本未因分块传输而升成2。固定learning-center.html只是路径，注释明确还非built asset；reading.invalidate是专用Port；projection tf-source-utf16-v1、item key ri1。
+**合同。** schemaVersion=1与protocolVersion=2分开：存储模型版本未因分块传输而升成2。固定learning-center.html现由#235构建，常量本身仍不是权限凭据；reading.invalidate是专用Port；projection tf-source-utf16-v1、item key ri1。
 
 **范围与依赖。** selection/context字符限制复用selection-explanation；其余集中限定field、request128KiB、artifact64KiB、record10000/total64MiB、page100、每record256 snapshots/artifacts、list1MiB/detail32MiB、export256KiB、operation16/owner128global/10min、export1/owner2global/10min、site exclusions200及扫描预算。字符上限与UTF-8字节是两道检查，容量是应用canonical JSON，不等同磁盘占用。
 
@@ -316,7 +316,7 @@ blob `dd3133180b00dabaf23bb61d9a61bb72bedbfa4e`；[完整源码 L1–L28](https:
 
 统计所有assistant artifact得assistantTurnCount/hasCompletedAssistant；locationCapability看保存时anchor position/quote是否存在，不能解释成当前DOM已重定位。返回validateRecordListItem结果并保留record基本字段、siteKey；不把所有detail交UI再筛。无独立状态/IO，write事务存储投影，query直接读它，GET_RECORD的viewed更新只改revision/lastViewedAt。
 
-**边界/影响。** artifact.createdAt是排序字段，非网络到达顺序；缓存的列表文本会受选择算法变更影响，修改后要考虑已有listItem是否需重建。NOT_RUN：contract-v2检验latest artifact与exact snapshot/no-hit，response测试检查最小化projection；浏览器列表产品尚未交付。
+**边界/影响。** artifact.createdAt是排序字段，非网络到达顺序；缓存的列表文本会受选择算法变更影响，修改后要考虑已有listItem是否需重建。NOT_RUN：contract-v2检验latest artifact与exact snapshot/no-hit，response测试检查最小化projection；本段旧列表合同现接[真实Library](learning-center.md#file-library)，该视图独立解释。
 
 <a id="file-shared-export"></a>
 ## src/shared/reading/export.js：分块传输响应校验
@@ -327,7 +327,7 @@ blob `c6196a640f129630823deeb33fb56ca501389aef`；[完整源码 L1–L32](https:
 
 **输入输出。** validateExportResponse按四个export方法白名单字段返回规范化数据。start要求exportId/revision/expiry/非空cursor；next要求sequence、jsonChunk、nextCursor、done、revision，同时限字符和UTF-8≤256KiB，正则拒不成对UTF-16代理，done必须等价于nextCursor=null。它有意不JSON.parse单chunk：一条record可跨块。
 
-finish要求state=finished和精确ID/sequence/revision；cancel形状只许state=cancelled或finished。外层完整envelope的1MiB转义预算由service/registry校验，本文件不证明owner、存储一致性或实际文件落盘，也不管理网络/取消资源。非法结构抛合同错误由service稳定回传。修改chunk上限、EOF或状态语义需联动export-reader/exports及未来下载消费者；contract-v2中raw/escaped/Unicode边界与operations响应验证相关，NOT_RUN。
+finish要求state=finished和精确ID/sequence/revision；cancel形状只许state=cancelled或finished。外层完整envelope的1MiB转义预算由service/registry校验，本文件不证明owner、存储一致性或实际文件落盘，也不管理网络/取消资源。非法结构抛合同错误由service稳定回传。修改chunk上限、EOF或状态语义需联动export-reader/exports及当前[下载消费者](learning-center.md#file-export)；contract-v2中raw/escaped/Unicode边界与operations响应验证相关，NOT_RUN。
 
 <a id="file-invalidations"></a>
 ## src/shared/reading/invalidations.js：无内容的 scope 专属失效合同
@@ -363,7 +363,7 @@ blob `e8ea3e242dc2cdbfe5383f74e104ded395e9618b`；[完整源码 L1–L14](https:
 - list.js：摘要不含全库/正文；record list包含bounded preview、assistant count和保存时locationCapability；列表项唯一，limit及nextCursor受限，空items不能携带nextCursor。pageList要求recordCount≥1，空tombstone不会当普通历史页展示。
 - validation.js：只接受plain/null-prototype object并拒额外key，各字段自行保证必填；字符串长度是UTF-16，另有JSON byte校验；ID/UUID/digest/pageKey/origin格式各不同。safeReturnUrl只HTTP(S)、无userinfo，拒敏感参数/fragment及@，不是对所有PII的万能检测。ReadingContractError内部含path，service对外只code，不能把原error.message直接暴露。
 
-**修改联合影响。** schema、normalization、response budget与scope变化要同时检查持久旧记录、native sender、source capture及未来UI，不能靠清库或放宽权限“兼容”。contract-dto/lifecycle/response/v2是对应测试设计范围；本轮NOT_RUN。
+**修改联合影响。** schema、normalization、response budget与scope变化要同时检查持久旧记录、native sender、source capture及当前学习中心UI，不能靠清库或放宽权限“兼容”。contract-dto/lifecycle/response/v2是对应测试设计范围；本轮NOT_RUN。
 
 <a id="partial-entry-router"></a>
 ## 局部：实际入口、已有来源与历史文档
@@ -380,9 +380,9 @@ index.js L14–18注册Reading各监听，router.js L71–79优先识别reading.
 
 当前 [controller](selection.md#file-controller) 在点击时 freezeQuery，并由 `records.start` 建立可信操作；`record-access` 安装 production `readingAccessCollector`，`record-client` 实际调用 REGISTER/BEGIN/SAVE/APPEND。SourceSnapshot 自身仍只是证据对象，持久化职责在 client→service→repository 链。`src/shared/constants.js` 的当前 CONTENT_SCRIPT_FILES 已按 contract/model/renderer/access/client/status/controller 顺序装配这些 classic 文件；这里只核对装配条目，不据此把整个 constants 或构建链计为完整。
 
-上方 index/source-snapshot/旧 router 链接是历史入口定位；controller 的当前完整解释和 router 的新 provenance 边界见 Selection 模块。Popup/Options“无 Reading 调用”的旧结论来自旧基线，本轮未重读这两根脚本，不将它用作当前广泛否定。当前 service/runtime 仍明确拒绝未启用的固定学习中心打开，真实 React 学习中心没有因此被补算交付。
+上方 index/source-snapshot/旧 router 链接是历史入口定位；controller 的当前完整解释和 router 的新 provenance 边界见 Selection 模块。Popup/Options“无 Reading 调用”的旧结论来自旧基线，本轮未重读这两根脚本，不将它用作当前广泛否定。本轮默认 runtime 已开启，Popup新增固定打开动作；[实际React链](learning-center.md)有独立完整正文，Popup根脚本这里只解释增量。
 
-reading-access-v1/README.md保留#232时期“repository absent”的旧开头，当前runtime默认createReadingRepository已不同；它描述#233的“未来接口”现在可与repository逐项对读，其中 collector 已由 #234 实现，学习中心可用性仍受当前 runtime=false 限制。它关于page delete清receipts的文字不是当前management代码事实，本章按代码说明代次/TTL防复活。不修改旧规范或业务，仅把分歧记录在导读。
+reading-access-v1/README.md保留#232时期“repository absent”的旧开头，当前runtime默认createReadingRepository已不同；它描述#233的“未来接口”现在可与repository逐项对读，其中 collector 已由 #234 实现，学习中心已由#235启用，不再受生产runtime=false限制。它关于page delete清receipts的文字不是当前management代码事实，本章按代码说明代次/TTL防复活。不修改旧规范或业务，仅把分歧记录在导读。
 
 <a id="test-boundaries"></a>
 ## 局部：测试设计能证明什么
@@ -413,7 +413,7 @@ reading-access-v1/README.md保留#232时期“repository absent”的旧开头�
 
 **纯合同（contract-dto/lifecycle/response/v2）。** 构造合法/非法/超界DTO，源关联与UTF-16范围、case保留itemKey、容量精确边界、assistant thread/branch/环、content最小响应、protocol2与schema1、chunk代理对/转义，以及最大cardinality detail边界。handoff fixture仅检验合同，不构成生产handoff可用证据。
 
-**原生访问（e2e/reading-access）。** 合成repository与owned collector、受控扩展页面，真实native sender/getContexts/ISOLATED world、导航Port和private message矩阵；测试显式configure learningCenterAvailable:true。只能在该测试边界下说明native授权，不能声称main LC产品存在。
+**原生访问（e2e/reading-access）。** 合成repository与owned collector、受控扩展页面，真实native sender/getContexts/ISOLATED world、导航Port和private message矩阵；测试显式configure learningCenterAvailable:true。只能在该测试边界下说明native授权，该旧测试本身不能证明main LC产品；当前产品存在另有#235页面及真实React测试依据。
 
 **持久化（e2e/reading-storage）。** beforeAll选择READING_STORAGE_ARTIFACT→TF_E2E_ARTIFACT→TF_I18N_ARTIFACT的第一个已设变量，否则.output/chrome-mv3；显式空路径拒绝。复制完整artifact inventory并核对background SHA未变，再仅测试副本加synthetic learning-center.html、localhost权限、ISOLATED collector和独立storage-probe worker/source closure。生产后台消息测试保存/重复/重启/迟到暂停和export；直接源码native probe测试超过128页、10k记录、近64MiB、空页/清理代次、transaction guard、quota/upgrade等。localhost quota测例自己标明不是compiled-extension quota。不能将direct-source probe、测试加的权限或假页面当实际发行用户验收。
 
@@ -429,3 +429,4 @@ reading-access-v1/README.md保留#232时期“repository absent”的旧开头�
 - [#234 state](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/state.json) 记录 completed、PR #279、mergeHead 19edb542；[acceptance](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/acceptance.json) 记录 candidate 72fc8cdd 的 validate/build/E2E PASS 与 140 PASS/7 SKIPPED。这是既有受限证据，保留 synthetic consent、真实付费 Provider/原生 Windows/macOS NOT_RUN 的限制；不称本轮或当前 d5246ca 已重新测试通过。
 
 上述测试已读完源码，但本章未对每个 helper/fixture 作独立完整章节，所以测试文件仍局部覆盖；本轮所有命令与浏览器 **NOT_RUN**。
+

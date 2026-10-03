@@ -1,5 +1,7 @@
 # 构建、实际产物与测试到安装升级
 
+> b606cfd增量：#235学习中心已加入产品；React仅允许其独占闭包，审计改用writeBundle最终输出/固定HTML映射，平台预算仍保留。下文d524细节是历史正文，涉及变动文件均在coverage待复核；本轮仅补[当前打包增量](../modules/learning-center.md#integration-deltas)，不将局部更新计完整。
+
 [逐文件说明](../modules/build-test-release.md) · [启动链](extension-startup.md) · [首页](../README.md)
 
 本章固定于 main `d5246cae6469e4a876fc122b229a2e0ddf115709`，2026-10-03 复核；以当前源码重校 `docs/code-walkthrough` 的 `f7bf28b546a58ac7debe6dd951bb502434dd915a` 文档。当前默认构建已切换为 WXT，旧的“默认 legacy / WXT opt-in”与“#278 未合入”不再描述本基线。所有安装、构建、脚本、Node/Vitest、浏览器、CI 和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS；也不从历史记录推导 realOxford 通过。
@@ -30,7 +32,7 @@ WXT 由 [wxt.config.mjs](../modules/build-test-release.md#file-wxt-config)配置
 
 生成词典不是 Git 内已有可安装数据。每个 TFLex 包按 manifest 明确声明、fingerprint、descriptor hash/size、role 和真实路径核验文件；开发缺包列入 missing，release 通过 requireLexicon 强制所有内置包就绪。它证明声明与字节完整性，不替代来源、词汇质量、真实词典兼容性或发行准入。
 
-[audit](../modules/build-test-release.md#file-audit)检查 Manifest 与基线全部字段 deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/React/开发资源、HTML 本地引用及代码体积预算。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
+[audit](../modules/build-test-release.md#file-audit)检查 Manifest 与基线全部字段 deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/开发资源并限制React只在学习中心闭包、HTML 本地引用及代码体积预算。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
 
 ## 3. 输出删除和测试副本的安全边界
 
@@ -102,4 +104,5 @@ prepareExtensionTestCopy 完成精确复制后才作受限测试适配：
 7. 用户体验改动：类型/Node 只是一层；补实际产物浏览器断言，真实权限弹窗/真实网页须单列证据。
 
 本轮只读源码与修订文档，没有运行以上步骤。大型边界分析器、mock server、专项认证脚本/来源链及未展开的产品 spec 仍保留局部覆盖。
+
 

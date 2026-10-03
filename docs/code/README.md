@@ -1,7 +1,5 @@
 # TranslateFlow 持续源码导读
 
-> 后续主线提醒：本文的完整清单与解释固定于 d5246ca。此后 main b606cfd556792d9764d0b15461b7a142fcd99575 已合入 [#285 学习中心（#235）](https://github.com/CoderLambert/translateflow-plugin/pull/285)；新增 React 学习中心留待下一轮逐文件复核。下文“学习中心未启用/未交付”仅描述 d5246ca 基线，不代表最新 main。
-
 
 ## 目标
 
@@ -15,8 +13,8 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单基线：`d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮优先复核 WXT 默认构建/产物安全/浏览器消费者、Reading 查询到显式保存与本地自查；未变文件保留旧固定引用，变动但未完整重读的文件一律待复核。
-- 当前状态：750 个文件全部登记；187 个完整解释、534 个待解释、29 个待复核；局部正文 129 个（待解释中 112、待复核中 17），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
+- 当前清单基线：`b606cfd556792d9764d0b15461b7a142fcd99575`。本轮完整贯通#235实际学习中心，从Popup/Selection入口到React列表/详情/搜索、后台存储、管理与导出；未变文件保留旧固定引用，变动但未完整重读的文件一律待复核。
+- 当前状态：766 个文件全部登记；198 个完整解释、525 个待解释、43 个待复核；局部正文 139 个（待解释中 108、待复核中 31），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
 
 
 ## 已交付导航与推荐阅读顺序
@@ -29,16 +27,16 @@
 6. [网页翻译、缓存恢复与重访](features/page-translation.md)及[15个文件详解](modules/page-translation-cache.md)。
 7. [YouTube字幕完整流程](features/youtube-subtitles.md)及[11个文件详解](modules/youtube-subtitles.md)。
 8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个文件详解](modules/providers-and-settings.md)。
-9. [Reading真实查询→显式保存与学习中心边界](features/reading-records.md)及[逐文件详解](modules/reading-records.md)。
+9. [Reading真实查询→显式保存→实际学习中心](features/reading-records.md)及[后台/保存详解](modules/reading-records.md)、[16个React/测试/规范新增文件](modules/learning-center.md)。
 10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[逐文件详解](modules/build-test-release.md)。
 11. [本地任务合同→冻结→验收→主Agent自查→同步](features/local-task-acceptance.md)及[逐文件说明](modules/local-task-acceptance.md)。
 12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-13. [覆盖清单](coverage.json)：750个文件的固定blob、状态和正文位置。
+13. [覆盖清单](coverage.json)：766个文件的固定blob、状态和正文位置。
 14. [更新记录](changes.md)：本轮证据与下一步。
 
-当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；学习中心入口仍未交付。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
+当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；实际React学习中心已接上列表/详情/过滤、管理、导出与错误恢复，见[用户操作到源码](features/reading-records.md#learning-center)；#236综合认定不据此补算。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
 
-这轮先消除已交付文档与 main 的矛盾，不增加无关功能章。普通 pack/TFLex、旧 MDX/StarDict、共享合同、大界面入口及未解释测试/脚本继续留作缺口；仅提及名称或复核局部不计整文件完成。参考[变更记录](changes.md)和[覆盖清单](coverage.json)定位待复核文件。
+这轮完成学习中心一个产品切片，并保留此前#234保存链、WXT两个产物目录与本地自查边界。普通 pack/TFLex、旧 MDX/StarDict、共享合同、大界面入口及未解释测试/脚本继续留作缺口；仅提及名称或复核局部不计整文件完成。参考[变更记录](changes.md)和[覆盖清单](coverage.json)定位待复核文件。
 
 
 ## 建议目录
@@ -132,4 +130,5 @@ docs/code/
 - 现存测试数量和某个旧PR通过，不等于最新源码全部行为已验收。
 
 来源：[AGENTS.md](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/AGENTS.md)、[架构文档](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/ARCHITECTURE.md)、[贡献与验收流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/CONTRIBUTING.md)。
+
 

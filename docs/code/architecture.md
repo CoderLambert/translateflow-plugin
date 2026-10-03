@@ -1,16 +1,14 @@
 # 运行时总览与阅读地图
 
-> 后续主线提醒：本文的完整清单与解释固定于 d5246ca。此后 main b606cfd556792d9764d0b15461b7a142fcd99575 已合入 [#285 学习中心（#235）](https://github.com/CoderLambert/translateflow-plugin/pull/285)；新增 React 学习中心留待下一轮逐文件复核。下文“学习中心未启用/未交付”仅描述 d5246ca 基线，不代表最新 main。
-
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮复核 Reading/划词增量、WXT 默认构建与本地自查流程；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
+当前清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`。本轮复核#235实际React学习中心与相邻入口；保留此前Reading保存、WXT默认构建与本地自查说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
 
 ## 先区分五种运行环境
 
 1. **扩展后台 service worker**：仓库保留的 [background.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/background.js) 调用 [initializeBackground](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/index.js)；当前默认 WXT 包由 [entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/entrypoints/background.ts) 复用同一函数。注册消息、快捷键、Reading端口/标签页/权限和安装启动事件。不能把浏览器启动事件当成每次 service worker 唤醒。
-2. **扩展页面**：Popup/Options 是原生 HTML/CSS/JS；WXT 编译这些唯一源码。Popup负责用户入口；Options负责配置和导入。页面生命周期不同于后台，关闭Popup并不等于自动取消所有后台请求。
+2. **扩展页面**：Popup/Options 是原生 HTML/CSS/JS；WXT 编译这些唯一源码。Popup负责用户入口；Options负责配置和导入；learning-center.html是WXT编译的独立React页面，只经v2消息读Reading仓库。页面生命周期不同于后台，关闭Popup并不等于自动取消所有后台请求。
 3. **网页 ISOLATED Content**：classic脚本按清单顺序装配到 `globalThis.__TRANSLATE_FLOW_CONTENT__`；[content.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/content.js) 最后注册监听并启动界面功能。不能直接加入ESM import。
 4. **YouTube MAIN**：受限网页桥接，仅观察播放器自己的字幕响应；不承载任意后台能力。获取、仲裁、批处理和UI生命周期见[字幕功能章](features/youtube-subtitles.md)。
 5. **导入 Workers**：Options按固定路径启动的独立处理环境；不是后台 service worker 的别名，也不是每次扩展启动都会创建。实际导入协议见[词典导入章](features/local-dictionary-import.md)，底层大型依赖完整程度以覆盖清单为准。
@@ -43,11 +41,12 @@
 - “打开Popup或快捷键没有作用”：先读[启动功能章](features/extension-startup.md)，再检查注入、页面协议、受限URL和消息返回。
 - “新增Content模块”：按启动逐文件说明检查有序清单、bootstrap依赖与同一 WXT 引擎的两个产物目录；不要只创建文件。
 - “改某个业务功能”：先从本页边界找到后台/Content/Worker归属，再进入对应功能章；尚未创建章节见首页待完成列表。
+- “改学习中心搜索/管理/导出”：从[用户行为定位](features/reading-records.md#learning-center)追App/hook/client→后台；保持ID-only深链接、原生授权与数据分域。
 - “源码更新了”：先用coverage中的固定blob比较；受影响文件标记待复核，连带复核调用方和返回UI，而非只改一个文件摘要。
 
 ## 当前缺口
 
-主要调用链已有正文；普通 pack/TFLex、设置大入口、Reading 共享合同局部依赖及专项测试/脚本仍待继续；Reading 显式保存已接通，学习中心入口仍未交付。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+主要调用链已有正文；普通 pack/TFLex、设置大入口、Reading 共享合同局部依赖及专项测试/脚本仍待继续；Reading 显式保存已接通，学习中心入口/列表/详情/管理/导出已交付源码，#236综合认定仍单独待验证。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -100,7 +99,7 @@ Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；
 
 SourceSnapshot 不自动写历史。production readingAccessCollector 已接入可信查询，record-client 贯通 REGISTER/BEGIN/SAVE/APPEND，保存状态回到浮层；后台 v2 原生身份授权、操作登记、独立 IDB 短事务、列表/管理/分块导出与失效 Port 继续提供边界。SAVE 只有真正 commit 后返回 saved，取消 ACK 区分未保存和已提交。Rich 必须实际展示成功后生成有界摘要与 packVersion；AI/普通翻译和词典结果来源分别绑定，不能跨查询串写。
 
-learningCenterAvailable 默认仍 false；#235/#236 的学习中心/回原文产品不因 #234 保存链完成而自动交付。静态源码不是浏览器或 realOxford PASS，当前实现与待开发仍分开。
+默认 runtime 已启用 learning-center.html；Popup/Selection固定打开 → React App/typed client → v2原生权限 → repository/query/management/export → UI快照/列表/确认/下载。列表30条、详情先渲染5个artifact，导出FINISH后才交付Blob，Port断线清未确认内容并可重试。详见[用户操作链](features/reading-records.md#learning-center)与[16个新增文件](modules/learning-center.md)。原页链接不保证定位，#236综合Release A不因#235合入自动PASS。静态源码不是浏览器或 realOxford PASS，当前实现与待开发仍分开。
 
 ## 构建与验收消费的是哪份产物
 
@@ -126,3 +125,4 @@ MDX index Map无MDD式容量驱逐，MDD为序列化index字节LRU；不同层�
 当前 docs/tasks 的合同/state/acceptance 是执行依据，review.md 可选记录自查或历史审核，11个 Actions 手动备用。freeze 绑定候选；gate 核对输入、依赖、真实命令日志和实际包指纹，不再强制模型独审，也不硬编码完整 validate。主 Agent 按真实 diff 自查，保留外部必需审查、人工验收和准确远端 head。
 
 Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效劳动，模型字段未知保留 UNKNOWN。index 中 workflow-local/234/path-safety completed，248 ready_to_sync，235/236 blocked；#284 默认切换代码已合入，归档索引不代表最新代码未落地。旧规范的暂停叙述按历史看待，不因此启动产品工作。本轮纯文档校对，不运行任何项目命令。
+

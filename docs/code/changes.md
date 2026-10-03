@@ -140,3 +140,13 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 - 187 个完整解释、534 个待解释、29 个待复核；局部正文 129 个（待解释中 112、待复核中 17），不计完整覆盖。完整解释要求实际重读与正文；任何变动而未完成全文复核路径保留待复核，旧固定链接标记历史范围。
 - README、总架构、启动与相邻 renderer 描述、地图、coverage 和双向链接同步；提交仅 docs/code/。文档身份、路径/锚点、清单计数与远端内容静态核验，不运行安装、构建、测试、浏览器、freeze/run/gate 或发布；全部运行 **NOT_RUN**，无 realOxford PASS 声明。
 - 下一步先按 coverage 清理待复核余项，再继续原有普通pack/TFLex与共享合同缺口；本轮不改业务、不启动其它开发任务。
+
+
+## 2026-10-03 #235 实际 React 学习中心导读
+
+- 本轮读取最新main/AGENTS/#275/导读README后固定 `b606cfd556792d9764d0b15461b7a142fcd99575`（#285），文档父提交26864e8；一次推进清单到766 blobs，新增16、变更20、删除0，不追后续移动main。sourceTree记录实际Git tree ae16411834ca7092ae6b3d2a6daa59e320290a1f，sourceCommit另列。
+- 接通Popup/Selection固定打开→HTML/main→App→typedclient/hooks→列表/搜索/页分组/详情→v2身份/后台query与管理→UI确认/重试/导出FINISH，给用户行为对应的修改入口，不孤立罗列文件。新增modules/learning-center完整解释16个新增文件；后台runtime/access/constants三处全文复核，其它20变动中的余项保留待复核。
+- 198 个完整解释、525 个待解释、43 个待复核；局部正文 139 个（待解释中 108、待复核中 31），不计完整覆盖。完整数变动同时包含新增与旧覆盖因源码变化降级，不能只用累计数字当工作量。README、架构、Reading功能/模块、构建交叉提示、地图/coverage同步，原#234保存、WXTdist与E2E.output、本地主Agent自查均保留。
+- #235归档候选的16 PASS只包含两个实际React故事，Selection旧首次同意仍synthetic；真实UIoffline reload不等同profile restart，大导出归档3,622,698B。旧storage确有同profile重启及>62/<64MiB native种子流测试，但其旧NOT_READY断言/预构建输入需要重新核验，不能继承成新UI近容量/重启PASS。#236无已核验综合PASS。
+- 只静态校对清单/源码身份/内部链接/正文，所有安装、构建、测试、浏览器、下载、freeze/run/gate、私有词典、发布运行NOT_RUN。仅docs/code分支文档，不改任何产品或任务状态。
+- 下一轮先按coverage复核变动旧入口/构建说明，再继续既有普通pack/TFLex和共享合同缺口；本次切片完成不代表全仓覆盖。

@@ -1,5 +1,7 @@
 # 构建与测试：逐文件说明
 
+> b606cfd增量：#235学习中心已加入产品；React仅允许其独占闭包，审计改用writeBundle最终输出/固定HTML映射，平台预算仍保留。下文d524细节是历史正文，涉及变动文件均在coverage待复核；本轮仅补[当前打包增量](../modules/learning-center.md#integration-deltas)，不将局部更新计完整。
+
 [完整功能链](../features/build-test-release.md) · [首页](../README.md)
 
 固定源码 main `d5246cae6469e4a876fc122b229a2e0ddf115709`，2026-10-03复核；以当前源码重校 docs/code-walkthrough 的 f7bf28b546a58ac7debe6dd951bb502434dd915a 文档。本轮完整读取并解释下列30个文件；大型spec、专项CI、package脚本总路由与依赖分析器保留局部。wxt.config.mjs 当前实现移至本章完整说明；entrypoints/background.ts 仍由启动章负责。运行验证全部 **NOT_RUN**；本文只说明代码中的断言与输出，不继承历史PASS，也不推导 realOxford 通过。
@@ -157,7 +159,7 @@ defineConfig只发现e2e/**/*.spec.mjs，test超时30秒、expect6秒，fullyPar
 
 blob `5b4f30eb9750cc76078ab3466d2c6f4ee0034c37`；[完整源码 L1–L14](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/vitest.config.ts#L1-L14)。
 
-Vite React plugin服务测试编译；test.include仅tests/unit/**/*.test.ts、tsx，明确排除旧mjs/E2E/node_modules和所有输出目录。默认environment=node、globals=false、maxWorkers=2、passWithNoTests=false，组件测试需自己声明jsdom。没有fixture代码自动进入生产构建；audit另防测试/React污染。修改include或environment需复核package test:unit、tsconfig及具体测试注释，不能把Node测试数量或没有测试运行算通过。NOT_RUN。
+Vite React plugin服务测试编译；test.include仅tests/unit/**/*.test.ts、tsx，明确排除旧mjs/E2E/node_modules和所有输出目录。默认environment=node、globals=false、maxWorkers=2、passWithNoTests=false，组件测试需自己声明jsdom。没有fixture代码自动进入生产构建；audit另防测试污染与React进入非学习中心闭包。修改include或environment需复核package test:unit、tsconfig及具体测试注释，不能把Node测试数量或没有测试运行算通过。NOT_RUN。
 
 <a id="file-tsconfig"></a>
 ## tsconfig.json：严格新TS与声明文件编译域
@@ -384,3 +386,4 @@ blob `1f59eff1326755dc7b37f2dfc332c5e2100dd792`；[完整源码 L1–L15](https:
 原文“未合入”只描述2026-10-03 08:29 UTC历史观察，不能继续用作当前状态。固定main的[path-boundaries](#file-path-boundaries)、[builder](#file-build-extension)和[production-artifact](#file-production-artifact)已实现ROOT规范化、四种路径关系、真实路径/链接/临时目录限制、目标内部嵌套Git与链接保全，builder删除前再检查一次。此为源码事实，不借旧PR/review报告推导任何新运行PASS。
 
 build/audit先在独立staging完成，使两阶段失败不删除最终包；发布仍是rm→mkdir→cp，非原子/回滚事务，也无同目标互斥锁。检查不是竞态下的持锁原子边界。不要给allowExternalOutput任意外部删除含义，不要用真实源码/worktree根重现破坏性负例。本轮build/delete/安全回归全部NOT_RUN。
+
