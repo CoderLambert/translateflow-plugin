@@ -90,12 +90,12 @@
     },
     {
       "task": "237",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "236"
       ],
       "branch": "feat/237-reading-site-handoff",
-      "candidateHead": null
+      "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2"
     },
     {
       "task": "245",

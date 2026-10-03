@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "237",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "236"
   ],
   "branch": "feat/237-reading-site-handoff",
   "worktree": ".worktrees/issue-237",
-  "candidateHead": null,
+  "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -30,5 +30,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "完成 handoff/站点意图实现与定向验证，补真实 WXT Chromium 流程后冻结候选。"
+  "nextAction": "候选 8fa9e8a 完整验收与主 Agent 自查通过；提交验收归档、执行本地 gate 后推送并建立受保护 PR。"
 }

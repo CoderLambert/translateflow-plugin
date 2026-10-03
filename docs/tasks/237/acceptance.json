@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "task": "237",
+  "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2",
+  "tree": "04218f211b91b5610c85f3818cfb16d8a8478268",
+  "inputTree": "919e5f2e38068739cb17596c7c0b553e9763dffe4e3c874b69ffa2405db6146f",
+  "frozenAt": "2026-10-03T22:32:15.753Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56118.386639,
+      "startedAt": "2026-10-03T22:32:36.931Z",
+      "log": "docs/task-execution/local/237/9080800f-5e5c-4c2a-a10b-b65d8a11b8eb.log",
+      "logSha256": "237601f96f22b6ae383159d88030b0204e9dca2ac7dc4e4f4070b911e646a644"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2342.74447,
+      "startedAt": "2026-10-03T22:33:41.227Z",
+      "log": "docs/task-execution/local/237/0a8fd8b8-b0ec-4ca6-ab61-576b35d36482.log",
+      "logSha256": "8aef8181112863e58abad5e3705d91988d70d75317d14708b5df5b4d6a148987"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-handoff.spec.mjs"
+      ],
+      "candidateHead": "8fa9e8a1a4c7bc3a0684424430ccdb59e0a79db2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2873.346692,
+      "startedAt": "2026-10-03T22:33:43.751Z",
+      "log": "docs/task-execution/local/237/2bf8fea3-2c11-40cb-a0f1-4cac6429d2f6.log",
+      "logSha256": "8c40671bac6d8516727ab158114ebbc16ba21ee24408d10caa7b8dd300c87711"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "cc0eaeb24404dfff50e1f9d54549cf180894af7728715472b5734deba3953b17"
+  },
+  "limitations": [
+    "任务 238 的 quote/position 唯一 DOM 定位、滚动与历史卡未实现；成功文案明确只确认安全打开。",
+    "任务 239 的自动 marker 绘制、本页列表与 SPA 恢复未实现；本任务只交付独立站点意图、权限状态和 handoff 基础。",
+    "真实 Chromium 覆盖了有效 host access、目标 tab/Content 一次性消费、marker 开关和零 Provider 调用；权限拒绝/撤销、redirect、删除/暂停/排除、代际变化、TTL 与 worker restart 由生产服务/Node 测试覆盖，未通过浏览器站点控制 UI 逐项手工操作。",
+    "Chrome 102、Edge、Firefox、Safari、隐身窗口和商店发布 NOT RUN；本任务没有修改最低版本、Manifest 权限或发布状态。"
+  ],
+  "decision": "LOCAL_CANDIDATE_PASS"
+}
