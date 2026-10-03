@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "248",
-  "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
-  "tree": "f7ad7a93e316619a6a146717ed37fd893e017c12",
+  "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+  "tree": "28a37bdc2e570ea59550ec174f3bc81609beb699",
   "inputTree": "4e25e51ac28d5baf3a25d068aebbc6645870569a06089b24c8f76cffd3128894",
-  "frozenAt": "2026-10-03T13:21:53.914Z",
+  "frozenAt": "2026-10-03T13:28:54.963Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
-    "browser": "NOT RUN"
+    "browser": "153.0.8010.12"
   },
   "checks": [
     {
@@ -17,14 +17,20 @@
         "run",
         "validate"
       ],
-      "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
       "durationMs": 56791.320333,
       "startedAt": "2026-10-03T13:21:54.123Z",
       "log": "docs/task-execution/local/248/8379943e-54c9-4ea2-86ce-65960e00f5fb.log",
-      "logSha256": "aa2c34d9d186565a8cd5bf0e488d2d66d680345cb934a453f47d93752f0380de"
+      "logSha256": "aa2c34d9d186565a8cd5bf0e488d2d66d680345cb934a453f47d93752f0380de",
+      "testedHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "reusedFor": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+      "reuseProof": {
+        "inputTree": "4e25e51ac28d5baf3a25d068aebbc6645870569a06089b24c8f76cffd3128894",
+        "reason": "Only task metadata changed; all tracked source, test, build and task-contract inputs are identical."
+      }
     },
     {
       "command": [
@@ -32,14 +38,20 @@
         "run",
         "build:extension:wxt"
       ],
-      "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
       "durationMs": 2152.256583,
       "startedAt": "2026-10-03T13:22:51.106Z",
       "log": "docs/task-execution/local/248/0819b8f8-ff23-4946-8d98-d45d6c01ab7c.log",
-      "logSha256": "f15addcd4b779c56fc680f4f0e84c40360671d54708b0de88c71664a37e69d56"
+      "logSha256": "f15addcd4b779c56fc680f4f0e84c40360671d54708b0de88c71664a37e69d56",
+      "testedHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "reusedFor": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+      "reuseProof": {
+        "inputTree": "4e25e51ac28d5baf3a25d068aebbc6645870569a06089b24c8f76cffd3128894",
+        "reason": "Only task metadata changed; all tracked source, test, build and task-contract inputs are identical."
+      }
     },
     {
       "command": [
@@ -47,14 +59,20 @@
         "run",
         "test:wxt:smoke"
       ],
-      "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
       "durationMs": 1687.644962,
       "startedAt": "2026-10-03T13:22:53.461Z",
       "log": "docs/task-execution/local/248/09f7defc-c758-4034-ad84-e165c6b2dd2e.log",
-      "logSha256": "c4503f1a8f2aaa58bbc0419f4f7109e633d6636d32486e599d16401f772ce749"
+      "logSha256": "c4503f1a8f2aaa58bbc0419f4f7109e633d6636d32486e599d16401f772ce749",
+      "testedHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "reusedFor": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+      "reuseProof": {
+        "inputTree": "4e25e51ac28d5baf3a25d068aebbc6645870569a06089b24c8f76cffd3128894",
+        "reason": "Only task metadata changed; all tracked source, test, build and task-contract inputs are identical."
+      }
     },
     {
       "command": [
@@ -62,14 +80,20 @@
         "run",
         "build:extension:release"
       ],
-      "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
       "durationMs": 2150.631266,
       "startedAt": "2026-10-03T13:22:55.344Z",
       "log": "docs/task-execution/local/248/4defc0fe-48ce-4fb7-9018-487bb5e1e382.log",
-      "logSha256": "3758054052186f95f4ae10fde3e07c0d602f25ec98057487b2ee42b3d5ec5ea0"
+      "logSha256": "3758054052186f95f4ae10fde3e07c0d602f25ec98057487b2ee42b3d5ec5ea0",
+      "testedHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "reusedFor": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+      "reuseProof": {
+        "inputTree": "4e25e51ac28d5baf3a25d068aebbc6645870569a06089b24c8f76cffd3128894",
+        "reason": "Only task metadata changed; all tracked source, test, build and task-contract inputs are identical."
+      }
     },
     {
       "command": [
@@ -77,18 +101,47 @@
         "run",
         "test:e2e",
         "--",
-        "--workers=4"
+        "e2e/selection-reading-record.spec.mjs",
+        "--workers=1"
       ],
-      "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
       "result": "FAIL",
       "exitCode": 1,
       "signal": null,
-      "durationMs": 95064.7674,
-      "startedAt": "2026-10-03T13:22:57.690Z",
-      "log": "docs/task-execution/local/248/c982637f-ecfe-448f-8887-88b7cb51eb9d.log",
-      "logSha256": "c9a8c0f1ad526cfce6d19c5b8489d649828e87dce56f8436fe463a7053cb78b8"
+      "durationMs": 18731.100405,
+      "startedAt": "2026-10-03T13:28:55.248Z",
+      "log": "docs/task-execution/local/248/140ba8a0-923c-45fe-a5fd-0bb01acf781a.log",
+      "logSha256": "7b6c24081d2a978613fbe5caffc74627b4368c992d963c08677821497a2089fa"
     }
   ],
   "artifact": null,
-  "limitations": []
+  "limitations": [
+    "Full E2E on the identical source/test/build input had one intermittent excluded-site UI assertion failure (143 PASS, 3 external-corpus SKIP). Isolated failing-story recheck PASS. Original full FAIL is retained; it is not relabelled PASS.",
+    "Real YouTube, Chrome 102, other browsers, paid Provider, external/private dictionary certification and store publication NOT RUN.",
+    "Final affected-file recheck: 6 PASS / 1 FAIL; excluded-site UI assertion still unresolved. No PR or merge performed."
+  ],
+  "priorFullE2E": {
+    "command": [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=4"
+    ],
+    "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+    "result": "FAIL",
+    "exitCode": 1,
+    "signal": null,
+    "durationMs": 95064.7674,
+    "startedAt": "2026-10-03T13:22:57.690Z",
+    "log": "docs/task-execution/local/248/c982637f-ecfe-448f-8887-88b7cb51eb9d.log",
+    "logSha256": "c9a8c0f1ad526cfce6d19c5b8489d649828e87dce56f8436fe463a7053cb78b8",
+    "summary": {
+      "pass": 143,
+      "skip": 3,
+      "fail": 1,
+      "notRun": 0,
+      "failure": "Selection Reading excluded-site UI assertion; isolated rerun PASS, final affected-file recheck pending"
+    }
+  }
 }

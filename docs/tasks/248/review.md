@@ -12,4 +12,4 @@
 - 最初候选完整 E2E：137 PASS、1 FAIL、3 SKIP、6 NOT RUN。FAIL 是 Selection Reading 测试准备向非空发布词典目录编译 fixture，尚未启动其浏览器断言；已由本候选的一行测试副本清理修复。原失败日志完整保留在本地，不改写为 PASS。
 - 最初候选两种语言状态的真实 same-ID 旧→WXT→重启均 PASS，生产包源码/字节在本候选保持不变。最终候选重新验收结果绑定 acceptance.json；采用 4 个 Playwright workers 执行相同完整测试集，不减少任何用例或断言。
 
-未发现剩余功能、数据、权限或打包缺陷。真实 YouTube、Chrome 102、其他浏览器、真实付费 Provider、私有/外部真实词典认证及商店发布 NOT RUN；不以本次 mock/合成词典证据替代这些结论。#235/#236 尚未在本任务开发或验收。
+WXT 构建、打包和同 ID 升级未发现剩余问题。最终整文件定向重验 6 PASS / 1 FAIL：站点排除卡片预期 disabled，实际 not-saved，单独用例曾 PASS 但整文件重验再次 FAIL；未解决，不合入。不得把此失败当作已消除的 flaky。真实 YouTube、Chrome 102、其他浏览器、真实付费 Provider、私有/外部真实词典认证及商店发布 NOT RUN；不以本次 mock/合成词典证据替代这些结论。#235/#236 尚未在本任务开发或验收。
