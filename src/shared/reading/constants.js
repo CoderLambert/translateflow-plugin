@@ -2,7 +2,7 @@ import { SELECTION_EXPLAIN_LIMITS } from "../selection-explanation.js";
 
 export const READING_SCHEMA_VERSION = 1;
 export const READING_PROTOCOL_VERSION = 2;
-// Path only: #235 creates this page; it is not yet a built asset.
+// Fixed unlisted WXT page, built by #235.
 export const READING_LEARNING_CENTER_PATH = "learning-center.html";
 export const READING_INVALIDATION_PORT = "reading.invalidate";
 export const READING_PROJECTION_VERSION = "tf-source-utf16-v1";

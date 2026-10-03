@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "task": "235",
-  "status": "blocked",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "233",
     "248",
     "249"
   ],
-  "branch": null,
-  "worktree": null,
-  "candidateHead": null,
+  "branch": "feat/235-react-learning-center",
+  "worktree": ".worktrees/issue-235",
+  "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -26,9 +26,14 @@
     [
       "npm",
       "run",
-      "test:e2e"
+      "test:e2e",
+      "--",
+      "e2e/learning-center.spec.mjs",
+      "e2e/selection-reading-record.spec.mjs",
+      "e2e/reading-access.spec.mjs",
+      "--workers=1"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+  "nextAction": "本地实现、完整 validate、16 项定向 Chromium E2E、产物审计及主 Agent 自查通过；等待明确远端同步授权，不启动 236。"
 }

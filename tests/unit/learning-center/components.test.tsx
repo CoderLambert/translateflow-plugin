@@ -1,0 +1,82 @@
+// @vitest-environment jsdom
+import { StrictMode } from "react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { App } from "../../../src/learning-center/App";
+import { ReadingClient } from "../../../src/learning-center/client/reading";
+import { Library } from "../../../src/learning-center/views/Library";
+import { Detail } from "../../../src/learning-center/views/Detail";
+import { createI18n } from "../../../src/i18n/index.js";
+import { useLibrary } from "../../../src/learning-center/useLibrary";
+import { READING_METHOD as M } from "../../../src/shared/reading/constants.js";
+import { response, record, artifact, snapshot, recordListItem, RECORD_ID } from "../../fixtures/reading/contract.mjs";
+import { validateRecordDetail } from "../../../src/shared/reading/record.js";
+beforeEach(() => {
+  history.replaceState(null, "", "/");
+  vi.stubGlobal("chrome", { i18n: { getUILanguage: () => "en" }, storage: { local: { get: async () => ({ uiLocale: "en" }) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } });
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+const i18n = createI18n({ uiLocale: "en" });
+test("StrictMode mount and synthetic events do not grant consent or start exports", async () => {
+  const calls: string[] = []; let enabled = false;
+  const client = new ReadingClient(async raw => {
+    const request = raw as { method: string; expectedConsentGeneration?: number }; calls.push(request.method);
+    if (request.method === M.SET_RECORDING) { expect(request.expectedConsentGeneration).toBe(1); enabled = true; }
+    if ((request.method === M.GET_RECORDING_STATE || request.method === M.SET_RECORDING)) return response(request.method, "extension", { data: { enabled, consentGeneration: enabled ? 2 : 1, capacityReached: false, dataGeneration: 1, recordCount: 0, totalBytes: 0 } });
+    if ((request.method === M.LIST_RECORDS || request.method === M.LIST_RECORDING_EXCLUSIONS)) return response(request.method, "extension", { data: { items: [], nextCursor: null, ...(request.method === M.LIST_RECORDS ? { catalogRevision: 1 } : {}) } });
+    throw Error("Unexpected mutation");
+  });
+  const dispose = vi.fn(), listen = vi.fn(() => dispose);
+  render(<StrictMode><App client={client} listen={listen} /></StrictMode>);
+  await screen.findByRole("button", { name: "Enable recording" });
+  expect(calls).not.toContain(M.SET_RECORDING); expect(calls).not.toContain(M.EXPORT_START);
+  expect(dispose).toHaveBeenCalledTimes(1);
+  await userEvent.click(screen.getByRole("button", { name: "Not now" }));
+  expect(calls).not.toContain(M.SET_RECORDING);
+  await userEvent.click(screen.getByRole("button", { name: "Enable recording" }));
+  expect(calls.filter(method => method === M.SET_RECORDING)).toHaveLength(0);
+});
+test("literal searches discard a late old response and never request row details", async () => {
+  let release: ((value: unknown) => void) | undefined;
+  const calls: string[] = [];
+  const client = new ReadingClient(raw => {
+    const request = raw as { method: string; query: string }; calls.push(request.method);
+    if (request.query === "old") return new Promise(resolve => { release = resolve; });
+    return Promise.resolve(response(M.LIST_RECORDS, "extension", { data: { items: [], nextCursor: null, catalogRevision: 1 } }));
+  });
+  function Search({ query }: { query: string }) {
+    const library = useLibrary(client, "recent", query, null, 0, true);
+    return <Library {...library} i18n={i18n} mode="recent" query={query} disabled={false} onMore={library.next} onRetry={library.retry} onRecord={() => {}} onPage={() => {}} />;
+  }
+  const view = render(<Search query="old" />); await waitFor(() => expect(release).toBeDefined());
+  view.rerender(<Search query="new" />); await screen.findByText("No matching records.");
+  await act(async () => { release?.(response(M.LIST_RECORDS)); });
+  expect(screen.queryByText("React")).toBeNull(); expect(calls.every(method => method === M.LIST_RECORDS)).toBe(true);
+});
+test("untrusted stored answer is text and only five large artifact bodies render initially", () => {
+  const artifacts = Array.from({ length: 12 }, (_, index) => artifact("translation", { artifactId: `artifact-${index}`, payload: { text: '<img src="https://evil.test/x" onerror="alert(1)">' } }));
+  const detail = validateRecordDetail({ record: record(), snapshots: [snapshot()], artifacts });
+  const { container } = render(<Detail detail={detail} i18n={i18n} onBack={() => {}} onDelete={() => {}} disabled={false} />);
+  expect(container.querySelectorAll(".artifact")).toHaveLength(5); expect(container.querySelector("img")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Load more" })); expect(container.querySelectorAll(".artifact")).toHaveLength(10);
+});
+test("delete invalidation discards a delayed detail and disconnect removes unconfirmed content", async () => {
+  let release: ((value: unknown) => void) | undefined, invalidate: (() => void) | undefined, disconnected: (() => void) | undefined, deleted = false;
+  const client = new ReadingClient(raw => {
+    const { method } = raw as { method: string };
+    if (method === M.GET_RECORD && !deleted) return new Promise(resolve => { release = resolve; });
+    if (method === M.GET_RECORD) return Promise.resolve({ protocolVersion: 2, ok: false, error: { code: "READING_NOT_FOUND" } });
+    return Promise.resolve(response(method));
+  });
+  const listen = (change: () => void, disconnect: () => void) => { invalidate = change; disconnected = disconnect; return () => {}; };
+  const view = render(<App client={client} listen={listen} />);
+  await screen.findByText("React"); await userEvent.click(screen.getByText("React"));
+  await waitFor(() => expect(release).toBeDefined());
+  await act(async () => { deleted = true; invalidate?.(); release?.(response(M.GET_RECORD)); });
+  await screen.findByText("This record is unavailable or was deleted. Return to records.");
+  expect(screen.queryByText("合成测试摘要")).toBeNull();
+  await act(async () => disconnected?.());
+  await screen.findByText("Connection interrupted. Saved content cannot be confirmed. Retry to reconnect.");
+  view.unmount();
+});

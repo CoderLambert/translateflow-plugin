@@ -1,10 +1,113 @@
 {
   "schema": 1,
   "task": "235",
-  "candidateHead": null,
-  "checks": [],
-  "artifact": null,
+  "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
+  "tree": "b71f6e89585b707972de4f99351fd7bf3a3244da",
+  "inputTree": "66de025a2c8dffd95efbccf0c466f22914afa7c556545ccf8759ac995f4d73fd",
+  "frozenAt": "2026-10-03T14:44:45.158Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 55472.608665,
+      "startedAt": "2026-10-03T14:44:45.344Z",
+      "log": "docs/task-execution/local/235/23d86f94-85f4-4587-900f-b064e2b030b4.log",
+      "logSha256": "c5747ea921fe2d7a07a5c4c5349fd40324a88c123caa82f9e61a8e9e8a55c7c3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2470.75987,
+      "startedAt": "2026-10-03T14:46:51.274Z",
+      "log": "docs/task-execution/local/235/fa9ed79b-bf23-433e-9785-ba2ace0dd828.log",
+      "logSha256": "2fdaecadeb79b75a62264feec653b111bbec345bfa07f1e879f535f0ec8c5fc1"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/learning-center.spec.mjs",
+        "e2e/selection-reading-record.spec.mjs",
+        "e2e/reading-access.spec.mjs",
+        "--workers=1"
+      ],
+      "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 24450.0451,
+      "startedAt": "2026-10-03T14:46:53.918Z",
+      "log": "docs/task-execution/local/235/2edc0d8c-ffd1-4510-a873-dfaaf7fe5325.log",
+      "logSha256": "2f1e8256bce9e23e2bed5aa9420207c124328951d8230a49b857ae454de0dd5e"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "3de37ae4b16b1a18e902934b1f98edc65a12387da12515d8b40c5ed639d79079"
+  },
   "limitations": [
-    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
-  ]
+    "Release A（236）认定和远端同步/合并/发布未执行。",
+    "主 Agent 自查；独立模型审核 NOT RUN。",
+    "Chromium E2E 使用合成词典与本地 mock Provider；大记录/分页为单独标记的 canonical-row seed，未替代真实 Selection 创建链路。",
+    "Chrome 102、其他浏览器、实际桌面 IME、原站点精确定位、付费 Provider、商店发布及文件对话框/磁盘保存结果未验证。",
+    "validate 的开发包无内置词典；显式 .output/chrome-mv3 复用现有经构建校验的 Core/Technical 生成资源，未重新编译/下载/发布认证。",
+    "当前验收不是全量 E2E；只运行本次学习中心/Selection 记录/Reading 权限的 16 项用户流程。"
+  ],
+  "supplementaryEvidence": [
+    {
+      "path": "docs/task-execution/local/235/learning-center-product.json",
+      "sha256": "4674ca1de66cbdc41ad57baa4d871eac3ecf69eb81c78d4a42a415c442c0e70c"
+    },
+    {
+      "path": "docs/task-execution/local/235/learning-center-large-export.json",
+      "sha256": "0588959c33e275476598462d0ee0078da6e79a5240fc80b00f1c5dfb37abfcd1"
+    },
+    {
+      "path": "docs/task-execution/local/235/learning-center-records-zh.png",
+      "sha256": "0308b742923b90a70bce0eb49c5f92ec9a76323472de02b68ed86705170fe391"
+    },
+    {
+      "path": "docs/task-execution/local/235/learning-center-dark-narrow-en.png",
+      "sha256": "a66c0b3dbe407dd91b2f601d6b90c9bdce5e6f37cfb9af2d3cb19c63e365b0f2"
+    },
+    {
+      "path": "docs/task-execution/local/235/production-audit.json",
+      "sha256": "75186831e7674822aaad244ec8c76797b5593aa134edd42df00111f3d939fc7e"
+    },
+    {
+      "path": "docs/task-execution/local/235/compiled-closures.json",
+      "sha256": "32299cf40d0bb81421d28aba698a9f57b6f284de2585e828052b0ca282fc34f5"
+    },
+    {
+      "path": "docs/task-execution/local/235/asset-map.json",
+      "sha256": "13b425f28aebf260c6f28ae95ee57c3eb2fefe0b8176ebd7f17b1947861d47b6"
+    }
+  ],
+  "developmentAttempt": {
+    "candidateHead": "0c38fd0b08b579992d6d84dd776564e68c7bf117",
+    "result": "FAIL",
+    "log": "docs/task-execution/local/235/4bd9da89-69e1-439e-8053-ceabe28b5da9.log",
+    "summary": "首次 validate：1032 Node PASS、2 FAIL；修复空 hash 边界及新页面产物映射后，在当前候选全部通过。"
+  }
 }

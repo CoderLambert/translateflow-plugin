@@ -13,7 +13,7 @@ function createRuntime(repository, learningCenterAvailable, ownsRepository) {
 }
 function runtime() {
   // The repository factory is pure; native storage opens only for an authorized operation.
-  if (!current) current = createRuntime(createReadingRepository(), false, true);
+  if (!current) current = createRuntime(createReadingRepository(), true, true);
   return current;
 }
 // #234 supplies the owned collector; #235 enables the built fixed page.

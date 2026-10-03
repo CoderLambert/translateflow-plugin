@@ -1,5 +1,5 @@
 // Stable installed paths shared by runtime callers and build/test adapters.
-export const EXTENSION_PAGES = Object.freeze({ popup: "popup.html", options: "options.html" });
+export const EXTENSION_PAGES = Object.freeze({ popup: "popup.html", options: "options.html", learningCenter: "learning-center.html" });
 export const MANIFEST_LOCALE_FILES = Object.freeze(["_locales/en/messages.json", "_locales/zh_CN/messages.json"]);
 export const WORKER_PATHS = Object.freeze({
   curatedDictionary: "src/options/workers/curated-dictionary-worker.js",

@@ -19,8 +19,8 @@ export default defineConfig({
     build: { target: "chrome102", cssTarget: "chrome102", sourcemap: false },
     plugins: [{
       name: "translateflow-output-audit",
-      generateBundle(_options, bundle) {
-        for (const item of Object.values(bundle)) compiledChunks.push({ fileName: item.fileName, type: item.type,
+      writeBundle(_options, bundle) {
+        for (const item of Object.values(bundle)) compiledChunks.push({ fileName: item.fileName === "entrypoints/learning-center/index.html" ? EXTENSION_PAGES.learningCenter : item.fileName, type: item.type,
           ...(item.type === "chunk" ? { imports: item.imports, dynamicImports: item.dynamicImports,
             modules: Object.keys(item.modules).map((id) => id.replace(ROOT, "")) } : {}) });
       }

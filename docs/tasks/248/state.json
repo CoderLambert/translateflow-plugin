@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "248",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "246",
@@ -9,10 +9,10 @@
     "227",
     "path-safety"
   ],
-  "branch": "build/248-default-switch",
-  "worktree": ".worktrees/248-switch",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
-  "mergeHead": null,
+  "mergeHead": "d5246cae6469e4a876fc122b229a2e0ddf115709",
   "validationCommands": [
     [
       "node",
@@ -48,5 +48,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "最终定向验收和主 Agent 自查通过；受保护 squash 合入，随后核对 main tree。"
+  "nextAction": "#248 已完成同 ID 升级连续性、默认 WXT 切换与受保护合入；#235 构建依赖已解除。完成记录随下一项已授权同步归档。",
+  "syncHead": "a6d7fd7efe61dc89919779cab186892b031ddf79",
+  "pr": 284
 }
