@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "path-safety",
-  "status": "paused",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/build-output-path-safety",
   "worktree": ".worktrees/issue-248-final",
-  "candidateHead": null,
+  "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -16,5 +16,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "冻结、完整本地验收、具名独立审核、准确 head 代码同步。"
+  "nextAction": "候选验收和独审PASS；归档后gate，推送PR278并使用准确head squash。"
 }

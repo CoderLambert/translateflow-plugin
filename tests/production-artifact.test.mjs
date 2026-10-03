@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile, readFile, symlink } from "node:fs/promises";
 import { join, posix, win32 } from "node:path";
 import { tmpdir } from "node:os";
-import { assertIsolatedArtifactPaths, copyProductionArtifact, inventoryArtifact } from "../e2e/support/production-artifact.mjs";
+import { assertIsolatedArtifactPaths, copyProductionArtifact, inventoryArtifact, prepareExtensionTestCopy } from "../e2e/support/production-artifact.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 
@@ -46,6 +46,17 @@ test("adapter copies exact supplied bytes and records deterministic production p
     assert.equal(copied.treeSha256,before.treeSha256);
     assert.deepEqual(copied.files,before.files);
     assert.equal(copied.totalBytes,before.totalBytes);
+    const foreign = join(root,"foreign-worktree");
+    const keep = join(foreign,"fixture/assets/lexicon/keep");
+    await mkdir(join(keep,".."),{recursive:true});
+    await writeFile(join(foreign,".git"),"synthetic foreign worktree marker");
+    await writeFile(keep,"foreign lexicon retained");
+    const alias = join(root,"alias");
+    await symlink(foreign,alias,process.platform==="win32"?"junction":"dir");
+    for (const destination of [join(alias,"fixture"),join(foreign,"fixture")]) {
+      await assert.rejects(prepareExtensionTestCopy({artifact,extensionDir:destination,baseUrl:"http://127.0.0.1:1"}),/symbolic link|another Git workspace/);
+      assert.equal(await readFile(keep,"utf8"),"foreign lexicon retained");
+    }
     await assert.rejects(copyProductionArtifact(artifact,artifact),/must be isolated/);
     await assert.rejects(copyProductionArtifact(artifact,join(artifact,"copy")),/must be isolated/);
     await assert.rejects(copyProductionArtifact(artifact,join(root,"copy")),/already exists|EEXIST/);

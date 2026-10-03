@@ -2,11 +2,13 @@
 
 ## Required validation
 
-提交前：
+实现候选提交后、同步前：
 
 ```bash
 npm run validate
 ```
+
+有效候选的纯元数据归档复用原验收与审核，纯文档修改执行路径、命令、语义和 diff 校对；不为这两类修改重复全量测试。条件与限制见 [最小执行与证据复用](docs/tasks/LOCAL_WORKFLOW.md#最小执行与证据复用)。
 
 使用 `package.json` 的 Node/npm 约束和 `npm ci` 安装锁定依赖；当前校验保留 Node 内置测试与旧默认构建。WXT 工程依赖只参与构建，现有业务仍复用原 JS 模块。
 
@@ -36,11 +38,13 @@ npm run test:e2e
 
 [docs/tasks/LOCAL_WORKFLOW.md](docs/tasks/LOCAL_WORKFLOW.md) 是唯一执行流程。任务合同在 `docs/tasks/<id>/task.md`，主 Agent 单写 `state.json`；索引由脚本生成。验收和未参与实现的具名 `dev_reviewer` 审核绑定准确候选。日常不读写 GitHub Issue、评论、标签、CI 状态或 GitHub Review API。历史 Issue 仅保留引用；新增任务直接建本地任务卡。
 
+以下步骤用于实现任务；纯文档与符合条件的元数据归档只执行本地流程规定的适用步骤。
+
 1. 读取本地任务合同、状态和依赖；核对 Git branch/head/修改/worktree，按需要一次 fetch。保留用户修改，有占用先协调。
 2. 明确文件所有权与验收，聚焦实现并运行受影响本地测试。并行实现必须独立 worktree；共享文件单写。
 3. 提交并冻结候选；运行完整 `npm run validate` 和任务必需的真实构建、Chromium/MV3、升级、安全及人工验收。未运行写 NOT RUN，失败写 FAIL。
-4. 具名独立 reviewer 审查准确候选和真实 diff；修复后冻结新候选并审查增量，按影响重验，旧证据不能冒充新源码。
-5. 归档简短验收/审核，生成索引并执行本地 gate。仅证据归档提交可与候选 SHA 不同，脚本必须证明源码、测试、构建与任务合同输入一致。
+4. 具名独立 reviewer 审查准确候选和真实 diff；修复后冻结新候选，只审查受影响增量并按影响重验。没有新实现变化或证据失效，不重复审查原实现。
+5. 归档简短验收/审核，生成索引并执行本地 gate。仅证据归档提交可与候选 SHA 不同，脚本必须证明源码、测试、构建与任务合同输入一致；主 Agent 核对归档准确性，不再启动模型审核。合并后完成记录按本地流程的归档条件处理。
 6. 推送分支；PR 只作为代码 diff 与 squash 入口。合并前核对准确远端 head，使用 `--match-head-commit`；仍遵守 GitHub 实际保护、必需审查和人工门槛，不能忽略被保护的失败/未运行检查。
 7. 合并后 fetch，核对 main 的 tree 和预期同步 tree，主 Agent 更新本地任务 mergeHead/结果。completed 只表示已合入并完成该任务要求，不代表商店发布或所有历史认证。
 

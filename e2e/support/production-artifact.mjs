@@ -5,6 +5,7 @@ import path, { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 import { byteSummary } from "../../scripts/wxt-assets.mjs";
+import { assertDisjointPaths, assertDisjointPathsOnDisk } from "../../scripts/path-boundaries.mjs";
 import { WORKER_PATHS } from "../../src/shared/runtime-assets.js";
 import { startupNetworkControl } from "./closed-network.mjs";
 import { mappingForGeneration, assertRuntimeMapping } from "./runtime-mapping.mjs";
@@ -24,18 +25,13 @@ export async function inventoryArtifact(root) {
 }
 
 export function assertIsolatedArtifactPaths(artifact, extensionDir, pathApi = path) {
-  const source = pathApi.resolve(artifact);
-  const destination = pathApi.resolve(extensionDir);
-  for (const [parent,child] of [[source,destination],[destination,source]]) {
-    const rel = pathApi.relative(parent,child);
-    assert(rel && (pathApi.isAbsolute(rel) || rel === ".." || rel.startsWith(`..${pathApi.sep}`)),
-      "Test copy must be isolated from the production artifact");
-  }
+  assertDisjointPaths(artifact, extensionDir, pathApi);
 }
 
 export async function copyProductionArtifact(artifact, extensionDir, { generation = "current" } = {}) {
   const source = resolve(artifact);
   assertIsolatedArtifactPaths(artifact, extensionDir);
+  await assertDisjointPathsOnDisk(artifact, extensionDir);
   // No builder fallback: callers must build/select the real production artifact first.
   const inventory = await inventoryArtifact(source);
   const paths = new Set(inventory.files.map((f) => f.path));

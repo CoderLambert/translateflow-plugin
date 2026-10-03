@@ -5,13 +5,12 @@ import { webcrypto } from "node:crypto";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES, BUNDLED_LEXICON_PATHS } from "../src/shared/runtime-assets.js";
 import { validateTflexManifest, verifyTflexManifestFingerprint, verifyTflexDescriptor } from "../src/background/lexical/tflex-integrity.js";
+import { pathRelation } from "./path-boundaries.mjs";
 
-export const ROOT = fileURLToPath(new URL("..", import.meta.url));
+export const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export function isInsideSourceRoot(root, candidate, pathApi = platformPath) {
-  const within = pathApi.relative(root, candidate);
-  return Boolean(within) && !pathApi.isAbsolute(within)
-    && within !== ".." && !within.startsWith(`..${pathApi.sep}`);
+  return pathRelation(root, candidate, pathApi) === "descendant";
 }
 
 export function assertAssetPath(path) {
