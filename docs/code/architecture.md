@@ -3,7 +3,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`。本轮全文复核构建/产物与测试合同；保留#235实际React学习中心、Reading保存与本地自查说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
+当前清单固定 main `345d630c0f0e0040f39fd74b8ed0457e3d193fd4`。本轮复核#286 Release A真实产品/测试/证据链及App/useLibrary焦点修复；保留#235组件与构建说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
 
 ## 先区分五种运行环境
 
@@ -46,7 +46,7 @@
 
 ## 当前缺口
 
-主要调用链已有正文；普通 pack/TFLex、设置大入口、Reading 共享合同局部依赖及专项测试/脚本仍待继续；Reading 显式保存已接通，学习中心入口/列表/详情/管理/导出已交付源码，#236综合认定仍单独待验证。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+主要调用链已有正文；普通 pack/TFLex、设置大入口、Reading 共享合同局部依赖及专项测试/脚本仍待继续；Reading 显式保存已接通，学习中心入口/列表/详情/管理/导出已交付源码，#286已整合真实创建/完整重启、实际UI大导出与原生quota恢复，既有候选结果按[复用链](modules/reading-release-a.md#evidence-chain)阅读。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -99,7 +99,7 @@ Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；
 
 SourceSnapshot 不自动写历史。production readingAccessCollector 已接入可信查询，record-client 贯通 REGISTER/BEGIN/SAVE/APPEND，保存状态回到浮层；后台 v2 原生身份授权、操作登记、独立 IDB 短事务、列表/管理/分块导出与失效 Port 继续提供边界。SAVE 只有真正 commit 后返回 saved，取消 ACK 区分未保存和已提交。Rich 必须实际展示成功后生成有界摘要与 packVersion；AI/普通翻译和词典结果来源分别绑定，不能跨查询串写。
 
-默认 runtime 已启用 learning-center.html；Popup/Selection固定打开 → React App/typed client → v2原生权限 → repository/query/management/export → UI快照/列表/确认/下载。列表30条、详情先渲染5个artifact，导出FINISH后才交付Blob，Port断线清未确认内容并可重试。详见[用户操作链](features/reading-records.md#learning-center)与[16个新增文件](modules/learning-center.md)。原页链接不保证定位，#236综合Release A不因#235合入自动PASS。静态源码不是浏览器或 realOxford PASS，当前实现与待开发仍分开。
+默认 runtime 已启用 learning-center.html；Popup/Selection固定打开 → React App/typed client → v2原生权限 → repository/query/management/export → UI快照/列表/确认/下载。列表30条、详情先渲染5个artifact，导出FINISH后才交付Blob，Port断线清未确认内容并可重试。详见[用户操作链](features/reading-records.md#learning-center)与[16个新增文件](modules/learning-center.md)。原页链接不保证定位，#286在此基础上提供实际用户故事；App返回焦点等连接/state/列表settled，不再一次性过早恢复，见[Release A章](modules/reading-release-a.md)。静态源码不是浏览器或 realOxford PASS，当前实现与待开发仍分开。
 
 ## 构建与验收消费的是哪份产物
 
@@ -126,5 +126,5 @@ MDX index Map无MDD式容量驱逐，MDD为序列化index字节LRU；不同层�
 
 当前 docs/tasks 的合同/state/acceptance 是执行依据，review.md 可选记录自查或历史审核，11个 Actions 手动备用。freeze 绑定候选；gate 核对输入、依赖、真实命令日志和实际包指纹，不再强制模型独审，也不硬编码完整 validate。主 Agent 按真实 diff 自查，保留外部必需审查、人工验收和准确远端 head。
 
-Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效劳动，模型字段未知保留 UNKNOWN。index 中 workflow-local/234/path-safety completed，248 ready_to_sync，235/236 blocked；#284 默认切换代码已合入，归档索引不代表最新代码未落地。旧规范的暂停叙述按历史看待，不因此启动产品工作。本轮纯文档校对，不运行任何项目命令。
+Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效劳动，模型字段未知保留 UNKNOWN。当前235/state记completed/mergeHead=b606；236/state仍归档ready_to_sync/d6cf346/mergeHead=null，但#286已实际合入345d630。index是state投影，不能推翻Git整合事实；未全文复核的index仍待复核，不借本导读修改任务状态。旧规范的暂停叙述按历史看待，不因此启动产品工作。本轮纯文档校对，不运行任何项目命令。
 

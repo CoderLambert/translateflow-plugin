@@ -2,7 +2,7 @@
 
 [Reading 完整产品链](../features/reading-records.md#learning-center) · [后台与保存模块](reading-records.md) · [首页](../README.md)
 
-本文固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`，2026-10-03 全文件静态复读。React 仅用于学习中心；本章完整解释 16 个新增文件。本章对旧入口和构建依赖仅解释相关增量；后续构建切片已在[构建逐文件章](build-test-release.md)全文复核配置/audit/runtime-assets及相应测试，入口等剩余项以coverage为准。安装、构建、测试、浏览器及下载均 **NOT_RUN**；归档 PASS 是已有任务证据，不是本轮执行。
+本章原16文件正文固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`；#286后仅 App/useLibrary 全文复读至 `345d630c0f0e0040f39fd74b8ed0457e3d193fd4`，其余未变blob保留原来源。React 仅用于学习中心；本章完整解释 16 个新增文件。本章对旧入口和构建依赖仅解释相关增量；后续构建切片已在[构建逐文件章](build-test-release.md)全文复核配置/audit/runtime-assets及相应测试，入口等剩余项以coverage为准。安装、构建、测试、浏览器及下载均 **NOT_RUN**；归档 PASS 是已有任务证据，不是本轮执行。
 
 阅读顺序：HTML/main → App → reading/useLibrary → Library/Detail/Management → export → common/locale/styles → 测试与规范。后台沿 [access/service](reading-records.md#file-access) → [repository/query](reading-records.md#file-repository) → [management](reading-records.md#file-management) / [exports](reading-records.md#file-exports) 返回。
 
@@ -27,11 +27,11 @@ StrictMode 可重复装卸 effect，所以不能把 mount 当用户同意。组�
 <a id="file-app"></a>
 ## src/learning-center/App.tsx：产品动作与生命周期的组合点
 
-[完整源码 L1–L160](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/learning-center/App.tsx#L1-L160)；blob `77b9d0055033a5af97a23653a540960e6210f30d`。
+[完整源码 L1–L159](https://github.com/CoderLambert/translateflow-plugin/blob/345d630c0f0e0040f39fd74b8ed0457e3d193fd4/src/learning-center/App.tsx#L1-L159)；blob `8bfbff95b82e7ae63ba44f8122b5b71b4b667359`。
 
 App 可注入 ReadingClient/listen 便于测试，生产默认使用消息 client/Port。state 是后端 recording state 快照；revision 是本页刷新触发器，connection 触发重新订阅；mode/input/query/page 控制列表，id/detail 控制详情，notice/confirm/busy/exporting 控制反馈。readEpoch/detailEpoch 防旧响应回写，active 防卸载后更新；mutation ref 阻止重复管理动作，exportingRef 持有唯一 AbortController。
 
-route 仅接受空 hash 或 #record=合法 UUID；其它返回 invalid，再经客户端合同拒绝，显示不可用/返回入口。hashchange 撤旧详情；navigate 用 pushState 设置 ID fragment，不放正文、URL、token。返回用原按钮/同 recordId 替代按钮/最近记录按钮恢复焦点；详情标题自身获焦点。没有自建全文数据仓库。
+route 仅接受空 hash 或 #record=合法 UUID；其它返回 invalid，再经客户端合同拒绝，显示不可用/返回入口。hashchange 撤旧详情；navigate 用 pushState 设置 ID fragment，不放正文、URL、token。navigate(null)登记returnFocus意图；要等无详情ID、library.settled、后台在线、有state且detailLoading=false才尝试恢复。按原按钮保存的data-record-id在新DOM中重找按钮，否则用最近记录按钮；目标存在且未disabled才focus并清意图。断线/列表未完成时保留意图，effect依赖settled/records/offline/state/detailLoading会再尝试；不是只等setTimeout，也不是直接聚焦已移除的旧DOM。详情标题自身获焦点。没有自建全文数据仓库。
 
 mount 建只读失效订阅：有效 revision 通知 refresh，断线使读代次失效、清 detail/state、abort 导出并断旧 Port；最多三次 250/500/750ms 重连，之后保留手动 Retry。cleanup 取消 timer、监听和导出。state/detail effect 分别发请求；每次响应必须仍 active 且代次相符。localeReady、state、在线、非导出共同控制读取，详情页不并行拉列表。网络离线与后台 Port 断线不同，前者仍可读本机库。
 
@@ -55,9 +55,9 @@ subscribe 连接 reading.invalidate，validateReadingInvalidation(extension) 后
 <a id="file-library-hook"></a>
 ## src/learning-center/useLibrary.ts：分页与搜索竞态
 
-[完整源码 L1–L32](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/learning-center/useLibrary.ts#L1-L32)；blob `e5f0b87adaa3cd023b1e73a11325d8edccd7f9a0`。
+[完整源码 L1–L32](https://github.com/CoderLambert/translateflow-plugin/blob/345d630c0f0e0040f39fd74b8ed0457e3d193fd4/src/learning-center/useLibrary.ts#L1-L32)；blob `e83593a3b26b82ee98c45eb6731b4389d377bf48`。
 
-输入 client/mode/query/pageKey/revision/enabled，持有 records/pages/cursor/loading/error/stale；epoch 标识当前加载，pending 防重复 next。load 根据 mode 调 pages 或 records，首屏替换、continuation 才追加；只接当前 epoch 响应。依赖变化先清数组/cursor/error/stale并使旧响应失效，enabled 才发首屏；effect cleanup 再增 epoch。
+输入 client/mode/query/pageKey/revision/enabled，持有 records/pages/cursor/loading/error/stale/settled；epoch 标识当前加载，pending 防重复 next。load 根据 mode 调 pages 或 records，首屏替换、continuation 才追加；只接当前 epoch 响应。load开始置settled=false；只有当前epoch的finally才置true。依赖变化先清数组/cursor/error/stale/settled并使旧响应失效，enabled 才发首屏；effect cleanup 再增 epoch。settled表示本次加载已结束（可含错误），不等于成功或有行；供App在空列表/失败时选择最近记录焦点退路。
 
 continuation 收到 READING_STALE_OPERATION 时标 stale 并重新首屏 load，不能把旧下一页拼接新列表；其它失败保留可重试 UI。next 要非 pending 且 cursor 存在；retry 重新第一页。输出没有完整 artifact，也从不逐行 getRecord。每页 30 限制响应量，不意味着后台搜索恒定时间或列表无限虚拟化。改分页合并需同时验证 cursor revision、快速搜索、删除通知与 late response；组件测试覆盖旧搜索被丢弃。
 
@@ -163,7 +163,7 @@ controlled promise 明确排列竞态，断言实际 DOM 与 method，不是固�
 
 第二故事明确为 supplementary canonical-row seed：仅测试副本复制 fixture sourceClosure，已有文件字节必须相同；31条检查30→31分页且不逐行详情；单条64 artifacts/24000字符答案检查先五个 DOM。hold 已返回的首块来排列取消与跨标签暂停：取消不给文件，内容改变提示重试；新导出实际下载 >1MiB 并验64 artifact和 Unicode；全清先 Escape/焦点返回，再确认。大记录由种子生成，不冒充真实 Selection 生成64条答案。
 
-两个 test 各120秒限时；不安装、不隐式构建。真实 React 部分只有这两条，不把三个 spec 合计16 PASS叫16条真实学习中心。测试不覆盖实际桌面 IME、Chrome102、全浏览器、真实付费 Provider/私有词典或文件对话框落盘；近64MiB与profile restart是另一个旧 storage spec 的不同层证据。本轮 NOT_RUN。
+两个 test 各120秒限时；不安装、不隐式构建。真实 React 部分只有这两条，不把三个 spec 合计16 PASS叫16条真实学习中心。测试不覆盖实际桌面 IME、Chrome102、全浏览器、真实付费 Provider/私有词典或文件对话框落盘；此前近64MiB与profile restart来自旧storage层；#286现另有真实产品完整profile重启和实际UI近容量导出，见[Release A六故事](reading-release-a.md#file-release-spec)。本轮 NOT_RUN。
 
 <a id="file-spec"></a>
 ## docs/LEARNING_CENTER_V1.md：面向维护者的产品合同
@@ -188,6 +188,8 @@ controlled promise 明确排列竞态，断言实际 DOM 与 method，不是固�
 
 #235 acceptance/review 绑定候选 e340b16c71d8a0c7d1f4a9795b4b1349963a3be4，归档记录 validate、显式 WXT包及三个spec合计16 PASS（两个学习中心故事 + Selection/权限）；review记录导出3,622,698B。当前main的#285合入身份另行确认，不能把归档中的 ready_to_sync/“未合并”当今天main尚未交付，也不能将其改写成本轮已运行。原始日志/图片为本地证据引用，本轮未下载或复跑，报告数字只按归档说明。
 
-旧 e2e/selection-reading-record.spec.mjs 的首次同意回调是 synthetic LC，与新实际 React 页不同；旧 e2e/reading-storage.spec.mjs 确实存在关闭/重新launch同profile的持久化与导出中断断言，也有 direct-source native IDB >62/<64MiB种子流式导出。后者不是实际React近容量下载，前者不等于新页面重启验收。旧storage用例按 READING_STORAGE_ARTIFACT→TF_E2E_ARTIFACT→TF_I18N_ARTIFACT→默认.output选择预构建包，复制后只替换合成LC HTML、加localhost权限和独立source probe，检查background字节未改；它没有把生产runtime重新配置成false，却仍在Popup调用固定open时期待NOT_READY。因此换成b606新包后该旧断言需要按实际输入重验；旧包证据不能直接继承。这里只记录静态输入/断言差异，未运行，不能报告当前PASS或FAIL。#236综合Release A认定仍无已核验 integrated PASS。
+旧 e2e/selection-reading-record.spec.mjs 的首次同意回调是 synthetic LC，与实际 React 页不同；旧storage spec也保留synthetic LC/collector与直接源码探针。本轮已全文读其345d630版本，Popup固定OPEN现期待opened:true，旧NOT_READY断言已修正，不再是当前待验证矛盾。详见[storage双轨输入和断言](reading-release-a.md#file-storage-spec)。
 
-[acceptance](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/tasks/235/acceptance.json) · [主Agent自查记录](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/tasks/235/review.md) · [旧storage层证据代码](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/e2e/reading-storage.spec.mjs#L102-L127)
+#286新增不seed真实创建→完整browser/profile重启→断网且无词典/Provider配置的历史故事、实际UI近64MiB seeded导出、worker/页面中断、原生extension-origin quota拒写和0 Provider显式重试，以及Escape/焦点修复。已有证据应按[候选与复用链](reading-release-a.md#evidence-chain)解读：149 PASS为148旧PASS加唯一失败的修复项，不是新跑155项；原日志/产物本轮未独立取得。归档ready_to_sync/未合入描述属于候选阶段，不能覆盖已核实#286合入main的事实；不据此擅自补状态或发布。
+
+[历史#235验收](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/tasks/235/acceptance.json) · [当前Release A逐文件证据](reading-release-a.md)

@@ -387,7 +387,7 @@ reading-access-v1/README.md保留#232时期“repository absent”的旧开头�
 <a id="test-boundaries"></a>
 ## 局部：测试设计能证明什么
 
-下面原有测试说明保留 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史静态断言边界；新增 #234 证据单独列于末尾。本轮并未重新完整读取所有旧测试；未逐一解释每个fixture/helper，因此这些测试全部保持局部。所有命令、浏览器、实际IDB/下载验证 **NOT_RUN**；不存在本轮PASS。后续获准验证应按package.json/CONTRIBUTING选择现有Node、构建、Playwright入口，不能假设validate含E2E。
+下面原有测试说明保留 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史静态断言边界；新增 #234 证据单独列于末尾。本轮并未重新完整读取所有旧测试；未逐一解释每个fixture/helper，因此未完整重读者保持局部；例外是本轮已在[Release A章](reading-release-a.md#file-storage-spec)全文复核的reading-storage.spec及[storage fixture](reading-release-a.md#file-storage-fixture)，其当前覆盖以新章为准。所有命令、浏览器、实际IDB/下载验证 **NOT_RUN**；不存在本轮PASS。后续获准验证应按package.json/CONTRIBUTING选择现有Node、构建、Playwright入口，不能假设validate含E2E。
 
 - [tests/reading-runtime-storage.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-runtime-storage.test.mjs)，blob `16f5b80197160fdd717777dbd0efe719599c4025`。
 - [tests/reading-storage-helpers.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-storage-helpers.test.mjs)，blob `c3b75a44726b2181063844e896c4ff66a4e0d813`。

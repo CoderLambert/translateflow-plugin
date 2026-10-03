@@ -3,9 +3,9 @@
 
 [首页](../README.md) · [逐文件说明](../modules/reading-records.md) · [已有划词来源链](selection-and-dictionary.md)
 
-当前产品链固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`；2026-10-03 只读复核。#234 已接通 Selection 的 production collector、结果存档与保存状态，不再是只有后台合同。本轮继续接上 #285 合入的 #235 实际学习中心；#236 跨页 Release A 综合认定仍单独判断。
+当前产品链清单固定 main `345d630c0f0e0040f39fd74b8ed0457e3d193fd4`；2026-10-03 只读复核。#234 已接通 Selection 的 production collector、结果存档与保存状态，不再是只有后台合同。保留 #285/#235 实际学习中心实现；本轮接上 #286 合入的真实 Release A 用户故事和归档候选证据，区分代码整合、历史运行和本轮静态阅读。
 
-本轮完整复读范围见[逐文件说明](../modules/reading-records.md)与[Selection 模块](../modules/selection.md)。下文后台事务/导出细节沿用 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整说明；清单逐项 blob 比对确认除本轮 runtime/access 及 shared constants 增量外，引用的后台事务文件字节未变，未重读部分仍保留旧源码身份，不冒充本轮审计。所有测试、构建、浏览器、实际下载 **NOT_RUN**。预构建产物选择见[构建与测试链](build-test-release.md)。
+本轮完整复读八个Release A/存储测试与证据文件以及App/useLibrary，详见[验收逐文件章](../modules/reading-release-a.md)。先前保存切片复读范围见[逐文件说明](../modules/reading-records.md)与[Selection 模块](../modules/selection.md)。下文后台事务/导出细节沿用 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整说明；清单逐项 blob 比对确认除本轮 runtime/access 及 shared constants 增量外，引用的后台事务文件字节未变，未重读部分仍保留旧源码身份，不冒充本轮审计。本导读本轮所有测试、构建、浏览器、实际下载 **NOT_RUN**；已有任务归档运行另按[候选链](../modules/reading-release-a.md#evidence-chain)列明。预构建产物选择见[构建与测试链](build-test-release.md)。
 
 ## 1. 用户今天真正能走到哪里
 
@@ -100,7 +100,7 @@ commit后publisher驱动reading.invalidate端口。每个消息发送前再读�
 
 ## 9. 读代码得出的测试范围，不冒充本轮运行
 
-此前保存切片的静态证据包括 production collector/client/model 的 VM 测试、translation-query/provenance/新旧注入列表测试，以及 selection-reading-record E2E。本轮新增实际React组件/导出单测与两个学习中心E2E故事，详见[文件说明](../modules/learning-center.md#test-e2e)。后者用真实随包 UI/collector 与后台 IDB，测试副本添加 synthetic LC、合成词典/localhost 权限；与下方旧合成 collector 的 native-access 测试不是同一层。#234 acceptance 记录 72fc8cdd 上的历史 PASS 与 7 SKIPPED，不能把它说成本轮 b606cfd PASS；[精确边界](../modules/reading-records.md#test-boundaries)。下方旧测试主题仍保留历史基线语义。
+此前保存切片的静态证据包括 production collector/client/model 的 VM 测试、translation-query/provenance/新旧注入列表测试，以及 selection-reading-record E2E。此前#235新增实际React组件/导出单测与两个学习中心E2E故事，详见[文件说明](../modules/learning-center.md#test-e2e)。后者用真实随包 UI/collector 与后台 IDB，测试副本添加 synthetic LC、合成词典/localhost 权限；与下方旧合成 collector 的 native-access 测试不是同一层。#234 acceptance 记录 72fc8cdd 上的历史 PASS 与 7 SKIPPED，不能把它说成本轮345d630 PASS；[精确边界](../modules/reading-records.md#test-boundaries)。下方旧测试主题仍保留历史基线语义。
 
 - 纯合同/registry Node测试：DTO bounds、source/branch关系、代次、capacity、并发reservation/ACK，很多使用synthetic browser/repository。这证明断言设计，不替代真实IDB。
 - native access spec：真实浏览器sender/context、隔离world和Port导航；fixture注入collector/合成repository并启用测试页面，不证明产品trusted点击链。
@@ -116,7 +116,7 @@ commit后publisher驱动reading.invalidate端口。每个消息发送前再读�
 - 保存计数/幂等：write + storage-state + operation registration，验证late rich/失ACK/删除竞态。
 - 列表和搜索：query + previews + index/cursor contract，避免UI拉全库detail。
 - 导出：先分清START/NEXT/EOF/FINISH/CANCEL，联动两种字节上限和真实消费者ACK。
-- 产品入口：#234保存和#235学习中心已分别有生产实现；#236综合闭环不能凭两个切片补算。本轮只更新导读，不补业务代码。
+- 产品入口：#234保存和#235学习中心已分别有生产实现；#236现已有#286真实跨页、完整重启、UI导出与quota证据，仍不能把各候选复用汇总改写为一次新全量运行。本轮只更新导读，不补业务代码。
 
 现有规范[reading-access-v1](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/reading-access-v1/README.md)开头仍写repository absent，是#232时期状态；main的runtime已默认装配真实repository，应以固定源码为当前事实。该规范也有旧的页删除receipt概述，当前management并未删receipts；已在逐文件节区分。
 
@@ -138,7 +138,7 @@ App/useLocale 就绪 → ReadingClient.state 与只读失效 Port → GET_RECORD
 
 Recent / By page / 提交搜索 → App 的 mode/query/pageKey → useLibrary → LIST_RECORDS/LIST_PAGES（limit30） → query/read → recent 或 pageRecent 索引与轻量 projection → opaque cursor/列表 DTO → Library。搜索是后台不区分大小写的字面 includes，record匹配选文、预览、context预览、标题、site；page匹配标题/site，不是完整答案全文搜索。UI 只在提交后改变 query；切模式清过滤，选页面转 recent + pageKey。列表不逐行 GET_RECORD。
 
-点击记录 → ID-only fragment → GET_RECORD → 同一原生 TAB 身份 + repository → 有界全部 detail → Detail。详情初始只渲染五个 artifact，再每次加五，但网络/消息不是五个一页。所有存储内容用 React 文本节点，sourceSnapshot/provenance折叠，无在线翻译/词典查询；网络离线且无Provider配置可读取本地历史。safeReturnUrl只打开原页，不保证原选区定位。非法/已删ID显示返回列表/重试；浏览器 hash 导航与返回撤旧响应并尽力恢复焦点。
+点击记录 → ID-only fragment → GET_RECORD → 同一原生 TAB 身份 + repository → 有界全部 detail → Detail。详情初始只渲染五个 artifact，再每次加五，但网络/消息不是五个一页。所有存储内容用 React 文本节点，sourceSnapshot/provenance折叠，无在线翻译/词典查询；网络离线且无Provider配置可读取本地历史。safeReturnUrl只打开原页，不保证原选区定位。非法/已删ID显示返回列表/重试；浏览器hash导航与返回撤旧响应；Escape返回登记焦点意图，等受限连接重连、有state且列表settled后按recordId重找按钮，失败/空列表回最近记录；未就绪保留意图，详见[App](../modules/learning-center.md#file-app)。
 
 ### 管理、删除、取消和重试
 
@@ -146,7 +146,7 @@ Pause/Resume → SET_RECORDING(expectedConsentGeneration)；站点排除/恢复 
 
 Delete record / page / all → 原生dialog确认 → DELETE_RECORD(expectedRevision) / DELETE_PAGE(pageKey) / CLEAR_RECORDS(expectedDataGeneration) → management短事务 → record/snapshot/artifact/page/meta更新 → service撤对应operation/全部导出 → publisher通知 → App清旧详情并重读 → 更新列表/计数。取消确认或Escape仅关闭dialog，无删除消息；收到冲突/过期错误不会盲目覆盖，提示刷新后重试。删除不碰翻译缓存/词典，不回收已下载副本。
 
-useLibrary用epoch挡旧搜索/旧页回包；续页cursor过期回到首屏，不混拼；App mutation ref阻止重复管理提交。Port断线清未经确认的state/detail并abort导出，最多三次短退避重连，失败留手动Retry。重连重读meta/list，不把通知当可靠历史日志。后台worker重启会丢operation/export session；持久历史可重读，旧token/export cursor不能续传。实际React故事只证明offline页面reload；同profile重启与近容量存储是旧storage层单独断言，详见[证据边界](../modules/learning-center.md#evidence)。
+useLibrary用epoch挡旧搜索/旧页回包；续页cursor过期回到首屏，不混拼；App mutation ref阻止重复管理提交。Port断线清未经确认的state/detail并abort导出，最多三次短退避重连，失败留手动Retry。重连重读meta/list，不把通知当可靠历史日志。后台worker重启会丢operation/export session；持久历史可重读，旧token/export cursor不能续传。原#235故事只测offline页面reload；#286另有不seed真实创建后的完整browser/profile重启、移除词典/Provider后offline读不可变快照，以及实际UI近容量seeded导出。证据输入与已记录结果见[Release A故事](../modules/reading-release-a.md#file-release-spec)。
 
 ### 导出到用户可用文件
 
@@ -161,3 +161,13 @@ Export JSON → App唯一AbortController → exportRecords → EXPORT_START/NEXT
 - 导出/重连：client/export + subscribe/App → exports/export-reader/subscriptions；同时验取消/EOF/FINISH和worker重启边界。
 
 [16个新增文件的完整解释](../modules/learning-center.md) 和 [相邻入口/打包增量](../modules/learning-center.md#integration-deltas) 按该调用顺序连接；后者局部说明不计全文件完成。
+
+
+<a id="release-a"></a>
+## 12. #286 怎样把真实用户链与验收连起来
+
+当前main的同一产品链已有单独Release A测试：真实Selection未开启查询→邀请进真实LC→可信Enable→回旧有效卡显式保存；随后新查询自动保存local hit/no-hit、translation/cache hit与completed Explain→读取snapshot/artifact→移除词典和Provider配置→完整浏览器同profile重启且断网仍可回顾，历史阶段不调用Provider/资源。普通存储失败不重发查询，原生quota故事观察READING_QUOTA/not-saved→恢复空间→明确重试保存，Provider0次。
+
+大语料另用canonical seed，真实UI导出1,439条/67,092,027B/256块，每行来源/序列/字节均由测试断言；不能把seed当用户创建，也不能把下载事件当磁盘落盘。worker停止/页面退出使未完成导出不可续传且无残缺文件，容量10k删一条恢复。见[完整测试、输入、取消与证据章](../modules/reading-release-a.md)。
+
+已有归档为8a972fc完整validate、215759f全E2E148/1/6、d6cf346唯一失败定向修复PASS，汇总149/0/6并非新全量155。#286已合入345d630且tree等同PRhead；归档中的ready_to_sync/未合入是历史阶段文字。此导读不运行测试、不改任务状态、不作新发布认定；详细限制和可核验身份见[证据链](../modules/reading-release-a.md#evidence-chain)。
