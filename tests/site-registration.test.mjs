@@ -92,11 +92,6 @@ test("global Selection refuses registration without explicit all-sites permissio
   assert.equal(mock.registered.size, 0);
 });
 
-test("global Selection is enabled by default in the persisted config contract", async () => {
-  const { DEFAULT_CONFIG } = await import("../src/shared/constants.js");
-  assert.equal(DEFAULT_CONFIG.selectionAllSites, true);
-});
-
 test("global Selection replaces exact registrations and restores them when disabled", async () => {
   const mock = createChromeMock({ permitted: true });
   const coordinator = await loadCoordinator(mock);

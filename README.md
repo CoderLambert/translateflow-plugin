@@ -397,23 +397,24 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - `activeTab`
 - `scripting`
 - `https://api.deepseek.com/*`
+
+可选 Host Permission 声明：
+
 - `http://*/*`
 - `https://*/*`
 
-HTTP/HTTPS 全站访问用于在普通网页加载时自动注入划词脚本，使新页面无需先点击扩展即可划词。用户可在 Popup 关闭“全站划词”，停止后续页面自动注入；Chrome 内部页和商店页仍不可注入。
+该声明是“允许用户以后授权的最大范围”，不是安装时直接授予。
 
 实际运行中：
 
 - 自动翻译：用户按站点授权
-- OpenAI-compatible：复用已授予的 HTTP/HTTPS 访问权限
+- OpenAI-compatible：用户按 API Origin 授权
 
 如果某个 Origin 同时是自动翻译站点和 API Provider 地址，关闭自动翻译时不会误撤销 Provider 仍需要的 Host Permission。
 
 ## 划词翻译
 
 在普通 http/https 网页中选择 2–2000 字符的英文文本后，会出现轻量“译”按钮。仅在用户点击后才检查 IndexedDB 缓存并调用 Provider；翻译使用当前站点的 Effective Translation Config。
-
-“全站划词”默认开启，因此新页面加载后可以直接划词，不需要先点击扩展图标。关闭该总开关只停止自动注入，不删除词典、缓存或历史记录。
 
 支持：
 

@@ -257,8 +257,6 @@ Extension-owned controls share the sage/beige design system and Shadow DOM found
 
 Chrome Commands are routed through Background and reuse existing Content messages. First-use invocation uses `activeTab` + `scripting`; it does not add a broad required Host Permission.
 
-Selection now uses required HTTP/HTTPS host access and one persistent global dynamic Content Script registration, enabled by default. This supplies direct selection lookup on newly opened ordinary web pages. The Popup global switch unregisters/re-registers this script without changing translation, cache or Quick Control state. Protected Chrome pages remain outside the match patterns.
-
 Settings remains native HTML/CSS/JS and reuses existing storage contracts. Automatic cache restore is an explicit per-site mode: cache hits restore from IndexedDB and cache misses do not fall through to Provider translation.
 
 ## Development task evidence

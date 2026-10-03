@@ -371,7 +371,7 @@ function passingEvidence() {
       totalBytes: 38_000_000,
       fileCount: 3,
       files: ["manifest.json", "assets/lexicon/core/manifest.json", "assets/lexicon/technical/manifest.json"],
-      hostPermissions: ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]
+      hostPermissions: ["https://api.deepseek.com/*"]
     }
   };
 }

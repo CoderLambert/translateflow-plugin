@@ -11,7 +11,7 @@ test("manifest exposes exactly the three v0.8 commands with conflict-conscious d
   assert.deepEqual(Object.keys(manifest.commands).sort(), Object.values(COMMANDS).sort());
   assert.equal(manifest.permissions.includes("activeTab"), true);
   assert.equal(manifest.permissions.includes("scripting"), true);
-  assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
+  assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*"]);
 
   assert.deepEqual(manifest.commands[COMMANDS.TRANSLATE_PAGE].suggested_key, {
     default: "Ctrl+Shift+Y",

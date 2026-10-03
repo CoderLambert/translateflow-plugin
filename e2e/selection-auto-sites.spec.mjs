@@ -15,8 +15,15 @@ async function selectLexical(page) {
 
 test("one all-sites permission makes Selection available on newly opened pages", async ({ harness }) => {
   await harness.reset();
-  const enabled = await harness.driver.evaluate(() => chrome.runtime.sendMessage({ type: "SELECTION_ALL_SITES_ENABLE" }));
-  expect(enabled).toMatchObject({ ok: true, enabled: true });
+  const first = await harness.open("/selection");
+  const firstTabId = await harness.tabId(first);
+  await harness.driver.evaluate(tabId => chrome.tabs.update(tabId, { active: true }), firstTabId);
+  await harness.driver.reload();
+
+  const selectionSwitch = harness.driver.getByRole("switch", { name: "开启全站划词查询" });
+  await expect(selectionSwitch).toBeEnabled();
+  await selectionSwitch.click();
+  await expect(harness.driver.locator("#selectionSite")).toHaveAttribute("aria-checked", "true");
 
   const second = await harness.open("/selection");
   await selectLexical(second);
@@ -25,7 +32,6 @@ test("one all-sites permission makes Selection available on newly opened pages",
   const secondTabId = await harness.tabId(second);
   await harness.driver.evaluate(tabId => chrome.tabs.update(tabId, { active: true }), secondTabId);
   await harness.driver.reload();
-  await expect(harness.driver.locator("#selectionSite")).toHaveAttribute("aria-checked", "true");
   await harness.driver.getByRole("switch", { name: "关闭全站划词查询" }).click();
   await expect(harness.driver.locator("#selectionSite")).toHaveAttribute("aria-checked", "false");
 

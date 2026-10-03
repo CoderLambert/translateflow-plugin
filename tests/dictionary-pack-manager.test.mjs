@@ -334,7 +334,7 @@ test("permission denial stops before network access and manifest keeps unlimited
 
   const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
   assert.equal(manifest.permissions.includes("unlimitedStorage"), false);
-  assert.equal(manifest.host_permissions.includes("https://*/*"), true);
+  assert.equal(manifest.host_permissions.includes("https://*/*"), false);
 });
 
 test("download resolution rejects traversal and non-normalized encoded paths", async () => {
