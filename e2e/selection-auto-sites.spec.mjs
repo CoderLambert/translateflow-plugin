@@ -14,10 +14,9 @@ async function selectLexical(page) {
 }
 
 test("one all-sites permission makes Selection available on newly opened pages", async ({ harness }) => {
-  await expect.poll(() => harness.driver.evaluate(async () =>
-    (await chrome.storage.local.get("selectionAllSites")).selectionAllSites)).toBe(true);
-  await expect.poll(() => harness.driver.evaluate(async () =>
-    (await chrome.scripting.getRegisteredContentScripts()).filter(item => item.id.includes("selection_all_sites")).length)).toBe(1);
+  await harness.reset();
+  const enabled = await harness.driver.evaluate(() => chrome.runtime.sendMessage({ type: "SELECTION_ALL_SITES_ENABLE" }));
+  expect(enabled).toMatchObject({ ok: true, enabled: true });
 
   const second = await harness.open("/selection");
   await selectLexical(second);

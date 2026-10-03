@@ -9,18 +9,7 @@ import {
   onReadingTabUpdated
 } from "./reading-record/runtime.js";
 
-async function initializePersistentSites(attempt = 0) {
-  try {
-    await ensureConfigDefaults();
-    await syncSiteRegistrations();
-  } catch (error) {
-    if (attempt >= 2) throw error;
-    await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
-    return initializePersistentSites(attempt + 1);
-  }
-}
-
-export async function initializeBackground() {
+export function initializeBackground() {
   registerMessageRouter();
   registerCommandRouter();
   chrome.runtime.onConnect.addListener(handleReadingPort);
@@ -37,9 +26,4 @@ export async function initializeBackground() {
   chrome.runtime.onStartup.addListener(() => {
     syncSiteRegistrations().catch(() => {});
   });
-
-  // Developer reloads and some service-worker restarts do not emit an
-  // install/startup event. Returning this promise keeps module initialization
-  // alive until defaults and persistent registrations are reconciled.
-  await initializePersistentSites();
 }
