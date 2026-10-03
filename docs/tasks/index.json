@@ -69,14 +69,14 @@
     },
     {
       "task": "235",
-      "status": "reviewing",
+      "status": "ready_to_sync",
       "dependencies": [
         "233",
         "248",
         "249"
       ],
       "branch": "feat/235-react-learning-center",
-      "candidateHead": null
+      "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4"
     },
     {
       "task": "236",

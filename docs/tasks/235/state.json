@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "235",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "233",
@@ -10,7 +10,7 @@
   ],
   "branch": "feat/235-react-learning-center",
   "worktree": ".worktrees/issue-235",
-  "candidateHead": null,
+  "candidateHead": "e340b16c71d8a0c7d1f4a9795b4b1349963a3be4",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -35,5 +35,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "冻结候选并执行完整本地验收与主 Agent 自查；远端同步未授权。"
+  "nextAction": "本地实现、完整 validate、16 项定向 Chromium E2E、产物审计及主 Agent 自查通过；等待明确远端同步授权，不启动 236。"
 }
