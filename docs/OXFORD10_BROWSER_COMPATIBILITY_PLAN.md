@@ -493,6 +493,12 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 
 以下文件与命令已在当前仓库确认，本次均未运行。实现时按变更补充用例，并记录实际结果。
 
+**浏览器验收产物选择（2026-10-03 增量复核，main `86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d` / #266）：** fixture 现在复制已构建的生产产物，不再自行构建或回退。`npm run test:e2e` 与 `npm run test:e2e:rich-mdict` 默认选择 `.output/chrome-mv3`，运行前须由待测 commit 执行 `npm run build:extension:wxt`。验证当前默认 legacy 安装包时，先执行 `npm run build:extension`，再显式设置 `TF_E2E_ARTIFACT=dist/extension`；`npm run validate` 不会生成 WXT 产物。每次浏览器运行须记录实际构建 commit，并将 `TF_E2E_ARTIFACT_SOURCE_HEAD` 设为该 commit；该字段是调用者声明，不能单独证明现有目录确由此 commit 生成，必须关联实际构建记录和产物摘要。保留 `[E2E_PRODUCTION_ARTIFACT]` 中的 artifact、sourceHead、treeSha256 与 testChanges，区分原产物和测试副本改动，避免消费旧目录。
+
+当前 MDict/MDD 专项 CI 显式消费 legacy；通过记录只适用于对应 commit、产物和用例，不能沿用为 WXT 或 Oxford10 六文件包的通过证据。此变化不表示 WXT 已切为默认，不改变 Oxford 实施门槛及全部 NOT_RUN 状态。原固定源码引用继续解释当时的运行时实现；本次无业务 src 变更。
+
+依据：[E2E 默认入口](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/scripts/run-e2e.mjs#L9-L31)、[产物身份与复制](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/e2e/support/production-artifact.mjs#L36-L64)、[测试副本来源输出](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/e2e/support/extension-fixture.mjs#L37-L50)、[MDict 专项 CI](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/rich-mdict-compatibility.yml#L102-L108)。
+
 - 单元/集成：`tests/rich-mdict-storage.test.mjs`、`tests/rich-mdict-format.test.mjs`、`tests/rich-mdict-product.test.mjs`、`tests/rich-mdict-security.test.mjs`、`tests/rich-viewer-contract.test.mjs`、`tests/rich-resource-resolver.test.mjs`、`tests/rich-dictionary-sanitizer.test.mjs`、`tests/mdd-format.test.mjs`、`tests/mdd-security.test.mjs`、`tests/local-dictionary-preflight.test.mjs`。
 - 浏览器：`e2e/rich-mdict-product.spec.mjs`、`e2e/rich-mdict-real-corpus.spec.mjs`、`e2e/mdd-resources.spec.mjs`、`e2e/rich-viewer-security.spec.mjs`、`e2e/local-dictionary-import-v2-product.spec.mjs`。
 - 仓库现成命令：`npm run validate`、`npm run test:rich-mdict-security`、`npm run test:rich-lookup-cancellation`、`npm run test:e2e:rich-mdict`、`npm run build:extension:wxt`、`npm run test:wxt:smoke`。
