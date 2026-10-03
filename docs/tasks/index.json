@@ -109,12 +109,12 @@
     },
     {
       "task": "239",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "238"
       ],
       "branch": "feat/239-reading-page-markers",
-      "candidateHead": null
+      "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1"
     },
     {
       "task": "245",

@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "task": "239",
+  "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
+  "tree": "d4ce58a08d8595b58525fa0e1c54ba356f91a13d",
+  "inputTree": "11cc479f5c078418203ba56aba67e72a92ed8cc1c5622531bfb6601a805bdc0d",
+  "frozenAt": "2026-10-03T23:25:32.992Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56489.984676,
+      "startedAt": "2026-10-03T23:25:47.976Z",
+      "log": "docs/task-execution/local/239/1897287d-4b8c-4b37-9bf7-9485276f849e.log",
+      "logSha256": "0f09753fae4d330ee7f08d14384c320b72e89b0082e49adf8ee31e84a1a33318"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2283.310055,
+      "startedAt": "2026-10-03T23:26:51.262Z",
+      "log": "docs/task-execution/local/239/a99fbca4-fda7-439c-b1c8-dd25a015b3c1.log",
+      "logSha256": "e333154053cd45cf03f2fdc71cb9270d794251b7c05c3959a60893ffaa9940bf"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2963.321594,
+      "startedAt": "2026-10-03T23:26:53.726Z",
+      "log": "docs/task-execution/local/239/dc118a0f-ab7c-46d2-a6c8-014d4daa7eff.log",
+      "logSha256": "1f9bbfbde4bd624851f3ed07cee47b82b55bdc66c3f0937bae742a300beb9bf8"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "47bf5a9ab7851a6e288a7465fe64db23cac8b8b71a43b8f70015479fc7094647"
+  },
+  "limitations": ["任务 240 综合 ABC 验收、Chrome 102/其它浏览器/隐身/真实权限撤销与商店发布 NOT RUN。", "npm 未变化锁文件仍报告 1 low / 1 high audit 告警。"],
+  "decision": "LOCAL_CANDIDATE_PASS",
+  "packageBudget": { "files": 160, "totalBytes": 1820239, "platformCodeBytes": 1572850, "platformCodeBudgetBytes": 1576595, "budgetRaised": false }
+}

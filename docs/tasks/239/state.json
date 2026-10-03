@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "239",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": ["238"],
   "branch": "feat/239-reading-page-markers",
   "worktree": ".worktrees/issue-239",
-  "candidateHead": null,
+  "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -14,5 +14,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/reading-page-markers.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "完成 marker/page-list/SPA 定向验证后冻结候选。"
+  "nextAction": "候选完整验收与自查通过；提交归档、gate 后同步 PR。"
 }
