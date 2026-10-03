@@ -25,7 +25,7 @@ acceptance/review/state 仍保留归档时“ready_to_sync、未合入、等待�
 
 ### 测试入口、输入与资源生命周期
 
-Playwright 从预构建产物经 prepareExtensionTestCopy 建独立临时扩展、副本词典和 localhost mock；不安装、不隐式构建。environment 启动 Chromium persistent profile，取得 service worker 的扩展 ID，以 Popup 作 driver，center() 打开随包真实 learning-center.html。openContent 生成普通合成文章，通过 scripting 按生产 CONTENT_SCRIPT_FILES/CONTENT_STYLE_FILES 注入。query 只合成 Range/selectionchange，随后 Playwright 真点击 chip；保存走生产 collector，不直接调用合成授权来冒充用户创建。
+Playwright 从预构建产物经 prepareExtensionTestCopy 建独立临时扩展、副本词典和 localhost mock；不安装、不隐式构建。environment 启动 Chromium persistent profile，取得 service worker 的扩展 ID，以普通TAB中的popup.html作driver（不是真实工具栏POPUP），center() 打开随包真实 learning-center.html。openContent生成普通合成文章，显式通过scripting 按生产 CONTENT_SCRIPT_FILES/CONTENT_STYLE_FILES 注入。query 只合成 Range/selectionchange，随后 Playwright 真点击 chip；保存走生产 collector，不直接调用合成授权来冒充用户创建。
 
 restart() close 整个 context 后在同 profile 重新 launch，区别于 page.reload 或仅停 worker。fixture() 仅在大语料/探针场景复制 storage fixture 的精确源码闭包：已有文件必须字节相同，缺文件才新增；第一真实创建故事不调用它、不 seed 历史。finally close 浏览器/server并删本次临时目录；异常仍执行清理。
 
@@ -131,3 +131,5 @@ state供本地任务工具/index消费，状态字段自身不会撤销导出、
 - Escape焦点：看[App/useLibrary当前状态门控](learning-center.md#file-app)，等restricted Port重连、state、列表settled再找recordId；不靠固定timer。
 - 历史/大导出：先分无seed可信创建与canonical压力语料，再核实际包、owner/revision/序列/FINISH；不能把本地abort当提交撤回。
 - 报告149通过：先沿[候选链](#evidence-chain)核原全量与修复项，保留skip/FAIL原身份；测试正文、归档报告与本轮NOT_RUN分别说明。
+
+#287当前原生POPUP与新页面Selection入口已另有专用测试，但本章#286下游证据身份不变；新测试未点击可见原生学习中心按钮，也未覆盖商店升级，见[新旧入口证据边界](real-entry.md#native-popup-evidence)。

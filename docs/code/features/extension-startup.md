@@ -2,18 +2,18 @@
 
 导航：[阅读入口](../README.md) · [架构总览](../architecture.md) · [仓库地图](../repository-map.md) · [startup 逐文件说明](../modules/startup.md)
 
-> 源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本文是该版本的静态源码走读，运行验证统一为 **NOT_RUN**。它不宣称完整翻译、词典或发布验收已经完成。
+> 当前入口基线：`c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`。2026-10-03 完整复核当前 Manifest投影、站点模式、Reading access/service，并修正真实入口链。其余未变入口沿用旧固定源码，coverage区分本轮全文/历史相同blob/局部；运行统一 **NOT_RUN**。
 >
 > 逐文件说明与覆盖边界见 [startup 模块](../modules/startup.md)。
 
 
-> 2026-10-03 增量说明：本章保留旧入口源码说明；当前 d5246ca 的构建和 Reading 接线已变化，以下第2节与 Reading 提示已更新。共享浏览器测试基础设施已切为复制预构建的明确产物，不再隐式构建；默认构建与默认本地E2E选择不同，实际运行请先读[构建与测试链](build-test-release.md)。旧测试链接只说明固定版本断言，不作为当前产物PASS；本轮运行NOT_RUN。
+> 当前#287入口和证据见[真实入口逐文件章](../modules/real-entry.md)。默认构建与默认E2E产物选择不同，见[构建链](build-test-release.md)。历史验收不认证本轮新权限或升级。
 
 ## 1. 先分清三个不同的“启动”
 
 1. **后台 worker 被浏览器装载**：注册消息、快捷键、Reading 会话与生命周期监听器。安装/更新事件另做默认配置与旧缓存清理。
 2. **Popup 被打开**：创建独立扩展页，绑定按钮并读取站点状态；读取缓存状态的路径会尝试把 Content 注入当前标签页。
-3. **Content 被注入网页**：按固定顺序装配 classic-script 模块，然后根 `content.js` 注册网页消息监听器、启动外观、Quick Control、Selection、持久模式与适用的字幕控制器。
+3. **普通网页自动装载 Content**：有效HTTP/HTTPS访问允许时，安装包Manifest在document_idle静态注入；无需先打开Popup。按固定顺序装配 classic-script 模块，然后根 `content.js` 注册网页消息监听器、启动外观、Quick Control、Selection、持久模式与适用的字幕控制器。
 
 这三者不是一个同步的全局初始化 Promise。后台没有“等所有配置/缓存/词典预热完再注册监听器”的步骤；Content 的 `STATUS.ok` 也只表示消息监听器可响应，不代表每个异步 UI/持久模式已完成。
 
@@ -25,7 +25,7 @@ main `d5246cae6469e4a876fc122b229a2e0ddf115709` 的 `build:extension` 与 `valid
 
 [entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/entrypoints/background.ts) 仍调用 `defineBackground({type:"module",main(){initializeBackground();}})`，没有延迟 import 或另一套业务初始化。根 `background.js` 保留薄入口源码，但不能把它当当前默认产物的复制入口。WXT 编译根 Popup/Options HTML；Content、YouTube MAIN、module Worker 通过精确 raw bridge 保留相应运行边界，Content 不因此变成 ESM。
 
-Manifest 来源仍声明 MV3、国际化 action/commands、Options 与 Chrome102 下限，无静态 content_scripts；实际产物 Manifest 经 WXT 与审计约束。安装扩展不等于立即对所有网页注入，React 依赖也不意味着 Content 已 React 化。历史兼容证据不能当本轮执行 PASS。
+当前根Manifest声明MV3、action/commands、Options、Chrome102下限，required host为DeepSeek加http://*/*、https://*/*，不再声明optional_host_permissions。根JSON未写content_scripts；[production-manifest投影](../modules/real-entry.md#file-projection)由WXT加上完整有序JS/CSS的HTTP/HTTPS document_idle静态项，audit精确检查该投影。Chrome可保留/撤回站点访问、拒绝受保护页面，安装不代表所有已有文档已热更新。React仍仅独立学习中心。这里描述代码现状，不替权限扩大或升级背书。
 
 ## 3. 后台：先把事件接好，再响应具体事件
 
@@ -40,7 +40,7 @@ Manifest 来源仍声明 MV3、国际化 action/commands、Options 与 Chrome102
 
 ### 安装、更新、浏览器启动
 
-- `onInstalled`：先 `ensureConfigDefaults()`，仅为存储中值为 `undefined` 的键补默认值；若 reason 为 `install` 或 `update`，删除 `chrome.storage.local` 中 `abt-cache-v1:` 前缀键；最后同步站点脚本注册。它不会清空当前翻译 IndexedDB、Reading 历史或词典存储。
+- `onInstalled`：先 `ensureConfigDefaults()`，仅为存储中值为 `undefined` 的键补默认值；若 reason 为 `install` 或 `update`，删除 `chrome.storage.local` 中 `abt-cache-v1:` 前缀键；最后清理旧动态注册并规范化有权限的站点偏好。它不会清空当前翻译 IndexedDB、Reading 历史或词典存储。
 - `onStartup`：仅调用 `syncSiteRegistrations().catch(() => {})`。同步失败被吞掉，不产生用户界面错误。
 - install callback 没有同样的顶层 catch。若默认配置或旧键清理失败，后面的同步不会执行；不能描述为“每一步独立失败仍继续”。
 - `initializeBackground` 没有自身幂等标记或统一 unregister。正常依赖每次 worker 上下文只通过一个入口初始化；人为重复调用会重复添加 listener。
@@ -49,7 +49,7 @@ Manifest 来源仍声明 MV3、国际化 action/commands、Options 与 Chrome102
 
 ### Reading 为什么出现在启动里
 
-[Reading runtime](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/runtime.js) 的单例是懒创建；收到 Reading 请求/认可的 port 或相关浏览器事件才取得 service/subscriptions/repository。导航 invalidates tab，tab 删除 forgets tab，权限移除 revokes service 并关闭订阅。仅注册这些回调不等于开启阅读采集或创建学习中心；旧注释不是当前产品接线依据：d5246ca 已接通 production collector 与显式保存，学习中心仍不可用；见[Reading当前完整链](reading-records.md)。这里仅解释未变的后台生命周期。
+[Reading runtime](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/runtime.js) 的单例是懒创建；收到 Reading 请求/认可的 port 或相关浏览器事件才取得 service/subscriptions/repository。导航 invalidates tab，tab 删除 forgets tab，权限移除 revokes service 并关闭订阅。仅注册这些回调不等于开启阅读采集或创建学习中心；旧注释不是当前产品接线依据：当前main已接通production collector、显式保存和实际React学习中心；见[Reading当前完整链](reading-records.md)。这里仅解释未变的后台生命周期。
 
 ## 4. 手动入口：打开 Popup 已经可能注入 Content
 
@@ -79,7 +79,7 @@ Manifest 来源仍声明 MV3、国际化 action/commands、Options 与 Chrome102
 - 打开 Popup 不是纯本地 DOM 操作，会启动页面交互能力；不必先点“翻译”。
 - `STATUS.ok` 是已加载检测，不是版本比较；它不会把旧模块强制换成新版。
 - 受保护页面先由 `getActiveSite` 的 http/https 判定拦住一部分；Chrome Web Store 等也可能是 https，最终仍由 Chrome 拒绝注入。不能说正则已识别所有受保护页面。
-- 未授权其他站点的持久访问不会凭空出现：Popup 临时操作依靠 activeTab，持久注入另走 origin 权限。
+- 当前Manifest具有required普通HTTP/HTTPS访问；Chrome withholding仍能阻止注入。activeTab手势及手动fallback与静态入口并存，不能再说持久页面只靠optional-origin动态注册。
 
 `popup-appearance.js` 独立读取 appearance/siteProfiles，建立“跟随默认”选项；失败禁用 select。Preset UI 通过 `EFFECTIVE_CONTEXT` 读后台解析后的站点/provider/model，失败隐藏卡片。两者不是 Provider API 预热。
 
@@ -91,21 +91,22 @@ Manifest 来源仍声明 MV3、国际化 action/commands、Options 与 Chrome102
 
 所以它不是 Popup 的“先 STATUS、再 QUICK_CONTROL_SHOW”算法，也没有无限重试。Content 启动成功和业务操作成功必须分别判断。
 
-## 6. 持久入口：三个站点偏好共享一个注册项
+## 6. 静态入口与三个显式站点偏好分开
 
-[auto-sites.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/auto-sites.js#L88) 是动态注册唯一 owner。用户在 Popup 开启自动翻译、缓存恢复或持久 Quick Control 时：
+普通页面 → 浏览器匹配产物Manifest → document_idle加载有序Content CSS/JS → runtime模块表 → 根content.js幂等组合 → Selection.start → projection/listener → 有效选区chip → 用户点击后进入[词典/翻译/显式AI链](selection-and-dictionary.md)。静态声明本身不是Provider调用或Reading开启；但已启用的auto/cache/subtitle模式仍按各自路径工作，不能笼统承诺整个启动绝无Provider。
 
-1. UI 在用户操作中请求站点 match pattern 权限；
-2. 后台 register 函数再次 `permissions.contains`；
-3. 写入对应 local 列表；
-4. `syncOriginRegistration` 计算三种需求并集，决定保留或删除注册；
-5. 当前已打开的标签页仍由 Popup `ensureInjected` 接通；动态注册用于匹配文档。
+用户在Popup开启auto/cache restore/persistent Quick Control时，现有UI仍执行permissions.request，后台仍contains校验；在有效required访问下，这不是每站新获optional权限的模型。后台写对应storage列表后，只注销该origin的旧动态ID，不创建新注册。全量sync按权限过滤偏好、去掉hidden Quick Control，再删所有本项目tf_site_/legacy前缀旧注册，保留无关注册；失败仍可能发生在storage写入之后，非事务回滚。showQuickControl只撤hidden，不重新开启persistent。
 
-持久注册的标识为 `tf_site_` + origin SHA-256 前 20 个 hex 字符。script 配置使用完整 `CONTENT_SCRIPT_FILES`、`content.css`、`document_idle`、`persistAcrossSessions:true`，不设 allFrames 或 MAIN world。三种偏好不是三份 script。
+根Content读这些偏好决定模式与可见性。关闭auto/restore/Quick Control不撤销生产Manifestrequired访问，也不卸载已注入Content；Chrome自己的站点访问设置是另一层。Popup旧remove逻辑不是新权限撤回保证。完整操作顺序见[auto-sites逐文件](../modules/startup.md#file-auto-sites)。
 
-全量同步会规范化/去重/排序站点，过滤没有权限的站点，排除隐藏的 Quick Control 站点，逐站先撤销旧同 ID 再注册；最后删掉不再需要的本项目新旧前缀 ID，并在状态变化时回写规范化列表。单站注册失败被捕获，但该 ID 不加入 desiredIds，后续可能成为 stale；并非事务或无损 upsert。全局读取/权限/注销错误仍可能使同步 reject。
+<a id="popup-reading-access"></a>
+### 工具栏 Popup → 固定学习中心 → Reading 权限
 
-`showQuickControlSite` 只移除 hidden 偏好，不把站点添加回 persistent 列表。关闭其中一项也不会误删另两项仍需要的 registration。Popup 释放 origin 权限前还检查其他模式与 OpenAI-compatible provider 是否仍使用该 match pattern。
+正文learningCenter按钮 → popup.js的v2 OPEN_LEARNING_CENTER → background router → 懒Reading runtime（learningCenterAvailable=true）→ service.validateRequest → access.authorize → lifecycle scope规则 → tabs.create固定learning-center.html → {opened:true}。它不经过getActiveSite/ensureInjected，不要求当前网页先建立collector；Popup的其它状态刷新仍可能走网页注入。
+
+真实工具栏sender可能同时缺documentId/tab/frameId。当前access只对固定popup.html的OPEN消息走getContexts({contextTypes:["POPUP"]})窄分支：核extension id、精确origin、无query/hash、唯一实际POPUP、UUID contextId、有效documentId及incognito=false，授予entry/nativeEntryOnly、tabId=-1。不能由请求自报context、不能以TAB driver冒充该fallback，也不给LIST/保存/导出权限。普通有documentId的Popup/Options及学习中心仍走原documentId校验；学习中心须TAB并有extension scope。
+
+创建新tab会自然关闭工具栏Popup，service只对这一个固定OPEN省略dispatch后的validateCurrent，避免已成功开页被解释成旧sender消失错误；其它读写仍复验、持久事务仍有自己的身份/代次检查。失败回稳定Reading错误码，Popup只显示无法打开/重试。Content邀请也只固定开页；开启记录必须学习中心内明确动作，返回仍有效旧卡另点保存。详见[access/service](../modules/reading-records.md#file-access)、[完整Reading链](reading-records.md)。
 
 ## 7. Content：固定顺序装配，不使用模块 import
 
@@ -163,20 +164,11 @@ Content 的 handler 则逐 case 决定同步响应/返回 false，或 Promise �
 - Quick Control 的 view.destroy 隐藏界面，不移除 start 注册的所有全局监听器。Selection dismiss 清理当前选择/任务语义，不等于撤销整个 Content。
 - 根入口没有总 dispose，runtime/app.loaded 随文档生命周期存在。重复注入保护不是热更新协议，扩展重载后的已有标签页应单独验证。
 
-## 10. 如何验证这条链（本次全部 NOT_RUN）
+## 10. 当前入口证据与最小改动路径
 
-本次只读取固定 commit 源码和测试，不执行 npm、扩展、浏览器或付费 Provider。以下是可复现的验证入口与测试实际覆盖的区别：
+- 新Selection spec在共享HTTP新页面不调用harness.inject，检查静态Manifest、STATUS与可见chip、零动态注册；不测点击后的业务，也不是独立HTTPS网站，见[准确输入](../modules/real-entry.md#test-selection)。
+- 新真实POPUP故事经action.openPopup建立原生上下文，CDP直接发送OPEN；检查center出现/Popup关闭，没点击可见学习中心按钮，也没消费CDP ACK。Node mock另验证闭合后成功ACK；旧TAB driver按钮故事仍有价值，边界见[证据对照](../modules/real-entry.md#native-popup-evidence)。
+- 改启动声明应联动production-manifest、wxt config/audit、中央资源列表与Selection/native permission测试；改固定打开应联动access/service/DTO/lifecycle及真实sender故事，不扩大读取权限。
+- 旧升级helper仍要求保留动态注册，和当前清理实现存在静态合同冲突；required权限旧用户商店升级重确认/恢复、全站observer成本未实测，见[限制](../modules/real-entry.md#limitations)。
 
-| 验证对象 | 已读证据 | 后续执行入口 | 本次状态 |
-| --- | --- | --- | --- |
-| 无权限拒绝、三模式共用注册、hide/show 不破坏 auto | [site-registration.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/site-registration.test.mjs) | `node --test tests/site-registration.test.mjs` | NOT_RUN |
-| 快捷键正常投递、首次失败注入一次/同 taskId 重发、拒绝保护协议 | [commands.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/commands.test.mjs) | `node --test tests/commands.test.mjs` | NOT_RUN |
-| cache restore 独立偏好与 Provider 禁止结构 | [cache-restore-mode.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/cache-restore-mode.test.mjs) | `node --test tests/cache-restore-mode.test.mjs` | NOT_RUN；主要是源码结构断言 |
-| Popup 控件、ARIA 与外观字段保留 | [popup-ux.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/popup-ux.test.mjs) | `node --test tests/popup-ux.test.mjs` | NOT_RUN；不是点击浏览器 |
-| WXT raw 顺序/路径、Manifest 拒绝额外权限与静态注入 | [wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/wxt-assets.test.mjs) | `node --test tests/wxt-assets.test.mjs` | NOT_RUN |
-| Reading 工厂/无效授权不打开 IDB | [reading-runtime-storage.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-runtime-storage.test.mjs) | 对应 Node test | NOT_RUN |
-| Quick-Control-only 不恢复；restore-only 命中/动态 miss；Shadow UI | [translateflow.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/translateflow.spec.mjs#L35) | 先 WXT build，再 `npm run test:e2e` | NOT_RUN；测试中显式 harness.inject，不证明浏览器持久注册本身 |
-| 聚合与 WXT 包 smoke | [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | `npm run validate`；`npm run build:extension:wxt`；`npm run test:wxt:smoke` | NOT_RUN；validate 不含 E2E |
-
-建议启动验收还要单独观察：首次安装与普通 worker 再唤醒、Popup 打开不点击、同文档两次注入、站点权限撤回后重启、Chrome 拒绝注入、UI start 中途失败、扩展更新后旧 tab 与新 tab 的区别。这是待验证检查表，不是已存在测试或已通过结论。
-
+全部命令/安装/构建/浏览器验证 **NOT_RUN**。本章解释入口可达性与安全边界，不认证全网站、商店升级、付费Provider或Oxford输入。

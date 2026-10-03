@@ -2,7 +2,7 @@
 
 [功能完整链与交付边界](../features/reading-records.md) · [首页](../README.md) · [已解释的来源捕获](selection.md#file-source-snapshot)
 
-2026-10-03 最新清单固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`；本轮完整复读 runtime/access/constants，新增实际页面见[学习中心模块](learning-center.md)。以下保存切片原说明固定 `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮完整复读并解释新增 `record-access.js`、`record-client.js`、`record-status.js`，以及原有 runtime/access/service/constants 四文件；Selection 的结果转换、实际 rich 展示摘要、翻译与 AI provenance 见[相邻模块](selection.md)。
+2026-10-03 当前入口固定main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`，access/service本轮全文复读并替换下文；其余历史切片保留原身份。此前清单固定 `b606cfd556792d9764d0b15461b7a142fcd99575`；本轮完整复读 runtime/access/constants，新增实际页面见[学习中心模块](learning-center.md)。以下保存切片原说明固定 `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮完整复读并解释新增 `record-access.js`、`record-client.js`、`record-status.js`，以及原有 runtime/access/service/constants 四文件；Selection 的结果转换、实际 rich 展示摘要、翻译与 AI provenance 见[相邻模块](selection.md)。
 
 原有19文件章节来自 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整解释。除上述四文件外，本轮没有重新逐行读完，保留原 SHA/链接与历史覆盖身份，不把它们升级为当前完整审计。清单逐项 blob 比对确认除当前 runtime/access/constants 三个已更新文件外，其余历史 Reading 后台/共享文件字节未变，但“blob 未变”不冒充本轮全文件复读。全部运行、测试、构建、浏览器和下载 **NOT_RUN**；测试主题引用仍为局部覆盖。
 
@@ -108,11 +108,11 @@ blob `590b38f09cc7529f0e72e7d8262795e2fdbda922`；[完整源码 L1–L34](https:
 <a id="file-access"></a>
 ## src/background/reading-record/access.js：浏览器原生身份与受控证明
 
-blob `5b2e92bdc6defaacd721d423dde497be8abedb9e`；本轮全文件复读，[完整源码 L1–L147](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/src/background/reading-record/access.js#L1-L147)。
+[完整源码 L1–L169](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/src/background/reading-record/access.js#L1-L169)；blob `acd062fe6e47b70d92f4bb6985f70d88eb758b85`。
 
 **职责与入口。** createReadingAccess 为 service/subscriptions 生成后台 access；输入 sender、已校验 method/request，输出 scope、ownerKey、tab/document/navigation/authority generation，以及 Content 的 page/site/安全回跳/标题/selection/proof。调用方 DTO 不能声明自身权限。
 
-**原生身份算法。** native 首先要求 sender.id=runtime.id。扩展 URL 仅固定 learning-center.html 得 extension scope，Popup/Options 为 entry；两者都必须通过 getContexts 按 documentId 找到唯一非隐身 TAB/POPUP、contextId、documentUrl、可选 sender.tab 与 frame0 匹配。学习中心必须是精确固定路径、无 query；允许唯一 #record=有效UUID，拒绝空 #、其它片段或附带正文。sender和getContexts当前documentUrl各自校验；Chromium同文档hash导航可使sender保留旧URL，只有这个固定页面允许两者hash不同，且必须TAB。Popup/Options仍按完整URL核验、可有hash、无query。缺 documentId/getContexts 为 CAPABILITY_LIMITED。documentId 接受 UUID 或 32 位十六进制但原值严格比较，不做大小写归一。
+**原生身份算法。** native 首先要求 sender.id=runtime.id。扩展 URL 仅固定 learning-center.html 得 extension scope，Popup/Options 为 entry；除下述工具栏固定打开窄分支外，两者都必须通过 getContexts 按 documentId 找到唯一非隐身 TAB/POPUP、contextId、documentUrl、可选 sender.tab 与 frame0 匹配。学习中心必须是精确固定路径、无 query；允许唯一 #record=有效UUID，拒绝空 #、其它片段或附带正文。sender和getContexts当前documentUrl各自校验；Chromium同文档hash导航可使sender保留旧URL，只有这个固定页面允许两者hash不同，且必须TAB。Popup/Options仍按完整URL核验、可有hash、无query。一般路径缺documentId/getContexts为CAPABILITY_LIMITED；仅固定popup OPEN且sender同时缺documentId/tab/frameId时尝试工具栏分支。documentId 接受 UUID 或 32 位十六进制但原值严格比较，不做大小写归一。
 
 Content OPEN_LEARNING_CENTER 在原生身份校验后返回 nativeEntryOnly，不要求collector session，也不授予其它读写；isCurrent仅对此固定打开豁免session比较，仍核authority/tab epoch。Content其余方法限 HTTP(S)、原生非隐身 tab、frame0、若提供则 active documentLifecycle 和有效 documentId，并要求 sender.tab.url 与 sender.url 一致；再做 policy 与 page identity。track 上限128；authority 在 hash 前捕获，随后用于过期检查。ownerKey 区分扩展原生 context/document，或 Content tab/document；legacy 无 documentId 使用受控 frame0 会话，不相信请求自报身份。
 
@@ -122,18 +122,22 @@ Content OPEN_LEARNING_CENTER 在原生身份校验后返回 nativeEntryOnly，�
 
 **失败/修改。** SPA pushState 若让 sender.url 与 tab.url 不同，鲜活注册也会 FORBIDDEN；不承诺任意 SPA 路由无重载恢复。原生权限不足不能由 caller safety、Page postMessage 或缺省 incognito 绕过。相关 reading-access、inline、postmerge、native access spec 覆盖边界，后者用合成 collector/repository；本轮 NOT_RUN。修改 scope/URL/document 判断须联动 DTO、service、Port、真实浏览器 sender 证据，不从测试造身份推断产品 UI 完成。
 
+**工具栏窄分支。** method必须OPEN_LEARNING_CENTER且精确popup.html，无query/hash，sender.origin与扩展URL.origin相等；getContexts({contextTypes:["POPUP"]})必须唯一同documentUrl的POPUP，contextId为UUID、documentId为有效原生形式、incognito严格false。失败关闭能力，不信caller提供的上下文。返回entry、allowlisted:false、nativeEntryOnly:true、tabId:-1，ownerKey包含实际context/document。getContexts抛错映CAPABILITY_LIMITED，其它身份不符FORBIDDEN；缺getContexts在此窄分支映FORBIDDEN。此特殊打开不授予列表/导出/修改或Port权力。原生与Node证明分别见[新入口章](real-entry.md#native-popup-evidence)。
+
 <a id="file-service"></a>
 ## src/background/reading-record/service.js：v2 请求编排与隐私安全响应
 
-blob `6c04cd87e3603f709a9f4b32098d14250710b7ff`；本轮全文件复读，[完整源码 L1–L114](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/src/background/reading-record/service.js#L1-L114)。
+[完整源码 L1–L117](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/src/background/reading-record/service.js#L1-L117)；blob `e0f11382a2be72e7921cba1955c654cafc4ef8cc`。
 
-**完整调用顺序。** handle 先 validateReadingRequest，再 accessControl.authorize。Content 除注册/固定打开外读 repository policy，并复核时序；扩展页不能调用 content-only 的 begin/save/append/summary/cancel/register/consume。authorizeReadingMethod 检查 scope及资源页，dispatch 执行业务，完成后 validateCurrent 再校验响应。这既有入口预检，也保留事务内再验，不把预读 policy 当永久授权。
+**完整调用顺序。** handle 先 validateReadingRequest，再 accessControl.authorize。Content 除注册/固定打开外读 repository policy，并复核时序；扩展页不能调用 content-only 的 begin/save/append/summary/cancel/register/consume。authorizeReadingMethod 检查 scope及资源页，dispatch 执行业务，完成后除固定OPEN_LEARNING_CENTER之外均validateCurrent，再校验响应。这既有入口预检，也保留事务内再验，不把预读 policy 当永久授权。
 
 **分支及 I/O。** 固定打开仅在 learningCenterAvailable 且 tabs.create 可用时打开常量 URL；注册返回 document/navigation/page/site。READS 交 read(context)，Content 的 GET_SITE_RECORDING 不准自选 site；extension 必须给 site。GET_RECORD 返回还要复核 recordId 和当前页。BEGIN 将 caller title/return URL 替换为 native access，要求请求 snapshot/safety 与 collector 完全一致，hash purpose/owner/page/record/revision/language/source 得 fingerprint；交 registry.prepare，再交 repository.prepareOperation，返回 disabled 或 ready/token。
 
 SAVE/APPEND 必须找到同 owner 的 registration；proof snapshot、完整 token、artifact.sourceSnapshotId 都匹配，再 hash artifact。assertCurrent 同时验 access 与 operation selection，交 mutate。CANCEL 允许取已撤销 registration用于重试，收到 repository 真实取消收据后才 revoke。管理操作提交后：删 record 撤该 record 的 operation，删页撤该页，site 设置撤该 site，其他管理撤全部；所有管理撤导出。四个 EXPORT 方法交 export registry。CREATE/CONSUME_HANDOFF 没有真正 dispatch 实现，最终 NOT_READY，不把 validator 当交付。
 
 **状态/错误/影响。** service 拥有 access、operation、export 三个临时控制器；tab navigation/removal 定向撤相应 operation/export，权限撤销全清。repository 缺接口明确 NOT_READY，不伪造空列表/成功。catch 只回 protocolVersion:2、ok:false、error.code；非 ReadingContractError 映射 STORAGE，不向 caller 泄漏原文、URL、stack/error.message。返回被导航阻断并不证明先前事务已回滚，应通过 receipt/重读确认。修改方法需同步 dto/response/lifecycle、repository 和 UI；reading-access/operations/runtime-storage及存储 spec是对应断言范围，NOT_RUN。
+
+**开页提交与Popup关闭。** tabs.create固定学习中心会令工具栏失焦关闭；OPEN成功后不再要求旧sender仍存活，避免不可逆开页被报错。授权仍在dispatch前完成；非OPEN保持后验，未扩大entry的读写scope。Node测试明确模拟创建后context消失并断言ok；真实POPUP测试只观察开页/关闭而不消费CDP ACK，见[证据边界](real-entry.md#native-popup-evidence)。
 
 <a id="file-operations"></a>
 ## src/background/reading-record/operations.js：有界临时 operation 注册表

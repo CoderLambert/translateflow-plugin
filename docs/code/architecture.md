@@ -3,7 +3,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单固定 main `345d630c0f0e0040f39fd74b8ed0457e3d193fd4`。本轮复核#286 Release A真实产品/测试/证据链及App/useLibrary焦点修复；保留#235组件与构建说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
+当前清单固定 main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`。本轮复核#286 Release A真实产品/测试/证据链及App/useLibrary焦点修复；保留#235组件与构建说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
 
 ## 先区分五种运行环境
 
@@ -17,7 +17,7 @@
 
 ## 入口如何连接成用户流程
 
-用户打开Popup或使用快捷键 → 对当前页面检查/注入Content → Content注册消息并启动外观、快捷控制、划词、持久站点模式和字幕控制器 → UI动作经扩展消息到后台router → 后台调用对应业务边界 → 返回受控响应 → 原动作的UI更新。
+普通HTTP/HTTPS页面在有效访问下由Manifest静态document_idle加载Content（Popup/快捷键仍有探测与手动fallback） → Content注册消息并启动外观、快捷控制、划词、持久站点模式和字幕控制器 → UI动作经扩展消息到后台router → 后台调用对应业务边界 → 返回受控响应 → 原动作的UI更新。
 
 [router.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/router.js) 中普通消息以 `{ok:true,...result}` 或 `{ok:false,error,errorCode}` 返回；Reading消息走独立v2处理入口，不经旧包装。具体权限校验随消息族不同，不能把“来自扩展”当作所有动作通行证。例如词典生命周期动作校验Settings发送者，富文本资源读取校验Content身份。
 
@@ -128,3 +128,7 @@ MDX index Map无MDD式容量驱逐，MDD为序列化index字节LRU；不同层�
 
 Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效劳动，模型字段未知保留 UNKNOWN。当前235/state记completed/mergeHead=b606；236/state仍归档ready_to_sync/d6cf346/mergeHead=null，但#286已实际合入345d630。index是state投影，不能推翻Git整合事实；未全文复核的index仍待复核，不借本导读修改任务状态。旧规范的暂停叙述按历史看待，不因此启动产品工作。本轮纯文档校对，不运行任何项目命令。
 
+
+## 当前真实入口与权限边界
+
+#287改为required普通HTTP/HTTPS访问和静态Content投影；auto-sites只持有显式站点模式并清旧动态注册。Popup正文学习中心按钮经v2固定OPEN、唯一原生POPUP校验，开页后容许Popup正常关闭；不授予entry读库权力。完整[启动调用链](features/extension-startup.md)与[逐文件/测试输入](modules/real-entry.md)区分原生POPUP、普通TAB driver、新HTTP fixture和显式inject。旧升级动态注册期望、旧用户重确认与observer成本仍有核验缺口，未复现/未运行不写成FAIL。

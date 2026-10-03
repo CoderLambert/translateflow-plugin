@@ -3,9 +3,11 @@
 
 [首页](../README.md) · [逐文件说明](../modules/reading-records.md) · [已有划词来源链](selection-and-dictionary.md)
 
-当前产品链清单固定 main `345d630c0f0e0040f39fd74b8ed0457e3d193fd4`；2026-10-03 只读复核。#234 已接通 Selection 的 production collector、结果存档与保存状态，不再是只有后台合同。保留 #285/#235 实际学习中心实现；本轮接上 #286 合入的真实 Release A 用户故事和归档候选证据，区分代码整合、历史运行和本轮静态阅读。
+当前产品链清单固定main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`；2026-10-03 只读复核。#234 已接通 Selection 的 production collector、结果存档与保存状态，不再是只有后台合同。保留 #285/#235 实际学习中心实现；本轮接上 #286 合入的真实 Release A 用户故事和归档候选证据，区分代码整合、历史运行和本轮静态阅读。
 
 本轮完整复读八个Release A/存储测试与证据文件以及App/useLibrary，详见[验收逐文件章](../modules/reading-release-a.md)。先前保存切片复读范围见[逐文件说明](../modules/reading-records.md)与[Selection 模块](../modules/selection.md)。下文后台事务/导出细节沿用 `d5e308a709c008acf6b277d466d020f13025bdca` 的历史完整说明；清单逐项 blob 比对确认除本轮 runtime/access 及 shared constants 增量外，引用的后台事务文件字节未变，未重读部分仍保留旧源码身份，不冒充本轮审计。本导读本轮所有测试、构建、浏览器、实际下载 **NOT_RUN**；已有任务归档运行另按[候选链](../modules/reading-release-a.md#evidence-chain)列明。预构建产物选择见[构建与测试链](build-test-release.md)。
+
+> #287当前入口补充：[普通网页静态启动→Selection、真实工具栏Popup→固定OPEN→Reading access](extension-startup.md#popup-reading-access)。required站点访问不等于Reading开启；Popup仍仅entry权限。access/service本轮完整复读，#286的TAB driver和显式Content注入只证明下游，不能补作新入口证据，详见[证据对照](../modules/real-entry.md#native-popup-evidence)。
 
 ## 1. 用户今天真正能走到哪里
 

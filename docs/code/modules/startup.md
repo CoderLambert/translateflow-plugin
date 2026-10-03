@@ -2,7 +2,9 @@
 
 导航：[阅读入口](../README.md) · [架构总览](../architecture.md) · [仓库地图](../repository-map.md) · [扩展启动功能链](../features/extension-startup.md)
 
-> 固定源码版本：`d5e308a709c008acf6b277d466d020f13025bdca`。
+> 当前c250ce9的Manifest和auto-sites已在原章节替换；其它入口保留旧固定引用。当前完整启动/POPUP/权限边界见[功能链](../features/extension-startup.md)与[证据章](real-entry.md)，不把历史optional/动态注册测试当新实现。
+
+> 其它历史章节固定源码版本：`d5e308a709c008acf6b277d466d020f13025bdca`。
 > 阅读顺序建议先看 [功能链：扩展启动](../features/extension-startup.md)，再用本页定位具体文件。
 > “完整解释”仅指该文件自身全部职责、关键分支、输入/输出与副作用均已说明；不把它调用的子模块自动算作完整解释。代码/浏览器/测试执行状态均为 **NOT_RUN**。
 
@@ -26,7 +28,7 @@
 <a id="file-manifest"></a>
 ## manifest.json：浏览器的声明入口
 
-[固定源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/manifest.json)
+[完整源码 L1–L18](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/manifest.json#L1-L18)；blob `a707543acbb3d719f79053eb36e180032b7008f1`。
 
 这是 Chrome 读取的 JSON，不含函数：
 
@@ -34,9 +36,9 @@
 - `name`、`description`、action title 与 commands description 使用 `__MSG_...__`；`default_locale:"en"` 是 Manifest 国际化默认值，不等同用户设置的 UI locale 或翻译目标语言。
 - 版本为 `0.8.0`，最低 Chrome 为 `102`。
 - `action.default_popup` 指向 `popup.html`；`options_page` 指向 `options.html`，不是 `options_ui`。
-- 必需 permission 为 storage、activeTab、scripting；必需 host 仅 DeepSeek origin；http/https optional host 是未来可请求范围，不是安装即取得全部网页授权。
+- 必需 permission 为 storage、activeTab、scripting；必需host为DeepSeek、http://*/*与https://*/*；optional_host_permissions已移除，实际访问仍受Chrome站点控制。
 - commands 定义 translate-page、toggle-translations、toggle-quick-control 的默认/Mac 组合键，由后台 commands 模块解释名称。
-- 没有静态 Content 注册、WAR、额外 CSP 或 sandbox 字段。Content 的手动/动态注入由后续代码决定。
+- 根JSON没有content_scripts、WAR、额外CSP或sandbox字段；当前安装包由[唯一投影](real-entry.md#file-projection)生成静态HTTP/HTTPS document_idle Content，不能由根JSON缺字段推导无静态注入。
 
 调用者是浏览器与两个构建路径；输出是加载入口/权限能力约束。它不保证脚本一定能注入 Chrome 保护的页面。
 
@@ -111,55 +113,18 @@ install/update 才执行 legacy 清理；其他 onInstalled reason 仍补默认�
 关联测试：[commands.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/commands.test.mjs)，本次 NOT_RUN。
 
 <a id="file-auto-sites"></a>
-## src/background/auto-sites.js：一个站点、一个持久注册 owner
+## src/background/auto-sites.js：站点模式与旧动态注册清理
 
-[固定源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/auto-sites.js)
+[完整源码 L1–L197](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/src/background/auto-sites.js#L1-L197)；blob `bf45432aa9e5599b3b989c818b1d6a5f423f8b14`。
 
-四个 storage keys 是 `cacheRestoreSites`、`autoSites`、`quickControlSites`、`quickControlHiddenSites`。读写均通过 chrome.storage.local，注册操作仅经过 chrome.scripting。
+四个storage键为cacheRestoreSites、autoSites、quickControlSites、quickControlHiddenSites。rawOrigin经normalizeOrigin取scheme+hostname（省略端口），无效输入拒绝；read/write统一对数组去重排序、忽略坏项，无第二份内存事实来源。
 
-### 对外操作的输入、输出与先后关系
+registerAutoSite/registerCacheRestoreSite先contains校验有效访问，再read→add→write→syncOriginRegistration，回enabled:true。两个unregister移除/写入/同步，回false；不清缓存、不直接撤Chrome权限。Quick Control注册另清hidden；unregister仅移除persistent；hide同时移除persistent并加hidden；show仅移除hidden并写回，不加persistent、不执行注册同步。
 
-输入都是 rawOrigin。先 `normalizeOrigin`，仓库的站点 scope 为 scheme + hostname，省略端口，不是原样 URL.origin。
+syncOriginRegistration只算当前及legacy前缀的origin SHA-256前20hex稳定ID，读取实际注册后注销存在者，不再registerContentScripts。全量sync先读规范化state，将三模式按contains过滤、quick再剔hidden，读取所有注册并清除SITE_SCRIPT_PREFIX及LEGACY_SITE_SCRIPT_PREFIXES的全部ID；保留无关项。构造next，sameState的四组JSON不同才write，返回next；syncAutoSiteRegistrations为别名。
 
-- `registerAutoSite` / `registerCacheRestoreSite`：检查 origin 权限，readState，添加到相应列表，writeState，syncOriginRegistration；返回 origin/enabled:true。
-- 两种 unregister：移除列表 → 写入 → 同步；返回 enabled:false。不会直接请求撤销 Chrome 权限，也不删缓存。
-- `registerQuickControlSite`：权限检查后加入 persistent，并从 hidden 删除，再写入/同步；返回 enabled:true, hidden:false。
-- `unregisterQuickControlSite`：只移除 persistent；不会将站点列入 hidden。
-- `hideQuickControlSite`：移除 persistent，加入 hidden，写入/同步；返回 enabled:false,hidden:true。
-- `showQuickControlSite`：仅移除 hidden 并写入，返回 hidden:false；不做注册同步，也不重新开启 persistent。这与 Popup “只在当前页重新显示”的文案一致。
+没有动态需求并集、逐站重注册或单站catch了；get/hash/permission/unregister/write任何异常均可上抛。单站操作先写偏好再清旧注册，失败不回滚；没有并发写锁/取消/重试。持久内容由Manifest负责，偏好只决定auto/cache/Quick Control行为。修改清理前缀、权限过滤、写入顺序须联动[Node测试](real-entry.md#test-sites)、实际权限和旧升级消费者；后者仍期待保留注册，见[静态不一致](real-entry.md#limitations)。本轮NOT_RUN。
 
-写 storage 发生在 registration 之前；注册失败没有回滚写入。因此返回 reject 时不能假设偏好未保存。
-
-### syncOriginRegistration：合并需求
-
-[源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/auto-sites.js#L126) 重新读取状态。desired 是 cacheRestore、auto、未 hidden 的 quickControl 三者 OR；同时检查 permissions.contains。desired 且 permitted 时注册，否则只撤销该 origin 的当前/legacy ID 中实际存在的项。
-
-`registerSiteScript` 先检查同 ID，存在则注销，再注册 JS/CSS 列表；runAt 为 document_idle，persistAcrossSessions 为 true。文件没设置 world/allFrames，故不能把它讲成 MAIN 注入或全 frame 注入。替换是先删后加，并非原子更新。
-
-### syncSiteRegistrations：全量协调
-
-[源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/auto-sites.js#L88)
-
-1. readState 规范化四列表。
-2. hidden 形成 Set；前三列表通过 permittedOrigins；quick 再剔除 hidden。
-3. 合并、排序 desiredOrigins。
-4. 逐个 registerSiteScript；成功后才加入 desiredIds；单站失败 catch，继续下一个。
-5. 读取全部 registered scripts，仅筛本项目 `tf_site_`、`tf_auto_`、`abt_auto_` 前缀中的 stale ID，再注销。
-6. next 保存过滤后的模式列表与排序 hidden；sameState 不同才回写；返回 next。
-
-`syncAutoSiteRegistrations` 是同函数别名，不是第二条实现。单站 catch 不覆盖其他 API 调用；全量过程也没有事务锁/跨调用串行队列。源码的容错是“尽量继续其他站点”，不是“必然保留上次可用 registration”。
-
-### 私有辅助函数
-
-- assertOriginPermission：contains 失败则抛传入的人类可读错误。
-- permittedOrigins：规范化后逐项权限检查，仅保留有权限者并排序。
-- readState / writeState：四列表统一规范化，无独立内存事实来源。
-- normalizeOrigins：非数组视为空；每个非法 origin 忽略；去重排序。
-- addOrigin / removeOrigin：在规范化集合上添加/删除。
-- sameState：四个规范化列表经 JSON.stringify 比较，避免无意义回写。
-- getSiteScriptId / getLegacyScriptId：origin 的 SHA-256 前 20 hex 字符 + 指定前缀；相同 origin 稳定落在同 ID。
-
-实际 Chrome 权限撤销由调用 UI 决策；Popup 还保护 Provider 或其他模式仍需的同 origin 权限。关联 [site-registration.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/site-registration.test.mjs) 验证权限拒绝与共用注册，但没有由此证明全部启动竞态；NOT_RUN。
 
 <a id="file-content-runtime"></a>
 ## src/content/runtime.js：classic-script 的最小共享运行时
@@ -264,7 +229,7 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 
 [固定源码](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/wxt.config.mjs)
 
-本文件当前已全文复核到 b606cfd，旧启动版逐项说明已移交[当前完整构建配置说明](build-test-release.md#file-wxt-config)，不继续把旧 opt-in 配置当最新。当前 WXT 引擎同时服务 dist/extension 与 .output/chrome-mv3；读取 root manifest、编译 Popup/Options/后台与独立 React 学习中心、精确 raw bridge 与资源报告属于构建时行为，不在浏览器启动时扫描仓库。
+本文件当前已全文复核到 c250ce9，旧启动版逐项说明已移交[当前完整构建配置说明](build-test-release.md#file-wxt-config)，不继续把旧 opt-in 配置当最新。当前 WXT 引擎同时服务 dist/extension 与 .output/chrome-mv3；读取 root manifest、编译 Popup/Options/后台与独立 React 学习中心、精确 raw bridge 与资源报告属于构建时行为，不在浏览器启动时扫描仓库。
 
 <a id="partial-files"></a>
 ## 只在启动边界解释的文件
@@ -306,14 +271,14 @@ IIFE guard 要求 runtime 且避免重复模块。内部保存 appliedVariables 
 | entrypoints/background.ts | WXT worker 入口、module 类型、listener 注册时序 | npm run build:extension:wxt 与 npm run test:wxt:smoke；未见专门同步时序单测证据 |
 | src/background/index.js | 安装默认值、旧键清理、启动注册、Reading 生命周期接线 | [reading-runtime-storage.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-runtime-storage.test.mjs) 仅测下游懒存储；实际 onInstalled/onStartup 顺序和重复 initialize 需专门验证 |
 | src/background/commands.js | 快捷键投递、首次注入、taskId 保留与保护页行为 | [commands.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/commands.test.mjs)；真实快捷键权限另需 Chromium |
-| src/background/auto-sites.js | 三种模式共享注册、权限过滤、legacy 注销与站点偏好 | [site-registration.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/site-registration.test.mjs)；真实跨会话注册/失败中断需额外验证 |
+| src/background/auto-sites.js | 三模式偏好、权限过滤与全部本项目旧注册清理 | [site-registration.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/site-registration.test.mjs)；真实跨会话注册/失败中断需额外验证 |
 | src/content/runtime.js | 所有 Content 消息值、共享状态、页面身份、fallback toast | [translateflow.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/translateflow.spec.mjs) 间接覆盖注入后消息/缓存；重复 runtime 装载与 fallback toast 无本次专门覆盖证据 |
 | content.js | 组合启动、消息响应、storage/SPA 路由和根幂等 | 同一 E2E 的手动翻译、模式切换、外观/Selection 路径；新增[wxt-injection-samples](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/e2e/wxt-injection-samples.spec.mjs)含十次cold/warm sameApp断言，但不是性能门槛；根启动异常仍需对应证据 |
 | src/content/appearance.js | CSS 白名单变量、旧响应丢弃与 fallback | 同一 E2E 的 reading appearance 用例检查 DOM 保留与 Provider 次数；refreshVersion 乱序需专项验证 |
 | src/content/ui/host.js | Shadow 样式隔离、layer 复用、节点归属与 host 重建 | 同一 E2E 的 Quick Control Shadow-isolated 用例；宿主节点外部删除后重建需专项验证 |
 | wxt.config.mjs | entrypoint 身份、raw 资产闭包、构建 target 与审计报告 | [wxt-assets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/wxt-assets.test.mjs) 加实际 WXT build/audit/smoke；helper 单测不能替代真实构建 hook |
 
-当入口或监听器变化时，优先复核本页的同步注册、重复注入、缺依赖与失败恢复语义；当 CONTENT_SCRIPT_FILES 变化时同时复核手动注入、动态注册、WXT raw bridge。修改业务模块不能仅凭本启动篇更新就把该模块全量 coverage 标记完成。
+当入口或监听器变化时，优先复核本页的同步注册、重复注入、缺依赖与失败恢复语义；当 CONTENT_SCRIPT_FILES 变化时同时复核手动fallback、静态Manifest投影、旧注册清理、WXT raw bridge。修改业务模块不能仅凭本启动篇更新就把该模块全量 coverage 标记完成。
 
 事实优先级：本固定 commit 的实际代码与当前架构约束优先于旧 README 的概括或历史验收数字。本页保留未变入口的历史固定源码；默认发行现已切 WXT，当前构建配置以构建章为准。
 

@@ -153,17 +153,19 @@ controlled promise 明确排列竞态，断言实际 DOM 与 method，不是固�
 测试用 JSON.stringify/Blob.text 比较 fixture，与生产导出不整包 stringify 的约束不冲突。覆盖协议适配和本地 Blob，不能证明浏览器实际文件保存、近容量 UI 内存或真实 service worker 重启。本轮 NOT_RUN。
 
 <a id="test-e2e"></a>
-## e2e/learning-center.spec.mjs：两条真实 React 产品故事
+## e2e/learning-center.spec.mjs：原生 Popup 与两条 React 产品故事
 
-[完整源码 L1–L211](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/e2e/learning-center.spec.mjs#L1-L211)；blob `5a17d49b8cf70aa82c149e07b9a543764d3febbf`。
+[完整源码 L1–L254](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/learning-center.spec.mjs#L1-L254)；blob `68c31a1c93f814e3f6ce3e210a862114ffa4816f`。
 
-依赖既有 extension-fixture 预构建 WXT 副本，select helper 合成选区但以 Playwright 真实点击 chip/按钮；message helper只发送 v2请求，trace 只记录 method。第一故事从 Popup 打开实际页面、Not now 不授权、Selection 邀请新开实际学习中心，再可信 Enable、回旧卡显式保存、另一 context 同词查询保存两条。检查真实页面列表/详情、移除 Provider 设置后 offline reload 仍可读，字面搜索、页面分组、站点排除/恢复、暂停/恢复与列表不 GET_RECORD。
+依赖既有 extension-fixture 预构建 WXT 副本，select helper合成选区且产品故事显式harness.inject，并以 Playwright 真实点击 chip/按钮；message helper只发送 v2请求，trace 只记录 method。原产品故事从普通TAB形式的popup.html driver 打开实际页面、Not now 不授权、Selection 邀请新开实际学习中心，再可信 Enable、回旧卡显式保存、另一 context 同词查询保存两条。检查真实页面列表/详情、移除 Provider 设置后 offline reload 仍可读，字面搜索、页面分组、站点排除/恢复、暂停/恢复与列表不 GET_RECORD。
 
 导出等待原生 download 并读流核 JSON/两种 context，历史路径 Provider 与词典/外部资源请求为零；再单删、页删取消/确认、已删 deep-link 的返回路径、实时中文→英文、360px 暗色/reduced motion无横向溢出。截图/JSON为测试产物；截图存在/旧报告 PASS 不能替代本轮执行。offline center.reload 是页面重载，并未关闭/重建 profile。
 
 第二故事明确为 supplementary canonical-row seed：仅测试副本复制 fixture sourceClosure，已有文件字节必须相同；31条检查30→31分页且不逐行详情；单条64 artifacts/24000字符答案检查先五个 DOM。hold 已返回的首块来排列取消与跨标签暂停：取消不给文件，内容改变提示重试；新导出实际下载 >1MiB 并验64 artifact和 Unicode；全清先 Escape/焦点返回，再确认。大记录由种子生成，不冒充真实 Selection 生成64条答案。
 
 两个 test 各120秒限时；不安装、不隐式构建。真实 React 部分只有这两条，不把三个 spec 合计16 PASS叫16条真实学习中心。测试不覆盖实际桌面 IME、Chrome102、全浏览器、真实付费 Provider/私有词典或文件对话框落盘；此前近64MiB与profile restart来自旧storage层；#286现另有真实产品完整profile重启和实际UI近容量导出，见[Release A六故事](reading-release-a.md#file-release-spec)。本轮 NOT_RUN。
+
+本轮全文复读当前254行（三个故事），新首例是真实POPUP身份/开页/关闭验证，直接CDP发消息且未读取ACK，完整输入与限制见[入口证据](real-entry.md#native-popup-evidence)。原两个故事仍按上述具体断言解释，不混作新入口证明。
 
 <a id="file-spec"></a>
 ## docs/LEARNING_CENTER_V1.md：面向维护者的产品合同

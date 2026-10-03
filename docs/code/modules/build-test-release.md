@@ -81,15 +81,17 @@ posix/win32 pathApi 模拟词法规则，不代表各 OS 已实测；symlink/jun
 <a id="file-wxt-config"></a>
 ## wxt.config.mjs：最终编译输出、学习中心与精确桥接
 
-blob `682b09df6a2b7f1e920c4aeaa353fc3b3b145590`；[完整源码 L1–L58](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/wxt.config.mjs#L1-L58)。
+[完整源码 L1–L60](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/wxt.config.mjs#L1-L60)；blob `993cffa4e0fb1e3e7ed757d638c6c5efe0bf5a0a`。
 
-**加载与入口。** 顶层读取唯一 manifest.json，移除 manifest_version 后交 WXT；imports=false，不给业务自动导入。@wxt-dev/module-react 服务实际学习中心，不能据此把 Popup/Options、Content、MAIN 或后台改作 React。Popup/Options 仍在 entrypoints:found 直接注册原 HTML，Options 使用 unlisted-page；resolved 查不到 Popup 即失败，action title 明确取 Manifest，保持 options_page 及本地化身份。学习中心由自身 entrypoints 目录提供，源码 HTML 不是根目录第二模板。
+**加载与入口。** 顶层读取唯一 manifest.json，移除manifest_version后经projectProductionManifest加静态Content再交WXT；imports=false，不给业务自动导入。@wxt-dev/module-react 服务实际学习中心，不能据此把 Popup/Options、Content、MAIN 或后台改作 React。Popup/Options 仍在 entrypoints:found 直接注册原 HTML，Options 使用 unlisted-page；resolved 查不到 Popup 即失败，action title 明确取 Manifest，保持 options_page 及本地化身份。学习中心由自身 entrypoints 目录提供，源码 HTML 不是根目录第二模板。
 
 **编译与报告。** Vite JS/CSS target=chrome102、sourcemap=false，只是构建目标，不是最低版本浏览器实测。插件在 **writeBundle** 收集最终 fileName/type，chunk 另记 imports、dynamicImports 与去掉 ROOT 前缀的模块 ID；唯一特殊映射把 entrypoints/learning-center/index.html 记为安装名 learning-center.html。不能继续使用旧 generateBundle 描述。compiledChunks 由本配置加载持有，build:before 清空，build:done 写 compiled-closures.json；报告失败使构建失败，不提供重试/回滚。
 
 **输出与资产。** TF_WXT_BUILD_ROOT 存在时 outDir=staging/output、reports=staging/reports，否则保留 WXT 默认和 .wxt/reports。build:publicAssets 拒绝任何已有未登记 assets，再分别计算 raw、locale、词典闭包，只追加 absoluteSrc/relativeDest；locale 先校验，开发缺词典 warn，require=1 失败。asset-map.json 记录这三组输入供 audit 重算。配置不删除最终安装目录，不负责事务提交；外层 builder 才拥有 staging/最终复制生命周期。
 
 **修改与证据。** 改目录入口或 chunk/HTML 名，要同时改稳定路径合同、最终报告和 audit 页面可达性；改 raw 路径须走唯一清单及闭包，不复制整个 src。对应 wxt-assets/mapping 单测并不执行这个 hook；真正配置行为仍需实际 build/audit 才能验证。本轮均 NOT_RUN。
+
+当前静态声明/required访问契约见[唯一投影](real-entry.md#file-projection)，历史无静态注册/权限不变不再适用。
 
 <a id="file-wxt-assets"></a>
 ## scripts/wxt-assets.mjs：精确raw与生成词典资产闭包
@@ -105,9 +107,9 @@ blob `b9afabb9407bbfa7c1ca6dc9a333b816a11df2ea`；[完整源码 L1–L110](https
 <a id="file-audit"></a>
 ## scripts/audit-wxt-extension.mjs：页面可达性、React 隔离与两个体积口径
 
-blob `b068510f955a21e3e56a5d6b3cb1330fab0b411d`；[完整源码 L1–L110](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/scripts/audit-wxt-extension.mjs#L1-L110)。
+[完整源码 L1–L111](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/scripts/audit-wxt-extension.mjs#L1-L111)；blob `4518030727478e455093efafa0ccb1fd4830298e`。
 
-**输入与精确集合。** auditWxtExtension 默认 .output/chrome-mv3、.wxt/reports，也接 builder 的 staging 参数。先读取源/产物 Manifest，assertProductionManifest 对所有字段 deepEqual；重算 raw/locale/词典闭包，对 asset-map 整体比对。expected 是 Manifest、三页面、全部 raw/词典/locale 与 compiled 记录的并集；present 必须恰好相等。桥接文件逐个与源 bytes 相等，所有 Worker/MAIN 路径必须存在。
+**输入与精确集合。** auditWxtExtension 默认 .output/chrome-mv3、.wxt/reports，也接 builder 的 staging 参数。先读取源/产物 Manifest，assertProductionManifest对projectProductionManifest(baseline)所有字段deepEqual，唯一构建投影为content_scripts；重算 raw/locale/词典闭包，对 asset-map 整体比对。expected 是 Manifest、三页面、全部 raw/词典/locale 与 compiled 记录的并集；present 必须恰好相等。桥接文件逐个与源 bytes 相等，所有 Worker/MAIN 路径必须存在。
 
 **页面闭包。** pageRoots 从安装 HTML 的 script/link src/href 取本地根，去掉起始 /。第一个 closure 用 Set 防环，同时追 imports 和 dynamicImports。learningFiles 从学习页面根出发并加入 learning-center.html；legacyCompiled 从 background.js 与 Popup/Options 的 HTML 资源出发。每个 compiled import 必须存在；模块 ID 禁测试库、构建/私有目录及 WXT dev helper。遇 react/react-dom 模块，所在 chunk 必须学习可达且旧运行时不可达，不能再写成“全包禁止 React”，也不能把共享 React chunk 判为允许。
 
@@ -116,6 +118,8 @@ blob `b068510f955a21e3e56a5d6b3cb1330fab0b411d`；[完整源码 L1–L110](https
 **预算与报告。** learningExclusive = 学习可达且旧运行时不可达的实际文件；包括 HTML/CSS/JS，按真实 size 求 learningBytes。platformCodeBytes = summary.codeBytes − learningBytes，只有此值受既有 **1,576,595B** 平台上限限制，共享 chunk 仍算平台。源码没有新增学习中心专属上限，不能把原预算说成整个 React 包总量门槛。报告的 backgroundClosure/uiClosure 是另一函数：只追静态 imports；uiClosure 从所有三页面根开始并加 HTML 大小。因此不能拿其数字替代上述含动态依赖的安全/预算闭包，两个展示闭包还可能重叠，不宜相加当包分区。
 
 **状态/失败/影响。** 所有集合只在调用内存在，任何读取/assert/write 失败传播；没有补文件、取消、重试、回滚。全部断言通过才写 production-audit.json/status PASS，本轮没有生成报告。report.source 文案仍固定 WXT production .output/chrome-mv3，调用 staging/dist 时须以参数及实际 fingerprint 识别产物，不能用文案当来源证明。改输出命名、React 共享依赖或预算归属应同时核对配置、HTML、mapping 与实际 audit；现有 Manifest 单测仅测 assertProductionManifest，不证明完整 React/audit 分支已执行。NOT_RUN。
+
+当前静态声明/required访问契约见[唯一投影](real-entry.md#file-projection)，历史无静态注册/权限不变不再适用。
 
 <a id="file-run-e2e"></a>
 ## scripts/run-e2e.mjs：明确选择产物的Playwright入口
@@ -332,7 +336,7 @@ blob `ee73bcc7f05aac74e28351ba31e35fdfc7923f04`；[完整源码 L1–L106](https
 <a id="test-wxt-assets"></a>
 ## tests/wxt-assets.test.mjs：三个页面、raw 桥与 fail-closed 负例
 
-blob `392f560161c00a73b493e951dc7ca03e8d5ab9ca`；[完整源码 L1–L101](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/tests/wxt-assets.test.mjs#L1-L101)。
+[完整源码 L1–L109](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/tests/wxt-assets.test.mjs#L1-L109)；blob `6dd378e18fb9d9014560788ad5dfad05f6b1956d`。
 
 七组 Node 测试，依赖真实常量/helper、fixture 与一次性临时目录：
 1. roots 前段严格按 Content JS/CSS 顺序，MAIN 与运行时同一引用；EXTENSION_PAGES 必须精确含 popup/options/learningCenter 三项。闭包包含全部 Worker 与 mdict-rich importer，不包含编译 Popup/Options/后台源。
@@ -341,9 +345,11 @@ blob `392f560161c00a73b493e951dc7ca03e8d5ab9ca`；[完整源码 L1–L101](https
 4. 临时 entry→child 相对 import 闭包成功，symlink 指向外部失败。
 5. 缺两个内置包返回显式 missing，release require 拒绝；含越界 descriptor 的假 manifest 也拒绝。
 6. 复制认证 fixture 仅取四个声明文件、忽略 stray source-lock；shard symlink escape、损坏后 size/hash 均拒绝。
-7. Manifest 先允许完全相同，再逐一拒绝新增 tabs/localhost、静态 Content、WAR、最低版本变化、options_ui 和失去 module 的 background。
+7. Manifest先投影精确HTTP/HTTPS有序JS/CSS、document_idle并允许该结果，再拒绝额外tabs/localhost、不等同批准投影的content_scripts、WAR、最低版本变化、options_ui和失去module的background。
 
 真实临时 fs 全部 finally 清理，不调用 WXT build hook/完整 audit，也不启动 Chrome。React 独占可达性与报告写入并非这七组的直接断言，不能拿该文件存在当完整审计覆盖。修改 asset 或 Manifest 合同需保留这些负例并选择相邻 build/运行验证；本轮 NOT_RUN。
+
+当前静态声明/required访问契约见[唯一投影](real-entry.md#file-projection)，历史无静态注册/权限不变不再适用。
 
 <a id="test-presentation"></a>
 ## tests/curated-install-artifact-presentation.test.mjs：从浏览器源码import移出的纯展示合同
@@ -378,7 +384,7 @@ blob `9e350ac3486e526f6588a71c899d5d844d6ba7a7`；[完整源码 L1–L73](https:
 
 - [e2e/wxt-upgrade.spec.mjs L1–L307](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/wxt-upgrade.spec.mjs#L1-L307)：两情景为缺失uiLocale/已有zh_CN；旧新artifact双环境缺任一skip。旧/新同version、同路径/profile/ID，旧package两mapping输入hash验证；真实Settings导入两个synthetic MDX/MDD、首选/启停、三翻译cache、站点注册并集后读取全部storage/DB/OPFS/registrations。替换后识别cached-old runtime并保持完整快照；管理reload才以native lifecycle和Reading v2 NOT_READY证明新runtime激活，允许仅缺locale默认写，以及动态注册只把js/css从精确oldMapping换为currentMapping，ID/matches/其它策略保留。旧world通过原消息channel失败证明失效，刷新后cache恢复Provider仍1次，DB只容许窄lastAccessedAt变化，注册采用newMapping期望，重启与恢复后全快照继续相等。报告含phase/原树hash/testChanges/probe/network/ID/浏览器、失败保存partial completeAcceptance=false；嵌套finally释放context/proxy/server/temp，setImmediate后比较真实TCP listener数量。这里解释证据链，未逐一展开dictionary/snapshot/stable/summary及所有UI断言，保持局部。
 - [e2e/wxt-injection-samples.spec.mjs L1–L90](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/wxt-injection-samples.spec.mjs#L1-L90)：旧/新明确输入，每代使用自身runtimeMapping，复用profile/path/ID；WXT强制管理reload、要求新worker和executionProof=原tree hash，再用native Reading响应区别旧runtime。各十次新article测cold insertCSS→scripts→status，原document再注入测warm；sameApp、loaded/module count不变，无译文/Provider，每次关page并核对pages数。报告原样本与median/min/max，没有性能阈值；不是单纯对source文本计时。未完整解释全部report字段/浏览器创建过程，局部、NOT_RUN。
-- [e2e/wxt-platform-permissions.spec.mjs L1–L165](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/wxt-platform-permissions.spec.mjs#L1-L165)：真实临时Chrome management API控制权限，无fake permissions.contains/executeScript。先取可访问页面native稳定tabId；未申请localhost作为hard-denied严格REJECTED对照；required-but-withheld及revoked在1000ms窗口逐样本观察真实promise只可PENDING/REJECTED、marker=0且native receiver不存在。fresh document上的grant必须FULFILLED且frame0 marker可见，三站点模式并集只一条native注册；撤权/重启要求权限false、注册与站点设置被剪除、Provider0。报告明确pendingConsentCompletion和browserPermissionPrompt NOT RUN，不能说权限弹窗已被点击或待定最终被拒绝。仍保留局部，未把全部probe状态/测试平台特有API视为生产架构。
+- [e2e/wxt-platform-permissions.spec.mjs L1–L165](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/e2e/wxt-platform-permissions.spec.mjs#L1-L165)：真实临时Chrome management API控制权限，无fake permissions.contains/executeScript。先取可访问页面native稳定tabId；当前localhost在required访问被withhold后也用一秒窗口PENDING/REJECTED无执行对照；required-but-withheld及revoked在1000ms窗口逐样本观察真实promise只可PENDING/REJECTED、marker=0且native receiver不存在。fresh document上的grant必须FULFILLED且frame0 marker可见，当前三站点模式只写偏好、零动态注册与一项静态声明；撤权/重启要求权限false、注册与站点设置被剪除、Provider0。报告明确pendingConsentCompletion和browserPermissionPrompt NOT RUN，不能说权限弹窗已被点击或待定最终被拒绝。仍保留局部，未把全部probe状态/测试平台特有API视为生产架构。
 
 <a id="consumer-deltas"></a>
 ## 其余消费者增量与测试边界（局部）
@@ -454,3 +460,5 @@ blob `573ad86dfdb5940be644248f96743701a470f264`；[完整源码 L1–L77](https:
 证据的关键是身份连续性：初始实现、路径guard修复、#227运行变更后重跑、最后17个Reading纯合同合入并逐文件验证143个安装字节不变，是不同阶段。文中742 Node、1,371,155B代码、Chromium153等数字都是归档观察，不能当今天构建结果；较早658测试、1,365,037B亦只属修复阶段。最后 f955 包与 d2 浏览器测试包字节相同的陈述是在解释为何未再跑 smoke，不是把未运行改成新 PASS。本轮仅阅读正文，未重新核验其所有证据附件或执行任何命令。
 
 冻结 smoke 是临时词典/localhost适配后的有限流程；其 extra-permission/extra-file/missing-worker、缺词典 gate 失败与保留原包等负例不等于完整产品认证。路径修复有 win32算法/POSIX symlink 证据，没有Windows磁盘实测；Chrome102、真实YouTube、完整当时WXT E2E、同ID升级、真实词典/付费Provider等未运行项仍属于当时范围。后续 #248/#235 是否交付应看当前源码与各自证据，不能从旧 NOT RUN 推断今天仍未实现，也不能跨候选挪用 PASS。修改构建说明时保留这些原绑定，仅在导读解释变化，不在本任务改写历史验收。
+
+当前c250ce9入口增量仅全文复核wxt.config/audit/wxt-assets测试；升级helper/spec与大型permission消费者保持原覆盖级别。旧升级比较器保留动态注册的期望与新清理实现冲突，详见[入口与升级边界](real-entry.md#limitations)，未执行不宣称实际FAIL。

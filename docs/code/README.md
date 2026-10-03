@@ -13,15 +13,15 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单基线：`345d630c0f0e0040f39fd74b8ed0457e3d193fd4`。本轮贯通#286真实Reading用户故事与候选验收链，全文解释八个测试/fixture/证据文件，复读App/useLibrary焦点修复；保留#235组件与构建章，不重复计数。未变文件保留旧固定引用，未完整复核者仍待复核。
-- 当前状态：768 个文件全部登记；214 个完整解释、519 个待解释、35 个待复核；局部正文 132 个（待解释中 107、待复核中 25），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
+- 当前清单基线：`c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`。本轮完整复读并解释13个真实启动/POPUP/权限关联文件，修正旧optional-only/动态注册和入口证据外推；其余保留原固定身份。
+- 当前状态：770 个文件全部登记；218 个完整解释、516 个待解释、36 个待复核；局部正文 130 个（待解释中 105、待复核中 25），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
 
 
 ## 已交付导航与推荐阅读顺序
 
 1. [运行时总览](architecture.md)：后台、扩展页面、Content、MAIN、Worker如何分工。
-2. [扩展启动完整流程](features/extension-startup.md)：从打开Popup/快捷键/持久站点到页面可交互，包含失败与重复注入。
-3. [启动模块逐文件说明](modules/startup.md)：11个完整文件与17个局部依赖的边界。
+2. [扩展启动完整流程](features/extension-startup.md)：从普通网页静态加载/Popup/快捷键到页面可交互与Reading固定打开，包含失败与重复注入。
+3. [启动模块逐文件说明](modules/startup.md)：保留旧入口并更新Manifest/站点模式；接[真实入口与测试输入](modules/real-entry.md)。
 4. [划词、本地词典与显式AI完整流程](features/selection-and-dictionary.md)及[18个文件详解](modules/selection.md)。
 5. [MDX/MDD导入与安全展示](features/local-dictionary-import.md)及[15个文件详解](modules/dictionary-import-render.md)；继续读[解析→紧凑索引→OPFS→范围查询](features/mdict-storage-internals.md)与[35个内部文件说明](modules/mdict-storage-internals.md)。
 6. [网页翻译、缓存恢复与重访](features/page-translation.md)及[15个文件详解](modules/page-translation-cache.md)。
@@ -31,12 +31,12 @@
 10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[逐文件详解](modules/build-test-release.md)：含最终 writeBundle、React 独占闭包、平台预算、三页面映射和历史验收辨读。
 11. [本地任务合同→冻结→验收→主Agent自查→同步](features/local-task-acceptance.md)及[逐文件说明](modules/local-task-acceptance.md)。
 12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-13. [覆盖清单](coverage.json)：768个文件的固定blob、状态和正文位置。
+13. [覆盖清单](coverage.json)：770个文件的固定blob、状态和正文位置。
 14. [更新记录](changes.md)：本轮证据与下一步。
 
 当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；实际React学习中心已接上列表/详情/过滤、管理、导出与错误恢复，见[用户操作到源码](features/reading-records.md#learning-center)；#286现已整合无seed真实创建/完整重启、近容量UI导出与原生quota恢复；[149项复用汇总](modules/reading-release-a.md#evidence-chain)不是新全量运行。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
 
-这轮修正“尚无端到端证据”、旧storage NOT_READY和过早焦点恢复描述，将实际产品可达性、测试输入、生命周期与取消、候选复用和归档滞后分开。此前构建切片保留；普通pack/TFLex、共享合同、大入口及未解释测试/脚本仍为缺口，未追完其余35项待复核。
+这轮完成普通网页→Selection与原生Popup→Reading access的启动切片；旧Release A下游证据保留，未冒充真实工具栏按钮、HTTPS网站、商店升级或全站性能验证。旧升级helper的注册保留期望与当前清理实现冲突，见[限制](modules/real-entry.md#limitations)。未追完整个待复核队列。
 
 
 ## 建议目录

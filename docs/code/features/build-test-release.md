@@ -22,6 +22,8 @@
 
 需要区分的是**默认构建目录与默认 E2E 消费目录**，不是两个构建引擎。只执行 validate 不会更新 `.output/chrome-mv3`：该目录缺失时 E2E 失败；若残留旧包，E2E 可能仍消费旧字节。要验收刚生成的稳定安装包，明确用 `TF_E2E_ARTIFACT=dist/extension npm run test:e2e`；wrapper 会在未另设时令 `TF_I18N_ARTIFACT` 跟随。要用默认 E2E / standalone smoke，先构建显式 WXT 输出。路径存在或来源标签都不足以证明包为本候选，见[package 路由](../modules/build-test-release.md#package-routing)。
 
+> #287当前安装包经[production-manifest](../modules/real-entry.md#file-projection)在普通HTTP/HTTPS静态document_idle加载Content，required权限已扩大；历史“无静态注入/权限不变”只属原候选。本轮没有构建、运行或认证。
+
 ## 2. 源码 → 审计通过的 WXT 产物 → 安装目录
 
 [buildExtension](../modules/build-test-release.md#file-build-extension)先执行[输出安全检查](../modules/build-test-release.md#file-path-boundaries)，再为每次调用分配独立 OS 临时 staging。子进程用当前 Node 调仓库 WXT CLI；`TF_WXT_BUILD_ROOT` 将构建输出和 reports 导向本次 staging，`TRANSLATEFLOW_WXT_REQUIRE_LEXICON` 由 requireLexicon 决定。构建完成后 audit staging 中的真实包；仅通过后再次检查目标，才 rm → mkdir → cp 到最终安装目录。显式 `.output/chrome-mv3` 输出还复制 reports 到 `.wxt/reports`；默认 dist 的 staging reports 随清理删除，不能假设它更新了 standalone smoke 使用的报告。
@@ -34,7 +36,7 @@ WXT 由 [wxt.config.mjs](../modules/build-test-release.md#file-wxt-config)配置
 
 生成词典不是 Git 内已有可安装数据。每个 TFLex 包按 manifest 明确声明、fingerprint、descriptor hash/size、role 和真实路径核验文件；开发缺包列入 missing，release 通过 requireLexicon 强制所有内置包就绪。它证明声明与字节完整性，不替代来源、词汇质量、真实词典兼容性或发行准入。
 
-[audit](../modules/build-test-release.md#file-audit)检查 Manifest 与基线全部字段 deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/开发资源并限制React只在学习中心闭包、HTML 本地引用及代码体积预算。React 允许范围由学习页面与 background/Popup/Options 的静态+动态可达闭包相减判定，共享给旧运行时的 React chunk 仍拒绝。平台上限只约束 `codeBytes − 学习中心独占 bytes`，共享 chunk 不扣除；没有新增学习中心专属上限。报告的 background/ui 展示统计另只追静态 imports，不能混作安全闭包或相加当互斥包分区。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
+[audit](../modules/build-test-release.md#file-audit)检查Manifest与production-manifest生成的批准静态投影全部字段deepEqual、精确资产集合、raw/词典/locale 源字节、编译依赖、禁入测试/开发资源并限制React只在学习中心闭包、HTML 本地引用及代码体积预算。React 允许范围由学习页面与 background/Popup/Options 的静态+动态可达闭包相减判定，共享给旧运行时的 React chunk 仍拒绝。平台上限只约束 `codeBytes − 学习中心独占 bytes`，共享 chunk 不扣除；没有新增学习中心专属上限。报告的 background/ui 展示统计另只追静态 imports，不能混作安全闭包或相加当互斥包分区。reports 属构建证据，不进入安装包。build/audit 成功也不证明 Chrome 102 运行或真实网站兼容。
 
 ## 3. 输出删除和测试副本的安全边界
 
@@ -72,6 +74,8 @@ prepareExtensionTestCopy 完成精确复制后才作受限测试适配：
 - fake permissions/mock runtime/DOM fixture 只证明模拟分支。native permission spec 另用临时 profile 的 Chrome 管理 API 操作 hard-denied/withheld/granted/revoked；withheld/revoked 的一秒观测允许 PENDING 或真实拒绝，但不能有执行、DOM marker 或 receiver。PENDING 不是最终拒绝，权限弹窗和 pending consent completion 仍未验证。
 
 ## 6. 同 ID 升级、真正激活、闭包更新、恢复与重启
+
+> 当前c250ce9的auto-sites已改为清理全部本项目动态注册；下述旧helper仍期望保留ID并换资源，存在静态合同冲突，不能将此旧说明作新Manifest升级PASS。旧用户required权限确认/恢复也未由unpacked reload覆盖，见[当前边界](../modules/real-entry.md#limitations)。
 
 > 本节大型升级/平台 spec 的逐项叙述仍绑定 d524 旧固定源码；e2e/wxt-upgrade.spec.mjs 在当前树有变，coverage 保留待复核。本节提及 Reading NOT_READY 只记录旧 probe，不能据此声称 b606 学习中心仍未开启或当前新包用例已通过。当前页面映射的两组 Node 断言已全文复核，但不替代升级 spec。
 
