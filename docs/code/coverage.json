@@ -7,8 +7,8 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/d5e308a709c008acf6b277d466d020f13025bdca?recursive=1",
   "denominator": 636,
   "counts": {
-    "已解释": 70,
-    "待解释": 566,
+    "已解释": 81,
+    "待解释": 555,
     "待复核": 0,
     "有理由排除": 0
   },
@@ -940,7 +940,10 @@
       "status": "待解释",
       "documentation": "modules/page-translation-cache.md#test-boundaries",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/providers-and-settings.md#test-boundaries"
+      ]
     },
     {
       "path": "e2e/ui-locale.spec.mjs",
@@ -1149,7 +1152,9 @@
       "sourceBlob": "7cffc2509a010eda8fdb620c36392ac71f71393c",
       "function": "Provider与设置",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#partial-entry-router",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "package-lock.json",
@@ -1208,7 +1213,8 @@
       "reviewedAt": "2026-10-03",
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
       "relatedDocumentation": [
-        "modules/startup.md#partial-files"
+        "modules/startup.md#partial-files",
+        "modules/providers-and-settings.md#partial-entry-router"
       ]
     },
     {
@@ -1614,14 +1620,14 @@
     {
       "path": "src/background/config.js",
       "sourceBlob": "67f9fc3d846b04d0e539247b7a8e4cf5672d2b9f",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": "modules/page-translation-cache.md#partial-router-config",
+      "function": "Provider与设置",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-config",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
       "relatedDocumentation": [
         "modules/startup.md#partial-files",
-        "modules/selection.md#partial-provider-cache"
+        "modules/selection.md#partial-provider-cache",
+        "modules/page-translation-cache.md#partial-router-config"
       ]
     },
     {
@@ -2243,9 +2249,10 @@
     {
       "path": "src/background/preset-session.js",
       "sourceBlob": "1571ee805b653b1c3421e246e8e1332c06af80d7",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": null
+      "function": "Provider与设置",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-session",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/providers/curated-dictionary-network.js",
@@ -2277,28 +2284,34 @@
       "path": "src/background/providers/local-translation.js",
       "sourceBlob": "b9801db660ed8f8dc78d74c65b61354fcc5f9555",
       "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": "modules/page-translation-cache.md#partial-http",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-local",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/page-translation-cache.md#partial-http"
+      ]
     },
     {
       "path": "src/background/providers/openai-compatible.js",
       "sourceBlob": "db2c7f7fdc58247fa8289096fe31245351269010",
       "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": "modules/page-translation-cache.md#partial-http",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-compatible",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/page-translation-cache.md#partial-http"
+      ]
     },
     {
       "path": "src/background/providers/openai-sse.js",
       "sourceBlob": "838aa21d5aa52000495b65a3d4afe1db478afcd8",
       "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": "modules/page-translation-cache.md#partial-http",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-sse",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/page-translation-cache.md#partial-http"
+      ]
     },
     {
       "path": "src/background/providers/pack-network.js",
@@ -2311,10 +2324,12 @@
       "path": "src/background/providers/shared.js",
       "sourceBlob": "22ed2a65b5d1dc367a916a4c0d9770131d7331e1",
       "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": "modules/page-translation-cache.md#partial-http",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-http",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/page-translation-cache.md#partial-http"
+      ]
     },
     {
       "path": "src/background/reading-record/access.js",
@@ -2428,7 +2443,8 @@
         "modules/startup.md#partial-files",
         "modules/selection.md#partial-router",
         "modules/dictionary-import-render.md#partial-router",
-        "modules/youtube-subtitles.md#partial-entry-router"
+        "modules/youtube-subtitles.md#partial-entry-router",
+        "modules/providers-and-settings.md#partial-entry-router"
       ]
     },
     {
@@ -2949,8 +2965,9 @@
       "path": "src/options/glossary-ui.js",
       "sourceBlob": "43ac502cb583a98126cc70facba2ff00a71b9b15",
       "function": "Provider与设置",
-      "status": "待解释",
-      "documentation": null
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-glossary-ui",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/options/installed-pack-ui.js",
@@ -3226,11 +3243,13 @@
     {
       "path": "src/popup/preset-ui.js",
       "sourceBlob": "697e67062e3ead421d3901d9625356af7b30b842",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "function": "Provider与设置",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-preset-ui",
+      "reviewedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/startup.md#partial-files"
+      ]
     },
     {
       "path": "src/shared/appearance.js",
@@ -3248,7 +3267,8 @@
       "reviewedAt": "2026-10-03",
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
       "relatedDocumentation": [
-        "modules/startup.md#partial-files"
+        "modules/startup.md#partial-files",
+        "modules/providers-and-settings.md#partial-entry-router"
       ]
     },
     {
@@ -3303,9 +3323,10 @@
     {
       "path": "src/shared/glossary.js",
       "sourceBlob": "48368af7d5bf45f359fd7ba415cdcfa289e557a6",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": null
+      "function": "Provider与设置",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-glossary",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/hash.js",
@@ -3353,18 +3374,21 @@
     {
       "path": "src/shared/presets.js",
       "sourceBlob": "f72382eb4277ef25be41d328940a475ecbfd0bdb",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": null
+      "function": "Provider与设置",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-presets",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/provider-config.js",
       "sourceBlob": "e3da406d26fb881cafed340d0a6c124d2209a892",
-      "function": "启动与共享基础",
-      "status": "待解释",
-      "documentation": "modules/page-translation-cache.md#partial-router-config",
+      "function": "Provider与设置",
+      "status": "已解释",
+      "documentation": "modules/providers-and-settings.md#file-provider-config",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "relatedDocumentation": [
+        "modules/page-translation-cache.md#partial-router-config"
+      ]
     },
     {
       "path": "src/shared/reading/artifact.js",
@@ -3861,7 +3885,9 @@
       "sourceBlob": "ff1186a8deeff031bdb5382d9e12b295c2d4b951",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/helpers/mdd-fixture.mjs",
@@ -4005,7 +4031,9 @@
       "sourceBlob": "2f4347f0ab1b34ac2191be169b14d8f5f80f735f",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/mdd-format.test.mjs",
@@ -4072,7 +4100,9 @@
       "sourceBlob": "e98d724a8aaebc6aab2ba073ae03403e88f6f780",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/opfs-import-quarantine.test.mjs",
@@ -4114,14 +4144,18 @@
       "sourceBlob": "5edf8ef7095357a4477390a33c8bcf58dfafb037",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/provider-config.test.mjs",
       "sourceBlob": "9a24af8aa14de60eecb0c1f5b281f8b0b81b5b9e",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/provider-retry.test.mjs",
@@ -4130,14 +4164,19 @@
       "status": "待解释",
       "documentation": "modules/page-translation-cache.md#test-boundaries",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/providers-and-settings.md#test-boundaries"
+      ]
     },
     {
       "path": "tests/provider-structured-json.test.mjs",
       "sourceBlob": "260305dd12a83ac19e7fe5c02b2ccf82f45e5625",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/providers-and-settings.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/providers.test.mjs",
@@ -4146,7 +4185,10 @@
       "status": "待解释",
       "documentation": "modules/page-translation-cache.md#test-boundaries",
       "reviewedAt": "2026-10-03",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释"
+      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "relatedDocumentation": [
+        "modules/providers-and-settings.md#test-boundaries"
+      ]
     },
     {
       "path": "tests/reading-access-concurrency.test.mjs",

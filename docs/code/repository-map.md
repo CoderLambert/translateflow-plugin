@@ -1,12 +1,12 @@
 # 仓库逐文件地图
 
-[首页](README.md) · [总架构](architecture.md) · [启动功能链](features/extension-startup.md) · [划词查询链](features/selection-and-dictionary.md) · [导入与展示链](features/local-dictionary-import.md) · [网页翻译与缓存](features/page-translation.md) · [YouTube字幕](features/youtube-subtitles.md) · [机器可读覆盖清单](coverage.json)
+[首页](README.md) · [总架构](architecture.md) · [启动功能链](features/extension-startup.md) · [划词查询链](features/selection-and-dictionary.md) · [导入与展示链](features/local-dictionary-import.md) · [网页翻译与缓存](features/page-translation.md) · [YouTube字幕](features/youtube-subtitles.md) · [Provider与设置](features/providers-and-settings.md) · [机器可读覆盖清单](coverage.json)
 
 ## 范围与计算
 
 固定 main `d5e308a709c008acf6b277d466d020f13025bdca` 的完整递归 Git tree，truncated=false。仅计 type=blob，共 **636 个受版本管理文件**；无排除、无漏掉的二进制fixture。树节点/目录不计文件。新写的导读在独立分支，不混进该 main 分母。
 
-已解释 **70**，待解释 **566**；其中 **87** 个有局部功能边界说明，仍计待解释。逐文件源码 blob/大小/日期见 coverage.json。以下功能归类是定位提示，未读正文的项不声称已验证职责。测试/规范/数据也逐项保留，后续按其性质说明用途与边界，不将它们冒充运行时业务。
+已解释 **81**，待解释 **555**；其中 **87** 个有局部功能边界说明，仍计待解释。逐文件源码 blob/大小/日期见 coverage.json。以下功能归类是定位提示，未读正文的项不声称已验证职责。测试/规范/数据也逐项保留，后续按其性质说明用途与边界，不将它们冒充运行时业务。
 
 已解释文件的正文包含实现、状态、错误、安全与修改影响。未解释项提供固定源码链接作为定位入口；链接本身不算解释。
 
@@ -26,14 +26,14 @@
 | [manifest.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/manifest.json) | 扩展启动 | 已解释 · [逐文件说明](modules/startup.md#file-manifest) |
 | [options.css](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/options.css) | Provider与设置 | 待解释 |
 | [options.html](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/options.html) | Provider与设置 | 待解释 · [局部说明](modules/dictionary-import-render.md#partial-options) |
-| [options.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/options.js) | Provider与设置 | 待解释 |
+| [options.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/options.js) | Provider与设置 | 待解释 · [局部说明](modules/providers-and-settings.md#partial-entry-router) |
 | [package-lock.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package-lock.json) | 构建与开发流程 | 待解释 |
 | [package.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/package.json) | 构建与开发流程 | 待解释 · [局部说明](modules/startup.md#partial-files) |
 | [playwright.config.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/playwright.config.mjs) | 构建与开发流程 | 待解释 |
 | [popup-appearance.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/popup-appearance.js) | 启动与共享基础 | 待解释 · [局部说明](modules/startup.md#partial-files) |
 | [popup.css](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/popup.css) | 界面基础 | 待解释 |
 | [popup.html](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/popup.html) | 启动与共享基础 | 待解释 · [局部说明](modules/startup.md#partial-files) |
-| [popup.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/popup.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-entry) · [补充1](modules/startup.md#partial-files) |
+| [popup.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/popup.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-entry) · [补充1](modules/startup.md#partial-files) · [补充2](modules/providers-and-settings.md#partial-entry-router) |
 | [tsconfig.json](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tsconfig.json) | 构建与开发流程 | 待解释 |
 | [vitest.config.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/vitest.config.ts) | 构建与开发流程 | 待解释 |
 | [wxt.config.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/wxt.config.mjs) | 扩展启动 | 已解释 · [逐文件说明](modules/startup.md#file-wxt-config) |
@@ -177,7 +177,7 @@
 | [e2e/subtitles.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/subtitles.spec.mjs) | 测试与验证 | 待解释 · [局部说明](modules/youtube-subtitles.md#test-boundaries) |
 | [e2e/support/extension-fixture.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/support/extension-fixture.mjs) | 测试与验证 | 待解释 |
 | [e2e/support/mock-server.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/support/mock-server.mjs) | 测试与验证 | 待解释 |
-| [e2e/translateflow.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/translateflow.spec.mjs) | 测试与验证 | 待解释 · [局部说明](modules/page-translation-cache.md#test-boundaries) |
+| [e2e/translateflow.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/translateflow.spec.mjs) | 测试与验证 | 待解释 · [局部说明](modules/page-translation-cache.md#test-boundaries) · [补充1](modules/providers-and-settings.md#test-boundaries) |
 | [e2e/ui-locale.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/ui-locale.spec.mjs) | 测试与验证 | 待解释 |
 | [e2e/ui-redesign.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/ui-redesign.spec.mjs) | 测试与验证 | 待解释 |
 | [e2e/youtube-subtitles.spec.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/e2e/youtube-subtitles.spec.mjs) | 字幕 | 待解释 · [局部说明](modules/youtube-subtitles.md#test-boundaries) |
@@ -279,7 +279,7 @@
 | [src/background/auto-sites.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/auto-sites.js) | 扩展启动 | 已解释 · [逐文件说明](modules/startup.md#file-auto-sites) |
 | [src/background/cache-db.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/cache-db.js) | 网页翻译与缓存 | 已解释 · [逐文件说明](modules/page-translation-cache.md#file-cache-db) · [补充1](modules/selection.md#partial-provider-cache) |
 | [src/background/commands.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/commands.js) | 扩展启动 | 已解释 · [逐文件说明](modules/startup.md#file-commands) |
-| [src/background/config.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/config.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-router-config) · [补充1](modules/startup.md#partial-files) · [补充2](modules/selection.md#partial-provider-cache) |
+| [src/background/config.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/config.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-config) · [补充1](modules/startup.md#partial-files) · [补充2](modules/selection.md#partial-provider-cache) · [补充3](modules/page-translation-cache.md#partial-router-config) |
 | [src/background/index.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/index.js) | 扩展启动 | 已解释 · [逐文件说明](modules/startup.md#file-background-index) |
 | [src/background/lexical/active-opfs-reader.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/lexical/active-opfs-reader.js) | 划词与词典查询 | 待解释 |
 | [src/background/lexical/context-phrase.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/lexical/context-phrase.js) | 划词与词典查询 | 待解释 · [局部说明](modules/selection.md#partial-lexical) |
@@ -361,15 +361,15 @@
 | [src/background/packs/rich-mdict.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict.js) | 词典导入与资源 | 待解释 · [局部说明](modules/dictionary-import-render.md#partial-storage) · [补充1](modules/selection.md#partial-router) |
 | [src/background/packs/snapshot.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/snapshot.js) | 词典导入与资源 | 待解释 |
 | [src/background/packs/state.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/state.js) | 词典导入与资源 | 待解释 · [局部说明](modules/dictionary-import-render.md#partial-storage) |
-| [src/background/preset-session.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/preset-session.js) | 启动与共享基础 | 待解释 |
+| [src/background/preset-session.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/preset-session.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-session) |
 | [src/background/providers/curated-dictionary-network.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/curated-dictionary-network.js) | Provider与设置 | 待解释 |
 | [src/background/providers/deepseek.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/deepseek.js) | 网页翻译与缓存 | 已解释 · [逐文件说明](modules/page-translation-cache.md#file-deepseek) |
 | [src/background/providers/index.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/index.js) | 网页翻译与缓存 | 已解释 · [逐文件说明](modules/page-translation-cache.md#file-provider-index) · [补充1](modules/selection.md#partial-provider-cache) |
-| [src/background/providers/local-translation.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/local-translation.js) | Provider与设置 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-http) |
-| [src/background/providers/openai-compatible.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/openai-compatible.js) | Provider与设置 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-http) |
-| [src/background/providers/openai-sse.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/openai-sse.js) | Provider与设置 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-http) |
+| [src/background/providers/local-translation.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/local-translation.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-local) · [补充1](modules/page-translation-cache.md#partial-http) |
+| [src/background/providers/openai-compatible.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/openai-compatible.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-compatible) · [补充1](modules/page-translation-cache.md#partial-http) |
+| [src/background/providers/openai-sse.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/openai-sse.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-sse) · [补充1](modules/page-translation-cache.md#partial-http) |
 | [src/background/providers/pack-network.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/pack-network.js) | Provider与设置 | 待解释 |
-| [src/background/providers/shared.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/shared.js) | Provider与设置 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-http) |
+| [src/background/providers/shared.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/providers/shared.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-http) · [补充1](modules/page-translation-cache.md#partial-http) |
 | [src/background/reading-record/access.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/access.js) | Reading记录 | 待解释 |
 | [src/background/reading-record/export-reader.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/export-reader.js) | Reading记录 | 待解释 |
 | [src/background/reading-record/exports.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/exports.js) | Reading记录 | 待解释 |
@@ -384,7 +384,7 @@
 | [src/background/reading-record/storage-state.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/storage-state.js) | Reading记录 | 待解释 |
 | [src/background/reading-record/subscriptions.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/subscriptions.js) | Reading记录 | 待解释 |
 | [src/background/reading-record/write.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/reading-record/write.js) | Reading记录 | 待解释 |
-| [src/background/router.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/router.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-router-config) · [补充1](modules/startup.md#partial-files) · [补充2](modules/selection.md#partial-router) · [补充3](modules/dictionary-import-render.md#partial-router) · [补充4](modules/youtube-subtitles.md#partial-entry-router) |
+| [src/background/router.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/router.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-router-config) · [补充1](modules/startup.md#partial-files) · [补充2](modules/selection.md#partial-router) · [补充3](modules/dictionary-import-render.md#partial-router) · [补充4](modules/youtube-subtitles.md#partial-entry-router) · [补充5](modules/providers-and-settings.md#partial-entry-router) |
 | [src/background/selection/explain-prompt.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/selection/explain-prompt.js) | 划词与词典查询 | 已解释 · [逐文件说明](modules/selection.md#file-explain-prompt) |
 | [src/background/selection/explain.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/selection/explain.js) | 划词与词典查询 | 已解释 · [逐文件说明](modules/selection.md#file-explain) |
 | [src/background/selection/resolve.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/selection/resolve.js) | 划词与词典查询 | 已解释 · [逐文件说明](modules/selection.md#file-resolve) |
@@ -448,7 +448,7 @@
 | [src/options/curated-dictionary-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/curated-dictionary-ui.js) | Provider与设置 | 待解释 |
 | [src/options/curated-ecdict-mdx-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/curated-ecdict-mdx-ui.js) | Provider与设置 | 待解释 |
 | [src/options/dictionary-library-v2-presentation.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/dictionary-library-v2-presentation.js) | Provider与设置 | 待解释 |
-| [src/options/glossary-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/glossary-ui.js) | Provider与设置 | 待解释 |
+| [src/options/glossary-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/glossary-ui.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-glossary-ui) |
 | [src/options/installed-pack-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/installed-pack-ui.js) | Provider与设置 | 待解释 |
 | [src/options/local-dictionary-import-presentation.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/local-dictionary-import-presentation.js) | Provider与设置 | 待解释 · [局部说明](modules/dictionary-import-render.md#partial-options) |
 | [src/options/local-dictionary-import-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/local-dictionary-import-ui.js) | 词典导入与安全展示 | 已解释 · [逐文件说明](modules/dictionary-import-render.md#file-local-ui) |
@@ -485,9 +485,9 @@
 | [src/options/workers/stardict-import-worker-core.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/workers/stardict-import-worker-core.js) | 词典导入与资源 | 待解释 |
 | [src/options/workers/stardict-import-worker-protocol.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/workers/stardict-import-worker-protocol.js) | 词典导入与资源 | 待解释 |
 | [src/options/workers/stardict-import-worker.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/workers/stardict-import-worker.js) | 词典导入与资源 | 待解释 |
-| [src/popup/preset-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/popup/preset-ui.js) | 启动与共享基础 | 待解释 · [局部说明](modules/startup.md#partial-files) |
+| [src/popup/preset-ui.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/popup/preset-ui.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-preset-ui) · [补充1](modules/startup.md#partial-files) |
 | [src/shared/appearance.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/appearance.js) | 启动与共享基础 | 待解释 |
-| [src/shared/constants.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/constants.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-router-config) · [补充1](modules/startup.md#partial-files) |
+| [src/shared/constants.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/constants.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-router-config) · [补充1](modules/startup.md#partial-files) · [补充2](modules/providers-and-settings.md#partial-entry-router) |
 | [src/shared/curated-dictionaries.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/curated-dictionaries.js) | 启动与共享基础 | 待解释 |
 | [src/shared/curated-ecdict-mdx-recipe.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/curated-ecdict-mdx-recipe.js) | 启动与共享基础 | 待解释 |
 | [src/shared/dictionary-catalog-v2-artifacts.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/dictionary-catalog-v2-artifacts.js) | 启动与共享基础 | 待解释 |
@@ -495,15 +495,15 @@
 | [src/shared/dictionary-catalog-v2-schema.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/dictionary-catalog-v2-schema.js) | 启动与共享基础 | 待解释 |
 | [src/shared/dictionary-catalog-v2-utils.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/dictionary-catalog-v2-utils.js) | 启动与共享基础 | 待解释 |
 | [src/shared/dictionary-catalog-v2.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/dictionary-catalog-v2.js) | 启动与共享基础 | 待解释 |
-| [src/shared/glossary.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/glossary.js) | 启动与共享基础 | 待解释 |
+| [src/shared/glossary.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/glossary.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-glossary) |
 | [src/shared/hash.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/hash.js) | 网页翻译与缓存 | 已解释 · [逐文件说明](modules/page-translation-cache.md#file-hash) |
 | [src/shared/import-quarantine-contract.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/import-quarantine-contract.js) | 启动与共享基础 | 待解释 |
 | [src/shared/lexical.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/lexical.js) | 启动与共享基础 | 待解释 |
 | [src/shared/opfs-import-quarantine.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/opfs-import-quarantine.js) | 启动与共享基础 | 待解释 |
 | [src/shared/pack-manager.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/pack-manager.js) | 启动与共享基础 | 待解释 |
 | [src/shared/pack-sources.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/pack-sources.js) | 启动与共享基础 | 待解释 |
-| [src/shared/presets.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/presets.js) | 启动与共享基础 | 待解释 |
-| [src/shared/provider-config.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/provider-config.js) | 启动与共享基础 | 待解释 · [局部说明](modules/page-translation-cache.md#partial-router-config) |
+| [src/shared/presets.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/presets.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-presets) |
+| [src/shared/provider-config.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/provider-config.js) | Provider与设置 | 已解释 · [逐文件说明](modules/providers-and-settings.md#file-provider-config) · [补充1](modules/page-translation-cache.md#partial-router-config) |
 | [src/shared/reading/artifact.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/artifact.js) | Reading记录 | 待解释 |
 | [src/shared/reading/constants.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/constants.js) | Reading记录 | 待解释 |
 | [src/shared/reading/dto.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/shared/reading/dto.js) | Reading记录 | 待解释 |
@@ -577,7 +577,7 @@
 | [tests/freedict-product-gate.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/freedict-product-gate.test.mjs) | 测试与验证 | 待解释 |
 | [tests/freedict-source-audit.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/freedict-source-audit.test.mjs) | 测试与验证 | 待解释 |
 | [tests/freedict-source-lock.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/freedict-source-lock.test.mjs) | 测试与验证 | 待解释 |
-| [tests/glossary.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/glossary.test.mjs) | 测试与验证 | 待解释 |
+| [tests/glossary.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/glossary.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/providers-and-settings.md#test-boundaries) |
 | [tests/helpers/mdd-fixture.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/helpers/mdd-fixture.mjs) | 测试与验证 | 待解释 |
 | [tests/helpers/mdict-fixture.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/helpers/mdict-fixture.mjs) | 测试与验证 | 待解释 |
 | [tests/helpers/rich-mdict-fixture.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/helpers/rich-mdict-fixture.mjs) | 测试与验证 | 待解释 |
@@ -597,7 +597,7 @@
 | [tests/local-dictionary-preflight.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/local-dictionary-preflight.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/dictionary-import-render.md#test-boundaries) |
 | [tests/local-import-display.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/local-import-display.test.mjs) | 测试与验证 | 待解释 |
 | [tests/local-tflex-import.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/local-tflex-import.test.mjs) | 测试与验证 | 待解释 |
-| [tests/local-translation.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/local-translation.test.mjs) | 测试与验证 | 待解释 |
+| [tests/local-translation.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/local-translation.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/providers-and-settings.md#test-boundaries) |
 | [tests/mdd-format.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/mdd-format.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/dictionary-import-render.md#test-boundaries) |
 | [tests/mdd-security.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/mdd-security.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/dictionary-import-render.md#test-boundaries) |
 | [tests/mdict-browser-import.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/mdict-browser-import.test.mjs) | 测试与验证 | 待解释 |
@@ -606,17 +606,17 @@
 | [tests/mdict-import-poc.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/mdict-import-poc.test.mjs) | 测试与验证 | 待解释 |
 | [tests/multi-dictionary-viewer.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/multi-dictionary-viewer.test.mjs) | 测试与验证 | 待解释 |
 | [tests/offline-dictionary-beta-certification.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/offline-dictionary-beta-certification.test.mjs) | 测试与验证 | 待解释 |
-| [tests/openai-sse.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/openai-sse.test.mjs) | 测试与验证 | 待解释 |
+| [tests/openai-sse.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/openai-sse.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/providers-and-settings.md#test-boundaries) |
 | [tests/opfs-import-quarantine.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/opfs-import-quarantine.test.mjs) | 测试与验证 | 待解释 |
 | [tests/opfs-indexed-reader.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/opfs-indexed-reader.test.mjs) | 测试与验证 | 待解释 |
 | [tests/opfs-pack-store.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/opfs-pack-store.test.mjs) | 测试与验证 | 待解释 |
 | [tests/pack-network.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/pack-network.test.mjs) | 测试与验证 | 待解释 |
 | [tests/popup-ux.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/popup-ux.test.mjs) | 测试与验证 | 待解释 |
-| [tests/presets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/presets.test.mjs) | 测试与验证 | 待解释 |
-| [tests/provider-config.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/provider-config.test.mjs) | 测试与验证 | 待解释 |
-| [tests/provider-retry.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/provider-retry.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/page-translation-cache.md#test-boundaries) |
-| [tests/provider-structured-json.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/provider-structured-json.test.mjs) | 测试与验证 | 待解释 |
-| [tests/providers.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/providers.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/page-translation-cache.md#test-boundaries) |
+| [tests/presets.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/presets.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/providers-and-settings.md#test-boundaries) |
+| [tests/provider-config.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/provider-config.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/providers-and-settings.md#test-boundaries) |
+| [tests/provider-retry.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/provider-retry.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/page-translation-cache.md#test-boundaries) · [补充1](modules/providers-and-settings.md#test-boundaries) |
+| [tests/provider-structured-json.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/provider-structured-json.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/providers-and-settings.md#test-boundaries) |
+| [tests/providers.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/providers.test.mjs) | 测试与验证 | 待解释 · [局部说明](modules/page-translation-cache.md#test-boundaries) · [补充1](modules/providers-and-settings.md#test-boundaries) |
 | [tests/reading-access-concurrency.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-access-concurrency.test.mjs) | 测试与验证 | 待解释 |
 | [tests/reading-access-inline.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-access-inline.test.mjs) | 测试与验证 | 待解释 |
 | [tests/reading-access-postmerge.test.mjs](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/tests/reading-access-postmerge.test.mjs) | 测试与验证 | 待解释 |

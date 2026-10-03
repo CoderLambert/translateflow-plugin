@@ -2,7 +2,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存和YouTube字幕功能链；大型依赖的内部覆盖以清单为准。
+源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕和Provider/设置功能链；大型依赖的内部覆盖以清单为准。
 
 ## 先区分五种运行环境
 
@@ -44,7 +44,7 @@
 
 ## 当前缺口
 
-启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储的局部依赖、设置、Reading和构建测试仍待继续；网页翻译/缓存与YouTube字幕已有对应功能章。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储及设置大入口的局部依赖、Reading和构建测试仍待继续；网页翻译/缓存、YouTube字幕和Provider/设置已有功能章。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -80,3 +80,12 @@ DOM候选→有限行内marker→去重分批→缓存查询→缺失时Provider
 播放器请求经MAIN旁路观察和有限协议进入ISOLATED，依次选择当前代MAIN timedtext、真实active TextTrack、DOM文本，再稳定化、去重、限队列分批。后台单批只解析一次有效配置，查缓存、调用Provider并写回；renderer使用textContent显示。签名字幕URL不重放。
 
 视频切换有媒体代与本地任务过期保护，但这不等于同视频所有cue/切轨时序均正确，也不等于后台缓存阶段可撤销。original模式仍进入翻译；off仅阻止新ingest，不能称队列及在途调用已取消。这些静态边界与现有合成测试范围均在功能章明确，实际网站与竞态验证NOT_RUN。
+
+
+## Provider与设置如何决定实际请求
+
+[完整流程](features/providers-and-settings.md) · [11个逐文件说明](modules/providers-and-settings.md)
+
+Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；后台按字段组合站点覆盖、临时Preset和Glossary，再交Provider适配。临时Preset按规范化站点会话共享，不是单tab私有；Effective Context不返回凭据。
+
+测试连接先保存表单，失败不回滚；测试成功不证明站点配置、翻译id完整性、流式和DOM可用。普通HTTP、SSE及本地模型分支的重试、格式检查和取消覆盖范围不同，不能用单一“自动重试/取消”概括。网页配置快照风险仍未修复；细节及测试缺口均为静态分析，NOT_RUN。
