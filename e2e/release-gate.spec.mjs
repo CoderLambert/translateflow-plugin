@@ -38,7 +38,7 @@ test.describe("v0.8 release-gate browser flows", () => {
     expect(harness.server.calls).toHaveLength(1);
   });
 
-  test("Popup release layout stays readable at normal extension width", async ({ harness }) => {
+  test("Popup release layout stays readable at normal extension width", async ({ harness }, testInfo) => {
     const popup = harness.driver;
     await popup.setViewportSize({ width: 420, height: 720 });
     await popup.reload();
@@ -61,6 +61,19 @@ test.describe("v0.8 release-gate browser flows", () => {
     expect(appearanceBox?.width || 0).toBeGreaterThanOrEqual(120);
     await expect(popup.locator("details[open]")).toHaveCount(0);
     await expect(popup.locator(".tf-button--primary")).toHaveCount(1);
+
+    const learning = popup.locator("#learningCenter");
+    await expect(popup.locator(".popup-header #learningCenter")).toHaveCount(0);
+    await expect(learning).toBeVisible();
+    const [headerBox, learningBox, primaryBox] = await Promise.all([
+      popup.locator(".popup-header").boundingBox(),
+      learning.boundingBox(),
+      popup.locator(".primary-section").boundingBox()
+    ]);
+    expect(learningBox?.width || 0).toBeGreaterThanOrEqual(328);
+    expect(learningBox?.y || 0).toBeGreaterThanOrEqual((headerBox?.y || 0) + (headerBox?.height || 0));
+    expect((learningBox?.y || 0) + (learningBox?.height || 0)).toBeLessThanOrEqual(primaryBox?.y || 0);
+    await popup.screenshot({ path: testInfo.outputPath("popup-learning-center-layout.png"), fullPage: true });
   });
 
   test("Quick Control remains dismissible and readable in dark mode", async ({ harness }) => {
