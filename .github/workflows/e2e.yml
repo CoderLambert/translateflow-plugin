@@ -1,31 +1,7 @@
 name: e2e
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - "manifest.json"
-      - "background.js"
-      - "content.js"
-      - "content.css"
-      - "popup.*"
-      - "options.*"
-      - "src/**"
-      - "e2e/**"
-      - "playwright.config.mjs"
-      - "entrypoints/**"
-      - "wxt.config.mjs"
-      - "tsconfig.json"
-      - "vitest.config.ts"
-      - "tests/unit/**"
-      - "scripts/check.mjs"
-      - "scripts/source-boundaries.mjs"
-      - "scripts/*wxt*.mjs"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/e2e.yml"
-      - "docs/DICTIONARY_SOURCE_FREEZE.md"
+  workflow_dispatch:
 
 permissions:
   contents: read

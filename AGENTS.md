@@ -1,7 +1,7 @@
 # AGENTS.md — TranslateFlow
 
 本文件是仓库级 Agent 工作约定，适用于本仓库的开发、修复、审核和文档任务。
-长期规则放在这里；当前任务范围与验收标准放在 GitHub Issue；专项流程放在实际存在的 Skill 中。
+长期规则放在这里；当前任务范围与验收标准放在 docs/tasks/<id>/task.md；专项流程放在实际存在的 Skill 中。
 默认用中文说明方案、进度与结果，保留代码标识符、命令和既有文件的语言风格。
 
 ## Personal working agreements and Agent role mapping
@@ -55,11 +55,11 @@ git rev-parse HEAD origin/main
 
 1. 本文件，以及目标目录中实际存在、适用的更具体 Agent 指令。
 2. [README.md](README.md)、[CONTRIBUTING.md](CONTRIBUTING.md)、[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、[package.json](package.json)。
-3. 当前 Issue 的正文、最新有效决策、依赖、验收标准，以及相关 open PR / CI / 实际代码与测试。
+3. 当前本地任务的 task.md、state.json、依赖、验收/审核证据，以及实际代码与测试；日常不查询 GitHub Issue、评论、标签、CI 状态接口。
 4. 受影响模块的规范文档；不要为了一个局部修改遍历所有历史 Issue 或加载所有文档。
 
-GitHub Issue 定义任务目标，代码与测试说明现有行为，架构文档约束实现方式。出现冲突时记录差异，不用其中一个静默覆盖另一个。
-用户明确给出的局部任务可直接作为本次范围；进入持续开发队列的任务按 CONTRIBUTING 补齐 Issue 契约。
+本地 task.md 定义任务目标，代码与测试说明现有行为，架构文档约束实现方式。出现冲突时记录差异，不用其中一个静默覆盖另一个。
+用户明确给出的局部任务可直接作为本次范围；进入持续开发队列的任务按 CONTRIBUTING 补齐本地任务契约。
 遇到无关缺陷记录后继续；只有影响正确性、安全性、授权或硬依赖的阻塞才暂停受影响的工作。
 
 ## 3. 模块导航与归属
@@ -161,12 +161,12 @@ npm run validate
 | 富文本查询取消 | `npm run test:rich-lookup-cancellation` |
 | 富文本词典浏览器路径 | `npm run test:e2e:rich-mdict` |
 
-- 提交前运行 `npm run validate`；开发中可先执行受影响测试缩短反馈周期。浏览器变化增加适用 E2E，词典/发布变化再按 Issue 与当前脚本运行对应认证，不给所有小任务附加整套发布流程。
+- 提交前运行 `npm run validate`；开发中可先执行受影响测试缩短反馈周期。浏览器变化增加适用 E2E，词典/发布变化再按本地任务与当前脚本运行对应认证，不给所有小任务附加整套发布流程。
 - `setup:lexicon` 涉及下载与 source-lock 校验；纯文档或无关修复不必运行。普通构建成功不能证明真实词典资源已就绪。
 - E2E 使用仓库 mock Provider、合成 fixture 和临时扩展副本，不需要真实 API Key。额外 localhost 权限只能加在测试副本。
 - 断言可观测结果、请求次数和明确状态，不用固定 sleep 或放宽断言掩盖竞态。测试隔离同时考虑 storage 与 IndexedDB。
 - E2E mock、真实网页手工验证、真实词典兼容性和发布认证是不同证据，不互相替代。
-- 纯文档改动也要校对路径、命令、状态语义和交叉引用。网络、依赖、浏览器或权限导致检查无法运行时，报告 `NOT RUN` / `BLOCKED` 和原因，不伪造 PASS、不跳过断言或关闭 CI。
+- 纯文档改动也要校对路径、命令、状态语义和交叉引用。网络、依赖、浏览器或权限导致检查无法运行时，报告 `NOT RUN` / `BLOCKED` 和原因，不伪造 PASS、不跳过断言或削弱检查。
 
 浏览器准备、fixture 和测试隔离见 [docs/E2E.md](docs/E2E.md)。
 
@@ -175,10 +175,10 @@ npm run validate
 完整流程以 [CONTRIBUTING.md](CONTRIBUTING.md) 为准，不创造第二套状态机。
 
 - 开发默认从最新 `origin/main` 建立聚焦分支，PR base 为 `main`；操作前核对现有 branch / open PR，避免重复实现。写入、合并与发布均不得超过当前授权。
-- 编码前写清目标、范围、依赖、修改模块和验收方式；Issue 的执行状态由一个协调者管理，不覆盖其他人的有效领取记录。
-- `agent-ready` 与 `blocked` 互斥；不要领取已被其他 Agent 标记为 `state:working`、`state:auditing` 或 `state:improving` 的任务。
-- `state:implemented` / `state:improved` 按现有约定表示对应实现/修复已合入 `main`、等待审核；本地写完、PR 创建或 CI 通过都不能替代合入事实。
-- Issue 关闭、PR 合并、独立审核通过和发布认证是不同状态；关闭 Issue 不等于可以标记 `state:audited`。
+- 编码前写清目标、范围、依赖、修改模块和验收方式；本地 state.json 由主 Agent 单写，子 Agent 只报告结果。有真实占用先协调。
+- 本地状态使用 working / reviewing / changes_requested / ready_to_sync / completed / paused / blocked；索引由 state.json 生成，不手工维护第二份状态。
+- 本地实现、验证或审核通过不等于合入；completed 必须核对实际 main 合入与任务全部要求，mergeHead 记录真实提交。发布认证和商店发布另有授权。
+- 本地验收与独立审核绑定同一 candidateHead；证据归档后的 syncHead 只允许精确元数据差异，脚本验证合同/源码/测试/构建输入未变。任何实现变化均重新冻结，按影响重验与独审。
 - 对已获明确委派授权、复杂且可独立拆分的任务，可并行处理：主 Agent 管范围、依赖和集成；实现 Agent 各自拥有明确文件范围和独立工作区；reviewer 只读审核。否则由主 Agent 顺序执行，不虚构分工或独立审核。
 - 每个子任务给出输入、输出、文件所有权、禁止修改区域和验收命令。共享 contract、manifest、package、router、全局样式等高冲突文件指定单一写入者；需要越界时交回协调者处理。
 - 不同实现者使用独立 branch/worktree；禁止在共享工作区替别人切分支、覆盖未提交改动或合入未审核的陈旧整条分支。
@@ -189,17 +189,17 @@ npm run validate
 
 - 对照任务验收标准检查真实 diff 和调用路径；代码能运行不等于解决了用户问题。每个发现给出位置、触发条件、影响和建议修复，区分已证实缺陷与待验证假设。
 - 重点检查：重复状态/配置、Provider 与缓存身份不一致、隐式联网、权限扩大、词典/HTML 输入安全、旧结果回写、取消竞态、资源泄漏、迁移数据丢失、打包越界及用户无法恢复的流程。
-- 审核结论绑定准确 commit/head SHA；变更后必须审查增量并重跑受影响验证，不能把旧 head 的 CI/审核当作新 head 的证明。
-- 实现者自查不能冒充独立审核。无独立 reviewer 时明确标记待审，不伪造 approval 或 `state:audited`。
-- 使用既有 squash-merge 约定；合并前重新读取目标 head 与 required checks，使用 expected-head 保护（工具支持时）。CI 未通过、存在冲突或未满足明确 gate 时不合并。
+- 审核结论绑定准确 commit/head SHA；变更后必须审查增量并重跑受影响验证，不能把旧 head 的验收/审核当作新 head 的证明。
+- 实现者自查不能冒充独立审核。无独立 reviewer 时明确标记待审，不伪造 approval 或本地审核通过。
+- 使用既有 squash-merge 约定；本地 gate 通过后核对准确远端 head，使用 expected-head 保护（工具支持时）。存在冲突、实际分支保护/必需审查/人工验收或本地门槛未满足时不合并；不查询日常远端 CI 状态，更不能忽略保护要求。
 - 优先报告真实功能、数据、安全和用户体验风险；不要用纯风格偏好阻塞任务，也不要修改规则或测试来证明自己的实现正确。
 
 ## 10. 交付与规则维护
 
-交付至少说明：用户现在能做什么；修改了哪些关键模块；实际执行的命令与结果；未验证内容/风险；适用的 branch、commit、PR、Issue 与剩余阻塞。
+交付至少说明：用户现在能做什么；修改了哪些关键模块；实际执行的命令与结果；未验证内容/风险；适用的本地任务、branch、candidate/sync/merge commit、PR 与剩余阻塞。
 界面变更在具备浏览器环境时补充截图或真实交互证据；不把设计描述当作已经验证的效果。
 
 契约或用户操作路径变化时同步相应规范文档，不复制整套方案到多个地方。
 仅在当前分支确实存在 `.agents/skills/**/SKILL.md`、且任务匹配时加载相应 Skill；存在 `docs/AGENT_SKILLS.md` 时按其路由规则使用。缺少 Skill 不阻塞常规工作，不假设未合并分支上的文件可用。
 
-本文件只保留稳定、可执行的规则。不要写入易过期的 Issue 清单、当前 SHA、测试数量、模型名称或发布进度；这些放在 Issue/PR/专门证据文档中。修改规范不得作为绕过已有约束的手段。
+本文件只保留稳定、可执行的规则。不要写入易过期的 Issue 清单、当前 SHA、测试数量、模型名称或发布进度；这些放在本地任务/专门证据文档中。修改规范不得作为绕过已有约束的手段。

@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
-export const STAGES = new Set(["baseline", "experiment", "implementation", "validation", "review", "fix", "ci", "merge", "checkpoint"]);
+export const STAGES = new Set(["baseline", "experiment", "implementation", "validation", "review", "fix", "ci", "sync", "merge", "checkpoint"]);
 export const RESULTS = new Set(["pass", "fail", "paused", "blocked"]);
 export const HOOK_EVENTS = new Set(["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PermissionRequest", "SubagentStart", "SubagentStop", "PreCompact", "PostCompact", "Stop", "Interrupt"]);
 const ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/u;
@@ -37,7 +37,8 @@ export function gitSnapshot(root) {
 }
 
 function safeRead(file) {
-  const fd = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+  if (lstatSync(file).isSymbolicLink()) throw new Error("Unsafe log file");
+  const fd = openSync(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const stat = fstatSync(fd);
     if (!stat.isFile() || stat.size > 64 * 1024 * 1024) throw new Error("Invalid log file");
@@ -77,7 +78,9 @@ export function createRecorder(root) {
       task: ctx.task, attempt: ctx.attempt, stage: ctx.stage, type,
       declaredRole: ctx.role, head: ctx.head, dirty: ctx.dirty, ...details
     };
-    const fd = openSync(join(directory, `${ctx.task}.jsonl`), constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | constants.O_NOFOLLOW, 0o600);
+    const file = join(directory, `${ctx.task}.jsonl`);
+    if (existsSync(file) && lstatSync(file).isSymbolicLink()) throw new Error("Unsafe log file");
+    const fd = openSync(file, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0), 0o600);
     try {
       if (!fstatSync(fd).isFile()) throw new Error("Invalid log file");
       // One bounded append per event; concurrent hooks don't rewrite shared state.

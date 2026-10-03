@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "task": "234",
+  "status": "paused",
+  "owner": "main",
+  "dependencies": [
+    "231",
+    "233"
+  ],
+  "branch": "feat/234-reading-selection",
+  "worktree": ".worktrees/issue-234",
+  "candidateHead": "f910e990a1ba7ef5e58250b99460a52e1128ece0",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "恢复时保留现有修改，完成最新修复的定向测试、完整 validate、实际 WXT E2E，再冻结与独立审核。"
+}

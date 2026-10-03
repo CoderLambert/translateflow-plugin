@@ -12,7 +12,7 @@
 
 ## 每个任务的使用
 
-每个 worktree 同时只维护一个活动任务上下文，阶段由协调者切换；并行实现仍使用各自独立、持久的 worktree。任务 ID 使用 Issue 编号或短标识，不填用户原文、私人路径或自由文本。角色参数是声明值，与 native hook 观测到的模型/角色字段分开。
+每个 worktree 同时只维护一个活动任务上下文，阶段由协调者切换；并行实现仍使用各自独立、持久的 worktree。任务 ID 使用本地任务编号或短标识，不填用户原文、私人路径或自由文本。角色参数是声明值，与 native hook 观测到的模型/角色字段分开。
 
 开始任务时，在已有基线检查命令中附加一次：
 
@@ -27,7 +27,7 @@ node scripts/task-execution.mjs stage implementation
 node scripts/task-execution.mjs stage validation
 ```
 
-支持阶段：`baseline`、`experiment`、`implementation`、`validation`、`review`、`fix`、`ci`、`merge`、`checkpoint`。不需要为每个文件或普通步骤创建阶段。
+支持阶段：`baseline`、`experiment`、`implementation`、`validation`、`review`、`fix`、`sync`、`merge`（历史 `ci` 仍可读取）、`checkpoint`。不需要为每个文件或普通步骤创建阶段。
 
 验证命令使用 wrapper，自动记录开始、结束、单调时钟耗时和真实退出码，并原样传递输出与参数：
 
@@ -45,7 +45,7 @@ node scripts/task-execution.mjs stage checkpoint
 node scripts/task-execution.mjs finish paused
 ```
 
-结果可用 `pass`、`fail`、`paused`、`blocked`，是协调者声明，不改变 GitHub 标签、审查或合并资格。`Stop` 只表示会话回合结束，不能自动判定任务完成。已有活动任务时重复 start 会失败，防止静默覆盖；finish 后再次 start 同任务会创建新的 attempt。
+结果可用 `pass`、`fail`、`paused`、`blocked`，是协调者声明，不改变本地状态、审查或合并资格。`Stop` 只表示会话回合结束，不能自动判定任务完成。已有活动任务时重复 start 会失败，防止静默覆盖；finish 后再次 start 同任务会创建新的 attempt。
 
 ## 按需统计
 
@@ -83,3 +83,9 @@ node scripts/task-execution.mjs report issue-234 > docs/task-execution/reports/i
 `local/`、`reports/` 默认 Git 忽略，免除频繁提交/CI 和自动上下文增长；源码、模板和操作文档正常受版本控制。需要分享汇总时先审核内容，再精确提交选定文件；不批量公开原始日志。docs/scripts/.codex 不属于实际 legacy/WXT 扩展输入。
 
 历史任务不回填猜测数据。本次工具完成后开始的记录只能证明从实际 start 开始的过程。hook 本身仍有 Node 启动与少量文件 I/O 成本，不宣称零延迟；它不增加模型调用。若记录失败，保留 UNKNOWN/未匹配状态并检查权限，不能把缺失记录当成功。
+
+## 本地验收接入
+
+冻结、实际命令验收、产物指纹和 gate 使用 [tasks/LOCAL_WORKFLOW.md](tasks/LOCAL_WORKFLOW.md) 的 local-task.mjs。它保存本地完整验证日志和每次真实耗时；不要再用 task-execution wrapper 包住它重复计算命令时长。原生 hooks 单独观测工具跨度，两种跨度不相加。日志捕获只用于已审核的验证命令、mock Provider 和合成数据，不用于认证、真实用户数据或付费请求。
+
+原生 hook 模板使用 POSIX shell 的 Git root 替换语法；Windows command hook 安装 NOT VERIFIED，不宣称跨平台。Windows 的不跟随链接 flag 缺失时采用显式 lstat 检查，不宣称抵抗恶意并发文件系统竞态。SessionEnd/Interrupt 的超时设为 3 秒；定义改变后须在 CLI /hooks 重新审阅。会话是否加载新定义以实际原生事件为证，不影响本地 CLI 验收。

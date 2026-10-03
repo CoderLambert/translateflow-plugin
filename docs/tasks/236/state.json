@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "task": "236",
+  "status": "blocked",
+  "owner": "main",
+  "dependencies": [
+    "234",
+    "235"
+  ],
+  "branch": null,
+  "worktree": null,
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+}

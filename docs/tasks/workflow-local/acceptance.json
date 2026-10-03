@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "task": "workflow-local",
+  "candidateHead": null,
+  "checks": [],
+  "artifact": null,
+  "limitations": [
+    "NOT RUN for current candidate."
+  ]
+}
