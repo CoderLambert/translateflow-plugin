@@ -5,16 +5,17 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROOT, legacyAssetRoots, sourceClosure, lexicalAssetFiles, byteSummary } from "./wxt-assets.mjs";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
+import { projectProductionManifest } from "./production-manifest.mjs";
 import { checkManifestLocales } from "./i18n-locales.mjs";
 
 export function assertProductionManifest(manifest, baseline) {
-  assert.deepEqual(manifest, baseline, "Production WXT Manifest must equal the baseline exactly");
+  assert.deepEqual(manifest, projectProductionManifest(baseline), "Production WXT Manifest must equal the approved static Content projection");
 }
 
 export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome-mv3"), reportDir = resolve(ROOT, ".wxt/reports") } = {}) {
   const manifest = JSON.parse(await readFile(resolve(output, "manifest.json"), "utf8"));
   const baseline = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
-  // No permission, registration, options semantics or identity differences are approved here.
+  // Static Content injection is the only approved build-time projection.
   assertProductionManifest(manifest, baseline);
   const legacy = await sourceClosure(legacyAssetRoots());
   const lexical = await lexicalAssetFiles();
@@ -96,7 +97,7 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   const uiClosure = compiledClosure((await Promise.all(Object.values(EXTENSION_PAGES).map(pageRoots))).flat());
   uiClosure.htmlBytes = Object.values(EXTENSION_PAGES).reduce((sum, path) => sum + sizes.get(path), 0);
   uiClosure.bytes += uiClosure.htmlBytes;
-  const report = { status: "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: [],
+  const report = { status: "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: ["content_scripts"],
     legacyFiles: legacy.length, lexicalMissing: lexical.missing, ...summary,
     codeBudgetBytes, platformCodeBytes, learningClosure: { files: learningExclusive.map(entry => entry.path), bytes: learningBytes }, backgroundClosure, uiClosure,
     compiledOutputs: compiled.map((item) => ({ fileName: item.fileName, type: item.type })) };

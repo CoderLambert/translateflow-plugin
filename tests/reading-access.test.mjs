@@ -139,14 +139,25 @@ test("Legacy Content identity requires controlled frame0 session; navigation/res
 test("A native Popup context with tabId -1 can fixed-open but closed context never stays current", async () => {
   const browser = nativeBrowser(), context = (await browser.runtime.getContexts())[0];
   const sender = extensionSender({ url: browser.runtime.getURL("popup.html") });
-  browser.runtime.getContexts = async () => [{ ...context, contextType: "POPUP", documentUrl: sender.url, tabId: -1 }];
+  const popupContext = { ...context, contextType: "POPUP", documentUrl: sender.url, tabId: -1 };
+  delete sender.documentId;
+  delete sender.frameId;
+  sender.origin = new URL(sender.url).origin;
+  let popupOpen = true;
+  browser.runtime.getContexts = async () => popupOpen ? [popupContext] : [];
   const control = createReadingAccess({ browser }), access = await control.authorize(sender, M.OPEN_LEARNING_CENTER, request(M.OPEN_LEARNING_CENTER));
   assert.equal(access.scope, "entry"); assert.equal(access.tabId, -1); assert.equal(control.isCurrent(access), true);
   await control.validateCurrent(access);
+  browser.tabs.create = async ({ url }) => {
+    assert.equal(url, browser.runtime.getURL("learning-center.html"));
+    popupOpen = false; // A real toolbar Popup closes when the new tab takes focus.
+    return { id: 99, url };
+  };
   const service = createReadingService({ browser, repository: repositoryDouble(), learningCenterAvailable: true });
   assert.equal((await service.handle(request(M.OPEN_LEARNING_CENTER), sender)).ok, true);
-  assert.equal((await service.handle(request(M.LIST_RECORDS), sender)).error.code, E.FORBIDDEN);
-  browser.runtime.getContexts = async () => [];
+  popupOpen = true;
+  assert.equal((await service.handle(request(M.LIST_RECORDS), sender)).error.code, E.CAPABILITY_LIMITED);
+  popupOpen = false;
   await rejects(() => control.validateCurrent(access), E.FORBIDDEN);
 });
 

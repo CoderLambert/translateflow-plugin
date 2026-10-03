@@ -22,7 +22,7 @@ This file is the release-certification record for Issue #28.
 | Settings | `e2e/settings-ia.spec.mjs` + UI certification responsive/focus coverage | PASS on integrated main |
 | YouTube acquisition | `e2e/subtitles.spec.mjs` MAIN timedtext, human/ASR, track change, A→B stale reject, fallbacks | PASS on integrated main |
 | YouTube pipeline/renderer | subtitle pipeline + renderer cache/failure/preset/size tests | PASS on integrated main |
-| Permissions | production manifest + registration/command tests | PASS; no broad required site permission |
+| Permissions | production manifest + registration/command tests | SUPERSEDED; all ordinary `http/https` pages are now required for automatic Selection startup |
 
 Integrated main evidence before the release-metadata commit:
 
@@ -72,11 +72,11 @@ The waiver applies to v0.8 release certification only. It does not convert unexe
 
 ## Permissions/privacy
 
-Production `manifest.json` remains intentionally narrow:
+The original v0.8 release used optional per-site grants. The current production contract was later expanded by explicit maintainer authorization so Selection is available as soon as a normal web page opens:
 
 - required permissions: `storage`, `activeTab`, `scripting`;
-- required host permission: DeepSeek API only;
-- site/API origins are declared optional and granted after user action;
+- required host permissions: DeepSeek API plus `http://*/*` and `https://*/*`;
+- the ordered Content Script bundle is statically injected at `document_idle` on ordinary web pages;
 - no required `<all_urls>`;
 - no required YouTube host permission;
 - no third-party subtitle service;
@@ -92,7 +92,7 @@ Production `manifest.json` remains intentionally narrow:
 - Post-merge main E2E #111: **PASS**
 - Maintainer authorization: remaining manual/interactive rows explicitly waived for the v0.8 merge after automated gate health was confirmed.
 - Production required permissions remain `storage`, `activeTab`, `scripting`.
-- Production required Host Permission remains DeepSeek API only; site origins remain optional/user-triggered.
+- The original merge used optional site origins; the current Manifest supersedes that evidence with required `http://*/*` and `https://*/*` access for automatic Selection startup.
 
 ## Merge gate — completed
 

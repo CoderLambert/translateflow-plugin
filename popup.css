@@ -131,6 +131,61 @@ select {
   color: var(--tf-green-900);
 }
 
+.learning-center-nav {
+  min-width: 0;
+}
+
+.learning-center-link {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-sm);
+  background: color-mix(in srgb, var(--tf-green-50) 74%, var(--tf-bg-card));
+  box-shadow: var(--tf-shadow-xs);
+  color: var(--tf-text-strong);
+  font-size: 13px;
+  font-weight: 690;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.learning-center-link::before {
+  content: "▤";
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--tf-green-100);
+  color: var(--tf-green-800);
+  font-size: 14px;
+}
+
+.learning-center-link::after {
+  content: "›";
+  color: var(--tf-green-700);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.learning-center-link:hover {
+  border-color: color-mix(in srgb, var(--tf-green-600) 28%, var(--tf-border-main));
+  background: var(--tf-green-100);
+}
+
+.learning-center-link:focus-visible {
+  outline: none;
+  box-shadow: var(--tf-focus-ring);
+}
+
 .page-card,
 .control-card,
 .secondary-card {

@@ -26,7 +26,7 @@ content scripts -> messages -> background router
 1. `src/shared/` 是纯合同/纯函数层，不访问 `chrome.*` 或 `browser.*`，也不能通过间接依赖引入它们。
 2. 外部 HTTP 只能位于 `src/background/providers/`。
 3. 翻译缓存 IndexedDB 仅由 `src/background/cache-db.js` 直接访问；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。其它 Reading 后台模块调用唯一 adapter，Content 与扩展 UI 只能走后台 v2 消息，不能直接或间接引入 adapter。两库不互相迁移或清空；词典 OPFS 独立。
-4. 动态 Content Script 注册只能位于 `src/background/auto-sites.js`。
+4. 普通 `http/https` 页面的 Content Script 由生产 Manifest 静态声明；`src/background/auto-sites.js` 只维护按站点模式状态并清理旧动态注册。若未来恢复动态注册，其唯一所有者仍是该模块。
 5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
    Reading 的 Content 接口由 `scripts/reading-contract-entry.mjs` 从唯一纯共享合同生成 `src/content/reading-contract.js`，按现有 classic 顺序注册；生成一致性由 Node 回归检查，不在 Content 手写第二套 DTO/校验规则或运行时导入 ESM。构建投影不引入 React 或新的浏览器能力。
 6. Runtime message value 必须集中定义。
@@ -62,7 +62,7 @@ The React learning center is a single unlisted WXT extension page at `learning-c
 - `providers/`: 网络 Provider adapter；统一接收 AbortSignal，并由 shared 层负责 timeout/retry
 - `translation-requests.js`: requestId / in-flight coalescing / background AbortController
 - `cache-db.js`: cache identity / IndexedDB / LRU
-- `auto-sites.js`: optional site permission + persistent script registration
+- `auto-sites.js`: per-site auto/cache/Quick Control state + obsolete dynamic-registration cleanup
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
 
@@ -87,7 +87,7 @@ Production builds are created from an explicit allowlist into `dist/extension`. 
 
 `src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. `scripts/wxt-assets.mjs` derives the raw bridge from the current ordered Content lists plus mapped MAIN/Worker roots and their relative-import closure. Only those individual files and authenticated generated pack descriptors enter WXT public assets; the whole `src` tree is never copied. Generated source locks and corpora stay outside both packages. Bridge removal belongs to the authorized legacy migration slice, not an ad hoc rewrite here.
 
-Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. `auto-sites.js` remains the sole dynamic registration owner. React is reserved for the future learning-center extension page; it is absent from this compatibility build. The new compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. Provider, cache/OPFS, privacy and permission boundaries above remain unchanged. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for actual commands, asset audit and limited smoke evidence.
+Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. The production Manifest loads the ordered Content list at `document_idle` on ordinary `http/https` pages, so Selection starts with the page. `auto-sites.js` keeps automatic translation, cache restoration and persistent Quick Control opt-in by site, and removes registrations left by older builds to prevent duplicate injection. The compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for the bridge and artifact audit.
 
 ### Approved type and test tooling
 

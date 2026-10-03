@@ -1,5 +1,7 @@
 # TranslateFlow platform upgrade v1: PF-00 migration contract
 
+> 后续产品变更已在明确授权下将普通 `http/https` 页面改为 Manifest 静态 Content Script 注入，使 Selection 随页面启动。本文中 optional-origin、无静态注册及权限不变的表述是平台迁移阶段的冻结证据，不再代表当前生产 Manifest。
+
 Status: **contract and isolated compatibility probe**, for #245 / parent #191. This is not the production build switch, Reading Loop acceptance, a browser support claim, or release approval. The active user authorization starts #245–#249 and Reading Loop Release A; the earlier “awaiting start” text in the planning Issues is superseded only for that scope.
 
 ## Baseline, ownership, and evidence

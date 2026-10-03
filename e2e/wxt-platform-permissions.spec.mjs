@@ -4,14 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prepareExtensionTestCopy, defaultArtifact } from "./support/production-artifact.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
-import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 
 const hostError="Cannot access contents of the page. Extension manifest must request permission to access the respective host.";
 const noReceiverError="Could not establish connection. Receiving end does not exist.";
 const observationWindowMs=1000;
 const registrationTypes=["AUTO_SITE_REGISTER","CACHE_RESTORE_SITE_REGISTER","QUICK_CONTROL_SITE_REGISTER"];
 
-test("native hard-denied, withheld, grant and revoke controls preserve the site registration union and restart pruning", async () => {
+test("native withheld, site grant and revoke controls gate static Content injection and prune old registrations", async () => {
   test.setTimeout(60000);
   const root=await mkdtemp(join(tmpdir(),"tf-platform-permission-"));
   const extension=join(root,"extension"),profile=join(root,"profile");
@@ -97,8 +96,13 @@ test("native hard-denied, withheld, grant and revoke controls preserve the site 
     expect(authorizedTabs).toHaveLength(1);const tabId=authorizedTabs[0].id;
     expect(Number.isInteger(tabId) && tabId>=0).toBe(true);
 
-    // A separate origin has never been requested or granted. No hard-denied host
-    // is added to the test-copy Manifest. The native-created tab supplies its ID.
+    // Restrict required all-site access through Chromium's native management UI.
+    // The extension cannot override this user choice.
+    await manager.evaluate((id)=>chrome.developerPrivate.updateExtensionConfiguration({
+      extensionId:id,hostAccess:chrome.developerPrivate.HostAccess.ON_SPECIFIC_SITES}),extensionId);
+    await expect.poll(()=>contains()).toBe(false);await page.reload();
+
+    // A separate ordinary origin remains denied while all-site access is withheld.
     const hardUrl=new URL(`${server.baseUrl}/article`);hardUrl.hostname="localhost";
     expect(await contains("http://localhost/*")).toBe(false);
     const [hardPage,hardTab]=await Promise.all([
@@ -108,16 +112,10 @@ test("native hard-denied, withheld, grant and revoke controls preserve the site 
     expect(Number.isInteger(hardTab.id) && hardTab.id>=0).toBe(true);
     await hardPage.waitForURL(hardUrl.href);await expect(hardPage).toHaveTitle("TranslateFlow E2E Fixture");
     const hardBefore=await startProbe("hard-denied",hardTab.id);
-    await expect.poll(async()=>(await readProbe("hard-denied")).state).toBe("REJECTED");
-    const hardDenied=await readProbe("hard-denied");assertHostRejected(hardDenied);
-    await assertNoProductionInjection(hardPage,hardTab.id);
+    const hardDenied=await observeUnexecuted("hard-denied",hardPage,hardTab.id);
     expect(await contains("http://localhost/*")).toBe(false);
 
-    // Chromium's native management API affects only this isolated extension.
     // Required-but-withheld access can leave a programmatic request pending.
-    await manager.evaluate((id)=>chrome.developerPrivate.updateExtensionConfiguration({
-      extensionId:id,hostAccess:chrome.developerPrivate.HostAccess.ON_SPECIFIC_SITES}),extensionId);
-    await expect.poll(()=>contains()).toBe(false);await page.reload();
     for(const type of registrationTypes)expect(await message(type)).toMatchObject({ok:false});
     expect(await driver.evaluate(()=>chrome.scripting.getRegisteredContentScripts())).toEqual([]);
     const withheldBefore=await startProbe("withheld",tabId);
@@ -138,8 +136,9 @@ test("native hard-denied, withheld, grant and revoke controls preserve the site 
     for(const type of ["CACHE_RESTORE_SITE_REGISTER","QUICK_CONTROL_SITE_REGISTER","AUTO_SITE_REGISTER","AUTO_SITE_UNREGISTER"])
       expect(await message(type)).toMatchObject({ok:true});
     const registrations=await driver.evaluate(()=>chrome.scripting.getRegisteredContentScripts());
-    expect(registrations).toHaveLength(1);
-    expect(registrations[0]).toMatchObject({js:[...CONTENT_SCRIPT_FILES],css:[...CONTENT_STYLE_FILES],persistAcrossSessions:true,runAt:"document_idle",matches:["http://127.0.0.1/*"]});
+    expect(registrations).toEqual([]);
+    const staticScripts=await driver.evaluate(()=>chrome.runtime.getManifest().content_scripts);
+    expect(staticScripts).toEqual([expect.objectContaining({matches:["http://*/*","https://*/*"],run_at:"document_idle"})]);
 
     await manager.evaluate(id=>chrome.developerPrivate.removeHostPermission(id,"http://127.0.0.1/*"),extensionId);
     await expect.poll(()=>contains()).toBe(false);const revokedContains=await contains();expect(revokedContains).toBe(false);
@@ -159,7 +158,7 @@ test("native hard-denied, withheld, grant and revoke controls preserve the site 
       beforeNative:{hardDenied:hardBefore,withheld:withheldBefore,granted:grantBefore,revoked:revokedBefore},
       hardDenied:{...hardDenied,markerCount:0,productionReceiver:"ABSENT"},withheld,granted:{...granted,markerCount:1},revoked,
       stableTabId:tabId,hardDeniedTabId:hardTab.id,revokedContains,restartedContains,
-      sameProfileRestart:true,startupPruned:true,registrationUnion:1,providerCalls:0,
+      sameProfileRestart:true,startupPruned:true,dynamicRegistrations:0,staticContentScripts:1,providerCalls:0,
       pendingConsentCompletion:"NOT RUN",browserPermissionPrompt:"NOT RUN",productionManifestChanged:false}));
   } finally {await context?.close().catch(()=>{});await server.close();await rm(root,{recursive:true,force:true});}
 });

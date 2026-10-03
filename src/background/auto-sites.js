@@ -1,6 +1,4 @@
 import {
-  CONTENT_SCRIPT_FILES,
-  CONTENT_STYLE_FILES,
   LEGACY_SITE_SCRIPT_PREFIXES,
   SITE_SCRIPT_PREFIX
 } from "../shared/constants.js";
@@ -92,23 +90,11 @@ export async function syncSiteRegistrations() {
   const validAuto = await permittedOrigins(state.autoSites);
   const validQuick = (await permittedOrigins(state.quickControlSites))
     .filter((origin) => !hidden.has(origin));
-  const desiredOrigins = [...new Set([...validRestore, ...validAuto, ...validQuick])].sort();
-  const desiredIds = new Set();
-
-  for (const origin of desiredOrigins) {
-    try {
-      await registerSiteScript(origin);
-      desiredIds.add(await getSiteScriptId(origin));
-    } catch {
-      // Keep service-worker startup resilient if one site fails.
-    }
-  }
-
   const registered = await chrome.scripting.getRegisteredContentScripts();
   const prefixes = [SITE_SCRIPT_PREFIX, ...LEGACY_SITE_SCRIPT_PREFIXES];
   const staleIds = registered
     .map((item) => item.id)
-    .filter((id) => prefixes.some((prefix) => id.startsWith(prefix)) && !desiredIds.has(id));
+    .filter((id) => prefixes.some((prefix) => id.startsWith(prefix)));
   if (staleIds.length) await chrome.scripting.unregisterContentScripts({ ids: staleIds });
 
   const next = {
@@ -124,19 +110,6 @@ export async function syncSiteRegistrations() {
 export const syncAutoSiteRegistrations = syncSiteRegistrations;
 
 async function syncOriginRegistration(origin) {
-  const state = await readState();
-  const hidden = new Set(normalizeOrigins(state.quickControlHiddenSites));
-  const desired = normalizeOrigins(state.cacheRestoreSites).includes(origin)
-    || normalizeOrigins(state.autoSites).includes(origin)
-    || (normalizeOrigins(state.quickControlSites).includes(origin) && !hidden.has(origin));
-  const match = getOriginMatchPattern(origin);
-  const permitted = await chrome.permissions.contains({ origins: [match] });
-
-  if (desired && permitted) {
-    await registerSiteScript(origin);
-    return;
-  }
-
   const candidateIds = [
     await getSiteScriptId(origin),
     ...await Promise.all(LEGACY_SITE_SCRIPT_PREFIXES.map((prefix) => getLegacyScriptId(origin, prefix)))
@@ -145,20 +118,6 @@ async function syncOriginRegistration(origin) {
   const registeredIds = new Set(registered.map((item) => item.id));
   const ids = candidateIds.filter((id) => registeredIds.has(id));
   if (ids.length) await chrome.scripting.unregisterContentScripts({ ids });
-}
-
-async function registerSiteScript(origin) {
-  const id = await getSiteScriptId(origin);
-  const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [id] });
-  if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [id] });
-  await chrome.scripting.registerContentScripts([{
-    id,
-    matches: [getOriginMatchPattern(origin)],
-    js: [...CONTENT_SCRIPT_FILES],
-    css: [...CONTENT_STYLE_FILES],
-    runAt: "document_idle",
-    persistAcrossSessions: true
-  }]);
 }
 
 async function assertOriginPermission(origin, message) {

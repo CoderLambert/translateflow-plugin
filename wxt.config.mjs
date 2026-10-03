@@ -3,9 +3,11 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { ROOT, legacyAssetRoots, sourceClosure, lexicalAssetFiles } from "./scripts/wxt-assets.mjs";
 import { EXTENSION_PAGES } from "./src/shared/runtime-assets.js";
+import { projectProductionManifest } from "./scripts/production-manifest.mjs";
 import { checkManifestLocales } from "./scripts/i18n-locales.mjs";
 
-const { manifest_version: _version, ...manifest } = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
+const { manifest_version: _version, ...baselineManifest } = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
+const manifest = projectProductionManifest(baselineManifest);
 const staging = process.env.TF_WXT_BUILD_ROOT;
 const reportDir = staging ? resolve(staging, "reports") : resolve(ROOT, ".wxt/reports");
 const compiledChunks = [];
