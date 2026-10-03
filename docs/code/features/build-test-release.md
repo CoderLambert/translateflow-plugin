@@ -2,7 +2,7 @@
 
 [逐文件说明](../modules/build-test-release.md) · [启动链](extension-startup.md) · [首页](../README.md)
 
-本章固定源码为 `86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d`（2026-10-03 读取最新 main）。#266 合入的是产物消费/测试/CI证据链调整；不能由此推导默认发行切换。所有安装、构建、脚本、Node/Vitest、浏览器、CI和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS。
+本章构建/测试实现固定于 `86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d`；2026-10-03 按 main `9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0` 复核 Actions 触发语义，其余本章已完整解释的构建/测试源码字节未变。#266 合入的是产物消费/测试/CI证据链调整；不能由此推导默认发行切换。所有安装、构建、脚本、Node/Vitest、浏览器、CI和发布验证在本轮均 **NOT_RUN**。下文“断言/报告”指源码定义，非本轮 PASS。
 
 ## 1. 用户入口与两种安装包
 
@@ -70,9 +70,9 @@ prepareExtensionTestCopy完成精确复制后才允许测试适配：
 
 ## 6. CI、安装和发布边界
 
-[quality](../modules/build-test-release.md#file-quality-workflow)对PR/main push运行validate。[e2e.yml](../modules/build-test-release.md#file-e2e-workflow)在main push/受路径过滤的PR建立legacy/wxt矩阵，显式设置artifact、locale、github.sha标签。每一行先WXT build+smoke再legacy build；WXT行额外构建固定旧commit worktree并传升级两个包，最后跑test:e2e。失败上传Playwright/test-results七天；并非每次成功都上传完整升级证据。看文件路径匹配和具体head的实际run，不能仅凭workflow定义称CI通过。
+[quality](../modules/build-test-release.md#file-quality-workflow)和[e2e.yml](../modules/build-test-release.md#file-e2e-workflow)现在都只由 workflow_dispatch 手动启动，不再响应 PR/main push。前者运行 validate；后者建立 legacy/wxt 矩阵，显式设置artifact、locale、github.sha标签。每一行先WXT build+smoke再legacy build；WXT行额外构建固定旧commit worktree并传升级两个包，最后跑test:e2e。失败上传Playwright/test-results七天；并非每次成功都上传完整升级证据。没有 PR 路径过滤触发可供推定；具体 run 必须有实际证据，不能仅凭 workflow 定义称 CI 通过。日常验收及候选绑定见[本地任务验收](local-task-acceptance.md)，真实远端保护仍有效。
 
-词典专项CI仍显式选dist/extension：lexicon-release、vNext在validate后已有legacy；MDD、rich cancellation、rich compatibility在focused E2E前明确build。认证流水线下载锁定公开来源、合成互操作素材和脱敏报告；读到这些定义不等于本轮已下载/认证。见[专项CI边界](../modules/build-test-release.md#partial-ci)。
+词典专项 Actions 同样只有手动入口，仍显式选 dist/extension：lexicon-release、vNext在validate后已有legacy；MDD、rich cancellation、rich compatibility在focused E2E前明确build。认证流水线下载锁定公开来源、合成互操作素材和脱敏报告；读到这些定义不等于本轮已下载/认证。见[专项CI边界](../modules/build-test-release.md#partial-ci)。
 
 安装路径仍是根README的dist/extension，WXT安装属opt-in。重新加载扩展后刷新已有网页才能获得新的Content context；同ID/profiles/storage兼容是独立验收，删除数据“重新安装成功”不能证明升级保留。源码中的build和CI没有自动商店上传/发布授权，本章也未执行安装、升级、上传或发布。
 
@@ -86,4 +86,5 @@ prepareExtensionTestCopy完成精确复制后才允许测试适配：
 6. 用户体验改动：Node/类型检查只是起点，补实际产物浏览器断言；需要真实权限弹窗/真实网页时单列证据。
 
 本轮没有运行以上步骤；没有把历史报告PASS、测试名称或test.skip当作新验收。后续逐文件待补：大型源边界分析器、mock server、专项认证脚本/来源链和各完整产品spec。
+
 

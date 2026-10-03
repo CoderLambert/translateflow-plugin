@@ -12,8 +12,8 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单与构建测试章源码基线：`86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d`；初始运行时章节保留`d5e308a709c008acf6b277d466d020f13025bdca`固定引用，其已完整解释源码blob均与新main相同。
-- 当前状态：启动、划词、词典导入展示、网页翻译/缓存、YouTube字幕、Provider/设置、Reading已实现后台链及构建测试链已形成，651个文件全部登记，162个完整解释、489个待解释（含117个仅解释局部边界）；运行验证 NOT_RUN。全仓导读仍未完成。
+- 当前清单与本地验收章源码基线：`2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503`；初始运行时章节保留`d5e308a709c008acf6b277d466d020f13025bdca`固定引用，运行时源码blob均未变；构建章的quality/E2E及局部CI入口已按新手动规则复核，旧实现固定引用另保留86ed596。
+- 当前状态：启动、划词、词典导入展示、网页翻译/缓存、YouTube字幕、Provider/设置、Reading已实现后台链及构建测试链已形成，732个文件全部登记，179个完整解释、553个待解释（含123个仅解释局部边界）；运行验证 NOT_RUN。全仓导读仍未完成。
 
 ## 已交付导航与推荐阅读顺序
 
@@ -27,11 +27,12 @@
 8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个文件详解](modules/providers-and-settings.md)。
 9. [Reading已实现后台与产品入口断点](features/reading-records.md)及[19个文件详解](modules/reading-records.md)。
 10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[27个文件详解](modules/build-test-release.md)。
-11. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-12. [覆盖清单](coverage.json)：651个文件的固定blob、状态和正文位置。
-13. [更新记录](changes.md)：本轮证据与下一步。
+11. [本地任务合同→冻结→验收→独审→同步](features/local-task-acceptance.md)及[17个新增完整说明](modules/local-task-acceptance.md)。
+12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
+13. [覆盖清单](coverage.json)：732个文件的固定blob、状态和正文位置。
+14. [更新记录](changes.md)：本轮证据与下一步。
 
-当前已具备启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置及Reading后台功能章；大型依赖仍有局部说明，后续逐文件补齐。Reading产品入口仍未交付，见对应章节；构建测试链现已补齐；Rich MDX/MDD解析与存储内部链已补齐；后续继续普通pack/TFLex、旧MDX/StarDict投影、共享合同、界面大入口及各专项测试/脚本的未解释部分。没有正文的章节不伪造链接。根README里部分旧概括未反映当前双构建/本地词典优先方向；本导读以固定源码和现行架构约束为据。
+当前已具备启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置及Reading后台功能章；大型依赖仍有局部说明，后续逐文件补齐。Reading产品入口仍未交付，见对应章节；构建测试链与新本地任务/被动监控链已补齐；Rich MDX/MDD解析与存储内部链已补齐；后续继续普通pack/TFLex、旧MDX/StarDict投影、共享合同、界面大入口及各专项测试/脚本的未解释部分。没有正文的章节不伪造链接。根README里部分旧概括未反映当前双构建/本地词典优先方向；本导读以固定源码和现行架构约束为据。
 
 ## 建议目录
 

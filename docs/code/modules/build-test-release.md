@@ -214,21 +214,23 @@ blob `bc2274b2ed1abb9324680d410f4b36ff70407d24`；[完整源码 L1–L84](https:
 
 它覆盖合成成功链，不覆盖真实大型/压缩文件、取消/失败全集或所有外部格式。旧测试的源码import/fake权限路线已移除，现有controller Node测试另补phase/activeRequestId复位断言。修改消息、阶段、Worker transfer或token清理需联动controller/worker/background和此断言；NOT_RUN。
 
+本章 Actions 段落于 main `9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0` 重新复核；其他构建/测试固定源码不因触发变更重写。新的 local-task 包指纹与 E2E treeSha256 串行化不同，不能互换，见[指纹边界](local-task-acceptance.md#fingerprint-boundary)。
+
 <a id="file-quality-workflow"></a>
 ## .github/workflows/quality.yml：基础校验CI编排
 
-blob `6e363e3a685ffc7e439bc802ec6ec45826e1e2c2`；[完整源码 L1–L20](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/quality.yml#L1-L20)。
+blob `613171104d9b1e73336d691570854617dd918c7d`；[完整源码 L1–L18](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/quality.yml#L1-L18)。
 
-所有PR与main push触发，只读contents权限，Ubuntu checkout@v4、setup-node@v4固定24.21.0，npm ci --no-audit --no-fund后npm run validate。validate按package当前串行链终止于legacy build；此workflow不安装Playwright Chromium、不启动E2E、不宣称发布认证。安装/命令失败使job失败，无恢复/发布动作或报告上传步骤。改package validate会隐式改变本job覆盖；精确head的run结果需另查询，本轮未查询/执行，NOT_RUN。
+只有 workflow_dispatch 手动入口，不再由 PR/main push 触发；只读contents权限，Ubuntu checkout@v4、setup-node@v4固定24.21.0，npm ci --no-audit --no-fund后npm run validate。validate按package当前串行链终止于legacy build；此workflow不安装Playwright Chromium、不启动E2E、不宣称发布认证。安装/命令失败使job失败，无恢复/发布动作或报告上传步骤。改package validate会隐式改变本job覆盖；精确 head 的手动 run 必须另有实际证据；日常按[本地任务流程](local-task-acceptance.md)验收，不恢复例行 CI 查询，本轮 NOT_RUN。
 
 <a id="file-e2e-workflow"></a>
 ## .github/workflows/e2e.yml：legacy/WXT双产物及旧代对照
 
-blob `29fca98c37a59d997c8b044d44fa45e47a85fa04`；[完整源码 L1–L80](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/e2e.yml#L1-L80)。
+blob `5fa77b3e1fcdfb7d898b8952864ed394d57a7bb8`；[完整源码 L1–L54](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/e2e.yml#L1-L54)。
 
-main push和受paths过滤的PR触发，contents read，Ubuntu12分钟job，matrix legacy dist/extension与wxt .output/chrome-mv3，fail-fast=false。env显式TF_E2E_ARTIFACT/TF_I18N_ARTIFACT对应矩阵，SOURCE_HEAD=github.sha只是标签。两行均npm ci、安装Chromium、build WXT、有限smoke、build legacy；不能把smoke误称只在wxt行跑。
+只有 workflow_dispatch 手动入口，不再监听 push/pull_request、没有 PR paths 过滤；contents read，Ubuntu12分钟job，matrix legacy dist/extension与wxt .output/chrome-mv3，fail-fast=false。env显式TF_E2E_ARTIFACT/TF_I18N_ARTIFACT对应矩阵，SOURCE_HEAD=github.sha只是标签。两行均npm ci、安装Chromium、build WXT、有限smoke、build legacy；不能把smoke误称只在wxt行跑。
 
-仅wxt行fetch固定19e89b6并detached worktree，直接运行该旧builder，用GITHUB_ENV指定旧产物绝对路径和新WXT相对路径。最终npm run test:e2e带每行output目录；legacy行没升级环境时对应spec skip。失败上传Playwright report和test-results，名字带矩阵name、缺文件ignore、保留7天；成功没有always上传。runtime/config/scripts/package路径变更触发，纯docs/code不在PR path列表；github.sha在PR事件可代表merge ref，不应猜为PR head。
+仅wxt行fetch固定19e89b6并detached worktree，直接运行该旧builder，用GITHUB_ENV指定旧产物绝对路径和新WXT相对路径。最终npm run test:e2e带每行output目录；legacy行没升级环境时对应spec skip。失败上传Playwright report和test-results，名字带矩阵name、缺文件ignore、保留7天；成功没有always上传。任何普通 push/PR 路径变更都不会自动触发；github.sha 是手动运行上下文的来源标签，不是独立构建证明。
 
 改fixture默认/locale/升级env必须同步矩阵，避免build一种却测试另一种；更改固定旧代需同步冻结mapping和hash。workflow定义和源码status PASS不是运行记录，全部NOT_RUN。
 
@@ -317,13 +319,13 @@ blob `1f59eff1326755dc7b37f2dfc332c5e2100dd792`；[完整源码 L1–L15](https:
 <a id="partial-ci"></a>
 ## 专项CI如何选择产物（局部）
 
-以下workflow已读但只解释本链相关入口/产物/证据，不把其庞大认证步骤和全部触发规则算完整解释。均contents:read；定义不是运行结果，全为NOT_RUN。
+以下 workflow 的入口/产物/证据已按 main `9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0` 复核；均只有 workflow_dispatch、contents:read，不再自动响应 PR/push。这里只解释本链相关部分，不把庞大认证算法算完整解释。vNext 保留必填 base_sha；job 内遗留 event-base 表达式不代表仍订阅 PR/push。定义不是运行结果，全为 NOT_RUN。
 
-- [.github/workflows/lexicon-release.yml L65–L144](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/lexicon-release.yml#L65-L144)：锁定OMW/WordNet checkout→setup:lexicon、benchmark/bootstrap/footprint/StarDict cost→Selection+pack certify→validate构建legacy→Chromium E2E。环境显式TF_E2E_ARTIFACT及TF_I18N_ARTIFACT=dist/extension、SOURCE_HEAD=github.sha、REQUIRE_RELEASE_LEXICON_PACKS=1、JSON报告；再Offline Beta certify。上传质量/发布词典/认证报告各自保留期，不是商店发布。
-- [.github/workflows/dictionary-library-vnext-certification.yml L120–L256](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/dictionary-library-vnext-certification.yml#L120-L256)：独立临时cache/evidence-private/evidence-published及run marker；setup词典/validate提供legacy，锁定writer/真实MDX及100MiB MDD证据、focused E2E显式dist。vNext汇总后检查冻结scope必要slice状态，ready才resolve可信base并跑ecosystem certify，否则打印pending，仅上传脱敏published summaries。一个vNext子认证成功不能推导最终生态gate完成。
-- [.github/workflows/mdd-resources.yml L38–L89](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/mdd-resources.yml#L38-L89)：锁定独立writer→regenerate/checksum/large-range evidence→parser/security测试→Chromium→明确build:extension→直接npx playwright MDD spec并选dist/SOURCE_HEAD；always上传有限evidence，非corpus。
-- [.github/workflows/rich-lookup-cancellation.yml L39–L78](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/rich-lookup-cancellation.yml#L39-L78)：full checkout、锁定基线测量→明确legacy build→取消spec（CI true、dist/SOURCE_HEAD和证据目录）→always保留两个脱敏baseline/report。源码存在这个基线流程不表示本轮跑过。
-- [.github/workflows/rich-mdict-compatibility.yml L83–L120](https://github.com/CoderLambert/translateflow-plugin/blob/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d/.github/workflows/rich-mdict-compatibility.yml#L83-L120)：先验证固定upstream MDX、parser/sanitizer，再legacy build；五个真实/本地preflight/one-click/hostile viewer specs显式dist/SOURCE_HEAD，ECDICT gate=1；always只上传证据目录，never corpus。它不消费默认WXT，即使本地wrapper已改默认值。
+- [.github/workflows/lexicon-release.yml L1–L151](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/lexicon-release.yml#L1-L151)：锁定OMW/WordNet checkout→setup:lexicon、benchmark/bootstrap/footprint/StarDict cost→Selection+pack certify→validate构建legacy→Chromium E2E。环境显式TF_E2E_ARTIFACT及TF_I18N_ARTIFACT=dist/extension、SOURCE_HEAD=github.sha、REQUIRE_RELEASE_LEXICON_PACKS=1、JSON报告；再Offline Beta certify。上传质量/发布词典/认证报告各自保留期，不是商店发布。
+- [.github/workflows/dictionary-library-vnext-certification.yml L1–L191](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/dictionary-library-vnext-certification.yml#L1-L191)：独立临时cache/evidence-private/evidence-published及run marker；setup词典/validate提供legacy，锁定writer/真实MDX及100MiB MDD证据、focused E2E显式dist。vNext汇总后检查冻结scope必要slice状态，ready才resolve可信base并跑ecosystem certify，否则打印pending，仅上传脱敏published summaries。一个vNext子认证成功不能推导最终生态gate完成。
+- [.github/workflows/mdd-resources.yml L1–L63](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/mdd-resources.yml#L1-L63)：锁定独立writer→regenerate/checksum/large-range evidence→parser/security测试→Chromium→明确build:extension→直接npx playwright MDD spec并选dist/SOURCE_HEAD；always上传有限evidence，非corpus。
+- [.github/workflows/rich-lookup-cancellation.yml L1–L51](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/rich-lookup-cancellation.yml#L1-L51)：full checkout、锁定基线测量→明确legacy build→取消spec（CI true、dist/SOURCE_HEAD和证据目录）→always保留两个脱敏baseline/report。源码存在这个基线流程不表示本轮跑过。
+- [.github/workflows/rich-mdict-compatibility.yml L1–L45](https://github.com/CoderLambert/translateflow-plugin/blob/9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0/.github/workflows/rich-mdict-compatibility.yml#L1-L45)：先验证固定upstream MDX、parser/sanitizer，再legacy build；五个真实/本地preflight/one-click/hostile viewer specs显式dist/SOURCE_HEAD，ECDICT gate=1；always只上传证据目录，never corpus。它不消费默认WXT，即使本地wrapper已改默认值。
 
 <a id="partial-adjacent"></a>
 ## 相邻完整说明与仍待解释的依赖
@@ -340,4 +342,5 @@ blob `1f59eff1326755dc7b37f2dfc332c5e2100dd792`；[完整源码 L1–L15](https:
 2026-10-03 08:29 UTC读取：[作者记录的#248事故](https://github.com/CoderLambert/translateflow-plugin/issues/248#issuecomment-5966960943)说明阶段二worktree曾被破坏性build/cleanup覆盖删除，主工作区和#234未受影响；[修复PR #278](https://github.com/CoderLambert/translateflow-plugin/pull/278)当时open、未merged，head为a33b6e2dd3db8f123b026df988e525eaab0081e7。[该head的P1审查](https://github.com/CoderLambert/translateflow-plugin/pull/278#discussion_r4172284125)指出允许输出树内的嵌套.git尚可被递归删除。此处是带日期的已知后续，不把未合入修复或review报告当本章86ed实现。
 
 固定main的legacy builder在安全判断后会rm(output,{recursive:true,force:true})；ROOT由fileURLToPath目录URL保留尾分隔符，而output经过resolve，raw equality不能作为规范化same判断。默认insideDist限制与allowExternalOutput路径必须分开：后者跳过insideDist，不能宣称可安全删除任意外部测试目录。代码也没有删除前的canonical/link/目标内部Git工作区保全检查。上文描述检查分支是实现走读，**不构成其全面安全保证**。不要在真实源码根/用户目录重现破坏性负例；本轮未执行任何build/delete回归。默认WXT切换仍未由此交付。
+
 

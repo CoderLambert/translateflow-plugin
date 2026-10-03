@@ -1,20 +1,29 @@
 {
   "schemaVersion": 1,
   "sourceRef": "main",
-  "sourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
-  "sourceTree": "57da627b77dbe5bbd6cae9c0422999fac50133f1",
+  "sourceCommit": "2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503",
+  "sourceTree": "eb067697086e02a4b98926c35a92268f7762b692",
   "inventoryMethod": "Git Trees recursive=1; truncated=false; every type=blob entry, no file excluded",
-  "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d?recursive=1",
-  "denominator": 651,
+  "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503?recursive=1",
+  "denominator": 732,
   "counts": {
-    "已解释": 162,
-    "待解释": 489,
+    "已解释": 179,
+    "待解释": 553,
     "待复核": 0,
     "有理由排除": 0
   },
   "statusRules": "部分解释仍计入待解释；目录归类不等于正文覆盖；新增导读文档不属于所读main的636文件分母；静态走读不是测试通过；各记录继承顶层sourceCommit，sourceBlob逐项独立；未解释功能分组仅按目录归类；documentationSourceCommit标记旧正文固定引用，blobVerifiedAt表示其源码字节与当前清单一致；基础设施消费语义变化见当前构建章，源码字节相同不冒充新运行测试",
   "runtimeVerification": "NOT_RUN",
   "files": [
+    {
+      "path": ".codex/hooks.json",
+      "sourceBlob": "6bbf538251ec735a702c5287ecde44865a79ae06",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-project-hooks",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
     {
       "path": ".editorconfig",
       "sourceBlob": "1014ba78880c899e842b397cb89a878be4671f7d",
@@ -45,105 +54,137 @@
     },
     {
       "path": ".github/workflows/dictionary-library-vnext-certification.yml",
-      "sourceBlob": "d537ee2da45c80cb09186c65da37a2a6c60a5b59",
+      "sourceBlob": "7fd8c5fbc2efdeee5c3055cf6402064cf0545618",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-ci",
-      "previousSourceBlob": "6d94e9931a385a1fb2f3591589ae0d536b895bfe",
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "d537ee2da45c80cb09186c65da37a2a6c60a5b59",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-ci"
+      ]
     },
     {
       "path": ".github/workflows/e2e.yml",
-      "sourceBlob": "29fca98c37a59d997c8b044d44fa45e47a85fa04",
-      "function": "构建与实际产物验证",
+      "sourceBlob": "5fa77b3e1fcdfb7d898b8952864ed394d57a7bb8",
+      "function": "本地任务与验收工作流",
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-e2e-workflow",
-      "previousSourceBlob": "6cdf147d41c8ee539136b628fc07865299d2c1f7",
+      "previousSourceBlob": "29fca98c37a59d997c8b044d44fa45e47a85fa04",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": ".github/workflows/freedict-source-audit.yml",
-      "sourceBlob": "96b3a49a0d76c8ed48ef6472eb15c1bbbb6b5666",
+      "sourceBlob": "bfcf123a02b947d8a4dec5d9762a98fef8bdfe33",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "96b3a49a0d76c8ed48ef6472eb15c1bbbb6b5666",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": ".github/workflows/lexicon-release.yml",
-      "sourceBlob": "c6aeb89f21097da2767997dc1036ac3da5f42cb0",
+      "sourceBlob": "47069b3b5e0a73cab54987bbd3e640dcadd7dec7",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-ci",
-      "previousSourceBlob": "11074927b3d871ac4441d853a9dedab508bc177d",
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "c6aeb89f21097da2767997dc1036ac3da5f42cb0",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-ci"
+      ]
     },
     {
       "path": ".github/workflows/mdd-resources.yml",
-      "sourceBlob": "0bb03d7d477cd653789f76c2c859259c943b176e",
+      "sourceBlob": "5a10ce4f87660ede40a5bf5b6404ff116dd0836f",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-ci",
-      "previousSourceBlob": "e4a5f7df74a47980bf6ed6bca927f205aeb7a4a8",
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "0bb03d7d477cd653789f76c2c859259c943b176e",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-ci"
+      ]
     },
     {
       "path": ".github/workflows/quality.yml",
-      "sourceBlob": "6e363e3a685ffc7e439bc802ec6ec45826e1e2c2",
-      "function": "构建与实际产物验证",
+      "sourceBlob": "613171104d9b1e73336d691570854617dd918c7d",
+      "function": "本地任务与验收工作流",
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-quality-workflow",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "previousSourceBlob": "6e363e3a685ffc7e439bc802ec6ec45826e1e2c2"
     },
     {
       "path": ".github/workflows/rich-lookup-cancellation.yml",
-      "sourceBlob": "9a1af03c8e1a7242ffbb1a8bffa562ac9253cf2c",
+      "sourceBlob": "6d86cdf3ac8ad4895aa95c26342d40ebd77c0a2e",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-ci",
-      "previousSourceBlob": "f4aab3f9c7189f1d7d9b47b28a9fce25840e4822",
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "9a1af03c8e1a7242ffbb1a8bffa562ac9253cf2c",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-ci"
+      ]
     },
     {
       "path": ".github/workflows/rich-mdict-compatibility.yml",
-      "sourceBlob": "30e369ddca4024650fda734e4bcd412023af4e65",
+      "sourceBlob": "bfcee9abae481994a4cf7cbb396c7212662fbe33",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-ci",
-      "previousSourceBlob": "93c3c980484bf296d4b65b081d1d05c953b60e30",
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "30e369ddca4024650fda734e4bcd412023af4e65",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-ci"
+      ]
     },
     {
       "path": ".github/workflows/wikimedia-wiktionary-source-lock.yml",
-      "sourceBlob": "b1dbb83ba671ed2cb7eaac6ef63a7833c174a1f9",
+      "sourceBlob": "32263420ec912ad9c76d7d026bf8e1633a6b915c",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "b1dbb83ba671ed2cb7eaac6ef63a7833c174a1f9",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": ".github/workflows/wiktextract-ingest.yml",
-      "sourceBlob": "58d20aa89d3c02b6604d9fc5cf2929e67ce8e42b",
+      "sourceBlob": "394dce3dae15f501ddb35197c30597d0ebb4a291",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "58d20aa89d3c02b6604d9fc5cf2929e67ce8e42b",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": ".github/workflows/wiktextract-rich-poc.yml",
-      "sourceBlob": "a0dc1dd959536ffcbb66600b581f81cb57ec00e0",
+      "sourceBlob": "4ef516eea95ab9330289fc8dd1c21944cfcf657a",
       "function": "构建与开发流程",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/local-task-acceptance.md#partial-manual-workflows",
+      "previousSourceBlob": "a0dc1dd959536ffcbb66600b581f81cb57ec00e0",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": ".gitignore",
@@ -154,30 +195,42 @@
     },
     {
       "path": "AGENTS.md",
-      "sourceBlob": "cb3bffbdbc7bae9c2f84262dfdf9c6951d697b9f",
+      "sourceBlob": "55139fc78a40b6b99a77e7da9dbede87f33a0626",
       "function": "现有规范与证据",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/local-task-acceptance.md#partial-policy",
+      "previousSourceBlob": "cd832be3b08c9ae6b90051f5af953cba5b040284",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503"
     },
     {
       "path": "CONTRIBUTING.md",
-      "sourceBlob": "7b73264bbbc7a1856786583d0f78aea0c229759d",
+      "sourceBlob": "b16d5b8d10161fa6969a9207ca4a58ea0045c20d",
       "function": "现有规范与证据",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-adjacent",
+      "documentation": "modules/local-task-acceptance.md#partial-policy",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503",
+      "previousSourceBlob": "771e7a878f060ca5eb175fd3d5122e06f6bc63b1",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-adjacent"
+      ]
     },
     {
       "path": "README.md",
-      "sourceBlob": "133e9888a60669e7c77a350b703776dbc3249ffc",
+      "sourceBlob": "c23329271765356f75cd13c1c852565a6c596e2e",
       "function": "现有规范与证据",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-adjacent",
+      "documentation": "modules/local-task-acceptance.md#partial-policy",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "previousSourceBlob": "133e9888a60669e7c77a350b703776dbc3249ffc",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-adjacent"
+      ]
     },
     {
       "path": "_locales/en/messages.json",
@@ -225,13 +278,17 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "sourceBlob": "f36588d3596cb40595812463a940735a87f6f2d5",
+      "sourceBlob": "4ce7d538a6791befcb4125b5de7c61e99a0f06b1",
       "function": "现有规范与证据",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#partial-adjacent",
+      "documentation": "modules/local-task-acceptance.md#partial-policy",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "previousSourceBlob": "f36588d3596cb40595812463a940735a87f6f2d5",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#partial-adjacent"
+      ]
     },
     {
       "path": "docs/BUNDLED_LEXICON_POLICY.md",
@@ -368,7 +425,8 @@
       "previousSourceBlob": "89d423f3f2e15ef521c9898e3c00fcd8d4774564",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "docs/PROVIDERS.md",
@@ -446,6 +504,15 @@
       "function": "现有规范与证据",
       "status": "待解释",
       "documentation": null
+    },
+    {
+      "path": "docs/TASK_EXECUTION.md",
+      "sourceBlob": "0663051f296d6450a331adefa169e435790e82cd",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-task-execution-doc",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": "docs/TFLEX_BUILD.md",
@@ -599,6 +666,536 @@
       "documentation": null
     },
     {
+      "path": "docs/task-execution/.gitignore",
+      "sourceBlob": "79ff451041cf9c4ce67580b0d9add2d4a8de81d5",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-log-ignore",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/task-execution/README.md",
+      "sourceBlob": "2b654ed822c60ec31a80c02d87d60e034d7db746",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-execution-readme",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/task-execution/hooks.json",
+      "sourceBlob": "6bbf538251ec735a702c5287ecde44865a79ae06",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-hook-template",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/tasks/191/acceptance.json",
+      "sourceBlob": "958f83e8310a3b93c7dd7268a4b4669896316af8",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/191/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/191/state.json",
+      "sourceBlob": "213b488f68f4565db3f1e5b0608e0a82523b5df4",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/191/task.md",
+      "sourceBlob": "3af44f90045f012834db23d7ad77c34d83b54ce7",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/227/acceptance.json",
+      "sourceBlob": "749989559c8229effaaadb6999fba6018f8710f8",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/227/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/227/state.json",
+      "sourceBlob": "c40ebe4ae888d2d1cfe95570c748b4d713153f05",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/227/task.md",
+      "sourceBlob": "5a8e48522d729be446a8731740162045517d9826",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/229/acceptance.json",
+      "sourceBlob": "54b45518ed271b673334fdfd438e8da26f3acffd",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/229/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/229/state.json",
+      "sourceBlob": "9f5c702efc1a5a2b165c021ad52ff7053e87a082",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/229/task.md",
+      "sourceBlob": "70a5580c0bf2b128b19485ceaf0a3f1e140e9d8e",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/230/acceptance.json",
+      "sourceBlob": "152cabb4809ff4581ff5dec4e64960092955e744",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/230/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/230/state.json",
+      "sourceBlob": "d1d1a20ecdda6badce8d898caecaafc73069c452",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/230/task.md",
+      "sourceBlob": "6338b987e29584941e4929286188e8cb9ab8fab8",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/231/acceptance.json",
+      "sourceBlob": "c32e124a768cf770e8c337b2cd2b2110d27ab9f0",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/231/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/231/state.json",
+      "sourceBlob": "4bc7e9ea4683ee659c7f8565a3f81d06ff05db03",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/231/task.md",
+      "sourceBlob": "65ff87afca32a8888e06d46539b4fcc31ce300f4",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/232/acceptance.json",
+      "sourceBlob": "00d534ae4b67efdfdb7d406d06bff9e2ac2d9567",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/232/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/232/state.json",
+      "sourceBlob": "12c033ef2353580c914d72c2f44b7f2ac9ce5c84",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/232/task.md",
+      "sourceBlob": "7faf64a25a2dae16283dcaf255669e8070094556",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/233/acceptance.json",
+      "sourceBlob": "c07bfc3bd1dc3d4480d45b629be2076f95e966ee",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/233/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/233/state.json",
+      "sourceBlob": "084190582f6cb909ffb0f88fe93da365dd508a33",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/233/task.md",
+      "sourceBlob": "799cbe7daa979f5e2e6d58d5e6e910061ece01f7",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/234/acceptance.json",
+      "sourceBlob": "c3bfff2ea81db7b5319a8dad71b8b313797201a5",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/234/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/234/state.json",
+      "sourceBlob": "882ae7b8276b8272ae524c5705aac5f784b1408a",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/234/task.md",
+      "sourceBlob": "74d65233fb5791e7747d387c682ff742ac9b2724",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/235/acceptance.json",
+      "sourceBlob": "0dbe655af8d3886dc2e14355da3fd38697ad0304",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/235/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/235/state.json",
+      "sourceBlob": "5006bf67dc9cb7924d70b252e157bff5fc7899e5",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/235/task.md",
+      "sourceBlob": "595d0f36320c1f537fb0dd5c6a9e58fafa7eb094",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/236/acceptance.json",
+      "sourceBlob": "305df5c91950321458e63e65e409c56b42c2b6e4",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/236/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/236/state.json",
+      "sourceBlob": "bc68ed6ae9f6846097c47a19e9ef5e504ce6b581",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/236/task.md",
+      "sourceBlob": "6ee31f519f9eb2681b170a2375db1500e07efc17",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/245/acceptance.json",
+      "sourceBlob": "58166863e2cb1a861bacdbc84b3b39ec5b29dddb",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/245/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/245/state.json",
+      "sourceBlob": "7a29a0a9631b4dd97740bc556f0975a4ea88be8d",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/245/task.md",
+      "sourceBlob": "c6496af31bc5da94f7fd7396814a475fa09e1519",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/246/acceptance.json",
+      "sourceBlob": "648fc24307b6b17d6399e03348fef0c21eb2a11f",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/246/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/246/state.json",
+      "sourceBlob": "34355293462cf25b806d38205159b3a1b223345a",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/246/task.md",
+      "sourceBlob": "3ec4117e51ed8d7fcdaddfa43bfa4e37f050e740",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/247/acceptance.json",
+      "sourceBlob": "4a48330240b8de7c615b26ffe673ffb4b0a95ac2",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/247/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/247/state.json",
+      "sourceBlob": "950c898a320179f48ea2b27671727be32ee34149",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/247/task.md",
+      "sourceBlob": "fe342f6b65272a77081de1922a079beb5a635e6c",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/248/acceptance.json",
+      "sourceBlob": "a1eb9ca79853b7f7735164704874f424e2f0cbf6",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/248/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/248/state.json",
+      "sourceBlob": "dccc41323302d1d7277380d0c419debaae873f62",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/248/task.md",
+      "sourceBlob": "1324dc63aec6b7ab29032f76fc6f46530ae458f2",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/249/acceptance.json",
+      "sourceBlob": "028c374679b912a7298d5d358e2a3a8f3b6b59ad",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/249/review.md",
+      "sourceBlob": "c026dc9eb4438b2553b4da830804f2a83e88cc91",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/249/state.json",
+      "sourceBlob": "bb6983d17449836e35fd9a3f8cc8c3b97587f4a3",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/249/task.md",
+      "sourceBlob": "07b4bb0fd400161c38bcc5d249d0c23f7191af7f",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/LOCAL_WORKFLOW.md",
+      "sourceBlob": "1a9b283bd7bb0f17517b51781333e6a714524a59",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-local-workflow",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503",
+      "previousSourceBlob": "e2c1445415ff4d4ad9f732dadfbf985c53929e62"
+    },
+    {
+      "path": "docs/tasks/index.json",
+      "sourceBlob": "5fb930884709c9aba2789b89d631e91ccddd3f79",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-task-index",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/tasks/path-safety/acceptance.json",
+      "sourceBlob": "094eb72abd3828e12fa8f873f9f32aa7dff7b840",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/path-safety/review.md",
+      "sourceBlob": "7e9de4d62f2a4bb4b50da989cf1437553edc0d30",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/path-safety/state.json",
+      "sourceBlob": "be33d5efe1806e1b56efc8210986d3c67f48f69f",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/path-safety/task.md",
+      "sourceBlob": "6f9e17e81738857231d6b3f74a4c31d8ce2ecb7a",
+      "function": "任务合同与证据",
+      "status": "待解释",
+      "documentation": null
+    },
+    {
+      "path": "docs/tasks/workflow-local/acceptance.json",
+      "sourceBlob": "4e47666be9fe02e1f6867eb86a47eb4068fd33b9",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-workflow-acceptance",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/tasks/workflow-local/review.md",
+      "sourceBlob": "f1c51fbef503326ca84c187391bce35a4aff7242",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-workflow-review",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/tasks/workflow-local/state.json",
+      "sourceBlob": "7889f568a0f27e1baf65dba6e233c2f3688b33d2",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-workflow-state",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "docs/tasks/workflow-local/task.md",
+      "sourceBlob": "0fb12554f681427a23924ed7831f1749f8391b24",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-workflow-task",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
       "path": "docs/types-tests-v1/artifact-fingerprint.json",
       "sourceBlob": "0a94e8f4604f16dcbaf70afc1ef6636e31b52719",
       "function": "现有规范与证据",
@@ -725,7 +1322,8 @@
       "documentation": "modules/build-test-release.md#file-commands",
       "previousSourceBlob": "b1ac2f617dec82ba579d0ad0f779f9ef1203823d",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/curated-ecdict-mdx-product.spec.mjs",
@@ -743,7 +1341,8 @@
       "previousSourceBlob": "e9ad53babec65a0b8dd882a00380bfa829d911b7",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/dark-mode.spec.mjs",
@@ -761,7 +1360,8 @@
       "previousSourceBlob": "b064486ba39562cc0da95faa29e3b56269444fbb",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/design-freeze-selection-slice.spec.mjs",
@@ -977,7 +1577,8 @@
       "documentation": "modules/build-test-release.md#file-stardict-consumer",
       "previousSourceBlob": "bd9261e50fb63c63a5d4ee437255964897eac7e7",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/subtitle-pipeline.spec.mjs",
@@ -1008,7 +1609,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-frozen-mapping",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/closed-network.mjs",
@@ -1017,7 +1619,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-closed-network",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/extension-fixture.mjs",
@@ -1027,7 +1630,8 @@
       "documentation": "modules/build-test-release.md#file-extension-fixture",
       "previousSourceBlob": "900b1a6c95c2b25e054e806ec559f3fedad54f98",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/mock-server.mjs",
@@ -1037,7 +1641,8 @@
       "documentation": "modules/build-test-release.md#partial-adjacent",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/production-artifact.mjs",
@@ -1046,7 +1651,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-production-artifact",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/runtime-mapping.mjs",
@@ -1055,7 +1661,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-runtime-mapping",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/support/upgrade-expectations.mjs",
@@ -1064,7 +1671,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-upgrade-expectations",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/translateflow.spec.mjs",
@@ -1102,7 +1710,8 @@
       "documentation": "modules/build-test-release.md#upgrade-consumers",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/wxt-platform-permissions.spec.mjs",
@@ -1112,7 +1721,8 @@
       "documentation": "modules/build-test-release.md#upgrade-consumers",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/wxt-upgrade.spec.mjs",
@@ -1122,7 +1732,8 @@
       "documentation": "modules/build-test-release.md#upgrade-consumers",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "e2e/youtube-subtitles.spec.mjs",
@@ -1354,7 +1965,8 @@
       "relatedDocumentation": [
         "modules/startup.md#partial-files"
       ],
-      "partial": true
+      "partial": true,
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "playwright.config.mjs",
@@ -1363,7 +1975,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-playwright",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "popup-appearance.js",
@@ -1452,7 +2065,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-audit",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/benchmark-lexical-quality.mjs",
@@ -1524,7 +2138,8 @@
       "documentation": "modules/build-test-release.md#partial-adjacent",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/certify-dictionary-ecosystem-v2.mjs",
@@ -1589,7 +2204,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-check",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/evaluate-core-bootstrap.mjs",
@@ -1626,7 +2242,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-i18n",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/inspect-mdict-compatibility.mjs",
@@ -1634,6 +2251,15 @@
       "function": "构建与开发流程",
       "status": "待解释",
       "documentation": null
+    },
+    {
+      "path": "scripts/local-task.mjs",
+      "sourceBlob": "faca14ce801d991d5fd3d38d817be55729fc4d81",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-local-task",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": "scripts/lock-kaikki-source.mjs",
@@ -1719,7 +2345,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-run-e2e",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/run-pinned-wiktextract-ingest.py",
@@ -1742,7 +2369,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-smoke",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/source-api-boundaries.mjs",
@@ -1752,7 +2380,8 @@
       "documentation": "modules/build-test-release.md#partial-adjacent",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "scripts/source-boundaries.mjs",
@@ -1762,7 +2391,35 @@
       "documentation": "modules/build-test-release.md#partial-adjacent",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
+    },
+    {
+      "path": "scripts/task-execution-log.mjs",
+      "sourceBlob": "95c669334adba2909c90c24149a18a5b4002d474",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-execution-recorder",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "scripts/task-execution-report.mjs",
+      "sourceBlob": "9641fbaa2ee699832db63cca60c8f06cb1419bb4",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-execution-report",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
+      "path": "scripts/task-execution.mjs",
+      "sourceBlob": "2cafbcb9f068e353fe1c685604ac7b474f5b6aea",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#file-execution-cli",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": "scripts/wikimedia-enwiktionary-contract.mjs",
@@ -1813,7 +2470,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-wxt-assets",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/auto-sites.js",
@@ -2049,7 +2707,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdd-key-codec",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdd-lookup.js",
@@ -2058,7 +2717,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdd-lookup",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdd-metadata.js",
@@ -2067,7 +2727,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdd-metadata",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdd-query-budget.js",
@@ -2076,7 +2737,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdd-budget",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdd-resource-path.js",
@@ -2085,7 +2747,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-resource-path",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdd-resource-policy.js",
@@ -2107,7 +2770,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdd-validation",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdd.js",
@@ -2116,7 +2780,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdd-facade",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-block-codec.js",
@@ -2125,7 +2790,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-block-codec",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-contract.js",
@@ -2134,7 +2800,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdict-contract",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-core.js",
@@ -2144,7 +2811,8 @@
       "documentation": "modules/mdict-storage-internals.md#partial-legacy",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-key-section.js",
@@ -2167,7 +2835,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-mdict-metadata",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-record-section.js",
@@ -2196,7 +2865,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-rich-key-codec",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-lookup.js",
@@ -2231,7 +2901,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-rich-budget",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-record-text.js",
@@ -2240,7 +2911,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-rich-record-text",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-source.js",
@@ -2249,7 +2921,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-range-source",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-validation.js",
@@ -2258,7 +2931,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-rich-validation",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-rich.js",
@@ -2267,7 +2941,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-rich-facade",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-ripemd128.js",
@@ -2276,7 +2951,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#file-ripemd",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "src/background/packs/importers/mdict-semantic.js",
@@ -4236,7 +4912,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-presentation",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/dark-mode.test.mjs",
@@ -4254,10 +4931,14 @@
     },
     {
       "path": "tests/dictionary-ecosystem-v2-certification.test.mjs",
-      "sourceBlob": "702739845f979b26305633528ba55693ddc2b31b",
+      "sourceBlob": "1f13567624c0e9d2f7fac326ce64669a4335d44f",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/local-task-acceptance.md#partial-policy",
+      "previousSourceBlob": "702739845f979b26305633528ba55693ddc2b31b",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": "tests/dictionary-library-v2-presentation.test.mjs",
@@ -4296,7 +4977,8 @@
       "previousSourceBlob": "06c85fc4a960bbd19eaef2663d8d9f0b51aaed3a",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/ecdict-mdx-recipe-lock.test.mjs",
@@ -4640,6 +5322,15 @@
       "documentation": null
     },
     {
+      "path": "tests/local-task.test.mjs",
+      "sourceBlob": "4ecaa69d11d7b9715082169fbf75c65cfb74baa4",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#test-local-task",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
+    },
+    {
       "path": "tests/local-tflex-import.test.mjs",
       "sourceBlob": "7adad279876608814156abf155d1f0e5de7f3f7e",
       "function": "测试与验证",
@@ -4757,7 +5448,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#test-opfs",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/pack-network.test.mjs",
@@ -4791,7 +5483,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-artifact",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/provider-config.test.mjs",
@@ -5050,7 +5743,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#test-mdd-cancel",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/rich-mdict-format.test.mjs",
@@ -5059,7 +5753,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#test-rich-format",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/rich-mdict-lookup-cancellation.test.mjs",
@@ -5101,7 +5796,8 @@
       "status": "已解释",
       "documentation": "modules/mdict-storage-internals.md#test-rich-security",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/rich-mdict-storage.test.mjs",
@@ -5186,14 +5882,17 @@
     },
     {
       "path": "tests/selection-release-certification.test.mjs",
-      "sourceBlob": "274e21833b6f0393fb09e6912085242334b478ae",
+      "sourceBlob": "468a4fade9fec2ffbfeca6caa18254375f6ad691",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": "modules/build-test-release.md#consumer-deltas",
-      "previousSourceBlob": "e6c9c3e6f7bca626d54d5fb7909f719f275ed80e",
+      "documentation": "modules/local-task-acceptance.md#partial-policy",
+      "previousSourceBlob": "274e21833b6f0393fb09e6912085242334b478ae",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0",
+      "relatedDocumentation": [
+        "modules/build-test-release.md#consumer-deltas"
+      ]
     },
     {
       "path": "tests/selection-result-model.test.mjs",
@@ -5272,7 +5971,8 @@
       "previousSourceBlob": "3d7066824de20cc1ccfa0045a9f4e2c16e92ee07",
       "partial": true,
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/stardict-import-cost.test.mjs",
@@ -5345,6 +6045,15 @@
       "reviewedAt": "2026-10-03",
       "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
       "blobVerifiedAt": "2026-10-03"
+    },
+    {
+      "path": "tests/task-execution.test.mjs",
+      "sourceBlob": "876a3a417c8bca8424a53282787b7d7fe132483c",
+      "function": "本地任务与验收工作流",
+      "status": "已解释",
+      "documentation": "modules/local-task-acceptance.md#test-task-execution",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "9bea2ddbe9d91950cf49074f11b93fcbfcc8b9a0"
     },
     {
       "path": "tests/tasks.test.mjs",
@@ -5541,7 +6250,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-wxt-assets",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/wxt-closed-network.test.mjs",
@@ -5550,7 +6260,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-network",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/wxt-e2e-entry.test.mjs",
@@ -5559,7 +6270,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-entry",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/wxt-runtime-mapping.test.mjs",
@@ -5568,7 +6280,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-mapping",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/wxt-upgrade-expectations.test.mjs",
@@ -5577,7 +6290,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#test-upgrade",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "tests/youtube-bridge.test.mjs",
@@ -5597,7 +6311,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-tsconfig",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "types/wxt-compat.d.ts",
@@ -5613,7 +6328,8 @@
       "status": "已解释",
       "documentation": "modules/build-test-release.md#file-vitest",
       "reviewedAt": "2026-10-03",
-      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03"
     },
     {
       "path": "wxt.config.mjs",

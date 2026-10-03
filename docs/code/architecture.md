@@ -2,7 +2,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单及构建验收基线：`86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d`。以下运行时固定链接保留`d5e308a709c008acf6b277d466d020f13025bdca`，已说明运行时源码blob未变；浏览器测试基础设施变化以[构建章](features/build-test-release.md)为准。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置与Reading已实现后台链；大型依赖的内部覆盖以清单为准。
+当前清单及本地验收基线：`2e7661a7f08e6a069f8bf4fb9c54b26e6de8f503`。以下运行时固定链接保留`d5e308a709c008acf6b277d466d020f13025bdca`，已说明运行时源码blob未变；浏览器测试基础设施变化以[构建章](features/build-test-release.md)为准。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置与Reading已实现后台链；大型依赖的内部覆盖以清单为准。
 
 ## 先区分五种运行环境
 
@@ -116,3 +116,15 @@ main 86ed596仍以legacy作为默认构建/发行；本地test:e2e默认选已�
 File范围源→header与压缩块→compact index→OPFS staging→后台重建核验→active snapshot→按需key/record块查询→alias/rawRecord或MDD媒体→既有受控展示。MDX提交核验索引描述符但不遍历每条record payload，MDD提交额外验证全部record块；不能将两者的提交证据混同。
 
 MDX index Map无MDD式容量驱逐，MDD为序列化index字节LRU；不同层的取消粒度和原生对象开销在正文单列。main key边界规范化不对称仍是现状，未合入parser分支和Oxford方案均不算当前支持。普通pack/TFLex索引与旧文本导入是其它路径，仍按coverage保留缺口。
+
+
+## 本地任务验收与被动监控
+
+[完整开发流程](features/local-task-acceptance.md) · [逐文件正文](modules/local-task-acceptance.md)
+
+新主线以docs/tasks中的合同/state/acceptance/review作为执行依据，11个Actions手动备用。freeze绑定候选，实际命令/日志与产物fingerprint、独审声明和依赖由gate核对；它不证明审核者独立、包必由该源码构建，也不替代产品/人工验收或实际分支保护。
+
+Hook只记录有限事件，不自动改变状态、重试开发或确认完成。报告中命令/工具/阶段重叠不能相加当有效劳动，模型用量缺字段为UNKNOWN。当前workflow-local归档completed，产品234/248/path-safety仍paused、235/236blocked；静态状态描述不授予继续执行权限。新流程替代旧CI触发描述，浏览器与实际包安全要求不降低。
+
+
+本轮发布前同步主线2e7661文档增量：新实现候选仍做完整验收；纯文档和符合输入未变条件的元数据归档按新规范复用证据，不重复冻结/全量测试/模型审核，不降低任务或真实保护要求。
