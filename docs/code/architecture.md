@@ -33,7 +33,7 @@
 | 本地词典 | 独立OPFS与对应目录/索引 | 导入事务、版本/资源关联、恢复 |
 | Provider HTTP | background/providers/ | AbortSignal、timeout/retry、显式用户动作和费用 |
 
-共享请求/缓存已在网页翻译章解释；Reading部分共享合同及词典存储大型依赖仍有未覆盖部分，见[覆盖清单](coverage.json)。本页的数据所有权依据[现有架构约束](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)与[AGENTS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)，不宣称所有实现已完成独立安全审核。
+共享请求/缓存已在网页翻译章解释；Reading部分共享合同与普通pack/TFLex存储仍有未覆盖部分，见[覆盖清单](coverage.json)。本页的数据所有权依据[现有架构约束](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)与[AGENTS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)，不宣称所有实现已完成独立安全审核。
 
 ## 如何定位修改
 
@@ -107,3 +107,12 @@ Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；
 main 86ed596仍以legacy作为默认构建/发行；本地test:e2e默认选已有WXT，两者不能混同。fixture不再自行build或fallback，先精确复制并记录原tree摘要，再允许列明的测试副本改动。sourceHead是声明而非构建证明；新包UI出现也不证明旧缓存Worker已替换，同ID升级需要实际激活及存储快照验证。
 
 共享fixture和CI变化已复核，前七章运行时固定源码仍一致；旧测试链接只说明当时断言，不代表当前包通过。构建输出包含递归清理，已知路径安全后续见本章，禁止将当前guard说成全面可靠。所有本轮运行、浏览器与发布均NOT_RUN。
+
+
+## Rich MDX/MDD持久读取内部链
+
+[二进制到重载查询](features/mdict-storage-internals.md) · [35个逐文件说明](modules/mdict-storage-internals.md)
+
+File范围源→header与压缩块→compact index→OPFS staging→后台重建核验→active snapshot→按需key/record块查询→alias/rawRecord或MDD媒体→既有受控展示。MDX提交核验索引描述符但不遍历每条record payload，MDD提交额外验证全部record块；不能将两者的提交证据混同。
+
+MDX index Map无MDD式容量驱逐，MDD为序列化index字节LRU；不同层的取消粒度和原生对象开销在正文单列。main key边界规范化不对称仍是现状，未合入parser分支和Oxford方案均不算当前支持。普通pack/TFLex索引与旧文本导入是其它路径，仍按coverage保留缺口。

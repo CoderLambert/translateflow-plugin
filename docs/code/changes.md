@@ -99,6 +99,18 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 - 阅读#248已报告的破坏性输出事故及未合入#278审查，在固定main说明风险，未执行危险反例或导入未合入修复。仅docs/code写入。
 - 当前清单sourceBlob与正文引用身份分开；变化的package局部说明已重读，已覆盖运行时字节未变。路径/锚点/导航/分母静态核对；安装/构建/测试/浏览器/发布NOT_RUN。
 
-### 唯一下一步
+### 当时下一步（本轮已接续）
 
 八条主要功能链已有导航，但全仓逐文件说明尚未完成。优先补齐MDX/MDD parser与OPFS/紧凑索引读写的完整内部链，复用导入/展示章，精确区分格式检查、块/键边界、索引身份、资源范围读取和失败恢复；不得借文档任务开发Oxford或运行词典JS。
+
+
+## 2026-10-03 18:20 UTC+08 Rich MDX/MDD内部读取切片
+
+- main仍86ed596，补齐[二进制/索引/OPFS/范围读取内部链](features/mdict-storage-internals.md)及[35个完整说明](modules/mdict-storage-internals.md)，复用现有导入、Worker、Content清洗与viewer章节。
+- 29运行时文件与6测试整文件解释，4路径保留局部；累计162/651完整、489待解释，其中117局部。MDX/MDD不同提交校验、cache限额、取消粒度与原始/规范key边界均按当前源码说明。
+- OPFS写入不等于active提交，MDX已索引不等于全record认证；MDD结构筛查不等于媒体完整解码。独立8aceb7c与Oxford拟议能力未写成main已实现。
+- 仅docs/code，静态核对blob、锚点、链接与计数；未访问私有词典、未执行业务/测试/浏览器/构建，全部NOT_RUN。
+
+### 唯一下一步
+
+接续普通pack/TFLex active OPFS索引读取和通用pack生命周期，连到现有dictionary-first结构化主卡；它与Rich MDX/MDD支路不同。旧MDX/StarDict显式文本投影、界面与共享合同余项保留待解释，不能以本轮内部链完成宣称全仓结束。

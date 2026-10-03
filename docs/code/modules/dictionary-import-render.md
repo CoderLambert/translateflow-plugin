@@ -272,3 +272,8 @@ retainCatalogResources 仅当旧新 curated mdxSha256 相同且资源所记 mdxF
 - 改持久化/替换：检查 reservation → staged → active 指针和 commitpoint；普通本地、curated reinstall、MDD附件集合是不同替换合同。
 - 改富文本样式：从 sanitizer-style 与 resolver 的有限 CSS 编译器入手；同时验证 tokenizer/viewer AST边界。缺图或交互缺失不能通过执行词典脚本、允许远程资源或放宽CSP解决。
 - 改关闭/取消：前篇 rich-details/controller 与本章 resolver、后台 ownerKey/AbortSignal 一起看。只隐藏UI会留下工作和句柄，只发送cancel也不能让旧结果写回。
+
+
+## 后续内部链
+
+前述局部Rich MDX/MDD parser、资源策略、OPFS与manager现在有[完整内部说明](mdict-storage-internals.md)及[功能链](../features/mdict-storage-internals.md)。本章原固定源码引用与当前main相关blob一致，历史“局部”只描述本章范围；全仓完整状态以coverage为准，不重复计数。未执行真实词典或浏览器验证。

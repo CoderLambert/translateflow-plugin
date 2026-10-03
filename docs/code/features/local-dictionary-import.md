@@ -130,3 +130,8 @@ rich-details 对每本词典发送 RICH_MDICT_LOOKUP，后台单词典 lookup �
 
 本章15个完整文件与其余局部依赖均列于[模块正文](../modules/dictionary-import-render.md)。结构化MDX/StarDict/TFLex内部、codec与parser全算法、catalog全流程、构建资源闭包及完整测试文件仍待后续专题。
 
+
+
+## 深入解析与持久读取
+
+本章的Worker、后台提交与查询可继续追到[MDX/MDD二进制→索引→OPFS→范围查询](mdict-storage-internals.md)和[35个内部文件说明](../modules/mdict-storage-internals.md)。旧的局部parser/存储引用现有完整正文，但普通pack/TFLex和旧文本投影仍是不同路径；覆盖状态以当前清单为准。未合入修复不算main能力。

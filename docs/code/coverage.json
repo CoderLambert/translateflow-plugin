@@ -7,8 +7,8 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d?recursive=1",
   "denominator": 651,
   "counts": {
-    "已解释": 127,
-    "待解释": 524,
+    "已解释": 162,
+    "待解释": 489,
     "待复核": 0,
     "有理由排除": 0
   },
@@ -2032,94 +2032,119 @@
     {
       "path": "src/background/packs/importers/mdd-index.js",
       "sourceBlob": "37d84ace16349871604a34e90ec709880d484df0",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-parser",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-index",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-parser"
+      ]
     },
     {
       "path": "src/background/packs/importers/mdd-key-codec.js",
       "sourceBlob": "18251c81fa0810ae70d1fe43aa4b3a1c08a68bd6",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-key-codec",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdd-lookup.js",
       "sourceBlob": "0bbc68a0b82e75ea891141da5fa641bd12bb133a",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-lookup",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdd-metadata.js",
       "sourceBlob": "f5a574be581c53ce82b22f429bccbd0c6ad2dc7a",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-metadata",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdd-query-budget.js",
       "sourceBlob": "494465374d89c1751ce7a2cf6280daec1899b149",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-budget",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdd-resource-path.js",
       "sourceBlob": "253efd9c3d417f613e73e48e7298ba1459eca9c6",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-resource-path",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdd-resource-policy.js",
       "sourceBlob": "552ad8bbf2b3e817aa0cf5e8b348590e7e7e0234",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-tokenizer",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-resource-policy",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-tokenizer"
+      ]
     },
     {
       "path": "src/background/packs/importers/mdd-validation.js",
       "sourceBlob": "90b6dec6d702abdac1f5d4a646a9a2d5d2e19314",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-validation",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdd.js",
       "sourceBlob": "7434ce9f90d14d738351d20a26734bc972d3f2a8",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-facade",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-block-codec.js",
       "sourceBlob": "cac7784ae5d3999458adfeca33e7fa2309529871",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-block-codec",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-contract.js",
       "sourceBlob": "384fb9dde6bc4c61cd82ae7880dd971fba887069",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdict-contract",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-core.js",
       "sourceBlob": "5e6b8563777f537e386afe2a51116a49d82ce978",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/mdict-storage-internals.md#partial-legacy",
+      "partial": true,
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-key-section.js",
@@ -2138,9 +2163,11 @@
     {
       "path": "src/background/packs/importers/mdict-metadata.js",
       "sourceBlob": "7a454679a48d18442d57caf00f8cebd4feb2644f",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdict-metadata",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-record-section.js",
@@ -2152,84 +2179,104 @@
     {
       "path": "src/background/packs/importers/mdict-rich-index.js",
       "sourceBlob": "d400c48499759fb56b1f58978732f9e27b1b36d0",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-parser",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-index",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-parser"
+      ]
     },
     {
       "path": "src/background/packs/importers/mdict-rich-key-codec.js",
       "sourceBlob": "7ae5eebbf5d77b7f165fa8c478b389642efc3b7d",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-key-codec",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-lookup.js",
       "sourceBlob": "2d2bc011c5d1909730b755143508c760566d1c0c",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-parser",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-lookup",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-parser"
+      ]
     },
     {
       "path": "src/background/packs/importers/mdict-rich-metadata.js",
       "sourceBlob": "95289e4b94c6146717a9a3c7f65ebdb6e60eb39b",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-parser",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-metadata",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-parser"
+      ]
     },
     {
       "path": "src/background/packs/importers/mdict-rich-query-budget.js",
       "sourceBlob": "2c8748f86984874c9252717fd9d40f3dba8fdad7",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-budget",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-record-text.js",
       "sourceBlob": "85e924715f492367ae13f3a500a62ac22d476cf2",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-record-text",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-source.js",
       "sourceBlob": "4bfeeeed2b3c8184a08f65e96b4f0db7ce060063",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-range-source",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-rich-validation.js",
       "sourceBlob": "5029aab06acae31f8f620d4ba73168c36400a473",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-validation",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-rich.js",
       "sourceBlob": "037bdb0b7e26eee660cdbd2b752745480f866efc",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-facade",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-ripemd128.js",
       "sourceBlob": "28ede7586d9d629b918ce6bf1eb4880651068d21",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-ripemd",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "src/background/packs/importers/mdict-semantic.js",
@@ -2400,13 +2447,15 @@
     {
       "path": "src/background/packs/opfs-store.js",
       "sourceBlob": "91def0803b76a249bb5f97f1193a315ecbdc6649",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-storage",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-opfs-store",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-storage"
+      ]
     },
     {
       "path": "src/background/packs/quarantine-import-loader.js",
@@ -2418,57 +2467,69 @@
     {
       "path": "src/background/packs/rich-mdd-contract.js",
       "sourceBlob": "827bdac8ff978f63109641f0c834655839e713a6",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-mdd-manager",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-contract",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-mdd-manager"
+      ]
     },
     {
       "path": "src/background/packs/rich-mdd-lookup-cancellation.js",
       "sourceBlob": "13baaba00204ab82fc07162a9ea11b3cae641cad",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-mdd-manager",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-cancellation",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-mdd-manager"
+      ]
     },
     {
       "path": "src/background/packs/rich-mdd-resources.js",
       "sourceBlob": "5d7794d75ab9ae4fedc51aa125864631d5b5028f",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-mdd-manager",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-mdd-manager",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-mdd-manager"
+      ]
     },
     {
       "path": "src/background/packs/rich-mdict-catalog-replacement.js",
       "sourceBlob": "2abcf48bbe0c556983653bf02b909880f913147a",
       "function": "词典导入与资源",
       "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-replacement",
-      "reviewedAt": "2026-10-02",
+      "documentation": "modules/mdict-storage-internals.md#partial-legacy",
+      "reviewedAt": "2026-10-03",
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-replacement"
+      ],
+      "partial": true
     },
     {
       "path": "src/background/packs/rich-mdict-contract.js",
       "sourceBlob": "a4b57f642633f3624c9c866d3c0ee6dd6333eff5",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-storage",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-contract",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-storage"
+      ]
     },
     {
       "path": "src/background/packs/rich-mdict-install-preflight.js",
@@ -2500,15 +2561,15 @@
     {
       "path": "src/background/packs/rich-mdict.js",
       "sourceBlob": "5ece857da72a76e13ed9f3e59cda4326a52ac8e0",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-storage",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-rich-manager",
+      "reviewedAt": "2026-10-03",
       "relatedDocumentation": [
-        "modules/selection.md#partial-router"
+        "modules/selection.md#partial-router",
+        "modules/dictionary-import-render.md#partial-storage"
       ],
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
       "blobVerifiedAt": "2026-10-03"
     },
     {
@@ -2521,13 +2582,15 @@
     {
       "path": "src/background/packs/state.js",
       "sourceBlob": "5d136cae2b973f4c64077f8b62129df6eca7b237",
-      "function": "词典导入与资源",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#partial-storage",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#file-pack-state",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#partial-storage"
+      ]
     },
     {
       "path": "src/background/preset-session.js",
@@ -4597,24 +4660,28 @@
     {
       "path": "tests/mdd-format.test.mjs",
       "sourceBlob": "44cb9e2d4c8594b9e38e424fb0b8224b8951ce38",
-      "function": "测试与验证",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#test-boundaries",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#test-mdd-format",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#test-boundaries"
+      ]
     },
     {
       "path": "tests/mdd-security.test.mjs",
       "sourceBlob": "f0bee9eedf9cec4e706097bd7a97aee458f4c11f",
-      "function": "测试与验证",
-      "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#test-boundaries",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#test-mdd-security",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#test-boundaries"
+      ]
     },
     {
       "path": "tests/mdict-browser-import.test.mjs",
@@ -4686,9 +4753,11 @@
     {
       "path": "tests/opfs-pack-store.test.mjs",
       "sourceBlob": "4cecec74c557f69bac46a5bdf1168c4f4b0a6ba9",
-      "function": "测试与验证",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#test-opfs",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "tests/pack-network.test.mjs",
@@ -4977,27 +5046,35 @@
     {
       "path": "tests/rich-mdd-lookup-cancellation.test.mjs",
       "sourceBlob": "22accfb4664af394cb2b9785f2193dffd065f8cf",
-      "function": "测试与验证",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#test-mdd-cancel",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "tests/rich-mdict-format.test.mjs",
       "sourceBlob": "fc5b51b5b04e51182ac1c779a0d7ee7398269ef2",
-      "function": "测试与验证",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#test-rich-format",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "tests/rich-mdict-lookup-cancellation.test.mjs",
       "sourceBlob": "542b1c9d87c24911214e02c4e750e4f9666504d9",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": "modules/selection.md#test-boundaries",
-      "reviewedAt": "2026-10-02",
+      "documentation": "modules/mdict-storage-internals.md#partial-tests",
+      "reviewedAt": "2026-10-03",
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/selection.md#test-boundaries"
+      ],
+      "partial": true
     },
     {
       "path": "tests/rich-mdict-preferences.test.mjs",
@@ -5020,20 +5097,26 @@
     {
       "path": "tests/rich-mdict-security.test.mjs",
       "sourceBlob": "3ce61c95d5e1b7a93845a26e6569b96676b45391",
-      "function": "测试与验证",
-      "status": "待解释",
-      "documentation": null
+      "function": "MDX/MDD解析与持久读取",
+      "status": "已解释",
+      "documentation": "modules/mdict-storage-internals.md#test-rich-security",
+      "reviewedAt": "2026-10-03",
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d"
     },
     {
       "path": "tests/rich-mdict-storage.test.mjs",
       "sourceBlob": "118f19a0c8f46b93e189974d3dbd328a715653c6",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": "modules/dictionary-import-render.md#test-boundaries",
-      "reviewedAt": "2026-10-02",
+      "documentation": "modules/mdict-storage-internals.md#partial-tests",
+      "reviewedAt": "2026-10-03",
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
-      "documentationSourceCommit": "d5e308a709c008acf6b277d466d020f13025bdca",
-      "blobVerifiedAt": "2026-10-03"
+      "documentationSourceCommit": "86ed596f8f266ac2d5c071b3bf681f2bb2d6ec2d",
+      "blobVerifiedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/dictionary-import-render.md#test-boundaries"
+      ],
+      "partial": true
     },
     {
       "path": "tests/rich-resource-resolver.test.mjs",
