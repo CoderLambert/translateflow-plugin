@@ -36,7 +36,7 @@ node scripts/task-execution.mjs run -- npm run validate
 node scripts/task-execution.mjs run -- node --test tests/task-execution.test.mjs
 ```
 
-wrapper 不使用 shell 拼接；需要 shell 时必须显式传入已有审查过的 shell 命令。分类器只保留 `validate`、`node-tests`、`e2e`、`unit`、`typecheck`、`check`、`build`、`ci-check`、`commit`、`push`、`merge` 或 `other`，不保存命令全文。混合多命令的类别只是提示，统计中不能推断它们输入完全相同。
+wrapper 不使用 shell 拼接；需要 shell 时必须显式传入已有审查过的 shell 命令。Linux/POSIX 上每次命令创建独立进程组，收到 SIGINT/SIGTERM 时只向该组转发，包含 npm/shell 后代进程；Windows 目前只能转发给直接子进程，进程树中断 NOT VERIFIED。分类器只保留 `validate`、`node-tests`、`e2e`、`unit`、`typecheck`、`check`、`build`、`ci-check`、`commit`、`push`、`merge` 或 `other`，不保存命令全文。混合多命令的类别只是提示，统计中不能推断它们输入完全相同。
 
 结束或暂停时：
 
@@ -70,11 +70,13 @@ node scripts/task-execution.mjs report issue-234 > docs/task-execution/reports/i
 | modelRequests / tokens | `null` / UNKNOWN：当前 hook 未提供可信统计，不读不稳定 transcript 估算，也不伪造数字 |
 | 未匹配跨度、损坏行、时钟异常 | 汇总明确计数；不补造缺失结束时间、不把负耗时改成 PASS |
 
-无需任务号时不猜关联，也不检查提示词寻找 Issue。任务号由单次 start 明确绑定。原生事件覆盖受客户端/工具路径影响，专用工具可能不经过 hook；报告不是完整调用审计。wrapper 与 native hook 可能同时观察同一命令，报告分别展示，不能重复相加。
+无需任务号时不猜关联，也不检查提示词寻找 Issue；写入保留标识 `unassigned-hooks`，可用 report 查看缺失绑定。任务号由单次 start 明确绑定。PreToolUse 将匿名 session/call 与当时的 task/attempt 保存为独立绑定；Post 使用该绑定，即使任务已暂停、切换或重开，也不会回写新任务。没有 Pre 绑定的 Post 只记录为未绑定，不能假定属于当前任务。
+
+原生事件覆盖受客户端/工具路径影响，专用工具可能不经过 hook；报告不是完整调用审计。wrapper 与 native hook 可能同时观察同一命令，报告分别展示，不能重复相加。
 
 ## 数据与开销边界
 
-原始记录存放在持久工作区 `docs/task-execution/local/<task>.jsonl`；上下文在同目录 `context.json`。事件以小型单次追加写入，不重写日志；hook 不修改任务上下文，支持同 worktree 内并发 hook。start/stage/finish 由唯一协调者串行执行。每个任务日志超过 64 MiB 时 report 明确失败，应先分任务/归档，不无限读取。
+原始记录存放在持久工作区 `docs/task-execution/local/<task>.jsonl`；上下文在同目录 `context.json`，未完成调用的匿名归属在 `pending-*.json`。完成 Post 后删除对应绑定；缺失 Post 时保留，不能在暂停时删除而丢失迟到结果的归属。事件以小型单次追加写入，不重写日志；hook 不修改任务上下文，支持同 worktree 内并发 hook。start/stage/finish 由唯一协调者串行执行。每个任务日志超过 64 MiB 时 report 明确失败，应先分任务/归档，不无限读取。
 
 不保存 prompt、assistant 文本、完整 command/argv、stdout/stderr、transcript/private 路径、环境变量、密钥、页面原文或词典内容。会话/turn/tool/agent ID 只保存关联 hash。Git head/dirty 只在任务边界与 wrapper 开始时读取，不每个 hook 跑 Git。路径使用固定 docs 子目录、限制任务 ID、拒绝符号链接，避免写出仓库。
 

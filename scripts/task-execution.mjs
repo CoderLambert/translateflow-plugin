@@ -31,10 +31,24 @@ async function run(argv) {
   const span = randomUUID();
   recorder.emit(ctx, "command_start", { span, kind: commandKind([executable, ...commandArgs].join(" ")) });
   const started = process.hrtime.bigint();
-  const child = spawn(executable, commandArgs, { stdio: "inherit", shell: false });
+  const processGroup = process.platform !== "win32";
+  const child = spawn(executable, commandArgs, { stdio: "inherit", shell: false, detached: processGroup });
   const handlers = new Map();
+  let pendingSignal = null;
+  function forward(signal) {
+    pendingSignal = signal;
+    if (!child.pid) return;
+    try {
+      // Only the new process group created for this command; never our own group.
+      if (processGroup) process.kill(-child.pid, signal);
+      else child.kill(signal);
+    } catch (error) {
+      if (error.code !== "ESRCH") console.error("task-execution: signal forwarding unavailable");
+    }
+  }
+  child.once("spawn", () => { if (pendingSignal) forward(pendingSignal); });
   for (const signal of ["SIGINT", "SIGTERM"]) {
-    const handler = () => child.kill(signal);
+    const handler = () => forward(signal);
     handlers.set(signal, handler);
     process.on(signal, handler);
   }

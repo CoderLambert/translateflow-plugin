@@ -175,3 +175,84 @@ test("overlapping tool spans are not treated as task time or model call counts",
   assert.equal(report.modelRequests, null);
   assert.ok(markdown(report).includes("overlap"));
 });
+
+test("late Post retains original task and attempt across pause, switch, restart and finish", (t) => {
+  const { recorder } = fixture(t);
+  const pre = (id) => ({ hook_event_name: "PreToolUse", session_id: "session", tool_use_id: id, tool_name: "Bash" });
+  const post = (id) => ({ ...pre(id), hook_event_name: "PostToolUse", tool_response: { exit_code: 0 } });
+  const original = recorder.start("task-a");
+  recorder.hook(pre("old-call"));
+  recorder.finish("paused");
+  recorder.start("task-b");
+  recorder.hook(post("old-call"));
+  assert.equal(summarize(recorder.read("task-a")).tools.Bash.count, 1);
+  assert.equal(summarize(recorder.read("task-a")).unmatchedSpans, 0);
+  assert.equal(recorder.read("task-b").events.length, 1);
+  assert.equal(recorder.read("task-a").events.at(-1).attempt, original.attempt);
+  recorder.finish("pass");
+  const second = recorder.start("task-a");
+  recorder.hook(pre("later-call"));
+  recorder.finish("paused");
+  recorder.start("task-a");
+  recorder.hook(post("later-call"));
+  recorder.hook(pre("after-finish"));
+  recorder.finish("pass");
+  recorder.hook(post("after-finish"));
+  const report = summarize(recorder.read("task-a"));
+  assert.equal(report.tools.Bash.count, 3);
+  assert.equal(report.unmatchedSpans, 0);
+  assert.equal(recorder.read("task-a").events.find((e) => e.event === "PostToolUse" && e.attempt === second.attempt).attempt, second.attempt);
+});
+
+test("orphan Post is explicitly unassigned instead of borrowing active task context", (t) => {
+  const { recorder } = fixture(t);
+  recorder.start("task-b");
+  recorder.hook({ hook_event_name: "PostToolUse", session_id: "session", tool_use_id: "missing-pre", tool_name: "Bash", tool_response: { exit_code: 1 } });
+  assert.equal(recorder.read("task-b").events.length, 1);
+  const unknown = recorder.read("unassigned-hooks");
+  assert.equal(unknown.events.length, 1);
+  assert.equal(unknown.events[0].head, null);
+  assert.equal(unknown.events[0].declaredRole, null);
+  assert.equal(summarize(unknown).unmatchedSpans, 1);
+  assert.throws(() => recorder.start("unassigned-hooks"));
+});
+
+test("SIGTERM to wrapper stops its own POSIX process group including a live descendant", { skip: process.platform !== "linux" }, async (t) => {
+  const { root, recorder, cli } = fixture(t, true);
+  recorder.start("process-tree");
+  const childFile = join(root, "descendant.mjs");
+  const driverFile = join(root, "driver.mjs");
+  writeFileSync(childFile, "console.log('READY:' + process.pid); setInterval(() => {}, 1000);\n");
+  writeFileSync(driverFile, "import { spawn } from 'node:child_process'; spawn(process.execPath, [process.argv[2]], { stdio: 'inherit' }); setInterval(() => {}, 1000);\n");
+  const wrapper = spawn(process.execPath, [cli, "run", "--", process.execPath, driverFile, childFile], { stdio: ["ignore", "pipe", "pipe"] });
+  let descendant = null;
+  t.after(() => {
+    if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill("SIGTERM");
+    if (descendant) { try { process.kill(descendant, "SIGKILL"); } catch {} }
+  });
+  const result = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Wrapper did not stop")), 5000);
+    wrapper.once("error", reject);
+    wrapper.once("close", (code, signal) => { clearTimeout(timer); resolve({ code, signal }); });
+  });
+  let output = "";
+  wrapper.stdout.on("data", (chunk) => {
+    output += chunk;
+    const match = output.match(/READY:(\d+)/u);
+    if (match && !descendant) {
+      descendant = Number(match[1]);
+      wrapper.kill("SIGTERM");
+    }
+  });
+  const ended = await result;
+  assert.ok(descendant, "Descendant was observably alive before interruption");
+  assert.equal(ended.code, 143);
+  const procStat = join("/proc", String(descendant), "stat");
+  try {
+    const stat = readFileSync(procStat, "utf8");
+    assert.ok(/\) Z /u.test(stat), "Descendant must have exited, not keep running");
+  } catch (error) { if (error.code !== "ENOENT") throw error; }
+  const report = summarize(recorder.read("process-tree"));
+  assert.equal(report.commandRuns[0].result, "fail");
+  assert.equal(report.commandRuns[0].signal, "SIGTERM");
+});

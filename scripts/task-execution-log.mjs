@@ -1,4 +1,4 @@
-import { constants, closeSync, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { constants, closeSync, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
@@ -9,6 +9,7 @@ export const HOOK_EVENTS = new Set(["SessionStart", "SessionEnd", "UserPromptSub
 const ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/u;
 const hash = (value) => typeof value === "string" && value.length ? createHash("sha256").update(value).digest("hex").slice(0, 24) : null;
 const name = (value) => typeof value === "string" && ID.test(value) ? value : null;
+const UNASSIGNED = "unassigned-hooks";
 
 export function commandKind(command) {
   if (typeof command !== "string") return "other";
@@ -63,11 +64,11 @@ export function createRecorder(root) {
     if (!name(value.task) || !name(value.attempt) || !STAGES.has(value.stage)) throw new Error("Invalid context");
     return value;
   }
-  function saveContext(value) {
+  function saveJson(file, value) {
     prepare();
     const temp = join(directory, `.context-${randomUUID()}.tmp`);
     writeFileSync(temp, JSON.stringify(value), { mode: 0o600, flag: "wx" });
-    renameSync(temp, contextFile);
+    renameSync(temp, file);
   }
   function emit(ctx, type, details = {}) {
     prepare();
@@ -85,11 +86,11 @@ export function createRecorder(root) {
     return event;
   }
   function start(task, role = "main") {
-    if (!name(task) || !new Set(["main", "dev_explorer", "dev_implementer", "dev_specialist", "dev_verifier", "dev_reviewer"]).has(role)) throw new Error("Invalid task or role");
+    if (!name(task) || task === UNASSIGNED || !new Set(["main", "dev_explorer", "dev_implementer", "dev_specialist", "dev_verifier", "dev_reviewer"]).has(role)) throw new Error("Invalid task or role");
     if (context()?.active) throw new Error("Finish the active task before starting another");
     const ctx = { task, attempt: randomUUID(), stage: "baseline", role, active: true, ...gitSnapshot(root) };
     emit(ctx, "task_start");
-    saveContext(ctx);
+    saveJson(contextFile, ctx);
     return ctx;
   }
   function active() {
@@ -103,18 +104,32 @@ export function createRecorder(root) {
     if (ctx.stage === next) return;
     const updated = { ...ctx, stage: next, ...gitSnapshot(root) };
     emit(updated, "stage_change", { previousStage: ctx.stage });
-    saveContext(updated);
+    saveJson(contextFile, updated);
   }
   function finish(result) {
     if (!RESULTS.has(result)) throw new Error("Invalid result");
     const ctx = { ...active(), ...gitSnapshot(root) };
     emit(ctx, "task_end", { result });
-    saveContext({ ...ctx, active: false });
+    saveJson(contextFile, { ...ctx, active: false });
   }
   function hook(input) {
     if (!input || !HOOK_EVENTS.has(input.hook_event_name)) throw new Error("Invalid hook event");
-    const ctx = context();
-    if (!ctx?.active) return; // No guessed Issue association or user-text inspection.
+    const current = context();
+    const unassigned = { task: UNASSIGNED, attempt: UNASSIGNED, stage: "baseline", role: null, head: null, dirty: null };
+    let ctx = current?.active ? current : unassigned;
+    const call = hash(input.tool_use_id);
+    const binding = call ? join(directory, `pending-${hash(input.session_id) ?? "no-session"}-${call}.json`) : null;
+    const isPre = input.hook_event_name === "PreToolUse";
+    const isPost = input.hook_event_name === "PostToolUse";
+    let hasBinding = false;
+    if ((isPre || isPost) && binding && existsSync(binding)) {
+      ctx = JSON.parse(safeRead(binding));
+      if (!name(ctx.task) || !name(ctx.attempt) || !STAGES.has(ctx.stage)) throw new Error("Invalid call binding");
+      hasBinding = true;
+    } else if (isPost) {
+      ctx = unassigned; // Never borrow a new task's context for an orphan result.
+    }
+    if (isPre && binding && !hasBinding) saveJson(binding, ctx);
     const tool = name(input.tool_name);
     const response = input.tool_response;
     // Read only numeric status in known object fields. Never inspect output text.
@@ -127,6 +142,7 @@ export function createRecorder(root) {
       observedModel: name(input.model), observedAgentType: name(input.agent_type),
       exitCode, isError
     });
+    if (isPost && hasBinding) unlinkSync(binding);
   }
   function read(task) {
     if (!name(task)) throw new Error("Invalid task");
