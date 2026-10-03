@@ -27,7 +27,7 @@ test("production package excludes reviewed ECDICT payloads and keeps required ho
       "utf8"
     );
     const fixtureSource = await readFile(
-      join(repoRoot, "e2e", "support", "extension-fixture.mjs"),
+      join(repoRoot, "e2e", "support", "production-artifact.mjs"),
       "utf8"
     );
 

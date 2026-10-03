@@ -76,6 +76,8 @@ jobs:
       - name: Chromium E2E with real release packs
         env:
           REQUIRE_RELEASE_LEXICON_PACKS: "1"
+          TF_E2E_ARTIFACT: dist/extension
+          TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
           TF_I18N_ARTIFACT: dist/extension
           PLAYWRIGHT_JSON_OUTPUT_FILE: offline-dictionary-beta-e2e.json
         run: npm run test:e2e -- --reporter=line,json

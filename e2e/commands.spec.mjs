@@ -1,6 +1,8 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
-test.describe("Chrome Commands MV3 routing", () => {
+test.use({ commandCallbackProbe: true });
+
+test.describe("Chrome Commands MV3 routing (actual registered callback probe)", () => {
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
   });
@@ -41,28 +43,22 @@ test.describe("Chrome Commands MV3 routing", () => {
   });
 
   test("protected pages are rejected before send or content injection", async ({ harness }) => {
-    const evidence = await harness.driver.evaluate(async ({ extensionId }) => {
-      const module = await import(`chrome-extension://${extensionId}/src/background/commands.js`);
-      let sends = 0;
-      let injections = 0;
-      const route = module.createCommandRouter({
-        queryActiveTab: async () => ({ id: 9001, url: "chrome://extensions/" }),
-        sendContentMessage: async () => {
-          sends += 1;
-          return { ok: true };
-        },
-        injectContent: async () => {
-          injections += 1;
-        }
-      });
-      return { result: await route("translate-page"), sends, injections };
-    }, { extensionId: harness.extensionId });
-
-    expect(evidence).toEqual({
-      result: { ok: false, unsupported: true },
-      sends: 0,
-      injections: 0
+    // The real router sees a native active extension page, which is protected.
+    await harness.driver.bringToFront();
+    await harness.serviceWorker.evaluate(async () => {
+      const p = globalThis.__tfCommandProbe;
+      p.sends = []; p.injections = 0; p.queries = [];
+      for (const callback of p.callbacks) callback("translate-page");
+      await Promise.all(p.queries);
+      await Promise.resolve(); await Promise.resolve();
     });
+    const evidence = await harness.serviceWorker.evaluate(() => ({
+      listeners: globalThis.__tfCommandProbe.callbacks.length,
+      sends: globalThis.__tfCommandProbe.sends.length,
+      injections: globalThis.__tfCommandProbe.injections
+    }));
+    expect(evidence).toEqual({ listeners: 1, sends: 0, injections: 0 });
+    expect(harness.server.calls).toHaveLength(0);
   });
 });
 
@@ -73,8 +69,17 @@ async function routeCommand(harness, page, command) {
     return tab?.url === expectedUrl;
   }, { expectedUrl: page.url() })).toBe(true);
 
-  return harness.driver.evaluate(async ({ extensionId, command }) => {
-    const module = await import(`chrome-extension://${extensionId}/src/background/commands.js`);
-    return module.routeCommand(command);
-  }, { extensionId: harness.extensionId, command });
+  const before = await harness.serviceWorker.evaluate((command) => {
+    const p = globalThis.__tfCommandProbe;
+    const count = p.sends.length;
+    if (p.callbacks.length !== 1) throw new Error("Expected one actual production command listener");
+    for (const callback of p.callbacks) callback(command);
+    return count;
+  }, command);
+  await expect.poll(() => harness.serviceWorker.evaluate((before) => {
+    const entries = globalThis.__tfCommandProbe.sends.slice(before);
+    return entries.some((entry) => entry.settled && entry.value?.ok);
+  }, before)).toBe(true);
+  return harness.serviceWorker.evaluate((before) => globalThis.__tfCommandProbe.sends.slice(before)
+    .find((entry) => entry.settled && entry.value?.ok)?.value, before);
 }

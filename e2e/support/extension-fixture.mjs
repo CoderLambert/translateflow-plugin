@@ -1,14 +1,11 @@
 import { test as base, chromium, expect } from "@playwright/test";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { startMockServer } from "./mock-server.mjs";
-import { buildExtension } from "../../scripts/build-extension.mjs";
-import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
+import { prepareExtensionTestCopy } from "./production-artifact.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../../src/shared/constants.js";
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CONTENT_SCRIPTS = [...CONTENT_SCRIPT_FILES];
 const CONTENT_STYLES = [...CONTENT_STYLE_FILES];
 const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
@@ -18,11 +15,13 @@ const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
 ];
 
 export const test = base.extend({
+  commandCallbackProbe: [false, { option: true, scope: "worker" }],
   lexiconPacks: ["fixture", { option: true, scope: "worker" }],
   ecdictMdxReleaseHostAccess: [false, { option: true, scope: "worker" }],
   ecdictMdxCachedArchivePath: ["", { option: true, scope: "worker" }],
   harness: [async ({
     lexiconPacks,
+    commandCallbackProbe,
     ecdictMdxReleaseHostAccess,
     ecdictMdxCachedArchivePath
   }, use) => {
@@ -31,71 +30,23 @@ export const test = base.extend({
     });
     const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-e2e-"));
     const extensionDir = join(tempRoot, "extension");
-    const buildReport = await buildExtension({
-      outDir: extensionDir,
-      allowExternalOutput: true
+    let context;
+    try {
+    const buildReport = await prepareExtensionTestCopy({
+      extensionDir, lexiconPacks, ecdictMdxReleaseHostAccess,
+      ecdictMdxCachedArchivePath, captureCommands: commandCallbackProbe, baseUrl: server.baseUrl
     });
 
-    const lexiconDir = join(extensionDir, "assets", "lexicon");
-    await rm(lexiconDir, { recursive: true, force: true });
-    if (lexiconPacks === "release") {
-      await cp(join(repoRoot, "assets", "lexicon"), lexiconDir, { recursive: true });
-    } else if (lexiconPacks !== "missing") {
-      await mkdir(lexiconDir, { recursive: true });
-      await cp(
-        join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),
-        join(lexiconDir, "core"),
-        { recursive: true }
-      );
-      await compileTflexTechnical({
-        extractPath: join(repoRoot, "lexicon", "sources", "wikidata-tech-entities.json"),
-        sourceLockPath: join(repoRoot, "lexicon", "source-locks", "technical-wikidata.json"),
-        outDir: join(lexiconDir, "technical")
-      });
-
-      if (lexiconPacks === "corrupt") {
-        const shardPath = join(lexiconDir, "core", "shards", "0000.jsonl");
-        const bytes = new Uint8Array(await readFile(shardPath));
-        const corruptBytes = new Uint8Array(bytes.byteLength + 1);
-        corruptBytes.set(bytes);
-        corruptBytes[corruptBytes.length - 1] = 10;
-        await writeFile(shardPath, corruptBytes);
-      } else if (lexiconPacks === "incompatible") {
-        const coreManifestPath = join(lexiconDir, "core", "manifest.json");
-        const manifest = JSON.parse(await readFile(coreManifestPath, "utf8"));
-        manifest.formatVersion = 2;
-        await writeFile(coreManifestPath, JSON.stringify(manifest) + "\n", "utf8");
-      }
-    }
-
-    const manifestPath = join(extensionDir, "manifest.json");
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    manifest.host_permissions = [
-      "http://127.0.0.1/*",
-      "https://api.deepseek.com/*",
-      "https://raw.githubusercontent.com/*"
-    ];
-    if (ecdictMdxReleaseHostAccess) {
-      manifest.host_permissions.push(
-        "https://github.com/*",
-        "https://release-assets.githubusercontent.com/*"
-      );
-    }
-    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-
-    if (ecdictMdxCachedArchivePath) {
-      const mdxWorkerPath = join(
-        extensionDir,
-        "src",
-        "options",
-        "workers",
-        "curated-ecdict-mdx-worker.js"
-      );
-      await writeFile(mdxWorkerPath, makeCachedEcdictMdxTestWorker(server.baseUrl));
-    }
-
+    console.log("[E2E_PRODUCTION_ARTIFACT]", JSON.stringify({
+      artifact: buildReport.artifact, sourceHead: buildReport.sourceHead,
+      treeSha256: buildReport.treeSha256, fileCount: buildReport.fileCount,
+      totalBytes: buildReport.totalBytes, lexicalBytes: buildReport.lexicalBytes,
+      lexiconMode: buildReport.lexiconMode, testChanges: buildReport.testCopy.changes,
+      commandCallbackProbe: buildReport.commandCallbackProbe,
+      cachedWorkerOverride: buildReport.cachedWorkerOverride
+    }));
     const userDataDir = join(tempRoot, "profile");
-    const context = await chromium.launchPersistentContext(userDataDir, {
+    context = await chromium.launchPersistentContext(userDataDir, {
       headless: true,
       channel: "chromium",
       args: [
@@ -253,53 +204,14 @@ export const test = base.extend({
 
     await harness.reset();
     await use(harness);
-    await context.close();
-    await server.close();
-    await rm(tempRoot, { recursive: true, force: true });
+    } finally {
+      try { await context?.close(); }
+      finally {
+        try { await server.close(); }
+        finally { await rm(tempRoot, { recursive: true, force: true }); }
+      }
+    }
   }, { scope: "worker" }]
 });
 
 export { expect };
-
-function makeCachedEcdictMdxTestWorker(baseUrl) {
-  return `import { createCuratedEcdictMdxWorkerHandler } from "./curated-ecdict-mdx-worker-core.js";
-
-const handler = createCuratedEcdictMdxWorkerHandler({
-  postMessage(message) { self.postMessage(message); },
-  network: {
-    async fetchSource(source, { signal } = {}) {
-      if (
-        source?.id !== "ecdict-en-zh-mdx-curated" ||
-        source?.downloadUrl !== "https://github.com/skywind3000/ECDICT/releases/download/1.0.28/ecdict-mdx-28.zip"
-      ) throw new Error("Test archive bridge only accepts the pinned ECDICT 1.0.28 recipe.");
-      const local = await fetch(${JSON.stringify(`${baseUrl}/__e2e/ecdict-mdx-28.zip`)}, {
-        method: "GET",
-        cache: "no-store",
-        signal
-      });
-      return {
-        ok: local.ok,
-        status: local.status,
-        url: "https://release-assets.githubusercontent.com/e2e-cached/ecdict-mdx-28.zip",
-        redirected: true,
-        headers: local.headers,
-        body: local.body,
-        arrayBuffer() { return local.arrayBuffer(); }
-      };
-    }
-  }
-});
-
-self.addEventListener("message", (event) => {
-  Promise.resolve(handler.handleMessage(event.data)).catch((error) => {
-    self.postMessage({
-      type: "curated-ecdict-mdx:error",
-      requestId: event.data?.requestId || "",
-      error: error?.message || String(error),
-      errorName: error?.name || "Error",
-      errorCode: error?.code || ""
-    });
-  });
-});
-`;
-}

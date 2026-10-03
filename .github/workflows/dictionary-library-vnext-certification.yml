@@ -126,6 +126,9 @@ jobs:
           npx playwright test "${test_paths[@]}" --reporter=line,json --output="$RUNNER_TEMP/translateflow-vnext/playwright-results"
         env:
           CI: "true"
+          TF_E2E_ARTIFACT: dist/extension
+          TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
+          TF_I18N_ARTIFACT: dist/extension
           ECDICT_MDX_ONE_CLICK_GATE: "1"
           PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/translateflow-vnext/evidence-private/playwright-vnext-report.json
           RICH_MDICT_CACHE_DIR: ${{ runner.temp }}/translateflow-vnext/cache

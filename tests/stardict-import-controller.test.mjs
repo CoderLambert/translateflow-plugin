@@ -76,6 +76,8 @@ test("Settings controller transfers plain StarDict ArrayBuffers and commits only
 
   const result = await resultPromise;
   assert.equal(result.commit.status, "imported");
+  assert.equal(controller.phase, "");
+  assert.equal(controller.activeRequestId, "");
   assert.equal(workers[0].terminated, true);
   assert.deepEqual(
     runtime.messages.map((message) => message.type),

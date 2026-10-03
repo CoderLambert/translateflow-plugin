@@ -1,11 +1,10 @@
 import { test, expect, chromium } from "@playwright/test";
 import { webcrypto } from "node:crypto";
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { copyProductionArtifact, defaultArtifact } from "./support/production-artifact.mjs";
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MARKER = "TF_DESIGN_FREEZE_MARKER";
 const MONOLITH_BYTES = 8 * 1024 * 1024;
 const MARKER_OFFSET = 4 * 1024 * 1024;
@@ -13,15 +12,7 @@ const MARKER_OFFSET = 4 * 1024 * 1024;
 async function prepareExtension() {
   const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-design-freeze-"));
   const extensionDir = join(tempRoot, "extension");
-  await cp(repoRoot, extensionDir, {
-    recursive: true,
-    filter: (source) => {
-      const rel = relative(repoRoot, source);
-      if (!rel) return true;
-      const first = rel.split(sep)[0];
-      return ![".git", "node_modules", "playwright-report", "test-results"].includes(first);
-    }
-  });
+  await copyProductionArtifact(defaultArtifact, extensionDir);
 
   const assetDir = join(extensionDir, "e2e-poc-assets");
   await mkdir(assetDir, { recursive: true });

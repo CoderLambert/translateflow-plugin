@@ -54,9 +54,10 @@ test("#107 Selection release gate keeps every required fixture family in CI", as
   assert.match(incompatible, /lexiconPacks: "incompatible"/);
   assert.match(incompatible, /与当前扩展版本不兼容/);
 
-  assert.match(fixture, /buildExtension\(/);
-  assert.match(fixture, /lexiconPacks === "corrupt"/);
-  assert.match(fixture, /lexiconPacks === "incompatible"/);
+  assert.match(fixture, /prepareExtensionTestCopy\(/);
+  assert.doesNotMatch(fixture, /buildExtension\(/);
+  assert.match(await source("e2e/support/production-artifact.mjs"), /lexiconPacks === "corrupt"/);
+  assert.match(await source("e2e/support/production-artifact.mjs"), /lexiconPacks === "incompatible"/);
   assert.match(workflow, /"e2e\/\*\*"/);
   assert.match(workflow, /REQUIRE_RELEASE_LEXICON_PACKS: "1"/);
 });

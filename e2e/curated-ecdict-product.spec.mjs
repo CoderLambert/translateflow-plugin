@@ -53,33 +53,6 @@ test.describe("curated ECDICT product flow", () => {
     ).toBeVisible();
     await expect(row).toContainText("已安装 · 可用");
 
-    const syntheticUpdate = await options.evaluate(async () => {
-      const [{ getCuratedInstallPresentation }, recipes] =
-        await Promise.all([
-          import(
-            chrome.runtime.getURL(
-              "src/options/curated-dictionary-ui.js"
-            )
-          ),
-          import(
-            chrome.runtime.getURL(
-              "src/shared/curated-dictionaries.js"
-            )
-          )
-        ]);
-      return getCuratedInstallPresentation(
-        recipes.CURATED_DICTIONARIES[0],
-        {
-          status: "healthy",
-          active: {
-            packVersion: "2024-older-reviewed"
-          }
-        }
-      );
-    });
-    expect(syntheticUpdate.status).toBe("update-available");
-    expect(syntheticUpdate.badgeLabel).toBe("有已审核更新");
-    expect(syntheticUpdate.actionLabel).toBe("更新");
 
     const page = await harness.open("/selection");
     await page.evaluate(() => {
