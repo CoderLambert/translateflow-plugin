@@ -315,10 +315,6 @@ select {
   border-top: 1px solid var(--tf-border-soft);
 }
 
-.control-row + .control-row {
-  border-top: 1px solid var(--tf-border-soft);
-}
-
 .control-copy {
   display: grid;
   min-width: 0;

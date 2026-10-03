@@ -13,7 +13,6 @@ import { createI18n } from "./src/i18n/index.js";
 
 const $ = (id) => document.getElementById(id);
 const autoBtn = $("autoSite");
-const selectionBtn = $("selectionSite");
 const cacheRestoreBtn = $("cacheRestoreSite");
 const quickControlBtn = $("quickControlSite");
 const translateBtn = $("translate");
@@ -27,11 +26,9 @@ const status = $("status");
 const cacheInfo = $("cacheInfo");
 const cacheRestoreInfo = $("cacheRestoreInfo");
 const autoInfo = $("autoInfo");
-const selectionInfo = $("selectionInfo");
 const quickControlInfo = $("quickControlInfo");
 
 let currentAutoEnabled = false;
-let currentSelectionEnabled = false;
 let currentCacheRestoreEnabled = false;
 let currentQuickControlPersistent = false;
 let currentQuickControlHidden = false;
@@ -86,7 +83,6 @@ autoBtn.addEventListener("click", async () => {
 
 cacheRestoreBtn.addEventListener("click", toggleCacheRestoreSite);
 quickControlBtn.addEventListener("click", toggleQuickControlSite);
-selectionBtn.addEventListener("click", toggleSelectionSite);
 
 translateBtn.addEventListener("click", runPageTranslation);
 cancelTaskBtn.addEventListener("click", cancelPageTranslation);
@@ -117,63 +113,10 @@ learningCenterBtn.addEventListener("click", async () => {
 Promise.allSettled([
   refreshCacheStatus(),
   refreshAutoStatus(),
-  refreshSelectionStatus(),
   refreshCacheRestoreStatus(),
   refreshQuickControlStatus(),
   presetUi.refresh()
 ]);
-
-async function toggleSelectionSite() {
-  setBusy(true, currentSelectionEnabled ? "正在关闭本站划词…" : "正在申请本站划词权限…");
-  try {
-    const site = await getActiveSite();
-    if (currentSelectionEnabled) {
-      const response = await chrome.runtime.sendMessage({
-        type: BACKGROUND_MESSAGES.SELECTION_SITE_UNREGISTER,
-        origin: site.origin
-      });
-      if (!response?.ok) throw new Error(response?.error || "关闭本站划词失败");
-      await maybeReleaseOriginPermission(site);
-      setStatus("已关闭本站自动划词；当前页面刷新前仍可继续使用。");
-    } else {
-      const granted = await chrome.permissions.request({ origins: [site.match] });
-      if (!granted) throw new Error("未授予本站权限，划词功能不会自动启用。");
-      const response = await chrome.runtime.sendMessage({
-        type: BACKGROUND_MESSAGES.SELECTION_SITE_REGISTER,
-        origin: site.origin
-      });
-      if (!response?.ok) throw new Error(response?.error || "本站划词注册失败");
-      await ensureInjected(site.tab.id);
-      setStatus("本站划词已开启；以后打开该站页面无需先点击扩展。");
-    }
-  } catch (error) {
-    setStatus(error.message || String(error), true);
-  } finally {
-    setBusy(false);
-    await refreshSelectionStatus();
-  }
-}
-
-async function refreshSelectionStatus() {
-  try {
-    const site = await getActiveSite();
-    const { selectionSites = [] } = await chrome.storage.local.get(["selectionSites"]);
-    const permitted = await chrome.permissions.contains({ origins: [site.match] });
-    currentSelectionEnabled = Array.isArray(selectionSites) && selectionSites.includes(site.origin) && permitted;
-    selectionInfo.textContent = currentSelectionEnabled
-      ? `本站打开页面时直接可用（${site.origin}）`
-      : "仅在主动点击扩展后的当前页面可用";
-    selectionBtn.setAttribute("aria-checked", String(currentSelectionEnabled));
-    selectionBtn.setAttribute("aria-label", currentSelectionEnabled ? "关闭本站划词查询" : "开启本站划词查询");
-    selectionBtn.disabled = false;
-  } catch {
-    currentSelectionEnabled = false;
-    selectionInfo.textContent = "当前页面不支持划词查询";
-    selectionBtn.setAttribute("aria-checked", "false");
-    selectionBtn.setAttribute("aria-label", "开启本站划词查询");
-    selectionBtn.disabled = true;
-  }
-}
 
 async function runPageTranslation() {
   setBusy(true, "正在准备翻译…");
@@ -505,7 +448,6 @@ async function ensureInjected(tabId) {
 
 function setBusy(busy, message) {
   autoBtn.disabled = busy;
-  selectionBtn.disabled = busy;
   cacheRestoreBtn.disabled = busy;
   quickControlBtn.disabled = busy;
   translateBtn.disabled = busy;
@@ -543,17 +485,14 @@ async function isOriginPermissionStillNeeded(site) {
   const {
     cacheRestoreSites = [],
     autoSites = [],
-    selectionSites = [],
     quickControlSites = []
   } = await chrome.storage.local.get([
     "cacheRestoreSites",
     "autoSites",
-    "selectionSites",
     "quickControlSites"
   ]);
   return (Array.isArray(cacheRestoreSites) && cacheRestoreSites.includes(site.origin))
     || (Array.isArray(autoSites) && autoSites.includes(site.origin))
-    || (Array.isArray(selectionSites) && selectionSites.includes(site.origin))
     || (Array.isArray(quickControlSites) && quickControlSites.includes(site.origin));
 }
 
