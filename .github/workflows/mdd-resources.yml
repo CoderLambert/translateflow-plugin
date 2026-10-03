@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/mdd-resources.yml"
+      - "e2e/support/**"
       - "docs/RICH_MDD_INTEROP_EVIDENCE.md"
       - "scripts/certify-mdd-interop.mjs"
       - "scripts/generate-mdd-interop-fixture.py"
@@ -14,7 +15,6 @@ on:
       - "tests/rich-dictionary-sanitizer.test.mjs"
       - "tests/mdd-*.test.mjs"
       - "e2e/mdd-resources.spec.mjs"
-      - "e2e/support/extension-fixture.mjs"
       - "src/background/packs/**"
       - "src/background/router.js"
       - "src/options/rich-mdict-*.js"
@@ -69,9 +69,14 @@ jobs:
       - name: Install Chromium for the local resources product gate
         run: npx playwright install --with-deps chromium
 
+      - name: Build the selected stage-one production artifact
+        run: npm run build:extension
+
       - name: Run local MDD resources browser gate
         run: npx playwright test e2e/mdd-resources.spec.mjs
         env:
+          TF_E2E_ARTIFACT: dist/extension
+          TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
           MDD_INTEROP_EVIDENCE_DIR: ${{ runner.temp }}/translateflow-mdd-184/evidence
 
       - name: Upload bounded test evidence

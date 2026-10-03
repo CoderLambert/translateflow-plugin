@@ -21,6 +21,8 @@ on:
       - "tests/unit/**"
       - "scripts/check.mjs"
       - "scripts/source-boundaries.mjs"
+      - "scripts/build-extension.mjs"
+      - "scripts/run-e2e.mjs"
       - "scripts/*wxt*.mjs"
       - "package.json"
       - "package-lock.json"
@@ -34,6 +36,18 @@ jobs:
   chromium-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact: dist/extension
+            name: legacy
+          - artifact: .output/chrome-mv3
+            name: wxt
+    env:
+      TF_E2E_ARTIFACT: ${{ matrix.artifact }}
+      TF_I18N_ARTIFACT: ${{ matrix.artifact }}
+      TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,12 +57,22 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build:extension:wxt
       - run: npm run test:wxt:smoke
-      - run: npm run test:e2e
+      - run: npm run build:extension
+      - name: Build the fixed pre-switch comparison artifact
+        if: matrix.name == 'wxt'
+        env:
+          TF_FIXED_OLD_ROOT: ${{ runner.temp }}/translateflow-pre-wxt
+        run: |
+          git fetch --no-tags origin 19e89b65fd3600073410407392da82ffa666ffc8
+          git worktree add --detach "$TF_FIXED_OLD_ROOT" 19e89b65fd3600073410407392da82ffa666ffc8
+          node "$TF_FIXED_OLD_ROOT/scripts/build-extension.mjs"
+          node --input-type=module -e 'import {appendFileSync} from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `TF_UPGRADE_OLD_ARTIFACT=${process.env.TF_FIXED_OLD_ROOT}/dist/extension\nTF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3\n`);'
+      - run: npm run test:e2e -- --output test-results/e2e-${{ matrix.name }}
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.name }}
           path: |
             playwright-report/
             test-results/
