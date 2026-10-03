@@ -19,14 +19,17 @@ An external test opt-in does not bypass source protection.
 mutation, rejects symlinks and non-directory components, and compares canonical
 paths, including outputs whose parents do not yet exist. External test outputs
 must be descendants of the OS temporary directory and must not be in another
-Git workspace below that temporary root. The temporary root itself cannot be
+Git workspace below that temporary root. Internal outputs also reject a nested
+Git workspace below the owning source root. The temporary root itself cannot be
 replaced. Existing test/certification callers use their own `mkdtemp` directory.
 These callers remain responsible for owning the disposable destination.
 
 The legacy builder validates before setup and again immediately before deleting
 its output. The WXT raw resource bridge uses the same relation for confinement.
-The production artifact adapter rejects both lexical and canonical overlap
-before copying. These checks do not grant permission to remove arbitrary data.
+The production artifact adapter rejects both lexical and canonical overlap,
+destination symlinks, and foreign Git workspaces before copying; its disposable
+destination must also be below the OS temporary directory. These checks do not
+grant permission to remove arbitrary data.
 They do not provide an atomic guarantee against another process changing the
 filesystem concurrently; builders must run in an isolated, owned workspace.
 

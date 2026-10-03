@@ -60,25 +60,35 @@ export async function assertBuildOutputPaths(sourceRoot, output, options = {}) {
   if (external && pathRelation(temporaryRoot, target) !== "descendant") {
     throw new Error("Unsafe extension output: external test output must be below the temporary directory");
   }
+  await assertDirectoryWritePath(target, external ? temporaryRoot : path.resolve(sourceRoot));
+  assertBuildOutputLocation(await canonicalPath(sourceRoot), await canonicalPath(target), options);
+  return target;
+}
+
+async function assertDirectoryWritePath(target, ownershipRoot) {
   // A writer must not traverse links, even when their current target looks safe.
   let current = target;
   for (;;) {
     const entry = await optionalLstat(current);
     if (entry?.isSymbolicLink()) throw new Error("Unsafe extension output: symbolic link in output path");
     if (entry && !entry.isDirectory()) throw new Error("Unsafe extension output: output path is not a directory");
-    // The OS temp root may itself have harness metadata; outputs cannot replace it.
-    if (external && current !== temporaryRoot && await optionalLstat(path.join(current, ".git"))) {
-      throw new Error("Unsafe extension output: external test output belongs to a Git workspace");
+    // The owning source/temp root may have metadata; nested Git workspaces are not ours.
+    if (pathRelation(ownershipRoot, current) === "descendant" && await optionalLstat(path.join(current, ".git"))) {
+      throw new Error("Unsafe extension output: destination belongs to another Git workspace");
     }
     const parent = path.dirname(current);
     if (parent === current) break;
     current = parent;
   }
-  assertBuildOutputLocation(await canonicalPath(sourceRoot), await canonicalPath(target), options);
-  return target;
 }
 
 export async function assertDisjointPathsOnDisk(source, destination) {
   assertDisjointPaths(source, destination);
+  const target = path.resolve(destination);
+  const temporaryRoot = path.resolve(tmpdir());
+  if (pathRelation(temporaryRoot, target) !== "descendant") {
+    throw new Error("Unsafe extension output: test copy must be below the temporary directory");
+  }
+  await assertDirectoryWritePath(target, temporaryRoot);
   assertDisjointPaths(await canonicalPath(source), await canonicalPath(destination));
 }

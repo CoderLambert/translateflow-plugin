@@ -50,9 +50,17 @@ test("disk guard rejects links, missing descendants through links and other work
     for (const output of [link, join(link, "missing/package"), foreign, join(foreign, "missing/package")]) {
       await assert.rejects(assertBuildOutputPaths(source, output, { allowExternalOutput: true }), /Unsafe extension output/);
     }
-    await assert.rejects(assertDisjointPathsOnDisk(source, link), /must be isolated/);
-    await assert.rejects(assertDisjointPathsOnDisk(source, join(link, "missing/package")), /must be isolated/);
+    await assert.rejects(assertDisjointPathsOnDisk(source, link), /symbolic link/);
+    await assert.rejects(assertDisjointPathsOnDisk(source, join(link, "missing/package")), /symbolic link/);
     await mkdir(join(source, "dist"));
+    await writeFile(join(source, ".git"), "synthetic owning worktree marker");
+    const nested = join(source, "dist", "nested-worktree");
+    await mkdir(nested); await writeFile(join(nested, ".git"), "synthetic foreign worktree marker");
+    await writeFile(join(nested, "keep"), "foreign source retained");
+    await assert.rejects(assertBuildOutputPaths(source, nested), /another Git workspace/);
+    await assert.rejects(assertBuildOutputPaths(source, join(nested, "missing/package")), /another Git workspace/);
+    assert.equal(await readFile(join(nested, "keep"), "utf8"), "foreign source retained");
+    assert.equal(await assertBuildOutputPaths(source, join(source, "dist", "package")), join(source, "dist", "package"));
     await symlink(foreign, join(source, "dist", "redirect"), process.platform === "win32" ? "junction" : "dir");
     await assert.rejects(assertBuildOutputPaths(source, join(source, "dist", "redirect", "new")), /symbolic link/);
     await writeFile(join(source, "dist", "file"), "not a directory");
