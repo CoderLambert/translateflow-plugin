@@ -2,7 +2,7 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕和Provider/设置功能链；大型依赖的内部覆盖以清单为准。
+源码基线：`d5e308a709c008acf6b277d466d020f13025bdca`。本页为固定版本静态分析；运行验证 **NOT_RUN**。已完成启动、划词查询、MDX/MDD导入展示、网页翻译/缓存、YouTube字幕、Provider/设置与Reading已实现后台链；大型依赖的内部覆盖以清单为准。
 
 ## 先区分五种运行环境
 
@@ -33,7 +33,7 @@
 | 本地词典 | 独立OPFS与对应目录/索引 | 导入事务、版本/资源关联、恢复 |
 | Provider HTTP | background/providers/ | AbortSignal、timeout/retry、显式用户动作和费用 |
 
-共享请求/缓存已在网页翻译章解释；Reading及词典存储大型依赖仍有未覆盖部分，见[覆盖清单](coverage.json)。本页的数据所有权依据[现有架构约束](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)与[AGENTS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)，不宣称所有实现已完成独立安全审核。
+共享请求/缓存已在网页翻译章解释；Reading部分共享合同及词典存储大型依赖仍有未覆盖部分，见[覆盖清单](coverage.json)。本页的数据所有权依据[现有架构约束](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/docs/ARCHITECTURE.md)与[AGENTS](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/AGENTS.md)，不宣称所有实现已完成独立安全审核。
 
 ## 如何定位修改
 
@@ -44,7 +44,7 @@
 
 ## 当前缺口
 
-启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储及设置大入口的局部依赖、Reading和构建测试仍待继续；网页翻译/缓存、YouTube字幕和Provider/设置已有功能章。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
+启动与划词/本地词典/显式AI的功能调用链已补齐；MDX/MDD导入与安全展示已新增功能章和15个文件详解；词典parser/存储、设置大入口和Reading共享合同局部依赖，以及构建测试仍待继续；Reading后台已有专章，但产品保存与学习中心入口仍缺。文件级完整程度以coverage为准，边界引用不算整文件完成。此总览不是全产品源码审计，也不证明Oxford10真实包已经能解析展示。
 
 ## 划词查询接上启动之后
 
@@ -89,3 +89,12 @@ DOM候选→有限行内marker→去重分批→缓存查询→缺失时Provider
 Options全局/站点保存、Popup临时/本站Preset是不同持久化路径；后台按字段组合站点覆盖、临时Preset和Glossary，再交Provider适配。临时Preset按规范化站点会话共享，不是单tab私有；Effective Context不返回凭据。
 
 测试连接先保存表单，失败不回滚；测试成功不证明站点配置、翻译id完整性、流式和DOM可用。普通HTTP、SSE及本地模型分支的重试、格式检查和取消覆盖范围不同，不能用单一“自动重试/取消”概括。网页配置快照风险仍未修复；细节及测试缺口均为静态分析，NOT_RUN。
+
+
+## Reading后台合同与用户入口断点
+
+[完整后台链与UI断点](features/reading-records.md) · [19个逐文件说明](modules/reading-records.md)
+
+已冻结SourceSnapshot并不自动写历史。main已实现Reading v2原生身份授权、操作登记、独立IDB短事务、列表/管理/分块导出与失效Port；SAVE仅在真正commit后返回saved，取消ACK区分尚未保存与已提交事实。
+
+生产readingAccessCollector及完整begin/save点击链尚缺，learningCenterAvailable默认false，固定学习中心打开仍NOT_READY；handoff合同不等于已实现回原文。测试注入的collector/页面与真实产品入口分开，不能把后台及合成测试当用户可用闭环。旧规范开头repository absent已落后于main，导读按固定源码说明。此轮未运行测试，不修改业务。

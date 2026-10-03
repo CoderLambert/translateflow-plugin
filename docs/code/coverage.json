@@ -7,8 +7,8 @@
   "inventoryUrl": "https://api.github.com/repos/CoderLambert/translateflow-plugin/git/trees/d5e308a709c008acf6b277d466d020f13025bdca?recursive=1",
   "denominator": 636,
   "counts": {
-    "已解释": 81,
-    "待解释": 555,
+    "已解释": 100,
+    "待解释": 536,
     "待复核": 0,
     "有理由排除": 0
   },
@@ -536,7 +536,9 @@
       "sourceBlob": "976bfde64682afe9e2f4a328eb951eb24e09a550",
       "function": "现有规范与证据",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-entry-router",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "docs/reading-source-position-v1/inline-review-repair.json",
@@ -785,7 +787,9 @@
       "sourceBlob": "9df5bf5d7e9d4a7a8a2f566a685b2a0dd1301986",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "e2e/reading-source-position.spec.mjs",
@@ -799,14 +803,18 @@
       "sourceBlob": "d633b85234488c741f868fda8211b34a6bc3221b",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "e2e/reading-storage.spec.mjs",
       "sourceBlob": "ec3e37be2a2a3533da23dde2d688e0f892d93ab9",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "e2e/release-gate.spec.mjs",
@@ -1154,7 +1162,10 @@
       "status": "待解释",
       "documentation": "modules/providers-and-settings.md#partial-entry-router",
       "partial": true,
-      "reviewedAt": "2026-10-03"
+      "reviewedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/reading-records.md#partial-entry-router"
+      ]
     },
     {
       "path": "package-lock.json",
@@ -1214,7 +1225,8 @@
       "scopeNote": "仅相关功能边界已解释，完整文件仍待解释",
       "relatedDocumentation": [
         "modules/startup.md#partial-files",
-        "modules/providers-and-settings.md#partial-entry-router"
+        "modules/providers-and-settings.md#partial-entry-router",
+        "modules/reading-records.md#partial-entry-router"
       ]
     },
     {
@@ -2334,102 +2346,117 @@
     {
       "path": "src/background/reading-record/access.js",
       "sourceBlob": "41acc833a8d560deb0f632ff710e689521aaa8b0",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-access",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/export-reader.js",
       "sourceBlob": "3e5d9c1d7d65ec8a35f58865afcd22e332a41ce6",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-export-reader",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/exports.js",
       "sourceBlob": "10e7b81e0de3bf42728a7b74424c9541f95918fc",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-exports",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/idb.js",
       "sourceBlob": "6c9c2d71b40dcbb57c492e16a895a61fd06b9d81",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-idb",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/management.js",
       "sourceBlob": "ac07b7dd786b6c672a375dbc9fc8b18c2a48d5d4",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-management",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/operations.js",
       "sourceBlob": "fbb8ebf8ff7e0ed69bb2d6ab60d0c4fb43bcca99",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-operations",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/policy.js",
       "sourceBlob": "590b38f09cc7529f0e72e7d8262795e2fdbda922",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-policy",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/query.js",
       "sourceBlob": "69edd066926f21096513783b2b9ac912b81c9ba8",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-query",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/repository.js",
       "sourceBlob": "86818dfdd0409c3164ce39719d538879a6f1c39d",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-repository",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/runtime.js",
       "sourceBlob": "7d754367448ac1712ef90c7528bf05900f6759e7",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": "modules/startup.md#partial-files",
-      "reviewedAt": "2026-10-02",
-      "scopeNote": "仅启动边界已解释，完整文件仍待解释"
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-runtime",
+      "reviewedAt": "2026-10-03",
+      "relatedDocumentation": [
+        "modules/startup.md#partial-files"
+      ]
     },
     {
       "path": "src/background/reading-record/service.js",
       "sourceBlob": "6c04cd87e3603f709a9f4b32098d14250710b7ff",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-service",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/storage-state.js",
       "sourceBlob": "b5a082b63e5a41c8ac2568b4e5d1e5098603935d",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-storage-state",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/subscriptions.js",
       "sourceBlob": "063d43fac37f9eb4e0243b20a0b03441efefe930",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-subscriptions",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/reading-record/write.js",
       "sourceBlob": "dd1028d52576a38c2fde7408b238f69224cba993",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-write",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/background/router.js",
@@ -2444,7 +2471,8 @@
         "modules/selection.md#partial-router",
         "modules/dictionary-import-render.md#partial-router",
         "modules/youtube-subtitles.md#partial-entry-router",
-        "modules/providers-and-settings.md#partial-entry-router"
+        "modules/providers-and-settings.md#partial-entry-router",
+        "modules/reading-records.md#partial-entry-router"
       ]
     },
     {
@@ -3395,91 +3423,112 @@
       "sourceBlob": "18353fe9063e70388a8e2f6057b63926349cffe4",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/constants.js",
       "sourceBlob": "c166d53aa0a55611198c7c949dc1482401a872e9",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-constants",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/dto.js",
       "sourceBlob": "5ce3d97212bdb16da111fdc1cb27ec0713902859",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/export.js",
       "sourceBlob": "c6196a640f129630823deeb33fb56ca501389aef",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-shared-export",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/identity.js",
       "sourceBlob": "aefa6132253ade059de341f7bcc42e1c9f2d8d4c",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-identity",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/invalidations.js",
       "sourceBlob": "e8ea3e242dc2cdbfe5383f74e104ded395e9618b",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-invalidations",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/lifecycle.js",
       "sourceBlob": "0daf499cdff894e21377df2e1fb19d970711df57",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/list.js",
       "sourceBlob": "9a11885863c3a821cfa71596b3a700b076a860de",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/previews.js",
       "sourceBlob": "dd3133180b00dabaf23bb61d9a61bb72bedbfa4e",
-      "function": "Reading记录",
-      "status": "待解释",
-      "documentation": null
+      "function": "Reading记录与授权",
+      "status": "已解释",
+      "documentation": "modules/reading-records.md#file-previews",
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/record.js",
       "sourceBlob": "48e8cbd49aa71b2f539d9de5337bee3a0e88a4aa",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/response.js",
       "sourceBlob": "1a9dc09c4e7ab161871c1dc44b508ecc197695a3",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/source.js",
       "sourceBlob": "ade9433ccc4398b0e82540108d023e2b00d944f8",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/reading/validation.js",
       "sourceBlob": "033ca350eb729fb99da9bf61ee7733d05ca349d5",
       "function": "Reading记录",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#partial-contracts",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "src/shared/retry-policy.js",
@@ -4195,70 +4244,90 @@
       "sourceBlob": "7d655ff7c9b771c918cf76cabe58f88e062f5872",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-access-inline.test.mjs",
       "sourceBlob": "485931b9a7fe3bd0292c40400e78dce62a73b4e9",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-access-postmerge.test.mjs",
       "sourceBlob": "c675317d11e985ba7dcd0441f160dc75ce78949b",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-access.test.mjs",
       "sourceBlob": "200ff69921b4c93110564d6228ce555a4b2cf671",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-contract-dto.test.mjs",
       "sourceBlob": "582ac9e74c286daa508d4ef34d5085076b8e3b86",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-contract-lifecycle.test.mjs",
       "sourceBlob": "ff2d56f8c48eedd37c887d87b4705fc9c6f44d05",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-contract-response.test.mjs",
       "sourceBlob": "e49f1c9f89a1b69295c9dc60899e9047f8c38721",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-contract-v2.test.mjs",
       "sourceBlob": "45308fcbdfbdd0275d8bed8a5b115cdd69f689ba",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-operations.test.mjs",
       "sourceBlob": "cb8e8c5ba69777d83ed528e69ae0a47361c1ec7a",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-runtime-storage.test.mjs",
       "sourceBlob": "16f5b80197160fdd717777dbd0efe719599c4025",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-source-position.test.mjs",
@@ -4272,7 +4341,9 @@
       "sourceBlob": "c3b75a44726b2181063844e896c4ff66a4e0d813",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/reading-text-projection.test.mjs",
@@ -4288,7 +4359,9 @@
       "sourceBlob": "b882a9f81877ee23aa251a2f72bf04c34ae2d7c4",
       "function": "测试与验证",
       "status": "待解释",
-      "documentation": null
+      "documentation": "modules/reading-records.md#test-boundaries",
+      "partial": true,
+      "reviewedAt": "2026-10-03"
     },
     {
       "path": "tests/release-gate.test.mjs",
