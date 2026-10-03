@@ -150,6 +150,12 @@ entry:// 转同词典查询，sound:// 转有用户手势的本地音频动作�
 
 #### 2.2 查询时机，不另造一套入口
 
+**真实入口增量复核（2026-10-03，源码固定于 `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24` / [#287](https://github.com/CoderLambert/translateflow-plugin/pull/287)）：** 既有学习中心产品用例通过普通扩展 TAB 打开 `popup.html`，Selection 步骤使用 `harness.inject`；它们的保存、历史和恢复证据仍有效，但不能外推为真实工具栏 Popup 身份或新网页默认启动已通过。#287 新增真实 POPUP context 消息用例和不注入脚本的新网页 Selection 用例；前者仍以消息触发打开，不替代用户点击真实工具栏内可见按钮的验收。该提交只是本次静态复核基线，不保证用户正在运行它，也不保证届时 main 未变化。最终使用实际候选构建，记录 commit、产物摘要及浏览器版本。
+
+同一扩展 ID 升级须单独确认权限与注册迁移：该源码把 HTTP/HTTPS 从 optional 改为 required，并删除旧动态站点注册；`expectedRegistrationsAfterInstalledUpdate()` 仍返回保留注册并更新资源列表，存在静态合同不一致，未在本次运行或复现。新警告权限可能使旧安装等待用户重新同意，这是 [Chrome 更新权限规则](https://developer.chrome.com/docs/extensions/develop/concepts/permission-warnings#update_permissions) 和 [#287 审核](https://github.com/CoderLambert/translateflow-plugin/pull/287#discussion_r4175033580) 指出的待验风险，不是已确认的用户事故。验收须覆盖旧动态注册迁移后的正确状态、浏览器同意/拒绝/撤回站点权限及恢复；unpacked reload 不能替代权限升级确认。Oxford 不据此认可或新增全站权限，不放宽 CSP，不绕过浏览器授权；若外部权限/升级合同未满足，准确标记受影响入口未就绪，保留其余既有证据。
+
+依据：[真实入口与既有产品用例](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/learning-center.spec.mjs)、[新网页 Selection](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/selection-auto-sites.spec.mjs)、[升级预期](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/support/upgrade-expectations.mjs)、[注册迁移](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/src/background/auto-sites.js)。本次仅修正方案；新增与原有 Oxford 浏览器项均为 `NOT_RUN`。
+
 `selection/controller.js` 的 `translateSnapshot(snapshot, {forceTranslation})` 先调用 `SELECTION_RESOLVE`。local 命中、no-hit-local、以及 unresolved 且 intent 为 lexical 时，调用 `loadRichDictionaryDetails(snapshot,version,expectedPage,isCurrentSelection)`。普通 translation/forceTranslation 分支目前不走此富词典加载。
 
 `selectionRichDetails.load(...)` 只发送 `RICH_MDICT_VIEWER_LIST`。后台 `createRichMdictViewerDictionaryLister({manager,preferencesStore})` 从 `listMetadata()` 取词典，合并持久化 enabled/order/expandedByDefault，滤掉禁用项并排序，第一本被标成 preferred 且默认展开。`appendRichDictionaryCards(...)` 对已展开卡立即调用 onLookup，其余等 toggle 展开才调用。
@@ -395,10 +401,10 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 交付必须绑定同一个 commit：可安装扩展构建产物、构建命令/版本、实际测试报告、已知缺口，另有用户真实六文件包的操作演示（商业内容仅私有保存/展示，不提交公开仓库）。顺序如下：
 
 1. 干净安装构建产物 → 选择1,533,010,812字节六文件组 → 全包ready；日志能解释复制/校验阶段而不是虚构百分比。
-2. 网页真实选择arch → 现有查询入口 → Oxford10卡 → 完整阅读 → 词性/音标/插图/发音/entry与fragment/返回，录屏连续呈现同一条链。
+2. 在实际产物上点击真实工具栏 Popup 内可见的学习中心按钮，确认入口可用；另新开普通 HTTPS 页面，不先打开 Popup 激活该页、不使用 harness.inject/手动脚本注入，在浏览器已授予的站点权限内真实选择arch → 现有查询入口 → Oxford10卡 → 完整阅读 → 词性/音标/插图/发音/entry与fragment/返回，录屏连续呈现同一条链。
 3. go → 确认末尾/全部词性可达 → 点击远端例句发音；记录实际AST数量、读取字节、活跃Blob、音频请求数，不能预取526音频。
 4. 切词/关闭/导航中取消，旧音频不播、旧DOM不覆盖、Blob回收；资源变更/卸载后旧版本失效。
-5. 重启浏览器/扩展 → 不重新选文件再走arch/go；中断附件导入、配额失败、损坏资源后可恢复或准确要求重选，旧附件仍可读。
+5. 重启浏览器/扩展 → 不重新选文件再走arch/go；同ID旧安装升级另验动态注册迁移、浏览器权限重新同意/拒绝/撤回及恢复，不能以干净安装或unpacked reload替代；中断附件导入、配额失败、损坏资源后可恢复或准确要求重选，旧附件仍可读。
 6. 合成边界夹具验证多records、同offset、跨block、别名环/分支、大小写/Stripkey、CSS路径与恶意输入；真实包和安全回归同时通过。
 
 本次上述全部浏览器项目为 NOT_RUN。4GB数值边界fixture通过只证明数值处理，不证明真实4GB性能；arch局部截图、parser单测、导入元数据、构建成功均不能单独替代整包兼容的完成判定。
@@ -439,7 +445,7 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 | 发音 | 实际单词与例句 sound:// 资源可播；确认英美按钮和 MIME；快切词不会播放旧词 | 音频请求与手势播放记录 |
 | 资源边界 | 基础卷图片、字体和音频卷均命中；%20和反斜杠路径正确；区分标签次数与独立资源，526音频不预载 | 资源来源/字节日志 |
 | 索引边界 | 首末 key block 条目、重复键、同 offset 别名、跨 record block 与重定向环行为正确 | 实包用例加边界 fixture |
-| 生命周期 | 导入可取消和重试；配额失败可解释；快速查询取消；删除与替换后资源可回收 | 阶段进度及存储前后对照 |
+| 生命周期 | 导入可取消和重试；配额失败可解释；快速查询取消；删除与替换后资源可回收；同ID升级的动态注册迁移及权限确认/拒绝/撤回/恢复可解释 | 阶段进度、存储/注册前后对照与真实权限升级记录 |
 | 安全 | 导入 JS、事件属性与外部 URL 不执行；CSS/SVG 恶意输入被拒绝；CSP 与权限不扩大 | 负向 fixture 与网络记录 |
 | 性能回归 | 冷导入、冷重启、冷热查词、长词条与连续切换有实测；缓存和URL不持续增长 | 时间 读取量 内存/存储曲线 |
 | 4 GB 独立项 | 4,000,000,000 接受、4,000,000,001 拒绝；高位偏移及真实大包性能单独验证 | 数值边界与浏览器证据分列 |
