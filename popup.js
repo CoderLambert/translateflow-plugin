@@ -45,6 +45,7 @@ const presetUi = initializePresetUi({
   refreshCacheStatus,
   setStatus
 });
+const ALL_SITE_PATTERNS = Object.freeze(["http://*/*", "https://*/*"]);
 
 autoBtn.addEventListener("click", async () => {
   setBusy(true, currentAutoEnabled ? "正在关闭本站自动翻译…" : "正在申请本站权限…");
@@ -124,27 +125,24 @@ Promise.allSettled([
 ]);
 
 async function toggleSelectionSite() {
-  setBusy(true, currentSelectionEnabled ? "正在关闭本站划词…" : "正在申请本站划词权限…");
+  setBusy(true, currentSelectionEnabled ? "正在关闭全站划词…" : "正在申请所有网站划词权限…");
   try {
     const site = await getActiveSite();
     if (currentSelectionEnabled) {
       const response = await chrome.runtime.sendMessage({
-        type: BACKGROUND_MESSAGES.SELECTION_SITE_UNREGISTER,
-        origin: site.origin
+        type: BACKGROUND_MESSAGES.SELECTION_ALL_SITES_DISABLE
       });
-      if (!response?.ok) throw new Error(response?.error || "关闭本站划词失败");
-      await maybeReleaseOriginPermission(site);
-      setStatus("已关闭本站自动划词；当前页面刷新前仍可继续使用。");
+      if (!response?.ok) throw new Error(response?.error || "关闭全站划词失败");
+      setStatus("已关闭全站自动划词；已打开页面刷新前仍可继续使用。");
     } else {
-      const granted = await chrome.permissions.request({ origins: [site.match] });
-      if (!granted) throw new Error("未授予本站权限，划词功能不会自动启用。");
+      const granted = await chrome.permissions.request({ origins: [...ALL_SITE_PATTERNS] });
+      if (!granted) throw new Error("未授予所有网站权限，划词功能不会自动启用。");
       const response = await chrome.runtime.sendMessage({
-        type: BACKGROUND_MESSAGES.SELECTION_SITE_REGISTER,
-        origin: site.origin
+        type: BACKGROUND_MESSAGES.SELECTION_ALL_SITES_ENABLE
       });
-      if (!response?.ok) throw new Error(response?.error || "本站划词注册失败");
-      await ensureInjected(site.tab.id);
-      setStatus("本站划词已开启；以后打开该站页面无需先点击扩展。");
+      if (!response?.ok) throw new Error(response?.error || "全站划词注册失败");
+      await ensureInjected(site.tab.id, { showQuickControl: false });
+      setStatus("全站划词已开启；以后打开普通网页无需先点击扩展。");
     }
   } catch (error) {
     setStatus(error.message || String(error), true);
@@ -156,21 +154,21 @@ async function toggleSelectionSite() {
 
 async function refreshSelectionStatus() {
   try {
-    const site = await getActiveSite();
-    const { selectionSites = [] } = await chrome.storage.local.get(["selectionSites"]);
-    const permitted = await chrome.permissions.contains({ origins: [site.match] });
-    currentSelectionEnabled = Array.isArray(selectionSites) && selectionSites.includes(site.origin) && permitted;
+    await getActiveSite();
+    const { selectionAllSites = false } = await chrome.storage.local.get(["selectionAllSites"]);
+    const permitted = await chrome.permissions.contains({ origins: [...ALL_SITE_PATTERNS] });
+    currentSelectionEnabled = selectionAllSites === true && permitted;
     selectionInfo.textContent = currentSelectionEnabled
-      ? `本站打开页面时直接可用（${site.origin}）`
+      ? "所有普通网页打开后直接可用"
       : "仅在主动点击扩展后的当前页面可用";
     selectionBtn.setAttribute("aria-checked", String(currentSelectionEnabled));
-    selectionBtn.setAttribute("aria-label", currentSelectionEnabled ? "关闭本站划词查询" : "开启本站划词查询");
+    selectionBtn.setAttribute("aria-label", currentSelectionEnabled ? "关闭全站划词查询" : "开启全站划词查询");
     selectionBtn.disabled = false;
   } catch {
     currentSelectionEnabled = false;
     selectionInfo.textContent = "当前页面不支持划词查询";
     selectionBtn.setAttribute("aria-checked", "false");
-    selectionBtn.setAttribute("aria-label", "开启本站划词查询");
+    selectionBtn.setAttribute("aria-label", "开启全站划词查询");
     selectionBtn.disabled = true;
   }
 }
@@ -486,7 +484,7 @@ async function getActiveSite() {
   return { tab, origin, match: getOriginMatchPattern(origin) };
 }
 
-async function ensureInjected(tabId) {
+async function ensureInjected(tabId, { showQuickControl = true } = {}) {
   let injected = false;
   try {
     const status = await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.STATUS });
@@ -498,9 +496,11 @@ async function ensureInjected(tabId) {
     await chrome.scripting.executeScript({ target: { tabId }, files: [...CONTENT_SCRIPT_FILES] });
   }
 
-  try {
-    await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.QUICK_CONTROL_SHOW });
-  } catch {}
+  if (showQuickControl) {
+    try {
+      await chrome.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.QUICK_CONTROL_SHOW });
+    } catch {}
+  }
 }
 
 function setBusy(busy, message) {
@@ -543,17 +543,14 @@ async function isOriginPermissionStillNeeded(site) {
   const {
     cacheRestoreSites = [],
     autoSites = [],
-    selectionSites = [],
     quickControlSites = []
   } = await chrome.storage.local.get([
     "cacheRestoreSites",
     "autoSites",
-    "selectionSites",
     "quickControlSites"
   ]);
   return (Array.isArray(cacheRestoreSites) && cacheRestoreSites.includes(site.origin))
     || (Array.isArray(autoSites) && autoSites.includes(site.origin))
-    || (Array.isArray(selectionSites) && selectionSites.includes(site.origin))
     || (Array.isArray(quickControlSites) && quickControlSites.includes(site.origin));
 }
 

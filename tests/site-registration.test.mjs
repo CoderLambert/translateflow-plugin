@@ -8,7 +8,7 @@ function createChromeMock({ permitted = false } = {}) {
   const storage = {
     cacheRestoreSites: [],
     autoSites: [],
-    selectionSites: [],
+    selectionAllSites: false,
     quickControlSites: [],
     quickControlHiddenSites: []
   };
@@ -84,15 +84,15 @@ test("persistent Quick Control refuses registration without an explicit Origin p
   assert.equal(mock.registered.size, 0);
 });
 
-test("persistent Selection refuses registration without an explicit Origin permission", async () => {
+test("global Selection refuses registration without explicit all-sites permission", async () => {
   const mock = createChromeMock({ permitted: false });
   const coordinator = await loadCoordinator(mock);
-  await assert.rejects(() => coordinator.registerSelectionSite("https://example.com"), /划词权限/);
-  assert.deepEqual(mock.storage.selectionSites, []);
+  await assert.rejects(() => coordinator.enableSelectionAllSites(), /所有网站的划词权限/);
+  assert.equal(mock.storage.selectionAllSites, false);
   assert.equal(mock.registered.size, 0);
 });
 
-test("cache restore, auto translation, Selection and Quick Control share one registration until all are disabled", async () => {
+test("global Selection replaces exact registrations and restores them when disabled", async () => {
   const mock = createChromeMock({ permitted: true });
   const coordinator = await loadCoordinator(mock);
 
@@ -104,9 +104,10 @@ test("cache restore, auto translation, Selection and Quick Control share one reg
   assert.deepEqual(mock.storage.quickControlSites, ["https://example.com"]);
   assert.equal(mock.registered.size, 1);
 
-  await coordinator.registerSelectionSite("https://example.com/docs");
-  assert.deepEqual(mock.storage.selectionSites, ["https://example.com"]);
+  await coordinator.enableSelectionAllSites();
+  assert.equal(mock.storage.selectionAllSites, true);
   assert.equal(mock.registered.size, 1);
+  assert.deepEqual([...mock.registered.values()][0].matches, ["http://*/*", "https://*/*"]);
 
   await coordinator.registerAutoSite("https://example.com");
   assert.deepEqual(mock.storage.autoSites, ["https://example.com"]);
@@ -120,8 +121,8 @@ test("cache restore, auto translation, Selection and Quick Control share one reg
   assert.deepEqual(mock.storage.autoSites, []);
   assert.equal(mock.registered.size, 1);
 
-  await coordinator.unregisterSelectionSite("https://example.com");
-  assert.deepEqual(mock.storage.selectionSites, []);
+  await coordinator.disableSelectionAllSites();
+  assert.equal(mock.storage.selectionAllSites, false);
   assert.equal(mock.registered.size, 1);
 
   await coordinator.unregisterCacheRestoreSite("https://example.com");

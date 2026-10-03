@@ -61,7 +61,8 @@ export async function copyProductionArtifact(artifact, extensionDir, { generatio
 }
 
 export async function prepareExtensionTestCopy({artifact = defaultArtifact, extensionDir,
-  generation = "current", lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, baseUrl}) {
+  generation = "current", lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, allSitesHostAccess = false,
+  ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, baseUrl}) {
     assert(!(captureCommands && observeInstalled), "Lifecycle observation and Commands probing use separate test copies");
     assert(!(captureCommands && (executionProof || startupNetwork)), "Startup observation and Commands probing use separate test copies");
     const sourceReport = await copyProductionArtifact(artifact, extensionDir, { generation });
@@ -111,6 +112,8 @@ export async function prepareExtensionTestCopy({artifact = defaultArtifact, exte
         "https://release-assets.githubusercontent.com/*"
       );
     }
+    if (allSitesHostAccess) manifest.host_permissions.push("http://*/*", "https://*/*");
+    manifest.host_permissions = [...new Set(manifest.host_permissions)];
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
     if (ecdictMdxCachedArchivePath) {
