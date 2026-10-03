@@ -3,5 +3,5 @@ import { initializeBackground } from "../src/background/index.js";
 
 export default defineBackground({
   type: "module",
-  main() { initializeBackground(); }
+  async main() { await initializeBackground(); }
 });

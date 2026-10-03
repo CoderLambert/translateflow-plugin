@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
+const backgroundEntry = await readFile(new URL("../src/background/index.js", import.meta.url), "utf8");
 
 function createChromeMock({ permitted = false } = {}) {
   const storage = {
@@ -95,6 +97,11 @@ test("global Selection refuses registration without explicit all-sites permissio
 test("global Selection is enabled by default in the persisted config contract", async () => {
   const { DEFAULT_CONFIG } = await import("../src/shared/constants.js");
   assert.equal(DEFAULT_CONFIG.selectionAllSites, true);
+});
+
+test("background worker startup always reconciles default persistent registrations", () => {
+  assert.match(backgroundEntry, /export async function initializeBackground/);
+  assert.match(backgroundEntry, /await initializePersistentSites\(\)/);
 });
 
 test("global Selection replaces exact registrations and restores them when disabled", async () => {
