@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "task": "workflow-local",
+  "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21",
+  "tree": "241805a028ef99a2648f0a86ecf06d4bd6001c05",
+  "inputTree": "2e21e21635310d2901f9611531be55da54d30785671196ea00e17c172933a26b",
+  "frozenAt": "2026-10-03T09:22:25.990Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 51385.220474,
+      "startedAt": "2026-10-03T09:22:26.270Z",
+      "log": "docs/task-execution/local/workflow-local/ba4c35cf-0cf2-44f4-bbe3-8c3fb8597efa.log",
+      "logSha256": "78f4f54b5f6ec59406dfb3f71e4049ee444962fa0252f7715c927e9f9d8092fd"
+    }
+  ],
+  "artifact": null,
+  "limitations": [
+    "Browser E2E and actual WXT build NOT RUN: workflow migration has no extension runtime changes.",
+    "Native hook reload/current invocation NOT VERIFIED; changed SessionEnd/Interrupt definitions require CLI review and trust.",
+    "Windows/CRLF local input gate and Windows hook installation NOT VERIFIED.",
+    "No real user profile, paid Provider, store publication or product task continuation."
+  ],
+  "supplemental": [
+    {
+      "check": "Local task and hook regression",
+      "command": [
+        "node",
+        "--test",
+        "tests/local-task.test.mjs",
+        "tests/task-execution.test.mjs"
+      ],
+      "result": "PASS",
+      "count": 29,
+      "log": "docs/task-execution/local/review-fixes-targeted.log"
+    },
+    {
+      "check": "Independent original counterexamples plus command-after hidden edits and normal archive",
+      "result": "PASS",
+      "role": "dev_reviewer"
+    },
+    {
+      "check": "11 workflows permissions/jobs/manual inputs match main",
+      "result": "PASS"
+    },
+    {
+      "check": "Paused worktree head and dirty fingerprints",
+      "result": "PASS"
+    },
+    {
+      "check": "Existing 234 card refuses missing current evidence",
+      "result": "PASS"
+    }
+  ],
+  "reviewerRuntime": {
+    "role": "dev_reviewer",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh",
+    "approvalPolicy": "never",
+    "sandbox": "danger-full-access",
+    "readOnlyEnforcement": "behavior only; sandbox default overridden"
+  },
+  "externalSettings": {
+    "automaticPrReview": "DISABLED, user confirmed; no independent App API verification"
+  }
+}

@@ -32,83 +32,21 @@ npm run test:e2e
 
 完整 E2E 包含直接读取 `.output/chrome-mv3` 的语言专项，运行前需显式构建 WXT 包；`validate` 当前生成的 `dist/extension` 不能替代它。语言专项的旧包对照先构建旧包，再显式设置 `TF_I18N_ARTIFACT=dist/extension`，见 [UI_LOCALE.md](docs/UI_LOCALE.md)。fixture 不会为缺失产物自动构建或补文件。
 
-## Issue-driven development workflow
+## Local task workflow
 
-TranslateFlow 的开发任务以 GitHub Issue 为执行单元。开始编码前，Issue 必须足够具体，至少包含：
+[docs/tasks/LOCAL_WORKFLOW.md](docs/tasks/LOCAL_WORKFLOW.md) 是唯一执行流程。任务合同在 `docs/tasks/<id>/task.md`，主 Agent 单写 `state.json`；索引由脚本生成。验收和未参与实现的具名 `dev_reviewer` 审核绑定准确候选。日常不读写 GitHub Issue、评论、标签、CI 状态或 GitHub Review API。历史 Issue 仅保留引用；新增任务直接建本地任务卡。
 
-- Goal / Scope
-- Dependencies
-- Architecture constraints
-- Acceptance criteria
-- Verification / test requirements
-- Non-goals（适用时）
+1. 读取本地任务合同、状态和依赖；核对 Git branch/head/修改/worktree，按需要一次 fetch。保留用户修改，有占用先协调。
+2. 明确文件所有权与验收，聚焦实现并运行受影响本地测试。并行实现必须独立 worktree；共享文件单写。
+3. 提交并冻结候选；运行完整 `npm run validate` 和任务必需的真实构建、Chromium/MV3、升级、安全及人工验收。未运行写 NOT RUN，失败写 FAIL。
+4. 具名独立 reviewer 审查准确候选和真实 diff；修复后冻结新候选并审查增量，按影响重验，旧证据不能冒充新源码。
+5. 归档简短验收/审核，生成索引并执行本地 gate。仅证据归档提交可与候选 SHA 不同，脚本必须证明源码、测试、构建与任务合同输入一致。
+6. 推送分支；PR 只作为代码 diff 与 squash 入口。合并前核对准确远端 head，使用 `--match-head-commit`；仍遵守 GitHub 实际保护、必需审查和人工门槛，不能忽略被保护的失败/未运行检查。
+7. 合并后 fetch，核对 main 的 tree 和预期同步 tree，主 Agent 更新本地任务 mergeHead/结果。completed 只表示已合入并完成该任务要求，不代表商店发布或所有历史认证。
 
-每个可执行任务还应带至少一个功能区域或类型 label（例如 `area:youtube`、`area:ui-ux`、`type:foundation`）以及适用的优先级 label。
+原始事件、完整日志、截图和备份只在 Git 忽略的 `docs/task-execution/local/`。简短脱敏任务文件随代码提交。统计只在完成、暂停或用户要求时生成；Hook 只记录，不参与状态决策，不调用模型/网络、不读取完整会话或认证、不发 GitHub 评论。详见 [docs/TASK_EXECUTION.md](docs/TASK_EXECUTION.md)。
 
-### Scheduling labels
-
-- `agent-ready`：规格已明确，所有硬依赖已满足，可以立即从当前 `main` 开发。
-- `blocked`：至少一个硬依赖尚未合入 `main`，当前不得开始实现。
-
-同一个 Issue 不得同时拥有 `agent-ready` 和 `blocked`。当最后一个硬依赖合入后，删除 `blocked` 并添加 `agent-ready`。
-
-### Execution state labels
-
-执行状态使用以下互斥状态：
-
-- `state:working`：正在开发。
-- `state:implemented`：实现 PR 已合入 `main`，等待审核。
-- `state:auditing`：正在审核已合入实现。
-- `state:audited`：审核通过。
-- `state:changes-requested`：审核发现明确问题，需要修改。
-- `state:improving`：正在处理审核后的修改。
-- `state:improved`：修改 PR 已合入 `main`，等待重新审核。
-
-不要用执行状态替代调度状态：`agent-ready` / `blocked` 只描述“能否开始”，`state:*` 描述当前执行阶段。
-
-### Starting an Agent task
-
-1. 再次读取 Issue、依赖、open PR 和当前 `main`，避免重复开发。
-2. 从最新 `main` 创建独立 branch。
-3. 在 Issue 评论中记录 branch 名称和 Implementation Plan。
-4. 真正修改代码前设置 `state:working`，并移除过期的执行状态 label。
-5. 不得领取 `blocked`、`state:working`、`state:auditing` 或 `state:improving` 的 Issue。
-
-### Development log
-
-开发过程中的重要结果必须同步回 Issue，而不是只在 PR 结束时总结。至少记录适用的：
-
-- architecture / data-model decisions
-- scope adjustments
-- compatibility findings
-- permission / privacy changes
-- cache identity or migration implications
-- discovered risks or blockers
-- meaningful validation / E2E results
-
-### Pull request and completion
-
-1. 完成 Issue acceptance criteria。
-2. 运行 `npm run validate`，按 Browser E2E 的产物前置要求构建后运行适用的 `npm run test:e2e`。
-3. PR 必须以 `main` 为 base，并在 body 中包含 `Closes #<issue>`。
-4. PR 说明 What changed、Architecture decisions / compatibility、Verification。
-5. Required CI 未通过时不得 merge。
-6. 使用仓库约定的 squash merge 合入 `main`。
-7. 在 Issue 中记录最终 PR、merged commit、测试/CI 结果和 remaining risks。
-8. 删除 `state:working`，添加 `state:implemented`；由后续审核决定是否进入 `state:audited`。
-9. 检查依赖该 Issue 的任务：当所有硬依赖都已合入时，将其从 `blocked` 转为 `agent-ready`。
-
-`Closes #<issue>` 由 PR merge 关闭 Issue；“Issue 关闭”和“审核通过”是两个独立事实，因此已关闭 Issue仍可继续使用 `state:implemented` / `state:auditing` / `state:audited`。
-
-### Audit and improvement loop
-
-审核开始时将待审任务置为 `state:auditing`，并按 Issue acceptance criteria、架构边界、权限/隐私、缓存/配置兼容性、UI/UX、测试/E2E、文档以及实际 `main` diff 进行检查。
-
-- 通过：删除 `state:auditing`，添加 `state:audited`。
-- 发现问题：删除 `state:auditing`，添加 `state:changes-requested`，并在 Issue 中列出可执行的修改项。
-- 开始修复：设置 `state:improving`，从最新 `main` 建修复 branch；不要与 `state:working` 的开发者并发修改同一任务。
-- 修复 PR 合入：删除 `state:improving` / `state:changes-requested`，添加 `state:improved`。
-- `state:improved` 必须再次审核，只有重新通过后才能成为 `state:audited`。
+Actions 均为 `workflow_dispatch` 手动备用验证，日常验收在本地。一次流程迁移允许读取历史任务、保护与 ruleset；后续只在代码备份/合并边界使用 GitHub。若保护规则要求远端检查，必须先由有权限者正式调整，不能绕过。自动 PR 审查 App 是独立设置，Actions 改动不保证停用它。
 
 ## Module ownership
 
@@ -245,5 +183,5 @@ npm run test:e2e
 - 不使用真实 Provider/API Key；统一走 `e2e/support/mock-server.mjs`。
 - fixture 与 mock 必须确定性，缓存断言优先检查 Provider 调用次数，不用固定 sleep 猜测。
 - 测试需要额外 Host Permission 时，只修改测试临时副本的 manifest，不扩大生产 manifest 权限。
-- `npm run validate` 保持快速，不包含浏览器启动；`npm run test:e2e` 由独立 CI workflow 运行。
+- `npm run validate` 保持快速，不包含浏览器启动；`npm run test:e2e` 在本地按变更/任务要求单独运行；手动 Actions 只作备用。
 - 新增核心用户流程时，优先在 E2E 中覆盖“成功、缓存命中、错误恢复”至少一个真实 MV3 路径。

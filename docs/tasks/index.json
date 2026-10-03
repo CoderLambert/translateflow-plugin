@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "source": "*/state.json",
+  "tasks": [
+    {
+      "task": "191",
+      "status": "paused",
+      "dependencies": [],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "227",
+      "status": "completed",
+      "dependencies": [],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "229",
+      "status": "paused",
+      "dependencies": [],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "230",
+      "status": "completed",
+      "dependencies": [],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "231",
+      "status": "completed",
+      "dependencies": [
+        "230"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "232",
+      "status": "completed",
+      "dependencies": [
+        "230"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "233",
+      "status": "completed",
+      "dependencies": [
+        "232"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "234",
+      "status": "paused",
+      "dependencies": [
+        "231",
+        "233"
+      ],
+      "branch": "feat/234-reading-selection",
+      "candidateHead": "f910e990a1ba7ef5e58250b99460a52e1128ece0"
+    },
+    {
+      "task": "235",
+      "status": "blocked",
+      "dependencies": [
+        "233",
+        "248",
+        "249"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "236",
+      "status": "blocked",
+      "dependencies": [
+        "234",
+        "235"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "245",
+      "status": "completed",
+      "dependencies": [],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "246",
+      "status": "completed",
+      "dependencies": [
+        "245"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "247",
+      "status": "completed",
+      "dependencies": [
+        "246"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "248",
+      "status": "paused",
+      "dependencies": [
+        "246",
+        "247",
+        "227",
+        "path-safety"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "249",
+      "status": "completed",
+      "dependencies": [
+        "246"
+      ],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
+      "task": "path-safety",
+      "status": "paused",
+      "dependencies": [],
+      "branch": "fix/build-output-path-safety",
+      "candidateHead": null
+    },
+    {
+      "task": "workflow-local",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "chore/local-task-workflow",
+      "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21"
+    }
+  ]
+}

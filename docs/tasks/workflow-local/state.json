@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "task": "workflow-local",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "chore/local-task-workflow",
+  "worktree": ".worktrees/local-task-workflow",
+  "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "本地gate通过后推送归档提交、创建聚焦迁移PR；核对remote head并guarded squash，fetch检查main完整tree，记录实际mergeHead/completed；关闭被替代PR276/277，不启动产品任务。",
+  "blockers": [],
+  "localGate": {
+    "result": "PASS",
+    "syncHead": "b092c1fe3d0233a299d920267f16ab2e77d14e4c",
+    "evidence": "docs/task-execution/local/gate-pass.json"
+  },
+  "externalSettings": {
+    "automaticPrReview": "DISABLED, user confirmed in current session"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "task": "233",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [
+    "232"
+  ],
+  "branch": null,
+  "worktree": null,
+  "candidateHead": null,
+  "mergeHead": "d5e308a709c008acf6b277d466d020f13025bdca",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+}

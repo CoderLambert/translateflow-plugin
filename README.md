@@ -469,7 +469,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - 旧根目录 `cache-db.js` 不允许重新出现
 - 生产扩展使用 allowlist `dist/extension`；测试、E2E、构建脚本、raw/source-lock/benchmark 资产不得进入发布包
 
-GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run validate`；独立 `e2e` workflow 在相关运行时代码变化时安装 Playwright Chromium 并执行 `npm run test:e2e`。
+`npm run validate` 和受影响的 Chromium/MV3 E2E 在本地运行。GitHub Actions 的 quality/e2e 等工作流仅保留手动 workflow_dispatch 入口，不自动响应 PR 或 push。
 
 ## 当前限制
 
@@ -479,3 +479,7 @@ GitHub Actions 的 `quality` workflow 在 PR 和 main push 时执行 `npm run va
 - PDF、Side Panel、非 YouTube 视频站点的双语字幕尚未实现；v0.8 视频体验首发支持 YouTube。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
 - API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
+
+## 开发任务与本地验收
+
+任务和执行状态见 [docs/tasks/index.json](docs/tasks/index.json)，完整流程见 [docs/tasks/LOCAL_WORKFLOW.md](docs/tasks/LOCAL_WORKFLOW.md)。日常在本地完成验收与具名独立审核；GitHub 仅用于代码同步。Actions 只接受手动触发，原始执行日志/截图保持本地并忽略。
