@@ -108,13 +108,6 @@ export async function saveSitePreset(pageUrl, value) {
 export async function ensureConfigDefaults() {
   const current = await chrome.storage.local.get(CONFIG_KEYS);
   const missing = {};
-  if (current.selectionAccessVersion !== DEFAULT_CONFIG.selectionAccessVersion) {
-    // v0.8 initially required activeTab for Selection. The explicit product
-    // migration enables the newly authorized all-sites experience once; later
-    // user changes keep the version marker and are never overwritten.
-    missing.selectionAllSites = true;
-    missing.selectionAccessVersion = DEFAULT_CONFIG.selectionAccessVersion;
-  }
   for (const [key, value] of Object.entries(DEFAULT_CONFIG)) {
     if (current[key] === undefined) missing[key] = value;
   }
