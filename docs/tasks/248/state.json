@@ -29,7 +29,8 @@
       "run",
       "test:e2e",
       "--",
-      "--workers=4"
+      "e2e/selection-reading-record.spec.mjs",
+      "--workers=1"
     ],
     [
       "npm",
@@ -43,5 +44,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "执行最终 WXT 默认构建、same-ID 升级与产物验收，主 Agent 自查后受保护合入。"
+  "nextAction": "按用户最新指令，复用同输入完整验收中的 PASS，仅重验 Selection Reading 测试修复；保留完整运行的不稳定断言及单项重验记录。"
 }
