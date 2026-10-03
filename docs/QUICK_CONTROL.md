@@ -66,7 +66,7 @@ Selection translation takes precedence visually: while the selection chip/panel 
 - Control UI lives only inside the shared Shadow DOM host.
 - Host-page CSS cannot directly restyle the toolbar.
 - Page translations remain in real page DOM.
-- No new required host permissions are added.
+- Quick Control does not request permission beyond the production Manifest's ordinary `http/https` access; persistent display remains an explicit per-site preference.
 - Provider calls remain in Background.
 - IndexedDB access remains in the cache layer.
 - Quick Control persistence does not alter translation cache identity.

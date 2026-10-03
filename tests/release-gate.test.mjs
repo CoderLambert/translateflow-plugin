@@ -15,11 +15,10 @@ test("v0.8 release metadata stays aligned", () => {
   assert.match(release, /TranslateFlow v0\.8 Release Gate/);
 });
 
-test("production permissions remain narrow", () => {
+test("production permissions include the authorized ordinary-web-page access", () => {
   assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting"]);
-  assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*"]);
-  assert.ok(manifest.optional_host_permissions.includes("http://*/*"));
-  assert.ok(manifest.optional_host_permissions.includes("https://*/*"));
+  assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
+  assert.equal(manifest.optional_host_permissions, undefined);
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));
   assert.ok(!manifest.host_permissions.some((pattern) => /youtube\.com/i.test(pattern)));
 });

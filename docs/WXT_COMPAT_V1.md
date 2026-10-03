@@ -1,4 +1,6 @@
 > #248 默认切换：`build:extension` 与 `build:extension:release` 现统一使用 WXT，稳定安装目录仍为 `dist/extension/`。`build:extension:wxt` 是同一引擎的显式输出入口（`.output/chrome-mv3/`）。下文 opt-in/旧默认描述为接入阶段的历史证据；最终升级与切换结果见 [PLATFORM_UPGRADE_V1.md](PLATFORM_UPGRADE_V1.md)。
+>
+> 后续 Selection 启动契约：生产 WXT Manifest 现在从 `CONTENT_SCRIPT_FILES` / `CONTENT_STYLE_FILES` 生成一项 `http://*/*`、`https://*/*` 静态 `document_idle` 注入。下文“无静态注册、权限不变”只记录 #246 当时的迁移证据，不再描述当前 Manifest。
 
 # WXT compatibility build v1
 

@@ -242,7 +242,7 @@ Model:     your-model
 
 如果 Base URL 已经以 `/chat/completions` 结尾，则不会重复追加。
 
-首次保存/测试 OpenAI-compatible Provider 时，Chrome 会请求该 API Origin 的访问权限。插件不会因为配置了通用 Provider 就在安装时直接获得所有 API 地址权限。
+生产扩展已获得普通 `http/https` 页面的访问权限，因此 OpenAI-compatible Provider 不再为每个 API Origin 单独弹出权限请求；Provider 凭据、调用时机和缓存身份仍按现有配置边界处理。
 
 例如 Ollama/OpenAI-compatible 网关：
 
@@ -397,24 +397,22 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - `activeTab`
 - `scripting`
 - `https://api.deepseek.com/*`
-
-可选 Host Permission 声明：
-
 - `http://*/*`
 - `https://*/*`
 
-该声明是“允许用户以后授权的最大范围”，不是安装时直接授予。
+`http://*/*` 与 `https://*/*` 用于在普通网页加载时静态注入同一套 Content Script，使划词功能无需先打开 Popup。Chrome 内置页、Chrome Web Store 等受保护页面仍不会注入。
 
 实际运行中：
 
-- 自动翻译：用户按站点授权
-- OpenAI-compatible：用户按 API Origin 授权
+- 划词：普通网页打开后即可使用，只有点击“译”才进行本地查询或按需调用 Provider；
+- 自动翻译、缓存恢复和持久 Quick Control：仍由用户按站点开启；
+- OpenAI-compatible：只在用户配置并触发翻译时调用。
 
-如果某个 Origin 同时是自动翻译站点和 API Provider 地址，关闭自动翻译时不会误撤销 Provider 仍需要的 Host Permission。
+关闭某个站点的自动翻译只移除该站点模式，不会撤销全站划词所需的 Manifest 权限。
 
 ## 划词翻译
 
-在普通 http/https 网页中选择 2–2000 字符的英文文本后，会出现轻量“译”按钮。仅在用户点击后才检查 IndexedDB 缓存并调用 Provider；翻译使用当前站点的 Effective Translation Config。
+在普通 http/https 网页中无需先打开 Popup；选择 2–2000 字符的英文文本后会出现轻量“译”按钮。仅在用户点击后才检查 IndexedDB 缓存并调用 Provider；翻译使用当前站点的 Effective Translation Config。
 
 支持：
 

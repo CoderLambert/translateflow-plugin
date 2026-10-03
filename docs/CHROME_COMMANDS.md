@@ -31,7 +31,7 @@ References:
 
 If TranslateFlow is already present, the command sends the existing message directly. On first use after an `activeTab` gesture, a failed message delivery triggers injection of the existing content CSS/script bundle through `chrome.scripting`, then retries the same message.
 
-This path does not add a required host permission. Protected/internal pages are rejected before injection.
+This command path does not request any permission beyond the production Manifest's ordinary `http/https` access. Protected/internal pages are rejected before injection.
 
 Quick Control has separate semantics:
 - `QUICK_CONTROL_SHOW` remains idempotent show behavior for Popup/other callers;

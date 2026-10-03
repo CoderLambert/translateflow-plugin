@@ -775,7 +775,7 @@ function certifyPackage(report, failures) {
   if (!Number.isSafeInteger(report.fileCount) || report.fileCount <= 0 || !Array.isArray(report.files)) failures.push("production package file inventory is missing");
   const rawPayloads = (report.files || []).filter((path) => typeof path === "string" && /\.(?:mdx|mdd|zip)$/iu.test(path));
   if (rawPayloads.length) failures.push(`production package contains raw dictionary/archive payloads: ${rawPayloads.join(", ")}`);
-  if (!sameJson(report.hostPermissions, ["https://api.deepseek.com/*"])) failures.push("production package host permission list drifted from the reviewed provider-only origin");
+  if (!sameJson(report.hostPermissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"])) failures.push("production package host permission list drifted from the reviewed all-web Selection contract");
   return {
     status: failures.length === before ? "passed" : "failed",
     builder: report.builder,

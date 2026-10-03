@@ -6,6 +6,7 @@ import { join, posix, win32 } from "node:path";
 import { assertAssetPath, isInsideSourceRoot, legacyAssetRoots, sourceClosure, lexicalAssetFiles } from "../scripts/wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
+import { GLOBAL_CONTENT_SCRIPT, projectProductionManifest } from "../scripts/production-manifest.mjs";
 import { YOUTUBE_MAIN_BRIDGE_FILES as runtimeMain } from "../src/background/youtube-bridge.js";
 import { assertProductionManifest } from "../scripts/audit-wxt-extension.mjs";
 
@@ -88,7 +89,14 @@ test("generated dictionaries copy only authenticated runtime descriptors, exclud
 
 test("production Manifest fails closed for permissions, static injection and development changes", async () => {
   const baseline = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
-  assertProductionManifest(structuredClone(baseline), baseline);
+  const production = projectProductionManifest(baseline);
+  assertProductionManifest(production, baseline);
+  assert.deepEqual(production.content_scripts, [{
+    matches: [...GLOBAL_CONTENT_SCRIPT.matches],
+    js: [...CONTENT_SCRIPT_FILES],
+    css: [...CONTENT_STYLE_FILES],
+    run_at: "document_idle"
+  }]);
   for (const change of [
     { permissions: [...baseline.permissions, "tabs"] },
     { host_permissions: [...baseline.host_permissions, "http://localhost/*"] },
@@ -97,5 +105,5 @@ test("production Manifest fails closed for permissions, static injection and dev
     { minimum_chrome_version: "140" },
     { options_ui: { page: "options.html" } },
     { background: { service_worker: "background.js" } }
-  ]) assert.throws(() => assertProductionManifest({ ...baseline, ...change }, baseline));
+  ]) assert.throws(() => assertProductionManifest({ ...production, ...change }, baseline));
 });

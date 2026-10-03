@@ -83,29 +83,29 @@ test("persistent Quick Control refuses registration without an explicit Origin p
   assert.equal(mock.registered.size, 0);
 });
 
-test("cache restore, auto translation and Quick Control share one registration until all are disabled", async () => {
+test("cache restore, auto translation and Quick Control reuse the statically injected runtime", async () => {
   const mock = createChromeMock({ permitted: true });
   const coordinator = await loadCoordinator(mock);
 
   await coordinator.registerCacheRestoreSite("https://example.com/docs");
   assert.deepEqual(mock.storage.cacheRestoreSites, ["https://example.com"]);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
 
   await coordinator.registerQuickControlSite("https://example.com/docs");
   assert.deepEqual(mock.storage.quickControlSites, ["https://example.com"]);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
 
   await coordinator.registerAutoSite("https://example.com");
   assert.deepEqual(mock.storage.autoSites, ["https://example.com"]);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
 
   await coordinator.unregisterQuickControlSite("https://example.com");
   assert.deepEqual(mock.storage.quickControlSites, []);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
 
   await coordinator.unregisterAutoSite("https://example.com");
   assert.deepEqual(mock.storage.autoSites, []);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
 
   await coordinator.unregisterCacheRestoreSite("https://example.com");
   assert.deepEqual(mock.storage.cacheRestoreSites, []);
@@ -123,9 +123,23 @@ test("hiding Quick Control removes persistent display without disrupting an auto
   assert.equal(result.hidden, true);
   assert.deepEqual(mock.storage.quickControlSites, []);
   assert.deepEqual(mock.storage.quickControlHiddenSites, ["https://example.com"]);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
 
   await coordinator.showQuickControlSite("https://example.com");
   assert.deepEqual(mock.storage.quickControlHiddenSites, []);
-  assert.equal(mock.registered.size, 1);
+  assert.equal(mock.registered.size, 0);
+});
+
+test("startup removes obsolete dynamic registrations after switching to static injection", async () => {
+  const mock = createChromeMock({ permitted: true });
+  mock.registered.set("tf_site_selection_all_sites", { id: "tf_site_selection_all_sites" });
+  mock.registered.set("tf_auto_legacy", { id: "tf_auto_legacy" });
+  mock.registered.set("unrelated_registration", { id: "unrelated_registration" });
+  mock.storage.autoSites = ["https://example.com"];
+  const coordinator = await loadCoordinator(mock);
+
+  const state = await coordinator.syncSiteRegistrations();
+
+  assert.deepEqual(state.autoSites, ["https://example.com"]);
+  assert.deepEqual([...mock.registered.keys()], ["unrelated_registration"]);
 });
