@@ -1,3 +1,5 @@
+> #248 默认构建已统一为 WXT；`dist/extension` 保持稳定安装目录。旧产物对照使用固定旧提交，不再由当前默认构建生成。
+
 # TranslateFlow Browser E2E
 
 TranslateFlow 的浏览器 E2E 使用 Playwright 驱动真实 Chromium，并以 unpacked Manifest V3 扩展运行。

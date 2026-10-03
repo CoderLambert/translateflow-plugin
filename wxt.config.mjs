@@ -6,11 +6,13 @@ import { EXTENSION_PAGES } from "./src/shared/runtime-assets.js";
 import { checkManifestLocales } from "./scripts/i18n-locales.mjs";
 
 const { manifest_version: _version, ...manifest } = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
-const reportDir = resolve(ROOT, ".wxt/reports");
+const staging = process.env.TF_WXT_BUILD_ROOT;
+const reportDir = staging ? resolve(staging, "reports") : resolve(ROOT, ".wxt/reports");
 const compiledChunks = [];
 
 export default defineConfig({
   imports: false,
+  ...(staging ? { outDir: resolve(staging, "output") } : {}),
   modules: ["@wxt-dev/module-react"],
   manifest,
   vite: () => ({

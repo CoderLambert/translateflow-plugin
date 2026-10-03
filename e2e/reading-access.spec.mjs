@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { startMockServer } from "./support/mock-server.mjs";
 import { request, snapshot } from "../tests/fixtures/reading/contract.mjs";
+import { sourceClosure } from "../scripts/wxt-assets.mjs";
 import { READING_METHOD as M, READING_ERROR as E } from "../src/shared/reading/constants.js";
 
 // Actual production router/runtime + native Chrome APIs. Repository, collector, LC are synthetic fixtures.
@@ -111,6 +112,14 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     await buildExtension({ outDir: extension, allowExternalOutput: true });
     await mkdir(join(extension, "tests/fixtures/reading"), { recursive: true });
     for (const file of ["contract.mjs", "access.mjs"]) await cp(join(testRoot, "tests/fixtures/reading", file), join(extension, "tests/fixtures/reading", file));
+    // This story deliberately replaces the compiled worker with a synthetic
+    // repository/authority harness. Its source imports are test-only assets,
+    // separate from actual production-artifact acceptance.
+    const roots = [...fixtureBootstrap.matchAll(/from ['"]\.\/(src\/[^'"]+)['"]/gu)].map(match => match[1]);
+    for (const path of await sourceClosure(roots, sourceRoot)) {
+      await mkdir(dirname(join(extension, path)), { recursive: true });
+      await cp(join(sourceRoot, path), join(extension, path));
+    }
     await writeFile(join(extension, "background.js"), fixtureBootstrap);
     // Test assets only. Production does not yet claim the #235 learning-center artifact exists.
     for (const name of ["learning-center.html", "unexpected.html"]) await writeFile(join(extension, name), "<!doctype html><title>Synthetic Reading authority fixture; not product UI</title><p>Fixture only</p>");

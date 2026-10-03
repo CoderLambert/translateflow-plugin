@@ -849,3 +849,35 @@ The previously temporary fixed-old package was no longer present. It was rebuilt
 Local evidence is retained in the repair worktree `dist/issue248-evidence/`. Initial full validation failed because the new worktree lacked WXT-generated inherited compiler configuration; that failure is retained as `validate-before-prepare.log`. Existing locked dependencies are shared from the isolated Reading worktree, and `npm run prepare` restores only generated configuration before revalidation. No assertion, permission or user data was changed to obtain a pass. The default/release build switch remains a separate second stage; this repair does not close #248 or release #235.
 
 After prepare, the complete local `npm run validate` passed: 975 Node tests, zero failures, strict TypeScript, 4 Vitest tests and legacy build. The repair remains confined to the adapter, its tests and this evidence note; independent incremental review and new-head remote CI are still required.
+
+## #248 default build switch (2026-10-03)
+
+The sole current production engine is now WXT. `build:extension` and
+`build:extension:release` retain `dist/extension/` as the stable unpacked install
+path; `build:extension:wxt` uses the same builder and audit with explicit
+`.output/chrome-mv3/` output. `buildExtension()` keeps its output/byte-count
+contract, so footprint and dictionary certification consumers now use WXT too.
+The old engine is available only from immutable pre-switch commit
+`19e89b65fd3600073410407392da82ffa666ffc8` for comparison.
+
+Each wrapper invocation builds in separate temporary staging, audits the actual
+package, rechecks the destination with the existing path-safety guards, and only
+then replaces the destination. Release builds retain authenticated manifest,
+fingerprint and descriptor validation for both generated packs. The existing
+Manifest equality and 1,576,595-byte code ceiling remain enforced. No production
+key, permission, storage schema, Provider or runtime source is changed.
+
+The Reading authority test still explicitly replaces the background with its
+synthetic repository harness; it now supplies that harness's exact source-import
+closure as test-only files rather than assuming the compiled WXT package contains
+uncompiled background modules. Actual production stories continue to consume the
+unmodified audited WXT artifact before adding their declared fixture changes.
+
+Final candidate-bound results, browser version, package fingerprint and same-ID
+old → WXT → browser-restart receipts are recorded in
+[248/acceptance.json](tasks/248/acceptance.json) and the main Agent's
+[248/review.md](tasks/248/review.md). Raw logs remain local and ignored. Historical
+failures and opt-in receipts above retain their original bindings; the switch
+uses fresh actual-package acceptance. Real YouTube, Chrome 102, other browsers,
+store publication and #235/#236 product acceptance are outside this switch's
+browser evidence.

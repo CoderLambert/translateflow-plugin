@@ -66,7 +66,7 @@
       ctx.registration = registration;
       const [state, site] = await Promise.all([send(M.GET_RECORDING_STATE), send(M.GET_SITE_RECORDING)]);
       if (!live(ctx)) throw error(E.STALE_OPERATION);
-      connect(ctx);
+      if (!site.excluded) connect(ctx);
       return { ...state, ...site };
     }
     function start({ snapshot, capture, event, isCurrent, purpose = "lookup", sourceLanguage = "en" }) {

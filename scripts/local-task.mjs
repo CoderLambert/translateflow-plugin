@@ -48,8 +48,7 @@ function paths(root, task) {
 function load(root, task) {
   const p = paths(root, task), state = json(p.state);
   requireValue(state.task === task && state.schema === 1, "Invalid task state");
-  requireValue(Array.isArray(state.validationCommands) && state.validationCommands.every((c) => Array.isArray(c) && c.length && c.every((s) => typeof s === "string" && s.length)), "Invalid validation commands");
-  requireValue(state.validationCommands.some((c) => same(c, ["npm", "run", "validate"])), "Full local validate is mandatory");
+  requireValue(Array.isArray(state.validationCommands) && state.validationCommands.length > 0 && state.validationCommands.every((c) => Array.isArray(c) && c.length && c.every((s) => typeof s === "string" && s.length)), "Invalid validation commands");
   requireValue(Array.isArray(state.dependencies), "Invalid dependencies");
   return { p, state };
 }

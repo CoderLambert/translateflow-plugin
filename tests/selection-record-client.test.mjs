@@ -20,8 +20,8 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
     __TRANSLATE_FLOW_CONTENT__: { modules: { textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
   const parse = vm.runInContext("JSON.parse", realm);
   const clone = (value) => parse(JSON.stringify(value));
-  let notify = null, disconnected = null;
-  if (withSubscription) realm.chrome.runtime.connect = () => ({
+  let notify = null, disconnected = null, connections = 0;
+  if (withSubscription) realm.chrome.runtime.connect = () => (connections++, {
     onMessage: { addListener(listener) { notify = listener; } },
     onDisconnect: { addListener(listener) { disconnected = listener; } }, disconnect() { disconnected?.(); }
   });
@@ -61,6 +61,7 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
   return { modules, client, start, draft, event, capture, source, messages, writes, views,
     enable() { state = { ...state, enabled: true, consentGeneration: state.consentGeneration + 1 }; },
     pause() { state = { ...state, enabled: false, consentGeneration: state.consentGeneration + 1 }; },
+    connections: () => connections,
     notify(overrides = {}) { notify?.(clone({ protocolVersion: 2, type: "reading.invalidate", pageRevision: 1,
       dataGeneration: 1, consentGeneration: state.consentGeneration, ...overrides })); },
     invalidate() { valid = false; revision++; }, exclude() { excluded = true; }, clone };
@@ -225,4 +226,13 @@ test("Result adapters preserve actual types and bounded provenance while droppin
   const assistant = model.readingAssistant({ generatedMeaning: "displayed meaning", explanation: "displayed answer" },
     { userQuestion: "这里是什么意思？", action: "understand", targetLanguage: "zh-CN", provenance: {} });
   assert.equal(assistant.kind, "assistant"); assert.equal(assistant.payload.assistantAnswer, "displayed meaning\ndisplayed answer");
+});
+
+test("Excluded sites keep the disabled card without opening a denied invalidation subscription", async () => {
+  const h = await harness({ withSubscription: true }); h.exclude();
+  const ctx = h.start(); h.client.accept(ctx, h.draft); await ctx.queue;
+  assert.equal(h.connections(), 0);
+  assert.equal(h.views.at(-1).state, "disabled");
+  assert.equal(h.writes.length, 0);
+  assert.equal(h.messages.some(message => message.method === M.BEGIN_QUERY), false);
 });

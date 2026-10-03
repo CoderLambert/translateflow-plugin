@@ -68,7 +68,7 @@ test("task contract and frozen required checks cannot be weakened by metadata ar
   const s = f.load("docs/tasks/234/state.json"); s.dependencies = ["233"]; f.save("docs/tasks/234/state.json", s);
   assert.throws(() => gate(f.root, "234"), /requirements changed/u);
   s.dependencies = []; s.validationCommands = []; f.save("docs/tasks/234/state.json", s);
-  assert.throws(() => gate(f.root, "234"), /Full local validate/u);
+  assert.throws(() => gate(f.root, "234"), /Invalid validation commands/u);
   s.validationCommands = [["npm", "run", "validate"]]; f.save("docs/tasks/234/state.json", s);
   writeFileSync(join(f.root, "docs/tasks/234/task.md"), "Changed contract\n");
   assert.throws(() => gate(f.root, "234"), /Uncommitted/u);
@@ -180,4 +180,16 @@ test("all workflows are manual-only; original job bodies and manual inputs remai
   }
   assert.match(readFileSync(join(directory, "dictionary-library-vnext-certification.yml"), "utf8"), /base_sha:/u);
   assert.match(readFileSync(join(directory, "wiktextract-rich-poc.yml"), "utf8"), /run_experimental_full_extraction:/u);
+});
+
+test("focused acceptance commands do not require an unrelated full validate", async (t) => {
+  const f = fixture(t), command = [process.execPath, "-e", "process.exit(0)"];
+  const state = f.load("docs/tasks/234/state.json"); state.validationCommands = [command];
+  f.save("docs/tasks/234/state.json", state); f.save("docs/tasks/index.json", buildIndex(f.root));
+  f.git("add", "."); f.git("commit", "-m", "focused task contract");
+  const acceptance = freeze(f.root, "234");
+  assert.equal((await runCheck(f.root, "234", command)).result, "PASS");
+  state.status = "ready_to_sync"; state.candidateHead = acceptance.candidateHead;
+  f.save("docs/tasks/234/state.json", state); f.save("docs/tasks/index.json", buildIndex(f.root));
+  assert.equal(gate(f.root, "234").result, "PASS");
 });

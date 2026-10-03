@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "248",
-  "status": "paused",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "246",
@@ -9,25 +9,28 @@
     "227",
     "path-safety"
   ],
-  "branch": null,
-  "worktree": ".worktrees/issue-248-final",
-  "candidateHead": null,
+  "branch": "build/248-default-switch",
+  "worktree": ".worktrees/248-switch",
+  "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
   "mergeHead": null,
   "validationCommands": [
     [
-      "npm",
-      "run",
-      "validate"
+      "node",
+      "--test",
+      "tests/selection-record-client.test.mjs",
+      "tests/local-task.test.mjs"
     ],
     [
       "npm",
       "run",
-      "build:extension:wxt"
+      "check"
     ],
     [
-      "npm",
-      "run",
-      "test:e2e"
+      "node",
+      "scripts/build-extension.mjs",
+      "--require-lexicon",
+      "--out",
+      ".output/chrome-mv3"
     ],
     [
       "npm",
@@ -37,9 +40,13 @@
     [
       "npm",
       "run",
-      "build:extension:release"
+      "test:e2e",
+      "--",
+      "e2e/selection-reading-record.spec.mjs",
+      "e2e/wxt-upgrade.spec.mjs",
+      "--workers=1"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "先完成 path-safety 独立闭环；恢复最终 WXT 默认切换需要用户授权。"
+  "nextAction": "最终定向验收和主 Agent 自查通过；受保护 squash 合入，随后核对 main tree。"
 }

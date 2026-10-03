@@ -42,7 +42,7 @@
     "test:e2e:rich-mdict": "node scripts/run-e2e.mjs e2e/rich-mdict-product.spec.mjs e2e/rich-mdict-real-corpus.spec.mjs",
     "prepare": "wxt prepare",
     "dev": "wxt -b chrome --mv3",
-    "build:extension:wxt": "wxt build -b chrome --mv3 && node scripts/audit-wxt-extension.mjs",
+    "build:extension:wxt": "node scripts/build-extension.mjs --out .output/chrome-mv3",
     "test:wxt:smoke": "node scripts/smoke-wxt-extension.mjs",
     "typecheck": "wxt prepare && tsc --noEmit",
     "test:unit": "wxt prepare && vitest run"

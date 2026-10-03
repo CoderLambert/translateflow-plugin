@@ -115,15 +115,15 @@
     },
     {
       "task": "248",
-      "status": "paused",
+      "status": "ready_to_sync",
       "dependencies": [
         "246",
         "247",
         "227",
         "path-safety"
       ],
-      "branch": null,
-      "candidateHead": null
+      "branch": "build/248-default-switch",
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366"
     },
     {
       "task": "249",

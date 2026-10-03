@@ -1,10 +1,197 @@
 {
   "schema": 1,
   "task": "248",
-  "candidateHead": null,
-  "checks": [],
-  "artifact": null,
+  "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
+  "tree": "f8208e15ef77231d7b66a329e5076b103c56a864",
+  "inputTree": "7975659ba9c0a3367f09276c29936127a740983bbaaa476f3f749f2b53bb3690",
+  "frozenAt": "2026-10-03T13:45:14.894Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/selection-record-client.test.mjs",
+        "tests/local-task.test.mjs"
+      ],
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5083.884344,
+      "startedAt": "2026-10-03T13:45:15.113Z",
+      "log": "docs/task-execution/local/248/03a276a5-af7f-4537-bb4c-1b9358bdb27d.log",
+      "logSha256": "bde2572513e9641b84fd5b8bf4635b4f9c604b302c1f63a6a8d7f496c995a2fe"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 15295.357192,
+      "startedAt": "2026-10-03T13:45:20.383Z",
+      "log": "docs/task-execution/local/248/f5990e64-c914-4839-bb3b-fdd827f36d42.log",
+      "logSha256": "fc1eec21a36366aac6f68f12237ac822098136053d840b2b62234bdb2a9d98c7"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/build-extension.mjs",
+        "--require-lexicon",
+        "--out",
+        ".output/chrome-mv3"
+      ],
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2062.651981,
+      "startedAt": "2026-10-03T13:45:35.873Z",
+      "log": "docs/task-execution/local/248/5a1505c0-4025-4f77-a6e9-0c1b2a2d0768.log",
+      "logSha256": "5a40fd5d049988048f0ed5e9c909ca585fad3ef5190c658b2a4f32ad39193115"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1708.522468,
+      "startedAt": "2026-10-03T13:45:38.134Z",
+      "log": "docs/task-execution/local/248/6c370aaf-f59e-4d17-95b6-a60cd4267703.log",
+      "logSha256": "1390746fc636e06f90bb6b7212353b040400506c37f6122ab80afe6b86d4886e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/selection-reading-record.spec.mjs",
+        "e2e/wxt-upgrade.spec.mjs",
+        "--workers=1"
+      ],
+      "candidateHead": "e722652a1c5df3b73bb11c73602ab0b5534cc366",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 25846.704288,
+      "startedAt": "2026-10-03T13:46:04.091Z",
+      "log": "docs/task-execution/local/248/5bd8f69f-dd9a-49a1-af1e-aa4f003d71b8.log",
+      "logSha256": "552adff10ca7fcd6698007c4357e577e2b58670a1efb02193ea45481e89719f4"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "7e67a6ab92549c3cfc89e092fe8a24b286bd4b8dc80abe7fab26fef3940cc3b5"
+  },
   "limitations": [
-    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
-  ]
+    "Earlier complete E2E: 143 PASS, 3 external-corpus SKIP, 1 FAIL. The failure was a denied excluded-site subscription overwriting the card; final scoped E2E is 9 PASS including the affected file and both same-ID upgrade/restart stories. Earlier failure remains recorded.",
+    "Real YouTube, Chrome 102, other browsers, paid Provider, external/private dictionary certification and store publication NOT RUN. #235/#236 are not completed by this task."
+  ],
+  "historicalEvidence": {
+    "completeValidate": {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56791.320333,
+      "startedAt": "2026-10-03T13:21:54.123Z",
+      "log": "docs/task-execution/local/248/8379943e-54c9-4ea2-86ce-65960e00f5fb.log",
+      "logSha256": "aa2c34d9d186565a8cd5bf0e488d2d66d680345cb934a453f47d93752f0380de",
+      "testedHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "reusedFor": "9cda093348a54c98ef21efa7145f2dcf3140658d",
+      "reuseProof": {
+        "inputTree": "4e25e51ac28d5baf3a25d068aebbc6645870569a06089b24c8f76cffd3128894",
+        "reason": "Only task metadata changed; all tracked source, test, build and task-contract inputs are identical."
+      }
+    },
+    "fullE2E": {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=4"
+      ],
+      "candidateHead": "3b22d9eaa23dbe7c9b70237bb6faf96b6a9d0424",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 95064.7674,
+      "startedAt": "2026-10-03T13:22:57.690Z",
+      "log": "docs/task-execution/local/248/c982637f-ecfe-448f-8887-88b7cb51eb9d.log",
+      "logSha256": "c9a8c0f1ad526cfce6d19c5b8489d649828e87dce56f8436fe463a7053cb78b8",
+      "summary": {
+        "pass": 143,
+        "skip": 3,
+        "fail": 1,
+        "notRun": 0,
+        "failure": "Selection Reading excluded-site UI assertion; isolated rerun PASS, final affected-file recheck pending"
+      }
+    },
+    "reuseAssessment": "Since testedHead 3b22d9e, production change is solely the excluded-site subscription guard in classic Content; focused Selection/upgrade E2E and client regression replace its affected coverage. Governance script changes are covered by local-task tests. TypeScript, Vitest, lockfile, Provider/cache/storage, compiled Background/Popup/Options and other browser stories are unchanged; their earlier execution remains bound to the original head. No new full-suite PASS is claimed."
+  },
+  "upgradeEvidence": [
+    {
+      "log": "docs/task-execution/local/248/resume-upgrade/same-id-upgrade-existing-ui-locale.json",
+      "sha256": "0bf1a30cc650a49c069f32ed9fea8e1e538424edb296bc32b8ee00df67e8872d",
+      "browserVersion": "153.0.8010.12",
+      "scenario": {
+        "before": "zh_CN",
+        "afterReplacement": "zh_CN",
+        "afterInstalledUpdate": "zh_CN",
+        "uiValue": "zh_CN",
+        "implicitUiStorageWrite": false
+      },
+      "sameUserDataDir": true,
+      "stableUnpackedPath": true,
+      "cacheRows": 3,
+      "unauthorizedProviderCalls": 0,
+      "refreshRecovery": true
+    },
+    {
+      "log": "docs/task-execution/local/248/resume-upgrade/same-id-upgrade-missing-ui-locale.json",
+      "sha256": "2c7711343e839fd8068e588ff799a80cf68e3acad40ba42300c6e67257c6ffa3",
+      "browserVersion": "153.0.8010.12",
+      "scenario": {
+        "before": "ABSENT",
+        "afterReplacement": "ABSENT",
+        "afterInstalledUpdate": "auto",
+        "uiValue": "auto",
+        "implicitUiStorageWrite": false
+      },
+      "sameUserDataDir": true,
+      "stableUnpackedPath": true,
+      "cacheRows": 3,
+      "unauthorizedProviderCalls": 0,
+      "refreshRecovery": true
+    }
+  ],
+  "packageSummary": {
+    "stable": "d627a161a812067d3a433d2f00be1c0ffe409ec86a1ef9e7d60f3d808909173a",
+    "explicit": "d627a161a812067d3a433d2f00be1c0ffe409ec86a1ef9e7d60f3d808909173a",
+    "files": 233,
+    "code": 1550895,
+    "lexical": 36830492,
+    "total": 38381387
+  }
 }
