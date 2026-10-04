@@ -178,3 +178,60 @@ test("cancelling one shared long-page consumer leaves the other resolver result 
   assert.equal(result.status, "resolved"); assert.equal(result.verifiedText, "session");
   assert.equal(result.range.toString(), "session");
 });
+
+
+test("resolver invalidates a cached page when an arbitrary selector attribute reveals a duplicate", async t => {
+  const f = fixture('<style>[data-show="no"] { display: none; }</style><main><p id="primary">alpha session tail</p><p id="duplicate" data-show="no">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#primary", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  const initial = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(initial.status, "resolved", JSON.stringify(initial));
+
+  f.window.document.querySelector("#duplicate").dataset.show = "yes";
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "ambiguous", JSON.stringify(updated));
+});
+
+test("resolver invalidates a cached page when an arbitrary selector attribute hides the only match", async t => {
+  const f = fixture('<style>[data-show="no"] { display: none; }</style><main><p id="target" data-show="yes">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  assert.equal((await f.modules.readingAnchorResolver.resolve(anchor)).status, "resolved");
+
+  f.window.document.querySelector("#target").dataset.show = "no";
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "missing", JSON.stringify(updated));
+});
+
+test("resolver invalidates a cached missing result when an arbitrary selector attribute reveals the match", async t => {
+  const f = fixture('<style>[data-show="no"] { display: none; }</style><main><p id="target" data-show="yes">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  f.window.document.querySelector("#target").dataset.show = "no";
+  assert.equal((await f.modules.readingAnchorResolver.resolve(anchor)).status, "missing");
+
+  f.window.document.querySelector("#target").dataset.show = "yes";
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "resolved", JSON.stringify(updated));
+  assert.equal(updated.range.toString(), "session");
+});
+
+test("resolver invalidates a cached page after viewport resize changes rendered visibility", async t => {
+  const f = fixture('<main><p id="primary">alpha session tail</p><p id="desktop">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  let width = 800;
+  Object.defineProperty(f.window, "innerWidth", { configurable: true, get: () => width });
+  const getStyle = f.window.getComputedStyle;
+  f.window.getComputedStyle = element => {
+    const value = getStyle(element);
+    return element.id === "desktop" && width < 1200 ? { ...value, display: "none" } : value;
+  };
+  const anchor = await anchorFor(f, "#primary", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  assert.equal((await f.modules.readingAnchorResolver.resolve(anchor)).status, "resolved");
+
+  width = 1400;
+  f.window.dispatchEvent(new f.window.Event("resize"));
+  await Promise.resolve();
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "ambiguous", JSON.stringify(updated));
+});
