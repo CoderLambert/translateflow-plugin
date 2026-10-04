@@ -58,8 +58,24 @@ test("real toolbar Popup reports success when opening the learning center closes
   const centerUrl = `chrome-extension://${harness.extensionId}/learning-center.html`;
   await expect.poll(() => harness.context.pages().filter(page => page.url() === centerUrl).length).toBe(1);
   const sender = await harness.serviceWorker.evaluate(() => globalThis.__toolbarPopupSender);
-  expect(sender).toEqual({ id: harness.extensionId, url: popupUrl,
-    origin: `chrome-extension://${harness.extensionId}`, tab: null });
+  const popupContext = popupContexts[0];
+  expect(popupContext).toMatchObject({ contextType: "POPUP", documentUrl: popupUrl, incognito: false });
+  expect(sender).toMatchObject({ id: harness.extensionId, url: popupUrl,
+    origin: `chrome-extension://${harness.extensionId}` });
+  // Chromium may expose a toolbar Popup sender in either of the two native
+  // shapes accepted by production access control. When document identity is
+  // present, bind every supplied field back to the observed POPUP context.
+  if (sender.documentId === undefined) {
+    expect(sender.frameId).toBeUndefined();
+    expect(sender.tab).toBeNull();
+  } else {
+    expect(sender.documentId).toBe(popupContext.documentId);
+    if (sender.documentLifecycle !== undefined) expect(sender.documentLifecycle).toBe("active");
+    if (sender.frameId !== undefined) expect(sender.frameId).toBe(0);
+    if (sender.tab !== null) expect(sender.tab).toEqual({
+      id: popupContext.tabId, incognito: false, url: popupUrl
+    });
+  }
   expect(await harness.driver.evaluate(async () => (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] })).length)).toBe(0);
   await cdp.detach();
 });
