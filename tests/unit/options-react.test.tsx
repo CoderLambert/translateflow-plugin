@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { GeneralSection } from "../../src/options/CommonSections";
+import { GeneralSection, SelectionSection } from "../../src/options/CommonSections";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
 import { LocaleProvider } from "../../src/options/LocaleContext";
@@ -28,6 +28,15 @@ test("general React controls keep values controlled without writing from render"
   expect(set).not.toHaveBeenCalled();
   await userEvent.clear(screen.getByLabelText("默认目标语言")); await userEvent.type(screen.getByLabelText("默认目标语言"), "Japanese");
   expect(update).toHaveBeenCalled(); expect(set).not.toHaveBeenCalled();
+});
+
+test("selection depth help labels use the active catalog", () => {
+  const update = vi.fn();
+  render(zhNode(<SelectionSection config={config} disabled={false} update={update} />));
+  expect(screen.getAllByText("Auto · 自动").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Concise · 精简").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Standard · 标准").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Professional · 专业").length).toBeGreaterThan(0);
 });
 
 test("UI locale StrictMode deduplicates its initial read and writes only after interaction", async () => {
