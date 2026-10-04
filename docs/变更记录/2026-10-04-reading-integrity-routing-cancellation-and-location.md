@@ -48,3 +48,31 @@
 - 未运行 Chrome 102、非 Chromium 浏览器、Chrome 原生权限提示 UI、真实付费 Provider、实时 YouTube timedtext、发布词典认证或私人词典。
 - 当前 `origin/main` 在候选验证后前进到 `29d4c2e`（#298/#299 React UI 迁移）。本分支仍以当时最新的 `a4dab12` 为基线；从共同基线比较，生产源码无文件重叠。远端已经用 `docs/tasks/251` 记录另一项任务，因此本变更记录使用独立路径，避免覆盖远端任务状态。审查时请以当前 `main` 为目标并关注更新后的 UI 集成和任务文档差异。
 - 本地浏览器产物为 `.output/chrome-mv3`，111 个文件、1,740,762 字节；原始 WXT 包 local-task tree SHA-256 为 `7103c3086500d83df578bdd6774f70cca7809f4c03e79ada55d4c091091bb836`。E2E 临时副本另含合成词典文件和 localhost 测试权限，不是原始安装包。
+
+## 最新 main 前置集成与四项审查修复（2026-10-04）
+
+### 集成基线
+
+- 开始时本地分支为 `fix/reading-integrity-20261004`，HEAD `11817a169786f38ab3f3ab5441b1be4611f75adf`，工作区干净。
+- fetch 后 `origin/main` 为 `29d4c2e6f08530d03352c06653db43942b88c2cc`，共同基线为 `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9`。已将 main 合并到本分支，合并提交 `9dcdc044d3b5ac98f1713b529c34b0310fb2e21b`，ort 策略无冲突。
+- 两侧净变更没有同路径文件。保留了 main 的 `docs/tasks/251` 和 `docs/tasks/252`；没有合并或 cherry-pick localization 分支。本记录仍放在独立变更记录路径。
+
+### 修复
+
+- `reading-anchor-resolver.js` 现在在扫描返回值中携带对应扫描状态；取消一个 single/batch 消费者只结束它自己的等待，不清空另一个消费者正在使用的扫描或根投影缓存。DOM 变更只会丢弃仍为当前共享状态的扫描。
+- `reading-page-markers.js` 在 DOM 变更时立即清除旧 Range 和 marker，保留通用历史入口、未定位状态与“重新检查位置”按钮。自动重试预算限于当前 Content 文档生命周期，焦点、手动重试和 SPA 路由不会重置；耗尽后不再自动扫描。
+- `assistant-stream.js` 的错误终态现在采用真实异常码，不会因为 signal 已 aborted 把 `READING_QUOTA` 等失败改成 `CANCELLED`。提交点后的已保存响应仍以 `complete`/`saved` 返回。
+- `reading-record/idb.js` 的 request error 使用首因语义，不覆盖已记录的取消或失败。新增回归覆盖原生 request error 先于 transaction abort 的事件次序。
+
+### 最终候选和验收
+
+- 最终产品/测试候选 `c479b969942e32beb72ecff8505c1dbe3954fe49`，分支工作区在此候选上干净。以下结果都在此 HEAD 上执行；先前 `30d155b` 的验收仅作为历史结果，不计入本轮通过项。
+- 环境：Node `v24.21.0`、npm `11.19.0`。本轮未重跑 `npm ci`；依赖目录沿用之前成功的锁定安装，`package.json` 与锁文件没有本轮差异。
+- `npm run validate`：PASS；595 项源码检查、Node `1087/1087`、严格 typecheck、Vitest `8` 个文件 / `26/26`、默认 `dist/extension` 构建通过。
+- `npm run build:extension:wxt`：PASS；`.output/chrome-mv3` 为 111 个文件、1,738,656 bytes，tree SHA-256 `1fedeb9c117bd85158232764dd3ce8a062fdefe8afac854f8dcf8878a3b5d472`。smoke 在 Chromium `153.0.8010.12` 通过；无页面错误、外部请求或意外动态注册。
+- 定向 E2E：Reading marker/return 与普通 assistant stream `3/3`；Reading commit、真实 Chromium request-error/transaction-abort 次序和 quota `3/3`；React 学习中心实际产品流程 `1/1`。另对最终长页 marker 证据运行 `1/1`。
+- 四轮独立 mutation 回归确认第 4 轮后历史入口仍存在、旧 marker 已清除，并可手动重新定位。共享长扫描回归只取消 marker 一方，return-card 消费者仍成功定位。Stop/quota 回归确认 quota 错误不变成取消，提交点后成功返回 saved；React 学习中心对 `READING_QUOTA` 呈失败终态。
+- 最终长页测量：Chromium `153.0.8010.12`，页面目标前 58,310 字符；扫描 57,705 字符、185 节点，实际工作 `14.6ms`、等待 `0ms`，结果 `resolved`，Provider 调用 `0`。记录见本地忽略证据 `docs/task-execution/local/reading-integrity-20261004-integration/reading-page-marker-scan.json`。
+- 原始 WXT 安装包指纹为上列 `.output/chrome-mv3` SHA。E2E 临时副本另含合成 Core/Technical 词典和测试 manifest：119 个文件、1,750,950 bytes，tree SHA-256 `78650a065c253d9331cfc894869741637d4f8a49cd71685b0abdc48a8a63fb8c`；此指纹不代表原始安装包。完整本地验收摘要在 `docs/task-execution/local/reading-integrity-20261004-integration/evidence-summary.json`，这些本地文件受 Git 忽略规则保护。
+
+本轮未运行 Chrome 102、非 Chromium、原生权限提示 UI、真实 YouTube timedtext、付费 Provider、发布词典认证，也未重新跑 same-ID 升级/撤权完整场景。未推送、未创建 PR，未合入 main。后续文档归档 HEAD 与测试候选不同；归档只记录结果，不改变 `testedHead` `c479b969942e32beb72ecff8505c1dbe3954fe49`。
