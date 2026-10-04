@@ -1,7 +1,7 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
-  const C = app.modules.readingContract, M = C.READING_METHOD, projection = app.modules.textProjection, { button, surface } = app.modules.uiPrimitives;
+  const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
   let generation = 0, controller = null, root = null, panel = null, markerNodes = [], ranges = new Map(), projectionUnsubscribe = null, timer = 0, port = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
   // Focus, manual retries, and SPA route changes do not replenish it.
@@ -83,7 +83,7 @@
       const limited = items.slice(0, C.READING_LIMITS.pageMarkers), locations = await app.modules.readingAnchorResolver.resolvePage(limited, { signal: ownController.signal });
       if (current !== generation || ownController.signal.aborted) return;
       lastItems = limited; lastPageRecordCount = count; render(limited, locations, count);
-      projectionUnsubscribe = projection.start(() => {
+      projectionUnsubscribe = app.modules.textProjection.start(() => {
         projectionUnsubscribe?.(); projectionUnsubscribe = null;
         // The source projection is stale. Drop every old Range immediately but keep the
         // generic list and its manual retry action visible after auto retries end.
