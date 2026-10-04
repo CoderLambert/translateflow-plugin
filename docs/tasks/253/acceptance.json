@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "task": "253",
+  "candidateHead": "8bf27c1c269ba4368f426553217e00236eac3f19",
+  "tree": "0c97d785f5dfab476bcc9e1300e5007e12867580",
+  "inputTree": "6f2962e159163ec66f4fc968a866c7b7689e8db7ddbad172d855991db757b565",
+  "frozenAt": "2026-10-04T13:44:08.677Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "8bf27c1c269ba4368f426553217e00236eac3f19",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 48908.154214,
+      "startedAt": "2026-10-04T13:44:33.916Z",
+      "log": "docs/task-execution/local/253/a5d6fb90-0d66-4141-8a77-1763782698f7.log",
+      "logSha256": "22ec1648ba79a1df5fbf3f565f2dd134daebc0ab6e5183de2cf04698ec9c2291"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}
