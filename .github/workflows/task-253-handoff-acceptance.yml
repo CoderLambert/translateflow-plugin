@@ -51,8 +51,8 @@ jobs:
         run: |
           node scripts/reading-content-classic.mjs
           git add src/content/reading-record.js src/content/reading-source.js
-          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
-            git commit -m "merge: integrate main into task 253 handoff"
+          if ! git diff --cached --quiet; then
+            git commit -m "build: refresh localized reading projections"
             git push origin HEAD:handoff/253-ui-localization-progress
           fi
       - run: npx playwright install --with-deps chromium
