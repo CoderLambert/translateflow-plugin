@@ -6,6 +6,9 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection } from "../../src/options/CommonSections";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
+import { LocaleProvider } from "../../src/options/LocaleContext";
+import { useLocale } from "../../src/options/useLocale";
+import { createI18n } from "../../src/i18n/index.js";
 import type { OptionsConfig } from "../../src/options/client";
 import type { GlossaryClient, GlossaryRow } from "../../src/options/glossary-client";
 
@@ -16,16 +19,19 @@ beforeEach(() => {
   vi.stubGlobal("chrome", { i18n: { getUILanguage: () => "en" }, storage: { local: { get, set }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } });
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+const zh = createI18n({ uiLocale: "zh_CN" });
+function LocaleControl() { const locale = useLocale(); return <UiLocaleSection {...locale} />; }
+function zhNode(node: React.ReactNode) { return <LocaleProvider value={zh}>{node}</LocaleProvider>; }
 
 test("general React controls keep values controlled without writing from render", async () => {
-  const update = vi.fn(); render(<GeneralSection config={config} disabled={false} update={update} />);
+  const update = vi.fn(); render(zhNode(<GeneralSection config={config} disabled={false} update={update} />));
   expect(set).not.toHaveBeenCalled();
   await userEvent.clear(screen.getByLabelText("默认目标语言")); await userEvent.type(screen.getByLabelText("默认目标语言"), "Japanese");
   expect(update).toHaveBeenCalled(); expect(set).not.toHaveBeenCalled();
 });
 
 test("UI locale StrictMode deduplicates its initial read and writes only after interaction", async () => {
-  render(<StrictMode><UiLocaleSection /></StrictMode>);
+  render(<StrictMode><LocaleControl /></StrictMode>);
   const select = await screen.findByLabelText("Interface language");
   expect(get).toHaveBeenCalledTimes(1); expect(set).not.toHaveBeenCalled();
   await userEvent.selectOptions(select, "zh_CN");
@@ -40,7 +46,7 @@ test("Glossary React controls cover save, scope, case, enable, edit and delete",
   const remove = vi.fn(async () => []);
   const client = { rows, save, setEnabled, remove } as GlossaryClient;
   const status = vi.fn();
-  render(<StrictMode><GlossarySection client={client} setStatus={status} /></StrictMode>);
+  render(<StrictMode>{zhNode(<GlossarySection client={client} setStatus={status} />)}</StrictMode>);
   await screen.findByText(/repository → 仓库/u);
   await userEvent.click(screen.getByRole("button", { name: "编辑" }));
   const target = screen.getByLabelText("目标译法");

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CONTENT_MESSAGES } from "../shared/constants.js";
-import { createI18n } from "../i18n/index.js";
 import { getPresetLabel } from "../shared/presets.js";
+import type { I18n } from "../i18n/index.js";
 import type { AppearanceStatus, CacheStatus, EffectiveContext, PopupClient, TaskStatus, ToggleStatus } from "./client";
 
 type Notice = { message: string; error: boolean };
 type Loadable<T> = { loading: boolean; value: T | null; error: string };
 const loading = <T,>(): Loadable<T> => ({ loading: true, value: null, error: "" });
 
-export function usePopup(client: PopupClient) {
-  const [notice, setNotice] = useState<Notice>({ message: "准备就绪", error: false });
+export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
+  const [notice, setNotice] = useState<Notice>(() => ({ message: i18n.t("popup.noticeReady"), error: false }));
   const [busy, setBusy] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [context, setContext] = useState<Loadable<EffectiveContext>>(loading);
@@ -19,7 +19,6 @@ export function usePopup(client: PopupClient) {
   const [quick, setQuick] = useState<Loadable<ToggleStatus>>(loading);
   const [appearance, setAppearance] = useState<Loadable<AppearanceStatus>>(loading);
   const [preset, setPreset] = useState("inherit");
-  const [learningLabel, setLearningLabel] = useState("学习中心");
   const active = useRef(false), generation = useRef(0), task = useRef<{ id: string; tabId: number } | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const show = useCallback((message: string, error = false) => setNotice({ message, error }), []);
@@ -34,19 +33,19 @@ export function usePopup(client: PopupClient) {
     setContext(value);
     const item = value.value;
     if (item) setPreset(item.temporaryPresetActive ? item.temporaryPresetId || "none" : item.savedPresetId || "inherit");
-  }, "当前页面无法读取翻译模式。"), [client, read]);
-  const refreshCache = useCallback(() => read(client.cacheStatus, setCache, "普通 http/https 网页可使用翻译缓存"), [client, read]);
-  const refreshAuto = useCallback(() => read(() => client.toggleStatus("auto"), setAuto, "当前页面不支持站点自动翻译"), [client, read]);
-  const refreshCacheRestore = useCallback(() => read(() => client.toggleStatus("cache"), setCacheRestore, "当前页面不支持自动缓存恢复"), [client, read]);
-  const refreshQuick = useCallback(() => read(() => client.toggleStatus("quick"), setQuick, "当前页面不支持 Quick Control"), [client, read]);
-  const refreshAppearance = useCallback(() => read(client.appearance, setAppearance, "当前页面不支持阅读外观"), [client, read]);
+  }, i18n.t("popup.contextError")), [client, i18n, read]);
+  const refreshCache = useCallback(() => read(client.cacheStatus, setCache, i18n.t("popup.cacheError")), [client, i18n, read]);
+  const refreshAuto = useCallback(() => read(() => client.toggleStatus("auto"), setAuto, i18n.t("popup.autoError")), [client, i18n, read]);
+  const refreshCacheRestore = useCallback(() => read(() => client.toggleStatus("cache"), setCacheRestore, i18n.t("popup.cacheRestoreError")), [client, i18n, read]);
+  const refreshQuick = useCallback(() => read(() => client.toggleStatus("quick"), setQuick, i18n.t("popup.quickError")), [client, i18n, read]);
+  const refreshAppearance = useCallback(() => read(client.appearance, setAppearance, i18n.t("popup.appearanceError")), [client, i18n, read]);
 
   useEffect(() => {
+    if (!enabled) return;
     active.current = true; generation.current += 1;
     void Promise.allSettled([refreshContext(), refreshCache(), refreshAuto(), refreshCacheRestore(), refreshQuick(), refreshAppearance()]);
-    chrome.storage.local.get("uiLocale").then(({ uiLocale }) => { if (active.current) setLearningLabel(createI18n({ uiLocale, browserLocale: chrome.i18n.getUILanguage() }).t("learning.title")); }).catch(() => {});
     return () => { active.current = false; generation.current += 1; if (timer.current) clearTimeout(timer.current); timer.current = null; task.current = null; };
-  }, [refreshAppearance, refreshAuto, refreshCache, refreshCacheRestore, refreshContext, refreshQuick]);
+  }, [enabled, refreshAppearance, refreshAuto, refreshCache, refreshCacheRestore, refreshContext, refreshQuick]);
 
   const poll = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -61,49 +60,54 @@ export function usePopup(client: PopupClient) {
 
   function renderTask(value: TaskStatus) {
     const progress = value.total > 0 ? ` ${Math.min(value.done, value.total)}/${value.total}` : "";
-    const labels: Record<string, string> = { queued: "准备翻译…", cache_lookup: `正在检查缓存…${progress}`, translating: `正在调用模型翻译…${progress}`, storing: `正在保存译文…${progress}`, completed: `翻译完成${progress}`, failed: value.error || "翻译失败", cancelled: "翻译已取消" };
-    show(labels[value.state] || "正在处理…", value.state === "failed");
+    const labels: Record<string, string> = {
+      queued: i18n.t("popup.taskQueued"), cache_lookup: i18n.t("popup.taskCache", { progress }),
+      translating: i18n.t("popup.taskTranslating", { progress }), storing: i18n.t("popup.taskStoring", { progress }),
+      completed: i18n.t("popup.taskCompleted", { progress }), failed: value.error || i18n.t("popup.taskFailed"),
+      cancelled: i18n.t("popup.taskCancelled")
+    };
+    show(labels[value.state] || i18n.t("common.working"), value.state === "failed");
   }
 
   const translate = useCallback(async () => {
     if (busy) return;
-    setBusy(true); show("正在准备翻译…");
+    setBusy(true); show(i18n.t("popup.taskPreparing"));
     try {
       const id = crypto.randomUUID();
       const prepared = await client.prepareTranslation(id);
       task.current = { id, tabId: prepared.site.tab.id }; setTranslating(true); poll();
       const response = await prepared.run();
-      if (!response.ok) throw new Error(String(response.error || "翻译失败"));
-      show(response.cancelled ? "翻译已取消。" : String(response.message || `已处理 ${Number(response.count || 0)} 个段落`));
+      if (!response.ok) throw new Error(String(response.error || i18n.t("popup.taskFailed")));
+      show(response.cancelled ? i18n.t("popup.taskCancelled") : String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })));
       await refreshCache();
     } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
     finally { if (timer.current) clearTimeout(timer.current); timer.current = null; task.current = null; if (active.current) { setTranslating(false); setBusy(false); } }
-  }, [client, poll, refreshCache, show]);
+  }, [client, i18n, poll, refreshCache, show]);
 
   const cancel = useCallback(async () => {
     const current = task.current; if (!current) return;
-    show("正在取消翻译…");
+    show(i18n.t("popup.taskCancelling"));
     try { await client.cancel(current.tabId, current.id); }
-    catch (error) { show(`取消失败：${error instanceof Error ? error.message : String(error)}`, true); }
-  }, [client, show]);
+    catch (error) { show(i18n.t("popup.cancelFailed", { message: error instanceof Error ? error.message : String(error) }), true); }
+  }, [client, i18n, show]);
 
   const pageAction = useCallback(async (type: string) => {
-    setBusy(true); show(type === CONTENT_MESSAGES.RESTORE_CACHE ? "正在处理页面…" : "处理中…");
+    setBusy(true); show(type === CONTENT_MESSAGES.RESTORE_CACHE ? i18n.t("popup.pageProcessing") : i18n.t("common.working"));
     try {
       const response = await client.action(type);
-      if (!response.ok) throw new Error(String(response.error || "操作失败"));
-      if (type === CONTENT_MESSAGES.TOGGLE_TRANSLATIONS) show(response.hidden ? "译文已隐藏" : "译文已显示");
-      else if (type === CONTENT_MESSAGES.CLEAR_TRANSLATIONS) show("已从页面移除译文；IndexedDB 缓存仍保留。");
-      else if (type === CONTENT_MESSAGES.CLEAR_PAGE_CACHE) show(`已删除本页 ${Number(response.deleted || 0)} 条缓存记录。`);
-      else show(String(response.message || `已处理 ${Number(response.count || 0)} 个段落`));
+      if (!response.ok) throw new Error(String(response.error || i18n.t("common.unknownError")));
+      if (type === CONTENT_MESSAGES.TOGGLE_TRANSLATIONS) show(response.hidden ? i18n.t("popup.translationHidden") : i18n.t("popup.translationShown"));
+      else if (type === CONTENT_MESSAGES.CLEAR_TRANSLATIONS) show(i18n.t("popup.translationRemoved"));
+      else if (type === CONTENT_MESSAGES.CLEAR_PAGE_CACHE) show(i18n.t("popup.cacheDeleted", { count: Number(response.deleted || 0) }));
+      else show(String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })));
       await refreshCache();
     } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
     finally { if (active.current) setBusy(false); }
-  }, [client, refreshCache, show]);
+  }, [client, i18n, refreshCache, show]);
 
   const toggleSite = useCallback(async (kind: "auto" | "cache" | "quick", value: Loadable<ToggleStatus>) => {
     if (!value.value) return;
-    setBusy(true); show("正在更新本站设置…");
+    setBusy(true); show(i18n.t("popup.siteUpdating"));
     try { show(await client.toggleSite(kind, value.value)); }
     catch (error) { show(error instanceof Error ? error.message : String(error), true); }
     finally {
@@ -111,7 +115,7 @@ export function usePopup(client: PopupClient) {
       await (kind === "auto" ? refreshAuto() : kind === "cache" ? refreshCacheRestore() : refreshQuick());
       if (kind !== "quick") await refreshCache();
     }
-  }, [client, refreshAuto, refreshCache, refreshCacheRestore, refreshQuick, show]);
+  }, [client, i18n, refreshAuto, refreshCache, refreshCacheRestore, refreshQuick, show]);
 
   const changeAppearance = useCallback(async (value: string) => {
     setAppearance(current => ({ ...current, loading: true }));
@@ -120,22 +124,29 @@ export function usePopup(client: PopupClient) {
   }, [client, refreshAppearance, show]);
 
   const applyPreset = useCallback(async (persist: boolean) => {
-    setBusy(true); show("正在更新翻译模式…");
+    setBusy(true); show(i18n.t("popup.modeUpdating"));
     try {
       const result = await client.applyPreset(preset, persist); setContext({ loading: false, value: result.context, error: "" });
-      if (result.context.hasSitePromptOverride) show(persist ? "模式已保存到本站，但本站自定义 Prompt 优先，因此当前翻译行为不变。" : "已记录临时模式，但本站自定义 Prompt 优先，因此当前翻译行为不变。");
-      else { show(persist ? "翻译模式已保存到本站。" : "已临时切换当前站点的翻译模式。"); if (result.before.presetId !== result.context.presetId) await translate(); }
+      if (result.context.hasSitePromptOverride) show(i18n.t(persist ? "popup.modeSavedPromptWins" : "popup.modeTemporaryPromptWins"));
+      else { show(i18n.t(persist ? "popup.modeSaved" : "popup.modeTemporary")); if (result.before.presetId !== result.context.presetId) await translate(); }
     } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
     finally { if (active.current) setBusy(false); }
-  }, [client, preset, show, translate]);
+  }, [client, i18n, preset, show, translate]);
 
   const openLearning = useCallback(async () => { try { await client.openLearning(); } catch (error) { show(error instanceof Error ? error.message : String(error), true); } }, [client, show]);
-  return { notice, busy, translating, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, learningLabel, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
+  return { notice, busy, translating, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
 }
 
-export function contextHint(value: EffectiveContext) {
-  if (value.hasSitePromptOverride) return getPresetLabel(value.selectedPresetId) ? `本站自定义 Prompt 优先；已配置 ${getPresetLabel(value.selectedPresetId)}，当前不生效。` : "本站自定义 Prompt 优先。";
-  if (value.presetSource === "temporary") return value.presetId ? `临时模式：${getPresetLabel(value.presetId)}；浏览器会话结束后自动清除。` : "临时关闭 Preset；浏览器会话结束后自动清除。";
-  if (value.presetSource === "site") return `本站已保存模式：${getPresetLabel(value.presetId)}。`;
-  return value.glossaryCount ? `默认 Prompt · 当前有效术语 ${value.glossaryCount} 条。` : "使用默认/自定义全局 Prompt。";
+export function contextHint(value: EffectiveContext, i18n: I18n) {
+  const preset = localizedPresetLabel(value.selectedPresetId || value.presetId, i18n);
+  if (value.hasSitePromptOverride) return preset ? i18n.t("popup.customPromptWithPreset", { preset }) : i18n.t("popup.customPrompt");
+  if (value.presetSource === "temporary") return value.presetId ? i18n.t("popup.temporaryPreset", { preset }) : i18n.t("popup.temporaryPresetOff");
+  if (value.presetSource === "site") return i18n.t("popup.sitePreset", { preset });
+  return value.glossaryCount ? i18n.t("popup.defaultGlossary", { count: value.glossaryCount }) : i18n.t("popup.defaultPrompt");
+}
+
+export function localizedPresetLabel(id: unknown, i18n: I18n) {
+  const normalized = String(id || "");
+  return (["technical", "academic", "news", "natural"] as const).includes(normalized as "technical")
+    ? i18n.t(`preset.${normalized}.label` as "preset.technical.label") : getPresetLabel(id);
 }
