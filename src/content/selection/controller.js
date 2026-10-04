@@ -321,7 +321,7 @@
         await writeSelectionText(copyText);
         showToast(t(copiedMessageKey), "success");
       } catch (error) {
-        const message = error?.i18nKey ? t(error.i18nKey) : String(error?.message || error);
+        const message = error?.i18nKey ? t(error.i18nKey) : t("content.selection.copyDenied");
         showToast(t("content.selection.copyFailed", { message }), "error");
       }
     };
