@@ -600,7 +600,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     harness.server.setFailures([401]);
     await selectElementText(page, "#auth");
     await page.locator(".tf-selection-chip").click();
-    await expect(page.locator(".tf-selection-status")).toContainText("mock failure 401");
+    await expect(page.locator(".tf-selection-status")).toContainText("翻译失败");
+    await expect(page.locator(".tf-selection-status")).not.toContainText("mock failure 401");
     await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
     expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401]);
 

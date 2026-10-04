@@ -1,13 +1,5 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
-const SUBTITLE_SCRIPTS = [
-  "src/content/subtitles/source.js",
-  "src/content/subtitles/sources/text-track.js",
-  "src/content/subtitles/youtube-bridge-protocol.js",
-  "src/content/subtitles/youtube-timedtext.js",
-  "src/content/subtitles/sources/youtube.js"
-];
-
 test("YouTube DOM subtitle source survives SPA navigation and tears down cleanly", async ({ harness }) => {
   const page = await harness.open("/article");
   await page.evaluate(() => {
@@ -29,9 +21,8 @@ test("YouTube DOM subtitle source survives SPA navigation and tears down cleanly
     document.body.appendChild(player);
   });
 
-  const tabId = await harness.tabId(page);
-  await harness.driver.evaluate(async ({ tabId, scripts }) => {
-    await chrome.scripting.executeScript({ target: { tabId }, files: scripts });
+  const tabId = await harness.inject(page);
+  await harness.driver.evaluate(async ({ tabId }) => {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: () => {
@@ -46,7 +37,7 @@ test("YouTube DOM subtitle source survives SPA navigation and tears down cleanly
         source.start();
       }
     });
-  }, { tabId, scripts: SUBTITLE_SCRIPTS });
+  }, { tabId });
 
   await expect.poll(async () => (await readEvents(harness, tabId)).at(-1)?.mediaId).toBe("youtube:e2e-video-a");
   let events = await readEvents(harness, tabId);
@@ -451,9 +442,8 @@ test("YouTube source uses TextTrack as secondary fallback and rendered DOM as fi
     document.body.appendChild(player);
   });
 
-  const tabId = await harness.tabId(page);
-  await harness.driver.evaluate(async ({ tabId, scripts }) => {
-    await chrome.scripting.executeScript({ target: { tabId }, files: scripts });
+  const tabId = await harness.inject(page);
+  await harness.driver.evaluate(async ({ tabId }) => {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: async () => {
@@ -488,7 +478,7 @@ test("YouTube source uses TextTrack as secondary fallback and rendered DOM as fi
         await globalThis.__tfFallbackSource.start();
       }
     });
-  }, { tabId, scripts: SUBTITLE_SCRIPTS });
+  }, { tabId });
 
   await expect.poll(async () => {
     const current = (await readBridgeEvents(harness, tabId, "__tfFallbackEvents")).at(-1);

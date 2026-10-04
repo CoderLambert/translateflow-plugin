@@ -58,8 +58,10 @@ test("real toolbar Popup reports success when opening the learning center closes
   const centerUrl = `chrome-extension://${harness.extensionId}/learning-center.html`;
   await expect.poll(() => harness.context.pages().filter(page => page.url() === centerUrl).length).toBe(1);
   const sender = await harness.serviceWorker.evaluate(() => globalThis.__toolbarPopupSender);
-  expect(sender).toEqual({ id: harness.extensionId, url: popupUrl,
-    origin: `chrome-extension://${harness.extensionId}`, tab: null });
+  expect(sender).toMatchObject({ id: harness.extensionId, url: popupUrl,
+    origin: `chrome-extension://${harness.extensionId}`, frameId: 0,
+    tab: { incognito: false, url: popupUrl } });
+  expect(sender.documentId).toMatch(/^[A-F0-9]{32}$/u);
   expect(await harness.driver.evaluate(async () => (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] })).length)).toBe(0);
   await cdp.detach();
 });
