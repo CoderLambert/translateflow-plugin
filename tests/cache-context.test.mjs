@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getCacheContext } from "../src/background/cache-db.js";
+import { getCacheContext, getConfigHash } from "../src/background/cache-db.js";
 import { resolveTranslationConfig } from "../src/shared/provider-config.js";
 
 const legacyCompatibleConfig = {
@@ -169,4 +169,15 @@ test("OpenAI-compatible streaming transport does not change cache identity", asy
   const nonStreaming = await getCacheContext(pageUrl, { ...base, streaming: false });
   const streaming = await getCacheContext(pageUrl, { ...base, streaming: true });
   assert.equal(nonStreaming.pageConfigKey, streaming.pageConfigKey);
+});
+
+test("the standalone provider fingerprint stays byte-compatible with cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const legacy = { model: "deepseek-flash", targetLanguage: "Simplified Chinese", prompt: "same prompt" };
+  const emptyGlossary = { ...legacy, provider: "deepseek", glossaryIdentity: [] };
+  assert.equal(await getConfigHash(legacy), (await getCacheContext(pageUrl, emptyGlossary)).configHash);
+  const local = { provider: "openai-compatible", apiBaseUrl: "http://127.0.0.1:11434/v1", model: "local",
+    targetLanguage: "Simplified Chinese", prompt: "same prompt" };
+  assert.notEqual(await getConfigHash(local), await getConfigHash({ ...local, apiBaseUrl: "http://127.0.0.1:11435/v1" }));
+  assert.equal(await getConfigHash(local), (await getCacheContext(pageUrl, local)).configHash);
 });

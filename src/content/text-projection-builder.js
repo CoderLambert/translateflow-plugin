@@ -10,8 +10,9 @@
       whitespace = false;
     }
     function append(nodeKey, text, baseOffset = 0, check = () => {}) {
-      const cells = [];
-      nodes.set(nodeKey, { cells, baseOffset });
+      let node = nodes.get(nodeKey);
+      if (!node) { node = { cells: [], baseOffset }; nodes.set(nodeKey, node); }
+      const { cells } = node;
       for (let index = 0; index < text.length; index++) {
         if (index % 64 === 0) check();
         const char = text[index], offset = baseOffset + index;
@@ -35,7 +36,11 @@
       if ([" ", "\n"].includes(units.at(-1))) { units.pop(); mapping.pop(); }
       return { text: units.join(""), mapping, nodes };
     }
-    return { append, boundary, finish, get size() { return units.length; } };
+    function view(start = 0, end = units.length) {
+      const from = Math.max(0, start), to = Math.min(units.length, end);
+      return { text: units.slice(from, to).join(""), mapping: mapping.slice(from, to), nodes, sourceOffset: from };
+    }
+    return { append, boundary, finish, view, get size() { return units.length; } };
   }
   app.modules.textProjectionBuilder = { createBuilder };
 })();

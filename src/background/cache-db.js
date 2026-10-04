@@ -263,7 +263,7 @@ export async function pruneCache(maxBytes) {
   return { ...finalStats, deleted };
 }
 
-async function getConfigHash(config) {
+export async function getConfigHash(config) {
   const provider = String(config?.provider || PROVIDER_IDS.DEEPSEEK).trim();
   const payload = {
     cacheSchema: CACHE_SCHEMA_VERSION,
