@@ -1,12 +1,12 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract ||
-      !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingReturnCard) return;
+      !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingReturnCard) return;
   const C = app.modules.readingContract, M = C.READING_METHOD;
   const locale = app.modules.contentI18n;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   let card = null, quoteNode = null, overlays = [], activeRange = null, activeText = "", controller = null, frame = 0, previousFocus = null, summary = null;
-  let mutationObserver = null, mutationTimer = 0, automaticRetries = 0, locationGeneration = 0, dismissed = false;
+  let projectionUnsubscribe = null, mutationTimer = 0, automaticRetries = 0, locationGeneration = 0, dismissed = false;
   const messages = {
     locating: "content.reading.locating",
     resolved: "content.reading.resolved",
@@ -48,7 +48,7 @@
   function cleanup() {
     locationGeneration++;
     controller?.abort(); controller = null; cancelAnimationFrame(frame); frame = 0; clearOverlays();
-    mutationObserver?.disconnect(); mutationObserver = null; clearTimeout(mutationTimer); mutationTimer = 0;
+    projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(mutationTimer); mutationTimer = 0;
     window.removeEventListener("scroll", scheduleOverlay, true); window.removeEventListener("resize", scheduleOverlay);
   }
   function close() {
@@ -93,13 +93,13 @@
         const element = result.range.commonAncestorContainer.nodeType === 1 ? result.range.commonAncestorContainer : result.range.commonAncestorContainer.parentElement;
         element?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
         updateOverlays();
-        mutationObserver = new MutationObserver(records => {
-          if (records.every(record => app.modules.uiHost.ownsNode(record.target))) return;
+        projectionUnsubscribe = app.modules.textProjection.start(() => {
+          if (!activeRange || !card) return;
+          projectionUnsubscribe?.(); projectionUnsubscribe = null;
           clearOverlays(); card.dataset.state = "not-loaded"; setLocalizedStatus(state, messages["not-loaded"], "warning");
           if (automaticRetries >= C.READING_LIMITS.scanRetryCount || mutationTimer) return;
           mutationTimer = setTimeout(() => { mutationTimer = 0; automaticRetries++; void locate(); }, C.READING_LIMITS.mutationDebounceMs);
         });
-        mutationObserver.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
       }
     } catch (error) { if (current === locationGeneration && controller === ownController && error?.name !== "AbortError" && card) {
       card.dataset.state = "error"; setLocalizedStatus(state, messages.error, "error");
