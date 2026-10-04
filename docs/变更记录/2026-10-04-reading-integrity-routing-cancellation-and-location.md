@@ -83,4 +83,11 @@
 - `e2e/reading-page-markers.spec.mjs` 新增挂起 GET_PAGE_SUMMARY 的回归：刷新等待期间原文本节点保持连接且内容改变，点击旧行不触发滚动；后台响应后显示新的未找到状态。
 - `tests/reading-idb-cancellation.test.mjs` 另覆盖 signal 取消后 pending request 抛 AbortError、随后 transaction abort，最终原因仍是 `CANCELLED`。
 - `validate` 首次运行发现 `src/content/reading-record.js` 与唯一 owned-source 生成结果不一致；已用 `node scripts/reading-content-classic.mjs` 重建，不手改生成文件，并纳入本候选检查。
-- 本节验证应绑定后续新候选；本记录先前的 `c479b96` 验收结果不覆盖本次改动。
+- 最终补丁候选 `2401928de615a1260047576390bfda7c8a9ae314`，在此前 `e07e714` 已推送审查分支上追加 5 个本地提交；本次复审补丁尚未推送或合入。旧候选 `c479b96` 的验收不替代本候选证据。
+- `npm run validate`：PASS；595 项源码检查，Node `1088/1088`、typecheck、Vitest `8` 个文件 / `26/26` 与默认构建均通过。首次运行只因 classic Reading 生成物不一致而在 Node 测试处停止；运行唯一生成器后重跑完整链通过。
+- `node scripts/reading-content-classic.mjs --check`、`git diff --check`：PASS。`node --test tests/reading-idb-cancellation.test.mjs`：PASS，`7/7`，新增 signal 取消、request AbortError、transaction abort 事件序列最终保留 `CANCELLED`。
+- `npm run build:extension:wxt`、`npm run test:wxt:smoke`：PASS；Chromium `153.0.8010.12`。默认 `dist/extension` 与 `.output/chrome-mv3` 逐文件一致，均为 111 个文件 / 1,738,667 bytes，tree SHA-256 `0bf2e4b44c861105f22306e064f260e36bde1c3abb0362ec00eb14678a9756ff`。
+- `TF_E2E_ARTIFACT_SOURCE_HEAD=2401928de615a1260047576390bfda7c8a9ae314 npm run test:e2e -- --workers=1 e2e/reading-page-markers.spec.mjs`：PASS，`1/1`。Chromium `153.0.8010.12`；刷新屏障期间旧定位未触发滚动，恢复响应后为未找到，Provider 调用 `0`。实测扫描 57,705 字符 / 185 节点，工作 10.2ms / 等待 0ms。
+- 定向 E2E 在稳定通过前有三次测试 harness 失败：首次从网页主世界访问扩展隔离状态，随后分别修正重复 URL 目标标签选择和打开隐藏面板后的点击步骤；这些失败没有作为 PASS 计入，最终结果绑定本候选并通过。
+- 此场景 E2E 临时副本单列 fingerprint：119 个文件 / 1,750,961 bytes，tree SHA-256 `099f5372eda98e95c4ca17c58dced313d526b459f4d30dfd3d31e3cf4a63a368`，含合成 Core/Technical 词典与测试 manifest localhost 权限；不代表原始安装包。证据 JSON：`test-results/e2e/reading-page-markers-autho-4d020-anges-without-Provider-work/reading-page-marker-scan.json`（本地测试产物，Git 忽略）。
+- 测试绑定代码候选 `2401928de615a1260047576390bfda7c8a9ae314`；本节为其后的文档记录提交，不改变测试输入。Chrome 102、其它浏览器、真实权限 UI、真实 YouTube timedtext、付费 Provider、same-ID 升级/撤权和发布词典认证仍未运行。
