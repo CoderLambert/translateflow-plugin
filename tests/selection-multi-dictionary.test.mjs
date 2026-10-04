@@ -152,6 +152,8 @@ test("dictionary lookups carry dictionaryId and isolate loading, errors, and sta
   pending.get("beta").resolve({ ok: false, errorCode: "INDEX_UNAVAILABLE" });
   await flushMicrotasks();
   assert.equal(cards.get("beta").state, "error");
+  assert.equal(cards.get("beta").message, "content.rich.lookupUnavailable");
+  assert.doesNotMatch(JSON.stringify(cards.get("beta").message), /INDEX_UNAVAILABLE/u);
   assert.equal(cards.get("alpha").state, "loading");
 
   current = false;
