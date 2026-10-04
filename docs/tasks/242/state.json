@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "task": "242",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["241", "234"],
+  "branch": "feat/242-grounded-assistant",
+  "worktree": ".worktrees/issue-242",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [["npm","run","validate"],["npm","run","build:extension:wxt"],["npm","run","test:e2e","--","e2e/selection-assistant-stream.spec.mjs"]],
+  "artifactRequired": true,
+  "nextAction": "冻结 grounded turn domain 并完成验收。"
+}

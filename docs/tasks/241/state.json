@@ -1,18 +1,21 @@
 {
   "schema": 1,
   "task": "241",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": ["236"],
-  "branch": "feat/241-selection-text-stream",
-  "worktree": ".worktrees/issue-241",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94",
-  "mergeHead": null,
+  "mergeHead": "3f7c0cde71096acdc438f65213d38b799806b5b7",
   "validationCommands": [
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:e2e", "--", "e2e/selection-assistant-stream.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "SELECTION_STREAM_PASS；提交归档、gate 后同步 PR。"
+  "nextAction": "PR #292 已合入并核对 tree；继续任务 242。",
+  "syncHead": "95c1e87651e4db8a86df30674b91fd9730a305ca",
+  "pr": 292,
+  "result": "SELECTION_STREAM_PASS"
 }
