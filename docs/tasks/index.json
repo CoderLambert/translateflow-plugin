@@ -127,12 +127,12 @@
     },
     {
       "task": "241",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "236"
       ],
       "branch": "feat/241-selection-text-stream",
-      "candidateHead": null
+      "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94"
     },
     {
       "task": "245",
