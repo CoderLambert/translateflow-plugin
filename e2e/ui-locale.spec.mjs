@@ -3,6 +3,7 @@ import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { makeMdx } from "../tests/helpers/mdict-fixture.mjs";
+import { catalogs } from "../src/i18n/catalog.js";
 
 // Consume a real built artifact. No runtime source or permissions are added.
 // Default to the WXT artifact built by CI; select dist/extension explicitly for legacy comparison.
@@ -111,7 +112,7 @@ test("failed native storage read is visible and retry restores an enabled contro
     const original = chrome.storage.local.get;
     globalThis.__tfFailLocaleRead = true;
     chrome.storage.local.get = async (keys) => {
-      if (globalThis.__tfFailLocaleRead && Array.isArray(keys) && keys.length === 1 && keys[0] === "uiLocale") {
+      if (globalThis.__tfFailLocaleRead && (keys === "uiLocale" || (Array.isArray(keys) && keys.length === 1 && keys[0] === "uiLocale"))) {
         throw new Error("Synthetic storage read failure");
       }
       return original.call(chrome.storage.local, keys);
@@ -133,7 +134,7 @@ test("the new control remains hidden while the initial stored language is pendin
     if (location.protocol !== "chrome-extension:" || !chrome.storage?.local) return;
     const original = chrome.storage.local.get;
     chrome.storage.local.get = async (keys) => {
-      if (Array.isArray(keys) && keys.length === 1 && keys[0] === "uiLocale") {
+      if (keys === "uiLocale" || (Array.isArray(keys) && keys.length === 1 && keys[0] === "uiLocale")) {
         const value = await original.call(chrome.storage.local, keys);
         await new Promise((resolve) => { globalThis.__tfReleaseLocaleRead = resolve; });
         return value;
@@ -157,12 +158,12 @@ test("mounted Quick Control, Selection and subtitle controls follow one live Con
   }));
   const page = await h.context.newPage();
   await page.goto("https://i18n.fixture.test/content");
-  await expect.poll(() => page.evaluate(() => Boolean(globalThis.__TRANSLATE_FLOW_CONTENT__?.loaded))).toBe(true);
-  await h.worker.evaluate(async url => {
+  await expect.poll(() => h.worker.evaluate(async url => {
     const [tab] = await chrome.tabs.query({ url });
-    if (!tab?.id) throw new Error("Content locale fixture tab is missing");
-    await chrome.tabs.sendMessage(tab.id, { type: "TF_QUICK_CONTROL_SHOW" });
-  }, page.url());
+    if (!tab?.id) return false;
+    try { return (await chrome.tabs.sendMessage(tab.id, { type: "TF_QUICK_CONTROL_SHOW" }))?.ok === true; }
+    catch { return false; }
+  }, page.url())).toBe(true);
   await expect(page.locator(".tf-quick-subtitle")).toHaveText("Page translation");
   await expect(page.locator(".tf-quick-auto strong")).toHaveText("Automatic translation");
 
@@ -229,10 +230,10 @@ test("Options Glossary and local dictionary preflight update in both languages w
   await page.locator("#localDictionaryFiles").setInputFiles({
     name: "broken-fixture.mdx", mimeType: "application/octet-stream", buffer: Buffer.from("not an MDX file")
   });
-  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("MDX file is corrupt or its structure cannot be read.");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText(catalogs.en["localImport.reason.mdx.preflight_limit_exceeded"]);
   await expect(page.locator("#localDictionaryImportButton")).toBeDisabled();
   await page.locator("#uiLocale").selectOption("zh_CN");
-  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("MDX 文件损坏或结构无法读取。");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText(catalogs.zh_CN["localImport.reason.mdx.preflight_limit_exceeded"]);
   await page.locator("#localDictionaryFiles").setInputFiles({
     name: "locale-fixture.mdx", mimeType: "application/octet-stream",
     buffer: makeMdx([["locale-fixture", "Synthetic local definition."]], { generatedVersion: "2.0", styleSheet: "" })

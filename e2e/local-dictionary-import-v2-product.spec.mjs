@@ -1,4 +1,5 @@
 import { test, expect } from "./support/extension-fixture.mjs";
+import { catalogs } from "../src/i18n/catalog.js";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 import { makeMdx } from "../tests/helpers/mdict-fixture.mjs";
@@ -49,7 +50,7 @@ test.describe("unified local dictionary import v2", () => {
     await expect(installed).toContainText("本机源文件");
     await expect(installed).toContainText("unified.mdx");
     await expect(installed).toContainText("本机源文件大小");
-    await expect(installed).toContainText("添加/替换 MDD 资源");
+    await expect(installed).toContainText(catalogs.zh_CN["dictionary.attachMdd"]);
     const dictionaryId = await installed.getAttribute("data-dictionary-id");
     const activeRich = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
     expect(activeRich.ok).toBe(true);
@@ -227,13 +228,13 @@ test.describe("unified local dictionary import v2", () => {
       })
     });
     await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
-    await options.evaluate(() => {
+    await options.evaluate(({ indexProgress }) => {
       const progress = document.getElementById("localDictionaryImportProgress");
       window.__mdxIndexCancelTriggered = false;
       window.__mdxIndexProgressObserved = "";
       window.__mdxIndexCancelVisible = false;
       const observer = new MutationObserver(() => {
-        if (progress.dataset.phase !== "index" || !progress.textContent.includes("建立受限查询索引")) return;
+        if (progress.textContent !== indexProgress) return;
         const cancel = document.getElementById("localDictionaryCancelButton");
         window.__mdxIndexProgressObserved = progress.textContent;
         window.__mdxIndexCancelVisible = Boolean(cancel && !cancel.hidden && !cancel.disabled);
@@ -241,12 +242,12 @@ test.describe("unified local dictionary import v2", () => {
         observer.disconnect();
         if (window.__mdxIndexCancelVisible) cancel.click();
       });
-      observer.observe(progress, { attributes: true, attributeFilter: ["data-phase"], childList: true, characterData: true, subtree: true });
-    });
+      observer.observe(progress, { childList: true, characterData: true, subtree: true });
+    }, { indexProgress: catalogs.zh_CN["localImport.progress.index"] });
 
     await options.locator("#localDictionaryImportButton").click();
     await expect.poll(() => options.evaluate(() => window.__mdxIndexCancelTriggered)).toBe(true);
-    expect(await options.evaluate(() => window.__mdxIndexProgressObserved)).toBe("建立受限查询索引");
+    expect(await options.evaluate(() => window.__mdxIndexProgressObserved)).toBe(catalogs.zh_CN["localImport.progress.index"]);
     expect(await options.evaluate(() => window.__mdxIndexCancelVisible)).toBe(true);
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("已取消", { timeout: 30_000 });
     const afterCancel = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
@@ -288,7 +289,7 @@ test.describe("unified local dictionary import v2", () => {
     await expect(options.locator("#localDictionaryLimitationsText")).toContainText("安装前会重新完整校验");
     await options.locator("#localDictionaryLimitationsConfirmation").check();
     await options.locator("#localDictionaryImportButton").click();
-    await expect(options.locator("#localDictionaryImportProgress")).toContainText("安装失败", { timeout: 90_000 });
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText(catalogs.zh_CN["localImport.failure.installStatus"], { timeout: 90_000 });
     await expect(options.locator("#installedDictionaryList")).not.toContainText("local-e2e-tflex-corrupt");
     expect(harness.server.calls).toHaveLength(0);
   });
@@ -337,7 +338,7 @@ test.describe("unified local dictionary import v2", () => {
     await options.locator("#localDictionaryDuplicateConfirmation").check();
     await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
     await options.locator("#localDictionaryImportButton").click();
-    await expect(options.locator("#localDictionaryImportProgress")).toContainText("安装失败", { timeout: 90_000 });
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText(catalogs.zh_CN["localImport.failure.installStatus"], { timeout: 90_000 });
 
     const afterStatus = await options.evaluate(() => chrome.runtime.sendMessage({ type: "DICTIONARY_PACK_STATUS" }));
     expect(afterStatus.state.packs[installedPack.manifest.packId].active.packVersion).toBe(beforeVersion);
@@ -364,7 +365,7 @@ test.describe("unified local dictionary import v2", () => {
     await expect(priorRow).toContainText("1 个 MDD 文件");
     const priorDictionaryId = await priorRow.getAttribute("data-dictionary-id");
 
-    const pendingMdd = makeMdd(Array.from({ length: 2048 }, (_, index) => [
+    const pendingMdd = makeMdd(Array.from({ length: 32_768 }, (_, index) => [
       `\\media\\pending-${String(index).padStart(4, "0")}.css`,
       new TextEncoder().encode(`.pending-${index} { color: #123456; }`)
     ]));
@@ -373,20 +374,21 @@ test.describe("unified local dictionary import v2", () => {
       { name: "cancel-attach.mdd", mimeType: "application/octet-stream", buffer: pendingMdd }
     ]);
     await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("cancel-attach.mdd");
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText(catalogs.zh_CN["localImport.row.associatedMdd"]);
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("32,768 项");
     await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
-    await options.evaluate(() => {
+    await options.evaluate(({ attachStartedText, indexProgress }) => {
       const progress = document.getElementById("localDictionaryImportProgress");
       window.__mddIndexCancelTriggered = false;
       window.__mddIndexProgressObserved = "";
       window.__mddCancelButtonVisible = false;
-      window.__mddAttachStarted = false;
-      const observer = new MutationObserver((records) => {
-        if (records.some((record) => Array.from(record.addedNodes || []).some((node) =>
-          String(node.textContent || "").includes("MDX 已安装，正在原子检查并添加已关联的 MDD")))) {
-          window.__mddAttachStarted = true;
-        }
-        if (!window.__mddAttachStarted || progress.dataset.phase !== "index") return;
-        if (!progress.textContent.includes("建立受限查询索引")) return;
+      window.__mddIndexProgressCount = 0;
+      const observer = new MutationObserver(() => {
+        if (progress.textContent !== indexProgress) return;
+        window.__mddIndexProgressCount += 1;
+        // The first index phase imports the MDX itself; the second indexes the
+        // selected MDD attachment. Cancel only the latter real worker phase.
+        if (window.__mddIndexProgressCount < 2) return;
         window.__mddIndexProgressObserved = progress.textContent;
         const cancel = document.getElementById("localDictionaryCancelButton");
         window.__mddCancelButtonVisible = Boolean(cancel && !cancel.hidden && !cancel.disabled);
@@ -394,13 +396,21 @@ test.describe("unified local dictionary import v2", () => {
         observer.disconnect();
         if (window.__mddCancelButtonVisible) cancel.click();
       });
-      observer.observe(progress, { attributes: true, attributeFilter: ["data-phase"], childList: true, characterData: true, subtree: true });
-    });
+      observer.observe(progress, { childList: true, characterData: true, subtree: true });
+    }, { indexProgress: catalogs.zh_CN["localImport.progress.index"] });
     await options.locator("#localDictionaryImportButton").click();
-    await expect.poll(() => options.evaluate(() => window.__mddIndexCancelTriggered)).toBe(true);
-    expect(await options.evaluate(() => window.__mddIndexProgressObserved)).toBe("建立受限查询索引");
+    await expect.poll(async () => {
+      const state = await options.evaluate(() => ({
+        triggered: window.__mddIndexCancelTriggered,
+        indexProgressCount: window.__mddIndexProgressCount,
+        progress: document.getElementById("localDictionaryImportProgress")?.textContent || "",
+        cancelVisible: window.__mddCancelButtonVisible
+      }));
+      return state.triggered ? "cancel-triggered" : JSON.stringify(state);
+    }).toBe("cancel-triggered");
+    expect(await options.evaluate(() => window.__mddIndexProgressObserved)).toBe(catalogs.zh_CN["localImport.progress.index"]);
     expect(await options.evaluate(() => window.__mddCancelButtonVisible)).toBe(true);
-    await expect(options.locator("#localDictionaryImportProgress")).toContainText("MDD 附件导入已取消", { timeout: 90_000 });
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText(catalogs.zh_CN["localImport.cancelled.mdxAttached"], { timeout: 90_000 });
 
     await expect(priorRow).toContainText("1 个 MDD 文件");
     const activeDictionaries = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));

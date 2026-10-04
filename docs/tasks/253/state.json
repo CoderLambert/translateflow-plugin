@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "253",
-  "status": "working",
+  "status": "paused",
   "owner": "main",
   "dependencies": ["249", "252", "244"],
-  "branch": "refactor/253-ui-localization",
+  "branch": "handoff/253-ui-localization-progress",
   "worktree": ".worktrees/issue-253",
   "candidateHead": null,
   "mergeHead": null,
@@ -16,5 +16,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/ui-locale.spec.mjs", "e2e/ui-redesign.spec.mjs", "e2e/settings-ia.spec.mjs", "e2e/dark-mode.spec.mjs", "e2e/learning-center.spec.mjs", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-page-markers.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-storage.spec.mjs", "e2e/local-dictionary-import-v2-product.spec.mjs", "e2e/translateflow.spec.mjs", "e2e/subtitles.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "将最新 origin/main@51bb03b 与 #253 收口提交冻结为候选，完成 validate、生成一致性、WXT build/smoke 与全部约定 Chromium E2E；仅更新本地验收证据。"
+  "nextAction": "恢复任务后，先在当前候选代码与失败修正上冻结新 candidate；重跑完整 validate、生成一致性、WXT build/smoke 和 task253 全部 Chromium E2E。未通过并归档全部验收前保持 paused，不推送或合并。"
 }

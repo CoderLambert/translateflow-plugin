@@ -29,3 +29,26 @@ for (const [surface, hook] of [
     expect(removeListener).toHaveBeenCalledWith(listener);
   });
 }
+
+test("Options keeps the successful locale status when storage.onChanged precedes set resolution", async () => {
+  const addListener = vi.fn();
+  let changed: ((changes: Record<string, { newValue?: unknown }>, area: string) => void) | null = null;
+  addListener.mockImplementation((listener: typeof changed) => { changed = listener; });
+  const set = vi.fn(async (value: { uiLocale: string }) => {
+    changed?.({ uiLocale: { newValue: value.uiLocale } }, "local");
+  });
+  vi.stubGlobal("chrome", {
+    i18n: { getUILanguage: () => "en-US" },
+    storage: { local: { get: vi.fn(async () => ({ uiLocale: "auto" })), set }, onChanged: { addListener, removeListener: vi.fn() } }
+  });
+
+  const view = renderHook(() => useOptionsLocale());
+  await waitFor(() => expect(view.result.current.ready).toBe(true));
+  await act(async () => { await view.result.current.save("zh_CN"); });
+
+  expect(view.result.current.locale).toBe("zh_CN");
+  expect(view.result.current.status).toBe("settings.saved");
+  expect(view.result.current.busy).toBe(false);
+  expect(set).toHaveBeenCalledWith({ uiLocale: "zh_CN" });
+  view.unmount();
+});

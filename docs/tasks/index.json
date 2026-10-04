@@ -241,13 +241,13 @@
     },
     {
       "task": "253",
-      "status": "working",
+      "status": "paused",
       "dependencies": [
         "249",
         "252",
         "244"
       ],
-      "branch": "refactor/253-ui-localization",
+      "branch": "handoff/253-ui-localization-progress",
       "candidateHead": null
     },
     {

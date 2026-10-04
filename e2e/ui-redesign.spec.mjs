@@ -86,7 +86,7 @@ test.describe("UI redesign release gate", () => {
     await harness.inject(page);
     await harness.sendContent(page, "TF_QUICK_CONTROL_SHOW");
 
-    const trigger = page.getByRole("button", { name: /TranslateFlow Quick Control/ });
+    const trigger = page.getByRole("button", { name: /TranslateFlow (?:Quick Control|快捷控制)/ });
     await expect(trigger).toBeVisible();
 
     const motion = await trigger.evaluate((node) => ({

@@ -44,7 +44,7 @@ export function registerStorageRegressions(test, expect, environment) {
     await expect.poll(async()=> (await signals()).length).toBeGreaterThan(0);
     const before = await content.send(request(M.GET_PAGE_SUMMARY)), catalog = await message(M.LIST_RECORDS);
     const detail = await message(M.GET_RECORD, {recordId:value.recordId}); expect(detail.ok).toBe(true);
-    const after = await content.send(request(M.GET_PAGE_SUMMARY)); expect(after.ok).toBe(true);
+    const after = await content.send(request(M.GET_PAGE_SUMMARY)); expect(after.ok, JSON.stringify(after)).toBe(true);
     expect(after.data.items[0].revision).toBeGreaterThan(before.data.items[0].revision);
     expect(after.data.pageRevision).toBe(before.data.pageRevision+1);
     await expect.poll(async()=> (await signals()).at(-1).pageRevision).toBe(after.data.pageRevision);

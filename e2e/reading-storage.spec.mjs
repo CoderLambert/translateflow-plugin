@@ -64,7 +64,7 @@ async function openContent() {
     func: (text) => { const source = JSON.parse(text); globalThis.__TRANSLATE_FLOW_CONTENT__ ||= { modules: {} };
       globalThis.__TRANSLATE_FLOW_CONTENT__.modules.readingAccessCollector = { read(challenge) { return { nonce: challenge.nonce,
         documentGeneration: source.documentGeneration, selectionGeneration: 1, captureSafety: { selection: 'safe', context: 'safe', root: 'light-dom' }, sourceSnapshot: source,
-        intent: ['register', 'inspect'].includes(challenge.action) ? null : { action: challenge.action, recordId: challenge.recordId, operationId: challenge.operationId } }; } }; }
+        intent: ['register', 'inspect', 'page', 'handoff'].includes(challenge.action) ? null : { action: challenge.action, recordId: challenge.recordId, operationId: challenge.operationId } }; } }; }
   }), { tabId, input: snap });
   const send = async (input) => { const [result] = await driver.evaluate(({ tabId, input }) => chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', args: [JSON.stringify(input)],
     func: (text) => chrome.runtime.sendMessage(JSON.parse(text)) }), { tabId, input }); return result.result; };
@@ -139,7 +139,7 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
     const ai = await lookup(first, 'assistant', a.recordId, a.revision, 'assistant');
     const newLookup = await lookup(first, 'translation', a.recordId, ai.revision);
     const detail = await message(M.GET_RECORD, { recordId: a.recordId }); expect(detail.data.record.lookupCount).toBe(2); expect(detail.data.artifacts).toHaveLength(3);
-    const summary = await first.send(request(M.GET_PAGE_SUMMARY, { limit: 100 })); expect(summary.ok).toBe(true); expect(summary.data.pageRecordCount).toBe(2);
+    const summary = await first.send(request(M.GET_PAGE_SUMMARY, { limit: 100 })); expect(summary.ok, JSON.stringify(summary)).toBe(true); expect(summary.data.pageRecordCount).toBe(2);
     expect(summary.data.items.find((item) => item.recordId === a.recordId).hasCompletedAssistant).toBe(true);
     for (const item of summary.data.items) expect(Object.keys(item).sort()).toEqual(['anchor', 'hasCompletedAssistant', 'recordId', 'revision']);
     const minimal = await first.send(request(M.GET_RECORDING_STATE)); expect(Object.keys(minimal.data).sort()).toEqual(['capacityReached', 'consentGeneration', 'enabled']);

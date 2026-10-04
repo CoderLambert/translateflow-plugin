@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "253",
-  "candidateHead": "f6a154c91743a8510769a83925451ab8d126d466",
-  "tree": "15e1a18bd2d106d3dd4656790c835a8bb7c27580",
-  "inputTree": "371f65a93d139890148bccbe094cfcd07d9e0acb204ae5c8423a1bb0ad4a7682",
-  "frozenAt": "2026-10-04T14:07:40.572Z",
+  "candidateHead": "cb865eddd165f98348553f4a08c0685b21d3f785",
+  "tree": "5ae6c3098d7e0074625c4cfe065fe78296a29a13",
+  "inputTree": "c9f5051444541fa38fcab2e601d5b492dfd6f2e6e97beeb3add374b921629bd8",
+  "frozenAt": "2026-10-04T14:09:39.043Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
@@ -17,14 +17,87 @@
         "run",
         "validate"
       ],
-      "candidateHead": "f6a154c91743a8510769a83925451ab8d126d466",
+      "candidateHead": "cb865eddd165f98348553f4a08c0685b21d3f785",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 60614.657168,
+      "startedAt": "2026-10-04T14:09:49.071Z",
+      "log": "docs/task-execution/local/253/cc4744a3-4820-445f-8cb7-00602fdd0e3d.log",
+      "logSha256": "17d3a2624c313d744f69091d954e418fc69b352e3f632a95cdb16ed6e195786f"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/reading-content-classic.mjs",
+        "--check"
+      ],
+      "candidateHead": "cb865eddd165f98348553f4a08c0685b21d3f785",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 373.157235,
+      "startedAt": "2026-10-04T14:11:18.363Z",
+      "log": "docs/task-execution/local/253/7f523af4-b300-4ab3-9ee1-0732bd3503ea.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "cb865eddd165f98348553f4a08c0685b21d3f785",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2694.540756,
+      "startedAt": "2026-10-04T14:11:26.669Z",
+      "log": "docs/task-execution/local/253/dc2b4b92-71a5-4756-8487-62f43b8787fa.log",
+      "logSha256": "d59d8587a676e7c9cff728b35404d5d84730af1063311f86f9e962d9d4b174a3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "cb865eddd165f98348553f4a08c0685b21d3f785",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1608.60335,
+      "startedAt": "2026-10-04T14:11:40.997Z",
+      "log": "docs/task-execution/local/253/aad25630-e012-4e83-8955-5fe708627d83.log",
+      "logSha256": "48f817772097fa0226240d9d1651900100b36a7668e6215c08dad0f20ff0ff6e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/ui-locale.spec.mjs",
+        "e2e/ui-redesign.spec.mjs",
+        "e2e/settings-ia.spec.mjs",
+        "e2e/dark-mode.spec.mjs",
+        "e2e/learning-center.spec.mjs",
+        "e2e/reading-loop-release-a.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-storage.spec.mjs",
+        "e2e/local-dictionary-import-v2-product.spec.mjs",
+        "e2e/translateflow.spec.mjs",
+        "e2e/subtitles.spec.mjs"
+      ],
+      "candidateHead": "cb865eddd165f98348553f4a08c0685b21d3f785",
       "result": "FAIL",
       "exitCode": 1,
       "signal": null,
-      "durationMs": 49082.625023,
-      "startedAt": "2026-10-04T14:07:49.969Z",
-      "log": "docs/task-execution/local/253/2818ead6-900a-4154-a2b5-835ae001b2f9.log",
-      "logSha256": "2fbda76127f553dca8512c148de181dad24a1efa1dcc5742c1148f44d55b2ab5"
+      "durationMs": 514241.210809,
+      "startedAt": "2026-10-04T14:12:06.802Z",
+      "log": "docs/task-execution/local/253/433f3c88-d7b2-46c7-ac8a-b69197c979fb.log",
+      "logSha256": "57d2ecfcb5b61a792f80a07c932fbc5055465d39590a03b73e8f99d45d4cdd9e"
     }
   ],
   "artifact": null,

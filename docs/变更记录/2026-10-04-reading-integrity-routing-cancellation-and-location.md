@@ -77,6 +77,46 @@
 
 本轮未运行 Chrome 102、非 Chromium、原生权限提示 UI、真实 YouTube timedtext、付费 Provider、发布词典认证，也未重新跑 same-ID 升级/撤权完整场景。未推送、未创建 PR，未合入 main。后续文档归档 HEAD 与测试候选不同；归档只记录结果，不改变 `testedHead` `c479b969942e32beb72ecff8505c1dbe3954fe49`。
 
+## #253 本地暂停与开发进度交接（2026-10-04）
+
+### 当前边界
+
+- Reading PR #300 已由本地 merge commit `52590a5e7f728ab1dc0df5e70f84671127669323` 集成；其基线为 `origin/main@51bb03b4be8a1638a16777c24a8abbeba35e4ef7`。本次交接分支从 `cb865eddd165f98348553f4a08c0685b21d3f785` 继续，尚未推送、创建 PR 或合入 main。
+- task253 保持 `paused`，`candidateHead`/`mergeHead` 均未设置。`acceptance.json` 中的完整 E2E `FAIL` 仍绑定旧候选 `cb865ed`；当前分支上的修复尚未冻结为新候选，不能将后续定向 PASS 改写成整套 E2E PASS。
+
+### 当前改动与已证实修复
+
+- `src/options/useLocale.ts`：本页 `storage.onChanged` 在 `storage.local.set()` Promise resolve 前触发会使 generation 失效、清空保存成功状态；现区分本地待完成/刚完成写入和其它页面的 locale 变化。新增 React 测试模拟此原生事件顺序。
+- 更新 Chromium fixture 使用当前 WXT 编译 Content 单资源、当前 locale catalog 文案和隔离世界的可观察状态，不再请求未打包的 `src/content/...` 文件或从网页主世界读取内部全局对象。
+- Reading storage fixture 的 `GET_PAGE_SUMMARY` collector 对 `page`/`handoff` challenge 误造非空 intent；已按 owner 合同返回通用 `null` intent。此前收到的 `READING_BAD_DTO` 是该测试夹具问题，不是生产 Reading router 缺陷。
+- MDD 初次取消场景用合成资源保留真实 Worker/取消路径；取消在 MDX 的第一次 index 进度之后、MDD 的第二次 index 进度中触发，并确认既有 MDD 资源仍可用。
+- 本地 MDD/Selection/Reading 测试不再要求 Provider 原始错误文本进入 UI；按受控中英文 catalog 状态断言失败和恢复结果。
+
+### 本工作区定向验证
+
+以下是当前未提交工作区的定向证据，不等于冻结候选完整验收：
+
+| 命令 | 结果 |
+| --- | --- |
+| `npm run check` | PASS；613 个 JS/TS/TSX 文件，catalog 1116 个消息键。 |
+| `npm run typecheck` | PASS。 |
+| `npm run test:unit` | PASS；9 个文件、33 项。 |
+| `npm run test:e2e -- e2e/ui-locale.spec.mjs` | PASS；7/7。 |
+| `npm run test:e2e -- e2e/local-dictionary-import-v2-product.spec.mjs --grep "one picker safely installs|cancelling Rich MDX index creation|TFLex full-validation failure|same-packId TFLex replacement|cancelling the initial MDD attachment"` | PASS；5/5。 |
+| `npm run test:e2e -- e2e/subtitles.spec.mjs` | PASS；8/8，WXT 编译 Content 图。 |
+| `npm run test:e2e -- e2e/reading-loop-release-a.spec.mjs --grep "trusted creation matrix survives browser restart|extension-origin physical quota refusal|injected quota boundary"` | PASS；3/3。 |
+| `npm run test:e2e -- e2e/reading-storage.spec.mjs` | PASS；21/21。 |
+| `npm run test:e2e -- e2e/dark-mode.spec.mjs e2e/ui-redesign.spec.mjs --grep "Quick Control"` | PASS；2/2。 |
+| `npm run test:e2e -- e2e/translateflow.spec.mjs --grep "Quick Control is Shadow-isolated|selection failure is actionable"` | PASS；2/2。 |
+
+### 尚未解决/未验证
+
+- 候选 `cb865ed` 上 `npm run validate`、`node scripts/reading-content-classic.mjs --check`、`npm run build:extension:wxt`、`npm run test:wxt:smoke` 均为 PASS；但当时的完整 task253 Chromium 命令记录为 `FAIL`：61/84 通过、23 项失败，耗时约 8.6 分钟。失败主要来自 locale 后的旧硬编码断言、预 WXT Content fixture，以及上述 Reading page/handoff fixture DTO；这些失败项目的定向修正场景已分别通过，但**修复后的整套 Chromium 命令尚未重跑**。
+- 当前 `.output/chrome-mv3` 最近一次 WXT 构建为 111 个文件、2,094,189 bytes。该构建之后只有 E2E fixture 修改；最终原始包 fingerprint 尚未归档。
+- 当前修改尚未提交/冻结；完整 `validate`、生成一致性、WXT build/smoke 与全量 task253 E2E 的最终证据不绑定当前工作树。
+- Chrome 102、真实权限提示 UI、same-ID 旧版升级/重启、真实 YouTube timedtext、真实付费 Provider、其它浏览器和发布词典认证仍未验证；smoke/E2E 都是合成/模拟验收，不构成生产认证。
+- 恢复后先冻结新 candidate，再按 task253 完整命令重跑并更新验收；在所有合同检查 PASS 前不得标记 ready_to_sync/completed。此交接不授权 push、PR 或合并。
+
 ## 复审 P2 刷新窗口修正
 
 - 复审指出在既有历史列表触发 focus/手动刷新后，后台响应期间旧 Range 仍可被定位按钮使用。现于每次 `load()` 起始立即以通用 `not-loaded` 状态重绘列表，同步清除旧 Range 与 marker；历史入口和手动重试保留，成功响应再渲染新定位结果。
