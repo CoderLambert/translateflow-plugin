@@ -121,7 +121,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     setAppearance(current => ({ ...current, loading: true }));
     try { const next = await client.saveAppearance(value); if (active.current) setAppearance({ loading: false, value: next, error: "" }); }
     catch (error) { show(uiErrorText(error, i18n.t("popup.appearanceError")), true); await refreshAppearance(); }
-  }, [client, refreshAppearance, show]);
+  }, [client, i18n, refreshAppearance, show]);
 
   const applyPreset = useCallback(async (persist: boolean) => {
     setBusy(true); show(i18n.t("popup.modeUpdating"));
