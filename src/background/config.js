@@ -13,6 +13,7 @@ import {
 import {
   getSiteProfile,
   resolveTranslationConfig,
+  resolveTranslationConfigForSite,
   updateSiteProfileAppearance,
   updateSiteProfilePreset
 } from "../shared/provider-config.js";
@@ -29,6 +30,7 @@ import {
 } from "../shared/appearance.js";
 import { normalizeOrigin } from "../shared/url.js";
 import { normalizeSelectionDepth } from "../shared/selection.js";
+import { siteKey as validateSiteKey } from "../shared/reading/validation.js";
 import {
   clearTemporaryPresetOverride,
   getTemporaryPresetOverride
@@ -50,6 +52,17 @@ export async function getEffectiveConfig(pageUrl = "") {
     glossaryIdentity: glossaryIdentity(glossary),
     prompt: composeGlossaryPrompt(resolved.prompt, glossary)
   };
+}
+
+export async function getEffectiveConfigForSite(rawSiteKey) {
+  const trustedSiteKey = validateSiteKey(rawSiteKey, "siteKey");
+  const stored = await getConfig();
+  const temporaryPreset = await safeTemporaryPreset(trustedSiteKey);
+  const resolved = resolveTranslationConfigForSite(stored, trustedSiteKey, temporaryPreset);
+  const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, trustedSiteKey);
+  if (!glossary.length) return resolved;
+  return { ...resolved, glossaryIdentity: glossaryIdentity(glossary),
+    prompt: composeGlossaryPrompt(resolved.prompt, glossary) };
 }
 
 export async function getEffectiveGlossary(pageUrl = "") {

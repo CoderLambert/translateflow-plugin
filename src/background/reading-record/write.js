@@ -45,7 +45,9 @@ export async function validatedWrite(context) {
   const token = validateOperationToken(context.request.token), snapshot = validateSourceSnapshot(op.sourceSnapshot), artifact = validateResultArtifact(context.request.artifact);
   if (JSON.stringify(token) !== JSON.stringify(op.token)) fail(E.STALE_OPERATION, "operation.registration");
   assertArtifactSource(artifact, snapshot, token);
+  context.assertCurrent();
   const [digest, sourceDigest, tokenDigest] = await Promise.all([sha256(JSON.stringify(artifact)), createSourceDigest(snapshot), sha256(JSON.stringify(token))]);
+  context.assertCurrent();
   if (digest !== context.artifactDigest || sourceDigest !== snapshot.sourceDigest) fail(E.BAD_DTO, "operation.digest");
   return { token, snapshot, artifact, digest, tokenDigest, op };
 }

@@ -58,7 +58,12 @@ test("resolver distinguishes missing, unsupported and bounded not-loaded outcome
   assert.equal(unsupportedResult.status, "unsupported");
 
   const limited = fixture('<main><p>other</p></main>'); t.after(() => limited.dom.window.close());
-  limited.modules.textProjection.project = () => ({ status: "resolved", text: "", mapping: [], domNodes: new Map(), stats: { nodes: 25_001, chars: 0, elapsedMs: 1 } });
+  limited.modules.textProjection.createScanner = () => ({
+    complete: false,
+    progress: () => ({ complete: false, incomplete: true, unsupported: false, stats: { nodes: 25_001, chars: 0, elapsedMs: 1 } }),
+    snapshot: () => ({ status: "resolved", text: "", mapping: [], nodes: new Map(), domNodes: new Map(),
+      complete: false, incomplete: true, unsupported: false, stats: { nodes: 25_001, chars: 0, elapsedMs: 1 } })
+  });
   const limitedResult = await limited.modules.readingAnchorResolver.resolve({ status: "unsupported", quote: { exact: "session", prefix: "", suffix: "" }, position: null, blockDigest: null });
   assert.equal(limitedResult.status, "not-loaded"); assert.ok(limitedResult.stats.nodes > 25_000);
 });
@@ -97,4 +102,136 @@ test("page resolver shares one projection across summaries and keeps per-record 
   const second = await anchorFor(f, "#two", "record", { prefix: "beta ", suffix: " end" });
   const results = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "a", anchor: first }, { recordId: "b", anchor: second }]);
   assert.equal(results.get("a").status, "ambiguous"); assert.equal(results.get("b").status, "resolved"); assert.equal(results.get("b").range.toString(), "record");
+});
+
+test("resumable page scan resolves a target beyond the first projection slice", async t => {
+  const article = Array.from({ length: 90 }, (_, index) => `<p>section ${index} ${"filler ".repeat(90)}</p>`).join("");
+  const f = fixture(`<main>${article}<p id="target">start 😀 session end</p></main>`); t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "start 😀 ", suffix: " end" });
+  const result = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(result.status, "resolved", JSON.stringify(result));
+  assert.equal(result.range.toString(), "session");
+  assert.ok(result.stats.chars > 16_000);
+  assert.ok(result.stats.waitMs >= 0);
+});
+
+test("page scan reports two end matches as ambiguous and preserves UTF-16 emoji and whitespace mapping", async t => {
+  const article = Array.from({ length: 40 }, (_, index) => `<p>section ${index} ${"filler ".repeat(80)}</p>`).join("");
+  const f = fixture(`<main>${article}<p id="duplicate">before session tail middle before session tail</p><p id="split">${"x".repeat(63)}😀   <span> cross</span>   boundary </p></main>`); t.after(() => f.dom.window.close());
+  const duplicate = await anchorFor(f, "#duplicate", "session", { prefix: "before ", suffix: " tail" });
+  assert.equal((await f.modules.readingAnchorResolver.resolve(duplicate)).status, "ambiguous");
+  const split = await anchorFor(f, "#split", "😀 cross boundary", { prefix: "x".repeat(63) });
+  f.window.document.querySelector("#split").innerHTML = `${"x".repeat(63)}<span>😀   cross</span>   boundary `;
+  const resolved = await f.modules.readingAnchorResolver.resolve(split);
+  assert.equal(resolved.status, "resolved", JSON.stringify(resolved));
+  assert.equal(resolved.verifiedText, "😀 cross boundary");
+  assert.equal(resolved.range.toString(), "😀   cross   boundary");
+});
+
+test("page scan restarts after a DOM revision and never reuses the stale final-page result", async t => {
+  const paragraphs = Array.from({ length: 260 }, (_, index) => `<p>paragraph ${index}</p>`).join("");
+  const f = fixture(`<main>${paragraphs}<p id="target">session at the end</p></main>`); t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "", suffix: " at the end" });
+  const nativeFrame = f.window.requestAnimationFrame.bind(f.window);
+  let changed = false;
+  f.window.requestAnimationFrame = callback => nativeFrame(time => {
+    if (!changed) { changed = true; f.window.document.querySelector("#target").textContent = "changed at the end"; }
+    callback(time);
+  });
+  const result = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(result.status, "missing");
+  assert.equal(result.retries, 1);
+});
+
+test("page resolver caps work at 200 summaries and marks remaining rows not-loaded", async t => {
+  const f = fixture('<main><p id="target">alpha session tail</p></main>'); t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });
+  const items = Array.from({ length: 201 }, (_, index) => ({ recordId: String(index), anchor }));
+  const results = await f.modules.readingAnchorResolver.resolvePage(items);
+  assert.equal(results.size, 201);
+  assert.equal(results.get("199").status, "resolved");
+  assert.equal(results.get("200").status, "not-loaded");
+});
+
+test("cancelling one shared long-page consumer leaves the other resolver result intact", async t => {
+  const article = Array.from({ length: 80 }, (_, index) => `<p>${"filler ".repeat(500)}section ${index}</p>`).join("");
+  const f = fixture(`<main>${article}<p id="target">start session at the end</p></main>`); t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "start ", suffix: " at the end", digest: false });
+  const frames = []; let nextFrameId = 0;
+  f.window.requestAnimationFrame = callback => { const id = ++nextFrameId; frames.push({ id, callback }); return id; };
+  f.window.cancelAnimationFrame = id => { const index = frames.findIndex(frame => frame.id === id); if (index >= 0) frames.splice(index, 1); };
+  const controller = new AbortController();
+  const markersRequest = f.modules.readingAnchorResolver.resolvePage([{ recordId: "marker-record", anchor }], { signal: controller.signal });
+  let settled = false;
+  const returnCardRequest = f.modules.readingAnchorResolver.resolve(anchor).finally(() => { settled = true; });
+  assert.ok(frames.length > 0, "both consumers should share an in-progress page scan");
+  controller.abort();
+  await assert.rejects(markersRequest, error => error.name === "AbortError");
+  let turns = 0;
+  while (!settled) {
+    assert.ok(turns++ < 40, "the surviving consumer should finish within the bounded scan");
+    const frame = frames.shift(); assert.ok(frame, "the surviving scan should have a scheduled frame");
+    frame.callback(turns * 16);
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  const result = await returnCardRequest;
+  assert.equal(result.status, "resolved"); assert.equal(result.verifiedText, "session");
+  assert.equal(result.range.toString(), "session");
+});
+
+
+test("resolver invalidates a cached page when an arbitrary selector attribute reveals a duplicate", async t => {
+  const f = fixture('<style>[data-show="no"] { display: none; }</style><main><p id="primary">alpha session tail</p><p id="duplicate" data-show="no">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#primary", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  const initial = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(initial.status, "resolved", JSON.stringify(initial));
+
+  f.window.document.querySelector("#duplicate").dataset.show = "yes";
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "ambiguous", JSON.stringify(updated));
+});
+
+test("resolver invalidates a cached page when an arbitrary selector attribute hides the only match", async t => {
+  const f = fixture('<style>[data-show="no"] { display: none; }</style><main><p id="target" data-show="yes">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  assert.equal((await f.modules.readingAnchorResolver.resolve(anchor)).status, "resolved");
+
+  f.window.document.querySelector("#target").dataset.show = "no";
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "missing", JSON.stringify(updated));
+});
+
+test("resolver invalidates a cached missing result when an arbitrary selector attribute reveals the match", async t => {
+  const f = fixture('<style>[data-show="no"] { display: none; }</style><main><p id="target" data-show="yes">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  f.window.document.querySelector("#target").dataset.show = "no";
+  assert.equal((await f.modules.readingAnchorResolver.resolve(anchor)).status, "missing");
+
+  f.window.document.querySelector("#target").dataset.show = "yes";
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "resolved", JSON.stringify(updated));
+  assert.equal(updated.range.toString(), "session");
+});
+
+test("resolver invalidates a cached page after viewport resize changes rendered visibility", async t => {
+  const f = fixture('<main><p id="primary">alpha session tail</p><p id="desktop">alpha session tail</p></main>');
+  t.after(() => f.dom.window.close());
+  let width = 800;
+  Object.defineProperty(f.window, "innerWidth", { configurable: true, get: () => width });
+  const getStyle = f.window.getComputedStyle;
+  f.window.getComputedStyle = element => {
+    const value = getStyle(element);
+    return element.id === "desktop" && width < 1200 ? { ...value, display: "none" } : value;
+  };
+  const anchor = await anchorFor(f, "#primary", "session", { prefix: "alpha ", suffix: " tail", digest: false });
+  assert.equal((await f.modules.readingAnchorResolver.resolve(anchor)).status, "resolved");
+
+  width = 1400;
+  f.window.dispatchEvent(new f.window.Event("resize"));
+  await Promise.resolve();
+  const updated = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(updated.status, "ambiguous", JSON.stringify(updated));
 });

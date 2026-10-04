@@ -97,6 +97,29 @@ test("history follow-up renders partial text, Stop saves nothing, and complete r
       turn: { completionStatus: "completed" }, saved: { state: "saved", recordId: RECORD_ID, revision: 3, artifactId: "artifact-next", duplicate: false } }); });
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
+test("React learning center presents a quota terminal as a failure even when Stop raced it", async () => {
+  type Listener = (value: unknown) => void;
+  const ports: Array<{ sent: any[]; message?: Listener }> = [];
+  (chrome as any).runtime = { connect: () => {
+    const state: { sent: any[]; message?: Listener } = { sent: [] }; ports.push(state);
+    return { postMessage: (value: unknown) => state.sent.push(value), disconnect: vi.fn(),
+      onMessage: { addListener: (value: Listener) => { state.message = value; }, removeListener: vi.fn() },
+      onDisconnect: { addListener: vi.fn(), removeListener: vi.fn() } };
+  } };
+  const detail = validateRecordDetail({ record: record({ revision: 2 }), snapshots: [snapshot()], artifacts: [artifact("assistant")] });
+  render(<Detail detail={detail} i18n={i18n} onBack={() => {}} onDelete={() => {}} disabled={false} />);
+  await userEvent.click(screen.getByRole("button", { name: "Ask a follow-up" }));
+  await userEvent.type(screen.getByPlaceholderText("Ask about this saved answer"), "Why here?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  const session = ports[0]!, start = session.sent[0]!;
+  act(() => { session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "started", mode: "stream" });
+    session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "delta", sequence: 0, text: "Partial" }); });
+  await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+  act(() => session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "interrupted", code: "READING_QUOTA", partialChars: 7 }));
+  expect(screen.getByText("The answer was interrupted and was not saved. Your existing history is unchanged.")).toBeTruthy();
+  expect(screen.queryByText("Stopped. No partial answer was saved.")).toBeNull();
+  expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+});
 test("delete invalidation discards a delayed detail and disconnect removes unconfirmed content", async () => {
   let release: ((value: unknown) => void) | undefined, invalidate: (() => void) | undefined, disconnected: (() => void) | undefined, deleted = false;
   const client = new ReadingClient(raw => {
