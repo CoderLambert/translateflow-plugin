@@ -232,12 +232,12 @@
     },
     {
       "task": "252",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "251"
       ],
       "branch": "refactor/252-react-dictionaries",
-      "candidateHead": null
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0"
     },
     {
       "task": "offline-dictionary",
