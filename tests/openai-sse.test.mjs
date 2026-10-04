@@ -70,6 +70,7 @@ const streamRequest = {
 test("SSE reader assembles content across arbitrary byte boundaries and DONE", async () => {
   const originalFetch = globalThis.fetch;
   const progress = [];
+  const deltas = [];
   const expected = '{"translations":[{"id":"1","text":"你好"}]}';
   const wire = buildWire(expected);
   const points = [2, 11, 29, 47, wire.length - 5];
@@ -87,11 +88,13 @@ test("SSE reader assembles content across arbitrary byte boundaries and DONE", a
       ...streamRequest,
       onProgress(event) {
         progress.push(event);
-      }
+      },
+      onTextDelta(value) { deltas.push(value); }
     });
     assert.equal(data.choices[0].message.content, expected);
     assert.equal(progress.at(-1).receivedChars, expected.length);
     assert.equal(progress.length, 3);
+    assert.equal(deltas.join(""), expected);
   } finally {
     globalThis.fetch = originalFetch;
   }

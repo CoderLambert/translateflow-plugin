@@ -92,6 +92,14 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           }))
         });
 
+        if (body?.stream === true && systemPrompt.includes("Plain text only")) {
+          response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "streamed " } }] })}\n\n`);
+          await new Promise(resolve => setTimeout(resolve, 300));
+          if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "answer" } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
+          return;
+        }
+
         if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (plannedStatus !== 200) {

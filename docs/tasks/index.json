@@ -118,12 +118,21 @@
     },
     {
       "task": "240",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "239"
       ],
-      "branch": "test/240-reading-abc",
+      "branch": "main",
       "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71"
+    },
+    {
+      "task": "241",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "236"
+      ],
+      "branch": "feat/241-selection-text-stream",
+      "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94"
     },
     {
       "task": "245",

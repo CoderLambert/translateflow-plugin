@@ -12,6 +12,7 @@ export async function requestChatCompletionsStream({
   requireApiKey = true,
   signal,
   onProgress,
+  onTextDelta,
   timeoutMs = DEFAULT_RETRY_POLICY.requestTimeoutMs
 }) {
   const token = String(apiKey || "").trim();
@@ -48,7 +49,8 @@ export async function requestChatCompletionsStream({
     return await readOpenAIEventStream(response, {
       providerLabel,
       signal,
-      onProgress
+      onProgress,
+      onTextDelta
     });
   } catch (error) {
     if (error instanceof ProviderRequestError) throw error;
@@ -78,19 +80,21 @@ export function isUnsupportedStreamingError(error) {
 async function readOpenAIEventStream(response, {
   providerLabel,
   signal,
-  onProgress
+  onProgress,
+  onTextDelta
 }) {
   const reader = response.body?.getReader?.();
   if (!reader) {
     return consumeChunks([await response.text()], {
       providerLabel,
       signal,
-      onProgress
+      onProgress,
+      onTextDelta
     });
   }
 
   const decoder = new TextDecoder();
-  const state = createStreamState(providerLabel, signal, onProgress);
+  const state = createStreamState(providerLabel, signal, onProgress, onTextDelta);
   try {
     while (!state.done) {
       const { done, value } = await reader.read();
@@ -112,13 +116,13 @@ async function readOpenAIEventStream(response, {
   }
 }
 
-function consumeChunks(chunks, { providerLabel, signal, onProgress }) {
-  const state = createStreamState(providerLabel, signal, onProgress);
+function consumeChunks(chunks, { providerLabel, signal, onProgress, onTextDelta }) {
+  const state = createStreamState(providerLabel, signal, onProgress, onTextDelta);
   for (const chunk of chunks) state.push(String(chunk || ""));
   return state.finish();
 }
 
-function createStreamState(providerLabel, signal, onProgress) {
+function createStreamState(providerLabel, signal, onProgress, onTextDelta) {
   let buffer = "";
   let dataLines = [];
   let content = "";
@@ -159,6 +163,7 @@ function createStreamState(providerLabel, signal, onProgress) {
         receivedChars: content.length,
         eventCount
       });
+      notifyText(onTextDelta, delta);
     }
   };
 
@@ -203,6 +208,11 @@ function createStreamState(providerLabel, signal, onProgress) {
       return { choices: [{ message: { content } }] };
     }
   };
+}
+
+function notifyText(listener, text) {
+  if (typeof listener !== "function") return;
+  try { listener(String(text)); } catch {}
 }
 
 function buildHttpError(response, raw, providerLabel) {

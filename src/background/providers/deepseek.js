@@ -70,6 +70,13 @@ export const deepSeekProvider = Object.freeze({
     });
   },
 
+  async completeText({ systemPrompt, prompt }, config, { signal } = {}) {
+    const data = await requestChatCompletions({ url: API_URL, apiKey: config.apiKey, providerLabel: "DeepSeek", requireApiKey: true, signal,
+      body: { model: config.model?.trim() || "deepseek-flash", messages: [{ role: "system", content: String(systemPrompt || "") },
+        { role: "user", content: String(prompt || "") }], thinking: { type: "disabled" }, stream: false, temperature: 0.2 } });
+    return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "unary" };
+  },
+
   async test(config) {
     const data = await requestChatCompletions({
       url: API_URL,

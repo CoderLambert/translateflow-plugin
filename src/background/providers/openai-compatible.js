@@ -40,6 +40,21 @@ export const openAICompatibleProvider = Object.freeze({
     return completeStructuredJson(input, config, signal);
   },
 
+  async completeText({ systemPrompt, prompt }, config, { signal, onDelta } = {}) {
+    await assertEndpointPermission(config.apiBaseUrl);
+    const model = requireModel(config.model), body = { model, messages: [{ role: "system", content: String(systemPrompt || "") }, { role: "user", content: String(prompt || "") }], temperature: 0.2 };
+    if (config.streaming) {
+      try {
+        const data = await requestChatCompletionsStream({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, providerLabel: PROVIDER_LABEL,
+          requireApiKey: false, signal, body, onTextDelta: onDelta });
+        return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "stream" };
+      } catch (error) { if (!isUnsupportedStreamingError(error)) throw error; }
+    }
+    const data = await requestChatCompletions({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, providerLabel: PROVIDER_LABEL,
+      requireApiKey: false, signal, body: { ...body, stream: false } });
+    return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "unary" };
+  },
+
   async test(config) {
     await assertEndpointPermission(config.apiBaseUrl);
     const model = requireModel(config.model);

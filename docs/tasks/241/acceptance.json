@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "task": "241",
+  "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94",
+  "tree": "f535afac60c1c9e364e2843359daca75ca457e27",
+  "inputTree": "333ffd4d11a8671c8f43f16aa836678aa7c2d1a7c2574ee77fa7476ea30e4fc2",
+  "frozenAt": "2026-10-04T02:06:52.719Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56602.871133,
+      "startedAt": "2026-10-04T02:07:07.432Z",
+      "log": "docs/task-execution/local/241/dfe24bf2-74ca-4990-aa55-812f80f4235d.log",
+      "logSha256": "cc1e0a89ca274aeb254a76af8684c93496d8e258eb402cdc92f9114509fcc946"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2312.293833,
+      "startedAt": "2026-10-04T02:08:12.838Z",
+      "log": "docs/task-execution/local/241/02ad8738-9dee-4a8e-9d0f-71d8f9966e4a.log",
+      "logSha256": "a602b0211516ec990e8fa048f0c2e5e0321664fe7252c47eca2d526fb9502d96"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/selection-assistant-stream.spec.mjs"
+      ],
+      "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2555.729506,
+      "startedAt": "2026-10-04T02:08:15.332Z",
+      "log": "docs/task-execution/local/241/53ae2f2e-3226-4986-929e-58fbcfeccb2a.log",
+      "logSha256": "8718682d7e655257f3d261adef135affd5bb04019d6bf70b5cc5d0395f2f8440"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "e1a48ac84ae085d7e94977d7e44ae3857d133e1fe2701ead588dfeaef3ffaabd"
+  },
+  "limitations": ["任务 242–244 的 grounded 动作、追问、UI 与持久化完整问答 NOT RUN。", "Chrome 102/其它浏览器/隐身/商店发布 NOT RUN；npm 锁文件仍报告 1 low / 1 high audit 告警。"],
+  "decision": "SELECTION_STREAM_PASS",
+  "packageBudget": { "files": 158, "totalBytes": 1814366, "platformCodeBytes": 1566977, "platformCodeBudgetBytes": 1576595, "budgetRaised": false }
+}

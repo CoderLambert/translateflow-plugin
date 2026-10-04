@@ -26,6 +26,10 @@ export async function completeJson(input, config, options = {}) {
   return provider.completeJson(input, config, options);
 }
 
+export async function completeText(input, config, options = {}) {
+  return getProvider(config).completeText(input, config, options);
+}
+
 export async function testProvider(config) {
   return getProvider(config).test(config);
 }
