@@ -32,8 +32,7 @@
       const failure = document.createElement("div");
       failure.className = "tf-selection-rich-error";
       const titleText = String(error?.title || locale.t("content.rich.title"));
-      if (error?.message) locale.bindText(failure, "content.rich.unavailableWithReason", { title: titleText, reason: String(error.message) });
-      else locale.bindText(failure, "content.rich.unavailable", { title: titleText });
+      locale.bindText(failure, "content.rich.unavailable", { title: titleText });
       section.appendChild(failure);
     }
     container.appendChild(section);
