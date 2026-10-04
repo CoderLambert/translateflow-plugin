@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "task": "offline-dictionary",
+  "candidateHead": null,
+  "checks": [],
+  "artifact": null,
+  "limitations": [
+    "Task definition only; implementation, binary regression, target-corpus verification and browser acceptance NOT RUN.",
+    "No target dictionary file set has been selected or provided for this task; OD-2 and OD-3 require the actual local MDX and associated resources.",
+    "Existing ECDICT and synthetic interop evidence retains its original scope and tested revision; it has not been rerun or rebound to this task.",
+    "Current state.validationCommands covers implementation quality and synthetic regressions only. Bind actual target-corpus and browser commands before candidate freeze; missing input, skipped tests or a local gate alone cannot satisfy the product acceptance contract."
+  ]
+}
