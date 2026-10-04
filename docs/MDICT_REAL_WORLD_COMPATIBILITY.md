@@ -5,6 +5,24 @@ rich dictionary lane. It records observed compatibility; it does not approve a
 dictionary for redistribution or claim that every observed record feature is
 rendered by the product.
 
+## Follow-up local task (2026-10-04)
+
+The [offline-dictionary task](tasks/offline-dictionary/task.md) now owns the
+follow-up plan: reproduce and repair paired MDX key-boundary compatibility,
+then verify one explicitly selected real English-Chinese dictionary through
+structural decoding, target-reader lookup, content quality and packaged-browser
+acceptance. Its state remains `paused`; this documentation update does not
+implement a parser fix, approve a download, or certify a new dictionary.
+
+The source review at `8c3ad6d8bfc528a12b4b28d3c90ab97e0e403a32` identified
+that `parseKeyBlock()` compares normalized actual first/last keys with the
+stored descriptors. Raw descriptors can therefore disagree at block boundaries.
+The task requires a binary reproducer and preserves strict paired checks,
+checksums, limits and existing lookup semantics; research experiments are not
+production acceptance. The matrix and capability decisions below retain their
+original corpus scope: "no measured gap in this corpus" does not assert that
+no parser defect exists elsewhere. No existing PASS is rebound by this plan.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,
