@@ -6,6 +6,14 @@ import { getManifestMessages, validateCatalogs } from "../src/i18n/index.js";
 import { MANIFEST_LOCALE_FILES } from "../src/shared/runtime-assets.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const CATALOG_SOURCE_FILES = Object.freeze([
+  "src/i18n/catalog-base.js",
+  "src/i18n/catalog-content.js",
+  "src/i18n/catalog-content-page.js",
+  "src/i18n/catalog-options.js",
+  "src/i18n/catalog-dictionary.js",
+  "src/i18n/catalog-learning.js"
+]);
 const manifestReferences = Object.freeze({
   extensionName: (value) => value.name,
   extensionDescription: (value) => value.description,
@@ -16,6 +24,7 @@ const manifestReferences = Object.freeze({
 });
 
 export async function checkManifestLocales({ root = ROOT, generate = false } = {}) {
+  await assertCatalogSourceKeys(root);
   const keyCount = validateCatalogs();
   const manifest = JSON.parse(await readFile(resolve(root, "manifest.json"), "utf8"));
   assert.equal(manifest.default_locale, "en", "Manifest default locale");
@@ -30,6 +39,29 @@ export async function checkManifestLocales({ root = ROOT, generate = false } = {
     assert.equal(await readFile(target, "utf8"), expected, `Generated locale is stale: ${path}`);
   }
   return { keyCount, files: [...MANIFEST_LOCALE_FILES] };
+}
+
+export async function assertCatalogSourceKeys(root = ROOT) {
+  const owners = { en: new Map(), zh_CN: new Map() };
+  for (const path of CATALOG_SOURCE_FILES) {
+    const source = await readFile(resolve(root, path), "utf8");
+    for (const locale of ["en", "zh_CN"]) {
+      const marker = `export const ${locale} = Object.freeze({`;
+      const start = source.indexOf(marker);
+      assert.notEqual(start, -1, `Missing catalog object: ${path}/${locale}`);
+      const bodyStart = start + marker.length;
+      const bodyEnd = source.indexOf("\n});", bodyStart);
+      assert.notEqual(bodyEnd, -1, `Unterminated catalog object: ${path}/${locale}`);
+      const keys = [...source.slice(bodyStart, bodyEnd).matchAll(/^\s*"([^"]+)"\s*:/gm)].map((match) => match[1]);
+      assert.equal(new Set(keys).size, keys.length, `Duplicate catalog key in ${path}/${locale}`);
+      for (const key of keys) {
+        const previous = owners[locale].get(key);
+        assert.equal(previous, undefined, `Duplicate catalog key ${key} in ${previous} and ${path} (${locale})`);
+        owners[locale].set(key, path);
+      }
+    }
+  }
+  assert.equal(owners.en.size, owners.zh_CN.size, "Catalog source key counts differ");
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
