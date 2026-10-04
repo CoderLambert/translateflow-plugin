@@ -180,6 +180,7 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(retryRow).toContainText("未完全加载");
     await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
     expect(await markerIsolated(driver, retryPage.url(), "mutate", M.GET_PAGE_SUMMARY)).toBe(true);
+    await retryPage.locator(".tf-reading-page-toggle").click();
     await retryRow.locator(".tf-reading-page-item").click();
     expect(await markerIsolated(driver, retryPage.url(), "scrolls", M.GET_PAGE_SUMMARY)).toBe(0);
     await markerIsolated(driver, retryPage.url(), "release", M.GET_PAGE_SUMMARY);
