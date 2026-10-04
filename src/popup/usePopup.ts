@@ -26,7 +26,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     const current = generation.current;
     setter({ loading: true, value: null, error: "" });
     try { const value = await loader(); if (active.current && current === generation.current) setter({ loading: false, value, error: "" }); }
-    catch (error) { if (active.current && current === generation.current) setter({ loading: false, value: null, error: error instanceof Error ? error.message : fallback }); }
+    catch (error) { if (active.current && current === generation.current) setter({ loading: false, value: null, error: uiErrorText(error, fallback) }); }
   }, []);
 
   const refreshContext = useCallback(() => read(client.context, value => {
@@ -63,7 +63,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     const labels: Record<string, string> = {
       queued: i18n.t("popup.taskQueued"), cache_lookup: i18n.t("popup.taskCache", { progress }),
       translating: i18n.t("popup.taskTranslating", { progress }), storing: i18n.t("popup.taskStoring", { progress }),
-      completed: i18n.t("popup.taskCompleted", { progress }), failed: value.error || i18n.t("popup.taskFailed"),
+      completed: i18n.t("popup.taskCompleted", { progress }), failed: i18n.t("popup.taskFailed"),
       cancelled: i18n.t("popup.taskCancelled")
     };
     show(labels[value.state] || i18n.t("common.working"), value.state === "failed");
@@ -77,10 +77,10 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
       const prepared = await client.prepareTranslation(id);
       task.current = { id, tabId: prepared.site.tab.id }; setTranslating(true); poll();
       const response = await prepared.run();
-      if (!response.ok) throw new Error(String(response.error || i18n.t("popup.taskFailed")));
-      show(response.cancelled ? i18n.t("popup.taskCancelled") : String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })));
+      if (!response.ok) throw new Error("translation failed");
+      show(response.cancelled ? i18n.t("popup.taskCancelled") : i18n.t("popup.taskProcessed", { count: Number(response.count || 0) }));
       await refreshCache();
-    } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
+    } catch (error) { show(uiErrorText(error, i18n.t("popup.taskFailed")), true); }
     finally { if (timer.current) clearTimeout(timer.current); timer.current = null; task.current = null; if (active.current) { setTranslating(false); setBusy(false); } }
   }, [client, i18n, poll, refreshCache, show]);
 
@@ -88,20 +88,20 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     const current = task.current; if (!current) return;
     show(i18n.t("popup.taskCancelling"));
     try { await client.cancel(current.tabId, current.id); }
-    catch (error) { show(i18n.t("popup.cancelFailed", { message: error instanceof Error ? error.message : String(error) }), true); }
+    catch (error) { show(uiErrorText(error, i18n.t("popup.cancelFailed", { message: i18n.t("common.unknownError") })), true); }
   }, [client, i18n, show]);
 
   const pageAction = useCallback(async (type: string) => {
     setBusy(true); show(type === CONTENT_MESSAGES.RESTORE_CACHE ? i18n.t("popup.pageProcessing") : i18n.t("common.working"));
     try {
       const response = await client.action(type);
-      if (!response.ok) throw new Error(String(response.error || i18n.t("common.unknownError")));
+      if (!response.ok) throw new Error("page action failed");
       if (type === CONTENT_MESSAGES.TOGGLE_TRANSLATIONS) show(response.hidden ? i18n.t("popup.translationHidden") : i18n.t("popup.translationShown"));
       else if (type === CONTENT_MESSAGES.CLEAR_TRANSLATIONS) show(i18n.t("popup.translationRemoved"));
       else if (type === CONTENT_MESSAGES.CLEAR_PAGE_CACHE) show(i18n.t("popup.cacheDeleted", { count: Number(response.deleted || 0) }));
-      else show(String(response.message || i18n.t("popup.taskProcessed", { count: Number(response.count || 0) })));
+      else show(i18n.t("popup.taskProcessed", { count: Number(response.count || 0) }));
       await refreshCache();
-    } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
+    } catch (error) { show(uiErrorText(error, i18n.t("common.unknownError")), true); }
     finally { if (active.current) setBusy(false); }
   }, [client, i18n, refreshCache, show]);
 
@@ -109,7 +109,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
     if (!value.value) return;
     setBusy(true); show(i18n.t("popup.siteUpdating"));
     try { show(await client.toggleSite(kind, value.value)); }
-    catch (error) { show(error instanceof Error ? error.message : String(error), true); }
+    catch (error) { show(uiErrorText(error, i18n.t("common.unknownError")), true); }
     finally {
       if (active.current) setBusy(false);
       await (kind === "auto" ? refreshAuto() : kind === "cache" ? refreshCacheRestore() : refreshQuick());
@@ -120,7 +120,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   const changeAppearance = useCallback(async (value: string) => {
     setAppearance(current => ({ ...current, loading: true }));
     try { const next = await client.saveAppearance(value); if (active.current) setAppearance({ loading: false, value: next, error: "" }); }
-    catch (error) { show(error instanceof Error ? error.message : String(error), true); await refreshAppearance(); }
+    catch (error) { show(uiErrorText(error, i18n.t("popup.appearanceError")), true); await refreshAppearance(); }
   }, [client, refreshAppearance, show]);
 
   const applyPreset = useCallback(async (persist: boolean) => {
@@ -129,11 +129,11 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
       const result = await client.applyPreset(preset, persist); setContext({ loading: false, value: result.context, error: "" });
       if (result.context.hasSitePromptOverride) show(i18n.t(persist ? "popup.modeSavedPromptWins" : "popup.modeTemporaryPromptWins"));
       else { show(i18n.t(persist ? "popup.modeSaved" : "popup.modeTemporary")); if (result.before.presetId !== result.context.presetId) await translate(); }
-    } catch (error) { show(error instanceof Error ? error.message : String(error), true); }
+    } catch (error) { show(uiErrorText(error, i18n.t("popup.modeSwitchFailed")), true); }
     finally { if (active.current) setBusy(false); }
   }, [client, i18n, preset, show, translate]);
 
-  const openLearning = useCallback(async () => { try { await client.openLearning(); } catch (error) { show(error instanceof Error ? error.message : String(error), true); } }, [client, show]);
+  const openLearning = useCallback(async () => { try { await client.openLearning(); } catch (error) { show(uiErrorText(error, i18n.t("popup.learningOpenFailed")), true); } }, [client, i18n, show]);
   return { notice, busy, translating, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
 }
 
@@ -149,4 +149,12 @@ export function localizedPresetLabel(id: unknown, i18n: I18n) {
   const normalized = String(id || "");
   return (["technical", "academic", "news", "natural"] as const).includes(normalized as "technical")
     ? i18n.t(`preset.${normalized}.label` as "preset.technical.label") : getPresetLabel(id);
+}
+
+function uiErrorText(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    const uiMessage = (error as Error & { uiMessage?: unknown }).uiMessage;
+    if (typeof uiMessage === "string" && uiMessage === error.message) return uiMessage;
+  }
+  return fallback;
 }
