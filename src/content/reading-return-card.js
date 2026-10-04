@@ -29,9 +29,12 @@
     for (const node of overlays) node.remove(); overlays = []; activeRange = null; activeText = "";
     if (quoteNode) { quoteNode.textContent = ""; quoteNode.hidden = true; }
   }
+  function rangeMatchesExact(range, exact) {
+    return Boolean(range?.startContainer?.isConnected && range?.endContainer?.isConnected && range.toString() === exact);
+  }
   function updateOverlays() {
     frame = 0;
-    if (!activeRange || !activeRange.startContainer.isConnected || !activeRange.endContainer.isConnected || activeText !== summary.anchor.quote.exact) {
+    if (!activeRange || !rangeMatchesExact(activeRange, summary?.anchor?.quote?.exact) || activeText !== summary.anchor.quote.exact) {
       clearOverlays(); if (card) { card.dataset.state = "missing"; setLocalizedStatus(card.querySelector('[data-role="location-status"]'), messages.missing, "error"); } return;
     }
     const rects = [...activeRange.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0).slice(0, 12);
@@ -83,7 +86,7 @@
       if (current !== locationGeneration || ownController.signal.aborted || controller !== ownController || !card || !summary) return;
       card.dataset.state = result.status; setLocalizedStatus(state, messages[result.status] || messages.error, result.status === "resolved" ? "success" : result.status === "ambiguous" ? "warning" : "error");
       if (result.status === "resolved" && result.range) {
-        if (!result.range.startContainer.isConnected || !result.range.endContainer.isConnected ||
+        if (!rangeMatchesExact(result.range, summary.anchor.quote.exact) ||
             result.verifiedText !== summary.anchor.quote.exact) {
           card.dataset.state = "missing"; setLocalizedStatus(state, messages.missing, "error"); return;
         }
