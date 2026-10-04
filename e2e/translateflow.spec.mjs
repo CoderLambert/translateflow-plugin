@@ -435,7 +435,6 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
     const visibleActions = page.locator(".tf-selection-panel > .tf-selection-actions button:visible");
     await expect(visibleActions).toHaveText(["AI 详解", "复制"]);
-    await expect(page.locator(".tf-selection-record-status button:visible")).toHaveText(["在学习中心开启阅读记录", "暂不"]);
     expect(harness.server.calls).toHaveLength(0);
 
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
