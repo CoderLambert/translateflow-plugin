@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "task": "251",
+  "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3",
+  "tree": "d321b0d9ba77b022af6e46dfb22ab43fe8628fdc",
+  "inputTree": "6f402148f4d07bafa2eca8359ca5af501ee1b57e342f751b7fb4f7c1b6d4a8f0",
+  "frozenAt": "2026-10-04T05:01:29.236Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 59361.010244,
+      "startedAt": "2026-10-04T05:01:39.719Z",
+      "log": "docs/task-execution/local/251/7e74a2e1-bd05-4035-9333-b0b99d896a0d.log",
+      "logSha256": "9eb2925a0dd7096f32a332cc29099ce89cad95e4bea8a2356378ccf8b185fd6c"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2716.545738,
+      "startedAt": "2026-10-04T05:03:06.429Z",
+      "log": "docs/task-execution/local/251/bec970a2-bf1b-45bb-b094-55f1a9144c42.log",
+      "logSha256": "40fcb8b86a945bbb5e19b7ab8d64b64970c944bc2c1fb17826fc4cdada404a11"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1414.961621,
+      "startedAt": "2026-10-04T05:03:09.325Z",
+      "log": "docs/task-execution/local/251/86e073dd-e37e-4df7-88c3-15125ec82cce.log",
+      "logSha256": "50b2225c32bc126f6799a3310bac587fd891f36be9a009a5849e6f1ecfff6b2e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/ui-redesign.spec.mjs",
+        "e2e/settings-ia.spec.mjs",
+        "e2e/dark-mode.spec.mjs",
+        "e2e/ui-locale.spec.mjs",
+        "e2e/commands.spec.mjs",
+        "e2e/reading-loop-release-a.spec.mjs",
+        "e2e/rich-mdict-product.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs"
+      ],
+      "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 52777.909065,
+      "startedAt": "2026-10-04T05:03:22.671Z",
+      "log": "docs/task-execution/local/251/59baff50-3255-41b1-add9-194454f6aad1.log",
+      "logSha256": "0f3a9688208c4d7c31bc7b75cb1f6cc8ccae529d54f48325136e3eec96cec877"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "3c74b4427c06f09d974ae7d78d07e2af16f11aa505644d93a7ebed6f2da6123b"
+  },
+  "limitations": [
+    "Glossary 与词典库仍是单一 legacy compatibility island；其 React 迁移属于任务 252，不在本任务宣称完成。",
+    "Popup/Options 的完整 en/zh_CN 文案收口属于任务 253；本任务只保留既有 uiLocale 控制和不改变翻译配置的合同。",
+    "真实浏览器权限提示 UI、Chrome 102、Edge/Firefox/Safari、隐身模式和商店发布 NOT RUN；当前 manifest 的 http/https required host 范围未由本任务改变。",
+    "子 Agent 实际 model/effort 不可由运行时独立观测，记 UNKNOWN；权限为 unrestricted，覆盖仓库默认沙箱/按需审批。",
+    "npm 锁文件安装仍报告既有 1 low / 1 high audit 告警；任务未改依赖或 lockfile。"
+  ],
+  "decision": "REACT_POPUP_SETTINGS_PASS"
+}

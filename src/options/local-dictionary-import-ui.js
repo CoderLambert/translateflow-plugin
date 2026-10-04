@@ -92,7 +92,6 @@ export function initializeLocalDictionaryImportUi({
   cancelButton.addEventListener("click", () => { void cancelActive(); });
   retryMddButton?.addEventListener("click", () => { void retryMddAttachment(); });
   document.addEventListener("translateflow:dictionary-state-changed", () => { void refreshInstalledCandidates(); });
-  window.addEventListener("pagehide", dispose, { once: true });
   void refreshInstalledCandidates();
   renderFileList();
 
@@ -415,4 +414,3 @@ export function initializeLocalDictionaryImportUi({
 
   return Object.freeze({ refreshInstalledCandidates, dispose });
 }
-if (typeof document !== "undefined") initializeLocalDictionaryImportUi();

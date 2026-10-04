@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "251",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["236", "249"],
+  "branch": "refactor/251-react-popup-settings",
+  "worktree": ".worktrees/issue-251",
+  "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3",
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["npm", "run", "test:e2e", "--", "e2e/ui-redesign.spec.mjs", "e2e/settings-ia.spec.mjs", "e2e/dark-mode.spec.mjs", "e2e/ui-locale.spec.mjs", "e2e/commands.spec.mjs", "e2e/reading-loop-release-a.spec.mjs", "e2e/rich-mdict-product.spec.mjs", "e2e/selection-rich-lookup-cancel.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "推送分支、创建 PR，并在准确 expected-head 与保护要求满足后 squash merge。"
+}

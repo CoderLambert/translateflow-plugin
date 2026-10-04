@@ -4,28 +4,32 @@ import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("../options.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../options.css", import.meta.url), "utf8");
-const js = await readFile(new URL("../options.js", import.meta.url), "utf8");
+const app = await readFile(new URL("../src/options/App.tsx", import.meta.url), "utf8");
+const common = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
+const sites = await readFile(new URL("../src/options/SiteSections.tsx", import.meta.url), "utf8");
+const cache = await readFile(new URL("../src/options/CacheSection.tsx", import.meta.url), "utf8");
+const client = await readFile(new URL("../src/options/client.ts", import.meta.url), "utf8");
+const js = [app, common, sites, cache, client].join("\n");
 
 test("Settings exposes the task-oriented information architecture including automatic site behavior", () => {
   for (const id of ["general","appearance","youtube","sites","auto-sites","glossary","provider","cache","developer"]) {
-    assert.match(html, new RegExp(`id=["']${id}["']`));
-    assert.match(html, new RegExp(`href=["']#${id}["']`));
+    assert.match(js + html, new RegExp(`(?:id=["']${id}["']|["']${id}["'])`));
   }
-  assert.ok(html.indexOf('id="general"') < html.indexOf('id="provider"'), "General must precede Provider");
-  assert.ok(html.indexOf('id="youtube"') < html.indexOf('id="provider"'), "YouTube must be user-facing");
+  assert.ok(app.indexOf("<GeneralSection") < app.indexOf("<ProviderSections"), "General must precede Provider");
+  assert.ok(app.indexOf("<YoutubeSection") < app.indexOf("<ProviderSections"), "YouTube must be user-facing");
 });
 
 test("Settings preserves finalized controls and automatic cache restore management", () => {
   for (const id of ["defaultProvider","prompt","targetLanguage","defaultAppearance","deepseekApiKey","openaiBaseUrl","openaiStreaming","siteOrigin","glossaryScope","cacheMaxMB","youtubeSubtitleMode","youtubeSubtitleSize","cacheRestoreSitesList"]) {
-    assert.match(html, new RegExp(`id=["']${id}["']`));
+    assert.match(js + html, new RegExp(`id=["']${id}["']`));
   }
-  assert.match(html, /chrome:\/\/extensions\/shortcuts/);
+  assert.match(common, /chrome:\/\/extensions\/shortcuts/);
   assert.match(js, /youtubeSubtitleMode/);
-  assert.match(js, /openaiStreaming\.checked/);
+  assert.match(js, /openaiStreaming/);
   assert.match(js, /youtubeSubtitleSize/);
   assert.match(js, /cacheRestoreSites/);
-  assert.match(js, /chrome\.storage\.local\.get/);
-  assert.match(js, /chrome\.storage\.local\.set/);
+  assert.match(js, /api\.storage\.local\.get/);
+  assert.match(js, /api\.storage\.local\.set/);
 });
 
 test("Settings uses the calm responsive card layout and bounded content width", () => {
@@ -39,16 +43,17 @@ test("Settings uses the calm responsive card layout and bounded content width", 
 });
 
 test("Settings navigation exposes current, hover and keyboard-focus states", () => {
-  assert.match(html, /data-settings-nav href="#general" aria-current="page"/);
+  assert.match(app, /data-settings-nav/);
+  assert.match(app, /aria-current=/);
   assert.match(css, /a\[aria-current="page"\]/);
   assert.match(css, /a:hover/);
   assert.match(css, /:focus-visible/);
-  assert.match(js, /setActiveSettingsNav/);
+  assert.match(app, /setActiveHash/);
 });
 
 test("Provider and cache destructive controls remain visually distinct without harsh styling", () => {
-  assert.match(html, /id="provider" class="advanced"/);
-  assert.match(html, /id="cache" class="advanced destructive-zone"/);
+  assert.match(common, /id="provider" className="advanced"/);
+  assert.match(cache, /id="cache" className="advanced destructive-zone"/);
   assert.match(css, /\.advanced[\s\S]*var\(--tf-green/);
   assert.match(css, /\.destructive-zone[\s\S]*var\(--tf-danger/);
 });

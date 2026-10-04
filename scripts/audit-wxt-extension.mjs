@@ -54,16 +54,15 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
     const html = await readFile(resolve(output, path), "utf8");
     return [...html.matchAll(/<(?:script|link)\b[^>]*?(?:src|href)=["']([^"']+)["']/gu)].map(match => match[1].replace(/^\//u, ""));
   }
-  const learningFiles = closure(await pageRoots(EXTENSION_PAGES.learningCenter));
-  learningFiles.add(EXTENSION_PAGES.learningCenter);
-  const nonLearningCompiled = closure(["background.js", ...CONTENT_SCRIPT_FILES,
-    ...await pageRoots(EXTENSION_PAGES.popup), ...await pageRoots(EXTENSION_PAGES.options)]);
+  const pageCompiled = new Map(await Promise.all(Object.entries(EXTENSION_PAGES).map(async ([name, path]) => [name, closure(await pageRoots(path))])));
+  const approvedUiCompiled = new Set([...pageCompiled.values()].flatMap(files => [...files]));
+  const nonUiCompiled = closure(["background.js", ...CONTENT_SCRIPT_FILES]);
   for (const chunk of compiled) {
     for (const path of [...(chunk.imports || []), ...(chunk.dynamicImports || [])]) assert(present.has(path), `Missing compiled import: ${path}`);
     for (const module of chunk.modules || []) {
       assert(!/(?:^|\/)(?:vitest|@vitest|@testing-library|jsdom|happy-dom|@webext-core\/fake-browser)(?:\/|$)/u.test(module), `Test dependency entered production: ${module}`);
       if (/(?:^|\/)(?:react|react-dom)\//u.test(module)) {
-        assert(learningFiles.has(chunk.fileName) && !nonLearningCompiled.has(chunk.fileName), `React entered non-learning runtime: ${module}`);
+        assert(approvedUiCompiled.has(chunk.fileName) && !nonUiCompiled.has(chunk.fileName), `React entered Background/Content/MAIN/Worker runtime: ${module}`);
       }
       assert(!/(?:^|\/)(?:tests|e2e|scripts|docs|lexicon|\.release-sources|\.github)\//u.test(module), `Build/private source entered compiled output: ${module}`);
       assert(!/\/wxt\/dist\/client\/(?:websocket|dev-server|reload)/u.test(module), `Development helper entered production: ${module}`);
@@ -85,9 +84,9 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
     }
   }
   const codeBudgetBytes = 1576595; // #245: old code + max(10%, 100 KiB), excluding dictionary data.
-  const learningExclusive = summary.files.filter(entry => learningFiles.has(entry.path) && !nonLearningCompiled.has(entry.path));
-  const learningBytes = learningExclusive.reduce((sum, entry) => sum + entry.size, 0);
-  const platformCodeBytes = summary.codeBytes - learningBytes;
+  const uiExclusive = summary.files.filter(entry => approvedUiCompiled.has(entry.path) && !nonUiCompiled.has(entry.path));
+  const uiBytes = uiExclusive.reduce((sum, entry) => sum + entry.size, 0);
+  const platformCodeBytes = summary.codeBytes - uiBytes;
   assert(platformCodeBytes <= codeBudgetBytes, `Platform code exceeds #245 budget: ${platformCodeBytes}`);
   const sizes = new Map(summary.files.map((entry) => [entry.path, entry.size]));
   const chunks = new Map(compiled.map((item) => [item.fileName, item]));
@@ -107,7 +106,9 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   uiClosure.bytes += uiClosure.htmlBytes;
   const report = { status: "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: ["content_scripts"],
     runtimeFiles: runtime.length, compiledContent: { js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES] }, lexicalMissing: lexical.missing, ...summary,
-    codeBudgetBytes, platformCodeBytes, learningClosure: { files: learningExclusive.map(entry => entry.path), bytes: learningBytes }, backgroundClosure, uiClosure,
+    codeBudgetBytes, platformCodeBytes,
+    reactPageClosures: Object.fromEntries([...pageCompiled].map(([name, files]) => [name, [...files].sort()])),
+    uiExclusiveClosure: { files: uiExclusive.map(entry => entry.path), bytes: uiBytes }, backgroundClosure, uiClosure,
     compiledOutputs: compiled.map((item) => ({ fileName: item.fileName, type: item.type })) };
   await writeFile(resolve(reportDir, "production-audit.json"), JSON.stringify(report, null, 2) + "\n");
   return report;
