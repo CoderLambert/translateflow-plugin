@@ -348,6 +348,8 @@ T1冻结转换器时，保留实际packId/MDX packVersion来源，并明确它�
 
 依据：[后台MDX版本](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/background/packs/rich-mdict-lookup-controller.js#L59-L70)、[session守卫](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/rich-details.js#L130-L132)、[原查询去重](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/controller.js#L337-L341)、[有界Reading投影](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/result-model.js#L225-L234)。
 
+**共享启动接入补充（main `33ab3ea2a38ce591b622ba06739344858d7da403` / #290）：** 后续若Oxford修改selection/controller、record或source接口，须沿[既有生成入口](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/scripts/reading-record-entry.mjs)和[classic projection生成/一致性检查](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/scripts/reading-content-classic.mjs)同步`reading-source.js`/`reading-record.js`，保留[rich-details先于reading-record的加载顺序](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/shared/constants.js#L62-L64)，不手改生成文件、不另加运行时ESM；此为未来实施检查，未执行生成或测试，Oxford浏览器验收仍全部NOT_RUN。
+
 #### CSS 固定处理消息（拟新增）
 
 沿用现有 router 的 content sender/owner 校验和取消生命周期，不建立独立运行平台。后台从已安装资源读取 CSS，content 不提交任意 CSS 程序或系统路径：
