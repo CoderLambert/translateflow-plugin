@@ -73,10 +73,10 @@ test("#107 hard assertions remain explicit in browser evidence", async () => {
   ]);
 
   assert.match(integrated, /expect\(harness\.server\.calls\)\.toHaveLength\(0\)/);
-  assert.match(integrated, /Selection Explain/);
+  assert.match(integrated, /Plain text only/);
   assert.match(integrated, /CACHE_LOOKUP/);
   assert.match(integrated, /hits\)\.toEqual\(\[\]\)/);
-  assert.match(integrated, /contextText\.length\)\.toBeLessThanOrEqual\(900\)/);
+  assert.match(integrated, /payload\.context\.length\)\.toBeLessThanOrEqual\(900\)/);
   assert.match(integrated, /userContent\)\.not\.toContain\(page\.url\(\)\)/);
   assert.match(integrated, /aria-modal/);
   assert.match(integrated, /toBeFocused\(\)/);
