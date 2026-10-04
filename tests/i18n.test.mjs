@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { catalogs } from "../src/i18n/catalog.js";
 import { createI18n, getManifestMessages, normalizeUiLocale, resolveLocale, validateCatalogs } from "../src/i18n/index.js";
 import { resolveTranslationConfig } from "../src/shared/provider-config.js";
@@ -36,6 +37,23 @@ test("both catalogs have exactly the same keys and placeholder contracts", () =>
   assert.throws(() => validateCatalogs(bad), /placeholders differ/);
   bad.zh_CN["learning.count"] = "数量：{count";
   assert.throws(() => validateCatalogs(bad), /Invalid i18n placeholder/);
+});
+
+test("catalog source shards contain no duplicate literal message keys", async () => {
+  const files = [
+    "catalog-base.js", "catalog-content.js", "catalog-content-page.js", "catalog-options.js",
+    "catalog-dictionary.js", "catalog-dictionary-runtime.js", "catalog-local-import.js",
+    "catalog-local-import-capabilities.js", "catalog-learning.js"
+  ];
+  for (const file of files) {
+    const source = await readFile(new URL(`../src/i18n/${file}`, import.meta.url), "utf8");
+    const split = source.indexOf("export const zh_CN");
+    assert.ok(split > 0, `${file}: missing zh_CN catalog`);
+    for (const [locale, blockSource] of [["en", source.slice(0, split)], ["zh_CN", source.slice(split)]]) {
+      const keys = [...blockSource.matchAll(/^\s*"([^"]+)"\s*:/gmu)].map((match) => match[1]);
+      assert.equal(new Set(keys).size, keys.length, `${file}/${locale}: duplicate message key`);
+    }
+  }
 });
 
 test("text interpolation preserves hostile text without producing DOM or interpreting braces", () => {
