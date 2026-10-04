@@ -138,15 +138,15 @@ entry:// 转同词典查询，sound:// 转有用户手势的本地音频动作�
 
 #### 2.1 安装及持久化
 
-1. `initializeLocalDictionaryImportUi(...)` 内的 `runPreflight()` 得到报告；`importSelected()` 对 `report.route.importer === "rich-mdict"` 找 MDX，`resolveAssociatedMddFiles(...)` 找关联 MDD。
+1. **生产设置入口（main `29d4c2e6f08530d03352c06653db43942b88c2cc` / #298、#299）**：`options.html` → `src/options/main.tsx` → `App` / `DictionarySection` → `LocalDictionaryImport.tsx`。React 组件调用 `createLocalDictionaryClient().preflight(...)` 得到报告，再由 `importFiles(report, files)` 按 `report.route.importer === "rich-mdict"` 选择 MDX，并用 `resolveAssociatedMddFiles(...)` 找关联 MDD；client 继续复用原预检和各格式 controller。旧 `local-dictionary-import-ui.js` 不再负责 Options runtime mount，后续 T5 必须接入当前 React owner/client，不能只改旧 DOM UI。
 2. `createRichMdictImportController(...).importDictionary({mdxFile, displayMetadata, curatedRecipe, expectedActiveVersion})` 发送 `RICH_MDICT_IMPORT_PREFLIGHT`，启动 worker，等待 READY，再发送 `RICH_MDICT_IMPORT_COMMIT`，返回 `{requestId, ready, commit}`。
 3. `createRichMdictImportWorkerHandler(...).handleMessage(message)` 用 `File.slice` 实现 `{size, read(offset,length)}`；调用 `buildRichMdictIndex({source,signal})`，写原 MDX 和 compact index 到 OPFS，核对写入长度并生成索引摘要。不是将全部 HTML 展开保存。
 4. `createRichMdictManager(...).commit(input)` 验证 reservation、staged source/index 长度与索引哈希，通过 `assertStagedFiles` 从 OPFS 范围读取重建 compact descriptors，比对后才更新 active snapshot。
-5. UI 取得 `imported.commit.dictionary.id` 后另调 `mddController.attachResources({dictionaryId,mdxFileName,files})`。现状是 MDX 先提交、MDD 后提交的两段流程，不是六文件事务。MDD 失败已有 `retryAttachment`/`retryMddAttachment()`，保留已装 MDX 和旧附件；当前重试所用 File 引用只在这次 UI 会话内。
+5. client 取得 `imported.commit.dictionary.id`（兼容 `packId`）后另调原 `mdd.attachResources({dictionaryId,mdxFileName,files})`。现状仍是 MDX 先提交、MDD 后提交的两段流程，不是六文件事务。MDD 失败由 client 保存会话内 `retryAttachment`，React 的 `retryAttachment()` 调用 `client.retryMdd()` 重试，保留已装 MDX 和旧附件；重试所用 File 引用仍只在本次会话内。组件卸载会中止预检并 dispose client/controller；入口迁移没有实现六文件持久化恢复，也未改变共享查询/资源合同、worker 或 OPFS 提交状态机。
 
 **拟变更**：保留 OPFS 和 compact index。为六文件生成持久化 package manifest，给 MDX 与 resources 的不同完成状态单独展示。所有必需资源校验并激活后才显示 `ready`；只有 MDX 时显示 `text-only/resource-incomplete`。重启后从持久化状态恢复；若暂存文件已清理，则重试明确要求重新选附件，而不是保留不可用的内存 File 引用。附件版本切换继续失败保留旧版；不要宣称现有代码已实现全包原子提交。
 
-源码：[Options 安装流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/local-dictionary-import-ui.js#L235-L282) · [MDX controller](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/rich-mdict-import-controller.js#L27-L138) · [worker](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/workers/rich-mdict-import-worker-core.js#L49-L146) · [manager commit](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict.js#L95-L194)
+源码：[Options React 入口](https://github.com/CoderLambert/translateflow-plugin/blob/29d4c2e6f08530d03352c06653db43942b88c2cc/options.html#L12-L13) · [词典库 owner](https://github.com/CoderLambert/translateflow-plugin/blob/29d4c2e6f08530d03352c06653db43942b88c2cc/src/options/DictionarySection.tsx#L64-L71) · [导入组件与生命周期](https://github.com/CoderLambert/translateflow-plugin/blob/29d4c2e6f08530d03352c06653db43942b88c2cc/src/options/LocalDictionaryImport.tsx#L32-L112) · [现行安装 client](https://github.com/CoderLambert/translateflow-plugin/blob/29d4c2e6f08530d03352c06653db43942b88c2cc/src/options/local-dictionary-client.ts#L47-L98) · [附件重试与清理](https://github.com/CoderLambert/translateflow-plugin/blob/29d4c2e6f08530d03352c06653db43942b88c2cc/src/options/local-dictionary-client.ts#L132-L159) · [MDX controller](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/rich-mdict-import-controller.js#L27-L138) · [worker](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/options/workers/rich-mdict-import-worker-core.js#L49-L146) · [manager commit](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/packs/rich-mdict.js#L95-L194)
 
 #### 2.2 查询时机，不另造一套入口
 
@@ -390,7 +390,7 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 
 | 现有模块 | 必要变化 | 集成验收责任 |
 |---|---|---|
-| local-dictionary-import-ui / preflight-mdx / controllers / workers | 六文件manifest、明确部分安装、外置资源持久化、恢复入口 | T5，integration owner验证重启后可用 |
+| LocalDictionaryImport.tsx / local-dictionary-client.ts / local-dictionary-import-presentation.js / preflight-mdx / controllers / workers | 六文件manifest、明确部分安装、外置资源持久化、恢复入口 | T5，integration owner验证重启后可用 |
 | rich-mdict / rich-mdd-resources / OPFS store | 保留compact index与范围IO；版本钉住、附件激活/旧版保留、资源定位 | T5与T2共同确认 |
 | mdict-rich-metadata/index/lookup | header实际拼写、同键多span、逐路径alias与边界、统一预算 | T2加T1夹具；T3消费同一EntryBundle |
 | rich-mdict-lookup-controller / packs/api / router | 新版本化结果、完整性标识、无静默clamp、版本验证、owner/cancel | integration owner负责两端同步 |
@@ -503,7 +503,7 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 
 ### T5 完整资源包导入和恢复
 
-- 涉及 `src/background/packs/local-dictionary-preflight-mdx.js`、`rich-mdict-install-preflight.js`、`rich-mdd-resources.js`、`opfs-store.js`；`src/options/local-dictionary-import-ui.js`、`rich-mdict-import-controller.js`、`mdd-resource-import-controller.js`；`src/options/workers/rich-mdict-import-worker-core.js` 与 `mdd-resource-import-worker-core.js`。同组省略目录的文件均沿用该组首项路径。
+- 涉及 `src/background/packs/local-dictionary-preflight-mdx.js`、`rich-mdict-install-preflight.js`、`rich-mdd-resources.js`、`opfs-store.js`；`src/options/LocalDictionaryImport.tsx`、`local-dictionary-client.ts`、`local-dictionary-import-presentation.js`、`rich-mdict-import-controller.js`、`mdd-resource-import-controller.js`；`src/options/workers/rich-mdict-import-worker-core.js` 与 `mdd-resource-import-worker-core.js`。同组省略目录的文件均沿用该组首项路径。
 - 统一 MDX、多 MDD、外置 CSS/图像的 manifest 与持久化。JS 识别和诊断，不执行。外置覆盖内嵌资源必须有固定优先级和差异提示；保持现有 MDD 重复路径检测。
 - 贯通各层容量策略，提供真实复制/验证/索引进度；复用 MDX 已安装和附件可重试语义。
 - 配额检查覆盖新增暂存、索引与新旧共存；写入仍可能失败，须准确报错并可清理或恢复。
