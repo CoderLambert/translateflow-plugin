@@ -156,12 +156,12 @@
     },
     {
       "task": "244",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "240",
         "243"
       ],
-      "branch": "test/244-reading-abcd",
+      "branch": "main",
       "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33"
     },
     {
@@ -209,6 +209,16 @@
       ],
       "branch": null,
       "candidateHead": null
+    },
+    {
+      "task": "250",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "248",
+        "244"
+      ],
+      "branch": "refactor/250-content-bridge",
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76"
     },
     {
       "task": "path-safety",

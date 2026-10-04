@@ -12,16 +12,18 @@ export function expectedStorageAfterInstalledUpdate(before, nativeEvent, previou
   return Object.hasOwn(before,"uiLocale") ? before : {...before,uiLocale:"auto"};
 }
 
-// A native update preserves registration identity/permissions and adopts the
-// audited new package's exact resource closure, rather than keeping stale files.
+// Compiled Content is statically registered by the Manifest. A native update
+// must remove the seeded legacy dynamic registration instead of retaining a
+// second Content product.
 export function expectedRegistrationsAfterInstalledUpdate(before, nativeEvent, previousVersion, oldMapping, newMapping) {
   assert.equal(nativeEvent?.reason, "update");
   assert.equal(nativeEvent.previousVersion, previousVersion);
-  return before.map(registration => {
+  before.forEach(registration => {
     assert.deepEqual(registration.js, oldMapping.contentScripts, "Seeded old JS closure must be exact");
     assert.deepEqual(registration.css, oldMapping.contentStyles, "Seeded old CSS closure must be exact");
-    return { ...registration, js: [...newMapping.contentScripts], css: [...newMapping.contentStyles] };
+    assert.notDeepEqual(registration.js, newMapping.contentScripts, "Compiled mapping must replace the old raw closure");
   });
+  return [];
 }
 
 export function assertRecoveredDatabases(before, after, observedAt = Date.now()) {

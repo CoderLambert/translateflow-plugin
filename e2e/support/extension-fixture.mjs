@@ -19,11 +19,13 @@ export const test = base.extend({
   lexiconPacks: ["fixture", { option: true, scope: "worker" }],
   ecdictMdxReleaseHostAccess: [false, { option: true, scope: "worker" }],
   ecdictMdxCachedArchivePath: ["", { option: true, scope: "worker" }],
+  staticContentInjection: [true, { option: true, scope: "worker" }],
   harness: [async ({
     lexiconPacks,
     commandCallbackProbe,
     ecdictMdxReleaseHostAccess,
-    ecdictMdxCachedArchivePath
+    ecdictMdxCachedArchivePath,
+    staticContentInjection
   }, use) => {
     const server = await startMockServer({
       ecdictMdxArchivePath: ecdictMdxCachedArchivePath
@@ -34,7 +36,8 @@ export const test = base.extend({
     try {
     const buildReport = await prepareExtensionTestCopy({
       extensionDir, lexiconPacks, ecdictMdxReleaseHostAccess,
-      ecdictMdxCachedArchivePath, captureCommands: commandCallbackProbe, baseUrl: server.baseUrl
+      ecdictMdxCachedArchivePath, captureCommands: commandCallbackProbe,
+      staticContentInjection, baseUrl: server.baseUrl
     });
 
     console.log("[E2E_PRODUCTION_ARTIFACT]", JSON.stringify({
@@ -43,7 +46,8 @@ export const test = base.extend({
       totalBytes: buildReport.totalBytes, lexicalBytes: buildReport.lexicalBytes,
       lexiconMode: buildReport.lexiconMode, testChanges: buildReport.testCopy.changes,
       commandCallbackProbe: buildReport.commandCallbackProbe,
-      cachedWorkerOverride: buildReport.cachedWorkerOverride
+      cachedWorkerOverride: buildReport.cachedWorkerOverride,
+      staticContentInjection: buildReport.staticContentInjection
     }));
     const userDataDir = join(tempRoot, "profile");
     context = await chromium.launchPersistentContext(userDataDir, {

@@ -6,6 +6,8 @@ import { buildRichMdictIndex } from "../src/background/packs/importers/mdict-ric
 import { lookupRichMdict } from "../src/background/packs/importers/mdict-rich-lookup.js";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 
+test.use({ staticContentInjection: false });
+
 const evidenceDir = process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || "";
 const baselinePath = evidenceDir
   ? resolve(evidenceDir, "rich-lookup-cancellation-baseline.json")
@@ -242,12 +244,9 @@ test.describe("Selection change cancels stale Rich lookups and preserves fresh r
 async function injectWithLookupGate(harness, page) {
   const tabId = await harness.tabId(page);
   await harness.driver.evaluate(async ({ tabId, scripts, styles }) => {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["src/content/runtime.js"] });
     await chrome.scripting.executeScript({
       target: { tabId },
       func: () => {
-        const runtime = globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime;
-        const original = runtime.sendRuntimeMessage.bind(runtime);
         const gate = {
           trace: [],
           delayedTexts: [],
@@ -255,43 +254,32 @@ async function injectWithLookupGate(harness, page) {
           active: 0,
           releases: Object.create(null)
         };
-        runtime.sendRuntimeMessage = (message) => {
-          if (message.type === runtime.messages.background.RICH_MDICT_LOOKUP_CANCEL) {
-            const event = {
-              kind: "cancel",
-              requestId: message.requestId,
-              observedAtEpochMs: Date.now(),
-              cancelled: false
-            };
+        globalThis.__TF_RICH_LOOKUP_GATE__ = gate;
+        const nativeSend = chrome.runtime.sendMessage.bind(chrome.runtime);
+        chrome.runtime.sendMessage = (message, callback) => {
+          const send = (after = () => {}) => {
+            gate.active += 1; gate.maxConcurrency = Math.max(gate.maxConcurrency, gate.active);
+            return nativeSend(message, (response) => { try { after(response); callback(response); } finally { gate.active -= 1; } });
+          };
+          if (message?.type === "RICH_MDICT_LOOKUP_CANCEL") {
+            const event = { kind: "cancel", requestId: message.requestId, observedAtEpochMs: Date.now(), cancelled: false };
             gate.trace.push(event);
-            return original(message).then((response) => {
-              event.cancelled = response?.ok === true && response?.cancelled === true;
-              return response;
-            });
+            return send((response) => { event.cancelled = response?.ok === true && response?.cancelled === true; });
           }
-          if (message.type !== runtime.messages.background.RICH_MDICT_LOOKUP) return original(message);
+          if (message?.type !== "RICH_MDICT_LOOKUP") return nativeSend(message, callback);
           const lookupEvent = { kind: "lookup", requestId: message.requestId, text: String(message.text || ""), delayed: false };
           gate.trace.push(lookupEvent);
           if (["cancelword", "replaceword"].includes(message.text) && !gate.delayedTexts.includes(message.text)) {
-            gate.delayedTexts.push(message.text);
-            lookupEvent.delayed = true;
-            return new Promise((resolve, reject) => {
-              gate.releases[message.text] = () => {
-                gate.active += 1;
-                gate.maxConcurrency = Math.max(gate.maxConcurrency, gate.active);
-                original(message).then(resolve, reject).finally(() => { gate.active -= 1; });
-              };
-            });
+            gate.delayedTexts.push(message.text); lookupEvent.delayed = true;
+            gate.releases[message.text] = send;
+            return undefined;
           }
-          gate.active += 1;
-          gate.maxConcurrency = Math.max(gate.maxConcurrency, gate.active);
-          return original(message).finally(() => { gate.active -= 1; });
+          return send();
         };
-        globalThis.__TF_RICH_LOOKUP_GATE__ = gate;
       }
     });
     await chrome.scripting.insertCSS({ target: { tabId }, files: styles });
-    await chrome.scripting.executeScript({ target: { tabId }, files: scripts.slice(1) });
+    await chrome.scripting.executeScript({ target: { tabId }, files: scripts });
   }, { tabId, scripts: CONTENT_SCRIPT_FILES, styles: CONTENT_STYLE_FILES });
 }
 

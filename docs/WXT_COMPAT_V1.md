@@ -1,6 +1,6 @@
 > #248 默认切换：`build:extension` 与 `build:extension:release` 现统一使用 WXT，稳定安装目录仍为 `dist/extension/`。`build:extension:wxt` 是同一引擎的显式输出入口（`.output/chrome-mv3/`）。下文 opt-in/旧默认描述为接入阶段的历史证据；最终升级与切换结果见 [PLATFORM_UPGRADE_V1.md](PLATFORM_UPGRADE_V1.md)。
 >
-> 后续 Selection 启动契约：生产 WXT Manifest 现在从 `CONTENT_SCRIPT_FILES` / `CONTENT_STYLE_FILES` 生成一项 `http://*/*`、`https://*/*` 静态 `document_idle` 注入。下文“无静态注册、权限不变”只记录 #246 当时的迁移证据，不再描述当前 Manifest。
+> #250 当前态：生产 WXT Manifest 静态加载编译后的 `content-scripts/content.js/.css`；`src/entries/content.js` 是唯一 Content 源模块图，Popup/Commands 的旧标签恢复使用同一安装路径。raw asset map 不再复制 ISOLATED Content 源码，只保留 MAIN/Worker 精确闭包、locale 与认证词典。下文逐文件 Content bridge、无静态注册等表述只记录 #246 历史阶段。
 
 # WXT compatibility build v1
 
@@ -28,14 +28,14 @@ Normal builds do not download lexical data. If Core/Technical resources have not
 | `entrypoints/background.ts` → existing `src/background/index.js` | `background.js` plus WXT-generated shared chunks | Current #247 thin TypeScript entry; static import and synchronous `initializeBackground()` in `defineBackground.main`; no fake globals, eval or delayed listener registration |
 | Existing root `popup.html` and its original modules/CSS | `popup.html`, compiled chunks/CSS | Registered directly through `entrypoints:found`; no copied second HTML template |
 | Existing root `options.html` and its original modules/CSS | `options.html`, compiled chunks/CSS | WXT unlisted-page compilation plus original Manifest `options_page`; no `options_ui` behavior change |
-| Current `CONTENT_SCRIPT_FILES` / `CONTENT_STYLE_FILES` | Identical source paths and source bytes | Existing classic-script order, manual injection, optional site grants and `auto-sites.js` single registration owner |
+| `src/entries/content.js` + `entrypoints/content.ts` | `content-scripts/content.js/.css` | WXT 编译的 ISOLATED classic/IIFE；Manifest、Popup、Commands 共用稳定安装路径，`auto-sites.js` 只保留意图与旧注册清理 |
 | Three mapped YouTube MAIN files | Identical paths and bytes | Protocol → timedtext → MAIN bridge order; existing `world: MAIN` boundary |
 | Six mapped module Workers and their relative imports | Identical paths and bytes | Existing `getURL()` Worker loading; browser-safe importer/shared/provider closures; existing OPFS lifecycle |
 | Generated Core/Technical manifests and descriptors | `assets/lexicon/core` / `technical` | Only manifest plus registered directory/shards/notices; shape, fingerprint, descriptor hashes and confinement checked; stray inputs are excluded |
 
-`src/shared/runtime-assets.js` is the pure path contract shared by runtime consumers, WXT bridge and tests. This slice replaces only path literals in six Worker callers, YouTube bridge, Options sender-path check and bundled lexical roots. Provider behavior, sender authorization, cache/OPFS schema, import cancellation and Selection lifecycle are unchanged. Content lists remain authoritative in `constants.js`; newly approved Content entries enter the bridge automatically, without fixing the original experiment's file count forever.
+`src/shared/runtime-assets.js` remains the pure path contract for Worker, MAIN, pages and bundled dictionaries. After #250, `CONTENT_SCRIPT_FILES` / `CONTENT_STYLE_FILES` are installed-output mappings; source order is owned by `src/entries/content.js` and checked separately. Provider behavior, sender authorization, cache/OPFS schema, import cancellation and Selection lifecycle are unchanged.
 
-`scripts/wxt-assets.mjs` computes the exact closure from those roots. The build adds individual `absoluteSrc`/`relativeDest` assets; it never exposes all of `src/`, the repository or `node_modules` as public. A nonempty undeclared public directory fails the build. The bridge is transitional and its removal remains PF-05; compiled extension UI uses WXT instead of a raw UI source copy.
+`scripts/wxt-assets.mjs` computes only the remaining MAIN/Worker raw closure. The build adds individual `absoluteSrc`/`relativeDest` assets and separately audited locale/lexical files; it never exposes all of `src/`, the repository or `node_modules` as public. A nonempty undeclared public directory fails the build. PF-05 removed the ISOLATED Content raw bridge without changing MAIN/Worker execution contexts.
 
 The generated production Manifest is deep-equal to root `manifest.json`: **zero allowed differences** in this slice. MV3, version, commands, root page identities, module background, minimum Chrome **102**, required/optional permissions and host scopes are unchanged. There is no static Content registration, WAR, new key, sandbox or CSP exception. Both compiled JS and CSS explicitly target `chrome102`; this is not a runtime/polyfill claim. React is absent from all compiled and raw runtime closures.
 

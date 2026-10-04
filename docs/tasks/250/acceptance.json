@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "task": "250",
+  "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+  "tree": "b3114aa6e8364e46b22e2415b300578ce0ba954f",
+  "inputTree": "3f8f6cd0286c9f7fc188c43bccb162952877b3de195010e67ebd5cff122da4dc",
+  "frozenAt": "2026-10-04T04:04:31.297Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 58391.310383,
+      "startedAt": "2026-10-04T04:04:38.626Z",
+      "log": "docs/task-execution/local/250/0fa20966-db48-4400-9960-fb6db428a37b.log",
+      "logSha256": "da75bf83637d65a36a28c530c2124f8afafc7d14445274d717f4f1d59d719ec4"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2621.729772,
+      "startedAt": "2026-10-04T04:05:45.309Z",
+      "log": "docs/task-execution/local/250/c5a1f74f-8fac-4394-92bd-ce1b996b6312.log",
+      "logSha256": "0090cabc77ba398b121fbc3a00da7e031a3526c3803eb53284ad256bf2579170"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1416.9041,
+      "startedAt": "2026-10-04T04:05:48.113Z",
+      "log": "docs/task-execution/local/250/52482394-8ee0-49ab-ad3d-fd11e9275f8c.log",
+      "logSha256": "f11ea5eef783d0818ec9910119e989ab983605034c7d592632ae04be9553c3c3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/commands.spec.mjs",
+        "e2e/translateflow.spec.mjs",
+        "e2e/design-freeze-selection-slice.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/reading-loop-release-a.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs",
+        "e2e/rich-mdict-product.spec.mjs",
+        "e2e/youtube-subtitles.spec.mjs",
+        "e2e/wxt-platform-permissions.spec.mjs"
+      ],
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 76563.238756,
+      "startedAt": "2026-10-04T04:06:11.299Z",
+      "log": "docs/task-execution/local/250/ce64a426-29ab-4d93-a1ac-55de88455afc.log",
+      "logSha256": "ecdc39078cb270a40a5d8b725b648bb9f5b9a257c90d10f2fc67963d0ea6cff4"
+    },
+    {
+      "command": [
+        "env",
+        "TF_UPGRADE_OLD_ARTIFACT=/home/lambert/githubRepos/lambert/translateflow-plugin/.worktrees/fixed-old-19e89b6/dist/extension",
+        "TF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/wxt-upgrade.spec.mjs"
+      ],
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14624.68368,
+      "startedAt": "2026-10-04T04:07:34.594Z",
+      "log": "docs/task-execution/local/250/5dfadc2c-b2cc-460c-bd3d-156447a3d8b2.log",
+      "logSha256": "e0988310732460affe1a7fc86822ecb31b67342e4f8791dc6f1f6622e030d51d"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "e5d0d3e3b58c106b83793c0a466e22a0a012b299c4a427eccc2d1b34ec93b4f2"
+  },
+  "limitations": [
+    "Chrome 102 runtime、真实 YouTube timedtext、真实付费 Provider、Firefox/Edge/Safari、隐身模式和商店发布 NOT RUN。",
+    "一次冻结前的过宽 npm run test:e2e 在外部 62.9 MiB ECDICT 下载场景 150 秒超时（仅到 16 MiB）后被终止；该 FAIL 保留，不属于 #250 未变词典下载/认证范围，也未计入正式 PASS。",
+    "npm 锁文件安装仍报告既有 1 low / 1 high audit 告警；任务未改依赖或 lockfile。"
+  ],
+  "decision": "WXT_CONTENT_BRIDGE_PASS"
+}

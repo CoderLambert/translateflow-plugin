@@ -3,22 +3,25 @@ import assert from "node:assert/strict";
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, win32 } from "node:path";
-import { assertAssetPath, isInsideSourceRoot, legacyAssetRoots, sourceClosure, lexicalAssetFiles } from "../scripts/wxt-assets.mjs";
+import { assertAssetPath, isInsideSourceRoot, runtimeAssetRoots, sourceClosure, lexicalAssetFiles } from "../scripts/wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { GLOBAL_CONTENT_SCRIPT, projectProductionManifest } from "../scripts/production-manifest.mjs";
 import { YOUTUBE_MAIN_BRIDGE_FILES as runtimeMain } from "../src/background/youtube-bridge.js";
 import { assertProductionManifest } from "../scripts/audit-wxt-extension.mjs";
 
-test("raw bridge follows runtime registration order and existing stable paths", async () => {
-  const roots = legacyAssetRoots();
-  assert.deepEqual(roots.slice(0, CONTENT_SCRIPT_FILES.length), [...CONTENT_SCRIPT_FILES]);
-  assert.deepEqual(roots.slice(CONTENT_SCRIPT_FILES.length, CONTENT_SCRIPT_FILES.length + CONTENT_STYLE_FILES.length), [...CONTENT_STYLE_FILES]);
+test("raw asset map retains only MAIN and Worker contexts while Content uses stable compiled paths", async () => {
+  const roots = runtimeAssetRoots();
+  assert.deepEqual(roots, [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)]);
+  assert.deepEqual(CONTENT_SCRIPT_FILES, ["content-scripts/content.js"]);
+  assert.deepEqual(CONTENT_STYLE_FILES, ["content-scripts/content.css"]);
   assert.strictEqual(runtimeMain, YOUTUBE_MAIN_BRIDGE_FILES);
   assert.deepEqual(EXTENSION_PAGES, { popup: "popup.html", options: "options.html", learningCenter: "learning-center.html" });
   const files = await sourceClosure(roots);
   for (const path of Object.values(WORKER_PATHS)) assert(files.includes(path));
   assert(files.includes("src/background/packs/importers/mdict-rich.js"));
+  assert(!files.includes("src/content/runtime.js"));
+  assert(!files.includes("content.css"));
   assert(!files.includes("popup.html"));
   assert(!files.includes("options.js"));
   assert(!files.includes("src/background/index.js"));
@@ -89,7 +92,9 @@ test("generated dictionaries copy only authenticated runtime descriptors, exclud
 
 test("production Manifest fails closed for permissions, static injection and development changes", async () => {
   const baseline = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
-  const production = projectProductionManifest(baseline);
+  const production = { ...projectProductionManifest(baseline), content_scripts: [{
+    matches: [...GLOBAL_CONTENT_SCRIPT.matches], js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES], run_at: "document_idle"
+  }] };
   assertProductionManifest(production, baseline);
   assert.deepEqual(production.content_scripts, [{
     matches: [...GLOBAL_CONTENT_SCRIPT.matches],

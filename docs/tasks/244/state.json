@@ -1,18 +1,20 @@
 {
   "schema": 1,
   "task": "244",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": ["240", "243"],
-  "branch": "test/244-reading-abcd",
-  "worktree": ".worktrees/issue-244",
+  "branch": "main",
+  "worktree": null,
   "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33",
-  "mergeHead": null,
+  "mergeHead": "8c3ad6d8bfc528a12b4b28d3c90ab97e0e403a32",
   "validationCommands": [
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:e2e", "--", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-handoff.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs", "e2e/selection-assistant-ui.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "推送 QA 分支、创建 PR，并在准确 expected-head 与保护要求满足后 squash merge。"
+  "syncHead": "38916bcd4746d5bc96cefab9674a6438c39f43c8",
+  "pullRequest": 295,
+  "nextAction": "已合入 main；Reading Loop A–D 完整验收结束，平台任务 250 已解锁。"
 }

@@ -2,14 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
 
-test("observed update changes only exact package JS/CSS closure and preserves registration policy",()=>{
+test("observed update removes the exact old dynamic closure after compiled static Content takes ownership",()=>{
   const old={contentScripts:["old.js","content.js"],contentStyles:["old.css"]};
   const next={contentScripts:["contract.js","new.js","content.js"],contentStyles:["new.css"]};
   const before=[{id:"persistent",matches:["https://fixture.invalid/*"],js:old.contentScripts,css:old.contentStyles,
     allFrames:false,persistAcrossSessions:true,runAt:"document_idle",world:"ISOLATED"}];
   const event={reason:"update",previousVersion:"0.8.0"};
-  assert.deepEqual(expectedRegistrationsAfterInstalledUpdate(before,event,"0.8.0",old,next),
-    [{...before[0],js:next.contentScripts,css:next.contentStyles}]);
+  assert.deepEqual(expectedRegistrationsAfterInstalledUpdate(before,event,"0.8.0",old,next), []);
   assert.deepEqual(before[0].js,["old.js","content.js"]);
   for(const invalid of [undefined,{reason:"install",previousVersion:"0.8.0"},{reason:"update",previousVersion:"different"}]) {
     assert.throws(()=>expectedRegistrationsAfterInstalledUpdate(before,invalid,"0.8.0",old,next),assert.AssertionError);

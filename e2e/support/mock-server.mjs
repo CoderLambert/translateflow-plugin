@@ -114,9 +114,12 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
 
         const isConnectionTest = systemPrompt.includes("Reply with exactly: OK");
         const isSelectionExplain = systemPrompt.includes("Selection Explain");
+        const isPlainAssistant = systemPrompt.includes("Plain text only");
         let completionContent;
         if (isConnectionTest) {
           completionContent = "OK";
+        } else if (isPlainAssistant) {
+          completionContent = "streamed answer";
         } else if (isSelectionExplain) {
           let explainPayload = {};
           try { explainPayload = JSON.parse(userContent); } catch {}
