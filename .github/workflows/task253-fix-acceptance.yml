@@ -21,19 +21,17 @@ jobs:
         with:
           node-version: "24.21.0"
       - run: npm ci --no-audit --no-fund
-      - name: Regenerate owned Reading classic projections
+      - name: Freeze exact workflow-free candidate
         run: |
-          node scripts/reading-content-classic.mjs
+          node scripts/reading-content-classic.mjs --check
           git diff --check
-          if ! git diff --quiet -- src/content/reading-source.js src/content/reading-record.js; then
-            git config user.name "TranslateFlow CI"
-            git config user.email "ci@translateflow.invalid"
-            git add src/content/reading-source.js src/content/reading-record.js
-            git commit -m "build: refresh generated reading content projection"
-            git push origin HEAD:fix/253-ui-localization-review
-          fi
+          git rm .github/workflows/task253-fix-acceptance.yml
+          git config user.name "TranslateFlow CI"
+          git config user.email "ci@translateflow.invalid"
+          git commit -m "ci: remove temporary task253 acceptance workflow"
+          echo "CANDIDATE_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "TF_E2E_ARTIFACT_SOURCE_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-      - name: Validate
+      - name: Validate exact candidate
         run: npm run validate
       - name: Check generated Reading projection
         run: node scripts/reading-content-classic.mjs --check
@@ -58,6 +56,10 @@ jobs:
           e2e/local-dictionary-import-v2-product.spec.mjs
           e2e/translateflow.spec.mjs
           e2e/subtitles.spec.mjs
+      - name: Push validated candidate
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_HEAD"
+          git push origin HEAD:fix/253-ui-localization-review
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
