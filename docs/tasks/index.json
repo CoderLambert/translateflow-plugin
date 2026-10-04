@@ -222,13 +222,22 @@
     },
     {
       "task": "251",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "236",
         "249"
       ],
-      "branch": "refactor/251-react-popup-settings",
+      "branch": "main",
       "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3"
+    },
+    {
+      "task": "252",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "251"
+      ],
+      "branch": "refactor/252-react-dictionaries",
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0"
     },
     {
       "task": "offline-dictionary",

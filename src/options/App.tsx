@@ -1,16 +1,20 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { CacheSection, DeveloperSection } from "./CacheSection";
 import { AppearanceSection, GeneralSection, ProviderSections, SelectionSection, ShortcutsSection, YoutubeSection } from "./CommonSections";
-import { LegacyIslands, type LegacyMarkup } from "./LegacyIslands";
+import { DictionarySection, createDictionaryClient } from "./DictionarySection";
+import { GlossarySection } from "./GlossarySection";
 import { BehaviorSection, SitesSection } from "./SiteSections";
 import { UiLocaleSection } from "./UiLocaleSection";
 import { optionsClient } from "./client";
+import { glossaryClient } from "./glossary-client";
 import { useOptions } from "./useOptions";
 
 const navItems = [["general", "通用"], ["selection", "划词翻译"], ["appearance", "外观"], ["youtube", "YouTube"], ["sites", "站点"], ["auto-sites", "自动行为"], ["glossary", "术语表"], ["dictionary-packs", "词典库"], ["provider", "Provider"], ["cache", "缓存"], ["developer", "开发者 / 关于"]] as const;
 
-export function App({ markup, client: provided }: { markup: LegacyMarkup; client?: ReturnType<typeof optionsClient> }) {
+export function App({ client: provided }: { client?: ReturnType<typeof optionsClient> }) {
   const client = useMemo(() => provided ?? optionsClient(), [provided]);
+  const glossary = useMemo(() => glossaryClient(), []);
+  const dictionaries = useMemo(() => createDictionaryClient(), []);
   const ui = useOptions(client);
   const [activeHash, setActiveHash] = useState(() => validHash(location.hash));
   const setStatus = useCallback((message: string, error = false) => ui.setStatus(message, error), [ui.setStatus]);
@@ -40,7 +44,8 @@ export function App({ markup, client: provided }: { markup: LegacyMarkup; client
         <SitesSection entries={ui.profiles.value} loading={ui.profiles.loading} error={ui.profiles.error} disabled={ui.busy} retry={() => void ui.refreshProfiles()} save={ui.saveProfile} remove={ui.deleteProfile} />
         <BehaviorSection restoreSites={ui.restoreSites.value} autoSites={ui.autoSites.value} loading={ui.restoreSites.loading || ui.autoSites.loading} errors={[ui.restoreSites.error, ui.autoSites.error]} disabled={ui.busy} refresh={() => void ui.refreshBehaviors()} remove={(key, origin) => void ui.removeBehavior(key, origin)} />
       </>}
-      <LegacyIslands markup={markup} setStatus={setStatus} />
+      <GlossarySection client={glossary} setStatus={setStatus} />
+      <DictionarySection client={dictionaries} setStatus={setStatus} />
       {config ? <>
         <ProviderSections config={config} disabled={ui.busy} update={update} />
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />

@@ -102,24 +102,26 @@ test("worker validates before claiming an active request and prefers the MDX hea
 });
 
 test("Settings and selection expose local rich details while preserving the strict MDX MDD limit", async () => {
-  const [settings, richUi, details, renderer, constants] = await Promise.all([
+  const [settings, localUi, localClient, dictionaryUi, details, renderer, constants] = await Promise.all([
     readFile(new URL("../options.html", import.meta.url), "utf8"),
-    readFile(new URL("../src/options/rich-mdict-import-ui.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/options/LocalDictionaryImport.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/options/local-dictionary-client.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/options/DictionarySection.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/content/selection/rich-details.js", import.meta.url), "utf8"),
     readFile(new URL("../src/content/selection/rich-result-renderer.js", import.meta.url), "utf8"),
     readFile(new URL("../src/shared/constants.js", import.meta.url), "utf8")
   ]);
 
-  const localImport = settings.slice(settings.indexOf('id="localDictionaryImport"'), settings.indexOf('id="appearance"'));
-  assert.match(localImport, /id="localDictionaryFiles"/u);
-  assert.match(localImport, /id="localDictionaryDropZone"/u);
-  assert.match(settings, /<h4>富文本词典<\/h4>\s*<p class="hint">[^<]*个人首选[^<]*<\/p>\s*<div id="richMdictInstalledList"/u);
-  assert.match(localImport, /支持 MDX \/ MDD/u);
-  assert.doesNotMatch(localImport, /OPFS|quarantine|Worker/iu);
+  assert.match(localUi, /id="localDictionaryFiles"/u);
+  assert.match(localUi, /id="localDictionaryDropZone"/u);
+  assert.match(dictionaryUi, /<h4>富文本词典<\/h4>/u);
+  assert.match(dictionaryUi, /个人首选/u);
+  assert.match(localUi, /支持 MDX \/ MDD/u);
+  assert.doesNotMatch(localUi, /OPFS|quarantine|Worker/iu);
   assert.doesNotMatch(settings, /id="richMdictFile"/u);
-  assert.match(richUi, /用户提供 \/ 未验证 · MDX/u);
-  assert.match(richUi, /parseRichMdictHeader/u);
-  assert.match(richUi, /header\.encoding\?\.name/u);
+  assert.match(localClient, /createRichMdictImportController/u);
+  assert.match(localClient, /preflightLocalDictionaryFiles/u);
+  assert.doesNotMatch(localUi, /dangerouslySetInnerHTML|innerHTML/u);
   assert.match(details, /RICH_MDICT_LOOKUP/u);
   assert.match(details, /do not delay or replace the primary result/u);
   assert.match(renderer, /sanitizeRichDictionaryRecord\(richRecord\)/u);

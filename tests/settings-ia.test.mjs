@@ -8,8 +8,10 @@ const app = await readFile(new URL("../src/options/App.tsx", import.meta.url), "
 const common = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
 const sites = await readFile(new URL("../src/options/SiteSections.tsx", import.meta.url), "utf8");
 const cache = await readFile(new URL("../src/options/CacheSection.tsx", import.meta.url), "utf8");
+const glossary = await readFile(new URL("../src/options/GlossarySection.tsx", import.meta.url), "utf8");
+const dictionaries = await readFile(new URL("../src/options/DictionarySection.tsx", import.meta.url), "utf8");
 const client = await readFile(new URL("../src/options/client.ts", import.meta.url), "utf8");
-const js = [app, common, sites, cache, client].join("\n");
+const js = [app, common, sites, cache, glossary, dictionaries, client].join("\n");
 
 test("Settings exposes the task-oriented information architecture including automatic site behavior", () => {
   for (const id of ["general","appearance","youtube","sites","auto-sites","glossary","provider","cache","developer"]) {
