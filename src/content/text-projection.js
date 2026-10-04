@@ -3,22 +3,29 @@
   if (!app?.modules.textProjectionBuilder || app.modules.textProjection) return;
   const policy = app.modules.textProjectionPolicy;
   const { createBuilder } = app.modules.textProjectionBuilder;
-  let sourceRevision = 1, observer = null, watchedPage = null, routeTimer = null;
+  let sourceRevision = 1, observer = null, watchedPage = null, routeTimer = null, viewportInvalidationQueued = false;
   const listeners = new Set();
   function consume(records) {
     if (!records.some(policy.sourceMutation)) return;
     invalidate();
   }
   function invalidate() { sourceRevision++; for (const listener of listeners) listener(sourceRevision); }
+  function invalidateViewport() {
+    if (viewportInvalidationQueued) return;
+    viewportInvalidationQueued = true;
+    Promise.resolve().then(() => { viewportInvalidationQueued = false; invalidate(); });
+  }
   function start(onInvalidation) {
     if (onInvalidation) listeners.add(onInvalidation);
     if (observer) return;
     observer = new MutationObserver(consume);
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true,
-      attributeOldValue: true, attributeFilter: ["class", "style", "hidden", "aria-hidden", "contenteditable", "data-tf-sensitive"] });
+      attributeOldValue: true });
     const route = (event) => { if (watchedPage && app.modules.runtime.getPageIdentity(event?.destination?.url || location.href) !== watchedPage) invalidate(); };
     window.addEventListener("popstate", route); window.addEventListener("hashchange", route);
     window.addEventListener("pagehide", invalidate);
+    window.addEventListener("resize", invalidateViewport, { passive: true });
+    globalThis.visualViewport?.addEventListener?.("resize", invalidateViewport, { passive: true });
     globalThis.navigation?.addEventListener?.("navigate", route);
   }
   function watchPage(pageUrl) {
@@ -83,6 +90,101 @@
       return { status: "resolved", ...value, domNodes, projectionVersion: policy.projectionVersion, stats: { ...stats, elapsedMs: budget.clock() - phaseStarted } };
     } catch (error) { return fail(error.message || "unsupported"); }
   }
+  function createScanner(root, { clock = () => performance.now(), maxUnits = 1_025_000 } = {}) {
+    const builder = createBuilder({ maxUnits }), domNodes = new Map();
+    const stats = { nodes: 0, chars: 0, elapsedMs: 0 };
+    const state = { stack: [{ node: root, entered: false }], ancestor: root?.parentElement || null, complete: false,
+      incomplete: false, unsupported: false, reason: "", nextNodeKey: 1, finalized: null };
+    function markIncomplete(reason, unsupported = false) {
+      state.incomplete = true; state.unsupported ||= unsupported; state.reason ||= reason || "unsupported";
+    }
+    function scanSlice({ maxChars = policy.limits.sliceChars, maxNodes = policy.limits.sliceNodes, maxMs = policy.limits.sliceMs } = {}) {
+      const started = clock(); let sliceChars = 0, sliceNodes = 0;
+      const timeUp = () => clock() - started >= maxMs;
+      const finishSlice = () => { stats.elapsedMs += Math.max(0, clock() - started); return progress(); };
+      if (state.complete) return progress();
+      if (!root || root.getRootNode() !== document) {
+        markIncomplete("unsupported-root", true); state.stack.length = 0; state.ancestor = null; state.complete = true; return finishSlice();
+      }
+      try {
+        while (state.ancestor || state.stack.length) {
+          if (sliceNodes >= maxNodes || sliceChars >= maxChars || timeUp()) break;
+          if (state.ancestor) {
+            const parent = state.ancestor; state.ancestor = parent.parentElement;
+            sliceNodes++; stats.nodes++;
+            const decision = policy.inspect(parent);
+            if (decision.excluded || decision.unsupported) {
+              markIncomplete(decision.reason || "excluded-ancestor", decision.unsupported);
+              state.stack.length = 0; state.ancestor = null; state.complete = true; break;
+            }
+            continue;
+          }
+          const frame = state.stack.at(-1), node = frame.node;
+          if (!frame.entered) {
+            if (sliceNodes >= maxNodes || stats.nodes >= policy.limits.totalNodes) { markIncomplete("node-budget"); break; }
+            frame.entered = true; sliceNodes++; stats.nodes++;
+            if (node.nodeType === 3) {
+              const length = node.length;
+              if (length > policy.limits.sliceChars) {
+                markIncomplete("oversized-text-node"); frame.textOffset = length;
+              } else {
+                const text = node.nodeValue || "";
+                if (/[\u0000\u0008\u000b]/u.test(text)) { markIncomplete("unsupported-text", true); frame.textOffset = length; }
+                else { frame.text = text; frame.textOffset = 0; frame.nodeKey = `n${state.nextNodeKey++}`; domNodes.set(frame.nodeKey, node); }
+              }
+            } else if (node.nodeType === 1) {
+              const decision = policy.inspect(node);
+              if (decision.unsupported) { markIncomplete(decision.reason, true); frame.skip = true; }
+              else if (!decision.excluded) {
+                frame.block = decision.block || String(node.localName || node.tagName).toUpperCase() === "BR";
+                if (frame.block) builder.boundary();
+                frame.child = node.firstChild;
+              } else frame.skip = true;
+            }
+          }
+          if (frame.text !== undefined && frame.textOffset < frame.text.length) {
+            const remaining = Math.min(maxChars - sliceChars, policy.limits.totalChars - stats.chars);
+            if (remaining <= 0) break;
+            const size = Math.min(remaining, frame.text.length - frame.textOffset, 64);
+            const start = frame.textOffset, chunk = frame.text.slice(start, start + size);
+            builder.append(frame.nodeKey, chunk, start);
+            frame.textOffset += size; sliceChars += size; stats.chars += size;
+            if (frame.textOffset < frame.text.length) {
+              if (sliceChars >= maxChars || timeUp()) break;
+              continue;
+            }
+          }
+          if (frame.text !== undefined || frame.skip || !frame.child) {
+            if (frame.block) builder.boundary();
+            state.stack.pop(); continue;
+          }
+          const child = frame.child; frame.child = child.nextSibling; state.stack.push({ node: child, entered: false });
+        }
+        if (!state.stack.length && !state.ancestor) state.complete = true;
+      } catch (error) {
+        markIncomplete(error.message || "unsupported", error.message === "unsupported");
+        state.stack.length = 0; state.ancestor = null; state.complete = true;
+      }
+      return finishSlice();
+    }
+    function finalize() {
+      if (state.complete && !state.finalized) {
+        const value = builder.finish();
+        state.finalized = { status: "resolved", ...value, domNodes, projectionVersion: policy.projectionVersion };
+      }
+    }
+    function progress() {
+      finalize();
+      return { complete: state.complete, incomplete: state.incomplete, unsupported: state.unsupported,
+        reason: state.reason, stats: { ...stats } };
+    }
+    function snapshot() {
+      const status = progress();
+      const value = state.finalized || { status: "resolved", ...builder.view(), domNodes, projectionVersion: policy.projectionVersion };
+      return { ...value, ...status };
+    }
+    return { scanSlice, progress, snapshot, get complete() { return state.complete; }, get incomplete() { return state.incomplete; } };
+  }
   function pointCell(projection, container, offset, end, budget) {
     const entries = [...projection.domNodes];
     function findCell(key, offset) {
@@ -132,5 +234,5 @@
     return Boolean(left && right && left.sourceRevision === right.sourceRevision && left.range?.startContainer === right.range?.startContainer &&
       left.range?.startOffset === right.range?.startOffset && left.range?.endContainer === right.range?.endContainer && left.range?.endOffset === right.range?.endOffset);
   }
-  app.modules.textProjection = { project, positionForRange, rangeForPosition, sameRange, revision, start, watchPage };
+  app.modules.textProjection = { project, createScanner, positionForRange, rangeForPosition, sameRange, revision, start, watchPage };
 })();

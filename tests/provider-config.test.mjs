@@ -6,6 +6,7 @@ import {
   normalizeOpenAIBaseUrl,
   normalizeSiteProfile,
   resolveTranslationConfig,
+  resolveTranslationConfigForSite,
   updateSiteProfilePreset
 } from "../src/shared/provider-config.js";
 
@@ -89,6 +90,26 @@ test("site profile overrides provider, model and prompt without duplicating cred
   assert.equal(config.prompt, "technical prompt");
   assert.equal(config.targetLanguage, "English");
   assert.equal(config.siteOrigin, "https://github.com");
+});
+
+test("trusted site identity uses the same profile resolver and preserves existing port normalization", () => {
+  const config = resolveTranslationConfigForSite({
+    provider: "deepseek", model: "global-model", prompt: "global prompt", targetLanguage: "Japanese",
+    openAICompatible: { baseUrl: "http://127.0.0.1:11434/v1", apiKey: "", model: "global-local-model" },
+    siteProfiles: { "https://local.test": { provider: "openai-compatible", model: "site-local-model", preset: "technical" } }
+  }, "https://local.test:8443");
+  assert.equal(config.provider, "openai-compatible");
+  assert.equal(config.apiBaseUrl, "http://127.0.0.1:11434/v1");
+  assert.equal(config.apiKey, "");
+  assert.equal(config.model, "site-local-model");
+  assert.equal(config.targetLanguage, "Japanese");
+  assert.equal(config.siteOrigin, "https://local.test");
+  assert.match(config.prompt, /Translation style preset: Technical/);
+
+  const inherited = resolveTranslationConfigForSite({ provider: "deepseek", model: "global-model", prompt: "global prompt" },
+    "https://no-profile.test");
+  assert.equal(inherited.provider, "deepseek");
+  assert.equal(inherited.model, "global-model");
 });
 
 test("non-matching and deleted site profiles fall back to global settings", () => {

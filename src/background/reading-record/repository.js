@@ -13,7 +13,7 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
   const database = createReadingDatabase(), cursors = new Map(); let publisher = onCommit;
   function published() { if (publisher) { try { void Promise.resolve(publisher()).catch(() => {}); } catch {} } }
   function prune() { for (const [key, value] of cursors) if (!value.busy && now() >= value.expiresAt) cursors.delete(key); }
-  const run = (mode, context, program) => database.run(mode, context.assertCurrent, program);
+  const run = (mode, context, program) => database.run(mode, context.assertCurrent, program, undefined, context.signal);
   async function readContext(context) {
     prune(); const { request } = context;
     const listed = [M.LIST_RECORDS, M.LIST_PAGES, M.GET_PAGE_SUMMARY, M.LIST_RECORDING_EXCLUSIONS].includes(request.method);

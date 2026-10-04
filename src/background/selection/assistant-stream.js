@@ -1,4 +1,4 @@
-import { getEffectiveConfig } from "../config.js";
+import { getEffectiveConfig, getEffectiveConfigForSite } from "../config.js";
 import { completeText } from "../providers/index.js";
 import { commitLearningAssistantTurn, cancelLearningAssistantTurn, prepareLearningAssistantTurn } from "../reading-record/runtime.js";
 import { readingTranslationResult } from "./reading-result.js";
@@ -30,24 +30,29 @@ export function abortSelectionAssistantStreams(tabId = null) {
 
 async function run(state, request, deps) {
   const getConfig = deps.getEffectiveConfig || getEffectiveConfig, resolve = deps.resolveSelectionRequest || resolveSelectionRequest;
+  const getConfigForSite = deps.getEffectiveConfigForSite || getEffectiveConfigForSite;
   const complete = deps.completeText || completeText, provenance = deps.readingTranslationResult || readingTranslationResult;
   const prepareHistory = deps.prepareLearningAssistantTurn || prepareLearningAssistantTurn;
   const commitHistory = deps.commitLearningAssistantTurn || commitLearningAssistantTurn;
   const cancelHistory = deps.cancelLearningAssistantTurn || cancelLearningAssistantTurn;
   let historySession = null;
   try {
-    let pageUrl, sourceLanguage, selectedText, contextText, candidates, history, question, turn;
+    let pageUrl, routingIdentity = null, sourceLanguage, selectedText, contextText, candidates, history, question, turn;
     if (state.scope === "history") {
       const prepared = await prepareHistory(state.port.sender, request,
-        detail => (deps.groundLearningAssistant || groundLearningAssistant)(detail, request, deps.randomId));
+        detail => (deps.groundLearningAssistant || groundLearningAssistant)(detail, request, deps.randomId),
+        { signal: state.ctl.signal });
       historySession = prepared.session;
+      throwIfCancelled(state);
       ({ history, question, turn } = prepared.grounded);
       selectedText = prepared.sourceSnapshot.selectedText;
       contextText = prepared.sourceSnapshot.contextMode === "bounded-context" ? prepared.sourceSnapshot.contextText : "";
-      candidates = []; pageUrl = prepared.record.safeReturnUrl || ""; sourceLanguage = prepared.record.sourceLanguage;
+      candidates = []; pageUrl = prepared.record.safeReturnUrl; routingIdentity = prepared.routingIdentity;
+      sourceLanguage = prepared.record.sourceLanguage;
     } else {
       const resolved = await resolve({ text: request.text, pageUrl: request.pageUrl, context: request.context || null,
         depth: request.depth, explainRequested: true });
+      throwIfCancelled(state);
       pageUrl = request.pageUrl; sourceLanguage = resolved.intent?.sourceLanguage || "unknown";
       selectedText = resolved.explanationInput?.selectionText || request.text;
       contextText = resolved.explanationInput?.contextText || "";
@@ -57,22 +62,28 @@ async function run(state, request, deps) {
         parentTurnId: request.parentTurnId, branchId: request.branchId, regenerationOf: request.regenerationOf };
     }
     if (state.ctl.signal.aborted) throw cancelled();
-    const config = await getConfig(pageUrl), mode = config.provider === "openai-compatible" && config.streaming ? "stream" : "unary";
+    if (state.scope === "history" && (!routingIdentity?.siteKey || !routingIdentity?.pageKey)) {
+      throw Object.assign(new Error("missing stored routing identity"), { code: "FORBIDDEN" });
+    }
+    const config = state.scope === "history" ? await getConfigForSite(routingIdentity.siteKey) : await getConfig(pageUrl);
+    throwIfCancelled(state);
+    const mode = config.provider === "openai-compatible" && config.streaming ? "stream" : "unary";
     post(state, { type: "started", mode });
     const prompt = JSON.stringify({ question, text: selectedText, context: contextText, candidates, history });
     const result = await complete({ systemPrompt: "Explain from context. Plain text only.", prompt }, config,
       { signal: state.ctl.signal, onDelta: delta => emitDelta(state, delta) });
-    if (state.ctl.signal.aborted) throw cancelled();
+    throwIfCancelled(state);
     const text = String(result.text || "");
     if (result.mode === "unary") emitDelta(state, text);
     if (!text || text.length > MAX_TOTAL) throw Object.assign(new Error("limit"), { code: "LIMIT" });
     const completedTurn = { ...turn, assistantAnswer: text, completionStatus: "completed" };
-    const readingResult = await provenance(pageUrl, config);
+    const readingResult = await provenance(config);
+    throwIfCancelled(state);
     readingResult.provenance.promptVersion = "selection-assistant-v1";
     if (historySession) {
       const committed = await commitHistory(historySession, { schemaVersion: 1, artifactId: crypto.randomUUID(),
         kind: "assistant", targetLanguage: readingResult.targetLanguage, createdAt: Date.now(), payload: completedTurn,
-        provenance: readingResult.provenance });
+        provenance: readingResult.provenance }, { signal: state.ctl.signal });
       historySession = null;
       post(state, { type: "complete", mode: result.mode, text, turn: completedTurn, saved: committed.saved });
     } else {
@@ -80,7 +91,7 @@ async function run(state, request, deps) {
         readingResult: { ...readingResult, sourceLanguage } });
     }
   } catch (error) {
-    if (!state.closed) post(state, { type: "interrupted", code: state.ctl?.signal.aborted ? "CANCELLED" : String(error?.code || "FAILED"), partialChars: state.chars });
+    if (!state.closed) post(state, { type: "interrupted", code: String(error?.code || "FAILED"), partialChars: state.chars });
   } finally {
     if (historySession) try { await cancelHistory(historySession); } catch {}
     state.ctl = null; active.delete(state);
@@ -96,6 +107,7 @@ function emitDelta(state, raw) {
 function post(state, message) { if (!state.closed) try { state.port.postMessage({ protocolVersion: V, requestId: state.id, ...message }); } catch { state.ctl?.abort(); } }
 function fail(state, code) { post(state, { type: "interrupted", code, partialChars: state.chars }); state.ctl?.abort(); }
 function cancelled() { return Object.assign(new Error("cancelled"), { code: "CANCELLED" }); }
+function throwIfCancelled(state) { if (state.ctl?.signal.aborted) throw cancelled(); }
 function senderScope(sender) {
   try {
     const url = new URL(String(sender?.url || ""));
