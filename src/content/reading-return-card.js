@@ -2,7 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract ||
       !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingReturnCard) return;
-  const C = app.modules.readingContract, M = C.READING_METHOD, projection = app.modules.textProjection;
+  const C = app.modules.readingContract, M = C.READING_METHOD;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   let card = null, quoteNode = null, overlays = [], activeRange = null, activeText = "", controller = null, frame = 0, previousFocus = null, summary = null;
   let projectionUnsubscribe = null, mutationTimer = 0, automaticRetries = 0, locationGeneration = 0, dismissed = false;
@@ -91,7 +91,7 @@
         const element = result.range.commonAncestorContainer.nodeType === 1 ? result.range.commonAncestorContainer : result.range.commonAncestorContainer.parentElement;
         element?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
         updateOverlays();
-        projectionUnsubscribe = projection.start(() => {
+        projectionUnsubscribe = app.modules.textProjection.start(() => {
           if (!activeRange || !card) return;
           clearOverlays(); card.dataset.state = "not-loaded"; setStatus(state, messages["not-loaded"], "warning");
           if (automaticRetries >= C.READING_LIMITS.scanRetryCount || mutationTimer) return;
