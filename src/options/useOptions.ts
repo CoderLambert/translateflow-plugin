@@ -19,17 +19,17 @@ export function useOptions(client: OptionsClient, i18n: I18n, enabled = true) {
   const loadConfig = useCallback(async () => {
     const current = generation.current; setLoadError("");
     try { const value = await client.loadConfig(); if (active.current && current === generation.current) setConfig(value); }
-    catch (error) { if (active.current && current === generation.current) setLoadError(error instanceof Error ? error.message : i18n.t("options.loadFallback")); }
+    catch { if (active.current && current === generation.current) setLoadError(i18n.t("options.loadFallback")); }
   }, [client, i18n]);
   const refreshProfiles = useCallback(async () => {
     const current = generation.current; setProfiles(value => ({ ...value, loading: true, error: "" }));
     try { const value = await client.profiles(); if (active.current && current === generation.current) setProfiles({ loading: false, value, error: "" }); }
-    catch (error) { if (active.current && current === generation.current) setProfiles({ loading: false, value: [], error: error instanceof Error ? error.message : i18n.t("options.profileReadFailed") }); }
+    catch { if (active.current && current === generation.current) setProfiles({ loading: false, value: [], error: i18n.t("options.profileReadFailed") }); }
   }, [client, i18n]);
   const refreshCache = useCallback(async () => {
     const current = generation.current; setCache(value => ({ ...value, loading: true, error: "" }));
     try { const value = await client.cacheStats(); if (active.current && current === generation.current) setCache({ loading: false, value, error: "" }); }
-    catch (error) { if (active.current && current === generation.current) setCache({ loading: false, value: null, error: error instanceof Error ? error.message : i18n.t("options.cacheReadFailed") }); }
+    catch { if (active.current && current === generation.current) setCache({ loading: false, value: null, error: i18n.t("options.cacheReadFailed") }); }
   }, [client, i18n]);
   const refreshBehaviors = useCallback(async () => {
     const current = generation.current;
@@ -77,4 +77,10 @@ export function useOptions(client: OptionsClient, i18n: I18n, enabled = true) {
   return { config, setConfig, loadError, loadConfig, busy, status, setStatus, profiles, refreshProfiles, cache, refreshCache, restoreSites, autoSites, refreshBehaviors, save, saveProfile, deleteProfile, prune, clear, removeBehavior };
 }
 
-function errorText(error: unknown, i18n?: I18n) { return error instanceof Error ? error.message : String(error || i18n?.t("common.unknownError") || "Operation failed"); }
+function errorText(error: unknown, i18n?: I18n) {
+  if (error instanceof Error) {
+    const uiMessage = (error as Error & { uiMessage?: unknown }).uiMessage;
+    if (typeof uiMessage === "string" && uiMessage === error.message) return uiMessage;
+  }
+  return i18n?.t("common.unknownError") || "Operation failed";
+}
