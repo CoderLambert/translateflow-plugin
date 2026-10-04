@@ -1,0 +1,51 @@
+name: task-253-handoff-acceptance
+
+on:
+  push:
+    branches:
+      - handoff/253-ui-localization-progress
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge current main into candidate worktree
+        run: |
+          git config user.name "TranslateFlow CI"
+          git config user.email "ci@translateflow.invalid"
+          git fetch origin main
+          git merge --no-edit origin/main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.21.0"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Validate
+        run: npm run validate
+      - name: Check generated Reading projection
+        run: node scripts/reading-content-classic.mjs --check
+      - name: Build WXT
+        run: npm run build:extension:wxt
+      - name: WXT smoke
+        run: npm run test:wxt:smoke
+      - name: Task 253 E2E
+        run: >
+          npm run test:e2e -- --workers=1 --retries=0
+          e2e/ui-locale.spec.mjs
+          e2e/ui-redesign.spec.mjs
+          e2e/settings-ia.spec.mjs
+          e2e/dark-mode.spec.mjs
+          e2e/learning-center.spec.mjs
+          e2e/reading-loop-release-a.spec.mjs
+          e2e/translateflow.spec.mjs
+          e2e/subtitles.spec.mjs
+      - name: Working tree must remain generated-clean
+        run: git diff --check && git status --short
