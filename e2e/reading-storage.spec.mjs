@@ -230,6 +230,39 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
     expect(result.lookupCount).toBe(1); expect(result.artifacts).toBe(1);
   });
 
+  test('Chromium dispatches the native request error before transaction abort and the adapter preserves the failure', async () => {
+    const result = await probeWorker.evaluate(async () => {
+      const p = __probe, database = p.createReadingDatabase(), events = [];
+      const transaction = IDBDatabase.prototype.transaction, add = IDBObjectStore.prototype.add;
+      IDBDatabase.prototype.transaction = function(...args) {
+        const tx = transaction.apply(this, args);
+        if (args[1] === 'readwrite' && args[0].includes('records')) {
+          tx.addEventListener('error', () => events.push('transaction-error'));
+          tx.addEventListener('abort', () => events.push('transaction-abort'));
+        }
+        return tx;
+      };
+      IDBObjectStore.prototype.add = function(...args) {
+        const request = add.apply(this, args); request.addEventListener('error', () => events.push('request-error')); return request;
+      };
+      let code;
+      try {
+        function* duplicatePrimaryKey(store) {
+          const records = store('records'), row = { record: { recordId: `abort-${crypto.randomUUID()}` } };
+          yield records.add(row); yield records.add(row);
+        }
+        try { await database.run('readwrite', () => {}, duplicatePrimaryKey, ['records']); }
+        catch (error) { code = error.code; }
+      } finally {
+        database.close(); IDBDatabase.prototype.transaction = transaction; IDBObjectStore.prototype.add = add;
+      }
+      return { events, code, recordCount: (await p.counts()).records };
+    });
+    expect(result.events.indexOf('request-error')).toBeGreaterThanOrEqual(0);
+    expect(result.events.indexOf('request-error')).toBeLessThan(result.events.indexOf('transaction-abort'));
+    expect(result.events).toContain('transaction-error'); expect(result.code).toBe(E.STORAGE); expect(result.recordCount).toBe(0);
+  });
+
   test('Native pause/resume, site exclusion/resume, empty page deletion and empty clear never revive old first-save tokens', async () => {
     const result = await probeWorker.evaluate(async () => { const p = __probe, failures = [];
       await p.enable(p.repo);

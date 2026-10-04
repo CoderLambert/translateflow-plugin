@@ -152,3 +152,29 @@ test("page resolver caps work at 200 summaries and marks remaining rows not-load
   assert.equal(results.get("199").status, "resolved");
   assert.equal(results.get("200").status, "not-loaded");
 });
+
+test("cancelling one shared long-page consumer leaves the other resolver result intact", async t => {
+  const article = Array.from({ length: 80 }, (_, index) => `<p>${"filler ".repeat(500)}section ${index}</p>`).join("");
+  const f = fixture(`<main>${article}<p id="target">start session at the end</p></main>`); t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "start ", suffix: " at the end", digest: false });
+  const frames = []; let nextFrameId = 0;
+  f.window.requestAnimationFrame = callback => { const id = ++nextFrameId; frames.push({ id, callback }); return id; };
+  f.window.cancelAnimationFrame = id => { const index = frames.findIndex(frame => frame.id === id); if (index >= 0) frames.splice(index, 1); };
+  const controller = new AbortController();
+  const markersRequest = f.modules.readingAnchorResolver.resolvePage([{ recordId: "marker-record", anchor }], { signal: controller.signal });
+  let settled = false;
+  const returnCardRequest = f.modules.readingAnchorResolver.resolve(anchor).finally(() => { settled = true; });
+  assert.ok(frames.length > 0, "both consumers should share an in-progress page scan");
+  controller.abort();
+  await assert.rejects(markersRequest, error => error.name === "AbortError");
+  let turns = 0;
+  while (!settled) {
+    assert.ok(turns++ < 40, "the surviving consumer should finish within the bounded scan");
+    const frame = frames.shift(); assert.ok(frame, "the surviving scan should have a scheduled frame");
+    frame.callback(turns * 16);
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  const result = await returnCardRequest;
+  assert.equal(result.status, "resolved"); assert.equal(result.verifiedText, "session");
+  assert.equal(result.range.toString(), "session");
+});

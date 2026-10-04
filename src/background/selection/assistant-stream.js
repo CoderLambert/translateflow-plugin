@@ -91,7 +91,7 @@ async function run(state, request, deps) {
         readingResult: { ...readingResult, sourceLanguage } });
     }
   } catch (error) {
-    if (!state.closed) post(state, { type: "interrupted", code: state.ctl?.signal.aborted ? "CANCELLED" : String(error?.code || "FAILED"), partialChars: state.chars });
+    if (!state.closed) post(state, { type: "interrupted", code: String(error?.code || "FAILED"), partialChars: state.chars });
   } finally {
     if (historySession) try { await cancelHistory(historySession); } catch {}
     state.ctl = null; active.delete(state);

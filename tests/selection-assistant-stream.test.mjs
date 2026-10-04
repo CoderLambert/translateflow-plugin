@@ -4,10 +4,13 @@ import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } fr
 const PORT = "selection.assistant-stream";
 
 function port(overrides = {}) {
-  let message, disconnect; const sent = [];
+  let message, disconnect; const sent = [], sentListeners = new Set();
   return { name: PORT, sender: { id: "ext", url: "https://example.test/article", documentId: "doc-1", frameId: 0, tab: { id: 7, incognito: false }, ...overrides }, sent,
     onMessage: { addListener(fn) { message = fn; } }, onDisconnect: { addListener(fn) { disconnect = fn; } },
-    postMessage(value) { sent.push(value); }, disconnect() { disconnect?.(); }, emit(value) { message?.(value); } };
+    postMessage(value) { sent.push(value); for (const listener of sentListeners) listener(value); },
+    whenSent(predicate) { const existing = sent.find(predicate); if (existing) return Promise.resolve(existing);
+      return new Promise(resolve => { const listener = value => { if (predicate(value)) { sentListeners.delete(listener); resolve(value); } }; sentListeners.add(listener); }); },
+    disconnect() { disconnect?.(); }, emit(value) { message?.(value); } };
 }
 function historyPort() {
   return port({ url: "chrome-extension://ext/learning-center.html", documentId: "22222222-2222-4222-8222-222222222222",
@@ -182,4 +185,47 @@ test("learning-center stop cancels the prepared operation and never commits part
   while (!p.sent.some(value => value.type === "delta")) await new Promise(resolve => setTimeout(resolve, 0));
   p.emit({ type: "cancel", requestId: "history-stop" }); await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(committed, 0); assert.equal(cancelled, 1); assert.equal(p.sent.at(-1).type, "interrupted");
+});
+
+test("a Stop racing a failed history commit preserves the actual Reading quota error", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = historyPort(), commitEntered = new Promise(resolve => { p.commitEntered = resolve; });
+  const history = { ...deps,
+    prepareLearningAssistantTurn: async () => ({ session: {}, grounded: { question: "Why?", history: [], sourceSnapshotId: "source-1",
+      turn: { userQuestion: "Why?", action: "follow-up", threadId: "thread-1", turnId: "turn-2", parentTurnId: "turn-1", branchId: "branch-1", regenerationOf: null } },
+      sourceSnapshot: { selectedText: "React", contextMode: "selection-only", contextText: "" }, record: { safeReturnUrl: null, sourceLanguage: "en" },
+      routingIdentity: { siteKey: "https://example.test", pageKey: `rp1:${"a".repeat(64)}` } }),
+    commitLearningAssistantTurn: async () => {
+      p.commitEntered();
+      const nativeFailure = Promise.reject(Object.assign(new Error("quota"), { code: "READING_QUOTA" }));
+      p.emit({ type: "cancel", requestId: "quota-race" });
+      return nativeFailure;
+    }, cancelLearningAssistantTurn: async () => {} };
+  const terminal = p.whenSent(value => value.type === "interrupted");
+  handleSelectionAssistantStreamPort(p, history);
+  p.emit({ protocolVersion: 1, type: "start", requestId: "quota-race", recordId: "11111111-1111-4111-8111-111111111111",
+    recordRevision: 3, sourceSnapshotId: "source-1", targetTurnId: "turn-1", historyAction: "follow-up", question: "Why?" });
+  await commitEntered; const event = await terminal;
+  assert.equal(event.code, "READING_QUOTA");
+});
+
+test("Stop after the history commit point still reports the saved terminal result", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = historyPort(); let releaseAck, commitEnteredResolve;
+  const ack = new Promise(resolve => { releaseAck = resolve; }), commitEntered = new Promise(resolve => { commitEnteredResolve = resolve; });
+  const history = { ...deps,
+    prepareLearningAssistantTurn: async () => ({ session: {}, grounded: { question: "Why?", history: [], sourceSnapshotId: "source-1",
+      turn: { userQuestion: "Why?", action: "follow-up", threadId: "thread-1", turnId: "turn-2", parentTurnId: "turn-1", branchId: "branch-1", regenerationOf: null } },
+      sourceSnapshot: { selectedText: "React", contextMode: "selection-only", contextText: "" }, record: { safeReturnUrl: null, sourceLanguage: "en" },
+      routingIdentity: { siteKey: "https://example.test", pageKey: `rp1:${"a".repeat(64)}` } }),
+    commitLearningAssistantTurn: async () => { commitEnteredResolve(); await ack; return { saved: { state: "saved", recordId: "11111111-1111-4111-8111-111111111111", revision: 4 } }; },
+    cancelLearningAssistantTurn: async () => { throw new Error("a committed operation must not be cancelled"); } };
+  const complete = p.whenSent(value => value.type === "complete");
+  handleSelectionAssistantStreamPort(p, history);
+  p.emit({ protocolVersion: 1, type: "start", requestId: "post-commit-stop", recordId: "11111111-1111-4111-8111-111111111111",
+    recordRevision: 3, sourceSnapshotId: "source-1", targetTurnId: "turn-1", historyAction: "follow-up", question: "Why?" });
+  await commitEntered; p.emit({ type: "cancel", requestId: "post-commit-stop" }); releaseAck();
+  const event = await complete;
+  assert.equal(event.saved.state, "saved"); assert.equal(event.saved.revision, 4);
+  assert.equal(p.sent.some(value => value.type === "interrupted"), false);
 });

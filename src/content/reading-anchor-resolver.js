@@ -41,6 +41,7 @@
     sharedScan = { revision, scanner, rootProjections: new Map() };
     return sharedScan;
   }
+  function discardScan(state) { if (sharedScan === state) sharedScan = null; }
   async function scanPage(signal) {
     projection.start();
     const revision = projection.revision();
@@ -48,25 +49,25 @@
     let waitMs = 0;
     while (!state.scanner.complete) {
       aborted(signal);
-      if (projection.revision() !== revision) { sharedScan = null; return { stale: true, revision }; }
+      if (projection.revision() !== revision) { discardScan(state); return { stale: true, revision, state }; }
       const stats = state.scanner.progress().stats;
       const remainingChars = TOTAL.chars - stats.chars, remainingNodes = TOTAL.nodes - stats.nodes, remainingMs = TOTAL.ms - stats.elapsedMs;
       if (remainingChars <= 0 || remainingNodes <= 0 || remainingMs <= 0) {
-        return { revision, value: state.scanner.snapshot(), waitMs, limited: true };
+        return { revision, value: state.scanner.snapshot(), waitMs, limited: true, state };
       }
       const value = state.scanner.scanSlice({ maxChars: Math.min(policy.limits.sliceChars, remainingChars),
         maxNodes: Math.min(policy.limits.sliceNodes, remainingNodes), maxMs: Math.min(policy.limits.sliceMs, remainingMs) });
-      if (projection.revision() !== revision) { sharedScan = null; return { stale: true, revision }; }
-      if (value.complete) return { revision, value: state.scanner.snapshot(), waitMs, limited: false };
+      if (projection.revision() !== revision) { discardScan(state); return { stale: true, revision, state }; }
+      if (value.complete) return { revision, value: state.scanner.snapshot(), waitMs, limited: false, state };
       const nextStats = value.stats;
       if (nextStats.chars >= TOTAL.chars || nextStats.nodes >= TOTAL.nodes || nextStats.elapsedMs >= TOTAL.ms) {
-        return { revision, value: state.scanner.snapshot(), waitMs, limited: true };
+        return { revision, value: state.scanner.snapshot(), waitMs, limited: true, state };
       }
       const waiting = performance.now();
       await yieldFrame(signal);
       waitMs += Math.max(0, performance.now() - waiting);
     }
-    return { revision, value: state.scanner.snapshot(), waitMs, limited: false };
+    return { revision, value: state.scanner.snapshot(), waitMs, limited: false, state };
   }
   function emptyStats() { return { chars: 0, nodes: 0, ms: 0, waitMs: 0 }; }
   function unresolved(items, status = "not-loaded") {
@@ -75,15 +76,16 @@
   async function resolveAtRevision(items, signal, retry) {
     const page = await scanPage(signal);
     if (page.stale) return null;
+    const state = page.state;
     const metrics = { chars: page.value.stats.chars, nodes: page.value.stats.nodes,
       ms: page.value.stats.elapsedMs, waitMs: page.waitMs };
-    const processingStarted = performance.now(), roots = sharedScan.rootProjections, ids = new Map(), results = new Map();
+    const processingStarted = performance.now(), roots = state.rootProjections, ids = new Map(), results = new Map();
     const stale = () => projection.revision() !== page.revision;
     const overBudget = () => metrics.chars >= TOTAL.chars || metrics.nodes >= TOTAL.nodes ||
       metrics.ms + Math.max(0, performance.now() - processingStarted) >= TOTAL.ms;
     for (const item of items.slice(0, TOTAL.items)) {
       aborted(signal);
-      if (stale()) { sharedScan = null; return null; }
+      if (stale()) { discardScan(state); return null; }
       const anchor = item?.anchor, exact = anchor?.quote?.exact;
       if (typeof exact !== "string" || !exact) { results.set(item.recordId, { status: "unsupported", range: null, stats: { ...metrics } }); continue; }
       const matches = new Map(); let unverified = false, limited = false;
@@ -105,7 +107,7 @@
           if (cached.value.status !== "resolved") { unverified = true; continue; }
           if (!cached.digest) cached.digest = digest(cached.value.text);
           const valueDigest = await cached.digest;
-          if (stale()) { sharedScan = null; return null; }
+          if (stale()) { discardScan(state); return null; }
           if (overBudget()) { limited = true; break; }
           if (valueDigest !== anchor.blockDigest) continue;
         }
@@ -124,7 +126,7 @@
       } else if (page.value.complete && page.value.unsupported && metrics.chars === 0) {
         results.set(item.recordId, { status: "unsupported", range: null, stats: { ...metrics } });
       } else results.set(item.recordId, { status: "not-loaded", range: null, stats: { ...metrics } });
-      if (stale()) { sharedScan = null; return null; }
+      if (stale()) { discardScan(state); return null; }
       if (overBudget()) {
         for (const pending of items) if (!results.has(pending.recordId)) results.set(pending.recordId, { status: "not-loaded", range: null, stats: { ...metrics } });
         break;
@@ -133,7 +135,7 @@
     for (const item of items.slice(TOTAL.items)) results.set(item.recordId, { status: "not-loaded", range: null, stats: { ...metrics } });
     metrics.ms += Math.max(0, performance.now() - processingStarted);
     for (const result of results.values()) result.stats = { ...metrics };
-    if (stale()) { sharedScan = null; return null; }
+    if (stale()) { discardScan(state); return null; }
     return { revision: page.revision, results, retry };
   }
   async function resolveItems(items, { signal } = {}) {
@@ -148,17 +150,9 @@
   }
   async function resolve(anchor, { signal } = {}) {
     const recordId = "__single__";
-    try {
-      const result = await resolveItems([{ recordId, anchor }], { signal });
-      return { ...(result.results.get(recordId) || { status: "not-loaded", range: null, stats: emptyStats() }), retries: result.retries };
-    } catch (error) {
-      if (error?.name === "AbortError") sharedScan = null;
-      throw error;
-    }
+    const result = await resolveItems([{ recordId, anchor }], { signal });
+    return { ...(result.results.get(recordId) || { status: "not-loaded", range: null, stats: emptyStats() }), retries: result.retries };
   }
-  async function resolvePage(items, { signal } = {}) {
-    try { return (await resolveItems(items, { signal })).results; }
-    catch (error) { if (error?.name === "AbortError") sharedScan = null; throw error; }
-  }
+  async function resolvePage(items, { signal } = {}) { return (await resolveItems(items, { signal })).results; }
   app.modules.readingAnchorResolver = Object.freeze({ resolve, resolvePage });
 })();

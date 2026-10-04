@@ -112,7 +112,7 @@ export function createReadingDatabase() {
           }
           const request = next.value;
           request.onsuccess = () => step(request.result);
-          request.onerror = () => { failure = request.error; }; // Native default abort remains enabled.
+          request.onerror = () => { failure ||= request.error; }; // Preserve the first cause; native default abort remains enabled.
         } catch (error) {
           failure ||= error;
           try { tx.abort(); } catch (abortError) { settleError(failure || abortError); }

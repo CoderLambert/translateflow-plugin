@@ -111,6 +111,24 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await revisit.goBack(); await expect(revisit).toHaveURL(articleUrl);
     await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
     await revisit.screenshot({ path: info.outputPath("reading-page-markers.png"), fullPage: false });
+
+    const retryPage = await context.newPage(); await retryPage.goto(articleUrl);
+    await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+    await retryPage.locator(".tf-reading-page-toggle").click();
+    const retryRow = retryPage.locator(".tf-reading-page-panel article");
+    for (const [round, restore] of [false, true, false, true].entries()) {
+      await retryPage.evaluate(restoreQuote => { document.querySelector("#source").textContent = restoreQuote
+        ? "PUBLIC session alpha tail" : "PUBLIC page changed alpha tail"; }, restore);
+      if (round < 3) await expect(retryRow).toContainText(restore ? "已定位" : "未找到");
+      else {
+        await expect(retryRow).toContainText("未完全加载");
+        await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+        await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
+        await retryPage.locator(".tf-reading-page-toggle").click();
+        await retryPage.getByRole("button", { name: "重新检查位置", exact: true }).click();
+        await expect(retryRow).toContainText("已定位");
+      }
+    }
     expect(server.calls).toHaveLength(0);
   } finally {
     await context?.close(); await server.close(); await rm(temporary, { recursive: true, force: true });

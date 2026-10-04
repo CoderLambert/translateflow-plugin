@@ -137,3 +137,17 @@ test("quota remains the reported failure when Stop races an already failed write
     assert.equal(tx.aborted, true); assert.deepEqual(probe.durableWrites, []);
   } finally { database.close(); probe.restore(); }
 });
+
+test("request error remains the first cause through the following native transaction abort event", async () => {
+  const probe = installIdbProbe(), database = createReadingDatabase();
+  try {
+    const pending = database.run("readwrite", () => {}, oneWrite);
+    const tx = await probe.waitForTransaction(2), request = tx.requests[0];
+    request.error = new DOMException("synthetic quota", "QuotaExceededError");
+    request.onerror(); // IndexedDB dispatches the request error before aborting its transaction.
+    tx.error = new DOMException("transaction aborted", "AbortError");
+    tx.aborted = true; tx.onabort();
+    await assert.rejects(pending, error => error.code === E.QUOTA);
+    assert.deepEqual(probe.durableWrites, []);
+  } finally { database.close(); probe.restore(); }
+});
