@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "244",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["240", "243"],
+  "branch": "test/244-reading-abcd",
+  "worktree": ".worktrees/issue-244",
+  "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33",
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-handoff.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs", "e2e/selection-assistant-ui.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "推送 QA 分支、创建 PR，并在准确 expected-head 与保护要求满足后 squash merge。"
+}
