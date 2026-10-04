@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "task": "244",
+  "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33",
+  "tree": "cf56a30ae8711198c8f1067cd9c14235dce5a238",
+  "inputTree": "edfafe95bbdcbee2b6311b90054d98a1aabe188494ee34716505d3c40f3b707d",
+  "frozenAt": "2026-10-04T03:16:51.584Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56850.516673,
+      "startedAt": "2026-10-04T03:16:57.025Z",
+      "log": "docs/task-execution/local/244/4b74b24e-db31-4e3d-bf99-beb522c44f26.log",
+      "logSha256": "45db8be361155cb7a05e4d89f9c7144a4d8cd3b4095ab4ff3a2f88a4208de6f2"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2282.637815,
+      "startedAt": "2026-10-04T03:18:00.531Z",
+      "log": "docs/task-execution/local/244/c818fa6b-be92-45d6-898c-428df67bfed4.log",
+      "logSha256": "2a4bc9cc9ee91253a802116133823d53f7a82ffa7d69a9bb0682f686183c89cf"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-loop-release-a.spec.mjs",
+        "e2e/reading-handoff.spec.mjs",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs"
+      ],
+      "candidateHead": "9a4b137a14b04712dfffcd1bb913441d635c7b33",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 46461.088121,
+      "startedAt": "2026-10-04T03:18:02.993Z",
+      "log": "docs/task-execution/local/244/f1b6e695-cf9f-49ad-ab49-7a782916a712.log",
+      "logSha256": "346629d8e1da1c20f5d008b98b7467fadebad5ce74a30909c07a769772c40efd"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "fb72c3b24a925d755848f962822988bc68c2c13e3983ea7fe379e91bf0fa2132"
+  },
+  "limitations": [
+    "Firefox/Safari、隐身模式、真实付费模型质量、真实私人词典、桌面原生 IME 候选窗、浏览器 UI 缩放和文件对话框最终落盘结果 NOT RUN。",
+    "Chrome Web Store、版本发布、外部部署、遥测、云同步与 SRS/Practice NOT AUTHORIZED / NOT PERFORMED。",
+    "npm 锁文件安装仍报告既有 1 low / 1 high audit 告警；任务未改依赖或 lockfile。"
+  ],
+  "decision": "READING_LOOP_ABCD_PASS"
+}
