@@ -18,8 +18,8 @@ type RuntimeResponse = { ok?: boolean; error?: string; [key: string]: unknown };
 export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
   async function getActiveSite(): Promise<Site> {
     const [tab] = await api.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error(i18n.t("popup.noActiveTab"));
-    if (!/^https?:/iu.test(tab.url || "")) throw new Error(i18n.t("popup.protectedPage"));
+    if (!tab?.id) throw uiError(i18n.t("popup.noActiveTab"));
+    if (!/^https?:/iu.test(tab.url || "")) throw uiError(i18n.t("popup.protectedPage"));
     const url = tab.url as string;
     const origin = normalizeOrigin(url);
     return { tab: { id: tab.id, url }, origin, match: getOriginMatchPattern(origin) };
@@ -48,13 +48,13 @@ export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n
   async function context(): Promise<EffectiveContext> {
     const site = await getActiveSite();
     const response = await sendRuntime({ type: BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT, pageUrl: site.tab.url });
-    if (!response.ok) throw new Error(response.error || i18n.t("popup.effectiveContextFailed"));
+    if (!response.ok) throw uiError(i18n.t("popup.effectiveContextFailed"));
     return response.context as EffectiveContext;
   }
 
   async function cacheStatus(): Promise<CacheStatus> {
     const result = await sendContent(CONTENT_MESSAGES.CACHE_STATUS);
-    if (!result.ok) throw new Error(result.error || i18n.t("popup.cacheStatusFailed"));
+    if (!result.ok) throw uiError(i18n.t("popup.cacheStatusFailed"));
     return { count: Number(result.count || 0), totalCount: Number(result.totalCount || 0), ...(result.lastAccessedAt ? { lastAccessedAt: Number(result.lastAccessedAt) } : {}) };
   }
 
@@ -107,7 +107,7 @@ export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n
     const site = await getActiveSite();
     if (kind === "quick" && current.hidden) {
       const response = await sendRuntime({ type: BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_SHOW, origin: site.origin });
-      if (!response.ok) throw new Error(response.error || i18n.t("popup.quickRestoreFailed"));
+      if (!response.ok) throw uiError(i18n.t("popup.quickRestoreFailed"));
       await ensureInjected(site.tab.id);
       return i18n.t("popup.quickRestoredHere");
     }
@@ -115,19 +115,19 @@ export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n
       const type = kind === "auto" ? BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER : kind === "cache" ? BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER : BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_UNREGISTER;
       if (kind === "auto") { try { await api.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.DISABLE_AUTO }); } catch {} }
       const response = await sendRuntime({ type, origin: site.origin });
-      if (!response.ok) throw new Error(response.error || i18n.t("popup.siteDisableFailed"));
+      if (!response.ok) throw uiError(i18n.t("popup.siteDisableFailed"));
       await maybeRelease(site);
       return i18n.t(kind === "auto" ? "popup.autoDisabledNotice" : kind === "cache" ? "popup.cacheRestoreDisabledNotice" : "popup.quickDisabledNotice");
     }
     const granted = await api.permissions.request({ origins: [site.match] });
-    if (!granted) throw new Error(i18n.t(kind === "auto" ? "popup.autoPermissionDenied" : kind === "cache" ? "popup.cachePermissionDenied" : "popup.quickPermissionDenied"));
+    if (!granted) throw uiError(i18n.t(kind === "auto" ? "popup.autoPermissionDenied" : kind === "cache" ? "popup.cachePermissionDenied" : "popup.quickPermissionDenied"));
     const type = kind === "auto" ? BACKGROUND_MESSAGES.AUTO_SITE_REGISTER : kind === "cache" ? BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_REGISTER : BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_REGISTER;
     const response = await sendRuntime({ type, origin: site.origin });
-    if (!response.ok) throw new Error(response.error || i18n.t("popup.siteRegisterFailed"));
+    if (!response.ok) throw uiError(i18n.t("popup.siteRegisterFailed"));
     await ensureInjected(site.tab.id);
     if (kind === "auto") {
       const started = await api.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.ENABLE_AUTO });
-      if (!started?.ok) throw new Error(started?.error || i18n.t("popup.autoStartFailed"));
+      if (!started?.ok) throw uiError(i18n.t("popup.autoStartFailed"));
     }
     return i18n.t(kind === "auto" ? "popup.autoEnabledNotice" : kind === "cache" ? "popup.cacheRestoreEnabledNotice" : "popup.quickEnabledNotice");
   }
@@ -135,17 +135,18 @@ export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n
   return {
     appearances: TRANSLATION_APPEARANCES, context, cacheStatus, toggleStatus, appearance, saveAppearance, toggleSite,
     openOptions: () => api.runtime.openOptionsPage(),
-    openLearning: async () => { const response = await sendRuntime({ protocolVersion: READING_PROTOCOL_VERSION, method: READING_METHOD.OPEN_LEARNING_CENTER }); if (!response.ok) throw new Error(i18n.t("popup.learningOpenFailed")); },
+    openLearning: async () => { const response = await sendRuntime({ protocolVersion: READING_PROTOCOL_VERSION, method: READING_METHOD.OPEN_LEARNING_CENTER }); if (!response.ok) throw uiError(i18n.t("popup.learningOpenFailed")); },
     prepareTranslation: async (taskId: string) => { const site = await getActiveSite(); await ensureInjected(site.tab.id); return { site, run: () => api.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.TRANSLATE_PAGE, taskId }) as Promise<RuntimeResponse> }; },
     cancel: (tabId: number, taskId: string) => api.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.CANCEL_TASK, taskId }),
     taskStatus: (tabId: number, taskId: string) => api.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.TASK_STATUS, taskId }) as Promise<{ task?: TaskStatus }>,
     action: (type: string) => sendContent(type),
-    applyPreset: async (preset: string, persist: boolean) => { const site = await getActiveSite(); const before = await context(); const response = await sendRuntime({ type: persist ? BACKGROUND_MESSAGES.SITE_PRESET_SAVE : BACKGROUND_MESSAGES.TEMP_PRESET_SET, pageUrl: site.tab.url, preset }); if (!response.ok) throw new Error(response.error || i18n.t("popup.modeSwitchFailed")); return { before, context: response.context as EffectiveContext }; }
+    applyPreset: async (preset: string, persist: boolean) => { const site = await getActiveSite(); const before = await context(); const response = await sendRuntime({ type: persist ? BACKGROUND_MESSAGES.SITE_PRESET_SAVE : BACKGROUND_MESSAGES.TEMP_PRESET_SET, pageUrl: site.tab.url, preset }); if (!response.ok) throw uiError(i18n.t("popup.modeSwitchFailed")); return { before, context: response.context as EffectiveContext }; }
   };
 }
 
 export type PopupClient = ReturnType<typeof popupClient>;
 
+function uiError(message: string) { return Object.assign(new Error(message), { uiMessage: message }); }
 function objectRecord(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function appearanceLabel(id: string, i18n: I18n) {
   const key = `appearance.${id}.label`;
