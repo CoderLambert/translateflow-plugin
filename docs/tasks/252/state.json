@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "252",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["251"],
+  "branch": "refactor/252-react-dictionaries",
+  "worktree": ".worktrees/issue-252",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["npm", "run", "test:e2e", "--", "e2e/settings-ia.spec.mjs", "e2e/dictionary-library-v2-product.spec.mjs", "e2e/rich-mdict-product.spec.mjs", "e2e/mdd-resources.spec.mjs", "e2e/selection-rich-lookup-cancel.spec.mjs", "e2e/translateflow.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "以 React typed clients 替换 Glossary/词典 legacy islands，复用现有 controller/worker 安全合同。"
+}

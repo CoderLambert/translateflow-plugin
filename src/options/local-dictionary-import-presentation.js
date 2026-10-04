@@ -165,6 +165,55 @@ export function resolveAssociatedMddFiles(associatedMdd, selectedFiles) {
   return resolved;
 }
 
+export function getLocalPreflightView(result, selectedFiles, installedCandidates) {
+  const status = result.compatibility.status;
+  const rows = [
+    { label: "检查结果", value: STATUS_LABELS[status] || STATUS_LABELS.invalid },
+    { label: "识别类型", value: familyLabel(result.identity.family) },
+    { label: "安装方式", value: ROUTE_LABELS[result.route.importer] || ROUTE_LABELS.none },
+    ...(result.identity.displayTitle ? [{ label: "词典名称", value: result.identity.displayTitle }] : []),
+    ...(Number.isSafeInteger(result.estimates.entryCount) ? [{ label: "词条数量", value: result.estimates.entryCount.toLocaleString() }] : []),
+    { label: "所选文件", value: `${selectedFiles.length} 个 · ${formatBytes(result.estimates.sourceBytes)}` },
+    { label: "本机占用估算", value: `${formatBytes(result.estimates.sourceBytes)} 文件数据；建立索引后可能增加` },
+    { label: "来源与信任", value: "用户选择的本机文件 · 来源与再分发权未经 TranslateFlow 验证" }
+  ];
+  const files = selectedFiles.map((file) => safeFileLabel(file.name));
+  if (files.length) rows.push({ label: "文件清单", value: files.join("、") });
+  const capabilities = result.compatibility.capabilitiesPresent || [];
+  if (capabilities.length) rows.push({ label: "识别格式", value: capabilities.map((item) => CAPABILITY_LABELS[item] || "其他词典功能").join("、") });
+  const encodings = capabilities.filter((item) => /\.encoding\./u.test(item)).map((item) => CAPABILITY_LABELS[item] || "其它编码");
+  if (encodings.length) rows.push({ label: "文本编码", value: encodings.join("、") });
+  if (result.resources.associatedMdd.length) {
+    rows.push({ label: "将关联的 MDD", value: result.resources.associatedMdd.map((item) => `${item.fileName}（${Number(item.entryCount || 0).toLocaleString()} 项）`).join("、") });
+  }
+  if (result.resources.missingCompanionHints.length) rows.push({ label: "缺少文件", value: result.resources.missingCompanionHints.join("、") });
+  if (result.resources.unassociatedFiles.length) rows.push({ label: "未能关联", value: result.resources.unassociatedFiles.join("、") });
+  if (isTflexOverInstallLimit(selectedFiles)) rows.push({ label: "文件大小限制", value: "TFLex 安装单个文件最多 64 MiB，文件组总计最多 128 MiB。" });
+  const reasons = [
+    ...(result.compatibility.reasons || []).map((item) => ({ ...item, warning: false })),
+    ...(result.compatibility.warnings || []).map((item) => ({ ...item, warning: true }))
+  ];
+  for (const item of reasons) rows.push({ label: item.warning ? "提示" : "原因", value: describeReason(item) });
+  const unsupported = (result.compatibility.unsupportedCapabilities || []).map((id) => CAPABILITY_LABELS[id] || "其他尚未支持的词典功能");
+  if (unsupported.length) rows.push({ label: "未支持功能", value: unsupported.join("、") });
+
+  const needsSemantic = result.identity.family === "stardict" ||
+    (result.identity.family.startsWith("mdict") && (result.compatibility.warnings || []).some((item) => item.code === "mdx.structured_semantics_not_confirmed"));
+  const semanticText = result.identity.family === "stardict"
+    ? "我确认这是英文词头 → 简体中文纯文本释义。StarDict 格式本身不说明语言方向。"
+    : "我确认纯文本记录表示英文词头 → 简体中文释义；将作为结构化词典导入。未勾选时 MDX 保持为富文本词典。";
+  const needsLimitations = status === "partial" && result.route.importer !== "none";
+  const limitationsText = result.identity.family === "tflex"
+    ? "我知道安装前会重新完整校验所有文件与词条。"
+    : "我已阅读上述兼容说明，仍按显示的安装方式继续。";
+  const duplicate = findDuplicateCandidate(result, installedCandidates, selectedFiles);
+  const sameTflexId = duplicate && result.identity.family === "tflex" && duplicate.packId && duplicate.packId === tflexPackId(result);
+  const duplicateText = sameTflexId
+    ? `确认更新已安装的同一 TFLex 包“${safeFileLabel(duplicate.name)}”？${describeDuplicateSources(duplicate, selectedFiles)} 更新前会完整校验所有文件；校验或保存失败时，当前已安装版本与查询会保持可用。文件声明身份尚未验证。`
+    : duplicate ? `可能与已安装的“${safeFileLabel(duplicate.name)}”重复（依据名称/文件声明提示，文件身份未验证）。${describeDuplicateSources(duplicate, selectedFiles)} 如仍要安装，请明确选择作为另一份独立词典保留；不会覆盖已安装词典。` : "";
+  return { rows, needsSemantic, semanticText, needsLimitations, limitationsText, duplicate, duplicateText };
+}
+
 export function renderLocalPreflight({ result, selectedFiles, installedCandidates, summary, semanticLabel, semanticCheck, semanticText, limitationsLabel, limitationsCheck, limitationsText, duplicateLabel, duplicateCheck, duplicateText, updateImportEnabled }) {
     summary.replaceChildren();
     const status = result.compatibility.status;

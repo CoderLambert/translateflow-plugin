@@ -114,8 +114,8 @@ translateflow-plugin/
 │   ├── options/
 │   │   ├── main.tsx / App.tsx
 │   │   ├── client.ts / useOptions.ts
-│   │   ├── legacy-islands.ts
-│   │   └── glossary / dictionary compatibility controllers
+│   │   ├── GlossarySection.tsx / glossary-client.ts
+│   │   └── DictionarySection.tsx / typed dictionary clients / existing import controllers
 │   ├── popup/
 │   │   └── main.tsx / App.tsx / client.ts / usePopup.ts
 │   │

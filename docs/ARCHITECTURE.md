@@ -47,12 +47,15 @@ Content document; the page never puts a record/token in the web URL. See
 [Learning center v1](LEARNING_CENTER_V1.md) for navigation, consent, invalidation
 and chunked download boundaries.
 
-Options Glossary and dictionary-library UI remain legacy compatibility islands
-for #252. Their inert HTML template contains only those two islands. React creates
-one stable container for each and `src/options/legacy-islands.ts` is the sole
-lifecycle owner for the existing controllers/workers. React does not render or
-duplicate dictionary lists, imports, downloads, preferences, OPFS or sanitizer
-logic.
+Options now owns Glossary and the complete dictionary-library control tree in
+React. `src/options/glossary-client.ts`, `dictionary-client.ts` and
+`local-dictionary-client.ts` are typed page clients: they preserve the existing
+versioned glossary stores, runtime messages and import controllers instead of
+creating a second parser, network, OPFS, quarantine, sanitizer or cancellation
+state machine. Initial effects read current state only. File pickers, optional
+origin permission prompts and install/update commits start from trusted user
+actions; effect cleanup invalidates stale reads and disposes controller/Worker
+owners under StrictMode.
 
 ## Configuration
 
@@ -239,7 +242,9 @@ normalize + resolveEffectiveGlossary(pageUrl)
 - 站点术语只在匹配 Origin 时参与解析；
 - 同 effective key 的站点术语覆盖全局术语；
 - 设置页只操作 versioned normalized store；
-- glossary UI 位于 `src/options/glossary-ui.js`，Provider/cache/content 不依赖 Options DOM。
+- glossary UI 位于 `src/options/GlossarySection.tsx`，通过
+  `src/options/glossary-client.ts` 操作同一 versioned store；
+  Provider/cache/content 不依赖 Options DOM。
 
 
 ## Preset resolution boundary
@@ -277,10 +282,12 @@ Extension-owned controls share the sage/beige design system and Shadow DOM found
 
 Chrome Commands are routed through Background and reuse existing Content messages. First-use invocation uses `activeTab` + `scripting`; it does not add a broad required Host Permission.
 
-Popup and the common Settings shell use React while preserving their existing
-message, storage, task/cancel, Effective Config and permission-union contracts.
-Permission requests occur only in trusted click/submit chains. Glossary and
-dictionary Settings remain controller-owned compatibility islands until #252.
+Popup and the complete Settings control tree use React while preserving their
+existing message, storage, task/cancel, Effective Config and permission-union
+contracts. Permission requests, file selection and dictionary installation occur
+only in trusted user-action chains. Options Workers and Background remain
+React-free; React clients coordinate the existing dictionary controllers and
+render only text/validated metadata, never untrusted dictionary HTML.
 Automatic cache restore is an explicit per-site mode: cache hits restore from
 IndexedDB and cache misses do not fall through to Provider translation.
 
