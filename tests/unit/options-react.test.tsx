@@ -9,7 +9,7 @@ import { UiLocaleSection } from "../../src/options/UiLocaleSection";
 import { LocaleProvider } from "../../src/options/LocaleContext";
 import { useLocale } from "../../src/options/useLocale";
 import { createI18n } from "../../src/i18n/index.js";
-import type { OptionsConfig } from "../../src/options/client";
+import { optionsClient, type OptionsConfig } from "../../src/options/client";
 import type { GlossaryClient, GlossaryRow } from "../../src/options/glossary-client";
 
 const config: OptionsConfig = { provider: "deepseek", apiKey: "", model: "deepseek-flash", prompt: "Translate", targetLanguage: "Chinese", appearance: "standard", cacheMaxMB: 200, openAICompatible: { baseUrl: "", apiKey: "", model: "", streaming: false }, youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", selectionExplanationDepth: "auto" };
@@ -45,6 +45,21 @@ test("UI locale StrictMode deduplicates its initial read and writes only after i
   expect(get).toHaveBeenCalledTimes(1); expect(set).not.toHaveBeenCalled();
   await userEvent.selectOptions(select, "zh_CN");
   await waitFor(() => expect(set).toHaveBeenCalledWith({ uiLocale: "zh_CN" }));
+});
+
+test("Options provider test maps raw provider errors to a catalog message", async () => {
+  const api = {
+    i18n: { getUILanguage: () => "zh-CN" },
+    runtime: {
+      getManifest: () => ({ version: "0.8.0" }),
+      sendMessage: vi.fn(async () => ({ ok: false, error: "SECRET_PROVIDER_RAW" }))
+    },
+    storage: { local: { get: vi.fn(async () => ({})), set: vi.fn(async () => {}) } },
+    permissions: { request: vi.fn(async () => true), remove: vi.fn(async () => true) }
+  } as unknown as typeof chrome;
+  const client = optionsClient(api, zh);
+  await expect(client.testProvider()).rejects.toMatchObject({ message: "API 测试失败。" });
+  await expect(client.testProvider()).rejects.not.toMatchObject({ message: "SECRET_PROVIDER_RAW" });
 });
 
 test("Glossary React controls cover save, scope, case, enable, edit and delete", async () => {
