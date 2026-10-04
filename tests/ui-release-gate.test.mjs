@@ -3,8 +3,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const popupHtml = await readFile(new URL("../popup.html", import.meta.url), "utf8");
+const popupApp = await readFile(new URL("../src/popup/App.tsx", import.meta.url), "utf8");
 const popupCss = await readFile(new URL("../popup.css", import.meta.url), "utf8");
 const optionsHtml = await readFile(new URL("../options.html", import.meta.url), "utf8");
+const optionsApp = await readFile(new URL("../src/options/App.tsx", import.meta.url), "utf8");
+const optionsSites = await readFile(new URL("../src/options/SiteSections.tsx", import.meta.url), "utf8");
 const optionsCss = await readFile(new URL("../options.css", import.meta.url), "utf8");
 const contentTokens = await readFile(new URL("../src/content/ui/tokens.js", import.meta.url), "utf8");
 const quickStyles = await readFile(new URL("../src/content/ui/quick-control-styles.js", import.meta.url), "utf8");
@@ -23,17 +26,19 @@ test("Popup advertises a stable intrinsic width and keeps advanced controls coll
   assert.match(popupCss, /min-width:\s*360px/);
   assert.doesNotMatch(popupCss, /max-width:\s*100vw/);
   assert.match(popupCss, /overflow-x:\s*hidden/);
-  assert.equal((popupHtml.match(/<details class="secondary-card tf-accordion">/g) || []).length, 2);
-  assert.doesNotMatch(popupHtml, /<details[^>]*\sopen[\s>]/);
-  assert.equal((popupHtml.match(/tf-button--primary/g) || []).length, 1);
+  assert.equal((popupApp.match(/<details className="secondary-card tf-accordion">/g) || []).length, 2);
+  assert.doesNotMatch(popupApp, /<details[^>]*\sopen[\s>]/);
+  assert.equal((popupApp.match(/tf-button--primary/g) || []).length, 1);
 });
 
 test("Settings keeps bounded desktop content and responsive mobile behavior", () => {
   assert.match(optionsCss, /grid-template-columns:\s*240px minmax\(0, 900px\)/);
   assert.match(optionsCss, /max-width:\s*900px/);
   assert.match(optionsCss, /@media \(max-width:\s*760px\)/);
-  assert.match(optionsHtml, /aria-current="page"/);
-  assert.match(optionsHtml, /id="cacheRestoreSitesList"/);
+  assert.match(optionsApp, /aria-current=/);
+  assert.match(optionsSites, /id="cacheRestoreSitesList"/);
+  assert.match(popupHtml, /id="root"/);
+  assert.match(optionsHtml, /id="root"/);
 });
 
 test("migrated UI surfaces do not restore the legacy saturated blue accent", () => {
