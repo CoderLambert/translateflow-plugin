@@ -93,6 +93,7 @@
         updateOverlays();
         projectionUnsubscribe = app.modules.textProjection.start(() => {
           if (!activeRange || !card) return;
+          projectionUnsubscribe?.(); projectionUnsubscribe = null;
           clearOverlays(); card.dataset.state = "not-loaded"; setStatus(state, messages["not-loaded"], "warning");
           if (automaticRetries >= C.READING_LIMITS.scanRetryCount || mutationTimer) return;
           mutationTimer = setTimeout(() => { mutationTimer = 0; automaticRetries++; void locate(); }, C.READING_LIMITS.mutationDebounceMs);
