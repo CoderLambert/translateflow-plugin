@@ -2,7 +2,7 @@
 
 日期：2026-10-02
 
-> 状态：设计方案。实际 Oxford10 元数据与当前源码已做只读检查；浏览器导入、展示、交互、性能及安全验收全部为 `NOT_RUN`。本次不实施代码，待额度重置后再开始。
+> 状态：设计方案。实际 Oxford10 元数据与当前源码已做只读检查；浏览器导入、展示、交互、性能及安全验收全部为 `NOT_RUN`。本次不实施代码；实施或恢复暂停任务须另行明确授权。
 
 > 公开范围：仅包含结构元数据、词条标识、摘要和开源源码链接；不提供词典下载地址、原始 HTML、释义、例句或媒体内容。
 
@@ -13,7 +13,7 @@
 
 建议保留现有 OPFS 原文件存储、分块索引、按需解压和安全 AST 渲染链，围绕这份 Oxford10 补齐资源包关联、原布局和有限交互。拟采用成熟 CSS 解析依赖及扩展自有的 Oxford10 行为适配器；整套 reader 替换、WASM 迁移和通用词典脚本运行时均不进入本轮方案。
 
-**交付目标**是让用户手中的完整 Oxford10 在浏览器中呈现原词条布局、字体、图片、发音与已确认交互，并以欧路中的实际表现为参照。欧路应用外壳和任意 MDX 的通用脚本兼容不属于该目标。当前仅完成只读研究，实施须等额度重置后再开始。
+**交付目标**是让用户手中的完整 Oxford10 在浏览器中呈现原词条布局、字体、图片、发音与已确认交互，并以欧路中的实际表现为参照。欧路应用外壳和任意 MDX 的通用脚本兼容不属于该目标。当前仅完成只读研究，实施须另行明确授权后再开始。
 
 ### 本次包的静态证据
 
@@ -111,7 +111,7 @@ GoldenDict-ng 为 GPL，Readest fork 为 AGPL。当前 TranslateFlow 未发现 L
 
 用 css-tree 替换手写正则解析，逐节点验证允许的选择器、属性和值，覆盖实包需要的 :checked 兄弟选择器、伪元素、媒体规则和字体声明。所有 url() 交给同一资源解析器，拒绝外部 import。无法解析的 Raw 节点或不安全规则局部丢弃并报告，避免一个注释导致整份 CSS 消失。保持隔离范围，不放宽扩展 CSP。
 
-css-tree 的接入须同时兼容当前默认安装包与 opt-in WXT：Content 仍是 classic script，不得直接加入 ESM/npm import 或假定 WXT 已切为默认。优先把 CSS 解析与安全转换放入现有后台资源处理边界，以固定版本、可审核的本地打包资源交付，前台只接收验证后的样式结果。实现须给出默认构建和 WXT 的精确资源闭包、许可声明及包体积变化；若需新增一条运行时依赖例外，只审核该固定依赖，不全局关闭源码检查或放宽 allowlist。
+css-tree 的接入以当前默认 WXT 构建为准（main `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9`，#284/#296）：`dist/extension` 与 `.output/chrome-mv3` 是同一引擎的不同输出入口，不是 legacy/WXT 两套生产实现。Content 源码经模块图编译，浏览器运行产物仍为单一 ISOLATED classic/IIFE；不引入运行时 ESM、动态 import 或 React 假设。CSS 解析与安全转换仍放在现有后台资源处理边界，以固定版本、可审核的构建期本地依赖交付，前台只接收验证后的样式结果。实现须审计对应执行上下文的精确依赖闭包、许可声明及包体积；若需固定依赖例外，只审核该依赖，不全局关闭源码检查或扩大 raw asset allowlist。生产 Content 接入详见第5A.7节。
 
 ### 固定行为适配器接管有限交互
 
@@ -152,9 +152,9 @@ entry:// 转同词典查询，sound:// 转有用户手势的本地音频动作�
 
 **真实入口增量复核（2026-10-03，源码固定于 `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24` / [#287](https://github.com/CoderLambert/translateflow-plugin/pull/287)）：** 既有学习中心产品用例通过普通扩展 TAB 打开 `popup.html`，Selection 步骤使用 `harness.inject`；它们的保存、历史和恢复证据仍有效，但不能外推为真实工具栏 Popup 身份或新网页默认启动已通过。#287 新增真实 POPUP context 消息用例和不注入脚本的新网页 Selection 用例；前者仍以消息触发打开，不替代用户点击真实工具栏内可见按钮的验收。该提交只是本次静态复核基线，不保证用户正在运行它，也不保证届时 main 未变化。最终使用实际候选构建，记录 commit、产物摘要及浏览器版本。
 
-同一扩展 ID 升级须单独确认权限与注册迁移：该源码把 HTTP/HTTPS 从 optional 改为 required，并删除旧动态站点注册；`expectedRegistrationsAfterInstalledUpdate()` 仍返回保留注册并更新资源列表，存在静态合同不一致，未在本次运行或复现。新警告权限可能使旧安装等待用户重新同意，这是 [Chrome 更新权限规则](https://developer.chrome.com/docs/extensions/develop/concepts/permission-warnings#update_permissions) 和 [#287 审核](https://github.com/CoderLambert/translateflow-plugin/pull/287#discussion_r4175033580) 指出的待验风险，不是已确认的用户事故。验收须覆盖旧动态注册迁移后的正确状态、浏览器同意/拒绝/撤回站点权限及恢复；unpacked reload 不能替代权限升级确认。Oxford 不据此认可或新增全站权限，不放宽 CSP，不绕过浏览器授权；若外部权限/升级合同未满足，准确标记受影响入口未就绪，保留其余既有证据。
+同一扩展 ID 的权限与注册迁移仍须区分证据范围。#287 时的升级 helper 合同不一致已由 #296 修正：当前 [`expectedRegistrationsAfterInstalledUpdate()`](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/e2e/support/upgrade-expectations.mjs) 在真实 update 事件后要求清理旧动态注册，与 [`auto-sites.js`](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/src/background/auto-sites.js) 和 Manifest 静态编译产物一致，不能继续把旧不一致写作当前缺陷。[任务250的既有记录](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/docs/tasks/250/review.md) 绑定候选 `20122c85e9a21ebdcd9ca475c66d3ca2eb037e76`，同 ID 的旧包替换 → 管理页 Reload → 浏览器重启为 2/2 PASS；[测试源码](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/e2e/wxt-upgrade.spec.mjs) 明确断言新旧 `manifest.version` 相同，并观察 Reload 产生真实 `onInstalled` update。此证据只覆盖同版本替换、注册清理与持久化连续性，不是版本号升级，也不证明浏览器权限 UI 的重新同意、拒绝、撤回及恢复已验收。上述权限路径和 Oxford 实包升级仍须单独验证；unpacked reload 不能替代权限升级确认。Oxford 不据此认可或新增全站权限，不放宽 CSP，不绕过浏览器授权；未验证项保持 NOT_RUN，保留其余既有证据。
 
-依据：[真实入口与既有产品用例](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/learning-center.spec.mjs)、[新网页 Selection](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/selection-auto-sites.spec.mjs)、[升级预期](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/support/upgrade-expectations.mjs)、[注册迁移](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/src/background/auto-sites.js)。本次仅修正方案；新增与原有 Oxford 浏览器项均为 `NOT_RUN`。
+依据：[真实入口与既有产品用例](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/learning-center.spec.mjs)、[新网页 Selection](https://github.com/CoderLambert/translateflow-plugin/blob/c250ce91aff7eb84d1ad8acbe1d4155ad244dc24/e2e/selection-auto-sites.spec.mjs)；升级现状以本节 #296 固定源码与证据为准。本次仅修正方案；新增与原有 Oxford 浏览器项均为 `NOT_RUN`。
 
 `selection/controller.js` 的 `translateSnapshot(snapshot, {forceTranslation})` 先调用 `SELECTION_RESOLVE`。local 命中、no-hit-local、以及 unresolved 且 intent 为 lexical 时，调用 `loadRichDictionaryDetails(snapshot,version,expectedPage,isCurrentSelection)`。普通 translation/forceTranslation 分支目前不走此富词典加载。
 
@@ -214,7 +214,7 @@ MDX 总逻辑记录流 344,095,474 字节不是常驻内存。继续保留块校
 1. 根据导入 manifest 的可信 profileVersion 选择扩展打包的固定 adapter；未知包只走通用安全视图，不能让正文中的 class 或 script 声明自己获得执行权限。
 2. 对每个 article 展开 compact marker，有界 token 化。收集 class、id、label-for、radio-name、片段目标以及 link/sound/entry；这一步生成数据，不运行文档脚本，不将原 HTML 直接插入 DOM。
 3. 优先用每个 article 的独立渲染根隔离原 ID/radio group；在同根合并且发生冲突时才统一映射。若采用全新 scope，必须一次生成完整 idMap/nameMap，并同步 HTML id、label-for、radio-name、片段目标、CSS ID selector/相关属性选择器、SVG 本地 href/xlink:href 与 url(#ref)、aria-labelledby/aria-describedby 等所有允许的 ID 引用；存在无法安全重写的引用则明确拒绝该结构并诊断，不能盲改 ID 后保留失效引用。保留真实布局所需的有限标签/属性，增加静态 SVG 白名单；SVG 禁 script、foreignObject、事件和外部引用。
-4. content 只做有界 HTML 安全 AST 与 idMap/nameMap，收集 stylesheet 引用；通过下述固定消息入口交后台资源处理边界（或其已有 worker）解析 CSS AST。css-tree 作为构建期审查并打包的本地依赖放在后台/worker，不在 content 闭包中执行 ESM/npm import，default/WXT 两套构建都须包含该入口。css-tree 只负责语法；自有策略决定允许的 selector/property/value/at-rule。支持本包实际用到的后代/兄弟/:checked/伪元素以及必要字体规则，拒绝危险部分并返回 diagnostics，不因一段注释将整份 CSS 清空。
+4. content 只做有界 HTML 安全 AST 与 idMap/nameMap，收集 stylesheet 引用；通过下述固定消息入口交后台资源处理边界（或其已有 worker）解析 CSS AST。css-tree 作为构建期审查并打包的本地依赖放在后台/worker，不进入 Content 闭包；两个 WXT 输出入口须包含同一经审计的新增处理入口，浏览器不运行外部模块或词典脚本。css-tree 只负责语法；自有策略决定允许的 selector/property/value/at-rule。支持本包实际用到的后代/兄弟/:checked/伪元素以及必要字体规则，拒绝危险部分并返回 diagnostics，不因一段注释将整份 CSS 清空。
 5. CSS URL 依赖统一进入 resourceRefs；@font-face 中字体引用也一样。styles 与 AST 使用同一 scope/idMap。CSS 不是独立地套一个前缀就算完成，必须保持 radio/label/:checked + sibling 的结构关系。@import 本轮默认禁止；若实包有必需导入，应另以同包、深度/去重/字节预算显式处理，不能网络回退。
 6. 输出安全 AST、sanitized styles、资源引用、action 引用、anchor 及 radio group 索引，交 viewer 二次验证后以 createElement/createTextNode 重建。
 
@@ -348,7 +348,9 @@ T1冻结转换器时，保留实际packId/MDX packVersion来源，并明确它�
 
 依据：[后台MDX版本](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/background/packs/rich-mdict-lookup-controller.js#L59-L70)、[session守卫](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/rich-details.js#L130-L132)、[原查询去重](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/controller.js#L337-L341)、[有界Reading投影](https://github.com/CoderLambert/translateflow-plugin/blob/19edb5426381b4cfa9e0cec354541170abb2114d/src/content/selection/result-model.js#L225-L234)。
 
-**共享启动接入补充（main `33ab3ea2a38ce591b622ba06739344858d7da403` / #290）：** 后续若Oxford修改selection/controller、record或source接口，须沿[既有生成入口](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/scripts/reading-record-entry.mjs)和[classic projection生成/一致性检查](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/scripts/reading-content-classic.mjs)同步`reading-source.js`/`reading-record.js`，保留[rich-details先于reading-record的加载顺序](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/shared/constants.js#L62-L64)，不手改生成文件、不另加运行时ESM；此为未来实施检查，未执行生成或测试，Oxford浏览器验收仍全部NOT_RUN。
+**共享启动与生产接入（2026-10-04 增量复核，main `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9` / #296）：** 生产链已改为 authored owners → [`src/entries/content.js`](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/src/entries/content.js) → [`entrypoints/content.ts`](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/entrypoints/content.ts) → `content-scripts/content.js/.css`。唯一源码图按依赖顺序直接引入 source-snapshot、Reading owners、selection/controller 等源码，保留同一 global registry 及 rich-details 先于 record/controller 的顺序；[`CONTENT_SCRIPT_FILES`/`CONTENT_STYLE_FILES`](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/src/shared/constants.js) 现在只描述安装产物，Manifest 静态注入、Popup/Commands 恢复共用这些路径。后续 Oxford 修改源码 owner 或新增依赖时维护并审计这张图，不重建另一条注入链、不手改编译输出。
+
+`reading-source.js`/`reading-record.js` 已不在生产源码图或安装列表中；[`reading-content-classic.mjs`](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/scripts/reading-content-classic.mjs) 与 [Node 精确一致性检查](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/tests/reading-content-classic.test.mjs) 仍保留。未来若改动这些 projection 的源码输入，继续通过既有生成器同步并检查，不能手改生成文件，也不能把它们重新当成生产入口。[raw asset map](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/scripts/wxt-assets.mjs) 已移除 ISOLATED Content，只保留 MAIN/Worker 的精确源码闭包及单独审计的 locale/词典资源；不恢复 raw Content bridge。Reading 的 onDisplay、有界摘要、MDX packVersion 与组合 packageVersion 边界不变。本次仅更新设计文字，未执行生成、构建或测试，Oxford 浏览器验收仍全部 NOT_RUN。
 
 #### CSS 固定处理消息（拟新增）
 
@@ -377,7 +379,7 @@ type CompileStylesResultV1 = {
 
 #### 样式依赖落到浏览器的最后一步
 
-后台不能把原始 url(fonts/...) 原样返回后直接插入页面。CSS生成器把每个资源URL输出为明确的替换槽，assetSlots记录生成文本中的有界区间和resourceId；原始URL不得混入普通文本片段。content先用受控资源通道获取必需字体/背景资源，验证后生成自身可用的Blob URL，再按已验证的槽位组装样式；不可用资源对应规则不激活并显示缺失诊断。所有槽位需有序、不重叠、位于对应CSS输出边界内且资源身份一致，不能用不受控正则替换任意CSS。只有完成本地URL绑定的样式才可挂入词条根，不将未解析路径交给浏览器自动请求。样式生命周期持有依赖引用，关闭或换包后释放。是否允许Blob字体/图像、默认包与WXT的实际CSP兼容必须以真实安装产物验证，不能靠开发页成功替代。
+后台不能把原始 url(fonts/...) 原样返回后直接插入页面。CSS生成器把每个资源URL输出为明确的替换槽，assetSlots记录生成文本中的有界区间和resourceId；原始URL不得混入普通文本片段。content先用受控资源通道获取必需字体/背景资源，验证后生成自身可用的Blob URL，再按已验证的槽位组装样式；不可用资源对应规则不激活并显示缺失诊断。所有槽位需有序、不重叠、位于对应CSS输出边界内且资源身份一致，不能用不受控正则替换任意CSS。只有完成本地URL绑定的样式才可挂入词条根，不将未解析路径交给浏览器自动请求。样式生命周期持有依赖引用，关闭或换包后释放。是否允许Blob字体/图像及当前WXT安装包的实际CSP兼容必须以同一候选的真实安装产物验证，不能靠开发页成功替代。
 
 #### 已有索引的兼容迁移
 
@@ -414,7 +416,7 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 
 ## 6 实施顺序与停止条件
 
-实施先验证真实词条的布局和交互，然后验证完整包导入与生命周期。小样只用于尽早证明渲染路线，不能替代用户这份约 1.533 GB 的完整词典验收。以下均为额度重置后的计划，尚未执行。
+实施先验证真实词条的布局和交互，然后验证完整包导入与生命周期。小样只用于尽早证明渲染路线，不能替代用户这份约 1.533 GB 的完整词典验收。以下均为待明确授权的计划，尚未执行。
 
 | 阶段 | 最小交付 | 通过后再继续的条件 |
 | --- | --- | --- |
@@ -433,6 +435,10 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 建议将 4 GB 明确定义为全部源文件合计不超过 4,000,000,000 字节，统一界面、worker、后台提交和恢复校验。保留单块、单资源、解压比和驻留索引保护；源文件小于4GB不保证累计decoded也小于4GB。配额失败、取消和重启后的暂存清理复用现有生命周期，实际OPFS复制取消另行验证。
 
 8aceb7c 的 parser 边界配对与预检诊断修复保持独立。该分支已推送并通过独立审查，但尚无 PR，也未合入 main；不能写成本方案已落地，或把容量和渲染升级塞进该修复。[独立提交](https://github.com/CoderLambert/translateflow-plugin/commit/8aceb7cda907eeecd1ebc756c46682342d046182)
+
+**与现有离线词典任务对齐（main `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9` / #297）：** [`offline-dictionary` 合同](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/docs/tasks/offline-dictionary/task.md) 已覆盖 OD-1 原始/旧式规范化 first/last 成对边界复现与最小修复、OD-2 一个目标英汉包的完整读取/独立对照及至少60个固定查询、OD-3 同包浏览器验收；[状态](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/docs/tasks/offline-dictionary/state.json) 仍为 `paused`，`candidateHead`/`mergeHead` 为空。这只是任务定义合入，不是 parser 已修复或目标词典已通过。旧 `8aceb7c` 仅作为可复用的独立修复参考，恢复前先按现合同与最新 main 核对，不自动复活旧分支或另建并行 parser/验收任务。
+
+本方案继续是 Oxford10 完整六文件、原布局、有限交互、长记录和容量验收的唯一设计。若 offline-dictionary 的目标最终选为同一 Oxford10，复用同一输入身份、实现与证据，交叉引用 T1–T6 及第7节额外门槛，不复制另一套 Oxford 方案；若选择其它词典，其结果不能替代 Oxford 验收。OD-1 当前明确不顺带改变 StripKey 默认值或接受拼写变体；本方案的 `Stripkey` 兼容、索引迁移及容量/渲染扩展仍需独立明确范围与复现，不能借 OD-1 自动扩项。本次不改变该任务状态、目标选择或执行授权。
 
 ## 7 实包验收矩阵
 
@@ -519,6 +525,8 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 
 当前MDict/MDD/取消专项Actions仍为`workflow_dispatch`手动备用，显式构建并消费`dist/extension`，其当前生产引擎已是WXT。历史legacy、WXT与当前构建的通过记录分别绑定原commit、产物及用例；默认切换不提供Oxford10六文件包的通过证据，全部Oxford浏览器验收仍NOT_RUN。构建target=chrome102不等于最低浏览器实测。
 
+**#296 证据范围（2026-10-04 只读复核）：** [任务250验收记录](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/docs/tasks/250/acceptance.json) 与[主Agent自查](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/docs/tasks/250/review.md) 绑定候选 `20122c85e9a21ebdcd9ca475c66d3ca2eb037e76`，记录 `validate`、显式 WXT 构建、smoke 与33项定向 Content Chromium 用例 PASS；同版本、同ID Reload/重启的2项范围见第5A.2节。这些是既有执行记录，本次没有重跑，也不能重绑定为 Oxford 通过。冻结前全量 E2E 曾因外部 ECDICT 下载超时失败，该 FAIL 保留，不因定向 Content 验收通过而改写为 PASS。Oxford 完整实包的导入、展示、交互、性能、安全及权限升级验收仍为 NOT_RUN。
+
 **执行与证据来源（2026-10-03 增量复核，main `d5246cae6469e4a876fc122b229a2e0ddf115709`，#280本地流程及#283取消强制模型审核）：** 仓库执行流程以 [docs/tasks/LOCAL_WORKFLOW.md](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/LOCAL_WORKFLOW.md) 为准；进入经明确授权的实施阶段后，任务合同、状态和验收使用本地任务文件；验收后由主Agent对照准确候选和实际diff自查，不自动启动第二轮模型审核，自查不称独立审核，Issue仅保留历史引用，不作为日常执行状态来源。11个Actions均为手动备用，没有自动运行不代表验收失败或通过；未运行的必需检查仍记NOT RUN，失败记FAIL，实际分支保护要求远端检查而尚未满足时仍为BLOCKED，不得绕过。
 
 验收与主Agent自查记录须绑定准确candidateHead；实际外部必需审查、分支保护和人工验收仍保留。真实安装包及构建记录、浏览器产物来源和第7节逐项实包证据仍须保留。本地gate通过不替代Oxford10整包、交互、性能、安全与人工验收。local-task产物fingerprint与E2E的treeSha256串行化不同，分别保留来源与版本，不要求两个摘要直接相等或互相替代。本次仅更新方案，不创建Oxford本地任务或启动实施，全部Oxford浏览器验收继续NOT_RUN；私有词典和原始证据保持本地，公开只留脱敏摘要，隐私、CSP、权限与产品门槛不变。参见[当前贡献流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/CONTRIBUTING.md)、[本地gate实现](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/scripts/local-task.mjs)。
@@ -536,11 +544,11 @@ Stripkey属性修正会改变部分词典的规范化语义，不能用新查询
 - T1 + T2 → T3 与 T5，和对应 Issue #271、#273 的依赖一致。T3 的源码阅读或样式样本分析可以提前进行，但消费共同 EntryBundle/预算合同的实现不得越过 T2。
 - T3 → T4；T2 + T3 + T4 先完成 arch 纵向切片，T5 完整包验证后，T4 交互也必须在完整包下复验。
 - T2 + T3 + T4 + T5 → T6。
-- 现有独立 parser 修复 `8aceb7c` 单独审查和合入；本方案基于更新后的 main 开发，不把范围混在同一修复中。
+- parser 边界修复先与第6节所引 `offline-dictionary` 的 OD-1 合同对齐；旧 `8aceb7c` 仅按当前 main 和实际 diff 决定可复用部分，不重复实施或自动合入旧分支。Oxford 容量、Stripkey 与渲染范围仍分开；没有明确授权不恢复任务。
 
 ## 9 明确不做的范围
 
-- 不在额度重置前实现代码。
+- 未获明确实施授权不实现代码或恢复暂停任务；额度重置和文档合入不等于授权。
 - 不替换整套MDX reader，不做Qt/WASM移植，不新增通用词典编译平台。
 - 不执行导入JavaScript，不开发任意脚本双模式，不放宽CSP或扩展权限。
 - 不复制欧路应用外壳，不承诺任意MDX/任意脚本兼容。
