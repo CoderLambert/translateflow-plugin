@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "253",
-  "status": "working",
+  "status": "paused",
   "owner": "main",
   "dependencies": ["249", "252", "244"],
   "branch": "refactor/253-ui-localization",
@@ -15,5 +15,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/ui-locale.spec.mjs", "e2e/ui-redesign.spec.mjs", "e2e/settings-ia.spec.mjs", "e2e/dark-mode.spec.mjs", "e2e/learning-center.spec.mjs", "e2e/reading-loop-release-a.spec.mjs", "e2e/translateflow.spec.mjs", "e2e/subtitles.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "扩展单一 i18n catalog，并沿现有 surface owner 完成 Popup、Options、Learning Center、Quick Control、Selection 与字幕 UI 文案收口。"
+  "nextAction": "恢复时先将词典 legacy presentation/client/controller 的动态中文状态收口到 catalog，再构建并运行 ui-locale 与任务契约 E2E；当前集成分支已通过 check、i18n/Content locale Node、typecheck 与 Vitest。"
 }
