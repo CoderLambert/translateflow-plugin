@@ -91,6 +91,13 @@ test("rich result renderer sends only bounded payload to sanitizer and preserves
   const fallbackBody = findClass(fallbackContainer, "tf-selection-rich-text");
   assert.equal(textContent(findClass(fallbackBody.shadowRoot, "tf-rich-viewer")), "plain safe result");
   assert.equal(fallbackBody.textContent, "plain safe result");
+
+  const errorContainer = document.createElement("div");
+  renderer.appendRichDictionaryDetails(errorContainer, {
+    errors: [{ title: "Fixture", message: "SECRET_PROVIDER_RAW", code: "RICH_INTERNAL_CODE" }]
+  });
+  assert.match(textContent(errorContainer), /content\.rich\.unavailable/u);
+  assert.doesNotMatch(textContent(errorContainer), /SECRET_PROVIDER_RAW|RICH_INTERNAL_CODE/u);
 });
 
 test("viewer caps AST traversal and uses no network or HTML parser APIs", async () => {
