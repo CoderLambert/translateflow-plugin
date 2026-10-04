@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "task": "242",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["241", "234"],
+  "branch": "feat/242-grounded-assistant",
+  "worktree": ".worktrees/issue-242",
+  "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891",
+  "mergeHead": null,
+  "validationCommands": [["npm","run","validate"],["npm","run","build:extension:wxt"],["npm","run","test:e2e","--","e2e/selection-assistant-stream.spec.mjs"]],
+  "artifactRequired": true,
+  "nextAction": "GROUNDED_TURN_PASS；提交归档、gate 后同步 PR。"
+}

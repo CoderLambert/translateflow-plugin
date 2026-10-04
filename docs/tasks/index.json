@@ -127,12 +127,22 @@
     },
     {
       "task": "241",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "236"
       ],
-      "branch": "feat/241-selection-text-stream",
+      "branch": "main",
       "candidateHead": "303b4d9e2e61509d5e005b1caa6aa2bc867b3f94"
+    },
+    {
+      "task": "242",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "241",
+        "234"
+      ],
+      "branch": "feat/242-grounded-assistant",
+      "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891"
     },
     {
       "task": "245",
