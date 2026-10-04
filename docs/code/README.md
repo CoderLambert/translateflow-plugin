@@ -13,8 +13,8 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单基线：`13041666b253ecf9aa86b3ff5edfa677dde01c05`（#293）。本轮完整说明20个页面再访/摘要/共享响应/归档与classic接线文件，其中16个补齐、4个既有全文复核；其它增量只同步blob和待复核状态，未变正文保留其固定身份。
-- 当前状态：817 个文件全部登记；230 个完整解释、531 个待解释、56 个待复核；局部正文 136 个（待解释中 103、待复核中 33），不计完整覆盖。本轮运行验证 **NOT_RUN**；#240 原候选已有 READING_ABC_PASS，见下方准确证据边界。全仓逐文件导读仍未完成。
+- 当前清单基线：`a4dab127c95f4f1d3b37375fc5a7b1b5241419f9`（#297）。本轮完整说明31个显式AI流/历史后续/合同/测试/243与244证据文件：18份首次全文、4份旧待复核恢复、9份既有全文复核；其它增量只同步blob和待复核状态，未变正文保留其固定身份。
+- 当前状态：842 个文件全部登记；238 个完整解释、529 个待解释、75 个待复核；局部正文 140 个（待解释中 101、待复核中 39），不计完整覆盖。本轮运行验证 **NOT_RUN**；#243/#244 原候选已有 ASSISTANT_UI_PASS / READING_LOOP_ABCD_PASS（组合10/10），见[准确证据与限制](features/assistant-stream.md#evidence)。全仓逐文件导读仍未完成。
 
 
 ## 已交付导航与推荐阅读顺序
@@ -26,12 +26,12 @@
 5. [MDX/MDD导入与安全展示](features/local-dictionary-import.md)及[15个文件详解](modules/dictionary-import-render.md)；继续读[解析→紧凑索引→OPFS→范围查询](features/mdict-storage-internals.md)与[35个内部文件说明](modules/mdict-storage-internals.md)。
 6. [网页翻译、缓存恢复与重访](features/page-translation.md)及[15个文件详解](modules/page-translation-cache.md)。
 7. [YouTube字幕完整流程](features/youtube-subtitles.md)及[11个文件详解](modules/youtube-subtitles.md)。
-8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个文件详解](modules/providers-and-settings.md)。
+8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个历史文件详解](modules/providers-and-settings.md)；接[显式AI：划词流→完成保存→历史追问/根重生成](features/assistant-stream.md)与[31个当前逐文件/证据说明](modules/assistant-stream.md)。
 9. [授权站点再访→最小摘要分页→页面marker/list→失效清理](features/reading-page-markers.md)及[20个逐文件/证据说明](modules/reading-page-markers.md)；接[返回原文：一次性交接→定位/临时卡→classic投影](features/reading-return-to-page.md)及[20个逐文件说明](modules/reading-return-to-page.md)；先读[Reading真实查询→显式保存→实际学习中心](features/reading-records.md)及[后台/保存详解](modules/reading-records.md)、[16个React/测试/规范文件](modules/learning-center.md)、[#286真实用户验收与八个文件](modules/reading-release-a.md)。
 10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[逐文件详解](modules/build-test-release.md)：含最终 writeBundle、React 独占闭包、平台预算、三页面映射和历史验收辨读。
 11. [本地任务合同→冻结→验收→主Agent自查→同步](features/local-task-acceptance.md)及[逐文件说明](modules/local-task-acceptance.md)。
 12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-13. [覆盖清单](coverage.json)：817个文件的固定blob、状态和正文位置。
+13. [覆盖清单](coverage.json)：842个文件的固定blob、状态和正文位置。
 14. [更新记录](changes.md)：本轮证据与下一步。
 
 当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；实际React学习中心已接上列表/详情/过滤、管理、导出与错误恢复，见[用户操作到源码](features/reading-records.md#learning-center)；#286现已整合无seed真实创建/完整重启、近容量UI导出与原生quota恢复；[149项复用汇总](modules/reading-release-a.md#evidence-chain)不是新全量运行。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
@@ -40,6 +40,12 @@
 
 #240已归档候选 `1bbfdfb` 的validate/WXT/Chromium9/9（6个A、3个B/C）READING_ABC_PASS，#291仅补文档证据；[原候选与后续源码分开](modules/reading-page-markers.md#evidence)。本轮未执行这些命令，不把PASS外推为所有Issue条款、Chrome102/真实撤权/权限迁移/真实Oxford/发布通过。前章[open Shadow历史quote风险](features/reading-return-to-page.md#5-必须保留的隐私警告)及[真实启动证据限制](modules/real-entry.md#limitations)仍保留。
 
+
+## 本轮显式 AI 阅读入口
+
+[两条完整用户链](features/assistant-stream.md)把Content三个根动作、Port、SSE/unary、Stop/retry、completed生成与Reading保存ACK分开；学习中心从真实仓库重读revision/source/turn，派生最多六条历史，root regenerate保留旧分支，再以事务ACK刷新。当前源码没有沿用旧SELECTION_EXPLAIN缓存/结构化prompt，详见[实际HTTP合同](features/assistant-stream.md#provider)。
+
+已知[条件来源路由与Stop提交窗口](features/assistant-stream.md#boundaries)按当前源码保留，未顺手修复、未伪造运行FAIL。243/244的历史PASS不等于这些时序已覆盖；本轮NOT_RUN也不表示此前未验收。#296已把生产Content切成WXT编译的单bundle；authored classic/IIFE仍是源码组织形式，旧raw注入/投影章保留原固定身份并待复核，不能用244旧fingerprint证明新包。其它14份旧完整文件因变动降为待复核，完整覆盖本轮净增8。
 
 ## 建议目录
 
@@ -125,7 +131,7 @@ docs/code/
 
 下列信息来自当前仓库约定与架构文档，作为导读起点；不代表逐文件解读已完成。
 
-- 当前默认安装包 dist/extension 与显式 .output/chrome-mv3 使用同一 WXT 引擎；Content/MAIN/Worker 仍精确 raw bridge，不能假定已变为普通 bundler ESM。
+- 当前默认安装包 dist/extension 与显式 .output/chrome-mv3 使用同一 WXT 引擎；Content由唯一有序source graph编译成ISOLATED bundle，MAIN/Worker保留各自精确资源边界。旧classic源码形式不等于生产仍逐文件raw注入，见[本轮接线](modules/assistant-stream.md#partial-adjacent)。
 - shared保持纯合同/纯函数，background协调消息和持久化，content负责页面/划词/字幕界面；根入口保持薄层。
 - 翻译缓存、独立ReadingRecord库、词典OPFS是不同数据边界。
 - 适合本地词汇检索的选段先查词典，AI详解显式触发；句子/不支持语言及无命中多词短语可走普通翻译。MDX/MDD走范围读取与受控渲染，不执行词典JS。

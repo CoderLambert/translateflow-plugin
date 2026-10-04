@@ -1,5 +1,7 @@
 # 构建、实际产物与测试到安装升级
 
+> 当前基线a4dab127已包含#296 Content WXT编译：唯一src/entries/content.js→entrypoints/content.ts→content-scripts/content.js/.css，authored classic/IIFE不等于生产raw逐文件注入。以下构建正文保留旧固定身份，发生变化的文件在coverage待复核；[本轮仅解释AI接线](../modules/assistant-stream.md#partial-adjacent)，不重验新包或将244旧fingerprint套给新产物。
+
 > 当前 main `13041666b253ecf9aa86b3ff5edfa677dde01c05` 的[record entry/drift test](../modules/reading-page-markers.md#classic-current)已吸收 Quick Control view/controller；generated输出仅登记映射，未运行生成器。#240[归档ABC证据](../modules/reading-page-markers.md#evidence)使用旧候选包47bf5a9…4647，不能当最新#292/#293构建结果。
 
 > 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：新增 reading-content-classic.mjs 从两个owned entry生成 reading-source.js/reading-record.js（minified、自包含IIFE、chrome102编译目标），check按字节防漂移。详见[三个脚本、测试与rich-details前序](../modules/reading-return-to-page.md#classic-order)及[实际用户返回链](reading-return-to-page.md)。raw bridge依然按CONTENT_SCRIPT_FILES装配，不把这些模块误写为运行时ESM；生成输出不能手改，本轮没有运行生成/构建。其余本章保留既有固定版本。

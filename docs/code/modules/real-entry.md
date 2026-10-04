@@ -1,5 +1,7 @@
 # 真实网页与工具栏入口：源码和证据的边界
 
+> 当前a4dab127已经改为WXT单Content bundle；[当前upgrade helper](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/e2e/support/upgrade-expectations.mjs#L14-L25)对native update返回空注册数组。下方“尚未覆盖”第1项是c250时期已消除的源码冲突，不能继续当作当前缺陷。完整新构建/升级章仍待复核；同版本替换/Reload/重启不等于真实版本号更新或用户权限确认UI证据。
+
 [启动完整链](../features/extension-startup.md) · [Reading 用户链](../features/reading-records.md) · [构建链](../features/build-test-release.md) · [覆盖清单](../coverage.json)
 
 固定 main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`，tree `0f733f269639f2dc1368eecfa2bf96379d59f94c`；#287 已合入。这里解释当前实现，不替权限扩大背书，也不将 PR 描述的 PASS 当成本轮验证。所有安装、构建、业务测试、浏览器、商店升级与 Oxford 实测均 **NOT_RUN**。

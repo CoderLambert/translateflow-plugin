@@ -1,5 +1,7 @@
 # 运行时总览与阅读地图
 
+> 当前AI增量固定 main `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9`：[完整显式AI与历史后续链](features/assistant-stream.md)、[31份逐文件/证据](modules/assistant-stream.md)区分Port v1、Reading消息v2和artifact v1；Content complete后另等保存ACK，history complete已带commit ACK。#243/#244已有原候选1/1与组合10/10 PASS，本轮静态阅读NOT_RUN；条件来源路由与Stop/provenance提交窗口保留。#296生产Content现为WXT单bundle，旧raw/classic投影描述只按各章历史身份阅读，构建全链仍待复核。
+
 > 2026-10-04 页面再访增量（固定 main `13041666b253ecf9aa86b3ff5edfa677dde01c05`）：[完整用户链](features/reading-page-markers.md)与[逐文件/证据](modules/reading-page-markers.md)已区分站点意图、page摘要/cursor、批量resolver小片门槛、列表计数和generation失效。#240原候选已有READING_ABC_PASS（9/9 fixture），本轮静态阅读NOT_RUN；不外推最新包、全Issue矩阵、权限迁移或发布。下方旧章节保留各自固定源码身份。
 
 > 2026-10-04 返回原文增量：本轮 main `33ab3ea2a38ce591b622ba06739344858d7da403` 的新增路径是学习中心可信返回→后台一次性tab/document能力→Content重新核对原文→临时卡。详见[完整流程](features/reading-return-to-page.md)与[逐文件/状态所有者](modules/reading-return-to-page.md)。Reading源码现在由两个owned entry投影为classic IIFE，运行加载仍非ESM；其余本页旧章节保留各自固定身份，不当作本轮全量复核。open Shadow内显示历史quote的现有风险见新章，样式隔离不等于保密。
@@ -7,13 +9,13 @@
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
-当前清单固定 main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`。本轮复核#286 Release A真实产品/测试/证据链及App/useLibrary焦点修复；保留#235组件与构建说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
+以下历史总览正文主要固定 main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`，本轮当前清单以README/coverage和上方AI增量为准。此前复核#286 Release A真实产品/测试/证据链及App/useLibrary焦点修复；保留#235组件与构建说明；其他章节的旧固定引用仅在 blob 未变时继续适用。逐文件未完成复核者在 coverage 标为待复核，不宣称全部运行时仍与旧基线相同。运行验证 **NOT_RUN**。
 
 ## 先区分五种运行环境
 
 1. **扩展后台 service worker**：仓库保留的 [background.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/background.js) 调用 [initializeBackground](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/src/background/index.js)；当前默认 WXT 包由 [entrypoints/background.ts](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/entrypoints/background.ts) 复用同一函数。注册消息、快捷键、Reading端口/标签页/权限和安装启动事件。不能把浏览器启动事件当成每次 service worker 唤醒。
 2. **扩展页面**：Popup/Options 是原生 HTML/CSS/JS；WXT 编译这些唯一源码。Popup负责用户入口；Options负责配置和导入；learning-center.html是WXT编译的独立React页面，只经v2消息读Reading仓库。页面生命周期不同于后台，关闭Popup并不等于自动取消所有后台请求。
-3. **网页 ISOLATED Content**：classic脚本按清单顺序装配到 `globalThis.__TRANSLATE_FLOW_CONTENT__`；[content.js](https://github.com/CoderLambert/translateflow-plugin/blob/d5e308a709c008acf6b277d466d020f13025bdca/content.js) 最后注册监听并启动界面功能。不能直接加入ESM import。
+3. **网页 ISOLATED Content**：当前 [src/entries/content.js](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/src/entries/content.js) 用有序side-effect imports组合classic/IIFE owners与Reading adapter，最后content.js启动；[entrypoints/content.ts](https://github.com/CoderLambert/translateflow-plugin/blob/a4dab127c95f4f1d3b37375fc5a7b1b5241419f9/entrypoints/content.ts) 交WXT编译单一ISOLATED bundle。owner仍登记到global registry，源码graph的ESM导入不等于网页运行时动态import或raw逐文件注入。
 4. **YouTube MAIN**：受限网页桥接，仅观察播放器自己的字幕响应；不承载任意后台能力。获取、仲裁、批处理和UI生命周期见[字幕功能章](features/youtube-subtitles.md)。
 5. **导入 Workers**：Options按固定路径启动的独立处理环境；不是后台 service worker 的别名，也不是每次扩展启动都会创建。实际导入协议见[词典导入章](features/local-dictionary-import.md)，底层大型依赖完整程度以覆盖清单为准。
 
@@ -135,5 +137,11 @@ Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效
 
 ## 当前真实入口与权限边界
 
-#287改为required普通HTTP/HTTPS访问和静态Content投影；auto-sites只持有显式站点模式并清旧动态注册。Popup正文学习中心按钮经v2固定OPEN、唯一原生POPUP校验，开页后容许Popup正常关闭；不授予entry读库权力。完整[启动调用链](features/extension-startup.md)与[逐文件/测试输入](modules/real-entry.md)区分原生POPUP、普通TAB driver、新HTTP fixture和显式inject。旧升级动态注册期望、旧用户重确认与observer成本仍有核验缺口，未复现/未运行不写成FAIL。
+#287改为required普通HTTP/HTTPS访问和静态Content投影；auto-sites只持有显式站点模式并清旧动态注册。Popup正文学习中心按钮经v2固定OPEN、唯一原生POPUP校验，开页后容许Popup正常关闭；不授予entry读库权力。完整[启动调用链](features/extension-startup.md)与[逐文件/测试输入](modules/real-entry.md)区分原生POPUP、普通TAB driver、新HTTP fixture和显式inject。旧基线的升级helper注册期望冲突已由当前返回空数组的实现消除，见[当前时效校正](modules/assistant-stream.md#partial-adjacent)；旧用户真实重确认与observer成本仍须独立证据，未复现/未运行不写成FAIL。
 
+
+## 显式 AI 与历史后续的两个提交边界
+
+[完整链与当前风险](features/assistant-stream.md) · [源码/测试/原候选证据](modules/assistant-stream.md)
+
+Selection controller 持Port/requestVersion/partial，Provider HTTP仍由background适配器持有；新completeText使用固定纯文本prompt，不继承旧结构化解释缓存。Content生成complete→record-client→Reading APPEND→saved，history prepare从真实库派生source/图→Provider→后台commit→complete(saved)。Stop signal、原生access失效和IDB提交是不同控制层。safeReturnUrl=null仍有site身份，当前config却用空字符串，可能在provenance失败前走全局Provider；具体条件见新章，不扩写为所有追问必然泄露。

@@ -60,6 +60,8 @@
 
 ## 4. 用户点击 AI 详解后才发生什么
 
+当前 `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9` 的controller三个根入口已改走 [assistant Port→Provider→completed保存完整链](assistant-stream.md)。本章其余旧Selection说明保留原固定版本；以下是仍存在的旧 `SELECTION_EXPLAIN` structured/cache支路，**不再代表当前三个流式按钮的实际请求链**。旧解释的候选ID校验、prompt和cache不能自动归给completeText。当前controller/popover/ai-detail完整说明见[新章](../modules/assistant-stream.md)。
+
 本地有主卡时，`explainSnapshot(snapshot, depth, baseCard)` 在卡内新增 AI 区，保留词典释义与来源；无本地主卡时使用整个 loading/result 区。[explain.js](../modules/selection.md#file-explain) 的链是：
 
 `SELECTION_EXPLAIN → 重新 resolve(explainRequested:true) → EffectiveConfig → 有界 payload/cache identity → 独立解释缓存 → completeJson → 严格解析 → 只存 generated 字段 → 返回 UI`
@@ -68,7 +70,7 @@
 
 [解释协议](../modules/selection.md#file-explanation-contract) 限制选文 2000、上下文 900、候选八个、每事实字段六项，模型只能返回已知候选 ID（去重后最多三个）、非空 explanation 和可选 translation；拒绝新增 provenance 等字段。[专用 prompt](../modules/selection.md#file-explain-prompt) 将所有 JSON 值作为引用资料，禁止伪造来源，不复用网页翻译 prompt。
 
-当前后台真正发送固定 userQuestion="这里是什么意思？"，action=understand；以 selection-explain-reading-v2 + 实际固定问题 + 原 cacheKey 再 hash，隔离旧 prompt 答案。Reading assistant 只保存用户看到的完成解释、固定问题及当次配置的 provider/model/promptVersion/fingerprint，不带 endpoint、prompt 或凭据。保留本地卡时不会把本地释义重标为 AI。
+该旧后台支路真正发送固定 userQuestion="这里是什么意思？"，action=understand；以 selection-explain-reading-v2 + 实际固定问题 + 原 cacheKey 再 hash，隔离旧 prompt 答案。Reading assistant 只保存用户看到的完成解释、固定问题及当次配置的 provider/model/promptVersion/fingerprint，不带 endpoint、prompt 或凭据。保留本地卡时不会把本地释义重标为 AI。
 
 解释缓存身份包含协议/prompt/schema 版本、provider/model/endpoint、目标语言、深度、selection/context/candidate 摘要和 pack 身份。命中后也重新验证候选 ID；命中不调用 Provider。敏感上下文时 payload.contextText 为空，且整个解释缓存读写被跳过；用户选词和有限结构化候选仍可能进入显式 AI 请求。原始页面 URL、不受限页面正文、MDX/MDD 文件/原文全文不是这条 payload 的内容。
 
@@ -82,6 +84,8 @@
 “复制”是用户按钮回调，显示结果并不自动写剪贴板。result-model（结果模型）负责整理复制文本，clipboard 优先用 navigator.clipboard，否则临时 textarea+execCommand；失败 toast，不影响词典结果。
 
 Escape、外部 pointerdown、关闭按钮、源投影修订、页面离开/pagehide 都可 dismiss：取消任务、取消 rich session、移除浮层、停止相关活动页面监视并增加 requestVersion。Popover 关闭/重置时通知 richResourceResolver.closeAll 清理显示资源；全生命周期 listener 由常驻模块保留，不宣称每次 dismiss 都移除了全局 listener。
+
+当前AI Port另由activeAssistant/stop/abandon处理，见[取消与提交窗口](assistant-stream.md#boundaries)；下列task取消解释的是本章旧普通翻译/SELECTION_EXPLAIN支路。
 
 取消与保存有四个不同边界，不能混用：
 - task 先标记本地 cancelled，再尝试 `CANCEL_TRANSLATION`，该消息也会 abort AI explanation。UI 的“已取消”是本地状态，不能证明已提交的缓存写入回滚。

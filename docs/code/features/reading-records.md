@@ -1,5 +1,7 @@
 # Reading：明确查询、真实保存与事务历史
 
+> 显式AI当前接续：[Content三入口→Port→完成保存，以及学习中心后续/根重生成](assistant-stream.md)。新章固定a4dab127并完整解释31份文件；#243/#244已有原候选PASS（组合10/10），本轮NOT_RUN不等于此前未验收。历史快照读取仍可离线，只有明确AI动作才进入Provider，已知来源路由和Stop窗口另列。
+
 > 当前固定 main `13041666b253ecf9aa86b3ff5edfa677dde01c05` 的[站点再访](reading-page-markers.md)补齐最小摘要/列表/刷新与暂停、删除、撤权边界。#239当前状态completed；#240已有[原候选READING_ABC_PASS](../modules/reading-page-markers.md#evidence)，不再把ABC整体写成未运行。旧A归档与新marker合同差异分别保留。
 
 > 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：详情 ReturnToPage 已接可信按钮→后台创建新标签/短期能力→Content消费最小摘要→精确定位/临时卡/准确记录deep-link，详见[返回原文完整链](reading-return-to-page.md)与[逐文件](../modules/reading-return-to-page.md)。普通URL链接不等于handoff。当前源码还含site markers，#239/#240集成状态和隐私风险明确分开；下面历史固定版本中“尚未接定位/返回”的表述不再代表这个新增切片，旧Release A证据不外推到它。
@@ -162,7 +164,7 @@ Export JSON → App唯一AbortController → exportRecords → EXPORT_START/NEXT
 
 - 入口/首次开启：Popup及Selection邀请 → App consent → access/service/runtime；同时看isTrusted、CAS和旧卡显式保存。
 - 列表/搜索/分组：App + useLibrary + Library → ReadingClient → query/列表合同；同时验旧响应、cursor失效、无逐行detail。
-- 历史显示/回原页：Detail + shared record/source/artifact/URL validators；不加入Provider或不可信HTML。
+- 历史显示/回原页：Detail + shared record/source/artifact/URL validators；只读显示不触发Provider，也不渲染不可信HTML。明确历史追问/根重生成经[专用Port和仓库重读](assistant-stream.md#history)，不能把只读原则误解为不存在AI入口。
 - 删除/站点管理：App/Confirmation/Management → service → management；同时验多标签冲突、历史与排除/缓存/词典分域。
 - 导出/重连：client/export + subscribe/App → exports/export-reader/subscriptions；同时验取消/EOF/FINISH和worker重启边界。
 

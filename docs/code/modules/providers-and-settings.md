@@ -1,5 +1,7 @@
 # Provider 与设置：逐文件说明
 
+> 当前AI版本的index/DeepSeek/compatible/SSE已在[新章](assistant-stream.md#file-provider-index)全文复核。以下旧源码身份保留，SSE增加onTextDelta、adapter增加completeText；不要把旧“仅计数”应用于当前assistant文本流。未变config/shared/local等正文继续按blob身份复用。
+
 [功能链](../features/providers-and-settings.md) · [首页](../README.md) · [已解释请求/缓存/DeepSeek](page-translation-cache.md)
 
 全部源码固定 `d5e308a709c008acf6b277d466d020f13025bdca`；2026-10-03 复核。以下11个生产文件读过完整内容；大入口与测试仍标局部。无运行证据，所有测试/安装/构建/浏览器/真实服务验证 **NOT_RUN**。blob 供逐文件增量比较，不代表测试结果。

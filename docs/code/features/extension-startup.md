@@ -1,5 +1,7 @@
 # 扩展启动：从浏览器入口到可交互页面
 
+> 当前a4dab127生产Content由WXT编译单一ISOLATED bundle，来源见[当前接线](../modules/assistant-stream.md#partial-adjacent)。下列旧注册/raw清单/投影细节保留原基线，仅用于历史理解；本轮未全文重做启动/升级章，不能把旧helper不匹配继续当作当前已确认缺陷。
+
 > 当前再访接线至 main `13041666b253ecf9aa86b3ff5edfa677dde01c05`：启动后初始文档注册→本站意图/权限→当前页摘要→marker/list→路由重注册，见[页面再访](reading-page-markers.md)。当前 record owned entry 还包含 Quick Control view/controller，前序 rich-details→reading-record 不变；[最新投影说明](../modules/reading-page-markers.md#classic-current)。以下旧版本的逐script清单不代表最新包。
 
 > 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：Reading source-snapshot/resolver 被编入 reading-source.js，record-access/client/handoff/card/markers/status/controller 被编入 reading-record.js；CONTENT_SCRIPT_FILES 不再逐个列这些owned源，rich-details 必须先于 reading-record。见[准确投影与顺序](../modules/reading-return-to-page.md#classic-order)。启动后注册文档可能消费学习中心发起的一次性交接，[完整返回链](reading-return-to-page.md)接续本文。下面未改段落仍绑定其原版本，不把旧逐个script列举当当前打包清单。

@@ -1,5 +1,7 @@
 # Provider 与设置：从保存到真实翻译
 
+> 当前AI文本增量见[显式AI完整链](assistant-stream.md#provider)与[Provider四文件当前说明](../modules/assistant-stream.md#file-provider-index)。旧章节主要解释网页批译/completeJson；新completeText有真实onDelta、独立固定prompt且不读解释缓存，不能沿用“只有进度计数”的概括。243/244原候选已有PASS，本轮NOT_RUN仅指文档读取。
+
 [首页](../README.md) · [运行时地图](../architecture.md) · [逐文件说明](../modules/providers-and-settings.md) · [网页请求与缓存](../modules/page-translation-cache.md)
 
 源码固定为 `d5e308a709c008acf6b277d466d020f13025bdca`，2026-10-03 重读 main 确认未变。本章只做静态源码走读，安装、构建、测试、浏览器、真实 Provider 请求全部 **NOT_RUN**。这里的“测试连接”指产品中的按钮，不是本轮执行记录。

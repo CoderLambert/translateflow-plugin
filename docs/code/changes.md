@@ -205,3 +205,18 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 ### 剩余范围
 
 底层projection、其它access/shared、assistant streaming/grounded turns与既有词典模块缺口仍按coverage推进。页面再访的具体合同差异交回相应产品/实现工作，不能把文档切片视为授权修复或全仓完成。
+
+
+## 2026-10-04 04:25 UTC 开始的显式 AI 流与历史后续切片
+
+- 固定main `a4dab127c95f4f1d3b37375fc5a7b1b5241419f9`（#297），实际tree `eb758100c00beb58dece02fc28e0998b5b44f8c6`；唯一文档分支从bee8494增量，未将文档分支旧业务源码当最新main。相对1304166新增25、变更49、删除0，842 blob全部登记。
+- 新增[完整双用户链](features/assistant-stream.md)：Content理解/分析/用法→独立Port→来源/配置→SSE或unary→partial/Stop/retry→completed→Reading ACK；学习中心已存turn→原生身份/真实仓库重读→最多六条parent链/根regenerate新branch→Provider→规范化artifact→IDB commit→saved刷新。说明旧SELECTION_EXPLAIN/缓存仍存在但不是当前三入口；text prompt没有自动继承有效config.prompt/语言指令。
+- [31份逐文件说明](modules/assistant-stream.md)包括18生产、5测试、8份243/244合同/状态/归档/自查；18首次全文、4旧待复核恢复、9既有全文复核。另14份旧完整文件因无关源码变化降级；完整净增8。当前238完整、529待解释、75待复核；140局部（101待解释、39待复核）不计完整，不把“读过/引用了”冒充解释完成。
+- 保留两条已知条件边界：history safeReturnUrl=null→空pageUrl→可能用全局Provider，provenance URL失败在请求后；Stop只abort signal，最后检查后await provenance仍可能进入history commit。明确真实触发条件、UI/后台不同终态与未覆盖测试位置，不重新复现、不顺手修复。unary单片/JSON无delta等协议差异也按源码标明，未伪造运行FAIL。
+- 纠正验收时效：243原候选0d34d357有ASSISTANT_UI_PASS；244原候选9a4b137a有READING_LOOP_ABCD_PASS及组合Chromium10/10，fb72c3b…2132包。实测场景是合成页面/fixture/mock Provider，assistant故事仅Understand→Stop/no-save→retry/commit→历史follow-up；不等于所有根动作/根再生/每个取消时序/真实模型/私人词典/其它浏览器/商店与发布。原始本地日志、截图、包字节未取得，不把读取归档说成重验。
+- 当前#296后生产Content已由唯一src/entries/content.js与entrypoints/content.ts经WXT编译；authored classic/IIFE仍登记registry，不等于raw逐文件生产注入。只补AI装配与过期提示，未重做完整构建/升级章，不将244旧fingerprint覆盖新包。#297离线词典合同仅登记待解释，不把计划当已修复。
+- README/架构/地图/coverage及旧Selection、Provider、Reading、学习中心、启动/构建导航同步。静态检查固定source返回blob、路径唯一与状态分母、内部链接/明确锚点、只docs/code树变更及远端全文/sha；不执行仓库脚本或业务代码。安装、生成、构建、Node/Vitest/Chromium和产品验收本轮全部NOT_RUN。
+
+### 后续阅读范围
+
+优先复核#296 Content编译/同ID升级等已变文件，再推进尚未全文解释的来源/访问共享合同、普通pack/TFLex和词典余项。此处是导读缺口，不授予业务实现、运行验收、权限变更、合并或发布；没有变化时不重复写同样进度。

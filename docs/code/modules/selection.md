@@ -1,5 +1,7 @@
 # selection 模块逐文件走读
 
+> 当前controller/popover/ai-detail已改接显式AI Port，完整当前说明见[新章](assistant-stream.md#file-controller)；以下三节保留历史身份，不代表当前按钮仍经SELECTION_EXPLAIN。其它未变文件仍以coverage身份为准。
+
 导航：[阅读入口](../README.md) · [架构总览](../architecture.md) · [仓库地图](../repository-map.md) · [完整功能链](../features/selection-and-dictionary.md) · [前置启动模块](startup.md)
 
 > 2026-10-03 增量固定 main `d5246cae6469e4a876fc122b229a2e0ddf115709`：本轮完整复读 controller、popover、result-model、result-renderer、rich-details、ai-detail、empty-state、explain、explain-prompt、rich-mdict-lookup-controller，并新增 rich-result-renderer、translation-query、reading-result 三个完整文件节。Reading access/client/status 的完整解释在[Reading 模块](reading-records.md)。
