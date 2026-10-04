@@ -36,9 +36,29 @@ The Chromium release gate emulates `colorScheme: "dark"` and checks representati
 
 All interactive primitives must provide a visible `:focus-visible` state. Nonessential transitions are disabled under `prefers-reduced-motion: reduce`.
 
-### Surface migration
+### React extension pages
 
-Popup, Quick Control, Options and reading presentation are migrated independently. The shared token/primitives layer must not change Provider, cache, permission or translation behavior.
+`popup.html` and `options.html` keep their installed identities, but their live
+shells now mount React from `src/popup/main.tsx` and `src/options/main.tsx`.
+Learning Center remains the third approved React extension page. React is not
+allowed in Background, Content, MAIN, Options Workers or shared pure domains.
+
+Popup and Options own their complete control trees. Options includes navigation,
+general settings, Selection, appearance, YouTube, sites, automatic behavior,
+Glossary, dictionary library, Provider, cache, developer/about and interface
+language. Glossary and dictionary components call typed page clients; the
+dictionary client delegates parsing, indexing, OPFS, quarantine, download,
+preflight, preferences and cancellation to the existing runtime/controller
+contracts. There is no inert template, `dangerouslySetInnerHTML`, legacy adapter
+or second DOM owner.
+
+Permission requests, native file picker activation and install/update commits
+remain inside trusted click handlers. Initial React effects only read state,
+subscribe and clean up listeners/controllers. Generation guards prevent stale
+preflight/list responses from replacing a newer selection, and StrictMode cleanup
+aborts preflight and disposes Worker/controller ownership. The shared
+token/primitives layer must not change Provider, cache, permission, dictionary
+format or translation behavior.
 
 ## Primitives
 

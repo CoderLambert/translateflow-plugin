@@ -39,17 +39,21 @@ See the official [Chrome internationalization reference](https://developer.chrom
 
 ## Current migration scope
 
-This slice localizes the new interface-language control, Manifest text and the
-first learning-center catalog namespace. The learning-center UI is delivered
-by its own task. Existing Options sections, Popup, Content controls, subtitles
-and dictionary displays retain their existing strings; this is not a claim
-that the entire extension is bilingual.
+The interface-language control now lives in the React Options shell. It still
+reads and writes only `uiLocale`, appears only after the initial read settles,
+listens for local storage changes across open Options pages, and reports
+read/write failures with a retry action. React StrictMode reuses one initial
+storage read; neither render nor an effect writes settings or requests a host
+permission. A failed write keeps the last committed selection and a read failure
+disables the control until recovery.
 
-The Options adapter reads and writes only `uiLocale`. It displays the new
-control after the initial read, listens for local storage changes to update
-open pages, and reports read/write failures with a retry action. It does not
-save or test Provider configuration. A failed write keeps the last committed
-selection. A read failure disables the control until recovery.
+Manifest text and the Learning Center namespace continue to use the same pure
+catalog. Popup currently uses the catalog for its Learning Center entry; the
+remaining Popup/Options copy, Content controls, subtitles and dictionary
+compatibility islands retain their existing strings. This is not a claim that
+the entire extension is bilingual; that broader string migration belongs to
+#253. `uiLocale` still does not change target language, dictionary languages,
+Prompt, Provider credentials, cache identity or artifacts.
 
 ## Verification
 

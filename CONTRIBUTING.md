@@ -182,7 +182,7 @@ npm run test:e2e
 
 约束：
 
-- E2E/单测依赖只能放在 `devDependencies`，不得进入安装包；旧业务复用 JS，WXT 管构建，React 仅限批准的学习中心 UI，不能进入 Background、Content、MAIN、Worker 或 shared。当前 WXT 兼容产物仍没有 React。
+- E2E/单测依赖只能放在 `devDependencies`，不得进入安装包；WXT 管构建，React 仅限批准的 Popup、Options、学习中心扩展页，不能进入 Background、Content、MAIN、Worker 或 shared。Options 的 Glossary / dictionary-packs 在 #252 前仍由单一 legacy adapter 挂载既有 controller，不复制词典业务。
 - 使用 Playwright bundled Chromium 的 persistent context 加载 unpacked MV3 扩展。
 - 不使用真实 Provider/API Key；统一走 `e2e/support/mock-server.mjs`。
 - fixture 与 mock 必须确定性，缓存断言优先检查 Provider 调用次数，不用固定 sleep 猜测。

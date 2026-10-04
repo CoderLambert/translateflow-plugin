@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "252",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["251"],
+  "branch": "refactor/252-react-dictionaries",
+  "worktree": ".worktrees/issue-252",
+  "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["npm", "run", "test:e2e", "--", "e2e/settings-ia.spec.mjs", "e2e/dictionary-library-v2-product.spec.mjs", "e2e/rich-mdict-product.spec.mjs", "e2e/mdd-resources.spec.mjs", "e2e/selection-rich-lookup-cancel.spec.mjs", "e2e/translateflow.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "推送准确候选与证据元数据，创建 PR，并在远端 head/保护要求核对通过后执行 squash merge。"
+}

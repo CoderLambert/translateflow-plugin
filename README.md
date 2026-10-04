@@ -68,7 +68,8 @@ cache-db        providers/
 
 - Chrome Manifest V3
 - 原生 JavaScript
-- 原生 HTML / CSS
+- React 19（仅 Popup / Options / Learning Center 扩展页）
+- 原生 CSS；Content / MAIN / Worker / Background 不引入 React
 - chrome.storage.local
 - IndexedDB
 - DeepSeek / OpenAI-compatible Chat Completions
@@ -111,9 +112,12 @@ translateflow-plugin/
 │   │       └── openai-compatible.js
 │   │
 │   ├── options/
-│   │   └── glossary-ui.js
+│   │   ├── main.tsx / App.tsx
+│   │   ├── client.ts / useOptions.ts
+│   │   ├── GlossarySection.tsx / glossary-client.ts
+│   │   └── DictionarySection.tsx / typed dictionary clients / existing import controllers
 │   ├── popup/
-│   │   └── preset-ui.js
+│   │   └── main.tsx / App.tsx / client.ts / usePopup.ts
 │   │
 │   └── content/
 │       ├── runtime.js

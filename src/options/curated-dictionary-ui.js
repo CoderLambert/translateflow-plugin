@@ -58,10 +58,8 @@ export function initializeCuratedDictionaryUi({
     setStatus
   });
 
-  document.addEventListener(
-    "translateflow:dictionary-state-changed",
-    () => refresh()
-  );
+  const onDictionaryStateChanged = () => { void refresh(); };
+  document.addEventListener("translateflow:dictionary-state-changed", onDictionaryStateChanged);
 
   async function refresh() {
     const [response, richResponse] = await Promise.all([
@@ -289,11 +287,11 @@ export function initializeCuratedDictionaryUi({
   }
 
   const pagehide = () => {
+    document.removeEventListener("translateflow:dictionary-state-changed", onDictionaryStateChanged);
     active?.worker?.terminate?.();
     mdxUi.dispose();
   };
-  window.addEventListener("pagehide", pagehide, { once: true });
-  return refresh();
+  return refresh().then(() => Object.freeze({ dispose: pagehide, refresh }));
 }
 
 function waitForWorker(
@@ -370,9 +368,4 @@ function responseError(response, fallback) {
   );
   error.code = response?.errorCode || "";
   return error;
-}
-
-
-if (typeof document !== "undefined") {
-  initializeCuratedDictionaryUi();
 }

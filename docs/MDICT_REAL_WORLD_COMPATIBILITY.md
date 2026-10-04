@@ -23,6 +23,12 @@ production acceptance. The matrix and capability decisions below retain their
 original corpus scope: "no measured gap in this corpus" does not assert that
 no parser defect exists elsewhere. No existing PASS is rebound by this plan.
 
+The Options import and library controls are React-owned, but continue to call the
+same bounded preflight, Rich MDict/MDD controllers, OPFS transaction, quarantine
+and sanitizer contracts. This UI migration neither changes the compatibility
+matrix nor adds MDX/MDD capabilities; selected files remain local and remote or
+active dictionary content remains blocked by the existing policy.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,

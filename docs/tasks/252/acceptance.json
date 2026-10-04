@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "task": "252",
+  "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
+  "tree": "ebc98380955e059195987bcbc46db19b6e1664dc",
+  "inputTree": "9a7c699f505a352e3ef7b874aded8e9eb0625e9020d5635cdff0eff5e6659fb6",
+  "frozenAt": "2026-10-04T05:26:51.561Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 59715.794199,
+      "startedAt": "2026-10-04T05:26:57.479Z",
+      "log": "docs/task-execution/local/252/90c27c24-28b7-4fe4-9763-1aa3e331e5a8.log",
+      "logSha256": "a2a5ba5ed443f7cddf567a5b3840639a011fa7a31935f32e850be6dde328e837"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2607.374772,
+      "startedAt": "2026-10-04T05:28:01.638Z",
+      "log": "docs/task-execution/local/252/504c8edd-00bd-49c7-b24f-66aa16006b25.log",
+      "logSha256": "037bf51d43648e7ae95d7460d9010f1e3484d5283663dd5ecb5bc3526999c4d1"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1418.348825,
+      "startedAt": "2026-10-04T05:28:04.440Z",
+      "log": "docs/task-execution/local/252/fbc819c6-9193-4cd2-bd4c-cd827c974e3a.log",
+      "logSha256": "813f9e2b191a0806e36a2e6d38544d97737c004e1b551e89240cc992ccc05eb2"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/settings-ia.spec.mjs",
+        "e2e/dictionary-library-v2-product.spec.mjs",
+        "e2e/rich-mdict-product.spec.mjs",
+        "e2e/mdd-resources.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/translateflow.spec.mjs"
+      ],
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 32195.116232,
+      "startedAt": "2026-10-04T05:28:48.377Z",
+      "log": "docs/task-execution/local/252/c1e84724-5571-485c-973b-e6d7e00c66e0.log",
+      "logSha256": "d395e53c5cbdfe56f6887140935efb3f917e5a95b806f549d401f88967b247f3"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "baf77f12c442f5ca2be9572144a02e2dddf4baae17d09ce09476aa2ac19915f9"
+  },
+  "limitations": [
+    "未重复下载外部 62.9 MiB ECDICT、未使用私有目标词典语料，也未执行词典发布认证；真实目标 MDX/MDD 兼容性仍由 offline-dictionary 或专门认证任务负责。",
+    "Popup/Options/Learning Center 的完整 en/zh_CN 文案收口属于任务 253；本任务只迁移 Glossary 与词典库 UI owner。",
+    "真实浏览器权限提示 UI、Chrome 102、Edge/Firefox/Safari、隐身模式、商店发布 NOT RUN；本任务未改变 manifest 权限、远程来源或词典格式。",
+    "子 Agent 实际 model/effort 不可由运行时独立观测，记 UNKNOWN；权限为 unrestricted，覆盖仓库默认沙箱/按需审批。",
+    "npm 锁文件安装仍报告既有 1 low / 1 high audit 告警；任务未改依赖或 lockfile。"
+  ],
+  "decision": "REACT_DICTIONARY_UI_PASS"
+}

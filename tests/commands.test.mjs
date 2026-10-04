@@ -5,7 +5,7 @@ import { CONTENT_MESSAGES } from "../src/shared/constants.js";
 import { COMMANDS, createCommandRouter, isSupportedPage } from "../src/background/commands.js";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
-const optionsHtml = await readFile(new URL("../options.html", import.meta.url), "utf8");
+const optionsCommands = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
 
 test("manifest exposes exactly the three v0.8 commands with conflict-conscious defaults", () => {
   assert.deepEqual(Object.keys(manifest.commands).sort(), Object.values(COMMANDS).sort());
@@ -33,13 +33,13 @@ test("manifest exposes exactly the three v0.8 commands with conflict-conscious d
 });
 
 test("Settings documents command management and all three default actions", () => {
-  assert.match(optionsHtml, /chrome:\/\/extensions\/shortcuts/);
-  assert.match(optionsHtml, /翻译 \/ 更新当前页/);
-  assert.match(optionsHtml, /显示 \/ 隐藏译文/);
-  assert.match(optionsHtml, /切换 Quick Control/);
-  assert.match(optionsHtml, /Ctrl\+Shift\+Y/);
-  assert.match(optionsHtml, /Ctrl\+Shift\+K/);
-  assert.match(optionsHtml, /Ctrl\+Shift\+\./);
+  assert.match(optionsCommands, /chrome:\/\/extensions\/shortcuts/);
+  assert.match(optionsCommands, /翻译 \/ 更新当前页/);
+  assert.match(optionsCommands, /显示 \/ 隐藏译文/);
+  assert.match(optionsCommands, /切换 Quick Control/);
+  assert.match(optionsCommands, /Ctrl\+Shift\+Y/);
+  assert.match(optionsCommands, /Ctrl\+Shift\+K/);
+  assert.match(optionsCommands, /Ctrl\+Shift\+\./);
 });
 
 test("command routing accepts only normal web pages", () => {

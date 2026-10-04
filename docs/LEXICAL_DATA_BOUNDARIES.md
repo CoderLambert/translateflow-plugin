@@ -80,6 +80,12 @@ Large dictionaries belong outside the base extension:
 
 They are installed after explicit user action and stored through the dictionary lifecycle (for example OPFS). Their size does not count toward the base extension package.
 
+The React Options surface is only a typed coordinator for that existing
+lifecycle. File selection, preflight confirmation, download permission and
+installation require explicit user actions; rendering the Settings page does not
+download/import data or call a Provider. Moving the UI owner does not change
+source approval, format, license, provenance or bundled-byte policy.
+
 ### E. AI-generated detail
 
 AI output is an explicit enhancement:

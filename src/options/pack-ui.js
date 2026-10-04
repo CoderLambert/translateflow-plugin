@@ -66,11 +66,10 @@ export function initializePackUi({
   }
 
   const pendingByPack = new Map();
-  refreshButton?.addEventListener("click", () => refresh());
-  document.addEventListener(
-    "translateflow:dictionary-state-changed",
-    () => refresh()
-  );
+  const onRefresh = () => { void refresh(); };
+  const onDictionaryStateChanged = () => { void refresh(); };
+  refreshButton?.addEventListener("click", onRefresh);
+  document.addEventListener("translateflow:dictionary-state-changed", onDictionaryStateChanged);
 
   async function refresh() {
     if (bundledList) bundledList.textContent = "正在检查内置词典…";
@@ -297,7 +296,13 @@ export function initializePackUi({
     return button;
   }
 
-  return refresh();
+  return refresh().then(() => Object.freeze({
+    refresh,
+    dispose() {
+      refreshButton?.removeEventListener("click", onRefresh);
+      document.removeEventListener("translateflow:dictionary-state-changed", onDictionaryStateChanged);
+    }
+  }));
 }
 
 export function getBundledPackPresentation(pack) {

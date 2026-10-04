@@ -224,4 +224,10 @@ export async function initializeGlossaryUi({ setStatus }) {
     enabled.checked = true;
     syncScope();
   }
+
+  return () => {
+    scope.removeEventListener("change", syncScope);
+    clear.removeEventListener("click", clearEditor);
+    save.removeEventListener("click", saveEntry);
+  };
 }

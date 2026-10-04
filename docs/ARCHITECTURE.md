@@ -36,13 +36,32 @@ content scripts -> messages -> background router
 10. Lexical content follows **Source-driven data → Rule-driven retrieval → Context-driven ranking → User-driven AI**. Project-authored word/translation rows and query-specific sense hacks are not a long-term coverage mechanism.
 11. Production extension packaging is allowlist-based. Build inputs, source locks, tests, E2E fixtures and benchmark assets stay outside the installed extension.
 
-The React learning center is a single unlisted WXT extension page at `learning-center.html`. Its typed message client consumes the Reading repository; it has no direct storage/dictionary/Provider path. Safe return uses a background-owned, worker-memory-only handoff bound to the new tab and controlled Content document; the page never puts a record/token in the web URL. See [Learning center v1](LEARNING_CENTER_V1.md) for navigation, consent, invalidation and chunked download boundaries.
+React is limited to the three extension-owned document surfaces: the fixed
+`popup.html` action page, the fixed full-tab `options.html` page and the
+unlisted `learning-center.html` page. Popup and Options use typed page clients
+over the existing storage/runtime/content messages; they do not add a Provider,
+cache, translation-task or Reading service. The Learning Center client consumes
+the Reading repository only through its v2 message boundary. Safe return uses a
+background-owned, worker-memory-only handoff bound to the new tab and controlled
+Content document; the page never puts a record/token in the web URL. See
+[Learning center v1](LEARNING_CENTER_V1.md) for navigation, consent, invalidation
+and chunked download boundaries.
+
+Options now owns Glossary and the complete dictionary-library control tree in
+React. `src/options/glossary-client.ts`, `dictionary-client.ts` and
+`local-dictionary-client.ts` are typed page clients: they preserve the existing
+versioned glossary stores, runtime messages and import controllers instead of
+creating a second parser, network, OPFS, quarantine, sanitizer or cancellation
+state machine. Initial effects read current state only. File pickers, optional
+origin permission prompts and install/update commits start from trusted user
+actions; effect cleanup invalidates stale reads and disposes controller/Worker
+owners under StrictMode.
 
 ## Configuration
 
 全局配置位于 `chrome.storage.local`。
 
-`uiLocale` (`auto` / `en` / `zh_CN`) is independent of translation targets and dictionary languages. The pure `src/i18n/` catalog, resolver and typed text/Intl API have no browser or storage access, including transitive dependencies. Options owns its existing storage adapter; it writes only this preference. UI locale does not enter Provider payloads, prompts or cache fingerprints. Controlled catalog projection generates the two allowlisted Manifest message files; browser-selected Manifest language and user-selected UI language remain separate. See [UI_LOCALE.md](./UI_LOCALE.md).
+`uiLocale` (`auto` / `en` / `zh_CN`) is independent of translation targets and dictionary languages. The pure `src/i18n/` catalog, resolver and typed text/Intl API have no browser or storage access, including transitive dependencies. The React Options control owns the existing storage boundary and writes only this preference from an explicit change event. UI locale does not enter Provider payloads, prompts or cache fingerprints. Controlled catalog projection generates the two allowlisted Manifest message files; browser-selected Manifest language and user-selected UI language remain separate. See [UI_LOCALE.md](./UI_LOCALE.md).
 
 `resolveTranslationConfig()` 负责把：
 
@@ -95,7 +114,7 @@ Content source owners remain classic/IIFE registry modules, compiled by WXT into
 
 TypeScript checks every new `src/**/*.ts(x)`, `entrypoints/**/*.ts(x)`, unit test/config and owned declaration under strict mode with `skipLibCheck:false`; legacy JS is not converted wholesale. Test discovery is disjoint: Node `tests/*.test.mjs`, Vitest `tests/unit/**/*.test.ts(x)`, Playwright `e2e/**/*.spec.mjs`. The only DOM environment is test-only jsdom; React interaction fixtures and all test libraries remain outside both production packages.
 
-`scripts/check.mjs` parses all actual JS/MJS/CJS/TS/TSX/JSX sources and walks runtime import/export/dynamic-import dependencies. React/JSX is allowed only under `entrypoints/learning-center/` and `src/learning-center/`; each non-UI source's transitive closure must remain React-free. Unregistered runtime packages, unresolvable/computed imports and runtime imports of tests/build sources fail. Declaration files are parsed and strictly typechecked but never enter the runtime graph; runtime edges into them fail. Complete `import type`/`export type` edges are erased, while inline type specifiers retain runtime edges under the actual verbatim compiler configuration. API ownership checks also cover TS and bounded aliases/computed API access. The single reviewed YouTube MAIN observer is pinned by an unconditional fixed SHA256 of its complete LF source, so container or mutable fetch delegation cannot widen its exception. Its exact path is fixed to LF by `.gitattributes` for fresh checkouts. Existing worktrees can retain Git-converted CRLF after an attribute-only upgrade, so the checker canonicalizes only CRLF to LF for this hash; standalone CR and all other source differences still fail. It does not rewrite the working file. Any other byte change requires authorized implementation, real subtitle regression and independent review before the coordinator updates that fixed value; this does not claim general JavaScript taint safety. The engineering migration itself grants no storage exception. The separately authorized ReadingRecord adapter is the second exact IndexedDB owner in Hard boundaries; frontend runtime dependency chains into it are rejected.
+`scripts/check.mjs` parses all actual JS/MJS/CJS/TS/TSX/JSX sources and walks runtime import/export/dynamic-import dependencies. React/JSX is allowed only under `entrypoints/learning-center/`, `src/learning-center/`, `src/popup/` and non-Worker `src/options/`; each non-UI source's transitive closure must remain React-free. `src/options/workers/` is explicitly outside that allowlist. The production audit independently computes Popup, Options and Learning Center compiled closures and rejects React in Background/Content; MAIN and Workers remain exact raw-asset closures. Unregistered runtime packages, unresolvable/computed imports and runtime imports of tests/build sources fail. Declaration files are parsed and strictly typechecked but never enter the runtime graph; runtime edges into them fail. Complete `import type`/`export type` edges are erased, while inline type specifiers retain runtime edges under the actual verbatim compiler configuration. API ownership checks also cover TS and bounded aliases/computed API access. The single reviewed YouTube MAIN observer is pinned by an unconditional fixed SHA256 of its complete LF source, so container or mutable fetch delegation cannot widen its exception. Its exact path is fixed to LF by `.gitattributes` for fresh checkouts. Existing worktrees can retain Git-converted CRLF after an attribute-only upgrade, so the checker canonicalizes only CRLF to LF for this hash; standalone CR and all other source differences still fail. It does not rewrite the working file. Any other byte change requires authorized implementation, real subtitle regression and independent review before the coordinator updates that fixed value; this does not claim general JavaScript taint safety. The engineering migration itself grants no storage exception. The separately authorized ReadingRecord adapter is the second exact IndexedDB owner in Hard boundaries; frontend runtime dependency chains into it are rejected.
 
 The type-only WXT aliases and unused generated `import.meta` environment limitation are recorded in [TYPES_TESTS_V1.md](./TYPES_TESTS_V1.md). They do not install browser globals or replace runtime validation/authorization. Reading DTOs remain owned by the existing `src/shared/reading/` validators; consumers begin with unknown input and must validate before narrowing.
 
@@ -223,7 +242,9 @@ normalize + resolveEffectiveGlossary(pageUrl)
 - 站点术语只在匹配 Origin 时参与解析；
 - 同 effective key 的站点术语覆盖全局术语；
 - 设置页只操作 versioned normalized store；
-- glossary UI 位于 `src/options/glossary-ui.js`，Provider/cache/content 不依赖 Options DOM。
+- glossary UI 位于 `src/options/GlossarySection.tsx`，通过
+  `src/options/glossary-client.ts` 操作同一 versioned store；
+  Provider/cache/content 不依赖 Options DOM。
 
 
 ## Preset resolution boundary
@@ -261,7 +282,14 @@ Extension-owned controls share the sage/beige design system and Shadow DOM found
 
 Chrome Commands are routed through Background and reuse existing Content messages. First-use invocation uses `activeTab` + `scripting`; it does not add a broad required Host Permission.
 
-Settings remains native HTML/CSS/JS and reuses existing storage contracts. Automatic cache restore is an explicit per-site mode: cache hits restore from IndexedDB and cache misses do not fall through to Provider translation.
+Popup and the complete Settings control tree use React while preserving their
+existing message, storage, task/cancel, Effective Config and permission-union
+contracts. Permission requests, file selection and dictionary installation occur
+only in trusted user-action chains. Options Workers and Background remain
+React-free; React clients coordinate the existing dictionary controllers and
+render only text/validated metadata, never untrusted dictionary HTML.
+Automatic cache restore is an explicit per-site mode: cache hits restore from
+IndexedDB and cache misses do not fall through to Provider translation.
 
 ## Development task evidence
 

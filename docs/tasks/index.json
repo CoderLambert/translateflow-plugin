@@ -212,13 +212,32 @@
     },
     {
       "task": "250",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "248",
         "244"
       ],
-      "branch": "refactor/250-content-bridge",
+      "branch": "main",
       "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76"
+    },
+    {
+      "task": "251",
+      "status": "completed",
+      "dependencies": [
+        "236",
+        "249"
+      ],
+      "branch": "main",
+      "candidateHead": "53041c66b1caddb3049bc6754c7c563e36ebc9a3"
+    },
+    {
+      "task": "252",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "251"
+      ],
+      "branch": "refactor/252-react-dictionaries",
+      "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0"
     },
     {
       "task": "offline-dictionary",

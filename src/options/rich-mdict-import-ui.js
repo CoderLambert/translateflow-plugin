@@ -52,9 +52,11 @@ export function initializeRichMdictImportUi({
       }
     };
     document.addEventListener("translateflow:dictionary-state-changed", refreshInstalled);
-    window.addEventListener("pagehide", () => resourceController.dispose(), { once: true });
     refreshInstalled();
-    return Object.freeze({ resourceController, refresh: refreshInstalled });
+    return Object.freeze({ resourceController, refresh: refreshInstalled, dispose() {
+      document.removeEventListener("translateflow:dictionary-state-changed", refreshInstalled);
+      resourceController.dispose();
+    } });
   }
   if (!fileInput || !inspection || !inspectionMeta || !importButton || !cancelButton || !progress || !installedList) {
     return null;
@@ -197,12 +199,13 @@ export function initializeRichMdictImportUi({
   }
 
   document.addEventListener("translateflow:dictionary-state-changed", refreshInstalled);
-  window.addEventListener("pagehide", () => {
+  const dispose = () => {
+    document.removeEventListener("translateflow:dictionary-state-changed", refreshInstalled);
     controller.dispose();
     resourceController.dispose();
-  }, { once: true });
+  };
   refreshInstalled();
-  return Object.freeze({ controller, resourceController, refresh: refreshInstalled });
+  return Object.freeze({ controller, resourceController, refresh: refreshInstalled, dispose });
 }
 
 function renderInstalled(container, dictionaries, { runtime, setStatus, refreshInstalled, resourceController, setProgressNode }) {
@@ -397,5 +400,3 @@ function metaLine(label, value) {
   line.append(term, text);
   return line;
 }
-
-if (typeof document !== "undefined") initializeRichMdictImportUi();

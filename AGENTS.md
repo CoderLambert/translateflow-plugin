@@ -141,7 +141,7 @@ Source-driven data → Rule-driven retrieval → Context-driven ranking → User
 ## 8. 开发与验证命令
 
 命令以当前 [package.json](package.json) 和 `.github/workflows/` 为准，不假设存在 `npm run dev`、`lint` 或 `typecheck`。
-使用仓库现有 npm 工作流，按锁文件和 Node/npm 约束安装。WXT 构建命令见下表；当前验证链包含严格 TypeScript 检查与 Vitest。React 仅允许已授权的学习中心 UI，不引入 Content、MAIN、Worker 或后台业务。
+使用仓库现有 npm 工作流，按锁文件和 Node/npm 约束安装。WXT 构建命令见下表；当前验证链包含严格 TypeScript 检查与 Vitest。React 仅允许 Popup、Options 和学习中心这三个已授权扩展页，不引入 Content、MAIN、Worker、Background 或 shared 业务层；Options 的词典 Worker 也不在 React allowlist。
 
 ```bash
 npm ci
