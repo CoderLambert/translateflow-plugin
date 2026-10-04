@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,22 +20,28 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Remove temporary workflow from validation tree
         run: rm .github/workflows/reading-fix-temporary-verify.yml
+      - name: Validate repository
+        run: npm run validate
+      - name: Verify generated Reading classic sources
+        run: node scripts/reading-content-classic.mjs --check
+      - name: Run focused anchor resolver regression
+        run: node --test tests/reading-anchor-resolver.test.mjs
       - run: npx playwright install --with-deps chromium
-      - run: npm run build:extension:wxt
-      - name: Run page markers E2E
-        id: page_markers
-        continue-on-error: true
-        run: npm run test:e2e -- --workers=1 --retries=0 e2e/reading-page-markers.spec.mjs
-      - name: Upload page markers failure evidence
-        if: always()
+      - name: Build WXT extension
+        run: npm run build:extension:wxt
+      - name: Smoke test WXT extension
+        run: npm run test:wxt:smoke
+      - name: Run Reading location E2E
+        env:
+          TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
+        run: npm run test:e2e -- --workers=1 --retries=0 e2e/reading-return-location.spec.mjs e2e/reading-page-markers.spec.mjs
+      - name: Upload failure evidence
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: reading-page-markers-debug-${{ github.sha }}
+          name: reading-fix-debug-${{ github.sha }}
           path: |
             test-results/
             playwright-report/
           if-no-files-found: ignore
           retention-days: 1
-      - name: Fail on page markers regression
-        if: steps.page_markers.outcome == 'failure'
-        run: exit 1
