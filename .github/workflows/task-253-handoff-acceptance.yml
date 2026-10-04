@@ -6,7 +6,7 @@ on:
       - handoff/253-ui-localization-progress
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   acceptance:
@@ -16,17 +16,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Merge current main into candidate worktree
+      - name: Merge current main and resolve the audited overlap
         run: |
           git config user.name "TranslateFlow CI"
           git config user.email "ci@translateflow.invalid"
           git fetch origin main
-          git merge --no-edit origin/main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "Current main already integrated."
+            exit 0
+          fi
+          set +e
+          git merge --no-commit --no-ff origin/main
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
+            expected="$(printf '%s\n'               src/content/reading-page-markers.js               src/content/reading-record.js               src/content/reading-return-card.js | sort)"
+            if [ "$conflicts" != "$expected" ]; then
+              echo "Unexpected merge conflicts:"
+              printf '%s\n' "$conflicts"
+              exit 1
+            fi
+            git checkout --ours src/content/reading-page-markers.js src/content/reading-return-card.js
+            git checkout --theirs src/content/reading-record.js
+            git add src/content/reading-page-markers.js src/content/reading-return-card.js src/content/reading-record.js
+            test -z "$(git diff --name-only --diff-filter=U)"
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: "24.21.0"
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Regenerate classic Reading projections after merge
+        run: |
+          node scripts/reading-content-classic.mjs
+          git add src/content/reading-record.js src/content/reading-source.js
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            git commit -m "merge: integrate main into task 253 handoff"
+            git push origin HEAD:handoff/253-ui-localization-progress
+          fi
       - run: npx playwright install --with-deps chromium
       - name: Validate
         run: npm run validate
@@ -48,4 +76,4 @@ jobs:
           e2e/translateflow.spec.mjs
           e2e/subtitles.spec.mjs
       - name: Working tree must remain generated-clean
-        run: git diff --check && git status --short
+        run: git diff --check && test -z "$(git status --short)"
