@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "240",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["239"],
+  "branch": "test/240-reading-abc",
+  "worktree": ".worktrees/issue-240",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-handoff.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "冻结当前 main 的 ABC 验收候选并执行完整证据矩阵。"
+}
