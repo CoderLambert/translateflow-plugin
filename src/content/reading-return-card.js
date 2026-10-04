@@ -29,10 +29,13 @@
     for (const node of overlays) node.remove(); overlays = []; activeRange = null; activeText = "";
     if (quoteNode) { quoteNode.textContent = ""; quoteNode.hidden = true; }
   }
+  function rangeMatches(range, expected) {
+    if (!range?.startContainer?.isConnected || !range?.endContainer?.isConnected || typeof expected !== "string") return false;
+    try { return range.toString() === expected; } catch { return false; }
+  }
   function updateOverlays() {
     frame = 0;
-    if (!activeRange || !summary || !activeRange.startContainer.isConnected || !activeRange.endContainer.isConnected ||
-        activeText !== summary.anchor.quote.exact || activeRange.toString() !== activeText) {
+    if (!activeRange || !summary || activeText !== summary.anchor.quote.exact || !rangeMatches(activeRange, activeText)) {
       clearOverlays(); if (card) { card.dataset.state = "missing"; setLocalizedStatus(card.querySelector('[data-role="location-status"]'), messages.missing, "error"); } return;
     }
     const rects = [...activeRange.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0).slice(0, 12);
@@ -85,8 +88,7 @@
       if (current !== locationGeneration || ownController.signal.aborted || controller !== ownController || !card || !summary || dismissed) return;
       card.dataset.state = result.status; setLocalizedStatus(state, messages[result.status] || messages.error, result.status === "resolved" ? "success" : result.status === "ambiguous" ? "warning" : "error");
       if (result.status === "resolved" && result.range) {
-        if (!result.range.startContainer.isConnected || !result.range.endContainer.isConnected ||
-            result.verifiedText !== summary.anchor.quote.exact) {
+        if (result.verifiedText !== summary.anchor.quote.exact || !rangeMatches(result.range, summary.anchor.quote.exact)) {
           card.dataset.state = "missing"; setLocalizedStatus(state, messages.missing, "error"); return;
         }
         activeRange = result.range; activeText = result.verifiedText;
