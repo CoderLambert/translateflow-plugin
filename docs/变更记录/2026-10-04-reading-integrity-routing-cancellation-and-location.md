@@ -82,4 +82,5 @@
 - 复审指出在既有历史列表触发 focus/手动刷新后，后台响应期间旧 Range 仍可被定位按钮使用。现于每次 `load()` 起始立即以通用 `not-loaded` 状态重绘列表，同步清除旧 Range 与 marker；历史入口和手动重试保留，成功响应再渲染新定位结果。
 - `e2e/reading-page-markers.spec.mjs` 新增挂起 GET_PAGE_SUMMARY 的回归：刷新等待期间原文本节点保持连接且内容改变，点击旧行不触发滚动；后台响应后显示新的未找到状态。
 - `tests/reading-idb-cancellation.test.mjs` 另覆盖 signal 取消后 pending request 抛 AbortError、随后 transaction abort，最终原因仍是 `CANCELLED`。
+- `validate` 首次运行发现 `src/content/reading-record.js` 与唯一 owned-source 生成结果不一致；已用 `node scripts/reading-content-classic.mjs` 重建，不手改生成文件，并纳入本候选检查。
 - 本节验证应绑定后续新候选；本记录先前的 `c479b96` 验收结果不覆盖本次改动。
