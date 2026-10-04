@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "241",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["236"],
+  "branch": "feat/241-selection-text-stream",
+  "worktree": ".worktrees/issue-241",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/selection-assistant-stream.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "实现窄 Port、Provider text completion stream/unary fallback 与中断验证。"
+}

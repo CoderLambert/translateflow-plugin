@@ -1,18 +1,21 @@
 {
   "schema": 1,
   "task": "240",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": ["239"],
-  "branch": "test/240-reading-abc",
-  "worktree": ".worktrees/issue-240",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71",
-  "mergeHead": null,
+  "mergeHead": "03d8126877ebf7640b188495961c73b8762281da",
   "validationCommands": [
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:e2e", "--", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-handoff.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "READING_ABC_PASS；提交归档、gate 后同步 PR。"
+  "nextAction": "PR #291 已合入并核对 tree；READING_ABC_PASS，继续任务 241。",
+  "syncHead": "1faf7d79c62d60eeb8f704c99fd94e65ef486c1f",
+  "pr": 291,
+  "result": "READING_ABC_PASS"
 }

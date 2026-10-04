@@ -66,6 +66,8 @@ The React learning center is a single unlisted WXT extension page at `learning-c
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
 
+Selection assistant text streaming uses the dedicated `selection.assistant-stream` Port. It is bound to the actual top-frame Content sender/document (or the existing 32-hex fallback owner), accepts one start/requestId, and is aborted on stop, disconnect, navigation, tab removal or permission revocation. It reuses Provider permission/timeout/AbortController code; it is not `reading.invalidate`, a generic bus, or permission to persist partial text.
+
 ## Lexical data ownership and package boundary
 
 TranslateFlow owns the lexical **engine**, not the ongoing authorship of dictionary content.

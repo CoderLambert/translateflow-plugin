@@ -8,14 +8,15 @@ import {
   onReadingTabRemoved,
   onReadingTabUpdated
 } from "./reading-record/runtime.js";
+import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } from "./selection/assistant-stream.js";
 
 export function initializeBackground() {
   registerMessageRouter();
   registerCommandRouter();
-  chrome.runtime.onConnect.addListener(handleReadingPort);
-  chrome.tabs.onUpdated.addListener(onReadingTabUpdated);
-  chrome.tabs.onRemoved.addListener(onReadingTabRemoved);
-  chrome.permissions.onRemoved.addListener(onReadingPermissionsRemoved);
+  chrome.runtime.onConnect.addListener(port => { if (!handleReadingPort(port)) handleSelectionAssistantStreamPort(port); });
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { onReadingTabUpdated(tabId, changeInfo); if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) abortSelectionAssistantStreams(tabId); });
+  chrome.tabs.onRemoved.addListener(tabId => { onReadingTabRemoved(tabId); abortSelectionAssistantStreams(tabId); });
+  chrome.permissions.onRemoved.addListener(() => { onReadingPermissionsRemoved(); abortSelectionAssistantStreams(); });
 
   chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     await ensureConfigDefaults();
