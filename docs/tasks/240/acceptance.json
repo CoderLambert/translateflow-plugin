@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "task": "240",
+  "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71",
+  "tree": "96705a0c525a458c09ea25d63ce8128ea45d0e01",
+  "inputTree": "db6042b1ebd9915bdc6e5bc490dac0c98c792d4fbfa81850c436ecf0bfdde513",
+  "frozenAt": "2026-10-04T01:49:34.343Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 57569.273,
+      "startedAt": "2026-10-04T01:49:52.115Z",
+      "log": "docs/task-execution/local/240/6e8e505e-af9b-4622-bb11-03c1f28871be.log",
+      "logSha256": "db2d535a2a5615637b3d96a91c97f2a7c5646d44fff256eda3dcb089404bd190"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2230.906555,
+      "startedAt": "2026-10-04T01:51:00.081Z",
+      "log": "docs/task-execution/local/240/ecdf92c3-2f30-4cc8-9e9c-41319d30f7e6.log",
+      "logSha256": "f470a345f9d67f38d88c1c51fd83f3c3747493301b36a7fb28e52c4fd5d7fd2a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-loop-release-a.spec.mjs",
+        "e2e/reading-handoff.spec.mjs",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 43418.009837,
+      "startedAt": "2026-10-04T01:51:02.505Z",
+      "log": "docs/task-execution/local/240/f500f745-9535-41b1-a96a-4a8eda9ed10a.log",
+      "logSha256": "744272f6bf7fad17863d7ebce86a598e72fb99fe63e5be597367641749193b76"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "47bf5a9ab7851a6e288a7465fe64db23cac8b8b71a43b8f70015479fc7094647"
+  },
+  "limitations": ["任务 241–244 的 D/AI 理解链、Chrome 102/其它浏览器/隐身/商店发布 NOT RUN。", "npm 未变化锁文件仍报告 1 low / 1 high audit 告警。"],
+  "decision": "READING_ABC_PASS"
+}

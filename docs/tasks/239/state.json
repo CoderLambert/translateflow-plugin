@@ -1,18 +1,21 @@
 {
   "schema": 1,
   "task": "239",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": ["238"],
-  "branch": "feat/239-reading-page-markers",
-  "worktree": ".worktrees/issue-239",
+  "branch": "main",
+  "worktree": ".",
   "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1",
-  "mergeHead": null,
+  "mergeHead": "33ab3ea2a38ce591b622ba06739344858d7da403",
   "validationCommands": [
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:e2e", "--", "e2e/reading-page-markers.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "候选完整验收与自查通过；提交归档、gate 后同步 PR。"
+  "nextAction": "PR #290 已按准确 head squash 合入，main tree 与验收归档 tree 一致；继续任务 240。",
+  "syncHead": "05dbcb04a910883b1b3c833d01518306706bc4b8",
+  "pr": 290,
+  "result": "TASK_239_PASS"
 }

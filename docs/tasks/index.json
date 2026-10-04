@@ -109,12 +109,21 @@
     },
     {
       "task": "239",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "238"
       ],
-      "branch": "feat/239-reading-page-markers",
+      "branch": "main",
       "candidateHead": "488d514ff2ef6ce4651908f36647586dbf9ae7c1"
+    },
+    {
+      "task": "240",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "239"
+      ],
+      "branch": "test/240-reading-abc",
+      "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71"
     },
     {
       "task": "245",
