@@ -4,9 +4,11 @@ import { readFile } from "node:fs/promises";
 import { createRichMdictImportController } from "../src/options/rich-mdict-import-controller.js";
 import { createRichMdictImportWorkerHandler } from "../src/options/workers/rich-mdict-import-worker-core.js";
 import { RICH_MDICT_WORKER_MESSAGES } from "../src/options/workers/rich-mdict-import-worker-protocol.js";
-import { BACKGROUND_MESSAGES, CONTENT_SCRIPT_FILES } from "../src/shared/constants.js";
+import { contentSourceFiles } from "../scripts/content-runtime.mjs";
+import { BACKGROUND_MESSAGES } from "../src/shared/constants.js";
 
 const UUID = "123e4567-e89b-42d3-a456-426614174000";
+const CONTENT_SOURCE_FILES = contentSourceFiles();
 
 test("Settings streams the selected file to a worker, reserves it, then commits a reloadable dictionary", async () => {
   const runtime = new FakeRuntime();
@@ -125,7 +127,7 @@ test("Settings and selection expose local rich details while preserving the stri
   assert.match(renderer, /viewer\.renderPlainText\(body, fallback\)/u);
   assert.match(renderer, /richRecord/u);
   assert.doesNotMatch(renderer, /innerHTML/u);
-  assert.ok(CONTENT_SCRIPT_FILES.indexOf("src/content/selection/rich-details.js") < CONTENT_SCRIPT_FILES.indexOf("src/content/reading-record.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-details.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/controller.js"));
   assert.match(constants, /RICH_MDICT_IMPORT_CANCEL/u);
 });
 

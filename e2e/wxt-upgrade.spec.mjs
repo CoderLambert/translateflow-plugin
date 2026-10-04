@@ -10,7 +10,7 @@ import { startMockServer } from "./support/mock-server.mjs";
 import { startClosedNetwork, startupNetworkControl, assertStartupNetworkControl } from "./support/closed-network.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
-import { READING_METHOD, READING_ERROR } from "../src/shared/reading/constants.js";
+import { READING_METHOD } from "../src/shared/reading/constants.js";
 import { request } from "../tests/fixtures/reading/contract.mjs";
 
 const oldArtifact = process.env.TF_UPGRADE_OLD_ARTIFACT;
@@ -182,13 +182,17 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     if(cachedOldRuntime) expect(initialRuntime).toEqual(legacyRuntime);
     else {
       expect(initialLifecycle).toEqual({events:[],capacity:4,overflow:false});
-      expect(initialRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
+      expect(initialRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     }
     const replacementStartup=await startupProof(initialWorker,cachedOldRuntime ? oldControl : newControl,replacementNetworkStart);
-    const after=await snapshot(); assertUnchangedUpgradeSnapshot(before,after);
+    // Chrome prunes the old dynamic registration when its raw files disappear,
+    // even if it temporarily retains the cached old background worker.
+    const expectedReplacement={...before,registrations:[],
+      databases:cachedOldRuntime ? before.databases : withEmptyReadingDatabase(before.databases)};
+    const after=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,after);
     await expect(driver.locator("#uiLocale")).toBeVisible();
     await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
-    const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(before,afterLocaleDisplay);
+    const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,afterLocaleDisplay);
     expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
     phases.push({phase:cachedOldRuntime ? "PRE_UPGRADE_CACHED_OLD_RUNTIME" : "WXT-replacement-runtime",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,
       startupObserver:next.startupObserver,networkStartup:replacementStartup,observerExecuted:!cachedOldRuntime,nativeLifecycle:initialLifecycle??null,nativeRuntime:initialRuntime,snapshot:summary(after)});
@@ -197,7 +201,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText("你的个人首选");
     const stale=await context.newPage(); await stale.goto(`${server.baseUrl}/selection`); await inject(stale);
     const staleId=await tabId(stale);
-    const beforeActivation=await snapshot(); assertUnchangedUpgradeSnapshot(before,beforeActivation);
+    const beforeActivation=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,beforeActivation);
     // Actual extension reload restarts the background and invalidates this existing
     // isolated world. Verify invalidation, then the supported refresh recovery.
     const manager = await context.newPage(); await manager.goto("chrome://extensions/");
@@ -220,9 +224,10 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const expectedReloadRegistrations=expectedRegistrationsAfterInstalledUpdate(before.registrations,reloadedLifecycle.events[0],oldManifest.version,
       mappingForGeneration("pre-switch-19e"),next.runtimeMapping);
     const activatedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
-    expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
+    expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     await expect.poll(()=>driver.evaluate(()=>chrome.storage.local.get(["uiLocale"]).then(x=>x.uiLocale))).toBe(expectedReloadStorage.uiLocale);
-    const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage,registrations:expectedReloadRegistrations});
+    const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage,
+      registrations:expectedReloadRegistrations,databases:withEmptyReadingDatabase(beforeActivation.databases)});
     phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,networkStartup:activatedStartup,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
@@ -245,7 +250,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(afterRecovery.registrations).toEqual(expectedReloadRegistrations);
     // Only the cache owner's lastAccessedAt on existing translation/page rows
     // may advance during real reads. Content/identity and all other stores stay exact.
-    assertRecoveredDatabases(before.databases,afterRecovery.databases);
+    assertRecoveredDatabases(activated.databases,afterRecovery.databases);
     expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
     phases.push({phase:"WXT-after-recovery",id:extensionId,allDatabaseContentPreserved:true,
       allowedReadMetadata:["ai_bilingual_translator.translations.lastAccessedAt","ai_bilingual_translator.pages.lastAccessedAt"],snapshot:summary(afterRecovery)});
@@ -257,7 +262,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(restartedLifecycle).toMatchObject({events:expect.any(Array),capacity:4,overflow:false});
     expect(restartedLifecycle.events.length).toBeLessThanOrEqual(restartedLifecycle.capacity);
     const restartedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
-    expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
+    expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
     phases.push({phase:"WXT-browser-restart",id:extensionId,networkStartup:restartedStartup,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
     expect(server.calls).toHaveLength(1); expect(network.snapshot().forwardedOutsideMock).toBe(0);
@@ -305,3 +310,9 @@ function summary(snapshot) {
 }
 function stable(value) { return Array.isArray(value) ? value.map(stable) : value&&typeof value==="object"
   ? Object.fromEntries(Object.keys(value).sort().map(k=>[k,stable(value[k])])) : value; }
+function withEmptyReadingDatabase(databases) {
+  if (databases.some(database=>database.name==="translateflow-reading-records")) return databases;
+  return [...databases,{name:"translateflow-reading-records",version:1,stores:{
+    artifacts:[],meta:[],pages:[],receipts:[],records:[],snapshots:[]
+  }}].sort((a,b)=>a.name.localeCompare(b.name));
+}

@@ -3,33 +3,40 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ROOT, legacyAssetRoots, sourceClosure, lexicalAssetFiles, byteSummary } from "./wxt-assets.mjs";
+import { ROOT, runtimeAssetRoots, sourceClosure, lexicalAssetFiles, byteSummary } from "./wxt-assets.mjs";
+import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
-import { projectProductionManifest } from "./production-manifest.mjs";
+import { expectedProductionManifest } from "./production-manifest.mjs";
 import { checkManifestLocales } from "./i18n-locales.mjs";
 
 export function assertProductionManifest(manifest, baseline) {
-  assert.deepEqual(manifest, projectProductionManifest(baseline), "Production WXT Manifest must equal the approved static Content projection");
+  assert.deepEqual(manifest, expectedProductionManifest(baseline), "Production WXT Manifest must equal the approved compiled Content projection");
 }
 
 export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome-mv3"), reportDir = resolve(ROOT, ".wxt/reports") } = {}) {
   const manifest = JSON.parse(await readFile(resolve(output, "manifest.json"), "utf8"));
   const baseline = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
-  // Static Content injection is the only approved build-time projection.
+  // WXT's compiled Content entrypoint is the only approved build-time projection.
   assertProductionManifest(manifest, baseline);
-  const legacy = await sourceClosure(legacyAssetRoots());
+  const runtime = await sourceClosure(runtimeAssetRoots());
   const lexical = await lexicalAssetFiles();
   const locales = await sourceClosure((await checkManifestLocales()).files);
   const assetMap = JSON.parse(await readFile(resolve(reportDir, "asset-map.json"), "utf8"));
-  assert.deepEqual(assetMap, { legacy, lexical, locales }, "Build bridge must match current runtime sources");
+  assert.deepEqual(assetMap, { runtime, lexical, locales }, "Raw runtime asset map must match current MAIN/Worker sources");
   const compiled = JSON.parse(await readFile(resolve(reportDir, "compiled-closures.json"), "utf8"));
   const summary = await byteSummary(output);
   const present = new Set(summary.files.map((entry) => entry.path));
-  const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...legacy, ...lexical.files, ...locales, ...compiled.map((item) => item.fileName)]);
+  const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...runtime, ...lexical.files, ...locales, ...compiled.map((item) => item.fileName)]);
   assert.deepEqual([...present].sort(), [...expected].sort(), "Unregistered or missing production assets");
-  for (const path of [...legacy, ...lexical.files, ...locales]) {
+  for (const path of [...runtime, ...lexical.files, ...locales]) {
     assert.deepEqual(await readFile(resolve(output, path)), await readFile(resolve(ROOT, path)), `Bridge changed source bytes: ${path}`);
   }
+  assert.deepEqual(manifest.content_scripts, [{ matches: ["http://*/*", "https://*/*"],
+    js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES], run_at: "document_idle" }]);
+  for (const path of [...CONTENT_SCRIPT_FILES, ...CONTENT_STYLE_FILES]) assert(present.has(path), `Missing compiled Content output: ${path}`);
+  for (const path of ["content.js", "content.css"]) assert(!present.has(path), `Raw Content root remained in production: ${path}`);
+  const rawRuntime = new Set(runtime);
+  for (const path of present) if (path.startsWith("src/content/")) assert(rawRuntime.has(path), `Raw ISOLATED Content source remained in production: ${path}`);
   for (const path of [...Object.values(WORKER_PATHS), ...YOUTUBE_MAIN_BRIDGE_FILES]) assert(present.has(path), `Missing runtime mapping: ${path}`);
   const chunkMap = new Map(compiled.map(item => [item.fileName, item]));
   function closure(roots) {
@@ -49,13 +56,14 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   }
   const learningFiles = closure(await pageRoots(EXTENSION_PAGES.learningCenter));
   learningFiles.add(EXTENSION_PAGES.learningCenter);
-  const legacyCompiled = closure(["background.js", ...await pageRoots(EXTENSION_PAGES.popup), ...await pageRoots(EXTENSION_PAGES.options)]);
+  const nonLearningCompiled = closure(["background.js", ...CONTENT_SCRIPT_FILES,
+    ...await pageRoots(EXTENSION_PAGES.popup), ...await pageRoots(EXTENSION_PAGES.options)]);
   for (const chunk of compiled) {
     for (const path of [...(chunk.imports || []), ...(chunk.dynamicImports || [])]) assert(present.has(path), `Missing compiled import: ${path}`);
     for (const module of chunk.modules || []) {
       assert(!/(?:^|\/)(?:vitest|@vitest|@testing-library|jsdom|happy-dom|@webext-core\/fake-browser)(?:\/|$)/u.test(module), `Test dependency entered production: ${module}`);
       if (/(?:^|\/)(?:react|react-dom)\//u.test(module)) {
-        assert(learningFiles.has(chunk.fileName) && !legacyCompiled.has(chunk.fileName), `React entered non-learning runtime: ${module}`);
+        assert(learningFiles.has(chunk.fileName) && !nonLearningCompiled.has(chunk.fileName), `React entered non-learning runtime: ${module}`);
       }
       assert(!/(?:^|\/)(?:tests|e2e|scripts|docs|lexicon|\.release-sources|\.github)\//u.test(module), `Build/private source entered compiled output: ${module}`);
       assert(!/\/wxt\/dist\/client\/(?:websocket|dev-server|reload)/u.test(module), `Development helper entered production: ${module}`);
@@ -77,7 +85,7 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
     }
   }
   const codeBudgetBytes = 1576595; // #245: old code + max(10%, 100 KiB), excluding dictionary data.
-  const learningExclusive = summary.files.filter(entry => learningFiles.has(entry.path) && !legacyCompiled.has(entry.path));
+  const learningExclusive = summary.files.filter(entry => learningFiles.has(entry.path) && !nonLearningCompiled.has(entry.path));
   const learningBytes = learningExclusive.reduce((sum, entry) => sum + entry.size, 0);
   const platformCodeBytes = summary.codeBytes - learningBytes;
   assert(platformCodeBytes <= codeBudgetBytes, `Platform code exceeds #245 budget: ${platformCodeBytes}`);
@@ -98,7 +106,7 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   uiClosure.htmlBytes = Object.values(EXTENSION_PAGES).reduce((sum, path) => sum + sizes.get(path), 0);
   uiClosure.bytes += uiClosure.htmlBytes;
   const report = { status: "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: ["content_scripts"],
-    legacyFiles: legacy.length, lexicalMissing: lexical.missing, ...summary,
+    runtimeFiles: runtime.length, compiledContent: { js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES] }, lexicalMissing: lexical.missing, ...summary,
     codeBudgetBytes, platformCodeBytes, learningClosure: { files: learningExclusive.map(entry => entry.path), bytes: learningBytes }, backgroundClosure, uiClosure,
     compiledOutputs: compiled.map((item) => ({ fileName: item.fileName, type: item.type })) };
   await writeFile(resolve(reportDir, "production-audit.json"), JSON.stringify(report, null, 2) + "\n");

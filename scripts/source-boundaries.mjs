@@ -97,12 +97,14 @@ export function inspectSources(root, files) {
       const { specifier } = dependency;
       if (!specifier) { failures.push(`${path} 不允许无法审计的动态依赖`); continue; }
       if (specifier.startsWith(".")) {
+        if (path === "entrypoints/content.ts" && specifier === "../content.css" && existsSync(resolve(root, "content.css"))) continue;
         const dependencyFile = resolveSource(root, path, specifier);
         if (!dependencyFile) failures.push(`${path} 无法解析或越界的源码依赖: ${specifier}`);
         else graph.get(path).resolved.push(relative(root, dependencyFile).replaceAll(sep, "/"));
       } else if (!(isReact(specifier) && UI.test(path)) &&
           !(path === "entrypoints/background.ts" && specifier === "wxt/utils/define-background") &&
-          !(path === "entrypoints/background.js" && specifier === "wxt/utils/define-background")) {
+          !(path === "entrypoints/background.js" && specifier === "wxt/utils/define-background") &&
+          !(path === "entrypoints/content.ts" && specifier === "wxt/utils/define-content-script")) {
         failures.push(`${path} 未批准的 runtime 依赖: ${specifier}`);
       }
     }

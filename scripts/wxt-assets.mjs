@@ -2,7 +2,6 @@ import { readFile, realpath, readdir, stat } from "node:fs/promises";
 import platformPath, { resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webcrypto } from "node:crypto";
-import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES, BUNDLED_LEXICON_PATHS } from "../src/shared/runtime-assets.js";
 import { validateTflexManifest, verifyTflexManifestFingerprint, verifyTflexDescriptor } from "../src/background/lexical/tflex-integrity.js";
 import { pathRelation } from "./path-boundaries.mjs";
@@ -21,10 +20,10 @@ export function assertAssetPath(path) {
   return path;
 }
 
-// Only explicit classic/MAIN/Worker roots and their relative module/CSS closure.
-export function legacyAssetRoots() {
-  return [...CONTENT_SCRIPT_FILES, ...CONTENT_STYLE_FILES,
-    ...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)];
+// WXT compiles ISOLATED Content. Only execution-context-specific MAIN/Worker
+// resources remain raw assets with their stable runtime paths.
+export function runtimeAssetRoots() {
+  return [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)];
 }
 
 export async function sourceClosure(roots, root = ROOT) {
