@@ -3,22 +3,29 @@
   if (!app?.modules.textProjectionBuilder || app.modules.textProjection) return;
   const policy = app.modules.textProjectionPolicy;
   const { createBuilder } = app.modules.textProjectionBuilder;
-  let sourceRevision = 1, observer = null, watchedPage = null, routeTimer = null;
+  let sourceRevision = 1, observer = null, watchedPage = null, routeTimer = null, viewportInvalidationQueued = false;
   const listeners = new Set();
   function consume(records) {
     if (!records.some(policy.sourceMutation)) return;
     invalidate();
   }
   function invalidate() { sourceRevision++; for (const listener of listeners) listener(sourceRevision); }
+  function invalidateViewport() {
+    if (viewportInvalidationQueued) return;
+    viewportInvalidationQueued = true;
+    Promise.resolve().then(() => { viewportInvalidationQueued = false; invalidate(); });
+  }
   function start(onInvalidation) {
     if (onInvalidation) listeners.add(onInvalidation);
     if (observer) return;
     observer = new MutationObserver(consume);
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true,
-      attributeOldValue: true, attributeFilter: ["class", "style", "hidden", "aria-hidden", "contenteditable", "data-tf-sensitive"] });
+      attributeOldValue: true });
     const route = (event) => { if (watchedPage && app.modules.runtime.getPageIdentity(event?.destination?.url || location.href) !== watchedPage) invalidate(); };
     window.addEventListener("popstate", route); window.addEventListener("hashchange", route);
     window.addEventListener("pagehide", invalidate);
+    window.addEventListener("resize", invalidateViewport, { passive: true });
+    globalThis.visualViewport?.addEventListener?.("resize", invalidateViewport, { passive: true });
     globalThis.navigation?.addEventListener?.("navigate", route);
   }
   function watchPage(pageUrl) {
