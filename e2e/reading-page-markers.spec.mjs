@@ -27,7 +27,7 @@ async function readPageSurface(page) {
 
 async function markerIsolated(driver, url, action, method) {
   return driver.evaluate(async ({ url, action, method }) => {
-    const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
+    const tabId = (await chrome.tabs.query({})).filter(tab => tab.url === url).at(-1)?.id;
     const [injection] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [action, method],
       func: (name, summaryMethod) => {
         if (name === "install") {
