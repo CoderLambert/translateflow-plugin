@@ -221,6 +221,13 @@
       "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76"
     },
     {
+      "task": "251",
+      "status": "working",
+      "dependencies": [],
+      "branch": "fix/reading-integrity-20261004",
+      "candidateHead": null
+    },
+    {
       "task": "offline-dictionary",
       "status": "paused",
       "dependencies": [],

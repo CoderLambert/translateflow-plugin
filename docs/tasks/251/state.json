@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "task": "251",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/reading-integrity-20261004",
+  "worktree": ".",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["npm", "run", "test:e2e", "--", "e2e/translateflow.spec.mjs", "e2e/selection-assistant-ui.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs", "e2e/learning-center.spec.mjs", "e2e/wxt-platform-permissions.spec.mjs"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-storage.spec.mjs", "--grep", "Production digest barrier proves pause-before-write|Native pause/resume, site exclusion/resume"],
+    ["env", "TF_UPGRADE_OLD_ARTIFACT=/tmp/translateflow-fixed-old-19e89b6-20261004/dist/extension", "TF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3", "npm", "run", "test:e2e", "--", "e2e/wxt-upgrade.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "完成候选提交后按授权运行上述验证；保留本地结果，不推送或开 PR。"
+}

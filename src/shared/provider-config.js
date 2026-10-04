@@ -50,6 +50,17 @@ export function resolveTranslationConfig(
   pageUrl = "",
   temporaryPresetOverride = null
 ) {
+  return resolveTranslationConfigForSite(config, pageUrl, temporaryPresetOverride);
+}
+
+// A trusted stored site identity can select the same existing profile chain
+// without inventing a return URL for records whose locator was intentionally
+// omitted. The caller validates siteKey before reaching this resolver.
+export function resolveTranslationConfigForSite(
+  config = DEFAULT_CONFIG,
+  siteKey = "",
+  temporaryPresetOverride = null
+) {
   const globalConfig = {
     ...DEFAULT_CONFIG,
     ...config,
@@ -60,7 +71,7 @@ export function resolveTranslationConfig(
     siteProfiles: isPlainObject(config?.siteProfiles) ? config.siteProfiles : {}
   };
 
-  const siteProfile = getSiteProfile(globalConfig.siteProfiles, pageUrl);
+  const siteProfile = getSiteProfile(globalConfig.siteProfiles, siteKey);
   const provider = normalizeProviderId(siteProfile?.provider || globalConfig.provider);
 
   const base = provider === PROVIDER_IDS.OPENAI_COMPATIBLE

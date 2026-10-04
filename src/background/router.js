@@ -98,7 +98,7 @@ export async function handleBackgroundMessage(message, sender) {
           segments: message.segments,
           config
         }),
-        readingResult: await readingTranslationResult(message.pageUrl, config)
+        readingResult: await readingTranslationResult(config)
       };
     }
     case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
@@ -146,7 +146,7 @@ export async function handleBackgroundMessage(message, sender) {
         segments: message.segments,
         config
       });
-      return { ...result, readingResult: await readingTranslationResult(message.pageUrl, config) };
+      return { ...result, readingResult: await readingTranslationResult(config) };
     }
     case BACKGROUND_MESSAGES.CACHE_STORE:
       return storeTranslations({

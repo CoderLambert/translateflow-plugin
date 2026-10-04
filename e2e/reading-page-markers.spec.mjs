@@ -1,15 +1,36 @@
 import { test, expect, chromium } from "@playwright/test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { startMockServer } from "./support/mock-server.mjs";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
+import { READING_METHOD as M } from "../src/shared/reading/constants.js";
+
+async function readPageSurface(page) {
+  return page.evaluate(() => {
+    const values = [...(globalThis.__tfObservedMessages || []), ...(globalThis.__tfObservedEventDetails || [])];
+    function visit(root) {
+      for (const node of root.childNodes || []) {
+        if (node.nodeType === Node.TEXT_NODE) values.push(node.nodeValue || "");
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          for (const attribute of node.attributes) values.push(`${attribute.name}=${attribute.value}`);
+          for (const key of ["title", "ariaLabel"]) if (node[key]) values.push(`${key}=${node[key]}`);
+          if (node.shadowRoot) visit(node.shadowRoot);
+        }
+        visit(node);
+      }
+    }
+    visit(document);
+    return values;
+  });
+}
 
 test("authorized revisit renders bounded page history markers and recovers across DOM and SPA changes without Provider work", async ({}, info) => {
   test.setTimeout(120000);
   const temporary = await mkdtemp(join(tmpdir(), "tf-reading-markers-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
   const server = await startMockServer(), articleUrl = `${server.baseUrl}/marker-page`; let context;
-  server.setPage("/marker-page", '<!doctype html><main><p id="source">PUBLIC session alpha tail</p></main>');
+  const longPrefix = Array.from({ length: 90 }, (_, index) => `<p>section ${index} ${"filler ".repeat(90)}</p>`).join("");
+  server.setPage("/marker-page", `<!doctype html><main>${longPrefix}<p id="source">PUBLIC session alpha tail</p></main>`);
   try {
     await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
@@ -23,18 +44,55 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await source.evaluate(() => { const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
       range.setStart(node, start); range.setEnd(node, start + 7); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange")); });
     await source.locator(".tf-selection-chip").click(); await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
-    await center.reload(); await center.locator(".record-list .record").first().click();
+    await center.reload();
+    const recordRow = center.locator(".record-list .record").first(), recordId = await recordRow.getAttribute("data-record-id");
+    await recordRow.click();
+    const detail = await center.evaluate(({ method, recordId }) => chrome.runtime.sendMessage({ protocolVersion: 2, method, recordId }),
+      { method: M.GET_RECORD, recordId });
     await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
     await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
     await source.close();
 
-    const revisit = await context.newPage(); await revisit.goto(articleUrl);
+    const revisit = await context.newPage();
+    await revisit.addInitScript(() => {
+      globalThis.__tfObservedMessages = []; globalThis.__tfObservedEventDetails = [];
+      addEventListener("message", event => { try { __tfObservedMessages.push(JSON.stringify(event.data)); } catch {} });
+      const dispatch = EventTarget.prototype.dispatchEvent;
+      EventTarget.prototype.dispatchEvent = function(event) {
+        if (event && "detail" in event) { try { __tfObservedEventDetails.push(JSON.stringify(event.detail)); } catch {} }
+        return dispatch.call(this, event);
+      };
+    });
+    await revisit.goto(articleUrl);
     await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
+    const scanEvidence = await driver.evaluate(async ({ url, anchor }) => {
+      const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
+      const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [anchor], func: async value => {
+        const resolved = await globalThis.__TRANSLATE_FLOW_CONTENT__.modules.readingAnchorResolver.resolve(value);
+        return { status: resolved.status, chars: resolved.stats.chars, nodes: resolved.stats.nodes,
+          workMs: resolved.stats.ms, waitMs: resolved.stats.waitMs, verifiedText: resolved.verifiedText };
+      } });
+      return result.result;
+    }, { url: revisit.url(), anchor: detail.data.anchor });
+    expect(scanEvidence.status).toBe("resolved");
+    expect(scanEvidence.verifiedText).toBe("session");
+    expect(scanEvidence.chars).toBeGreaterThan(16_000);
+    expect(scanEvidence.workMs).toBeGreaterThanOrEqual(0);
+    expect(scanEvidence.waitMs).toBeGreaterThanOrEqual(0);
+    await writeFile(info.outputPath("reading-page-marker-scan.json"), JSON.stringify({ browser: context.browser().version(), status: scanEvidence.status,
+      chars: scanEvidence.chars, nodes: scanEvidence.nodes, workMs: scanEvidence.workMs, waitMs: scanEvidence.waitMs,
+      pageCharsBeforeTarget: longPrefix.length, providerCalls: server.calls.length }, null, 2));
     await revisit.locator(".tf-reading-page-marker").click();
     await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("session");
+    await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
     await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("已定位");
+    expect(JSON.stringify(await readPageSurface(revisit))).toContain("session"); // Only the current verified Range contains it.
+
+    await revisit.evaluate(() => { document.querySelector("#source").textContent = "PUBLIC removed alpha tail"; });
+    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("未找到");
+    await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(0);
+    expect(JSON.stringify(await readPageSurface(revisit))).not.toContain("session");
 
     await revisit.evaluate(() => { document.querySelector("#source").innerHTML = "<span>PUBLIC </span><strong>session</strong><span> alpha tail</span>"; });
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);

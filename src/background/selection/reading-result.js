@@ -1,8 +1,9 @@
-import { getCacheContext } from "../cache-db.js";
+import { getConfigHash } from "../cache-db.js";
 
-// The same effective config used for the result/cache; no endpoint, prompt or credentials cross to Content.
-export async function readingTranslationResult(pageUrl, config) {
-  const { configHash } = await getCacheContext(pageUrl, config);
+// Fingerprint the exact effective config used for the Provider call. Page
+// locators and credentials never enter the saved provenance DTO.
+export async function readingTranslationResult(config) {
+  const configHash = await getConfigHash(config);
   return { targetLanguage: config.targetLanguage,
     provenance: { provider: config.provider, model: config.model,
       promptVersion: "translation-prompt-v1", providerConfigFingerprint: configHash } };

@@ -66,7 +66,7 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     cache.cacheKey = "selection-explain:" + await sha256(JSON.stringify([SELECTION_READING_PROMPT_VERSION, SELECTION_EXPLAIN_QUESTION, cache.cacheKey]));
     const payload = { ...cache.payload, userQuestion: SELECTION_EXPLAIN_QUESTION };
     const systemPrompt = buildSelectionExplainPrompt({ targetLanguage: config.targetLanguage, depth: payload.depth });
-    const readingResult = { ...await readingTranslationResult(input.pageUrl || "", { ...config, prompt: systemPrompt }),
+    const readingResult = { ...await readingTranslationResult({ ...config, prompt: systemPrompt }),
       userQuestion: SELECTION_EXPLAIN_QUESTION, action: "understand", sourceLanguage: resolved.intent?.sourceLanguage || "en" };
     readingResult.provenance.promptVersion = SELECTION_READING_PROMPT_VERSION;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);

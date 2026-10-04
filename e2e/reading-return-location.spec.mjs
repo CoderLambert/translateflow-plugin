@@ -6,6 +6,27 @@ import { startMockServer } from "./support/mock-server.mjs";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
 import { READING_METHOD as M } from "../src/shared/reading/constants.js";
 
+async function readOwnedSurface(page, includePage = false) {
+  return page.evaluate(includePage => {
+    const values = [...(globalThis.__tfObservedMessages || []), ...(globalThis.__tfObservedEventDetails || [])];
+    function visit(root) {
+      if (!root) return;
+      for (const node of root.childNodes || []) {
+        if (node.nodeType === Node.TEXT_NODE) values.push(node.nodeValue || "");
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          for (const attribute of node.attributes) values.push(`${attribute.name}=${attribute.value}`);
+          for (const key of ["title", "ariaLabel"]) if (node[key]) values.push(`${key}=${node[key]}`);
+          if (node.shadowRoot) visit(node.shadowRoot);
+        }
+        visit(node);
+      }
+    }
+    if (includePage) visit(document);
+    else visit(document.querySelector("#translateflow-ui-root")?.shadowRoot);
+    return values;
+  }, includePage);
+}
+
 test("Reading return resolves one exact Range, refuses ambiguous/missing locations and opens the exact history card", async ({}, info) => {
   test.setTimeout(120000);
   const temporary = await mkdtemp(join(tmpdir(), "tf-reading-return-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
@@ -20,6 +41,15 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     server.setPage("/return-location", html());
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
+    await context.addInitScript(() => {
+      globalThis.__tfObservedMessages = []; globalThis.__tfObservedEventDetails = [];
+      addEventListener("message", event => { try { __tfObservedMessages.push(JSON.stringify(event.data)); } catch {} });
+      const dispatch = EventTarget.prototype.dispatchEvent;
+      EventTarget.prototype.dispatchEvent = function(event) {
+        if (event && "detail" in event) { try { __tfObservedEventDetails.push(JSON.stringify(event.detail)); } catch {} }
+        return dispatch.call(this, event);
+      };
+    });
     const driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);
     await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", autoSites: [], cacheRestoreSites: [], quickControlSites: [], quickControlHiddenSites: [] }));
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
@@ -44,7 +74,12 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
       await center.getByRole("button", { name: "Return to original page", exact: true }).click();
       const page = await opened; await page.waitForLoadState("domcontentloaded");
       await expect(page.locator(`.tf-reading-return-card[data-state="${expected}"]`)).toBeVisible();
-      await expect(page.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+      if (expected === "resolved") await expect(page.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+      else {
+        await expect(page.locator(".tf-reading-return-card blockquote")).toBeHidden();
+        await expect(page.locator(".tf-reading-return-card blockquote")).toHaveText("");
+      }
+      if (expected !== "resolved") expect(JSON.stringify(await readOwnedSurface(page))).not.toContain("session");
       return page;
     }
 
@@ -68,7 +103,8 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
     await expect(target.locator('[data-role="location-status"]')).toContainText("多个可信匹配"); await target.close();
 
     mode = "missing"; target = await openTarget("missing");
-    await expect(target.locator('[data-role="location-status"]')).toContainText("未找到保存的原文"); await target.close();
+    await expect(target.locator('[data-role="location-status"]')).toContainText("未找到保存的原文");
+    expect(JSON.stringify(await readOwnedSurface(target, true))).not.toContain("session"); await target.close();
 
     mode = "unique"; target = await openTarget("resolved");
     const openedHistory = context.waitForEvent("page");

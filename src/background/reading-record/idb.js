@@ -70,29 +70,61 @@ export function createReadingDatabase() {
     void pending.catch(() => { if (opening === pending) opening = null; });
     return pending;
   }
-  async function run(mode, assertCurrent, program, stores = READING_STORES) {
-    const db = await open(); assertCurrent();
+  async function run(mode, assertCurrent, program, stores = READING_STORES, signal = null) {
+    const checkCurrent = () => {
+      if (signal?.aborted) throw cancellationError();
+      assertCurrent?.();
+    };
+    checkCurrent();
+    const db = await open();
+    checkCurrent();
     return new Promise((resolve, reject) => {
-      let tx, iterator, result, failure;
+      let tx, iterator, result, failure, settled = false, commitStarted = false;
       try { tx = db.transaction(stores, mode); } catch (error) { reject(storageError(error)); return; }
-      tx.oncomplete = () => resolve(result); // Success request events are not commit acknowledgements.
-      tx.onabort = () => reject(storageError(failure || tx.error));
+      const cleanup = () => signal?.removeEventListener("abort", abortTransaction);
+      const settleError = error => {
+        if (settled) return;
+        settled = true; cleanup();
+        reject(error?.code === "CANCELLED" ? error : storageError(error));
+      };
+      const abortTransaction = () => {
+        if (settled || commitStarted) return;
+        failure ||= cancellationError();
+        try { tx.abort(); } catch (error) {
+          // If abort is no longer possible, preserve the native failure/result.
+          if (failure?.code !== "CANCELLED") settleError(failure || error);
+        }
+      };
+      signal?.addEventListener("abort", abortTransaction, { once: true });
+      tx.oncomplete = () => { settled = true; cleanup(); resolve(result); };
+      tx.onabort = () => settleError(failure || tx.error);
       tx.onerror = () => { failure ||= tx.error; };
       function step(value) {
         try {
+          checkCurrent();
           const next = iterator.next(value);
-          if (next.done) { assertCurrent(); result = next.value; return; }
+          if (next.done) {
+            // This synchronous check and commit call form the sole point after
+            // which Stop can no longer roll back the IndexedDB transaction.
+            checkCurrent(); result = next.value; commitStarted = true; cleanup();
+            if (typeof tx.commit === "function") tx.commit();
+            return;
+          }
           const request = next.value;
           request.onsuccess = () => step(request.result);
           request.onerror = () => { failure = request.error; }; // Native default abort remains enabled.
-        } catch (error) { failure = error; try { tx.abort(); } catch { reject(storageError(error)); } }
+        } catch (error) {
+          failure ||= error;
+          try { tx.abort(); } catch (abortError) { settleError(failure || abortError); }
+        }
       }
       try { iterator = program((name) => tx.objectStore(name)); step(); }
-      catch (error) { failure = error; tx.abort(); }
+      catch (error) { failure ||= error; try { tx.abort(); } catch (abortError) { settleError(failure || abortError); } }
     });
   }
   return { run, close };
 }
+function cancellationError() { return Object.assign(new Error("cancelled"), { name: "AbortError", code: "CANCELLED" }); }
 export const only = (value) => IDBKeyRange.only(value);
 export const lower = (value, open = false) => IDBKeyRange.lowerBound(value, open);
 export const bound = (start, end, startOpen = false, endOpen = false) => IDBKeyRange.bound(start, end, startOpen, endOpen);
