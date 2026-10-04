@@ -138,7 +138,7 @@ test("the MDX card distinguishes current, repair, reviewed update, and conflicti
       mdxSha256: recipe.mdx.sha256
     }
   };
-  assert.equal(getCuratedMdxInstallPresentation(recipe, null).actionLabel, "安装");
+  assert.equal(getCuratedMdxInstallPresentation(recipe, null).actionLabel, "下载并安装");
   assert.equal(
     getCuratedMdxInstallPresentation(recipe, current).status,
     "current"

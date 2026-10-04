@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "253",
-  "candidateHead": "8bf27c1c269ba4368f426553217e00236eac3f19",
-  "tree": "0c97d785f5dfab476bcc9e1300e5007e12867580",
-  "inputTree": "6f2962e159163ec66f4fc968a866c7b7689e8db7ddbad172d855991db757b565",
-  "frozenAt": "2026-10-04T13:44:08.677Z",
+  "candidateHead": "f6a154c91743a8510769a83925451ab8d126d466",
+  "tree": "15e1a18bd2d106d3dd4656790c835a8bb7c27580",
+  "inputTree": "371f65a93d139890148bccbe094cfcd07d9e0acb204ae5c8423a1bb0ad4a7682",
+  "frozenAt": "2026-10-04T14:07:40.572Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
@@ -17,14 +17,14 @@
         "run",
         "validate"
       ],
-      "candidateHead": "8bf27c1c269ba4368f426553217e00236eac3f19",
+      "candidateHead": "f6a154c91743a8510769a83925451ab8d126d466",
       "result": "FAIL",
       "exitCode": 1,
       "signal": null,
-      "durationMs": 48908.154214,
-      "startedAt": "2026-10-04T13:44:33.916Z",
-      "log": "docs/task-execution/local/253/a5d6fb90-0d66-4141-8a77-1763782698f7.log",
-      "logSha256": "22ec1648ba79a1df5fbf3f565f2dd134daebc0ab6e5183de2cf04698ec9c2291"
+      "durationMs": 49082.625023,
+      "startedAt": "2026-10-04T14:07:49.969Z",
+      "log": "docs/task-execution/local/253/2818ead6-900a-4154-a2b5-835ae001b2f9.log",
+      "logSha256": "2fbda76127f553dca8512c148de181dad24a1efa1dcc5742c1148f44d55b2ab5"
     }
   ],
   "artifact": null,
