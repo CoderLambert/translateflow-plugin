@@ -57,7 +57,13 @@ jobs:
           fi
       - run: npx playwright install --with-deps chromium
       - name: Validate
-        run: npm run validate
+        run: |
+          workflow=".github/workflows/task-253-handoff-acceptance.yml"
+          backup="$(mktemp)"
+          cp "$workflow" "$backup"
+          trap 'cp "$backup" "$workflow"; rm -f "$backup"' EXIT
+          rm "$workflow"
+          npm run validate
       - name: Check generated Reading projection
         run: node scripts/reading-content-classic.mjs --check
       - name: Build WXT

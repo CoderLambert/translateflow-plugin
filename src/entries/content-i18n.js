@@ -2,11 +2,11 @@ import { createI18n } from "../i18n/index.js";
 
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__ ||= { modules: {} };
-  if (app.modules.contentI18n) return;
+  if (app.modules.contentI18n && !app.modules.contentI18n.legacyFallback) return;
 
   const subscribers = new Set();
   const bindings = new Set();
-  let translator = null;
+  let translator = createI18n({ uiLocale: "auto", browserLocale: browserLocale() });
   let started = false;
   let ready = false;
   let readError = false;

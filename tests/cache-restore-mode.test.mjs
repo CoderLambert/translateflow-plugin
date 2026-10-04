@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../src/shared/constants.js";
+import { zh_CN as optionsZhCN } from "../src/i18n/catalog-options.js";
 
 const popupHtml = await readFile(new URL("../popup.html", import.meta.url), "utf8");
 const popupJs = await readFile(new URL("../src/popup/client.ts", import.meta.url), "utf8");
@@ -27,7 +28,8 @@ test("popup exposes per-site automatic cache restore separately from manual rest
 
 test("settings exposes persistent automatic cache restore sites and removal", () => {
   assert.match(optionsView, /id="cacheRestoreSitesList"/);
-  assert.match(optionsView, /自动恢复缓存只读取 IndexedDB/);
+  assert.match(optionsView, /options\.behavior\.summary/);
+  assert.match(optionsZhCN["options.behavior.summary"], /自动恢复缓存只读取 IndexedDB/);
   assert.match(optionsJs, /"cacheRestoreSites"/);
   assert.match(optionsJs, /CACHE_RESTORE_SITE_UNREGISTER/);
 });

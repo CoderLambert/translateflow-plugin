@@ -1,5 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__ ||= { modules: {} };
+  if (!app.modules.contentI18n) app.modules.contentI18n = createLegacyContentI18n();
   if (app.modules.runtime) return;
 
   const TRACKING_PARAMS = new Set([
@@ -153,4 +154,28 @@
     sendRuntimeMessage,
     showToast
   };
+
+  function createLegacyContentI18n() {
+    const fallback = Object.freeze({
+      "content.selection.updatedRefresh": "扩展已更新，请刷新网页后重新查询。",
+      "content.selection.updatedRich": "扩展已更新，请刷新网页后查看详细词典释义。"
+    });
+    const snapshot = () => Object.freeze({ i18n: null, locale: "zh_CN", ready: true, error: false });
+    const format = (key, args = {}) => String(fallback[key] || key).replace(/\{([a-z][a-zA-Z0-9]*)\}/g, (_match, name) => String(args[name] ?? ""));
+    const bindText = (node, key, args = {}) => { if (node) node.textContent = format(key, args); return () => {}; };
+    const bindAttribute = (node, attribute, key, args = {}) => { node?.setAttribute?.(attribute, format(key, args)); return () => {}; };
+    return Object.freeze({
+      legacyFallback: true,
+      start: async () => snapshot(),
+      dispose() {},
+      subscribe(subscriber, { immediate = true } = {}) { if (immediate && typeof subscriber === "function") subscriber(snapshot()); return () => {}; },
+      t: format,
+      bindText,
+      bindAttribute,
+      unbind() {},
+      unbindTree() {},
+      get: snapshot,
+      isReady: () => true
+    });
+  }
 })();

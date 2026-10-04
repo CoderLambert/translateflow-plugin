@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { CONTENT_MESSAGES } from "../src/shared/constants.js";
 import { COMMANDS, createCommandRouter, isSupportedPage } from "../src/background/commands.js";
+import { zh_CN as optionsZhCN } from "../src/i18n/catalog-options.js";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 const optionsCommands = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
@@ -33,10 +34,14 @@ test("manifest exposes exactly the three v0.8 commands with conflict-conscious d
 });
 
 test("Settings documents command management and all three default actions", () => {
-  assert.match(optionsCommands, /chrome:\/\/extensions\/shortcuts/);
-  assert.match(optionsCommands, /翻译 \/ 更新当前页/);
-  assert.match(optionsCommands, /显示 \/ 隐藏译文/);
-  assert.match(optionsCommands, /切换 Quick Control/);
+  assert.match(optionsCommands, /options\.shortcuts\.summary/);
+  assert.match(optionsCommands, /options\.shortcuts\.translate/);
+  assert.match(optionsCommands, /options\.shortcuts\.toggle/);
+  assert.match(optionsCommands, /options\.shortcuts\.quick/);
+  assert.match(optionsZhCN["options.shortcuts.summary"], /chrome:\/\/extensions\/shortcuts/);
+  assert.equal(optionsZhCN["options.shortcuts.translate"], "翻译 / 更新当前页");
+  assert.equal(optionsZhCN["options.shortcuts.toggle"], "显示 / 隐藏译文");
+  assert.equal(optionsZhCN["options.shortcuts.quick"], "切换 Quick Control");
   assert.match(optionsCommands, /Ctrl\+Shift\+Y/);
   assert.match(optionsCommands, /Ctrl\+Shift\+K/);
   assert.match(optionsCommands, /Ctrl\+Shift\+\./);
