@@ -66,6 +66,42 @@ async function markerIsolated(driver, url, action, method) {
   }, { url, action, method });
 }
 
+async function sharedResolverIsolated(driver, url, action) {
+  return driver.evaluate(async ({ url, action }) => {
+    const tabId = (await chrome.tabs.query({})).filter(tab => tab.url === url).at(-1)?.id;
+    const [injection] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [action],
+      func: async name => {
+        const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
+        if (name === "prepare") {
+          app.modules.readingPageMarkers.cleanup();
+          await Promise.resolve();
+          window.dispatchEvent(new Event("resize"));
+          await Promise.resolve();
+          const resolver = app.modules.readingAnchorResolver, projection = app.modules.textProjection;
+          const originalResolve = resolver.resolve.bind(resolver), originalResolvePage = resolver.resolvePage.bind(resolver);
+          const originalCreateScanner = projection.createScanner.bind(projection);
+          const evidence = { singleStarted: 0, pageStarted: 0, singleActive: 0, pageActive: 0, scannerCreations: 0, slices: 0 };
+          app.modules.readingAnchorResolver = {
+            ...resolver,
+            resolve: async (...args) => { evidence.singleStarted++; evidence.singleActive++; try { return await originalResolve(...args); } finally { evidence.singleActive--; } },
+            resolvePage: async (...args) => { evidence.pageStarted++; evidence.pageActive++; try { return await originalResolvePage(...args); } finally { evidence.pageActive--; } }
+          };
+          projection.createScanner = (...args) => {
+            evidence.scannerCreations++; const scanner = originalCreateScanner(...args), scan = scanner.scanSlice.bind(scanner);
+            scanner.scanSlice = options => { evidence.slices++; return scan({ ...options, maxChars: Math.min(options?.maxChars ?? 6000, 6000), maxNodes: Math.min(options?.maxNodes ?? 300, 300), maxMs: Math.min(options?.maxMs ?? 8, 8) }); };
+            return scanner;
+          };
+          globalThis.__tfSharedResolverEvidence = evidence;
+          return true;
+        }
+        if (name === "start-markers") { void app.modules.readingPageMarkers.refresh(); return true; }
+        if (name === "cancel-markers") { app.modules.readingPageMarkers.cleanup(); return true; }
+        if (name === "evidence") return { ...globalThis.__tfSharedResolverEvidence };
+      } });
+    return injection.result;
+  }, { url, action });
+}
+
 test("authorized revisit renders bounded page history markers and recovers across DOM and SPA changes without Provider work", async ({}, info) => {
   test.setTimeout(120000);
   const temporary = await mkdtemp(join(tmpdir(), "tf-reading-markers-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
@@ -106,13 +142,21 @@ test("authorized revisit renders bounded page history markers and recovers acros
       };
     });
     await revisit.goto(articleUrl);
-    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
     await expect(revisit.locator(".tf-reading-page-marker")).toBeHidden();
     await revisit.locator(".tf-reading-page-toggle").click();
     await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
     await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("已定位");
+    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
+    await expect(revisit.locator(".tf-reading-page-item")).toHaveAccessibleName("Locate history item 1");
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+    await expect(revisit.locator(".tf-reading-page-panel")).toHaveAttribute("aria-label", "TranslateFlow 本页阅读历史");
+    await expect(revisit.locator(".tf-reading-page-item")).toHaveAccessibleName("定位第 1 条历史");
+    await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en" }));
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
     await revisit.locator("#source").scrollIntoViewIfNeeded();
     await expect(revisit.locator(".tf-reading-page-marker")).toBeVisible();
     const scanEvidence = await driver.evaluate(async ({ url, anchor }) => {
@@ -139,53 +183,74 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await revisit.locator(".tf-reading-page-marker").click();
     await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
     await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("已定位");
+    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
     expect(JSON.stringify(await readPageSurface(revisit))).toContain("session"); // Only the current verified Range contains it.
 
     await revisit.evaluate(() => { document.querySelector("#source").textContent = "PUBLIC removed alpha tail"; });
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("未找到");
+    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Not found");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(0);
     expect(JSON.stringify(await readPageSurface(revisit))).not.toContain("session");
 
     await revisit.evaluate(() => { document.querySelector("#source").innerHTML = "<span>PUBLIC </span><strong>session</strong><span> alpha tail</span>"; });
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("已定位");
+    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
 
     await revisit.evaluate(() => { history.pushState({}, "", "/marker-other"); dispatchEvent(new PopStateEvent("popstate")); });
     await expect(revisit.locator(".tf-reading-page-toggle")).toHaveCount(0);
     await revisit.goBack(); await expect(revisit).toHaveURL(articleUrl);
-    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
     await revisit.screenshot({ path: info.outputPath("reading-page-markers.png"), fullPage: false });
 
     const retryPage = await context.newPage(); await retryPage.goto(articleUrl);
-    await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+    await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
     await retryPage.locator(".tf-reading-page-toggle").click();
     const retryRow = retryPage.locator(".tf-reading-page-panel article");
     for (const [round, restore] of [false, true, false, true].entries()) {
       await retryPage.evaluate(restoreQuote => { document.querySelector("#source").textContent = restoreQuote
         ? "PUBLIC session alpha tail" : "PUBLIC page changed alpha tail"; }, restore);
-      if (round < 3) await expect(retryRow).toContainText(restore ? "已定位" : "未找到");
+      if (round < 3) await expect(retryRow).toContainText(restore ? "Located" : "Not found");
       else {
-        await expect(retryRow).toContainText("未完全加载");
-        await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+        await expect(retryRow).toContainText("Not fully loaded");
+        await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
         await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
         await retryPage.locator(".tf-reading-page-toggle").click();
-        await retryPage.getByRole("button", { name: "重新检查位置", exact: true }).click();
-        await expect(retryRow).toContainText("已定位");
+        await retryPage.getByRole("button", { name: "Check locations again", exact: true }).click();
+        await expect(retryRow).toContainText("Located");
       }
     }
 
     await markerIsolated(driver, retryPage.url(), "install", M.GET_PAGE_SUMMARY);
     await expect.poll(() => markerIsolated(driver, retryPage.url(), "started", M.GET_PAGE_SUMMARY)).toBe(true);
-    await expect(retryRow).toContainText("未完全加载");
+    await expect(retryRow).toContainText("Not fully loaded");
     await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
     expect(await markerIsolated(driver, retryPage.url(), "mutate", M.GET_PAGE_SUMMARY)).toBe(true);
     await retryPage.locator(".tf-reading-page-toggle").click();
     await retryRow.locator(".tf-reading-page-item").click();
     expect(await markerIsolated(driver, retryPage.url(), "scrolls", M.GET_PAGE_SUMMARY)).toBe(0);
     await markerIsolated(driver, retryPage.url(), "release", M.GET_PAGE_SUMMARY);
-    await expect(retryRow).toContainText("未找到");
+    await expect(retryRow).toContainText("Not found");
     await markerIsolated(driver, retryPage.url(), "restore", M.GET_PAGE_SUMMARY);
+
+    const returnTab = context.waitForEvent("page");
+    await center.getByRole("button", { name: "Return to original page", exact: true }).click();
+    const returned = await returnTab; await returned.waitForLoadState("domcontentloaded");
+    await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+    await expect(returned.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+    expect(await sharedResolverIsolated(driver, returned.url(), "prepare")).toBe(true);
+    expect(await sharedResolverIsolated(driver, returned.url(), "start-markers")).toBe(true);
+    await returned.locator('.tf-reading-return-card [data-action="retry"]').click();
+    await expect.poll(async () => {
+      const evidence = await sharedResolverIsolated(driver, returned.url(), "evidence");
+      return evidence.singleActive > 0 && evidence.pageActive > 0 && evidence.slices > 0;
+    }).toBe(true);
+    await sharedResolverIsolated(driver, returned.url(), "cancel-markers");
+    await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+    await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+    await expect(returned.locator(".tf-reading-page-toggle")).toHaveCount(0);
+    const sharedEvidence = await sharedResolverIsolated(driver, returned.url(), "evidence");
+    expect(sharedEvidence.scannerCreations).toBe(1);
+    expect(sharedEvidence.singleStarted).toBe(1); expect(sharedEvidence.pageStarted).toBe(1);
+    await returned.close();
     expect(server.calls).toHaveLength(0);
   } finally {
     await context?.close(); await server.close(); await rm(temporary, { recursive: true, force: true });

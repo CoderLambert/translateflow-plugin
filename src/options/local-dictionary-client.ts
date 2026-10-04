@@ -8,14 +8,16 @@ import { inspectStarDictFiles, createStarDictProductRecipe } from "./stardict-im
 import { createTflexLocalImportController } from "./tflex-local-import-controller.js";
 import { readInstalledDictionaryState } from "./local-dictionary-installed-state.js";
 import {
-  fileBaseName, importProgressLabel, resolveAssociatedMddFiles, userMessage
+  fileBaseName, importProgressMessage, resolveAssociatedMddFiles, userMessageDescriptor
 } from "./local-dictionary-import-presentation.js";
+import { localizedMessage } from "../i18n/messages.js";
+import type { LocalizedMessage } from "../i18n/messages.js";
 
 export type LocalPreflight = Record<string, any>;
 export type InstalledDictionaryState = { candidates: Record<string, any>[]; known: { rich: boolean; packs: boolean } };
 export type LocalImportResult = {
-  progress: string;
-  status: string;
+  progress: LocalizedMessage;
+  status: LocalizedMessage;
   error: boolean;
   changed: boolean;
   retryMdd: boolean;
@@ -37,16 +39,16 @@ export function createLocalDictionaryClient({
   runtime = chrome.runtime,
   WorkerCtor = Worker,
   cryptoProvider = crypto,
-  onProgress = (_message: string) => {}
+  onProgress = (_message: LocalizedMessage) => {}
 }: {
   runtime?: typeof chrome.runtime;
   WorkerCtor?: typeof Worker;
   cryptoProvider?: Crypto;
-  onProgress?: (message: string) => void;
+  onProgress?: (message: LocalizedMessage) => void;
 } = {}) {
   let active: LocalController | null = null;
   let retryAttachment: null | { dictionaryId: string; mdxFileName: string; files: File[]; title: string } = null;
-  const progress = (event: { phase?: string }) => onProgress(importProgressLabel(event.phase));
+  const progress = (event: { phase?: string }) => onProgress(importProgressMessage(event.phase));
   const rich = makeRichController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
   const structured = makeMdictController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
   const stardict = makeStarDictController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
@@ -72,9 +74,9 @@ export function createLocalDictionaryClient({
     try {
       if (route === "rich-mdict") {
         const mdxFile = files.find(file => /\.mdx$/iu.test(file.name));
-        if (!mdxFile) throw new Error("缺少 MDX 文件。");
+        if (!mdxFile) throw importError("MDX_REQUIRED");
         const attached = resolveAssociatedMddFiles(report.resources.associatedMdd, files) as File[] | null;
-        if (!attached) throw new Error("MDD 文件名无法安全匹配到唯一的所选文件；请重新选择文件组。");
+        if (!attached) throw importError("RICH_MDD_ASSOCIATION");
         const imported = await run(rich, () => rich.importDictionary({
           mdxFile,
           displayMetadata: { name: report.identity.displayTitle || fileBaseName(mdxFile.name) }
@@ -82,63 +84,63 @@ export function createLocalDictionaryClient({
         const importedRecord = imported as Record<string, any>;
         const dictionaryId = String(importedRecord.commit?.dictionary?.id || importedRecord.commit?.dictionary?.packId || "");
         if (attached.length) {
-          if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
+          if (!dictionaryId) throw importError("MDD_TARGET_UNAVAILABLE");
           try {
-            onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…");
+            onProgress(localizedMessage("localImport.progress.attachMdd"));
             await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, files: attached }));
           } catch (error) {
             retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached, title: String(report.identity.displayTitle || "") };
             const cancelled = isAbort(error);
             return {
-              progress: cancelled ? "MDX 已安装；MDD 附件导入已取消，原有附件保持不变。" : `MDX 已安装；MDD 未更改。${userMessage(error)}`,
-              status: cancelled ? "MDD 附件导入已取消，原有附件保持不变。可检查文件后重试。" : "MDX 已安装，但 MDD 附件检查失败，原有附件保持不变。可检查文件后重试。",
+              progress: localizedMessage(cancelled ? "localImport.cancelled.mdxAttached" : "localImport.failure.mdxAttached"),
+              status: localizedMessage(cancelled ? "localImport.cancelled.mdxStatus" : "localImport.failure.mdxStatus"),
               error: !cancelled, changed: true, retryMdd: true
             };
           }
         }
-        return success("完成 · 富文本词典已安装");
+        return success(localizedMessage("localImport.success.rich"));
       }
       if (route === "structured-mdict") {
         const mdxFile = files.find(file => /\.mdx$/iu.test(file.name));
-        if (!mdxFile) throw new Error("缺少 MDX 文件。");
+        if (!mdxFile) throw importError("MDX_REQUIRED");
         const inspection = await inspectMdictFile(mdxFile);
         const recipe = createMdictProductRecipe(inspection, { cryptoProvider });
         await run(structured, () => structured.importDictionary({ mdxFile, recipe, displayMetadata: { name: recipe.dictionary.title, format: "mdict" } }));
-        return success("完成 · 结构化词典已安装");
+        return success(localizedMessage("localImport.success.structured"));
       }
       if (route === "stardict") {
         const inspection = await inspectStarDictFiles(files);
         const recipe = createStarDictProductRecipe(inspection, { cryptoProvider });
         await run(stardict, () => stardict.importDictionary({ ...inspection, recipe, displayMetadata: { name: recipe.dictionary.bookname, format: "stardict" } }));
-        return success("完成 · StarDict 已安装");
+        return success(localizedMessage("localImport.success.stardict"));
       }
       if (route === "tflex") {
         await run(tflex, () => tflex.importDictionary({
           files,
-          displayMetadata: { kind: "local-import", name: report.identity.displayTitle || "本地 TFLex 词典", format: "tflex", sourceLabel: "用户提供 · 未验证" }
+          displayMetadata: { kind: "local-import", name: report.identity.displayTitle || "TFLex", format: "tflex", sourceLabel: "用户提供 · 未验证" }
         }));
-        return success("完成 · TFLex 文件已通过完整安装校验");
+        return success(localizedMessage("localImport.success.tflex"));
       }
-      throw new Error("没有可用的导入方式。");
+      throw importError("NO_IMPORT_ROUTE");
     } catch (error) {
       const cancelled = isAbort(error);
       return {
-        progress: cancelled ? "已取消；临时文件已清理，原有词典保持不变。" : `安装失败：${userMessage(error, route)}`,
-        status: userMessage(error, route), error: !cancelled, changed: false, retryMdd: Boolean(retryAttachment)
+        progress: localizedMessage(cancelled ? "localImport.failure.cancelled" : "localImport.failure.installStatus"),
+        status: userMessageDescriptor(error, route), error: !cancelled, changed: false, retryMdd: Boolean(retryAttachment)
       };
     } finally { active = null; }
   }
 
   async function retryMdd(): Promise<LocalImportResult> {
     const attempt = retryAttachment;
-    if (!attempt) throw new Error("没有可重试的 MDD 附件。");
+    if (!attempt) throw importError("NO_RETRY_MDD");
     try {
       await run(mdd, () => mdd.attachResources({ dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, files: attempt.files }));
       retryAttachment = null;
-      return { progress: "完成 · MDD 附件已添加", status: "MDD 附件已安全添加。", error: false, changed: true, retryMdd: false };
+      return { progress: localizedMessage("localImport.success.mdd"), status: localizedMessage("localImport.success.mddAttached"), error: false, changed: true, retryMdd: false };
     } catch (error) {
       const cancelled = isAbort(error);
-      return { progress: cancelled ? "已取消；原有附件保持不变。" : `MDD 附件未更改：${userMessage(error)}`, status: userMessage(error), error: !cancelled, changed: false, retryMdd: true };
+      return { progress: localizedMessage(cancelled ? "localImport.failure.mddCancelled" : "localImport.failure.mddStatus"), status: userMessageDescriptor(error, "mdd"), error: !cancelled, changed: false, retryMdd: true };
     } finally { active = null; }
   }
 
@@ -159,9 +161,10 @@ export function createLocalDictionaryClient({
   return { preflight, installed, importFiles, retryMdd, cancel, dispose };
 }
 
-function success(progress: string): LocalImportResult {
-  return { progress, status: "词典已安装并保存在本机；不会自动调用 Provider。若需要确认词条含义，请先在划词结果中查看。", error: false, changed: true, retryMdd: false };
+function success(progress: LocalizedMessage): LocalImportResult {
+  return { progress, status: localizedMessage("localImport.success.savedLocalOnly"), error: false, changed: true, retryMdd: false };
 }
+function importError(code: string) { return Object.assign(new Error(code), { code }); }
 function isAbort(error: unknown) { return error instanceof DOMException ? error.name === "AbortError" : error instanceof Error && error.name === "AbortError"; }
 
 export type LocalDictionaryClient = ReturnType<typeof createLocalDictionaryClient>;

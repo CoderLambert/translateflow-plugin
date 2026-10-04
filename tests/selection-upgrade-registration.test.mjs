@@ -4,8 +4,9 @@ import { readFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { waitFor } from "@testing-library/dom";
-import { contentRuntimeSource } from "../scripts/content-runtime.mjs";
-import { preSwitchRuntimeMapping } from "../e2e/support/runtime-mapping.mjs";
+import { contentRuntimeSource, contentSourceFiles } from "../scripts/content-runtime.mjs";
+import { currentRuntimeMapping, preSwitchRuntimeMapping } from "../e2e/support/runtime-mapping.mjs";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 async function load(files, { compiled = false } = {}) {
   const errors = [], requests = [], virtualConsole = new VirtualConsole();
@@ -14,6 +15,15 @@ async function load(files, { compiled = false } = {}) {
     { url: "https://fixture.invalid/article", runScripts: "outside-only", pretendToBeVisual: true, virtualConsole });
   const { window } = dom;
   Object.defineProperty(window, "crypto", { value: webcrypto });
+  if (!compiled) {
+    // This frozen registration list predates the WXT-owned locale module. Supply
+    // its page contract in the isolated compatibility fixture; production WXT
+    // receives the real owner from src/entries/content.js.
+    window.__TRANSLATE_FLOW_CONTENT__ = { modules: { contentI18n: createContentI18nStub({ locale: "zh_CN", messages: {
+      "content.selection.updatedRefresh": "扩展已更新，请刷新网页后重新查询。",
+      "content.selection.updatedRich": "扩展已更新，请刷新网页后查看详细词典释义。"
+    } }) } };
+  }
   Object.assign(window, { TextEncoder, TextDecoder,
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     chrome: { runtime: { getURL: (path) => `chrome-extension://synthetic/${path}`, onMessage: { addListener() {} },
@@ -31,6 +41,7 @@ async function load(files, { compiled = false } = {}) {
     assert.equal(reads[index].status, "fulfilled", files[index]);
     window.eval(reads[index].value);
   }
+  if (compiled) await window.__TRANSLATE_FLOW_CONTENT__.modules.contentI18n.start();
   return { dom, window, requests, errors, app: window.__TRANSLATE_FLOW_CONTENT__ };
 }
 
@@ -65,8 +76,11 @@ test("immutable old registration loading new bytes keeps required content module
 });
 
 test("fresh compiled Content includes the current Selection graph and delivers the actual Rich display hook", async () => {
+  assert.ok(contentSourceFiles().includes("src/entries/content-i18n.js"), "the real WXT Content graph owns locale setup");
+  assert.deepEqual(currentRuntimeMapping.contentScripts, ["content-scripts/content.js"], "production keeps one compiled Content resource");
   const h = await load([], { compiled: true });
   try {
+    assert.equal(h.app.modules.contentI18n.isReady(), true);
     assert.ok(h.app.modules.selectionTranslationQuery); assert.ok(h.app.modules.selectionRichResultRenderer);
     assert.equal(h.app.loaded, true); assert.deepEqual(h.errors, []);
     const container = h.window.document.createElement("div"), displayed = [];

@@ -3,30 +3,31 @@ import { dictionaryClient, type DictionaryClient, type DictionarySnapshot } from
 import { BundledList, CuratedList, InstalledPackList, OfficialList, RichList } from "./DictionaryViews";
 import { LocalDictionaryImport } from "./LocalDictionaryImport";
 import { useOptionsI18n } from "./LocaleContext";
+import type { LocalizedMessage } from "../i18n/messages.js";
 
 export function DictionarySection({ client, setStatus }: {
   client: DictionaryClient;
-  setStatus: (message: string, error?: boolean) => void;
+  setStatus: (message: string | LocalizedMessage, error?: boolean) => void;
 }) {
   const i18n = useOptionsI18n();
   const [snapshot, setSnapshot] = useState<DictionarySnapshot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
   const generation = useRef(0);
   const mounted = useRef(false);
 
   const refresh = useCallback(async () => {
     const request = ++generation.current;
-    setLoading(true); setError("");
+    setLoading(true); setError(false);
     try {
       const next = await client.load();
       if (mounted.current && request === generation.current) setSnapshot(next);
-    } catch (cause) {
-      if (mounted.current && request === generation.current) setError(cause instanceof Error ? cause.message : i18n.t("dictionary.readFailed", { message: i18n.t("common.unknownError") }));
+    } catch {
+      if (mounted.current && request === generation.current) setError(true);
     } finally {
       if (mounted.current && request === generation.current) setLoading(false);
     }
-  }, [client, i18n]);
+  }, [client]);
 
   useEffect(() => {
     mounted.current = true;
@@ -65,9 +66,9 @@ export function DictionarySection({ client, setStatus }: {
 
   return <section id="dictionary-packs" tabIndex={-1}>
     <h2>{i18n.t("dictionary.title")}</h2><p className="section-summary">{i18n.t("dictionary.summary")}</p>
-    {error && !snapshot ? <div className="dictionary-library-group"><p role="alert">{i18n.t("dictionary.readFailed", { message: error })}</p><button type="button" onClick={() => void refresh()}>{i18n.t("common.retry")}</button></div> : content}
+    {error && !snapshot ? <div className="dictionary-library-group"><p role="alert">{i18n.t("dictionary.readFailed", { message: i18n.t("dictionary.client.readFailed") })}</p><button type="button" onClick={() => void refresh()}>{i18n.t("common.retry")}</button></div> : content}
     {!snapshot && !error ? <div className="dictionary-library-group" aria-busy="true">{i18n.t("dictionary.loading")}</div> : null}
-    {error && snapshot ? <p role="alert">{i18n.t("dictionary.refreshFailed", { message: error })}</p> : null}
+    {error && snapshot ? <p role="alert">{i18n.t("dictionary.refreshFailed", { message: i18n.t("dictionary.client.readFailed") })}</p> : null}
     <div className="dictionary-library-group" aria-labelledby="dictionaryImportHeading">
       <h3 id="dictionaryImportHeading">{i18n.t("dictionary.import")}</h3><p className="hint">{i18n.t("dictionary.importHelp")}</p>
       <LocalDictionaryImport setStatus={setStatus} onChanged={refresh} />

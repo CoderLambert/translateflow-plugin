@@ -4,12 +4,13 @@ import { getCatalogPermissionOrigins, makeInstalledCatalogMetadata } from "../sh
 import { OPTIONAL_PACK_SOURCES } from "../shared/pack-sources.js";
 import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import { describeCuratedProgress, shortCuratedRevision } from "./curated-dictionary-presentation.js";
-import { getCuratedMdxErrorMessage } from "./dictionary-library-v2-presentation.js";
+import { getCuratedMdxErrorDescriptor } from "./dictionary-library-v2-presentation.js";
 import { createMddResourceImportController } from "./mdd-resource-import-controller.js";
 import { requestDictionaryPackOriginPermission } from "./pack-ui.js";
 import { createRichMdictImportController } from "./rich-mdict-import-controller.js";
 import { CURATED_WORKER_MESSAGES } from "./workers/curated-dictionary-worker-protocol.js";
 import { CURATED_ECDICT_MDX_WORKER_MESSAGES } from "./workers/curated-ecdict-mdx-worker-protocol.js";
+import { localizedMessage, type LocalizedMessage } from "../i18n/messages.js";
 
 export type DictionaryRecord = Record<string, any>;
 export type PackState = { packs: Record<string, DictionaryRecord> };
@@ -18,7 +19,7 @@ export type DictionarySnapshot = {
   packState: PackState;
   rich: DictionaryRecord[];
 };
-export type ProgressWriter = (message: string) => void;
+export type ProgressWriter = (message: LocalizedMessage) => void;
 type ImportController = {
   importDictionary: (input: DictionaryRecord) => Promise<DictionaryRecord>;
   attachResources: (input: DictionaryRecord) => Promise<DictionaryRecord>;
@@ -55,9 +56,7 @@ export function dictionaryClient({
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }),
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })
     ]);
-    if (!bundled?.ok) throw new Error(bundled?.error || "读取内置词典状态失败。");
-    if (!packs?.ok) throw new Error(packs?.error || "读取已安装词典状态失败。");
-    if (!rich?.ok) throw new Error(rich?.error || "读取富文本词典状态失败。");
+    if (!bundled?.ok || !packs?.ok || !rich?.ok) throw codedError("DICTIONARY_READ_FAILED");
     return {
       bundled: Array.isArray(bundled.packs) ? bundled.packs : [],
       packState: packs.state && typeof packs.state === "object" ? packs.state : { packs: {} },
@@ -66,26 +65,26 @@ export function dictionaryClient({
   }
 
   async function uninstallPack(packId: string) {
-    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_UNINSTALL, packId }), "词典删除失败。");
+    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_UNINSTALL, packId }), "DICTIONARY_UNINSTALL_FAILED");
   }
   async function rollbackPack(packId: string) {
-    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_ROLLBACK, packId }), "词典包回滚失败。");
+    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_ROLLBACK, packId }), "DICTIONARY_ROLLBACK_FAILED");
   }
   async function uninstallRich(packId: string) {
-    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL, packId }), "富文本词典删除失败。");
+    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL, packId }), "DICTIONARY_UNINSTALL_FAILED");
   }
   async function updateRichPreferences(dictionaryId: string, preferences: Record<string, boolean>) {
-    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_UPDATE, dictionaryId, preferences }), "词典显示偏好保存失败。");
+    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_UPDATE, dictionaryId, preferences }), "DICTIONARY_SETTINGS_FAILED");
   }
   async function reorderRich(dictionaryIds: string[]) {
-    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_REORDER, dictionaryIds }), "词典排序保存失败。");
+    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_REORDER, dictionaryIds }), "DICTIONARY_SETTINGS_FAILED");
   }
   async function promoteRich(dictionaryId: string) {
-    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_PROMOTE, dictionaryId }), "设置个人首选失败。");
+    await requireOk(runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_PREFERENCES_PROMOTE, dictionaryId }), "DICTIONARY_SETTINGS_FAILED");
   }
 
   async function attachMdd(dictionary: DictionaryRecord, files: File[], onProgress: ProgressWriter) {
-    if (activeMdd) throw new Error("另一组 MDD 附件正在处理中。");
+    if (activeMdd) throw codedError("DICTIONARY_OPERATION_BUSY");
     const controller = makeMddController({
       runtime, WorkerCtor, cryptoProvider,
       onProgress(event: { phase?: string }) { onProgress(resourceProgressLabel(event.phase)); }
@@ -102,18 +101,18 @@ export function dictionaryClient({
 
   async function installOfficial(source: DictionaryRecord, pack: DictionaryRecord) {
     const granted = await requestDictionaryPackOriginPermission(source, permissions);
-    if (!granted) throw new Error(`未授予词典包下载权限：${String(source.originPattern || "")}`);
+    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED");
     const requestId = makeRequestId("pack", cryptoProvider);
     return requireOk(runtime.sendMessage({
       type: BACKGROUND_MESSAGES.DICTIONARY_PACK_INSTALL,
       sourceId: source.id,
       packId: pack.packId,
       requestId
-    }), "词典包安装失败。");
+    }), "DICTIONARY_INSTALL_FAILED");
   }
 
   async function installCurated(source: DictionaryRecord, existing: DictionaryRecord | null, onProgress: ProgressWriter) {
-    if (activeCurated) throw new Error("另一项精选词典操作正在进行。");
+    if (activeCurated) throw codedError("DICTIONARY_OPERATION_BUSY");
     return source.importerType === CURATED_IMPORTER_TYPES.ECDICT_MDX_ZIP_V1
       ? installCuratedMdx(source, existing, onProgress)
       : installCuratedStructured(source, onProgress);
@@ -121,18 +120,18 @@ export function dictionaryClient({
 
   async function installCuratedStructured(source: DictionaryRecord, onProgress: ProgressWriter) {
     const granted = await requestDictionaryPackOriginPermission(source, permissions);
-    if (!granted) throw new Error(`未授予 ${String(source.label || "精选词典")} 上游下载权限。`);
+    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED");
     const requestId = makeRequestId("curated", cryptoProvider);
     const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedDictionary), { type: "module" });
     activeCurated = { sourceId: source.id, requestId, phase: "worker", worker, commitRequestId: "", richController: null };
     try {
-      onProgress("开始从固定上游版本下载…");
+      onProgress(localizedMessage("dictionary.curated.progressConnecting"));
       const ready = await waitForWorker(worker, requestId, CURATED_WORKER_MESSAGES, message => onProgress(describeCuratedProgress(message, source)), source.id);
       if (!activeCurated || activeCurated.requestId !== requestId) throw abortError();
       activeCurated.worker = null;
       activeCurated.phase = "commit";
       activeCurated.commitRequestId = makeRequestId("curated-commit", cryptoProvider);
-      onProgress("正在保存并进行后台完整性验证…");
+      onProgress(localizedMessage("dictionary.client.verifying"));
       return await requireOk(runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_LOCAL_IMPORT_COMMIT,
         token: ready.token,
@@ -142,7 +141,7 @@ export function dictionaryClient({
           sourceLabel: source.publisher, sourceVersion: shortCuratedRevision(source.upstreamRevision),
           licenseLabel: source.sourceLicenseLabel, catalog: makeInstalledCatalogMetadata(source)
         }
-      }), "精选词典激活失败。");
+      }), "DICTIONARY_ACTIVATION_FAILED");
     } finally {
       activeCurated?.worker?.terminate();
       if (activeCurated?.requestId === requestId) activeCurated = null;
@@ -152,12 +151,12 @@ export function dictionaryClient({
   async function installCuratedMdx(source: DictionaryRecord, existing: DictionaryRecord | null, onProgress: ProgressWriter) {
     const origins = getCatalogPermissionOrigins(source);
     const granted = await permissions.request({ origins });
-    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
+    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED");
     const requestId = makeRequestId("curated", cryptoProvider);
     const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
     activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
     try {
-      onProgress("正在连接已审核的上游词典…");
+      onProgress(localizedMessage("dictionary.curated.progressMdxCheck"));
       const ready = await waitForWorker(worker, requestId, CURATED_ECDICT_MDX_WORKER_MESSAGES, message => onProgress(describeCuratedMdxProgress(message, source)), source.id);
       if (!activeCurated || activeCurated.requestId !== requestId) throw abortError();
       activeCurated.worker = null;
@@ -175,7 +174,8 @@ export function dictionaryClient({
       });
     } catch (error) {
       if ((error as Error).name === "AbortError") throw error;
-      throw new Error(getCuratedMdxErrorMessage(error, activeCurated?.phase));
+      const detail = getCuratedMdxErrorDescriptor(error, activeCurated?.phase);
+      throw codedError("DICTIONARY_CURATED_FAILED", "", detail);
     } finally {
       activeCurated?.worker?.terminate();
       activeCurated?.richController?.dispose();
@@ -212,9 +212,9 @@ export function dictionaryClient({
   };
 }
 
-async function requireOk(promise: Promise<any>, fallback: string) {
+async function requireOk(promise: Promise<any>, fallbackCode = "DICTIONARY_OPERATION_FAILED") {
   const response = await promise;
-  if (!response?.ok) throw codedError(response?.errorCode || "DICTIONARY_OPERATION_FAILED", response?.error || fallback);
+  if (!response?.ok) throw codedError(response?.errorCode || fallbackCode);
   return response;
 }
 
@@ -247,25 +247,29 @@ function normalizeExtractedMdxFile(value: any, source: DictionaryRecord): File {
   return new File([value], source.mdx.fileName, { type: value.type || "application/octet-stream", lastModified: 0 });
 }
 
-function describeCuratedMdxProgress(message: DictionaryRecord, source: DictionaryRecord) {
-  if (message.phase === "download") return Number(message.inputBytes || 0) ? `正在下载词典：${formatBytes(message.inputBytes)} / ${formatBytes(source.downloadBytes)}` : "正在连接已审核的上游词典…";
-  if (message.phase === "extract") return `正在检查词典文件：${formatBytes(message.outputBytes)} / ${formatBytes(source.mdx.bytes)}`;
-  return "正在检查上游词典…";
+function describeCuratedMdxProgress(message: DictionaryRecord, source: DictionaryRecord): LocalizedMessage {
+  if (message.phase === "download") return Number(message.inputBytes || 0)
+    ? localizedMessage("dictionary.curated.progressMdxDownload", { loaded: formatBytes(message.inputBytes), total: formatBytes(source.downloadBytes) })
+    : localizedMessage("dictionary.curated.progressConnecting");
+  if (message.phase === "extract") return localizedMessage("dictionary.curated.progressMdxExtract", { loaded: formatBytes(message.outputBytes || 0), total: formatBytes(source.mdx.bytes) });
+  return localizedMessage("dictionary.curated.progressMdxCheck");
 }
-function describeRichMdictProgress(phase?: string) {
-  return ({ preflight: "检查本地空间并准备安全安装…", index: "正在检查词典结构…", "store-source": "正在保存离线 MDX 文件…", "store-index": "正在保存本地查询信息…", commit: "正在复核并启用词典…", done: "富文本 MDX 已启用。" } as Record<string, string>)[phase || ""] || "正在处理富文本 MDX…";
+function describeRichMdictProgress(phase?: string): LocalizedMessage {
+  const suffix = ({ preflight: "preflight", index: "index", "store-source": "storeSource", "store-index": "storeIndex", commit: "commit", done: "done" } as Record<string, string>)[phase || ""] || "unknown";
+  return localizedMessage(`dictionary.richMdx.progress.${suffix}` as never);
 }
-function resourceProgressLabel(phase?: string) {
-  return ({ preflight: "检查附件与本地空间…", worker: "正在检查 MDD 附件…", index: "正在建立安全资源索引…", "store-source": "正在保存 MDD 文件…", "store-index": "正在保存资源索引…", commit: "正在原子替换附件…", done: "MDD 附件已更新。" } as Record<string, string>)[phase || ""] || "正在处理 MDD 附件…";
+function resourceProgressLabel(phase?: string): LocalizedMessage {
+  const suffix = ({ preflight: "preflight", worker: "worker", index: "index", "store-source": "storeSource", "store-index": "storeIndex", commit: "commit", done: "done" } as Record<string, string>)[phase || ""] || "unknown";
+  return localizedMessage(`dictionary.mdd.progress.${suffix}` as never);
 }
 function formatBytes(value: unknown) {
   const bytes = Number(value || 0); return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 function workerResponseError(message: DictionaryRecord) {
   if (message?.errorName === "AbortError") return abortError();
-  return codedError(message?.errorCode || "DICTIONARY_WORKER_FAILED", message?.error || "精选词典 Worker 执行失败。");
+  return codedError(message?.errorCode || "DICTIONARY_WORKER_FAILED");
 }
-function codedError(code: string, message: string) { const error = new Error(message) as Error & { code: string }; error.code = code; return error; }
-function abortError() { return new DOMException("词典操作已取消。", "AbortError"); }
+function codedError(code: string, message = "", localized?: LocalizedMessage) { const error = new Error(message) as Error & { code: string; localized?: LocalizedMessage }; error.code = code; if (localized) error.localized = localized; return error; }
+function abortError() { return new DOMException("AbortError", "AbortError"); }
 
 export type DictionaryClient = ReturnType<typeof dictionaryClient>;

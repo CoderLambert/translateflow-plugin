@@ -14,6 +14,9 @@ import {
   renderCatalogLimitations,
   renderDictionaryMetadata
 } from "./dictionary-library-v2-presentation.js";
+import { createI18n } from "../i18n/index.js";
+
+const defaultI18n = createI18n({ uiLocale: "zh_CN" });
 
 export function renderInstalledPackList({
   container,
@@ -130,7 +133,8 @@ export function renderInstalledPackList({
 export function installedPackName(
   packId,
   entry,
-  sources = OPTIONAL_PACK_SOURCES
+  sources = OPTIONAL_PACK_SOURCES,
+  i18n = defaultI18n
 ) {
   const displayName =
     String(entry?.display?.name || "").trim();
@@ -139,31 +143,31 @@ export function installedPackName(
   const declared = (Array.isArray(sources) ? sources : [])
     .flatMap((source) => source?.packs || [])
     .find((pack) => pack?.packId === packId);
-  return declared?.label || "已安装词典";
+  return declared?.label || i18n.t("dictionary.value.installed");
 }
 
-export function installedPackMeta(entry) {
+export function installedPackMeta(entry, i18n = defaultI18n) {
   const active = entry?.active || {};
   const display = entry?.display || null;
   const result = [];
   if (display?.kind === "local-import") {
-    result.push("本地导入 · 用户提供 / 未验证");
-    result.push("兼容性 当前版本可使用");
+    result.push(i18n.t("dictionary.value.localImportTag"));
+    result.push(i18n.t("dictionary.value.localCompatibility"));
     if (display.formatLabel) {
       result.push(display.formatLabel);
     }
   } else if (display?.kind === "curated-upstream") {
-    result.push("精选上游 · 非官方");
+    result.push(i18n.t("dictionary.value.curatedTag"));
     if (display.formatLabel) {
       result.push(display.formatLabel);
     }
   }
-  const installedVersion = formatLocalDictionaryVersion(active.packVersion);
-  if (installedVersion !== "未记录") result.push(`本地安装版本 ${installedVersion}`);
+  const installedVersion = formatLocalDictionaryVersion(active.packVersion, i18n);
+  if (installedVersion !== i18n.t("dictionary.value.versionNotRecorded")) result.push(i18n.t("dictionary.value.installedVersion", { version: installedVersion }));
   const installedDate = formatLocalInstallDate(display?.importedAt || active.verifiedAt);
-  if (installedDate) result.push(`本机安装日期 ${installedDate}`);
+  if (installedDate) result.push(i18n.t("dictionary.value.installedDate", { date: installedDate }));
   if (Number.isFinite(Number(active.totalBytes))) {
-    result.push(`已安装大小 ${formatDictionaryBytes(Number(active.totalBytes))}`);
+    result.push(i18n.t("dictionary.value.installedBytes", { size: formatDictionaryBytes(Number(active.totalBytes), i18n) }));
   }
   return result;
 }

@@ -1,144 +1,48 @@
-import { userMessageForMdictError } from "./mdict-import-ui.js";
-import { userMessageForStarDictError } from "./stardict-import-ui.js";
 import { safeFileLabel as safePreflightFileLabel } from "../background/packs/local-dictionary-preflight-contract.js";
+import { createI18n } from "../i18n/index.js";
+import { catalogs } from "../i18n/catalog.js";
+import { localizedMessage, renderLocalizedMessage } from "../i18n/messages.js";
+
+const defaultI18n = createI18n({ uiLocale: "zh_CN" });
+function translate(i18n, key, args = {}) {
+  const api = i18n || defaultI18n;
+  return Object.hasOwn(catalogs.en, key) ? api.t(key, args) : api.t("localImport.error.install");
+}
+function joined(values, i18n) { return values.join((i18n || defaultI18n).locale === "en" ? ", " : "、"); }
 
 export const STATUS_LABELS = Object.freeze({
-  supported: "可用",
-  partial: "部分可用",
-  unsupported: "暂不支持",
-  invalid: "文件无效"
+  supported: "localImport.status.supported",
+  partial: "localImport.status.partial",
+  unsupported: "localImport.status.unsupported",
+  invalid: "localImport.status.invalid"
 });
 export const ROUTE_LABELS = Object.freeze({
-  "rich-mdict": "MDX 富文本词典",
-  "structured-mdict": "MDX 结构化纯文本词典",
-  stardict: "StarDict 结构化词典",
-  tflex: "TranslateFlow 本地词典",
-  none: "无可用安装方式"
+  "rich-mdict": "localImport.route.rich-mdict",
+  "structured-mdict": "localImport.route.structured-mdict",
+  stardict: "localImport.route.stardict",
+  tflex: "localImport.route.tflex",
+  none: "localImport.route.none"
 });
-export const REASON_LABELS = Object.freeze({
-  "file_set.duplicate_name": "所选文件中有重名文件，请只保留一份。",
-  "file_set.limit_exceeded": "文件数量或总大小超过当前安全上限。",
-  "file_set.unrecognized": "无法识别这组文件。请选择 MDX/MDD、完整 StarDict 文件组或 TFLex 文件。",
-  "mdx.multiple_dictionaries": "一次只能导入一个 MDX 词典。",
-  "mdx.structured_semantics_not_confirmed": "MDX 可默认作为富文本词典使用；只有你确认英文到简体中文的纯文本含义后，才可作为结构化词典导入。",
-  "mdx.structured_language_direction_unsupported": "结构化导入目前只接受英文到简体中文方向。",
-  "mdx.structured_mdd_not_supported": "带有 MDD 附件的 MDX 只能保留为富文本词典。",
-  "mdx.structured_profile_unsupported": "该 MDX 的排版或记录格式不适合结构化导入，可尝试富文本方式。",
-  "mdx.capability_not_shipped": "词典包含当前版本尚未完整验证的 MDX 功能。",
-  "mdx.capability_unsupported": "该 MDX 使用当前不支持的功能。",
-  "mdx.corrupt_or_malformed": "MDX 文件损坏或结构无法读取。",
-  "mdx.unsafe_content": "MDX 含有当前安全策略禁止的内容。",
-  "mdx.file_too_large": "MDX 超过当前安全大小上限。",
-  "mdx.preflight_limit_exceeded": "MDX 检查超过当前安全资源上限。",
-  "mdx.preflight_failed": "无法完成 MDX 检查。",
-  "mdd.mdx_required": "MDD 需要与 MDX 一起选择，不能单独导入。",
-  "mdd.too_many_companions": "MDD 附件数量超过当前支持范围。",
-  "mdd.companion_names_ambiguous_or_invalid": "MDD 文件名与 MDX 的附件规则不匹配或存在歧义。",
-  "mdd.numbering_not_consecutive": "编号 MDD 必须从 .1.mdd 开始连续排列。",
-  "mdd.unassociated_files": "有 MDD 或其它文件无法关联到所选 MDX；请移除这些文件后再试。",
-  "mdd.capability_unsupported": "某个 MDD 附件使用当前不支持的功能。",
-  "mdd.corrupt_or_malformed": "某个 MDD 附件损坏或结构无法读取。",
-  "mdd.file_too_large": "MDD 附件超过当前安全大小上限。",
-  "mdd.preflight_limit_exceeded": "MDD 检查超过当前安全资源上限。",
-  "mdd.preflight_failed": "无法完成 MDD 检查。",
-  "stardict.ifo_missing": "缺少 StarDict .ifo 文件。",
-  "stardict.idx_missing": "缺少与 .ifo 同名的 .idx 文件。",
-  "stardict.dictionary_data_missing": "缺少与 .ifo 同名的 .dict 或 .dict.dz 正文文件。",
-  "stardict.syn_missing": "词典声明包含同义词索引，但缺少 .syn 文件。",
-  "stardict.multiple_ifo": "一次只能选择一套 StarDict 词典。",
-  "stardict.duplicate_component": "同一套 StarDict 中有重复组件文件。",
-  "stardict.ambiguous_dictionary_data": "同时选择了 .dict 和 .dict.dz；请只保留一种正文文件。",
-  "stardict.unassociated_files": "有文件不属于这套 StarDict，请移除后再试。",
-  "stardict.semantic_recipe_required": "StarDict 格式不表示语言方向，导入前需要你明确确认语义。",
-  "stardict.capability_unsupported": "该 StarDict 使用当前不支持的格式。",
-  "stardict.corrupt_or_malformed": "StarDict 文件损坏或各文件不匹配。",
-  "stardict.unsafe_content": "StarDict 含有当前安全策略禁止的内容。",
-  "stardict.preflight_limit_exceeded": "StarDict 检查超过当前安全资源上限。",
-  "tflex.duplicate_component": "TFLex 文件组中存在重名组件。",
-  "tflex.manifest_missing": "缺少 manifest.json 文件。",
-  "tflex.manifest_invalid": "manifest.json 无法读取或格式无效。",
-  "tflex.manifest_too_large": "manifest.json 超过当前安全大小上限。",
-  "tflex.profile_unsupported": "该 TFLex 文件组与当前读取器不兼容。",
-  "tflex.required_files_missing": "缺少 index.dat 或 entries.dat。",
-  "tflex.full_validation_deferred": "预检只识别 TFLex 声明；完整哈希、索引和词条校验会在安装时执行。",
-  "tflex.importer_verifies_hashes_and_records": "安装器会再次校验完整文件、索引与词条。",
-  "tflex.unassociated_files": "所选文件中有不属于 TFLex 文件组的项目，请移除。"
-});
+export const REASON_LABELS = Object.freeze(Object.fromEntries([
+  "file_set.duplicate_name", "file_set.limit_exceeded", "file_set.unrecognized",
+  "mdx.multiple_dictionaries", "mdx.structured_semantics_not_confirmed", "mdx.structured_language_direction_unsupported", "mdx.structured_mdd_not_supported", "mdx.structured_profile_unsupported", "mdx.capability_not_shipped", "mdx.capability_unsupported", "mdx.corrupt_or_malformed", "mdx.unsafe_content", "mdx.file_too_large", "mdx.preflight_limit_exceeded", "mdx.preflight_failed",
+  "mdd.mdx_required", "mdd.too_many_companions", "mdd.companion_names_ambiguous_or_invalid", "mdd.numbering_not_consecutive", "mdd.unassociated_files", "mdd.capability_unsupported", "mdd.corrupt_or_malformed", "mdd.file_too_large", "mdd.preflight_limit_exceeded", "mdd.preflight_failed",
+  "stardict.ifo_missing", "stardict.idx_missing", "stardict.dictionary_data_missing", "stardict.syn_missing", "stardict.multiple_ifo", "stardict.duplicate_component", "stardict.ambiguous_dictionary_data", "stardict.unassociated_files", "stardict.semantic_recipe_required", "stardict.capability_unsupported", "stardict.corrupt_or_malformed", "stardict.unsafe_content", "stardict.preflight_limit_exceeded",
+  "tflex.duplicate_component", "tflex.manifest_missing", "tflex.manifest_invalid", "tflex.manifest_too_large", "tflex.profile_unsupported", "tflex.required_files_missing", "tflex.full_validation_deferred", "tflex.importer_verifies_hashes_and_records", "tflex.unassociated_files"
+].map(code => [code, `localImport.reason.${code}`])));
 
-export const CAPABILITY_LABELS = Object.freeze({
-  "mdx.engine.v2": "MDX 2",
-  "mdx.required-engine-version": "MDX 所需引擎版本",
-  "mdx.encoding.utf8": "UTF-8",
-  "mdx.encoding.utf16le": "UTF-16LE",
-  "mdx.encoding.gbk": "GBK 编码（当前不支持）",
-  "mdx.encoding.big5": "Big5 编码（当前不支持）",
-  "mdx.encoding.gb18030": "GB18030 编码（当前不支持）",
-  "mdx.encoding.other": "其它编码（当前不支持）",
-  "mdx.encryption.key-info-v2": "MDX 密钥信息加密",
-  "mdx.encryption.password-protected": "MDX 密码保护（当前不支持）",
-  "mdx.encryption.record": "MDX 记录加密（当前不支持）",
-  "mdx.key-info.compression-zlib": "MDX 索引压缩",
-  "mdx.compression.none": "未压缩记录块",
-  "mdx.compression.zlib": "zlib 记录块",
-  "mdx.compression.lzo": "LZO 压缩（当前不支持）",
-  "mdx.compression.unknown": "未知记录压缩（当前不支持）",
-  "mdx.record.html": "HTML 记录",
-  "mdx.record.text": "纯文本记录",
-  "mdx.record-format.other": "其它记录格式（当前不支持）",
-  "mdx.style-sheet": "样式表",
-  "mdx.compact-records": "紧凑记录",
-  "mdx.alias-link": "词头别名链接（当前不支持）",
-  "mdd.engine.v2": "MDD 2",
-  "mdd.required-engine-version": "MDD 所需引擎版本",
-  "mdd.encoding.utf8": "MDD UTF-8（当前不支持）",
-  "mdd.encoding.utf16le": "MDD UTF-16LE",
-  "mdd.encoding.gbk": "MDD GBK 编码（当前不支持）",
-  "mdd.encoding.big5": "MDD Big5 编码（当前不支持）",
-  "mdd.encoding.gb18030": "MDD GB18030 编码（当前不支持）",
-  "mdd.encoding.other": "MDD 其它编码（当前不支持）",
-  "mdd.encryption.key-info-v2": "MDD 密钥信息加密",
-  "mdd.encryption.password-protected": "MDD 密码保护（当前不支持）",
-  "mdd.encryption.record": "MDD 资源加密（当前不支持）",
-  "mdd.compression.none": "MDD 未压缩资源",
-  "mdd.compression.zlib": "MDD zlib 资源",
-  "mdd.compression.lzo": "MDD LZO 压缩（当前不支持）",
-  "mdd.compression.unknown": "MDD 未知压缩（当前不支持）",
-  "mdd.resource.path-normalization": "MDD 资源路径标准化",
-  "mdd.resource.format-other": "MDD 其它资源格式",
-  "rich.html-structure": "富文本 HTML 结构",
-  "rich.inline-style": "内联样式（安全过滤后显示）",
-  "rich.style-sheet-reference": "词典样式表引用（安全过滤后显示）",
-  "rich.compact-style-marker": "紧凑样式标记",
-  "rich.relative-resource-path": "本地相对资源引用",
-  "rich.other-uri-scheme": "其它资源链接格式（当前不处理）",
-  "rich.unusual-resource-extension": "非典型资源文件格式（当前不处理）",
-  "rich.entry-reference": "词典内部词条引用",
-  "rich.sound-reference": "词典内部音频引用",
-  "rich.local-anchor": "本地页内链接",
-  "rich.remote-url": "远程资源链接（不会自动请求）",
-  "rich.image-reference": "本地图片引用",
-  "rich.audio-reference": "本地音频引用"
-});
-export const CAPABILITY_REASON_LABELS = Object.freeze({
-  "mdx.compression.lzo": "该 MDX 使用 LZO 压缩；当前无法读取这种压缩方式。",
-  "mdd.compression.lzo": "该 MDD 使用 LZO 压缩；当前无法读取这种压缩方式。",
-  "mdx.encoding.gbk": "该 MDX 使用 GBK 编码，当前版本无法可靠读取。",
-  "mdx.encoding.big5": "该 MDX 使用 Big5 编码，当前版本无法可靠读取。",
-  "mdx.encoding.gb18030": "该 MDX 使用 GB18030 编码，当前版本无法可靠读取。",
-  "mdd.encoding.gbk": "该 MDD 使用 GBK 编码，当前版本无法可靠读取。",
-  "mdd.encoding.big5": "该 MDD 使用 Big5 编码，当前版本无法可靠读取。",
-  "mdd.encoding.gb18030": "该 MDD 使用 GB18030 编码，当前版本无法可靠读取。",
-  "mdx.encryption.password-protected": "该 MDX 使用密码保护；当前版本不支持解密。",
-  "mdx.encryption.record": "该 MDX 的记录已加密；当前版本不支持解密。",
-  "mdd.encryption.password-protected": "该 MDD 使用密码保护；当前版本不支持解密。",
-  "mdd.encryption.record": "该 MDD 的资源已加密；当前版本不支持解密。",
-  "mdx.required-engine-version": "词典要求的 MDX 引擎版本与当前支持范围不匹配。",
-  "mdd.required-engine-version": "附件要求的 MDD 引擎版本与当前支持范围不匹配。",
-  "rich.remote-url": "词典包含远程资源链接；TranslateFlow 不会自动请求这些地址。",
-  "rich.other-uri-scheme": "词典包含当前不会处理的资源链接格式。",
-  "mdx.unsafe_content": "词典记录包含脚本、危险链接或其他当前禁止的内容，已拒绝导入。",
-  "stardict.unsafe_content": "词典内容触发当前安全限制，已拒绝导入。"
-});
+const capabilityIds = [
+  "mdx.engine.v2", "mdx.required-engine-version", "mdx.encoding.utf8", "mdx.encoding.utf16le", "mdx.encoding.gbk", "mdx.encoding.big5", "mdx.encoding.gb18030", "mdx.encoding.other", "mdx.encryption.key-info-v2", "mdx.encryption.password-protected", "mdx.encryption.record", "mdx.key-info.compression-zlib", "mdx.compression.none", "mdx.compression.zlib", "mdx.compression.lzo", "mdx.compression.unknown", "mdx.record.html", "mdx.record.text", "mdx.record-format.other", "mdx.style-sheet", "mdx.compact-records", "mdx.alias-link",
+  "mdd.engine.v2", "mdd.required-engine-version", "mdd.encoding.utf8", "mdd.encoding.utf16le", "mdd.encoding.gbk", "mdd.encoding.big5", "mdd.encoding.gb18030", "mdd.encoding.other", "mdd.encryption.key-info-v2", "mdd.encryption.password-protected", "mdd.encryption.record", "mdd.compression.none", "mdd.compression.zlib", "mdd.compression.lzo", "mdd.compression.unknown", "mdd.resource.path-normalization", "mdd.resource.format-other",
+  "rich.html-structure", "rich.inline-style", "rich.style-sheet-reference", "rich.compact-style-marker", "rich.relative-resource-path", "rich.other-uri-scheme", "rich.unusual-resource-extension", "rich.entry-reference", "rich.sound-reference", "rich.local-anchor", "rich.remote-url", "rich.image-reference", "rich.audio-reference"
+];
+export const CAPABILITY_LABELS = Object.freeze(Object.fromEntries(capabilityIds.map(id => [id, `localImport.capability.${id}`])));
+const capabilityReasonIds = [
+  "mdx.compression.lzo", "mdd.compression.lzo", "mdx.encoding.gbk", "mdx.encoding.big5", "mdx.encoding.gb18030", "mdd.encoding.gbk", "mdd.encoding.big5", "mdd.encoding.gb18030",
+  "mdx.encryption.password-protected", "mdx.encryption.record", "mdd.encryption.password-protected", "mdd.encryption.record", "mdx.required-engine-version", "mdd.required-engine-version",
+  "rich.remote-url", "rich.other-uri-scheme", "mdx.unsafe_content", "stardict.unsafe_content"
+];
+export const CAPABILITY_REASON_LABELS = Object.freeze(Object.fromEntries(capabilityReasonIds.map(id => [id, `localImport.capabilityReason.${id}`])));
 
 export function findDuplicateCandidate(result, installedCandidates, selectedFiles) {
     const packId = result.identity.family === "tflex" ? tflexPackId(result) : "";
@@ -165,115 +69,65 @@ export function resolveAssociatedMddFiles(associatedMdd, selectedFiles) {
   return resolved;
 }
 
-export function getLocalPreflightView(result, selectedFiles, installedCandidates) {
+export function getLocalPreflightView(result, selectedFiles, installedCandidates, i18n) {
+  const label = (key, args = {}) => translate(i18n, key, args);
+  const capabilityLabel = id => label(CAPABILITY_LABELS[id] || "localImport.unknownFeature");
   const status = result.compatibility.status;
   const rows = [
-    { label: "检查结果", value: STATUS_LABELS[status] || STATUS_LABELS.invalid },
-    { label: "识别类型", value: familyLabel(result.identity.family) },
-    { label: "安装方式", value: ROUTE_LABELS[result.route.importer] || ROUTE_LABELS.none },
-    ...(result.identity.displayTitle ? [{ label: "词典名称", value: result.identity.displayTitle }] : []),
-    ...(Number.isSafeInteger(result.estimates.entryCount) ? [{ label: "词条数量", value: result.estimates.entryCount.toLocaleString() }] : []),
-    { label: "所选文件", value: `${selectedFiles.length} 个 · ${formatBytes(result.estimates.sourceBytes)}` },
-    { label: "本机占用估算", value: `${formatBytes(result.estimates.sourceBytes)} 文件数据；建立索引后可能增加` },
-    { label: "来源与信任", value: "用户选择的本机文件 · 来源与再分发权未经 TranslateFlow 验证" }
+    { label: label("localImport.row.result"), value: label(STATUS_LABELS[status] || STATUS_LABELS.invalid) },
+    { label: label("localImport.row.family"), value: familyLabel(result.identity.family, i18n) },
+    { label: label("localImport.row.route"), value: label(ROUTE_LABELS[result.route.importer] || ROUTE_LABELS.none) },
+    ...(result.identity.displayTitle ? [{ label: label("localImport.row.name"), value: String(result.identity.displayTitle) }] : []),
+    ...(Number.isSafeInteger(result.estimates.entryCount) ? [{ label: label("localImport.row.entryCount"), value: Number(result.estimates.entryCount).toLocaleString(i18n?.locale === "zh_CN" ? "zh-CN" : "en") }] : []),
+    { label: label("localImport.row.selectedFiles"), value: label("localImport.fileCount", { count: selectedFiles.length, size: formatBytes(result.estimates.sourceBytes) }) },
+    { label: label("localImport.row.storageEstimate"), value: label("localImport.storageEstimate", { size: formatBytes(result.estimates.sourceBytes) }) },
+    { label: label("localImport.row.sourceTrust"), value: label("localImport.sourceUnverified") }
   ];
-  const files = selectedFiles.map((file) => safeFileLabel(file.name));
-  if (files.length) rows.push({ label: "文件清单", value: files.join("、") });
+  const files = selectedFiles.map((file) => safeFileLabel(file.name, i18n));
+  if (files.length) rows.push({ label: label("localImport.row.fileList"), value: joined(files, i18n) });
   const capabilities = result.compatibility.capabilitiesPresent || [];
-  if (capabilities.length) rows.push({ label: "识别格式", value: capabilities.map((item) => CAPABILITY_LABELS[item] || "其他词典功能").join("、") });
-  const encodings = capabilities.filter((item) => /\.encoding\./u.test(item)).map((item) => CAPABILITY_LABELS[item] || "其它编码");
-  if (encodings.length) rows.push({ label: "文本编码", value: encodings.join("、") });
+  if (capabilities.length) rows.push({ label: label("localImport.row.recognizedFeatures"), value: joined(capabilities.map(capabilityLabel), i18n) });
+  const encodings = capabilities.filter((item) => /\.encoding\./u.test(item)).map(id => CAPABILITY_LABELS[id] ? capabilityLabel(id) : label("localImport.unknownEncoding"));
+  if (encodings.length) rows.push({ label: label("localImport.row.encoding"), value: joined(encodings, i18n) });
   if (result.resources.associatedMdd.length) {
-    rows.push({ label: "将关联的 MDD", value: result.resources.associatedMdd.map((item) => `${item.fileName}（${Number(item.entryCount || 0).toLocaleString()} 项）`).join("、") });
+    rows.push({ label: label("localImport.row.associatedMdd"), value: joined(result.resources.associatedMdd.map(item => `${safeFileLabel(item.fileName, i18n)} (${label("localImport.mddFileCount", { count: Number(item.entryCount || 0).toLocaleString(i18n?.locale === "zh_CN" ? "zh-CN" : "en") })})`), i18n) });
   }
-  if (result.resources.missingCompanionHints.length) rows.push({ label: "缺少文件", value: result.resources.missingCompanionHints.join("、") });
-  if (result.resources.unassociatedFiles.length) rows.push({ label: "未能关联", value: result.resources.unassociatedFiles.join("、") });
-  if (isTflexOverInstallLimit(selectedFiles)) rows.push({ label: "文件大小限制", value: "TFLex 安装单个文件最多 64 MiB，文件组总计最多 128 MiB。" });
+  if (result.resources.missingCompanionHints.length) rows.push({ label: label("localImport.row.missingFiles"), value: joined(result.resources.missingCompanionHints.map(name => safeFileLabel(name, i18n)), i18n) });
+  if (result.resources.unassociatedFiles.length) rows.push({ label: label("localImport.row.unassociatedFiles"), value: joined(result.resources.unassociatedFiles.map(name => safeFileLabel(name, i18n)), i18n) });
+  if (isTflexOverInstallLimit(selectedFiles)) rows.push({ label: label("localImport.row.fileLimit"), value: label("localImport.limit.tflex") });
   const reasons = [
     ...(result.compatibility.reasons || []).map((item) => ({ ...item, warning: false })),
     ...(result.compatibility.warnings || []).map((item) => ({ ...item, warning: true }))
   ];
-  for (const item of reasons) rows.push({ label: item.warning ? "提示" : "原因", value: describeReason(item) });
-  const unsupported = (result.compatibility.unsupportedCapabilities || []).map((id) => CAPABILITY_LABELS[id] || "其他尚未支持的词典功能");
-  if (unsupported.length) rows.push({ label: "未支持功能", value: unsupported.join("、") });
+  for (const item of reasons) rows.push({ label: label(item.warning ? "localImport.row.warning" : "localImport.row.reason"), value: describeReason(item, i18n) });
+  const unsupported = (result.compatibility.unsupportedCapabilities || []).map(id => CAPABILITY_LABELS[id] ? capabilityLabel(id) : label("localImport.unknownUnsupportedFeature"));
+  if (unsupported.length) rows.push({ label: label("localImport.row.unsupportedFeatures"), value: joined(unsupported, i18n) });
 
   const needsSemantic = result.identity.family === "stardict" ||
     (result.identity.family.startsWith("mdict") && (result.compatibility.warnings || []).some((item) => item.code === "mdx.structured_semantics_not_confirmed"));
-  const semanticText = result.identity.family === "stardict"
-    ? "我确认这是英文词头 → 简体中文纯文本释义。StarDict 格式本身不说明语言方向。"
-    : "我确认纯文本记录表示英文词头 → 简体中文释义；将作为结构化词典导入。未勾选时 MDX 保持为富文本词典。";
+  const semanticText = label(result.identity.family === "stardict" ? "localImport.confirm.stardictSemantic" : "localImport.confirm.mdxSemantic");
   const needsLimitations = status === "partial" && result.route.importer !== "none";
-  const limitationsText = result.identity.family === "tflex"
-    ? "我知道安装前会重新完整校验所有文件与词条。"
-    : "我已阅读上述兼容说明，仍按显示的安装方式继续。";
+  const limitationsText = label(result.identity.family === "tflex" ? "localImport.confirm.tflexValidation" : "localImport.confirm.partialCompatibility");
   const duplicate = findDuplicateCandidate(result, installedCandidates, selectedFiles);
   const sameTflexId = duplicate && result.identity.family === "tflex" && duplicate.packId && duplicate.packId === tflexPackId(result);
   const duplicateText = sameTflexId
-    ? `确认更新已安装的同一 TFLex 包“${safeFileLabel(duplicate.name)}”？${describeDuplicateSources(duplicate, selectedFiles)} 更新前会完整校验所有文件；校验或保存失败时，当前已安装版本与查询会保持可用。文件声明身份尚未验证。`
-    : duplicate ? `可能与已安装的“${safeFileLabel(duplicate.name)}”重复（依据名称/文件声明提示，文件身份未验证）。${describeDuplicateSources(duplicate, selectedFiles)} 如仍要安装，请明确选择作为另一份独立词典保留；不会覆盖已安装词典。` : "";
+    ? label("localImport.duplicate.sameTflex", { name: safeFileLabel(duplicate.name, i18n), installed: describeDuplicateSources(duplicate, selectedFiles, i18n).installed, incoming: describeDuplicateSources(duplicate, selectedFiles, i18n).incoming })
+    : duplicate ? label("localImport.duplicate.possible", { name: safeFileLabel(duplicate.name, i18n), installed: describeDuplicateSources(duplicate, selectedFiles, i18n).installed, incoming: describeDuplicateSources(duplicate, selectedFiles, i18n).incoming }) : "";
   return { rows, needsSemantic, semanticText, needsLimitations, limitationsText, duplicate, duplicateText };
 }
 
-export function renderLocalPreflight({ result, selectedFiles, installedCandidates, summary, semanticLabel, semanticCheck, semanticText, limitationsLabel, limitationsCheck, limitationsText, duplicateLabel, duplicateCheck, duplicateText, updateImportEnabled }) {
-    summary.replaceChildren();
-    const status = result.compatibility.status;
-    appendSummaryLine(summary, "检查结果", STATUS_LABELS[status] || STATUS_LABELS.invalid);
-    appendSummaryLine(summary, "识别类型", familyLabel(result.identity.family));
-    appendSummaryLine(summary, "安装方式", ROUTE_LABELS[result.route.importer] || ROUTE_LABELS.none);
-    if (result.identity.displayTitle) appendSummaryLine(summary, "词典名称", result.identity.displayTitle);
-    if (Number.isSafeInteger(result.estimates.entryCount)) appendSummaryLine(summary, "词条数量", result.estimates.entryCount.toLocaleString());
-    appendSummaryLine(summary, "所选文件", `${selectedFiles.length} 个 · ${formatBytes(result.estimates.sourceBytes)}`);
-    appendSummaryLine(summary, "本机占用估算", `${formatBytes(result.estimates.sourceBytes)} 文件数据；建立索引后可能增加`);
-    appendSummaryLine(summary, "来源与信任", "用户选择的本机文件 · 来源与再分发权未经 TranslateFlow 验证");
-    const files = selectedFiles.map((file) => safeFileLabel(file.name));
-    if (files.length) appendSummaryLine(summary, "文件清单", files.join("、"));
-    const capabilities = result.compatibility.capabilitiesPresent || [];
-    if (capabilities.length) appendSummaryLine(summary, "识别格式", capabilities.map((item) => CAPABILITY_LABELS[item] || "其他词典功能").join("、"));
-    const encodings = capabilities.filter((item) => /\.encoding\./u.test(item)).map((item) => CAPABILITY_LABELS[item] || "其它编码");
-    if (encodings.length) appendSummaryLine(summary, "文本编码", encodings.join("、"));
-    if (result.resources.associatedMdd.length) {
-      const attached = result.resources.associatedMdd.map((item) => `${item.fileName}（${Number(item.entryCount || 0).toLocaleString()} 项）`);
-      appendSummaryLine(summary, "将关联的 MDD", attached.join("、"));
-    }
-    if (result.resources.missingCompanionHints.length) appendSummaryLine(summary, "缺少文件", result.resources.missingCompanionHints.join("、"));
-    if (result.resources.unassociatedFiles.length) appendSummaryLine(summary, "未能关联", result.resources.unassociatedFiles.join("、"));
-    if (isTflexOverInstallLimit(selectedFiles)) appendSummaryLine(summary, "文件大小限制", "TFLex 安装单个文件最多 64 MiB，文件组总计最多 128 MiB。");
-    const reasons = [
-      ...(result.compatibility.reasons || []).map((item) => ({ ...item, warning: false })),
-      ...(result.compatibility.warnings || []).map((item) => ({ ...item, warning: true }))
-    ];
-    for (const item of reasons) appendSummaryLine(summary, item.warning ? "提示" : "原因", describeReason(item));
-    const missingCapabilityLabels = (result.compatibility.unsupportedCapabilities || []).map((id) => CAPABILITY_LABELS[id] || "其他尚未支持的词典功能");
-    if (missingCapabilityLabels.length) appendSummaryLine(summary, "未支持功能", missingCapabilityLabels.join("、"));
-
-    const needsSemantic = result.identity.family === "stardict" ||
-      (result.identity.family.startsWith("mdict") && (result.compatibility.warnings || []).some((item) => item.code === "mdx.structured_semantics_not_confirmed"));
-    semanticLabel.hidden = !needsSemantic;
-    semanticCheck.disabled = !needsSemantic;
-    if (result.identity.family === "stardict") {
-      semanticText.textContent = "我确认这是英文词头 → 简体中文纯文本释义。StarDict 格式本身不说明语言方向。";
-    } else if (needsSemantic) {
-      semanticText.textContent = "我确认纯文本记录表示英文词头 → 简体中文释义；将作为结构化词典导入。未勾选时 MDX 保持为富文本词典。";
-    }
-    const canContinuePartial = status === "partial" && result.route.importer !== "none";
-    limitationsLabel.hidden = !canContinuePartial;
-    limitationsCheck.disabled = !canContinuePartial;
-    limitationsText.textContent = result.identity.family === "tflex"
-      ? "我知道安装前会重新完整校验所有文件与词条。"
-      : "我已阅读上述兼容说明，仍按显示的安装方式继续。";
-    const duplicate = findDuplicateCandidate(result, installedCandidates, selectedFiles);
-    duplicateLabel.hidden = !duplicate;
-    duplicateCheck.disabled = !duplicate;
-    const sameTflexId = duplicate && result.identity.family === "tflex" && duplicate.packId && duplicate.packId === tflexPackId(result);
-    if (sameTflexId) {
-      duplicateText.textContent = `确认更新已安装的同一 TFLex 包“${safeFileLabel(duplicate.name)}”？${describeDuplicateSources(duplicate, selectedFiles)} 更新前会完整校验所有文件；校验或保存失败时，当前已安装版本与查询会保持可用。文件声明身份尚未验证。`;
-    } else {
-      duplicateText.textContent = duplicate
-        ? `可能与已安装的“${safeFileLabel(duplicate.name)}”重复（依据名称/文件声明提示，文件身份未验证）。${describeDuplicateSources(duplicate, selectedFiles)} 如仍要安装，请明确选择作为另一份独立词典保留；不会覆盖已安装词典。`
-        : "";
-    }
-    updateImportEnabled();
-  }
+export function renderLocalPreflight({ result, selectedFiles, installedCandidates, summary, semanticLabel, semanticCheck, semanticText, limitationsLabel, limitationsCheck, limitationsText, duplicateLabel, duplicateCheck, duplicateText, updateImportEnabled, i18n }) {
+  summary.replaceChildren();
+  const view = getLocalPreflightView(result, selectedFiles, installedCandidates, i18n);
+  for (const row of view.rows) appendSummaryLine(summary, row.label, row.value);
+  semanticLabel.hidden = !view.needsSemantic; semanticCheck.disabled = !view.needsSemantic;
+  semanticText.textContent = view.semanticText;
+  limitationsLabel.hidden = !view.needsLimitations; limitationsCheck.disabled = !view.needsLimitations;
+  limitationsText.textContent = view.limitationsText;
+  duplicateLabel.hidden = !view.duplicate; duplicateCheck.disabled = !view.duplicate;
+  duplicateText.textContent = view.duplicateText;
+  updateImportEnabled();
+}
 
 export function appendSummaryLine(container, label, value) {
   const row = document.createElement("div");
@@ -285,16 +139,14 @@ export function appendSummaryLine(container, label, value) {
   container.appendChild(row);
 }
 
-export function describeReason(item) {
-  return CAPABILITY_REASON_LABELS[item.capability] || REASON_LABELS[item.code] || "此文件组存在需要注意的兼容情况。";
+export function describeReason(item, i18n) {
+  const code = String(item?.capability || item?.code || "");
+  const key = item?.capability ? CAPABILITY_REASON_LABELS[code] : REASON_LABELS[code];
+  return key ? translate(i18n, key) : translate(i18n, "localImport.error.preflight");
 }
 
-export function familyLabel(family) {
-  if (family === "mdict-rich") return "MDX · 富文本";
-  if (family === "mdict-structured") return "MDX · 纯文本结构化";
-  if (family === "stardict") return "StarDict";
-  if (family === "tflex") return "TranslateFlow TFLex";
-  return "未识别";
+export function familyLabel(family, i18n) {
+  return translate(i18n, `localImport.family.${family || "unknown"}`);
 }
 
 export function tflexPackId(result) {
@@ -311,66 +163,72 @@ export function normalizeIdentityText(value) {
   return String(value || "").normalize("NFKC").trim().toLocaleLowerCase("en-US");
 }
 
-export function fileBaseName(name) {
-  return safeFileLabel(name || "词典").replace(/\.mdx$/iu, "");
+export function fileBaseName(name, i18n) {
+  return safeFileLabel(name || translate(i18n, "dictionary.title"), i18n).replace(/\.mdx$/iu, "");
 }
 
-export function safeFileLabel(value) {
+export function safeFileLabel(value, i18n) {
   return String(value || "")
     .normalize("NFC")
     .replace(/[\\/]/gu, "_")
     .replace(/[\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]/gu, " ")
     .replace(/\s+/gu, " ")
     .trim()
-    .slice(0, 120) || "未命名文件";
+    .slice(0, 120) || translate(i18n, "localImport.unknownFile");
 }
 
-export function formatBytes(bytes) {
+export function formatBytes(bytes, i18n) {
   const value = Number(bytes || 0);
   if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KiB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MiB`;
+  const locale = (i18n || defaultI18n).locale === "zh_CN" ? "zh-CN" : "en";
+  if (value < 1024 * 1024) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value / 1024)} KiB`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value / (1024 * 1024))} MiB`;
 }
 
-function describeDuplicateSources(installed, selectedFiles) {
-  const incomingNames = Array.from(selectedFiles || []).slice(0, 16).map((file) => safeFileLabel(file?.name));
+function describeDuplicateSources(installed, selectedFiles, i18n) {
+  const incomingNames = Array.from(selectedFiles || []).slice(0, 16).map((file) => safeFileLabel(file?.name, i18n));
   const incomingSize = Array.from(selectedFiles || []).reduce((sum, file) => sum + Math.max(0, Number(file?.size) || 0), 0);
   const installedNames = Array.isArray(installed?.sourceFiles)
-    ? installed.sourceFiles.slice(0, 16).map(safeFileLabel)
-    : installed?.fileName ? [safeFileLabel(installed.fileName)] : [];
-  const installedDetails = [
-    installed?.version ? `版本 ${safeFileLabel(installed.version)}` : "",
-    installedNames.length ? `源文件 ${installedNames.join("、")}` : "源文件名称未知",
-    Number.isFinite(Number(installed?.sourceSize)) && Number(installed.sourceSize) > 0
-      ? `大小 ${formatBytes(installed.sourceSize)}` : "大小未知"
-  ].filter(Boolean).join(" · ");
-  return `已安装：${installedDetails}。当前选择：${incomingNames.join("、") || "文件名未知"} · ${formatBytes(incomingSize)}。`;
-}
-
-export function importProgressLabel(phase) {
-  const labels = {
-    preflight: "检查本机存储",
-    read: "读取所选文件",
-    worker: "验证并转换词典",
-    convert: "转换词条",
-    stage: "安全暂存文件",
-    index: "建立受限查询索引",
-    "store-source": "保存本地源文件",
-    "store-index": "保存本地查询索引",
-    commit: "后台完整复核并启用",
-    done: "完成"
+    ? installed.sourceFiles.slice(0, 16).map(name => safeFileLabel(name, i18n))
+    : installed?.fileName ? [safeFileLabel(installed.fileName, i18n)] : [];
+  return {
+    installed: translate(i18n, "localImport.duplicate.installedDetails", {
+      version: installed?.version ? safeFileLabel(installed.version, i18n) : translate(i18n, "localImport.duplicate.unknownVersion"),
+      files: installedNames.length ? joined(installedNames, i18n) : translate(i18n, "localImport.duplicate.unknownFiles"),
+      size: Number.isFinite(Number(installed?.sourceSize)) && Number(installed.sourceSize) > 0 ? formatBytes(installed.sourceSize, i18n) : translate(i18n, "localImport.duplicate.unknownSize")
+    }),
+    incoming: translate(i18n, "localImport.duplicate.incomingDetails", {
+      files: incomingNames.length ? joined(incomingNames, i18n) : translate(i18n, "localImport.duplicate.unknownFiles"),
+      size: formatBytes(incomingSize, i18n)
+    })
   };
-  return labels[phase] || "处理中…";
 }
 
-export function userMessage(error, route) {
-  if (error?.name === "AbortError") return "导入已取消；原有词典保持不变。";
-  if (route === "structured-mdict") return userMessageForMdictError(error);
-  if (route === "stardict") return userMessageForStarDictError(error);
-  if (error?.code === "RICH_MDD_INPUT") return "MDD 文件名无法与 MDX 安全关联，原有附件保持不变。";
-  if (["RICH_MDD_LIMIT", "RICH_MDD_QUOTA", "RICH_MDICT_LIMIT", "RICH_MDICT_QUOTA", "PACK_QUOTA"].includes(error?.code)) return "词典超过当前安全大小或本机存储不足；没有启用部分导入内容。";
-  if (/CORRUPT|HASH|UNSUPPORTED|INVALID/iu.test(String(error?.code || ""))) return "文件完整检查未通过，未安装词典或更改现有内容。请检查文件后重试。";
-  return error?.message || "词典在完整验证或保存时失败；现有词典保持不变。";
+export function importProgressLabel(phase, i18n) {
+  return renderLocalizedMessage(i18n || defaultI18n, importProgressMessage(phase));
+}
+
+export function importProgressMessage(phase) {
+  const key = ({ preflight: "preflight", read: "read", worker: "worker", convert: "convert", stage: "stage", index: "index", "store-source": "storeSource", "store-index": "storeIndex", commit: "commit", done: "done" })[phase || ""];
+  return localizedMessage(key ? `localImport.progress.${key}` : "localImport.progress.unknown");
+}
+
+export function userMessage(error, route, i18n) {
+  return renderLocalizedMessage(i18n || defaultI18n, userMessageDescriptor(error, route));
+}
+
+export function userMessageDescriptor(error, route) {
+  if (error?.name === "AbortError") return localizedMessage("localImport.error.cancelled");
+  const code = String(error?.code || "");
+  if (route === "preflight") return localizedMessage(REASON_LABELS[code] || "localImport.error.preflight");
+  if (code === "RICH_MDD_INPUT" || code === "RICH_MDD_ASSOCIATION") return localizedMessage("localImport.error.mddAssociation");
+  if (code === "MDX_REQUIRED") return localizedMessage("localImport.error.mdxRequired");
+  if (code === "MDD_TARGET_UNAVAILABLE") return localizedMessage("localImport.error.mddTarget");
+  if (["RICH_MDD_LIMIT", "RICH_MDD_QUOTA", "RICH_MDICT_LIMIT", "RICH_MDICT_QUOTA", "PACK_QUOTA", "MDICT_IMPORT_LIMIT", "STARDICT_IMPORT_LIMIT"].includes(code) || /LIMIT|QUOTA/u.test(code)) return localizedMessage("localImport.error.limit");
+  if (/UNSAFE/u.test(code)) return localizedMessage("localImport.error.unsafe");
+  if (/CORRUPT|HASH|PACK_INVALID/u.test(code)) return localizedMessage("localImport.error.corrupt");
+  if (/UNSUPPORTED/u.test(code)) return localizedMessage("localImport.error.unsupported");
+  return localizedMessage("localImport.error.install");
 }
 
 export function setPageStatus(message, isError = false) {

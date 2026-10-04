@@ -1,12 +1,16 @@
-export function getCuratedMdxInstallPresentation(source, dictionary) {
+import { createI18n } from "../i18n/index.js";
+import { localizedMessage } from "../i18n/messages.js";
+
+const defaultI18n = createI18n({ uiLocale: "zh_CN" });
+
+export function getCuratedMdxInstallPresentation(source, dictionary, i18n = defaultI18n) {
   if (!dictionary) {
     return {
       status: "not-installed",
       kind: "warning",
-      badgeLabel: "精选上游",
-      actionLabel: "安装",
-      detail:
-        "点击后直接从已锁定的上游发行版本下载。版本来源、词典内容日期和兼容性审核日期会分别显示。"
+      badgeLabel: i18n.t("dictionary.curated.notInstalledBadge"),
+      actionLabel: i18n.t("dictionary.curated.install"),
+      detail: i18n.t("dictionary.curated.notInstalledDetail")
     };
   }
 
@@ -14,10 +18,9 @@ export function getCuratedMdxInstallPresentation(source, dictionary) {
     return {
       status: "identity-conflict",
       kind: "error",
-      badgeLabel: "身份冲突",
-      actionLabel: "无法安装",
-      detail:
-        "固定词典标识已被其它富文本词典占用。请删除该词典后重试。"
+      badgeLabel: i18n.t("dictionary.curated.identityConflictBadge"),
+      actionLabel: i18n.t("dictionary.curated.unavailable"),
+      detail: i18n.t("dictionary.curated.identityConflictDetail")
     };
   }
 
@@ -25,10 +28,9 @@ export function getCuratedMdxInstallPresentation(source, dictionary) {
     return {
       status: "needs-reinstall",
       kind: "warning",
-      badgeLabel: "需要修复",
-      actionLabel: "重新安装",
-      detail:
-        "本地词典文件或查询信息无法正常读取。重新安装会先完成检查，再替换当前副本。"
+      badgeLabel: i18n.t("dictionary.curated.repairBadge"),
+      actionLabel: i18n.t("dictionary.curated.reinstall"),
+      detail: i18n.t("dictionary.curated.repairDetail")
     };
   }
 
@@ -41,36 +43,34 @@ export function getCuratedMdxInstallPresentation(source, dictionary) {
     return {
       status: "current",
       kind: "success",
-      badgeLabel: "已安装 · 可用",
-      actionLabel: "重新安装",
-      detail:
-        `已安装上游版本 ${source.upstreamRevision}。兼容性审核状态不代表词典内容仍在更新。`
+      badgeLabel: i18n.t("dictionary.curated.readyBadge"),
+      actionLabel: i18n.t("dictionary.curated.reinstall"),
+      detail: i18n.t("dictionary.curated.mdxCurrentDetail", { version: String(source.upstreamRevision || "") })
     };
   }
 
   return {
     status: "update-available",
     kind: "warning",
-    badgeLabel: "有已审核更新",
-    actionLabel: "更新",
-    detail:
-      `已安装上游版本 ${currentVersion || "未知版本"}；可安装的已审核版本为 ${source?.upstreamRevision || "未知"}。检查通过后才会替换当前副本。`
+    badgeLabel: i18n.t("dictionary.curated.updateBadge"),
+    actionLabel: i18n.t("dictionary.curated.update"),
+    detail: i18n.t("dictionary.curated.mdxUpdateDetail", { current: currentVersion || i18n.t("localImport.duplicate.unknownVersion"), next: String(source?.upstreamRevision || i18n.t("localImport.duplicate.unknownVersion")) })
   };
 }
 
 export function getCuratedInstallPresentation(
   source,
-  entry
+  entry,
+  i18n = defaultI18n
 ) {
   const active = entry?.active || null;
   if (!active) {
     return {
       status: "not-installed",
       kind: "warning",
-      badgeLabel: "精选上游",
-      actionLabel: "下载并安装",
-      detail:
-        "由你主动从已锁定的上游版本下载；TranslateFlow 不镜像该词典内容。"
+      badgeLabel: i18n.t("dictionary.curated.notInstalledBadge"),
+      actionLabel: i18n.t("dictionary.curated.install"),
+      detail: i18n.t("dictionary.curated.packNotInstalledDetail")
     };
   }
 
@@ -78,10 +78,9 @@ export function getCuratedInstallPresentation(
     return {
       status: "needs-reinstall",
       kind: "warning",
-      badgeLabel: "需要修复",
-      actionLabel: "重新安装",
-      detail:
-        "本地词典文件或完整性检查异常；重新安装会重新下载并验证。"
+      badgeLabel: i18n.t("dictionary.curated.repairBadge"),
+      actionLabel: i18n.t("dictionary.curated.reinstall"),
+      detail: i18n.t("dictionary.curated.packRepairDetail")
     };
   }
 
@@ -91,40 +90,31 @@ export function getCuratedInstallPresentation(
     return {
       status: "current",
       kind: "success",
-      badgeLabel: "已安装 · 可用",
-      actionLabel: "重新安装",
-      detail:
-        "此目录版本已安装；词典内容日期与兼容性审核日期分别列出。"
+      badgeLabel: i18n.t("dictionary.curated.readyBadge"),
+      actionLabel: i18n.t("dictionary.curated.reinstall"),
+      detail: i18n.t("dictionary.curated.packCurrentDetail")
     };
   }
 
   return {
     status: "update-available",
     kind: "warning",
-    badgeLabel: "有已审核更新",
-    actionLabel: "更新",
-    detail:
-      "已安装版本与可安装的已审核目录版本不同。更新会先验证新版本，再替换当前副本。"
+    badgeLabel: i18n.t("dictionary.curated.updateBadge"),
+    actionLabel: i18n.t("dictionary.curated.update"),
+    detail: i18n.t("dictionary.curated.packUpdateDetail")
   };
 }
 
-export function describeCuratedProgress(
-  message,
-  source
-) {
+export function describeCuratedProgress(message, source) {
   if (message.phase === "download") {
     const loaded = Number(message.inputBytes || 0);
-    return loaded
-      ? `正在下载/筛选：${formatCuratedBytes(loaded)} / ${formatCuratedBytes(source.downloadBytes)}`
-      : "正在连接固定上游版本…";
+    return loaded ? localizedMessage("dictionary.curated.progressDownload", { loaded: formatCuratedBytes(loaded), total: formatCuratedBytes(source.downloadBytes) }) : localizedMessage("dictionary.curated.progressConnecting");
   }
   if (message.phase === "convert") {
-    return `正在转换：已保留 ${Number(message.retainedRecords || 0).toLocaleString()} 个词条…`;
+    return localizedMessage("dictionary.curated.progressConvert", { count: Number(message.retainedRecords || 0).toLocaleString() });
   }
-  if (message.phase === "stage") {
-    return "正在保存词典并检查文件完整性…";
-  }
-  return "正在处理…";
+  if (message.phase === "stage") return localizedMessage("dictionary.curated.progressStage");
+  return localizedMessage("dictionary.curated.progressUnknown");
 }
 
 export function shortCuratedRevision(value) {

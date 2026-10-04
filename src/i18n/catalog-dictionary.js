@@ -146,7 +146,7 @@ export const zh_CN = Object.freeze({
   "dictionary.moveDown": "下移",
   "dictionary.orderSaved": "富文本词典顺序已保存。",
   "dictionary.attachMdd": "添加或替换 MDD 资源",
-  "dictionary.attachMddAria": "为 {title} 添加或替换 MDD 附件",
+  "dictionary.attachMddAria": "为{title}添加或替换 MDD 附件",
   "dictionary.cancelMdd": "取消资源导入",
   "dictionary.mddPreparing": "准备导入 MDD 资源…",
   "dictionary.mddAttached": "已附加 {count} 个 MDD 文件。",

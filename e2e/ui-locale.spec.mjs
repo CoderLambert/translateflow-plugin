@@ -2,6 +2,7 @@ import { test as base, expect, chromium } from "@playwright/test";
 import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { makeMdx } from "../tests/helpers/mdict-fixture.mjs";
 
 // Consume a real built artifact. No runtime source or permissions are added.
 // Default to the WXT artifact built by CI; select dist/extension explicitly for legacy comparison.
@@ -193,6 +194,51 @@ test("mounted Quick Control, Selection and subtitle controls follow one live Con
   await expect(youtube.getByRole("combobox", { name: "TranslateFlow subtitle mode" }).locator("option")).toHaveText(["Bilingual", "Original captions", "Off"]);
   await h.worker.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
   await expect(youtube.getByRole("combobox", { name: "TranslateFlow 字幕模式" }).locator("option")).toHaveText(["双语", "原字幕", "关闭"]);
+});
+
+test("Options Glossary and local dictionary preflight update in both languages without changing entered files", async ({ localeHarness: h }) => {
+  const page = await h.openOptions();
+  await expect(page.locator("#glossary h2")).toHaveText("Glossary");
+  await expect(page.locator("#dictionary-packs h2")).toHaveText("Dictionary library");
+  await page.locator("#glossarySource").fill("fixture-source");
+  await page.locator("#glossaryTarget").fill("fixture-target");
+  await page.locator("#saveGlossaryEntry").click();
+  await expect(page.locator("#status")).toContainText("Term saved");
+  await expect(page.locator("#glossaryList")).toContainText("fixture-source → fixture-target");
+
+  await page.locator("#localDictionaryFiles").setInputFiles({
+    name: "locale-fixture.mdx", mimeType: "application/octet-stream",
+    buffer: makeMdx([["locale-fixture", "Synthetic local definition."]], { generatedVersion: "2.0", styleSheet: "" })
+  });
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("Supported");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("Rich-text MDX dictionary");
+
+  await page.locator("#uiLocale").selectOption("zh_CN");
+  await expect(page.locator("#uiLocaleStatus")).toHaveText("界面语言已保存。");
+  await expect(page.locator("#glossary h2")).toHaveText("术语表");
+  await expect(page.locator("label[for='glossarySource']")).toHaveText("来源术语");
+  await expect(page.locator("#glossaryList")).toContainText("fixture-source → fixture-target");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("可用");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("MDX 富文本词典");
+  await expect(page.locator("#localDictionaryFileList")).toContainText("locale-fixture.mdx");
+
+  await page.locator("#uiLocale").selectOption("en");
+  await expect(page.locator("#glossary h2")).toHaveText("Glossary");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("Supported");
+  await expect(page.locator("#localDictionaryFileList")).toContainText("locale-fixture.mdx");
+  await page.locator("#localDictionaryFiles").setInputFiles({
+    name: "broken-fixture.mdx", mimeType: "application/octet-stream", buffer: Buffer.from("not an MDX file")
+  });
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("MDX file is corrupt or its structure cannot be read.");
+  await expect(page.locator("#localDictionaryImportButton")).toBeDisabled();
+  await page.locator("#uiLocale").selectOption("zh_CN");
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("MDX 文件损坏或结构无法读取。");
+  await page.locator("#localDictionaryFiles").setInputFiles({
+    name: "locale-fixture.mdx", mimeType: "application/octet-stream",
+    buffer: makeMdx([["locale-fixture", "Synthetic local definition."]], { generatedVersion: "2.0", styleSheet: "" })
+  });
+  await expect(page.locator("#localDictionaryPreflightSummary")).toContainText("可用");
+  await expect(page.locator("#localDictionaryImportButton")).toBeEnabled();
 });
 
 test.describe("Chinese browser with an explicit English interface", () => {

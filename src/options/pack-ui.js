@@ -5,6 +5,9 @@ import {
   getDictionaryCatalogEntryForRecipe
 } from "../shared/dictionary-catalog-v2.js";
 import { renderInstalledPackList } from "./installed-pack-ui.js";
+import { createI18n } from "../i18n/index.js";
+
+const defaultI18n = createI18n({ uiLocale: "zh_CN" });
 
 export async function requestDictionaryPackOriginPermission(
   source,
@@ -305,18 +308,20 @@ export function initializePackUi({
   }));
 }
 
-export function getBundledPackPresentation(pack) {
+export function getBundledPackPresentation(pack, i18n = defaultI18n) {
   const version = String(pack?.packVersion || "").trim();
   const count = Number(pack?.recordCount || 0);
+  const tr = (key, args = {}) => i18n.t(key, args);
+  const locale = i18n.locale === "zh_CN" ? "zh-CN" : "en";
   const readyMeta = [
-    version ? `版本 ${version}` : "版本未知",
-    `${count.toLocaleString()} 条记录`
+    version ? tr("dictionary.bundled.version", { version }) : tr("dictionary.bundled.versionUnknown"),
+    tr("dictionary.bundled.recordCount", { count: count.toLocaleString(locale) })
   ];
 
   if (pack?.status === "ready") {
     return {
       kind: "success",
-      label: "已就绪",
+      label: tr("dictionary.health.ready"),
       meta: readyMeta,
       detail: ""
     };
@@ -324,40 +329,40 @@ export function getBundledPackPresentation(pack) {
   if (pack?.status === "unavailable") {
     return {
       kind: "error",
-      label: "资源缺失",
+      label: tr("dictionary.health.missing"),
       meta: [],
-      detail: "内置词典资源不可用。请重新加载扩展；若仍未恢复，可查看下方修复说明。"
+      detail: tr("dictionary.bundled.detailMissing")
     };
   }
   if (pack?.status === "corrupt") {
     return {
       kind: "error",
-      label: "校验失败",
+      label: tr("dictionary.health.corrupt"),
       meta: [],
-      detail: "词典资源校验失败或已损坏。请重新加载或重新安装词典资源。"
+      detail: tr("dictionary.bundled.detailCorrupt")
     };
   }
   if (pack?.status === "incompatible") {
     return {
       kind: "warning",
-      label: "版本不兼容",
+      label: tr("dictionary.compatibility.unsupported"),
       meta: [],
-      detail: "词典格式与当前扩展版本不兼容。请更新扩展或重新安装对应资源。"
+      detail: tr("dictionary.bundled.detailIncompatible")
     };
   }
   if (pack?.status === "unhealthy") {
     return {
       kind: "warning",
-      label: "健康检查失败",
+      label: tr("dictionary.health.unknown"),
       meta: [],
-      detail: "词典缺少必要的基准词条，当前不会作为正常可用资源。"
+      detail: tr("dictionary.bundled.detailUnhealthy")
     };
   }
   return {
     kind: "error",
-    label: "状态异常",
+    label: tr("dictionary.health.unknown"),
     meta: [],
-    detail: pack?.message ? String(pack.message) : "无法确认词典状态。"
+    detail: tr("dictionary.healthDetail.unknown")
   };
 }
 

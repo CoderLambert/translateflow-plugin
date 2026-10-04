@@ -10,6 +10,8 @@ import { optionsClient } from "./client";
 import { glossaryClient } from "./glossary-client";
 import { useLocale } from "./useLocale";
 import { useOptions } from "./useOptions";
+import { renderLocalizedMessage } from "../i18n/messages.js";
+import type { LocalizedMessage } from "../i18n/messages.js";
 
 const navItems = [
   ["general", "options.nav.general"], ["selection", "options.nav.selection"], ["appearance", "options.nav.appearance"],
@@ -25,7 +27,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
   const dictionaries = useMemo(() => createDictionaryClient(), []);
   const ui = useOptions(client, locale.i18n, locale.ready);
   const [activeHash, setActiveHash] = useState(() => validHash(location.hash));
-  const setStatus = useCallback((message: string, error = false) => ui.setStatus(message, error), [ui.setStatus]);
+  const setStatus = useCallback((message: string | LocalizedMessage, error = false) => ui.setStatus(message, error), [ui.setStatus]);
   useEffect(() => {
     const changed = () => setActiveHash(validHash(location.hash));
     window.addEventListener("hashchange", changed);
@@ -64,7 +66,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
         <DeveloperSection version={client.version} />
         <div className="sticky-actions"><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("options.save")}</button><button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button></div>
       </> : null}
-      <div id="status" className={`status${ui.status.error ? " error" : ""}`} role="status" aria-live="polite">{ui.status.message}</div>
+      <div id="status" className={`status${ui.status.error ? " error" : ""}`} role="status" aria-live="polite">{renderLocalizedMessage(i18n, ui.status.message)}</div>
     </main>
   </div></LocaleProvider>;
 }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CacheStats, OptionsClient, OptionsConfig, SiteEntry, SiteProfile } from "./client";
 import type { I18n } from "../i18n/index.js";
+import type { LocalizedMessage } from "../i18n/messages.js";
 
-type Status = { message: string; error: boolean };
+type Status = { message: string | LocalizedMessage; error: boolean };
 type Resource<T> = { loading: boolean; value: T; error: string };
 
 export function useOptions(client: OptionsClient, i18n: I18n, enabled = true) {
@@ -13,7 +14,7 @@ export function useOptions(client: OptionsClient, i18n: I18n, enabled = true) {
   const [restoreSites, setRestoreSites] = useState<Resource<string[]>>({ loading: true, value: [], error: "" });
   const [autoSites, setAutoSites] = useState<Resource<string[]>>({ loading: true, value: [], error: "" });
   const active = useRef(false), generation = useRef(0);
-  const setStatus = useCallback((message: string, error = false) => setStatusState({ message, error }), []);
+  const setStatus = useCallback((message: string | LocalizedMessage, error = false) => setStatusState({ message, error }), []);
 
   const loadConfig = useCallback(async () => {
     const current = generation.current; setLoadError("");

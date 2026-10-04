@@ -85,6 +85,12 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
 
     mode = "unique";
     let target = await openTarget("resolved");
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
+    await expect(target.locator(".tf-reading-return-card h2")).toHaveText("阅读历史定位");
+    await expect(target.locator('.tf-reading-return-card [data-action="retry"]')).toHaveText("重新定位");
+    await expect(target.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en" }));
+    await expect(target.locator(".tf-reading-return-card h2")).toHaveText("Reading-history location");
     await expect(target.locator(".tf-reading-return-highlight")).not.toHaveCount(0);
     await expect.poll(() => target.evaluate(() => scrollY)).toBeGreaterThan(1000);
     await expect.poll(() => target.locator(".tf-reading-return-highlight").first().evaluate(node => {
@@ -100,10 +106,10 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
 
     mode = "ambiguous"; target = await openTarget("ambiguous");
     await expect(target.locator(".tf-reading-return-highlight")).toHaveCount(0);
-    await expect(target.locator('[data-role="location-status"]')).toContainText("多个可信匹配"); await target.close();
+    await expect(target.locator('[data-role="location-status"]')).toContainText("Several reliable matches"); await target.close();
 
     mode = "missing"; target = await openTarget("missing");
-    await expect(target.locator('[data-role="location-status"]')).toContainText("未找到保存的原文");
+    await expect(target.locator('[data-role="location-status"]')).toContainText("The saved text was not found");
     expect(JSON.stringify(await readOwnedSurface(target, true))).not.toContain("session"); await target.close();
 
     mode = "unique"; target = await openTarget("resolved");

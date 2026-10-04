@@ -91,3 +91,12 @@
 - 定向 E2E 在稳定通过前有三次测试 harness 失败：首次从网页主世界访问扩展隔离状态，随后分别修正重复 URL 目标标签选择和打开隐藏面板后的点击步骤；这些失败没有作为 PASS 计入，最终结果绑定本候选并通过。
 - 此场景 E2E 临时副本单列 fingerprint：119 个文件 / 1,750,961 bytes，tree SHA-256 `099f5372eda98e95c4ca17c58dced313d526b459f4d30dfd3d31e3cf4a63a368`，含合成 Core/Technical 词典与测试 manifest localhost 权限；不代表原始安装包。证据 JSON：`test-results/e2e/reading-page-markers-autho-4d020-anges-without-Provider-work/reading-page-marker-scan.json`（本地测试产物，Git 忽略）。
 - 测试绑定代码候选 `2401928de615a1260047576390bfda7c8a9ae314`；本节为其后的文档记录提交，不改变测试输入。Chrome 102、其它浏览器、真实权限 UI、真实 YouTube timedtext、付费 Provider、same-ID 升级/撤权和发布词典认证仍未运行。
+
+## #253 en/zh_CN 收口分支集成（2026-10-04）
+
+- `refactor/253-ui-localization` 从 `67d7eb99362181ecb56a5f5d98ece5f1da761e8c` 集成最新 `origin/main@51bb03b4be8a1638a16777c24a8abbeba35e4ef7`；该 main 包含 PR #300（Reading 实现候选 `9cc21e7f0c9af9b1d2966c9bede9177259477f4b`），本地 merge commit 为 `52590a5e7f728ab1dc0df5e70f84671127669323`。
+- `reading-page-markers.js` 保留共享长页扫描、单请求取消隔离、生命周期内自动重试上限、手动重试入口、页面可见性边界和 Range 当前文本校验；接入 locale binding，列表和 marker 只使用序号及状态，不向未定位项目输出存储 quote。
+- `reading-return-card.js` 保留 generation、dismissed、AbortController 与路由清理；每次定位先同步清空旧 Range、overlay 与 quote，响应后再次检查 Range 仍连接且文本精确匹配，只有通过检查才展示 quote。状态和辅助名称改为 locale binding。
+- `reading-record.js` 与 `reading-source.js` 均由 owned sources 重建，生成命令为 `node scripts/reading-content-classic.mjs`；不直接修补 minified projection。
+- 生产 WXT 仍从 `src/entries/content.js` 的单一模块图加载 locale owner，最终仍生成唯一 `content-scripts/content.js`。冻结的 pre-switch registration list 只在升级兼容测试中使用；该旧 fixture 注入 test-only locale stub，实际 WXT artifact 的用例验证真实 locale owner，不向生产增添旧清单 fallback。
+- 此次候选验收命令、每项结果、Chromium 版本、原始安装包与 E2E 临时副本指纹记录在 `docs/tasks/253/acceptance.json` 和 `review.md`，并绑定准确 `candidateHead`。这段日志只记录合并取舍和生成方式，不替代候选验收证据。

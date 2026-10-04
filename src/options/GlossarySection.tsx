@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { GlossaryClient, GlossaryDraft, GlossaryRow, GlossaryScope } from "./glossary-client";
 import { useOptionsI18n } from "./LocaleContext";
 import type { I18n } from "../i18n/index.js";
+import { localizedMessage, renderLocalizedMessage } from "../i18n/messages.js";
+import type { LocalizedMessage } from "../i18n/messages.js";
 
 const emptyDraft = (): GlossaryDraft => ({
   scope: "global", origin: "", source: "", target: "", caseSensitive: false, enabled: true
@@ -9,29 +11,29 @@ const emptyDraft = (): GlossaryDraft => ({
 
 export function GlossarySection({ client, setStatus }: {
   client: GlossaryClient;
-  setStatus: (message: string, error?: boolean) => void;
+  setStatus: (message: string | LocalizedMessage, error?: boolean) => void;
 }) {
   const i18n = useOptionsI18n();
   const [rows, setRows] = useState<GlossaryRow[]>([]);
   const [draft, setDraft] = useState<GlossaryDraft>(emptyDraft);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<LocalizedMessage | null>(null);
   const [busy, setBusy] = useState(false);
   const sourceRef = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
 
   const refresh = useCallback(async () => {
     const request = ++generation.current;
-    setLoading(true); setError("");
+    setLoading(true); setError(null);
     try {
       const value = await client.rows();
       if (request === generation.current) setRows(value);
-    } catch (cause) {
-      if (request === generation.current) setError(errorText(cause, i18n.t("options.glossary.readFailed")));
+    } catch {
+      if (request === generation.current) setError(localizedMessage("options.glossary.readFailed"));
     } finally {
       if (request === generation.current) setLoading(false);
     }
-  }, [client, i18n]);
+  }, [client]);
 
   useEffect(() => { void refresh(); return () => { generation.current += 1; }; }, [refresh]);
 
@@ -47,14 +49,14 @@ export function GlossarySection({ client, setStatus }: {
     setBusy(true);
     try {
       setRows(await client.save(draft)); clearEditor();
-      setStatus(i18n.t("options.glossary.saved"));
-    } catch (cause) { setStatus(errorText(cause, i18n.t("common.unknownError")), true); }
+      setStatus(localizedMessage("options.glossary.saved"));
+    } catch { setStatus(localizedMessage("options.glossary.operationFailed"), true); }
     finally { setBusy(false); }
   }
   async function toggle(row: GlossaryRow) {
     setBusy(true);
-    try { setRows(await client.setEnabled(row, !row.entry.enabled)); setStatus(i18n.t(row.entry.enabled ? "options.glossary.disabled" : "options.glossary.enabledNotice")); }
-    catch (cause) { setStatus(errorText(cause, i18n.t("common.unknownError")), true); }
+    try { setRows(await client.setEnabled(row, !row.entry.enabled)); setStatus(localizedMessage(row.entry.enabled ? "options.glossary.disabled" : "options.glossary.enabledNotice")); }
+    catch { setStatus(localizedMessage("options.glossary.operationFailed"), true); }
     finally { setBusy(false); }
   }
   async function remove(row: GlossaryRow) {
@@ -62,8 +64,8 @@ export function GlossarySection({ client, setStatus }: {
     try {
       setRows(await client.remove(row));
       if (draft.id === row.entry.id) clearEditor();
-      setStatus(i18n.t("options.glossary.deleted"));
-    } catch (cause) { setStatus(errorText(cause, i18n.t("common.unknownError")), true); }
+      setStatus(localizedMessage("options.glossary.deleted"));
+    } catch { setStatus(localizedMessage("options.glossary.operationFailed"), true); }
     finally { setBusy(false); }
   }
 
@@ -84,7 +86,7 @@ export function GlossarySection({ client, setStatus }: {
     </div>
     <div className="actions"><button id="saveGlossaryEntry" className="primary" type="button" disabled={busy} onClick={() => void commit()}>{i18n.t("options.glossary.save")}</button><button id="clearGlossaryEditor" type="button" disabled={busy} onClick={clearEditor}>{i18n.t("options.glossary.clear")}</button></div>
     <div id="glossaryList" className="site-list" aria-busy={loading}>
-      {loading ? i18n.t("options.glossary.loading") : error ? <><p role="alert">{error}</p><button type="button" onClick={() => void refresh()}>{i18n.t("common.retry")}</button></> : rows.length ? rows.map(row => <GlossaryRowView key={`${row.scope}:${row.origin}:${row.entry.id}`} row={row} busy={busy} edit={edit} toggle={toggle} remove={remove} i18n={i18n} />) : i18n.t("options.glossary.empty")}
+      {loading ? i18n.t("options.glossary.loading") : error ? <><p role="alert">{renderLocalizedMessage(i18n, error)}</p><button type="button" onClick={() => void refresh()}>{i18n.t("common.retry")}</button></> : rows.length ? rows.map(row => <GlossaryRowView key={`${row.scope}:${row.origin}:${row.entry.id}`} row={row} busy={busy} edit={edit} toggle={toggle} remove={remove} i18n={i18n} />) : i18n.t("options.glossary.empty")}
     </div>
     <p className="hint">{i18n.t("options.glossary.helpCache")}</p>
   </section>;
@@ -99,5 +101,3 @@ function GlossaryRowView({ row, busy, edit, toggle, remove, i18n }: {
 }) {
   return <div className="site-row"><div className="site-summary"><strong>{row.scope === "global" ? i18n.t("options.glossary.global") : row.origin}</strong><small>{row.entry.source} → {row.entry.target} · {i18n.t(row.entry.caseSensitive ? "options.glossary.caseSensitive" : "options.glossary.ignoreCase")} · {i18n.t(row.entry.enabled ? "options.glossary.statusEnabled" : "options.glossary.statusDisabled")}</small></div><div className="site-actions"><button type="button" disabled={busy} onClick={() => edit(row)}>{i18n.t("common.edit")}</button><button type="button" disabled={busy} onClick={() => void toggle(row)}>{i18n.t(row.entry.enabled ? "common.disable" : "common.enable")}</button><button type="button" disabled={busy} onClick={() => void remove(row)}>{i18n.t("common.delete")}</button></div></div>;
 }
-
-function errorText(error: unknown, fallback: string) { return error instanceof Error ? error.message : String(error || fallback); }

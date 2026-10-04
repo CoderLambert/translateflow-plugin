@@ -82,6 +82,9 @@ export const test = base.extend({
           await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" });
           await chrome.storage.local.clear();
           await chrome.storage.local.set({
+            // Keep legacy product-flow assertions deterministic in Chinese;
+            // dedicated UI-locale stories exercise auto and live en/zh switches.
+            uiLocale: "zh_CN",
             provider: "openai-compatible",
             model: "mock-model",
             targetLanguage: "Simplified Chinese",

@@ -48,9 +48,15 @@ does not briefly render in the browser-language fallback. React StrictMode
 reuses one initial read, storage listeners are removed symmetrically, and an
 already-open document rerenders safely when another document changes the value.
 
-The pure catalog still performs no storage or browser access. Content's classic
-renderers receive an already-resolved translator through their existing
-surface owner; they do not create another storage owner. Popup, Options,
+The pure catalog still performs no storage or browser access. The production
+WXT Content graph loads `src/entries/content-i18n.js` before its classic
+renderers; the root Content entry starts the single locale owner before any
+locale-dependent UI or page operation can run. Classic renderers receive the
+resolved translator through their existing surface owner; they do not create
+another storage owner. The frozen pre-switch registration list is retained only
+as a compatibility test fixture and supplies a test-only locale stub. The
+production package continues to ship the single compiled Content resource from
+the current WXT graph. Popup, Options,
 Glossary, the dictionary library and local import, Learning Center, Quick
 Control, Selection and subtitle controls use catalog text for their
 loading/empty/error/success/cancel/permission/confirmation paths. Dynamic site,

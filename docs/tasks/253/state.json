@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "253",
-  "status": "paused",
+  "status": "working",
   "owner": "main",
   "dependencies": ["249", "252", "244"],
   "branch": "refactor/253-ui-localization",
@@ -10,10 +10,11 @@
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
+    ["node", "scripts/reading-content-classic.mjs", "--check"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:wxt:smoke"],
-    ["npm", "run", "test:e2e", "--", "e2e/ui-locale.spec.mjs", "e2e/ui-redesign.spec.mjs", "e2e/settings-ia.spec.mjs", "e2e/dark-mode.spec.mjs", "e2e/learning-center.spec.mjs", "e2e/reading-loop-release-a.spec.mjs", "e2e/translateflow.spec.mjs", "e2e/subtitles.spec.mjs"]
+    ["npm", "run", "test:e2e", "--", "e2e/ui-locale.spec.mjs", "e2e/ui-redesign.spec.mjs", "e2e/settings-ia.spec.mjs", "e2e/dark-mode.spec.mjs", "e2e/learning-center.spec.mjs", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-page-markers.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-storage.spec.mjs", "e2e/local-dictionary-import-v2-product.spec.mjs", "e2e/translateflow.spec.mjs", "e2e/subtitles.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "恢复时先将词典 legacy presentation/client/controller 的动态中文状态收口到 catalog，再构建并运行 ui-locale 与任务契约 E2E；当前集成分支已通过 check、i18n/Content locale Node、typecheck 与 Vitest。"
+  "nextAction": "将最新 origin/main@51bb03b 与 #253 收口提交冻结为候选，完成 validate、生成一致性、WXT build/smoke 与全部约定 Chromium E2E；仅更新本地验收证据。"
 }
