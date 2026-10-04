@@ -21,6 +21,19 @@
       });
     }
 
+    function choices(onAction) {
+      render({ state: "actions", message: "选择一种方式继续：", onAction });
+    }
+
+    function streaming(answer, onCancel, stopping = false) {
+      render({ state: stopping ? "stopping" : "streaming", message: stopping ? "正在停止，等待确认…" : "AI 正在回答…",
+        answer: String(answer || ""), onCancel: stopping ? null : onCancel });
+    }
+
+    function interrupted(answer, message, onRetry) {
+      render({ state: "interrupted", message: message || "回答中断，未保存。", answer: String(answer || ""), onRetry });
+    }
+
     function success(result = {}) {
       render({
         state: "success",
@@ -59,14 +72,17 @@
       message = "",
       generatedMeaning = "",
       explanation = "",
+      answer = "",
       onRetry = null,
-      onCancel = null
+      onCancel = null,
+      onAction = null
     } = {}) {
       const target = ensureNode();
       target.replaceChildren();
       target.hidden = state === "idle";
       target.dataset.state = state;
-      target.setAttribute("aria-busy", state === "loading" ? "true" : "false");
+      target.setAttribute("aria-busy", ["loading", "streaming", "stopping"].includes(state) ? "true" : "false");
+      target.setAttribute("aria-live", "polite");
       if (target.hidden) {
         onResize?.();
         return;
@@ -105,22 +121,37 @@
         return;
       }
 
+      if (answer) {
+        const body = document.createElement("div");
+        body.className = "tf-selection-generated-body";
+        body.textContent = answer;
+        target.appendChild(body);
+      }
+
       const statusNode = document.createElement("div");
       statusNode.className = "tf-selection-ai-status";
       statusNode.dataset.kind = state;
       statusNode.textContent = message;
       target.appendChild(statusNode);
 
-      if (typeof onRetry === "function" || typeof onCancel === "function") {
+      if (typeof onAction === "function" || typeof onRetry === "function" || typeof onCancel === "function") {
         const actions = document.createElement("div");
         actions.className = "tf-selection-ai-actions";
+        if (typeof onAction === "function") {
+          for (const [action, text, label] of [["understand", "理解", "解释这里是什么意思"], ["analyze", "分析", "拆解这里的表达"], ["usage", "用法", "说明这里的用法"]]) {
+            const actionButton = button({ text, label });
+            actionButton.dataset.action = action;
+            actionButton.addEventListener("click", event => onAction(event, action));
+            actions.appendChild(actionButton);
+          }
+        }
         if (typeof onRetry === "function") {
           const retry = button({ text: "重试", label: "重新请求 AI 详解" });
           retry.addEventListener("click", (event) => onRetry(event));
           actions.appendChild(retry);
         }
         if (typeof onCancel === "function") {
-          const cancel = button({ text: "取消", label: "取消 AI 详解" });
+          const cancel = button({ text: state === "streaming" ? "停止" : "取消", label: state === "streaming" ? "停止 AI 回答" : "取消 AI 详解" });
           cancel.addEventListener("click", () => onCancel());
           actions.appendChild(cancel);
         }
@@ -132,7 +163,10 @@
     return Object.freeze({
       reset,
       ensure: ensureNode,
+      choices,
       loading,
+      streaming,
+      interrupted,
       success,
       error,
       cancelled

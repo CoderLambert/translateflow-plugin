@@ -58,22 +58,26 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(lexicalStyles, /\.tf-selection-action-quiet/);
 });
 
-test("Selection AI detail preserves the local card across loading, failure and cancellation", async () => {
+test("Selection assistant preserves the local card while streaming, stopping and retrying", async () => {
   const [controller, popover, aiDetail] = await Promise.all([
     source("src/content/selection/controller.js"),
     source("src/content/selection/popover.js"),
     source("src/content/selection/ai-detail.js")
   ]);
 
-  assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card, event\)/);
-  assert.match(controller, /popover\.showAiDetailLoading/);
-  assert.match(controller, /popover\.showAiDetailError/);
-  assert.match(controller, /popover\.showAiDetailCancelled/);
+  assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card, event, action\)/);
+  assert.match(controller, /selection\.assistant-stream/);
+  assert.match(controller, /message\.type === "started"/);
+  assert.match(controller, /popover\.showAiDetailStreaming/);
+  assert.match(controller, /popover\.showAiDetailStopping/);
+  assert.match(controller, /popover\.showAiDetailInterrupted/);
+  assert.match(controller, /message\.turn\?\.completionStatus !== "completed"/);
   assert.match(controller, /isCurrentSelection\(version, snapshot, expectedPage\)/);
   assert.match(popover, /showAiDetailResult/);
   assert.match(aiDetail, /aria-busy/);
   assert.match(aiDetail, /重新请求 AI 详解/);
-  assert.match(aiDetail, /取消 AI 详解/);
+  assert.match(aiDetail, /停止 AI 回答/);
+  for (const action of ["understand", "analyze", "usage"]) assert.match(aiDetail, new RegExp(action));
 });
 
 test("Selection result model separates local provenance and AI explanation", async () => {
@@ -88,7 +92,7 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(resultModel, /AI 辅助/);
   assert.match(resultModel, /词典包 ·/);
   assert.match(popover, /正在查词/);
-  assert.match(controller, /正在结合上下文解释/);
+  assert.match(controller, /正在连接 AI 助手/);
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(controller, /popover\.showEmpty/);
   assert.match(controller, /forceTranslation: true/);

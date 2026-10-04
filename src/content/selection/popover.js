@@ -154,6 +154,7 @@
     updateSource(snapshot, result);
     setStatus(statusNode, "", "success");
     renderResult(result);
+    if (explainHandler) aiDetail.choices(explainHandler);
     resultNode.hidden = false;
     cancelButton.hidden = true;
     copyButton.hidden = false;
@@ -254,39 +255,52 @@
     resultNode.hidden = false;
     hideActionButtons();
     emptyState.show({ title, message, onExplain, onTranslate });
+    if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
 
   function showAiDetailLoading(onCancel) {
-    ensureUi();
-    if (!resultNode || resultNode.hidden) return;
-    explainHandler = null;
-    explainButton.hidden = true;
+    ensureUi(); if (!resultNode || resultNode.hidden) return;
+    explainHandler = null; explainButton.hidden = true;
     aiDetail.loading(onCancel);
   }
 
+  function showAiDetailStreaming(answer, onStop) {
+    ensureUi(); if (!resultNode) return;
+    resultNode.hidden = false; explainHandler = null;
+    explainButton.hidden = cancelButton.hidden = true;
+    aiDetail.streaming(answer, onStop);
+  }
+
+  function showAiDetailStopping(answer) {
+    ensureUi(); if (!resultNode) return;
+    resultNode.hidden = false; cancelButton.hidden = true;
+    aiDetail.streaming(answer, null, true);
+  }
+
+  function showAiDetailInterrupted(answer, message, onRetry) {
+    ensureUi(); if (!resultNode) return;
+    resultNode.hidden = false; explainHandler = null; explainButton.hidden = true;
+    aiDetail.interrupted(answer, message, onRetry);
+  }
+
   function showAiDetailResult(result, onCopy) {
-    ensureUi();
-    if (!resultNode || resultNode.hidden) return;
+    ensureUi(); if (!resultNode || resultNode.hidden) return;
     if (typeof onCopy === "function") copyHandler = onCopy;
-    explainHandler = null;
-    explainButton.hidden = true;
+    explainHandler = null; explainButton.hidden = cancelButton.hidden = true;
+    copyButton.hidden = typeof onCopy !== "function";
     aiDetail.success(result);
   }
 
   function showAiDetailError(message, onRetry) {
-    ensureUi();
-    if (!resultNode || resultNode.hidden) return;
-    explainHandler = null;
-    explainButton.hidden = true;
+    ensureUi(); if (!resultNode || resultNode.hidden) return;
+    explainHandler = null; explainButton.hidden = true;
     aiDetail.error(message, onRetry);
   }
 
   function showAiDetailCancelled(onRetry) {
-    ensureUi();
-    if (!resultNode || resultNode.hidden) return;
-    explainHandler = null;
-    explainButton.hidden = true;
+    ensureUi(); if (!resultNode || resultNode.hidden) return;
+    explainHandler = null; explainButton.hidden = true;
     aiDetail.cancelled(onRetry);
   }
 
@@ -388,6 +402,9 @@
     showError,
     showEmpty,
     showAiDetailLoading,
+    showAiDetailStreaming,
+    showAiDetailStopping,
+    showAiDetailInterrupted,
     showAiDetailResult,
     showAiDetailError,
     showAiDetailCancelled,

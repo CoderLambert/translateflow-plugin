@@ -89,6 +89,16 @@
       ctx.operations.push(operation);
       return operation;
     }
+    async function discard(ctx, operation) {
+      if (!ctx || !operation) return;
+      access.cancel(operation);
+      ctx.operations = ctx.operations.filter(value => value !== operation);
+      try {
+        await operation.preparing?.catch(() => {});
+        if (operation.token) await send(M.CANCEL_OPERATION, { operationId: operation.operationId });
+      } catch { /* An incomplete assistant turn is never promoted to a saved artifact. */ }
+      finally { access.forget(operation); }
+    }
     async function prepare(ctx, operation) {
       if (operation.token) return operation.token;
       if (operation.preparing) return operation.preparing;
@@ -269,7 +279,7 @@
       if (!current && port) { const owned = port; port = null; invalidation = null; owned.disconnect(); }
       return ctx.referenceGeneration === referenceGeneration ? ctx.ref : null;
     }
-    return Object.freeze({ start, assistant, accept, refresh, save, retry, close, invalidateReference,
+    return Object.freeze({ start, assistant, discard, accept, refresh, save, retry, close, invalidateReference,
       decline(event) { if (access.trusted(event)) { declined = true; if (current) showAvailable(current); } },
       async open(event) {
         if (!access.trusted(event)) return;
