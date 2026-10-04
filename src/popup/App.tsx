@@ -42,7 +42,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
 
     <section id="effectiveContext" className="page-card" hidden={!context} aria-label={i18n.t("popup.currentContext")} aria-busy={ui.context.loading}>
       <div className="page-card-head"><div className="site-icon" aria-hidden="true">🌐</div><div className="site-copy"><span className="section-kicker">{i18n.t("popup.currentPage")}</span><strong id="contextSite">{context?.hostname || context?.origin || "—"}</strong></div></div>
-      <div className="context-grid"><span>{i18n.t("popup.translationMode")}</span><strong id="contextMode">{context?.hasSitePromptOverride ? "Custom Prompt" : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : context?.presetLabel || "Default"}</strong><span>{i18n.t("popup.modelService")}</span><strong><span id="contextProvider">{formatProvider(context?.provider)}</span> · <span id="contextModel">{context?.model || "—"}</span></strong></div>
+      <div className="context-grid"><span>{i18n.t("popup.translationMode")}</span><strong id="contextMode">{context?.hasSitePromptOverride ? i18n.t("popup.contextModeCustomPrompt") : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : i18n.t("popup.contextModeDefault")}</strong><span>{i18n.t("popup.modelService")}</span><strong><span id="contextProvider">{formatProvider(context?.provider)}</span> · <span id="contextModel">{context?.model || "—"}</span></strong></div>
     </section>
     {ui.context.error ? <div className="preset-hint" role="alert">{ui.context.error} <button type="button" onClick={() => void ui.refreshContext()}>{i18n.t("common.retry")}</button></div> : null}
 
