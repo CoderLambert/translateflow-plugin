@@ -84,7 +84,7 @@ export function createLocalDictionaryClient({
         if (attached.length) {
           if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
           try {
-            onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…");
+            onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…", "");
             await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, files: attached }));
           } catch (error) {
             retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached, title: String(report.identity.displayTitle || "") };
