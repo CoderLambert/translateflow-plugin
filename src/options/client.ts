@@ -29,8 +29,8 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
 
   async function ensureOpenAIPermission(raw: string) {
     const pattern = getProviderHostPermissionPattern(raw);
-    if (!pattern) throw new Error(i18n.t("options.openaiBaseRequired"));
-    if (!await api.permissions.request({ origins: [pattern] })) throw new Error(i18n.t("options.apiPermissionDenied", { pattern }));
+    if (!pattern) throw uiError(i18n.t("options.openaiBaseRequired"));
+    if (!await api.permissions.request({ origins: [pattern] })) throw uiError(i18n.t("options.apiPermissionDenied", { pattern }));
   }
 
   function normalizeConfig(input: OptionsConfig): OptionsConfig {
@@ -55,7 +55,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
 
   async function testProvider() {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.TEST_API });
-    if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
+    if (!response?.ok) throw uiError(i18n.t("options.apiTestFailed"));
     return String(response.result || "");
   }
 
@@ -80,16 +80,16 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
 
   async function cacheStats(): Promise<CacheStats> {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_STATS });
-    if (!response?.ok) throw new Error(response?.error || i18n.t("options.readFailed"));
+    if (!response?.ok) throw uiError(i18n.t("options.readFailed"));
     return { pageCount: Number(response.pageCount || 0), segmentCount: Number(response.segmentCount || 0), bytes: Number(response.bytes || 0) };
   }
-  async function pruneCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE }); if (!response?.ok) throw new Error(response?.error || i18n.t("options.cachePruneFailed")); return Number(response.deleted || 0); }
-  async function clearCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_CLEAR_ALL }); if (!response?.ok) throw new Error(response?.error || i18n.t("options.cacheClearFailed")); }
+  async function pruneCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE }); if (!response?.ok) throw uiError(i18n.t("options.cachePruneFailed")); return Number(response.deleted || 0); }
+  async function clearCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_CLEAR_ALL }); if (!response?.ok) throw uiError(i18n.t("options.cacheClearFailed")); }
   async function behaviorSites(key: "cacheRestoreSites" | "autoSites") { const value = await api.storage.local.get([key]) as Record<string, unknown>, sites = value[key]; return Array.isArray(sites) ? [...new Set<string>(sites.filter((item): item is string => typeof item === "string"))].sort() : []; }
 
   async function removeBehavior(key: "cacheRestoreSites" | "autoSites", origin: string) {
     const type = key === "cacheRestoreSites" ? BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER : BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER;
-    const response = await api.runtime.sendMessage({ type, origin }); if (!response?.ok) throw new Error(response?.error || i18n.t("options.behaviorRemoveFailed"));
+    const response = await api.runtime.sendMessage({ type, origin }); if (!response?.ok) throw uiError(i18n.t("options.behaviorRemoveFailed"));
     const pattern = `${origin}/*`, stored = await api.storage.local.get(["cacheRestoreSites", "autoSites", "quickControlSites", "openAICompatible"]) as Record<string, unknown>;
     const stillNeeded = [stored.cacheRestoreSites, stored.autoSites, stored.quickControlSites].some(values => Array.isArray(values) && values.includes(origin));
     let providerNeeded = false; try { providerNeeded = getProviderHostPermissionPattern(objectRecord(stored.openAICompatible).baseUrl) === pattern; } catch {}
@@ -99,5 +99,6 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
   return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, profiles, saveProfile, deleteProfile, cacheStats, pruneCache, clearCache, behaviorSites, removeBehavior };
 }
 export type OptionsClient = ReturnType<typeof optionsClient>;
+function uiError(message: string) { return Object.assign(new Error(message), { uiMessage: message }); }
 function objectRecord(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function text(value: unknown, fallback = "") { return typeof value === "string" ? value : fallback; }
