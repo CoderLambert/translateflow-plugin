@@ -108,7 +108,8 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   assert.equal(optionsZhCN["options.selection.depth"], "AI 详解深度");
   assert.match(source, /aria-live="polite"/);
   assert.match(section, /dictionary-repair-help/);
-  assert.match(section, /npm run setup:lexicon/);
+  assert.match(section, /dictionary\.sourceRepairHelp/);
+  assert.match(dictionaryZhCN["dictionary.sourceRepairHelp"], /npm run setup:lexicon/);
   assert.match(html, /src\/options\/main\.tsx/);
   assert.doesNotMatch(html, /FreeDict eng-zho 2025\.11\.23/);
   assert.match(css, /dictionary-health-badge\[data-kind="success"\]/);
