@@ -321,7 +321,7 @@ export function getBundledPackPresentation(pack, i18n = defaultI18n) {
   if (pack?.status === "ready") {
     return {
       kind: "success",
-      label: tr("dictionary.health.ready"),
+      label: tr("dictionary.bundled.ready"),
       meta: readyMeta,
       detail: ""
     };
@@ -329,7 +329,7 @@ export function getBundledPackPresentation(pack, i18n = defaultI18n) {
   if (pack?.status === "unavailable") {
     return {
       kind: "error",
-      label: tr("dictionary.health.missing"),
+      label: tr("dictionary.bundled.missing"),
       meta: [],
       detail: tr("dictionary.bundled.detailMissing")
     };
@@ -337,7 +337,7 @@ export function getBundledPackPresentation(pack, i18n = defaultI18n) {
   if (pack?.status === "corrupt") {
     return {
       kind: "error",
-      label: tr("dictionary.health.corrupt"),
+      label: tr("dictionary.bundled.corrupt"),
       meta: [],
       detail: tr("dictionary.bundled.detailCorrupt")
     };
@@ -345,7 +345,7 @@ export function getBundledPackPresentation(pack, i18n = defaultI18n) {
   if (pack?.status === "incompatible") {
     return {
       kind: "warning",
-      label: tr("dictionary.compatibility.unsupported"),
+      label: tr("dictionary.bundled.incompatible"),
       meta: [],
       detail: tr("dictionary.bundled.detailIncompatible")
     };
@@ -353,7 +353,7 @@ export function getBundledPackPresentation(pack, i18n = defaultI18n) {
   if (pack?.status === "unhealthy") {
     return {
       kind: "warning",
-      label: tr("dictionary.health.unknown"),
+      label: tr("dictionary.bundled.unhealthy"),
       meta: [],
       detail: tr("dictionary.bundled.detailUnhealthy")
     };

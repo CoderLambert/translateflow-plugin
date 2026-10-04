@@ -140,10 +140,10 @@ test("installed dictionary presentation uses human name, trust and size", () => 
   );
   assert.deepEqual(installedPackMeta(entry), [
     "本地导入 · 用户提供 / 未验证",
-    "兼容性 当前版本可使用",
+    "兼容性：当前版本可使用",
     "StarDict",
     "本地安装版本 import-v1",
     "本机安装日期 2026-09-29",
-    "已安装大小 4.0 KiB"
+    "已安装大小 4 KiB"
   ]);
 });

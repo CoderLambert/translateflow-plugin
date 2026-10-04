@@ -42,16 +42,16 @@ test("local compatibility and health states use user-facing explanations", () =>
     unsupportedCapabilities: ["mdx.compression.lzo"]
   }), {
     label: "可使用 · 部分功能受限",
-    detail: "词典使用 LZO 压缩，当前版本无法读取。"
+    detail: "MDX 使用 LZO 压缩，当前版本无法读取。"
   });
   assert.deepEqual(getDictionaryHealthPresentation("corrupt"), {
     label: "检查失败",
     kind: "error",
-    detail: "本地词典无法通过完整性检查；其他词典仍可正常使用。"
+    detail: "完整性检查失败；其它词典仍可正常使用。"
   });
   assert.equal(getDictionaryHealthPresentation("missing").label, "文件缺失");
   assert.equal(getDictionaryHealthPresentation("ready").label, "可用");
-  assert.equal(formatDictionaryBytes(4_096), "4.0 KiB");
+  assert.equal(formatDictionaryBytes(4_096), "4 KiB");
 });
 
 test("user-owned rich MDX keeps local version separate from installation date", () => {
@@ -65,10 +65,10 @@ test("user-owned rich MDX keeps local version separate from installation date", 
   const values = Object.fromEntries(rows.map(({ label, value }) => [label, value]));
 
   assert.equal(values["本地安装版本"], "import-mgj2xio0-12345678");
-  assert.equal(values["本地安装日期"], "2026-09-29");
+  assert.equal(values["本机安装日期"], "2026-09-29");
   assert.equal(values["本机源文件"], "user-book.mdx");
-  assert.equal(values["本机源文件大小"], "8.0 KiB");
-  assert.equal(values["已安装大小"], "12.0 KiB");
+  assert.equal(values["本机源文件大小"], "8 KiB");
+  assert.equal(values["已安装大小"], "12 KiB");
 });
 
 test("curated install failures remain distinct and actionable", () => {

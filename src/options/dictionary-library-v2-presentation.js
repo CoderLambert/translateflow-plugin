@@ -209,8 +209,8 @@ export function getLocalRichDictionaryRows(dictionary = {}, installedBytes = 0, 
     { label: text(i18n, "dictionary.meta.direction"), value: text(i18n, "dictionary.value.localDirection") },
     { label: text(i18n, "dictionary.meta.format"), value: text(i18n, "dictionary.value.formatMdxRich") },
     { label: text(i18n, "dictionary.meta.compatibility"), value: compatibility.label },
-    { label: text(i18n, "dictionary.meta.installedVersion"), value: formatLocalDictionaryVersion(dictionary.packVersion, i18n) },
-    { label: text(i18n, "dictionary.meta.releaseDate"), value: formatLocalInstallDate(dictionary.installedAt) || text(i18n, "dictionary.value.unknownDate") },
+    { label: text(i18n, "dictionary.meta.localInstalledVersion"), value: formatLocalDictionaryVersion(dictionary.packVersion, i18n) },
+    { label: text(i18n, "dictionary.meta.localInstalledDate"), value: formatLocalInstallDate(dictionary.installedAt) || text(i18n, "dictionary.value.unknownDate") },
     { label: text(i18n, "dictionary.meta.sourceFile"), value: dictionary.fileName ? safeDictionaryFileName(dictionary.fileName, i18n) : text(i18n, "localImport.unknownFile") },
     ...(Number(dictionary.sourceSize) > 0
       ? [{ label: text(i18n, "dictionary.meta.sourceFileSize"), value: formatDictionaryBytes(dictionary.sourceSize, i18n) }]

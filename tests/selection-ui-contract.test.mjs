@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { catalogs } from "../src/i18n/catalog.js";
 
 async function source(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -16,7 +17,9 @@ test("Selection settings expose all explanation-depth modes and license path", a
   for (const value of ["auto", "concise", "standard", "professional"]) {
     assert.match(html, new RegExp(`value="${value}"`));
   }
-  assert.match(html, /点击“AI 详解”/);
+  assert.match(html, /i18n\.t\("options\.selection\.autoHelp"\)/);
+  assert.match(catalogs.en["options.selection.autoHelp"], /AI details/u);
+  assert.match(catalogs.zh_CN["options.selection.autoHelp"], /AI 详解/u);
   assert.match(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
   assert.match(js, /normalizeSelectionDepth\(value\.selectionExplanationDepth\)/);
   assert.match(js, /selectionExplanationDepth:\s*normalizeSelectionDepth\(input\.selectionExplanationDepth\)/);
@@ -38,8 +41,11 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(renderer, /tf-selection-entry-meaning/);
   assert.match(popover, /renderStructuredResult/);
   assert.match(popover, /showAiDetailResult/);
-  assert.match(popover, /AI 详解/);
-  assert.match(popover, /label: "处理所选文本"/);
+  assert.match(popover, /locale\.bindText\(explainButton, "content\.selection\.aiDetail"\)/);
+  assert.match(popover, /locale\.bindAttribute\(panel, "aria-label", "content\.selection\.aria"\)/);
+  assert.match(popover, /locale\.bindAttribute\(chip, "aria-label", "content\.selection\.process"\)/);
+  assert.match(catalogs.en["content.selection.aria"], /selection translation/u);
+  assert.match(catalogs.zh_CN["content.selection.aria"], /划词翻译/u);
   assert.match(popover, /duplicatesHeadword/);
   assert.match(popover, /tf-selection-action-primary/);
   assert.match(popover, /tf-selection-action-quiet/);
@@ -75,8 +81,10 @@ test("Selection assistant preserves the local card while streaming, stopping and
   assert.match(controller, /isCurrentSelection\(version, snapshot, expectedPage\)/);
   assert.match(popover, /showAiDetailResult/);
   assert.match(aiDetail, /aria-busy/);
-  assert.match(aiDetail, /重新请求 AI 详解/);
-  assert.match(aiDetail, /停止 AI 回答/);
+  assert.match(aiDetail, /locale\.bindAttribute\(retry, "aria-label", "content\.ai\.retryAria"\)/);
+  assert.match(aiDetail, /locale\.bindAttribute\(cancel, "aria-label", state === "streaming" \? "content\.ai\.stopAria" : "content\.ai\.cancelAria"\)/);
+  assert.match(catalogs.en["content.ai.stopAria"], /Stop/u);
+  assert.match(catalogs.zh_CN["content.ai.stopAria"], /停止/u);
   for (const action of ["understand", "analyze", "usage"]) assert.match(aiDetail, new RegExp(action));
 });
 
@@ -87,12 +95,15 @@ test("Selection result model separates local provenance and AI explanation", asy
     source("src/content/selection/popover.js")
   ]);
 
-  assert.match(resultModel, /技术词条/);
-  assert.match(resultModel, /本地词典/);
-  assert.match(resultModel, /AI 辅助/);
-  assert.match(resultModel, /词典包 ·/);
-  assert.match(popover, /正在查词/);
-  assert.match(controller, /正在连接 AI 助手/);
+  assert.match(resultModel, /content\.selection\.sourceTechnical/);
+  assert.match(resultModel, /content\.selection\.sourceLocal/);
+  assert.match(resultModel, /content\.selection\.sourcePack/);
+  assert.match(popover, /content\.selection\.loadingWord/);
+  assert.match(controller, /content\.ai\.connecting/);
+  for (const key of ["content.selection.sourceTechnical", "content.selection.sourceLocal", "content.selection.sourcePack", "content.ai.connecting"]) {
+    assert.ok(catalogs.en[key]);
+    assert.ok(catalogs.zh_CN[key]);
+  }
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(controller, /popover\.showEmpty/);
   assert.match(controller, /forceTranslation: true/);
@@ -112,12 +123,20 @@ test("Selection no-hit is neutral while local lexicon failures keep diagnostic e
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(popover, /setStatus\(statusNode, "", "info"\)/);
   assert.match(emptyState, /container\.dataset\.resultKind = "empty"/);
-  assert.match(emptyState, /本地词典暂未收录/);
-  assert.match(emptyState, /使用 AI 进一步解释这个词/);
-  assert.match(emptyState, /使用普通翻译处理这个词/);
+  assert.match(emptyState, /content\.selection\.localEmptyTitle/);
+  assert.match(controller, /messageKey: "content\.selection\.localEmptyHelp"/);
+  assert.match(emptyState, /messageKey = "content\.selection\.localEmpty"/);
+  assert.match(emptyState, /content\.selection\.aiFurtherAria/);
+  assert.match(emptyState, /content\.selection\.regularTranslationAria/);
+  assert.match(catalogs.en["content.selection.localEmptyTitle"], /local dictionary/u);
+  assert.match(catalogs.zh_CN["content.selection.localEmptyTitle"], /本地词典/u);
+  assert.match(catalogs.en["content.selection.lexiconMissing"], /Settings/u);
+  assert.match(catalogs.zh_CN["content.selection.lexiconMissing"], /本地词典/u);
 
   assert.match(messages, /LEXICON_STORAGE/);
-  assert.match(messages, /设置 > 本地词典/);
+  assert.match(messages, /content\.selection\.lexiconMissing/);
+  assert.match(messages, /content\.selection\.lexiconInvalid/);
+  assert.match(messages, /content\.selection\.lexiconIncompatible/);
   assert.match(messages, /LEXICON_CORRUPT/);
   assert.match(messages, /LEXICON_INCOMPATIBLE/);
   assert.match(controller, /popover\.showError/);

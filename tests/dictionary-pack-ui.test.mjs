@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { describeBundledPackState, getBundledPackPresentation, requestDictionaryPackOriginPermission } from "../src/options/pack-ui.js";
+import { catalogs } from "../src/i18n/catalog.js";
 
 test("Settings requests only the exact trusted optional-pack origin", async () => {
   const calls = [];
@@ -84,7 +85,8 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   assert.equal(getBundledPackPresentation({ status: "corrupt" }).label, "校验失败");
   assert.equal(getBundledPackPresentation({ status: "incompatible" }).kind, "warning");
   assert.equal(getBundledPackPresentation({ status: "unhealthy" }).label, "健康检查失败");
-  assert.equal(getBundledPackPresentation({ status: "unknown", message: "probe failed" }).detail, "probe failed");
+  assert.equal(getBundledPackPresentation({ status: "unknown", message: "private probe failure" }).detail, "暂时无法确认此词典是否可用。");
+  assert.doesNotMatch(getBundledPackPresentation({ status: "unknown", message: "private probe failure" }).detail, /private probe failure/u);
 
   assert.match(describeBundledPackState({
     status: "ready",
@@ -99,12 +101,20 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   const common = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../options.css", import.meta.url), "utf8");
   assert.match(source, /dictionary-health-badge/);
-  assert.match(source, /当前没有符合发布条件的官方词典/);
-  assert.match(source, /精选上游和本地导入词典会分别显示在各自栏目中/);
-  assert.match(common, /AI 详解深度/);
+  assert.match(source, /i18n\.t\("dictionary\.noOfficial"\)/);
+  assert.match(source, /i18n\.t\("dictionary\.curatedHelp"\)/);
+  assert.match(common, /i18n\.t\("options\.selection\.depth"\)/);
+  assert.match(catalogs.en["dictionary.noOfficial"], /release requirements/u);
+  assert.match(catalogs.zh_CN["dictionary.noOfficial"], /符合发布条件/u);
+  assert.match(catalogs.en["dictionary.curatedHelp"], /reviewed/u);
+  assert.match(catalogs.zh_CN["dictionary.curatedHelp"], /固定的上游版本/u);
+  assert.match(catalogs.en["options.selection.depth"], /AI detail/u);
+  assert.match(catalogs.zh_CN["options.selection.depth"], /AI 详解/u);
   assert.match(source, /aria-live="polite"/);
   assert.match(section, /dictionary-repair-help/);
-  assert.match(section, /npm run setup:lexicon/);
+  assert.match(section, /i18n\.t\("dictionary\.sourceRepairHelp"\)/);
+  assert.match(catalogs.en["dictionary.sourceRepairHelp"], /npm run setup:lexicon/u);
+  assert.match(catalogs.zh_CN["dictionary.sourceRepairHelp"], /npm run setup:lexicon/u);
   assert.match(html, /src\/options\/main\.tsx/);
   assert.doesNotMatch(html, /FreeDict eng-zho 2025\.11\.23/);
   assert.match(css, /dictionary-health-badge\[data-kind="success"\]/);

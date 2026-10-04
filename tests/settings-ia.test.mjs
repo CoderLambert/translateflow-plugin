@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { catalogs } from "../src/i18n/catalog.js";
 
 const html = await readFile(new URL("../options.html", import.meta.url), "utf8");
 const css = await readFile(new URL("../options.css", import.meta.url), "utf8");
@@ -25,7 +26,9 @@ test("Settings preserves finalized controls and automatic cache restore manageme
   for (const id of ["defaultProvider","prompt","targetLanguage","defaultAppearance","deepseekApiKey","openaiBaseUrl","openaiStreaming","siteOrigin","glossaryScope","cacheMaxMB","youtubeSubtitleMode","youtubeSubtitleSize","cacheRestoreSitesList"]) {
     assert.match(js + html, new RegExp(`id=["']${id}["']`));
   }
-  assert.match(common, /chrome:\/\/extensions\/shortcuts/);
+  assert.match(common, /i18n\.t\("options\.shortcuts\.summary"\)/);
+  assert.match(catalogs.en["options.shortcuts.summary"], /chrome:\/\/extensions\/shortcuts/u);
+  assert.match(catalogs.zh_CN["options.shortcuts.summary"], /chrome:\/\/extensions\/shortcuts/u);
   assert.match(js, /youtubeSubtitleMode/);
   assert.match(js, /openaiStreaming/);
   assert.match(js, /youtubeSubtitleSize/);

@@ -111,12 +111,20 @@ test("Settings and selection expose local rich details while preserving the stri
     readFile(new URL("../src/content/selection/rich-result-renderer.js", import.meta.url), "utf8"),
     readFile(new URL("../src/shared/constants.js", import.meta.url), "utf8")
   ]);
+  const [catalogs, dictionaryViews] = await Promise.all([
+    import("../src/i18n/catalog.js"),
+    readFile(new URL("../src/options/DictionaryViews.tsx", import.meta.url), "utf8")
+  ]);
 
   assert.match(localUi, /id="localDictionaryFiles"/u);
   assert.match(localUi, /id="localDictionaryDropZone"/u);
-  assert.match(dictionaryUi, /<h4>富文本词典<\/h4>/u);
-  assert.match(dictionaryUi, /个人首选/u);
-  assert.match(localUi, /支持 MDX \/ MDD/u);
+  assert.match(dictionaryUi, /i18n\.t\("dictionary\.rich"\)/u);
+  assert.match(dictionaryViews, /dictionary\.preferredAria/u);
+  assert.match(localUi, /i18n\.t\("localImport\.support"\)/u);
+  assert.match(catalogs.en["dictionary.rich"], /rich-text/i);
+  assert.match(catalogs.zh_CN["dictionary.rich"], /富文本/u);
+  assert.match(catalogs.en["localImport.support"], /MDX \/ MDD/u);
+  assert.match(catalogs.zh_CN["localImport.support"], /MDX \/ MDD/u);
   assert.doesNotMatch(localUi, /OPFS|quarantine|Worker/iu);
   assert.doesNotMatch(settings, /id="richMdictFile"/u);
   assert.match(localClient, /createRichMdictImportController/u);
