@@ -175,6 +175,20 @@ test("authorized revisit renders bounded page history markers and recovers acros
       }
     }
 
+    await retryPage.evaluate(() => {
+      const style = document.createElement("style"); style.id = "tf-reading-head-visibility-test";
+      style.textContent = "#source{display:none!important}"; document.head.appendChild(style);
+    });
+    await expect(retryRow).toContainText("未完全加载");
+    await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
+    await retryPage.getByRole("button", { name: "重新检查位置", exact: true }).click();
+    await expect(retryRow).toContainText("未找到");
+    await retryPage.evaluate(() => document.querySelector("#tf-reading-head-visibility-test").remove());
+    await expect(retryRow).toContainText("未完全加载");
+    await retryPage.getByRole("button", { name: "重新检查位置", exact: true }).click();
+    await expect(retryRow).toContainText("已定位");
+    await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(1);
+
     await markerIsolated(driver, retryPage.url(), "install", M.GET_PAGE_SUMMARY);
     await expect.poll(() => markerIsolated(driver, retryPage.url(), "started", M.GET_PAGE_SUMMARY)).toBe(true);
     await expect(retryRow).toContainText("未完全加载");
