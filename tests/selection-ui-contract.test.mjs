@@ -8,8 +8,8 @@ async function source(path) {
 
 test("Selection settings expose all explanation-depth modes and license path", async () => {
   const [html, js] = await Promise.all([
-    source("options.html"),
-    source("options.js")
+    source("src/options/CommonSections.tsx"),
+    source("src/options/client.ts")
   ]);
 
   assert.match(html, /id="selectionExplanationDepth"/);
@@ -18,8 +18,8 @@ test("Selection settings expose all explanation-depth modes and license path", a
   }
   assert.match(html, /点击“AI 详解”/);
   assert.match(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
-  assert.match(js, /normalizeSelectionDepth\(config\.selectionExplanationDepth\)/);
-  assert.match(js, /selectionExplanationDepth:\s*normalizeSelectionDepth\(selectionExplanationDepth\.value\)/);
+  assert.match(js, /normalizeSelectionDepth\(value\.selectionExplanationDepth\)/);
+  assert.match(js, /selectionExplanationDepth:\s*normalizeSelectionDepth\(input\.selectionExplanationDepth\)/);
 });
 
 test("Selection popover keeps a non-modal structured result region", async () => {

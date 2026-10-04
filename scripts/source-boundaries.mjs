@@ -5,7 +5,9 @@ import ts from "typescript";
 import { createApiInspector } from "./source-api-boundaries.mjs";
 
 export const SOURCE_EXTENSION = /\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/u;
-const UI = /^(?:entrypoints\/learning-center\/|src\/learning-center\/)/u;
+// React is confined to extension-owned document UIs. Options Workers remain raw
+// worker assets and are intentionally excluded from this allowlist.
+const UI = /^(?:entrypoints\/learning-center\/|src\/(?:learning-center|popup)\/|src\/options\/(?!workers\/))/u;
 const PURE = /^src\/(?:shared|i18n)\//u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
 const READING_IDB = "src/background/reading-record/idb.js";
@@ -117,7 +119,7 @@ export function inspectSources(root, files) {
       const module = graph.get(path);
       if (!module) { failures.push(`${origin} runtime 依赖进入非 runtime 源码: ${chain.join(" → ")}`); return; }
       if (path === READING_IDB && !isBackgroundSource(origin)) failures.push(`${origin} Reading IndexedDB 只能由后台访问；前端使用消息接口: ${chain.join(" → ")}`);
-      if (!UI.test(origin) && (module.jsx || module.deps.some(({ specifier }) => specifier && isReact(specifier)))) failures.push(`${origin} React/JSX 泄漏到非学习中心运行环境: ${chain.join(" → ")}`);
+      if (!UI.test(origin) && (module.jsx || module.deps.some(({ specifier }) => specifier && isReact(specifier)))) failures.push(`${origin} React/JSX 泄漏到非扩展页面运行环境: ${chain.join(" → ")}`);
       if (PURE.test(origin) && ["chrome", "browser", "fetch", "indexedDB", "registerContentScripts"].some((name) => module.effects.has(name))) failures.push(`${origin} ${origin.startsWith("src/i18n/") ? "i18n" : "shared"} 层不允许浏览器/网络/存储 API: ${chain.join(" → ")}`);
       for (const dependency of module.resolved) visit(dependency, [...chain, dependency]);
     }

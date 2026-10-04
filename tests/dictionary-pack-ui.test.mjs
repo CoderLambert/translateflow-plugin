@@ -54,7 +54,7 @@ test("pack permission helper permits explicit insecure localhost only for develo
 
 test("pack Settings surface keeps permission request on the options user-gesture path", async () => {
   const source = await readFile(new URL("../src/options/pack-ui.js", import.meta.url), "utf8");
-  const options = await readFile(new URL("../options.js", import.meta.url), "utf8");
+  const options = await readFile(new URL("../src/options/legacy-islands.ts", import.meta.url), "utf8");
   const html = await readFile(new URL("../options.html", import.meta.url), "utf8");
 
   assert.match(source, /permissions\.request\(\{ origins: \[pattern\] \}\)/);
@@ -62,7 +62,7 @@ test("pack Settings surface keeps permission request on the options user-gesture
   assert.match(source, /DICTIONARY_PACK_CANCEL/);
   assert.match(source, /DICTIONARY_PACK_ROLLBACK/);
   assert.match(source, /DICTIONARY_PACK_UNINSTALL/);
-  assert.match(options, /initializePackUi\(\{ setStatus \}\)/);
+  assert.match(options, /initializePackUi[\s\S]*\{ setStatus \}/);
   assert.match(html, /id="dictionary-packs"/);
 });
 
@@ -93,12 +93,13 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
 
   const source = await readFile(new URL("../src/options/pack-ui.js", import.meta.url), "utf8");
   const html = await readFile(new URL("../options.html", import.meta.url), "utf8");
+  const common = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../options.css", import.meta.url), "utf8");
   assert.match(source, /BUNDLED_LEXICON_STATUS/);
   assert.match(source, /dictionary-health-badge/);
   assert.match(source, /当前没有符合发布条件的官方词典/);
   assert.match(source, /精选上游和本地导入词典会分别显示在各自栏目中/);
-  assert.match(html, /AI 详解深度/);
+  assert.match(common, /AI 详解深度/);
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /dictionary-repair-help/);
   assert.match(html, /npm run setup:lexicon/);
