@@ -146,13 +146,13 @@
     },
     {
       "task": "243",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "242",
         "235"
       ],
       "branch": "feat/243-assistant-ui",
-      "candidateHead": null
+      "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83"
     },
     {
       "task": "245",
