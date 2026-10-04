@@ -35,12 +35,12 @@ jobs:
         run: npm run validate
       - name: Check generated Reading projection
         run: node scripts/reading-content-classic.mjs --check
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
       - name: Build WXT package
         run: npm run build:extension:wxt
       - name: WXT smoke
         run: npm run test:wxt:smoke
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
       - name: Task 253 Chromium acceptance
         run: >-
           npm run test:e2e --
