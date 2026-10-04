@@ -18,6 +18,19 @@ jobs:
         with:
           node-version: "24.21.0"
       - run: npm ci --no-audit --no-fund
+      - name: Remove temporary workflow from validation tree
+        run: rm .github/workflows/reading-fix-temporary-verify.yml
+      - name: Regenerate Reading classic projections
+        run: node scripts/reading-content-classic.mjs
+      - name: Upload generated Reading projections
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-generated-${{ github.sha }}
+          path: |
+            src/content/reading-source.js
+            src/content/reading-record.js
+          if-no-files-found: error
+          retention-days: 1
       - run: npm run validate
       - run: node scripts/reading-content-classic.mjs --check
       - run: node --test tests/reading-anchor-resolver.test.mjs
