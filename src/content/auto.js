@@ -334,7 +334,7 @@
       state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
 
       if (now - state.lastAutoErrorAt > 5000) {
-        showToast(t("content.page.autoPaused", { message }), "error");
+        showToast(t("content.page.autoPaused", { message: t("content.page.translationFailed") }), "error");
         state.lastAutoErrorAt = now;
       }
     }
