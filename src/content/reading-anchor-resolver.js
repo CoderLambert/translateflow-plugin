@@ -4,7 +4,6 @@
   const projection = app.modules.textProjection, policy = app.modules.textProjectionPolicy;
   const TOTAL = { chars: 1_000_000, nodes: 25_000, ms: 250, retries: 3, debounceMs: 150, items: 200 };
   const ROOTS = "p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main";
-  const TRANSIENT_PROJECTION_REASONS = new Set(["time-budget"]);
   let sharedScan = null;
   const aborted = (signal) => { if (signal?.aborted) throw new DOMException("Aborted", "AbortError"); };
   const delay = (ms, signal) => new Promise((resolve, reject) => {
@@ -80,7 +79,7 @@
     const state = page.state;
     const metrics = { chars: page.value.stats.chars, nodes: page.value.stats.nodes,
       ms: page.value.stats.elapsedMs, waitMs: page.waitMs };
-    const processingStarted = performance.now(), roots = state.rootProjections, attemptRoots = new Map(), ids = new Map(), results = new Map();
+    const processingStarted = performance.now(), roots = state.rootProjections, ids = new Map(), results = new Map();
     const stale = () => projection.revision() !== page.revision;
     const overBudget = () => metrics.chars >= TOTAL.chars || metrics.nodes >= TOTAL.nodes ||
       metrics.ms + Math.max(0, performance.now() - processingStarted) >= TOTAL.ms;
@@ -99,12 +98,12 @@
         if (!located || page.value.text.slice(located.start, located.end) !== exact) continue;
         if (anchor.blockDigest) {
           const root = contextRoot(range);
-          let cached = roots.get(root) || attemptRoots.get(root);
+          let cached = roots.get(root);
           if (!cached) {
             const value = projection.project(root);
             metrics.nodes += value.stats?.nodes || 0; metrics.chars += value.stats?.chars || 0;
-            cached = { value, digest: null }; attemptRoots.set(root, cached);
-            if (value.status === "resolved" || !TRANSIENT_PROJECTION_REASONS.has(value.reason)) roots.set(root, cached);
+            cached = { value, digest: null };
+            if (value.status === "resolved" || value.reason !== "time-budget") roots.set(root, cached);
           }
           if (cached.value.status !== "resolved") { unverified = true; continue; }
           if (!cached.digest) cached.digest = digest(cached.value.text);
