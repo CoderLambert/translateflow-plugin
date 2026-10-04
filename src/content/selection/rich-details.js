@@ -71,12 +71,7 @@
       } else {
         state.settled = true;
       }
-      const status = String(dictionary.status).slice(0, 48);
-      const code = safeErrorCode(dictionary.errorCode);
-      const detail = code || status;
-      card.setError(detail
-        ? { key: "content.rich.currentUnavailableWithReason", args: { reason: detail } }
-        : { key: "content.rich.currentUnavailable", args: {} });
+      card.setError("content.rich.currentUnavailable");
       return;
     }
 
@@ -107,11 +102,7 @@
         const lookupError = Array.isArray(result?.errors) ? result.errors[0] : null;
         if (!result?.ok || lookupError) {
           state.settled = true;
-          const reason = safeErrorCode(result?.errorCode || lookupError?.code);
-          card.setError(reason
-            ? { key: "content.rich.lookupUnavailableWithReason", args: { reason } }
-            : { key: "content.rich.lookupUnavailable", args: {} },
-          () => { void request(true); });
+          card.setError("content.rich.lookupUnavailable", () => { void request(true); });
           return;
         }
 
@@ -305,13 +296,6 @@
       }
     }
     return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-  }
-
-  function safeErrorCode(value) {
-    return String(value || "")
-      .replace(/[\u0000-\u001f\u007f]/gu, " ")
-      .trim()
-      .slice(0, 64);
   }
 
   app.modules.selectionRichDetails = Object.freeze({ load, cancel, dispose: cancel, bindLifecycle });
