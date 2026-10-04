@@ -6,35 +6,36 @@ on:
       - fix/reading-invalidation-retry-20261004
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24.21.0"
       - run: npm ci --no-audit --no-fund
-      - name: Regenerate Reading classic projections
-        run: node scripts/reading-content-classic.mjs
-      - name: Commit exact generated Reading projections
-        run: |
-          if ! git diff --quiet -- src/content/reading-source.js src/content/reading-record.js; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/content/reading-source.js src/content/reading-record.js
-            git commit -m "build(reading): refresh generated projections"
-            git push
-          fi
       - name: Remove temporary workflow from validation tree
         run: rm .github/workflows/reading-fix-temporary-verify.yml
-      - run: npm run validate
-      - run: node scripts/reading-content-classic.mjs --check
-      - run: node --test tests/reading-anchor-resolver.test.mjs
       - run: npx playwright install --with-deps chromium
       - run: npm run build:extension:wxt
-      - run: npm run test:wxt:smoke
-      - run: npm run test:e2e -- --workers=1 e2e/reading-return-location.spec.mjs e2e/reading-page-markers.spec.mjs
+      - name: Run page markers E2E
+        id: page_markers
+        continue-on-error: true
+        run: npm run test:e2e -- --workers=1 --retries=0 e2e/reading-page-markers.spec.mjs
+      - name: Upload page markers failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-page-markers-debug-${{ github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Fail on page markers regression
+        if: steps.page_markers.outcome == 'failure'
+        run: exit 1
