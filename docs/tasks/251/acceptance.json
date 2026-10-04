@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "task": "251",
+  "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+  "tree": "8ada26bab5dac480cd125c7ebac5c3cec939d5de",
+  "inputTree": "ca5b28456cf661aa0d2fdc8903857cf0237e06f31039ab3feb8861d479e220ea",
+  "frozenAt": "2026-10-04T05:38:26.795Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 32246.82415,
+      "startedAt": "2026-10-04T05:38:42.225Z",
+      "log": "docs/task-execution/local/251/c1a2a1b8-1e45-4769-8496-2f077a5eb018.log",
+      "logSha256": "2d886a0b31538573ffcb2d9643c24146b017d264314e0473b1870719634a5a8c"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 39044.155784,
+      "startedAt": "2026-10-04T05:39:51.647Z",
+      "log": "docs/task-execution/local/251/15394e79-2a22-475c-9cc5-248f4df32628.log",
+      "logSha256": "a8989702e4f67113caa1e5228d0214e2295da675d22931ad2f614b710ed440eb"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1725.649353,
+      "startedAt": "2026-10-04T05:40:37.188Z",
+      "log": "docs/task-execution/local/251/870761bb-88a1-434f-8bc9-4f6ccf4292f7.log",
+      "logSha256": "ce53065820eb4224f5737682bb60037eb91a3a88cf42f06916255c7c0f7eed99"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 933.884408,
+      "startedAt": "2026-10-04T05:40:44.130Z",
+      "log": "docs/task-execution/local/251/8041f413-577c-4f97-8047-408af20c0f9b.log",
+      "logSha256": "b828b4c5675b769744f9e641ae2624a84aef038be7546b26d7d22573a0d58009"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/translateflow.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs",
+        "e2e/learning-center.spec.mjs",
+        "e2e/wxt-platform-permissions.spec.mjs"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 34221.549848,
+      "startedAt": "2026-10-04T05:40:57.527Z",
+      "log": "docs/task-execution/local/251/ad02b075-0808-48c0-8d31-a25b2ac90918.log",
+      "logSha256": "9a30b66dcc8485a3f51cf332edfefe7f8d0122d425d80b50f589f5f8a175389c"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-storage.spec.mjs",
+        "--grep",
+        "Production digest barrier proves pause-before-write|Native pause/resume, site exclusion/resume"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1502.830164,
+      "startedAt": "2026-10-04T05:41:43.541Z",
+      "log": "docs/task-execution/local/251/a3f16545-4ba3-4da1-9a5e-baa85caa1721.log",
+      "logSha256": "2955e5158dff84053bd60dbe9914745dee62841d7c3b02e34f098876dba999a1"
+    },
+    {
+      "command": [
+        "env",
+        "TF_UPGRADE_OLD_ARTIFACT=/tmp/translateflow-fixed-old-19e89b6-20261004/dist/extension",
+        "TF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/wxt-upgrade.spec.mjs"
+      ],
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 17616.461521,
+      "startedAt": "2026-10-04T05:41:53.245Z",
+      "log": "docs/task-execution/local/251/90b8c435-1e7e-49bb-8c41-7a8649b6cfb8.log",
+      "logSha256": "4e6b23b7ef875a3536d32b1dacde47877a274d2dce56e2a2f8c4272b2c70496e"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "7103c3086500d83df578bdd6774f70cca7809f4c03e79ada55d4c091091bb836"
+  },
+  "limitations": [
+    "Chrome 102 and non-Chromium browsers: NOT_RUN",
+    "Chrome's native host-permission prompt: NOT_RUN; native withheld, grant, revoke and same-profile restart controls were exercised in an isolated profile",
+    "Real paid Providers, live YouTube timedtext, release lexicon certification and private dictionaries: NOT_RUN"
+  ]
+}

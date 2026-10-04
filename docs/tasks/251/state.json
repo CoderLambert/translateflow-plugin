@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "251",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/reading-integrity-20261004",
   "worktree": ".",
-  "candidateHead": null,
+  "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -17,5 +17,5 @@
     ["env", "TF_UPGRADE_OLD_ARTIFACT=/tmp/translateflow-fixed-old-19e89b6-20261004/dist/extension", "TF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3", "npm", "run", "test:e2e", "--", "e2e/wxt-upgrade.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "完成候选提交后按授权运行上述验证；保留本地结果，不推送或开 PR。"
+  "nextAction": "本地验收与候选检查完成；本次授权不包含远端同步。"
 }

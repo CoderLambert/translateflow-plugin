@@ -222,10 +222,10 @@
     },
     {
       "task": "251",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/reading-integrity-20261004",
-      "candidateHead": null
+      "candidateHead": "30d155b38ef112a6d8adf7df9c5274d880f45e2e"
     },
     {
       "task": "offline-dictionary",
