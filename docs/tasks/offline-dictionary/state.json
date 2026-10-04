@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "task": "offline-dictionary",
+  "status": "paused",
+  "owner": "main",
+  "dependencies": [],
+  "branch": null,
+  "worktree": null,
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/rich-mdict-product.spec.mjs",
+      "e2e/mdd-resources.spec.mjs",
+      "e2e/rich-viewer-security.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "--workers=1"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本次只同步任务定义。获准实施后先复现并修复 OD-1 块边界问题；OD-2/OD-3 待固定一个合法持有的目标 MDX/MDD 包，冻结前补入实际目标验证命令。缺文件不阻塞 OD-1，不启动 Builder 或扩大范围。"
+}

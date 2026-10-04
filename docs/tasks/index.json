@@ -221,6 +221,13 @@
       "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76"
     },
     {
+      "task": "offline-dictionary",
+      "status": "paused",
+      "dependencies": [],
+      "branch": null,
+      "candidateHead": null
+    },
+    {
       "task": "path-safety",
       "status": "completed",
       "dependencies": [],
