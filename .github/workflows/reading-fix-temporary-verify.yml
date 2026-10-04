@@ -6,7 +6,7 @@ on:
       - fix/reading-invalidation-retry-20261004
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -18,23 +18,23 @@ jobs:
         with:
           node-version: "24.21.0"
       - run: npm ci --no-audit --no-fund
-      - name: Remove temporary workflow from validation tree
-        run: rm .github/workflows/reading-fix-temporary-verify.yml
       - name: Regenerate Reading classic projections
         run: node scripts/reading-content-classic.mjs
-      - name: Upload generated Reading projections
-        uses: actions/upload-artifact@v4
-        with:
-          name: reading-generated-${{ github.sha }}
-          path: |
-            src/content/reading-source.js
-            src/content/reading-record.js
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit exact generated Reading projections
+        run: |
+          if ! git diff --quiet -- src/content/reading-source.js src/content/reading-record.js; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/content/reading-source.js src/content/reading-record.js
+            git commit -m "build(reading): refresh generated projections"
+            git push
+          fi
+      - name: Remove temporary workflow from validation tree
+        run: rm .github/workflows/reading-fix-temporary-verify.yml
       - run: npm run validate
       - run: node scripts/reading-content-classic.mjs --check
       - run: node --test tests/reading-anchor-resolver.test.mjs
+      - run: npx playwright install --with-deps chromium
       - run: npm run build:extension:wxt
       - run: npm run test:wxt:smoke
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e -- --workers=1 e2e/reading-return-location.spec.mjs e2e/reading-page-markers.spec.mjs
