@@ -94,6 +94,17 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
     await expect(target.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
     await expect(target.locator(".tf-reading-return-highlight")).not.toHaveCount(0);
     await target.screenshot({ path: info.outputPath("reading-return-resolved.png"), fullPage: false });
+    await target.evaluate(() => {
+      const style = document.createElement("style"); style.id = "tf-reading-viewport-test";
+      style.textContent = "#viewport-duplicate{display:none}@media(max-width:700px){#viewport-duplicate{display:block}}";
+      document.head.appendChild(style);
+      const duplicate = document.createElement("p"); duplicate.id = "viewport-duplicate";
+      duplicate.textContent = "PUBLIC session alpha tail"; document.querySelector("main").appendChild(duplicate);
+    });
+    await expect(target.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+    await target.setViewportSize({ width: 600, height: 720 });
+    await expect(target.locator('.tf-reading-return-card[data-state="ambiguous"]')).toBeVisible();
+    await expect(target.locator(".tf-reading-return-highlight")).toHaveCount(0);
     await target.keyboard.press("Escape");
     await expect(target.locator(".tf-reading-return-card")).toHaveCount(0); await expect(target.locator(".tf-reading-return-highlight")).toHaveCount(0);
     await target.close();
