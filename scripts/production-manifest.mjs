@@ -8,8 +8,13 @@ export const GLOBAL_CONTENT_SCRIPT = Object.freeze({
 });
 
 export function projectProductionManifest(baseline) {
+  const { content_scripts: _legacyContentScripts, ...manifest } = baseline;
+  return manifest;
+}
+
+export function expectedProductionManifest(baseline) {
   return {
-    ...baseline,
+    ...projectProductionManifest(baseline),
     content_scripts: [{
       matches: [...GLOBAL_CONTENT_SCRIPT.matches],
       js: [...GLOBAL_CONTENT_SCRIPT.js],

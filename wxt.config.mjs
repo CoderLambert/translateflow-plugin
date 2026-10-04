@@ -1,7 +1,7 @@
 import { defineConfig } from "wxt";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { ROOT, legacyAssetRoots, sourceClosure, lexicalAssetFiles } from "./scripts/wxt-assets.mjs";
+import { ROOT, runtimeAssetRoots, sourceClosure, lexicalAssetFiles } from "./scripts/wxt-assets.mjs";
 import { EXTENSION_PAGES } from "./src/shared/runtime-assets.js";
 import { projectProductionManifest } from "./scripts/production-manifest.mjs";
 import { checkManifestLocales } from "./scripts/i18n-locales.mjs";
@@ -43,14 +43,14 @@ export default defineConfig({
     },
     "build:before": () => { compiledChunks.length = 0; },
     "build:publicAssets": async (_wxt, assets) => {
-      if (assets.length) throw new Error("Unregistered public assets are forbidden; use the exact legacy bridge.");
-      const legacy = await sourceClosure(legacyAssetRoots());
+      if (assets.length) throw new Error("Unregistered public assets are forbidden; use the exact runtime asset map.");
+      const runtime = await sourceClosure(runtimeAssetRoots());
       const locales = await sourceClosure((await checkManifestLocales()).files);
       const lexical = await lexicalAssetFiles({ requireLexicon: process.env.TRANSLATEFLOW_WXT_REQUIRE_LEXICON === "1" });
       if (lexical.missing.length) console.warn(`WXT development package missing generated dictionaries: ${lexical.missing.join(", ")}`);
-      for (const path of [...legacy, ...lexical.files, ...locales]) assets.push({ absoluteSrc: resolve(ROOT, path), relativeDest: path });
+      for (const path of [...runtime, ...lexical.files, ...locales]) assets.push({ absoluteSrc: resolve(ROOT, path), relativeDest: path });
       await mkdir(reportDir, { recursive: true });
-      await writeFile(resolve(reportDir, "asset-map.json"), JSON.stringify({ legacy, lexical, locales }, null, 2) + "\n");
+      await writeFile(resolve(reportDir, "asset-map.json"), JSON.stringify({ runtime, lexical, locales }, null, 2) + "\n");
     },
     "build:done": async () => {
       await mkdir(reportDir, { recursive: true });

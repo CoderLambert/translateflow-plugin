@@ -48,7 +48,7 @@ export async function copyProductionArtifact(artifact, extensionDir, { generatio
     "content.js","content.css","popup.js","popup.css","popup-appearance.js","options.js","options.css"]);
   for(const path of paths) {
     const top=path.split("/")[0];
-    assert(flatRuntime.has(path) || ["src","assets","chunks","_locales"].includes(top),
+    assert(flatRuntime.has(path) || ["src","assets","chunks","content-scripts","_locales"].includes(top),
       `Non-production artifact path: ${path}`);
     assert(!/\.(?:[cm]?tsx?|map|pem|crx|zip)$/u.test(path),`Non-runtime artifact file: ${path}`);
   }
@@ -61,7 +61,7 @@ export async function copyProductionArtifact(artifact, extensionDir, { generatio
 }
 
 export async function prepareExtensionTestCopy({artifact = defaultArtifact, extensionDir,
-  generation = "current", lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, baseUrl}) {
+  generation = "current", lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, staticContentInjection = true, baseUrl}) {
     assert(!(captureCommands && observeInstalled), "Lifecycle observation and Commands probing use separate test copies");
     assert(!(captureCommands && (executionProof || startupNetwork)), "Startup observation and Commands probing use separate test copies");
     const sourceReport = await copyProductionArtifact(artifact, extensionDir, { generation });
@@ -100,6 +100,7 @@ export async function prepareExtensionTestCopy({artifact = defaultArtifact, exte
 
     const manifestPath = join(extensionDir, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (!staticContentInjection) delete manifest.content_scripts;
     manifest.host_permissions = [...new Set([...(manifest.host_permissions || []),
       "http://127.0.0.1/*",
       "https://api.deepseek.com/*",
@@ -168,10 +169,13 @@ export async function prepareExtensionTestCopy({artifact = defaultArtifact, exte
       || (captureCommands || observeInstalled || executionProof || startupNetwork) && path === manifest.background.service_worker,
       `Test adapter changed production runtime: ${path}`);
     const originalManifest = JSON.parse(await readFile(join(sourceReport.artifact, "manifest.json"), "utf8"));
-    assert.deepEqual({...manifest, host_permissions: originalManifest.host_permissions}, originalManifest,
-      "Test adapter changed Manifest beyond host_permissions");
+    const expectedManifest = structuredClone(originalManifest);
+    if (!staticContentInjection) delete expectedManifest.content_scripts;
+    assert.deepEqual({...manifest, host_permissions: originalManifest.host_permissions}, expectedManifest,
+      "Test adapter changed Manifest beyond approved host/static-Content controls");
     return {...sourceReport, testCopy: {...after, changes}, lexiconMode: lexiconPacks,
-      cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands,lifecycleObserver,startupObserver};
+      cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands,
+      staticContentInjection, lifecycleObserver,startupObserver};
 }
 
 function makeCachedEcdictMdxTestWorker(baseUrl) {

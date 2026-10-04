@@ -4,10 +4,10 @@ import { readFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { waitFor } from "@testing-library/dom";
-import { CONTENT_SCRIPT_FILES } from "../src/shared/constants.js";
+import { contentRuntimeSource } from "../scripts/content-runtime.mjs";
 import { preSwitchRuntimeMapping } from "../e2e/support/runtime-mapping.mjs";
 
-async function load(files) {
+async function load(files, { compiled = false } = {}) {
   const errors = [], requests = [], virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", (error) => errors.push(error.message));
   const dom = new JSDOM('<!doctype html><main><p id="source">This is a synthetic ordinary sentence.</p></main>',
@@ -25,7 +25,8 @@ async function load(files) {
       } }, storage: { local: { async get() { return {}; }, async set() {} }, onChanged: { addListener() {} } } }
   });
   window.Range.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, right: 100, bottom: 30, width: 90, height: 20 });
-  const reads = await Promise.allSettled(files.map((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8")));
+  const reads = compiled ? [{ status: "fulfilled", value: await contentRuntimeSource() }]
+    : await Promise.allSettled(files.map((file) => readFile(new URL(`../${file}`, import.meta.url), "utf8")));
   for (let index = 0; index < reads.length; index++) {
     assert.equal(reads[index].status, "fulfilled", files[index]);
     window.eval(reads[index].value);
@@ -63,8 +64,8 @@ test("immutable old registration loading new bytes keeps required content module
   } finally { h.dom.window.close(); }
 });
 
-test("fresh current registration includes the current Selection projection and delivers the actual Rich display hook", async () => {
-  const h = await load(CONTENT_SCRIPT_FILES);
+test("fresh compiled Content includes the current Selection graph and delivers the actual Rich display hook", async () => {
+  const h = await load([], { compiled: true });
   try {
     assert.ok(h.app.modules.selectionTranslationQuery); assert.ok(h.app.modules.selectionRichResultRenderer);
     assert.equal(h.app.loaded, true); assert.deepEqual(h.errors, []);

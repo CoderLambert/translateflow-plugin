@@ -28,7 +28,7 @@ content scripts -> messages -> background router
 3. 翻译缓存 IndexedDB 仅由 `src/background/cache-db.js` 直接访问；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。其它 Reading 后台模块调用唯一 adapter，Content 与扩展 UI 只能走后台 v2 消息，不能直接或间接引入 adapter。两库不互相迁移或清空；词典 OPFS 独立。
 4. 普通 `http/https` 页面的 Content Script 由生产 Manifest 静态声明；`src/background/auto-sites.js` 只维护按站点模式状态并清理旧动态注册。若未来恢复动态注册，其唯一所有者仍是该模块。
 5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
-   Reading 的 Content 接口由 `scripts/reading-contract-entry.mjs` 从唯一纯共享合同生成 `src/content/reading-contract.js`。为保持冻结的 #245 platform byte ceiling，`scripts/reading-content-classic.mjs` 还从现有可读 Reading Content owners 确定性生成 `reading-source.js` 与 `reading-record.js` 两个 minified classic bundle；Node 回归逐字检查投影，生产顺序只装生成文件，不维护第二套逻辑。构建投影不引入 React、动态 import 或新的浏览器能力。
+   `src/entries/content.js` 是唯一生产 Content 模块图；WXT 将有序 classic/IIFE owners 与 `src/entries/reading-contract.js` 的共享 Reading DTO adapter 编译为一个 ISOLATED IIFE。`scripts/reading-*-classic.mjs` 与 `src/content/reading-{source,contract,record}.js` 仅保留旧注册/Node 合同的可复现投影，不进入当前安装包。Content 编译闭包不引入 React、动态 import 或新的浏览器能力。
 6. Runtime message value 必须集中定义。
 7. 权限属于公共 API，不能在普通重构中扩大。
 8. API 调用和缓存读写必须基于同一个 Effective Translation Config。
@@ -87,9 +87,9 @@ Production builds are created from an explicit allowlist into `dist/extension`. 
 
 `build:extension` and `build:extension:release` use the sole WXT production engine, audit the package before replacing the stable `dist/extension/` install directory, and preserve the existing `buildExtension()` report contract for certifiers. `build:extension:wxt` uses the same builder with `.output/chrome-mv3/` as its output. Each build uses isolated temporary staging so parallel certifiers cannot overwrite one another. `entrypoints/background.ts` statically imports the existing `initializeBackground()` and synchronously registers listeners in `main`; WXT build-time imports have no substitute Chrome/window globals. The root `popup.html` and `options.html` remain the unique UI source, registered through the WXT entrypoint hook and compiled by Vite. Their installed identities and full-tab `options_page` semantics stay unchanged.
 
-`src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. `scripts/wxt-assets.mjs` derives the raw bridge from the current ordered Content lists plus mapped MAIN/Worker roots and their relative-import closure. Only those individual files and authenticated generated pack descriptors enter WXT public assets; the whole `src` tree is never copied. Generated source locks and corpora stay outside both packages. Bridge removal belongs to the authorized legacy migration slice, not an ad hoc rewrite here.
+`src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. WXT owns the Content entrypoint and emits stable `content-scripts/content.js/.css`, used by both Manifest injection and Popup/Command recovery. `scripts/wxt-assets.mjs` now derives raw assets only from mapped MAIN/Worker roots and their relative-import closure; locale files and authenticated generated pack descriptors are added separately. The whole `src` tree is never copied, and generated source locks/corpora stay outside both packages.
 
-Content remains classic-script code; MAIN and Workers retain their existing loading contexts and source bytes. The production Manifest loads the ordered Content list at `document_idle` on ordinary `http/https` pages, so Selection starts with the page. Reading first establishes a document-only controlled registration. One-shot handoff resolves one anchor; persistent page markers additionally require the independent site intent and fetch only the current page's bounded `PageSummaryItem` pages. Both reuse text-projection exclusions/budgets, render only in Shadow layers, and never wrap page DOM or call a Provider. SPA route changes re-register the document/page identity before reading again. `auto-sites.js` keeps automatic translation, cache restoration, persistent Quick Control and independent Reading marker intent by site, and removes registrations left by older builds to prevent duplicate injection. The compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for the bridge and artifact audit.
+Content source owners remain classic/IIFE registry modules, compiled by WXT into one ISOLATED script; MAIN and Workers retain their existing loading contexts and raw source bytes. The production Manifest loads the compiled Content JS/CSS at `document_idle` on ordinary `http/https` pages, so Selection starts with the page. Reading first establishes a document-only controlled registration. One-shot handoff resolves one anchor; persistent page markers additionally require the independent site intent and fetch only the current page's bounded `PageSummaryItem` pages. Both reuse text-projection exclusions/budgets, render only in Shadow layers, and never wrap page DOM or call a Provider. SPA route changes re-register the document/page identity before reading again. `auto-sites.js` keeps automatic translation, cache restoration, persistent Quick Control and independent Reading marker intent by site, and removes registrations left by older builds to prevent duplicate injection. The compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for the build and artifact audit.
 
 ### Approved type and test tooling
 
@@ -116,7 +116,7 @@ Content/Selection (later #79)
 
 ## Content
 
-Content Script 继续保持 build-free classic script modules：
+Content Script 的 owner 继续按 classic registry 模块分层，由 WXT 在构建期按唯一图组合：
 
 1. runtime
 2. tasks
@@ -126,6 +126,8 @@ Content Script 继续保持 build-free classic script modules：
 6. auto
 7. selection modules
 8. bootstrap
+
+安装包只暴露 `content-scripts/content.js/.css`；源码图、旧逐文件投影和根 Content 文件不作为 ISOLATED public assets。
 
 `processor.js` 会把 pageUrl 同时传给缓存和翻译请求，因此 Background 可以为当前站点解析同一份有效配置。
 

@@ -53,16 +53,9 @@ export const CONTENT_MESSAGES = Object.freeze({
   CLEAR_TRANSLATIONS: "ABT_CLEAR_TRANSLATIONS", STATUS: "ABT_STATUS", TASK_STATUS: "TF_TASK_STATUS", CANCEL_TASK: "TF_CANCEL_TASK",
   QUICK_CONTROL_SHOW: "TF_QUICK_CONTROL_SHOW", QUICK_CONTROL_TOGGLE: "TF_QUICK_CONTROL_TOGGLE"
 });
-export const CONTENT_SCRIPT_FILES = Object.freeze([
-  "src/content/runtime.js", "src/content/ui/tokens.js", "src/content/ui/quick-control-styles.js", "src/content/ui/selection-ai-detail-styles.js", "src/content/ui/selection-empty-state-styles.js", "src/content/ui/selection-lexical-styles.js", "src/content/ui/reading-return-styles.js", "src/content/ui/host.js", "src/content/ui/primitives.js", "src/content/ui/toast.js",
-  "src/content/appearance.js", "src/content/tasks.js", "src/content/structured.js", "src/content/dom.js", "src/content/batch.js",
-  "src/content/processor.js", "src/content/auto.js", "src/content/subtitles/source.js", "src/content/subtitles/sources/text-track.js",
-  "src/content/subtitles/youtube-bridge-protocol.js", "src/content/subtitles/youtube-timedtext.js",
-  "src/content/subtitles/sources/youtube.js", "src/content/subtitles/pipeline.js", "src/content/subtitles/renderer.js", "src/content/subtitles/controller.js",
-  "src/content/text-projection-policy.js", "src/content/text-projection-builder.js", "src/content/text-projection.js", "src/content/reading-source.js", "src/content/reading-contract.js",
-  "src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/translation-query.js", "src/content/selection/clipboard.js", "src/content/selection/messages.js", "src/content/selection/empty-state.js", "src/content/selection/rich-sanitizer-style.js", "src/content/selection/rich-resource-path.js", "src/content/selection/rich-sanitizer-tokenizer.js", "src/content/selection/rich-sanitizer.js", "src/content/selection/rich-resource-resolver.js", "src/content/selection/rich-viewer.js", "src/content/selection/rich-result-renderer.js", "src/content/selection/result-renderer.js", "src/content/reading-record.js",
-  "content.js"
-]);
-export const CONTENT_STYLE_FILES = Object.freeze(["content.css"]);
+// Stable installed WXT outputs shared by Manifest injection and explicit
+// Popup/Command recovery. The source graph lives in src/entries/content.js.
+export const CONTENT_SCRIPT_FILES = Object.freeze(["content-scripts/content.js"]);
+export const CONTENT_STYLE_FILES = Object.freeze(["content-scripts/content.css"]);
 export const SITE_SCRIPT_PREFIX = "tf_site_";
 export const LEGACY_SITE_SCRIPT_PREFIXES = Object.freeze(["tf_auto_", "abt_auto_"]);

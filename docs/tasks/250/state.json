@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "task": "250",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["248", "244"],
+  "branch": "refactor/250-content-bridge",
+  "worktree": ".worktrees/issue-250",
+  "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["npm", "run", "test:e2e", "--", "e2e/commands.spec.mjs", "e2e/translateflow.spec.mjs", "e2e/design-freeze-selection-slice.spec.mjs", "e2e/selection-rich-lookup-cancel.spec.mjs", "e2e/reading-loop-release-a.spec.mjs", "e2e/selection-assistant-ui.spec.mjs", "e2e/rich-mdict-product.spec.mjs", "e2e/youtube-subtitles.spec.mjs", "e2e/wxt-platform-permissions.spec.mjs"],
+    ["env", "TF_UPGRADE_OLD_ARTIFACT=/home/lambert/githubRepos/lambert/translateflow-plugin/.worktrees/fixed-old-19e89b6/dist/extension", "TF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3", "npm", "run", "test:e2e", "--", "e2e/wxt-upgrade.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "推送分支、创建 PR，并在准确 expected-head 与保护要求满足后 squash merge。"
+}
