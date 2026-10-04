@@ -1,5 +1,7 @@
 # startup 模块逐文件走读
 
+> 当前页面再访接线与record IIFE中的Quick Control合并见[再访完整流程](../features/reading-page-markers.md)及[最新生成入口](reading-page-markers.md#classic-current)；后台Reading runtime的撤权/导航失效仍由同一入口装配。本页其它文件保留原固定版本，不自动认定最新assistant-stream增量已全文说明。
+
 导航：[阅读入口](../README.md) · [架构总览](../architecture.md) · [仓库地图](../repository-map.md) · [扩展启动功能链](../features/extension-startup.md)
 
 > 当前c250ce9的Manifest和auto-sites已在原章节替换；其它入口保留旧固定引用。当前完整启动/POPUP/权限边界见[功能链](../features/extension-startup.md)与[证据章](real-entry.md)，不把历史optional/动态注册测试当新实现。

@@ -186,6 +186,22 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 - 同步README、架构、启动、Reading/学习中心与构建交叉链接；没有重复完成整个旧章节。task238的旧候选PASS只按归档引用，未变为当前main运行结论；Oxford classic兼容另有方案，不由Reading投影证明。
 - 仅执行文档静态路径/固定blob/内部链接与清单校对，以及发布后远端字节/分支检查；安装、生成、构建、业务测试、浏览器、Oxford、集成、商店与发布全部NOT_RUN。
 
-### 后续缺口
+### 当时后续缺口
 
-继续解释未覆盖的相关测试/再访生命周期与当前待复核队列；不把20文件切片视作全仓完成。#239持久marker/#240集成和独立安全修复属于各自授权，本文不改变它们的状态。
+相关测试/再访生命周期已由下一条记录接续；当时的#239/#240未核验描述不替代后续已归档状态。独立安全修复仍需各自授权，本导读不改变业务或任务状态。
+
+
+## 2026-10-04 UTC 页面再访生命周期与 ABC 证据
+
+- 文档起点50d7189119e6fe67e7b0dc48cf2616ad9c95a96e；固定main `13041666b253ecf9aa86b3ff5edfa677dde01c05`、实际tree `55ced4b9fdc96690bfbb0a39b5ce195667806a55`。相对33ab3ea新增15、变更16、删除0，817 blobs无排除；后续main若移动另作下一轮，不无限扩大本次切片。
+- [完整用户链](features/reading-page-markers.md)与[20文件说明](modules/reading-page-markers.md)接站点意图/权限→真实document/page proof→page-scoped摘要/cursor→批量resolver→总数/前200项与marker→详情deep link，再到mutation/SPA/暂停/删除/撤权/取消。16份补齐、4份既有全文复核；5份其它旧完整生产文件因变更降为待复核。
+- 817 个文件全部登记；230 个完整解释、531 个待解释、56 个待复核；局部正文 136 个（待解释中 103、待复核中 33），不计完整覆盖。既有未变正文保留原固定来源，partial不计完整；没有追完整个旧54待复核队列。
+- 准确区分原Issue与本地合同/当前实现：所有resolved都画点、未使用hasCompletedAssistant筛选；没有检查/定位分项计数或201+页内续页；分页条数/cursor与消息字节边界分开解释；mutation持续新load不受终身三次预算。batch body先受16kUTF-16/500nodes/8ms小片门槛，失败即全not-loaded/unsupported，没有单条root fallback；1M/25k/250ms只是另一级代码预算，不是实测证明。
+- 保留既有open Shadow历史quote风险；确认tokens的hidden !important，未重复误报panel/grid隐藏失效。marker未有临时卡的Escape/焦点回退，开关即时清理/真实撤权/BFCache等缺口按源码与测试边界说明，未改代码或伪造运行FAIL。
+- 纠正当前概述中的#239 ready_to_sync/#240整体NOT_RUN：#239 completed/TASK_239_PASS；#240候选1bbfdfb的validate/WXT/Chromium9/9（6A+3B/C）已归档READING_ABC_PASS，#291比较仅7个docs/tasks文件。包47bf5a9…4647只归原候选，#292/#293后续生产输入不继承当前包PASS。200DTO测量和performance.now=0的Node fixture不证明DOM性能。
+- 当前classic record entry新增Quick Control view/controller、drift test同步排除单列，保持rich-details前序；generated minified文件仅映射/局部登记，不冒充 authored完整解释。README/架构/启动/Reading/构建、旧return章、全地图与coverage同步。
+- 仅静态核对固定blob/路径/链接/锚点/计数/文档范围及发布后远端正文/分支头；安装、生成、构建、项目测试、浏览器、验收、Oxford、商店/发布均本轮NOT_RUN。原始日志/包/截图未取得，现有PASS只按归档引用；没有业务/权限/任务状态/合并/发布操作。
+
+### 剩余范围
+
+底层projection、其它access/shared、assistant streaming/grounded turns与既有词典模块缺口仍按coverage推进。页面再访的具体合同差异交回相应产品/实现工作，不能把文档切片视为授权修复或全仓完成。

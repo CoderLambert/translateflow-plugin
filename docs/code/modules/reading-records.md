@@ -1,5 +1,7 @@
 # Reading：逐文件说明
 
+> 当前 main `13041666b253ecf9aa86b3ff5edfa677dde01c05`：repository/service、record-access、shared list/constants/response已在[页面再访逐文件章](reading-page-markers.md)全文复核；旧段落对这些文件的“本轮仅局部/待复核”属于之前切片。access/其它shared及底层projection仍按coverage保留局部。暂停允许旧摘要、删除/排除的失效链与#240候选PASS见[再访生命周期](../features/reading-page-markers.md#lifecycle)。
+
 > 2026-10-04 返回原文增量：main `33ab3ea2a38ce591b622ba06739344858d7da403` 的 runtime 新事件桥、handoffs/handoff-target、Content handoff与定位，见[返回原文逐文件章](reading-return-to-page.md)。access/service/repository/shared DTO等只做本切片局部复核，清单保留待复核；本页原固定版本完整说明不被当作最新全量复读。
 
 [功能完整链与交付边界](../features/reading-records.md) · [首页](../README.md) · [已解释的来源捕获](selection.md#file-source-snapshot)

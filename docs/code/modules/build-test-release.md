@@ -1,5 +1,7 @@
 # 构建与测试：逐文件说明
 
+> 当前 record entry 与 classic drift test 的全文增量移至[页面再访章](reading-page-markers.md#classic-current)；Quick Control两源现并入reading-record IIFE，不单独出现在Content清单。#240[候选ABC归档](reading-page-markers.md#evidence)已有PASS，本轮仍未运行构建/测试；旧包fingerprint不覆盖新生产输入。
+
 > 2026-10-04 返回原文增量：main `33ab3ea2a38ce591b622ba06739344858d7da403` 的Reading生成增量见[两个entry→classic IIFE与顺序](reading-return-to-page.md#classic-order)和[防漂移测试](reading-return-to-page.md#test-classic)。它是WXT raw bridge之前的owned源码投影；本页原构建解释仍按其固定身份保留，未重复计完整覆盖或执行生成器。
 
 > 本轮将构建配置、审计、固定资源合同、两个回归测试、package 路由及两份规范全文复核到 b606cfd；旧引用仅在对应 blob 未变时沿用。React 学习中心产品行为见原产品章，不重复计数。

@@ -1,5 +1,7 @@
 # 学习中心：从页面到仓库的逐文件说明
 
+> 再访续篇：[页面标记与本页历史](../features/reading-page-markers.md)接本站marker开关→最小摘要→准确学习中心deep link；#240已归档[候选ABC 9/9](reading-page-markers.md#evidence)。此结果不替代marker缺失计数/续页、AI-only和键盘等逐项合同，也不是本轮运行。
+
 > 2026-10-04 返回原文增量：main `33ab3ea2a38ce591b622ba06739344858d7da403` 的 Detail、client/reading 与新 ReturnToPage 已在[返回原文逐文件章](reading-return-to-page.md)全文复核，新增可信返回、站点marker UI与消息；本页相应旧版本说明作为历史来源保留，其余组件不冒充本轮复核。完整用户链见[返回原文](../features/reading-return-to-page.md)。
 
 [Reading 完整产品链](../features/reading-records.md#learning-center) · [后台与保存模块](reading-records.md) · [首页](../README.md)

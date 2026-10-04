@@ -2,7 +2,7 @@
 
 [完整用户旅程](../features/reading-return-to-page.md) · [Reading 数据库/保存](reading-records.md) · [学习中心](learning-center.md) · [构建](build-test-release.md) · [清单](../coverage.json)
 
-本章所有新说明固定于 `33ab3ea2a38ce591b622ba06739344858d7da403`。下面有完整小节的 20 个文件均全文阅读；关联大文件只解释本切片边界，不提升为完整覆盖。所有测试、构建、生成、浏览器及产品验收 **NOT_RUN**。链接指向固定源码，不把 docs 分支代码当 main。
+本章原说明固定于 `33ab3ea2a38ce591b622ba06739344858d7da403`；后续1304166的[页面再访章](reading-page-markers.md)已全文复核marker/resolver并更新classic entry/test，相关当前说明以下列接续链接为准。下面有完整小节的 20 个文件均全文阅读；关联大文件只解释本切片边界，不提升为完整覆盖。所有测试、构建、生成、浏览器及产品验收 **NOT_RUN**。链接指向固定源码，不把 docs 分支代码当 main。
 
 <a id="file-return-view"></a>
 ## 1. ReturnToPage.tsx：用户动作与异步 UI
@@ -92,7 +92,7 @@ rangeKey 用临时 Node→id Map 和起止 offset 去重；exactOffsets 枚举 e
 
 resolve 缺 exact/body 返回 unsupported，start projection 后最多尝试三次；只对 stale revision 重试，150ms delay 支持 abort，不是 missing 自动等待页面加载。循环与扫描多处检查 signal，AbortError 交给调用方；不能从“有 abort 检查”推断每个 await 之后都不存在竞态。
 
-resolvePage 先共享 body 投影；不可投影时所有记录记 not-loaded 或 unsupported。对各 exact offset 映射 Range，按 contextRoot 局部投影和 digest（roots Map 缓存），核对局部 context；每条独立判 ambiguous/resolved/missing。全局预算超量把余下未处理记录设 not-loaded。revision 改变整批最多三次，尽量不返回混版集合。它与单条的逐 root 全扫描不同，修改一条路径不能假定另一条等价。临时 ranges 只由 UI 持有，刷新/关闭要释放。
+resolvePage 先共享 body 投影；底层单次project硬限16k UTF-16/500节点/8ms，失败立即令所有记录not-loaded（预算原因）或unsupported，没有单条resolve的collectRoots fallback；不能用1M/25k/250ms总预算掩盖这个更小入口门槛。对各 exact offset 映射 Range，按 contextRoot 局部投影和 digest（roots Map 缓存），核对局部 context；每条独立判 ambiguous/resolved/missing。全局预算超量把余下未处理记录设 not-loaded。revision 改变整批最多三次，尽量不返回混版集合。它与单条的逐 root 全扫描不同，修改一条路径不能假定另一条等价。临时 ranges 只由 UI 持有，刷新/关闭要释放。
 
 JSDOM 测试覆盖跨 inline、节点替换、旧 position、上下文/摘要、歧义、missing、unsupported、budget、revision retry、预先 abort 和共享 page projection。performance.now 被固定为 0，不能证明真实 250ms 性能；没有将快速手动重试/扫描中 abort 视为已覆盖。
 
@@ -126,17 +126,11 @@ open shadow 能阻止普通外层 CSS 穿透，却能被网站通过 DOM 读取�
 样式不改变 location status 或权限，Range 到坐标由控制器给出。没有网络资源和用户输入插值；颜色依赖全局 UI token。修改布局会影响卡片可见性、长 quote、滚动 panel、暗色和 overlay 命中，需真实窄屏/缩放/键盘/鼠标核验，不能用静态 CSS 阅读宣称可访问性完成。
 
 <a id="file-page-markers"></a>
-## 12. reading-page-markers.js：相邻持久再访路径的当前源码
+## 12. reading-page-markers.js：持久再访接续
 
-源码：[src/content/reading-page-markers.js](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/content/reading-page-markers.js)。这不是一次性卡的续命机制，而是 independently gated 的本站标记功能；必须先 GET_SITE_MARKERS=ready/enabled，才按当前 Content 身份 GET_PAGE_SUMMARY，不带任意 page/site 参数。
+当前完整说明移至[页面再访控制器](reading-page-markers.md#file-marker)与[完整用户链](../features/reading-page-markers.md)。marker/resolver源blob在33ab3ea→1304166保持相同，旧全文解释按源连续性保留；新章补齐摘要/cursor、计数、AI标识使用现状与mutation/SPA/失效的分工。
 
-load 增 generation，abort 旧扫描、断 observer/timer、清 UI；首次等 handoff.ready，register=true 时显式重新注册。摘要按每页 100 取至无 cursor 或累积达到 pageMarkers=200，最后 slice 200，保留 pageRecordCount 提示总量。resolvePage 得每条位置；generation 检查防旧 load 覆盖。空数据/权限不就绪直接无 UI，异常只清 UI，没有假成功 toast。
-
-render 为每条建立 quote/status/查看记录，并仅为 resolved 保存 Range 和圆点；点击 quote 只在 Range 起点仍连接时 scrollIntoView，查看记录须可信事件，toggle/close 管 aria-expanded/hidden 与焦点。marker 点击展开对应行；Range rect 第一个正面积框定位到右侧，scroll/resize 重算，没 rect 隐藏。历史 quote/label 同样进入 open shadow，不能据此声称持久历史对站点保密，完整隐私评估仍待后续任务。
-
-成功渲染后观察 body mutation，以 debounce 调 load；此模块没有卡片的三次自动重试计数。connect 接 invalidation port，任意消息重载，断开 cleanup；focus 时重新 connect+register/load。popstate/hashchange/Navigation API navigate 先 cleanup，再 debounce 重注册；pagehide once cleanup。cleanup 增 generation、abort、断 observer、清 timer/scroll/resize/UI/ranges，但不会主动 disconnect port 或拆长期路由/focus listeners；不能把它描述成卸载整个模块。重复注入由模块存在 guard 防止。
-
-修改范围必须同时检查权限开关、service 当前页面隔离、分页/200上限、SPA/失效/DOM 高频更新及共享 UI 隐私。此文件全文解释只表示源码理解；#239 归档 ready_to_sync 与 main 中代码存在并列记录，#240 集成、持久 marker 性能/保密和全链验收未由本章判定 PASS。
+#239当前state已是completed，#240已归档原候选READING_ABC_PASS；不能继续将旧ready_to_sync/240 NOT_RUN当当前状态。实际边界包括所有resolved都画点、body小片预算提前失败、无终身三次mutation上限、无201+本页续页、无marker Escape及即时开关失效证据；见[源码差异](../features/reading-page-markers.md#boundaries)。这些是静态说明，不是本轮浏览器FAIL，也没有修业务代码。
 
 <a id="classic-order"></a>
 ## 13. classic 投影与加载顺序
@@ -160,7 +154,7 @@ source 关闭用户 config、silent、write:false，target chrome102/minify esbu
 <a id="file-record-entry"></a>
 ### scripts/reading-record-entry.mjs
 
-源码：[record entry](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/scripts/reading-record-entry.mjs)。依次导入 record-access、record-client、handoff-client、reading-return-card、reading-page-markers、record-status、selection/controller。无业务状态，import 次序表达启动依赖：collector/client 先在，handoff.ready 在 card/markers 之前，Selection controller 最后看到完整模块。输出 [reading-record.js](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/content/reading-record.js)。任何源 IIFE 因缺依赖返回不会被 entry 自动重试。
+当前完整说明见[1304166 record entry](reading-page-markers.md#file-record-entry)：在原record-access、record-client、handoff-client、reading-return-card、reading-page-markers、record-status、selection/controller之后，又导入quick-control-view与quick-control。下面原顺序约束继续有效，但不能把旧七个imports当完整当前闭包。无业务状态，import 次序表达启动依赖：collector/client 先在，handoff.ready 在 card/markers 之前，Selection controller 最后看到完整模块。输出 [reading-record.js](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/content/reading-record.js)。任何源 IIFE 因缺依赖返回不会被 entry 自动重试。
 
 实际加载由 [src/shared/constants.js](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/shared/constants.js#L55-L67) 的 CONTENT_SCRIPT_FILES 所有：reading-return-styles 在 host 前；text-projection-policy/builder/text-projection 在 reading-source 前，再 reading-contract；Selection 各 UI 依赖（特别是 rich-details）在 reading-record 前。两个 entry 内的 owned 源文件不再逐个进入该生产列表，避免重复初始化/增大资源清单。WXT raw bridge/manifest 沿该列表保持 classic 加载；参见[构建职责](build-test-release.md)。
 
@@ -191,7 +185,7 @@ anchorFor 先投影目标块并生成 digest。七类测试依次验证跨 inlin
 <a id="test-classic"></a>
 ### tests/reading-content-classic.test.mjs
 
-源码：[classic drift test](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/tests/reading-content-classic.test.mjs)。唯一 async test 先 checkReadingContentClassic，再断言两个输出在 CONTENT_SCRIPT_FILES，九个 owned 输入不在该列表。check 会真正调用 Vite 构建到内存，不是简单 grep。它不单独断言 rich-details 相对位置，也不执行浏览器 UI；改列表仍须读依赖顺序、跑相关入口/构建检查，本轮未执行该 test。
+当前完整说明见[1304166 drift test](reading-page-markers.md#test-classic)。唯一async test先checkReadingContentClassic，再断言两个输出在CONTENT_SCRIPT_FILES、九个Reading owned输入不在列表，新增循环还要求Quick Control view/controller两源不单列。check 会真正调用 Vite 构建到内存，不是简单 grep。它不单独断言 rich-details 相对位置，也不执行浏览器 UI；改列表仍须读依赖顺序、跑相关入口/构建检查，本轮未执行该 test。
 
 <a id="test-return-e2e"></a>
 ## 15. e2e/reading-return-location.spec.mjs：可观察用户旅程
@@ -202,7 +196,7 @@ anchorFor 先投影目标块并生成 digest。七类测试依次验证跨 inlin
 
 openTarget 换 mock HTML，点击返回等待新页，断言卡片 expected state 与 quote。unique 场景正文在1800px后，要求高亮、scrollY>1000、首个框在 viewport；替换 inline 节点后仍有 resolved 与框；截图写测试输出；Escape 后卡和框都消失。ambiguous 场景两个相同块无高亮、有提示；missing 换掉文字仍显示历史 quote 和 missing，正说明 quote 展示不以当前匹配成功为前提。最后 open-record 新页必须是准确 learning-center.html#record=... 且标题匹配，再断言 Provider0。
 
-限制：该故事不是真实 HTTPS 网站、权限拒绝/重定向/TTL/restart/全站兼容/长期 marker、快速重试/中途关闭竞态或页面脚本读 quote 的安全用例。曾有 task238 归档结果也不等于本轮执行，更不自动成为 #239/#240 PASS。
+限制：该故事不是真实 HTTPS 网站、权限拒绝/重定向/TTL/restart/全站兼容/长期 marker、快速重试/中途关闭竞态或页面脚本读 quote 的安全用例。task238旧归档不等于本轮执行；后来的#239/#240已有各自[候选PASS归档](reading-page-markers.md#evidence)，但仍不覆盖本句列出的所有未测范围。
 
 <a id="partial-adjacent"></a>
 ## 16. 关联文件的局部复核与后续范围
@@ -213,6 +207,6 @@ openTarget 换 mock HTML，点击返回等待新页，断言卡片 expected stat
 - [record-access.js](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/content/selection/record-access.js)：register/handoff/page 在无当前 operation 时可返回 documentGeneration 的被动证明，保存仍受 trusted owned event/token/current capture 约束。
 - [shared reading constants](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/shared/reading/constants.js)、[dto](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/shared/reading/dto.js)、[response](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/shared/reading/response.js)：共享协议仍 v2，新增 handoff 和 marker 方法/受限响应不是任意 IDB 通道。生成 reading-contract 属于另一生成器，不与本章两个业务 IIFE 混淆。
 - [auto-sites.js](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/src/background/auto-sites.js)：站点 marker 开关与 origin 权限属于页面再访边界；此处不替代已有启动章全文复核。
-- [#238归档](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/docs/tasks/238/acceptance.json)、[#239状态](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/docs/tasks/239/state.json)：历史候选证据与当前源码分开。没有修改任务状态、业务实现或发布结论。
+- [#238旧归档](https://github.com/CoderLambert/translateflow-plugin/blob/33ab3ea2a38ce591b622ba06739344858d7da403/docs/tasks/238/acceptance.json)按原身份保留；#239/#240的当前state与准确候选命令、包、限制已在[续篇](reading-page-markers.md#evidence)全文解释。没有修改任务状态、业务实现或发布结论。
 
-全仓增量中的其它代码、测试、规范与归档未在本切片完整复核，只同步清单准确 blob/待复核状态。下一步应从仍未解释的相关测试/持久再访证据接续，而不是重复本章或把所有关联文件升为完整。
+全仓增量中的其它代码、测试、规范与归档未在本切片完整复核，只同步清单准确 blob/待复核状态。页面再访及#239/#240证据已在[续篇](reading-page-markers.md)补齐；其余文件继续按清单，不重复本章或把关联文件自动升为完整。

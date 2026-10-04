@@ -13,8 +13,8 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单基线：`33ab3ea2a38ce591b622ba06739344858d7da403`。本轮完整解释20个返回原文/临时定位/classic投影文件，其余变更仅更新准确blob与待复核状态；既有未变正文保留原固定身份。
-- 当前状态：802 个文件全部登记；219 个完整解释、529 个待解释、54 个待复核；局部正文 140 个（待解释中 106、待复核中 34），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
+- 当前清单基线：`13041666b253ecf9aa86b3ff5edfa677dde01c05`（#293）。本轮完整说明20个页面再访/摘要/共享响应/归档与classic接线文件，其中16个补齐、4个既有全文复核；其它增量只同步blob和待复核状态，未变正文保留其固定身份。
+- 当前状态：817 个文件全部登记；230 个完整解释、531 个待解释、56 个待复核；局部正文 136 个（待解释中 103、待复核中 33），不计完整覆盖。本轮运行验证 **NOT_RUN**；#240 原候选已有 READING_ABC_PASS，见下方准确证据边界。全仓逐文件导读仍未完成。
 
 
 ## 已交付导航与推荐阅读顺序
@@ -27,16 +27,18 @@
 6. [网页翻译、缓存恢复与重访](features/page-translation.md)及[15个文件详解](modules/page-translation-cache.md)。
 7. [YouTube字幕完整流程](features/youtube-subtitles.md)及[11个文件详解](modules/youtube-subtitles.md)。
 8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个文件详解](modules/providers-and-settings.md)。
-9. [返回原文：一次性交接→定位/临时卡→classic投影](features/reading-return-to-page.md)及[20个逐文件说明](modules/reading-return-to-page.md)；先读[Reading真实查询→显式保存→实际学习中心](features/reading-records.md)及[后台/保存详解](modules/reading-records.md)、[16个React/测试/规范文件](modules/learning-center.md)、[#286真实用户验收与八个文件](modules/reading-release-a.md)。
+9. [授权站点再访→最小摘要分页→页面marker/list→失效清理](features/reading-page-markers.md)及[20个逐文件/证据说明](modules/reading-page-markers.md)；接[返回原文：一次性交接→定位/临时卡→classic投影](features/reading-return-to-page.md)及[20个逐文件说明](modules/reading-return-to-page.md)；先读[Reading真实查询→显式保存→实际学习中心](features/reading-records.md)及[后台/保存详解](modules/reading-records.md)、[16个React/测试/规范文件](modules/learning-center.md)、[#286真实用户验收与八个文件](modules/reading-release-a.md)。
 10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[逐文件详解](modules/build-test-release.md)：含最终 writeBundle、React 独占闭包、平台预算、三页面映射和历史验收辨读。
 11. [本地任务合同→冻结→验收→主Agent自查→同步](features/local-task-acceptance.md)及[逐文件说明](modules/local-task-acceptance.md)。
 12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-13. [覆盖清单](coverage.json)：802个文件的固定blob、状态和正文位置。
+13. [覆盖清单](coverage.json)：817个文件的固定blob、状态和正文位置。
 14. [更新记录](changes.md)：本轮证据与下一步。
 
 当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；实际React学习中心已接上列表/详情/过滤、管理、导出与错误恢复，见[用户操作到源码](features/reading-records.md#learning-center)；#286现已整合无seed真实创建/完整重启、近容量UI导出与原生quota恢复；[149项复用汇总](modules/reading-release-a.md#evidence-chain)不是新全量运行。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
 
-本轮补全学习中心可信返回→tab/document绑定的一次性交接→exact/ambiguous/missing/重试与关闭→临时卡，以及Reading自有源码生成classic IIFE与加载次序。持久marker源码已出现，但#239归档与#240集成不由本轮判定PASS。当前卡片在定位前将历史quote写入open Shadow的隐私风险见[明确边界](features/reading-return-to-page.md#5-必须保留的隐私警告)。没有修复业务代码或追完整个待复核队列；此前真实启动的证据限制仍见[限制](modules/real-entry.md#limitations)。
+本轮接通持久再访完整链：站点marker意图与权限→真实文档证明→page-scoped摘要/cursor→共享resolver→总数/前200项列表与点→DOM/SPA/暂停/删除/撤权/取消。当前实现对所有resolved记录画点、未按hasCompletedAssistant筛选；body投影16k UTF-16/500节点/8ms提前失败会使批量全not-loaded，mutation新load也不受终身三次预算。详见[现有合同差异](features/reading-page-markers.md#boundaries)，没有顺手修代码。
+
+#240已归档候选 `1bbfdfb` 的validate/WXT/Chromium9/9（6个A、3个B/C）READING_ABC_PASS，#291仅补文档证据；[原候选与后续源码分开](modules/reading-page-markers.md#evidence)。本轮未执行这些命令，不把PASS外推为所有Issue条款、Chrome102/真实撤权/权限迁移/真实Oxford/发布通过。前章[open Shadow历史quote风险](features/reading-return-to-page.md#5-必须保留的隐私警告)及[真实启动证据限制](modules/real-entry.md#limitations)仍保留。
 
 
 ## 建议目录

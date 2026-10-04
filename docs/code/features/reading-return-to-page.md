@@ -4,7 +4,7 @@
 
 ## 固定范围与读法
 
-本章只读固定 main `33ab3ea2a38ce591b622ba06739344858d7da403`，不以文档分支的旧业务代码作为输入。说明当前可见的 ReturnToPage、一次性交接、定位/临时卡及 classic 投影，所有运行验证 **NOT_RUN**。源码中也已有持久再访 marker 模块，见[边界](../modules/reading-return-to-page.md#file-page-markers)；源码存在不代表 #239/#240 的集成、发布或隐私验收已完成。
+本章只读固定 main `33ab3ea2a38ce591b622ba06739344858d7da403`，不以文档分支的旧业务代码作为输入。说明当前可见的 ReturnToPage、一次性交接、定位/临时卡及 classic 投影，所有运行验证 **NOT_RUN**。后续固定 main 1304166 的[持久再访续篇](reading-page-markers.md)已完整解释页面marker/list；#239当前completed、#240已归档候选READING_ABC_PASS。该归档、本章静态NOT_RUN、仍待验证的隐私/合同差异与发布是不同结论。
 
 用户已经在[学习中心详情](reading-records.md#learning-center)查看一条保存记录。点击“Return to original page”后，后台创建一个新标签，只允许该标签当前文档消费这条记录的最小摘要；Content 再核对页面文字，能定位时滚动并显示临时框，无法定位时保留明确状态与打开历史记录的入口。普通“Open page”链接只有开网址的效果，没有这一能力交接。
 
@@ -56,6 +56,6 @@ resolver 使用现有 `textProjection` 的可见正文与 UTF-16→DOM Range 映
 
 完整说明与测试入口在[逐文件章](../modules/reading-return-to-page.md#tests)。Node registry 用例是 mock browser/repository；resolver 是 JSDOM、固定 performance.now；E2E 源码使用 mock HTTP 页面、fixture 词典与临时 profile，程序化选区后真实点击按钮，包含 unique、节点替换、ambiguous、missing、Escape、准确 deep link 和 Provider 0 次断言。读取测试源码不等于执行。
 
-固定 main 的 `docs/tasks/238/acceptance.json` 记录旧候选 `e02b7c0` 的 validate/build/定向 E2E PASS，并记录 #289 合入 `7c97090`。这里仅引用归档，未取得并重验所有原始日志、产物或截图；更不能把它外推为当前 main #239 持久再访或 #240 全链集成 PASS。#239 的 state 仍是候选 ready_to_sync，main 已含相应模块，这两个事实应同时保留。
+本章原固定快照的 #238 acceptance 记录旧候选 e02b7c0 的 validate/build/定向E2E PASS及#289合入7c97090。后续 #239 state 已更新为 completed；#240 的候选1bbfdfb已独立归档 validate/WXT/Chromium9/9、READING_ABC_PASS并经#291合入。详见[准确证据链与限制](../modules/reading-page-markers.md#evidence)，不能再以旧ready_to_sync或旧NOT_RUN描述当前ABC状态。这里没有取得或复验原始日志、包、截图，也不把这些fixture结果外推成全Issue条款、隐私风险已解决、最新main或发布通过。
 
 改变返回按钮先看 ReturnToPage/client；改变目标验证看 handoffs/handoff-target/access；改变匹配看 resolver 和 projection；改变临时 UI 看 card/host/styles；改变源码体积或启动顺序看两个 entry 与 classic generator。不要编辑生成的 reading-source.js/reading-record.js 来修源码，也不要仅因为写文档运行生成器。Oxford classic 兼容方案与本章的 Reading classic 投影不是同一项验收，本轮 Oxford/构建/测试/浏览器/发布全部 NOT_RUN。

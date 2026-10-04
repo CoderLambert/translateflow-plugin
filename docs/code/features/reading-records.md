@@ -1,5 +1,7 @@
 # Reading：明确查询、真实保存与事务历史
 
+> 当前固定 main `13041666b253ecf9aa86b3ff5edfa677dde01c05` 的[站点再访](reading-page-markers.md)补齐最小摘要/列表/刷新与暂停、删除、撤权边界。#239当前状态completed；#240已有[原候选READING_ABC_PASS](../modules/reading-page-markers.md#evidence)，不再把ABC整体写成未运行。旧A归档与新marker合同差异分别保留。
+
 > 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：详情 ReturnToPage 已接可信按钮→后台创建新标签/短期能力→Content消费最小摘要→精确定位/临时卡/准确记录deep-link，详见[返回原文完整链](reading-return-to-page.md)与[逐文件](../modules/reading-return-to-page.md)。普通URL链接不等于handoff。当前源码还含site markers，#239/#240集成状态和隐私风险明确分开；下面历史固定版本中“尚未接定位/返回”的表述不再代表这个新增切片，旧Release A证据不外推到它。
 
 

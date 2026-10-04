@@ -1,5 +1,7 @@
 # 运行时总览与阅读地图
 
+> 2026-10-04 页面再访增量（固定 main `13041666b253ecf9aa86b3ff5edfa677dde01c05`）：[完整用户链](features/reading-page-markers.md)与[逐文件/证据](modules/reading-page-markers.md)已区分站点意图、page摘要/cursor、批量resolver小片门槛、列表计数和generation失效。#240原候选已有READING_ABC_PASS（9/9 fixture），本轮静态阅读NOT_RUN；不外推最新包、全Issue矩阵、权限迁移或发布。下方旧章节保留各自固定源码身份。
+
 > 2026-10-04 返回原文增量：本轮 main `33ab3ea2a38ce591b622ba06739344858d7da403` 的新增路径是学习中心可信返回→后台一次性tab/document能力→Content重新核对原文→临时卡。详见[完整流程](features/reading-return-to-page.md)与[逐文件/状态所有者](modules/reading-return-to-page.md)。Reading源码现在由两个owned entry投影为classic IIFE，运行加载仍非ESM；其余本页旧章节保留各自固定身份，不当作本轮全量复核。open Shadow内显示历史quote的现有风险见新章，样式隔离不等于保密。
 
 
