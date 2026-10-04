@@ -24,6 +24,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
   const [installed, setInstalled] = useState<InstalledDictionaryState>(emptyInstalled);
   const [phase, setPhase] = useState<"empty" | "checking" | "ready" | "cancelled" | "invalid">("empty");
   const [progress, setProgress] = useState("");
+  const [workerPhase, setWorkerPhase] = useState("");
   const [semantic, setSemantic] = useState(false);
   const [limitations, setLimitations] = useState(false);
   const [duplicate, setDuplicate] = useState(false);
@@ -33,7 +34,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
 
   useEffect(() => {
     mounted.current = true;
-    const client = createLocalDictionaryClient({ onProgress: message => { if (mounted.current) setProgress(message); } });
+    const client = createLocalDictionaryClient({ onProgress: (message, nextPhase) => { if (mounted.current) { setProgress(message); setWorkerPhase(nextPhase); } } });
     service.current = client; setReady(true);
     void refreshInstalled(client);
     return () => {
@@ -74,7 +75,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
     if (busy) return;
     generation.current += 1; preflightAbort.current?.abort();
     setFiles(next.filter(file => file && typeof file.name === "string"));
-    setReport(null); setPhase(next.length ? "checking" : "empty"); setProgress("");
+    setReport(null); setPhase(next.length ? "checking" : "empty"); setProgress(""); setWorkerPhase("");
     setSemantic(false); setLimitations(false); setDuplicate(false); setRetryMdd(false);
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -82,11 +83,11 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
   async function importSelected() {
     const client = service.current;
     if (!client || !report || !canImport(report, files, installed, semantic, limitations, duplicate) || busy) return;
-    setBusy(true); setProgress(i18n.t("localImport.preparing"));
+    setBusy(true); setProgress(i18n.t("localImport.preparing")); setWorkerPhase("");
     try {
       const result = await client.importFiles(report, files);
       if (!mounted.current) return;
-      setProgress(result.progress); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
+      setProgress(result.progress); setWorkerPhase(""); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
       if (result.changed) await onChanged();
     } finally { if (mounted.current) setBusy(false); }
   }
@@ -105,11 +106,11 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
 
   async function retryAttachment() {
     if (!service.current || busy) return;
-    setBusy(true); setProgress(i18n.t("localImport.retryingMdd"));
+    setBusy(true); setProgress(i18n.t("localImport.retryingMdd")); setWorkerPhase("");
     try {
       const result = await service.current.retryMdd();
       if (!mounted.current) return;
-      setProgress(result.progress); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
+      setProgress(result.progress); setWorkerPhase(""); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
       if (result.changed) await onChanged();
     } finally { if (mounted.current) setBusy(false); }
   }
@@ -141,7 +142,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
       <label id="localDictionaryLimitationsLabel" className="checkbox-label" htmlFor="localDictionaryLimitationsConfirmation" hidden={!view?.needsLimitations}><input id="localDictionaryLimitationsConfirmation" type="checkbox" checked={limitations} disabled={busy || !view?.needsLimitations} onChange={event => setLimitations(event.target.checked)} /><span id="localDictionaryLimitationsText">{view?.limitationsText}</span></label>
       <label id="localDictionaryDuplicateLabel" className="checkbox-label" htmlFor="localDictionaryDuplicateConfirmation" hidden={!view?.duplicate}><input id="localDictionaryDuplicateConfirmation" type="checkbox" checked={duplicate} disabled={busy || !view?.duplicate} onChange={event => setDuplicate(event.target.checked)} /><span id="localDictionaryDuplicateText">{view?.duplicateText}</span></label>
       <div className="actions"><button id="localDictionaryImportButton" className="primary" type="button" disabled={!importEnabled} onClick={event => { if (event.nativeEvent.isTrusted) void importSelected(); }}>{i18n.t("localImport.install")}</button><button id="localDictionaryCancelButton" type="button" hidden={!busy && phase !== "checking"} onClick={() => void cancelActive()}>{i18n.t("common.cancel")}</button><button id="localDictionaryRetryMddButton" type="button" hidden={!retryMdd} disabled={busy} onClick={event => { if (event.nativeEvent.isTrusted) void retryAttachment(); }}>{i18n.t("localImport.retryMdd")}</button></div>
-      <p id="localDictionaryImportProgress" className="hint" aria-live="polite">{progress}</p>
+      <p id="localDictionaryImportProgress" className="hint" data-phase={workerPhase} aria-live="polite">{progress}</p>
     </section>
   </div>;
 }
@@ -165,4 +166,4 @@ function canImport(report: LocalPreflight, files: File[], installed: InstalledDi
 }
 
 function isAbort(error: unknown) { return error instanceof Error && error.name === "AbortError"; }
-function errorText(error: unknown, fallback: string) { return error instanceof Error ? error.message : String(error || fallback); }
+function errorText(_error: unknown, fallback: string) { return fallback; }
