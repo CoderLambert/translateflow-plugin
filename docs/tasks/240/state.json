@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "240",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": ["239"],
   "branch": "test/240-reading-abc",
   "worktree": ".worktrees/issue-240",
-  "candidateHead": null,
+  "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -14,5 +14,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-handoff.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "冻结当前 main 的 ABC 验收候选并执行完整证据矩阵。"
+  "nextAction": "READING_ABC_PASS；提交归档、gate 后同步 PR。"
 }

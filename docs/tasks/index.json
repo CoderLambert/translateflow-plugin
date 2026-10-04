@@ -118,12 +118,12 @@
     },
     {
       "task": "240",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "239"
       ],
       "branch": "test/240-reading-abc",
-      "candidateHead": null
+      "candidateHead": "1bbfdfb001f73f3175f0b47c9935cd4e486f3b71"
     },
     {
       "task": "245",
