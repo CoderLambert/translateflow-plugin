@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "250",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": ["248", "244"],
   "branch": "refactor/250-content-bridge",
   "worktree": ".worktrees/issue-250",
-  "candidateHead": null,
+  "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -16,5 +16,5 @@
     ["env", "TF_UPGRADE_OLD_ARTIFACT=/home/lambert/githubRepos/lambert/translateflow-plugin/.worktrees/fixed-old-19e89b6/dist/extension", "TF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3", "npm", "run", "test:e2e", "--", "e2e/wxt-upgrade.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "实现 WXT compiled Content entrypoint，收缩 public raw bridge，并保持手动恢复与 same-ID 升级。"
+  "nextAction": "推送分支、创建 PR，并在准确 expected-head 与保护要求满足后 squash merge。"
 }

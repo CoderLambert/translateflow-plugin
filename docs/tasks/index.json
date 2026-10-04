@@ -212,13 +212,13 @@
     },
     {
       "task": "250",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "248",
         "244"
       ],
       "branch": "refactor/250-content-bridge",
-      "candidateHead": null
+      "candidateHead": "20122c85e9a21ebdcd9ca475c66d3ca2eb037e76"
     },
     {
       "task": "path-safety",
