@@ -32,7 +32,7 @@ test("authorized revisit renders bounded page history markers and recovers acros
   const longPrefix = Array.from({ length: 90 }, (_, index) => `<p>section ${index} ${"filler ".repeat(90)}</p>`).join("");
   server.setPage("/marker-page", `<!doctype html><main>${longPrefix}<p id="source">PUBLIC session alpha tail</p></main>`);
   try {
-    await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
+    const buildReport = await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
@@ -88,7 +88,11 @@ test("authorized revisit renders bounded page history markers and recovers acros
     expect(scanEvidence.chars).toBeGreaterThan(16_000);
     expect(scanEvidence.workMs).toBeGreaterThanOrEqual(0);
     expect(scanEvidence.waitMs).toBeGreaterThanOrEqual(0);
-    await writeFile(info.outputPath("reading-page-marker-scan.json"), JSON.stringify({ browser: context.browser().version(), status: scanEvidence.status,
+    await writeFile(info.outputPath("reading-page-marker-scan.json"), JSON.stringify({ candidateHead: buildReport.sourceHead,
+      browser: context.browser().version(), status: scanEvidence.status,
+      productionArtifact: { treeSha256: buildReport.treeSha256, fileCount: buildReport.fileCount, totalBytes: buildReport.totalBytes },
+      testCopy: { treeSha256: buildReport.testCopy.treeSha256, fileCount: buildReport.testCopy.fileCount, totalBytes: buildReport.testCopy.totalBytes,
+        changes: buildReport.testCopy.changes },
       chars: scanEvidence.chars, nodes: scanEvidence.nodes, workMs: scanEvidence.workMs, waitMs: scanEvidence.waitMs,
       pageCharsBeforeTarget: longPrefix.length, providerCalls: server.calls.length }, null, 2));
     await revisit.locator(".tf-reading-page-marker").click();
