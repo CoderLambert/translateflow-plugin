@@ -181,10 +181,12 @@ test("authorized revisit renders bounded page history markers and recovers acros
     });
     await expect(retryRow).toContainText("未完全加载");
     await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
+    await retryPage.locator(".tf-reading-page-toggle").click();
     await retryPage.getByRole("button", { name: "重新检查位置", exact: true }).click();
     await expect(retryRow).toContainText("未找到");
     await retryPage.evaluate(() => document.querySelector("#tf-reading-head-visibility-test").remove());
     await expect(retryRow).toContainText("未完全加载");
+    await retryPage.locator(".tf-reading-page-toggle").click();
     await retryPage.getByRole("button", { name: "重新检查位置", exact: true }).click();
     await expect(retryRow).toContainText("已定位");
     await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(1);
