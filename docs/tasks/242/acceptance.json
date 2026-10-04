@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "task": "242",
+  "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891",
+  "tree": "6b2d4282c9fc6e219a17943b93246092ec015b2a",
+  "inputTree": "3e8faff1e35117780766cb068a894740bcdb29d7415a998b6d08769f7a395abe",
+  "frozenAt": "2026-10-04T02:14:40.793Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56573.131563,
+      "startedAt": "2026-10-04T02:14:54.294Z",
+      "log": "docs/task-execution/local/242/c9e16ca7-e4d0-485f-b2d1-91085d5e4ddf.log",
+      "logSha256": "c125e3fac10576fac33863a6e9b8ff3f2afde142dd27a1921405ae8faf4e9460"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2276.060653,
+      "startedAt": "2026-10-04T02:15:57.539Z",
+      "log": "docs/task-execution/local/242/bf275e97-a7b7-48f7-823f-330f4bc83bf8.log",
+      "logSha256": "09a5075e67e019f91a800175e09aba1aac8026e0b3f4fbd9f05c636e51c29e97"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/selection-assistant-stream.spec.mjs"
+      ],
+      "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2631.575708,
+      "startedAt": "2026-10-04T02:15:59.996Z",
+      "log": "docs/task-execution/local/242/5a1b1a02-45ea-4f54-befd-ef2873425295.log",
+      "logSha256": "5e2e0519e945b8566bf1d09893349c3a3acb698b8ce43b73ae46677b7e580432"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "54d86fbbd8d276a58b9858a26df5937b1134e551a37517369fa48643ada6710d"
+  },
+  "limitations": ["任务 243 UI/实际保存线程与 244 最终 D 验收 NOT RUN。", "其它浏览器/隐身/商店发布 NOT RUN；npm 锁文件仍报告 1 low / 1 high audit 告警。"],
+  "decision": "GROUNDED_TURN_PASS"
+}
