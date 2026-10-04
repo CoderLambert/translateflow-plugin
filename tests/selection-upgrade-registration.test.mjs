@@ -63,7 +63,7 @@ test("immutable old registration loading new bytes keeps required content module
   } finally { h.dom.window.close(); }
 });
 
-test("fresh current registration includes both split modules and delivers the actual Rich display hook", async () => {
+test("fresh current registration includes the current Selection projection and delivers the actual Rich display hook", async () => {
   const h = await load(CONTENT_SCRIPT_FILES);
   try {
     assert.ok(h.app.modules.selectionTranslationQuery); assert.ok(h.app.modules.selectionRichResultRenderer);

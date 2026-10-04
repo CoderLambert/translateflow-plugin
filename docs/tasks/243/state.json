@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "task": "243",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": ["242", "235"],
+  "branch": "feat/243-assistant-ui",
+  "worktree": ".worktrees/issue-243",
+  "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83",
+  "mergeHead": null,
+  "validationCommands": [["npm","run","validate"],["npm","run","build:extension:wxt"],["npm","run","test:e2e","--","e2e/selection-assistant-ui.spec.mjs"]],
+  "artifactRequired": true,
+  "nextAction": "推送分支、创建 PR，并在准确 expected-head 与保护要求满足后 squash merge。"
+}

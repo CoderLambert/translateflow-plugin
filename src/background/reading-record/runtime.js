@@ -28,6 +28,9 @@ export function configureReadingRuntime({ repository, learningCenterAvailable = 
 }
 export function isReadingMessage(message) { return typeof message?.method === "string" && message.method.startsWith("reading."); }
 export function handleReadingMessage(message, sender) { return runtime().service.handle(message, sender); }
+export function prepareLearningAssistantTurn(sender, input, ground) { return runtime().service.prepareAssistantTurn(sender, input, ground); }
+export function commitLearningAssistantTurn(session, artifact) { return runtime().service.commitAssistantTurn(session, artifact); }
+export function cancelLearningAssistantTurn(session) { return runtime().service.cancelAssistantTurn(session); }
 export function handleReadingPort(port) {
   if (port.name !== READING_INVALIDATION_PORT) return false;
   void runtime().subscriptions.connect(port);

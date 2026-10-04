@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "task": "243",
+  "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83",
+  "tree": "be830cc63fcc8c0e3c635eab333576664e05fe77",
+  "inputTree": "196c95cb77e7ad7f4a4d0c637d43b61f5a2300b3acb8a1a45a6a5fd7b7986a29",
+  "frozenAt": "2026-10-04T03:08:24.339Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56829.006481,
+      "startedAt": "2026-10-04T03:08:29.673Z",
+      "log": "docs/task-execution/local/243/e818b7e8-6486-42df-a1b2-b81a01e756f7.log",
+      "logSha256": "ddf3004c0e4b52d765c491c5e3871d080ac2f0455fb6e43f8a5f330664737a84"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2267.80808,
+      "startedAt": "2026-10-04T03:09:32.076Z",
+      "log": "docs/task-execution/local/243/17f69a5c-fdb8-4a8e-9959-a7980ea94eee.log",
+      "logSha256": "e0cd2ac5f25f45946813a427fbba08fcf6ea590b29ebbb4501bd1c57c74d2a8d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/selection-assistant-ui.spec.mjs"
+      ],
+      "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4272.033709,
+      "startedAt": "2026-10-04T03:09:34.529Z",
+      "log": "docs/task-execution/local/243/bebc0c87-dee6-4493-a146-206e219db824.log",
+      "logSha256": "065ab28a4044d894a9bfc018feebc43554b3269391c1cf5f11812ce1ecb0d54e"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "fb72c3b24a925d755848f962822988bc68c2c13e3983ea7fe379e91bf0fa2132"
+  },
+  "limitations": [
+    "其它浏览器、隐身模式和商店发布 NOT RUN；不属于任务 243 的 Chromium 验收范围。",
+    "npm 锁文件安装仍报告既有 1 low / 1 high audit 告警。"
+  ],
+  "decision": "ASSISTANT_UI_PASS"
+}

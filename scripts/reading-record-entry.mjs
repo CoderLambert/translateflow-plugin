@@ -1,3 +1,6 @@
+import "../src/content/selection/ai-detail.js";
+import "../src/content/selection/popover.js";
+import "../src/content/selection/rich-details.js";
 import "../src/content/selection/record-access.js";
 import "../src/content/selection/record-client.js";
 import "../src/content/selection/handoff-client.js";

@@ -132,7 +132,8 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     {id ? <>
       {detailLoading && <Notice>{i18n.t("learning.loading")}</Notice>}
       {detailError && <><Notice error>{i18n.t("learning.notFound")}</Notice><Button onClick={refresh}>{i18n.t("learning.retry")}</Button></>}
-      {detail ? <Detail detail={detail} i18n={i18n} onBack={() => navigate(null)} onDelete={() => setConfirm("record")} disabled={blocked} client={client} />
+      {detail ? <Detail detail={detail} i18n={i18n} onBack={() => navigate(null)} onDelete={() => setConfirm("record")}
+        onAssistantSaved={refresh} disabled={blocked} assistantDisabled={blocked || !state?.enabled} client={client} />
         : <Button onClick={() => navigate(null)}>{i18n.t("learning.back")}</Button>}
     </> : <>
       <nav className="actions" aria-label={i18n.t("learning.title")}>

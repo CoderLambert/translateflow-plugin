@@ -1,7 +1,7 @@
 import { READING_METHOD as M, READING_LIMITS as L, READING_ERROR as E } from "../../shared/reading/constants.js";
 import { fail } from "../../shared/reading/validation.js";
 import { createReadingDatabase } from "./idb.js";
-import { state, pageState, policy, sitePolicy } from "./storage-state.js";
+import { state, pageState, policy, sitePolicy, detail } from "./storage-state.js";
 import { prepare, validatedWrite, append, cancel, cancellationInput } from "./write.js";
 import { manage } from "./management.js";
 import { read, queryIdentity } from "./query.js";
@@ -57,6 +57,13 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
     setInvalidationPublisher(value) { if (value !== null && typeof value !== "function") throw new TypeError("publisher"); publisher = value; },
     close() { publisher = null; cursors.clear(); database.close(); },
     read: readContext,
+    readAssistantTarget(context) { return run("readonly", context, function* (store) {
+      const meta = yield* state(store); policy(meta, context);
+      const row = yield store("records").get(context.request.recordId);
+      if (!row) fail(E.NOT_FOUND, "assistant.record");
+      return { detail: yield* detail(store, context.request.recordId, row), siteKey: row.siteKey,
+        documentGeneration: row.documentGeneration, siteExcluded: sitePolicy(meta, row.siteKey).excluded };
+    }); },
     readHandoffTarget(context) { return run("readonly", context, (store) => readHandoffTarget(store, context)); },
     readPolicy(context) { return run("readonly", context, function* (store) {
       // This is the internal preflight policy read, before service derives access.siteExcluded.

@@ -95,6 +95,17 @@ export const en = Object.freeze({
   "learning.loadError": "Could not load this section. Retry.",
   "learning.siteInvalid": "Enter an HTTP or HTTPS origin without a path.",
   "learning.siteSaved": "Site recording preference saved.",
+  "learning.followUp": "Ask a follow-up",
+  "learning.followUpPlaceholder": "Ask about this saved answer",
+  "learning.send": "Send",
+  "learning.regenerate": "Regenerate answer",
+  "learning.stop": "Stop",
+  "learning.assistantConnecting": "Connecting to the assistant…",
+  "learning.assistantStreaming": "Answering…",
+  "learning.assistantStopping": "Stopping; waiting for confirmation…",
+  "learning.assistantStopped": "Stopped. No partial answer was saved.",
+  "learning.assistantFailed": "The answer was interrupted and was not saved. Your existing history is unchanged.",
+  "learning.assistantSaved": "Answer saved. Refreshing this history…",
 });
 
 export const zh_CN = Object.freeze({
@@ -193,6 +204,17 @@ export const zh_CN = Object.freeze({
   "learning.loadError": "无法读取此部分，请重试。",
   "learning.siteInvalid": "请输入无路径的 HTTP 或 HTTPS Origin。",
   "learning.siteSaved": "站点记录设置已保存。",
+  "learning.followUp": "继续追问",
+  "learning.followUpPlaceholder": "针对这条已保存回答继续提问",
+  "learning.send": "发送",
+  "learning.regenerate": "重新生成回答",
+  "learning.stop": "停止",
+  "learning.assistantConnecting": "正在连接助手…",
+  "learning.assistantStreaming": "正在回答…",
+  "learning.assistantStopping": "正在停止，等待确认…",
+  "learning.assistantStopped": "已停止，部分回答未保存。",
+  "learning.assistantFailed": "回答中断且未保存，原有历史保持不变。",
+  "learning.assistantSaved": "回答已保存，正在刷新历史…",
 });
 
 export const catalogs = Object.freeze({ en, zh_CN });

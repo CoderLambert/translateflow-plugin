@@ -1,4 +1,5 @@
 import { sha256 } from "../../shared/hash.js";
+import { validateResultArtifact } from "../../shared/reading/artifact.js";
 import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_METHOD as M, READING_PROTOCOL_VERSION as V } from "../../shared/reading/constants.js";
 import { validateReadingRequest } from "../../shared/reading/dto.js";
 import { authorizeReadingMethod } from "../../shared/reading/lifecycle.js";
@@ -17,9 +18,10 @@ const MANAGE = new Set([M.SET_RECORDING, M.SET_SITE_RECORDING, M.DELETE_RECORD, 
 
 // repository is an injected #233 owner. No default data, consent store, empty list or success receipt.
 export function createReadingService({ browser, repository = null, collector, now = Date.now, randomId = () => crypto.randomUUID(), learningCenterAvailable = false,
-  siteMarkers = { get: getReadingMemorySite, set: setReadingMemorySite } } = {}) {
+    siteMarkers = { get: getReadingMemorySite, set: setReadingMemorySite } } = {}) {
   const accessControl = createReadingAccess({ browser, collector, randomId });
   const operations = createOperationRegistry({ now });
+  const assistantSessions = new Set();
   const exports = createExportRegistry({ repository, now, randomId });
   function repositoryMethod(name) {
     if (typeof repository?.[name] !== "function") fail(E.NOT_READY, "repository");
@@ -134,10 +136,70 @@ export function createReadingService({ browser, repository = null, collector, no
       return { protocolVersion: V, ok: false, error: { code: error instanceof ReadingContractError ? error.code : E.STORAGE } };
     }
   }
+  async function prepareAssistantTurn(sender, input, ground) {
+    const request = { method: M.GET_RECORD, recordId: input.recordId };
+    const nativeAccess = await accessControl.authorize(sender, M.GET_RECORD, request);
+    if (nativeAccess.scope !== "extension" || typeof ground !== "function") fail(E.FORBIDDEN, "assistant.sender");
+    const nativeCurrent = () => assertAccess(nativeAccess);
+    const target = await repositoryMethod("readAssistantTarget")({ request, access: nativeAccess, assertCurrent: nativeCurrent });
+    nativeCurrent();
+    if (target.detail.record.revision !== input.recordRevision) fail(E.REVISION_CONFLICT, "assistant.revision");
+    if (target.siteExcluded) fail(E.DISABLED, "assistant.site");
+    const grounded = ground(target.detail);
+    const sourceSnapshot = target.detail.snapshots.find(value => value.sourceSnapshotId === grounded?.sourceSnapshotId);
+    if (!sourceSnapshot) fail(E.BAD_DTO, "assistant.source");
+    const access = { ...nativeAccess, pageKey: target.detail.record.pageKey, siteKey: target.siteKey,
+      safeReturnUrl: target.detail.record.safeReturnUrl, pageTitle: target.detail.record.pageTitle,
+      documentGeneration: sourceSnapshot.documentGeneration, selectionGeneration: sourceSnapshot.selectionGeneration,
+      siteExcluded: false };
+    const operationId = `assistant-${randomId()}`;
+    const begin = { method: M.BEGIN_QUERY, operationId, purpose: "assistant", sourceSnapshot,
+      pageKey: access.pageKey, safeReturnUrl: access.safeReturnUrl, pageTitle: access.pageTitle,
+      itemText: sourceSnapshot.selectedText, sourceLanguage: target.detail.record.sourceLanguage,
+      recordId: target.detail.record.recordId, recordRevision: target.detail.record.revision,
+      captureSafety: { selection: "safe", context: "safe", root: "light-dom" } };
+    const fingerprint = await sha256(JSON.stringify(["assistant", access.ownerKey, access.pageKey,
+      begin.recordId, begin.recordRevision, begin.sourceLanguage, sourceSnapshot]));
+    const assertCurrent = () => assertAccess(access);
+    const prepared = await operations.prepare(access, begin, fingerprint, sourceSnapshot,
+      reservation => repositoryMethod("prepareOperation")({ request: begin, access, assertCurrent, ...reservation }), assertCurrent);
+    if (prepared?.state !== "ready") fail(E.DISABLED, "assistant.recording");
+    await accessControl.validateCurrent(nativeAccess);
+    const session = { access, operation: operations.get(access, operationId), grounded, active: true };
+    assistantSessions.add(session);
+    return { session, grounded, sourceSnapshot, record: target.detail.record };
+  }
+  async function commitAssistantTurn(session, draft) {
+    if (!assistantSessions.has(session) || !session.active) fail(E.STALE_OPERATION, "assistant.session");
+    const { access, operation } = session, token = operation.token;
+    const artifact = validateResultArtifact({ ...draft, recordId: token.recordId, operationId: token.operationId,
+      sourceSnapshotId: operation.sourceSnapshot.sourceSnapshotId });
+    const request = { method: M.APPEND_ASSISTANT, token, artifact };
+    const assertCurrent = () => { assertAccess(access); operations.assertCurrent(operation, access); };
+    try {
+      await accessControl.validateCurrent(access);
+      const artifactDigest = await sha256(JSON.stringify(artifact)); assertCurrent();
+      const saved = await repositoryMethod("mutate")({ request, access, assertCurrent, registeredOperation: operation, artifactDigest });
+      // The repository resolves only after the IndexedDB transaction commits.
+      // Do not turn that durable success into a false failure if the native page closes immediately afterwards.
+      return { saved, artifact };
+    } finally {
+      session.active = false; assistantSessions.delete(session); operations.revoke(value => value === operation);
+    }
+  }
+  async function cancelAssistantTurn(session) {
+    if (!assistantSessions.has(session) || !session.active) return;
+    session.active = false; assistantSessions.delete(session);
+    const { access, operation } = session;
+    try { await repositoryMethod("cancelOperation")({ request: { method: M.CANCEL_OPERATION, operationId: operation.token.operationId },
+      access, registeredOperation: operation, assertCurrent: () => assertAccess(access) }); }
+    finally { operations.revoke(value => value === operation); }
+  }
   function invalidateAccess(tabId) { accessControl.invalidateTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); }
-  return { handle, accessControl, operations, exports, handoffs,
+  return { handle, prepareAssistantTurn, commitAssistantTurn, cancelAssistantTurn, accessControl, operations, exports, handoffs,
     forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); handoffs.revoke(entry => entry.tabId === tabId); },
     invalidateTab(tabId) { invalidateAccess(tabId); handoffs.revoke(entry => entry.tabId === tabId); },
     onTabUpdated(tabId, changeInfo) { handoffs.onTabUpdated(tabId, changeInfo); invalidateAccess(tabId); },
-    revoke() { accessControl.invalidateAll(); operations.revoke(); exports.revoke(); handoffs.revoke(); } };
+    revoke() { accessControl.invalidateAll(); for (const session of assistantSessions) session.active = false;
+      assistantSessions.clear(); operations.revoke(); exports.revoke(); handoffs.revoke(); } };
 }

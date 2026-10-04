@@ -22,7 +22,7 @@
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
-  const { buildLocalResult, buildExplainedResult, copyTextForCard } = app.modules.selectionResultModel;
+  const { buildLocalResult, copyTextForCard } = app.modules.selectionResultModel;
   const model = app.modules.selectionResultModel;
   const records = app.modules.selectionRecordClient?.create({ onStatus: (view) => app.modules.selectionRecordStatus?.update(view, {
     save: (event) => records.save(event), retry: (event) => records.retry(event),
@@ -35,6 +35,7 @@
   let started = false;
   let activeSnapshot = null;
   let activeTask = null;
+  let activeAssistant = null;
   let requestVersion = 0;
   let selectionTimer = null;
   function start() {
@@ -91,6 +92,7 @@
     }
 
     cancelActiveTask({ showCancelled: false });
+    abandonAssistant();
     void cancelRichDictionaryDetails();
     void records?.close();
     recordContext = null;
@@ -147,7 +149,7 @@
           card,
           copyTextForCard(card),
           "结果已复制",
-          resolved.explanationAllowed ? (event) => explainSnapshot(snapshot, resolved.depth, card, event) : null
+          resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null
         );
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
         void loadRich(snapshot, version, expectedPage, queryRecord);
@@ -166,7 +168,7 @@
           title: "本地词典暂未收录",
           message: "没有找到可靠的本地词典结果。你可以选择进一步解释或普通翻译。",
           onExplain: resolved.explanationAllowed
-            ? (event) => explainSnapshot(snapshot, resolved.depth, null, event)
+            ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action)
             : null,
           onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, event })
         });
@@ -180,7 +182,7 @@
         snapshot,
         unresolvedMessage(resolved),
         (event) => translateSnapshot(snapshot, { event }),
-        resolved.explanationAllowed ? (event) => explainSnapshot(snapshot, resolved.depth, null, event) : null
+        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null
       );
       if (resolved.intent?.kind === "lexical") {
         void loadRich(snapshot, version, expectedPage, queryRecord);
@@ -199,128 +201,94 @@
     }
   }
 
-  async function explainSnapshot(snapshot, depth, baseCard = null, event = null) {
-    if (!snapshot || snapshot !== activeSnapshot) return;
+  async function explainSnapshot(snapshot, depth, baseCard = null, event = null, action = "understand") {
+    if (!snapshot || snapshot !== activeSnapshot || !["understand", "analyze", "usage"].includes(action)) return;
     const existing = recordContext && isFrozenCurrent(snapshot, snapshot.sourceCapture);
     const capture = existing ? snapshot.sourceCapture : freezeQuery(snapshot);
-    if (activeTask && !tasks.isTerminal(activeTask)) {
-      await tasks.cancelTask(activeTask);
-    }
-
+    if (activeTask && !tasks.isTerminal(activeTask)) await tasks.cancelTask(activeTask);
     if (!isFrozenCurrent(snapshot, capture)) return;
-    const task = beginTask(snapshot);
-
-    const version = ++requestVersion;
-    const expectedPage = getPageIdentity(snapshot.pageUrl);
+    abandonAssistant();
+    const version = ++requestVersion, expectedPage = getPageIdentity(snapshot.pageUrl);
     const queryRecord = existing ? recordContext : (recordContext = records?.start({ snapshot, capture, event, purpose: "assistant",
       isCurrent: () => isFrozenCurrent(snapshot, capture) && snapshot.pageUrl === location.href }) || null);
-    const assistantOperation = existing ? records?.assistant(queryRecord, event) : queryRecord?.operations[0];
-    const context = captureSelectionContext(snapshot);
-    const preserveLocal = Boolean(baseCard?.primaryMeaning);
-
-    if (preserveLocal) {
-      popover.showAiDetailLoading(() => cancelAiDetail(snapshot, depth, baseCard));
-    } else {
-      popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }), "正在结合上下文解释…");
-    }
-
+    const operation = existing ? records?.assistant(queryRecord, event) : queryRecord?.operations[0];
+    const requestId = `assistant-${crypto.randomUUID()}`;
+    const state = activeAssistant = { snapshot, capture, version, expectedPage, depth, baseCard, action, queryRecord, operation,
+      requestId, partial: "", sequence: 0, stopping: false, terminal: false, port: null };
+    if (!baseCard) popover.showLoading(snapshot, () => stopAssistant(true), "正在连接 AI 助手…");
+    popover.showAiDetailStreaming("", () => stopAssistant(true));
     try {
-      await explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard, queryRecord, assistantOperation);
-    } catch (error) {
-      if (error?.name === "SelectionSupersededError") return;
-      tasks.failTask(task, error);
-      if (!isCurrentSelection(version, snapshot, expectedPage)) return;
+      const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
+      port.onMessage.addListener(message => handleAssistantMessage(state, message));
+      port.onDisconnect.addListener(() => {
+        if (!state.terminal) interruptAssistant(state, "连接中断，未保存。");
+      });
+      port.postMessage({ protocolVersion: 1, type: "start", requestId, text: capture.selectedText,
+        pageUrl: snapshot.pageUrl, context: captureSelectionContext(snapshot), depth, ownerToken: ownerToken(),
+        action, threadId: `thread-${crypto.randomUUID()}`, turnId: `turn-${crypto.randomUUID()}`,
+        parentTurnId: null, branchId: `branch-${crypto.randomUUID()}`, regenerationOf: null });
+    } catch { interruptAssistant(state, "无法连接 AI 助手，未保存。"); }
+  }
 
-      const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
-      if (preserveLocal) {
-        if (cancelled) {
-          popover.showAiDetailCancelled((event) => explainSnapshot(snapshot, depth, baseCard, event));
-        } else {
-          popover.showAiDetailError(
-            `AI 详解失败：${error?.message || error}`,
-            (event) => explainSnapshot(snapshot, depth, baseCard, event)
-          );
-        }
-        return;
+  function handleAssistantMessage(state, message) {
+    if (!assistantLive(state) || message?.protocolVersion !== 1 || message.requestId !== state.requestId) return;
+    if (message.type === "started") {
+      if (!["stream", "unary"].includes(message.mode) || state.sequence !== 0 || state.partial) {
+        interruptAssistant(state, "回答协议异常，未保存。");
       }
-
-      popover.showError(
-        snapshot,
-        cancelled ? "AI 详解已取消。" : `AI 详解失败：${error?.message || error}`,
-        (event) => explainSnapshot(snapshot, depth, null, event)
-      );
-    }
-  }
-
-  function cancelAiDetail(snapshot, depth, baseCard) {
-    const task = activeTask;
-    if (!task || tasks.isTerminal(task)) return;
-    tasks.cancelTask(task).catch(() => {});
-    if (snapshot === activeSnapshot) {
-      popover.showAiDetailCancelled((event) => explainSnapshot(snapshot, depth, baseCard, event));
-    }
-  }
-
-  async function explainSelection(snapshot, task, version, expectedPage, context, depth, baseCard = null, queryRecord = null, assistantOperation = null) {
-    tasks.transition(task, "translating");
-    if (!baseCard) popover.setLoadingStatus("正在结合上下文解释…");
-    const explained = await sendRuntimeMessage({
-      type: messages.background.SELECTION_EXPLAIN,
-      requestId: task.id,
-      text: snapshot.text,
-      pageUrl: snapshot.pageUrl,
-      context,
-      depth
-    });
-    assertCurrent(version, snapshot, expectedPage, task);
-    if (!explained?.ok) throw tasks.responseError(explained, "划词解释失败");
-
-    if (explained.route === "local" && explained.resolved) {
-      if (baseCard) throw new Error("当前本地结果没有可用的 AI 详解。");
-      const card = buildLocalResult(explained.resolved);
-      if (!card?.primaryMeaning) throw new Error("本地词典没有可展示结果。");
-      tasks.completeTask(task, { done: 1 });
-      showResult(snapshot, card, copyTextForCard(card), "结果已复制");
       return;
     }
-
-    if (explained.route === "translation") {
-      if (baseCard) throw new Error("当前选段已不再适合本地词典详解，请重新选择。");
-      await translateSelection(snapshot, task, version, expectedPage);
+    if (message.type === "delta") {
+      if (message.sequence !== state.sequence || typeof message.text !== "string") return interruptAssistant(state, "回答顺序异常，未保存。");
+      state.sequence++; state.partial += message.text;
+      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true));
       return;
     }
-
-    if (explained.route !== "explained" || !explained.generated?.explanation) {
-      throw new Error("模型没有返回可用的划词解释。");
+    if (message.type === "interrupted") {
+      const stopped = state.stopping || message.code === "CANCELLED";
+      return interruptAssistant(state, stopped ? "已停止，未保存。" : "回答中断，未保存。");
     }
-
-    const card = buildExplainedResult(explained);
-    tasks.completeTask(task, {
-      done: 1,
-      cacheHits: explained.cacheHit ? 1 : 0,
-      apiTranslated: explained.cacheHit ? 0 : 1
-    });
-
-    if (baseCard) {
-      const combinedCard = {
-        ...baseCard,
-        generatedMeaning: card.generatedMeaning,
-        explanation: card.explanation
-      };
-      popover.showAiDetailResult(
-        card,
-        copyAction(copyTextForCard(combinedCard), "解释已复制")
-      );
-      records?.accept(queryRecord, model.readingAssistant(card, explained.readingResult, { preserveLocal: true }),
-        { key: assistantOperation?.operationId, operation: assistantOperation, sourceLanguage: explained.readingResult?.sourceLanguage });
-      records?.render();
-      return;
+    if (message.type !== "complete" || state.stopping || message.turn?.completionStatus !== "completed" ||
+        message.turn.assistantAnswer !== message.text || !message.readingResult?.targetLanguage || !message.readingResult?.provenance) {
+      return interruptAssistant(state, state.stopping ? "已停止，未保存。" : "回答未完整确认，未保存。");
     }
-
-    showResult(snapshot, card, copyTextForCard(card), "解释已复制");
-    records?.accept(queryRecord, model.readingAssistant(card, explained.readingResult),
-      { key: assistantOperation?.operationId, operation: assistantOperation, sourceLanguage: explained.readingResult?.sourceLanguage });
+    state.terminal = true; activeAssistant = null;
+    try { state.port.disconnect(); } catch {}
+    const answer = String(message.text || "");
+    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "回答已复制"));
+    records?.accept(state.queryRecord, { kind: "assistant", targetLanguage: message.readingResult.targetLanguage,
+      provenance: message.readingResult.provenance, payload: message.turn },
+    { key: state.operation?.operationId, operation: state.operation, sourceLanguage: message.readingResult.sourceLanguage });
+    records?.render();
   }
+
+  function stopAssistant(show) {
+    const state = activeAssistant;
+    if (!state || state.terminal || state.stopping) return;
+    state.stopping = true;
+    try { state.port?.postMessage({ type: "cancel", requestId: state.requestId }); } catch {}
+    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial);
+  }
+  function abandonAssistant() {
+    const state = activeAssistant;
+    if (!state || state.terminal) return;
+    state.terminal = true; activeAssistant = null;
+    try { state.port?.postMessage({ type: "cancel", requestId: state.requestId }); state.port?.disconnect(); } catch {}
+    void records?.discard(state.queryRecord, state.operation);
+  }
+  function interruptAssistant(state, message) {
+    if (state.terminal) return;
+    state.terminal = true;
+    if (activeAssistant === state) activeAssistant = null;
+    try { state.port?.disconnect(); } catch {}
+    void records?.discard(state.queryRecord, state.operation);
+    if (isCurrentSelection(state.version, state.snapshot, state.expectedPage)) {
+      popover.showAiDetailInterrupted(state.partial, message,
+        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action));
+    }
+  }
+  function assistantLive(state) { return activeAssistant === state && !state.terminal && isCurrentSelection(state.version, state.snapshot, state.expectedPage); }
+  function ownerToken() { return [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, "0")).join(""); }
 
   function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
     return runTranslation(snapshot, task, version, expectedPage, queryRecord);
@@ -380,6 +348,7 @@
   }
 
   function dismiss() {
+    abandonAssistant();
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
     void records?.close();

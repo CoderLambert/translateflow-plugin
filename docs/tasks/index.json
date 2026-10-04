@@ -136,13 +136,23 @@
     },
     {
       "task": "242",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "241",
         "234"
       ],
-      "branch": "feat/242-grounded-assistant",
+      "branch": "main",
       "candidateHead": "01cb14a17fdbddca054f78cd3b89b73bf9d24891"
+    },
+    {
+      "task": "243",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "242",
+        "235"
+      ],
+      "branch": "feat/243-assistant-ui",
+      "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83"
     },
     {
       "task": "245",

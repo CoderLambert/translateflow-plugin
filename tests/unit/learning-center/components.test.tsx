@@ -61,6 +61,42 @@ test("untrusted stored answer is text and only five large artifact bodies render
   expect(container.querySelectorAll(".artifact")).toHaveLength(5); expect(container.querySelector("img")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Load more" })); expect(container.querySelectorAll(".artifact")).toHaveLength(10);
 });
+test("history follow-up renders partial text, Stop saves nothing, and complete refreshes only after saved ACK", async () => {
+  type Listener = (value: unknown) => void;
+  const ports: Array<{ sent: any[]; message?: Listener; disconnect?: () => void }> = [];
+  (chrome as any).runtime = { connect: () => {
+    const state: { sent: any[]; message?: Listener; disconnect?: () => void } = { sent: [] }; ports.push(state);
+    return { postMessage: (value: unknown) => state.sent.push(value), disconnect: vi.fn(),
+      onMessage: { addListener: (value: Listener) => { state.message = value; }, removeListener: vi.fn() },
+      onDisconnect: { addListener: (value: () => void) => { state.disconnect = value; }, removeListener: vi.fn() } };
+  } };
+  const onSaved = vi.fn();
+  const detail = validateRecordDetail({ record: record({ revision: 2 }), snapshots: [snapshot()], artifacts: [artifact(), artifact("assistant")] });
+  render(<Detail detail={detail} i18n={i18n} onBack={() => {}} onDelete={() => {}} onAssistantSaved={onSaved} disabled={false} />);
+  expect(screen.getByText("This synthetic passage refers to a UI library.")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Ask a follow-up" }));
+  await userEvent.type(screen.getByPlaceholderText("Ask about this saved answer"), "Why here?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  const first = ports[0]!, start = first.sent[0];
+  expect(start).toMatchObject({ recordId: RECORD_ID, recordRevision: 2, sourceSnapshotId: "source-1",
+    targetTurnId: "turn-1", historyAction: "follow-up", question: "Why here?" });
+  expect(start).not.toHaveProperty("text"); expect(start).not.toHaveProperty("history");
+  act(() => { first.message?.({ protocolVersion: 1, requestId: start.requestId, type: "started", mode: "stream" });
+    first.message?.({ protocolVersion: 1, requestId: start.requestId, type: "delta", sequence: 0, text: "Partial" }); });
+  expect(screen.getByText("Partial")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+  expect(first.sent.at(-1)).toEqual({ type: "cancel", requestId: start.requestId });
+  act(() => first.message?.({ protocolVersion: 1, requestId: start.requestId, type: "interrupted", code: "CANCELLED", partialChars: 7 }));
+  expect(screen.getByText("Stopped. No partial answer was saved.")).toBeTruthy();
+  expect(screen.getByText("This synthetic passage refers to a UI library.")).toBeTruthy(); expect(onSaved).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  const second = ports[1]!, retry = second.sent[0];
+  act(() => { second.message?.({ protocolVersion: 1, requestId: retry.requestId, type: "started", mode: "stream" });
+    second.message?.({ protocolVersion: 1, requestId: retry.requestId, type: "delta", sequence: 0, text: "Complete" });
+    second.message?.({ protocolVersion: 1, requestId: retry.requestId, type: "complete", text: "Complete",
+      turn: { completionStatus: "completed" }, saved: { state: "saved", recordId: RECORD_ID, revision: 3, artifactId: "artifact-next", duplicate: false } }); });
+  expect(onSaved).toHaveBeenCalledTimes(1);
+});
 test("delete invalidation discards a delayed detail and disconnect removes unconfirmed content", async () => {
   let release: ((value: unknown) => void) | undefined, invalidate: (() => void) | undefined, disconnected: (() => void) | undefined, deleted = false;
   const client = new ReadingClient(raw => {
