@@ -54,7 +54,36 @@ test("page action failure stays recoverable and a retry can succeed", async () =
   const client = clientDouble({ action } as Partial<PopupClient>);
   render(<App client={client} />); await screen.findByText("example.test");
   const button = screen.getByRole("button", { name: "Show / hide translations" });
-  await userEvent.click(button); await screen.findByText("synthetic failure");
+  await userEvent.click(button); await screen.findByText("The operation could not be completed.");
+  expect(screen.queryByText("synthetic failure")).toBeNull();
   await userEvent.click(button); await screen.findByText("Translations are hidden.");
   expect(action).toHaveBeenCalledTimes(2);
+});
+
+test("Popup context mode uses the active catalog instead of backend fallback labels", async () => {
+  vi.stubGlobal("chrome", {
+    i18n: { getUILanguage: () => "zh-CN" },
+    storage: { local: { get: vi.fn(async () => ({ uiLocale: "zh_CN" })) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } }
+  });
+  const client = clientDouble({
+    context: vi.fn(async () => ({ hostname: "example.test", provider: "deepseek", model: "model", presetLabel: "Default" }))
+  } as Partial<PopupClient>);
+  render(<App client={client} />);
+  await screen.findByText("example.test");
+  expect(document.getElementById("contextMode")?.textContent).toBe("默认");
+  expect(document.getElementById("contextMode")?.textContent).not.toBe("Default");
+});
+
+test("Popup custom-prompt mode localizes the status label", async () => {
+  vi.stubGlobal("chrome", {
+    i18n: { getUILanguage: () => "zh-CN" },
+    storage: { local: { get: vi.fn(async () => ({ uiLocale: "zh_CN" })) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } }
+  });
+  const client = clientDouble({
+    context: vi.fn(async () => ({ hostname: "example.test", provider: "deepseek", model: "model", hasSitePromptOverride: true }))
+  } as Partial<PopupClient>);
+  render(<App client={client} />);
+  await screen.findByText("example.test");
+  expect(document.getElementById("contextMode")?.textContent).toBe("自定义 Prompt");
+  expect(document.getElementById("contextMode")?.textContent).not.toBe("Custom Prompt");
 });
