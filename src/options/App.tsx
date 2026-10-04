@@ -39,12 +39,14 @@ export function App({ markup, client: provided }: { markup: LegacyMarkup; client
         <GeneralSection config={config} disabled={ui.busy} update={update} /><UiLocaleSection /><SelectionSection config={config} disabled={ui.busy} update={update} /><AppearanceSection config={config} disabled={ui.busy} update={update} /><YoutubeSection config={config} disabled={ui.busy} update={update} /><ShortcutsSection />
         <SitesSection entries={ui.profiles.value} loading={ui.profiles.loading} error={ui.profiles.error} disabled={ui.busy} retry={() => void ui.refreshProfiles()} save={ui.saveProfile} remove={ui.deleteProfile} />
         <BehaviorSection restoreSites={ui.restoreSites.value} autoSites={ui.autoSites.value} loading={ui.restoreSites.loading || ui.autoSites.loading} errors={[ui.restoreSites.error, ui.autoSites.error]} disabled={ui.busy} refresh={() => void ui.refreshBehaviors()} remove={(key, origin) => void ui.removeBehavior(key, origin)} />
-        <LegacyIslands markup={markup} setStatus={setStatus} />
+      </>}
+      <LegacyIslands markup={markup} setStatus={setStatus} />
+      {config ? <>
         <ProviderSections config={config} disabled={ui.busy} update={update} />
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />
         <DeveloperSection version={client.version} />
         <div className="sticky-actions"><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>保存全局设置</button><button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>测试当前默认 Provider</button></div>
-      </>}
+      </> : null}
       <div id="status" className={`status${ui.status.error ? " error" : ""}`} role="status" aria-live="polite">{ui.status.message}</div>
     </main>
   </div>;
