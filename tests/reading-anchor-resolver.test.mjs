@@ -235,3 +235,23 @@ test("resolver invalidates a cached page after viewport resize changes rendered 
   const updated = await f.modules.readingAnchorResolver.resolve(anchor);
   assert.equal(updated.status, "ambiguous", JSON.stringify(updated));
 });
+
+test("resolver retries a transient root time-budget failure without requiring a DOM revision", async t => {
+  const f = fixture('<main><p id="target">alpha session tail</p></main>'); t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });
+  const project = f.modules.textProjection.project.bind(f.modules.textProjection);
+  let failOnce = true;
+  f.modules.textProjection.project = (root, options) => {
+    if (root?.id === "target" && failOnce) {
+      failOnce = false;
+      return { status: "unsupported", reason: "time-budget", sensitive: false, stats: { nodes: 1, chars: 0, elapsedMs: 9 } };
+    }
+    return project(root, options);
+  };
+
+  const first = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(first.status, "not-loaded", JSON.stringify(first));
+  const second = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(second.status, "resolved", JSON.stringify(second));
+  assert.equal(second.range.toString(), "session");
+});

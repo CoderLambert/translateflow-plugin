@@ -102,7 +102,8 @@
           if (!cached) {
             const value = projection.project(root);
             metrics.nodes += value.stats?.nodes || 0; metrics.chars += value.stats?.chars || 0;
-            cached = { value, digest: null }; roots.set(root, cached);
+            cached = { value, digest: null };
+            if (value.status === "resolved" || value.reason !== "time-budget") roots.set(root, cached);
           }
           if (cached.value.status !== "resolved") { unverified = true; continue; }
           if (!cached.digest) cached.digest = digest(cached.value.text);

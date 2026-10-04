@@ -1,8 +1,8 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
+  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
-  let generation = 0, controller = null, root = null, panel = null, markerNodes = [], ranges = new Map(), observer = null, timer = 0, port = null;
+  let generation = 0, controller = null, root = null, panel = null, markerNodes = [], ranges = new Map(), projectionUnsubscribe = null, timer = 0, port = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
   // Focus, manual retries, and SPA route changes do not replenish it.
   let automaticRetries = 0, lastItems = [], lastPageRecordCount = 0;
@@ -13,7 +13,7 @@
   }
   function clearUi() { root?.remove(); root = panel = null; for (const node of markerNodes) node.remove(); markerNodes = []; ranges.clear(); }
   function unresolved(items) { return new Map(items.map(item => [item.recordId, { status: "not-loaded", range: null }])); }
-  function cleanup() { generation++; controller?.abort(); controller = null; observer?.disconnect(); observer = null; clearTimeout(timer); timer = 0;
+  function cleanup() { generation++; controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); timer = 0;
     lastItems = []; lastPageRecordCount = 0;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
   function rectFor(range) { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
@@ -64,7 +64,7 @@
   }
   async function load({ register = false } = {}) {
     const current = ++generation; controller?.abort(); const ownController = new AbortController(); controller = ownController;
-    observer?.disconnect(); observer = null; clearTimeout(timer); timer = 0;
+    projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); timer = 0;
     if (lastItems.length) render(lastItems, unresolved(lastItems), lastPageRecordCount);
     else clearUi();
     try {
@@ -83,18 +83,15 @@
       const limited = items.slice(0, C.READING_LIMITS.pageMarkers), locations = await app.modules.readingAnchorResolver.resolvePage(limited, { signal: ownController.signal });
       if (current !== generation || ownController.signal.aborted) return;
       lastItems = limited; lastPageRecordCount = count; render(limited, locations, count);
-      observer = new MutationObserver(records => {
-        const changedPage = records.some(record => !app.modules.uiHost.ownsNode(record.target) &&
-          (!record.addedNodes.length && !record.removedNodes.length || [...record.addedNodes, ...record.removedNodes].some(node => !app.modules.uiHost.ownsNode(node))));
-        if (!changedPage) return;
-        // Page structure has moved. Drop every old Range immediately but keep the
+      projectionUnsubscribe = app.modules.textProjection.start(() => {
+        projectionUnsubscribe?.(); projectionUnsubscribe = null;
+        // The source projection is stale. Drop every old Range immediately but keep the
         // generic list and its manual retry action visible after auto retries end.
         render(lastItems, unresolved(lastItems), lastPageRecordCount);
         if (!timer && automaticRetries < C.READING_LIMITS.scanRetryCount) timer = setTimeout(() => {
           timer = 0; automaticRetries++; void load();
         }, C.READING_LIMITS.mutationDebounceMs);
       });
-      observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
     } catch { if (current === generation) {
       if (lastItems.length) render(lastItems, unresolved(lastItems), lastPageRecordCount);
       else clearUi();

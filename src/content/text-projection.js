@@ -9,7 +9,12 @@
     if (!records.some(policy.sourceMutation)) return;
     invalidate();
   }
-  function invalidate() { sourceRevision++; for (const listener of listeners) listener(sourceRevision); }
+  function invalidate() {
+    sourceRevision++;
+    for (const listener of listeners) {
+      try { listener(sourceRevision); } catch {}
+    }
+  }
   function invalidateViewport() {
     if (viewportInvalidationQueued) return;
     viewportInvalidationQueued = true;
@@ -17,16 +22,18 @@
   }
   function start(onInvalidation) {
     if (onInvalidation) listeners.add(onInvalidation);
-    if (observer) return;
-    observer = new MutationObserver(consume);
-    observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true,
-      attributeOldValue: true });
-    const route = (event) => { if (watchedPage && app.modules.runtime.getPageIdentity(event?.destination?.url || location.href) !== watchedPage) invalidate(); };
-    window.addEventListener("popstate", route); window.addEventListener("hashchange", route);
-    window.addEventListener("pagehide", invalidate);
-    window.addEventListener("resize", invalidateViewport, { passive: true });
-    globalThis.visualViewport?.addEventListener?.("resize", invalidateViewport, { passive: true });
-    globalThis.navigation?.addEventListener?.("navigate", route);
+    if (!observer) {
+      observer = new MutationObserver(consume);
+      observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true,
+        attributeOldValue: true });
+      const route = (event) => { if (watchedPage && app.modules.runtime.getPageIdentity(event?.destination?.url || location.href) !== watchedPage) invalidate(); };
+      window.addEventListener("popstate", route); window.addEventListener("hashchange", route);
+      window.addEventListener("pagehide", invalidate);
+      window.addEventListener("resize", invalidateViewport, { passive: true });
+      globalThis.visualViewport?.addEventListener?.("resize", invalidateViewport, { passive: true });
+      globalThis.navigation?.addEventListener?.("navigate", route);
+    }
+    return () => { if (onInvalidation) listeners.delete(onInvalidation); };
   }
   function watchPage(pageUrl) {
     watchedPage = pageUrl ? app.modules.runtime.getPageIdentity(pageUrl) : null;
