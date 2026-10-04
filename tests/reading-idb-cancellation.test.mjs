@@ -162,7 +162,7 @@ test("Stop remains the first cause when aborting a pending request produces Abor
     request.onerror(); // Native IDB reports the request error while the transaction is aborting.
     tx.error = new DOMException("transaction aborted", "AbortError");
     tx.onabort();
-    await assert.rejects(pending, error => error.code === E.CANCELLED);
+    await assert.rejects(pending, error => error.code === "CANCELLED");
     assert.equal(tx.aborted, true);
     assert.deepEqual(probe.durableWrites, []);
   } finally { database.close(); probe.restore(); }

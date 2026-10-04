@@ -25,6 +25,47 @@ async function readPageSurface(page) {
   });
 }
 
+async function markerIsolated(driver, url, action, method) {
+  return driver.evaluate(async ({ url, action, method }) => {
+    const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
+    const [injection] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [action, method],
+      func: (name, summaryMethod) => {
+        if (name === "install") {
+          const textNode = document.querySelector("#source").firstChild;
+          globalThis.__heldMarkerTextNode = textNode;
+          globalThis.__staleMarkerScrolls = 0;
+          textNode.parentElement.scrollIntoView = () => { globalThis.__staleMarkerScrolls++; };
+          const runtime = globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime;
+          globalThis.__originalMarkerSendRuntimeMessage = runtime.sendRuntimeMessage;
+          let release;
+          const gate = new Promise(resolve => { release = resolve; });
+          globalThis.__markerRefreshGate = { started: false, release: () => release() };
+          runtime.sendRuntimeMessage = async request => {
+            if (!globalThis.__markerRefreshGate.started && request.method === summaryMethod) {
+              globalThis.__markerRefreshGate.started = true;
+              await gate;
+            }
+            return globalThis.__originalMarkerSendRuntimeMessage(request);
+          };
+          void globalThis.__TRANSLATE_FLOW_CONTENT__.modules.readingPageMarkers.refresh();
+          return true;
+        }
+        if (name === "started") return globalThis.__markerRefreshGate?.started;
+        if (name === "mutate") {
+          globalThis.__heldMarkerTextNode.nodeValue = "PUBLIC refreshed alpha tail";
+          return globalThis.__heldMarkerTextNode.isConnected;
+        }
+        if (name === "scrolls") return globalThis.__staleMarkerScrolls;
+        if (name === "release") { globalThis.__markerRefreshGate.release(); return true; }
+        if (name === "restore") {
+          globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime.sendRuntimeMessage = globalThis.__originalMarkerSendRuntimeMessage;
+          return true;
+        }
+      } });
+    return injection.result;
+  }, { url, action, method });
+}
+
 test("authorized revisit renders bounded page history markers and recovers across DOM and SPA changes without Provider work", async ({}, info) => {
   test.setTimeout(120000);
   const temporary = await mkdtemp(join(tmpdir(), "tf-reading-markers-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
@@ -134,38 +175,16 @@ test("authorized revisit renders bounded page history markers and recovers acros
       }
     }
 
-    await retryPage.evaluate(method => {
-      const textNode = document.querySelector("#source").firstChild;
-      globalThis.__heldMarkerTextNode = textNode;
-      globalThis.__staleMarkerScrolls = 0;
-      textNode.parentElement.scrollIntoView = () => { globalThis.__staleMarkerScrolls++; };
-      const runtime = globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime;
-      const sendRuntimeMessage = runtime.sendRuntimeMessage;
-      globalThis.__originalMarkerSendRuntimeMessage = sendRuntimeMessage;
-      let release;
-      const gate = new Promise(resolve => { release = resolve; });
-      globalThis.__markerRefreshGate = { started: false, release: () => release() };
-      runtime.sendRuntimeMessage = async request => {
-        if (!globalThis.__markerRefreshGate.started && request.method === method) {
-          globalThis.__markerRefreshGate.started = true;
-          await gate;
-        }
-        return sendRuntimeMessage(request);
-      };
-      void globalThis.__TRANSLATE_FLOW_CONTENT__.modules.readingPageMarkers.refresh();
-    }, M.GET_PAGE_SUMMARY);
-    await expect.poll(() => retryPage.evaluate(() => globalThis.__markerRefreshGate.started)).toBe(true);
+    await markerIsolated(driver, retryPage.url(), "install", M.GET_PAGE_SUMMARY);
+    await expect.poll(() => markerIsolated(driver, retryPage.url(), "started", M.GET_PAGE_SUMMARY)).toBe(true);
     await expect(retryRow).toContainText("未完全加载");
     await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
-    await retryPage.evaluate(() => { globalThis.__heldMarkerTextNode.nodeValue = "PUBLIC refreshed alpha tail"; });
-    await expect.poll(() => retryPage.evaluate(() => globalThis.__heldMarkerTextNode.isConnected)).toBe(true);
+    expect(await markerIsolated(driver, retryPage.url(), "mutate", M.GET_PAGE_SUMMARY)).toBe(true);
     await retryRow.locator(".tf-reading-page-item").click();
-    expect(await retryPage.evaluate(() => globalThis.__staleMarkerScrolls)).toBe(0);
-    await retryPage.evaluate(() => globalThis.__markerRefreshGate.release());
+    expect(await markerIsolated(driver, retryPage.url(), "scrolls", M.GET_PAGE_SUMMARY)).toBe(0);
+    await markerIsolated(driver, retryPage.url(), "release", M.GET_PAGE_SUMMARY);
     await expect(retryRow).toContainText("未找到");
-    await retryPage.evaluate(() => {
-      globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime.sendRuntimeMessage = globalThis.__originalMarkerSendRuntimeMessage;
-    });
+    await markerIsolated(driver, retryPage.url(), "restore", M.GET_PAGE_SUMMARY);
     expect(server.calls).toHaveLength(0);
   } finally {
     await context?.close(); await server.close(); await rm(temporary, { recursive: true, force: true });
