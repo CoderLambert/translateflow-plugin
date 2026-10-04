@@ -1,11 +1,12 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app || app.modules.selectionResultRenderer) return;
+  if (!app?.modules.contentI18n || app.modules.selectionResultRenderer) return;
+  const locale = app.modules.contentI18n;
   function richUnavailable(container) {
     if (!container) return;
     const message = document.createElement("p");
     message.className = "tf-selection-rich-error";
-    message.textContent = "扩展已更新，请刷新网页后查看详细词典释义。";
+    locale.bindText(message, "content.selection.updatedRich");
     container.appendChild(message);
   }
   function appendRichDictionaryDetails(container, response) {
@@ -40,7 +41,7 @@
     if (!container.childElementCount && !generatedMeaning && !explanation) {
       const empty = document.createElement("div");
       empty.className = "tf-selection-primary";
-      empty.textContent = "暂无可展示结果。";
+      locale.bindText(empty, "content.selection.noDisplayResult");
       container.appendChild(empty);
     }
 
@@ -56,7 +57,8 @@
       const badge = document.createElement("span");
       badge.className = "tf-selection-result-badge";
       badge.dataset.kind = String(item?.kind || "local");
-      badge.textContent = label;
+      if (item?.labelKey) locale.bindText(badge, item.labelKey, item.labelArgs || {});
+      else badge.textContent = label;
       meta.appendChild(badge);
     }
     if (meta.childElementCount) container.appendChild(meta);
@@ -161,7 +163,8 @@
       if (provenance) {
         const source = document.createElement("div");
         source.className = "tf-selection-entry-provenance";
-        source.textContent = provenance;
+        if (entry?.provenanceKey) locale.bindText(source, entry.provenanceKey, entry.provenanceArgs || {});
+        else source.textContent = provenance;
         item.appendChild(source);
       }
       list.appendChild(item);
@@ -170,7 +173,7 @@
     if (Number(moreEntryCount || 0) > 0) {
       const more = document.createElement("div");
       more.className = "tf-selection-more-entries";
-      more.textContent = `还有 ${Number(moreEntryCount)} 个候选未展开`;
+      locale.bindText(more, "content.selection.moreCandidates", { count: Number(moreEntryCount) });
       list.appendChild(more);
     }
     container.appendChild(list);

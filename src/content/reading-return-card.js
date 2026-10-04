@@ -1,20 +1,22 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract ||
-      !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingReturnCard) return;
+      !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingReturnCard) return;
   const C = app.modules.readingContract, M = C.READING_METHOD;
+  const locale = app.modules.contentI18n;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   let card = null, overlays = [], activeRange = null, controller = null, frame = 0, previousFocus = null, summary = null;
   let mutationObserver = null, mutationTimer = 0, automaticRetries = 0;
   const messages = {
-    locating: "正在核对保存的原文位置…",
-    resolved: "已回到唯一匹配的原文位置。",
-    ambiguous: "页面中有多个可信匹配，未自动选择位置。",
-    missing: "当前页面未找到保存的原文，历史记录仍可查看。",
-    "not-loaded": "页面内容尚未完整加载或已达到安全扫描上限，可稍后重试。",
-    unsupported: "当前页面结构不支持安全定位，历史记录仍可查看。",
-    error: "定位已中断，可重试或打开学习中心查看历史。"
+    locating: "content.reading.locating",
+    resolved: "content.reading.resolved",
+    ambiguous: "content.reading.ambiguous",
+    missing: "content.reading.missing",
+    "not-loaded": "content.reading.notLoaded",
+    unsupported: "content.reading.unsupportedLocation",
+    error: "content.reading.locationError"
   };
+  function setLocalizedStatus(node, key, kind) { setStatus(node, "", kind); locale.bindText(node, key); }
   const onKeyDown = event => { if (card && event.key === "Escape") close(); };
   async function send(method, body = {}) {
     const request = C.validateReadingRequest({ protocolVersion: C.READING_PROTOCOL_VERSION, method, ...body });
@@ -26,7 +28,7 @@
   function updateOverlays() {
     frame = 0;
     if (!activeRange || !activeRange.startContainer.isConnected || !activeRange.endContainer.isConnected || activeRange.toString() !== summary.anchor.quote.exact) {
-      clearOverlays(); if (card) { card.dataset.state = "missing"; setStatus(card.querySelector('[data-role="location-status"]'), messages.missing, "error"); } return;
+      clearOverlays(); if (card) { card.dataset.state = "missing"; setLocalizedStatus(card.querySelector('[data-role="location-status"]'), messages.missing, "error"); } return;
     }
     const rects = [...activeRange.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0).slice(0, 12);
     while (overlays.length > rects.length) overlays.pop().remove();
@@ -45,31 +47,31 @@
     window.removeEventListener("scroll", scheduleOverlay, true); window.removeEventListener("resize", scheduleOverlay);
   }
   function close() {
-    cleanup(); document.removeEventListener("keydown", onKeyDown); card?.remove(); card = null;
+    cleanup(); document.removeEventListener("keydown", onKeyDown); locale.unbindTree(card); card?.remove(); card = null;
     if (previousFocus?.isConnected) previousFocus.focus(); previousFocus = null;
   }
   function renderCard() {
     if (card?.isConnected) return;
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    card = surface({ className: "tf-reading-return-card", role: "dialog" }); card.setAttribute("aria-label", "TranslateFlow 阅读历史定位");
-    const header = document.createElement("header"), title = document.createElement("h2"), closeButton = button({ text: "×", label: "关闭阅读历史定位", icon: true });
-    title.textContent = "阅读历史定位"; closeButton.addEventListener("click", close); header.append(title, closeButton);
+    card = surface({ className: "tf-reading-return-card", role: "dialog" }); locale.bindAttribute(card, "aria-label", "content.reading.returnAria");
+    const header = document.createElement("header"), title = document.createElement("h2"), closeButton = button({ text: "×", label: locale.t("content.reading.closeReturn"), icon: true });
+    locale.bindText(title, "content.reading.returnTitle"); locale.bindAttribute(closeButton, "aria-label", "content.reading.closeReturn"); closeButton.addEventListener("click", close); header.append(title, closeButton);
     const quote = document.createElement("blockquote"); quote.textContent = summary.anchor.quote.exact;
     const state = status({ className: "tf-reading-return-status" }); state.dataset.role = "location-status";
     const actions = document.createElement("div"); actions.className = "tf-reading-return-actions";
-    const retry = button({ text: "重新定位" }); retry.dataset.action = "retry"; retry.addEventListener("click", event => { if (event.isTrusted) void locate(state); });
-    const open = button({ text: "打开学习中心记录" }); open.dataset.action = "open-record";
-    open.addEventListener("click", event => { if (event.isTrusted) void send(M.OPEN_LEARNING_CENTER, { recordId: summary.recordId }).catch(() => setStatus(state, messages.error, "error")); });
+    const retry = button({ text: locale.t("content.reading.retryLocate") }); locale.bindText(retry, "content.reading.retryLocate"); retry.dataset.action = "retry"; retry.addEventListener("click", event => { if (event.isTrusted) void locate(state); });
+    const open = button({ text: locale.t("content.reading.openRecord") }); locale.bindText(open, "content.reading.openRecord"); open.dataset.action = "open-record";
+    open.addEventListener("click", event => { if (event.isTrusted) void send(M.OPEN_LEARNING_CENTER, { recordId: summary.recordId }).catch(() => setLocalizedStatus(state, messages.error, "error")); });
     actions.append(retry, open); card.append(header, quote, state, actions); app.modules.uiHost.getLayer("reading-return-card").appendChild(card);
     document.addEventListener("keydown", onKeyDown);
     closeButton.focus(); return state;
   }
   async function locate(state = card?.querySelector('[data-role="location-status"]')) {
-    cleanup(); controller = new AbortController(); setStatus(state, messages.locating, "loading"); card.dataset.state = "locating";
+    cleanup(); controller = new AbortController(); setLocalizedStatus(state, messages.locating, "loading"); card.dataset.state = "locating";
     try {
       const result = await app.modules.readingAnchorResolver.resolve(summary.anchor, { signal: controller.signal });
       if (controller.signal.aborted || !card) return;
-      card.dataset.state = result.status; setStatus(state, messages[result.status] || messages.error, result.status === "resolved" ? "success" : result.status === "ambiguous" ? "warning" : "error");
+      card.dataset.state = result.status; setLocalizedStatus(state, messages[result.status] || messages.error, result.status === "resolved" ? "success" : result.status === "ambiguous" ? "warning" : "error");
       if (result.status === "resolved" && result.range) {
         activeRange = result.range;
         window.addEventListener("scroll", scheduleOverlay, true); window.addEventListener("resize", scheduleOverlay);
@@ -82,7 +84,7 @@
         });
         mutationObserver.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
       }
-    } catch (error) { if (error?.name !== "AbortError" && card) { card.dataset.state = "error"; setStatus(state, messages.error, "error"); } }
+    } catch (error) { if (error?.name !== "AbortError" && card) { card.dataset.state = "error"; setLocalizedStatus(state, messages.error, "error"); } }
   }
   async function start() {
     const handoff = await app.modules.readingHandoff.ready;

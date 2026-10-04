@@ -1,8 +1,10 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.uiTokens || !app?.modules.uiPrimitives || app.modules.subtitleRenderer) return;
+  if (!app?.modules.uiTokens || !app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.subtitleRenderer) return;
 
   const { select: createSelect } = app.modules.uiPrimitives;
+  const locale = app.modules.contentI18n;
+  const t = (key, args) => locale.t(key, args);
   const MODES = Object.freeze(["bilingual", "original", "off"]);
   const SIZES = Object.freeze(["small", "standard", "large"]);
   const SIZE_PX = Object.freeze({ small: 15, standard: 18, large: 22 });
@@ -41,21 +43,23 @@ ${app.modules.uiTokens.css}
 
       const controls = doc.createElement("div"); controls.className = "controls";
       modeSelect = createSelect({
-        label: "TranslateFlow subtitle mode",
+        label: t("content.subtitle.modeAria"),
         value: mode,
-        options: [["bilingual", "双语"], ["original", "原字幕"], ["off", "关闭"]].map(([value, label]) => ({ value, label })),
+        options: [["bilingual", "content.subtitle.bilingual"], ["original", "content.subtitle.original"], ["off", "content.subtitle.off"]]
+          .map(([value, key]) => ({ value, label: t(key) })),
         className: "tf-subtitle-mode"
       });
       presetSelect = createSelect({
-        label: "Translation preset",
+        label: t("content.subtitle.presetAria"),
         value: presetValue,
         options: buildPresetOptions(),
         className: "tf-subtitle-preset"
       });
       sizeSelect = createSelect({
-        label: "Translated subtitle size",
+        label: t("content.subtitle.sizeAria"),
         value: size,
-        options: [["small", "小"], ["standard", "标准"], ["large", "大"]].map(([value, label]) => ({ value, label })),
+        options: [["small", "content.subtitle.small"], ["standard", "content.subtitle.standard"], ["large", "content.subtitle.large"]]
+          .map(([value, key]) => ({ value, label: t(key) })),
         className: "tf-subtitle-size"
       });
       modeSelect.addEventListener("change", () => { setMode(modeSelect.value); onModeChange?.(mode); });
@@ -64,14 +68,15 @@ ${app.modules.uiTokens.css}
       controls.append(modeSelect, presetSelect, sizeSelect);
       shadow.append(style, wrap, controls);
       player.appendChild(host);
+      bindControls();
       applyState();
       return true;
     }
 
     function buildPresetOptions() {
       return [
-        { value: "inherit", label: "继承本站设置" },
-        { value: "none", label: "无 Preset / 默认 Prompt" },
+        { value: "inherit", key: "content.quick.inheritSite" },
+        { value: "none", key: "content.quick.noPreset" },
         ...presetOptions.map((item) => ({
           value: item.id,
           label: item.description ? `${item.label} · ${item.description}` : item.label
@@ -85,7 +90,8 @@ ${app.modules.uiTokens.css}
       for (const entry of buildPresetOptions()) {
         const option = doc.createElement("option");
         option.value = String(entry.value);
-        option.textContent = String(entry.label);
+        if (entry.key) locale.bindText(option, entry.key);
+        else option.textContent = String(entry.label);
         presetSelect.appendChild(option);
       }
       presetSelect.value = presetValue;
@@ -120,13 +126,24 @@ ${app.modules.uiTokens.css}
       statusEl?.classList.toggle("hidden", off || !statusEl.textContent);
     }
 
-    function renderOriginal(text = "") { if (originalEl) { originalEl.textContent = String(text).trim(); applyState(); } }
-    function renderTranslation(text = "") { if (translatedEl) { translatedEl.textContent = String(text).trim(); applyState(); } }
-    function setStatus(text = "", kind = "info") { if (statusEl) { statusEl.textContent = String(text).trim(); statusEl.dataset.kind = kind; applyState(); } }
-    function clear({ keepStatus = false } = {}) { if (originalEl) originalEl.textContent = ""; if (translatedEl) translatedEl.textContent = ""; if (!keepStatus && statusEl) statusEl.textContent = ""; applyState(); }
+    function bindControls() {
+      locale.bindAttribute(modeSelect, "aria-label", "content.subtitle.modeAria");
+      locale.bindAttribute(presetSelect, "aria-label", "content.subtitle.presetAria");
+      locale.bindAttribute(sizeSelect, "aria-label", "content.subtitle.sizeAria");
+      const modeKeys = ["content.subtitle.bilingual", "content.subtitle.original", "content.subtitle.off"];
+      [...modeSelect.options].forEach((option, index) => locale.bindText(option, modeKeys[index]));
+      const sizeKeys = ["content.subtitle.small", "content.subtitle.standard", "content.subtitle.large"];
+      [...sizeSelect.options].forEach((option, index) => locale.bindText(option, sizeKeys[index]));
+    }
+
+    function renderOriginal(text = "") { if (originalEl) { locale.unbind(originalEl); originalEl.textContent = String(text).trim(); applyState(); } }
+    function renderTranslation(text = "") { if (translatedEl) { locale.unbind(translatedEl); translatedEl.textContent = String(text).trim(); applyState(); } }
+    function setStatus(text = "", kind = "info") { if (statusEl) { locale.unbind(statusEl); statusEl.textContent = String(text).trim(); statusEl.dataset.kind = kind; applyState(); } }
+    function setStatusKey(key, kind = "info", args = {}) { if (statusEl) { locale.bindText(statusEl, key, args); statusEl.dataset.kind = kind; applyState(); } }
+    function clear({ keepStatus = false } = {}) { if (originalEl) { locale.unbind(originalEl); originalEl.textContent = ""; } if (translatedEl) { locale.unbind(translatedEl); translatedEl.textContent = ""; } if (!keepStatus && statusEl) { locale.unbind(statusEl); statusEl.textContent = ""; } applyState(); }
     function setMode(value) { mode = MODES.includes(value) ? value : "bilingual"; applyState(); return mode; }
     function setSize(value) { size = SIZES.includes(value) ? value : "standard"; applyState(); return size; }
-    function unmount() { host?.remove(); player = host = shadow = originalEl = translatedEl = statusEl = modeSelect = sizeSelect = presetSelect = null; }
+    function unmount() { locale.unbindTree(host); host?.remove(); player = host = shadow = originalEl = translatedEl = statusEl = modeSelect = sizeSelect = presetSelect = null; }
 
     return {
       mount,
@@ -135,6 +152,7 @@ ${app.modules.uiTokens.css}
       renderOriginal,
       renderTranslation,
       setStatus,
+      setStatusKey,
       setMode,
       setSize,
       setPresetContext,

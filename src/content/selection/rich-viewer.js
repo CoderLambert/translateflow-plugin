@@ -1,6 +1,7 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app || app.modules.selectionRichViewer) return;
+  if (!app?.modules.contentI18n || app.modules.selectionRichViewer) return;
+  const locale = app.modules.contentI18n;
 
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u",
@@ -72,7 +73,7 @@
     const viewport = document.createElement("div");
     viewport.className = "tf-rich-viewer";
     viewport.setAttribute("role", "region");
-    viewport.setAttribute("aria-label", "词典释义");
+    locale.bindAttribute(viewport, "aria-label", "content.rich.contentAria");
     viewport.tabIndex = 0;
     if (preserveNewlines) viewport.style.setProperty("white-space", "pre-wrap");
     root.appendChild(viewport);
@@ -91,7 +92,7 @@
     if (count.truncated) {
       const note = document.createElement("div");
       note.className = "tf-rich-truncated";
-      note.textContent = "词典内容过长，已截断显示。";
+      locale.bindText(note, "content.rich.truncated");
       viewport.appendChild(note);
     }
     container.replaceChildren(document.createTextNode(String(fallbackText || "").slice(0, 512 * 1024)));
@@ -144,7 +145,14 @@
       appendChildren(element, node.children, depth, count, resources);
       return wrapper;
     }
-    appendChildren(element, node.children, depth, count, resources);
+    const placeholderKind = String(node.attrs?.["data-rich-placeholder"] || "");
+    if (placeholderKind === "image" || placeholderKind === "audio") {
+      const label = String(node.attrs?.["data-rich-label"] || "").slice(0, 160);
+      locale.bindText(element,
+        label ? (placeholderKind === "image" ? "content.rich.imageLabel" : "content.rich.audioLabel")
+          : (placeholderKind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing"),
+        label ? { label } : {});
+    } else appendChildren(element, node.children, depth, count, resources);
     return element;
   }
 
@@ -180,7 +188,7 @@
     if (placeholderKind === "image" || placeholderKind === "audio") {
       element.className += " tf-rich-placeholder";
       element.setAttribute("data-rich-placeholder", placeholderKind);
-      element.setAttribute("aria-label", placeholderKind === "image" ? "图片资源未导入" : "音频资源未导入");
+      locale.bindAttribute(element, "aria-label", placeholderKind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing");
     }
     for (const name of ["colspan", "rowspan"]) {
       const value = Number(attrs[name]);
@@ -211,11 +219,14 @@
     }
   }
 
-  function placeholder(kind) {
+  function placeholder(kind, label = "") {
     const item = document.createElement("span");
     item.className = "tf-rich-placeholder";
-    item.setAttribute("aria-label", kind === "img" ? "图片资源未导入" : "音频资源未导入");
-    item.textContent = kind === "img" ? "[图片资源未导入]" : "[音频资源未导入]";
+    const image = kind === "img" || kind === "image";
+    locale.bindAttribute(item, "aria-label", image ? "content.rich.imageMissing" : "content.rich.audioMissing");
+    locale.bindText(item,
+      label ? (image ? "content.rich.imageLabel" : "content.rich.audioLabel") : (image ? "content.rich.imageMissing" : "content.rich.audioMissing"),
+      label ? { label } : {});
     return item;
   }
 

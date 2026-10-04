@@ -2,10 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 async function loadResultModel() {
   const code = await readFile(new URL("../src/content/selection/result-model.js", import.meta.url), "utf8");
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: { modules: {} } });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub({ messages: {
+    "content.selection.sourceLocal": "本地词典",
+    "content.selection.sourceTechnical": "技术词条",
+    "content.selection.sourcePack": "词典包 · {packId}",
+    "content.selection.moreCandidates": "还有 {count} 个候选未展开"
+  } }) } } });
   vm.runInContext(code, context);
   return context.__TRANSLATE_FLOW_CONTENT__.modules.selectionResultModel;
 }

@@ -107,7 +107,7 @@
         if (resourceCount < (limits.resourceCount || 8)) {
           appendResource("image", path, label);
         } else {
-          appendElement("span", { "data-rich-placeholder": "image" }, {}, [textNode(label ? `［图片：${label}］` : "［图片资源未导入］")]);
+          appendElement("span", { "data-rich-placeholder": "image", "data-rich-label": label }, {}, []);
         }
         continue;
       }
@@ -119,7 +119,7 @@
         }
         const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
         if (resourceCount < (limits.resourceCount || 8)) appendResource("audio", path, label);
-        else appendElement("span", { "data-rich-placeholder": "audio" }, {}, [textNode(label ? `［音频：${label}］` : "［音频资源未导入］")]);
+        else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
         if (!token.selfClosing) {
           if (skipped.length >= limits.depth) truncated = true;
           else skipped.push("audio");

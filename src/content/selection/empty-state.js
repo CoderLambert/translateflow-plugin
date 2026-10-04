@@ -1,22 +1,24 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.uiPrimitives || app.modules.selectionEmptyState) return;
+  if (!app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.selectionEmptyState) return;
 
   const { button } = app.modules.uiPrimitives;
+  const locale = app.modules.contentI18n;
 
   function create({ container, onResize } = {}) {
     if (!container) throw new Error("Selection empty-state container is required.");
     let node = null;
 
     function reset() {
+      locale.unbindTree(node);
       node?.remove();
       node = null;
       delete container.dataset.resultKind;
     }
 
     function show({
-      title = "本地词典暂未收录",
-      message = "没有找到可靠的本地词典结果。",
+      titleKey = "content.selection.localEmptyTitle",
+      messageKey = "content.selection.localEmpty",
       onExplain = null,
       onTranslate = null
     } = {}) {
@@ -28,22 +30,26 @@
 
       const heading = document.createElement("strong");
       heading.className = "tf-selection-empty-title";
-      heading.textContent = title;
+      locale.bindText(heading, titleKey);
 
       const body = document.createElement("div");
       body.className = "tf-selection-empty-message";
-      body.textContent = message;
+      locale.bindText(body, messageKey);
       node.append(heading, body);
 
       const actions = document.createElement("div");
       actions.className = "tf-selection-empty-actions";
       if (typeof onExplain === "function") {
-        const explain = button({ text: "AI 详解", label: "使用 AI 进一步解释这个词" });
+        const explain = button({ text: locale.t("content.selection.aiDetail"), label: locale.t("content.selection.aiFurtherAria") });
+        locale.bindText(explain, "content.selection.aiDetail");
+        locale.bindAttribute(explain, "aria-label", "content.selection.aiFurtherAria");
         explain.addEventListener("click", (event) => onExplain(event));
         actions.appendChild(explain);
       }
       if (typeof onTranslate === "function") {
-        const translate = button({ text: "普通翻译", label: "使用普通翻译处理这个词" });
+        const translate = button({ text: locale.t("content.selection.regularTranslation"), label: locale.t("content.selection.regularTranslationAria") });
+        locale.bindText(translate, "content.selection.regularTranslation");
+        locale.bindAttribute(translate, "aria-label", "content.selection.regularTranslationAria");
         translate.addEventListener("click", (event) => onTranslate(event));
         actions.appendChild(translate);
       }

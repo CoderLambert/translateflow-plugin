@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 function loadTasksModule() {
   const sent = [];
@@ -13,6 +14,7 @@ function loadTasksModule() {
     clearTimeout,
     __TRANSLATE_FLOW_CONTENT__: {
       modules: {
+        contentI18n: createContentI18nStub(),
         runtime: {
           messages: {
             background: {

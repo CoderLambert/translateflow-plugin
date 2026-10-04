@@ -1,14 +1,16 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.uiPrimitives || app.modules.selectionAiDetail) return;
+  if (!app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.selectionAiDetail) return;
 
   const { button } = app.modules.uiPrimitives;
+  const locale = app.modules.contentI18n;
 
   function create({ container, onResize } = {}) {
     if (!container) throw new Error("Selection AI detail container is required.");
     let node = null;
 
     function reset() {
+      locale.unbindTree(node);
       node?.remove();
       node = null;
     }
@@ -16,22 +18,22 @@
     function loading(onCancel) {
       render({
         state: "loading",
-        message: "正在结合上下文解释…",
+        messageKey: "content.ai.loading",
         onCancel
       });
     }
 
     function choices(onAction) {
-      render({ state: "actions", message: "选择一种方式继续：", onAction });
+      render({ state: "actions", messageKey: "content.ai.choose", onAction });
     }
 
     function streaming(answer, onCancel, stopping = false) {
-      render({ state: stopping ? "stopping" : "streaming", message: stopping ? "正在停止，等待确认…" : "AI 正在回答…",
+      render({ state: stopping ? "stopping" : "streaming", messageKey: stopping ? "content.ai.stopping" : "content.ai.answering",
         answer: String(answer || ""), onCancel: stopping ? null : onCancel });
     }
 
-    function interrupted(answer, message, onRetry) {
-      render({ state: "interrupted", message: message || "回答中断，未保存。", answer: String(answer || ""), onRetry });
+    function interrupted(answer, messageKey, onRetry) {
+      render({ state: "interrupted", messageKey: messageKey || "content.ai.interrupted", answer: String(answer || ""), onRetry });
     }
 
     function success(result = {}) {
@@ -42,10 +44,10 @@
       });
     }
 
-    function error(message, onRetry) {
+    function error(messageKey, onRetry) {
       render({
         state: "error",
-        message: message || "AI 详解暂不可用。",
+        messageKey: messageKey || "content.ai.unavailable",
         onRetry
       });
     }
@@ -53,7 +55,7 @@
     function cancelled(onRetry) {
       render({
         state: "cancelled",
-        message: "AI 详解已取消。",
+        messageKey: "content.ai.cancelled",
         onRetry
       });
     }
@@ -69,7 +71,7 @@
 
     function render({
       state = "idle",
-      message = "",
+      messageKey = "",
       generatedMeaning = "",
       explanation = "",
       answer = "",
@@ -92,14 +94,14 @@
       header.className = "tf-selection-ai-header";
       const label = document.createElement("div");
       label.className = "tf-selection-generated-label";
-      label.textContent = "AI 详解";
+      locale.bindText(label, "content.ai.label");
       header.appendChild(label);
 
       if (state === "success") {
         const badge = document.createElement("span");
         badge.className = "tf-selection-result-badge";
         badge.dataset.kind = "ai";
-        badge.textContent = "AI 辅助";
+        locale.bindText(badge, "content.ai.badge");
         header.appendChild(badge);
       }
       target.appendChild(header);
@@ -131,27 +133,33 @@
       const statusNode = document.createElement("div");
       statusNode.className = "tf-selection-ai-status";
       statusNode.dataset.kind = state;
-      statusNode.textContent = message;
+      if (messageKey) locale.bindText(statusNode, messageKey);
       target.appendChild(statusNode);
 
       if (typeof onAction === "function" || typeof onRetry === "function" || typeof onCancel === "function") {
         const actions = document.createElement("div");
         actions.className = "tf-selection-ai-actions";
         if (typeof onAction === "function") {
-          for (const [action, text, label] of [["understand", "理解", "解释这里是什么意思"], ["analyze", "分析", "拆解这里的表达"], ["usage", "用法", "说明这里的用法"]]) {
-            const actionButton = button({ text, label });
+          for (const [action, textKey, labelKey] of [["understand", "content.ai.understand", "content.ai.understandAria"], ["analyze", "content.ai.analyze", "content.ai.analyzeAria"], ["usage", "content.ai.usage", "content.ai.usageAria"]]) {
+            const actionButton = button({ text: locale.t(textKey), label: locale.t(labelKey) });
+            locale.bindText(actionButton, textKey);
+            locale.bindAttribute(actionButton, "aria-label", labelKey);
             actionButton.dataset.action = action;
             actionButton.addEventListener("click", event => onAction(event, action));
             actions.appendChild(actionButton);
           }
         }
         if (typeof onRetry === "function") {
-          const retry = button({ text: "重试", label: "重新请求 AI 详解" });
+          const retry = button({ text: locale.t("content.common.retry"), label: locale.t("content.ai.retryAria") });
+          locale.bindText(retry, "content.common.retry");
+          locale.bindAttribute(retry, "aria-label", "content.ai.retryAria");
           retry.addEventListener("click", (event) => onRetry(event));
           actions.appendChild(retry);
         }
         if (typeof onCancel === "function") {
-          const cancel = button({ text: state === "streaming" ? "停止" : "取消", label: state === "streaming" ? "停止 AI 回答" : "取消 AI 详解" });
+          const cancel = button({ text: locale.t(state === "streaming" ? "content.common.stop" : "content.common.cancel"), label: locale.t(state === "streaming" ? "content.ai.stopAria" : "content.ai.cancelAria") });
+          locale.bindText(cancel, state === "streaming" ? "content.common.stop" : "content.common.cancel");
+          locale.bindAttribute(cancel, "aria-label", state === "streaming" ? "content.ai.stopAria" : "content.ai.cancelAria");
           cancel.addEventListener("click", () => onCancel());
           actions.appendChild(cancel);
         }

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 const RESOLVER = new URL("../src/content/selection/rich-resource-resolver.js", import.meta.url);
 
@@ -9,6 +10,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
   const calls = [];
   const pending = [];
   const app = { modules: {
+    contentI18n: createContentI18nStub(),
     runtime: {
       messages: { background: {
         RICH_MDD_RESOURCE: "RICH_MDD_RESOURCE",

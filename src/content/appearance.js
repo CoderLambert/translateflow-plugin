@@ -1,6 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || app.modules.appearance) return;
+  if (!app?.modules.runtime || !app?.modules.contentI18n || app.modules.appearance) return;
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
   const appliedVariables = new Set();
@@ -14,7 +14,7 @@
       pageUrl: location.href
     });
     if (version !== refreshVersion) return current;
-    if (!response?.ok) throw new Error(response?.error || "读取阅读外观失败。");
+    if (!response?.ok) throw new Error(app.modules.contentI18n.t("content.page.appearanceReadFailed"));
 
     applyContext(response.context || {});
     return current;

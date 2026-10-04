@@ -1,14 +1,15 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
+  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
+  const locale = app.modules.contentI18n;
   let generation = 0, controller = null, root = null, panel = null, markerNodes = [], ranges = new Map(), observer = null, timer = 0, port = null;
   async function send(method, body = {}) {
     const request = C.validateReadingRequest({ protocolVersion: C.READING_PROTOCOL_VERSION, method, ...body });
     const raw = await app.modules.runtime.sendRuntimeMessage(request), response = C.validateReadingResponse(method, raw, "content", body.limit);
     if (!response.ok) throw Object.assign(new Error(response.error.code), { code: response.error.code }); return response.data;
   }
-  function clearUi() { root?.remove(); root = panel = null; for (const node of markerNodes) node.remove(); markerNodes = []; ranges.clear(); }
+  function clearUi() { locale.unbindTree(root); root?.remove(); root = panel = null; for (const node of markerNodes) { locale.unbindTree(node); node.remove(); } markerNodes = []; ranges.clear(); }
   function cleanup() { generation++; controller?.abort(); controller = null; observer?.disconnect(); observer = null; clearTimeout(timer); timer = 0;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
   function rectFor(range) { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0) || null; }
@@ -22,20 +23,20 @@
   async function openRecord(recordId) { try { await send(M.OPEN_LEARNING_CENTER, { recordId }); } catch {} }
   function render(items, locations, pageRecordCount) {
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); root = document.createElement("div"); root.className = "tf-reading-page-history";
-    const toggle = button({ text: `本页历史 ${pageRecordCount}`, className: "tf-reading-page-toggle" }); toggle.setAttribute("aria-expanded", "false");
-    panel = surface({ className: "tf-reading-page-panel", role: "dialog" }); panel.hidden = true; panel.setAttribute("aria-label", "TranslateFlow 本页阅读历史");
-    const header = document.createElement("header"), title = document.createElement("strong"), close = button({ text: "×", label: "关闭本页历史", icon: true });
-    title.textContent = pageRecordCount > items.length ? `本页历史（定位前 ${items.length} 条）` : "本页历史"; close.addEventListener("click", hidePanel); header.append(title, close); panel.appendChild(header);
+    const toggle = button({ text: locale.t("content.reading.pageCount", { count: pageRecordCount }), className: "tf-reading-page-toggle" }); locale.bindText(toggle, "content.reading.pageCount", { count: pageRecordCount }); toggle.setAttribute("aria-expanded", "false");
+    panel = surface({ className: "tf-reading-page-panel", role: "dialog" }); panel.hidden = true; locale.bindAttribute(panel, "aria-label", "content.reading.pageAria");
+    const header = document.createElement("header"), title = document.createElement("strong"), close = button({ text: "×", label: locale.t("content.reading.closePage"), icon: true });
+    locale.bindText(title, pageRecordCount > items.length ? "content.reading.pageLimited" : "content.reading.pageTitle", pageRecordCount > items.length ? { count: items.length } : {}); locale.bindAttribute(close, "aria-label", "content.reading.closePage"); close.addEventListener("click", hidePanel); header.append(title, close); panel.appendChild(header);
     for (const item of items) {
       const location = locations.get(item.recordId), row = document.createElement("article"); row.dataset.recordId = item.recordId;
       const locate = button({ text: item.anchor.quote.exact, className: "tf-reading-page-item" }); locate.dataset.recordId = item.recordId;
-      const state = document.createElement("span"); state.textContent = ({ resolved: "已定位", ambiguous: "多处匹配", missing: "未找到", "not-loaded": "未完全加载", unsupported: "不支持" })[location.status] || "不可用";
+      const state = document.createElement("span"); locale.bindText(state, ({ resolved: "content.reading.statusResolved", ambiguous: "content.reading.statusAmbiguous", missing: "content.reading.statusMissing", "not-loaded": "content.reading.statusNotLoaded", unsupported: "content.reading.statusUnsupported" })[location.status] || "content.reading.statusUnavailable");
       locate.addEventListener("click", () => { const range = ranges.get(item.recordId); if (range?.startContainer.isConnected) { const element = range.startContainer.parentElement;
         element?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } });
-      const open = button({ text: "查看记录" }); open.addEventListener("click", event => { if (event.isTrusted) void openRecord(item.recordId); });
+      const open = button({ text: locale.t("content.reading.viewRecord") }); locale.bindText(open, "content.reading.viewRecord"); open.addEventListener("click", event => { if (event.isTrusted) void openRecord(item.recordId); });
       row.append(locate, state, open); panel.appendChild(row);
       if (location.status === "resolved") {
-        ranges.set(item.recordId, location.range); const marker = button({ text: "•", label: `历史：${item.anchor.quote.exact}`, className: "tf-reading-page-marker" }); marker.dataset.recordId = item.recordId;
+        ranges.set(item.recordId, location.range); const marker = button({ text: "•", label: locale.t("content.reading.marker", { quote: item.anchor.quote.exact }), className: "tf-reading-page-marker" }); locale.bindAttribute(marker, "aria-label", "content.reading.marker", { quote: item.anchor.quote.exact }); marker.dataset.recordId = item.recordId;
         marker.addEventListener("click", () => showPanel(item.recordId)); markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
       }
     }
