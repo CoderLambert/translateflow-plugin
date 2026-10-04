@@ -1,5 +1,7 @@
 # Reading：明确查询、真实保存与事务历史
 
+> 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：详情 ReturnToPage 已接可信按钮→后台创建新标签/短期能力→Content消费最小摘要→精确定位/临时卡/准确记录deep-link，详见[返回原文完整链](reading-return-to-page.md)与[逐文件](../modules/reading-return-to-page.md)。普通URL链接不等于handoff。当前源码还含site markers，#239/#240集成状态和隐私风险明确分开；下面历史固定版本中“尚未接定位/返回”的表述不再代表这个新增切片，旧Release A证据不外推到它。
+
 
 [首页](../README.md) · [逐文件说明](../modules/reading-records.md) · [已有划词来源链](selection-and-dictionary.md)
 
@@ -173,3 +175,4 @@ Export JSON → App唯一AbortController → exportRecords → EXPORT_START/NEXT
 大语料另用canonical seed，真实UI导出1,439条/67,092,027B/256块，每行来源/序列/字节均由测试断言；不能把seed当用户创建，也不能把下载事件当磁盘落盘。worker停止/页面退出使未完成导出不可续传且无残缺文件，容量10k删一条恢复。见[完整测试、输入、取消与证据章](../modules/reading-release-a.md)。
 
 已有归档为8a972fc完整validate、215759f全E2E148/1/6、d6cf346唯一失败定向修复PASS，汇总149/0/6并非新全量155。#286已合入345d630且tree等同PRhead；归档中的ready_to_sync/未合入是历史阶段文字。此导读不运行测试、不改任务状态、不作新发布认定；详细限制和可核验身份见[证据链](../modules/reading-release-a.md#evidence-chain)。
+

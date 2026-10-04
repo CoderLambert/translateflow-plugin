@@ -175,3 +175,17 @@ Reading完整链：授权与来源快照→后台v2会话/消息→真实reposit
 - 218 个完整解释、516 个待解释、36 个待复核；局部正文 130 个（待解释中 105、待复核中 25），不计完整覆盖。
 - 明确旧TAB driver/harness.inject的下游证据；新POPUP直接CDP发消息未点可见按钮/未消费ACK，新页面spec为HTTP mock非真实HTTPS。旧升级注册期望冲突、商店重确认/恢复与全站observer成本保留限制，不宣称运行FAIL。
 - 仅静态文档身份、锚点、覆盖与范围校对；安装、构建、测试、浏览器、Oxford与发布全部NOT_RUN。未改代码/权限/任务状态，未合并。
+
+
+## 2026-10-04 UTC 返回原文与 classic 投影切片
+
+- 固定main `33ab3ea2a38ce591b622ba06739344858d7da403`，文档起点a16589d；在同一docs分支仅更新docs/code。相对c250ce9新增32、变化33、删除0；完整802条blob清单。
+- [完整流程](features/reading-return-to-page.md)与[20个逐文件说明](modules/reading-return-to-page.md)覆盖可信ReturnToPage、tab/nativeDocument/document/navigation绑定、60s一次性摘要交接、exact/context/digest重新定位、ambiguous/missing/预算/重试/关闭与准确deep link，以及两个owned entry生成classic IIFE和rich-details前序。同时解释main已有page-markers源码，未声称#239/#240集成或发布通过。
+- 明确记录历史quote在定位前进入open Shadow的静态隐私风险；trusted入口不让目标站点DOM成为秘密容器。没有修业务代码。session容量、重试/abort和overlay命中只写源码事实及待验证，未伪造运行复现；resolver预算中已有一候选的resolved优先级也未包装为穷尽全页证明。
+- 802 个文件全部登记；219 个完整解释、529 个待解释、54 个待复核；局部正文 140 个（待解释中 106、待复核中 34），不计完整覆盖。 未变旧文件保留原正文身份，变更且未完整复核者转/留待复核；局部正文不计完整。
+- 同步README、架构、启动、Reading/学习中心与构建交叉链接；没有重复完成整个旧章节。task238的旧候选PASS只按归档引用，未变为当前main运行结论；Oxford classic兼容另有方案，不由Reading投影证明。
+- 仅执行文档静态路径/固定blob/内部链接与清单校对，以及发布后远端字节/分支检查；安装、生成、构建、业务测试、浏览器、Oxford、集成、商店与发布全部NOT_RUN。
+
+### 后续缺口
+
+继续解释未覆盖的相关测试/再访生命周期与当前待复核队列；不把20文件切片视作全仓完成。#239持久marker/#240集成和独立安全修复属于各自授权，本文不改变它们的状态。

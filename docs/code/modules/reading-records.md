@@ -1,5 +1,7 @@
 # Reading：逐文件说明
 
+> 2026-10-04 返回原文增量：main `33ab3ea2a38ce591b622ba06739344858d7da403` 的 runtime 新事件桥、handoffs/handoff-target、Content handoff与定位，见[返回原文逐文件章](reading-return-to-page.md)。access/service/repository/shared DTO等只做本切片局部复核，清单保留待复核；本页原固定版本完整说明不被当作最新全量复读。
+
 [功能完整链与交付边界](../features/reading-records.md) · [首页](../README.md) · [已解释的来源捕获](selection.md#file-source-snapshot)
 
 2026-10-03 当前入口固定main `c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`，access/service本轮全文复读并替换下文；其余历史切片保留原身份。此前清单固定 `b606cfd556792d9764d0b15461b7a142fcd99575`；本轮完整复读 runtime/access/constants，新增实际页面见[学习中心模块](learning-center.md)。以下保存切片原说明固定 `d5246cae6469e4a876fc122b229a2e0ddf115709`。本轮完整复读并解释新增 `record-access.js`、`record-client.js`、`record-status.js`，以及原有 runtime/access/service/constants 四文件；Selection 的结果转换、实际 rich 展示摘要、翻译与 AI provenance 见[相邻模块](selection.md)。
@@ -433,4 +435,5 @@ reading-access-v1/README.md保留#232时期“repository absent”的旧开头�
 - [#234 state](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/state.json) 记录 completed、PR #279、mergeHead 19edb542；[acceptance](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/tasks/234/acceptance.json) 记录 candidate 72fc8cdd 的 validate/build/E2E PASS 与 140 PASS/7 SKIPPED。这是既有受限证据，保留 synthetic consent、真实付费 Provider/原生 Windows/macOS NOT_RUN 的限制；不称本轮或当前 d5246ca 已重新测试通过。
 
 上述测试已读完源码，但本章未对每个 helper/fixture 作独立完整章节，所以测试文件仍局部覆盖；本轮所有命令与浏览器 **NOT_RUN**。
+
 

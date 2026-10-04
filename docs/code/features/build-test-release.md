@@ -1,5 +1,7 @@
 # 构建、实际产物与测试到安装升级
 
+> 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：新增 reading-content-classic.mjs 从两个owned entry生成 reading-source.js/reading-record.js（minified、自包含IIFE、chrome102编译目标），check按字节防漂移。详见[三个脚本、测试与rich-details前序](../modules/reading-return-to-page.md#classic-order)及[实际用户返回链](reading-return-to-page.md)。raw bridge依然按CONTENT_SCRIPT_FILES装配，不把这些模块误写为运行时ESM；生成输出不能手改，本轮没有运行生成/构建。其余本章保留既有固定版本。
+
 > 已将构建配置/audit/固定路径/相关测试和操作规范全文复核到 b606cfd。下文未变实现保留旧固定来源；大型升级 spec 等尚未全文复核的局部说明继续明确标为历史边界。
 
 [逐文件说明](../modules/build-test-release.md) · [启动链](extension-startup.md) · [首页](../README.md)
@@ -112,5 +114,6 @@ prepareExtensionTestCopy 完成精确复制后才作受限测试适配：
 7. 用户体验改动：类型/Node 只是一层；补实际产物浏览器断言，真实权限弹窗/真实网页须单列证据。
 
 本轮只读源码与修订文档，没有运行以上步骤。大型边界分析器、mock server、专项认证脚本/来源链及未展开的产品 spec 仍保留局部覆盖。读历史兼容报告前参照[规范与证据身份](../modules/build-test-release.md#file-wxt-compat-doc)，日常命令/隔离参照[E2E 规范详解](../modules/build-test-release.md#file-e2e-doc)。
+
 
 

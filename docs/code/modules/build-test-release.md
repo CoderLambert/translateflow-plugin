@@ -1,5 +1,7 @@
 # 构建与测试：逐文件说明
 
+> 2026-10-04 返回原文增量：main `33ab3ea2a38ce591b622ba06739344858d7da403` 的Reading生成增量见[两个entry→classic IIFE与顺序](reading-return-to-page.md#classic-order)和[防漂移测试](reading-return-to-page.md#test-classic)。它是WXT raw bridge之前的owned源码投影；本页原构建解释仍按其固定身份保留，未重复计完整覆盖或执行生成器。
+
 > 本轮将构建配置、审计、固定资源合同、两个回归测试、package 路由及两份规范全文复核到 b606cfd；旧引用仅在对应 blob 未变时沿用。React 学习中心产品行为见原产品章，不重复计数。
 
 [完整功能链](../features/build-test-release.md) · [首页](../README.md)
@@ -462,3 +464,4 @@ blob `573ad86dfdb5940be644248f96743701a470f264`；[完整源码 L1–L77](https:
 冻结 smoke 是临时词典/localhost适配后的有限流程；其 extra-permission/extra-file/missing-worker、缺词典 gate 失败与保留原包等负例不等于完整产品认证。路径修复有 win32算法/POSIX symlink 证据，没有Windows磁盘实测；Chrome102、真实YouTube、完整当时WXT E2E、同ID升级、真实词典/付费Provider等未运行项仍属于当时范围。后续 #248/#235 是否交付应看当前源码与各自证据，不能从旧 NOT RUN 推断今天仍未实现，也不能跨候选挪用 PASS。修改构建说明时保留这些原绑定，仅在导读解释变化，不在本任务改写历史验收。
 
 当前c250ce9入口增量仅全文复核wxt.config/audit/wxt-assets测试；升级helper/spec与大型permission消费者保持原覆盖级别。旧升级比较器保留动态注册的期望与新清理实现冲突，详见[入口与升级边界](real-entry.md#limitations)，未执行不宣称实际FAIL。
+

@@ -13,8 +13,8 @@
 - 唯一写入分支：`docs/code-walkthrough`。
 - 唯一文档目录：`docs/code/`。
 - 读取目标：每轮最新 `main`；文档分支上的代码可能落后，不能把它误当最新 main。
-- 当前清单基线：`c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`。本轮完整复读并解释13个真实启动/POPUP/权限关联文件，修正旧optional-only/动态注册和入口证据外推；其余保留原固定身份。
-- 当前状态：770 个文件全部登记；218 个完整解释、516 个待解释、36 个待复核；局部正文 130 个（待解释中 105、待复核中 25），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
+- 当前清单基线：`33ab3ea2a38ce591b622ba06739344858d7da403`。本轮完整解释20个返回原文/临时定位/classic投影文件，其余变更仅更新准确blob与待复核状态；既有未变正文保留原固定身份。
+- 当前状态：802 个文件全部登记；219 个完整解释、529 个待解释、54 个待复核；局部正文 140 个（待解释中 106、待复核中 34），不计完整覆盖。运行验证 **NOT_RUN**，全仓逐文件导读仍未完成。
 
 
 ## 已交付导航与推荐阅读顺序
@@ -27,16 +27,16 @@
 6. [网页翻译、缓存恢复与重访](features/page-translation.md)及[15个文件详解](modules/page-translation-cache.md)。
 7. [YouTube字幕完整流程](features/youtube-subtitles.md)及[11个文件详解](modules/youtube-subtitles.md)。
 8. [Provider与设置完整流程](features/providers-and-settings.md)及[11个文件详解](modules/providers-and-settings.md)。
-9. [Reading真实查询→显式保存→实际学习中心](features/reading-records.md)及[后台/保存详解](modules/reading-records.md)、[16个React/测试/规范文件](modules/learning-center.md)、[#286真实用户验收与八个文件](modules/reading-release-a.md)。
+9. [返回原文：一次性交接→定位/临时卡→classic投影](features/reading-return-to-page.md)及[20个逐文件说明](modules/reading-return-to-page.md)；先读[Reading真实查询→显式保存→实际学习中心](features/reading-records.md)及[后台/保存详解](modules/reading-records.md)、[16个React/测试/规范文件](modules/learning-center.md)、[#286真实用户验收与八个文件](modules/reading-release-a.md)。
 10. [构建→实际产物→测试→安装升级](features/build-test-release.md)及[逐文件详解](modules/build-test-release.md)：含最终 writeBundle、React 独占闭包、平台预算、三页面映射和历史验收辨读。
 11. [本地任务合同→冻结→验收→主Agent自查→同步](features/local-task-acceptance.md)及[逐文件说明](modules/local-task-acceptance.md)。
 12. [全仓文件地图](repository-map.md)：按目录查文件、跳源码和解释。
-13. [覆盖清单](coverage.json)：770个文件的固定blob、状态和正文位置。
+13. [覆盖清单](coverage.json)：802个文件的固定blob、状态和正文位置。
 14. [更新记录](changes.md)：本轮证据与下一步。
 
 当前已有启动、划词、词典导入/安全展示/存储内部、网页翻译/缓存、字幕、Provider/设置、Reading 与构建/本地验收调用链。Reading production collector 与显式保存已在 main 接通；实际React学习中心已接上列表/详情/过滤、管理、导出与错误恢复，见[用户操作到源码](features/reading-records.md#learning-center)；#286现已整合无seed真实创建/完整重启、近容量UI导出与原生quota恢复；[149项复用汇总](modules/reading-release-a.md#evidence-chain)不是新全量运行。构建和 validate 默认 WXT 输出 dist/extension，而 E2E 默认仍消费 .output/chrome-mv3，测试 dist 必须显式指定。主 Agent 自查取代强制模型独审，真实外部门槛仍保留。
 
-这轮完成普通网页→Selection与原生Popup→Reading access的启动切片；旧Release A下游证据保留，未冒充真实工具栏按钮、HTTPS网站、商店升级或全站性能验证。旧升级helper的注册保留期望与当前清理实现冲突，见[限制](modules/real-entry.md#limitations)。未追完整个待复核队列。
+本轮补全学习中心可信返回→tab/document绑定的一次性交接→exact/ambiguous/missing/重试与关闭→临时卡，以及Reading自有源码生成classic IIFE与加载次序。持久marker源码已出现，但#239归档与#240集成不由本轮判定PASS。当前卡片在定位前将历史quote写入open Shadow的隐私风险见[明确边界](features/reading-return-to-page.md#5-必须保留的隐私警告)。没有修复业务代码或追完整个待复核队列；此前真实启动的证据限制仍见[限制](modules/real-entry.md#limitations)。
 
 
 ## 建议目录
@@ -130,5 +130,6 @@ docs/code/
 - 现存测试数量和某个旧PR通过，不等于最新源码全部行为已验收。
 
 来源：[AGENTS.md](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/AGENTS.md)、[架构文档](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/docs/ARCHITECTURE.md)、[贡献与验收流程](https://github.com/CoderLambert/translateflow-plugin/blob/d5246cae6469e4a876fc122b229a2e0ddf115709/CONTRIBUTING.md)。
+
 
 

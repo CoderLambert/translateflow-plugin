@@ -1,5 +1,7 @@
 # 学习中心：从页面到仓库的逐文件说明
 
+> 2026-10-04 返回原文增量：main `33ab3ea2a38ce591b622ba06739344858d7da403` 的 Detail、client/reading 与新 ReturnToPage 已在[返回原文逐文件章](reading-return-to-page.md)全文复核，新增可信返回、站点marker UI与消息；本页相应旧版本说明作为历史来源保留，其余组件不冒充本轮复核。完整用户链见[返回原文](../features/reading-return-to-page.md)。
+
 [Reading 完整产品链](../features/reading-records.md#learning-center) · [后台与保存模块](reading-records.md) · [首页](../README.md)
 
 本章原16文件正文固定 main `b606cfd556792d9764d0b15461b7a142fcd99575`；#286后仅 App/useLibrary 全文复读至 `345d630c0f0e0040f39fd74b8ed0457e3d193fd4`，其余未变blob保留原来源。React 仅用于学习中心；本章完整解释 16 个新增文件。本章对旧入口和构建依赖仅解释相关增量；后续构建切片已在[构建逐文件章](build-test-release.md)全文复核配置/audit/runtime-assets及相应测试，入口等剩余项以coverage为准。安装、构建、测试、浏览器及下载均 **NOT_RUN**；归档 PASS 是已有任务证据，不是本轮执行。
@@ -195,3 +197,4 @@ controlled promise 明确排列竞态，断言实际 DOM 与 method，不是固�
 #286新增不seed真实创建→完整browser/profile重启→断网且无词典/Provider配置的历史故事、实际UI近64MiB seeded导出、worker/页面中断、原生extension-origin quota拒写和0 Provider显式重试，以及Escape/焦点修复。已有证据应按[候选与复用链](reading-release-a.md#evidence-chain)解读：149 PASS为148旧PASS加唯一失败的修复项，不是新跑155项；原日志/产物本轮未独立取得。归档ready_to_sync/未合入描述属于候选阶段，不能覆盖已核实#286合入main的事实；不据此擅自补状态或发布。
 
 [历史#235验收](https://github.com/CoderLambert/translateflow-plugin/blob/b606cfd556792d9764d0b15461b7a142fcd99575/docs/tasks/235/acceptance.json) · [当前Release A逐文件证据](reading-release-a.md)
+

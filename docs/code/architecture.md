@@ -1,5 +1,7 @@
 # 运行时总览与阅读地图
 
+> 2026-10-04 返回原文增量：本轮 main `33ab3ea2a38ce591b622ba06739344858d7da403` 的新增路径是学习中心可信返回→后台一次性tab/document能力→Content重新核对原文→临时卡。详见[完整流程](features/reading-return-to-page.md)与[逐文件/状态所有者](modules/reading-return-to-page.md)。Reading源码现在由两个owned entry投影为classic IIFE，运行加载仍非ESM；其余本页旧章节保留各自固定身份，不当作本轮全量复核。open Shadow内显示历史quote的现有风险见新章，样式隔离不等于保密。
+
 
 [返回导读首页](README.md) · [完整文件清单](repository-map.md) · [启动调用链](features/extension-startup.md) · [启动逐文件说明](modules/startup.md) · [划词查询链](features/selection-and-dictionary.md)
 
@@ -132,3 +134,4 @@ Hook 只记录有限事件，不改变状态；重叠跨度不能相加成有效
 ## 当前真实入口与权限边界
 
 #287改为required普通HTTP/HTTPS访问和静态Content投影；auto-sites只持有显式站点模式并清旧动态注册。Popup正文学习中心按钮经v2固定OPEN、唯一原生POPUP校验，开页后容许Popup正常关闭；不授予entry读库权力。完整[启动调用链](features/extension-startup.md)与[逐文件/测试输入](modules/real-entry.md)区分原生POPUP、普通TAB driver、新HTTP fixture和显式inject。旧升级动态注册期望、旧用户重确认与observer成本仍有核验缺口，未复现/未运行不写成FAIL。
+

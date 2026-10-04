@@ -1,5 +1,7 @@
 # 扩展启动：从浏览器入口到可交互页面
 
+> 2026-10-04 返回原文增量：增量到 main `33ab3ea2a38ce591b622ba06739344858d7da403`：Reading source-snapshot/resolver 被编入 reading-source.js，record-access/client/handoff/card/markers/status/controller 被编入 reading-record.js；CONTENT_SCRIPT_FILES 不再逐个列这些owned源，rich-details 必须先于 reading-record。见[准确投影与顺序](../modules/reading-return-to-page.md#classic-order)。启动后注册文档可能消费学习中心发起的一次性交接，[完整返回链](reading-return-to-page.md)接续本文。下面未改段落仍绑定其原版本，不把旧逐个script列举当当前打包清单。
+
 导航：[阅读入口](../README.md) · [架构总览](../architecture.md) · [仓库地图](../repository-map.md) · [startup 逐文件说明](../modules/startup.md)
 
 > 当前入口基线：`c250ce91aff7eb84d1ad8acbe1d4155ad244dc24`。2026-10-03 完整复核当前 Manifest投影、站点模式、Reading access/service，并修正真实入口链。其余未变入口沿用旧固定源码，coverage区分本轮全文/历史相同blob/局部；运行统一 **NOT_RUN**。
@@ -172,3 +174,4 @@ Content 的 handler 则逐 case 决定同步响应/返回 false，或 Promise �
 - 旧升级helper仍要求保留动态注册，和当前清理实现存在静态合同冲突；required权限旧用户商店升级重确认/恢复、全站observer成本未实测，见[限制](../modules/real-entry.md#limitations)。
 
 全部命令/安装/构建/浏览器验证 **NOT_RUN**。本章解释入口可达性与安全边界，不认证全网站、商店升级、付费Provider或Oxford输入。
+
