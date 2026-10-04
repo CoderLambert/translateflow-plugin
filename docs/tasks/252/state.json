@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "252",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": ["251"],
-  "branch": "refactor/252-react-dictionaries",
-  "worktree": ".worktrees/issue-252",
+  "branch": "main",
+  "worktree": null,
   "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0",
-  "mergeHead": null,
+  "mergeHead": "29d4c2e6f08530d03352c06653db43942b88c2cc",
   "validationCommands": [
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
@@ -15,5 +15,7 @@
     ["npm", "run", "test:e2e", "--", "e2e/settings-ia.spec.mjs", "e2e/dictionary-library-v2-product.spec.mjs", "e2e/rich-mdict-product.spec.mjs", "e2e/mdd-resources.spec.mjs", "e2e/selection-rich-lookup-cancel.spec.mjs", "e2e/translateflow.spec.mjs"]
   ],
   "artifactRequired": true,
-  "nextAction": "推送准确候选与证据元数据，创建 PR，并在远端 head/保护要求核对通过后执行 squash merge。"
+  "syncHead": "a7c0170002296d9f14f54645770cb25120068bdd",
+  "pullRequest": 299,
+  "nextAction": "已合入 main；任务 253 可完成当前 UI 的 en/zh_CN 收口。"
 }
