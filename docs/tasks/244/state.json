@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "244",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["240", "243"],
+  "branch": "test/244-reading-abcd",
+  "worktree": ".worktrees/issue-244",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/reading-loop-release-a.spec.mjs", "e2e/reading-handoff.spec.mjs", "e2e/reading-return-location.spec.mjs", "e2e/reading-page-markers.spec.mjs", "e2e/selection-assistant-ui.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "在同一真实 WXT 包上执行 A–D 组合 Chromium 验收并更新最终接受文档。"
+}

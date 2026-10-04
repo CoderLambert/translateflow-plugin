@@ -146,13 +146,23 @@
     },
     {
       "task": "243",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "242",
         "235"
       ],
-      "branch": "feat/243-assistant-ui",
+      "branch": "main",
       "candidateHead": "0d34d357777ad378cd94a5ec090a8a902b27cd83"
+    },
+    {
+      "task": "244",
+      "status": "working",
+      "dependencies": [
+        "240",
+        "243"
+      ],
+      "branch": "test/244-reading-abcd",
+      "candidateHead": null
     },
     {
       "task": "245",

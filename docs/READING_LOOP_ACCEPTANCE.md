@@ -1,45 +1,50 @@
-# Reading Loop Release A acceptance
+# Reading Loop A–D acceptance
 
-Task [236](tasks/236/task.md) validates the shipped #234/#235 product on WXT `learning-center.html`. #235 is merged through PR #285 at `b606cfd556792d9764d0b15461b7a142fcd99575`; its main tree equals the locally validated sync tree. Exact Release A candidate, package fingerprint, command results and raw-evidence hashes belong to [236 acceptance.json](tasks/236/acceptance.json).
+任务 [244](tasks/244/task.md) 在当前 main 的同一个真实 WXT production artifact 上验证完整 Reading Loop：
+
+```text
+Read → Lookup → Understand (optional) → Remember → Return
+```
+
+任务 236、240、243 保留各阶段的准确候选、原始失败与修复证据；本文件只汇总最终产品结论。任务 244 的准确 candidate、命令、耗时、日志 hash 与 package fingerprint 以 [acceptance.json](tasks/244/acceptance.json) 为准。
 
 ## Decision
 
-**Local Release A candidate validation PASS; remote merge/Release A final recognition pending.** The previous physical extension-origin quota gap is resolved by reopening the complete browser/profile before applying the override. The renderer/worker-only restart did not reliably clear IndexedDB's bucket-space allowance cache. The Chromium 153.0.8010.12 implementation uses that allowance before asking the quota manager again; the source and controlled restart comparison support this diagnosis, without claiming direct observation of the private cache value.
+**READING_LOOP_ABCD_PASS（本地候选）**。
 
-The corrected native transaction refuses the same 512 KiB incompressible input with `QuotaExceededError`. A second native-quota stage runs the shipped trusted Selection collector and compiled Reading backend: actual `reading.begin-query` returns `READING_QUOTA`, the result card truthfully says not-saved, the old record remains, and restoring space plus explicit retry saves once with zero Provider calls. No `DOMException`/IDB prototype is injected in this native case. Existing native localhost and injected-boundary cases stay separately labelled.
-
-The earlier full-run FAIL is retained under its original head/log. Since only this quota case and acceptance documentation changed, the unchanged production package and other PASS results are reused; the failed case is rerun at the new exact candidate. Consolidated coverage is 149 PASS / 0 unresolved FAIL / 6 SKIPPED, derived from the prior 148-PASS full run plus its passing replacement, **not a claim of a new complete 155-case run**. `READING_LOOP_A_PASS` and completed status await actual main integration and the project's final acceptance boundary.
+同一 `.output/chrome-mv3` 包通过 A–D 组合 Chromium 验收：WXT 155 files / 1,815,834 bytes；组合场景 10/10 PASS。生产包未注入词典 fixture、localhost 权限或测试脚本；E2E 先审计生产包，再复制到临时目录，只为合成站点加入受控 fixture/权限。该结论不等于商店发布，也不扩展到其它浏览器、真实付费模型质量或未授权产品范围。
 
 ## Evidence matrix
 
-| Scope | Evidence and status |
-| --- | --- |
-| Real creation and restart | PASS in targeted actual-product story: unauthorised local lookup → fixed LC → trusted Enable → current-card explicit save; new-query automatic save, local hit/no-hit, explicit translation, cache hit and completed Explain. A full browser/profile restart preserves immutable snapshots/artifacts and lookup counts. This story uses no database seed. |
-| Paid/upload boundary | PASS with local deterministic mock only: 0 Provider requests for local dictionary/no-hit/history; 1 explicit translation + 1 explicit Explain; translation requery uses cache. Removing test dictionary assets and Provider configuration, then going offline, does not prevent historical read or trigger resources. Real paid model quality NOT RUN. |
-| Consent/refusal/native access | Existing actual Selection/Reading authority cases cover Not now, closed/changed/navigated card, trusted collector, cross-page/old document/private/sensitive/excluded and forbidden global authorization. They are separately labelled when native authority uses a synthetic repository. |
-| Storage/commit/races | Existing native tests cover idempotent artifacts, late Rich, two tabs, lost ACK, transaction abort, pause/delete/clear ordering, receipts and exact byte billing. These source-probe cases are not falsely presented as React creation. |
-| Lists/detail | Product uses 30-item backend summaries, no row get-record requests. #235 covers recent/page/search, distinct contexts, invalid/deleted deep links and delayed-read discard. #236 real restart opens saved full answers/source, while a labelled native-row corpus exercises capacity. |
-| Near-budget export | Actual compiled product UI exports >62 MiB canonical rows through one sequential next at a time. Every full response is checked against 1 MiB, contiguous sequence, exact UTF-8 chunk/file totals and all downloaded record/source/artifact references. Unicode, quotes, slash escaping and newlines round-trip. This large-input corpus is explicitly seeded and supplements real creation. |
-| Export termination | Actual product worker is stopped with CDP while a delivered chunk is held. Restricted port disconnect aborts the UI export; reconnect restores reading; no partial download occurs. Page exit revokes the owned export. #235 covers user cancel, cross-tab content changes and successful finish/cancel ordering. |
-| Capacity and delete | Canonical 10,000-row corpus produces the real capacity message. Actual UI deletion restores 9,999 rows without changing enabled consent. Existing native probes verify cache/OPFS/exclusion separation and exact bytes/orphans. |
-| Physical quota | **PASS for extension origin after full browser/profile restart**: 512 KiB random native transaction aborts with `QuotaExceededError`; shipped collector/compiled Reading also returns actual `READING_QUOTA`, retains old rows and succeeds on explicit retry after restoring quota, with 0 Provider calls. Old read/export/delete remains usable. Earlier cache-affected FAIL, localhost engine and injected-boundary evidence keep their separate original labels. |
-| Safety and interaction | Browser test verifies hostile saved script/image strings remain text, no remote image requests, Escape/focus return, browser composition-Enter guard, zh_CN/en snapshot invariance, dark/reduced-motion and CSS 200% zoom. Actual desktop IME and native browser zoom UI NOT RUN. |
-| Real DOM performance | Ten samples use native `performance.now` around the shipped synchronous capture and completion promise on an ordinary fixture; normal input resolves position. A 1.1-million-character node has bounded context/fallback; dynamic replacement recovers. Raw samples, input size and measured timings are retained; simulated-clock slice tests are labelled separately. |
+| 阶段 | 用户可观察结果 | 证据与状态 |
+| --- | --- | --- |
+| A — Remember | 明确查询后可选择开启本机记录；真实词义、译文和已完成问答在学习中心可搜索、按页查看、导出和删除 | PASS。`reading-loop-release-a.spec.mjs` 覆盖未授权查询→固定学习中心授权→当前卡显式保存、新查询自动保存、完整浏览器/profile 重启后离线回顾、暂停/排除/删除/清空、容量、中断、近 64 MiB 有界导出、extension-origin 物理 quota 与显式恢复重试。Local lookup/history 为零 Provider；明确翻译/AI 才使用 mock Provider。 |
+| B — Return | 从历史安全打开原页面；证据唯一时定位，歧义/缺失时不猜测且历史仍可读 | PASS。`reading-handoff.spec.mjs` 与 `reading-return-location.spec.mjs` 覆盖 tab/document/expiry 绑定、唯一 Range、ambiguous/missing、DOM replacement、overlay 清理和准确历史 deep link；回访不增加 Provider 请求或 lookupCount。 |
+| C — Recognize | 用户明确授权的站点再访时显示轻 marker 与本页历史；SPA/节点替换后可恢复 | PASS。`reading-page-markers.spec.mjs` 覆盖新 tab 再访、marker/list、DOM replacement、SPA 离开清理与返回恢复；未授权、权限丢失和关闭意图均 fail closed。 |
+| D — Understand | Content 显示三个根动作的真实流式 partial；Stop 保留可读 partial 但不保存；重试完整后保存；学习中心可有限追问和根重生成 | PASS。`selection-assistant-ui.spec.mjs` 覆盖真实 SSE partial、Stop/interrupted/no-save、retry/complete/Reading ACK，以及学习中心从已保存 turn 发起 repository-grounded follow-up 并刷新历史。Node/React 覆盖 Understand/Analyze/Usage、最多六条历史、root-only regenerate、新 turn/branch、revision/source/graph 伪造拒绝、迟到 delta、disconnect 与 IME/Escape。 |
+| 安全与隐私 | 网页/调用方不能凭 recordId、正文、URL 或图 ID 获得写权限；未完成内容不进入历史 | PASS。后台固定 top-frame/原生学习中心身份，重读真实 record/revision/source/site/turn 后派生 parent/thread/branch；prompt 不含 URL、页面标题或 anchor 前后缀。保存只接受规范化 completed artifact 与实际 IndexedDB commit ACK。无新增权限、Manifest host、DB schema、Provider 或通用消息总线。 |
+| 包与升级 | 默认安装目录和显式 WXT 包来自同一构建引擎，旧注册/新字节与当前注册都能恢复 | PASS。`npm run validate` 覆盖 classic projection、旧注册窗口、strict typecheck、Node/Vitest 和默认 WXT；显式 `build:extension:wxt` 固定同一安装包。AI detail、popover、rich details 与 Reading/Quick Control 使用现有确定性 projection，未提高平台代码预算。 |
+
+## Product-state truthfulness
+
+- Loading、empty/no-hit、error、not-saved、paused、excluded、quota、streaming、stopping、interrupted、retry、saved 都由真实后台结果驱动。
+- 发出 Stop/Cancel 不被当作撤回成功；到达不可逆事务提交点后以实际 commit 为准。
+- partial、取消、Provider 失败、Port disconnect 和过期 selection 不生成 completed assistant artifact；旧 selection 的迟到帧不能覆盖新卡。
+- 学习中心失败时保留旧问答；只有 `saved` ACK 才刷新历史。根 regenerate 保留旧分支，不迁移旧追问。
+- 历史读取、回访和 marker 不重新请求 Provider、不重新读取词典资产，也不增加 lookupCount。
 
 ## Reproduction
 
-Use the actual audited `.output/chrome-mv3` package; the test adapter verifies the copy before adding only synthetic lexical assets/localhost permission. It never supplies a missing product LC page/chunk. `e2e/reading-loop-release-a.spec.mjs` uses temporary profiles and the unchanged compiled background. Seed modules are added only for separately labelled corpus/probe cases. The physical quota database is disposable and contains random synthetic bytes only.
+从任务 244 准确候选执行 `state.json` 中的三个命令。组合 E2E 使用 Chromium 153.0.8010.12、临时 profile、合成页面、合成词典 fixture 和本地 mock Provider，不需要 API key 或私人数据。
 
-Run the frozen candidate's configured commands from `state.json`. The full E2E run included the required quota assertion. Its original failure log and trace are retained, and the repaired case keeps the refusal assertion plus native compiled-Reading checks. Only that changed case is rerun; tests/docs changes do not rebuild the unchanged production package. Product integrity is independently verified with the exact existing fingerprint.
+用户路径：在普通网页选择文字并明确查询 → 打开固定学习中心并开启记录 → 返回仍有效的结果卡保存 → 再次查询自动保存 → 明确请求 AI 详解，观察 partial、Stop/no-save 与重试完整保存 → 学习中心搜索并追问 → 重启浏览器后离线查看 → 安全回到原文 → 授权站点再访 marker/本页历史 → 暂停、排除、导出或删除数据。
 
-User flow for a supported current Chrome: open an ordinary synthetic/public article → query a local word → open learning center from the invitation → explicitly enable → return to the still-valid card → Save this result → open LC recent/search/page/detail → restart Chrome → reread snapshot → pause/exclude/delete/export. Original-page links are page-level only. Precise revisit, automatic markers, new streaming assistant, SRS and further releases remain outside A.
+## Limitations
 
-## Limitations and next action
+- PASS：Chrome/Chromium MV3、合成 ordinary-web-page、mock Provider、实际 WXT production artifact、真实 IndexedDB/权限/Port/浏览器重启路径。
+- NOT RUN：Firefox/Safari、隐身模式、真实付费模型质量、真实私人词典、桌面原生 IME 候选窗、浏览器 UI 缩放、文件对话框最终落盘结果。
+- NOT AUTHORIZED / NOT PERFORMED：Chrome Web Store 发布、版本发布、外部部署、遥测、云同步、SRS/Practice。
+- npm 锁文件安装仍报告既有 1 low / 1 high audit 告警；本任务未改依赖或 lockfile。
+- 主 Agent 自查不是独立人工审核；远端分支保护或人工验收若实际要求，仍必须满足。
 
-Chrome 102, other browsers, actual desktop IME, real paid model quality, file-dialog/disk save outcome and store release are not certified. Primary-agent self-check follows current LOCAL_WORKFLOW and is not an independent reviewer approval. Only actual protection/human acceptance applies outside this local process.
-
-Physical quota now has native extension-origin refusal and product recovery evidence. No production budget/permission was changed, no host disk was filled, and no synthetic thrown error was substituted. Local readiness is not main delivery or store release: task 236 is ready_to_sync, with actual remote synchronization/merge still requiring authorization. The focus repair remains on the task branch until merged.
-
-## Native quota diagnosis sources
-
-The exact browser-version implementation is [BucketContext space checking and cache](https://chromium.googlesource.com/chromium/src/+/153.0.8010.12/content/browser/indexed_db/instance/bucket_context.cc) and [Transaction quota abort](https://chromium.googlesource.com/chromium/src/+/153.0.8010.12/content/browser/indexed_db/instance/transaction.cc). This change adjusts only the test's context lifecycle; it does not modify Chromium or extension storage policy.
+只有任务 244 的准确候选经本地 gate、远端 expected-head 合并及最终 tree 核对后，才能把本地候选结论记录为已合入 main。商店发布保持独立授权边界。
