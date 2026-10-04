@@ -11,7 +11,8 @@
   function clearUi() { root?.remove(); root = panel = null; for (const node of markerNodes) node.remove(); markerNodes = []; ranges.clear(); }
   function cleanup() { generation++; controller?.abort(); controller = null; observer?.disconnect(); observer = null; clearTimeout(timer); timer = 0;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
-  function rectFor(range) { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0) || null; }
+  function rectFor(range) { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
+    rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth) || null; }
   function positionMarkers() {
     markerNodes.forEach(node => { const rect = rectFor(ranges.get(node.dataset.recordId)); if (!rect) { node.hidden = true; return; }
       node.hidden = false; node.style.left = `${Math.min(innerWidth - 24, rect.right + 4)}px`; node.style.top = `${Math.max(4, rect.top)}px`; });

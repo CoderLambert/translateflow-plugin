@@ -41,7 +41,8 @@ test("authorized revisit renders bounded page history markers and recovers acros
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
     await center.getByRole("button", { name: "Enable recording", exact: true }).click();
     const source = await context.newPage(); await source.goto(articleUrl);
-    await source.evaluate(() => { const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
+    await source.evaluate(() => { document.querySelector("#source").scrollIntoView({ block: "center" });
+      const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
       range.setStart(node, start); range.setEnd(node, start + 7); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange")); });
     await source.locator(".tf-selection-chip").click(); await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
     await center.reload();
@@ -66,6 +67,13 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await revisit.goto(articleUrl);
     await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
+    await expect(revisit.locator(".tf-reading-page-marker")).toBeHidden();
+    await revisit.locator(".tf-reading-page-toggle").click();
+    await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
+    await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
+    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("已定位");
+    await revisit.locator("#source").scrollIntoViewIfNeeded();
+    await expect(revisit.locator(".tf-reading-page-marker")).toBeVisible();
     const scanEvidence = await driver.evaluate(async ({ url, anchor }) => {
       const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
       const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [anchor], func: async value => {
@@ -74,7 +82,7 @@ test("authorized revisit renders bounded page history markers and recovers acros
           workMs: resolved.stats.ms, waitMs: resolved.stats.waitMs, verifiedText: resolved.verifiedText };
       } });
       return result.result;
-    }, { url: revisit.url(), anchor: detail.data.anchor });
+    }, { url: revisit.url(), anchor: JSON.parse(JSON.stringify(detail.data.record.anchor)) });
     expect(scanEvidence.status).toBe("resolved");
     expect(scanEvidence.verifiedText).toBe("session");
     expect(scanEvidence.chars).toBeGreaterThan(16_000);
