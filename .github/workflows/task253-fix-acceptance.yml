@@ -1,0 +1,70 @@
+name: task253-fix-acceptance
+
+on:
+  push:
+    branches:
+      - fix/253-ui-localization-review
+
+permissions:
+  contents: write
+
+jobs:
+  acceptance:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.21.0"
+      - run: npm ci --no-audit --no-fund
+      - name: Regenerate owned Reading classic projections
+        run: |
+          node scripts/reading-content-classic.mjs
+          git diff --check
+          if ! git diff --quiet -- src/content/reading-source.js src/content/reading-record.js; then
+            git config user.name "TranslateFlow CI"
+            git config user.email "ci@translateflow.invalid"
+            git add src/content/reading-source.js src/content/reading-record.js
+            git commit -m "build: refresh generated reading content projection"
+            git push origin HEAD:fix/253-ui-localization-review
+          fi
+          echo "TF_E2E_ARTIFACT_SOURCE_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Validate
+        run: npm run validate
+      - name: Check generated Reading projection
+        run: node scripts/reading-content-classic.mjs --check
+      - name: Build WXT package
+        run: npm run build:extension:wxt
+      - name: WXT smoke
+        run: npm run test:wxt:smoke
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Task 253 Chromium acceptance
+        run: >-
+          npm run test:e2e --
+          e2e/ui-locale.spec.mjs
+          e2e/ui-redesign.spec.mjs
+          e2e/settings-ia.spec.mjs
+          e2e/dark-mode.spec.mjs
+          e2e/learning-center.spec.mjs
+          e2e/reading-loop-release-a.spec.mjs
+          e2e/reading-page-markers.spec.mjs
+          e2e/reading-return-location.spec.mjs
+          e2e/reading-storage.spec.mjs
+          e2e/local-dictionary-import-v2-product.spec.mjs
+          e2e/translateflow.spec.mjs
+          e2e/subtitles.spec.mjs
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task253-fix-acceptance
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
