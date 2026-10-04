@@ -151,3 +151,19 @@ test("request error remains the first cause through the following native transac
     assert.deepEqual(probe.durableWrites, []);
   } finally { database.close(); probe.restore(); }
 });
+
+test("Stop remains the first cause when aborting a pending request produces AbortError before transaction abort", async () => {
+  const probe = installIdbProbe(), database = createReadingDatabase(), controller = new AbortController();
+  try {
+    const pending = database.run("readwrite", () => {}, oneWrite, undefined, controller.signal);
+    const tx = await probe.waitForTransaction(2), request = tx.requests[0];
+    controller.abort(); // tx.abort() schedules the transaction abort event.
+    request.error = new DOMException("request aborted", "AbortError");
+    request.onerror(); // Native IDB reports the request error while the transaction is aborting.
+    tx.error = new DOMException("transaction aborted", "AbortError");
+    tx.onabort();
+    await assert.rejects(pending, error => error.code === E.CANCELLED);
+    assert.equal(tx.aborted, true);
+    assert.deepEqual(probe.durableWrites, []);
+  } finally { database.close(); probe.restore(); }
+});

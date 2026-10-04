@@ -76,3 +76,10 @@
 - 原始 WXT 安装包指纹为上列 `.output/chrome-mv3` SHA。E2E 临时副本另含合成 Core/Technical 词典和测试 manifest：119 个文件、1,750,950 bytes，tree SHA-256 `78650a065c253d9331cfc894869741637d4f8a49cd71685b0abdc48a8a63fb8c`；此指纹不代表原始安装包。完整本地验收摘要在 `docs/task-execution/local/reading-integrity-20261004-integration/evidence-summary.json`，这些本地文件受 Git 忽略规则保护。
 
 本轮未运行 Chrome 102、非 Chromium、原生权限提示 UI、真实 YouTube timedtext、付费 Provider、发布词典认证，也未重新跑 same-ID 升级/撤权完整场景。未推送、未创建 PR，未合入 main。后续文档归档 HEAD 与测试候选不同；归档只记录结果，不改变 `testedHead` `c479b969942e32beb72ecff8505c1dbe3954fe49`。
+
+## 复审 P2 刷新窗口修正
+
+- 复审指出在既有历史列表触发 focus/手动刷新后，后台响应期间旧 Range 仍可被定位按钮使用。现于每次 `load()` 起始立即以通用 `not-loaded` 状态重绘列表，同步清除旧 Range 与 marker；历史入口和手动重试保留，成功响应再渲染新定位结果。
+- `e2e/reading-page-markers.spec.mjs` 新增挂起 GET_PAGE_SUMMARY 的回归：刷新等待期间原文本节点保持连接且内容改变，点击旧行不触发滚动；后台响应后显示新的未找到状态。
+- `tests/reading-idb-cancellation.test.mjs` 另覆盖 signal 取消后 pending request 抛 AbortError、随后 transaction abort，最终原因仍是 `CANCELLED`。
+- 本节验证应绑定后续新候选；本记录先前的 `c479b96` 验收结果不覆盖本次改动。

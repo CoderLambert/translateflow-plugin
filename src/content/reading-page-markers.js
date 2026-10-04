@@ -65,7 +65,8 @@
   async function load({ register = false } = {}) {
     const current = ++generation; controller?.abort(); const ownController = new AbortController(); controller = ownController;
     observer?.disconnect(); observer = null; clearTimeout(timer); timer = 0;
-    if (!lastItems.length) clearUi();
+    if (lastItems.length) render(lastItems, unresolved(lastItems), lastPageRecordCount);
+    else clearUi();
     try {
       if (register) await app.modules.readingHandoff.register(); else await app.modules.readingHandoff.ready;
       if (current !== generation || ownController.signal.aborted) return;

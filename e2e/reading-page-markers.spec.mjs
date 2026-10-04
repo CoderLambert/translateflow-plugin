@@ -133,6 +133,39 @@ test("authorized revisit renders bounded page history markers and recovers acros
         await expect(retryRow).toContainText("已定位");
       }
     }
+
+    await retryPage.evaluate(method => {
+      const textNode = document.querySelector("#source").firstChild;
+      globalThis.__heldMarkerTextNode = textNode;
+      globalThis.__staleMarkerScrolls = 0;
+      textNode.parentElement.scrollIntoView = () => { globalThis.__staleMarkerScrolls++; };
+      const runtime = globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime;
+      const sendRuntimeMessage = runtime.sendRuntimeMessage;
+      globalThis.__originalMarkerSendRuntimeMessage = sendRuntimeMessage;
+      let release;
+      const gate = new Promise(resolve => { release = resolve; });
+      globalThis.__markerRefreshGate = { started: false, release: () => release() };
+      runtime.sendRuntimeMessage = async request => {
+        if (!globalThis.__markerRefreshGate.started && request.method === method) {
+          globalThis.__markerRefreshGate.started = true;
+          await gate;
+        }
+        return sendRuntimeMessage(request);
+      };
+      void globalThis.__TRANSLATE_FLOW_CONTENT__.modules.readingPageMarkers.refresh();
+    }, M.GET_PAGE_SUMMARY);
+    await expect.poll(() => retryPage.evaluate(() => globalThis.__markerRefreshGate.started)).toBe(true);
+    await expect(retryRow).toContainText("未完全加载");
+    await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
+    await retryPage.evaluate(() => { globalThis.__heldMarkerTextNode.nodeValue = "PUBLIC refreshed alpha tail"; });
+    await expect.poll(() => retryPage.evaluate(() => globalThis.__heldMarkerTextNode.isConnected)).toBe(true);
+    await retryRow.locator(".tf-reading-page-item").click();
+    expect(await retryPage.evaluate(() => globalThis.__staleMarkerScrolls)).toBe(0);
+    await retryPage.evaluate(() => globalThis.__markerRefreshGate.release());
+    await expect(retryRow).toContainText("未找到");
+    await retryPage.evaluate(() => {
+      globalThis.__TRANSLATE_FLOW_CONTENT__.modules.runtime.sendRuntimeMessage = globalThis.__originalMarkerSendRuntimeMessage;
+    });
     expect(server.calls).toHaveLength(0);
   } finally {
     await context?.close(); await server.close(); await rm(temporary, { recursive: true, force: true });
