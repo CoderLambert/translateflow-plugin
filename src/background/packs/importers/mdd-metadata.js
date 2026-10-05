@@ -54,13 +54,22 @@ export function parseMddHeader(input, limits = MDICT_IMPORT_LIMITS) {
       encrypted
     });
   }
+  const keyCaseSensitive = parseMddYesNo(attributes.KeyCaseSensitive, false);
   return {
     generatedByEngineVersion,
     requiredEngineVersion,
     encrypted,
+    keyCaseSensitive,
     title: cleanText(attributes.Title || ""),
     attributes
   };
+}
+
+function parseMddYesNo(value, defaultValue) {
+  if (value == null || value === "") return defaultValue;
+  if (/^yes$/iu.test(String(value))) return true;
+  if (/^no$/iu.test(String(value))) return false;
+  mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDD key option is invalid.");
 }
 
 function supportedRequiredVersion(value) {

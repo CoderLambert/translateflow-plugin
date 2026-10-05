@@ -7,7 +7,7 @@ import {
 import { compareMddResourcePaths, normalizeMddResourcePath } from "./mdd-resource-path.js";
 import { LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES } from "../../../shared/local-dictionary-limits.js";
 
-export const MDD_INDEX_SCHEMA_VERSION = 1;
+export const MDD_INDEX_SCHEMA_VERSION = 2;
 export const MDD_INDEX_FORMAT = "mdd-v2";
 export const MDD_IMPORT_LIMITS = Object.freeze({
   ...MDICT_IMPORT_LIMITS,
@@ -28,15 +28,18 @@ export function validateMddIndex(index, {
   limits = MDD_IMPORT_LIMITS,
   checkSerializedSize = true
 } = {}) {
+  const allowedFields = [
+    "schemaVersion", "format", "sourceSize", "header", "keyCount", "totalKeyBlockBytes",
+    "totalRecordBytes", "keyInfoCompression", "keyInfoEncrypted", "keyPreambleOffset",
+    "keyInfoOffset", "keyInfoCompressedBytes", "keyBlocksOffset", "keyBlocksBytes",
+    "recordSectionOffset", "recordBlocksOffset", "recordBlocksBytes", "keyBlocks", "recordBlocks"
+  ];
+  if (index?.schemaVersion === MDD_INDEX_SCHEMA_VERSION) allowedFields.push("keyOrder");
   if (
     !index ||
-    !hasOnlyFields(index, [
-      "schemaVersion", "format", "sourceSize", "header", "keyCount", "totalKeyBlockBytes",
-      "totalRecordBytes", "keyInfoCompression", "keyInfoEncrypted", "keyPreambleOffset",
-      "keyInfoOffset", "keyInfoCompressedBytes", "keyBlocksOffset", "keyBlocksBytes",
-      "recordSectionOffset", "recordBlocksOffset", "recordBlocksBytes", "keyBlocks", "recordBlocks"
-    ]) ||
-    index.schemaVersion !== MDD_INDEX_SCHEMA_VERSION ||
+    !hasOnlyFields(index, allowedFields) ||
+    ![1, MDD_INDEX_SCHEMA_VERSION].includes(index.schemaVersion) ||
+    (index.schemaVersion === MDD_INDEX_SCHEMA_VERSION && !["case-sensitive", "case-folded"].includes(index.keyOrder)) ||
     index.format !== MDD_INDEX_FORMAT ||
     !Number.isSafeInteger(index.sourceSize) ||
     index.sourceSize !== sourceSize ||
@@ -124,6 +127,7 @@ function validateKeys(index, limits) {
   let keyBytes = 0;
   let previousKey = "";
   let previousRecordOffset = -1;
+  const orderMode = index.schemaVersion === 1 ? "case-sensitive" : index.keyOrder;
   for (const block of index.keyBlocks) {
     if (
       !block ||
@@ -154,8 +158,8 @@ function validateKeys(index, limits) {
       !validCanonicalPath(block.lookupMaxKey) ||
       block.firstKey !== block.lookupMinKey ||
       block.lastKey !== block.lookupMaxKey ||
-      compareMddResourcePaths(block.lookupMinKey, block.lookupMaxKey) > 0 ||
-      (previousKey && compareMddResourcePaths(block.lookupMinKey, previousKey) <= 0)
+      compareMddResourcePaths(block.lookupMinKey, block.lookupMaxKey, orderMode) > 0 ||
+      (previousKey && compareMddResourcePaths(block.lookupMinKey, previousKey, orderMode) <= 0)
     ) {
       mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDD key block descriptor is invalid.");
     }

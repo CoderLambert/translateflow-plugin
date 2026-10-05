@@ -9,8 +9,10 @@ import { compareMddResourcePaths, normalizeMddResourcePath } from "./mdd-resourc
 import { classifyMddResource } from "./mdd-resource-policy.js";
 import {
   createMddLookupBudget,
+  MDD_LOOKUP_BUDGETS,
   meterMddRangeSource
 } from "./mdd-query-budget.js";
+import { mddResourceOrderMode } from "./mdd-key-codec.js";
 import {
   readSourceRange,
   validateMdictSource,
@@ -41,7 +43,8 @@ export async function lookupMddResource({
   const meteredSource = meterMddRangeSource(rangeSource, lookupBudget);
 
   try {
-    const blockIndex = findCandidateBlock(index.keyBlocks, normalizedPath);
+    const orderMode = mddResourceOrderMode(index);
+    const blockIndex = findCandidateBlock(index.keyBlocks, normalizedPath, orderMode);
     if (blockIndex < 0) return { found: false, path: normalizedPath };
     const candidates = [index.keyBlocks[blockIndex]];
     lookupBudget.checkCandidatePlan(candidates);
@@ -55,7 +58,7 @@ export async function lookupMddResource({
       budget: lookupBudget,
       signal
     });
-    const matchIndex = findExactEntry(entries, normalizedPath);
+    const matchIndex = findExactEntry(entries, normalizedPath, orderMode);
     if (matchIndex < 0) return { found: false, path: normalizedPath };
     const match = entries[matchIndex];
     const end = entries[matchIndex + 1]?.recordOffset ??
@@ -107,29 +110,29 @@ export async function lookupMddResource({
   }
 }
 
-function findExactEntry(entries, path) {
+function findExactEntry(entries, path, orderMode) {
   let low = 0;
   let high = entries.length - 1;
   while (low <= high) {
     const middle = low + ((high - low) >> 1);
     const key = entries[middle].path;
     if (key === path) return middle;
-    if (compareMddResourcePaths(key, path) < 0) low = middle + 1;
+    if (compareMddResourcePaths(key, path, orderMode) < 0) low = middle + 1;
     else high = middle - 1;
   }
   return -1;
 }
 
-function findCandidateBlock(blocks, path) {
+function findCandidateBlock(blocks, path, orderMode) {
   let low = 0;
   let high = blocks.length;
   while (low < high) {
     const middle = low + ((high - low) >> 1);
-    if (compareMddResourcePaths(blocks[middle].lookupMinKey, path) <= 0) low = middle + 1;
+    if (compareMddResourcePaths(blocks[middle].lookupMinKey, path, orderMode) <= 0) low = middle + 1;
     else high = middle;
   }
   const candidate = low - 1;
-  return candidate >= 0 && compareMddResourcePaths(path, blocks[candidate].lookupMaxKey) <= 0
+  return candidate >= 0 && compareMddResourcePaths(path, blocks[candidate].lookupMaxKey, orderMode) <= 0
     ? candidate
     : -1;
 }

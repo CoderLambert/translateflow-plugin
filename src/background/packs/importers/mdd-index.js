@@ -14,7 +14,8 @@ import { parseMddHeader } from "./mdd-metadata.js";
 import {
   addMddKeyBlockBounds,
   parseMddKeyBlock,
-  parseMddKeyBlockDescriptors
+  parseMddKeyBlockDescriptors,
+  mddResourceOrderMode
 } from "./mdd-key-codec.js";
 import { parseRecordBlockDescriptors, safeAdd } from "./mdict-rich-key-codec.js";
 import {
@@ -129,6 +130,7 @@ export async function buildMddIndex({
     schemaVersion: MDD_INDEX_SCHEMA_VERSION,
     format: MDD_INDEX_FORMAT,
     sourceSize,
+    keyOrder: header.keyCaseSensitive ? "case-sensitive" : "case-folded",
     header: serializableHeader(header),
     keyCount,
     totalKeyBlockBytes: 0,
@@ -191,7 +193,8 @@ export async function decodeMddKeyBlock({
   const parsed = parseMddKeyBlock(
     decoded.bytes,
     { ...descriptor, expectedFirstKey: descriptor.firstKey, expectedLastKey: descriptor.lastKey },
-    index.totalRecordBytes
+    index.totalRecordBytes,
+    { orderMode: mddResourceOrderMode(index) }
   );
   if (
     parsed.firstRecordOffset !== descriptor.firstRecordOffset ||

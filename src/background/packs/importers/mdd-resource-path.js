@@ -54,7 +54,17 @@ export function normalizeMddResourcePath(value) {
 }
 
 /** Match the Unicode code-point ordering used by the independent MDD writer. */
-export function compareMddResourcePaths(left, right) {
+export function compareMddResourcePaths(left, right, orderMode = "case-sensitive", tieBreak = true) {
+  const exactLeft = left;
+  const exactRight = right;
+  if (orderMode === "case-folded") {
+    left = left.toLowerCase();
+    right = right.toLowerCase();
+  }
+  return compareCodePoints(left, right) || (tieBreak ? compareCodePoints(exactLeft, exactRight) : 0);
+}
+
+function compareCodePoints(left, right) {
   let leftOffset = 0;
   let rightOffset = 0;
   while (leftOffset < left.length && rightOffset < right.length) {
