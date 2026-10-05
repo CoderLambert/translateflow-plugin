@@ -66,18 +66,25 @@
           : app.modules.richResourceStylesheet?.compileLocalStylesheet(asset.bytes) || "";
         for (const slot of asset.assetSlots) {
           if (!isCurrent(session)) return;
-          const image = await fetchAsset(session, { kind: "image", path: slot.path, label: "" });
-          const pixels = image.width * image.height;
-          if (!Number.isSafeInteger(pixels) || pixels <= 0 || pixels > MAX_VIEW_IMAGE_PIXELS) {
+          try {
+            const image = await fetchAsset(session, { kind: "image", path: slot.path, label: "" });
+            if (!isCurrent(session)) return;
+            const pixels = image.width * image.height;
+            if (!Number.isSafeInteger(pixels) || pixels <= 0 || pixels > MAX_VIEW_IMAGE_PIXELS) {
+              css = css.replaceAll(slot.token, "none");
+              continue;
+            }
+            const url = createTrackedUrl(session, image, pixels);
+            if (!url) {
+              css = css.replaceAll(slot.token, "none");
+              continue;
+            }
+            css = css.replaceAll(slot.token, `url("${url}")`);
+          } catch (error) {
+            if (!isCurrent(session)) return;
+            if (error?.code !== "RICH_MDD_RESOURCE_MISSING") throw error;
             css = css.replaceAll(slot.token, "none");
-            continue;
           }
-          const url = createTrackedUrl(session, image, pixels);
-          if (!url) {
-            css = css.replaceAll(slot.token, "none");
-            continue;
-          }
-          css = css.replaceAll(slot.token, `url("${url}")`);
         }
         if (!css || !isCurrent(session)) return;
         const style = document.createElement("style");
@@ -191,8 +198,17 @@
     } finally {
       session.inFlightRequests.delete(requestId);
     }
-    if (!isCurrent(session) || !response?.ok || !response.found) throw new Error("MDD resource is unavailable.");
-    if (session.packageVersion && response.packageVersion !== session.packageVersion) throw new Error("MDD package version changed while this entry was being rendered.");
+    if (!isCurrent(session) || !response?.ok) throw new Error("MDD resource is unavailable.");
+    if (response.stale || (session.packageVersion && response.packageVersion !== session.packageVersion)) {
+      const error = new Error("MDD package version changed while this entry was being rendered.");
+      error.code = "RICH_MDD_RESOURCE_STALE";
+      throw error;
+    }
+    if (!response.found) {
+      const error = new Error("MDD resource is unavailable.");
+      error.code = "RICH_MDD_RESOURCE_MISSING";
+      throw error;
+    }
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {

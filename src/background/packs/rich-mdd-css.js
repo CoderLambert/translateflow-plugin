@@ -24,6 +24,8 @@ const COLOR_NAMES = new Set([
   "dodgerblue", "gold", "indigo", "lightblue", "lightgray", "lightgreen", "lightgrey", "magenta",
   "pink", "rebeccapurple", "tomato", "transparent"
 ]);
+const COLOR_PROPERTIES = new Set(["color", "background-color", "border-color"]);
+const COLOR_FUNCTIONS = new Set(["rgb", "rgba", "hsl", "hsla"]);
 const SPACING_PROPERTIES = /^(?:margin|padding)(?:-(?:top|right|bottom|left))?$|^border-(?:width|spacing)$/u;
 const BORDER_PROPERTIES = /^(?:border|border-(?:top|right|bottom|left))$/u;
 
@@ -119,7 +121,10 @@ function sanitizeDeclaration(declaration, context) {
   if (value?.type === "Value") {
     value.children.forEach((node) => {
       if (node.type !== "Url") {
-        if (node.type === "Function") unsafe = true;
+        if (node.type === "Function") {
+          const functionName = String(node.name || "").toLowerCase();
+          if (!COLOR_PROPERTIES.has(property) || !COLOR_FUNCTIONS.has(functionName)) unsafe = true;
+        }
         return;
       }
       if (property !== "background-image" || ++assetCount > 1) {
@@ -173,13 +178,14 @@ function normalizeSelector(value) {
   const match = /^(?:(div|span|p|br|b|strong|i|em|u|ul|ol|li|table|tr|td|th|ruby|rt|rp|img|audio))?(?:\.([-_a-z][-_a-z0-9]{0,47})|#([-_a-z][-_a-z0-9]{0,47}))?$/iu.exec(selector);
   if (!match || (!match[1] && !match[2] && !match[3])) return "";
   if (match[1] && !TAGS.has(match[1].toLowerCase())) return "";
-  return `${match[1] ? match[1].toLowerCase() : ""}${match[2] ? `.${match[2]}` : ""}${match[3] ? `#${match[3]}` : ""}`;
+  const target = match[2] ? `.${match[2]}` : match[3] ? `[data-rich-target-id="${match[3]}"]` : "";
+  return `${match[1] ? match[1].toLowerCase() : ""}${target}`;
 }
 
 function safeValue(property, value, hasAsset) {
   if (!value || value.length > 128 || /[<>\\"'{};]/u.test(value) || /(?:javascript|vbscript|expression|var|env|calc|attr)\s*\(/iu.test(value)) return false;
   if (property === "background-image") return hasAsset && /^tfasset[0-7]$/u.test(value);
-  if (["color", "background-color", "border-color"].includes(property)) {
+  if (COLOR_PROPERTIES.has(property)) {
     return COLOR_NAMES.has(value) || /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/u.test(value) ||
       /^(?:rgb|rgba|hsl|hsla)\([0-9.% ,+-]+\)$/u.test(value);
   }

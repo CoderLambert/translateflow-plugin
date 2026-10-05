@@ -18,6 +18,23 @@ test("CSS AST sanitizer scopes safe rules and converts local image URLs into pac
   assert.ok(result.diagnostics.includes("css.rule_filtered"));
 });
 
+test("CSS AST sanitizer preserves bounded color functions and maps ID selectors to viewer targets", () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    ".rgb { color: rgb(31, 93, 80); }",
+    ".rgba { background-color: rgba(1, 2, 3, .4); }",
+    ".hsl { color: hsl(210, 50%, 40%); }",
+    "#media-anchor { color: blue; }",
+    ".unsafe { color: color-mix(in srgb, red, blue); font-size: calc(1px + 1px); }"
+  ].join("\n")), "styles/entry.css");
+
+  assert.match(result.css, /\.tf-rich-viewer \.rgb\{color:rgb\(/u);
+  assert.match(result.css, /\.tf-rich-viewer \.rgba\{background-color:rgba\(/u);
+  assert.match(result.css, /\.tf-rich-viewer \.hsl\{color:hsl\(/u);
+  assert.match(result.css, /\.tf-rich-viewer \[data-rich-target-id="media-anchor"\]\{color:blue\}/u);
+  assert.doesNotMatch(result.css, /color-mix|calc\(/u);
+  assert.ok(result.diagnostics.includes("css.declaration_filtered"));
+});
+
 test("CSS AST sanitizer rejects remote, encoded, and active asset URLs", () => {
   const result = sanitizeRichMddStylesheet(Buffer.from([
     ".x { background-image: url('https://attacker.invalid/x.png'); }",
