@@ -68,9 +68,13 @@
     }
 
     function hideImageInstance(session, resource, instance) {
-      if (instance.element?.tagName !== "IMG") return;
-      const placeholder = makePlaceholder("image", resource.label);
-      replaceImageInstance(session, resource, instance, placeholder);
+      const image = instance.element;
+      if (image?.tagName !== "IMG") return;
+      // Keep the image element's width/height box in layout while dropping its
+      // Blob URL. Replacing a tall image with a text placeholder collapses the
+      // viewer's scroll range and moves content the reader was following.
+      image.removeAttribute("src");
+      image.style.visibility = "hidden";
     }
 
     async function loadImage(session, resource) {

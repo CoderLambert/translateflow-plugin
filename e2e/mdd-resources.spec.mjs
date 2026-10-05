@@ -328,6 +328,113 @@ test.describe("local MDD resource product and security behavior", () => {
     await page.getByRole("button", { name: "关闭" }).click();
   });
 
+  test("offscreen tall MDD image keeps the viewer scroll position and reloads on return", async ({ harness }) => {
+    const { mdx } = await readMddInteropFixture();
+    const tallMdd = makeMdd([
+      ["\\interop\\sample.png", makeDemoPng({ height: 600 })]
+    ], { title: "Synthetic Tall Image Scroll Fixture" });
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles([
+      { name: "interop.mdx", mimeType: "application/octet-stream", buffer: mdx },
+      { name: "interop.mdd", mimeType: "application/octet-stream", buffer: tallMdd }
+    ]);
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("TranslateFlow MDD Interop Fixture");
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 60_000 });
+
+    const row = options.locator("#richMdictInstalledList [data-dictionary-id]").filter({ hasText: "TranslateFlow MDD Interop Fixture" });
+    await expect(row).toBeVisible();
+    const dictionaryId = await row.getAttribute("data-dictionary-id");
+    await attachMddFile(row, {
+      name: "interop.mdd", mimeType: "application/octet-stream", buffer: tallMdd
+    }, { success: true });
+
+    const page = await harness.open("/selection");
+    await harness.inject(page);
+    await page.evaluate(() => {
+      const node = document.createElement("p");
+      node.id = "tall-image-scroll-fixture-word";
+      node.textContent = "mddinteropfixture";
+      document.body.appendChild(node);
+    });
+    await selectElementText(page, "#tall-image-scroll-fixture-word");
+    const chip = page.locator(".tf-selection-chip");
+    await expect(chip).toBeVisible({ timeout: 10_000 });
+    await chip.click();
+    const card = page.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+    await expandRichCard(card);
+    const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
+    const image = viewer.locator("img.tf-rich-resource-image[src^='blob:']");
+    await expect(image).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => image.evaluate((node) => node.naturalHeight)).toBe(600);
+
+    const layoutBeforeUnload = await viewer.evaluate((root) => {
+      const currentImage = root.querySelector("img.tf-rich-resource-image");
+      const tail = document.createElement("p");
+      tail.dataset.testScrollTail = "true";
+      tail.textContent = "TAIL_AFTER_TALL_IMAGE";
+      tail.style.height = "600px";
+      tail.style.margin = "0";
+      currentImage.after(tail);
+      const imageBottom = currentImage.getBoundingClientRect().bottom - root.getBoundingClientRect().top + root.scrollTop;
+      root.scrollTop = imageBottom + 10;
+      const tailRect = tail.getBoundingClientRect();
+      return {
+        scrollHeight: root.scrollHeight,
+        scrollTop: root.scrollTop,
+        tailTop: tailRect.top - root.getBoundingClientRect().top,
+        tailText: tail.textContent,
+        imageTop: currentImage.getBoundingClientRect().top - root.getBoundingClientRect().top
+      };
+    });
+    expect(layoutBeforeUnload.imageTop).toBeLessThan(-200);
+    expect(layoutBeforeUnload.tailText).toBe("TAIL_AFTER_TALL_IMAGE");
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(0);
+    const layoutAfterUnload = await viewer.evaluate((root) => {
+      const currentImage = root.querySelector("img.tf-rich-resource-image");
+      const tail = root.querySelector("[data-test-scroll-tail]");
+      const tailRect = tail.getBoundingClientRect();
+      return {
+        scrollHeight: root.scrollHeight,
+        scrollTop: root.scrollTop,
+        tailTop: tailRect.top - root.getBoundingClientRect().top,
+        imageWidth: currentImage.width,
+        imageHeight: currentImage.height,
+        imageHasSource: currentImage.hasAttribute("src"),
+        imageVisibility: currentImage.style.visibility
+      };
+    });
+    expect(layoutAfterUnload.scrollHeight).toBe(layoutBeforeUnload.scrollHeight);
+    expect(layoutAfterUnload.scrollTop).toBe(layoutBeforeUnload.scrollTop);
+    expect(layoutAfterUnload.tailTop).toBe(layoutBeforeUnload.tailTop);
+    expect(layoutAfterUnload).toMatchObject({ imageWidth: 240, imageHeight: 600, imageHasSource: false, imageVisibility: "hidden" });
+
+    await viewer.evaluate((root) => { root.scrollTop = 0; });
+    await expect(image).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => image.evaluate((node) => node.naturalHeight)).toBe(600);
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
+    const layoutAfterReturn = await viewer.evaluate((root) => ({ scrollHeight: root.scrollHeight, scrollTop: root.scrollTop }));
+    expect(layoutAfterReturn.scrollHeight).toBe(layoutBeforeUnload.scrollHeight);
+    expect(layoutAfterReturn.scrollTop).toBe(0);
+    expect(harness.server.calls).toHaveLength(0);
+
+    console.log("[RICH_TALL_IMAGE_SCROLL_E2E]", JSON.stringify({
+      status: "PASS",
+      testedSourceHead: harness.buildReport.sourceHead,
+      artifactTreeSha256: harness.buildReport.treeSha256,
+      existingMdxFixture: "tests/fixtures/mdd-interop/interop.mdx",
+      testImage: { width: 240, height: 600 },
+      layoutBeforeUnload,
+      layoutAfterUnload,
+      layoutAfterReturn,
+      blobUrlsAfterUnload: 0,
+      blobUrlsAfterReturn: 1,
+      providerCalls: harness.server.calls.length
+    }));
+    await page.getByRole("button", { name: "关闭" }).click();
+  });
+
   test("selecting MDX and its MDD together installs one linked offline dictionary", async ({ harness }) => {
     const { mdx, mdd } = await readMddInteropFixture();
     const options = await harness.context.newPage();
@@ -915,9 +1022,7 @@ async function selectElementText(page, selector) {
   });
 }
 
-function makeDemoPng() {
-  const width = 240;
-  const height = 32;
+function makeDemoPng({ width = 240, height = 32 } = {}) {
   const scanlines = Buffer.alloc(height * (1 + width * 4));
   for (let y = 0; y < height; y += 1) {
     const row = y * (1 + width * 4);

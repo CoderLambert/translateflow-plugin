@@ -135,6 +135,11 @@ test("duplicate visible image instances share one URL and release it after the l
   assert.equal(harness.resolver.activeObjectUrlBytes, bytes.byteLength);
 
   harness.observer.trigger(parent.children[0], false);
+  assert.equal(parent.children[0].tagName, "IMG", "offscreen cleanup keeps the image's intrinsic layout box");
+  assert.equal(parent.children[0].src, "");
+  assert.equal(parent.children[0].style.visibility, "hidden");
+  assert.equal(parent.children[0].width, 2);
+  assert.equal(parent.children[0].height, 2);
   assert.equal(harness.resolver.activeObjectUrlCount, 1, "one visible duplicate keeps the shared URL alive");
   harness.observer.trigger(parent.children[1], false);
   await waitFor(() => harness.resolver.activeObjectUrlCount === 0);
@@ -378,6 +383,7 @@ class FakeElement {
     this.tagName = tagName;
     this.parentNode = null;
     this.dataset = {};
+    this.style = {};
     this.listeners = new Map();
     this.attributes = new Map();
     this.src = "";

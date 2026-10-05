@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "task": "offline-dictionary",
+  "date": "2026-10-05",
+  "status": "PASS",
+  "scope": "synthetic browser layout regression only",
+  "baseHead": "df80f47e860da69c9ccd6bad222535ccf9601729",
+  "testedCodeAndTestTree": "1cf75819e3fbd4150f369c120c7478766034e7ae",
+  "testedSourceHead": "df80f47e860da69c9ccd6bad222535ccf9601729+working-tree",
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "48a960dfb7452511eb92dbdac4085f74a67c13972e9d1998e6acc36426bc1399",
+    "fileCount": 112,
+    "totalBytes": 2193114
+  },
+  "runtime": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "commands": [
+    "npm run build:extension",
+    "node --test tests/rich-resource-resolver.test.mjs",
+    "TF_E2E_ARTIFACT=dist/extension npm run test:e2e -- e2e/mdd-resources.spec.mjs --grep 'offscreen tall MDD image'"
+  ],
+  "results": {
+    "resolverUnitTests": "8/8 PASS",
+    "browserTests": "1/1 PASS",
+    "existingMdxFixture": "tests/fixtures/mdd-interop/interop.mdx",
+    "imageDimensions": [240, 600],
+    "scrollHeightBeforeUnload": 1250,
+    "scrollHeightAfterUnload": 1250,
+    "scrollTopBeforeUnload": 636,
+    "scrollTopAfterUnload": 636,
+    "tailTopBeforeUnload": -10.015625,
+    "tailTopAfterUnload": -10.015625,
+    "imageLayoutBoxAfterUnload": {
+      "width": 240,
+      "height": 600,
+      "srcRemoved": true,
+      "visibility": "hidden"
+    },
+    "blobUrlsAfterUnload": 0,
+    "blobUrlsAfterReturn": 1,
+    "providerCalls": 0
+  },
+  "implementation": "When a loaded image leaves the viewer, remove its Blob URL and hide the same IMG element so its intrinsic width/height box remains in layout. The existing observer reloads it when it returns to view.",
+  "limits": [
+    "The test reuses the existing independent-writer MDX and creates only a small inline MDD image fixture; it is not dictionary corpus evidence.",
+    "The large-import cancellation/retry browser scenario was not run in this incremental P2 review.",
+    "Real Oxford content and actual quota exhaustion remain NOT_RUN.",
+    "The full validation suite was not rerun; product source was not changed after the targeted build and browser run."
+  ]
+}
