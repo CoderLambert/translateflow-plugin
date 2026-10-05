@@ -57,6 +57,11 @@ function data(method, value, scope, pageLimit) {
   if (method === M.LIST_PAGES) return validateListPage(value, validatePageListItem, "pageKey", pageLimit, { catalogRevision: revision });
   if (method === M.LIST_RECORDING_EXCLUSIONS) return validateListPage(value, validateExclusionItem, "siteKey", pageLimit, {});
   if (method === M.GET_RECORD) return validateRecordDetail(value, "data");
+  if (method === M.GET_RECORD_SITE_KEY) {
+    if (scope !== "extension") fail(E.FORBIDDEN, "response.scope");
+    object(value, ["siteKey"], "data");
+    return { siteKey: siteKey(value.siteKey, "data.siteKey") };
+  }
   if ([M.GET_RECORDING_STATE, M.SET_RECORDING].includes(method)) return validateRecordingState(value, scope, "data");
   if ([M.GET_SITE_RECORDING, M.SET_SITE_RECORDING].includes(method)) {
     object(value, ["excluded", "sitePolicyRevision"], "data");

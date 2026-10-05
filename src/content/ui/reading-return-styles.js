@@ -15,6 +15,8 @@
 .tf-reading-page-panel header, .tf-reading-page-panel article { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px; }
 .tf-reading-page-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .tf-reading-page-panel span { color: var(--tf-color-muted); font-size: var(--tf-font-size-xs); }
-.tf-reading-page-marker { position: fixed; width: 20px; height: 20px; padding: 0; border-radius: 50%; color: var(--tf-primary-foreground); background: var(--tf-green-700); }
+.tf-reading-page-marker { position: fixed; display: block; width: 14px; height: 14px; min-width: 14px; min-height: 14px; padding: 0 !important; border: 2px solid #fff; border-radius: 50%; color: transparent; background: var(--tf-green-800); box-shadow: 0 0 0 1px var(--tf-green-700), 0 2px 5px rgba(30,50,30,.35); font-size: 0; line-height: 0; }
+.tf-reading-page-marker:hover { background: var(--tf-green-900); transform: scale(1.08); }
+.tf-reading-page-marker:focus-visible { outline: 3px solid var(--tf-green-500); outline-offset: 3px; }
 ` });
 })();

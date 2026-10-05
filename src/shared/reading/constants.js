@@ -65,6 +65,7 @@ export const READING_METHOD = Object.freeze({
   APPEND_ASSISTANT: "reading.append-assistant",
   GET_PAGE_SUMMARY: "reading.get-page-summary",
   GET_RECORD: "reading.get-record",
+  GET_RECORD_SITE_KEY: "reading.get-record-site-key",
   LIST_RECORDS: "reading.list-records",
   GET_RECORDING_STATE: "reading.get-recording-state",
   SET_RECORDING: "reading.set-recording",

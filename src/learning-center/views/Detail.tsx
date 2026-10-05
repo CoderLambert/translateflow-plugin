@@ -8,9 +8,9 @@ type AssistantArtifact = RecordDetail["artifacts"][number] & { kind: "assistant"
   userQuestion: string; assistantAnswer: string; action: "understand" | "analyze" | "usage" | "follow-up";
   threadId: string; turnId: string; parentTurnId: string | null; branchId: string; regenerationOf: string | null; completionStatus: "completed";
 } };
-export function Detail({ detail, i18n, onBack, onDelete, onAssistantSaved, disabled, assistantDisabled = disabled, client }: {
+export function Detail({ detail, siteKey, i18n, onBack, onDelete, onAssistantSaved, disabled, assistantDisabled = disabled, client }: {
   detail: RecordDetail; i18n: I18n; onBack: () => void; onDelete: () => void; onAssistantSaved?: () => void;
-  disabled: boolean; assistantDisabled?: boolean; client?: ReadingClient;
+  disabled: boolean; siteKey?: string | null; assistantDisabled?: boolean; client?: ReadingClient;
 }) {
   const [shown, setShown] = useState(5);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -22,7 +22,7 @@ export function Detail({ detail, i18n, onBack, onDelete, onAssistantSaved, disab
     <p className="eyebrow">{i18n.t("learning.snapshot")}</p>
     <p>{record.pageTitle}</p>
     <p>{i18n.t("learning.savedAt", { date: i18n.formatDateTime(record.firstSeenAt) })}</p>
-    <ReturnToPage record={record} i18n={i18n} disabled={disabled} {...(client ? { client } : {})} />
+    <ReturnToPage record={record} i18n={i18n} disabled={disabled} {...(siteKey !== undefined ? { siteKey } : {})} {...(client ? { client } : {})} />
     {artifacts.slice(0, shown).map(artifact => {
       const source = snapshots.find(snapshot => snapshot.sourceSnapshotId === artifact.sourceSnapshotId);
       const payload = artifact.payload;

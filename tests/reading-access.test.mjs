@@ -62,6 +62,16 @@ test("Page-scoped explicit detail denies cross-page stored records and caller sa
     assert.equal(code(await bad.handle(request(M.REGISTER_DOCUMENT), contentSender())), E.FORBIDDEN);
   }
 });
+test("Minimal record site identity is repository-backed and extension-only", async () => {
+  const siteKey = "https://example.test";
+  const { service } = await setup({ repository: repositoryDouble({ read: async ({ request: value }) => {
+    assert.equal(value.method, M.GET_RECORD_SITE_KEY);
+    return { siteKey };
+  } }) });
+  assert.equal(code(await service.handle(request(M.GET_RECORD_SITE_KEY), contentSender())), E.FORBIDDEN);
+  const response = await service.handle(request(M.GET_RECORD_SITE_KEY), extensionSender());
+  assert.deepEqual(response.data, { siteKey });
+});
 test("Private and unknown sender deny every history route and fixed open never accepts arbitrary URL", async () => {
   const service = createReadingService({ browser: nativeBrowser(), repository: repositoryDouble(), collector: collector(), learningCenterAvailable: true });
   for (const method of Object.values(M)) assert.equal(code(await service.handle(request(method), contentSender({ tab: { id: 7, incognito: true } }))), E.FORBIDDEN);

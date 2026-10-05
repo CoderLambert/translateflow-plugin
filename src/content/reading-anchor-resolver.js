@@ -144,16 +144,20 @@
     for (let retry = 0; retry < TOTAL.retries; retry++) {
       aborted(signal);
       const result = await resolveAtRevision(items, signal, retry);
-      if (result) return { results: result.results, retries: retry };
+      if (result) return { results: result.results, retries: retry, projectionRevision: result.revision };
       if (retry + 1 < TOTAL.retries) await delay(TOTAL.debounceMs, signal);
     }
-    return { results: unresolved(items), retries: TOTAL.retries };
+    return { results: unresolved(items), retries: TOTAL.retries, projectionRevision: null };
   }
   async function resolve(anchor, { signal } = {}) {
     const recordId = "__single__";
     const result = await resolveItems([{ recordId, anchor }], { signal });
     return { ...(result.results.get(recordId) || { status: "not-loaded", range: null, stats: emptyStats() }), retries: result.retries };
   }
-  async function resolvePage(items, { signal } = {}) { return (await resolveItems(items, { signal })).results; }
+  async function resolvePage(items, { signal } = {}) {
+    const result = await resolveItems(items, { signal });
+    Object.defineProperty(result.results, "projectionRevision", { value: result.projectionRevision, enumerable: false });
+    return result.results;
+  }
   app.modules.readingAnchorResolver = Object.freeze({ resolve, resolvePage });
 })();

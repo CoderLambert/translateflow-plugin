@@ -8,7 +8,7 @@ const BASE = ["protocolVersion", "method"];
 const fields = {
   [M.BEGIN_QUERY]: ["operationId", "purpose", "sourceSnapshot", "pageKey", "safeReturnUrl", "pageTitle", "itemText", "sourceLanguage", "recordId", "recordRevision", "captureSafety"],
   [M.SAVE_QUERY_RESULT]: ["token", "artifact"], [M.APPEND_ASSISTANT]: ["token", "artifact"],
-  [M.GET_PAGE_SUMMARY]: ["cursor", "limit"], [M.GET_RECORD]: ["recordId"],
+  [M.GET_PAGE_SUMMARY]: ["cursor", "limit"], [M.GET_RECORD]: ["recordId"], [M.GET_RECORD_SITE_KEY]: ["recordId"],
   [M.LIST_RECORDS]: ["pageKey", "query", "cursor", "limit"], [M.LIST_PAGES]: ["query", "cursor", "limit"],
   [M.GET_RECORDING_STATE]: [], [M.SET_RECORDING]: ["enabled", "expectedConsentGeneration"],
   [M.DELETE_RECORD]: ["recordId", "expectedRevision"], [M.DELETE_PAGE]: ["pageKey"],
@@ -56,9 +56,9 @@ function body(method, value) {
     if ([M.LIST_RECORDS, M.LIST_PAGES].includes(method)) result.query = text(value.query, L.searchChars, "request.query", { empty: true });
     return result;
   }
-  if ([M.GET_RECORD, M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) {
+  if ([M.GET_RECORD, M.GET_RECORD_SITE_KEY, M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) {
     const result = { recordId: recordId(value.recordId, "request.recordId") };
-    if (method !== M.GET_RECORD) result.expectedRevision = integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision");
+    if ([M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) result.expectedRevision = integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision");
     return result;
   }
   if (method === M.SET_RECORDING) return { enabled: bool(value.enabled, "request.enabled"),

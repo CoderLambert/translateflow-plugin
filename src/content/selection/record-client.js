@@ -19,8 +19,18 @@
     const show = (ctx, state, messageKey, retryAvailable = false, messageArgs = {}) => {
       if (!live(ctx)) return;
       ctx.view = { state, messageKey, messageArgs, retryAvailable };
+      if (state === "saved" && ctx.ref) ctx.view.siteMarkerStatus = ctx.siteMarkers?.state === "permission-required" ? "permission-required"
+        : ctx.siteMarkers ? (ctx.siteMarkers.enabled ? "enabled" : "disabled") : "unknown";
       onStatus(ctx.view);
     };
+    async function refreshSiteMarkers(ctx) {
+      try {
+        const value = await send(M.GET_SITE_MARKERS);
+        if (!live(ctx)) return;
+        ctx.siteMarkers = value;
+      } catch { if (!live(ctx)) return; ctx.siteMarkers = null; }
+      if (ctx.view?.state === "saved") show(ctx, "saved", ctx.view.messageKey, ctx.view.retryAvailable, ctx.view.messageArgs);
+    }
     function failure(ctx, caught) {
       if (!live(ctx)) return;
       const code = caught?.code || E.INTERRUPTED;
@@ -55,7 +65,7 @@
             void refresh(true);
           } catch (caught) { failure(current, caught); }
         });
-        port.onDisconnect.addListener(() => { if (port === ownedPort) { port = null; invalidation = null; } });
+        port.onDisconnect.addListener(() => { if (port === ownedPort) { port = null; invalidation = null; if (current?.ref) void refreshSiteMarkers(current); } });
       } catch { /* Focus and each explicit query also re-read policy. */ }
     }
     async function policy(ctx) {
@@ -183,7 +193,7 @@
           consentGeneration: ctx.policy.consentGeneration, sitePolicyRevision: ctx.policy.sitePolicyRevision };
         if (ctx.referenceGeneration === referenceGeneration) lastSaved = ctx.ref;
       }
-      if (ctx.drafts.size) show(ctx, "saved", "content.reading.saved");
+      if (ctx.drafts.size) { show(ctx, "saved", "content.reading.saved"); void refreshSiteMarkers(ctx); }
     }
     async function refresh(checkRecord = false) {
       const ctx = current;
@@ -219,6 +229,7 @@
           }
         }
         if (!ctx.auto && !ctx.manual) showAvailable(ctx);
+        if (ctx.ref && ctx.view?.state === "saved") void refreshSiteMarkers(ctx);
       } catch (caught) { failure(ctx, caught); }
     }
     function invalidateReference() { referenceGeneration++; lastSaved = null; }
@@ -284,7 +295,7 @@
       async open(event) {
         if (!access.trusted(event)) return;
         const ctx = current;
-        try { await send(M.OPEN_LEARNING_CENTER); }
+        try { await send(M.OPEN_LEARNING_CENTER, ctx?.ref?.recordId ? { recordId: ctx.ref.recordId } : {}); }
         catch (caught) {
           if (caught.code === E.NOT_READY) show(ctx, "invite", "content.reading.learningNotReady");
           else failure(ctx, caught);

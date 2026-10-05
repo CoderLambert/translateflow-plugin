@@ -41,6 +41,7 @@ export class ReadingClient {
   }
   pages(query: string, cursor: string | null = null) { return this.request<Page<PageItem>>(M.LIST_PAGES, { query, cursor, limit: 30 }); }
   getRecord(recordId: string) { return this.request<Detail>(M.GET_RECORD, { recordId }); }
+  recordSiteKey(recordId: string) { return this.request<{ siteKey: string }>(M.GET_RECORD_SITE_KEY, { recordId }); }
   exclusions(cursor: string | null = null) { return this.request<Page<Exclusion>>(M.LIST_RECORDING_EXCLUSIONS, { cursor, limit: 30 }); }
   site(siteKey: string) { return this.request<{ excluded: boolean; sitePolicyRevision: number }>(M.GET_SITE_RECORDING, { siteKey }); }
   setSite(siteKey: string, excluded: boolean, expectedSitePolicyRevision: number) {

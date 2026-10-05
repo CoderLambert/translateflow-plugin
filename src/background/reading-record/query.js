@@ -37,6 +37,12 @@ export function* read(store, context, cursor, now, viewed = true) {
     }
     return { data };
   }
+  if (request.method === M.GET_RECORD_SITE_KEY) {
+    if (access.scope !== "extension") fail(E.FORBIDDEN, "record-site-key.scope");
+    const row = yield store("records").get(request.recordId);
+    if (!row) fail(E.NOT_FOUND, "record");
+    return { data: { siteKey: row.siteKey } };
+  }
   const page = access.scope === "content" ? yield* pageState(store, access.pageKey) : null;
   const identity = queryIdentity(context);
   if (cursor && (cursor.identity !== identity || cursor.catalogRevision !== meta.catalogRevision || cursor.consentGeneration !== meta.consentGeneration ||

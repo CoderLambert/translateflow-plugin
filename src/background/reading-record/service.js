@@ -11,7 +11,7 @@ import { createExportRegistry } from "./exports.js";
 import { createHandoffRegistry } from "./handoffs.js";
 import { getReadingMemorySite, setReadingMemorySite } from "../auto-sites.js";
 
-const READS = new Set([M.GET_PAGE_SUMMARY, M.GET_RECORD, M.LIST_RECORDS, M.LIST_PAGES, M.GET_RECORDING_STATE,
+const READS = new Set([M.GET_PAGE_SUMMARY, M.GET_RECORD, M.GET_RECORD_SITE_KEY, M.LIST_RECORDS, M.LIST_PAGES, M.GET_RECORDING_STATE,
   M.GET_SITE_RECORDING, M.LIST_RECORDING_EXCLUSIONS]);
 const WRITES = new Set([M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT]);
 const MANAGE = new Set([M.SET_RECORDING, M.SET_SITE_RECORDING, M.DELETE_RECORD, M.DELETE_PAGE, M.CLEAR_RECORDS]);
@@ -56,6 +56,7 @@ export function createReadingService({ browser, repository = null, collector, no
     if (method === M.CREATE_HANDOFF) return handoffs.create(context);
     if (method === M.CONSUME_HANDOFF) return handoffs.consume(context);
     if (READS.has(method)) {
+      if (method === M.GET_RECORD_SITE_KEY && access.scope !== "extension") fail(E.FORBIDDEN, "record-site-key.scope");
       if (method === M.GET_SITE_RECORDING && access.scope === "content" && request.siteKey !== undefined) fail(E.FORBIDDEN, "siteKey");
       if (method === M.GET_SITE_RECORDING && access.scope === "extension" && request.siteKey === undefined) fail(E.BAD_DTO, "siteKey");
       // Repository rechecks meta/access and stored page atomically; caller recordId is never ownership.

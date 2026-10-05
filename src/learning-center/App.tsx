@@ -21,7 +21,8 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
   const [offline, setOffline] = useState(false), [stateError, setStateError] = useState(false), [busy, setBusy] = useState(false), [notice, setNotice] = useState("");
   const [mode, setMode] = useState<"recent" | "pages">("recent"), [input, setInput] = useState(""), [query, setQuery] = useState("");
   const [page, setPage] = useState<{ pageKey: string; siteKey: string; title: string } | null>(null);
-  const [id, setId] = useState(route), [detail, setDetail] = useState<RecordDetail | null>(null), [detailError, setDetailError] = useState(false), [detailLoading, setDetailLoading] = useState(false);
+  const [id, setId] = useState(route), [detail, setDetail] = useState<RecordDetail | null>(null), [detailSiteKey, setDetailSiteKey] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState(false), [detailLoading, setDetailLoading] = useState(false);
   const [notNow, setNotNow] = useState(false), [confirm, setConfirm] = useState<"record" | "page" | "all" | null>(null);
   const [exporting, setExporting] = useState(false), [bytes, setBytes] = useState(0);
   const active = useRef(false), readEpoch = useRef(0), detailEpoch = useRef(0), mutation = useRef(false), exportingRef = useRef<AbortController | null>(null);
@@ -60,11 +61,11 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     return () => window.removeEventListener("hashchange", change);
   }, []);
   useEffect(() => {
-    const generation = ++detailEpoch.current; setDetail(null); setDetailError(false);
+    const generation = ++detailEpoch.current; setDetail(null); setDetailSiteKey(null); setDetailError(false);
     if (!id || offline || exporting || !state || !localeReady) { setDetailLoading(false); return; }
     setDetailLoading(true);
-    client.getRecord(id).then(value => {
-      if (active.current && detailEpoch.current === generation) setDetail(value);
+    Promise.all([client.getRecord(id), client.recordSiteKey(id).catch(() => null)]).then(([value, site]) => {
+      if (active.current && detailEpoch.current === generation) { setDetail(value); setDetailSiteKey(site?.siteKey ?? null); }
     }).catch(() => { if (active.current && detailEpoch.current === generation) setDetailError(true); })
       .finally(() => { if (active.current && detailEpoch.current === generation) setDetailLoading(false); });
     return () => { detailEpoch.current++; };
@@ -134,7 +135,7 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     {id ? <>
       {detailLoading && <Notice>{i18n.t("learning.loading")}</Notice>}
       {detailError && <><Notice error>{i18n.t("learning.notFound")}</Notice><Button onClick={refresh}>{i18n.t("learning.retry")}</Button></>}
-      {detail ? <Detail detail={detail} i18n={i18n} onBack={() => navigate(null)} onDelete={() => setConfirm("record")}
+      {detail ? <Detail detail={detail} siteKey={detailSiteKey} i18n={i18n} onBack={() => navigate(null)} onDelete={() => setConfirm("record")}
         onAssistantSaved={refresh} disabled={blocked} assistantDisabled={blocked || !state?.enabled} client={client} />
         : <Button onClick={() => navigate(null)}>{i18n.t("learning.back")}</Button>}
     </> : <>
