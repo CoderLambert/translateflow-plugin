@@ -267,7 +267,7 @@
               units: batch
             });
             tasks.assertActive(activeTask);
-            if (!response?.ok) throw tasks.responseError(response, "字幕翻译失败");
+            if (!response?.ok) throw tasks.responseError(response, "content.subtitle.translationFailed");
 
             if (batchGeneration !== generation || stopped) {
               tasks.completeTask(activeTask, { done: batch.length });

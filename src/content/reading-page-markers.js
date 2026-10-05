@@ -1,7 +1,8 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
+  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
+  const locale = app.modules.contentI18n;
   let generation = 0, controller = null, root = null, panel = null, markerNodes = [], ranges = new Map(), projectionUnsubscribe = null, timer = 0, port = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
   // Focus, manual retries, and SPA route changes do not replenish it.
@@ -11,7 +12,7 @@
     const raw = await app.modules.runtime.sendRuntimeMessage(request), response = C.validateReadingResponse(method, raw, "content", body.limit);
     if (!response.ok) throw Object.assign(new Error(response.error.code), { code: response.error.code }); return response.data;
   }
-  function clearUi() { root?.remove(); root = panel = null; for (const node of markerNodes) node.remove(); markerNodes = []; ranges.clear(); }
+  function clearUi() { locale.unbindTree(root); root?.remove(); root = panel = null; for (const node of markerNodes) { locale.unbindTree(node); node.remove(); } markerNodes = []; ranges.clear(); }
   function unresolved(items) { return new Map(items.map(item => [item.recordId, { status: "not-loaded", range: null }])); }
   function cleanup() { generation++; controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); timer = 0;
     lastItems = []; lastPageRecordCount = 0;
@@ -28,24 +29,25 @@
   async function openRecord(recordId) { try { await send(M.OPEN_LEARNING_CENTER, { recordId }); } catch {} }
   function render(items, locations, pageRecordCount) {
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); root = document.createElement("div"); root.className = "tf-reading-page-history";
-    const toggle = button({ text: `本页历史 ${pageRecordCount}`, className: "tf-reading-page-toggle" }); toggle.setAttribute("aria-expanded", "false");
-    panel = surface({ className: "tf-reading-page-panel", role: "dialog" }); panel.hidden = true; panel.setAttribute("aria-label", "TranslateFlow 本页阅读历史");
-    const header = document.createElement("header"), title = document.createElement("strong"), retry = button({ text: "重新检查位置", className: "tf-reading-page-retry" }), close = button({ text: "×", label: "关闭本页历史", icon: true });
+    const toggle = button({ text: locale.t("content.reading.pageCount", { count: pageRecordCount }), className: "tf-reading-page-toggle" }); locale.bindText(toggle, "content.reading.pageCount", { count: pageRecordCount }); toggle.setAttribute("aria-expanded", "false");
+    panel = surface({ className: "tf-reading-page-panel", role: "dialog" }); panel.hidden = true; locale.bindAttribute(panel, "aria-label", "content.reading.pageAria");
+    const header = document.createElement("header"), title = document.createElement("strong"), retry = button({ text: locale.t("content.reading.retryPosition"), className: "tf-reading-page-retry" }), close = button({ text: "×", label: locale.t("content.reading.closePage"), icon: true });
+    locale.bindText(retry, "content.reading.retryPosition"); locale.bindAttribute(close, "aria-label", "content.reading.closePage");
     retry.addEventListener("click", event => { if (event.isTrusted) void load(); });
-    title.textContent = pageRecordCount > items.length ? "本页历史（已加载 " + items.length + "/" + pageRecordCount + " 条）" : "本页历史"; close.addEventListener("click", hidePanel); header.append(title, retry, close); panel.appendChild(header);
+    locale.bindText(title, pageRecordCount > items.length ? "content.reading.pageLoadedTitle" : "content.reading.pageTitle", pageRecordCount > items.length ? { loaded: items.length, total: pageRecordCount } : {}); close.addEventListener("click", hidePanel); header.append(title, retry, close); panel.appendChild(header);
     for (const [index, item] of items.entries()) {
       const location = locations.get(item.recordId) || { status: "not-loaded" }, row = document.createElement("article"); row.dataset.recordId = item.recordId;
-      const locate = button({ text: `定位第 ${index + 1} 条历史`, className: "tf-reading-page-item" }); locate.dataset.recordId = item.recordId;
+      const locate = button({ text: locale.t("content.reading.locateItem", { index: index + 1 }), className: "tf-reading-page-item" }); locale.bindText(locate, "content.reading.locateItem", { index: index + 1 }); locate.dataset.recordId = item.recordId;
       const rangeIsCurrent = location.status === "resolved" && location.range?.startContainer?.isConnected && location.range?.endContainer?.isConnected &&
         location.verifiedText === item.anchor.quote.exact;
       const locationStatus = location.status === "resolved" && !rangeIsCurrent ? "not-loaded" : location.status;
-      const state = document.createElement("span"); state.textContent = ({ resolved: "已定位", ambiguous: "多处匹配", missing: "未找到", "not-loaded": "未完全加载", unsupported: "不支持" })[locationStatus] || "不可用";
+      const state = document.createElement("span"); locale.bindText(state, ({ resolved: "content.reading.statusResolved", ambiguous: "content.reading.statusAmbiguous", missing: "content.reading.statusMissing", "not-loaded": "content.reading.statusNotLoaded", unsupported: "content.reading.statusUnsupported" })[locationStatus] || "content.reading.statusUnavailable");
       locate.addEventListener("click", () => { const range = ranges.get(item.recordId); if (range?.startContainer.isConnected) { const element = range.startContainer.parentElement;
         element?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } });
-      const open = button({ text: "查看记录" }); open.addEventListener("click", event => { if (event.isTrusted) void openRecord(item.recordId); });
+      const open = button({ text: locale.t("content.reading.viewRecord") }); locale.bindText(open, "content.reading.viewRecord"); open.addEventListener("click", event => { if (event.isTrusted) void openRecord(item.recordId); });
       row.append(locate, state, open); panel.appendChild(row);
       if (rangeIsCurrent) {
-        ranges.set(item.recordId, location.range); const marker = button({ text: "•", label: `第 ${index + 1} 条阅读历史，已定位`, className: "tf-reading-page-marker" }); marker.dataset.recordId = item.recordId;
+        ranges.set(item.recordId, location.range); const marker = button({ text: "•", label: locale.t("content.reading.markerLocated", { index: index + 1 }), className: "tf-reading-page-marker" }); locale.bindAttribute(marker, "aria-label", "content.reading.markerLocated", { index: index + 1 }); marker.dataset.recordId = item.recordId;
         marker.addEventListener("click", () => showPanel(item.recordId)); markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
       }
     }
@@ -55,9 +57,9 @@
         location.range?.endContainer?.isConnected && location.verifiedText === item.anchor.quote.exact;
     }).length;
     const summary = document.createElement("p"); summary.setAttribute("role", "status");
-    summary.textContent = pageRecordCount > C.READING_LIMITS.pageMarkers
-      ? "本页共 " + pageRecordCount + " 条，已加载前 " + items.length + " 条，定位 " + locatedCount + " 条；已达每页 " + C.READING_LIMITS.pageMarkers + " 条上限。"
-      : "本页共 " + pageRecordCount + " 条，已加载 " + items.length + " 条，定位 " + locatedCount + " 条。";
+    locale.bindText(summary, pageRecordCount > C.READING_LIMITS.pageMarkers ? "content.reading.pageSummaryLimited" : "content.reading.pageSummary", pageRecordCount > C.READING_LIMITS.pageMarkers
+      ? { total: pageRecordCount, loaded: items.length, located: locatedCount, limit: C.READING_LIMITS.pageMarkers }
+      : { total: pageRecordCount, loaded: items.length, located: locatedCount });
     panel.appendChild(summary);
     toggle.addEventListener("click", () => panel.hidden ? showPanel() : hidePanel()); root.append(toggle, panel); app.modules.uiHost.getLayer("reading-page-history").appendChild(root); positionMarkers();
     window.addEventListener("scroll", positionMarkers, true); window.addEventListener("resize", positionMarkers);

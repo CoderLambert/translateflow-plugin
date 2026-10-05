@@ -112,10 +112,12 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
       if (active.current) setNotice(i18n.t(error instanceof ReadingError && error.code === "READING_EXPORT_CANCELLED" ? "learning.exportCancelled" : "learning.exportChanged"));
     } finally { exportingRef.current = null; if (active.current) { setExporting(false); refresh(); } }
   }
+  if (!localeReady) return <main className="learning-center" aria-busy="true">
+    {localeError ? <><Notice error>{i18n.t("settings.readError")}</Notice><Button onClick={retryLocale}>{i18n.t("learning.retry")}</Button></> : null}
+  </main>;
   return <main className="learning-center">
     <header><div><p className="eyebrow">TranslateFlow</p><h1>{i18n.t("learning.title")}</h1></div>
       {state && <p>{i18n.t("learning.count", { count: state.recordCount })}</p>}</header>
-    {localeError && <><Notice error>{i18n.t("settings.readError")}</Notice><Button onClick={retryLocale}>{i18n.t("learning.retry")}</Button></>}
     {offline || stateError ? <><Notice error>{i18n.t(offline ? "learning.unconfirmed" : "learning.error")}</Notice><Button onClick={() => { setOffline(false); setConnection(value => value + 1); refresh(); }}>{i18n.t("learning.retry")}</Button></>
       : !state ? <Notice>{i18n.t("learning.loading")}</Notice> : null}
     {state && <section className="consent">

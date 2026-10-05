@@ -6,6 +6,7 @@ import { createRichMdictImportWorkerHandler } from "../src/options/workers/rich-
 import { RICH_MDICT_WORKER_MESSAGES } from "../src/options/workers/rich-mdict-import-worker-protocol.js";
 import { contentSourceFiles } from "../scripts/content-runtime.mjs";
 import { BACKGROUND_MESSAGES } from "../src/shared/constants.js";
+import { zh_CN as dictionaryZhCN } from "../src/i18n/catalog-dictionary.js";
 
 const UUID = "123e4567-e89b-42d3-a456-426614174000";
 const CONTENT_SOURCE_FILES = contentSourceFiles();
@@ -102,11 +103,12 @@ test("worker validates before claiming an active request and prefers the MDX hea
 });
 
 test("Settings and selection expose local rich details while preserving the strict MDX MDD limit", async () => {
-  const [settings, localUi, localClient, dictionaryUi, details, renderer, constants] = await Promise.all([
+  const [settings, localUi, localClient, dictionaryUi, dictionaryViews, details, renderer, constants] = await Promise.all([
     readFile(new URL("../options.html", import.meta.url), "utf8"),
     readFile(new URL("../src/options/LocalDictionaryImport.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/options/local-dictionary-client.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/options/DictionarySection.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/options/DictionaryViews.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/content/selection/rich-details.js", import.meta.url), "utf8"),
     readFile(new URL("../src/content/selection/rich-result-renderer.js", import.meta.url), "utf8"),
     readFile(new URL("../src/shared/constants.js", import.meta.url), "utf8")
@@ -114,9 +116,12 @@ test("Settings and selection expose local rich details while preserving the stri
 
   assert.match(localUi, /id="localDictionaryFiles"/u);
   assert.match(localUi, /id="localDictionaryDropZone"/u);
-  assert.match(dictionaryUi, /<h4>富文本词典<\/h4>/u);
-  assert.match(dictionaryUi, /个人首选/u);
-  assert.match(localUi, /支持 MDX \/ MDD/u);
+  assert.match(dictionaryUi, /dictionary\.rich/u);
+  assert.equal(dictionaryZhCN["dictionary.rich"], "富文本词典");
+  assert.match(dictionaryViews, /dictionary\.preferred/u);
+  assert.equal(dictionaryZhCN["dictionary.preferred"], "你的个人首选");
+  assert.match(localUi, /localImport\.support/u);
+  assert.match(dictionaryZhCN["localImport.support"], /支持 MDX \/ MDD/u);
   assert.doesNotMatch(localUi, /OPFS|quarantine|Worker/iu);
   assert.doesNotMatch(settings, /id="richMdictFile"/u);
   assert.match(localClient, /createRichMdictImportController/u);

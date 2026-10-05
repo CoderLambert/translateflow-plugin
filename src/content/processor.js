@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.contentI18n
     || !app?.modules.tasks
     || !app?.modules.dom
     || !app?.modules.batch
@@ -9,6 +10,9 @@
   ) return;
 
   const { constants, messages, state, getPageIdentity, normalizeSourceText, sendRuntimeMessage, showToast } = app.modules.runtime;
+  const t = (key, args) => app.modules.contentI18n.t(key, args);
+  const resultMessage = (key, args = {}) => ({ message: t(key, args), messageKey: key, messageArgs: args });
+  const responseError = (response, key) => Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
   const tasks = app.modules.tasks;
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
@@ -18,7 +22,7 @@
     if (!startup && state.startupRestorePromise) {
       try { await state.startupRestorePromise; } catch {}
     }
-    if (state.manualRunning || state.autoDrainRunning) return { message: "正在处理中…" };
+    if (state.manualRunning || state.autoDrainRunning) return resultMessage("content.page.processing");
     state.manualRunning = true;
     let task = null;
 
@@ -26,7 +30,7 @@
       clearTranslations();
       const entries = buildEntries(collectElements());
       if (!entries.length) {
-        return { message: "当前页面没有发现适合翻译的英文正文。", count: 0, cacheHits: 0, apiTranslated: 0 };
+        return { ...resultMessage("content.page.noEnglish"), count: 0, cacheHits: 0, apiTranslated: 0 };
       }
 
       if (!cacheOnly) {
@@ -47,10 +51,7 @@
       const pageUrl = location.href;
 
       if (!silent) {
-        showToast(
-          cacheOnly ? `正在恢复本页缓存（${entries.length} 个段落）…` : `发现 ${entries.length} 个英文段落，正在检查缓存…`,
-          "info"
-        );
+        showToast(t(cacheOnly ? "content.page.restoreChecking" : "content.page.cacheChecking", { count: entries.length }), "info");
       }
 
       for (let i = 0; i < batches.length; i += 1) {
@@ -80,14 +81,16 @@
 
       const count = cacheHits + apiTranslated;
       if (cacheOnly) {
-        const message = cacheHits
-          ? `已恢复 ${cacheHits} 个缓存段落；${missing} 个段落暂无缓存。`
-          : "当前网页内容没有可恢复的缓存。";
+        const key = cacheHits ? "content.page.restoreSummary" : "content.page.noCache";
+        const args = cacheHits ? { hits: cacheHits, missing } : {};
+        const message = t(key, args);
         if (!silent) showToast(message, cacheHits ? "success" : "info");
-        return { count, cacheHits, apiTranslated: 0, missing, message };
+        return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args };
       }
 
-      const message = `完成：缓存命中 ${cacheHits}，API 新翻译 ${apiTranslated}${missing ? `，未返回 ${missing}` : ""}。`;
+      const key = missing ? "content.page.completeMissing" : "content.page.complete";
+      const args = missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
+      const message = t(key, args);
       tasks.completeTask(task, {
         done: entries.length,
         cacheHits,
@@ -100,15 +103,17 @@
         apiTranslated,
         missing,
         message,
+        messageKey: key,
+        messageArgs: args,
         task: tasks.getTaskStatus(task)
       };
     } catch (error) {
       if (task) tasks.failTask(task, error);
       if (tasks.isCancelledError(error)) {
-        if (!silent) showToast("翻译已取消。", "info");
+        if (!silent) showToast(t("content.page.cancelled"), "info");
         return {
           cancelled: true,
-          message: "已取消翻译",
+          ...resultMessage("content.page.cancelledShort"),
           task: tasks.getTaskStatus(task)
         };
       }
@@ -130,7 +135,7 @@
       segments: groups.map(({ id, text }) => ({ id, text }))
     });
     if (task) tasks.assertActive(task);
-    if (!lookup?.ok) throw tasks.responseError(lookup, "缓存查询失败");
+    if (!lookup?.ok) throw responseError(lookup, "content.page.cacheLookupFailed");
 
     const cachedMap = new Map((lookup.hits || []).map((item) => [String(item.id), item.text]));
     const uncached = [];
@@ -163,7 +168,7 @@
       segments: uncached.map(({ id, text }) => ({ id, text }))
     });
     if (task) tasks.assertActive(task);
-    if (!response?.ok) throw tasks.responseError(response, "翻译失败");
+    if (!response?.ok) throw responseError(response, "content.page.translationFailed");
 
     const translatedMap = new Map((response.translations || []).map((item) => [String(item.id), item.text]));
     const toStore = [];
@@ -193,7 +198,7 @@
         items: toStore
       });
       if (task) tasks.assertActive(task);
-      if (!stored?.ok) throw tasks.responseError(stored, "缓存写入失败");
+      if (!stored?.ok) throw responseError(stored, "content.page.cacheStoreFailed");
 
       if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000) {
         state.lastAutoPruneAt = Date.now();

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 const sources = await Promise.all(["result-model.js", "translation-query.js"].map((file) =>
   readFile(new URL(`../src/content/selection/${file}`, import.meta.url), "utf8")));
@@ -11,6 +12,7 @@ const provenance = { provider: "synthetic", model: "synthetic-model", promptVers
 function harness(reply, { current = () => true } = {}) {
   const sent = [], shown = [], artifacts = [], completions = [], statuses = [];
   const app = { modules: {
+    contentI18n: createContentI18nStub(),
     runtime: { messages: { background: { CACHE_LOOKUP: "lookup", TRANSLATE_BATCH: "translate", CACHE_STORE: "store" } },
       async sendRuntimeMessage(request) { sent.push(json(request)); return reply(request); } },
     tasks: { transition() {}, completeTask(_task, result) { completions.push(json(result)); },
@@ -59,6 +61,6 @@ test("Selection supersession or failed cache commit never displays or records a 
   assert.equal(stale.shown.length, 0); assert.equal(stale.artifacts.length, 0);
   const failed = harness((request) => request.type === "lookup" ? { ok: true, hits: [] } : request.type === "translate"
     ? { ok: true, translations: [{ id: "selection", text: "uncommitted result" }] } : { ok: false, error: "synthetic storage failure" });
-  await assert.rejects(failed.run(), /synthetic storage failure/);
+  await assert.rejects(failed.run(), /content\.selection\.cacheStoreFailed/);
   assert.equal(failed.shown.length, 0); assert.equal(failed.artifacts.length, 0); assert.equal(failed.completions.length, 0);
 });

@@ -37,23 +37,28 @@ Manifest text based on its own locale rules. Changing `uiLocale` does not
 immediately change the extension name, browser action title or command labels.
 See the official [Chrome internationalization reference](https://developer.chrome.com/docs/extensions/reference/api/i18n).
 
-## Current migration scope
+## Surface ownership
 
-The interface-language control now lives in the React Options shell. It still
-reads and writes only `uiLocale`, appears only after the initial read settles,
-listens for local storage changes across open Options pages, and reports
-read/write failures with a retry action. React StrictMode reuses one initial
-storage read; neither render nor an effect writes settings or requests a host
-permission. A failed write keeps the last committed selection and a read failure
-disables the control until recovery.
+Popup, Options, Learning Center and the extension-owned Content controls consume
+the same catalog. Each React document has one locale hook that owns its initial
+`chrome.storage.local` read and its `storage.onChanged` listener. Options also
+owns the explicit `uiLocale` write from its language control. Initial document
+content is withheld until the stored value settles, so an explicit preference
+does not briefly render in the browser-language fallback. React StrictMode
+reuses one initial read, storage listeners are removed symmetrically, and an
+already-open document rerenders safely when another document changes the value.
 
-Manifest text and the Learning Center namespace continue to use the same pure
-catalog. Popup currently uses the catalog for its Learning Center entry; the
-remaining Popup/Options copy, Content controls, subtitles and dictionary
-compatibility islands retain their existing strings. This is not a claim that
-the entire extension is bilingual; that broader string migration belongs to
-#253. `uiLocale` still does not change target language, dictionary languages,
-Prompt, Provider credentials, cache identity or artifacts.
+The pure catalog still performs no storage or browser access. Content's classic
+renderers receive an already-resolved translator through their existing
+surface owner; they do not create another storage owner. Popup, Options,
+Glossary, the dictionary library and local import, Learning Center, Quick
+Control, Selection and subtitle controls use catalog text for their
+loading/empty/error/success/cancel/permission/confirmation paths. Dynamic site,
+model, dictionary, word and user values remain text interpolation arguments.
+
+Manifest localization remains browser-owned and independent. `uiLocale` still
+does not change target language, dictionary languages, Prompt, Provider
+credentials, cache identity or artifacts.
 
 ## Verification
 

@@ -3,13 +3,15 @@ import { DEFAULT_APPEARANCE_ID, normalizeAppearanceId } from "../shared/appearan
 import { getProviderHostPermissionPattern, normalizeOpenAIBaseUrl, normalizeSiteProfile } from "../shared/provider-config.js";
 import { normalizeSelectionDepth } from "../shared/selection.js";
 import { normalizeOrigin } from "../shared/url.js";
+import { createI18n } from "../i18n/index.js";
+import type { I18n } from "../i18n/index.js";
 
 export type OptionsConfig = { provider: string; apiKey: string; model: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
 export type SiteProfile = { provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
 export type SiteEntry = { origin: string; profile: SiteProfile };
 export type CacheStats = { pageCount: number; segmentCount: number; bytes: number };
 
-export function optionsClient(api: typeof chrome = chrome) {
+export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
   async function loadConfig(): Promise<OptionsConfig> {
     const value = await api.storage.local.get(["provider", "apiKey", "model", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
     const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...objectRecord(value.openAICompatible) };
@@ -27,8 +29,8 @@ export function optionsClient(api: typeof chrome = chrome) {
 
   async function ensureOpenAIPermission(raw: string) {
     const pattern = getProviderHostPermissionPattern(raw);
-    if (!pattern) throw new Error("请先填写 OpenAI-compatible Base URL。");
-    if (!await api.permissions.request({ origins: [pattern] })) throw new Error(`未授予 API 地址权限：${pattern}`);
+    if (!pattern) throw new Error(i18n.t("options.openaiBaseRequired"));
+    if (!await api.permissions.request({ origins: [pattern] })) throw new Error(i18n.t("options.apiPermissionDenied", { pattern }));
   }
 
   function normalizeConfig(input: OptionsConfig): OptionsConfig {
@@ -53,7 +55,7 @@ export function optionsClient(api: typeof chrome = chrome) {
 
   async function testProvider() {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.TEST_API });
-    if (!response?.ok) throw new Error(response?.error || "API 测试失败");
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
     return String(response.result || "");
   }
 
@@ -78,16 +80,16 @@ export function optionsClient(api: typeof chrome = chrome) {
 
   async function cacheStats(): Promise<CacheStats> {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_STATS });
-    if (!response?.ok) throw new Error(response?.error || "读取失败");
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.readFailed"));
     return { pageCount: Number(response.pageCount || 0), segmentCount: Number(response.segmentCount || 0), bytes: Number(response.bytes || 0) };
   }
-  async function pruneCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE }); if (!response?.ok) throw new Error(response?.error || "缓存清理失败"); return Number(response.deleted || 0); }
-  async function clearCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_CLEAR_ALL }); if (!response?.ok) throw new Error(response?.error || "清空缓存失败"); }
+  async function pruneCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_PRUNE }); if (!response?.ok) throw new Error(response?.error || i18n.t("options.cachePruneFailed")); return Number(response.deleted || 0); }
+  async function clearCache() { const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CACHE_CLEAR_ALL }); if (!response?.ok) throw new Error(response?.error || i18n.t("options.cacheClearFailed")); }
   async function behaviorSites(key: "cacheRestoreSites" | "autoSites") { const value = await api.storage.local.get([key]) as Record<string, unknown>, sites = value[key]; return Array.isArray(sites) ? [...new Set<string>(sites.filter((item): item is string => typeof item === "string"))].sort() : []; }
 
   async function removeBehavior(key: "cacheRestoreSites" | "autoSites", origin: string) {
     const type = key === "cacheRestoreSites" ? BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER : BACKGROUND_MESSAGES.AUTO_SITE_UNREGISTER;
-    const response = await api.runtime.sendMessage({ type, origin }); if (!response?.ok) throw new Error(response?.error || "移除站点行为失败");
+    const response = await api.runtime.sendMessage({ type, origin }); if (!response?.ok) throw new Error(response?.error || i18n.t("options.behaviorRemoveFailed"));
     const pattern = `${origin}/*`, stored = await api.storage.local.get(["cacheRestoreSites", "autoSites", "quickControlSites", "openAICompatible"]) as Record<string, unknown>;
     const stillNeeded = [stored.cacheRestoreSites, stored.autoSites, stored.quickControlSites].some(values => Array.isArray(values) && values.includes(origin));
     let providerNeeded = false; try { providerNeeded = getProviderHostPermissionPattern(objectRecord(stored.openAICompatible).baseUrl) === pattern; } catch {}

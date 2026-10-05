@@ -1,6 +1,7 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__ ||= { modules: {} };
-  if (!app.modules.runtime || !app.modules.richResourcePath || app.modules.richResourceResolver) return;
+  if (!app.modules.runtime || !app.modules.contentI18n || !app.modules.richResourcePath || app.modules.richResourceResolver) return;
+  const locale = app.modules.contentI18n;
 
   const MAX_RESOURCE_COUNT = 8;
   const MAX_ASSET_BYTES = 8 * 1024 * 1024;
@@ -78,7 +79,8 @@
       resource.objectUrl = url;
       const image = document.createElement("img");
       image.className = "tf-rich-resource-image";
-      image.alt = resource.label || "詞典圖片";
+      if (resource.label) image.alt = resource.label;
+      else locale.bindAttribute(image, "alt", "content.rich.dictionaryImage");
       image.width = width;
       image.height = height;
       image.addEventListener("error", () => {
@@ -109,18 +111,17 @@
     button.className = "tf-rich-placeholder tf-rich-audio-load";
     button.type = "button";
     button.dataset.action = "load-mdd-audio";
-    button.textContent = resource.label ? `載入音訊：${resource.label}` : "載入本地音訊";
-    button.setAttribute("aria-label", button.textContent);
+    locale.bindText(button, resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
+    locale.bindAttribute(button, "aria-label", resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
     resource.element = button;
     resource.onClose = () => {
       const placeholder = makePlaceholder("audio", resource.label);
-      placeholder.textContent = resource.label ? `［音訊：${resource.label}］` : "［音訊資源未導入］";
       button.replaceWith(placeholder);
     };
     button.addEventListener("click", async () => {
       if (!isCurrent(session) || button.disabled) return;
       button.disabled = true;
-      button.textContent = "正在載入本地音訊…";
+      locale.bindText(button, "content.rich.loadingAudio");
       try {
         const asset = await scheduleRead(session, () => fetchAsset(session, resource));
         if (!isCurrent(session)) return;
@@ -149,7 +150,7 @@
         resource.objectUrl = "";
         if (!isCurrent(session)) return;
         button.disabled = true;
-        button.textContent = resource.label ? `［音訊無法讀取：${resource.label}］` : "［音訊資源未導入］";
+        locale.bindText(button, resource.label ? "content.rich.audioUnreadable" : "content.rich.audioMissing", resource.label ? { label: resource.label } : {});
       }
     });
     previous?.replaceWith(button);
@@ -391,10 +392,11 @@
   function makePlaceholder(kind, label = "") {
     const node = kind === "audio" ? document.createElement("button") : document.createElement("span");
     node.className = "tf-rich-placeholder";
-    node.setAttribute("aria-label", kind === "image" ? "圖片資源未導入" : "音訊資源未導入");
-    node.textContent = kind === "image"
-      ? (label ? `［圖片：${label}］` : "［圖片資源未導入］")
-      : (label ? `［音訊：${label}］` : "［音訊資源未導入］");
+    locale.bindAttribute(node, "aria-label", kind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing");
+    locale.bindText(node,
+      label ? (kind === "image" ? "content.rich.imageLabel" : "content.rich.audioLabel")
+        : (kind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing"),
+      label ? { label } : {});
     return node;
   }
 

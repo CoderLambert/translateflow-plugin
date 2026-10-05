@@ -1,17 +1,11 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (
-    !app?.modules.runtime
-    || !app?.modules.selection
-    || !app?.modules.uiHost
-    || !app?.modules.uiPrimitives
-    || !app?.modules.selectionAiDetail
-    || !app?.modules.selectionEmptyState
-    || !app?.modules.selectionResultRenderer
-    || app.modules.selectionPopover
-  ) return;
+  if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.selection || !app?.modules.uiHost ||
+    !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
+    !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
 
   const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
+  const locale = app.modules.contentI18n;
   const { getLayer, ownsNode } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
@@ -20,26 +14,9 @@
   const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
 
-  let root;
-  let chip;
-  let panel;
-  let sourceNode;
-  let resultNode;
-  let aiDetail;
-  let emptyState;
-  let statusNode;
-  let copyButton;
-  let explainButton;
-  let retryButton;
-  let cancelButton;
-  let closeButton;
-  let activeSnapshot;
-  let translateHandler;
-  let retryHandler;
-  let copyHandler;
-  let explainHandler;
-  let cancelHandler;
-  let closeHandler;
+  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode;
+  let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
+  let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -47,12 +24,14 @@
     root = document.createElement("div");
     root.className = "tf-selection-ui";
 
-    chip = button({ text: "译", label: "处理所选文本", className: "tf-selection-chip" });
+    chip = button({ text: locale.t("content.selection.chipMark"), label: locale.t("content.selection.process"), className: "tf-selection-chip" });
+    locale.bindText(chip, "content.selection.chipMark");
+    locale.bindAttribute(chip, "aria-label", "content.selection.process");
     chip.addEventListener("pointerdown", (event) => event.preventDefault());
     chip.addEventListener("click", (event) => translateHandler?.(event));
 
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
-    panel.setAttribute("aria-label", "TranslateFlow 划词翻译");
+    locale.bindAttribute(panel, "aria-label", "content.selection.aria");
     panel.setAttribute("aria-modal", "false");
     installInteractionIsolation(panel);
     const header = document.createElement("div");
@@ -60,7 +39,8 @@
     const title = document.createElement("strong");
     title.textContent = "TranslateFlow";
 
-    closeButton = button({ text: "×", label: "关闭", icon: true, className: "tf-selection-icon-button" });
+    closeButton = button({ text: "×", label: locale.t("content.common.close"), icon: true, className: "tf-selection-icon-button" });
+    locale.bindAttribute(closeButton, "aria-label", "content.common.close");
     closeButton.addEventListener("click", () => closeHandler?.());
     header.append(title, closeButton);
 
@@ -80,16 +60,21 @@
     actions.className = "tf-selection-actions";
 
     explainButton = button({
-      text: "AI 详解",
-      label: "使用 AI 结合上下文详解",
+      text: locale.t("content.selection.aiDetail"),
+      label: locale.t("content.selection.aiDetailAria"),
       className: "tf-selection-action-primary"
     });
+    locale.bindText(explainButton, "content.selection.aiDetail");
+    locale.bindAttribute(explainButton, "aria-label", "content.selection.aiDetailAria");
     explainButton.addEventListener("click", (event) => explainHandler?.(event));
-    copyButton = button({ text: "复制", className: "tf-selection-action-quiet" });
+    copyButton = button({ text: locale.t("content.common.copy"), className: "tf-selection-action-quiet" });
+    locale.bindText(copyButton, "content.common.copy");
     copyButton.addEventListener("click", () => copyHandler?.());
-    retryButton = button({ text: "重试", className: "tf-selection-action-primary" });
+    retryButton = button({ text: locale.t("content.common.retry"), className: "tf-selection-action-primary" });
+    locale.bindText(retryButton, "content.common.retry");
     retryButton.addEventListener("click", (event) => retryHandler?.(event));
-    cancelButton = button({ text: "取消", className: "tf-selection-action-quiet" });
+    cancelButton = button({ text: locale.t("content.common.cancel"), className: "tf-selection-action-quiet" });
+    locale.bindText(cancelButton, "content.common.cancel");
     cancelButton.addEventListener("click", () => cancelHandler?.());
 
     actions.append(explainButton, copyButton, retryButton, cancelButton);
@@ -118,7 +103,7 @@
     panel.hidden = false;
     clearPageSelection();
     updateSource(snapshot);
-    setStatus(statusNode, loadingMessage, "loading");
+    setLocalizedStatus(statusNode, loadingMessage, "content.selection.loadingText", "loading");
     aiDetail?.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
@@ -130,17 +115,17 @@
     focusPanelEntry();
   }
 
-  function setLoadingStatus(message) {
+  function setLoadingStatus(message, args = {}) {
     if (!statusNode || panel?.hidden) return;
-    setStatus(statusNode, message, "loading");
+    setLocalizedStatus(statusNode, typeof message === "string" && !message.startsWith("content.") ? message : { key: message, args }, "content.selection.loadingText", "loading");
     reposition();
   }
 
   function defaultLoadingMessage(snapshot) {
     const text = String(snapshot?.text || "").trim();
     return /^[A-Za-z][A-Za-z’'-]*$/u.test(text)
-      ? "正在查词…"
-      : "正在处理所选内容…";
+      ? "content.selection.loadingWord"
+      : "content.selection.loadingText";
   }
 
   function showResult(snapshot, result, onCopy, onExplain) {
@@ -152,7 +137,7 @@
     chip.hidden = true;
     panel.hidden = false;
     updateSource(snapshot, result);
-    setStatus(statusNode, "", "success");
+    locale.unbind(statusNode); setStatus(statusNode, "", "success");
     renderResult(result);
     if (explainHandler) aiDetail.choices(explainHandler);
     resultNode.hidden = false;
@@ -173,7 +158,7 @@
     chip.hidden = true;
     panel.hidden = false;
     updateSource(snapshot);
-    setStatus(statusNode, message || "翻译失败，请重试。", "error");
+    setLocalizedStatus(statusNode, message, "content.selection.errorRetry", "error");
     aiDetail?.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
@@ -240,7 +225,7 @@
       .toLocaleLowerCase("en-US");
   }
 
-  function showEmpty(snapshot, { title, message, onExplain, onTranslate } = {}) {
+  function showEmpty(snapshot, { titleKey, messageKey, onExplain, onTranslate } = {}) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
@@ -248,13 +233,13 @@
     chip.hidden = true;
     panel.hidden = false;
     updateSource(snapshot);
-    setStatus(statusNode, "", "info");
+    locale.unbind(statusNode); setStatus(statusNode, "", "info");
     aiDetail?.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = false;
     hideActionButtons();
-    emptyState.show({ title, message, onExplain, onTranslate });
+    emptyState.show({ titleKey, messageKey, onExplain, onTranslate });
     if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
@@ -304,14 +289,6 @@
     aiDetail.cancelled(onRetry);
   }
 
-  function uniqueText(values) {
-    return [...new Set(
-      (Array.isArray(values) ? values : [])
-        .map((value) => String(value || "").trim())
-        .filter(Boolean)
-    )];
-  }
-
   function focusPanelEntry() {
     requestAnimationFrame(() => {
       if (!panel?.hidden && closeButton?.isConnected) {
@@ -323,6 +300,7 @@
   function hide() {
     if (!root) return;
     app.modules.richResourceResolver?.closeAll();
+    locale.unbindTree(root);
     root.remove();
     root = null;
     chip = null;
@@ -346,6 +324,18 @@
 
   function clearActionHandlers() {
     retryHandler = copyHandler = explainHandler = cancelHandler = null;
+  }
+
+  function setLocalizedStatus(node, message, fallbackKey, kind) {
+    setStatus(node, "", kind);
+    const descriptor = typeof message === "string"
+      ? { key: message.startsWith("content.") ? message : null, text: message, args: {} }
+      : { key: message?.key || fallbackKey, text: "", args: message?.args || {} };
+    if (descriptor.key) locale.bindText(node, descriptor.key, descriptor.args);
+    else {
+      locale.unbind(node);
+      node.textContent = descriptor.text || locale.t(fallbackKey);
+    }
   }
   function hideActionButtons() {
     cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;

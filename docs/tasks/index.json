@@ -232,12 +232,23 @@
     },
     {
       "task": "252",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "251"
       ],
-      "branch": "refactor/252-react-dictionaries",
+      "branch": "main",
       "candidateHead": "70ad25d89ffc859a1404cb0d062649d8d10872b0"
+    },
+    {
+      "task": "253",
+      "status": "paused",
+      "dependencies": [
+        "249",
+        "252",
+        "244"
+      ],
+      "branch": "refactor/253-ui-localization",
+      "candidateHead": null
     },
     {
       "task": "offline-dictionary",

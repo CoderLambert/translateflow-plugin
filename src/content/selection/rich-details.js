@@ -74,7 +74,9 @@
       const status = String(dictionary.status).slice(0, 48);
       const code = safeErrorCode(dictionary.errorCode);
       const detail = code || status;
-      card.setError(`该词典当前不可读取${detail ? `（${detail}）` : ""}。`);
+      card.setError(detail
+        ? { key: "content.rich.currentUnavailableWithReason", args: { reason: detail } }
+        : { key: "content.rich.currentUnavailable", args: {} });
       return;
     }
 
@@ -105,12 +107,11 @@
         const lookupError = Array.isArray(result?.errors) ? result.errors[0] : null;
         if (!result?.ok || lookupError) {
           state.settled = true;
-          card.setError(
-            `该词典暂时无法读取${safeErrorCode(result?.errorCode || lookupError?.code)
-              ? `（${safeErrorCode(result?.errorCode || lookupError?.code)}）`
-              : ""}。`,
-            () => { void request(true); }
-          );
+          const reason = safeErrorCode(result?.errorCode || lookupError?.code);
+          card.setError(reason
+            ? { key: "content.rich.lookupUnavailableWithReason", args: { reason } }
+            : { key: "content.rich.lookupUnavailable", args: {} },
+          () => { void request(true); });
           return;
         }
 
@@ -118,7 +119,7 @@
         const record = records.find((item) => String(item?.id || "") === dictionaryId);
         if (result.found && records.length && !record) {
           state.settled = true;
-          card.setError("返回的词典结果与本卡片不匹配。");
+          card.setError("content.rich.mismatch");
           return;
         }
         if (!result.found || !record) {
@@ -134,7 +135,7 @@
       } catch {
         if (!isLiveSession(session)) return;
         state.settled = true;
-        card.setError("该词典暂时无法读取。", () => { void request(true); });
+        card.setError("content.rich.lookupUnavailable", () => { void request(true); });
       } finally {
         state.inFlight = false;
       }
@@ -218,7 +219,7 @@
     for (const job of pendingJobs) settleJob(job, null);
 
     for (const job of pendingJobs) {
-      job.card.setError("所选内容已变化；本次富文本词典查询已停止。");
+      job.card.setError("content.rich.selectionChanged");
     }
     const requestIds = [...session.inFlightRequests];
     session.cancelPromise = Promise.allSettled(requestIds.map((requestId) =>

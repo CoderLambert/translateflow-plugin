@@ -1,37 +1,15 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (
-    !app?.modules.uiHost
-    || !app?.modules.uiPrimitives
-    || app.modules.quickControlView
-  ) return;
+  if (!app?.modules.uiHost || !app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.quickControlView) return;
 
-  const { getLayer } = app.modules.uiHost;
-  const {
-    button,
-    surface,
-    status,
-    setStatus,
-    badge,
-    progress,
-    setProgress
-  } = app.modules.uiPrimitives;
+  const { getLayer } = app.modules.uiHost, locale = app.modules.contentI18n, t = (key, args) => locale.t(key, args),
+    { button, surface, status, setStatus, badge, progress, setProgress } = app.modules.uiPrimitives;
 
   function create(handlers = {}) {
-    let root;
-    let trigger;
-    let panel;
-    let stateBadge;
-    let statusNode;
-    let progressNode;
-    let translateButton;
-    let retryButton;
-    let cancelButton;
-    let autoButton;
-    let autoStatus;
-    let presetSelect;
-    let appearanceSelect;
-
+    let root, trigger, panel, stateBadge, statusNode, progressNode, translateButton;
+    let retryButton, cancelButton, autoButton, autoStatus, presetSelect, appearanceSelect;
+    let taskValue = null, workingStateValues = new Set(), autoValue = false, contextValue = null, messageValue = null;
+    const unsubscribeLocale = locale.subscribe(refreshLocale);
     function ensure() {
       if (root?.isConnected) return api;
 
@@ -41,19 +19,19 @@
 
       trigger = button({
         text: "",
-        label: "TranslateFlow Quick Control",
+        label: t("content.quick.aria"),
         className: "tf-quick-trigger"
       });
       trigger.setAttribute("aria-expanded", "false");
       const triggerMark = document.createElement("span");
       triggerMark.className = "tf-quick-trigger-mark";
       triggerMark.setAttribute("aria-hidden", "true");
-      triggerMark.textContent = "译";
+      triggerMark.textContent = t("content.brandMark");
       trigger.appendChild(triggerMark);
       trigger.addEventListener("click", () => handlers.onToggle?.());
 
       panel = surface({ className: "tf-quick-panel", role: "dialog" });
-      panel.setAttribute("aria-label", "TranslateFlow Quick Control");
+      panel.setAttribute("aria-label", t("content.quick.aria"));
       panel.hidden = true;
 
       const header = document.createElement("div");
@@ -64,7 +42,7 @@
       const brandMark = document.createElement("span");
       brandMark.className = "tf-quick-brand-mark";
       brandMark.setAttribute("aria-hidden", "true");
-      brandMark.textContent = "译";
+      brandMark.textContent = t("content.brandMark");
       const brandCopy = document.createElement("div");
       brandCopy.className = "tf-quick-brand-copy";
       const title = document.createElement("strong");
@@ -72,17 +50,17 @@
       title.textContent = "TranslateFlow";
       const subtitle = document.createElement("span");
       subtitle.className = "tf-quick-subtitle";
-      subtitle.textContent = "页面翻译";
+      subtitle.textContent = t("content.quick.pageTranslation");
       brandCopy.append(title, subtitle);
       brand.append(brandMark, brandCopy);
 
       const headerActions = document.createElement("div");
       headerActions.className = "tf-quick-header-actions";
-      stateBadge = badge({ text: "就绪", kind: "neutral" });
+      stateBadge = badge({ text: t("content.quick.ready"), kind: "neutral" });
       stateBadge.classList.add("tf-quick-state-badge");
       const close = button({
         text: "×",
-        label: "关闭 Quick Control",
+        label: t("content.quick.close"),
         icon: true,
         className: "tf-quick-close"
       });
@@ -93,11 +71,11 @@
       const stateBlock = document.createElement("div");
       stateBlock.className = "tf-quick-state-block";
       statusNode = status({ className: "tf-quick-status" });
-      setStatus(statusNode, "准备就绪", "info");
+      setStatus(statusNode, t("content.quick.readyMessage"), "info");
       progressNode = progress({
         value: 0,
         max: 1,
-        label: "翻译进度",
+        label: t("content.quick.progress"),
         className: "tf-quick-progress"
       });
       progressNode.hidden = true;
@@ -105,30 +83,30 @@
 
       const primaryActions = document.createElement("div");
       primaryActions.className = "tf-quick-primary-actions";
-      translateButton = action("翻译 / 重翻", "tf-quick-translate", handlers.onTranslate);
+      translateButton = action(t("content.quick.translate"), "tf-quick-translate", handlers.onTranslate);
       primaryActions.appendChild(translateButton);
 
       const inlineActions = document.createElement("div");
       inlineActions.className = "tf-quick-inline-actions";
-      retryButton = action("重试", "tf-quick-retry", handlers.onRetry);
-      cancelButton = action("取消", "tf-quick-cancel", handlers.onCancel);
+      retryButton = action(t("content.common.retry"), "tf-quick-retry", handlers.onRetry);
+      cancelButton = action(t("content.common.cancel"), "tf-quick-cancel", handlers.onCancel);
       retryButton.hidden = true;
       cancelButton.hidden = true;
       inlineActions.append(retryButton, cancelButton);
 
       autoButton = button({
         text: "",
-        label: "切换本页自动翻译",
+        label: t("content.quick.toggleAuto"),
         className: "tf-quick-auto"
       });
       autoButton.setAttribute("aria-pressed", "false");
       const autoCopy = document.createElement("span");
       autoCopy.className = "tf-quick-auto-copy";
       const autoTitle = document.createElement("strong");
-      autoTitle.textContent = "自动翻译";
+      autoTitle.textContent = t("content.quick.auto");
       autoStatus = document.createElement("span");
       autoStatus.className = "tf-quick-auto-status";
-      autoStatus.textContent = "已关闭 · 仅手动翻译";
+      autoStatus.textContent = t("content.quick.autoOff");
       autoCopy.append(autoTitle, autoStatus);
       const autoSwitch = document.createElement("span");
       autoSwitch.className = "tf-quick-switch-visual";
@@ -140,38 +118,34 @@
       preferences.className = "tf-quick-preferences";
       const preferencesTitle = document.createElement("div");
       preferencesTitle.className = "tf-quick-section-title";
-      preferencesTitle.textContent = "阅读偏好";
+      preferencesTitle.textContent = t("content.quick.preferences");
 
-      const presetField = field("翻译模式");
+      const presetField = field(t("content.quick.preset"));
       presetSelect = presetField.select;
       presetSelect.classList.add("tf-quick-preset");
-      presetSelect.setAttribute("aria-label", "翻译模式");
+      presetSelect.setAttribute("aria-label", t("content.quick.preset"));
       presetSelect.addEventListener("change", () => handlers.onPresetChange?.(presetSelect.value));
 
-      const appearanceField = field("阅读外观");
+      const appearanceField = field(t("content.quick.appearance"));
       appearanceSelect = appearanceField.select;
       appearanceSelect.classList.add("tf-quick-appearance");
-      appearanceSelect.setAttribute("aria-label", "阅读外观");
+      appearanceSelect.setAttribute("aria-label", t("content.quick.appearance"));
       appearanceSelect.addEventListener("change", () => handlers.onAppearanceChange?.(appearanceSelect.value));
       preferences.append(preferencesTitle, presetField.root, appearanceField.root);
 
       const footer = document.createElement("div");
       footer.className = "tf-quick-footer";
-      const settingsButton = action("设置", "tf-quick-settings", handlers.onSettings);
-      const hideButton = action("在本站隐藏", "tf-quick-hide-site", handlers.onHideSite);
+      const settingsButton = action(t("content.common.settings"), "tf-quick-settings", handlers.onSettings);
+      const hideButton = action(t("content.quick.hideSite"), "tf-quick-hide-site", handlers.onHideSite);
       footer.append(settingsButton, hideButton);
 
-      panel.append(
-        header,
-        stateBlock,
-        primaryActions,
-        inlineActions,
-        autoButton,
-        preferences,
-        footer
-      );
+      panel.append(header, stateBlock, primaryActions, inlineActions, autoButton, preferences, footer);
       root.append(trigger, panel);
       getLayer("quick-control").appendChild(root);
+      renderTask();
+      renderAuto();
+      renderContext();
+      renderMessage();
       return api;
     }
 
@@ -224,26 +198,41 @@
       return Boolean(root?.isConnected && !root.hidden && root.dataset.suppressed !== "true");
     }
 
-    function setMessage(message, kind = "info") {
+    function setMessage(key, args = {}, kind = "info") {
+      messageValue = { key, args, kind, text: null };
       ensure();
-      setStatus(statusNode, message, kind);
+      renderMessage();
+    }
+
+    function setMessageText(message, kind = "info") {
+      messageValue = { key: null, args: {}, kind, text: String(message || "") };
+      ensure();
+      renderMessage();
     }
 
     function setTask(task, workingStates) {
+      taskValue = task || null;
+      workingStateValues = workingStates || new Set();
+      messageValue = null;
       ensure();
-      const taskState = task?.state || "idle";
-      const working = workingStates.has(taskState);
-      const progressText = task?.total > 0
-        ? ` ${Math.min(task.done, task.total)}/${task.total}`
+      renderTask();
+    }
+
+    function renderTask() {
+      if (!root) return;
+      const taskState = taskValue?.state || "idle";
+      const working = workingStateValues.has(taskState);
+      const progressText = taskValue?.total > 0
+        ? ` ${Math.min(taskValue.done, taskValue.total)}/${taskValue.total}`
         : "";
       const labels = {
-        queued: "准备翻译…",
-        cache_lookup: `正在检查缓存…${progressText}`,
-        translating: `正在调用模型翻译…${progressText}`,
-        storing: `正在保存译文…${progressText}`,
-        completed: `翻译完成${progressText}`,
-        failed: task?.error || "翻译失败",
-        cancelled: "翻译已取消"
+        queued: t("content.quick.taskQueued", { progress: progressText }),
+        cache_lookup: t("content.quick.taskCacheLookup", { progress: progressText }),
+        translating: t("content.quick.taskTranslating", { progress: progressText }),
+        storing: t("content.quick.taskStoring", { progress: progressText }),
+        completed: t("content.quick.taskCompleted", { progress: progressText }),
+        failed: t("content.quick.taskFailed"),
+        cancelled: t("content.quick.taskCancelled")
       };
 
       trigger.dataset.state = working
@@ -257,21 +246,21 @@
       trigger.setAttribute(
         "aria-label",
         working
-          ? "TranslateFlow Quick Control，翻译进行中"
+          ? t("content.quick.ariaWorking")
           : taskState === "failed"
-            ? "TranslateFlow Quick Control，需要处理"
+            ? t("content.quick.ariaNeedsAttention")
             : taskState === "completed"
-              ? "TranslateFlow Quick Control，翻译完成"
-              : "TranslateFlow Quick Control"
+              ? t("content.quick.ariaComplete")
+              : t("content.quick.aria")
       );
 
       stateBadge.textContent = working
-        ? "进行中"
+        ? t("content.quick.working")
         : taskState === "failed"
-          ? "需处理"
+          ? t("content.quick.needsAttention")
           : taskState === "completed"
-            ? "完成"
-            : "就绪";
+            ? t("content.quick.completed")
+            : t("content.quick.ready");
       stateBadge.dataset.kind = taskState === "failed"
         ? "error"
         : taskState === "completed"
@@ -280,16 +269,16 @@
             ? "info"
             : "neutral";
 
-      if (task) {
+      if (taskValue) {
         setStatus(
           statusNode,
-          labels[taskState] || "正在处理…",
+          labels[taskState] || t("content.quick.taskProcessing"),
           taskState === "failed" ? "error" : (taskState === "completed" ? "success" : "info")
         );
-        setProgress(progressNode, task.done || 0, task.total || 1);
+        setProgress(progressNode, taskValue.done || 0, taskValue.total || 1);
         progressNode.hidden = !(working || taskState === "completed");
       } else {
-        setStatus(statusNode, "准备就绪", "info");
+        setStatus(statusNode, t("content.quick.readyMessage"), "info");
         progressNode.hidden = true;
       }
 
@@ -301,13 +290,19 @@
     }
 
     function setAuto(enabled) {
+      autoValue = Boolean(enabled);
       ensure();
-      const active = Boolean(enabled);
+      renderAuto();
+    }
+
+    function renderAuto() {
+      if (!autoButton) return;
+      const active = autoValue;
       autoButton.dataset.active = active ? "true" : "false";
       autoButton.setAttribute("aria-pressed", active ? "true" : "false");
       autoStatus.textContent = active
-        ? "已开启 · 新内容自动翻译"
-        : "已关闭 · 仅手动翻译";
+        ? t("content.quick.autoOn")
+        : t("content.quick.autoOff");
     }
 
     function setAutoDisabled(disabled) {
@@ -315,10 +310,17 @@
     }
 
     function setContext(context) {
+      contextValue = context || {};
       ensure();
+      renderContext();
+    }
+
+    function renderContext() {
+      if (!presetSelect || !appearanceSelect) return;
+      const context = contextValue || {};
       presetSelect.replaceChildren(
-        option("inherit", "继承本站设置"),
-        option("none", "无 Preset / 默认 Prompt"),
+        option("inherit", t("content.quick.inheritSite")),
+        option("none", t("content.quick.noPreset")),
         ...(Array.isArray(context?.availablePresets) ? context.availablePresets : [])
           .map((item) => option(item.id, `${item.label} · ${item.description}`))
       );
@@ -327,7 +329,7 @@
         : (context?.savedPresetId || "inherit");
 
       appearanceSelect.replaceChildren(
-        option("inherit", "继承默认外观"),
+        option("inherit", t("content.quick.inheritAppearance")),
         ...(Array.isArray(context?.availableAppearances) ? context.availableAppearances : [])
           .map((item) => option(item.id, `${item.label} · ${item.description}`))
       );
@@ -336,12 +338,32 @@
         : "inherit";
     }
 
-    function setPresetDisabled(disabled) {
-      if (presetSelect) presetSelect.disabled = Boolean(disabled);
+    function setPresetDisabled(disabled) { if (presetSelect) presetSelect.disabled = Boolean(disabled); }
+    function setAppearanceDisabled(disabled) { if (appearanceSelect) appearanceSelect.disabled = Boolean(disabled); }
+
+    function renderMessage() {
+      if (!statusNode || !messageValue) return;
+      const text = messageValue.key
+        ? t(messageValue.key, messageValue.args)
+        : messageValue.text;
+      setStatus(statusNode, text, messageValue.kind);
     }
 
-    function setAppearanceDisabled(disabled) {
-      if (appearanceSelect) appearanceSelect.disabled = Boolean(disabled);
+    function refreshLocale() {
+      if (!root?.isConnected) return;
+      const open = Boolean(panel && !panel.hidden);
+      const suppressed = root.dataset.suppressed === "true";
+      const active = root.getRootNode()?.activeElement;
+      const focusClass = root.contains(active) ? [...(active.classList || [])].find((name) => name.startsWith("tf-quick-")) : "";
+      root.remove();
+      root = null;
+      ensure();
+      setSuppressed(suppressed);
+      if (open) {
+        panel.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+      }
+      if (focusClass) root.querySelector(`.${focusClass}`)?.focus({ preventScroll: true });
     }
 
     const api = {
@@ -353,13 +375,15 @@
       setSuppressed,
       isVisible,
       setMessage,
+      setMessageText,
       setTask,
       setAuto,
       setAutoDisabled,
       setContext,
       setPresetDisabled,
       setAppearanceDisabled,
-      isOpen: () => Boolean(panel && !panel.hidden)
+      isOpen: () => Boolean(panel && !panel.hidden),
+      dispose: () => { unsubscribeLocale(); destroy(); }
     };
     return api;
   }

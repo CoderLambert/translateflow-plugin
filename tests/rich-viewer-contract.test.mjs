@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 const VIEWER = new URL("../src/content/selection/rich-viewer.js", import.meta.url);
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
@@ -165,7 +166,7 @@ test("per-dictionary Compact rules carry safe formatting into the isolated viewe
 
 async function loadModules({ sanitizer = { sanitizeRichDictionaryRecord: () => ({ nodes: [], truncated: false }) } } = {}) {
   const document = new FakeDocument();
-  const app = { modules: { selectionRichSanitizer: sanitizer } };
+  const app = { modules: { contentI18n: createContentI18nStub(), selectionRichSanitizer: sanitizer } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
@@ -175,7 +176,7 @@ async function loadModules({ sanitizer = { sanitizeRichDictionaryRecord: () => (
 
 async function loadSanitizedPipeline() {
   const document = new FakeDocument();
-  const app = { modules: {} };
+  const app = { modules: { contentI18n: createContentI18nStub() } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
   for (const path of SANITIZER_MODULES) vm.runInContext(await readFile(path, "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);

@@ -8,6 +8,7 @@ import { READING_METHOD as M, READING_ERROR as E } from "../src/shared/reading/c
 import { createSourceDigest } from "../src/shared/reading/identity.js";
 import { snapshot } from "./fixtures/reading/contract.mjs";
 import { nativeBrowser, contentSender, repositoryDouble } from "./fixtures/reading/access.mjs";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 const files = ["reading-contract.js", "selection/record-access.js", "selection/record-client.js", "selection/result-model.js"];
 const sources = await Promise.all(files.map((file) => readFile(new URL(`../src/content/${file}`, import.meta.url), "utf8")));
@@ -17,7 +18,7 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
   let revision = 1, valid = true, savedRevision = 0, state = { enabled, consentGeneration: 1, capacityReached: false }, excluded = false;
   const messages = [], writes = [], views = [];
   const realm = vm.createContext({ crypto: webcrypto, TextEncoder, URL, Date, chrome: { runtime: {} },
-    __TRANSLATE_FLOW_CONTENT__: { modules: { textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
+    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
   const parse = vm.runInContext("JSON.parse", realm);
   const clone = (value) => parse(JSON.stringify(value));
   let notify = null, disconnected = null, connections = 0;
@@ -100,7 +101,7 @@ test("Storage/lost-ACK retry keeps the exact operation/artifact and performs no 
     return value;
   } }), ctx = h.start();
   h.client.accept(ctx, h.draft); await ctx.queue;
-  assert.deepEqual(h.views.at(-1), { state: "not-saved", message: "保存确认中断，当前结果仍可复制；可重试确认保存。", retryAvailable: true });
+  assert.deepEqual(h.views.at(-1), { state: "not-saved", messageKey: "content.reading.interrupted", messageArgs: {}, retryAvailable: true });
   await h.client.retry(h.event);
   assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.writes.length, 2);
   assert.deepEqual(h.writes[0], h.writes[1]); assert.equal(h.messages.filter((r) => r.method === M.BEGIN_QUERY).length, 1);
@@ -135,7 +136,7 @@ test("Close before consent, exclusion and unknown transport versions do not crea
   assert.equal(excluded.writes.length, 0); assert.equal(excluded.views.at(-1).state, "disabled");
   const old = await harness({ responseFilter(value) { return { ...value, protocolVersion: 1 }; } });
   const obsolete = old.start(); old.client.accept(obsolete, old.draft); await obsolete.queue;
-  assert.equal(old.writes.length, 0); assert.match(old.views.at(-1).message, /刷新网页/);
+  assert.equal(old.writes.length, 0); assert.equal(old.views.at(-1).messageKey, "content.reading.unsupportedVersion");
 });
 
 test("An invalidated saved reference and late page-summary reply cannot attach to the new card", async () => {

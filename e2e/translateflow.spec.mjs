@@ -214,7 +214,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const shown = await harness.sendContent(page, "TF_QUICK_CONTROL_SHOW");
     expect(shown.ok).toBe(true);
 
-    const trigger = page.getByRole("button", { name: "TranslateFlow Quick Control" });
+    const trigger = page.locator(".tf-quick-trigger");
     await expect(trigger).toBeVisible();
     expect(await trigger.evaluate((node) => getComputedStyle(node).fontSize)).not.toBe("1px");
     const triggerBox = await trigger.boundingBox();
@@ -225,7 +225,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     await trigger.click();
 
-    const dialog = page.getByRole("dialog", { name: "TranslateFlow Quick Control" });
+    const dialog = page.locator(".tf-quick-panel");
     await expect(dialog).toBeVisible();
     const dialogBox = await dialog.boundingBox();
     expect(dialogBox?.width).toBeGreaterThanOrEqual(320);
@@ -248,7 +248,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     harness.server.setFailures([401]);
     await page.getByRole("button", { name: "翻译 / 重翻" }).click();
-    await expect(page.locator(".tf-quick-status")).toContainText("mock failure 401");
+    await expect(page.locator(".tf-quick-status")).toContainText("翻译失败");
+    await expect(page.locator(".tf-quick-status")).not.toContainText("mock failure 401");
     await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
 
     harness.server.setFailures([]);
@@ -272,7 +273,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-quick-status")).toContainText("翻译已取消");
 
     harness.server.setDelay(0);
-    await page.getByRole("button", { name: "关闭 Quick Control" }).click();
+    await page.locator(".tf-quick-close").click();
     await selectElementText(page, "#intro");
     await expect(page.locator(".tf-selection-chip")).toBeVisible();
     await expect(trigger).not.toBeVisible();
@@ -600,7 +601,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     harness.server.setFailures([401]);
     await selectElementText(page, "#auth");
     await page.locator(".tf-selection-chip").click();
-    await expect(page.locator(".tf-selection-status")).toContainText("mock failure 401");
+    await expect(page.locator(".tf-selection-status")).toContainText("翻译失败");
+    await expect(page.locator(".tf-selection-status")).not.toContainText("mock failure 401");
     await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
     expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401]);
 

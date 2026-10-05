@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.contentI18n
     || !app?.modules.tasks
     || !app?.modules.selection
     || !app?.modules.selectionContext
@@ -14,6 +15,8 @@
   ) return;
 
   const { messages, getPageIdentity, sendRuntimeMessage, showToast } = app.modules.runtime;
+  const i18n = app.modules.contentI18n;
+  const t = (key, args) => i18n.t(key, args);
   const tasks = app.modules.tasks;
   const { readSelection, isExtensionOwnedNode } = app.modules.selection;
   const { captureSelectionContext } = app.modules.selectionContext;
@@ -30,7 +33,7 @@
   }) });
   const runTranslation = app.modules.selectionTranslationQuery?.create({
     assertCurrent, showResult, onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
-  }) || (() => Promise.reject(new Error("扩展已更新，请刷新网页后重新查询。")));
+  }) || (() => Promise.reject(localizedError("content.selection.updatedRefresh")));
   let recordContext = null;
   let started = false;
   let activeSnapshot = null;
@@ -129,7 +132,7 @@
       }
 
       tasks.transition(task, "translating");
-      popover.setLoadingStatus("正在解析所选内容…");
+      popover.setLoadingStatus("content.selection.resolving");
       const selectionContext = captureSelectionContext(snapshot);
       resolved = await sendRuntimeMessage({
         type: messages.background.SELECTION_RESOLVE,
@@ -138,17 +141,17 @@
         context: selectionContext
       });
       assertCurrent(version, snapshot, expectedPage, task);
-      if (!resolved?.ok) throw tasks.responseError(resolved, "划词解析失败");
+      if (!resolved?.ok) throw localizedError("content.selection.resolveFailed", resolved?.errorCode);
 
       if (resolved.route === "local") {
         const card = buildLocalResult(resolved);
-        if (!card?.primaryMeaning) throw new Error("本地词典没有可展示结果。");
+        if (!card?.primaryMeaning) throw localizedError("content.selection.noLocalResult");
         tasks.completeTask(task, { done: 1 });
         showResult(
           snapshot,
           card,
           copyTextForCard(card),
-          "结果已复制",
+          "content.selection.resultCopied",
           resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null
         );
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
@@ -165,8 +168,8 @@
       if (resolved.routeReason === "no-hit-local") {
         tasks.completeTask(task, { done: 1 });
         popover.showEmpty(snapshot, {
-          title: "本地词典暂未收录",
-          message: "没有找到可靠的本地词典结果。你可以选择进一步解释或普通翻译。",
+          titleKey: "content.selection.localEmptyTitle",
+          messageKey: "content.selection.localEmptyHelp",
           onExplain: resolved.explanationAllowed
             ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action)
             : null,
@@ -195,7 +198,7 @@
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
       popover.showError(
         snapshot,
-        cancelled ? "翻译已取消。" : failureMessage(error, resolved),
+        cancelled ? "content.selection.cancelled" : failureMessage(error, resolved),
         (event) => translateSnapshot(snapshot, { event })
       );
     }
@@ -215,47 +218,47 @@
     const requestId = `assistant-${crypto.randomUUID()}`;
     const state = activeAssistant = { snapshot, capture, version, expectedPage, depth, baseCard, action, queryRecord, operation,
       requestId, partial: "", sequence: 0, stopping: false, terminal: false, port: null };
-    if (!baseCard) popover.showLoading(snapshot, () => stopAssistant(true), "正在连接 AI 助手…");
+    if (!baseCard) popover.showLoading(snapshot, () => stopAssistant(true), "content.ai.connecting");
     popover.showAiDetailStreaming("", () => stopAssistant(true));
     try {
       const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
       port.onMessage.addListener(message => handleAssistantMessage(state, message));
       port.onDisconnect.addListener(() => {
-        if (!state.terminal) interruptAssistant(state, "连接中断，未保存。");
+        if (!state.terminal) interruptAssistant(state, "content.ai.disconnected");
       });
       port.postMessage({ protocolVersion: 1, type: "start", requestId, text: capture.selectedText,
         pageUrl: snapshot.pageUrl, context: captureSelectionContext(snapshot), depth, ownerToken: ownerToken(),
         action, threadId: `thread-${crypto.randomUUID()}`, turnId: `turn-${crypto.randomUUID()}`,
         parentTurnId: null, branchId: `branch-${crypto.randomUUID()}`, regenerationOf: null });
-    } catch { interruptAssistant(state, "无法连接 AI 助手，未保存。"); }
+    } catch { interruptAssistant(state, "content.ai.connectFailed"); }
   }
 
   function handleAssistantMessage(state, message) {
     if (!assistantLive(state) || message?.protocolVersion !== 1 || message.requestId !== state.requestId) return;
     if (message.type === "started") {
       if (!["stream", "unary"].includes(message.mode) || state.sequence !== 0 || state.partial) {
-        interruptAssistant(state, "回答协议异常，未保存。");
+        interruptAssistant(state, "content.ai.protocolError");
       }
       return;
     }
     if (message.type === "delta") {
-      if (message.sequence !== state.sequence || typeof message.text !== "string") return interruptAssistant(state, "回答顺序异常，未保存。");
+      if (message.sequence !== state.sequence || typeof message.text !== "string") return interruptAssistant(state, "content.ai.orderError");
       state.sequence++; state.partial += message.text;
       if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true));
       return;
     }
     if (message.type === "interrupted") {
       const stopped = state.stopping || message.code === "CANCELLED";
-      return interruptAssistant(state, stopped ? "已停止，未保存。" : "回答中断，未保存。");
+      return interruptAssistant(state, stopped ? "content.ai.stopped" : "content.ai.interrupted");
     }
     if (message.type !== "complete" || state.stopping || message.turn?.completionStatus !== "completed" ||
         message.turn.assistantAnswer !== message.text || !message.readingResult?.targetLanguage || !message.readingResult?.provenance) {
-      return interruptAssistant(state, state.stopping ? "已停止，未保存。" : "回答未完整确认，未保存。");
+      return interruptAssistant(state, state.stopping ? "content.ai.stopped" : "content.ai.incomplete");
     }
     state.terminal = true; activeAssistant = null;
     try { state.port.disconnect(); } catch {}
     const answer = String(message.text || "");
-    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "回答已复制"));
+    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "content.selection.answerCopied"));
     records?.accept(state.queryRecord, { kind: "assistant", targetLanguage: message.readingResult.targetLanguage,
       provenance: message.readingResult.provenance, payload: message.turn },
     { key: state.operation?.operationId, operation: state.operation, sourceLanguage: message.readingResult.sourceLanguage });
@@ -294,12 +297,16 @@
     return runTranslation(snapshot, task, version, expectedPage, queryRecord);
   }
 
-  function failureMessage(error) { return error?.message || String(error); }
+  function failureMessage(error) { return error?.i18nKey || "content.selection.errorRetry"; }
+
+  function localizedError(key, code = "") {
+    return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
+  }
 
   function showResult(snapshot, card, copyText, copiedMessage, onExplain = null) {
     popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain);
     records?.render();
-    if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", message: "阅读记录暂不可用，当前结果仍可使用。" });
+    if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
 
   function loadRich(snapshot, version, expectedPage, queryRecord) {
@@ -308,13 +315,14 @@
     });
   }
 
-  function copyAction(copyText, copiedMessage) {
+  function copyAction(copyText, copiedMessageKey) {
     return async () => {
       try {
         await writeSelectionText(copyText);
-        showToast(copiedMessage, "success");
+        showToast(t(copiedMessageKey), "success");
       } catch (error) {
-        showToast("复制失败：" + (error?.message || error), "error");
+        const message = error?.i18nKey ? t(error.i18nKey) : String(error?.message || error);
+        showToast(t("content.selection.copyFailed", { message }), "error");
       }
     };
   }
@@ -367,7 +375,7 @@
     tasks.cancelTask(task).catch(() => {});
     if (showCancelled && activeSnapshot) {
       const snapshot = activeSnapshot;
-      popover.showError(snapshot, "翻译已取消。", (event) => translateSnapshot(snapshot, { event }));
+      popover.showError(snapshot, "content.selection.cancelled", (event) => translateSnapshot(snapshot, { event }));
     }
   }
 

@@ -8,6 +8,8 @@ vi.mock("../../src/options/local-dictionary-client", () => ({ createLocalDiction
 
 import { LocalDictionaryImport } from "../../src/options/LocalDictionaryImport";
 import { createLocalDictionaryClient } from "../../src/options/local-dictionary-client";
+import { LocaleProvider } from "../../src/options/LocaleContext";
+import { createI18n } from "../../src/i18n/index.js";
 
 const report = {
   identity: { family: "mdict-rich", displayTitle: "React Fixture Dictionary", hints: [] },
@@ -19,11 +21,13 @@ const report = {
 
 beforeEach(() => { vi.mocked(createLocalDictionaryClient).mockReset(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+const zh = createI18n({ uiLocale: "zh_CN" });
+function subject() { return <LocaleProvider value={zh}><LocalDictionaryImport setStatus={vi.fn()} onChanged={vi.fn(async () => {})} /></LocaleProvider>; }
 
 test("local dictionary React preflight renders safe text and enables the confirmed route", async () => {
   const service = makeService({ preflight: vi.fn(async () => report) });
   vi.mocked(createLocalDictionaryClient).mockReturnValue(service as never);
-  render(<LocalDictionaryImport setStatus={vi.fn()} onChanged={vi.fn(async () => {})} />);
+  render(subject());
   await userEvent.upload(document.querySelector<HTMLInputElement>("#localDictionaryFiles")!, new File(["fixture"], "fixture.mdx"));
   await screen.findByText("React Fixture Dictionary");
   expect((screen.getByRole("button", { name: "安装词典" }) as HTMLButtonElement).disabled).toBe(false);
@@ -37,7 +41,7 @@ test("local dictionary React cancel aborts a pending preflight without importing
   }));
   const service = makeService({ preflight });
   vi.mocked(createLocalDictionaryClient).mockReturnValue(service as never);
-  render(<LocalDictionaryImport setStatus={vi.fn()} onChanged={vi.fn(async () => {})} />);
+  render(subject());
   await userEvent.upload(document.querySelector<HTMLInputElement>("#localDictionaryFiles")!, new File(["fixture"], "fixture.mdx"));
   await waitFor(() => expect(preflight).toHaveBeenCalled());
   await userEvent.click(screen.getByRole("button", { name: "取消" }));
@@ -48,7 +52,7 @@ test("local dictionary React cancel aborts a pending preflight without importing
 test("local dictionary StrictMode disposes every controller owner", async () => {
   const services = [makeService(), makeService()];
   vi.mocked(createLocalDictionaryClient).mockImplementation(() => services.shift() as never);
-  const view = render(<StrictMode><LocalDictionaryImport setStatus={vi.fn()} onChanged={vi.fn(async () => {})} /></StrictMode>);
+  const view = render(<StrictMode>{subject()}</StrictMode>);
   await waitFor(() => expect(createLocalDictionaryClient).toHaveBeenCalledTimes(2));
   expect((vi.mocked(createLocalDictionaryClient).mock.results[0]?.value as ReturnType<typeof makeService>).dispose).toHaveBeenCalledTimes(1);
   const active = vi.mocked(createLocalDictionaryClient).mock.results[1]?.value as ReturnType<typeof makeService>;

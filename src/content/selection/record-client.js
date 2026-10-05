@@ -1,6 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.selectionRecordAccess || !app?.modules.readingContract || app.modules.selectionRecordClient) return;
+  if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.selectionRecordAccess || !app?.modules.readingContract || app.modules.selectionRecordClient) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, E = C.READING_ERROR, access = app.modules.selectionRecordAccess;
   const { sendRuntimeMessage } = app.modules.runtime;
   const retryable = new Set([E.STORAGE, E.QUOTA, E.INTERRUPTED]);
@@ -16,9 +16,9 @@
   function create({ onStatus = () => {} } = {}) {
     let current = null, declined = false, port = null, invalidation = null, lastSaved = null, referenceGeneration = 1;
     const live = (ctx) => current === ctx && !ctx.closed && ctx.isCurrent();
-    const show = (ctx, state, message, retryAvailable = false) => {
+    const show = (ctx, state, messageKey, retryAvailable = false, messageArgs = {}) => {
       if (!live(ctx)) return;
-      ctx.view = { state, message, retryAvailable };
+      ctx.view = { state, messageKey, messageArgs, retryAvailable };
       onStatus(ctx.view);
     };
     function failure(ctx, caught) {
@@ -26,18 +26,18 @@
       const code = caught?.code || E.INTERRUPTED;
       if (!retryable.has(code)) ctx.blocked = true;
       const messages = {
-        [E.UNSUPPORTED_VERSION]: "阅读记录版本已更新，请刷新网页后重新操作。",
-        [E.STALE_OPERATION]: "本次保存已失效，请重新明确查询；当前结果仍可复制。",
-        [E.REVISION_CONFLICT]: "记录已变化，请重新明确查询；当前结果仍可复制。",
-        [E.FORBIDDEN]: "当前页面或所选内容不允许记录，结果仍可使用。",
-        [E.DISABLED]: "阅读记录已暂停或本站已排除，结果仍可使用。",
-        [E.CAPACITY]: "阅读记录空间已满，请在学习中心整理后重新查询。",
-        [E.NOT_READY]: "阅读记录入口暂未就绪，当前结果仍可使用。",
-        [E.QUOTA]: "本地空间不足，未确认保存；可整理空间后重试保存。",
-        [E.STORAGE]: "保存未完成，当前结果仍可复制；可重试保存。",
-        [E.INTERRUPTED]: "保存确认中断，当前结果仍可复制；可重试确认保存。"
+        [E.UNSUPPORTED_VERSION]: "content.reading.unsupportedVersion",
+        [E.STALE_OPERATION]: "content.reading.stale",
+        [E.REVISION_CONFLICT]: "content.reading.conflict",
+        [E.FORBIDDEN]: "content.reading.forbidden",
+        [E.DISABLED]: "content.reading.disabled",
+        [E.CAPACITY]: "content.reading.capacity",
+        [E.NOT_READY]: "content.reading.notReady",
+        [E.QUOTA]: "content.reading.quota",
+        [E.STORAGE]: "content.reading.storage",
+        [E.INTERRUPTED]: "content.reading.interrupted"
       };
-      show(ctx, "not-saved", messages[code] || "该结果暂不支持保存，当前结果仍可使用。", retryable.has(code));
+      show(ctx, "not-saved", messages[code] || "content.reading.unsupported", retryable.has(code));
     }
     function connect(ctx) {
       if (port || !chrome.runtime.connect || !live(ctx)) return;
@@ -142,14 +142,14 @@
     function accept(ctx, draft, { key = "primary", operation = ctx?.operations[0], sourceLanguage } = {}) {
       if (!live(ctx) || !operation || ctx.blocked) return;
       if (sourceLanguage) ctx.sourceLanguage = sourceLanguage;
-      if (!draft) { if (!ctx.drafts.size) show(ctx, "not-saved", "该结果暂不支持保存，当前结果仍可使用。"); return; }
+      if (!draft) { if (!ctx.drafts.size) show(ctx, "not-saved", "content.reading.unsupported"); return; }
       if (ctx.drafts.has(key) || ctx.drafts.size >= 8) return;
       let bounded;
       try {
         bounded = C.validateResultArtifact({ schemaVersion: 1, artifactId: crypto.randomUUID(), recordId: "00000000-0000-4000-8000-000000000000",
           operationId: operation.operationId, sourceSnapshotId: "pending", kind: draft.kind, targetLanguage: draft.targetLanguage,
           createdAt: Date.now(), payload: draft.payload, provenance: draft.provenance });
-      } catch { if (!ctx.drafts.size) show(ctx, "not-saved", "该结果暂不支持保存，当前结果仍可使用。"); return; }
+      } catch { if (!ctx.drafts.size) show(ctx, "not-saved", "content.reading.unsupported"); return; }
       ctx.drafts.set(key, { operation, bounded, artifact: null, saved: false });
       ctx.queue = ctx.queue.then(async () => {
         await ctx.policyPromise;
@@ -160,16 +160,16 @@
     }
     function showAvailable(ctx) {
       if (ctx.blocked || !ctx.drafts.size) return;
-      if (ctx.policy?.excluded) show(ctx, "disabled", "本站已排除阅读记录，当前结果仍可使用。");
-      else if (ctx.policy?.enabled) show(ctx, "manual", "阅读记录已开启，可保存当前仍有效的结果。");
-      else show(ctx, declined ? "disabled" : "invite", declined ? "本次结果未记录。" : "本次结果尚未记录，开启后可返回保存。");
+      if (ctx.policy?.excluded) show(ctx, "disabled", "content.reading.siteExcluded");
+      else if (ctx.policy?.enabled) show(ctx, "manual", "content.reading.enabled");
+      else show(ctx, declined ? "disabled" : "invite", declined ? "content.reading.notRecorded" : "content.reading.invite");
     }
     async function flush(ctx) {
       if (!live(ctx) || ctx.blocked) return;
       for (const item of ctx.drafts.values()) {
         if (item.saved) continue;
         if (!live(ctx) || ctx.blocked) return;
-        show(ctx, "saving", "正在保存阅读记录…");
+        show(ctx, "saving", "content.reading.saving");
         const token = await prepare(ctx, item.operation);
         if (!item.artifact) item.artifact = C.validateResultArtifact({ ...item.bounded,
           recordId: token.recordId, sourceSnapshotId: (await ctx.capture.ready).sourceSnapshotId });
@@ -183,7 +183,7 @@
           consentGeneration: ctx.policy.consentGeneration, sitePolicyRevision: ctx.policy.sitePolicyRevision };
         if (ctx.referenceGeneration === referenceGeneration) lastSaved = ctx.ref;
       }
-      if (ctx.drafts.size) show(ctx, "saved", "已保存阅读记录。");
+      if (ctx.drafts.size) show(ctx, "saved", "content.reading.saved");
     }
     async function refresh(checkRecord = false) {
       const ctx = current;
@@ -286,7 +286,7 @@
         const ctx = current;
         try { await send(M.OPEN_LEARNING_CENTER); }
         catch (caught) {
-          if (caught.code === E.NOT_READY) show(ctx, "invite", "学习中心入口暂未就绪，本次结果仍可使用。");
+          if (caught.code === E.NOT_READY) show(ctx, "invite", "content.reading.learningNotReady");
           else failure(ctx, caught);
         }
       },

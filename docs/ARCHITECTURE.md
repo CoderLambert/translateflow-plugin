@@ -48,7 +48,11 @@ Content document; the page never puts a record/token in the web URL. See
 and chunked download boundaries.
 
 Options now owns Glossary and the complete dictionary-library control tree in
-React. `src/options/glossary-client.ts`, `dictionary-client.ts` and
+React. Popup, Options and Learning Center each have one document-level locale
+hook; it performs the initial `uiLocale` read, listens for changes and removes
+that listener on cleanup. Options is the only React document that writes the
+preference. Rendering waits for the first read, while the pure `src/i18n/`
+catalog remains free of browser and storage access. `src/options/glossary-client.ts`, `dictionary-client.ts` and
 `local-dictionary-client.ts` are typed page clients: they preserve the existing
 versioned glossary stores, runtime messages and import controllers instead of
 creating a second parser, network, OPFS, quarantine, sanitizer or cancellation
@@ -61,7 +65,7 @@ owners under StrictMode.
 
 全局配置位于 `chrome.storage.local`。
 
-`uiLocale` (`auto` / `en` / `zh_CN`) is independent of translation targets and dictionary languages. The pure `src/i18n/` catalog, resolver and typed text/Intl API have no browser or storage access, including transitive dependencies. The React Options control owns the existing storage boundary and writes only this preference from an explicit change event. UI locale does not enter Provider payloads, prompts or cache fingerprints. Controlled catalog projection generates the two allowlisted Manifest message files; browser-selected Manifest language and user-selected UI language remain separate. See [UI_LOCALE.md](./UI_LOCALE.md).
+`uiLocale` (`auto` / `en` / `zh_CN`) is independent of translation targets and dictionary languages. The pure `src/i18n/` catalog, resolver and typed text/Intl API have no browser or storage access, including transitive dependencies. Each React document has one storage/listener owner; only the Options owner writes this preference, and only from an explicit change event. UI locale does not enter Provider payloads, prompts or cache fingerprints. Controlled catalog projection generates the two allowlisted Manifest message files; browser-selected Manifest language and user-selected UI language remain separate. See [UI_LOCALE.md](./UI_LOCALE.md).
 
 `resolveTranslationConfig()` 负责把：
 

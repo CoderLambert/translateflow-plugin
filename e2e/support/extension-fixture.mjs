@@ -85,6 +85,7 @@ export const test = base.extend({
             provider: "openai-compatible",
             model: "mock-model",
             targetLanguage: "Simplified Chinese",
+            uiLocale: "zh_CN",
             prompt: "Translate the segments and return JSON only.",
             appearance: "standard",
             cacheMaxMB: 50,

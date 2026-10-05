@@ -1,6 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.appearance || !app?.modules.tasks || !app?.modules.dom || !app?.modules.processor || !app?.modules.auto || !app?.modules.selectionController || !app?.modules.quickControl || !app?.modules.subtitleController) throw new Error("TranslateFlow content modules were not loaded in the expected order.");
+  if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.appearance || !app?.modules.tasks || !app?.modules.dom || !app?.modules.processor || !app?.modules.auto || !app?.modules.selectionController || !app?.modules.quickControl || !app?.modules.subtitleController) throw new Error("TranslateFlow content modules were not loaded in the expected order.");
   if (app.loaded) return;
   app.loaded = true;
 
@@ -8,6 +8,7 @@
   const appearance = app.modules.appearance, tasks = app.modules.tasks, { clearTranslations } = app.modules.dom, { processPage } = app.modules.processor;
   const { enableAutoMode, disableAutoMode, enableCacheRestoreMode, disableCacheRestoreMode, rescanAutoPage, maybeStartPersistentModes, scheduleAutoDrain } = app.modules.auto;
   const { start: startSelectionTranslation } = app.modules.selectionController, quickControl = app.modules.quickControl, subtitleController = app.modules.subtitleController;
+  const localeReady = app.modules.contentI18n.start();
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
@@ -15,14 +16,14 @@
         app.modules.richResourceResolver?.closeDictionary(message.dictionaryId);
         sendResponse({ ok: true });
         return false;
-      case messages.content.TRANSLATE_PAGE: processPage({ cacheOnly: false, taskId: message.taskId }).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
-      case messages.content.RESTORE_CACHE: processPage({ cacheOnly: true }).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
+      case messages.content.TRANSLATE_PAGE: localeReady.then(() => processPage({ cacheOnly: false, taskId: message.taskId })).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
+      case messages.content.RESTORE_CACHE: localeReady.then(() => processPage({ cacheOnly: true })).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.TASK_STATUS: sendResponse({ ok: true, task: tasks.getTaskStatus(message.taskId) }); return false;
-      case messages.content.CANCEL_TASK: tasks.cancelTask(message.taskId).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
+      case messages.content.CANCEL_TASK: localeReady.then(() => tasks.cancelTask(message.taskId)).then((result) => sendResponse({ ok: true, ...result })).catch((error) => sendResponse({ ok: false, error: error.message, errorCode: error?.code || "" })); return true;
       case messages.content.QUICK_CONTROL_SHOW: quickControl.showForTab().then(() => sendResponse({ ok: true, visible: quickControl.isVisible() })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.QUICK_CONTROL_TOGGLE: quickControl.toggleForTab().then(() => sendResponse({ ok: true, visible: quickControl.isVisible() })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
-      case messages.content.ENABLE_AUTO: enableAutoMode({ announce: true }).then(() => sendResponse({ ok: true, auto: true })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
-      case messages.content.DISABLE_AUTO: disableAutoMode({ announce: true }); sendResponse({ ok: true, auto: false }); return false;
+      case messages.content.ENABLE_AUTO: localeReady.then(() => enableAutoMode({ announce: true })).then(() => sendResponse({ ok: true, auto: true })).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
+      case messages.content.DISABLE_AUTO: localeReady.then(() => { disableAutoMode({ announce: true }); sendResponse({ ok: true, auto: false }); }).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.CACHE_STATUS: sendRuntimeMessage({ type: messages.background.CACHE_PAGE_STATUS, pageUrl: location.href }).then(sendResponse).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.CLEAR_PAGE_CACHE: sendRuntimeMessage({ type: messages.background.CACHE_CLEAR_PAGE, pageUrl: location.href }).then(sendResponse).catch((error) => sendResponse({ ok: false, error: error.message })); return true;
       case messages.content.TOGGLE_TRANSLATIONS: state.hidden = !state.hidden; document.documentElement.classList.toggle("abt-hide-translations", state.hidden); sendResponse({ ok: true, hidden: state.hidden }); return false;
@@ -76,11 +77,14 @@
     rescanAutoPage();
   }
 
-  appearance.start();
-  quickControl.start();
-  startSelectionTranslation();
-  maybeStartPersistentModes();
-  subtitleController.start().catch(() => {});
+  void localeReady.then(() => {
+    appearance.start();
+    quickControl.start();
+    startSelectionTranslation();
+    maybeStartPersistentModes();
+    subtitleController.start().catch(() => {});
+  });
+  window.addEventListener("pagehide", () => app.modules.contentI18n.dispose(), { once: true });
 
   document.addEventListener("yt-navigate-finish", () => {
     refreshIncrementalRoute();

@@ -45,7 +45,7 @@ const test = base.extend({
         return worker.evaluate(() => chrome.storage.local.get(["uiLocale"]));
       }).toEqual({ uiLocale: "auto" });
       console.log("[I18N_NATIVE_DEFAULTS_READY]", JSON.stringify({ artifact, initialLocale, readinessReads, uiLocale: "auto", storageWritesByHarness: 0 }));
-      await use({ context, openOptions, extensionId, errors, external });
+      await use({ context, openOptions, extensionId, worker, errors, external });
       expect(external, "No Provider or external HTTP call").toEqual([]);
       expect(errors, "No uncaught page errors").toEqual([]);
     } finally {
@@ -147,6 +147,62 @@ test("the new control remains hidden while the initial stored language is pendin
   await page.evaluate(() => globalThis.__tfReleaseLocaleRead());
   await expect(page.locator("#uiLocaleControl")).toBeVisible();
   await expect(page.locator("#uiLocaleControl h2")).toHaveText("界面语言");
+});
+
+test("mounted Quick Control, Selection and subtitle controls follow one live Content locale", async ({ localeHarness: h }) => {
+  await h.context.route("https://i18n.fixture.test/**", route => route.fulfill({
+    contentType: "text/html",
+    body: "<!doctype html><html><body><p id='selection'>synthetic selection text</p></body></html>"
+  }));
+  const page = await h.context.newPage();
+  await page.goto("https://i18n.fixture.test/content");
+  const contentTabId = await h.worker.evaluate(async url => {
+    const [tab] = await chrome.tabs.query({ url });
+    if (!tab?.id) throw new Error("Content locale fixture tab is missing");
+    await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ["content-scripts/content.css"] });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content-scripts/content.js"] });
+    return tab.id;
+  }, page.url());
+  await expect.poll(() => h.worker.evaluate(async tabId => {
+    const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: () => Boolean(globalThis.__TRANSLATE_FLOW_CONTENT__?.loaded) });
+    return result?.result === true;
+  }, contentTabId)).toBe(true);
+  await h.worker.evaluate(async url => {
+    const [tab] = await chrome.tabs.query({ url });
+    if (!tab?.id) throw new Error("Content locale fixture tab is missing");
+    await chrome.tabs.sendMessage(tab.id, { type: "TF_QUICK_CONTROL_SHOW" });
+  }, page.url());
+  await expect(page.locator(".tf-quick-subtitle")).toHaveText("Page translation");
+  await expect(page.locator(".tf-quick-auto strong")).toHaveText("Automatic translation");
+
+  await h.worker.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
+  await expect(page.locator(".tf-quick-subtitle")).toHaveText("页面翻译");
+  await expect(page.locator(".tf-quick-translate")).toHaveText("翻译 / 重翻");
+  await page.evaluate(() => {
+    const target = document.querySelector("#selection");
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    target.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  });
+  await expect(page.getByRole("button", { name: "处理所选文本" })).toBeVisible();
+  await h.worker.evaluate(() => chrome.storage.local.set({ uiLocale: "en" }));
+  await expect(page.getByRole("button", { name: "Process selected text" })).toBeVisible();
+
+  await h.context.route("https://www.youtube.com/watch**", route => route.fulfill({
+    contentType: "text/html",
+    body: "<!doctype html><html><body><div class='html5-video-player' style='position:relative;width:640px;height:360px'></div></body></html>"
+  }));
+  const youtube = await h.context.newPage();
+  await youtube.goto("https://www.youtube.com/watch?v=tf-i18n");
+  const subtitleHost = youtube.locator('[data-tf-extension-ui="youtube-subtitles"]');
+  await expect(subtitleHost).toBeAttached();
+  await expect(youtube.getByRole("combobox", { name: "TranslateFlow subtitle mode" })).toHaveValue("bilingual");
+  await expect(youtube.getByRole("combobox", { name: "TranslateFlow subtitle mode" }).locator("option")).toHaveText(["Bilingual", "Original captions", "Off"]);
+  await h.worker.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
+  await expect(youtube.getByRole("combobox", { name: "TranslateFlow 字幕模式" }).locator("option")).toHaveText(["双语", "原字幕", "关闭"]);
 });
 
 test.describe("Chinese browser with an explicit English interface", () => {

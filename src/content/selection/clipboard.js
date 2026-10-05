@@ -1,6 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app || app.modules.selectionClipboard) return;
+  if (!app?.modules.contentI18n || app.modules.selectionClipboard) return;
 
   async function writeText(text) {
     if (navigator.clipboard?.writeText) {
@@ -18,7 +18,7 @@
     textarea.select();
     const copied = document.execCommand("copy");
     textarea.remove();
-    if (!copied) throw new Error("浏览器拒绝复制操作");
+    if (!copied) throw Object.assign(new Error(app.modules.contentI18n.t("content.selection.copyDenied")), { i18nKey: "content.selection.copyDenied" });
   }
 
   app.modules.selectionClipboard = Object.freeze({ writeText });

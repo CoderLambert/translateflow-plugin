@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
+import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
 const RICH_RENDERER = new URL("../src/content/selection/rich-result-renderer.js", import.meta.url);
@@ -360,7 +361,11 @@ async function loadRenderer({
   }
 } = {}) {
   const document = new FakeDocument();
-  const app = { modules: { selectionRichSanitizer: sanitizer, selectionRichViewer: viewer } };
+  const app = { modules: { contentI18n: createContentI18nStub({ messages: {
+    "content.rich.order": "词典顺序 {index}",
+    "content.rich.preferred": "你的首选 · 个人偏好",
+    "content.rich.trust": "来源 / 信任：{trust}"
+  } }), selectionRichSanitizer: sanitizer, selectionRichViewer: viewer } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);

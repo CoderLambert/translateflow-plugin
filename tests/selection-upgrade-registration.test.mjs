@@ -22,7 +22,7 @@ async function load(files, { compiled = false } = {}) {
         callback(request.type === "SELECTION_RESOLVE"
           ? { ok: true, route: "translation", intent: { sourceLanguage: "en" } }
           : { ok: true, context: {} });
-      } }, storage: { local: { async get() { return {}; }, async set() {} }, onChanged: { addListener() {} } } }
+      } }, storage: { local: { async get() { return {}; }, async set() {} }, onChanged: { addListener() {}, removeListener() {} } } }
   });
   window.Range.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, right: 100, bottom: 30, width: 90, height: 20 });
   const reads = compiled ? [{ status: "fulfilled", value: await contentRuntimeSource() }]
@@ -31,7 +31,12 @@ async function load(files, { compiled = false } = {}) {
     assert.equal(reads[index].status, "fulfilled", files[index]);
     window.eval(reads[index].value);
   }
-  return { dom, window, requests, errors, app: window.__TRANSLATE_FLOW_CONTENT__ };
+  const app = window.__TRANSLATE_FLOW_CONTENT__;
+  if (compiled) {
+    await app.modules.contentI18n.start();
+    await new Promise(resolve => window.setTimeout(resolve, 0));
+  }
+  return { dom, window, requests, errors, app };
 }
 
 test("immutable old registration loading new bytes keeps required content modules and a recoverable translation path", async () => {

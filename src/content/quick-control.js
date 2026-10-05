@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.contentI18n
     || !app?.modules.quickControlView
     || !app?.modules.tasks
     || !app?.modules.processor
@@ -11,6 +12,8 @@
   ) return;
 
   const { messages, state, getSiteScope, sendRuntimeMessage } = app.modules.runtime;
+  const i18n = app.modules.contentI18n;
+  const t = (key, args) => i18n.t(key, args);
   const tasks = app.modules.tasks;
   const { processPage } = app.modules.processor;
   const { enableAutoMode, disableAutoMode } = app.modules.auto;
@@ -50,6 +53,7 @@
   }
 
   async function showForTab() {
+    await i18n.start();
     tabVisible = true;
     await refreshSiteVisibility();
     if (!hiddenForSite) {
@@ -111,7 +115,7 @@
     const opened = view.togglePanel();
     if (!opened) return;
     await refreshContext().catch((error) => {
-      view.setMessage(error?.message || "无法读取当前配置。", "error");
+      view.setMessage("content.quick.readConfigError", {}, "error");
     });
   }
 
@@ -134,24 +138,25 @@
 
   async function runTranslation() {
     if (latestTask && WORKING_STATES.has(latestTask.state)) return;
-    view.setMessage("正在准备翻译…", "info");
+    view.setMessage("content.quick.preparing", {}, "info");
     try {
       const result = await processPage({ cacheOnly: false, taskId: crypto.randomUUID() });
       if (!tasks.getLatestTask("page") && result?.message) {
-        view.setMessage(result.message, "info");
+        if (result.messageKey) view.setMessage(result.messageKey, result.messageArgs || {}, "info");
+        else view.setMessageText(result.message, "info");
       }
       await refreshContext().catch(() => {});
     } catch (error) {
       if (!latestTask || latestTask.state !== "failed") {
-        view.setMessage(error?.message || String(error), "error");
+        view.setMessage("content.quick.taskFailed", {}, "error");
       }
     }
   }
 
   async function cancelTranslation() {
     if (!latestTask || !WORKING_STATES.has(latestTask.state)) return;
-    await tasks.cancelTask(latestTask.id).catch((error) => {
-      view.setMessage(error?.message || "取消失败。", "error");
+    await tasks.cancelTask(latestTask.id).catch(() => {
+      view.setMessage("content.quick.cancelFailed", {}, "error");
     });
   }
 
@@ -161,9 +166,9 @@
       if (state.auto) disableAutoMode({ announce: false });
       else await enableAutoMode({ announce: false });
       view.setAuto(state.auto);
-      view.setMessage(state.auto ? "本页自动翻译已开启。" : "本页自动翻译已关闭。", "info");
-    } catch (error) {
-      view.setMessage(error?.message || "自动翻译切换失败。", "error");
+      view.setMessage(state.auto ? "content.quick.autoEnabled" : "content.quick.autoDisabled", {}, "info");
+    } catch {
+      view.setMessage("content.quick.autoToggleFailed", {}, "error");
     } finally {
       view.setAutoDisabled(false);
     }
@@ -174,7 +179,7 @@
       type: messages.background.EFFECTIVE_CONTEXT,
       pageUrl: location.href
     });
-    if (!response?.ok) throw new Error(response?.error || "读取当前翻译配置失败。");
+    if (!response?.ok) throw new Error(t("content.quick.contextReadFailed"));
     context = response.context || {};
     view.setContext(context);
     return context;
@@ -188,17 +193,18 @@
         pageUrl: location.href,
         preset: value
       });
-      if (!response?.ok) throw new Error(response?.error || "翻译模式切换失败。");
+      if (!response?.ok) throw new Error(t("content.quick.presetUpdateFailed"));
       context = response.context || context;
       view.setContext(context);
       view.setMessage(
         context?.hasSitePromptOverride
-          ? "本站自定义 Prompt 优先，模式已记录但当前不生效。"
-          : "翻译模式已切换；点击“翻译 / 重翻”应用到页面。",
+          ? "content.quick.promptOverrideActive"
+          : "content.quick.presetApplied",
+        {},
         "info"
       );
-    } catch (error) {
-      view.setMessage(error?.message || String(error), "error");
+    } catch {
+      view.setMessage("content.quick.presetUpdateFailed", {}, "error");
     } finally {
       view.setPresetDisabled(false);
     }
@@ -212,13 +218,13 @@
         pageUrl: location.href,
         appearance: value
       });
-      if (!response?.ok) throw new Error(response?.error || "阅读外观切换失败。");
+      if (!response?.ok) throw new Error(t("content.quick.appearanceUpdateFailed"));
       context = response.context || context;
       appearance.applyContext(context || {});
       view.setContext(context);
-      view.setMessage("阅读外观已应用到本站；不会重新调用翻译模型。", "success");
-    } catch (error) {
-      view.setMessage(error?.message || String(error), "error");
+      view.setMessage("content.quick.appearanceApplied", {}, "success");
+    } catch {
+      view.setMessage("content.quick.appearanceUpdateFailed", {}, "error");
     } finally {
       view.setAppearanceDisabled(false);
     }
@@ -226,7 +232,7 @@
 
   async function openSettings() {
     const response = await sendRuntimeMessage({ type: messages.background.OPEN_OPTIONS });
-    if (!response?.ok) view.setMessage(response?.error || "无法打开设置。", "error");
+    if (!response?.ok) view.setMessage("content.quick.openSettingsFailed", {}, "error");
   }
 
   async function hideOnSite() {
@@ -235,7 +241,7 @@
       origin: getSiteScope(location.href)
     });
     if (!response?.ok) {
-      view.setMessage(response?.error || "隐藏 Quick Control 失败。", "error");
+      view.setMessage("content.quick.hideFailed", {}, "error");
       return;
     }
     hiddenForSite = true;

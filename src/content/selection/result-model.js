@@ -1,6 +1,7 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app || app.modules.selectionResultModel) return;
+  if (!app?.modules.contentI18n || app.modules.selectionResultModel) return;
+  const t = (key, args) => app.modules.contentI18n.t(key, args);
 
   function buildLocalResult(resolved) {
     const candidates = orderedCandidates(resolved);
@@ -59,7 +60,7 @@
       explanation: String(explained?.generated?.explanation || "").trim(),
       badges: dedupeBadges([
         ...(Array.isArray(base.badges) ? base.badges : []),
-        { label: "AI 辅助", kind: "ai" }
+        { label: t("content.selection.badgeAi"), labelKey: "content.selection.badgeAi", kind: "ai" }
       ]),
       dictionaryEntries: base.dictionaryEntries || [],
       moreEntryCount: Number(base.moreEntryCount || 0)
@@ -70,7 +71,7 @@
     return {
       kind: "translation",
       primaryMeaning: String(text || "").trim(),
-      badges: [{ label: "翻译", kind: "translation" }],
+      badges: [{ label: t("content.selection.badgeTranslation"), labelKey: "content.selection.badgeTranslation", kind: "translation" }],
       senses: [],
       domains: [],
       typeLabels: []
@@ -94,7 +95,7 @@
       senses: translations.slice(1),
       domains: uniqueText(candidate?.domains),
       typeLabels: labels,
-      badges: [{ label: provenanceLabel(candidate), kind: "local" }]
+      badges: [{ ...provenanceDescriptor(candidate), kind: "local" }]
     };
   }
 
@@ -125,7 +126,7 @@
       translations: uniqueText(candidate?.translations),
       domains: uniqueText(candidate?.domains),
       typeLabels: uniqueText(candidate?.typeLabels),
-      provenanceLabel: provenanceLabel(candidate),
+      ...provenanceDescriptor(candidate, "provenance"),
       provenanceKind: isTechnicalCandidate(candidate) ? "technical" : "local",
       primary: Boolean(primary)
     };
@@ -136,12 +137,18 @@
       || candidate?.kind === "technical-entity";
   }
 
-  function provenanceLabel(candidate) {
-    if (candidate?.kind === "technical-entity") return "技术词条";
+  function provenanceDescriptor(candidate, prefix = "label") {
+    if (candidate?.kind === "technical-entity") return localizedDescriptor("content.selection.sourceTechnical", {}, prefix);
     const packId = String(candidate?.provenance?.packId || "").trim();
-    if (!packId || packId === "core" || packId.includes("core")) return "本地词典";
-    if (packId.includes("technical") || packId.includes("wikidata")) return "技术词条";
-    return `词典包 · ${packId}`;
+    if (!packId || packId === "core" || packId.includes("core")) return localizedDescriptor("content.selection.sourceLocal", {}, prefix);
+    if (packId.includes("technical") || packId.includes("wikidata")) return localizedDescriptor("content.selection.sourceTechnical", {}, prefix);
+    const args = { packId };
+    return localizedDescriptor("content.selection.sourcePack", args, prefix);
+  }
+
+  function localizedDescriptor(key, args, prefix) {
+    if (prefix === "provenance") return { provenanceLabel: t(key, args), provenanceKey: key, provenanceArgs: args };
+    return { label: t(key, args), labelKey: key, labelArgs: args };
   }
 
   function copyTextForCard(card) {
@@ -150,7 +157,7 @@
       ? entries.flatMap((entry, index) => {
           const meta = uniqueText([
             entry?.partOfSpeech,
-            entry?.provenanceLabel,
+            entry?.provenanceKey ? t(entry.provenanceKey, entry.provenanceArgs || {}) : entry?.provenanceLabel,
             ...(Array.isArray(entry?.domains) ? entry.domains : []),
             ...(Array.isArray(entry?.typeLabels) ? entry.typeLabels : [])
           ]);
@@ -166,7 +173,7 @@
         ]);
 
     if (Number(card?.moreEntryCount || 0) > 0) {
-      lexicalLines.push(`… 还有 ${Number(card.moreEntryCount)} 个候选`);
+      lexicalLines.push(t("content.selection.moreCandidates", { count: Number(card.moreEntryCount) }));
     }
 
     return [
@@ -182,7 +189,7 @@
   function dedupeBadges(values) {
     const seen = new Set();
     return (Array.isArray(values) ? values : []).filter((item) => {
-      const label = String(item?.label || "").trim();
+      const label = String(item?.labelKey || item?.label || "").trim();
       if (!label || seen.has(label)) return false;
       seen.add(label);
       return true;

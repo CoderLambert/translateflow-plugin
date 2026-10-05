@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "task": "253",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [
+    "249",
+    "252",
+    "244"
+  ],
+  "branch": "handoff/253-ui-localization-progress",
+  "worktree": ".worktrees/issue-253",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/ui-locale.spec.mjs",
+      "e2e/ui-redesign.spec.mjs",
+      "e2e/settings-ia.spec.mjs",
+      "e2e/dark-mode.spec.mjs",
+      "e2e/learning-center.spec.mjs",
+      "e2e/reading-loop-release-a.spec.mjs",
+      "e2e/translateflow.spec.mjs",
+      "e2e/subtitles.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "Continue the current PR #302 candidate: close remaining user-facing raw-error/hard-coded UI blockers, then freeze one exact candidateHead and run the full validationCommands plus generated Reading projection check before independent audit."
+}

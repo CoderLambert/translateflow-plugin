@@ -1,8 +1,10 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || !app?.modules.youtubeSubtitleSource || !app?.modules.subtitlePipeline || !app?.modules.subtitleRenderer || app.modules.subtitleController) return;
+  if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.youtubeSubtitleSource || !app?.modules.subtitlePipeline || !app?.modules.subtitleRenderer || app.modules.subtitleController) return;
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
+  const i18n = app.modules.contentI18n;
+  const t = (key) => i18n.t(key);
   const { createYouTubeSubtitleSource, PLAYER_SELECTORS } = app.modules.youtubeSubtitleSource;
   const { createSubtitlePipeline } = app.modules.subtitlePipeline;
   const { createSubtitleRenderer, MODES, SIZES } = app.modules.subtitleRenderer;
@@ -20,7 +22,7 @@
     const renderer = rendererFactory({
       onModeChange: (value) => setMode(value).catch(() => {}),
       onSizeChange: (value) => setSize(value).catch(() => {}),
-      onPresetChange: (value) => setPreset(value).catch((error) => renderer.setStatus(error.message || "Preset update failed", "error"))
+      onPresetChange: (value) => setPreset(value).catch(() => renderer.setStatusKey("content.subtitle.presetUpdateFailed", "error"))
     });
 
     function findPlayer() { for (const selector of PLAYER_SELECTORS) { const node = document.querySelector(selector); if (node) return node; } return null; }
@@ -46,7 +48,7 @@
         type: messages.background.EFFECTIVE_CONTEXT,
         pageUrl: location.href
       });
-      if (!response?.ok) throw new Error(response?.error || "Unable to read effective translation config.");
+      if (!response?.ok) throw new Error(t("content.subtitle.configReadFailed"));
       presetContext = response.context || {};
       renderer.setPresetContext(presetContext);
       if (retranslate && started && mode !== "off") {
@@ -67,8 +69,9 @@
       if (snapshot.mediaId !== mediaId) { mediaId = snapshot.mediaId; renderer.clear(); }
       const original = (snapshot.cues || []).map((cue) => cue.text).filter(Boolean).join(" ");
       renderer.renderOriginal(original);
-      renderer.setStatus(snapshot.cues?.length ? "" : "Captions unavailable", "muted");
-      if (mode !== "off") pipeline?.ingest(snapshot).catch((error) => renderer.setStatus(error.message || "Subtitle translation failed", "error"));
+      if (snapshot.cues?.length) renderer.setStatus("");
+      else renderer.setStatusKey("content.subtitle.captionsUnavailable", "muted");
+      if (mode !== "off") pipeline?.ingest(snapshot).catch(() => renderer.setStatusKey("content.subtitle.translationFailed", "error"));
     }
 
     function consumeTranslation({ unit, translation }) {
@@ -77,7 +80,7 @@
     }
 
     function consumeState(state) {
-      if (state.blockedByError) renderer.setStatus("Translation unavailable — original captions remain visible", "error");
+      if (state.blockedByError) renderer.setStatusKey("content.subtitle.translationUnavailable", "error");
     }
 
     async function start() {
@@ -92,7 +95,7 @@
         return true;
       } catch (error) {
         started = false;
-        renderer.setStatus(error.message || "Subtitle controls unavailable", "error");
+        renderer.setStatusKey("content.subtitle.controlsUnavailable", "error");
         throw error;
       }
     }
@@ -131,7 +134,7 @@
         pageUrl: location.href,
         preset: next
       });
-      if (!response?.ok) throw new Error(response?.error || "Unable to update translation preset.");
+      if (!response?.ok) throw new Error(t("content.subtitle.presetUpdateFailed"));
       presetContext = response.context || {};
       renderer.setPresetContext(presetContext);
       if (started && mode !== "off") {

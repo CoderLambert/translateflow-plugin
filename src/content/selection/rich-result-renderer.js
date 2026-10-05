@@ -1,6 +1,7 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app || app.modules.selectionRichResultRenderer) return;
+  if (!app?.modules.contentI18n || app.modules.selectionRichResultRenderer) return;
+  const locale = app.modules.contentI18n;
 
   function appendRichDictionaryDetails(container, response) {
     if (!container || !response || typeof response !== "object") return false;
@@ -10,10 +11,10 @@
 
     const section = document.createElement("section");
     section.className = "tf-selection-rich-details";
-    section.setAttribute("aria-label", "详细词典释义");
+    locale.bindAttribute(section, "aria-label", "content.rich.aria");
     const heading = document.createElement("strong");
     heading.className = "tf-selection-rich-heading";
-    heading.textContent = "详细词典";
+    locale.bindText(heading, "content.rich.title");
     section.appendChild(heading);
 
     for (const dictionary of dictionaries.slice(0, 5)) {
@@ -30,7 +31,8 @@
     for (const error of errors.slice(0, 3)) {
       const failure = document.createElement("div");
       failure.className = "tf-selection-rich-error";
-      failure.textContent = `${String(error?.title || "详细词典")}：暂时无法读取（${String(error?.message || "索引或文件损坏")}）`;
+      const titleText = String(error?.title || locale.t("content.rich.title"));
+      locale.bindText(failure, "content.rich.unavailable", { title: titleText });
       section.appendChild(failure);
     }
     container.appendChild(section);
@@ -42,10 +44,10 @@
 
     const section = document.createElement("section");
     section.className = "tf-selection-rich-details";
-    section.setAttribute("aria-label", "详细词典释义");
+    locale.bindAttribute(section, "aria-label", "content.rich.aria");
     const heading = document.createElement("strong");
     heading.className = "tf-selection-rich-heading";
-    heading.textContent = "详细词典";
+    locale.bindText(heading, "content.rich.title");
     section.appendChild(heading);
 
     const ordered = dictionaries
@@ -73,17 +75,21 @@
       const order = document.createElement("span");
       order.className = "tf-selection-rich-order";
       order.textContent = String(index + 1);
-      order.setAttribute("aria-label", `词典顺序 ${order.textContent}`);
+      locale.bindAttribute(order, "aria-label", "content.rich.order", { index: index + 1 });
 
       const identity = document.createElement("span");
       identity.className = "tf-selection-rich-identity";
       const title = document.createElement("strong");
       title.className = "tf-selection-rich-title";
-      title.textContent = String(dictionary?.title || "详细词典");
+      if (dictionary?.title) title.textContent = String(dictionary.title);
+      else locale.bindText(title, "content.rich.title");
       identity.appendChild(title);
-      if (dictionary?.preferred) identity.appendChild(Object.assign(document.createElement("span"), {
-        className: "tf-selection-rich-preference", textContent: "你的首选 · 个人偏好"
-      }));
+      if (dictionary?.preferred) {
+        const preferred = document.createElement("span");
+        preferred.className = "tf-selection-rich-preference";
+        locale.bindText(preferred, "content.rich.preferred");
+        identity.appendChild(preferred);
+      }
 
       const metadata = document.createElement("span");
       metadata.className = "tf-selection-rich-metadata";
@@ -91,7 +97,7 @@
       if (trustLabel) {
         const trust = document.createElement("span");
         trust.className = "tf-selection-rich-trust";
-        trust.textContent = `来源 / 信任：${trustLabel}`;
+        locale.bindText(trust, "content.rich.trust", { trust: trustLabel });
         metadata.appendChild(trust);
       }
       const format = String(dictionary?.format || "").trim();
@@ -106,7 +112,7 @@
       const status = document.createElement("span");
       status.className = "tf-selection-rich-card-status";
       status.setAttribute("aria-live", "polite");
-      status.textContent = details.open ? "正在查询…" : "展开后查询";
+      locale.bindText(status, details.open ? "content.rich.querying" : "content.rich.queryOnOpen");
       summary.append(order, identity, status);
 
       const body = document.createElement("div");
@@ -121,22 +127,22 @@
         dictionary,
         isOpen: () => details.open,
         setLoading() {
-          setCardState(details, status, "loading", "正在查询…");
+          setCardState(details, status, "loading", "content.rich.querying");
           body.replaceChildren();
         },
         setError(message, onRetry = null) {
-          setCardState(details, status, "error", "查询失败");
+          setCardState(details, status, "error", "content.rich.queryFailed");
           body.replaceChildren();
           const failure = document.createElement("p");
           failure.className = "tf-selection-rich-error";
-          failure.textContent = String(message || "暂时无法读取。");
+          bindMessage(failure, message, "content.rich.temporarilyUnavailable");
           body.appendChild(failure);
           retryHandler = typeof onRetry === "function" ? onRetry : null;
           if (retryHandler) {
             const retry = document.createElement("button");
             retry.type = "button";
             retry.className = "tf-selection-rich-retry";
-            retry.textContent = "重试查询";
+            locale.bindText(retry, "content.rich.retry");
             retry.addEventListener("click", (event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -145,24 +151,24 @@
             body.appendChild(retry);
           }
         },
-        setEmpty(message = "这本词典没有匹配条目。") {
-          setCardState(details, status, "empty", "无匹配");
+        setEmpty(message = "content.rich.noMatch") {
+          setCardState(details, status, "empty", "content.rich.noMatchShort");
           body.replaceChildren();
           const empty = document.createElement("p");
           empty.className = "tf-selection-rich-empty";
-          empty.textContent = String(message);
+          bindMessage(empty, message, "content.rich.noMatch");
           body.appendChild(empty);
           retryHandler = null;
         },
         setResult(record, dictionaryId, onDisplay = null) {
-          setCardState(details, status, "success", "查询完成");
+          setCardState(details, status, "success", "content.rich.complete");
           retryHandler = null;
           pendingResult = { record, dictionaryId, onDisplay };
           if (details.open) renderPendingResult();
           else {
             const note = document.createElement("p");
             note.className = "tf-selection-rich-deferred";
-            note.textContent = "释义已就绪，展开后显示。";
+            locale.bindText(note, "content.rich.readyCollapsed");
             body.replaceChildren(note);
           }
         }
@@ -191,7 +197,18 @@
     return cards;
   }
 
-  function setCardState(details, status, state, text) { details.dataset.state = state; status.textContent = text; }
+  function setCardState(details, status, state, key) { details.dataset.state = state; locale.bindText(status, key); }
+
+  function bindMessage(node, message, fallbackKey) {
+    if (message && typeof message === "object" && typeof message.key === "string") {
+      locale.bindText(node, message.key, message.args || {});
+    } else if (typeof message === "string" && message.startsWith("content.")) {
+      locale.bindText(node, message);
+    } else if (message) {
+      locale.unbind(node);
+      node.textContent = String(message);
+    } else locale.bindText(node, fallbackKey);
+  }
 
   function renderRichDictionaryRecord(container, dictionary, dictionaryId) {
     const headword = String(dictionary?.headword || "").trim();
@@ -205,7 +222,7 @@
     const bodyText = String(dictionary?.text || "").trim();
     const body = document.createElement("div");
     body.className = "tf-selection-rich-text";
-    const fallback = bodyText || "词典中有匹配记录，但没有可展示的纯文本内容。";
+    const fallback = bodyText || locale.t("content.rich.emptyBody");
     const richRecord = dictionary?.richRecord;
     const sanitizer = app.modules.selectionRichSanitizer;
     const viewer = app.modules.selectionRichViewer;
@@ -229,6 +246,7 @@
     }
     container.appendChild(body);
     const viewport = body.shadowRoot?.querySelector?.(".tf-rich-viewer");
+    if (!bodyText && !displayed && viewport) locale.bindText(viewport, "content.rich.emptyBody");
     return { id: String(dictionaryId || ""), headword, packVersion: dictionary?.packVersion,
       text: String(viewport?.textContent ?? (!displayed ? bodyText : "")) };
   }

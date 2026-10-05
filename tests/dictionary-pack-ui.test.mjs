@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { describeBundledPackState, getBundledPackPresentation, requestDictionaryPackOriginPermission } from "../src/options/pack-ui.js";
+import { zh_CN as dictionaryZhCN } from "../src/i18n/catalog-dictionary.js";
+import { zh_CN as optionsZhCN } from "../src/i18n/catalog-options.js";
 
 test("Settings requests only the exact trusted optional-pack origin", async () => {
   const calls = [];
@@ -99,12 +101,15 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   const common = await readFile(new URL("../src/options/CommonSections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../options.css", import.meta.url), "utf8");
   assert.match(source, /dictionary-health-badge/);
-  assert.match(source, /当前没有符合发布条件的官方词典/);
-  assert.match(source, /精选上游和本地导入词典会分别显示在各自栏目中/);
-  assert.match(common, /AI 详解深度/);
+  assert.match(source, /dictionary\.noOfficial/);
+  assert.match(dictionaryZhCN["dictionary.noOfficial"], /当前没有符合发布条件的官方词典/);
+  assert.match(dictionaryZhCN["dictionary.noOfficial"], /精选上游和本地导入词典会分别显示在各自栏目中/);
+  assert.match(common, /options\.selection\.depth/);
+  assert.equal(optionsZhCN["options.selection.depth"], "AI 详解深度");
   assert.match(source, /aria-live="polite"/);
   assert.match(section, /dictionary-repair-help/);
-  assert.match(section, /npm run setup:lexicon/);
+  assert.match(section, /dictionary\.sourceRepairHelp/);
+  assert.match(dictionaryZhCN["dictionary.sourceRepairHelp"], /npm run setup:lexicon/);
   assert.match(html, /src\/options\/main\.tsx/);
   assert.doesNotMatch(html, /FreeDict eng-zho 2025\.11\.23/);
   assert.match(css, /dictionary-health-badge\[data-kind="success"\]/);

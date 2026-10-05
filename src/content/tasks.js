@@ -1,8 +1,9 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.runtime || app.modules.tasks) return;
+  if (!app?.modules.runtime || !app?.modules.contentI18n || app.modules.tasks) return;
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
+  const t = (key) => app.modules.contentI18n.t(key);
   const TERMINAL_STATES = new Set(["completed", "failed", "cancelled"]);
   const tasks = new Map();
   const listeners = new Set();
@@ -68,12 +69,12 @@
     if (!task) return null;
     if (isCancelledError(error) || task.state === "cancelled") {
       return transition(task, "cancelled", {
-        error: "翻译已取消。",
+        error: t("content.page.cancelled"),
         errorCode: "CANCELLED"
       });
     }
     return transition(task, "failed", {
-      error: error?.message || String(error || "翻译失败"),
+      error: error?.message || t("content.page.translationFailed"),
       errorCode: error?.code || ""
     });
   }
@@ -85,7 +86,7 @@
     }
 
     transition(task, "cancelled", {
-      error: "翻译已取消。",
+      error: t("content.page.cancelled"),
       errorCode: "CANCELLED"
     });
 
@@ -157,8 +158,10 @@
   }
 
   function responseError(response, fallback) {
-    const error = new Error(response?.error || fallback || "操作失败");
+    const key = typeof fallback === "string" && fallback.startsWith("content.") ? fallback : "";
+    const error = new Error(key ? t(key) : (fallback || t("content.common.operationFailed")));
     error.code = response?.errorCode || "";
+    if (key) error.i18nKey = key;
     return error;
   }
 
@@ -196,7 +199,8 @@
   }
 
   function createCancelledError() {
-    const error = new Error("翻译已取消。");
+    const error = new Error(t("content.page.cancelled"));
+    error.i18nKey = "content.page.cancelled";
     error.name = "TaskCancelledError";
     error.code = "CANCELLED";
     return error;

@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (
     !app?.modules.runtime
+    || !app?.modules.contentI18n
     || !app?.modules.tasks
     || !app?.modules.dom
     || !app?.modules.batch
@@ -10,6 +11,7 @@
   ) return;
 
   const { constants, state, getPageIdentity, getSiteScope, showToast } = app.modules.runtime;
+  const t = (key, args) => app.modules.contentI18n.t(key, args);
   const tasks = app.modules.tasks;
   const {
     collectElements,
@@ -85,7 +87,7 @@
 
     ensureAutoObservers();
     rescanAutoPage();
-    if (announce) showToast("已开启本站自动缓存恢复；只恢复已有缓存，不会调用翻译 API。", "success");
+    if (announce) showToast(t("content.page.cacheRestoreEnabled"), "success");
   }
 
   function disableCacheRestoreMode({ announce = false } = {}) {
@@ -96,7 +98,7 @@
     } else {
       stopIncrementalObservers();
     }
-    if (announce) showToast("已关闭本站自动缓存恢复。", "info");
+    if (announce) showToast(t("content.page.cacheRestoreDisabled"), "info");
   }
 
   async function enableAutoMode({ announce = false } = {}) {
@@ -109,7 +111,7 @@
     state.currentPageIdentity = getPageIdentity(location.href);
     ensureAutoObservers();
     rescanAutoPage();
-    if (announce) showToast("已开启此站自动增量翻译：缓存优先，缺失内容才调用 API。", "success");
+    if (announce) showToast(t("content.page.autoEnabled"), "success");
   }
 
   function disableAutoMode({ announce = false } = {}) {
@@ -123,7 +125,7 @@
       stopIncrementalObservers();
     }
 
-    if (announce) showToast("已关闭此站自动增量翻译。", "info");
+    if (announce) showToast(t("content.page.autoDisabled"), "info");
   }
 
   function stopIncrementalObservers() {
@@ -332,7 +334,7 @@
       state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
 
       if (now - state.lastAutoErrorAt > 5000) {
-        showToast(`自动翻译暂停：${message}`, "error");
+        showToast(t("content.page.autoPaused", { message }), "error");
         state.lastAutoErrorAt = now;
       }
     }

@@ -37,16 +37,16 @@ export function createLocalDictionaryClient({
   runtime = chrome.runtime,
   WorkerCtor = Worker,
   cryptoProvider = crypto,
-  onProgress = (_message: string) => {}
+  onProgress = (_message: string, _phase: string) => {}
 }: {
   runtime?: typeof chrome.runtime;
   WorkerCtor?: typeof Worker;
   cryptoProvider?: Crypto;
-  onProgress?: (message: string) => void;
+  onProgress?: (message: string, phase: string) => void;
 } = {}) {
   let active: LocalController | null = null;
   let retryAttachment: null | { dictionaryId: string; mdxFileName: string; files: File[]; title: string } = null;
-  const progress = (event: { phase?: string }) => onProgress(importProgressLabel(event.phase));
+  const progress = (event: { phase?: string }) => onProgress(importProgressLabel(event.phase), String(event.phase || ""));
   const rich = makeRichController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
   const structured = makeMdictController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
   const stardict = makeStarDictController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
@@ -84,7 +84,7 @@ export function createLocalDictionaryClient({
         if (attached.length) {
           if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
           try {
-            onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…");
+            onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…", "");
             await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, files: attached }));
           } catch (error) {
             retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached, title: String(report.identity.displayTitle || "") };
