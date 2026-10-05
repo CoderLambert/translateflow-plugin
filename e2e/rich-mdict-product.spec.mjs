@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
+import { readBoundaryFixture } from "../tests/helpers/mdx-boundary-fixture.mjs";
 
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
   resolve("test-results/rich-mdict-evidence");
@@ -133,6 +134,56 @@ test.describe("Rich MDict local product and security behavior", () => {
     await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("MDX 文件损坏");
     await expect(options.locator("#localDictionaryImportButton")).toBeDisabled();
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
+    expect(harness.server.calls).toHaveLength(0);
+  });
+
+  test("independent raw-boundary MDX imports, survives Options reload, and serves a selected word locally", async ({ harness }) => {
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const bytes = await readBoundaryFixture("writer-utf8.mdx");
+
+    await options.locator("#localDictionaryFiles").setInputFiles({
+      name: "synthetic-boundary.mdx",
+      mimeType: "application/octet-stream",
+      buffer: bytes
+    });
+    const summary = options.locator("#localDictionaryPreflightSummary");
+    await expect(summary).toContainText("检查结果可用");
+    await expect(summary).toContainText("MDX 富文本词典");
+    await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", {
+      timeout: 60_000
+    });
+    await expect(options.locator("#richMdictInstalledList")).toContainText("Synthetic MDX boundary fixture");
+
+    await options.reload();
+    await expect(options.locator("#richMdictInstalledList")).toContainText("Synthetic MDX boundary fixture");
+    const storedLookup = await options.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "C"
+    }));
+    expect(storedLookup.ok).toBe(true);
+    expect(storedLookup.found).toBe(true);
+    expect(JSON.stringify(storedLookup)).toContain("Uppercase sentinel");
+
+    const page = await harness.open("/selection");
+    await page.evaluate(() => {
+      const node = document.createElement("p");
+      node.id = "mdict-boundary-word";
+      node.textContent = "Zebra";
+      document.body.appendChild(node);
+    });
+    await harness.inject(page);
+    await selectElementText(page, "#mdict-boundary-word");
+    await expect(page.locator(".tf-selection-chip")).toBeVisible({ timeout: 10_000 });
+    await page.locator(".tf-selection-chip").click();
+    const card = page.locator(".tf-selection-rich-record").filter({
+      hasText: "Synthetic MDX boundary fixture"
+    });
+    await expandRichCard(card);
+    await expect(card.locator(".tf-selection-rich-text .tf-rich-viewer"))
+      .toContainText("Last sentinel", { timeout: 30_000 });
     expect(harness.server.calls).toHaveLength(0);
   });
 });

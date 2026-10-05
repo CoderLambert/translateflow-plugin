@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "purpose": "synthetic-raw-key-boundary-regression",
+  "writerRepository": "https://github.com/zhansliu/writemdict",
+  "writerCommit": "f0240b30cabd2f0470d3ee1a0641fc7f8c38dcf5",
+  "writerSha256": "f47452af9296b79d8f4fc39e0432d72278079857482bc6d74b1b5e35e4b65081",
+  "license": "MIT",
+  "headerDate": "2026-09-30",
+  "generatorSha256": "8351e4253456156bb58dbd0796fd8d85a5b65bd8ccb9f3139d48aa0806b9fdce",
+  "files": [
+    {
+      "file": "single-c.mdx",
+      "bytes": 918,
+      "sha256": "83f7a7350a78e4d5fafefa0f31c4b6d7845860322af1f105cd88f90e56090d1e",
+      "encoding": "utf8",
+      "encrypted": false,
+      "entries": [
+        "C"
+      ]
+    },
+    {
+      "file": "writer-utf8.mdx",
+      "bytes": 1205,
+      "sha256": "5d15f7d34d49bd7085a3a94cd7f5523da6a9c08b9d33ec8121316804eef742de",
+      "encoding": "utf8",
+      "encrypted": false,
+      "entries": [
+        "C",
+        "co-op",
+        "Ｆoo",
+        "Zebra"
+      ]
+    },
+    {
+      "file": "writer-utf16.mdx",
+      "bytes": 1291,
+      "sha256": "ae206f09d82264a5fa8af51f6f013298ddab3de00de9921563ef7d844b921460",
+      "encoding": "utf16",
+      "encrypted": false,
+      "entries": [
+        "C",
+        "co-op",
+        "Ｆoo",
+        "Zebra"
+      ]
+    },
+    {
+      "file": "writer-encrypted.mdx",
+      "bytes": 918,
+      "sha256": "a4dd8f0350cb0b23160229ad716fa025e647841eb88e252f916dd201120d6c4b",
+      "encoding": "utf8",
+      "encrypted": true,
+      "entries": [
+        "C"
+      ]
+    }
+  ]
+}

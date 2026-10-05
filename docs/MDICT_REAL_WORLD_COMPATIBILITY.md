@@ -11,17 +11,24 @@ The [offline-dictionary task](tasks/offline-dictionary/task.md) now owns the
 follow-up plan: reproduce and repair paired MDX key-boundary compatibility,
 then verify one explicitly selected real English-Chinese dictionary through
 structural decoding, target-reader lookup, content quality and packaged-browser
-acceptance. Its state remains `paused`; this documentation update does not
-implement a parser fix, approve a download, or certify a new dictionary.
+acceptance. Task state and candidate evidence live in that task's state and
+acceptance files.
 
 The source review at `8c3ad6d8bfc528a12b4b28d3c90ab97e0e403a32` identified
 that `parseKeyBlock()` compares normalized actual first/last keys with the
 stored descriptors. Raw descriptors can therefore disagree at block boundaries.
-The task requires a binary reproducer and preserves strict paired checks,
-checksums, limits and existing lookup semantics; research experiments are not
-production acceptance. The matrix and capability decisions below retain their
-original corpus scope: "no measured gap in this corpus" does not assert that
-no parser defect exists elsewhere. No existing PASS is rebound by this plan.
+The reader accepts either a complete raw endpoint pair or the legacy complete
+normalized pair. It keeps descriptors unchanged, rejects mixed pairs, and
+derives lookup bounds separately from the actual keys in each block. The
+regression set pins four synthetic MDX files from the independent MIT
+`zhansliu/writemdict` writer, covering UTF-8, UTF-16, encrypted key info and
+multiple blocks; tests exercise file preflight, index construction, lookup
+sentinels, legacy pairs and re-checksummed mixed-boundary failures. The product
+E2E imports the independent fixture, reloads Options and looks up first/last
+sentinels through Selection. This evidence covers synthetic input. The matrix
+and capability decisions below retain their original corpus scope: "no measured
+gap in this corpus" does not assert that no parser defect exists elsewhere.
+Existing PASS evidence retains its original tested revision.
 
 The Options import and library controls are React-owned, but continue to call the
 same bounded preflight, Rich MDict/MDD controllers, OPFS transaction, quarantine
