@@ -70,7 +70,9 @@ export function createRichMdictImportWorkerHandler({
     active = { requestId, controller };
 
     try {
-      emitProgress(postMessage, requestId, "index");
+      emitProgress(postMessage, requestId, "index", { fileName: file.name, bytesRead: 0, fileBytes: file.size });
+      let bytesRead = 0;
+      let lastReportedRead = 0;
       const source = {
         size: file.size,
         async read(offset, length) {
@@ -89,10 +91,18 @@ export function createRichMdictImportWorkerHandler({
           if (bytes.byteLength !== length) {
             throw workerError("RICH_MDICT_CORRUPT", "MDX range read returned a short block.");
           }
+          bytesRead += bytes.byteLength;
+          if (bytesRead - lastReportedRead >= 1024 * 1024 || bytesRead >= file.size) {
+            lastReportedRead = bytesRead;
+            emitProgress(postMessage, requestId, "index", { fileName: file.name, bytesRead, fileBytes: file.size });
+          }
           return bytes;
         }
       };
       const index = await buildIndex({ source, signal: controller.signal });
+      if (lastReportedRead !== bytesRead) {
+        emitProgress(postMessage, requestId, "index", { fileName: file.name, bytesRead, fileBytes: file.size });
+      }
       assertActive(controller.signal);
 
       const indexBytes = new TextEncoder().encode(JSON.stringify(index));
@@ -108,8 +118,15 @@ export function createRichMdictImportWorkerHandler({
       ) {
         throw workerError("RICH_MDICT_EXISTS", "This rich dictionary identifier is already in use.");
       }
-      emitProgress(postMessage, requestId, "store-source");
-      await store.writeFile(packId, packVersion, RICH_MDICT_SOURCE_PATH, file);
+      emitProgress(postMessage, requestId, "store-source", {
+        fileName: file.name, bytesWritten: 0, fileBytes: file.size, completedBytes: 0, totalBytes: file.size
+      });
+      await store.writeFile(packId, packVersion, RICH_MDICT_SOURCE_PATH, file, {
+        signal: controller.signal,
+        onProgress: ({ bytesWritten }) => emitProgress(postMessage, requestId, "store-source", {
+          fileName: file.name, bytesWritten, fileBytes: file.size, completedBytes: bytesWritten, totalBytes: file.size
+        })
+      });
       assertActive(controller.signal);
       emitProgress(postMessage, requestId, "store-index");
       await store.writeFile(packId, packVersion, RICH_MDICT_INDEX_PATH, indexBytes);
@@ -212,8 +229,8 @@ async function sha256(bytes, cryptoProvider) {
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function emitProgress(postMessage, requestId, phase) {
-  postMessage({ type: RICH_MDICT_WORKER_MESSAGES.PROGRESS, requestId, phase });
+function emitProgress(postMessage, requestId, phase, details = {}) {
+  postMessage({ type: RICH_MDICT_WORKER_MESSAGES.PROGRESS, requestId, phase, ...details });
 }
 
 function normalizeRequestId(value) {

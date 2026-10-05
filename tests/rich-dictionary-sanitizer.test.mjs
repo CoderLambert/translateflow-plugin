@@ -37,6 +37,12 @@ function local(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function countNodes(nodes) {
+  let count = 0;
+  walk(nodes, () => { count += 1; });
+  return count;
+}
+
 test("safe rich markup preserves dictionary hierarchy and decodes entities as text", () => {
   const result = sanitizer().sanitizeRichDictionaryRecord({
     format: "HTML",
@@ -128,9 +134,49 @@ test("invalid and over-limit records return bounded plain-text fallback", () => 
   assert.equal(deep.truncated, true);
   assert.equal(textContent(deep.nodes).replace(/\s/gu, ""), "word");
 
-  const huge = module.sanitizeRichDictionaryRecord({ format: "HTML", rawRecord: "x".repeat(600 * 1024) });
+  const huge = module.sanitizeRichDictionaryRecord({ format: "HTML", rawRecord: "x".repeat(3 * 1024 * 1024) });
   assert.equal(huge.truncated, true);
-  assert.ok(huge.nodes[0].text.length <= module.limits.fallbackBytes);
+  assert.ok(new TextEncoder().encode(huge.nodes[0].text).byteLength <= module.limits.fallbackBytes);
+});
+
+test("778,100-byte logical records keep a long node/resource stream and its tail within bounds", () => {
+  const module = sanitizer();
+  const repeatedNodes = "<span>x</span>".repeat(15_000);
+  const repeatedResources = '<audio src="interop/tone.wav"/>'.repeat(526);
+  const prefix = `<div>BEGIN${repeatedNodes}${repeatedResources}`;
+  const suffix = "<p>TAIL_SENTINEL</p></div>";
+  const fillerBytes = 778_100 - prefix.length - suffix.length - 7;
+  assert.ok(fillerBytes > 0);
+  const rawRecord = `${prefix}<!--${"x".repeat(fillerBytes)}-->${suffix}`;
+  assert.equal(new TextEncoder().encode(rawRecord).byteLength, 778_100);
+  const result = module.sanitizeRichDictionaryRecord({ format: "HTML", rawRecord });
+  assert.equal(result.truncated, false);
+  assert.equal(textContent(result.nodes).includes("TAIL_SENTINEL"), true);
+  let resources = 0;
+  walk(result.nodes, (node) => { if (node.type === "resource") resources += 1; });
+  assert.equal(resources, 526);
+  assert.ok(countNodes(result.nodes) <= module.limits.outputNodes);
+});
+
+test("resource references deduplicate paths and cap unique resources at 1,024", () => {
+  const module = sanitizer();
+  const duplicates = module.sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<img src="images/same.png"/>'.repeat(526)
+  });
+  assert.equal(duplicates.truncated, false);
+  let duplicateReferences = 0;
+  walk(duplicates.nodes, (node) => { if (node.type === "resource") duplicateReferences += 1; });
+  assert.equal(duplicateReferences, 526);
+
+  const unique = module.sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: Array.from({ length: 1_025 }, (_, index) => `<img src="images/${index}.png"/>`).join("")
+  });
+  assert.equal(unique.truncated, true);
+  let uniqueResources = 0;
+  walk(unique.nodes, (node) => { if (node.type === "resource") uniqueResources += 1; });
+  assert.equal(uniqueResources, 1_024);
 });
 
 test("nested active subtrees have a strict depth bound", () => {

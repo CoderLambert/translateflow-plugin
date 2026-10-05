@@ -1,9 +1,8 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__ ||= { modules: {} };
-  if (!app.modules.runtime || !app.modules.contentI18n || !app.modules.richResourcePath || app.modules.richResourceResolver) return;
-  const locale = app.modules.contentI18n;
+  if (!app.modules.runtime || !app.modules.contentI18n || !app.modules.richResourcePath || !app.modules.richResourceMedia || app.modules.richResourceResolver) return;
 
-  const MAX_RESOURCE_COUNT = 8;
+  const MAX_RESOURCE_COUNT = 1024;
   const MAX_ASSET_BYTES = 8 * 1024 * 1024;
   const MAX_VIEW_BLOB_BYTES = 32 * 1024 * 1024;
   const MAX_VIEW_IMAGE_PIXELS = 16 * 1024 * 1024;
@@ -20,6 +19,17 @@
   let activeObjectUrlCount = 0;
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
+  const locale = app.modules.contentI18n;
+  const media = app.modules.richResourceMedia.create({
+    isCurrent,
+    scheduleRead,
+    fetchAsset,
+    createTrackedUrl,
+    revokeUrl,
+    makePlaceholder,
+    cancelResourceRequest,
+    maxViewImagePixels: MAX_VIEW_IMAGE_PIXELS
+  });
 
   function attach(container, shadowRoot, viewport, resources, dictionaryId, packageVersion = "") {
     close(container);
@@ -33,6 +43,9 @@
       resources: [],
       urls: new Map(),
       inFlightRequests: new Set(),
+      activeAudio: null,
+      imageObserver: null,
+      observedImages: new WeakMap(),
       objectBytes: 0,
       imagePixels: 0
     };
@@ -41,21 +54,29 @@
     for (const item of Array.isArray(resources) ? resources.slice(0, MAX_RESOURCE_COUNT) : []) {
       const path = app.modules.richResourcePath.normalize(item?.path);
       if (!path || path !== item.path || !["image", "audio", "stylesheet"].includes(item.kind)) continue;
+      const elements = Array.isArray(item?.elements)
+        ? item.elements.filter(Boolean)
+        : item?.element ? [item.element] : [];
+      const key = `${item.kind}\u0000${path}`;
+      if (session.resources.some((existing) => `${existing.kind}\u0000${existing.path}` === key)) continue;
       session.resources.push({
         kind: item.kind,
         path,
         label: String(item.label || "").slice(0, 160),
-        element: item.element || null
+        instances: elements.map((element) => ({ element, loaded: false, loading: false, objectUrl: "" })),
+        inFlightRequests: new Set(),
+        styleNode: null
       });
     }
     for (const resource of session.resources) {
-      if (resource.kind === "audio") installAudioLoader(session, resource);
-      else void scheduleRead(session, () => loadResource(session, resource));
+      if (resource.kind === "audio") media.installAudioLoader(session, resource);
+      else if (resource.kind === "image") media.installLazyImages(session, resource);
+      else void scheduleRead(session, () => loadStylesheet(session, resource));
     }
     return session;
   }
 
-  async function loadResource(session, resource) {
+  async function loadStylesheet(session, resource) {
     if (!isCurrent(session)) return;
     try {
       const asset = await fetchAsset(session, resource);
@@ -93,98 +114,21 @@
         resource.styleNode = style;
         return;
       }
-      if (resource.kind !== "image") return;
-      const width = asset.width;
-      const height = asset.height;
-      if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) return;
-      const pixels = width * height;
-      if (!Number.isSafeInteger(pixels) || pixels > MAX_VIEW_IMAGE_PIXELS || session.imagePixels + pixels > MAX_VIEW_IMAGE_PIXELS) return;
-      const url = createTrackedUrl(session, asset, pixels);
-      if (!url || !isCurrent(session)) return;
-      resource.objectUrl = url;
-      const image = document.createElement("img");
-      image.className = "tf-rich-resource-image";
-      if (resource.label) image.alt = resource.label;
-      else locale.bindAttribute(image, "alt", "content.rich.dictionaryImage");
-      image.width = width;
-      image.height = height;
-      image.addEventListener("error", () => {
-        revokeUrl(session, url);
-        resource.objectUrl = "";
-        if (!isCurrent(session)) return;
-        resource.element?.replaceWith(makePlaceholder("image", resource.label));
-      }, { once: true });
-      image.addEventListener("load", () => {
-        if (!isCurrent(session)) revokeUrl(session, url);
-      }, { once: true });
-      image.src = url;
-      if (resource.element?.isConnected) resource.element.replaceWith(image);
-      else if (resource.element?.parentNode) resource.element.replaceWith(image);
-      resource.element = image;
-      resource.onClose = () => image.replaceWith(makePlaceholder("image", resource.label));
     } catch {
-      if (resource.objectUrl) revokeUrl(session, resource.objectUrl);
-      resource.objectUrl = "";
       if (!isCurrent(session)) return;
-      resource.element?.replaceWith(makePlaceholder(resource.kind, resource.label));
-    }
-  }
-
-  function installAudioLoader(session, resource) {
-    const previous = resource.element;
-    const button = makePlaceholder("audio", resource.label);
-    button.className = "tf-rich-placeholder tf-rich-audio-load";
-    button.type = "button";
-    button.dataset.action = "load-mdd-audio";
-    locale.bindText(button, resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
-    locale.bindAttribute(button, "aria-label", resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
-    resource.element = button;
-    resource.onClose = () => {
-      const placeholder = makePlaceholder("audio", resource.label);
-      button.replaceWith(placeholder);
-    };
-    button.addEventListener("click", async () => {
-      if (!isCurrent(session) || button.disabled) return;
-      button.disabled = true;
-      locale.bindText(button, "content.rich.loadingAudio");
-      try {
-        const asset = await scheduleRead(session, () => fetchAsset(session, resource));
-        if (!isCurrent(session)) return;
-        const url = createTrackedUrl(session, asset, 0);
-        if (!url) throw new Error("Audio resource budget was exceeded.");
-        resource.objectUrl = url;
-        const audio = document.createElement("audio");
-        audio.className = "tf-rich-resource-audio";
-        audio.controls = true;
-        audio.preload = "none";
-        audio.autoplay = false;
-        audio.setAttribute("controls", "");
-        audio.setAttribute("preload", "none");
-        audio.src = url;
-        audio.addEventListener("error", () => {
-          revokeUrl(session, url);
-          resource.objectUrl = "";
-          if (!isCurrent(session)) return;
-          audio.replaceWith(makePlaceholder("audio", resource.label));
-        }, { once: true });
-        if (button.parentNode) button.replaceWith(audio);
-        resource.element = audio;
-        resource.onClose = () => audio.replaceWith(makePlaceholder("audio", resource.label));
-      } catch {
-        if (resource.objectUrl) revokeUrl(session, resource.objectUrl);
-        resource.objectUrl = "";
-        if (!isCurrent(session)) return;
-        button.disabled = true;
-        locale.bindText(button, resource.label ? "content.rich.audioUnreadable" : "content.rich.audioMissing", resource.label ? { label: resource.label } : {});
+      for (const instance of resource.instances) {
+        if (instance.element?.isConnected || instance.element?.parentNode) {
+          instance.element.replaceWith(makePlaceholder(resource.kind, resource.label));
+        }
       }
-    });
-    previous?.replaceWith(button);
+    }
   }
 
   async function fetchAsset(session, resource) {
     if (!isCurrent(session)) throw new Error("Rich viewer is closed.");
     const requestId = createResourceRequestId();
     session.inFlightRequests.add(requestId);
+    resource.inFlightRequests?.add(requestId);
     let response;
     try {
       response = await sendRuntimeMessage({
@@ -197,6 +141,7 @@
       });
     } finally {
       session.inFlightRequests.delete(requestId);
+      resource.inFlightRequests?.delete(requestId);
     }
     if (!isCurrent(session) || !response?.ok) throw new Error("MDD resource is unavailable.");
     if (response.stale || (session.packageVersion && response.packageVersion !== session.packageVersion)) {
@@ -291,15 +236,15 @@
     session.closed = true;
     if (sessionsByContainer.get(session.container) === session) sessionsByContainer.delete(session.container);
     activeSessions.delete(session);
+    session.imageObserver?.disconnect();
+    if (session.activeAudio) media.releaseActiveAudio(session, session.activeAudio, false);
     cancelQueuedReads(session);
     cancelRunningReads(session);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();
-      if (restorePlaceholders) {
-        try { resource.onClose?.(); } catch {}
-      }
     }
+    if (restorePlaceholders) media.restorePlaceholders(session);
   }
 
   function isCurrent(session) {
@@ -327,14 +272,17 @@
 
   function cancelRunningReads(session) {
     const requestIds = [...session.inFlightRequests];
-    session.inFlightRequests.clear();
-    for (const requestId of requestIds) {
-      void sendRuntimeMessage({
-        type: messages.background.RICH_MDD_RESOURCE_READ_CANCEL,
-        requestId,
-        ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN
-      }).catch(() => {});
-    }
+    for (const requestId of requestIds) cancelResourceRequest(session, null, requestId);
+  }
+
+  function cancelResourceRequest(session, resource, requestId) {
+    session.inFlightRequests.delete(requestId);
+    resource?.inFlightRequests?.delete(requestId);
+    void sendRuntimeMessage({
+      type: messages.background.RICH_MDD_RESOURCE_READ_CANCEL,
+      requestId,
+      ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN
+    }).catch(() => {});
   }
 
   function drainReads() {

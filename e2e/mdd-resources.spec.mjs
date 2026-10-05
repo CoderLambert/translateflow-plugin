@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { readMddInteropFixture, readMddLinkedPackageFixture } from "../tests/helpers/mdd-fixture.mjs";
+import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
 const evidenceDir = process.env.MDD_INTEROP_EVIDENCE_DIR ||
   resolve("/tmp/translateflow-mdd-184/evidence");
@@ -288,6 +289,111 @@ test.describe("local MDD resource product and security behavior", () => {
       providerCalls: harness.server.calls.length
     }));
     await resourceProbe.close();
+  });
+
+  test("long rich record keeps its tail and lazy single-slot audio over an independent MDD fixture", async ({ harness }) => {
+    await mkdir(evidenceDir, { recursive: true });
+    const { mdd } = await readMddInteropFixture();
+    const repeatedNodes = "<span>x</span>".repeat(15_000);
+    const repeatedResources = '<audio src="interop/tone.wav"/>'.repeat(526) + '<img src="interop/sample.png" alt="lazy sample"/>';
+    const prefix = `<div>BEGIN${repeatedNodes}${repeatedResources}`;
+    const suffix = "<p>TAIL_SENTINEL</p></div>";
+    const fillerBytes = 778_100 - prefix.length - suffix.length - 7;
+    const rawRecord = `${prefix}<!--${"x".repeat(fillerBytes)}-->${suffix}`;
+    expect(Buffer.byteLength(rawRecord, "utf8")).toBe(778_100);
+    const mdx = makeRichMdx([["longrecordfixture", rawRecord]], { title: "Bounded Long Record Fixture" });
+
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles({
+      name: "interop.mdx", mimeType: "application/octet-stream", buffer: mdx
+    });
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("Bounded Long Record Fixture");
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 60_000 });
+    const row = options.locator("#richMdictInstalledList [data-dictionary-id]").filter({ hasText: "Bounded Long Record Fixture" });
+    await expect(row).toBeVisible();
+    const dictionaryId = await row.getAttribute("data-dictionary-id");
+    await attachMddFile(row, {
+      name: "interop.mdd", mimeType: "application/octet-stream", buffer: mdd
+    }, { success: true });
+
+    const page = await harness.open("/selection");
+    const remoteRequests = [];
+    const browserErrors = [];
+    page.on("request", (request) => {
+      if (/^https?:/iu.test(request.url()) && new URL(request.url()).origin !== harness.server.baseUrl) remoteRequests.push(request.url());
+    });
+    page.on("pageerror", (error) => browserErrors.push(error.message));
+    await page.evaluate(() => {
+      const node = document.createElement("p");
+      node.id = "long-record-fixture-word";
+      node.textContent = "longrecordfixture";
+      document.body.appendChild(node);
+    });
+    await harness.inject(page);
+    await selectElementText(page, "#long-record-fixture-word");
+    const chip = page.locator(".tf-selection-chip");
+    await expect(chip).toBeVisible({ timeout: 10_000 });
+    await chip.click();
+    const card = page.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+    await expandRichCard(card);
+    const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
+    await expect(viewer).toContainText("TAIL_SENTINEL", { timeout: 30_000 });
+    const audioLoaders = viewer.locator("button[data-action='load-mdd-audio']");
+    await expect(audioLoaders).toHaveCount(526);
+    await expect(viewer.locator("audio")).toHaveCount(0);
+    await expect(viewer.locator("img.tf-rich-resource-image[src^='blob:']")).toHaveCount(0);
+    expect(await activeObjectUrlCount(harness, page)).toBe(0);
+
+    await audioLoaders.nth(0).click();
+    let audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
+    await expect(audio).toHaveCount(1, { timeout: 30_000 });
+    await expect(audio).toHaveAttribute("preload", "none");
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
+    await audioLoaders.nth(1).click();
+    await expect(viewer.locator("audio.tf-rich-resource-audio[src^='blob:']")).toHaveCount(1);
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
+    await expect(viewer.locator("button[data-action='load-mdd-audio']")).toHaveCount(525);
+    await expect(viewer.locator("img.tf-rich-resource-image[src^='blob:']")).toHaveCount(0);
+    await viewer.locator("button[data-action='load-mdd-audio']").first().click();
+    audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
+    await expect(audio).toHaveCount(1);
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
+    expect(await audio.getAttribute("autoplay")).toBeNull();
+    await viewer.evaluate((root) => { root.scrollTop = root.scrollHeight; });
+    const lazyImage = viewer.locator("img.tf-rich-resource-image[src^='blob:']");
+    await expect(lazyImage).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => lazyImage.evaluate((node) => node.naturalWidth)).toBe(2);
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(2);
+    expect(await harness.server.calls).toHaveLength(0);
+    expect(remoteRequests).toEqual([]);
+    expect(browserErrors).toEqual([]);
+
+    await page.getByRole("button", { name: "关闭" }).click();
+    await expect(page.locator(".tf-selection-panel")).toBeHidden();
+    await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(0);
+    const report = {
+      status: "PASS",
+      fixture: "778100-byte-synthetic-record-with-independent-writemdict-mdd",
+      testedSourceHead: harness.buildReport.sourceHead,
+      artifactTreeSha256: harness.buildReport.treeSha256,
+      independentMddWriterCommit: lock.independentWriter.commit,
+      rawRecordBytes: Buffer.byteLength(rawRecord, "utf8"),
+      tailSentinelRendered: true,
+      repeatedAudioReferences: 526,
+      audioRequestedOnClickOnly: true,
+      offscreenImageLoadedOnlyAfterScrolling: true,
+      activeAudioSlotCount: 1,
+      previousAudioCanBeSelectedAgain: true,
+      objectUrlsAfterViewerClose: await activeObjectUrlCount(harness, page),
+      providerCalls: harness.server.calls.length,
+      remoteRequests: remoteRequests.length,
+      browserErrors,
+      generatedAt: new Date().toISOString()
+    };
+    await writeFile(resolve(evidenceDir, "rich-long-record-resources-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    console.log("[RICH_LONG_RECORD_RESOURCES_E2E]", JSON.stringify(report));
   });
 
   test("six-file MDX/MDD package keeps sidecars versioned across a real browser restart", async ({ harness }) => {

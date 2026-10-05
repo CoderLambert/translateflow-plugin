@@ -54,6 +54,46 @@ test("OPFS pack store range reads preserve path and identifier safety", async ()
   );
 });
 
+test("OPFS File writes copy bounded slices, report completed bytes, and keep the previous file on cancellation", async () => {
+  const root = new MemoryDirectory();
+  const store = createOpfsPackStore({ rootProvider: async () => root });
+  const original = new TextEncoder().encode("previous-version");
+  await store.writeFile("local-fixture", "v1", "source.dat", original);
+
+  const bytes = Uint8Array.from({ length: 257 }, (_, index) => index & 0xff);
+  const reads = [];
+  const file = {
+    size: bytes.byteLength,
+    slice(start, end) {
+      reads.push([start, end]);
+      return new Blob([bytes.subarray(start, end)]);
+    }
+  };
+  const progress = [];
+  const completed = await store.writeFile("local-fixture", "v1", "source.dat", file, {
+    chunkBytes: 32,
+    onProgress: (detail) => progress.push(detail)
+  });
+  assert.deepEqual(completed, { bytesWritten: bytes.byteLength, totalBytes: bytes.byteLength });
+  assert.equal(reads.length, Math.ceil(bytes.byteLength / 32));
+  assert.deepEqual(progress.map(({ bytesWritten }) => bytesWritten), [32, 64, 96, 128, 160, 192, 224, 256, 257]);
+  assert.deepEqual(await store.readFile("local-fixture", "v1", "source.dat"), bytes);
+
+  const controller = new AbortController();
+  const cancelledProgress = [];
+  await assert.rejects(store.writeFile("local-fixture", "v1", "source.dat", file, {
+    chunkBytes: 32,
+    signal: controller.signal,
+    onProgress: (detail) => {
+      cancelledProgress.push(detail);
+      controller.abort();
+    }
+  }), (error) => error?.name === "AbortError");
+  assert.deepEqual(cancelledProgress, [{ bytesWritten: 32, totalBytes: bytes.byteLength, chunkBytes: 32 }]);
+  assert.deepEqual(await store.readFile("local-fixture", "v1", "source.dat"), bytes,
+    "an aborted replacement never publishes a partial file");
+});
+
 class MemoryDirectory {
   constructor() {
     this.directories = new Map();
@@ -105,12 +145,18 @@ class MemoryFile {
   }
 
   async createWritable() {
-    let pending = this.bytes;
+    let pending = new Uint8Array();
     return {
       write: async (value) => {
-        if (value instanceof Uint8Array) pending = new Uint8Array(value);
-        else if (value instanceof ArrayBuffer) pending = new Uint8Array(value.slice(0));
-        else pending = new Uint8Array(await new Blob([value]).arrayBuffer());
+        const bytes = value instanceof Uint8Array
+          ? value
+          : value instanceof ArrayBuffer
+            ? new Uint8Array(value)
+            : new Uint8Array(await new Blob([value]).arrayBuffer());
+        const next = new Uint8Array(pending.byteLength + bytes.byteLength);
+        next.set(pending);
+        next.set(bytes, pending.byteLength);
+        pending = next;
       },
       close: async () => {
         this.bytes = new Uint8Array(pending);

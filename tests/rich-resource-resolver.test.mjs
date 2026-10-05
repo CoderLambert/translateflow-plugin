@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
 
 const RESOLVER = new URL("../src/content/selection/rich-resource-resolver.js", import.meta.url);
+const MEDIA = new URL("../src/content/selection/rich-resource-media.js", import.meta.url);
 
 test("closing a rich viewer purges queued stale MDD resource reads", async () => {
   const calls = [];
@@ -36,6 +37,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
     URL,
     atob
   });
+  vm.runInContext(await readFile(MEDIA, "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -149,6 +151,7 @@ async function createStylesheetHarness({ imageResponse, deferImage = false }) {
     createElement(name) { return { tagName: name, textContent: "", remove() { this.removed = true; } }; }
   };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextDecoder, Uint8Array, Blob, URL, atob });
+  vm.runInContext(await readFile(MEDIA, "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};

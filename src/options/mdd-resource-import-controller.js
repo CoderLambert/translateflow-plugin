@@ -24,10 +24,18 @@ export function createMddResourceImportController({
 
   let active = null;
 
-  async function attachResources({ dictionaryId, mdxFileName, files, sidecars = [] } = {}) {
+  async function attachResources({ dictionaryId, mdxFileName, files, sidecars = [], mdxSourceBytes = 0 } = {}) {
     if (active) throw controllerError("RICH_MDD_BUSY", "Another MDD resource import is already running.");
     const normalizedFiles = validateFiles(files, mdxFileName);
     const normalizedSidecars = validateSidecars(sidecars);
+    const mdxBytes = Number(mdxSourceBytes);
+    if (!Number.isSafeInteger(mdxBytes) || mdxBytes < 0) {
+      throw controllerError("RICH_MDD_LIMIT", "MDX source size is invalid.");
+    }
+    const selectedPackageBytes = mdxBytes + normalizedFiles.reduce((sum, item) => sum + item.size, 0) + normalizedSidecars.reduce((sum, item) => sum + item.size, 0);
+    if (!Number.isSafeInteger(selectedPackageBytes) || selectedPackageBytes > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) {
+      throw controllerError("RICH_MDD_LIMIT", "MDX, MDD sources, and sidecars exceed the 4,000,000,000-byte package safety limit.");
+    }
     const identity = createIdentity(cryptoProvider, now);
     const requestId = "mdd-res-" + identity.uuid;
     const current = {
@@ -171,10 +179,10 @@ function validateFiles(files, mdxFileName) {
   return ordered.map(({ fileName }) => {
     const file = byName.get(fileName);
     if (!file || typeof file.slice !== "function" || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > RICH_MDD_MAX_SOURCE_BYTES) {
-      throw controllerError("RICH_MDD_LIMIT", "Each MDD file must be between 1 byte and 128 MiB.");
+      throw controllerError("RICH_MDD_LIMIT", "Each MDD file must be between 1 byte and 4,000,000,000 bytes.");
     }
     total += file.size;
-    if (total > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw controllerError("RICH_MDD_LIMIT", "MDD companions exceed the 512 MiB safety limit.");
+    if (total > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw controllerError("RICH_MDD_LIMIT", "MDD companions exceed the 4,000,000,000-byte safety limit.");
     return { fileName, size: file.size, file };
   });
 }

@@ -230,7 +230,7 @@
     if (richRecord && sanitizer?.sanitizeRichDictionaryRecord && viewer?.render) {
       try {
         const safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
-        if (safeTree && !safeTree.truncated) {
+        if (safeTree) {
           displayed = viewer.render(body, safeTree, fallback, {
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
             dictionaryId: String(dictionaryId || ""),

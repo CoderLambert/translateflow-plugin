@@ -28,7 +28,7 @@
     const stack = [{ name: "", children: root.children }];
     const skipped = [];
     let nodeCount = 0;
-    let resourceCount = 0;
+    const resourceKeys = new Set();
     let offset = 0;
     let invalid = false;
     let truncated = false;
@@ -104,7 +104,7 @@
         const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
         if (!path) continue;
         const label = safeResourceLabel(token.attrs.alt || token.attrs.title || "");
-        if (resourceCount < (limits.resourceCount || 8)) {
+        if (reserveResource("image", path)) {
           appendResource("image", path, label);
         } else {
           appendElement("span", { "data-rich-placeholder": "image", "data-rich-label": label }, {}, []);
@@ -118,7 +118,7 @@
           continue;
         }
         const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
-        if (resourceCount < (limits.resourceCount || 8)) appendResource("audio", path, label);
+        if (reserveResource("audio", path)) appendResource("audio", path, label);
         else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
         if (!token.selfClosing) {
           if (skipped.length >= limits.depth) truncated = true;
@@ -129,7 +129,7 @@
       if (token.name === "link") {
         const rel = String(token.attrs.rel || "").trim().toLowerCase();
         const path = rel === "stylesheet" ? resourcePath?.normalize?.(token.attrs.href || "") || "" : "";
-        if (path && resourceCount < (limits.resourceCount || 8)) appendResource("stylesheet", path, "");
+        if (path && reserveResource("stylesheet", path)) appendResource("stylesheet", path, "");
         continue;
       }
       if (VOID_DISCARD_TAGS.has(token.name)) continue;
@@ -186,7 +186,17 @@
       }
       stack[stack.length - 1].children.push({ type: "resource", kind, path, label });
       nodeCount += 1;
-      resourceCount += 1;
+    }
+
+    function reserveResource(kind, path) {
+      const key = `${kind}\u0000${path}`;
+      if (resourceKeys.has(key)) return true;
+      if (resourceKeys.size >= limits.resourceCount) {
+        truncated = true;
+        return false;
+      }
+      resourceKeys.add(key);
+      return true;
     }
   }
 

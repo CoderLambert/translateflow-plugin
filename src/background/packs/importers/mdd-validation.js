@@ -5,19 +5,20 @@ import {
   requireMdictAtMost
 } from "./mdict-contract.js";
 import { compareMddResourcePaths, normalizeMddResourcePath } from "./mdd-resource-path.js";
+import { LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES } from "../../../shared/local-dictionary-limits.js";
 
 export const MDD_INDEX_SCHEMA_VERSION = 1;
 export const MDD_INDEX_FORMAT = "mdd-v2";
 export const MDD_IMPORT_LIMITS = Object.freeze({
   ...MDICT_IMPORT_LIMITS,
-  fileBytes: 128 * 1024 * 1024,
+  fileBytes: LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES,
   entryCount: 1_000_000,
   keyIndexBytes: 16 * 1024 * 1024,
   blockCompressedBytes: 4 * 1024 * 1024,
   blockDecompressedBytes: 4 * 1024 * 1024,
   headwordBytes: 4096,
   totalKeyBlockBytes: 64 * 1024 * 1024,
-  totalRecordBytes: 128 * 1024 * 1024,
+  totalRecordBytes: 2 * 1024 * 1024 * 1024,
   resourceBytes: 8 * 1024 * 1024,
   compressionRatio: 100
 });

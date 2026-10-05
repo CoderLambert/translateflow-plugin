@@ -13,7 +13,9 @@ export const RICH_MDICT_IMPORT_LIMITS = Object.freeze({
   // ECDICT 1.0.28 has 3,402,564 entries and 246,598,512 uncompressed
   // record bytes. These limits cover that reviewed corpus with headroom.
   entryCount: 4_000_000,
-  totalRecordBytes: 256 * 1024 * 1024,
+  totalRecordBytes: 512 * 1024 * 1024,
+  entryBytes: 1024 * 1024,
+  expandedTextBytes: 2 * 1024 * 1024,
   // The reviewed corpus peaks at a 64 KiB record block. Keep each individual
   // compressed range and inflate bounded for key info, keys and record data.
   blockCompressedBytes: 4 * 1024 * 1024,

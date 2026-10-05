@@ -1,8 +1,9 @@
 import { normalizeMddResourcePath } from "./importers/mdd-resource-path.js";
 import { richError, normalizePackId, normalizeVersion, clampText } from "./rich-mdict-contract.js";
+import { LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES } from "../../shared/local-dictionary-limits.js";
 
-export const RICH_MDD_MAX_SOURCE_BYTES = 128 * 1024 * 1024;
-export const RICH_MDD_MAX_TOTAL_SOURCE_BYTES = 512 * 1024 * 1024;
+export const RICH_MDD_MAX_SOURCE_BYTES = LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES;
+export const RICH_MDD_MAX_TOTAL_SOURCE_BYTES = LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES;
 export const RICH_MDD_MAX_INDEX_BYTES = 16 * 1024 * 1024;
 export const RICH_MDD_MAX_TOTAL_INDEX_BYTES = 32 * 1024 * 1024;
 export const RICH_MDD_MAX_COMPANIONS = 16;
@@ -177,7 +178,7 @@ export function normalizeResourceImportMetadata(input, mdxFileName) {
       throw richError("RICH_MDD_CORRUPT", "MDD resource paths or order are inconsistent.");
     }
     if (!Number.isSafeInteger(sourceSize) || sourceSize <= 0 || sourceSize > RICH_MDD_MAX_SOURCE_BYTES) {
-      throw richError("RICH_MDD_LIMIT", "An MDD file exceeds the 128 MiB safety limit.");
+      throw richError("RICH_MDD_LIMIT", "An MDD file exceeds the 4,000,000,000-byte package safety limit.");
     }
     if (!Number.isSafeInteger(indexSize) || indexSize <= 0 || indexSize > RICH_MDD_MAX_INDEX_BYTES) {
       throw richError("RICH_MDD_LIMIT", "An MDD index exceeds the 16 MiB safety limit.");
@@ -187,7 +188,7 @@ export function normalizeResourceImportMetadata(input, mdxFileName) {
     }
     totalBytes += sourceSize;
     totalIndexBytes += indexSize;
-    if (totalBytes > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw richError("RICH_MDD_LIMIT", "MDD companions exceed the 512 MiB total safety limit.");
+    if (totalBytes > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw richError("RICH_MDD_LIMIT", "MDD companions exceed the 4,000,000,000-byte total safety limit.");
     if (totalIndexBytes > RICH_MDD_MAX_TOTAL_INDEX_BYTES) throw richError("RICH_MDD_LIMIT", "MDD indexes exceed the 32 MiB total safety limit.");
     return { ...paths, fileName, sourceSize, indexSize, indexSha256, keyCount };
   });
