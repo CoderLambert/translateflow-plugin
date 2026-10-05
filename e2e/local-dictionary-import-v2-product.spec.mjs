@@ -198,6 +198,7 @@ test.describe("unified local dictionary import v2", () => {
       await expect(card).toHaveAttribute("data-state", "success", { timeout: 30_000 });
       const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
       await expect(viewer).toBeVisible();
+      await expect(card).toHaveJSProperty("open", true);
       const renderedText = await viewer.innerText();
       expect(renderedText.trim().length).toBeGreaterThan(0);
       const expectedVisibleText = String(selectionRecord.text)
@@ -208,7 +209,9 @@ test.describe("unified local dictionary import v2", () => {
       const expectedRecordToken = expectedVisibleText.match(/[\p{L}\p{N}]{4,}/u)?.[0];
       expect(expectedRecordToken).toBeTruthy();
       expect(renderedText.toLocaleLowerCase()).toContain(expectedRecordToken.toLocaleLowerCase());
-      await lookupPage.screenshot({ path: selectionScreenshot, fullPage: false, caret: "hide" });
+      await viewer.scrollIntoViewIfNeeded();
+      await expect(viewer).toBeInViewport();
+      await lookupPage.locator(".tf-selection-panel").screenshot({ path: selectionScreenshot, caret: "hide" });
       console.log("[LOCAL_REAL_CEDICT_PRODUCT_UI]", JSON.stringify({
         status: "PASS",
         selectedText: "IP",
