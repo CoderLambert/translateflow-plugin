@@ -128,6 +128,30 @@ export const test = base.extend({
         return { extensionId, restartedPersistentProfile: true };
       },
 
+      async resetProfile() {
+        await context.close();
+        await rm(userDataDir, { recursive: true, force: true });
+        context = await chromium.launchPersistentContext(userDataDir, {
+          headless: true,
+          channel: "chromium",
+          args: [
+            `--disable-extensions-except=${extensionDir}`,
+            `--load-extension=${extensionDir}`
+          ]
+        });
+        let nextServiceWorker = context.serviceWorkers()[0];
+        if (!nextServiceWorker) nextServiceWorker = await context.waitForEvent("serviceworker");
+        const nextExtensionId = new URL(nextServiceWorker.url()).host;
+        if (nextExtensionId !== extensionId) throw new Error("The extension identity changed after a fresh test-profile reset.");
+        serviceWorker = nextServiceWorker;
+        driver = await context.newPage();
+        await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+        harness.context = context;
+        harness.driver = driver;
+        harness.serviceWorker = serviceWorker;
+        return { extensionId, freshPersistentProfile: true };
+      },
+
       async open(pathname) {
         const page = await context.newPage();
         await page.goto(`${server.baseUrl}${pathname}`);

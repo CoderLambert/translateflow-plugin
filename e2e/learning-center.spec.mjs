@@ -12,6 +12,15 @@ async function select(page, selector, text) {
   await expect(page.locator(".tf-selection-chip")).toBeVisible();
   await page.locator(".tf-selection-chip").click();
 }
+async function waitForStableReturnCard(page, quietMs = 300) {
+  await page.locator(".tf-reading-return-card").evaluate((card, quietMs) => new Promise(resolve => {
+    let timer;
+    const finish = () => { observer.disconnect(); resolve(); };
+    const observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(finish, quietMs); });
+    observer.observe(card, { subtree: true, childList: true, characterData: true, attributes: true });
+    timer = setTimeout(finish, quietMs);
+  }), quietMs);
+}
 const message = (page, method, fields = {}) => page.evaluate(request => chrome.runtime.sendMessage(request), { protocolVersion: 2, method, ...fields });
 async function trace(page) {
   await page.evaluate(() => {
@@ -185,6 +194,111 @@ test("Actual React product: Popup/selection, consent, real save, history, site p
   await writeFile(info.outputPath("learning-center-product.json"), JSON.stringify({ browser: harness.context.browser().version(), build: harness.buildReport,
     realCreation: "trusted Selection dictionary query → LC enable → explicit current-card save", historyProviderCalls: harness.server.calls.length - providerBefore, historyResources: resources,
     exportRecords: exported.records.length, offlineHistory: true, providerUnconfigured: true, nonSensitiveDeepLink: true, locales: ["zh_CN", "en"] }, null, 2));
+});
+
+test("Reading user journey: explicit consent, persistent browser restart, exact return and deleted page history", async ({ harness }, info) => {
+  test.setTimeout(120000);
+  await harness.resetProfile();
+  await harness.reset();
+  await harness.setStorage({ uiLocale: "en", readingMemorySites: [] });
+  await harness.driver.reload();
+
+  const firstCenterOpened = harness.context.waitForEvent("page");
+  await expect(harness.driver.locator("#learningCenter")).toBeVisible();
+  await harness.driver.locator("#learningCenter").click();
+  const firstCenter = await firstCenterOpened;
+  await firstCenter.waitForURL(`chrome-extension://${harness.extensionId}/learning-center.html`);
+  await expect(firstCenter.getByRole("button", { name: "Not now", exact: true })).toBeEnabled();
+  await firstCenter.getByRole("button", { name: "Not now", exact: true }).click();
+
+  const content = await harness.open("/selection");
+  await harness.inject(content);
+  await select(content, "#technical-competition", "session");
+  await expect(content.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "invite");
+  await expect(firstCenter.locator(".record-list .record")).toHaveCount(0);
+  expect(harness.server.calls).toHaveLength(0);
+
+  const consentOpened = harness.context.waitForEvent("page");
+  await content.getByRole("button", { name: "Enable reading records in Learning Center", exact: true }).click();
+  const consent = await consentOpened;
+  await expect(consent.getByRole("button", { name: "Enable recording", exact: true })).toBeEnabled();
+  await consent.getByRole("button", { name: "Enable recording", exact: true }).click();
+  await expect(consent.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+
+  await content.bringToFront();
+  await content.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(content.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "manual");
+  await expect(firstCenter.locator(".record-list .record")).toHaveCount(0);
+  await content.getByRole("button", { name: "Save this result", exact: true }).click();
+  await expect(content.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  await expect(firstCenter.locator(".record-list .record")).toHaveCount(1);
+  expect(harness.server.calls).toHaveLength(0);
+
+  const recordId = await firstCenter.locator(".record-list .record").first().getAttribute("data-record-id");
+  await firstCenter.locator(`[data-record-id="${recordId}"]`).click();
+  await expect(firstCenter.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await expect(firstCenter.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
+  await firstCenter.getByRole("button", { name: "Enable site markers", exact: true }).click();
+  await expect(firstCenter.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await firstCenter.screenshot({ path: info.outputPath("reading-user-journey-saved-history.png"), fullPage: true });
+
+  const restart = await harness.restartBrowser();
+  expect(restart).toMatchObject({ extensionId: harness.extensionId, restartedPersistentProfile: true });
+  const history = await harness.context.newPage();
+  await history.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
+  await expect(history.locator(".record-list .record")).toHaveCount(1);
+  await history.screenshot({ path: info.outputPath("reading-user-journey-after-restart.png"), fullPage: true });
+  await history.locator(`[data-record-id="${recordId}"]`).click();
+  await expect(history.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await expect(history.getByText("Historical snapshot · readable offline")).toBeVisible();
+
+  const returnedOpened = harness.context.waitForEvent("page");
+  await history.getByRole("button", { name: "Return to original page", exact: true }).click();
+  const returned = await returnedOpened;
+  await returned.waitForLoadState("domcontentloaded");
+  await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+  await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+  await expect(returned.locator(".tf-reading-return-highlight")).not.toHaveCount(0);
+  await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+  await expect(returned.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+  await expect(returned.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await waitForStableReturnCard(returned);
+  await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+  await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+  await returned.screenshot({ path: info.outputPath("reading-user-journey-return-state.png"), fullPage: false });
+  if (await returned.locator(".tf-reading-return-card").getAttribute("data-state") !== "resolved") {
+    await returned.getByRole("button", { name: "Locate again", exact: true }).click();
+  }
+  await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+  await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+  await returned.locator(".tf-reading-page-toggle").click();
+  await expect(returned.locator(".tf-reading-page-panel")).toBeVisible();
+  await expect(returned.locator(".tf-reading-page-panel article")).toHaveCount(1);
+  await expect(returned.locator(".tf-reading-page-panel article")).not.toContainText("session");
+
+  const recordOpened = harness.context.waitForEvent("page");
+  await returned.locator('[data-action="open-record"]').click();
+  const recordPage = await recordOpened;
+  await recordPage.waitForLoadState("domcontentloaded");
+  await expect(recordPage.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await expect(recordPage.getByText("Historical snapshot · readable offline")).toBeVisible();
+  expect(harness.server.calls).toHaveLength(0);
+
+  await recordPage.getByRole("button", { name: "Delete record", exact: true }).click();
+  await recordPage.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(recordPage.locator(".record-list .record")).toHaveCount(0);
+  await expect(returned.locator(".tf-reading-page-toggle")).toHaveCount(0);
+  await expect(returned.locator(".tf-reading-page-marker")).toHaveCount(0);
+  await expect(returned.locator(".tf-reading-return-card")).toHaveCount(0);
+  await recordPage.screenshot({ path: info.outputPath("reading-user-journey-deleted.png"), fullPage: true });
+  await writeFile(info.outputPath("reading-user-journey.json"), JSON.stringify({
+    browser: harness.context.browser().version(), build: harness.buildReport,
+    flow: ["Popup → Learning Center", "explicit enable → save current query", "persistent-profile browser restart", "Learning Center history → exact original page and range", "open historical record", "delete → list and page history entry disappear"],
+    page: "localhost synthetic fixture /selection; synthetic local dictionary; test-only localhost permission",
+    provider: "mock endpoint configured without a real API key; explicit test flow observed 0 Provider requests",
+    afterRestartRecordRows: 1, returnLocation: "resolved", historyEntryAfterDeletion: 0,
+    screenshotFiles: ["reading-user-journey-saved-history.png", "reading-user-journey-after-restart.png", "reading-user-journey-return-state.png", "reading-user-journey-deleted.png"]
+  }, null, 2));
 });
 
 test("Supplementary synthetic canonical rows: bounded pagination, >1 MiB detail, cancellation and native export download", async ({ harness }, info) => {
