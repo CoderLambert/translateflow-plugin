@@ -28,7 +28,7 @@ MDD 索引在读取已解码键时识别实际原始或大小写折叠顺序，�
 
 ## 验证与产物
 
-环境：Linux x86_64；Node `v24.19.0`；npm `11.9.0`；Chromium `153.0.8010.12`。本运行环境不提供可观测模型名或推理档位，记为 `UNKNOWN`。
+环境：Linux x86_64；本次 E2E/构建实际使用 Node `v24.19.0`、npm `11.9.0`、Chromium `153.0.8010.12`。仓库要求 Node `>=24.21.0 <25`、npm `>=11.19.0 <12`，因此这次 PASS 使用了低于仓库要求的运行时，不能视为合规版本认证。当前执行环境仅发现此 Node/npm 安装；合规版本重跑为 NOT_RUN。本运行环境不提供可观测模型名或推理档位，记为 `UNKNOWN`。
 
 | 检查 | 结果 |
 | --- | --- |
@@ -36,7 +36,7 @@ MDD 索引在读取已解码键时识别实际原始或大小写折叠顺序，�
 | `node --test tests/rich-mdict-format.test.mjs tests/mdd-format.test.mjs` | PASS，17/17。 |
 | `npm run build:extension:wxt` | PASS_WITH_WARNING；Manifest/资源/审计断言通过。平台代码 1,582,032 字节，#245 旧阈值 1,576,595 字节，超额 5,437 字节并发出 WARN。 |
 | 当前 WXT 产物 | Chrome MV3，112 文件、2,198,751 字节、无内置词库；按 E2E tree-fingerprint 计算 SHA-256：`f6e28352271856a373e9a3f13a182acd473233a652c13b63a1c5dfd88f3409f2`。真实输入未进入构建产物。 |
-| 本地真实文件 Options E2E | `npm run test:e2e -- e2e/local-dictionary-import-v2-product.spec.mjs --grep "locally supplied real MDX/MDD" --workers=1 --retries=0`，PASS，1/1；Git `testedHead` 为 `7195185865797ddd1275faa61227080847361f86`。`TF_LOCAL_REAL_MDICT_MDX`/`TF_LOCAL_REAL_MDICT_MDD` 指定的输入仅在本地读取；Options 导入后以 `中国` 查到 `中國`，持久 profile 重启后再次得到相同词条，再删除本次安装。Provider 调用 0、观测到的外部请求 0。运行器的 `sourceHead` 字段为空；这里的 testedHead 由本地 Git HEAD 核验。 |
+| 本地真实文件 Options E2E | `npm run test:e2e -- e2e/local-dictionary-import-v2-product.spec.mjs --grep "locally supplied real MDX/MDD" --workers=1 --retries=0`，当前运行时 PASS，1/1；仓库要求版本下的重跑为 NOT_RUN。Git `testedHead` 为 `7195185865797ddd1275faa61227080847361f86`。输入只在本地读取；Options 导入后以 `中国` 查到 `中國`，持久 profile 重启后再次得到相同词条，再删除本次安装。Provider 调用 0、观测到的外部请求 0。运行器的 `sourceHead` 字段为空；这里的 testedHead 由本地 Git HEAD 核验。 |
 | 真实导入截图 | `test-results/e2e/local-dictionary-import-v2-5db7d--survives-a-browser-restart/local-real-mdict-import-complete.png`；SHA-256 `139fa14c280a9e42f2072be68714a8e71bad46e7c5f7a80186933a5f5e2184cf`。截图显示预检可用、19.7 万词条及真实 MDD 文件关联；E2E 另行断言查询与重启后的词条相同。 |
 
 本轮没有重新运行完整 `npm run validate`。既有 Reading/Selection/Provider 通过记录不移作本轮证据。本次真实 E2E 验证了 Options 的导入、直接离线查询、重启持久性和删除；没有覆盖 Selection 浮层或 MDD 资源在富文本卡中的真实呈现。
