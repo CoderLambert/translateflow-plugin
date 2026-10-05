@@ -36,5 +36,6 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "候选 d530056 已通过完整本地验证与定向 Reading/Selection 回归；等待父助手通过已授权 GitHub 连接器创建草稿 PR。未触及 Issues。"
+  "nextAction": "Draft PR #303 is open for review through the authorized GitHub connector. Keep it in draft; do not merge or change Issue labels/closure in this audit.",
+  "pullRequest": 303
 }

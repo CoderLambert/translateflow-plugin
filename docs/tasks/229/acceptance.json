@@ -80,6 +80,13 @@
   "artifact": null,
   "limitations": [
     "Real paid Providers, private dictionaries, and Edge/Safari coverage were NOT_RUN.",
-    "GitHub push and draft-PR creation remain blocked by invalid GH_TOKEN authentication in gh CLI."
-  ]
+    "The gh CLI GH_TOKEN was invalid; no retry or credential change was attempted. The authorized GitHub connector confirmed main at the exact base and created draft PR #303."
+  ],
+  "remoteSync": {
+    "pullRequest": 303,
+    "url": "https://github.com/CoderLambert/translateflow-plugin/pull/303",
+    "draft": true,
+    "branch": "audit/229-state-calibration-20261005",
+    "base": "66cb7b876f8df4c8fea6eb645cb66cb101b6299a"
+  }
 }

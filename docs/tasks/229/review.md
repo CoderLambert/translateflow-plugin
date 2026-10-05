@@ -41,6 +41,8 @@ PR #302 candidate `a3812cf06fd26f07963ed9536e446ff4615f5e97` passed Actions run 
 
 Local task state records already mark #248/#250/#251/#252 completed with merged PRs #284/#296/#298/#299. Prior GitHub review found their Issues still had stale working/blocked state. #253 was already closed externally; its local state was reconciled to completed with PR #302 and the merge head. #234–#244 are locally completed/implemented while their Issues remain open. No Issue labels or closure state were changed in this audit.
 
-## Not run / blocked
+## Not run / handoff
 
-Real paid Provider calls, private dictionaries, and non-Chromium browser coverage are not run. GitHub reads and draft-PR creation are currently blocked because `gh auth status` reports the active `GH_TOKEN` as invalid; no retry or alternate credential path was attempted. The initial read-only check observed zero open PRs, but the current PR-list refresh could not complete. No PR was created or pushed. The runtime model and reasoning level are not observable from this environment and remain unknown. No merge, store publication, CSP change, permission expansion, or credential configuration was performed.
+Real paid Provider calls, private dictionaries, and Edge/Safari coverage were not run. `gh auth status` reported the active `GH_TOKEN` invalid; it was not retried and no credentials were changed. The connected GitHub app independently confirmed `main` at exact base `66cb7b876f8df4c8fea6eb645cb66cb101b6299a`, found no open PRs or same-name branch before sync, and created draft PR [#303](https://github.com/CoderLambert/translateflow-plugin/pull/303) from `audit/229-state-calibration-20261005`. Its initial tree matched the local candidate handoff tree. No Issue labels or closure state were changed. The PR remains a draft; no merge, store publication, CSP change, permission expansion, or credential configuration was performed.
+
+The runtime model and reasoning level are not observable from this environment and remain unknown.
