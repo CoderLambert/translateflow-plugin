@@ -149,6 +149,60 @@ test.describe("unified local dictionary import v2", () => {
     expect(firstRecord?.headword).toBe("中國");
     expect(firstRecord?.text.length).toBeGreaterThan(0);
 
+    const lookupPage = await harness.open("/selection");
+    await lookupPage.setViewportSize({ width: 1440, height: 900 });
+    await lookupPage.evaluate(() => {
+      document.title = "Local dictionary lookup";
+      document.body.replaceChildren();
+      const paragraph = document.createElement("p");
+      paragraph.append("Select this real dictionary entry: ");
+      const word = document.createElement("span");
+      word.id = "real-cedict-selected-word";
+      word.textContent = "中国";
+      paragraph.append(word);
+      document.body.append(paragraph);
+    });
+    const selectionScreenshot = testInfo.outputPath("local-real-cedict-rich-text-selection.png");
+    try {
+      await lookupPage.locator("#real-cedict-selected-word").evaluate((element) => {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        element.dispatchEvent(new MouseEvent("mouseup", {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        }));
+      });
+      const chip = lookupPage.locator(".tf-selection-chip");
+      await expect(chip).toBeVisible({ timeout: 15_000 });
+      await chip.click();
+      const card = lookupPage.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+      await expect(card).toBeVisible({ timeout: 30_000 });
+      if (!await card.evaluate((node) => node.open)) await card.locator("summary").click();
+      await expect(card).toHaveAttribute("data-state", "success", { timeout: 30_000 });
+      const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
+      await expect(viewer).toBeVisible();
+      const renderedText = await viewer.innerText();
+      expect(renderedText.trim().length).toBeGreaterThan(0);
+      await lookupPage.screenshot({ path: selectionScreenshot, fullPage: false, caret: "hide" });
+      console.log("[LOCAL_REAL_CEDICT_PRODUCT_UI]", JSON.stringify({
+        status: "PASS",
+        selectedText: "中国",
+        dictionaryTitle: firstDictionary.title,
+        renderedTextCharacters: renderedText.trim().length,
+        screenshot: selectionScreenshot
+      }));
+    } catch (error) {
+      await lookupPage.screenshot({
+        path: testInfo.outputPath("local-real-cedict-selection-failure.png"),
+        fullPage: false
+      }).catch(() => {});
+      throw error;
+    }
+
     const browserVersion = harness.context.browser().version();
     await harness.restartBrowser();
     const restartedOptions = await harness.context.newPage();

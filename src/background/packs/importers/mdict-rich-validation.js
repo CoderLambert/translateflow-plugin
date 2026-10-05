@@ -161,7 +161,6 @@ function validateKeys(index, limits) {
       !validSortKey(block.lookupMinKey, limits.headwordBytes) ||
       !validSortKey(block.lookupMaxKey, limits.headwordBytes) ||
       (block.firstKey === "" && block.lookupMinKey !== "") ||
-      (block.lastKey === "" && block.lookupMaxKey !== "") ||
       block.lookupMinKey > block.lookupMaxKey
     ) {
       mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "Rich MDict key block index is invalid.");

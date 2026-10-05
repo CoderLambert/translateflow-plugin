@@ -85,6 +85,24 @@ test("StripKey permits an empty normalized descriptor but never an empty stored 
   );
 });
 
+test("StripKey accepts a final raw key whose normalized value is empty", async () => {
+  const bytes = makeRichMdx([
+    ["alpha", "<p>ordinary headword</p>"],
+    ["。", "<p>punctuation-only headword</p>"]
+  ]);
+  const source = createTrackedSource(bytes);
+  const index = await buildRichMdictIndex({ source });
+  const block = index.keyBlocks[0];
+
+  assert.equal(block.firstKey, "alpha");
+  assert.equal(block.lastKey, "");
+  assert.equal(block.lookupMinKey, "");
+  assert.equal(block.lookupMaxKey, "alpha");
+  const result = await lookupRichMdict({ source, index, text: "alpha" });
+  assert.equal(result.found, true);
+  assert.match(result.rawRecord, /ordinary headword/u);
+});
+
 test("StripKey normalized endpoints must match the complete actual endpoint pair", async () => {
   const bytes = makeRichMdx([
     ["%", "<p>punctuation-only headword</p>"],
