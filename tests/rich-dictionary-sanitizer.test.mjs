@@ -90,11 +90,13 @@ test("active markup, navigation, event handlers, unsafe CSS, and remote resource
   assert.equal(textContent(result.nodes), "safelinkbold");
   const elements = [];
   walk(result.nodes, (node) => { if (node.type === "element") elements.push(node); });
-  assert.deepEqual(elements.map((node) => node.tag), ["div", "b"]);
+  assert.deepEqual(elements.map((node) => node.tag), ["div", "a", "b"]);
   const resources = [];
   walk(result.nodes, (node) => { if (node.type === "resource") resources.push(node); });
   assert.deepEqual(local(resources), [{ type: "resource", kind: "image", path: "images/local.png", label: "local" }]);
-  assert.deepEqual(local(elements[1].style || {}), {});
+  assert.equal(Object.hasOwn(elements[1].attrs || {}, "href"), false);
+  assert.equal(Object.hasOwn(elements[1].attrs || {}, "data-rich-fragment-target"), false);
+  assert.deepEqual(local(elements[2].style || {}), {});
   assert.deepEqual(local(elements[0].style), { color: "red" });
   for (const element of elements) {
     assert.equal(Object.hasOwn(element.attrs || {}, "src"), false);
