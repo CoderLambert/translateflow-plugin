@@ -114,6 +114,20 @@ test("legacy raw and new folded MDD orders preserve exact same-fold resources ac
     index: foldedIndex,
     path: "B.css"
   })).bytes), Buffer.from("B{color:blue}"));
+
+  const missingHeaderSource = trackedSource(makeMdd(resources, {
+    keyOrder: "case-sensitive",
+    keyCaseSensitive: null,
+    keyBlockEntryCounts: [2, 1]
+  }));
+  const missingHeaderIndex = await buildMddIndex({ source: missingHeaderSource });
+  assert.equal(missingHeaderIndex.header.keyCaseSensitive, false);
+  assert.equal(missingHeaderIndex.keyOrder, "case-sensitive");
+  for (const [path, bytes] of resources) {
+    const result = await lookupMddResource({ source: missingHeaderSource, index: missingHeaderIndex, path });
+    assert.equal(result.found, true);
+    assert.deepEqual(Buffer.from(result.bytes), bytes);
+  }
 });
 
 test("MDD endpoint pairs must be fully raw or fully lower(actual), and offsets stay monotonic", () => {
