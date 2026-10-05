@@ -333,6 +333,9 @@ label {
 .local-dictionary-import {
   max-width: 760px;
 }
+.local-dictionary-import [hidden] {
+  display: none !important;
+}
 .visually-hidden-file-input {
   position: absolute;
   width: 1px;

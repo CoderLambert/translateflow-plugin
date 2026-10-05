@@ -9,10 +9,14 @@ import { safeAdd } from "./mdict-rich-key-codec.js";
 
 const UTF16LE = new TextDecoder("utf-16le", { fatal: true });
 
-export function parseMddKeyBlock(input, descriptor, totalRecordBytes) {
+export function parseMddKeyBlock(input, descriptor, totalRecordBytes, {
+  orderMode = "case-sensitive",
+  orderValidator = null,
+  allowNormalizedDescriptorPair = false
+} = {}) {
   const cursor = new MDictCursor(input);
   const entries = [];
-  let previousPath = "";
+  const validateOrder = orderValidator || createMddResourceOrderValidator(orderMode);
   let firstRecordOffset = -1;
   let lastRecordOffset = -1;
   for (let index = 0; index < descriptor.entryCount; index += 1) {
@@ -22,19 +26,19 @@ export function parseMddKeyBlock(input, descriptor, totalRecordBytes) {
     if (recordOffset >= totalRecordBytes || recordOffset < lastRecordOffset) {
       mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDD resource record offset is invalid.");
     }
-    if (previousPath && compareMddResourcePaths(path, previousPath) <= 0) {
-      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource keys are duplicated or unsorted.");
-    }
+    validateOrder(path);
     if (firstRecordOffset < 0) firstRecordOffset = recordOffset;
     lastRecordOffset = recordOffset;
-    previousPath = path;
     entries.push({ path, recordOffset });
   }
-  if (
-    cursor.remaining !== 0 ||
-    entries[0]?.path !== descriptor.expectedFirstKey ||
-    entries.at(-1)?.path !== descriptor.expectedLastKey
-  ) {
+  const actualFirstKey = entries[0]?.path || "";
+  const actualLastKey = entries.at(-1)?.path || "";
+  const rawEndpointPair = actualFirstKey === descriptor.expectedFirstKey &&
+    actualLastKey === descriptor.expectedLastKey;
+  const normalizedEndpointPair = allowNormalizedDescriptorPair &&
+    descriptor.expectedFirstKey === actualFirstKey.toLowerCase() &&
+    descriptor.expectedLastKey === actualLastKey.toLowerCase();
+  if (cursor.remaining !== 0 || (!rawEndpointPair && !normalizedEndpointPair)) {
     mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDD key block does not match its descriptor.", {
       trailingBytes: cursor.remaining
     });
@@ -46,6 +50,20 @@ export function parseMddKeyBlock(input, descriptor, totalRecordBytes) {
     firstKey: entries[0].path,
     lastKey: entries.at(-1).path
   };
+}
+
+export function createMddResourceOrderValidator(orderMode) {
+  let previousPath = null;
+  return (path) => {
+    if (previousPath && compareMddResourcePaths(path, previousPath, orderMode) <= 0) {
+      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource keys are duplicated or unsorted.");
+    }
+    previousPath = path;
+  };
+}
+
+export function mddResourceOrderMode(index) {
+  return index?.schemaVersion === 1 ? "case-sensitive" : index?.keyOrder;
 }
 
 export function parseMddKeyBlockDescriptors(
@@ -130,7 +148,21 @@ function readNullTerminatedPath(cursor) {
 
 export async function addMddKeyBlockBounds(keyBlocks, { source, index, decode, limits }) {
   let previousRecordOffset = -1;
-  let previousPath = "";
+  const supportsCaseFoldedOrder = index.header.keyCaseSensitive === false;
+  const orderCandidates = new Map(
+    (supportsCaseFoldedOrder ? ["case-sensitive", "case-folded"] : ["case-sensitive"])
+      .map((mode) => [mode, { valid: true, previousPath: null }])
+  );
+  const orderValidator = (path) => {
+    for (const [mode, candidate] of orderCandidates) {
+      if (!candidate.valid) continue;
+      if (candidate.previousPath !== null &&
+        compareMddResourcePaths(path, candidate.previousPath, mode) <= 0) {
+        candidate.valid = false;
+      }
+      candidate.previousPath = path;
+    }
+  };
   let totalKeyBlockBytes = 0;
   for (let blockIndex = 0; blockIndex < keyBlocks.length; blockIndex += 1) {
     const descriptor = keyBlocks[blockIndex];
@@ -144,13 +176,15 @@ export async function addMddKeyBlockBounds(keyBlocks, { source, index, decode, l
         expectedFirstKey: descriptor.firstKey,
         expectedLastKey: descriptor.lastKey
       },
-      index.totalRecordBytes
+      index.totalRecordBytes,
+      {
+        orderMode: "case-sensitive",
+        orderValidator,
+        allowNormalizedDescriptorPair: supportsCaseFoldedOrder
+      }
     );
-    if (
-      parsed.firstRecordOffset < previousRecordOffset ||
-      (previousPath && compareMddResourcePaths(parsed.firstKey, previousPath) <= 0)
-    ) {
-      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource keys or offsets are duplicated or unsorted.");
+    if (parsed.firstRecordOffset < previousRecordOffset) {
+      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource record offsets are unsorted.");
     }
     descriptor.firstKey = parsed.firstKey;
     descriptor.lastKey = parsed.lastKey;
@@ -158,9 +192,13 @@ export async function addMddKeyBlockBounds(keyBlocks, { source, index, decode, l
     descriptor.lookupMaxKey = parsed.lastKey;
     descriptor.firstRecordOffset = parsed.firstRecordOffset;
     descriptor.lastRecordOffset = parsed.lastRecordOffset;
-    previousPath = parsed.lastKey;
     previousRecordOffset = parsed.lastRecordOffset;
   }
+  const detectedOrder = [...orderCandidates].find(([, candidate]) => candidate.valid)?.[0];
+  if (!detectedOrder) {
+    mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource keys are duplicated or unsorted.");
+  }
+  index.keyOrder = detectedOrder;
   return totalKeyBlockBytes;
 }
 

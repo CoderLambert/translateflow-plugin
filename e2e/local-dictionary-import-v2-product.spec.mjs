@@ -1,15 +1,36 @@
 import { test, expect } from "./support/extension-fixture.mjs";
+import { readFile } from "node:fs/promises";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 import { makeMdx } from "../tests/helpers/mdict-fixture.mjs";
 import { webcrypto } from "node:crypto";
 import { buildLocalIndexedTflex } from "../src/background/packs/importers/tflex-local-builder.js";
 
+const realMdxPath = process.env.TF_LOCAL_REAL_MDICT_MDX || "";
+const realMddPath = process.env.TF_LOCAL_REAL_MDICT_MDD || "";
+
 test.describe("unified local dictionary import v2", () => {
   test.setTimeout(180_000);
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+  });
+
+  test("empty local dictionary preflight and confirmation labels are not visible", async ({ harness }, testInfo) => {
+    const options = await harness.context.newPage();
+    await options.setViewportSize({ width: 1100, height: 1000 });
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const card = options.locator("#localDictionaryImport");
+    await expect(card).toBeVisible();
+    await expect(options.locator("#localDictionaryPreflight")).toBeHidden();
+    for (const selector of [
+      "#localDictionarySemanticLabel",
+      "#localDictionaryLimitationsLabel",
+      "#localDictionaryDuplicateLabel"
+    ]) {
+      await expect(options.locator(selector)).toBeHidden();
+    }
+    await card.screenshot({ path: testInfo.outputPath("local-dictionary-preflight-empty.png") });
   });
 
   test("one picker safely installs Rich MDX with base and numbered MDD locally", async ({ harness }) => {
@@ -75,6 +96,172 @@ test.describe("unified local dictionary import v2", () => {
     await options.locator("#richMdictInstalledList .site-row").filter({ hasText: "Unified Rich Fixture" }).getByRole("button", { name: "删除" }).click();
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
     expect(harness.server.calls).toHaveLength(0);
+  });
+
+  test("locally supplied real MDX/MDD imports, looks up offline, and survives a browser restart", async ({ harness }, testInfo) => {
+    test.skip(!realMdxPath || !realMddPath,
+      "Set TF_LOCAL_REAL_MDICT_MDX and TF_LOCAL_REAL_MDICT_MDD to run the local real-file import check.");
+    test.setTimeout(240_000);
+    const mdxBytes = await readFile(realMdxPath);
+    const mddBytes = await readFile(realMddPath);
+    const options = await harness.context.newPage();
+    const optionsPageNonLocalRequestsBeforeRestart = [];
+    options.on("request", (request) => {
+      if (/^https?:/iu.test(request.url()) && !/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/iu.test(request.url())) {
+        optionsPageNonLocalRequestsBeforeRestart.push(request.url());
+      }
+    });
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles([
+      { name: "local-real-check.mdx", mimeType: "application/octet-stream", buffer: mdxBytes },
+      { name: "local-real-check.mdd", mimeType: "application/octet-stream", buffer: mddBytes }
+    ]);
+
+    const importButton = options.locator("#localDictionaryImportButton");
+    await expect(importButton).toBeEnabled({ timeout: 90_000 });
+    for (const selector of ["#localDictionarySemanticConfirmation", "#localDictionaryLimitationsConfirmation"]) {
+      const confirmation = options.locator(selector);
+      if (await confirmation.isVisible()) await confirmation.check();
+    }
+    await expect(importButton).toBeEnabled();
+    await importButton.click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 120_000 });
+    await options.locator("#localDictionaryImport").screenshot({
+      path: testInfo.outputPath("local-real-mdict-import-complete.png")
+    });
+
+    const installed = options.locator("#richMdictInstalledList .site-row").first();
+    await expect(installed).toBeVisible();
+    const selectionEnabled = installed.locator('input[data-action="enabled"]');
+    await expect(selectionEnabled).toBeVisible();
+    if (!await selectionEnabled.isChecked()) await selectionEnabled.check();
+    await expect(selectionEnabled).toBeChecked();
+    const dictionaryId = await installed.getAttribute("data-dictionary-id");
+    expect(dictionaryId).toBeTruthy();
+    const firstList = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
+    const firstDictionary = firstList.dictionaries.find((item) => item.id === dictionaryId);
+    expect(firstDictionary?.status).toBe("ready");
+    expect(firstDictionary?.entryCount).toBeGreaterThan(0);
+    expect(firstDictionary?.resourceCount).toBe(1);
+
+    const firstLookup = await options.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "中国"
+    }));
+    expect(firstLookup.found).toBe(true);
+    const firstRecord = firstLookup.dictionaries.find((item) => item.id === dictionaryId);
+    expect(firstRecord?.headword).toBe("中國");
+    expect(firstRecord?.text.length).toBeGreaterThan(0);
+    const selectionLookup = await options.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "IP"
+    }));
+    expect(selectionLookup.found).toBe(true);
+    const selectionRecord = selectionLookup.dictionaries.find((item) => item.id === dictionaryId);
+    expect(selectionRecord?.headword).toBe("IP");
+
+    const lookupPage = await harness.open("/selection");
+    await lookupPage.setViewportSize({ width: 1440, height: 900 });
+    await lookupPage.evaluate(() => {
+      document.title = "Local dictionary lookup";
+      document.body.replaceChildren();
+      const paragraph = document.createElement("p");
+      paragraph.append("Select this real dictionary entry: ");
+      const word = document.createElement("span");
+      word.id = "real-cedict-selected-word";
+      word.textContent = "IP";
+      paragraph.append(word);
+      document.body.append(paragraph);
+    });
+    await harness.inject(lookupPage);
+    const selectionScreenshot = testInfo.outputPath("local-real-cedict-rich-text-selection.png");
+    try {
+      await lookupPage.locator("#real-cedict-selected-word").evaluate((element) => {
+        element.scrollIntoView({ block: "center", inline: "center" });
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        element.dispatchEvent(new MouseEvent("mouseup", {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        }));
+      });
+      const chip = lookupPage.locator(".tf-selection-chip");
+      await expect(chip).toBeVisible({ timeout: 15_000 });
+      await chip.click();
+      const card = lookupPage.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+      await expect(card).toBeVisible({ timeout: 30_000 });
+      if (!await card.evaluate((node) => node.open)) await card.locator("summary").click();
+      await expect(card).toHaveAttribute("data-state", "success", { timeout: 30_000 });
+      const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
+      await expect(viewer).toBeVisible();
+      await expect(card).toHaveJSProperty("open", true);
+      const renderedText = await viewer.innerText();
+      expect(renderedText.trim().length).toBeGreaterThan(0);
+      const expectedVisibleText = String(selectionRecord.text)
+        .replace(/<[^>]*>/gu, " ")
+        .replace(/&(?:nbsp|amp|lt|gt|quot);/giu, " ")
+        .replace(/\s+/gu, " ")
+        .trim();
+      const expectedRecordToken = expectedVisibleText.match(/[\p{L}\p{N}]{4,}/u)?.[0];
+      expect(expectedRecordToken).toBeTruthy();
+      expect(renderedText.toLocaleLowerCase()).toContain(expectedRecordToken.toLocaleLowerCase());
+      await viewer.scrollIntoViewIfNeeded();
+      await expect(viewer).toBeInViewport();
+      await lookupPage.locator(".tf-selection-panel").screenshot({ path: selectionScreenshot, caret: "hide" });
+      console.log("[LOCAL_REAL_CEDICT_PRODUCT_UI]", JSON.stringify({
+        status: "PASS",
+        selectedText: "IP",
+        dictionaryTitle: firstDictionary.title,
+        renderedTextCharacters: renderedText.trim().length,
+        renderedRecordTokenVisible: true,
+        screenshot: selectionScreenshot
+      }));
+    } catch (error) {
+      await lookupPage.screenshot({
+        path: testInfo.outputPath("local-real-cedict-selection-failure.png"),
+        fullPage: false
+      }).catch(() => {});
+      throw error;
+    }
+
+    const browserVersion = harness.context.browser().version();
+    await harness.restartBrowser();
+    const restartedOptions = await harness.context.newPage();
+    await restartedOptions.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const persistedRow = restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`);
+    await expect(persistedRow).toBeVisible();
+    const restartedList = await restartedOptions.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
+    expect(restartedList.dictionaries.find((item) => item.id === dictionaryId)?.status).toBe("ready");
+    const restartedLookup = await restartedOptions.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "中国"
+    }));
+    expect(restartedLookup.found).toBe(true);
+    const restartedRecord = restartedLookup.dictionaries.find((item) => item.id === dictionaryId);
+    expect(restartedRecord?.headword).toBe(firstRecord.headword);
+    expect(restartedRecord?.text).toBe(firstRecord.text);
+    await restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)
+      .getByRole("button", { name: "删除" }).click();
+    await expect(restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)).toBeHidden();
+
+    expect(harness.server.calls).toHaveLength(0);
+    expect(optionsPageNonLocalRequestsBeforeRestart).toEqual([]);
+    console.log("[LOCAL_REAL_MDICT_FLOW]", JSON.stringify({
+      browserVersion,
+      entryCount: firstDictionary.entryCount,
+      mddFileCount: firstDictionary.resourceCount,
+      lookupHeadword: firstRecord.headword,
+      restartLookupPreserved: restartedRecord.text === firstRecord.text,
+      mockProviderCalls: harness.server.calls.length,
+      optionsPageNonLocalRequestsBeforeRestart: optionsPageNonLocalRequestsBeforeRestart.length,
+      productionArtifactTreeSha256BeforeTestAdaptation: harness.buildReport.treeSha256,
+      productionArtifactBytesBeforeTestAdaptation: harness.buildReport.totalBytes,
+      productionArtifactFileCountBeforeTestAdaptation: harness.buildReport.fileCount
+    }));
   });
 
   test("unrelated MDD is shown and blocks installation instead of attaching silently", async ({ harness }) => {

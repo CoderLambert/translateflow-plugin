@@ -28,8 +28,11 @@ export function parseKeyBlockDescriptors(
     if (!blockEntries) {
       mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict key block declares zero entries.");
     }
-    const firstKey = readSizedKey(cursor, encoding, limits, "MDict first key");
-    const lastKey = readSizedKey(cursor, encoding, limits, "MDict last key");
+    // Key-info endpoints can be normalized by StripKey and therefore be empty
+    // even though the corresponding stored headword is non-empty. The decoded
+    // key block below validates actual headwords and matches the endpoint pair.
+    const firstKey = readSizedDescriptorKey(cursor, encoding, limits, "MDict first key");
+    const lastKey = readSizedDescriptorKey(cursor, encoding, limits, "MDict last key");
     const compressedBytes = cursor.readSafeUint64Be("MDict key block compressed bytes");
     const decompressedBytes = cursor.readSafeUint64Be("MDict key block decompressed bytes");
     requireMdictAtMost(compressedBytes, limits.blockCompressedBytes, "MDict key block compressed bytes");
@@ -127,7 +130,7 @@ function throwIfAborted(signal) {
   if (signal?.aborted) throw new DOMException("MDict lookup cancelled.", "AbortError");
 }
 
-function readSizedKey(cursor, encoding, limits, label) {
+function readSizedDescriptorKey(cursor, encoding, limits, label) {
   const units = cursor.readUint16Be(label + " length");
   const byteLength = units * encoding.unitBytes;
   requireMdictAtMost(byteLength, limits.headwordBytes, label + " bytes");
@@ -136,9 +139,7 @@ function readSizedKey(cursor, encoding, limits, label) {
   if (!terminator.every((value) => value === 0)) {
     mdictFail(MDICT_IMPORT_ERROR.CORRUPT, label + " is missing its null terminator.");
   }
-  const text = decodeMdictText(raw, encoding, label);
-  validateMdictHeadword(text);
-  return text;
+  return decodeMdictText(raw, encoding, label);
 }
 
 function readNullTerminatedKey(cursor, encoding) {

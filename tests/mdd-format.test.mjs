@@ -12,6 +12,7 @@ import {
   validateMddIndex
 } from "../src/background/packs/importers/mdd.js";
 import { MDICT_IMPORT_ERROR, MDictImportError } from "../src/background/packs/importers/mdict-contract.js";
+import { parseMddKeyBlock } from "../src/background/packs/importers/mdd-key-codec.js";
 import { makeMdd, readMddInteropFixture } from "./helpers/mdd-fixture.mjs";
 
 test("pinned independent MDD builds a compact index and retrieves exact resource bytes", async () => {
@@ -55,6 +56,119 @@ test("pinned independent MDD builds a compact index and retrieves exact resource
 
   const caseMismatch = await lookupMddResource({ source, index, path: "/Interop/sample.png" });
   assert.deepEqual(caseMismatch, { found: false, path: "Interop/sample.png" });
+});
+
+test("legacy raw and new folded MDD orders preserve exact same-fold resources across blocks", async () => {
+  const resources = [
+    ["A.css", Buffer.from("A{color:red}")],
+    ["B.css", Buffer.from("B{color:blue}")],
+    ["a.css", Buffer.from("a{color:green}")]
+  ];
+  const legacySource = trackedSource(makeMdd(resources, {
+    keyOrder: "case-sensitive",
+    keyBlockEntryCounts: [2, 1]
+  }));
+  const legacySchema2 = await buildMddIndex({ source: legacySource });
+  assert.equal(legacySchema2.keyOrder, "case-sensitive");
+
+  const legacyIndex = structuredClone(legacySchema2);
+  legacyIndex.schemaVersion = 1;
+  delete legacyIndex.keyOrder;
+  delete legacyIndex.header.keyCaseSensitive;
+  assert.equal(validateMddIndex(legacyIndex, { sourceSize: legacySource.size }), legacyIndex);
+  for (const [path, bytes] of resources) {
+    const result = await lookupMddResource({ source: legacySource, index: legacyIndex, path });
+    assert.equal(result.found, true);
+    assert.deepEqual(Buffer.from(result.bytes), bytes);
+  }
+  assert.deepEqual(Buffer.from((await lookupMddResource({
+    source: legacySource,
+    index: legacyIndex,
+    path: "B.css"
+  })).bytes), Buffer.from("B{color:blue}"));
+  assert.deepEqual(Buffer.from((await lookupMddResource({
+    source: legacySource,
+    index: legacyIndex,
+    path: "a.css"
+  })).bytes), Buffer.from("a{color:green}"));
+
+  const foldedSource = trackedSource(makeMdd(resources, {
+    keyOrder: "case-folded",
+    keyBlockEntryCounts: [2, 1]
+  }));
+  const foldedIndex = await buildMddIndex({ source: foldedSource });
+  assert.equal(foldedIndex.schemaVersion, 2);
+  assert.equal(foldedIndex.keyOrder, "case-folded");
+  for (const path of ["A.css", "a.css", "B.css"]) {
+    const result = await lookupMddResource({ source: foldedSource, index: foldedIndex, path });
+    assert.equal(result.found, true);
+    assert.deepEqual(Buffer.from(result.bytes), resources.find(([key]) => key === path)[1]);
+  }
+  assert.deepEqual(Buffer.from((await lookupMddResource({
+    source: foldedSource,
+    index: foldedIndex,
+    path: "a.css"
+  })).bytes), Buffer.from("a{color:green}"));
+  assert.deepEqual(Buffer.from((await lookupMddResource({
+    source: foldedSource,
+    index: foldedIndex,
+    path: "B.css"
+  })).bytes), Buffer.from("B{color:blue}"));
+
+  const missingHeaderSource = trackedSource(makeMdd(resources, {
+    keyOrder: "case-sensitive",
+    keyCaseSensitive: null,
+    keyBlockEntryCounts: [2, 1]
+  }));
+  const missingHeaderIndex = await buildMddIndex({ source: missingHeaderSource });
+  assert.equal(missingHeaderIndex.header.keyCaseSensitive, false);
+  assert.equal(missingHeaderIndex.keyOrder, "case-sensitive");
+  for (const [path, bytes] of resources) {
+    const result = await lookupMddResource({ source: missingHeaderSource, index: missingHeaderIndex, path });
+    assert.equal(result.found, true);
+    assert.deepEqual(Buffer.from(result.bytes), bytes);
+  }
+});
+
+test("MDD endpoint pairs must be fully raw or fully lower(actual), and offsets stay monotonic", () => {
+  const raw = mddKeyBlock([
+    [0, "A.css"],
+    [3, "B.css"]
+  ]);
+  const descriptor = {
+    entryCount: 2,
+    expectedFirstKey: "A.css",
+    expectedLastKey: "B.css"
+  };
+  const rawPair = parseMddKeyBlock(raw, descriptor, 5);
+  assert.equal(rawPair.entries[0].path, "A.css");
+  assert.equal(rawPair.entries[1].path, "B.css");
+
+  const lowerPair = parseMddKeyBlock(raw, {
+    ...descriptor,
+    expectedFirstKey: "a.css",
+    expectedLastKey: "b.css"
+  }, 5, { allowNormalizedDescriptorPair: true });
+  assert.equal(lowerPair.entries[1].path, "B.css");
+
+  assert.throws(
+    () => parseMddKeyBlock(raw, {
+      ...descriptor,
+      expectedLastKey: "b.css"
+    }, 5, { allowNormalizedDescriptorPair: true }),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.CORRUPT
+  );
+  assert.throws(
+    () => parseMddKeyBlock(raw, {
+      ...descriptor,
+      expectedFirstKey: "wrong.css"
+    }, 5, { allowNormalizedDescriptorPair: true }),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.CORRUPT
+  );
+  assert.throws(
+    () => parseMddKeyBlock(mddKeyBlock([[3, "A.css"], [0, "B.css"]]), descriptor, 5),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.CORRUPT
+  );
 });
 
 test("MDD reader supports none and zlib blocks without changing binary boundaries", async () => {
@@ -191,6 +305,14 @@ function firstRecordBlockOffset(bytes) {
   const recordSectionOffset = keyBlocksOffset + keyBlocksBytes;
   const recordBlockCount = Number(bytes.readBigUInt64BE(recordSectionOffset));
   return recordSectionOffset + 32 + recordBlockCount * 16;
+}
+
+function mddKeyBlock(entries) {
+  return Buffer.concat(entries.map(([offset, path]) => {
+    const recordOffset = Buffer.alloc(8);
+    recordOffset.writeBigUInt64BE(BigInt(offset));
+    return Buffer.concat([recordOffset, Buffer.from(path, "utf16le"), Buffer.from([0, 0])]);
+  }));
 }
 
 function sha256(input) {

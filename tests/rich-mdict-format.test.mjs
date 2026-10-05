@@ -63,6 +63,60 @@ test("Encrypted=2 Compact/Compat MDX builds an index and returns readable safe t
   assert.ok(source.requests.every(({ offset, length }) => offset + length <= bytes.byteLength));
 });
 
+test("StripKey permits an empty normalized descriptor but never an empty stored headword", async () => {
+  const bytes = makeRichMdx([
+    ["%", "<p>punctuation-only headword</p>"],
+    ["alpha", "<p>ordinary headword</p>"]
+  ]);
+  const source = createTrackedSource(bytes);
+  const index = await buildRichMdictIndex({ source });
+
+  assert.equal(index.keyBlocks[0].firstKey, "");
+  assert.equal(index.keyBlocks[0].lookupMinKey, "");
+  const result = await lookupRichMdict({ source, index, text: "alpha" });
+  assert.equal(result.found, true);
+  assert.match(result.rawRecord, /ordinary headword/u);
+
+  await assert.rejects(
+    buildRichMdictIndex({
+      source: createTrackedSource(makeRichMdx([["", "<p>empty stored headword</p>"]]))
+    }),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
+  );
+});
+
+test("StripKey accepts a final raw key whose normalized value is empty", async () => {
+  const bytes = makeRichMdx([
+    ["alpha", "<p>ordinary headword</p>"],
+    ["。", "<p>punctuation-only headword</p>"]
+  ]);
+  const source = createTrackedSource(bytes);
+  const index = await buildRichMdictIndex({ source });
+  const block = index.keyBlocks[0];
+
+  assert.equal(block.firstKey, "alpha");
+  assert.equal(block.lastKey, "");
+  assert.equal(block.lookupMinKey, "");
+  assert.equal(block.lookupMaxKey, "alpha");
+  const result = await lookupRichMdict({ source, index, text: "alpha" });
+  assert.equal(result.found, true);
+  assert.match(result.rawRecord, /ordinary headword/u);
+});
+
+test("StripKey normalized endpoints must match the complete actual endpoint pair", async () => {
+  const bytes = makeRichMdx([
+    ["%", "<p>punctuation-only headword</p>"],
+    ["alpha", "<p>ordinary headword</p>"]
+  ], {
+    keyBlockDescriptorOverrides: [{ firstKey: "wrong-boundary" }]
+  });
+
+  await assert.rejects(
+    buildRichMdictIndex({ source: createTrackedSource(bytes) }),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.CORRUPT
+  );
+});
+
 test("UTF-16 record bytes and decoded UTF-8 bytes remain distinct within their limits", async () => {
   const record = `<div>${"漢".repeat(400_000)}<span>TAIL_SENTINEL</span></div>`;
   const bytes = makeRichMdx([["utf16fixture", record]], { encoding: "UTF-16" });

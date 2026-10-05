@@ -156,10 +156,11 @@ function validateKeys(index, limits) {
       block.firstRecordOffset > block.lastRecordOffset ||
       block.firstRecordOffset < previousRecordOffset ||
       block.lastRecordOffset >= index.totalRecordBytes ||
-      !validHeadword(block.firstKey, limits.headwordBytes) ||
-      !validHeadword(block.lastKey, limits.headwordBytes) ||
+      !validDescriptorKey(block.firstKey, limits.headwordBytes, index.header) ||
+      !validDescriptorKey(block.lastKey, limits.headwordBytes, index.header) ||
       !validSortKey(block.lookupMinKey, limits.headwordBytes) ||
       !validSortKey(block.lookupMaxKey, limits.headwordBytes) ||
+      (block.firstKey === "" && block.lookupMinKey !== "") ||
       block.lookupMinKey > block.lookupMaxKey
     ) {
       mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "Rich MDict key block index is invalid.");
@@ -220,6 +221,12 @@ function validHeadword(value, maximumBytes) {
     new TextEncoder().encode(value).byteLength <= maximumBytes &&
     !/[\u0000-\u001F\u007F]/u.test(value)
   );
+}
+
+function validDescriptorKey(value, maximumBytes, header) {
+  return value === ""
+    ? header.stripKey
+    : validHeadword(value, maximumBytes);
 }
 
 function validSortKey(value, maximumBytes) {
