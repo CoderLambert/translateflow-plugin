@@ -20,11 +20,11 @@ test.describe("real CC-CEDICT rich resource display", () => {
     expect(mddSha256).toBe("19b7bf816cc344829aa95d56d63754b6879560f052537cee51e299296d9b7f23");
 
     const options = await harness.context.newPage();
-    const browserErrors = [];
-    const externalRequests = [];
-    options.on("pageerror", (error) => browserErrors.push(error.message));
+    const observedPageErrors = [];
+    const selectionPageExternalRequests = [];
+    options.on("pageerror", (error) => observedPageErrors.push(error.message));
     options.on("console", (message) => {
-      if (message.type() === "error") browserErrors.push(message.text());
+      if (message.type() === "error") observedPageErrors.push(message.text());
     });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
@@ -57,13 +57,13 @@ test.describe("real CC-CEDICT rich resource display", () => {
 
     const page = await harness.open("/selection");
     await page.setViewportSize({ width: 1440, height: 900 });
-    page.on("pageerror", (error) => browserErrors.push(error.message));
+    page.on("pageerror", (error) => observedPageErrors.push(error.message));
     page.on("console", (message) => {
-      if (message.type() === "error") browserErrors.push(message.text());
+      if (message.type() === "error") observedPageErrors.push(message.text());
     });
     page.on("request", (request) => {
       if (/^https?:/iu.test(request.url()) && new URL(request.url()).origin !== harness.server.baseUrl) {
-        externalRequests.push(request.url());
+        selectionPageExternalRequests.push(request.url());
       }
     });
     await page.evaluate(() => {
@@ -89,8 +89,20 @@ test.describe("real CC-CEDICT rich resource display", () => {
     await expect(viewer).toBeVisible();
     await expect.poll(() => viewer.evaluate((node) => {
       const root = node.getRootNode();
-      return [...root.querySelectorAll("style")].some((style) => style.textContent.includes(".tf-rich-viewer"));
-    }), { timeout: 30_000 }).toBe(true);
+      const dictionaryStyles = [...root.querySelectorAll("style")].slice(1);
+      const descendants = [node, ...node.querySelectorAll("*")];
+      let matchedDictionaryRules = 0;
+      function countMatchedRules(rules) {
+        for (const rule of [...(rules || [])]) {
+          if (rule.selectorText && descendants.some((element) => {
+            try { return element.matches(rule.selectorText); } catch { return false; }
+          })) matchedDictionaryRules += 1;
+          if (rule.cssRules) countMatchedRules(rule.cssRules);
+        }
+      }
+      for (const style of dictionaryStyles) countMatchedRules(style.sheet?.cssRules);
+      return matchedDictionaryRules;
+    }), { timeout: 30_000 }).toBeGreaterThan(0);
     const displayProof = await viewer.evaluate((node) => {
       const root = node.getRootNode();
       const styleNodes = [...root.querySelectorAll("style")];
@@ -141,15 +153,15 @@ test.describe("real CC-CEDICT rich resource display", () => {
       richDictionaryCardState: await card.getAttribute("data-state"),
       richDictionaryCardExpanded: await card.evaluate((node) => node.open),
       displayProof,
-      externalRequests: externalRequests.length,
-      providerCalls: harness.server.calls.length,
-      browserErrors: browserErrors.length
+      selectionPageExternalRequests: selectionPageExternalRequests.length,
+      providerFixtureCalls: harness.server.calls.length,
+      pageErrorsObservedOnInitialOptionsAndSelectionPages: observedPageErrors.length
     };
+    expect(selectionPageExternalRequests).toEqual([]);
+    expect(harness.server.calls).toHaveLength(0);
+    expect(observedPageErrors).toEqual([]);
     await writeFile(resolve(evidenceDir, "cc-cedict-resource-display.json"), `${JSON.stringify(report, null, 2)}\n`);
     console.log("[CC_CEDICT_REAL_RESOURCE_DISPLAY]", JSON.stringify(report));
-    expect(externalRequests).toEqual([]);
-    expect(harness.server.calls).toHaveLength(0);
-    expect(browserErrors).toEqual([]);
   });
 });
 
