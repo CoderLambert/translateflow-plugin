@@ -250,7 +250,7 @@ function waitForReady({ worker, requestId, onProgress, setReject }) {
       const message = event?.data;
       if (message?.requestId !== requestId) return;
       if (message.type === RICH_MDICT_WORKER_MESSAGES.PROGRESS) {
-        emitProgress(onProgress, requestId, message.phase || "worker");
+        emitProgress(onProgress, requestId, message.phase || "worker", progressDetails(message));
       } else if (message.type === RICH_MDICT_WORKER_MESSAGES.READY) {
         cleanup();
         resolve(message);
@@ -266,6 +266,11 @@ function waitForReady({ worker, requestId, onProgress, setReject }) {
     worker.addEventListener("message", onMessage);
     worker.addEventListener("error", onError);
   });
+}
+
+function progressDetails(message) {
+  const allowed = ["fileName", "index", "count", "bytesRead", "bytesWritten", "fileBytes", "completedBytes", "totalBytes"];
+  return Object.fromEntries(allowed.filter((key) => message?.[key] !== undefined).map((key) => [key, message[key]]));
 }
 
 function workerError(message) {

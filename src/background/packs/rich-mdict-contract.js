@@ -1,4 +1,5 @@
 import {
+  RICH_MDICT_IMPORT_LIMITS,
   validateRichMdictIndex
 } from "./importers/mdict-rich-validation.js";
 import {
@@ -16,8 +17,9 @@ export const RICH_MDICT_INDEX_PATH = "index.json";
 export const RICH_MDICT_MAX_SOURCE_BYTES = 128 * 1024 * 1024;
 export const RICH_MDICT_MAX_INDEX_BYTES = 8 * 1024 * 1024;
 export const RICH_MDICT_MAX_ENTRIES = 4_000_000;
-export const RICH_MDICT_MAX_RECORD_BYTES = 512 * 1024;
-export const RICH_MDICT_MAX_DISPLAY_CHARS = 6000;
+export const RICH_MDICT_MAX_SOURCE_RECORD_BYTES = RICH_MDICT_IMPORT_LIMITS.entryBytes;
+export const RICH_MDICT_MAX_RECORD_TEXT_BYTES = RICH_MDICT_IMPORT_LIMITS.expandedTextBytes;
+export const RICH_MDICT_MAX_DISPLAY_BYTES = 2 * 1024 * 1024;
 export const RICH_MDICT_SOURCE_ID = "local-rich-mdict";
 
 export function validateCommit({ packId, packVersion, metadata } = {}) {
@@ -203,19 +205,26 @@ export function publicRichDictionary(entry) {
   const resourceSources = Array.isArray(active.resources?.sources) && active.resources.sources.length <= 16
     ? active.resources.sources
     : [];
+  const sidecars = Array.isArray(active.resources?.sidecars) && active.resources.sidecars.length <= 32
+    ? active.resources.sidecars
+    : [];
+  const sidecarBytes = sidecars.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0);
   return {
     id: String(active.packId || ""),
     title: clampText(active.title || active.fileName || "Rich MDict", 200),
     fileName: clampText(active.fileName || "", 200),
     format: clampText(active.format || "", 40),
     packVersion: clampText(active.packVersion || "", 120),
+    packageVersion: clampText(active.resources?.packVersion || active.packVersion || "", 120),
     sourceSize: Number(active.sourceSize || 0),
     indexSize: Number(active.indexSize || 0),
     entryCount: Number(active.entryCount || 0),
     resourceCount: resourceSources.length,
     resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
+    sidecarCount: sidecars.length,
+    sidecarBytes,
     installedBytes: Number(active.sourceSize || 0) + Number(active.indexSize || 0) +
-      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)) + Math.max(0, Number(source?.indexSize || 0)), 0),
+      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)) + Math.max(0, Number(source?.indexSize || 0)), 0) + sidecarBytes,
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
     ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),

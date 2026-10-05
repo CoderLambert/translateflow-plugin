@@ -114,7 +114,9 @@ export async function lookupRichMdict({
         requestedKey,
         displayForm: match.displayForm,
         rawRecord,
-        safeTextFallback: toSafeRichMdictPlainText(rawRecord, index.header),
+        sourceRecordBytes: record.byteLength,
+        decodedTextBytes: new TextEncoder().encode(rawRecord).byteLength,
+        safeTextFallback: toSafeRichMdictPlainText(rawRecord, index.header, limits.expandedTextBytes),
         aliasTarget: initialAliasTarget
       };
     }

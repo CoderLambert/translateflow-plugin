@@ -111,7 +111,9 @@ test("rich lookup returns the bounded raw record with the validated rendering me
       found: true,
       displayForm: "run",
       safeTextFallback: "run — 运行",
-      rawRecord: "🦭".repeat(160_000)
+      rawRecord: "🦭".repeat(400_000),
+      sourceRecordBytes: 800_000,
+      decodedTextBytes: 1_600_000
     })
   });
   const metadata = await stage(env, BASE_ID, index);
@@ -120,9 +122,82 @@ test("rich lookup returns the bounded raw record with the validated rendering me
   const response = await env.manager.lookup("run");
   const richRecord = response.dictionaries[0].richRecord;
   assert.equal(response.dictionaries[0].text, "run — 运行");
-  assert.equal(new TextEncoder().encode(richRecord.rawRecord).byteLength, 512 * 1024);
+  assert.equal(richRecord.sourceBytes, 800_000);
+  assert.equal(richRecord.textBytes, 1_600_000);
+  assert.equal(new TextEncoder().encode(richRecord.rawRecord).byteLength, 1_600_000);
   assert.equal(richRecord.format, "Html");
   assert.deepEqual(richRecord.styleSheetRules, [{ id: 1, begin: "<b>", end: "</b>" }]);
+});
+
+test("MDD preflight enforces the package-wide 4,000,000,000-byte selected-source budget", async () => {
+  const env = createEnvironment();
+  const metadata = await stage(env, BASE_ID);
+  await env.manager.commit({ ...BASE_ID, metadata });
+  const resourceManager = createRichMddResourceManager({
+    store: env.store,
+    stateStore: env.stateStore,
+    cryptoProvider: webcrypto
+  });
+  const request = {
+    dictionaryId: BASE_ID.packId,
+    requestId: "package-budget-mdd-preflight",
+    resourceVersion: "import-budget-a23e4567",
+    mdxFileName: metadata.fileName,
+    files: [{ fileName: "english-filename.mdd", size: 4_000_000_000 - metadata.sourceSize + 1 }]
+  };
+  await assert.rejects(resourceManager.preflight(request), (error) => error?.code === "RICH_MDD_LIMIT");
+  assert.deepEqual((await env.stateStore.read()).resourceReservations || {}, {});
+});
+
+test("MDD worker rejects an individual or combined input over its 4,000,000,000-byte cap", async () => {
+  const handler = createMddResourceImportWorkerHandler({
+    postMessage() {},
+    store: new MemoryStore(),
+    cryptoProvider: webcrypto,
+    buildIndex: async () => ({ keyCount: 1 }),
+    validateIndex() {}
+  });
+  const fakeFile = (name, size) => ({ name, size, slice() { return new Blob([new Uint8Array([0])]); } });
+  const input = {
+    dictionaryId: BASE_ID.packId,
+    requestId: "mdd-worker-size-guard",
+    resourceVersion: "import-size-a23e4567",
+    mdxFileName: "filename.mdx",
+    files: [fakeFile("filename.mdd", 4_000_000_001)],
+    sidecars: []
+  };
+  await assert.rejects(handler.handleMessage({ type: MDD_RESOURCE_WORKER_MESSAGES.START, requestId: input.requestId, input }),
+    (error) => error?.code === "RICH_MDD_LIMIT");
+
+  input.files = [fakeFile("filename.mdd", 3_999_999_990)];
+  input.sidecars = [{ path: "audio/tone.wav", file: fakeFile("tone.wav", 20) }];
+  await assert.rejects(handler.handleMessage({ type: MDD_RESOURCE_WORKER_MESSAGES.START, requestId: input.requestId, input }),
+    (error) => error?.code === "RICH_MDD_LIMIT");
+
+  const stored = new Map();
+  const progress = [];
+  const maxSource = fakeFile("filename.mdd", 4_000_000_000);
+  const maxHandler = createMddResourceImportWorkerHandler({
+    postMessage: (message) => progress.push(message),
+    cryptoProvider: webcrypto,
+    buildIndex: async ({ source }) => { await source.read(0, 1); return { keyCount: 1 }; },
+    validateIndex() {},
+    store: {
+      async listVersions() { return []; },
+      async writeFile(packId, version, path, value, options = {}) {
+        const bytes = value.size ?? value.byteLength;
+        stored.set(`${packId}/${version}/${path}`, bytes);
+        options.onProgress?.({ bytesWritten: bytes, totalBytes: bytes });
+      },
+      async getFileSize(packId, version, path) { return stored.get(`${packId}/${version}/${path}`) || 0; },
+      async removeVersion() { return true; }
+    }
+  });
+  const validMaxInput = { ...input, requestId: "mdd-worker-max-source", resourceVersion: "import-max-a23e4567", files: [maxSource], sidecars: [] };
+  const result = await maxHandler.handleMessage({ type: MDD_RESOURCE_WORKER_MESSAGES.START, requestId: validMaxInput.requestId, input: validMaxInput });
+  assert.equal(result.type, MDD_RESOURCE_WORKER_MESSAGES.READY);
+  assert.ok(progress.some((message) => message.phase === "index" && message.bytesRead === 1 && message.fileBytes === 4_000_000_000));
+  assert.ok(progress.some((message) => message.phase === "store-source" && message.bytesWritten === 4_000_000_000 && message.totalBytes === 4_000_000_000));
 });
 
 test("a same-size persisted index that differs from the MDX source is rejected before activation", async () => {
@@ -550,8 +625,16 @@ function createEnvironment(overrides = {}) {
     buildIndex: builder,
     lookup: overrides.lookup || (async ({ source, text }) => {
       await source.read(92, 8);
+      const rawRecord = "<p>run — 运行</p>";
       return text === "run"
-        ? { found: true, displayForm: "run", safeTextFallback: "run — 运行" }
+        ? {
+            found: true,
+            displayForm: "run",
+            safeTextFallback: "run — 运行",
+            rawRecord,
+            sourceRecordBytes: Buffer.byteLength(rawRecord),
+            decodedTextBytes: Buffer.byteLength(rawRecord)
+          }
         : { found: false };
     })
   };

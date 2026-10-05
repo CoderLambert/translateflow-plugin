@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "offline-dictionary",
-  "status": "paused",
+  "status": "working",
   "owner": "main",
   "dependencies": [],
-  "branch": null,
-  "worktree": null,
+  "branch": "feat/oxford10-integrated-import",
+  "worktree": "/workspace/translateflow-plugin-oxford10",
   "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
@@ -29,5 +29,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本次只同步任务定义。获准实施后先复现并修复 OD-1 块边界问题；OD-2/OD-3 待固定一个合法持有的目标 MDX/MDD 包，冻结前补入实际目标验证命令。缺文件不阻塞 OD-1，不启动 Builder 或扩大范围。"
+  "nextAction": "已获准连续实现 MDX/MDD 完整产品旅程。先用独立 writer fixture 复现并修复 raw/legacy 成对边界，再贯通现有选择、预检、OPFS 持久化、查询与受控渲染；真实 Oxford10 六文件和浏览器实包验收待用户提供输入。"
 }

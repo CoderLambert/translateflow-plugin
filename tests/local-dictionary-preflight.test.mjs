@@ -9,6 +9,7 @@ import {
   preflightLocalDictionaryFiles,
   LOCAL_DICTIONARY_PREFLIGHT_STATUS
 } from "../src/background/packs/local-dictionary-preflight.js";
+import { getLocalPreflightView } from "../src/options/local-dictionary-import-presentation.js";
 import { validateStarDictIndex, validateStarDictSynonyms } from "../src/background/packs/importers/stardict-binary.js";
 
 test("rich MDX plus base and numbered MDD companions is classified without reading resource bodies", async () => {
@@ -57,6 +58,22 @@ test("unassociated MDD is surfaced and never silently attached", async () => {
   assert.deepEqual(result.resources.unassociatedFiles, ["DifferentBook.mdd"]);
   assert.doesNotMatch(result.identity.displayTitle, /[<>]/u);
   assert.ok(result.compatibility.warnings.some((warning) => warning.code === "mdd.unassociated_files"));
+});
+
+test("sidecar-only selection is shown as unassociated and is not reported as attached", async () => {
+  const mdx = namedBlob("EntryBook.mdx", makeRichMdx([["alpha", "plain"]]));
+  const stylesheet = namedBlob("entry.css", Buffer.from(".entry{color:red}"));
+  Object.defineProperty(stylesheet, "webkitRelativePath", { value: "package/styles/entry.css" });
+  const result = await preflightLocalDictionaryFiles({ files: [mdx, stylesheet] });
+  const view = getLocalPreflightView(result, [mdx, stylesheet], []);
+
+  assert.equal(result.compatibility.status, "partial");
+  assert.deepEqual(result.resources.associatedMdd, []);
+  assert.deepEqual(result.resources.associatedSidecars, []);
+  assert.deepEqual(result.resources.unassociatedFiles, ["entry.css"]);
+  assert.ok(result.compatibility.warnings.some((warning) => warning.code === "mdd.unassociated_files"));
+  assert.equal(view.rows.find((row) => row.label === "将关联的本地资源"), undefined);
+  assert.equal(view.rows.find((row) => row.label === "未能关联")?.value, "entry.css");
 });
 
 test("plain-text MDX stays in the rich lane until the user confirms strict EN to zh-CN projection", async () => {

@@ -14,6 +14,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
 }) {
   const i18n = useOptionsI18n();
   const inputRef = useRef<HTMLInputElement>(null);
+  const directoryInputRef = useRef<HTMLInputElement>(null);
   const service = useRef<LocalDictionaryClient | null>(null);
   const preflightAbort = useRef<AbortController | null>(null);
   const generation = useRef(0);
@@ -78,6 +79,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
     setReport(null); setPhase(next.length ? "checking" : "empty"); setProgress(""); setImportPhase("");
     setSemantic(false); setLimitations(false); setDuplicate(false); setRetryMdd(false);
     if (inputRef.current) inputRef.current.value = "";
+    if (directoryInputRef.current) directoryInputRef.current.value = "";
   }
 
   async function importSelected() {
@@ -127,11 +129,13 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
       onDrop={event => { event.preventDefault(); setDragging(false); if (event.nativeEvent.isTrusted) replaceSelection(Array.from(event.dataTransfer.files)); }}>
       <span>{i18n.t("localImport.drop")}</span><small>{i18n.t("localImport.support")}</small>
     </label>
-    <input ref={inputRef} id="localDictionaryFiles" className="visually-hidden-file-input" type="file" multiple accept=".mdx,.mdd,.ifo,.idx,.dict,.dict.dz,.syn,.json,.dat" aria-describedby="localDictionaryHelp" disabled={busy}
+    <input ref={inputRef} id="localDictionaryFiles" className="visually-hidden-file-input" type="file" multiple accept=".mdx,.mdd,.css,.png,.jpg,.jpeg,.gif,.webp,.wav,.mp3,.ogg,.oga,.opus,.m4a,.mp4,.aac,.flac,.ifo,.idx,.dict,.dict.dz,.syn,.json,.dat" aria-describedby="localDictionaryHelp" disabled={busy}
+      onChange={event => replaceSelection(Array.from(event.target.files || []))} />
+    <input ref={node => { directoryInputRef.current = node; if (node && !node.hasAttribute("webkitdirectory")) node.setAttribute("webkitdirectory", ""); }} id="localDictionaryFolder" className="visually-hidden-file-input" type="file" multiple aria-describedby="localDictionaryHelp" disabled={busy}
       onChange={event => replaceSelection(Array.from(event.target.files || []))} />
     <p id="localDictionaryHelp" className="hint">{i18n.t("localImport.help")}</p>
     <ul id="localDictionaryFileList" className="local-dictionary-file-list" aria-label={i18n.t("localImport.selectedAria")}>{files.map((file, index) => <li className="local-dictionary-file" key={`${file.name}:${file.size}:${index}`}><span className="local-dictionary-file-name">{safeFileLabel(file.name)} · {formatBytes(file.size)}</span><button type="button" disabled={busy} aria-label={i18n.t("localImport.removeFile", { name: safeFileLabel(file.name) })} onClick={() => replaceSelection(files.filter((_, at) => at !== index))}>{i18n.t("common.delete")}</button></li>)}</ul>
-    <div className="actions"><button id="localDictionaryChooseFiles" type="button" disabled={busy} onClick={event => { if (event.nativeEvent.isTrusted) inputRef.current?.click(); }}>{i18n.t("localImport.choose")}</button><button id="localDictionaryClearFiles" type="button" disabled={busy || !files.length} onClick={() => replaceSelection([])}>{i18n.t("localImport.clear")}</button></div>
+    <div className="actions"><button id="localDictionaryChooseFiles" type="button" disabled={busy} onClick={event => { if (event.nativeEvent.isTrusted) inputRef.current?.click(); }}>{i18n.t("localImport.choose")}</button><button id="localDictionaryChooseFolder" type="button" disabled={busy} onClick={event => { if (event.nativeEvent.isTrusted) directoryInputRef.current?.click(); }}>{i18n.t("localImport.chooseFolder")}</button><button id="localDictionaryClearFiles" type="button" disabled={busy || !files.length} onClick={() => replaceSelection([])}>{i18n.t("localImport.clear")}</button></div>
     <section id="localDictionaryPreflight" className="local-dictionary-preflight" aria-labelledby="localDictionaryPreflightHeading" hidden={!showPreflight}>
       <h4 id="localDictionaryPreflightHeading">{i18n.t("localImport.preflight")}</h4>
       <div id="localDictionaryPreflightSummary" className="local-dictionary-preflight-summary" aria-live="polite">

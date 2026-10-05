@@ -1,11 +1,11 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__ ||= { modules: {} };
-  if (!app.modules.runtime || !app.modules.contentI18n || !app.modules.richResourcePath || app.modules.richResourceResolver) return;
-  const locale = app.modules.contentI18n;
+  if (!app.modules.runtime || !app.modules.contentI18n || !app.modules.richResourcePath || !app.modules.richResourceMedia || app.modules.richResourceResolver) return;
 
-  const MAX_RESOURCE_COUNT = 8;
+  const MAX_RESOURCE_COUNT = 1024;
   const MAX_ASSET_BYTES = 8 * 1024 * 1024;
   const MAX_VIEW_BLOB_BYTES = 32 * 1024 * 1024;
+  const MAX_VIEW_IMAGE_BYTES = MAX_VIEW_BLOB_BYTES - MAX_ASSET_BYTES;
   const MAX_VIEW_IMAGE_PIXELS = 16 * 1024 * 1024;
   const MAX_STYLESHEET_BYTES = 64 * 1024;
   const MAX_BASE64_CHARS = Math.ceil(MAX_ASSET_BYTES / 3) * 4;
@@ -20,19 +20,37 @@
   let activeObjectUrlCount = 0;
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
+  const locale = app.modules.contentI18n;
+  const media = app.modules.richResourceMedia.create({
+    isCurrent,
+    scheduleRead,
+    fetchAsset,
+    createTrackedUrl,
+    revokeUrl,
+    makePlaceholder,
+    cancelResourceRequest,
+    maxAssetBytes: MAX_ASSET_BYTES,
+    maxViewImageBytes: MAX_VIEW_IMAGE_BYTES,
+    maxViewImagePixels: MAX_VIEW_IMAGE_PIXELS
+  });
 
-  function attach(container, shadowRoot, viewport, resources, dictionaryId) {
+  function attach(container, shadowRoot, viewport, resources, dictionaryId, packageVersion = "") {
     close(container);
     const session = {
       container,
       shadowRoot,
       viewport,
       dictionaryId: String(dictionaryId || ""),
+      packageVersion: String(packageVersion || ""),
       closed: false,
       resources: [],
       urls: new Map(),
       inFlightRequests: new Set(),
+      activeAudio: null,
+      imageObserver: null,
+      observedImages: new WeakMap(),
       objectBytes: 0,
+      imageBytes: 0,
       imagePixels: 0
     };
     sessionsByContainer.set(container, session);
@@ -40,27 +58,60 @@
     for (const item of Array.isArray(resources) ? resources.slice(0, MAX_RESOURCE_COUNT) : []) {
       const path = app.modules.richResourcePath.normalize(item?.path);
       if (!path || path !== item.path || !["image", "audio", "stylesheet"].includes(item.kind)) continue;
+      const elements = Array.isArray(item?.elements)
+        ? item.elements.filter(Boolean)
+        : item?.element ? [item.element] : [];
+      const key = `${item.kind}\u0000${path}`;
+      if (session.resources.some((existing) => `${existing.kind}\u0000${existing.path}` === key)) continue;
       session.resources.push({
         kind: item.kind,
         path,
         label: String(item.label || "").slice(0, 160),
-        element: item.element || null
+        instances: elements.map((element) => ({ element })),
+        objectUrl: "",
+        imageLoadFailed: false,
+        loadingPromise: null,
+        inFlightRequests: new Set(),
+        styleNode: null
       });
     }
     for (const resource of session.resources) {
-      if (resource.kind === "audio") installAudioLoader(session, resource);
-      else void scheduleRead(session, () => loadResource(session, resource));
+      if (resource.kind === "audio") media.installAudioLoader(session, resource);
+      else if (resource.kind === "image") media.installLazyImages(session, resource);
+      else void scheduleRead(session, () => loadStylesheet(session, resource));
     }
     return session;
   }
 
-  async function loadResource(session, resource) {
+  async function loadStylesheet(session, resource) {
     if (!isCurrent(session)) return;
     try {
       const asset = await fetchAsset(session, resource);
       if (!isCurrent(session)) return;
       if (resource.kind === "stylesheet") {
-        const css = compileLocalStylesheet(asset.bytes);
+        let css = asset.safeCss;
+        for (const slot of asset.assetSlots) {
+          if (!isCurrent(session)) return;
+          try {
+            const image = await fetchAsset(session, { kind: "image", path: slot.path, label: "" });
+            if (!isCurrent(session)) return;
+            const pixels = image.width * image.height;
+            if (!Number.isSafeInteger(pixels) || pixels <= 0 || pixels > MAX_VIEW_IMAGE_PIXELS) {
+              css = css.replaceAll(slot.token, "none");
+              continue;
+            }
+            const url = createTrackedUrl(session, image, pixels, "image");
+            if (!url) {
+              css = css.replaceAll(slot.token, "none");
+              continue;
+            }
+            css = css.replaceAll(slot.token, `url("${url}")`);
+          } catch (error) {
+            if (!isCurrent(session)) return;
+            if (error?.code !== "RICH_MDD_RESOURCE_MISSING") throw error;
+            css = css.replaceAll(slot.token, "none");
+          }
+        }
         if (!css || !isCurrent(session)) return;
         const style = document.createElement("style");
         style.textContent = css;
@@ -68,98 +119,21 @@
         resource.styleNode = style;
         return;
       }
-      if (resource.kind !== "image") return;
-      const width = asset.width;
-      const height = asset.height;
-      if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) return;
-      const pixels = width * height;
-      if (!Number.isSafeInteger(pixels) || pixels > MAX_VIEW_IMAGE_PIXELS || session.imagePixels + pixels > MAX_VIEW_IMAGE_PIXELS) return;
-      const url = createTrackedUrl(session, asset, pixels);
-      if (!url || !isCurrent(session)) return;
-      resource.objectUrl = url;
-      const image = document.createElement("img");
-      image.className = "tf-rich-resource-image";
-      if (resource.label) image.alt = resource.label;
-      else locale.bindAttribute(image, "alt", "content.rich.dictionaryImage");
-      image.width = width;
-      image.height = height;
-      image.addEventListener("error", () => {
-        revokeUrl(session, url);
-        resource.objectUrl = "";
-        if (!isCurrent(session)) return;
-        resource.element?.replaceWith(makePlaceholder("image", resource.label));
-      }, { once: true });
-      image.addEventListener("load", () => {
-        if (!isCurrent(session)) revokeUrl(session, url);
-      }, { once: true });
-      image.src = url;
-      if (resource.element?.isConnected) resource.element.replaceWith(image);
-      else if (resource.element?.parentNode) resource.element.replaceWith(image);
-      resource.element = image;
-      resource.onClose = () => image.replaceWith(makePlaceholder("image", resource.label));
     } catch {
-      if (resource.objectUrl) revokeUrl(session, resource.objectUrl);
-      resource.objectUrl = "";
       if (!isCurrent(session)) return;
-      resource.element?.replaceWith(makePlaceholder(resource.kind, resource.label));
-    }
-  }
-
-  function installAudioLoader(session, resource) {
-    const previous = resource.element;
-    const button = makePlaceholder("audio", resource.label);
-    button.className = "tf-rich-placeholder tf-rich-audio-load";
-    button.type = "button";
-    button.dataset.action = "load-mdd-audio";
-    locale.bindText(button, resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
-    locale.bindAttribute(button, "aria-label", resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
-    resource.element = button;
-    resource.onClose = () => {
-      const placeholder = makePlaceholder("audio", resource.label);
-      button.replaceWith(placeholder);
-    };
-    button.addEventListener("click", async () => {
-      if (!isCurrent(session) || button.disabled) return;
-      button.disabled = true;
-      locale.bindText(button, "content.rich.loadingAudio");
-      try {
-        const asset = await scheduleRead(session, () => fetchAsset(session, resource));
-        if (!isCurrent(session)) return;
-        const url = createTrackedUrl(session, asset, 0);
-        if (!url) throw new Error("Audio resource budget was exceeded.");
-        resource.objectUrl = url;
-        const audio = document.createElement("audio");
-        audio.className = "tf-rich-resource-audio";
-        audio.controls = true;
-        audio.preload = "none";
-        audio.autoplay = false;
-        audio.setAttribute("controls", "");
-        audio.setAttribute("preload", "none");
-        audio.src = url;
-        audio.addEventListener("error", () => {
-          revokeUrl(session, url);
-          resource.objectUrl = "";
-          if (!isCurrent(session)) return;
-          audio.replaceWith(makePlaceholder("audio", resource.label));
-        }, { once: true });
-        if (button.parentNode) button.replaceWith(audio);
-        resource.element = audio;
-        resource.onClose = () => audio.replaceWith(makePlaceholder("audio", resource.label));
-      } catch {
-        if (resource.objectUrl) revokeUrl(session, resource.objectUrl);
-        resource.objectUrl = "";
-        if (!isCurrent(session)) return;
-        button.disabled = true;
-        locale.bindText(button, resource.label ? "content.rich.audioUnreadable" : "content.rich.audioMissing", resource.label ? { label: resource.label } : {});
+      for (const instance of resource.instances) {
+        if (instance.element?.isConnected || instance.element?.parentNode) {
+          instance.element.replaceWith(makePlaceholder(resource.kind, resource.label));
+        }
       }
-    });
-    previous?.replaceWith(button);
+    }
   }
 
   async function fetchAsset(session, resource) {
     if (!isCurrent(session)) throw new Error("Rich viewer is closed.");
     const requestId = createResourceRequestId();
     session.inFlightRequests.add(requestId);
+    resource.inFlightRequests?.add(requestId);
     let response;
     try {
       response = await sendRuntimeMessage({
@@ -167,12 +141,24 @@
         requestId,
         ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN,
         dictionaryId: session.dictionaryId,
-        path: resource.path
+        path: resource.path,
+        ...(session.packageVersion ? { packageVersion: session.packageVersion } : {})
       });
     } finally {
       session.inFlightRequests.delete(requestId);
+      resource.inFlightRequests?.delete(requestId);
     }
-    if (!isCurrent(session) || !response?.ok || !response.found) throw new Error("MDD resource is unavailable.");
+    if (!isCurrent(session) || !response?.ok) throw new Error("MDD resource is unavailable.");
+    if (response.stale || (session.packageVersion && response.packageVersion !== session.packageVersion)) {
+      const error = new Error("MDD package version changed while this entry was being rendered.");
+      error.code = "RICH_MDD_RESOURCE_STALE";
+      throw error;
+    }
+    if (!response.found) {
+      const error = new Error("MDD resource is unavailable.");
+      error.code = "RICH_MDD_RESOURCE_MISSING";
+      throw error;
+    }
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {
@@ -191,15 +177,38 @@
     if (resource.kind === "image" && (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0)) {
       throw new Error("MDD image dimensions are missing.");
     }
-    return { bytes, mime, size, width, height };
+    const safeCss = typeof response.safeCss === "string" && response.safeCss.length <= MAX_STYLESHEET_BYTES
+      ? response.safeCss
+      : "";
+    const assetSlots = normalizeStylesheetAssetSlots(response.assetSlots);
+    return { bytes, mime, size, width, height, safeCss, assetSlots };
   }
 
-  function createTrackedUrl(session, asset, pixels) {
-    if (!isCurrent(session) || session.objectBytes + asset.size > MAX_VIEW_BLOB_BYTES) return "";
+  function normalizeStylesheetAssetSlots(input) {
+    if (!Array.isArray(input) || input.length > MAX_RESOURCE_COUNT) return [];
+    const slots = [];
+    const names = new Set();
+    for (const item of input) {
+      const token = String(item?.token || "");
+      const path = app.modules.richResourcePath.normalize(item?.path || "");
+      if (!/^tfasset[0-7]$/u.test(token) || !path || path !== item.path || names.has(token) || item.kind !== "image") continue;
+      names.add(token);
+      slots.push({ token, path });
+    }
+    return slots;
+  }
+
+  function createTrackedUrl(session, asset, pixels, kind = "image") {
+    const imageBytes = kind === "audio" ? 0 : asset.size;
+    if (!isCurrent(session) || !Number.isSafeInteger(asset.size) || asset.size <= 0 || asset.size > MAX_ASSET_BYTES ||
+        session.objectBytes + asset.size > MAX_VIEW_BLOB_BYTES ||
+        session.imageBytes + imageBytes > MAX_VIEW_IMAGE_BYTES ||
+        session.imagePixels + pixels > MAX_VIEW_IMAGE_PIXELS) return "";
     let url = "";
     try { url = URL.createObjectURL(new Blob([asset.bytes], { type: asset.mime })); } catch { return ""; }
-    session.urls.set(url, { size: asset.size, pixels });
+    session.urls.set(url, { size: asset.size, pixels, kind });
     session.objectBytes += asset.size;
+    session.imageBytes += imageBytes;
     session.imagePixels += pixels;
     activeObjectUrlCount += 1;
     return url;
@@ -210,9 +219,11 @@
     if (!item) return;
     session.urls.delete(url);
     session.objectBytes = Math.max(0, session.objectBytes - item.size);
+    if (item.kind !== "audio") session.imageBytes = Math.max(0, session.imageBytes - item.size);
     session.imagePixels = Math.max(0, session.imagePixels - item.pixels);
     activeObjectUrlCount = Math.max(0, activeObjectUrlCount - 1);
     try { URL.revokeObjectURL(url); } catch {}
+    media.retryVisibleImages(session);
   }
 
   function close(container) {
@@ -237,15 +248,15 @@
     session.closed = true;
     if (sessionsByContainer.get(session.container) === session) sessionsByContainer.delete(session.container);
     activeSessions.delete(session);
+    session.imageObserver?.disconnect();
+    if (session.activeAudio) media.releaseActiveAudio(session, session.activeAudio, false);
     cancelQueuedReads(session);
     cancelRunningReads(session);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();
-      if (restorePlaceholders) {
-        try { resource.onClose?.(); } catch {}
-      }
     }
+    if (restorePlaceholders) media.restorePlaceholders(session);
   }
 
   function isCurrent(session) {
@@ -273,14 +284,17 @@
 
   function cancelRunningReads(session) {
     const requestIds = [...session.inFlightRequests];
-    session.inFlightRequests.clear();
-    for (const requestId of requestIds) {
-      void sendRuntimeMessage({
-        type: messages.background.RICH_MDD_RESOURCE_READ_CANCEL,
-        requestId,
-        ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN
-      }).catch(() => {});
-    }
+    for (const requestId of requestIds) cancelResourceRequest(session, null, requestId);
+  }
+
+  function cancelResourceRequest(session, resource, requestId) {
+    session.inFlightRequests.delete(requestId);
+    resource?.inFlightRequests?.delete(requestId);
+    void sendRuntimeMessage({
+      type: messages.background.RICH_MDD_RESOURCE_READ_CANCEL,
+      requestId,
+      ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN
+    }).catch(() => {});
   }
 
   function drainReads() {
@@ -299,59 +313,6 @@
           drainReads();
         });
     }
-  }
-
-  function compileLocalStylesheet(bytes) {
-    let source;
-    try { source = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return ""; }
-    if (!source || bytes.byteLength > MAX_STYLESHEET_BYTES || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(source)) return "";
-    if (/@|\/\*|\*\/|\\|url\s*\(|expression\s*\(|javascript\s*:|vbscript\s*:/iu.test(source)) return "";
-    const styleApi = app.modules.richDictionarySanitizerStyle;
-    if (!styleApi?.safeStyleValue) return "";
-    const rules = [];
-    let offset = 0;
-    const pattern = /([^{}]+)\{([^{}]*)\}/g;
-    for (const match of source.matchAll(pattern)) {
-      if (match.index !== offset && source.slice(offset, match.index).trim()) return "";
-      offset = match.index + match[0].length;
-      const selectors = match[1].split(",").map((item) => item.trim()).filter(Boolean);
-      if (!selectors.length || selectors.length > 3) return "";
-      const safeSelectors = selectors.map(normalizeLocalSelector);
-      if (safeSelectors.some((selector) => !selector)) return "";
-      const declarations = [];
-      for (const declaration of match[2].split(";")) {
-        if (!declaration.trim()) continue;
-        const separator = declaration.indexOf(":");
-        if (separator <= 0 || declarations.length >= 12) return "";
-        const property = declaration.slice(0, separator).trim().toLowerCase();
-        const rawValue = declaration.slice(separator + 1).trim();
-        const value = styleApi.safeStyleValue(property, rawValue);
-        if (!value || !ALLOWED_STYLESHEET_PROPERTIES.has(property)) continue;
-        declarations.push(`${property}:${property === "font-size" ? `clamp(8px, ${value}, 48px)` : value}`);
-      }
-      if (!declarations.length) continue;
-      rules.push(`${safeSelectors.map((selector) => `.tf-rich-viewer ${selector}`).join(",")}{${declarations.join(";")}}`);
-      if (rules.length > 64) return "";
-    }
-    if (source.slice(offset).trim()) return "";
-    return rules.join("\n");
-  }
-
-  const ALLOWED_STYLESHEET_TAGS = new Set(["div", "span", "p", "br", "b", "strong", "i", "em", "u", "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp"]);
-  const ALLOWED_STYLESHEET_PROPERTIES = new Set([
-    "color", "background-color", "font-size", "font-weight", "font-style", "text-decoration", "text-align",
-    "vertical-align", "white-space", "line-height", "margin", "margin-top", "margin-right", "margin-bottom",
-    "margin-left", "padding", "padding-top", "padding-right", "padding-bottom", "padding-left", "border",
-    "border-top", "border-right", "border-bottom", "border-left", "border-color", "border-width", "border-style",
-    "border-collapse", "border-spacing"
-  ]);
-
-  function normalizeLocalSelector(value) {
-    const selector = String(value || "").trim();
-    const match = /^(?:(div|span|p|br|b|strong|i|em|u|ul|ol|li|table|tr|td|th|ruby|rt|rp))?(?:\.([-_a-z][-_a-z0-9]{0,47}))?$/iu.exec(selector);
-    if (!match || (!match[1] && !match[2])) return "";
-    if (match[1] && !ALLOWED_STYLESHEET_TAGS.has(match[1].toLowerCase())) return "";
-    return `${match[1] ? match[1].toLowerCase() : ""}${match[2] ? `.${match[2]}` : ""}`;
   }
 
   function createResourceRequestId() {
@@ -381,12 +342,28 @@
   }
 
   function decodeBase64(base64, expectedSize) {
-    if (!base64 || !/^(?:[a-z0-9+/]{4})*(?:[a-z0-9+/]{2}==|[a-z0-9+/]{3}=)?$/iu.test(base64)) throw new Error("MDD resource encoding is invalid.");
+    if (!isStrictBase64(base64)) throw new Error("MDD resource encoding is invalid.");
     const binary = atob(base64);
     if (binary.length !== expectedSize || binary.length > MAX_ASSET_BYTES) throw new Error("MDD resource byte length is inconsistent.");
     const bytes = new Uint8Array(binary.length);
     for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
     return bytes;
+  }
+
+  function isStrictBase64(value) {
+    if (!value || value.length % 4 !== 0) return false;
+    const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+    const payloadEnd = value.length - padding;
+    if ((padding === 2 && payloadEnd % 4 !== 2) || (padding === 1 && payloadEnd % 4 !== 3)) return false;
+    for (let index = 0; index < payloadEnd; index += 1) {
+      const code = value.charCodeAt(index);
+      if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122) ||
+          (code >= 48 && code <= 57) || code === 43 || code === 47)) return false;
+    }
+    for (let index = payloadEnd; index < value.length; index += 1) {
+      if (value.charCodeAt(index) !== 61) return false;
+    }
+    return true;
   }
 
   function makePlaceholder(kind, label = "") {
@@ -405,8 +382,17 @@
     close,
     closeAll,
     closeDictionary,
-    compileLocalStylesheet,
     get activeObjectUrlCount() { return activeObjectUrlCount; },
+    get activeObjectUrlBytes() {
+      let bytes = 0;
+      for (const session of activeSessions) bytes += session.objectBytes;
+      return bytes;
+    },
+    get activeImagePixelCount() {
+      let pixels = 0;
+      for (const session of activeSessions) pixels += session.imagePixels;
+      return pixels;
+    },
     get pendingReadCount() { return readQueue.length; },
     get runningReadCount() { return runningReads; }
   });

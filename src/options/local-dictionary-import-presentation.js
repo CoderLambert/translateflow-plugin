@@ -165,6 +165,29 @@ export function resolveAssociatedMddFiles(associatedMdd, selectedFiles) {
   return resolved;
 }
 
+export function resolveAssociatedRichResourceFiles(associatedMdd, associatedSidecars, selectedFiles) {
+  const mddFiles = resolveAssociatedMddFiles(associatedMdd, selectedFiles);
+  if (!mddFiles) return null;
+  const used = new Set(mddFiles);
+  const sidecars = [];
+  for (const item of associatedSidecars || []) {
+    const matches = Array.from(selectedFiles || []).filter((file) =>
+      !used.has(file) && selectedPackagePath(file) === item.path
+    );
+    if (matches.length !== 1) return null;
+    used.add(matches[0]);
+    sidecars.push({ path: item.path, file: matches[0] });
+  }
+  return { mddFiles, sidecars };
+}
+
+function selectedPackagePath(file) {
+  const relative = String(file?.webkitRelativePath || "").replaceAll("\\", "/");
+  if (!relative) return String(file?.name || "");
+  const segments = relative.split("/");
+  return segments.length > 1 ? segments.slice(1).join("/") : segments[0];
+}
+
 export function getLocalPreflightView(result, selectedFiles, installedCandidates) {
   const status = result.compatibility.status;
   const rows = [
@@ -185,6 +208,9 @@ export function getLocalPreflightView(result, selectedFiles, installedCandidates
   if (encodings.length) rows.push({ label: "文本编码", value: encodings.join("、") });
   if (result.resources.associatedMdd.length) {
     rows.push({ label: "将关联的 MDD", value: result.resources.associatedMdd.map((item) => `${item.fileName}（${Number(item.entryCount || 0).toLocaleString()} 项）`).join("、") });
+  }
+  if (result.resources.associatedSidecars?.length) {
+    rows.push({ label: "将关联的本地资源", value: result.resources.associatedSidecars.map((item) => `${item.path}（${formatBytes(item.sourceBytes)}）`).join("、") });
   }
   if (result.resources.missingCompanionHints.length) rows.push({ label: "缺少文件", value: result.resources.missingCompanionHints.join("、") });
   if (result.resources.unassociatedFiles.length) rows.push({ label: "未能关联", value: result.resources.unassociatedFiles.join("、") });
@@ -234,6 +260,9 @@ export function renderLocalPreflight({ result, selectedFiles, installedCandidate
     if (result.resources.associatedMdd.length) {
       const attached = result.resources.associatedMdd.map((item) => `${item.fileName}（${Number(item.entryCount || 0).toLocaleString()} 项）`);
       appendSummaryLine(summary, "将关联的 MDD", attached.join("、"));
+    }
+    if (result.resources.associatedSidecars?.length) {
+      appendSummaryLine(summary, "将关联的本地资源", result.resources.associatedSidecars.map((item) => `${item.path}（${formatBytes(item.sourceBytes)}）`).join("、"));
     }
     if (result.resources.missingCompanionHints.length) appendSummaryLine(summary, "缺少文件", result.resources.missingCompanionHints.join("、"));
     if (result.resources.unassociatedFiles.length) appendSummaryLine(summary, "未能关联", result.resources.unassociatedFiles.join("、"));

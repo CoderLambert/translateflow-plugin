@@ -6,6 +6,8 @@ import {
 } from "../../shared/pack-manager.js";
 
 const DEFAULT_ROOT_DIR = "dictionaries";
+const DEFAULT_WRITE_CHUNK_BYTES = 1024 * 1024;
+const MAX_WRITE_CHUNK_BYTES = 8 * 1024 * 1024;
 
 export function createOpfsPackStore({
   rootProvider = () => navigator.storage.getDirectory(),
@@ -15,21 +17,45 @@ export function createOpfsPackStore({
     throw packError(PACK_ERROR_CODES.STORAGE, "Unsafe dictionary pack root directory.");
   }
 
-  async function writeFile(packId, version, path, bytes) {
+  async function writeFile(packId, version, path, input, {
+    signal,
+    onProgress = () => {},
+    chunkBytes = DEFAULT_WRITE_CHUNK_BYTES
+  } = {}) {
     validateLocation(packId, version, path);
+    const source = writableSource(input);
+    if (!Number.isSafeInteger(chunkBytes) || chunkBytes <= 0 || chunkBytes > MAX_WRITE_CHUNK_BYTES) {
+      throw packError(PACK_ERROR_CODES.STORAGE, "Invalid dictionary pack write chunk size.");
+    }
     try {
+      throwIfAborted(signal);
       const versionDir = await getVersionDir(packId, version, true);
       const { directory, name } = await descendToParent(versionDir, path, true);
       const handle = await directory.getFileHandle(name, { create: true });
       const writable = await handle.createWritable();
+      let bytesWritten = 0;
       try {
-        await writable.write(bytes);
+        while (bytesWritten < source.size) {
+          throwIfAborted(signal);
+          const end = Math.min(source.size, bytesWritten + chunkBytes);
+          const chunk = await source.read(bytesWritten, end - bytesWritten);
+          throwIfAborted(signal);
+          if (chunk.byteLength !== end - bytesWritten) {
+            throw new Error("Dictionary pack write source returned a short range.");
+          }
+          await writable.write(chunk);
+          bytesWritten = end;
+          try { onProgress({ bytesWritten, totalBytes: source.size, chunkBytes: chunk.byteLength }); } catch {}
+        }
+        throwIfAborted(signal);
         await writable.close();
       } catch (error) {
-        await writable.abort?.().catch?.(() => {});
+        try { await writable.abort?.(); } catch {}
         throw error;
       }
+      return { bytesWritten, totalBytes: source.size };
     } catch (error) {
+      if (error?.name === "AbortError") throw error;
       throw storageError("Unable to write dictionary pack file.", { packId, version, path, cause: error });
     }
   }
@@ -251,6 +277,31 @@ function throwIfAborted(signal) {
 
 function abortError() {
   return new DOMException("Dictionary pack range read cancelled.", "AbortError");
+}
+
+function writableSource(input) {
+  if (input instanceof Uint8Array) {
+    return { size: input.byteLength, read: (offset, length) => input.subarray(offset, offset + length) };
+  }
+  if (input instanceof ArrayBuffer) {
+    const bytes = new Uint8Array(input);
+    return { size: bytes.byteLength, read: (offset, length) => bytes.subarray(offset, offset + length) };
+  }
+  if (ArrayBuffer.isView(input)) {
+    const bytes = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    return { size: bytes.byteLength, read: (offset, length) => bytes.subarray(offset, offset + length) };
+  }
+  if (input && typeof input.slice === "function" && Number.isSafeInteger(input.size) && input.size >= 0) {
+    return {
+      size: input.size,
+      async read(offset, length) {
+        const range = input.slice(offset, offset + length);
+        if (typeof range?.arrayBuffer !== "function") throw new TypeError("Dictionary pack File range cannot be read.");
+        return new Uint8Array(await range.arrayBuffer());
+      }
+    };
+  }
+  throw packError(PACK_ERROR_CODES.STORAGE, "Dictionary pack file must be bytes or a local File/Blob.");
 }
 
 async function descendToParent(root, path, create) {

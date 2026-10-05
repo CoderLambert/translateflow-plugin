@@ -95,10 +95,22 @@ test("rich result renderer sends only bounded payload to sanitizer and preserves
 
 test("viewer caps AST traversal and uses no network or HTML parser APIs", async () => {
   const source = await readFile(VIEWER, "utf8");
-  assert.match(source, /MAX_NODES = 8192/u);
+  assert.match(source, /MAX_NODES = 32768/u);
   assert.match(source, /MAX_DEPTH = 32/u);
   assert.doesNotMatch(source, /fetch\s*\(|XMLHttpRequest|DOMParser|innerHTML|outerHTML/u);
   assert.match(source, /attachShadow\(\{ mode: "open" \}\)/u);
+});
+
+test("viewer renders the bounded prefix and marks node truncation explicitly", async () => {
+  const { viewer, document } = await loadModules();
+  const host = document.createElement("div");
+  const nodes = Array.from({ length: 32_769 }, (_, index) => ({ type: "text", text: `n${index}` }));
+  viewer.render(host, { nodes, truncated: false }, "bounded fallback");
+  const viewport = findClass(host.shadowRoot, "tf-rich-viewer");
+  assert.equal(viewport.childNodes.length, 32_768);
+  assert.ok(findClass(viewport, "tf-rich-truncated"));
+  assert.equal(textContent(host.shadowRoot).includes("n32766"), true);
+  assert.equal(textContent(host.shadowRoot).includes("n32767"), false);
 });
 
 test("Rich display hook waits for expansion and exposes the visible sanitized text once", async () => {

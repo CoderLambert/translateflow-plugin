@@ -43,6 +43,7 @@ import "../content/selection/rich-sanitizer-style.js";
 import "../content/selection/rich-resource-path.js";
 import "../content/selection/rich-sanitizer-tokenizer.js";
 import "../content/selection/rich-sanitizer.js";
+import "../content/selection/rich-resource-media.js";
 import "../content/selection/rich-resource-resolver.js";
 import "../content/selection/rich-viewer.js";
 import "../content/selection/rich-result-renderer.js";

@@ -94,7 +94,7 @@ test("rich card results pass through the reviewed sanitizer and keep resource lo
   assert.deepEqual(JSON.parse(JSON.stringify(viewerCalls)), [{
     tree: { nodes: [{ type: "text", text: "safe tree" }], truncated: false },
     fallback: "safe fallback",
-    options: { preserveNewlines: false, dictionaryId: "curated-pack" }
+    options: { preserveNewlines: false, dictionaryId: "curated-pack", packageVersion: "" }
   }]);
   const card = findClass(container, "tf-selection-rich-record")[0];
   assert.equal(card.dataset.state, "success");

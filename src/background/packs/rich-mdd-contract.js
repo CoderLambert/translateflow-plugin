@@ -1,13 +1,17 @@
 import { normalizeMddResourcePath } from "./importers/mdd-resource-path.js";
 import { richError, normalizePackId, normalizeVersion, clampText } from "./rich-mdict-contract.js";
+import { LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES } from "../../shared/local-dictionary-limits.js";
 
-export const RICH_MDD_MAX_SOURCE_BYTES = 128 * 1024 * 1024;
-export const RICH_MDD_MAX_TOTAL_SOURCE_BYTES = 512 * 1024 * 1024;
+export const RICH_MDD_MAX_SOURCE_BYTES = LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES;
+export const RICH_MDD_MAX_TOTAL_SOURCE_BYTES = LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES;
 export const RICH_MDD_MAX_INDEX_BYTES = 16 * 1024 * 1024;
 export const RICH_MDD_MAX_TOTAL_INDEX_BYTES = 32 * 1024 * 1024;
 export const RICH_MDD_MAX_COMPANIONS = 16;
 export const RICH_MDD_MAX_ASSET_BYTES = 8 * 1024 * 1024;
 export const RICH_MDD_MAX_QUERY_BYTES = 32 * 1024 * 1024;
+export const RICH_MDD_MAX_SIDECAR_FILES = 32;
+export const RICH_MDD_MAX_SIDECAR_BYTES = 64 * 1024 * 1024;
+export const RICH_MDD_MAX_SIDECAR_FILE_BYTES = 8 * 1024 * 1024;
 export const RICH_MDD_RESOURCE_SCHEMA = 1;
 
 const encoder = new TextEncoder();
@@ -53,6 +57,10 @@ export function resourceFilePaths(index) {
   });
 }
 
+export function sidecarFilePath(index) {
+  return `sidecars/${String(index).padStart(3, "0")}.bin`;
+}
+
 export function validateResourceSnapshot(packId, value) {
   if (!value || typeof value !== "object" || value.schemaVersion !== RICH_MDD_RESOURCE_SCHEMA) return false;
   try {
@@ -62,6 +70,7 @@ export function validateResourceSnapshot(packId, value) {
   if (!Array.isArray(sources) || !sources.length || sources.length > RICH_MDD_MAX_COMPANIONS) return false;
   let total = 0;
   let totalIndex = 0;
+  let totalSidecar = 0;
   const names = new Set();
   for (let index = 0; index < sources.length; index += 1) {
     const source = sources[index];
@@ -82,13 +91,33 @@ export function validateResourceSnapshot(packId, value) {
     if (total > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) return false;
     if (totalIndex > RICH_MDD_MAX_TOTAL_INDEX_BYTES) return false;
   }
+  if (value.sidecars !== undefined) {
+    if (!Array.isArray(value.sidecars) || value.sidecars.length > RICH_MDD_MAX_SIDECAR_FILES) return false;
+    const paths = new Set();
+    for (let index = 0; index < value.sidecars.length; index += 1) {
+      const item = value.sidecars[index];
+      if (!item || typeof item !== "object") return false;
+      let path;
+      try { path = normalizeMddResourcePath(item.path); } catch { return false; }
+      if (path !== item.path || paths.has(path.toLocaleLowerCase("en-US"))) return false;
+      paths.add(path.toLocaleLowerCase("en-US"));
+      if (item.sourcePath !== sidecarFilePath(index)) return false;
+      if (!Number.isSafeInteger(item.sourceSize) || item.sourceSize <= 0 || item.sourceSize > RICH_MDD_MAX_SIDECAR_FILE_BYTES) return false;
+      if (item.kind === "stylesheet" && item.sourceSize > 64 * 1024) return false;
+      if (!/^[a-f0-9]{64}$/u.test(String(item.sha256 || ""))) return false;
+      const expectedKind = sidecarKind(path);
+      if (!expectedKind || item.kind !== expectedKind.kind || item.mime !== expectedKind.mime) return false;
+      totalSidecar += item.sourceSize;
+      if (totalSidecar > RICH_MDD_MAX_SIDECAR_BYTES) return false;
+    }
+  }
   try {
     const ordered = validateMddCompanions(sources.map((source) => source.fileName), value.mdxFileName);
     return ordered.every((item, index) => item.fileName === sources[index].fileName);
   } catch { return false; }
 }
 
-export function makeResourceSnapshot({ packId, packVersion, mdxFileName, resources }) {
+export function makeResourceSnapshot({ packId, packVersion, mdxFileName, resources, sidecars = [] }) {
   const snapshot = {
     schemaVersion: RICH_MDD_RESOURCE_SCHEMA,
     packId,
@@ -102,6 +131,7 @@ export function makeResourceSnapshot({ packId, packVersion, mdxFileName, resourc
       indexSha256: String(resource.indexSha256 || "").toLowerCase(),
       keyCount: Number(resource.keyCount)
     })),
+    ...(sidecars.length ? { sidecars: normalizeSidecars(sidecars) } : {}),
     installedAt: Date.now()
   };
   if (!validateResourceSnapshot(packId, snapshot)) throw richError("RICH_MDD_CORRUPT", "MDD resource metadata is invalid.");
@@ -116,13 +146,16 @@ export function normalizeRichMddResourceLookupRequestId(value) {
   return id;
 }
 
-export function validateResourceRequest({ dictionaryId, path } = {}) {
+export function validateResourceRequest({ dictionaryId, path, packageVersion } = {}) {
   const packId = normalizePackId(dictionaryId);
   const normalizedPath = normalizeMddResourcePath(path);
   if (!normalizedPath || normalizedPath.length > 1024) {
     throw richError("RICH_MDD_QUERY", "MDD resource path is invalid.");
   }
-  return { packId, path: normalizedPath };
+  const version = packageVersion === undefined || packageVersion === null || packageVersion === ""
+    ? ""
+    : normalizeVersion(packageVersion);
+  return { packId, path: normalizedPath, packageVersion: version };
 }
 
 export function normalizeResourceImportMetadata(input, mdxFileName) {
@@ -145,7 +178,7 @@ export function normalizeResourceImportMetadata(input, mdxFileName) {
       throw richError("RICH_MDD_CORRUPT", "MDD resource paths or order are inconsistent.");
     }
     if (!Number.isSafeInteger(sourceSize) || sourceSize <= 0 || sourceSize > RICH_MDD_MAX_SOURCE_BYTES) {
-      throw richError("RICH_MDD_LIMIT", "An MDD file exceeds the 128 MiB safety limit.");
+      throw richError("RICH_MDD_LIMIT", "An MDD file exceeds the 4,000,000,000-byte package safety limit.");
     }
     if (!Number.isSafeInteger(indexSize) || indexSize <= 0 || indexSize > RICH_MDD_MAX_INDEX_BYTES) {
       throw richError("RICH_MDD_LIMIT", "An MDD index exceeds the 16 MiB safety limit.");
@@ -155,11 +188,63 @@ export function normalizeResourceImportMetadata(input, mdxFileName) {
     }
     totalBytes += sourceSize;
     totalIndexBytes += indexSize;
-    if (totalBytes > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw richError("RICH_MDD_LIMIT", "MDD companions exceed the 512 MiB total safety limit.");
+    if (totalBytes > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw richError("RICH_MDD_LIMIT", "MDD companions exceed the 4,000,000,000-byte total safety limit.");
     if (totalIndexBytes > RICH_MDD_MAX_TOTAL_INDEX_BYTES) throw richError("RICH_MDD_LIMIT", "MDD indexes exceed the 32 MiB total safety limit.");
     return { ...paths, fileName, sourceSize, indexSize, indexSha256, keyCount };
   });
-  return { resources, totalBytes };
+  const sidecars = normalizeSidecars(Array.isArray(input.sidecars) ? input.sidecars : []);
+  return { resources, sidecars, totalBytes };
+}
+
+function normalizeSidecars(input) {
+  if (!Array.isArray(input) || input.length > RICH_MDD_MAX_SIDECAR_FILES) {
+    throw richError("RICH_MDD_LIMIT", "The package contains too many sidecar files.");
+  }
+  const paths = new Set();
+  let total = 0;
+  const sidecars = input.map((item, index) => {
+    let path;
+    try { path = normalizeMddResourcePath(String(item?.path || "")); }
+    catch (cause) { throw richError("RICH_MDD_CORRUPT", "A sidecar package path is invalid.", { cause }); }
+    const key = path.toLocaleLowerCase("en-US");
+    const expected = sidecarKind(path);
+    const sourcePath = String(item?.sourcePath || "");
+    const sourceSize = Number(item?.sourceSize);
+    const sha256 = String(item?.sha256 || "").toLowerCase();
+    const kind = String(item?.kind || "");
+    const mime = String(item?.mime || "");
+    if (!expected || paths.has(key) || sourcePath !== sidecarFilePath(index)) {
+      throw richError("RICH_MDD_CORRUPT", "Sidecar package paths, order, or type are inconsistent.");
+    }
+    if (!Number.isSafeInteger(sourceSize) || sourceSize <= 0 || sourceSize > RICH_MDD_MAX_SIDECAR_FILE_BYTES) {
+      throw richError("RICH_MDD_LIMIT", "A sidecar file exceeds the 8 MiB safety limit.");
+    }
+    if (kind !== expected.kind || mime !== expected.mime || !/^[a-f0-9]{64}$/u.test(sha256)) {
+      throw richError("RICH_MDD_CORRUPT", "Sidecar source metadata is invalid.");
+    }
+    paths.add(key);
+    total += sourceSize;
+    if (total > RICH_MDD_MAX_SIDECAR_BYTES) throw richError("RICH_MDD_LIMIT", "Sidecar files exceed the 64 MiB total safety limit.");
+    return { path, sourcePath, sourceSize, sha256, kind, mime };
+  });
+  return sidecars;
+}
+
+export function classifyMddSidecarPath(path) {
+  return sidecarKind(normalizeMddResourcePath(path));
+}
+
+function sidecarKind(path) {
+  const extension = String(path).split(".").pop()?.toLowerCase();
+  if (extension === "css") return { kind: "stylesheet", mime: "text/css" };
+  if (extension === "png") return { kind: "image", mime: "image/png" };
+  if (extension === "jpg" || extension === "jpeg") return { kind: "image", mime: "image/jpeg" };
+  if (extension === "gif") return { kind: "image", mime: "image/gif" };
+  if (extension === "webp") return { kind: "image", mime: "image/webp" };
+  if (extension === "wav") return { kind: "audio", mime: "audio/wav" };
+  if (extension === "mp3") return { kind: "audio", mime: "audio/mpeg" };
+  if (extension === "ogg") return { kind: "audio", mime: "audio/ogg" };
+  return null;
 }
 
 export function parseMddIndex(bytes, sourceSize, validateMddIndex) {

@@ -7,6 +7,14 @@ const fixtureDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../fixtures/mdd-interop"
 );
+const linkedPackageFixtureDirectory = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../fixtures/mdd-linked-package"
+);
+const distinctAudioFixtureDirectory = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../fixtures/mdd-audio-526"
+);
 
 /** Load the independently generated, pinned writemdict positive fixture. */
 export async function readMddInteropFixture() {
@@ -15,6 +23,25 @@ export async function readMddInteropFixture() {
     readFile(resolve(fixtureDirectory, "interop.mdd"))
   ]);
   return { mdx, mdd };
+}
+
+/** Load the pinned independent MDD with 526 distinct audio resource paths. */
+export async function readMddAudio526Fixture() {
+  const [mdd, lockSource] = await Promise.all([
+    readFile(resolve(distinctAudioFixtureDirectory, "audio-526.mdd")),
+    readFile(resolve(distinctAudioFixtureDirectory, "corpus-lock.json"), "utf8")
+  ]);
+  return { mdd, lock: JSON.parse(lockSource) };
+}
+
+/** Load the independently generated six-file package used by the package lifecycle E2E. */
+export async function readMddLinkedPackageFixture() {
+  const names = [
+    "linked-package.mdx", "linked-package.mdd", "linked-package.1.mdd",
+    "fixture.css", "sample.png", "tone.wav"
+  ];
+  const buffers = await Promise.all(names.map((name) => readFile(resolve(linkedPackageFixtureDirectory, name))));
+  return Object.fromEntries(names.map((name, index) => [name, buffers[index]]));
 }
 
 /**

@@ -49,7 +49,11 @@ export function decodeRichMdictRecordText(bytes, encodingName, displayForm, limi
   if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(text)) {
     mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDict record contains unsafe control characters.", { displayForm });
   }
-  requireMdictAtMost(new TextEncoder().encode(text).byteLength, limits.entryBytes, "MDict record bytes");
+  requireMdictAtMost(
+    new TextEncoder().encode(text).byteLength,
+    limits.expandedTextBytes || limits.entryBytes,
+    "MDict decoded record text bytes"
+  );
   return text.trim();
 }
 
@@ -61,7 +65,7 @@ export function validateRichMdictAliasTarget(target, limits) {
   validateMdictHeadword(target);
 }
 
-export function toSafeRichMdictPlainText(value, header) {
+export function toSafeRichMdictPlainText(value, header, maximumBytes = MDICT_IMPORT_LIMITS.entryBytes) {
   const markerIds = header?.styleSheetRules?.map((rule) => rule.id) || [];
   const markerPattern = markerIds.length
     ? new RegExp("`(?:" + markerIds.join("|") + ")`", "gu")
@@ -72,12 +76,25 @@ export function toSafeRichMdictPlainText(value, header) {
   const text = stripMarkupLinearly(withoutKnownMarkers)
     .replace(ENTITY, decodeEntity)
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, " ");
-  return text
+  return clipUtf8Bytes(text
     .split("\n")
     .map((line) => line.replace(/[\t \u00a0]+/gu, " ").trim())
     .filter(Boolean)
-    .join("\n")
-    .slice(0, MDICT_IMPORT_LIMITS.entryBytes);
+    .join("\n"), maximumBytes);
+}
+
+function clipUtf8Bytes(value, maximumBytes) {
+  let bytes = 0;
+  let end = 0;
+  const text = String(value);
+  while (end < text.length) {
+    const code = text.codePointAt(end);
+    const size = code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
+    if (bytes + size > maximumBytes) break;
+    bytes += size;
+    end += code > 0xffff ? 2 : 1;
+  }
+  return text.slice(0, end);
 }
 
 function stripMarkupLinearly(value) {

@@ -6,7 +6,8 @@ import {
   normalizePackId,
   RICH_MDICT_SOURCE_ID,
   RICH_MDICT_STATE_KEY,
-  validateCuratedRichMdictProvenance
+  validateCuratedRichMdictProvenance,
+  clampText
 } from "./rich-mdict-contract.js";
 import { createRichMdictPreferencesStore } from "./rich-mdict-preferences.js";
 
@@ -88,6 +89,7 @@ export function createRichMdictViewerDictionaryLister({ manager, preferencesStor
         order: preferences[dictionary.id]?.order ?? 0,
         expandedByDefault: preferences[dictionary.id]?.expandedByDefault === true,
         trustLabel: richDictionaryTrustLabel(dictionary),
+        packageVersion: clampText(dictionary.packageVersion || dictionary.packVersion || "", 120),
         format: dictionary.format,
         status: dictionary.status,
         errorCode: clampPublicErrorCode(dictionary.errorCode)

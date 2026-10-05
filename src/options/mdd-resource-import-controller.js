@@ -1,7 +1,14 @@
 import { WORKER_PATHS } from "../shared/runtime-assets.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
-import { RICH_MDD_MAX_SOURCE_BYTES, RICH_MDD_MAX_TOTAL_SOURCE_BYTES, validateMddCompanions } from "../background/packs/rich-mdd-contract.js";
+import {
+  RICH_MDD_MAX_SOURCE_BYTES,
+  RICH_MDD_MAX_TOTAL_SOURCE_BYTES,
+  RICH_MDD_MAX_SIDECAR_FILE_BYTES,
+  classifyMddSidecarPath,
+  validateMddCompanions
+} from "../background/packs/rich-mdd-contract.js";
 import { MDD_RESOURCE_WORKER_MESSAGES } from "./workers/mdd-resource-import-worker-protocol.js";
+import { normalizeMddResourcePath } from "../background/packs/importers/mdd-resource-path.js";
 
 export function createMddResourceImportController({
   runtime = globalThis.chrome?.runtime,
@@ -17,9 +24,18 @@ export function createMddResourceImportController({
 
   let active = null;
 
-  async function attachResources({ dictionaryId, mdxFileName, files } = {}) {
+  async function attachResources({ dictionaryId, mdxFileName, files, sidecars = [], mdxSourceBytes = 0 } = {}) {
     if (active) throw controllerError("RICH_MDD_BUSY", "Another MDD resource import is already running.");
     const normalizedFiles = validateFiles(files, mdxFileName);
+    const normalizedSidecars = validateSidecars(sidecars);
+    const mdxBytes = Number(mdxSourceBytes);
+    if (!Number.isSafeInteger(mdxBytes) || mdxBytes < 0) {
+      throw controllerError("RICH_MDD_LIMIT", "MDX source size is invalid.");
+    }
+    const selectedPackageBytes = mdxBytes + normalizedFiles.reduce((sum, item) => sum + item.size, 0) + normalizedSidecars.reduce((sum, item) => sum + item.size, 0);
+    if (!Number.isSafeInteger(selectedPackageBytes) || selectedPackageBytes > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) {
+      throw controllerError("RICH_MDD_LIMIT", "MDX, MDD sources, and sidecars exceed the 4,000,000,000-byte package safety limit.");
+    }
     const identity = createIdentity(cryptoProvider, now);
     const requestId = "mdd-res-" + identity.uuid;
     const current = {
@@ -42,7 +58,8 @@ export function createMddResourceImportController({
         requestId,
         resourceVersion: identity.resourceVersion,
         mdxFileName: current.mdxFileName,
-        files: normalizedFiles.map(({ fileName, size }) => ({ fileName, size }))
+        files: normalizedFiles.map(({ fileName, size }) => ({ fileName, size })),
+        sidecars: normalizedSidecars.map(({ path, size, kind, mime }) => ({ path, size, kind, mime }))
       });
       if (!preflight?.ok) throw responseError(preflight, "MDD resource storage preflight failed.");
       assertCurrent(current);
@@ -59,7 +76,8 @@ export function createMddResourceImportController({
           requestId,
           resourceVersion: identity.resourceVersion,
           mdxFileName: current.mdxFileName,
-          files: normalizedFiles.map(({ file }) => file)
+          files: normalizedFiles.map(({ file }) => file),
+          sidecars: normalizedSidecars.map(({ path, file }) => ({ path, file }))
         }
       });
       const ready = await readyPromise;
@@ -83,7 +101,7 @@ export function createMddResourceImportController({
       }
       current.committed = true;
       if (current.cancelRequested) throw abortError();
-      emitProgress(onProgress, requestId, "done", { dictionaryId: current.dictionaryId, resources: ready.metadata.resources });
+      emitProgress(onProgress, requestId, "done", { dictionaryId: current.dictionaryId, resources: ready.metadata.resources, sidecars: ready.metadata.sidecars || [] });
       return { requestId, ready, commit };
     } catch (error) {
       if (!current.committed) await removeStaged(current).catch(() => {});
@@ -161,12 +179,36 @@ function validateFiles(files, mdxFileName) {
   return ordered.map(({ fileName }) => {
     const file = byName.get(fileName);
     if (!file || typeof file.slice !== "function" || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > RICH_MDD_MAX_SOURCE_BYTES) {
-      throw controllerError("RICH_MDD_LIMIT", "Each MDD file must be between 1 byte and 128 MiB.");
+      throw controllerError("RICH_MDD_LIMIT", "Each MDD file must be between 1 byte and 4,000,000,000 bytes.");
     }
     total += file.size;
-    if (total > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw controllerError("RICH_MDD_LIMIT", "MDD companions exceed the 512 MiB safety limit.");
+    if (total > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw controllerError("RICH_MDD_LIMIT", "MDD companions exceed the 4,000,000,000-byte safety limit.");
     return { fileName, size: file.size, file };
   });
+}
+
+function validateSidecars(input) {
+  if (!Array.isArray(input) || input.length > 32) throw controllerError("RICH_MDD_LIMIT", "Select no more than 32 CSS, image, or audio sidecars.");
+  const seen = new Set();
+  let total = 0;
+  return input.map((item) => {
+    let path;
+    try { path = normalizeMddResourcePath(String(item?.path || "")); }
+    catch { throw controllerError("RICH_MDD_INPUT", "Sidecar resource path is invalid."); }
+    if (path !== item?.path) throw controllerError("RICH_MDD_INPUT", "Sidecar resource path is not canonical.");
+    const file = item?.file;
+    const type = classifyMddSidecarPath(path);
+    if (!type || !file || typeof file.slice !== "function" || !Number.isSafeInteger(file.size) || file.size <= 0 || file.size > RICH_MDD_MAX_SIDECAR_FILE_BYTES ||
+        (type.kind === "stylesheet" && file.size > 64 * 1024)) {
+      throw controllerError("RICH_MDD_LIMIT", "Sidecar files exceed the supported size limit.");
+    }
+    const key = path.toLocaleLowerCase("en-US");
+    if (seen.has(key)) throw controllerError("RICH_MDD_INPUT", "Duplicate sidecar resource paths are not allowed.");
+    seen.add(key);
+    total += file.size;
+    if (total > 64 * 1024 * 1024) throw controllerError("RICH_MDD_LIMIT", "Sidecar files exceed the 64 MiB total safety limit.");
+    return { path, size: file.size, kind: type.kind, mime: type.mime, file };
+  }).sort((left, right) => left.path.localeCompare(right.path));
 }
 
 function createIdentity(cryptoProvider, now) {

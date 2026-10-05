@@ -35,7 +35,7 @@ export function initializeRichMdictImportUi({
       WorkerCtor,
       cryptoProvider,
       onProgress(event) {
-        if (activeResourceProgress) activeResourceProgress.textContent = resourceProgressLabel(event.phase);
+        if (activeResourceProgress) activeResourceProgress.textContent = resourceProgressLabel(event.phase, event);
       }
     });
     const refreshInstalled = async () => {
@@ -72,7 +72,7 @@ export function initializeRichMdictImportUi({
     WorkerCtor,
     cryptoProvider,
     onProgress(event) {
-      progress.textContent = progressLabel(event.phase);
+      progress.textContent = progressLabel(event.phase, event);
       progress.dataset.phase = String(event.phase || "");
     }
   });
@@ -81,7 +81,7 @@ export function initializeRichMdictImportUi({
     WorkerCtor,
     cryptoProvider,
     onProgress(event) {
-      if (activeResourceProgress) activeResourceProgress.textContent = resourceProgressLabel(event.phase);
+      if (activeResourceProgress) activeResourceProgress.textContent = resourceProgressLabel(event.phase, event);
     }
   });
 

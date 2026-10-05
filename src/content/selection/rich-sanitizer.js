@@ -5,17 +5,17 @@
   if (!tokenizer || !app.modules.richDictionarySanitizerStyle) return;
 
   const LIMITS = Object.freeze({
-    inputBytes: 512 * 1024,
-    expandedBytes: 512 * 1024,
-    outputNodes: 8192,
+    inputBytes: 2 * 1024 * 1024,
+    expandedBytes: 2 * 1024 * 1024,
+    outputNodes: 32768,
     depth: 32,
     tagBytes: 4096,
     attributeBytes: 2048,
     attributesPerTag: 32,
     stylesheetRules: 255,
     stylesheetBytes: 64 * 1024,
-    resourceCount: 8,
-    fallbackBytes: 64 * 1024
+    resourceCount: 1024,
+    fallbackBytes: 2 * 1024 * 1024
   });
   const MARKER = /^`([0-9]{1,3})`/u;
 
@@ -43,8 +43,17 @@
     const expanded = expandCompactMarkers(boundedSource, rules);
     if (expanded.overflow || oversized) return fallbackResult(boundedSource, rules, true);
     const parsed = tokenizer.parseHtml(expanded.value, LIMITS);
-    if (parsed.invalid || parsed.truncated) return fallbackResult(boundedSource, rules, true);
-    return { nodes: parsed.nodes, truncated: false };
+    if (parsed.invalid) return fallbackResult(boundedSource, rules, true);
+    if (parsed.truncated && !containsDisplayContent(parsed.nodes)) return fallbackResult(boundedSource, rules, true);
+    return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated) };
+  }
+
+  function containsDisplayContent(nodes) {
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+      if ((node.type === "text" && node.text) || node.type === "resource") return true;
+      if (node.type === "element" && containsDisplayContent(node.children)) return true;
+    }
+    return false;
   }
 
   function normalizeRules(input) {

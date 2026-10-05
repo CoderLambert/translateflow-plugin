@@ -5,7 +5,7 @@
 
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u",
-    "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp"
+    "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "a"
   ]);
   const DROP_SUBTREE_TAGS = new Set([
     "script", "style", "iframe", "object", "embed", "form", "svg", "math",
@@ -19,8 +19,11 @@
     "padding-left", "padding-right", "padding-top", "text-align", "text-decoration",
     "vertical-align", "white-space"
   ]);
-  const MAX_NODES = 8192;
+  const MAX_NODES = 32768;
+  const MAX_CONTENT_NODES = MAX_NODES - 1;
   const MAX_DEPTH = 32;
+  const MAX_TEXT_BYTES = 2 * 1024 * 1024;
+  const MAX_RESOURCE_DESCRIPTORS = 1024;
   const VIEWER_CSS = `
 :host { --tf-rich-blue: #1e90ff; --tf-rich-note: #777; display: block; min-width: 0; max-width: 100%; color: var(--tf-text-main, #3c463d); }
 *, *::before, *::after { box-sizing: border-box; max-width: 100%; }
@@ -49,6 +52,7 @@
 .tf-rich-resource-image { display: block; max-width: min(100%, 320px); height: auto; object-fit: contain; }
 .tf-rich-resource-audio { display: block; max-width: 100%; margin: .25em 0; }
 .tf-rich-audio-load { font: inherit; cursor: pointer; background: transparent; }
+.tf-rich-fragment-link { border: 0; padding: 0; color: var(--tf-rich-blue); font: inherit; text-decoration: underline; cursor: pointer; background: transparent; }
 .tf-rich-truncated { margin-top: .35em; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
 @media (prefers-color-scheme: dark) {
   :host { --tf-rich-blue: #83bfff; --tf-rich-note: #aab3aa; color: var(--tf-text-main, #e1e9de); }
@@ -59,7 +63,7 @@
 }
 `;
 
-  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "" } = {}) {
+  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "" } = {}) {
     if (!container) return false;
     const root = getShadowRoot(container);
     if (!root) return false;
@@ -75,19 +79,43 @@
     viewport.setAttribute("role", "region");
     locale.bindAttribute(viewport, "aria-label", "content.rich.contentAria");
     viewport.tabIndex = 0;
+    viewport.addEventListener("click", (event) => {
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+      const button = path.find((node) => node instanceof HTMLButtonElement && node.hasAttribute("data-rich-fragment-target")) || null;
+      if (!button || !viewport.contains(button)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const targetId = String(button.dataset.richFragmentTarget || "");
+      const target = [...viewport.querySelectorAll("[data-rich-target-id]")]
+        .find((node) => node.dataset.richTargetId === targetId);
+      if (!target) return;
+      target.scrollIntoView({ block: "nearest", behavior: "auto" });
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+    });
     if (preserveNewlines) viewport.style.setProperty("white-space", "pre-wrap");
     root.appendChild(viewport);
 
-    let count = { value: 0, truncated: Boolean(ast?.truncated) };
+    const fallbackSource = String(fallbackText || "");
+    const boundedFallback = clipUtf8Text(fallbackSource, MAX_TEXT_BYTES);
+    let count = {
+      value: 0,
+      textBytes: 0,
+      truncated: Boolean(ast?.truncated) || boundedFallback.length < fallbackSource.length
+    };
     const resources = [];
+    const resourceMap = new Map();
     const nodes = Array.isArray(ast?.nodes) ? ast.nodes : [];
-    for (const node of nodes) {
-      const rendered = renderNode(node, 0, count, resources);
+    for (let index = 0; index < nodes.length; index += 1) {
+      const rendered = renderNode(nodes[index], 0, count, resources, resourceMap);
       if (rendered) viewport.appendChild(rendered);
-      if (count.value >= MAX_NODES) break;
+      if (count.value >= MAX_CONTENT_NODES) {
+        if (index < nodes.length - 1) count.truncated = true;
+        break;
+      }
     }
-    if (!viewport.childNodes.length && String(fallbackText || "")) {
-      viewport.appendChild(document.createTextNode(String(fallbackText).slice(0, 512 * 1024)));
+    if (!viewport.childNodes.length && boundedFallback) {
+      viewport.appendChild(document.createTextNode(boundedFallback));
     }
     if (count.truncated) {
       const note = document.createElement("div");
@@ -95,9 +123,9 @@
       locale.bindText(note, "content.rich.truncated");
       viewport.appendChild(note);
     }
-    container.replaceChildren(document.createTextNode(String(fallbackText || "").slice(0, 512 * 1024)));
+    container.replaceChildren(document.createTextNode(boundedFallback));
     if (resources.length && dictionaryId) {
-      app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId);
+      app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId, packageVersion);
     }
     return true;
   }
@@ -106,24 +134,39 @@
     return render(container, { nodes: [{ type: "text", text: String(text || "") }] }, text, { preserveNewlines: true });
   }
 
-  function renderNode(node, depth, count, resources) {
-    if (!node || typeof node !== "object" || depth > MAX_DEPTH || count.value >= MAX_NODES) {
+  function renderNode(node, depth, count, resources, resourceMap) {
+    if (!node || typeof node !== "object" || depth > MAX_DEPTH ||
+        (node.type === "element" && depth >= MAX_DEPTH) || count.value >= MAX_CONTENT_NODES) {
       count.truncated = true;
       return null;
     }
     count.value += 1;
     if (node.type === "text") {
-      return document.createTextNode(String(node.text || "").slice(0, 512 * 1024));
+      const text = String(node.text || "");
+      const remaining = Math.max(0, MAX_TEXT_BYTES - count.textBytes);
+      const bounded = clipUtf8Text(text, remaining);
+      count.textBytes += utf8ByteLength(bounded);
+      if (bounded.length < text.length) count.truncated = true;
+      return document.createTextNode(bounded);
     }
     if (node.type === "resource") {
       const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
       if (!path || path !== node.path || !["image", "audio", "stylesheet"].includes(node.kind)) return null;
       const label = String(node.label || "").slice(0, 160);
-      const item = { kind: node.kind, path, label, element: null };
-      resources.push(item);
+      const key = `${node.kind}\u0000${path}`;
+      let item = resourceMap.get(key);
+      if (!item) {
+        if (resources.length >= MAX_RESOURCE_DESCRIPTORS) {
+          count.truncated = true;
+          return placeholder(node.kind === "image" ? "img" : "audio", label);
+        }
+        item = { kind: node.kind, path, label, elements: [] };
+        resourceMap.set(key, item);
+        resources.push(item);
+      } else if (!item.label && label) item.label = label;
       if (node.kind === "stylesheet") return null;
       const placeholderNode = placeholder(node.kind === "image" ? "img" : "audio", label);
-      item.element = placeholderNode;
+      item.elements.push(placeholderNode);
       if (node.kind === "audio") placeholderNode.className += " tf-rich-audio-load";
       return placeholderNode;
     }
@@ -132,7 +175,18 @@
     const tag = String(node.tag || "").toLowerCase();
     if (DROP_SUBTREE_TAGS.has(tag)) return null;
     if (tag === "img" || tag === "audio") return placeholder(tag);
-    if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count, resources);
+    if (tag === "a") {
+      const target = String(node.attrs?.["data-rich-fragment-target"] || "");
+      if (!/^[a-z0-9_-]{1,80}$/iu.test(target)) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
+      const link = document.createElement("button");
+      link.type = "button";
+      link.className = "tf-rich-fragment-link";
+      link.dataset.richFragmentTarget = target;
+      applySafeStyles(link, node.style);
+      appendChildren(link, node.children, depth, count, resources, resourceMap);
+      return link;
+    }
+    if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
 
     const element = document.createElement(tag);
     element.className = `tf-rich-node-${tag}`;
@@ -142,7 +196,7 @@
       const wrapper = document.createElement("div");
       wrapper.className = "tf-rich-table-scroll";
       wrapper.appendChild(element);
-      appendChildren(element, node.children, depth, count, resources);
+      appendChildren(element, node.children, depth, count, resources, resourceMap);
       return wrapper;
     }
     const placeholderKind = String(node.attrs?.["data-rich-placeholder"] || "");
@@ -152,25 +206,55 @@
         label ? (placeholderKind === "image" ? "content.rich.imageLabel" : "content.rich.audioLabel")
           : (placeholderKind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing"),
         label ? { label } : {});
-    } else appendChildren(element, node.children, depth, count, resources);
+    } else appendChildren(element, node.children, depth, count, resources, resourceMap);
     return element;
   }
 
-  function renderChildren(children, depth, count, resources) {
+  function renderChildren(children, depth, count, resources, resourceMap) {
     const fragment = document.createDocumentFragment();
-    appendChildren(fragment, children, depth, count, resources);
+    appendChildren(fragment, children, depth, count, resources, resourceMap);
     return fragment.childNodes.length ? fragment : null;
   }
 
-  function appendChildren(parent, children, depth, count, resources) {
-    for (const child of Array.isArray(children) ? children : []) {
-      const rendered = renderNode(child, depth + 1, count, resources);
+  function appendChildren(parent, children, depth, count, resources, resourceMap) {
+    const items = Array.isArray(children) ? children : [];
+    for (let index = 0; index < items.length; index += 1) {
+      const rendered = renderNode(items[index], depth + 1, count, resources, resourceMap);
       if (rendered) parent.appendChild(rendered);
-      if (count.value >= MAX_NODES) {
-        count.truncated = true;
+      if (count.value >= MAX_CONTENT_NODES) {
+        if (index < items.length - 1) count.truncated = true;
         break;
       }
     }
+  }
+
+  function clipUtf8Text(value, maximumBytes) {
+    const text = String(value || "");
+    let bytes = 0;
+    let end = 0;
+    while (end < text.length) {
+      const code = text.codePointAt(end);
+      const size = code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
+      if (bytes + size > maximumBytes) break;
+      bytes += size;
+      end += code > 0xffff ? 2 : 1;
+    }
+    return text.slice(0, end);
+  }
+
+  function utf8ByteLength(value) {
+    let bytes = 0;
+    const text = String(value || "");
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      if (code <= 0x7f) bytes += 1;
+      else if (code <= 0x7ff) bytes += 2;
+      else if (code >= 0xd800 && code <= 0xdbff && index + 1 < text.length && text.charCodeAt(index + 1) >= 0xdc00 && text.charCodeAt(index + 1) <= 0xdfff) {
+        bytes += 4;
+        index += 1;
+      } else bytes += 3;
+    }
+    return bytes;
   }
 
   function applySafeAttributes(element, attrs) {
@@ -179,6 +263,8 @@
     if (/^(?:[1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$/u.test(compactId)) {
       element.setAttribute("data-compact-id", compactId);
     }
+    const targetId = String(attrs["data-rich-target-id"] || "");
+    if (/^[a-z0-9_-]{1,80}$/iu.test(targetId)) element.dataset.richTargetId = targetId;
     const safeClasses = String(attrs.class || "")
       .split(/\s+/u)
       .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))

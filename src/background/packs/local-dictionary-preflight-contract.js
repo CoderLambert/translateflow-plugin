@@ -2,6 +2,7 @@ import {
   DICTIONARY_RUNTIME_CAPABILITIES,
   SHIPPED_DICTIONARY_RUNTIME_CAPABILITIES
 } from "../../shared/dictionary-catalog-v2-schema.js";
+import { LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES } from "../../shared/local-dictionary-limits.js";
 
 export const LOCAL_DICTIONARY_PREFLIGHT_STATUS = Object.freeze([
   "supported", "partial", "unsupported", "invalid"
@@ -11,7 +12,7 @@ export const LOCAL_DICTIONARY_PREFLIGHT_IMPORTERS = Object.freeze([
 ]);
 export const LOCAL_DICTIONARY_PREFLIGHT_LIMITS = Object.freeze({
   fileCount: 32,
-  totalBytes: 640 * 1024 * 1024,
+  totalBytes: LOCAL_DICTIONARY_MAX_PACKAGE_SOURCE_BYTES,
   titleChars: 120,
   fileNameChars: 180,
   tflexManifestBytes: 64 * 1024
@@ -35,6 +36,7 @@ export function basePreflightResult({
   unsupportedCapabilities = [],
   route = { importer: "none", requiresSemanticConfirmation: false },
   associatedMdd = [],
+  associatedSidecars = [],
   unassociatedFiles = [],
   missingCompanionHints = [],
   identity = {}
@@ -65,6 +67,7 @@ export function basePreflightResult({
     },
     resources: {
       associatedMdd,
+      associatedSidecars,
       unassociatedFiles: unassociatedFiles.map((file) => safeFileLabel(file.name)),
       missingCompanionHints: missingCompanionHints.map(cleanDisplayText).filter(Boolean)
     },
@@ -102,7 +105,8 @@ export function normalizePreflightFiles(input) {
 export function hasDuplicateFileNames(files) {
   const names = new Set();
   for (const file of files) {
-    const key = file.name.normalize("NFKC").toLocaleLowerCase("en-US");
+    const identity = String(file.webkitRelativePath || file.name).replaceAll("\\", "/");
+    const key = identity.normalize("NFKC").toLocaleLowerCase("en-US");
     if (names.has(key)) return true;
     names.add(key);
   }

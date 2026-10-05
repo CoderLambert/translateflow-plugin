@@ -7,9 +7,16 @@ import { RICH_MDICT_WORKER_MESSAGES } from "../src/options/workers/rich-mdict-im
 import { contentSourceFiles } from "../scripts/content-runtime.mjs";
 import { BACKGROUND_MESSAGES } from "../src/shared/constants.js";
 import { zh_CN as dictionaryZhCN } from "../src/i18n/catalog-dictionary.js";
+import { progressLabel, resourceProgressLabel } from "../src/options/rich-mdict-import-copy.js";
 
 const UUID = "123e4567-e89b-42d3-a456-426614174000";
 const CONTENT_SOURCE_FILES = contentSourceFiles();
+
+test("Mdict progress labels show factual byte counts for reads and writes", () => {
+  assert.match(progressLabel("index", { bytesRead: 1_048_576, fileBytes: 3_000_000 }), /已读取 1\.0 MiB/u);
+  assert.match(progressLabel("store-source", { bytesWritten: 2_097_152, fileBytes: 3_000_000, completedBytes: 2_097_152, totalBytes: 3_000_000 }), /已写入 2\.0 MiB \/ 2\.9 MiB/u);
+  assert.match(resourceProgressLabel("store-sidecar", { bytesWritten: 512, fileBytes: 1024 }), /已写入 512 B \/ 1\.0 KiB/u);
+});
 
 test("Settings streams the selected file to a worker, reserves it, then commits a reloadable dictionary", async () => {
   const runtime = new FakeRuntime();
@@ -75,6 +82,7 @@ test("worker validates before claiming an active request and prefers the MDX hea
     cryptoProvider: globalThis.crypto,
     buildIndex: async ({ source }) => {
       assert.equal(source.size, 9);
+      await source.read(0, 1);
       return { entryCount: 1, header: { title: "ECDICT 简明英汉增强版", format: "Html", version: "2.0" } };
     }
   });
@@ -92,6 +100,10 @@ test("worker validates before claiming an active request and prefers the MDX hea
   assert.equal(result.metadata.title, "ECDICT 简明英汉增强版");
   assert.equal(store.writes[0].bytes, file);
   assert.equal(file.arrayBufferCalls, 0);
+  assert.deepEqual(file.sliceReads, [[0, 1]]);
+  const progress = posted.filter((message) => message.type === RICH_MDICT_WORKER_MESSAGES.PROGRESS);
+  assert.ok(progress.some((message) => message.phase === "index" && message.bytesRead === 1 && message.fileBytes === 9));
+  assert.ok(progress.some((message) => message.phase === "store-source" && message.bytesWritten === 9 && message.fileBytes === 9));
   assert.equal(handler.activeRequestId, "");
 
   await assert.rejects(handler.handleMessage({
@@ -226,9 +238,11 @@ class WorkerStore {
   writes = [];
   files = new Map();
   async listVersions(packId) { return [...this.files.keys()].some((key) => key.startsWith(`${packId}/`)) ? ["existing"] : []; }
-  async writeFile(packId, version, path, bytes) {
+  async writeFile(packId, version, path, bytes, options = {}) {
     this.writes.push({ packId, version, path, bytes });
-    this.files.set(`${packId}/${version}/${path}`, bytes instanceof Uint8Array ? bytes.length : bytes.size);
+    const size = bytes instanceof Uint8Array ? bytes.length : bytes.size;
+    this.files.set(`${packId}/${version}/${path}`, size);
+    options.onProgress?.({ bytesWritten: size, totalBytes: size });
   }
   async getFileSize(packId, version, path) { return this.files.get(`${packId}/${version}/${path}`) || 0; }
   async removeVersion(packId, version) {
@@ -244,12 +258,13 @@ function makeFile(name, size = 16) {
     slice(start, end) {
       return {
         async arrayBuffer() {
-          this.parent.arrayBufferCalls += 1;
+          this.parent.sliceReads.push([start, end]);
           return new Uint8Array(Math.max(0, end - start)).buffer;
         },
         parent: this
       };
     },
+    sliceReads: [],
     async arrayBuffer() {
       this.arrayBufferCalls += 1;
       return new Uint8Array(size).buffer;

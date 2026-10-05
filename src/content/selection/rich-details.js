@@ -129,7 +129,7 @@
         }
 
         state.settled = true;
-        card.setResult(record, dictionaryId, (displayed) => {
+        card.setResult({ ...record, packageVersion: dictionary.packageVersion || "" }, dictionaryId, (displayed) => {
           if (isLiveSession(session)) session.onResult?.(displayed, dictionary);
         });
       } catch {
