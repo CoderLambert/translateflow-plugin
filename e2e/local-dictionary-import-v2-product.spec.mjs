@@ -151,6 +151,7 @@ test.describe("unified local dictionary import v2", () => {
 
     const lookupPage = await harness.open("/selection");
     await lookupPage.setViewportSize({ width: 1440, height: 900 });
+    await harness.inject(lookupPage);
     await lookupPage.evaluate(() => {
       document.title = "Local dictionary lookup";
       document.body.replaceChildren();
