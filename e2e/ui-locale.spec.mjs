@@ -156,13 +156,17 @@ test("mounted Quick Control, Selection and subtitle controls follow one live Con
   }));
   const page = await h.context.newPage();
   await page.goto("https://i18n.fixture.test/content");
-  await h.worker.evaluate(async url => {
+  const contentTabId = await h.worker.evaluate(async url => {
     const [tab] = await chrome.tabs.query({ url });
     if (!tab?.id) throw new Error("Content locale fixture tab is missing");
     await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ["content-scripts/content.css"] });
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content-scripts/content.js"] });
+    return tab.id;
   }, page.url());
-  await expect.poll(() => page.evaluate(() => Boolean(globalThis.__TRANSLATE_FLOW_CONTENT__?.loaded))).toBe(true);
+  await expect.poll(() => h.worker.evaluate(async tabId => {
+    const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: () => Boolean(globalThis.__TRANSLATE_FLOW_CONTENT__?.loaded) });
+    return result?.result === true;
+  }, contentTabId)).toBe(true);
   await h.worker.evaluate(async url => {
     const [tab] = await chrome.tabs.query({ url });
     if (!tab?.id) throw new Error("Content locale fixture tab is missing");

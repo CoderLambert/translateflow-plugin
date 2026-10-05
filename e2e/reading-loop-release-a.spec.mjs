@@ -88,7 +88,10 @@ test('Release A actual product: trusted creation matrix survives browser restart
     await content.page.bringToFront(); await content.page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await content.page.getByRole('button', { name: 'Save this result', exact: true }).click(); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
     await query(content.page, '#miss', 'zzsyntheticmissing'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(0);
-    await query(content.page, '#sentence', 'This is a synthetic ordinary sentence.'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(1);
+    await query(content.page, '#sentence', 'This is a synthetic ordinary sentence.');
+    await expect.poll(() => env.server.calls.length).toBe(1);
+    await expect(content.page.locator('.tf-selection-result')).toContainText('[DEFAULT|PLAIN]');
+    await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
     await content.page.getByRole('button', { name: 'Close', exact: true }).click();
     await query(content.page, '#sentence', 'This is a synthetic ordinary sentence.'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(1);
     await query(content.page, '#first', 'session'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
@@ -247,7 +250,6 @@ test('Release A real DOM capture reports ten-sample sync/total timing and bounde
 test('Release A extension-origin physical quota refusal preserves actual product read/export/delete recovery', async ({}, info) => {
   test.setTimeout(60000); const env = await environment(info);
   try {
-    await env.driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'zh_CN' }));
     await env.fixture(); let center = await env.center();
     await center.evaluate(async () => (await import(chrome.runtime.getURL('tests/fixtures/reading/storage.mjs'))).seedRecords(1));
     await center.close();
@@ -294,12 +296,12 @@ test('Release A extension-origin physical quota refusal preserves actual product
     } }), content.tabId);
     await query(content.page, '#first', 'session');
     await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'not-saved');
-    await expect(content.page.getByText('本地空间不足，未确认保存；可整理空间后重试保存。')).toBeVisible();
+    await expect(content.page.getByText('Local space is insufficient and the save was not confirmed. Free space, then retry.')).toBeVisible();
     expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(1); expect(env.server.calls).toHaveLength(0);
     const replies = await env.driver.evaluate(async tabId => (await chrome.scripting.executeScript({ target: { tabId }, func: () => nativeQuotaReplies }))[0].result, content.tabId);
     expect(replies.some(reply => reply.code === 'READING_QUOTA')).toBe(true);
     await productCdp.send('Storage.overrideQuotaForOrigin', { origin });
-    await content.page.getByRole('button', { name: '重试保存', exact: true }).click();
+    await content.page.getByRole('button', { name: 'Retry save', exact: true }).click();
     await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
     expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(2); expect(env.server.calls).toHaveLength(0);
     await productCdp.detach();
@@ -313,7 +315,6 @@ test('Release A extension-origin physical quota refusal preserves actual product
 test('Release A injected quota boundary is truthful/retryable; stored hostile answers and bilingual composition remain text-only', async ({}, info) => {
   test.setTimeout(60000); const env = await environment(info);
   try {
-    await env.driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'zh_CN' }));
     let center = await env.center(); await center.getByRole('button', { name: 'Enable recording', exact: true }).click();
     await expect(center.getByRole('button', { name: 'Pause recording' })).toBeVisible();
     const worker = env.context.serviceWorkers()[0];
@@ -321,10 +322,10 @@ test('Release A injected quota boundary is truthful/retryable; stored hostile an
       IDBObjectStore.prototype.put = function (...args) { if (this.name === 'records') throw new DOMException('synthetic quota boundary', 'QuotaExceededError'); return originalPut.apply(this, args); }; });
     const content = await env.openContent(); await query(content.page, '#first', 'session');
     await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'not-saved');
-    await expect(content.page.getByText('本地空间不足，未确认保存；可整理空间后重试保存。')).toBeVisible();
+    await expect(content.page.getByText('Local space is insufficient and the save was not confirmed. Free space, then retry.')).toBeVisible();
     expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(0); expect(env.server.calls).toHaveLength(0);
     await worker.evaluate(() => { IDBObjectStore.prototype.put = originalPut; });
-    await content.page.getByRole('button', { name: '重试保存', exact: true }).click();
+    await content.page.getByRole('button', { name: 'Retry save', exact: true }).click();
     await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(0);
     await env.fixture();
     const hostile = '<script>window.releaseAEvil=true</script><img src="https://evil.invalid/remote.png" onerror="window.releaseAEvil=true"> 😀 " \\';

@@ -248,7 +248,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     harness.server.setFailures([401]);
     await page.getByRole("button", { name: "翻译 / 重翻" }).click();
-    await expect(page.locator(".tf-quick-status")).toContainText("mock failure 401");
+    await expect(page.locator(".tf-quick-status")).toContainText("翻译失败");
+    await expect(page.locator(".tf-quick-status")).not.toContainText("mock failure 401");
     await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
 
     harness.server.setFailures([]);
