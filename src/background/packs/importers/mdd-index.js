@@ -130,7 +130,8 @@ export async function buildMddIndex({
     schemaVersion: MDD_INDEX_SCHEMA_VERSION,
     format: MDD_INDEX_FORMAT,
     sourceSize,
-    keyOrder: header.keyCaseSensitive ? "case-sensitive" : "case-folded",
+    // The observed on-disk order is detected while bounded key blocks are read.
+    keyOrder: "case-sensitive",
     header: serializableHeader(header),
     keyCount,
     totalKeyBlockBytes: 0,
@@ -236,6 +237,7 @@ function serializableHeader(header) {
     title: header.title,
     generatedByEngineVersion: header.generatedByEngineVersion,
     requiredEngineVersion: header.requiredEngineVersion,
-    encrypted: header.encrypted
+    encrypted: header.encrypted,
+    keyCaseSensitive: header.keyCaseSensitive
   };
 }

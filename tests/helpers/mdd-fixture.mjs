@@ -55,6 +55,9 @@ export function makeMdd(entries, {
   keyInfoCompression = "zlib",
   keyCompression = "zlib",
   recordCompression = "zlib",
+  keyOrder = "case-sensitive",
+  keyBlockEntryCounts = [entries?.length || 0],
+  keyBlockDescriptorOverrides = [],
   recordOffsets,
   recordBlockBytes
 } = {}) {
@@ -69,38 +72,57 @@ export function makeMdd(entries, {
       throw new TypeError("MDD fixture resource data must be bytes.");
     }
     return [key, Buffer.from(input)];
-  }).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+  }).sort(([left], [right]) => compareFixtureKeys(left, right, keyOrder));
+
+  if (
+    !["case-sensitive", "case-folded"].includes(keyOrder) ||
+    !Array.isArray(keyBlockEntryCounts) ||
+    keyBlockEntryCounts.some((count) => !Number.isInteger(count) || count <= 0) ||
+    keyBlockEntryCounts.reduce((sum, count) => sum + count, 0) !== normalized.length
+  ) {
+    throw new TypeError("MDD fixture key order or key block counts are invalid.");
+  }
 
   const recordParts = [];
-  const keyParts = [];
+  const keyBlocks = [];
   const descriptors = [];
   let recordOffset = 0;
   for (const [index, [key, resource]] of normalized.entries()) {
     const offset = recordOffsetOverride(recordOffsets, index, key, recordOffset);
-    const keyBytes = Buffer.from(key, "utf16le");
-    keyParts.push(u64be(offset), keyBytes, Buffer.from([0, 0]));
     recordParts.push(resource);
+    normalized[index] = [key, resource, offset];
     recordOffset += resource.byteLength;
   }
-  const keyData = Buffer.concat(keyParts);
-  const keyBlock = wrapBlock(keyData, keyCompression);
-  const firstKey = normalized[0][0];
-  const lastKey = normalized.at(-1)[0];
-  descriptors.push(
-    u64be(normalized.length),
-    sizedKey(firstKey),
-    sizedKey(lastKey),
-    u64be(keyBlock.byteLength),
-    u64be(keyData.byteLength)
-  );
+  let entryOffset = 0;
+  for (const [blockIndex, entryCount] of keyBlockEntryCounts.entries()) {
+    const blockEntries = normalized.slice(entryOffset, entryOffset + entryCount);
+    const keyData = Buffer.concat(blockEntries.map(([key, , offset]) => Buffer.concat([
+      u64be(offset), Buffer.from(key, "utf16le"), Buffer.from([0, 0])
+    ])));
+    const keyBlock = wrapBlock(keyData, keyCompression);
+    keyBlocks.push(keyBlock);
+    const descriptorOverride = keyBlockDescriptorOverrides[blockIndex] || {};
+    const firstKey = descriptorOverride.firstKey ?? blockEntries[0][0];
+    const lastKey = descriptorOverride.lastKey ?? blockEntries.at(-1)[0];
+    descriptors.push(
+      u64be(blockEntries.length),
+      sizedKey(firstKey),
+      sizedKey(lastKey),
+      u64be(keyBlock.byteLength),
+      u64be(keyData.byteLength)
+    );
+    entryOffset += entryCount;
+  }
+
   const keyIndex = Buffer.concat(descriptors);
   const compressedKeyIndex = wrapBlock(keyIndex, keyInfoCompression);
+  const keyBlocksBytes = keyBlocks.reduce((sum, block) => sum + block.byteLength, 0);
   const keyPreamble = Buffer.concat([
-    u64be(1),
+    u64be(keyBlocks.length),
     u64be(normalized.length),
     u64be(keyIndex.byteLength),
     u64be(compressedKeyIndex.byteLength),
-    u64be(keyBlock.byteLength)
+    u64be(keyBlocksBytes)
   ]);
 
   const recordData = Buffer.concat(recordParts);
@@ -144,11 +166,21 @@ export function makeMdd(entries, {
     keyPreamble,
     u32be(adler32(keyPreamble)),
     compressedKeyIndex,
-    keyBlock,
+    ...keyBlocks,
     recordHeader,
     recordIndex,
     ...recordBlocks
   ]);
+}
+
+function compareFixtureKeys(left, right, orderMode) {
+  if (orderMode === "case-folded") {
+    const leftFolded = left.toLowerCase();
+    const rightFolded = right.toLowerCase();
+    if (leftFolded < rightFolded) return -1;
+    if (leftFolded > rightFolded) return 1;
+  }
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function splitRecordData(input, boundaries) {

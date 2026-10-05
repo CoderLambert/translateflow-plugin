@@ -49,7 +49,7 @@ export function validateMddIndex(index, {
     !Number.isSafeInteger(index.totalRecordBytes) ||
     !Array.isArray(index.keyBlocks) ||
     !Array.isArray(index.recordBlocks) ||
-    !validHeader(index.header) ||
+    !validHeader(index.header, index.schemaVersion) ||
     !["none", "zlib"].includes(index.keyInfoCompression) ||
     index.keyInfoEncrypted !== (index.header.encrypted === 2)
   ) {
@@ -99,13 +99,16 @@ export function validateMddIndex(index, {
   return index;
 }
 
-function validHeader(header) {
+function validHeader(header, schemaVersion) {
+  const fields = ["title", "generatedByEngineVersion", "requiredEngineVersion", "encrypted"];
+  if (schemaVersion === MDD_INDEX_SCHEMA_VERSION) fields.push("keyCaseSensitive");
   return Boolean(
     header &&
-    hasOnlyFields(header, ["title", "generatedByEngineVersion", "requiredEngineVersion", "encrypted"]) &&
+    hasOnlyFields(header, fields) &&
     header.generatedByEngineVersion === "2.0" &&
     supportedRequiredVersion(header.requiredEngineVersion) &&
     [0, 2].includes(header.encrypted) &&
+    (schemaVersion !== MDD_INDEX_SCHEMA_VERSION || typeof header.keyCaseSensitive === "boolean") &&
     typeof header.title === "string" &&
     header.title.length <= 4096 &&
     !/[\u0000-\u001F\u007F]/u.test(header.title)

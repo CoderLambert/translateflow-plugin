@@ -1,9 +1,13 @@
 import { test, expect } from "./support/extension-fixture.mjs";
+import { readFile } from "node:fs/promises";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 import { makeMdx } from "../tests/helpers/mdict-fixture.mjs";
 import { webcrypto } from "node:crypto";
 import { buildLocalIndexedTflex } from "../src/background/packs/importers/tflex-local-builder.js";
+
+const realMdxPath = process.env.TF_LOCAL_REAL_MDICT_MDX || "";
+const realMddPath = process.env.TF_LOCAL_REAL_MDICT_MDD || "";
 
 test.describe("unified local dictionary import v2", () => {
   test.setTimeout(180_000);
@@ -17,13 +21,14 @@ test.describe("unified local dictionary import v2", () => {
     await options.setViewportSize({ width: 1100, height: 1000 });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
     const card = options.locator("#localDictionaryImport");
-    expect(await options.locator("#localDictionaryPreflight").isVisible()).toBe(false);
+    await expect(card).toBeVisible();
+    await expect(options.locator("#localDictionaryPreflight")).toBeHidden();
     for (const selector of [
       "#localDictionarySemanticLabel",
       "#localDictionaryLimitationsLabel",
       "#localDictionaryDuplicateLabel"
     ]) {
-      expect(await options.locator(selector).isVisible()).toBe(false);
+      await expect(options.locator(selector)).toBeHidden();
     }
     await card.screenshot({ path: testInfo.outputPath("local-dictionary-preflight-empty.png") });
   });
@@ -91,6 +96,90 @@ test.describe("unified local dictionary import v2", () => {
     await options.locator("#richMdictInstalledList .site-row").filter({ hasText: "Unified Rich Fixture" }).getByRole("button", { name: "删除" }).click();
     await expect(options.locator("#richMdictInstalledList")).toContainText("尚未安装");
     expect(harness.server.calls).toHaveLength(0);
+  });
+
+  test("locally supplied real MDX/MDD imports, looks up offline, and survives a browser restart", async ({ harness }) => {
+    test.skip(!realMdxPath || !realMddPath,
+      "Set TF_LOCAL_REAL_MDICT_MDX and TF_LOCAL_REAL_MDICT_MDD to run the local real-file import check.");
+    test.setTimeout(240_000);
+    const mdxBytes = await readFile(realMdxPath);
+    const mddBytes = await readFile(realMddPath);
+    const options = await harness.context.newPage();
+    const externalRequests = [];
+    options.on("request", (request) => {
+      if (/^https?:/iu.test(request.url()) && !/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/iu.test(request.url())) {
+        externalRequests.push(request.url());
+      }
+    });
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles([
+      { name: "local-real-check.mdx", mimeType: "application/octet-stream", buffer: mdxBytes },
+      { name: "local-real-check.mdd", mimeType: "application/octet-stream", buffer: mddBytes }
+    ]);
+
+    const importButton = options.locator("#localDictionaryImportButton");
+    await expect(importButton).toBeEnabled({ timeout: 90_000 });
+    for (const selector of ["#localDictionarySemanticConfirmation", "#localDictionaryLimitationsConfirmation"]) {
+      const confirmation = options.locator(selector);
+      if (await confirmation.isVisible()) await confirmation.check();
+    }
+    await expect(importButton).toBeEnabled();
+    await importButton.click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 120_000 });
+
+    const installed = options.locator("#richMdictInstalledList .site-row").first();
+    await expect(installed).toBeVisible();
+    const dictionaryId = await installed.getAttribute("data-dictionary-id");
+    expect(dictionaryId).toBeTruthy();
+    const firstList = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
+    const firstDictionary = firstList.dictionaries.find((item) => item.id === dictionaryId);
+    expect(firstDictionary?.status).toBe("ready");
+    expect(firstDictionary?.entryCount).toBeGreaterThan(0);
+    expect(firstDictionary?.resourceCount).toBe(1);
+
+    const firstLookup = await options.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "中国"
+    }));
+    expect(firstLookup.found).toBe(true);
+    const firstRecord = firstLookup.dictionaries.find((item) => item.id === dictionaryId);
+    expect(firstRecord?.headword).toBe("中國");
+    expect(firstRecord?.text.length).toBeGreaterThan(0);
+
+    const browserVersion = harness.context.browser().version();
+    await harness.restartBrowser();
+    const restartedOptions = await harness.context.newPage();
+    await restartedOptions.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await expect(restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)).toBeVisible();
+    const restartedList = await restartedOptions.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
+    expect(restartedList.dictionaries.find((item) => item.id === dictionaryId)?.status).toBe("ready");
+    const restartedLookup = await restartedOptions.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "中国"
+    }));
+    expect(restartedLookup.found).toBe(true);
+    const restartedRecord = restartedLookup.dictionaries.find((item) => item.id === dictionaryId);
+    expect(restartedRecord?.headword).toBe(firstRecord.headword);
+    expect(restartedRecord?.text).toBe(firstRecord.text);
+
+    await restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)
+      .getByRole("button", { name: "删除" }).click();
+    await expect(restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)).toBeHidden();
+
+    expect(harness.server.calls).toHaveLength(0);
+    expect(externalRequests).toEqual([]);
+    console.log("[LOCAL_REAL_MDICT_FLOW]", JSON.stringify({
+      browserVersion,
+      entryCount: firstDictionary.entryCount,
+      mddFileCount: firstDictionary.resourceCount,
+      lookupHeadword: firstRecord.headword,
+      restartLookupPreserved: restartedRecord.text === firstRecord.text,
+      providerCalls: harness.server.calls.length,
+      externalRequests: externalRequests.length,
+      artifactTreeSha256: harness.buildReport.treeSha256,
+      artifactBytes: harness.buildReport.totalBytes,
+      artifactFileCount: harness.buildReport.fileCount
+    }));
   });
 
   test("unrelated MDD is shown and blocks installation instead of attaching silently", async ({ harness }) => {

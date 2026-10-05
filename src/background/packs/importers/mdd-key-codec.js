@@ -11,7 +11,8 @@ const UTF16LE = new TextDecoder("utf-16le", { fatal: true });
 
 export function parseMddKeyBlock(input, descriptor, totalRecordBytes, {
   orderMode = "case-sensitive",
-  orderValidator = null
+  orderValidator = null,
+  allowNormalizedDescriptorPair = false
 } = {}) {
   const cursor = new MDictCursor(input);
   const entries = [];
@@ -30,11 +31,14 @@ export function parseMddKeyBlock(input, descriptor, totalRecordBytes, {
     lastRecordOffset = recordOffset;
     entries.push({ path, recordOffset });
   }
-  if (
-    cursor.remaining !== 0 ||
-    compareMddResourcePaths(entries[0]?.path || "", descriptor.expectedFirstKey || "", orderMode, false) !== 0 ||
-    compareMddResourcePaths(entries.at(-1)?.path || "", descriptor.expectedLastKey || "", orderMode, false) !== 0
-  ) {
+  const actualFirstKey = entries[0]?.path || "";
+  const actualLastKey = entries.at(-1)?.path || "";
+  const rawEndpointPair = actualFirstKey === descriptor.expectedFirstKey &&
+    actualLastKey === descriptor.expectedLastKey;
+  const normalizedEndpointPair = allowNormalizedDescriptorPair &&
+    descriptor.expectedFirstKey === actualFirstKey.toLowerCase() &&
+    descriptor.expectedLastKey === actualLastKey.toLowerCase();
+  if (cursor.remaining !== 0 || (!rawEndpointPair && !normalizedEndpointPair)) {
     mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDD key block does not match its descriptor.", {
       trailingBytes: cursor.remaining
     });
@@ -144,9 +148,21 @@ function readNullTerminatedPath(cursor) {
 
 export async function addMddKeyBlockBounds(keyBlocks, { source, index, decode, limits }) {
   let previousRecordOffset = -1;
-  let previousPath = "";
-  const orderMode = mddResourceOrderMode(index);
-  const orderValidator = createMddResourceOrderValidator(orderMode);
+  const supportsCaseFoldedOrder = index.header.keyCaseSensitive === false;
+  const orderCandidates = new Map(
+    (supportsCaseFoldedOrder ? ["case-sensitive", "case-folded"] : ["case-sensitive"])
+      .map((mode) => [mode, { valid: true, previousPath: null }])
+  );
+  const orderValidator = (path) => {
+    for (const [mode, candidate] of orderCandidates) {
+      if (!candidate.valid) continue;
+      if (candidate.previousPath !== null &&
+        compareMddResourcePaths(path, candidate.previousPath, mode) <= 0) {
+        candidate.valid = false;
+      }
+      candidate.previousPath = path;
+    }
+  };
   let totalKeyBlockBytes = 0;
   for (let blockIndex = 0; blockIndex < keyBlocks.length; blockIndex += 1) {
     const descriptor = keyBlocks[blockIndex];
@@ -161,13 +177,14 @@ export async function addMddKeyBlockBounds(keyBlocks, { source, index, decode, l
         expectedLastKey: descriptor.lastKey
       },
       index.totalRecordBytes,
-      { orderMode, orderValidator }
+      {
+        orderMode: "case-sensitive",
+        orderValidator,
+        allowNormalizedDescriptorPair: supportsCaseFoldedOrder
+      }
     );
-    if (
-      parsed.firstRecordOffset < previousRecordOffset ||
-      (previousPath && compareMddResourcePaths(parsed.firstKey, previousPath, orderMode) <= 0)
-    ) {
-      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource keys or offsets are duplicated or unsorted.");
+    if (parsed.firstRecordOffset < previousRecordOffset) {
+      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource record offsets are unsorted.");
     }
     descriptor.firstKey = parsed.firstKey;
     descriptor.lastKey = parsed.lastKey;
@@ -175,9 +192,13 @@ export async function addMddKeyBlockBounds(keyBlocks, { source, index, decode, l
     descriptor.lookupMaxKey = parsed.lastKey;
     descriptor.firstRecordOffset = parsed.firstRecordOffset;
     descriptor.lastRecordOffset = parsed.lastRecordOffset;
-    previousPath = parsed.lastKey;
     previousRecordOffset = parsed.lastRecordOffset;
   }
+  const detectedOrder = [...orderCandidates].find(([, candidate]) => candidate.valid)?.[0];
+  if (!detectedOrder) {
+    mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource keys are duplicated or unsorted.");
+  }
+  index.keyOrder = detectedOrder;
   return totalKeyBlockBytes;
 }
 

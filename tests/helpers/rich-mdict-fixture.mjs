@@ -14,6 +14,7 @@ export function makeRichMdx(entries, {
   format = "Html",
   encoding = "UTF-8",
   keyBlockEntryCounts = [entries?.length || 0],
+  keyBlockDescriptorOverrides = [],
   styleSheet = "1\n<b>\n</b>"
 } = {}) {
   if (!Array.isArray(entries) || !entries.length) {
@@ -42,8 +43,9 @@ export function makeRichMdx(entries, {
   let entryOffset = 0;
   const keyBlocks = [];
   const keyDescriptors = [];
-  for (const blockEntryCount of keyBlockEntryCounts) {
+  for (const [blockIndex, blockEntryCount] of keyBlockEntryCounts.entries()) {
     const blockEntries = entries.slice(entryOffset, entryOffset + blockEntryCount);
+    const descriptorOverride = keyBlockDescriptorOverrides[blockIndex] || {};
     const keyRaw = Buffer.concat(blockEntries.map(([key], localIndex) => Buffer.concat([
       u64be(offsets[entryOffset + localIndex]), Buffer.from(key, textEncoding), terminator
     ])));
@@ -51,8 +53,8 @@ export function makeRichMdx(entries, {
     keyBlocks.push(keyBlock);
     keyDescriptors.push(Buffer.concat([
       u64be(blockEntryCount),
-      sizedKey(Buffer.from(fixtureLookupKey(blockEntries[0][0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
-      sizedKey(Buffer.from(fixtureLookupKey(blockEntries.at(-1)[0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
+      sizedKey(Buffer.from(descriptorOverride.firstKey ?? fixtureLookupKey(blockEntries[0][0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
+      sizedKey(Buffer.from(descriptorOverride.lastKey ?? fixtureLookupKey(blockEntries.at(-1)[0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
       u64be(keyBlock.byteLength),
       u64be(keyRaw.byteLength)
     ]));
