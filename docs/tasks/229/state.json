@@ -1,20 +1,41 @@
 {
   "schema": 1,
   "task": "229",
-  "status": "paused",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
-  "branch": null,
-  "worktree": null,
-  "candidateHead": null,
+  "branch": "audit/229-state-calibration-20261005",
+  "worktree": ".",
+  "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
   "mergeHead": null,
   "validationCommands": [
     [
       "npm",
       "run",
       "validate"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/selection-controller-cancel.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=1",
+      "--retries=0",
+      "e2e/reading-return-location.spec.mjs",
+      "e2e/reading-page-markers.spec.mjs"
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+  "nextAction": "Draft PR #303 is open for review through the authorized GitHub connector. Keep it in draft; do not merge or change Issue labels/closure in this audit.",
+  "pullRequest": 303
 }

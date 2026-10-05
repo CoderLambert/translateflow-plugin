@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "task": "229",
+  "candidateHead": "eb14bca98ad19b2276a109f536a254945f47ef2c",
+  "tree": "c8533e4f40ad180d219a7d78ad242d1343d02081",
+  "inputTree": "24c3ad16aabb4a33f2d7f3ac78075490886e4eb3c083361aa53e894207f76130",
+  "frozenAt": "2026-10-05T04:09:29.017Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "eb14bca98ad19b2276a109f536a254945f47ef2c",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 59364.039263,
+      "startedAt": "2026-10-05T04:09:36.199Z",
+      "log": "docs/task-execution/local/229/97caa2c0-9d4e-4223-877b-58c3a9018057.log",
+      "logSha256": "a001bc8df5caf011082dcc8f900eddf389298b2262d12ec23c773e62affb486c"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/selection-controller-cancel.test.mjs"
+      ],
+      "candidateHead": "eb14bca98ad19b2276a109f536a254945f47ef2c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 651.979391,
+      "startedAt": "2026-10-05T04:11:04.792Z",
+      "log": "docs/task-execution/local/229/dc89e975-2851-4cbd-8ca0-79bef5b17fc0.log",
+      "logSha256": "91e477713177801c6aa7794d3051528890c6b4035646abec99ab8cc3b4b7c3e3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "eb14bca98ad19b2276a109f536a254945f47ef2c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3556.337465,
+      "startedAt": "2026-10-05T04:11:10.349Z",
+      "log": "docs/task-execution/local/229/269641c9-47fa-48c1-a32b-477d1e401dc1.log",
+      "logSha256": "111a0cb23068bd713a4eacf3aab8d3377b0766f3d3a22d62d3385949451f4747"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "eb14bca98ad19b2276a109f536a254945f47ef2c",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 2186.118299,
+      "startedAt": "2026-10-05T04:11:21.437Z",
+      "log": "docs/task-execution/local/229/f6b34741-5bf5-4490-80e1-d6d084235387.log",
+      "logSha256": "94524e0e1fa040810f841fbc127cb538fb584c3c973157607ff3844fc3a69d76"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "eb14bca98ad19b2276a109f536a254945f47ef2c",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 127429.921071,
+      "startedAt": "2026-10-05T04:12:09.632Z",
+      "log": "docs/task-execution/local/229/55d01aa3-fcc3-4432-9ad9-86055e43f852.log",
+      "logSha256": "341e075e6391861d95693f12b5311bd497e79c3a3315a88cf4f68753f9cbb4d7"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}

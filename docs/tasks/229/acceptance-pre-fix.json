@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "task": "229",
+  "candidateHead": "cf68b90ad5f595c14f413d13130a8fba8821f69e",
+  "tree": "bc0b3505376c2cca2f6db4aef7bf3287da69e8ef",
+  "inputTree": "58da16270d06c354e60fc22c9d95d595cfcc0a50dbf7e4dfa7265807a023aa62",
+  "frozenAt": "2026-10-05T03:36:06.404Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "cf68b90ad5f595c14f413d13130a8fba8821f69e",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 166.739913,
+      "startedAt": "2026-10-05T03:36:16.718Z",
+      "log": "docs/task-execution/local/229/2c9010d2-cfc7-42a6-ba41-fcecd03fc7c5.log",
+      "logSha256": "5a51c3be917936fc7c3eedac6e0980981b973a06b8212d4d32bddae48deeba90"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "cf68b90ad5f595c14f413d13130a8fba8821f69e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3396.815091,
+      "startedAt": "2026-10-05T03:36:54.120Z",
+      "log": "docs/task-execution/local/229/7e95b61d-457d-4110-adb2-0fbafaa2c258.log",
+      "logSha256": "eafceb647430a1a1149a718ec523e0061957ddf07b801ea822cdd3284b44336d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "cf68b90ad5f595c14f413d13130a8fba8821f69e",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 1975.540216,
+      "startedAt": "2026-10-05T03:37:08.360Z",
+      "log": "docs/task-execution/local/229/b494852f-025d-4c76-aeeb-f844d96afad0.log",
+      "logSha256": "7d7fde25de06cb75c91933cf636698c989398ef9e0cd2e19b265e39ea5cfeee0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "cf68b90ad5f595c14f413d13130a8fba8821f69e",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 19715.320599,
+      "startedAt": "2026-10-05T03:37:54.343Z",
+      "log": "docs/task-execution/local/229/fa71dc76-9dba-4401-af98-1192c61af68d.log",
+      "logSha256": "bc94020967d0eebe1c6e6e0d4c69543ede856bd9c021424553b16f0d634c391b"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}

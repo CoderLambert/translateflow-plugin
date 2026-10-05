@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "task": "229",
+  "candidateHead": "8205dbcabdb81cf2fcee72a2fe4ac304be422607",
+  "tree": "8f32f8eb665215e36787f865f5fe319c7e5dae03",
+  "inputTree": "ad577765f3ab37bbcbe7e654e43ab7d446de4c232efbfa1d2fd37b413cb83ea3",
+  "frozenAt": "2026-10-05T04:16:23.803Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12; PLAYWRIGHT_BROWSERS_PATH=/tmp/translateflow-playwright"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "8205dbcabdb81cf2fcee72a2fe4ac304be422607",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11212.567439,
+      "startedAt": "2026-10-05T04:16:32.864Z",
+      "log": "docs/task-execution/local/229/afc14ce5-6875-438e-a633-6d6eff7a87dc.log",
+      "logSha256": "d520252287985e5222620eb79b05942e4e7cc026268416278f91912f70e6bd48"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "8205dbcabdb81cf2fcee72a2fe4ac304be422607",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 56748.118547,
+      "startedAt": "2026-10-05T04:17:12.097Z",
+      "log": "docs/task-execution/local/229/e30d899e-7c1a-4a9a-a3cd-f554f03df28f.log",
+      "logSha256": "a2e8ad88bb0fc9b0ab0fc701d3d25b08f0033bf84c32ce2dd71288c265970989"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/selection-controller-cancel.test.mjs"
+      ],
+      "candidateHead": "8205dbcabdb81cf2fcee72a2fe4ac304be422607",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 664.912167,
+      "startedAt": "2026-10-05T04:18:19.713Z",
+      "log": "docs/task-execution/local/229/3809f0ea-f002-43c3-b31a-793e3c4a8076.log",
+      "logSha256": "2f7e6aaf43315295066d72c798eaa128bf2da645edf184af9c3636e242077375"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "8205dbcabdb81cf2fcee72a2fe4ac304be422607",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3420.946593,
+      "startedAt": "2026-10-05T04:18:26.017Z",
+      "log": "docs/task-execution/local/229/0656ecc5-7640-4bd6-948b-f4fe38b8c4bb.log",
+      "logSha256": "111a0cb23068bd713a4eacf3aab8d3377b0766f3d3a22d62d3385949451f4747"
+    }
+  ],
+  "artifact": null,
+  "limitations": [
+    "npm run validate failed in tests/reading-content-classic.test.mjs: src/content/reading-record.js is stale; 1 of 1099 Node tests failed, so typecheck, Vitest and the validate build stage were not reached.",
+    "Real paid Providers, private dictionaries, and Edge/Safari coverage were NOT_RUN.",
+    "GitHub push and draft-PR creation are blocked by invalid GH_TOKEN authentication in gh CLI."
+  ]
+}
