@@ -3,7 +3,7 @@
 - 日期：2026-10-05
 - 分支：`fix/wiktionary-mdict-preflight-20261005`
 - 基线：`origin/main` `39bdb53de2cff9f6f470ee6fa39809b635858810`
-- 产品与回归候选：`a54e70509e63138a74f5f4a303b6b911c5ef4298`
+- 真实 MDX/MDD E2E `testedHead`：`7195185865797ddd1275faa61227080847361f86`
 - 范围：修正 Options 本地词典隐藏控件、MDX `StripKey` 空描述符和 MDD 实际排序识别；保留 #245 包体阈值的 advisory 行为。真实 MDX+MDD 文件只在本机用于解析与 Options 浏览器验收。未合并、未发布。
 
 ## 变更
@@ -36,13 +36,15 @@ MDD 索引在读取已解码键时识别实际原始或大小写折叠顺序，�
 | `node --test tests/rich-mdict-format.test.mjs tests/mdd-format.test.mjs` | PASS，17/17。 |
 | `npm run build:extension:wxt` | PASS_WITH_WARNING；Manifest/资源/审计断言通过。平台代码 1,582,032 字节，#245 旧阈值 1,576,595 字节，超额 5,437 字节并发出 WARN。 |
 | 当前 WXT 产物 | Chrome MV3，112 文件、2,198,751 字节、无内置词库；按 E2E tree-fingerprint 计算 SHA-256：`f6e28352271856a373e9a3f13a182acd473233a652c13b63a1c5dfd88f3409f2`。真实输入未进入构建产物。 |
-| 本地真实文件 Options E2E | `npm run test:e2e -- e2e/local-dictionary-import-v2-product.spec.mjs --grep "locally supplied real MDX/MDD" --workers=1`，PASS，1/1。`TF_LOCAL_REAL_MDICT_MDX`/`TF_LOCAL_REAL_MDICT_MDD` 指定的输入仅在本地读取；Options 导入后以 `中国` 查到 `中國`，保留持久 profile 重启后再次得到相同词条，再删除本次安装。Provider 调用 0、观测到的外部请求 0。测试绑定 candidate `a54e70509e63138a74f5f4a303b6b911c5ef4298` 与上列 tree SHA。 |
+| 本地真实文件 Options E2E | `npm run test:e2e -- e2e/local-dictionary-import-v2-product.spec.mjs --grep "locally supplied real MDX/MDD" --workers=1 --retries=0`，PASS，1/1；Git `testedHead` 为 `7195185865797ddd1275faa61227080847361f86`。`TF_LOCAL_REAL_MDICT_MDX`/`TF_LOCAL_REAL_MDICT_MDD` 指定的输入仅在本地读取；Options 导入后以 `中国` 查到 `中國`，持久 profile 重启后再次得到相同词条，再删除本次安装。Provider 调用 0、观测到的外部请求 0。运行器的 `sourceHead` 字段为空；这里的 testedHead 由本地 Git HEAD 核验。 |
+| 真实导入截图 | `test-results/e2e/local-dictionary-import-v2-5db7d--survives-a-browser-restart/local-real-mdict-import-complete.png`；SHA-256 `139fa14c280a9e42f2072be68714a8e71bad46e7c5f7a80186933a5f5e2184cf`。截图显示预检可用、19.7 万词条及真实 MDD 文件关联；E2E 另行断言查询与重启后的词条相同。 |
 
 本轮没有重新运行完整 `npm run validate`。既有 Reading/Selection/Provider 通过记录不移作本轮证据。本次真实 E2E 验证了 Options 的导入、直接离线查询、重启持久性和删除；没有覆盖 Selection 浮层或 MDD 资源在富文本卡中的真实呈现。
 
 ## 未运行与边界
 
 - 未做整个 MDX 原文映射的独立实现全量 byte-for-byte 对照、60 个固定查询、10 个复杂词条的内容价值验证；不能据此完成 `offline-dictionary` 整卡认证。
+- 该真实样本只验证本地 CC-CEDICT 格式导入与离线查询；Wiktionary 内容覆盖/质量和 Oxford 词典内容均未验证。
 - 未验证实际 MDD CSS/图片/音频展示；字体和 SVG 继续受当前策略阻止，另有 CSS 引用没有资源键。没有放宽 CSP、权限或资源 allowlist。
 - 真实/付费 Provider、商业或私人词典、Firefox/Safari、Edge、真实安装升级、商店打包/上传均未运行。
 - 未改 GitHub Issue、任务状态、标签或 #229 审计结论。#229 仍为 open/auditing；只读核对发现 draft PR [#304](https://github.com/CoderLambert/translateflow-plugin/pull/304) 已更新其 post-merge 状态记录，此分支未改其文件或 Issues。
