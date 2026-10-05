@@ -1,6 +1,7 @@
 import {
   RICH_MDICT_MAX_DISPLAY_BYTES,
-  RICH_MDICT_MAX_RECORD_BYTES,
+  RICH_MDICT_MAX_SOURCE_RECORD_BYTES,
+  RICH_MDICT_MAX_RECORD_TEXT_BYTES,
   RICH_MDICT_SOURCE_ID,
   clampText,
   isValidSnapshot,
@@ -57,16 +58,33 @@ export function createRichMdictLookupController({
           assertNotAborted(signal);
           const result = await lookup({ source: sourceReader(packId, active, signal), index, text: query, signal });
           assertNotAborted(signal);
-          if (result?.found) dictionaries.push({
+          if (result?.found) {
+            const rawRecordBytes = new TextEncoder().encode(result.rawRecord).byteLength;
+            if (!Number.isSafeInteger(result.sourceRecordBytes) ||
+                result.sourceRecordBytes <= 0 ||
+                result.sourceRecordBytes > RICH_MDICT_MAX_SOURCE_RECORD_BYTES ||
+                !Number.isSafeInteger(rawRecordBytes) ||
+                rawRecordBytes > RICH_MDICT_MAX_RECORD_TEXT_BYTES ||
+                (Number.isSafeInteger(result.decodedTextBytes) && result.decodedTextBytes !== rawRecordBytes)) {
+              throw richError("RICH_MDICT_LIMIT", "Rich MDict record exceeds the source or decoded text safety limit.");
+            }
+            dictionaries.push({
             id: packId,
             packVersion: active.packVersion,
             title: active.title,
             headword: clampText(result.displayForm, 300),
             text: clampUtf8Text(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_BYTES),
-            richRecord: { rawRecord: clampUtf8Text(result.rawRecord, RICH_MDICT_MAX_RECORD_BYTES), format: clampText(index.header.format, 40), styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end })) },
+            richRecord: {
+              rawRecord: result.rawRecord,
+              sourceBytes: result.sourceRecordBytes,
+              textBytes: rawRecordBytes,
+              format: clampText(index.header.format, 40),
+              styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end }))
+            },
             ...(result.aliasTarget ? { aliasTarget: clampText(result.aliasTarget, 300) } : {}),
             ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {})
-          });
+            });
+          }
         } catch (error) {
           if (signal?.aborted || error?.name === "AbortError") throw richMdictAbortError();
           errors.push({

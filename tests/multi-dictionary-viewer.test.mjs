@@ -31,7 +31,9 @@ test("a slow dictionary lookup does not serialize an independent rich dictionary
         found: true,
         displayForm: text,
         safeTextFallback: `${index.header.title}: synthetic definition`,
-        rawRecord: `<p>${index.header.title}: synthetic definition</p>`
+        rawRecord: `<p>${index.header.title}: synthetic definition</p>`,
+        sourceRecordBytes: Buffer.byteLength(`<p>${index.header.title}: synthetic definition</p>`),
+        decodedTextBytes: Buffer.byteLength(`<p>${index.header.title}: synthetic definition</p>`)
       };
     }
   });

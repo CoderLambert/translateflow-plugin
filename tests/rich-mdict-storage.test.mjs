@@ -111,7 +111,9 @@ test("rich lookup returns the bounded raw record with the validated rendering me
       found: true,
       displayForm: "run",
       safeTextFallback: "run — 运行",
-      rawRecord: "🦭".repeat(400_000)
+      rawRecord: "🦭".repeat(400_000),
+      sourceRecordBytes: 800_000,
+      decodedTextBytes: 1_600_000
     })
   });
   const metadata = await stage(env, BASE_ID, index);
@@ -120,7 +122,9 @@ test("rich lookup returns the bounded raw record with the validated rendering me
   const response = await env.manager.lookup("run");
   const richRecord = response.dictionaries[0].richRecord;
   assert.equal(response.dictionaries[0].text, "run — 运行");
-  assert.equal(new TextEncoder().encode(richRecord.rawRecord).byteLength, 1024 * 1024);
+  assert.equal(richRecord.sourceBytes, 800_000);
+  assert.equal(richRecord.textBytes, 1_600_000);
+  assert.equal(new TextEncoder().encode(richRecord.rawRecord).byteLength, 1_600_000);
   assert.equal(richRecord.format, "Html");
   assert.deepEqual(richRecord.styleSheetRules, [{ id: 1, begin: "<b>", end: "</b>" }]);
 });
@@ -621,8 +625,16 @@ function createEnvironment(overrides = {}) {
     buildIndex: builder,
     lookup: overrides.lookup || (async ({ source, text }) => {
       await source.read(92, 8);
+      const rawRecord = "<p>run — 运行</p>";
       return text === "run"
-        ? { found: true, displayForm: "run", safeTextFallback: "run — 运行" }
+        ? {
+            found: true,
+            displayForm: "run",
+            safeTextFallback: "run — 运行",
+            rawRecord,
+            sourceRecordBytes: Buffer.byteLength(rawRecord),
+            decodedTextBytes: Buffer.byteLength(rawRecord)
+          }
         : { found: false };
     })
   };

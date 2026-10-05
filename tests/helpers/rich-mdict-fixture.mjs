@@ -12,6 +12,7 @@ export function makeRichMdx(entries, {
   compact = "No",
   compat = "No",
   format = "Html",
+  encoding = "UTF-8",
   keyBlockEntryCounts = [entries?.length || 0],
   styleSheet = "1\n<b>\n</b>"
 } = {}) {
@@ -19,12 +20,14 @@ export function makeRichMdx(entries, {
     throw new Error("Rich MDict fixture requires entries.");
   }
 
+  const textEncoding = String(encoding).toUpperCase() === "UTF-16" ? "utf16le" : "utf8";
+  const terminator = textEncoding === "utf16le" ? Buffer.from([0, 0]) : Buffer.from([0]);
   const recordParts = [];
   const offsets = [];
   let recordOffset = 0;
   for (const [, record] of entries) {
     offsets.push(recordOffset);
-    const bytes = Buffer.concat([Buffer.from(record, "utf8"), Buffer.from([0])]);
+    const bytes = Buffer.concat([Buffer.from(record, textEncoding), terminator]);
     recordParts.push(bytes);
     recordOffset += bytes.byteLength;
   }
@@ -42,14 +45,14 @@ export function makeRichMdx(entries, {
   for (const blockEntryCount of keyBlockEntryCounts) {
     const blockEntries = entries.slice(entryOffset, entryOffset + blockEntryCount);
     const keyRaw = Buffer.concat(blockEntries.map(([key], localIndex) => Buffer.concat([
-      u64be(offsets[entryOffset + localIndex]), Buffer.from(key, "utf8"), Buffer.from([0])
+      u64be(offsets[entryOffset + localIndex]), Buffer.from(key, textEncoding), terminator
     ])));
     const keyBlock = wrapBlock(keyRaw);
     keyBlocks.push(keyBlock);
     keyDescriptors.push(Buffer.concat([
       u64be(blockEntryCount),
-      sizedKey(Buffer.from(fixtureLookupKey(blockEntries[0][0]), "utf8")),
-      sizedKey(Buffer.from(fixtureLookupKey(blockEntries.at(-1)[0]), "utf8")),
+      sizedKey(Buffer.from(fixtureLookupKey(blockEntries[0][0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
+      sizedKey(Buffer.from(fixtureLookupKey(blockEntries.at(-1)[0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
       u64be(keyBlock.byteLength),
       u64be(keyRaw.byteLength)
     ]));
@@ -85,7 +88,7 @@ export function makeRichMdx(entries, {
     ' GeneratedByEngineVersion="2.0"',
     ` RequiredEngineVersion="${escapeAttribute(requiredEngineVersion)}"`,
     ` Encrypted="${encrypted}"`,
-    ' Encoding="UTF-8"',
+    ` Encoding="${textEncoding === "utf16le" ? "UTF-16" : "UTF-8"}"`,
     ` Format="${escapeAttribute(format)}"`,
     ` Compact="${compact}"`,
     ` Compat="${compat}"`,
@@ -141,10 +144,10 @@ function wrapBlock(rawInput) {
   return Buffer.concat([header, deflateSync(raw)]);
 }
 
-function sizedKey(bytes) {
+function sizedKey(bytes, unitBytes = 1) {
   const length = Buffer.alloc(2);
-  length.writeUInt16BE(bytes.byteLength);
-  return Buffer.concat([length, bytes, Buffer.from([0])]);
+  length.writeUInt16BE(bytes.byteLength / unitBytes);
+  return Buffer.concat([length, bytes, Buffer.alloc(unitBytes)]);
 }
 
 function u64be(value) {

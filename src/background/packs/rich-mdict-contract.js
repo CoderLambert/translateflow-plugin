@@ -1,4 +1,5 @@
 import {
+  RICH_MDICT_IMPORT_LIMITS,
   validateRichMdictIndex
 } from "./importers/mdict-rich-validation.js";
 import {
@@ -16,7 +17,8 @@ export const RICH_MDICT_INDEX_PATH = "index.json";
 export const RICH_MDICT_MAX_SOURCE_BYTES = 128 * 1024 * 1024;
 export const RICH_MDICT_MAX_INDEX_BYTES = 8 * 1024 * 1024;
 export const RICH_MDICT_MAX_ENTRIES = 4_000_000;
-export const RICH_MDICT_MAX_RECORD_BYTES = 1024 * 1024;
+export const RICH_MDICT_MAX_SOURCE_RECORD_BYTES = RICH_MDICT_IMPORT_LIMITS.entryBytes;
+export const RICH_MDICT_MAX_RECORD_TEXT_BYTES = RICH_MDICT_IMPORT_LIMITS.expandedTextBytes;
 export const RICH_MDICT_MAX_DISPLAY_BYTES = 2 * 1024 * 1024;
 export const RICH_MDICT_SOURCE_ID = "local-rich-mdict";
 

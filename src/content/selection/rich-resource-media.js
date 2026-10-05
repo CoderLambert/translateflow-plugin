@@ -4,75 +4,146 @@
   const locale = app.modules.contentI18n;
 
   function create({ isCurrent, scheduleRead, fetchAsset, createTrackedUrl, revokeUrl, makePlaceholder, cancelResourceRequest,
-    maxAssetBytes, maxViewImagePixels }) {
+    maxAssetBytes, maxViewImageBytes, maxViewImagePixels }) {
     function installLazyImages(session, resource) {
       if (!resource.instances.length) return;
       if (typeof IntersectionObserver !== "function") {
-        for (const instance of resource.instances) void loadImage(session, resource, instance);
+        for (const instance of resource.instances) {
+          instance.visible = true;
+          void loadImage(session, resource);
+        }
         return;
       }
       session.imageObserver ||= new IntersectionObserver((entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const target = entry.target;
-          const targetInfo = session.observedImages.get(target);
-          session.imageObserver?.unobserve(target);
-          session.observedImages.delete(target);
-          if (targetInfo) void loadImage(session, targetInfo.resource, targetInfo.instance);
+          const targetInfo = session.observedImages.get(entry.target);
+          if (!targetInfo || !isCurrent(session)) continue;
+          const { resource: observedResource, instance } = targetInfo;
+          instance.visible = Boolean(entry.isIntersecting);
+          if (instance.visible) {
+            if (observedResource.objectUrl) showImageInstance(session, observedResource, instance);
+            else void loadImage(session, observedResource);
+          } else {
+            hideImageInstance(session, observedResource, instance);
+            releaseImageWhenOffscreen(session, observedResource);
+          }
         }
       }, { root: session.viewport, rootMargin: "0px" });
-      for (const instance of resource.instances) {
-        if (!instance.element) continue;
-        session.observedImages.set(instance.element, { resource, instance });
-        session.imageObserver.observe(instance.element);
-      }
+      for (const instance of resource.instances) observeImageInstance(session, resource, instance);
     }
 
-    async function loadImage(session, resource, instance) {
-      if (!isCurrent(session) || instance.loading || instance.loaded) return;
-      instance.loading = true;
-      try {
-        const asset = await scheduleRead(session, () => fetchAsset(session, resource));
-        if (!asset || !isCurrent(session)) return;
-        const width = asset.width;
-        const height = asset.height;
-        if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) return;
-        const pixels = width * height;
-        if (!Number.isSafeInteger(pixels) || pixels > maxViewImagePixels || session.imagePixels + pixels > maxViewImagePixels) return;
-        const url = createTrackedUrl(session, asset, pixels);
-        if (!url || !isCurrent(session)) return;
-        const image = document.createElement("img");
-        image.className = "tf-rich-resource-image";
-        if (resource.label) image.alt = resource.label;
-        else locale.bindAttribute(image, "alt", "content.rich.dictionaryImage");
-        image.width = width;
-        image.height = height;
-        image.addEventListener("error", () => {
-          revokeUrl(session, url);
-          instance.objectUrl = "";
-          if (!isCurrent(session)) return;
-          const placeholder = makePlaceholder("image", resource.label);
-          image.replaceWith(placeholder);
-          instance.element = placeholder;
-          instance.loaded = false;
-        }, { once: true });
-        image.addEventListener("load", () => {
-          if (!isCurrent(session)) revokeUrl(session, url);
-        }, { once: true });
-        image.src = url;
-        if (instance.element?.isConnected || instance.element?.parentNode) instance.element.replaceWith(image);
-        instance.element = image;
-        instance.objectUrl = url;
-        instance.loaded = true;
-      } catch {
-        if (!isCurrent(session)) return;
-        if (instance.element?.isConnected || instance.element?.parentNode) {
-          const placeholder = makePlaceholder("image", resource.label);
-          instance.element.replaceWith(placeholder);
-          instance.element = placeholder;
+    function observeImageInstance(session, resource, instance) {
+      if (!session.imageObserver || !instance.element || !isCurrent(session)) return;
+      session.observedImages.set(instance.element, { resource, instance });
+      session.imageObserver.observe(instance.element);
+    }
+
+    function replaceImageInstance(session, resource, instance, next) {
+      const previous = instance.element;
+      if (previous) {
+        session.imageObserver?.unobserve(previous);
+        session.observedImages.delete(previous);
+        if (previous.isConnected || previous.parentNode) previous.replaceWith(next);
+      }
+      instance.element = next;
+      observeImageInstance(session, resource, instance);
+    }
+
+    function showImageInstance(session, resource, instance) {
+      const url = resource.objectUrl;
+      if (!url || !instance.visible || !isCurrent(session)) return;
+      if (instance.element?.tagName === "IMG" && instance.element.src === url) return;
+      const image = document.createElement("img");
+      image.className = "tf-rich-resource-image";
+      if (resource.label) image.alt = resource.label;
+      else locale.bindAttribute(image, "alt", "content.rich.dictionaryImage");
+      image.width = resource.imageWidth;
+      image.height = resource.imageHeight;
+      image.addEventListener("error", () => failImageResource(session, resource, url), { once: true });
+      image.addEventListener("load", () => {
+        if (!isCurrent(session)) revokeUrl(session, url);
+      }, { once: true });
+      image.src = url;
+      replaceImageInstance(session, resource, instance, image);
+    }
+
+    function hideImageInstance(session, resource, instance) {
+      if (instance.element?.tagName !== "IMG") return;
+      const placeholder = makePlaceholder("image", resource.label);
+      replaceImageInstance(session, resource, instance, placeholder);
+    }
+
+    async function loadImage(session, resource) {
+      if (!isCurrent(session) || resource.imageLoadFailed || resource.objectUrl || resource.loadingPromise ||
+          !resource.instances.some((instance) => instance.visible)) return;
+      resource.loadingPromise = (async () => {
+        try {
+          const asset = await scheduleRead(session, () => fetchAsset(session, resource));
+          if (!asset || !isCurrent(session) || !resource.instances.some((instance) => instance.visible)) return;
+          const width = asset.width;
+          const height = asset.height;
+          if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 ||
+              !Number.isSafeInteger(asset.size) || asset.size <= 0 || asset.size > maxAssetBytes) {
+            resource.imageLoadFailed = true;
+            return;
+          }
+          const pixels = width * height;
+          if (!Number.isSafeInteger(pixels) || pixels <= 0 || pixels > maxViewImagePixels) {
+            resource.imageLoadFailed = true;
+            return;
+          }
+          if (session.imagePixels + pixels > maxViewImagePixels ||
+              session.imageBytes + asset.size > maxViewImageBytes) return;
+          const url = createTrackedUrl(session, asset, pixels, "image");
+          if (!url || !isCurrent(session) || !resource.instances.some((instance) => instance.visible)) {
+            if (url) revokeUrl(session, url);
+            return;
+          }
+          resource.objectUrl = url;
+          resource.imageWidth = width;
+          resource.imageHeight = height;
+          for (const instance of resource.instances) showImageInstance(session, resource, instance);
+        } catch {
+          // A failed or over-budget read leaves its observed placeholder in place.
+          // Capacity changes call retryVisibleImages() so it can be tried again.
         }
-      } finally {
-        instance.loading = false;
+      })().finally(() => {
+        resource.loadingPromise = null;
+      });
+      await resource.loadingPromise;
+    }
+
+    function releaseImageWhenOffscreen(session, resource) {
+      if (resource.instances.some((instance) => instance.visible) || !resource.objectUrl) return;
+      const url = resource.objectUrl;
+      resource.objectUrl = "";
+      resource.imageWidth = 0;
+      resource.imageHeight = 0;
+      revokeUrl(session, url);
+    }
+
+    function failImageResource(session, resource, url) {
+      if (resource.objectUrl !== url) return;
+      resource.imageLoadFailed = true;
+      resource.objectUrl = "";
+      resource.imageWidth = 0;
+      resource.imageHeight = 0;
+      for (const instance of resource.instances) {
+        if (instance.element?.tagName === "IMG" && instance.element.src === url) {
+          const placeholder = makePlaceholder("image", resource.label);
+          replaceImageInstance(session, resource, instance, placeholder);
+        }
+      }
+      revokeUrl(session, url);
+    }
+
+    function retryVisibleImages(session) {
+      if (!isCurrent(session)) return;
+      for (const resource of session.resources) {
+        if (resource.kind === "image" && !resource.objectUrl && !resource.imageLoadFailed &&
+            !resource.loadingPromise && resource.instances.some((instance) => instance.visible)) {
+          void loadImage(session, resource);
+        }
       }
     }
 
@@ -102,7 +173,7 @@
       try {
         const asset = await scheduleRead(session, () => session.activeAudio === activeAudio ? fetchAsset(session, resource) : undefined);
         if (!asset || !isCurrent(session) || session.activeAudio !== activeAudio) return;
-        const url = createTrackedUrl(session, asset, 0);
+        const url = createTrackedUrl(session, asset, 0, "audio");
         if (!url) throw new Error("Audio resource budget was exceeded.");
         const audio = document.createElement("audio");
         audio.className = "tf-rich-resource-audio";
@@ -115,8 +186,6 @@
         activeAudio.audio = audio;
         activeAudio.objectUrl = url;
         instance.element = audio;
-        instance.objectUrl = url;
-        instance.loaded = true;
         audio.addEventListener("error", () => {
           if (session.activeAudio === activeAudio) releaseActiveAudio(session, activeAudio, true);
         }, { once: true });
@@ -124,7 +193,6 @@
       } catch {
         if (session.activeAudio !== activeAudio || !isCurrent(session)) return;
         session.activeAudio = null;
-        instance.loaded = false;
         bindAudioButton(session, resource, instance);
         locale.bindText(instance.element, resource.label ? "content.rich.audioUnreadable" : "content.rich.audioMissing", resource.label ? { label: resource.label } : {});
       }
@@ -141,8 +209,6 @@
       }
       for (const requestId of activeAudio.resource.inFlightRequests) cancelResourceRequest(session, activeAudio.resource, requestId);
       if (activeAudio.objectUrl) revokeUrl(session, activeAudio.objectUrl);
-      activeAudio.instance.objectUrl = "";
-      activeAudio.instance.loaded = false;
       if (session.activeAudio === activeAudio) session.activeAudio = null;
       if (restoreButton && isCurrent(session)) bindAudioButton(session, activeAudio.resource, activeAudio.instance);
     }
@@ -166,7 +232,7 @@
       }
     }
 
-    return Object.freeze({ installLazyImages, installAudioLoader, releaseActiveAudio, restorePlaceholders });
+    return Object.freeze({ installLazyImages, installAudioLoader, releaseActiveAudio, restorePlaceholders, retryVisibleImages });
   }
 
   app.modules.richResourceMedia = Object.freeze({ create });

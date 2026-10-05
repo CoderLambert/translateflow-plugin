@@ -63,6 +63,24 @@ test("Encrypted=2 Compact/Compat MDX builds an index and returns readable safe t
   assert.ok(source.requests.every(({ offset, length }) => offset + length <= bytes.byteLength));
 });
 
+test("UTF-16 record bytes and decoded UTF-8 bytes remain distinct within their limits", async () => {
+  const record = `<div>${"漢".repeat(400_000)}<span>TAIL_SENTINEL</span></div>`;
+  const bytes = makeRichMdx([["utf16fixture", record]], { encoding: "UTF-16" });
+  const source = createTrackedSource(bytes);
+  const index = await buildRichMdictIndex({ source });
+  const result = await lookupRichMdict({ source, index, text: "utf16fixture" });
+
+  assert.equal(index.header.encoding, "UTF-16");
+  assert.equal(result.found, true);
+  assert.ok(result.sourceRecordBytes <= 1024 * 1024);
+  assert.ok(result.sourceRecordBytes > 800_000);
+  assert.equal(result.decodedTextBytes, new TextEncoder().encode(record).byteLength);
+  assert.ok(result.decodedTextBytes > 1024 * 1024);
+  assert.ok(result.decodedTextBytes < 2 * 1024 * 1024);
+  assert.ok(result.rawRecord.endsWith("</div>"));
+  assert.match(result.rawRecord, /TAIL_SENTINEL<\/span><\/div>$/u);
+});
+
 test("corrupt Encrypted=2 key-info bytes fail as a bounded MDict corruption", async () => {
   const bytes = Buffer.from(makeRichMdx([["alpha", "definition"]], { encrypted: 2 }));
   const headerLength = bytes.readUInt32BE(0);

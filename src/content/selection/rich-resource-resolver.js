@@ -5,6 +5,7 @@
   const MAX_RESOURCE_COUNT = 1024;
   const MAX_ASSET_BYTES = 8 * 1024 * 1024;
   const MAX_VIEW_BLOB_BYTES = 32 * 1024 * 1024;
+  const MAX_VIEW_IMAGE_BYTES = MAX_VIEW_BLOB_BYTES - MAX_ASSET_BYTES;
   const MAX_VIEW_IMAGE_PIXELS = 16 * 1024 * 1024;
   const MAX_STYLESHEET_BYTES = 64 * 1024;
   const MAX_BASE64_CHARS = Math.ceil(MAX_ASSET_BYTES / 3) * 4;
@@ -28,6 +29,8 @@
     revokeUrl,
     makePlaceholder,
     cancelResourceRequest,
+    maxAssetBytes: MAX_ASSET_BYTES,
+    maxViewImageBytes: MAX_VIEW_IMAGE_BYTES,
     maxViewImagePixels: MAX_VIEW_IMAGE_PIXELS
   });
 
@@ -47,6 +50,7 @@
       imageObserver: null,
       observedImages: new WeakMap(),
       objectBytes: 0,
+      imageBytes: 0,
       imagePixels: 0
     };
     sessionsByContainer.set(container, session);
@@ -63,7 +67,10 @@
         kind: item.kind,
         path,
         label: String(item.label || "").slice(0, 160),
-        instances: elements.map((element) => ({ element, loaded: false, loading: false, objectUrl: "" })),
+        instances: elements.map((element) => ({ element })),
+        objectUrl: "",
+        imageLoadFailed: false,
+        loadingPromise: null,
         inFlightRequests: new Set(),
         styleNode: null
       });
@@ -82,9 +89,7 @@
       const asset = await fetchAsset(session, resource);
       if (!isCurrent(session)) return;
       if (resource.kind === "stylesheet") {
-        let css = typeof asset.safeCss === "string"
-          ? asset.safeCss
-          : app.modules.richResourceStylesheet?.compileLocalStylesheet(asset.bytes) || "";
+        let css = asset.safeCss;
         for (const slot of asset.assetSlots) {
           if (!isCurrent(session)) return;
           try {
@@ -95,7 +100,7 @@
               css = css.replaceAll(slot.token, "none");
               continue;
             }
-            const url = createTrackedUrl(session, image, pixels);
+            const url = createTrackedUrl(session, image, pixels, "image");
             if (!url) {
               css = css.replaceAll(slot.token, "none");
               continue;
@@ -193,12 +198,17 @@
     return slots;
   }
 
-  function createTrackedUrl(session, asset, pixels) {
-    if (!isCurrent(session) || session.objectBytes + asset.size > MAX_VIEW_BLOB_BYTES) return "";
+  function createTrackedUrl(session, asset, pixels, kind = "image") {
+    const imageBytes = kind === "audio" ? 0 : asset.size;
+    if (!isCurrent(session) || !Number.isSafeInteger(asset.size) || asset.size <= 0 || asset.size > MAX_ASSET_BYTES ||
+        session.objectBytes + asset.size > MAX_VIEW_BLOB_BYTES ||
+        session.imageBytes + imageBytes > MAX_VIEW_IMAGE_BYTES ||
+        session.imagePixels + pixels > MAX_VIEW_IMAGE_PIXELS) return "";
     let url = "";
     try { url = URL.createObjectURL(new Blob([asset.bytes], { type: asset.mime })); } catch { return ""; }
-    session.urls.set(url, { size: asset.size, pixels });
+    session.urls.set(url, { size: asset.size, pixels, kind });
     session.objectBytes += asset.size;
+    session.imageBytes += imageBytes;
     session.imagePixels += pixels;
     activeObjectUrlCount += 1;
     return url;
@@ -209,9 +219,11 @@
     if (!item) return;
     session.urls.delete(url);
     session.objectBytes = Math.max(0, session.objectBytes - item.size);
+    if (item.kind !== "audio") session.imageBytes = Math.max(0, session.imageBytes - item.size);
     session.imagePixels = Math.max(0, session.imagePixels - item.pixels);
     activeObjectUrlCount = Math.max(0, activeObjectUrlCount - 1);
     try { URL.revokeObjectURL(url); } catch {}
+    media.retryVisibleImages(session);
   }
 
   function close(container) {
@@ -330,12 +342,28 @@
   }
 
   function decodeBase64(base64, expectedSize) {
-    if (!base64 || !/^(?:[a-z0-9+/]{4})*(?:[a-z0-9+/]{2}==|[a-z0-9+/]{3}=)?$/iu.test(base64)) throw new Error("MDD resource encoding is invalid.");
+    if (!isStrictBase64(base64)) throw new Error("MDD resource encoding is invalid.");
     const binary = atob(base64);
     if (binary.length !== expectedSize || binary.length > MAX_ASSET_BYTES) throw new Error("MDD resource byte length is inconsistent.");
     const bytes = new Uint8Array(binary.length);
     for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
     return bytes;
+  }
+
+  function isStrictBase64(value) {
+    if (!value || value.length % 4 !== 0) return false;
+    const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+    const payloadEnd = value.length - padding;
+    if ((padding === 2 && payloadEnd % 4 !== 2) || (padding === 1 && payloadEnd % 4 !== 3)) return false;
+    for (let index = 0; index < payloadEnd; index += 1) {
+      const code = value.charCodeAt(index);
+      if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122) ||
+          (code >= 48 && code <= 57) || code === 43 || code === 47)) return false;
+    }
+    for (let index = payloadEnd; index < value.length; index += 1) {
+      if (value.charCodeAt(index) !== 61) return false;
+    }
+    return true;
   }
 
   function makePlaceholder(kind, label = "") {
@@ -354,8 +382,17 @@
     close,
     closeAll,
     closeDictionary,
-    compileLocalStylesheet: app.modules.richResourceStylesheet?.compileLocalStylesheet,
     get activeObjectUrlCount() { return activeObjectUrlCount; },
+    get activeObjectUrlBytes() {
+      let bytes = 0;
+      for (const session of activeSessions) bytes += session.objectBytes;
+      return bytes;
+    },
+    get activeImagePixelCount() {
+      let pixels = 0;
+      for (const session of activeSessions) pixels += session.imagePixels;
+      return pixels;
+    },
     get pendingReadCount() { return readQueue.length; },
     get runningReadCount() { return runningReads; }
   });

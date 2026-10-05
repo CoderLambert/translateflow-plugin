@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { deflateSync } from "node:zlib";
+import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 import { test, expect } from "./support/extension-fixture.mjs";
-import { readMddInteropFixture, readMddLinkedPackageFixture } from "../tests/helpers/mdd-fixture.mjs";
+import { readMddAudio526Fixture, readMddInteropFixture, readMddLinkedPackageFixture } from "../tests/helpers/mdd-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
+import { buildRichMdictIndex, lookupRichMdict } from "../src/background/packs/importers/mdict-rich.js";
 
 const evidenceDir = process.env.MDD_INTEROP_EVIDENCE_DIR ||
   resolve("/tmp/translateflow-mdd-184/evidence");
@@ -232,6 +235,99 @@ test.describe("local MDD resource product and security behavior", () => {
     console.log("[MDD_RESOURCES_E2E]", JSON.stringify(report));
   });
 
+  test("wide synthetic screenshot shows the actual rich viewer definition, media, and fragment jump", async ({ harness }) => {
+    const mdd = makeMdd([
+      ["\\interop\\sample.png", makeDemoPng()],
+      ["\\interop\\tone.wav", makeDemoWav()]
+    ], { title: "Synthetic Visual Resource Fixture" });
+    const visualRecord = [
+      '<div class="mdd-note">',
+      '<p><b>SYNTHETIC SAMPLE</b> — Definition: local demo. <a href="#usage">Usage jump</a> <span id="usage">Example.</span></p>',
+      '<img alt="Synthetic local illustration" src="interop/sample.png">',
+      '<audio title="Synthetic pronunciation" src="interop/tone.wav"></audio>',
+      '</div>'
+    ].join("");
+    const mdx = makeRichMdx([["visualdemo", visualRecord]], {
+      title: "Synthetic Rich Viewer Screenshot Fixture"
+    });
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles({
+      name: "visualdemo.mdx", mimeType: "application/octet-stream", buffer: mdx
+    });
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("Synthetic Rich Viewer Screenshot Fixture");
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 60_000 });
+    const row = options.locator("#richMdictInstalledList [data-dictionary-id]").filter({
+      hasText: "Synthetic Rich Viewer Screenshot Fixture"
+    });
+    await expect(row).toBeVisible();
+    const dictionaryId = await row.getAttribute("data-dictionary-id");
+    await attachMddFile(row, {
+      name: "visualdemo.mdd", mimeType: "application/octet-stream", buffer: mdd
+    }, { success: true });
+
+    const page = await harness.open("/selection");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.evaluate(() => {
+      document.title = "Synthetic reading page";
+      document.body.replaceChildren();
+      const heading = document.createElement("h1");
+      heading.textContent = "Synthetic reading page";
+      const context = document.createElement("p");
+      context.append("Select ");
+      const selected = document.createElement("span");
+      selected.id = "visual-demo-word";
+      selected.textContent = "visualdemo";
+      context.append(selected, " to view the local dictionary example.");
+      document.body.append(heading, context);
+    });
+    await harness.inject(page);
+    await selectElementText(page, "#visual-demo-word");
+    const chip = page.locator(".tf-selection-chip");
+    await expect(chip).toBeVisible({ timeout: 10_000 });
+    await chip.click();
+    const card = page.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+    await expandRichCard(card);
+    const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
+    await expect(viewer).toContainText("SYNTHETIC SAMPLE");
+    await expect(viewer).toContainText("Definition: local demo.");
+    const image = viewer.locator("img.tf-rich-resource-image[src^='blob:']");
+    await expect(image).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => image.evaluate((node) => node.naturalWidth)).toBe(240);
+    const audioButton = viewer.locator("button[data-action='load-mdd-audio']");
+    await expect(audioButton).toBeVisible();
+    await audioButton.click();
+    const audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
+    await expect(audio).toBeVisible({ timeout: 30_000 });
+    const fragmentLink = viewer.locator("button[data-rich-fragment-target='usage']");
+    await expect(fragmentLink).toContainText("Usage jump");
+    await fragmentLink.click();
+    await expect.poll(() => viewer.evaluate((root) => {
+      return root.getRootNode().activeElement?.getAttribute("data-rich-target-id") === "usage";
+    })).toBe(true);
+    await expect(viewer).toContainText("Example.");
+
+    const screenshotPath = resolve(process.env.TF_RICH_DICTIONARY_SCREENSHOT || "/tmp/translateflow-rich-dictionary-demo.png");
+    await mkdir(dirname(screenshotPath), { recursive: true });
+    await page.screenshot({ path: screenshotPath, fullPage: false, caret: "initial" });
+    console.log("[RICH_VIEWER_SCREENSHOT]", JSON.stringify({
+      status: "PASS",
+      screenshotPath,
+      testedSourceHead: harness.buildReport.sourceHead,
+      artifactTreeSha256: harness.buildReport.treeSha256,
+      viewport: [1440, 900],
+      syntheticContentMarker: "SYNTHETIC SAMPLE",
+      definitionVisible: true,
+      imageLoaded: true,
+      audioLoadedOnClick: true,
+      fragmentJumpVerified: true,
+      providerCalls: harness.server.calls.length
+    }));
+    await page.getByRole("button", { name: "关闭" }).click();
+  });
+
   test("selecting MDX and its MDD together installs one linked offline dictionary", async ({ harness }) => {
     const { mdx, mdd } = await readMddInteropFixture();
     const options = await harness.context.newPage();
@@ -293,9 +389,15 @@ test.describe("local MDD resource product and security behavior", () => {
 
   test("long rich record keeps its tail and lazy single-slot audio over an independent MDD fixture", async ({ harness }) => {
     await mkdir(evidenceDir, { recursive: true });
-    const { mdd } = await readMddInteropFixture();
+    const { mdd, lock: audioFixtureLock } = await readMddAudio526Fixture();
+    const audioPaths = audioFixtureLock.generation.distinctAudioPaths;
+    expect(audioPaths).toHaveLength(526);
+    expect(new Set(audioPaths).size).toBe(526);
     const repeatedNodes = "<span>x</span>".repeat(15_000);
-    const repeatedResources = '<audio src="interop/tone.wav"/>'.repeat(526) + '<img src="interop/sample.png" alt="lazy sample"/>';
+    const repeatedResources = audioPaths.map((path) => {
+      const name = path.split("/").at(-1);
+      return `<audio aria-label="${name}" src="${path}"/>`;
+    }).join("") + '<img src="interop/sample.png" alt="lazy sample"/>';
     const prefix = `<div>BEGIN${repeatedNodes}${repeatedResources}`;
     const suffix = "<p>TAIL_SENTINEL</p></div>";
     const fillerBytes = 778_100 - prefix.length - suffix.length - 7;
@@ -306,7 +408,7 @@ test.describe("local MDD resource product and security behavior", () => {
     const options = await harness.context.newPage();
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
     await options.locator("#localDictionaryFiles").setInputFiles({
-      name: "interop.mdx", mimeType: "application/octet-stream", buffer: mdx
+      name: "longrecordfixture.mdx", mimeType: "application/octet-stream", buffer: mdx
     });
     await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("Bounded Long Record Fixture");
     await options.locator("#localDictionaryImportButton").click();
@@ -315,7 +417,7 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect(row).toBeVisible();
     const dictionaryId = await row.getAttribute("data-dictionary-id");
     await attachMddFile(row, {
-      name: "interop.mdd", mimeType: "application/octet-stream", buffer: mdd
+      name: "longrecordfixture.mdd", mimeType: "application/octet-stream", buffer: mdd
     }, { success: true });
 
     const page = await harness.open("/selection");
@@ -345,21 +447,30 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect(viewer.locator("audio")).toHaveCount(0);
     await expect(viewer.locator("img.tf-rich-resource-image[src^='blob:']")).toHaveCount(0);
     expect(await activeObjectUrlCount(harness, page)).toBe(0);
+    for (const index of [0, 262, 525]) {
+      const audioName = `tone-${String(index).padStart(3, "0")}.wav`;
+      await expect(viewer.locator(`button[data-action='load-mdd-audio'][aria-label*='${audioName}']`)).toHaveCount(1);
+    }
 
-    await audioLoaders.nth(0).click();
+    await viewer.locator("button[data-action='load-mdd-audio'][aria-label*='tone-000.wav']").click();
     let audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
     await expect(audio).toHaveCount(1, { timeout: 30_000 });
     await expect(audio).toHaveAttribute("preload", "none");
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
-    await audioLoaders.nth(1).click();
+    await viewer.locator("button[data-action='load-mdd-audio'][aria-label*='tone-262.wav']").click();
     await expect(viewer.locator("audio.tf-rich-resource-audio[src^='blob:']")).toHaveCount(1);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
     await expect(viewer.locator("button[data-action='load-mdd-audio']")).toHaveCount(525);
     await expect(viewer.locator("img.tf-rich-resource-image[src^='blob:']")).toHaveCount(0);
-    await viewer.locator("button[data-action='load-mdd-audio']").first().click();
+    await viewer.locator("button[data-action='load-mdd-audio'][aria-label*='tone-000.wav']").click();
     audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
     await expect(audio).toHaveCount(1);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
+    await viewer.locator("button[data-action='load-mdd-audio'][aria-label*='tone-525.wav']").click();
+    await expect(viewer.locator("audio.tf-rich-resource-audio[src^='blob:']")).toHaveCount(1);
+    const urlsAfterLastAudioSwitch = await activeObjectUrlCount(harness, page);
+    expect(urlsAfterLastAudioSwitch).toBeGreaterThanOrEqual(1);
+    expect(urlsAfterLastAudioSwitch).toBeLessThanOrEqual(2, "the one audio URL may coexist with the lazy image after it enters view");
     expect(await audio.getAttribute("autoplay")).toBeNull();
     await viewer.evaluate((root) => { root.scrollTop = root.scrollHeight; });
     const lazyImage = viewer.locator("img.tf-rich-resource-image[src^='blob:']");
@@ -379,10 +490,15 @@ test.describe("local MDD resource product and security behavior", () => {
       testedSourceHead: harness.buildReport.sourceHead,
       artifactTreeSha256: harness.buildReport.treeSha256,
       independentMddWriterCommit: lock.independentWriter.commit,
+      distinctAudioResourcePaths: audioPaths.length,
+      audioFixtureMddBytes: mdd.byteLength,
+      audioFixtureMddSha256: audioFixtureLock.generation.mdd.sha256,
       rawRecordBytes: Buffer.byteLength(rawRecord, "utf8"),
       tailSentinelRendered: true,
       repeatedAudioReferences: 526,
+      allAudioReferencesUseDistinctMddPaths: new Set(audioPaths).size === 526,
       audioRequestedOnClickOnly: true,
+      firstMiddleLastAudioControlsLoaded: true,
       offscreenImageLoadedOnlyAfterScrolling: true,
       activeAudioSlotCount: 1,
       previousAudioCanBeSelectedAgain: true,
@@ -394,6 +510,108 @@ test.describe("local MDD resource product and security behavior", () => {
     };
     await writeFile(resolve(evidenceDir, "rich-long-record-resources-report.json"), `${JSON.stringify(report, null, 2)}\n`);
     console.log("[RICH_LONG_RECORD_RESOURCES_E2E]", JSON.stringify(report));
+  });
+
+  test("UTF-16 record keeps separate source and decoded sizes through selection lookup and viewer", async ({ harness }) => {
+    await mkdir(evidenceDir, { recursive: true });
+    const record = `<div>${"漢".repeat(400_000)}<span>UTF16_TAIL_SENTINEL</span></div>`;
+    const mdx = makeRichMdx([["utf16fixture", record]], {
+      title: "UTF-16 Rich Record Fixture",
+      encoding: "UTF-16"
+    });
+    const source = {
+      size: mdx.byteLength,
+      async read(offset, length) { return new Uint8Array(mdx.subarray(offset, offset + length)); }
+    };
+    const index = await buildRichMdictIndex({ source });
+    const decoded = await lookupRichMdict({ source, index, text: "utf16fixture" });
+    expect(decoded.found).toBe(true);
+    expect(decoded.sourceRecordBytes).toBeGreaterThan(800_000);
+    expect(decoded.sourceRecordBytes).toBeLessThanOrEqual(1024 * 1024);
+    expect(decoded.decodedTextBytes).toBe(Buffer.byteLength(record, "utf8"));
+    expect(decoded.decodedTextBytes).toBeGreaterThan(1024 * 1024);
+    expect(decoded.rawRecord).toContain("UTF16_TAIL_SENTINEL");
+
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles({
+      name: "utf16-record.mdx", mimeType: "application/octet-stream", buffer: mdx
+    });
+    await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("UTF-16 Rich Record Fixture");
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 60_000 });
+    const row = options.locator("#richMdictInstalledList [data-dictionary-id]").filter({ hasText: "UTF-16 Rich Record Fixture" });
+    await expect(row).toBeVisible();
+    const dictionaryId = await row.getAttribute("data-dictionary-id");
+
+    const page = await harness.open("/selection");
+    await page.evaluate(() => {
+      const node = document.createElement("p");
+      node.id = "utf16-rich-fixture-word";
+      node.textContent = "utf16fixture";
+      document.body.appendChild(node);
+    });
+    await harness.inject(page);
+    const lookupMessage = await readRichMdictLookup(harness, page, dictionaryId, "utf16fixture");
+    const messageDictionaries = lookupMessage?.dictionaries || lookupMessage?.data?.dictionaries || [];
+    const messageDictionary = messageDictionaries.find((item) => item.id === dictionaryId) || messageDictionaries[0];
+    const messageRecord = messageDictionary?.richRecord;
+    console.log("[RICH_UTF16_LOOKUP_MESSAGE]", JSON.stringify({
+      responseKeys: Object.keys(lookupMessage || {}),
+      ok: lookupMessage?.ok,
+      found: lookupMessage?.found,
+      dictionaryCount: messageDictionaries.length,
+      dictionaryKeys: Object.keys(messageDictionary || {}),
+      dictionaryId: messageDictionary?.id,
+      richRecordKeys: Object.keys(messageRecord || {}),
+      sourceBytes: messageRecord?.sourceBytes,
+      textBytes: messageRecord?.textBytes,
+      rawChars: messageRecord?.rawRecord?.length,
+      rawTail: messageRecord?.rawRecord?.slice(-48),
+      hasSentinel: Boolean(messageRecord?.rawRecord?.includes("UTF16_TAIL_SENTINEL")),
+      errors: lookupMessage?.errors?.map((item) => ({ code: item.code, message: item.message }))
+    }));
+    expect(lookupMessage?.ok).toBe(true);
+    expect(messageRecord?.sourceBytes).toBe(decoded.sourceRecordBytes);
+    expect(messageRecord?.textBytes).toBe(decoded.decodedTextBytes);
+    expect(messageRecord?.rawRecord?.includes("UTF16_TAIL_SENTINEL")).toBe(true);
+    await selectElementText(page, "#utf16-rich-fixture-word");
+    const chip = page.locator(".tf-selection-chip");
+    await expect(chip).toBeVisible({ timeout: 10_000 });
+    await chip.click();
+    const card = page.locator(`.tf-selection-rich-record[data-dictionary-id="${dictionaryId}"]`);
+    await expandRichCard(card);
+    const viewer = card.locator(".tf-selection-rich-text .tf-rich-viewer");
+    const renderedMetrics = await viewer.evaluate((root) => {
+      const text = root.textContent || "";
+      return {
+        textChars: text.length,
+        tail: text.slice(-48),
+        hasSentinel: text.includes("UTF16_TAIL_SENTINEL"),
+        truncated: Boolean(root.querySelector(".tf-rich-truncated"))
+      };
+    });
+    console.log("[RICH_UTF16_RENDERED_METRICS]", JSON.stringify(renderedMetrics));
+    expect(renderedMetrics.hasSentinel, JSON.stringify(renderedMetrics)).toBe(true);
+    await expect(viewer.locator(".tf-rich-truncated")).toHaveCount(0);
+
+    const report = {
+      status: "PASS",
+      testedSourceHead: harness.buildReport.sourceHead,
+      artifactTreeSha256: harness.buildReport.treeSha256,
+      sourceEncoding: "UTF-16LE",
+      sourceRecordBytes: decoded.sourceRecordBytes,
+      decodedTextBytes: decoded.decodedTextBytes,
+      messageSourceBytes: messageRecord.sourceBytes,
+      messageTextBytes: messageRecord.textBytes,
+      tailSentinelRendered: true,
+      truncationNoticeCount: 0,
+      providerCalls: harness.server.calls.length,
+      generatedAt: new Date().toISOString()
+    };
+    await writeFile(resolve(evidenceDir, "rich-utf16-message-viewer-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    console.log("[RICH_UTF16_MESSAGE_VIEWER_E2E]", JSON.stringify(report));
+    await page.getByRole("button", { name: "关闭" }).click();
   });
 
   test("six-file MDX/MDD package keeps sidecars versioned across a real browser restart", async ({ harness }) => {
@@ -613,6 +831,24 @@ async function readMddResourceFromOptions(options, dictionaryId, path) {
   }), { dictionaryId, path });
 }
 
+async function readRichMdictLookup(harness, page, dictionaryId, text) {
+  const tabId = await harness.tabId(page);
+  const [result] = await harness.driver.evaluate(async ({ tabId, dictionaryId, text }) => {
+    return chrome.scripting.executeScript({
+      target: { tabId },
+      func: async ({ dictionaryId, text }) => chrome.runtime.sendMessage({
+        type: "RICH_MDICT_LOOKUP",
+        requestId: `selection-rich-lookup-${crypto.randomUUID().replaceAll("-", "")}`,
+        ownerToken: crypto.randomUUID().replaceAll("-", ""),
+        dictionaryId,
+        text
+      }),
+      args: [{ dictionaryId, text }]
+    });
+  }, { tabId, dictionaryId, text });
+  return result?.result;
+}
+
 async function readMddResource(harness, page, dictionaryId, path, packageVersion = "") {
   const tabId = await harness.tabId(page);
   return harness.driver.evaluate(async ({ tabId, dictionaryId, path, packageVersion }) => {
@@ -677,6 +913,76 @@ async function selectElementText(page, selector) {
       view: window
     }));
   });
+}
+
+function makeDemoPng() {
+  const width = 240;
+  const height = 32;
+  const scanlines = Buffer.alloc(height * (1 + width * 4));
+  for (let y = 0; y < height; y += 1) {
+    const row = y * (1 + width * 4);
+    scanlines[row] = 0;
+    for (let x = 0; x < width; x += 1) {
+      const pixel = row + 1 + x * 4;
+      const grid = x % 24 < 2 || y % 16 < 2;
+      scanlines[pixel] = grid ? 239 : 55 + Math.round(x / width * 45);
+      scanlines[pixel + 1] = grid ? 246 : 121 + Math.round(y / height * 55);
+      scanlines[pixel + 2] = grid ? 236 : 118 + Math.round(x / width * 58);
+      scanlines[pixel + 3] = 255;
+    }
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = 6;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", deflateSync(scanlines)),
+    pngChunk("IEND", Buffer.alloc(0))
+  ]);
+}
+
+function pngChunk(type, data) {
+  const typeBytes = Buffer.from(type, "ascii");
+  const body = Buffer.concat([typeBytes, data]);
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.byteLength);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(crc32(body));
+  return Buffer.concat([length, body, checksum]);
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function makeDemoWav() {
+  const sampleCount = 960;
+  const pcm = Buffer.alloc(sampleCount * 2);
+  for (let index = 0; index < sampleCount; index += 1) {
+    pcm.writeInt16LE(Math.round(5000 * Math.sin(2 * Math.PI * 440 * index / 8000)), index * 2);
+  }
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(36 + pcm.byteLength, 4);
+  header.write("WAVEfmt ", 8, "ascii");
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(8000, 24);
+  header.writeUInt32LE(16000, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36, "ascii");
+  header.writeUInt32LE(pcm.byteLength, 40);
+  return Buffer.concat([header, pcm]);
 }
 
 function sha256(input) {

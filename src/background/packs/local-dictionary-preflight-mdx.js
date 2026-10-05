@@ -6,6 +6,7 @@ import { buildRichMdictIndex } from "./importers/mdict-rich.js";
 import { buildMddIndex } from "./importers/mdd.js";
 import {
   RICH_MDD_MAX_COMPANIONS,
+  RICH_MDD_MAX_SOURCE_BYTES,
   RICH_MDD_MAX_SIDECAR_FILE_BYTES,
   classifyMddSidecarPath,
   validateMddCompanions
@@ -124,7 +125,7 @@ export async function preflightMdxFiles({
   const associatedMdd = [];
   for (const companion of orderedCompanions) {
     try {
-      assertPreflightFileLimit(companion, 128 * 1024 * 1024, "mdd.file_too_large");
+      assertPreflightFileLimit(companion, RICH_MDD_MAX_SOURCE_BYTES, "mdd.file_too_large");
       const mddIndex = await buildMddIndex({
         source: blobRangeSource(companion, signal),
         signal
