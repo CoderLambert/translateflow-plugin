@@ -98,7 +98,7 @@ test.describe("unified local dictionary import v2", () => {
     expect(harness.server.calls).toHaveLength(0);
   });
 
-  test("locally supplied real MDX/MDD imports, looks up offline, and survives a browser restart", async ({ harness }) => {
+  test("locally supplied real MDX/MDD imports, looks up offline, and survives a browser restart", async ({ harness }, testInfo) => {
     test.skip(!realMdxPath || !realMddPath,
       "Set TF_LOCAL_REAL_MDICT_MDX and TF_LOCAL_REAL_MDICT_MDD to run the local real-file import check.");
     test.setTimeout(240_000);
@@ -126,6 +126,9 @@ test.describe("unified local dictionary import v2", () => {
     await expect(importButton).toBeEnabled();
     await importButton.click();
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 120_000 });
+    await options.locator("#localDictionaryImport").screenshot({
+      path: testInfo.outputPath("local-real-mdict-import-complete.png")
+    });
 
     const installed = options.locator("#richMdictInstalledList .site-row").first();
     await expect(installed).toBeVisible();
@@ -150,7 +153,8 @@ test.describe("unified local dictionary import v2", () => {
     await harness.restartBrowser();
     const restartedOptions = await harness.context.newPage();
     await restartedOptions.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
-    await expect(restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)).toBeVisible();
+    const persistedRow = restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`);
+    await expect(persistedRow).toBeVisible();
     const restartedList = await restartedOptions.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
     expect(restartedList.dictionaries.find((item) => item.id === dictionaryId)?.status).toBe("ready");
     const restartedLookup = await restartedOptions.evaluate(() => chrome.runtime.sendMessage({
@@ -161,7 +165,6 @@ test.describe("unified local dictionary import v2", () => {
     const restartedRecord = restartedLookup.dictionaries.find((item) => item.id === dictionaryId);
     expect(restartedRecord?.headword).toBe(firstRecord.headword);
     expect(restartedRecord?.text).toBe(firstRecord.text);
-
     await restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)
       .getByRole("button", { name: "删除" }).click();
     await expect(restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)).toBeHidden();
