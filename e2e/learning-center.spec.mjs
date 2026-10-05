@@ -284,14 +284,25 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await expect(recordPage.getByText("Historical snapshot · readable offline")).toBeVisible();
   expect(harness.server.calls).toHaveLength(0);
 
+  const latestReturnOpened = harness.context.waitForEvent("page");
+  await recordPage.getByRole("button", { name: "Return to original page", exact: true }).click();
+  const latestReturned = await latestReturnOpened;
+  await latestReturned.waitForLoadState("domcontentloaded");
+  await expect(latestReturned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+  await expect(latestReturned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
+  await expect(latestReturned.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+  await expect(latestReturned.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await waitForStableReturnCard(latestReturned);
+  await expect(latestReturned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
+
   await recordPage.getByRole("button", { name: "Delete record", exact: true }).click();
   await recordPage.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(recordPage.locator(".record-list .record")).toHaveCount(0);
   await expect(recordPage.locator("header")).toContainText("Records: 0");
   await expect(recordPage.getByText("Connection interrupted. Saved content cannot be confirmed.", { exact: true })).toHaveCount(0);
-  await expect(returned.locator(".tf-reading-page-toggle")).toHaveCount(0);
-  await expect(returned.locator(".tf-reading-page-marker")).toHaveCount(0);
-  await expect(returned.locator(".tf-reading-return-card")).toHaveCount(0);
+  await expect(latestReturned.locator(".tf-reading-page-toggle")).toHaveCount(0);
+  await expect(latestReturned.locator(".tf-reading-page-marker")).toHaveCount(0);
+  await expect(latestReturned.locator(".tf-reading-return-card")).toHaveCount(0);
   await recordPage.screenshot({ path: info.outputPath("reading-user-journey-deleted.png"), fullPage: true });
   await writeFile(info.outputPath("reading-user-journey.json"), JSON.stringify({
     browser: harness.context.browser().version(), build: harness.buildReport,
