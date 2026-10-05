@@ -6,6 +6,7 @@
   const locale = app.modules.contentI18n;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   let card = null, quoteNode = null, overlays = [], activeRange = null, activeText = "", controller = null, frame = 0, previousFocus = null, summary = null;
+  let invalidationMonitor = null, invalidationUnsubscribe = null;
   let projectionUnsubscribe = null, mutationTimer = 0, automaticRetries = 0, locationGeneration = 0, dismissed = false;
   const messages = {
     locating: "content.reading.locating",
@@ -56,6 +57,8 @@
   }
   function close() {
     dismissed = true;
+    invalidationUnsubscribe?.(); invalidationUnsubscribe = null;
+    invalidationMonitor?.close(); invalidationMonitor = null;
     cleanup(); document.removeEventListener("keydown", onKeyDown); locale.unbindTree(card); card?.remove(); card = null;
     quoteNode = null; summary = null;
     window.removeEventListener("popstate", close); window.removeEventListener("hashchange", close);
@@ -110,7 +113,11 @@
   }
   async function start() {
     const handoff = await app.modules.readingHandoff.ready;
-    if (dismissed || handoff.state !== "consumed") return { state: "closed" };
+    if (handoff.state !== "consumed") { handoff.invalidation?.close(); return { state: "closed" }; }
+    invalidationMonitor = handoff.invalidation;
+    if (dismissed || !invalidationMonitor || invalidationMonitor.invalidated) { close(); return { state: "closed" }; }
+    invalidationUnsubscribe = invalidationMonitor.subscribe(close);
+    if (dismissed || invalidationMonitor.invalidated) { close(); return { state: "closed" }; }
     summary = handoff.summary; const state = renderCard(); await locate(state); return { state: card?.dataset.state || "closed" };
   }
   window.addEventListener("pagehide", close, { once: true });
