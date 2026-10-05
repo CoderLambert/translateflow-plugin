@@ -121,6 +121,10 @@
     reposition();
   }
 
+  function setLoadingCancelable(cancelable) {
+    if (cancelButton && !cancelButton.hidden) cancelButton.disabled = !cancelable;
+  }
+
   function defaultLoadingMessage(snapshot) {
     const text = String(snapshot?.text || "").trim();
     return /^[A-Za-z][A-Za-z’'-]*$/u.test(text)
@@ -386,6 +390,7 @@
     showChip,
     showLoading,
     setLoadingStatus,
+    setLoadingCancelable,
     showResult,
     appendRichDictionaryDetails,
     appendRichDictionaryCards,

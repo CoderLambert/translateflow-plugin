@@ -1,10 +1,85 @@
 {
   "schema": 1,
   "task": "229",
-  "candidateHead": null,
-  "checks": [],
+  "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
+  "tree": "f3045c54c400d6ff35cbee76949833249e8f4a0b",
+  "inputTree": "d1f424ee805c66256937ff2c09dccd71c38f69fd0da45fbd2768c42517d0c028",
+  "frozenAt": "2026-10-05T04:28:08.774Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12; PLAYWRIGHT_BROWSERS_PATH=/tmp/translateflow-playwright"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 72582.209923,
+      "startedAt": "2026-10-05T04:28:13.861Z",
+      "log": "docs/task-execution/local/229/b73afd5d-a36f-46a3-8c2b-85f1d8328c3b.log",
+      "logSha256": "16df3da5c3ccfe0ddb83ec0216fc7e15e76caa8434a927550fb979b4c2e1b500"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/selection-controller-cancel.test.mjs"
+      ],
+      "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 668.323705,
+      "startedAt": "2026-10-05T04:29:37.288Z",
+      "log": "docs/task-execution/local/229/964dc447-a911-45b2-bfaa-a15b941ce6f4.log",
+      "logSha256": "6d79f7c1e74ca9275e9d2f20aa3fd8175ac2fb691fe72a0b7ec1d3110759aeb9"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3546.370414,
+      "startedAt": "2026-10-05T04:29:42.239Z",
+      "log": "docs/task-execution/local/229/3d8892b0-7d77-4448-8307-6c9a9577a448.log",
+      "logSha256": "111a0cb23068bd713a4eacf3aab8d3377b0766f3d3a22d62d3385949451f4747"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "e2e/reading-return-location.spec.mjs",
+        "e2e/reading-page-markers.spec.mjs"
+      ],
+      "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 10985.020731,
+      "startedAt": "2026-10-05T04:29:50.947Z",
+      "log": "docs/task-execution/local/229/d2fa7f40-e05b-4ead-ab4b-b7aea8fb0eb3.log",
+      "logSha256": "6abe1cfd9beddf28a0e2ef3539f5f016c36a2e31562578d1e81c5bb5719fab0d"
+    }
+  ],
   "artifact": null,
   "limitations": [
-    "Historical evidence was not rerun or rebound during migration; current local acceptance NOT RUN."
+    "Real paid Providers, private dictionaries, and Edge/Safari coverage were NOT_RUN.",
+    "GitHub push and draft-PR creation remain blocked by invalid GH_TOKEN authentication in gh CLI."
   ]
 }

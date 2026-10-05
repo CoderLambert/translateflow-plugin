@@ -122,7 +122,7 @@
     const expectedPage = getPageIdentity(snapshot.pageUrl);
     const queryRecord = recordContext = records?.start({ snapshot, capture, event,
       isCurrent: () => isFrozenCurrent(snapshot, capture) && snapshot.pageUrl === location.href }) || null;
-    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true }));
+    popover.showLoading(snapshot, () => cancelActiveTask({ showCancelled: true, snapshot, task, version }));
 
     let resolved = null;
     try {
@@ -191,9 +191,8 @@
         void loadRich(snapshot, version, expectedPage, queryRecord);
       }
     } catch (error) {
-      if (error?.name === "SelectionSupersededError") return;
+      if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
       tasks.failTask(task, error);
-      if (snapshot !== activeSnapshot) return;
 
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
       popover.showError(
@@ -369,9 +368,13 @@
     setQuickControlSelectionActive(false);
   }
 
-  function cancelActiveTask({ showCancelled }) {
+  function cancelActiveTask({ showCancelled, snapshot: expectedSnapshot, task: expectedTask, version: expectedVersion }) {
     const task = activeTask;
     if (!task || tasks.isTerminal(task)) return;
+    if ((expectedSnapshot && expectedSnapshot !== activeSnapshot)
+      || (expectedTask && expectedTask !== task)
+      || (expectedVersion !== undefined && expectedVersion !== requestVersion)) return;
+    if (showCancelled && task.state === "storing") return;
     tasks.cancelTask(task).catch(() => {});
     if (showCancelled && activeSnapshot) {
       const snapshot = activeSnapshot;

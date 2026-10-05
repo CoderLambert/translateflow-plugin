@@ -1,20 +1,40 @@
 {
   "schema": 1,
   "task": "229",
-  "status": "paused",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
-  "branch": null,
-  "worktree": null,
-  "candidateHead": null,
+  "branch": "audit/229-state-calibration-20261005",
+  "worktree": ".",
+  "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
   "mergeHead": null,
   "validationCommands": [
     [
       "npm",
       "run",
       "validate"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/selection-controller-cancel.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=1",
+      "--retries=0",
+      "e2e/reading-return-location.spec.mjs",
+      "e2e/reading-page-markers.spec.mjs"
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+  "nextAction": "候选 d530056 已通过完整本地验证与定向 Reading/Selection 回归；等待父助手通过已授权 GitHub 连接器创建草稿 PR。未触及 Issues。"
 }

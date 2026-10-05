@@ -17,7 +17,7 @@ function harness(reply, { current = () => true } = {}) {
       async sendRuntimeMessage(request) { sent.push(json(request)); return reply(request); } },
     tasks: { transition() {}, completeTask(_task, result) { completions.push(json(result)); },
       responseError(response, message) { return new Error(response.error || message); } },
-    selectionPopover: { setLoadingStatus(message) { statuses.push(message); } }
+    selectionPopover: { setLoadingStatus(message) { statuses.push(message); }, setLoadingCancelable() {} }
   } };
   const realm = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document: { title: "Synthetic title" } });
   for (const source of sources) vm.runInContext(source, realm);

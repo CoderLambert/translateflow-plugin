@@ -51,6 +51,7 @@
 
       tasks.transition(task, "storing");
       popover.setLoadingStatus("content.selection.storing");
+      popover.setLoadingCancelable(false);
       const stored = await sendRuntimeMessage({
         type: messages.background.CACHE_STORE,
         pageUrl: snapshot.pageUrl,

@@ -18,10 +18,10 @@
     },
     {
       "task": "229",
-      "status": "paused",
+      "status": "ready_to_sync",
       "dependencies": [],
-      "branch": null,
-      "candidateHead": null
+      "branch": "audit/229-state-calibration-20261005",
+      "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079"
     },
     {
       "task": "230",
@@ -241,14 +241,14 @@
     },
     {
       "task": "253",
-      "status": "paused",
+      "status": "completed",
       "dependencies": [
         "249",
         "252",
         "244"
       ],
-      "branch": "refactor/253-ui-localization",
-      "candidateHead": null
+      "branch": "main",
+      "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
       "task": "offline-dictionary",

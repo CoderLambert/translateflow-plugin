@@ -111,10 +111,10 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
 
     mode = "ambiguous"; target = await openTarget("ambiguous");
     await expect(target.locator(".tf-reading-return-highlight")).toHaveCount(0);
-    await expect(target.locator('[data-role="location-status"]')).toContainText("多个可信匹配"); await target.close();
+    await expect(target.locator('[data-role="location-status"]')).toHaveText("Several reliable matches were found, so no location was selected automatically."); await target.close();
 
     mode = "missing"; target = await openTarget("missing");
-    await expect(target.locator('[data-role="location-status"]')).toContainText("未找到保存的原文");
+    await expect(target.locator('[data-role="location-status"]')).toHaveText("The saved text was not found on this page. The historical record remains available.");
     expect(JSON.stringify(await readOwnedSurface(target, true))).not.toContain("session"); await target.close();
 
     mode = "unique"; target = await openTarget("resolved");
