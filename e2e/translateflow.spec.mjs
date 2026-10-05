@@ -273,7 +273,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-quick-status")).toContainText("翻译已取消");
 
     harness.server.setDelay(0);
-    await page.getByRole("button", { name: "关闭 Quick Control" }).click();
+    await page.locator(".tf-quick-close").click();
     await selectElementText(page, "#intro");
     await expect(page.locator(".tf-selection-chip")).toBeVisible();
     await expect(trigger).not.toBeVisible();
