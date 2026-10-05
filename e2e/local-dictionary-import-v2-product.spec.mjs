@@ -35,10 +35,10 @@ test.describe("unified local dictionary import v2", () => {
 
   test("one picker safely installs Rich MDX with base and numbered MDD locally", async ({ harness }) => {
     const options = await harness.context.newPage();
-    const externalRequests = [];
+    const optionsPageNonLocalRequestsBeforeRestart = [];
     options.on("request", (request) => {
       if (/^https?:/iu.test(request.url()) && !/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/iu.test(request.url())) {
-        externalRequests.push(request.url());
+        optionsPageNonLocalRequestsBeforeRestart.push(request.url());
       }
     });
     await options.setViewportSize({ width: 390, height: 844 });
@@ -148,10 +148,15 @@ test.describe("unified local dictionary import v2", () => {
     const firstRecord = firstLookup.dictionaries.find((item) => item.id === dictionaryId);
     expect(firstRecord?.headword).toBe("中國");
     expect(firstRecord?.text.length).toBeGreaterThan(0);
+    const selectionLookup = await options.evaluate(() => chrome.runtime.sendMessage({
+      type: "RICH_MDICT_LOOKUP",
+      text: "IP"
+    }));
+    expect(selectionLookup.found).toBe(true);
+    expect(selectionLookup.dictionaries.find((item) => item.id === dictionaryId)?.headword).toBe("IP");
 
     const lookupPage = await harness.open("/selection");
     await lookupPage.setViewportSize({ width: 1440, height: 900 });
-    await harness.inject(lookupPage);
     await lookupPage.evaluate(() => {
       document.title = "Local dictionary lookup";
       document.body.replaceChildren();
@@ -159,13 +164,15 @@ test.describe("unified local dictionary import v2", () => {
       paragraph.append("Select this real dictionary entry: ");
       const word = document.createElement("span");
       word.id = "real-cedict-selected-word";
-      word.textContent = "中国";
+      word.textContent = "IP";
       paragraph.append(word);
       document.body.append(paragraph);
     });
+    await harness.inject(lookupPage);
     const selectionScreenshot = testInfo.outputPath("local-real-cedict-rich-text-selection.png");
     try {
       await lookupPage.locator("#real-cedict-selected-word").evaluate((element) => {
+        element.scrollIntoView({ block: "center", inline: "center" });
         const selection = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(element);
@@ -191,7 +198,7 @@ test.describe("unified local dictionary import v2", () => {
       await lookupPage.screenshot({ path: selectionScreenshot, fullPage: false, caret: "hide" });
       console.log("[LOCAL_REAL_CEDICT_PRODUCT_UI]", JSON.stringify({
         status: "PASS",
-        selectedText: "中国",
+        selectedText: "IP",
         dictionaryTitle: firstDictionary.title,
         renderedTextCharacters: renderedText.trim().length,
         screenshot: selectionScreenshot
@@ -225,18 +232,18 @@ test.describe("unified local dictionary import v2", () => {
     await expect(restartedOptions.locator(`#richMdictInstalledList [data-dictionary-id="${dictionaryId}"]`)).toBeHidden();
 
     expect(harness.server.calls).toHaveLength(0);
-    expect(externalRequests).toEqual([]);
+    expect(optionsPageNonLocalRequestsBeforeRestart).toEqual([]);
     console.log("[LOCAL_REAL_MDICT_FLOW]", JSON.stringify({
       browserVersion,
       entryCount: firstDictionary.entryCount,
       mddFileCount: firstDictionary.resourceCount,
       lookupHeadword: firstRecord.headword,
       restartLookupPreserved: restartedRecord.text === firstRecord.text,
-      providerCalls: harness.server.calls.length,
-      externalRequests: externalRequests.length,
-      artifactTreeSha256: harness.buildReport.treeSha256,
-      artifactBytes: harness.buildReport.totalBytes,
-      artifactFileCount: harness.buildReport.fileCount
+      mockProviderCalls: harness.server.calls.length,
+      optionsPageNonLocalRequestsBeforeRestart: optionsPageNonLocalRequestsBeforeRestart.length,
+      productionArtifactTreeSha256BeforeTestAdaptation: harness.buildReport.treeSha256,
+      productionArtifactBytesBeforeTestAdaptation: harness.buildReport.totalBytes,
+      productionArtifactFileCountBeforeTestAdaptation: harness.buildReport.fileCount
     }));
   });
 
