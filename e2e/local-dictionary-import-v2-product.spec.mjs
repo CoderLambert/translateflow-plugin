@@ -12,6 +12,22 @@ test.describe("unified local dictionary import v2", () => {
     await harness.reset();
   });
 
+  test("empty local dictionary preflight and confirmation labels are not visible", async ({ harness }, testInfo) => {
+    const options = await harness.context.newPage();
+    await options.setViewportSize({ width: 1100, height: 1000 });
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    const card = options.locator("#localDictionaryImport");
+    expect(await options.locator("#localDictionaryPreflight").isVisible()).toBe(false);
+    for (const selector of [
+      "#localDictionarySemanticLabel",
+      "#localDictionaryLimitationsLabel",
+      "#localDictionaryDuplicateLabel"
+    ]) {
+      expect(await options.locator(selector).isVisible()).toBe(false);
+    }
+    await card.screenshot({ path: testInfo.outputPath("local-dictionary-preflight-empty.png") });
+  });
+
   test("one picker safely installs Rich MDX with base and numbered MDD locally", async ({ harness }) => {
     const options = await harness.context.newPage();
     const externalRequests = [];
