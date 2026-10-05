@@ -18,9 +18,9 @@
     },
     {
       "task": "229",
-      "status": "ready_to_sync",
+      "status": "blocked",
       "dependencies": [],
-      "branch": "audit/229-state-calibration-20261005",
+      "branch": "audit/229-postmerge-sync-20261005",
       "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079"
     },
     {

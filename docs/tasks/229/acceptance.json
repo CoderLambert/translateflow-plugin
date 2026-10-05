@@ -79,14 +79,18 @@
   ],
   "artifact": null,
   "limitations": [
-    "Real paid Providers, private dictionaries, and Edge/Safari coverage were NOT_RUN.",
-    "The gh CLI GH_TOKEN was invalid; no retry or credential change was attempted. The authorized GitHub connector confirmed main at the exact base and created draft PR #303."
+    "Real paid Providers, private dictionaries, and Edge/Safari coverage were NOT_RUN; #244 also leaves incognito, desktop native IME, browser UI zoom, final file-dialog persistence, and store publication NOT_RUN or NOT_AUTHORIZED.",
+    "The gh CLI GH_TOKEN was invalid; no retry or credential change was attempted. The authorized GitHub connector created PR #303, which was merged by the parent at 638e9c2e906072a87ed9f6b1d6228681f74928e5; refreshed origin/main has the same tree as the PR sync head.",
+    "Do not mark the parent Epic completed from the merged Selection fix or the A–D PASS alone; independent human audit is required by the #229 close clause."
   ],
   "remoteSync": {
     "pullRequest": 303,
     "url": "https://github.com/CoderLambert/translateflow-plugin/pull/303",
-    "draft": true,
-    "branch": "audit/229-state-calibration-20261005",
-    "base": "66cb7b876f8df4c8fea6eb645cb66cb101b6299a"
-  }
+    "state": "merged",
+    "draft": false,
+    "syncHead": "dc383a6afef1c0ee7509d2a6afb8f76579d67fc6",
+    "mergeHead": "638e9c2e906072a87ed9f6b1d6228681f74928e5",
+    "mainTree": "345458ea5746544744477e865bd285f9b38e768b"
+  },
+  "epicCloseout": "BLOCKED: independent human audit remains outstanding. The A–D dossier documents a main-agent self-check, explicitly not an independent review."
 }

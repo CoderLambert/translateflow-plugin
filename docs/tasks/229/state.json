@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "229",
-  "status": "ready_to_sync",
+  "status": "blocked",
   "owner": "main",
   "dependencies": [],
-  "branch": "audit/229-state-calibration-20261005",
-  "worktree": ".",
+  "branch": "audit/229-postmerge-sync-20261005",
+  "worktree": "/workspace/translateflow-plugin-229-sync",
   "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
-  "mergeHead": null,
+  "mergeHead": "638e9c2e906072a87ed9f6b1d6228681f74928e5",
   "validationCommands": [
     [
       "npm",
@@ -36,6 +36,7 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "Draft PR #303 is open for review through the authorized GitHub connector. Keep it in draft; do not merge or change Issue labels/closure in this audit.",
-  "pullRequest": 303
+  "nextAction": "PR #303 is merged and its tree is verified on origin/main. Do not mark Epic #229 completed yet: its close rule requires independent audit, while #244 records only the main-agent self-check. Obtain independent human review of the A–D evidence and preserve all explicit NOT_RUN / NOT_AUTHORIZED boundaries before any Issue close-out.",
+  "pullRequest": 303,
+  "syncHead": "dc383a6afef1c0ee7509d2a6afb8f76579d67fc6"
 }
