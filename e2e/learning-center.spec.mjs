@@ -287,6 +287,8 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await recordPage.getByRole("button", { name: "Delete record", exact: true }).click();
   await recordPage.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(recordPage.locator(".record-list .record")).toHaveCount(0);
+  await expect(recordPage.locator("header")).toContainText("Records: 0");
+  await expect(recordPage.getByText("Connection interrupted. Saved content cannot be confirmed.", { exact: true })).toHaveCount(0);
   await expect(returned.locator(".tf-reading-page-toggle")).toHaveCount(0);
   await expect(returned.locator(".tf-reading-page-marker")).toHaveCount(0);
   await expect(returned.locator(".tf-reading-return-card")).toHaveCount(0);
