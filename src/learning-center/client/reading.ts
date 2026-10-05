@@ -1,7 +1,8 @@
 import { READING_METHOD as M, READING_PROTOCOL_VERSION as V, READING_INVALIDATION_PORT } from "../../shared/reading/constants.js";
 import { validateReadingRequest } from "../../shared/reading/dto.js";
 import { validateReadingResponse } from "../../shared/reading/response.js";
-import { validateReadingInvalidation } from "../../shared/reading/invalidations.js";
+import { validateReadingInvalidation, validateReadingSiteMarkersInvalidation } from "../../shared/reading/invalidations.js";
+import { READING_SITE_MARKERS_INVALIDATION } from "../../shared/reading/constants.js";
 import type { validateRecordListItem, validatePageListItem, validateExclusionItem } from "../../shared/reading/list.js";
 import type { validateReadingRecord } from "../../shared/reading/record.js";
 import type { validateSourceSnapshot } from "../../shared/reading/source.js";
@@ -50,6 +51,9 @@ export class ReadingClient {
   markers(siteKey: string) { return this.request<SiteMarkers>(M.GET_SITE_MARKERS, { siteKey }); }
   setMarkers(siteKey: string, enabled: boolean) { return this.request<SiteMarkers>(M.SET_SITE_MARKERS, { siteKey, enabled }); }
   createHandoff(recordId: string, expectedRevision: number) { return this.request<ReturnHandoff>(M.CREATE_HANDOFF, { recordId, expectedRevision }); }
+  previewClaim(previewId: string) { return this.request<{ claimId: string }>(M.PREVIEW_CLAIM, { previewId }); }
+  previewRead(previewId: string) { return this.request<Detail>(M.PREVIEW_READ, { previewId }); }
+  previewClose(previewId: string) { return this.request<{ closed: true }>(M.PREVIEW_CLOSE, { previewId }); }
   // Called directly by a trusted click, before any asynchronous work.
   requestSitePermission(siteKey: string) { return chrome.permissions.request({ origins: [`${new URL(siteKey).origin}/*`] }); }
 }
@@ -59,6 +63,11 @@ export function subscribe(onChange: () => void, onDisconnect: () => void): () =>
   let closed = false, previous = "";
   const message = (value: unknown) => {
     try {
+      if ((value as { type?: unknown } | null)?.type === READING_SITE_MARKERS_INVALIDATION) {
+        validateReadingSiteMarkersInvalidation(value);
+        if (!closed) onChange();
+        return;
+      }
       const current = JSON.stringify(validateReadingInvalidation(value, "extension"));
       if (!closed && previous !== current) { previous = current; onChange(); }
     }

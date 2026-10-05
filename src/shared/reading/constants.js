@@ -4,7 +4,9 @@ export const READING_SCHEMA_VERSION = 1;
 export const READING_PROTOCOL_VERSION = 2;
 // Fixed unlisted WXT page, built by #235.
 export const READING_LEARNING_CENTER_PATH = "learning-center.html";
+export const READING_PREVIEW_PATH = "reading-preview.html";
 export const READING_INVALIDATION_PORT = "reading.invalidate";
+export const READING_SITE_MARKERS_INVALIDATION = "reading.site-markers.invalidate";
 export const READING_PROJECTION_VERSION = "tf-source-utf16-v1";
 export const READING_ITEM_KEY_VERSION = "ri1";
 export const READING_LIMITS = Object.freeze({
@@ -86,7 +88,12 @@ export const READING_METHOD = Object.freeze({
   CANCEL_OPERATION: "reading.cancel-operation",
   REGISTER_DOCUMENT: "reading.register-document",
   CREATE_HANDOFF: "reading.create-handoff",
-  CONSUME_HANDOFF: "reading.consume-handoff"
+  CONSUME_HANDOFF: "reading.consume-handoff",
+  PREVIEW_CREATE: "reading.preview-create",
+  PREVIEW_BIND: "reading.preview-bind",
+  PREVIEW_CLAIM: "reading.preview-claim",
+  PREVIEW_READ: "reading.preview-read",
+  PREVIEW_CLOSE: "reading.preview-close"
 });
 
 export const READING_ERROR = Object.freeze({
@@ -112,7 +119,8 @@ export const READING_CONTENT_METHODS = Object.freeze([
   READING_METHOD.BEGIN_QUERY, READING_METHOD.SAVE_QUERY_RESULT, READING_METHOD.APPEND_ASSISTANT,
   READING_METHOD.GET_PAGE_SUMMARY, READING_METHOD.GET_RECORD, READING_METHOD.GET_RECORDING_STATE,
   READING_METHOD.CONSUME_HANDOFF, READING_METHOD.OPEN_LEARNING_CENTER, READING_METHOD.GET_SITE_RECORDING,
-  READING_METHOD.CANCEL_OPERATION, READING_METHOD.REGISTER_DOCUMENT, READING_METHOD.GET_SITE_MARKERS
+  READING_METHOD.CANCEL_OPERATION, READING_METHOD.REGISTER_DOCUMENT, READING_METHOD.GET_SITE_MARKERS,
+  READING_METHOD.PREVIEW_CREATE, READING_METHOD.PREVIEW_BIND, READING_METHOD.PREVIEW_CLOSE
 ]);
 
 export const READING_LOCATION_STATUS = Object.freeze([

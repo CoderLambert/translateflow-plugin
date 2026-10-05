@@ -1,0 +1,181 @@
+import { test, expect } from "./support/extension-fixture.mjs";
+import { READING_METHOD as M } from "../src/shared/reading/constants.js";
+
+const message = (page, method, fields = {}) => page.evaluate(request => chrome.runtime.sendMessage(request),
+  { protocolVersion: 2, method, ...fields });
+async function select(page, selector, text) {
+  await page.evaluate(({ selector, text }) => {
+    const node = document.querySelector(selector).firstChild, offset = node.nodeValue.indexOf(text);
+    const range = document.createRange(); range.setStart(node, offset); range.setEnd(node, offset + text.length);
+    getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange"));
+  }, { selector, text });
+  await expect(page.locator(".tf-selection-chip")).toBeVisible();
+  await page.locator(".tf-selection-chip").click();
+}
+async function bindGate(driver, url, action) {
+  return driver.evaluate(async ({ url, action, method }) => {
+    const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
+    const [injection] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [action, method],
+      func: (name, targetMethod) => {
+        const app = globalThis.__TRANSLATE_FLOW_CONTENT__, runtime = app?.modules.runtime;
+        if (!runtime) return null;
+        if (name === "install") {
+          const original = runtime.sendRuntimeMessage; let release;
+          const gate = new Promise(resolve => { release = resolve; });
+          globalThis.__tfPreviewBindGate = { original, gate, release, started: false };
+          runtime.sendRuntimeMessage = async request => {
+            const result = await original(request);
+            if (!globalThis.__tfPreviewBindGate.started && request.method === targetMethod) {
+              globalThis.__tfPreviewBindGate.started = true; await gate;
+            }
+            return result;
+          };
+          return true;
+        }
+        if (name === "started") return globalThis.__tfPreviewBindGate?.started === true;
+        if (name === "release") { globalThis.__tfPreviewBindGate.release(); return true; }
+        if (name === "restore") { runtime.sendRuntimeMessage = globalThis.__tfPreviewBindGate.original; return true; }
+        return false;
+      } });
+    return injection.result;
+  }, { url, action, method: M.PREVIEW_BIND });
+}
+async function pageSurface(page) {
+  return page.evaluate(() => {
+    const values = [...(globalThis.__tfObservedMessages || [])];
+    function visit(root) {
+      for (const node of root.childNodes || []) {
+        if (node.nodeType === Node.TEXT_NODE) values.push(node.nodeValue || "");
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          for (const attribute of node.attributes) values.push(`${attribute.name}=${attribute.value}`);
+          if (node.shadowRoot) visit(node.shadowRoot);
+        }
+        visit(node);
+      }
+    }
+    visit(document); return values;
+  });
+}
+
+ test("saved assistant history opens in an isolated revisit preview and stays bound to its live frame", async ({ harness }, info) => {
+  test.setTimeout(180000);
+  await harness.reset();
+  await harness.setStorage({ uiLocale: "en", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
+  const center = await harness.context.newPage();
+  await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
+  await center.getByRole("button", { name: "Enable recording", exact: true }).click();
+  await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+
+  const original = await harness.open("/selection"); await harness.inject(original);
+  await select(original, "#technical-competition", "session");
+  await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  await original.getByRole("button", { name: "Explain with AI using the surrounding context", exact: true }).click();
+  await expect(original.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+  await expect(original.locator(".tf-selection-ai-detail")).toContainText("streamed answer");
+  const listed = await message(center, M.LIST_RECORDS, { pageKey: null, query: "session", cursor: null, limit: 30 });
+  expect(listed.data.items).toHaveLength(1);
+  const recordId = listed.data.items[0].recordId;
+  await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
+  await expect(center.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
+  await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const followUpQuestion = "Why is this terminal session reusable?";
+  await center.getByRole("button", { name: "Ask a follow-up", exact: true }).click();
+  await center.getByPlaceholder("Ask about this saved answer").fill(followUpQuestion);
+  await center.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(center.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
+  await expect(center.getByText("streamed answer", { exact: true })).toHaveCount(2);
+  const detail = await message(center, M.GET_RECORD, { recordId });
+  const turns = detail.data.artifacts.filter(value => value.kind === "assistant");
+  expect(turns).toHaveLength(2);
+  expect(turns.every(value => value.payload.completionStatus === "completed" && value.payload.assistantAnswer === "streamed answer")).toBe(true);
+  const rootQuestion = turns[0].payload.userQuestion;
+  expect(rootQuestion).toBeTruthy();
+  const providerCalls = harness.server.calls.length;
+  expect(providerCalls).toBe(2);
+
+  await original.close();
+  const revisit = await harness.open("/selection"); await harness.inject(revisit);
+  await revisit.setViewportSize({ width: 1280, height: 800 });
+  await revisit.addInitScript(() => {
+    globalThis.__tfObservedMessages = [];
+    addEventListener("message", event => { try { __tfObservedMessages.push(JSON.stringify(event.data)); } catch {} });
+  });
+  await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await revisit.locator(".tf-reading-page-marker").focus();
+  await revisit.keyboard.press("Enter");
+  const truePreview = revisit.frameLocator("iframe.tf-reading-preview-frame");
+  await expect(truePreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await expect(truePreview.getByRole("heading", { name: rootQuestion, exact: true })).toBeVisible();
+  await expect(truePreview.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
+  await expect(truePreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
+  expect(JSON.stringify(await pageSurface(revisit))).not.toContain(rootQuestion);
+  expect(JSON.stringify(await pageSurface(revisit))).not.toContain(followUpQuestion);
+  expect(JSON.stringify(await pageSurface(revisit))).not.toContain("streamed answer");
+  expect(harness.server.calls).toHaveLength(providerCalls);
+  await revisit.keyboard.press("Escape");
+  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
+
+  // A child frame can copy the URL identifier, but its distinct native frame identity cannot read.
+  await revisit.locator(".tf-reading-page-marker").click();
+  await expect(revisit.locator(".tf-reading-preview-frame")).toBeVisible({ timeout: 8000 });
+  const previewUrl = await revisit.locator(".tf-reading-preview-frame").getAttribute("src");
+  const previewId = new URL(previewUrl).searchParams.get("previewId");
+  await revisit.evaluate(src => {
+    const frame = document.createElement("iframe"); frame.id = "forged-preview"; frame.width = "1"; frame.height = "1"; frame.src = src; document.body.append(frame);
+  }, previewUrl);
+  const forged = revisit.frameLocator("#forged-preview");
+  await expect(forged.getByText("Saved history could not be opened. Close this preview and try again.", { exact: true })).toBeVisible();
+  const forgedRead = await forged.locator("body").evaluate(async (_body, id) => chrome.runtime.sendMessage({
+    protocolVersion: 2, method: "reading.preview-read", previewId: id
+  }), previewId);
+  expect(forgedRead.ok).toBe(false);
+
+  const crossPage = await harness.open("/selection"); await harness.inject(crossPage);
+  await crossPage.evaluate(src => {
+    const frame = document.createElement("iframe"); frame.id = "copied-preview"; frame.width = "1"; frame.height = "1"; frame.src = src; document.body.append(frame);
+  }, previewUrl);
+  const copied = crossPage.frameLocator("#copied-preview");
+  await expect(copied.getByText("Saved history could not be opened. Close this preview and try again.", { exact: true })).toBeVisible();
+  const copiedRead = await copied.locator("body").evaluate(async (_body, id) => chrome.runtime.sendMessage({
+    protocolVersion: 2, method: "reading.preview-read", previewId: id
+  }), previewId);
+  expect(copiedRead.ok).toBe(false);
+
+  // A real browser restart drops the in-memory preview session while keeping the saved record and marker choice.
+  await harness.restartBrowser();
+  const restartedCenter = await harness.context.newPage();
+  await restartedCenter.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
+  await expect(restartedCenter.getByRole("button", { name: "Disable site markers", exact: true })).toBeVisible();
+  const afterRestart = await harness.open("/selection"); await harness.inject(afterRestart);
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await afterRestart.locator(".tf-reading-page-marker").click();
+  const restartedPreview = afterRestart.frameLocator("iframe.tf-reading-preview-frame");
+  await expect(restartedPreview.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
+  await expect(restartedPreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
+  expect(harness.server.calls).toHaveLength(providerCalls);
+
+  // Site-marker revocation closes the embedded detail; a delayed bind response cannot restore it.
+  await afterRestart.keyboard.press("Escape");
+  await bindGate(harness.driver, afterRestart.url(), "install");
+  await afterRestart.locator(".tf-reading-page-marker").click();
+  await expect.poll(() => bindGate(harness.driver, afterRestart.url(), "started")).toBe(true);
+  await restartedCenter.getByRole("button", { name: "Disable site markers", exact: true }).click();
+  await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
+  await bindGate(harness.driver, afterRestart.url(), "release");
+  await bindGate(harness.driver, afterRestart.url(), "restore");
+  await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
+  await expect(restartedCenter.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
+  await restartedCenter.getByRole("button", { name: "Enable site markers", exact: true }).click();
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(1);
+
+  // Deleting the source record revokes an open preview and removes its location marker.
+  await afterRestart.locator(".tf-reading-page-marker").click();
+  await expect(afterRestart.locator(".tf-reading-preview-frame")).toBeVisible();
+  await restartedCenter.getByRole("button", { name: "Delete record", exact: true }).click();
+  await restartedCenter.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(0);
+  await expect(afterRestart.locator(".tf-reading-page-toggle")).toHaveCount(0);
+  expect(harness.server.calls).toHaveLength(providerCalls);
+});

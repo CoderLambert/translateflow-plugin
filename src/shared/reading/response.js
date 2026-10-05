@@ -10,7 +10,7 @@ export { validatePageSummaryItem } from "./list.js";
 export function validateReadingResponse(method, value, scope, pageLimit = L.pageSize) {
   choice(method, Object.values(M), "response.method");
   choice(scope, ["content", "extension", "entry"], "response.scope");
-  jsonBytes(value, method === M.GET_RECORD ? L.detailResponseBytes : L.listResponseBytes, "response");
+  jsonBytes(value, [M.GET_RECORD, M.PREVIEW_READ].includes(method) ? L.detailResponseBytes : L.listResponseBytes, "response");
   object(value, value?.ok === true ? ["protocolVersion", "ok", "data"] : ["protocolVersion", "ok", "error"], "response");
   const transportVersion = protocolVersion(value.protocolVersion, "response.protocolVersion");
   if (!bool(value.ok, "response.ok")) {
@@ -104,6 +104,23 @@ function data(method, value, scope, pageLimit) {
     object(value, value?.state === "ready" ? ["state", "handoff"] : ["state"], "data");
     const state = choice(value.state, ["ready", "permission-required", "unsupported"], "data.state");
     return state === "ready" ? { state, handoff: validateHandoff(value.handoff) } : { state };
+  }
+  if (method === M.PREVIEW_CREATE) {
+    object(value, ["previewId", "expiresAt"], "data");
+    return { previewId: id(value.previewId, "data.previewId"), expiresAt: integer(value.expiresAt, 1, Number.MAX_SAFE_INTEGER, "data.expiresAt") };
+  }
+  if (method === M.PREVIEW_CLAIM) {
+    object(value, ["claimId"], "data");
+    return { claimId: id(value.claimId, "data.claimId") };
+  }
+  if (method === M.PREVIEW_BIND) {
+    object(value, ["bound"], "data");
+    return { bound: choice(value.bound, [true], "data.bound") };
+  }
+  if (method === M.PREVIEW_READ) return validateRecordDetail(value, "data");
+  if (method === M.PREVIEW_CLOSE) {
+    object(value, ["closed"], "data");
+    return { closed: choice(value.closed, [true], "data.closed") };
   }
   return validatePageSummaryItem(value, "data");
 }

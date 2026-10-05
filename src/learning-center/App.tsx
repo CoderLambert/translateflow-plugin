@@ -22,6 +22,7 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
   const [mode, setMode] = useState<"recent" | "pages">("recent"), [input, setInput] = useState(""), [query, setQuery] = useState("");
   const [page, setPage] = useState<{ pageKey: string; siteKey: string; title: string } | null>(null);
   const [id, setId] = useState(route), [detail, setDetail] = useState<RecordDetail | null>(null), [detailSiteKey, setDetailSiteKey] = useState<string | null>(null);
+  const [detailSiteKeyStatus, setDetailSiteKeyStatus] = useState<"loading" | "ready" | "error">("loading");
   const [detailError, setDetailError] = useState(false), [detailLoading, setDetailLoading] = useState(false);
   const [notNow, setNotNow] = useState(false), [confirm, setConfirm] = useState<"record" | "page" | "all" | null>(null);
   const [exporting, setExporting] = useState(false), [bytes, setBytes] = useState(0);
@@ -61,15 +62,30 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     return () => window.removeEventListener("hashchange", change);
   }, []);
   useEffect(() => {
-    const generation = ++detailEpoch.current; setDetail(null); setDetailSiteKey(null); setDetailError(false);
+    const generation = ++detailEpoch.current; setDetail(null); setDetailSiteKey(null); setDetailSiteKeyStatus("loading"); setDetailError(false);
     if (!id || offline || exporting || !state || !localeReady) { setDetailLoading(false); return; }
     setDetailLoading(true);
-    Promise.all([client.getRecord(id), client.recordSiteKey(id).catch(() => null)]).then(([value, site]) => {
-      if (active.current && detailEpoch.current === generation) { setDetail(value); setDetailSiteKey(site?.siteKey ?? null); }
-    }).catch(() => { if (active.current && detailEpoch.current === generation) setDetailError(true); })
-      .finally(() => { if (active.current && detailEpoch.current === generation) setDetailLoading(false); });
+    Promise.allSettled([client.getRecord(id), client.recordSiteKey(id)]).then(([recordResult, siteResult]) => {
+      if (!active.current || detailEpoch.current !== generation) return;
+      if (recordResult.status === "rejected") { setDetailError(true); return; }
+      setDetail(recordResult.value);
+      if (siteResult.status === "fulfilled") {
+        setDetailSiteKey(siteResult.value.siteKey); setDetailSiteKeyStatus("ready");
+      } else { setDetailSiteKey(null); setDetailSiteKeyStatus("error"); }
+    }).finally(() => { if (active.current && detailEpoch.current === generation) setDetailLoading(false); });
     return () => { detailEpoch.current++; };
   }, [client, id, revision, offline, exporting, state !== null, localeReady]);
+  async function retryDetailSiteKey() {
+    const generation = detailEpoch.current, recordId = id;
+    if (!recordId || offline || detailSiteKeyStatus === "loading") return;
+    setDetailSiteKeyStatus("loading");
+    try {
+      const value = await client.recordSiteKey(recordId);
+      if (active.current && detailEpoch.current === generation) { setDetailSiteKey(value.siteKey); setDetailSiteKeyStatus("ready"); }
+    } catch {
+      if (active.current && detailEpoch.current === generation) { setDetailSiteKey(null); setDetailSiteKeyStatus("error"); }
+    }
+  }
   function navigate(next: string | null) {
     detailEpoch.current++; setDetail(null); setId(next);
     history.pushState(null, "", next ? `#record=${next}` : location.pathname);
@@ -135,7 +151,8 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     {id ? <>
       {detailLoading && <Notice>{i18n.t("learning.loading")}</Notice>}
       {detailError && <><Notice error>{i18n.t("learning.notFound")}</Notice><Button onClick={refresh}>{i18n.t("learning.retry")}</Button></>}
-      {detail ? <Detail detail={detail} siteKey={detailSiteKey} i18n={i18n} onBack={() => navigate(null)} onDelete={() => setConfirm("record")}
+      {detail ? <Detail detail={detail} siteKey={detailSiteKey} siteKeyStatus={detailSiteKeyStatus} onRetrySiteKey={retryDetailSiteKey}
+        markersRevision={revision} i18n={i18n} onBack={() => navigate(null)} onDelete={() => setConfirm("record")}
         onAssistantSaved={refresh} disabled={blocked} assistantDisabled={blocked || !state?.enabled} client={client} />
         : <Button onClick={() => navigate(null)}>{i18n.t("learning.back")}</Button>}
     </> : <>

@@ -64,6 +64,24 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
       return { detail: yield* detail(store, context.request.recordId, row), siteKey: row.siteKey,
         documentGeneration: row.documentGeneration, siteExcluded: sitePolicy(meta, row.siteKey).excluded };
     }); },
+    readPreviewTarget(context) { return run("readonly", { ...context, request: { method: M.GET_RECORD, recordId: context.request.recordId } }, function* (store) {
+      const meta = yield* state(store);
+      const scoped = { ...context, request: { method: M.GET_RECORD, recordId: context.request.recordId } };
+      policy(meta, scoped);
+      if (!meta.enabled || (context.request.dataGeneration !== undefined && meta.dataGeneration !== context.request.dataGeneration) ||
+          (context.request.consentGeneration !== undefined && meta.consentGeneration !== context.request.consentGeneration)) fail(E.STALE_OPERATION, "preview.consent");
+      const row = yield store("records").get(context.request.recordId);
+      if (!row || row.record.revision !== context.request.expectedRevision || row.record.pageKey !== context.access.pageKey || row.siteKey !== context.access.siteKey) fail(E.STALE_OPERATION, "preview.record");
+      const page = yield* pageState(store, context.access.pageKey), site = sitePolicy(meta, row.siteKey);
+      if ((context.request.pageGeneration !== undefined && page.pageGeneration !== context.request.pageGeneration) ||
+          (context.request.pageRevision !== undefined && page.pageRevision !== context.request.pageRevision) ||
+          (context.request.sitePolicyRevision !== undefined && site.sitePolicyRevision !== context.request.sitePolicyRevision)) fail(E.STALE_OPERATION, "preview.page");
+      if (row.record.revision !== context.request.expectedRevision) fail(E.STALE_OPERATION, "preview.record-revision");
+      return { detail: yield* detail(store, row.record.recordId, row), recordId: row.record.recordId,
+        siteKey: row.siteKey, pageKey: row.record.pageKey, revision: row.record.revision,
+        dataGeneration: meta.dataGeneration, consentGeneration: meta.consentGeneration,
+        pageGeneration: page.pageGeneration, pageRevision: page.pageRevision, sitePolicyRevision: site.sitePolicyRevision };
+    }); },
     readHandoffTarget(context) { return run("readonly", context, (store) => readHandoffTarget(store, context)); },
     readPolicy(context) { return run("readonly", context, function* (store) {
       // This is the internal preflight policy read, before service derives access.siteExcluded.

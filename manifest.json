@@ -6,6 +6,10 @@
   "default_locale": "en",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["https://api.deepseek.com/*", "http://*/*", "https://*/*"],
+  "web_accessible_resources": [{
+    "resources": ["reading-preview.html"],
+    "matches": ["http://*/*", "https://*/*"]
+  }],
   "background": {"service_worker": "background.js", "type": "module"},
   "action": {"default_title": "__MSG_actionTitle__", "default_popup": "popup.html"},
   "options_page": "options.html",

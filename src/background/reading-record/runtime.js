@@ -29,7 +29,7 @@ export function configureReadingRuntime({ repository, learningCenterAvailable = 
 export function isReadingMessage(message) { return typeof message?.method === "string" && message.method.startsWith("reading."); }
 export async function handleReadingMessage(message, sender) {
   const state = runtime(), result = await state.service.handle(message, sender);
-  if (message?.method === M.SET_SITE_MARKERS && result?.ok === true) await state.subscriptions.publish();
+  if (message?.method === M.SET_SITE_MARKERS && result?.ok === true) await state.subscriptions.publishSiteMarkers();
   return result;
 }
 export function prepareLearningAssistantTurn(sender, input, ground, options) { return runtime().service.prepareAssistantTurn(sender, input, ground, options); }

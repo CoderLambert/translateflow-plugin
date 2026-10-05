@@ -89,12 +89,47 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(source.locator(".tf-selection-record-status")).toContainText("Set this site's history markers");
     await center.reload();
     const recordRow = center.locator(".record-list .record").first(), recordId = await recordRow.getAttribute("data-record-id");
+    await center.evaluate(() => {
+      const original = chrome.runtime.sendMessage.bind(chrome.runtime);
+      const replacement = (request, ...args) => {
+        if (!globalThis.__tfAllowSiteKeyRetry && request?.method === "reading.get-record-site-key") {
+          globalThis.__tfSiteKeyFailureFired = true;
+          return Promise.reject(new Error("synthetic site identity failure"));
+        }
+        return original(request, ...args);
+      };
+      globalThis.__tfSiteKeyReplacement = replacement;
+      Object.defineProperty(chrome.runtime, "sendMessage", { configurable: true, writable: true, value: replacement });
+    });
+    expect(await center.evaluate(() => chrome.runtime.sendMessage === globalThis.__tfSiteKeyReplacement)).toBe(true);
     await recordRow.click();
     const detail = await center.evaluate(({ method, recordId }) => chrome.runtime.sendMessage({ protocolVersion: 2, method, recordId }),
       { method: M.GET_RECORD, recordId });
     expect(detail.data.record.safeReturnUrl).toBeNull();
+    await expect(center.getByRole("heading", { name: "Reading history on this site", exact: true })).toBeVisible();
+    expect(await center.evaluate(() => globalThis.__tfSiteKeyFailureFired === true)).toBe(true);
+    await expect(center.getByText("Could not load this record’s site identity. Retry to manage its site markers.", { exact: true })).toBeVisible();
+    await center.evaluate(() => { globalThis.__tfAllowSiteKeyRetry = true; });
+    await center.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect(center.getByRole("button", { name: "Enable site markers", exact: true })).toBeEnabled();
+
+    const peer = await context.newPage(); await peer.goto(`chrome-extension://${id}/learning-center.html#record=${recordId}`);
+    await expect(peer.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
+    await center.evaluate(() => {
+      const original = chrome.permissions.request.bind(chrome.permissions);
+      globalThis.__tfOriginalPermissionRequest = original;
+      chrome.permissions.request = async () => false;
+    });
+    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
+    await expect(center.getByText("Site access was not granted. Markers remain off; you can grant access and try again when you want them.", { exact: true }).first()).toBeVisible();
+    await center.evaluate(() => { chrome.permissions.request = globalThis.__tfOriginalPermissionRequest; });
     await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
     await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(peer.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await peer.getByRole("button", { name: "Disable site markers", exact: true }).click();
+    await expect(center.getByRole("button", { name: "Enable site markers", exact: true })).toHaveAttribute("aria-pressed", "false");
+    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
+    await expect(peer.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(center.getByRole("button", { name: "Return to original page", exact: true })).toBeDisabled();
     await expect(center.getByRole("link", { name: "Open original page", exact: true })).toHaveCount(0);
     await source.close();
@@ -132,14 +167,19 @@ test("authorized revisit renders bounded page history markers and recovers acros
     }));
     expect(dotAppearance).toMatchObject({ width: 14, height: 14, radius: "50%" });
     expect(dotAppearance.label).not.toContain("session");
-    await revisit.locator(".tf-reading-page-marker").focus();
-    expect(await revisit.locator(".tf-reading-page-marker").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
+    await revisit.locator(".tf-reading-page-toggle").focus();
     await revisit.keyboard.press("Enter");
     await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
-    expect(await revisit.locator(".tf-reading-page-item").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
+    expect(await revisit.locator(".tf-reading-page-retry").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
     await revisit.keyboard.press("Escape");
     await expect(revisit.locator(".tf-reading-page-panel")).toBeHidden();
-    expect(await revisit.locator(".tf-reading-page-marker").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
+    expect(await revisit.locator(".tf-reading-page-toggle").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
+    await revisit.locator(".tf-reading-page-marker").focus();
+    await revisit.keyboard.press("Enter");
+    const keyboardPreview = revisit.frameLocator("iframe.tf-reading-preview-frame");
+    await expect(keyboardPreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+    await revisit.keyboard.press("Escape");
+    await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
     const scanEvidence = await driver.evaluate(async ({ url, anchor }) => {
       const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
       const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [anchor], func: async value => {
@@ -162,7 +202,12 @@ test("authorized revisit renders bounded page history markers and recovers acros
       chars: scanEvidence.chars, nodes: scanEvidence.nodes, workMs: scanEvidence.workMs, waitMs: scanEvidence.waitMs,
       pageCharsBeforeTarget: longPrefix.length, providerCalls: server.calls.length }, null, 2));
     await revisit.locator(".tf-reading-page-marker").click();
-    await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
+    const preview = revisit.frameLocator("iframe.tf-reading-preview-frame");
+    await expect(preview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+    await revisit.keyboard.press("Escape");
+    await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
+    expect(await revisit.locator(".tf-reading-page-marker").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
+    await revisit.locator(".tf-reading-page-toggle").click();
     await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
     await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
     expect(JSON.stringify(await readPageSurface(revisit))).toContain("session"); // Only the current verified Range contains it.
@@ -171,6 +216,13 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Not found");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(0);
     expect(JSON.stringify(await readPageSurface(revisit))).not.toContain("session");
+    await revisit.locator(".tf-reading-page-toggle").click();
+    await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
+    const unresolvedDetailPromise = context.waitForEvent("page", { timeout: 8000 });
+    await revisit.locator(".tf-reading-page-panel article").getByRole("button", { name: "View record", exact: true }).click();
+    const unresolvedDetail = await unresolvedDetailPromise;
+    await expect(unresolvedDetail.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+    await unresolvedDetail.close();
 
     await revisit.evaluate(() => { document.querySelector("#source").innerHTML = "<span>PUBLIC </span><strong>session</strong><span> alpha tail</span>"; });
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
@@ -184,11 +236,8 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(revisit.locator(".tf-reading-page-marker")).toBeVisible();
     await revisit.screenshot({ path: info.outputPath("reading-page-markers.png"), fullPage: false });
     await revisit.locator(".tf-reading-page-marker").click();
-    const detailTab = context.waitForEvent("page");
-    await revisit.locator(".tf-reading-page-panel article").getByRole("button", { name: "View record", exact: true }).click();
-    const reopenedDetail = await detailTab;
-    await expect(reopenedDetail).toHaveURL(new RegExp(`#record=${recordId}$`));
-    await expect(reopenedDetail.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+    await expect(revisit.locator(".tf-reading-preview-frame")).toBeVisible();
+    await revisit.keyboard.press("Escape");
 
     const retryPage = await context.newPage(); await retryPage.goto(articleUrl);
     await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");

@@ -21,6 +21,9 @@ test("production permissions include the authorized ordinary-web-page access", (
   assert.equal(manifest.optional_host_permissions, undefined);
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));
   assert.ok(!manifest.host_permissions.some((pattern) => /youtube\.com/i.test(pattern)));
+assert.deepEqual(manifest.web_accessible_resources, [{
+  resources: ["reading-preview.html"], matches: ["http://*/*", "https://*/*"]
+}]);
 });
 
 test("release docs describe the final YouTube acquisition architecture", () => {

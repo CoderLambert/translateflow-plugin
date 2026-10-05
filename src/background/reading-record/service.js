@@ -1,11 +1,12 @@
 import { sha256 } from "../../shared/hash.js";
 import { validateResultArtifact } from "../../shared/reading/artifact.js";
-import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_METHOD as M, READING_PROTOCOL_VERSION as V } from "../../shared/reading/constants.js";
+import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_PREVIEW_PATH, READING_METHOD as M, READING_PROTOCOL_VERSION as V } from "../../shared/reading/constants.js";
 import { validateReadingRequest } from "../../shared/reading/dto.js";
 import { authorizeReadingMethod } from "../../shared/reading/lifecycle.js";
 import { validateReadingResponse } from "../../shared/reading/response.js";
 import { ReadingContractError, bool, fail, pageKey as validatePageKey, siteKey as validateSiteKey } from "../../shared/reading/validation.js";
-import { createReadingAccess } from "./access.js";
+import { createReadingAccess, verifyReadingPreviewFrame } from "./access.js";
+import { createReadingPreviewRegistry } from "./previews.js";
 import { createOperationRegistry } from "./operations.js";
 import { createExportRegistry } from "./exports.js";
 import { createHandoffRegistry } from "./handoffs.js";
@@ -20,6 +21,7 @@ const MANAGE = new Set([M.SET_RECORDING, M.SET_SITE_RECORDING, M.DELETE_RECORD, 
 export function createReadingService({ browser, repository = null, collector, now = Date.now, randomId = () => crypto.randomUUID(), learningCenterAvailable = false,
     siteMarkers = { get: getReadingMemorySite, set: setReadingMemorySite } } = {}) {
   const accessControl = createReadingAccess({ browser, collector, randomId });
+  const previews = createReadingPreviewRegistry({ now, randomId });
   const operations = createOperationRegistry({ now });
   const assistantSessions = new Set();
   const exports = createExportRegistry({ repository, now, randomId });
@@ -29,6 +31,61 @@ export function createReadingService({ browser, repository = null, collector, no
   }
   const handoffs = createHandoffRegistry({ browser, now, randomId, readTarget: context => repositoryMethod("readHandoffTarget")(context) });
   const assertAccess = (access) => { if (!accessControl.isCurrent(access)) fail(E.STALE_OPERATION, "access.current"); };
+  async function requirePreviewConsent(siteKey) {
+    const value = await siteMarkers.get(siteKey);
+    if (value?.state !== "ready" || value.enabled !== true || value.permissionGranted !== true) fail(E.DISABLED, "preview.site-markers");
+    return value;
+  }
+  function previewTargetRequest(entry) {
+    return { recordId: entry.recordId, expectedRevision: entry.recordRevision, dataGeneration: entry.dataGeneration,
+      consentGeneration: entry.consentGeneration, pageGeneration: entry.pageGeneration, pageRevision: entry.pageRevision,
+      sitePolicyRevision: entry.sitePolicyRevision };
+  }
+  async function readPreview(entry) {
+    const assertPreviewCurrent = () => {
+      if (previews.get(entry.previewId) !== entry) fail(E.STALE_OPERATION, "preview.expired");
+      assertAccess(entry.ownerAccess);
+    };
+    assertPreviewCurrent();
+    await accessControl.validateCurrent(entry.ownerAccess);
+    await requirePreviewConsent(entry.siteKey);
+    assertPreviewCurrent();
+    const target = await repositoryMethod("readPreviewTarget")({ request: previewTargetRequest(entry), access: entry.ownerAccess,
+      assertCurrent: assertPreviewCurrent });
+    assertPreviewCurrent();
+    await requirePreviewConsent(entry.siteKey);
+    assertPreviewCurrent();
+    return target.detail;
+  }
+  async function handlePreviewFrame(request, sender) {
+    const frame = await verifyReadingPreviewFrame(browser, sender, request.previewId);
+    const entry = previews.get(request.previewId);
+    if (!entry || !accessControl.isCurrent(entry.ownerAccess)) fail(E.STALE_OPERATION, "preview.owner-current");
+    if (request.method === M.PREVIEW_CLAIM) {
+      await requirePreviewConsent(entry.siteKey);
+      return previews.claim(request.previewId, frame);
+    }
+    if (request.method === M.PREVIEW_READ) return readPreview(previews.forFrame(request.previewId, frame));
+    if (request.method === M.PREVIEW_CLOSE) return previews.closeByFrame(request.previewId, frame);
+    fail(E.FORBIDDEN, "preview.frame-method");
+  }
+  async function bindPreview(access, request) {
+    if (access.scope !== "content" || access.siteExcluded) fail(E.FORBIDDEN, "preview.bind-scope");
+    const entry = previews.get(request.previewId), candidate = previews.getClaim(request.previewId, request.claimId);
+    if (!entry || !candidate || entry.ownerKey !== access.ownerKey) fail(E.FORBIDDEN, "preview.bind-owner");
+    assertAccess(access);
+    await requirePreviewConsent(entry.siteKey);
+    const storedSender = { id: browser.runtime.id, url: candidate.documentUrl, documentId: candidate.documentId,
+      frameId: candidate.frameId, tab: { id: candidate.tabId, incognito: false }, documentLifecycle: "active" };
+    const frame = await verifyReadingPreviewFrame(browser, storedSender, request.previewId);
+    if (frame.contextId !== candidate.contextId || frame.tabId !== candidate.tabId) fail(E.FORBIDDEN, "preview.bind-frame");
+    const target = await repositoryMethod("readPreviewTarget")({ request: previewTargetRequest(entry), access: entry.ownerAccess,
+      assertCurrent: () => { assertAccess(entry.ownerAccess); if (previews.get(request.previewId) !== entry) fail(E.STALE_OPERATION, "preview.expired"); } });
+    if (target.recordId !== entry.recordId || target.revision !== entry.recordRevision) fail(E.STALE_OPERATION, "preview.revision");
+    await requirePreviewConsent(entry.siteKey);
+    assertAccess(access);
+    return previews.bind(access, request.previewId, request.claimId);
+  }
   async function dispatch(request, access) {
     const method = request.method;
     if (method === M.OPEN_LEARNING_CENTER) {
@@ -36,6 +93,21 @@ export function createReadingService({ browser, repository = null, collector, no
       const path = `${READING_LEARNING_CENTER_PATH}${request.recordId ? `#record=${request.recordId}` : ""}`;
       await browser.tabs.create({ url: browser.runtime.getURL(path) });
       return { opened: true };
+    }
+    if (method === M.PREVIEW_CREATE) {
+      if (access.scope !== "content" || access.siteExcluded) fail(E.FORBIDDEN, "preview.create-scope");
+      await accessControl.validateCurrent(access);
+      await requirePreviewConsent(access.siteKey);
+      const target = await repositoryMethod("readPreviewTarget")({ request: { recordId: request.recordId, expectedRevision: request.expectedRevision },
+        access, assertCurrent: () => assertAccess(access) });
+      await requirePreviewConsent(access.siteKey);
+      await accessControl.validateCurrent(access);
+      return previews.create({ access, target });
+    }
+    if (method === M.PREVIEW_BIND) return bindPreview(access, request);
+    if (method === M.PREVIEW_CLOSE) {
+      if (access.scope !== "content") fail(E.FORBIDDEN, "preview.close-scope");
+      return previews.closeByOwner(access, request.previewId);
     }
     if (method === M.REGISTER_DOCUMENT) {
       const handoffId = await handoffs.bindDocument(access);
@@ -51,6 +123,7 @@ export function createReadingService({ browser, repository = null, collector, no
       await accessControl.validateCurrent(access);
       const result = await siteMarkers.set(origin, request.enabled);
       if (!request.enabled) handoffs.revoke(entry => entry.target.siteKey === origin);
+      previews.revokeSite(origin);
       return result;
     }
     if (method === M.CREATE_HANDOFF) return handoffs.create(context);
@@ -64,6 +137,7 @@ export function createReadingService({ browser, repository = null, collector, no
       if (method === M.GET_RECORD && (result?.record?.recordId !== request.recordId ||
           (access.scope === "content" && result.record.pageKey !== access.pageKey))) fail(E.FORBIDDEN, "record.page");
       if (method === M.GET_PAGE_SUMMARY && access.scope !== "content") fail(E.FORBIDDEN, "summary.scope");
+      if (method === M.GET_RECORD && result?.committed) previews.revokeRecord(request.recordId);
       return result;
     }
     if (method === M.BEGIN_QUERY) {
@@ -86,7 +160,9 @@ export function createReadingService({ browser, repository = null, collector, no
       const artifactDigest = await sha256(JSON.stringify(request.artifact));
       const assertCurrent = () => { assertAccess(access); operations.assertCurrent(registeredOperation, access); };
       assertCurrent();
-      return repositoryMethod("mutate")({ ...context, assertCurrent, registeredOperation, artifactDigest });
+      const result = await repositoryMethod("mutate")({ ...context, assertCurrent, registeredOperation, artifactDigest });
+      previews.revokeRecord(request.token.recordId);
+      return result;
     }
     if (method === M.CANCEL_OPERATION) {
       const registeredOperation = operations.getForCancellation(access, request.operationId);
@@ -96,6 +172,7 @@ export function createReadingService({ browser, repository = null, collector, no
     }
     if (MANAGE.has(method)) {
       const result = await repositoryMethod("mutate")(context);
+      previews.revokeAll();
       if (method === M.DELETE_RECORD) operations.revoke((entry) => (entry.token?.recordId ?? entry.request?.recordId) === request.recordId);
       else if (method === M.DELETE_PAGE) operations.revoke((entry) => entry.access.pageKey === request.pageKey);
       else if (method === M.SET_SITE_RECORDING) operations.revoke((entry) => entry.access.siteKey === request.siteKey);
@@ -116,6 +193,13 @@ export function createReadingService({ browser, repository = null, collector, no
   async function handle(message, sender) {
     try {
       const request = validateReadingRequest(message);
+      const previewFrame = request.method === M.PREVIEW_CLAIM || request.method === M.PREVIEW_READ ||
+        (request.method === M.PREVIEW_CLOSE && sender?.id === browser?.runtime?.id &&
+          typeof sender?.url === "string" && sender.url.startsWith(`${browser.runtime.getURL(READING_PREVIEW_PATH)}?`));
+      if (previewFrame) {
+        const data = await handlePreviewFrame(request, sender);
+        return validateReadingResponse(request.method, { protocolVersion: V, ok: true, data }, "extension");
+      }
       let access = await accessControl.authorize(sender, request.method, request);
       if (access.scope === "content" && ![M.REGISTER_DOCUMENT, M.OPEN_LEARNING_CENTER].includes(request.method)) {
         const policy = await repositoryMethod("readPolicy")({ access, request, assertCurrent: () => assertAccess(access) });
@@ -208,13 +292,14 @@ export function createReadingService({ browser, repository = null, collector, no
       access, registeredOperation: operation, assertCurrent: () => assertAccess(access) }); }
     finally { operations.revoke(value => value === operation); }
   }
-  function invalidateAccess(tabId) { accessControl.invalidateTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); }
+  function invalidateAccess(tabId) { accessControl.invalidateTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); previews.revokeTab(tabId); }
   return { handle, prepareAssistantTurn, commitAssistantTurn, cancelAssistantTurn, accessControl, operations, exports, handoffs,
-    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); handoffs.revoke(entry => entry.tabId === tabId); },
+    previews,
+    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); handoffs.revoke(entry => entry.tabId === tabId); previews.revokeTab(tabId); },
     invalidateTab(tabId) { invalidateAccess(tabId); handoffs.revoke(entry => entry.tabId === tabId); },
     onTabUpdated(tabId, changeInfo) { handoffs.onTabUpdated(tabId, changeInfo); invalidateAccess(tabId); },
     revoke() { accessControl.invalidateAll(); for (const session of assistantSessions) session.active = false;
-      assistantSessions.clear(); operations.revoke(); exports.revoke(); handoffs.revoke(); } };
+      assistantSessions.clear(); operations.revoke(); exports.revoke(); handoffs.revoke(); previews.revokeAll(); } };
 }
 
 function assertNotAborted(signal) {
