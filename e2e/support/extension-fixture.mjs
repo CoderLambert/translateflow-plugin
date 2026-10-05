@@ -62,7 +62,7 @@ export const test = base.extend({
     let serviceWorker = context.serviceWorkers()[0];
     if (!serviceWorker) serviceWorker = await context.waitForEvent("serviceworker");
     const extensionId = new URL(serviceWorker.url()).host;
-    const driver = await context.newPage();
+    let driver = await context.newPage();
     await driver.goto(`chrome-extension://${extensionId}/popup.html`);
     const pageTokens = new WeakMap();
     let pageTokenCounter = 0;
@@ -103,6 +103,29 @@ export const test = base.extend({
             }
           });
         }, { baseUrl: server.baseUrl });
+      },
+
+      async restartBrowser() {
+        await context.close();
+        context = await chromium.launchPersistentContext(userDataDir, {
+          headless: true,
+          channel: "chromium",
+          args: [
+            `--disable-extensions-except=${extensionDir}`,
+            `--load-extension=${extensionDir}`
+          ]
+        });
+        let nextServiceWorker = context.serviceWorkers()[0];
+        if (!nextServiceWorker) nextServiceWorker = await context.waitForEvent("serviceworker");
+        const nextExtensionId = new URL(nextServiceWorker.url()).host;
+        if (nextExtensionId !== extensionId) throw new Error("The extension identity changed after a persistent-profile browser restart.");
+        serviceWorker = nextServiceWorker;
+        driver = await context.newPage();
+        await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+        harness.context = context;
+        harness.driver = driver;
+        harness.serviceWorker = serviceWorker;
+        return { extensionId, restartedPersistentProfile: true };
       },
 
       async open(pathname) {

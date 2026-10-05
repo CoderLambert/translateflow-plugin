@@ -5,7 +5,7 @@
 
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u",
-    "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp"
+    "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "a"
   ]);
   const DROP_SUBTREE_TAGS = new Set([
     "script", "style", "iframe", "object", "embed", "form", "svg", "math",
@@ -49,6 +49,7 @@
 .tf-rich-resource-image { display: block; max-width: min(100%, 320px); height: auto; object-fit: contain; }
 .tf-rich-resource-audio { display: block; max-width: 100%; margin: .25em 0; }
 .tf-rich-audio-load { font: inherit; cursor: pointer; background: transparent; }
+.tf-rich-fragment-link { border: 0; padding: 0; color: var(--tf-rich-blue); font: inherit; text-decoration: underline; cursor: pointer; background: transparent; }
 .tf-rich-truncated { margin-top: .35em; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
 @media (prefers-color-scheme: dark) {
   :host { --tf-rich-blue: #83bfff; --tf-rich-note: #aab3aa; color: var(--tf-text-main, #e1e9de); }
@@ -59,7 +60,7 @@
 }
 `;
 
-  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "" } = {}) {
+  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "" } = {}) {
     if (!container) return false;
     const root = getShadowRoot(container);
     if (!root) return false;
@@ -75,6 +76,20 @@
     viewport.setAttribute("role", "region");
     locale.bindAttribute(viewport, "aria-label", "content.rich.contentAria");
     viewport.tabIndex = 0;
+    viewport.addEventListener("click", (event) => {
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+      const button = path.find((node) => node instanceof HTMLButtonElement && node.hasAttribute("data-rich-fragment-target")) || null;
+      if (!button || !viewport.contains(button)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const targetId = String(button.dataset.richFragmentTarget || "");
+      const target = [...viewport.querySelectorAll("[data-rich-target-id]")]
+        .find((node) => node.dataset.richTargetId === targetId);
+      if (!target) return;
+      target.scrollIntoView({ block: "nearest", behavior: "auto" });
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+    });
     if (preserveNewlines) viewport.style.setProperty("white-space", "pre-wrap");
     root.appendChild(viewport);
 
@@ -97,7 +112,7 @@
     }
     container.replaceChildren(document.createTextNode(String(fallbackText || "").slice(0, 512 * 1024)));
     if (resources.length && dictionaryId) {
-      app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId);
+      app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId, packageVersion);
     }
     return true;
   }
@@ -132,6 +147,17 @@
     const tag = String(node.tag || "").toLowerCase();
     if (DROP_SUBTREE_TAGS.has(tag)) return null;
     if (tag === "img" || tag === "audio") return placeholder(tag);
+    if (tag === "a") {
+      const target = String(node.attrs?.["data-rich-fragment-target"] || "");
+      if (!/^[a-z0-9_-]{1,80}$/iu.test(target)) return renderChildren(node.children, depth + 1, count, resources);
+      const link = document.createElement("button");
+      link.type = "button";
+      link.className = "tf-rich-fragment-link";
+      link.dataset.richFragmentTarget = target;
+      applySafeStyles(link, node.style);
+      appendChildren(link, node.children, depth, count, resources);
+      return link;
+    }
     if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count, resources);
 
     const element = document.createElement(tag);
@@ -179,6 +205,8 @@
     if (/^(?:[1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$/u.test(compactId)) {
       element.setAttribute("data-compact-id", compactId);
     }
+    const targetId = String(attrs["data-rich-target-id"] || "");
+    if (/^[a-z0-9_-]{1,80}$/iu.test(targetId)) element.dataset.richTargetId = targetId;
     const safeClasses = String(attrs.class || "")
       .split(/\s+/u)
       .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))

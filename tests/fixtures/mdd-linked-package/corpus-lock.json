@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "purpose": "synthetic-linked-mdx-mdd-package-not-real-dictionary-corpus",
+  "independentWriter": {
+    "name": "writemdict",
+    "repository": "https://github.com/zhansliu/writemdict",
+    "commit": "f0240b30cabd2f0470d3ee1a0641fc7f8c38dcf5",
+    "license": "MIT"
+  },
+  "entry": "linkedpackagefixture",
+  "files": [
+    {
+      "file": "linked-package.mdx",
+      "bytes": 1290,
+      "sha256": "2480a073cd6b2fff3be54ec46b8523d40d532302db25b7ec6ae890d63d6b3de7",
+      "role": "mdx"
+    },
+    {
+      "file": "linked-package.mdd",
+      "bytes": 1057,
+      "sha256": "ce9b793d54caad16cada682d50aff1e1db90e13d7a7d3d410b50a16cdf3b2979",
+      "role": "mdd-base"
+    },
+    {
+      "file": "linked-package.1.mdd",
+      "bytes": 1320,
+      "sha256": "fa705a4fb82005b6df6646ead6093cef3dcb28461ccc7fd23512e43eb51a48a8",
+      "role": "mdd-numbered"
+    },
+    {
+      "file": "fixture.css",
+      "bytes": 264,
+      "sha256": "d6b3eea1f4e80021d154c81ab24e6d8359f56ece76828af757a7d58e33434aa1",
+      "role": "stylesheet-sidecar"
+    },
+    {
+      "file": "sample.png",
+      "bytes": 74,
+      "sha256": "20ecc6210563125790dfe870c7cace5dcc33bc037df681dc53bc2a418c8ea58b",
+      "role": "image-sidecar"
+    },
+    {
+      "file": "tone.wav",
+      "bytes": 1004,
+      "sha256": "ede0acf6591d67e7443e5c1c6c423f8fc1d80594a6fb2be77515b559f29e68ae",
+      "role": "audio-sidecar"
+    }
+  ],
+  "resources": [
+    {
+      "path": "fixture.css",
+      "bytes": 264,
+      "sha256": "d6b3eea1f4e80021d154c81ab24e6d8359f56ece76828af757a7d58e33434aa1",
+      "mime": "text/css"
+    },
+    {
+      "path": "sample.png",
+      "bytes": 74,
+      "sha256": "20ecc6210563125790dfe870c7cace5dcc33bc037df681dc53bc2a418c8ea58b",
+      "mime": "image/png",
+      "dimensions": [
+        3,
+        2
+      ]
+    },
+    {
+      "path": "tone.wav",
+      "bytes": 1004,
+      "sha256": "ede0acf6591d67e7443e5c1c6c423f8fc1d80594a6fb2be77515b559f29e68ae",
+      "mime": "audio/wav",
+      "channels": 1,
+      "sampleRateHz": 8000,
+      "sampleCount": 480,
+      "format": "PCM16"
+    }
+  ],
+  "mdxResourceReferences": [
+    "fixture.css",
+    "sample.png",
+    "tone.wav",
+    "#media-anchor"
+  ],
+  "expectedOverrides": [
+    {
+      "path": "fixture.css",
+      "expectedKind": "sidecar",
+      "mddSha256": "f32c7ffab2b04a6d45bf0d58f52fb6b5378d604721aeb6bb33d16a35956c52dc"
+    },
+    {
+      "path": "sample.png",
+      "expectedKind": "sidecar",
+      "mddSha256": "1b7b3eeffe30587a78f524ec571c6925ce2f5bf0ceb96204bb4b237ba6c33ef0"
+    },
+    {
+      "path": "tone.wav",
+      "expectedKind": "sidecar",
+      "mddSha256": "03f2c1ec2a2c51b74f120ce42518033784efffc56a8cd47e5c43764d3fac1aff"
+    }
+  ],
+  "expectedSafety": {
+    "externalRequests": 0,
+    "dictionaryScriptsExecuted": false,
+    "audioStartsAfterUserClick": true
+  }
+}

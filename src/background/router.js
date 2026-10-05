@@ -299,7 +299,8 @@ export async function handleBackgroundMessage(message, sender) {
         requestId: message.requestId,
         resourceVersion: message.resourceVersion,
         mdxFileName: message.mdxFileName,
-        files: message.files
+        files: message.files,
+        sidecars: message.sidecars
       });
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_COMMIT:
       assertOptionsSender(sender);
@@ -328,6 +329,7 @@ export async function handleBackgroundMessage(message, sender) {
       return lookupRichMddResource({
         dictionaryId: message.dictionaryId,
         path: message.path,
+        packageVersion: message.packageVersion,
         requestId: message.requestId
       }, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_READ_CANCEL:

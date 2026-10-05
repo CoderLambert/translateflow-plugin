@@ -13,7 +13,7 @@ import {
 } from "./local-dictionary-installed-state.js";
 import {
   appendSummaryLine, fileBaseName, findDuplicateCandidate, formatBytes, importProgressLabel,
-  isTflexOverInstallLimit, renderLocalPreflight, resolveAssociatedMddFiles, safeFileLabel,
+  isTflexOverInstallLimit, renderLocalPreflight, resolveAssociatedRichResourceFiles, safeFileLabel,
   setPageStatus, tflexPackId, userMessage
 } from "./local-dictionary-import-presentation.js";
 
@@ -243,22 +243,22 @@ export function initializeLocalDictionaryImportUi({
     try {
       if (route === "rich-mdict") {
         const mdxFile = importedFiles.find((file) => /\.mdx$/iu.test(file.name));
-        const attached = resolveAssociatedMddFiles(preflightResult.resources.associatedMdd, importedFiles);
+        const attached = resolveAssociatedRichResourceFiles(preflightResult.resources.associatedMdd, preflightResult.resources.associatedSidecars || [], importedFiles);
         if (!attached) throw new Error("MDD 文件名无法安全匹配到唯一的所选文件；请重新选择文件组。");
         const imported = await runImportWithCancel(richController, () => richController.importDictionary({
           mdxFile,
           displayMetadata: { name: preflightResult.identity.displayTitle || fileBaseName(mdxFile.name) }
         }));
         const dictionaryId = String(imported.commit?.dictionary?.id || imported.commit?.dictionary?.packId || "");
-        if (attached.length) {
+        if (attached.mddFiles.length) {
           if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
           try {
             progress.textContent = "MDX 已安装，正在原子检查并添加已关联的 MDD…";
             await runImportWithCancel(mddController, () => mddController.attachResources({
-              dictionaryId, mdxFileName: mdxFile.name, files: attached
+              dictionaryId, mdxFileName: mdxFile.name, files: attached.mddFiles, sidecars: attached.sidecars
             }));
           } catch (error) {
-            retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached, title: preflightResult.identity.displayTitle };
+            retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached.mddFiles, sidecars: attached.sidecars, title: preflightResult.identity.displayTitle };
             retryMddButton.hidden = false;
             retryMddButton.textContent = `重试为“${retryAttachment.title || "已安装词典"}”添加 MDD`;
             const cancelled = error?.name === "AbortError";
@@ -355,7 +355,7 @@ export function initializeLocalDictionaryImportUi({
     const attempt = retryAttachment;
     try {
       await runImportWithCancel(mddController, () => mddController.attachResources({
-        dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, files: attempt.files
+        dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, files: attempt.files, sidecars: attempt.sidecars
       }));
       retryAttachment = null;
       retryMddButton.hidden = true;

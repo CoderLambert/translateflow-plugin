@@ -8,7 +8,7 @@ import { inspectStarDictFiles, createStarDictProductRecipe } from "./stardict-im
 import { createTflexLocalImportController } from "./tflex-local-import-controller.js";
 import { readInstalledDictionaryState } from "./local-dictionary-installed-state.js";
 import {
-  fileBaseName, importProgressLabel, resolveAssociatedMddFiles, userMessage
+  fileBaseName, importProgressLabel, resolveAssociatedRichResourceFiles, userMessage
 } from "./local-dictionary-import-presentation.js";
 
 export type LocalPreflight = Record<string, any>;
@@ -45,7 +45,7 @@ export function createLocalDictionaryClient({
   onProgress?: (message: string, phase: string) => void;
 } = {}) {
   let active: LocalController | null = null;
-  let retryAttachment: null | { dictionaryId: string; mdxFileName: string; files: File[]; title: string } = null;
+  let retryAttachment: null | { dictionaryId: string; mdxFileName: string; files: File[]; sidecars: { path: string; file: File }[]; title: string } = null;
   const progress = (event: { phase?: string }) => onProgress(importProgressLabel(event.phase), String(event.phase || ""));
   const rich = makeRichController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
   const structured = makeMdictController({ runtime, WorkerCtor, cryptoProvider, onProgress: progress });
@@ -73,7 +73,7 @@ export function createLocalDictionaryClient({
       if (route === "rich-mdict") {
         const mdxFile = files.find(file => /\.mdx$/iu.test(file.name));
         if (!mdxFile) throw new Error("缺少 MDX 文件。");
-        const attached = resolveAssociatedMddFiles(report.resources.associatedMdd, files) as File[] | null;
+        const attached = resolveAssociatedRichResourceFiles(report.resources.associatedMdd, report.resources.associatedSidecars || [], files) as { mddFiles: File[]; sidecars: { path: string; file: File }[] } | null;
         if (!attached) throw new Error("MDD 文件名无法安全匹配到唯一的所选文件；请重新选择文件组。");
         const imported = await run(rich, () => rich.importDictionary({
           mdxFile,
@@ -81,13 +81,13 @@ export function createLocalDictionaryClient({
         }));
         const importedRecord = imported as Record<string, any>;
         const dictionaryId = String(importedRecord.commit?.dictionary?.id || importedRecord.commit?.dictionary?.packId || "");
-        if (attached.length) {
+        if (attached.mddFiles.length) {
           if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
           try {
             onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…", "");
-            await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, files: attached }));
+            await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, files: attached.mddFiles, sidecars: attached.sidecars }));
           } catch (error) {
-            retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached, title: String(report.identity.displayTitle || "") };
+            retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, files: attached.mddFiles, sidecars: attached.sidecars, title: String(report.identity.displayTitle || "") };
             const cancelled = isAbort(error);
             return {
               progress: cancelled ? "MDX 已安装；MDD 附件导入已取消，原有附件保持不变。" : `MDX 已安装；MDD 未更改。${userMessage(error)}`,
@@ -133,7 +133,7 @@ export function createLocalDictionaryClient({
     const attempt = retryAttachment;
     if (!attempt) throw new Error("没有可重试的 MDD 附件。");
     try {
-      await run(mdd, () => mdd.attachResources({ dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, files: attempt.files }));
+      await run(mdd, () => mdd.attachResources({ dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, files: attempt.files, sidecars: attempt.sidecars }));
       retryAttachment = null;
       return { progress: "完成 · MDD 附件已添加", status: "MDD 附件已安全添加。", error: false, changed: true, retryMdd: false };
     } catch (error) {

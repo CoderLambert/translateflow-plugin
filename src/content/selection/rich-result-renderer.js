@@ -233,7 +233,8 @@
         if (safeTree && !safeTree.truncated) {
           displayed = viewer.render(body, safeTree, fallback, {
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
-            dictionaryId: String(dictionaryId || "")
+            dictionaryId: String(dictionaryId || ""),
+            packageVersion: String(dictionary?.packageVersion || "")
           });
         }
       } catch {

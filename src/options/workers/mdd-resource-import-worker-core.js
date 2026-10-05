@@ -1,15 +1,21 @@
 import { createOpfsPackStore } from "../../background/packs/opfs-store.js";
-import { buildMddIndex, validateMddIndex } from "../../background/packs/importers/mdd.js";
+import { buildMddIndex, validateMddIndex, MDD_IMPORT_LIMITS } from "../../background/packs/importers/mdd.js";
+import { classifyMddResource } from "../../background/packs/importers/mdd-resource-policy.js";
 import { RICH_MDICT_OPFS_ROOT } from "../../background/packs/rich-mdict.js";
 import {
   RICH_MDD_MAX_INDEX_BYTES,
   RICH_MDD_MAX_SOURCE_BYTES,
   RICH_MDD_MAX_TOTAL_INDEX_BYTES,
   RICH_MDD_MAX_TOTAL_SOURCE_BYTES,
+  RICH_MDD_MAX_SIDECAR_FILE_BYTES,
+  RICH_MDD_MAX_SIDECAR_BYTES,
+  classifyMddSidecarPath,
   resourceFilePaths,
+  sidecarFilePath,
   safeFileName,
   validateMddCompanions
 } from "../../background/packs/rich-mdd-contract.js";
+import { normalizeMddResourcePath } from "../../background/packs/importers/mdd-resource-path.js";
 import { normalizePackId, normalizeRequestId, normalizeVersion, richError, richMdictAbortError } from "../../background/packs/rich-mdict-contract.js";
 import { MDD_RESOURCE_WORKER_MESSAGES } from "./mdd-resource-import-worker-protocol.js";
 
@@ -40,7 +46,7 @@ export function createMddResourceImportWorkerHandler({
     const requestId = normalizeRequestId(message.requestId);
     if (active) throw workerError("RICH_MDD_WORKER_BUSY", "Another MDD resource import is already running.");
     const input = validateInput(message.input);
-    const { dictionaryId, requestId: ignored, resourceVersion, mdxFileName, files } = input;
+    const { dictionaryId, requestId: ignored, resourceVersion, mdxFileName, files, sidecars } = input;
     void ignored;
     const controller = new AbortController();
     active = { requestId, controller };
@@ -89,6 +95,33 @@ export function createMddResourceImportWorkerHandler({
           keyCount: builtIndex.keyCount
         });
       }
+      const storedSidecars = [];
+      let sidecarBytes = 0;
+      for (let index = 0; index < sidecars.length; index += 1) {
+        assertActive(controller.signal);
+        const item = sidecars[index];
+        const bytes = new Uint8Array(await item.file.arrayBuffer());
+        assertActive(controller.signal);
+        if (bytes.byteLength !== item.file.size) throw workerError("RICH_MDD_CORRUPT", "A sidecar file was read incompletely.");
+        const actual = classifyMddResource(item.path, bytes, MDD_IMPORT_LIMITS);
+        if (actual.kind !== item.kind || actual.mime !== item.mime) throw workerError("RICH_MDD_CORRUPT", "A sidecar file does not match its declared type.");
+        sidecarBytes += bytes.byteLength;
+        if (sidecarBytes > RICH_MDD_MAX_SIDECAR_BYTES) throw workerError("RICH_MDD_LIMIT", "Sidecar files exceed the 64 MiB total safety limit.");
+        const sourcePath = sidecarFilePath(index);
+        emitProgress(postMessage, requestId, "store-sidecar", { fileName: item.path, index: index + 1, count: sidecars.length });
+        await store.writeFile(dictionaryId, resourceVersion, sourcePath, bytes);
+        assertActive(controller.signal);
+        const sourceSize = await store.getFileSize(dictionaryId, resourceVersion, sourcePath);
+        if (sourceSize !== bytes.byteLength) throw workerError("RICH_MDD_STORAGE", "Stored sidecar size is inconsistent.");
+        storedSidecars.push({
+          path: item.path,
+          sourcePath,
+          sourceSize,
+          sha256: await sha256(bytes, cryptoProvider),
+          kind: actual.kind,
+          mime: actual.mime
+        });
+      }
       const ordered = validateMddCompanions(resources.map((resource) => resource.fileName), mdxFileName);
       if (ordered.some((item, index) => item.fileName !== resources[index].fileName)) {
         throw workerError("RICH_MDD_CORRUPT", "MDD companions changed order during indexing.");
@@ -98,7 +131,7 @@ export function createMddResourceImportWorkerHandler({
         requestId,
         dictionaryId,
         resourceVersion,
-        metadata: { mdxFileName, resources }
+        metadata: { mdxFileName, resources, sidecars: storedSidecars }
       };
       postMessage(result);
       return result;
@@ -136,7 +169,26 @@ function validateInput(input) {
   }
   const total = sortedFiles.reduce((sum, file) => sum + file.size, 0);
   if (total > RICH_MDD_MAX_TOTAL_SOURCE_BYTES) throw workerError("RICH_MDD_LIMIT", "MDD companions exceed the 512 MiB safety limit.");
-  return { dictionaryId, requestId, resourceVersion, mdxFileName, files: sortedFiles };
+  const rawSidecars = Array.isArray(input?.sidecars) ? input.sidecars : [];
+  if (rawSidecars.length > 32) throw workerError("RICH_MDD_LIMIT", "Select no more than 32 sidecar files.");
+  const paths = new Set();
+  let sidecarBytes = 0;
+  const sidecars = rawSidecars.map((item) => {
+    const path = normalizeMddResourcePath(String(item?.path || ""));
+    const type = classifyMddSidecarPath(path);
+    const file = item?.file;
+    if (!type || !file || typeof file.slice !== "function" || !Number.isSafeInteger(file.size) || file.size <= 0 ||
+        file.size > RICH_MDD_MAX_SIDECAR_FILE_BYTES || (type.kind === "stylesheet" && file.size > 64 * 1024)) {
+      throw workerError("RICH_MDD_LIMIT", "Sidecar files exceed the supported size limit.");
+    }
+    const key = path.toLocaleLowerCase("en-US");
+    if (paths.has(key)) throw workerError("RICH_MDD_INPUT", "Duplicate sidecar resource paths are not allowed.");
+    paths.add(key);
+    sidecarBytes += file.size;
+    if (sidecarBytes > RICH_MDD_MAX_SIDECAR_BYTES) throw workerError("RICH_MDD_LIMIT", "Sidecar files exceed the 64 MiB total safety limit.");
+    return { path, file, kind: type.kind, mime: type.mime };
+  }).sort((left, right) => left.path.localeCompare(right.path));
+  return { dictionaryId, requestId, resourceVersion, mdxFileName, files: sortedFiles, sidecars };
 }
 
 function fileSource(file, signal) {

@@ -203,19 +203,26 @@ export function publicRichDictionary(entry) {
   const resourceSources = Array.isArray(active.resources?.sources) && active.resources.sources.length <= 16
     ? active.resources.sources
     : [];
+  const sidecars = Array.isArray(active.resources?.sidecars) && active.resources.sidecars.length <= 32
+    ? active.resources.sidecars
+    : [];
+  const sidecarBytes = sidecars.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0);
   return {
     id: String(active.packId || ""),
     title: clampText(active.title || active.fileName || "Rich MDict", 200),
     fileName: clampText(active.fileName || "", 200),
     format: clampText(active.format || "", 40),
     packVersion: clampText(active.packVersion || "", 120),
+    packageVersion: clampText(active.resources?.packVersion || active.packVersion || "", 120),
     sourceSize: Number(active.sourceSize || 0),
     indexSize: Number(active.indexSize || 0),
     entryCount: Number(active.entryCount || 0),
     resourceCount: resourceSources.length,
     resourceBytes: resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)), 0),
+    sidecarCount: sidecars.length,
+    sidecarBytes,
     installedBytes: Number(active.sourceSize || 0) + Number(active.indexSize || 0) +
-      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)) + Math.max(0, Number(source?.indexSize || 0)), 0),
+      resourceSources.reduce((sum, source) => sum + Math.max(0, Number(source?.sourceSize || 0)) + Math.max(0, Number(source?.indexSize || 0)), 0) + sidecarBytes,
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
     ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),

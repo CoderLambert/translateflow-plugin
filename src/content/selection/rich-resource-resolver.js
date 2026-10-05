@@ -21,13 +21,14 @@
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
 
-  function attach(container, shadowRoot, viewport, resources, dictionaryId) {
+  function attach(container, shadowRoot, viewport, resources, dictionaryId, packageVersion = "") {
     close(container);
     const session = {
       container,
       shadowRoot,
       viewport,
       dictionaryId: String(dictionaryId || ""),
+      packageVersion: String(packageVersion || ""),
       closed: false,
       resources: [],
       urls: new Map(),
@@ -60,7 +61,24 @@
       const asset = await fetchAsset(session, resource);
       if (!isCurrent(session)) return;
       if (resource.kind === "stylesheet") {
-        const css = compileLocalStylesheet(asset.bytes);
+        let css = typeof asset.safeCss === "string"
+          ? asset.safeCss
+          : app.modules.richResourceStylesheet?.compileLocalStylesheet(asset.bytes) || "";
+        for (const slot of asset.assetSlots) {
+          if (!isCurrent(session)) return;
+          const image = await fetchAsset(session, { kind: "image", path: slot.path, label: "" });
+          const pixels = image.width * image.height;
+          if (!Number.isSafeInteger(pixels) || pixels <= 0 || pixels > MAX_VIEW_IMAGE_PIXELS) {
+            css = css.replaceAll(slot.token, "none");
+            continue;
+          }
+          const url = createTrackedUrl(session, image, pixels);
+          if (!url) {
+            css = css.replaceAll(slot.token, "none");
+            continue;
+          }
+          css = css.replaceAll(slot.token, `url("${url}")`);
+        }
         if (!css || !isCurrent(session)) return;
         const style = document.createElement("style");
         style.textContent = css;
@@ -167,12 +185,14 @@
         requestId,
         ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN,
         dictionaryId: session.dictionaryId,
-        path: resource.path
+        path: resource.path,
+        ...(session.packageVersion ? { packageVersion: session.packageVersion } : {})
       });
     } finally {
       session.inFlightRequests.delete(requestId);
     }
     if (!isCurrent(session) || !response?.ok || !response.found) throw new Error("MDD resource is unavailable.");
+    if (session.packageVersion && response.packageVersion !== session.packageVersion) throw new Error("MDD package version changed while this entry was being rendered.");
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {
@@ -191,7 +211,25 @@
     if (resource.kind === "image" && (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0)) {
       throw new Error("MDD image dimensions are missing.");
     }
-    return { bytes, mime, size, width, height };
+    const safeCss = typeof response.safeCss === "string" && response.safeCss.length <= MAX_STYLESHEET_BYTES
+      ? response.safeCss
+      : "";
+    const assetSlots = normalizeStylesheetAssetSlots(response.assetSlots);
+    return { bytes, mime, size, width, height, safeCss, assetSlots };
+  }
+
+  function normalizeStylesheetAssetSlots(input) {
+    if (!Array.isArray(input) || input.length > MAX_RESOURCE_COUNT) return [];
+    const slots = [];
+    const names = new Set();
+    for (const item of input) {
+      const token = String(item?.token || "");
+      const path = app.modules.richResourcePath.normalize(item?.path || "");
+      if (!/^tfasset[0-7]$/u.test(token) || !path || path !== item.path || names.has(token) || item.kind !== "image") continue;
+      names.add(token);
+      slots.push({ token, path });
+    }
+    return slots;
   }
 
   function createTrackedUrl(session, asset, pixels) {
@@ -301,59 +339,6 @@
     }
   }
 
-  function compileLocalStylesheet(bytes) {
-    let source;
-    try { source = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return ""; }
-    if (!source || bytes.byteLength > MAX_STYLESHEET_BYTES || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(source)) return "";
-    if (/@|\/\*|\*\/|\\|url\s*\(|expression\s*\(|javascript\s*:|vbscript\s*:/iu.test(source)) return "";
-    const styleApi = app.modules.richDictionarySanitizerStyle;
-    if (!styleApi?.safeStyleValue) return "";
-    const rules = [];
-    let offset = 0;
-    const pattern = /([^{}]+)\{([^{}]*)\}/g;
-    for (const match of source.matchAll(pattern)) {
-      if (match.index !== offset && source.slice(offset, match.index).trim()) return "";
-      offset = match.index + match[0].length;
-      const selectors = match[1].split(",").map((item) => item.trim()).filter(Boolean);
-      if (!selectors.length || selectors.length > 3) return "";
-      const safeSelectors = selectors.map(normalizeLocalSelector);
-      if (safeSelectors.some((selector) => !selector)) return "";
-      const declarations = [];
-      for (const declaration of match[2].split(";")) {
-        if (!declaration.trim()) continue;
-        const separator = declaration.indexOf(":");
-        if (separator <= 0 || declarations.length >= 12) return "";
-        const property = declaration.slice(0, separator).trim().toLowerCase();
-        const rawValue = declaration.slice(separator + 1).trim();
-        const value = styleApi.safeStyleValue(property, rawValue);
-        if (!value || !ALLOWED_STYLESHEET_PROPERTIES.has(property)) continue;
-        declarations.push(`${property}:${property === "font-size" ? `clamp(8px, ${value}, 48px)` : value}`);
-      }
-      if (!declarations.length) continue;
-      rules.push(`${safeSelectors.map((selector) => `.tf-rich-viewer ${selector}`).join(",")}{${declarations.join(";")}}`);
-      if (rules.length > 64) return "";
-    }
-    if (source.slice(offset).trim()) return "";
-    return rules.join("\n");
-  }
-
-  const ALLOWED_STYLESHEET_TAGS = new Set(["div", "span", "p", "br", "b", "strong", "i", "em", "u", "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp"]);
-  const ALLOWED_STYLESHEET_PROPERTIES = new Set([
-    "color", "background-color", "font-size", "font-weight", "font-style", "text-decoration", "text-align",
-    "vertical-align", "white-space", "line-height", "margin", "margin-top", "margin-right", "margin-bottom",
-    "margin-left", "padding", "padding-top", "padding-right", "padding-bottom", "padding-left", "border",
-    "border-top", "border-right", "border-bottom", "border-left", "border-color", "border-width", "border-style",
-    "border-collapse", "border-spacing"
-  ]);
-
-  function normalizeLocalSelector(value) {
-    const selector = String(value || "").trim();
-    const match = /^(?:(div|span|p|br|b|strong|i|em|u|ul|ol|li|table|tr|td|th|ruby|rt|rp))?(?:\.([-_a-z][-_a-z0-9]{0,47}))?$/iu.exec(selector);
-    if (!match || (!match[1] && !match[2])) return "";
-    if (match[1] && !ALLOWED_STYLESHEET_TAGS.has(match[1].toLowerCase())) return "";
-    return `${match[1] ? match[1].toLowerCase() : ""}${match[2] ? `.${match[2]}` : ""}`;
-  }
-
   function createResourceRequestId() {
     const bytes = new Uint8Array(16);
     if (globalThis.crypto?.getRandomValues) {
@@ -405,7 +390,7 @@
     close,
     closeAll,
     closeDictionary,
-    compileLocalStylesheet,
+    compileLocalStylesheet: app.modules.richResourceStylesheet?.compileLocalStylesheet,
     get activeObjectUrlCount() { return activeObjectUrlCount; },
     get pendingReadCount() { return readQueue.length; },
     get runningReadCount() { return runningReads; }

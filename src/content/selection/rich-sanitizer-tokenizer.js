@@ -4,7 +4,7 @@
 
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u", "ul", "ol",
-    "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "font"
+    "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "font", "a"
   ]);
   const ACTIVE_TAGS = new Set([
     "script", "style", "iframe", "object", "form", "button", "select", "textarea",
@@ -148,6 +148,12 @@
 
       const tag = token.name === "font" ? "span" : token.name;
       const attrs = styleApi.safeAttributes(token);
+      const targetId = /^[a-z0-9_-]{1,80}$/iu.test(token.attrs.id || "") ? token.attrs.id : "";
+      if (targetId) attrs["data-rich-target-id"] = targetId;
+      if (token.name === "a") {
+        const fragment = /^#([a-z0-9_-]{1,80})$/iu.exec(String(token.attrs.href || ""));
+        if (fragment) attrs["data-rich-fragment-target"] = fragment[1];
+      }
       const style = styleApi.safeStyle(token.attrs.style || "");
       if (token.name === "font" && !style.color && token.attrs.color) {
         const color = styleApi.safeStyleValue("color", token.attrs.color.trim());

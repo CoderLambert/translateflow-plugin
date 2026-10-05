@@ -41,6 +41,7 @@ import "../content/selection/messages.js";
 import "../content/selection/empty-state.js";
 import "../content/selection/rich-sanitizer-style.js";
 import "../content/selection/rich-resource-path.js";
+import "../content/selection/rich-resource-stylesheet.js";
 import "../content/selection/rich-sanitizer-tokenizer.js";
 import "../content/selection/rich-sanitizer.js";
 import "../content/selection/rich-resource-resolver.js";

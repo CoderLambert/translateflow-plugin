@@ -104,6 +104,7 @@ export function inspectSources(root, files) {
         if (!dependencyFile) failures.push(`${path} 无法解析或越界的源码依赖: ${specifier}`);
         else graph.get(path).resolved.push(relative(root, dependencyFile).replaceAll(sep, "/"));
       } else if (!(isReact(specifier) && UI.test(path)) &&
+          !(path === "src/background/packs/rich-mdd-css.js" && specifier === "css-tree") &&
           !(path === "entrypoints/background.ts" && specifier === "wxt/utils/define-background") &&
           !(path === "entrypoints/background.js" && specifier === "wxt/utils/define-background") &&
           !(path === "entrypoints/content.ts" && specifier === "wxt/utils/define-content-script")) {

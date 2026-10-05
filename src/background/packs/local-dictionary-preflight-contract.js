@@ -35,6 +35,7 @@ export function basePreflightResult({
   unsupportedCapabilities = [],
   route = { importer: "none", requiresSemanticConfirmation: false },
   associatedMdd = [],
+  associatedSidecars = [],
   unassociatedFiles = [],
   missingCompanionHints = [],
   identity = {}
@@ -65,6 +66,7 @@ export function basePreflightResult({
     },
     resources: {
       associatedMdd,
+      associatedSidecars,
       unassociatedFiles: unassociatedFiles.map((file) => safeFileLabel(file.name)),
       missingCompanionHints: missingCompanionHints.map(cleanDisplayText).filter(Boolean)
     },
@@ -102,7 +104,8 @@ export function normalizePreflightFiles(input) {
 export function hasDuplicateFileNames(files) {
   const names = new Set();
   for (const file of files) {
-    const key = file.name.normalize("NFKC").toLocaleLowerCase("en-US");
+    const identity = String(file.webkitRelativePath || file.name).replaceAll("\\", "/");
+    const key = identity.normalize("NFKC").toLocaleLowerCase("en-US");
     if (names.has(key)) return true;
     names.add(key);
   }

