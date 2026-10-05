@@ -83,16 +83,16 @@ test('Release A actual product: trusted creation matrix survives browser restart
     let center = await env.center(); const content = await env.openContent();
     await query(content.page, '#first', 'session'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'invite');
     expect(env.server.calls).toHaveLength(0); expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(0);
-    const opened = env.context.waitForEvent('page'); await content.page.getByRole('button', { name: '在学习中心开启阅读记录' }).click(); const consent = await opened;
+    const opened = env.context.waitForEvent('page'); await content.page.getByRole('button', { name: 'Enable reading records in Learning Center' }).click(); const consent = await opened;
     await consent.getByRole('button', { name: 'Enable recording', exact: true }).click(); await expect(consent.getByRole('button', { name: 'Pause recording' })).toBeVisible();
     await content.page.bringToFront(); await content.page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await content.page.getByRole('button', { name: '保存本次结果', exact: true }).click(); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
+    await content.page.getByRole('button', { name: 'Save this result', exact: true }).click(); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
     await query(content.page, '#miss', 'zzsyntheticmissing'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(0);
     await query(content.page, '#sentence', 'This is a synthetic ordinary sentence.'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(1);
-    await content.page.getByRole('button', { name: '关闭', exact: true }).click();
+    await content.page.getByRole('button', { name: 'Close', exact: true }).click();
     await query(content.page, '#sentence', 'This is a synthetic ordinary sentence.'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(1);
     await query(content.page, '#first', 'session'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
-    await content.page.getByRole('button', { name: '使用 AI 结合上下文详解' }).click(); await expect(content.page.locator('.tf-selection-ai-detail')).toHaveAttribute('data-state', 'success');
+    await content.page.getByRole('button', { name: 'Explain with AI using the surrounding context' }).click(); await expect(content.page.locator('.tf-selection-ai-detail')).toHaveAttribute('data-state', 'success');
     await expect.poll(async () => (await details(center)).flatMap(value => value.artifacts).filter(artifact => artifact.kind === 'assistant').length).toBe(1);
     expect(env.server.calls).toHaveLength(2); const before = await details(center);
     expect(before.find(value => value.record.itemText === 'zzsyntheticmissing').artifacts[0].payload.outcome).toBe('no-hit');
@@ -247,6 +247,7 @@ test('Release A real DOM capture reports ten-sample sync/total timing and bounde
 test('Release A extension-origin physical quota refusal preserves actual product read/export/delete recovery', async ({}, info) => {
   test.setTimeout(60000); const env = await environment(info);
   try {
+    await env.driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'zh_CN' }));
     await env.fixture(); let center = await env.center();
     await center.evaluate(async () => (await import(chrome.runtime.getURL('tests/fixtures/reading/storage.mjs'))).seedRecords(1));
     await center.close();
@@ -312,6 +313,7 @@ test('Release A extension-origin physical quota refusal preserves actual product
 test('Release A injected quota boundary is truthful/retryable; stored hostile answers and bilingual composition remain text-only', async ({}, info) => {
   test.setTimeout(60000); const env = await environment(info);
   try {
+    await env.driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'zh_CN' }));
     let center = await env.center(); await center.getByRole('button', { name: 'Enable recording', exact: true }).click();
     await expect(center.getByRole('button', { name: 'Pause recording' })).toBeVisible();
     const worker = env.context.serviceWorkers()[0];

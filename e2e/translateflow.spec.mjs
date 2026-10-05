@@ -214,7 +214,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const shown = await harness.sendContent(page, "TF_QUICK_CONTROL_SHOW");
     expect(shown.ok).toBe(true);
 
-    const trigger = page.getByRole("button", { name: "TranslateFlow Quick Control" });
+    const trigger = page.locator(".tf-quick-trigger");
     await expect(trigger).toBeVisible();
     expect(await trigger.evaluate((node) => getComputedStyle(node).fontSize)).not.toBe("1px");
     const triggerBox = await trigger.boundingBox();
@@ -225,7 +225,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     await trigger.click();
 
-    const dialog = page.getByRole("dialog", { name: "TranslateFlow Quick Control" });
+    const dialog = page.locator(".tf-quick-panel");
     await expect(dialog).toBeVisible();
     const dialogBox = await dialog.boundingBox();
     expect(dialogBox?.width).toBeGreaterThanOrEqual(320);
