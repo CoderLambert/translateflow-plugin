@@ -35,10 +35,10 @@ test.describe("unified local dictionary import v2", () => {
 
   test("one picker safely installs Rich MDX with base and numbered MDD locally", async ({ harness }) => {
     const options = await harness.context.newPage();
-    const optionsPageNonLocalRequestsBeforeRestart = [];
+    const externalRequests = [];
     options.on("request", (request) => {
       if (/^https?:/iu.test(request.url()) && !/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/iu.test(request.url())) {
-        optionsPageNonLocalRequestsBeforeRestart.push(request.url());
+        externalRequests.push(request.url());
       }
     });
     await options.setViewportSize({ width: 390, height: 844 });
@@ -105,10 +105,10 @@ test.describe("unified local dictionary import v2", () => {
     const mdxBytes = await readFile(realMdxPath);
     const mddBytes = await readFile(realMddPath);
     const options = await harness.context.newPage();
-    const externalRequests = [];
+    const optionsPageNonLocalRequestsBeforeRestart = [];
     options.on("request", (request) => {
       if (/^https?:/iu.test(request.url()) && !/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/iu.test(request.url())) {
-        externalRequests.push(request.url());
+        optionsPageNonLocalRequestsBeforeRestart.push(request.url());
       }
     });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
@@ -132,6 +132,10 @@ test.describe("unified local dictionary import v2", () => {
 
     const installed = options.locator("#richMdictInstalledList .site-row").first();
     await expect(installed).toBeVisible();
+    const selectionEnabled = installed.locator('input[data-action="enabled"]');
+    await expect(selectionEnabled).toBeVisible();
+    if (!await selectionEnabled.isChecked()) await selectionEnabled.check();
+    await expect(selectionEnabled).toBeChecked();
     const dictionaryId = await installed.getAttribute("data-dictionary-id");
     expect(dictionaryId).toBeTruthy();
     const firstList = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
@@ -153,7 +157,8 @@ test.describe("unified local dictionary import v2", () => {
       text: "IP"
     }));
     expect(selectionLookup.found).toBe(true);
-    expect(selectionLookup.dictionaries.find((item) => item.id === dictionaryId)?.headword).toBe("IP");
+    const selectionRecord = selectionLookup.dictionaries.find((item) => item.id === dictionaryId);
+    expect(selectionRecord?.headword).toBe("IP");
 
     const lookupPage = await harness.open("/selection");
     await lookupPage.setViewportSize({ width: 1440, height: 900 });
@@ -195,12 +200,21 @@ test.describe("unified local dictionary import v2", () => {
       await expect(viewer).toBeVisible();
       const renderedText = await viewer.innerText();
       expect(renderedText.trim().length).toBeGreaterThan(0);
+      const expectedVisibleText = String(selectionRecord.text)
+        .replace(/<[^>]*>/gu, " ")
+        .replace(/&(?:nbsp|amp|lt|gt|quot);/giu, " ")
+        .replace(/\s+/gu, " ")
+        .trim();
+      const expectedRecordToken = expectedVisibleText.match(/[\p{L}\p{N}]{4,}/u)?.[0];
+      expect(expectedRecordToken).toBeTruthy();
+      expect(renderedText.toLocaleLowerCase()).toContain(expectedRecordToken.toLocaleLowerCase());
       await lookupPage.screenshot({ path: selectionScreenshot, fullPage: false, caret: "hide" });
       console.log("[LOCAL_REAL_CEDICT_PRODUCT_UI]", JSON.stringify({
         status: "PASS",
         selectedText: "IP",
         dictionaryTitle: firstDictionary.title,
         renderedTextCharacters: renderedText.trim().length,
+        renderedRecordTokenVisible: true,
         screenshot: selectionScreenshot
       }));
     } catch (error) {
