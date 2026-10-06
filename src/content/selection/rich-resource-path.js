@@ -21,5 +21,11 @@
     return path;
   }
 
-  app.modules.richResourcePath = Object.freeze({ normalize });
+  function normalizeAudioReference(value) {
+    if (typeof value !== "string") return "";
+    const path = value.startsWith("sound://") ? value.slice("sound://".length) : value;
+    return normalize(path);
+  }
+
+  app.modules.richResourcePath = Object.freeze({ normalize, normalizeAudioReference });
 })();

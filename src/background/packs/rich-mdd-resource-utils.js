@@ -64,7 +64,7 @@ export async function assertStagedSidecars({ store, packId, resourceVersion, sid
 
 export function validateResourceMime(result) {
   const expected = {
-    image: /^image\/(?:png|jpeg|gif|webp)$/u,
+    image: /^image\/(?:png|jpeg|gif|webp|avif)$/u,
     audio: /^audio\/(?:wav|mpeg|ogg|mp4|aac|flac)$/u,
     stylesheet: /^text\/css$/u
   }[result.kind];

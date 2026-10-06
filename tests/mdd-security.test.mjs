@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildMddIndex, lookupMddResource, normalizeMddResourcePath } from "../src/background/packs/importers/mdd.js";
+import { buildMddIndex, lookupMddResource, normalizeMddResourcePath, MDD_IMPORT_LIMITS } from "../src/background/packs/importers/mdd.js";
+import { classifyMddResource } from "../src/background/packs/importers/mdd-resource-policy.js";
+import { classifyMddSidecarPath } from "../src/background/packs/rich-mdd-contract.js";
 import { MDICT_IMPORT_ERROR, MDictImportError } from "../src/background/packs/importers/mdict-contract.js";
 import { makeMdd, readMddInteropFixture } from "./helpers/mdd-fixture.mjs";
 
@@ -109,6 +111,87 @@ test("SVG, HTML, unknown payloads, malformed images, and image bombs stay unavai
   );
 });
 
+test("bounded AVIF image items and Ogg Opus resources receive browser MIME types", async () => {
+  const avif = makeAvif();
+  const opus = makeOggOpus();
+  assert.deepEqual(classifyMddResource("graphics/sample.avif", avif, MDD_IMPORT_LIMITS), {
+    mime: "image/avif", kind: "image", dimensions: { width: 640, height: 480 }
+  });
+  assert.deepEqual(classifyMddResource("audio/sample.opus", opus, MDD_IMPORT_LIMITS), {
+    mime: "audio/ogg", kind: "audio"
+  });
+  assert.deepEqual(classifyMddSidecarPath("graphics/sample.avif"), { kind: "image", mime: "image/avif" });
+  assert.deepEqual(classifyMddSidecarPath("audio/sample.opus"), { kind: "audio", mime: "audio/ogg" });
+  assert.throws(
+    () => classifyMddResource("graphics/sample.png", avif, MDD_IMPORT_LIMITS),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
+  );
+
+  const source = trackedSource(makeMdd([
+    ["\\graphics\\sample.avif", avif],
+    ["\\kanji_alive_audio\\sample.opus", opus]
+  ], { recordCompression: "none" }));
+  const index = await buildMddIndex({ source });
+  const image = await lookupMddResource({ source, index, path: "graphics/sample.avif" });
+  const audio = await lookupMddResource({ source, index, path: "kanji_alive_audio/sample.opus" });
+  assert.equal(image.mime, "image/avif");
+  assert.deepEqual(image.dimensions, { width: 640, height: 480 });
+  assert.equal(audio.mime, "audio/ogg");
+});
+
+test("AVIF parser rejects truncated, ambiguous, oversized, sequence, and grid metadata", () => {
+  const valid = makeAvif();
+  const truncated = valid.slice(0, valid.length - 1);
+  const duplicateSpatialExtents = makeAvif({ duplicateSpatialExtents: true });
+  const oversized = makeAvif({ width: 16_385, height: 1 });
+  const sequence = makeAvif({ compatibleBrands: ["avif", "mif1", "miaf", "avis"] });
+  const grid = makeAvif({ itemType: "grid" });
+  const unknownEssential = makeAvif({ unknownEssentialProperty: true });
+
+  for (const bytes of [truncated, duplicateSpatialExtents]) {
+    assert.throws(
+      () => classifyMddResource("sample.avif", bytes, MDD_IMPORT_LIMITS),
+      (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
+    );
+  }
+  assert.throws(
+    () => classifyMddResource("sample.avif", oversized, MDD_IMPORT_LIMITS),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.LIMIT
+  );
+  for (const bytes of [sequence, grid, unknownEssential]) {
+    assert.throws(
+      () => classifyMddResource("sample.avif", bytes, MDD_IMPORT_LIMITS),
+      (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSUPPORTED
+    );
+  }
+});
+
+test("Opus extension requires a complete first BOS page with a bounded mono or stereo OpusHead", () => {
+  const valid = makeOggOpus();
+  const missingBos = valid.slice();
+  missingBos[5] = 0;
+  const truncated = valid.slice(0, valid.length - 1);
+  const badVersion = valid.slice();
+  badVersion[36] = 2;
+  const tooManyChannels = valid.slice();
+  tooManyChannels[37] = 3;
+  const mapped = valid.slice();
+  mapped[46] = 1;
+
+  for (const bytes of [missingBos, truncated, badVersion, tooManyChannels, mapped]) {
+    assert.throws(
+      () => classifyMddResource("audio/sample.opus", bytes, MDD_IMPORT_LIMITS),
+      (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
+    );
+  }
+  const ordinaryOgg = makeOggPage(Uint8Array.of(1, 2, 3));
+  assert.throws(
+    () => classifyMddResource("audio/sample.opus", ordinaryOgg, MDD_IMPORT_LIMITS),
+    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
+  );
+  assert.deepEqual(classifyMddResource("audio/sample.ogg", ordinaryOgg, MDD_IMPORT_LIMITS), { mime: "audio/ogg", kind: "audio" });
+});
+
 
 test("in-flight MDD resource lookup aborts the active range read", async () => {
   const { mdd } = await readMddInteropFixture();
@@ -149,4 +232,101 @@ function trackedSource(input) {
       return new Uint8Array(bytes.subarray(offset, offset + length));
     }
   };
+}
+
+function makeAvif({ width = 640, height = 480, itemType = "av01", compatibleBrands = ["avif", "mif1", "miaf"],
+  duplicateSpatialExtents = false, unknownEssentialProperty = false } = {}) {
+  const ftyp = makeBox("ftyp", concatBytes(
+    asciiBytes("avif"), be32(0), ...compatibleBrands.map(asciiBytes)
+  ));
+  const colr = makeBox("colr", concatBytes(asciiBytes("nclx"), Uint8Array.of(0, 1, 0, 13, 0, 6, 0x80)));
+  const av1c = makeBox("av1C", Uint8Array.of(0x81, 0x04, 0x0c, 0));
+  const ispe = makeBox("ispe", concatBytes(fullBox(0, new Uint8Array()), be32(width), be32(height)));
+  const pixi = makeBox("pixi", concatBytes(fullBox(0, new Uint8Array()), Uint8Array.of(3, 8, 8, 8)));
+  const properties = [colr, av1c, ispe, ...(duplicateSpatialExtents ? [ispe] : []), pixi];
+  const associations = [1, 0x82, 3, ...(duplicateSpatialExtents ? [4, 5] : [4])];
+  if (unknownEssentialProperty) {
+    properties.push(makeBox("zzzz", Uint8Array.of(0)));
+    associations.push(0x80 | properties.length);
+  }
+  const ipma = makeBox("ipma", concatBytes(
+    fullBox(0, new Uint8Array()), be32(1), be16(1), Uint8Array.of(associations.length), Uint8Array.from(associations)
+  ));
+  const iprp = makeBox("iprp", concatBytes(
+    makeBox("ipco", concatBytes(...properties)), ipma
+  ));
+  const hdlr = makeBox("hdlr", concatBytes(
+    fullBox(0, new Uint8Array()), be32(0), asciiBytes("pict"), new Uint8Array(12), Uint8Array.of(0)
+  ));
+  const pitm = makeBox("pitm", concatBytes(fullBox(0, new Uint8Array()), be16(1)));
+  const infe = makeBox("infe", concatBytes(
+    fullBox(2, new Uint8Array()), be16(1), be16(0), asciiBytes(itemType), Uint8Array.of(0)
+  ));
+  const iinf = makeBox("iinf", concatBytes(fullBox(0, new Uint8Array()), be16(1), infe));
+  const makeIloc = (baseOffset) => makeBox("iloc", concatBytes(
+    fullBox(0, new Uint8Array()), Uint8Array.of(0x44, 0x40), be16(1), be16(1), be16(0),
+    be32(baseOffset), be16(1), be32(0), be32(1)
+  ));
+  const imageData = Uint8Array.of(0x12);
+  const makeMeta = (baseOffset) => makeBox("meta", concatBytes(
+    fullBox(0, new Uint8Array()), hdlr, pitm, makeIloc(baseOffset), iinf, iprp
+  ));
+  let meta = makeMeta(0);
+  const mdatPayloadOffset = ftyp.length + meta.length + 8;
+  meta = makeMeta(mdatPayloadOffset);
+  return concatBytes(ftyp, meta, makeBox("mdat", imageData));
+}
+
+function makeOggOpus() {
+  const opusHead = new Uint8Array(19);
+  opusHead.set(asciiBytes("OpusHead"));
+  opusHead[8] = 1;
+  opusHead[9] = 1;
+  opusHead[10] = 0;
+  opusHead[11] = 0;
+  opusHead[12] = 0x80;
+  opusHead[13] = 0xbb;
+  return makeOggPage(opusHead);
+}
+
+function makeOggPage(payload) {
+  const page = new Uint8Array(28 + payload.length);
+  page.set(asciiBytes("OggS"));
+  page[4] = 0;
+  page[5] = 0x02;
+  page[26] = 1;
+  page[27] = payload.length;
+  page.set(payload, 28);
+  return page;
+}
+
+function makeBox(type, payload) {
+  return concatBytes(be32(8 + payload.length), asciiBytes(type), payload);
+}
+
+function fullBox(version, payload) {
+  return concatBytes(Uint8Array.of(version, 0, 0, 0), payload);
+}
+
+function asciiBytes(value) {
+  return Uint8Array.from(value, (character) => character.charCodeAt(0));
+}
+
+function be16(value) {
+  return Uint8Array.of((value >>> 8) & 0xff, value & 0xff);
+}
+
+function be32(value) {
+  return Uint8Array.of((value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff);
+}
+
+function concatBytes(...items) {
+  const length = items.reduce((total, item) => total + item.length, 0);
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const item of items) {
+    result.set(item, offset);
+    offset += item.length;
+  }
+  return result;
 }
