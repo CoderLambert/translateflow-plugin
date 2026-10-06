@@ -4,6 +4,7 @@ import { commitLearningAssistantTurn, cancelLearningAssistantTurn, prepareLearni
 import { readingTranslationResult } from "./reading-result.js";
 import { resolveSelectionRequest } from "./resolve.js";
 import { ASSISTANT_ROOT_QUESTIONS as QUESTIONS, groundLearningAssistant } from "./assistant-grounding.js";
+import { sanitizeSelectionContext } from "../../shared/selection.js";
 
 const PORT = "selection.assistant-stream", V = 1, MAX_TEXT = 2000, MAX_DELTA = 2048, MAX_TOTAL = 24000, MAX_ACTIVE = 32;
 const active = new Set();
@@ -55,7 +56,7 @@ async function run(state, request, deps) {
       throwIfCancelled(state);
       pageUrl = request.pageUrl; sourceLanguage = resolved.intent?.sourceLanguage || "unknown";
       selectedText = resolved.explanationInput?.selectionText || request.text;
-      contextText = resolved.explanationInput?.contextText || "";
+      contextText = resolved.explanationInput?.contextText ?? sanitizeSelectionContext(request.context).text;
       candidates = resolved.explanationInput?.candidates || []; history = request.history || [];
       question = request.action === "follow-up" ? request.question : QUESTIONS[request.action];
       turn = { userQuestion: question, action: request.action, threadId: request.threadId, turnId: request.turnId,

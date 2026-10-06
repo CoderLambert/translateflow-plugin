@@ -71,6 +71,49 @@ test("explicit CJK assistant action streams bounded page context after a local-o
   assert.equal(p.sent.at(-1).type, "complete");
 });
 
+test("explicit assistant stream sanitizes request context when resolver omits explanation details", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = port();
+  const visibleContext = "この記事では弁護士が地域の相談窓口を案内していた。";
+  let providerPrompt;
+  handleSelectionAssistantStreamPort(p, {
+    resolveSelectionRequest: async () => ({ intent: { sourceLanguage: "ja" }, explanationInput: null }),
+    getEffectiveConfig: async () => ({ provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" }),
+    readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
+    completeText: async input => {
+      providerPrompt = JSON.parse(input.prompt);
+      return { text: "此处指律师。", mode: "unary" };
+    }
+  });
+  p.emit({ ...input, requestId: "cjk-stream-context-fallback", text: "弁護士", context: { text: visibleContext, source: "visible-local", sensitive: false } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(providerPrompt.text, "弁護士");
+  assert.equal(providerPrompt.context, visibleContext);
+  assert.equal(p.sent.at(-1).type, "complete");
+});
+
+test("explicit assistant stream context fallback still excludes sensitive surroundings", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = port();
+  let providerPrompt;
+  handleSelectionAssistantStreamPort(p, {
+    resolveSelectionRequest: async () => ({ intent: { sourceLanguage: "ja" }, explanationInput: null }),
+    getEffectiveConfig: async () => ({ provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" }),
+    readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
+    completeText: async input => {
+      providerPrompt = JSON.parse(input.prompt);
+      return { text: "回答", mode: "unary" };
+    }
+  });
+  p.emit({ ...input, requestId: "cjk-stream-sensitive-context", text: "弁護士", context: { text: "私有フォームの内容", source: "visible-local", sensitive: true } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(providerPrompt.text, "弁護士");
+  assert.equal(providerPrompt.context, "");
+  assert.equal(p.sent.at(-1).type, "complete");
+});
+
 test("grounded turn shapes allow finite follow-up and root regeneration but reject graph edits", async () => {
   globalThis.chrome = { runtime: { id: "ext" } };
   for (const value of [
