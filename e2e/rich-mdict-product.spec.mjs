@@ -58,6 +58,8 @@ test.describe("Rich MDict local product and security behavior", () => {
       hasText: "Rich Fixture Dictionary"
     });
     await expect(installed).toBeVisible();
+    expect(await installed.locator(".site-summary").evaluate((node) => node.getBoundingClientRect().width))
+      .toBeGreaterThan(200);
     await options.screenshot({ path: resolve(evidenceDir, "synthetic-settings-installed.png"), fullPage: true });
     await options.reload();
     installed = options.locator("#richMdictInstalledList .site-row").filter({
