@@ -3,7 +3,7 @@
   if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
   const locale = app.modules.contentI18n;
-  let generation = 0, controller = null, root = null, panel = null, panelReturnFocus = null, preview = null,
+  let generation = 0, previewEpoch = 0, controller = null, root = null, panel = null, panelReturnFocus = null, preview = null,
     markerNodes = [], ranges = new Map(), projectionUnsubscribe = null, timer = 0, port = null, portReady = false,
     portReadyPromise = null, resolvePortReady = null, lastInvalidation = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
@@ -20,14 +20,17 @@
     lastItems = []; lastPageRecordCount = 0; lastMarkerEnabled = false;
     lastInvalidation = null;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
-  function rectFor(range) { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
-    rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth) || null; }
+  function rectFor(range) { try { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
+    rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth) || null; } catch { return null; } }
   function positionMarkers() {
-    markerNodes.forEach(node => { const range = ranges.get(node.dataset.recordId), rect = rectFor(range);
-      if (!rect || renderProjectionRevision === null || app.modules.textProjection.revision() !== renderProjectionRevision) { node.hidden = true; return; }
+    const current = renderProjectionRevision !== null && app.modules.textProjection.revision() === renderProjectionRevision;
+    markerNodes.forEach(node => {
+      const range = ranges.get(node.dataset.recordId), rect = current ? rectFor(range) : null;
+      if (!rect) { node.hidden = true; return; }
       const size = 14;
       node.hidden = false; node.style.left = `${Math.max(2, Math.min(innerWidth - size - 2, rect.right + 5))}px`;
-      node.style.top = `${Math.max(2, Math.min(innerHeight - size - 2, rect.top + (rect.height - size) / 2))}px`; });
+      node.style.top = `${Math.max(2, Math.min(innerHeight - size - 2, rect.top + (rect.height - size) / 2))}px`;
+    });
   }
   function showPanel(focusId = null) { if (!panel) return; if (panel.hidden) panelReturnFocus = root.getRootNode().activeElement || document.activeElement;
     panel.hidden = false; root.querySelector(".tf-reading-page-toggle").setAttribute("aria-expanded", "true");
@@ -36,9 +39,12 @@
   function hidePanel() { if (!panel) return; panel.hidden = true; root.querySelector(".tf-reading-page-toggle").setAttribute("aria-expanded", "false");
     const target = panelReturnFocus; panelReturnFocus = null; if (target?.isConnected) target.focus(); }
   function closePreview({ notify = true, restore = true } = {}) {
+    previewEpoch++;
     const active = preview; if (!active) return;
     preview = null; clearTimeout(active.timeout); window.removeEventListener("message", active.listener);
-    active.shell.remove();
+    // Keep cleanup tied to the owned browsing context even if page script moves the
+    // iframe out of its dialog with Element.moveBefore().
+    active.frame.remove(); active.shell.remove();
     if (notify) void send(M.PREVIEW_CLOSE, { previewId: active.previewId }).catch(() => {});
     if (restore) {
       requestAnimationFrame(() => {
@@ -55,10 +61,11 @@
   async function openPreview(item, range, projectionRevision, renderedGeneration) {
     if (preview?.recordId === item.recordId && preview.frame.isConnected) { preview.frame.focus({ preventScroll: true }); return; }
     if (preview) closePreview({ restore: false });
+    const requestEpoch = ++previewEpoch;
     let created;
     try {
       created = await send(M.PREVIEW_CREATE, { recordId: item.recordId, expectedRevision: item.revision });
-      if (!localLocationCurrent(range, projectionRevision, renderedGeneration)) {
+      if (requestEpoch !== previewEpoch || !localLocationCurrent(range, projectionRevision, renderedGeneration)) {
         void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {}); return;
       }
       const shadow = root.getRootNode(), returnFocus = markerNodes.find(node => node.dataset.recordId === item.recordId) || shadow.activeElement || document.activeElement;
@@ -96,7 +103,7 @@
       state.timeout = setTimeout(() => { if (preview === state) { closePreview(); showPanel(item.recordId); } }, 14_000);
     } catch {
       if (created?.previewId) void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {});
-      if (renderedGeneration === generation) showPanel(item.recordId);
+      if (requestEpoch === previewEpoch && renderedGeneration === generation) showPanel(item.recordId);
     }
   }
   async function openRecord(recordId) { try { await send(M.OPEN_LEARNING_CENTER, { recordId }); } catch {} }

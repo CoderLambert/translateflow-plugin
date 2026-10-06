@@ -19,7 +19,7 @@ export function contentSender(overrides = {}) {
 export function collector(proof = {}) {
   return async (_browser, _sender, challenge) => ({ nonce: challenge.nonce, documentGeneration: "doc-1", selectionGeneration: 1,
     captureSafety: { selection: "safe", context: "safe", root: "light-dom" }, sourceSnapshot: snapshot(),
-    intent: ["inspect", "register"].includes(challenge.action) ? null : { action: challenge.action, recordId: challenge.recordId, operationId: challenge.operationId }, ...proof });
+    intent: ["inspect", "register", "handoff", "page"].includes(challenge.action) ? null : { action: challenge.action, recordId: challenge.recordId, operationId: challenge.operationId }, ...proof });
 }
 // Explicit synthetic repository double, NOT persisted save/export acceptance. Each callback invokes the guard.
 export function repositoryDouble(overrides = {}) {

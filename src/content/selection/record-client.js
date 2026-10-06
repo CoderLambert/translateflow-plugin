@@ -57,6 +57,11 @@
         port.onMessage.addListener((value) => {
           if (port !== ownedPort || !current) return;
           try {
+            if (value?.type === "reading.site-markers.invalidate") {
+              C.validateReadingSiteMarkersInvalidation(value);
+              if (current.ref) void refreshSiteMarkers(current);
+              return;
+            }
             const next = C.validateReadingInvalidation(value, "content"), active = current;
             if (invalidation && (next.dataGeneration !== invalidation.dataGeneration || (next.consentGeneration !== invalidation.consentGeneration
               && next.consentGeneration !== active.policy?.consentGeneration))
