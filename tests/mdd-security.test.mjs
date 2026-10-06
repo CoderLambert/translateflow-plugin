@@ -117,6 +117,10 @@ test("bounded AVIF image items and Ogg Opus resources receive browser MIME types
   assert.deepEqual(classifyMddResource("graphics/sample.avif", avif, MDD_IMPORT_LIMITS), {
     mime: "image/avif", kind: "image", dimensions: { width: 640, height: 480 }
   });
+  assert.deepEqual(classifyMddResource("graphics/unsized-final.avif",
+    makeAvif({ unsizedSequenceHeader: true }), MDD_IMPORT_LIMITS), {
+    mime: "image/avif", kind: "image", dimensions: { width: 640, height: 480 }
+  });
   assert.deepEqual(classifyMddResource("audio/sample.opus", opus, MDD_IMPORT_LIMITS), {
     mime: "audio/ogg", kind: "audio"
   });
@@ -238,7 +242,8 @@ function trackedSource(input) {
 }
 
 function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeight = height, itemType = "av01",
-  compatibleBrands = ["avif", "mif1", "miaf"], duplicateSpatialExtents = false, unknownEssentialProperty = false } = {}) {
+  compatibleBrands = ["avif", "mif1", "miaf"], duplicateSpatialExtents = false, unknownEssentialProperty = false,
+  unsizedSequenceHeader = false } = {}) {
   const ftyp = makeBox("ftyp", concatBytes(
     asciiBytes("avif"), be32(0), ...compatibleBrands.map(asciiBytes)
   ));
@@ -270,7 +275,7 @@ function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeig
     fullBox(0, new Uint8Array()), Uint8Array.of(0x44, 0x40), be16(1), be16(1), be16(0),
     be32(baseOffset), be16(1), be32(0), be32(1)
   ));
-  const imageData = makeAv1SequenceHeaderObu(encodedWidth, encodedHeight);
+  const imageData = makeAv1SequenceHeaderObu(encodedWidth, encodedHeight, { hasSizeField: !unsizedSequenceHeader });
   const makeMeta = (baseOffset) => makeBox("meta", concatBytes(
     fullBox(0, new Uint8Array()), hdlr, pitm, makeIloc(baseOffset), iinf, iprp
   ));
@@ -280,7 +285,7 @@ function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeig
   return concatBytes(ftyp, meta, makeBox("mdat", imageData));
 }
 
-function makeAv1SequenceHeaderObu(width, height) {
+function makeAv1SequenceHeaderObu(width, height, { hasSizeField = true } = {}) {
   const widthBits = Math.max(1, Math.ceil(Math.log2(width)));
   const heightBits = Math.max(1, Math.ceil(Math.log2(height)));
   const bits = [];
@@ -297,7 +302,9 @@ function makeAv1SequenceHeaderObu(width, height) {
   for (let index = 0; index < bits.length; index += 1) {
     payload[Math.floor(index / 8)] |= bits[index] << (7 - (index % 8));
   }
-  return concatBytes(Uint8Array.of(0x0a, payload.length), payload);
+  return hasSizeField
+    ? concatBytes(Uint8Array.of(0x0a, payload.length), payload)
+    : concatBytes(Uint8Array.of(0x08), payload);
 }
 
 function appendBits(target, value, count) {
