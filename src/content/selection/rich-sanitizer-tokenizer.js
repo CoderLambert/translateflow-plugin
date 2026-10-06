@@ -125,8 +125,8 @@
         const path = resourcePath?.normalizeSoundReference?.(token.attrs.href || "") || "";
         if (path) {
           const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
-          if (reserveResource("audio", path)) appendResource("audio", path, label);
-          else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
+          reserveResource("audio", path) ? appendResource("audio", path, label)
+            : appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
           if (!token.selfClosing && stack.length >= limits.depth + 1) { truncated = true; break; }
           if (!token.selfClosing) stack.push({ name: "a", children: stack[stack.length - 1].children });
           continue;
