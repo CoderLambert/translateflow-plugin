@@ -113,8 +113,8 @@ export function chooseSelectionRoute({
 } = {}) {
   if (intent?.reason === "rich-dictionary-only") {
     return {
-      route: SELECTION_ROUTE.UNRESOLVED,
-      reason: "no-hit-local",
+      route: explainRequested ? SELECTION_ROUTE.NEEDS_EXPLANATION : SELECTION_ROUTE.UNRESOLVED,
+      reason: explainRequested ? "no-hit-explicit-explanation" : "no-hit-local",
       depth: resolveSelectionDepth(depth, { intent, decision }),
       explanationAllowed: true
     };

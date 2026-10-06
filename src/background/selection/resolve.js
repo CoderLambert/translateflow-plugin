@@ -31,7 +31,13 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
 
   if (intent.reason === "rich-dictionary-only") {
     const decision = { outcome: "no-hit", candidates: [], evidence: [] };
-    const route = chooseSelectionRoute({ intent, decision, depth: requestedDepth, text });
+    const route = chooseSelectionRoute({
+      intent,
+      decision,
+      depth: requestedDepth,
+      text,
+      explainRequested: input.explainRequested === true
+    });
     return response({ text, intent, route, context, lookup: null, decision });
   }
 

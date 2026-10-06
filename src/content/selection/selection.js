@@ -35,16 +35,22 @@
     if (/^(?:https?:\/\/|www\.)\S+$/i.test(normalized)) return false;
 
     const latin = (normalized.match(/[A-Za-z]/g) || []).length;
-    const cjk = (normalized.match(/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g) || []).length;
-    const hasKana = /[\u3040-\u30ff\u31f0-\u31ff]/u.test(normalized);
     if (latin === 0) {
+      // Match the background classifier's NFKC key before deciding whether this
+      // is a short local CJK headword. Compatibility punctuation such as U+FF61
+      // must not pass the content gate and then become a translation request.
+      const canonical = normalized.normalize("NFKC").trim().replace(/\s+/gu, " ");
+      if (/[A-Za-z]/u.test(canonical)) return false;
+      const cjk = (canonical.match(/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g) || []).length;
+      const hasKana = /[\u3040-\u30ff\u31f0-\u31ff]/u.test(canonical);
       const maxCjkHeadwordLength = hasKana ? 24 : 6;
       return cjk >= 2
-        && normalized.length <= maxCjkHeadwordLength
-        && !/\s/u.test(normalized)
-        && !/[。！？!?]/u.test(normalized);
+        && canonical.length <= maxCjkHeadwordLength
+        && !/\s/u.test(canonical)
+        && !/[。！？!?]/u.test(canonical);
     }
 
+    const cjk = (normalized.match(/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g) || []).length;
     const letters = latin + cjk;
     return latin >= 2 && letters >= 2 && latin / letters >= 0.35;
   }

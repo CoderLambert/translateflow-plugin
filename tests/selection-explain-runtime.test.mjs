@@ -4,6 +4,7 @@ import {
   cancelSelectionExplanationRequest,
   runSelectionExplanationRequest
 } from "../src/background/selection/explain.js";
+import { resolveSelectionRequest } from "../src/background/selection/resolve.js";
 
 function ambiguousResolved() {
   return {
@@ -114,6 +115,50 @@ test("Selection explanation marks recompute as explicit and can enhance a suffic
   assert.equal(result.readingResult.action, "understand");
   assert.equal(result.readingResult.provenance.promptVersion, "selection-explain-reading-v2");
   assert.equal(JSON.stringify(result.readingResult).includes(config.apiKey), false);
+});
+
+test("explicit CJK explanation sends bounded context after a local-only miss", async () => {
+  let providerPayload;
+  let lexicalCalls = 0;
+  const result = await runSelectionExplanationRequest({
+    requestId: "cjk-explicit-explain",
+    text: "弁護士",
+    pageUrl: "https://example.test/article",
+    context: {
+      text: "記事では弁護士が地域の相談窓口を案内していた。",
+      source: "visible-local",
+      sensitive: false
+    }
+  }, {
+    resolveSelectionRequest: (input) => resolveSelectionRequest(input, {
+      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
+      getEffectiveConfig: async () => config,
+      runLexicalLookup: async () => {
+        lexicalCalls += 1;
+        throw new Error("CJK rich-dictionary text must not use the English lexical index");
+      }
+    }),
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => ({ hit: null }),
+    storeSelectionExplanation: async () => ({ stored: 1 }),
+    completeJson: async (input) => {
+      providerPayload = input.payload;
+      return input.parseResult({
+        selectedCandidateIds: [],
+        explanation: "此处指律师。",
+        translation: "律师"
+      });
+    }
+  });
+
+  assert.equal(result.route, "explained");
+  assert.equal(result.routeReason, "no-hit-explicit-explanation");
+  assert.deepEqual(result.generated.selectedCandidateIds, []);
+  assert.equal(result.local.decisionOutcome, "no-hit");
+  assert.deepEqual(providerPayload.candidates, []);
+  assert.equal(providerPayload.selectionText, "弁護士");
+  assert.equal(providerPayload.contextText, "記事では弁護士が地域の相談窓口を案内していた。");
+  assert.equal(lexicalCalls, 0);
 });
 
 test("Selection explanation uses its own prompt and stores only generated fields", async () => {
