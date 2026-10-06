@@ -241,9 +241,10 @@ function sidecarKind(path) {
   if (extension === "jpg" || extension === "jpeg") return { kind: "image", mime: "image/jpeg" };
   if (extension === "gif") return { kind: "image", mime: "image/gif" };
   if (extension === "webp") return { kind: "image", mime: "image/webp" };
+  if (extension === "avif") return { kind: "image", mime: "image/avif" };
   if (extension === "wav") return { kind: "audio", mime: "audio/wav" };
   if (extension === "mp3") return { kind: "audio", mime: "audio/mpeg" };
-  if (extension === "ogg") return { kind: "audio", mime: "audio/ogg" };
+  if (extension === "ogg" || extension === "opus") return { kind: "audio", mime: "audio/ogg" };
   return null;
 }
 
