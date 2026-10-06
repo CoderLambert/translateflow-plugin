@@ -50,6 +50,9 @@ function classifyImage(extension, bytes, limits) {
     mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD image format does not match its path or is malformed.");
   }
   checkDimensions(result.width, result.height);
+  if (result.encodedDimensions) {
+    checkDimensions(result.encodedDimensions.width, result.encodedDimensions.height);
+  }
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD image bytes");
   return { mime: result.mime, kind: "image", dimensions: { width: result.width, height: result.height } };
 }
