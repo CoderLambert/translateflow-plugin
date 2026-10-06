@@ -526,6 +526,16 @@ label {
   border-bottom: 1px solid var(--tf-border-soft);
 }
 
+#richMdictInstalledList .dictionary-pack-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+#richMdictInstalledList .dictionary-pack-row .site-actions {
+  justify-content: flex-start;
+  min-width: 0;
+}
+
 .site-row:last-child {
   border-bottom: 0;
 }
