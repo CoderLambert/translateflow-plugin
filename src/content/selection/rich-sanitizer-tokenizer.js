@@ -112,19 +112,30 @@
         continue;
       }
       if (token.name === "audio") {
-        const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
+        const path = resourcePath?.normalizeAudioReference?.(token.attrs.src || "") || "";
         if (!path) {
-          if (!token.selfClosing && skipped.length < limits.depth) skipped.push("audio");
-          continue;
+          if (!token.selfClosing && skipped.length < limits.depth) skipped.push("audio"); continue;
         }
         const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
         if (reserveResource("audio", path)) appendResource("audio", path, label);
         else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
-        if (!token.selfClosing) {
-          if (skipped.length >= limits.depth) truncated = true;
-          else skipped.push("audio");
+        if (!token.selfClosing) skipped.length >= limits.depth ? truncated = true : skipped.push("audio"); continue;
+      }
+      if (token.name === "a") {
+        const path = resourcePath?.normalizeSoundReference?.(token.attrs.href || "") || "";
+        if (path) {
+          const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
+          if (reserveResource("audio", path)) appendResource("audio", path, label);
+          else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
+          if (!token.selfClosing) {
+            if (stack.length >= limits.depth + 1) {
+              truncated = true;
+              break;
+            }
+            stack.push({ name: "a", children: stack[stack.length - 1].children });
+          }
+          continue;
         }
-        continue;
       }
       if (token.name === "link") {
         const rel = String(token.attrs.rel || "").trim().toLowerCase();
