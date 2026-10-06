@@ -302,17 +302,19 @@ function parseAv1SequenceMaxDimensions(bytes, start, end) {
     const obuType = (header >> 3) & 0x0f;
     const extensionFlag = (header & 0x04) !== 0;
     const hasSizeField = (header & 0x02) !== 0;
-    if (!hasSizeField) return null;
     if (extensionFlag) {
       if (offset >= end) return null;
       const extension = bytes[offset++];
       if ((extension & 0x07) !== 0) return null;
     }
-    const size = readAv1Leb128(bytes, offset, end);
-    if (!size) return null;
-    offset = size.next;
-    const payloadEnd = offset + size.value;
-    if (!Number.isSafeInteger(payloadEnd) || payloadEnd > end) return null;
+    let payloadEnd = end;
+    if (hasSizeField) {
+      const size = readAv1Leb128(bytes, offset, end);
+      if (!size) return null;
+      offset = size.next;
+      payloadEnd = offset + size.value;
+      if (!Number.isSafeInteger(payloadEnd) || payloadEnd > end) return null;
+    }
     if (obuType === 1) {
       if (sequence) return null;
       sequence = parseAv1SequenceHeaderMaxDimensions(bytes, offset, payloadEnd);
