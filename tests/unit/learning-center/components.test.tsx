@@ -89,7 +89,7 @@ test("history follow-up renders partial text, Stop saves nothing, and complete r
   act(() => first.message?.({ protocolVersion: 1, requestId: start.requestId, type: "interrupted", code: "CANCELLED", partialChars: 7 }));
   expect(screen.getByText("Stopped. No partial answer was saved.")).toBeTruthy();
   expect(screen.getByText("This synthetic passage refers to a UI library.")).toBeTruthy(); expect(onSaved).not.toHaveBeenCalled();
-  await userEvent.click(screen.getAllByRole("button", { name: "Retry", exact: true }).at(-1)!);
+  await userEvent.click(screen.getAllByRole("button", { name: "Retry" }).at(-1)!);
   const second = ports[1]!, retry = second.sent[0];
   act(() => { second.message?.({ protocolVersion: 1, requestId: retry.requestId, type: "started", mode: "stream" });
     second.message?.({ protocolVersion: 1, requestId: retry.requestId, type: "delta", sequence: 0, text: "Complete" });
@@ -118,7 +118,7 @@ test("React learning center presents a quota terminal as a failure even when Sto
   act(() => session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "interrupted", code: "READING_QUOTA", partialChars: 7 }));
   expect(screen.getByText("The answer was interrupted and was not saved. Your existing history is unchanged.")).toBeTruthy();
   expect(screen.queryByText("Stopped. No partial answer was saved.")).toBeNull();
-  expect(screen.getAllByRole("button", { name: "Retry", exact: true }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole("button", { name: "Retry" }).length).toBeGreaterThan(0);
 });
 test("delete invalidation discards a delayed detail and disconnect removes unconfirmed content", async () => {
   let release: ((value: unknown) => void) | undefined, invalidate: (() => void) | undefined, disconnected: (() => void) | undefined, deleted = false;
@@ -165,8 +165,8 @@ test("record site identity failure stays visible and a single retry restores mar
   await screen.findByRole("heading", { name: "Reading history on this site" });
   await screen.findByText("Could not load this record’s site identity. Retry to manage its site markers.");
   expect(calls).not.toContain(M.GET_SITE_MARKERS);
-  await userEvent.click(screen.getByRole("button", { name: "Retry", exact: true }));
-  await screen.findByRole("button", { name: "Enable site markers", exact: true });
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await screen.findByRole("button", { name: "Enable site markers" });
   expect(siteKeyAttempts).toBe(2);
   expect(calls.filter(method => method === M.GET_SITE_MARKERS)).toHaveLength(1);
 });

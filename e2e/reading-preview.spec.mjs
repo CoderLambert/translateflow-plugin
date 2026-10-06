@@ -22,7 +22,7 @@ async function bindGate(driver, url, action, method = M.PREVIEW_BIND) {
         if (name === "install") {
           const original = runtime.sendRuntimeMessage; let release;
           const gate = new Promise(resolve => { release = resolve; });
-          globalThis.__tfPreviewBindGate = { original, gate, release, started: false, created: [], closed: [] };
+          globalThis.__tfPreviewBindGate = { original, gate, release, started: false, completed: 0, created: [], closed: [] };
           runtime.sendRuntimeMessage = async request => {
             const result = await original(request);
             if (request.method === closeMethod) globalThis.__tfPreviewBindGate.closed.push(request.previewId);
@@ -30,11 +30,13 @@ async function bindGate(driver, url, action, method = M.PREVIEW_BIND) {
             if (!globalThis.__tfPreviewBindGate.started && request.method === targetMethod) {
               globalThis.__tfPreviewBindGate.started = true; await gate;
             }
+            if (request.method === targetMethod) globalThis.__tfPreviewBindGate.completed++;
             return result;
           };
           return true;
         }
         if (name === "started") return globalThis.__tfPreviewBindGate?.started === true;
+        if (name === "completed") return globalThis.__tfPreviewBindGate?.completed || 0;
         if (name === "created") return [...(globalThis.__tfPreviewBindGate?.created || [])];
         if (name === "closed") return [...(globalThis.__tfPreviewBindGate?.closed || [])];
         if (name === "release") { globalThis.__tfPreviewBindGate.release(); return true; }
@@ -113,8 +115,17 @@ async function pageSurface(page) {
   expect(turns.every(value => value.payload.completionStatus === "completed" && value.payload.assistantAnswer === "streamed answer")).toBe(true);
   const rootQuestion = turns[0].payload.userQuestion;
   expect(rootQuestion).toBeTruthy();
+  expect(harness.server.calls).toHaveLength(2);
+
+  // Add a second record on this page so a slow older location check cannot replace
+  // a newer preview for a different record.
+  await select(original, "#ambiguous", "persistent");
+  await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  const secondRecord = await message(center, M.LIST_RECORDS, { pageKey: null, query: "persistent", cursor: null, limit: 30 });
+  expect(secondRecord.data.items).toHaveLength(1);
+  const secondRecordId = secondRecord.data.items[0].recordId;
+  expect(secondRecordId).not.toBe(recordId);
   const providerCalls = harness.server.calls.length;
-  expect(providerCalls).toBe(2);
 
   await original.close();
   const revisit = await harness.open("/selection");
@@ -131,13 +142,36 @@ async function pageSurface(page) {
   });
   await harness.inject(revisit);
   await revisit.setViewportSize({ width: 1280, height: 800 });
-  await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(2);
+
+  const sessionMarker = revisit.locator(`.tf-reading-page-marker[data-record-id="${recordId}"]`);
+  const secondMarker = revisit.locator(`.tf-reading-page-marker[data-record-id="${secondRecordId}"]`);
+
+  // Delay the earlier click during page-summary confirmation. The later click's
+  // validation finishes first and must remain the sole preview after the old reply.
+  await bindGate(harness.driver, revisit.url(), "install", M.GET_PAGE_SUMMARY);
+  await sessionMarker.click();
+  await expect.poll(() => bindGate(harness.driver, revisit.url(), "started", M.GET_PAGE_SUMMARY)).toBe(true);
+  await secondMarker.click();
+  const secondPreview = revisit.frameLocator("iframe.tf-reading-preview-frame");
+  await expect(secondPreview.getByRole("heading", { name: "persistent", exact: true })).toBeVisible();
+  const validationRaceIds = await bindGate(harness.driver, revisit.url(), "created", M.GET_PAGE_SUMMARY);
+  expect(validationRaceIds).toHaveLength(1);
+  const secondPreviewUrl = await revisit.locator(".tf-reading-preview-frame").getAttribute("src");
+  expect(new URL(secondPreviewUrl).searchParams.get("previewId")).toBe(validationRaceIds[0]);
+  await bindGate(harness.driver, revisit.url(), "release", M.GET_PAGE_SUMMARY);
+  await expect.poll(() => bindGate(harness.driver, revisit.url(), "completed", M.GET_PAGE_SUMMARY)).toBe(2);
+  await expect(secondPreview.getByRole("heading", { name: "persistent", exact: true })).toBeVisible();
+  expect(await bindGate(harness.driver, revisit.url(), "created", M.GET_PAGE_SUMMARY)).toHaveLength(1);
+  await bindGate(harness.driver, revisit.url(), "restore", M.GET_PAGE_SUMMARY);
+  await revisit.locator(".tf-reading-preview-shell .tf-ui-icon-button").click();
+  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
 
   // Hold the first create reply so a second activation wins while the first is pending.
   await bindGate(harness.driver, revisit.url(), "install", M.PREVIEW_CREATE);
-  await revisit.locator(".tf-reading-page-marker").click();
+  await sessionMarker.click();
   await expect.poll(() => bindGate(harness.driver, revisit.url(), "started", M.PREVIEW_CREATE)).toBe(true);
-  await revisit.locator(".tf-reading-page-marker").click();
+  await sessionMarker.click();
   const truePreview = revisit.frameLocator("iframe.tf-reading-preview-frame");
   await expect(truePreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
   await expect(truePreview.getByRole("heading", { name: rootQuestion, exact: true })).toBeVisible();
@@ -207,8 +241,9 @@ async function pageSurface(page) {
   await restartedCenter.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
   await expect(restartedCenter.getByRole("button", { name: "Disable site markers", exact: true })).toBeVisible();
   const afterRestart = await harness.open("/selection"); await harness.inject(afterRestart);
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(1);
-  await afterRestart.locator(".tf-reading-page-marker").click();
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(2);
+  const restartedSessionMarker = afterRestart.locator(`.tf-reading-page-marker[data-record-id="${recordId}"]`);
+  await restartedSessionMarker.click();
   const restartedPreview = afterRestart.frameLocator("iframe.tf-reading-preview-frame");
   await expect(restartedPreview.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
   await expect(restartedPreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
@@ -217,7 +252,7 @@ async function pageSurface(page) {
   // Site-marker revocation closes the embedded detail; a delayed bind response cannot restore it.
   await afterRestart.keyboard.press("Escape");
   await bindGate(harness.driver, afterRestart.url(), "install");
-  await afterRestart.locator(".tf-reading-page-marker").click();
+  await restartedSessionMarker.click();
   await expect.poll(() => bindGate(harness.driver, afterRestart.url(), "started")).toBe(true);
   const movedForRevoke = await moveLivePreviewToHistoryLayer(afterRestart);
   expect(movedForRevoke).toEqual({ supported: true, moved: true, connected: true });
@@ -228,10 +263,10 @@ async function pageSurface(page) {
   await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
   await expect(restartedCenter.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
   await restartedCenter.getByRole("button", { name: "Enable site markers", exact: true }).click();
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(2);
 
   // Deleting the source record revokes an open preview and removes its location marker.
-  await afterRestart.locator(".tf-reading-page-marker").click();
+  await restartedSessionMarker.click();
   await expect(afterRestart.locator(".tf-reading-preview-frame")).toBeVisible();
   await expect(afterRestart.frameLocator("iframe.tf-reading-preview-frame").getByText("streamed answer", { exact: true })).toHaveCount(2);
   const movedForDelete = await moveLivePreviewToHistoryLayer(afterRestart);
@@ -239,7 +274,8 @@ async function pageSurface(page) {
   await restartedCenter.getByRole("button", { name: "Delete record", exact: true }).click();
   await restartedCenter.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(0);
-  await expect(afterRestart.locator(".tf-reading-page-toggle")).toHaveCount(0);
+  await expect(restartedSessionMarker).toHaveCount(0);
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await expect(afterRestart.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
   expect(harness.server.calls).toHaveLength(providerCalls);
 });

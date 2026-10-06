@@ -58,14 +58,14 @@
     return renderedGeneration === generation && range?.startContainer?.isConnected && range?.endContainer?.isConnected &&
       renderProjectionRevision === projectionRevision && app.modules.textProjection.revision() === projectionRevision;
   }
-  async function openPreview(item, range, projectionRevision, renderedGeneration) {
+  async function openPreview(item, range, projectionRevision, renderedGeneration, activationEpoch) {
+    if (activationEpoch !== previewEpoch) return;
     if (preview?.recordId === item.recordId && preview.frame.isConnected) { preview.frame.focus({ preventScroll: true }); return; }
-    if (preview) closePreview({ restore: false });
-    const requestEpoch = ++previewEpoch;
+    if (preview) { closePreview({ restore: false }); activationEpoch = previewEpoch; }
     let created;
     try {
       created = await send(M.PREVIEW_CREATE, { recordId: item.recordId, expectedRevision: item.revision });
-      if (requestEpoch !== previewEpoch || !localLocationCurrent(range, projectionRevision, renderedGeneration)) {
+      if (activationEpoch !== previewEpoch || !localLocationCurrent(range, projectionRevision, renderedGeneration)) {
         void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {}); return;
       }
       const shadow = root.getRootNode(), returnFocus = markerNodes.find(node => node.dataset.recordId === item.recordId) || shadow.activeElement || document.activeElement;
@@ -103,7 +103,7 @@
       state.timeout = setTimeout(() => { if (preview === state) { closePreview(); showPanel(item.recordId); } }, 14_000);
     } catch {
       if (created?.previewId) void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {});
-      if (requestEpoch === previewEpoch && renderedGeneration === generation) showPanel(item.recordId);
+      if (activationEpoch === previewEpoch && renderedGeneration === generation) showPanel(item.recordId);
     }
   }
   async function openRecord(recordId) { try { await send(M.OPEN_LEARNING_CENTER, { recordId }); } catch {} }
@@ -167,8 +167,13 @@
         ranges.set(item.recordId, location.range); const marker = button({ text: "", label: locale.t("content.reading.markerLocated", { index: index + 1 }), className: "tf-reading-page-marker" });
         locale.bindAttribute(marker, "aria-label", "content.reading.markerLocated", { index: index + 1 });
         locale.bindAttribute(marker, "title", "content.reading.markerHint"); marker.dataset.recordId = item.recordId;
-        marker.addEventListener("click", event => { if (event.isTrusted) void checkedAction(item, location.range, projectionRevision, renderedGeneration,
-          () => void openPreview(item, location.range, projectionRevision, renderedGeneration)); });
+        marker.addEventListener("click", event => {
+          if (!event.isTrusted) return;
+          const activationEpoch = ++previewEpoch;
+          void checkedAction(item, location.range, projectionRevision, renderedGeneration, () => {
+            if (activationEpoch === previewEpoch) void openPreview(item, location.range, projectionRevision, renderedGeneration, activationEpoch);
+          });
+        });
         markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
       }
     }
