@@ -21,5 +21,16 @@
     return path;
   }
 
-  app.modules.richResourcePath = Object.freeze({ normalize });
+  function normalizeAudioReference(value) {
+    if (typeof value !== "string") return "";
+    const path = value.startsWith("sound://") ? value.slice("sound://".length) : value;
+    return normalize(path);
+  }
+
+  function normalizeSoundReference(value) {
+    if (typeof value !== "string" || !value.startsWith("sound://")) return "";
+    return normalize(value.slice("sound://".length));
+  }
+
+  app.modules.richResourcePath = Object.freeze({ normalize, normalizeAudioReference, normalizeSoundReference });
 })();

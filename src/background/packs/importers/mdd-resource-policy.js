@@ -3,6 +3,7 @@ import {
   mdictFail,
   requireMdictAtMost
 } from "./mdict-contract.js";
+import { readMddAvifDimensions } from "./mdd-avif-policy.js";
 
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const IMAGE_PIXEL_LIMIT = 16_777_216;
@@ -15,10 +16,10 @@ export function classifyMddResource(path, input, limits) {
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD resource bytes");
   const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
   if (extension === "css") return classifyCss(bytes);
-  if (["png", "jpg", "jpeg", "gif", "webp"].includes(extension)) {
+  if (["png", "jpg", "jpeg", "gif", "webp", "avif"].includes(extension)) {
     return classifyImage(extension, bytes, limits);
   }
-  if (["mp3", "ogg", "wav"].includes(extension)) {
+  if (["mp3", "ogg", "opus", "wav"].includes(extension)) {
     return classifyAudio(extension, bytes, limits);
   }
   mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD resource type is not allowed.", { path });
@@ -44,10 +45,14 @@ function classifyImage(extension, bytes, limits) {
   else if (["jpg", "jpeg"].includes(extension) && isJpeg(bytes)) result = jpegDimensions(bytes);
   else if (extension === "gif" && isGif(bytes)) result = gifDimensions(bytes);
   else if (extension === "webp" && isWebp(bytes)) result = webpDimensions(bytes);
+  else if (extension === "avif") result = readMddAvifDimensions(bytes);
   if (!result) {
     mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD image format does not match its path or is malformed.");
   }
   checkDimensions(result.width, result.height);
+  if (result.encodedDimensions) {
+    checkDimensions(result.encodedDimensions.width, result.encodedDimensions.height);
+  }
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD image bytes");
   return { mime: result.mime, kind: "image", dimensions: { width: result.width, height: result.height } };
 }
@@ -259,6 +264,7 @@ function classifyAudio(extension, bytes, limits) {
   if (extension === "wav" && isWav(bytes)) mime = "audio/wav";
   if (extension === "mp3" && isMp3(bytes)) mime = "audio/mpeg";
   if (extension === "ogg" && isOgg(bytes)) mime = "audio/ogg";
+  if (extension === "opus" && isOggOpus(bytes)) mime = "audio/ogg";
   if (!mime) mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT, "MDD audio format does not match its path or is malformed.");
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD audio bytes");
   return { mime, kind: "audio" };
@@ -314,6 +320,19 @@ function isOgg(bytes) {
   let payloadBytes = 0;
   for (let index = 0; index < segmentCount; index += 1) payloadBytes += bytes[27 + index];
   return payloadBytes > 0 && 27 + segmentCount + payloadBytes <= bytes.length;
+}
+
+function isOggOpus(bytes) {
+  if (bytes.length < 47 || ascii(bytes, 0, 4) !== "OggS" || bytes[4] !== 0) return false;
+  const flags = bytes[5];
+  if ((flags & 0x02) === 0 || (flags & 0x01) !== 0 || (flags & 0xf8) !== 0) return false;
+  const segmentCount = bytes[26];
+  if (segmentCount !== 1 || 27 + segmentCount > bytes.length || bytes[27] !== 19) return false;
+  const payloadOffset = 28;
+  if (payloadOffset + 19 > bytes.length || ascii(bytes, payloadOffset, 8) !== "OpusHead") return false;
+  return bytes[payloadOffset + 8] === 1 &&
+    [1, 2].includes(bytes[payloadOffset + 9]) &&
+    bytes[payloadOffset + 18] === 0;
 }
 
 function checkDimensions(width, height) {

@@ -162,7 +162,7 @@
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {
-      image: /^image\/(?:png|jpeg|gif|webp)$/u,
+      image: /^image\/(?:png|jpeg|gif|webp|avif)$/u,
       audio: /^audio\/(?:wav|mpeg|ogg|mp4|aac|flac)$/u,
       stylesheet: /^text\/css$/u
     }[resource.kind];

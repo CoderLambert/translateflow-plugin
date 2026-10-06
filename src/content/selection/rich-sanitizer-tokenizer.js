@@ -112,19 +112,25 @@
         continue;
       }
       if (token.name === "audio") {
-        const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
+        const path = resourcePath?.normalizeAudioReference?.(token.attrs.src || "") || "";
         if (!path) {
-          if (!token.selfClosing && skipped.length < limits.depth) skipped.push("audio");
-          continue;
+          if (!token.selfClosing && skipped.length < limits.depth) skipped.push("audio"); continue;
         }
         const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
         if (reserveResource("audio", path)) appendResource("audio", path, label);
         else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
-        if (!token.selfClosing) {
-          if (skipped.length >= limits.depth) truncated = true;
-          else skipped.push("audio");
+        if (!token.selfClosing) skipped.length >= limits.depth ? truncated = true : skipped.push("audio"); continue;
+      }
+      if (token.name === "a") {
+        const path = resourcePath?.normalizeSoundReference?.(token.attrs.href || "") || "";
+        if (path) {
+          const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
+          reserveResource("audio", path) ? appendResource("audio", path, label)
+            : appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
+          if (!token.selfClosing && stack.length >= limits.depth + 1) { truncated = true; break; }
+          if (!token.selfClosing) stack.push({ name: "a", children: stack[stack.length - 1].children });
+          continue;
         }
-        continue;
       }
       if (token.name === "link") {
         const rel = String(token.attrs.rel || "").trim().toLowerCase();
@@ -358,7 +364,6 @@
     }
     return output.replace(/[\t\u00a0 ]+/gu, " ").replace(/ *\n */gu, "\n").trim();
   }
-
   function decodeEntities(value) {
     return String(value).replace(ENTITY_PATTERN, (full, token) => {
       const lower = token.toLowerCase();
@@ -369,7 +374,6 @@
       return String.fromCodePoint(numeric);
     });
   }
-
   function boundedUtf8Bytes(value, maxBytes) {
     let bytes = 0;
     for (let index = 0; index < value.length; index += 1) {
