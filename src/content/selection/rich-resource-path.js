@@ -27,5 +27,10 @@
     return normalize(path);
   }
 
-  app.modules.richResourcePath = Object.freeze({ normalize, normalizeAudioReference });
+  function normalizeSoundReference(value) {
+    if (typeof value !== "string" || !value.startsWith("sound://")) return "";
+    return normalize(value.slice("sound://".length));
+  }
+
+  app.modules.richResourcePath = Object.freeze({ normalize, normalizeAudioReference, normalizeSoundReference });
 })();
