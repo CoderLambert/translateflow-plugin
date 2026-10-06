@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } from "../src/background/selection/assistant-stream.js";
+import { resolveSelectionRequest } from "../src/background/selection/resolve.js";
 const PORT = "selection.assistant-stream";
 
 function port(overrides = {}) {
@@ -34,6 +35,83 @@ test("assistant stream port binds one sender/request and emits ordered real delt
   assert.deepEqual(p.sent.find(value => value.type === "complete").turn, { userQuestion: "这里是什么意思？", assistantAnswer: "hello world", action: "understand",
     threadId: "thread-1", turnId: "turn-1", parentTurnId: null, branchId: "branch-1", regenerationOf: null, completionStatus: "completed" });
   assert.equal(p.sent.at(-1).type, "interrupted"); assert.equal(p.sent.at(-1).code, "BAD_REQUEST");
+});
+
+test("explicit CJK assistant action streams bounded page context after a local-only miss", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = port({ url: "https://example.test/article", tab: { id: 7, incognito: false } });
+  const visibleContext = "記事では弁護士が地域の相談窓口を案内していた。";
+  let providerPrompt;
+  let providerCalls = 0;
+  const config = { provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" };
+  const resolverDeps = {
+    getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
+    getEffectiveConfig: async () => config,
+    runLexicalLookup: async () => {
+      throw new Error("CJK rich-dictionary text must not use the English lexical index");
+    }
+  };
+  handleSelectionAssistantStreamPort(p, {
+    resolveSelectionRequest: input => resolveSelectionRequest(input, resolverDeps),
+    getEffectiveConfig: async () => config,
+    readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
+    completeText: async input => {
+      providerCalls += 1;
+      providerPrompt = JSON.parse(input.prompt);
+      return { text: "此处指律师。", mode: "unary" };
+    }
+  });
+  p.emit({ ...input, requestId: "cjk-stream-explain", text: "弁護士", context: { text: visibleContext, source: "visible-local", sensitive: false } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(providerCalls, 1);
+  assert.equal(providerPrompt.text, "弁護士");
+  assert.equal(providerPrompt.context, visibleContext);
+  assert.deepEqual(providerPrompt.candidates, []);
+  assert.equal(p.sent.at(-1).type, "complete");
+});
+
+test("explicit assistant stream sanitizes request context when resolver omits explanation details", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = port();
+  const visibleContext = "この記事では弁護士が地域の相談窓口を案内していた。";
+  let providerPrompt;
+  handleSelectionAssistantStreamPort(p, {
+    resolveSelectionRequest: async () => ({ intent: { sourceLanguage: "ja" }, explanationInput: null }),
+    getEffectiveConfig: async () => ({ provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" }),
+    readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
+    completeText: async input => {
+      providerPrompt = JSON.parse(input.prompt);
+      return { text: "此处指律师。", mode: "unary" };
+    }
+  });
+  p.emit({ ...input, requestId: "cjk-stream-context-fallback", text: "弁護士", context: { text: visibleContext, source: "visible-local", sensitive: false } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(providerPrompt.text, "弁護士");
+  assert.equal(providerPrompt.context, visibleContext);
+  assert.equal(p.sent.at(-1).type, "complete");
+});
+
+test("explicit assistant stream context fallback still excludes sensitive surroundings", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = port();
+  let providerPrompt;
+  handleSelectionAssistantStreamPort(p, {
+    resolveSelectionRequest: async () => ({ intent: { sourceLanguage: "ja" }, explanationInput: null }),
+    getEffectiveConfig: async () => ({ provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" }),
+    readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
+    completeText: async input => {
+      providerPrompt = JSON.parse(input.prompt);
+      return { text: "回答", mode: "unary" };
+    }
+  });
+  p.emit({ ...input, requestId: "cjk-stream-sensitive-context", text: "弁護士", context: { text: "私有フォームの内容", source: "visible-local", sensitive: true } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  assert.equal(providerPrompt.text, "弁護士");
+  assert.equal(providerPrompt.context, "");
+  assert.equal(p.sent.at(-1).type, "complete");
 });
 
 test("grounded turn shapes allow finite follow-up and root regeneration but reject graph edits", async () => {

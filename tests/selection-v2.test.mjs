@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
+import { readFile } from "node:fs/promises";
 import {
   SELECTION_EXPLANATION_DEPTH,
   SELECTION_INTENT,
@@ -9,6 +11,11 @@ import {
   sanitizeSelectionContext
 } from "../src/shared/selection.js";
 import { resolveSelectionRequest } from "../src/background/selection/resolve.js";
+
+const contentSelectionSource = await readFile(
+  new URL("../src/content/selection/selection.js", import.meta.url),
+  "utf8"
+);
 
 test("Selection v2 classifier keeps lexical, sentence and unsupported-local routes separate", () => {
   const word = classifySelectionIntent({ text: "persistent", targetLanguage: "Simplified Chinese" });
@@ -36,6 +43,55 @@ test("Selection v2 classifier keeps lexical, sentence and unsupported-local rout
   const unsupportedTarget = classifySelectionIntent({ text: "persistent", targetLanguage: "Japanese" });
   assert.equal(unsupportedTarget.kind, SELECTION_INTENT.TRANSLATION);
   assert.equal(unsupportedTarget.reason, "unsupported-local-target");
+});
+
+test("short Han and kana headwords use only the local Rich MDict route", async () => {
+  const state = vm.createContext({
+    __TRANSLATE_FLOW_CONTENT__: {
+      modules: {
+        runtime: {
+          constants: { EXTENSION_UI_ATTR: "data-tf-extension-ui" },
+          cleanText: (value) => String(value ?? "").replace(/\s+/g, " ").trim()
+        }
+      }
+    }
+  });
+  vm.runInContext(contentSelectionSource, state);
+  const selection = state.__TRANSLATE_FLOW_CONTENT__.modules.selection;
+  let lexicalLookups = 0;
+  const deps = {
+    getConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => {
+      lexicalLookups += 1;
+      throw new Error("Rich MDict selections must not enter the English lexical index.");
+    }
+  };
+
+  for (const [text, sourceLanguage] of [
+    ["弁護士", "unknown"],
+    ["美容院", "unknown"],
+    ["イトマキエイ", "ja"],
+    ["ｲﾄﾏｷｴｲ", "ja"]
+  ]) {
+    assert.equal(selection.isEligibleText(text), true, text);
+    const intent = classifySelectionIntent({ text, targetLanguage: "Simplified Chinese" });
+    assert.equal(intent.reason, "rich-dictionary-only", text);
+    assert.equal(intent.localLexiconEligible, false, text);
+    assert.equal(intent.sourceLanguage, sourceLanguage, text);
+
+    const result = await resolveSelectionRequest({ text, pageUrl: "https://example.test/" }, deps);
+    assert.equal(result.routeReason, "no-hit-local", text);
+    assert.equal(result.lookup, null, text);
+    assert.equal(result.decision.outcome, "no-hit", text);
+  }
+
+  assert.equal(selection.isEligibleText("这是一个中文选择"), false);
+  assert.equal(selection.isEligibleText("日本語 の単語"), false);
+  assert.equal(selection.isEligibleText("日本語の文です。"), false);
+  assert.equal(selection.isEligibleText("日本語｡"), false);
+  assert.equal(selection.isEligibleText("ｲﾄﾏｷｴｲ｡"), false);
+  assert.equal(lexicalLookups, 0);
 });
 
 test("Selection v2 keeps dictionary lookup first and AI explanation explicit", () => {
@@ -83,6 +139,30 @@ test("Selection v2 keeps dictionary lookup first and AI explanation explicit", (
       explainRequested: true
     }).route,
     SELECTION_ROUTE.NEEDS_EXPLANATION
+  );
+
+  const cjkIntent = classifySelectionIntent({ text: "弁護士", targetLanguage: "Simplified Chinese" });
+  assert.equal(
+    chooseSelectionRoute({
+      intent: cjkIntent,
+      decision: { outcome: "no-hit", candidates: [] },
+      text: "弁護士"
+    }).route,
+    SELECTION_ROUTE.UNRESOLVED
+  );
+  assert.deepEqual(
+    chooseSelectionRoute({
+      intent: cjkIntent,
+      decision: { outcome: "no-hit", candidates: [] },
+      text: "弁護士",
+      explainRequested: true
+    }),
+    {
+      route: SELECTION_ROUTE.NEEDS_EXPLANATION,
+      reason: "no-hit-explicit-explanation",
+      depth: SELECTION_EXPLANATION_DEPTH.STANDARD,
+      explanationAllowed: true
+    }
   );
   assert.equal(
     chooseSelectionRoute({
@@ -222,6 +302,50 @@ test("Selection resolver bypasses lexical lookup for sentence and unsupported ta
     getEffectiveConfig: async () => ({ targetLanguage: "Japanese" })
   });
   assert.equal(unsupportedTarget.route, SELECTION_ROUTE.TRANSLATION);
+  assert.equal(lexicalCalls, 0);
+});
+
+test("rich-only CJK no-hit stays local by default and carries sanitized context only on explicit explanation", async () => {
+  let lexicalCalls = 0;
+  const deps = {
+    getConfig: async () => ({
+      selectionExplanationDepth: "auto",
+      targetLanguage: "Simplified Chinese"
+    }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => {
+      lexicalCalls += 1;
+      throw new Error("rich-only selection must not enter the English lookup");
+    }
+  };
+  const context = {
+    text: "弁護士として記事を読む場面です。",
+    source: "visible-local",
+    sensitive: false
+  };
+
+  const local = await resolveSelectionRequest({ text: "弁護士", context }, deps);
+  assert.equal(local.route, SELECTION_ROUTE.UNRESOLVED);
+  assert.equal(local.routeReason, "no-hit-local");
+  assert.equal("explanationInput" in local, false);
+  assert.equal(lexicalCalls, 0);
+
+  const explicit = await resolveSelectionRequest({ text: "弁護士", context, explainRequested: true }, deps);
+  assert.equal(explicit.route, SELECTION_ROUTE.NEEDS_EXPLANATION);
+  assert.equal(explicit.routeReason, "no-hit-explicit-explanation");
+  assert.deepEqual(explicit.explanationInput, {
+    selectionText: "弁護士",
+    contextText: context.text,
+    sensitive: false,
+    depth: SELECTION_EXPLANATION_DEPTH.STANDARD,
+    candidates: []
+  });
+  assert.deepEqual(explicit.contextPolicy, {
+    sensitive: false,
+    source: "visible-local",
+    truncated: false,
+    chars: context.text.length
+  });
   assert.equal(lexicalCalls, 0);
 });
 
@@ -389,4 +513,3 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
   assert.equal(result.decision.topCandidateId, "technical:Q1935361");
   assert.equal(result.decision.candidates[0].typeLabels[0], "terminal multiplexer");
 });
-
