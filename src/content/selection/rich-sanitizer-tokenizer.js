@@ -364,7 +364,6 @@
     }
     return output.replace(/[\t\u00a0 ]+/gu, " ").replace(/ *\n */gu, "\n").trim();
   }
-
   function decodeEntities(value) {
     return String(value).replace(ENTITY_PATTERN, (full, token) => {
       const lower = token.toLowerCase();
@@ -375,7 +374,6 @@
       return String.fromCodePoint(numeric);
     });
   }
-
   function boundedUtf8Bytes(value, maxBytes) {
     let bytes = 0;
     for (let index = 0; index < value.length; index += 1) {
