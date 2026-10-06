@@ -271,11 +271,11 @@ function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeig
     fullBox(2, new Uint8Array()), be16(1), be16(0), asciiBytes(itemType), Uint8Array.of(0)
   ));
   const iinf = makeBox("iinf", concatBytes(fullBox(0, new Uint8Array()), be16(1), infe));
+  const imageData = makeAv1SequenceHeaderObu(encodedWidth, encodedHeight, { hasSizeField: !unsizedSequenceHeader });
   const makeIloc = (baseOffset) => makeBox("iloc", concatBytes(
     fullBox(0, new Uint8Array()), Uint8Array.of(0x44, 0x40), be16(1), be16(1), be16(0),
-    be32(baseOffset), be16(1), be32(0), be32(1)
+    be32(baseOffset), be16(1), be32(0), be32(imageData.length)
   ));
-  const imageData = makeAv1SequenceHeaderObu(encodedWidth, encodedHeight, { hasSizeField: !unsizedSequenceHeader });
   const makeMeta = (baseOffset) => makeBox("meta", concatBytes(
     fullBox(0, new Uint8Array()), hdlr, pitm, makeIloc(baseOffset), iinf, iprp
   ));
