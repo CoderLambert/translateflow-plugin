@@ -29,6 +29,12 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
   const intent = classifySelectionIntent({ text, targetLanguage });
   const context = sanitizeSelectionContext(input.context);
 
+  if (intent.reason === "rich-dictionary-only") {
+    const decision = { outcome: "no-hit", candidates: [], evidence: [] };
+    const route = chooseSelectionRoute({ intent, decision, depth: requestedDepth, text });
+    return response({ text, intent, route, context, lookup: null, decision });
+  }
+
   if (intent.kind === "translation") {
     const route = chooseSelectionRoute({
       intent,

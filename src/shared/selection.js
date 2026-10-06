@@ -47,6 +47,18 @@ export function classifySelectionIntent({
     };
   }
 
+  if (isRichDictionaryOnlySelection(normalized)) {
+    const hasKana = /[\u3040-\u30ff\u31f0-\u31ff]/u.test(normalized);
+    return {
+      kind: SELECTION_INTENT.LEXICAL,
+      reason: "rich-dictionary-only",
+      localLexiconEligible: false,
+      sourceLanguage: hasKana ? "ja" : "unknown",
+      targetLanguage,
+      tokenCount
+    };
+  }
+
   if (!localTargetSupported || !englishDominant) {
     return {
       kind: SELECTION_INTENT.TRANSLATION,
@@ -99,6 +111,15 @@ export function chooseSelectionRoute({
   text,
   explainRequested = false
 } = {}) {
+  if (intent?.reason === "rich-dictionary-only") {
+    return {
+      route: SELECTION_ROUTE.UNRESOLVED,
+      reason: "no-hit-local",
+      depth: resolveSelectionDepth(depth, { intent, decision }),
+      explanationAllowed: true
+    };
+  }
+
   if (!intent || intent.kind === SELECTION_INTENT.TRANSLATION) {
     return {
       route: SELECTION_ROUTE.TRANSLATION,
@@ -212,4 +233,17 @@ function countWordLikeTokens(text) {
 
 function isMultiWord(text) {
   return countWordLikeTokens(text) > 1;
+}
+
+function isRichDictionaryOnlySelection(text) {
+  const value = String(text || "");
+  const latin = (value.match(/[A-Za-z]/g) || []).length;
+  const cjk = (value.match(/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g) || []).length;
+  const hasKana = /[\u3040-\u30ff\u31f0-\u31ff]/u.test(value);
+  const maxHeadwordLength = hasKana ? 24 : 6;
+  return latin === 0
+    && cjk >= 2
+    && value.length <= maxHeadwordLength
+    && !/\s/u.test(value)
+    && !/[。！？!?]/u.test(value);
 }
