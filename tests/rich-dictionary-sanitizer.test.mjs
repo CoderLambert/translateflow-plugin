@@ -110,6 +110,21 @@ test("active markup, navigation, event handlers, unsafe CSS, and remote resource
   }
 });
 
+test("sound:// audio links preserve body labels and ordinary relative links stay text", () => {
+  const result = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<a href="entry/relative">ordinary</a><a href="sound://kanji_alive_audio/08596-1.opus" title="reading"><span>英式</span></a><audio src="sound://kanji_alive_audio/08128-1.opus" title="voice"/><a href="https://example.test/audio.opus">remote</a><audio src="data:audio/ogg;base64,AA"/><audio src="sound://../private.opus"/><audio src="sound://https://example.test/a.opus"/><audio src="sound://sound://example.test/a.opus"/><audio src="sound://sound%253A%252F%252Fexample.test/a.opus"/><audio src="sound://kanji_alive_audio%2f..%2fprivate.opus"/>'
+  });
+
+  const resources = [];
+  walk(result.nodes, (node) => { if (node.type === "resource") resources.push(node); });
+  assert.deepEqual(local(resources), [
+    { type: "resource", kind: "audio", path: "kanji_alive_audio/08596-1.opus", label: "reading" },
+    { type: "resource", kind: "audio", path: "kanji_alive_audio/08128-1.opus", label: "voice" }
+  ]);
+  assert.equal(textContent(result.nodes), "ordinary英式remote");
+});
+
 test("decoded entity text stays inert and format Text is returned literally", () => {
   const module = sanitizer();
   const html = module.sanitizeRichDictionaryRecord({
