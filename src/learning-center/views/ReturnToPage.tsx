@@ -4,19 +4,26 @@ import { readingClient, ReadingError } from "../client/reading";
 import type { Detail, ReadingClient, SiteMarkers } from "../client/reading";
 import { Button, Notice } from "../components/common";
 
-export function ReturnToPage({ record, i18n, disabled, client = readingClient }: {
-  record: Detail["record"]; i18n: I18n; disabled: boolean; client?: ReadingClient;
+export function ReturnToPage({ record, siteKey, siteKeyStatus = "ready", onRetrySiteKey, markersRevision, i18n, disabled, client = readingClient }: {
+  record: Detail["record"]; siteKey?: string | null; siteKeyStatus?: "loading" | "ready" | "error"; onRetrySiteKey?: () => void;
+  markersRevision?: number; i18n: I18n; disabled: boolean; client?: ReadingClient;
 }) {
-  const origin = record.safeReturnUrl ? new URL(record.safeReturnUrl).origin : null;
+  const origin = siteKey ?? (record.safeReturnUrl ? new URL(record.safeReturnUrl).origin : null);
   const [markers, setMarkers] = useState<SiteMarkers | null>(null), [markerError, setMarkerError] = useState(false);
   const [busy, setBusy] = useState(false), [status, setStatus] = useState<"ready" | "permission-required" | "unsupported" | "error" | "disabled" | "changed" | null>(null);
   const epoch = useRef(0), mutation = useRef(false);
+  function reloadMarkers() {
+    if (!origin) return;
+    const current = epoch.current; setMarkerError(false); setMarkers(null);
+    client.markers(origin).then(value => { if (epoch.current === current) setMarkers(value); })
+      .catch(() => { if (epoch.current === current) setMarkerError(true); });
+  }
   useEffect(() => {
     const current = ++epoch.current; setMarkers(null); setStatus(null); setMarkerError(false); setBusy(false);
     if (origin) client.markers(origin).then(value => { if (epoch.current === current) setMarkers(value); })
       .catch(() => { if (epoch.current === current) setMarkerError(true); });
     return () => { epoch.current++; };
-  }, [client, origin, record.recordId]);
+  }, [client, origin, record.recordId, markersRevision]);
   async function returnToPage(grant = false) {
     if (disabled || mutation.current) return;
     const current = epoch.current; mutation.current = true; setBusy(true); setStatus(null);
@@ -44,18 +51,30 @@ export function ReturnToPage({ record, i18n, disabled, client = readingClient }:
     finally { mutation.current = false; if (epoch.current === current) setBusy(false); }
   }
   return <div className="return-to-page" aria-busy={busy}>
-    <div className="actions"><Button disabled={disabled || busy} onClick={event => { if (event.nativeEvent.isTrusted) void returnToPage(); }}>{i18n.t("learning.returnPage")}</Button>
+    <section className="site-marker-settings" aria-labelledby="site-marker-title">
+      <h3 id="site-marker-title">{i18n.t("learning.siteMarkersTitle")}</h3>
+      {!origin && siteKeyStatus === "loading" && <Notice>{i18n.t("learning.siteIdentityLoading")}</Notice>}
+      {!origin && siteKeyStatus === "error" && <><Notice error>{i18n.t("learning.siteIdentityError")}</Notice>
+        {onRetrySiteKey && <Button disabled={disabled} onClick={onRetrySiteKey}>{i18n.t("learning.retry")}</Button>}</>}
+      {origin && markers && <p role="status">{i18n.t(markers.state === "permission-required"
+        ? markers.enabled ? "learning.siteMarkersRevoked" : "learning.siteMarkersGrantRequired"
+        : markers.enabled ? "learning.siteMarkersOn" : "learning.siteMarkersOff")}</p>}
+      {origin && <><div className="actions"><Button className={markers?.enabled ? "" : "primary"} aria-pressed={markers?.enabled ?? false}
+        disabled={disabled || busy || !markers} onClick={event => { if (event.nativeEvent.isTrusted) void toggleMarkers(); }}>
+        {i18n.t(markers?.enabled ? "learning.disableSiteMarkers" : "learning.enableSiteMarkers")}</Button>
+        {markerError && <Button disabled={disabled || busy} onClick={reloadMarkers}>{i18n.t("learning.retry")}</Button>}
+      </div>
+      <p className="muted">{i18n.t("learning.siteMarkersHelp")}</p>
+      {markers?.state === "permission-required" && <Notice>{i18n.t(markers.enabled ? "learning.siteMarkersRevoked" : "learning.siteMarkersGrantRequired")}</Notice>}
+      {markerError && <Notice error>{i18n.t("learning.actionError")}</Notice>}</>}
+    </section>
+    <div className="actions"><Button disabled={disabled || busy || !record.safeReturnUrl} onClick={event => { if (event.nativeEvent.isTrusted) void returnToPage(); }}>{i18n.t("learning.returnPage")}</Button>
       {status === "permission-required" && origin && <Button disabled={disabled || busy} onClick={event => { if (event.nativeEvent.isTrusted) void returnToPage(true); }}>{i18n.t("learning.grantSiteAccess")}</Button>}
     </div>
     {busy && <Notice>{i18n.t("learning.returnLoading")}</Notice>}
     {status && <Notice error={["error", "disabled", "changed"].includes(status)}>{i18n.t(status === "ready" ? "learning.returnReady" : status === "permission-required" ? "learning.returnPermission"
       : status === "unsupported" ? "learning.returnUnsupported" : status === "disabled" ? "learning.returnDisabled" : status === "changed" ? "learning.changed" : "learning.actionError")}</Notice>}
-    {origin && <><Button aria-pressed={markers?.enabled ?? false} disabled={disabled || busy || (!markers && !markerError)} onClick={event => { if (event.nativeEvent.isTrusted) void toggleMarkers(); }}>
-      {i18n.t(markers?.enabled ? "learning.disableSiteMarkers" : "learning.enableSiteMarkers")}</Button>
-      <p className="muted">{i18n.t("learning.siteMarkersHelp")}</p>
-      {markers?.state === "permission-required" && <Notice>{i18n.t("learning.returnPermission")}</Notice>}
-      {markerError && <Notice error>{i18n.t("learning.actionError")}</Notice>}
-    </>}
+    {!record.safeReturnUrl && <p className="muted">{i18n.t("learning.returnUnsupported")}</p>}
     {record.safeReturnUrl && <><a href={record.safeReturnUrl} target="_blank" rel="noopener noreferrer">{i18n.t("learning.openPage")}</a><p className="muted">{i18n.t("learning.openHelp")}</p></>}
   </div>;
 }

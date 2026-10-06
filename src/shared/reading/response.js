@@ -10,7 +10,7 @@ export { validatePageSummaryItem } from "./list.js";
 export function validateReadingResponse(method, value, scope, pageLimit = L.pageSize) {
   choice(method, Object.values(M), "response.method");
   choice(scope, ["content", "extension", "entry"], "response.scope");
-  jsonBytes(value, method === M.GET_RECORD ? L.detailResponseBytes : L.listResponseBytes, "response");
+  jsonBytes(value, [M.GET_RECORD, M.PREVIEW_READ].includes(method) ? L.detailResponseBytes : L.listResponseBytes, "response");
   object(value, value?.ok === true ? ["protocolVersion", "ok", "data"] : ["protocolVersion", "ok", "error"], "response");
   const transportVersion = protocolVersion(value.protocolVersion, "response.protocolVersion");
   if (!bool(value.ok, "response.ok")) {
@@ -57,6 +57,11 @@ function data(method, value, scope, pageLimit) {
   if (method === M.LIST_PAGES) return validateListPage(value, validatePageListItem, "pageKey", pageLimit, { catalogRevision: revision });
   if (method === M.LIST_RECORDING_EXCLUSIONS) return validateListPage(value, validateExclusionItem, "siteKey", pageLimit, {});
   if (method === M.GET_RECORD) return validateRecordDetail(value, "data");
+  if (method === M.GET_RECORD_SITE_KEY) {
+    if (scope !== "extension") fail(E.FORBIDDEN, "response.scope");
+    object(value, ["siteKey"], "data");
+    return { siteKey: siteKey(value.siteKey, "data.siteKey") };
+  }
   if ([M.GET_RECORDING_STATE, M.SET_RECORDING].includes(method)) return validateRecordingState(value, scope, "data");
   if ([M.GET_SITE_RECORDING, M.SET_SITE_RECORDING].includes(method)) {
     object(value, ["excluded", "sitePolicyRevision"], "data");
@@ -99,6 +104,23 @@ function data(method, value, scope, pageLimit) {
     object(value, value?.state === "ready" ? ["state", "handoff"] : ["state"], "data");
     const state = choice(value.state, ["ready", "permission-required", "unsupported"], "data.state");
     return state === "ready" ? { state, handoff: validateHandoff(value.handoff) } : { state };
+  }
+  if (method === M.PREVIEW_CREATE) {
+    object(value, ["previewId", "expiresAt"], "data");
+    return { previewId: id(value.previewId, "data.previewId"), expiresAt: integer(value.expiresAt, 1, Number.MAX_SAFE_INTEGER, "data.expiresAt") };
+  }
+  if (method === M.PREVIEW_CLAIM) {
+    object(value, ["claimId"], "data");
+    return { claimId: id(value.claimId, "data.claimId") };
+  }
+  if (method === M.PREVIEW_BIND) {
+    object(value, ["bound"], "data");
+    return { bound: choice(value.bound, [true], "data.bound") };
+  }
+  if (method === M.PREVIEW_READ) return validateRecordDetail(value, "data");
+  if (method === M.PREVIEW_CLOSE) {
+    object(value, ["closed"], "data");
+    return { closed: choice(value.closed, [true], "data.closed") };
   }
   return validatePageSummaryItem(value, "data");
 }

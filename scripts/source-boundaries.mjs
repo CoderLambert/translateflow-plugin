@@ -7,7 +7,7 @@ import { createApiInspector } from "./source-api-boundaries.mjs";
 export const SOURCE_EXTENSION = /\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/u;
 // React is confined to extension-owned document UIs. Options Workers remain raw
 // worker assets and are intentionally excluded from this allowlist.
-const UI = /^(?:entrypoints\/learning-center\/|src\/(?:learning-center|popup)\/|src\/options\/(?!workers\/))/u;
+const UI = /^(?:entrypoints\/(?:learning-center|reading-preview)\/|src\/(?:learning-center|popup)\/|src\/options\/(?!workers\/))/u;
 const PURE = /^src\/(?:shared|i18n)\//u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
 const READING_IDB = "src/background/reading-record/idb.js";

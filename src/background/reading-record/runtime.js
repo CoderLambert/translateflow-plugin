@@ -1,4 +1,4 @@
-import { READING_INVALIDATION_PORT } from "../../shared/reading/constants.js";
+import { READING_INVALIDATION_PORT, READING_METHOD as M } from "../../shared/reading/constants.js";
 import { createReadingRepository } from "./repository.js";
 import { createReadingService } from "./service.js";
 import { createReadingSubscriptions } from "./subscriptions.js";
@@ -27,7 +27,11 @@ export function configureReadingRuntime({ repository, learningCenterAvailable = 
   return { publishInvalidation: current.publishInvalidation };
 }
 export function isReadingMessage(message) { return typeof message?.method === "string" && message.method.startsWith("reading."); }
-export function handleReadingMessage(message, sender) { return runtime().service.handle(message, sender); }
+export async function handleReadingMessage(message, sender) {
+  const state = runtime(), result = await state.service.handle(message, sender);
+  if (message?.method === M.SET_SITE_MARKERS && result?.ok === true) await state.subscriptions.publishSiteMarkers();
+  return result;
+}
 export function prepareLearningAssistantTurn(sender, input, ground, options) { return runtime().service.prepareAssistantTurn(sender, input, ground, options); }
 export function commitLearningAssistantTurn(session, artifact, options) { return runtime().service.commitAssistantTurn(session, artifact, options); }
 export function cancelLearningAssistantTurn(session) { return runtime().service.cancelAssistantTurn(session); }

@@ -1,4 +1,4 @@
-import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_METHOD as M } from "../../shared/reading/constants.js";
+import { READING_ERROR as E, READING_LEARNING_CENTER_PATH, READING_PREVIEW_PATH, READING_METHOD as M } from "../../shared/reading/constants.js";
 import { validateCaptureSafety } from "../../shared/reading/dto.js";
 import { validateSourceSnapshot } from "../../shared/reading/source.js";
 import { id, integer, nullable, object, fail, recordId } from "../../shared/reading/validation.js";
@@ -7,10 +7,10 @@ import { classifyPage, derivePageIdentity, requireCaptureSafety } from "./policy
 const ENTRY_PATHS = new Set(["/popup.html", "/options.html"]);
 const TOOLBAR_POPUP_PATH = "/popup.html";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-const nativeDocumentId = (value) => typeof value === "string" && (UUID.test(value) || /^[0-9a-f]{32}$/iu.test(value));
 const ACTIONS = new Map([[M.BEGIN_QUERY, "begin"], [M.SAVE_QUERY_RESULT, "save"], [M.APPEND_ASSISTANT, "save"],
   [M.GET_RECORD, "detail"], [M.CANCEL_OPERATION, "cancel"], [M.CONSUME_HANDOFF, "handoff"],
-  [M.GET_RECORDING_STATE, "page"], [M.GET_SITE_RECORDING, "page"], [M.GET_SITE_MARKERS, "page"], [M.GET_PAGE_SUMMARY, "page"]]);
+  [M.GET_RECORDING_STATE, "page"], [M.GET_SITE_RECORDING, "page"], [M.GET_SITE_MARKERS, "page"], [M.GET_PAGE_SUMMARY, "page"],
+  [M.PREVIEW_CREATE, "page"], [M.PREVIEW_BIND, "page"], [M.PREVIEW_CLOSE, "page"]]);
 
 export async function readOwnedCollector(browser, sender, challenge) {
   if (typeof browser?.scripting?.executeScript !== "function") fail(E.CAPABILITY_LIMITED, "collector");
@@ -29,6 +29,31 @@ export async function readOwnedCollector(browser, sender, challenge) {
   if (results[0].result === null) fail(E.NOT_READY, "collector");
   return results[0].result;
 }
+
+// Preview data can be read only by the exact live extension document that claimed a
+// session from an embedded frame. A URL token by itself never supplies authority.
+export async function verifyReadingPreviewFrame(browser, sender, previewId) {
+  if (!browser?.runtime?.id || sender?.id !== browser.runtime.id || !Number.isInteger(sender.tab?.id) || sender.tab.id < 0 ||
+      sender.tab.incognito !== false || !Number.isInteger(sender.frameId) || sender.frameId <= 0 ||
+      !nativeDocumentId(sender.documentId) || (sender.documentLifecycle !== undefined && sender.documentLifecycle !== "active") ||
+      typeof browser.runtime.getContexts !== "function") fail(E.FORBIDDEN, "preview.sender");
+  const expectedUrl = browser.runtime.getURL(`${READING_PREVIEW_PATH}?previewId=${encodeURIComponent(previewId)}`);
+  let url;
+  try { url = new URL(sender.url); } catch { fail(E.FORBIDDEN, "preview.url"); }
+  if (sender.url !== expectedUrl || url.pathname !== `/${READING_PREVIEW_PATH}` || url.hash ||
+      [...url.searchParams].length !== 1 || url.searchParams.get("previewId") !== previewId) fail(E.FORBIDDEN, "preview.url");
+  let contexts;
+  try { contexts = await browser.runtime.getContexts({ documentIds: [sender.documentId] }); }
+  catch { fail(E.CAPABILITY_LIMITED, "preview.context"); }
+  if (!Array.isArray(contexts) || contexts.length !== 1) fail(E.FORBIDDEN, "preview.context");
+  const context = contexts[0];
+  if (context.documentId !== sender.documentId || context.documentUrl !== sender.url || context.contextType !== "TAB" ||
+      context.incognito !== false || context.tabId !== sender.tab.id || context.frameId !== sender.frameId) fail(E.FORBIDDEN, "preview.context");
+  return { tabId: sender.tab.id, frameId: sender.frameId, documentId: sender.documentId,
+    documentUrl: sender.url, contextId: context.contextId };
+}
+
+function nativeDocumentId(value) { return typeof value === "string" && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value) || /^[0-9a-f]{32}$/iu.test(value)); }
 function validateProof(value, nonce, action, requestedRecordId, operationId) {
   object(value, ["nonce", "documentGeneration", "selectionGeneration", "captureSafety", "sourceSnapshot", "intent"], "proof");
   if (value.nonce !== nonce) fail(E.FORBIDDEN, "proof.nonce");

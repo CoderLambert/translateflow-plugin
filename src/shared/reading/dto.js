@@ -8,7 +8,7 @@ const BASE = ["protocolVersion", "method"];
 const fields = {
   [M.BEGIN_QUERY]: ["operationId", "purpose", "sourceSnapshot", "pageKey", "safeReturnUrl", "pageTitle", "itemText", "sourceLanguage", "recordId", "recordRevision", "captureSafety"],
   [M.SAVE_QUERY_RESULT]: ["token", "artifact"], [M.APPEND_ASSISTANT]: ["token", "artifact"],
-  [M.GET_PAGE_SUMMARY]: ["cursor", "limit"], [M.GET_RECORD]: ["recordId"],
+  [M.GET_PAGE_SUMMARY]: ["cursor", "limit"], [M.GET_RECORD]: ["recordId"], [M.GET_RECORD_SITE_KEY]: ["recordId"],
   [M.LIST_RECORDS]: ["pageKey", "query", "cursor", "limit"], [M.LIST_PAGES]: ["query", "cursor", "limit"],
   [M.GET_RECORDING_STATE]: [], [M.SET_RECORDING]: ["enabled", "expectedConsentGeneration"],
   [M.DELETE_RECORD]: ["recordId", "expectedRevision"], [M.DELETE_PAGE]: ["pageKey"],
@@ -20,7 +20,9 @@ const fields = {
   [M.GET_SITE_MARKERS]: ["siteKey"], [M.SET_SITE_MARKERS]: ["siteKey", "enabled"],
   [M.LIST_RECORDING_EXCLUSIONS]: ["cursor", "limit"], [M.CANCEL_OPERATION]: ["operationId"],
   [M.REGISTER_DOCUMENT]: ["documentGeneration"],
-  [M.CREATE_HANDOFF]: ["recordId", "expectedRevision"], [M.CONSUME_HANDOFF]: ["handoffId"]
+  [M.CREATE_HANDOFF]: ["recordId", "expectedRevision"], [M.CONSUME_HANDOFF]: ["handoffId"],
+  [M.PREVIEW_CREATE]: ["recordId", "expectedRevision"], [M.PREVIEW_BIND]: ["previewId", "claimId"],
+  [M.PREVIEW_CLAIM]: ["previewId"], [M.PREVIEW_READ]: ["previewId"], [M.PREVIEW_CLOSE]: ["previewId"]
 };
 export function validateReadingRequest(value) {
   jsonBytes(value, L.requestBytes, "request");
@@ -56,9 +58,16 @@ function body(method, value) {
     if ([M.LIST_RECORDS, M.LIST_PAGES].includes(method)) result.query = text(value.query, L.searchChars, "request.query", { empty: true });
     return result;
   }
-  if ([M.GET_RECORD, M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) {
+  if ([M.GET_RECORD, M.GET_RECORD_SITE_KEY, M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) {
     const result = { recordId: recordId(value.recordId, "request.recordId") };
-    if (method !== M.GET_RECORD) result.expectedRevision = integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision");
+    if ([M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) result.expectedRevision = integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision");
+    return result;
+  }
+  if (method === M.PREVIEW_CREATE) return { recordId: recordId(value.recordId, "request.recordId"),
+    expectedRevision: integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision") };
+  if ([M.PREVIEW_BIND, M.PREVIEW_CLAIM, M.PREVIEW_READ, M.PREVIEW_CLOSE].includes(method)) {
+    const result = { previewId: id(value.previewId, "request.previewId") };
+    if (method === M.PREVIEW_BIND) result.claimId = id(value.claimId, "request.claimId");
     return result;
   }
   if (method === M.SET_RECORDING) return { enabled: bool(value.enabled, "request.enabled"),

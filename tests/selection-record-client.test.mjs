@@ -16,6 +16,7 @@ const json = (value) => JSON.parse(JSON.stringify(value));
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 async function harness({ enabled = true, summaryOfWrites = false, sourceOverrides = {}, withSubscription = false, responseFilter = (value) => value } = {}) {
   let revision = 1, valid = true, savedRevision = 0, state = { enabled, consentGeneration: 1, capacityReached: false }, excluded = false;
+  let siteMarkers = { state: "ready", enabled: false, permissionGranted: true };
   const messages = [], writes = [], views = [];
   const realm = vm.createContext({ crypto: webcrypto, TextEncoder, URL, Date, chrome: { runtime: {} },
     __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
@@ -44,7 +45,10 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
   });
   const modules = realm.__TRANSLATE_FLOW_CONTENT__.modules;
   const service = createReadingService({ browser: nativeBrowser(), repository: repo,
-    collector: async (_browser, _sender, challenge) => json(await modules.readingAccessCollector.read(clone(challenge))) });
+    collector: async (_browser, _sender, challenge) => json(await modules.readingAccessCollector.read(clone(challenge))),
+    siteMarkers: { async get() { return { ...siteMarkers }; }, async set(_siteKey, enabled) {
+      siteMarkers = { state: "ready", enabled, permissionGranted: true }; return { ...siteMarkers };
+    } } });
   modules.runtime = { async sendRuntimeMessage(request) {
     messages.push(json(request));
     const reply = await service.handle(json(request), contentSender());
@@ -65,6 +69,8 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
     connections: () => connections,
     notify(overrides = {}) { notify?.(clone({ protocolVersion: 2, type: "reading.invalidate", pageRevision: 1,
       dataGeneration: 1, consentGeneration: state.consentGeneration, ...overrides })); },
+    notifySiteMarkers() { notify?.(clone({ protocolVersion: 2, type: "reading.site-markers.invalidate" })); },
+    setSiteMarkers(value) { siteMarkers = { ...value }; },
     invalidate() { valid = false; revision++; }, exclude() { excluded = true; }, clone };
 }
 
@@ -181,6 +187,34 @@ test("A delayed first-enable notification agrees with the accepted policy; later
   assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.writes.length, 1);
   h.pause(); h.notify({ pageRevision: 3 }); await h.client.refresh(true);
   assert.equal(ctx.blocked, true); assert.equal(ctx.ref, null); assert.equal(h.views.at(-1).state, "not-saved");
+});
+
+test("Site-marker invalidation refreshes the saved status without blocking a follow-up append", async () => {
+  const h = await harness({ summaryOfWrites: true, withSubscription: true }), ctx = h.start();
+  h.client.accept(ctx, h.draft); await ctx.queue;
+  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "disabled"; index++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "disabled");
+
+  h.setSiteMarkers({ state: "ready", enabled: true, permissionGranted: true });
+  h.notifySiteMarkers();
+  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "enabled"; index++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.equal(ctx.blocked, false); assert.ok(ctx.ref);
+  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "enabled");
+
+  const operation = h.client.assistant(ctx, h.event);
+  assert.ok(operation);
+  h.client.accept(ctx, h.clone({ kind: "assistant", targetLanguage: "zh-CN", provenance: { provider: "mock", model: "mock",
+    promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" }, payload: { userQuestion: "Why?", assistantAnswer: "Because.",
+    action: "follow-up", threadId: "thread-1", turnId: "turn-2", parentTurnId: "turn-1", branchId: "branch-1",
+    regenerationOf: null, completionStatus: "completed" } }), { key: "follow-up", operation });
+  await ctx.queue;
+  assert.equal(ctx.blocked, false); assert.equal(h.views.at(-1).state, "saved");
+  assert.equal(h.writes.length, 2); assert.equal(h.writes.at(-1).kind, "assistant");
+  assert.equal(h.messages.filter((request) => request.method === M.APPEND_ASSISTANT).length, 1);
 });
 
 test("An unchanged unsupported anchor preserves its committed snapshot without becoming resolved", async () => {

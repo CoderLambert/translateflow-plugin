@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { READING_ERROR as E, READING_INVALIDATION_PORT, READING_METHOD as M } from "../src/shared/reading/constants.js";
 import { createReadingAccess } from "../src/background/reading-record/access.js";
 import { createReadingSubscriptions } from "../src/background/reading-record/subscriptions.js";
+import { validateReadingSiteMarkersInvalidation } from "../src/shared/reading/invalidations.js";
+import { READING_SITE_MARKERS_INVALIDATION } from "../src/shared/reading/constants.js";
 import { createReadingService } from "../src/background/reading-record/service.js";
 import { createExportRegistry } from "../src/background/reading-record/exports.js";
 import { fail } from "../src/shared/reading/validation.js";
@@ -42,6 +44,20 @@ test("Subscriptions reserve pending native-authorized connects before repository
   subscriptions.close(); assert.equal(subscriptions.size, 0);
   const reused = port(); await subscriptions.connect(reused);
   assert.equal(reused.messages[0].type, "reading.invalidate"); subscriptions.close();
+});
+
+test("Site-marker changes publish a separate validated settings signal without changing DB revisions", async () => {
+  let reads = 0;
+  const subscriptions = createReadingSubscriptions({ accessControl: createReadingAccess({ browser: nativeBrowser() }),
+    repository: { async readInvalidationState({ assertCurrent }) { assertCurrent(); reads++; return invalidation(); } } });
+  const item = port(); await subscriptions.connect(item);
+  assert.equal(reads, 1); assert.deepEqual(item.messages[0], invalidation());
+  await subscriptions.publishSiteMarkers();
+  assert.equal(reads, 1);
+  assert.deepEqual(item.messages[1], { protocolVersion: 2, type: READING_SITE_MARKERS_INVALIDATION });
+  assert.deepEqual(validateReadingSiteMarkersInvalidation(item.messages[1]), item.messages[1]);
+  assert.throws(() => validateReadingSiteMarkersInvalidation({ ...item.messages[1], dataGeneration: 2 }));
+  subscriptions.close();
 });
 
 test("Pending/active subscription reservations release on disconnect, caller message, global close and refusal", async () => {

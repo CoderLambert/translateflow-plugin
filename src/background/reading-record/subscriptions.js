@@ -1,5 +1,5 @@
-import { READING_ERROR as E, READING_INVALIDATION_PORT, READING_METHOD as M, READING_PROTOCOL_VERSION as V } from "../../shared/reading/constants.js";
-import { validateReadingInvalidation } from "../../shared/reading/invalidations.js";
+import { READING_ERROR as E, READING_INVALIDATION_PORT, READING_METHOD as M, READING_PROTOCOL_VERSION as V, READING_SITE_MARKERS_INVALIDATION } from "../../shared/reading/constants.js";
+import { validateReadingInvalidation, validateReadingSiteMarkersInvalidation } from "../../shared/reading/invalidations.js";
 import { fail } from "../../shared/reading/validation.js";
 
 // Read-only Reading revision invalidations. No generic message forwarding or future assistant stream.
@@ -50,8 +50,15 @@ export function createReadingSubscriptions({ accessControl, repository } = {}) {
       } catch { entry.close(); try { port.disconnect(); } catch {} }
     }));
   }
+  async function publishSiteMarkers() {
+    const message = validateReadingSiteMarkersInvalidation({ protocolVersion: V, type: READING_SITE_MARKERS_INVALIDATION });
+    await Promise.all([...entries].filter(([, entry]) => entry.active).map(async ([port, entry]) => {
+      try { entry.assertCurrent(); port.postMessage(message); }
+      catch { entry.close(); try { port.disconnect(); } catch {} }
+    }));
+  }
   function disconnect(port, entry) { entry.close(); try { port.disconnect(); } catch {} }
-  return { connect, publish,
+  return { connect, publish, publishSiteMarkers,
     closeTab(tabId) {
       if (!Number.isInteger(tabId) || tabId < 0) return;
       for (const [port, entry] of [...entries]) {

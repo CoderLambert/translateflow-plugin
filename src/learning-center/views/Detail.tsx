@@ -4,44 +4,27 @@ import type { I18n } from "../../i18n/index.js";
 import { Button } from "../components/common";
 import { openAssistant } from "../client/assistant";
 import { ReturnToPage } from "./ReturnToPage";
+import { RecordHistory } from "./RecordHistory";
 type AssistantArtifact = RecordDetail["artifacts"][number] & { kind: "assistant"; payload: {
   userQuestion: string; assistantAnswer: string; action: "understand" | "analyze" | "usage" | "follow-up";
   threadId: string; turnId: string; parentTurnId: string | null; branchId: string; regenerationOf: string | null; completionStatus: "completed";
 } };
-export function Detail({ detail, i18n, onBack, onDelete, onAssistantSaved, disabled, assistantDisabled = disabled, client }: {
+export function Detail({ detail, siteKey, siteKeyStatus = "ready", onRetrySiteKey, markersRevision, i18n, onBack, onDelete, onAssistantSaved, disabled, assistantDisabled = disabled, client }: {
   detail: RecordDetail; i18n: I18n; onBack: () => void; onDelete: () => void; onAssistantSaved?: () => void;
-  disabled: boolean; assistantDisabled?: boolean; client?: ReadingClient;
+  disabled: boolean; siteKey?: string | null; siteKeyStatus?: "loading" | "ready" | "error"; onRetrySiteKey?: () => void;
+  markersRevision?: number; assistantDisabled?: boolean; client?: ReadingClient;
 }) {
-  const [shown, setShown] = useState(5);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const { record, snapshots, artifacts } = detail;
-  useEffect(() => { setShown(5); heading.current?.focus(); }, [record.recordId]);
+  const { record } = detail;
   return <section onKeyDown={event => { if (event.key === "Escape" && !event.defaultPrevented) onBack(); }} aria-labelledby="detail-title">
     <Button onClick={onBack}>{i18n.t("learning.back")}</Button>
-    <h2 id="detail-title" ref={heading} tabIndex={-1}>{record.itemText}</h2>
-    <p className="eyebrow">{i18n.t("learning.snapshot")}</p>
-    <p>{record.pageTitle}</p>
-    <p>{i18n.t("learning.savedAt", { date: i18n.formatDateTime(record.firstSeenAt) })}</p>
-    <ReturnToPage record={record} i18n={i18n} disabled={disabled} {...(client ? { client } : {})} />
-    {artifacts.slice(0, shown).map(artifact => {
-      const source = snapshots.find(snapshot => snapshot.sourceSnapshotId === artifact.sourceSnapshotId);
-      const payload = artifact.payload;
-      return <article className="artifact" key={artifact.artifactId}>
-        <h3>{i18n.t(artifact.kind === "assistant" ? "learning.questions" : "learning.result")}</h3>
-        {artifact.kind === "assistant" && "userQuestion" in payload ? <><h4>{payload.userQuestion}</h4><p className="text">{payload.assistantAnswer}</p></>
-          : "definitions" in payload ? <><p>{payload.headword} {payload.phonetic} {payload.partOfSpeech}</p>
-            {payload.outcome === "no-hit" ? <p>{i18n.t("learning.noHit")}</p> : <ul>{payload.definitions.map((value: string, index: number) => <li key={index}>{value}</li>)}</ul>}</>
-            : "text" in payload ? <p className="text">{payload.text}</p> : null}
-        {source && <details><summary>{i18n.t("learning.context")}</summary><blockquote>{source.selectedText}</blockquote><p className="text">{source.contextText}</p></details>}
-        <details><summary>{i18n.t("learning.diagnostics")}</summary>
-          <pre>{JSON.stringify(artifact.provenance, null, 2)}</pre><p>{artifact.targetLanguage} · {i18n.formatDateTime(artifact.createdAt)}</p>
-        </details>
-        {artifact.kind === "assistant" && "userQuestion" in payload && <AssistantControls artifact={artifact as AssistantArtifact}
-          recordId={record.recordId} recordRevision={record.revision} i18n={i18n} disabled={assistantDisabled}
-          onSaved={onAssistantSaved ?? (() => {})} />}
-      </article>;
-    })}
-    {shown < artifacts.length && <Button onClick={() => setShown(value => value + 5)}>{i18n.t("learning.more")}</Button>}
+    <RecordHistory detail={detail} i18n={i18n} beforeArtifacts={<ReturnToPage record={record} i18n={i18n} disabled={disabled}
+      {...(siteKey !== undefined ? { siteKey } : {})} siteKeyStatus={siteKeyStatus}
+      {...(onRetrySiteKey ? { onRetrySiteKey } : {})} {...(markersRevision !== undefined ? { markersRevision } : {})}
+      {...(client ? { client } : {})} />}>
+      {artifact => artifact.kind === "assistant" && "userQuestion" in artifact.payload ? <AssistantControls artifact={artifact as AssistantArtifact}
+        recordId={record.recordId} recordRevision={record.revision} i18n={i18n} disabled={assistantDisabled}
+        onSaved={onAssistantSaved ?? (() => {})} /> : null}
+    </RecordHistory>
     <div className="actions"><Button className="danger" disabled={disabled} onClick={onDelete}>{i18n.t("learning.delete")}</Button></div>
   </section>;
 }

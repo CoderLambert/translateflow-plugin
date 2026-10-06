@@ -16,7 +16,7 @@ test("raw asset map retains only MAIN and Worker contexts while Content uses sta
   assert.deepEqual(CONTENT_SCRIPT_FILES, ["content-scripts/content.js"]);
   assert.deepEqual(CONTENT_STYLE_FILES, ["content-scripts/content.css"]);
   assert.strictEqual(runtimeMain, YOUTUBE_MAIN_BRIDGE_FILES);
-  assert.deepEqual(EXTENSION_PAGES, { popup: "popup.html", options: "options.html", learningCenter: "learning-center.html" });
+  assert.deepEqual(EXTENSION_PAGES, { popup: "popup.html", options: "options.html", learningCenter: "learning-center.html", readingPreview: "reading-preview.html" });
   const files = await sourceClosure(roots);
   for (const path of Object.values(WORKER_PATHS)) assert(files.includes(path));
   assert(files.includes("src/background/packs/importers/mdict-rich.js"));

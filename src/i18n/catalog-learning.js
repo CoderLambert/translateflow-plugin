@@ -49,7 +49,15 @@ export const en = Object.freeze({
   "learning.grantSiteAccess": "Grant site access and retry",
   "learning.enableSiteMarkers": "Enable site markers",
   "learning.disableSiteMarkers": "Disable site markers",
-  "learning.siteMarkersHelp": "Save this site’s marker preference separately from recording. Markers become available with page-location support; site access alone does not enable them.",
+  "learning.siteMarkersTitle": "Reading history on this site",
+  "learning.siteMarkersOn": "Site markers are on. Saved locations can appear when you revisit this site.",
+  "learning.siteMarkersOff": "Site markers are off. Turn them on only if you want saved locations marked here.",
+  "learning.siteMarkersPermission": "Site access is needed to display the saved location markers.",
+  "learning.siteMarkersGrantRequired": "Site access was not granted. Markers remain off; you can grant access and try again when you want them.",
+  "learning.siteMarkersRevoked": "Markers remain enabled, but site access is missing. Restore site access to display them again.",
+  "learning.siteIdentityLoading": "Loading the saved site identity…",
+  "learning.siteIdentityError": "Could not load this record’s site identity. Retry to manage its site markers.",
+  "learning.siteMarkersHelp": "This separate setting shows a small dot at saved locations. Enabling it asks for site access and does not turn on recording.",
   "learning.diagnostics": "Source and model details",
   "learning.unconfirmed": "Connection interrupted. Saved content cannot be confirmed. Retry to reconnect.",
   "learning.notFound": "This record is unavailable or was deleted. Return to records.",
@@ -88,7 +96,11 @@ export const en = Object.freeze({
   "learning.assistantStopping": "Stopping; waiting for confirmation…",
   "learning.assistantStopped": "Stopped. No partial answer was saved.",
   "learning.assistantFailed": "The answer was interrupted and was not saved. Your existing history is unchanged.",
-  "learning.assistantSaved": "Answer saved. Refreshing this history…"
+  "learning.assistantSaved": "Answer saved. Refreshing this history…",
+  "learning.previewTitle": "Saved reading history",
+  "learning.previewClose": "Close saved reading history",
+  "learning.previewLoading": "Loading saved history…",
+  "learning.previewUnavailable": "Saved history could not be opened. Close this preview and try again."
 });
 export const zh_CN = Object.freeze({
   "learning.title": "学习中心",
@@ -141,7 +153,15 @@ export const zh_CN = Object.freeze({
   "learning.grantSiteAccess": "授权本站并重试",
   "learning.enableSiteMarkers": "开启本站标记",
   "learning.disableSiteMarkers": "关闭本站标记",
-  "learning.siteMarkersHelp": "单独保存本站标记意图，不影响记录开关。标记随原文定位功能提供；站点权限本身不会开启标记。",
+  "learning.siteMarkersTitle": "本站阅读历史标记",
+  "learning.siteMarkersOn": "本站标记已开启。再次访问时可在已保存位置显示圆点。",
+  "learning.siteMarkersOff": "本站标记已关闭。仅在希望本站显示已保存位置时开启。",
+  "learning.siteMarkersPermission": "显示已保存位置标记需要本站访问权限。",
+  "learning.siteMarkersGrantRequired": "尚未授予本站访问权限，标记仍保持关闭。希望使用时可授权后重试。",
+  "learning.siteMarkersRevoked": "标记仍处于开启状态，但本站访问权限已撤回。恢复权限后才会显示。",
+  "learning.siteIdentityLoading": "正在读取已保存的站点身份…",
+  "learning.siteIdentityError": "无法读取此记录的站点身份。请重试后管理本站标记。",
+  "learning.siteMarkersHelp": "此项单独控制已保存位置旁的小圆点。开启时会请求本站访问权限，不会开启阅读记录。",
   "learning.diagnostics": "来源与模型详情",
   "learning.unconfirmed": "连接已中断，无法确认记录状态。请重试连接。",
   "learning.notFound": "此记录不可用或已删除，请返回列表。",
@@ -180,5 +200,9 @@ export const zh_CN = Object.freeze({
   "learning.assistantStopping": "正在停止，等待确认…",
   "learning.assistantStopped": "已停止，部分回答未保存。",
   "learning.assistantFailed": "回答中断且未保存，原有历史保持不变。",
-  "learning.assistantSaved": "回答已保存，正在刷新历史…"
+  "learning.assistantSaved": "回答已保存，正在刷新历史…",
+  "learning.previewTitle": "已保存的阅读历史",
+  "learning.previewClose": "关闭已保存的阅读历史",
+  "learning.previewLoading": "正在读取已保存的历史…",
+  "learning.previewUnavailable": "无法打开已保存的历史，请关闭预览后重试。"
 });

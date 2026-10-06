@@ -42,7 +42,7 @@ export function request(method, overrides = {}) {
     [M.SAVE_QUERY_RESULT]: { token: token(), artifact: artifact() },
     [M.APPEND_ASSISTANT]: { token: token({ purpose: "assistant" }), artifact: artifact("assistant") },
     [M.GET_PAGE_SUMMARY]: { cursor: null, limit: 20 },
-    [M.GET_RECORD]: { recordId: RECORD_ID },
+    [M.GET_RECORD]: { recordId: RECORD_ID }, [M.GET_RECORD_SITE_KEY]: { recordId: RECORD_ID },
     [M.LIST_RECORDS]: { pageKey: null, query: "React", cursor: null, limit: 20 },
     [M.GET_RECORDING_STATE]: {}, [M.SET_RECORDING]: { enabled: true, expectedConsentGeneration: 1 },
     [M.DELETE_RECORD]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.DELETE_PAGE]: { pageKey: PAGE_KEY },
@@ -54,7 +54,9 @@ export function request(method, overrides = {}) {
     [M.GET_SITE_MARKERS]: {}, [M.SET_SITE_MARKERS]: { siteKey: "https://example.test", enabled: true },
     [M.LIST_RECORDING_EXCLUSIONS]: { cursor: null, limit: 20 }, [M.CANCEL_OPERATION]: { operationId: "op-1" },
     [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1" },
-    [M.CREATE_HANDOFF]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.CONSUME_HANDOFF]: { handoffId: "handoff-1" }
+    [M.CREATE_HANDOFF]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.CONSUME_HANDOFF]: { handoffId: "handoff-1" },
+    [M.PREVIEW_CREATE]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.PREVIEW_BIND]: { previewId: "preview-1", claimId: "claim-1" },
+    [M.PREVIEW_CLAIM]: { previewId: "preview-1" }, [M.PREVIEW_READ]: { previewId: "preview-1" }, [M.PREVIEW_CLOSE]: { previewId: "preview-1" }
   };
   return { protocolVersion: 2, method, ...bodies[method], ...overrides };
 }
@@ -74,6 +76,7 @@ export function response(method, scope = "extension", overrides = {}) {
     [M.SAVE_QUERY_RESULT]: saved, [M.APPEND_ASSISTANT]: saved,
     [M.GET_PAGE_SUMMARY]: { items: [pageSummaryItem()], nextCursor: null, pageRecordCount: 1, pageRevision: 1 },
     [M.GET_RECORD]: detail,
+    [M.GET_RECORD_SITE_KEY]: { siteKey: "https://example.test" },
     [M.LIST_RECORDS]: { items: [recordListItem()], nextCursor: null, catalogRevision: 1 },
     [M.GET_RECORDING_STATE]: recordingState(scope), [M.SET_RECORDING]: recordingState(scope),
     [M.DELETE_RECORD]: { deleted: true }, [M.DELETE_PAGE]: { deletedCount: 1, pageGeneration: 2 },
@@ -88,7 +91,9 @@ export function response(method, scope = "extension", overrides = {}) {
     [M.LIST_RECORDING_EXCLUSIONS]: { items: [{ siteKey: "https://example.test", excluded: true, sitePolicyRevision: 2 }], nextCursor: null },
     [M.CANCEL_OPERATION]: { operationId: "op-1", state: "cancelled", recordId: null, revision: null },
     [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1", navigationGeneration: 1, pageKey: PAGE_KEY, siteKey: "https://example.test" },
-    [M.CREATE_HANDOFF]: { state: "ready", handoff: handoff() }, [M.CONSUME_HANDOFF]: pageSummaryItem()
+    [M.CREATE_HANDOFF]: { state: "ready", handoff: handoff() }, [M.CONSUME_HANDOFF]: pageSummaryItem(),
+    [M.PREVIEW_CREATE]: { previewId: "preview-1", expiresAt: 16000 }, [M.PREVIEW_BIND]: { bound: true },
+    [M.PREVIEW_CLAIM]: { claimId: "claim-1" }, [M.PREVIEW_READ]: detail, [M.PREVIEW_CLOSE]: { closed: true }
   };
   return { protocolVersion: 2, ok: true, data: values[method], ...overrides };
 }
