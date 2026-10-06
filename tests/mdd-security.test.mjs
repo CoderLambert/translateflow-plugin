@@ -143,17 +143,26 @@ test("bounded AVIF image items and Ogg Opus resources receive browser MIME types
   assert.equal(audio.mime, "audio/ogg");
 });
 
-test("AVIF parser rejects truncated, ambiguous, oversized encoded dimensions, sequence, and grid metadata", () => {
+test("AVIF parser rejects unsafe dimensions, non-reduced frame overrides, sequences, and grid metadata", () => {
   const valid = makeAvif();
   const truncated = valid.slice(0, valid.length - 1);
   const duplicateSpatialExtents = makeAvif({ duplicateSpatialExtents: true });
   const oversized = makeAvif({ width: 16_385, height: 1 });
   const encodedBomb = makeAvif({ width: 32, height: 32, encodedWidth: 16_385, encodedHeight: 1 });
+  const dimensionMismatch = makeAvif({ width: 1, height: 1, encodedWidth: 4096, encodedHeight: 4096 });
+  const frameOverrideCandidate = makeAvif({
+    width: 32,
+    height: 32,
+    encodedWidth: 32,
+    encodedHeight: 32,
+    frameOverrideWidth: 16_385,
+    frameOverrideHeight: 1
+  });
   const sequence = makeAvif({ compatibleBrands: ["avif", "mif1", "miaf", "avis"] });
   const grid = makeAvif({ itemType: "grid" });
   const unknownEssential = makeAvif({ unknownEssentialProperty: true });
 
-  for (const bytes of [truncated, duplicateSpatialExtents]) {
+  for (const bytes of [truncated, duplicateSpatialExtents, dimensionMismatch, frameOverrideCandidate]) {
     assert.throws(
       () => classifyMddResource("sample.avif", bytes, MDD_IMPORT_LIMITS),
       (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
@@ -243,7 +252,7 @@ function trackedSource(input) {
 
 function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeight = height, itemType = "av01",
   compatibleBrands = ["avif", "mif1", "miaf"], duplicateSpatialExtents = false, unknownEssentialProperty = false,
-  unsizedSequenceHeader = false } = {}) {
+  unsizedSequenceHeader = false, frameOverrideWidth = 0, frameOverrideHeight = 0 } = {}) {
   const ftyp = makeBox("ftyp", concatBytes(
     asciiBytes("avif"), be32(0), ...compatibleBrands.map(asciiBytes)
   ));
@@ -271,7 +280,9 @@ function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeig
     fullBox(2, new Uint8Array()), be16(1), be16(0), asciiBytes(itemType), Uint8Array.of(0)
   ));
   const iinf = makeBox("iinf", concatBytes(fullBox(0, new Uint8Array()), be16(1), infe));
-  const imageData = makeAv1SequenceHeaderObu(encodedWidth, encodedHeight, { hasSizeField: !unsizedSequenceHeader });
+  const imageData = frameOverrideWidth
+    ? makeAv1FrameOverrideCandidate(encodedWidth, encodedHeight, frameOverrideWidth, frameOverrideHeight)
+    : makeAv1SequenceHeaderObu(encodedWidth, encodedHeight, { hasSizeField: !unsizedSequenceHeader });
   const makeIloc = (baseOffset) => makeBox("iloc", concatBytes(
     fullBox(0, new Uint8Array()), Uint8Array.of(0x44, 0x40), be16(1), be16(1), be16(0),
     be32(baseOffset), be16(1), be32(0), be32(imageData.length)
@@ -285,14 +296,33 @@ function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeig
   return concatBytes(ftyp, meta, makeBox("mdat", imageData));
 }
 
-function makeAv1SequenceHeaderObu(width, height, { hasSizeField = true } = {}) {
+function makeAv1FrameOverrideCandidate(sequenceWidth, sequenceHeight, frameWidth, frameHeight) {
+  const sequence = makeAv1SequenceHeaderObu(sequenceWidth, sequenceHeight, {
+    reducedStillPictureHeader: false
+  });
+  // This Frame Header payload deliberately carries dimensions larger than the
+  // sequence bounds. The production parser must reject the non-reduced mode
+  // before it ever needs to interpret frame_size_override_flag or create a Blob.
+  const overridePayload = concatBytes(be32(frameWidth), be32(frameHeight));
+  return concatBytes(sequence, makeAv1Obu(3, overridePayload));
+}
+
+function makeAv1SequenceHeaderObu(width, height, { hasSizeField = true, reducedStillPictureHeader = true } = {}) {
   const widthBits = Math.max(1, Math.ceil(Math.log2(width)));
   const heightBits = Math.max(1, Math.ceil(Math.log2(height)));
   const bits = [];
   appendBits(bits, 0, 3);
   appendBits(bits, 1, 1);
-  appendBits(bits, 1, 1);
-  appendBits(bits, 0, 5);
+  appendBits(bits, reducedStillPictureHeader ? 1 : 0, 1);
+  if (reducedStillPictureHeader) {
+    appendBits(bits, 0, 5);
+  } else {
+    appendBits(bits, 0, 1);
+    appendBits(bits, 0, 1);
+    appendBits(bits, 0, 5);
+    appendBits(bits, 0, 12);
+    appendBits(bits, 0, 5);
+  }
   appendBits(bits, widthBits - 1, 4);
   appendBits(bits, heightBits - 1, 4);
   appendBits(bits, width - 1, widthBits);
@@ -303,8 +333,12 @@ function makeAv1SequenceHeaderObu(width, height, { hasSizeField = true } = {}) {
     payload[Math.floor(index / 8)] |= bits[index] << (7 - (index % 8));
   }
   return hasSizeField
-    ? concatBytes(Uint8Array.of(0x0a, payload.length), payload)
+    ? makeAv1Obu(1, payload)
     : concatBytes(Uint8Array.of(0x08), payload);
+}
+
+function makeAv1Obu(type, payload) {
+  return concatBytes(Uint8Array.of((type << 3) | 0x02, payload.length), payload);
 }
 
 function appendBits(target, value, count) {
