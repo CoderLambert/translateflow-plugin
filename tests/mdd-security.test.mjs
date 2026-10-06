@@ -139,11 +139,12 @@ test("bounded AVIF image items and Ogg Opus resources receive browser MIME types
   assert.equal(audio.mime, "audio/ogg");
 });
 
-test("AVIF parser rejects truncated, ambiguous, oversized, sequence, and grid metadata", () => {
+test("AVIF parser rejects truncated, ambiguous, oversized encoded dimensions, sequence, and grid metadata", () => {
   const valid = makeAvif();
   const truncated = valid.slice(0, valid.length - 1);
   const duplicateSpatialExtents = makeAvif({ duplicateSpatialExtents: true });
   const oversized = makeAvif({ width: 16_385, height: 1 });
+  const encodedBomb = makeAvif({ width: 32, height: 32, encodedWidth: 16_385, encodedHeight: 1 });
   const sequence = makeAvif({ compatibleBrands: ["avif", "mif1", "miaf", "avis"] });
   const grid = makeAvif({ itemType: "grid" });
   const unknownEssential = makeAvif({ unknownEssentialProperty: true });
@@ -154,10 +155,12 @@ test("AVIF parser rejects truncated, ambiguous, oversized, sequence, and grid me
       (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.UNSAFE_CONTENT
     );
   }
-  assert.throws(
-    () => classifyMddResource("sample.avif", oversized, MDD_IMPORT_LIMITS),
-    (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.LIMIT
-  );
+  for (const bytes of [oversized, encodedBomb]) {
+    assert.throws(
+      () => classifyMddResource("sample.avif", bytes, MDD_IMPORT_LIMITS),
+      (error) => error instanceof MDictImportError && error.code === MDICT_IMPORT_ERROR.LIMIT
+    );
+  }
   for (const bytes of [sequence, grid, unknownEssential]) {
     assert.throws(
       () => classifyMddResource("sample.avif", bytes, MDD_IMPORT_LIMITS),
@@ -234,8 +237,8 @@ function trackedSource(input) {
   };
 }
 
-function makeAvif({ width = 640, height = 480, itemType = "av01", compatibleBrands = ["avif", "mif1", "miaf"],
-  duplicateSpatialExtents = false, unknownEssentialProperty = false } = {}) {
+function makeAvif({ width = 640, height = 480, encodedWidth = width, encodedHeight = height, itemType = "av01",
+  compatibleBrands = ["avif", "mif1", "miaf"], duplicateSpatialExtents = false, unknownEssentialProperty = false } = {}) {
   const ftyp = makeBox("ftyp", concatBytes(
     asciiBytes("avif"), be32(0), ...compatibleBrands.map(asciiBytes)
   ));
@@ -267,7 +270,7 @@ function makeAvif({ width = 640, height = 480, itemType = "av01", compatibleBran
     fullBox(0, new Uint8Array()), Uint8Array.of(0x44, 0x40), be16(1), be16(1), be16(0),
     be32(baseOffset), be16(1), be32(0), be32(1)
   ));
-  const imageData = Uint8Array.of(0x12);
+  const imageData = makeAv1SequenceHeaderObu(encodedWidth, encodedHeight);
   const makeMeta = (baseOffset) => makeBox("meta", concatBytes(
     fullBox(0, new Uint8Array()), hdlr, pitm, makeIloc(baseOffset), iinf, iprp
   ));
@@ -275,6 +278,32 @@ function makeAvif({ width = 640, height = 480, itemType = "av01", compatibleBran
   const mdatPayloadOffset = ftyp.length + meta.length + 8;
   meta = makeMeta(mdatPayloadOffset);
   return concatBytes(ftyp, meta, makeBox("mdat", imageData));
+}
+
+function makeAv1SequenceHeaderObu(width, height) {
+  const widthBits = Math.max(1, Math.ceil(Math.log2(width)));
+  const heightBits = Math.max(1, Math.ceil(Math.log2(height)));
+  const bits = [];
+  appendBits(bits, 0, 3);
+  appendBits(bits, 1, 1);
+  appendBits(bits, 1, 1);
+  appendBits(bits, 0, 5);
+  appendBits(bits, widthBits - 1, 4);
+  appendBits(bits, heightBits - 1, 4);
+  appendBits(bits, width - 1, widthBits);
+  appendBits(bits, height - 1, heightBits);
+  while (bits.length % 8) bits.push(0);
+  const payload = new Uint8Array(bits.length / 8);
+  for (let index = 0; index < bits.length; index += 1) {
+    payload[Math.floor(index / 8)] |= bits[index] << (7 - (index % 8));
+  }
+  return concatBytes(Uint8Array.of(0x0a, payload.length), payload);
+}
+
+function appendBits(target, value, count) {
+  for (let index = count - 1; index >= 0; index -= 1) {
+    target.push(Math.floor(value / (2 ** index)) & 1);
+  }
 }
 
 function makeOggOpus() {
