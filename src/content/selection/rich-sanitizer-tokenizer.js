@@ -122,12 +122,11 @@
         if (!token.selfClosing) skipped.length >= limits.depth ? truncated = true : skipped.push("audio"); continue;
       }
       if (token.name === "a") {
-        const path = resourcePath?.normalizeAudioReference?.(token.attrs.href || "") || "";
+        const path = resourcePath?.normalizeSoundReference?.(token.attrs.href || "") || "";
         if (path) {
           const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
           if (reserveResource("audio", path)) appendResource("audio", path, label);
           else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
-          if (!token.selfClosing) skipped.length >= limits.depth ? truncated = true : skipped.push("a");
           continue;
         }
       }
