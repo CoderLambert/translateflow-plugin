@@ -52,6 +52,10 @@ function classifyImage(extension, bytes, limits) {
   checkDimensions(result.width, result.height);
   if (result.encodedDimensions) {
     checkDimensions(result.encodedDimensions.width, result.encodedDimensions.height);
+    if (result.width !== result.encodedDimensions.width || result.height !== result.encodedDimensions.height) {
+      mdictFail(MDICT_IMPORT_ERROR.UNSAFE_CONTENT,
+        "AVIF container dimensions do not match encoded still-picture dimensions.");
+    }
   }
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD image bytes");
   return { mime: result.mime, kind: "image", dimensions: { width: result.width, height: result.height } };

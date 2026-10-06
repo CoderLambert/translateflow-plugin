@@ -25,7 +25,7 @@ export function readMddAv1SequenceMaxDimensions(bytes, start, end) {
     }
     if (obuType === 1) {
       if (sequence) return null;
-      sequence = parseAv1SequenceHeaderMaxDimensions(bytes, offset, payloadEnd);
+      sequence = parseReducedStillSequenceDimensions(bytes, offset, payloadEnd);
       if (!sequence) return null;
     }
     offset = payloadEnd;
@@ -33,53 +33,18 @@ export function readMddAv1SequenceMaxDimensions(bytes, start, end) {
   return offset === end ? sequence : null;
 }
 
-function parseAv1SequenceHeaderMaxDimensions(bytes, start, end) {
+function parseReducedStillSequenceDimensions(bytes, start, end) {
   const reader = makeAv1BitReader(bytes, start, end);
   const profile = reader.read(3);
   const stillPicture = reader.read(1);
   const reducedStillPictureHeader = reader.read(1);
-  if (profile === null || stillPicture === null || reducedStillPictureHeader === null || profile > 2) return null;
+  if (profile === null || stillPicture === null || reducedStillPictureHeader === null ||
+      profile > 2 || stillPicture !== 1 || reducedStillPictureHeader !== 1) return null;
 
-  let decoderModelInfoPresent = 0;
-  let bufferDelayLength = 0;
-  if (reducedStillPictureHeader) {
-    if (!stillPicture || reader.read(5) === null) return null;
-  } else {
-    const timingInfoPresent = reader.read(1);
-    if (timingInfoPresent === null) return null;
-    if (timingInfoPresent) {
-      if (reader.read(32) === null || reader.read(32) === null) return null;
-      const equalPictureInterval = reader.read(1);
-      if (equalPictureInterval === null || (equalPictureInterval && !skipAv1Uvlc(reader))) return null;
-      decoderModelInfoPresent = reader.read(1);
-      if (decoderModelInfoPresent === null) return null;
-      if (decoderModelInfoPresent) {
-        const bufferDelayLengthMinusOne = reader.read(5);
-        if (bufferDelayLengthMinusOne === null || reader.read(32) === null ||
-            reader.read(5) === null || reader.read(5) === null) return null;
-        bufferDelayLength = bufferDelayLengthMinusOne + 1;
-      }
-    }
-    const initialDisplayDelayPresent = reader.read(1);
-    const operatingPointsMinusOne = reader.read(5);
-    if (initialDisplayDelayPresent === null || operatingPointsMinusOne === null) return null;
-    for (let index = 0; index <= operatingPointsMinusOne; index += 1) {
-      if (reader.read(12) === null) return null;
-      const level = reader.read(5);
-      if (level === null || (level > 7 && reader.read(1) === null)) return null;
-      if (decoderModelInfoPresent) {
-        const present = reader.read(1);
-        if (present === null) return null;
-        if (present && (reader.read(bufferDelayLength) === null ||
-            reader.read(bufferDelayLength) === null || reader.read(1) === null)) return null;
-      }
-      if (initialDisplayDelayPresent) {
-        const present = reader.read(1);
-        if (present === null || (present && reader.read(4) === null)) return null;
-      }
-    }
-  }
-
+  // reduced_still_picture_header fixes frame_size_override_flag to 0. The
+  // decoded frame dimensions therefore come directly from the sequence bounds,
+  // so no Frame Header parser is needed for this intentionally narrow profile.
+  if (reader.read(5) === null) return null;
   const widthBitsMinusOne = reader.read(4);
   const heightBitsMinusOne = reader.read(4);
   if (widthBitsMinusOne === null || heightBitsMinusOne === null) return null;
@@ -104,15 +69,6 @@ function makeAv1BitReader(bytes, start, end) {
       return value;
     }
   };
-}
-
-function skipAv1Uvlc(reader) {
-  for (let leadingZeros = 0; leadingZeros <= 32; leadingZeros += 1) {
-    const done = reader.read(1);
-    if (done === null) return false;
-    if (done) return leadingZeros >= 32 || reader.read(leadingZeros) !== null;
-  }
-  return false;
 }
 
 function readAv1Leb128(bytes, offset, end) {

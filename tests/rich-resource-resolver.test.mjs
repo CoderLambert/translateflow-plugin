@@ -220,6 +220,40 @@ test("global image pixel cap keeps the visible placeholder retryable until pixel
   assert.equal(harness.resolver.activeImagePixelCount, 0);
 });
 
+test("full reported AVIF dimensions consume the cumulative viewer pixel budget", async () => {
+  const bytes = Buffer.from([0, 0, 0, 1]);
+  const harness = createMediaLifecycleHarness({
+    "images/full.avif": { bytes, mime: "image/avif", width: 4096, height: 4096 },
+    "images/tail.png": { bytes, mime: "image/png", width: 1, height: 1 }
+  });
+  const parent = new FakeParent();
+  const full = parent.append(new FakeElement("SPAN"));
+  const tail = parent.append(new FakeElement("SPAN"));
+  const container = {};
+  harness.resolver.attach(container, { appendChild() {} }, {}, [
+    { kind: "image", path: "images/full.avif", label: "", element: full },
+    { kind: "image", path: "images/tail.png", label: "", element: tail }
+  ], "rich-mdict-10000000-0000-4000-8000-000000000001", "v1");
+
+  harness.observer.trigger(full, true);
+  await waitFor(() => harness.resolver.activeObjectUrlCount === 1);
+  assert.equal(harness.resolver.activeImagePixelCount, 4096 * 4096);
+
+  harness.observer.trigger(tail, true);
+  await waitFor(() => pathReadCount(harness.messages, "images/tail.png") === 1);
+  await waitFor(() => harness.resolver.runningReadCount === 0);
+  assert.equal(harness.resolver.activeObjectUrlCount, 1,
+    "one additional pixel must exceed the cumulative 16 Mi-pixel viewer budget");
+  assert.equal(harness.resolver.activeImagePixelCount, 4096 * 4096);
+
+  harness.observer.trigger(parent.children[0], false);
+  await waitFor(() => pathReadCount(harness.messages, "images/tail.png") === 2 &&
+    harness.resolver.activeObjectUrlCount === 1);
+  assert.equal(harness.resolver.activeImagePixelCount, 1,
+    "the queued 1x1 image may load only after the full-size image releases its budget");
+  harness.resolver.close(container);
+});
+
 test("independent audio controls request distinct first, middle, and last MDD paths on click", async () => {
   const paths = Array.from({ length: 526 }, (_, index) =>
     `interop/tone-${String(index).padStart(3, "0")}.wav`);
