@@ -127,13 +127,8 @@
           const label = safeResourceLabel(token.attrs.title || token.attrs["aria-label"] || "");
           if (reserveResource("audio", path)) appendResource("audio", path, label);
           else appendElement("span", { "data-rich-placeholder": "audio", "data-rich-label": label }, {}, []);
-          if (!token.selfClosing) {
-            if (stack.length >= limits.depth + 1) {
-              truncated = true;
-              break;
-            }
-            stack.push({ name: "a", children: stack[stack.length - 1].children });
-          }
+          if (!token.selfClosing && stack.length >= limits.depth + 1) { truncated = true; break; }
+          if (!token.selfClosing) stack.push({ name: "a", children: stack[stack.length - 1].children });
           continue;
         }
       }
