@@ -54,14 +54,19 @@ type responseEvent struct {
 func (c *Client) ListModels(ctx context.Context) ([]contract.Model, error) {
 	requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	credential, err := c.credentialForUse(requestCtx)
+	operationCtx, finish, err := c.beginOperation(requestCtx)
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
+	credential, err := c.credentialForUse(operationCtx)
 	if err != nil {
 		return nil, err
 	}
 	if !officialAPIURL(modelsURL) {
 		return nil, contract.NewError("api_target_invalid", "The ChatGPT model endpoint is invalid.")
 	}
-	request, err := http.NewRequestWithContext(requestCtx, http.MethodGet, modelsURL, nil)
+	request, err := http.NewRequestWithContext(operationCtx, http.MethodGet, modelsURL, nil)
 	if err != nil {
 		return nil, contract.NewError("models_unavailable", "ChatGPT models could not be loaded.")
 	}
@@ -69,6 +74,9 @@ func (c *Client) ListModels(ctx context.Context) ([]contract.Model, error) {
 	request.Header.Set("Accept", "application/json")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
+		if operationCtx.Err() != nil {
+			return nil, context.Canceled
+		}
 		return nil, contract.NewError("models_unavailable", "ChatGPT models could not be loaded.")
 	}
 	defer response.Body.Close()
@@ -87,6 +95,9 @@ func (c *Client) ListModels(ctx context.Context) ([]contract.Model, error) {
 		} `json:"models"`
 	}
 	if err := decodeLimitedJSON(response.Body, maxModelsBodyBytes, &result); err != nil {
+		if operationCtx.Err() != nil {
+			return nil, context.Canceled
+		}
 		return nil, contract.NewError("models_response_invalid", "ChatGPT returned an invalid model list.")
 	}
 	models := make([]contract.Model, 0, len(result.Models))
@@ -105,10 +116,15 @@ func (c *Client) ListModels(ctx context.Context) ([]contract.Model, error) {
 func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onDelta func(string) error) (contract.InferenceResult, error) {
 	requestCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
+	operationCtx, finish, err := c.beginOperation(requestCtx)
+	if err != nil {
+		return contract.InferenceResult{}, err
+	}
+	defer finish()
 	if input.Model == "" || len(input.Model) > 128 || len(input.Instructions) > 16*1024 || input.Input == "" || len(input.Input) > 64*1024 {
 		return contract.InferenceResult{}, contract.NewError("invalid_payload", "The inference request is invalid or exceeds its size limit.")
 	}
-	credential, err := c.credentialForUse(requestCtx)
+	credential, err := c.credentialForUse(operationCtx)
 	if err != nil {
 		return contract.InferenceResult{}, err
 	}
@@ -129,7 +145,7 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 	if err != nil {
 		return contract.InferenceResult{}, contract.NewError("invalid_payload", "The inference request is invalid.")
 	}
-	request, err := http.NewRequestWithContext(requestCtx, http.MethodPost, responsesURL, bytes.NewReader(encoded))
+	request, err := http.NewRequestWithContext(operationCtx, http.MethodPost, responsesURL, bytes.NewReader(encoded))
 	if err != nil {
 		return contract.InferenceResult{}, contract.NewError("inference_unavailable", "ChatGPT inference could not be started.")
 	}
@@ -138,8 +154,8 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 	request.Header.Set("Accept", "text/event-stream")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		if requestCtx.Err() != nil {
-			return contract.InferenceResult{}, inferenceContextError(requestCtx)
+		if operationCtx.Err() != nil {
+			return contract.InferenceResult{}, inferenceContextError(operationCtx)
 		}
 		return contract.InferenceResult{}, contract.NewError("inference_unavailable", "ChatGPT inference could not be started.")
 	}
@@ -188,6 +204,8 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 			return contract.NewError("inference_failed", "ChatGPT reported that the response failed.")
 		case "response.incomplete":
 			return contract.NewError("inference_incomplete", "ChatGPT returned an incomplete response.")
+		case "error":
+			return contract.NewError("inference_failed", "ChatGPT reported that the response failed.")
 		}
 		return nil
 	}
@@ -196,8 +214,8 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 		line := strings.TrimSuffix(scanner.Text(), "\r")
 		if line == "" {
 			if err := process(); err != nil {
-				if requestCtx.Err() != nil {
-					return contract.InferenceResult{}, inferenceContextError(requestCtx)
+				if operationCtx.Err() != nil {
+					return contract.InferenceResult{}, inferenceContextError(operationCtx)
 				}
 				return contract.InferenceResult{}, err
 			}
@@ -216,18 +234,18 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 	}
 	if !completed && len(dataLines) > 0 {
 		if err := process(); err != nil {
-			if requestCtx.Err() != nil {
-				return contract.InferenceResult{}, inferenceContextError(requestCtx)
+			if operationCtx.Err() != nil {
+				return contract.InferenceResult{}, inferenceContextError(operationCtx)
 			}
 			return contract.InferenceResult{}, err
 		}
 	}
-	if requestCtx.Err() != nil {
-		return contract.InferenceResult{}, inferenceContextError(requestCtx)
+	if operationCtx.Err() != nil {
+		return contract.InferenceResult{}, inferenceContextError(operationCtx)
 	}
 	if scanner.Err() != nil {
-		if errors.Is(scanner.Err(), context.Canceled) || requestCtx.Err() != nil {
-			return contract.InferenceResult{}, inferenceContextError(requestCtx)
+		if errors.Is(scanner.Err(), context.Canceled) || operationCtx.Err() != nil {
+			return contract.InferenceResult{}, inferenceContextError(operationCtx)
 		}
 		return contract.InferenceResult{}, contract.NewError("stream_failed", "The ChatGPT response stream was interrupted.")
 	}

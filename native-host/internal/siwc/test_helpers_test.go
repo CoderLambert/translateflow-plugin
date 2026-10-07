@@ -38,6 +38,18 @@ type fakeOpenAI struct {
 	modelAuthorization string
 	refreshToken       string
 	responseHandler    http.HandlerFunc
+	refreshStarted     chan struct{}
+	refreshRelease     chan struct{}
+	refreshOnce        sync.Once
+	revokeStarted      chan struct{}
+	revokeRelease      chan struct{}
+	revokeOnce         sync.Once
+	callbackClientID   string
+	identityMutator    func(map[string]any)
+	invalidSignature   bool
+	metadataStarted    chan struct{}
+	metadataRelease    chan struct{}
+	metadataOnce       sync.Once
 }
 
 func newFakeOpenAI(t *testing.T, grantedScope string, now time.Time) *fakeOpenAI {
@@ -48,7 +60,17 @@ func newFakeOpenAI(t *testing.T, grantedScope string, now time.Time) *fakeOpenAI
 	}
 	fake := &fakeOpenAI{key: key, now: now, grantScope: grantedScope}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
+		if fake.metadataStarted != nil {
+			fake.metadataOnce.Do(func() { close(fake.metadataStarted) })
+		}
+		if fake.metadataRelease != nil {
+			select {
+			case <-fake.metadataRelease:
+			case <-r.Context().Done():
+				return
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(providerInfo{
 			Issuer:                issuerURL,
@@ -63,6 +85,19 @@ func newFakeOpenAI(t *testing.T, grantedScope string, now time.Time) *fakeOpenAI
 		_ = json.NewEncoder(w).Encode(fake.jwks())
 	})
 	mux.HandleFunc("/api/accounts/oauth/token", fake.handleToken)
+	mux.HandleFunc("/api/accounts/oauth/revoke", func(w http.ResponseWriter, r *http.Request) {
+		if fake.revokeStarted != nil {
+			fake.revokeOnce.Do(func() { close(fake.revokeStarted) })
+		}
+		if fake.revokeRelease != nil {
+			select {
+			case <-fake.revokeRelease:
+			case <-r.Context().Done():
+				return
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 	mux.HandleFunc("/v1/models", fake.handleModels)
 	mux.HandleFunc("/v1/responses", fake.handleResponses)
 	fake.server = httptest.NewServer(mux)
@@ -116,7 +151,19 @@ func (f *fakeOpenAI) handleToken(w http.ResponseWriter, r *http.Request) {
 		f.refreshToken = r.Form.Get("refresh_token")
 		clientID := r.Form.Get("client_id")
 		resource := r.Form.Get("resource")
+		refreshStarted := f.refreshStarted
+		refreshRelease := f.refreshRelease
 		f.mu.Unlock()
+		if refreshStarted != nil {
+			f.refreshOnce.Do(func() { close(refreshStarted) })
+		}
+		if refreshRelease != nil {
+			select {
+			case <-refreshRelease:
+			case <-r.Context().Done():
+				return
+			}
+		}
 		if clientID != testIssuedClientID || resource != resourceURL || f.refreshToken != "old-refresh-value" {
 			http.Error(w, "invalid refresh", http.StatusBadRequest)
 			return
@@ -182,7 +229,7 @@ func (f *fakeOpenAI) signIdentityToken(nonce, clientID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	claims, err := json.Marshal(map[string]any{
+	claimSet := map[string]any{
 		"iss":   issuerURL,
 		"sub":   "offline-test-subject",
 		"aud":   clientID,
@@ -190,7 +237,11 @@ func (f *fakeOpenAI) signIdentityToken(nonce, clientID string) (string, error) {
 		"exp":   f.now.Add(time.Hour).Unix(),
 		"nonce": nonce,
 		"email": "offline@example.invalid",
-	})
+	}
+	if f.identityMutator != nil {
+		f.identityMutator(claimSet)
+	}
+	claims, err := json.Marshal(claimSet)
 	if err != nil {
 		return "", err
 	}
@@ -199,6 +250,9 @@ func (f *fakeOpenAI) signIdentityToken(nonce, clientID string) (string, error) {
 	signature, err := rsa.SignPKCS1v15(rand.Reader, f.key, crypto.SHA256, digest[:])
 	if err != nil {
 		return "", err
+	}
+	if f.invalidSignature {
+		signature = make([]byte, f.key.Size())
 	}
 	return input + "." + base64.RawURLEncoding.EncodeToString(signature), nil
 }
@@ -212,14 +266,22 @@ func (f *fakeOpenAI) beginAuthorization(ctx context.Context, rawURL string, reje
 	if query.Get("response_type") != "code" || query.Get("resource") != resourceURL || query.Get("code_challenge_method") != "S256" {
 		return errorsForTest("authorization parameters are incomplete")
 	}
-	if query.Get("client_id") != newClientID || query.Get("agent_name_hint") != "TranslateFlow" {
+	returning := query.Get("client_id") != newClientID
+	if (!returning && query.Get("agent_name_hint") != "TranslateFlow") || (returning && query.Get("agent_name_hint") != "") {
 		return errorsForTest("initial registration parameters are incorrect")
+	}
+	if returning && query.Get("client_id") != testIssuedClientID {
+		return errorsForTest("returning authorization did not reuse the issued client ID")
 	}
 	if query.Get("ext_agent_host_id") == "" || len(query.Get("state")) < 40 || len(query.Get("nonce")) < 40 {
 		return errorsForTest("host ID, state, or nonce is missing")
 	}
 	f.setExpectedChallenge(query.Get("code_challenge"))
-	identity, err := f.signIdentityToken(query.Get("nonce"), testIssuedClientID)
+	issuedID := f.callbackClientID
+	if issuedID == "" {
+		issuedID = testIssuedClientID
+	}
+	identity, err := f.signIdentityToken(query.Get("nonce"), issuedID)
 	if err != nil {
 		return err
 	}
@@ -241,22 +303,29 @@ func (f *fakeOpenAI) beginAuthorization(ctx context.Context, rawURL string, reje
 		}
 	}
 	callback := *redirect
-	callback.RawQuery = queryForCallback(query.Get("state"), "offline-test-code").Encode()
+	callback.RawQuery = queryForCallback(query.Get("state"), "offline-test-code", issuedID).Encode()
 	status, err := getCallback(ctx, callback.String())
 	if err != nil {
 		return err
 	}
 	if status != http.StatusOK {
+		if issuedID == newClientID {
+			return nil // The host intentionally rejects the reserved sentinel ID.
+		}
 		return errorsForTest("valid callback was not accepted")
 	}
 	return nil
 }
 
-func queryForCallback(state, code string) url.Values {
+func queryForCallback(state, code string, clientIDs ...string) url.Values {
 	values := url.Values{}
 	values.Set("state", state)
 	values.Set("code", code)
-	values.Set("client_id", testIssuedClientID)
+	clientID := testIssuedClientID
+	if len(clientIDs) > 0 {
+		clientID = clientIDs[0]
+	}
+	values.Set("client_id", clientID)
 	return values
 }
 

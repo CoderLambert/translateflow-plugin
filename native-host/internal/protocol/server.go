@@ -15,23 +15,28 @@ import (
 
 const (
 	defaultMaxRequests = 4
+	defaultMaxControls = 2
 )
 
 var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 type Server struct {
-	Backend   contract.Backend
-	Input     io.Reader
-	Output    io.Writer
-	MaxFrame  uint32
-	MaxActive int
+	Backend     contract.Backend
+	Input       io.Reader
+	Output      io.Writer
+	MaxFrame    uint32
+	MaxActive   int
+	MaxControls int
 
-	writeMu sync.Mutex
-	mu      sync.Mutex
-	active  map[string]*operation
-	infers  int
-	auths   int
-	wg      sync.WaitGroup
+	writeMu       sync.Mutex
+	mu            sync.Mutex
+	active        map[string]*operation
+	infers        int
+	auths         int
+	workActive    int
+	controlActive int
+	loggingOut    bool
+	wg            sync.WaitGroup
 }
 
 type request struct {
@@ -66,12 +71,13 @@ type operation struct {
 
 func NewServer(backend contract.Backend, input io.Reader, output io.Writer) *Server {
 	return &Server{
-		Backend:   backend,
-		Input:     input,
-		Output:    output,
-		MaxFrame:  MaxFrameBytes,
-		MaxActive: defaultMaxRequests,
-		active:    make(map[string]*operation),
+		Backend:     backend,
+		Input:       input,
+		Output:      output,
+		MaxFrame:    MaxFrameBytes,
+		MaxActive:   defaultMaxRequests,
+		MaxControls: defaultMaxControls,
+		active:      make(map[string]*operation),
 	}
 }
 
@@ -84,6 +90,9 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 	if s.MaxActive <= 0 {
 		s.MaxActive = defaultMaxRequests
+	}
+	if s.MaxControls <= 0 {
+		s.MaxControls = defaultMaxControls
 	}
 	for {
 		frame, err := ReadFrame(s.Input, s.MaxFrame)
@@ -115,16 +124,41 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) accept(parent context.Context, req request) {
+	if req.Method == "auth.logout" {
+		if err := decodeOptionalStrict(req.Payload, &struct{}{}); err != nil {
+			_ = s.immediateTerminal(req.RequestID, "invalid_payload", "The auth.logout payload is invalid.")
+			return
+		}
+	}
 	s.mu.Lock()
 	if _, exists := s.active[req.RequestID]; exists {
 		s.mu.Unlock()
 		_ = s.immediateTerminal(req.RequestID, "request_id_in_use", "requestId is already active.")
 		return
 	}
-	if len(s.active) >= s.MaxActive {
-		s.mu.Unlock()
-		_ = s.immediateTerminal(req.RequestID, "busy", "The host has reached its active request limit.")
-		return
+	control := req.Method == "cancel" || req.Method == "auth.logout"
+	if control {
+		if s.controlActive >= s.MaxControls {
+			s.mu.Unlock()
+			_ = s.immediateTerminal(req.RequestID, "busy", "The host has reached its active control limit.")
+			return
+		}
+		if req.Method == "auth.logout" && s.loggingOut {
+			s.mu.Unlock()
+			_ = s.immediateTerminal(req.RequestID, "busy", "Sign-out is already in progress.")
+			return
+		}
+	} else {
+		if s.loggingOut {
+			s.mu.Unlock()
+			_ = s.immediateTerminal(req.RequestID, "signing_out", "The ChatGPT session is signing out. Try again shortly.")
+			return
+		}
+		if s.workActive >= s.MaxActive {
+			s.mu.Unlock()
+			_ = s.immediateTerminal(req.RequestID, "busy", "The host has reached its active request limit.")
+			return
+		}
 	}
 	if req.Method == "infer.start" {
 		if s.infers != 0 {
@@ -142,18 +176,24 @@ func (s *Server) accept(parent context.Context, req request) {
 		}
 		s.auths++
 	}
-	var waitForInference []<-chan struct{}
+	var waitForWork []<-chan struct{}
 	if req.Method == "auth.logout" {
+		s.loggingOut = true
 		for _, active := range s.active {
-			if active.method == "infer.start" {
+			if active.method != "cancel" && active.method != "auth.logout" {
 				active.cancel()
-				waitForInference = append(waitForInference, active.done)
+				waitForWork = append(waitForWork, active.done)
 			}
 		}
 	}
 	ctx, cancel := context.WithCancel(parent)
 	op := &operation{id: req.RequestID, method: req.Method, cancel: cancel, done: make(chan struct{})}
 	s.active[req.RequestID] = op
+	if control {
+		s.controlActive++
+	} else {
+		s.workActive++
+	}
 	s.wg.Add(1)
 	s.mu.Unlock()
 
@@ -169,9 +209,18 @@ func (s *Server) accept(parent context.Context, req request) {
 			if req.Method == "auth.start" && s.auths > 0 {
 				s.auths--
 			}
+			if control && s.controlActive > 0 {
+				s.controlActive--
+			}
+			if !control && s.workActive > 0 {
+				s.workActive--
+			}
+			if req.Method == "auth.logout" {
+				s.loggingOut = false
+			}
 			s.mu.Unlock()
 		}()
-		for _, done := range waitForInference {
+		for _, done := range waitForWork {
 			select {
 			case <-done:
 			case <-ctx.Done():

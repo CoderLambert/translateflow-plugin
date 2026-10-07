@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/CoderLambert/translateflow-plugin/native-host/internal/contract"
@@ -47,6 +48,17 @@ type Client struct {
 	now         func() time.Time
 	authTimeout time.Duration
 	hostID      string
+	opMu        sync.Mutex
+	loggingOut  bool
+	logoutDone  chan struct{}
+	nextOpID    uint64
+	operations  map[uint64]clientOperation
+	refreshGate chan struct{}
+}
+
+type clientOperation struct {
+	cancel context.CancelFunc
+	done   chan struct{}
 }
 
 func New(options Options) (*Client, error) {
@@ -93,53 +105,70 @@ func New(options Options) (*Client, error) {
 		now:         options.Now,
 		authTimeout: options.AuthTimeout,
 		hostID:      hostID,
+		operations:  make(map[uint64]clientOperation),
+		refreshGate: make(chan struct{}, 1),
 	}, nil
 }
 
 func (c *Client) AuthStatus(ctx context.Context) (contract.AuthStatus, error) {
-	credential, ok, err := c.store.Load(ctx)
+	snapshot, err := c.store.Snapshot(ctx)
 	if err != nil {
+		if ctx.Err() != nil {
+			return contract.AuthStatus{}, context.Canceled
+		}
 		return contract.AuthStatus{}, contract.NewError("credential_unavailable", "The local credential store is unavailable.")
 	}
 	status := contract.AuthStatus{Storage: "process-memory"}
-	if !ok {
+	if !snapshot.HasSession {
 		return status, nil
 	}
 	status.Connected = true
-	status.ExpiresAt = &credential.Expiry
-	status.CanInfer = hasScope(credential.Scopes, planUseScope) &&
-		(credential.Expiry.After(c.now()) || credential.RefreshToken != "")
+	expiresAt := snapshot.Tokens.Expiry
+	status.ExpiresAt = &expiresAt
+	status.CanInfer = hasScope(snapshot.Tokens.Scopes, planUseScope) &&
+		(snapshot.Tokens.Expiry.After(c.now()) || snapshot.Tokens.RefreshToken != "")
 	return status, nil
 }
 
 func (c *Client) credentialForUse(ctx context.Context) (Credential, error) {
-	credential, ok, err := c.store.Load(ctx)
+	select {
+	case c.refreshGate <- struct{}{}:
+		defer func() { <-c.refreshGate }()
+	case <-ctx.Done():
+		return Credential{}, context.Canceled
+	}
+	snapshot, err := c.store.Snapshot(ctx)
 	if err != nil {
+		if ctx.Err() != nil {
+			return Credential{}, context.Canceled
+		}
 		return Credential{}, contract.NewError("credential_unavailable", "The local credential store is unavailable.")
 	}
-	if !ok {
+	if !snapshot.HasSession {
 		return Credential{}, contract.NewError("not_signed_in", "Sign in with ChatGPT before using this action.")
 	}
-	if !hasScope(credential.Scopes, planUseScope) {
+	if !hasScope(snapshot.Tokens.Scopes, planUseScope) {
 		return Credential{}, contract.NewError("missing_scope", "This ChatGPT account has not granted plan usage.")
 	}
+	credential := snapshot.credential()
 	if credential.AccessToken != "" && credential.Expiry.After(c.now().Add(30*time.Second)) {
 		return credential, nil
 	}
-	if credential.RefreshToken == "" {
+	if snapshot.Tokens.RefreshToken == "" {
 		if credential.AccessToken == "" {
 			return Credential{}, contract.NewError("token_unavailable", "The ChatGPT access token is unavailable.")
 		}
 		return Credential{}, contract.NewError("token_expired", "The ChatGPT session has expired. Sign in again.")
 	}
-	refreshed, err := c.refresh(ctx, credential)
+	refreshed, err := c.refresh(ctx, snapshot)
 	if err != nil {
 		return Credential{}, err
 	}
 	return refreshed, nil
 }
 
-func (c *Client) refresh(ctx context.Context, credential Credential) (Credential, error) {
+func (c *Client) refresh(ctx context.Context, snapshot CredentialSnapshot) (Credential, error) {
+	credential := snapshot.credential()
 	form := url.Values{
 		"grant_type":    {"refresh_token"},
 		"client_id":     {credential.ClientID},
@@ -148,26 +177,86 @@ func (c *Client) refresh(ctx context.Context, credential Credential) (Credential
 	}
 	response, err := c.postTokenForm(ctx, form)
 	if err != nil {
+		if ctx.Err() != nil {
+			return Credential{}, context.Canceled
+		}
 		return Credential{}, err
 	}
 	if response.AccessToken == "" || response.ExpiresIn <= 0 || !strings.EqualFold(response.TokenType, "Bearer") {
 		return Credential{}, contract.NewError("token_refresh_failed", "The ChatGPT session could not be refreshed.")
 	}
-	credential.AccessToken = response.AccessToken
+	tokens := snapshot.Tokens
+	tokens.AccessToken = response.AccessToken
 	if response.RefreshToken != "" {
-		credential.RefreshToken = response.RefreshToken
+		tokens.RefreshToken = response.RefreshToken
 	}
 	if response.Scope != "" {
-		credential.Scopes = parseScopes(response.Scope)
+		tokens.Scopes = parseScopes(response.Scope)
 	}
-	credential.Expiry = c.now().Add(time.Duration(response.ExpiresIn) * time.Second)
-	if err := c.store.Save(ctx, credential); err != nil {
+	tokens.Expiry = c.now().Add(time.Duration(response.ExpiresIn) * time.Second)
+	committed, err := c.store.CommitRefresh(ctx, snapshot.Generation, tokens)
+	if err != nil {
+		if ctx.Err() != nil {
+			return Credential{}, context.Canceled
+		}
 		return Credential{}, contract.NewError("credential_unavailable", "The refreshed session could not be saved.")
 	}
-	if !hasScope(credential.Scopes, planUseScope) {
+	if !committed {
+		if ctx.Err() != nil {
+			return Credential{}, context.Canceled
+		}
+		return Credential{}, contract.NewError("session_changed", "The ChatGPT session changed while it was being refreshed. Sign in again.")
+	}
+	credential.AccessToken = tokens.AccessToken
+	credential.RefreshToken = tokens.RefreshToken
+	credential.Scopes = append([]string(nil), tokens.Scopes...)
+	credential.Expiry = tokens.Expiry
+	if !hasScope(tokens.Scopes, planUseScope) {
 		return Credential{}, contract.NewError("missing_scope", "The refreshed ChatGPT session does not grant plan usage.")
 	}
 	return credential, nil
+}
+
+func (c *Client) beginOperation(parent context.Context) (context.Context, func(), error) {
+	ctx, cancel := context.WithCancel(parent)
+	c.opMu.Lock()
+	if c.loggingOut {
+		c.opMu.Unlock()
+		cancel()
+		return nil, nil, contract.NewError("signing_out", "The ChatGPT session is signing out. Try again shortly.")
+	}
+	c.nextOpID++
+	id := c.nextOpID
+	operation := clientOperation{cancel: cancel, done: make(chan struct{})}
+	c.operations[id] = operation
+	c.opMu.Unlock()
+	finish := func() {
+		cancel()
+		c.opMu.Lock()
+		delete(c.operations, id)
+		close(operation.done)
+		c.opMu.Unlock()
+	}
+	return ctx, finish, nil
+}
+
+func (c *Client) cancelAndWaitOperations(ctx context.Context) {
+	c.opMu.Lock()
+	operations := make([]clientOperation, 0, len(c.operations))
+	for _, operation := range c.operations {
+		operations = append(operations, operation)
+	}
+	c.opMu.Unlock()
+	for _, operation := range operations {
+		operation.cancel()
+	}
+	for _, operation := range operations {
+		select {
+		case <-operation.done:
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (c *Client) provider(ctx context.Context) (*providerInfo, error) {

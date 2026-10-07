@@ -42,15 +42,31 @@ type tokenResponse struct {
 }
 
 func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
-	old, returning, err := c.store.Load(ctx)
+	authCtx, cancel := context.WithTimeout(ctx, c.authTimeout)
+	defer cancel()
+	operationCtx, finish, err := c.beginOperation(authCtx)
 	if err != nil {
+		return err
+	}
+	defer finish()
+
+	snapshot, err := c.store.Snapshot(operationCtx)
+	if err != nil {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
 		return contract.NewError("credential_unavailable", "The local credential store is unavailable.")
 	}
+	old := snapshot.credential()
+	returning := snapshot.HasRegistration
 	if returning && (old.ClientID == "" || old.HostID == "") {
 		return contract.NewError("credential_invalid", "The saved ChatGPT registration is incomplete.")
 	}
-	metadata, err := c.provider(ctx)
+	metadata, err := c.provider(operationCtx)
 	if err != nil {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
 		return err
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -121,7 +137,9 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 	values.Set("code_challenge_method", "S256")
 	values.Set("code_challenge", oauth2.S256ChallengeFromVerifier(verifier))
 	if returning {
-		values.Set("id_token_hint", old.IDToken)
+		if snapshot.HasSession && snapshot.Tokens.IDToken != "" {
+			values.Set("id_token_hint", snapshot.Tokens.IDToken)
+		}
 		if old.Email != "" {
 			values.Set("login_hint", old.Email)
 		}
@@ -133,9 +151,10 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 	}
 	loginURL := authorizeURL + "?" + values.Encode()
 
-	authCtx, cancel := context.WithTimeout(ctx, c.authTimeout)
-	defer cancel()
-	if err := c.openBrowser(authCtx, loginURL); err != nil {
+	if err := c.openBrowser(operationCtx, loginURL); err != nil {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
 		return contract.NewError("browser_unavailable", "The system browser could not be opened for ChatGPT sign-in.")
 	}
 	if waiting != nil {
@@ -145,8 +164,8 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 	var result callbackResult
 	select {
 	case result = <-callback:
-	case <-authCtx.Done():
-		if errors.Is(authCtx.Err(), context.DeadlineExceeded) {
+	case <-operationCtx.Done():
+		if errors.Is(operationCtx.Err(), context.DeadlineExceeded) {
 			return contract.NewError("authorization_timeout", "ChatGPT sign-in timed out.")
 		}
 		return context.Canceled
@@ -176,9 +195,12 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 		},
 		Scopes: requestedScopes,
 	}
-	ctxWithHTTP := context.WithValue(authCtx, oauth2.HTTPClient, c.httpClient)
+	ctxWithHTTP := context.WithValue(operationCtx, oauth2.HTTPClient, c.httpClient)
 	token, err := config.Exchange(ctxWithHTTP, result.code, oauth2.VerifierOption(verifier), oauth2.SetAuthURLParam("resource", resourceURL))
 	if err != nil {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
 		return contract.NewError("token_exchange_failed", "ChatGPT sign-in could not be completed. Start sign-in again.")
 	}
 	idTokenRaw := stringExtra(token, "id_token")
@@ -192,6 +214,9 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 	verifierOIDC := oidc.NewVerifier(issuerURL, keySet, &oidc.Config{ClientID: clientID, Now: c.now})
 	idToken, err := verifierOIDC.Verify(ctxWithHTTP, idTokenRaw)
 	if err != nil {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
 		return contract.NewError("id_token_invalid", "ChatGPT returned an invalid identity token.")
 	}
 	if subtle.ConstantTimeCompare([]byte(idToken.Nonce), []byte(nonce)) != 1 || idToken.Subject == "" {
@@ -217,13 +242,43 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 		Scopes:       scopes,
 		Expiry:       c.now().Add(time.Duration(token.ExpiresIn) * time.Second),
 	}
-	if err := c.store.Save(ctx, credential); err != nil {
+	registration := Registration{
+		ClientID: clientID,
+		HostID:   hostID,
+		Subject:  idToken.Subject,
+		Email:    claims.Email,
+	}
+	tokens := SessionTokens{
+		IDToken:      credential.IDToken,
+		AccessToken:  credential.AccessToken,
+		RefreshToken: credential.RefreshToken,
+		Scopes:       credential.Scopes,
+		Expiry:       credential.Expiry,
+	}
+	committed, err := c.store.CommitAuth(operationCtx, snapshot.Generation, registration, tokens)
+	if err != nil {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
 		return contract.NewError("credential_unavailable", "The ChatGPT session could not be saved in memory.")
+	}
+	if !committed {
+		if operationCtx.Err() != nil {
+			return authorizationContextError(operationCtx)
+		}
+		return contract.NewError("session_changed", "The ChatGPT session changed while sign-in was completing. Start sign-in again.")
 	}
 	if !hasScope(scopes, planUseScope) {
 		return contract.NewError("missing_scope", "This ChatGPT account has not granted plan usage.")
 	}
 	return nil
+}
+
+func authorizationContextError(ctx context.Context) error {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return contract.NewError("authorization_timeout", "ChatGPT sign-in timed out.")
+	}
+	return context.Canceled
 }
 
 func validateCallbackRequest(r *http.Request, expectedHost, state, requestedClientID string, returning bool) callbackResult {
@@ -261,7 +316,7 @@ func validateCallbackRequest(r *http.Request, expectedHost, state, requestedClie
 }
 
 func validClientID(value string) bool {
-	if len(value) == 0 || len(value) > 256 || strings.TrimSpace(value) != value {
+	if len(value) == 0 || len(value) > 256 || value == newClientID || strings.TrimSpace(value) != value {
 		return false
 	}
 	for _, char := range value {

@@ -25,8 +25,10 @@ in-process fake HTTP server and never contact OpenAI.
 ## Native messaging protocol
 
 Each message is UTF-8 JSON preceded by a four-byte little-endian byte length.
-The host accepts at most 1 MiB per frame, four concurrent requests, and one
-inference at a time. Inputs are bounded to 64 KiB and instructions to 16 KiB;
+The host accepts at most 1 MiB per frame, four concurrent work requests, and one
+inference at a time. Two separately bounded control slots serve `cancel` and
+`auth.logout` even while all work slots are occupied. Inputs are bounded to
+64 KiB and instructions to 16 KiB;
 model responses are capped at 256 entries and generated text at 128 KiB. A
 request is:
 
@@ -50,6 +52,14 @@ reuses that issued ID. ID tokens are checked with the official OIDC issuer,
 audience, signature, expiry, and nonce; inference requires the granted
 `chatgpt.tokens.use.direct` scope. Model discovery and inference use only
 `api.openai.com/v1/models` and `/v1/responses`.
+
+Registration identity is stored separately from session tokens. Logout advances
+the session generation and clears tokens before waiting on remote revocation;
+the issued client ID, subject, and host ID remain available for reauthorization.
+Refreshes are serialized, re-read the latest expiry after acquiring the session
+lock, and use generation-checked commits so an in-flight refresh or callback
+cannot restore a session after logout. The complete sign-in and sign-out flow is
+bounded by the configured authentication timeout.
 
 Responses requests set `store:false` and `stream:true`. A response succeeds only
 after `response.completed`; failed, incomplete, cancelled, or interrupted
