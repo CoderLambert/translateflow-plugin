@@ -252,10 +252,10 @@
     },
     {
       "task": "chatgpt-plan-live-inference",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/chatgpt-plan-live-inference",
-      "candidateHead": null
+      "candidateHead": "631bf4c9ba673a86e081cfb8579a6720aa042d24"
     },
     {
       "task": "offline-dictionary",

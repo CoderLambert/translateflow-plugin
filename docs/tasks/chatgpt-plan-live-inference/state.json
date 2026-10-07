@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "chatgpt-plan-live-inference",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/chatgpt-plan-live-inference",
   "worktree": "/home/lambert/Documents/Codex/2026-10-08/task/translateflow-inference-fix",
-  "candidateHead": null,
+  "candidateHead": "631bf4c9ba673a86e081cfb8579a6720aa042d24",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -16,5 +16,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "完成定向验证、构建并替换当前用户 Host，然后复核浏览器真实请求。"
+  "nextAction": "独立复审候选 631bf4c9ba673a86e081cfb8579a6720aa042d24，并在通过后同步修复分支；不合并。"
 }
