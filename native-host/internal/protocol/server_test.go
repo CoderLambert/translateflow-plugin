@@ -78,6 +78,23 @@ type logoutOrderingBackend struct {
 	logoutOnce    sync.Once
 }
 
+type startupProbeBackend struct{ calls int }
+
+func (b *startupProbeBackend) AuthStatus(context.Context) (contract.AuthStatus, error) {
+	b.calls++
+	return contract.AuthStatus{}, nil
+}
+func (b *startupProbeBackend) StartAuth(context.Context, func()) error { b.calls++; return nil }
+func (b *startupProbeBackend) Logout(context.Context) (bool, error)    { b.calls++; return false, nil }
+func (b *startupProbeBackend) ListModels(context.Context) ([]contract.Model, error) {
+	b.calls++
+	return nil, nil
+}
+func (b *startupProbeBackend) Infer(context.Context, contract.InferenceRequest, func(string) error) (contract.InferenceResult, error) {
+	b.calls++
+	return contract.InferenceResult{}, nil
+}
+
 func (b *logoutOrderingBackend) AuthStatus(context.Context) (contract.AuthStatus, error) {
 	return contract.AuthStatus{}, nil
 }
@@ -328,6 +345,28 @@ func TestServerUnknownMethodGetsOneSafeTerminal(t *testing.T) {
 	}
 	if frames[0].Error.Message != "The requested method is not supported." {
 		t.Fatalf("error message = %q, want sanitized fixed text", frames[0].Error.Message)
+	}
+}
+
+func TestStartupErrorReturnsHostBusyBeforeCallingBackend(t *testing.T) {
+	input := new(bytes.Buffer)
+	writeRequest(t, input, map[string]any{
+		"type": "request", "requestId": "busy-infer", "method": "infer.start",
+		"payload": map[string]string{"model": "model-a", "input": "must not start", "instructions": ""},
+	})
+	output := new(bytes.Buffer)
+	backend := &startupProbeBackend{}
+	server := NewServer(backend, input, output)
+	server.StartupError = contract.NewError("HOST_BUSY", "Another TranslateFlow native host is active. Close it and retry.")
+	if err := server.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	frames := readResponses(t, output)
+	if len(frames) != 1 || frames[0].RequestID != "busy-infer" || frames[0].Error == nil || frames[0].Error.Code != "HOST_BUSY" {
+		t.Fatalf("startup error frames = %#v, want one HOST_BUSY terminal", frames)
+	}
+	if backend.calls != 0 {
+		t.Fatalf("startup error reached backend %d times; auth and inference must not start", backend.calls)
 	}
 }
 

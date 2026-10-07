@@ -1,20 +1,30 @@
 package siwc
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
 
 type fakeSecureBlob struct {
-	mu       sync.Mutex
-	value    []byte
-	readErr  error
-	writeErr error
+	mu        sync.Mutex
+	value     []byte
+	readErr   error
+	writeErr  error
+	readGate  chan struct{}
+	readCall  chan struct{}
+	writeGate chan struct{}
+	writeCall chan struct{}
 }
 
 type observedRefreshStore struct {
@@ -27,7 +37,21 @@ func (s *observedRefreshStore) AcquireRefreshLock(ctx context.Context) (func(), 
 	return s.CredentialStore.AcquireRefreshLock(ctx)
 }
 
-func (b *fakeSecureBlob) Read() ([]byte, error) {
+func (b *fakeSecureBlob) Read(ctx context.Context) ([]byte, error) {
+	if b.readGate != nil {
+		select {
+		case b.readCall <- struct{}{}:
+		default:
+		}
+		select {
+		case <-b.readGate:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.readErr != nil {
@@ -39,7 +63,21 @@ func (b *fakeSecureBlob) Read() ([]byte, error) {
 	return bytes.Clone(b.value), nil
 }
 
-func (b *fakeSecureBlob) Write(value []byte) error {
+func (b *fakeSecureBlob) Write(ctx context.Context, value []byte) error {
+	if b.writeGate != nil {
+		select {
+		case b.writeCall <- struct{}{}:
+		default:
+		}
+		select {
+		case <-b.writeGate:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.writeErr != nil {
@@ -58,7 +96,7 @@ func newPersistentStoreForTest(t *testing.T, blob SecureBlobStore, lockDir strin
 	return store
 }
 
-func TestPersistentStoreRestoresSessionAfterHostRestart(t *testing.T) {
+func TestRecreatedPersistentStoreRestoresFromFakeSecureBlob(t *testing.T) {
 	ctx := context.Background()
 	blob := &fakeSecureBlob{}
 	lockDir := filepath.Join(t.TempDir(), "locks")
@@ -82,12 +120,12 @@ func TestPersistentStoreRestoresSessionAfterHostRestart(t *testing.T) {
 		t.Fatalf("CommitAuth() = committed:%v err:%v", committed, err)
 	}
 
-	// Reconstructing the host store over the same OS backend and lock directory
-	// models a process restart; no prior Go object remains involved.
-	restarted := newPersistentStoreForTest(t, blob, lockDir)
-	snapshot, err := restarted.Snapshot(ctx)
+	// This simulates store recreation over a fake backend. It does not exercise
+	// an actual host process restart or either system credential service.
+	recreated := newPersistentStoreForTest(t, blob, lockDir)
+	snapshot, err := recreated.Snapshot(ctx)
 	if err != nil || !snapshot.HasRegistration || !snapshot.HasSession {
-		t.Fatalf("restarted Snapshot() = %#v, err=%v", snapshot, err)
+		t.Fatalf("recreated Snapshot() = %#v, err=%v", snapshot, err)
 	}
 	if snapshot.Registration != registration || snapshot.Tokens.AccessToken != tokens.AccessToken ||
 		snapshot.Tokens.RefreshToken != tokens.RefreshToken || snapshot.Generation != 1 {
@@ -121,7 +159,176 @@ func TestPersistentStoreReturnsExplicitErrorsForUnavailableAndCorruptData(t *tes
 	}
 }
 
-func TestPersistentStoreLogoutRejectsWritesFromOlderHostProcess(t *testing.T) {
+func TestPersistentStoreReadCancellationReleasesStateLock(t *testing.T) {
+	blob := &fakeSecureBlob{readGate: make(chan struct{}), readCall: make(chan struct{}, 1)}
+	lockDir := filepath.Join(t.TempDir(), "locks")
+	blocked := newPersistentStoreForTest(t, blob, lockDir)
+	otherStore := newPersistentStoreForTest(t, blob, lockDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := blocked.Snapshot(ctx)
+		result <- err
+	}()
+	select {
+	case <-blob.readCall:
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("fake secure Read did not enter its blocked call")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancelled Snapshot() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancelled secure Read did not return")
+	}
+	close(blob.readGate)
+	snapshot, err := otherStore.Snapshot(context.Background())
+	if err != nil || snapshot.HasSession || snapshot.HasRegistration {
+		t.Fatalf("state lock was not reusable after cancelled Read: snapshot=%#v err=%v", snapshot, err)
+	}
+}
+
+func TestPersistentStoreWriteCancellationLeavesNoLateTokenWrite(t *testing.T) {
+	blob := &fakeSecureBlob{writeGate: make(chan struct{}), writeCall: make(chan struct{}, 1)}
+	lockDir := filepath.Join(t.TempDir(), "locks")
+	blocked := newPersistentStoreForTest(t, blob, lockDir)
+	otherStore := newPersistentStoreForTest(t, blob, lockDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	registration := Registration{ClientID: testIssuedClientID, HostID: "urn:uuid:cancel-host", Subject: "offline-test-subject"}
+	tokens := SessionTokens{AccessToken: "late-token-must-not-commit", Expiry: time.Now().Add(time.Hour)}
+	result := make(chan error, 1)
+	go func() {
+		_, err := blocked.CommitAuth(ctx, 0, registration, tokens)
+		result <- err
+	}()
+	select {
+	case <-blob.writeCall:
+	case <-time.After(2 * time.Second):
+		cancel()
+		t.Fatal("fake secure Write did not enter its blocked call")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancelled CommitAuth() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancelled secure Write did not return")
+	}
+	close(blob.writeGate)
+	snapshot, err := otherStore.Snapshot(context.Background())
+	if err != nil || snapshot.HasSession || snapshot.HasRegistration {
+		t.Fatalf("cancelled Write left a late credential or held state lock: snapshot=%#v err=%v", snapshot, err)
+	}
+	blob.mu.Lock()
+	stored := bytes.Clone(blob.value)
+	blob.mu.Unlock()
+	if stored != nil {
+		t.Fatalf("cancelled Write changed the secure blob after it returned: %q", stored)
+	}
+}
+
+func TestHostLockSubprocessCompetitionAndRelease(t *testing.T) {
+	lockDir := filepath.Join(t.TempDir(), "host-lock")
+	hold := hostLockHelperCommand(lockDir, "hold")
+	stdout, err := hold.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdin, err := hold.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hold.Start(); err != nil {
+		t.Fatal(err)
+	}
+	line, err := bufio.NewReader(stdout).ReadString('\n')
+	if err != nil || strings.TrimSpace(line) != "LOCKED" {
+		_ = stdin.Close()
+		_ = hold.Wait()
+		t.Fatalf("first host lock helper output = %q, err=%v", line, err)
+	}
+	if output, err := hostLockHelperCommand(lockDir, "probe").CombinedOutput(); err != nil || strings.TrimSpace(string(output)) != "HOST_BUSY" {
+		_ = stdin.Close()
+		_ = hold.Wait()
+		t.Fatalf("competing process output = %q, err=%v; want HOST_BUSY", output, err)
+	}
+	if err := stdin.Close(); err != nil {
+		_ = hold.Wait()
+		t.Fatal(err)
+	}
+	if err := hold.Wait(); err != nil {
+		t.Fatalf("lock holder exit = %v", err)
+	}
+	if output, err := hostLockHelperCommand(lockDir, "probe").CombinedOutput(); err != nil || strings.TrimSpace(string(output)) != "FREE" {
+		t.Fatalf("released lock probe output = %q, err=%v; want FREE", output, err)
+	}
+	exitedHolder := hostLockHelperCommand(lockDir, "exit-held")
+	exitedOutput, err := exitedHolder.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := exitedHolder.Start(); err != nil {
+		t.Fatal(err)
+	}
+	line, err = bufio.NewReader(exitedOutput).ReadString('\n')
+	if err != nil || strings.TrimSpace(line) != "LOCKED" {
+		t.Fatalf("exiting lock helper output = %q, err=%v", line, err)
+	}
+	if err := exitedHolder.Wait(); err != nil {
+		t.Fatalf("exiting lock helper exit = %v", err)
+	}
+	if output, err := hostLockHelperCommand(lockDir, "probe").CombinedOutput(); err != nil || strings.TrimSpace(string(output)) != "FREE" {
+		t.Fatalf("process-exit lock probe output = %q, err=%v; want FREE", output, err)
+	}
+}
+
+func TestHostLockSubprocessHelper(t *testing.T) {
+	mode := os.Getenv("TRANSLATEFLOW_HOST_LOCK_TEST_MODE")
+	if mode == "" {
+		return
+	}
+	release, err := AcquireHostLock(os.Getenv("TRANSLATEFLOW_HOST_LOCK_TEST_DIR"))
+	if errors.Is(err, ErrHostBusy) {
+		_, _ = fmt.Fprintln(os.Stdout, "HOST_BUSY")
+		os.Exit(0)
+	}
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stdout, "LOCK_ERROR")
+		os.Exit(1)
+	}
+	if mode == "hold" {
+		_, _ = fmt.Fprintln(os.Stdout, "LOCKED")
+		_, _ = io.Copy(io.Discard, os.Stdin)
+		release()
+		os.Exit(0)
+	}
+	if mode == "exit-held" {
+		_, _ = fmt.Fprintln(os.Stdout, "LOCKED")
+		os.Exit(0)
+	}
+	release()
+	if mode == "probe" {
+		_, _ = fmt.Fprintln(os.Stdout, "FREE")
+	}
+	os.Exit(0)
+}
+
+func hostLockHelperCommand(lockDir, mode string) *exec.Cmd {
+	command := exec.Command(os.Args[0], "-test.run=^TestHostLockSubprocessHelper$")
+	command.Env = append(os.Environ(),
+		"TRANSLATEFLOW_HOST_LOCK_TEST_MODE="+mode,
+		"TRANSLATEFLOW_HOST_LOCK_TEST_DIR="+lockDir,
+	)
+	return command
+}
+
+func TestPersistentStoreLogoutRejectsStaleGenerationWrites(t *testing.T) {
 	ctx := context.Background()
 	blob := &fakeSecureBlob{}
 	lockDir := filepath.Join(t.TempDir(), "locks")

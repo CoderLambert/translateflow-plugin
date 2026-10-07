@@ -9,6 +9,12 @@ Windows encrypts it with current-user DPAPI and writes only ciphertext under the
 user config directory. If the secure store is locked or unavailable, operations
 return a recoverable error and never fall back to plaintext. Other platforms
 report secure storage as unavailable.
+Only one host process may use a user's store at a time. A second process returns
+one `HOST_BUSY` terminal before dispatching auth, models, or inference. On Linux,
+Secret Service calls use a five-second context deadline; the adapter checks the
+collection/item lock state and does not call `Unlock` or `Prompt`. Windows
+ciphertext replacement uses `MoveFileEx` with replace-existing and write-through
+flags; Windows runtime behavior remains untested.
 
 ## Build and run tests
 
@@ -21,9 +27,12 @@ GOOS=windows GOARCH=amd64 go build -o /tmp/translateflow-host-windows.exe ./cmd/
 ```
 
 The runtime has no Node.js or Python dependency. Direct Go modules provide OIDC
-verification, OAuth PKCE, process-safe file locks, Linux Secret Service access,
-and Windows system calls. Tests use an in-process fake HTTP server and a fake
-secure-blob store; they never contact OpenAI or the actual OS credential store.
+verification, OAuth PKCE, process-safe file locks, Linux D-Bus Secret Service
+access, and Windows system calls. Tests use an in-process fake HTTP server and
+a fake secure-blob store; store recreation and refresh contention tests are
+in-process simulations. A separate helper-subprocess test exercises the host
+lock's competition and release. Tests never contact OpenAI or the actual OS
+credential store.
 
 ## Native messaging protocol
 
@@ -66,6 +75,16 @@ and logout are serialized by a separate state lock. Corrupt secure-store records
 are surfaced as errors instead of being silently reset. The complete sign-in
 and sign-out flow is bounded by the configured authentication timeout.
 
+## Future extension connection owner
+
+When the extension is integrated, the MV3 background service worker must be the
+sole owner of `chrome.runtime.connectNative` and the native host port. Popup,
+Options, Content, and other extension callers should send validated runtime
+messages to that owner; it forwards requests over the shared port and correlates
+`requestId` and sequence frames. They must not open separate native host
+connections. The single-owner extension bridge is a follow-up; this isolated
+candidate only enforces the host-process side of the boundary.
+
 Responses requests set `store:false` and `stream:true`. A response succeeds only
 after `response.completed`; failed, incomplete, cancelled, or interrupted
 streams produce an error terminal. Logs go to stderr and do not include tokens,
@@ -75,8 +94,8 @@ there are no Responses tools or API-key fallback.
 
 The registered-account entitlement and model availability depend on the user's
 account/workspace. They cannot be established by offline tests. Actual DPAPI,
-Secret Service, live account, credential, registration, and inference paths were
-not run for this candidate.
+Secret Service, Windows replacement, live account, credential, registration,
+and inference paths were not run for this candidate.
 
 ## Official contract references
 

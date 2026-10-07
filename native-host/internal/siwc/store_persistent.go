@@ -25,15 +25,18 @@ const (
 var (
 	ErrSecureBlobNotFound      = errors.New("secure credential item not found")
 	ErrSecureBlobCorrupt       = errors.New("secure credential item is corrupt")
+	ErrSecureStoreLocked       = errors.New("system secure store is locked")
 	ErrSecureStoreUnavailable  = errors.New("system secure store is unavailable")
 	ErrCredentialRecordInvalid = errors.New("stored credential record is invalid")
+	ErrHostBusy                = errors.New("another native host process is active")
 )
 
 // SecureBlobStore stores one opaque byte string using an operating-system
-// protected credential facility. Implementations must never persist plaintext.
+// protected credential facility. Implementations must honor context and return
+// without leaving a read or write running after cancellation.
 type SecureBlobStore interface {
-	Read() ([]byte, error)
-	Write([]byte) error
+	Read(context.Context) ([]byte, error)
+	Write(context.Context, []byte) error
 }
 
 type credentialRecord struct {
@@ -48,6 +51,32 @@ type credentialRecord struct {
 type PersistentStore struct {
 	blob    SecureBlobStore
 	lockDir string
+}
+
+// AcquireHostLock enforces one active host process per current-user store.
+// Operating-system file locks are released automatically when the process exits.
+func AcquireHostLock(lockDir string) (func(), error) {
+	if lockDir == "" {
+		return nil, ErrSecureStoreUnavailable
+	}
+	lockDir = filepath.Clean(lockDir)
+	if err := os.MkdirAll(lockDir, 0o700); err != nil {
+		return nil, ErrSecureStoreUnavailable
+	}
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(lockDir, 0o700); err != nil {
+			return nil, ErrSecureStoreUnavailable
+		}
+	}
+	lock := flock.New(filepath.Join(lockDir, "host.lock"), flock.SetPermissions(0o600))
+	locked, err := lock.TryLock()
+	if err != nil {
+		return nil, ErrSecureStoreUnavailable
+	}
+	if !locked {
+		return nil, ErrHostBusy
+	}
+	return func() { _ = lock.Unlock() }, nil
 }
 
 func NewPersistentStore(blob SecureBlobStore, lockDir string) (*PersistentStore, error) {
@@ -195,12 +224,18 @@ func (s *PersistentStore) readRecord(ctx context.Context) (credentialRecord, err
 	if err := ctx.Err(); err != nil {
 		return credentialRecord{}, err
 	}
-	data, err := s.blob.Read()
+	data, err := s.blob.Read(ctx)
+	if ctx.Err() != nil {
+		return credentialRecord{}, ctx.Err()
+	}
 	if errors.Is(err, ErrSecureBlobNotFound) {
 		return credentialRecord{}, nil
 	}
 	if errors.Is(err, ErrSecureBlobCorrupt) {
 		return credentialRecord{}, ErrCredentialRecordInvalid
+	}
+	if errors.Is(err, ErrSecureStoreLocked) {
+		return credentialRecord{}, ErrSecureStoreLocked
 	}
 	if err != nil {
 		return credentialRecord{}, fmt.Errorf("%w: secure credential read failed", ErrSecureStoreUnavailable)
@@ -238,7 +273,13 @@ func (s *PersistentStore) writeRecord(ctx context.Context, record credentialReco
 	if err != nil || len(data) > maxCredentialRecord {
 		return ErrCredentialRecordInvalid
 	}
-	if err := s.blob.Write(data); err != nil {
+	if err := s.blob.Write(ctx, data); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if errors.Is(err, ErrSecureStoreLocked) {
+			return ErrSecureStoreLocked
+		}
 		return fmt.Errorf("%w: secure credential write failed", ErrSecureStoreUnavailable)
 	}
 	return nil

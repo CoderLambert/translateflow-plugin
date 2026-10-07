@@ -21,12 +21,13 @@ const (
 var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 type Server struct {
-	Backend     contract.Backend
-	Input       io.Reader
-	Output      io.Writer
-	MaxFrame    uint32
-	MaxActive   int
-	MaxControls int
+	Backend      contract.Backend
+	Input        io.Reader
+	Output       io.Writer
+	StartupError error
+	MaxFrame     uint32
+	MaxActive    int
+	MaxControls  int
 
 	writeMu       sync.Mutex
 	mu            sync.Mutex
@@ -60,13 +61,15 @@ type response struct {
 }
 
 type operation struct {
-	id     string
-	method string
-	cancel context.CancelFunc
-	done   chan struct{}
-	mu     sync.Mutex
-	seq    uint64
-	closed bool
+	id          string
+	method      string
+	cancel      context.CancelFunc
+	done        chan struct{}
+	cleanup     func()
+	cleanupOnce sync.Once
+	mu          sync.Mutex
+	seq         uint64
+	closed      bool
 }
 
 func NewServer(backend contract.Backend, input io.Reader, output io.Writer) *Server {
@@ -118,6 +121,13 @@ func (s *Server) Run(ctx context.Context) error {
 				return werr
 			}
 			continue
+		}
+		if s.StartupError != nil {
+			code, message := safeError(s.StartupError)
+			if err := s.immediateTerminal(req.RequestID, code, message); err != nil {
+				return err
+			}
+			return nil
 		}
 		s.accept(ctx, req)
 	}
@@ -188,6 +198,26 @@ func (s *Server) accept(parent context.Context, req request) {
 	}
 	ctx, cancel := context.WithCancel(parent)
 	op := &operation{id: req.RequestID, method: req.Method, cancel: cancel, done: make(chan struct{})}
+	op.cleanup = func() {
+		s.mu.Lock()
+		delete(s.active, req.RequestID)
+		if req.Method == "infer.start" && s.infers > 0 {
+			s.infers--
+		}
+		if req.Method == "auth.start" && s.auths > 0 {
+			s.auths--
+		}
+		if control && s.controlActive > 0 {
+			s.controlActive--
+		}
+		if !control && s.workActive > 0 {
+			s.workActive--
+		}
+		if req.Method == "auth.logout" {
+			s.loggingOut = false
+		}
+		s.mu.Unlock()
+	}
 	s.active[req.RequestID] = op
 	if control {
 		s.controlActive++
@@ -200,26 +230,7 @@ func (s *Server) accept(parent context.Context, req request) {
 	go func() {
 		defer s.wg.Done()
 		defer cancel()
-		defer func() {
-			s.mu.Lock()
-			delete(s.active, req.RequestID)
-			if req.Method == "infer.start" && s.infers > 0 {
-				s.infers--
-			}
-			if req.Method == "auth.start" && s.auths > 0 {
-				s.auths--
-			}
-			if control && s.controlActive > 0 {
-				s.controlActive--
-			}
-			if !control && s.workActive > 0 {
-				s.workActive--
-			}
-			if req.Method == "auth.logout" {
-				s.loggingOut = false
-			}
-			s.mu.Unlock()
-		}()
+		defer op.finish()
 		for _, done := range waitForWork {
 			select {
 			case <-done:
@@ -341,12 +352,11 @@ func (op *operation) event(s *Server, name string, payload any) error {
 
 func (op *operation) terminal(s *Server, ok bool, payload any, code, message string) {
 	op.mu.Lock()
-	defer op.mu.Unlock()
 	if op.closed {
+		op.mu.Unlock()
 		return
 	}
 	op.closed = true
-	close(op.done)
 	result := response{Type: "terminal", RequestID: op.id, Sequence: op.seq, Payload: payload}
 	op.seq++
 	result.OK = &ok
@@ -356,7 +366,18 @@ func (op *operation) terminal(s *Server, ok bool, payload any, code, message str
 			Message string `json:"message"`
 		}{Code: code, Message: message}
 	}
+	op.mu.Unlock()
+	op.finish()
+	close(op.done)
 	_ = s.write(result)
+}
+
+func (op *operation) finish() {
+	op.cleanupOnce.Do(func() {
+		if op.cleanup != nil {
+			op.cleanup()
+		}
+	})
 }
 
 func (s *Server) immediateTerminal(id, code, message string) error {

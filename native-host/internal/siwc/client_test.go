@@ -232,7 +232,7 @@ func TestConcurrentExpiredConsumersRefreshRotatingTokenOnce(t *testing.T) {
 	}
 }
 
-func TestConcurrentPersistentClientsShareRefreshLockAcrossRestarts(t *testing.T) {
+func TestTwoPersistentStoreInstancesShareFakeRefreshLock(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	fake := newFakeOpenAI(t, planUseScope+" offline_access", now)
 	fake.refreshStarted = make(chan struct{})
@@ -387,6 +387,7 @@ func TestLogoutCancelsAndWaitsForInference(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	fake := newFakeOpenAI(t, planUseScope+" offline_access", now)
 	streamDelta := make(chan struct{})
+	streamStopped := make(chan struct{})
 	fake.responseHandler = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		flusher, ok := w.(http.Flusher)
@@ -397,6 +398,9 @@ func TestLogoutCancelsAndWaitsForInference(t *testing.T) {
 		flusher.Flush()
 		close(streamDelta)
 		<-r.Context().Done()
+		close(streamStopped)
+		_, _ = io.WriteString(w, "data: {\"type\":\"response.completed\"}\n\n")
+		flusher.Flush()
 	}
 	store := NewMemoryStore()
 	seedCredential(t, store, now.Add(time.Hour))
@@ -425,6 +429,11 @@ func TestLogoutCancelsAndWaitsForInference(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("logout returned without stopping the active inference")
+	}
+	select {
+	case <-streamStopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the server did not observe logout cancellation of the active SSE stream")
 	}
 	status, err := client.AuthStatus(context.Background())
 	if err != nil || status.Connected || status.CanInfer {
@@ -823,6 +832,12 @@ func TestAuthorizationEndpointAllowlistRejectsLookalikes(t *testing.T) {
 		if officialHTTPS(raw) {
 			t.Errorf("officialHTTPS(%q) unexpectedly accepted an untrusted origin", raw)
 		}
+	}
+}
+
+func TestLockedCredentialStoreHasActionableError(t *testing.T) {
+	if got := errorCode(credentialStoreError(ErrSecureStoreLocked)); got != "credential_locked" {
+		t.Fatalf("locked credential error code = %q, want credential_locked", got)
 	}
 }
 

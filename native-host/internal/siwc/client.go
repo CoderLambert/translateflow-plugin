@@ -178,6 +178,9 @@ func credentialStoreError(err error) error {
 	if errors.Is(err, ErrCredentialRecordInvalid) {
 		return contract.NewError("credential_invalid", "Saved ChatGPT credential data is invalid. Restore or remove that secure-store item, then sign in again.")
 	}
+	if errors.Is(err, ErrSecureStoreLocked) {
+		return contract.NewError("credential_locked", "Unlock the system credential store, then try again.")
+	}
 	return contract.NewError("credential_unavailable", "The system secure store is unavailable or locked. Unlock it and retry.")
 }
 

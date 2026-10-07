@@ -3,6 +3,7 @@
 package siwc
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -19,7 +20,10 @@ func newSystemSecureBlobStore(storeDir string) (SecureBlobStore, error) {
 	return windowsDPAPIBlob{path: filepath.Join(storeDir, "credentials.dpapi")}, nil
 }
 
-func (s windowsDPAPIBlob) Read() ([]byte, error) {
+func (s windowsDPAPIBlob) Read(ctx context.Context) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	file, err := os.Open(s.path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, ErrSecureBlobNotFound
@@ -49,10 +53,17 @@ func (s windowsDPAPIBlob) Read() ([]byte, error) {
 		return nil, ErrSecureBlobCorrupt
 	}
 	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))
-	return append([]byte(nil), unsafe.Slice(output.Data, int(output.Size))...), nil
+	value := append([]byte(nil), unsafe.Slice(output.Data, int(output.Size))...)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
-func (s windowsDPAPIBlob) Write(plaintext []byte) error {
+func (s windowsDPAPIBlob) Write(ctx context.Context, plaintext []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if len(plaintext) == 0 || len(plaintext) > maxCredentialRecord {
 		return ErrCredentialRecordInvalid
 	}
@@ -70,10 +81,13 @@ func (s windowsDPAPIBlob) Write(plaintext []byte) error {
 	}
 	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))
 	ciphertext := unsafe.Slice(output.Data, int(output.Size))
-	return writeProtectedBlob(s.path, ciphertext)
+	return writeProtectedBlob(ctx, s.path, ciphertext)
 }
 
-func writeProtectedBlob(path string, ciphertext []byte) error {
+func writeProtectedBlob(ctx context.Context, path string, ciphertext []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	temp, err := os.CreateTemp(filepath.Dir(path), ".credentials-*.tmp")
 	if err != nil {
 		return ErrSecureStoreUnavailable
@@ -95,7 +109,18 @@ func writeProtectedBlob(path string, ciphertext []byte) error {
 	if err := temp.Close(); err != nil {
 		return ErrSecureStoreUnavailable
 	}
-	if err := os.Rename(tempPath, path); err != nil {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	tempName, err := windows.UTF16PtrFromString(tempPath)
+	if err != nil {
+		return ErrSecureStoreUnavailable
+	}
+	targetName, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return ErrSecureStoreUnavailable
+	}
+	if err := windows.MoveFileEx(tempName, targetName, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH); err != nil {
 		return ErrSecureStoreUnavailable
 	}
 	return nil
