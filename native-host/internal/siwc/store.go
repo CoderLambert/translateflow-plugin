@@ -54,19 +54,34 @@ type CredentialStore interface {
 	CommitAuth(context.Context, uint64, Registration, SessionTokens) (bool, error)
 	CommitRefresh(context.Context, uint64, SessionTokens) (bool, error)
 	InvalidateSession(context.Context) (Credential, error)
+	AcquireRefreshLock(context.Context) (func(), error)
 }
 
 // MemoryStore keeps the registration and session separately for the lifetime
-// of the host process. Platform-protected stores can implement this contract in
-// a later change.
+// of the process. The native host uses PersistentStore; this remains a simple
+// adapter for isolated tests and callers that explicitly want in-memory state.
 type MemoryStore struct {
 	mu           sync.Mutex
 	registration *Registration
 	session      *SessionTokens
 	generation   uint64
+	refreshLock  chan struct{}
 }
 
-func NewMemoryStore() *MemoryStore { return &MemoryStore{} }
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{refreshLock: make(chan struct{}, 1)}
+}
+
+func (s *MemoryStore) StorageName() string { return "process-memory" }
+
+func (s *MemoryStore) AcquireRefreshLock(ctx context.Context) (func(), error) {
+	select {
+	case s.refreshLock <- struct{}{}:
+		return func() { <-s.refreshLock }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
 
 func (s *MemoryStore) Snapshot(ctx context.Context) (CredentialSnapshot, error) {
 	if err := ctx.Err(); err != nil {

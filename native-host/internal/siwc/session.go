@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/CoderLambert/translateflow-plugin/native-host/internal/contract"
 )
 
 func (c *Client) Logout(ctx context.Context) (bool, error) {
@@ -31,7 +29,7 @@ func (c *Client) Logout(ctx context.Context) (bool, error) {
 	credential, clearErr := c.store.InvalidateSession(clearCtx)
 	clearCancel()
 	if clearErr != nil {
-		return false, contract.NewError("credential_unavailable", "The local ChatGPT session could not be cleared.")
+		return false, credentialStoreError(clearErr)
 	}
 
 	c.cancelAndWaitOperations(logoutCtx)

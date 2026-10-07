@@ -15,7 +15,7 @@ func main() {
 
 	client, err := siwc.New(siwc.Options{
 		AgentName: "TranslateFlow",
-		Store:     siwc.NewMemoryStore(),
+		Store:     siwc.NewSystemStore(),
 	})
 	if err != nil {
 		log.Printf("native host initialization failed: %v", err)

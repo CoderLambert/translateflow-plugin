@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -228,6 +229,71 @@ func TestConcurrentExpiredConsumersRefreshRotatingTokenOnce(t *testing.T) {
 	credential, ok, err := store.Load(context.Background())
 	if err != nil || !ok || credential.RefreshToken != "rotated-refresh-value" {
 		t.Fatalf("rotated token snapshot = %#v ok=%v err=%v", credential, ok, err)
+	}
+}
+
+func TestConcurrentPersistentClientsShareRefreshLockAcrossRestarts(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	fake := newFakeOpenAI(t, planUseScope+" offline_access", now)
+	fake.refreshStarted = make(chan struct{})
+	fake.refreshRelease = make(chan struct{})
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(fake.refreshRelease) })
+	blob := &fakeSecureBlob{}
+	lockDir := filepath.Join(t.TempDir(), "locks")
+	storeOne := newPersistentStoreForTest(t, blob, lockDir)
+	storeTwo := newPersistentStoreForTest(t, blob, lockDir)
+	tokens := SessionTokens{
+		IDToken:      "offline-id-token",
+		AccessToken:  "expired-access-value",
+		RefreshToken: "old-refresh-value",
+		Scopes:       []string{planUseScope, "offline_access"},
+		Expiry:       now.Add(-time.Minute),
+	}
+	registration := Registration{ClientID: testIssuedClientID, HostID: "urn:uuid:shared-host", Subject: "offline-test-subject"}
+	if committed, err := storeOne.CommitAuth(context.Background(), 0, registration, tokens); err != nil || !committed {
+		t.Fatalf("initial CommitAuth() = committed:%v err:%v", committed, err)
+	}
+
+	lockAttempts := make(chan struct{}, 2)
+	clientOne := newTestClient(t, fake, &observedRefreshStore{CredentialStore: storeOne, entered: lockAttempts}, now, false)
+	clientTwo := newTestClient(t, fake, &observedRefreshStore{CredentialStore: storeTwo, entered: lockAttempts}, now, false)
+	results := make(chan error, 2)
+	go func() { _, err := clientOne.ListModels(context.Background()); results <- err }()
+	go func() { _, err := clientTwo.ListModels(context.Background()); results <- err }()
+
+	for range 2 {
+		select {
+		case <-lockAttempts:
+		case <-time.After(2 * time.Second):
+			t.Fatal("both persistent clients did not reach the shared refresh lock")
+		}
+	}
+	select {
+	case <-fake.refreshStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the refresh lock owner did not start token refresh")
+	}
+	if _, refreshes, _, _, _, _ := fake.tokenStats(); refreshes != 1 {
+		t.Fatalf("refresh requests while the first request is held = %d, want exactly one", refreshes)
+	}
+	releaseOnce.Do(func() { close(fake.refreshRelease) })
+	for range 2 {
+		select {
+		case err := <-results:
+			if err != nil {
+				t.Fatalf("ListModels() across persistent clients: %v", err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("a persistent client did not finish after refresh release")
+		}
+	}
+	if _, refreshes, _, _, _, oldRefresh := fake.tokenStats(); refreshes != 1 || oldRefresh != "old-refresh-value" {
+		t.Fatalf("refresh stats = refreshes:%d token:%q; want one use of the old rotating token", refreshes, oldRefresh)
+	}
+	current, err := storeTwo.Snapshot(context.Background())
+	if err != nil || !current.HasSession || current.Tokens.AccessToken != "refreshed-access-value" || current.Tokens.RefreshToken != "rotated-refresh-value" {
+		t.Fatalf("shared rotated credential = %#v, err=%v", current, err)
 	}
 }
 
@@ -760,7 +826,7 @@ func TestAuthorizationEndpointAllowlistRejectsLookalikes(t *testing.T) {
 	}
 }
 
-func newTestClient(t *testing.T, fake *fakeOpenAI, store *MemoryStore, now time.Time, rejectWrongState bool) *Client {
+func newTestClient(t *testing.T, fake *fakeOpenAI, store CredentialStore, now time.Time, rejectWrongState bool) *Client {
 	t.Helper()
 	client, err := New(Options{
 		AgentName:  "TranslateFlow",

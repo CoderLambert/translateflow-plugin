@@ -175,7 +175,7 @@ func TestServerCancelProducesOneTerminalPerRequest(t *testing.T) {
 func TestCancelAndLogoutUseControlCapacityWhenWorkLimitIsFull(t *testing.T) {
 	inputReader, inputWriter := io.Pipe()
 	outputReader, outputWriter := io.Pipe()
-	backend := &capacityBackend{started: make(chan string, 4), logoutCalled: make(chan struct{})}
+	backend := &capacityBackend{started: make(chan string, 8), logoutCalled: make(chan struct{})}
 	server := NewServer(backend, inputReader, outputWriter)
 	server.MaxActive = 4
 	runDone := make(chan error, 1)
@@ -239,6 +239,22 @@ func TestCancelAndLogoutUseControlCapacityWhenWorkLimitIsFull(t *testing.T) {
 	}
 
 cancelAccepted:
+	for !hasTerminal(collected, "full-infer") {
+		select {
+		case frame := <-frames:
+			collected = append(collected, frame)
+		case <-time.After(2 * time.Second):
+			t.Fatal("the cancelled inference did not release its work slot")
+		}
+	}
+	writeRequest(t, inputWriter, map[string]any{"type": "request", "requestId": "full-model-3", "method": "models.list"})
+	select {
+	case <-backend.started:
+		// The cancelled inference released one slot, bringing active work back
+		// to four before the following logout request is sent.
+	case <-time.After(2 * time.Second):
+		t.Fatal("the fourth blocked work request did not start")
+	}
 	writeRequest(t, inputWriter, map[string]any{"type": "request", "requestId": "control-logout", "method": "auth.logout"})
 	select {
 	case <-backend.logoutCalled:
@@ -279,11 +295,20 @@ framesCollected:
 	if !ok || logout.OK == nil || !*logout.OK || logoutPayload["revocationConfirmed"] != true {
 		t.Fatalf("auth.logout response = %#v, want success despite full work capacity", logout)
 	}
-	for _, id := range []string{"full-infer", "full-model-0", "full-model-1", "full-model-2"} {
+	for _, id := range []string{"full-infer", "full-model-0", "full-model-1", "full-model-2", "full-model-3"} {
 		if _, ok := terminals[id]; !ok {
 			t.Errorf("request %s has no terminal response", id)
 		}
 	}
+}
+
+func hasTerminal(frames []response, requestID string) bool {
+	for _, frame := range frames {
+		if frame.Type == "terminal" && frame.RequestID == requestID {
+			return true
+		}
+	}
+	return false
 }
 
 func TestServerUnknownMethodGetsOneSafeTerminal(t *testing.T) {

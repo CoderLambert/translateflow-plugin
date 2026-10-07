@@ -55,7 +55,7 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 		if operationCtx.Err() != nil {
 			return authorizationContextError(operationCtx)
 		}
-		return contract.NewError("credential_unavailable", "The local credential store is unavailable.")
+		return credentialStoreError(err)
 	}
 	old := snapshot.credential()
 	returning := snapshot.HasRegistration
@@ -260,7 +260,7 @@ func (c *Client) StartAuth(ctx context.Context, waiting func()) error {
 		if operationCtx.Err() != nil {
 			return authorizationContextError(operationCtx)
 		}
-		return contract.NewError("credential_unavailable", "The ChatGPT session could not be saved in memory.")
+		return credentialStoreError(err)
 	}
 	if !committed {
 		if operationCtx.Err() != nil {

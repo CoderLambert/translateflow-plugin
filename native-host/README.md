@@ -3,9 +3,12 @@
 This is an isolated Go candidate for the ChatGPT plan provider. It is not wired
 into the extension, does not add a native-host manifest, and does not perform
 client registration or sign-in unless a caller explicitly sends `auth.start`.
-The executable keeps credentials in process memory only; there is no plaintext
-credential-file fallback. OS credential storage and installer/manifest work are
-separate follow-up tasks.
+The executable uses current-user OS credential storage so a later host process
+can restore the session. Linux stores the protected record in Secret Service;
+Windows encrypts it with current-user DPAPI and writes only ciphertext under the
+user config directory. If the secure store is locked or unavailable, operations
+return a recoverable error and never fall back to plaintext. Other platforms
+report secure storage as unavailable.
 
 ## Build and run tests
 
@@ -17,10 +20,10 @@ GOOS=linux GOARCH=amd64 go build -o /tmp/translateflow-host-linux ./cmd/translat
 GOOS=windows GOARCH=amd64 go build -o /tmp/translateflow-host-windows.exe ./cmd/translateflow-host
 ```
 
-The runtime has no Node.js or Python dependency. The direct Go modules are
-`github.com/coreos/go-oidc/v3` for OIDC discovery and ID-token verification and
-`golang.org/x/oauth2` for authorization-code PKCE exchange. Tests use an
-in-process fake HTTP server and never contact OpenAI.
+The runtime has no Node.js or Python dependency. Direct Go modules provide OIDC
+verification, OAuth PKCE, process-safe file locks, Linux Secret Service access,
+and Windows system calls. Tests use an in-process fake HTTP server and a fake
+secure-blob store; they never contact OpenAI or the actual OS credential store.
 
 ## Native messaging protocol
 
@@ -56,10 +59,12 @@ audience, signature, expiry, and nonce; inference requires the granted
 Registration identity is stored separately from session tokens. Logout advances
 the session generation and clears tokens before waiting on remote revocation;
 the issued client ID, subject, and host ID remain available for reauthorization.
-Refreshes are serialized, re-read the latest expiry after acquiring the session
-lock, and use generation-checked commits so an in-flight refresh or callback
-cannot restore a session after logout. The complete sign-in and sign-out flow is
-bounded by the configured authentication timeout.
+Refreshes are serialized across host processes, re-read the latest expiry after
+acquiring the refresh lock, and use generation-checked commits so an in-flight
+refresh or callback cannot restore a session after logout. Credential updates
+and logout are serialized by a separate state lock. Corrupt secure-store records
+are surfaced as errors instead of being silently reset. The complete sign-in
+and sign-out flow is bounded by the configured authentication timeout.
 
 Responses requests set `store:false` and `stream:true`. A response succeeds only
 after `response.completed`; failed, incomplete, cancelled, or interrupted
@@ -69,8 +74,9 @@ are intentionally limited to model, instructions, and one bounded text input;
 there are no Responses tools or API-key fallback.
 
 The registered-account entitlement and model availability depend on the user's
-account/workspace. They cannot be established by offline tests. No live account,
-credential, registration, or inference was used for this candidate.
+account/workspace. They cannot be established by offline tests. Actual DPAPI,
+Secret Service, live account, credential, registration, and inference paths were
+not run for this candidate.
 
 ## Official contract references
 

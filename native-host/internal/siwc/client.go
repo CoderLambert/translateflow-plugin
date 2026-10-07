@@ -53,7 +53,6 @@ type Client struct {
 	logoutDone  chan struct{}
 	nextOpID    uint64
 	operations  map[uint64]clientOperation
-	refreshGate chan struct{}
 }
 
 type clientOperation struct {
@@ -106,7 +105,6 @@ func New(options Options) (*Client, error) {
 		authTimeout: options.AuthTimeout,
 		hostID:      hostID,
 		operations:  make(map[uint64]clientOperation),
-		refreshGate: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -116,9 +114,9 @@ func (c *Client) AuthStatus(ctx context.Context) (contract.AuthStatus, error) {
 		if ctx.Err() != nil {
 			return contract.AuthStatus{}, context.Canceled
 		}
-		return contract.AuthStatus{}, contract.NewError("credential_unavailable", "The local credential store is unavailable.")
+		return contract.AuthStatus{}, credentialStoreError(err)
 	}
-	status := contract.AuthStatus{Storage: "process-memory"}
+	status := contract.AuthStatus{Storage: credentialStorageName(c.store)}
 	if !snapshot.HasSession {
 		return status, nil
 	}
@@ -131,18 +129,20 @@ func (c *Client) AuthStatus(ctx context.Context) (contract.AuthStatus, error) {
 }
 
 func (c *Client) credentialForUse(ctx context.Context) (Credential, error) {
-	select {
-	case c.refreshGate <- struct{}{}:
-		defer func() { <-c.refreshGate }()
-	case <-ctx.Done():
-		return Credential{}, context.Canceled
+	unlock, err := c.store.AcquireRefreshLock(ctx)
+	if err != nil {
+		if ctx.Err() != nil {
+			return Credential{}, context.Canceled
+		}
+		return Credential{}, credentialStoreError(err)
 	}
+	defer unlock()
 	snapshot, err := c.store.Snapshot(ctx)
 	if err != nil {
 		if ctx.Err() != nil {
 			return Credential{}, context.Canceled
 		}
-		return Credential{}, contract.NewError("credential_unavailable", "The local credential store is unavailable.")
+		return Credential{}, credentialStoreError(err)
 	}
 	if !snapshot.HasSession {
 		return Credential{}, contract.NewError("not_signed_in", "Sign in with ChatGPT before using this action.")
@@ -165,6 +165,20 @@ func (c *Client) credentialForUse(ctx context.Context) (Credential, error) {
 		return Credential{}, err
 	}
 	return refreshed, nil
+}
+
+func credentialStorageName(store CredentialStore) string {
+	if named, ok := store.(interface{ StorageName() string }); ok {
+		return named.StorageName()
+	}
+	return "system-secure"
+}
+
+func credentialStoreError(err error) error {
+	if errors.Is(err, ErrCredentialRecordInvalid) {
+		return contract.NewError("credential_invalid", "Saved ChatGPT credential data is invalid. Restore or remove that secure-store item, then sign in again.")
+	}
+	return contract.NewError("credential_unavailable", "The system secure store is unavailable or locked. Unlock it and retry.")
 }
 
 func (c *Client) refresh(ctx context.Context, snapshot CredentialSnapshot) (Credential, error) {
@@ -199,7 +213,7 @@ func (c *Client) refresh(ctx context.Context, snapshot CredentialSnapshot) (Cred
 		if ctx.Err() != nil {
 			return Credential{}, context.Canceled
 		}
-		return Credential{}, contract.NewError("credential_unavailable", "The refreshed session could not be saved.")
+		return Credential{}, credentialStoreError(err)
 	}
 	if !committed {
 		if ctx.Err() != nil {
