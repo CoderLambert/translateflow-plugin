@@ -784,7 +784,11 @@ func TestResponsesHTTPFailureRejectsUnsafeOrOversizedDiagnostics(t *testing.T) {
 		body string
 	}{
 		{name: "unsafe code", body: `{"error":{"code":"UPSTREAM MESSAGE"}}`},
-		{name: "oversized body", body: strings.Repeat("x", maxErrorBodyBytes+1)},
+		{
+			name: "oversized body",
+			body: `{"error":{"code":"safe_upstream_code","padding":"` +
+				strings.Repeat("x", maxErrorBodyBytes) + `"}}`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
