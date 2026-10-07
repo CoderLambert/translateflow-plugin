@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "selection-context-popover-scroll",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/selection-context-popover-scroll",
   "worktree": "/home/lambert/Documents/Codex/2026-10-08/task/translateflow-inference-fix",
-  "candidateHead": null,
+  "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -28,5 +28,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "实现局部上下文根与无关投影变更下的弹窗保留，完成定向单测及本地 Chromium 假 Provider 验收。"
+  "nextAction": "由父任务对候选 b834c3fe108ad295dc50528924eb6526c5474bb7 做独立审查；通过后推送本分支，不合并。"
 }

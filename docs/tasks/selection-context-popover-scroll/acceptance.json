@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "task": "selection-context-popover-scroll",
+  "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+  "tree": "0472e3b64d5d18363a526b20a64484090c63dcd4",
+  "inputTree": "27ee453cf4a2323ed587683d19fbdba364ae8ca5efd5ec1b1b3269e759eda4da",
+  "frozenAt": "2026-10-07T20:10:26.702Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 152.0.7977.82 Arch Linux"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/reading-text-projection.test.mjs",
+        "tests/selection-controller-cancel.test.mjs"
+      ],
+      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 809.924328,
+      "startedAt": "2026-10-07T20:10:39.545Z",
+      "log": "docs/task-execution/local/selection-context-popover-scroll/4a0b5682-cd7a-42a4-91b6-e301a31a5949.log",
+      "logSha256": "7f399f51f21f55d997af0b435e8d552d428560a6d03ad17e20813cc84ba2978f"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2146.898796,
+      "startedAt": "2026-10-07T20:10:48.324Z",
+      "log": "docs/task-execution/local/selection-context-popover-scroll/b7e38131-bffd-47b7-98b3-82776ebd8c97.log",
+      "logSha256": "7848f49c720d81580e721573348fc0e831acf50d7083dabfb37f6a58a0d1fadd"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/run-e2e.mjs",
+        "e2e/selection-context-popover.spec.mjs",
+        "--reporter=line"
+      ],
+      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3030.087639,
+      "startedAt": "2026-10-07T20:10:59.871Z",
+      "log": "docs/task-execution/local/selection-context-popover-scroll/a3f2f507-8e48-4242-a49c-5de350045f17.log",
+      "logSha256": "970babeb3b3045fc732d1209484f25ee1fe9c21a7ddadb52aa3184c22fe257be"
+    }
+  ],
+  "artifact": null,
+  "limitations": [
+    "Browser acceptance used a fresh temporary Chromium profile, a local synthetic page, and the fake OpenAI-compatible Provider only; no real model request, account credential, user dictionary, learning record, or existing browser profile was accessed.",
+    "Privacy-safe screenshot: docs/task-execution/local/selection-context-popover-scroll/selection-context-ai-detail.png (local evidence, intentionally not committed)."
+  ]
+}
