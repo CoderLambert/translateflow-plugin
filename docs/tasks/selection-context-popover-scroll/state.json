@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "selection-context-popover-scroll",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/selection-context-popover-scroll",
   "worktree": "/home/lambert/Documents/Codex/2026-10-08/task/translateflow-inference-fix",
-  "candidateHead": null,
+  "candidateHead": "b3beadf5756e03743240331190f9400f9ec11318",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -28,5 +28,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "修复独立审查发现的 selection-only 失效 Range 误判，重新冻结并验收。"
+  "nextAction": "推送独立修复分支供上游验收；不合并，不替换现有浏览器 profile。"
 }

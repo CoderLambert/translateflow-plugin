@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "selection-context-popover-scroll",
-  "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
-  "tree": "0472e3b64d5d18363a526b20a64484090c63dcd4",
-  "inputTree": "27ee453cf4a2323ed587683d19fbdba364ae8ca5efd5ec1b1b3269e759eda4da",
-  "frozenAt": "2026-10-07T20:10:26.702Z",
+  "candidateHead": "b3beadf5756e03743240331190f9400f9ec11318",
+  "tree": "af07f8fb7d72c8d9f7de136278e23534793390dd",
+  "inputTree": "af4b55ffd00c54a7be3ce999d6b9335d44add6fffa2e917d9bbb1baf6931c0a4",
+  "frozenAt": "2026-10-07T20:14:57.859Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
@@ -18,14 +18,14 @@
         "tests/reading-text-projection.test.mjs",
         "tests/selection-controller-cancel.test.mjs"
       ],
-      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+      "candidateHead": "b3beadf5756e03743240331190f9400f9ec11318",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 809.924328,
-      "startedAt": "2026-10-07T20:10:39.545Z",
-      "log": "docs/task-execution/local/selection-context-popover-scroll/4a0b5682-cd7a-42a4-91b6-e301a31a5949.log",
-      "logSha256": "7f399f51f21f55d997af0b435e8d552d428560a6d03ad17e20813cc84ba2978f"
+      "durationMs": 799.998065,
+      "startedAt": "2026-10-07T20:15:05.777Z",
+      "log": "docs/task-execution/local/selection-context-popover-scroll/63c898a9-03da-4a62-9937-31a5b397e206.log",
+      "logSha256": "8ff211a4b7bf0260c7a81e7c0beea26de616f442a76c569958047eb8d770163e"
     },
     {
       "command": [
@@ -33,14 +33,14 @@
         "run",
         "build:extension:wxt"
       ],
-      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+      "candidateHead": "b3beadf5756e03743240331190f9400f9ec11318",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 2146.898796,
-      "startedAt": "2026-10-07T20:10:48.324Z",
-      "log": "docs/task-execution/local/selection-context-popover-scroll/b7e38131-bffd-47b7-98b3-82776ebd8c97.log",
-      "logSha256": "7848f49c720d81580e721573348fc0e831acf50d7083dabfb37f6a58a0d1fadd"
+      "durationMs": 2003.987082,
+      "startedAt": "2026-10-07T20:15:13.359Z",
+      "log": "docs/task-execution/local/selection-context-popover-scroll/67565380-b2f2-4477-ba68-951b220de0f3.log",
+      "logSha256": "a83fa55df99c62bd4220171258da6c3ce6d93572f38db21ad492504472e49b00"
     },
     {
       "command": [
@@ -49,14 +49,14 @@
         "e2e/selection-context-popover.spec.mjs",
         "--reporter=line"
       ],
-      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+      "candidateHead": "b3beadf5756e03743240331190f9400f9ec11318",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 3030.087639,
-      "startedAt": "2026-10-07T20:10:59.871Z",
-      "log": "docs/task-execution/local/selection-context-popover-scroll/a3f2f507-8e48-4242-a49c-5de350045f17.log",
-      "logSha256": "970babeb3b3045fc732d1209484f25ee1fe9c21a7ddadb52aa3184c22fe257be"
+      "durationMs": 3079.601802,
+      "startedAt": "2026-10-07T20:15:21.895Z",
+      "log": "docs/task-execution/local/selection-context-popover-scroll/48cbe4f8-de0d-487d-bee4-4e050f96435c.log",
+      "logSha256": "7d0bd7b5b923ee9ce6efbe2fe3210964fb8641ab1062cf422f184ed8550ec0f9"
     }
   ],
   "artifact": null,
