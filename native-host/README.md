@@ -16,6 +16,14 @@ collection/item lock state and does not call `Unlock` or `Prompt`. Windows
 ciphertext replacement uses `MoveFileEx` with replace-existing and write-through
 flags; Windows runtime behavior remains untested.
 
+Protected blobs use random immutable version IDs. A private local pointer names
+the only version that can be read and records the session generation. Its blob
+ID changes only after a secure-store write is acknowledged and the local atomic
+replacement succeeds. A cancelled Linux D-Bus write may still land later at
+the service; its unique version stays unreachable. Logout atomically advances
+the local generation first, so an older blob can retain reauthorization data
+without exposing its session tokens after a restart.
+
 ## Build and run tests
 
 From this directory, with Go 1.26 or later:
@@ -29,10 +37,12 @@ GOOS=windows GOARCH=amd64 go build -o /tmp/translateflow-host-windows.exe ./cmd/
 The runtime has no Node.js or Python dependency. Direct Go modules provide OIDC
 verification, OAuth PKCE, process-safe file locks, Linux D-Bus Secret Service
 access, and Windows system calls. Tests use an in-process fake HTTP server and
-a fake secure-blob store; store recreation and refresh contention tests are
-in-process simulations. A separate helper-subprocess test exercises the host
-lock's competition and release. Tests never contact OpenAI or the actual OS
-credential store.
+fake secure-blob stores. A delayed-apply backend simulates a D-Bus service
+committing a cancelled immutable write after logout; a helper subprocess then
+reopens the pointer and verifies the session stays invalid. Store recreation
+and refresh contention tests are in-process simulations. Separate helper
+subprocess tests exercise host-lock competition/release and pointer recovery.
+Tests never contact OpenAI or the actual OS credential store.
 
 ## Native messaging protocol
 

@@ -67,6 +67,8 @@ type operation struct {
 	done        chan struct{}
 	cleanup     func()
 	cleanupOnce sync.Once
+	remove      func()
+	removeOnce  sync.Once
 	mu          sync.Mutex
 	seq         uint64
 	closed      bool
@@ -200,7 +202,6 @@ func (s *Server) accept(parent context.Context, req request) {
 	op := &operation{id: req.RequestID, method: req.Method, cancel: cancel, done: make(chan struct{})}
 	op.cleanup = func() {
 		s.mu.Lock()
-		delete(s.active, req.RequestID)
 		if req.Method == "infer.start" && s.infers > 0 {
 			s.infers--
 		}
@@ -218,6 +219,11 @@ func (s *Server) accept(parent context.Context, req request) {
 		}
 		s.mu.Unlock()
 	}
+	op.remove = func() {
+		s.mu.Lock()
+		delete(s.active, req.RequestID)
+		s.mu.Unlock()
+	}
 	s.active[req.RequestID] = op
 	if control {
 		s.controlActive++
@@ -230,7 +236,7 @@ func (s *Server) accept(parent context.Context, req request) {
 	go func() {
 		defer s.wg.Done()
 		defer cancel()
-		defer op.finish()
+		defer op.complete()
 		for _, done := range waitForWork {
 			select {
 			case <-done:
@@ -367,15 +373,26 @@ func (op *operation) terminal(s *Server, ok bool, payload any, code, message str
 		}{Code: code, Message: message}
 	}
 	op.mu.Unlock()
-	op.finish()
-	close(op.done)
-	_ = s.write(result)
+	s.writeTerminal(op, result)
 }
 
 func (op *operation) finish() {
 	op.cleanupOnce.Do(func() {
 		if op.cleanup != nil {
 			op.cleanup()
+		}
+	})
+}
+
+func (op *operation) complete() {
+	op.finish()
+	op.removeActive()
+}
+
+func (op *operation) removeActive() {
+	op.removeOnce.Do(func() {
+		if op.remove != nil {
+			op.remove()
 		}
 	})
 }
@@ -402,6 +419,31 @@ func (s *Server) write(value response) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	return WriteFrame(s.Output, data, s.MaxFrame)
+}
+
+func (s *Server) writeTerminal(op *operation, value response) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		ok := false
+		data, _ = json.Marshal(response{
+			Type:      "terminal",
+			RequestID: op.id,
+			Sequence:  value.Sequence,
+			OK:        &ok,
+			Error: &struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			}{Code: "response_encoding_failed", Message: "The response could not be encoded."},
+		})
+	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	// Requests queued behind the writer remain active. Release this operation
+	// only after it owns the write lock, immediately before its terminal frame.
+	op.finish()
+	close(op.done)
+	_ = WriteFrame(s.Output, data, s.MaxFrame)
+	op.removeActive()
 }
 
 func (s *Server) cancelActive() {

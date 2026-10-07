@@ -14,17 +14,20 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-type windowsDPAPIBlob struct{ path string }
+type windowsDPAPIBlob struct{ dir string }
 
 func newSystemSecureBlobStore(storeDir string) (SecureBlobStore, error) {
-	return windowsDPAPIBlob{path: filepath.Join(storeDir, "credentials.dpapi")}, nil
+	return windowsDPAPIBlob{dir: storeDir}, nil
 }
 
-func (s windowsDPAPIBlob) Read(ctx context.Context) ([]byte, error) {
+func (s windowsDPAPIBlob) Read(ctx context.Context, versionID string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(s.path)
+	if !validCredentialBlobID(versionID) {
+		return nil, ErrCredentialRecordInvalid
+	}
+	file, err := os.Open(filepath.Join(s.dir, "credentials-"+versionID+".dpapi"))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, ErrSecureBlobNotFound
 	}
@@ -60,9 +63,12 @@ func (s windowsDPAPIBlob) Read(ctx context.Context) ([]byte, error) {
 	return value, nil
 }
 
-func (s windowsDPAPIBlob) Write(ctx context.Context, plaintext []byte) error {
+func (s windowsDPAPIBlob) Write(ctx context.Context, versionID string, plaintext []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if !validCredentialBlobID(versionID) {
+		return ErrCredentialRecordInvalid
 	}
 	if len(plaintext) == 0 || len(plaintext) > maxCredentialRecord {
 		return ErrCredentialRecordInvalid
@@ -81,7 +87,24 @@ func (s windowsDPAPIBlob) Write(ctx context.Context, plaintext []byte) error {
 	}
 	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))
 	ciphertext := unsafe.Slice(output.Data, int(output.Size))
-	return writeProtectedBlob(ctx, s.path, ciphertext)
+	return writeProtectedBlob(ctx, filepath.Join(s.dir, "credentials-"+versionID+".dpapi"), ciphertext)
+}
+
+func (s windowsDPAPIBlob) Delete(ctx context.Context, versionID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !validCredentialBlobID(versionID) {
+		return ErrCredentialRecordInvalid
+	}
+	err := os.Remove(filepath.Join(s.dir, "credentials-"+versionID+".dpapi"))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return ErrSecureStoreUnavailable
+	}
+	return nil
 }
 
 func writeProtectedBlob(ctx context.Context, path string, ciphertext []byte) error {
@@ -112,16 +135,22 @@ func writeProtectedBlob(ctx context.Context, path string, ciphertext []byte) err
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	tempName, err := windows.UTF16PtrFromString(tempPath)
-	if err != nil {
-		return ErrSecureStoreUnavailable
-	}
-	targetName, err := windows.UTF16PtrFromString(path)
-	if err != nil {
-		return ErrSecureStoreUnavailable
-	}
-	if err := windows.MoveFileEx(tempName, targetName, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH); err != nil {
+	if err := replaceCredentialFile(tempPath, path); err != nil {
 		return ErrSecureStoreUnavailable
 	}
 	return nil
 }
+
+func replaceCredentialFile(tempPath, targetPath string) error {
+	tempName, err := windows.UTF16PtrFromString(tempPath)
+	if err != nil {
+		return err
+	}
+	targetName, err := windows.UTF16PtrFromString(targetPath)
+	if err != nil {
+		return err
+	}
+	return windows.MoveFileEx(tempName, targetName, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH)
+}
+
+func syncCredentialDirectory(string) error { return nil }

@@ -95,6 +95,21 @@ func (b *startupProbeBackend) Infer(context.Context, contract.InferenceRequest, 
 	return contract.InferenceResult{}, nil
 }
 
+type gatedFirstWriter struct {
+	bytes.Buffer
+	firstWrite sync.Once
+	entered    chan struct{}
+	release    chan struct{}
+}
+
+func (w *gatedFirstWriter) Write(value []byte) (int, error) {
+	w.firstWrite.Do(func() {
+		close(w.entered)
+		<-w.release
+	})
+	return w.Buffer.Write(value)
+}
+
 func (b *logoutOrderingBackend) AuthStatus(context.Context) (contract.AuthStatus, error) {
 	return contract.AuthStatus{}, nil
 }
@@ -316,6 +331,147 @@ framesCollected:
 		if _, ok := terminals[id]; !ok {
 			t.Errorf("request %s has no terminal response", id)
 		}
+	}
+}
+
+func TestTerminalBackpressureKeepsWaitingRequestsBounded(t *testing.T) {
+	inputReader, inputWriter := io.Pipe()
+	writer := &gatedFirstWriter{entered: make(chan struct{}), release: make(chan struct{})}
+	var releaseOnce sync.Once
+	releaseWriter := func() { releaseOnce.Do(func() { close(writer.release) }) }
+	defer func() {
+		releaseWriter()
+		_ = inputWriter.Close()
+	}()
+	server := NewServer(&startupProbeBackend{}, inputReader, writer)
+	server.MaxActive = 2
+	runDone := make(chan error, 1)
+	go func() { runDone <- server.Run(context.Background()) }()
+
+	const requests = 48
+	senderDone := make(chan error, 1)
+	go func() {
+		for index := 0; index < requests; index++ {
+			data, err := json.Marshal(request{Type: "request", RequestID: fmt.Sprintf("slow-%d", index), Method: "hello"})
+			if err != nil {
+				senderDone <- err
+				return
+			}
+			if err := WriteFrame(inputWriter, data, MaxFrameBytes); err != nil {
+				senderDone <- err
+				return
+			}
+		}
+		senderDone <- nil
+	}()
+	select {
+	case <-writer.entered:
+	case <-time.After(2 * time.Second):
+		releaseWriter()
+		t.Fatal("first terminal did not reach the blocked writer")
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		server.mu.Lock()
+		active := server.workActive
+		activeRequests := len(server.active)
+		server.mu.Unlock()
+		if active == server.MaxActive {
+			if activeRequests > server.MaxActive+1 {
+				t.Fatalf("writer plus waiting requests = %d, exceed the bounded limit %d", activeRequests, server.MaxActive+1)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			releaseWriter()
+			t.Fatalf("blocked output did not retain the queued work slots: active=%d activeRequests=%d", active, activeRequests)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	time.Sleep(20 * time.Millisecond)
+	server.mu.Lock()
+	activeWhileBlocked := server.workActive
+	queuedWhileBlocked := len(server.active)
+	server.mu.Unlock()
+	if activeWhileBlocked != server.MaxActive || queuedWhileBlocked > server.MaxActive+1 {
+		releaseWriter()
+		t.Fatalf("blocked output accumulated unbounded work or released waiting slots: active=%d requests=%d limit=%d", activeWhileBlocked, queuedWhileBlocked, server.MaxActive)
+	}
+	releaseWriter()
+	select {
+	case err := <-senderDone:
+		if err != nil {
+			t.Fatalf("request sender after output resumed: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not resume consuming requests after writer release")
+	}
+
+	deadline = time.Now().Add(5 * time.Second)
+	for {
+		server.mu.Lock()
+		active := server.workActive
+		server.mu.Unlock()
+		if active == 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("requests did not drain after writer release: %d remain", active)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	reuse, err := json.Marshal(request{Type: "request", RequestID: "reuse-after-backpressure", Method: "hello"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(inputWriter, reuse, MaxFrameBytes); err != nil {
+		t.Fatalf("write request after backpressure: %v", err)
+	}
+	if err := inputWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-runDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not stop after draining terminal frames")
+	}
+
+	terminalCounts := make(map[string]int, requests+1)
+	terminalSuccess := make(map[string]bool, requests+1)
+	outputReader := bytes.NewReader(writer.Bytes())
+	for {
+		data, err := ReadFrame(outputReader, MaxFrameBytes)
+		if err == nil {
+			var result response
+			if err := json.Unmarshal(data, &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Type != "terminal" {
+				t.Fatalf("unexpected non-terminal frame under hello workload: %#v", result)
+			}
+			terminalCounts[result.RequestID]++
+			terminalSuccess[result.RequestID] = result.OK != nil && *result.OK
+			continue
+		}
+		if err != io.EOF {
+			t.Fatalf("read terminal frames: %v", err)
+		}
+		break
+	}
+	if len(terminalCounts) != requests+1 {
+		t.Fatalf("terminal request IDs = %d, want %d unique terminals", len(terminalCounts), requests+1)
+	}
+	for index := 0; index < requests; index++ {
+		id := fmt.Sprintf("slow-%d", index)
+		if terminalCounts[id] != 1 {
+			t.Fatalf("terminal count for %s = %d, want exactly one", id, terminalCounts[id])
+		}
+	}
+	if terminalCounts["reuse-after-backpressure"] != 1 || !terminalSuccess["reuse-after-backpressure"] {
+		t.Fatalf("post-backpressure slot was not reusable: count=%d success=%v", terminalCounts["reuse-after-backpressure"], terminalSuccess["reuse-after-backpressure"])
 	}
 }
 

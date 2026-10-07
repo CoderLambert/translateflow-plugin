@@ -3,6 +3,8 @@ package siwc
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,15 +13,19 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gofrs/flock"
 )
 
 const (
-	credentialRecordVersion = 1
-	maxCredentialRecord     = 1 << 20
-	lockRetryDelay          = 25 * time.Millisecond
+	credentialRecordVersion  = 1
+	credentialPointerVersion = 1
+	maxCredentialRecord      = 1 << 20
+	maxCredentialPointer     = 4096
+	lockRetryDelay           = 25 * time.Millisecond
+	credentialPointerName    = "credential-pointer.json"
 )
 
 var (
@@ -31,12 +37,14 @@ var (
 	ErrHostBusy                = errors.New("another native host process is active")
 )
 
-// SecureBlobStore stores one opaque byte string using an operating-system
-// protected credential facility. Implementations must honor context and return
-// without leaving a read or write running after cancellation.
+// SecureBlobStore stores immutable, opaque versions in an operating-system
+// protected credential facility. A cancelled Write may still be applied by a
+// remote service; PersistentStore never makes that version readable unless a
+// separate local pointer is atomically committed.
 type SecureBlobStore interface {
-	Read(context.Context) ([]byte, error)
-	Write(context.Context, []byte) error
+	Read(context.Context, string) ([]byte, error)
+	Write(context.Context, string, []byte) error
+	Delete(context.Context, string) error
 }
 
 type credentialRecord struct {
@@ -46,11 +54,21 @@ type credentialRecord struct {
 	Session      *SessionTokens `json:"session,omitempty"`
 }
 
+// credentialPointer is deliberately non-secret. Its generation fences out
+// older session records, while BlobID selects exactly one confirmed blob. A
+// remote write that completes after its caller timed out can never replace it.
+type credentialPointer struct {
+	Version    int    `json:"version"`
+	Generation uint64 `json:"generation"`
+	BlobID     string `json:"blob_id,omitempty"`
+}
+
 // PersistentStore adds process-safe state transitions and a separate
 // interprocess refresh lock around an OS-protected credential blob.
 type PersistentStore struct {
-	blob    SecureBlobStore
-	lockDir string
+	blob        SecureBlobStore
+	lockDir     string
+	pointerPath string
 }
 
 // AcquireHostLock enforces one active host process per current-user store.
@@ -95,7 +113,11 @@ func NewPersistentStore(blob SecureBlobStore, lockDir string) (*PersistentStore,
 			return nil, fmt.Errorf("%w: could not protect the credential lock directory", ErrSecureStoreUnavailable)
 		}
 	}
-	return &PersistentStore{blob: blob, lockDir: lockDir}, nil
+	return &PersistentStore{
+		blob:        blob,
+		lockDir:     lockDir,
+		pointerPath: filepath.Join(lockDir, credentialPointerName),
+	}, nil
 }
 
 func (*PersistentStore) StorageName() string { return "system-secure" }
@@ -170,18 +192,34 @@ func (s *PersistentStore) CommitRefresh(ctx context.Context, expected uint64, to
 func (s *PersistentStore) InvalidateSession(ctx context.Context) (Credential, error) {
 	var credential Credential
 	err := s.withStateLock(ctx, func() error {
-		record, err := s.readRecord(ctx)
+		pointer, err := s.readPointer()
 		if err != nil {
 			return err
 		}
-		credential = record.snapshot().credential()
-		if record.Generation == math.MaxUint64 {
+		if pointer.Generation == math.MaxUint64 {
 			return ErrCredentialRecordInvalid
 		}
-		record.Version = credentialRecordVersion
-		record.Generation++
-		record.Session = nil
-		return s.writeRecord(ctx, record)
+		oldGeneration := pointer.Generation
+		pointer.Generation = oldGeneration + 1
+		// Persist logout's fence before contacting the secure store. No delayed
+		// remote write can move this pointer or make an older generation valid.
+		if err := s.writePointer(ctx, pointer); err != nil {
+			return err
+		}
+		if pointer.BlobID == "" {
+			return nil
+		}
+		// Reading the old record is only for best-effort token revocation. The
+		// durable epoch already makes local logout effective if this read fails.
+		record, err := s.readBlobRecord(ctx, pointer.BlobID)
+		if err != nil || record.Generation > oldGeneration {
+			return nil
+		}
+		if record.Generation < oldGeneration {
+			record.Session = nil
+		}
+		credential = record.snapshot().credential()
+		return nil
 	})
 	return credential, err
 }
@@ -224,12 +262,39 @@ func (s *PersistentStore) readRecord(ctx context.Context) (credentialRecord, err
 	if err := ctx.Err(); err != nil {
 		return credentialRecord{}, err
 	}
-	data, err := s.blob.Read(ctx)
+	pointer, err := s.readPointer()
+	if err != nil {
+		return credentialRecord{}, err
+	}
+	if pointer.BlobID == "" {
+		return credentialRecord{Version: credentialRecordVersion, Generation: pointer.Generation}, nil
+	}
+	record, err := s.readBlobRecord(ctx, pointer.BlobID)
+	if ctx.Err() != nil {
+		return credentialRecord{}, ctx.Err()
+	}
+	if err != nil {
+		return credentialRecord{}, err
+	}
+	if record.Generation > pointer.Generation {
+		return credentialRecord{}, ErrCredentialRecordInvalid
+	}
+	if record.Generation < pointer.Generation {
+		// Logout durably advances the local epoch before any best-effort secure
+		// store mutation. Preserve reauthorization data but invalidate tokens.
+		record.Generation = pointer.Generation
+		record.Session = nil
+	}
+	return record, nil
+}
+
+func (s *PersistentStore) readBlobRecord(ctx context.Context, blobID string) (credentialRecord, error) {
+	data, err := s.blob.Read(ctx, blobID)
 	if ctx.Err() != nil {
 		return credentialRecord{}, ctx.Err()
 	}
 	if errors.Is(err, ErrSecureBlobNotFound) {
-		return credentialRecord{}, nil
+		return credentialRecord{}, ErrCredentialRecordInvalid
 	}
 	if errors.Is(err, ErrSecureBlobCorrupt) {
 		return credentialRecord{}, ErrCredentialRecordInvalid
@@ -273,7 +338,18 @@ func (s *PersistentStore) writeRecord(ctx context.Context, record credentialReco
 	if err != nil || len(data) > maxCredentialRecord {
 		return ErrCredentialRecordInvalid
 	}
-	if err := s.blob.Write(ctx, data); err != nil {
+	pointer, err := s.readPointer()
+	if err != nil {
+		return err
+	}
+	if record.Generation < pointer.Generation || record.Generation > pointer.Generation+1 {
+		return ErrCredentialRecordInvalid
+	}
+	versionID, err := newCredentialBlobID()
+	if err != nil {
+		return ErrSecureStoreUnavailable
+	}
+	if err := s.blob.Write(ctx, versionID, data); err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -282,7 +358,125 @@ func (s *PersistentStore) writeRecord(ctx context.Context, record credentialReco
 		}
 		return fmt.Errorf("%w: secure credential write failed", ErrSecureStoreUnavailable)
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	previousID := pointer.BlobID
+	pointer.Version = credentialPointerVersion
+	pointer.Generation = record.Generation
+	pointer.BlobID = versionID
+	if err := s.writePointer(ctx, pointer); err != nil {
+		return err
+	}
+	if previousID != "" && previousID != versionID {
+		// Old versions are no longer reachable through the pointer. Delete is
+		// best effort; failure cannot reactivate them.
+		_ = s.blob.Delete(ctx, previousID)
+	}
 	return nil
+}
+
+func (s *PersistentStore) readPointer() (credentialPointer, error) {
+	data, err := os.ReadFile(s.pointerPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return credentialPointer{Version: credentialPointerVersion}, nil
+	}
+	if err != nil {
+		return credentialPointer{}, fmt.Errorf("%w: could not read credential pointer", ErrSecureStoreUnavailable)
+	}
+	if len(data) == 0 || len(data) > maxCredentialPointer {
+		return credentialPointer{}, ErrCredentialRecordInvalid
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var pointer credentialPointer
+	if err := decoder.Decode(&pointer); err != nil {
+		return credentialPointer{}, ErrCredentialRecordInvalid
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return credentialPointer{}, ErrCredentialRecordInvalid
+	}
+	if pointer.Version != credentialPointerVersion || pointer.BlobID != "" && !validCredentialBlobID(pointer.BlobID) {
+		return credentialPointer{}, ErrCredentialRecordInvalid
+	}
+	return pointer, nil
+}
+
+func (s *PersistentStore) writePointer(ctx context.Context, pointer credentialPointer) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	pointer.Version = credentialPointerVersion
+	if pointer.BlobID != "" && !validCredentialBlobID(pointer.BlobID) {
+		return ErrCredentialRecordInvalid
+	}
+	data, err := json.Marshal(pointer)
+	if err != nil || len(data) > maxCredentialPointer {
+		return ErrCredentialRecordInvalid
+	}
+	if err := writePrivateAtomicFile(ctx, s.pointerPath, data); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return fmt.Errorf("%w: could not commit credential pointer", ErrSecureStoreUnavailable)
+	}
+	return nil
+}
+
+func newCredentialBlobID() (string, error) {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(value[:]), nil
+}
+
+func validCredentialBlobID(value string) bool {
+	if len(value) != 32 || strings.ToLower(value) != value {
+		return false
+	}
+	for _, ch := range value {
+		if ch < '0' || ch > '9' {
+			if ch < 'a' || ch > 'f' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func writePrivateAtomicFile(ctx context.Context, path string, data []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	temp, err := os.CreateTemp(filepath.Dir(path), ".credential-pointer-*.tmp")
+	if err != nil {
+		return err
+	}
+	tempPath := temp.Name()
+	defer os.Remove(tempPath)
+	if err := temp.Chmod(0o600); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if _, err := temp.Write(data); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Sync(); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := replaceCredentialFile(tempPath, path); err != nil {
+		return err
+	}
+	return syncCredentialDirectory(filepath.Dir(path))
 }
 
 func (record credentialRecord) snapshot() CredentialSnapshot {

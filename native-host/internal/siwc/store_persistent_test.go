@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +19,7 @@ import (
 
 type fakeSecureBlob struct {
 	mu        sync.Mutex
-	value     []byte
+	values    map[string][]byte
 	readErr   error
 	writeErr  error
 	readGate  chan struct{}
@@ -37,7 +38,7 @@ func (s *observedRefreshStore) AcquireRefreshLock(ctx context.Context) (func(), 
 	return s.CredentialStore.AcquireRefreshLock(ctx)
 }
 
-func (b *fakeSecureBlob) Read(ctx context.Context) ([]byte, error) {
+func (b *fakeSecureBlob) Read(ctx context.Context, versionID string) ([]byte, error) {
 	if b.readGate != nil {
 		select {
 		case b.readCall <- struct{}{}:
@@ -57,13 +58,14 @@ func (b *fakeSecureBlob) Read(ctx context.Context) ([]byte, error) {
 	if b.readErr != nil {
 		return nil, b.readErr
 	}
-	if b.value == nil {
+	value, ok := b.values[versionID]
+	if !ok {
 		return nil, ErrSecureBlobNotFound
 	}
-	return bytes.Clone(b.value), nil
+	return bytes.Clone(value), nil
 }
 
-func (b *fakeSecureBlob) Write(ctx context.Context, value []byte) error {
+func (b *fakeSecureBlob) Write(ctx context.Context, versionID string, value []byte) error {
 	if b.writeGate != nil {
 		select {
 		case b.writeCall <- struct{}{}:
@@ -83,7 +85,20 @@ func (b *fakeSecureBlob) Write(ctx context.Context, value []byte) error {
 	if b.writeErr != nil {
 		return b.writeErr
 	}
-	b.value = bytes.Clone(value)
+	if b.values == nil {
+		b.values = make(map[string][]byte)
+	}
+	b.values[versionID] = bytes.Clone(value)
+	return nil
+}
+
+func (b *fakeSecureBlob) Delete(ctx context.Context, versionID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.values, versionID)
 	return nil
 }
 
@@ -94,6 +109,107 @@ func newPersistentStoreForTest(t *testing.T, blob SecureBlobStore, lockDir strin
 		t.Fatal(err)
 	}
 	return store
+}
+
+type lateBlobWrite struct {
+	versionID string
+	data      []byte
+}
+
+// lateApplyingSecureBlob models a Secret Service call whose client-side wait
+// is cancelled while the daemon continues an already accepted CreateItem.
+// The simulated server commit intentionally ignores ctx.Done().
+type lateApplyingSecureBlob struct {
+	dir          string
+	mu           sync.Mutex
+	delayNext    bool
+	started      chan lateBlobWrite
+	allowRemote  chan struct{}
+	remoteResult chan error
+}
+
+func newLateApplyingSecureBlob(t *testing.T, dir string) *lateApplyingSecureBlob {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return &lateApplyingSecureBlob{
+		dir:          dir,
+		started:      make(chan lateBlobWrite, 1),
+		allowRemote:  make(chan struct{}),
+		remoteResult: make(chan error, 1),
+	}
+}
+
+func (b *lateApplyingSecureBlob) Read(ctx context.Context, versionID string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(secureBlobFixturePath(b.dir, versionID))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, ErrSecureBlobNotFound
+	}
+	if err != nil {
+		return nil, ErrSecureStoreUnavailable
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (b *lateApplyingSecureBlob) Write(ctx context.Context, versionID string, value []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	b.mu.Lock()
+	delayed := b.delayNext
+	b.delayNext = false
+	b.mu.Unlock()
+	if delayed {
+		b.started <- lateBlobWrite{versionID: versionID, data: bytes.Clone(value)}
+		go func() {
+			<-b.allowRemote
+			b.remoteResult <- os.WriteFile(secureBlobFixturePath(b.dir, versionID), value, 0o600)
+		}()
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	return os.WriteFile(secureBlobFixturePath(b.dir, versionID), value, 0o600)
+}
+
+func (b *lateApplyingSecureBlob) Delete(ctx context.Context, versionID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	err := os.Remove(secureBlobFixturePath(b.dir, versionID))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+func secureBlobFixturePath(dir, versionID string) string {
+	return filepath.Join(dir, "blob-"+versionID+".json")
+}
+
+func TestPersistentStoreSubprocessSnapshotHelper(t *testing.T) {
+	storeDir := os.Getenv("TRANSLATEFLOW_PERSISTENT_SNAPSHOT_STORE_DIR")
+	if storeDir == "" {
+		return
+	}
+	blobDir := os.Getenv("TRANSLATEFLOW_PERSISTENT_SNAPSHOT_BLOB_DIR")
+	blob := newLateApplyingSecureBlob(t, blobDir)
+	store := newPersistentStoreForTest(t, blob, storeDir)
+	snapshot, err := store.Snapshot(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = fmt.Fprintln(os.Stdout, string(data))
 }
 
 func TestRecreatedPersistentStoreRestoresFromFakeSecureBlob(t *testing.T) {
@@ -137,21 +253,28 @@ func TestPersistentStoreReturnsExplicitErrorsForUnavailableAndCorruptData(t *tes
 	ctx := context.Background()
 	blob := &fakeSecureBlob{readErr: errors.New("secret service is locked")}
 	store := newPersistentStoreForTest(t, blob, filepath.Join(t.TempDir(), "locks"))
+	const fixtureID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	if err := store.writePointer(ctx, credentialPointer{Version: credentialPointerVersion, BlobID: fixtureID}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := store.Snapshot(ctx); !errors.Is(err, ErrSecureStoreUnavailable) {
 		t.Fatalf("locked secure store error = %v, want ErrSecureStoreUnavailable", err)
 	}
 
 	blob.mu.Lock()
 	blob.readErr = nil
-	blob.value = []byte(`{"version":1,"generation":4,"registration":{"client_id":"incomplete"}}`)
+	blob.values = map[string][]byte{fixtureID: []byte(`{"version":1,"generation":0,"registration":{"client_id":"incomplete"}}`)}
 	blob.mu.Unlock()
 	if _, err := store.Snapshot(ctx); !errors.Is(err, ErrCredentialRecordInvalid) {
 		t.Fatalf("corrupt credential record error = %v, want ErrCredentialRecordInvalid", err)
 	}
 	blob.mu.Lock()
-	blob.value = nil
+	blob.values = nil
 	blob.writeErr = errors.New("secret service is unavailable")
 	blob.mu.Unlock()
+	if err := store.writePointer(ctx, credentialPointer{Version: credentialPointerVersion}); err != nil {
+		t.Fatal(err)
+	}
 	registration := Registration{ClientID: testIssuedClientID, HostID: "urn:uuid:stable-host", Subject: "offline-test-subject"}
 	tokens := SessionTokens{AccessToken: "offline-access-token", Expiry: time.Now().Add(time.Hour)}
 	if committed, err := store.CommitAuth(ctx, 0, registration, tokens); committed || !errors.Is(err, ErrSecureStoreUnavailable) {
@@ -164,6 +287,12 @@ func TestPersistentStoreReadCancellationReleasesStateLock(t *testing.T) {
 	lockDir := filepath.Join(t.TempDir(), "locks")
 	blocked := newPersistentStoreForTest(t, blob, lockDir)
 	otherStore := newPersistentStoreForTest(t, blob, lockDir)
+	if err := blocked.writePointer(context.Background(), credentialPointer{Version: credentialPointerVersion, BlobID: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}); err != nil {
+		t.Fatal(err)
+	}
+	blob.mu.Lock()
+	blob.values = map[string][]byte{"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": []byte(`{"version":1,"generation":0}`)}
+	blob.mu.Unlock()
 	ctx, cancel := context.WithCancel(context.Background())
 	result := make(chan error, 1)
 	go func() {
@@ -226,10 +355,112 @@ func TestPersistentStoreWriteCancellationLeavesNoLateTokenWrite(t *testing.T) {
 		t.Fatalf("cancelled Write left a late credential or held state lock: snapshot=%#v err=%v", snapshot, err)
 	}
 	blob.mu.Lock()
-	stored := bytes.Clone(blob.value)
+	stored := len(blob.values)
 	blob.mu.Unlock()
-	if stored != nil {
-		t.Fatalf("cancelled Write changed the secure blob after it returned: %q", stored)
+	if stored != 0 {
+		t.Fatalf("cancelled Write changed the secure blob after it returned: %d version(s)", stored)
+	}
+}
+
+func TestLateSecureWriteCannotReactivateSessionAfterLogoutAndRestart(t *testing.T) {
+	root := t.TempDir()
+	storeDir := filepath.Join(root, "store")
+	blobDir := filepath.Join(root, "secret-service")
+	blob := newLateApplyingSecureBlob(t, blobDir)
+	store := newPersistentStoreForTest(t, blob, storeDir)
+	registration := Registration{ClientID: testIssuedClientID, HostID: "urn:uuid:late-host", Subject: "offline-test-subject"}
+	tokens := SessionTokens{AccessToken: "old-access-token", RefreshToken: "old-refresh-token", Scopes: []string{planUseScope}, Expiry: time.Now().Add(time.Hour)}
+	if committed, err := store.CommitAuth(context.Background(), 0, registration, tokens); err != nil || !committed {
+		t.Fatalf("initial CommitAuth() = committed:%v err=%v", committed, err)
+	}
+	initialPointer, err := store.readPointer()
+	if err != nil || initialPointer.Generation != 1 || initialPointer.BlobID == "" {
+		t.Fatalf("initial pointer = %#v err=%v", initialPointer, err)
+	}
+	initialVersionID := initialPointer.BlobID
+
+	blob.mu.Lock()
+	blob.delayNext = true
+	blob.mu.Unlock()
+	refreshed := tokens
+	refreshed.AccessToken = "late-access-token"
+	refreshed.RefreshToken = "late-refresh-token"
+	refreshCtx, cancelRefresh := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancelRefresh()
+	refreshDone := make(chan struct {
+		committed bool
+		err       error
+	}, 1)
+	go func() {
+		committed, err := store.CommitRefresh(refreshCtx, initialPointer.Generation, refreshed)
+		refreshDone <- struct {
+			committed bool
+			err       error
+		}{committed: committed, err: err}
+	}()
+	var late lateBlobWrite
+	select {
+	case late = <-blob.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the fake Secret Service did not accept the delayed versioned write")
+	}
+	select {
+	case result := <-refreshDone:
+		if result.committed || !errors.Is(result.err, context.DeadlineExceeded) {
+			t.Fatalf("timed-out refresh = committed:%v err=%v", result.committed, result.err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("client did not return when its Secret Service call timed out")
+	}
+
+	credential, err := store.InvalidateSession(context.Background())
+	if err != nil || credential.RefreshToken != tokens.RefreshToken {
+		t.Fatalf("logout invalidation = credential:%#v err=%v", credential, err)
+	}
+	logoutPointer, err := store.readPointer()
+	if err != nil || logoutPointer.Generation != initialPointer.Generation+1 || logoutPointer.BlobID != initialVersionID {
+		t.Fatalf("logout pointer = %#v err=%v; want durable epoch bump retaining the old blob only for registration", logoutPointer, err)
+	}
+
+	close(blob.allowRemote)
+	select {
+	case err := <-blob.remoteResult:
+		if err != nil {
+			t.Fatalf("simulated late CreateItem commit = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the fake Secret Service did not finish its post-timeout commit")
+	}
+	lateData, err := os.ReadFile(secureBlobFixturePath(blobDir, late.versionID))
+	if err != nil {
+		t.Fatalf("late item did not actually land after logout: %v", err)
+	}
+	var lateRecord credentialRecord
+	if err := json.Unmarshal(lateData, &lateRecord); err != nil || lateRecord.Generation != logoutPointer.Generation ||
+		lateRecord.Session == nil || lateRecord.Session.RefreshToken != "late-refresh-token" {
+		t.Fatalf("delayed item = %#v err=%v; want the stale generation to have landed", lateRecord, err)
+	}
+	if late.versionID == logoutPointer.BlobID {
+		t.Fatal("late version unexpectedly reused the active pointer ID")
+	}
+
+	command := exec.Command(os.Args[0], "-test.run=^TestPersistentStoreSubprocessSnapshotHelper$")
+	command.Env = append(os.Environ(),
+		"TRANSLATEFLOW_PERSISTENT_SNAPSHOT_STORE_DIR="+storeDir,
+		"TRANSLATEFLOW_PERSISTENT_SNAPSHOT_BLOB_DIR="+blobDir,
+	)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("restarted-store subprocess = %v, output=%s", err, output)
+	}
+	line, _, _ := bytes.Cut(output, []byte("\n"))
+	var afterRestart CredentialSnapshot
+	if err := json.Unmarshal(line, &afterRestart); err != nil {
+		t.Fatalf("decode restarted-store snapshot from %q: %v", output, err)
+	}
+	if afterRestart.HasSession || afterRestart.Tokens.RefreshToken != "" || !afterRestart.HasRegistration ||
+		afterRestart.Registration != registration || afterRestart.Generation != logoutPointer.Generation {
+		t.Fatalf("late write resurrected a session after restart: %#v", afterRestart)
 	}
 }
 

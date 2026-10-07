@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,7 +39,10 @@ func newSystemSecureBlobStore(string) (SecureBlobStore, error) {
 	return linuxSecretServiceBlob{}, nil
 }
 
-func (linuxSecretServiceBlob) Read(parent context.Context) ([]byte, error) {
+func (linuxSecretServiceBlob) Read(parent context.Context, versionID string) ([]byte, error) {
+	if !validCredentialBlobID(versionID) {
+		return nil, ErrCredentialRecordInvalid
+	}
 	var value []byte
 	err := withSecretService(parent, func(ctx context.Context, conn *dbus.Conn) error {
 		collection, err := defaultSecretCollection(ctx, conn)
@@ -52,7 +56,7 @@ func (linuxSecretServiceBlob) Read(parent context.Context) ([]byte, error) {
 		if locked {
 			return ErrSecureStoreLocked
 		}
-		item, err := findSecretItem(ctx, conn, collection)
+		item, err := findSecretItem(ctx, conn, collection, versionID)
 		if err != nil {
 			return err
 		}
@@ -80,7 +84,10 @@ func (linuxSecretServiceBlob) Read(parent context.Context) ([]byte, error) {
 	return value, nil
 }
 
-func (linuxSecretServiceBlob) Write(parent context.Context, value []byte) error {
+func (linuxSecretServiceBlob) Write(parent context.Context, versionID string, value []byte) error {
+	if !validCredentialBlobID(versionID) {
+		return ErrCredentialRecordInvalid
+	}
 	err := withSecretService(parent, func(ctx context.Context, conn *dbus.Conn) error {
 		collection, err := defaultSecretCollection(ctx, conn)
 		if err != nil {
@@ -93,7 +100,7 @@ func (linuxSecretServiceBlob) Write(parent context.Context, value []byte) error 
 		if locked {
 			return ErrSecureStoreLocked
 		}
-		items, err := searchSecretItems(ctx, conn, collection)
+		items, err := searchSecretItems(ctx, conn, collection, versionID)
 		if err != nil && !errors.Is(err, ErrSecureBlobNotFound) {
 			return err
 		}
@@ -113,6 +120,7 @@ func (linuxSecretServiceBlob) Write(parent context.Context, value []byte) error 
 		attributes := map[string]string{
 			"username": linuxCredentialUser,
 			"service":  linuxCredentialService,
+			"version":  versionID,
 		}
 		properties := map[string]dbus.Variant{
 			secretItemInterface + ".Label":      dbus.MakeVariant("TranslateFlow native host credentials"),
@@ -132,6 +140,56 @@ func (linuxSecretServiceBlob) Write(parent context.Context, value []byte) error 
 		// locked or requires user interaction. No deferred write is left running.
 		if itemPath == "/" || promptPath != "/" {
 			return ErrSecureStoreLocked
+		}
+		return nil
+	})
+	if err != nil {
+		return normalizeSecretServiceError(parent, err)
+	}
+	return nil
+}
+
+func (linuxSecretServiceBlob) Delete(parent context.Context, versionID string) error {
+	if !validCredentialBlobID(versionID) {
+		return ErrCredentialRecordInvalid
+	}
+	err := withSecretService(parent, func(ctx context.Context, conn *dbus.Conn) error {
+		collection, err := defaultSecretCollection(ctx, conn)
+		if err != nil {
+			if errors.Is(err, ErrSecureBlobNotFound) {
+				return nil
+			}
+			return err
+		}
+		locked, err := secretObjectLocked(ctx, conn, collection, secretCollectionIface)
+		if err != nil {
+			return err
+		}
+		if locked {
+			return ErrSecureStoreLocked
+		}
+		items, err := searchSecretItems(ctx, conn, collection, versionID)
+		if errors.Is(err, ErrSecureBlobNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			itemLocked, err := secretObjectLocked(ctx, conn, item, secretItemInterface)
+			if err != nil {
+				return err
+			}
+			if itemLocked {
+				return ErrSecureStoreLocked
+			}
+			var promptPath dbus.ObjectPath
+			if err := callSecretService(ctx, conn.Object(secretServiceName, item), secretItemInterface+".Delete", nil, &promptPath); err != nil {
+				return err
+			}
+			if promptPath != "/" {
+				return ErrSecureStoreLocked
+			}
 		}
 		return nil
 	})
@@ -235,18 +293,19 @@ func defaultSecretCollection(ctx context.Context, conn *dbus.Conn) (dbus.ObjectP
 	return collection, nil
 }
 
-func findSecretItem(ctx context.Context, conn *dbus.Conn, collection dbus.ObjectPath) (dbus.ObjectPath, error) {
-	items, err := searchSecretItems(ctx, conn, collection)
+func findSecretItem(ctx context.Context, conn *dbus.Conn, collection dbus.ObjectPath, versionID string) (dbus.ObjectPath, error) {
+	items, err := searchSecretItems(ctx, conn, collection, versionID)
 	if err != nil {
 		return "", err
 	}
 	return items[0], nil
 }
 
-func searchSecretItems(ctx context.Context, conn *dbus.Conn, collection dbus.ObjectPath) ([]dbus.ObjectPath, error) {
+func searchSecretItems(ctx context.Context, conn *dbus.Conn, collection dbus.ObjectPath, versionID string) ([]dbus.ObjectPath, error) {
 	attributes := map[string]string{
 		"username": linuxCredentialUser,
 		"service":  linuxCredentialService,
+		"version":  versionID,
 	}
 	var items []dbus.ObjectPath
 	if err := callSecretService(ctx, conn.Object(secretServiceName, collection), secretCollectionIface+".SearchItems", []any{attributes}, &items); err != nil {
@@ -256,6 +315,19 @@ func searchSecretItems(ctx context.Context, conn *dbus.Conn, collection dbus.Obj
 		return nil, ErrSecureBlobNotFound
 	}
 	return items, nil
+}
+
+func replaceCredentialFile(tempPath, targetPath string) error {
+	return os.Rename(tempPath, targetPath)
+}
+
+func syncCredentialDirectory(path string) error {
+	directory, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
 }
 
 func secretObjectLocked(ctx context.Context, conn *dbus.Conn, path dbus.ObjectPath, iface string) (bool, error) {
