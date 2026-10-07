@@ -194,11 +194,11 @@ test("all Range ancestors and interior share the first time and node stop budget
 test("giant text fallback reads only a bounded CharacterData window and enforces its time budget", async () => {
   for (const timeout of [false, true]) {
     let ticks = 0, wholeReads = 0, boundedReads = 0;
-    const state = load({ performance: { now: () => timeout ? ticks++ * 5 : 0 } });
+    const state = load({ performance: { now: () => timeout ? ticks++ * 5 : 0 }, getComputedStyle: (node) => node.style });
     const value = `${"x".repeat(2_000_000)} session END_CONTEXT`, start = 2_000_001;
     const node = { nodeType: 3, length: value.length, get nodeValue() { wholeReads++; return value; },
       substringData(from, length) { boundedReads++; assert.ok(length <= 1207); return value.slice(from, from + length); } };
-    const root = { closest: () => root }; node.parentElement = root;
+    const root = element(state.document, [], { display: "block" }); node.parentElement = root;
     const range = { commonAncestorContainer: node, startContainer: node, endContainer: node, startOffset: start, endOffset: start + 7 };
     state.modules.textProjectionPolicy.rangePolicy = () => ({ supported: true, sensitive: false });
     state.modules.textProjection.project = () => ({ status: "unsupported", reason: "char-budget" });
@@ -214,8 +214,8 @@ test("giant text fallback reads only a bounded CharacterData window and enforces
 });
 
 test("query evidence is synchronously frozen and hashes never re-read DOM after awaiting", async () => {
-  const state = load();
-  const block = {}, range = { commonAncestorContainer: { nodeType: 1, closest: () => block } };
+  const state = load({ getComputedStyle: (node) => node.style });
+  const block = element(state.document, [], { display: "block" }), range = { commonAncestorContainer: block };
   const localText = "ALPHA session tail", selectedText = "session";
   state.modules.textProjectionPolicy.rangePolicy = () => ({ supported: true, sensitive: false });
   state.modules.textProjection.project = (root) => ({ status: "resolved", text: root === state.document.body ? `prefix\n${localText}` : localText });
@@ -230,6 +230,30 @@ test("query evidence is synchronously frozen and hashes never re-read DOM after 
   assert.deepEqual(validateSourceSnapshot(json(frozen)), json(frozen));
   assert.equal(frozen.sourceDigest, await createSourceDigest(frozen));
   assert.equal(Object.isFrozen(frozen.anchor.quote), true); assert.equal(Object.isFrozen(capture.context), true);
+});
+
+test("selection context uses the nearest safe block for div and span based text", async () => {
+  const state = load({ getComputedStyle: (node) => node.style });
+  const selected = { nodeType: 3, length: 10, nodeValue: "persistent", isConnected: true, getRootNode: () => state.document };
+  const inline = element(state.document, [selected], { display: "inline" });
+  const block = element(state.document, [inline], { display: "block" });
+  const sentence = "A persistent connection remains available across reconnects.";
+  const range = { commonAncestorContainer: selected, startContainer: selected, endContainer: selected,
+    startOffset: 0, endOffset: 10 };
+  state.document.body = block;
+  state.modules.textProjection.project = () => ({ status: "resolved", text: sentence });
+  state.modules.textProjection.positionForRange = () => ({ start: 2, end: 12 });
+  vm.runInContext(sources.get(files[3]), state.context);
+
+  const snapshot = { text: "persistent", range, selectionGeneration: 1 };
+  const capture = state.modules.selectionSourceSnapshot.capture(snapshot);
+  assert.equal(state.modules.selectionSourceSnapshot.contextRoot(range), block);
+  assert.equal(capture.context.text, sentence);
+  assert.equal(capture.context.text.includes("connection remains available"), true);
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), true);
+  state.modules.textProjection.project = () => ({ status: "resolved", text: "A persistent cache entry changed nearby." });
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
+  assert.equal((await capture.ready).contextText, sentence);
 });
 
 test("sensitive and unsupported roots retain the ordinary selected text with no surrounding capture", async () => {

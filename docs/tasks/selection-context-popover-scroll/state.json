@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "task": "selection-context-popover-scroll",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/selection-context-popover-scroll",
+  "worktree": "/home/lambert/Documents/Codex/2026-10-08/task/translateflow-inference-fix",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/reading-text-projection.test.mjs",
+      "tests/selection-controller-cancel.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "node",
+      "scripts/run-e2e.mjs",
+      "e2e/selection-context-popover.spec.mjs",
+      "--reporter=line"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "实现局部上下文根与无关投影变更下的弹窗保留，完成定向单测及本地 Chromium 假 Provider 验收。"
+}

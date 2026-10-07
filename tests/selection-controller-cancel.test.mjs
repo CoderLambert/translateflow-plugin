@@ -24,6 +24,7 @@ function harness() {
   const pageUrl = "https://fixture.invalid/article";
   const location = { href: pageUrl };
   let selectedText = "current selected text", onTranslate = null, onCancel = null, chipCount = 0;
+  let projectionListener = null, projectionRevision = 1, sourceMatches = true, hideCount = 0, repositionCount = 0;
   const cancelHandlers = [];
   let stored = false, cancelButtonDisabled = false;
 
@@ -60,10 +61,11 @@ function harness() {
       CACHE_STORE: "cache-store", CANCEL_TRANSLATION: "cancel-translation"
     } }, sendRuntimeMessage, getPageIdentity: (value) => value, showToast() {} },
     contentI18n: createContentI18nStub(),
-    selection: { readSelection: () => ({ text: selectedText, pageUrl, sourceRevision: 1, range: {}, rect: {} }),
+    selection: { readSelection: () => ({ text: selectedText, pageUrl, sourceRevision: projectionRevision,
+      range: { startContainer: { isConnected: true }, endContainer: { isConnected: true }, toString: () => selectedText }, rect: {} }),
       isExtensionOwnedNode: () => false },
     selectionContext: { captureSelectionContext: () => ({ text: "safe synthetic context", sensitive: false }) },
-    textProjection: { start() {}, watchPage() {}, revision: () => 1, sameRange: () => true },
+    textProjection: { start(listener) { projectionListener = listener; }, watchPage() {}, revision: () => projectionRevision, sameRange: () => true },
     selectionPopover: {
       setCloseHandler(handler) { this.closeHandler = handler; },
       showChip(_snapshot, handler) {
@@ -77,7 +79,7 @@ function harness() {
       setLoadingCancelable(cancelable) { cancelButtonDisabled = !cancelable; },
       showResult(_snapshot, card) { results.push(card); },
       showError(_snapshot, message) { errors.push(message); },
-      hide() {}, reposition() {}, contains: () => false
+      hide() { hideCount++; }, reposition() { repositionCount++; }, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
     selectionMessages: { unresolvedMessage: () => "content.selection.resolveFailed" },
@@ -89,7 +91,8 @@ function harness() {
       save: async () => {}, retry: async () => {}, open: async () => {}, decline() {}
     }) },
     selectionRecordStatus: { update() {}, clear() {} },
-    selectionSourceSnapshot: { capture(snapshot) { return { selectedText: snapshot.text, sourceRevision: snapshot.sourceRevision,
+    selectionSourceSnapshot: { matches: () => sourceMatches, capture(snapshot) { return { selectedText: snapshot.text, sourceRevision: snapshot.sourceRevision,
+      context: { text: "safe synthetic context", sensitive: false, source: "visible-local", truncated: false },
       sourceSnapshotId: "snapshot-1", documentGeneration: "document-1", selectionGeneration: snapshot.selectionGeneration,
       ready: Promise.resolve({ selectedText: snapshot.text, sourceSnapshotId: "snapshot-1", documentGeneration: "document-1",
         selectionGeneration: snapshot.selectionGeneration, anchor: { status: "unsupported", quote: { exact: snapshot.text } } }) }; } },
@@ -118,6 +121,10 @@ function harness() {
     get cancelButtonDisabled() { return cancelButtonDisabled; },
     stop: () => onCancel?.(), translate: () => onTranslate?.({ isTrusted: true }),
     stopAt: (index) => cancelHandlers[index]?.(),
+    invalidateProjection({ matches = true, revision = projectionRevision + 1 } = {}) {
+      sourceMatches = matches; projectionRevision = revision; projectionListener?.(revision);
+    },
+    get hideCount() { return hideCount; }, get repositionCount() { return repositionCount; },
     getTask: () => app.modules.tasks.getLatestTask("selection"),
     setSelectedText(value) { selectedText = value; documentListeners.get("mouseup")({ target: {} }); },
     close: () => app.modules.selectionPopover.closeHandler?.(),
@@ -129,6 +136,34 @@ function harness() {
     return new Promise(resolve => chipWaiters.push({ count, resolve }));
   }
 }
+
+test("unrelated projection invalidation retains the frozen selection and pending result", async () => {
+  const h = harness();
+  await h.ready;
+  const pending = h.translate();
+  await h.storeStarted;
+  h.invalidateProjection({ matches: true });
+  h.resolveStore();
+  await pending;
+
+  assert.equal(h.hideCount, 0);
+  assert.ok(h.repositionCount > 0);
+  assert.equal(h.results.length, 1);
+  assert.equal(h.results[0].primaryMeaning, "current selected text translated");
+});
+
+test("projection invalidation still dismisses a changed frozen selection", async () => {
+  const h = harness();
+  await h.ready;
+  const pending = h.translate();
+  await h.storeStarted;
+  h.invalidateProjection({ matches: false });
+  h.resolveStore();
+  await pending;
+
+  assert.equal(h.hideCount, 1);
+  assert.deepEqual(h.results, []);
+});
 
 test("Stop after Selection cache write starts completes the real committed result instead of claiming cancellation", async () => {
   const h = harness();

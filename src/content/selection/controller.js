@@ -45,7 +45,7 @@
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
-    projection.start(() => { if (activeSnapshot) { records?.invalidateReference(); dismiss(); } });
+    projection.start(handleProjectionInvalidation);
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -71,6 +71,31 @@
   function scheduleSelectionRefresh() {
     clearTimeout(selectionTimer);
     selectionTimer = setTimeout(refreshSelectionUi, 90);
+  }
+
+  function handleProjectionInvalidation(revision = projection.revision()) {
+    const snapshot = activeSnapshot;
+    if (!snapshot) return;
+    const capture = snapshot.sourceCapture;
+    if (capture
+      ? app.modules.selectionSourceSnapshot.matches(snapshot, capture)
+      : liveRangeMatches(snapshot)) {
+      snapshot.sourceRevision = revision;
+      if (capture) capture.sourceRevision = revision;
+      popover.reposition();
+      return;
+    }
+    records?.invalidateReference();
+    dismiss();
+  }
+
+  function liveRangeMatches(snapshot) {
+    const range = snapshot?.range;
+    if (!range?.startContainer?.isConnected || !range?.endContainer?.isConnected) return false;
+    try {
+      const normalize = (value) => String(value || "").replace(/[\t\n\r\f ]+/gu, " ").trim();
+      return normalize(range.toString()) === normalize(snapshot.text);
+    } catch { return false; }
   }
 
   function refreshSelectionUi() {
