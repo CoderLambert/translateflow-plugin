@@ -255,7 +255,7 @@
       "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/chatgpt-plan-live-inference",
-      "candidateHead": "631bf4c9ba673a86e081cfb8579a6720aa042d24"
+      "candidateHead": "3799e55a96c1b243866aeca8b9796aff4c9729a4"
     },
     {
       "task": "offline-dictionary",

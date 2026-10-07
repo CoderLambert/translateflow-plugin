@@ -6,7 +6,7 @@
   "dependencies": [],
   "branch": "fix/chatgpt-plan-live-inference",
   "worktree": "/home/lambert/Documents/Codex/2026-10-08/task/translateflow-inference-fix",
-  "candidateHead": "631bf4c9ba673a86e081cfb8579a6720aa042d24",
+  "candidateHead": "3799e55a96c1b243866aeca8b9796aff4c9729a4",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -16,5 +16,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "独立复审候选 631bf4c9ba673a86e081cfb8579a6720aa042d24，并在通过后同步修复分支；不合并。"
+  "nextAction": "同步已通过独立复审的候选 3799e55a96c1b243866aeca8b9796aff4c9729a4；不合并。"
 }
