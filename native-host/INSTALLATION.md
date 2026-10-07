@@ -1,8 +1,9 @@
 # Native host installation readiness
 
-This note describes the candidate's user-level install path. No registration,
-browser setting, native permission, OAuth client, account, or credential is
-created by the build or by these checks.
+This note describes the candidate's user-level install path. The extension
+manifest declares `nativeMessaging`, but the build and checks do not register a
+host, change browser settings, register an OAuth client, sign in to an account,
+or create credentials.
 
 ## Product status
 
@@ -23,11 +24,10 @@ created by the build or by these checks.
   or Developer Dashboard is not required to obtain that development ID. A
   development ID may differ from the published ID unless the final manifest
   has a stable `key`.
-- The extension manifest still lacks `nativeMessaging`. The required
-  declaration belongs in the root `manifest.json` `permissions` array. It is
-  listed here for review and was not added in this candidate. The extension
-  host does not need an additional network `host_permissions` entry for Native
-  Messaging.
+- The root `manifest.json` declares `nativeMessaging` in its `permissions`
+  array. This lets the extension request a Native Messaging connection; it
+  does not register the host. The extension host does not need an additional
+  network `host_permissions` entry for Native Messaging.
 
 ## Host registration
 
@@ -83,6 +83,36 @@ provider. If the address or provider is unavailable, the host reports that
 state and does not save credentials. If the provider is locked or requires an
 interactive prompt, the host reports a locked-store error and does not call
 Secret Service `Unlock` or `Prompt`.
+
+For a manual local setup from this candidate, first sync the branch in the
+repository:
+
+```sh
+git fetch origin
+git switch feat/chatgpt-plan-native-host
+git pull --ff-only origin feat/chatgpt-plan-native-host
+```
+
+Alternatively, download and extract the candidate ZIP, then extract
+`translateflow-extension-chrome-mv3.zip` to a directory such as `extension/`.
+In Chromium open `chrome://extensions`, enable Developer mode, choose **Load
+unpacked**, and select that extracted directory. Copy the 32-character ID
+shown on the extension card; this unpacked build has no pinned public ID.
+
+From the extracted candidate ZIP directory, register the bundled Linux AMD64
+host for that exact ID. Choose `--browser chrome` for Google Chrome or
+`--browser chromium` for Chromium:
+
+```sh
+./translateflow-host-linux-amd64 install --extension-id <exact-id> --browser chromium
+```
+
+Then open the extension's **Options**, set **General → Default provider** to
+**ChatGPT subscription**, and go to **Provider · ChatGPT subscription**. Click
+**Connect ChatGPT account** and review the official consent screen, including
+`chatgpt.tokens.use.direct`, before approving. After sign-in, choose a model
+returned by the host and save the global settings. This step starts the real
+user-authorized OAuth flow; the offline candidate build does not do it.
 
 The candidate does not assume GNOME Keyring, install dependencies, alter PAM,
 or select a distro package. Any package needed to provide Secret Service in a

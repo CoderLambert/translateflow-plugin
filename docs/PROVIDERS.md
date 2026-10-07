@@ -86,10 +86,10 @@ The extension service worker is the only owner of `chrome.runtime.connectNative`
 Settings actions pass through the background router, while Content and the
 Learning Center continue to use their existing runtime-message/port paths. The
 host ID is `com.coderlambert.translateflow`. The current candidate manifest
-does not request `nativeMessaging`; a later integration needs that single
-extension permission plus separate user-level host registration for the exact
-extension ID. No host install, permission request, or registration is part of
-this candidate.
+declares the `nativeMessaging` extension permission. The native host still
+requires separate user-level registration for the exact extension ID. No host
+install, registration, account sign-in, or credential use is part of this
+candidate.
 
 ## Permissions
 

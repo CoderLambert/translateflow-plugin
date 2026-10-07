@@ -53,11 +53,11 @@ test("ChatGPT settings load host models on demand and keep sign-in gated by a tr
   expect(chatGPTPlanAction).not.toHaveBeenCalledWith("connect");
 });
 
-test("ChatGPT settings explain missing host permission from the offline candidate", async () => {
+test("ChatGPT settings explain when Native Messaging permission is unavailable", async () => {
   const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("permission"), { code: "NATIVE_MESSAGING_PERMISSION" }); });
   render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
   await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
-  expect(await screen.findByText(/尚未声明 nativeMessaging 权限/u)).toBeTruthy();
+  expect(await screen.findByText(/Native Messaging 权限不可用/u)).toBeTruthy();
 });
 
 test("ChatGPT settings do not guess whether unavailable access means expired session or missing scope", async () => {

@@ -16,7 +16,7 @@ test("v0.8 release metadata stays aligned", () => {
 });
 
 test("production permissions include the authorized ordinary-web-page access", () => {
-  assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting"]);
+  assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting", "nativeMessaging"]);
   assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
   assert.equal(manifest.optional_host_permissions, undefined);
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));

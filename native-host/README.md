@@ -2,11 +2,12 @@
 
 This Go candidate implements the ChatGPT plan provider's Native Messaging
 host, a current-user install/uninstall command, and the extension background
-service worker client bridge. The root extension `manifest.json` still does not
-declare `nativeMessaging`, and the release extension ID is not pinned here, so
-the host is not ready for an end-user install. No install or OAuth operation
-was run as part of these offline checks. Client registration and sign-in start
-only after an explicit `auth.start` request.
+service worker client bridge. The root extension `manifest.json` declares
+`nativeMessaging`, but the release extension ID is not pinned here. A local
+development install must use the ID shown by the browser and separately
+register the host for that ID. No host install or OAuth operation was run as
+part of these offline checks. Client registration and sign-in start only after
+an explicit `auth.start` request.
 
 The executable uses current-user OS credential storage so a later host process
 can restore the session. Linux stores the protected record in Secret Service
