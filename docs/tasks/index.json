@@ -251,6 +251,13 @@
       "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
+      "task": "chatgpt-plan-live-inference",
+      "status": "working",
+      "dependencies": [],
+      "branch": "fix/chatgpt-plan-live-inference",
+      "candidateHead": null
+    },
+    {
       "task": "offline-dictionary",
       "status": "paused",
       "dependencies": [],

@@ -691,11 +691,45 @@ func TestFailedResponsesStreamNeverReturnsSuccess(t *testing.T) {
 		deltas = append(deltas, delta)
 		return nil
 	})
-	if errorCode(err) != "inference_failed" || result.Text != "" {
-		t.Fatalf("Infer() = %#v, %v; failed stream must not produce success", result, err)
+	if errorCode(err) != "offline_failure" || result.Text != "" {
+		t.Fatalf("Infer() = %#v, %v; failed stream must preserve its error code and not produce success", result, err)
 	}
 	if strings.Join(deltas, "") != "partial" {
 		t.Fatalf("deltas = %#v, want the streamed partial text before failure", deltas)
+	}
+}
+
+func TestResponsesHTTPFailurePreservesSafeUpstreamCode(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	fake := newFakeOpenAI(t, planUseScope, now)
+	fake.responseHandler = func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = io.WriteString(w, `{"error":{"code":"subscription_sharing_usage_limit_exceeded","message":"not forwarded"}}`)
+	}
+	store := NewMemoryStore()
+	seedCredential(t, store, now.Add(time.Hour))
+	client := newTestClient(t, fake, store, now, false)
+	result, err := client.Infer(context.Background(), contract.InferenceRequest{Model: "model-a", Input: "offline input"}, nil)
+	if errorCode(err) != "subscription_sharing_usage_limit_exceeded" || result.Text != "" {
+		t.Fatalf("Infer() = %#v, %v; want exact safe upstream code and no output", result, err)
+	}
+}
+
+func TestResponsesHTTPFailureFallsBackToStatusWithoutForwardingBody(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	fake := newFakeOpenAI(t, planUseScope, now)
+	fake.responseHandler = func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"detail":"diagnostic text must not become an error code"}`)
+	}
+	store := NewMemoryStore()
+	seedCredential(t, store, now.Add(time.Hour))
+	client := newTestClient(t, fake, store, now, false)
+	result, err := client.Infer(context.Background(), contract.InferenceRequest{Model: "model-a", Input: "offline input"}, nil)
+	if errorCode(err) != "inference_http_503" || result.Text != "" {
+		t.Fatalf("Infer() = %#v, %v; want status fallback and no output", result, err)
 	}
 }
 
@@ -723,8 +757,8 @@ func TestResponsesErrorAndIncompleteEventsFailImmediately(t *testing.T) {
 	}{
 		{
 			name:     "error cannot be overridden by completed",
-			body:     "data: {\"type\":\"error\",\"response\":{\"error\":{\"code\":\"offline_failure\"}}}\n\ndata: {\"type\":\"response.completed\"}\n\n",
-			wantCode: "inference_failed",
+			body:     "data: {\"type\":\"error\",\"code\":\"offline_failure\"}\n\ndata: {\"type\":\"response.completed\"}\n\n",
+			wantCode: "offline_failure",
 		},
 		{
 			name:     "incomplete response",
@@ -811,10 +845,12 @@ func TestCompletedResponsesStreamReturnsAccumulatedText(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Errorf("decode Responses request: %v", err)
 		} else if body.Model != "model-a" || body.Instructions != "translate" || body.Store || !body.Stream ||
-			len(body.Input) != 1 || len(body.Input[0].Content) != 1 || body.Input[0].Content[0].Text != "offline input" {
+			len(body.Input) != 1 || body.Input[0].Content != "offline input" {
 			t.Errorf("Responses request did not match the SIWC contract: %#v", body)
 		}
-		w.Header().Set("Content-Type", "text/event-stream")
+		// The Responses payload is authoritative. Some direct-route responses use
+		// a non-standard Content-Type even though the body contains valid SSE.
+		w.Header().Set("Content-Type", "application/octet-stream")
 		_, _ = io.WriteString(w, "data: {\"type\":\"response.output_text.delta\",\"delta\":\"ok\"}\n\n")
 		_, _ = io.WriteString(w, "data: {\"type\":\"response.completed\"}\n\n")
 	}

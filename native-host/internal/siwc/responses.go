@@ -6,9 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 const (
 	maxModelsBodyBytes = 2 << 20
 	maxStreamBodyBytes = 4 << 20
+	maxErrorBodyBytes  = 64 << 10
 	maxSSELineBytes    = 256 << 10
 	maxOutputBytes     = 128 << 10
 	maxModelsToReturn  = 256
@@ -32,24 +35,28 @@ type responsesRequest struct {
 }
 
 type responseItem struct {
-	Role    string          `json:"role"`
-	Content []responseBlock `json:"content"`
-}
-
-type responseBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
 type responseEvent struct {
 	Type     string `json:"type"`
 	Delta    string `json:"delta"`
+	Code     string `json:"code"`
 	Response struct {
-		Error *struct {
-			Code string `json:"code"`
-		} `json:"error"`
+		Error *responsesError `json:"error"`
 	} `json:"response"`
 }
+
+type responsesError struct {
+	Code string `json:"code"`
+}
+
+type responsesErrorEnvelope struct {
+	Error *responsesError `json:"error"`
+}
+
+var responsesErrorCodePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]{0,95}$`)
 
 func (c *Client) ListModels(ctx context.Context) ([]contract.Model, error) {
 	requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -136,7 +143,7 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 		Instructions: input.Instructions,
 		Input: []responseItem{{
 			Role:    "user",
-			Content: []responseBlock{{Type: "input_text", Text: input.Input}},
+			Content: input.Input,
 		}},
 		Store:  false,
 		Stream: true,
@@ -161,13 +168,8 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return contract.InferenceResult{}, contract.NewError("inference_unavailable", "ChatGPT inference could not be completed.")
+		return contract.InferenceResult{}, responseHTTPError(response.StatusCode, response.Body)
 	}
-	mediaType, _, mediaErr := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	if mediaErr != nil || mediaType != "text/event-stream" {
-		return contract.InferenceResult{}, contract.NewError("stream_invalid", "ChatGPT returned an invalid response stream.")
-	}
-
 	limited := &io.LimitedReader{R: response.Body, N: maxStreamBodyBytes + 1}
 	scanner := bufio.NewScanner(limited)
 	scanner.Buffer(make([]byte, 4096), maxSSELineBytes)
@@ -185,7 +187,7 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 		}
 		var event responseEvent
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
-			return contract.NewError("stream_invalid", "ChatGPT returned an invalid response stream.")
+			return contract.NewError("stream_event_invalid", "ChatGPT returned an invalid response stream event.")
 		}
 		switch event.Type {
 		case "response.output_text.delta":
@@ -201,11 +203,14 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 		case "response.completed":
 			completed = true
 		case "response.failed":
+			if event.Response.Error != nil {
+				return responseStreamError(event.Response.Error.Code)
+			}
 			return contract.NewError("inference_failed", "ChatGPT reported that the response failed.")
 		case "response.incomplete":
 			return contract.NewError("inference_incomplete", "ChatGPT returned an incomplete response.")
 		case "error":
-			return contract.NewError("inference_failed", "ChatGPT reported that the response failed.")
+			return responseStreamError(event.Code)
 		}
 		return nil
 	}
@@ -256,6 +261,38 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 		return contract.InferenceResult{}, contract.NewError("stream_incomplete", "The ChatGPT response stream ended before completion.")
 	}
 	return contract.InferenceResult{Text: output.String()}, nil
+}
+
+func responseHTTPError(status int, body io.Reader) error {
+	code := responseEnvelopeErrorCode(body)
+	if safeResponsesErrorCode(code) {
+		return contract.NewError(code, "ChatGPT rejected the inference request.")
+	}
+	return contract.NewError(fmt.Sprintf("inference_http_%d", status), "ChatGPT inference could not be completed.")
+}
+
+func responseEnvelopeErrorCode(body io.Reader) string {
+	limited := io.LimitReader(body, maxErrorBodyBytes+1)
+	data, err := io.ReadAll(limited)
+	if err != nil || len(data) > maxErrorBodyBytes {
+		return ""
+	}
+	var envelope responsesErrorEnvelope
+	if json.Unmarshal(data, &envelope) != nil || envelope.Error == nil {
+		return ""
+	}
+	return envelope.Error.Code
+}
+
+func responseStreamError(code string) error {
+	if safeResponsesErrorCode(code) {
+		return contract.NewError(code, "ChatGPT reported that the response failed.")
+	}
+	return contract.NewError("inference_failed", "ChatGPT reported that the response failed.")
+}
+
+func safeResponsesErrorCode(code string) bool {
+	return responsesErrorCodePattern.MatchString(code)
 }
 
 func inferenceContextError(ctx context.Context) error {
