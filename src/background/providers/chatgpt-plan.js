@@ -5,6 +5,7 @@ import { NativeHostError, nativeMessagingClient } from "./native-messaging.js";
 const PROVIDER_LABEL = "ChatGPT subscription";
 const MAX_INSTRUCTIONS_BYTES = 16 * 1024;
 const MAX_INPUT_BYTES = 64 * 1024;
+const MAX_STREAM_DELTA_CHARS = 2048;
 
 export function createChatGPTPlanProvider({ nativeClient = nativeMessagingClient } = {}) {
   return Object.freeze({
@@ -49,7 +50,11 @@ export function createChatGPTPlanProvider({ nativeClient = nativeMessagingClient
       let streamed = "";
       const result = await nativeClient.infer({ model: config.model, instructions, input }, {
         signal,
-        onDelta(delta) { streamed += delta; onDelta?.(delta); }
+        onDelta(delta) {
+          const text = String(delta || "");
+          streamed += text;
+          emitBoundedDeltas(text, onDelta, signal);
+        }
       });
       const text = String(result.text || "");
       if (!text || text !== streamed) {
@@ -124,3 +129,17 @@ function emitProgress(listener, event) {
   if (typeof listener !== "function") return;
   try { listener(Object.freeze({ ...event })); } catch {}
 }
+
+function emitBoundedDeltas(text, listener, signal) {
+  if (typeof listener !== "function") return;
+  for (let start = 0; start < text.length;) {
+    let end = Math.min(start + MAX_STREAM_DELTA_CHARS, text.length);
+    if (end < text.length && isHighSurrogate(text.charCodeAt(end - 1)) && isLowSurrogate(text.charCodeAt(end))) end -= 1;
+    if (signal?.aborted) return;
+    listener(text.slice(start, end));
+    start = end;
+  }
+}
+
+function isHighSurrogate(code) { return code >= 0xd800 && code <= 0xdbff; }
+function isLowSurrogate(code) { return code >= 0xdc00 && code <= 0xdfff; }

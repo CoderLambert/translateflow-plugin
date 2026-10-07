@@ -367,3 +367,51 @@ test("ChatGPT host frames stream through a Learning Center follow-up and commit 
   assert.equal(inference.payload.input.includes("React"), true);
   assert.deepEqual(methods.map(value => value.method), ["hello", "infer.start"]);
 });
+
+test("a large ChatGPT delta is chunked for the port and cancelling mid-stream never saves partial history", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  const p = historyPort();
+  const requestId = "chatgpt-large-cancel";
+  const postMessage = p.postMessage.bind(p);
+  let cancelSent = false;
+  p.postMessage = value => {
+    postMessage(value);
+    if (value.type === "delta" && !cancelSent) {
+      cancelSent = true;
+      p.emit({ type: "cancel", requestId });
+    }
+  };
+
+  const rawDelta = "x".repeat(2049);
+  const provider = createChatGPTPlanProvider({ nativeClient: {
+    async infer(_input, { onDelta }) { onDelta(rawDelta); return { text: rawDelta }; }
+  } });
+  const config = { provider: "chatgpt-plan", model: "fixture-model", streaming: true, targetLanguage: "zh-CN" };
+  let committed = 0;
+  let cancelled = 0;
+  const history = { ...deps,
+    getEffectiveConfigForSite: async () => config,
+    prepareLearningAssistantTurn: async () => ({ session: {}, grounded: { question: "Why?", history: [], sourceSnapshotId: "source-1",
+      turn: { userQuestion: "Why?", action: "follow-up", threadId: "thread-1", turnId: "turn-2", parentTurnId: "turn-1", branchId: "branch-1", regenerationOf: null } },
+      sourceSnapshot: { selectedText: "React", contextMode: "selection-only", contextText: "" },
+      record: { safeReturnUrl: null, sourceLanguage: "en" },
+      routingIdentity: { siteKey: "https://example.test", pageKey: `rp1:${"d".repeat(64)}` } }),
+    completeText: (input, current, options) => provider.completeText(input, current, options),
+    commitLearningAssistantTurn: async () => { committed++; return { saved: { state: "saved" } }; },
+    cancelLearningAssistantTurn: async () => { cancelled++; } };
+
+  const interrupted = p.whenSent(value => value.type === "interrupted");
+  handleSelectionAssistantStreamPort(p, history);
+  p.emit({ protocolVersion: 1, type: "start", requestId, recordId: "11111111-1111-4111-8111-111111111111",
+    recordRevision: 3, sourceSnapshotId: "source-1", targetTurnId: "turn-1", historyAction: "follow-up", question: "Why?" });
+  const terminal = await interrupted;
+
+  assert.equal(cancelSent, true);
+  assert.equal(p.sent.filter(value => value.type === "delta").length, 1);
+  assert.equal(p.sent.find(value => value.type === "delta").text.length, 2048);
+  assert.equal(terminal.code, "CANCELLED");
+  assert.equal(terminal.partialChars, 2048);
+  assert.equal(p.sent.some(value => value.type === "complete"), false);
+  assert.equal(committed, 0);
+  assert.equal(cancelled, 1);
+});

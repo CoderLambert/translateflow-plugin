@@ -67,6 +67,28 @@ test("Selection JSON and learning text consume only a completed matching stream"
   assert.equal(client.calls.length, 2);
 });
 
+test("large native deltas are bounded without changing text or splitting a surrogate pair", async () => {
+  const ascii = "a".repeat(2049);
+  const crossBoundary = `${"b".repeat(2047)}🧠z`;
+  const client = fixtureClient(async (_input, _options, index) => ({
+    text: index === 1 ? ascii : crossBoundary,
+    deltas: [index === 1 ? ascii : crossBoundary]
+  }));
+  const provider = createChatGPTPlanProvider({ nativeClient: client });
+  const first = [];
+  const result1 = await provider.completeText({ prompt: "ascii" }, { model: "fixture" }, { onDelta: delta => first.push(delta) });
+  const second = [];
+  const result2 = await provider.completeText({ prompt: "unicode" }, { model: "fixture" }, { onDelta: delta => second.push(delta) });
+
+  assert.deepEqual(first.map(delta => delta.length), [2048, 1]);
+  assert.equal(first.join(""), ascii);
+  assert.deepEqual(result1, { text: ascii, mode: "stream" });
+  assert.deepEqual(second.map(delta => delta.length), [2047, 3]);
+  assert.equal(second.join(""), crossBoundary);
+  assert.equal(second[1].startsWith("🧠"), true);
+  assert.deepEqual(result2, { text: crossBoundary, mode: "stream" });
+});
+
 test("an incomplete/mismatched host stream is rejected and the host error is preserved", async () => {
   const mismatch = createChatGPTPlanProvider({ nativeClient: fixtureClient(async () => ({ text: "complete", deltas: ["partial"] })) });
   await assert.rejects(mismatch.completeText({ prompt: "q" }, { model: "fixture" }), { code: "NATIVE_HOST_PROTOCOL" });

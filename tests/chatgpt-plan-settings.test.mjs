@@ -60,3 +60,45 @@ test("failed sign-in reports that prior model selection was already cleared", as
     else globalThis.chrome = originalChrome;
   }
 });
+
+async function assertConnectAndLogoutClearForDefaultProvider(provider) {
+  for (const action of ["connect", "logout"]) {
+    const otherProvider = provider === "deepseek" ? "openai-compatible" : "deepseek";
+    const value = {
+      provider,
+      chatgptPlanModel: "old-account-model",
+      siteProfiles: {
+        "https://inherits-default.test": { model: `keep-${provider}` },
+        "https://explicit-chatgpt.test": { provider: "chatgpt-plan", model: "old-site-account-model", prompt: "keep prompt" },
+        "https://other-provider.test": { provider: otherProvider, model: `keep-${otherProvider}` }
+      }
+    };
+    const storage = { async get() { return structuredClone(value); }, async set(patch) { Object.assign(value, patch); } };
+    const originalChrome = globalThis.chrome;
+    globalThis.chrome = { storage: { local: storage } };
+    try {
+      const result = await handleChatGPTPlanAction(action, {
+        async ensureConnected() {},
+        async startAuth() { return { connected: true }; },
+        async logout() { return { connected: false }; }
+      });
+
+      assert.equal(result.modelSelectionCleared, true, `${action} under ${provider} should clear the dedicated account model`);
+      assert.equal(value.chatgptPlanModel, "");
+      assert.deepEqual(value.siteProfiles["https://inherits-default.test"], { model: `keep-${provider}` });
+      assert.deepEqual(value.siteProfiles["https://explicit-chatgpt.test"], { provider: "chatgpt-plan", prompt: "keep prompt" });
+      assert.deepEqual(value.siteProfiles["https://other-provider.test"], { provider: otherProvider, model: `keep-${otherProvider}` });
+    } finally {
+      if (originalChrome === undefined) delete globalThis.chrome;
+      else globalThis.chrome = originalChrome;
+    }
+  }
+}
+
+test("connect and logout clear ChatGPT selections when DeepSeek is the default provider", async () => {
+  await assertConnectAndLogoutClearForDefaultProvider("deepseek");
+});
+
+test("connect and logout clear ChatGPT selections when OpenAI-compatible is the default provider", async () => {
+  await assertConnectAndLogoutClearForDefaultProvider("openai-compatible");
+});

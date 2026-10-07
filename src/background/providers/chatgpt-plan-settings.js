@@ -26,7 +26,7 @@ export async function clearChatGPTPlanModelSelections(storage = chrome.storage.l
   const stored = await storage.get(["provider", "chatgptPlanModel", "siteProfiles"]);
   const globalProvider = providerId(stored.provider);
   const patch = {};
-  if (globalProvider === "chatgpt-plan" && String(stored.chatgptPlanModel || "")) patch.chatgptPlanModel = "";
+  if (String(stored.chatgptPlanModel || "")) patch.chatgptPlanModel = "";
 
   const profiles = stored.siteProfiles && typeof stored.siteProfiles === "object" && !Array.isArray(stored.siteProfiles)
     ? stored.siteProfiles : {};
