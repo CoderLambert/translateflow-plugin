@@ -5,7 +5,6 @@ package siwc
 import (
 	"errors"
 	"os"
-	"path/filepath"
 )
 
 func newSystemSecureBlobStore(string) (SecureBlobStore, error) {
@@ -17,10 +16,5 @@ func replaceCredentialFile(tempPath, targetPath string) error {
 }
 
 func syncCredentialDirectory(path string) error {
-	directory, err := os.Open(filepath.Dir(path))
-	if err != nil {
-		return err
-	}
-	defer directory.Close()
-	return directory.Sync()
+	return syncCredentialDirectoryWith(path, os.Open)
 }

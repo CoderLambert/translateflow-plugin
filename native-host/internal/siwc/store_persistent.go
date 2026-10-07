@@ -446,6 +446,10 @@ func validCredentialBlobID(value string) bool {
 }
 
 func writePrivateAtomicFile(ctx context.Context, path string, data []byte) error {
+	return writePrivateAtomicFileWithSync(ctx, path, data, syncCredentialDirectory)
+}
+
+func writePrivateAtomicFileWithSync(ctx context.Context, path string, data []byte, syncDirectory func(string) error) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -476,7 +480,16 @@ func writePrivateAtomicFile(ctx context.Context, path string, data []byte) error
 	if err := replaceCredentialFile(tempPath, path); err != nil {
 		return err
 	}
-	return syncCredentialDirectory(filepath.Dir(path))
+	return syncDirectory(filepath.Dir(path))
+}
+
+func syncCredentialDirectoryWith(path string, openDirectory func(string) (*os.File, error)) error {
+	directory, err := openDirectory(path)
+	if err != nil {
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
 }
 
 func (record credentialRecord) snapshot() CredentialSnapshot {
