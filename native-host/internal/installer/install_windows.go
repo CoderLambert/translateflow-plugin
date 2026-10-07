@@ -86,6 +86,13 @@ func Uninstall(browser string, dryRun bool, out io.Writer) error {
 	if dryRun {
 		return PrintPlan(out, plan)
 	}
+	runningExecutable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("cannot identify the running native host executable; uninstall stopped without changing registration: %w", err)
+	}
+	if err := guardAgainstSelfUninstall(runningExecutable, plan.BinaryPath); err != nil {
+		return err
+	}
 	registeredPath, registered, err := registeredManifestPath()
 	if err != nil {
 		return err

@@ -18,6 +18,11 @@ created by the build or by these checks.
   public ID with `-ldflags "-X main.pinnedExtensionID=<ID>"`, after which
   opening the installer with no arguments performs the current-user install.
   Until the stable ID is decided, a true double-click install is not ready.
+- For a local development extension, use the current ID shown at
+  `chrome://extensions` with Developer mode enabled. A Chrome Web Store upload
+  or Developer Dashboard is not required to obtain that development ID. A
+  development ID may differ from the published ID unless the final manifest
+  has a stable `key`.
 - The extension manifest still lacks `nativeMessaging`. The required
   declaration belongs in the root `manifest.json` `permissions` array. It is
   listed here for review and was not added in this candidate. The extension
@@ -92,7 +97,11 @@ Run `translateflow-host uninstall --dry-run` to inspect the paths, then
 `translateflow-host uninstall` to remove this component. Linux removal requires
 the expected host name, description, executable path, stdio type, and a single
 valid extension origin. Windows removal requires the HKCU value to point to
-this component's manifest. Conflicts are left untouched.
+this component's manifest. Conflicts are left untouched. On Windows, run
+uninstall from a separate downloaded copy of the executable, such as the copy
+extracted from the candidate ZIP in Downloads. If the running process is the
+installed executable, uninstall stops before changing the HKCU registration or
+host manifest; rerun from the separate copy.
 
 Uninstall removes this component's selected browser registration and host
 manifest. On Linux, Chrome and Chromium share the installed executable; it is

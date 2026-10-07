@@ -20,7 +20,10 @@ const (
 	RegistryKey     = `Software\Google\Chrome\NativeMessagingHosts\` + HostName
 )
 
-var ErrRegistrationConflict = errors.New("a non-TranslateFlow native host registration already uses this path")
+var (
+	ErrRegistrationConflict = errors.New("a non-TranslateFlow native host registration already uses this path")
+	ErrSelfUninstall        = errors.New("the running native host executable cannot uninstall itself")
+)
 
 type NativeManifest struct {
 	Name           string   `json:"name"`
@@ -107,6 +110,16 @@ func WindowsInstallPlan(localAppData, extensionID string) (Plan, error) {
 func UninstallPlan(browser, binaryPath, manifestPath, registration string) Plan {
 	return Plan{Action: "uninstall", Browser: browser, HostName: HostName, BinaryPath: binaryPath,
 		ManifestPath: manifestPath, Registration: registration}
+}
+
+func guardAgainstSelfUninstall(runningExecutable, installedExecutable string) error {
+	if strings.TrimSpace(runningExecutable) == "" || strings.TrimSpace(installedExecutable) == "" {
+		return fmt.Errorf("cannot safely identify the running or installed executable; uninstall was stopped without changing registration")
+	}
+	if samePath(runningExecutable, installedExecutable) {
+		return fmt.Errorf("%w: start uninstall from a separate downloaded copy, for example in Downloads; registration and installed files were left unchanged", ErrSelfUninstall)
+	}
+	return nil
 }
 
 func installPlan(browser, extensionID, binaryPath, manifestPath, registration string) (Plan, error) {

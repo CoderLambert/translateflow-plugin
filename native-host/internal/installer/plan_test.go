@@ -2,6 +2,7 @@ package installer
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -83,6 +84,28 @@ func TestOwnershipCheckRejectsDifferentPathOrMultipleOrigins(t *testing.T) {
 	}
 	if IsOwnedManifest(encoded, manifest.Path) {
 		t.Fatal("manifest that grants another extension must not be deleted as ours")
+	}
+}
+
+func TestUninstallPreflightRejectsRunningInstalledExecutableBeforeMutation(t *testing.T) {
+	root := t.TempDir()
+	installed := filepath.Join(root, "TranslateFlow", "NativeHost", "translateflow-host.exe")
+	err := guardAgainstSelfUninstall(installed, installed)
+	if !errors.Is(err, ErrSelfUninstall) {
+		t.Fatalf("self-uninstall error = %v, want ErrSelfUninstall", err)
+	}
+	if !strings.Contains(err.Error(), "separate downloaded copy") || !strings.Contains(err.Error(), "registration and installed files were left unchanged") {
+		t.Fatalf("self-uninstall guidance is unclear: %q", err)
+	}
+	downloadedCopy := filepath.Join(root, "Downloads", "translateflow-host.exe")
+	if err := guardAgainstSelfUninstall(downloadedCopy, installed); err != nil {
+		t.Fatalf("uninstall from separate copy was rejected: %v", err)
+	}
+}
+
+func TestUninstallPreflightFailsClosedWhenExecutablePathIsMissing(t *testing.T) {
+	if err := guardAgainstSelfUninstall("", filepath.Join(t.TempDir(), "translateflow-host.exe")); err == nil {
+		t.Fatal("missing running executable path should block uninstall")
 	}
 }
 
