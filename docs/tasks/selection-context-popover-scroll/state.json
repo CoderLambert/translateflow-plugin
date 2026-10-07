@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "selection-context-popover-scroll",
-  "status": "ready_to_sync",
+  "status": "working",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/selection-context-popover-scroll",
   "worktree": "/home/lambert/Documents/Codex/2026-10-08/task/translateflow-inference-fix",
-  "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7",
+  "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
     [
@@ -28,5 +28,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "由父任务对候选 b834c3fe108ad295dc50528924eb6526c5474bb7 做独立审查；通过后推送本分支，不合并。"
+  "nextAction": "修复独立审查发现的 selection-only 失效 Range 误判，重新冻结并验收。"
 }

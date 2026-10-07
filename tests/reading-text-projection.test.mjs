@@ -238,8 +238,9 @@ test("selection context uses the nearest safe block for div and span based text"
   const inline = element(state.document, [selected], { display: "inline" });
   const block = element(state.document, [inline], { display: "block" });
   const sentence = "A persistent connection remains available across reconnects.";
+  let rangeText = "persistent";
   const range = { commonAncestorContainer: selected, startContainer: selected, endContainer: selected,
-    startOffset: 0, endOffset: 10 };
+    startOffset: 0, endOffset: 10, toString: () => rangeText };
   state.document.body = block;
   state.modules.textProjection.project = () => ({ status: "resolved", text: sentence });
   state.modules.textProjection.positionForRange = () => ({ start: 2, end: 12 });
@@ -251,6 +252,12 @@ test("selection context uses the nearest safe block for div and span based text"
   assert.equal(capture.context.text, sentence);
   assert.equal(capture.context.text.includes("connection remains available"), true);
   assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), true);
+  rangeText = "changed text";
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
+  rangeText = "persistent";
+  selected.isConnected = false;
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
+  selected.isConnected = true;
   state.modules.textProjection.project = () => ({ status: "resolved", text: "A persistent cache entry changed nearby." });
   assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
   assert.equal((await capture.ready).contextText, sentence);
@@ -267,6 +274,24 @@ test("sensitive and unsupported roots retain the ordinary selected text with no 
   assert.equal(frozen.contextMode, "selection-only"); assert.equal(frozen.anchor.status, "unsupported");
   assert.equal(frozen.anchor.position, null); assert.equal(frozen.anchor.blockDigest, null);
   assert.deepEqual(validateSourceSnapshot(json(frozen)), json(frozen));
+});
+
+test("selection-only matching rejects changed text and detached Range endpoints", () => {
+  const state = load();
+  state.modules.textProjectionPolicy.rangePolicy = () => ({ supported: false, sensitive: true, reason: "unsupported-root" });
+  vm.runInContext(sources.get(files[3]), state.context);
+  const endpoint = { isConnected: true };
+  let liveText = "session";
+  const snapshot = { text: "session", range: { startContainer: endpoint, endContainer: endpoint, toString: () => liveText } };
+  const capture = state.modules.selectionSourceSnapshot.capture(snapshot);
+  assert.equal(capture.context.text, "");
+  assert.equal(capture.context.sensitive, true);
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), true);
+  liveText = "changed";
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
+  liveText = "session";
+  endpoint.isConnected = false;
+  assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
 });
 
 test("missing digest capability rejects evidence without breaking ordinary selected-text context", async () => {

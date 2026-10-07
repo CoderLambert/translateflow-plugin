@@ -273,10 +273,10 @@
     },
     {
       "task": "selection-context-popover-scroll",
-      "status": "ready_to_sync",
+      "status": "working",
       "dependencies": [],
       "branch": "fix/selection-context-popover-scroll",
-      "candidateHead": "b834c3fe108ad295dc50528924eb6526c5474bb7"
+      "candidateHead": null
     },
     {
       "task": "workflow-local",

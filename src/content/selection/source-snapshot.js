@@ -106,6 +106,9 @@
   function matches(snapshot, frozen) {
     if (!snapshot?.range || !frozen) return false;
     try {
+      const range = snapshot.range;
+      if (!range.startContainer?.isConnected || !range.endContainer?.isConnected
+        || comparable(range.toString()) !== comparable(frozen.selectedText)) return false;
       const current = localCapture(snapshot);
       return current.selectedText === frozen.selectedText
         && current.text === frozen.context?.text
