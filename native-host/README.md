@@ -1,14 +1,22 @@
 # TranslateFlow ChatGPT Native Messaging Host (candidate)
 
-This is an isolated Go candidate for the ChatGPT plan provider. It is not wired
-into the extension, does not add a native-host manifest, and does not perform
-client registration or sign-in unless a caller explicitly sends `auth.start`.
+This Go candidate implements the ChatGPT plan provider's Native Messaging
+host, a current-user install/uninstall command, and the extension background
+service worker client bridge. The root extension `manifest.json` still does not
+declare `nativeMessaging`, and the release extension ID is not pinned here, so
+the host is not ready for an end-user install. No install or OAuth operation
+was run as part of these offline checks. Client registration and sign-in start
+only after an explicit `auth.start` request.
+
 The executable uses current-user OS credential storage so a later host process
-can restore the session. Linux stores the protected record in Secret Service;
-Windows encrypts it with current-user DPAPI and writes only ciphertext under the
-user config directory. If the secure store is locked or unavailable, operations
-return a recoverable error and never fall back to plaintext. Other platforms
-report secure storage as unavailable.
+can restore the session. Linux stores the protected record in Secret Service
+over the current session D-Bus; Windows encrypts it with current-user DPAPI and
+writes only ciphertext under the user config directory. Linux reports locked
+and unavailable D-Bus/Secret Service states separately. On Omarchy/Hyprland, a
+compatible Secret Service provider must already be available in the user
+session; the candidate does not assume GNOME Keyring, install packages, change
+PAM settings, or unlock the provider. Windows secure storage and other platforms
+report their own unavailable state rather than falling back to plaintext.
 Only one host process may use a user's store at a time. A second process returns
 one `HOST_BUSY` terminal before dispatching auth, models, or inference. On Linux,
 Secret Service calls use a five-second context deadline; the adapter checks the
@@ -26,7 +34,7 @@ without exposing its session tokens after a restart.
 
 ## Build and run tests
 
-From this directory, with Go 1.26 or later:
+From this directory, with Go 1.26.0 or later:
 
 ```sh
 go test ./...
@@ -85,21 +93,20 @@ and logout are serialized by a separate state lock. Corrupt secure-store records
 are surfaced as errors instead of being silently reset. The complete sign-in
 and sign-out flow is bounded by the configured authentication timeout.
 
-## Future extension connection owner
+## Extension connection owner
 
-When the extension is integrated, the MV3 background service worker must be the
-sole owner of `chrome.runtime.connectNative` and the native host port. Popup,
-Options, Content, and other extension callers should send validated runtime
-messages to that owner; it forwards requests over the shared port and correlates
-`requestId` and sequence frames. They must not open separate native host
-connections. The single-owner extension bridge is a follow-up; this isolated
-candidate only enforces the host-process side of the boundary.
+The MV3 background service worker is the sole owner of
+`chrome.runtime.connectNative` and the native host port. Popup, Options,
+Content, and other extension callers send validated runtime messages to that
+owner; it forwards requests over the shared port and correlates `requestId` and
+sequence frames. They must not open separate native host connections.
 
-The future Chrome Native Messaging host name is
-`com.coderlambert.translateflow`. The Chrome extension manifest will need the
-`nativeMessaging` permission, and the user-level host manifest must allow the
-extension's exact Chrome origin. Neither manifest change nor user-level host
-registration is included in this candidate.
+The Native Messaging host name is `com.coderlambert.translateflow`. Before
+release, the root extension manifest's `permissions` array must declare
+`nativeMessaging`, and the user-level host manifest must allow the extension's
+exact Chrome origin. The permission and a pinned extension ID are not included
+in this candidate; installation behavior and expected paths are documented in
+[`INSTALLATION.md`](INSTALLATION.md).
 
 Responses requests set `store:false` and `stream:true`. A response succeeds only
 after `response.completed`; failed, incomplete, cancelled, or interrupted

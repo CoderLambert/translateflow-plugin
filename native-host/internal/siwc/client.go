@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -179,7 +180,13 @@ func credentialStoreError(err error) error {
 		return contract.NewError("credential_invalid", "Saved ChatGPT credential data is invalid. Restore or remove that secure-store item, then sign in again.")
 	}
 	if errors.Is(err, ErrSecureStoreLocked) {
+		if runtime.GOOS == "linux" {
+			return contract.NewError("credential_locked", "The Linux Secret Service is locked or requires an interactive prompt. Unlock a compatible Secret Service provider in your current user session, then retry; TranslateFlow will not unlock it automatically.")
+		}
 		return contract.NewError("credential_locked", "Unlock the system credential store, then try again.")
+	}
+	if runtime.GOOS == "linux" {
+		return contract.NewError("credential_unavailable", "TranslateFlow could not reach a compatible Secret Service on the current user's session D-Bus. Check that this session has DBUS_SESSION_BUS_ADDRESS and that a Secret Service provider is running; TranslateFlow will not install or unlock one automatically.")
 	}
 	return contract.NewError("credential_unavailable", "The system secure store is unavailable or locked. Unlock it and retry.")
 }
