@@ -168,7 +168,11 @@ func (c *Client) Infer(ctx context.Context, input contract.InferenceRequest, onD
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return contract.InferenceResult{}, responseHTTPError(response.StatusCode, response.Body)
+		responseErr := responseHTTPError(response.StatusCode, response.Body)
+		if operationCtx.Err() != nil {
+			return contract.InferenceResult{}, inferenceContextError(operationCtx)
+		}
+		return contract.InferenceResult{}, responseErr
 	}
 	limited := &io.LimitedReader{R: response.Body, N: maxStreamBodyBytes + 1}
 	scanner := bufio.NewScanner(limited)

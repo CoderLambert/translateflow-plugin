@@ -733,6 +733,127 @@ func TestResponsesHTTPFailureFallsBackToStatusWithoutForwardingBody(t *testing.T
 	}
 }
 
+func TestResponsesHTTPFailureCancellationPreservesContext(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	fake := newFakeOpenAI(t, planUseScope, now)
+	headersSent := make(chan struct{})
+	fake.responseHandler = func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		close(headersSent)
+		<-r.Context().Done()
+	}
+	store := NewMemoryStore()
+	seedCredential(t, store, now.Add(time.Hour))
+	client := newTestClient(t, fake, store, now, false)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	resultCh := make(chan struct {
+		result contract.InferenceResult
+		err    error
+	}, 1)
+	go func() {
+		result, err := client.Infer(ctx, contract.InferenceRequest{Model: "model-a", Input: "offline input"}, nil)
+		resultCh <- struct {
+			result contract.InferenceResult
+			err    error
+		}{result: result, err: err}
+	}()
+	select {
+	case <-headersSent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("fake HTTP failure did not send its response headers")
+	}
+	cancel()
+	select {
+	case result := <-resultCh:
+		if !errors.Is(result.err, context.Canceled) || result.result.Text != "" {
+			t.Fatalf("cancelled HTTP failure = %#v, %v", result.result, result.err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancelled HTTP failure body did not stop")
+	}
+}
+
+func TestResponsesHTTPFailureRejectsUnsafeOrOversizedDiagnostics(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "unsafe code", body: `{"error":{"code":"UPSTREAM MESSAGE"}}`},
+		{name: "oversized body", body: strings.Repeat("x", maxErrorBodyBytes+1)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			now := time.Now().UTC().Truncate(time.Second)
+			fake := newFakeOpenAI(t, planUseScope, now)
+			fake.responseHandler = func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = io.WriteString(w, test.body)
+			}
+			store := NewMemoryStore()
+			seedCredential(t, store, now.Add(time.Hour))
+			client := newTestClient(t, fake, store, now, false)
+			result, err := client.Infer(context.Background(), contract.InferenceRequest{Model: "model-a", Input: "offline input"}, nil)
+			if errorCode(err) != "inference_http_429" || result.Text != "" {
+				t.Fatalf("Infer() = %#v, %v; want safe status fallback", result, err)
+			}
+		})
+	}
+}
+
+func TestResponsesStreamValidatesPayloadWithoutMIMEGate(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		wantCode string
+	}{
+		{name: "malformed event", body: "data: {not-json}\n\n", wantCode: "stream_event_invalid"},
+		{name: "oversized line", body: "data: " + strings.Repeat("x", maxSSELineBytes) + "\n\n", wantCode: "stream_failed"},
+		{name: "oversized output", body: "data: {\"type\":\"response.output_text.delta\",\"delta\":\"" + strings.Repeat("x", maxOutputBytes+1) + "\"}\n\n", wantCode: "output_too_large"},
+		{name: "unsafe stream code", body: "data: {\"type\":\"error\",\"code\":\"UPSTREAM MESSAGE\"}\n\n", wantCode: "inference_failed"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			now := time.Now().UTC().Truncate(time.Second)
+			fake := newFakeOpenAI(t, planUseScope, now)
+			fake.responseHandler = func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				_, _ = io.WriteString(w, test.body)
+			}
+			store := NewMemoryStore()
+			seedCredential(t, store, now.Add(time.Hour))
+			client := newTestClient(t, fake, store, now, false)
+			result, err := client.Infer(context.Background(), contract.InferenceRequest{Model: "model-a", Input: "offline input"}, nil)
+			if errorCode(err) != test.wantCode || result.Text != "" {
+				t.Fatalf("Infer() = %#v, %v; want %s and no successful output", result, err, test.wantCode)
+			}
+		})
+	}
+}
+
+func TestResponsesStreamBodyLimitWithoutMIMEGate(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	fake := newFakeOpenAI(t, planUseScope, now)
+	fake.responseHandler = func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		chunk := ":" + strings.Repeat("x", 1022) + "\n"
+		for written := 0; written <= maxStreamBodyBytes; written += len(chunk) {
+			_, _ = io.WriteString(w, chunk)
+		}
+	}
+	store := NewMemoryStore()
+	seedCredential(t, store, now.Add(time.Hour))
+	client := newTestClient(t, fake, store, now, false)
+	result, err := client.Infer(context.Background(), contract.InferenceRequest{Model: "model-a", Input: "offline input"}, nil)
+	if errorCode(err) != "stream_too_large" || result.Text != "" {
+		t.Fatalf("Infer() = %#v, %v; want bounded stream failure", result, err)
+	}
+}
+
 func TestResponsesStreamRequiresCompletedEvent(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	fake := newFakeOpenAI(t, planUseScope, now)
