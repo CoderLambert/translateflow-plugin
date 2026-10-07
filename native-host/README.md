@@ -95,6 +95,12 @@ messages to that owner; it forwards requests over the shared port and correlates
 connections. The single-owner extension bridge is a follow-up; this isolated
 candidate only enforces the host-process side of the boundary.
 
+The future Chrome Native Messaging host name is
+`com.coderlambert.translateflow`. The Chrome extension manifest will need the
+`nativeMessaging` permission, and the user-level host manifest must allow the
+extension's exact Chrome origin. Neither manifest change nor user-level host
+registration is included in this candidate.
+
 Responses requests set `store:false` and `stream:true`. A response succeeds only
 after `response.completed`; failed, incomplete, cancelled, or interrupted
 streams produce an error terminal. Logs go to stderr and do not include tokens,

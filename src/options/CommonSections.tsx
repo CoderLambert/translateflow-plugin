@@ -1,13 +1,15 @@
 import { TRANSLATION_APPEARANCES } from "../shared/appearance.js";
 import type { OptionsConfig } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
+import { ChatGPTPlanSection } from "./ChatGPTPlanSection";
+import type { OptionsClient } from "./client";
 
 type Props = { config: OptionsConfig; disabled: boolean; update: (patch: Partial<OptionsConfig>) => void };
 
 export function GeneralSection({ config, disabled, update }: Props) {
   const i18n = useOptionsI18n();
   return <section id="general" tabIndex={-1}><h2>{i18n.t("options.general.title")}</h2><p className="section-summary">{i18n.t("options.general.summary")}</p>
-    <label htmlFor="defaultProvider">{i18n.t("options.general.defaultProvider")}</label><select id="defaultProvider" disabled={disabled} value={config.provider} onChange={event => update({ provider: event.target.value })}><option value="deepseek">DeepSeek</option><option value="openai-compatible">OpenAI-compatible</option></select>
+    <label htmlFor="defaultProvider">{i18n.t("options.general.defaultProvider")}</label><select id="defaultProvider" disabled={disabled} value={config.provider} onChange={event => update({ provider: event.target.value })}><option value="deepseek">DeepSeek</option><option value="openai-compatible">OpenAI-compatible</option><option value="chatgpt-plan">{i18n.t("options.chatgptPlan.providerName")}</option></select>
     <label htmlFor="targetLanguage">{i18n.t("options.general.targetLanguage")}</label><input id="targetLanguage" disabled={disabled} value={config.targetLanguage} onChange={event => update({ targetLanguage: event.target.value })} type="text" placeholder="Simplified Chinese" />
     <label htmlFor="prompt">{i18n.t("options.general.prompt")}</label><textarea id="prompt" disabled={disabled} value={config.prompt} onChange={event => update({ prompt: event.target.value })} rows={6} onKeyDown={preventComposingSubmit} />
     <p className="hint">{i18n.t("options.general.help")}</p></section>;
@@ -36,11 +38,12 @@ export function ShortcutsSection() {
   return <section id="keyboard-shortcuts"><h2>{i18n.t("options.shortcuts.title")}</h2><p>{i18n.t("options.shortcuts.summary")}</p><div className="shortcut-list"><div><strong>{i18n.t("options.shortcuts.translate")}</strong><span><kbd>Ctrl+Shift+Y</kbd><small>macOS: Control+Shift+Y</small></span></div><div><strong>{i18n.t("options.shortcuts.toggle")}</strong><span><kbd>Ctrl+Shift+K</kbd><small>macOS: Control+Shift+K</small></span></div><div><strong>{i18n.t("options.shortcuts.quick")}</strong><span><kbd>Ctrl+Shift+.</kbd><small>macOS: Control+Shift+.</small></span></div></div><p className="hint">{i18n.t("options.shortcuts.help")}</p></section>;
 }
 
-export function ProviderSections({ config, disabled, update }: Props) {
+export function ProviderSections({ config, disabled, update, client }: Props & { client: Pick<OptionsClient, "chatGPTPlanAction"> }) {
   const i18n = useOptionsI18n();
   const open = (patch: Partial<OptionsConfig["openAICompatible"]>) => update({ openAICompatible: { ...config.openAICompatible, ...patch } });
   return <><section id="provider" className="advanced" tabIndex={-1}><h2>Provider · DeepSeek</h2><p className="section-summary">{i18n.t("options.provider.deepseekSummary")}</p><label htmlFor="deepseekApiKey">API Key</label><Password id="deepseekApiKey" value={config.apiKey} disabled={disabled} onChange={value => update({ apiKey: value })} /><label htmlFor="deepseekModel">{i18n.t("options.provider.model")}</label><input id="deepseekModel" disabled={disabled} value={config.model} onChange={event => update({ model: event.target.value })} type="text" /><p className="hint">{i18n.t("options.provider.deepseekHelp")}</p></section>
-    <section className="advanced"><h2>Provider · OpenAI-compatible</h2><label htmlFor="openaiBaseUrl">Base URL</label><input id="openaiBaseUrl" disabled={disabled} value={config.openAICompatible.baseUrl} onChange={event => open({ baseUrl: event.target.value })} type="url" placeholder="https://api.openai.com/v1" /><p className="hint">{i18n.t("options.provider.openaiHelp")}</p><label htmlFor="openaiApiKey">API Key</label><Password id="openaiApiKey" value={config.openAICompatible.apiKey} disabled={disabled} onChange={value => open({ apiKey: value })} /><label htmlFor="openaiModel">{i18n.t("options.provider.model")}</label><input id="openaiModel" disabled={disabled} value={config.openAICompatible.model} onChange={event => open({ model: event.target.value })} type="text" placeholder="gpt-4.1-mini / qwen / local-model ..." /><div className="inline-checks"><label className="checkbox-label" htmlFor="openaiStreaming"><input id="openaiStreaming" disabled={disabled} checked={config.openAICompatible.streaming} onChange={event => open({ streaming: event.target.checked })} type="checkbox" />{i18n.t("options.provider.streaming")}</label></div></section></>;
+    <section className="advanced"><h2>Provider · OpenAI-compatible</h2><label htmlFor="openaiBaseUrl">Base URL</label><input id="openaiBaseUrl" disabled={disabled} value={config.openAICompatible.baseUrl} onChange={event => open({ baseUrl: event.target.value })} type="url" placeholder="https://api.openai.com/v1" /><p className="hint">{i18n.t("options.provider.openaiHelp")}</p><label htmlFor="openaiApiKey">API Key</label><Password id="openaiApiKey" value={config.openAICompatible.apiKey} disabled={disabled} onChange={value => open({ apiKey: value })} /><label htmlFor="openaiModel">{i18n.t("options.provider.model")}</label><input id="openaiModel" disabled={disabled} value={config.openAICompatible.model} onChange={event => open({ model: event.target.value })} type="text" placeholder="gpt-4.1-mini / qwen / local-model ..." /><div className="inline-checks"><label className="checkbox-label" htmlFor="openaiStreaming"><input id="openaiStreaming" disabled={disabled} checked={config.openAICompatible.streaming} onChange={event => open({ streaming: event.target.checked })} type="checkbox" />{i18n.t("options.provider.streaming")}</label></div></section>
+    <ChatGPTPlanSection config={config} disabled={disabled} update={update} client={client} /></>;
 }
 
 function Password({ id, value, disabled, onChange }: { id: string; value: string; disabled: boolean; onChange: (value: string) => void }) {

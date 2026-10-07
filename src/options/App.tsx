@@ -59,7 +59,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
       <GlossarySection client={glossary} setStatus={setStatus} />
       <DictionarySection client={dictionaries} setStatus={setStatus} />
       {config ? <>
-        <ProviderSections config={config} disabled={ui.busy} update={update} />
+        <ProviderSections config={config} disabled={ui.busy} update={update} client={client} />
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />
         <DeveloperSection version={client.version} />
         <div className="sticky-actions"><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("options.save")}</button><button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button></div>

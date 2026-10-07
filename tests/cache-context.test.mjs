@@ -171,6 +171,15 @@ test("OpenAI-compatible streaming transport does not change cache identity", asy
   assert.equal(nonStreaming.pageConfigKey, streaming.pageConfigKey);
 });
 
+test("ChatGPT subscription model selection contributes to cache identity", async () => {
+  const pageUrl = "https://example.com/docs";
+  const base = { provider: "chatgpt-plan", apiBaseUrl: "https://api.openai.com/v1/responses",
+    model: "fixture-model-a", targetLanguage: "Simplified Chinese", prompt: "same prompt" };
+  const first = await getCacheContext(pageUrl, base);
+  const second = await getCacheContext(pageUrl, { ...base, model: "fixture-model-b" });
+  assert.notEqual(first.pageConfigKey, second.pageConfigKey);
+});
+
 test("the standalone provider fingerprint stays byte-compatible with cache identity", async () => {
   const pageUrl = "https://example.com/docs";
   const legacy = { model: "deepseek-flash", targetLanguage: "Simplified Chinese", prompt: "same prompt" };

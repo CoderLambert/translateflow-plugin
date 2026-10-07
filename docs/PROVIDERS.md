@@ -1,9 +1,10 @@
 # Provider Architecture
 
-TranslateFlow v0.5 支持两类 Provider：
+TranslateFlow v0.5 支持三类 Provider：
 
 - `deepseek`
 - `openai-compatible`
+- `chatgpt-plan`（Native Messaging Host 候选）
 
 ## Runtime contract
 
@@ -67,6 +68,28 @@ API Key 可以为空，以支持本地兼容服务。
 与 DeepSeek 不同，OpenAI-compatible 的 Base URL 会进入缓存配置指纹，因为同一模型名可能指向完全不同的后端。
 
 OpenAI-compatible 高级配置可显式开启 SSE streaming。该开关默认关闭，只改变传输方式，不改变翻译语义，因此不进入缓存指纹。流式响应仅在 Background Provider/Gateway 内组装；只有收到完整 `[DONE]`、并通过既有翻译结果校验后才返回给上层。服务端明确拒绝 streaming 时，会在产生可用流式结果之前回退到非流式请求。Hy-MT2 / TranslateGemma 等结构化本地翻译模型保持非流式请求。
+
+## ChatGPT subscription (candidate)
+
+`chatgpt-plan` stays on the shared Provider dispatcher, so page translation,
+Selection explanation, and the existing Learning Center follow-up path all use
+the same effective config and completion checks. It uses the official ChatGPT
+Responses endpoint through the Go Native Messaging Host; it has no API-key
+fallback. The selected model is stored separately as `chatgptPlanModel`, and
+the model list is fetched from the host when the user checks status or signs in.
+Translation and Selection text are sent only after an explicit request. The
+host returns streamed text, and callers treat only the completed terminal as a
+successful result; existing translation validation and Reading-record commit
+points remain in effect.
+
+The extension service worker is the only owner of `chrome.runtime.connectNative`.
+Settings actions pass through the background router, while Content and the
+Learning Center continue to use their existing runtime-message/port paths. The
+host ID is `com.coderlambert.translateflow`. The current candidate manifest
+does not request `nativeMessaging`; a later integration needs that single
+extension permission plus separate user-level host registration for the exact
+extension ID. No host install, permission request, or registration is part of
+this candidate.
 
 ## Permissions
 

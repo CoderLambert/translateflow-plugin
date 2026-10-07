@@ -35,12 +35,13 @@ function AssistantControls({ artifact, recordId, recordRevision, i18n, disabled,
   type Phase = "idle" | "connecting" | "streaming" | "stopping" | "stopped" | "failed" | "saved";
   const [expanded, setExpanded] = useState(false), [question, setQuestion] = useState(""), [answer, setAnswer] = useState("");
   const [phase, setPhase] = useState<Phase>("idle"), [lastAction, setLastAction] = useState<"follow-up" | "regenerate">("follow-up");
+  const [failureCode, setFailureCode] = useState("");
   const session = useRef<ReturnType<typeof openAssistant> | null>(null), sequence = useRef(0), partial = useRef(""), terminal = useRef(true);
   useEffect(() => () => { terminal.current = true; session.current?.close(); }, [artifact.artifactId]);
   function start(historyAction: "follow-up" | "regenerate") {
     const nextQuestion = question.trim();
     if (disabled || session.current || (historyAction === "follow-up" && !nextQuestion)) return;
-    terminal.current = false; sequence.current = 0; partial.current = ""; setAnswer(""); setPhase("connecting"); setLastAction(historyAction);
+    terminal.current = false; sequence.current = 0; partial.current = ""; setAnswer(""); setFailureCode(""); setPhase("connecting"); setLastAction(historyAction);
     session.current = openAssistant({ recordId, recordRevision, sourceSnapshotId: artifact.sourceSnapshotId,
       targetTurnId: artifact.payload.turnId, historyAction, ...(historyAction === "follow-up" ? { question: nextQuestion } : {}) }, event => {
       if (terminal.current) return;
@@ -49,7 +50,10 @@ function AssistantControls({ artifact, recordId, recordRevision, i18n, disabled,
         if (event.sequence !== sequence.current++) return finish("failed");
         partial.current += event.text; setAnswer(partial.current); setPhase("streaming"); return;
       }
-      if (event.type === "interrupted") return finish(event.code === "CANCELLED" ? "stopped" : "failed");
+      if (event.type === "interrupted") {
+        setFailureCode(event.code);
+        return finish(event.code === "CANCELLED" ? "stopped" : "failed");
+      }
       if (event.type === "complete") {
         if (event.text !== partial.current || event.saved.state !== "saved" || event.saved.recordId !== recordId || event.saved.revision <= recordRevision) return finish("failed");
         setAnswer(event.text); finish("saved"); onSaved();
@@ -65,7 +69,7 @@ function AssistantControls({ artifact, recordId, recordRevision, i18n, disabled,
   }
   const status = phase === "connecting" ? "learning.assistantConnecting" : phase === "streaming" ? "learning.assistantStreaming"
     : phase === "stopping" ? "learning.assistantStopping" : phase === "stopped" ? "learning.assistantStopped"
-      : phase === "failed" ? "learning.assistantFailed" : phase === "saved" ? "learning.assistantSaved" : null;
+      : phase === "failed" ? assistantFailureStatus(failureCode) : phase === "saved" ? "learning.assistantSaved" : null;
   return <div className="assistant-controls" onKeyDown={event => {
     if (event.key !== "Escape") return;
     event.preventDefault(); event.stopPropagation();
@@ -91,4 +95,21 @@ function AssistantControls({ artifact, recordId, recordRevision, i18n, disabled,
     {!session.current && ["failed", "stopped"].includes(phase) && <Button disabled={disabled}
       onClick={() => start(lastAction)}>{i18n.t("learning.retry")}</Button>}
   </div>;
+}
+
+function assistantFailureStatus(code: string): Parameters<I18n["t"]>[0] {
+  const statusByCode: Record<string, Parameters<I18n["t"]>[0]> = {
+    RECONNECT_REQUIRED: "learning.assistantReconnectRequired",
+    NOT_CONNECTED: "learning.assistantReconnectRequired",
+    NATIVE_MESSAGING_PERMISSION: "learning.assistantSetupRequired",
+    NATIVE_MESSAGING_UNAVAILABLE: "learning.assistantSetupRequired",
+    NATIVE_HOST_UNAVAILABLE: "learning.assistantSetupRequired",
+    NATIVE_HOST_DISCONNECTED: "learning.assistantSetupRequired",
+    NATIVE_HOST_TIMEOUT: "learning.assistantSetupRequired",
+    HOST_BUSY: "learning.assistantHostBusy",
+    MISSING_SCOPE: "learning.assistantScopeMissing",
+    INFERENCE_INCOMPLETE: "learning.assistantIncomplete",
+    INFERENCE_FAILED: "learning.assistantInferenceFailed"
+  };
+  return statusByCode[code] || "learning.assistantFailed";
 }

@@ -68,7 +68,7 @@ async function run(state, request, deps) {
     }
     const config = state.scope === "history" ? await getConfigForSite(routingIdentity.siteKey) : await getConfig(pageUrl);
     throwIfCancelled(state);
-    const mode = config.provider === "openai-compatible" && config.streaming ? "stream" : "unary";
+    const mode = config.streaming ? "stream" : "unary";
     post(state, { type: "started", mode });
     const prompt = JSON.stringify({ question, text: selectedText, context: contextText, candidates, history });
     const result = await complete({ systemPrompt: "Explain from context. Plain text only.", prompt }, config,

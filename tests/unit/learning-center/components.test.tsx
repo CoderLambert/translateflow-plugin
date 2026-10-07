@@ -120,6 +120,50 @@ test("React learning center presents a quota terminal as a failure even when Sto
   expect(screen.queryByText("Stopped. No partial answer was saved.")).toBeNull();
   expect(screen.getAllByRole("button", { name: "Retry" }).length).toBeGreaterThan(0);
 });
+test("learning follow-up keeps partial text visible, maps an incomplete ChatGPT stream, and saves nothing", async () => {
+  type Listener = (value: unknown) => void;
+  const ports: Array<{ sent: any[]; message?: Listener }> = [];
+  (chrome as any).runtime = { connect: () => {
+    const state: { sent: any[]; message?: Listener } = { sent: [] }; ports.push(state);
+    return { postMessage: (value: unknown) => state.sent.push(value), disconnect: vi.fn(),
+      onMessage: { addListener: (value: Listener) => { state.message = value; }, removeListener: vi.fn() },
+      onDisconnect: { addListener: vi.fn(), removeListener: vi.fn() } };
+  } };
+  const onSaved = vi.fn();
+  const detail = validateRecordDetail({ record: record({ revision: 2 }), snapshots: [snapshot()], artifacts: [artifact("assistant")] });
+  render(<Detail detail={detail} i18n={i18n} onBack={() => {}} onDelete={() => {}} onAssistantSaved={onSaved} disabled={false} />);
+  await userEvent.click(screen.getByRole("button", { name: "Ask a follow-up" }));
+  await userEvent.type(screen.getByPlaceholderText("Ask about this saved answer"), "Why here?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  const session = ports[0]!, start = session.sent[0]!;
+  act(() => { session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "started", mode: "stream" });
+    session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "delta", sequence: 0, text: "Partial text" });
+    session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "interrupted", code: "INFERENCE_INCOMPLETE", partialChars: 12 }); });
+
+  expect(screen.getByText("Partial text")).toBeTruthy();
+  expect(screen.getByText("ChatGPT ended before completing the answer. Partial text remains visible, but no answer was saved.")).toBeTruthy();
+  expect(onSaved).not.toHaveBeenCalled();
+});
+test("learning follow-up points out missing ChatGPT plan scope and leaves history unchanged", async () => {
+  type Listener = (value: unknown) => void;
+  const ports: Array<{ sent: any[]; message?: Listener }> = [];
+  (chrome as any).runtime = { connect: () => {
+    const state: { sent: any[]; message?: Listener } = { sent: [] }; ports.push(state);
+    return { postMessage: (value: unknown) => state.sent.push(value), disconnect: vi.fn(),
+      onMessage: { addListener: (value: Listener) => { state.message = value; }, removeListener: vi.fn() },
+      onDisconnect: { addListener: vi.fn(), removeListener: vi.fn() } };
+  } };
+  const onSaved = vi.fn();
+  const detail = validateRecordDetail({ record: record({ revision: 2 }), snapshots: [snapshot()], artifacts: [artifact("assistant")] });
+  render(<Detail detail={detail} i18n={i18n} onBack={() => {}} onDelete={() => {}} onAssistantSaved={onSaved} disabled={false} />);
+  await userEvent.click(screen.getByRole("button", { name: "Ask a follow-up" }));
+  await userEvent.type(screen.getByPlaceholderText("Ask about this saved answer"), "Why here?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  const session = ports[0]!, start = session.sent[0]!;
+  act(() => session.message?.({ protocolVersion: 1, requestId: start.requestId, type: "interrupted", code: "MISSING_SCOPE", partialChars: 0 }));
+  expect(screen.getByText("This ChatGPT account does not have the required plan access. This partial answer was not saved.")).toBeTruthy();
+  expect(onSaved).not.toHaveBeenCalled();
+});
 test("delete invalidation discards a delayed detail and disconnect removes unconfirmed content", async () => {
   let release: ((value: unknown) => void) | undefined, invalidate: (() => void) | undefined, disconnected: (() => void) | undefined, deleted = false;
   const client = new ReadingClient(raw => {
