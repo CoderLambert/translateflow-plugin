@@ -5,6 +5,8 @@
   const contextBlockTags = new Set(["ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "BODY", "DD", "DETAILS", "DIV", "DL", "DT",
     "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE", "SECTION",
     "SUMMARY", "TABLE", "TBODY", "TD", "TFOOT", "TH", "THEAD", "TR", "UL"]);
+  // Mirrors the resolver's historical scope so new local contexts preserve saved anchor identity.
+  const readingAnchorRoots = "p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main";
   // This local document marker is evidence only; #232 must bind trusted sender authority.
   function randomId(prefix) { const bytes = crypto.getRandomValues(new Uint8Array(16)); return prefix + [...bytes].map((value) => value.toString(16).padStart(2, "0")).join(""); }
   const documentGeneration = randomId("doc-");
@@ -17,6 +19,11 @@
     }
     return origin;
   };
+  const readingAnchorRoot = (range) => {
+    const common = range?.commonAncestorContainer;
+    const origin = common?.nodeType === 1 ? common : common?.parentElement;
+    return origin?.closest?.(readingAnchorRoots) || origin;
+  };
   function boundedText(text, position, maxChars) {
     const center = (position.start + position.end) / 2;
     let start = Math.max(0, Math.floor(center - maxChars / 2));
@@ -24,8 +31,8 @@
     start = Math.max(0, end - maxChars);
     return { text: text.slice(start, end), truncated: start > 0 || end < text.length };
   }
-  function localProjection(range, budget) {
-    const root = contextRoot(range), value = projection.project(root, { budget });
+  function localProjection(range, budget, root = contextRoot(range)) {
+    const value = projection.project(root, { budget });
     if (value.status === "resolved") return value;
     if (!["char-budget", "node-budget", "time-budget"].includes(value.reason) || range.startContainer !== range.endContainer || range.startContainer.nodeType !== 3) return value;
     const check = () => { if (policy.timeExpired(budget)) throw new Error("time-budget"); };
@@ -78,10 +85,11 @@
     const budget = policy.createSliceBudget();
     const sourceRevision = projection.revision();
     const decision = policy.rangePolicy(snapshot.range, snapshot.text, { budget });
-    let selectedText = snapshot.text, text = "", prefix = "", suffix = "", localPosition = null, blockText = null;
+    let selectedText = snapshot.text, text = "", prefix = "", suffix = "", localPosition = null, localBlockText = null, localRoot = null;
     let truncated = false;
     if (decision.supported) {
-      const local = localProjection(snapshot.range, budget);
+      localRoot = contextRoot(snapshot.range);
+      const local = localProjection(snapshot.range, budget, localRoot);
       localPosition = selectionPosition(local, snapshot.range, budget);
       if (local.sensitive) decision.sensitive = true;
       if (localPosition && comparable(local.text.slice(localPosition.start, localPosition.end)) === comparable(snapshot.text)) {
@@ -90,17 +98,25 @@
         text = context.text; truncated = context.truncated || Boolean(local.localWindow);
         prefix = local.text.slice(Math.max(0, localPosition.start - 120), localPosition.start);
         suffix = local.text.slice(localPosition.end, localPosition.end + 120);
-        if (!local.localWindow) blockText = local.text;
+        if (!local.localWindow) localBlockText = local.text;
       }
     }
-    return { budget, sourceRevision, decision, selectedText, text, prefix, suffix, localPosition, blockText, truncated };
+    return { budget, sourceRevision, decision, selectedText, text, prefix, suffix, localPosition, localBlockText, localRoot, truncated };
+  }
+  function readingAnchorBlockText(range, localRoot, localBlockText, budget) {
+    if (localBlockText === null) return null;
+    const root = readingAnchorRoot(range);
+    if (root === localRoot) return localBlockText;
+    const value = projection.project(root, { budget });
+    return value.status === "resolved" ? value.text : null;
   }
   function capture(snapshot, { maxChars = 900 } = {}) {
     const rangeIdentity = snapshot.rangeIdentity || freezeRange(snapshot.range);
     const local = localCapture(snapshot, { maxChars });
-    const { budget, sourceRevision, decision, selectedText, text, prefix, suffix, localPosition, blockText, truncated } = local;
+    const { budget, sourceRevision, decision, selectedText, text, prefix, suffix, localPosition, localBlockText, localRoot, truncated } = local;
+    const blockText = readingAnchorBlockText(snapshot.range, localRoot, localBlockText, budget);
     let position = null, status = "unsupported";
-    if (blockText !== null) {
+    if (localBlockText !== null) {
       const full = projection.project(document.body, { budget });
       const globalPosition = selectionPosition(full, snapshot.range, budget);
       if (globalPosition && localPosition && full.text.slice(globalPosition.start, globalPosition.end) === selectedText) {
