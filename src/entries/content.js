@@ -50,6 +50,7 @@ import "../content/selection/rich-viewer.js";
 import "../content/selection/rich-result-renderer.js";
 import "../content/selection/result-renderer.js";
 import "../content/selection/ai-detail.js";
+import "../content/selection/vocabulary-actions.js";
 import "../content/selection/popover.js";
 import "../content/selection/rich-details.js";
 import "../content/selection/record-access.js";

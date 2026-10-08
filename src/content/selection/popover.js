@@ -2,7 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.selection || !app?.modules.uiHost ||
     !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
-    !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
+    !app?.modules.selectionResultRenderer || !app?.modules.selectionVocabularyActions || app.modules.selectionPopover) return;
 
   const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
   const locale = app.modules.contentI18n;
@@ -10,14 +10,15 @@
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
+  const { create: createVocabularyActions } = app.modules.selectionVocabularyActions;
   const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
   const focusReturn = createFocusReturn();
 
-  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions, vocabularyStatus;
-  let copyButton, explainButton, retryButton, cancelButton, closeButton, vocabularyAddButton, vocabularyOpenButton, activeSnapshot;
-  let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler, vocabularySaveHandler, vocabularyOpenHandler;
+  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions;
+  let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
+  let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -56,23 +57,7 @@
     resultNode.setAttribute("aria-live", "polite");
     aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
     emptyState = createEmptyState({ container: resultNode, onResize: reposition });
-
-    vocabularyActions = document.createElement("div");
-    vocabularyActions.className = "tf-selection-vocabulary-actions";
-    vocabularyActions.hidden = true;
-    vocabularyAddButton = button({ text: locale.t("content.vocabulary.add"), className: "tf-selection-action-primary tf-selection-vocabulary-add" });
-    locale.bindText(vocabularyAddButton, "content.vocabulary.add");
-    vocabularyAddButton.addEventListener("click", (event) => saveVocabulary(event));
-    vocabularyOpenButton = button({ text: locale.t("content.vocabulary.open"), className: "tf-selection-action-quiet tf-selection-vocabulary-open" });
-    locale.bindText(vocabularyOpenButton, "content.vocabulary.open");
-    vocabularyOpenButton.hidden = true;
-    vocabularyOpenButton.addEventListener("click", (event) => openVocabulary(event));
-    vocabularyStatus = document.createElement("div");
-    vocabularyStatus.className = "tf-selection-vocabulary-status";
-    vocabularyStatus.setAttribute("role", "status");
-    vocabularyStatus.setAttribute("aria-live", "polite");
-    vocabularyStatus.hidden = true;
-    vocabularyActions.append(vocabularyAddButton, vocabularyOpenButton, vocabularyStatus);
+    vocabularyActions = createVocabularyActions({ onResize: reposition });
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
@@ -96,7 +81,7 @@
     cancelButton.addEventListener("click", () => cancelHandler?.());
 
     actions.append(explainButton, copyButton, retryButton, cancelButton);
-    panel.append(header, sourceNode, statusNode, resultNode, vocabularyActions, actions);
+    panel.append(header, sourceNode, statusNode, resultNode, vocabularyActions.ensure(), actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
   }
@@ -158,8 +143,8 @@
     clearActionHandlers();
     copyHandler = onCopy;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
-    vocabularySaveHandler = typeof onSaveVocabulary === "function" ? onSaveVocabulary : null;
-    vocabularyOpenHandler = typeof onOpenVocabulary === "function" ? onOpenVocabulary : null;
+    vocabularyActions.show({ onSave: onSaveVocabulary, onOpen: onOpenVocabulary,
+      current: () => snapshot === activeSnapshot && !panel?.hidden });
     chip.hidden = true;
     panel.hidden = false;
     updateSource(snapshot, result);
@@ -171,12 +156,6 @@
     copyButton.hidden = false;
     explainButton.hidden = !explainHandler;
     retryButton.hidden = true;
-    vocabularyActions.hidden = !vocabularySaveHandler;
-    vocabularyAddButton.hidden = !vocabularySaveHandler;
-    vocabularyAddButton.disabled = false;
-    vocabularyOpenButton.hidden = true;
-    vocabularyOpenButton.disabled = false;
-    setVocabularyStatus("");
     position(snapshot, panel);
   }
 
@@ -344,15 +323,13 @@
     aiDetail = null;
     emptyState = null;
     statusNode = null;
+    vocabularyActions?.dispose();
     vocabularyActions = null;
-    vocabularyStatus = null;
     copyButton = null;
     explainButton = null;
     retryButton = null;
     cancelButton = null;
     closeButton = null;
-    vocabularyAddButton = null;
-    vocabularyOpenButton = null;
     activeSnapshot = null;
     translateHandler = null;
     clearActionHandlers();
@@ -361,8 +338,8 @@
   }
 
   function clearActionHandlers() {
-    retryHandler = copyHandler = explainHandler = cancelHandler = vocabularySaveHandler = vocabularyOpenHandler = null;
-    if (vocabularyActions) vocabularyActions.hidden = true;
+    retryHandler = copyHandler = explainHandler = cancelHandler = null;
+    vocabularyActions?.reset();
   }
 
   function setLocalizedStatus(node, message, fallbackKey, kind) {
@@ -378,66 +355,15 @@
   }
   function hideActionButtons() {
     cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
-    if (vocabularyActions) vocabularyActions.hidden = true;
+    vocabularyActions?.hide();
   }
 
-  async function saveVocabulary(event) {
-    const handler = vocabularySaveHandler, snapshot = activeSnapshot;
-    if (!event?.isTrusted || !handler || !vocabularyAddButton) return;
-    vocabularyAddButton.disabled = true;
-    setVocabularyStatus("content.vocabulary.saving");
-    try {
-      const result = await handler(event);
-      if (snapshot !== activeSnapshot || panel?.hidden || !vocabularyActions?.isConnected || result?.ignored) return;
-      vocabularyAddButton.hidden = true;
-      vocabularyOpenButton.hidden = false;
-      setVocabularyStatus(result?.added ? "content.vocabulary.saved" : result?.updated ? "content.vocabulary.updatedSaved" : "content.vocabulary.alreadySaved");
-    } catch (error) {
-      if (snapshot !== activeSnapshot || panel?.hidden || !vocabularyActions?.isConnected) return;
-      vocabularyAddButton.disabled = false;
-      const key = error?.code === "VOCABULARY_CAPACITY" ? "content.vocabulary.full"
-        : error?.code === "VOCABULARY_STORAGE" ? "content.vocabulary.storageError"
-          : "content.vocabulary.saveError";
-      setVocabularyStatus(key);
-    }
-    reposition();
-  }
-
-  async function openVocabulary(event) {
-    const handler = vocabularyOpenHandler, snapshot = activeSnapshot;
-    if (!event?.isTrusted || !handler || !vocabularyOpenButton) return;
-    vocabularyOpenButton.disabled = true;
-    try {
-      await handler(event);
-      if (snapshot === activeSnapshot && !panel?.hidden && vocabularyActions?.isConnected) setVocabularyStatus("content.vocabulary.opened");
-    } catch {
-      if (snapshot === activeSnapshot && !panel?.hidden && vocabularyActions?.isConnected) setVocabularyStatus("content.vocabulary.openError");
-    } finally {
-      if (snapshot === activeSnapshot && !panel?.hidden && vocabularyOpenButton?.isConnected) vocabularyOpenButton.disabled = false;
-    }
-  }
-
-  function setVocabularyStatus(key) {
-    if (!vocabularyStatus) return;
-    locale.unbind(vocabularyStatus);
-    vocabularyStatus.textContent = "";
-    vocabularyStatus.hidden = !key;
-    if (key) locale.bindText(vocabularyStatus, key);
-  }
-
-  function setCloseHandler(handler) {
-    closeHandler = typeof handler === "function" ? handler : null;
-  }
-  function contains(target) {
-    return ownsNode(target);
-  }
-  function isEventInsidePanel(event) {
-    return eventInsidePanel(event, panel);
-  }
+  function setCloseHandler(handler) { closeHandler = typeof handler === "function" ? handler : null; }
+  function contains(target) { return ownsNode(target); }
+  function isEventInsidePanel(event) { return eventInsidePanel(event, panel); }
   function reposition() {
     if (!root || !activeSnapshot) return;
-    const target = !panel?.hidden ? panel : chip;
-    if (target) position(activeSnapshot, target);
+    position(activeSnapshot, !panel?.hidden ? panel : chip);
   }
   function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
 

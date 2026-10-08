@@ -38,7 +38,7 @@ import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
 import { getBundledLexiconStatus, runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
-import { createChromeVocabularyBook } from "./vocabulary-book.js";
+import { handleVocabularyBookMessage } from "./vocabulary-book-router.js";
 import {
   cancelSelectionExplanationRequest,
   runSelectionExplanationRequest
@@ -69,12 +69,6 @@ import {
   uninstallRichMdictDictionary,
   uninstallDictionaryPack
 } from "./packs/api.js";
-
-let vocabularyBook;
-function getVocabularyBook() {
-  vocabularyBook ||= createChromeVocabularyBook();
-  return vocabularyBook;
-}
 
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -343,21 +337,11 @@ export async function handleBackgroundMessage(message, sender) {
       assertSelectionContentSender(sender);
       return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
-      assertVocabularyContentSender(sender);
-      return getVocabularyBook().add(message.entry);
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
-      assertVocabularyContentSender(sender);
-      await chrome.tabs.create({ url: `${chrome.runtime.getURL(EXTENSION_PAGES.learningCenter)}#wordbook` });
-      return { opened: true };
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
-      assertVocabularyLearningCenterSender(sender);
-      return getVocabularyBook().list();
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW:
-      assertVocabularyLearningCenterSender(sender);
-      return getVocabularyBook().review(message.id, message.rating);
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REMOVE:
-      assertVocabularyLearningCenterSender(sender);
-      return getVocabularyBook().remove(message.id);
+      return handleVocabularyBookMessage(message, sender);
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED:
       return { notified: true };
     default:
@@ -410,27 +394,6 @@ function assertSelectionContentSender(sender) {
   ) {
     const error = new Error("Rich dictionary viewer messages are only available to TranslateFlow page content.");
     error.code = "RICH_MDICT_CONTENT_ONLY";
-    throw error;
-  }
-}
-
-function assertVocabularyContentSender(sender) {
-  assertSelectionContentSender(sender);
-  if (sender?.frameId !== 0 || sender?.incognito === true || sender?.tab?.incognito === true) {
-    const error = new Error("Vocabulary book actions require a regular top-level page.");
-    error.code = "VOCABULARY_FORBIDDEN";
-    throw error;
-  }
-}
-
-function assertVocabularyLearningCenterSender(sender) {
-  const expected = chrome.runtime.getURL(EXTENSION_PAGES.learningCenter);
-  const actual = String(sender?.url || "");
-  const allowed = new Set([expected, `${expected}#wordbook`, `${expected}#review`]);
-  if (sender?.id !== chrome.runtime.id || sender?.frameId !== 0 || sender?.incognito === true ||
-      sender?.tab?.incognito === true || !allowed.has(actual)) {
-    const error = new Error("Vocabulary book data is available only in the Learning Center.");
-    error.code = "VOCABULARY_FORBIDDEN";
     throw error;
   }
 }
