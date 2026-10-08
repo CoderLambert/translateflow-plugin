@@ -7,6 +7,7 @@ import { startMockServer } from "./support/mock-server.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { VOCABULARY_BOOK_STORAGE_KEY } from "../src/background/vocabulary-book.js";
 import { defaultArtifact } from "./support/production-artifact.mjs";
+import { compileTflexTechnical } from "../scripts/build-tflex-technical.mjs";
 
 // Real WXT Chromium artifact, with a clearly synthetic Core fixture copied into
 // a temporary browser profile. This proves the UX and local storage contract,
@@ -34,11 +35,12 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     await cp(artifact, extension, { recursive: true });
     expect(await inventory(extension)).toEqual(production);
     const backgroundSha256 = hash(await readFile(join(extension, "background.js")));
-    const technicalFixture = join(artifact, "assets/lexicon/technical");
     await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
     await mkdir(join(extension, "assets/lexicon"), { recursive: true });
     await cp(join(root, "tests/fixtures/tflex-runtime-pack"), join(extension, "assets/lexicon/core"), { recursive: true });
-    await cp(technicalFixture, join(extension, "assets/lexicon/technical"), { recursive: true });
+    await compileTflexTechnical({ extractPath: join(root, "lexicon/sources/wikidata-tech-entities.json"),
+      sourceLockPath: join(root, "lexicon/source-locks/technical-wikidata.json"),
+      outDir: join(extension, "assets/lexicon/technical") });
     const manifest = JSON.parse(await readFile(join(extension, "manifest.json"), "utf8"));
     manifest.host_permissions.push("http://127.0.0.1/*");
     await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
@@ -51,7 +53,7 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     await driver.goto(`chrome-extension://${extensionId}/popup.html`);
     await writeFile(test.info().outputPath("selection-vocabulary-package.json"), JSON.stringify({ artifactPath: artifact,
       productionInventory: production, backgroundSha256, exactCopyBeforeFixtures: true, browser: context.browser().version(),
-      temporaryChanges: ["synthetic Core TFLex fixture; built-in Technical pack retained", "localhost test host permission"], paidProviderCalls: 0,
+      temporaryChanges: ["synthetic Core TFLex fixture and repository Technical fixture", "localhost test host permission"], paidProviderCalls: 0,
       privateDictionaryUpload: false }, null, 2));
   });
 
