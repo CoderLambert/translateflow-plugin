@@ -2,7 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.selection || !app?.modules.uiHost ||
     !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
-    !app?.modules.selectionResultRenderer || !app?.modules.selectionVocabularyActions || app.modules.selectionPopover) return;
+    !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
 
   const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
   const locale = app.modules.contentI18n;
@@ -10,7 +10,7 @@
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
-  const { create: createVocabularyActions } = app.modules.selectionVocabularyActions;
+  const createVocabularyActions = app.modules.selectionVocabularyActions?.create;
   const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
@@ -57,7 +57,7 @@
     resultNode.setAttribute("aria-live", "polite");
     aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
     emptyState = createEmptyState({ container: resultNode, onResize: reposition });
-    vocabularyActions = createVocabularyActions({ onResize: reposition });
+    vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, reset() {}, hide() {}, dispose() {} };
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";

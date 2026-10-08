@@ -17,13 +17,15 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness() {
+function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
-  const messages = [], chips = [], results = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [];
+  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [];
+  const assistantPorts = [], vocabularyAdds = [];
   const storeStarted = deferred(), secondStoreStarted = deferred();
   const pageUrl = "https://fixture.invalid/article";
   const location = { href: pageUrl };
   let selectedText = "current selected text", onTranslate = null, onCancel = null, chipCount = 0;
+  let projectionRevision = 1, onProjectionChange = null, onAssistantStop = null;
   const cancelHandlers = [];
   let stored = false, cancelButtonDisabled = false;
 
@@ -31,6 +33,12 @@ function harness() {
     messages.push(request);
     switch (request.type) {
       case "selection-resolve":
+        if (resolveRoute === "local") return { ok: true, route: "local", explanationAllowed: true, depth: "standard",
+          intent: { kind: "lexical", sourceLanguage: "en" }, decision: { topCandidateId: "persistent", candidates: [{
+            id: "persistent", kind: "lexical", headword: "persistent", pronunciation: "/pərˈsɪstənt/", partOfSpeech: "adjective",
+            translations: ["持久的"], examples: [], provenance: { packId: "core", packVersion: "1",
+              sourceRefs: [{ sourceId: "pwn-3.0", recordId: "persistent-entry" }] }
+          }] } };
         return { ok: true, route: "translation", intent: { kind: "translation", sourceLanguage: "en" }, explanationAllowed: false };
       case "cache-lookup":
         return { ok: true, hits: [] };
@@ -54,6 +62,21 @@ function harness() {
     }
   };
 
+  function connectAssistant() {
+    let onMessage = null, onDisconnect = null;
+    const session = { messages: [], disconnected: false };
+    session.port = {
+      onMessage: { addListener(listener) { onMessage = listener; } },
+      onDisconnect: { addListener(listener) { onDisconnect = listener; } },
+      postMessage(message) { session.messages.push(message); },
+      disconnect() { session.disconnected = true; }
+    };
+    session.emit = message => onMessage?.(message);
+    session.disconnectExternally = () => onDisconnect?.();
+    assistantPorts.push(session);
+    return session.port;
+  }
+
   const app = { modules: {
     runtime: { messages: { background: {
       SELECTION_RESOLVE: "selection-resolve", CACHE_LOOKUP: "cache-lookup", TRANSLATE_BATCH: "translate-batch",
@@ -63,7 +86,7 @@ function harness() {
     selection: { readSelection: () => ({ text: selectedText, pageUrl, sourceRevision: 1, range: {}, rect: {} }),
       isExtensionOwnedNode: () => false },
     selectionContext: { captureSelectionContext: () => ({ text: "safe synthetic context", sensitive: false }) },
-    textProjection: { start() {}, watchPage() {}, revision: () => 1, sameRange: () => true },
+    textProjection: { start(callback) { onProjectionChange = callback; }, watchPage() {}, revision: () => projectionRevision, sameRange: () => true },
     selectionPopover: {
       setCloseHandler(handler) { this.closeHandler = handler; },
       showChip(_snapshot, handler) {
@@ -75,20 +98,30 @@ function harness() {
       showLoading(_snapshot, handler) { onCancel = handler; cancelHandlers.push(handler); cancelButtonDisabled = false; },
       setLoadingStatus(status) { statuses.push(status); },
       setLoadingCancelable(cancelable) { cancelButtonDisabled = !cancelable; },
-      showResult(_snapshot, card) { results.push(card); },
+      showResult(_snapshot, card, _copy, onExplain, onSave, onOpen) {
+        results.push(card); resultActions.push({ onExplain, onSave, onOpen });
+      },
       showError(_snapshot, message) { errors.push(message); },
+      showAiDetailStreaming(_answer, onStop) { onAssistantStop = onStop; },
+      showAiDetailStopping() {},
+      showAiDetailResult() {},
+      showAiDetailInterrupted() {},
       hide() {}, reposition() {}, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
     selectionMessages: { unresolvedMessage: () => "content.selection.resolveFailed" },
     selectionRichDetails: { load: async () => {}, cancel: async () => {}, bindLifecycle() {} },
-    selectionVocabularyBook: { create: () => ({ add: async () => ({}), open: async () => ({}) }) },
-    selectionRecordClient: { create: () => ({
-      start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
-      accept(_context, artifact) { accepted.push(artifact); },
-      close: async () => null, invalidateReference() {}, refresh: async () => {}, render() {},
-      save: async () => {}, retry: async () => {}, open: async () => {}, decline() {}
+    selectionVocabularyBook: { create: () => ({
+      add: async (entry, event) => { vocabularyAdds.push({ entry, event }); return { added: true }; },
+      open: async () => ({})
     }) },
+    selectionRecordClient: { create: () => readingRecords ? ({
+      start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
+      assistant(context) { const operation = { operationId: `assistant-${context.operations.length + 1}` }; context.operations.push(operation); return operation; },
+      accept(_context, artifact) { accepted.push(artifact); },
+      close: async () => null, discard: async () => {}, invalidateReference() {}, refresh: async () => {}, render() {},
+      save: async () => {}, retry: async () => {}, open: async () => {}, decline() {}
+    }) : null },
     selectionRecordStatus: { update() {}, clear() {} },
     selectionSourceSnapshot: { capture(snapshot) { return { selectedText: snapshot.text, sourceRevision: snapshot.sourceRevision,
       sourceSnapshotId: "snapshot-1", documentGeneration: "document-1", selectionGeneration: snapshot.selectionGeneration,
@@ -106,21 +139,34 @@ function harness() {
     addEventListener(type, listener) { windowListeners.set(type, listener); },
     removeEventListener() {}
   };
-  const realm = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, window, location, crypto,
+  const chrome = { runtime: { connect: connectAssistant } };
+  const realm = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, window, location, chrome, crypto,
     setTimeout, clearTimeout, URL, Date, console });
   for (const source of sources) vm.runInContext(source, realm);
   app.modules.selectionController.start();
   documentListeners.get("mouseup")({ target: {} });
 
   return {
-    messages, chips, results, errors, accepted, statuses, appModules: app.modules, ready: waitForChip(1), storeStarted: storeStarted.promise,
+    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds,
+    ready: waitForChip(1), storeStarted: storeStarted.promise,
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
     resolveStore: (index = 0, result = { ok: true }) => storeAcks[index].resolve(result), get stored() { return stored; },
     get cancelButtonDisabled() { return cancelButtonDisabled; },
     stop: () => onCancel?.(), translate: () => onTranslate?.({ isTrusted: true }),
+    explain: (index = 0) => resultActions[index]?.onExplain?.({ isTrusted: true }, "understand"),
+    save: (index = 0) => resultActions[index]?.onSave?.({ isTrusted: true }),
+    stopAssistant: () => onAssistantStop?.(),
+    completeAssistant(text = "AI explanation") {
+      const session = assistantPorts.at(-1), start = session?.messages.find(message => message.type === "start");
+      session?.emit({ protocolVersion: 1, type: "complete", requestId: start?.requestId, text,
+        turn: { completionStatus: "completed", assistantAnswer: text },
+        readingResult: { targetLanguage: "zh-CN", sourceLanguage: "en", provenance: { provider: "synthetic" } } });
+    },
     stopAt: (index) => cancelHandlers[index]?.(),
     getTask: () => app.modules.tasks.getLatestTask("selection"),
     setSelectedText(value) { selectedText = value; documentListeners.get("mouseup")({ target: {} }); },
+    changeProjection({ notify = false } = {}) { projectionRevision++; if (notify) onProjectionChange?.(); },
+    navigateTo(url, { notify = false } = {}) { location.href = url; if (notify) windowListeners.get("popstate")?.(); },
     close: () => app.modules.selectionPopover.closeHandler?.(),
     location, windowListeners
   };
@@ -130,6 +176,75 @@ function harness() {
     return new Promise(resolve => chipWaiters.push({ count, resolve }));
   }
 }
+
+test("a local dictionary save remains valid while its optional AI explanation is streaming", async () => {
+  const h = harness({ resolveRoute: "local", readingRecords: false });
+  await h.ready;
+  await h.translate();
+  await h.save();
+  assert.equal(h.vocabularyAdds.length, 1);
+
+  await h.explain();
+  assert.equal(h.assistantPorts.length, 1);
+  await h.save();
+
+  assert.equal(h.vocabularyAdds.length, 2);
+});
+
+test("a local dictionary save remains valid after its optional AI explanation completes", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain();
+  h.completeAssistant();
+
+  await h.save();
+
+  assert.equal(h.vocabularyAdds.length, 1);
+});
+
+test("a local dictionary save remains valid after its optional AI explanation is stopped", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain();
+  h.stopAssistant();
+
+  await h.save();
+
+  assert.equal(h.vocabularyAdds.length, 1);
+});
+
+test("a new selection invalidates a saved local dictionary result", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  const save = h.resultActions[0].onSave;
+
+  h.setSelectedText("new selected text");
+  await h.waitForChip(2);
+
+  assert.throws(() => save({ isTrusted: true }), error => error.i18nKey === "content.vocabulary.updated");
+  assert.equal(h.vocabularyAdds.length, 0);
+});
+
+test("navigation and projection changes invalidate a saved local dictionary result", async () => {
+  const page = harness({ resolveRoute: "local" });
+  await page.ready;
+  await page.translate();
+  const pageSave = page.resultActions[0].onSave;
+  page.navigateTo("https://fixture.invalid/another-page");
+  assert.throws(() => pageSave({ isTrusted: true }), error => error.i18nKey === "content.vocabulary.updated");
+  assert.equal(page.vocabularyAdds.length, 0);
+
+  const projection = harness({ resolveRoute: "local" });
+  await projection.ready;
+  await projection.translate();
+  const projectionSave = projection.resultActions[0].onSave;
+  projection.changeProjection();
+  assert.throws(() => projectionSave({ isTrusted: true }), error => error.i18nKey === "content.vocabulary.updated");
+  assert.equal(projection.vocabularyAdds.length, 0);
+});
 
 test("Stop after Selection cache write starts completes the real committed result instead of claiming cancellation", async () => {
   const h = harness();

@@ -11,7 +11,6 @@
     || !app?.modules.selectionClipboard
     || !app?.modules.selectionMessages
     || !app?.modules.selectionRichDetails
-    || !app?.modules.selectionVocabularyBook
     || app.modules.selectionController
   ) return;
 
@@ -26,7 +25,10 @@
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
-  const vocabularyBook = app.modules.selectionVocabularyBook.create();
+  const vocabularyBook = app.modules.selectionVocabularyBook?.create() || {
+    add: async () => ({ ignored: true }),
+    open: () => ({ ignored: true })
+  };
   const { buildLocalResult, copyTextForCard } = app.modules.selectionResultModel;
   const model = app.modules.selectionResultModel;
   const records = app.modules.selectionRecordClient?.create({ onStatus: (view) => app.modules.selectionRecordStatus?.update(view, {
@@ -158,7 +160,7 @@
           resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null,
           vocabularyEntry ? (event) => {
             if (!event?.isTrusted) return { ignored: true };
-            if (!isCurrentSelection(version, snapshot, expectedPage)) throw localizedError("content.vocabulary.updated");
+            if (!isCurrentVocabularySelection(snapshot, capture, expectedPage)) throw localizedError("content.vocabulary.updated");
             return vocabularyBook.add(vocabularyEntry, event);
           } : null,
           (event) => vocabularyBook.open(event)
@@ -214,8 +216,10 @@
 
   async function explainSnapshot(snapshot, depth, baseCard = null, event = null, action = "understand") {
     if (!snapshot || snapshot !== activeSnapshot || !["understand", "analyze", "usage"].includes(action)) return;
-    const existing = recordContext && isFrozenCurrent(snapshot, snapshot.sourceCapture);
-    const capture = existing ? snapshot.sourceCapture : freezeQuery(snapshot);
+    const currentCapture = snapshot.sourceCapture;
+    const captureIsCurrent = Boolean(currentCapture && isFrozenCurrent(snapshot, currentCapture));
+    const existing = Boolean(recordContext && captureIsCurrent);
+    const capture = captureIsCurrent ? currentCapture : freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) await tasks.cancelTask(activeTask);
     if (!isFrozenCurrent(snapshot, capture)) return;
     abandonAssistant();
@@ -339,6 +343,11 @@
     return version === requestVersion
       && snapshot === activeSnapshot
       && snapshot.sourceRevision === projection.revision()
+      && getPageIdentity(location.href) === expectedPage;
+  }
+
+  function isCurrentVocabularySelection(snapshot, capture, expectedPage) {
+    return isFrozenCurrent(snapshot, capture)
       && getPageIdentity(location.href) === expectedPage;
   }
 
