@@ -2,7 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.selection || !app?.modules.uiHost ||
     !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
-    !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
+    !app?.modules.selectionResultRenderer || !app?.modules.selectionVocabularyActions || app.modules.selectionPopover) return;
 
   const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
   const locale = app.modules.contentI18n;
@@ -10,12 +10,13 @@
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
+  const { create: createVocabularyActions } = app.modules.selectionVocabularyActions;
   const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
   const focusReturn = createFocusReturn();
 
-  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode;
+  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions;
   let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
   let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
 
@@ -56,6 +57,7 @@
     resultNode.setAttribute("aria-live", "polite");
     aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
     emptyState = createEmptyState({ container: resultNode, onResize: reposition });
+    vocabularyActions = createVocabularyActions({ onResize: reposition });
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
@@ -79,7 +81,7 @@
     cancelButton.addEventListener("click", () => cancelHandler?.());
 
     actions.append(explainButton, copyButton, retryButton, cancelButton);
-    panel.append(header, sourceNode, statusNode, resultNode, actions);
+    panel.append(header, sourceNode, statusNode, resultNode, vocabularyActions.ensure(), actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
   }
@@ -135,12 +137,14 @@
       : "content.selection.loadingText";
   }
 
-  function showResult(snapshot, result, onCopy, onExplain) {
+  function showResult(snapshot, result, onCopy, onExplain, onSaveVocabulary, onOpenVocabulary) {
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
     copyHandler = onCopy;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
+    vocabularyActions.show({ onSave: onSaveVocabulary, onOpen: onOpenVocabulary,
+      current: () => snapshot === activeSnapshot && !panel?.hidden });
     chip.hidden = true;
     panel.hidden = false;
     updateSource(snapshot, result);
@@ -319,6 +323,8 @@
     aiDetail = null;
     emptyState = null;
     statusNode = null;
+    vocabularyActions?.dispose();
+    vocabularyActions = null;
     copyButton = null;
     explainButton = null;
     retryButton = null;
@@ -333,6 +339,7 @@
 
   function clearActionHandlers() {
     retryHandler = copyHandler = explainHandler = cancelHandler = null;
+    vocabularyActions?.reset();
   }
 
   function setLocalizedStatus(node, message, fallbackKey, kind) {
@@ -348,21 +355,14 @@
   }
   function hideActionButtons() {
     cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
+    vocabularyActions?.hide();
   }
-
-  function setCloseHandler(handler) {
-    closeHandler = typeof handler === "function" ? handler : null;
-  }
-  function contains(target) {
-    return ownsNode(target);
-  }
-  function isEventInsidePanel(event) {
-    return eventInsidePanel(event, panel);
-  }
+  function setCloseHandler(handler) { closeHandler = typeof handler === "function" ? handler : null; }
+  function contains(target) { return ownsNode(target); }
+  function isEventInsidePanel(event) { return eventInsidePanel(event, panel); }
   function reposition() {
     if (!root || !activeSnapshot) return;
-    const target = !panel?.hidden ? panel : chip;
-    if (target) position(activeSnapshot, target);
+    position(activeSnapshot, !panel?.hidden ? panel : chip);
   }
   function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
 

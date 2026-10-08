@@ -10,10 +10,18 @@ import { Button, Confirmation, Notice } from "./components/common";
 import { Detail } from "./views/Detail";
 import { Library } from "./views/Library";
 import { Management } from "./views/Management";
+import { VocabularyBook } from "./views/VocabularyBook";
+type Section = "reading" | "wordbook" | "review";
 function route(): string | null {
   if (!location.hash) return null;
+  if (location.hash === "#wordbook" || location.hash === "#review") return null;
   if (!location.hash.startsWith("#record=")) return "invalid";
   try { return validateRecordId(location.hash.slice(8), "route"); } catch { return "invalid"; }
+}
+function routeSection(): Section {
+  if (location.hash === "#wordbook") return "wordbook";
+  if (location.hash === "#review") return "review";
+  return "reading";
 }
 export function App({ client = readingClient, listen = subscribe }: { client?: ReadingClient; listen?: typeof subscribe }) {
   const { i18n, ready: localeReady, error: localeError, retry: retryLocale } = useLocale();
@@ -21,14 +29,14 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
   const [offline, setOffline] = useState(false), [stateError, setStateError] = useState(false), [busy, setBusy] = useState(false), [notice, setNotice] = useState("");
   const [mode, setMode] = useState<"recent" | "pages">("recent"), [input, setInput] = useState(""), [query, setQuery] = useState("");
   const [page, setPage] = useState<{ pageKey: string; siteKey: string; title: string } | null>(null);
-  const [id, setId] = useState(route), [detail, setDetail] = useState<RecordDetail | null>(null), [detailSiteKey, setDetailSiteKey] = useState<string | null>(null);
+  const [section, setSection] = useState<Section>(routeSection), [id, setId] = useState(route), [detail, setDetail] = useState<RecordDetail | null>(null), [detailSiteKey, setDetailSiteKey] = useState<string | null>(null);
   const [detailSiteKeyStatus, setDetailSiteKeyStatus] = useState<"loading" | "ready" | "error">("loading");
   const [detailError, setDetailError] = useState(false), [detailLoading, setDetailLoading] = useState(false);
   const [notNow, setNotNow] = useState(false), [confirm, setConfirm] = useState<"record" | "page" | "all" | null>(null);
   const [exporting, setExporting] = useState(false), [bytes, setBytes] = useState(0);
   const active = useRef(false), readEpoch = useRef(0), detailEpoch = useRef(0), mutation = useRef(false), exportingRef = useRef<AbortController | null>(null);
   const originFocus = useRef<HTMLElement | null>(null), returnFocus = useRef(false);
-  const library = useLibrary(client, mode, query, page?.pageKey ?? null, revision, !offline && !exporting && state !== null && localeReady && !id);
+  const library = useLibrary(client, mode, query, page?.pageKey ?? null, revision, section === "reading" && !offline && !exporting && state !== null && localeReady && !id);
   const refresh = useCallback(() => { readEpoch.current++; detailEpoch.current++; setDetail(null); setRevision(value => value + 1); }, []);
   useEffect(() => {
     active.current = true;
@@ -57,9 +65,10 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
       .catch(() => { if (active.current && generation === readEpoch.current) { setState(null); setStateError(true); } });
   }, [client, revision, offline]);
   useEffect(() => {
-    const change = () => { detailEpoch.current++; setDetail(null); setId(route()); };
+    const change = () => { detailEpoch.current++; setDetail(null); setId(route()); setSection(routeSection()); };
     window.addEventListener("hashchange", change);
-    return () => window.removeEventListener("hashchange", change);
+    window.addEventListener("popstate", change);
+    return () => { window.removeEventListener("hashchange", change); window.removeEventListener("popstate", change); };
   }, []);
   useEffect(() => {
     const generation = ++detailEpoch.current; setDetail(null); setDetailSiteKey(null); setDetailSiteKeyStatus("loading"); setDetailError(false);
@@ -87,9 +96,14 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     }
   }
   function navigate(next: string | null) {
-    detailEpoch.current++; setDetail(null); setId(next);
+    detailEpoch.current++; setDetail(null); setId(next); setSection("reading");
     history.pushState(null, "", next ? `#record=${next}` : location.pathname);
     returnFocus.current = next === null;
+  }
+  function navigateSection(next: Section) {
+    detailEpoch.current++; setDetail(null); setId(null); setSection(next); setConfirm(null);
+    history.pushState(null, "", next === "reading" ? location.pathname : `#${next}`);
+    returnFocus.current = false;
   }
   useEffect(() => {
     if (id || !returnFocus.current || !library.settled || offline || !state || detailLoading) return;
@@ -134,7 +148,13 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
   </main>;
   return <main className="learning-center">
     <header><div><p className="eyebrow">TranslateFlow</p><h1>{i18n.t("learning.title")}</h1></div>
-      {state && <p>{i18n.t("learning.count", { count: state.recordCount })}</p>}</header>
+    {section === "reading" && state && <p>{i18n.t("learning.count", { count: state.recordCount })}</p>}</header>
+    <nav className="learning-sections actions" aria-label={i18n.t("learning.title")}>
+      <Button aria-pressed={section === "reading"} onClick={() => navigateSection("reading")}>{i18n.t("learning.sectionReading")}</Button>
+      <Button aria-pressed={section === "wordbook"} onClick={() => navigateSection("wordbook")}>{i18n.t("learning.sectionWordbook")}</Button>
+      <Button aria-pressed={section === "review"} onClick={() => navigateSection("review")}>{i18n.t("learning.sectionReview")}</Button>
+    </nav>
+    {section !== "reading" ? <VocabularyBook section={section} i18n={i18n} /> : <>
     {offline || stateError ? <><Notice error>{i18n.t(offline ? "learning.unconfirmed" : "learning.error")}</Notice><Button onClick={() => { setOffline(false); setConnection(value => value + 1); refresh(); }}>{i18n.t("learning.retry")}</Button></>
       : !state ? <Notice>{i18n.t("learning.loading")}</Notice> : null}
     {state && <section className="consent">
@@ -176,5 +196,6 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
         <Button disabled={blocked} onClick={() => void startExport()}>{i18n.t("learning.export")}</Button>
         <Button disabled={blocked || !state.recordCount} className="danger" onClick={() => setConfirm("all")}>{i18n.t("learning.clear")}</Button></div><p className="muted">{i18n.t("learning.deleteHelp")}</p></footer></>}
     {confirm && <Confirmation i18n={i18n} text={i18n.t(confirm === "record" ? "learning.deleteConfirm" : confirm === "page" ? "learning.deletePageConfirm" : "learning.clearConfirm")} onCancel={() => setConfirm(null)} onConfirm={() => void remove()} />}
+    </>}
   </main>;
 }

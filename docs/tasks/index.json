@@ -252,9 +252,9 @@
     },
     {
       "task": "offline-dictionary",
-      "status": "paused",
+      "status": "working",
       "dependencies": [],
-      "branch": null,
+      "branch": "feat/oxford10-integrated-import",
       "candidateHead": null
     },
     {
@@ -263,6 +263,13 @@
       "dependencies": [],
       "branch": "main",
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
+    },
+    {
+      "task": "selection-vocabulary-book-v1",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "feat/selection-vocabulary-book-v1",
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673"
     },
     {
       "task": "workflow-local",

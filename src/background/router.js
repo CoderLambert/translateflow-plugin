@@ -38,6 +38,7 @@ import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
 import { getBundledLexiconStatus, runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
+import { handleVocabularyBookMessage } from "./vocabulary-book-router.js";
 import {
   cancelSelectionExplanationRequest,
   runSelectionExplanationRequest
@@ -335,6 +336,12 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_READ_CANCEL:
       assertSelectionContentSender(sender);
       return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REMOVE:
+      return handleVocabularyBookMessage(message, sender);
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCES_CHANGED:
       return { notified: true };
     default:
