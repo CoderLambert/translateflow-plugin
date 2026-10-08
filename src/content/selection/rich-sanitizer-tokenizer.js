@@ -9,7 +9,7 @@
   const ACTIVE_TAGS = new Set([
     "script", "style", "iframe", "object", "form", "button", "select", "textarea",
     "option", "optgroup", "fieldset", "legend", "datalist", "output", "video", "canvas",
-    "template", "svg", "math", "foreignobject", "audio"
+    "template", "svg", "math", "foreignobject", "audio", "title"
   ]);
   const VOID_DISCARD_TAGS = new Set(["embed", "input", "link", "meta", "base"]);
   const BREAK_TAGS = new Set(["div", "p", "li", "tr", "table"]);

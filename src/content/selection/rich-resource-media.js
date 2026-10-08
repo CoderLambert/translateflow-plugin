@@ -55,7 +55,15 @@
       if (instance.element?.tagName === "IMG" && instance.element.src === url) return;
       const image = document.createElement("img");
       image.className = "tf-rich-resource-image";
-      if (resource.label) image.alt = resource.label;
+      const presentation = oxfordInlinePresentation(resource);
+      if (presentation) {
+        image.className += " tf-rich-resource-image-oxford-inline";
+        const descriptionKey = presentation === "oxford-opposition"
+          ? "content.rich.oxfordOppositionDescription" : "content.rich.oxfordKeyDescription";
+        locale.bindAttribute(image, "alt", descriptionKey);
+        locale.bindAttribute(image, "aria-label", descriptionKey);
+        locale.bindAttribute(image, "title", descriptionKey);
+      } else if (resource.label) image.alt = resource.label;
       else locale.bindAttribute(image, "alt", "content.rich.dictionaryImage");
       image.width = resource.imageWidth;
       image.height = resource.imageHeight;
@@ -135,6 +143,7 @@
       for (const instance of resource.instances) {
         if (instance.element?.tagName === "IMG" && instance.element.src === url) {
           const placeholder = makePlaceholder("image", resource.label);
+          decorateOxfordPlaceholder(placeholder, oxfordInlinePresentation(resource));
           replaceImageInstance(session, resource, instance, placeholder);
         }
       }
@@ -223,6 +232,7 @@
           const element = instance.element;
           if (!element || !/^(?:AUDIO|IMG)$/u.test(element.tagName)) continue;
           const placeholder = makePlaceholder(resource.kind === "audio" ? "audio" : "image", resource.label);
+          decorateOxfordPlaceholder(placeholder, oxfordInlinePresentation(resource));
           if (resource.kind === "audio") {
             placeholder.className = "tf-rich-placeholder tf-rich-audio-load";
             placeholder.type = "button";
@@ -234,6 +244,25 @@
           instance.element = placeholder;
         }
       }
+    }
+
+    function oxfordInlinePresentation(resource) {
+      if (resource?.presentation === "oxford-opposition" && resource.path === "img/OPP.png") return resource.presentation;
+      if (resource?.presentation === "oxford-key" &&
+          (resource.path === "img/Ox3000_key_L.png" || resource.path === "img/Ox3000_key_S.png")) return resource.presentation;
+      return "";
+    }
+
+    function decorateOxfordPlaceholder(element, presentation) {
+      if (!element || !presentation) return;
+      const opposition = presentation === "oxford-opposition";
+      const fallbackKey = opposition ? "content.rich.oxfordOppositionFallback" : "content.rich.oxfordKeyFallback";
+      const descriptionKey = opposition ? "content.rich.oxfordOppositionDescription" : "content.rich.oxfordKeyDescription";
+      element.className += " tf-rich-inline-symbol-placeholder";
+      locale.bindText(element, fallbackKey);
+      element.setAttribute("role", "img");
+      locale.bindAttribute(element, "aria-label", descriptionKey);
+      locale.bindAttribute(element, "title", descriptionKey);
     }
 
     return Object.freeze({ installLazyImages, installAudioLoader, releaseActiveAudio, restorePlaceholders, retryVisibleImages });

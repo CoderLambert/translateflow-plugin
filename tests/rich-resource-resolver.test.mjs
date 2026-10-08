@@ -147,6 +147,27 @@ test("duplicate visible image instances share one URL and release it after the l
   harness.resolver.close(container);
 });
 
+test("validated Oxford symbol resources stay inline after their local images load", async () => {
+  const bytes = Buffer.from([137, 80, 78, 71]);
+  const harness = createMediaLifecycleHarness({
+    "img/OPP.png": { bytes, mime: "image/png", width: 24, height: 24 }
+  });
+  const parent = new FakeParent();
+  const placeholder = parent.append(new FakeElement("SPAN"));
+  const container = {};
+  harness.resolver.attach(container, { appendChild() {} }, {}, [{
+    kind: "image", path: "img/OPP.png", presentation: "oxford-opposition", element: placeholder
+  }], "rich-mdict-10000000-0000-4000-8000-000000000001", "v1");
+
+  harness.observer.trigger(placeholder, true);
+  await waitFor(() => parent.children[0].tagName === "IMG");
+  const image = parent.children[0];
+  assert.match(image.className, /tf-rich-resource-image-oxford-inline/u);
+  assert.equal(image.attributes.get("alt"), "content.rich.oxfordOppositionDescription");
+  assert.equal(image.attributes.get("aria-label"), "content.rich.oxfordOppositionDescription");
+  harness.resolver.close(container);
+});
+
 test("image budget failure retries after offscreen release and preserves audio headroom", async () => {
   const imageBytes = Buffer.alloc(8 * 1024 * 1024, 0x39);
   const audioBytes = Buffer.alloc(8 * 1024 * 1024, 0x41);

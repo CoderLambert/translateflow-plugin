@@ -45,7 +45,57 @@
     const parsed = tokenizer.parseHtml(expanded.value, LIMITS);
     if (parsed.invalid) return fallbackResult(boundedSource, rules, true);
     if (parsed.truncated && !containsDisplayContent(parsed.nodes)) return fallbackResult(boundedSource, rules, true);
+    annotateOxfordSemantics(parsed.nodes);
     return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated) };
+  }
+
+  function annotateOxfordSemantics(nodes, context = {}) {
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+      if (node.type === "resource") {
+        if (node.kind !== "image") continue;
+        if (node.path === "img/OPP.png" && context.opposition && context.oppositionIcon) {
+          node.presentation = "oxford-opposition";
+        } else if ((node.path === "img/Ox3000_key_L.png" || node.path === "img/Ox3000_key_S.png") && context.oxfordKey) {
+          node.presentation = "oxford-key";
+        }
+        continue;
+      }
+      if (node.type !== "element") continue;
+      const classes = new Set(String(node.attrs?.class || "").split(/\s+/u).filter(Boolean));
+      const nextContext = {
+        opposition: context.opposition || classes.has("o-ref-opp"),
+        oppositionIcon: context.oppositionIcon || (classes.has("o-symbol-opp") && classes.has("o-symbol-source-img")),
+        oxfordKey: context.oxfordKey || (classes.has("o-symbol-key") && classes.has("o-symbol-ox3000"))
+      };
+      if (classes.has("o-pron-chunk")) replacePronunciationIcon(node, classes);
+      annotateOxfordSemantics(node.children, nextContext);
+    }
+  }
+
+  function replacePronunciationIcon(chunk, classes) {
+    const language = classes.has("o-pron-BrE") ? "british"
+      : classes.has("o-pron-NAmE") ? "american" : "";
+    if (!language || !containsAudioResource(chunk.children)) return;
+    chunk.children = chunk.children.map((node) => {
+      const label = language === "british" ? "BrE" : "NAmE";
+      const expectedPath = language === "british" ? "img/voicebre.svg" : "img/voicenam.svg";
+      if (node.type === "resource" && node.kind === "image" && node.path === expectedPath) {
+        return {
+          type: "element", tag: "span",
+          attrs: { class: "tf-rich-pronunciation-label", "data-rich-pronunciation": language },
+          children: [tokenizer.textNode(label)]
+        };
+      }
+      return node;
+    });
+  }
+
+  function containsAudioResource(nodes) {
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+      if (node.type === "resource" && node.kind === "audio") return true;
+      if (node.type === "element" && containsAudioResource(node.children)) return true;
+    }
+    return false;
   }
 
   function containsDisplayContent(nodes) {

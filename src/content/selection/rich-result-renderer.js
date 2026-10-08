@@ -212,13 +212,6 @@
 
   function renderRichDictionaryRecord(container, dictionary, dictionaryId) {
     const headword = String(dictionary?.headword || "").trim();
-    if (headword) {
-      const form = document.createElement("div");
-      form.className = "tf-selection-rich-headword";
-      form.textContent = headword;
-      container.appendChild(form);
-    }
-
     const bodyText = String(dictionary?.text || "").trim();
     const body = document.createElement("div");
     body.className = "tf-selection-rich-text";
@@ -227,9 +220,10 @@
     const sanitizer = app.modules.selectionRichSanitizer;
     const viewer = app.modules.selectionRichViewer;
     let displayed = false;
+    let safeTree = null;
     if (richRecord && sanitizer?.sanitizeRichDictionaryRecord && viewer?.render) {
       try {
-        const safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
+        safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
         if (safeTree) {
           displayed = viewer.render(body, safeTree, fallback, {
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
@@ -245,11 +239,55 @@
       if (viewer?.renderPlainText) viewer.renderPlainText(body, fallback);
       else body.textContent = fallback;
     }
+    if (headword && !(displayed && semanticHeadwordMatches(safeTree, headword))) {
+      const form = document.createElement("div");
+      form.className = "tf-selection-rich-headword";
+      form.textContent = headword;
+      container.appendChild(form);
+    }
     container.appendChild(body);
     const viewport = body.shadowRoot?.querySelector?.(".tf-rich-viewer");
     if (!bodyText && !displayed && viewport) locale.bindText(viewport, "content.rich.emptyBody");
     return { id: String(dictionaryId || ""), headword, packVersion: dictionary?.packVersion,
       text: String(viewport?.textContent ?? (!displayed ? bodyText : "")) };
+  }
+
+  function semanticHeadwordMatches(tree, headword) {
+    const rootNodes = Array.isArray(tree?.nodes) ? tree.nodes : [];
+    for (const line of rootNodes) {
+      if (line.type !== "element" || line.tag !== "div" || !hasClass(line, "o-word-line")) continue;
+      const main = findDescendant(line, (node) => node.tag === "span" && hasClass(node, "o-head-main"));
+      const semantic = main && findDescendant(main, (node) => node.tag === "span" && hasClass(node, "o-h"));
+      if (!semantic) continue;
+      if (normalizeHeadword(collectText(semantic)) === normalizeHeadword(headword)) return true;
+    }
+    return false;
+  }
+
+  function hasClass(node, name) {
+    return String(node?.attrs?.class || "").split(/\s+/u).includes(name);
+  }
+
+  function findDescendant(node, predicate) {
+    for (const child of Array.isArray(node?.children) ? node.children : []) {
+      if (child.type === "element" && predicate(child)) return child;
+      const nested = child.type === "element" ? findDescendant(child, predicate) : null;
+      if (nested) return nested;
+    }
+    return null;
+  }
+
+  function collectText(node) {
+    let text = "";
+    for (const child of Array.isArray(node?.children) ? node.children : []) {
+      if (child.type === "text") text += child.text;
+      else if (child.type === "element") text += collectText(child);
+    }
+    return text;
+  }
+
+  function normalizeHeadword(value) {
+    return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
   }
 
   function dictionaryMetadataText(dictionary) { return [String(dictionary?.title || "Rich MDict"), String(dictionary?.trustLabel || "").trim(), String(dictionary?.format || "").trim()].filter(Boolean).join(" · "); }

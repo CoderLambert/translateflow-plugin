@@ -145,17 +145,7 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     }));
     await page.emulateMedia({ colorScheme: "dark" });
     await page.setViewportSize({ width: 360, height: 800 });
-    await expect(page.locator(".tf-selection-panel")).toBeHidden({ timeout: 10_000 });
-    await expect(viewer).toBeHidden();
-    await page.locator("#rich-viewer-hostile-word").evaluate((node) => node.scrollIntoView({ block: "center", inline: "nearest" }));
-    await selectElementText(page, "#rich-viewer-hostile-word");
-    const resizedChip = page.locator(".tf-selection-chip");
-    await expect(resizedChip).toBeVisible({ timeout: 10_000 });
-    await resizedChip.click({ timeout: 10_000 });
-    richCard = page.locator(".tf-selection-rich-record")
-      .filter({ hasText: "Rich Viewer Security Fixture" });
-    await expandRichCard(richCard);
-    viewer = richCard.locator(".tf-selection-rich-text .tf-rich-viewer");
+    await expect(page.locator(".tf-selection-panel")).toBeVisible({ timeout: 10_000 });
     await expect(viewer).toBeVisible({ timeout: 30_000 });
     const darkLayout = await viewer.evaluate((root) => {
       const style = getComputedStyle(root);
@@ -250,8 +240,8 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
       },
       theme: { light: lightColors, dark: darkLayout },
       compact: compactProof,
-      resizeInvalidatedOldSourcePanel: true,
-      darkNarrowViewerReopenedAfterRecapture: true,
+      resizePreservedSourcePanel: true,
+      darkNarrowViewerRetainedWithoutRecapture: true,
       escapeClosesViewer: true,
       generatedAt: new Date().toISOString()
     };

@@ -61,11 +61,13 @@
       const elements = Array.isArray(item?.elements)
         ? item.elements.filter(Boolean)
         : item?.element ? [item.element] : [];
-      const key = `${item.kind}\u0000${path}`;
-      if (session.resources.some((existing) => `${existing.kind}\u0000${existing.path}` === key)) continue;
+      const presentation = validatedOxfordPresentation(item.presentation, path);
+      const key = `${item.kind}\u0000${path}\u0000${presentation}`;
+      if (session.resources.some((existing) => `${existing.kind}\u0000${existing.path}\u0000${existing.presentation || ""}` === key)) continue;
       session.resources.push({
         kind: item.kind,
         path,
+        presentation,
         label: String(item.label || "").slice(0, 160),
         instances: elements.map((element) => ({ element })),
         objectUrl: "",
@@ -375,6 +377,12 @@
         : (kind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing"),
       label ? { label } : {});
     return node;
+  }
+
+  function validatedOxfordPresentation(value, path) {
+    if (value === "oxford-opposition" && path === "img/OPP.png") return value;
+    if (value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
+    return "";
   }
 
   app.modules.richResourceResolver = Object.freeze({
