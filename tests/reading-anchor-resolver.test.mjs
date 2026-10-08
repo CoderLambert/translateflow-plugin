@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 import { JSDOM } from "jsdom";
 
-const files = ["text-projection-policy.js", "text-projection-builder.js", "text-projection.js", "reading-anchor-resolver.js"];
+const files = ["text-projection-policy.js", "text-projection-builder.js", "text-projection.js", "selection/source-snapshot.js", "reading-anchor-resolver.js"];
 const sources = await Promise.all(files.map(file => readFile(new URL(`../src/content/${file}`, import.meta.url), "utf8")));
 async function sha256(text) {
   const bytes = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -28,6 +28,30 @@ async function anchorFor(f, selector, exact, { prefix = "", suffix = "", digest 
   assert.equal(value.status, "resolved", JSON.stringify(value));
   return { status: "resolved", quote: { exact, prefix, suffix }, position: { start: 0, end: exact.length }, blockDigest: digest ? await sha256(value.text) : null };
 }
+
+test("new local div context returns to source with the legacy main block identity", async t => {
+  const f = fixture('<main id="root"><div id="target">A <span>persistent</span> local example.</div><div>Sibling content stays outside the AI context.</div></main>');
+  t.after(() => f.dom.window.close());
+  const target = f.window.document.querySelector("#target").firstChild.nextSibling.firstChild;
+  const range = f.window.document.createRange(); range.setStart(target, 0); range.setEnd(target, "persistent".length);
+  const capture = f.modules.selectionSourceSnapshot.capture({ text: "persistent", range, pageUrl: f.window.location.href, selectionGeneration: 1 });
+  assert.equal(capture.context.text, "A persistent local example.");
+  const frozen = await capture.ready;
+  const legacyRoot = f.window.document.querySelector("#root");
+  assert.equal(frozen.anchor.blockDigest, await sha256(f.modules.textProjection.project(legacyRoot).text));
+  const result = await f.modules.readingAnchorResolver.resolve(frozen.anchor);
+  assert.equal(result.status, "resolved", JSON.stringify({ anchor: frozen.anchor, status: result.status }));
+  assert.equal(result.range.toString(), "persistent");
+});
+
+test("saved main-root anchors remain compatible with the Reading resolver", async t => {
+  const f = fixture('<main id="root"><div id="target">A <span>persistent</span> local example.</div><div>Sibling content remains part of the saved main block.</div></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#root", "persistent", { prefix: "A ", suffix: " local example." });
+  const result = await f.modules.readingAnchorResolver.resolve(anchor);
+  assert.equal(result.status, "resolved", JSON.stringify(result));
+  assert.equal(result.range.toString(), "persistent");
+});
 
 test("resolver restores a split-inline exact Range after node replacement and ignores the stale position hint", async t => {
   const f = fixture('<main><p id="target">alpha <span>ses</span><em>sion</em> tail</p></main>'); t.after(() => f.dom.window.close());

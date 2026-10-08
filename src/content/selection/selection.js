@@ -19,10 +19,12 @@
     const clonedRange = canonical.range;
     const rect = getRangeRect(clonedRange);
     if (!rect) return null;
+    const rangeIdentity = app.modules.selectionSourceSnapshot.freezeRange(clonedRange);
 
     return {
       text,
       range: clonedRange,
+      rangeIdentity,
       rect,
       sourceRevision: app.modules.textProjection.revision(),
       pageUrl: location.href
