@@ -82,15 +82,23 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           segments = Array.isArray(payload?.segments) ? payload.segments : [];
         } catch {}
 
-        calls.push({
+        const call = {
           plannedStatus,
           systemPrompt,
           userContent,
           segments: segments.map((item) => ({
             id: String(item?.id || ""),
             text: String(item?.text || "")
-          }))
+          })),
+          responseState: "pending"
+        };
+        calls.push(call);
+        response.once("finish", () => { call.responseState = "finished"; });
+        response.once("close", () => {
+          if (!response.writableFinished) call.responseState = "closed";
         });
+
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (body?.stream === true && systemPrompt.includes("Plain text only")) {
           response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -99,8 +107,6 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "answer" } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
           return;
         }
-
-        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (plannedStatus !== 200) {
           response.statusCode = plannedStatus;
@@ -244,6 +250,8 @@ function renderFixture(pathname) {
       <p id="initial">Automatic translation should process visible English content and preserve cached results for later visits.</p>
     `,
     "/selection": `
+      <button id="focus-return-before">Focus return before Selection</button>
+      <button id="focus-moved-after">Focus moved after Selection</button>
       <p id="selectable">Selection translation should reuse the same provider configuration while keeping Selection v2 cache identity separate.</p>
       <p id="lexical-context"><span id="entity">tmux</span> is a <span id="lexical">terminal multiplexer</span> used to manage terminal sessions.</p>
       <p id="technical-competition-context">Open tmux in the terminal and attach to a <span id="technical-competition">session</span>.</p>

@@ -95,6 +95,55 @@
   font-size: 10px;
   line-height: 1.35;
 }
+.tf-selection-example {
+  margin: 8px 0 0;
+  padding: 6px 9px;
+  border-left: 2px solid var(--tf-warning);
+  border-radius: 0 var(--tf-radius-xs) var(--tf-radius-xs) 0;
+  background: color-mix(in srgb, var(--tf-bg-subtle) 70%, var(--tf-bg-card));
+  color: var(--tf-text-secondary);
+  font-size: var(--tf-font-size-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.tf-selection-dictionary-disclosure {
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid var(--tf-border-soft);
+}
+.tf-selection-dictionary-disclosure-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  color: var(--tf-green-800);
+  font-size: var(--tf-font-size-xs);
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.tf-selection-dictionary-disclosure-summary::-webkit-details-marker { display: none; }
+.tf-selection-dictionary-disclosure-summary::before {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tf-green-100);
+  color: var(--tf-green-800);
+  content: "+";
+  font-size: 14px;
+  line-height: 1;
+}
+.tf-selection-dictionary-disclosure[open] > .tf-selection-dictionary-disclosure-summary::before {
+  content: "−";
+}
+.tf-selection-dictionary-disclosure-summary:focus-visible {
+  border-radius: var(--tf-radius-xs);
+  outline: 2px solid var(--tf-green-500);
+  outline-offset: 2px;
+}
+.tf-selection-dictionary-disclosure-body { padding-top: 2px; }
 .tf-selection-more-entries {
   padding: 3px 2px 0;
   color: var(--tf-text-muted);

@@ -55,6 +55,143 @@ test("derived personal preference opens first while preserving other expanded ch
   assert.equal(findClass(cards[1], "tf-selection-rich-preference").length, 0);
 });
 
+test("structured Selection shows its primary dictionary entry and collapses additional detail", async () => {
+  const { renderer, document } = await loadRenderer();
+  const container = document.createElement("div");
+
+  renderer.render(container, {
+    kind: "local",
+    headword: "persistent",
+    pronunciation: "/pərˈsɪstənt/",
+    partOfSpeech: "adjective",
+    primaryMeaning: "持久的",
+    dictionaryEntries: [
+      {
+        primary: true,
+        kind: "lexical",
+        headword: "persistent",
+        partOfSpeech: "adjective",
+        translations: ["持久的", "持续的"],
+        examples: ["A real example from the source."],
+        provenanceLabel: "本地词典"
+      },
+      {
+        primary: false,
+        kind: "lexical",
+        headword: "persistent",
+        partOfSpeech: "noun",
+        translations: ["顽强的"],
+        provenanceLabel: "本地词典"
+      }
+    ],
+    moreEntryCount: 0,
+    badges: [{ label: "本地词典", kind: "local" }]
+  });
+
+  assert.equal(findClass(container, "tf-selection-headword")[0].textContent, "persistent");
+  assert.equal(findClass(container, "tf-selection-headword-meta")[0].textContent, "/pərˈsɪstənt/ · adjective");
+  assert.equal(findClass(container, "tf-selection-primary")[0].textContent, "持久的");
+  assert.equal(findClass(container, "tf-selection-example")[0].textContent, "A real example from the source.");
+  assert.equal(findClass(container, "tf-selection-result-badge")[0].textContent, "本地词典");
+
+  const disclosure = findClass(container, "tf-selection-dictionary-disclosure")[0];
+  assert.equal(disclosure.open, false);
+  assert.equal(findClass(disclosure, "tf-selection-dictionary-disclosure-summary")[0].textContent, "查看完整词典词条");
+  assert.equal(findClass(disclosure, "tf-selection-dictionary-entry").length, 2);
+});
+
+test("expanded dictionary entries preserve every source example as text and leave missing examples empty", async () => {
+  const { renderer, document } = await loadRenderer();
+  const container = document.createElement("div");
+
+  renderer.render(container, {
+    kind: "local",
+    headword: "persistent",
+    primaryMeaning: "持久的",
+    dictionaryEntries: [
+      {
+        primary: true,
+        headword: "persistent",
+        translations: ["持久的"],
+        examples: ["Primary source example one.", "<img src=x onerror=alert(1)>", "Primary source example three."]
+      },
+      {
+        primary: false,
+        headword: "persistent",
+        partOfSpeech: "noun",
+        translations: ["顽强的"],
+        examples: ["Secondary source example one.", "Secondary source example two."]
+      },
+      {
+        primary: false,
+        headword: "persistent",
+        partOfSpeech: "adverb",
+        translations: ["坚定地"]
+      }
+    ],
+    moreEntryCount: 0
+  });
+
+  const summaryExamples = findClass(container, "tf-selection-example");
+  assert.equal(summaryExamples[0].textContent, "Primary source example one.");
+  const disclosure = findClass(container, "tf-selection-dictionary-disclosure")[0];
+  assert.ok(disclosure);
+  assert.equal(disclosure.open, false);
+
+  disclosure.open = true;
+  const entries = findClass(disclosure, "tf-selection-dictionary-entry");
+  assert.equal(entries.length, 3);
+  const examplesByEntry = entries.map((entry) =>
+    findClass(entry, "tf-selection-entry-example").map((node) => node.textContent)
+  );
+  assert.deepEqual(examplesByEntry, [
+    ["Primary source example one.", "<img src=x onerror=alert(1)>", "Primary source example three."],
+    ["Secondary source example one.", "Secondary source example two."],
+    []
+  ]);
+  assert.equal(findClass(entries[0], "tf-selection-entry-example")[1].children.length, 0);
+});
+
+test("a single-entry disclosure appears only when source details are hidden from the summary", async () => {
+  const { renderer, document } = await loadRenderer();
+  const renderSingleEntry = ({ entryExamples, resultExamples } = {}) => {
+    const container = document.createElement("div");
+    const entry = { primary: true, translations: ["core sense"] };
+    if (entryExamples !== undefined) entry.examples = entryExamples;
+    renderer.render(container, {
+      kind: "local",
+      headword: "word",
+      dictionaryEntries: [entry],
+      examples: resultExamples
+    });
+    return container;
+  };
+
+  const oneExample = renderSingleEntry({ entryExamples: ["Only source example."] });
+  assert.equal(findClass(oneExample, "tf-selection-example").length, 1);
+  assert.equal(findClass(oneExample, "tf-selection-dictionary-disclosure").length, 0);
+
+  const multipleEntryExamples = renderSingleEntry({ entryExamples: ["First source example.", "Second source example."] });
+  const entryDisclosure = findClass(multipleEntryExamples, "tf-selection-dictionary-disclosure")[0];
+  assert.ok(entryDisclosure);
+  assert.equal(findClass(multipleEntryExamples, "tf-selection-example")[0].textContent, "First source example.");
+  entryDisclosure.open = true;
+  assert.deepEqual(findClass(entryDisclosure, "tf-selection-entry-example").map((node) => node.textContent), [
+    "First source example.", "Second source example."
+  ]);
+
+  const multipleFallbackExamples = renderSingleEntry({ resultExamples: ["Fallback example one.", "Fallback example two."] });
+  const fallbackDisclosure = findClass(multipleFallbackExamples, "tf-selection-dictionary-disclosure")[0];
+  assert.ok(fallbackDisclosure);
+  assert.deepEqual(findClass(fallbackDisclosure, "tf-selection-entry-example").map((node) => node.textContent), [
+    "Fallback example one.", "Fallback example two."
+  ]);
+
+  const noExamples = renderSingleEntry({ entryExamples: [] });
+  assert.equal(findClass(noExamples, "tf-selection-example").length, 0);
+  assert.equal(findClass(noExamples, "tf-selection-dictionary-disclosure").length, 0);
+});
+
 test("rich card results pass through the reviewed sanitizer and keep resource lookup on that dictionary", async () => {
   const sanitizerCalls = [];
   const viewerCalls = [];
@@ -364,7 +501,8 @@ async function loadRenderer({
   const app = { modules: { contentI18n: createContentI18nStub({ messages: {
     "content.rich.order": "词典顺序 {index}",
     "content.rich.preferred": "你的首选 · 个人偏好",
-    "content.rich.trust": "来源 / 信任：{trust}"
+    "content.rich.trust": "来源 / 信任：{trust}",
+    "content.selection.dictionaryDetails": "查看完整词典词条"
   } }), selectionRichSanitizer: sanitizer, selectionRichViewer: viewer } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);

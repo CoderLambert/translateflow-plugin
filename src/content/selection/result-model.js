@@ -93,6 +93,10 @@
       partOfSpeech: String(candidate?.partOfSpeech || "").trim(),
       primaryMeaning,
       senses: translations.slice(1),
+      examples: uniqueText([
+        ...(Array.isArray(candidate?.examples) ? candidate.examples : []),
+        candidate?.example
+      ]),
       domains: uniqueText(candidate?.domains),
       typeLabels: labels,
       badges: [{ ...provenanceDescriptor(candidate), kind: "local" }]
@@ -124,6 +128,10 @@
       pronunciation: String(candidate?.pronunciation || "").trim(),
       partOfSpeech: String(candidate?.partOfSpeech || "").trim(),
       translations: uniqueText(candidate?.translations),
+      examples: uniqueText([
+        ...(Array.isArray(candidate?.examples) ? candidate.examples : []),
+        candidate?.example
+      ]),
       domains: uniqueText(candidate?.domains),
       typeLabels: uniqueText(candidate?.typeLabels),
       ...provenanceDescriptor(candidate, "provenance"),

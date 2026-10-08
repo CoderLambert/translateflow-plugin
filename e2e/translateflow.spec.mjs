@@ -426,12 +426,22 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
-    const senses = page.locator(".tf-selection-dictionary-entry");
+    const primary = page.locator(".tf-selection-result > .tf-selection-primary").first();
+    await expect(page.locator(".tf-selection-example")).toHaveCount(0);
+    const dictionaryDetails = page.locator(".tf-selection-dictionary-disclosure");
+    await expect(dictionaryDetails).toHaveCount(1);
+    await expect(dictionaryDetails).toHaveJSProperty("open", false);
+    const senses = dictionaryDetails.locator(".tf-selection-dictionary-entry");
     await expect(senses).toHaveCount(2);
+    await expect(senses.first()).toBeHidden();
+    await dictionaryDetails.locator("summary").click();
+    await expect(dictionaryDetails).toHaveJSProperty("open", true);
     await expect(senses.nth(0)).toContainText("持久的");
     await expect(senses.nth(0)).toContainText("持续存在的");
     await expect(senses.nth(1)).toContainText("顽强的");
     await expect(senses.nth(0)).toContainText("adjective");
+    await dictionaryDetails.locator("summary").click();
+    await expect(dictionaryDetails).toHaveJSProperty("open", false);
     await expect(page.locator(".tf-selection-source")).toBeHidden();
     await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
     const visibleActions = page.locator(".tf-selection-panel > .tf-selection-actions button:visible");
@@ -440,7 +450,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
     const detail = page.locator(".tf-selection-ai-detail");
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(primary).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("AI 正在回答");
     await expect(page.getByRole("button", { name: "停止 AI 回答" })).toBeVisible();
@@ -508,19 +518,19 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
 
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("streamed");
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect.poll(() => harness.server.calls.length).toBe(1);
 
     await page.getByRole("button", { name: "停止 AI 回答" }).click();
     await expect(detail).toHaveAttribute("data-state", "interrupted");
     await expect(detail).toContainText("已停止，未保存");
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     expect(harness.server.calls).toHaveLength(1);
 
     await page.getByRole("button", { name: "重新请求 AI 详解" }).click();
@@ -529,7 +539,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(2);
 
     await expect(detail).toHaveAttribute("data-state", "success");
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
   });
 
   test("Selection card exposes provenance, explicit AI retry, narrow viewport and copy", async ({ harness }) => {
@@ -547,12 +557,12 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(panel).toBeVisible();
     await expect(page.getByRole("button", { name: "关闭" })).toBeFocused();
     await expect(panel).toHaveAttribute("aria-modal", "false");
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     expect(harness.server.calls).toHaveLength(0);
 
     await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
     const detail = page.locator(".tf-selection-ai-detail");
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "interrupted");
     await expect(detail).toContainText("回答中断，未保存");
     await expect(page.locator(".tf-selection-status")).toHaveText("");
@@ -561,7 +571,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     harness.server.setFailures([]);
     await page.getByRole("button", { name: "重新请求 AI 详解" }).click();
 
-    await expect(page.locator(".tf-selection-primary")).toContainText("持久的");
+    await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
     await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典", "AI 辅助"]);

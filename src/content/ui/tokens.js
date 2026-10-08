@@ -222,6 +222,7 @@ button { color: inherit; }
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+@media (max-height: 480px) { .tf-selection-panel { height: calc(100vh - 20px); overflow: hidden auto; } .tf-selection-header { position: sticky; top: 0; z-index: 1; background: var(--tf-bg-card); } .tf-selection-result { flex: 1 1 0; min-height: 56px; max-height: none; } }
 .tf-selection-result-meta {
   display: flex;
   flex-wrap: wrap;
