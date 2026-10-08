@@ -54,6 +54,34 @@
     return node.getRootNode?.() === shadow;
   }
 
+  function focusablePageTarget(target) {
+    if (!target || target.nodeType !== 1 || target.ownerDocument !== document
+      || target === document.body || target === document.documentElement
+      || !target.isConnected || typeof target.focus !== "function" || ownsNode(target)) return null;
+    if (target.matches?.(":disabled") || target.closest?.("[hidden], [inert]")) return null;
+    return target;
+  }
+
+  function createFocusReturn() {
+    let target = null;
+    return {
+      capture(activeElement) { target = focusablePageTarget(activeElement) || target; },
+      clear() { target = null; },
+      restore() {
+        const candidate = focusablePageTarget(target);
+        target = null;
+        if (!candidate) return;
+        try { candidate.focus({ preventScroll: true }); } catch { /* The page may remove it. */ }
+      }
+    };
+  }
+
+  function isEventInsidePanel(event, panel) {
+    if (!panel || panel.hidden || !event) return false;
+    if (typeof event.composedPath === "function" && event.composedPath().includes(panel)) return true;
+    return panel.contains(panel.getRootNode()?.activeElement);
+  }
+
   function getHost() {
     return ensureHost().host;
   }
@@ -62,5 +90,5 @@
     return ensureHost().shadow;
   }
 
-  app.modules.uiHost = { getHost, getShadowRoot, getLayer, ownsNode };
+  app.modules.uiHost = { getHost, getShadowRoot, getLayer, ownsNode, createFocusReturn, isEventInsidePanel };
 })();

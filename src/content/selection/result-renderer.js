@@ -29,12 +29,15 @@
     renderHeadword(container, result);
 
     const entries = Array.isArray(result.dictionaryEntries) ? result.dictionaryEntries : [];
-    if (entries.length > 1) {
-      renderDictionaryEntries(container, entries, result.moreEntryCount, result.headword);
+    if (entries.length) {
+      renderDictionarySummary(container, entries[0], result);
     } else {
       renderCompactMeaning(container, result);
     }
     renderBadges(container, result.badges);
+    if (hasCollapsedDictionaryDetails(entries, result.moreEntryCount, result.examples)) {
+      renderDictionaryDetails(container, entries, result.moreEntryCount, result.headword, result.examples);
+    }
 
     const generatedMeaning = String(result.generatedMeaning || "").trim();
     const explanation = String(result.explanation || "").trim();
@@ -114,7 +117,56 @@
     ]);
   }
 
-  function renderDictionaryEntries(container, entries, moreEntryCount, primaryHeadword = "") {
+  function renderDictionarySummary(container, entry, result) {
+    const translations = uniqueText(entry?.translations);
+    const primary = translations[0] || String(result.primaryMeaning || "").trim();
+    if (primary) {
+      const node = document.createElement("div");
+      node.className = "tf-selection-primary";
+      node.textContent = primary;
+      container.appendChild(node);
+    }
+
+    renderFacts(container, [
+      ...(Array.isArray(entry?.domains) ? entry.domains : []),
+      ...(Array.isArray(entry?.typeLabels) ? entry.typeLabels : [])
+    ].filter((value) => String(value || "").trim() !== primary));
+
+    const examples = dictionaryExamples(entry, result.examples);
+    if (examples.length) {
+      const example = document.createElement("p");
+      example.className = "tf-selection-example";
+      example.textContent = examples[0];
+      container.appendChild(example);
+    }
+  }
+
+  function hasCollapsedDictionaryDetails(entries, moreEntryCount, primaryExamples = []) {
+    if (!Array.isArray(entries) || !entries.length) return false;
+    if (entries.length > 1 || Number(moreEntryCount || 0) > 0) return true;
+    const first = entries[0] || {};
+    return uniqueText(first.translations).length > 1
+      || dictionaryExamples(first, primaryExamples).length > 1;
+  }
+
+  function renderDictionaryDetails(container, entries, moreEntryCount, primaryHeadword = "", primaryExamples = []) {
+    const details = document.createElement("details");
+    details.className = "tf-selection-dictionary-disclosure";
+    details.dataset.action = "dictionary-details";
+
+    const summary = document.createElement("summary");
+    summary.className = "tf-selection-dictionary-disclosure-summary";
+    locale.bindText(summary, "content.selection.dictionaryDetails");
+    details.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "tf-selection-dictionary-disclosure-body";
+    renderDictionaryEntries(body, entries, moreEntryCount, primaryHeadword, primaryExamples);
+    details.appendChild(body);
+    container.appendChild(details);
+  }
+
+  function renderDictionaryEntries(container, entries, moreEntryCount, primaryHeadword = "", primaryExamples = []) {
     const list = document.createElement("div");
     list.className = "tf-selection-dictionary-entries";
     for (const [index, entry] of entries.entries()) {
@@ -159,6 +211,14 @@
         ...(Array.isArray(entry?.typeLabels) ? entry.typeLabels : [])
       ], "tf-selection-entry-facts");
 
+      const examples = dictionaryExamples(entry, index === 0 ? primaryExamples : []);
+      for (const text of examples) {
+        const example = document.createElement("p");
+        example.className = "tf-selection-example tf-selection-entry-example";
+        example.textContent = text;
+        item.appendChild(example);
+      }
+
       const provenance = String(entry?.provenanceLabel || "").trim();
       if (provenance) {
         const source = document.createElement("div");
@@ -177,6 +237,13 @@
       list.appendChild(more);
     }
     container.appendChild(list);
+  }
+
+  function dictionaryExamples(entry, fallbackExamples = []) {
+    return uniqueText([
+      ...(Array.isArray(entry?.examples) ? entry.examples : []),
+      ...(Array.isArray(fallbackExamples) ? fallbackExamples : [])
+    ]);
   }
 
   function renderFacts(container, values, className = "tf-selection-facts") {

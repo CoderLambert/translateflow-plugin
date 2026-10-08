@@ -10,7 +10,8 @@ async function loadResultModel() {
     "content.selection.sourceLocal": "本地词典",
     "content.selection.sourceTechnical": "技术词条",
     "content.selection.sourcePack": "词典包 · {packId}",
-    "content.selection.moreCandidates": "还有 {count} 个候选未展开"
+    "content.selection.moreCandidates": "还有 {count} 个候选未展开",
+    "content.selection.dictionaryDetails": "查看完整词典词条"
   } }) } } });
   vm.runInContext(code, context);
   return context.__TRANSLATE_FLOW_CONTENT__.modules.selectionResultModel;
@@ -52,6 +53,7 @@ test("local result preserves ranked candidate boundaries instead of flattening a
 
   assert.equal(card.primaryMeaning, "持久的");
   assert.deepEqual([...card.senses], ["持续的"]);
+  assert.deepEqual([...card.examples], []);
   assert.equal(card.dictionaryEntries.length, 2);
   assert.equal(card.dictionaryEntries[0].id, first.id);
   assert.equal(card.dictionaryEntries[0].primary, true);
@@ -65,6 +67,18 @@ test("local result preserves ranked candidate boundaries instead of flattening a
   assert.match(copied, /1\. adjective · 本地词典\n\s+持久的\n\s+持续的/);
   assert.match(copied, /2\. noun · 本地词典\n\s+持续存在\n\s+持久的/);
   assert.equal((copied.match(/持久的/g) || []).length, 2);
+});
+
+test("local result carries only examples supplied by the dictionary candidate", async () => {
+  const model = await loadResultModel();
+  const card = model.buildLocalResult({
+    decision: {
+      candidates: [candidate({ examples: ["A source-provided example."], example: "duplicate" })]
+    }
+  });
+
+  assert.deepEqual([...card.examples], ["A source-provided example.", "duplicate"]);
+  assert.deepEqual([...card.dictionaryEntries[0].examples], ["A source-provided example.", "duplicate"]);
 });
 
 test("structured result keeps technical identity and only supplied metadata", async () => {

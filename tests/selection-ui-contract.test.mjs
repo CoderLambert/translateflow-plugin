@@ -38,6 +38,7 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(popover, /aria-modal", "false"/);
   assert.match(renderer, /tf-selection-result-badge/);
   assert.match(renderer, /tf-selection-dictionary-entries/);
+  assert.match(renderer, /tf-selection-dictionary-disclosure/);
   assert.match(renderer, /tf-selection-entry-meaning/);
   assert.match(popover, /renderStructuredResult/);
   assert.match(popover, /showAiDetailResult/);
@@ -58,6 +59,7 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(emptyStyles, /\.tf-selection-empty-actions/);
   assert.match(lexicalStyles, /\.tf-selection-dictionary-entry/);
   assert.match(lexicalStyles, /\.tf-selection-entry-provenance/);
+  assert.match(lexicalStyles, /\.tf-selection-dictionary-disclosure-summary/);
   assert.match(lexicalStyles, /\.tf-selection-more-entries/);
   assert.match(lexicalStyles, /\.tf-selection-action-primary/);
   assert.match(lexicalStyles, /\.tf-selection-action-quiet/);
@@ -142,8 +144,8 @@ test("Selection result hierarchy renders dictionary content before provenance", 
   const renderer = await source("src/content/selection/result-renderer.js");
 
   const headwordIndex = renderer.indexOf("renderHeadword(container, result)");
-  const compactIndex = renderer.indexOf("renderCompactMeaning(container, result)");
+  const summaryIndex = renderer.indexOf("renderDictionarySummary(container, entries[0], result)");
   const badgesIndex = renderer.indexOf("renderBadges(container, result.badges)");
-  assert.ok(headwordIndex >= 0 && compactIndex > headwordIndex && badgesIndex > compactIndex);
+  assert.ok(headwordIndex >= 0 && summaryIndex > headwordIndex && badgesIndex > summaryIndex);
   assert.match(renderer, /tf-selection-entry-provenance/);
 });

@@ -47,7 +47,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await expect(alphaRow.locator('[data-role="personal-preference"]')).toHaveCount(0);
     await expect(alphaRow.locator('[data-action="promote-preferred"]')).toBeVisible();
     await expect(options.locator("#dictionaryInstalledHeading").locator(".."))
-      .toContainText("不代表 TranslateFlow 的推荐或官方背书");
+      .toContainText("个人显示偏好，不代表官方背书");
     const settingsLayout = await options.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,
@@ -145,7 +145,7 @@ test.describe("multiple local rich dictionary cards", () => {
       richLookupsStarted: viewerRequests.filter((message) => message.type === "RICH_MDICT_LOOKUP").length,
       providerCalls: harness.server.calls.length
     };
-    await page.screenshot({ path: resolve(evidenceDir, "beta-preferred-alpha-user-expanded.png"), fullPage: true });
+    await page.screenshot({ path: resolve(evidenceDir, "beta-preferred-alpha-user-expanded-viewport.png"), fullPage: false });
     console.log("[MULTI_DICTIONARY_VIEWER]", JSON.stringify(evidence));
   });
 
@@ -315,15 +315,17 @@ async function setDictionaryPreference(options, row, name, value) {
   const control = dictionaryPreference(row, name);
   const current = await control.isChecked();
   if (current !== value) {
-    if (value) await control.check();
-    else await control.uncheck();
+    // The control is intentionally controlled by React. Its checked prop is
+    // refreshed after the async storage message completes, so Playwright's
+    // immediate check()/uncheck() postcondition can race that refresh.
+    await control.click();
   }
-  await expect(control).toBeChecked({ checked: value });
   const rowId = await row.getAttribute("data-dictionary-id");
   await expect.poll(async () => {
     const state = await options.evaluate(() => chrome.storage.local.get("tfRichMdictPreferencesV1"));
     return state.tfRichMdictPreferencesV1?.dictionaries?.[rowId]?.[name];
   }).toBe(value);
+  await expect(control).toBeChecked({ checked: value });
 }
 
 async function promoteDictionaryToPreferred(options, row) {

@@ -6,13 +6,14 @@
 
   const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
   const locale = app.modules.contentI18n;
-  const { getLayer, ownsNode } = app.modules.uiHost;
+  const { getLayer, ownsNode, createFocusReturn, isEventInsidePanel: eventInsidePanel } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
   const { create: createAiDetail } = app.modules.selectionAiDetail;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
   const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
   const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
+  const focusReturn = createFocusReturn();
 
   let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode;
   let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
@@ -32,7 +33,7 @@
 
     panel = surface({ className: "tf-selection-panel", role: "dialog" });
     locale.bindAttribute(panel, "aria-label", "content.selection.aria");
-    panel.setAttribute("aria-modal", "false");
+    panel.setAttribute("aria-modal", "false"); panel.addEventListener("toggle", onDetailsToggle, true);
     installInteractionIsolation(panel);
     const header = document.createElement("div");
     header.className = "tf-selection-header";
@@ -41,7 +42,7 @@
 
     closeButton = button({ text: "×", label: locale.t("content.common.close"), icon: true, className: "tf-selection-icon-button" });
     locale.bindAttribute(closeButton, "aria-label", "content.common.close");
-    closeButton.addEventListener("click", () => closeHandler?.());
+    closeButton.addEventListener("click", (event) => closeHandler?.({ restoreFocus: eventInsidePanel(event, panel) }));
     header.append(title, closeButton);
 
     sourceNode = document.createElement("div");
@@ -85,6 +86,7 @@
 
   function showChip(snapshot, onTranslate) {
     app.modules.richResourceResolver?.closeAll();
+    focusReturn.capture(document.activeElement);
     ensureUi();
     activeSnapshot = snapshot;
     translateHandler = onTranslate;
@@ -97,6 +99,7 @@
   function showLoading(snapshot, onCancel, loadingMessage = defaultLoadingMessage(snapshot)) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
+    focusReturn.capture(document.activeElement);
     activeSnapshot = snapshot;
     cancelHandler = onCancel;
     chip.hidden = true;
@@ -301,11 +304,11 @@
     });
   }
 
-  function hide() {
+  function hide({ restoreFocus = false } = {}) {
     if (!root) return;
     app.modules.richResourceResolver?.closeAll();
     locale.unbindTree(root);
-    root.remove();
+    root.remove(); panel.removeEventListener("toggle", onDetailsToggle, true);
     root = null;
     chip = null;
     panel = null;
@@ -324,6 +327,8 @@
     activeSnapshot = null;
     translateHandler = null;
     clearActionHandlers();
+    if (restoreFocus) focusReturn.restore();
+    else focusReturn.clear();
   }
 
   function clearActionHandlers() {
@@ -348,16 +353,18 @@
   function setCloseHandler(handler) {
     closeHandler = typeof handler === "function" ? handler : null;
   }
-
   function contains(target) {
     return ownsNode(target);
   }
-
+  function isEventInsidePanel(event) {
+    return eventInsidePanel(event, panel);
+  }
   function reposition() {
     if (!root || !activeSnapshot) return;
     const target = !panel?.hidden ? panel : chip;
     if (target) position(activeSnapshot, target);
   }
+  function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
 
   function position(snapshot, element) {
     const rect = refreshRect(snapshot);
@@ -406,6 +413,7 @@
     hide,
     setCloseHandler,
     contains,
+    isEventInsidePanel,
     reposition
   };
 })();

@@ -351,10 +351,10 @@
 
   function handleKeyDown(event) {
     if (event.key !== "Escape") return;
-    dismiss();
+    dismiss({ restoreFocus: popover.isEventInsidePanel(event) });
   }
 
-  function dismiss() {
+  function dismiss({ restoreFocus = false } = {}) {
     abandonAssistant();
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
@@ -364,7 +364,7 @@
     activeSnapshot = null;
     projection.watchPage(null);
     requestVersion += 1;
-    popover.hide();
+    popover.hide({ restoreFocus });
     setQuickControlSelectionActive(false);
   }
 
