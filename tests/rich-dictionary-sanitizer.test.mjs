@@ -59,6 +59,73 @@ test("safe rich markup preserves dictionary hierarchy and decodes entities as te
   assert.deepEqual(local(headerCell.attrs), { colspan: "2" });
 });
 
+test("HTML title metadata is omitted while stylesheet links and body text remain", () => {
+  const complete = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<html><head><link rel="stylesheet" href="styles/oald.css"><title>document metadata</title></head><body><p>body definition</p></body></html>'
+  });
+  const resources = [];
+  walk(complete.nodes, (node) => { if (node.type === "resource") resources.push(node); });
+  assert.equal(complete.truncated, false);
+  assert.equal(textContent(complete.nodes), "body definition");
+  assert.deepEqual(local(resources), [{ type: "resource", kind: "stylesheet", path: "styles/oald.css", label: "" }]);
+
+  const fragment = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: "before<title>fragment metadata</title>after"
+  });
+  assert.equal(textContent(fragment.nodes), "beforeafter");
+});
+
+test("entity-encoded title markup remains literal dictionary text", () => {
+  const result = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: "<span>&lt;title&gt;literal&lt;/title&gt;</span>"
+  });
+  assert.equal(textContent(result.nodes), "<title>literal</title>");
+});
+
+test("Oxford image semantics require their exact asset path and sanitized context", () => {
+  const result = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<div class="o-ref-opp"><span><span class="o-symbol o-symbol-opp o-symbol-source-img o-symbol-token"><img src="img/OPP.png"></span></span></div>' +
+      '<span class="o-symbol o-symbol-key o-symbol-ox3000"><img src="img/Ox3000_key_L.png"></span>' +
+      '<span class="o-symbol o-symbol-key"><img src="img/Ox3000_key_L.png"></span>' +
+      '<div class="o-ref-opp"><span class="o-symbol o-symbol-opp o-symbol-source-img"><img src="img/other.png"></span></div>'
+  });
+  const resources = [];
+  walk(result.nodes, (node) => { if (node.type === "resource") resources.push(node); });
+  assert.deepEqual(resources.map(({ path, presentation }) => [path, presentation || ""]), [
+    ["img/OPP.png", "oxford-opposition"],
+    ["img/Ox3000_key_L.png", "oxford-key"],
+    ["img/Ox3000_key_L.png", ""],
+    ["img/other.png", ""]
+  ]);
+});
+
+test("Oxford pronunciation labels replace only matching icons beside local audio", () => {
+  const result = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<div class="o-pron-chunk o-pron-BrE"><img src="img/voicebre.svg"><a href="sound://audio/word/entry_br.mp3"></a></div>' +
+      '<div class="o-pron-chunk o-pron-NAmE"><img src="img/voicenam.svg"><a href="sound://audio/word/entry_us.mp3"></a></div>' +
+      '<div class="o-example-eng"><img src="img/voicebre.svg"></div>' +
+      '<div class="o-pron-chunk o-pron-BrE"><img src="img/voicebre.svg">no audio</div>'
+  });
+  const pronunciationLabels = [];
+  const resources = [];
+  walk(result.nodes, (node) => {
+    if (node.type === "element" && node.attrs?.["data-rich-pronunciation"]) pronunciationLabels.push(node.attrs["data-rich-pronunciation"]);
+    if (node.type === "resource") resources.push(node);
+  });
+  assert.deepEqual(pronunciationLabels, ["british", "american"]);
+  assert.deepEqual(resources.filter((node) => node.kind === "audio").map((node) => node.path), [
+    "audio/word/entry_br.mp3", "audio/word/entry_us.mp3"
+  ]);
+  assert.deepEqual(resources.filter((node) => node.kind === "image").map((node) => node.path), [
+    "img/voicebre.svg", "img/voicebre.svg"
+  ]);
+});
+
 test("actual ECDICT compact stylesheet rules safely wrap each following segment", () => {
   const styleSheetRules = [
     { id: 1, begin: '<b style="font-size:180%;">', end: "</b>" },

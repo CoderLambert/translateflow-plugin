@@ -49,7 +49,10 @@
 .tf-rich-viewer td, .tf-rich-viewer th { border: 1px solid var(--tf-border-soft, rgba(58,75,59,.14)); padding: 2px 5px; vertical-align: top; }
 .tf-rich-viewer th { font-weight: 700; }
 .tf-rich-placeholder { display: inline-block; padding: 1px 5px; border: 1px dashed var(--tf-border-soft, #b9c2b4); border-radius: 4px; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
+.tf-rich-inline-symbol-placeholder { padding: 0 .12em; border: 0; border-radius: 2px; font-size: 1em; line-height: 1; vertical-align: middle; }
+.tf-rich-pronunciation-label { display: inline-block; margin: 0 .2em; color: var(--tf-text-muted, #777); font-size: .82em; line-height: 1; vertical-align: middle; }
 .tf-rich-resource-image { display: block; max-width: min(100%, 320px); height: auto; object-fit: contain; }
+.tf-rich-resource-image-oxford-inline { display: inline-block; width: auto; height: 1em; max-width: 4em; max-height: 1em; margin: 0 .12em; vertical-align: middle; object-fit: contain; }
 .tf-rich-resource-audio { display: block; max-width: 100%; margin: .25em 0; }
 .tf-rich-audio-load { font: inherit; cursor: pointer; background: transparent; }
 .tf-rich-fragment-link { border: 0; padding: 0; color: var(--tf-rich-blue); font: inherit; text-decoration: underline; cursor: pointer; background: transparent; }
@@ -153,19 +156,21 @@
       const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
       if (!path || path !== node.path || !["image", "audio", "stylesheet"].includes(node.kind)) return null;
       const label = String(node.label || "").slice(0, 160);
-      const key = `${node.kind}\u0000${path}`;
+      const presentation = oxfordImagePresentation(node.presentation, path);
+      const key = `${node.kind}\u0000${path}\u0000${presentation}`;
       let item = resourceMap.get(key);
       if (!item) {
         if (resources.length >= MAX_RESOURCE_DESCRIPTORS) {
           count.truncated = true;
           return placeholder(node.kind === "image" ? "img" : "audio", label);
         }
-        item = { kind: node.kind, path, label, elements: [] };
+        item = { kind: node.kind, path, label, presentation, elements: [] };
         resourceMap.set(key, item);
         resources.push(item);
       } else if (!item.label && label) item.label = label;
       if (node.kind === "stylesheet") return null;
       const placeholderNode = placeholder(node.kind === "image" ? "img" : "audio", label);
+      if (presentation) decorateOxfordPlaceholder(placeholderNode, presentation);
       item.elements.push(placeholderNode);
       if (node.kind === "audio") placeholderNode.className += " tf-rich-audio-load";
       return placeholderNode;
@@ -198,6 +203,16 @@
       wrapper.appendChild(element);
       appendChildren(element, node.children, depth, count, resources, resourceMap);
       return wrapper;
+    }
+    const pronunciation = safePronunciationKind(tag, node.attrs);
+    if (pronunciation) {
+      const shortKey = pronunciation === "british" ? "content.rich.britishPronunciationShort" : "content.rich.americanPronunciationShort";
+      const descriptionKey = pronunciation === "british" ? "content.rich.britishPronunciationDescription" : "content.rich.americanPronunciationDescription";
+      element.setAttribute("role", "img");
+      locale.bindText(element, shortKey);
+      locale.bindAttribute(element, "aria-label", descriptionKey);
+      locale.bindAttribute(element, "title", descriptionKey);
+      return element;
     }
     const placeholderKind = String(node.attrs?.["data-rich-placeholder"] || "");
     if (placeholderKind === "image" || placeholderKind === "audio") {
@@ -270,6 +285,8 @@
       .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))
       .slice(0, 4);
     if (safeClasses.length) element.className += ` ${[...new Set(safeClasses)].join(" ")}`;
+    const pronunciation = safePronunciationKind(element.tagName.toLowerCase(), attrs);
+    if (pronunciation) element.setAttribute("data-rich-pronunciation", pronunciation);
     const placeholderKind = String(attrs["data-rich-placeholder"] || "");
     if (placeholderKind === "image" || placeholderKind === "audio") {
       element.className += " tf-rich-placeholder";
@@ -282,6 +299,31 @@
         element.setAttribute(name, String(value));
       }
     }
+  }
+
+  function safePronunciationKind(tag, attrs) {
+    if (tag !== "span" || !attrs || typeof attrs !== "object") return "";
+    const classes = String(attrs.class || "").split(/\s+/u);
+    if (!classes.includes("tf-rich-pronunciation-label")) return "";
+    const value = String(attrs["data-rich-pronunciation"] || "");
+    return value === "british" || value === "american" ? value : "";
+  }
+
+  function oxfordImagePresentation(value, path) {
+    if (value === "oxford-opposition" && path === "img/OPP.png") return value;
+    if (value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
+    return "";
+  }
+
+  function decorateOxfordPlaceholder(element, presentation) {
+    const opposition = presentation === "oxford-opposition";
+    const fallbackKey = opposition ? "content.rich.oxfordOppositionFallback" : "content.rich.oxfordKeyFallback";
+    const descriptionKey = opposition ? "content.rich.oxfordOppositionDescription" : "content.rich.oxfordKeyDescription";
+    element.className += " tf-rich-inline-symbol-placeholder";
+    locale.bindText(element, fallbackKey);
+    element.setAttribute("role", "img");
+    locale.bindAttribute(element, "aria-label", descriptionKey);
+    locale.bindAttribute(element, "title", descriptionKey);
   }
 
   function applySafeStyles(element, styles) {

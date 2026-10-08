@@ -93,6 +93,73 @@ test("rich result renderer sends only bounded payload to sanitizer and preserves
   assert.equal(fallbackBody.textContent, "plain safe result");
 });
 
+test("Oxford semantic headword suppresses only the matching plugin-added heading", async () => {
+  const semanticTree = (word) => ({ nodes: [{
+    type: "element", tag: "div", attrs: { class: "o-word-line" }, children: [
+      { type: "element", tag: "span", attrs: { class: "o-head-main" }, children: [
+        { type: "element", tag: "span", attrs: { class: "o-tag o-h" }, children: [{ type: "text", text: word }] }
+      ] },
+      { type: "text", text: " source definition" }
+    ]
+  }], truncated: false });
+  const sanitizer = { sanitizeRichDictionaryRecord(input) { return semanticTree(input.rawRecord); } };
+  const { renderer, document } = await loadModules({ sanitizer });
+
+  const matching = document.createElement("div");
+  renderer.appendRichDictionaryDetails(matching, { dictionaries: [{
+    id: "match", headword: "term", text: "fallback", richRecord: { rawRecord: "term", format: "HTML" }
+  }] });
+  assert.equal(findClass(matching, "tf-selection-rich-headword"), null);
+  const matchingBody = findClass(matching, "tf-selection-rich-text");
+  assert.match(textContent(findClass(matchingBody.shadowRoot, "tf-rich-viewer")), /term source definition/u);
+
+  const variant = document.createElement("div");
+  renderer.appendRichDictionaryDetails(variant, { dictionaries: [{
+    id: "variant", headword: "term", text: "fallback", richRecord: { rawRecord: "terms", format: "HTML" }
+  }] });
+  assert.equal(findClass(variant, "tf-selection-rich-headword")?.textContent, "term");
+
+  const multipleSanitizer = { sanitizeRichDictionaryRecord() {
+    return { nodes: [...semanticTree("other").nodes, ...semanticTree("term").nodes], truncated: false };
+  } };
+  const multiple = await loadModules({ sanitizer: multipleSanitizer });
+  const multipleContainer = multiple.document.createElement("div");
+  multiple.renderer.appendRichDictionaryDetails(multipleContainer, { dictionaries: [{
+    id: "multiple", headword: "term", text: "fallback", richRecord: { rawRecord: "ignored", format: "HTML" }
+  }] });
+  assert.equal(findClass(multipleContainer, "tf-selection-rich-headword"), null);
+});
+
+test("Oxford inline icons and pronunciation labels stay localized and non-interactive", async () => {
+  const attachCalls = [];
+  const resolver = { close() {}, attach(...args) { attachCalls.push(args); } };
+  const { viewer, document } = await loadModules({
+    resolver,
+    richResourcePath: { normalize: (value) => String(value || "") }
+  });
+  const host = document.createElement("div");
+  viewer.render(host, { nodes: [
+    { type: "resource", kind: "image", path: "img/OPP.png", presentation: "oxford-opposition" },
+    { type: "resource", kind: "image", path: "img/Ox3000_key_S.png", presentation: "oxford-key" },
+    { type: "resource", kind: "image", path: "img/not-oxford.png", presentation: "oxford-opposition" },
+    { type: "element", tag: "span", attrs: { class: "tf-rich-pronunciation-label", "data-rich-pronunciation": "british" }, children: [{ type: "text", text: "untrusted raw label" }] }
+  ] }, "fallback", { dictionaryId: "fixture" });
+
+  const placeholders = walk(host.shadowRoot).filter((node) => node.className?.includes("tf-rich-inline-symbol-placeholder"));
+  assert.equal(placeholders.length, 2);
+  assert.ok(placeholders.every((node) => node.attributes.get("role") === "img"));
+  assert.ok(placeholders.every((node) => node.attributes.get("aria-label").startsWith("content.rich.oxford")));
+  const pronunciation = findClass(host.shadowRoot, "tf-rich-pronunciation-label");
+  assert.equal(pronunciation.textContent, "content.rich.britishPronunciationShort");
+  assert.equal(pronunciation.attributes.get("aria-label"), "content.rich.britishPronunciationDescription");
+  assert.equal(attachCalls.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(attachCalls[0][3].map((item) => [item.path, item.presentation]))), [
+    ["img/OPP.png", "oxford-opposition"],
+    ["img/Ox3000_key_S.png", "oxford-key"],
+    ["img/not-oxford.png", ""]
+  ]);
+});
+
 test("viewer caps AST traversal and uses no network or HTML parser APIs", async () => {
   const source = await readFile(VIEWER, "utf8");
   assert.match(source, /MAX_NODES = 32768/u);
@@ -176,9 +243,18 @@ test("per-dictionary Compact rules carry safe formatting into the isolated viewe
   assert.ok(textContent(host.shadowRoot).includes("HeadwordFieldNote"));
 });
 
-async function loadModules({ sanitizer = { sanitizeRichDictionaryRecord: () => ({ nodes: [], truncated: false }) } } = {}) {
+async function loadModules({
+  sanitizer = { sanitizeRichDictionaryRecord: () => ({ nodes: [], truncated: false }) },
+  resolver = null,
+  richResourcePath = null
+} = {}) {
   const document = new FakeDocument();
-  const app = { modules: { contentI18n: createContentI18nStub(), selectionRichSanitizer: sanitizer } };
+  const app = { modules: {
+    contentI18n: createContentI18nStub(),
+    selectionRichSanitizer: sanitizer,
+    ...(resolver ? { richResourceResolver: resolver } : {}),
+    ...(richResourcePath ? { richResourcePath } : {})
+  } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);

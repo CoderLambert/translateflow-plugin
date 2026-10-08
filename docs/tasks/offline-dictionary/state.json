@@ -4,8 +4,8 @@
   "status": "working",
   "owner": "main",
   "dependencies": [],
-  "branch": "feat/oxford10-integrated-import",
-  "worktree": "/workspace/translateflow-plugin-oxford10",
+  "branch": "fix/oxford-rich-closeout-20261009",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-oxford-closeout-20261009",
   "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
@@ -29,5 +29,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "已获准连续实现 MDX/MDD 完整产品旅程。先用独立 writer fixture 复现并修复 raw/legacy 成对边界，再贯通现有选择、预检、OPFS 持久化、查询与受控渲染；真实 Oxford10 六文件和浏览器实包验收待用户提供输入。"
+  "nextAction": "用户已提供本机 Oxford10 六文件并授权连续收口。当前先在 origin/main=2539deef5c0747359dec4663d581798f1d526f83 上整合 OX-01 四项最小富文本修复，完成定向回归、实际 WXT 构建及真实界面导入/查询/图片/音频/刷新/重启验收；私人文件和证据只留在本机忽略目录。"
 }

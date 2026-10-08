@@ -254,7 +254,7 @@
       "task": "offline-dictionary",
       "status": "working",
       "dependencies": [],
-      "branch": "feat/oxford10-integrated-import",
+      "branch": "fix/oxford-rich-closeout-20261009",
       "candidateHead": null
     },
     {
