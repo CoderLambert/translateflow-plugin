@@ -7,10 +7,13 @@
   "branch": "feat/selection-vocabulary-book-v1",
   "worktree": ".",
   "validationCommands": [
-    ["npm", "run", "validate"],
+    ["npm", "run", "check"],
+    ["npm", "run", "typecheck"],
+    ["node", "--test", "tests/vocabulary-book.test.mjs"],
+    ["npm", "run", "test:unit"],
     ["npm", "run", "build:extension:wxt"],
     ["npm", "run", "test:e2e", "--", "e2e/selection-vocabulary-book.spec.mjs", "--workers=1"]
   ],
   "artifactRequired": true,
-  "nextAction": "Commit the candidate, finish required checks, then open a PR for user review and merge."
+  "nextAction": "Freeze this candidate, finish the scoped checks and WXT package evidence, then update PR #316 for user review and merge."
 }
