@@ -38,6 +38,7 @@ import "../content/selection/result-model.js";
 import "../content/selection/translation-query.js";
 import "../content/selection/clipboard.js";
 import "../content/selection/messages.js";
+import "../content/selection/vocabulary-book.js";
 import "../content/selection/empty-state.js";
 import "../content/selection/rich-sanitizer-style.js";
 import "../content/selection/rich-resource-path.js";

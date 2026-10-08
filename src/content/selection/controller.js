@@ -11,6 +11,7 @@
     || !app?.modules.selectionClipboard
     || !app?.modules.selectionMessages
     || !app?.modules.selectionRichDetails
+    || !app?.modules.selectionVocabularyBook
     || app.modules.selectionController
   ) return;
 
@@ -25,6 +26,7 @@
   const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
+  const vocabularyBook = app.modules.selectionVocabularyBook.create();
   const { buildLocalResult, copyTextForCard } = app.modules.selectionResultModel;
   const model = app.modules.selectionResultModel;
   const records = app.modules.selectionRecordClient?.create({ onStatus: (view) => app.modules.selectionRecordStatus?.update(view, {
@@ -146,13 +148,20 @@
       if (resolved.route === "local") {
         const card = buildLocalResult(resolved);
         if (!card?.primaryMeaning) throw localizedError("content.selection.noLocalResult");
+        const vocabularyEntry = model.vocabularyDraft(resolved);
         tasks.completeTask(task, { done: 1 });
         showResult(
           snapshot,
           card,
           copyTextForCard(card),
           "content.selection.resultCopied",
-          resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null
+          resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null,
+          vocabularyEntry ? (event) => {
+            if (!event?.isTrusted) return { ignored: true };
+            if (!isCurrentSelection(version, snapshot, expectedPage)) throw localizedError("content.vocabulary.updated");
+            return vocabularyBook.add(vocabularyEntry, event);
+          } : null,
+          (event) => vocabularyBook.open(event)
         );
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
         void loadRich(snapshot, version, expectedPage, queryRecord);
@@ -302,8 +311,8 @@
     return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
   }
 
-  function showResult(snapshot, card, copyText, copiedMessage, onExplain = null) {
-    popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain);
+  function showResult(snapshot, card, copyText, copiedMessage, onExplain = null, onSaveVocabulary = null, onOpenVocabulary = null) {
+    popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain, onSaveVocabulary, onOpenVocabulary);
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }

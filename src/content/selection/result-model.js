@@ -225,6 +225,31 @@
     return { kind: "dictionary", targetLanguage: "zh-CN", payload: { outcome: "hit", headword: candidate.headword,
       phonetic: String(candidate.pronunciation || ""), partOfSpeech: String(candidate.partOfSpeech || ""), definitions }, provenance };
   }
+  function vocabularyDraft(resolved) {
+    if (resolved?.routeReason === "no-hit-local") return null;
+    const candidate = orderedCandidates(resolved)[0];
+    const provenance = candidate?.provenance;
+    const sourceRefs = Array.isArray(provenance?.sourceRefs) ? provenance.sourceRefs.slice(0, 4) : [];
+    const sources = sourceRefs.map((ref) => ({
+      sourceId: String(ref?.sourceId || ""),
+      packId: String(provenance?.packId || ""),
+      packVersion: String(provenance?.packVersion || ""),
+      sourceEntryId: String(ref?.recordId || "")
+    }));
+    const definitions = uniqueText(candidate?.translations).slice(0, 4);
+    if (!candidate?.headword || !definitions.length || !sources.length || sources.some((source) =>
+      !source.sourceId || !source.packId || !source.packVersion || !source.sourceEntryId)) return null;
+    return {
+      headword: String(candidate.headword).trim(),
+      sourceLanguage: String(resolved?.intent?.sourceLanguage || "en"),
+      targetLanguage: "zh-CN",
+      pronunciation: String(candidate.pronunciation || "").trim(),
+      partOfSpeech: String(candidate.partOfSpeech || "").trim(),
+      definitions,
+      examples: uniqueText([...(Array.isArray(candidate.examples) ? candidate.examples : []), candidate.example]).slice(0, 2),
+      sources
+    };
+  }
   function readingTranslation(text, result) {
     if (!result?.provenance || !text) return null;
     return { kind: "translation", targetLanguage: result.targetLanguage, payload: { text }, provenance: result.provenance };
@@ -254,6 +279,6 @@
     buildExplainedResult,
     buildTranslationResult,
     copyTextForCard,
-    readingDictionary, readingTranslation, readingAssistant, readingRich
+    readingDictionary, readingTranslation, readingAssistant, readingRich, vocabularyDraft
   });
 })();

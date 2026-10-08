@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "task": "selection-vocabulary-book-v1",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/selection-vocabulary-book-v1",
+  "worktree": ".",
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:e2e", "--", "e2e/selection-vocabulary-book.spec.mjs", "--workers=1"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "Commit the candidate, finish required checks, then open a PR for user review and merge."
+}

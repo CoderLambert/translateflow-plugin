@@ -82,6 +82,7 @@ function harness() {
     selectionClipboard: { writeText: async () => {} },
     selectionMessages: { unresolvedMessage: () => "content.selection.resolveFailed" },
     selectionRichDetails: { load: async () => {}, cancel: async () => {}, bindLifecycle() {} },
+    selectionVocabularyBook: { create: () => ({ add: async () => ({}), open: async () => ({}) }) },
     selectionRecordClient: { create: () => ({
       start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
       accept(_context, artifact) { accepted.push(artifact); },

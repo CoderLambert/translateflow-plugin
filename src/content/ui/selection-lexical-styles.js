@@ -22,6 +22,24 @@
   border-color: var(--tf-border-soft);
   background: var(--tf-bg-subtle);
 }
+.tf-selection-vocabulary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--tf-border-soft);
+}
+.tf-selection-vocabulary-actions[hidden] { display: none; }
+.tf-selection-vocabulary-status {
+  flex: 1 1 100%;
+  color: var(--tf-text-secondary);
+  font-size: var(--tf-font-size-xs);
+  line-height: 1.4;
+}
+.tf-selection-vocabulary-status[hidden] { display: none; }
+.tf-selection-vocabulary-actions button { min-height: 34px; }
 .tf-selection-dictionary-entries {
   display: grid;
   gap: 7px;

@@ -15,9 +15,9 @@
   const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
   const focusReturn = createFocusReturn();
 
-  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode;
-  let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
-  let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
+  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions, vocabularyStatus;
+  let copyButton, explainButton, retryButton, cancelButton, closeButton, vocabularyAddButton, vocabularyOpenButton, activeSnapshot;
+  let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler, vocabularySaveHandler, vocabularyOpenHandler;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -57,6 +57,23 @@
     aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
     emptyState = createEmptyState({ container: resultNode, onResize: reposition });
 
+    vocabularyActions = document.createElement("div");
+    vocabularyActions.className = "tf-selection-vocabulary-actions";
+    vocabularyActions.hidden = true;
+    vocabularyAddButton = button({ text: locale.t("content.vocabulary.add"), className: "tf-selection-action-primary tf-selection-vocabulary-add" });
+    locale.bindText(vocabularyAddButton, "content.vocabulary.add");
+    vocabularyAddButton.addEventListener("click", (event) => saveVocabulary(event));
+    vocabularyOpenButton = button({ text: locale.t("content.vocabulary.open"), className: "tf-selection-action-quiet tf-selection-vocabulary-open" });
+    locale.bindText(vocabularyOpenButton, "content.vocabulary.open");
+    vocabularyOpenButton.hidden = true;
+    vocabularyOpenButton.addEventListener("click", (event) => openVocabulary(event));
+    vocabularyStatus = document.createElement("div");
+    vocabularyStatus.className = "tf-selection-vocabulary-status";
+    vocabularyStatus.setAttribute("role", "status");
+    vocabularyStatus.setAttribute("aria-live", "polite");
+    vocabularyStatus.hidden = true;
+    vocabularyActions.append(vocabularyAddButton, vocabularyOpenButton, vocabularyStatus);
+
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions";
 
@@ -79,7 +96,7 @@
     cancelButton.addEventListener("click", () => cancelHandler?.());
 
     actions.append(explainButton, copyButton, retryButton, cancelButton);
-    panel.append(header, sourceNode, statusNode, resultNode, actions);
+    panel.append(header, sourceNode, statusNode, resultNode, vocabularyActions, actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
   }
@@ -135,12 +152,14 @@
       : "content.selection.loadingText";
   }
 
-  function showResult(snapshot, result, onCopy, onExplain) {
+  function showResult(snapshot, result, onCopy, onExplain, onSaveVocabulary, onOpenVocabulary) {
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
     copyHandler = onCopy;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
+    vocabularySaveHandler = typeof onSaveVocabulary === "function" ? onSaveVocabulary : null;
+    vocabularyOpenHandler = typeof onOpenVocabulary === "function" ? onOpenVocabulary : null;
     chip.hidden = true;
     panel.hidden = false;
     updateSource(snapshot, result);
@@ -152,6 +171,12 @@
     copyButton.hidden = false;
     explainButton.hidden = !explainHandler;
     retryButton.hidden = true;
+    vocabularyActions.hidden = !vocabularySaveHandler;
+    vocabularyAddButton.hidden = !vocabularySaveHandler;
+    vocabularyAddButton.disabled = false;
+    vocabularyOpenButton.hidden = true;
+    vocabularyOpenButton.disabled = false;
+    setVocabularyStatus("");
     position(snapshot, panel);
   }
 
@@ -319,11 +344,15 @@
     aiDetail = null;
     emptyState = null;
     statusNode = null;
+    vocabularyActions = null;
+    vocabularyStatus = null;
     copyButton = null;
     explainButton = null;
     retryButton = null;
     cancelButton = null;
     closeButton = null;
+    vocabularyAddButton = null;
+    vocabularyOpenButton = null;
     activeSnapshot = null;
     translateHandler = null;
     clearActionHandlers();
@@ -332,7 +361,8 @@
   }
 
   function clearActionHandlers() {
-    retryHandler = copyHandler = explainHandler = cancelHandler = null;
+    retryHandler = copyHandler = explainHandler = cancelHandler = vocabularySaveHandler = vocabularyOpenHandler = null;
+    if (vocabularyActions) vocabularyActions.hidden = true;
   }
 
   function setLocalizedStatus(node, message, fallbackKey, kind) {
@@ -348,6 +378,51 @@
   }
   function hideActionButtons() {
     cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
+    if (vocabularyActions) vocabularyActions.hidden = true;
+  }
+
+  async function saveVocabulary(event) {
+    const handler = vocabularySaveHandler, snapshot = activeSnapshot;
+    if (!event?.isTrusted || !handler || !vocabularyAddButton) return;
+    vocabularyAddButton.disabled = true;
+    setVocabularyStatus("content.vocabulary.saving");
+    try {
+      const result = await handler(event);
+      if (snapshot !== activeSnapshot || panel?.hidden || !vocabularyActions?.isConnected || result?.ignored) return;
+      vocabularyAddButton.hidden = true;
+      vocabularyOpenButton.hidden = false;
+      setVocabularyStatus(result?.added ? "content.vocabulary.saved" : result?.updated ? "content.vocabulary.updatedSaved" : "content.vocabulary.alreadySaved");
+    } catch (error) {
+      if (snapshot !== activeSnapshot || panel?.hidden || !vocabularyActions?.isConnected) return;
+      vocabularyAddButton.disabled = false;
+      const key = error?.code === "VOCABULARY_CAPACITY" ? "content.vocabulary.full"
+        : error?.code === "VOCABULARY_STORAGE" ? "content.vocabulary.storageError"
+          : "content.vocabulary.saveError";
+      setVocabularyStatus(key);
+    }
+    reposition();
+  }
+
+  async function openVocabulary(event) {
+    const handler = vocabularyOpenHandler, snapshot = activeSnapshot;
+    if (!event?.isTrusted || !handler || !vocabularyOpenButton) return;
+    vocabularyOpenButton.disabled = true;
+    try {
+      await handler(event);
+      if (snapshot === activeSnapshot && !panel?.hidden && vocabularyActions?.isConnected) setVocabularyStatus("content.vocabulary.opened");
+    } catch {
+      if (snapshot === activeSnapshot && !panel?.hidden && vocabularyActions?.isConnected) setVocabularyStatus("content.vocabulary.openError");
+    } finally {
+      if (snapshot === activeSnapshot && !panel?.hidden && vocabularyOpenButton?.isConnected) vocabularyOpenButton.disabled = false;
+    }
+  }
+
+  function setVocabularyStatus(key) {
+    if (!vocabularyStatus) return;
+    locale.unbind(vocabularyStatus);
+    vocabularyStatus.textContent = "";
+    vocabularyStatus.hidden = !key;
+    if (key) locale.bindText(vocabularyStatus, key);
   }
 
   function setCloseHandler(handler) {

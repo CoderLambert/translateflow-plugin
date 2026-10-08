@@ -17,6 +17,26 @@ label { display: block; font-weight: 600; margin-bottom: 8px; }
 .consent, .artifact, .management, footer { border: 1px solid var(--tf-border-main); background: var(--tf-bg-panel); padding: 20px; border-radius: var(--tf-radius-md); margin: 20px 0; }
 .site-marker-settings { border: 1px solid var(--tf-border-main); background: var(--tf-bg-panel); padding: 16px; border-radius: var(--tf-radius-md); margin: 16px 0; }
 .site-marker-settings h3 { margin: 0 0 8px; font-size: 18px; }
+.learning-sections { margin: 0 0 24px; padding-bottom: 16px; border-bottom: 1px solid var(--tf-border-main); }
+.vocabulary-section { margin-top: 16px; }
+.vocabulary-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.vocabulary-heading h2 { margin-bottom: 4px; }
+.vocabulary-heading p { margin-top: 0; }
+.vocabulary-list { display: grid; gap: 12px; list-style: none; padding: 0; }
+.vocabulary-entry, .vocabulary-review-card { border: 1px solid var(--tf-border-main); border-radius: var(--tf-radius-md); background: var(--tf-bg-panel); padding: clamp(16px, 3vw, 24px); box-shadow: var(--tf-shadow-xs); }
+.vocabulary-entry { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.vocabulary-entry-copy { min-width: 0; flex: 1 1 340px; }
+.vocabulary-entry h3, .vocabulary-review-card h3 { margin: 0; color: var(--tf-text-strong); font-size: clamp(24px, 5vw, 34px); overflow-wrap: anywhere; }
+.vocabulary-meta { margin: 4px 0 12px; color: var(--tf-text-secondary); }
+.vocabulary-definitions { display: grid; gap: 5px; margin: 12px 0; padding-left: 22px; }
+.vocabulary-entry blockquote, .vocabulary-review-card blockquote { margin: 14px 0; color: var(--tf-text-secondary); }
+.vocabulary-review-card { max-width: 680px; min-height: 240px; margin: 20px auto; }
+.vocabulary-review-card > .muted { margin: 0 0 24px; }
+.vocabulary-review-card > button { margin-top: 20px; }
+.vocabulary-answer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--tf-border-main); }
+.vocabulary-answer .actions { margin-top: 20px; }
+.vocabulary-answer .actions > button { min-width: 140px; }
+@media (max-width: 480px) { .learning-sections > button { flex: 1 1 28%; padding-inline: 8px; } .vocabulary-entry > button { width: 100%; } }
 .notice { padding: 12px 16px; background: var(--tf-green-100); border-radius: var(--tf-radius-sm); overflow-wrap: anywhere; }
 .error { border-left: 4px solid var(--tf-danger); }
 .danger { color: var(--tf-danger); } .muted, .context { color: var(--tf-text-secondary); font-size: 14px; }
