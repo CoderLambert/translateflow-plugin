@@ -357,7 +357,6 @@
     cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
     vocabularyActions?.hide();
   }
-
   function setCloseHandler(handler) { closeHandler = typeof handler === "function" ? handler : null; }
   function contains(target) { return ownsNode(target); }
   function isEventInsidePanel(event) { return eventInsidePanel(event, panel); }
