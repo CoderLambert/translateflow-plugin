@@ -266,10 +266,10 @@
     },
     {
       "task": "selection-vocabulary-book-v1",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "feat/selection-vocabulary-book-v1",
-      "candidateHead": null
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673"
     },
     {
       "task": "workflow-local",

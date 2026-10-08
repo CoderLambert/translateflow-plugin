@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "task": "selection-vocabulary-book-v1",
+  "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+  "tree": "6a7ced08e237568f8e7c51d1abf3b14fe6426fce",
+  "inputTree": "ef056f5df788f6ea5695d3799fefec612a22101c808932b388979199d48b083a",
+  "frozenAt": "2026-10-08T16:59:56.750Z",
+  "environment": {
+    "node": "v24.19.0",
+    "npm": "11.9.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 21335.743345,
+      "startedAt": "2026-10-08T17:00:04.276Z",
+      "log": "docs/task-execution/local/selection-vocabulary-book-v1/3da5c224-a96f-4bf9-95f6-1df0b342a742.log",
+      "logSha256": "325e9804bb90944bf797b826c13efd008c4582e8589c656d4f29ae9fa4808dd9"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 8921.095544,
+      "startedAt": "2026-10-08T17:00:32.325Z",
+      "log": "docs/task-execution/local/selection-vocabulary-book-v1/868fe0be-e18e-48b8-8491-e8046ffa212c.log",
+      "logSha256": "d2a34388fa98774ae5cef3451a68c1c469cb31b32c4aa262db84b14168dedac0"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/vocabulary-book.test.mjs"
+      ],
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1152.642091,
+      "startedAt": "2026-10-08T17:00:48.258Z",
+      "log": "docs/task-execution/local/selection-vocabulary-book-v1/cb6bdc5e-d652-446b-9920-fddddffbc64c.log",
+      "logSha256": "94948cb4b4c044e1df44f5df49c5d55ce2c0ff0eb2e6347f130a442b26fd056d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit"
+      ],
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4660.858507,
+      "startedAt": "2026-10-08T17:00:57.123Z",
+      "log": "docs/task-execution/local/selection-vocabulary-book-v1/6a20b332-5b0e-4e77-b123-3bb042c69b28.log",
+      "logSha256": "12029db49b829da2fca83c27a8c218ce032443a031ae4ad5f9b0ce1d6a319d9d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4485.16648,
+      "startedAt": "2026-10-08T17:01:11.211Z",
+      "log": "docs/task-execution/local/selection-vocabulary-book-v1/f23149e7-be78-45ff-a36d-1ed6ead60bee.log",
+      "logSha256": "ba07073c84774eecd8a50fe4e80567f5505d1e447ffc0799e9f2ec89efc948d3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/selection-vocabulary-book.spec.mjs",
+        "--workers=1"
+      ],
+      "candidateHead": "033540996db9ce4150d949772f4386b258456673",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3956.052646,
+      "startedAt": "2026-10-08T17:01:30.668Z",
+      "log": "docs/task-execution/local/selection-vocabulary-book-v1/7c19ba90-8bd9-41e2-8979-b596597c63cf.log",
+      "logSha256": "5a17b1496970712bd3ba4163cf8ccadad4335fe20c39988b43d01a3d79c0db45"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "31cdc135f8bfbac1791b1366760bc67ec530f082321d96ed19c7cee94a451b60"
+  },
+  "limitations": [
+    "The browser run loaded the exact built WXT artifact before fixture setup, then copied it into an isolated profile and replaced only Core with the repository synthetic TFLex fixture; the built-in Technical package was retained. This does not validate Oxford or private dictionaries.",
+    "The mock server received zero requests. A localhost host permission was added only to the temporary test copy. No real AI/provider call was made.",
+    "OS-level IME behavior was not exercised."
+  ]
+}

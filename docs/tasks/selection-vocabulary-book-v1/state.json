@@ -1,8 +1,9 @@
 {
   "schema": 1,
   "task": "selection-vocabulary-book-v1",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
+  "candidateHead": "033540996db9ce4150d949772f4386b258456673",
   "dependencies": [],
   "branch": "feat/selection-vocabulary-book-v1",
   "worktree": ".",
@@ -15,5 +16,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/selection-vocabulary-book.spec.mjs", "--workers=1"]
   ],
   "artifactRequired": true,
-  "nextAction": "Freeze this candidate, finish the scoped checks and WXT package evidence, then update PR #316 for user review and merge."
+  "nextAction": "Sync the verified candidate to PR #316 for user review and merge."
 }
