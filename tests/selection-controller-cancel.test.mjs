@@ -26,6 +26,8 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
   const location = { href: pageUrl };
   let selectedText = "current selected text", onTranslate = null, onCancel = null, chipCount = 0;
   let projectionRevision = 1, onProjectionChange = null, onAssistantStop = null;
+  let sourceMatches = true, rangeConnected = true, rangeText = null, hideCount = 0, repositionCount = 0, referenceInvalidations = 0;
+  const rangeEndpoint = { get isConnected() { return rangeConnected; } };
   const cancelHandlers = [];
   let stored = false, cancelButtonDisabled = false;
 
@@ -83,8 +85,13 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       CACHE_STORE: "cache-store", CANCEL_TRANSLATION: "cancel-translation"
     } }, sendRuntimeMessage, getPageIdentity: (value) => value, showToast() {} },
     contentI18n: createContentI18nStub(),
-    selection: { readSelection: () => ({ text: selectedText, pageUrl, sourceRevision: 1, range: {}, rect: {} }),
-      isExtensionOwnedNode: () => false },
+    selection: { readSelection: () => {
+      const range = { startContainer: rangeEndpoint, startOffset: 0, endContainer: rangeEndpoint, endOffset: selectedText.length,
+        toString: () => rangeText ?? selectedText };
+      return { text: selectedText, pageUrl, sourceRevision: projectionRevision, range,
+        rangeIdentity: { startContainer: range.startContainer, startOffset: range.startOffset,
+          endContainer: range.endContainer, endOffset: range.endOffset, text: selectedText }, rect: {} };
+    }, isExtensionOwnedNode: () => false },
     selectionContext: { captureSelectionContext: () => ({ text: "safe synthetic context", sensitive: false }) },
     textProjection: { start(callback) { onProjectionChange = callback; }, watchPage() {}, revision: () => projectionRevision, sameRange: () => true },
     selectionPopover: {
@@ -106,7 +113,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       showAiDetailStopping() {},
       showAiDetailResult() {},
       showAiDetailInterrupted() {},
-      hide() {}, reposition() {}, contains: () => false
+      hide() { hideCount++; }, reposition() { repositionCount++; }, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
     selectionMessages: { unresolvedMessage: () => "content.selection.resolveFailed" },
@@ -119,11 +126,20 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
       assistant(context) { const operation = { operationId: `assistant-${context.operations.length + 1}` }; context.operations.push(operation); return operation; },
       accept(_context, artifact) { accepted.push(artifact); },
-      close: async () => null, discard: async () => {}, invalidateReference() {}, refresh: async () => {}, render() {},
+      close: async () => null, discard: async () => {}, invalidateReference() { referenceInvalidations++; }, refresh: async () => {}, render() {},
       save: async () => {}, retry: async () => {}, open: async () => {}, decline() {}
     }) : null },
     selectionRecordStatus: { update() {}, clear() {} },
-    selectionSourceSnapshot: { capture(snapshot) { return { selectedText: snapshot.text, sourceRevision: snapshot.sourceRevision,
+    selectionSourceSnapshot: {
+      matchesCurrentPage(snapshot, frozen, currentUrl, getIdentity) {
+        return Boolean(snapshot) && getIdentity(snapshot.pageUrl) === getIdentity(currentUrl)
+          && (frozen ? this.matches(snapshot, frozen) : this.rangeMatches(snapshot.range, snapshot.rangeIdentity));
+      },
+      rangeMatches(range, frozen) { return Boolean(range && frozen && range.startContainer?.isConnected && range.endContainer?.isConnected
+        && range.startContainer === frozen.startContainer && range.startOffset === frozen.startOffset
+        && range.endContainer === frozen.endContainer && range.endOffset === frozen.endOffset && range.toString() === frozen.text); },
+      matches() { return sourceMatches; },
+      capture(snapshot) { return { selectedText: snapshot.text, rangeIdentity: snapshot.rangeIdentity, sourceRevision: snapshot.sourceRevision,
       sourceSnapshotId: "snapshot-1", documentGeneration: "document-1", selectionGeneration: snapshot.selectionGeneration,
       ready: Promise.resolve({ selectedText: snapshot.text, sourceSnapshotId: "snapshot-1", documentGeneration: "document-1",
         selectionGeneration: snapshot.selectionGeneration, anchor: { status: "unsupported", quote: { exact: snapshot.text } } }) }; } },
@@ -152,6 +168,8 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
     resolveStore: (index = 0, result = { ok: true }) => storeAcks[index].resolve(result), get stored() { return stored; },
     get cancelButtonDisabled() { return cancelButtonDisabled; },
+    get hideCount() { return hideCount; }, get repositionCount() { return repositionCount; },
+    get referenceInvalidations() { return referenceInvalidations; },
     stop: () => onCancel?.(), translate: () => onTranslate?.({ isTrusted: true }),
     explain: (index = 0) => resultActions[index]?.onExplain?.({ isTrusted: true }, "understand"),
     save: (index = 0) => resultActions[index]?.onSave?.({ isTrusted: true }),
@@ -165,7 +183,11 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     stopAt: (index) => cancelHandlers[index]?.(),
     getTask: () => app.modules.tasks.getLatestTask("selection"),
     setSelectedText(value) { selectedText = value; documentListeners.get("mouseup")({ target: {} }); },
+    setRangeState({ connected = rangeConnected, text = rangeText } = {}) { rangeConnected = connected; rangeText = text; },
     changeProjection({ notify = false } = {}) { projectionRevision++; if (notify) onProjectionChange?.(); },
+    invalidateProjection({ matches = true, revision = projectionRevision + 1 } = {}) {
+      sourceMatches = matches; projectionRevision = revision; onProjectionChange?.(revision);
+    },
     navigateTo(url, { notify = false } = {}) { location.href = url; if (notify) windowListeners.get("popstate")?.(); },
     close: () => app.modules.selectionPopover.closeHandler?.(),
     location, windowListeners
@@ -176,6 +198,47 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     return new Promise(resolve => chipWaiters.push({ count, resolve }));
   }
 }
+
+test("an unrelated projection change retains the pending result and refreshes its revision", async () => {
+  const h = harness();
+  await h.ready;
+  const pending = h.translate();
+  await h.storeStarted;
+  h.invalidateProjection({ matches: true });
+  h.resolveStore();
+  await pending;
+
+  assert.equal(h.hideCount, 0);
+  assert.equal(h.repositionCount, 1);
+  assert.equal(h.referenceInvalidations, 0);
+  assert.equal(h.results.length, 1);
+  assert.equal(h.results[0].primaryMeaning, "current selected text translated");
+});
+
+test("a projection change dismisses when the frozen selection or local context no longer matches", async () => {
+  const h = harness();
+  await h.ready;
+  const pending = h.translate();
+  await h.storeStarted;
+  h.invalidateProjection({ matches: false });
+  h.resolveStore();
+  await pending;
+
+  assert.equal(h.hideCount, 1);
+  assert.equal(h.referenceInvalidations, 1);
+  assert.deepEqual(h.results, []);
+});
+
+test("a pre-query projection change checks the selection-time Range endpoints and raw text", async () => {
+  const h = harness();
+  await h.ready;
+  h.setRangeState({ text: "changed selected text" });
+  h.invalidateProjection();
+
+  assert.equal(h.hideCount, 1);
+  assert.equal(h.repositionCount, 0);
+  assert.equal(h.referenceInvalidations, 1);
+});
 
 test("a local dictionary save remains valid while its optional AI explanation is streaming", async () => {
   const h = harness({ resolveRoute: "local", readingRecords: false });

@@ -2,12 +2,20 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.textProjection || app.modules.selectionSourceSnapshot) return;
   const projection = app.modules.textProjection, policy = app.modules.textProjectionPolicy;
+  const contextBlockTags = new Set(["ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "BODY", "DD", "DETAILS", "DIV", "DL", "DT",
+    "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE", "SECTION",
+    "SUMMARY", "TABLE", "TBODY", "TD", "TFOOT", "TH", "THEAD", "TR", "UL"]);
   // This local document marker is evidence only; #232 must bind trusted sender authority.
   function randomId(prefix) { const bytes = crypto.getRandomValues(new Uint8Array(16)); return prefix + [...bytes].map((value) => value.toString(16).padStart(2, "0")).join(""); }
   const documentGeneration = randomId("doc-");
   const contextRoot = (range) => {
-    const element = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
-    return element?.closest("p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main") || element;
+    const common = range?.commonAncestorContainer;
+    const origin = common?.nodeType === 1 ? common : common?.parentElement;
+    let element = origin;
+    for (let count = 0; element && count < policy.limits.sliceNodes; count++, element = element.parentElement) {
+      if (contextBlockTags.has(String(element.localName || element.tagName).toUpperCase())) return element;
+    }
+    return origin;
   };
   function boundedText(text, position, maxChars) {
     const center = (position.start + position.end) / 2;
@@ -44,14 +52,37 @@
     return position.start < position.end ? position : null;
   }
   const comparable = (text) => text.replace(/[\t\n\r\f ]+/gu, " ").replace(/^ +| +$/gu, "");
-  function capture(snapshot, { maxChars = 900 } = {}) {
+  function freezeRange(range) {
+    if (!range) return null;
+    try {
+      return Object.freeze({
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset,
+        text: String(range.toString())
+      });
+    } catch { return null; }
+  }
+  function rangeMatches(range, frozen) {
+    if (!range || !frozen || !range.startContainer?.isConnected || !range.endContainer?.isConnected) return false;
+    try {
+      return range.startContainer === frozen.startContainer
+        && range.startOffset === frozen.startOffset
+        && range.endContainer === frozen.endContainer
+        && range.endOffset === frozen.endOffset
+        && String(range.toString()) === frozen.text;
+    } catch { return false; }
+  }
+  function localCapture(snapshot, { maxChars = 900 } = {}) {
     const budget = policy.createSliceBudget();
-    const sourceRevision = projection.revision(), decision = policy.rangePolicy(snapshot.range, snapshot.text, { budget });
-    let selectedText = snapshot.text, text = "", prefix = "", suffix = "", position = null, blockText = null;
-    let status = "unsupported", truncated = false;
+    const sourceRevision = projection.revision();
+    const decision = policy.rangePolicy(snapshot.range, snapshot.text, { budget });
+    let selectedText = snapshot.text, text = "", prefix = "", suffix = "", localPosition = null, blockText = null;
+    let truncated = false;
     if (decision.supported) {
-      // Preserve proven local context before spending the remaining slice on page coordinates.
-      const local = localProjection(snapshot.range, budget), localPosition = selectionPosition(local, snapshot.range, budget);
+      const local = localProjection(snapshot.range, budget);
+      localPosition = selectionPosition(local, snapshot.range, budget);
       if (local.sensitive) decision.sensitive = true;
       if (localPosition && comparable(local.text.slice(localPosition.start, localPosition.end)) === comparable(snapshot.text)) {
         selectedText = local.text.slice(localPosition.start, localPosition.end);
@@ -61,12 +92,19 @@
         suffix = local.text.slice(localPosition.end, localPosition.end + 120);
         if (!local.localWindow) blockText = local.text;
       }
-      if (blockText !== null) {
-        const full = projection.project(document.body, { budget });
-        const globalPosition = selectionPosition(full, snapshot.range, budget);
-        if (globalPosition && localPosition && full.text.slice(globalPosition.start, globalPosition.end) === selectedText) {
-          status = "resolved"; position = globalPosition;
-        }
+    }
+    return { budget, sourceRevision, decision, selectedText, text, prefix, suffix, localPosition, blockText, truncated };
+  }
+  function capture(snapshot, { maxChars = 900 } = {}) {
+    const rangeIdentity = snapshot.rangeIdentity || freezeRange(snapshot.range);
+    const local = localCapture(snapshot, { maxChars });
+    const { budget, sourceRevision, decision, selectedText, text, prefix, suffix, localPosition, blockText, truncated } = local;
+    let position = null, status = "unsupported";
+    if (blockText !== null) {
+      const full = projection.project(document.body, { budget });
+      const globalPosition = selectionPosition(full, snapshot.range, budget);
+      if (globalPosition && localPosition && full.text.slice(globalPosition.start, globalPosition.end) === selectedText) {
+        status = "resolved"; position = globalPosition;
       }
     }
     const context = Object.freeze({ text, sensitive: decision.sensitive, source: text ? "visible-local" : "selection-only", truncated });
@@ -74,7 +112,8 @@
       contextMode: text ? "bounded-context" : "selection-only", projectionVersion: policy.projectionVersion,
       documentGeneration, selectionGeneration: snapshot.selectionGeneration || 1,
       anchor: { status, quote: { exact: selectedText, prefix, suffix }, position, blockDigest: null }, capturedAt: Date.now() };
-    const result = { sourceRevision, root: decision.supported && !decision.sensitive ? "document" : "unsupported", selectedText, capability: status, context, sourceSnapshot: null };
+    const result = { sourceRevision, root: decision.supported && !decision.sensitive ? "document" : "unsupported",
+      selectedText, rangeIdentity, capability: status, context, sourceSnapshot: null };
     const validText = selectedText?.trim() && selectedText.length <= 2000 && !/[\u0000\u0008\u000b\u000c]/u.test(selectedText);
     result.ready = (validText ? Promise.all([digest(JSON.stringify([frozen.projectionVersion, selectedText, frozen.contextMode, text])), blockText === null ? null : digest(blockText)])
       : Promise.reject(new Error("unsupported selected text")))
@@ -88,6 +127,20 @@
     result.ready.catch(() => {});
     return result;
   }
+  function matches(snapshot, frozen) {
+    if (!snapshot?.range || !frozen || !rangeMatches(snapshot.range, frozen.rangeIdentity || snapshot.rangeIdentity)) return false;
+    try {
+      const current = localCapture(snapshot);
+      return current.selectedText === frozen.selectedText
+        && current.text === frozen.context?.text
+        && Boolean(current.decision.sensitive) === Boolean(frozen.context?.sensitive);
+    } catch { return false; }
+  }
+  function matchesCurrentPage(snapshot, frozen, currentUrl, getPageIdentity) {
+    return Boolean(snapshot)
+      && getPageIdentity(snapshot.pageUrl) === getPageIdentity(currentUrl)
+      && (frozen ? matches(snapshot, frozen) : rangeMatches(snapshot.range, snapshot.rangeIdentity));
+  }
   async function digest(text) {
     const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
     return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -100,5 +153,5 @@
     const canonicalRange = projection.rangeForPosition(value, position, { budget });
     return canonicalRange ? { range: canonicalRange, text: value.text.slice(position.start, position.end) } : { range, text };
   }
-  app.modules.selectionSourceSnapshot = { capture, contextRoot, canonicalize, documentGeneration };
+  app.modules.selectionSourceSnapshot = { capture, matches, matchesCurrentPage, freezeRange, rangeMatches, contextRoot, canonicalize, documentGeneration };
 })();

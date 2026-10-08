@@ -49,7 +49,7 @@
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
-    projection.start(() => { if (activeSnapshot) { records?.invalidateReference(); dismiss(); } });
+    projection.start(handleProjectionInvalidation);
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -75,6 +75,12 @@
   function scheduleSelectionRefresh() {
     clearTimeout(selectionTimer);
     selectionTimer = setTimeout(refreshSelectionUi, 90);
+  }
+  function handleProjectionInvalidation(revision = projection.revision()) {
+    const snapshot = activeSnapshot, capture = snapshot?.sourceCapture; if (!snapshot) return;
+    const current = app.modules.selectionSourceSnapshot.matchesCurrentPage(snapshot, capture, location.href, getPageIdentity);
+    if (!current) { records?.invalidateReference(); dismiss(); return; }
+    snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition();
   }
 
   function refreshSelectionUi() {
