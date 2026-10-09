@@ -248,8 +248,9 @@
     container.appendChild(body);
     const viewport = body.shadowRoot?.querySelector?.(".tf-rich-viewer");
     if (!bodyText && !displayed && viewport) locale.bindText(viewport, "content.rich.emptyBody");
+    const visibleText = typeof viewport?.innerText === "string" ? viewport.innerText : viewport?.textContent;
     return { id: String(dictionaryId || ""), headword, packVersion: dictionary?.packVersion,
-      text: String(viewport?.textContent ?? (!displayed ? bodyText : "")) };
+      text: String(visibleText ?? (!displayed ? bodyText : "")).replace(/\r\n?/gu, "\n") };
   }
 
   function semanticHeadwordMatches(tree, headword) {

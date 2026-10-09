@@ -3,7 +3,7 @@
   if (!app?.modules.textProjection || app.modules.selectionSourceSnapshot) return;
   const projection = app.modules.textProjection, policy = app.modules.textProjectionPolicy;
   const contextBlockTags = new Set(["ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "BODY", "DD", "DETAILS", "DIV", "DL", "DT",
-    "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE", "SECTION",
+    "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "H1", "H2", "H3", "H4", "H5", "H6", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE", "SECTION",
     "SUMMARY", "TABLE", "TBODY", "TD", "TFOOT", "TH", "THEAD", "TR", "UL"]);
   // Mirrors the resolver's historical scope so new local contexts preserve saved anchor identity.
   const readingAnchorRoots = "p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main";
@@ -157,6 +157,49 @@
       && getPageIdentity(snapshot.pageUrl) === getPageIdentity(currentUrl)
       && (frozen ? matches(snapshot, frozen) : rangeMatches(snapshot.range, snapshot.rangeIdentity));
   }
+  function reanchor(snapshot, frozen) {
+    if (!snapshot || !frozen || frozen.context?.source !== "visible-local" || !frozen.context.text) return null;
+    try {
+      const budget = policy.createSliceBudget();
+      const page = projection.project(document.body, { budget });
+      if (page.status !== "resolved") return null;
+      const contextText = frozen.context.text;
+      const firstContext = page.text.indexOf(contextText);
+      if (firstContext < 0 || page.text.indexOf(contextText, firstContext + 1) >= 0) return null;
+      const exact = frozen.selectedText;
+      const localStart = contextText.indexOf(exact);
+      if (localStart < 0 || contextText.indexOf(exact, localStart + 1) >= 0) return null;
+      const position = { start: firstContext + localStart, end: firstContext + localStart + exact.length };
+      const range = projection.rangeForPosition(page, position, { budget });
+      if (!range || comparable(String(range.toString())) !== comparable(exact)) return null;
+      return range;
+    } catch { return null; }
+  }
+  function createProjectionGuard({ getSnapshot, getCurrentUrl, getPageIdentity, onAccept, onReject, delay = 120 }) {
+    let timer = null;
+    const clear = () => { clearTimeout(timer); timer = null; };
+    const accept = (snapshot, capture, revision, range = null) => {
+      clear();
+      if (range) {
+        snapshot.range = range; snapshot.rangeIdentity = freezeRange(range);
+        if (capture) capture.rangeIdentity = snapshot.rangeIdentity;
+      }
+      onAccept(snapshot, capture, revision);
+    };
+    const validate = (snapshot, capture, revision) => {
+      if (snapshot !== getSnapshot()) return;
+      if (getPageIdentity(snapshot.pageUrl) !== getPageIdentity(getCurrentUrl())) { onReject(); return; }
+      if (matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) { accept(snapshot, capture, revision); return; }
+      const range = capture && reanchor(snapshot, capture);
+      if (range) accept(snapshot, capture, revision, range); else onReject();
+    };
+    const invalidate = (revision = projection.revision()) => {
+      const snapshot = getSnapshot(), capture = snapshot?.sourceCapture; if (!snapshot) return;
+      if (matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) { accept(snapshot, capture, revision); return; }
+      clear(); timer = setTimeout(() => { timer = null; validate(snapshot, capture, projection.revision()); }, delay);
+    };
+    return Object.freeze({ invalidate, clear });
+  }
   async function digest(text) {
     const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
     return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -169,5 +212,6 @@
     const canonicalRange = projection.rangeForPosition(value, position, { budget });
     return canonicalRange ? { range: canonicalRange, text: value.text.slice(position.start, position.end) } : { range, text };
   }
-  app.modules.selectionSourceSnapshot = { capture, matches, matchesCurrentPage, freezeRange, rangeMatches, contextRoot, canonicalize, documentGeneration };
+  app.modules.selectionSourceSnapshot = { capture, matches, matchesCurrentPage, reanchor, createProjectionGuard,
+    freezeRange, rangeMatches, contextRoot, canonicalize, documentGeneration };
 })();

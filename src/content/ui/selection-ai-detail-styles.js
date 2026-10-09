@@ -6,6 +6,13 @@
 .tf-selection-ai-detail[aria-busy="true"] {
   opacity: .92;
 }
+.tf-selection-ai-detail[data-state="actions"] {
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--tf-green-600) 18%, var(--tf-border-soft));
+  border-radius: var(--tf-radius-sm);
+  background: color-mix(in srgb, var(--tf-green-50) 82%, var(--tf-bg-card));
+}
 .tf-selection-ai-header {
   display: flex;
   align-items: center;
@@ -34,7 +41,9 @@
   margin-top: 8px;
 }
 .tf-selection-ai-actions .tf-ui-button {
+  flex: 1 1 92px;
   padding: 7px 10px;
+  background: var(--tf-bg-card);
 }
 `;
 

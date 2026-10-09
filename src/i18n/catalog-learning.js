@@ -124,7 +124,7 @@ export const en = Object.freeze({
   "learning.assistantIncomplete": "ChatGPT ended before completing the answer. Partial text remains visible, but no answer was saved.",
   "learning.assistantInferenceFailed": "ChatGPT could not complete the answer. Partial text remains visible, but no answer was saved.",
   "learning.assistantSaved": "Answer saved. Refreshing this history…",
-  "learning.previewTitle": "Saved reading history",
+  "learning.previewTitle": "Query history for this word",
   "learning.previewClose": "Close saved reading history",
   "learning.previewLoading": "Loading saved history…",
   "learning.previewUnavailable": "Saved history could not be opened. Close this preview and try again."
@@ -255,7 +255,7 @@ export const zh_CN = Object.freeze({
   "learning.assistantIncomplete": "ChatGPT 在回答完成前结束了流。部分文本仍显示，但没有保存为回答。",
   "learning.assistantInferenceFailed": "ChatGPT 未能完成回答。部分文本仍显示，但没有保存为回答。",
   "learning.assistantSaved": "回答已保存，正在刷新历史…",
-  "learning.previewTitle": "已保存的阅读历史",
+  "learning.previewTitle": "该词的查询记录",
   "learning.previewClose": "关闭已保存的阅读历史",
   "learning.previewLoading": "正在读取已保存的历史…",
   "learning.previewUnavailable": "无法打开已保存的历史，请关闭预览后重试。"

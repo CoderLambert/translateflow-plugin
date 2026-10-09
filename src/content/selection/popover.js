@@ -60,7 +60,7 @@
     vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, reset() {}, hide() {}, dispose() {} };
 
     const actions = document.createElement("div");
-    actions.className = "tf-selection-actions";
+    actions.className = "tf-selection-actions tf-selection-footer-actions";
 
     explainButton = button({
       text: locale.t("content.selection.aiDetail"),
@@ -196,7 +196,7 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
-    if (appended) {
+    if (appended) { emptyState?.reset();
       resultNode.hidden = false;
       reposition();
     }
@@ -207,13 +207,16 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
-    if (cards.length) {
+    if (cards.length) { emptyState?.reset();
       resultNode.hidden = false;
       reposition();
     }
     return cards.length > 0;
   }
 
+  function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
+    if (snapshot !== activeSnapshot || panel?.hidden || typeof onSave !== "function") return false;
+    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); reposition(); return true; }
   function updateSource(snapshot, result = null) {
     const sourceText = String(snapshot?.text || "").trim();
     const headword = String(result?.headword || "").trim();
@@ -227,7 +230,6 @@
     sourceNode.hidden = !sourceText || duplicatesHeadword;
     sourceNode.dataset.role = lexicalResult ? "lexical-source" : "selection-source";
   }
-
   function normalizeDisplayText(value) {
     return String(value || "")
       .normalize("NFKC")
@@ -235,7 +237,6 @@
       .trim()
       .toLocaleLowerCase("en-US");
   }
-
   function showEmpty(snapshot, { titleKey, messageKey, onExplain, onTranslate } = {}) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
@@ -254,13 +255,11 @@
     if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
-
   function showAiDetailLoading(onCancel) {
     ensureUi(); if (!resultNode || resultNode.hidden) return;
     explainHandler = null; explainButton.hidden = true;
     aiDetail.loading(onCancel);
   }
-
   function showAiDetailStreaming(answer, onStop) {
     ensureUi(); if (!resultNode) return;
     resultNode.hidden = false; explainHandler = null;
@@ -401,6 +400,7 @@
     showResult,
     appendRichDictionaryDetails,
     appendRichDictionaryCards,
+    showVocabularyActions,
     showError,
     showEmpty,
     showAiDetailLoading,

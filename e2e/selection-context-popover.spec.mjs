@@ -48,6 +48,8 @@ async function frozenSelection(harness, page) {
           selectedText: capture.selectedText,
           context: capture.context,
           rawRangeText: capture.rangeIdentity?.text,
+          startConnected: capture.rangeIdentity?.startContainer?.isConnected,
+          endConnected: capture.rangeIdentity?.endContainer?.isConnected,
           startOffset: capture.rangeIdentity?.startOffset,
           endOffset: capture.rangeIdentity?.endOffset
         } : null;
@@ -88,6 +90,14 @@ test.describe("Selection context and popover lifecycle", () => {
     expect(payload.context).not.toContain("UNRELATED_SECRET_PAGE_TEXT");
 
     await page.locator("#unrelated").evaluate(node => { node.textContent = "A separate page block changed."; });
+    await expect(page.locator(".tf-selection-panel")).toBeVisible();
+    await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+
+    await page.locator(".markdown-line").evaluate(node => {
+      node.innerHTML = 'A <span id="target">persistent</span> connection remains available across reconnects.';
+    });
+    await expect.poll(async () => (await frozenSelection(harness, page))?.startConnected).toBe(true);
+    await expect.poll(async () => (await frozenSelection(harness, page))?.endConnected).toBe(true);
     await expect(page.locator(".tf-selection-panel")).toBeVisible();
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
   });

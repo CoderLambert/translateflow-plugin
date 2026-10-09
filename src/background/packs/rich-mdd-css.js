@@ -7,7 +7,8 @@ const MAX_DECLARATIONS = 12;
 const MAX_ASSET_SLOTS = 8;
 const TAGS = new Set([
   "div", "span", "p", "br", "b", "strong", "i", "em", "u", "ul", "ol",
-  "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "img", "audio"
+  "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "img", "audio",
+  "details", "summary"
 ]);
 const PROPERTIES = new Set([
   "color", "background-color", "background-image", "font-size", "font-weight",
@@ -175,7 +176,7 @@ function resolveLocalAssetPath(stylesheetPath, value) {
 
 function normalizeSelector(value) {
   const selector = String(value || "").trim();
-  const match = /^(?:(div|span|p|br|b|strong|i|em|u|ul|ol|li|table|tr|td|th|ruby|rt|rp|img|audio))?(?:\.([-_a-z][-_a-z0-9]{0,47})|#([-_a-z][-_a-z0-9]{0,47}))?$/iu.exec(selector);
+  const match = /^(?:(div|span|p|br|b|strong|i|em|u|ul|ol|li|table|tr|td|th|ruby|rt|rp|img|audio|details|summary))?(?:\.([-_a-z][-_a-z0-9]{0,47})|#([-_a-z][-_a-z0-9]{0,47}))?$/iu.exec(selector);
   if (!match || (!match[1] && !match[2] && !match[3])) return "";
   if (match[1] && !TAGS.has(match[1].toLowerCase())) return "";
   const target = match[2] ? `.${match[2]}` : match[3] ? `[data-rich-target-id="${match[3]}"]` : "";

@@ -268,10 +268,29 @@
     if (!limits || record?.id !== dictionary?.id || !record.packVersion || typeof record.text !== "string") return null;
     const summary = record.text.trim();
     if (!summary || summary === record.headword || /(?:<\/?[a-z]|`\d+`|(?:file|sound|entry|https?):\/\/|(?:[A-Za-z]:\\|\/home\/))/iu.test(summary)) return null;
-    const definitions = summary.split("\n").filter(Boolean).slice(0, limits.dictionaryEntries).map((s) => s.slice(0, limits.definitionChars));
+    const normalizedHeadword = String(record.headword || "").normalize("NFKC").trim().toLocaleLowerCase("en-US");
+    const definitions = uniqueText(summary.split(/\n+/u).map((value) => value.replace(/[\t\r\f ]+/gu, " ").trim())
+      .filter((value) => value.normalize("NFKC").toLocaleLowerCase("en-US") !== normalizedHeadword))
+      .slice(0, limits.dictionaryEntries).map((s) => s.slice(0, limits.definitionChars));
+    if (!definitions.length) return null;
     return { kind: "dictionary", targetLanguage: "zh-CN", payload: { outcome: "hit", headword: record.headword,
       phonetic: "", partOfSpeech: "", definitions }, provenance: [{ sourceId: "local-rich-mdict", packId: dictionary.id,
         packVersion: record.packVersion, sourceEntryId: record.headword }] };
+  }
+  function vocabularyDraftFromRich(record, dictionary, sourceLanguage = "en") {
+    const reading = readingRich(record, dictionary), headword = String(reading?.payload?.headword || "").trim();
+    const source = reading?.provenance?.[0];
+    if (!reading || !headword || headword.length > 180 || !source || String(sourceLanguage).length > 80) return null;
+    return {
+      headword,
+      sourceLanguage: String(sourceLanguage || "en"),
+      targetLanguage: reading.targetLanguage,
+      pronunciation: "",
+      partOfSpeech: "",
+      definitions: reading.payload.definitions.slice(0, 4),
+      examples: [],
+      sources: [source]
+    };
   }
 
   app.modules.selectionResultModel = Object.freeze({
@@ -279,6 +298,6 @@
     buildExplainedResult,
     buildTranslationResult,
     copyTextForCard,
-    readingDictionary, readingTranslation, readingAssistant, readingRich, vocabularyDraft
+    readingDictionary, readingTranslation, readingAssistant, readingRich, vocabularyDraft, vocabularyDraftFromRich
   });
 })();

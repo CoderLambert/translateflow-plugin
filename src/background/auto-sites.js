@@ -7,7 +7,7 @@ import { getOriginMatchPattern, normalizeOrigin } from "../shared/url.js";
 import { READING_ERROR as E, READING_LIMITS as L } from "../shared/reading/constants.js";
 import { fail } from "../shared/reading/validation.js";
 
-const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "readingMemorySites"];
+const STORAGE_KEYS = ["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "readingMemorySites", "readingMemoryDisabledSites"];
 let mutations = Promise.resolve();
 function serialize(operation) {
   const result = mutations.then(operation);
@@ -26,7 +26,7 @@ async function patchState(origin, patch) {
 export async function getReadingMemorySite(rawOrigin) {
   const origin = normalizeReadingOrigin(rawOrigin), state = await readState();
   const permissionGranted = await chrome.permissions.contains({ origins: [readingMatchPattern(origin)] }) === true;
-  const enabled = state.readingMemorySites.includes(origin);
+  const enabled = !state.readingMemoryDisabledSites.includes(origin);
   return { state: enabled && !permissionGranted ? "permission-required" : "ready", enabled, permissionGranted };
 }
 export function setReadingMemorySite(rawOrigin, enabled) {
@@ -34,8 +34,14 @@ export function setReadingMemorySite(rawOrigin, enabled) {
   return serialize(async () => {
     const state = await readState();
     const permissionGranted = await chrome.permissions.contains({ origins: [readingMatchPattern(origin)] }) === true;
-    if (enabled && !permissionGranted) return { state: "permission-required", enabled: state.readingMemorySites.includes(origin), permissionGranted };
-    if (enabled && !state.readingMemorySites.includes(origin) && state.readingMemorySites.length >= L.exclusionSites) fail(E.CAPACITY, "site-markers");
+    const current = !state.readingMemoryDisabledSites.includes(origin);
+    if (enabled && !permissionGranted) return { state: "permission-required", enabled: current, permissionGranted };
+    if (!enabled && current && state.readingMemoryDisabledSites.length >= L.exclusionSites) fail(E.CAPACITY, "site-markers");
+    state.readingMemoryDisabledSites = enabled
+      ? removeReadingOrigin(state.readingMemoryDisabledSites, origin)
+      : addReadingOrigin(state.readingMemoryDisabledSites, origin);
+    // Preserve the legacy positive list for rollback compatibility. Effective
+    // marker state is default-on and now comes from the negative list above.
     state.readingMemorySites = enabled ? addReadingOrigin(state.readingMemorySites, origin) : removeReadingOrigin(state.readingMemorySites, origin);
     await writeState(state); await syncOriginRegistration(origin);
     return { state: "ready", enabled, permissionGranted };
@@ -123,7 +129,8 @@ async function syncRegistrations() {
     quickControlHiddenSites: [...hidden].sort(),
     // Keep explicit Reading intent through a denial/revocation; effective access
     // is computed live, and history/other feature preferences stay independent.
-    readingMemorySites: normalizeReadingOrigins(state.readingMemorySites)
+    readingMemorySites: normalizeReadingOrigins(state.readingMemorySites),
+    readingMemoryDisabledSites: normalizeReadingOrigins(state.readingMemoryDisabledSites)
   };
   if (!sameState(state, next)) await writeState(next);
   return next;
@@ -166,7 +173,8 @@ async function readState() {
     autoSites: normalizeOrigins(stored.autoSites),
     quickControlSites: normalizeOrigins(stored.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(stored.quickControlHiddenSites),
-    readingMemorySites: normalizeReadingOrigins(stored.readingMemorySites)
+    readingMemorySites: normalizeReadingOrigins(stored.readingMemorySites),
+    readingMemoryDisabledSites: normalizeReadingOrigins(stored.readingMemoryDisabledSites)
   };
 }
 
@@ -176,7 +184,8 @@ async function writeState(state) {
     autoSites: normalizeOrigins(state.autoSites),
     quickControlSites: normalizeOrigins(state.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(state.quickControlHiddenSites),
-    readingMemorySites: normalizeReadingOrigins(state.readingMemorySites)
+    readingMemorySites: normalizeReadingOrigins(state.readingMemorySites),
+    readingMemoryDisabledSites: normalizeReadingOrigins(state.readingMemoryDisabledSites)
   });
 }
 
@@ -228,13 +237,15 @@ function sameState(a, b) {
     autoSites: normalizeOrigins(a.autoSites),
     quickControlSites: normalizeOrigins(a.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(a.quickControlHiddenSites),
-    readingMemorySites: normalizeReadingOrigins(a.readingMemorySites)
+    readingMemorySites: normalizeReadingOrigins(a.readingMemorySites),
+    readingMemoryDisabledSites: normalizeReadingOrigins(a.readingMemoryDisabledSites)
   }) === JSON.stringify({
     cacheRestoreSites: normalizeOrigins(b.cacheRestoreSites),
     autoSites: normalizeOrigins(b.autoSites),
     quickControlSites: normalizeOrigins(b.quickControlSites),
     quickControlHiddenSites: normalizeOrigins(b.quickControlHiddenSites),
-    readingMemorySites: normalizeReadingOrigins(b.readingMemorySites)
+    readingMemorySites: normalizeReadingOrigins(b.readingMemorySites),
+    readingMemoryDisabledSites: normalizeReadingOrigins(b.readingMemoryDisabledSites)
   });
 }
 

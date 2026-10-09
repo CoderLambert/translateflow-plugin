@@ -61,7 +61,7 @@
       const elements = Array.isArray(item?.elements)
         ? item.elements.filter(Boolean)
         : item?.element ? [item.element] : [];
-      const presentation = validatedOxfordPresentation(item.presentation, path);
+      const presentation = validatedResourcePresentation(item.presentation, item.kind, path);
       const key = `${item.kind}\u0000${path}\u0000${presentation}`;
       if (session.resources.some((existing) => `${existing.kind}\u0000${existing.path}\u0000${existing.presentation || ""}` === key)) continue;
       session.resources.push({
@@ -368,9 +368,11 @@
     return true;
   }
 
-  function makePlaceholder(kind, label = "") {
+  function makePlaceholder(kind, label = "", presentation = "") {
     const node = kind === "audio" ? document.createElement("button") : document.createElement("span");
     node.className = "tf-rich-placeholder";
+    node.dataset.richResourceKind = kind;
+    if (presentation) node.dataset.richPresentation = presentation;
     locale.bindAttribute(node, "aria-label", kind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing");
     locale.bindText(node,
       label ? (kind === "image" ? "content.rich.imageLabel" : "content.rich.audioLabel")
@@ -379,9 +381,10 @@
     return node;
   }
 
-  function validatedOxfordPresentation(value, path) {
-    if (value === "oxford-opposition" && path === "img/OPP.png") return value;
-    if (value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
+  function validatedResourcePresentation(value, kind, path) {
+    if (kind === "image" && value === "oxford-opposition" && path === "img/OPP.png") return value;
+    if (kind === "image" && value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
+    if (kind === "audio" && (value === "pronunciation-british" || value === "pronunciation-american")) return value;
     return "";
   }
 

@@ -19,7 +19,8 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
   let siteMarkers = { state: "ready", enabled: false, permissionGranted: true };
   const messages = [], writes = [], views = [];
   const realm = vm.createContext({ crypto: webcrypto, TextEncoder, URL, Date, chrome: { runtime: {} },
-    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
+    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision },
+      selectionSourceSnapshot: { documentGeneration: "doc-test" }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
   const parse = vm.runInContext("JSON.parse", realm);
   const clone = (value) => parse(JSON.stringify(value));
   let notify = null, disconnected = null, connections = 0;
@@ -86,6 +87,12 @@ test("Reading collector rejects untrusted/page actions and forged operation inte
   assert.equal(await read({ operationId: "forged" }), null);
   assert.equal(await read({ recordId: "arbitrary" }), null);
   h.invalidate(); assert.equal(await read({}), null);
+  const recordId = "11111111-1111-4111-8111-111111111111";
+  assert.equal(h.modules.selectionRecordAccess.authorizePageAction({ event: { isTrusted: true, target: "page" }, action: "delete", recordId }), false);
+  assert.equal(h.modules.selectionRecordAccess.authorizePageAction({ event: h.event, action: "delete", recordId }), true);
+  const deleteProof = await h.modules.readingAccessCollector.read({ nonce: "delete-nonce", action: "delete", recordId, operationId: null });
+  assert.deepEqual(json(deleteProof.intent), { action: "delete", recordId, operationId: null });
+  assert.equal(await h.modules.readingAccessCollector.read({ nonce: "again", action: "delete", recordId, operationId: null }), null);
 });
 
 test("First consent retains one frozen card, has no BEGIN/history and uses explicit fresh token without Provider", async () => {
@@ -189,21 +196,17 @@ test("A delayed first-enable notification agrees with the accepted policy; later
   assert.equal(ctx.blocked, true); assert.equal(ctx.ref, null); assert.equal(h.views.at(-1).state, "not-saved");
 });
 
-test("Site-marker invalidation refreshes the saved status without blocking a follow-up append", async () => {
+test("Site-marker invalidation leaves the saved card unchanged and does not block a follow-up append", async () => {
   const h = await harness({ summaryOfWrites: true, withSubscription: true }), ctx = h.start();
   h.client.accept(ctx, h.draft); await ctx.queue;
-  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "disabled"; index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "disabled");
+  const before = json(h.views.at(-1));
+  assert.equal(before.state, "saved"); assert.equal("siteMarkerStatus" in before, false);
 
   h.setSiteMarkers({ state: "ready", enabled: true, permissionGranted: true });
   h.notifySiteMarkers();
-  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "enabled"; index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
   assert.equal(ctx.blocked, false); assert.ok(ctx.ref);
-  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "enabled");
+  assert.deepEqual(h.views.at(-1), before);
+  assert.equal(h.messages.filter((request) => request.method === M.GET_SITE_MARKERS).length, 0);
 
   const operation = h.client.assistant(ctx, h.event);
   assert.ok(operation);
@@ -254,6 +257,12 @@ test("Result adapters preserve actual types and bounded provenance while droppin
   const rich = model.readingRich(record, { id: "synthetic", packVersion: "v1", fileName: "/home/private" });
   assert.equal(rich.kind, "dictionary"); assert.equal(JSON.stringify(rich).includes("PRIVATE_RAW"), false);
   assert.equal(JSON.stringify(rich).includes("/home"), false);
+  const richVocabulary = model.vocabularyDraftFromRich({ ...record, text: "React\n持久的用户界面库" },
+    { id: "synthetic", packVersion: "v1", fileName: "/home/private" }, "en");
+  assert.deepEqual(json(richVocabulary.definitions), ["持久的用户界面库"]);
+  assert.deepEqual(json(richVocabulary.sources), [{ sourceId: "local-rich-mdict", packId: "synthetic",
+    packVersion: "v1", sourceEntryId: "React" }]);
+  assert.equal(JSON.stringify(richVocabulary).includes("PRIVATE_RAW"), false);
   assert.equal(model.readingRich({ ...record, text: "sound://private.mp3" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingRich({ ...record, text: "" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingDictionary({ routeReason: "no-hit-local" }, "missing").payload.outcome, "no-hit");
