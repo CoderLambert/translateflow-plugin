@@ -169,6 +169,8 @@ function describeError(code: string, i18n: ReturnType<typeof useOptionsI18n>): s
     invalid_callback: "options.chatgptPlan.authFailed",
     state_mismatch: "options.chatgptPlan.authFailed",
     registration_incomplete: "options.chatgptPlan.authFailed",
+    credential_invalid: "options.chatgptPlan.authFailed",
+    id_token_invalid: "options.chatgptPlan.authFailed",
     client_id_mismatch: "options.chatgptPlan.authFailed",
     token_exchange_failed: "options.chatgptPlan.authFailed",
     browser_unavailable: "options.chatgptPlan.browserUnavailable",
