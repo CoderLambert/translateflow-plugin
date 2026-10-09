@@ -1,33 +1,69 @@
 # TranslateFlow v0.8
 
-轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
+轻量、BYOK、缓存优先的 Chrome Manifest V3 双语阅读扩展。TranslateFlow 在原网页中保留原文并显示译文，同时提供本地查词、用户导入词典、显式 AI 详解、生词本、阅读历史和 YouTube 字幕翻译。网络翻译支持 DeepSeek、OpenAI-compatible API，以及通过独立 Native Messaging Host 连接的 ChatGPT 订阅。
 
-## v0.8 重点
+## 当前功能
 
-- DeepSeek Provider
-- OpenAI-compatible Provider
-- 自定义 OpenAI-compatible Base URL / API Key / Model
-- 支持无 API Key 的本地兼容服务
-- 按 API Origin 动态申请 Host Permission
-- 站点级 Provider / Model / Prompt / Target Language 覆盖
-- 划词翻译浮层：选择文本后按需翻译、复制、取消、失败重试，并复用站点配置与 IndexedDB 缓存
-- 统一 Translation Task：阶段进度、用户取消、Provider timeout/retry 与 in-flight 请求去重
-- 结构化双语渲染：保留链接、强调、code/kbd/mark 等安全内联语义，不注入模型 HTML
-- Provider Base URL 纳入 OpenAI-compatible 缓存版本
-- DeepSeek v0.3/v0.4 缓存继续兼容
-- 全局 + 站点术语表：支持覆盖、启停、大小写规则，并纳入有效缓存身份
-- Technical / Academic / News / Natural 四种内置翻译模式
-- Popup 展示当前站点 / 模式 / Provider / Model，并支持临时切换或保存到本站
+### 网页双语翻译
 
-## v0.8 体验更新
+- 在原段落旁保留并展示译文，安全保留链接、强调、`code`、`kbd`、`mark` 等受控内联语义，不注入模型 HTML。
+- 手动翻译、按站点自动翻译，以及动态页面新增内容的增量翻译。
+- Standard / Compact / Reading / Minimal 四种阅读外观；Technical / Academic / News / Natural 四种翻译模式。
+- Popup 和页内 Quick Control 显示任务阶段、段落进度、当前 Provider / Model / 模式，并支持重试、取消、临时切换或保存到本站。
+- Chrome Commands：翻译或更新页面、显示或隐藏译文、切换 Quick Control。
+- 全局与站点术语表，支持启停、大小写规则、站点覆盖和确定性缓存身份。
+- 站点级 Provider、Model、Prompt、Target Language 和阅读外观配置。
 
-- **Calm UI**：Popup、Quick Control、Settings 与状态反馈统一使用柔和鼠尾草绿 / 暖米色设计系统。
-- **Reading Appearance**：Standard / Compact / Reading / Minimal 四种双语阅读外观。
-- **Quick Control**：低干扰页内翻译、任务状态、重试/取消、Preset、阅读外观、自动翻译与 Settings 入口。
-- **Persistent cache restore**：可按站点自动恢复 IndexedDB 已有译文；cache miss 不触发 Provider。
-- **Chrome Commands**：翻译/更新页面、显示/隐藏译文、切换 Quick Control。
-- **YouTube subtitles**：MAIN-world player-owned timedtext 主路径，TextTrack 与 rendered DOM 作为 fallback；支持双语/原文/off、ASR、人类字幕、SPA 切换与缓存复用。
-- **Settings IA**：General / Appearance / YouTube / Sites / Automatic behavior / Glossary + Advanced Provider / Cache / Developer。
+### 缓存与任务恢复
+
+- 按“规范化 URL + 有效翻译配置 + 原文指纹”写入 IndexedDB 缓存。
+- 缓存命中直接恢复；按站点自动恢复既有译文时，cache miss 不会隐式调用 Provider。
+- 正文、划词和增量翻译共用任务、取消、有限重试、超时、缓存提交和 in-flight 请求去重机制。
+- 旧请求、已取消任务、导航前任务或过期选区不能覆盖新结果。
+
+### Provider
+
+- **DeepSeek**：固定官方 API Origin，保持既有缓存兼容。
+- **OpenAI-compatible**：自定义 Base URL、API Key、Model；支持无 API Key 的本地兼容服务和可选 SSE streaming。
+- **ChatGPT 订阅**：通过单独安装的 Go Native Messaging Host 完成官方 ChatGPT 授权、账号状态、模型列表和流式 Responses 调用；访问令牌保存在系统安全凭据存储中，不进入扩展存储。
+- 所有 Provider 都通过同一 Effective Translation Config、缓存身份和完成校验；只有用户明确发起的翻译或 AI 操作才会发送文本。
+
+### 划词查词与 AI 详解
+
+- 普通网页选择文本后显示轻量“译”入口；单词优先走本地词典，句子和不适合本地释义的文本进入翻译路径。
+- 内置 Core Semantic 与 Technical Concepts 词典包；本地查词不需要 Provider 或网络。
+- 支持用户本地导入 TFLex、StarDict 和经过兼容性检查的 MDX/MDD 文件，包含安装预检、进度、取消、重试、更新、修复、卸载、首选词典、排序和展开策略。
+- Rich MDX 内容经过限定 HTML/CSS sanitizer 后在隔离视图中展示；本地 MDD 图片与音频按受控资源路径解析，不执行脚本，也不自动加载远程资源。
+- 已对用户本地合法持有的 Oxford Advanced Learner's Dictionary 10th Edition 完成富文本标题、语义词头、Oxford 3000/OPP 行内图标、英美发音标签及本地媒体的定向验收；这不代表所有商业 MDX/MDD 全面兼容。
+- 本地结果之后可显式选择“理解 / 分析 / 用法”或完整“AI 详解”。停止、完成或失败不会覆盖本地词典卡；只有完整 AI 结果可进入历史。
+- 支持复制、关闭、Escape、焦点退路、窄屏布局、失败重试和旧选区回调拒绝。
+
+### 生词本与最小复习
+
+- 从成功的本地词典结果显式收藏到本机生词本；不会自动把 AI 输出当作词典事实。
+- 生词条目保存规范化词形、语言、可信词典摘要、来源和可选 Reading 关联，不保存页面 URL 或选区上下文。
+- 学习中心提供按保存时间排列的生词列表、来源查看、删除，以及“再学一次 / 已掌握”的最小复习排期。
+- 生词本与 Reading 历史职责分离：删除生词不会删除 Reading 记录，删除 Reading 记录也不会隐式修改生词本。
+
+### Reading 历史与学习中心
+
+- Reading 记录需用户显式开启；首次开启不会回填旧查询，当前仍有效的结果可显式保存。
+- 支持最近记录、按页面浏览、搜索、完整结果与上下文快照、已完成 AI 问答、暂停/恢复、排除站点、单条/单页/全部删除和 JSON 导出。
+- 可从历史返回原网页；只有唯一且仍匹配的 Range 会被滚动并临时标记，定位缺失、歧义、页面变化或权限不足时提供明确退路。
+- 站点历史标记单独启用和授权，不会改变翻译、缓存恢复或 Quick Control 设置。
+- 历史浏览、回到原文、生词复习和缓存恢复不会重新调用 Provider。
+
+### YouTube 字幕
+
+- YouTube MAIN-world player-owned timedtext 主路径，TextTrack 与已渲染字幕 DOM 作为 fallback。
+- 支持双语、仅原文和关闭状态，兼容 ASR 与人工字幕、SPA 视频切换、媒体身份隔离、取消和缓存复用。
+
+### 界面与隐私
+
+- Popup、Settings、Quick Control、划词卡和学习中心统一使用柔和鼠尾草绿 / 暖米色设计系统。
+- 扩展自有 UI 使用隔离的 Shadow DOM 或扩展页面；支持键盘、可见焦点、Escape、窄屏、暗色和减少动画。
+- API Key 保存在扩展本地存储；ChatGPT 令牌只保存在操作系统安全凭据存储。原始本地词典文件和媒体不会上传到仓库或 Provider；只有用户显式触发 AI 操作时，才发送完成该请求所需的有界文本与候选摘要。
+- 翻译缓存、Reading 数据库、生词本和词典 OPFS 分别维护，不通过清空用户数据掩盖错误。
 
 ## 架构
 
@@ -35,25 +71,23 @@
 Web Page
    │
    ▼
-content/
-   │
-   │ pageUrl + segments
-   ▼
-background/router
+Content / Selection / YouTube
    │
    ▼
-resolveTranslationConfig(pageUrl)
-   +
-resolveEffectiveGlossary(pageUrl)
-   │
-   ├── global provider/site profile
-   └── global glossary/site glossary
-   │
-   ├───────────────┐
-   ▼               ▼
-cache-db        providers/
-                   ├── deepseek
-                   └── openai-compatible
+Background router + task coordinator
+   ├── Effective Translation Config
+   │      ├── DeepSeek
+   │      ├── OpenAI-compatible
+   │      └── ChatGPT subscription → Native Messaging Host
+   ├── Translation cache IndexedDB
+   ├── Lexical Gateway
+   │      ├── bundled Core / Technical TFLex
+   │      └── user-imported TFLex / StarDict / MDX + MDD in OPFS
+   ├── ReadingRecord repository
+   └── local vocabulary book
+            │
+            ▼
+       Learning Center
 ```
 
 关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖和术语表先在共享配置层解析，Provider adapter 不读取术语存储。
@@ -64,15 +98,17 @@ cache-db        providers/
 
 ## 技术栈
 
-运行时保持零第三方依赖、零 bundler；发布阶段只做 allowlist 文件打包：
+生产扩展由 WXT 从唯一源码图构建并审核安装包边界；Content、MAIN、Worker、Background 和 shared 业务层保持原生 Web API / JavaScript 边界：
 
 - Chrome Manifest V3
-- 原生 JavaScript
+- WXT 0.21
+- 原生 JavaScript / TypeScript
 - React 19（仅 Popup / Options / Learning Center 扩展页）
 - 原生 CSS；Content / MAIN / Worker / Background 不引入 React
 - chrome.storage.local
-- IndexedDB
+- IndexedDB、OPFS
 - DeepSeek / OpenAI-compatible Chat Completions
+- ChatGPT Responses API（经 Go Native Messaging Host）
 
 Node.js 只用于开发校验；单元测试使用 `node:test`，浏览器 E2E 使用 Playwright。Playwright 仅为开发依赖，不进入扩展运行时。
 
@@ -89,56 +125,34 @@ translateflow-plugin/
 │
 ├── src/
 │   ├── shared/
-│   │   ├── constants.js
-│   │   ├── provider-config.js
-│   │   ├── glossary.js
-│   │   ├── presets.js
-│   │   ├── hash.js
-│   │   ├── text.js
-│   │   ├── url.js
-│   │   └── retry-policy.js
+│   │   ├── Provider / glossary / preset / cache contracts
+│   │   ├── Reading v2 contracts
+│   │   └── vocabulary-book.js
 │   │
 │   ├── background/
-│   │   ├── index.js
-│   │   ├── router.js
-│   │   ├── config.js
 │   │   ├── cache-db.js
 │   │   ├── auto-sites.js
-│   │   ├── translation-requests.js
+│   │   ├── lexical/ + packs/
+│   │   ├── reading-record/
+│   │   ├── selection/
+│   │   ├── vocabulary-book.js
 │   │   └── providers/
-│   │       ├── index.js
-│   │       ├── shared.js
 │   │       ├── deepseek.js
-│   │       └── openai-compatible.js
+│   │       ├── openai-compatible.js
+│   │       └── chatgpt-plan.js
 │   │
-│   ├── options/
-│   │   ├── main.tsx / App.tsx
-│   │   ├── client.ts / useOptions.ts
-│   │   ├── GlossarySection.tsx / glossary-client.ts
-│   │   └── DictionarySection.tsx / typed dictionary clients / existing import controllers
-│   ├── popup/
-│   │   └── main.tsx / App.tsx / client.ts / usePopup.ts
-│   │
-│   └── content/
-│       ├── runtime.js
-│       ├── tasks.js
-│       ├── dom.js
-│       ├── batch.js
-│       ├── processor.js
-│       ├── auto.js
-│       └── selection/
-│           ├── selection.js
-│           ├── popover.js
-│           └── controller.js
+│   ├── content/             # 页面翻译、Selection、字幕与隔离 UI
+│   ├── options/             # React 设置页与词典导入
+│   ├── popup/               # React Popup
+│   ├── learning-center/     # Reading、生词本与复习
+│   └── entries/             # WXT 生产入口
 │
+├── native-host/             # ChatGPT 订阅 Go Native Messaging Host
+├── lexicon/                 # source locks、构建规则和认证元数据
 ├── tests/
-├── e2e/
-│   ├── support/
-│   │   ├── extension-fixture.mjs
-│   │   └── mock-server.mjs
-│   └── translateflow.spec.mjs
+├── e2e/                     # 实际 WXT / Chromium / MV3 场景
 ├── playwright.config.mjs
-├── scripts/check.mjs
+├── scripts/
 ├── docs/
 └── .github/workflows/quality.yml
 ```
@@ -155,7 +169,7 @@ cd translateflow-plugin
 首次源码安装或清理过词典产物后，先执行：
 
 ```bash
-npm install
+npm ci
 npm run setup:lexicon
 npm run validate
 npm run build:extension:release
@@ -166,7 +180,7 @@ npm run build:extension:release
 真实 Chromium 扩展 E2E：
 
 ```bash
-npm install
+npm ci
 npx playwright install chromium
 npm run build:extension:wxt
 npm run test:e2e
@@ -179,9 +193,10 @@ E2E 使用临时 unpacked 扩展副本、本地 fixture 页面和本地 OpenAI-c
 首次安装或更新到包含词典格式/数据变更的版本：
 
 ```bash
-npm install
+npm ci
 npm run setup:lexicon
 npm run validate
+npm run build:extension:release
 ```
 
 然后：
@@ -254,7 +269,20 @@ Model:     your-model
 http://localhost:11434/v1
 ```
 
-Host Permission 会按浏览器 Match Pattern 申请，因此 localhost 不按端口精细隔离。
+生产 Manifest 的普通 `http/https` 页面范围同时承载 Content 注入和已配置的兼容服务访问，因此 localhost 不按端口精细隔离。
+
+### ChatGPT 订阅
+
+ChatGPT 订阅 Provider 不读取浏览器 Cookie，也没有 API Key fallback。它通过独立安装的 Native Messaging Host 完成官方授权，并使用当前 ChatGPT 账号可用的模型和套餐额度。
+
+1. 按 [Native Host 安装说明](native-host/INSTALLATION.md) 构建并注册本机 Host。
+2. 在 TranslateFlow 设置页打开 **Provider · ChatGPT 订阅**。
+3. 点击“检查状态并加载模型”或“连接 ChatGPT 账号”。
+4. 在官方授权页完成登录后，返回设置页选择 Host 返回的模型并保存。
+
+Host 将账号注册、会话和模型列表分开管理；设置页支持添加账号和选择已保存账号。切换账号会清除旧的 ChatGPT 模型选择，但不会改写 DeepSeek 或 OpenAI-compatible 凭据。授权停滞、超时或遗留登录进程可从设置页重新连接；新的授权会取消并等待旧任务退出。
+
+当前真实验收覆盖 Linux 主 Chrome 的单账号登录、GPT-6-Luna 模型加载、非缓存推理、退出、重新授权和浏览器重启恢复。多账号界面与协议已实现，但多个真实账号的添加/切换尚未执行产品验收；Windows 实机安装也仍未验证。更多合同见 [Provider Architecture](docs/PROVIDERS.md) 和 [Native Host README](native-host/README.md)。
 
 ## 站点级配置
 
@@ -395,11 +423,15 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 
 ## 权限
 
-必需权限：
+扩展权限：
 
 - `storage`
 - `activeTab`
 - `scripting`
+- `nativeMessaging`
+
+Host Permissions：
+
 - `https://api.deepseek.com/*`
 - `http://*/*`
 - `https://*/*`
@@ -411,20 +443,29 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - 划词：普通网页打开后即可使用，只有点击“译”才进行本地查询或按需调用 Provider；
 - 自动翻译、缓存恢复和持久 Quick Control：仍由用户按站点开启；
 - OpenAI-compatible：只在用户配置并触发翻译时调用。
+- ChatGPT 订阅：`nativeMessaging` 只连接用户单独安装并注册的 TranslateFlow Host；普通扩展构建不会安装 Host、登录账号或读取凭据。
 
 关闭某个站点的自动翻译只移除该站点模式，不会撤销全站划词所需的 Manifest 权限。
 
 ## 划词翻译
 
-在普通 http/https 网页中无需先打开 Popup；选择 2–2000 字符的英文文本后会出现轻量“译”按钮。仅在用户点击后才检查 IndexedDB 缓存并调用 Provider；翻译使用当前站点的 Effective Translation Config。
+在普通 http/https 网页中无需先打开 Popup；选择 2–2000 字符的文本后会出现轻量“译”按钮。用户点击后，Selection 会根据文本形态选择本地查词或翻译路径，并复用当前站点的 Effective Translation Config。
 
 支持：
 
-- 缓存命中时 0 API 恢复；
+- 英文单词及受支持短词优先查询内置和用户安装的本地词典，命中时 Provider 调用为 0；
+- 多词典摘要、来源、首选顺序、展开详情和 Rich MDX/MDD 受控媒体；
+- 普通句子翻译及缓存命中时 0 API 恢复；
+- 本地词典结果之后显式触发 AI 理解、分析、用法或完整详解；
+- 将成功的本地词典结果显式收藏到生词本；
+- Reading 开启后显式保存结果，并可设置本站历史标记；
 - Copy；
 - Escape、右上角关闭按钮或点击外部关闭；
 - Provider 失败后 Retry；
+- AI 流式请求停止、失败和重试；Selection 变化、关闭或导航后旧回调不会覆盖当前卡片；
 - 与自动增量翻译同时启用时，划词 UI 不会进入 MutationObserver 翻译队列。
+
+词典导入、格式与安全边界见 [Lexical data boundaries](docs/LEXICAL_DATA_BOUNDARIES.md) 和 [MDX/MDD compatibility evidence](docs/MDICT_REAL_WORLD_COMPATIBILITY.md)。解析成功或单个真实词典验收不等于所有 MDX/MDD 全面兼容。
 
 ## 翻译任务与错误恢复
 
@@ -459,7 +500,13 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 
 ## 学习中心
 
-从 Popup 的“学习中心”或划词结果卡进入独立页面，可找回最近记录、按页面浏览、搜索、阅读历史快照，以及暂停/恢复记录、管理排除站点、删除和导出 JSON。首次开启后只记录之后的查询；原网页仍有效的结果卡可显式“保存本次结果”。历史阅读无需重新查词或调用 Provider。完整操作与数据边界见 [Learning center v1](docs/LEARNING_CENTER_V1.md)。
+从 Popup 或划词结果卡进入独立学习中心。当前包含三个相互关联但存储职责独立的流程：
+
+- **Reading 历史**：最近记录、按页面浏览、搜索、词典/译文/已完成 AI 快照、暂停/恢复、排除站点、删除和 JSON 导出。
+- **生词本**：查看本地收藏的词头、发音、词性、释义、来源和关联 Reading 记录；支持删除。
+- **最小复习**：显示答案后选择“再学一次”或“已掌握”，更新本地待复习时间和统计；当前不是 SRS/FSRS。
+
+首次开启 Reading 后只记录之后的查询；原网页仍有效的结果卡可显式“保存本次结果”。历史详情可以在不查询词典、不读取 MDD、不调用 Provider 的情况下离线阅读。返回原网页时重新验证授权、记录 revision、页面投影和唯一位置；无法精确定位时保留安全的手动入口。生词本和 Reading 删除互不级联。完整操作与数据边界见 [Learning center v1](docs/LEARNING_CENTER_V1.md) 和 [Reading loop v1](docs/READING_LOOP_V1.md)。
 
 ## 开发约束
 
@@ -467,7 +514,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 
 - `src/shared/` 禁止依赖 `chrome.*`
 - 外部 `fetch()` 只能位于 `src/background/providers/`
-- IndexedDB 只能由 `src/background/cache-db.js` 访问
+- 翻译缓存 IndexedDB 只能由 `src/background/cache-db.js` 访问；ReadingRecord IndexedDB 只能由 `src/background/reading-record/idb.js` 访问
 - 动态 Content Script 注册只能由 `src/background/auto-sites.js` 调用
 - Content Script 模块禁止 ESM import/export
 - `src/` 单文件超过 420 行失败
@@ -482,7 +529,11 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - OpenAI-compatible 当前基于 Chat Completions 接口，不是 Responses API。
 - 不同兼容服务对 JSON 输出能力差异较大，当前通过严格 Prompt + 容错 JSON 解析适配。
 - Provider 额外 Header 尚未开放配置；OpenRouter 等需要特殊 Header 的场景后续可扩展。
+- ChatGPT 订阅需要单独安装 Native Messaging Host；当前真实产品验收覆盖 Linux 单账号，真实多账号切换和 Windows 实机安装尚未验证。
+- MDX/MDD 支持以现有兼容矩阵、sanitizer 和资源边界为准；Oxford 10 的定向实机结果不能升格为所有商业词典、所有编码或全部 MDict 版本的认证。
+- 生词本提供本地显式收藏与最小复习，不包含云同步、自动 AI 释义、SRS/FSRS 或跨设备账号体系。
 - PDF、Side Panel、非 YouTube 视频站点的双语字幕尚未实现；v0.8 视频体验首发支持 YouTube。
+- 当前生产目标是 Chrome Manifest V3；Edge / Firefox / Safari 和浏览器商店发布未完成独立交付认证。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
 - API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
 
