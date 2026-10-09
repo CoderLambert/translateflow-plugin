@@ -8,6 +8,7 @@ type ViewState = { status: ChatGPTPlanAuthStatus | null; models: ChatGPTPlanMode
 export function ChatGPTPlanSection({ config, disabled, update, client }: Props) {
   const i18n = useOptionsI18n();
   const [view, setView] = useState<ViewState>({ status: null, models: [], message: i18n.t("options.chatgptPlan.notChecked"), error: false, busy: false });
+  const [authPending, setAuthPending] = useState(false);
   const operation = useRef(0);
 
   async function refresh() {
@@ -41,17 +42,20 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
   }
 
   async function connect(event: React.MouseEvent<HTMLButtonElement>, addAccount = false) {
-    if (!event.nativeEvent.isTrusted || disabled || view.busy) return;
+    if (!event.nativeEvent.isTrusted || chatGPTSignInActionDisabled(disabled, view.busy, authPending)) return;
     const current = ++operation.current;
+    setAuthPending(true);
     setView(value => ({ ...value, status: null, models: [], busy: true, error: false, message: i18n.t("options.chatgptPlan.connecting") }));
     try {
       const result = await client.chatGPTPlanAction(addAccount ? "add" : "connect");
       if (result.modelSelectionCleared) update({ chatgptPlanModel: "" });
       if (current !== operation.current) return;
+      setAuthPending(false);
       setView(value => ({ ...value, busy: false, message: i18n.t("options.chatgptPlan.loadingModels"), error: false }));
       await refresh();
     } catch (error) {
       if (current !== operation.current) return;
+      setAuthPending(false);
       const code = String((error as { code?: string })?.code || "");
       if ((error as { modelSelectionCleared?: boolean })?.modelSelectionCleared) update({ chatgptPlanModel: "" });
       setView({ status: statusForError(code), models: [], busy: false, error: true, message: describeError(code, i18n) });
@@ -118,11 +122,17 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     <p className="hint">{i18n.t("options.chatgptPlan.modelHelp")}</p>
     <div className="actions">
       <button type="button" disabled={disabled || view.busy} onClick={() => void refresh()}>{i18n.t("options.chatgptPlan.check")}</button>
-      <button type="button" disabled={disabled || view.busy} onClick={event => void connect(event)}>{i18n.t("options.chatgptPlan.connect")}</button>
+      <button type="button" disabled={chatGPTSignInActionDisabled(disabled, view.busy, authPending)} onClick={event => void connect(event)}>
+        {i18n.t(authPending ? "options.chatgptPlan.retryConnect" : "options.chatgptPlan.connect")}
+      </button>
       <button type="button" disabled={disabled || view.busy} onClick={event => void connect(event, true)}>{i18n.t("options.chatgptPlan.addAccount")}</button>
       {view.status?.connected && <button type="button" disabled={disabled || view.busy} onClick={event => void logout(event)}>{i18n.t("options.chatgptPlan.signOut")}</button>}
     </div>
   </section>;
+}
+
+export function chatGPTSignInActionDisabled(disabled: boolean, busy: boolean, authPending: boolean): boolean {
+  return disabled || (busy && !authPending);
 }
 
 function normalizeModels(value: unknown): ChatGPTPlanModel[] {
@@ -149,6 +159,14 @@ function describeError(code: string, i18n: ReturnType<typeof useOptionsI18n>): s
     NATIVE_HOST_DISCONNECTED: "options.chatgptPlan.hostMissing",
     NATIVE_HOST_TIMEOUT: "options.chatgptPlan.hostMissing",
     HOST_BUSY: "options.chatgptPlan.hostBusy",
+    authorization_timeout: "options.chatgptPlan.authTimeout",
+    authorization_denied: "options.chatgptPlan.authDenied",
+    authorization_failed: "options.chatgptPlan.authFailed",
+    invalid_callback: "options.chatgptPlan.authFailed",
+    state_mismatch: "options.chatgptPlan.authFailed",
+    registration_incomplete: "options.chatgptPlan.authFailed",
+    client_id_mismatch: "options.chatgptPlan.authFailed",
+    token_exchange_failed: "options.chatgptPlan.authFailed",
     INFERENCE_INCOMPLETE: "options.chatgptPlan.inferenceIncomplete",
     INFERENCE_FAILED: "options.chatgptPlan.inferenceFailed",
     RECONNECT_REQUIRED: "options.chatgptPlan.reconnectRequired",

@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection } from "../../src/options/CommonSections";
-import { ChatGPTPlanSection } from "../../src/options/ChatGPTPlanSection";
+import { ChatGPTPlanSection, chatGPTSignInActionDisabled } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
 import { LocaleProvider } from "../../src/options/LocaleContext";
@@ -58,6 +58,14 @@ test("ChatGPT settings explain when Native Messaging permission is unavailable",
   render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
   await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
   expect(await screen.findByText(/Native Messaging 权限不可用/u)).toBeTruthy();
+});
+
+test("ChatGPT sign-in keeps an explicit retry action while authorization is pending", () => {
+  expect(chatGPTSignInActionDisabled(false, true, true)).toBe(false);
+  expect(chatGPTSignInActionDisabled(false, true, false)).toBe(true);
+  expect(chatGPTSignInActionDisabled(true, true, true)).toBe(true);
+  expect(zh.t("options.chatgptPlan.connecting")).toContain("重新连接");
+  expect(zh.t("options.chatgptPlan.authTimeout")).toContain("授权未完成");
 });
 
 test("ChatGPT settings do not guess whether unavailable access means expired session or missing scope", async () => {
