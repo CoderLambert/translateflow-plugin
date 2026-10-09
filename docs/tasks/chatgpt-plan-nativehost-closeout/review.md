@@ -1,8 +1,8 @@
 # ChatGPT Plan Native Host 收口审查
 
-**candidateHead:** `ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0`
+**candidateHead:** `4b5b160bd7fbd92c4766be67876e95ef2a466468`
 
-**base:** `1778776ab8fb7bdf33590762d2d8becdfe21f73e` (`origin/main`)
+**base:** `a5182b9da0d4a7d1f8418a8f560da09e15dc61d7` (`origin/main`)
 
 ## 主 Agent 自查
 
@@ -17,13 +17,13 @@
 
 ## 准确候选验收
 
-- `npm run validate`：PASS；Node 1214/1214、Vitest 38/38、严格类型检查和开发安装包构建通过。
-- `npm run build:extension:wxt`：PASS；119 files、2,363,738 bytes。
+- `npm run validate`：PASS；Node 1214/1214、Vitest 39/39、严格类型检查和开发安装包构建通过。
+- `npm run build:extension:wxt`：PASS；119 files、2,363,743 bytes。
 - `npm run test:wxt:smoke`：PASS；Chrome for Testing 153.0.8010.12。
 - `npm run test:e2e -- e2e/chatgpt-plan-nativehost.spec.mjs --workers=1`：PASS；实际 WXT Settings 的 Host 缺失恢复入口与窄屏流程通过。
 - `go -C native-host test -race ./...`：PASS；执行前清除 Go test cache，覆盖满容量登录接管和凭据协调回归。
 - WXT 产物 fingerprint 记录在 `acceptance.json`。
-- clean candidate Host 已安装；Go build metadata 为 `vcs.revision=ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0`、`vcs.modified=false`，安装器保留既有凭据。
+- clean candidate Host 已安装；Go build metadata 为 `vcs.revision=4b5b160bd7fbd92c4766be67876e95ef2a466468`、`vcs.modified=false`，安装器保留既有凭据。
 - 本机 Native Messaging `hello` / `auth.status` 脱敏探针：PASS；协议 1、单账号连接有效、`system-secure`、可推理。
 
 逐项耗时、退出码、本地日志 hash、真实用户流程与限制记录在 `acceptance.json`。
@@ -41,4 +41,5 @@
 - 首轮只读独立审查在 `45c06ee884320540d9caca5ce12b4f18aa4c3d00` 发现三个阻断项：锁顺序、满容量登录替换、添加账号重试模式；另建议移除 `id_token_hint` 并补充可操作错误文案。
 - 对 `45c06ee..10e3b67` 的有限增量复审结论为通过、无阻断；确认三个阻断项和 `id_token_hint` 已修复。审查者建议的剩余非阻断文案缺口已在最终候选补齐，并对最终候选重新执行全部规定检查。
 - 对 `10e3b67..ab7e961` 的最终两文件增量复审结论为通过、无新阻断；结论明确绑定 `ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0`。
+- PR #320 的五文件 UX09/10 增量另由同一只读审查者绑定 `0a9fef4688a9520dac0fe4505220e865992db15a` 审查通过并已合入 main。最终候选仅把该已审查 main 合并进 NativeHost 分支，无冲突；合并树已重新执行全部规定检查。
 - 跨 Host 同时存在多个主动 port 的登录协调未做平台实测，记录为 `NOT_VERIFIED`；普通 `connectNative()` 生命周期下没有证据表明它是当前阻断。

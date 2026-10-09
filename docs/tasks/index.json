@@ -255,7 +255,7 @@
       "status": "ready_to_sync",
       "dependencies": [],
       "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
-      "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0"
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468"
     },
     {
       "task": "offline-dictionary",

@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "chatgpt-plan-nativehost-closeout",
-  "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
-  "tree": "e86e96429728b4d929f78910e08a218bf5d9c0bf",
-  "inputTree": "9a9bd1fbc0e9fc2d25216ef03c349757e1e324d1fa6ee268130c1560a678bc20",
-  "frozenAt": "2026-10-09T06:14:54.758Z",
+  "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
+  "tree": "c68357829198ed687e843d55f9bf16d071075d61",
+  "inputTree": "c7db9d4b64090d72653d9feaecde7a679c794c83ca00987f9f28123511520425",
+  "frozenAt": "2026-10-09T06:22:33.498Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
@@ -17,14 +17,14 @@
         "run",
         "validate"
       ],
-      "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 44740.739583,
-      "startedAt": "2026-10-09T06:15:02.711Z",
-      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/302a67e3-63ad-410b-bfde-a4c0e69bfccb.log",
-      "logSha256": "aca59dd1f6f35f774ca51a73c0b251c2ea32a96245e1b03a6ee18607e3c9b298"
+      "durationMs": 46562.377705,
+      "startedAt": "2026-10-09T06:22:42.990Z",
+      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/de9fac7b-201a-40e9-a2f5-c37e6cd06f3c.log",
+      "logSha256": "d55da73ac5a344cdb56c0e163b41da4bba1bc22802774637fdd0763cea4ac173"
     },
     {
       "command": [
@@ -32,14 +32,14 @@
         "run",
         "build:extension:wxt"
       ],
-      "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 2365.57332,
-      "startedAt": "2026-10-09T06:15:47.607Z",
-      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/d1b8a29a-429b-4205-8cea-728c22aa4366.log",
-      "logSha256": "e0ac5745dc14783b32fb584359625e2ae623979357d91843278aa07a9cdabdc4"
+      "durationMs": 2115.971602,
+      "startedAt": "2026-10-09T06:23:29.701Z",
+      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/4301ad27-f36d-41e2-84c6-f63c9307caef.log",
+      "logSha256": "20d148e825325b6e076ef18c98ea24fdd9e8df6d801691401035c2a8ba599553"
     },
     {
       "command": [
@@ -47,14 +47,14 @@
         "run",
         "test:wxt:smoke"
       ],
-      "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1097.464977,
-      "startedAt": "2026-10-09T06:15:50.117Z",
-      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/858ff230-36f7-430a-801d-9ca8450edc5a.log",
-      "logSha256": "aa49193727708e94daf57517122ad2d68e1b9d5d513215795456d986fd1d3ff2"
+      "durationMs": 1046.525738,
+      "startedAt": "2026-10-09T06:23:31.968Z",
+      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/3526aa3d-0c6e-4873-944f-72d801f0ce48.log",
+      "logSha256": "3cc3e15b96c8dbb744c8d82a672c0f2ca8cca7402fa2aab615b5d10f4c0ed205"
     },
     {
       "command": [
@@ -65,14 +65,14 @@
         "e2e/chatgpt-plan-nativehost.spec.mjs",
         "--workers=1"
       ],
-      "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1656.941732,
-      "startedAt": "2026-10-09T06:15:51.364Z",
-      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/12482fa1-2a75-4cc4-80da-380d0b41e4c2.log",
-      "logSha256": "35b1782e38facbed6181d5e491953b9f4586921f26d493ee9904d769d3ee7d0c"
+      "durationMs": 1551.746815,
+      "startedAt": "2026-10-09T06:23:33.152Z",
+      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/039714ce-d024-41ef-b03c-0cb66ce98d8c.log",
+      "logSha256": "954b4517fd19e078ca6550161c9e13101ab7a82f3e335903c0cd0d88726a1140"
     },
     {
       "command": [
@@ -83,25 +83,26 @@
         "-race",
         "./..."
       ],
-      "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 4563.607849,
-      "startedAt": "2026-10-09T06:15:53.166Z",
-      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/76532974-1187-471f-8ee5-35b71d23ea00.log",
-      "logSha256": "0c7e8fd6b870e13274c930d071cf29ae876fae8ad41c86a4bb4791469e34e8e5"
+      "durationMs": 4534.106126,
+      "startedAt": "2026-10-09T06:23:34.847Z",
+      "log": "docs/task-execution/local/chatgpt-plan-nativehost-closeout/75122e58-a13d-47a9-b762-865d6f5658b6.log",
+      "logSha256": "5529d413c75197ac4784573186050b83a6368829371fd9881b61e1e04922c89c"
     }
   ],
   "artifact": {
     "path": ".output/chrome-mv3",
-    "treeSha256": "8f9834547dbafea6143b90a2fe6e608f255bf1a83d6acd6567a19127cd4c4eb7"
+    "treeSha256": "13005c9244b84797bd75406b8eea865667b634b9d6e9892eeff04df245a1bdae"
   },
   "limitations": [
     "PASS（真实用户流程）：本机用户级 Host 使用 system-secure 读取既有单账号注册，返回账号级模型列表；用户保留 GPT-6-Luna / gpt-6-luna 并保存为 ChatGPT 订阅 Provider。两个唯一文本的真实推理均完成且不是缓存命中。无账号信息截图为 /tmp/translateflow-chatgpt-live-acceptance.jpg，SHA-256 03fdc298f22ce7f112ca5cf9f66831f9f4b1753d5f394206b7c4f94a27be0f51；该本机路径不入库。",
     "PASS（真实用户流程）：退出登录返回 revocationConfirmed=true，设置页清除模型列表和选择；随后真实重连遇到一次 OpenAI consent 页面无回调并最终显示 invalid_auth_step。Host 回调监听器当时健康；新登录替换旧 auth.start 后，用户完成 fresh authorization 并恢复连接。不能据此把第三方 invalid_auth_step 进一步归因于 TranslateFlow。",
-    "PASS（准确候选安装）：ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0 的 WXT 产物已替换本机 unpacked 测试扩展；同一候选的 clean Go build 已安装，vcs.modified=false，凭据未改变。直接 Native Messaging hello/auth.status 脱敏探针返回 protocolVersion=1、connected=true、canInfer=true、storage=system-secure、accountCount=1。",
-    "PASS（最终候选自动验收）：等待授权提示、普通登录/添加账号重试、满容量旧登录接管、错误恢复文案和 id_token_hint 移除由 React 单测、Go race 回归、完整 validate、WXT smoke 与设置页 E2E 覆盖。",
+    "PASS（准确候选安装）：4b5b160bd7fbd92c4766be67876e95ef2a466468 的 WXT 产物已替换本机 unpacked 测试扩展；同一候选的 clean Go build 已安装，vcs.modified=false，凭据未改变。直接 Native Messaging hello/auth.status 脱敏探针返回 protocolVersion=1、connected=true、canInfer=true、storage=system-secure、accountCount=1。",
+    "PASS（最终候选自动验收）：候选包含已合入 main 的 PR #320；重新执行 validate（Node 1214/1214、Vitest 39/39）、WXT build/smoke、ChatGPT Settings E2E 1/1、Go race，全部通过。",
+    "PASS（独立审查）：NativeHost 恢复增量和最终两文件文案增量分别审查通过；PR #320 五文件 UX09/10 增量另行审查通过。最终合并 main 无冲突并重新执行门禁。",
     "NOT_RUN（用户选择跳过）：多账号添加与切换。不得把单账号成功写成多账号验收。",
     "NOT_RUN：完整浏览器重启后的 Host/session 恢复、Windows 实机安装与凭据管理器、固定发布扩展 ID。当前仅验证本机显式 extension ID 的 unpacked 安装。",
     "NOT_RUN：没有在最终候选上主动再次制造真实 stalled consent；最终异常提示的真实视觉状态没有新截图。",
