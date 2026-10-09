@@ -113,5 +113,12 @@
     "The browser run loaded the exact built WXT artifact before fixture setup, then copied it into an isolated profile and replaced only Core with the repository synthetic TFLex fixture; the built-in Technical package was retained. This does not validate Oxford or private dictionaries.",
     "The mock server received zero requests. A localhost host permission was added only to the temporary test copy. No real AI/provider call was made.",
     "OS-level IME behavior was not exercised."
-  ]
+  ],
+  "remoteSync": {
+    "pullRequest": 316,
+    "url": "https://github.com/CoderLambert/translateflow-plugin/pull/316",
+    "state": "merged",
+    "head": "3321bf6092d8a86bd1910873726ee885a8e8162b",
+    "mergeHead": "bfd837c8dcff83fd31b2b4a889866eeb7e0dd8bf"
+  }
 }

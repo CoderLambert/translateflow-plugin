@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "229",
-  "status": "ready_to_sync",
+  "status": "blocked",
   "owner": "main",
   "dependencies": [],
-  "branch": "audit/229-state-calibration-20261005",
-  "worktree": ".",
+  "branch": null,
+  "worktree": null,
   "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079",
-  "mergeHead": null,
+  "mergeHead": "638e9c2e906072a87ed9f6b1d6228681f74928e5",
   "validationCommands": [
     [
       "npm",
@@ -36,6 +36,7 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "Draft PR #303 is open for review through the authorized GitHub connector. Keep it in draft; do not merge or change Issue labels/closure in this audit.",
-  "pullRequest": 303
+  "nextAction": "PR #303 已合入 main，Selection 修复与 A–D 既有证据已保存。Epic #229 的关闭合同仍要求独立人工审计；当前没有该证据，因此保持 blocked。不得用主 Agent 自查、UX09/10 增量审查或本次元数据清理代替人工审计。",
+  "pullRequest": 303,
+  "syncHead": "dc383a6afef1c0ee7509d2a6afb8f76579d67fc6"
 }

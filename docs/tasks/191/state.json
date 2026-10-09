@@ -16,5 +16,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "按本地合同恢复；未经授权不扩展后续范围。"
+  "nextAction": "本次校准基线 main=02249f08ef786e8d7f2357750b9a1532376b70dd 已包含 WXT 默认构建、React 扩展页、Reading/词典/生词本与 Chrome 验收成果；旧 Epic 文本中的部分迁移状态已过期。本 Epic 继续 paused。只有用户明确启动 Edge/Firefox/Safari、商店发布或其它剩余平台范围时，才先按最新代码重新拆分任务，不整体照搬旧清单。"
 }

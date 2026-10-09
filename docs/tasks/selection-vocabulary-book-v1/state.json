@@ -1,20 +1,48 @@
 {
   "schema": 1,
   "task": "selection-vocabulary-book-v1",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "candidateHead": "033540996db9ce4150d949772f4386b258456673",
   "dependencies": [],
   "branch": "feat/selection-vocabulary-book-v1",
   "worktree": ".",
   "validationCommands": [
-    ["npm", "run", "check"],
-    ["npm", "run", "typecheck"],
-    ["node", "--test", "tests/vocabulary-book.test.mjs"],
-    ["npm", "run", "test:unit"],
-    ["npm", "run", "build:extension:wxt"],
-    ["npm", "run", "test:e2e", "--", "e2e/selection-vocabulary-book.spec.mjs", "--workers=1"]
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/vocabulary-book.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/selection-vocabulary-book.spec.mjs",
+      "--workers=1"
+    ]
   ],
   "artifactRequired": true,
-  "nextAction": "Sync the verified candidate to PR #316 for user review and merge."
+  "nextAction": "PR #316 已合入 main，mergeHead=bfd837c8dcff83fd31b2b4a889866eeb7e0dd8bf；后续保存失效修复由 PR #317、完整 UX09/10 旅程由 PR #320 单独完成。本任务无需继续实现。",
+  "mergeHead": "bfd837c8dcff83fd31b2b4a889866eeb7e0dd8bf"
 }
