@@ -86,7 +86,7 @@ test("authorized revisit renders bounded page history markers and recovers acros
       const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
       range.setStart(node, start); range.setEnd(node, start + 7); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange")); });
     await source.locator(".tf-selection-chip").click(); await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
-    await expect(source.locator(".tf-selection-record-status")).toContainText("Set this site's history markers");
+    await expect(source.locator(".tf-selection-record-status")).toContainText("Marker settings");
     await center.reload();
     const recordRow = center.locator(".record-list .record").first(), recordId = await recordRow.getAttribute("data-record-id");
     await center.evaluate(() => {

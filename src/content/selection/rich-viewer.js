@@ -41,8 +41,16 @@
 .tf-rich-viewer:focus-visible { outline: 2px solid var(--tf-green-600, #6f9668); outline-offset: 2px; }
 .tf-rich-viewer p { margin: 0 0 .45em; }
 .tf-rich-viewer p:last-child { margin-bottom: 0; }
-.tf-rich-viewer ul, .tf-rich-viewer ol { margin: .25em 0; padding-left: 1.5em; }
-.tf-rich-viewer li { margin: .1em 0; }
+.tf-rich-viewer ul.tf-rich-node-ul, .tf-rich-viewer ol.tf-rich-node-ol {
+  margin: .35em 0 .55em;
+  padding-inline-start: 1.35em;
+  list-style-position: outside;
+}
+.tf-rich-viewer ul.tf-rich-node-ul > li.tf-rich-node-li,
+.tf-rich-viewer ol.tf-rich-node-ol > li.tf-rich-node-li {
+  margin: .3em 0;
+  padding-inline-start: .15em;
+}
 .tf-rich-table-scroll { max-width: 100%; overflow-x: auto; }
 .tf-rich-viewer table { max-width: 100%; border-collapse: collapse; }
 .tf-rich-viewer td, .tf-rich-viewer th { border: 1px solid var(--tf-border-soft, rgba(58,75,59,.14)); padding: 2px 5px; vertical-align: top; }

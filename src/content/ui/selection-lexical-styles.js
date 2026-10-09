@@ -41,25 +41,105 @@
 .tf-selection-vocabulary-status[hidden] { display: none; }
 .tf-selection-vocabulary-actions button { min-height: 34px; }
 .tf-selection-record-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   flex: 0 0 auto;
-  margin-top: 8px;
-  padding: 9px 10px;
-  border: 1px solid var(--tf-border-soft);
-  border-radius: var(--tf-radius-sm);
-  background: var(--tf-bg-subtle);
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 7px;
+  padding: 7px 2px 0;
+  border: 0;
+  border-top: 1px solid var(--tf-border-soft);
+  border-radius: 0;
+  background: transparent;
   color: var(--tf-text-secondary);
   font-size: var(--tf-font-size-xs);
-  line-height: 1.45;
+  line-height: 1.35;
 }
 .tf-selection-record-status[data-state="saved"] {
-  border-color: color-mix(in srgb, var(--tf-green-600) 24%, var(--tf-border-soft));
-  background: var(--tf-green-50);
-  color: var(--tf-green-800);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  border-color: color-mix(in srgb, var(--tf-green-600) 18%, var(--tf-border-soft));
 }
-.tf-selection-record-status > .tf-selection-actions {
-  justify-content: flex-start;
-  margin-top: 7px;
-  padding-top: 7px;
+.tf-selection-record-message {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--tf-text-secondary);
+  font-weight: 650;
+}
+.tf-selection-record-status[data-state="saved"] > .tf-selection-record-message::before {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tf-green-100);
+  color: var(--tf-green-800);
+  content: "✓";
+  font-size: 10px;
+  line-height: 1;
+}
+.tf-selection-record-marker {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tf-selection-record-status > .tf-selection-record-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+}
+.tf-selection-record-actions .tf-ui-button {
+  min-height: 26px;
+  padding: 3px 6px;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+}
+@media (max-width: 360px) {
+  .tf-selection-record-status[data-state="saved"] {
+    padding-top: 5px;
+  }
+  .tf-selection-record-status[data-state="saved"] > .tf-selection-record-marker {
+    display: none;
+  }
+  .tf-selection-record-status[data-state="saved"] .tf-ui-button {
+    width: 28px;
+    min-height: 24px;
+    overflow: hidden;
+    padding: 3px;
+    font-size: 0;
+    white-space: nowrap;
+  }
+  .tf-selection-record-status[data-state="saved"] .tf-ui-button::before {
+    content: "⚙";
+    font-size: 12px;
+  }
+}
+@media (max-height: 480px) {
+  .tf-selection-record-status {
+    padding-top: 4px;
+  }
+  .tf-selection-record-status > .tf-selection-record-message {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .tf-selection-record-status > .tf-selection-record-marker {
+    display: none;
+  }
+  .tf-selection-record-status > .tf-selection-record-actions {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
 }
 .tf-selection-footer-actions {
   align-items: center;
