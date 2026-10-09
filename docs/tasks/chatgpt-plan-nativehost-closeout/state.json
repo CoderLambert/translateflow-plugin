@@ -42,5 +42,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "最终候选 4b5b160bd7fbd92c4766be67876e95ef2a466468 已对齐 main=a5182b9da0d4a7d1f8418a8f560da09e15dc61d7，并完成规定验收、准确候选安装及两个增量的独立审查；可同步 PR。多账号切换由用户选择跳过；完整浏览器重启、Windows 实机和固定发布扩展 ID 仍未验证。"
+  "nextAction": "最终候选 4b5b160bd7fbd92c4766be67876e95ef2a466468 已对齐 main=a5182b9da0d4a7d1f8418a8f560da09e15dc61d7，并完成规定自动验收、准确候选安装及两个增量的独立审查。PR 保持 Draft，等待用户主 Chrome 完整重启验收或明确接受该 NOT_RUN 边界；多账号切换由用户选择跳过，Windows 实机和固定发布扩展 ID 仍未验证。"
 }
