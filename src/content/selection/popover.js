@@ -60,7 +60,7 @@
     vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, reset() {}, hide() {}, dispose() {} };
 
     const actions = document.createElement("div");
-    actions.className = "tf-selection-actions";
+    actions.className = "tf-selection-actions tf-selection-footer-actions";
 
     explainButton = button({
       text: locale.t("content.selection.aiDetail"),

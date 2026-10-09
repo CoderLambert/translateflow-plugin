@@ -40,6 +40,37 @@
 }
 .tf-selection-vocabulary-status[hidden] { display: none; }
 .tf-selection-vocabulary-actions button { min-height: 34px; }
+.tf-selection-record-status {
+  flex: 0 0 auto;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-bg-subtle);
+  color: var(--tf-text-secondary);
+  font-size: var(--tf-font-size-xs);
+  line-height: 1.45;
+}
+.tf-selection-record-status[data-state="saved"] {
+  border-color: color-mix(in srgb, var(--tf-green-600) 24%, var(--tf-border-soft));
+  background: var(--tf-green-50);
+  color: var(--tf-green-800);
+}
+.tf-selection-record-status > .tf-selection-actions {
+  justify-content: flex-start;
+  margin-top: 7px;
+  padding-top: 7px;
+}
+.tf-selection-footer-actions {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 10px;
+}
+.tf-selection-footer-actions .tf-selection-action-primary {
+  min-height: 36px;
+  padding-inline: 14px;
+}
 .tf-selection-dictionary-entries {
   display: grid;
   gap: 7px;
@@ -213,9 +244,10 @@
 .tf-selection-rich-title {
   display: block;
   margin: 0;
-  color: var(--tf-text-muted);
-  font-size: 11px;
-  font-weight: 650;
+  color: var(--tf-text-main);
+  font-size: var(--tf-font-size-xs);
+  font-weight: 700;
+  line-height: 1.35;
 }
 .tf-selection-rich-preference {
   width: fit-content;
@@ -234,7 +266,10 @@
 .tf-selection-rich-format { font-weight: 650; }
 .tf-selection-rich-card-status {
   max-width: 92px;
-  color: var(--tf-text-muted);
+  padding: 2px 6px;
+  border-radius: var(--tf-radius-pill);
+  background: var(--tf-green-50);
+  color: var(--tf-green-800);
   font-size: 10px;
   line-height: 1.35;
   text-align: right;

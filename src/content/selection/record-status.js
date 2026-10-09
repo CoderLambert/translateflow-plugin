@@ -37,7 +37,8 @@
     if (view.retryAvailable) add("content.reading.retrySave", handlers.retry);
     if (view.state === "saved") add("content.reading.openSiteMarkers", handlers.open);
     if (actions.childElementCount) node.appendChild(actions);
-    panel.appendChild(node);
+    const footer = panel.querySelector(":scope > .tf-selection-footer-actions");
+    panel.insertBefore(node, footer || null);
     app.modules.selectionPopover?.reposition();
   }
   app.modules.selectionRecordStatus = Object.freeze({ update, clear });

@@ -30,14 +30,12 @@
 .tf-rich-viewer {
   box-sizing: border-box;
   max-width: 100%;
-  max-height: 210px;
-  overflow: auto;
+  overflow: visible;
   overflow-wrap: anywhere;
   color: inherit;
   font: inherit;
   line-height: 1.55;
   white-space: normal;
-  scrollbar-width: thin;
 }
 .tf-rich-viewer:focus-visible { outline: 2px solid var(--tf-green-600, #6f9668); outline-offset: 2px; }
 .tf-rich-viewer p { margin: 0 0 .45em; }
