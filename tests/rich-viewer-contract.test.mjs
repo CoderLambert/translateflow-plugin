@@ -142,6 +142,7 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
     { type: "resource", kind: "image", path: "img/OPP.png", presentation: "oxford-opposition" },
     { type: "resource", kind: "image", path: "img/Ox3000_key_S.png", presentation: "oxford-key" },
     { type: "resource", kind: "image", path: "img/not-oxford.png", presentation: "oxford-opposition" },
+    { type: "resource", kind: "audio", path: "audio/word/entry_br.mp3", presentation: "pronunciation-british" },
     { type: "element", tag: "span", attrs: { class: "tf-rich-pronunciation-label", "data-rich-pronunciation": "british" }, children: [{ type: "text", text: "untrusted raw label" }] }
   ] }, "fallback", { dictionaryId: "fixture" });
 
@@ -156,7 +157,8 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
   assert.deepEqual(JSON.parse(JSON.stringify(attachCalls[0][3].map((item) => [item.path, item.presentation]))), [
     ["img/OPP.png", "oxford-opposition"],
     ["img/Ox3000_key_S.png", "oxford-key"],
-    ["img/not-oxford.png", ""]
+    ["img/not-oxford.png", ""],
+    ["audio/word/entry_br.mp3", "pronunciation-british"]
   ]);
 });
 

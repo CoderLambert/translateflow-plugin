@@ -200,22 +200,28 @@
 }
 .tf-selection-rich-details {
   display: grid;
-  gap: 7px;
-  margin-top: 10px;
-  padding-top: 9px;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 11px;
   border-top: 1px solid var(--tf-border-soft);
 }
 .tf-selection-rich-heading {
-  color: var(--tf-text-secondary);
+  color: var(--tf-text-muted);
   font-size: var(--tf-font-size-xs);
+  font-weight: 650;
   letter-spacing: .02em;
 }
 .tf-selection-rich-record {
   min-width: 0;
-  padding: 8px 9px;
+  padding: 10px 11px;
   border: 1px solid var(--tf-border-soft);
   border-radius: var(--tf-radius-sm);
-  background: color-mix(in srgb, var(--tf-bg-card) 88%, transparent);
+  background: color-mix(in srgb, var(--tf-bg-subtle) 34%, var(--tf-bg-card));
+}
+.tf-selection-rich-record[open] {
+  border-color: color-mix(in srgb, var(--tf-green-600) 22%, var(--tf-border-soft));
+  background: var(--tf-bg-card);
+  box-shadow: 0 5px 16px rgba(38, 58, 40, .07);
 }
 .tf-selection-rich-record[data-state="error"] {
   border-color: color-mix(in srgb, var(--tf-color-danger, #bd5550) 42%, var(--tf-border-soft));
@@ -223,7 +229,7 @@
 .tf-selection-rich-summary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 8px;
   cursor: pointer;
   list-style: none;
@@ -279,7 +285,9 @@
 }
 .tf-selection-rich-card-body {
   min-width: 0;
-  padding-top: 8px;
+  margin-top: 9px;
+  padding-top: 10px;
+  border-top: 1px solid var(--tf-border-soft);
 }
 .tf-selection-rich-headword {
   margin-bottom: 4px;
@@ -292,8 +300,8 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   color: var(--tf-text-main);
-  font-size: var(--tf-font-size-sm);
-  line-height: 1.55;
+  font-size: var(--tf-font-size-md);
+  line-height: 1.62;
 }
 .tf-selection-rich-error {
   color: var(--tf-text-muted);
@@ -320,6 +328,10 @@
 @media (max-width: 360px) {
   .tf-selection-rich-summary { grid-template-columns: auto minmax(0, 1fr); }
   .tf-selection-rich-card-status { grid-column: 2; max-width: none; text-align: left; }
+}
+@media (max-width: 520px) {
+  .tf-selection-panel { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding-inline: 13px; }
+  .tf-selection-headword { font-size: 18px; }
 }
 `;
 

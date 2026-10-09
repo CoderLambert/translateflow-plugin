@@ -196,7 +196,7 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
-    if (appended) {
+    if (appended) { emptyState?.reset();
       resultNode.hidden = false;
       reposition();
     }
@@ -207,7 +207,7 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
-    if (cards.length) {
+    if (cards.length) { emptyState?.reset();
       resultNode.hidden = false;
       reposition();
     }

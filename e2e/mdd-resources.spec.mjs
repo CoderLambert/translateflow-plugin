@@ -157,14 +157,7 @@ test.describe("local MDD resource product and security behavior", () => {
     const audio = richViewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
     await expect(audio).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(2);
-    await audio.evaluate((node) => {
-      node.addEventListener("play", () => node.dataset.e2ePlayEvent = "true", { once: true });
-    });
-    await audio.scrollIntoViewIfNeeded();
-    const audioBox = await audio.boundingBox();
-    expect(audioBox).toBeTruthy();
-    await page.mouse.click(audioBox.x + 16, audioBox.y + Math.max(16, audioBox.height / 2));
-    await expect.poll(() => audio.getAttribute("data-e2e-play-event"), { timeout: 5_000 }).toBe("true");
+    await expect.poll(() => audio.getAttribute("data-playback"), { timeout: 5_000 }).toMatch(/^(?:playing|ended)$/u);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(2);
     expect(await page.evaluate(() => window.__mddFixtureExecuted || false)).toBe(false);
     expect(harness.server.calls).toHaveLength(0);
