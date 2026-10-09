@@ -252,10 +252,10 @@
     },
     {
       "task": "chatgpt-plan-nativehost-closeout",
-      "status": "working",
+      "status": "reviewing",
       "dependencies": [],
       "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
-      "candidateHead": null
+      "candidateHead": "c1213d85203873ff0ab37bf92bfd5babd2fcf996"
     },
     {
       "task": "offline-dictionary",

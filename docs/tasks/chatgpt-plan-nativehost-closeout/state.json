@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "chatgpt-plan-nativehost-closeout",
-  "status": "working",
+  "status": "reviewing",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-nativehost-closeout-20261009",
-  "candidateHead": null,
+  "candidateHead": "c1213d85203873ff0ab37bf92bfd5babd2fcf996",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -42,5 +42,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "从 origin/main=1778776ab8fb7bdf33590762d2d8becdfe21f73e 选择性整合 NativeHost/Plan 与 PR314；先完成当前多账号契约和离线验证。真实登录、固定发布扩展 ID 与独立安全审查仍是后续门槛。"
+  "nextAction": "候选 c1213d85203873ff0ab37bf92bfd5babd2fcf996 已完成离线与 Host 缺失浏览器验收；等待独立代码/安全审查，并由用户本人完成真实登录、多账号切换、模型、推理、登出和重启验收。仓库仍缺固定发布扩展 ID。"
 }
