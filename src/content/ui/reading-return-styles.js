@@ -25,10 +25,12 @@
 .tf-reading-page-marker:empty::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .tf-reading-page-marker:hover, .tf-reading-page-marker[data-active="true"] { background: var(--tf-green-900); opacity: 1; transform: translateY(-1px) scale(1.06); }
 .tf-reading-page-marker:focus-visible { outline: 3px solid var(--tf-green-500); outline-offset: 3px; }
+.tf-reading-hover-preview { position: fixed; height: min(300px, calc(100vh - 16px)); padding: 0; overflow: hidden; border-color: color-mix(in srgb, var(--tf-green-700) 34%, var(--tf-color-border)); box-shadow: 0 14px 36px rgba(30,50,30,.2); }
+.tf-reading-hover-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--tf-color-surface); color-scheme: light dark; }
 .tf-reading-preview-shell { position: fixed; right: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); height: min(720px, calc(100vh - 32px)); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
 .tf-reading-preview-shell header { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--tf-color-border); }
 .tf-reading-preview-frame { width: 100%; height: 100%; min-height: 0; border: 0; background: var(--tf-color-surface); color-scheme: light dark; }
-@media (max-width: 480px) { .tf-reading-page-panel article { grid-template-columns: minmax(0,1fr); } .tf-reading-page-row-actions { justify-content: flex-start; } .tf-reading-preview-shell { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); } }
+@media (max-width: 480px) { .tf-reading-page-panel article { grid-template-columns: minmax(0,1fr); } .tf-reading-page-row-actions { justify-content: flex-start; } .tf-reading-hover-preview { left: 8px !important; width: calc(100vw - 16px) !important; height: min(280px, calc(100vh - 16px)); } .tf-reading-preview-shell { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); } }
 @media (prefers-reduced-motion: reduce) { .tf-reading-page-highlight, .tf-reading-page-marker { transition: none !important; } }
 ` });
 })();

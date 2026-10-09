@@ -3,7 +3,6 @@ import type { Detail as RecordDetail } from "./client/reading";
 import { readingClient } from "./client/reading";
 import { useLocale } from "./useLocale";
 import { Button, Notice } from "./components/common";
-import { RecordHistory } from "./views/RecordHistory";
 
 const CLOSE_MESSAGE = "translateflow-reading-preview-close";
 const CLAIM_MESSAGE = "translateflow-reading-preview-claim";
@@ -57,6 +56,31 @@ export function ReadingPreview() {
     {!ready ? localeError ? <Notice error>{i18n.t("learning.previewUnavailable")}</Notice> : <Notice>{i18n.t("learning.previewLoading")}</Notice>
       : failed ? <Notice error>{i18n.t("learning.previewUnavailable")}</Notice>
         : !detail ? <Notice>{i18n.t("learning.previewLoading")}</Notice>
-          : <section aria-labelledby="detail-title"><RecordHistory detail={detail} i18n={i18n} /></section>}
+          : <PreviewSummary detail={detail} i18n={i18n} />}
   </main>;
+}
+
+function PreviewSummary({ detail, i18n }: { detail: RecordDetail; i18n: ReturnType<typeof useLocale>["i18n"] }) {
+  const latest = detail.artifacts.reduce<RecordDetail["artifacts"][number] | null>((current, artifact) =>
+    !current || artifact.createdAt > current.createdAt ||
+      (artifact.createdAt === current.createdAt && artifact.artifactId > current.artifactId) ? artifact : current, null);
+  return <section className="reading-preview-summary" aria-labelledby="detail-title">
+    <h2 id="detail-title">{detail.record.itemText}</h2>
+    {!latest ? <Notice>{i18n.t("learning.noHit")}</Notice> : <PreviewArtifact artifact={latest} i18n={i18n} />}
+  </section>;
+}
+
+function PreviewArtifact({ artifact, i18n }: {
+  artifact: RecordDetail["artifacts"][number]; i18n: ReturnType<typeof useLocale>["i18n"];
+}) {
+  const payload = artifact.payload;
+  return <article className="reading-preview-result">
+    <p className="eyebrow">{i18n.t(artifact.kind === "assistant" ? "learning.questions" : "learning.result")}</p>
+    {artifact.kind === "assistant" && "userQuestion" in payload
+      ? <><strong>{payload.userQuestion}</strong><p className="text">{payload.assistantAnswer}</p></>
+      : "definitions" in payload
+        ? <>{payload.outcome === "no-hit" ? <p>{i18n.t("learning.noHit")}</p>
+          : <ul>{payload.definitions.slice(0, 3).map((value: string, index: number) => <li key={index}>{value}</li>)}</ul>}</>
+        : "text" in payload ? <p className="text">{payload.text}</p> : null}
+  </article>;
 }

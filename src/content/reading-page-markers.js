@@ -3,9 +3,9 @@
   if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || !app?.modules.selectionRecordAccess || app.modules.readingPageMarkers) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
   const locale = app.modules.contentI18n;
-  let generation = 0, controller = null, root = null, panel = null, panelReturnFocus = null,
+  let generation = 0, previewEpoch = 0, controller = null, root = null, panel = null, panelReturnFocus = null, preview = null,
     markerNodes = [], markerGroups = new Map(), recordGroups = new Map(), ranges = new Map(), projectionUnsubscribe = null,
-    timer = 0, pulseTimer = 0, port = null, portReady = false, portReadyPromise = null, resolvePortReady = null,
+    timer = 0, pulseTimer = 0, hoverOpenTimer = 0, hoverCloseTimer = 0, port = null, portReady = false, portReadyPromise = null, resolvePortReady = null,
     lastInvalidation = null, panelRequestedOpen = false, pendingPanelFocus = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
   // Focus, manual retries, and SPA route changes do not replenish it.
@@ -16,13 +16,14 @@
     if (!response.ok) throw Object.assign(new Error(response.error.code), { code: response.error.code }); return response.data;
   }
   function clearUi() {
+    closeHoverPreview();
     locale.unbindTree(root); root?.remove(); root = panel = panelReturnFocus = null;
     for (const node of markerNodes) { locale.unbindTree(node); node.remove(); }
     for (const group of markerGroups.values()) for (const node of group.highlights) node.remove();
     markerNodes = []; markerGroups.clear(); recordGroups.clear(); ranges.clear();
   }
   function unresolved(items) { return new Map(items.map(item => [item.recordId, { status: "not-loaded", range: null }])); }
-  function cleanup() { generation++; controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); clearTimeout(pulseTimer); timer = pulseTimer = 0;
+  function cleanup() { generation++; controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); clearTimeout(pulseTimer); clearTimeout(hoverOpenTimer); clearTimeout(hoverCloseTimer); timer = pulseTimer = hoverOpenTimer = hoverCloseTimer = 0;
     lastItems = []; lastLocations = new Map(); lastPageRecordCount = 0; lastMarkerEnabled = false;
     lastInvalidation = null; panelRequestedOpen = false; pendingPanelFocus = null;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
@@ -68,6 +69,8 @@
       node.style.left = `${Math.round(safeLeft ? left : right)}px`;
       node.style.top = `${Math.round(Math.max(edge, Math.min(innerHeight - size - edge, anchor.line.top + (anchor.line.height - size) / 2)))}px`;
     });
+    if (preview?.marker?.isConnected && !preview.marker.hidden) positionHoverPreview(preview);
+    else if (preview) closeHoverPreview();
   }
   function sameLocations(items, left, right) {
     return items.every((item) => {
@@ -75,6 +78,83 @@
       if (before?.status !== after?.status) return false;
       return before?.status !== "resolved" || before.verifiedText === after.verifiedText;
     });
+  }
+  function positionHoverPreview(active) {
+    const markerRect = active.marker.getBoundingClientRect(), shell = active.shell;
+    const width = Math.min(380, innerWidth - 16), height = Math.min(shell.offsetHeight || 280, innerHeight - 16), gap = 10;
+    const right = markerRect.right + gap, left = markerRect.left - width - gap;
+    const x = right + width <= innerWidth - 8 ? right : Math.max(8, left);
+    const y = Math.max(8, Math.min(innerHeight - height - 8, markerRect.top + markerRect.height / 2 - height / 2));
+    shell.style.left = `${Math.round(x)}px`; shell.style.top = `${Math.round(y)}px`; shell.style.width = `${Math.round(width)}px`;
+  }
+  function closeHoverPreview({ notify = true } = {}) {
+    previewEpoch++; clearTimeout(hoverOpenTimer); clearTimeout(hoverCloseTimer); hoverOpenTimer = hoverCloseTimer = 0;
+    const active = preview; if (!active) return;
+    preview = null; clearTimeout(active.timeout); window.removeEventListener("message", active.listener);
+    locale.unbindTree(active.shell); active.frame.remove(); active.shell.remove();
+    if (notify) void send(M.PREVIEW_CLOSE, { previewId: active.previewId }).catch(() => {});
+  }
+  function scheduleHoverClose() {
+    clearTimeout(hoverOpenTimer); hoverOpenTimer = 0; const epoch = ++previewEpoch;
+    clearTimeout(hoverCloseTimer); hoverCloseTimer = setTimeout(() => {
+      hoverCloseTimer = 0; if (epoch === previewEpoch) closeHoverPreview();
+    }, 220);
+  }
+  function groupIsCurrent(group, renderedGeneration) {
+    if (renderedGeneration !== generation || !group?.marker?.isConnected || group.marker.hidden ||
+        !group.range?.startContainer?.isConnected || !group.range?.endContainer?.isConnected) return false;
+    try { return String(group.range.toString()) === group.expected; } catch { return false; }
+  }
+  function scheduleHoverPreview(item, group, renderedGeneration, delay = 160) {
+    clearTimeout(hoverCloseTimer); hoverCloseTimer = 0;
+    if (preview?.recordId === item.recordId && preview.shell.isConnected) return;
+    clearTimeout(hoverOpenTimer); const epoch = ++previewEpoch;
+    hoverOpenTimer = setTimeout(() => { hoverOpenTimer = 0; void openHoverPreview(item, group, renderedGeneration, epoch); }, delay);
+  }
+  async function openHoverPreview(item, group, renderedGeneration, activationEpoch) {
+    if (activationEpoch !== previewEpoch || !groupIsCurrent(group, renderedGeneration)) return;
+    let created;
+    try {
+      created = await send(M.PREVIEW_CREATE, { recordId: item.recordId, expectedRevision: item.revision });
+      if (activationEpoch !== previewEpoch || !groupIsCurrent(group, renderedGeneration)) {
+        void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {}); return;
+      }
+      if (preview) { closeHoverPreview(); activationEpoch = previewEpoch; }
+      const shell = surface({ className: "tf-reading-hover-preview", role: "dialog" });
+      locale.bindAttribute(shell, "aria-label", "content.reading.previewAria");
+      const frame = document.createElement("iframe"); frame.className = "tf-reading-hover-frame tf-reading-preview-frame";
+      frame.title = locale.t("content.reading.previewTitle"); frame.referrerPolicy = "no-referrer";
+      const extensionOrigin = new URL(chrome.runtime.getURL("/")).origin;
+      const state = { previewId: created.previewId, recordId: item.recordId, marker: group.marker,
+        shell, frame, listener: null, timeout: 0 };
+      state.listener = async event => {
+        if (!event.isTrusted || event.source !== frame.contentWindow || event.origin !== extensionOrigin ||
+            !event.data || Object.getPrototypeOf(event.data) !== Object.prototype) return;
+        const message = event.data;
+        if (message.type === "translateflow-reading-preview-close" && Object.keys(message).length === 2 && message.previewId === state.previewId) {
+          closeHoverPreview(); return;
+        }
+        if (message.type !== "translateflow-reading-preview-claim" || Object.keys(message).length !== 3 ||
+            message.previewId !== state.previewId || typeof message.claimId !== "string" || preview !== state) return;
+        try {
+          const bound = await send(M.PREVIEW_BIND, { previewId: state.previewId, claimId: message.claimId });
+          if (preview !== state || bound.bound !== true || !groupIsCurrent(group, renderedGeneration)) {
+            if (preview === state) closeHoverPreview(); return;
+          }
+          clearTimeout(state.timeout);
+          frame.contentWindow?.postMessage({ type: "translateflow-reading-preview-bound", previewId: state.previewId,
+            claimId: message.claimId }, extensionOrigin);
+        } catch { if (preview === state) closeHoverPreview(); }
+      };
+      shell.addEventListener("pointerenter", () => { clearTimeout(hoverCloseTimer); hoverCloseTimer = 0; });
+      shell.addEventListener("pointerleave", scheduleHoverClose);
+      preview = state; window.addEventListener("message", state.listener);
+      shell.appendChild(frame); app.modules.uiHost.getLayer("reading-page-preview").appendChild(shell); positionHoverPreview(state);
+      frame.src = `${chrome.runtime.getURL("reading-preview.html")}?previewId=${encodeURIComponent(state.previewId)}`;
+      state.timeout = setTimeout(() => { if (preview === state) closeHoverPreview(); }, 14_000);
+    } catch {
+      if (created?.previewId) void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {});
+    }
   }
   function showPanel(focusId = null) { panelRequestedOpen = true; pendingPanelFocus = focusId; if (!panel) return; if (panel.hidden) panelReturnFocus = root.getRootNode().activeElement || document.activeElement;
     panel.hidden = false; root.querySelector(".tf-reading-page-toggle").setAttribute("aria-expanded", "true");
@@ -190,7 +270,13 @@
         marker.dataset.recordId = item.recordId;
         const group = { marker, range: location.range, expected: quote, recordIds: [item.recordId], highlights: [] };
         markerRangeIds.set(rangeId, group); markerGroups.set(item.recordId, group); recordGroups.set(item.recordId, group); updateMarkerLabel(group);
-        marker.addEventListener("click", event => { if (event.isTrusted) { showPanel(group.recordIds[0]); pulseRecord(group.recordIds[0]); } });
+        marker.addEventListener("pointerenter", event => { if (event.isTrusted) scheduleHoverPreview(item, group, renderedGeneration); });
+        marker.addEventListener("pointerleave", event => { if (event.isTrusted) scheduleHoverClose(); });
+        marker.addEventListener("focus", event => { if (event.isTrusted) scheduleHoverPreview(item, group, renderedGeneration, 0); });
+        marker.addEventListener("blur", event => { if (event.isTrusted) scheduleHoverClose(); });
+        marker.addEventListener("click", event => {
+          if (event.isTrusted) { closeHoverPreview(); showPanel(group.recordIds[0]); pulseRecord(group.recordIds[0]); }
+        });
         markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-highlights"); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
       }
     }
