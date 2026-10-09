@@ -206,7 +206,8 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(preview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
     await revisit.keyboard.press("Escape");
     await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
-    expect(await revisit.locator(".tf-reading-page-marker").evaluate(node => node.getRootNode().activeElement === node)).toBe(true);
+    await expect.poll(() => revisit.locator(".tf-reading-page-marker").evaluate(node =>
+      node.getRootNode().activeElement === node)).toBe(true);
     await revisit.locator(".tf-reading-page-toggle").click();
     await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
     await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");

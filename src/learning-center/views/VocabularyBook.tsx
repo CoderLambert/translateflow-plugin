@@ -42,9 +42,9 @@ export function VocabularyBook({ section, i18n, client = vocabularyBookClient }:
     try {
       const updated = await client.review(entry.id, rating);
       if (active.current) {
-        setNotice(i18n.t(rating === "again" ? "learning.reviewAgainSaved" : "learning.reviewKnowSaved", {
-          date: i18n.formatDateTime(updated.nextReviewAt)
-        }));
+        setNotice(rating === "again"
+          ? i18n.t("learning.reviewAgainSaved")
+          : i18n.t("learning.reviewKnowSaved", { date: i18n.formatDateTime(updated.nextReviewAt) }));
       }
       await refresh();
     } catch {

@@ -7,6 +7,7 @@ import { App } from "../../../src/learning-center/App";
 import { ReadingClient } from "../../../src/learning-center/client/reading";
 import { Library } from "../../../src/learning-center/views/Library";
 import { Detail } from "../../../src/learning-center/views/Detail";
+import { VocabularyBook } from "../../../src/learning-center/views/VocabularyBook";
 import { createI18n } from "../../../src/i18n/index.js";
 import { useLibrary } from "../../../src/learning-center/useLibrary";
 import { READING_METHOD as M } from "../../../src/shared/reading/constants.js";
@@ -18,6 +19,29 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const i18n = createI18n({ uiLocale: "en" });
+test("Still learning reports the saved review and refreshes the due card", async () => {
+  const entry = {
+    id: "review-entry", headword: "session", sourceLanguage: "en", targetLanguage: "zh-CN",
+    pronunciation: "", partOfSpeech: "noun", definitions: ["会话"], examples: [],
+    sources: [{ sourceId: "pwn-3.0", packId: "core-fixture", packVersion: "1", sourceEntryId: "session" }],
+    savedAt: 1, reviewCount: 0, knownStreak: 0, lastReviewedAt: null, nextReviewAt: 1
+  };
+  let due = [entry];
+  const client = {
+    list: vi.fn(async () => ({ entries: [entry], due, count: 1, dueCount: due.length, capacity: 200 })),
+    review: vi.fn(async () => {
+      due = [];
+      return { ...entry, reviewCount: 1, lastReviewedAt: 2, nextReviewAt: 900_002 };
+    }),
+    remove: vi.fn()
+  };
+  render(<VocabularyBook section="review" i18n={i18n} client={client as any} />);
+  await userEvent.click(await screen.findByRole("button", { name: "Show meaning" }));
+  await userEvent.click(screen.getByRole("button", { name: "Still learning" }));
+  await screen.findByText("Try this word again in about 15 minutes.");
+  expect(screen.queryByTestId("vocabulary-review-card")).toBeNull();
+  expect(client.review).toHaveBeenCalledWith("review-entry", "again");
+});
 test("StrictMode mount and synthetic events do not grant consent or start exports", async () => {
   const calls: string[] = []; let enabled = false;
   const client = new ReadingClient(async raw => {
