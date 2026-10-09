@@ -214,6 +214,9 @@
     return cards.length > 0;
   }
 
+  function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
+    if (snapshot !== activeSnapshot || panel?.hidden || typeof onSave !== "function") return false;
+    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); reposition(); return true; }
   function updateSource(snapshot, result = null) {
     const sourceText = String(snapshot?.text || "").trim();
     const headword = String(result?.headword || "").trim();
@@ -227,7 +230,6 @@
     sourceNode.hidden = !sourceText || duplicatesHeadword;
     sourceNode.dataset.role = lexicalResult ? "lexical-source" : "selection-source";
   }
-
   function normalizeDisplayText(value) {
     return String(value || "")
       .normalize("NFKC")
@@ -235,7 +237,6 @@
       .trim()
       .toLocaleLowerCase("en-US");
   }
-
   function showEmpty(snapshot, { titleKey, messageKey, onExplain, onTranslate } = {}) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
@@ -254,13 +255,11 @@
     if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
-
   function showAiDetailLoading(onCancel) {
     ensureUi(); if (!resultNode || resultNode.hidden) return;
     explainHandler = null; explainButton.hidden = true;
     aiDetail.loading(onCancel);
   }
-
   function showAiDetailStreaming(answer, onStop) {
     ensureUi(); if (!resultNode) return;
     resultNode.hidden = false; explainHandler = null;
@@ -401,6 +400,7 @@
     showResult,
     appendRichDictionaryDetails,
     appendRichDictionaryCards,
+    showVocabularyActions,
     showError,
     showEmpty,
     showAiDetailLoading,

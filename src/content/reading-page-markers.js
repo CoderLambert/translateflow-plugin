@@ -4,20 +4,20 @@
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
   const locale = app.modules.contentI18n;
   let generation = 0, previewEpoch = 0, controller = null, root = null, panel = null, panelReturnFocus = null, preview = null,
-    markerNodes = [], ranges = new Map(), projectionUnsubscribe = null, timer = 0, port = null, portReady = false,
+    markerNodes = [], ranges = new Map(), markerExpected = new Map(), projectionUnsubscribe = null, timer = 0, port = null, portReady = false,
     portReadyPromise = null, resolvePortReady = null, lastInvalidation = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
   // Focus, manual retries, and SPA route changes do not replenish it.
-  let automaticRetries = 0, lastItems = [], lastPageRecordCount = 0, renderProjectionRevision = null, lastMarkerEnabled = false;
+  let automaticRetries = 0, lastItems = [], lastLocations = new Map(), lastPageRecordCount = 0, renderProjectionRevision = null, lastMarkerEnabled = false;
   async function send(method, body = {}) {
     const request = C.validateReadingRequest({ protocolVersion: C.READING_PROTOCOL_VERSION, method, ...body });
     const raw = await app.modules.runtime.sendRuntimeMessage(request), response = C.validateReadingResponse(method, raw, "content", body.limit);
     if (!response.ok) throw Object.assign(new Error(response.error.code), { code: response.error.code }); return response.data;
   }
-  function clearUi() { locale.unbindTree(root); root?.remove(); root = panel = panelReturnFocus = null; for (const node of markerNodes) { locale.unbindTree(node); node.remove(); } markerNodes = []; ranges.clear(); renderProjectionRevision = null; }
+  function clearUi() { locale.unbindTree(root); root?.remove(); root = panel = panelReturnFocus = null; for (const node of markerNodes) { locale.unbindTree(node); node.remove(); } markerNodes = []; ranges.clear(); markerExpected.clear(); renderProjectionRevision = null; }
   function unresolved(items) { return new Map(items.map(item => [item.recordId, { status: "not-loaded", range: null }])); }
   function cleanup() { generation++; closePreview({ restore: false }); controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); timer = 0;
-    lastItems = []; lastPageRecordCount = 0; lastMarkerEnabled = false;
+    lastItems = []; lastLocations = new Map(); lastPageRecordCount = 0; lastMarkerEnabled = false;
     lastInvalidation = null;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
   const markerBlockRoots = "p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main";
@@ -30,9 +30,11 @@
     return { line, block, rect: blockRect?.width > 0 && blockRect?.height > 0 ? blockRect : line };
   }
   function positionMarkers() {
-    const current = renderProjectionRevision !== null && app.modules.textProjection.revision() === renderProjectionRevision;
     markerNodes.forEach(node => {
-      const range = ranges.get(node.dataset.recordId), anchor = current ? markerAnchor(range) : null;
+      const range = ranges.get(node.dataset.recordId), expected = markerExpected.get(node.dataset.recordId);
+      let rangeCurrent = false;
+      try { rangeCurrent = range?.startContainer?.isConnected && range?.endContainer?.isConnected && String(range.toString()) === expected; } catch {}
+      const anchor = rangeCurrent ? markerAnchor(range) : null;
       if (!anchor) { node.hidden = true; return; }
       const size = 16, edge = 4, gap = 8, listOffset = anchor.block?.matches?.("li") ? 16 : 0;
       const left = anchor.rect.left - size - gap - listOffset;
@@ -43,6 +45,13 @@
       node.dataset.side = safeLeft ? "left" : "right";
       node.style.left = `${Math.round(safeLeft ? left : right)}px`;
       node.style.top = `${Math.round(Math.max(edge, Math.min(innerHeight - size - edge, anchor.line.top + (anchor.line.height - size) / 2)))}px`;
+    });
+  }
+  function sameLocations(items, left, right) {
+    return items.every((item) => {
+      const before = left.get(item.recordId), after = right.get(item.recordId);
+      if (before?.status !== after?.status) return false;
+      return before?.status !== "resolved" || before.verifiedText === after.verifiedText;
     });
   }
   function showPanel(focusId = null) { if (!panel) return; if (panel.hidden) panelReturnFocus = root.getRootNode().activeElement || document.activeElement;
@@ -163,6 +172,11 @@
     retry.addEventListener("click", event => { if (event.isTrusted) void load(); });
     panel.addEventListener("keydown", event => { if (event.key === "Escape") { event.preventDefault(); hidePanel(); } });
     locale.bindText(title, pageRecordCount > items.length ? "content.reading.pageLoadedTitle" : "content.reading.pageTitle", pageRecordCount > items.length ? { loaded: items.length, total: pageRecordCount } : {}); close.addEventListener("click", hidePanel); header.append(title, retry, close); panel.appendChild(header);
+    const markerRangeIds = new Map(), rangeNodeIds = new Map();
+    const markerRangeKey = (range) => {
+      const nodeId = (node) => { if (!rangeNodeIds.has(node)) rangeNodeIds.set(node, rangeNodeIds.size + 1); return rangeNodeIds.get(node); };
+      return `${nodeId(range.startContainer)}:${range.startOffset}:${nodeId(range.endContainer)}:${range.endOffset}`;
+    };
     for (const [index, item] of items.entries()) {
       const location = locations.get(item.recordId) || { status: "not-loaded" }, row = document.createElement("article"); row.dataset.recordId = item.recordId;
       const locate = button({ text: locale.t("content.reading.locateItem", { index: index + 1 }), className: "tf-reading-page-item" }); locale.bindText(locate, "content.reading.locateItem", { index: index + 1 }); locate.dataset.recordId = item.recordId;
@@ -177,7 +191,12 @@
       });
       row.append(locate, state, open); panel.appendChild(row);
       if (rangeIsCurrent) {
-        ranges.set(item.recordId, location.range); const marker = button({ text: "", label: locale.t("content.reading.markerLocated", { index: index + 1 }), className: "tf-reading-page-marker" });
+        ranges.set(item.recordId, location.range);
+        const rangeId = markerRangeKey(location.range);
+        if (markerRangeIds.has(rangeId)) continue;
+        markerRangeIds.set(rangeId, item.recordId);
+        markerExpected.set(item.recordId, item.anchor.quote.exact);
+        const marker = button({ text: "", label: locale.t("content.reading.markerLocated", { index: index + 1 }), className: "tf-reading-page-marker" });
         locale.bindAttribute(marker, "aria-label", "content.reading.markerLocated", { index: index + 1 });
         locale.bindAttribute(marker, "title", "content.reading.markerHint"); marker.dataset.recordId = item.recordId;
         marker.addEventListener("click", event => {
@@ -190,11 +209,7 @@
         markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
       }
     }
-    const locatedCount = items.filter(item => {
-      const location = locations.get(item.recordId);
-      return location?.status === "resolved" && location.range?.startContainer?.isConnected &&
-        location.range?.endContainer?.isConnected && location.verifiedText === item.anchor.quote.exact;
-    }).length;
+    const locatedCount = markerRangeIds.size;
     const summary = document.createElement("p"); summary.setAttribute("role", "status");
     locale.bindText(summary, unavailable ? "content.reading.pageSummaryUnavailable"
       : pageRecordCount > C.READING_LIMITS.pageMarkers ? "content.reading.pageSummaryLimited" : "content.reading.pageSummary", unavailable ? {}
@@ -204,6 +219,42 @@
     panel.appendChild(summary);
     toggle.addEventListener("click", () => panel.hidden ? showPanel() : hidePanel()); root.append(toggle, panel); app.modules.uiHost.getLayer("reading-page-history").appendChild(root); positionMarkers();
     window.addEventListener("scroll", positionMarkers, true); window.addEventListener("resize", positionMarkers);
+  }
+  function subscribeProjection() {
+    projectionUnsubscribe?.();
+    projectionUnsubscribe = app.modules.textProjection.start(() => {
+      projectionUnsubscribe?.(); projectionUnsubscribe = null;
+      closePreview({ restore: false });
+      if (!timer) timer = setTimeout(() => { timer = 0; void refreshLocationsAfterMutation(); }, C.READING_LIMITS.mutationDebounceMs);
+    });
+  }
+  async function refreshLocationsAfterMutation() {
+    if (!lastItems.length) return;
+    const current = ++generation; controller?.abort(); const ownController = new AbortController(); controller = ownController;
+    const previous = lastLocations;
+    try {
+      const locations = await app.modules.readingAnchorResolver.resolvePage(lastItems, { signal: ownController.signal, verifiedBlocksFirst: true });
+      if (current !== generation || ownController.signal.aborted) return;
+      const unchanged = sameLocations(lastItems, previous, locations);
+      if (!unchanged && automaticRetries >= C.READING_LIMITS.scanRetryCount) {
+        lastLocations = unresolved(lastItems);
+        render(lastItems, lastLocations, lastPageRecordCount);
+        return;
+      }
+      if (!unchanged) automaticRetries++;
+      lastLocations = locations;
+      render(lastItems, locations, lastPageRecordCount, locations.projectionRevision);
+      subscribeProjection();
+    } catch {
+      if (current !== generation || ownController.signal.aborted) return;
+      if (automaticRetries >= C.READING_LIMITS.scanRetryCount) {
+        lastLocations = unresolved(lastItems);
+        render(lastItems, lastLocations, lastPageRecordCount);
+        return;
+      }
+      automaticRetries++;
+      subscribeProjection();
+    }
   }
   async function load({ register = false } = {}) {
     const current = ++generation; controller?.abort(); const ownController = new AbortController(); controller = ownController;
@@ -215,7 +266,7 @@
       if (current !== generation || ownController.signal.aborted) return;
       const markerState = await send(M.GET_SITE_MARKERS); if (current !== generation || ownController.signal.aborted) return;
       lastMarkerEnabled = markerState.state === "ready" && markerState.enabled;
-      if (!lastMarkerEnabled) { closePreview({ restore: false }); lastItems = []; lastPageRecordCount = 0; clearUi(); return; }
+      if (!lastMarkerEnabled) { closePreview({ restore: false }); lastItems = []; lastLocations = new Map(); lastPageRecordCount = 0; clearUi(); return; }
       const items = []; let cursor = null, count = 0;
       let summaryRequests = 0;
       do { const page = await send(M.GET_PAGE_SUMMARY, { cursor, limit: 100 }); summaryRequests++;
@@ -223,22 +274,14 @@
         items.push(...page.items); cursor = page.nextCursor; count = page.pageRecordCount;
       } while (cursor && items.length < C.READING_LIMITS.pageMarkers && summaryRequests < 2);
       if (current !== generation || ownController.signal.aborted) return;
-      if (!items.length) { closePreview({ restore: false }); lastItems = []; lastPageRecordCount = count; clearUi(); return; }
+      if (!items.length) { closePreview({ restore: false }); lastItems = []; lastLocations = new Map(); lastPageRecordCount = count; clearUi(); return; }
       const limited = items.slice(0, C.READING_LIMITS.pageMarkers);
       lastItems = limited; lastPageRecordCount = count; render(limited, unresolved(limited), count);
-      const locations = await app.modules.readingAnchorResolver.resolvePage(limited, { signal: ownController.signal });
+      const locations = await app.modules.readingAnchorResolver.resolvePage(limited, { signal: ownController.signal, verifiedBlocksFirst: true });
       if (current !== generation || ownController.signal.aborted) return;
+      lastLocations = locations;
       render(limited, locations, count, locations.projectionRevision);
-      projectionUnsubscribe = app.modules.textProjection.start(() => {
-        projectionUnsubscribe?.(); projectionUnsubscribe = null;
-        closePreview({ restore: false });
-        // The source projection is stale. Drop every old Range immediately but keep the
-        // generic list and its manual retry action visible after auto retries end.
-        render(lastItems, unresolved(lastItems), lastPageRecordCount);
-        if (!timer && automaticRetries < C.READING_LIMITS.scanRetryCount) timer = setTimeout(() => {
-          timer = 0; automaticRetries++; void load();
-        }, C.READING_LIMITS.mutationDebounceMs);
-      });
+      subscribeProjection();
     } catch { if (current === generation) {
       closePreview({ restore: false });
       if (lastItems.length) render(lastItems, unresolved(lastItems), lastPageRecordCount);

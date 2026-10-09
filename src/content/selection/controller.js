@@ -169,7 +169,7 @@
           (event) => vocabularyBook.open(event)
         );
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
-        void loadRich(snapshot, version, expectedPage, queryRecord);
+        void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: !vocabularyEntry });
         return;
       }
 
@@ -190,7 +190,7 @@
           onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, event })
         });
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
-        void loadRich(snapshot, version, expectedPage, queryRecord);
+        void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
         return;
       }
 
@@ -202,7 +202,7 @@
         resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null
       );
       if (resolved.intent?.kind === "lexical") {
-        void loadRich(snapshot, version, expectedPage, queryRecord);
+        void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
       }
     } catch (error) {
       if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
@@ -311,22 +311,24 @@
   function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
     return runTranslation(snapshot, task, version, expectedPage, queryRecord);
   }
-
   function failureMessage(error) { return error?.i18nKey || "content.selection.errorRetry"; }
-
   function localizedError(key, code = "") {
     return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
   }
-
   function showResult(snapshot, card, copyText, copiedMessage, onExplain = null, onSaveVocabulary = null, onOpenVocabulary = null) {
     popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain, onSaveVocabulary, onOpenVocabulary);
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
-
-  function loadRich(snapshot, version, expectedPage, queryRecord) {
+  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false } = {}) {
     return loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection, (record, dictionary) => {
       records?.accept(queryRecord, model.readingRich(record, dictionary), { key: `rich:${dictionary.id}` });
+      if (!allowVocabularyFallback) return;
+      const vocabularyEntry = model.vocabularyDraftFromRich(record, dictionary, sourceLanguage || "en");
+      if (!vocabularyEntry) return;
+      popover.showVocabularyActions(snapshot, (event) => { if (!event?.isTrusted) return { ignored: true };
+        if (!isCurrentVocabularySelection(snapshot, snapshot.sourceCapture, expectedPage)) throw localizedError("content.vocabulary.updated");
+        return vocabularyBook.add(vocabularyEntry, event); }, (event) => vocabularyBook.open(event));
     });
   }
 

@@ -254,6 +254,12 @@ test("Result adapters preserve actual types and bounded provenance while droppin
   const rich = model.readingRich(record, { id: "synthetic", packVersion: "v1", fileName: "/home/private" });
   assert.equal(rich.kind, "dictionary"); assert.equal(JSON.stringify(rich).includes("PRIVATE_RAW"), false);
   assert.equal(JSON.stringify(rich).includes("/home"), false);
+  const richVocabulary = model.vocabularyDraftFromRich({ ...record, text: "React\n持久的用户界面库" },
+    { id: "synthetic", packVersion: "v1", fileName: "/home/private" }, "en");
+  assert.deepEqual(json(richVocabulary.definitions), ["持久的用户界面库"]);
+  assert.deepEqual(json(richVocabulary.sources), [{ sourceId: "local-rich-mdict", packId: "synthetic",
+    packVersion: "v1", sourceEntryId: "React" }]);
+  assert.equal(JSON.stringify(richVocabulary).includes("PRIVATE_RAW"), false);
   assert.equal(model.readingRich({ ...record, text: "sound://private.mp3" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingRich({ ...record, text: "" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingDictionary({ routeReason: "no-hit-local" }, "missing").payload.outcome, "no-hit");

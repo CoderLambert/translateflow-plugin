@@ -87,6 +87,14 @@ test("authorized revisit renders bounded page history markers and recovers acros
       range.setStart(node, start); range.setEnd(node, start + 7); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange")); });
     await source.locator(".tf-selection-chip").click(); await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
     await expect(source.locator(".tf-selection-record-status")).toContainText("Marker settings");
+    await source.locator(".tf-selection-icon-button").click();
+    await source.evaluate(() => {
+      const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
+      range.setStart(node, start); range.setEnd(node, start + 7); getSelection().removeAllRanges(); getSelection().addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await source.locator(".tf-selection-chip").click();
+    await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
     await center.reload();
     const recordRow = center.locator(".record-list .record").first(), recordId = await recordRow.getAttribute("data-record-id");
     await center.evaluate(() => {
@@ -146,17 +154,17 @@ test("authorized revisit renders bounded page history markers and recovers acros
       };
     });
     await revisit.goto(articleUrl);
-    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 2");
     await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
-    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 1");
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("本页历史 2");
     await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en" }));
-    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 2");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
     await expect(revisit.locator(".tf-reading-page-marker")).toBeHidden();
     await revisit.locator(".tf-reading-page-toggle").click();
     await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
-    await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
+    await expect(revisit.locator(".tf-reading-page-panel article").first()).not.toContainText("session");
+    await expect(revisit.locator(".tf-reading-page-panel article").first()).toContainText("Located");
     await revisit.locator(".tf-reading-page-toggle").click();
     await expect(revisit.locator(".tf-reading-page-panel")).toBeHidden();
     await revisit.locator("#source").scrollIntoViewIfNeeded();
@@ -211,30 +219,30 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect.poll(() => revisit.locator(".tf-reading-page-marker").evaluate(node =>
       node.getRootNode().activeElement === node)).toBe(true);
     await revisit.locator(".tf-reading-page-toggle").click();
-    await expect(revisit.locator(".tf-reading-page-panel article")).not.toContainText("session");
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
+    await expect(revisit.locator(".tf-reading-page-panel article").first()).not.toContainText("session");
+    await expect(revisit.locator(".tf-reading-page-panel article").first()).toContainText("Located");
     expect(JSON.stringify(await readPageSurface(revisit))).toContain("session"); // Only the current verified Range contains it.
 
     await revisit.evaluate(() => { document.querySelector("#source").textContent = "PUBLIC removed alpha tail"; });
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Not found");
+    await expect(revisit.locator(".tf-reading-page-panel article").first()).toContainText("Not found");
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(0);
     expect(JSON.stringify(await readPageSurface(revisit))).not.toContain("session");
     await revisit.locator(".tf-reading-page-toggle").click();
     await expect(revisit.locator(".tf-reading-page-panel")).toBeVisible();
     const unresolvedDetailPromise = context.waitForEvent("page", { timeout: 8000 });
-    await revisit.locator(".tf-reading-page-panel article").getByRole("button", { name: "View record", exact: true }).click();
+    await revisit.locator(".tf-reading-page-panel article").first().getByRole("button", { name: "View record", exact: true }).click();
     const unresolvedDetail = await unresolvedDetailPromise;
     await expect(unresolvedDetail.getByRole("heading", { name: "session", exact: true })).toBeVisible();
     await unresolvedDetail.close();
 
     await revisit.evaluate(() => { document.querySelector("#source").innerHTML = "<span>PUBLIC </span><strong>session</strong><span> alpha tail</span>"; });
     await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(1);
-    await expect(revisit.locator(".tf-reading-page-panel article")).toContainText("Located");
+    await expect(revisit.locator(".tf-reading-page-panel article").first()).toContainText("Located");
 
     await revisit.evaluate(() => { history.pushState({}, "", "/marker-other"); dispatchEvent(new PopStateEvent("popstate")); });
     await expect(revisit.locator(".tf-reading-page-toggle")).toHaveCount(0);
     await revisit.goBack(); await expect(revisit).toHaveURL(articleUrl);
-    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+    await expect(revisit.locator(".tf-reading-page-toggle")).toHaveText("Page history 2");
     await revisit.locator("#source").scrollIntoViewIfNeeded();
     await expect(revisit.locator(".tf-reading-page-marker")).toBeVisible();
     await revisit.screenshot({ path: info.outputPath("reading-page-markers.png"), fullPage: false });
@@ -243,16 +251,16 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await revisit.keyboard.press("Escape");
 
     const retryPage = await context.newPage(); await retryPage.goto(articleUrl);
-    await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+    await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 2");
     await retryPage.locator(".tf-reading-page-toggle").click();
-    const retryRow = retryPage.locator(".tf-reading-page-panel article");
+    const retryRow = retryPage.locator(".tf-reading-page-panel article").first();
     for (const [round, restore] of [false, true, false, true].entries()) {
       await retryPage.evaluate(restoreQuote => { document.querySelector("#source").textContent = restoreQuote
         ? "PUBLIC session alpha tail" : "PUBLIC page changed alpha tail"; }, restore);
       if (round < 3) await expect(retryRow).toContainText(restore ? "Located" : "Not found");
       else {
         await expect(retryRow).toContainText("Not fully loaded");
-        await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+        await expect(retryPage.locator(".tf-reading-page-toggle")).toHaveText("Page history 2");
         await expect(retryPage.locator(".tf-reading-page-marker")).toHaveCount(0);
         await retryPage.locator(".tf-reading-page-toggle").click();
         await retryPage.getByRole("button", { name: "Check location again", exact: true }).click();

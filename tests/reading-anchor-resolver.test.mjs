@@ -53,6 +53,17 @@ test("saved main-root anchors remain compatible with the Reading resolver", asyn
   assert.equal(result.range.toString(), "persistent");
 });
 
+test("verified block anchors resolve without waiting for an unstable full-page scan", async t => {
+  const f = fixture('<main><p id="target">alpha session tail</p><section id="dynamic">changing shell</section></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });
+  f.modules.textProjection.createScanner = () => { throw new Error("full page scan should not run"); };
+  const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+  const result = locations.get("target");
+  assert.equal(result.status, "resolved", JSON.stringify(result));
+  assert.equal(result.range.toString(), "session");
+});
+
 test("resolver restores a split-inline exact Range after node replacement and ignores the stale position hint", async t => {
   const f = fixture('<main><p id="target">alpha <span>ses</span><em>sion</em> tail</p></main>'); t.after(() => f.dom.window.close());
   const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });

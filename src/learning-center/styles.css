@@ -23,12 +23,13 @@ label { display: block; font-weight: 600; margin-bottom: 8px; }
 .vocabulary-heading h2 { margin-bottom: 4px; }
 .vocabulary-heading p { margin-top: 0; }
 .vocabulary-list { display: grid; gap: 12px; list-style: none; padding: 0; }
-.vocabulary-entry, .vocabulary-review-card { border: 1px solid var(--tf-border-main); border-radius: var(--tf-radius-md); background: var(--tf-bg-panel); padding: clamp(16px, 3vw, 24px); box-shadow: var(--tf-shadow-xs); }
+.vocabulary-entry, .vocabulary-review-card { min-width: 0; overflow: hidden; border: 1px solid var(--tf-border-main); border-radius: var(--tf-radius-md); background: var(--tf-bg-panel); padding: clamp(16px, 3vw, 24px); box-shadow: var(--tf-shadow-xs); }
 .vocabulary-entry { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .vocabulary-entry-copy { min-width: 0; flex: 1 1 340px; }
 .vocabulary-entry h3, .vocabulary-review-card h3 { margin: 0; color: var(--tf-text-strong); font-size: clamp(24px, 5vw, 34px); overflow-wrap: anywhere; }
 .vocabulary-meta { margin: 4px 0 12px; color: var(--tf-text-secondary); }
-.vocabulary-definitions { display: grid; gap: 5px; margin: 12px 0; padding-left: 22px; }
+.vocabulary-definitions { display: grid; max-width: 100%; gap: 5px; margin: 12px 0; padding-left: 22px; }
+.vocabulary-definitions > li { min-width: 0; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
 .vocabulary-entry blockquote, .vocabulary-review-card blockquote { margin: 14px 0; color: var(--tf-text-secondary); }
 .vocabulary-review-card { max-width: 680px; min-height: 240px; margin: 20px auto; }
 .vocabulary-review-card > .muted { margin: 0 0 24px; }
