@@ -134,6 +134,20 @@ test("Oxford pronunciation labels replace only matching icons beside local audio
   ]);
 });
 
+test("safe dictionary disclosures preserve details and summary structure", () => {
+  const result = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<details class="o-unbox-panel" open onclick="alert(1)"><summary class="o-unbox-tile"><span class="o-unbox-tile-title">More about</span></summary><div class="o-unbox-body">Supplement</div></details>'
+  });
+  const elements = [];
+  walk(result.nodes, (node) => { if (node.type === "element") elements.push(node); });
+  assert.deepEqual(elements.map((node) => node.tag), ["details", "summary", "span", "div"]);
+  assert.equal(elements[0].attrs.class, "o-unbox-panel");
+  assert.equal(Object.hasOwn(elements[0].attrs, "open"), false);
+  assert.equal(Object.hasOwn(elements[0].attrs, "onclick"), false);
+  assert.equal(textContent(result.nodes), "More aboutSupplement");
+});
+
 test("actual ECDICT compact stylesheet rules safely wrap each following segment", () => {
   const styleSheetRules = [
     { id: 1, begin: '<b style="font-size:180%;">', end: "</b>" },

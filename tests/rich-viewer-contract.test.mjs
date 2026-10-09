@@ -162,6 +162,28 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
   ]);
 });
 
+test("Oxford disclosure and active pronunciation layout remain compact without dictionary CSS", async () => {
+  const { viewer, document } = await loadModules();
+  const host = document.createElement("div");
+  viewer.render(host, { nodes: [
+    { type: "element", tag: "div", attrs: { class: "o-pronunciation-set o-active" }, children: [{ type: "text", text: "active pronunciation" }] },
+    { type: "element", tag: "div", attrs: { class: "o-pronunciation-set" }, children: [{ type: "text", text: "inactive pronunciation" }] },
+    { type: "element", tag: "details", attrs: { class: "o-unbox-panel" }, children: [
+      { type: "element", tag: "summary", attrs: { class: "o-unbox-tile" }, children: [
+        { type: "element", tag: "div", attrs: { class: "o-unbox-tile-title" }, children: [{ type: "text", text: "补充说明 MORE ABOUT" }] }
+      ] },
+      { type: "element", tag: "div", attrs: { class: "o-unbox-body" }, children: [{ type: "text", text: "supplement" }] }
+    ] }
+  ] }, "fallback");
+
+  assert.ok(findTag(host.shadowRoot, "details"));
+  assert.ok(findTag(host.shadowRoot, "summary"));
+  const staticCss = findTag(host.shadowRoot, "style").textContent;
+  assert.match(staticCss, /\.o-pronunciation-set\.o-active \{ display: block; \}/u);
+  assert.match(staticCss, /details\.o-unbox-panel\[open\] > \.o-unbox-body \{ display: block; \}/u);
+  assert.match(staticCss, /summary\.o-unbox-tile \{ display: flex;/u);
+});
+
 test("viewer caps AST traversal and uses no network or HTML parser APIs", async () => {
   const source = await readFile(VIEWER, "utf8");
   assert.match(source, /MAX_NODES = 32768/u);
