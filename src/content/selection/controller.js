@@ -45,11 +45,15 @@
   let activeAssistant = null;
   let requestVersion = 0;
   let selectionTimer = null;
+  const projectionGuard = app.modules.selectionSourceSnapshot.createProjectionGuard({ getSnapshot: () => activeSnapshot,
+    getCurrentUrl: () => location.href, getPageIdentity,
+    onAccept: (snapshot, capture, revision) => { snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition(); },
+    onReject: () => { records?.invalidateReference(); dismiss(); } });
   function start() {
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
-    projection.start(handleProjectionInvalidation);
+    projection.start(projectionGuard.invalidate);
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -76,13 +80,6 @@
     clearTimeout(selectionTimer);
     selectionTimer = setTimeout(refreshSelectionUi, 90);
   }
-  function handleProjectionInvalidation(revision = projection.revision()) {
-    const snapshot = activeSnapshot, capture = snapshot?.sourceCapture; if (!snapshot) return;
-    const current = app.modules.selectionSourceSnapshot.matchesCurrentPage(snapshot, capture, location.href, getPageIdentity);
-    if (!current) { records?.invalidateReference(); dismiss(); return; }
-    snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition();
-  }
-
   function refreshSelectionUi() {
     const snapshot = readSelection();
     if (!snapshot) {
@@ -379,6 +376,7 @@
   }
 
   function dismiss({ restoreFocus = false } = {}) {
+    projectionGuard.clear();
     abandonAssistant();
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();

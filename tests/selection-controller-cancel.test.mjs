@@ -131,6 +131,14 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     }) : null },
     selectionRecordStatus: { update() {}, clear() {} },
     selectionSourceSnapshot: {
+      createProjectionGuard({ getSnapshot, getCurrentUrl, getPageIdentity, onAccept, onReject }) {
+        return { invalidate: (revision = projectionRevision) => {
+          const snapshot = getSnapshot(), capture = snapshot?.sourceCapture;
+          if (!snapshot) return;
+          if (this.matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) onAccept(snapshot, capture, revision);
+          else onReject();
+        }, clear() {} };
+      },
       matchesCurrentPage(snapshot, frozen, currentUrl, getIdentity) {
         return Boolean(snapshot) && getIdentity(snapshot.pageUrl) === getIdentity(currentUrl)
           && (frozen ? this.matches(snapshot, frozen) : this.rangeMatches(snapshot.range, snapshot.rangeIdentity));

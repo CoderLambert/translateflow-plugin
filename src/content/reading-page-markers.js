@@ -20,16 +20,29 @@
     lastItems = []; lastPageRecordCount = 0; lastMarkerEnabled = false;
     lastInvalidation = null;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
+  const markerBlockRoots = "p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main";
   function rectFor(range) { try { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
     rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth) || null; } catch { return null; } }
+  function markerAnchor(range) {
+    const line = rectFor(range); if (!line) return null;
+    const origin = range.commonAncestorContainer?.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer?.parentElement;
+    const block = origin?.closest?.(markerBlockRoots), blockRect = block?.getBoundingClientRect?.();
+    return { line, block, rect: blockRect?.width > 0 && blockRect?.height > 0 ? blockRect : line };
+  }
   function positionMarkers() {
     const current = renderProjectionRevision !== null && app.modules.textProjection.revision() === renderProjectionRevision;
     markerNodes.forEach(node => {
-      const range = ranges.get(node.dataset.recordId), rect = current ? rectFor(range) : null;
-      if (!rect) { node.hidden = true; return; }
-      const size = 14;
-      node.hidden = false; node.style.left = `${Math.max(2, Math.min(innerWidth - size - 2, rect.right + 5))}px`;
-      node.style.top = `${Math.max(2, Math.min(innerHeight - size - 2, rect.top + (rect.height - size) / 2))}px`;
+      const range = ranges.get(node.dataset.recordId), anchor = current ? markerAnchor(range) : null;
+      if (!anchor) { node.hidden = true; return; }
+      const size = 16, edge = 4, gap = 8, listOffset = anchor.block?.matches?.("li") ? 16 : 0;
+      const left = anchor.rect.left - size - gap - listOffset;
+      const right = anchor.rect.right + gap;
+      const safeLeft = left >= edge, safeRight = right + size <= innerWidth - edge;
+      if (!safeLeft && !safeRight) { node.hidden = true; return; }
+      node.hidden = false;
+      node.dataset.side = safeLeft ? "left" : "right";
+      node.style.left = `${Math.round(safeLeft ? left : right)}px`;
+      node.style.top = `${Math.round(Math.max(edge, Math.min(innerHeight - size - edge, anchor.line.top + (anchor.line.height - size) / 2)))}px`;
     });
   }
   function showPanel(focusId = null) { if (!panel) return; if (panel.hidden) panelReturnFocus = root.getRootNode().activeElement || document.activeElement;

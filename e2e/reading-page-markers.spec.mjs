@@ -71,7 +71,7 @@ test("authorized revisit renders bounded page history markers and recovers acros
   const temporary = await mkdtemp(join(tmpdir(), "tf-reading-markers-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
   const server = await startMockServer(), articleUrl = `${server.baseUrl}/marker-page?private=synthetic`; let context;
   const longPrefix = Array.from({ length: 90 }, (_, index) => `<p>section ${index} ${"filler ".repeat(90)}</p>`).join("");
-  server.setPage("/marker-page", `<!doctype html><main>${longPrefix}<p id="source">PUBLIC session alpha tail</p></main>`);
+  server.setPage("/marker-page", `<!doctype html><style>main{margin:0 48px}</style><main>${longPrefix}<p id="source">PUBLIC session alpha tail</p></main>`);
   try {
     const buildReport = await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
@@ -161,11 +161,13 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(revisit.locator(".tf-reading-page-panel")).toBeHidden();
     await revisit.locator("#source").scrollIntoViewIfNeeded();
     await expect(revisit.locator(".tf-reading-page-marker")).toBeVisible();
-    const dotAppearance = await revisit.locator(".tf-reading-page-marker").evaluate(node => ({
-      width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height,
-      radius: getComputedStyle(node).borderRadius, label: node.getAttribute("aria-label")
-    }));
-    expect(dotAppearance).toMatchObject({ width: 14, height: 14, radius: "50%" });
+    const dotAppearance = await revisit.locator(".tf-reading-page-marker").evaluate(node => {
+      const marker = node.getBoundingClientRect(), source = document.querySelector("#source").getBoundingClientRect();
+      return { width: marker.width, height: marker.height, radius: getComputedStyle(node).borderRadius,
+        label: node.getAttribute("aria-label"), side: node.dataset.side,
+        outsideText: marker.right <= source.left || marker.left >= source.right };
+    });
+    expect(dotAppearance).toMatchObject({ width: 16, height: 16, radius: "50%", side: "left", outsideText: true });
     expect(dotAppearance.label).not.toContain("session");
     await revisit.locator(".tf-reading-page-toggle").focus();
     await revisit.keyboard.press("Enter");
