@@ -86,6 +86,43 @@ type logoutOrderingBackend struct {
 
 type startupProbeBackend struct{ calls int }
 
+type supersedingAuthBackend struct {
+	mu            sync.Mutex
+	calls         int
+	firstStarted  chan struct{}
+	firstStopped  chan struct{}
+	secondStarted chan struct{}
+}
+
+func (b *supersedingAuthBackend) AuthStatus(context.Context) (contract.AuthStatus, error) {
+	return contract.AuthStatus{}, nil
+}
+
+func (b *supersedingAuthBackend) StartAuth(ctx context.Context, _ contract.AuthStartRequest, waiting func()) error {
+	b.mu.Lock()
+	b.calls++
+	call := b.calls
+	b.mu.Unlock()
+	waiting()
+	if call == 1 {
+		close(b.firstStarted)
+		<-ctx.Done()
+		close(b.firstStopped)
+		return ctx.Err()
+	}
+	close(b.secondStarted)
+	return nil
+}
+
+func (b *supersedingAuthBackend) SelectAccount(context.Context, string) error { return nil }
+func (b *supersedingAuthBackend) Logout(context.Context) (bool, error)        { return true, nil }
+func (b *supersedingAuthBackend) ListModels(context.Context) ([]contract.Model, error) {
+	return nil, nil
+}
+func (b *supersedingAuthBackend) Infer(context.Context, contract.InferenceRequest, func(string) error) (contract.InferenceResult, error) {
+	return contract.InferenceResult{}, nil
+}
+
 func (b *startupProbeBackend) AuthStatus(context.Context) (contract.AuthStatus, error) {
 	b.calls++
 	return contract.AuthStatus{}, nil
@@ -216,6 +253,72 @@ func TestServerCancelProducesOneTerminalPerRequest(t *testing.T) {
 		if responses[0].Sequence != 0 {
 			t.Fatalf("%s terminal sequence = %d, want 0", id, responses[0].Sequence)
 		}
+	}
+}
+
+func TestNewAuthStartCancelsAndReplacesWaitingAuth(t *testing.T) {
+	inputReader, inputWriter := io.Pipe()
+	backend := &supersedingAuthBackend{
+		firstStarted:  make(chan struct{}),
+		firstStopped:  make(chan struct{}),
+		secondStarted: make(chan struct{}),
+	}
+	output := new(bytes.Buffer)
+	server := NewServer(backend, inputReader, output)
+	runDone := make(chan error, 1)
+	go func() { runDone <- server.Run(context.Background()) }()
+
+	writeRequest(t, inputWriter, map[string]any{
+		"type": "request", "requestId": "auth-old", "method": "auth.start",
+		"payload": map[string]bool{"addAccount": false},
+	})
+	select {
+	case <-backend.firstStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first sign-in did not start")
+	}
+
+	writeRequest(t, inputWriter, map[string]any{
+		"type": "request", "requestId": "auth-new", "method": "auth.start",
+		"payload": map[string]bool{"addAccount": false},
+	})
+	select {
+	case <-backend.firstStopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement sign-in did not cancel the first flow")
+	}
+	select {
+	case <-backend.secondStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement sign-in did not start after the first flow stopped")
+	}
+
+	if err := inputWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-runDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("native host did not stop after replacing sign-in")
+	}
+
+	frames := readResponses(t, output)
+	terminals := make(map[string]response)
+	for _, frame := range frames {
+		if frame.Type == "terminal" {
+			terminals[frame.RequestID] = frame
+		}
+	}
+	old := terminals["auth-old"]
+	if old.OK == nil || *old.OK || old.Error == nil || old.Error.Code != "cancelled" {
+		t.Fatalf("superseded sign-in terminal = %#v, want cancelled", old)
+	}
+	newer := terminals["auth-new"]
+	if newer.OK == nil || !*newer.OK {
+		t.Fatalf("replacement sign-in terminal = %#v, want success", newer)
 	}
 }
 
@@ -519,7 +622,7 @@ func TestServerUnknownMethodGetsOneSafeTerminal(t *testing.T) {
 	}
 }
 
-func TestStartupErrorReturnsHostBusyBeforeCallingBackend(t *testing.T) {
+func TestStartupErrorReturnsCredentialUnavailableBeforeCallingBackend(t *testing.T) {
 	input := new(bytes.Buffer)
 	writeRequest(t, input, map[string]any{
 		"type": "request", "requestId": "busy-infer", "method": "infer.start",
@@ -528,13 +631,13 @@ func TestStartupErrorReturnsHostBusyBeforeCallingBackend(t *testing.T) {
 	output := new(bytes.Buffer)
 	backend := &startupProbeBackend{}
 	server := NewServer(backend, input, output)
-	server.StartupError = contract.NewError("HOST_BUSY", "Another TranslateFlow native host is active. Close it and retry.")
+	server.StartupError = contract.NewError("credential_unavailable", "The credential store is unavailable.")
 	if err := server.Run(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	frames := readResponses(t, output)
-	if len(frames) != 1 || frames[0].RequestID != "busy-infer" || frames[0].Error == nil || frames[0].Error.Code != "HOST_BUSY" {
-		t.Fatalf("startup error frames = %#v, want one HOST_BUSY terminal", frames)
+	if len(frames) != 1 || frames[0].RequestID != "busy-infer" || frames[0].Error == nil || frames[0].Error.Code != "credential_unavailable" {
+		t.Fatalf("startup error frames = %#v, want one credential_unavailable terminal", frames)
 	}
 	if backend.calls != 0 {
 		t.Fatalf("startup error reached backend %d times; auth and inference must not start", backend.calls)

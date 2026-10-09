@@ -230,7 +230,7 @@ function normalizeErrorCode(code) {
 
 function errorFor(code) {
   const messages = {
-    HOST_BUSY: "Another TranslateFlow native host is active. Close the other instance and retry.",
+    HOST_BUSY: "Another ChatGPT subscription operation is still running. Wait for it to finish and retry.",
     RECONNECT_REQUIRED: "The ChatGPT session needs to be reconnected in Settings.",
     MISSING_SCOPE: "This ChatGPT account does not have the required plan access.",
     CANCELLED: "The ChatGPT request was cancelled.",

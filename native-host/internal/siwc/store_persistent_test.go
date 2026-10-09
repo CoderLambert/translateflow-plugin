@@ -1,17 +1,14 @@
 package siwc
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -322,6 +319,73 @@ func TestPersistentStoreKeepsSessionsSeparateAcrossAccountSwitches(t *testing.T)
 	}
 }
 
+func TestPersistentStoreSerializesOverlappingHostInstances(t *testing.T) {
+	ctx := context.Background()
+	blob := &fakeSecureBlob{}
+	lockDir := filepath.Join(t.TempDir(), "shared-host-store")
+	first := newPersistentStoreForTest(t, blob, lockDir)
+	second := newPersistentStoreForTest(t, blob, lockDir)
+	registration := Registration{
+		ClientID: testIssuedClientID,
+		HostID:   "urn:uuid:stable-host",
+		Subject:  "overlapping-host-subject",
+		Email:    "overlap@example.test",
+	}
+	initial := SessionTokens{
+		IDToken:      "initial-id-token",
+		AccessToken:  "initial-access-token",
+		RefreshToken: "initial-refresh-token",
+		Scopes:       []string{planUseScope},
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if committed, err := first.CommitAuth(ctx, 0, registration, initial); err != nil || !committed {
+		t.Fatalf("initial CommitAuth() = committed:%v err:%v", committed, err)
+	}
+	snapshot, err := first.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type result struct {
+		committed bool
+		err       error
+	}
+	start := make(chan struct{})
+	results := make(chan result, 2)
+	for index, store := range []*PersistentStore{first, second} {
+		index, store := index, store
+		go func() {
+			<-start
+			next := initial
+			next.AccessToken = fmt.Sprintf("overlap-access-%d", index)
+			committed, err := store.CommitRefresh(ctx, snapshot.Generation, next)
+			results <- result{committed: committed, err: err}
+		}()
+	}
+	close(start)
+	wins := 0
+	for range 2 {
+		result := <-results
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		if result.committed {
+			wins++
+		}
+	}
+	if wins != 1 {
+		t.Fatalf("overlapping host commits = %d, want exactly one generation winner", wins)
+	}
+	final, err := second.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !final.HasSession || final.Generation != snapshot.Generation+1 ||
+		(final.Tokens.AccessToken != "overlap-access-0" && final.Tokens.AccessToken != "overlap-access-1") {
+		t.Fatalf("final overlapping host state = %#v", final)
+	}
+}
+
 func TestPersistentStoreReturnsExplicitErrorsForUnavailableAndCorruptData(t *testing.T) {
 	ctx := context.Background()
 	blob := &fakeSecureBlob{readErr: errors.New("secret service is locked")}
@@ -539,101 +603,6 @@ func TestLateSecureWriteCannotReactivateSessionAfterLogoutAndRestart(t *testing.
 		afterRestart.Registration != normalizeRegistration(registration) || afterRestart.Generation != logoutPointer.Generation {
 		t.Fatalf("late write resurrected a session after restart: %#v", afterRestart)
 	}
-}
-
-func TestHostLockSubprocessCompetitionAndRelease(t *testing.T) {
-	lockDir := filepath.Join(t.TempDir(), "host-lock")
-	hold := hostLockHelperCommand(lockDir, "hold")
-	stdout, err := hold.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	stdin, err := hold.StdinPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := hold.Start(); err != nil {
-		t.Fatal(err)
-	}
-	line, err := bufio.NewReader(stdout).ReadString('\n')
-	if err != nil || strings.TrimSpace(line) != "LOCKED" {
-		_ = stdin.Close()
-		_ = hold.Wait()
-		t.Fatalf("first host lock helper output = %q, err=%v", line, err)
-	}
-	if output, err := hostLockHelperCommand(lockDir, "probe").CombinedOutput(); err != nil || strings.TrimSpace(string(output)) != "HOST_BUSY" {
-		_ = stdin.Close()
-		_ = hold.Wait()
-		t.Fatalf("competing process output = %q, err=%v; want HOST_BUSY", output, err)
-	}
-	if err := stdin.Close(); err != nil {
-		_ = hold.Wait()
-		t.Fatal(err)
-	}
-	if err := hold.Wait(); err != nil {
-		t.Fatalf("lock holder exit = %v", err)
-	}
-	if output, err := hostLockHelperCommand(lockDir, "probe").CombinedOutput(); err != nil || strings.TrimSpace(string(output)) != "FREE" {
-		t.Fatalf("released lock probe output = %q, err=%v; want FREE", output, err)
-	}
-	exitedHolder := hostLockHelperCommand(lockDir, "exit-held")
-	exitedOutput, err := exitedHolder.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := exitedHolder.Start(); err != nil {
-		t.Fatal(err)
-	}
-	line, err = bufio.NewReader(exitedOutput).ReadString('\n')
-	if err != nil || strings.TrimSpace(line) != "LOCKED" {
-		t.Fatalf("exiting lock helper output = %q, err=%v", line, err)
-	}
-	if err := exitedHolder.Wait(); err != nil {
-		t.Fatalf("exiting lock helper exit = %v", err)
-	}
-	if output, err := hostLockHelperCommand(lockDir, "probe").CombinedOutput(); err != nil || strings.TrimSpace(string(output)) != "FREE" {
-		t.Fatalf("process-exit lock probe output = %q, err=%v; want FREE", output, err)
-	}
-}
-
-func TestHostLockSubprocessHelper(t *testing.T) {
-	mode := os.Getenv("TRANSLATEFLOW_HOST_LOCK_TEST_MODE")
-	if mode == "" {
-		return
-	}
-	release, err := AcquireHostLock(os.Getenv("TRANSLATEFLOW_HOST_LOCK_TEST_DIR"))
-	if errors.Is(err, ErrHostBusy) {
-		_, _ = fmt.Fprintln(os.Stdout, "HOST_BUSY")
-		os.Exit(0)
-	}
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stdout, "LOCK_ERROR")
-		os.Exit(1)
-	}
-	if mode == "hold" {
-		_, _ = fmt.Fprintln(os.Stdout, "LOCKED")
-		_, _ = io.Copy(io.Discard, os.Stdin)
-		release()
-		os.Exit(0)
-	}
-	if mode == "exit-held" {
-		_, _ = fmt.Fprintln(os.Stdout, "LOCKED")
-		os.Exit(0)
-	}
-	release()
-	if mode == "probe" {
-		_, _ = fmt.Fprintln(os.Stdout, "FREE")
-	}
-	os.Exit(0)
-}
-
-func hostLockHelperCommand(lockDir, mode string) *exec.Cmd {
-	command := exec.Command(os.Args[0], "-test.run=^TestHostLockSubprocessHelper$")
-	command.Env = append(os.Environ(),
-		"TRANSLATEFLOW_HOST_LOCK_TEST_MODE="+mode,
-		"TRANSLATEFLOW_HOST_LOCK_TEST_DIR="+lockDir,
-	)
-	return command
 }
 
 func TestPersistentStoreLogoutRejectsStaleGenerationWrites(t *testing.T) {

@@ -37,7 +37,6 @@ var (
 	ErrSecureStoreLocked       = errors.New("system secure store is locked")
 	ErrSecureStoreUnavailable  = errors.New("system secure store is unavailable")
 	ErrCredentialRecordInvalid = errors.New("stored credential record is invalid")
-	ErrHostBusy                = errors.New("another native host process is active")
 )
 
 // SecureBlobStore stores immutable, opaque versions in an operating-system
@@ -81,32 +80,6 @@ type PersistentStore struct {
 	blob        SecureBlobStore
 	lockDir     string
 	pointerPath string
-}
-
-// AcquireHostLock enforces one active host process per current-user store.
-// Operating-system file locks are released automatically when the process exits.
-func AcquireHostLock(lockDir string) (func(), error) {
-	if lockDir == "" {
-		return nil, ErrSecureStoreUnavailable
-	}
-	lockDir = filepath.Clean(lockDir)
-	if err := os.MkdirAll(lockDir, 0o700); err != nil {
-		return nil, ErrSecureStoreUnavailable
-	}
-	if runtime.GOOS != "windows" {
-		if err := os.Chmod(lockDir, 0o700); err != nil {
-			return nil, ErrSecureStoreUnavailable
-		}
-	}
-	lock := flock.New(filepath.Join(lockDir, "host.lock"), flock.SetPermissions(0o600))
-	locked, err := lock.TryLock()
-	if err != nil {
-		return nil, ErrSecureStoreUnavailable
-	}
-	if !locked {
-		return nil, ErrHostBusy
-	}
-	return func() { _ = lock.Unlock() }, nil
 }
 
 func NewPersistentStore(blob SecureBlobStore, lockDir string) (*PersistentStore, error) {

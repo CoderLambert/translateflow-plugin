@@ -33,7 +33,6 @@ type Server struct {
 	mu            sync.Mutex
 	active        map[string]*operation
 	infers        int
-	auths         int
 	workActive    int
 	controlActive int
 	loggingOut    bool
@@ -136,6 +135,12 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) accept(parent context.Context, req request) {
+	if req.Method == "auth.start" {
+		if err := decodeOptionalStrict(req.Payload, &contract.AuthStartRequest{}); err != nil {
+			_ = s.immediateTerminal(req.RequestID, "invalid_payload", "The auth.start payload is invalid.")
+			return
+		}
+	}
 	if req.Method == "auth.logout" {
 		if err := decodeOptionalStrict(req.Payload, &struct{}{}); err != nil {
 			_ = s.immediateTerminal(req.RequestID, "invalid_payload", "The auth.logout payload is invalid.")
@@ -180,15 +185,15 @@ func (s *Server) accept(parent context.Context, req request) {
 		}
 		s.infers++
 	}
-	if req.Method == "auth.start" {
-		if s.auths != 0 {
-			s.mu.Unlock()
-			_ = s.immediateTerminal(req.RequestID, "busy", "Only one sign-in flow can run at a time.")
-			return
-		}
-		s.auths++
-	}
 	var waitForWork []<-chan struct{}
+	if req.Method == "auth.start" {
+		for _, active := range s.active {
+			if active.method == "auth.start" && !active.isClosed() {
+				active.cancel()
+				waitForWork = append(waitForWork, active.done)
+			}
+		}
+	}
 	if req.Method == "auth.logout" || req.Method == "auth.select" {
 		s.loggingOut = true
 		for _, active := range s.active {
@@ -204,9 +209,6 @@ func (s *Server) accept(parent context.Context, req request) {
 		s.mu.Lock()
 		if req.Method == "infer.start" && s.infers > 0 {
 			s.infers--
-		}
-		if req.Method == "auth.start" && s.auths > 0 {
-			s.auths--
 		}
 		if control && s.controlActive > 0 {
 			s.controlActive--

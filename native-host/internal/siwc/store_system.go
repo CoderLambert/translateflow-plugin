@@ -5,26 +5,24 @@ import (
 	"path/filepath"
 )
 
-// NewSystemStore selects the current-user secure credential backend and holds
-// an exclusive process lock until the returned release function is called.
+// NewSystemStore selects the current-user secure credential backend. Multiple
+// Chrome Native Messaging connections may create overlapping host processes,
+// so process coordination belongs to PersistentStore's short-lived state and
+// refresh locks rather than a host-lifetime lock.
 // It does not read or write credentials during setup.
-func NewSystemStore() (CredentialStore, func(), error) {
+func NewSystemStore() (CredentialStore, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil || configDir == "" {
-		return nil, nil, ErrSecureStoreUnavailable
+		return nil, ErrSecureStoreUnavailable
 	}
 	storeDir := filepath.Join(configDir, "CoderLambert", "TranslateFlow", "native-host")
 	blob, err := newSystemSecureBlobStore(storeDir)
 	if err != nil {
-		return nil, nil, ErrSecureStoreUnavailable
+		return nil, ErrSecureStoreUnavailable
 	}
 	store, err := NewPersistentStore(blob, storeDir)
 	if err != nil {
-		return nil, nil, ErrSecureStoreUnavailable
+		return nil, ErrSecureStoreUnavailable
 	}
-	release, err := AcquireHostLock(storeDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	return store, release, nil
+	return store, nil
 }

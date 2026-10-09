@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -115,18 +114,14 @@ func runHost() int {
 	log.SetOutput(os.Stderr)
 	log.SetFlags(0)
 
-	store, releaseHost, startupErr := siwc.NewSystemStore()
+	store, startupErr := siwc.NewSystemStore()
 	if startupErr != nil {
 		store = siwc.NewMemoryStore()
-		if errors.Is(startupErr, siwc.ErrHostBusy) {
-			startupErr = contract.NewError("HOST_BUSY", "Another TranslateFlow native host is active. Close it and retry.")
-		} else if runtime.GOOS == "linux" {
+		if runtime.GOOS == "linux" {
 			startupErr = contract.NewError("credential_unavailable", "TranslateFlow could not initialize the current-user credential store. Check that your user config directory is writable.")
 		} else {
 			startupErr = contract.NewError("credential_unavailable", "TranslateFlow could not open the current-user secure credential store.")
 		}
-	} else {
-		defer releaseHost()
 	}
 	client, err := siwc.New(siwc.Options{
 		AgentName: "TranslateFlow",

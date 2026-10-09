@@ -18,12 +18,18 @@ compatible Secret Service provider must already be available in the user
 session; the candidate does not assume GNOME Keyring, install packages, change
 PAM settings, or unlock the provider. Windows secure storage and other platforms
 report their own unavailable state rather than falling back to plaintext.
-Only one host process may use a user's store at a time. A second process returns
-one `HOST_BUSY` terminal before dispatching auth, models, or inference. On Linux,
+Chrome may overlap Native Messaging host processes while its Manifest V3
+background context is restarting. Each process may open the same user store;
+short-lived state and refresh file locks serialize credential transitions, and
+generation checks reject stale authorization, refresh, or logout writes. On Linux,
 Secret Service calls use a five-second context deadline; the adapter checks the
 collection/item lock state and does not call `Unlock` or `Prompt`. Windows
 ciphertext replacement uses `MoveFileEx` with replace-existing and write-through
 flags; Windows runtime behavior remains untested.
+
+If the user starts sign-in again while an earlier browser authorization is still
+waiting, the newer request cancels and replaces the older flow. The user does not
+need to find or terminate a host process after an authorization timeout.
 
 Protected blobs use random immutable version IDs. A private local pointer names
 the only version that can be read and records the session generation. Its blob
@@ -49,8 +55,8 @@ access, and Windows system calls. Tests use an in-process fake HTTP server and
 fake secure-blob stores. A delayed-apply backend simulates a D-Bus service
 committing a cancelled immutable write after logout; a helper subprocess then
 reopens the pointer and verifies the session stays invalid. Store recreation
-and refresh contention tests are in-process simulations. Separate helper
-subprocess tests exercise host-lock competition/release and pointer recovery.
+and refresh contention tests are in-process simulations. A helper subprocess
+reopens the credential pointer to exercise restart recovery.
 Tests never contact OpenAI or the actual OS credential store.
 
 ## Native messaging protocol
