@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "chatgpt-plan-nativehost-closeout",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-nativehost-closeout-20261009",
   "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468",
-  "mergeHead": null,
+  "mergeHead": "a565772133c31c1d653a386cd8e139417ce3f8a6",
   "validationCommands": [
     [
       "npm",
@@ -42,5 +42,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "最终候选 4b5b160bd7fbd92c4766be67876e95ef2a466468 已对齐 main=a5182b9da0d4a7d1f8418a8f560da09e15dc61d7，并完成规定自动验收、准确候选安装、独立审查和用户主 Chrome 完整重启后的真实登录恢复。可核对 expected head 并合并 PR #321；多账号切换由用户选择跳过，Windows 实机和固定发布扩展 ID 保留为发布边界。"
+  "nextAction": "任务已通过 PR #321 合入 main，mergeHead=a565772133c31c1d653a386cd8e139417ce3f8a6。用户主 Chrome 完整重启后的登录恢复为 PASS；合并后 GitHub checks 为空，记录为 NOT_RUN/NOT_VERIFIED。多账号切换由用户选择跳过；Windows 实机、固定发布扩展 ID 为发布边界，跨 Host 多主动 port 仍为 NOT_VERIFIED。"
 }
