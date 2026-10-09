@@ -251,6 +251,13 @@
       "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
+      "task": "chatgpt-plan-nativehost-closeout",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
+      "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468"
+    },
+    {
       "task": "offline-dictionary",
       "status": "working",
       "dependencies": [],

@@ -63,6 +63,23 @@ test("OpenAI-compatible global provider resolves separate credentials", () => {
   assert.equal(config.streaming, true);
 });
 
+test("ChatGPT subscription config uses the host account, fixed Responses endpoint, and separate model", () => {
+  const config = resolveTranslationConfig({
+    provider: "chatgpt-plan",
+    apiKey: "ignored-extension-key",
+    model: "deepseek-flash",
+    chatgptPlanModel: "fixture-model",
+    prompt: "global prompt",
+    targetLanguage: "Simplified Chinese"
+  });
+
+  assert.equal(config.provider, "chatgpt-plan");
+  assert.equal(config.apiKey, "");
+  assert.equal(config.apiBaseUrl, "https://api.openai.com/v1/responses");
+  assert.equal(config.model, "fixture-model");
+  assert.equal(config.streaming, true);
+});
+
 test("site profile overrides provider, model and prompt without duplicating credentials", () => {
   const config = resolveTranslationConfig({
     provider: "deepseek",

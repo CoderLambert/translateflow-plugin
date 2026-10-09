@@ -6,17 +6,22 @@ import { normalizeOrigin } from "../shared/url.js";
 import { createI18n } from "../i18n/index.js";
 import type { I18n } from "../i18n/index.js";
 
-export type OptionsConfig = { provider: string; apiKey: string; model: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
+export type OptionsConfig = { provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
 export type SiteProfile = { provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
 export type SiteEntry = { origin: string; profile: SiteProfile };
 export type CacheStats = { pageCount: number; segmentCount: number; bytes: number };
+export type ChatGPTPlanAccount = { id: string; label: string; email?: string; connected: boolean };
+export type ChatGPTPlanAuthStatus = { connected: boolean; canInfer: boolean; expiresAt?: string; storage: string; activeAccountId?: string; accounts: ChatGPTPlanAccount[] };
+export type ChatGPTPlanModel = { slug: string; displayName: string };
 
 export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
   async function loadConfig(): Promise<OptionsConfig> {
-    const value = await api.storage.local.get(["provider", "apiKey", "model", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
+    const value = await api.storage.local.get(["provider", "apiKey", "model", "chatgptPlanModel", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
     const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...objectRecord(value.openAICompatible) };
     return {
-      provider: text(value.provider, DEFAULT_CONFIG.provider), apiKey: text(value.apiKey), model: text(value.model, DEFAULT_CONFIG.model),
+      provider: text(value.provider, DEFAULT_CONFIG.provider), apiKey: text(value.apiKey),
+      model: text(value.model, DEFAULT_CONFIG.model),
+      chatgptPlanModel: text(value.chatgptPlanModel),
       prompt: text(value.prompt, DEFAULT_CONFIG.prompt), targetLanguage: text(value.targetLanguage, DEFAULT_CONFIG.targetLanguage),
       appearance: normalizeAppearanceId(value.appearance) || DEFAULT_APPEARANCE_ID,
       cacheMaxMB: Number(value.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB),
@@ -35,7 +40,8 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
 
   function normalizeConfig(input: OptionsConfig): OptionsConfig {
     const max = Math.min(2048, Math.max(20, Number(input.cacheMaxMB) || DEFAULT_CONFIG.cacheMaxMB));
-    return { ...input, provider: input.provider || PROVIDER_IDS.DEEPSEEK, apiKey: input.apiKey.trim(), model: input.model.trim() || DEFAULT_CONFIG.model,
+    const provider = input.provider || PROVIDER_IDS.DEEPSEEK;
+    return { ...input, provider, apiKey: input.apiKey.trim(), model: input.model.trim() || DEFAULT_CONFIG.model, chatgptPlanModel: input.chatgptPlanModel.trim(),
       prompt: input.prompt.trim() || DEFAULT_CONFIG.prompt, targetLanguage: input.targetLanguage.trim() || DEFAULT_CONFIG.targetLanguage,
       appearance: normalizeAppearanceId(input.appearance) || DEFAULT_APPEARANCE_ID, cacheMaxMB: max,
       openAICompatible: { baseUrl: normalizeOpenAIBaseUrl(input.openAICompatible.baseUrl), apiKey: input.openAICompatible.apiKey.trim(), model: input.openAICompatible.model.trim(), streaming: Boolean(input.openAICompatible.streaming) },
@@ -47,7 +53,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
   async function saveConfig(input: OptionsConfig, requestPermission: boolean) {
     const value = normalizeConfig(input);
     if (requestPermission && value.provider === PROVIDER_IDS.OPENAI_COMPATIBLE) await ensureOpenAIPermission(value.openAICompatible.baseUrl);
-    await api.storage.local.set({ provider: value.provider, apiKey: value.apiKey, model: value.model, prompt: value.prompt, targetLanguage: value.targetLanguage,
+    await api.storage.local.set({ provider: value.provider, apiKey: value.apiKey, model: value.model, chatgptPlanModel: value.chatgptPlanModel, prompt: value.prompt, targetLanguage: value.targetLanguage,
       appearance: value.appearance, cacheMaxMB: value.cacheMaxMB, openAICompatible: value.openAICompatible,
       youtubeSubtitleMode: value.youtubeSubtitleMode, youtubeSubtitleSize: value.youtubeSubtitleSize, selectionExplanationDepth: value.selectionExplanationDepth });
     return value;
@@ -57,6 +63,18 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.TEST_API });
     if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
     return String(response.result || "");
+  }
+
+  async function chatGPTPlanAction(action: "status" | "models" | "connect" | "add" | "select" | "logout", accountId?: string) {
+    const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION, action, accountId });
+    if (!response?.ok) {
+      const error = Object.assign(new Error(String(response?.error || i18n.t("options.chatgptPlan.actionFailed"))), {
+        code: String(response?.errorCode || ""),
+        modelSelectionCleared: Boolean(response?.modelSelectionCleared)
+      });
+      throw error;
+    }
+    return response as { status?: ChatGPTPlanAuthStatus; models?: ChatGPTPlanModel[]; connected?: boolean; selected?: boolean; modelSelectionCleared?: boolean; revocationConfirmed?: boolean };
   }
 
   async function profiles(): Promise<SiteEntry[]> {
@@ -96,7 +114,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     if (!stillNeeded && !providerNeeded) await api.permissions.remove({ origins: [pattern] });
   }
 
-  return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, profiles, saveProfile, deleteProfile, cacheStats, pruneCache, clearCache, behaviorSites, removeBehavior };
+  return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, chatGPTPlanAction, profiles, saveProfile, deleteProfile, cacheStats, pruneCache, clearCache, behaviorSites, removeBehavior };
 }
 export type OptionsClient = ReturnType<typeof optionsClient>;
 function objectRecord(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }

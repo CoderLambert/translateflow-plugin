@@ -1,10 +1,12 @@
 import { PROVIDER_IDS } from "../../shared/constants.js";
 import { deepSeekProvider } from "./deepseek.js";
 import { openAICompatibleProvider } from "./openai-compatible.js";
+import { chatGPTPlanProvider } from "./chatgpt-plan.js";
 
 const PROVIDERS = new Map([
   [deepSeekProvider.id, deepSeekProvider],
-  [openAICompatibleProvider.id, openAICompatibleProvider]
+  [openAICompatibleProvider.id, openAICompatibleProvider],
+  [chatGPTPlanProvider.id, chatGPTPlanProvider]
 ]);
 
 export function getProvider(config) {

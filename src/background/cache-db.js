@@ -275,6 +275,8 @@ export async function getConfigHash(config) {
 
   if (provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
     payload.endpoint = normalizeOpenAIBaseUrl(config?.apiBaseUrl || "");
+  } else if (provider === PROVIDER_IDS.CHATGPT_PLAN) {
+    payload.endpoint = String(config?.apiBaseUrl || "");
   }
 
   if (Array.isArray(config?.glossaryIdentity) && config.glossaryIdentity.length) {
