@@ -68,9 +68,9 @@ test("real toolbar Popup reports success when opening the learning center closes
   await expect.poll(() => harness.context.pages().filter(page => page.url() === centerUrl).length).toBe(1);
   const sender = await harness.serviceWorker.evaluate(() => globalThis.__toolbarPopupSender);
   expect(sender).toMatchObject({ id: harness.extensionId, url: popupUrl,
-    origin: `chrome-extension://${harness.extensionId}`, frameId: 0,
-    tab: { incognito: false, url: popupUrl } });
-  expect(sender.documentId).toMatch(/^[A-F0-9]{32}$/u);
+    origin: `chrome-extension://${harness.extensionId}`, tab: null });
+  expect(sender.frameId).toBeUndefined();
+  expect(sender.documentId).toBeUndefined();
   expect(await harness.driver.evaluate(async () => (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] })).length)).toBe(0);
   await cdp.detach();
 });
@@ -214,6 +214,9 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   const content = await harness.open("/selection");
   await harness.inject(content);
   await select(content, "#technical-competition", "session");
+  await expect(content.locator(".tf-selection-result")).toContainText("会话");
+  await content.getByRole("button", { name: "Save to wordbook", exact: true }).click();
+  await expect(content.getByRole("button", { name: "Open wordbook", exact: true })).toBeVisible();
   await expect(content.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "invite");
   await expect(firstCenter.locator(".record-list .record")).toHaveCount(0);
   expect(harness.server.calls).toHaveLength(0);
@@ -248,6 +251,22 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await history.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
   await expect(history.locator(".record-list .record")).toHaveCount(1);
   await history.screenshot({ path: info.outputPath("reading-user-journey-after-restart.png"), fullPage: true });
+  await history.getByRole("button", { name: "Wordbook", exact: true }).click();
+  await expect(history.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await history.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(history.getByTestId("vocabulary-review-card")).toContainText("session");
+  await history.getByRole("button", { name: "Show meaning", exact: true }).click();
+  await expect(history.locator(".vocabulary-answer")).toContainText("会话");
+  await history.getByRole("button", { name: "Still learning", exact: true }).click();
+  await expect(history.getByText("Try this word again in about 15 minutes.", { exact: true })).toBeVisible();
+  await expect(history.getByTestId("vocabulary-review-card")).toHaveCount(0);
+  await history.screenshot({ path: info.outputPath("reading-user-journey-wordbook-reviewed.png"), fullPage: true });
+  await history.getByRole("button", { name: "Wordbook", exact: true }).click();
+  await history.locator("[data-entry-id]").getByRole("button", { name: "Delete word", exact: true }).click();
+  await history.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(history.getByText(/No saved words yet/u)).toBeVisible();
+  await history.getByRole("button", { name: "Reading history", exact: true }).click();
+  await expect(history.locator(".record-list .record")).toHaveCount(1);
   await history.locator(`[data-record-id="${recordId}"]`).click();
   await expect(history.getByRole("heading", { name: "session", exact: true })).toBeVisible();
   await expect(history.getByText("Historical snapshot · readable offline")).toBeVisible();
@@ -306,11 +325,11 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await recordPage.screenshot({ path: info.outputPath("reading-user-journey-deleted.png"), fullPage: true });
   await writeFile(info.outputPath("reading-user-journey.json"), JSON.stringify({
     browser: harness.context.browser().version(), build: harness.buildReport,
-    flow: ["Popup → Learning Center", "explicit enable → save current query", "persistent-profile browser restart", "Learning Center history → exact original page and range", "open historical record", "delete → list and page history entry disappear"],
+    flow: ["local lookup → explicit wordbook save", "explicit Reading enable → save current query", "persistent-profile browser restart", "wordbook → review → delete while Reading history remains", "Learning Center history → exact original page and range", "open historical record", "delete Reading record → list and page history entry disappear"],
     page: "localhost synthetic fixture /selection; synthetic local dictionary; test-only localhost permission",
     provider: "mock endpoint configured without a real API key; explicit test flow observed 0 Provider requests",
     afterRestartRecordRows: 1, returnLocation: "resolved", historyEntryAfterDeletion: 0,
-    screenshotFiles: ["reading-user-journey-saved-history.png", "reading-user-journey-after-restart.png", "reading-user-journey-return-state.png", "reading-user-journey-deleted.png"]
+    screenshotFiles: ["reading-user-journey-saved-history.png", "reading-user-journey-after-restart.png", "reading-user-journey-wordbook-reviewed.png", "reading-user-journey-return-state.png", "reading-user-journey-deleted.png"]
   }, null, 2));
 });
 
