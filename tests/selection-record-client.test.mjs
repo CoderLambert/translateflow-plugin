@@ -19,7 +19,8 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
   let siteMarkers = { state: "ready", enabled: false, permissionGranted: true };
   const messages = [], writes = [], views = [];
   const realm = vm.createContext({ crypto: webcrypto, TextEncoder, URL, Date, chrome: { runtime: {} },
-    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
+    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision },
+      selectionSourceSnapshot: { documentGeneration: "doc-test" }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
   const parse = vm.runInContext("JSON.parse", realm);
   const clone = (value) => parse(JSON.stringify(value));
   let notify = null, disconnected = null, connections = 0;
@@ -86,6 +87,12 @@ test("Reading collector rejects untrusted/page actions and forged operation inte
   assert.equal(await read({ operationId: "forged" }), null);
   assert.equal(await read({ recordId: "arbitrary" }), null);
   h.invalidate(); assert.equal(await read({}), null);
+  const recordId = "11111111-1111-4111-8111-111111111111";
+  assert.equal(h.modules.selectionRecordAccess.authorizePageAction({ event: { isTrusted: true, target: "page" }, action: "delete", recordId }), false);
+  assert.equal(h.modules.selectionRecordAccess.authorizePageAction({ event: h.event, action: "delete", recordId }), true);
+  const deleteProof = await h.modules.readingAccessCollector.read({ nonce: "delete-nonce", action: "delete", recordId, operationId: null });
+  assert.deepEqual(json(deleteProof.intent), { action: "delete", recordId, operationId: null });
+  assert.equal(await h.modules.readingAccessCollector.read({ nonce: "again", action: "delete", recordId, operationId: null }), null);
 });
 
 test("First consent retains one frozen card, has no BEGIN/history and uses explicit fresh token without Provider", async () => {

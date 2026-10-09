@@ -9,6 +9,7 @@ const TOOLBAR_POPUP_PATH = "/popup.html";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const ACTIONS = new Map([[M.BEGIN_QUERY, "begin"], [M.SAVE_QUERY_RESULT, "save"], [M.APPEND_ASSISTANT, "save"],
   [M.GET_RECORD, "detail"], [M.CANCEL_OPERATION, "cancel"], [M.CONSUME_HANDOFF, "handoff"],
+  [M.DELETE_RECORD, "delete"],
   [M.GET_RECORDING_STATE, "page"], [M.GET_SITE_RECORDING, "page"], [M.GET_SITE_MARKERS, "page"], [M.GET_PAGE_SUMMARY, "page"],
   [M.PREVIEW_CREATE, "page"], [M.PREVIEW_BIND, "page"], [M.PREVIEW_CLOSE, "page"]]);
 

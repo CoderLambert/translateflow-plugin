@@ -1,24 +1,30 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || app.modules.readingPageMarkers) return;
+  if (!app?.modules.readingHandoff || !app?.modules.readingAnchorResolver || !app?.modules.readingContract || !app?.modules.textProjection || !app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.uiHost || !app?.modules.uiPrimitives || !app?.modules.selectionRecordAccess || app.modules.readingPageMarkers) return;
   const C = app.modules.readingContract, M = C.READING_METHOD, { button, surface } = app.modules.uiPrimitives;
   const locale = app.modules.contentI18n;
-  let generation = 0, previewEpoch = 0, controller = null, root = null, panel = null, panelReturnFocus = null, preview = null,
-    markerNodes = [], ranges = new Map(), markerExpected = new Map(), projectionUnsubscribe = null, timer = 0, port = null, portReady = false,
-    portReadyPromise = null, resolvePortReady = null, lastInvalidation = null;
+  let generation = 0, controller = null, root = null, panel = null, panelReturnFocus = null,
+    markerNodes = [], markerGroups = new Map(), recordGroups = new Map(), ranges = new Map(), projectionUnsubscribe = null,
+    timer = 0, pulseTimer = 0, port = null, portReady = false, portReadyPromise = null, resolvePortReady = null,
+    lastInvalidation = null, panelRequestedOpen = false, pendingPanelFocus = null;
   // The automatic retry budget belongs to this document's content-script lifetime.
   // Focus, manual retries, and SPA route changes do not replenish it.
-  let automaticRetries = 0, lastItems = [], lastLocations = new Map(), lastPageRecordCount = 0, renderProjectionRevision = null, lastMarkerEnabled = false;
+  let automaticRetries = 0, lastItems = [], lastLocations = new Map(), lastPageRecordCount = 0, lastMarkerEnabled = false;
   async function send(method, body = {}) {
     const request = C.validateReadingRequest({ protocolVersion: C.READING_PROTOCOL_VERSION, method, ...body });
     const raw = await app.modules.runtime.sendRuntimeMessage(request), response = C.validateReadingResponse(method, raw, "content", body.limit);
     if (!response.ok) throw Object.assign(new Error(response.error.code), { code: response.error.code }); return response.data;
   }
-  function clearUi() { locale.unbindTree(root); root?.remove(); root = panel = panelReturnFocus = null; for (const node of markerNodes) { locale.unbindTree(node); node.remove(); } markerNodes = []; ranges.clear(); markerExpected.clear(); renderProjectionRevision = null; }
+  function clearUi() {
+    locale.unbindTree(root); root?.remove(); root = panel = panelReturnFocus = null;
+    for (const node of markerNodes) { locale.unbindTree(node); node.remove(); }
+    for (const group of markerGroups.values()) for (const node of group.highlights) node.remove();
+    markerNodes = []; markerGroups.clear(); recordGroups.clear(); ranges.clear();
+  }
   function unresolved(items) { return new Map(items.map(item => [item.recordId, { status: "not-loaded", range: null }])); }
-  function cleanup() { generation++; closePreview({ restore: false }); controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); timer = 0;
+  function cleanup() { generation++; controller?.abort(); controller = null; projectionUnsubscribe?.(); projectionUnsubscribe = null; clearTimeout(timer); clearTimeout(pulseTimer); timer = pulseTimer = 0;
     lastItems = []; lastLocations = new Map(); lastPageRecordCount = 0; lastMarkerEnabled = false;
-    lastInvalidation = null;
+    lastInvalidation = null; panelRequestedOpen = false; pendingPanelFocus = null;
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); }
   const markerBlockRoots = "p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6,article,section,main";
   function rectFor(range) { try { return [...range.getClientRects()].find(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
@@ -29,14 +35,30 @@
     const block = origin?.closest?.(markerBlockRoots), blockRect = block?.getBoundingClientRect?.();
     return { line, block, rect: blockRect?.width > 0 && blockRect?.height > 0 ? blockRect : line };
   }
+  function visibleRects(range) { try { return [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 &&
+    rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth).slice(0, 16); } catch { return []; } }
+  function positionHighlights(group, rects) {
+    const layer = app.modules.uiHost.getLayer("reading-page-highlights");
+    while (group.highlights.length < rects.length) {
+      const node = document.createElement("span"); node.className = "tf-reading-page-highlight"; node.setAttribute("aria-hidden", "true");
+      group.highlights.push(node); layer.appendChild(node);
+    }
+    group.highlights.forEach((node, index) => {
+      const rect = rects[index]; node.hidden = !rect;
+      if (!rect) return;
+      node.style.left = `${Math.max(0, rect.left - 2)}px`; node.style.top = `${Math.max(0, rect.top - 1)}px`;
+      node.style.width = `${Math.min(innerWidth - Math.max(0, rect.left - 2), rect.width + 4)}px`; node.style.height = `${rect.height + 2}px`;
+    });
+  }
   function positionMarkers() {
     markerNodes.forEach(node => {
-      const range = ranges.get(node.dataset.recordId), expected = markerExpected.get(node.dataset.recordId);
+      const group = markerGroups.get(node.dataset.recordId), range = group?.range, expected = group?.expected;
       let rangeCurrent = false;
       try { rangeCurrent = range?.startContainer?.isConnected && range?.endContainer?.isConnected && String(range.toString()) === expected; } catch {}
-      const anchor = rangeCurrent ? markerAnchor(range) : null;
+      const rects = rangeCurrent ? visibleRects(range) : []; positionHighlights(group, rects);
+      const anchor = rects.length ? markerAnchor(range) : null;
       if (!anchor) { node.hidden = true; return; }
-      const size = 16, edge = 4, gap = 8, listOffset = anchor.block?.matches?.("li") ? 16 : 0;
+      const size = 20, edge = 4, gap = 8, listOffset = anchor.block?.matches?.("li") ? 16 : 0;
       const left = anchor.rect.left - size - gap - listOffset;
       const right = anchor.rect.right + gap;
       const safeLeft = left >= edge, safeRight = right + size <= innerWidth - edge;
@@ -54,79 +76,23 @@
       return before?.status !== "resolved" || before.verifiedText === after.verifiedText;
     });
   }
-  function showPanel(focusId = null) { if (!panel) return; if (panel.hidden) panelReturnFocus = root.getRootNode().activeElement || document.activeElement;
+  function showPanel(focusId = null) { panelRequestedOpen = true; pendingPanelFocus = focusId; if (!panel) return; if (panel.hidden) panelReturnFocus = root.getRootNode().activeElement || document.activeElement;
     panel.hidden = false; root.querySelector(".tf-reading-page-toggle").setAttribute("aria-expanded", "true");
     const target = focusId ? panel.querySelector(`[data-record-id="${focusId}"] .tf-reading-page-item`) : panel.querySelector("button");
     queueMicrotask(() => { if (!panel?.hidden && target?.isConnected) target.focus({ preventScroll: true }); }); }
-  function hidePanel() { if (!panel) return; panel.hidden = true; root.querySelector(".tf-reading-page-toggle").setAttribute("aria-expanded", "false");
+  function hidePanel() { panelRequestedOpen = false; pendingPanelFocus = null; if (!panel) return; panel.hidden = true; root.querySelector(".tf-reading-page-toggle").setAttribute("aria-expanded", "false");
     const target = panelReturnFocus; panelReturnFocus = null; if (target?.isConnected) target.focus(); }
-  function closePreview({ notify = true, restore = true } = {}) {
-    previewEpoch++;
-    const active = preview; if (!active) return;
-    preview = null; clearTimeout(active.timeout); window.removeEventListener("message", active.listener);
-    // Keep cleanup tied to the owned browsing context even if page script moves the
-    // iframe out of its dialog with Element.moveBefore().
-    active.frame.remove(); active.shell.remove();
-    if (notify) void send(M.PREVIEW_CLOSE, { previewId: active.previewId }).catch(() => {});
-    if (restore) {
-      requestAnimationFrame(() => {
-        const target = active.returnFocus?.isConnected ? active.returnFocus
-          : markerNodes.find(node => node.dataset.recordId === active.recordId);
-        if (target?.isConnected) target.focus({ preventScroll: true });
-      });
-    }
+  function pulseRecord(recordId) {
+    const group = recordGroups.get(recordId); if (!group) return;
+    clearTimeout(pulseTimer); for (const node of [group.marker, ...group.highlights]) node.dataset.active = "true";
+    pulseTimer = setTimeout(() => { for (const node of [group.marker, ...group.highlights]) delete node.dataset.active; pulseTimer = 0; }, 1100);
   }
-  function localLocationCurrent(range, projectionRevision, renderedGeneration) {
-    return renderedGeneration === generation && range?.startContainer?.isConnected && range?.endContainer?.isConnected &&
-      renderProjectionRevision === projectionRevision && app.modules.textProjection.revision() === projectionRevision;
-  }
-  async function openPreview(item, range, projectionRevision, renderedGeneration, activationEpoch) {
-    if (activationEpoch !== previewEpoch) return;
-    if (preview?.recordId === item.recordId && preview.frame.isConnected) { preview.frame.focus({ preventScroll: true }); return; }
-    if (preview) { closePreview({ restore: false }); activationEpoch = previewEpoch; }
-    let created;
-    try {
-      created = await send(M.PREVIEW_CREATE, { recordId: item.recordId, expectedRevision: item.revision });
-      if (activationEpoch !== previewEpoch || !localLocationCurrent(range, projectionRevision, renderedGeneration)) {
-        void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {}); return;
-      }
-      const shadow = root.getRootNode(), returnFocus = markerNodes.find(node => node.dataset.recordId === item.recordId) || shadow.activeElement || document.activeElement;
-      const shell = surface({ className: "tf-reading-preview-shell", role: "dialog" });
-      locale.bindAttribute(shell, "aria-label", "content.reading.previewAria");
-      const header = document.createElement("header"), heading = document.createElement("strong"), close = button({ text: "×", label: locale.t("content.reading.closePreview"), icon: true });
-      locale.bindText(heading, "content.reading.previewTitle"); locale.bindAttribute(close, "aria-label", "content.reading.closePreview");
-      close.addEventListener("click", event => { if (event.isTrusted) closePreview(); }); header.append(heading, close);
-      const frame = document.createElement("iframe"); frame.className = "tf-reading-preview-frame";
-      frame.title = locale.t("content.reading.previewTitle"); frame.referrerPolicy = "no-referrer";
-      const extensionOrigin = new URL(chrome.runtime.getURL("/")).origin;
-      const state = { previewId: created.previewId, recordId: item.recordId, shell, frame, listener: null, timeout: 0, returnFocus };
-      state.listener = async event => {
-        if (!event.isTrusted || event.source !== frame.contentWindow || event.origin !== extensionOrigin ||
-            !event.data || Object.getPrototypeOf(event.data) !== Object.prototype) return;
-        const message = event.data;
-        if (message.type === "translateflow-reading-preview-close" && Object.keys(message).length === 2 && message.previewId === state.previewId) {
-          closePreview(); return;
-        }
-        if (message.type !== "translateflow-reading-preview-claim" || Object.keys(message).length !== 3 ||
-            message.previewId !== state.previewId || typeof message.claimId !== "string" || preview !== state) return;
-        try {
-          const bound = await send(M.PREVIEW_BIND, { previewId: state.previewId, claimId: message.claimId });
-          if (preview !== state || bound.bound !== true || !localLocationCurrent(range, projectionRevision, renderedGeneration)) {
-            if (preview === state) closePreview(); return;
-          }
-          clearTimeout(state.timeout);
-          frame.contentWindow?.postMessage({ type: "translateflow-reading-preview-bound", previewId: state.previewId,
-            claimId: message.claimId }, extensionOrigin);
-        } catch { if (preview === state) { closePreview(); showPanel(item.recordId); } }
-      };
-      preview = state; window.addEventListener("message", state.listener);
-      shell.append(header, frame); app.modules.uiHost.getLayer("reading-page-preview").appendChild(shell);
-      frame.src = `${chrome.runtime.getURL("reading-preview.html")}?previewId=${encodeURIComponent(state.previewId)}`;
-      state.timeout = setTimeout(() => { if (preview === state) { closePreview(); showPanel(item.recordId); } }, 14_000);
-    } catch {
-      if (created?.previewId) void send(M.PREVIEW_CLOSE, { previewId: created.previewId }).catch(() => {});
-      if (activationEpoch === previewEpoch && renderedGeneration === generation) showPanel(item.recordId);
-    }
+  function locateRecord(recordId, { openPanel = false } = {}) {
+    const range = ranges.get(recordId); if (!range?.startContainer?.isConnected) return;
+    const element = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+    element?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (openPanel) showPanel(recordId);
+    requestAnimationFrame(() => requestAnimationFrame(() => { positionMarkers(); pulseRecord(recordId); }));
   }
   async function openRecord(recordId) { try { await send(M.OPEN_LEARNING_CENTER, { recordId }); } catch {} }
   async function confirmListedItem(item, renderedGeneration) {
@@ -144,25 +110,48 @@
         JSON.stringify(latest?.anchor) === JSON.stringify(item.anchor);
     } catch { return false; }
   }
-  async function confirmCurrentItem(item, range, projectionRevision, renderedGeneration) {
-    if (!(await confirmListedItem(item, renderedGeneration))) return false;
-    const currentRange = ranges.get(item.recordId);
-    return renderedGeneration === generation && currentRange === range &&
-      range?.startContainer?.isConnected && range?.endContainer?.isConnected &&
-      renderProjectionRevision === projectionRevision && app.modules.textProjection.revision() === projectionRevision;
-  }
-  async function checkedAction(item, range, projectionRevision, renderedGeneration, action) {
-    if (await confirmCurrentItem(item, range, projectionRevision, renderedGeneration)) action();
-    else if (renderedGeneration === generation) void load();
-  }
   async function checkedListedAction(item, renderedGeneration, action) {
     if (await confirmListedItem(item, renderedGeneration)) action();
     else if (renderedGeneration === generation) void load();
   }
-  function render(items, locations, pageRecordCount, projectionRevision = null, unavailable = false) {
+  function bindButtonText(node, key) { locale.unbindTree(node); locale.bindText(node, key); }
+  function updateMarkerLabel(group) {
+    const args = { count: group.recordIds.length, quote: group.expected };
+    locale.unbindTree(group.marker); locale.bindAttribute(group.marker, "aria-label", "content.reading.markerLocated", args);
+    locale.bindAttribute(group.marker, "title", "content.reading.markerHint");
+    group.marker.textContent = group.recordIds.length > 1 ? String(group.recordIds.length) : "";
+    group.marker.dataset.count = String(group.recordIds.length);
+  }
+  function addDeleteControls(row, item, renderedGeneration, nextFocusId, open) {
+    const actions = document.createElement("div"); actions.className = "tf-reading-page-row-actions";
+    const remove = button({ text: locale.t("content.reading.deleteRecord"), className: "tf-reading-page-delete" });
+    const cancel = button({ text: locale.t("content.reading.cancelDelete"), className: "tf-reading-page-cancel" });
+    locale.bindText(remove, "content.reading.deleteRecord"); locale.bindText(cancel, "content.reading.cancelDelete"); cancel.hidden = true;
+    const status = document.createElement("span"); status.className = "tf-reading-page-row-status"; status.setAttribute("role", "status"); status.hidden = true;
+    const reset = () => { row.dataset.confirming = "false"; bindButtonText(remove, "content.reading.deleteRecord"); remove.disabled = false; cancel.hidden = true; status.hidden = true; };
+    cancel.addEventListener("click", event => { if (event.isTrusted) reset(); });
+    remove.addEventListener("click", async event => {
+      if (!event.isTrusted) return;
+      if (row.dataset.confirming !== "true") {
+        row.dataset.confirming = "true"; bindButtonText(remove, "content.reading.confirmDeleteRecord"); cancel.hidden = false; cancel.focus({ preventScroll: true }); return;
+      }
+      if (!app.modules.selectionRecordAccess.authorizePageAction({ event, action: "delete", recordId: item.recordId })) return;
+      remove.disabled = cancel.disabled = true; status.hidden = false; locale.bindText(status, "content.reading.deletingRecord");
+      panelRequestedOpen = true; pendingPanelFocus = nextFocusId;
+      try {
+        await send(M.DELETE_RECORD, { recordId: item.recordId, expectedRevision: item.revision });
+        if (renderedGeneration === generation) void load();
+      } catch {
+        if (renderedGeneration !== generation) return;
+        locale.unbindTree(status); locale.bindText(status, "content.reading.deleteFailed"); row.dataset.confirming = "false";
+        bindButtonText(remove, "content.reading.deleteRecord"); remove.disabled = cancel.disabled = false; cancel.hidden = true;
+      }
+    });
+    actions.append(open, remove, cancel); row.append(actions, status);
+  }
+  function render(items, locations, pageRecordCount, unavailable = false) {
     window.removeEventListener("scroll", positionMarkers, true); window.removeEventListener("resize", positionMarkers); clearUi(); root = document.createElement("div"); root.className = "tf-reading-page-history";
     const renderedGeneration = generation;
-    renderProjectionRevision = projectionRevision;
     const toggleKey = unavailable ? "content.reading.pageUnavailable" : "content.reading.pageCount";
     const toggleArgs = unavailable ? {} : { count: pageRecordCount };
     const toggle = button({ text: locale.t(toggleKey, toggleArgs), className: "tf-reading-page-toggle" }); locale.bindText(toggle, toggleKey, toggleArgs); toggle.setAttribute("aria-expanded", "false");
@@ -179,34 +168,30 @@
     };
     for (const [index, item] of items.entries()) {
       const location = locations.get(item.recordId) || { status: "not-loaded" }, row = document.createElement("article"); row.dataset.recordId = item.recordId;
-      const locate = button({ text: locale.t("content.reading.locateItem", { index: index + 1 }), className: "tf-reading-page-item" }); locale.bindText(locate, "content.reading.locateItem", { index: index + 1 }); locate.dataset.recordId = item.recordId;
+      const quote = item.anchor.quote.exact;
       const rangeIsCurrent = location.status === "resolved" && location.range?.startContainer?.isConnected && location.range?.endContainer?.isConnected &&
         location.verifiedText === item.anchor.quote.exact;
+      const locateKey = rangeIsCurrent ? "content.reading.locateItem" : "content.reading.locateUnavailable";
+      const locateArgs = rangeIsCurrent ? { quote } : { index: index + 1 };
+      const locate = button({ text: rangeIsCurrent ? quote : locale.t(locateKey, locateArgs), label: locale.t(locateKey, locateArgs), className: "tf-reading-page-item" });
+      locale.bindAttribute(locate, "aria-label", locateKey, locateArgs); if (rangeIsCurrent) locate.title = quote; else locale.bindText(locate, locateKey, locateArgs); locate.dataset.recordId = item.recordId;
       const locationStatus = location.status === "resolved" && !rangeIsCurrent ? "not-loaded" : location.status;
       const state = document.createElement("span"); locale.bindText(state, ({ resolved: "content.reading.statusResolved", ambiguous: "content.reading.statusAmbiguous", missing: "content.reading.statusMissing", "not-loaded": "content.reading.statusNotLoaded", unsupported: "content.reading.statusUnsupported" })[locationStatus] || "content.reading.statusUnavailable");
-      locate.addEventListener("click", () => { const range = ranges.get(item.recordId); if (range?.startContainer.isConnected) { const element = range.startContainer.parentElement;
-        element?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } });
+      locate.addEventListener("click", event => { if (event.isTrusted) locateRecord(item.recordId); });
       const open = button({ text: locale.t("content.reading.viewRecord") }); locale.bindText(open, "content.reading.viewRecord"); open.addEventListener("click", event => {
         if (event.isTrusted) void checkedListedAction(item, renderedGeneration, () => void openRecord(item.recordId));
       });
-      row.append(locate, state, open); panel.appendChild(row);
+      row.append(locate, state); addDeleteControls(row, item, renderedGeneration, items[index + 1]?.recordId || items[index - 1]?.recordId || null, open); panel.appendChild(row);
       if (rangeIsCurrent) {
         ranges.set(item.recordId, location.range);
-        const rangeId = markerRangeKey(location.range);
-        if (markerRangeIds.has(rangeId)) continue;
-        markerRangeIds.set(rangeId, item.recordId);
-        markerExpected.set(item.recordId, item.anchor.quote.exact);
-        const marker = button({ text: "", label: locale.t("content.reading.markerLocated", { index: index + 1 }), className: "tf-reading-page-marker" });
-        locale.bindAttribute(marker, "aria-label", "content.reading.markerLocated", { index: index + 1 });
-        locale.bindAttribute(marker, "title", "content.reading.markerHint"); marker.dataset.recordId = item.recordId;
-        marker.addEventListener("click", event => {
-          if (!event.isTrusted) return;
-          const activationEpoch = ++previewEpoch;
-          void checkedAction(item, location.range, projectionRevision, renderedGeneration, () => {
-            if (activationEpoch === previewEpoch) void openPreview(item, location.range, projectionRevision, renderedGeneration, activationEpoch);
-          });
-        });
-        markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
+        const rangeId = markerRangeKey(location.range), existing = markerRangeIds.get(rangeId);
+        if (existing) { existing.recordIds.push(item.recordId); recordGroups.set(item.recordId, existing); updateMarkerLabel(existing); continue; }
+        const marker = button({ text: "", label: locale.t("content.reading.markerLocated", { count: 1, quote }), className: "tf-reading-page-marker" });
+        marker.dataset.recordId = item.recordId;
+        const group = { marker, range: location.range, expected: quote, recordIds: [item.recordId], highlights: [] };
+        markerRangeIds.set(rangeId, group); markerGroups.set(item.recordId, group); recordGroups.set(item.recordId, group); updateMarkerLabel(group);
+        marker.addEventListener("click", event => { if (event.isTrusted) { showPanel(group.recordIds[0]); pulseRecord(group.recordIds[0]); } });
+        markerNodes.push(marker); app.modules.uiHost.getLayer("reading-page-highlights"); app.modules.uiHost.getLayer("reading-page-markers").appendChild(marker);
       }
     }
     const locatedCount = markerRangeIds.size;
@@ -218,13 +203,13 @@
           : { total: pageRecordCount, loaded: items.length, located: locatedCount });
     panel.appendChild(summary);
     toggle.addEventListener("click", () => panel.hidden ? showPanel() : hidePanel()); root.append(toggle, panel); app.modules.uiHost.getLayer("reading-page-history").appendChild(root); positionMarkers();
+    if (panelRequestedOpen) showPanel(pendingPanelFocus);
     window.addEventListener("scroll", positionMarkers, true); window.addEventListener("resize", positionMarkers);
   }
   function subscribeProjection() {
     projectionUnsubscribe?.();
     projectionUnsubscribe = app.modules.textProjection.start(() => {
       projectionUnsubscribe?.(); projectionUnsubscribe = null;
-      closePreview({ restore: false });
       if (!timer) timer = setTimeout(() => { timer = 0; void refreshLocationsAfterMutation(); }, C.READING_LIMITS.mutationDebounceMs);
     });
   }
@@ -243,7 +228,7 @@
       }
       if (!unchanged) automaticRetries++;
       lastLocations = locations;
-      render(lastItems, locations, lastPageRecordCount, locations.projectionRevision);
+      render(lastItems, locations, lastPageRecordCount);
       subscribeProjection();
     } catch {
       if (current !== generation || ownController.signal.aborted) return;
@@ -266,7 +251,7 @@
       if (current !== generation || ownController.signal.aborted) return;
       const markerState = await send(M.GET_SITE_MARKERS); if (current !== generation || ownController.signal.aborted) return;
       lastMarkerEnabled = markerState.state === "ready" && markerState.enabled;
-      if (!lastMarkerEnabled) { closePreview({ restore: false }); lastItems = []; lastLocations = new Map(); lastPageRecordCount = 0; clearUi(); return; }
+      if (!lastMarkerEnabled) { lastItems = []; lastLocations = new Map(); lastPageRecordCount = 0; clearUi(); return; }
       const items = []; let cursor = null, count = 0;
       let summaryRequests = 0;
       do { const page = await send(M.GET_PAGE_SUMMARY, { cursor, limit: 100 }); summaryRequests++;
@@ -274,18 +259,17 @@
         items.push(...page.items); cursor = page.nextCursor; count = page.pageRecordCount;
       } while (cursor && items.length < C.READING_LIMITS.pageMarkers && summaryRequests < 2);
       if (current !== generation || ownController.signal.aborted) return;
-      if (!items.length) { closePreview({ restore: false }); lastItems = []; lastLocations = new Map(); lastPageRecordCount = count; clearUi(); return; }
+      if (!items.length) { lastItems = []; lastLocations = new Map(); lastPageRecordCount = count; clearUi(); return; }
       const limited = items.slice(0, C.READING_LIMITS.pageMarkers);
       lastItems = limited; lastPageRecordCount = count; render(limited, unresolved(limited), count);
       const locations = await app.modules.readingAnchorResolver.resolvePage(limited, { signal: ownController.signal, verifiedBlocksFirst: true });
       if (current !== generation || ownController.signal.aborted) return;
       lastLocations = locations;
-      render(limited, locations, count, locations.projectionRevision);
+      render(limited, locations, count);
       subscribeProjection();
     } catch { if (current === generation) {
-      closePreview({ restore: false });
       if (lastItems.length) render(lastItems, unresolved(lastItems), lastPageRecordCount);
-      else if (lastMarkerEnabled) render([], new Map(), null, null, true);
+      else if (lastMarkerEnabled) render([], new Map(), null, true);
       else clearUi();
     } }
   }
@@ -310,14 +294,14 @@
           }
           if (value?.type === "reading.site-markers.invalidate") {
             C.validateReadingSiteMarkersInvalidation(value);
-            closePreview({ restore: false }); void load(); return;
+            void load(); return;
           }
           const next = C.validateReadingInvalidation(value, "content"), previous = lastInvalidation;
           lastInvalidation = next;
           if (previous && previous.dataGeneration === next.dataGeneration && previous.consentGeneration === next.consentGeneration &&
               previous.pageRevision === next.pageRevision) return;
-          closePreview({ restore: false }); void load();
-        } catch { if (port === ownedPort) { closePreview({ restore: false }); void load(); } }
+          void load();
+        } catch { if (port === ownedPort) void load(); }
       });
       port.onDisconnect.addListener(() => {
         if (port !== ownedPort) return;

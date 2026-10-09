@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.textProjection || !app?.modules.uiHost || app.modules.selectionRecordAccess) return;
   const operations = new Map();
+  const pageIntents = new Map();
   const limits = app.modules.readingContract?.READING_LIMITS;
   let current = null;
   const randomId = () => `reading-${crypto.randomUUID()}`;
@@ -34,6 +35,13 @@
   async function read(challenge) {
     prune();
     if (!challenge || typeof challenge.nonce !== "string") return null;
+    if (challenge.action === "delete") {
+      const intent = pageIntents.get(challenge.recordId); pageIntents.delete(challenge.recordId);
+      if (!intent || intent.expiresAt <= Date.now()) return null;
+      return { nonce: challenge.nonce, documentGeneration: app.modules.selectionSourceSnapshot.documentGeneration,
+        selectionGeneration: 1, captureSafety: { selection: "safe", context: "safe", root: "light-dom" }, sourceSnapshot: null,
+        intent: { action: "delete", recordId: challenge.recordId, operationId: null } };
+    }
     const passive = ["inspect", "register", "handoff", "page"].includes(challenge.action);
     const operation = passive ? current : operations.get(challenge.operationId);
     if (!operation && ["register", "handoff", "page"].includes(challenge.action)) {
@@ -61,11 +69,18 @@
     return true;
   }
   function cancel(operation) { if (operation) operation.cancelled = true; }
+  function authorizePageAction({ event, action, recordId }) {
+    if (!trusted(event) || action !== "delete" || typeof recordId !== "string" || !recordId) return false;
+    pageIntents.set(recordId, { expiresAt: Date.now() + 10_000 }); return true;
+  }
   function forget(operation) {
     operations.delete(operation?.operationId);
     if (current === operation) current = [...operations.values()].reverse().find(live) || null;
   }
-  function prune() { for (const value of operations.values()) if (Date.now() >= value.expiresAt) forget(value); }
+  function prune() {
+    for (const value of operations.values()) if (Date.now() >= value.expiresAt) forget(value);
+    for (const [key, value] of pageIntents) if (Date.now() >= value.expiresAt) pageIntents.delete(key);
+  }
   app.modules.readingAccessCollector = Object.freeze({ read });
-  app.modules.selectionRecordAccess = Object.freeze({ create, live, safety, bindToken, cancel, forget, trusted });
+  app.modules.selectionRecordAccess = Object.freeze({ create, live, safety, bindToken, cancel, forget, trusted, authorizePageAction });
 })();

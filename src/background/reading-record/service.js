@@ -207,7 +207,7 @@ export function createReadingService({ browser, repository = null, collector, no
         access = { ...access, siteExcluded: bool(policy?.siteExcluded, "policy.siteExcluded") };
         if (request.method === M.GET_PAGE_SUMMARY && access.siteExcluded) fail(E.DISABLED, "policy.site");
       }
-      const resourcePageKey = access.scope === "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF].includes(request.method) ? access.pageKey : null;
+      const resourcePageKey = access.scope === "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF, M.DELETE_RECORD].includes(request.method) ? access.pageKey : null;
       if (access.scope !== "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_PAGE_SUMMARY, M.CANCEL_OPERATION, M.REGISTER_DOCUMENT, M.CONSUME_HANDOFF].includes(request.method)) fail(E.FORBIDDEN, "scope.content-only");
       authorizeReadingMethod(request.method, access, resourcePageKey);
       const data = await dispatch(request, access);

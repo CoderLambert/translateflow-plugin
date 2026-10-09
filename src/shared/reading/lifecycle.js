@@ -48,7 +48,7 @@ export function authorizeReadingMethod(method, access, resourcePageKey = null) {
   if (access.scope === "entry" && access.senderVerified === true && method === M.OPEN_LEARNING_CENTER) return true;
   if (access.scope !== "content" || access.senderVerified !== true || !CONTENT_METHODS.has(method) ||
       !access.documentGeneration || !access.pageKey) fail(READING_ERROR.FORBIDDEN, "access.scope");
-  if ([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF].includes(method) && resourcePageKey === null) fail(READING_ERROR.FORBIDDEN, "access.resource");
+  if ([M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF, M.DELETE_RECORD].includes(method) && resourcePageKey === null) fail(READING_ERROR.FORBIDDEN, "access.resource");
   if (resourcePageKey !== null && resourcePageKey !== access.pageKey) fail(READING_ERROR.FORBIDDEN, "access.pageKey");
   if (access.sensitive !== false || access.editable !== false || access.accountPage !== false ||
       (WRITE_METHODS.has(method) && access.siteExcluded !== false)) fail(READING_ERROR.FORBIDDEN, "access.policy");
