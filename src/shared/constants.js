@@ -7,13 +7,13 @@ export const DEFAULT_PROMPT = [
   "Do not add explanations.", 'Return valid JSON only, exactly in this shape: {"translations":[{"id":"...","text":"..."}] }.',
   "Every input id must appear exactly once in the output."
 ].join("\n");
-export const PROVIDER_IDS = Object.freeze({ DEEPSEEK: "deepseek", OPENAI_COMPATIBLE: "openai-compatible" });
+export const PROVIDER_IDS = Object.freeze({ DEEPSEEK: "deepseek", OPENAI_COMPATIBLE: "openai-compatible", CHATGPT_PLAN: "chatgpt-plan" });
 export const DEFAULT_OPENAI_COMPATIBLE = Object.freeze({ apiKey: "", baseUrl: "", model: "", streaming: false });
 export const GLOSSARY_STORAGE_VERSION = 1;
 export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, entries: Object.freeze([]) });
 export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });
 export const DEFAULT_CONFIG = Object.freeze({
-  apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", targetLanguage: "Simplified Chinese", uiLocale: "auto",
+  apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", chatgptPlanModel: "", targetLanguage: "Simplified Chinese", uiLocale: "auto",
   appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
   youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", selectionExplanationDepth: SELECTION_EXPLANATION_DEPTH.AUTO,
   prompt: DEFAULT_PROMPT, openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
@@ -23,7 +23,7 @@ export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
 export const CACHE_SCHEMA_VERSION = 2;
 export const BACKGROUND_MESSAGES = Object.freeze({
   TRANSLATE_BATCH: "TRANSLATE_BATCH", SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH", CANCEL_TRANSLATION: "CANCEL_TRANSLATION",
-  TEST_API: "TEST_API", LEXICAL_LOOKUP: "LEXICAL_LOOKUP", SELECTION_RESOLVE: "SELECTION_RESOLVE", SELECTION_EXPLAIN: "SELECTION_EXPLAIN",
+  TEST_API: "TEST_API", CHATGPT_PLAN_ACTION: "CHATGPT_PLAN_ACTION", LEXICAL_LOOKUP: "LEXICAL_LOOKUP", SELECTION_RESOLVE: "SELECTION_RESOLVE", SELECTION_EXPLAIN: "SELECTION_EXPLAIN",
   CACHE_LOOKUP: "CACHE_LOOKUP", CACHE_STORE: "CACHE_STORE", CACHE_PAGE_STATUS: "CACHE_PAGE_STATUS",
   CACHE_CLEAR_PAGE: "CACHE_CLEAR_PAGE", CACHE_CLEAR_ALL: "CACHE_CLEAR_ALL", CACHE_STATS: "CACHE_STATS", CACHE_PRUNE: "CACHE_PRUNE",
   CACHE_RESTORE_SITE_REGISTER: "CACHE_RESTORE_SITE_REGISTER", CACHE_RESTORE_SITE_UNREGISTER: "CACHE_RESTORE_SITE_UNREGISTER",

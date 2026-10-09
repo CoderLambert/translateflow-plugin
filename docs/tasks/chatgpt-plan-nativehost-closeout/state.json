@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "task": "chatgpt-plan-nativehost-closeout",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-nativehost-closeout-20261009",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/chatgpt-plan-nativehost.spec.mjs",
+      "--workers=1"
+    ],
+    [
+      "go",
+      "-C",
+      "native-host",
+      "test",
+      "-race",
+      "./..."
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "从 origin/main=1778776ab8fb7bdf33590762d2d8becdfe21f73e 选择性整合 NativeHost/Plan 与 PR314；先完成当前多账号契约和离线验证。真实登录、固定发布扩展 ID 与独立安全审查仍是后续门槛。"
+}

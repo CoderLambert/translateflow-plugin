@@ -30,10 +30,8 @@ import {
 } from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
-import {
-  cancelTranslationRequest,
-  runTranslationRequest
-} from "./translation-requests.js";
+import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
+import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
 import { getBundledLexiconStatus, runLexicalLookup } from "./lexical/index.js";
@@ -83,7 +81,8 @@ export function registerMessageRouter() {
       .catch((error) => sendResponse({
         ok: false,
         error: error?.message || String(error),
-        errorCode: error?.code || ""
+        errorCode: error?.code || "",
+        ...(error?.modelSelectionCleared ? { modelSelectionCleared: true } : {})
       }));
     return true;
   });
@@ -118,6 +117,8 @@ export async function handleBackgroundMessage(message, sender) {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
+    case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
+      assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
       return resolveSelectionRequest({
         text: message.text,
@@ -371,7 +372,7 @@ function assertOptionsSender(sender) {
   const expected = chrome.runtime.getURL(EXTENSION_PAGES.options);
   const actual = String(sender?.url || "");
   if (actual !== expected && !actual.startsWith(expected + "#")) {
-    const error = new Error("Dictionary pack lifecycle actions are only available from Settings.");
+    const error = new Error("This action is only available from Settings.");
     error.code = "PACK_SETTINGS_ONLY";
     throw error;
   }

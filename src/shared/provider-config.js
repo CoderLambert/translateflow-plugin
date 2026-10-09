@@ -12,7 +12,7 @@ import { normalizeOrigin } from "./url.js";
 
 export function normalizeProviderId(value) {
   const provider = String(value || PROVIDER_IDS.DEEPSEEK).trim().toLowerCase();
-  if (provider === PROVIDER_IDS.DEEPSEEK || provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
+  if (provider === PROVIDER_IDS.DEEPSEEK || provider === PROVIDER_IDS.OPENAI_COMPATIBLE || provider === PROVIDER_IDS.CHATGPT_PLAN) {
     return provider;
   }
   throw new Error(`不支持的翻译 Provider：${provider}`);
@@ -82,7 +82,15 @@ export function resolveTranslationConfigForSite(
         model: String(globalConfig.openAICompatible.model || "").trim(),
         streaming: Boolean(globalConfig.openAICompatible.streaming)
       }
-    : {
+    : provider === PROVIDER_IDS.CHATGPT_PLAN
+      ? {
+          provider,
+          apiKey: "",
+          apiBaseUrl: "https://api.openai.com/v1/responses",
+          model: String(globalConfig.chatgptPlanModel || "").trim(),
+          streaming: true
+        }
+      : {
         provider,
         apiKey: String(globalConfig.apiKey || "").trim(),
         apiBaseUrl: "https://api.deepseek.com",
