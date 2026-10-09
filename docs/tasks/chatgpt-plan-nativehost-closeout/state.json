@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "chatgpt-plan-nativehost-closeout",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-nativehost-closeout-20261009",
-  "candidateHead": "c1213d85203873ff0ab37bf92bfd5babd2fcf996",
+  "candidateHead": "ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -42,5 +42,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "候选 c1213d85203873ff0ab37bf92bfd5babd2fcf996 已完成离线与 Host 缺失浏览器验收；等待独立代码/安全审查，并由用户本人完成真实登录、多账号切换、模型、推理、登出和重启验收。仓库仍缺固定发布扩展 ID。"
+  "nextAction": "最终候选 ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0 已完成规定验收、单账号真实使用、准确候选安装和独立增量审查；可同步 PR。多账号切换由用户选择跳过；完整浏览器重启、Windows 实机和固定发布扩展 ID 仍未验证。"
 }
