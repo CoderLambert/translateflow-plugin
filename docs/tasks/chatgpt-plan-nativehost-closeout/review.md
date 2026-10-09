@@ -43,3 +43,11 @@
 - 对 `10e3b67..ab7e961` 的最终两文件增量复审结论为通过、无新阻断；结论明确绑定 `ab7e961dcbe4d9a83c77aa6b4283203d876ed1f0`。
 - PR #320 的五文件 UX09/10 增量另由同一只读审查者绑定 `0a9fef4688a9520dac0fe4505220e865992db15a` 审查通过并已合入 main。最终候选仅把该已审查 main 合并进 NativeHost 分支，无冲突；合并树已重新执行全部规定检查。
 - 跨 Host 同时存在多个主动 port 的登录协调未做平台实测，记录为 `NOT_VERIFIED`；普通 `connectNative()` 生命周期下没有证据表明它是当前阻断。
+
+## 合并结果
+
+- PR #321 已用 expected head `5ea5a12707a93fa7731035ba5f032033091e7289` squash 合入 `main`。
+- merge commit：`a565772133c31c1d653a386cd8e139417ce3f8a6`。
+- 合并后 GitHub checks 为空：`NOT_RUN` / `NOT_VERIFIED`，不声明 CI 绿灯。
+- 用户在主 Chrome 完整重启后确认 ChatGPT 登录正常：PASS。
+- 本节仅同步合并事实，没有修改实现、测试或构建输入，因此未重复运行构建与测试。

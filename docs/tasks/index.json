@@ -252,7 +252,7 @@
     },
     {
       "task": "chatgpt-plan-nativehost-closeout",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
       "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468"
