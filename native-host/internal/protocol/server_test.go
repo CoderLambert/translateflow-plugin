@@ -265,6 +265,7 @@ func TestNewAuthStartCancelsAndReplacesWaitingAuth(t *testing.T) {
 	}
 	output := new(bytes.Buffer)
 	server := NewServer(backend, inputReader, output)
+	server.MaxActive = 1
 	runDone := make(chan error, 1)
 	go func() { runDone <- server.Run(context.Background()) }()
 
@@ -319,6 +320,11 @@ func TestNewAuthStartCancelsAndReplacesWaitingAuth(t *testing.T) {
 	newer := terminals["auth-new"]
 	if newer.OK == nil || !*newer.OK {
 		t.Fatalf("replacement sign-in terminal = %#v, want success", newer)
+	}
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	if server.workActive != 0 {
+		t.Fatalf("workActive = %d, want 0 after replacement completes", server.workActive)
 	}
 }
 

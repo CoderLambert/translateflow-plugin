@@ -146,8 +146,11 @@ func TestReauthorizationReusesIssuedClientAndStableHostID(t *testing.T) {
 			}
 			query := parsed.Query()
 			if query.Get("client_id") != testIssuedClientID || query.Get("agent_name_hint") != "" ||
-				query.Get("id_token_hint") != "retained-id-token-hint" || query.Get("ext_agent_host_id") != stableHostID {
+				query.Get("ext_agent_host_id") != stableHostID {
 				return errors.New("returning authorization did not retain the selected registration")
+			}
+			if _, present := query["id_token_hint"]; present {
+				return errors.New("returning authorization exposed an id_token_hint")
 			}
 			fake.setExpectedChallenge(query.Get("code_challenge"))
 			identity, err := fake.signIdentityToken(query.Get("nonce"), testIssuedClientID)

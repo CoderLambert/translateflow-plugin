@@ -65,7 +65,10 @@ test("ChatGPT sign-in keeps an explicit retry action while authorization is pend
   expect(chatGPTSignInActionDisabled(false, true, false)).toBe(true);
   expect(chatGPTSignInActionDisabled(true, true, true)).toBe(true);
   expect(zh.t("options.chatgptPlan.connecting")).toContain("重新连接");
+  expect(zh.t("options.chatgptPlan.retryAddAccount")).toBe("重新添加账号");
   expect(zh.t("options.chatgptPlan.authTimeout")).toContain("授权未完成");
+  expect(zh.t("options.chatgptPlan.credentialLocked")).toContain("解锁");
+  expect(zh.t("options.chatgptPlan.accountMismatch")).toContain("另行添加");
 });
 
 test("ChatGPT settings do not guess whether unavailable access means expired session or missing scope", async () => {

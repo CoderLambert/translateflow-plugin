@@ -64,6 +64,7 @@ type operation struct {
 	method      string
 	cancel      context.CancelFunc
 	done        chan struct{}
+	workSlot    bool
 	cleanup     func()
 	cleanupOnce sync.Once
 	remove      func()
@@ -154,6 +155,8 @@ func (s *Server) accept(parent context.Context, req request) {
 		return
 	}
 	control := req.Method == "cancel" || req.Method == "auth.logout" || req.Method == "auth.select"
+	var waitForWork []<-chan struct{}
+	transferWorkSlot := false
 	if control {
 		if s.controlActive >= s.MaxControls {
 			s.mu.Unlock()
@@ -171,7 +174,20 @@ func (s *Server) accept(parent context.Context, req request) {
 			_ = s.immediateTerminal(req.RequestID, "signing_out", "The ChatGPT session is signing out. Try again shortly.")
 			return
 		}
-		if s.workActive >= s.MaxActive {
+		if req.Method == "auth.start" {
+			for _, active := range s.active {
+				if active.method != "auth.start" {
+					continue
+				}
+				active.cancel()
+				waitForWork = append(waitForWork, active.done)
+				if !transferWorkSlot && active.workSlot {
+					active.workSlot = false
+					transferWorkSlot = true
+				}
+			}
+		}
+		if !transferWorkSlot && s.workActive >= s.MaxActive {
 			s.mu.Unlock()
 			_ = s.immediateTerminal(req.RequestID, "busy", "The host has reached its active request limit.")
 			return
@@ -185,15 +201,6 @@ func (s *Server) accept(parent context.Context, req request) {
 		}
 		s.infers++
 	}
-	var waitForWork []<-chan struct{}
-	if req.Method == "auth.start" {
-		for _, active := range s.active {
-			if active.method == "auth.start" && !active.isClosed() {
-				active.cancel()
-				waitForWork = append(waitForWork, active.done)
-			}
-		}
-	}
 	if req.Method == "auth.logout" || req.Method == "auth.select" {
 		s.loggingOut = true
 		for _, active := range s.active {
@@ -204,7 +211,7 @@ func (s *Server) accept(parent context.Context, req request) {
 		}
 	}
 	ctx, cancel := context.WithCancel(parent)
-	op := &operation{id: req.RequestID, method: req.Method, cancel: cancel, done: make(chan struct{})}
+	op := &operation{id: req.RequestID, method: req.Method, cancel: cancel, done: make(chan struct{}), workSlot: !control}
 	op.cleanup = func() {
 		s.mu.Lock()
 		if req.Method == "infer.start" && s.infers > 0 {
@@ -213,8 +220,9 @@ func (s *Server) accept(parent context.Context, req request) {
 		if control && s.controlActive > 0 {
 			s.controlActive--
 		}
-		if !control && s.workActive > 0 {
+		if op.workSlot && s.workActive > 0 {
 			s.workActive--
+			op.workSlot = false
 		}
 		if req.Method == "auth.logout" || req.Method == "auth.select" {
 			s.loggingOut = false
@@ -229,7 +237,7 @@ func (s *Server) accept(parent context.Context, req request) {
 	s.active[req.RequestID] = op
 	if control {
 		s.controlActive++
-	} else {
+	} else if !transferWorkSlot {
 		s.workActive++
 	}
 	s.wg.Add(1)

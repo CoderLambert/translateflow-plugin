@@ -141,9 +141,6 @@ func (c *Client) StartAuth(ctx context.Context, request contract.AuthStartReques
 	values.Set("code_challenge_method", "S256")
 	values.Set("code_challenge", oauth2.S256ChallengeFromVerifier(verifier))
 	if returning {
-		if snapshot.HasSession && snapshot.Tokens.IDToken != "" {
-			values.Set("id_token_hint", snapshot.Tokens.IDToken)
-		}
 		if old.Email != "" {
 			values.Set("login_hint", old.Email)
 		}
