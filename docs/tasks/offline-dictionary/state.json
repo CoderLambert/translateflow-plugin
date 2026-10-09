@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "offline-dictionary",
-  "status": "working",
+  "status": "paused",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/oxford-rich-closeout-20261009",
@@ -29,5 +29,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户已提供本机 Oxford10 六文件并授权连续收口。当前先在 origin/main=2539deef5c0747359dec4663d581798f1d526f83 上整合 OX-01 四项最小富文本修复，完成定向回归、实际 WXT 构建及真实界面导入/查询/图片/音频/刷新/重启验收；私人文件和证据只留在本机忽略目录。"
+  "nextAction": "OX-01 的四项 Oxford 富文本收口已通过 PR #319 合入（candidate 5fe26af5f7a5cb3b1aa65a91ce364a1add10ca44；merge 1778776ab8fb7bdf33590762d2d8becdfe21f73e）。本任务更宽的 OD-2/OD-3 合同还要求全量独立 reader 对照、至少 60 个固定查询及相应浏览器认证，当前未执行；除非用户明确重新启用该范围，否则保持 paused，不把 OX-01 结果升格为整卡完成。"
 }

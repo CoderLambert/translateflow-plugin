@@ -18,9 +18,9 @@
     },
     {
       "task": "229",
-      "status": "ready_to_sync",
+      "status": "blocked",
       "dependencies": [],
-      "branch": "audit/229-state-calibration-20261005",
+      "branch": null,
       "candidateHead": "d530056d57ab3be64d05af0995a8a49aaf963079"
     },
     {
@@ -259,7 +259,7 @@
     },
     {
       "task": "offline-dictionary",
-      "status": "working",
+      "status": "paused",
       "dependencies": [],
       "branch": "fix/oxford-rich-closeout-20261009",
       "candidateHead": null
@@ -273,7 +273,7 @@
     },
     {
       "task": "selection-vocabulary-book-v1",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/selection-vocabulary-book-v1",
       "candidateHead": "033540996db9ce4150d949772f4386b258456673"

@@ -46,3 +46,7 @@ Local task state records already mark #248/#250/#251/#252 completed with merged 
 Real paid Provider calls, private dictionaries, and Edge/Safari coverage were not run. `gh auth status` reported the active `GH_TOKEN` invalid; it was not retried and no credentials were changed. The connected GitHub app independently confirmed `main` at exact base `66cb7b876f8df4c8fea6eb645cb66cb101b6299a`, found no open PRs or same-name branch before sync, and created draft PR [#303](https://github.com/CoderLambert/translateflow-plugin/pull/303) from `audit/229-state-calibration-20261005`. Its initial tree matched the local candidate handoff tree. No Issue labels or closure state were changed. The PR remains a draft; no merge, store publication, CSP change, permission expansion, or credential configuration was performed.
 
 The runtime model and reasoning level are not observable from this environment and remain unknown.
+
+## 合并后状态校准（2026-10-09）
+
+PR #303 已合入 `main`，merge commit 为 `638e9c2e906072a87ed9f6b1d6228681f74928e5`。旧 Draft PR #304 只记录该合并事实和人工审计缺口，其内容由本次最新 main 上的状态校准取代。Epic #229 仍缺合同要求的独立人工审计，因此不标 completed。

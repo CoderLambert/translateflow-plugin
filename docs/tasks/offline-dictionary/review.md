@@ -14,3 +14,7 @@
 环境限制：GitHub 连接用于读取/同步；容器网络不能 clone，文档检查使用远端读取的相关文件快照及逐个 state 的索引输入字段，不是完整工作区。索引生成使用 Node v22.16.0，仅运行无外部依赖的文档生成步骤，不代表满足产品 package.json 的 Node/npm 工具链或运行了实现验收。
 
 实施代码审核、边界二进制回归、真实目标正文/资源对照、产品浏览器验收、生产包构建和实现 local gate 均为 **NOT RUN**。目标文件集尚未提供；本卡保持 paused，未填写实现 candidateHead/mergeHead，不因文档合入变为 completed。
+
+## OX-01 与宽范围任务边界校准（2026-10-09）
+
+PR #319 已完成用户授权的 Oxford 富文本四项收口并合入 `main`，candidate 为 `5fe26af5f7a5cb3b1aa65a91ce364a1add10ca44`，merge commit 为 `1778776ab8fb7bdf33590762d2d8becdfe21f73e`。该验收不包含本任务合同要求的全量独立 reader 对照、至少 60 个固定查询和全部 OD-2/OD-3 认证，因此宽范围任务保持 paused。
