@@ -47,6 +47,8 @@
 .tf-rich-viewer table { max-width: 100%; border-collapse: collapse; }
 .tf-rich-viewer td, .tf-rich-viewer th { border: 1px solid var(--tf-border-soft, rgba(58,75,59,.14)); padding: 2px 5px; vertical-align: top; }
 .tf-rich-viewer th { font-weight: 700; }
+.tf-rich-viewer .o-symbol-wrap { display: inline-flex; align-items: center; margin: 0 .12em; line-height: 1; vertical-align: middle; }
+.tf-rich-viewer .o-symbol-token > .tf-rich-resource-image { display: inline-block; width: auto; height: 1.05em; max-width: 3em; max-height: 1.05em; margin: 0; border-radius: 0; object-fit: contain; vertical-align: text-bottom; }
 .tf-rich-viewer .o-pronunciation-set, .tf-rich-viewer .o-head-symbol-set { display: none; }
 .tf-rich-viewer .o-pronunciation-set.o-active { display: block; }
 .tf-rich-viewer .o-head-symbol-set.o-active { display: inline-flex; }
