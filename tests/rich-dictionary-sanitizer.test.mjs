@@ -109,6 +109,8 @@ test("Oxford pronunciation labels replace only matching icons beside local audio
     rawRecord: '<div class="o-pron-chunk o-pron-BrE"><img src="img/voicebre.svg"><a href="sound://audio/word/entry_br.mp3"></a></div>' +
       '<div class="o-pron-chunk o-pron-NAmE"><img src="img/voicenam.svg"><a href="sound://audio/word/entry_us.mp3"></a></div>' +
       '<div class="o-pron-chunk o-pron-BrE"><img src="img/vendor-speaker.svg" alt="英音发音"><a href="sound://audio/word/entry_br_alt.mp3"></a></div>' +
+      '<div><a href="sound://audio/example_br.mp3"><img src="img/example-speaker.svg" alt="英音发音"></a></div>' +
+      '<div><a href="sound://audio/example_us.mp3"><img src="img/example-speaker.svg" alt="美音发音"></a></div>' +
       '<div class="o-example-eng"><img src="img/voicebre.svg"></div>' +
       '<div class="o-pron-chunk o-pron-BrE"><img src="img/voicebre.svg">no audio</div>'
   });
@@ -118,12 +120,14 @@ test("Oxford pronunciation labels replace only matching icons beside local audio
     if (node.type === "element" && node.attrs?.["data-rich-pronunciation"]) pronunciationLabels.push(node.attrs["data-rich-pronunciation"]);
     if (node.type === "resource") resources.push(node);
   });
-  assert.deepEqual(pronunciationLabels, ["british", "american", "british"]);
+  assert.deepEqual(pronunciationLabels, []);
   assert.deepEqual(resources.filter((node) => node.kind === "audio").map((node) => node.path), [
-    "audio/word/entry_br.mp3", "audio/word/entry_us.mp3", "audio/word/entry_br_alt.mp3"
+    "audio/word/entry_br.mp3", "audio/word/entry_us.mp3", "audio/word/entry_br_alt.mp3",
+    "audio/example_br.mp3", "audio/example_us.mp3"
   ]);
   assert.deepEqual(resources.filter((node) => node.kind === "audio").map((node) => node.presentation), [
-    "pronunciation-british", "pronunciation-american", "pronunciation-british"
+    "pronunciation-british", "pronunciation-american", "pronunciation-british",
+    "pronunciation-british", "pronunciation-american"
   ]);
   assert.deepEqual(resources.filter((node) => node.kind === "image").map((node) => node.path), [
     "img/voicebre.svg", "img/voicebre.svg"

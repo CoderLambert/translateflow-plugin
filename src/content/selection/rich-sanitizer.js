@@ -46,6 +46,7 @@
     if (parsed.invalid) return fallbackResult(boundedSource, rules, true);
     if (parsed.truncated && !containsDisplayContent(parsed.nodes)) return fallbackResult(boundedSource, rules, true);
     annotateOxfordSemantics(parsed.nodes);
+    mergePronunciationResourcePairs(parsed.nodes);
     return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated) };
   }
 
@@ -76,22 +77,39 @@
     const language = classes.has("o-pron-BrE") ? "british"
       : classes.has("o-pron-NAmE") ? "american" : "";
     if (!language || !containsAudioResource(chunk.children)) return;
-    chunk.children = chunk.children.map((node) => {
-      const label = language === "british" ? "BrE" : "NAmE";
+    chunk.children = chunk.children.flatMap((node) => {
       const expectedPath = language === "british" ? "img/voicebre.svg" : "img/voicenam.svg";
       if (node.type === "resource" && node.kind === "audio") {
-        return { ...node, presentation: `pronunciation-${language}` };
+        return [{ ...node, presentation: `pronunciation-${language}` }];
       }
       if (node.type === "resource" && node.kind === "image" &&
           (node.path === expectedPath || isPronunciationImageLabel(node.label, language))) {
-        return {
-          type: "element", tag: "span",
-          attrs: { class: "tf-rich-pronunciation-label", "data-rich-pronunciation": language },
-          children: [tokenizer.textNode(label)]
-        };
+        return [];
       }
-      return node;
+      return [node];
     });
+  }
+
+  function mergePronunciationResourcePairs(nodes) {
+    const items = Array.isArray(nodes) ? nodes : [];
+    for (const node of items) {
+      if (node.type === "element") mergePronunciationResourcePairs(node.children);
+    }
+    for (let index = 0; index + 1 < items.length; index += 1) {
+      const audio = items[index];
+      const image = items[index + 1];
+      if (audio?.type !== "resource" || audio.kind !== "audio" || image?.type !== "resource" || image.kind !== "image") continue;
+      const language = pronunciationLanguageFromLabel(image.label);
+      if (!language) continue;
+      items[index] = { ...audio, presentation: `pronunciation-${language}` };
+      items.splice(index + 1, 1);
+    }
+  }
+
+  function pronunciationLanguageFromLabel(value) {
+    if (isPronunciationImageLabel(value, "british")) return "british";
+    if (isPronunciationImageLabel(value, "american")) return "american";
+    return "";
   }
 
   function isPronunciationImageLabel(value, language) {
