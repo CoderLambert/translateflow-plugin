@@ -104,7 +104,7 @@
     "PASS（最终候选自动验收）：候选包含已合入 main 的 PR #320；重新执行 validate（Node 1214/1214、Vitest 39/39）、WXT build/smoke、ChatGPT Settings E2E 1/1、Go race，全部通过。",
     "PASS（独立审查）：NativeHost 恢复增量和最终两文件文案增量分别审查通过；PR #320 五文件 UX09/10 增量另行审查通过。最终合并 main 无冲突并重新执行门禁。",
     "NOT_RUN（用户选择跳过）：多账号添加与切换。不得把单账号成功写成多账号验收。",
-    "NOT_RUN：用户主 Chrome 的完整重启恢复、Windows 实机安装与凭据管理器、固定发布扩展 ID。曾尝试用独立临时 Chrome Stable profile 冷启动同一 unpacked 目录，但自动化窗口未加载扩展并返回 ERR_BLOCKED_BY_CLIENT；没有关闭用户主浏览器，也未将该尝试计为通过。Host 自身已通过多个独立进程的 hello/auth.status 冷启动探针。",
+    "PASS（用户主浏览器重启）：用户通过 chrome://restart 完整重启主 Chrome，随后在 TranslateFlow 的 ChatGPT 订阅设置中检查连接并报告登录正常。此前 clean candidate Host 冷启动探针已确认 connected=true、canInfer=true、storage=system-secure。",
     "NOT_RUN：没有在最终候选上主动再次制造真实 stalled consent；最终异常提示的真实视觉状态没有新截图。",
     "NOT_VERIFIED：跨 Host 同时存在多个主动 Native Messaging port 时的登录取消协调；普通 connectNative 生命周期未显示当前阻断。",
     "真实截图只保留无账号信息的推理结果；包含账号信息的用户截图未上传、未入库。",

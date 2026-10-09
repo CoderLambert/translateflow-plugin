@@ -33,7 +33,7 @@
 - 单账号真实模型列表、GPT-6-Luna 选择、两次唯一文本推理、退出撤销和 fresh authorization 后重连：PASS。安全截图不含账号信息；包含账号信息的原始截图未上传、未入库。
 - 一次 OpenAI consent 提交长时间无回调，取消后页面显示 `invalid_auth_step`。当时本机回调监听器健康；现有证据只支持第三方授权步骤失效，不支持更具体归因。
 - 多账号添加/切换：`NOT_RUN`（用户选择跳过）。
-- 完整浏览器重启后的恢复、Windows 实机、固定发布扩展 ID：`NOT_RUN`。
+- 用户主 Chrome 完整重启后的登录连接恢复：PASS（用户报告）。Windows 实机、固定发布扩展 ID：`NOT_RUN`。
 - 最终候选提示已构建并加载。为避免再次破坏成功会话，没有在真实 OpenAI 页主动制造第二次 stalled consent；该异常视觉状态为 `NOT_RUN`，状态和重试行为由 React 单测、Go 并发回归与构建覆盖。
 
 ## 独立审查
