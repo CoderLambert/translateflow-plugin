@@ -196,21 +196,17 @@ test("A delayed first-enable notification agrees with the accepted policy; later
   assert.equal(ctx.blocked, true); assert.equal(ctx.ref, null); assert.equal(h.views.at(-1).state, "not-saved");
 });
 
-test("Site-marker invalidation refreshes the saved status without blocking a follow-up append", async () => {
+test("Site-marker invalidation leaves the saved card unchanged and does not block a follow-up append", async () => {
   const h = await harness({ summaryOfWrites: true, withSubscription: true }), ctx = h.start();
   h.client.accept(ctx, h.draft); await ctx.queue;
-  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "disabled"; index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "disabled");
+  const before = json(h.views.at(-1));
+  assert.equal(before.state, "saved"); assert.equal("siteMarkerStatus" in before, false);
 
   h.setSiteMarkers({ state: "ready", enabled: true, permissionGranted: true });
   h.notifySiteMarkers();
-  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "enabled"; index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
   assert.equal(ctx.blocked, false); assert.ok(ctx.ref);
-  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "enabled");
+  assert.deepEqual(h.views.at(-1), before);
+  assert.equal(h.messages.filter((request) => request.method === M.GET_SITE_MARKERS).length, 0);
 
   const operation = h.client.assistant(ctx, h.event);
   assert.ok(operation);

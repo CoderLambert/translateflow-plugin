@@ -37,7 +37,9 @@ test("saved assistant history reopens through page history without exposing answ
   await harness.setStorage({ uiLocale: "en", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const center = await harness.context.newPage();
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
-  await center.getByRole("button", { name: "Enable recording", exact: true }).click();
+  const enableRecording = center.getByRole("button", { name: "Enable recording", exact: true });
+  if (await enableRecording.isVisible()) await enableRecording.click();
+  else await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
   const original = await harness.open("/selection"); await harness.inject(original);
   await select(original, "#technical-competition", "session");
@@ -49,7 +51,7 @@ test("saved assistant history reopens through page history without exposing answ
   const recordId = listed.data.items[0].recordId;
 
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
-  await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
+  await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
   const followUpQuestion = "Why is this terminal session reusable?";
   await center.getByRole("button", { name: "Ask a follow-up", exact: true }).click();
   await center.getByPlaceholder("Ask about this saved answer").fill(followUpQuestion);
@@ -69,11 +71,14 @@ test("saved assistant history reopens through page history without exposing answ
   await sessionMarker.hover();
   const hoverPreview = revisit.frameLocator("iframe.tf-reading-hover-frame");
   await expect(hoverPreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
-  await expect(hoverPreview.getByText("streamed answer", { exact: true })).toBeVisible();
+  await expect(hoverPreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
+  await expect(hoverPreview.getByText("streamed answer", { exact: true }).first()).toBeVisible();
+  await expect(hoverPreview.getByText(followUpQuestion, { exact: true })).toBeVisible();
   await expect(revisit.locator(".tf-reading-hover-preview")).toBeVisible();
   expect(JSON.stringify(await pageSurface(revisit))).not.toContain(followUpQuestion);
   expect(JSON.stringify(await pageSurface(revisit))).not.toContain("streamed answer");
   expect(harness.server.calls).toHaveLength(providerCalls);
+  await revisit.screenshot({ path: info.outputPath("reading-marker-hover-history.png"), fullPage: false });
   const hoverBox = await revisit.locator(".tf-reading-hover-preview").boundingBox();
   expect(hoverBox).not.toBeNull();
   await revisit.mouse.move(hoverBox.x + hoverBox.width / 2, hoverBox.y + hoverBox.height / 2);
@@ -100,19 +105,13 @@ test("saved assistant history reopens through page history without exposing answ
   await harness.restartBrowser();
   const restartedCenter = await harness.context.newPage();
   await restartedCenter.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
-  await expect(restartedCenter.getByRole("button", { name: "Disable site markers", exact: true })).toBeVisible();
+  await expect(restartedCenter.getByRole("button", { name: /site markers/i })).toHaveCount(0);
   const afterRestart = await harness.open("/selection"); await harness.inject(afterRestart);
   await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(2);
   await afterRestart.locator(`.tf-reading-page-marker[data-record-id="${recordId}"]`).click();
   await expect(afterRestart.locator(".tf-reading-page-panel")).toBeVisible();
   await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
   expect(harness.server.calls).toHaveLength(providerCalls);
-
-  await restartedCenter.getByRole("button", { name: "Disable site markers", exact: true }).click();
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(0);
-  await expect(afterRestart.locator(".tf-reading-page-toggle")).toHaveCount(0);
-  await restartedCenter.getByRole("button", { name: "Enable site markers", exact: true }).click();
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(2);
 
   await restartedCenter.getByRole("button", { name: "Delete record", exact: true }).click();
   await restartedCenter.getByRole("button", { name: "Confirm", exact: true }).click();

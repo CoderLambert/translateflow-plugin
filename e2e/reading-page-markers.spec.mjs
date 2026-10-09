@@ -86,7 +86,7 @@ test("authorized revisit renders bounded page history markers and recovers acros
       const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
       range.setStart(node, start); range.setEnd(node, start + 7); getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange")); });
     await source.locator(".tf-selection-chip").click(); await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
-    await expect(source.locator(".tf-selection-record-status")).toContainText("Marker settings");
+    await expect(source.locator(".tf-selection-record-status")).not.toContainText("Marker settings");
     await source.locator(".tf-selection-icon-button").click();
     await source.evaluate(() => {
       const node = document.querySelector("#source").firstChild, start = node.nodeValue.indexOf("session"), range = document.createRange();
@@ -97,47 +97,11 @@ test("authorized revisit renders bounded page history markers and recovers acros
     await expect(source.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
     await center.reload();
     const recordRow = center.locator(".record-list .record").first(), recordId = await recordRow.getAttribute("data-record-id");
-    await center.evaluate(() => {
-      const original = chrome.runtime.sendMessage.bind(chrome.runtime);
-      const replacement = (request, ...args) => {
-        if (!globalThis.__tfAllowSiteKeyRetry && request?.method === "reading.get-record-site-key") {
-          globalThis.__tfSiteKeyFailureFired = true;
-          return Promise.reject(new Error("synthetic site identity failure"));
-        }
-        return original(request, ...args);
-      };
-      globalThis.__tfSiteKeyReplacement = replacement;
-      Object.defineProperty(chrome.runtime, "sendMessage", { configurable: true, writable: true, value: replacement });
-    });
-    expect(await center.evaluate(() => chrome.runtime.sendMessage === globalThis.__tfSiteKeyReplacement)).toBe(true);
     await recordRow.click();
     const detail = await center.evaluate(({ method, recordId }) => chrome.runtime.sendMessage({ protocolVersion: 2, method, recordId }),
       { method: M.GET_RECORD, recordId });
     expect(detail.data.record.safeReturnUrl).toBeNull();
-    await expect(center.getByRole("heading", { name: "Reading history on this site", exact: true })).toBeVisible();
-    expect(await center.evaluate(() => globalThis.__tfSiteKeyFailureFired === true)).toBe(true);
-    await expect(center.getByText("Could not load this record’s site identity. Retry to manage its site markers.", { exact: true })).toBeVisible();
-    await center.evaluate(() => { globalThis.__tfAllowSiteKeyRetry = true; });
-    await center.getByRole("button", { name: "Retry", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Enable site markers", exact: true })).toBeEnabled();
-
-    const peer = await context.newPage(); await peer.goto(`chrome-extension://${id}/learning-center.html#record=${recordId}`);
-    await expect(peer.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
-    await center.evaluate(() => {
-      const original = chrome.permissions.request.bind(chrome.permissions);
-      globalThis.__tfOriginalPermissionRequest = original;
-      chrome.permissions.request = async () => false;
-    });
-    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
-    await expect(center.getByText("Site access was not granted. Markers remain off; you can grant access and try again when you want them.", { exact: true }).first()).toBeVisible();
-    await center.evaluate(() => { chrome.permissions.request = globalThis.__tfOriginalPermissionRequest; });
-    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(peer.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await peer.getByRole("button", { name: "Disable site markers", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Enable site markers", exact: true })).toHaveAttribute("aria-pressed", "false");
-    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
-    await expect(peer.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
     await expect(center.getByRole("button", { name: "Return to original page", exact: true })).toBeDisabled();
     await expect(center.getByRole("link", { name: "Open original page", exact: true })).toHaveCount(0);
     await source.close();

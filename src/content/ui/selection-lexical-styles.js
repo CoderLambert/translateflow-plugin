@@ -57,7 +57,6 @@
   line-height: 1.35;
 }
 .tf-selection-record-status[data-state="saved"] {
-  grid-template-columns: auto minmax(0, 1fr) auto;
   border-color: color-mix(in srgb, var(--tf-green-600) 18%, var(--tf-border-soft));
 }
 .tf-selection-record-message {
@@ -81,14 +80,6 @@
   font-size: 10px;
   line-height: 1;
 }
-.tf-selection-record-marker {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--tf-text-muted);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .tf-selection-record-status > .tf-selection-record-actions {
   justify-content: flex-end;
   margin: 0 0 0 auto;
@@ -104,9 +95,6 @@
 @media (max-width: 360px) {
   .tf-selection-record-status[data-state="saved"] {
     padding-top: 5px;
-  }
-  .tf-selection-record-status[data-state="saved"] > .tf-selection-record-marker {
-    display: none;
   }
   .tf-selection-record-status[data-state="saved"] .tf-ui-button {
     width: 28px;
@@ -132,9 +120,6 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-  .tf-selection-record-status > .tf-selection-record-marker {
-    display: none;
   }
   .tf-selection-record-status > .tf-selection-record-actions {
     grid-column: 1 / -1;

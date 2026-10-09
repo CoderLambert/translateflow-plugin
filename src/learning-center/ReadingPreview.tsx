@@ -61,12 +61,11 @@ export function ReadingPreview() {
 }
 
 function PreviewSummary({ detail, i18n }: { detail: RecordDetail; i18n: ReturnType<typeof useLocale>["i18n"] }) {
-  const latest = detail.artifacts.reduce<RecordDetail["artifacts"][number] | null>((current, artifact) =>
-    !current || artifact.createdAt > current.createdAt ||
-      (artifact.createdAt === current.createdAt && artifact.artifactId > current.artifactId) ? artifact : current, null);
   return <section className="reading-preview-summary" aria-labelledby="detail-title">
     <h2 id="detail-title">{detail.record.itemText}</h2>
-    {!latest ? <Notice>{i18n.t("learning.noHit")}</Notice> : <PreviewArtifact artifact={latest} i18n={i18n} />}
+    {!detail.artifacts.length ? <Notice>{i18n.t("learning.noHit")}</Notice>
+      : <div className="reading-preview-results">{detail.artifacts.map(artifact =>
+        <PreviewArtifact key={artifact.artifactId} artifact={artifact} i18n={i18n} />)}</div>}
   </section>;
 }
 
@@ -75,7 +74,7 @@ function PreviewArtifact({ artifact, i18n }: {
 }) {
   const payload = artifact.payload;
   return <article className="reading-preview-result">
-    <p className="eyebrow">{i18n.t(artifact.kind === "assistant" ? "learning.questions" : "learning.result")}</p>
+    <p className="eyebrow">{i18n.t(artifact.kind === "assistant" ? "learning.questions" : "learning.result")} · {i18n.formatDateTime(artifact.createdAt)}</p>
     {artifact.kind === "assistant" && "userQuestion" in payload
       ? <><strong>{payload.userQuestion}</strong><p className="text">{payload.assistantAnswer}</p></>
       : "definitions" in payload

@@ -209,32 +209,24 @@ test("delete invalidation discards a delayed detail and disconnect removes uncon
 });
 
 
-test("record site identity failure stays visible and a single retry restores marker settings without a safe return URL", async () => {
+test("record details omit marker controls and do not request unused site marker state", async () => {
   history.replaceState(null, "", `/#record=${RECORD_ID}`);
-  const calls: string[] = []; let siteKeyAttempts = 0;
+  const calls: string[] = [];
   const detail = response(M.GET_RECORD).data;
   detail.record.safeReturnUrl = null;
   const client = new ReadingClient(async raw => {
     const request = raw as { method: string };
     calls.push(request.method);
     if (request.method === M.GET_RECORD) return response(M.GET_RECORD, "extension", { data: detail });
-    if (request.method === M.GET_RECORD_SITE_KEY) {
-      siteKeyAttempts++;
-      if (siteKeyAttempts === 1) throw new Error("synthetic one-request failure");
-      return response(M.GET_RECORD_SITE_KEY);
-    }
-    if (request.method === M.GET_SITE_MARKERS) return response(M.GET_SITE_MARKERS);
     if (request.method === M.LIST_RECORDING_EXCLUSIONS) return response(M.LIST_RECORDING_EXCLUSIONS,
       "extension", { data: { items: [], nextCursor: null } });
     return response(request.method);
   });
   const listen = vi.fn(() => vi.fn());
   render(<App client={client} listen={listen} />);
-  await screen.findByRole("heading", { name: "Reading history on this site" });
-  await screen.findByText("Could not load this record’s site identity. Retry to manage its site markers.");
+  await screen.findByRole("heading", { name: detail.record.itemText });
+  expect(screen.queryByRole("button", { name: /site markers/i })).toBeNull();
+  expect(screen.queryByText("Could not load this record’s site identity. Retry to manage its site markers.")).toBeNull();
   expect(calls).not.toContain(M.GET_SITE_MARKERS);
-  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByRole("button", { name: "Enable site markers" });
-  expect(siteKeyAttempts).toBe(2);
-  expect(calls.filter(method => method === M.GET_SITE_MARKERS)).toHaveLength(1);
+  expect(calls).not.toContain(M.GET_RECORD_SITE_KEY);
 });

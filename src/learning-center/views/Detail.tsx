@@ -9,17 +9,14 @@ type AssistantArtifact = RecordDetail["artifacts"][number] & { kind: "assistant"
   userQuestion: string; assistantAnswer: string; action: "understand" | "analyze" | "usage" | "follow-up";
   threadId: string; turnId: string; parentTurnId: string | null; branchId: string; regenerationOf: string | null; completionStatus: "completed";
 } };
-export function Detail({ detail, siteKey, siteKeyStatus = "ready", onRetrySiteKey, markersRevision, i18n, onBack, onDelete, onAssistantSaved, disabled, assistantDisabled = disabled, client }: {
+export function Detail({ detail, i18n, onBack, onDelete, onAssistantSaved, disabled, assistantDisabled = disabled, client }: {
   detail: RecordDetail; i18n: I18n; onBack: () => void; onDelete: () => void; onAssistantSaved?: () => void;
-  disabled: boolean; siteKey?: string | null; siteKeyStatus?: "loading" | "ready" | "error"; onRetrySiteKey?: () => void;
-  markersRevision?: number; assistantDisabled?: boolean; client?: ReadingClient;
+  disabled: boolean; assistantDisabled?: boolean; client?: ReadingClient;
 }) {
   const { record } = detail;
   return <section onKeyDown={event => { if (event.key === "Escape" && !event.defaultPrevented) onBack(); }} aria-labelledby="detail-title">
     <Button onClick={onBack}>{i18n.t("learning.back")}</Button>
     <RecordHistory detail={detail} i18n={i18n} beforeArtifacts={<ReturnToPage record={record} i18n={i18n} disabled={disabled}
-      {...(siteKey !== undefined ? { siteKey } : {})} siteKeyStatus={siteKeyStatus}
-      {...(onRetrySiteKey ? { onRetrySiteKey } : {})} {...(markersRevision !== undefined ? { markersRevision } : {})}
       {...(client ? { client } : {})} />}>
       {artifact => artifact.kind === "assistant" && "userQuestion" in artifact.payload ? <AssistantControls artifact={artifact as AssistantArtifact}
         recordId={record.recordId} recordRevision={record.revision} i18n={i18n} disabled={assistantDisabled}

@@ -240,9 +240,7 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   const recordId = await firstCenter.locator(".record-list .record").first().getAttribute("data-record-id");
   await firstCenter.locator(`[data-record-id="${recordId}"]`).click();
   await expect(firstCenter.getByRole("heading", { name: "session", exact: true })).toBeVisible();
-  await expect(firstCenter.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
-  await firstCenter.getByRole("button", { name: "Enable site markers", exact: true }).click();
-  await expect(firstCenter.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(firstCenter.getByRole("button", { name: /site markers/i })).toHaveCount(0);
   await firstCenter.screenshot({ path: info.outputPath("reading-user-journey-saved-history.png"), fullPage: true });
 
   const restart = await harness.restartBrowser();
@@ -293,7 +291,7 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await returned.locator(".tf-reading-page-toggle").click();
   await expect(returned.locator(".tf-reading-page-panel")).toBeVisible();
   await expect(returned.locator(".tf-reading-page-panel article")).toHaveCount(1);
-  await expect(returned.locator(".tf-reading-page-panel article")).not.toContainText("session");
+  await expect(returned.locator(".tf-reading-page-panel article")).toContainText("session");
 
   const recordOpened = harness.context.waitForEvent("page");
   await returned.locator('[data-action="open-record"]').click();
@@ -346,7 +344,10 @@ test("Supplementary synthetic canonical rows: bounded pagination, >1 MiB detail,
     catch (error) { if (error.code !== "ENOENT") throw error; await mkdir(dirname(target), { recursive: true }); await cp(source, target); }
   }
   const center = await harness.context.newPage(); await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
-  await center.evaluate(async () => { const { seedRecords } = await import(chrome.runtime.getURL("tests/fixtures/reading/storage.mjs")); await seedRecords(31); });
+  await center.evaluate(async () => {
+    await chrome.storage.local.set({ uiLocale: "en" });
+    const { seedRecords } = await import(chrome.runtime.getURL("tests/fixtures/reading/storage.mjs")); await seedRecords(31);
+  });
   await center.reload(); await trace(center);
   await expect(center.locator(".record-list .record")).toHaveCount(30);
   await center.getByRole("button", { name: "Load more", exact: true }).click();

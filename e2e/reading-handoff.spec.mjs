@@ -60,13 +60,9 @@ test("Reading handoff opens the exact saved page and target Content consumes one
     const consumed = await readHandoff();
     expect(Object.keys(consumed.summary).sort()).toEqual(["anchor", "hasCompletedAssistant", "recordId", "revision"]);
 
-    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
-    expect(await driver.evaluate(() => chrome.storage.local.get("readingMemorySites"))).toEqual({ readingMemorySites: [new URL(server.baseUrl).origin] });
+    await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
+    expect(await driver.evaluate(() => chrome.storage.local.get("readingMemoryDisabledSites"))).toEqual({});
     await center.screenshot({ path: info.outputPath("reading-handoff-ready.png"), fullPage: true });
-    await center.getByRole("button", { name: "Disable site markers", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Enable site markers", exact: true })).toHaveAttribute("aria-pressed", "false");
-    expect(await driver.evaluate(() => chrome.storage.local.get("readingMemorySites"))).toEqual({ readingMemorySites: [] });
   } finally {
     await context?.close(); await server.close(); await rm(temporary, { recursive: true, force: true });
   }

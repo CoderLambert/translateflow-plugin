@@ -17,15 +17,6 @@
     label.setAttribute("aria-live", "polite");
     locale.bindText(label, view.messageKey, view.messageArgs || {});
     node.appendChild(label);
-    if (view.state === "saved") {
-      const markerStatus = document.createElement("div");
-      markerStatus.className = "tf-selection-record-marker";
-      markerStatus.setAttribute("role", "status");
-      const key = ({ enabled: "content.reading.siteMarkersOn", disabled: "content.reading.siteMarkersOff",
-        "permission-required": "content.reading.siteMarkersPermission", unknown: "content.reading.siteMarkersUnknown" })[view.siteMarkerStatus] || "content.reading.siteMarkersUnknown";
-      locale.bindText(markerStatus, key);
-      node.appendChild(markerStatus);
-    }
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions tf-selection-record-actions";
     const add = (key, action) => {
@@ -37,7 +28,6 @@
     if (view.state === "invite") { add("content.reading.enableInCenter", handlers.open); add("content.reading.notNow", handlers.decline); }
     if (view.state === "manual") add("content.reading.saveResult", handlers.save);
     if (view.retryAvailable) add("content.reading.retrySave", handlers.retry);
-    if (view.state === "saved") add("content.reading.openSiteMarkers", handlers.open);
     if (actions.childElementCount) node.appendChild(actions);
     const footer = panel.querySelector(":scope > .tf-selection-footer-actions");
     panel.insertBefore(node, footer || null);
