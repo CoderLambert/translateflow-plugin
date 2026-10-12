@@ -36,31 +36,7 @@
     const element = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
     return element?.closest(ROOTS) || element;
   }
-  function rootCandidates(exacts) {
-    const matches = []; let chars = 0, nodes = 0;
-    if (exacts.some(exact => exact.includes("\n"))) return { matches, limited: true };
-    for (const root of document.querySelectorAll(ROOTS)) {
-      let text = "";
-      const stack = [...root.childNodes].reverse();
-      try {
-        while (stack.length) {
-          if (++nodes > TOTAL.nodes || chars + text.length > TOTAL.chars) return { matches, limited: true };
-          const node = stack.pop();
-          if (node.nodeType === 3) {
-            text += String(node.data || "");
-            if (chars + text.length > TOTAL.chars) return { matches, limited: true };
-            continue;
-          }
-          if (node.nodeType !== 1 || node.matches?.(ROOTS)) continue;
-          for (let index = node.childNodes.length - 1; index >= 0; index--) stack.push(node.childNodes[index]);
-        }
-      } catch { return { matches, limited: true }; }
-      chars += text.length;
-      const normalized = text.replace(/[\t\n\r\f ]+/gu, " ").trim();
-      if (exacts.some((exact) => normalized.includes(exact))) matches.push(root);
-    }
-    return { matches, limited: false };
-  }
+  function rootCandidates() { return [...document.querySelectorAll(ROOTS)]; }
   function sameRoots(left, right) {
     return left.length === right.length && left.every((root, index) => root === right[index]);
   }
@@ -71,27 +47,23 @@
     );
     if (!eligible.length) return { results, revision: null };
     projection.start();
+    const revision = projection.revision();
     const exacts = [...new Set(eligible.map((item) => item.anchor.quote.exact))];
-    const candidates = rootCandidates(exacts), roots = candidates.matches;
-    if (candidates.limited || roots.length > TOTAL.nodes) return { results, revision: projection.revision() };
+    const roots = rootCandidates();
+    if (roots.length > TOTAL.nodes) return { results, revision: projection.revision() };
     const projected = new Map();
     for (const root of roots) {
       aborted(signal);
       if (performance.now() - started >= TOTAL.ms) return { results: new Map(), revision: projection.revision() };
       const value = projection.project(root);
       metrics.nodes += value.stats?.nodes || 0; metrics.chars += value.stats?.chars || 0;
-      if (metrics.nodes >= TOTAL.nodes || metrics.chars >= TOTAL.chars) return { results: new Map(), revision: projection.revision() };
-      if (value.status !== "resolved") continue;
-      projected.set(root, { value, digest: await digest(value.text) });
+      if (value.status !== "resolved" || metrics.nodes >= TOTAL.nodes || metrics.chars >= TOTAL.chars ||
+          performance.now() - started >= TOTAL.ms) return { results: new Map(), revision: projection.revision() };
+      if (exacts.some((exact) => value.text.includes(exact))) projected.set(root, { value, digest: await digest(value.text) });
     }
     aborted(signal);
-    const currentRoots = rootCandidates(exacts);
-    if (currentRoots.limited || !sameRoots(roots, currentRoots.matches)) return { results: new Map(), revision: projection.revision() };
-    for (const [root, cached] of projected) {
-      const current = projection.project(root);
-      metrics.nodes += current.stats?.nodes || 0; metrics.chars += current.stats?.chars || 0;
-      if (current.status !== "resolved" || current.text !== cached.value.text) return { results: new Map(), revision: projection.revision() };
-    }
+    if (projection.revision() !== revision || !sameRoots(roots, rootCandidates()))
+      return { results: new Map(), revision: projection.revision() };
     for (const item of eligible) {
       const anchor = item.anchor, exact = anchor.quote.exact, matches = new Map();
       for (const [root, cached] of projected) {

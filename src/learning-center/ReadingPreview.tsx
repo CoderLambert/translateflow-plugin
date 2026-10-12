@@ -161,7 +161,7 @@ function dictionarySummary(detail: RecordDetail) {
 function usefulDefinition(value: string, headword: string) {
   const text = String(value || "").replace(/[\t\r\f ]+/gu, " ").trim();
   if (!text || text.normalize("NFKC").toLocaleLowerCase("en-US") === headword.normalize("NFKC").trim().toLocaleLowerCase("en-US")) return "";
-  if (/^(?:(?:图片|图像|音频|发音|image|picture|audio|pronunciation)|\[(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return "";
+  if (/^(?:\[(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return "";
   const metadata = text.match(/(?:key_[a-z0-9_-]+|ox(?:ford)?\s*(?:3000|5000)|牛津\s*(?:3000|5000)|cefr[_\s-]?[abc][12]|cet[46]|tem[48]|nmet|播放(?:英音|美音))/giu) || [];
   const dialects = text.match(/\b(?:BrE|NAmE)\b/gu) || [];
   return metadata.length + dialects.length >= 2 || /key_[a-z0-9_-]+/iu.test(text) ? "" : text;

@@ -85,33 +85,34 @@ test("authorized revisit keeps one word highlight for repeated lookups and resto
 
     await revisit.evaluate(() => {
       const staleSource = document.querySelector("#source"), staleWord = document.querySelector("#word");
-      staleSource.id = "stale-source"; staleWord.id = "stale-word";
+      const replacementRoot = staleSource.closest("main").cloneNode(true);
+      const replacementSource = replacementRoot.querySelector("#source"), replacementWord = replacementRoot.querySelector("#word");
+      replacementSource.id = "current-source"; replacementWord.id = "current-word";
       staleSource.firstChild.data = "CHANGED "; staleSource.lastChild.data = " shifted";
-      const replacement = document.createElement("p"); replacement.id = "source";
-      replacement.innerHTML = 'PUBLIC <span id="word">session</span> alpha tail';
-      staleSource.replaceWith(replacement);
-      document.body.append(staleSource);
+      replacementRoot.id = "replacement-root";
+      document.body.append(replacementRoot);
+      replacementWord.scrollIntoView({ block: "center" });
     });
     await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(1);
     await expect.poll(async () => {
       const highlight = await revisit.locator(".tf-reading-page-highlight").boundingBox();
-      const current = await revisit.locator("#word").boundingBox();
-      const stale = await revisit.locator("#stale-word").boundingBox();
+      const current = await revisit.locator("#current-word").boundingBox();
+      const stale = await revisit.locator("#word").boundingBox();
       if (!highlight || !current || !stale) return "missing geometry";
       const currentDistance = Math.abs(highlight.x - current.x) + Math.abs(highlight.y - current.y);
       const staleDistance = Math.abs(highlight.x - stale.x) + Math.abs(highlight.y - stale.y);
       return currentDistance < 6 && currentDistance < staleDistance ? "migrated" : { currentDistance, staleDistance };
     }).toBe("migrated");
 
-    await revisit.evaluate(() => { document.querySelector("#source").textContent = "PUBLIC removed alpha tail"; });
+    await revisit.evaluate(() => { document.querySelector("#current-source").textContent = "PUBLIC removed alpha tail"; });
     await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(0);
-    await revisit.evaluate(() => { document.querySelector("#source").innerHTML = "PUBLIC <span id=\"word\">session</span> alpha tail"; });
+    await revisit.evaluate(() => { document.querySelector("#current-source").innerHTML = "PUBLIC <span id=\"current-word\">session</span> alpha tail"; });
     await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(1);
 
     await revisit.evaluate(() => { history.pushState({}, "", "/marker-other"); dispatchEvent(new PopStateEvent("popstate")); });
     await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(0);
     await revisit.goBack(); await expect(revisit).toHaveURL(articleUrl);
-    await revisit.locator("#word").scrollIntoViewIfNeeded();
+    await revisit.evaluate(() => (document.querySelector("#current-word") || document.querySelector("#word")).scrollIntoView({ block: "center" }));
     await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(1);
     await expect(revisit.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
     expect(server.calls).toHaveLength(0);

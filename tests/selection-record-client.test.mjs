@@ -409,6 +409,11 @@ test("Result adapters preserve actual types and bounded provenance while droppin
   assert.deepEqual(json(englishDefinitions.payload.definitions), ["image of a person", "surname and given name"]);
   assert.deepEqual(json(model.vocabularyDraftFromRich({ ...record, text: ["React", "image of a person", "surname and given name"].join("\n") },
     { id: "synthetic", packVersion: "v1" }, "en").definitions), ["image of a person", "surname and given name"]);
+  const shortDefinitions = model.readingRich({ ...record, headword: "photo", text: ["photo", "图片", "image"].join("\n") },
+    { id: "synthetic", packVersion: "v1" });
+  assert.deepEqual(json(shortDefinitions.payload.definitions), ["图片", "image"]);
+  assert.deepEqual(json(model.vocabularyDraftFromRich({ ...record, headword: "photo", text: ["photo", "图片", "image"].join("\n") },
+    { id: "synthetic", packVersion: "v1" }, "en").definitions), ["图片", "image"]);
   assert.equal(JSON.stringify(richVocabulary).includes("PRIVATE_RAW"), false);
   assert.equal(model.readingRich({ ...record, text: "sound://private.mp3" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingRich({ ...record, text: "" }, { id: "synthetic", packVersion: "v1" }), null);

@@ -74,6 +74,32 @@ test("verified-block fast path treats normalized whitespace duplicates as ambigu
   assert.equal(locations.get("target").range, null);
 });
 
+test("verified-block fast path enumerates duplicates through the formal projection policy", async t => {
+  const excluded = [
+    ["hidden", '<span hidden>HIDDEN</span>'],
+    ["aria-hidden", '<span aria-hidden="true">HIDDEN</span>'],
+    ["display-none", '<span style="display:none">HIDDEN</span>'],
+    ["visibility-hidden", '<span style="visibility:hidden">HIDDEN</span>'],
+    ["content-visibility-hidden", '<span style="content-visibility:hidden">HIDDEN</span>'],
+    ["opacity-zero", '<span style="opacity:0">HIDDEN</span>'],
+    ["excluded-tag", "<script>HIDDEN</script>"]
+  ];
+  for (const [label, hidden] of excluded) {
+    await t.test(label, async () => {
+      const f = fixture(`<main><p class="same">left alpha beta right</p><p class="same">left alpha${hidden} beta right</p></main>`);
+      try {
+        const blocks = [...f.window.document.querySelectorAll(".same")].map(root => f.modules.textProjection.project(root));
+        assert.equal(blocks[0].status, "resolved"); assert.equal(blocks[1].status, "resolved");
+        assert.equal(blocks[1].text, blocks[0].text);
+        const anchor = await anchorFor(f, ".same", "alpha beta", { prefix: "left ", suffix: " right" });
+        f.modules.textProjection.createScanner = () => { throw new Error("fast path should settle formal duplicates"); };
+        const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+        assert.equal(locations.get("target").status, "ambiguous"); assert.equal(locations.get("target").range, null);
+      } finally { f.dom.window.close(); }
+    });
+  }
+});
+
 test("resolver restores a split-inline exact Range after node replacement and ignores the stale position hint", async t => {
   const f = fixture('<main><p id="target">alpha <span>ses</span><em>sion</em> tail</p></main>'); t.after(() => f.dom.window.close());
   const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });

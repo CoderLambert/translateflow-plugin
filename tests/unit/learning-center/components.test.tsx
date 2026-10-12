@@ -31,15 +31,19 @@ test("bound preview retry reads the same session without claiming it again", asy
     return nativeAdd(type, listener, options);
   }) as typeof window.addEventListener);
   const claim = vi.spyOn(readingClient, "previewClaim").mockResolvedValue({ claimId: "claim-1" });
+  const preview = response(M.PREVIEW_READ).data as any;
+  preview.artifacts[0].payload.definitions = ["图片", "image", "[图片资源未导入]"];
   const read = vi.spyOn(readingClient, "previewRead")
     .mockRejectedValueOnce(new Error("transient"))
-    .mockResolvedValue(response(M.PREVIEW_READ).data as any);
+    .mockResolvedValue(preview);
   render(<ReadingPreview />);
   await waitFor(() => expect(claim).toHaveBeenCalledTimes(1));
   await act(async () => message?.({ isTrusted: true, source: window.parent, origin: "https://example.test",
     data: { type: "translateflow-reading-preview-bound", previewId: "preview-1", claimId: "claim-1" } } as MessageEvent));
   await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
   await screen.findByRole("heading", { name: "React" });
+  expect(screen.getByText("图片")).toBeTruthy(); expect(screen.getByText("image")).toBeTruthy();
+  expect(screen.queryByText("[图片资源未导入]")).toBeNull();
   expect(read).toHaveBeenCalledTimes(2);
   expect(claim).toHaveBeenCalledTimes(1);
 });
