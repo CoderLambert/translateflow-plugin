@@ -28,7 +28,9 @@
             releaseImageWhenOffscreen(session, observedResource);
           }
         }
-      }, { root: session.viewport, rootMargin: "0px" });
+      // The viewer expands inside .tf-selection-result; it is not itself a scroll root.
+      // A viewport root also accounts for clipping by that scrolling ancestor.
+      }, { root: null, rootMargin: "0px" });
       for (const instance of resource.instances) observeImageInstance(session, resource, instance);
     }
 

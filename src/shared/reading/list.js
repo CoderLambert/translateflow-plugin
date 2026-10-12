@@ -5,7 +5,7 @@ import { array, bool, choice, fail, id, integer, nullable, object, pageKey, reco
 export function validatePageSummaryItem(value, path = "pageSummaryItem") {
   object(value, ["recordId", "revision", "itemKey", "anchor", "hasCompletedAssistant"], path);
   return { recordId: recordId(value.recordId, `${path}.recordId`), revision: revision(value.revision, `${path}.revision`),
-    itemKey: text(value.itemKey, L.selectionChars + L.languageChars + 32, `${path}.itemKey`),
+    itemKey: text(value.itemKey, L.itemKeyChars, `${path}.itemKey`),
     anchor: validateAnchor(value.anchor, `${path}.anchor`), hasCompletedAssistant: bool(value.hasCompletedAssistant, `${path}.hasCompletedAssistant`) };
 }
 export function validateResultPreview(value, path) {

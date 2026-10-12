@@ -364,21 +364,22 @@ test.describe("local MDD resource product and security behavior", () => {
 
     const layoutBeforeUnload = await viewer.evaluate((root) => {
       const currentImage = root.querySelector("img.tf-rich-resource-image");
+      const scrollRoot = root.getRootNode().host.closest(".tf-selection-result");
       const tail = document.createElement("p");
       tail.dataset.testScrollTail = "true";
       tail.textContent = "TAIL_AFTER_TALL_IMAGE";
       tail.style.height = "600px";
       tail.style.margin = "0";
       currentImage.after(tail);
-      const imageBottom = currentImage.getBoundingClientRect().bottom - root.getBoundingClientRect().top + root.scrollTop;
-      root.scrollTop = imageBottom + 10;
+      const imageBottom = currentImage.getBoundingClientRect().bottom - scrollRoot.getBoundingClientRect().top + scrollRoot.scrollTop;
+      scrollRoot.scrollTop = imageBottom + 10;
       const tailRect = tail.getBoundingClientRect();
       return {
-        scrollHeight: root.scrollHeight,
-        scrollTop: root.scrollTop,
-        tailTop: tailRect.top - root.getBoundingClientRect().top,
+        scrollHeight: scrollRoot.scrollHeight,
+        scrollTop: scrollRoot.scrollTop,
+        tailTop: tailRect.top - scrollRoot.getBoundingClientRect().top,
         tailText: tail.textContent,
-        imageTop: currentImage.getBoundingClientRect().top - root.getBoundingClientRect().top
+        imageTop: currentImage.getBoundingClientRect().top - scrollRoot.getBoundingClientRect().top
       };
     });
     expect(layoutBeforeUnload.imageTop).toBeLessThan(-200);
@@ -386,12 +387,13 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(0);
     const layoutAfterUnload = await viewer.evaluate((root) => {
       const currentImage = root.querySelector("img.tf-rich-resource-image");
+      const scrollRoot = root.getRootNode().host.closest(".tf-selection-result");
       const tail = root.querySelector("[data-test-scroll-tail]");
       const tailRect = tail.getBoundingClientRect();
       return {
-        scrollHeight: root.scrollHeight,
-        scrollTop: root.scrollTop,
-        tailTop: tailRect.top - root.getBoundingClientRect().top,
+        scrollHeight: scrollRoot.scrollHeight,
+        scrollTop: scrollRoot.scrollTop,
+        tailTop: tailRect.top - scrollRoot.getBoundingClientRect().top,
         imageWidth: currentImage.width,
         imageHeight: currentImage.height,
         imageHasSource: currentImage.hasAttribute("src"),
@@ -403,11 +405,14 @@ test.describe("local MDD resource product and security behavior", () => {
     expect(layoutAfterUnload.tailTop).toBe(layoutBeforeUnload.tailTop);
     expect(layoutAfterUnload).toMatchObject({ imageWidth: 240, imageHeight: 600, imageHasSource: false, imageVisibility: "hidden" });
 
-    await viewer.evaluate((root) => { root.scrollTop = 0; });
+    await viewer.evaluate((root) => { root.getRootNode().host.closest(".tf-selection-result").scrollTop = 0; });
     await expect(image).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => image.evaluate((node) => node.naturalHeight)).toBe(600);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
-    const layoutAfterReturn = await viewer.evaluate((root) => ({ scrollHeight: root.scrollHeight, scrollTop: root.scrollTop }));
+    const layoutAfterReturn = await viewer.evaluate((root) => {
+      const scrollRoot = root.getRootNode().host.closest(".tf-selection-result");
+      return { scrollHeight: scrollRoot.scrollHeight, scrollTop: scrollRoot.scrollTop };
+    });
     expect(layoutAfterReturn.scrollHeight).toBe(layoutBeforeUnload.scrollHeight);
     expect(layoutAfterReturn.scrollTop).toBe(0);
     expect(harness.server.calls).toHaveLength(0);

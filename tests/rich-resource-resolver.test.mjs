@@ -125,6 +125,8 @@ test("duplicate visible image instances share one URL and release it after the l
     { kind: "image", path: "images/shared.png", label: "shared", elements: [first, second] }
   ], "rich-mdict-10000000-0000-4000-8000-000000000001", "v1");
 
+  assert.equal(harness.observer.options.root, null, "lazy media follows the browser viewport and clipping scroll ancestors");
+
   harness.observer.trigger(first, true);
   harness.observer.trigger(second, true);
   await waitFor(() => harness.resolver.activeObjectUrlCount === 1);
@@ -377,7 +379,7 @@ function createMediaLifecycleHarness(assets) {
   const messages = [];
   let latestObserver = null;
   class Observer {
-    constructor(callback) { this.callback = callback; this.targets = new Set(); latestObserver = this; }
+    constructor(callback, options) { this.callback = callback; this.options = options; this.targets = new Set(); latestObserver = this; }
     observe(target) { this.targets.add(target); }
     unobserve(target) { this.targets.delete(target); }
     disconnect() { this.targets.clear(); }

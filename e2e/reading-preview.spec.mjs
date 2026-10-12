@@ -72,6 +72,8 @@ test("saved lookup details reopen from the highlighted word without exposing ans
   await revisit.setViewportSize({ width: 1280, height: 800 });
   await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(3);
   await expect(revisit.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
+  await revisit.evaluate(() => { document.querySelector("#technical-competition").textContent = "The original saved location moved away."; });
+  await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(2);
   await revisit.locator("#technical-competition-second").hover();
   const hoverPreview = revisit.frameLocator("iframe.tf-reading-hover-frame");
   await expect(hoverPreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();

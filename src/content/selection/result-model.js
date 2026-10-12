@@ -280,9 +280,10 @@
   function richMetadataLine(value) {
     const text = String(value || "").normalize("NFKC").trim();
     if (!text) return true;
-    if (/^(?:\[?(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]?|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return true;
-    const metadata = text.match(/(?:key_[a-z0-9_-]+|ox(?:ford)?\s*(?:3000|5000)|牛津\s*(?:3000|5000)|cefr[_\s-]?[abc][12]|cet[46]|tem[48]|nmet|播放(?:英音|美音)|br(?:itish)?e|nam(?:erican)?e)/giu) || [];
-    return /key_[a-z0-9_-]+/iu.test(text) || metadata.length >= 2;
+    if (/^(?:(?:图片|图像|音频|发音|image|picture|audio|pronunciation)|\[(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return true;
+    const metadata = text.match(/(?:key_[a-z0-9_-]+|ox(?:ford)?\s*(?:3000|5000)|牛津\s*(?:3000|5000)|cefr[_\s-]?[abc][12]|cet[46]|tem[48]|nmet|播放(?:英音|美音))/giu) || [];
+    const dialects = text.match(/\b(?:BrE|NAmE)\b/gu) || [];
+    return /key_[a-z0-9_-]+/iu.test(text) || metadata.length + dialects.length >= 2;
   }
   function vocabularyDraftFromRich(record, dictionary, sourceLanguage = "en") {
     const reading = readingRich(record, dictionary), headword = String(reading?.payload?.headword || "").trim();

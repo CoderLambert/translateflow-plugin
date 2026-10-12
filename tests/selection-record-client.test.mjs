@@ -72,6 +72,7 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
     enable() { state = { ...state, enabled: true, consentGeneration: state.consentGeneration + 1 }; },
     pause() { state = { ...state, enabled: false, consentGeneration: state.consentGeneration + 1 }; },
     connections: () => connections,
+    disconnect() { disconnected?.(); },
     notify(overrides = {}) { notify?.(clone({ protocolVersion: 2, type: "reading.invalidate", pageRevision: 1,
       dataGeneration: 1, consentGeneration: state.consentGeneration, ...overrides })); },
     notifySiteMarkers() { notify?.(clone({ protocolVersion: 2, type: "reading.site-markers.invalidate" })); },
@@ -343,6 +344,21 @@ test("Site-marker invalidation leaves the saved card unchanged and does not bloc
   assert.equal(h.messages.filter((request) => request.method === M.APPEND_ASSISTANT).length, 1);
 });
 
+test("Invalidation disconnect with a saved ref reconnects and refreshes through the current local summary path", async () => {
+  const refreshed = deferred();
+  const h = await harness({ summaryOfWrites: true, withSubscription: true, responseFilter(value, request) {
+    if (request.method === M.GET_PAGE_SUMMARY) refreshed.resolve();
+    return value;
+  } }), ctx = h.start();
+  h.client.accept(ctx, h.draft); await ctx.queue;
+  assert.equal(h.connections(), 1); assert.ok(ctx.ref);
+
+  assert.doesNotThrow(() => h.disconnect());
+  await refreshed.promise;
+  assert.equal(h.connections(), 2); assert.equal(ctx.blocked, false); assert.ok(ctx.ref);
+  assert.equal(h.messages.filter((request) => request.method === M.GET_PAGE_SUMMARY).length, 1);
+});
+
 test("An unchanged unsupported anchor preserves its committed snapshot without becoming resolved", async () => {
   const anchor = { ...snapshot().anchor, status: "unsupported", position: null, blockDigest: null };
   const h = await harness({ summaryOfWrites: true, sourceOverrides: { anchor }, responseFilter(value, request) {
@@ -388,6 +404,11 @@ test("Result adapters preserve actual types and bounded provenance while droppin
   const cleanedRich = model.readingRich({ ...record, text: ["React", "BrE /riˈækt/ 播放英音", "图片 · Ox5000 key_L",
     "牛津5000词汇表", "用于构建用户界面的 JavaScript 库"].join("\n") }, { id: "synthetic", packVersion: "v1" });
   assert.deepEqual(json(cleanedRich.payload.definitions), ["用于构建用户界面的 JavaScript 库"]);
+  const englishDefinitions = model.readingRich({ ...record, text: ["React", "image of a person", "surname and given name"].join("\n") },
+    { id: "synthetic", packVersion: "v1" });
+  assert.deepEqual(json(englishDefinitions.payload.definitions), ["image of a person", "surname and given name"]);
+  assert.deepEqual(json(model.vocabularyDraftFromRich({ ...record, text: ["React", "image of a person", "surname and given name"].join("\n") },
+    { id: "synthetic", packVersion: "v1" }, "en").definitions), ["image of a person", "surname and given name"]);
   assert.equal(JSON.stringify(richVocabulary).includes("PRIVATE_RAW"), false);
   assert.equal(model.readingRich({ ...record, text: "sound://private.mp3" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingRich({ ...record, text: "" }, { id: "synthetic", packVersion: "v1" }), null);

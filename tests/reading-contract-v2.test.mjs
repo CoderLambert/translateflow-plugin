@@ -6,6 +6,7 @@ import { validateReadingResponse } from "../src/shared/reading/response.js";
 import { validateRecordDetail } from "../src/shared/reading/record.js";
 import { projectRecordListItem } from "../src/shared/reading/previews.js";
 import { siteKey } from "../src/shared/reading/validation.js";
+import { createReadingItemKey } from "../src/shared/reading/identity.js";
 import { artifact, pageListItem, record, recordListItem, request, response, snapshot } from "./fixtures/reading/contract.mjs";
 const rejects = (fn, code) => assert.throws(fn, (error) => error.code === code);
 
@@ -27,6 +28,26 @@ test("Minimal current-page summary has counts/revision/assistant flag without UR
     rejects(() => validateReadingResponse(M.GET_PAGE_SUMMARY, response(M.GET_PAGE_SUMMARY, "content", {
       data: { ...response(M.GET_PAGE_SUMMARY).data, items: [item] }
     }), "content"), E.BAD_DTO);
+  }
+});
+test("Maximum escaped item identities remain bounded across page summaries and handoffs", () => {
+  const selected = "\u0001".repeat(L.selectionChars), language = "\u0001".repeat(L.languageChars);
+  const itemKey = createReadingItemKey(selected, language);
+  assert.equal(itemKey.length, L.itemKeyChars);
+  for (const method of [M.GET_PAGE_SUMMARY, M.CONSUME_HANDOFF]) {
+    const valid = response(method, "content");
+    const data = method === M.GET_PAGE_SUMMARY
+      ? { ...valid.data, items: [{ ...valid.data.items[0], itemKey }] }
+      : { ...valid.data, itemKey };
+    const parsed = validateReadingResponse(method, { ...valid, data }, "content").data;
+    assert.equal(method === M.GET_PAGE_SUMMARY ? parsed.items[0].itemKey : parsed.itemKey, itemKey);
+  }
+  rejects(() => validateReadingResponse(M.CONSUME_HANDOFF, {
+    ...response(M.CONSUME_HANDOFF, "content"),
+    data: { ...response(M.CONSUME_HANDOFF, "content").data, itemKey: `${itemKey}x` }
+  }, "content"), E.LIMIT);
+  for (const value of ["\"".repeat(L.selectionChars), "\\".repeat(L.selectionChars), "😀".repeat(L.selectionChars / 2)]) {
+    assert.ok(createReadingItemKey(value, "en").length <= L.itemKeyChars);
   }
 });
 test("Record preview derives latest completed artifact and that exact snapshot; no-hit is honest", () => {

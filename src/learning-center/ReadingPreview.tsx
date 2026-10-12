@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Detail as RecordDetail, PreviewDetail } from "./client/reading";
 import { readingClient } from "./client/reading";
 import { compareAssistantArtifacts } from "../shared/reading/artifact.js";
@@ -14,6 +14,7 @@ export function ReadingPreview() {
   const { i18n, ready, error: localeError } = useLocale();
   const [detail, setDetail] = useState<PreviewDetail | null>(null), [failed, setFailed] = useState(false), [attempt, setAttempt] = useState(0);
   const previewId = new URLSearchParams(location.search).get("previewId") || "";
+  const boundPreview = useRef("");
 
   useEffect(() => {
     let active = true, boundReceived = false, reading = false;
@@ -23,6 +24,14 @@ export function ReadingPreview() {
       if (event.key !== "Escape") return;
       event.preventDefault(); event.stopPropagation(); close();
     };
+    const read = async () => {
+      if (reading) return;
+      reading = true; clearTimeout(timer);
+      try {
+        const value = await readingClient.previewRead(previewId);
+        if (active) setDetail(value);
+      } catch { if (active) setFailed(true); }
+    };
     const onMessage = async (event: MessageEvent) => {
       let origin: URL;
       try { origin = new URL(event.origin); } catch { return; }
@@ -31,15 +40,13 @@ export function ReadingPreview() {
       const message = event.data;
       if (message.type !== BOUND_MESSAGE || Object.keys(message).length !== 3 || message.previewId !== previewId ||
           typeof message.claimId !== "string" || boundReceived || reading) return;
-      boundReceived = true; reading = true; clearTimeout(timer);
-      try {
-        const value = await readingClient.previewRead(previewId);
-        if (active) setDetail(value);
-      } catch { if (active) setFailed(true); }
+      boundReceived = true; boundPreview.current = previewId;
+      await read();
     };
     window.addEventListener("message", onMessage);
     window.addEventListener("keydown", onKeyDown, true);
     if (!previewId) setFailed(true);
+    else if (boundPreview.current === previewId) void read();
     else void readingClient.previewClaim(previewId).then(({ claimId }) => {
       if (!active) return;
       window.parent.postMessage({ type: CLAIM_MESSAGE, previewId, claimId }, "*");
@@ -154,9 +161,10 @@ function dictionarySummary(detail: RecordDetail) {
 function usefulDefinition(value: string, headword: string) {
   const text = String(value || "").replace(/[\t\r\f ]+/gu, " ").trim();
   if (!text || text.normalize("NFKC").toLocaleLowerCase("en-US") === headword.normalize("NFKC").trim().toLocaleLowerCase("en-US")) return "";
-  if (/^(?:\[?(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]?|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return "";
-  const metadata = text.match(/(?:key_[a-z0-9_-]+|ox(?:ford)?\s*(?:3000|5000)|牛津\s*(?:3000|5000)|cefr[_\s-]?[abc][12]|cet[46]|tem[48]|nmet|播放(?:英音|美音)|br(?:itish)?e|nam(?:erican)?e)/giu) || [];
-  return metadata.length >= 2 || /key_[a-z0-9_-]+/iu.test(text) ? "" : text;
+  if (/^(?:(?:图片|图像|音频|发音|image|picture|audio|pronunciation)|\[(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return "";
+  const metadata = text.match(/(?:key_[a-z0-9_-]+|ox(?:ford)?\s*(?:3000|5000)|牛津\s*(?:3000|5000)|cefr[_\s-]?[abc][12]|cet[46]|tem[48]|nmet|播放(?:英音|美音))/giu) || [];
+  const dialects = text.match(/\b(?:BrE|NAmE)\b/gu) || [];
+  return metadata.length + dialects.length >= 2 || /key_[a-z0-9_-]+/iu.test(text) ? "" : text;
 }
 
 function addUnique(target: string[], value: string) {

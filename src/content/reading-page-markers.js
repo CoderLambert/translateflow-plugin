@@ -32,6 +32,12 @@
   }
   const visible = rect => rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth;
   function visibleRects(range) { try { return [...range.getClientRects()].filter(visible).slice(0, 16); } catch { return []; } }
+  function rangeMatchesExpected(range, expectedRaw) {
+    try {
+      return Boolean(range?.startContainer?.isConnected && range?.endContainer?.isConnected &&
+        String(range.toString()) === expectedRaw);
+    } catch { return false; }
+  }
   function positionGroup(group, rects) {
     group.hitRects = rects;
     const layer = app.modules.uiHost.getLayer("reading-page-highlights");
@@ -49,8 +55,7 @@
   }
   function positionHighlights() {
     for (const group of groups) {
-      let current = false;
-      try { current = group.range?.startContainer?.isConnected && group.range?.endContainer?.isConnected && String(group.range.toString()) === group.expected; } catch {}
+      const current = rangeMatchesExpected(group.range, group.expectedRaw);
       positionGroup(group, current ? visibleRects(group.range) : []);
     }
     if (!preview?.anchorRect) return;
@@ -62,8 +67,11 @@
       const before = left.get(item.recordId), after = right.get(item.recordId);
       if (before?.status !== after?.status) return false;
       if (before?.status !== "resolved") return true;
-      try { return before.verifiedText === after.verifiedText && before.range?.startContainer?.isConnected && before.range?.endContainer?.isConnected &&
-        String(before.range.toString()) === item.anchor.quote.exact; } catch { return false; }
+      try { return before.verifiedText === item.anchor.quote.exact && after.verifiedText === item.anchor.quote.exact &&
+        before.range?.startContainer?.isConnected && before.range?.endContainer?.isConnected &&
+        after.range?.startContainer?.isConnected && after.range?.endContainer?.isConnected &&
+        before.range.startContainer === after.range.startContainer && before.range.startOffset === after.range.startOffset &&
+        before.range.endContainer === after.range.endContainer && before.range.endOffset === after.range.endOffset; } catch { return false; }
     });
   }
   function positionHoverPreview(active) {
@@ -145,8 +153,7 @@
     });
   }
   function groupIsCurrent(group) {
-    if (group?.renderedGeneration !== generation || !group.range?.startContainer?.isConnected || !group.range?.endContainer?.isConnected) return false;
-    try { return String(group.range.toString()) === group.expected; } catch { return false; }
+    return group?.renderedGeneration === generation && rangeMatchesExpected(group.range, group.expectedRaw);
   }
   function scheduleHoverPreview(item, group, delay = 160, anchorRect = null) {
     clearTimeout(hoverCloseTimer); hoverCloseTimer = 0;
@@ -212,16 +219,17 @@
       return `${nodeId(range.startContainer)}:${range.startOffset}:${nodeId(range.endContainer)}:${range.endOffset}`;
     };
     for (const item of items) {
+      if (!item.hasCompletedAssistant) continue;
+      const related = assistantsByItem.get(item.itemKey) || [];
+      related.push(item); assistantsByItem.set(item.itemKey, related);
+    }
+    for (const item of items) {
       const location = locations.get(item.recordId), quote = item.anchor.quote.exact;
       const current = location?.status === "resolved" && location.range?.startContainer?.isConnected && location.range?.endContainer?.isConnected && location.verifiedText === quote;
       if (!current) continue;
-      if (item.hasCompletedAssistant) {
-        const related = assistantsByItem.get(item.itemKey) || [];
-        related.push(item); assistantsByItem.set(item.itemKey, related);
-      }
       const key = rangeKey(location.range), existing = rangeGroups.get(key);
       if (existing) { if (item.hasCompletedAssistant && !existing.item.hasCompletedAssistant) existing.item = item; continue; }
-      const group = { range: location.range, expected: quote, highlights: [], hitRects: [], item, renderedGeneration, relatedRecords: [] };
+      const group = { range: location.range, expectedRaw: String(location.range.toString()), highlights: [], hitRects: [], item, renderedGeneration, relatedRecords: [] };
       rangeGroups.set(key, group); groups.push(group);
     }
     for (const group of groups) group.relatedRecords = (assistantsByItem.get(group.item.itemKey) || [])

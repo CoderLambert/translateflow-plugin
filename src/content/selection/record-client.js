@@ -81,7 +81,7 @@
             void refresh(true);
           } catch (caught) { failure(current, caught); }
         });
-        port.onDisconnect.addListener(() => { if (port === ownedPort) { port = null; invalidation = null; if (current?.ref) void refreshSiteMarkers(current); } });
+        port.onDisconnect.addListener(() => { if (port === ownedPort) { port = null; invalidation = null; if (current?.ref) void refresh(true); } });
       } catch { /* Focus and each explicit query also re-read policy. */ }
     }
     async function policy(ctx) {

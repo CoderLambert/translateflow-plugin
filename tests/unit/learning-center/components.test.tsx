@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { App } from "../../../src/learning-center/App";
 import { ReadingClient } from "../../../src/learning-center/client/reading";
+import { readingClient } from "../../../src/learning-center/client/reading";
+import { ReadingPreview } from "../../../src/learning-center/ReadingPreview";
 import { Library } from "../../../src/learning-center/views/Library";
 import { Detail } from "../../../src/learning-center/views/Detail";
 import { VocabularyBook } from "../../../src/learning-center/views/VocabularyBook";
@@ -17,8 +19,30 @@ beforeEach(() => {
   history.replaceState(null, "", "/");
   vi.stubGlobal("chrome", { i18n: { getUILanguage: () => "en" }, storage: { local: { get: async () => ({ uiLocale: "en" }) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } });
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const i18n = createI18n({ uiLocale: "en" });
+test("bound preview retry reads the same session without claiming it again", async () => {
+  history.replaceState(null, "", "/reading-preview.html?previewId=preview-1");
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  let message: ((event: MessageEvent) => void) | undefined;
+  const nativeAdd = window.addEventListener.bind(window);
+  vi.spyOn(window, "addEventListener").mockImplementation(((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+    if (type === "message") message = listener as (event: MessageEvent) => void;
+    return nativeAdd(type, listener, options);
+  }) as typeof window.addEventListener);
+  const claim = vi.spyOn(readingClient, "previewClaim").mockResolvedValue({ claimId: "claim-1" });
+  const read = vi.spyOn(readingClient, "previewRead")
+    .mockRejectedValueOnce(new Error("transient"))
+    .mockResolvedValue(response(M.PREVIEW_READ).data as any);
+  render(<ReadingPreview />);
+  await waitFor(() => expect(claim).toHaveBeenCalledTimes(1));
+  await act(async () => message?.({ isTrusted: true, source: window.parent, origin: "https://example.test",
+    data: { type: "translateflow-reading-preview-bound", previewId: "preview-1", claimId: "claim-1" } } as MessageEvent));
+  await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+  await screen.findByRole("heading", { name: "React" });
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(claim).toHaveBeenCalledTimes(1);
+});
 test("Still learning reports the saved review and refreshes the due card", async () => {
   const entry = {
     id: "review-entry", headword: "session", sourceLanguage: "en", targetLanguage: "zh-CN",

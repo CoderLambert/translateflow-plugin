@@ -40,20 +40,43 @@
 
 | 命令或检查 | 结果 |
 | --- | --- |
-| `npm run validate` | PASS；647 个源码文件通过检查，i18n 879 keys，Node `1227/1227`，严格 typecheck，Vitest `9` files / `39/39`，默认 WXT 开发安装包构建成功。平台代码预算仍有既有 advisory：超出 153,494 bytes。 |
+| `npm run validate` | PASS；647 个源码文件通过检查，i18n 879 keys，Node `1230/1230`，严格 typecheck，Vitest `9` files / `40/40`，默认 WXT 开发安装包构建成功。平台代码预算仍有既有 advisory：超出 153,997 bytes。 |
 | `node scripts/reading-content-classic.mjs --check` | PASS；两个生成的 classic Reading 文件与唯一源码一致。 |
-| `npm run build:extension:wxt` | PASS；`.output/chrome-mv3` 为 197 files / 39,231,900 bytes。 |
+| `npm run build:extension:wxt` | PASS；`.output/chrome-mv3` 为 197 files / 39,232,573 bytes。 |
 | `npm run test:wxt:smoke` | PASS；Chromium `153.0.8010.12`，Popup/Options/background/Workers/Content smoke 通过，无页面错误、外部请求或意外动态注册。 |
 | `npm run test:e2e -- e2e/selection-assistant-ui.spec.mjs e2e/reading-preview.spec.mjs e2e/reading-page-markers.spec.mjs e2e/selection-reading-record.spec.mjs e2e/learning-center.spec.mjs` | PASS，`18/18`，单 worker。覆盖自然关闭竞态、Stop 负例、restart hover、related record、刷新稳定性、完整历史与窄视口 BCR。使用 mock Provider 与临时 profile。 |
 | `git diff --check` | PASS。 |
 
-`dist/extension` 与 `.output/chrome-mv3` 的逐文件 tree SHA-256 均为 `6363bfe83350ac10b076a52c13b88133bae59debbb5a624d014d6599d6116bd9`。E2E 使用临时测试副本并加入合成词典与 localhost 权限，不能把临时副本当作用户安装包。
+`dist/extension` 与 `.output/chrome-mv3` 的逐文件 tree SHA-256 均为 `4aacec4f2171715846a278bfd865444eeaee31c749b8be3e2269be771d4fb3ef`，Content SHA-256 均为 `b9211d07f8d68233b38a0f2ababa40702050c36f22c8ebae43fd85a2df41d6c1`。E2E 使用临时测试副本并加入合成词典与 localhost 权限，不能把临时副本当作用户安装包。
 
 ## 限制与真实 profile 状态
 
-- **REAL ACCEPTANCE: BLOCKED**。现有 Chrome profile 可见，但当前浏览器控制能力不允许读取 `chrome://extensions`、扩展页加载目录或运行 Content hash，因此无法证明同一实际扩展 ID 已加载上述 `6363bfe8…6bd9` 候选，也无法形成真实 `APPEND → artifact → refresh/restart hover` 证据。
+- **REAL ACCEPTANCE: BLOCKED**。现有 Chrome profile 配置的固定 unpacked 目录已安全切换为上述 `4aacec4f…d4fb3ef` 候选，但浏览器控制策略明确禁止访问 `chrome://extensions`，因此无法点击 reload，也不能证明浏览器进程已加载 Content `b9211d07…41d6c1`；没有在未确认 reload 的状态下调用真实 Provider 或伪造 `APPEND → artifact → refresh/restart hover` 证据。
 - 没有以临时 profile、mock Provider 或自动测试替代上述真实 profile 结论；真实 Provider 增量也因此记为 `UNKNOWN`。自动 E2E 中 hover 的 Provider 增量为 `0`。
-- 没有修改用户 IndexedDB、Reading 开关、站点排除、API Key、模型配置或私人词典，没有清空数据；也没有更新本机候选安装目录，因为无法在受控接口中确认其加载/恢复链。
+- 没有修改用户 IndexedDB、Reading 开关、站点排除、API Key、模型配置或私人词典，没有清空数据。候选目录切换前已把原目录完整保存在 `extension.backup-20261012T215500Z`；没有执行扩展 reload。
 - 未运行 Chrome 102、其它浏览器、真实 YouTube timedtext、真实付费 Provider、发布词典认证、商店发布或 main 合并。
 
-完成真实 profile 验收所需的最小人工步骤是：在现有 Chrome 的扩展管理页确认该固定 ID 的加载目录为本次候选并点击一次“重新加载”，刷新目标页；随后可在不等待 saved selector 的节奏下执行“完成后立即关闭 → 直接 hover”，再刷新和正常重启核对。该操作不应清空 profile 或 Reading 数据。
+完成真实 profile 验收所需的最小人工步骤是：在现有 Chrome 的扩展管理页对该固定 ID 点击一次“重新加载”，刷新目标页；随后可在不等待 saved selector 的节奏下执行“完成后立即关闭 → 直接 hover”，再刷新和正常重启核对。该操作不应清空 profile 或 Reading 数据，也不需要新增扩展权限。
+
+## 复审断连回归修复
+
+独立复审发现 Selection invalidation port 的 `onDisconnect` 仍调用已删除的 `refreshSiteMarkers`。当当前卡已有已保存 ref、后台 service worker 重启或端口异常断开时，该残留调用会抛出 `ReferenceError`，既不能重连，也不能校验保存引用。
+
+- 断连回调现改用既有 `refresh(true)` 路径：重新读取 recording/site policy、重建 invalidation subscription，并通过当前页摘要校验 ref；不读取详情、不更新 viewed revision，也不调用 Provider。
+- `tests/selection-record-client.test.mjs` 新增带已保存 ref 的断连回归，断言回调不抛错、连接数从 1 增至 2、只执行一次 `GET_PAGE_SUMMARY` 且当前 ref 未被阻断。
+
+## 独立复审后续收口
+
+同一轮独立复审另发现七项边界回归，均在一次候选中修复：
+
+| 边界 | 修复与证据 |
+| --- | --- |
+| 已绑定 preview 读取失败后 Retry | 前端记住本 `previewId` 已成功绑定，重试只再次 `PREVIEW_READ`，不重复已被后台禁止的 `PREVIEW_CLAIM`。Vitest 断言首次读取失败后第二次读取成功，claim 始终恰好一次。 |
+| 最大转义 `itemKey` | 统一按版本前缀、JSON 固定包络和每个 UTF-16 unit 最坏 6 字符转义推导 `itemKeyChars=12491`；页面摘要和 handoff 共用同一上界。控制字符、引号、反斜杠和 surrogate-pair 边界均有回归。 |
+| marker Range 迁移 | `sameLocations` 同时比较新旧 Range 的两端节点和 offset，不再只验证旧 Range；渲染保留本次 Range 的原始文本作轻量存活校验，支持规范化空白。真实 Chromium 保留旧节点 connected、把合法 anchor 移到新节点后，高亮几何迁移到新位置。 |
+| 不可定位 related AI | assistant 候选先按完整有界页面摘要和精确 `itemKey` 聚合，再单独筛选可定位 marker；旧 AI record 即使失去定位，同页同词的可定位 record 仍能 local-only 恢复完整 AI 历史。E2E 中高亮从 3 降到 2 后，第二个同词 marker 仍恢复回答与追问，Provider 增量为 0。 |
+| 富媒体 IntersectionObserver 根 | `.tf-rich-viewer` 已非滚动容器，Observer 改用浏览器 viewport root，让 `.tf-selection-result` 的实际祖先裁切参与交叉计算。真实外层滚动回归确认离屏 Blob URL 从 1 回收为 0，回到可见区后恢复为 1，布局高度/滚动位置不塌缩，Provider 为 0。 |
+| 富文本 metadata 误过滤 | 只过滤独立资源标签、完整受控方括号占位和明确组合 metadata；`BrE`/`NAmE` 使用大小写敏感词边界，普通定义 `image of a person` 与 `surname and given name` 在 Reading 与生词本草稿中均保留。 |
+| 规范化空白 fast path | root 候选使用与投影一致的空白规范化，并用投影 round-trip 校验 Range；两个原始空白不同但投影相同的 block 返回 `ambiguous`，不会静默选择第一个。 |
+
+新增/修改回归的最终结果：Node 定向 `43/43`、ReadingPreview 组件文件 `11/11`、Reading preview 浏览器文件 `3/3`、marker 迁移 `1/1`、富媒体外层滚动 `1/1`。第一次沙箱内 `npm run check` 因检查器派生 Node 子进程被统一 `EPERM` 阻止；使用同一仓库命令在获批工作区权限下重跑后通过，未把该环境阻塞记作源码失败。

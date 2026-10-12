@@ -38,6 +38,7 @@
   }
   function rootCandidates(exacts) {
     const matches = []; let chars = 0, nodes = 0;
+    if (exacts.some(exact => exact.includes("\n"))) return { matches, limited: true };
     for (const root of document.querySelectorAll(ROOTS)) {
       let text = "";
       const stack = [...root.childNodes].reverse();
@@ -55,7 +56,8 @@
         }
       } catch { return { matches, limited: true }; }
       chars += text.length;
-      if (exacts.some((exact) => text.includes(exact))) matches.push(root);
+      const normalized = text.replace(/[\t\n\r\f ]+/gu, " ").trim();
+      if (exacts.some((exact) => normalized.includes(exact))) matches.push(root);
     }
     return { matches, limited: false };
   }
@@ -97,7 +99,9 @@
         for (let start = cached.value.text.indexOf(exact); start >= 0; start = cached.value.text.indexOf(exact, start + 1)) {
           if (!contextMatches(cached.value.text, start, anchor)) continue;
           const range = projection.rangeForPosition(cached.value, { start, end: start + exact.length });
-          if (!range || contextRoot(range) !== root || !range.startContainer.isConnected || !range.endContainer.isConnected || String(range.toString()) !== exact) continue;
+          const located = range && projection.positionForRange(cached.value, range);
+          if (!range || contextRoot(range) !== root || !range.startContainer.isConnected || !range.endContainer.isConnected ||
+              !located || cached.value.text.slice(located.start, located.end) !== exact) continue;
           matches.set(rangeKey(range, ids), range);
           if (matches.size > 1) break;
         }

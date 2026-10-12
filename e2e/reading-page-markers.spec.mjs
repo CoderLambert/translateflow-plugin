@@ -83,6 +83,26 @@ test("authorized revisit keeps one word highlight for repeated lookups and resto
     expect(scanEvidence).toMatchObject({ status: "resolved", verifiedText: "session" });
     expect(scanEvidence.chars).toBeGreaterThan(16_000);
 
+    await revisit.evaluate(() => {
+      const staleSource = document.querySelector("#source"), staleWord = document.querySelector("#word");
+      staleSource.id = "stale-source"; staleWord.id = "stale-word";
+      staleSource.firstChild.data = "CHANGED "; staleSource.lastChild.data = " shifted";
+      const replacement = document.createElement("p"); replacement.id = "source";
+      replacement.innerHTML = 'PUBLIC <span id="word">session</span> alpha tail';
+      staleSource.replaceWith(replacement);
+      document.body.append(staleSource);
+    });
+    await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(1);
+    await expect.poll(async () => {
+      const highlight = await revisit.locator(".tf-reading-page-highlight").boundingBox();
+      const current = await revisit.locator("#word").boundingBox();
+      const stale = await revisit.locator("#stale-word").boundingBox();
+      if (!highlight || !current || !stale) return "missing geometry";
+      const currentDistance = Math.abs(highlight.x - current.x) + Math.abs(highlight.y - current.y);
+      const staleDistance = Math.abs(highlight.x - stale.x) + Math.abs(highlight.y - stale.y);
+      return currentDistance < 6 && currentDistance < staleDistance ? "migrated" : { currentDistance, staleDistance };
+    }).toBe("migrated");
+
     await revisit.evaluate(() => { document.querySelector("#source").textContent = "PUBLIC removed alpha tail"; });
     await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(0);
     await revisit.evaluate(() => { document.querySelector("#source").innerHTML = "PUBLIC <span id=\"word\">session</span> alpha tail"; });

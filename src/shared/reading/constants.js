@@ -9,6 +9,9 @@ export const READING_INVALIDATION_PORT = "reading.invalidate";
 export const READING_SITE_MARKERS_INVALIDATION = "reading.site-markers.invalidate";
 export const READING_PROJECTION_VERSION = "tf-source-utf16-v1";
 export const READING_ITEM_KEY_VERSION = "ri1";
+const READING_LANGUAGE_CHARS = 80;
+const READING_ITEM_KEY_CHARS = READING_ITEM_KEY_VERSION.length + 1 + 7 +
+  6 * (SELECTION_EXPLAIN_LIMITS.selectionChars + READING_LANGUAGE_CHARS);
 export const READING_LIMITS = Object.freeze({
   selectionChars: SELECTION_EXPLAIN_LIMITS.selectionChars,
   contextChars: SELECTION_EXPLAIN_LIMITS.contextChars,
@@ -23,7 +26,8 @@ export const READING_LIMITS = Object.freeze({
   cursorChars: 256,
   titleChars: 300,
   urlChars: 4096,
-  languageChars: 80,
+  languageChars: READING_LANGUAGE_CHARS,
+  itemKeyChars: READING_ITEM_KEY_CHARS,
   questionChars: 2000,
   answerChars: 24000,
   dictionaryEntries: 8,
