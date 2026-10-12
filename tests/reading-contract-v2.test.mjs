@@ -22,8 +22,12 @@ test("Minimal current-page summary has counts/revision/assistant flag without UR
     rejects(() => validateReadingResponse(M.GET_PAGE_SUMMARY, response(M.GET_PAGE_SUMMARY, "content", { data: { ...response(M.GET_PAGE_SUMMARY).data, [field]: "private" } }), "content"), E.BAD_DTO);
   }
   rejects(() => validateReadingResponse(M.GET_PAGE_SUMMARY, response(M.GET_PAGE_SUMMARY, "content", { data: { ...response(M.GET_PAGE_SUMMARY).data, pageRecordCount: 0 } }), "content"), E.BAD_DTO);
-  const item = response(M.GET_PAGE_SUMMARY).data.items[0]; delete item.hasCompletedAssistant;
-  rejects(() => validateReadingResponse(M.GET_PAGE_SUMMARY, response(M.GET_PAGE_SUMMARY, "content", { data: { ...response(M.GET_PAGE_SUMMARY).data, items: [item] } }), "content"), E.BAD_DTO);
+  for (const field of ["hasCompletedAssistant", "itemKey"]) {
+    const item = response(M.GET_PAGE_SUMMARY).data.items[0]; delete item[field];
+    rejects(() => validateReadingResponse(M.GET_PAGE_SUMMARY, response(M.GET_PAGE_SUMMARY, "content", {
+      data: { ...response(M.GET_PAGE_SUMMARY).data, items: [item] }
+    }), "content"), E.BAD_DTO);
+  }
 });
 test("Record preview derives latest completed artifact and that exact snapshot; no-hit is honest", () => {
   const s2 = snapshot({ sourceSnapshotId: "source-2", contextText: "New frozen context" });

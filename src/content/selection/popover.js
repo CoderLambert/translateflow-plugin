@@ -4,7 +4,7 @@
     !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
     !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
 
-  const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
+  const { installInteractionIsolation, clearPageSelection, positionPopover } = app.modules.selection;
   const locale = app.modules.contentI18n;
   const { getLayer, ownsNode, createFocusReturn, isEventInsidePanel: eventInsidePanel } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
@@ -261,7 +261,7 @@
     aiDetail.loading(onCancel);
   }
   function showAiDetailStreaming(answer, onStop) {
-    ensureUi(); if (!resultNode) return;
+    ensureUi(); if (!resultNode) return; locale.unbind(statusNode); setStatus(statusNode, "", "info");
     resultNode.hidden = false; explainHandler = null;
     explainButton.hidden = cancelButton.hidden = true;
     aiDetail.streaming(answer, onStop);
@@ -280,7 +280,7 @@
   }
 
   function showAiDetailResult(result, onCopy) {
-    ensureUi(); if (!resultNode || resultNode.hidden) return;
+    ensureUi(); if (!resultNode || resultNode.hidden) return; locale.unbind(statusNode); setStatus(statusNode, "", "success");
     if (typeof onCopy === "function") copyHandler = onCopy;
     explainHandler = null; explainButton.hidden = cancelButton.hidden = true;
     copyButton.hidden = typeof onCopy !== "function";
@@ -364,33 +364,7 @@
     position(activeSnapshot, !panel?.hidden ? panel : chip);
   }
   function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
-
-  function position(snapshot, element) {
-    const rect = refreshRect(snapshot);
-    if (!rect || !element) return;
-
-    requestAnimationFrame(() => {
-      if (!element?.isConnected) return;
-      const box = element.getBoundingClientRect();
-      const margin = 10;
-      const maxWidth = Math.max(0, window.innerWidth - margin * 2);
-      let left = rect.left;
-      let top = rect.bottom + 8;
-
-      if (box.width > maxWidth) left = margin;
-      else if (left + box.width > window.innerWidth - margin) left = window.innerWidth - box.width - margin;
-      if (left < margin) left = margin;
-
-      if (top + box.height > window.innerHeight - margin) {
-        const above = rect.top - box.height - 8;
-        top = above >= margin ? above : margin;
-      }
-      if (top < margin) top = margin;
-
-      element.style.left = `${Math.round(left)}px`;
-      element.style.top = `${Math.round(top)}px`;
-    });
-  }
+  function position(snapshot, element) { positionPopover({ snapshot, element, panel }); }
 
   app.modules.selectionPopover = {
     showChip,

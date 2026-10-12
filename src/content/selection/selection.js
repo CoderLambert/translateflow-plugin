@@ -102,6 +102,60 @@
     event.stopPropagation();
   }
 
+  function positionPopover({ snapshot, element, panel }) {
+    const rect = refreshRect(snapshot);
+    if (!rect || !element) return;
+    const viewport = window.visualViewport;
+    const margin = 8, viewportLeft = viewport?.offsetLeft || 0, viewportTop = viewport?.offsetTop || 0;
+    const viewportWidth = viewport?.width || window.innerWidth, viewportHeight = viewport?.height || window.innerHeight;
+    const bounds = { left: viewportLeft + margin, top: viewportTop + margin,
+      right: viewportLeft + viewportWidth - margin, bottom: viewportTop + viewportHeight - margin };
+    const availableWidth = Math.max(0, bounds.right - bounds.left), availableHeight = Math.max(0, bounds.bottom - bounds.top);
+    element.style.maxWidth = `${Math.floor(availableWidth)}px`;
+    element.style.maxHeight = `${Math.floor(availableHeight)}px`;
+    if (element === panel) element.style.width = `${Math.floor(Math.min(500, availableWidth))}px`;
+    requestAnimationFrame(() => {
+      if (!element?.isConnected) return;
+      const box = element.getBoundingClientRect();
+      let left = Math.max(bounds.left, rect.left), top = rect.bottom + 8;
+      if (left + box.width > bounds.right) left = Math.max(bounds.left, bounds.right - box.width);
+      if (top + box.height > bounds.bottom) {
+        const above = rect.top - box.height - 8;
+        top = above >= bounds.top ? above : bounds.top;
+      }
+      if (top < bounds.top) top = bounds.top;
+      element.style.left = `${Math.round(left)}px`; element.style.top = `${Math.round(top)}px`;
+      requestAnimationFrame(() => clampPopoverRect(element, panel, bounds, availableWidth, availableHeight, 0));
+    });
+  }
+
+  function clampPopoverRect(element, panel, bounds, availableWidth, availableHeight, attempt) {
+    if (!element?.isConnected) return;
+    const actual = element.getBoundingClientRect(), scaleX = actual.width / Math.max(1, element.offsetWidth),
+      scaleY = actual.height / Math.max(1, element.offsetHeight);
+    let resized = false;
+    if (element === panel && actual.width > availableWidth + 0.5) {
+      element.style.width = `${Math.max(1, Math.floor(availableWidth / Math.max(scaleX, 0.01)))}px`; resized = true;
+    }
+    if (actual.height > availableHeight + 0.5) {
+      element.style.maxHeight = `${Math.max(1, Math.floor(availableHeight / Math.max(scaleY, 0.01)))}px`; resized = true;
+    }
+    if (resized && attempt < 2) {
+      requestAnimationFrame(() => clampPopoverRect(element, panel, bounds, availableWidth, availableHeight, attempt + 1)); return;
+    }
+    const currentLeft = Number.parseFloat(element.style.left) || 0, currentTop = Number.parseFloat(element.style.top) || 0;
+    let deltaX = 0, deltaY = 0;
+    if (actual.left < bounds.left) deltaX = bounds.left - actual.left;
+    else if (actual.right > bounds.right) deltaX = bounds.right - actual.right;
+    if (actual.top < bounds.top) deltaY = bounds.top - actual.top;
+    else if (actual.bottom > bounds.bottom) deltaY = bounds.bottom - actual.bottom;
+    if (Math.abs(deltaX) > 0.5) element.style.left = `${Math.round(currentLeft + deltaX / Math.max(scaleX, 0.01))}px`;
+    if (Math.abs(deltaY) > 0.5) element.style.top = `${Math.round(currentTop + deltaY / Math.max(scaleY, 0.01))}px`;
+    if ((Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) && attempt < 2) {
+      requestAnimationFrame(() => clampPopoverRect(element, panel, bounds, availableWidth, availableHeight, attempt + 1));
+    }
+  }
+
   app.modules.selection = {
     readSelection,
     isEligibleText,
@@ -109,6 +163,7 @@
     refreshRect,
     isExtensionOwnedNode,
     installInteractionIsolation,
-    clearPageSelection
+    clearPageSelection,
+    positionPopover
   };
 })();

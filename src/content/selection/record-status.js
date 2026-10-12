@@ -26,6 +26,7 @@
       actions.appendChild(button);
     };
     if (view.state === "invite") { add("content.reading.enableInCenter", handlers.open); add("content.reading.notNow", handlers.decline); }
+    if (view.openAvailable) add("content.reading.openLearningCenter", handlers.open);
     if (view.state === "manual") add("content.reading.saveResult", handlers.save);
     if (view.retryAvailable) add("content.reading.retrySave", handlers.retry);
     if (actions.childElementCount) node.appendChild(actions);

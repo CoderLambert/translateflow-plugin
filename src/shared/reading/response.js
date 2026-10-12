@@ -1,6 +1,6 @@
 import { READING_CONTENT_METHODS, READING_ERROR as E, READING_LIMITS as L, READING_METHOD as M } from "./constants.js";
 import { validateHandoff, validateOperationToken } from "./lifecycle.js";
-import { validateRecordDetail } from "./record.js";
+import { validatePreviewDetail, validateRecordDetail } from "./record.js";
 import { validateExportResponse } from "./export.js";
 import { revision, validateExclusionItem, validateListPage, validatePageListItem, validatePageSummaryItem, validateRecordListItem } from "./list.js";
 import { bool, choice, fail, id, integer, jsonBytes, nullable, object, pageKey, protocolVersion, recordId, siteKey } from "./validation.js";
@@ -117,7 +117,7 @@ function data(method, value, scope, pageLimit) {
     object(value, ["bound"], "data");
     return { bound: choice(value.bound, [true], "data.bound") };
   }
-  if (method === M.PREVIEW_READ) return validateRecordDetail(value, "data");
+  if (method === M.PREVIEW_READ) return validatePreviewDetail(value, "data");
   if (method === M.PREVIEW_CLOSE) {
     object(value, ["closed"], "data");
     return { closed: choice(value.closed, [true], "data.closed") };

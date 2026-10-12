@@ -196,7 +196,7 @@ test("Actual React product: Popup/selection, consent, real save, history, site p
     exportRecords: exported.records.length, offlineHistory: true, providerUnconfigured: true, nonSensitiveDeepLink: true, locales: ["zh_CN", "en"] }, null, 2));
 });
 
-test("Reading user journey: explicit consent, persistent browser restart, exact return and deleted page history", async ({ harness }, info) => {
+test("Reading user journey: explicit consent, persistent browser restart, exact return and deleted word highlight", async ({ harness }, info) => {
   test.setTimeout(120000);
   await harness.resetProfile();
   await harness.reset();
@@ -277,8 +277,8 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
   await expect(returned.locator(".tf-reading-return-highlight")).not.toHaveCount(0);
   await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
-  await expect(returned.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
-  await expect(returned.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await expect(returned.locator(".tf-reading-page-highlight")).toHaveCount(1);
+  await expect(returned.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
   await waitForStableReturnCard(returned);
   await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
   await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
@@ -288,11 +288,6 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   }
   await expect(returned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
   await expect(returned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
-  await returned.locator(".tf-reading-page-toggle").click();
-  await expect(returned.locator(".tf-reading-page-panel")).toBeVisible();
-  await expect(returned.locator(".tf-reading-page-panel article")).toHaveCount(1);
-  await expect(returned.locator(".tf-reading-page-panel article")).toContainText("session");
-
   const recordOpened = harness.context.waitForEvent("page");
   await returned.locator('[data-action="open-record"]').click();
   const recordPage = await recordOpened;
@@ -307,8 +302,8 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await latestReturned.waitForLoadState("domcontentloaded");
   await expect(latestReturned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
   await expect(latestReturned.locator(".tf-reading-return-card blockquote")).toHaveText("session");
-  await expect(latestReturned.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
-  await expect(latestReturned.locator(".tf-reading-page-marker")).toHaveCount(1);
+  await expect(latestReturned.locator(".tf-reading-page-highlight")).toHaveCount(1);
+  await expect(latestReturned.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
   await waitForStableReturnCard(latestReturned);
   await expect(latestReturned.locator('.tf-reading-return-card[data-state="resolved"]')).toBeVisible();
 
@@ -317,13 +312,13 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   await expect(recordPage.locator(".record-list .record")).toHaveCount(0);
   await expect(recordPage.locator("header")).toContainText("Records: 0");
   await expect(recordPage.getByText("Connection interrupted. Saved content cannot be confirmed.", { exact: true })).toHaveCount(0);
-  await expect(latestReturned.locator(".tf-reading-page-toggle")).toHaveCount(0);
-  await expect(latestReturned.locator(".tf-reading-page-marker")).toHaveCount(0);
+  await expect(latestReturned.locator(".tf-reading-page-highlight")).toHaveCount(0);
+  await expect(latestReturned.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
   await expect(latestReturned.locator(".tf-reading-return-card")).toHaveCount(0);
   await recordPage.screenshot({ path: info.outputPath("reading-user-journey-deleted.png"), fullPage: true });
   await writeFile(info.outputPath("reading-user-journey.json"), JSON.stringify({
     browser: harness.context.browser().version(), build: harness.buildReport,
-    flow: ["local lookup → explicit wordbook save", "explicit Reading enable → save current query", "persistent-profile browser restart", "wordbook → review → delete while Reading history remains", "Learning Center history → exact original page and range", "open historical record", "delete Reading record → list and page history entry disappear"],
+    flow: ["local lookup → explicit wordbook save", "explicit Reading enable → save current query", "persistent-profile browser restart", "wordbook → review → delete while Reading history remains", "Learning Center history → exact original page and range", "open historical record", "delete Reading record → list and word highlight disappear"],
     page: "localhost synthetic fixture /selection; synthetic local dictionary; test-only localhost permission",
     provider: "mock endpoint configured without a real API key; explicit test flow observed 0 Provider requests",
     afterRestartRecordRows: 1, returnLocation: "resolved", historyEntryAfterDeletion: 0,

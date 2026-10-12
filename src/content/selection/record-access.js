@@ -1,6 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.textProjection || !app?.modules.uiHost || app.modules.selectionRecordAccess) return;
+  if (!app?.modules.textProjection || !app?.modules.uiHost || !app?.modules.selectionSourceSnapshot || app.modules.selectionRecordAccess) return;
   const operations = new Map();
   const pageIntents = new Map();
   const limits = app.modules.readingContract?.READING_LIMITS;
@@ -25,6 +25,24 @@
       && operation.capture.sourceRevision === app.modules.textProjection.revision()
       && operation.snapshot.range?.startContainer?.isConnected !== false
       && operation.snapshot.range?.endContainer?.isConnected !== false;
+  }
+  function accept(operation) {
+    if (!live(operation)) return false;
+    if (!operation.accepted) operation.accepted = Object.freeze({
+      acceptedAt: Date.now(), sourceRevision: operation.capture.sourceRevision,
+      documentGeneration: app.modules.selectionSourceSnapshot.documentGeneration,
+      pageUrl: String(operation.snapshot.pageUrl || ""), capture: operation.capture
+    });
+    return true;
+  }
+  function accepted(operation) {
+    const proof = operation?.accepted;
+    return Boolean(proof && operations.get(operation.operationId) === operation && !operation.cancelled
+      && Date.now() < operation.expiresAt && operation.capture === proof.capture
+      && operation.capture.sourceRevision === proof.sourceRevision
+      && app.modules.textProjection.revision() === proof.sourceRevision
+      && app.modules.selectionSourceSnapshot.documentGeneration === proof.documentGeneration
+      && String(operation.snapshot.pageUrl || "") === proof.pageUrl);
   }
   function safety(operation) {
     const capture = operation.capture;
@@ -51,19 +69,19 @@
     }
     if (!operation) return null;
     const cancellation = challenge.action === "cancel" && operation.cancelled;
-    if (!cancellation && !live(operation)) return null;
+    if (!cancellation && !live(operation) && !accepted(operation)) return null;
     const expectedId = challenge.action === "begin" ? operation.recordId : operation.token?.recordId ?? null;
     if (!passive && (!["begin", "save", "cancel"].includes(challenge.action) || challenge.recordId !== expectedId)) return null;
     if (challenge.action === "save" && !operation.token) return null;
     let sourceSnapshot;
     try { sourceSnapshot = await operation.capture.ready; } catch { return null; }
-    if (!cancellation && !live(operation)) return null;
+    if (!cancellation && !live(operation) && !accepted(operation)) return null;
     return { nonce: challenge.nonce, documentGeneration: sourceSnapshot.documentGeneration,
       selectionGeneration: sourceSnapshot.selectionGeneration, captureSafety: safety(operation), sourceSnapshot,
       intent: passive ? null : { action: challenge.action, recordId: challenge.recordId, operationId: operation.operationId } };
   }
   function bindToken(operation, token) {
-    if (!live(operation) || token.operationId !== operation.operationId) return false;
+    if ((!live(operation) && !accepted(operation)) || token.operationId !== operation.operationId) return false;
     operation.token = token;
     operation.expiresAt = token.expiresAt;
     return true;
@@ -82,5 +100,5 @@
     for (const [key, value] of pageIntents) if (Date.now() >= value.expiresAt) pageIntents.delete(key);
   }
   app.modules.readingAccessCollector = Object.freeze({ read });
-  app.modules.selectionRecordAccess = Object.freeze({ create, live, safety, bindToken, cancel, forget, trusted, authorizePageAction });
+  app.modules.selectionRecordAccess = Object.freeze({ create, live, accept, accepted, safety, bindToken, cancel, forget, trusted, authorizePageAction });
 })();

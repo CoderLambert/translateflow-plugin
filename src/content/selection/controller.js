@@ -62,6 +62,7 @@
     document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("scroll", () => popover.reposition(), true);
     window.addEventListener("resize", () => popover.reposition(), true);
+    window.visualViewport?.addEventListener("scroll", () => popover.reposition()); window.visualViewport?.addEventListener("resize", () => popover.reposition());
     window.addEventListener("focus", () => { void records?.refresh(); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void records?.refresh(); });
     const checkReadingRoute = () => { records?.invalidateReference(); if (activeSnapshot && activeSnapshot.pageUrl !== location.href) dismiss(); };
@@ -70,7 +71,6 @@
     const leaveDocument = () => { records?.invalidateReference(); dismiss(); };
     app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: leaveDocument, onPageHide: leaveDocument });
   }
-
   function handlePotentialSelection(event) {
     if (isExtensionOwnedNode(event.target)) return;
     scheduleSelectionRefresh();

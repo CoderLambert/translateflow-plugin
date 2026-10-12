@@ -21,6 +21,19 @@ export function validateResultArtifact(value, path = "artifact") {
     createdAt: integer(value.createdAt, 0, Number.MAX_SAFE_INTEGER, `${path}.createdAt`), payload, provenance
   };
 }
+export function compareAssistantArtifacts(left, right) {
+  const a = left?.payload || {}, b = right?.payload || {};
+  if (a.threadId === b.threadId) {
+    if (a.turnId === b.parentTurnId || a.turnId === b.regenerationOf) return -1;
+    if (b.turnId === a.parentTurnId || b.turnId === a.regenerationOf) return 1;
+  }
+  if (left.createdAt !== right.createdAt) return left.createdAt - right.createdAt;
+  for (const key of ["threadId", "branchId", "parentTurnId", "turnId"]) {
+    const av = String(a[key] || ""), bv = String(b[key] || "");
+    if (av !== bv) return av < bv ? -1 : 1;
+  }
+  return 0;
+}
 function dictionary(value, path) {
   object(value, ["outcome", "headword", "phonetic", "partOfSpeech", "definitions"], path);
   const outcome = choice(value.outcome, ["hit", "no-hit"], `${path}.outcome`);

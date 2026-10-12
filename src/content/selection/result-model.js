@@ -270,12 +270,19 @@
     if (!summary || summary === record.headword || /(?:<\/?[a-z]|`\d+`|(?:file|sound|entry|https?):\/\/|(?:[A-Za-z]:\\|\/home\/))/iu.test(summary)) return null;
     const normalizedHeadword = String(record.headword || "").normalize("NFKC").trim().toLocaleLowerCase("en-US");
     const definitions = uniqueText(summary.split(/\n+/u).map((value) => value.replace(/[\t\r\f ]+/gu, " ").trim())
-      .filter((value) => value.normalize("NFKC").toLocaleLowerCase("en-US") !== normalizedHeadword))
+      .filter((value) => value.normalize("NFKC").toLocaleLowerCase("en-US") !== normalizedHeadword && !richMetadataLine(value)))
       .slice(0, limits.dictionaryEntries).map((s) => s.slice(0, limits.definitionChars));
     if (!definitions.length) return null;
     return { kind: "dictionary", targetLanguage: "zh-CN", payload: { outcome: "hit", headword: record.headword,
       phonetic: "", partOfSpeech: "", definitions }, provenance: [{ sourceId: "local-rich-mdict", packId: dictionary.id,
         packVersion: record.packVersion, sourceEntryId: record.headword }] };
+  }
+  function richMetadataLine(value) {
+    const text = String(value || "").normalize("NFKC").trim();
+    if (!text) return true;
+    if (/^(?:\[?(?:图片|图像|音频|发音|image|picture|audio|pronunciation)[^\]]*\]?|(?:载入|加载|播放).*(?:音频|发音)|(?:牛津|oxford)\s*(?:3000|5000).*词汇表?)$/iu.test(text)) return true;
+    const metadata = text.match(/(?:key_[a-z0-9_-]+|ox(?:ford)?\s*(?:3000|5000)|牛津\s*(?:3000|5000)|cefr[_\s-]?[abc][12]|cet[46]|tem[48]|nmet|播放(?:英音|美音)|br(?:itish)?e|nam(?:erican)?e)/giu) || [];
+    return /key_[a-z0-9_-]+/iu.test(text) || metadata.length >= 2;
   }
   function vocabularyDraftFromRich(record, dictionary, sourceLanguage = "en") {
     const reading = readingRich(record, dictionary), headword = String(reading?.payload?.headword || "").trim();

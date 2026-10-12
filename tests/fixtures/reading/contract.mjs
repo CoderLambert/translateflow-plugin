@@ -55,14 +55,15 @@ export function request(method, overrides = {}) {
     [M.LIST_RECORDING_EXCLUSIONS]: { cursor: null, limit: 20 }, [M.CANCEL_OPERATION]: { operationId: "op-1" },
     [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1" },
     [M.CREATE_HANDOFF]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.CONSUME_HANDOFF]: { handoffId: "handoff-1" },
-    [M.PREVIEW_CREATE]: { recordId: RECORD_ID, expectedRevision: 1 }, [M.PREVIEW_BIND]: { previewId: "preview-1", claimId: "claim-1" },
+    [M.PREVIEW_CREATE]: { recordId: RECORD_ID, expectedRevision: 1, relatedRecords: [] }, [M.PREVIEW_BIND]: { previewId: "preview-1", claimId: "claim-1" },
     [M.PREVIEW_CLAIM]: { previewId: "preview-1" }, [M.PREVIEW_READ]: { previewId: "preview-1" }, [M.PREVIEW_CLOSE]: { previewId: "preview-1" }
   };
   return { protocolVersion: 2, method, ...bodies[method], ...overrides };
 }
 
 export function pageSummaryItem(overrides = {}) {
-  return { recordId: RECORD_ID, revision: 1, anchor: snapshot().anchor, hasCompletedAssistant: false, ...overrides };
+  return { recordId: RECORD_ID, revision: 1, itemKey: record().itemKey,
+    anchor: snapshot().anchor, hasCompletedAssistant: false, ...overrides };
 }
 export function recordingState(scope = "extension", overrides = {}) {
   const minimal = { enabled: true, consentGeneration: 1, capacityReached: false };
@@ -93,7 +94,7 @@ export function response(method, scope = "extension", overrides = {}) {
     [M.REGISTER_DOCUMENT]: { documentGeneration: "doc-1", navigationGeneration: 1, pageKey: PAGE_KEY, siteKey: "https://example.test" },
     [M.CREATE_HANDOFF]: { state: "ready", handoff: handoff() }, [M.CONSUME_HANDOFF]: pageSummaryItem(),
     [M.PREVIEW_CREATE]: { previewId: "preview-1", expiresAt: 16000 }, [M.PREVIEW_BIND]: { bound: true },
-    [M.PREVIEW_CLAIM]: { claimId: "claim-1" }, [M.PREVIEW_READ]: detail, [M.PREVIEW_CLOSE]: { closed: true }
+    [M.PREVIEW_CLAIM]: { claimId: "claim-1" }, [M.PREVIEW_READ]: { ...detail, related: [] }, [M.PREVIEW_CLOSE]: { closed: true }
   };
   return { protocolVersion: 2, ok: true, data: values[method], ...overrides };
 }

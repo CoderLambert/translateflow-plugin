@@ -46,6 +46,8 @@ export const READING_LIMITS = Object.freeze({
   scanRetryCount: 3,
   mutationDebounceMs: 150,
   pageMarkers: 200,
+  previewRelatedRecords: 4,
+  previewAssistantArtifacts: 12,
   handoffTtlMs: 60000,
   operationTtlMs: 10 * 60 * 1000,
   listResponseBytes: 1024 * 1024,
