@@ -255,11 +255,14 @@ function renderFixture(pathname) {
       <p id="selectable">Selection translation should reuse the same provider configuration while keeping Selection v2 cache identity separate.</p>
       <p id="lexical-context"><span id="entity">tmux</span> is a <span id="lexical">terminal multiplexer</span> used to manage terminal sessions.</p>
       <p id="technical-competition-context">Open tmux in the terminal and attach to a <span id="technical-competition">session</span>.</p>
+      <p id="technical-competition-second-context">A second <span id="technical-competition-second">session</span> keeps another saved lookup on this page.</p>
       <p id="ambiguous-context">A <span id="ambiguous">persistent</span> connection remains available across reconnects.</p>
       <p id="phrase-context">The documentation mentions <span id="unknown-phrase">persistent session</span> as an ordinary phrase.</p>
       <p id="nohit-context">The invented token <span id="nohit">TFNoSuchLexeme</span> is intentionally absent from the local dictionary.</p>
       <p id="unrelated">UNRELATED_SECRET_PAGE_TEXT should never be sent for the nearby selection.</p>
       <div id="editable" contenteditable="true">Private draft <span contenteditable="false"><span id="editable-word">persistent</span></span> account token</div>
+      <p id="dual-source">The <span id="foundation">foundation</span> is <span id="production-grade">production-grade</span>.</p>
+      <a href="#link" id="test-link">Normal Link</a>
     `,
     "/failure": `
       <p id="auth">Authentication failures should produce a visible retry action instead of leaving the translation UI stuck.</p>

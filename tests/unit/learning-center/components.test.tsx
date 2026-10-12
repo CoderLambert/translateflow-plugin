@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { App } from "../../../src/learning-center/App";
 import { ReadingClient } from "../../../src/learning-center/client/reading";
+import { readingClient } from "../../../src/learning-center/client/reading";
+import { ReadingPreview } from "../../../src/learning-center/ReadingPreview";
 import { Library } from "../../../src/learning-center/views/Library";
 import { Detail } from "../../../src/learning-center/views/Detail";
 import { VocabularyBook } from "../../../src/learning-center/views/VocabularyBook";
@@ -17,8 +19,34 @@ beforeEach(() => {
   history.replaceState(null, "", "/");
   vi.stubGlobal("chrome", { i18n: { getUILanguage: () => "en" }, storage: { local: { get: async () => ({ uiLocale: "en" }) }, onChanged: { addListener: vi.fn(), removeListener: vi.fn() } } });
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const i18n = createI18n({ uiLocale: "en" });
+test("bound preview retry reads the same session without claiming it again", async () => {
+  history.replaceState(null, "", "/reading-preview.html?previewId=preview-1");
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  let message: ((event: MessageEvent) => void) | undefined;
+  const nativeAdd = window.addEventListener.bind(window);
+  vi.spyOn(window, "addEventListener").mockImplementation(((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+    if (type === "message") message = listener as (event: MessageEvent) => void;
+    return nativeAdd(type, listener, options);
+  }) as typeof window.addEventListener);
+  const claim = vi.spyOn(readingClient, "previewClaim").mockResolvedValue({ claimId: "claim-1" });
+  const preview = response(M.PREVIEW_READ).data as any;
+  preview.artifacts[0].payload.definitions = ["图片", "image", "[图片资源未导入]"];
+  const read = vi.spyOn(readingClient, "previewRead")
+    .mockRejectedValueOnce(new Error("transient"))
+    .mockResolvedValue(preview);
+  render(<ReadingPreview />);
+  await waitFor(() => expect(claim).toHaveBeenCalledTimes(1));
+  await act(async () => message?.({ isTrusted: true, source: window.parent, origin: "https://example.test",
+    data: { type: "translateflow-reading-preview-bound", previewId: "preview-1", claimId: "claim-1" } } as MessageEvent));
+  await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+  await screen.findByRole("heading", { name: "React" });
+  expect(screen.getByText("图片")).toBeTruthy(); expect(screen.getByText("image")).toBeTruthy();
+  expect(screen.queryByText("[图片资源未导入]")).toBeNull();
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(claim).toHaveBeenCalledTimes(1);
+});
 test("Still learning reports the saved review and refreshes the due card", async () => {
   const entry = {
     id: "review-entry", headword: "session", sourceLanguage: "en", targetLanguage: "zh-CN",
@@ -209,32 +237,24 @@ test("delete invalidation discards a delayed detail and disconnect removes uncon
 });
 
 
-test("record site identity failure stays visible and a single retry restores marker settings without a safe return URL", async () => {
+test("record details omit marker controls and do not request unused site marker state", async () => {
   history.replaceState(null, "", `/#record=${RECORD_ID}`);
-  const calls: string[] = []; let siteKeyAttempts = 0;
+  const calls: string[] = [];
   const detail = response(M.GET_RECORD).data;
   detail.record.safeReturnUrl = null;
   const client = new ReadingClient(async raw => {
     const request = raw as { method: string };
     calls.push(request.method);
     if (request.method === M.GET_RECORD) return response(M.GET_RECORD, "extension", { data: detail });
-    if (request.method === M.GET_RECORD_SITE_KEY) {
-      siteKeyAttempts++;
-      if (siteKeyAttempts === 1) throw new Error("synthetic one-request failure");
-      return response(M.GET_RECORD_SITE_KEY);
-    }
-    if (request.method === M.GET_SITE_MARKERS) return response(M.GET_SITE_MARKERS);
     if (request.method === M.LIST_RECORDING_EXCLUSIONS) return response(M.LIST_RECORDING_EXCLUSIONS,
       "extension", { data: { items: [], nextCursor: null } });
     return response(request.method);
   });
   const listen = vi.fn(() => vi.fn());
   render(<App client={client} listen={listen} />);
-  await screen.findByRole("heading", { name: "Reading history on this site" });
-  await screen.findByText("Could not load this record’s site identity. Retry to manage its site markers.");
+  await screen.findByRole("heading", { name: detail.record.itemText });
+  expect(screen.queryByRole("button", { name: /site markers/i })).toBeNull();
+  expect(screen.queryByText("Could not load this record’s site identity. Retry to manage its site markers.")).toBeNull();
   expect(calls).not.toContain(M.GET_SITE_MARKERS);
-  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByRole("button", { name: "Enable site markers" });
-  expect(siteKeyAttempts).toBe(2);
-  expect(calls.filter(method => method === M.GET_SITE_MARKERS)).toHaveLength(1);
+  expect(calls).not.toContain(M.GET_RECORD_SITE_KEY);
 });

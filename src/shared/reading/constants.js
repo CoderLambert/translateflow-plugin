@@ -9,6 +9,9 @@ export const READING_INVALIDATION_PORT = "reading.invalidate";
 export const READING_SITE_MARKERS_INVALIDATION = "reading.site-markers.invalidate";
 export const READING_PROJECTION_VERSION = "tf-source-utf16-v1";
 export const READING_ITEM_KEY_VERSION = "ri1";
+const READING_LANGUAGE_CHARS = 80;
+const READING_ITEM_KEY_CHARS = READING_ITEM_KEY_VERSION.length + 1 + 7 +
+  6 * (SELECTION_EXPLAIN_LIMITS.selectionChars + READING_LANGUAGE_CHARS);
 export const READING_LIMITS = Object.freeze({
   selectionChars: SELECTION_EXPLAIN_LIMITS.selectionChars,
   contextChars: SELECTION_EXPLAIN_LIMITS.contextChars,
@@ -23,7 +26,8 @@ export const READING_LIMITS = Object.freeze({
   cursorChars: 256,
   titleChars: 300,
   urlChars: 4096,
-  languageChars: 80,
+  languageChars: READING_LANGUAGE_CHARS,
+  itemKeyChars: READING_ITEM_KEY_CHARS,
   questionChars: 2000,
   answerChars: 24000,
   dictionaryEntries: 8,
@@ -46,6 +50,8 @@ export const READING_LIMITS = Object.freeze({
   scanRetryCount: 3,
   mutationDebounceMs: 150,
   pageMarkers: 200,
+  previewRelatedRecords: 4,
+  previewAssistantArtifacts: 12,
   handoffTtlMs: 60000,
   operationTtlMs: 10 * 60 * 1000,
   listResponseBytes: 1024 * 1024,
@@ -120,7 +126,7 @@ export const READING_CONTENT_METHODS = Object.freeze([
   READING_METHOD.GET_PAGE_SUMMARY, READING_METHOD.GET_RECORD, READING_METHOD.GET_RECORDING_STATE,
   READING_METHOD.CONSUME_HANDOFF, READING_METHOD.OPEN_LEARNING_CENTER, READING_METHOD.GET_SITE_RECORDING,
   READING_METHOD.CANCEL_OPERATION, READING_METHOD.REGISTER_DOCUMENT, READING_METHOD.GET_SITE_MARKERS,
-  READING_METHOD.PREVIEW_CREATE, READING_METHOD.PREVIEW_BIND, READING_METHOD.PREVIEW_CLOSE
+  READING_METHOD.DELETE_RECORD, READING_METHOD.PREVIEW_CREATE, READING_METHOD.PREVIEW_BIND, READING_METHOD.PREVIEW_CLOSE
 ]);
 
 export const READING_LOCATION_STATUS = Object.freeze([

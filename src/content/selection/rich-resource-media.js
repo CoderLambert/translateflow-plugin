@@ -28,7 +28,9 @@
             releaseImageWhenOffscreen(session, observedResource);
           }
         }
-      }, { root: session.viewport, rootMargin: "0px" });
+      // The viewer expands inside .tf-selection-result; it is not itself a scroll root.
+      // A viewport root also accounts for clipping by that scrolling ancestor.
+      }, { root: null, rootMargin: "0px" });
       for (const instance of resource.instances) observeImageInstance(session, resource, instance);
     }
 
@@ -142,7 +144,7 @@
       resource.imageHeight = 0;
       for (const instance of resource.instances) {
         if (instance.element?.tagName === "IMG" && instance.element.src === url) {
-          const placeholder = makePlaceholder("image", resource.label);
+          const placeholder = makePlaceholder("image", resource.label, resource.presentation);
           decorateOxfordPlaceholder(placeholder, oxfordInlinePresentation(resource));
           replaceImageInstance(session, resource, instance, placeholder);
         }
@@ -165,12 +167,11 @@
     }
 
     function bindAudioButton(session, resource, instance) {
-      const button = makePlaceholder("audio", resource.label);
+      const button = makePlaceholder("audio", resource.label, resource.presentation);
       button.className = "tf-rich-placeholder tf-rich-audio-load";
       button.type = "button";
       button.dataset.action = "load-mdd-audio";
-      locale.bindText(button, resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
-      locale.bindAttribute(button, "aria-label", resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
+      bindAudioButtonLabel(button, resource);
       button.addEventListener("click", () => { void loadAudio(session, resource, instance, button); });
       if (instance.element?.isConnected || instance.element?.parentNode) instance.element.replaceWith(button);
       instance.element = button;
@@ -182,6 +183,8 @@
       const activeAudio = { resource, instance, button, audio: null, objectUrl: "" };
       session.activeAudio = activeAudio;
       button.disabled = true;
+      button.dataset.state = "loading";
+      button.setAttribute("aria-busy", "true");
       locale.bindText(button, "content.rich.loadingAudio");
       try {
         const asset = await scheduleRead(session, () => session.activeAudio === activeAudio ? fetchAsset(session, resource) : undefined);
@@ -195,6 +198,10 @@
         audio.autoplay = false;
         audio.setAttribute("controls", "");
         audio.setAttribute("preload", "none");
+        bindAudioAccessibleLabel(audio, resource);
+        audio.addEventListener("play", () => { audio.dataset.playback = "playing"; });
+        audio.addEventListener("pause", () => { if (!audio.ended) audio.dataset.playback = "paused"; });
+        audio.addEventListener("ended", () => { audio.dataset.playback = "ended"; });
         audio.src = url;
         activeAudio.audio = audio;
         activeAudio.objectUrl = url;
@@ -203,6 +210,8 @@
           if (session.activeAudio === activeAudio) releaseActiveAudio(session, activeAudio, true);
         }, { once: true });
         if (button.parentNode) button.replaceWith(audio);
+        const playPromise = audio.play?.();
+        if (playPromise?.catch) void playPromise.catch(() => {});
       } catch {
         if (session.activeAudio !== activeAudio || !isCurrent(session)) return;
         session.activeAudio = null;
@@ -231,14 +240,13 @@
         for (const instance of resource.instances) {
           const element = instance.element;
           if (!element || !/^(?:AUDIO|IMG)$/u.test(element.tagName)) continue;
-          const placeholder = makePlaceholder(resource.kind === "audio" ? "audio" : "image", resource.label);
+          const placeholder = makePlaceholder(resource.kind === "audio" ? "audio" : "image", resource.label, resource.presentation);
           decorateOxfordPlaceholder(placeholder, oxfordInlinePresentation(resource));
           if (resource.kind === "audio") {
             placeholder.className = "tf-rich-placeholder tf-rich-audio-load";
             placeholder.type = "button";
             placeholder.dataset.action = "load-mdd-audio";
-            locale.bindText(placeholder, resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
-            locale.bindAttribute(placeholder, "aria-label", resource.label ? "content.rich.loadAudio" : "content.rich.loadAudioGeneric", resource.label ? { label: resource.label } : {});
+            bindAudioButtonLabel(placeholder, resource);
           }
           element.replaceWith(placeholder);
           instance.element = placeholder;
@@ -251,6 +259,25 @@
       if (resource?.presentation === "oxford-key" &&
           (resource.path === "img/Ox3000_key_L.png" || resource.path === "img/Ox3000_key_S.png")) return resource.presentation;
       return "";
+    }
+
+    function audioLabelDescriptor(resource) {
+      if (resource.presentation === "pronunciation-british") return { key: "content.rich.playBritishPronunciation", args: {} };
+      if (resource.presentation === "pronunciation-american") return { key: "content.rich.playAmericanPronunciation", args: {} };
+      return resource.label
+        ? { key: "content.rich.playAudio", args: { label: resource.label } }
+        : { key: "content.rich.playAudioGeneric", args: {} };
+    }
+
+    function bindAudioButtonLabel(button, resource) {
+      const descriptor = audioLabelDescriptor(resource);
+      locale.bindText(button, descriptor.key, descriptor.args);
+      locale.bindAttribute(button, "aria-label", descriptor.key, descriptor.args);
+    }
+
+    function bindAudioAccessibleLabel(audio, resource) {
+      const descriptor = audioLabelDescriptor(resource);
+      locale.bindAttribute(audio, "aria-label", descriptor.key, descriptor.args);
     }
 
     function decorateOxfordPlaceholder(element, presentation) {

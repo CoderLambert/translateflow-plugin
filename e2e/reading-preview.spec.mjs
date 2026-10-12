@@ -3,70 +3,20 @@ import { READING_METHOD as M } from "../src/shared/reading/constants.js";
 
 const message = (page, method, fields = {}) => page.evaluate(request => chrome.runtime.sendMessage(request),
   { protocolVersion: 2, method, ...fields });
-async function select(page, selector, text) {
-  await page.evaluate(({ selector, text }) => {
-    const node = document.querySelector(selector).firstChild, offset = node.nodeValue.indexOf(text);
-    const range = document.createRange(); range.setStart(node, offset); range.setEnd(node, offset + text.length);
+
+async function select(page, selector, selectedText) {
+  await page.evaluate(({ selector, selectedText }) => {
+    const node = document.querySelector(selector).firstChild, offset = node.nodeValue.indexOf(selectedText);
+    const range = document.createRange(); range.setStart(node, offset); range.setEnd(node, offset + selectedText.length);
     getSelection().removeAllRanges(); getSelection().addRange(range); document.dispatchEvent(new Event("selectionchange"));
-  }, { selector, text });
+  }, { selector, selectedText });
   await expect(page.locator(".tf-selection-chip")).toBeVisible();
   await page.locator(".tf-selection-chip").click();
 }
-async function bindGate(driver, url, action, method = M.PREVIEW_BIND) {
-  return driver.evaluate(async ({ url, action, method, closeMethod, createMethod }) => {
-    const tabId = (await chrome.tabs.query({})).find(tab => tab.url === url)?.id;
-    const [injection] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [action, method, closeMethod, createMethod],
-      func: (name, targetMethod, closeMethod, createMethod) => {
-        const app = globalThis.__TRANSLATE_FLOW_CONTENT__, runtime = app?.modules.runtime;
-        if (!runtime) return null;
-        if (name === "install") {
-          const original = runtime.sendRuntimeMessage; let release;
-          const gate = new Promise(resolve => { release = resolve; });
-          globalThis.__tfPreviewBindGate = { original, gate, release, started: false, completed: 0, created: [], closed: [] };
-          runtime.sendRuntimeMessage = async request => {
-            const result = await original(request);
-            if (request.method === closeMethod) globalThis.__tfPreviewBindGate.closed.push(request.previewId);
-            if (request.method === createMethod) globalThis.__tfPreviewBindGate.created.push(result?.data?.previewId || result?.previewId || null);
-            if (!globalThis.__tfPreviewBindGate.started && request.method === targetMethod) {
-              globalThis.__tfPreviewBindGate.started = true; await gate;
-            }
-            if (request.method === targetMethod) globalThis.__tfPreviewBindGate.completed++;
-            return result;
-          };
-          return true;
-        }
-        if (name === "started") return globalThis.__tfPreviewBindGate?.started === true;
-        if (name === "completed") return globalThis.__tfPreviewBindGate?.completed || 0;
-        if (name === "created") return [...(globalThis.__tfPreviewBindGate?.created || [])];
-        if (name === "closed") return [...(globalThis.__tfPreviewBindGate?.closed || [])];
-        if (name === "release") { globalThis.__tfPreviewBindGate.release(); return true; }
-        if (name === "restore") { runtime.sendRuntimeMessage = globalThis.__tfPreviewBindGate.original; return true; }
-        return false;
-      } });
-    return injection.result;
-  }, { url, action, method, closeMethod: M.PREVIEW_CLOSE, createMethod: M.PREVIEW_CREATE });
-}
-async function addPreviewCopySlot(page, id) {
-  await page.evaluate(id => {
-    const frame = document.createElement("iframe"); frame.id = id; frame.width = "320"; frame.height = "220";
-    frame.style.cssText = "position:fixed;left:-400px;top:0"; frame.src = "about:blank"; document.body.append(frame);
-  }, id);
-}
-async function copyPreviewIntoSlot(page, id, src) {
-  await page.evaluate(({ id, src }) => document.getElementById(id).contentWindow.location.replace(src), { id, src });
-}
-async function moveLivePreviewToHistoryLayer(page) {
-  return page.evaluate(() => {
-    const shadow = document.querySelector("#translateflow-ui-root")?.shadowRoot;
-    const frame = shadow?.querySelector("iframe.tf-reading-preview-frame"), destination = shadow?.querySelector('.tf-ui-layer[data-layer="reading-page-history"]');
-    if (!frame || !destination || typeof destination.moveBefore !== "function") return { supported: false, moved: false };
-    destination.moveBefore(frame, null);
-    return { supported: true, moved: frame.parentElement === destination, connected: frame.isConnected };
-  });
-}
+
 async function pageSurface(page) {
   return page.evaluate(() => {
-    const values = [...(globalThis.__tfObservedMessages || [])];
+    const values = [];
     function visit(root) {
       for (const node of root.childNodes || []) {
         if (node.nodeType === Node.TEXT_NODE) values.push(node.nodeValue || "");
@@ -81,201 +31,266 @@ async function pageSurface(page) {
   });
 }
 
- test("saved assistant history opens in an isolated revisit preview and stays bound to its live frame", async ({ harness }, info) => {
+test("saved lookup details reopen from the highlighted word without exposing answers in the host page", async ({ harness }, info) => {
   test.setTimeout(60000);
   await harness.reset();
   await harness.setStorage({ uiLocale: "en", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const center = await harness.context.newPage();
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
-  await center.getByRole("button", { name: "Enable recording", exact: true }).click();
-  await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  const recording = await message(center, M.GET_RECORDING_STATE);
+  if (!recording.data.enabled) {
+    expect((await message(center, M.SET_RECORDING, { enabled: true,
+      expectedConsentGeneration: recording.data.consentGeneration })).ok).toBe(true);
+  }
 
   const original = await harness.open("/selection"); await harness.inject(original);
   await select(original, "#technical-competition", "session");
   await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
   await original.getByRole("button", { name: "Explain with AI using the surrounding context", exact: true }).click();
   await expect(original.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
-  await expect(original.locator(".tf-selection-ai-detail")).toContainText("streamed answer");
   const listed = await message(center, M.LIST_RECORDS, { pageKey: null, query: "session", cursor: null, limit: 30 });
   expect(listed.data.items).toHaveLength(1);
   const recordId = listed.data.items[0].recordId;
+
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
-  await expect(center.getByRole("heading", { name: "session", exact: true })).toBeVisible();
-  await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
-  await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
   const followUpQuestion = "Why is this terminal session reusable?";
   await center.getByRole("button", { name: "Ask a follow-up", exact: true }).click();
   await center.getByPlaceholder("Ask about this saved answer").fill(followUpQuestion);
   await center.getByRole("button", { name: "Send", exact: true }).click();
   await expect(center.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
   await expect(center.getByText("streamed answer", { exact: true })).toHaveCount(2);
-  const detail = await message(center, M.GET_RECORD, { recordId });
-  const turns = detail.data.artifacts.filter(value => value.kind === "assistant");
-  expect(turns).toHaveLength(2);
-  expect(turns.every(value => value.payload.completionStatus === "completed" && value.payload.assistantAnswer === "streamed answer")).toBe(true);
-  const rootQuestion = turns[0].payload.userQuestion;
-  expect(rootQuestion).toBeTruthy();
-  expect(harness.server.calls).toHaveLength(2);
 
-  // Add a second record on this page so a slow older location check cannot replace
-  // a newer preview for a different record.
+  await select(original, "#technical-competition-second", "session");
+  await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
   await select(original, "#ambiguous", "persistent");
   await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
-  const secondRecord = await message(center, M.LIST_RECORDS, { pageKey: null, query: "persistent", cursor: null, limit: 30 });
-  expect(secondRecord.data.items).toHaveLength(1);
-  const secondRecordId = secondRecord.data.items[0].recordId;
-  expect(secondRecordId).not.toBe(recordId);
   const providerCalls = harness.server.calls.length;
-
   await original.close();
-  const revisit = await harness.open("/selection");
-  await addPreviewCopySlot(revisit, "forged-preview");
-  await revisit.evaluate(() => {
-    globalThis.__tfObservedMessages = [];
-    addEventListener("message", event => { try { __tfObservedMessages.push(JSON.stringify(event.data)); } catch {} });
-  });
-  // The active host document got an evaluate listener above; this init script observes
-  // messages addressed into the extension iframe created later.
-  await revisit.addInitScript(() => {
-    globalThis.__tfObservedMessages = [];
-    addEventListener("message", event => { try { __tfObservedMessages.push(JSON.stringify(event.data)); } catch {} });
-  });
-  await harness.inject(revisit);
+
+  const revisit = await harness.open("/selection"); await harness.inject(revisit);
   await revisit.setViewportSize({ width: 1280, height: 800 });
-  await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(2);
-
-  const sessionMarker = revisit.locator(`.tf-reading-page-marker[data-record-id="${recordId}"]`);
-  const secondMarker = revisit.locator(`.tf-reading-page-marker[data-record-id="${secondRecordId}"]`);
-
-  // Delay the earlier click during page-summary confirmation. The later click's
-  // validation finishes first and must remain the sole preview after the old reply.
-  await bindGate(harness.driver, revisit.url(), "install", M.GET_PAGE_SUMMARY);
-  await sessionMarker.click();
-  await expect.poll(() => bindGate(harness.driver, revisit.url(), "started", M.GET_PAGE_SUMMARY)).toBe(true);
-  await secondMarker.click();
-  const secondPreview = revisit.frameLocator("iframe.tf-reading-preview-frame");
-  await expect(secondPreview.getByRole("heading", { name: "persistent", exact: true })).toBeVisible();
-  const validationRaceIds = await bindGate(harness.driver, revisit.url(), "created", M.GET_PAGE_SUMMARY);
-  expect(validationRaceIds).toHaveLength(1);
-  const secondPreviewUrl = await revisit.locator(".tf-reading-preview-frame").getAttribute("src");
-  expect(new URL(secondPreviewUrl).searchParams.get("previewId")).toBe(validationRaceIds[0]);
-  await bindGate(harness.driver, revisit.url(), "release", M.GET_PAGE_SUMMARY);
-  await expect.poll(() => bindGate(harness.driver, revisit.url(), "completed", M.GET_PAGE_SUMMARY)).toBe(2);
-  await expect(secondPreview.getByRole("heading", { name: "persistent", exact: true })).toBeVisible();
-  expect(await bindGate(harness.driver, revisit.url(), "created", M.GET_PAGE_SUMMARY)).toHaveLength(1);
-  await bindGate(harness.driver, revisit.url(), "restore", M.GET_PAGE_SUMMARY);
-  await revisit.locator(".tf-reading-preview-shell .tf-ui-icon-button").click();
-  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
-
-  // Hold the first create reply so a second activation wins while the first is pending.
-  await bindGate(harness.driver, revisit.url(), "install", M.PREVIEW_CREATE);
-  await sessionMarker.click();
-  await expect.poll(() => bindGate(harness.driver, revisit.url(), "started", M.PREVIEW_CREATE)).toBe(true);
-  await sessionMarker.click();
-  const truePreview = revisit.frameLocator("iframe.tf-reading-preview-frame");
-  await expect(truePreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
-  await expect(truePreview.getByRole("heading", { name: rootQuestion, exact: true })).toBeVisible();
-  await expect(truePreview.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
-  await expect(truePreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
-
-  const createdIds = await bindGate(harness.driver, revisit.url(), "created", M.PREVIEW_CREATE);
-  expect(createdIds).toHaveLength(2);
-  const livePreviewUrl = await revisit.locator(".tf-reading-preview-frame").getAttribute("src");
-  const previewId = new URL(livePreviewUrl).searchParams.get("previewId");
-  expect(previewId).toBe(createdIds[1]);
-  await bindGate(harness.driver, revisit.url(), "release", M.PREVIEW_CREATE);
-  await expect.poll(async () => (await bindGate(harness.driver, revisit.url(), "closed", M.PREVIEW_CREATE)).includes(createdIds[0])).toBe(true);
-  await bindGate(harness.driver, revisit.url(), "restore", M.PREVIEW_CREATE);
-  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(1);
-  await revisit.screenshot({ path: info.outputPath("reading-preview-live.png"), fullPage: false, animations: "allow", caret: "initial" });
-  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(1);
-  await expect(truePreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
-
-  const hostMessages = await revisit.evaluate(() => globalThis.__tfObservedMessages.map(value => JSON.parse(value)));
-  const frameMessages = await truePreview.locator("body").evaluate(() => globalThis.__tfObservedMessages || []);
-  expect(hostMessages.some(value => value.type === "translateflow-reading-preview-claim")).toBe(true);
-  expect(frameMessages.some(value => JSON.parse(value).type === "translateflow-reading-preview-bound")).toBe(true);
-  const handshakeMessages = JSON.stringify([...hostMessages, ...frameMessages]);
-  expect(handshakeMessages).not.toContain(rootQuestion);
-  expect(handshakeMessages).not.toContain(followUpQuestion);
-  expect(handshakeMessages).not.toContain("streamed answer");
-
-  expect(JSON.stringify(await pageSurface(revisit))).not.toContain(rootQuestion);
+  await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(3);
+  await expect(revisit.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
+  await revisit.evaluate(() => { document.querySelector("#technical-competition").textContent = "The original saved location moved away."; });
+  await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(2);
+  await revisit.locator("#technical-competition-second").hover();
+  const hoverPreview = revisit.frameLocator("iframe.tf-reading-hover-frame");
+  await expect(hoverPreview.getByRole("heading", { name: "session", exact: true })).toBeVisible();
+  await expect(hoverPreview.getByRole("heading", { name: "Saved context", exact: true })).toBeVisible();
+  await expect(hoverPreview.getByText("A second session keeps another saved lookup on this page.", { exact: true })).toBeVisible();
+  await expect(hoverPreview.getByRole("heading", { name: "AI explanation", exact: true })).toBeVisible();
+  await expect(hoverPreview.getByRole("heading", { name: "Follow-up", exact: true })).toBeVisible();
+  await expect(hoverPreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
+  await expect(hoverPreview.getByText("streamed answer", { exact: true }).first()).toBeVisible();
+  await expect(hoverPreview.getByText(followUpQuestion, { exact: true })).toBeVisible();
+  await expect(revisit.locator(".tf-reading-hover-preview")).toBeVisible();
+  expect(JSON.stringify(await pageSurface(revisit))).not.toContain(followUpQuestion);
+  expect(JSON.stringify(await pageSurface(revisit))).not.toContain("streamed answer");
+  expect(harness.server.calls).toHaveLength(providerCalls);
+  await hoverPreview.getByRole("button", { name: "Close", exact: false }).click();
+  await expect(revisit.locator(".tf-reading-hover-preview")).toHaveCount(0);
+  await revisit.setViewportSize({ width: 360, height: 420 });
+  await revisit.locator("#technical-competition-second").hover();
+  await expect(hoverPreview.getByText(followUpQuestion, { exact: true })).toBeVisible();
+  await expect.poll(async () => revisit.locator(".tf-reading-hover-preview").evaluate(node => {
+    const box = node.getBoundingClientRect(), viewport = visualViewport;
+    const left = (viewport?.offsetLeft || 0) + 7, top = (viewport?.offsetTop || 0) + 7;
+    const right = (viewport?.offsetLeft || 0) + (viewport?.width || innerWidth) - 7;
+    const bottom = (viewport?.offsetTop || 0) + (viewport?.height || innerHeight) - 7;
+    const value = { inside: box.left >= left && box.right <= right && box.top >= top && box.bottom <= bottom,
+      innerWidth, innerHeight,
+      viewport: viewport ? { width: viewport.width, height: viewport.height, offsetLeft: viewport.offsetLeft,
+        offsetTop: viewport.offsetTop, scale: viewport.scale } : null,
+      bounds: { left, top, right, bottom },
+      rect: { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height },
+      style: { left: node.style.left, top: node.style.top, width: node.style.width, height: node.style.height,
+        maxWidth: node.style.maxWidth, maxHeight: node.style.maxHeight } };
+    return value.inside ? "inside" : JSON.stringify(value);
+  })).toBe("inside");
+  await expect(hoverPreview.getByRole("button", { name: "Close", exact: false })).toBeVisible();
+  await revisit.screenshot({ path: info.outputPath("reading-highlight-hover-details.png"), fullPage: false });
+  const hoverBox = await revisit.locator(".tf-reading-hover-preview").boundingBox();
+  expect(hoverBox).not.toBeNull();
+  await revisit.mouse.move(hoverBox.x + hoverBox.width / 2, hoverBox.y + hoverBox.height / 2);
+  await hoverPreview.getByRole("button", { name: "Close", exact: false }).click();
+  await expect(revisit.locator(".tf-reading-hover-preview")).toHaveCount(0);
   expect(JSON.stringify(await pageSurface(revisit))).not.toContain(followUpQuestion);
   expect(JSON.stringify(await pageSurface(revisit))).not.toContain("streamed answer");
   expect(harness.server.calls).toHaveLength(providerCalls);
 
-  // The copied frame was inserted before content injection. Navigating that existing
-  // frame does not mutate the source document while the legitimate frame is bound.
-  await copyPreviewIntoSlot(revisit, "forged-preview", livePreviewUrl);
-  const forged = revisit.frameLocator("#forged-preview");
-  await expect(forged.getByText("Saved history could not be opened. Close this preview and try again.", { exact: true })).toBeVisible();
-  const forgedRead = await forged.locator("body").evaluate(async (_body, id) => chrome.runtime.sendMessage({
-    protocolVersion: 2, method: "reading.preview-read", previewId: id
-  }), previewId);
-  expect(forgedRead.ok).toBe(false);
-  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(1);
-  await expect(truePreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
-
-  const crossPage = await harness.open("/selection"); await addPreviewCopySlot(crossPage, "copied-preview"); await harness.inject(crossPage);
-  await copyPreviewIntoSlot(crossPage, "copied-preview", livePreviewUrl);
-  const copied = crossPage.frameLocator("#copied-preview");
-  await expect(copied.getByText("Saved history could not be opened. Close this preview and try again.", { exact: true })).toBeVisible();
-  const copiedRead = await copied.locator("body").evaluate(async (_body, id) => chrome.runtime.sendMessage({
-    protocolVersion: 2, method: "reading.preview-read", previewId: id
-  }), previewId);
-  expect(copiedRead.ok).toBe(false);
-  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(1);
-  await expect(truePreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
-
-  const moved = await moveLivePreviewToHistoryLayer(revisit);
-  expect(moved).toEqual({ supported: true, moved: true, connected: true });
-  await expect(truePreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
-  await revisit.locator(".tf-reading-preview-shell .tf-ui-icon-button").click();
-  await expect(revisit.locator(".tf-reading-preview-frame")).toHaveCount(0);
-  await expect(revisit.locator(".tf-reading-preview-shell")).toHaveCount(0);
-
-  // A real browser restart drops the in-memory preview session while keeping the saved record and marker choice.
   await harness.restartBrowser();
   const restartedCenter = await harness.context.newPage();
   await restartedCenter.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
-  await expect(restartedCenter.getByRole("button", { name: "Disable site markers", exact: true })).toBeVisible();
+  await expect(restartedCenter.getByRole("button", { name: /site markers/i })).toHaveCount(0);
   const afterRestart = await harness.open("/selection"); await harness.inject(afterRestart);
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(2);
-  const restartedSessionMarker = afterRestart.locator(`.tf-reading-page-marker[data-record-id="${recordId}"]`);
-  await restartedSessionMarker.click();
-  const restartedPreview = afterRestart.frameLocator("iframe.tf-reading-preview-frame");
-  await expect(restartedPreview.getByRole("heading", { name: followUpQuestion, exact: true })).toBeVisible();
-  await expect(restartedPreview.getByText("streamed answer", { exact: true })).toHaveCount(2);
+  await expect(afterRestart.locator(".tf-reading-page-highlight")).toHaveCount(3);
+  await expect(afterRestart.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
+  await afterRestart.locator("#technical-competition-second").hover();
+  await expect(afterRestart.frameLocator("iframe.tf-reading-hover-frame").getByText(followUpQuestion, { exact: true })).toBeVisible();
   expect(harness.server.calls).toHaveLength(providerCalls);
 
-  // Site-marker revocation closes the embedded detail; a delayed bind response cannot restore it.
-  await afterRestart.keyboard.press("Escape");
-  await bindGate(harness.driver, afterRestart.url(), "install");
-  await restartedSessionMarker.click();
-  await expect.poll(() => bindGate(harness.driver, afterRestart.url(), "started")).toBe(true);
-  const movedForRevoke = await moveLivePreviewToHistoryLayer(afterRestart);
-  expect(movedForRevoke).toEqual({ supported: true, moved: true, connected: true });
-  await restartedCenter.getByRole("button", { name: "Disable site markers", exact: true }).click();
-  await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
-  await bindGate(harness.driver, afterRestart.url(), "release");
-  await bindGate(harness.driver, afterRestart.url(), "restore");
-  await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
-  await expect(restartedCenter.getByRole("button", { name: "Enable site markers", exact: true })).toBeVisible();
-  await restartedCenter.getByRole("button", { name: "Enable site markers", exact: true }).click();
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(2);
-
-  // Deleting the source record revokes an open preview and removes its location marker.
-  await restartedSessionMarker.click();
-  await expect(afterRestart.locator(".tf-reading-preview-frame")).toBeVisible();
-  await expect(afterRestart.frameLocator("iframe.tf-reading-preview-frame").getByText("streamed answer", { exact: true })).toHaveCount(2);
-  const movedForDelete = await moveLivePreviewToHistoryLayer(afterRestart);
-  expect(movedForDelete).toEqual({ supported: true, moved: true, connected: true });
   await restartedCenter.getByRole("button", { name: "Delete record", exact: true }).click();
   await restartedCenter.getByRole("button", { name: "Confirm", exact: true }).click();
-  await expect(afterRestart.locator(".tf-reading-preview-frame")).toHaveCount(0);
-  await expect(restartedSessionMarker).toHaveCount(0);
-  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(1);
-  await expect(afterRestart.locator(".tf-reading-page-toggle")).toHaveText("Page history 1");
+  await expect(afterRestart.locator(".tf-reading-page-highlight")).toHaveCount(2);
+  await expect(afterRestart.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
   expect(harness.server.calls).toHaveLength(providerCalls);
+});
+
+test("multiple highlights on the same line show independent previews on hover and preserve page interactivity", async ({ harness }) => {
+  test.setTimeout(60000);
+  await harness.resetProfile();
+  await harness.reset();
+  await harness.setStorage({ uiLocale: "en", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
+  const center = await harness.context.newPage();
+  await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
+  const enableRecording = center.getByRole("button", { name: "Enable recording", exact: true });
+  if (await enableRecording.isVisible()) await enableRecording.click();
+
+  const original = await harness.open("/selection"); await harness.inject(original);
+
+  // Select foundation
+  await select(original, "#foundation", "foundation");
+  await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  await original.locator("button.tf-selection-icon-button").first().click(); // Close popup
+  await expect(original.locator(".tf-selection-chip")).toHaveCount(0);
+
+  // Select production-grade
+  await select(original, "#production-grade", "production-grade");
+  await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  await original.locator("button.tf-selection-icon-button").first().click(); // Close popup
+  await expect(original.locator(".tf-selection-chip")).toHaveCount(0);
+
+  const providerCalls = harness.server.calls.length;
+  await original.close();
+
+  const revisit = await harness.open("/selection"); await harness.inject(revisit);
+  await revisit.setViewportSize({ width: 1280, height: 800 });
+  await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(2);
+  await expect(revisit.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
+
+  // Verify site markers are on by default and switch doesn't exist
+  await center.bringToFront();
+  await center.reload();
+  await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
+
+  await revisit.bringToFront();
+
+  // Hover foundation highlight
+  await revisit.locator("#foundation").hover();
+
+  const hoverPreview = revisit.frameLocator("iframe.tf-reading-hover-frame");
+  await expect(hoverPreview.getByRole("heading", { name: "foundation", exact: true })).toBeVisible();
+  await expect(hoverPreview.getByRole("heading", { name: "Saved context", exact: true })).toBeVisible();
+  await expect(hoverPreview.getByText("No saved AI activity", { exact: true })).toBeVisible();
+  await expect(hoverPreview.locator(".reading-preview-info")).toHaveAttribute("title", /Completed AI explanations/);
+
+  // Ensure we can move to the preview card without it closing
+  const shellBox = await revisit.locator(".tf-reading-hover-preview").boundingBox();
+  expect(shellBox.height).toBeLessThan(560);
+  await revisit.mouse.move(shellBox.x + 5, shellBox.y + 5);
+  await expect(hoverPreview.getByRole("heading", { name: "foundation", exact: true })).toBeVisible();
+  const stableFrame = revisit.locator("iframe.tf-reading-hover-frame");
+  const stablePreviewUrl = await stableFrame.getAttribute("src");
+  const stableSince = Date.now();
+  await expect.poll(async () => {
+    const urls = await revisit.locator("iframe.tf-reading-hover-frame").evaluateAll(nodes => nodes.map(node => node.getAttribute("src")));
+    return Date.now() - stableSince >= 600 && urls.length === 1 && urls[0] === stablePreviewUrl ? "stable" : JSON.stringify(urls);
+  }, { timeout: 1500 }).toBe("stable");
+
+  // Move mouse away to close the first preview card
+  await revisit.mouse.move(0, 0);
+  await expect(revisit.locator(".tf-reading-hover-preview")).toHaveCount(0);
+
+  // Hover production-grade highlight
+  await revisit.locator("#production-grade").hover();
+
+  await expect(hoverPreview.getByRole("heading", { name: "production-grade", exact: true })).toBeVisible();
+
+  // Verify provider calls hasn't increased (no network request on hover)
+  expect(harness.server.calls.length).toBe(providerCalls);
+
+  // Click a normal link on the page (verifies pointer-events doesn't block clicks)
+  let linkClicked = false;
+  await revisit.exposeFunction("setLinkClicked", () => { linkClicked = true; });
+  await revisit.evaluate(() => {
+    document.getElementById("test-link").addEventListener("click", (e) => { e.preventDefault(); window.setLinkClicked(); });
+  });
+  await revisit.locator("#test-link").click();
+  expect(linkClicked).toBe(true);
+
+  // Select some normal text (verifies pointer-events doesn't block selection)
+  await revisit.evaluate(() => {
+    const node = document.querySelector("#dual-source").firstChild;
+    const range = document.createRange(); range.setStart(node, 0); range.setEnd(node, 3);
+    getSelection().removeAllRanges(); getSelection().addRange(range);
+  });
+  const selectionText = await revisit.evaluate(() => getSelection().toString());
+  expect(selectionText).toBe("The");
+
+  // Delete foundation record
+  const records = await message(center, M.LIST_RECORDS, { pageKey: null, query: "", cursor: null, limit: 30 });
+  const foundationRecord = records.data.items.find(i => i.itemText === "foundation");
+
+  await center.bringToFront();
+  await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${foundationRecord.recordId}`);
+  await center.getByRole("button", { name: "Delete record", exact: true }).click();
+  await center.getByRole("button", { name: "Confirm", exact: true }).click();
+
+  // Verify only production-grade remains
+  await revisit.bringToFront();
+  await expect(revisit.locator(".tf-reading-page-marker")).toHaveCount(0);
+  await expect(revisit.locator(".tf-reading-page-highlight")).toHaveCount(1);
+
+  // Restart browser and verify consistency
+  await harness.restartBrowser();
+  const afterRestart = await harness.open("/selection"); await harness.inject(afterRestart);
+  await expect(afterRestart.locator(".tf-reading-page-marker")).toHaveCount(0);
+  await expect(afterRestart.locator(".tf-reading-page-highlight")).toHaveCount(1);
+});
+
+test("a new lookup on a page with live highlights keeps the refreshed word preview stable", async ({ harness }) => {
+  test.setTimeout(60000);
+  await harness.resetProfile();
+  await harness.reset();
+  await harness.setStorage({ uiLocale: "en" });
+  const center = await harness.context.newPage();
+  await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
+  const enableRecording = center.getByRole("button", { name: "Enable recording", exact: true });
+  if (await enableRecording.isVisible()) await enableRecording.click();
+
+  const page = await harness.open("/selection"); await harness.inject(page);
+  await select(page, "#foundation", "foundation");
+  await expect(page.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  await page.locator("button.tf-selection-icon-button").first().click();
+  await expect(page.locator(".tf-reading-page-highlight")).toHaveCount(1);
+  await expect(page.locator(".tf-reading-page-marker, .tf-reading-page-toggle, .tf-reading-page-panel")).toHaveCount(0);
+
+  await page.locator("#foundation").hover();
+  const firstPreview = page.locator("iframe.tf-reading-hover-frame");
+  await expect(page.frameLocator("iframe.tf-reading-hover-frame").getByRole("heading", { name: "foundation", exact: true })).toBeVisible();
+  const firstPreviewUrl = await firstPreview.getAttribute("src");
+  const firstStableSince = Date.now();
+  await expect.poll(async () => {
+    const urls = await page.locator("iframe.tf-reading-hover-frame").evaluateAll(nodes => nodes.map(node => node.getAttribute("src")));
+    return Date.now() - firstStableSince >= 600 && urls.length === 1 && urls[0] === firstPreviewUrl ? "stable" : JSON.stringify(urls);
+  }, { timeout: 1500 }).toBe("stable");
+  await page.frameLocator("iframe.tf-reading-hover-frame").getByRole("button", { name: "Close", exact: false }).click();
+
+  await select(page, "#production-grade", "production-grade");
+  await expect(page.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  await page.locator("button.tf-selection-icon-button").first().click();
+  await expect(page.locator(".tf-reading-page-highlight")).toHaveCount(2);
+
+  const records = await message(center, M.LIST_RECORDS, { pageKey: null, query: "production-grade", cursor: null, limit: 30 });
+  const refreshedRecord = records.data.items.find(item => item.itemText === "production-grade");
+  expect(refreshedRecord).toBeTruthy();
+  await page.locator("#production-grade").hover();
+  await expect(page.frameLocator("iframe.tf-reading-hover-frame").getByRole("heading", { name: "production-grade", exact: true })).toBeVisible();
+  const refreshedPreview = page.locator("iframe.tf-reading-hover-frame"), refreshedPreviewUrl = await refreshedPreview.getAttribute("src");
+  const refreshedStableSince = Date.now();
+  await expect.poll(async () => {
+    const urls = await page.locator("iframe.tf-reading-hover-frame").evaluateAll(nodes => nodes.map(node => node.getAttribute("src")));
+    return Date.now() - refreshedStableSince >= 600 && urls.length === 1 && urls[0] === refreshedPreviewUrl ? "stable" : JSON.stringify(urls);
+  }, { timeout: 1500 }).toBe("stable");
 });

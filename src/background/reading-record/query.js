@@ -63,7 +63,8 @@ export function* read(store, context, cursor, now, viewed = true) {
     const row = current.value;
     const item = pages ? { pageKey: row.pageKey, siteKey: row.siteKey, pageTitle: row.pageTitle, safeReturnUrl: row.safeReturnUrl,
       recordCount: row.recordCount, lastLookupAt: row.lastLookupAt } : request.method === M.GET_PAGE_SUMMARY ?
-      { recordId: row.record.recordId, revision: row.record.revision, anchor: row.record.anchor, hasCompletedAssistant: row.listItem.hasCompletedAssistant } : row.listItem;
+      { recordId: row.record.recordId, revision: row.record.revision, itemKey: row.record.itemKey,
+        anchor: row.record.anchor, hasCompletedAssistant: row.listItem.hasCompletedAssistant } : row.listItem;
     if (pages ? literalMatch(item, request.query) : request.method === M.GET_PAGE_SUMMARY || literalMatch(item, request.query)) {
       const size = byteLength(JSON.stringify(item)) + 1;
       if (items.length >= request.limit || bytes + size > L.listResponseBytes - 1024) { more = true; break; }

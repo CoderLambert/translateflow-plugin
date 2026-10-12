@@ -36,6 +36,55 @@
     const element = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
     return element?.closest(ROOTS) || element;
   }
+  function rootCandidates() { return [...document.querySelectorAll(ROOTS)]; }
+  function sameRoots(left, right) {
+    return left.length === right.length && left.every((root, index) => root === right[index]);
+  }
+  async function resolveVerifiedBlocks(items, signal) {
+    const started = performance.now(), metrics = emptyStats(), results = new Map(), ids = new Map();
+    const eligible = items.slice(0, TOTAL.items).filter((item) =>
+      typeof item?.anchor?.quote?.exact === "string" && item.anchor.quote.exact && typeof item.anchor.blockDigest === "string" && item.anchor.blockDigest
+    );
+    if (!eligible.length) return { results, revision: null };
+    projection.start();
+    const revision = projection.revision();
+    const exacts = [...new Set(eligible.map((item) => item.anchor.quote.exact))];
+    const roots = rootCandidates();
+    if (roots.length > TOTAL.nodes) return { results, revision: projection.revision() };
+    const projected = new Map();
+    for (const root of roots) {
+      aborted(signal);
+      if (performance.now() - started >= TOTAL.ms) return { results: new Map(), revision: projection.revision() };
+      const value = projection.project(root);
+      metrics.nodes += value.stats?.nodes || 0; metrics.chars += value.stats?.chars || 0;
+      if (value.status !== "resolved" || metrics.nodes >= TOTAL.nodes || metrics.chars >= TOTAL.chars ||
+          performance.now() - started >= TOTAL.ms) return { results: new Map(), revision: projection.revision() };
+      if (exacts.some((exact) => value.text.includes(exact))) projected.set(root, { value, digest: await digest(value.text) });
+    }
+    aborted(signal);
+    if (projection.revision() !== revision || !sameRoots(roots, rootCandidates()))
+      return { results: new Map(), revision: projection.revision() };
+    for (const item of eligible) {
+      const anchor = item.anchor, exact = anchor.quote.exact, matches = new Map();
+      for (const [root, cached] of projected) {
+        if (cached.digest !== anchor.blockDigest) continue;
+        for (let start = cached.value.text.indexOf(exact); start >= 0; start = cached.value.text.indexOf(exact, start + 1)) {
+          if (!contextMatches(cached.value.text, start, anchor)) continue;
+          const range = projection.rangeForPosition(cached.value, { start, end: start + exact.length });
+          const located = range && projection.positionForRange(cached.value, range);
+          if (!range || contextRoot(range) !== root || !range.startContainer.isConnected || !range.endContainer.isConnected ||
+              !located || cached.value.text.slice(located.start, located.end) !== exact) continue;
+          matches.set(rangeKey(range, ids), range);
+          if (matches.size > 1) break;
+        }
+        if (matches.size > 1) break;
+      }
+      if (matches.size > 1) results.set(item.recordId, { status: "ambiguous", range: null, stats: { ...metrics } });
+    }
+    metrics.ms = Math.max(0, performance.now() - started);
+    for (const result of results.values()) result.stats = { ...metrics };
+    return { results, revision: projection.revision() };
+  }
   function freshScan(revision) {
     const scanner = projection.createScanner(document.body);
     sharedScan = { revision, scanner, rootProjections: new Map() };
@@ -139,23 +188,38 @@
     if (stale()) { discardScan(state); return null; }
     return { revision: page.revision, results, retry };
   }
-  async function resolveItems(items, { signal } = {}) {
+  async function resolveItems(items, { signal, verifiedBlocksFirst = false } = {}) {
     if (!Array.isArray(items) || !document.body) return { results: unresolved(Array.isArray(items) ? items : [], "unsupported"), retries: 0 };
+    const capped = items.slice(0, TOTAL.items), overflow = items.slice(TOTAL.items);
+    const local = verifiedBlocksFirst ? await resolveVerifiedBlocks(capped, signal) : { results: new Map(), revision: null };
+    const pending = capped.filter((item) => !local.results.has(item.recordId));
+    if (!pending.length) {
+      const combined = new Map(local.results);
+      for (const [recordId, value] of unresolved(overflow)) combined.set(recordId, value);
+      return { results: combined, retries: 0, projectionRevision: local.revision };
+    }
     for (let retry = 0; retry < TOTAL.retries; retry++) {
       aborted(signal);
-      const result = await resolveAtRevision(items, signal, retry);
-      if (result) return { results: result.results, retries: retry, projectionRevision: result.revision };
+      const result = await resolveAtRevision(pending, signal, retry);
+      if (result) {
+        const combined = new Map(local.results);
+        for (const [recordId, value] of result.results) combined.set(recordId, value);
+        for (const [recordId, value] of unresolved(overflow)) combined.set(recordId, value);
+        return { results: combined, retries: retry, projectionRevision: result.revision };
+      }
       if (retry + 1 < TOTAL.retries) await delay(TOTAL.debounceMs, signal);
     }
-    return { results: unresolved(items), retries: TOTAL.retries, projectionRevision: null };
+    const combined = new Map(local.results);
+    for (const [recordId, value] of unresolved([...pending, ...overflow])) combined.set(recordId, value);
+    return { results: combined, retries: TOTAL.retries, projectionRevision: local.results.size ? local.revision : null };
   }
   async function resolve(anchor, { signal } = {}) {
     const recordId = "__single__";
     const result = await resolveItems([{ recordId, anchor }], { signal });
     return { ...(result.results.get(recordId) || { status: "not-loaded", range: null, stats: emptyStats() }), retries: result.retries };
   }
-  async function resolvePage(items, { signal } = {}) {
-    const result = await resolveItems(items, { signal });
+  async function resolvePage(items, { signal, verifiedBlocksFirst = false } = {}) {
+    const result = await resolveItems(items, { signal, verifiedBlocksFirst });
     Object.defineProperty(result.results, "projectionRevision", { value: result.projectionRevision, enumerable: false });
     return result.results;
   }

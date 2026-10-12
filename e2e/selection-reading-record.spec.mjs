@@ -118,7 +118,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     server.reset();
     await driver.evaluate(async ({ baseUrl }) => {
       await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" }); await chrome.storage.local.clear();
-      await chrome.storage.local.set({ provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
+      await chrome.storage.local.set({ uiLocale: "zh_CN", provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
         selectionExplanationDepth: "standard", appearance: "standard", glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
         openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
     }, { baseUrl: server.baseUrl });
@@ -193,12 +193,15 @@ test.describe("Selection → frozen trusted source → committed Reading records
     await content.page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
     await expect(content.page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     await expect(status(content)).toHaveAttribute("data-state", "saved");
-    expect(server.calls).toHaveLength(2); expect(JSON.parse(server.calls[1].userContent).userQuestion).toBe("这里是什么意思？");
+    expect(server.calls).toHaveLength(2);
+    const explainRequest = JSON.parse(server.calls[1].userContent);
+    expect(explainRequest.question).toBe("这里是什么意思？");
+    expect(explainRequest.text).toBe("session");
     list = await records(); const lexical = list.find((value) => value.itemText === "session");
     detail = await message(M.GET_RECORD, { recordId: lexical.recordId }); expect(detail.data.record.lookupCount).toBe(1);
     const assistant = detail.data.artifacts.find((a) => a.kind === "assistant"); expect(assistant.payload.userQuestion).toBe("这里是什么意思？");
     expect(assistant.payload.assistantAnswer).toContain(await content.page.locator(".tf-selection-generated-body").innerText());
-    expect(assistant.provenance.model).toBe("mock-model"); expect(assistant.provenance.promptVersion).toBe("selection-explain-reading-v2");
+    expect(assistant.provenance.model).toBe("mock-model"); expect(assistant.provenance.promptVersion).toBe("selection-assistant-v1");
     expect(JSON.stringify(assistant.provenance)).not.toContain("127.0.0.1");
     await message(M.GET_RECORD, { recordId: lexical.recordId }); expect(server.calls).toHaveLength(2);
   });

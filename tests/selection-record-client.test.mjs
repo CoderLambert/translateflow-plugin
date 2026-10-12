@@ -5,7 +5,8 @@ import { readFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 import { createReadingService } from "../src/background/reading-record/service.js";
 import { READING_METHOD as M, READING_ERROR as E } from "../src/shared/reading/constants.js";
-import { createSourceDigest } from "../src/shared/reading/identity.js";
+import { ReadingContractError } from "../src/shared/reading/validation.js";
+import { createReadingItemKey, createSourceDigest } from "../src/shared/reading/identity.js";
 import { snapshot } from "./fixtures/reading/contract.mjs";
 import { nativeBrowser, contentSender, repositoryDouble } from "./fixtures/reading/access.mjs";
 import { createContentI18nStub } from "./helpers/content-i18n-stub.mjs";
@@ -19,7 +20,8 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
   let siteMarkers = { state: "ready", enabled: false, permissionGranted: true };
   const messages = [], writes = [], views = [];
   const realm = vm.createContext({ crypto: webcrypto, TextEncoder, URL, Date, chrome: { runtime: {} },
-    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
+    __TRANSLATE_FLOW_CONTENT__: { modules: { contentI18n: createContentI18nStub(), textProjection: { revision: () => revision },
+      selectionSourceSnapshot: { documentGeneration: "doc-test" }, uiHost: { ownsNode: (node) => node === "owned-ui" } } } });
   const parse = vm.runInContext("JSON.parse", realm);
   const clone = (value) => parse(JSON.stringify(value));
   let notify = null, disconnected = null, connections = 0;
@@ -33,12 +35,15 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
       if (request.method === M.GET_SITE_RECORDING) return { excluded, sitePolicyRevision: 1 };
       if (request.method === M.GET_PAGE_SUMMARY) {
         const ids = summaryOfWrites ? [...new Set(writes.map((item) => item.recordId))] : [];
-        return { items: ids.map((recordId) => ({ recordId, revision: savedRevision, anchor: json(source.anchor), hasCompletedAssistant: false })),
+        return { items: ids.map((recordId) => ({ recordId, revision: savedRevision, itemKey: createReadingItemKey(source.selectedText, "en"),
+          anchor: json(source.anchor), hasCompletedAssistant: false })),
           nextCursor: null, pageRevision: 1, pageRecordCount: ids.length };
       }
     },
     async prepareOperation(context) { if (!state.enabled) return { state: "disabled" }; return repositoryDouble().prepareOperation(context); },
-    async mutate({ request, assertCurrent }) { assertCurrent(); writes.push(request.artifact);
+    async mutate({ request, assertCurrent }) { assertCurrent();
+      if (!state.enabled || excluded) throw new ReadingContractError(E.DISABLED, "test.policy");
+      writes.push(request.artifact);
       return { state: "saved", recordId: request.token.recordId, revision: ++savedRevision, artifactId: request.artifact.artifactId, duplicate: writes.filter((a) => a.artifactId === request.artifact.artifactId).length > 1 }; },
     async cancelOperation({ request, registeredOperation, assertCurrent }) { assertCurrent();
       return { operationId: request.operationId, state: writes.length ? "committed" : "cancelled", recordId: writes.length ? registeredOperation.token.recordId : null, revision: writes.length ? savedRevision : null }; }
@@ -67,11 +72,19 @@ async function harness({ enabled = true, summaryOfWrites = false, sourceOverride
     enable() { state = { ...state, enabled: true, consentGeneration: state.consentGeneration + 1 }; },
     pause() { state = { ...state, enabled: false, consentGeneration: state.consentGeneration + 1 }; },
     connections: () => connections,
+    disconnect() { disconnected?.(); },
     notify(overrides = {}) { notify?.(clone({ protocolVersion: 2, type: "reading.invalidate", pageRevision: 1,
       dataGeneration: 1, consentGeneration: state.consentGeneration, ...overrides })); },
     notifySiteMarkers() { notify?.(clone({ protocolVersion: 2, type: "reading.site-markers.invalidate" })); },
     setSiteMarkers(value) { siteMarkers = { ...value }; },
     invalidate() { valid = false; revision++; }, exclude() { excluded = true; }, clone };
+}
+function assistantDraft(h, overrides = {}) {
+  return h.clone({ kind: "assistant", targetLanguage: "zh-CN",
+    provenance: { provider: "mock", model: "mock", promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" },
+    payload: { userQuestion: "How is this used?", assistantAnswer: "Saved answer.", action: "usage", threadId: "thread-accepted",
+      turnId: "turn-accepted", parentTurnId: null, branchId: "branch-accepted", regenerationOf: null,
+      completionStatus: "completed", ...overrides } });
 }
 
 test("Reading collector rejects untrusted/page actions and forged operation intents", async () => {
@@ -86,6 +99,12 @@ test("Reading collector rejects untrusted/page actions and forged operation inte
   assert.equal(await read({ operationId: "forged" }), null);
   assert.equal(await read({ recordId: "arbitrary" }), null);
   h.invalidate(); assert.equal(await read({}), null);
+  const recordId = "11111111-1111-4111-8111-111111111111";
+  assert.equal(h.modules.selectionRecordAccess.authorizePageAction({ event: { isTrusted: true, target: "page" }, action: "delete", recordId }), false);
+  assert.equal(h.modules.selectionRecordAccess.authorizePageAction({ event: h.event, action: "delete", recordId }), true);
+  const deleteProof = await h.modules.readingAccessCollector.read({ nonce: "delete-nonce", action: "delete", recordId, operationId: null });
+  assert.deepEqual(json(deleteProof.intent), { action: "delete", recordId, operationId: null });
+  assert.equal(await h.modules.readingAccessCollector.read({ nonce: "again", action: "delete", recordId, operationId: null }), null);
 });
 
 test("First consent retains one frozen card, has no BEGIN/history and uses explicit fresh token without Provider", async () => {
@@ -99,6 +118,26 @@ test("First consent retains one frozen card, has no BEGIN/history and uses expli
   assert.equal(h.writes[0].sourceSnapshotId, h.source.sourceSnapshotId);
   assert.equal(h.messages.filter((r) => r.method === M.BEGIN_QUERY).length, 1);
   assert.equal(h.messages.some((r) => r.method === M.SET_RECORDING || r.type), false);
+});
+
+test("A completed AI answer explains why it is unsaved and can be explicitly saved after enabling records", async () => {
+  const h = await harness({ enabled: false }), ctx = h.start();
+  h.client.accept(ctx, h.draft); await ctx.queue;
+  const operation = h.client.assistant(ctx, h.event);
+  h.client.accept(ctx, h.clone({ kind: "assistant", targetLanguage: "zh-CN",
+    provenance: { provider: "mock", model: "mock", promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" },
+    payload: { userQuestion: "How is this used?", assistantAnswer: "Saved answer.", action: "usage", threadId: "thread-1",
+      turnId: "turn-1", parentTurnId: null, branchId: "branch-1", regenerationOf: null, completionStatus: "completed" } }),
+  { key: operation.operationId, operation });
+  await ctx.queue;
+  assert.deepEqual(h.views.at(-1), { state: "invite", messageKey: "content.reading.aiPaused", messageArgs: {}, retryAvailable: false });
+  assert.equal(h.writes.length, 0); assert.equal(h.messages.some((request) => request.method === M.BEGIN_QUERY), false);
+
+  h.enable(); await h.client.refresh();
+  assert.equal(h.views.at(-1).state, "manual");
+  await h.client.save(h.event);
+  assert.deepEqual(h.writes.map((artifact) => artifact.kind), ["dictionary", "assistant"]);
+  assert.equal(h.messages.filter((request) => request.method === M.APPEND_ASSISTANT).length, 1);
 });
 
 test("Storage/lost-ACK retry keeps the exact operation/artifact and performs no second result request", async () => {
@@ -121,6 +160,98 @@ test("Basic, late Rich and duplicate callbacks use one lookup token and immutabl
   assert.equal(h.writes.length, 2); assert.notEqual(h.writes[0].artifactId, h.writes[1].artifactId);
   assert.equal(h.writes[0].operationId, h.writes[1].operationId);
   assert.equal(h.messages.filter((r) => r.method === M.BEGIN_QUERY).length, 1);
+});
+
+test("A completed assistant accept survives immediate close and duplicate accept reuses its exact acknowledged artifact", async () => {
+  const h = await harness(), ctx = h.start(), operation = h.client.assistant(ctx, h.event), draft = assistantDraft(h);
+  const accepted = h.client.accept(ctx, draft, { key: operation.operationId, operation });
+  assert.equal(h.client.accept(ctx, draft, { key: operation.operationId, operation }), accepted);
+  const closed = h.client.close(ctx), receipt = await accepted;
+  assert.equal((await closed).recordId, receipt.recordId);
+  assert.equal(h.writes.length, 1); assert.equal(h.writes[0].artifactId, receipt.artifactId);
+  assert.equal(h.messages.filter(request => request.method === M.APPEND_ASSISTANT).length, 1);
+  assert.equal(h.messages.filter(request => request.method === M.CANCEL_OPERATION).length, 0);
+  assert.equal(h.views.some(view => view.state === "saved"), false, "a closed card cannot receive the old ACK");
+});
+
+test("A completed assistant keeps its frozen identity across a new selection and the old ACK cannot overwrite the new card", async () => {
+  const entered = deferred(), release = deferred(); let delayed = true;
+  const h = await harness({ summaryOfWrites: true, async responseFilter(value, request) {
+    if (request.method === M.APPEND_ASSISTANT && delayed) { delayed = false; entered.resolve(); await release.promise; }
+    return value;
+  } });
+  let oldCurrent = true;
+  const first = h.start({ isCurrent: () => oldCurrent }), operation = h.client.assistant(first, h.event);
+  const accepted = h.client.accept(first, assistantDraft(h), { key: operation.operationId, operation });
+  await entered.promise; oldCurrent = false;
+  const second = h.start({ isCurrent: () => true });
+  h.client.accept(second, h.draft); release.resolve();
+  const receipt = await accepted; await second.queue;
+  assert.equal(h.writes.filter(item => item.kind === "assistant").length, 1);
+  assert.equal(h.writes.find(item => item.kind === "assistant").artifactId, receipt.artifactId);
+  assert.equal(h.messages.filter(request => request.method === M.APPEND_ASSISTANT).length, 1);
+  assert.equal(h.client.getCurrent(), second); assert.equal(h.views.at(-1).state, "saved");
+  const begins = h.messages.filter(request => request.method === M.BEGIN_QUERY);
+  assert.equal(begins.at(-1).recordId, receipt.recordId); assert.equal(begins.at(-1).recordRevision, receipt.revision);
+});
+
+test("An accepted assistant waits for pending policy after close, while an unauthorized close never begins or writes", async () => {
+  for (const enabled of [true, false]) {
+    const entered = deferred(), release = deferred(); let delayed = true;
+    const h = await harness({ enabled, async responseFilter(value, request) {
+      if (request.method === M.GET_RECORDING_STATE && delayed) { delayed = false; entered.resolve(); await release.promise; }
+      return value;
+    } });
+    const ctx = h.start(), operation = h.client.assistant(ctx, h.event);
+    const accepted = h.client.accept(ctx, assistantDraft(h), { key: operation.operationId, operation });
+    await entered.promise; const closed = h.client.close(ctx); release.resolve();
+    if (enabled) {
+      const receipt = await accepted; assert.equal(receipt.artifactId, h.writes[0].artifactId);
+    } else {
+      await assert.rejects(accepted, value => value?.code === E.DISABLED);
+    }
+    await closed;
+    assert.equal(h.writes.length, enabled ? 1 : 0);
+    assert.equal(h.messages.filter(request => request.method === M.BEGIN_QUERY).length, enabled ? 1 : 0);
+  }
+});
+
+test("A persisted assistant with a delayed or lost ACK stays committed after close and retries only the same artifact", async () => {
+  for (const mode of ["delayed", "lost"]) {
+    const entered = deferred(), release = deferred(); let first = true;
+    const h = await harness({ async responseFilter(value, request) {
+      if (request.method !== M.APPEND_ASSISTANT || !first) return value;
+      first = false; entered.resolve();
+      if (mode === "delayed") { await release.promise; return value; }
+      throw new Error("synthetic lost assistant ack");
+    } });
+    const ctx = h.start(), operation = h.client.assistant(ctx, h.event);
+    const accepted = h.client.accept(ctx, assistantDraft(h), { key: operation.operationId, operation });
+    await entered.promise; const closed = h.client.close(ctx); release.resolve();
+    const receipt = await accepted; await closed;
+    assert.equal(receipt.artifactId, h.writes[0].artifactId);
+    assert.equal(h.writes.length, mode === "lost" ? 2 : 1);
+    assert.ok(h.writes.every(item => item.artifactId === receipt.artifactId && item.operationId === operation.operationId));
+  }
+});
+
+test("Navigation, pause and exclusion before an accepted assistant append still fail closed", async () => {
+  for (const change of ["navigation", "pause", "exclude"]) {
+    const entered = deferred(), release = deferred(); let delayed = true;
+    const h = await harness({ async responseFilter(value, request) {
+      if (request.method === M.BEGIN_QUERY && delayed) { delayed = false; entered.resolve(); await release.promise; }
+      return value;
+    } });
+    const ctx = h.start(), operation = h.client.assistant(ctx, h.event);
+    const accepted = h.client.accept(ctx, assistantDraft(h), { key: operation.operationId, operation });
+    await entered.promise;
+    if (change === "navigation") { h.client.invalidateReference(); h.invalidate(); }
+    if (change === "pause") h.pause();
+    if (change === "exclude") h.exclude();
+    const closed = h.client.close(ctx); release.resolve();
+    await assert.rejects(accepted, undefined, change); await closed;
+    assert.equal(h.writes.length, 0, change);
+  }
 });
 
 test("Closing during BEGIN cancels its arrived token; late ACK cannot replace the next card", async () => {
@@ -189,21 +320,17 @@ test("A delayed first-enable notification agrees with the accepted policy; later
   assert.equal(ctx.blocked, true); assert.equal(ctx.ref, null); assert.equal(h.views.at(-1).state, "not-saved");
 });
 
-test("Site-marker invalidation refreshes the saved status without blocking a follow-up append", async () => {
+test("Site-marker invalidation leaves the saved card unchanged and does not block a follow-up append", async () => {
   const h = await harness({ summaryOfWrites: true, withSubscription: true }), ctx = h.start();
   h.client.accept(ctx, h.draft); await ctx.queue;
-  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "disabled"; index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "disabled");
+  const before = json(h.views.at(-1));
+  assert.equal(before.state, "saved"); assert.equal("siteMarkerStatus" in before, false);
 
   h.setSiteMarkers({ state: "ready", enabled: true, permissionGranted: true });
   h.notifySiteMarkers();
-  for (let index = 0; index < 10 && h.views.at(-1)?.siteMarkerStatus !== "enabled"; index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
   assert.equal(ctx.blocked, false); assert.ok(ctx.ref);
-  assert.equal(h.views.at(-1).state, "saved"); assert.equal(h.views.at(-1).siteMarkerStatus, "enabled");
+  assert.deepEqual(h.views.at(-1), before);
+  assert.equal(h.messages.filter((request) => request.method === M.GET_SITE_MARKERS).length, 0);
 
   const operation = h.client.assistant(ctx, h.event);
   assert.ok(operation);
@@ -215,6 +342,21 @@ test("Site-marker invalidation refreshes the saved status without blocking a fol
   assert.equal(ctx.blocked, false); assert.equal(h.views.at(-1).state, "saved");
   assert.equal(h.writes.length, 2); assert.equal(h.writes.at(-1).kind, "assistant");
   assert.equal(h.messages.filter((request) => request.method === M.APPEND_ASSISTANT).length, 1);
+});
+
+test("Invalidation disconnect with a saved ref reconnects and refreshes through the current local summary path", async () => {
+  const refreshed = deferred();
+  const h = await harness({ summaryOfWrites: true, withSubscription: true, responseFilter(value, request) {
+    if (request.method === M.GET_PAGE_SUMMARY) refreshed.resolve();
+    return value;
+  } }), ctx = h.start();
+  h.client.accept(ctx, h.draft); await ctx.queue;
+  assert.equal(h.connections(), 1); assert.ok(ctx.ref);
+
+  assert.doesNotThrow(() => h.disconnect());
+  await refreshed.promise;
+  assert.equal(h.connections(), 2); assert.equal(ctx.blocked, false); assert.ok(ctx.ref);
+  assert.equal(h.messages.filter((request) => request.method === M.GET_PAGE_SUMMARY).length, 1);
 });
 
 test("An unchanged unsupported anchor preserves its committed snapshot without becoming resolved", async () => {
@@ -254,6 +396,25 @@ test("Result adapters preserve actual types and bounded provenance while droppin
   const rich = model.readingRich(record, { id: "synthetic", packVersion: "v1", fileName: "/home/private" });
   assert.equal(rich.kind, "dictionary"); assert.equal(JSON.stringify(rich).includes("PRIVATE_RAW"), false);
   assert.equal(JSON.stringify(rich).includes("/home"), false);
+  const richVocabulary = model.vocabularyDraftFromRich({ ...record, text: "React\n持久的用户界面库" },
+    { id: "synthetic", packVersion: "v1", fileName: "/home/private" }, "en");
+  assert.deepEqual(json(richVocabulary.definitions), ["持久的用户界面库"]);
+  assert.deepEqual(json(richVocabulary.sources), [{ sourceId: "local-rich-mdict", packId: "synthetic",
+    packVersion: "v1", sourceEntryId: "React" }]);
+  const cleanedRich = model.readingRich({ ...record, text: ["React", "BrE /riˈækt/ 播放英音", "图片 · Ox5000 key_L",
+    "牛津5000词汇表", "用于构建用户界面的 JavaScript 库"].join("\n") }, { id: "synthetic", packVersion: "v1" });
+  assert.deepEqual(json(cleanedRich.payload.definitions), ["用于构建用户界面的 JavaScript 库"]);
+  const englishDefinitions = model.readingRich({ ...record, text: ["React", "image of a person", "surname and given name"].join("\n") },
+    { id: "synthetic", packVersion: "v1" });
+  assert.deepEqual(json(englishDefinitions.payload.definitions), ["image of a person", "surname and given name"]);
+  assert.deepEqual(json(model.vocabularyDraftFromRich({ ...record, text: ["React", "image of a person", "surname and given name"].join("\n") },
+    { id: "synthetic", packVersion: "v1" }, "en").definitions), ["image of a person", "surname and given name"]);
+  const shortDefinitions = model.readingRich({ ...record, headword: "photo", text: ["photo", "图片", "image"].join("\n") },
+    { id: "synthetic", packVersion: "v1" });
+  assert.deepEqual(json(shortDefinitions.payload.definitions), ["图片", "image"]);
+  assert.deepEqual(json(model.vocabularyDraftFromRich({ ...record, headword: "photo", text: ["photo", "图片", "image"].join("\n") },
+    { id: "synthetic", packVersion: "v1" }, "en").definitions), ["图片", "image"]);
+  assert.equal(JSON.stringify(richVocabulary).includes("PRIVATE_RAW"), false);
   assert.equal(model.readingRich({ ...record, text: "sound://private.mp3" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingRich({ ...record, text: "" }, { id: "synthetic", packVersion: "v1" }), null);
   assert.equal(model.readingDictionary({ routeReason: "no-hit-local" }, "missing").payload.outcome, "no-hit");
@@ -269,5 +430,21 @@ test("Excluded sites keep the disabled card without opening a denied invalidatio
   assert.equal(h.connections(), 0);
   assert.equal(h.views.at(-1).state, "disabled");
   assert.equal(h.writes.length, 0);
+  assert.equal(h.messages.some(message => message.method === M.BEGIN_QUERY), false);
+});
+
+test("A completed AI answer on an excluded site reports the exact policy and offers the management route", async () => {
+  const h = await harness({ withSubscription: true }); h.exclude();
+  const ctx = h.start(); h.client.accept(ctx, h.draft); await ctx.queue;
+  const operation = h.client.assistant(ctx, h.event);
+  h.client.accept(ctx, h.clone({ kind: "assistant", targetLanguage: "zh-CN",
+    provenance: { provider: "mock", model: "mock", promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" },
+    payload: { userQuestion: "Why?", assistantAnswer: "Because.", action: "analyze", threadId: "thread-2", turnId: "turn-2",
+      parentTurnId: null, branchId: "branch-2", regenerationOf: null, completionStatus: "completed" } }),
+  { key: operation.operationId, operation });
+  await ctx.queue;
+  assert.deepEqual(h.views.at(-1), { state: "disabled", messageKey: "content.reading.aiSiteExcluded", messageArgs: {},
+    retryAvailable: false, openAvailable: true });
+  assert.equal(h.connections(), 0); assert.equal(h.writes.length, 0);
   assert.equal(h.messages.some(message => message.method === M.BEGIN_QUERY), false);
 });

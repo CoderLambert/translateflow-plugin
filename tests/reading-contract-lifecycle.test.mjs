@@ -33,9 +33,11 @@ test("Clear, page delete, pause, selection change and record delete defeat late 
 test("Content is page-scoped; only a precise trusted extension page may list/export/control", () => {
   assert.equal(authorizeReadingMethod(M.GET_PAGE_SUMMARY, access()), true);
   assert.equal(authorizeReadingMethod(M.GET_RECORD, access(), PAGE_KEY), true);
+  assert.equal(authorizeReadingMethod(M.DELETE_RECORD, access(), PAGE_KEY), true);
+  rejects(() => authorizeReadingMethod(M.DELETE_RECORD, access()), E.FORBIDDEN);
   rejects(() => authorizeReadingMethod(M.GET_RECORD, access()), E.FORBIDDEN);
   rejects(() => authorizeReadingMethod(M.GET_RECORD, access(), `rp1:${"d".repeat(64)}`), E.FORBIDDEN);
-  for (const method of [M.EXPORT_START, M.LIST_RECORDS, M.CLEAR_RECORDS, M.DELETE_PAGE, M.DELETE_RECORD, M.SET_RECORDING]) {
+  for (const method of [M.EXPORT_START, M.LIST_RECORDS, M.CLEAR_RECORDS, M.DELETE_PAGE, M.SET_RECORDING]) {
     rejects(() => authorizeReadingMethod(method, access(), PAGE_KEY), E.FORBIDDEN);
     assert.equal(authorizeReadingMethod(method, { scope: "extension", senderVerified: true, sensitive: false, editable: false, accountPage: false, incognito: false, allowlisted: true }), true);
     rejects(() => authorizeReadingMethod(method, { scope: "extension", incognito: true, allowlisted: true }), E.FORBIDDEN);

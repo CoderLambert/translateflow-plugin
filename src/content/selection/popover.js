@@ -4,7 +4,7 @@
     !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
     !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
 
-  const { refreshRect, installInteractionIsolation, clearPageSelection } = app.modules.selection;
+  const { installInteractionIsolation, clearPageSelection, positionPopover } = app.modules.selection;
   const locale = app.modules.contentI18n;
   const { getLayer, ownsNode, createFocusReturn, isEventInsidePanel: eventInsidePanel } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
@@ -60,7 +60,7 @@
     vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, reset() {}, hide() {}, dispose() {} };
 
     const actions = document.createElement("div");
-    actions.className = "tf-selection-actions";
+    actions.className = "tf-selection-actions tf-selection-footer-actions";
 
     explainButton = button({
       text: locale.t("content.selection.aiDetail"),
@@ -196,7 +196,7 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
-    if (appended) {
+    if (appended) { emptyState?.reset();
       resultNode.hidden = false;
       reposition();
     }
@@ -207,13 +207,16 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
-    if (cards.length) {
+    if (cards.length) { emptyState?.reset();
       resultNode.hidden = false;
       reposition();
     }
     return cards.length > 0;
   }
 
+  function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
+    if (snapshot !== activeSnapshot || panel?.hidden || typeof onSave !== "function") return false;
+    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); reposition(); return true; }
   function updateSource(snapshot, result = null) {
     const sourceText = String(snapshot?.text || "").trim();
     const headword = String(result?.headword || "").trim();
@@ -227,7 +230,6 @@
     sourceNode.hidden = !sourceText || duplicatesHeadword;
     sourceNode.dataset.role = lexicalResult ? "lexical-source" : "selection-source";
   }
-
   function normalizeDisplayText(value) {
     return String(value || "")
       .normalize("NFKC")
@@ -235,7 +237,6 @@
       .trim()
       .toLocaleLowerCase("en-US");
   }
-
   function showEmpty(snapshot, { titleKey, messageKey, onExplain, onTranslate } = {}) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
@@ -254,15 +255,13 @@
     if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
-
   function showAiDetailLoading(onCancel) {
     ensureUi(); if (!resultNode || resultNode.hidden) return;
     explainHandler = null; explainButton.hidden = true;
     aiDetail.loading(onCancel);
   }
-
   function showAiDetailStreaming(answer, onStop) {
-    ensureUi(); if (!resultNode) return;
+    ensureUi(); if (!resultNode) return; locale.unbind(statusNode); setStatus(statusNode, "", "info");
     resultNode.hidden = false; explainHandler = null;
     explainButton.hidden = cancelButton.hidden = true;
     aiDetail.streaming(answer, onStop);
@@ -281,7 +280,7 @@
   }
 
   function showAiDetailResult(result, onCopy) {
-    ensureUi(); if (!resultNode || resultNode.hidden) return;
+    ensureUi(); if (!resultNode || resultNode.hidden) return; locale.unbind(statusNode); setStatus(statusNode, "", "success");
     if (typeof onCopy === "function") copyHandler = onCopy;
     explainHandler = null; explainButton.hidden = cancelButton.hidden = true;
     copyButton.hidden = typeof onCopy !== "function";
@@ -365,33 +364,7 @@
     position(activeSnapshot, !panel?.hidden ? panel : chip);
   }
   function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
-
-  function position(snapshot, element) {
-    const rect = refreshRect(snapshot);
-    if (!rect || !element) return;
-
-    requestAnimationFrame(() => {
-      if (!element?.isConnected) return;
-      const box = element.getBoundingClientRect();
-      const margin = 10;
-      const maxWidth = Math.max(0, window.innerWidth - margin * 2);
-      let left = rect.left;
-      let top = rect.bottom + 8;
-
-      if (box.width > maxWidth) left = margin;
-      else if (left + box.width > window.innerWidth - margin) left = window.innerWidth - box.width - margin;
-      if (left < margin) left = margin;
-
-      if (top + box.height > window.innerHeight - margin) {
-        const above = rect.top - box.height - 8;
-        top = above >= margin ? above : margin;
-      }
-      if (top < margin) top = margin;
-
-      element.style.left = `${Math.round(left)}px`;
-      element.style.top = `${Math.round(top)}px`;
-    });
-  }
+  function position(snapshot, element) { positionPopover({ snapshot, element, panel }); }
 
   app.modules.selectionPopover = {
     showChip,
@@ -401,6 +374,7 @@
     showResult,
     appendRichDictionaryDetails,
     appendRichDictionaryCards,
+    showVocabularyActions,
     showError,
     showEmpty,
     showAiDetailLoading,

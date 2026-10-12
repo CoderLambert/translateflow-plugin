@@ -2,7 +2,7 @@ import { READING_ERROR as E, READING_LIMITS as L, READING_METHOD as M } from "./
 import { validateSourceSnapshot } from "./source.js";
 import { validateResultArtifact } from "./artifact.js";
 import { validateOperationToken } from "./lifecycle.js";
-import { bool, choice, fail, id, integer, jsonBytes, nullable, object, pageKey, protocolVersion, recordId, safeReturnUrl, siteKey, text } from "./validation.js";
+import { array, bool, choice, fail, id, integer, jsonBytes, nullable, object, pageKey, protocolVersion, recordId, safeReturnUrl, siteKey, text } from "./validation.js";
 
 const BASE = ["protocolVersion", "method"];
 const fields = {
@@ -21,7 +21,7 @@ const fields = {
   [M.LIST_RECORDING_EXCLUSIONS]: ["cursor", "limit"], [M.CANCEL_OPERATION]: ["operationId"],
   [M.REGISTER_DOCUMENT]: ["documentGeneration"],
   [M.CREATE_HANDOFF]: ["recordId", "expectedRevision"], [M.CONSUME_HANDOFF]: ["handoffId"],
-  [M.PREVIEW_CREATE]: ["recordId", "expectedRevision"], [M.PREVIEW_BIND]: ["previewId", "claimId"],
+  [M.PREVIEW_CREATE]: ["recordId", "expectedRevision", "relatedRecords"], [M.PREVIEW_BIND]: ["previewId", "claimId"],
   [M.PREVIEW_CLAIM]: ["previewId"], [M.PREVIEW_READ]: ["previewId"], [M.PREVIEW_CLOSE]: ["previewId"]
 };
 export function validateReadingRequest(value) {
@@ -63,8 +63,17 @@ function body(method, value) {
     if ([M.DELETE_RECORD, M.CREATE_HANDOFF].includes(method)) result.expectedRevision = integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision");
     return result;
   }
-  if (method === M.PREVIEW_CREATE) return { recordId: recordId(value.recordId, "request.recordId"),
-    expectedRevision: integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision") };
+  if (method === M.PREVIEW_CREATE) {
+    const primaryId = recordId(value.recordId, "request.recordId");
+    const relatedRecords = value.relatedRecords === undefined ? [] : array(value.relatedRecords, L.previewRelatedRecords, (item, path) => {
+      object(item, ["recordId", "expectedRevision"], path);
+      return { recordId: recordId(item.recordId, `${path}.recordId`),
+        expectedRevision: integer(item.expectedRevision, 1, Number.MAX_SAFE_INTEGER, `${path}.expectedRevision`) };
+    }, "request.relatedRecords");
+    const ids = new Set(relatedRecords.map(item => item.recordId));
+    if (ids.size !== relatedRecords.length || ids.has(primaryId)) fail(E.BAD_DTO, "request.relatedRecords");
+    return { recordId: primaryId, expectedRevision: integer(value.expectedRevision, 1, Number.MAX_SAFE_INTEGER, "request.expectedRevision"), relatedRecords };
+  }
   if ([M.PREVIEW_BIND, M.PREVIEW_CLAIM, M.PREVIEW_READ, M.PREVIEW_CLOSE].includes(method)) {
     const result = { previewId: id(value.previewId, "request.previewId") };
     if (method === M.PREVIEW_BIND) result.claimId = id(value.claimId, "request.claimId");

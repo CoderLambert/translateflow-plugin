@@ -31,6 +31,7 @@ export function* manage(store, context, now) {
   if (request.method === M.DELETE_RECORD) {
     const row = yield store("records").get(request.recordId);
     if (!row) fail(E.NOT_FOUND, "record");
+    if (context.access.scope === "content" && row.record.pageKey !== context.access.pageKey) fail(E.FORBIDDEN, "record.page");
     if (row.record.revision !== request.expectedRevision) fail(E.REVISION_CONFLICT, "record.revision");
     page = yield* pageState(store, row.record.pageKey);
     deletedBytes = yield* deleteRows(store, row); deletedCount = 1;

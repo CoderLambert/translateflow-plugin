@@ -53,6 +53,64 @@ test("saved main-root anchors remain compatible with the Reading resolver", asyn
   assert.equal(result.range.toString(), "persistent");
 });
 
+test("one verified-block match defers uniqueness to the complete formal scan", async t => {
+  const f = fixture('<main><p id="target">alpha session tail</p><section id="dynamic">changing shell</section></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });
+  const createScanner = f.modules.textProjection.createScanner; let scans = 0;
+  f.modules.textProjection.createScanner = (...args) => { scans++; return createScanner(...args); };
+  const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+  const result = locations.get("target");
+  assert.equal(result.status, "resolved", JSON.stringify(result));
+  assert.equal(result.range.toString(), "session");
+  assert.equal(scans, 1);
+});
+
+test("verified-block fast path treats normalized whitespace duplicates as ambiguous", async t => {
+  const f = fixture('<main><p class="same">left alpha beta right</p><p class="same">left alpha   beta right</p></main>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, ".same", "alpha beta", { prefix: "left ", suffix: " right" });
+  f.modules.textProjection.createScanner = () => { throw new Error("fast path should settle the ambiguity"); };
+  const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+  assert.equal(locations.get("target").status, "ambiguous");
+  assert.equal(locations.get("target").range, null);
+});
+
+test("one ROOTS candidate cannot hide a formally equivalent non-ROOTS context root", async t => {
+  const f = fixture('<p id="target">left alpha beta right</p><div>left alpha beta right</div>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "alpha beta", { prefix: "left ", suffix: " right" });
+  const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+  assert.equal(locations.get("target").status, "ambiguous");
+  assert.equal(locations.get("target").range, null);
+});
+
+test("verified-block fast path enumerates duplicates through the formal projection policy", async t => {
+  const excluded = [
+    ["hidden", '<span hidden>HIDDEN</span>'],
+    ["aria-hidden", '<span aria-hidden="true">HIDDEN</span>'],
+    ["display-none", '<span style="display:none">HIDDEN</span>'],
+    ["visibility-hidden", '<span style="visibility:hidden">HIDDEN</span>'],
+    ["content-visibility-hidden", '<span style="content-visibility:hidden">HIDDEN</span>'],
+    ["opacity-zero", '<span style="opacity:0">HIDDEN</span>'],
+    ["excluded-tag", "<script>HIDDEN</script>"]
+  ];
+  for (const [label, hidden] of excluded) {
+    await t.test(label, async () => {
+      const f = fixture(`<main><p class="same">left alpha beta right</p><p class="same">left alpha${hidden} beta right</p></main>`);
+      try {
+        const blocks = [...f.window.document.querySelectorAll(".same")].map(root => f.modules.textProjection.project(root));
+        assert.equal(blocks[0].status, "resolved"); assert.equal(blocks[1].status, "resolved");
+        assert.equal(blocks[1].text, blocks[0].text);
+        const anchor = await anchorFor(f, ".same", "alpha beta", { prefix: "left ", suffix: " right" });
+        f.modules.textProjection.createScanner = () => { throw new Error("fast path should settle formal duplicates"); };
+        const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+        assert.equal(locations.get("target").status, "ambiguous"); assert.equal(locations.get("target").range, null);
+      } finally { f.dom.window.close(); }
+    });
+  }
+});
+
 test("resolver restores a split-inline exact Range after node replacement and ignores the stale position hint", async t => {
   const f = fixture('<main><p id="target">alpha <span>ses</span><em>sion</em> tail</p></main>'); t.after(() => f.dom.window.close());
   const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });

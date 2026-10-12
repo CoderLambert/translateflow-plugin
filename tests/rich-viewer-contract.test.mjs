@@ -142,6 +142,7 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
     { type: "resource", kind: "image", path: "img/OPP.png", presentation: "oxford-opposition" },
     { type: "resource", kind: "image", path: "img/Ox3000_key_S.png", presentation: "oxford-key" },
     { type: "resource", kind: "image", path: "img/not-oxford.png", presentation: "oxford-opposition" },
+    { type: "resource", kind: "audio", path: "audio/word/entry_br.mp3", presentation: "pronunciation-british" },
     { type: "element", tag: "span", attrs: { class: "tf-rich-pronunciation-label", "data-rich-pronunciation": "british" }, children: [{ type: "text", text: "untrusted raw label" }] }
   ] }, "fallback", { dictionaryId: "fixture" });
 
@@ -156,8 +157,32 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
   assert.deepEqual(JSON.parse(JSON.stringify(attachCalls[0][3].map((item) => [item.path, item.presentation]))), [
     ["img/OPP.png", "oxford-opposition"],
     ["img/Ox3000_key_S.png", "oxford-key"],
-    ["img/not-oxford.png", ""]
+    ["img/not-oxford.png", ""],
+    ["audio/word/entry_br.mp3", "pronunciation-british"]
   ]);
+});
+
+test("Oxford disclosure and active pronunciation layout remain compact without dictionary CSS", async () => {
+  const { viewer, document } = await loadModules();
+  const host = document.createElement("div");
+  viewer.render(host, { nodes: [
+    { type: "element", tag: "div", attrs: { class: "o-pronunciation-set o-active" }, children: [{ type: "text", text: "active pronunciation" }] },
+    { type: "element", tag: "div", attrs: { class: "o-pronunciation-set" }, children: [{ type: "text", text: "inactive pronunciation" }] },
+    { type: "element", tag: "details", attrs: { class: "o-unbox-panel" }, children: [
+      { type: "element", tag: "summary", attrs: { class: "o-unbox-tile" }, children: [
+        { type: "element", tag: "div", attrs: { class: "o-unbox-tile-title" }, children: [{ type: "text", text: "补充说明 MORE ABOUT" }] }
+      ] },
+      { type: "element", tag: "div", attrs: { class: "o-unbox-body" }, children: [{ type: "text", text: "supplement" }] }
+    ] }
+  ] }, "fallback");
+
+  assert.ok(findTag(host.shadowRoot, "details"));
+  assert.ok(findTag(host.shadowRoot, "summary"));
+  const staticCss = findTag(host.shadowRoot, "style").textContent;
+  assert.match(staticCss, /\.o-pronunciation-set\.o-active \{ display: block; \}/u);
+  assert.match(staticCss, /details\.o-unbox-panel\[open\] > \.o-unbox-body \{ display: block; \}/u);
+  assert.match(staticCss, /summary\.o-unbox-tile \{ display: flex;/u);
+  assert.match(staticCss, /\.o-symbol-token > \.tf-rich-resource-image \{ display: inline-block; width: auto; height: 1\.05em; max-width: 3em;/u);
 });
 
 test("viewer caps AST traversal and uses no network or HTML parser APIs", async () => {

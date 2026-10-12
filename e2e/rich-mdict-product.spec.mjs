@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { readBoundaryFixture } from "../tests/helpers/mdx-boundary-fixture.mjs";
+import { VOCABULARY_BOOK_STORAGE_KEY } from "../src/background/vocabulary-book.js";
 
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
   resolve("test-results/rich-mdict-evidence");
@@ -93,6 +94,20 @@ test.describe("Rich MDict local product and security behavior", () => {
       .toContainText("Fixture gloss", { timeout: 30_000 });
     await expect(richViewer)
       .toContainText("安全文本回退");
+    await expect(page.locator(".tf-selection-vocabulary-add")).toBeVisible();
+    await page.locator(".tf-selection-vocabulary-add").click();
+    await expect(page.locator(".tf-selection-vocabulary-open")).toBeVisible();
+    const savedWordbook = await options.evaluate(async key => (await chrome.storage.local.get(key))[key], VOCABULARY_BOOK_STORAGE_KEY);
+    expect(savedWordbook.entries).toHaveLength(1);
+    expect(savedWordbook.entries[0].headword).toBe("richmdictfixtureterm");
+    expect(savedWordbook.entries[0].definitions.join(" ")).toContain("Fixture gloss");
+    const wordbookOpened = harness.context.waitForEvent("page");
+    await page.locator(".tf-selection-vocabulary-open").click();
+    const wordbook = await wordbookOpened;
+    await expect(wordbook).toHaveURL(/learning-center\.html#wordbook$/u);
+    await expect(wordbook.getByRole("heading", { name: "richmdictfixtureterm", exact: true })).toBeVisible();
+    expect(await wordbook.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await wordbook.close();
     const fallback = await richViewer.textContent();
     expect(fallback).not.toContain("window.__richFixtureExecuted");
     expect(fallback).not.toContain("attacker.invalid");

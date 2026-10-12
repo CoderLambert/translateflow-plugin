@@ -13,6 +13,7 @@ const runtimeSource = await readFile(new URL("../src/content/runtime.js", import
 function load(extra = {}) {
   const document = {}, window = {}; window.top = window;
   const context = vm.createContext({ document, window, crypto: webcrypto, TextEncoder, performance: { now: () => 0 },
+    setTimeout, clearTimeout,
     chrome: { dom: { openOrClosedShadowRoot: (node) => node.shadowRoot ?? null } },
     __TRANSLATE_FLOW_CONTENT__: { modules: { runtime: { constants: { EXTENSION_UI_ATTR: "data-tf-extension-ui", TRANSLATION_CLASS: "abt-translation" }, cleanText: (value) => value.trim() } } }, ...extra });
   for (const file of files.slice(0, 3)) vm.runInContext(sources.get(file), context);
@@ -258,6 +259,34 @@ test("selection context uses the nearest safe block for div and span based text"
   state.modules.textProjection.project = () => ({ status: "resolved", text: "A persistent cache entry changed nearby." });
   assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), false);
   assert.equal((await capture.ready).contextText, sentence);
+});
+
+test("heading selections keep a narrow context root and can re-anchor after an exact DOM replacement", async () => {
+  const state = load({ getComputedStyle: (node) => node.style });
+  const oldText = { nodeType: 3, length: 7, nodeValue: "session", isConnected: false, getRootNode: () => state.document };
+  const heading = Object.assign(element(state.document, [oldText], { display: "block" }), { tagName: "H2", localName: "h2" });
+  state.document.body = heading;
+  state.modules.textProjectionPolicy.rangePolicy = () => ({ supported: true, sensitive: false });
+  vm.runInContext(sources.get(files[3]), state.context);
+  assert.equal(state.modules.selectionSourceSnapshot.contextRoot({ commonAncestorContainer: oldText }), heading);
+
+  const restoredRange = { startContainer: { isConnected: true }, endContainer: { isConnected: true }, toString: () => "session" };
+  state.modules.textProjection.project = () => ({ status: "resolved", text: "Read the session carefully." });
+  state.modules.textProjection.rangeForPosition = (_value, position) => {
+    assert.deepEqual(json(position), { start: 9, end: 16 }); return restoredRange;
+  };
+  state.modules.textProjection.revision = () => 2;
+  const snapshot = { pageUrl: "https://example.test/article", range: { startContainer: oldText, endContainer: oldText }, sourceCapture: null };
+  const capture = snapshot.sourceCapture = { selectedText: "session", context: { source: "visible-local", text: "Read the session carefully." },
+    rangeIdentity: { startContainer: oldText, endContainer: oldText, text: "session" } };
+  let accepted = null, rejected = false;
+  const guard = state.modules.selectionSourceSnapshot.createProjectionGuard({ getSnapshot: () => snapshot,
+    getCurrentUrl: () => snapshot.pageUrl, getPageIdentity: (value) => new URL(value).origin,
+    onAccept: (_snapshot, _capture, revision) => { accepted = revision; }, onReject: () => { rejected = true; }, delay: 5 });
+  guard.invalidate(2);
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(accepted, 2); assert.equal(rejected, false);
+  assert.equal(snapshot.range, restoredRange); assert.equal(capture.rangeIdentity.startContainer, restoredRange.startContainer);
 });
 
 test("rendered cross-block separators do not replace raw Range identity", () => {

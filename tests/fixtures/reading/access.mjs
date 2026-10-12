@@ -42,7 +42,8 @@ export function repositoryDouble(overrides = {}) {
       const value = handoffTarget || { recordId: request.recordId, recordRevision: request.expectedRevision, pageKey: record().pageKey,
         siteKey: "https://example.test", safeReturnUrl: record().safeReturnUrl, consentGeneration: 1, dataGeneration: 1,
         sitePolicyRevision: 1, pageGeneration: 1 };
-      return { ...value, summary: { recordId: value.recordId, revision: value.recordRevision, anchor: record().anchor, hasCompletedAssistant: false } };
+      return { ...value, summary: { recordId: value.recordId, revision: value.recordRevision, itemKey: record().itemKey,
+        anchor: record().anchor, hasCompletedAssistant: false } };
     },
     async openExport({ assertCurrent }) { assertCurrent(); return { exportRevision: 1, exportedAt: 1000, position: 0 }; },
     async checkExport({ assertCurrent }) { assertCurrent(); },

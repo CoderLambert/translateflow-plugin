@@ -4,7 +4,8 @@
 
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u", "ul", "ol",
-    "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "font", "a"
+    "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "font", "a",
+    "details", "summary"
   ]);
   const ACTIVE_TAGS = new Set([
     "script", "style", "iframe", "object", "form", "button", "select", "textarea",
