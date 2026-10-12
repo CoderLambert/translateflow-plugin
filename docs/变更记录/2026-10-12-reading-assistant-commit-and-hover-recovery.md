@@ -40,21 +40,21 @@
 
 | 命令或检查 | 结果 |
 | --- | --- |
-| `npm run validate` | PASS；647 个源码文件通过检查，i18n 879 keys，Node `1238/1238`，严格 typecheck，Vitest `9` files / `40/40`，默认 WXT 开发安装包构建成功。平台代码预算仍有既有 advisory：超出 153,183 bytes。 |
+| `npm run validate` | PASS；647 个源码文件通过检查，i18n 879 keys，Node `1239/1239`，严格 typecheck，Vitest `9` files / `40/40`，默认 WXT 开发安装包构建成功。平台代码预算仍有既有 advisory：超出 153,081 bytes。 |
 | `node scripts/reading-content-classic.mjs --check`、`node scripts/reading-record-entry.mjs --check` | PASS；两个生成的 classic Reading 文件与唯一源码一致。 |
-| `npm run build:extension:wxt` | PASS；`.output/chrome-mv3` 为 197 files / 39,231,693 bytes。 |
+| `npm run build:extension:wxt` | PASS；`.output/chrome-mv3` 为 197 files / 39,231,591 bytes。 |
 | `npm run test:wxt:smoke` | PASS；Chromium `153.0.8010.12`，Popup/Options/background/Workers/Content smoke 通过，无页面错误、外部请求或意外动态注册。 |
 | `npm run test:e2e -- e2e/selection-assistant-ui.spec.mjs e2e/reading-preview.spec.mjs e2e/reading-page-markers.spec.mjs e2e/selection-reading-record.spec.mjs e2e/learning-center.spec.mjs` | 候选 `15dd395` 上 PASS，`18/18`，单 worker。覆盖自然关闭竞态、Stop 负例、restart hover、related record、刷新稳定性、完整历史与窄视口 BCR。使用 mock Provider 与临时 profile。 |
 | `npx playwright test e2e/reading-page-markers.spec.mjs` | 最终候选 PASS，`1/1`。旧词节点保持 connected 且留在原位，只改变其上下文；另一个正式投影完全相同的段落得到高亮，Provider 调用为 0。 |
 | `git diff --check` | PASS。 |
 
-`dist/extension` 与 `.output/chrome-mv3` 的逐文件 tree SHA-256 均为 `ee57e413b62734c83b4db6d257dcb0cb99ff79229663489223178399fe731925`，Content SHA-256 均为 `5d3511e797e868d6a18124128c3bbcff9963d22d2e9fb2edf584ab9dd850447c`。E2E 使用临时测试副本并加入合成词典与 localhost 权限，不能把临时副本当作用户安装包。
+`dist/extension` 与 `.output/chrome-mv3` 的逐文件 tree SHA-256 均为 `0801b649a7984b8b414d6a842c7427b44c7ecc016461213daa5ccc6e16186eed`，Content SHA-256 均为 `757bd9c7e8f40bee3c08577cc76a899f6cb66517e699b1da6beb852f5e1222e9`。E2E 使用临时测试副本并加入合成词典与 localhost 权限，不能把临时副本当作用户安装包。
 
 ## 限制与真实 profile 状态
 
-- **REAL ACCEPTANCE: BLOCKED**。现有 Chrome profile 配置的固定 unpacked 目录已安全切换为上述 `ee57e413…1925` 候选，但浏览器控制策略明确禁止访问 `chrome://extensions`，因此无法点击 reload，也不能证明浏览器进程已加载 Content `5d3511e7…447c`；没有在未确认 reload 的状态下调用真实 Provider 或伪造 `APPEND → artifact → refresh/restart hover` 证据。
+- **REAL ACCEPTANCE: BLOCKED**。现有 Chrome profile 配置的固定 unpacked 目录已安全切换为上述 `0801b649…86eed` 候选，但浏览器控制策略明确禁止访问 `chrome://extensions`，因此无法点击 reload，也不能证明浏览器进程已加载 Content `757bd9c7…1222e9`；没有在未确认 reload 的状态下调用真实 Provider 或伪造 `APPEND → artifact → refresh/restart hover` 证据。
 - 没有以临时 profile、mock Provider 或自动测试替代上述真实 profile 结论；真实 Provider 增量也因此记为 `UNKNOWN`。自动 E2E 中 hover 的 Provider 增量为 `0`。
-- 没有修改用户 IndexedDB、Reading 开关、站点排除、API Key、模型配置或私人词典，没有清空数据。最终候选切换前的 `4aacec4f…d4fb3ef` 原目录完整保存在 `extension.backup-20261012T140454Z`；更早的 `extension.backup-20261012T215500Z` 也保留；没有执行扩展 reload。
+- 没有修改用户 IndexedDB、Reading 开关、站点排除、API Key、模型配置或私人词典，没有清空数据。最终候选切换前的 `ee57e413…1925` 原目录完整保存在 `extension.backup-20261012T141513Z`；先前的 `extension.backup-20261012T140454Z` 与 `extension.backup-20261012T215500Z` 也保留；没有执行扩展 reload。
 - 未运行 Chrome 102、其它浏览器、真实 YouTube timedtext、真实付费 Provider、发布词典认证、商店发布或 main 合并。
 
 完成真实 profile 验收所需的最小人工步骤是：在现有 Chrome 的扩展管理页对该固定 ID 点击一次“重新加载”，刷新目标页；随后可在不等待 saved selector 的节奏下执行“完成后立即关闭 → 直接 hover”，再刷新和正常重启核对。该操作不应清空 profile 或 Reading 数据，也不需要新增扩展权限。
@@ -90,6 +90,12 @@
 - Rich Reading 和 `ReadingPreview` 不再把独立的“图片”或 `image` 当作媒体 metadata 删除；只过滤受控方括号占位、明确加载/播放提示和组合 metadata。Reading artifact、生词本草稿及 hover 组件均断言合法短释义保留，`[图片资源未导入]` 仍被过滤。
 - marker E2E 中旧 `#word` 节点保持 connected 且不离开原 DOM 位置，只修改其上下文；新匹配内容另行插入并滚入视口，最终高亮几何必须迁移到新节点而不是继续依赖旧 Range。
 
-最终候选验证为：`npm run validate` PASS（Node `1238/1238`、Vitest `40/40`），两个 classic 生成器 `--check` PASS，显式 WXT build 与 smoke PASS，marker Chromium E2E `1/1` PASS。没有新增 manifest 权限、远程请求或 Provider 调用。
+最终候选验证为：`npm run validate` PASS（Node `1239/1239`、Vitest `40/40`），两个 classic 生成器 `--check` PASS，显式 WXT build 与 smoke PASS，marker Chromium E2E `1/1` PASS。没有新增 manifest 权限、远程请求或 Provider 调用。
 
 严格 marker 场景第一次运行时，迁移几何断言已通过，但最终 SPA 返回使用了旧 `#word` 定位；Chromium BFCache 保留变异 DOM 后该节点不是当前合法匹配，导致末尾高亮断言失败。测试改为返回后优先滚动仍存在的 `#current-word`，没有修改生产代码或放宽迁移断言；最终同一命令重跑 `1/1` PASS。
+
+## Fast path 唯一性收口
+
+最终完整性复审指出，`rootCandidates` 只枚举 `ROOTS`，但正式 `contextRoot` 合同允许 `closest(ROOTS) || element`。因此页面在 `body` 下同时存在一个匹配 `p` 和一个正式投影等价的普通 `div` 时，fast path 只能看到 `p`，不能据此证明唯一。
+
+收口后 fast path 只提前返回已经找到两个独立 Range 的 `ambiguous`；单匹配不再返回 `resolved`，一律进入完整正式扫描。新增 `p + div`、无共同 ROOTS 祖先的回归会验证第二个正式 context root 并返回 `ambiguous`；原有规范化空白以及 hidden、ARIA、CSS 排除测试继续证明可确定的重复仍由 fast path 提前拒绝。最终 `npm run validate`、WXT build/smoke 和 marker Chromium E2E 均 PASS，marker Provider 调用为 0。

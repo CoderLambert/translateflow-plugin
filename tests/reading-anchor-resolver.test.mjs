@@ -53,15 +53,17 @@ test("saved main-root anchors remain compatible with the Reading resolver", asyn
   assert.equal(result.range.toString(), "persistent");
 });
 
-test("verified block anchors resolve without waiting for an unstable full-page scan", async t => {
+test("one verified-block match defers uniqueness to the complete formal scan", async t => {
   const f = fixture('<main><p id="target">alpha session tail</p><section id="dynamic">changing shell</section></main>');
   t.after(() => f.dom.window.close());
   const anchor = await anchorFor(f, "#target", "session", { prefix: "alpha ", suffix: " tail" });
-  f.modules.textProjection.createScanner = () => { throw new Error("full page scan should not run"); };
+  const createScanner = f.modules.textProjection.createScanner; let scans = 0;
+  f.modules.textProjection.createScanner = (...args) => { scans++; return createScanner(...args); };
   const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
   const result = locations.get("target");
   assert.equal(result.status, "resolved", JSON.stringify(result));
   assert.equal(result.range.toString(), "session");
+  assert.equal(scans, 1);
 });
 
 test("verified-block fast path treats normalized whitespace duplicates as ambiguous", async t => {
@@ -69,6 +71,15 @@ test("verified-block fast path treats normalized whitespace duplicates as ambigu
   t.after(() => f.dom.window.close());
   const anchor = await anchorFor(f, ".same", "alpha beta", { prefix: "left ", suffix: " right" });
   f.modules.textProjection.createScanner = () => { throw new Error("fast path should settle the ambiguity"); };
+  const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
+  assert.equal(locations.get("target").status, "ambiguous");
+  assert.equal(locations.get("target").range, null);
+});
+
+test("one ROOTS candidate cannot hide a formally equivalent non-ROOTS context root", async t => {
+  const f = fixture('<p id="target">left alpha beta right</p><div>left alpha beta right</div>');
+  t.after(() => f.dom.window.close());
+  const anchor = await anchorFor(f, "#target", "alpha beta", { prefix: "left ", suffix: " right" });
   const locations = await f.modules.readingAnchorResolver.resolvePage([{ recordId: "target", anchor }], { verifiedBlocksFirst: true });
   assert.equal(locations.get("target").status, "ambiguous");
   assert.equal(locations.get("target").range, null);

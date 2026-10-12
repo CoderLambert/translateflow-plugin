@@ -80,8 +80,6 @@
         if (matches.size > 1) break;
       }
       if (matches.size > 1) results.set(item.recordId, { status: "ambiguous", range: null, stats: { ...metrics } });
-      else if (matches.size === 1) results.set(item.recordId, { status: "resolved", range: [...matches.values()][0],
-        verifiedText: exact, stats: { ...metrics } });
     }
     metrics.ms = Math.max(0, performance.now() - started);
     for (const result of results.values()) result.stats = { ...metrics };
