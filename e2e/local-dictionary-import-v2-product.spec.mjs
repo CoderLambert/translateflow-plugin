@@ -70,7 +70,7 @@ test.describe("unified local dictionary import v2", () => {
     await expect(installed).toContainText("本机源文件");
     await expect(installed).toContainText("unified.mdx");
     await expect(installed).toContainText("本机源文件大小");
-    await expect(installed).toContainText("添加/替换 MDD 资源");
+    await expect(installed).toContainText("添加/重新选择资源");
     const dictionaryId = await installed.getAttribute("data-dictionary-id");
     const activeRich = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
     expect(activeRich.ok).toBe(true);
@@ -420,7 +420,7 @@ test.describe("unified local dictionary import v2", () => {
       window.__mdxIndexProgressObserved = "";
       window.__mdxIndexCancelVisible = false;
       const observer = new MutationObserver(() => {
-        if (progress.dataset.phase !== "index" || !progress.textContent.includes("建立受限查询索引")) return;
+        if (progress.dataset.phase !== "index" || !progress.textContent.startsWith("建立受限查询索引")) return;
         const cancel = document.getElementById("localDictionaryCancelButton");
         window.__mdxIndexProgressObserved = progress.textContent;
         window.__mdxIndexCancelVisible = Boolean(cancel && !cancel.hidden && !cancel.disabled);
@@ -433,7 +433,7 @@ test.describe("unified local dictionary import v2", () => {
 
     await options.locator("#localDictionaryImportButton").click();
     await expect.poll(() => options.evaluate(() => window.__mdxIndexCancelTriggered)).toBe(true);
-    expect(await options.evaluate(() => window.__mdxIndexProgressObserved)).toBe("建立受限查询索引");
+    expect(await options.evaluate(() => window.__mdxIndexProgressObserved)).toMatch(/^建立受限查询索引(?: ·|$)/u);
     expect(await options.evaluate(() => window.__mdxIndexCancelVisible)).toBe(true);
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("已取消", { timeout: 30_000 });
     const afterCancel = await options.evaluate(() => chrome.runtime.sendMessage({ type: "RICH_MDICT_LIST" }));
@@ -566,14 +566,11 @@ test.describe("unified local dictionary import v2", () => {
       window.__mddIndexCancelTriggered = false;
       window.__mddIndexProgressObserved = "";
       window.__mddCancelButtonVisible = false;
-      window.__mddAttachStarted = false;
-      const observer = new MutationObserver((records) => {
-        if (records.some((record) => Array.from(record.addedNodes || []).some((node) =>
-          String(node.textContent || "").includes("MDX 已安装，正在原子检查并添加已关联的 MDD")))) {
-          window.__mddAttachStarted = true;
-        }
-        if (!window.__mddAttachStarted || progress.dataset.phase !== "index") return;
-        if (!progress.textContent.includes("建立受限查询索引")) return;
+      const observer = new MutationObserver(() => {
+        // The intermediate attachment notice may be batched away by React.
+        // Target the actual MDD index progress, not the preceding MDX index.
+        if (progress.dataset.phase !== "index" || !progress.textContent.startsWith("建立受限查询索引") ||
+            !progress.textContent.endsWith(" · cancel-attach.mdd")) return;
         window.__mddIndexProgressObserved = progress.textContent;
         const cancel = document.getElementById("localDictionaryCancelButton");
         window.__mddCancelButtonVisible = Boolean(cancel && !cancel.hidden && !cancel.disabled);
@@ -585,7 +582,7 @@ test.describe("unified local dictionary import v2", () => {
     });
     await options.locator("#localDictionaryImportButton").click();
     await expect.poll(() => options.evaluate(() => window.__mddIndexCancelTriggered)).toBe(true);
-    expect(await options.evaluate(() => window.__mddIndexProgressObserved)).toBe("建立受限查询索引");
+    expect(await options.evaluate(() => window.__mddIndexProgressObserved)).toMatch(/^建立受限查询索引 ·.* · cancel-attach\.mdd$/u);
     expect(await options.evaluate(() => window.__mddCancelButtonVisible)).toBe(true);
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("MDD 附件导入已取消", { timeout: 90_000 });
 
