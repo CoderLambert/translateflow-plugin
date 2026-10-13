@@ -153,5 +153,16 @@
     "path": ".output/chrome-mv3",
     "treeSha256": "d647e94ed268b6050203eaab3ad58f3802d90181123c0a18fd8c05873258fd77"
   },
-  "limitations": []
+  "localInstallation": {
+    "result": "COPIED_AND_FINGERPRINT_VERIFIED",
+    "sameLoadDirectory": true,
+    "backupCreated": true,
+    "profileStorageTouched": false,
+    "treeSha256": "d647e94ed268b6050203eaab3ad58f3802d90181123c0a18fd8c05873258fd77",
+    "activation": "User must reload the existing extension and refresh the options page; original browser runtime is not yet visually verified."
+  },
+  "limitations": [
+    "Original user browser activation and visual verification remain pending reload.",
+    "Full private Oxford six-file certification was not repeated for this Settings presentation cleanup."
+  ]
 }
