@@ -398,6 +398,10 @@
   .tf-selection-panel { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding-inline: 13px; }
   .tf-selection-headword { font-size: 18px; }
 }
+.tf-selection-panel[data-view-mode="reading"] .tf-selection-result { flex: 1 1 0; max-height: none; min-height: 56px; }
+.tf-selection-header > strong { margin-right: auto; }
+.tf-selection-size-toggle { flex: 0 0 auto; padding: 4px 9px; font-size: var(--tf-font-size-xs); white-space: nowrap; }
+.tf-selection-panel[data-view-mode="reading"] .tf-selection-source { max-height: 48px; }
 `;
 
   app.modules.uiSelectionLexicalStyles = Object.freeze({ css });

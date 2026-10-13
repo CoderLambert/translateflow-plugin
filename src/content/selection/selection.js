@@ -102,6 +102,48 @@
     event.stopPropagation();
   }
 
+  // Keep one DOM/session: resizing must not restart lookup, audio, or navigation.
+  function createReadingLayout({ panel, result, header, onResize }) {
+    const locale = app.modules.contentI18n;
+    const toggle = app.modules.uiPrimitives.button({ text: "", className: "tf-selection-size-toggle" });
+    toggle.hidden = true; header.insertBefore(toggle, header.lastElementChild);
+    let snapshot = null, manual = false, closed = false, frame = null;
+    const observed = new Set();
+    const resize = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
+    const mutation = typeof MutationObserver === "function" ? new MutationObserver(schedule) : null;
+    resize?.observe(result);
+    mutation?.observe(result, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "data-state"] });
+    function setMode(reading) {
+      panel.dataset.viewMode = reading ? "reading" : "compact";
+      toggle.setAttribute("aria-expanded", String(reading));
+      locale.bindText(toggle, reading ? "content.selection.compactWindow" : "content.selection.readingWindow");
+    }
+    function schedule() {
+      if (closed || frame !== null) return;
+      frame = requestAnimationFrame(() => { frame = null; inspect(); });
+    }
+    function inspect() {
+      if (closed || panel.hidden || !panel.isConnected) return;
+      const hosts = [...result.querySelectorAll('.tf-selection-rich-record[open] .tf-selection-rich-text')];
+      for (const host of observed) if (!hosts.includes(host)) { resize?.unobserve(host); observed.delete(host); }
+      for (const host of hosts) if (!observed.has(host)) { observed.add(host); resize?.observe(host); }
+      toggle.hidden = hosts.length === 0;
+      if (!hosts.length || manual || panel.dataset.viewMode === "reading") return;
+      // Vertical overflow also matters: wrapped columns can be unreadable without horizontal overflow.
+      if (result.clientHeight > 0 && (result.scrollHeight > result.clientHeight + 8 || result.scrollWidth > result.clientWidth + 8)) {
+        setMode(true); onResize();
+      }
+    }
+    toggle.addEventListener("click", () => {
+      manual = true; setMode(panel.dataset.viewMode !== "reading"); onResize();
+    });
+    setMode(false);
+    return {
+      update(next) { if (next !== snapshot) { snapshot = next; manual = false; setMode(false); } schedule(); },
+      dispose() { closed = true; resize?.disconnect(); mutation?.disconnect(); observed.clear(); if (frame !== null) cancelAnimationFrame(frame); locale.unbindTree(toggle); }
+    };
+  }
+
   function positionPopover({ snapshot, element, panel }) {
     const rect = refreshRect(snapshot);
     if (!rect || !element) return;
@@ -113,11 +155,16 @@
     const availableWidth = Math.max(0, bounds.right - bounds.left), availableHeight = Math.max(0, bounds.bottom - bounds.top);
     element.style.maxWidth = `${Math.floor(availableWidth)}px`;
     element.style.maxHeight = `${Math.floor(availableHeight)}px`;
-    if (element === panel) element.style.width = `${Math.floor(Math.min(500, availableWidth))}px`;
+    const reading = element === panel && panel.dataset.viewMode === "reading";
+    if (element === panel) {
+      element.style.width = `${Math.floor(Math.min(reading ? 1120 : 500, availableWidth))}px`;
+      element.style.height = reading ? `${Math.floor(Math.min(900, availableHeight))}px` : "";
+    }
     requestAnimationFrame(() => {
       if (!element?.isConnected) return;
       const box = element.getBoundingClientRect();
-      let left = Math.max(bounds.left, rect.left), top = rect.bottom + 8;
+      let left = reading ? bounds.left + (availableWidth - box.width) / 2 : Math.max(bounds.left, rect.left);
+      let top = reading ? bounds.top + (availableHeight - box.height) / 2 : rect.bottom + 8;
       if (left + box.width > bounds.right) left = Math.max(bounds.left, bounds.right - box.width);
       if (top + box.height > bounds.bottom) {
         const above = rect.top - box.height - 8;
@@ -164,6 +211,7 @@
     isExtensionOwnedNode,
     installInteractionIsolation,
     clearPageSelection,
-    positionPopover
+    positionPopover,
+    createReadingLayout
   };
 })();

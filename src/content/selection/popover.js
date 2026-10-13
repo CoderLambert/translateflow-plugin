@@ -19,7 +19,7 @@
   let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions;
   let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
   let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
-  let localEmptyOptions = null;
+  let localEmptyOptions = null, readingLayout;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -85,6 +85,7 @@
     panel.append(header, sourceNode, statusNode, resultNode, vocabularyActions.ensure(), actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
+    readingLayout = app.modules.selection.createReadingLayout?.({ panel, result: resultNode, header, onResize: reposition });
   }
 
   function showChip(snapshot, onTranslate) {
@@ -324,6 +325,7 @@
     if (!root) return;
     app.modules.richResourceResolver?.closeAll();
     locale.unbindTree(root);
+    readingLayout?.dispose(); readingLayout = null;
     root.remove(); panel.removeEventListener("toggle", onDetailsToggle, true);
     root = null;
     chip = null;
@@ -378,7 +380,7 @@
     position(activeSnapshot, !panel?.hidden ? panel : chip);
   }
   function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
-  function position(snapshot, element) { positionPopover({ snapshot, element, panel }); }
+  function position(snapshot, element) { readingLayout?.update(snapshot); positionPopover({ snapshot, element, panel }); }
 
   app.modules.selectionPopover = {
     showChip,

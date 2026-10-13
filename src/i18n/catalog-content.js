@@ -1,4 +1,6 @@
 export const en = Object.freeze({
+  "content.selection.readingWindow": "Expand window",
+  "content.selection.compactWindow": "Compact window",
   "content.brandMark": "TF",
   "content.common.retry": "Retry",
   "content.common.cancel": "Cancel",
@@ -138,6 +140,8 @@ export const en = Object.freeze({
 
 });
 export const zh_CN = Object.freeze({
+  "content.selection.readingWindow": "展开大窗口",
+  "content.selection.compactWindow": "恢复小窗口",
   "content.brandMark": "译",
   "content.common.retry": "重试",
   "content.common.cancel": "取消",

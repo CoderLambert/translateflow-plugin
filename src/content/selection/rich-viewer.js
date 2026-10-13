@@ -26,7 +26,7 @@
   const MAX_TEXT_BYTES = 2 * 1024 * 1024;
   const MAX_RESOURCE_DESCRIPTORS = 1024;
   const VIEWER_CSS = `
-:host { --tf-rich-blue: #1e90ff; --tf-rich-note: #777; display: block; min-width: 0; max-width: 100%; color: var(--tf-text-main, #3c463d); }
+:host { container: tf-rich-article / inline-size; --tf-rich-blue: #1e90ff; --tf-rich-note: #777; display: block; min-width: 0; max-width: 100%; color: var(--tf-text-main, #3c463d); }
 *, *::before, *::after { box-sizing: border-box; max-width: 100%; }
 .tf-rich-viewer {
   box-sizing: border-box;
@@ -87,7 +87,7 @@
 .tf-rich-resource-image { display: block; max-width: min(100%, 360px); height: auto; margin: .45em 0; border-radius: 8px; object-fit: contain; }
 .tf-rich-resource-image-oxford-inline { display: inline-block; width: auto; height: 1em; max-width: 4em; max-height: 1em; margin: 0 .12em; vertical-align: middle; object-fit: contain; }
 .tf-rich-resource-audio { display: inline-block; width: min(100%, 280px); height: 32px; margin: .18em .3em .18em 0; vertical-align: middle; }
-.tf-rich-audio-load { min-height: 28px; padding: 4px 10px; border-color: color-mix(in srgb, var(--tf-green-600, #6f9668) 30%, var(--tf-border-soft, #d8ddd4)); background: var(--tf-green-50, #f5f8f2); color: var(--tf-green-800, #3f613f); font: inherit; font-size: .82em; font-weight: 700; cursor: pointer; }
+.tf-rich-audio-load { flex-shrink: 0; white-space: nowrap; min-height: 28px; padding: 4px 10px; border-color: color-mix(in srgb, var(--tf-green-600, #6f9668) 30%, var(--tf-border-soft, #d8ddd4)); background: var(--tf-green-50, #f5f8f2); color: var(--tf-green-800, #3f613f); font: inherit; font-size: .82em; font-weight: 700; cursor: pointer; }
 .tf-rich-audio-load::before { content: "◖))"; font-size: .9em; letter-spacing: -.16em; transform: translateX(-.08em); }
 .tf-rich-audio-load:hover { border-color: var(--tf-green-600, #6f9668); background: var(--tf-green-100, #edf3e8); }
 .tf-rich-audio-load:focus-visible { outline: 2px solid var(--tf-green-500, #8caf82); outline-offset: 2px; }

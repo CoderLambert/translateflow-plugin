@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "status": "ready_to_sync",
+  "status": "working",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css"
@@ -23,7 +23,10 @@
       "tests/rich-resource-resolver.test.mjs",
       "tests/rich-navigation.test.mjs",
       "tests/rich-viewer-contract.test.mjs",
-      "tests/constants.test.mjs"
+      "tests/constants.test.mjs",
+      "tests/selection-reading-window.test.mjs",
+      "tests/selection-v2.test.mjs",
+      "tests/rich-mdd-css.test.mjs"
     ],
     [
       "npm",
@@ -58,9 +61,11 @@
       "e2e/mdd-resources.spec.mjs",
       "e2e/rich-navigation.spec.mjs",
       "e2e/oxford-radio-css.spec.mjs",
-      "e2e/rich-resource-failure-ui.spec.mjs"
+      "e2e/rich-resource-failure-ui.spec.mjs",
+      "e2e/rich-reading-window.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "PR #331 保持 draft；在原截图安装使用新包核对安全错误分类和恢复结果，未验证原安装前不宣称用户问题全部解决。"
+  "nextAction": "修复copy/build flex布局并增加长词条自动大窗口，统一执行受影响检查与真实私有对照。"
 }
