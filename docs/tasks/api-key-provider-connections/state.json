@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "api-key-provider-connections",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/api-key-provider-connections",
   "worktree": null,
-  "candidateHead": null,
+  "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -17,5 +17,11 @@
   "artifactRequired": true,
   "syncHead": null,
   "pullRequest": null,
-  "nextAction": "Freeze the implemented candidate, run the declared acceptance commands, self-check the exact diff, and prepare it for sync."
+  "nextAction": "Push this branch and create a PR when explicitly authorized; no remote sync has been performed.",
+  "validation": {
+    "npmRunValidate": "PASS",
+    "wxtBuild": "PASS (206 files, 39541586 bytes)",
+    "wxtSmoke": "PASS (Chromium 153.0.8010.12)",
+    "relatedE2E": "PASS (14/14)"
+  }
 }
