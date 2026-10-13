@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "api-key-provider-connections",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/api-key-provider-connections",
   "worktree": null,
-  "candidateHead": null,
+  "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
   "mergeHead": null,
   "validationCommands": [
     ["npm", "run", "validate"],
@@ -17,5 +17,12 @@
   "artifactRequired": true,
   "syncHead": null,
   "pullRequest": null,
-  "nextAction": "Validate the Selection assistant reload recovery message and target-language prompt, then rebuild the installed extension artifact."
+  "nextAction": "Push this branch and create a PR when explicitly authorized; no remote sync has been performed.",
+  "validation": {
+    "npmRunValidate": "PASS (1542 Node tests, 46 Vitest)",
+    "wxtBuild": "PASS (206 files, 39542503 bytes)",
+    "wxtSmoke": "PASS (Chromium 153.0.8010.12)",
+    "relatedE2E": "PASS (14/14)",
+    "realLocalLmStudio": "PASS (hy-mt2-7b streaming Selection usage returned Chinese complete response)"
+  }
 }

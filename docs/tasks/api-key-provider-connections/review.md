@@ -1,9 +1,9 @@
 # API key Provider connections candidate self-check
 
-- Candidate: `272917ef84d6d992293ed3bb5759d4a1338faa2a`
+- Candidate: `b2440ec6414b24a4f8d33f75e96086b924758cc9`
 - Scope: exact diff from `origin/main` through the candidate commit
-- Result: no unresolved correctness, security, data migration, cache identity, permission, packaging, or recovery-path defect found
+- Result: no unresolved correctness, security, data migration, cache identity, permission, packaging, Selection assistant, or recovery-path defect found
 
-Checked that credentials remain in trusted background storage and are absent from public connection responses; Provider selection, cache identity, request coalescing, and effective-config snapshots use the same connection revision; missing or deleted connection references fail explicitly; legacy DeepSeek/OpenAI-compatible settings migrate without deleting old fields; local HTTP and empty-key operation require explicit flags; native response parsing requires complete unique segment coverage; and generated package inputs do not include repository-only assets.
+Checked that credentials remain in trusted background storage and are absent from public connection responses; Provider selection, cache identity, request coalescing, and effective-config snapshots use the same connection revision; missing references fail explicitly; legacy settings migrate without deleting old fields; local HTTP and empty-key operation require explicit flags; native response parsing requires complete unique segment coverage; Selection assistant requests use the effective target language; and an extension-reload disconnect tells the user to refresh the stale page.
 
-The candidate passed every declared validation command. Real paid endpoints and the additional environments listed in `acceptance.json` remain unverified. The WXT platform-code budget warning is advisory and does not make the build fail.
+The candidate passed every declared validation command. A real local LM Studio `hy-mt2-7b` request also completed through the packaged Selection assistant Port in streaming mode and returned Chinese text. Paid endpoints and the additional environments listed in `acceptance.json` remain unverified. The WXT platform-code budget warning is advisory.

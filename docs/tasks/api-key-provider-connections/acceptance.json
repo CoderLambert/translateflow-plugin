@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "api-key-provider-connections",
-  "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a",
-  "tree": "c13992fd7bfd2cc19c961b8db519380b0442c5a5",
-  "inputTree": "7feeba5ff3a224e64725984fff8bdb36d43ee32bca2b935e47e39ca355b8826f",
-  "frozenAt": "2026-10-13T19:04:33.558Z",
+  "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
+  "tree": "b8449bc94b2416a786f32b9a60a19d1350d26bcd",
+  "inputTree": "1e99da6a87aeca353901d9577c28b98211e3946b4dfb4dbb85f64bfcc1bd09a5",
+  "frozenAt": "2026-10-13T19:35:16.984Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
@@ -17,14 +17,14 @@
         "run",
         "validate"
       ],
-      "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a",
+      "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 52958.655948,
-      "startedAt": "2026-10-13T19:04:37.469Z",
-      "log": "docs/task-execution/local/api-key-provider-connections/e98cac90-3097-438a-8c3f-084f79fdebe7.log",
-      "logSha256": "f38923fe5cde35c05decad78c17ea25594945c8172d2d9d61424ec22d3a88250"
+      "durationMs": 53512.350854,
+      "startedAt": "2026-10-13T19:35:19.774Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/e7616cda-3187-4412-bf43-74e9208e8394.log",
+      "logSha256": "822338088d44e96f16affbecbe9b684f0999de15d763022baf26fe6a889477f3"
     },
     {
       "command": [
@@ -32,14 +32,14 @@
         "run",
         "build:extension:wxt"
       ],
-      "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a",
+      "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 2421.919516,
-      "startedAt": "2026-10-13T19:06:28.877Z",
-      "log": "docs/task-execution/local/api-key-provider-connections/f1e91549-1c9c-4787-bcf2-fa81157e77a8.log",
-      "logSha256": "4f2cc2465b9eb5dc8835dfcab6522f71dfd09dc6852e71165b140893c3203fb3"
+      "durationMs": 2538.55168,
+      "startedAt": "2026-10-13T19:36:17.063Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/3e8ab05d-bc84-4172-95f7-4dd38a13c565.log",
+      "logSha256": "ec9b9b03f1d918cd1b8980d425f390fd037ff954e4c7b774aca875cbeb371b95"
     },
     {
       "command": [
@@ -47,14 +47,14 @@
         "run",
         "test:wxt:smoke"
       ],
-      "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a",
+      "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1134.049943,
-      "startedAt": "2026-10-13T19:06:33.582Z",
-      "log": "docs/task-execution/local/api-key-provider-connections/9fbb3d78-f22f-4789-9b0f-d17efef37c44.log",
-      "logSha256": "c9c4a0129493465acc046202920d69af122285d4cf43421592da302cc4ba982a"
+      "durationMs": 1233.595468,
+      "startedAt": "2026-10-13T19:36:22.215Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/0ec8d552-0a2c-4fc8-936b-9f421d12fdba.log",
+      "logSha256": "04cc32be549c50a3e2d749ca6900d2248670c6cbd18195f1899612cd0eb8974a"
     },
     {
       "command": [
@@ -65,23 +65,23 @@
         "e2e/subtitles.spec.mjs",
         "e2e/learning-center.spec.mjs"
       ],
-      "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a",
+      "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 28583.921788,
-      "startedAt": "2026-10-13T19:06:37.308Z",
-      "log": "docs/task-execution/local/api-key-provider-connections/a3a8705f-6930-4a95-9b05-12fce934c498.log",
-      "logSha256": "bd0defcec3bcdbe1c3263a360ea3af76a2bff2527aeb9e872e77cb61e17f1660"
+      "durationMs": 28755.478912,
+      "startedAt": "2026-10-13T19:36:26.165Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/8e7c93a4-56be-4578-81b5-bf251d17ea63.log",
+      "logSha256": "c1a614dde2d78d321e3e4a24e616e04c72b8422b72230e4938d544b90e53ea85"
     }
   ],
   "artifact": {
     "path": ".output/chrome-mv3",
-    "treeSha256": "4cc5960e62a821232225da5ef08b59bc7dad58d6f1c4f757ea8375ff73c2677a"
+    "treeSha256": "b9c49533f0e69b3fc3db430c222da764e516a37189e1af69228c1bf3c0a8dd8c"
   },
   "limitations": [
-    "Real paid Provider endpoints were not called; protocol coverage uses the repository mock Provider.",
+    "Real paid Provider endpoints were not called; native cloud protocol coverage uses the repository mock Provider.",
     "Chrome 102, other browsers, real YouTube timedtext, same-ID upgrade/restart, and release lexicon certification were not run.",
-    "The WXT build passed with the existing advisory platform-code budget warning: 2007607/1576595 bytes."
+    "The WXT build passed with the advisory platform-code budget warning: 2008295/1576595 bytes."
   ]
 }
