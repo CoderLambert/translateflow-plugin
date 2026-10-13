@@ -25,10 +25,7 @@ test("rich dictionary cards keep configured order and lazily follow expandedByDe
 
   const cardNodes = findClass(container, "tf-selection-rich-record");
   assert.deepEqual(cardNodes.map((node) => node.dataset.dictionaryId), ["first", "second", "third"]);
-  assert.deepEqual(cardNodes.map((node) => findClass(node, "tf-selection-rich-order")[0].textContent), ["1", "2", "3"]);
-  assert.deepEqual(cardNodes.map((node) => findClass(node, "tf-selection-rich-order")[0].attributes.get("aria-label")), [
-    "词典顺序 1", "词典顺序 2", "词典顺序 3"
-  ]);
+  assert.equal(findClass(container, "tf-selection-rich-order").length, 0);
   assert.deepEqual(cardNodes.map((node) => node.open), [true, false, false]);
   assert.deepEqual(opened, ["first"]);
   assert.deepEqual(cardNodes.map((node) => node.dataset.state), ["idle", "idle", "idle"]);
@@ -39,7 +36,7 @@ test("rich dictionary cards keep configured order and lazily follow expandedByDe
   assert.equal(cards.length, 3);
 });
 
-test("derived personal preference opens first while preserving other expanded choices", async () => {
+test("derived personal preference opens first without adding redundant header metadata", async () => {
   const { renderer, document } = await loadRenderer();
   const container = document.createElement("div");
   const opened = [];
@@ -51,8 +48,8 @@ test("derived personal preference opens first while preserving other expanded ch
   const cards = findClass(container, "tf-selection-rich-record");
   assert.deepEqual(cards.map((card) => card.open), [true, true]);
   assert.deepEqual(opened, ["preferred", "also-expanded"]);
-  assert.equal(findClass(cards[0], "tf-selection-rich-preference")[0].textContent, "你的首选 · 个人偏好");
-  assert.equal(findClass(cards[1], "tf-selection-rich-preference").length, 0);
+  assert.equal(findClass(container, "tf-selection-rich-preference").length, 0);
+  assert.equal(findClass(container, "tf-selection-rich-metadata").length, 0);
 });
 
 test("structured Selection shows its primary dictionary entry and collapses additional detail", async () => {
@@ -236,8 +233,20 @@ test("rich card results pass through the reviewed sanitizer and keep resource lo
   const card = findClass(container, "tf-selection-rich-record")[0];
   assert.equal(card.dataset.state, "success");
   assert.equal(findClass(card, "tf-selection-rich-title")[0].textContent, "<img onerror=alert(1)>");
-  assert.equal(findClass(card, "tf-selection-rich-trust")[0].textContent, "来源 / 信任：Curated provenance");
-  assert.equal(findClass(card, "tf-selection-rich-format")[0].textContent, "MDX");
+  assert.equal(findClass(card, "tf-selection-rich-trust").length, 0);
+  assert.equal(findClass(card, "tf-selection-rich-format").length, 0);
+  const status = findClass(card, "tf-selection-rich-card-status")[0];
+  assert.equal(status.hidden, true);
+  assert.equal(status.textContent, "");
+  cards[0].setLoading();
+  assert.equal(status.hidden, false);
+  assert.equal(status.textContent, "content.rich.querying");
+  cards[0].setEmpty();
+  assert.equal(status.hidden, false);
+  assert.equal(status.textContent, "content.rich.noMatchShort");
+  cards[0].setError();
+  assert.equal(status.hidden, false);
+  assert.equal(status.textContent, "content.rich.queryFailed");
 });
 
 test("dictionary lookups carry dictionaryId and isolate loading, errors, and stale responses", async () => {

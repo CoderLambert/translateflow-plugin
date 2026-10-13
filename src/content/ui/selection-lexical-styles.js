@@ -293,25 +293,14 @@
 }
 .tf-selection-rich-summary {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   list-style: none;
 }
 .tf-selection-rich-summary::-webkit-details-marker { display: none; }
-.tf-selection-rich-order {
-  display: inline-grid;
-  min-width: 19px;
-  height: 19px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--tf-bg-subtle);
-  color: var(--tf-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-}
-.tf-selection-rich-identity { display: grid; min-width: 0; gap: 3px; }
+.tf-selection-rich-identity { min-width: 0; }
 .tf-selection-rich-title {
   display: block;
   margin: 0;
@@ -320,21 +309,6 @@
   font-weight: 700;
   line-height: 1.35;
 }
-.tf-selection-rich-preference {
-  width: fit-content;
-  color: var(--tf-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-}
-.tf-selection-rich-metadata {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  color: var(--tf-text-muted);
-  font-size: 10px;
-  line-height: 1.35;
-}
-.tf-selection-rich-format { font-weight: 650; }
 .tf-selection-rich-card-status {
   max-width: 92px;
   padding: 2px 6px;
@@ -391,8 +365,8 @@
 }
 .tf-selection-rich-retry:hover { border-color: var(--tf-green-600); }
 @media (max-width: 360px) {
-  .tf-selection-rich-summary { grid-template-columns: auto minmax(0, 1fr); }
-  .tf-selection-rich-card-status { grid-column: 2; max-width: none; text-align: left; }
+  .tf-selection-rich-summary { grid-template-columns: minmax(0, 1fr); }
+  .tf-selection-rich-card-status { max-width: none; text-align: left; }
 }
 @media (max-width: 520px) {
   .tf-selection-panel { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding-inline: 13px; }

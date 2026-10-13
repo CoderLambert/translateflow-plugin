@@ -686,7 +686,7 @@ function failureUiHarness(reply) {
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob, crypto: globalThis.crypto });
   for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
   const h = { dom, host, shadow, viewport, calls, resources, resolver: app.modules.richResourceResolver,
-    add(kind, path) { const element = document.createElement('span'); viewport.append(element); resources.push({ kind, path, element }); return element; },
+    add(kind, path, presentation = '') { const element = document.createElement('span'); viewport.append(element); resources.push({ kind, path, ...(presentation ? { presentation } : {}), element }); return element; },
     attach() { h.session = h.resolver.attach(host, shadow, viewport, resources, 'fixture', 'v1'); },
     notice() { return shadow.querySelector('.tf-rich-resource-notice'); },
     async settle() { await waitFor(() => !h.resolver.runningReadCount && !h.resolver.pendingReadCount); },
@@ -698,6 +698,18 @@ function validUiAsset(kind) {
     mime: kind === 'stylesheet' ? 'text/css' : kind === 'image' ? 'image/png' : 'audio/wav', width: 1, height: 1,
     ...(kind === 'stylesheet' ? { safeCss: '.tf-rich-viewer .entry{color:red}', assetSlots: [] } : {}) };
 }
+test('Oxford pronunciation buttons use short visible labels and full accessible names', () => {
+  const h = failureUiHarness(() => validUiAsset('audio'));
+  h.add('audio', 'british.wav', 'pronunciation-british');
+  h.add('audio', 'american.wav', 'pronunciation-american');
+  h.attach();
+  const [british, american] = [...h.viewport.querySelectorAll('button')];
+  assert.equal(british.textContent, '英');
+  assert.equal(british.getAttribute('aria-label'), '播放英音');
+  assert.equal(american.textContent, '美');
+  assert.equal(american.getAttribute('aria-label'), '播放美音');
+  h.close();
+});
 for (const [kind, response, code] of [
   ['missing', { ok: true, found: false }, 'RICH_MDD_RESOURCE_MISSING'],
   ['stale', { ok: true, found: false, stale: true, packageVersion: 'v2' }, 'RICH_MDD_RESOURCE_STALE'],

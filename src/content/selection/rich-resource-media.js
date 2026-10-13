@@ -330,22 +330,30 @@
     }
 
     function audioLabelDescriptor(resource) {
-      if (resource.presentation === "pronunciation-british") return { key: "content.rich.playBritishPronunciation", args: {} };
-      if (resource.presentation === "pronunciation-american") return { key: "content.rich.playAmericanPronunciation", args: {} };
+      if (resource.presentation === "pronunciation-british") return {
+        textKey: "content.rich.britishPronunciationButton",
+        ariaKey: "content.rich.playBritishPronunciation",
+        args: {}
+      };
+      if (resource.presentation === "pronunciation-american") return {
+        textKey: "content.rich.americanPronunciationButton",
+        ariaKey: "content.rich.playAmericanPronunciation",
+        args: {}
+      };
       return resource.label
-        ? { key: "content.rich.playAudio", args: { label: resource.label } }
-        : { key: "content.rich.playAudioGeneric", args: {} };
+        ? { textKey: "content.rich.playAudio", ariaKey: "content.rich.playAudio", args: { label: resource.label } }
+        : { textKey: "content.rich.playAudioGeneric", ariaKey: "content.rich.playAudioGeneric", args: {} };
     }
 
     function bindAudioButtonLabel(button, resource) {
       const descriptor = audioLabelDescriptor(resource);
-      locale.bindText(button, descriptor.key, descriptor.args);
-      locale.bindAttribute(button, "aria-label", descriptor.key, descriptor.args);
+      locale.bindText(button, descriptor.textKey, descriptor.args);
+      locale.bindAttribute(button, "aria-label", descriptor.ariaKey, descriptor.args);
     }
 
     function bindAudioAccessibleLabel(audio, resource) {
       const descriptor = audioLabelDescriptor(resource);
-      locale.bindAttribute(audio, "aria-label", descriptor.key, descriptor.args);
+      locale.bindAttribute(audio, "aria-label", descriptor.ariaKey, descriptor.args);
     }
 
     function decorateOxfordPlaceholder(element, presentation) {

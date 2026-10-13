@@ -80,8 +80,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await expect(cardById(alpha.id)).toHaveJSProperty("open", true);
     await expect(cardById(beta.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(beta.id)).toContainText("Beta rich gloss");
-    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
-    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).toBeVisible();
+    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).not.toBeAttached();
     const preferredVisibleMs = Date.now() - selectionStarted;
     await expect(cardById(alpha.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(alpha.id)).toContainText("Alpha rich gloss");
@@ -184,7 +183,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await expect(cards).toHaveCount(1);
     await expect(cards.first()).toHaveAttribute("data-dictionary-id", enabled.id);
     await expect(cards.first()).toHaveJSProperty("open", true);
-    await expect(cards.first().locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(cards.first().locator(".tf-selection-rich-preference")).not.toBeAttached();
     await cards.first().locator("summary").click();
     await expect(cards.first()).toHaveAttribute("data-state", "success");
     await expect(cards.first()).toContainText("Enabled rich gloss");
@@ -240,7 +239,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await page.locator(".tf-selection-chip").click();
     const remainingCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${alpha.id}"]`);
     await expect(remainingCard).toHaveJSProperty("open", true);
-    await expect(remainingCard.locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(remainingCard.locator(".tf-selection-rich-preference")).not.toBeAttached();
     await expect(remainingCard).toHaveAttribute("data-state", "success");
     expect(harness.server.calls).toHaveLength(0);
   });
@@ -329,7 +328,7 @@ test.describe("multiple local rich dictionary cards", () => {
     const corruptCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${corrupt.id}"]`);
     const healthyCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${healthy.id}"]`);
     await expect(corruptCard).toHaveAttribute("data-state", "error");
-    await expect(corruptCard.locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(corruptCard.locator(".tf-selection-rich-preference")).not.toBeAttached();
     await expect(healthyCard).toHaveAttribute("data-state", "success");
     await expect(healthyCard).toContainText("Healthy rich gloss");
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");

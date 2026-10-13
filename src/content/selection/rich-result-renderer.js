@@ -23,7 +23,7 @@
       record.className = "tf-selection-rich-record";
       const title = document.createElement("div");
       title.className = "tf-selection-rich-title";
-      title.textContent = dictionaryMetadataText(dictionary);
+      title.textContent = String(dictionary?.title || "Rich MDict");
       record.appendChild(title);
       renderRichDictionaryRecord(record, dictionary, dictionary?.id);
       section.appendChild(record);
@@ -64,7 +64,7 @@
       });
     const cards = [];
 
-    for (const [index, { dictionary }] of ordered.entries()) {
+    for (const { dictionary } of ordered) {
       const details = document.createElement("details");
       details.className = "tf-selection-rich-record";
       details.dataset.dictionaryId = String(dictionary?.id || "");
@@ -73,11 +73,6 @@
 
       const summary = document.createElement("summary");
       summary.className = "tf-selection-rich-summary";
-      const order = document.createElement("span");
-      order.className = "tf-selection-rich-order";
-      order.textContent = String(index + 1);
-      locale.bindAttribute(order, "aria-label", "content.rich.order", { index: index + 1 });
-
       const identity = document.createElement("span");
       identity.className = "tf-selection-rich-identity";
       const title = document.createElement("strong");
@@ -85,36 +80,11 @@
       if (dictionary?.title) title.textContent = String(dictionary.title);
       else locale.bindText(title, "content.rich.title");
       identity.appendChild(title);
-      if (dictionary?.preferred) {
-        const preferred = document.createElement("span");
-        preferred.className = "tf-selection-rich-preference";
-        locale.bindText(preferred, "content.rich.preferred");
-        identity.appendChild(preferred);
-      }
-
-      const metadata = document.createElement("span");
-      metadata.className = "tf-selection-rich-metadata";
-      const trustLabel = String(dictionary?.trustLabel || "").trim();
-      if (trustLabel) {
-        const trust = document.createElement("span");
-        trust.className = "tf-selection-rich-trust";
-        locale.bindText(trust, "content.rich.trust", { trust: trustLabel });
-        metadata.appendChild(trust);
-      }
-      const format = String(dictionary?.format || "").trim();
-      if (format) {
-        const formatLabel = document.createElement("span");
-        formatLabel.className = "tf-selection-rich-format";
-        formatLabel.textContent = format;
-        metadata.appendChild(formatLabel);
-      }
-      if (metadata.childElementCount) identity.appendChild(metadata);
-
       const status = document.createElement("span");
       status.className = "tf-selection-rich-card-status";
       status.setAttribute("aria-live", "polite");
       locale.bindText(status, details.open ? "content.rich.querying" : "content.rich.queryOnOpen");
-      summary.append(order, identity, status);
+      summary.append(identity, status);
 
       const body = document.createElement("div");
       body.className = "tf-selection-rich-card-body";
@@ -224,7 +194,14 @@
     return cards;
   }
 
-  function setCardState(details, status, state, key) { details.dataset.state = state; locale.bindText(status, key); }
+  function setCardState(details, status, state, key) {
+    details.dataset.state = state;
+    status.hidden = state === "success";
+    if (status.hidden) {
+      locale.unbind(status);
+      status.textContent = "";
+    } else locale.bindText(status, key);
+  }
 
   function bindMessage(node, message, fallbackKey) {
     if (message && typeof message === "object" && typeof message.key === "string") {
@@ -374,8 +351,6 @@
   function normalizeHeadword(value) {
     return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
   }
-
-  function dictionaryMetadataText(dictionary) { return [String(dictionary?.title || "Rich MDict"), String(dictionary?.trustLabel || "").trim(), String(dictionary?.format || "").trim()].filter(Boolean).join(" · "); }
 
   app.modules.selectionRichResultRenderer = Object.freeze({ appendRichDictionaryDetails, appendRichDictionaryCards });
 })();
