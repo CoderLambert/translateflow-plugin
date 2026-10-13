@@ -55,6 +55,16 @@ test("cards alone keep the recovery surface and do not imply a lookup or success
   assert.equal(h.summary().allNoHit, false);
 });
 
+test("the outcome owner publishes frozen presentation feedback for the popover to consume", async () => {
+  const h = await createHarness([dictionary("one", { preferred: true })]);
+  await h.start();
+  assert.equal(h.summary().feedback.titleKey, "content.rich.title");
+  assert.equal(h.summary().feedback.messageKey, "content.rich.querying");
+  await h.complete("one", miss);
+  assert.equal(h.summary().allNoHit, true);
+  assert.equal(h.summary().feedback, null);
+});
+
 test("rich outcomes never replace the structured primary, even when every rich dictionary misses", async () => {
   const h = await createHarness([dictionary("one", { preferred: true })]);
   await h.start({ primary: true });
@@ -151,6 +161,28 @@ test("a changed selection generation suppresses both summary and card writes wit
   assert.doesNotMatch(h.layer.textContent, /stale generation/);
 });
 
+test("expanding an old deferred hit after the selection generation changes cannot write stale dictionary DOM", async () => {
+  const h = await createHarness([dictionary("one", { preferred: true })]);
+  await h.start({ primary: true });
+  h.open("one", false);
+  await h.complete("one", hit("one", "old deferred glossary"));
+  assert.equal(h.summary().hasHit, true);
+  assert.equal(h.displayed.length, 0);
+  const summariesBefore = h.summaries.length;
+  const lookupsBefore = h.sentLookups().length;
+  h.invalidate();
+  h.open("one");
+  assert.equal(h.nodes("tf-selection-rich-text").length, 0);
+  assert.doesNotMatch(h.layer.textContent, /old deferred glossary/);
+  assert.equal(h.nodes("tf-selection-primary")[0].textContent, "structured meaning");
+  assert.equal(h.displayed.length, 0);
+  assert.equal(h.summaries.length, summariesBefore);
+  assert.equal(h.sentLookups().length, lookupsBefore);
+  h.open("one", false);
+  h.open("one");
+  assert.equal(h.nodes("tf-selection-rich-text").length, 0);
+});
+
 test("render failures clear deferred results and recover through retry without duplicating onDisplay", async () => {
   let throwRender = true;
   const h = await createHarness([dictionary("one", { preferred: true })], { renderPlainText(body, text) {
@@ -237,6 +269,7 @@ async function createHarness(dictionaries, { listResponse = null, renderPlainTex
   const update = app.modules.selectionPopover.updateRichDictionarySummary;
   app.modules.selectionPopover.updateRichDictionarySummary = (snapshot, summary) => {
     assert.ok(Object.isFrozen(summary) && Object.isFrozen(summary.counts) && Object.isFrozen(summary.dictionaries));
+    assert.ok(summary.feedback === null || Object.isFrozen(summary.feedback));
     summaries.push(summary);
     update(snapshot, summary);
   };

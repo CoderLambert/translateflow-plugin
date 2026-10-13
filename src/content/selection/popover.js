@@ -222,19 +222,7 @@
       reposition();
       return;
     }
-    // A structured miss alone cannot establish the outcome of unqueried,
-    // running or failed rich dictionaries. Preserve explicit recovery actions.
-    let options = { ...localEmptyOptions, titleKey: "content.rich.title", messageKey: "content.rich.queryOnOpen" };
-    if (summary.listState === "pending" || summary.counts.queued || summary.counts.pending) {
-      options = { ...options, titleKey: "content.rich.title", messageKey: "content.rich.querying" };
-    } else if (summary.listState === "error" || summary.counts.error || summary.counts.unavailable) {
-      options = { ...options, titleKey: "content.rich.queryFailed", messageKey: "content.rich.temporarilyUnavailable" };
-    } else if (summary.counts.cancelled) {
-      options = { ...options, titleKey: "content.rich.title", messageKey: "content.rich.selectionChanged" };
-    } else if (summary.allNoHit || (summary.listState === "ready" && !summary.dictionaries.length)) {
-      options = localEmptyOptions;
-    }
-    emptyState.show(options);
+    emptyState.show({ ...localEmptyOptions, ...summary.feedback });
     reposition();
   }
 

@@ -163,11 +163,11 @@
           body.appendChild(empty);
           retryHandler = null;
         },
-        setResult(record, dictionaryId, onDisplay = null, onError = null) {
+        setResult(record, dictionaryId, onDisplay = null, onError = null, isCurrent = null) {
           clearPendingResult();
           setCardState(details, status, "success", "content.rich.complete");
           retryHandler = null;
-          pendingResult = { record, dictionaryId, onDisplay, onError };
+          pendingResult = { record, dictionaryId, onDisplay, onError, isCurrent };
           if (details.open) renderPendingResult();
           else {
             const note = document.createElement("p");
@@ -186,6 +186,10 @@
 
       function renderPendingResult() {
         if (!pendingResult || resultDisplayed) return;
+        if (typeof pendingResult.isCurrent === "function" && !pendingResult.isCurrent()) {
+          clearPendingResult();
+          return;
+        }
         body.replaceChildren();
         const displayed = renderRichDictionaryRecord(body, pendingResult.record, pendingResult.dictionaryId);
         resultDisplayed = true;

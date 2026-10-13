@@ -85,15 +85,33 @@
       counts[state.outcome] += 1;
       return Object.freeze({ id, outcome: state.outcome });
     });
+    const allNoHit = session.listState === "ready" && dictionaries.length > 0 && counts["no-hit"] === dictionaries.length;
     const summary = Object.freeze({
       version: session.version,
       listState: session.listState,
       dictionaries: Object.freeze(dictionaries),
       counts: Object.freeze(counts),
       hasHit: counts.hit > 0,
-      allNoHit: session.listState === "ready" && dictionaries.length > 0 && counts["no-hit"] === dictionaries.length
+      allNoHit,
+      feedback: createSummaryFeedback(session.listState, counts, allNoHit, dictionaries.length)
     });
     popover.updateRichDictionarySummary?.(session.snapshot, summary);
+  }
+
+  function createSummaryFeedback(listState, counts, allNoHit, dictionaryCount) {
+    // A structured miss cannot establish the outcome of unqueried, running or
+    // failed rich dictionaries. Null preserves the original no-hit recovery.
+    if (counts.hit) return null;
+    let titleKey = "content.rich.title", messageKey = "content.rich.queryOnOpen";
+    if (listState === "pending" || counts.queued || counts.pending) {
+      messageKey = "content.rich.querying";
+    } else if (listState === "error" || counts.error || counts.unavailable) {
+      titleKey = "content.rich.queryFailed";
+      messageKey = "content.rich.temporarilyUnavailable";
+    } else if (counts.cancelled) {
+      messageKey = "content.rich.selectionChanged";
+    } else if (allNoHit || (listState === "ready" && !dictionaryCount)) return null;
+    return Object.freeze({ titleKey, messageKey });
   }
 
   function setOutcome(session, state, outcome) {
@@ -190,7 +208,7 @@
           if (!isLiveSession(session) || state.requestId !== requestId || state.outcome !== "hit") return;
           card.setError("content.rich.lookupUnavailable", () => { void request(true); });
           setOutcome(session, state, "error");
-        });
+        }, () => isLiveSession(session) && state.requestId === requestId);
         setOutcome(session, state, "hit");
       } catch {
         if (!isLiveSession(session)) return;
