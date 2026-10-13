@@ -291,13 +291,13 @@
     },
     {
       "task": "rich-local-fonts",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "oxford-radio-css",
         "rich-multiple-records"
       ],
       "branch": "fix/rich-font-svg-20261013",
-      "candidateHead": null
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc"
     },
     {
       "task": "rich-lookup-outcome",

@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "task": "rich-local-fonts",
+  "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+  "tree": "c8787cbac28e577b182f1b6b80dd0b64172734fc",
+  "inputTree": "6fdb28eee6f08fef798458d1ae162b3596b4c23ec2502b9aa75a903f21424525",
+  "frozenAt": "2026-10-13T12:03:48.748Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 19.024838,
+      "startedAt": "2026-10-13T12:03:52.819Z",
+      "log": "docs/task-execution/local/rich-local-fonts/df1efbc5-c28c-4aca-9111-a0a1fec736d4.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/mdd-format.test.mjs",
+        "tests/mdd-security.test.mjs",
+        "tests/rich-mdd-css.test.mjs",
+        "tests/rich-resource-resolver.test.mjs",
+        "tests/rich-static-svg.test.mjs",
+        "tests/rich-navigation.test.mjs",
+        "tests/rich-oxford-adapter.test.mjs",
+        "tests/rich-resource-recovery.test.mjs",
+        "tests/local-dictionary-preflight.test.mjs",
+        "tests/local-dictionary-import-presentation.test.mjs",
+        "tests/constants.test.mjs",
+        "tests/rich-mdd-lookup-cancellation.test.mjs",
+        "tests/rich-mdict-storage.test.mjs",
+        "tests/rich-controls.test.mjs",
+        "tests/rich-viewer-contract.test.mjs",
+        "tests/selection-rich-outcome.test.mjs",
+        "tests/selection-multi-dictionary.test.mjs",
+        "tests/selection-controller-cancel.test.mjs",
+        "tests/reading-content-classic.test.mjs"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11953.486398,
+      "startedAt": "2026-10-13T12:03:58.076Z",
+      "log": "docs/task-execution/local/rich-local-fonts/8d2a92a0-67ea-4a77-adcb-911a14cd2cd2.log",
+      "logSha256": "9081b992436e57a19bdc247b76e26a7bddf19a0725eff74bce55ada7d5547727"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 47484.14451,
+      "startedAt": "2026-10-13T12:04:13.958Z",
+      "log": "docs/task-execution/local/rich-local-fonts/269800f4-8829-40b2-a994-517ce58dd2eb.log",
+      "logSha256": "7dfb19785d963ab712351e8d63af8dd985aec48c603f6894e1afe0707c7fcc88"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2091.292802,
+      "startedAt": "2026-10-13T12:05:05.025Z",
+      "log": "docs/task-execution/local/rich-local-fonts/964ced46-2d9d-4807-b14f-280f8e346f88.log",
+      "logSha256": "4b57a686332de13aa7b82c56276bec9f45d5f14e153e7d9141fcb6a1c7d6e23c"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1010.582763,
+      "startedAt": "2026-10-13T12:05:10.448Z",
+      "log": "docs/task-execution/local/rich-local-fonts/3179bf6e-e3cf-4146-931d-a41bfb417e5a.log",
+      "logSha256": "fbf9489f0618390686ba98f58210d26f2a1737e5ddd989c0eec991ef9392714b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 157.321976,
+      "startedAt": "2026-10-13T12:05:15.261Z",
+      "log": "docs/task-execution/local/rich-local-fonts/d727321e-387a-4a79-9d4f-db34853d66bc.log",
+      "logSha256": "328355006c6f5e20bfbb4e6c0b9e28b8e16684459c68cd1bae9341b6a1e4020a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 191.598688,
+      "startedAt": "2026-10-13T12:05:18.097Z",
+      "log": "docs/task-execution/local/rich-local-fonts/30af44ad-aed0-4f12-92b1-0234b2b9aeca.log",
+      "logSha256": "77c7d2fa98438689351fc043cd7446529d3afab5e49d7b6bc18bc0d83f897d66"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/rich-local-fonts.spec.mjs",
+        "e2e/rich-static-svg.spec.mjs",
+        "e2e/rich-navigation.spec.mjs",
+        "e2e/rich-oxford-adapter.spec.mjs",
+        "e2e/rich-resource-recovery.spec.mjs",
+        "e2e/oxford-radio-css.spec.mjs",
+        "e2e/multi-dictionary-viewer.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/mdd-resources.spec.mjs",
+        "e2e/local-dictionary-import-v2-product.spec.mjs"
+      ],
+      "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 55841.163799,
+      "startedAt": "2026-10-13T12:06:23.082Z",
+      "log": "docs/task-execution/local/rich-local-fonts/fc68f6b6-e459-45ee-b37f-755010575ad2.log",
+      "logSha256": "a41d93daabc56f2e4b86e3fa31b41aec2b55479557b79a605c861aa4cbc2a5df"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "2a98d9de3cf4524aa8adcc4c6e203dd15d50ea520b9855192fbb1a480d49300e"
+  },
+  "limitations": [
+    "真实 Oxford 六文件仅覆盖安装、重启、arch/go、POS/radio、四种字体、长词条底部可达、清理以及 Provider/external HTTP 均为 0；come/get/重复键、UK/US 分别播放、真实 SVG/hint/unbox/preview、entry Back/Forward、附件失败恢复和 old healthy 保护为 NOT_RUN。对应实现由同候选 synthetic Node/Chromium 覆盖，不能冒充真实 Oxford PASS。",
+    "真实 runner 使用从 clean WXT artifact 派生的临时测试副本；仅替换 fixture lexicon 与测试 manifest。clean artifact fingerprint 和 runner artifact inventory 均单独记录。",
+    "六文件中的 JS 被选入且未执行，但 ignored metadata/storage 行为未由真实 runner 单独证明。",
+    "heap/RSS NOT_MEASURED；index cache cumulative budget/LRU 按用户决定暂停。"
+  ],
+  "capacity": {
+    "mdxSourceMaximumBytes": 134217728,
+    "mddSourceMaximumBytesEach": 4000000000,
+    "totalPackageSourceMaximumBytes": 4000000000,
+    "decodedSourceRecordMaximumBytes": 1048576,
+    "expandedTextMaximumBytes": 2097152,
+    "aggregateDisplayMaximumBytes": 2097152,
+    "mdxIndexMaximumBytes": 8388608,
+    "mddIndexMaximumBytesEach": 16777216,
+    "mddIndexMaximumBytesTotal": 33554432,
+    "resourceMaximumBytesEach": 8388608,
+    "mddQueryMaximumBytes": 33554432,
+    "sidecarMaximumBytesEach": 8388608,
+    "sidecarMaximumBytesTotal": 67108864,
+    "mddVolumeMaximum": 16,
+    "actualSelectedPackageBytes": 1533010812,
+    "actualPersistedSupportedPackageBytes": 1532995960,
+    "heapRss": "NOT_MEASURED"
+  },
+  "realOxford": {
+    "status": "PASS_WITH_LIMITATIONS",
+    "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
+    "cleanArtifactTreeSha256": "2a98d9de3cf4524aa8adcc4c6e203dd15d50ea520b9855192fbb1a480d49300e",
+    "runnerArtifactInventorySha256": "ca92b0354f43f3119e7e02ae3db0badae81f3270d7f01bb0560a4107b3d6e058",
+    "runnerArtifactFiles": 128,
+    "runnerArtifactBytes": 2529460,
+    "browser": "Google Chrome for Testing 153.0.8010.12",
+    "reportSha256": "e1259957ff6937d485f419df8db69c937342393f07266b572069937d8473dbcc",
+    "packageIdentity": [
+      { "role": "css", "bytes": 61996, "sha256": "5c7aa91257d09fec7801f1daa8ed33962960633e14ff3048883d55afafd06ae1" },
+      { "role": "javascript-inert-input", "bytes": 14852, "sha256": "c04e2fc513f458e1fc37f984fbaaf4b4fb46c657d5a4de1b89b89654153dffae" },
+      { "role": "mdd", "bytes": 30900438, "sha256": "02e64bd5210a68bd10e34849d9ff6c7e24a51cf4a271b2728482519df2cd24b8" },
+      { "role": "mdd", "bytes": 1463189889, "sha256": "59abe81fa9dc011f4808874edbeb6c8f62af79029ad862382ca41191838efa35" },
+      { "role": "mdx", "bytes": 38807694, "sha256": "737a93e9a25bfdaf5ee1683b4a0aff43ec5a9ed6238700526e258c79cad24e19" },
+      { "role": "png", "bytes": 35943, "sha256": "b9ce5c911cccd400aa4bb45d38e9dfd750623066c2f52c645c0616ec41ce9d3e" }
+    ],
+    "install": "PASS",
+    "words": ["arch", "go"],
+    "restart": "PASS",
+    "posRadioKeyboard": "PASS",
+    "fontFaces": 4,
+    "longArticleTailReachable": true,
+    "providerCalls": 0,
+    "externalDictionaryHttp": 0
+  }
+}

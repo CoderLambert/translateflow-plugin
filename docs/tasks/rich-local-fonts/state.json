@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-local-fonts",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css",
@@ -9,7 +9,7 @@
   ],
   "branch": "fix/rich-font-svg-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-font-svg-20261013",
-  "candidateHead": null,
+  "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -84,5 +84,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "冻结依赖名已校准的最终候选并重新绑定本地gate证据。"
+  "nextAction": "推送 PR #330，核对远端准确 head/base/checks/review 后 guarded squash merge。"
 }
