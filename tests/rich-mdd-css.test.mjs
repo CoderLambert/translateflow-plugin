@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { buildMddIndex, lookupMddResource } from "../src/background/packs/importers/mdd.js";
+import { makeMdd } from "./helpers/mdd-fixture.mjs";
+import { makeTinyTrueType } from "./helpers/ttf-fixture.mjs";
 import { sanitizeRichMddStylesheet } from "../src/background/packs/rich-mdd-css.js";
 
 test("CSS AST sanitizer scopes safe rules and converts local image URLs into package slots", () => {
@@ -171,4 +174,34 @@ test("font defaults, duplicate variants and eight combined image/font slots stay
   assert.ok(result.diagnostics.includes('css.font_limit')); assert.match(result.css, /color:red/u);
   const mixed = sanitizeRichMddStylesheet(Buffer.from(face + Array.from({ length: 8 }, (_, index) => `.i${index}{background-image:url(${index}.png)}`).join('')), 'entry.css');
   assert.equal(mixed.fontFaces.length + mixed.assetSlots.length, 8);
+});
+
+
+test("verified percent-encoded spaces map once to the exact local MDD font key", async () => {
+  const source = '@font-face{font-family:Fixture;src:url("fonts/Test%20Font.ttf")} .entry{font-family:Fixture,serif}';
+  const result = sanitizeRichMddStylesheet(Buffer.from(source), 'entry.css');
+  assert.deepEqual(result.fontFaces, [{ familyToken: 'tffamily0', path: 'fonts/Test Font.ttf', style: 'normal', weight: '400', display: 'swap' }]);
+  const font = makeTinyTrueType(), bytes = makeMdd([['fonts/Test Font.ttf', font]]);
+  const mddSource = { size: bytes.length, read: async (offset, length) => bytes.subarray(offset, offset + length) };
+  const index = await buildMddIndex({ source: mddSource });
+  const lookup = await lookupMddResource({ source: mddSource, index, path: result.fontFaces[0].path });
+  assert.equal(lookup.found, true); assert.equal(lookup.kind, 'font'); assert.equal(lookup.mime, 'font/ttf');
+  assert.deepEqual(Buffer.from(lookup.bytes), font);
+  const relative = sanitizeRichMddStylesheet(Buffer.from('@font-face{font-family:Fixture;src:url("../fonts/Test%20Font.ttf")}'), 'styles/entry.css');
+  assert.equal(relative.fontFaces[0].path, 'fonts/Test Font.ttf');
+});
+
+test("font URL percent compatibility rejects all other escapes, encoded traversal and double encoding", () => {
+  for (const path of [
+    'fonts/Test%2520Font.ttf', 'fonts/Test%2FFont.ttf', 'fonts/Test%2fFont.ttf', 'fonts/Test%5cFont.ttf',
+    '%2e%2e/fonts/a.ttf', '%2E%2E/fonts/a.ttf', 'fonts/%2e%2e/a.ttf', 'fonts/Test%00Font.ttf',
+    'fonts/Test%0aFont.ttf', 'fonts/Test%7fFont.ttf', 'fonts/Test%3fFont.ttf', 'fonts/Test%23Font.ttf',
+    'https%3a//attacker.invalid/a.ttf', 'fonts/Test%20Font.ttf?x=1', 'fonts/Test%20Font.ttf#fragment',
+    'fonts/Test%Font.ttf', 'fonts/Test%2020%252e.ttf', '../outside/Test%20Font.ttf',
+    'https://attacker.invalid/Test%20Font.ttf', '//attacker.invalid/Test%20Font.ttf'
+  ]) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`@font-face{font-family:Fixture;src:url("${path}")} .entry{color:red;font-family:Fixture,serif}`), 'entry.css');
+    assert.equal(result.fontFaces, undefined, path); assert.ok(result.diagnostics.includes('css.font_filtered'), path);
+    assert.equal(result.css, '.tf-rich-viewer .entry{color:red;font-family:serif}');
+  }
 });

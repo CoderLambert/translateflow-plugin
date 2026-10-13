@@ -80,8 +80,12 @@ export function sanitizeRichFontFamily(value, families) {
 }
 
 function fontPath(stylesheetPath, value) {
-  const raw = String(value || "");
-  if (!raw || raw.length > 512 || /[\u0000-\u001f\u007f%?#:\\]/u.test(raw) || raw.startsWith("//")) return "";
+  const encoded = String(value || "");
+  if (!encoded || encoded.length > 512 || /%(?!20)/u.test(encoded)) return "";
+  // The verified local CSS uses URI-encoded spaces. Decode only that spelling
+  // once; every other percent escape stays outside the supported URL subset.
+  const raw = encoded.replace(/%20/gu, " ");
+  if (/[\u0000-\u001f\u007f%?#:\\]/u.test(raw) || raw.startsWith("//")) return "";
   const segments = raw.startsWith("/") ? [] : String(stylesheetPath).split("/").slice(0, -1).filter(Boolean);
   for (const segment of raw.replace(/^\//u, "").split("/")) {
     if (!segment || segment === ".") continue;
