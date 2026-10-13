@@ -41,7 +41,8 @@
     "chatgptNativeHostE2E": "PASS (host-missing recovery; optional permission pregranted only in isolated test copy)",
     "goRace": "PASS",
     "localHostHello": "PASS (protocolVersion 1, hostVersion dev, 7 capabilities)",
-    "candidateBuild": "PASS with synthetic non-release extension ID; NOT_SIGNED and publishable=false"
+    "candidateBuild": "PASS with synthetic non-release extension ID; NOT_SIGNED and publishable=false",
+    "installationGuide": "PASS (commands, relative links, release placeholders and git diff whitespace checked)"
   },
   "review": {
     "reviewer": "dev_verifier",
@@ -50,5 +51,6 @@
       "non-string/unsafe host version acceptance"
     ],
     "resolution": "Fixed and revalidated; no unresolved blocker in the reviewed scope."
-  }
+  },
+  "documentationHead": "42ba15fe548057a7feb154a97fcd923d092bbb49"
 }
