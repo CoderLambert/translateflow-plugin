@@ -110,7 +110,7 @@ function assistantSystemPrompt(config) {
   return [
     "Answer the user's question about the selected text using only the supplied context and candidates.",
     `Write the answer in ${targetLanguage}.`,
-    "Return plain text only."
+    "Plain text only."
   ].join("\n");
 }
 function post(state, message) { if (!state.closed) try { state.port.postMessage({ protocolVersion: V, requestId: state.id, ...message }); } catch { state.ctl?.abort(); } }
