@@ -155,7 +155,10 @@ an anonymous family token, normal/italic style, 400/700 weight and swap/fallback
 display. A single local URL and optional truetype format are accepted; local()
 lookup, mixed sources, external URLs, unsupported descriptors and duplicate
 variants are rejected with diagnostics. Declaration order does not affect
-ordinary font-family references. Only declared families and generic fallbacks
+ordinary font-family references. Verified `%20` spaces in the four target URLs
+are decoded once; all other percent escapes remain unsupported, including
+encoded separators, traversal, scheme/control characters and double encoding.
+Only declared families and generic fallbacks
 survive; original custom family names are not returned to the viewer.
 
 The existing eight-slot bound covers image slots and font faces together.
@@ -169,7 +172,10 @@ Chromium does not load a blob @font-face inside a Shadow stylesheet in the
 measured prototype. The viewer instead constructs controlled ArrayBuffer
 FontFace objects and adds them to the owning document's font set. Each
 stylesheet/session uses cryptographically random names referenced only by
-its scoped Shadow CSS. No dictionary font URL is emitted, and no CSP or
+its scoped Shadow CSS. Alias rewriting visits only actual font-family
+declarations; selectors, controlled IDs and literal content remain unchanged
+even when their spelling matches a family token, including fallback paths.
+No dictionary font URL is emitted, and no CSP or
 permission is changed. An absent native RNG, unsupported API or failed face
 uses a visible display-fallback notice while preserving other stylesheet rules.
 

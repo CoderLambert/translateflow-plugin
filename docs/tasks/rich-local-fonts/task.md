@@ -13,3 +13,5 @@
 验收覆盖valid四faces与genericfallback、case/family mapping、source恶意family/escape/URL/local()/mixed src/descriptor重复/错误字体signature/table超界重叠/数量累计限额、坏font正常fallback、samefamily跨dict隔离、load→close/selectiongeneration/packageversion陈旧不添加、重复渲染资源释放、style与音频/图片不回归。真实同Oxford包arch/go当前WXT实际字体load/应用（FontFace status与fontSet/matching computed alias及字宽/FontFace证据，不能仅computed family宣称loaded），全部POS/重启/provider0/http0。合成字体从可追溯生成fixture，禁止复制Oxford字体作为fixture或包asset。
 
 原型及实现收口：Chromium153 Shadow @font-face不能加载；受控ArrayBuffer FontFace需document.fonts add，delete还原字形，另Shadow/页面字体不变。生产alias仅crypto.getRandomValues，无RNG诚实fallback；单字体失败明示显示降级而保留其它CSS。pending native load保留reservation+既有2读槽直到settle；原始TTF bytes8MiB、每view32MiB逻辑预算不当heap上限。生成752B原创矩形字形fixture真实Chrome解码、四variant/两dict隔离/close0/restart/坏font+radio测试，未复制商用字体。实际4字体新policy预验证4/4PASS仅dirty source；最终frozen候选仍须真实UI。
+
+准确95762候选门禁8PASS后，独审真实复现全CSS token替换误改同名radio ID/class/content；已改声明级有界scanner，所有fallback路径保真，实际4state collision E2E回归保留。旧候选真实fonts0/4 FAIL（五文件installPASS）；实际4src均仅%20编码空格，blanket拒绝percent过滤四faces。只增加verified一次%20→space，其余encoded危险/双重/不认识percent继续reject，并以独立生成fonts/Test Font.ttf MDD命中测试固定。旧attempt保持绑定，不作新headPASS。
