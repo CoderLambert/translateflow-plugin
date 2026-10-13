@@ -252,10 +252,10 @@
     },
     {
       "task": "api-key-provider-connections",
-      "status": "ready_to_sync",
+      "status": "working",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
-      "candidateHead": "272917ef84d6d992293ed3bb5759d4a1338faa2a"
+      "candidateHead": null
     },
     {
       "task": "chatgpt-native-host-distribution",

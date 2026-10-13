@@ -234,7 +234,10 @@
       const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
       port.onMessage.addListener(message => handleAssistantMessage(state, message));
       port.onDisconnect.addListener(() => {
-        if (!state.terminal) interruptAssistant(state, "content.ai.disconnected");
+        const runtimeMessage = String(chrome.runtime.lastError?.message || "");
+        if (!state.terminal) interruptAssistant(state, extensionContextInvalid(runtimeMessage)
+          ? "content.ai.extensionReloaded"
+          : "content.ai.disconnected");
       });
       port.postMessage({ protocolVersion: 1, type: "start", requestId, text: capture.selectedText,
         pageUrl: snapshot.pageUrl, context: captureSelectionContext(snapshot), depth, ownerToken: ownerToken(),
@@ -301,6 +304,7 @@
     }
   }
   function assistantLive(state) { return activeAssistant === state && !state.terminal && isCurrentSelection(state.version, state.snapshot, state.expectedPage); }
+  function extensionContextInvalid(message) { return /extension context invalidated|receiving end does not exist/iu.test(String(message || "")); }
   function ownerToken() { return [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, "0")).join(""); }
 
   function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {

@@ -19,7 +19,7 @@ function deferred() {
 
 function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
-  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [];
+  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
   const assistantPorts = [], vocabularyAdds = [];
   const storeStarted = deferred(), secondStoreStarted = deferred();
   const pageUrl = "https://fixture.invalid/article";
@@ -74,7 +74,11 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       disconnect() { session.disconnected = true; }
     };
     session.emit = message => onMessage?.(message);
-    session.disconnectExternally = () => onDisconnect?.();
+    session.disconnectExternally = (message = "") => {
+      chrome.runtime.lastError = message ? { message } : undefined;
+      onDisconnect?.();
+      delete chrome.runtime.lastError;
+    };
     assistantPorts.push(session);
     return session.port;
   }
@@ -112,7 +116,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       showAiDetailStreaming(_answer, onStop) { onAssistantStop = onStop; },
       showAiDetailStopping() {},
       showAiDetailResult() {},
-      showAiDetailInterrupted() {},
+      showAiDetailInterrupted(_answer, message) { assistantInterruptions.push(message); },
       hide() { hideCount++; }, reposition() { repositionCount++; }, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
@@ -171,7 +175,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
   documentListeners.get("mouseup")({ target: {} });
 
   return {
-    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds,
+    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds, assistantInterruptions,
     ready: waitForChip(1), storeStarted: storeStarted.promise,
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
     resolveStore: (index = 0, result = { ok: true }) => storeAcks[index].resolve(result), get stored() { return stored; },
@@ -285,6 +289,17 @@ test("a local dictionary save remains valid after its optional AI explanation is
   await h.save();
 
   assert.equal(h.vocabularyAdds.length, 1);
+});
+
+test("an assistant port invalidated by an extension reload tells the user to refresh the page", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain();
+
+  h.assistantPorts.at(-1).disconnectExternally("Extension context invalidated.");
+
+  assert.deepEqual(h.assistantInterruptions, ["content.ai.extensionReloaded"]);
 });
 
 test("a new selection invalidates a saved local dictionary result", async () => {
