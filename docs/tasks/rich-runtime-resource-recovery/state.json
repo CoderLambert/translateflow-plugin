@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css"
   ],
   "branch": "fix/rich-runtime-assets-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
-  "candidateHead": "dea649ffcf8b5ed8888c9878b1f29061154f048d",
+  "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
   "mergeHead": "",
   "validationCommands": [
     [
@@ -70,5 +70,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "冻结当前实现候选，完成整体验收、自查与现有本地加载包更新。"
+  "nextAction": "同步已验收候选与产物到远端分支和用户当前加载目录；PR 保持 draft 等待实际界面复核。"
 }
