@@ -256,6 +256,12 @@ http://localhost:11434/v1
 
 Host Permission 会按浏览器 Match Pattern 申请，因此 localhost 不按端口精细隔离。
 
+### ChatGPT 订阅
+
+ChatGPT 订阅 Provider 通过可选的 TranslateFlow 本地组件连接。未安装组件时，词典、DeepSeek 和 OpenAI-compatible 等其他功能仍可使用。设置页只会在用户点击 **启用本地连接** 后申请 `nativeMessaging` 权限，并提供下载、重新检测和重启入口。
+
+面向用户的 Windows/Linux 安装、升级、卸载与故障恢复步骤见 [ChatGPT 本地组件安装与发布引导](docs/CHATGPT_NATIVE_HOST_INSTALL.md)。
+
 ## 站点级配置
 
 设置页可以针对站点覆盖：
@@ -411,6 +417,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 - 划词：普通网页打开后即可使用，只有点击“译”才进行本地查询或按需调用 Provider；
 - 自动翻译、缓存恢复和持久 Quick Control：仍由用户按站点开启；
 - OpenAI-compatible：只在用户配置并触发翻译时调用。
+- ChatGPT 订阅：`nativeMessaging` 是可选权限，仅在用户从设置页启用本地连接后申请；未授权不影响其他 Provider。
 
 关闭某个站点的自动翻译只移除该站点模式，不会撤销全站划词所需的 Manifest 权限。
 

@@ -1,5 +1,8 @@
 # Native host installation readiness
 
+面向最终用户和公开发布维护者的中文安装流程见
+[`docs/CHATGPT_NATIVE_HOST_INSTALL.md`](../docs/CHATGPT_NATIVE_HOST_INSTALL.md)。本文保留候选构建、注册路径和工程验收细节。
+
 This note describes the candidate's user-level install path. The extension
 manifest declares `nativeMessaging` as an optional permission requested only
 from the ChatGPT subscription Settings action, but the build and checks do not register a
