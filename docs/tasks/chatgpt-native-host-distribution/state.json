@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "chatgpt-native-host-distribution",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/rich-runtime-assets-20261013",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["go", "-C", "native-host", "test", "-race", "./..."]
+  ],
+  "artifactRequired": true,
+  "nextAction": "完成实现和定向验证；正式商店 ID 与平台签名仍是发布外部输入。"
+}

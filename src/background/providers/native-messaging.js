@@ -1,6 +1,13 @@
-export const CHATGPT_PLAN_NATIVE_HOST = "com.coderlambert.translateflow";
+import {
+  CHATGPT_PLAN_MIN_HOST_VERSION,
+  CHATGPT_PLAN_NATIVE_HOST,
+  CHATGPT_PLAN_NATIVE_PERMISSION,
+  supportedHostVersion,
+  validHostVersion
+} from "../../shared/chatgpt-native-host.js";
 
-const NATIVE_PERMISSION = "nativeMessaging";
+export { CHATGPT_PLAN_NATIVE_HOST };
+
 const PROTOCOL_VERSION = 1;
 const REQUIRED_CAPABILITIES = Object.freeze([
   "auth.status", "auth.start", "auth.select", "auth.logout", "models.list", "infer.start", "cancel"
@@ -24,6 +31,7 @@ export function createNativeMessagingClient({
   let portReady = false;
   let connecting = null;
   let activeInferenceId = "";
+  let hostInfo = null;
   const pending = new Map();
 
   async function ensureConnected() {
@@ -60,7 +68,11 @@ export function createNativeMessagingClient({
           REQUIRED_CAPABILITIES.some(capability => !hello.capabilities.includes(capability))) {
           throw protocolError();
         }
+        if (hello?.hostVersion === undefined || hello?.hostVersion === "") throw updateRequired();
+        if (!validHostVersion(hello.hostVersion)) throw protocolError();
+        if (!supportedHostVersion(hello.hostVersion)) throw updateRequired();
         if (port !== candidate) throw disconnected();
+        hostInfo = Object.freeze({ hostVersion: hello.hostVersion, protocolVersion: hello.protocolVersion });
         portReady = true;
       } catch (error) {
         close(candidate, normalizeClientError(error));
@@ -84,7 +96,10 @@ export function createNativeMessagingClient({
     return sendOn(current, method, payload, options);
   }
 
-  async function authStatus() { return request("auth.status"); }
+  async function authStatus() {
+    const status = await request("auth.status");
+    return { ...status, ...hostInfo };
+  }
   async function startAuth({ addAccount = false } = {}) { return request("auth.start", { addAccount: Boolean(addAccount) }); }
   async function selectAccount(accountId) { return request("auth.select", { accountId: String(accountId || "") }); }
   async function logout() { return request("auth.logout"); }
@@ -188,6 +203,7 @@ export function createNativeMessagingClient({
     if (source !== port) return;
     port = null;
     portReady = false;
+    hostInfo = null;
     try { source.disconnect?.(); } catch {}
     for (const entry of pending.values()) settle(entry, false, error);
   }
@@ -211,11 +227,11 @@ async function assertPermission(browser, runtime) {
     throw new NativeHostError("NATIVE_MESSAGING_UNAVAILABLE", "Native messaging is unavailable in this browser context.");
   }
   const manifest = runtime.getManifest();
-  const required = Array.isArray(manifest?.permissions) && manifest.permissions.includes(NATIVE_PERMISSION);
-  const optional = Array.isArray(manifest?.optional_permissions) && manifest.optional_permissions.includes(NATIVE_PERMISSION);
+  const required = Array.isArray(manifest?.permissions) && manifest.permissions.includes(CHATGPT_PLAN_NATIVE_PERMISSION);
+  const optional = Array.isArray(manifest?.optional_permissions) && manifest.optional_permissions.includes(CHATGPT_PLAN_NATIVE_PERMISSION);
   let granted = required;
   if (optional && typeof browser?.permissions?.contains === "function") {
-    try { granted = await browser.permissions.contains({ permissions: [NATIVE_PERMISSION] }); } catch { granted = false; }
+    try { granted = await browser.permissions.contains({ permissions: [CHATGPT_PLAN_NATIVE_PERMISSION] }); } catch { granted = false; }
   }
   if (!required && !optional || !granted) {
     throw new NativeHostError("NATIVE_MESSAGING_PERMISSION", "The extension does not have native messaging permission. Install the host component and authorize native messaging first.");
@@ -249,6 +265,7 @@ function errorFor(code) {
     NATIVE_HOST_UNAVAILABLE: "TranslateFlow native host is not installed or registered for this user.",
     NATIVE_HOST_DISCONNECTED: "TranslateFlow native host disconnected before completing the request.",
     NATIVE_HOST_PROTOCOL: "TranslateFlow native host returned an unsupported protocol response.",
+    NATIVE_HOST_UPDATE_REQUIRED: `TranslateFlow native host ${CHATGPT_PLAN_MIN_HOST_VERSION} or later is required.`,
     NATIVE_HOST_TIMEOUT: "TranslateFlow native host did not respond in time.",
     NATIVE_HOST_ERROR: "The ChatGPT native host request failed."
   };
@@ -263,6 +280,7 @@ function normalizeClientError(error) {
 function hostUnavailable() { return errorFor("NATIVE_HOST_UNAVAILABLE"); }
 function disconnected() { return errorFor("NATIVE_HOST_DISCONNECTED"); }
 function protocolError() { return errorFor("NATIVE_HOST_PROTOCOL"); }
+function updateRequired() { return errorFor("NATIVE_HOST_UPDATE_REQUIRED"); }
 function hostBusy() { return errorFor("HOST_BUSY"); }
 function cancelled() { return errorFor("CANCELLED"); }
 function isObject(value) { return Boolean(value) && typeof value === "object" && !Array.isArray(value); }

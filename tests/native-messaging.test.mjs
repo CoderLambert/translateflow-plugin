@@ -35,9 +35,9 @@ function fail(port, request, code, sequence = 0) {
   port.deliver({ type: "terminal", requestId: request.requestId, sequence, ok: false, error: { code, message: "fixture failure" } });
 }
 
-function helloOr(handler) {
+function helloOr(handler, hostVersion = "dev") {
   return (request, port) => {
-    if (request.method === "hello") reply(port, request, { protocolVersion: 1, capabilities: CAPABILITIES });
+    if (request.method === "hello") reply(port, request, { protocolVersion: 1, hostVersion, capabilities: CAPABILITIES });
     else handler(request, port);
   };
 }
@@ -66,7 +66,7 @@ test("ChatGPT host handshake, status, model list, and streamed result share one 
 
   assert.equal(fixture.connects, 1);
   assert.deepEqual(fixture.posted.map(value => value.method), ["hello", "auth.status", "models.list", "infer.start"]);
-  assert.deepEqual(status, { connected: true, canInfer: true, storage: "fake" });
+  assert.deepEqual(status, { connected: true, canInfer: true, storage: "fake", hostVersion: "dev", protocolVersion: 1 });
   assert.equal(models.models[0].slug, "fixture-model");
   assert.deepEqual(deltas, ["hello"]);
   assert.deepEqual(result, { text: "hello" });
@@ -84,7 +84,7 @@ test("explicit restart closes the idle port and completes a fresh host handshake
           disconnected: false,
           postMessage(request) {
             posted.push(request);
-            if (request.method === "hello") reply(port, request, { protocolVersion: 1, capabilities: CAPABILITIES });
+            if (request.method === "hello") reply(port, request, { protocolVersion: 1, hostVersion: "dev", capabilities: CAPABILITIES });
             else if (request.method === "auth.status") reply(port, request, { connected: true, canInfer: true, storage: "fake" });
             else assert.fail(`Unexpected host method: ${request.method}`);
           },
@@ -145,12 +145,33 @@ test("missing SIWC scope and an expired token surface distinct recoverable error
 });
 
 test("invalid host sequence and missing host fail closed", async () => {
-  const badSequence = fakeBrowser((request, port) => reply(port, request, { protocolVersion: 1, capabilities: CAPABILITIES }, 1));
+  const badSequence = fakeBrowser((request, port) => reply(port, request, { protocolVersion: 1, hostVersion: "dev", capabilities: CAPABILITIES }, 1));
   const client = createNativeMessagingClient({ getBrowser: () => badSequence.browser });
   await assert.rejects(client.ensureConnected(), { code: "NATIVE_HOST_PROTOCOL" });
 
   const missing = fakeBrowser(() => {}, { connectError: new Error("host path must not escape to callers") });
   await assert.rejects(createNativeMessagingClient({ getBrowser: () => missing.browser }).ensureConnected(), { code: "NATIVE_HOST_UNAVAILABLE" });
+});
+
+test("optional nativeMessaging permission is checked before opening a host port", async () => {
+  const fixture = fakeBrowser(helloOr(() => {}), { permissions: [], optionalPermissions: ["nativeMessaging"] });
+  fixture.browser.permissions.contains = async details => details.permissions?.[0] === "nativeMessaging";
+  const client = createNativeMessagingClient({ getBrowser: () => fixture.browser });
+  await client.ensureConnected();
+  assert.equal(fixture.connects, 1);
+});
+
+test("missing and old host versions require an update while malformed versions fail the protocol", async () => {
+  for (const version of [undefined, "0.7.9"]) {
+    const fixture = fakeBrowser((request, port) => {
+      if (request.method === "hello") reply(port, request, { protocolVersion: 1, ...(version ? { hostVersion: version } : {}), capabilities: CAPABILITIES });
+    });
+    await assert.rejects(createNativeMessagingClient({ getBrowser: () => fixture.browser }).ensureConnected(), { code: "NATIVE_HOST_UPDATE_REQUIRED" });
+  }
+  for (const version of ["latest", ["0.8.0"], { version: "0.8.0" }]) {
+    const malformed = fakeBrowser(helloOr(() => {}, version));
+    await assert.rejects(createNativeMessagingClient({ getBrowser: () => malformed.browser }).ensureConnected(), { code: "NATIVE_HOST_PROTOCOL" });
+  }
 });
 
 test("cancel sends a separate control request and never resolves a partial inference", async () => {

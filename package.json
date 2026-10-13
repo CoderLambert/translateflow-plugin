@@ -24,6 +24,7 @@
     "benchmark:lexical": "node scripts/benchmark-lexical-quality.mjs",
     "build:extension": "node scripts/build-extension.mjs",
     "build:extension:release": "node scripts/build-extension.mjs --require-lexicon",
+    "build:native-host:candidate": "node scripts/build-native-host-candidate.mjs",
     "evaluate:bootstrap": "node scripts/evaluate-core-bootstrap.mjs",
     "measure:extension-footprint": "node scripts/measure-extension-footprint.mjs",
     "project:kaikki": "node scripts/project-kaikki-rich.mjs",

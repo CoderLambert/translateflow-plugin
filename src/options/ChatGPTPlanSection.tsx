@@ -1,16 +1,66 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OptionsClient, OptionsConfig, ChatGPTPlanAuthStatus, ChatGPTPlanModel } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
+import { CHATGPT_PLAN_HOST_DOWNLOAD_URL } from "../shared/chatgpt-native-host.js";
 
-type Props = { config: OptionsConfig; disabled: boolean; update: (patch: Partial<OptionsConfig>) => void; client: Pick<OptionsClient, "chatGPTPlanAction"> };
-type ViewState = { status: ChatGPTPlanAuthStatus | null; models: ChatGPTPlanModel[]; message: string; error: boolean; busy: boolean };
+type Props = { config: OptionsConfig; disabled: boolean; update: (patch: Partial<OptionsConfig>) => void; client: Pick<OptionsClient, "chatGPTPlanAction"> & Partial<Pick<OptionsClient, "hasChatGPTPlanPermission" | "requestChatGPTPlanPermission">> };
+type ViewState = { status: ChatGPTPlanAuthStatus | null; models: ChatGPTPlanModel[]; message: string; error: boolean; busy: boolean; errorCode?: string };
 type AuthAction = "connect" | "add";
+type PermissionState = "checking" | "granted" | "missing";
 
 export function ChatGPTPlanSection({ config, disabled, update, client }: Props) {
   const i18n = useOptionsI18n();
   const [view, setView] = useState<ViewState>({ status: null, models: [], message: i18n.t("options.chatgptPlan.notChecked"), error: false, busy: false });
   const [authAction, setAuthAction] = useState<AuthAction | null>(null);
+  const [permission, setPermission] = useState<PermissionState>(client.hasChatGPTPlanPermission ? "checking" : "granted");
   const operation = useRef(0);
+
+  useEffect(() => {
+    if (!client.hasChatGPTPlanPermission) return;
+    let active = true;
+    void client.hasChatGPTPlanPermission().then(granted => {
+      if (!active) return;
+      setPermission(granted ? "granted" : "missing");
+      if (!granted) setView(value => ({ ...value, error: false, errorCode: "NATIVE_MESSAGING_PERMISSION",
+        message: i18n.t("options.chatgptPlan.permissionRequired") }));
+    }).catch(() => {
+      if (!active) return;
+      setPermission("missing");
+      setView(value => ({ ...value, error: true, errorCode: "NATIVE_MESSAGING_PERMISSION",
+        message: i18n.t("options.chatgptPlan.permissionMissing") }));
+    });
+    return () => { active = false; };
+  }, [client, i18n]);
+
+  useEffect(() => {
+    if (permission !== "granted" || !["NATIVE_HOST_UNAVAILABLE", "NATIVE_HOST_UPDATE_REQUIRED"].includes(view.errorCode || "")) return;
+    const recheck = () => void refresh();
+    window.addEventListener("focus", recheck);
+    return () => window.removeEventListener("focus", recheck);
+  }, [permission, view.errorCode]);
+
+  async function enablePermission() {
+    if (!client.requestChatGPTPlanPermission) return;
+    const current = ++operation.current;
+    setView(value => ({ ...value, busy: true, error: false, message: i18n.t("options.chatgptPlan.requestingPermission") }));
+    try {
+      const granted = await client.requestChatGPTPlanPermission();
+      if (current !== operation.current) return;
+      if (!granted) {
+        setPermission("missing");
+        setView(value => ({ ...value, busy: false, error: true, errorCode: "NATIVE_MESSAGING_PERMISSION",
+          message: i18n.t("options.chatgptPlan.permissionDenied") }));
+        return;
+      }
+      setPermission("granted");
+      await refresh();
+    } catch {
+      if (current !== operation.current) return;
+      setPermission("missing");
+      setView(value => ({ ...value, busy: false, error: true, errorCode: "NATIVE_MESSAGING_PERMISSION",
+        message: i18n.t("options.chatgptPlan.permissionMissing") }));
+    }
+  }
 
   async function refresh(restart = false) {
     const current = ++operation.current;
@@ -38,7 +88,8 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     } catch (error) {
       if (current !== operation.current) return;
       const code = String((error as { code?: string })?.code || "");
-      setView({ status: status || statusForError(code), models: [], busy: false, error: true, message: describeError(code, i18n) });
+      restorePermissionAction(code);
+      setView({ status: status || statusForError(code), models: [], busy: false, error: true, errorCode: code, message: describeError(code, i18n) });
     }
   }
 
@@ -58,8 +109,9 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
       if (current !== operation.current) return;
       setAuthAction(null);
       const code = String((error as { code?: string })?.code || "");
+      restorePermissionAction(code);
       if ((error as { modelSelectionCleared?: boolean })?.modelSelectionCleared) update({ chatgptPlanModel: "" });
-      setView({ status: statusForError(code), models: [], busy: false, error: true, message: describeError(code, i18n) });
+      setView({ status: statusForError(code), models: [], busy: false, error: true, errorCode: code, message: describeError(code, i18n) });
     }
   }
 
@@ -75,7 +127,8 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     } catch (error) {
       if (current !== operation.current) return;
       const code = String((error as { code?: string })?.code || "");
-      setView(value => ({ ...value, busy: false, error: true, message: describeError(code, i18n) }));
+      restorePermissionAction(code);
+      setView(value => ({ ...value, busy: false, error: true, errorCode: code, message: describeError(code, i18n) }));
     }
   }
 
@@ -94,15 +147,25 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     } catch (error) {
       if (current !== operation.current) return;
       const code = String((error as { code?: string })?.code || "");
-      setView(value => ({ ...value, busy: false, error: true, message: describeError(code, i18n) }));
+      restorePermissionAction(code);
+      setView(value => ({ ...value, busy: false, error: true, errorCode: code, message: describeError(code, i18n) }));
     }
   }
 
+  function restorePermissionAction(code: string) {
+    if (code === "NATIVE_MESSAGING_PERMISSION") setPermission("missing");
+  }
+
   const available = view.models.some(model => model.slug === config.chatgptPlanModel);
+  const hostNeedsInstall = ["NATIVE_HOST_UNAVAILABLE", "NATIVE_HOST_DISCONNECTED", "NATIVE_HOST_TIMEOUT", "NATIVE_HOST_UPDATE_REQUIRED"].includes(view.errorCode || "");
+  const controlsAvailable = permission === "granted" && !hostNeedsInstall;
   return <section className="advanced" aria-labelledby="chatgpt-plan-title">
     <h2 id="chatgpt-plan-title">{i18n.t("options.chatgptPlan.title")}</h2>
     <p className="section-summary">{i18n.t("options.chatgptPlan.summary")}</p>
     <p className={`notice${view.error ? " error" : ""}`} role="status" aria-live="polite">{view.message}</p>
+    {hostNeedsInstall && <p className="hint"><a href={CHATGPT_PLAN_HOST_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+      {i18n.t(view.errorCode === "NATIVE_HOST_UPDATE_REQUIRED" ? "options.chatgptPlan.updateHost" : "options.chatgptPlan.downloadHost")}
+    </a></p>}
     {Boolean(view.status?.accounts?.length) && <>
       <label htmlFor="chatgptPlanAccount">{i18n.t("options.chatgptPlan.account")}</label>
       <select id="chatgptPlanAccount" disabled={disabled || view.busy} value={view.status?.activeAccountId || ""}
@@ -122,13 +185,16 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     </select>
     <p className="hint">{i18n.t("options.chatgptPlan.modelHelp")}</p>
     <div className="actions">
-      <button type="button" disabled={disabled || view.busy} onClick={() => void refresh()}>{i18n.t("options.chatgptPlan.check")}</button>
-      <button type="button" disabled={disabled || view.busy} onClick={() => void refresh(true)}>{i18n.t("options.chatgptPlan.restart")}</button>
-      <button type="button" disabled={chatGPTSignInActionDisabled(disabled, view.busy, Boolean(authAction))}
+      {permission === "missing" && <button type="button" disabled={disabled || view.busy} onClick={() => void enablePermission()}>{i18n.t("options.chatgptPlan.enable")}</button>}
+      {permission === "granted" && <button type="button" disabled={disabled || view.busy} onClick={() => void refresh()}>
+        {i18n.t(hostNeedsInstall ? "options.chatgptPlan.recheck" : "options.chatgptPlan.check")}
+      </button>}
+      {controlsAvailable && <button type="button" disabled={disabled || view.busy} onClick={() => void refresh(true)}>{i18n.t("options.chatgptPlan.restart")}</button>}
+      {controlsAvailable && <button type="button" disabled={chatGPTSignInActionDisabled(disabled, view.busy, Boolean(authAction))}
         onClick={event => void connect(event, authAction === "add")}>
         {i18n.t(authAction === "add" ? "options.chatgptPlan.retryAddAccount" : authAction === "connect" ? "options.chatgptPlan.retryConnect" : "options.chatgptPlan.connect")}
-      </button>
-      <button type="button" disabled={disabled || view.busy} onClick={event => void connect(event, true)}>{i18n.t("options.chatgptPlan.addAccount")}</button>
+      </button>}
+      {controlsAvailable && <button type="button" disabled={disabled || view.busy} onClick={event => void connect(event, true)}>{i18n.t("options.chatgptPlan.addAccount")}</button>}
       {view.status?.connected && <button type="button" disabled={disabled || view.busy} onClick={event => void logout(event)}>{i18n.t("options.chatgptPlan.signOut")}</button>}
     </div>
   </section>;
@@ -161,6 +227,7 @@ function describeError(code: string, i18n: ReturnType<typeof useOptionsI18n>): s
     NATIVE_HOST_UNAVAILABLE: "options.chatgptPlan.hostMissing",
     NATIVE_HOST_DISCONNECTED: "options.chatgptPlan.hostMissing",
     NATIVE_HOST_TIMEOUT: "options.chatgptPlan.hostMissing",
+    NATIVE_HOST_UPDATE_REQUIRED: "options.chatgptPlan.hostUpdateRequired",
     HOST_BUSY: "options.chatgptPlan.hostBusy",
     authorization_timeout: "options.chatgptPlan.authTimeout",
     authorization_denied: "options.chatgptPlan.authDenied",

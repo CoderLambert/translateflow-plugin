@@ -43,7 +43,7 @@ test("ChatGPT settings load host models on demand and keep sign-in gated by a tr
   render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={update} client={client} />));
 
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
-  await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
+  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
   await screen.findByText("已连接 · 安全存储：fixture-store");
   expect(screen.getByRole("option", { name: /Fixture model · fixture-model/ })).toBeTruthy();
   await userEvent.selectOptions(screen.getByLabelText("模型"), "fixture-model");
@@ -55,9 +55,39 @@ test("ChatGPT settings load host models on demand and keep sign-in gated by a tr
 
 test("ChatGPT settings explain when Native Messaging permission is unavailable", async () => {
   const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("permission"), { code: "NATIVE_MESSAGING_PERMISSION" }); });
-  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
-  await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction,
+    hasChatGPTPlanPermission: vi.fn(async () => true), requestChatGPTPlanPermission: vi.fn(async () => true) } as any} />));
+  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
   expect(await screen.findByText(/Native Messaging 权限不可用/u)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "启用本地连接" })).toBeTruthy();
+});
+
+test("ChatGPT settings request optional local-app access only from the enable button", async () => {
+  const chatGPTPlanAction = vi.fn();
+  const requestChatGPTPlanPermission = vi.fn(async () => false);
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+    chatGPTPlanAction,
+    hasChatGPTPlanPermission: vi.fn(async () => false),
+    requestChatGPTPlanPermission
+  } as any} />));
+  const enable = await screen.findByRole("button", { name: "启用本地连接" });
+  expect(chatGPTPlanAction).not.toHaveBeenCalled();
+  await userEvent.click(enable);
+  expect(requestChatGPTPlanPermission).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText(/未授予本地应用连接权限/u)).toBeTruthy();
+  expect(chatGPTPlanAction).not.toHaveBeenCalled();
+});
+
+test("ChatGPT settings link host installation and update failures to the maintained release page", async () => {
+  const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "NATIVE_HOST_UNAVAILABLE" }); });
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+    chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
+  } as any} />));
+  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
+  const download = await screen.findByRole("link", { name: "下载 TranslateFlow 本地组件" });
+  expect(download.getAttribute("href")).toBe("https://github.com/CoderLambert/translateflow-plugin/releases/latest");
+  expect(screen.queryByRole("button", { name: "连接 ChatGPT 账号" })).toBeNull();
+  expect(screen.getByRole("button", { name: "已经安装 · 重新检测" })).toBeTruthy();
 });
 
 test("ChatGPT settings restart the local component and reload models from the fresh connection", async () => {
@@ -135,6 +165,18 @@ test("settings persist a separate ChatGPT model without requesting an API-origin
 
   expect(set).toHaveBeenCalledWith(expect.objectContaining({ provider: "chatgpt-plan", model: "deepseek-flash", chatgptPlanModel: "fixture-new" }));
   expect(requestPermission).not.toHaveBeenCalled();
+});
+
+test("options client grants nativeMessaging only after an explicit request", async () => {
+  const contains = vi.fn(async () => false), request = vi.fn(async () => true);
+  const api = { i18n: { getUILanguage: () => "en" }, storage: { local: { get, set } },
+    runtime: { getManifest: () => ({ version: "fixture", permissions: [], optional_permissions: ["nativeMessaging"] }), sendMessage: vi.fn() },
+    permissions: { contains, request } };
+  const client = optionsClient(api as any, zh);
+  expect(await client.hasChatGPTPlanPermission()).toBe(false);
+  expect(request).not.toHaveBeenCalled();
+  expect(await client.requestChatGPTPlanPermission()).toBe(true);
+  expect(request).toHaveBeenCalledWith({ permissions: ["nativeMessaging"] });
 });
 
 test("UI locale StrictMode deduplicates its initial read and writes only after interaction", async () => {
