@@ -1,7 +1,7 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
-const definition = (sentinel, color) => `<div id="shared-fragment" style="color:${color}">${sentinel}</div><a href="#shared-fragment">Jump ${sentinel}</a><input type="radio" name="shared-group" checked><script>window.__multiRecordExecuted=true</script><img src="https://attacker.invalid/records.png">`;
+const definition = (sentinel, color) => `<div id="shared-fragment" style="color:${color}">${sentinel}</div><a href="#shared-fragment">Jump ${sentinel}</a><input type="password" name="shared-group"><script>window.__multiRecordExecuted=true</script><img src="https://attacker.invalid/records.png">`;
 
 test("multiple terminal records render all sentinels in isolated viewers without shared fragments, controls or styles", async ({ harness }) => {
   test.setTimeout(120_000);
