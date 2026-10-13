@@ -103,6 +103,16 @@
         continue;
       }
 
+      if (token.name === "svg") {
+        const safe = app.modules.safeSvg?.extractSafeSvg(source, open);
+        if (safe) {
+          if (nodeCount + safe.nodes > limits.outputNodes || stack.length - 1 + safe.depth > limits.depth) { truncated = true; break; }
+          stack[stack.length - 1].children.push({ type: "svg", scene: safe.scene });
+          nodeCount += safe.nodes;
+          offset = safe.end;
+          continue;
+        }
+      }
       if (token.name === "img") {
         const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
         if (!path) continue;

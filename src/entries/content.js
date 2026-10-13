@@ -44,6 +44,8 @@ import "../content/selection/rich-controls.js";
 import "../content/selection/rich-sanitizer-tags.js";
 import "../content/selection/rich-sanitizer-style.js";
 import "../content/selection/rich-resource-path.js";
+import "./safe-svg.js";
+import "../content/selection/rich-svg.js";
 import "../content/selection/rich-sanitizer-tokenizer.js";
 import "../content/selection/rich-sanitizer.js";
 import "../content/selection/rich-resource-media.js";

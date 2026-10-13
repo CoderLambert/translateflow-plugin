@@ -38,6 +38,9 @@
     maxAssetBytes: MAX_ASSET_BYTES, maxActiveBytes: MAX_VIEW_BLOB_BYTES,
     onRelease: (session) => media.retryVisibleImages(session) });
 
+  const svg = app.modules.richSvg?.create({ isCurrent, scheduleRead, fetchAsset,
+    maxActiveBytes: MAX_VIEW_BLOB_BYTES, maxImageBytes: MAX_VIEW_IMAGE_BYTES, maxImagePixels: MAX_VIEW_IMAGE_PIXELS, makePlaceholder });
+
   function attach(container, shadowRoot, viewport, resources, dictionaryId, packageVersion = "") {
     close(container);
     const session = {
@@ -83,6 +86,7 @@
     }
     for (const resource of session.resources) {
       if (resource.kind === "audio") media.installAudioLoader(session, resource);
+      else if (resource.kind === "image" && /\.svg$/iu.test(resource.path)) void svg?.load(session, resource);
       else if (resource.kind === "image") media.installLazyImages(session, resource);
       else void scheduleRead(session, () => loadStylesheet(session, resource));
     }
@@ -99,6 +103,7 @@
         for (const slot of asset.assetSlots) {
           if (!isCurrent(session)) return;
           try {
+            if (/\.svg$/iu.test(slot.path)) { css = css.replaceAll(slot.token, "none"); continue; }
             const image = await fetchAsset(session, { kind: "image", path: slot.path, label: "" });
             if (!isCurrent(session)) return;
             const pixels = image.width * image.height;
@@ -166,6 +171,7 @@
       error.code = "RICH_MDD_RESOURCE_MISSING";
       throw error;
     }
+    if (resource.kind === "image" && response.mime === "image/svg+xml") return app.modules.richSvg.asset(response);
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {
@@ -261,6 +267,7 @@
     cancelQueuedReads(session);
     cancelRunningReads(session);
     fonts.close(session);
+    svg?.close(session, restorePlaceholders);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();

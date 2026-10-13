@@ -24,7 +24,7 @@
     let nodes = 0;
     const resources = new Set();
     const visit = (items) => { for (const node of items || []) {
-      nodes += 1;
+      nodes += node.type === "svg" ? app.modules.safeSvg?.validateSafeSvgScene(node.scene)?.nodes || 1 : 1;
       const key = node.type === "resource" ? app.modules.richResourcePath?.descriptorKey?.(node.kind, node.path, node.presentation) : "";
       if (key) resources.add(key);
       if (node.children) visit(node.children);
@@ -154,7 +154,7 @@
 
   function containsDisplayContent(nodes) {
     for (const node of Array.isArray(nodes) ? nodes : []) {
-      if ((node.type === "text" && node.text) || node.type === "resource") return true;
+      if ((node.type === "text" && node.text) || node.type === "resource" || node.type === "svg") return true;
       if (node.type === "element" && containsDisplayContent(node.children)) return true;
     }
     return false;

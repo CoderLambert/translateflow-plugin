@@ -96,6 +96,7 @@ export async function lookupMddResource({
       mime: policy.mime,
       kind: policy.kind,
       bytes,
+      ...(policy.safeSvg ? { safeSvg: policy.safeSvg } : {}),
       ...(policy.dimensions ? { dimensions: policy.dimensions } : {})
     };
   } finally {

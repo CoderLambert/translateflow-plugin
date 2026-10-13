@@ -196,6 +196,12 @@
       if (bounded.length < text.length) count.truncated = true;
       return document.createTextNode(bounded);
     }
+    if (node.type === "svg") {
+      const built = app.modules.richSvg?.build(node.scene);
+      if (!built || depth + built.depth > MAX_DEPTH || count.value + built.nodes - 1 > MAX_CONTENT_NODES) { count.truncated = true; return null; }
+      count.value += built.nodes - 1;
+      return built.element;
+    }
     if (node.type === "resource") {
       const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
       if (!path || path !== node.path || !["image", "audio", "stylesheet"].includes(node.kind)) return null;

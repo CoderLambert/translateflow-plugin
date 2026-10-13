@@ -3,6 +3,7 @@ import {
   mdictFail,
   requireMdictAtMost
 } from "./mdict-contract.js";
+import { classifyMddSvg } from "./mdd-svg-policy.js";
 import { classifyMddTrueType } from "./mdd-font-policy.js";
 import { readMddAvifDimensions } from "./mdd-avif-policy.js";
 
@@ -16,6 +17,7 @@ export function classifyMddResource(path, input, limits) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD resource bytes");
   const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  if (extension === "svg") return classifyMddSvg(bytes);
   if (extension === "ttf") return classifyMddTrueType(bytes);
   if (extension === "css") return classifyCss(bytes);
   if (["png", "jpg", "jpeg", "gif", "webp", "avif"].includes(extension)) {

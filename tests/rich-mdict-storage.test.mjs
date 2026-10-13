@@ -609,6 +609,27 @@ async function stageWithStore(manager, store, identity) {
   };
 }
 
+test("MDD SVG manager emits a validated scene DTO without raw XML encoding", async () => {
+  const env = createEnvironment();
+  const metadata = await stage(env, BASE_ID);
+  await env.manager.commit({ ...BASE_ID, metadata });
+  const resources = createRichMddResourceManager({ store: env.store, stateStore: env.stateStore, cryptoProvider: webcrypto });
+  const xml = '<svg viewBox="0 0 16 16"><path d="M0 0L16 0L0 16Z" fill="#123456"/></svg>';
+  const file = new Blob([makeMdd([["icons/static.svg", encoder.encode(xml)]])]);
+  Object.defineProperty(file, "name", { value: "english-filename.mdd" });
+  const input = { dictionaryId: BASE_ID.packId, requestId: "svg-resource-import", resourceVersion: "import-svg-123e4567", mdxFileName: "english-filename.mdx" };
+  await resources.preflight({ ...input, files: [{ fileName: file.name, size: file.size }] });
+  const worker = createMddResourceImportWorkerHandler({ postMessage() {}, store: env.store, cryptoProvider: webcrypto });
+  const ready = await worker.handleMessage({ type: MDD_RESOURCE_WORKER_MESSAGES.START, requestId: input.requestId, input: { ...input, files: [file] } });
+  assert.equal(ready.type, MDD_RESOURCE_WORKER_MESSAGES.READY);
+  await resources.commit({ ...input, metadata: ready.metadata });
+  const result = await resources.lookupResource({ dictionaryId: BASE_ID.packId, path: "icons/static.svg" });
+  assert.equal(result.found, true); assert.equal(result.kind, "image"); assert.equal(result.mime, "image/svg+xml");
+  assert.equal(result.safeSvg.format, "safe-svg-v1"); assert.equal(result.safeSvg.root.children[0].tag, "path");
+  assert.equal(result.size, Buffer.byteLength(xml)); assert.equal(result.width, 16); assert.equal(result.height, 16);
+  assert.equal(Object.hasOwn(result, "base64"), false); assert.equal(Object.hasOwn(result, "bytes"), false);
+});
+
 function createEnvironment(overrides = {}) {
   const store = new MemoryStore();
   const storageArea = new MemoryStorageArea();
