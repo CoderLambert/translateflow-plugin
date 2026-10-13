@@ -40,6 +40,8 @@ import "../content/selection/clipboard.js";
 import "../content/selection/messages.js";
 import "../content/selection/vocabulary-book.js";
 import "../content/selection/empty-state.js";
+import "../content/selection/rich-controls.js";
+import "../content/selection/rich-sanitizer-tags.js";
 import "../content/selection/rich-sanitizer-style.js";
 import "../content/selection/rich-resource-path.js";
 import "../content/selection/rich-sanitizer-tokenizer.js";

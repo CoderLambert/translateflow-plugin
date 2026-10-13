@@ -6,11 +6,11 @@
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u",
     "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "a",
-    "details", "summary"
+    "details", "summary", "label", "input"
   ]);
   const DROP_SUBTREE_TAGS = new Set([
     "script", "style", "iframe", "object", "embed", "form", "svg", "math",
-    "video", "source", "input", "button", "select", "textarea", "link", "meta", "base"
+    "video", "source", "button", "select", "textarea", "link", "meta", "base"
   ]);
   const STYLE_PROPERTIES = new Set([
     "background-color", "border", "border-bottom", "border-color", "border-left",
@@ -135,14 +135,18 @@
 
     const fallbackSource = String(fallbackText || "");
     const boundedFallback = clipUtf8Text(fallbackSource, MAX_TEXT_BYTES);
+    const sourceNodes = Array.isArray(ast?.nodes) ? ast.nodes : [];
+    const controls = app.modules.richDictionaryControls?.createView(sourceNodes);
+    let unavailable = ast?.controlsUnavailable === true || controls?.unavailable;
+    const nodes = unavailable ? [{ type: "text", text: controls?.plainText() || boundedFallback }] : sourceNodes;
     let count = {
+      controls: unavailable ? null : controls,
       value: 0,
       textBytes: 0,
       truncated: Boolean(ast?.truncated) || boundedFallback.length < fallbackSource.length
     };
     const resources = [];
     const resourceMap = new Map();
-    const nodes = Array.isArray(ast?.nodes) ? ast.nodes : [];
     for (let index = 0; index < nodes.length; index += 1) {
       const rendered = renderNode(nodes[index], 0, count, resources, resourceMap);
       if (rendered) viewport.appendChild(rendered);
@@ -150,6 +154,11 @@
         if (index < nodes.length - 1) count.truncated = true;
         break;
       }
+    }
+    if (count.controls?.finish() === false) {
+      viewport.replaceChildren(document.createTextNode(clipUtf8Text(controls.plainText() || boundedFallback, MAX_TEXT_BYTES)));
+      resources.length = 0;
+      unavailable = true;
     }
     if (!viewport.childNodes.length && boundedFallback) {
       viewport.appendChild(document.createTextNode(boundedFallback));
@@ -160,6 +169,7 @@
       locale.bindText(note, "content.rich.truncated");
       viewport.appendChild(note);
     }
+    if (unavailable) app.modules.richDictionaryControls?.unavailableNotice(viewport, locale);
     container.replaceChildren(document.createTextNode(boundedFallback));
     if (resources.length && dictionaryId) {
       app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId, packageVersion);
@@ -227,7 +237,9 @@
     }
     if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
 
-    const element = document.createElement(tag);
+    const control = count.controls?.element(node);
+    if (tag === "input" && !control) return null;
+    const element = control || document.createElement(tag === "label" ? "span" : tag);
     element.className = `tf-rich-node-${tag}`;
     applySafeAttributes(element, node.attrs);
     applySafeStyles(element, node.style);

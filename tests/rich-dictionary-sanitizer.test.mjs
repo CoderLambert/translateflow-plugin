@@ -10,6 +10,7 @@ const RESOURCE_PATH_SOURCE = new URL("../src/content/selection/rich-resource-pat
 
 function sanitizer() {
   const context = vm.createContext({});
+  for (const file of ["rich-controls.js", "rich-sanitizer-tags.js"]) vm.runInContext(readFileSync(new URL(`../src/content/selection/${file}`, import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(RESOURCE_PATH_SOURCE, "utf8"), context, { filename: "rich-resource-path.js" });
   vm.runInContext(readFileSync(STYLE_SOURCE, "utf8"), context, { filename: "rich-sanitizer-style.js" });
   vm.runInContext(readFileSync(TOKENIZER_SOURCE, "utf8"), context, { filename: "rich-sanitizer-tokenizer.js" });

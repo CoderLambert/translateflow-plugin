@@ -25,7 +25,7 @@
     const visit = (items) => { for (const node of items || []) { nodes += 1; if (node.type === "resource") resources += 1; if (node.children) visit(node.children); } };
     visit(result.nodes);
     const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources });
-    return { nodes: result.nodes, truncated: result.truncated, metrics };
+    return { nodes: result.nodes, truncated: result.truncated, metrics, controlsUnavailable: result.controlsUnavailable === true, diagnostics: result.controlsDegraded ? ["controls.unavailable"] : [] };
   }
 
   function sanitizeRecord(input = {}) {
@@ -55,9 +55,15 @@
     const parsed = tokenizer.parseHtml(expanded.value, LIMITS);
     if (parsed.invalid) return fallbackResult(boundedSource, rules, true);
     if (parsed.truncated && !containsDisplayContent(parsed.nodes)) return fallbackResult(boundedSource, rules, true);
+    const controls = app.modules.richDictionaryControls?.normalize(parsed.nodes);
+    if (controls?.unavailable) {
+      const fallback = fallbackResult(boundedSource, rules, parsed.truncated);
+      return { ...fallback, controlsDegraded: true, controlsUnavailable: true };
+    }
+    const controlsDegraded = controls?.degraded;
     annotateOxfordSemantics(parsed.nodes);
     mergePronunciationResourcePairs(parsed.nodes);
-    return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated), expandedBytes: tokenizer.boundedUtf8Bytes(expanded.value, LIMITS.expandedBytes) };
+    return { nodes: parsed.nodes, controlsDegraded, truncated: Boolean(parsed.truncated), expandedBytes: tokenizer.boundedUtf8Bytes(expanded.value, LIMITS.expandedBytes) };
   }
 
   function annotateOxfordSemantics(nodes, context = {}) {

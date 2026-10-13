@@ -8,6 +8,8 @@ const VIEWER = new URL("../src/content/selection/rich-viewer.js", import.meta.ur
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
 const RICH_RENDERER = new URL("../src/content/selection/rich-result-renderer.js", import.meta.url);
 const SANITIZER_MODULES = [
+  "../src/content/selection/rich-controls.js",
+  "../src/content/selection/rich-sanitizer-tags.js",
   "../src/content/selection/rich-resource-path.js",
   "../src/content/selection/rich-sanitizer-style.js",
   "../src/content/selection/rich-sanitizer-tokenizer.js",
@@ -329,6 +331,7 @@ async function loadModules({
     ...(richResourcePath ? { richResourcePath } : {})
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
@@ -340,6 +343,7 @@ async function loadSanitizedPipeline() {
   const app = { modules: { contentI18n: createContentI18nStub() } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   for (const path of SANITIZER_MODULES) vm.runInContext(await readFile(path, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
