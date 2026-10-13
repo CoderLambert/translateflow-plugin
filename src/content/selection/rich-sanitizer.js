@@ -21,11 +21,17 @@
 
   function sanitizeRichDictionaryRecord(input = {}) {
     const result = sanitizeRecord(input);
-    let nodes = 0, resources = 0;
-    const visit = (items) => { for (const node of items || []) { nodes += 1; if (node.type === "resource") resources += 1; if (node.children) visit(node.children); } };
+    let nodes = 0;
+    const resources = new Set();
+    const visit = (items) => { for (const node of items || []) {
+      nodes += 1;
+      const key = node.type === "resource" ? app.modules.richResourcePath?.descriptorKey?.(node.kind, node.path, node.presentation) : "";
+      if (key) resources.add(key);
+      if (node.children) visit(node.children);
+    } };
     visit(result.nodes);
-    const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources });
-    return { nodes: result.nodes, truncated: result.truncated, metrics };
+    const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources: resources.size });
+    return { nodes: result.nodes, truncated: result.truncated, metrics, controlsUnavailable: result.controlsUnavailable === true, diagnostics: result.controlsDegraded ? ["controls.unavailable"] : [] };
   }
 
   function sanitizeRecord(input = {}) {
@@ -55,9 +61,15 @@
     const parsed = tokenizer.parseHtml(expanded.value, LIMITS);
     if (parsed.invalid) return fallbackResult(boundedSource, rules, true);
     if (parsed.truncated && !containsDisplayContent(parsed.nodes)) return fallbackResult(boundedSource, rules, true);
+    const controls = app.modules.richDictionaryControls?.normalize(parsed.nodes);
+    if (controls?.unavailable) {
+      const fallback = fallbackResult(boundedSource, rules, parsed.truncated);
+      return { ...fallback, controlsDegraded: true, controlsUnavailable: true };
+    }
+    const controlsDegraded = controls?.degraded;
     annotateOxfordSemantics(parsed.nodes);
     mergePronunciationResourcePairs(parsed.nodes);
-    return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated), expandedBytes: tokenizer.boundedUtf8Bytes(expanded.value, LIMITS.expandedBytes) };
+    return { nodes: parsed.nodes, controlsDegraded, truncated: Boolean(parsed.truncated), expandedBytes: tokenizer.boundedUtf8Bytes(expanded.value, LIMITS.expandedBytes) };
   }
 
   function annotateOxfordSemantics(nodes, context = {}) {

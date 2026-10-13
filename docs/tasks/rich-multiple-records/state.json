@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-multiple-records",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "rich-stripkey-migration"
@@ -9,7 +9,7 @@
   "branch": "fix/rich-multiple-records-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-records-20261013",
   "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
-  "mergeHead": null,
+  "mergeHead": "a778a24f762c97933dd339c7a50bc39d99bd1610",
   "validationCommands": [
     [
       "git",
@@ -71,5 +71,6 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地exact-head验收与独审PASS；核对远端base/head/checks/threads后guarded squash merge。"
+  "nextAction": "main准确tree核对与post-merge Node/Chromium PASS；继续唯一解锁的总index cache预算切片。",
+  "syncHead": "5bbb656403ac9bea0ad40d1901df7e70f618f73c"
 }

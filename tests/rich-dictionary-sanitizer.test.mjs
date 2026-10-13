@@ -10,6 +10,7 @@ const RESOURCE_PATH_SOURCE = new URL("../src/content/selection/rich-resource-pat
 
 function sanitizer() {
   const context = vm.createContext({});
+  for (const file of ["rich-controls.js", "rich-sanitizer-tags.js"]) vm.runInContext(readFileSync(new URL(`../src/content/selection/${file}`, import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(RESOURCE_PATH_SOURCE, "utf8"), context, { filename: "rich-resource-path.js" });
   vm.runInContext(readFileSync(STYLE_SOURCE, "utf8"), context, { filename: "rich-sanitizer-style.js" });
   vm.runInContext(readFileSync(TOKENIZER_SOURCE, "utf8"), context, { filename: "rich-sanitizer-tokenizer.js" });
@@ -327,4 +328,52 @@ test("sanitizer reports complete frozen metrics for compact expansion, placehold
   }
   assert.ok(module.sanitizeRichDictionaryRecord(inputs[1]).metrics.expandedBytes > Buffer.byteLength(inputs[1].rawRecord));
   assert.equal(module.sanitizeRichDictionaryRecord(inputs[2]).metrics.resources, 2);
+});
+
+test("resource metrics count canonical kind/path descriptors while every repeated reference remains a node", () => {
+  const module = sanitizer();
+  const rawRecord = '<link rel="stylesheet" href="state.css">' + '<img src="images/same.png"><audio src="audio/same.wav"/>'.repeat(1100) + '<p>REPEATED RESOURCE TAIL</p>';
+  const result = module.sanitizeRichDictionaryRecord({ rawRecord, format: "HTML" });
+  assert.equal(result.truncated, false);
+  assert.equal(result.metrics.resources, 3);
+  assert.equal(result.metrics.nodes, countNodes(result.nodes));
+  assert.ok(result.metrics.nodes > 2200);
+  let references = 0;
+  walk(result.nodes, (node) => { if (node.type === "resource") references += 1; });
+  assert.equal(references, 2201);
+  assert.match(textContent(result.nodes), /REPEATED RESOURCE TAIL/u);
+
+  const unique = module.sanitizeRichDictionaryRecord({ rawRecord: Array.from({ length: 1025 }, (_, index) => `<img src="images/${index}.png">`).join(''), format: "HTML" });
+  assert.equal(unique.truncated, true);
+  assert.equal(unique.metrics.resources, 1024);
+  assert.ok(countNodes(unique.nodes) >= 1024);
+});
+
+test("descriptor metrics preserve ordinary and two pronunciation presentations of the same audio path", () => {
+  const module = sanitizer();
+  const ordinary = '<audio src="audio/shared.wav"/>';
+  const british = '<span class="o-pron-chunk o-pron-BrE">' + ordinary + '</span>';
+  const american = '<span class="o-pron-chunk o-pron-NAmE">' + ordinary + '</span>';
+  const result = module.sanitizeRichDictionaryRecord({ rawRecord: (ordinary + british + american).repeat(400) + '<p>ALL PRESENTATIONS TAIL</p>' });
+  assert.equal(result.truncated, false);
+  assert.equal(result.metrics.resources, 3);
+  let occurrences = 0;
+  walk(result.nodes, (node) => { if (node.type === "resource") occurrences += 1; });
+  assert.equal(occurrences, 1200);
+  assert.equal(result.metrics.nodes, countNodes(result.nodes));
+  assert.match(textContent(result.nodes), /ALL PRESENTATIONS TAIL/u);
+});
+
+test("canonical descriptor identity filters hostile paths and folds only unrecognized presentations to ordinary", () => {
+  const context = vm.createContext({});
+  vm.runInContext(readFileSync(RESOURCE_PATH_SOURCE, "utf8"), context);
+  const api = context.__TRANSLATE_FLOW_CONTENT__.modules.richResourcePath;
+  const ordinary = api.descriptorKey("audio", "audio/shared.wav");
+  assert.equal(api.descriptorKey("audio", "audio/shared.wav", "unknown"), ordinary);
+  assert.notEqual(api.descriptorKey("audio", "audio/shared.wav", "pronunciation-british"), ordinary);
+  assert.notEqual(api.descriptorKey("audio", "audio/shared.wav", "pronunciation-american"), ordinary);
+  assert.equal(api.descriptorKey("image", "images/plain.png", "oxford-opposition"), api.descriptorKey("image", "images/plain.png"));
+  assert.notEqual(api.descriptorKey("image", "img/OPP.png", "oxford-opposition"), api.descriptorKey("image", "img/OPP.png"));
+  for (const path of ["https://attacker.invalid/x.png", "../secret.png", "/images/same.png", "images%2fsame.png", "images\\same.png"]) assert.equal(api.descriptorKey("image", path), "");
+  assert.equal(api.descriptorKey("script", "images/same.png"), "");
 });

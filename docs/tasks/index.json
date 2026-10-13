@@ -265,11 +265,29 @@
       "candidateHead": null
     },
     {
+      "task": "oxford-radio-css",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "rich-multiple-records"
+      ],
+      "branch": "fix/oxford-rich-layout-20261013",
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734"
+    },
+    {
       "task": "path-safety",
       "status": "completed",
       "dependencies": [],
       "branch": "main",
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
+    },
+    {
+      "task": "rich-index-cache-budget",
+      "status": "paused",
+      "dependencies": [
+        "rich-multiple-records"
+      ],
+      "branch": "fix/rich-index-cache-budget-20261013",
+      "candidateHead": null
     },
     {
       "task": "rich-lookup-outcome",
@@ -280,7 +298,7 @@
     },
     {
       "task": "rich-multiple-records",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "rich-stripkey-migration"
       ],

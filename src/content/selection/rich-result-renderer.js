@@ -273,10 +273,16 @@
 
   function treeMetrics(tree, fallback) {
     if (tree?.metrics) return tree.metrics;
-    let nodes = 0, resources = 0;
-    const visit = (items) => { for (const node of items || []) { nodes += 1; if (node.type === "resource") resources += 1; if (node.children) visit(node.children); } };
+    let nodes = 0;
+    const resources = new Set();
+    const visit = (items) => { for (const node of items || []) {
+      nodes += 1;
+      const key = node.type === "resource" ? app.modules.richResourcePath?.descriptorKey?.(node.kind, node.path, node.presentation) : "";
+      if (key) resources.add(key);
+      if (node.children) visit(node.children);
+    } };
     visit(tree?.nodes);
-    return { nodes: nodes || 1, resources, expandedBytes: new TextEncoder().encode(String(fallback)).byteLength };
+    return { nodes: nodes || 1, resources: resources.size, expandedBytes: new TextEncoder().encode(String(fallback)).byteLength };
   }
 
   function renderSingleRecord(container, dictionary, dictionaryId, safeTree) {

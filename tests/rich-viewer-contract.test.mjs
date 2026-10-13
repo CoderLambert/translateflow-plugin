@@ -8,6 +8,8 @@ const VIEWER = new URL("../src/content/selection/rich-viewer.js", import.meta.ur
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
 const RICH_RENDERER = new URL("../src/content/selection/rich-result-renderer.js", import.meta.url);
 const SANITIZER_MODULES = [
+  "../src/content/selection/rich-controls.js",
+  "../src/content/selection/rich-sanitizer-tags.js",
   "../src/content/selection/rich-resource-path.js",
   "../src/content/selection/rich-sanitizer-style.js",
   "../src/content/selection/rich-sanitizer-tokenizer.js",
@@ -325,21 +327,24 @@ async function loadModules({
   const app = { modules: {
     contentI18n: createContentI18nStub(),
     selectionRichSanitizer: sanitizer,
-    ...(resolver ? { richResourceResolver: resolver } : {}),
-    ...(richResourcePath ? { richResourcePath } : {})
+    ...(resolver ? { richResourceResolver: resolver } : {})
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
+  if (richResourcePath) app.modules.richResourcePath = { ...app.modules.richResourcePath, ...richResourcePath };
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
   return { viewer: app.modules.selectionRichViewer, renderer: app.modules.selectionResultRenderer, document };
 }
 
-async function loadSanitizedPipeline() {
+async function loadSanitizedPipeline({ resolver = null } = {}) {
   const document = new FakeDocument();
-  const app = { modules: { contentI18n: createContentI18nStub() } };
+  const app = { modules: { contentI18n: createContentI18nStub(), ...(resolver ? { richResourceResolver: resolver } : {}) } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   for (const path of SANITIZER_MODULES) vm.runInContext(await readFile(path, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
@@ -433,3 +438,66 @@ class FakeNode {
     return this.shadowRoot;
   }
 }
+
+test("more than 1024 repeated references render their complete record using a few canonical descriptors", async () => {
+  const { renderer, document } = await loadSanitizedPipeline();
+  const container = document.createElement("div");
+  const rawRecord = '<img src="images/same.png"><audio src="audio/same.wav"/>'.repeat(1100) + '<p>COMPLETE REPEATED TAIL</p>';
+  assert.equal(renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", text: "fallback", richRecord: { rawRecord, format: "HTML" } }] }), true);
+  const host = walk(container).find((node) => node.className === "tf-selection-rich-text");
+  assert.ok(host);
+  assert.match(textContent(findClass(host.shadowRoot, "tf-rich-viewer")), /COMPLETE REPEATED TAIL/u);
+  assert.equal(walk(host.shadowRoot).filter((node) => node.dataset?.richResourceKind === "image").length, 1100);
+  assert.equal(walk(host.shadowRoot).filter((node) => node.dataset?.richResourceKind === "audio").length, 1100);
+});
+
+test("multi-record descriptor budgets count unique paths per Shadow and keep the 1024 aggregate boundary", async () => {
+  const { renderer, document } = await loadSanitizedPipeline();
+  const definition = (distinct) => Array.from({ length: distinct }, (_, index) => `<img src="images/${index}.png"><img src="images/${index}.png">`).join('') + '<p>RECORD TAIL</p>';
+  const make = (distinct) => ({ dictionaries: [{ id: "fixture", records: Array.from({ length: 2 }, () => ({ text: "fallback", richRecord: { rawRecord: definition(distinct), format: "HTML" } })) }] });
+  const healthy = document.createElement("div");
+  assert.equal(renderer.appendRichDictionaryDetails(healthy, make(512)), true);
+  assert.equal(walk(healthy).filter((node) => node.className === "tf-selection-rich-text").length, 2);
+  const rejected = document.createElement("div");
+  assert.throws(() => renderer.appendRichDictionaryDetails(rejected, make(513)), /aggregate display/u);
+  assert.equal(walk(rejected).filter((node) => node.className === "tf-selection-rich-text").length, 0);
+});
+
+test("legacy tree metrics fallback deduplicates only closed canonical resource descriptors", async () => {
+  const { renderer, document } = await loadModules({
+    richResourcePath: { normalize: (path) => typeof path === "string" && /^local\/[a-z]+\.png$/u.test(path) ? path : "" },
+    sanitizer: { sanitizeRichDictionaryRecord: () => ({ nodes: Array.from({ length: 1100 }, () => ({ type: "resource", kind: "image", path: "local/same.png" })) }) }
+  });
+  const container = document.createElement("div");
+  assert.equal(renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", richRecord: { rawRecord: "valid legacy tree", format: "HTML" } }] }), true);
+  assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, 1);
+});
+
+test("sanitizer metrics and viewer descriptors agree on semantic image and pronunciation variants", async () => {
+  const attached = [];
+  const { renderer, document, sanitizer } = await loadSanitizedPipeline({ resolver: { close() {}, attach(...args) { attached.push(args[3]); } } });
+  const audio = '<audio src="audio/shared.wav"/>';
+  const rawRecord = audio + '<span class="o-pron-chunk o-pron-BrE">' + audio + '</span><span class="o-pron-chunk o-pron-NAmE">' + audio + '</span>' +
+    '<img src="img/OPP.png"><span class="o-ref-opp"><span class="o-symbol-opp o-symbol-source-img"><img src="img/OPP.png"></span></span><p>VARIANT TAIL</p>';
+  const tree = sanitizer.sanitizeRichDictionaryRecord({ rawRecord });
+  assert.equal(tree.metrics.resources, 5);
+  const container = document.createElement("div");
+  renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", richRecord: { rawRecord, format: "HTML" } }] });
+  assert.equal(attached.length, 1); assert.equal(attached[0].length, tree.metrics.resources);
+  assert.deepEqual(Array.from(attached[0], (item) => item.presentation).sort(), ["", "", "oxford-opposition", "pronunciation-american", "pronunciation-british"]);
+  const host = walk(container).find((node) => node.className === "tf-selection-rich-text");
+  assert.equal(walk(host.shadowRoot).filter((node) => node.className?.includes("tf-rich-inline-symbol-placeholder")).length, 1);
+  assert.match(textContent(host.shadowRoot), /VARIANT TAIL/u);
+});
+
+test("legacy descriptor metrics count validated presentation variants per Shadow and reject aggregate overflow", async () => {
+  const variantTree = (count) => ({ nodes: Array.from({ length: count }, (_, index) => ["", "pronunciation-british", "pronunciation-american", "unknown"].map((presentation) => ({ type: "resource", kind: "audio", path: `audio/${index}.wav`, presentation }))).flat() });
+  for (const [count, rejected] of [[170, false], [171, true]]) {
+    const { renderer, document } = await loadModules({ sanitizer: { sanitizeRichDictionaryRecord: () => variantTree(count) } });
+    const container = document.createElement("div");
+    const response = { dictionaries: [{ id: "fixture", records: Array.from({ length: 2 }, () => ({ richRecord: { rawRecord: "valid legacy AST" } })) }] };
+    if (rejected) assert.throws(() => renderer.appendRichDictionaryDetails(container, response), /aggregate display/u);
+    else assert.equal(renderer.appendRichDictionaryDetails(container, response), true);
+    assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, rejected ? 0 : 2);
+  }
+});

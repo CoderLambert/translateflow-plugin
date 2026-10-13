@@ -313,5 +313,36 @@
     "limitations": [
       "Actual parser lookup over all 5,185 repeated raw display queries; same complete graph expectation, not independent reader/full corpus reread. Eight-link/overflow negative cases remain synthetic tests. Sample original-body comparison uses independent native zlib inflation and known raw spans, not an independent dictionary reader. Sequential local filesystem-warm timings are observations, not browser performance. No OPFS writes or browser verification."
     ]
+  },
+  "postMergeVerification": {
+    "mergeHead": "a778a24f762c97933dd339c7a50bc39d99bd1610",
+    "treeMatchesSync": true,
+    "checks": [
+      {
+        "command": [
+          "node",
+          "--test",
+          "tests/rich-mdict-records.test.mjs",
+          "tests/rich-viewer-contract.test.mjs",
+          "tests/selection-rich-outcome.test.mjs"
+        ],
+        "result": "PASS"
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "test:e2e",
+          "--",
+          "e2e/rich-mdict-records.spec.mjs",
+          "e2e/multi-dictionary-viewer.spec.mjs"
+        ],
+        "result": "PASS",
+        "tests": 7
+      }
+    ],
+    "log": "docs/task-execution/local/rich-multiple-records/post-merge.log",
+    "logSha256": "81c4abd80cfb160ff6e2c16c0288b056b4787a239e89c354410d199b99d5e7c3",
+    "artifactReuse": "main tree与sync完全一致，生产输入未变。"
   }
 }

@@ -56,3 +56,79 @@ test("CSS AST sanitizer bounds invalid input and refuses to emit parse failures"
   assert.deepEqual(malformed.assetSlots, []);
   assert.ok(malformed.diagnostics.includes("css.parse_failed"));
 });
+
+test("closed selector AST retains compound and bounded state relations without global or functional selectors", () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    'input.choice#choice-0:checked ~ div.panels > .panel-0 { display:block; }',
+    '.choice:checked + label.tab { display:flex; align-items:center; justify-content:flex-start; position:relative; width:max-content; }',
+    'details[open] > summary:first-child { color:red; }',
+    '.tabs label:last-child:focus::after { content:"›"; }',
+    ':host .escape,:root,html,body,.x:has(.y),.x:not(.y),[for="private"],.x[data-title],.x:nth-child(1),.x::marker { color:red; }',
+    '.x\\61 { color:red; }',
+    '.x { position:fixed; content:"bad"; }'
+  ].join('\n')), "entry.css");
+  assert.match(result.css, /input\.choice\[data-rich-target-id="choice-0"\]:checked ~ div\.panels > \.panel-0/u);
+  assert.match(result.css, /display:flex;align-items:center;justify-content:flex-start;position:relative;width:max-content/u);
+  assert.match(result.css, /details\[open\] > summary:first-child/u);
+  assert.match(result.css, /label:last-child:focus::after\{content:"›"\}/u);
+  assert.doesNotMatch(result.css, /:host|:root|:has|:not|data-title|\[for|nth-child|::marker|position:fixed|content:"bad"|x\\61/u);
+  assert.ok(result.diagnostics.includes("css.selector_filtered"));
+});
+
+test("static pseudo content rejects resource, attribute, function and unbounded values", () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    '.a::before{content:""}', '.b::after{content:"•"}',
+    '.c::after{content:attr(data-title)}', '.d::before{content:url(https://attacker.invalid)}',
+    '.e::before{content:counter(secret)}', '.f::after{content:"' + 'x'.repeat(81) + '"}',
+    '.g::after{content:"<script>"}', '.h::after{content:"\\a"}'
+  ].join('\n')), "entry.css");
+  assert.equal(result.css, '.tf-rich-viewer .a::before{content:""}.tf-rich-viewer .b::after{content:"•"}');
+  assert.deepEqual(result.assetSlots, []);
+});
+
+test("media AST accepts only one bounded screen/px feature or known color scheme", () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    '@media screen and (max-width:500px){.a{display:block}}',
+    '@media (max-width:374px){.b{display:none}}',
+    '@media print{.bad{color:red}}', '@media screen and (max-width:999px){.bad{color:red}}',
+    '@media screen and (min-width:400px){.bad{color:red}}', '@media (max-width:500px),screen{.bad{color:red}}',
+    '@media (max-width:calc(1px + 1px)){.bad{color:red}}'
+  ].join('\n')), "entry.css");
+  assert.match(result.css, /@media screen and \(max-width: 500px\)/u);
+  assert.match(result.css, /@media \(max-width: 374px\)/u);
+  assert.doesNotMatch(result.css, /\.bad/u);
+});
+
+test("CSS visits rejected source rules before late state rules without spending accepted budget", () => {
+  const source = '.bad:has(.x){color:red}'.repeat(300) + '.choice:checked ~ .panel{display:block}';
+  const result = sanitizeRichMddStylesheet(Buffer.from(source), "entry.css");
+  assert.match(result.css, /\.choice:checked ~ \.panel\{display:block\}/u);
+  assert.equal(result.diagnostics.includes("css.rule_limit"), false);
+  const overflow = sanitizeRichMddStylesheet(Buffer.from('.bad:has(.x){color:red}'.repeat(1025)), "entry.css");
+  assert.equal(overflow.css, ""); assert.ok(overflow.diagnostics.includes("css.rule_limit"));
+});
+
+test("accepted-rule and expanded UTF8 output overflow return diagnostics and no partial style", () => {
+  const edge = sanitizeRichMddStylesheet(Buffer.from('.x{color:red}'.repeat(512)), "entry.css");
+  assert.equal((edge.css.match(/color:red/gu) || []).length, 512);
+  const extra = sanitizeRichMddStylesheet(Buffer.from('.x{color:red}'.repeat(513)), "entry.css");
+  assert.equal(extra.css, ""); assert.ok(extra.diagnostics.includes("css.accepted_rule_limit"));
+  const ids = Array.from({ length: 512 }, (_, index) => '#' + ('x'.repeat(76) + index) + '{color:red}').join('');
+  assert.ok(Buffer.byteLength(ids) < 64 * 1024);
+  const expanded = sanitizeRichMddStylesheet(Buffer.from(ids), "entry.css");
+  assert.equal(expanded.css, ""); assert.ok(expanded.diagnostics.includes("css.output_limit"));
+});
+
+test("nested media depth overflow diagnoses and rejects partial CSS", () => {
+  const rule = '.safe{color:red}';
+  const nested = '@media (max-width:500px){'.repeat(3) + rule + '}'.repeat(3);
+  const result = sanitizeRichMddStylesheet(Buffer.from(rule + nested), "entry.css");
+  assert.equal(result.css, ""); assert.ok(result.diagnostics.includes("css.depth_limit"));
+});
+
+test("passive nav and section type selectors retain state structure with the existing scope", () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from('input.choice:checked ~ nav.o-pos-tabs > label.tab{color:red}input.choice:checked ~ div.o-pos-panels > section.o-pos.o-pos-panel.o-for-pos-3{display:block}form input:checked ~ section{color:red}'), "entry.css");
+  assert.match(result.css, /\.tf-rich-viewer input\.choice:checked ~ nav\.o-pos-tabs > label\.tab\{color:red\}/u);
+  assert.match(result.css, /div\.o-pos-panels > section\.o-pos\.o-pos-panel\.o-for-pos-3\{display:block\}/u);
+  assert.doesNotMatch(result.css, /form/u);
+});
