@@ -107,6 +107,9 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   assert.match(common, /options\.selection\.depth/);
   assert.equal(optionsZhCN["options.selection.depth"], "AI 详解深度");
   assert.match(source, /aria-live="polite"/);
+  assert.match(source, /dictionary-v2-details/);
+  assert.match(source, /dictionary-compact-facts/);
+  assert.equal(dictionaryZhCN["dictionary.details"], "详细信息");
   assert.match(section, /dictionary-repair-help/);
   assert.match(section, /dictionary\.sourceRepairHelp/);
   assert.match(dictionaryZhCN["dictionary.sourceRepairHelp"], /npm run setup:lexicon/);

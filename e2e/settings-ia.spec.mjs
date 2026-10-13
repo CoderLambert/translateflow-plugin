@@ -66,12 +66,24 @@ test.describe("Settings information architecture", () => {
       .filter({ hasText: "ECDICT 高频英汉" });
     await expect(curated).toBeVisible();
     await expect(curated).toContainText("精选上游 · 非官方");
+    await expect(curated.locator(".dictionary-compact-facts")).toContainText("English → 简体中文");
+    await expect(curated.locator(".dictionary-compact-facts")).toContainText("CSV 词典数据");
+    const details = curated.locator(".dictionary-v2-details");
+    await expect(details).not.toHaveAttribute("open", "");
+    await expect(curated.getByRole("link", { name: "访问上游项目" })).not.toBeVisible();
+    const detailsSummary = details.getByText("详细信息", { exact: true });
+    await detailsSummary.focus();
+    await expect(detailsSummary).toBeFocused();
+    await detailsSummary.press("Enter");
+    await expect(details).toHaveAttribute("open", "");
     await expect(
       curated.getByRole("link", { name: "访问上游项目" })
     ).toBeVisible();
     await expect(
       curated.getByRole("link", { name: "查看上游许可说明" })
     ).toBeVisible();
+    await page.reload();
+    await expect(page.locator("#curatedDictionaryList .site-row").filter({ hasText: "ECDICT 高频英汉" }).locator(".dictionary-v2-details")).not.toHaveAttribute("open", "");
 
     await expect(page.getByRole("heading", { name: "本地导入", exact: true })).toBeVisible();
     await expect(page.locator("#localDictionaryChooseFiles")).toBeVisible();

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "status": "ready_to_sync",
+  "status": "working",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css"
@@ -67,5 +67,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "已更新用户原加载目录并校验指纹；等待用户重新加载扩展、刷新页面后核对实际视觉效果。"
+  "nextAction": "精简词典库卡片：保留关键摘要与操作，完整元数据默认收起，完成窄屏与键盘验证。"
 }

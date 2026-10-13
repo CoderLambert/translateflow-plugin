@@ -57,6 +57,18 @@ test.describe("local MDD resource product and security behavior", () => {
       mimeType: "application/octet-stream",
       buffer: mdd
     }, { success: true });
+    const compactFacts = row.locator(".dictionary-compact-facts");
+    await expect(compactFacts).toContainText("MDX 富文本");
+    await expect(compactFacts).toContainText("MDD 文件");
+    const dictionaryDetails = row.locator(".dictionary-v2-details");
+    await expect(dictionaryDetails).not.toHaveAttribute("open", "");
+    await expect(row.locator(".dictionary-v2-metadata")).not.toBeVisible();
+    await expect(row.locator('[data-action="attach-mdd-resources-button"]')).toBeVisible();
+    const dictionaryDetailsSummary = dictionaryDetails.locator("summary");
+    await dictionaryDetailsSummary.focus();
+    await dictionaryDetailsSummary.press("Space");
+    await expect(dictionaryDetails).toHaveAttribute("open", "");
+    await expect(row.locator(".dictionary-v2-metadata")).toBeVisible();
 
     const deniedSettingsRead = await readMddResourceFromOptions(
       options,
@@ -83,6 +95,7 @@ test.describe("local MDD resource product and security behavior", () => {
       hasText: "TranslateFlow MDD Interop Fixture"
     });
     await expect(row).toBeVisible();
+    await expect(row.locator(".dictionary-v2-details")).not.toHaveAttribute("open", "");
     const afterReload = await readMddResource(harness, resourceProbe, dictionaryId, "interop/sample.png");
     expect(afterReload.ok).toBe(true);
     expect(afterReload.found).toBe(true);
