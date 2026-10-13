@@ -1,45 +1,82 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
-  "tree": "2b6112b5eb5f0d8bb7f88f5c5af1da18d5d4e04e",
-  "inputTree": "9aecdf0eb381fdcb51efc1723ac395ee6c69d9df15810485eb1bcd46e306e2ff",
-  "frozenAt": "2026-10-13T14:35:45.194Z",
+  "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+  "tree": "05468d3040a1d1b1fbd929cc88d671371b74fb66",
+  "inputTree": "7cae578e1272d5381c417ac9af397ea97ae74f9e69d715221e512f7b38245f37",
+  "frozenAt": "2026-10-13T14:52:21.068Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
-    "browser": "NOT RUN"
+    "browser": "Google Chrome for Testing 153.0.8010.12"
   },
   "checks": [
     {
       "command": [
         "npm",
         "run",
-        "validate"
+        "build:extension:wxt"
       ],
-      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 63136.909248,
-      "startedAt": "2026-10-13T14:35:45.427Z",
-      "log": "docs/task-execution/local/rich-runtime-resource-recovery/b9d04da4-d753-4a6c-aa88-e8ba8aee5a64.log",
-      "logSha256": "db00d0ece6b79bc1ffea52febc965255bb8cbc8b566fef58561a9f4c873916c2"
+      "durationMs": 2403.67691,
+      "startedAt": "2026-10-13T14:52:21.212Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/68cded11-b8aa-47bf-a814-a41f92faf25d.log",
+      "logSha256": "29a93fa02ba078577e32b210b44b5295129b6caf906ca645bc442d3aacc04b13"
     },
     {
       "command": [
         "npm",
         "run",
-        "build:extension:wxt"
+        "validate"
       ],
-      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 2290.453138,
-      "startedAt": "2026-10-13T14:37:03.197Z",
-      "log": "docs/task-execution/local/rich-runtime-resource-recovery/3dc65d28-e6e8-4747-bbe7-93f463e49ed6.log",
-      "logSha256": "232354f91e3da5e294e7a104c43461a91c2213d563d5f77a7bc606e7958320f6"
+      "durationMs": 51236.846416,
+      "startedAt": "2026-10-13T14:52:42.061Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/7763887a-f0b9-4f78-a36e-93efa504a3c7.log",
+      "logSha256": "3fa171d61170fdc4433ec05484f9b086904f0b707888404452a5fe6d56d33763"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 12.048232,
+      "startedAt": "2026-10-13T14:53:53.776Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/b8d95dd9-bd14-42e8-adee-5ca8a9f5c152.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/rich-resource-resolver.test.mjs",
+        "tests/rich-navigation.test.mjs",
+        "tests/rich-viewer-contract.test.mjs",
+        "tests/constants.test.mjs",
+        "tests/selection-reading-window.test.mjs",
+        "tests/selection-v2.test.mjs",
+        "tests/rich-mdd-css.test.mjs"
+      ],
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1173.399488,
+      "startedAt": "2026-10-13T14:53:53.928Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/faf60239-ef82-4819-b190-82ef5690c1f1.log",
+      "logSha256": "5bab51dca4048bf15cd7a9c68b8569df5ff29d45a7dae5ad3d4a51771125df07"
     },
     {
       "command": [
@@ -47,14 +84,44 @@
         "run",
         "test:wxt:smoke"
       ],
-      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
       "result": "PASS",
       "exitCode": 0,
       "signal": null,
-      "durationMs": 1141.330438,
-      "startedAt": "2026-10-13T14:37:05.615Z",
-      "log": "docs/task-execution/local/rich-runtime-resource-recovery/ba1816d7-8e97-49ee-86d0-a13e4bc22036.log",
-      "logSha256": "2777ad07d89181a3aaee61900c135a8a4707052a1dad53f991bbb7e478571f5e"
+      "durationMs": 1157.319857,
+      "startedAt": "2026-10-13T14:53:55.241Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/c332d772-0cfe-4f90-9b3b-aee8e39cc4f5.log",
+      "logSha256": "a9c36a7305c9cc3548982ba2790167a23b7fda60dba9f0720f9128dc0511e7ed"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 160.476695,
+      "startedAt": "2026-10-13T14:53:56.536Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/a5a3de71-1912-4703-8dc6-7d996380e24d.log",
+      "logSha256": "fdeab86e88db883610c9e4ade72ed42271b30fffe7e859116670d9dbe49d5465"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 193.354064,
+      "startedAt": "2026-10-13T14:53:56.841Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/8d8127db-53d7-4efe-990b-3029e31bd3b0.log",
+      "logSha256": "e296859e4888023b0143db76f601c803427abeb992d22897173273ff6f93bba4"
     },
     {
       "command": [
@@ -69,16 +136,67 @@
         "e2e/rich-reading-window.spec.mjs",
         "e2e/selection-assistant-ui.spec.mjs"
       ],
-      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
-      "result": "PASS",
-      "exitCode": 0,
+      "candidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+      "result": "FAIL",
+      "exitCode": 1,
       "signal": null,
-      "durationMs": 27874.853039,
-      "startedAt": "2026-10-13T14:37:06.888Z",
-      "log": "docs/task-execution/local/rich-runtime-resource-recovery/eaf927a8-5272-46f2-85fc-8b199d3ce3cc.log",
-      "logSha256": "13495c772b512a48d631bbfc28f62c75c4fa002850b205fb07068e247a42cc52"
+      "durationMs": 28634.823209,
+      "startedAt": "2026-10-13T14:53:57.194Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/cb8a31a2-c726-4d31-b1ea-b4e250252554.log",
+      "logSha256": "61c05661b80ce341a590c15606bdd3bac21a44b2e942976014e457842f1f44ee"
     }
   ],
-  "artifact": null,
-  "limitations": []
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "da81caa6c2fb678a2aa01ddfa6dc5fd5fedd3372c5584757767305578fef483d"
+  },
+  "limitations": [
+    "Full six-file installation/restart/failure recovery matrix NOT_RUN this round.",
+    "Original user browser activation and runtime verification pending reload.",
+    "Acceptance keeps production candidate and test-only retry heads separate; no claim that local merge gate passed."
+  ],
+  "supplementalEvidence": {
+    "productionCandidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+    "testHead": "9c943fdd5c6ef66fa14b55a650619566b8b4bcfb",
+    "changedSinceCandidate": [
+      "e2e/rich-reading-window.spec.mjs"
+    ],
+    "reason": "Wait for actual viewport resize layout before asserting containment; no production/build changes. Preserve original batch FAIL (13 passed, one timing failure).",
+    "retry": {
+      "command": "npm run test:e2e -- e2e/rich-reading-window.spec.mjs",
+      "result": "PASS",
+      "passed": 1,
+      "artifactTreeSha256": "da81caa6c2fb678a2aa01ddfa6dc5fd5fedd3372c5584757767305578fef483d"
+    },
+    "staticChecks": {
+      "commands": [
+        "npm run check",
+        "git diff --check"
+      ],
+      "result": "PASS"
+    }
+  },
+  "realDictionaryFocusedEvidence": {
+    "productionCandidateHead": "769207ed5ef1e313fdd6c91d2f08f0e5036f9030",
+    "words": [
+      "copy",
+      "build"
+    ],
+    "desktop": "PASS: automatic reading window; build synonyms width approximately 660px",
+    "narrow": "PASS: 360px viewport; column layout; no horizontal overflow",
+    "audio": "PASS: UK and US for both words; readyState 4; no media error; local blob",
+    "providerCalls": 0,
+    "externalDictionaryHttp": 0,
+    "stylesheetBytes": 40168,
+    "stylesheetFlexAndContainerRules": true,
+    "scope": "Existing legitimate private six-file package in isolated persistent test profile, not full issue 274 acceptance. Private files, article contents and screenshots excluded."
+  },
+  "localInstallation": {
+    "result": "COPIED_AND_FINGERPRINT_VERIFIED",
+    "sameLoadDirectory": true,
+    "backupCreated": true,
+    "profileStorageTouched": false,
+    "treeSha256": "da81caa6c2fb678a2aa01ddfa6dc5fd5fedd3372c5584757767305578fef483d",
+    "activation": "User must reload existing extension and refresh page; original browser runtime NOT VERIFIED"
+  }
 }

@@ -1,11 +1,13 @@
 # 验收后自查
 
-候选：`6b49211bea6dcc0c98b6915f1a84b8ccea857667`。执行者：主 Agent；此记录是自查，不是独立审核。
+生产候选：`769207ed5ef1e313fdd6c91d2f08f0e5036f9030`。测试时序修正：`9c943fdd5c6ef66fa14b55a650619566b8b4bcfb`，仅修改新 E2E 等待 resize 完成的方式，没有修改生产或构建输入。执行者为主 Agent；此记录不是独立审核。
 
-检查完整生产 diff、资源读取/取消/释放、CSS slot 降级、版本绑定、音频重试和导航失败保留正文路径。单个 CSS 图片失败不再丢整张 stylesheet；stale 和关闭仍丢弃旧样式。found 响应仍必须匹配绑定版本。保留现有 MIME、字节、像素、对象 URL、SVG 和 CSS 安全校验，无新增外网、Provider、权限或 CSP 变更。
+检查资源读取、取消、对象 URL 释放、版本绑定、CSS slot 降级和音频重试。CSS 新增 flex 属性有界校验；背景只接受纯颜色；响应式规则使用 viewer 命名容器；相同规则只在同一层保留最后位置，只有相邻且声明完全相同的规则合并选择器，保留预算。没有放宽脚本、外网、CSP 或权限。
 
-当前取消恢复默认播放按钮；旧音频或旧 viewer 的迟到错误不能追加提示。恢复提示按 descriptor 聚合，成功重试只清除对应错误。关闭清理提示与翻译绑定。仅更新导航失败文案，没有修改词形规范化、词条身份或历史。
+大窗口沿用当前 Selection 和历史，不重新查询；手动收起在当前 selection 保持，新 selection 重置。关闭清理 observer 和动画帧。真实 Oxford 样式在原有输出规则预算内保留，copy 词头、build 近义词以及 POS 背景恢复；360px 时上下排列。底部操作可达。
 
-最终检查：97 项定向 Node、完整 validate（1497 Node / 42 Vitest）、WXT build / smoke、3 项安全和 12 项取消测试、10 项 Chromium E2E 通过。已查看 360px 窄屏缺附件/重启恢复两张合成截图：徽标横向紧凑，正文和 footer 可达，恢复后 CSS/图片/音频出现。真实 Oxford 健康对照 commit 的词典 CSS、英美发音解码通过；Provider=0，外部 HTTP=0。详细命令和指纹见 acceptance.json。
+生产候选 validate PASS（1513 Node、42 Vitest）、WXT build/smoke PASS、安全 3 项与取消 12 项 PASS。Chromium 批次 13 PASS、1 个 resize 即时断言失败；测试修正后只重跑受影响场景，1 PASS，复用完全相同包指纹。另跑 check 和 diff --check PASS。保留原始 FAIL，不改写为整批 exact-head PASS。
 
-没有发现本次已证明缺陷修复的代码 blocker。仍不能证明原截图安装的附件为何失败，也未在该安装验证恢复。PR 保留 draft，不以健康对照代替用户原安装验收。当前开发包不带生成内置 TFLex 数据，不能声称顶部内置词典警告已修复。LRU 等低优先级工作未展开。
+真实私有 Oxford copy/build：桌面与窄屏 PASS，build 近义词约 660px；两词 UK/US 音频均 readyState=4、无错误、local blob；Provider=0、external HTTP=0。仅脱敏结果入库，未公开原文或截图。这是聚焦回归，不是完整 #274 验收。
+
+已复用经完整性核验的生成内置词典资源构建，修复当前交付包遗漏内置资源的问题。已将相同指纹包更新到用户提供的原加载目录，备份旧包，不接触浏览器存储。原浏览器需要用户重新加载扩展并刷新页面，其运行结果尚未验证。未发现当前已证明问题的代码 blocker；保留 draft，不声称合并门禁通过。LRU 等低优先级工作未展开。
