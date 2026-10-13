@@ -1,19 +1,54 @@
 {
   "schema": 1,
   "task": "chatgpt-native-host-distribution",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/rich-runtime-assets-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
-  "candidateHead": null,
+  "candidateHead": "df6e65fd908228ca46763a1fa276c76d3164fd3e",
   "mergeHead": null,
   "validationCommands": [
-    ["npm", "run", "validate"],
-    ["npm", "run", "build:extension:wxt"],
-    ["npm", "run", "test:wxt:smoke"],
-    ["go", "-C", "native-host", "test", "-race", "./..."]
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "go",
+      "-C",
+      "native-host",
+      "test",
+      "-race",
+      "./..."
+    ]
   ],
   "artifactRequired": true,
-  "nextAction": "完成实现和定向验证；正式商店 ID 与平台签名仍是发布外部输入。"
+  "nextAction": "Push the Draft PR. Public release remains blocked on the real Chrome Web Store ID, Windows signing certificate, Linux release signing, and clean-system installer acceptance.",
+  "validation": {
+    "npmRunValidate": "PASS (1524 Node tests, 46 Vitest)",
+    "wxtBuildSmoke": "PASS (Chromium 153.0.8010.12)",
+    "chatgptNativeHostE2E": "PASS (host-missing recovery; optional permission pregranted only in isolated test copy)",
+    "goRace": "PASS",
+    "localHostHello": "PASS (protocolVersion 1, hostVersion dev, 7 capabilities)",
+    "candidateBuild": "PASS with synthetic non-release extension ID; NOT_SIGNED and publishable=false"
+  },
+  "review": {
+    "reviewer": "dev_verifier",
+    "initialBlockers": [
+      "symlink output escape",
+      "non-string/unsafe host version acceptance"
+    ],
+    "resolution": "Fixed and revalidated; no unresolved blocker in the reviewed scope."
+  }
 }
