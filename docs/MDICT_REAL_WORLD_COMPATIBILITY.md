@@ -105,7 +105,9 @@ acceptance.
 
 Rich records can retain coherent radio/label relationships as bounded data.
 The tokenizer and viewer both validate IDs, names, label targets and checked
-states before creating controls inside that record's Shadow root. Zero initial
+states before creating controls inside that record's Shadow root. Passive nav/section
+wrappers and up to eight safe class tokens preserve the relationships; the
+verified go panels require a state class in the fifth position. Zero initial
 selection stays zero; multiple initial checked states, duplicate identities or
 incomplete radio relationships degrade that record to readable safe text with
 a visible notice. Decorative orphan labels become static text without disabling
@@ -136,6 +138,14 @@ cross-entry history, Oxford-specific adapters or attachment recovery. Existing
 long-entry scrolling, footer actions, pronunciation controls and details stay
 under regression coverage. No stored index, source file, permission or CSP
 migration is introduced.
+
+The cumulative 1,024 resource budget counts actual descriptors using a shared
+closed identity: kind, canonical path and validated presentation. Repeated
+references still consume the node budget, while references to the same
+descriptor share that descriptor. Each independent record keeps its own count
+for the aggregate. This corrects an occurrence-count regression: the verified
+go record has 1,079 resource nodes but 539 descriptors. No resource, node,
+text, active-Blob or image limit is raised.
 
 ## Local inspection
 

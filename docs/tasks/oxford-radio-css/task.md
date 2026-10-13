@@ -13,3 +13,5 @@
 每 PR git diff check、受影响Node、完整npm validate、显式WXT、smoke、安全/取消、相关Chromium。准确candidate freeze、独立只读review无blocker、remote checks/threads/base/head保护、guarded squash merge及post-merge实际main复验。缓存切片根据用户当前优先级反馈后移；保留测量和未验收代码，不丢弃也不声称已交付。
 
 冻结前明确：CSS visited cap1024、accepted512、source/output64KiB（只读636源/463有限投影依据）；private输入报告只统计，不包含商业正文。两个受控Content helper只提取标签扫描与radio关联/键盘构造，src/entries/content.js单源顺序注册；无新React/运行平台。拒绝radio group本record纯文本+提示，不因普通orphan标签降级；合法0checked保持零，不伪造默认选择。
+
+真实验收定位的blocker已纳入同一切片：nav/section被动包装与第五state class需保留，两层统一8安全class上限；1079资源node出现次数不是1079descriptors，go实际539三元组descriptor（arch27/18）。同一kind/canonicalpath/validatedpresentation纯helper被sanitizer/renderer/viewer/resolver复用，跨Shadow逐record累加，1024与所有node计数/既有Blob及媒体预算不升。六文件全选含.js的未关联预检FAIL/installNOT_RUN属#269/#273后续；本片真实显示用同一包5个支持files新profile，JS不导入不执行，不称#274端到端PASS。
