@@ -280,12 +280,12 @@
     },
     {
       "task": "rich-multiple-records",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "rich-stripkey-migration"
       ],
       "branch": "fix/rich-multiple-records-20261013",
-      "candidateHead": null
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf"
     },
     {
       "task": "rich-stripkey-migration",

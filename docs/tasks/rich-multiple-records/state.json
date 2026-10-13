@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "rich-multiple-records",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "rich-stripkey-migration"
   ],
   "branch": "fix/rich-multiple-records-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-records-20261013",
-  "candidateHead": null,
+  "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -71,5 +71,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "实现有界多record/alias解析、累计DTO和独立安全渲染。"
+  "nextAction": "本地exact-head验收与独审PASS；核对远端base/head/checks/threads后guarded squash merge。"
 }
