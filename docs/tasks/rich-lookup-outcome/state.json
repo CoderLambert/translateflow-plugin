@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "rich-lookup-outcome",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
-  "branch": "fix/rich-lookup-outcome-20261013",
+  "branch": "main",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-outcome-20261013",
   "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
-  "mergeHead": null,
+  "mergeHead": "f1d655c30299286ca454f6a030d2d52d988a0c08",
   "validationCommands": [
     [
       "git",
@@ -59,6 +59,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "准确候选全部门禁PASS；独立审核最终证据核对后guarded squash merge。",
-  "pullRequest": 326
+  "nextAction": "已合入且合后main Node26 / multi-dictionary E2E6/6 PASS；继续#270 Stripkey与派生索引兼容。",
+  "pullRequest": 326,
+  "syncHead": "ce3dad985643e3101f6437e21c51f73064827380"
 }
