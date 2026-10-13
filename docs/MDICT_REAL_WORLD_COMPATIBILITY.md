@@ -147,6 +147,45 @@ for the aggregate. This corrects an occurrence-count regression: the verified
 go record has 1,079 resource nodes but 539 descriptors. No resource, node,
 text, active-Blob or image limit is raised.
 
+## Local TrueType fonts
+
+Bounded local stylesheet `@font-face` declarations can be projected to an
+optional `fontFaces` manifest. Each face retains a canonical local TTF path,
+an anonymous family token, normal/italic style, 400/700 weight and swap/fallback
+display. A single local URL and optional truetype format are accepted; local()
+lookup, mixed sources, external URLs, unsupported descriptors and duplicate
+variants are rejected with diagnostics. Declaration order does not affect
+ordinary font-family references. Only declared families and generic fallbacks
+survive; original custom family names are not returned to the viewer.
+
+The existing eight-slot bound covers image slots and font faces together.
+Source/generated CSS remain bounded at 64 KiB, including random alias expansion.
+The MDD resource policy accepts only sfnt TrueType TTF with at most 64 bounded,
+non-overlapping directory tables and consistent required table/glyph bounds.
+The native browser decoder validates table contents. The eight-MiB resource
+limit remains unchanged; this does not add OTF, WOFF, TTC or sidecar-font import.
+
+Chromium does not load a blob @font-face inside a Shadow stylesheet in the
+measured prototype. The viewer instead constructs controlled ArrayBuffer
+FontFace objects and adds them to the owning document's font set. Each
+stylesheet/session uses cryptographically random names referenced only by
+its scoped Shadow CSS. No dictionary font URL is emitted, and no CSP or
+permission is changed. An absent native RNG, unsupported API or failed face
+uses a visible display-fallback notice while preserving other stylesheet rules.
+
+Font bytes share the existing per-view 32-MiB active-resource budget, separately
+from the image byte budget. Reservation happens before native decoding and
+shares the existing two-read queue. Closing deletes registered faces. Native
+loads cannot be aborted; their reservations and queue slots remain until
+settlement, and stale completion cannot register a face. These are logical
+resource-byte bounds, not measured browser heap/RSS limits.
+
+See [the font task](tasks/rich-local-fonts/task.md) for exact candidate and
+acceptance evidence. The measured private package contains four TrueType
+faces totalling 2,956,896 bytes. Its structural prevalidation is not browser
+acceptance. SVG, entry/history and install recovery remain separate unfinished
+capabilities; this slice alone does not close Oxford final acceptance.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,

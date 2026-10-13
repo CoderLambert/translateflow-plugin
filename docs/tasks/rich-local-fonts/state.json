@@ -24,8 +24,12 @@
       "tests/mdd-security.test.mjs",
       "tests/rich-mdd-css.test.mjs",
       "tests/rich-resource-resolver.test.mjs",
-      "tests/rich-dictionary-sanitizer.test.mjs",
-      "tests/constants.test.mjs"
+      "tests/constants.test.mjs",
+      "tests/rich-mdd-lookup-cancellation.test.mjs",
+      "tests/rich-mdict-storage.test.mjs",
+      "tests/rich-controls.test.mjs",
+      "tests/rich-viewer-contract.test.mjs",
+      "tests/selection-rich-outcome.test.mjs"
     ],
     [
       "npm",

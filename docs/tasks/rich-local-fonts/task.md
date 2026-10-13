@@ -11,3 +11,5 @@
 执行Agent仅owned字体policy/compiler/resource DTO/resolver受控helper与注册、相应Node/E2E；主Agent独占docs/task/state/兼容文档/GH。新增helper复用现有Content注册，不另建runtime。单一实现Agent，不派生。实现阶段targeted tests/check，不全量；主Agent最终exact candidate八验收及独立只读review/guarded merge/postmain。
 
 验收覆盖valid四faces与genericfallback、case/family mapping、source恶意family/escape/URL/local()/mixed src/descriptor重复/错误字体signature/table超界重叠/数量累计限额、坏font正常fallback、samefamily跨dict隔离、load→close/selectiongeneration/packageversion陈旧不添加、重复渲染资源释放、style与音频/图片不回归。真实同Oxford包arch/go当前WXT实际字体load/应用（FontFace status与fontSet/matching computed alias及字宽/FontFace证据，不能仅computed family宣称loaded），全部POS/重启/provider0/http0。合成字体从可追溯生成fixture，禁止复制Oxford字体作为fixture或包asset。
+
+原型及实现收口：Chromium153 Shadow @font-face不能加载；受控ArrayBuffer FontFace需document.fonts add，delete还原字形，另Shadow/页面字体不变。生产alias仅crypto.getRandomValues，无RNG诚实fallback；单字体失败明示显示降级而保留其它CSS。pending native load保留reservation+既有2读槽直到settle；原始TTF bytes8MiB、每view32MiB逻辑预算不当heap上限。生成752B原创矩形字形fixture真实Chrome解码、四variant/两dict隔离/close0/restart/坏font+radio测试，未复制商用字体。实际4字体新policy预验证4/4PASS仅dirty source；最终frozen候选仍须真实UI。
