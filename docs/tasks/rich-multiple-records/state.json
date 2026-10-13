@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "task": "rich-multiple-records",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [
+    "rich-stripkey-migration"
+  ],
+  "branch": "fix/rich-multiple-records-20261013",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-records-20261013",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/rich-mdict-records.test.mjs",
+      "tests/rich-mdict-format.test.mjs",
+      "tests/rich-mdict-product.test.mjs",
+      "tests/selection-rich-outcome.test.mjs",
+      "tests/selection-multi-dictionary.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/rich-mdict-records.spec.mjs",
+      "e2e/rich-mdict-index-migration.spec.mjs",
+      "e2e/multi-dictionary-viewer.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "e2e/rich-viewer-security.spec.mjs",
+      "e2e/mdd-resources.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "实现有界多record/alias解析、累计DTO和独立安全渲染。"
+}

@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "task": "rich-stripkey-migration",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "rich-lookup-outcome"
   ],
-  "branch": "fix/rich-stripkey-migration-20261013",
+  "branch": "main",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-stripkey-20261013",
   "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
-  "mergeHead": null,
+  "mergeHead": "320f78e2b34fc16648e35369b06c473f1a58c68e",
   "validationCommands": [
     [
       "git",
@@ -62,6 +62,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "准确候选8门禁及独立审核PASS；guarded squash merge后继续#270多records。",
-  "pullRequest": 327
+  "nextAction": "Stripkey与受影响legacy迁移已合入且合后main验证PASS；继续#270多records。",
+  "pullRequest": 327,
+  "syncHead": "562dec877c82c8a890d30613eb9318ed59eda93d"
 }

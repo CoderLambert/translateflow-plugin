@@ -217,5 +217,34 @@
       "时延是单次观察；不代表性能门槛或峰值内存。",
       "仅本地parser与隔离in-memory迁移；真实用户OPFS/真实Oxford浏览器终验NOT RUN。"
     ]
+  },
+  "postMergeVerification": {
+    "mergeHead": "320f78e2b34fc16648e35369b06c473f1a58c68e",
+    "treeMatchesSync": true,
+    "checks": [
+      {
+        "command": [
+          "node",
+          "--test",
+          "tests/rich-mdict-index-migration.test.mjs",
+          "tests/rich-mdict-format.test.mjs"
+        ],
+        "result": "PASS"
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "test:e2e",
+          "--",
+          "e2e/rich-mdict-index-migration.spec.mjs"
+        ],
+        "result": "PASS",
+        "tests": 1
+      }
+    ],
+    "log": "docs/task-execution/local/rich-stripkey-migration/post-merge.log",
+    "logSha256": "c8c282022a57ae1cd5dae1d3515af806453f70d28d5c26508f96740cfa4303df",
+    "artifactReuse": "main tree与sync完全一致，生产输入未变。"
   }
 }
