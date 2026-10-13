@@ -112,11 +112,11 @@ test("CSS visits rejected source rules before late state rules without spending 
 });
 
 test("accepted-rule and expanded UTF8 output overflow return diagnostics and no partial style", () => {
-  const edge = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 512 }, (_, index) => `.x${index}{color:red}`).join('')), "entry.css");
-  assert.equal((edge.css.match(/color:red/gu) || []).length, 512);
-  const extra = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 513 }, (_, index) => `.x${index}{color:red}`).join('')), "entry.css");
+  const edge = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 512 }, (_, index) => `.x${index}{color:#${index.toString(16).padStart(6, "0")}}`).join('')), "entry.css");
+  assert.equal((edge.css.match(/color:#[0-9a-f]{6}/gu) || []).length, 512);
+  const extra = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 513 }, (_, index) => `.x${index}{color:#${index.toString(16).padStart(6, "0")}}`).join('')), "entry.css");
   assert.equal(extra.css, ""); assert.ok(extra.diagnostics.includes("css.accepted_rule_limit"));
-  const ids = Array.from({ length: 512 }, (_, index) => '#' + ('x'.repeat(76) + index) + '{color:red}').join('');
+  const ids = Array.from({ length: 512 }, (_, index) => '#' + ('x'.repeat(76) + index) + `{color:#${index.toString(16).padStart(6, '0')}}`).join('');
   assert.ok(Buffer.byteLength(ids) < 64 * 1024);
   const expanded = sanitizeRichMddStylesheet(Buffer.from(ids), "entry.css");
   assert.equal(expanded.css, ""); assert.ok(expanded.diagnostics.includes("css.output_limit"));
@@ -263,7 +263,7 @@ test('min-width and gap accept their exact finite boundaries without altering ru
   const declarations = '.ok{' + 'min-width:0;'.repeat(13) + '}';
   const limited = sanitizeRichMddStylesheet(Buffer.from(declarations), 'entry.css');
   assert.equal((limited.css.match(/min-width:0/gu) || []).length, 12); assert.ok(limited.diagnostics.includes('css.declaration_limit'));
-  const rules = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 513 }, (_, index) => `.ok${index}{display:inline-flex}`).join('')), 'entry.css');
+  const rules = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 513 }, (_, index) => `.ok${index}{display:inline-flex;color:#${index.toString(16).padStart(6, "0")}}`).join('')), 'entry.css');
   assert.equal(rules.css, ''); assert.ok(rules.diagnostics.includes('css.accepted_rule_limit'));
 });
 
@@ -340,4 +340,38 @@ test('output counts retained rules while duplicate source rules still consume th
   assert.equal((allowed.css.match(/\.same\{color:red\}/gu) || []).length, 512); assert.deepEqual(allowed.diagnostics, []);
   const over = sanitizeRichMddStylesheet(Buffer.from('@media(max-width:500px){.same{color:red}}'.repeat(513)), 'entry.css');
   assert.equal(over.css, ''); assert.ok(over.diagnostics.includes('css.accepted_rule_limit'));
+});
+
+test('adjacent rules with identical complete declarations merge selectors without losing cascade alternatives', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from('.a{color:red;font-weight:700}.b{color:red;font-weight:700}.c{color:blue}.d{color:red;font-weight:700}'), 'entry.css');
+  assert.equal(result.css, '.tf-rich-viewer .a,.tf-rich-viewer .b{color:red;font-weight:700}.tf-rich-viewer .c{color:blue}.tf-rich-viewer .d{color:red;font-weight:700}');
+  const state = sanitizeRichMddStylesheet(Buffer.from('input.a:checked ~ .one{display:block}input.b:checked + .two{display:block}'), 'entry.css');
+  assert.equal(state.css, '.tf-rich-viewer input.a:checked ~ .one,.tf-rich-viewer input.b:checked + .two{display:block}');
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test('different declarations, nonadjacent rules and every emitted conditional block prevent adjacent merging', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from('.a{color:red}.different{color:blue}.b{color:red}@media(prefers-color-scheme:dark){.dark-a{color:red}.dark-b{color:red}}.c{color:red}@media(max-width:500px){.narrow-a{color:red}.narrow-b{color:red}}.d{color:red}'), 'entry.css');
+  assert.match(result.css, /^\.tf-rich-viewer \.a\{color:red\}\.tf-rich-viewer \.different\{color:blue\}\.tf-rich-viewer \.b\{color:red\}/u);
+  assert.match(result.css, /@media \(prefers-color-scheme: dark\)\{\.tf-rich-viewer \.dark-a,\.tf-rich-viewer \.dark-b\{color:red\}\}\.tf-rich-viewer \.c\{color:red\}/u);
+  assert.match(result.css, /@container tf-rich-article \(max-width: 500px\)\{\.tf-rich-viewer \.narrow-a,\.tf-rich-viewer \.narrow-b\{color:red\}\}\.tf-rich-viewer \.d\{color:red\}/u);
+});
+
+test('merged selector groups remain bounded by count and generated selector characters', () => {
+  const many = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 33 }, (_, index) => `.a${index}{color:red}`).join('')), 'entry.css');
+  const countGroups = many.css.split('}').filter(Boolean).map(rule => rule.slice(0, rule.indexOf('{')).split(','));
+  assert.deepEqual(countGroups.map(group => group.length), [32, 1]);
+  const long = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 20 }, (_, index) => `.${'x'.repeat(44)}${String(index).padStart(2, '0')}{color:red}`).join('')), 'entry.css');
+  const headers = long.css.split('}').filter(Boolean).map(rule => rule.slice(0, rule.indexOf('{')));
+  assert.ok(headers.length > 1); assert.ok(headers.every(header => header.length <= 1024));
+  assert.equal(headers.flatMap(header => header.split(',')).length, 20, 'every original validated selector is retained');
+});
+
+test('adjacent merging spends final rule budget while retaining visits and independent conditional output limits', () => {
+  const compact = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 1024 }, (_, index) => `.a${index}{color:red}`).join('')), 'entry.css');
+  assert.notEqual(compact.css, ''); assert.equal(compact.diagnostics.includes('css.accepted_rule_limit'), false);
+  const visited = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 1025 }, (_, index) => `.a${index}{color:red}`).join('')), 'entry.css');
+  assert.equal(visited.css, ''); assert.ok(visited.diagnostics.includes('css.rule_limit'));
+  const independent = sanitizeRichMddStylesheet(Buffer.from('@media(max-width:500px){.a{color:red}}'.repeat(513)), 'entry.css');
+  assert.equal(independent.css, ''); assert.ok(independent.diagnostics.includes('css.accepted_rule_limit'));
 });

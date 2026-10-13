@@ -123,9 +123,11 @@ function sanitizeList(list, context, depth) {
   });
   // Within one condition/list, the last identical safe rule dominates every
   // earlier copy. Keep its source position; conditional child lists stay separate.
-  context.accepted += lastRules.size;
+  const retained = output.filter((rule, index) => !lastRules.has(rule) || lastRules.get(rule) === index);
+  const merged = mergeAdjacentRules(retained, lastRules);
+  context.accepted += merged.count;
   if (context.accepted > MAX_OUTPUT_RULES) { context.overflow = true; context.diagnostics.push("css.accepted_rule_limit"); }
-  return output.filter((rule, index) => !lastRules.has(rule) || lastRules.get(rule) === index).join("");
+  return merged.css;
 }
 
 function sanitizeDeclaration(declaration, context, allowContent = false) {
@@ -304,4 +306,24 @@ function safeFlexWrap(value) { return /^(?:nowrap|wrap|wrap-reverse)$/u.test(val
 function safeFlexFactor(value) { return /^(?:\d{1,2}(?:\.\d{1,2})?|\.\d{1,2})$/u.test(value) && Number(value) <= 16; }
 function safeFlexLength(value) {
   return value === "0" || safeSpacing(value, 512) || safeSpacing(value, 40, "em", "rem") || safeSpacing(value, 100, "%");
+}
+
+function mergeAdjacentRules(rules, ruleKeys) {
+  const output = [];
+  let count = 0;
+  for (const css of rules) {
+    if (!ruleKeys.has(css)) { output.push({ css }); continue; }
+    // These strings are constructed from already validated selectors/values.
+    // Selector grammar has no commas inside an atom and no opening braces.
+    const start = css.indexOf("{"), declarations = css.slice(start + 1, -1);
+    const selectors = css.slice(0, start).split(","), previous = output.at(-1);
+    if (previous?.declarations === declarations && previous.selectors.length + selectors.length <= 32) {
+      const combined = previous.selectors.concat(selectors);
+      if (combined.join(",").length <= 1024) {
+        previous.selectors = combined; previous.css = `${combined.join(",")}{${declarations}}`; continue;
+      }
+    }
+    output.push({ css, selectors, declarations }); count += 1;
+  }
+  return { css: output.map(item => item.css).join(""), count };
 }
