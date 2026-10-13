@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.contentI18n || app.modules.selectionRichResultRenderer) return;
   const locale = app.modules.contentI18n;
+  const renderedHosts = new WeakMap();
 
   function appendRichDictionaryDetails(container, response) {
     if (!container || !response || typeof response !== "object") return false;
@@ -179,6 +180,7 @@
       };
 
       function clearPendingResult() {
+        closeRecords(body);
         pendingResult = null;
         resultDisplayed = false;
         retryHandler = null;
@@ -230,20 +232,65 @@
     } else locale.bindText(node, fallbackKey);
   }
 
+  function closeRecords(container) {
+    for (const host of renderedHosts.get(container) || []) app.modules.richResourceResolver?.close(host);
+    renderedHosts.delete(container);
+  }
+
   function renderRichDictionaryRecord(container, dictionary, dictionaryId) {
+    if (dictionary?.records !== undefined && !Array.isArray(dictionary.records)) throw new Error("Rich dictionary records are invalid.");
+    const inputs = Array.isArray(dictionary?.records) ? dictionary.records : [dictionary];
+    if (!inputs.length || inputs.length > 256) throw new Error("Rich dictionary record count is invalid.");
+    const totals = { expandedBytes: Math.max(0, inputs.length - 1) * 2, nodes: 0, resources: 0 };
+    const sanitizer = app.modules.selectionRichSanitizer;
+    const prepared = inputs.map((input) => {
+      const record = { ...input, packageVersion: dictionary?.packageVersion, packVersion: dictionary?.packVersion };
+      if (record.richRecord && !record.richRecord.styleSheetRules && dictionary?.styleSheetRules) {
+        record.richRecord = { ...record.richRecord, styleSheetRules: dictionary.styleSheetRules };
+      }
+      const richRecord = record.richRecord;
+      let tree = null;
+      if (richRecord && sanitizer?.sanitizeRichDictionaryRecord) {
+        try { tree = sanitizer.sanitizeRichDictionaryRecord(richRecord); } catch { /* Existing safe text fallback. */ }
+      }
+      const measured = treeMetrics(tree, richRecord?.rawRecord ?? record.text ?? "");
+      for (const key of Object.keys(totals)) {
+        if (!Number.isSafeInteger(measured[key]) || measured[key] < 0) throw new Error("Rich dictionary display metrics are invalid.");
+        totals[key] += measured[key];
+      }
+      if (totals.expandedBytes > 2 * 1024 * 1024 || totals.nodes > 32768 || totals.resources > 1024) {
+        throw new Error("Rich dictionary aggregate display exceeds its safety limits.");
+      }
+      return { record, tree };
+    });
+    closeRecords(container);
+    renderedHosts.set(container, []);
+    try {
+      const displayed = prepared.map(({ record, tree }) => renderSingleRecord(container, record, dictionaryId, tree));
+      return { ...displayed[0], text: displayed.map((item) => item.text).filter(Boolean).join("\n\n") };
+    } catch (error) { closeRecords(container); throw error; }
+  }
+
+  function treeMetrics(tree, fallback) {
+    if (tree?.metrics) return tree.metrics;
+    let nodes = 0, resources = 0;
+    const visit = (items) => { for (const node of items || []) { nodes += 1; if (node.type === "resource") resources += 1; if (node.children) visit(node.children); } };
+    visit(tree?.nodes);
+    return { nodes: nodes || 1, resources, expandedBytes: new TextEncoder().encode(String(fallback)).byteLength };
+  }
+
+  function renderSingleRecord(container, dictionary, dictionaryId, safeTree) {
     const headword = String(dictionary?.headword || "").trim();
     const bodyText = String(dictionary?.text || "").trim();
     const body = document.createElement("div");
     body.className = "tf-selection-rich-text";
+    renderedHosts.get(container)?.push(body);
     const fallback = bodyText || locale.t("content.rich.emptyBody");
     const richRecord = dictionary?.richRecord;
-    const sanitizer = app.modules.selectionRichSanitizer;
     const viewer = app.modules.selectionRichViewer;
     let displayed = false;
-    let safeTree = null;
-    if (richRecord && sanitizer?.sanitizeRichDictionaryRecord && viewer?.render) {
+    if (richRecord && safeTree && viewer?.render) {
       try {
-        safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
         if (safeTree) {
           displayed = viewer.render(body, safeTree, fallback, {
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",

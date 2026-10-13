@@ -4,6 +4,11 @@ import {
 } from "./mdict-contract.js";
 
 export const RICH_MDICT_LOOKUP_BUDGETS = Object.freeze({
+  // Reviewed mixed alias/real queries peak at 23 actual span visits. These
+  // guards include repeated cached work and reject overflow rather than trim.
+  matchedEntries: 64,
+  spanVisits: 256,
+  keyScans: 1_000_000,
   candidateKeyBlocks: 256,
   keyBlockDecodes: 256,
   keyCompressedBytes: 8 * 1024 * 1024,
@@ -17,6 +22,8 @@ export const RICH_MDICT_LOOKUP_BUDGETS = Object.freeze({
 
 export function createRichMdictLookupBudget(onMetrics) {
   const metrics = {
+    spanVisits: 0,
+    keyScans: 0,
     candidateKeyBlocks: 0,
     keyBlockDecodes: 0,
     keyCompressedBytes: 0,
@@ -31,6 +38,17 @@ export function createRichMdictLookupBudget(onMetrics) {
   };
   return {
     metrics,
+    checkMatches(count) { requireBudget(count, RICH_MDICT_LOOKUP_BUDGETS.matchedEntries, "matched MDict entries"); },
+    consumeSpanVisits(count) {
+      const visits = metrics.spanVisits + count;
+      requireBudget(visits, RICH_MDICT_LOOKUP_BUDGETS.spanVisits, "MDict record span visits");
+      metrics.spanVisits = visits;
+    },
+    consumeKeyScans(count = 1) {
+      const scans = metrics.keyScans + count;
+      requireBudget(scans, RICH_MDICT_LOOKUP_BUDGETS.keyScans, "MDict key scans");
+      metrics.keyScans = scans;
+    },
     checkCandidatePlan(blocks) {
       const compressedBytes = sumDescriptorBytes(blocks, "compressedBytes");
       const decompressedBytes = sumDescriptorBytes(blocks, "decompressedBytes");

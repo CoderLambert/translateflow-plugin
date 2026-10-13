@@ -183,6 +183,20 @@ test("expanding an old deferred hit after the selection generation changes canno
   assert.equal(h.nodes("tf-selection-rich-text").length, 0);
 });
 
+test("multiple deferred records preserve the Task0 generation guard and never expose any stale record", async () => {
+  const h = await createHarness([dictionary("one", { preferred: true })]);
+  await h.start({ primary: true });
+  h.open("one", false);
+  const result = hit("one");
+  result.dictionaries[0].records = [{ text: "STALE FIRST RECORD" }, { text: "STALE SECOND RECORD" }];
+  await h.complete("one", result);
+  h.invalidate();
+  h.open("one");
+  assert.equal(h.nodes("tf-selection-rich-text").length, 0);
+  assert.doesNotMatch(h.layer.textContent, /STALE (FIRST|SECOND) RECORD/u);
+  assert.equal(h.displayed.length, 0);
+});
+
 test("render failures clear deferred results and recover through retry without duplicating onDisplay", async () => {
   let throwRender = true;
   const h = await createHarness([dictionary("one", { preferred: true })], { renderPlainText(body, text) {
@@ -262,7 +276,7 @@ async function createHarness(dictionaries, { listResponse = null, renderPlainTex
     selectionAiDetail: { create: () => ({ reset() {}, ensure() {}, choices() {} }) },
     selectionRichViewer: { renderPlainText }
   } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, requestAnimationFrame: (callback) => callback() });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document, requestAnimationFrame: (callback) => callback() });
   for (const name of ["empty-state", "rich-result-renderer", "result-renderer", "popover", "rich-details"]) {
     vm.runInContext(await readFile(selectionSource(name), "utf8"), context);
   }

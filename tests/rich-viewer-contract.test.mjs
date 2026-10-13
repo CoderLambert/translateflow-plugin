@@ -8,6 +8,7 @@ const VIEWER = new URL("../src/content/selection/rich-viewer.js", import.meta.ur
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
 const RICH_RENDERER = new URL("../src/content/selection/rich-result-renderer.js", import.meta.url);
 const SANITIZER_MODULES = [
+  "../src/content/selection/rich-resource-path.js",
   "../src/content/selection/rich-sanitizer-style.js",
   "../src/content/selection/rich-sanitizer-tokenizer.js",
   "../src/content/selection/rich-sanitizer.js"
@@ -268,6 +269,53 @@ test("per-dictionary Compact rules carry safe formatting into the isolated viewe
   assert.ok(textContent(host.shadowRoot).includes("HeadwordFieldNote"));
 });
 
+test("multiple records use independent viewers, shared Compact rules and one aggregate display callback", async () => {
+  const { renderer, document } = await loadSanitizedPipeline();
+  const container = document.createElement("div"), displayed = [];
+  const [card] = renderer.appendRichDictionaryCards(container, [{ id: "fixture", expandedByDefault: true }]);
+  card.setResult({ id: "fixture", packVersion: "actual-v2", styleSheetRules: [{ id: 1, begin: "<b>", end: "</b>" }],
+    records: [
+      { headword: "term", text: "first fallback", richRecord: { rawRecord: "`1`FIRST SENTINEL", format: "HTML" } },
+      { headword: "term", text: "second fallback", richRecord: { rawRecord: "`1`SECOND SENTINEL", format: "HTML" } }
+    ] }, "fixture", (value) => displayed.push(value));
+  const hosts = walk(container).filter((node) => node.className === "tf-selection-rich-text");
+  assert.equal(hosts.length, 2);
+  assert.notEqual(hosts[0].shadowRoot, hosts[1].shadowRoot);
+  assert.match(textContent(findClass(hosts[0].shadowRoot, "tf-rich-viewer")), /FIRST SENTINEL/u);
+  assert.match(textContent(findClass(hosts[1].shadowRoot, "tf-rich-viewer")), /SECOND SENTINEL/u);
+  assert.equal(findTag(hosts[0].shadowRoot, "b").tagName, "B");
+  assert.equal(displayed.length, 1);
+  assert.equal(displayed[0].text, "FIRST SENTINEL\n\nSECOND SENTINEL");
+  findTag(container, "details").dispatch("toggle");
+  assert.equal(displayed.length, 1);
+});
+
+for (const kind of ["expandedBytes", "nodes", "resources"]) {
+  test(`multiple records enforce cumulative sanitized ${kind} before creating any viewers`, async () => {
+    const { renderer, document } = await loadSanitizedPipeline();
+    const container = document.createElement("div");
+    let rawRecord, styleSheetRules = [];
+    if (kind === "nodes") rawRecord = "<span>x</span>".repeat(9000);
+    else if (kind === "resources") rawRecord = Array.from({ length: 600 }, (_, index) => `<a href="sound://fixture${index}.wav">audio</a>`).join("");
+    else { rawRecord = "`1`entry".repeat(600); styleSheetRules = [{ id: 1, begin: "x".repeat(4000), end: "" }]; }
+    assert.throws(() => renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", styleSheetRules,
+      records: Array.from({ length: 2 }, () => ({ text: "bounded fallback", richRecord: { rawRecord, format: "HTML" } })) }] }), /aggregate display/u);
+    assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, 0);
+  });
+}
+
+test("clearing a multi-record card closes only its own resource hosts", async () => {
+  const closed = [];
+  const { renderer, document } = await loadModules({ resolver: { close: (host) => closed.push(host) } });
+  const container = document.createElement("div");
+  const [card] = renderer.appendRichDictionaryCards(container, [{ id: "fixture", expandedByDefault: true }]);
+  card.setResult({ records: [{ text: "first" }, { text: "second" }] }, "fixture");
+  const hosts = walk(container).filter((node) => node.className === "tf-selection-rich-text");
+  const previous = closed.length;
+  card.setError("content.rich.lookupUnavailable");
+  assert.deepEqual(closed.slice(previous), hosts);
+});
+
 async function loadModules({
   sanitizer = { sanitizeRichDictionaryRecord: () => ({ nodes: [], truncated: false }) },
   resolver = null,
@@ -280,7 +328,7 @@ async function loadModules({
     ...(resolver ? { richResourceResolver: resolver } : {}),
     ...(richResourcePath ? { richResourcePath } : {})
   } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
@@ -290,10 +338,12 @@ async function loadModules({
 async function loadSanitizedPipeline() {
   const document = new FakeDocument();
   const app = { modules: { contentI18n: createContentI18nStub() } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   for (const path of SANITIZER_MODULES) vm.runInContext(await readFile(path, "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
-  return { sanitizer: app.modules.selectionRichSanitizer, viewer: app.modules.selectionRichViewer, document };
+  vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
+  vm.runInContext(await readFile(RENDERER, "utf8"), context);
+  return { sanitizer: app.modules.selectionRichSanitizer, viewer: app.modules.selectionRichViewer, renderer: app.modules.selectionResultRenderer, document };
 }
 
 function findClass(root, className) {

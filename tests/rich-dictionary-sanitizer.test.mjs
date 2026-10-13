@@ -303,3 +303,28 @@ test("unknown compact ids stay literal and invalid stylesheet data cannot expand
   });
   assert.equal(textContent(invalid.nodes), "`1`entry");
 });
+
+
+test("sanitizer reports complete frozen metrics for compact expansion, placeholders and every fallback", () => {
+  const module = sanitizer();
+  const inputs = [
+    { format: "Text", rawRecord: "plain text" },
+    { rawRecord: "`1`entry", styleSheetRules: [{ id: 1, begin: "<b>", end: "</b>" }] },
+    { rawRecord: '<img src="local.png"><a href="sound://local.wav">audio</a>' },
+    { rawRecord: "before <b title='unterminated>after" },
+    { rawRecord: "x".repeat(3 * 1024 * 1024) },
+    { rawRecord: { toString() { throw new Error("synthetic coercion failure"); } } }
+  ];
+  for (const input of inputs) {
+    const result = module.sanitizeRichDictionaryRecord(input);
+    assert.ok(Object.isFrozen(result.metrics));
+    assert.equal(result.metrics.nodes, countNodes(result.nodes));
+    let resources = 0;
+    walk(result.nodes, (node) => { if (node.type === "resource") resources += 1; });
+    assert.equal(result.metrics.resources, resources);
+    assert.ok(Number.isSafeInteger(result.metrics.expandedBytes));
+    assert.ok(result.metrics.expandedBytes >= 0 && result.metrics.expandedBytes <= module.limits.expandedBytes);
+  }
+  assert.ok(module.sanitizeRichDictionaryRecord(inputs[1]).metrics.expandedBytes > Buffer.byteLength(inputs[1].rawRecord));
+  assert.equal(module.sanitizeRichDictionaryRecord(inputs[2]).metrics.resources, 2);
+});

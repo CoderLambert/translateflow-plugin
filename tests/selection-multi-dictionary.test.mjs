@@ -504,7 +504,7 @@ async function loadRenderer({
     "content.rich.trust": "来源 / 信任：{trust}",
     "content.selection.dictionaryDetails": "查看完整词典词条"
   } }), selectionRichSanitizer: sanitizer, selectionRichViewer: viewer } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
   return { renderer: app.modules.selectionResultRenderer, document };
