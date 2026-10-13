@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "candidateHead": "b65d554489c44946eda3b2be2eb8a54566e840ce",
-  "tree": "01f86a6c787849ef1e131ba5d98417ec7d71a702",
-  "inputTree": "4ae34c9615e8e839be7fb71afc87a8aaa9d59e192ce43871b3c610f26e09287b",
-  "frozenAt": "2026-10-13T14:34:53.368Z",
+  "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+  "tree": "2b6112b5eb5f0d8bb7f88f5c5af1da18d5d4e04e",
+  "inputTree": "9aecdf0eb381fdcb51efc1723ac395ee6c69d9df15810485eb1bcd46e306e2ff",
+  "frozenAt": "2026-10-13T14:35:45.194Z",
   "environment": {
     "node": "v24.21.0",
     "npm": "11.19.0",
@@ -17,14 +17,66 @@
         "run",
         "validate"
       ],
-      "candidateHead": "b65d554489c44946eda3b2be2eb8a54566e840ce",
-      "result": "FAIL",
-      "exitCode": 1,
+      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "result": "PASS",
+      "exitCode": 0,
       "signal": null,
-      "durationMs": 39361.262673,
-      "startedAt": "2026-10-13T14:34:53.516Z",
-      "log": "docs/task-execution/local/rich-runtime-resource-recovery/66ff6550-e6d8-483f-8e68-0fcf98ba4a4b.log",
-      "logSha256": "ec3a6f567c2f27d4af8a538612a16ada6d52a9df9c3f86c69a10d47d58c05d23"
+      "durationMs": 63136.909248,
+      "startedAt": "2026-10-13T14:35:45.427Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/b9d04da4-d753-4a6c-aa88-e8ba8aee5a64.log",
+      "logSha256": "db00d0ece6b79bc1ffea52febc965255bb8cbc8b566fef58561a9f4c873916c2"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2290.453138,
+      "startedAt": "2026-10-13T14:37:03.197Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/3dc65d28-e6e8-4747-bbe7-93f463e49ed6.log",
+      "logSha256": "232354f91e3da5e294e7a104c43461a91c2213d563d5f77a7bc606e7958320f6"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1141.330438,
+      "startedAt": "2026-10-13T14:37:05.615Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/ba1816d7-8e97-49ee-86d0-a13e4bc22036.log",
+      "logSha256": "2777ad07d89181a3aaee61900c135a8a4707052a1dad53f991bbb7e478571f5e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/mdd-resources.spec.mjs",
+        "e2e/rich-navigation.spec.mjs",
+        "e2e/oxford-radio-css.spec.mjs",
+        "e2e/rich-resource-failure-ui.spec.mjs",
+        "e2e/rich-reading-window.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs"
+      ],
+      "candidateHead": "9f6efee656ef82d5470ee2fae684c29706d42ff9",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 27874.853039,
+      "startedAt": "2026-10-13T14:37:06.888Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/eaf927a8-5272-46f2-85fc-8b199d3ce3cc.log",
+      "logSha256": "13495c772b512a48d631bbfc28f62c75c4fa002850b205fb07068e247a42cc52"
     }
   ],
   "artifact": null,
