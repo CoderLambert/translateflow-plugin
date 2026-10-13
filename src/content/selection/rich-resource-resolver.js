@@ -61,9 +61,9 @@
       const elements = Array.isArray(item?.elements)
         ? item.elements.filter(Boolean)
         : item?.element ? [item.element] : [];
-      const presentation = validatedResourcePresentation(item.presentation, item.kind, path);
-      const key = `${item.kind}\u0000${path}\u0000${presentation}`;
-      if (session.resources.some((existing) => `${existing.kind}\u0000${existing.path}\u0000${existing.presentation || ""}` === key)) continue;
+      const presentation = app.modules.richResourcePath.validatedPresentation(item.presentation, item.kind, path);
+      const key = app.modules.richResourcePath.descriptorKey(item.kind, path, presentation);
+      if (session.resources.some((existing) => app.modules.richResourcePath.descriptorKey(existing.kind, existing.path, existing.presentation) === key)) continue;
       session.resources.push({
         kind: item.kind,
         path,
@@ -379,13 +379,6 @@
         : (kind === "image" ? "content.rich.imageMissing" : "content.rich.audioMissing"),
       label ? { label } : {});
     return node;
-  }
-
-  function validatedResourcePresentation(value, kind, path) {
-    if (kind === "image" && value === "oxford-opposition" && path === "img/OPP.png") return value;
-    if (kind === "image" && value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
-    if (kind === "audio" && (value === "pronunciation-british" || value === "pronunciation-american")) return value;
-    return "";
   }
 
   app.modules.richResourceResolver = Object.freeze({

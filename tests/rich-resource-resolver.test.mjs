@@ -26,9 +26,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
         return new Promise((resolve) => pending.push(resolve));
       }
     },
-    richResourcePath: {
-      normalize(value) { return String(value || ""); }
-    }
+
   } };
   const context = vm.createContext({
     __TRANSLATE_FLOW_CONTENT__: app,
@@ -38,6 +36,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
     URL,
     atob
   });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
@@ -343,12 +342,13 @@ async function createStylesheetHarness({ imageResponse, deferImage = false }) {
         return Promise.resolve(imageResponse);
       }
     },
-    richResourcePath: { normalize(value) { return String(value || ""); } }
+
   } };
   const document = {
     createElement(name) { return { tagName: name, textContent: "", remove() { this.removed = true; } }; }
   };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextDecoder, Uint8Array, Blob, URL, atob });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
@@ -407,12 +407,13 @@ function createMediaLifecycleHarness(assets) {
         });
       }
     },
-    richResourcePath: { normalize(value) { return String(value || ""); } }
+
   } };
   const context = vm.createContext({
     __TRANSLATE_FLOW_CONTENT__: app, document, IntersectionObserver: Observer,
     TextDecoder, Uint8Array, Blob, URL, atob, crypto: globalThis.crypto
   });
+  vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(MEDIA, "utf8"), context);
   vm.runInContext(readFileSync(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
@@ -453,3 +454,21 @@ class FakeElement {
   pause() {}
   load() {}
 }
+
+test("the same image path retains separate ordinary and validated semantic descriptor styles", async () => {
+  const bytes = Buffer.from([137, 80, 78, 71]);
+  const harness = createMediaLifecycleHarness({ "img/OPP.png": { bytes, mime: "image/png", width: 24, height: 24 } });
+  const parent = new FakeParent();
+  const ordinary = parent.append(new FakeElement("SPAN")), semantic = parent.append(new FakeElement("SPAN"));
+  const container = {};
+  harness.resolver.attach(container, { appendChild() {} }, {}, [
+    { kind: "image", path: "img/OPP.png", element: ordinary },
+    { kind: "image", path: "img/OPP.png", presentation: "oxford-opposition", element: semantic }
+  ], "rich-mdict-10000000-0000-4000-8000-000000000001", "v1");
+  harness.observer.trigger(ordinary, true); harness.observer.trigger(semantic, true);
+  await waitFor(() => parent.children.every((node) => node.tagName === "IMG"));
+  assert.equal(parent.children[0].className, "tf-rich-resource-image");
+  assert.match(parent.children[1].className, /tf-rich-resource-image-oxford-inline/u);
+  assert.equal(harness.resolver.activeObjectUrlCount, 2);
+  harness.resolver.close(container); assert.equal(harness.resolver.activeObjectUrlCount, 0);
+});

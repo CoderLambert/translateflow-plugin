@@ -21,10 +21,16 @@
 
   function sanitizeRichDictionaryRecord(input = {}) {
     const result = sanitizeRecord(input);
-    let nodes = 0, resources = 0;
-    const visit = (items) => { for (const node of items || []) { nodes += 1; if (node.type === "resource") resources += 1; if (node.children) visit(node.children); } };
+    let nodes = 0;
+    const resources = new Set();
+    const visit = (items) => { for (const node of items || []) {
+      nodes += 1;
+      const key = node.type === "resource" ? app.modules.richResourcePath?.descriptorKey?.(node.kind, node.path, node.presentation) : "";
+      if (key) resources.add(key);
+      if (node.children) visit(node.children);
+    } };
     visit(result.nodes);
-    const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources });
+    const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources: resources.size });
     return { nodes: result.nodes, truncated: result.truncated, metrics, controlsUnavailable: result.controlsUnavailable === true, diagnostics: result.controlsDegraded ? ["controls.unavailable"] : [] };
   }
 

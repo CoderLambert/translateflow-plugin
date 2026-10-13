@@ -200,8 +200,8 @@
       const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
       if (!path || path !== node.path || !["image", "audio", "stylesheet"].includes(node.kind)) return null;
       const label = String(node.label || "").slice(0, 160);
-      const presentation = resourcePresentation(node.presentation, node.kind, path);
-      const key = `${node.kind}\u0000${path}\u0000${presentation}`;
+      const presentation = app.modules.richResourcePath.validatedPresentation(node.presentation, node.kind, path);
+      const key = app.modules.richResourcePath.descriptorKey(node.kind, path, presentation);
       let item = resourceMap.get(key);
       if (!item) {
         if (resources.length >= MAX_RESOURCE_DESCRIPTORS) {
@@ -353,13 +353,6 @@
     if (!classes.includes("tf-rich-pronunciation-label")) return "";
     const value = String(attrs["data-rich-pronunciation"] || "");
     return value === "british" || value === "american" ? value : "";
-  }
-
-  function resourcePresentation(value, kind, path) {
-    if (kind === "image" && value === "oxford-opposition" && path === "img/OPP.png") return value;
-    if (kind === "image" && value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
-    if (kind === "audio" && (value === "pronunciation-british" || value === "pronunciation-american")) return value;
-    return "";
   }
 
   function decorateOxfordPlaceholder(element, presentation) {
