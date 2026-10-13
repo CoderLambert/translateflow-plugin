@@ -168,3 +168,69 @@ test('hint metadata count and node admission stay bounded and optional ambiguity
   const ambiguous = p.render(original + '<span class="o-symbol-wrap"><span class="o-symbol-tip">ONE</span><span class="o-symbol-tip">TWO</span></span>');
   assert.equal(ambiguous.shadowRoot.querySelector('.tf-rich-owned-action'), null); p.close();
 });
+
+function hintButton(host) { return [...host.shadowRoot.querySelectorAll('button')].find(node => node.textContent === 'content.rich.showHint'); }
+function card(p, hosts) {
+  const body = p.document.createElement('div'); body.className = 'tf-selection-rich-card-body'; p.document.body.append(body);
+  for (const host of hosts) { host.classList.add('tf-selection-rich-text'); body.append(host); }
+  return body;
+}
+function usage(hosts) {
+  let nodes = 0, bytes = 0;
+  for (const host of hosts) {
+    const walker = host.ownerDocument.createTreeWalker(host.shadowRoot.querySelector('.tf-rich-viewer'), 0xffffffff);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) { nodes++; if (node.nodeType === 3) bytes += Buffer.byteLength(node.nodeValue); }
+  }
+  return { nodes, bytes };
+}
+function padNodes(p, host, hosts, target) {
+  const filler = p.document.createElement('div'), fragment = p.document.createDocumentFragment();
+  for (let count = usage(hosts).nodes + 1; count < target; count++) fragment.append(p.document.createTextNode(''));
+  filler.append(fragment); host.shadowRoot.querySelector('.tf-rich-viewer').append(filler);
+  assert.equal(usage(hosts).nodes, target); return filler;
+}
+
+test('two valid records whose aggregate metrics admit 32766 nodes cannot open an over-budget hint', () => {
+  const p = pipeline(); const base = makeOxfordAdapterRecord(); const count = p.sanitize(base).metrics.nodes;
+  const html = base + '<span></span>'.repeat(16383 - count);
+  assert.equal(p.sanitize(html).metrics.nodes, 16383);
+  const first = p.render(html), second = p.render(html); card(p, [first, second]);
+  const before = usage([first, second]); hintButton(first).click();
+  assert.equal(first.shadowRoot.querySelector('.tf-rich-owned-hint'), null); assert.deepEqual(usage([first, second]), before);
+  p.close();
+});
+
+test('card-wide actual UTF-8 text near 2 MiB refuses a hint, then admits it after sibling text is removed', () => {
+  const p = pipeline(), first = p.render(makeOxfordAdapterRecord()), second = p.render(makeOxfordAdapterRecord()); card(p, [first, second]);
+  const padding = p.document.createTextNode('界'.repeat(Math.ceil((2 * 1024 * 1024 - usage([first, second]).bytes - 128) / 3)));
+  second.shadowRoot.querySelector('.tf-rich-viewer').append(padding);
+  assert.ok(usage([first, second]).bytes < 2 * 1024 * 1024);
+  hintButton(first).click(); assert.equal(first.shadowRoot.querySelector('.tf-rich-owned-hint'), null);
+  padding.remove(); hintButton(first).click(); assert.ok(first.shadowRoot.querySelector('.tf-rich-owned-hint')); p.close();
+});
+
+test('sibling hints count toward card nodes; toggling a hint closed at the limit restores admission', () => {
+  const p = pipeline(), first = p.render(makeOxfordAdapterRecord()), second = p.render(makeOxfordAdapterRecord()); card(p, [first, second]);
+  padNodes(p, second, [first, second], 32760);
+  hintButton(second).click(); assert.ok(second.shadowRoot.querySelector('.tf-rich-owned-hint')); assert.equal(usage([first, second]).nodes, 32765);
+  hintButton(first).click(); assert.equal(first.shadowRoot.querySelector('.tf-rich-owned-hint'), null);
+  hintButton(second).click(); assert.equal(second.shadowRoot.querySelector('.tf-rich-owned-hint'), null); assert.equal(usage([first, second]).nodes, 32760);
+  hintButton(first).click(); assert.ok(first.shadowRoot.querySelector('.tf-rich-owned-hint')); assert.ok(usage([first, second]).nodes <= 32768); p.close();
+});
+
+test('live sibling preview and SVG nodes are measured, and closing preview restores hint admission', async () => {
+  const p = pipeline({ assets: () => response() }), first = p.render(makeOxfordAdapterRecord()), second = p.render(makeOxfordAdapterRecord()); card(p, [first, second]); await settle(p);
+  [...second.shadowRoot.querySelectorAll('button')].find(node => node.textContent === 'content.rich.viewIllustration').click(); await settle(p);
+  assert.ok(second.shadowRoot.querySelector('.tf-rich-image-preview svg path'));
+  padNodes(p, second, [first, second], 32764);
+  hintButton(first).click(); assert.equal(first.shadowRoot.querySelector('.tf-rich-owned-hint'), null);
+  assert.equal(p.app.modules.richResourceResolver.closeImagePreview(second), true);
+  hintButton(first).click(); assert.ok(first.shadowRoot.querySelector('.tf-rich-owned-hint')); assert.ok(usage([first, second]).nodes <= 32768); p.close();
+});
+
+test('host without a card body counts only its own viewport, and own hostile additions still stop admission', () => {
+  const p = pipeline(), first = p.render(makeOxfordAdapterRecord()), second = p.render(makeOxfordAdapterRecord());
+  padNodes(p, second, [second], 32768); hintButton(first).click(); assert.ok(first.shadowRoot.querySelector('.tf-rich-owned-hint'));
+  hintButton(first).click(); assert.equal(first.shadowRoot.querySelector('.tf-rich-owned-hint'), null);
+  padNodes(p, first, [first], 32764); hintButton(first).click(); assert.equal(first.shadowRoot.querySelector('.tf-rich-owned-hint'), null); p.close();
+});

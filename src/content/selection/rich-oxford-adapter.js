@@ -121,8 +121,9 @@
       const button = ownedButton("content.rich.showHint"); wrap.appendChild(button);
       button.addEventListener("click", (event) => {
         event.preventDefault(); event.stopPropagation(); if (!live()) return;
-        if (state.count + 5 > 32767 || state.textBytes + new TextEncoder().encode(item.text).length > 2 * 1024 * 1024) return;
         if (state.popup?.opener === button) { closeHint(state); return; } closeHint(state);
+        const textBytes = new TextEncoder().encode(item.text).length;
+        if (state.count + 5 > 32767 || state.textBytes + textBytes > 2 * 1024 * 1024 || !admitsHint(state, textBytes)) return;
         const popup = document.createElement("div"); popup.className = "tf-rich-owned-hint"; popup.setAttribute("role", "dialog");
         popup.style.cssText = "display:block!important;position:relative;max-width:100%;padding:8px;border:1px solid var(--tf-border-soft,#d8ddd4);background:var(--tf-bg-subtle,#f7f5ef);color:var(--tf-text-main,#3c463d);border-radius:8px";
         const text = document.createElement("span"); text.textContent = item.text;
@@ -146,6 +147,29 @@
       return true;
     };
     return state;
+  }
+  function admitsHint(state, hintBytes) {
+    const maxNodes = 32768 - 5, maxBytes = 2 * 1024 * 1024 - hintBytes - 256;
+    const body = state.host.closest?.(".tf-selection-rich-card-body");
+    const hosts = body ? body.querySelectorAll(".tf-selection-rich-text") : [state.host];
+    let nodes = 0, bytes = 0;
+    const encoder = new TextEncoder();
+    for (const host of hosts) {
+      const viewport = host === state.host ? state.viewport : host.shadowRoot?.querySelector(".tf-rich-viewer");
+      if (!viewport) continue;
+      // TreeWalker measures actual dynamic hints/previews/SVG too, without a
+      // recursive stack or materializing all descendants near the card limit.
+      const walker = viewport.ownerDocument.createTreeWalker(viewport, 0xffffffff);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (++nodes > maxNodes) return false;
+        if (node.nodeType !== 3) continue;
+        const text = node.nodeValue || "";
+        if (text.length > maxBytes - bytes) return false;
+        bytes += encoder.encode(text).length;
+        if (bytes > maxBytes) return false;
+      }
+    }
+    return true;
   }
   function ownedButton(key) {
     const button = document.createElement("button"); button.type = "button"; button.className = "tf-rich-owned-action";
