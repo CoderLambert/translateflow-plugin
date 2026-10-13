@@ -4,7 +4,8 @@
   "status": "working",
   "owner": "main",
   "dependencies": [
-    "oxford-radio-css"
+    "oxford-radio-css",
+    "rich-mdict-multiple-records"
   ],
   "branch": "fix/rich-font-svg-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-font-svg-20261013",
@@ -24,12 +25,21 @@
       "tests/mdd-security.test.mjs",
       "tests/rich-mdd-css.test.mjs",
       "tests/rich-resource-resolver.test.mjs",
+      "tests/rich-static-svg.test.mjs",
+      "tests/rich-navigation.test.mjs",
+      "tests/rich-oxford-adapter.test.mjs",
+      "tests/rich-resource-recovery.test.mjs",
+      "tests/local-dictionary-preflight.test.mjs",
+      "tests/local-dictionary-import-presentation.test.mjs",
       "tests/constants.test.mjs",
       "tests/rich-mdd-lookup-cancellation.test.mjs",
       "tests/rich-mdict-storage.test.mjs",
       "tests/rich-controls.test.mjs",
       "tests/rich-viewer-contract.test.mjs",
-      "tests/selection-rich-outcome.test.mjs"
+      "tests/selection-rich-outcome.test.mjs",
+      "tests/selection-multi-dictionary.test.mjs",
+      "tests/selection-controller-cancel.test.mjs",
+      "tests/reading-content-classic.test.mjs"
     ],
     [
       "npm",
@@ -62,12 +72,17 @@
       "test:e2e",
       "--",
       "e2e/rich-local-fonts.spec.mjs",
+      "e2e/rich-static-svg.spec.mjs",
+      "e2e/rich-navigation.spec.mjs",
+      "e2e/rich-oxford-adapter.spec.mjs",
+      "e2e/rich-resource-recovery.spec.mjs",
       "e2e/oxford-radio-css.spec.mjs",
       "e2e/multi-dictionary-viewer.spec.mjs",
       "e2e/selection-rich-lookup-cancel.spec.mjs",
-      "e2e/mdd-resources.spec.mjs"
+      "e2e/mdd-resources.spec.mjs",
+      "e2e/local-dictionary-import-v2-product.spec.mjs"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "Chrome字体原型后实施有界真实TTF slice，fonts完成再SVG。"
+  "nextAction": "冻结完整Oxford高影响收口候选，统一执行一次exact-head验收与真实六文件产品流程。"
 }
