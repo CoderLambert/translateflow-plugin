@@ -43,7 +43,7 @@ test('rich article expands the existing window on overflow; container layout, ma
   await panel.locator('.tf-selection-size-toggle').click();await expect(panel).toHaveAttribute('data-view-mode','compact');
   await expect.poll(()=>viewer.locator('.layout').evaluate(el=>getComputedStyle(el).flexDirection)).toBe('column');
   await panel.locator('.tf-selection-size-toggle').click();await expect(panel).toHaveAttribute('data-view-mode','reading');
-  await page.setViewportSize({width:360,height:760});await contained(page,panel);
+  await page.setViewportSize({width:360,height:760});await expect(async()=>{await contained(page,panel);}).toPass();
   await expect.poll(()=>viewer.locator('.layout').evaluate(el=>getComputedStyle(el).flexDirection)).toBe('column');
   expect(await viewer.locator('.head').evaluate(el=>el.getBoundingClientRect().height)).toBeLessThan(35);
   await viewer.locator('.tail').scrollIntoViewIfNeeded();await expect(viewer.locator('.tail')).toBeInViewport();
