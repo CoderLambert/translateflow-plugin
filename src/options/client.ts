@@ -6,9 +6,13 @@ import { normalizeOrigin } from "../shared/url.js";
 import { createI18n } from "../i18n/index.js";
 import type { I18n } from "../i18n/index.js";
 import { CHATGPT_PLAN_NATIVE_PERMISSION } from "../shared/chatgpt-native-host.js";
+import { getConnectionHostPermissionPattern, normalizeProviderBaseUrl } from "../shared/provider-connections.js";
 
 export type OptionsConfig = { provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
-export type SiteProfile = { provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
+export type ServiceRef = { kind: "api-key"; connectionId: string } | { kind: "chatgpt-plan" };
+export type ProviderConnection = { id: string; revision: number; name: string; platform: string; protocol: string; baseUrl: string; credentialId: string; defaultModel: string; hasApiKey: boolean; settings: { streaming: boolean; outputTokens: number; temperature: number | null; reasoning: string; allowEmptyApiKey: boolean; allowInsecureHttp: boolean } };
+export type ProviderConnectionState = { version: number; defaultService: ServiceRef | null; connections: ProviderConnection[] };
+export type SiteProfile = { serviceRef?: ServiceRef; provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
 export type SiteEntry = { origin: string; profile: SiteProfile };
 export type CacheStats = { pageCount: number; segmentCount: number; bytes: number };
 export type ChatGPTPlanAccount = { id: string; label: string; email?: string; connected: boolean };
@@ -39,6 +43,12 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     if (!await api.permissions.request({ origins: [pattern] })) throw new Error(i18n.t("options.apiPermissionDenied", { pattern }));
   }
 
+  async function ensureConnectionPermission(raw: string) {
+    const pattern = getConnectionHostPermissionPattern(raw);
+    if (!pattern) throw new Error(i18n.t("options.openaiBaseRequired"));
+    if (!await api.permissions.request({ origins: [pattern] })) throw new Error(i18n.t("options.apiPermissionDenied", { pattern }));
+  }
+
   function normalizeConfig(input: OptionsConfig): OptionsConfig {
     const max = Math.min(2048, Math.max(20, Number(input.cacheMaxMB) || DEFAULT_CONFIG.cacheMaxMB));
     const provider = input.provider || PROVIDER_IDS.DEEPSEEK;
@@ -62,6 +72,36 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
 
   async function testProvider() {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.TEST_API });
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
+    return String(response.result || "");
+  }
+
+  async function providerConnections(): Promise<ProviderConnectionState> {
+    const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.PROVIDER_CONNECTIONS_LIST });
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.readFailed"));
+    return { version: Number(response.version || 1), defaultService: response.defaultService || null, connections: Array.isArray(response.connections) ? response.connections : [] };
+  }
+
+  async function saveProviderConnection(connection: Omit<ProviderConnection, "hasApiKey">, expectedRevision: number, apiKey: string, updateCredential: boolean) {
+    await ensureConnectionPermission(normalizeProviderBaseUrl(connection.baseUrl));
+    const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.PROVIDER_CONNECTION_UPSERT, connection, expectedRevision, apiKey, updateCredential });
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
+    return response.connection as ProviderConnection;
+  }
+
+  async function deleteProviderConnection(connection: ProviderConnection) {
+    const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.PROVIDER_CONNECTION_DELETE, connectionId: connection.id, expectedRevision: connection.revision });
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
+  }
+
+  async function setDefaultService(service: ServiceRef) {
+    const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.DEFAULT_SERVICE_SET, service });
+    if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
+    return response.defaultService as ServiceRef;
+  }
+
+  async function testProviderConnection(connectionId: string) {
+    const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.PROVIDER_CONNECTION_TEST, connectionId });
     if (!response?.ok) throw new Error(response?.error || i18n.t("options.apiTestFailed"));
     return String(response.result || "");
   }
@@ -97,9 +137,8 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     return Object.entries(objectRecord(stored.siteProfiles)).sort(([a], [b]) => a.localeCompare(b)).map(([origin, raw]) => ({ origin, profile: normalizeSiteProfile(objectRecord(raw)) as SiteProfile }));
   }
 
-  async function saveProfile(originInput: string, profileInput: SiteProfile, openAIBaseUrl: string, defaultProvider: string) {
+  async function saveProfile(originInput: string, profileInput: SiteProfile) {
     const origin = normalizeOrigin(originInput), profile = normalizeSiteProfile(profileInput);
-    if ((profile.provider || defaultProvider || PROVIDER_IDS.DEEPSEEK) === PROVIDER_IDS.OPENAI_COMPATIBLE) await ensureOpenAIPermission(openAIBaseUrl);
     const stored = await api.storage.local.get(["siteProfiles"]) as Record<string, unknown>, next: Record<string, unknown> = { ...objectRecord(stored.siteProfiles) };
     if (Object.keys(profile).length) next[origin] = profile; else delete next[origin];
     await api.storage.local.set({ siteProfiles: next });
@@ -126,10 +165,12 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     const pattern = `${origin}/*`, stored = await api.storage.local.get(["cacheRestoreSites", "autoSites", "quickControlSites", "openAICompatible"]) as Record<string, unknown>;
     const stillNeeded = [stored.cacheRestoreSites, stored.autoSites, stored.quickControlSites].some(values => Array.isArray(values) && values.includes(origin));
     let providerNeeded = false; try { providerNeeded = getProviderHostPermissionPattern(objectRecord(stored.openAICompatible).baseUrl) === pattern; } catch {}
+    if (!providerNeeded) { try { providerNeeded = (await providerConnections()).connections.some(connection => getConnectionHostPermissionPattern(connection.baseUrl) === pattern); } catch {} }
     if (!stillNeeded && !providerNeeded) await api.permissions.remove({ origins: [pattern] });
   }
 
-  return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, hasChatGPTPlanPermission, requestChatGPTPlanPermission,
+  return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, providerConnections, saveProviderConnection,
+    deleteProviderConnection, setDefaultService, testProviderConnection, hasChatGPTPlanPermission, requestChatGPTPlanPermission,
     chatGPTPlanAction, profiles, saveProfile, deleteProfile, cacheStats, pruneCache, clearCache, behaviorSites, removeBehavior };
 }
 export type OptionsClient = ReturnType<typeof optionsClient>;

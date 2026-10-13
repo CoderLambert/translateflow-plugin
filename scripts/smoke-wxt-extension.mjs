@@ -68,6 +68,12 @@ try {
     prompt: "Translate the segments and return JSON only.", appearance: "standard", cacheMaxMB: 50,
     cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
     siteProfiles: {}, glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
+    providerConnectionsVersion: 1,
+    providerConnections: { "openai-compatible": { id: "openai-compatible", revision: 1, name: "OpenAI-compatible", platform: "custom",
+      protocol: "openai-chat", baseUrl: `${baseUrl}/v1`, credentialId: "openai-compatible", defaultModel: "mock-model",
+      settings: { streaming: false, outputTokens: 4096, temperature: null, reasoning: "", allowEmptyApiKey: true, allowInsecureHttp: true } } },
+    providerCredentials: { "openai-compatible": "" },
+    defaultService: { kind: "api-key", connectionId: "openai-compatible" },
     openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" }
   }), server.baseUrl);
   const page = await context.newPage();
@@ -87,7 +93,7 @@ try {
   }, { tabId, scripts: [...CONTENT_SCRIPT_FILES], styles: [...CONTENT_STYLE_FILES], main: [...YOUTUBE_MAIN_BRIDGE_FILES] });
   assert.equal(await page.evaluate(() => window.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__?.version), 1);
   const translated = await driver.evaluate((tabId) => chrome.tabs.sendMessage(tabId, { type: "ABT_TRANSLATE_PAGE", taskId: "wxt-body-smoke" }), tabId);
-  assert.equal(translated.ok, true);
+  assert.equal(translated.ok, true, JSON.stringify(translated));
   assert.equal(translated.apiTranslated, 3);
   await expect(page.locator(".abt-translation")).toHaveCount(3);
   assert.equal(server.calls.length, 1);

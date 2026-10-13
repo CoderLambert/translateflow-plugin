@@ -35,8 +35,10 @@ import {
   clearTemporaryPresetOverride,
   getTemporaryPresetOverride
 } from "./preset-session.js";
+import { ensureProviderConnections } from "./provider-connections.js";
 
 export async function getConfig() {
+  await ensureProviderConnections();
   const stored = await chrome.storage.local.get(CONFIG_KEYS);
   return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...stored });
 }
@@ -81,6 +83,8 @@ export async function getEffectiveContext(pageUrl) {
     origin,
     hostname: new URL(origin).hostname,
     provider: resolved.provider,
+    providerLabel: resolved.providerLabel,
+    connectionId: resolved.connectionId,
     model: resolved.model,
     targetLanguage: resolved.targetLanguage,
     presetId: resolved.presetId,
@@ -125,7 +129,8 @@ export async function ensureConfigDefaults() {
     if (current[key] === undefined) missing[key] = value;
   }
   if (Object.keys(missing).length) await chrome.storage.local.set(missing);
-  return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...current, ...missing });
+  await ensureProviderConnections();
+  return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...current, ...missing, ...await chrome.storage.local.get(CONFIG_KEYS) });
 }
 
 export async function removeLegacyV1Cache() {

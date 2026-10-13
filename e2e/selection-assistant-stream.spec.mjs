@@ -14,6 +14,11 @@ test("Selection assistant Port streams real text and stop preserves partial with
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
     const driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);
     await driver.evaluate(baseUrl => chrome.storage.local.set({ provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+      providerConnectionsVersion: 1,
+      providerConnections: { "openai-compatible": { id: "openai-compatible", revision: 1, name: "OpenAI-compatible", platform: "custom",
+        protocol: "openai-chat", baseUrl: `${baseUrl}/v1`, credentialId: "openai-compatible", defaultModel: "mock-model",
+        settings: { streaming: true, outputTokens: 4096, temperature: null, reasoning: "", allowEmptyApiKey: true, allowInsecureHttp: true } } },
+      providerCredentials: { "openai-compatible": "" }, defaultService: { kind: "api-key", connectionId: "openai-compatible" },
       openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } }), server.baseUrl);
     const page = await context.newPage(); await page.goto(`${server.baseUrl}/selection`); const tabId = await driver.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url).id, page.url());
     async function command(name, requestId) { return driver.evaluate(async ({ tabId, name, requestId, pageUrl }) => { const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [name, requestId, pageUrl], func: (name, requestId, pageUrl) => {

@@ -2,22 +2,8 @@ import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
-import {
-  clearAllCache,
-  clearPageCache,
-  getCacheStats,
-  getPageCacheStatus,
-  lookupTranslations,
-  pruneCache,
-  storeTranslations
-} from "./cache-db.js";
-import {
-  getConfig,
-  getEffectiveConfig,
-  getEffectiveContext,
-  saveSiteAppearance,
-  saveSitePreset
-} from "./config.js";
+import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "./cache-db.js";
+import { getConfig, getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
   hideQuickControlSite,
   registerAutoSite,
@@ -30,6 +16,10 @@ import {
 } from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
+import { deleteProviderConnection, listProviderConnections, setDefaultService, upsertProviderConnection } from "./provider-connections.js";
+import { testSavedProviderConnection } from "./provider-connection-runtime.js";
+import { readPublicSettings, writePublicSettings } from "./public-settings.js";
+import { createEffectiveConfigSnapshot, resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
@@ -91,7 +81,7 @@ export function registerMessageRouter() {
 export async function handleBackgroundMessage(message, sender) {
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await getEffectiveConfig(message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
       return {
         translations: await runTranslationRequest({
           requestId: message.requestId,
@@ -117,6 +107,22 @@ export async function handleBackgroundMessage(message, sender) {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTIONS_LIST:
+      assertOptionsSender(sender); return listProviderConnections();
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_UPSERT:
+      assertOptionsSender(sender); return upsertProviderConnection(message);
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_DELETE:
+      assertOptionsSender(sender); return deleteProviderConnection(message.connectionId, message.expectedRevision);
+    case BACKGROUND_MESSAGES.DEFAULT_SERVICE_SET:
+      assertOptionsSender(sender); return setDefaultService(message.service);
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_TEST: {
+      assertOptionsSender(sender);
+      return testSavedProviderConnection(message.connectionId);
+    }
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_GET:
+      return { settings: await readPublicSettings() };
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET:
+      return writePublicSettings(message.settings);
     case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
       assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
@@ -142,21 +148,27 @@ export async function handleBackgroundMessage(message, sender) {
         targetLanguage: message.targetLanguage || "zh-CN"
       });
     case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
-      const config = await getEffectiveConfig(message.pageUrl);
+      const snapshot = message.configSnapshotId
+        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl) }
+        : await createEffectiveConfigSnapshot(message.pageUrl);
+      const config = snapshot.config;
       const result = await lookupTranslations({
         pageUrl: message.pageUrl,
         segments: message.segments,
         config
       });
-      return { ...result, readingResult: await readingTranslationResult(config) };
+      return { ...result, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
     }
-    case BACKGROUND_MESSAGES.CACHE_STORE:
-      return storeTranslations({
+    case BACKGROUND_MESSAGES.CACHE_STORE: {
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      const result = await storeTranslations({
         pageUrl: message.pageUrl,
         pageTitle: message.pageTitle,
         items: message.items,
-        config: await getEffectiveConfig(message.pageUrl)
+        config
       });
+      return result;
+    }
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
       return getPageCacheStatus({
         pageUrl: message.pageUrl,
@@ -332,6 +344,7 @@ export async function handleBackgroundMessage(message, sender) {
       throw new Error("未知扩展消息。");
   }
 }
+
 
 async function notifyRichMddResourcesChanged(dictionaryId) {
   const tabsApi = globalThis.chrome?.tabs;

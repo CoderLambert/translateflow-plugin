@@ -53,13 +53,13 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
     <main><header className="settings-intro"><span className="section-kicker">{i18n.t("options.kicker")}</span><h1>{i18n.t("options.title")}</h1><p className="lead">{i18n.t("options.lead")}</p></header>
       {!config ? <section className="tf-card" aria-busy={!ui.loadError}>{ui.loadError ? <><p role="alert">{i18n.t("options.loadFailed", { message: ui.loadError })}</p><button type="button" onClick={() => void ui.loadConfig()}>{i18n.t("common.retry")}</button></> : <p>{i18n.t("options.loading")}</p>}</section> : <>
         <GeneralSection config={config} disabled={ui.busy} update={update} />{localeSection}<SelectionSection config={config} disabled={ui.busy} update={update} /><AppearanceSection config={config} disabled={ui.busy} update={update} /><YoutubeSection config={config} disabled={ui.busy} update={update} /><ShortcutsSection />
-        <SitesSection entries={ui.profiles.value} loading={ui.profiles.loading} error={ui.profiles.error} disabled={ui.busy} retry={() => void ui.refreshProfiles()} save={ui.saveProfile} remove={ui.deleteProfile} />
+        <SitesSection entries={ui.profiles.value} connections={ui.connections.value?.connections || []} loading={ui.profiles.loading} error={ui.profiles.error} disabled={ui.busy} retry={() => void ui.refreshProfiles()} save={ui.saveProfile} remove={ui.deleteProfile} />
         <BehaviorSection restoreSites={ui.restoreSites.value} autoSites={ui.autoSites.value} loading={ui.restoreSites.loading || ui.autoSites.loading} errors={[ui.restoreSites.error, ui.autoSites.error]} disabled={ui.busy} refresh={() => void ui.refreshBehaviors()} remove={(key, origin) => void ui.removeBehavior(key, origin)} />
       </>}
       <GlossarySection client={glossary} setStatus={setStatus} />
       <DictionarySection client={dictionaries} setStatus={setStatus} />
       {config ? <>
-        <ProviderSections config={config} disabled={ui.busy} update={update} client={client} />
+        <ProviderSections config={config} disabled={ui.busy} update={update} client={client} connections={ui.connections.value} loading={ui.connections.loading} error={ui.connections.error} reload={ui.refreshConnections} setStatus={setStatus} />
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />
         <DeveloperSection version={client.version} />
         <div className="sticky-actions"><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("options.save")}</button><button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button></div>

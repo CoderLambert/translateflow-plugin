@@ -23,6 +23,7 @@
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
+      const configSnapshotId = String(lookup.configSnapshotId || "");
 
       const cached = (lookup.hits || [])
         .find((item) => String(item.id) === "selection")?.text?.trim();
@@ -40,6 +41,7 @@
         type: messages.background.TRANSLATE_BATCH,
         requestId: task.id,
         pageUrl: snapshot.pageUrl,
+        configSnapshotId,
         segments: [{ id: "selection", text: snapshot.text }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
@@ -56,6 +58,7 @@
         type: messages.background.CACHE_STORE,
         pageUrl: snapshot.pageUrl,
         pageTitle: document.title,
+        configSnapshotId,
         items: [{ sourceText: snapshot.text, translation }]
       });
       assertCurrent(version, snapshot, expectedPage, task);

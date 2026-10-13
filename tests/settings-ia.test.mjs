@@ -12,7 +12,8 @@ const cache = await readFile(new URL("../src/options/CacheSection.tsx", import.m
 const glossary = await readFile(new URL("../src/options/GlossarySection.tsx", import.meta.url), "utf8");
 const dictionaries = await readFile(new URL("../src/options/DictionarySection.tsx", import.meta.url), "utf8");
 const client = await readFile(new URL("../src/options/client.ts", import.meta.url), "utf8");
-const js = [app, common, sites, cache, glossary, dictionaries, client].join("\n");
+const connections = await readFile(new URL("../src/options/ProviderConnectionsSection.tsx", import.meta.url), "utf8");
+const js = [app, common, sites, cache, glossary, dictionaries, connections, client].join("\n");
 
 test("Settings exposes the task-oriented information architecture including automatic site behavior", () => {
   for (const id of ["general","appearance","youtube","sites","auto-sites","glossary","provider","cache","developer"]) {
@@ -23,13 +24,14 @@ test("Settings exposes the task-oriented information architecture including auto
 });
 
 test("Settings preserves finalized controls and automatic cache restore management", () => {
-  for (const id of ["defaultProvider","prompt","targetLanguage","defaultAppearance","deepseekApiKey","openaiBaseUrl","openaiStreaming","siteOrigin","glossaryScope","cacheMaxMB","youtubeSubtitleMode","youtubeSubtitleSize","cacheRestoreSitesList"]) {
+  for (const id of ["defaultService","prompt","targetLanguage","defaultAppearance","connectionPlatform","connectionProtocol","connectionBaseUrl","connectionApiKey","connectionModel","siteOrigin","glossaryScope","cacheMaxMB","youtubeSubtitleMode","youtubeSubtitleSize","cacheRestoreSitesList"]) {
     assert.match(js + html, new RegExp(`id=["']${id}["']`));
   }
   assert.match(common, /options\.shortcuts\.summary/);
   assert.match(optionsZhCN["options.shortcuts.summary"], /chrome:\/\/extensions\/shortcuts/);
   assert.match(js, /youtubeSubtitleMode/);
-  assert.match(js, /openaiStreaming/);
+  assert.match(js, /settings\.streaming/);
+  assert.match(js, /PROVIDER_CONNECTION_UPSERT/);
   assert.match(js, /youtubeSubtitleSize/);
   assert.match(js, /cacheRestoreSites/);
   assert.match(js, /api\.storage\.local\.get/);
@@ -56,7 +58,7 @@ test("Settings navigation exposes current, hover and keyboard-focus states", () 
 });
 
 test("Provider and cache destructive controls remain visually distinct without harsh styling", () => {
-  assert.match(common, /id="provider" className="advanced"/);
+  assert.match(connections, /id="provider" className="advanced"/);
   assert.match(cache, /id="cache" className="advanced destructive-zone"/);
   assert.match(css, /\.advanced[\s\S]*var\(--tf-green/);
   assert.match(css, /\.destructive-zone[\s\S]*var\(--tf-danger/);

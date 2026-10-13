@@ -69,15 +69,19 @@ owners under StrictMode.
 
 `resolveTranslationConfig()` 负责把：
 
-- 默认 Provider
-- Provider credentials
+- 默认服务引用
+- API Key 连接定义与 credentials
 - 默认 Prompt
 - Target Language
 - Site Profile
 
 解析成一次翻译真正使用的配置。
 
-站点 Profile 只覆盖 Provider / Model / Prompt / Target Language，不复制 API Key。
+站点 Profile 只覆盖 `serviceRef` / Model / Prompt / Target Language，不复制 API Key。API Key 连接由 `providerConnections` + `providerCredentials` 表示；`chatgpt-plan` 保持独立服务引用。旧 Provider 配置会惰性迁移，但仍保留用于回滚。
+
+Background 将本地存储访问限制为 trusted extension contexts。Content 不直接读取 `chrome.storage.local`；它通过 `PUBLIC_SETTINGS_GET` / `PUBLIC_SETTINGS_SET` 获取允许暴露的页面行为设置，并接收脱敏的 `PUBLIC_SETTINGS_CHANGED` 通知。Provider 连接列表只返回 `hasApiKey`。
+
+页面翻译的第一次 cache lookup 会创建短生命周期 Effective Config snapshot；同一任务的 Provider 请求和 cache store 使用该 snapshot，避免设置中途变化造成缓存与请求身份不一致。
 
 ## Background
 
@@ -186,6 +190,7 @@ The bridge owns a monotonic `videoId + generation` identity. The isolated source
 - URL normalization
 - text normalization
 - provider identity
+- provider connection ID / revision / protocol
 - Provider endpoint 是否参与 cache fingerprint
 - Runtime message value
 - site profile storage shape

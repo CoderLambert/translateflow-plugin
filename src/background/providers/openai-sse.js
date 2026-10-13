@@ -7,6 +7,7 @@ import { ProviderRequestError } from "./shared.js";
 export async function requestChatCompletionsStream({
   url,
   apiKey,
+  headers: requestHeaders = {},
   body,
   providerLabel,
   requireApiKey = true,
@@ -23,9 +24,10 @@ export async function requestChatCompletionsStream({
 
   const headers = {
     "Content-Type": "application/json",
-    Accept: "text/event-stream"
+    Accept: "text/event-stream",
+    ...requestHeaders
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token && !Object.keys(headers).some(name => ["authorization", "api-key"].includes(name.toLowerCase()))) headers.Authorization = `Bearer ${token}`;
 
   const linked = createLinkedSignal(signal, timeoutMs);
   try {

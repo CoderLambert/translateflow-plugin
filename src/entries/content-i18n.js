@@ -58,7 +58,8 @@ import { createI18n } from "../i18n/index.js";
   async function readStoredLocale({ fallbackOnError }) {
     const readGeneration = generation;
     try {
-      const stored = await chrome.storage.local.get(["uiLocale"]);
+      const response = await app.modules.runtime.sendRuntimeMessage({ type: app.modules.runtime.messages.background.PUBLIC_SETTINGS_GET });
+      const stored = response?.settings || {};
       if (!started || readGeneration !== generation) return snapshot();
       return apply(stored?.uiLocale);
     } catch {
@@ -73,26 +74,28 @@ import { createI18n } from "../i18n/index.js";
     }
   }
 
-  function handleStorageChange(changes, areaName) {
-    if (!started || areaName !== "local" || !changes?.uiLocale) return;
+  function handleSettingsMessage(message) {
+    const changes = message?.changes;
+    if (!started || message?.type !== app.modules.runtime.messages.background.PUBLIC_SETTINGS_CHANGED || !changes?.uiLocale) return false;
     generation += 1;
     if (retryTimer !== null) {
       globalThis.clearTimeout(retryTimer);
       retryTimer = null;
     }
     apply(changes.uiLocale.newValue);
+    return false;
   }
 
   function start() {
     if (startPromise) return startPromise;
     started = true;
-    chrome.storage.onChanged.addListener(handleStorageChange);
+    chrome.runtime.onMessage.addListener(handleSettingsMessage);
     startPromise = readStoredLocale({ fallbackOnError: true });
     return startPromise;
   }
 
   function dispose() {
-    if (started) chrome.storage.onChanged.removeListener(handleStorageChange);
+    if (started) chrome.runtime.onMessage.removeListener(handleSettingsMessage);
     started = false;
     startPromise = null;
     generation += 1;
