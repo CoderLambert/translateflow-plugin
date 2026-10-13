@@ -3,13 +3,14 @@ import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
 
 // Generic synthetic structure. No real dictionary markup or private styles are embedded.
-const record = (marker) => `<link rel="stylesheet" href="styles/state.css"><div class="entry"><input type="radio" id="choice-0" name="choices" class="choice choice-0" checked><input type="radio" id="choice-1" name="choices" class="choice choice-1"><div class="tabs"><label for="choice-0" class="tab">First</label><label for="choice-1" class="tab">Second</label></div><div class="panels"><p class="panel panel-0">${marker} FIRST PANEL</p><p class="panel panel-1">${marker} SECOND PANEL</p></div><a href="#fragment-target">Jump to final sentinel</a><label for="outside">Static orphan</label><input type="text" id="outside" name="outside"><script>window.__radioFixtureExecuted=true</script><img src="https://attacker.invalid/radio.png"><details><summary>Local disclosure</summary>DISCLOSURE BODY</details><p id="fragment-target">FINAL SENTINEL ${marker}</p></div>`;
+const panelNames = ["FIRST", "SECOND", "THIRD", "FOURTH"];
+const labelMarkup = (index) => `<label for="choice-${index}" class="tab tab-${index}">${["First", "Second", "Third", "Fourth"][index]}</label>`;
+const record = (marker) => `<link rel="stylesheet" href="styles/state.css"><div class="entry o-pos-switch">${panelNames.map((_, index) => `<input type="radio" id="choice-${index}" name="choices" class="choice choice-${index}" ${index === 0 ? "checked" : ""}>`).join("")}<nav class="tabs o-pos-tabs">${panelNames.map((_, index) => labelMarkup(index)).join("")}</nav><div class="panels o-pos-panels">${panelNames.map((name, index) => `<section class="panel o-pos o-pos-panel ${index >= 2 ? "extra " : ""}o-for-pos-${index}">${marker} ${name} PANEL</section>`).join("")}</div><a href="#fragment-target">Jump to final sentinel</a><label for="outside">Static orphan</label><input type="text" id="outside" name="outside"><script>window.__radioFixtureExecuted=true</script><img src="https://attacker.invalid/radio.png"><details><summary>Local disclosure</summary>DISCLOSURE BODY</details><p id="fragment-target">FINAL SENTINEL ${marker}</p></div>`;
 const css = [
   '.choice{display:none}.tabs{display:flex;align-items:center;justify-content:flex-start;position:relative;width:max-content}',
   '.tab{padding:4px;border:1px solid #123456}.panel{display:none}',
-  '#choice-0:checked ~ .panels > .panel-0{display:block}',
-  '#choice-1:checked ~ .panels > .panel-1{display:block}',
-  '.choice-0:checked ~ .tabs > .tab:first-child,.choice-1:checked ~ .tabs > .tab:last-child{background-color:#123456;color:white}',
+  ...panelNames.map((_, index) => `#choice-${index}:checked ~ div.o-pos-panels > section.o-for-pos-${index}{display:block}`),
+  ...panelNames.map((_, index) => `.choice-${index}:checked ~ nav.o-pos-tabs > label.tab-${index}{background-color:#123456;color:white}`),
   '.tab::before{content:"›"}.tab:focus{border-color:red}',
   '@media screen and (max-width:500px){.tabs{width:100%}}',
   ':host,.x:has(.y),[for="outside"]{position:fixed;background-image:url(https://attacker.invalid/style.png)}',
@@ -23,7 +24,7 @@ test("generic radio state CSS works through real MDD resources and stays isolate
   await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
   await options.locator("#localDictionaryFiles").setInputFiles({ name: "radio.mdx", mimeType: "application/octet-stream", buffer: makeRichMdx([
     ["radiostatefixture", record("ONE")], ["radiostatefixture", record("TWO")],
-    ["radiostatefixture", record("THREE").replace('<label for="choice-1" class="tab">Second</label>', "") + '<p style="display:none">INLINE HIDDEN TAIL</p>']
+    ["radiostatefixture", record("THREE").replace(labelMarkup(1), "") + '<p style="display:none">INLINE HIDDEN TAIL</p>']
   ], { title: "Synthetic Radio State" }) });
   await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("Synthetic Radio State");
   await options.locator("#localDictionaryImportButton").click();
@@ -60,25 +61,40 @@ test("generic radio state CSS works through real MDD resources and stays isolate
     await expect(fallback).toContainText("INLINE HIDDEN TAIL");
     await expect(fallback.locator(".tf-rich-truncated")).toContainText(/交互暂不可用|Entry interactions/u);
     await expect(fallback.locator("input,label,[style]")).toHaveCount(0);
-    await expect(one.locator(".panel-0")).toBeVisible(); await expect(one.locator(".panel-1")).toBeHidden();
-    await expect(two.locator(".panel-0")).toBeVisible(); await expect(two.locator(".panel-1")).toBeHidden();
+    await expect(one.locator(".o-for-pos-0")).toBeVisible(); await expect(one.locator(".o-for-pos-1")).toBeHidden();
+    await expect(two.locator(".o-for-pos-0")).toBeVisible(); await expect(two.locator(".o-for-pos-1")).toBeHidden();
     for (const viewer of [one, two]) {
-      await expect(viewer.locator("input[type=radio]")).toHaveCount(2);
-      await expect(viewer.locator("label")).toHaveCount(2);
+      await expect(viewer.locator("input[type=radio]")).toHaveCount(4);
+      await expect(viewer.locator("label")).toHaveCount(4);
       await expect(viewer.locator('input:not([type=radio]),form,script,img[src^="https:"]')).toHaveCount(0);
     }
+    for (const viewer of [one, two]) {
+      await expect(viewer.locator("nav.o-pos-tabs")).toHaveCount(1);
+      await expect(viewer.locator(".o-pos-panels > section[class*=o-for-pos-]")).toHaveCount(4);
+      expect(await viewer.locator("section.o-for-pos-3").evaluate((node) => [...node.classList].indexOf("o-for-pos-3"))).toBeGreaterThanOrEqual(4);
+    }
+    for (let selected = 0; selected < 4; selected += 1) {
+      await one.locator(`label[for="choice-${selected}"]`).click();
+      for (let panel = 0; panel < 4; panel += 1) {
+        if (panel === selected) await expect(one.locator(`section.o-for-pos-${panel}`)).toBeVisible();
+        else await expect(one.locator(`section.o-for-pos-${panel}`)).toBeHidden();
+        if (panel === 0) await expect(two.locator(`section.o-for-pos-${panel}`)).toBeVisible();
+        else await expect(two.locator(`section.o-for-pos-${panel}`)).toBeHidden();
+      }
+    }
+    const fourthLabel = one.locator('label[for="choice-3"]');
     const firstLabel = one.locator('label[for="choice-0"]'), secondLabel = one.locator('label[for="choice-1"]');
     await secondLabel.click();
-    await expect(one.locator(".panel-0")).toBeHidden(); await expect(one.locator(".panel-1")).toBeVisible();
+    await expect(one.locator(".o-for-pos-0")).toBeHidden(); await expect(one.locator(".o-for-pos-1")).toBeVisible();
     await expect(secondLabel).toHaveAttribute("aria-checked", "true");
-    await expect(two.locator(".panel-0")).toBeVisible(); await expect(two.locator(".panel-1")).toBeHidden();
+    await expect(two.locator(".o-for-pos-0")).toBeVisible(); await expect(two.locator(".o-for-pos-1")).toBeHidden();
     await secondLabel.focus(); await secondLabel.press("Home");
-    await expect(firstLabel).toBeFocused(); await expect(one.locator(".panel-0")).toBeVisible();
-    await firstLabel.press("End"); await expect(secondLabel).toBeFocused(); await expect(one.locator(".panel-1")).toBeVisible();
-    await secondLabel.press("ArrowRight"); await expect(firstLabel).toBeFocused(); await expect(one.locator(".panel-0")).toBeVisible();
-    await firstLabel.press("ArrowLeft"); await expect(secondLabel).toBeFocused();
-    await firstLabel.focus(); await firstLabel.press("Space"); await expect(one.locator(".panel-0")).toBeVisible();
-    await secondLabel.focus(); await secondLabel.press("Enter"); await expect(one.locator(".panel-1")).toBeVisible();
+    await expect(firstLabel).toBeFocused(); await expect(one.locator(".o-for-pos-0")).toBeVisible();
+    await firstLabel.press("End"); await expect(fourthLabel).toBeFocused(); await expect(one.locator(".o-for-pos-3")).toBeVisible();
+    await fourthLabel.press("ArrowRight"); await expect(firstLabel).toBeFocused(); await expect(one.locator(".o-for-pos-0")).toBeVisible();
+    await firstLabel.press("ArrowLeft"); await expect(fourthLabel).toBeFocused();
+    await firstLabel.focus(); await firstLabel.press("Space"); await expect(one.locator(".o-for-pos-0")).toBeVisible();
+    await secondLabel.focus(); await secondLabel.press("Enter"); await expect(one.locator(".o-for-pos-1")).toBeVisible();
     await expect.poll(() => secondLabel.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe("rgb(18, 52, 86)");
     expect(await firstLabel.evaluate((node) => getComputedStyle(node, "::before").content)).toBe('"›"');
     await one.locator("summary").click(); await expect(one).toContainText("DISCLOSURE BODY");

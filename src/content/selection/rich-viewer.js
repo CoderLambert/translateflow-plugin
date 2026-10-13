@@ -6,7 +6,7 @@
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u",
     "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "a",
-    "details", "summary", "label", "input"
+    "details", "summary", "nav", "section", "label", "input"
   ]);
   const DROP_SUBTREE_TAGS = new Set([
     "script", "style", "iframe", "object", "embed", "form", "svg", "math",
@@ -329,7 +329,7 @@
     const safeClasses = String(attrs.class || "")
       .split(/\s+/u)
       .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))
-      .slice(0, 4);
+      .slice(0, 8);
     if (safeClasses.length) element.className += ` ${[...new Set(safeClasses)].join(" ")}`;
     const pronunciation = safePronunciationKind(element.tagName.toLowerCase(), attrs);
     if (pronunciation) element.setAttribute("data-rich-pronunciation", pronunciation);

@@ -149,3 +149,37 @@ test("one multi-record fallback cannot remove another record's controls and disp
   assert.equal(hosts[1].shadowRoot.querySelector("input:checked").id, "choice-1");
   assert.equal(delivered.length, 1);
 });
+
+test("passive nav/section wrappers retain fifth-position state classes and each native state matches one panel", () => {
+  const p = pipeline();
+  const html = `<div class="o-pos-switch">${Array.from({ length: 4 }, (_, index) => `<input type="radio" id="pos-${index}" name="pos" ${index === 0 ? "checked" : ""}>`).join("")}<nav class="o-pos-tabs">${Array.from({ length: 4 }, (_, index) => `<label for="pos-${index}">State ${index}</label>`).join("")}</nav><div class="o-pos-panels">${Array.from({ length: 4 }, (_, index) => `<section class="o-pos o-pos-panel extra-a extra-b o-for-pos-${index}" onclick="attack()">PANEL ${index}</section>`).join("")}</div></div>`;
+  const ast = p.sanitize(html), all = flat(ast.nodes);
+  assert.equal(all.filter((node) => node.tag === "nav").length, 1);
+  assert.equal(all.filter((node) => node.tag === "section").length, 4);
+  assert.equal(all.find((node) => node.tag === "section").attrs.class.split(" ")[4], "o-for-pos-0");
+  const one = render(p, ast), two = render(p, p.sanitize(html));
+  assert.equal(one.querySelectorAll(".o-pos-switch > nav.o-pos-tabs").length, 1);
+  assert.equal(one.querySelectorAll(".o-pos-panels > section[class*=o-for-pos-]").length, 4);
+  for (let selected = 0; selected < 4; selected += 1) {
+    one.querySelector(`label[for="pos-${selected}"]`).click();
+    for (let index = 0; index < 4; index += 1) {
+      const selector = `#pos-${index}:checked ~ div.o-pos-panels > section.o-for-pos-${index}`;
+      assert.equal(one.querySelectorAll(selector).length, selected === index ? 1 : 0);
+      assert.equal(two.querySelectorAll(selector).length, index === 0 ? 1 : 0);
+    }
+  }
+  assert.equal(one.querySelectorAll("nav[onclick],section[onclick],form,script").length, 0);
+});
+
+test("sanitizer and viewer allow at most eight safe class tokens without widening attributes", () => {
+  const p = pipeline(), classes = 'a b c d e f g h ninth bad:token ' + 'x'.repeat(49);
+  const ast = p.sanitize(`<nav class="${classes}" onclick="attack()" role="button"><section class="${classes}" onmouseover="attack()">safe</section></nav>`);
+  for (const node of flat(ast.nodes).filter((node) => node.type === "element")) assert.equal(node.attrs.class, "a b c d e f g h");
+  const forged = p.sanitize('<nav><section>safe</section></nav>');
+  for (const node of flat(forged.nodes).filter((node) => node.type === "element")) node.attrs = { class: classes, onclick: "attack()", role: "button" };
+  const root = render(p, forged);
+  for (const el of root.querySelectorAll("nav,section")) {
+    assert.deepEqual([...el.classList].filter((value) => !value.startsWith("tf-rich-node-")), ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']);
+    assert.equal(el.hasAttribute("onclick"), false); assert.equal(el.hasAttribute("role"), false);
+  }
+});

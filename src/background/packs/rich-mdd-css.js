@@ -9,7 +9,7 @@ const MAX_ASSET_SLOTS = 8;
 const TAGS = new Set([
   "div", "span", "p", "br", "b", "strong", "i", "em", "u", "ul", "ol",
   "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "img", "audio",
-  "details", "summary", "input", "label"
+  "details", "summary", "nav", "section", "input", "label"
 ]);
 const PROPERTIES = new Set([
   "color", "background-color", "background-image", "font-size", "font-weight",

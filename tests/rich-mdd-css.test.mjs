@@ -125,3 +125,10 @@ test("nested media depth overflow diagnoses and rejects partial CSS", () => {
   const result = sanitizeRichMddStylesheet(Buffer.from(rule + nested), "entry.css");
   assert.equal(result.css, ""); assert.ok(result.diagnostics.includes("css.depth_limit"));
 });
+
+test("passive nav and section type selectors retain state structure with the existing scope", () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from('input.choice:checked ~ nav.o-pos-tabs > label.tab{color:red}input.choice:checked ~ div.o-pos-panels > section.o-pos.o-pos-panel.o-for-pos-3{display:block}form input:checked ~ section{color:red}'), "entry.css");
+  assert.match(result.css, /\.tf-rich-viewer input\.choice:checked ~ nav\.o-pos-tabs > label\.tab\{color:red\}/u);
+  assert.match(result.css, /div\.o-pos-panels > section\.o-pos\.o-pos-panel\.o-for-pos-3\{display:block\}/u);
+  assert.doesNotMatch(result.css, /form/u);
+});
