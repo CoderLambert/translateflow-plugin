@@ -64,6 +64,8 @@ test("selection modules are loaded before the content bootstrap", () => {
     assert.ok(CONTENT_SOURCE_FILES.includes(file), `${file} should be compiled`); assert.ok(CONTENT_SOURCE_FILES.indexOf(file) < CONTENT_SOURCE_FILES.indexOf("content.js"));
   }
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-style.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-oxford-adapter.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  for (const file of ["rich-resource-encoding", "rich-resource-preview"]) assert.ok(CONTENT_SOURCE_FILES.indexOf(`src/content/selection/${file}.js`) < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-resolver.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-navigation-actions.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-navigation.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-result-renderer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-lookup-identity.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-details.js"));

@@ -70,7 +70,7 @@ function harness(response) {
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob,
     HTMLButtonElement: dom.window.HTMLButtonElement });
   for (const file of ['rich-controls', 'rich-sanitizer-tags', 'rich-sanitizer-style', 'rich-resource-path', 'rich-svg',
-    'rich-sanitizer-tokenizer', 'rich-sanitizer', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-resolver', 'rich-viewer']) {
+    'rich-sanitizer-tokenizer', 'rich-sanitizer', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver', 'rich-viewer']) {
     vm.runInContext(readFileSync(new URL(`../src/content/selection/${file}.js`, import.meta.url), 'utf8'), context);
   }
   const container = document.createElement('div'); document.body.append(container);

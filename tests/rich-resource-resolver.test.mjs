@@ -39,6 +39,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-encoding.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -352,6 +353,7 @@ async function createStylesheetHarness({ imageResponse, deferImage = false }) {
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-encoding.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -418,6 +420,7 @@ function createMediaLifecycleHarness(assets) {
   vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(MEDIA, "utf8"), context);
   vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
+  vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-encoding.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   return { messages, resolver, get observer() { return latestObserver; } };
@@ -508,7 +511,7 @@ function createFontHarness({ manifest, fontBytes = Buffer.alloc(32), rejectDecod
     }
   } } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, FontFace: Face, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob, crypto: cryptoProvider });
-  for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
+  for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
   const resolver = app.modules.richResourceResolver;
   const attach = () => { const container = { ownerDocument: document }; const viewport = { appendChild: (node) => notices.push(node) }; const session = resolver.attach(container, { appendChild: (node) => styles.push(node) }, viewport, [{ kind: 'stylesheet', path: 'entry.css' }], 'fixture', 'v1'); return { container, session }; };
   return { resolver, attach, messages, styles, notices, created, registered, pendingReads, pendingLoads };

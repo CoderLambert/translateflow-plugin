@@ -73,7 +73,7 @@
   }
 
   function createView(nodes) {
-    const plan = associations(nodes), inputs = new Map(), labels = new Map();
+    const plan = associations(nodes), inputs = new Map(), labels = new Map(), listeners = new Set();
     function element(node) {
       const item = plan.allowed.get(node);
       if (!item) return null;
@@ -114,7 +114,7 @@
           }
         };
         for (const item of group) {
-          inputs.get(item).addEventListener("change", sync);
+          inputs.get(item).addEventListener("change", () => { sync(); for (const listener of listeners) listener(item.node); });
           for (const label of labels.get(item)) label.addEventListener("keydown", (event) => {
             const index = group.indexOf(item);
             let next = index;
@@ -132,7 +132,9 @@
       }
       return complete;
     }
-    return { element, finish, unavailable: plan.unavailable, plainText: () => plainText(nodes) };
+    return { element, finish, select(node) { const item = plan.allowed.get(node); const input = inputs.get(item); if (!input) return false; input.click(); return true; },
+      selected: (node) => Boolean(inputs.get(plan.allowed.get(node))?.checked),
+      onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); }, unavailable: plan.unavailable, plainText: () => plainText(nodes) };
   }
 
   function plainText(nodes) {
@@ -159,5 +161,5 @@
     locale.bindText(note, "content.rich.controlsUnavailable"); viewport.appendChild(note);
   }
 
-  app.modules.richDictionaryControls = Object.freeze({ tokenAttributes, normalize, createView, unavailableNotice });
+  app.modules.richDictionaryControls = Object.freeze({ tokenAttributes, associations, normalize, createView, unavailableNotice, plainText });
 })();

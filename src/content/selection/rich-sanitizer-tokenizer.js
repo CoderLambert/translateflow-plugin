@@ -153,7 +153,10 @@
       }
       if (token.name === "input") {
         const attrs = app.modules.richDictionaryControls?.tokenAttributes(token);
-        if (attrs) appendElement("input", { ...styleApi.safeAttributes(token), ...attrs });
+        if (attrs) {
+          const element = appendElement("input", { ...styleApi.safeAttributes(token), ...attrs });
+          app.modules.richOxfordAdapter?.project(element, token);
+        }
         else if (String(token.attrs.type || "").toLowerCase() === "radio") appendElement("span", { "data-rich-control-unavailable": "radio" });
         continue;
       }
@@ -200,6 +203,7 @@
       }
       const element = appendElement(tag, attrs, style);
       if (!element) continue;
+      app.modules.richOxfordAdapter?.project(element, token);
       if (!token.selfClosing) {
         if (stack.length >= limits.depth + 1) {
           truncated = true;

@@ -238,7 +238,7 @@
   }
 
   function closeRecords(container) {
-    for (const host of renderedHosts.get(container) || []) app.modules.richResourceResolver?.close(host);
+    for (const host of renderedHosts.get(container) || []) { app.modules.richOxfordAdapter?.close(host); app.modules.richResourceResolver?.close(host); }
     renderedHosts.delete(container);
   }
 
@@ -288,6 +288,8 @@
       if (node.children) visit(node.children);
     } };
     visit(tree?.nodes);
+    const plan = app.modules.richOxfordAdapter?.recognize(tree?.nodes);
+    if (plan && nodes + plan.extraNodes <= 32767) nodes += plan.extraNodes;
     return { nodes: nodes || 1, resources: resources.size, expandedBytes: new TextEncoder().encode(String(fallback)).byteLength };
   }
 
@@ -308,6 +310,8 @@
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
             dictionaryId: String(dictionaryId || ""),
             packageVersion: String(dictionary?.packageVersion || ""),
+            ...(dictionary?.packVersion ? { packVersion: String(dictionary.packVersion) } : {}),
+            ...(Number.isSafeInteger(dictionary?.recordOffset) ? { recordOffset: dictionary.recordOffset } : {}),
             ...(navigation ? { onAction: (action) => navigation.navigate(action) } : {})
           });
         }

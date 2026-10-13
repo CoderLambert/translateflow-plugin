@@ -30,6 +30,8 @@
       if (node.children) visit(node.children);
     } };
     visit(result.nodes);
+    const plan = app.modules.richOxfordAdapter?.recognize(result.nodes);
+    if (plan && nodes + plan.extraNodes <= LIMITS.outputNodes - 1) nodes += plan.extraNodes;
     const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources: resources.size });
     return { nodes: result.nodes, truncated: result.truncated, metrics, controlsUnavailable: result.controlsUnavailable === true, diagnostics: result.controlsDegraded ? ["controls.unavailable"] : [] };
   }

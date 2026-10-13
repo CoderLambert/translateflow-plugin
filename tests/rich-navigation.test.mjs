@@ -40,7 +40,7 @@ function harness(list = [dictionary], resources = false) {
   if (resources) delete app.modules.richResourceResolver;
   const context = vm.createContext({ Blob, URL, Uint8Array, TextDecoder, atob, FontFace: FakeFontFace, __TRANSLATE_FLOW_CONTENT__: app, document, window: dom.window, location: dom.window.location, crypto: webcrypto, TextEncoder });
   for (const file of ['rich-controls', 'rich-sanitizer-tags', 'rich-sanitizer-style', 'rich-resource-path', 'rich-navigation-actions', 'rich-sanitizer-tokenizer', 'rich-sanitizer',
-    'rich-navigation', ...(resources ? ['rich-resource-media', 'rich-resource-fonts', 'rich-resource-resolver'] : []), 'rich-viewer', 'rich-result-renderer', 'rich-lookup-identity', 'rich-details']) {
+    'rich-navigation', ...(resources ? ['rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver'] : []), 'rich-viewer', 'rich-result-renderer', 'rich-lookup-identity', 'rich-details']) {
     vm.runInContext(readFileSync(new URL(`../src/content/selection/${file}.js`, import.meta.url), 'utf8'), context);
   }
   const factory = app.modules.richNavigation;

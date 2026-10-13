@@ -49,6 +49,8 @@
     const matches = targets(hosts, value);
     const node = matches[0];
     if (node) {
+      const host = node.getRootNode?.().host;
+      if (host) app.modules.richOxfordAdapter?.prepareTarget(host, node);
       node.scrollIntoView?.({ block: "nearest", behavior: "auto" }); node.tabIndex = -1;
       node.focus?.({ preventScroll: true });
     }

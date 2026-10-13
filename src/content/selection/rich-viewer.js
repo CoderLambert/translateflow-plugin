@@ -100,10 +100,11 @@
 }
 `;
 
-  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "", onAction = null } = {}) {
+  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "", onAction = null, packVersion = "", recordOffset = null } = {}) {
     if (!container) return false;
     const root = getShadowRoot(container);
     if (!root) return false;
+    app.modules.richOxfordAdapter?.close(container);
     app.modules.richResourceResolver?.close(container);
     root.replaceChildren();
 
@@ -127,6 +128,7 @@
     let unavailable = ast?.controlsUnavailable === true || controls?.unavailable;
     const nodes = unavailable ? [{ type: "text", text: controls?.plainText() || boundedFallback }] : sourceNodes;
     let count = {
+      elements: new Map(),
       controls: unavailable ? null : controls,
       value: 0,
       textBytes: 0,
@@ -161,6 +163,7 @@
     if (resources.length && dictionaryId) {
       app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId, packageVersion);
     }
+    if (!unavailable) app.modules.richOxfordAdapter?.bind({ host: container, viewport, nodes, controls, elements: count.elements, count: count.value, textBytes: count.textBytes, identity: { dictionaryId, packVersion, packageVersion, recordOffset } });
     return true;
   }
 
@@ -233,6 +236,7 @@
     const control = count.controls?.element(node);
     if (tag === "input" && !control) return null;
     const element = control || document.createElement(tag === "label" ? "span" : tag);
+    count.elements.set(node, element);
     element.className = `tf-rich-node-${tag}`;
     applySafeAttributes(element, node.attrs);
     applySafeStyles(element, node.style);

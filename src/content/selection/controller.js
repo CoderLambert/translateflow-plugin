@@ -373,7 +373,7 @@
   }
 
   function handleKeyDown(event) {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || popover.consumeRichEscape?.(event)) return;
     dismiss({ restoreFocus: popover.isEventInsidePanel(event) });
   }
 
