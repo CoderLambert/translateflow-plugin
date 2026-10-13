@@ -1,0 +1,317 @@
+{
+  "schema": 1,
+  "task": "rich-multiple-records",
+  "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+  "tree": "1c655fc70b595caf3e583c83fe2465f2b72031ce",
+  "inputTree": "1be09c6e9a2a06fdba28b2042fdad34b4401c1b104f3b8a879af2aa33826de2f",
+  "frozenAt": "2026-10-13T06:40:20.101Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12 (Playwright channel chromium)"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 9.642499,
+      "startedAt": "2026-10-13T06:40:51.237Z",
+      "log": "docs/task-execution/local/rich-multiple-records/e7b851db-ee58-4cf5-aeae-b8022a44c181.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/rich-mdict-records.test.mjs",
+        "tests/rich-viewer-contract.test.mjs",
+        "tests/rich-dictionary-sanitizer.test.mjs",
+        "tests/selection-multi-dictionary.test.mjs",
+        "tests/selection-rich-outcome.test.mjs",
+        "tests/rich-mdict-format.test.mjs",
+        "tests/rich-mdict-product.test.mjs",
+        "tests/rich-mdict-security.test.mjs",
+        "tests/rich-mdict-storage.test.mjs",
+        "tests/rich-mdict-lookup-cancellation.test.mjs",
+        "tests/rich-mdict-index-migration.test.mjs"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 293.379958,
+      "startedAt": "2026-10-13T06:40:51.374Z",
+      "log": "docs/task-execution/local/rich-multiple-records/006c516f-378c-4b47-af74-2468e791deb3.log",
+      "logSha256": "7589aaff3ce0d2600b6dec3ce96931f67991005aee45f5b92e38c03e33d9114d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 46168.748986,
+      "startedAt": "2026-10-13T06:40:51.803Z",
+      "log": "docs/task-execution/local/rich-multiple-records/2c8b7b74-60cb-4f85-a34e-264bf6013aff.log",
+      "logSha256": "f4089665e585440aa93066de12156d34a546431132efc524fd84ec58eb4cf07e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2130.332746,
+      "startedAt": "2026-10-13T06:41:38.108Z",
+      "log": "docs/task-execution/local/rich-multiple-records/e30bc23a-576e-4ab6-ade7-26fabdb0ee04.log",
+      "logSha256": "4d0958f84bc0c932965ce36027f488c15fa212ac3eeb4689824a19a8b9cff241"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1059.743472,
+      "startedAt": "2026-10-13T06:41:40.370Z",
+      "log": "docs/task-execution/local/rich-multiple-records/c07c8145-b218-4cc2-a3a9-5ed9163809a2.log",
+      "logSha256": "49d236e2a87f51cbc8a21cb97c30f905679b780a0cd73b44a04c70e4860f8b03"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 165.223171,
+      "startedAt": "2026-10-13T06:41:41.566Z",
+      "log": "docs/task-execution/local/rich-multiple-records/4ec838f5-da04-41e7-a1d8-40b23b2f8ddb.log",
+      "logSha256": "d7b403607beadaa4260662a6bdf6d5cb497a8707f234d6b12848a453a117c933"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 172.736526,
+      "startedAt": "2026-10-13T06:41:41.870Z",
+      "log": "docs/task-execution/local/rich-multiple-records/757daef5-4b60-485a-bc79-050e691fdaab.log",
+      "logSha256": "1bf3aebef66e97b5209b22ac4480370ba1c5c035f0de09fc48ab3a7bf8828281"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/rich-mdict-records.spec.mjs",
+        "e2e/rich-mdict-index-migration.spec.mjs",
+        "e2e/multi-dictionary-viewer.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/rich-viewer-security.spec.mjs",
+        "e2e/mdd-resources.spec.mjs"
+      ],
+      "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 30567.134413,
+      "startedAt": "2026-10-13T06:41:42.193Z",
+      "log": "docs/task-execution/local/rich-multiple-records/bdee4f84-13db-4cf3-a5fd-b804f870cc3a.log",
+      "logSha256": "519b82039ce34c9bd62e2ba3576fcbb5d7fe529ea3457af6c043a0fa9fd20cd8"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "bb88ebe91176d9afdd0b6313c4c1c70e7ea25162098d655f240f834c3b54bc79"
+  },
+  "limitations": [
+    "Chromium/MV3多record显示、fragment/style隔离与Provider/external=0使用合成fixture；不是#274真实Oxford完整产品验收。",
+    "组成字段累计上限、256访问与有界first兼容重复限制响应；不宣称固定JSON payload/实际heap上限。",
+    "无MDX/MDD/index schema或持久化迁移；独立正文viewer不包含跨词navigation或Oxford交互新能力。",
+    "真实Oxford parser只读对照另列；真实Oxford浏览器六文件安装/媒体/完整恢复终验尚未执行。",
+    "heap/RSS NOT_MEASURED；物理音频输出/最低浏览器/真实4GB性能 NOT_RUN。",
+    "E2E inventory 8f3523d930d5ee4a378a205117cebf90af1e131aa543bef596a669e6c4f211e5 与local-task fingerprint算法不同；120文件/2,424,470 bytes。",
+    "总index cache预算与#271-274剩余能力仍需后续准确验收，#270/#268保持open。"
+  ],
+  "realOxfordReadOnly": {
+    "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf",
+    "result": "PASS",
+    "runner": "dev_explorer (独立只读定位；不代替独立review)",
+    "input": {
+      "role": "MDX",
+      "sourceSize": 38807694,
+      "sha256": "737a93e9a25bfdaf5ee1683b4a0aff43ec5a9ed6238700526e258c79cad24e19",
+      "identityReuse": "已确认运行前后size/mtime一致，复用前次SHA，不重复hash/download"
+    },
+    "repeatQueries": {
+      "attempted": 5185,
+      "pass": 5185,
+      "exceptions": 0,
+      "comparisonFailures": 0,
+      "terminalRecordsTotal": 10871,
+      "maxRecords": 7,
+      "recordCountHistogram": {
+        "2": 4776,
+        "3": 338,
+        "4": 59,
+        "5": 6,
+        "6": 3,
+        "7": 3
+      },
+      "differentBodiesQueries": 5185,
+      "aliasCycleDiagnosticQueries": 345,
+      "totalMetrics": {
+        "spanVisits": 21763,
+        "keyScans": 56200048,
+        "candidateKeyBlocks": 12734,
+        "keyBlockDecodes": 12734,
+        "keyCompressedBytes": 94152377,
+        "keyDecompressedBytes": 284911012,
+        "recordBlockDecodes": 8712,
+        "recordCompressedBytes": 59467966,
+        "recordDecompressedBytes": 555845948,
+        "totalDecompressedBytes": 840756960,
+        "sourceRangeReads": 21446,
+        "sourceBytesRead": 153620343,
+        "aliasHops": 6546
+      },
+      "maxMetrics": {
+        "spanVisits": 23,
+        "keyScans": 50304,
+        "candidateKeyBlocks": 6,
+        "keyBlockDecodes": 6,
+        "keyCompressedBytes": 55823,
+        "keyDecompressedBytes": 167801,
+        "recordBlockDecodes": 5,
+        "recordCompressedBytes": 82600,
+        "recordDecompressedBytes": 842644,
+        "totalDecompressedBytes": 943836,
+        "sourceRangeReads": 11,
+        "sourceBytesRead": 118762,
+        "aliasHops": 4
+      },
+      "timingMs": {
+        "p50": 4.109,
+        "p95": 7.248,
+        "p99": 10.253,
+        "max": 23.071
+      },
+      "maxAggregateSourceRecordBytes": 806930,
+      "maxAggregateDecodedTextBytes": 806926
+    },
+    "fixed": [
+      {
+        "query": "arch",
+        "records": 1,
+        "expectedOffsetMatch": true,
+        "stableAscending": true,
+        "offsetDedup": true,
+        "firstCompatibility": true,
+        "spanVisits": 1,
+        "sourceRangeReads": 2,
+        "sourceBytesRead": 17835,
+        "aggregateSourceRecordBytes": 18923,
+        "aggregateDecodedTextBytes": 18921,
+        "aliasCycleBranches": 0,
+        "elapsedMs": 14.533,
+        "errorCode": null,
+        "allChecksPass": true
+      },
+      {
+        "query": "go",
+        "records": 1,
+        "expectedOffsetMatch": true,
+        "stableAscending": true,
+        "offsetDedup": true,
+        "firstCompatibility": true,
+        "spanVisits": 1,
+        "sourceRangeReads": 4,
+        "sourceBytesRead": 97869,
+        "aggregateSourceRecordBytes": 778100,
+        "aggregateDecodedTextBytes": 778098,
+        "aliasCycleBranches": 0,
+        "elapsedMs": 23.188,
+        "errorCode": null,
+        "allChecksPass": true
+      },
+      {
+        "query": "come",
+        "records": 1,
+        "expectedOffsetMatch": true,
+        "stableAscending": true,
+        "offsetDedup": true,
+        "firstCompatibility": true,
+        "spanVisits": 1,
+        "sourceRangeReads": 3,
+        "sourceBytesRead": 70652,
+        "aggregateSourceRecordBytes": 587579,
+        "aggregateDecodedTextBytes": 587577,
+        "aliasCycleBranches": 0,
+        "elapsedMs": 14.17,
+        "errorCode": null,
+        "allChecksPass": true
+      },
+      {
+        "query": "get",
+        "records": 1,
+        "expectedOffsetMatch": true,
+        "stableAscending": true,
+        "offsetDedup": true,
+        "firstCompatibility": true,
+        "spanVisits": 1,
+        "sourceRangeReads": 4,
+        "sourceBytesRead": 78376,
+        "aggregateSourceRecordBytes": 566816,
+        "aggregateDecodedTextBytes": 566814,
+        "aliasCycleBranches": 0,
+        "elapsedMs": 15.214,
+        "errorCode": null,
+        "allChecksPass": true
+      }
+    ],
+    "anonymousSampleCount": 7,
+    "uniqueSampleQueries": 6,
+    "originalBodyComparisons": 12,
+    "sampleChecksAllPass": true,
+    "actualLookupRanges": 21482,
+    "actualLookupBytesRead": 154077394,
+    "elapsedMs": 23726,
+    "heapPeak": "NOT_MEASURED",
+    "rssPeak": "NOT_MEASURED",
+    "report": "docs/task-execution/local/rich-multiple-records/oxford-readonly-summary.json",
+    "reportSha256": "e0243a7327422cc0941c4f8450bf1f44309ce05a0c018b27924e2e2f8776d4c5",
+    "limitations": [
+      "Actual parser lookup over all 5,185 repeated raw display queries; same complete graph expectation, not independent reader/full corpus reread. Eight-link/overflow negative cases remain synthetic tests. Sample original-body comparison uses independent native zlib inflation and known raw spans, not an independent dictionary reader. Sequential local filesystem-warm timings are observations, not browser performance. No OPFS writes or browser verification."
+    ]
+  }
+}

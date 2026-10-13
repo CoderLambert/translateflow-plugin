@@ -20,6 +20,15 @@
   const MARKER = /^`([0-9]{1,3})`/u;
 
   function sanitizeRichDictionaryRecord(input = {}) {
+    const result = sanitizeRecord(input);
+    let nodes = 0, resources = 0;
+    const visit = (items) => { for (const node of items || []) { nodes += 1; if (node.type === "resource") resources += 1; if (node.children) visit(node.children); } };
+    visit(result.nodes);
+    const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources });
+    return { nodes: result.nodes, truncated: result.truncated, metrics };
+  }
+
+  function sanitizeRecord(input = {}) {
     const { rawRecord, format, styleSheetRules } = input && typeof input === "object" ? input : {};
     let source;
     try {
@@ -35,6 +44,7 @@
       const plain = tokenizer.clipUtf8(boundedSource, LIMITS.fallbackBytes);
       return {
         nodes: plain ? [tokenizer.textNode(plain)] : [],
+        expandedBytes: tokenizer.boundedUtf8Bytes(boundedSource, LIMITS.expandedBytes),
         truncated: oversized || plain.length < boundedSource.length
       };
     }
@@ -47,7 +57,7 @@
     if (parsed.truncated && !containsDisplayContent(parsed.nodes)) return fallbackResult(boundedSource, rules, true);
     annotateOxfordSemantics(parsed.nodes);
     mergePronunciationResourcePairs(parsed.nodes);
-    return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated) };
+    return { nodes: parsed.nodes, truncated: Boolean(parsed.truncated), expandedBytes: tokenizer.boundedUtf8Bytes(expanded.value, LIMITS.expandedBytes) };
   }
 
   function annotateOxfordSemantics(nodes, context = {}) {
@@ -213,6 +223,7 @@
     const bounded = tokenizer.clipUtf8(value, LIMITS.fallbackBytes);
     return {
       nodes: bounded ? [tokenizer.textNode(bounded)] : [],
+      expandedBytes: expanded.overflow ? LIMITS.expandedBytes : Math.min(LIMITS.expandedBytes, tokenizer.boundedUtf8Bytes(expanded.value, LIMITS.expandedBytes)),
       truncated: truncated || expanded.overflow || bounded.length < value.length
     };
   }

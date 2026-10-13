@@ -16,6 +16,9 @@ export function makeRichMdx(entries, {
   keyOptions = { KeyCaseSensitive: "No", StripKey: "Yes" },
   keyBlockEntryCounts = [entries?.length || 0],
   keyBlockDescriptorOverrides = [],
+  recordOffsets = null,
+  recordStream = null,
+  recordBlockBytes = null,
   styleSheet = "1\n<b>\n</b>"
 } = {}) {
   if (!Array.isArray(entries) || !entries.length) {
@@ -48,7 +51,7 @@ export function makeRichMdx(entries, {
     const blockEntries = entries.slice(entryOffset, entryOffset + blockEntryCount);
     const descriptorOverride = keyBlockDescriptorOverrides[blockIndex] || {};
     const keyRaw = Buffer.concat(blockEntries.map(([key], localIndex) => Buffer.concat([
-      u64be(offsets[entryOffset + localIndex]), Buffer.from(key, textEncoding), terminator
+      u64be((recordOffsets || offsets)[entryOffset + localIndex]), Buffer.from(key, textEncoding), terminator
     ])));
     const keyBlock = wrapBlock(keyRaw);
     keyBlocks.push(keyBlock);
@@ -75,15 +78,15 @@ export function makeRichMdx(entries, {
     u64be(keyBlocksBytes)
   ]);
 
-  const recordRaw = Buffer.concat(recordParts);
-  const recordBlock = wrapBlock(recordRaw);
+  const recordRaw = recordStream === null ? Buffer.concat(recordParts) : Buffer.from(recordStream);
+  const recordSizes = recordBlockBytes || [recordRaw.byteLength];
+  if (recordSizes.some((bytes) => !Number.isInteger(bytes) || bytes <= 0) || recordSizes.reduce((sum, bytes) => sum + bytes, 0) !== recordRaw.byteLength) throw new Error("Invalid fixture record blocks.");
+  let recordPosition = 0;
+  const recordBlocks = recordSizes.map((size) => { const block = wrapBlock(recordRaw.subarray(recordPosition, recordPosition + size)); recordPosition += size; return block; });
+  const recordCompressedBytes = recordBlocks.reduce((sum, block) => sum + block.byteLength, 0);
   const recordHeader = Buffer.concat([
-    u64be(1),
-    u64be(entries.length),
-    u64be(16),
-    u64be(recordBlock.byteLength),
-    u64be(recordBlock.byteLength),
-    u64be(recordRaw.byteLength)
+    u64be(recordBlocks.length), u64be(entries.length), u64be(recordBlocks.length * 16), u64be(recordCompressedBytes),
+    ...recordBlocks.flatMap((block, index) => [u64be(block.byteLength), u64be(recordSizes[index])])
   ]);
 
   const headerText = [
@@ -117,7 +120,7 @@ export function makeRichMdx(entries, {
     keyInfo,
     ...keyBlocks,
     recordHeader,
-    recordBlock
+    ...recordBlocks
   ]);
 }
 

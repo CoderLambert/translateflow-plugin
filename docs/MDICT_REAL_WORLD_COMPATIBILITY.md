@@ -63,6 +63,44 @@ See [the migration task](tasks/rich-stripkey-migration/task.md) for exact
 candidate evidence. These mechanics do not establish the complete Oxford
 layout, navigation, attachment-recovery or final-product acceptance.
 
+## Multiple records and alias collections
+
+Rich lookup returns `records[]` for all selected exact-spelling key entries, or
+for the folded collection when no exact spelling exists. Duplicate source
+positions and convergent terminal positions produce one record. Terminal
+records retain their original source order. The first scalar record remains a
+compatibility view; consumers normalize the array or that legacy view instead
+of concatenating adjacent raw HTML strings.
+
+Aliases resolve each path independently with an eight-link bound and source
+offsets for cycle detection. A cycle branch is pruned while valid siblings
+continue; bounded diagnostics record that pruning. An alias collection with no
+valid terminal, a missing target, a corrupt span or exhausted work budget fails
+explicitly. Folded-key visited sets are insufficient because separate records
+can legitimately return to the same key collection.
+
+The complete query shares existing range/byte/decode budgets. Candidate span
+visits include initial roots, cache hits, repeated terminals and pruned cycle
+branches; the initial guard is 256 actual visits, supported by a maximum 23
+visits measured in the pinned Oxford alias graph. Selected matches are limited
+to 64 after exact/folded precedence is decided, and actual key scans have their
+own 1,000,000-entry guard. These guards are compatibility limits, not promises
+about all dictionaries. Exceeding them reports a limit rather than silently
+returning a partial entry.
+
+Record and aggregate source/text bounds remain 1 MiB / 2 MiB. Sanitized Compact
+expansion, nodes and resource descriptors also share the existing 2 MiB /
+32,768 / 1,024 limits across the complete result. Each record uses the existing
+sanitizer and a separate Shadow viewer so local IDs, fragments and styles do
+not cross records. Display completion reports one bounded plain-text summary;
+it does not add a Reading or vocabulary persistence channel.
+
+Exact implementation and acceptance are recorded in
+[the multiple-record task](tasks/rich-multiple-records/task.md). Original MDX/MDD files,
+index schema, permissions, CSP and Provider boundaries do not change in this
+slice, and its synthetic browser evidence does not replace Oxford final
+acceptance.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,
