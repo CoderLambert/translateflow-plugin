@@ -9,8 +9,8 @@
   const { messages, sendRuntimeMessage } = app.modules.runtime;
   const popover = app.modules.selectionPopover;
   const MAX_CONCURRENT_LOOKUPS = 3;
-  const { createLookupRequestId, createContentDocumentOwnerToken } = app.modules.richLookupIdentity;
-  const CONTENT_DOCUMENT_OWNER_TOKEN = createContentDocumentOwnerToken();
+  const { createLookupRequestId, createContentDocumentOwnerToken } = app.modules.richLookupIdentity || {};
+  const CONTENT_DOCUMENT_OWNER_TOKEN = createContentDocumentOwnerToken?.() || "";
   const lookupQueue = [];
   let activeSession = null;
   let runningLookups = 0;
@@ -19,6 +19,12 @@
   let nativeNavigationEvents = false;
 
   async function load(snapshot, version, expectedPage, isCurrentSelection, onResult = null) {
+    // Frozen pre-upgrade registrations omit newer helpers. Keep Selection usable
+    // through the existing refresh notice, without creating unowned rich queries.
+    if (!createLookupRequestId || !CONTENT_DOCUMENT_OWNER_TOKEN) {
+      if (isCurrentSelection(version, snapshot, expectedPage)) popover.appendRichDictionaryCards([], () => {});
+      return;
+    }
     if (activeSession) void cancelSession(activeSession);
     const session = {
       snapshot,
