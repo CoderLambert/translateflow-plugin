@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection } from "../../src/options/CommonSections";
 import { ChatGPTPlanSection, chatGPTSignInActionDisabled } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
+import { ProviderConnectionsSection } from "../../src/options/ProviderConnectionsSection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
 import { LocaleProvider } from "../../src/options/LocaleContext";
 import { useLocale } from "../../src/options/useLocale";
@@ -24,6 +25,23 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const zh = createI18n({ uiLocale: "zh_CN" });
 function LocaleControl() { const locale = useLocale(); return <UiLocaleSection {...locale} />; }
 function zhNode(node: React.ReactNode) { return <LocaleProvider value={zh}>{node}</LocaleProvider>; }
+
+test("provider connection test feedback stays visible in the tested card", async () => {
+  let finish: ((value: string) => void) | undefined;
+  const testProviderConnection = vi.fn(() => new Promise<string>((resolve) => { finish = resolve; }));
+  const connection = { id: "local", revision: 1, name: "LM Studio HY-MT2", platform: "local", protocol: "openai-chat",
+    baseUrl: "http://localhost:1234/v1", credentialId: "local", defaultModel: "hy-mt2-7b", hasApiKey: false,
+    settings: { streaming: true, outputTokens: 4096, temperature: null, reasoning: "", allowEmptyApiKey: true, allowInsecureHttp: true } };
+  render(zhNode(<ProviderConnectionsSection client={{ testProviderConnection, saveProviderConnection: vi.fn(),
+    deleteProviderConnection: vi.fn(), setDefaultService: vi.fn() } as any} state={{ version: 1,
+    defaultService: { kind: "api-key", connectionId: "local" }, connections: [connection] } as any}
+    loading={false} error="" disabled={false} reload={vi.fn()} setStatus={vi.fn()} />));
+
+  await userEvent.click(screen.getByRole("button", { name: "测试" }));
+  expect(screen.getByRole("status").textContent).toContain("正在测试 LM Studio HY-MT2");
+  finish?.("OK");
+  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("模型返回：OK"));
+});
 
 test("general React controls keep values controlled without writing from render", async () => {
   const update = vi.fn(); render(zhNode(<GeneralSection config={config} disabled={false} update={update} />));

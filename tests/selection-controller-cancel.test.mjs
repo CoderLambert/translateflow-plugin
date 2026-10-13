@@ -17,7 +17,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
+function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "" } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
   const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
   const assistantPorts = [], vocabularyAdds = [];
@@ -33,6 +33,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
 
   const sendRuntimeMessage = async (request) => {
     messages.push(request);
+    if (runtimeFailure) throw new Error(runtimeFailure);
     switch (request.type) {
       case "selection-resolve":
         if (resolveRoute === "local") return { ok: true, route: "local", explanationAllowed: true, depth: "standard",
@@ -300,6 +301,14 @@ test("an assistant port invalidated by an extension reload tells the user to ref
   h.assistantPorts.at(-1).disconnectExternally("Extension context invalidated.");
 
   assert.deepEqual(h.assistantInterruptions, ["content.ai.extensionReloaded"]);
+});
+
+test("a Selection request invalidated by an extension reload tells the user to refresh the page", async () => {
+  const h = harness({ runtimeFailure: "Extension context invalidated." });
+  await h.ready;
+  await h.translate();
+
+  assert.deepEqual(h.errors, ["content.ai.extensionReloaded"]);
 });
 
 test("a new selection invalidates a saved local dictionary result", async () => {

@@ -26,6 +26,7 @@ test.describe("API key provider connections", () => {
     const anthropicCard = options.locator(".connection-card").filter({ hasText: "Anthropic" });
     await expect(anthropicCard).toContainText("已保存 API Key");
     await anthropicCard.getByRole("button", { name: "测试" }).click();
+    await expect(anthropicCard.getByRole("status")).toContainText("模型返回：OK");
     await expect(options.locator("#status")).toContainText("模型返回：OK");
     await options.locator("#defaultService").selectOption("api-key:anthropic");
     await expect(options.locator("#status")).toContainText("默认翻译服务已更新");

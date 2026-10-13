@@ -310,7 +310,10 @@
   function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
     return runTranslation(snapshot, task, version, expectedPage, queryRecord);
   }
-  function failureMessage(error) { return error?.i18nKey || "content.selection.errorRetry"; }
+  function failureMessage(error) {
+    if (extensionContextInvalid(error?.message)) return "content.ai.extensionReloaded";
+    return error?.i18nKey || "content.selection.errorRetry";
+  }
   function localizedError(key, code = "") {
     return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
   }

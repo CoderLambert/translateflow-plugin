@@ -1,28 +1,40 @@
 {
   "schema": 1,
   "task": "api-key-provider-connections",
-  "status": "ready_to_sync",
+  "status": "working",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/api-key-provider-connections",
   "worktree": null,
-  "candidateHead": "b2440ec6414b24a4f8d33f75e96086b924758cc9",
+  "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
-    ["npm", "run", "validate"],
-    ["npm", "run", "build:extension:wxt"],
-    ["npm", "run", "test:wxt:smoke"],
-    ["node", "scripts/run-e2e.mjs", "e2e/provider-connections.spec.mjs", "e2e/selection-assistant-stream.spec.mjs", "e2e/subtitles.spec.mjs", "e2e/learning-center.spec.mjs"]
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "node",
+      "scripts/run-e2e.mjs",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/selection-assistant-stream.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/learning-center.spec.mjs"
+    ]
   ],
   "artifactRequired": true,
   "syncHead": null,
   "pullRequest": null,
-  "nextAction": "Push this branch and create a PR when explicitly authorized; no remote sync has been performed.",
-  "validation": {
-    "npmRunValidate": "PASS (1542 Node tests, 46 Vitest)",
-    "wxtBuild": "PASS (206 files, 39542503 bytes)",
-    "wxtSmoke": "PASS (Chromium 153.0.8010.12)",
-    "relatedE2E": "PASS (14/14)",
-    "realLocalLmStudio": "PASS (hy-mt2-7b streaming Selection usage returned Chinese complete response)"
-  }
+  "nextAction": "修复扩展重载后的划词错误提示，并在 Provider 连接卡内显示测试反馈；随后执行受影响验证和重新构建。"
 }

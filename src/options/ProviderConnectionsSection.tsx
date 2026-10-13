@@ -4,6 +4,7 @@ import type { OptionsClient, ProviderConnection, ProviderConnectionState, Servic
 import { useOptionsI18n } from "./LocaleContext";
 
 type Draft = Omit<ProviderConnection, "hasApiKey">;
+type ConnectionTestStatus = { connectionId: string; message: string; kind: "loading" | "success" | "error" };
 type Props = { client: Pick<OptionsClient, "saveProviderConnection" | "deleteProviderConnection" | "setDefaultService" | "testProviderConnection">; state: ProviderConnectionState | null; loading: boolean; error: string; disabled: boolean; reload: () => Promise<void>; setStatus: (message: string, error?: boolean) => void };
 
 export function ProviderConnectionsSection({ client, state, loading, error, disabled, reload, setStatus }: Props) {
@@ -13,6 +14,7 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
   const [apiKey, setApiKey] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [testStatus, setTestStatus] = useState<ConnectionTestStatus | null>(null);
   const connections = state?.connections || [];
   const defaultValue = serviceValue(state?.defaultService || null);
   const platformOptions = useMemo(() => PROVIDER_PLATFORMS, []);
@@ -50,9 +52,15 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
   }
 
   async function test(connection: ProviderConnection) {
-    setBusy(true); setStatus(i18n.t("options.connections.testing", { name: connection.name }));
-    try { setStatus(i18n.t("options.testSucceeded", { message: await client.testProviderConnection(connection.id) })); }
-    catch (cause) { setStatus(errorText(cause), true); } finally { setBusy(false); }
+    const testing = i18n.t("options.connections.testing", { name: connection.name });
+    setBusy(true); setTestStatus({ connectionId: connection.id, message: testing, kind: "loading" }); setStatus(testing);
+    try {
+      const message = i18n.t("options.testSucceeded", { message: await client.testProviderConnection(connection.id) });
+      setTestStatus({ connectionId: connection.id, message, kind: "success" }); setStatus(message);
+    } catch (cause) {
+      const message = errorText(cause);
+      setTestStatus({ connectionId: connection.id, message, kind: "error" }); setStatus(message, true);
+    } finally { setBusy(false); }
   }
 
   async function remove(connection: ProviderConnection) {
@@ -68,7 +76,7 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
 
   return <section id="provider" className="advanced" tabIndex={-1}><h2>{i18n.t("options.connections.title")}</h2><p className="section-summary">{i18n.t("options.connections.summary")}</p>
     <label htmlFor="defaultService">{i18n.t("options.connections.default")}</label><select id="defaultService" disabled={locked || loading || !state} value={defaultValue} onChange={event => void selectDefault(event.target.value)}>{connections.map(connection => <option key={connection.id} value={`api-key:${connection.id}`}>{connection.name} · {connection.defaultModel || i18n.t("options.connections.modelUnset")}</option>)}<option value="chatgpt-plan">{i18n.t("options.chatgptPlan.providerName")}</option></select>
-    <div className="connection-list" aria-busy={loading}>{loading ? <p>{i18n.t("options.connections.loading")}</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => void reload()}>{i18n.t("common.retry")}</button></div> : connections.map(connection => <div className="connection-card" key={connection.id}><div><strong>{connection.name}</strong><small>{connection.platform} · {connection.protocol} · {connection.defaultModel || i18n.t("options.connections.modelUnset")}</small><small>{connection.baseUrl}</small><span className={`connection-key-state ${connection.hasApiKey ? "ready" : "empty"}`}>{connection.hasApiKey ? i18n.t("options.connections.keySaved") : connection.settings.allowEmptyApiKey ? i18n.t("options.connections.keyOptional") : i18n.t("options.connections.keyMissing")}</span></div><div className="site-actions"><button type="button" disabled={locked} onClick={() => void test(connection)}>{i18n.t("options.connections.test")}</button><button type="button" disabled={locked} onClick={() => edit(connection)}>{i18n.t("common.edit")}</button><button type="button" disabled={locked} onClick={() => void remove(connection)}>{i18n.t("common.delete")}</button></div></div>)}</div>
+    <div className="connection-list" aria-busy={loading}>{loading ? <p>{i18n.t("options.connections.loading")}</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => void reload()}>{i18n.t("common.retry")}</button></div> : connections.map(connection => <div className="connection-card" key={connection.id}><div><strong>{connection.name}</strong><small>{connection.platform} · {connection.protocol} · {connection.defaultModel || i18n.t("options.connections.modelUnset")}</small><small>{connection.baseUrl}</small><span className={`connection-key-state ${connection.hasApiKey ? "ready" : "empty"}`}>{connection.hasApiKey ? i18n.t("options.connections.keySaved") : connection.settings.allowEmptyApiKey ? i18n.t("options.connections.keyOptional") : i18n.t("options.connections.keyMissing")}</span>{testStatus?.connectionId === connection.id ? <span className="connection-test-status" data-kind={testStatus.kind} role={testStatus.kind === "error" ? "alert" : "status"} aria-live="polite">{testStatus.message}</span> : null}</div><div className="site-actions"><button type="button" disabled={locked} onClick={() => void test(connection)}>{i18n.t("options.connections.test")}</button><button type="button" disabled={locked} onClick={() => edit(connection)}>{i18n.t("common.edit")}</button><button type="button" disabled={locked} onClick={() => void remove(connection)}>{i18n.t("common.delete")}</button></div></div>)}</div>
     <form className="connection-editor" onSubmit={event => void save(event)}><h3>{i18n.t(editing ? "options.connections.edit" : "options.connections.add")}</h3>
       <div className="profile-grid"><div><label htmlFor="connectionPlatform">{i18n.t("options.connections.platform")}</label><select id="connectionPlatform" disabled={locked} value={draft.platform} onChange={event => choosePlatform(event.target.value)}>{platformOptions.map(value => <option key={value.id} value={value.id}>{value.label}</option>)}</select></div><div><label htmlFor="connectionProtocol">{i18n.t("options.connections.protocol")}</label><select id="connectionProtocol" disabled={locked} value={draft.protocol} onChange={event => update({ protocol: event.target.value })}>{Object.values(PROVIDER_PROTOCOLS).map(value => <option key={value} value={value}>{value}</option>)}</select></div></div>
       <div className="profile-grid"><div><label htmlFor="connectionName">{i18n.t("options.connections.name")}</label><input id="connectionName" disabled={locked} value={draft.name} onChange={event => update({ name: event.target.value })} /></div><div><label htmlFor="connectionId">ID</label><input id="connectionId" disabled={locked || Boolean(editing)} value={draft.id} onChange={event => { const id = event.target.value.toLowerCase().replace(/[^a-z0-9._-]/gu, "-"); update({ id, credentialId: id }); }} /></div></div>

@@ -485,6 +485,9 @@ label {
 .connection-card small { overflow-wrap: anywhere; color: var(--tf-text-secondary); }
 .connection-key-state { width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: var(--tf-green-50); color: var(--tf-green-800); font-size: 11px; font-weight: 650; }
 .connection-key-state.empty { background: color-mix(in srgb, var(--tf-bg-muted) 80%, transparent); color: var(--tf-text-muted); }
+.connection-test-status { margin-top: 6px; color: var(--tf-text-secondary); font-size: 12px; line-height: 1.45; }
+.connection-test-status[data-kind="success"] { color: var(--tf-green-800); }
+.connection-test-status[data-kind="error"] { color: var(--tf-danger); }
 .connection-editor { padding-top: 4px; border-top: 1px solid var(--tf-border-soft); }
 
 .checkbox-label {
