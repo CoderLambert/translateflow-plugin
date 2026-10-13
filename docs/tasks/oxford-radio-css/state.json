@@ -25,7 +25,10 @@
       "tests/rich-viewer-contract.test.mjs",
       "tests/rich-mdd-css.test.mjs",
       "tests/selection-rich-outcome.test.mjs",
-      "tests/selection-multi-dictionary.test.mjs"
+      "tests/selection-multi-dictionary.test.mjs",
+      "tests/rich-controls.test.mjs",
+      "tests/constants.test.mjs",
+      "tests/rich-resource-resolver.test.mjs"
     ],
     [
       "npm",

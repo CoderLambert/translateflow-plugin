@@ -101,6 +101,42 @@ index schema, permissions, CSP and Provider boundaries do not change in this
 slice, and its synthetic browser evidence does not replace Oxford final
 acceptance.
 
+## Controlled radio state and scoped stylesheet rules
+
+Rich records can retain coherent radio/label relationships as bounded data.
+The tokenizer and viewer both validate IDs, names, label targets and checked
+states before creating controls inside that record's Shadow root. Zero initial
+selection stays zero; multiple initial checked states, duplicate identities or
+incomplete radio relationships degrade that record to readable safe text with
+a visible notice. Decorative orphan labels become static text without disabling
+an otherwise valid group. Native label actions and bounded keyboard handling
+update only the associated group; no form, dictionary handler or script runs.
+
+Local stylesheet compilation uses the existing background css-tree path and
+closed selector atoms for compounds, descendants, child/sibling relationships,
+`:checked`, simple structural/focus states, `[open]` and static before/after
+pseudo-elements. IDs use the same controlled targets as labels and fragments.
+Pure bounded string content is allowed on the two pseudo-elements; arbitrary
+functions, attribute-driven content, external URLs and Shadow escape selectors
+remain rejected. Relative flex layouts and finite pixel max-width media
+conditions are supported; fixed positioning cannot escape the viewer.
+
+Source and generated CSS are each capped at 64 KiB. Source rule visits are
+bounded at 1,024 and accepted output rules at 512; the existing twelve
+declarations per rule and eight local asset slots remain bounded. A read-only
+inspection measured 636 source rules and 463 potentially useful rules in the
+verified Oxford sidecar, including state rules beyond the former 255 visits.
+That projection is design evidence, not a claim of browser acceptance. Rule,
+output-byte or nesting exhaustion rejects the stylesheet with diagnostics
+instead of presenting a truncated stylesheet as complete.
+
+See [the radio/CSS task](tasks/oxford-radio-css/task.md) for exact candidate and
+browser evidence. This slice does not establish font/static-SVG support,
+cross-entry history, Oxford-specific adapters or attachment recovery. Existing
+long-entry scrolling, footer actions, pronunciation controls and details stay
+under regression coverage. No stored index, source file, permission or CSP
+migration is introduced.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,

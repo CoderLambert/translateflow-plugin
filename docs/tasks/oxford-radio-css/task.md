@@ -11,3 +11,5 @@
 验收：合法 radio/label 相互作用、各正文同ID/group隔离、for/id/name malformed/duplicate/orphan降级、无form提交/handler/JS/HTTP；selector AST positive/negative、状态面板、source/accepted/output预算、伪元素content固定安全子集；Selection cancel/generation与资源close不回归。实际 candidate WXT 下同一真实 Oxford arch/go（只读对照/私有profile测试副本），检查DOM/全部radio状态/POS面板/keyboard/default状态/footer/末尾，Provider=0/external dictionary HTTP=0，记录exact commit/artifact/browser/包身份。合成 PASS不代替真实词条验收，真实终验尚缺字体/SVG/导航/失败恢复时明确 NOT_RUN/剩余项。
 
 每 PR git diff check、受影响Node、完整npm validate、显式WXT、smoke、安全/取消、相关Chromium。准确candidate freeze、独立只读review无blocker、remote checks/threads/base/head保护、guarded squash merge及post-merge实际main复验。缓存切片根据用户当前优先级反馈后移；保留测量和未验收代码，不丢弃也不声称已交付。
+
+冻结前明确：CSS visited cap1024、accepted512、source/output64KiB（只读636源/463有限投影依据）；private输入报告只统计，不包含商业正文。两个受控Content helper只提取标签扫描与radio关联/键盘构造，src/entries/content.js单源顺序注册；无新React/运行平台。拒绝radio group本record纯文本+提示，不因普通orphan标签降级；合法0checked保持零，不伪造默认选择。
