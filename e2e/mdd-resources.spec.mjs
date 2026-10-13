@@ -826,14 +826,17 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect.poll(() => viewer.evaluate((node) => node.getRootNode().activeElement?.dataset.richTargetId || "")).toBe("media-anchor");
     const audioLoader = viewer.locator("button[data-action='load-mdd-audio']");
     await expect(audioLoader).toBeVisible();
+    // Loading from this trusted click starts playback; observe the non-bubbling
+    // play event before the audio element is created, on the actual audio target.
+    await viewer.evaluate((node) => node.addEventListener("play", (event) => {
+      const audio = event.target;
+      if (audio instanceof HTMLAudioElement && audio.matches("audio.tf-rich-resource-audio")) {
+        audio.dataset.e2ePlayEvent = "true";
+      }
+    }, { capture: true, once: true }));
     await audioLoader.click();
     const audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
     await expect(audio).toBeVisible({ timeout: 30_000 });
-    await audio.evaluate((node) => node.addEventListener("play", () => { node.dataset.e2ePlayEvent = "true"; }, { once: true }));
-    await audio.scrollIntoViewIfNeeded();
-    const audioBox = await audio.boundingBox();
-    expect(audioBox).toBeTruthy();
-    await page.mouse.click(audioBox.x + 16, audioBox.y + Math.max(16, audioBox.height / 2));
     await expect.poll(() => audio.getAttribute("data-e2e-play-event"), { timeout: 5_000 }).toBe("true");
     expect(await page.evaluate(() => window.__mddLinkedPackageExecuted || false)).toBe(false);
     expect(remoteRequests).toEqual([]);
