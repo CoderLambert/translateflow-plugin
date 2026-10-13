@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "oxford-radio-css",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "rich-multiple-records"
@@ -9,7 +9,7 @@
   "branch": "fix/oxford-rich-layout-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-layout-20261013",
   "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
-  "mergeHead": null,
+  "mergeHead": "cbf9e3b7498a3fa36e768ffcf48146996cd4786c",
   "validationCommands": [
     [
       "git",
@@ -69,5 +69,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "exact-head验收与独审通过；准确远端head/base/threads/checks核对后guarded squash merge，post-main验证。"
+  "nextAction": "PR329实际main post-merge回归通过；下一唯一优先切片为#271字体/static SVG。"
 }

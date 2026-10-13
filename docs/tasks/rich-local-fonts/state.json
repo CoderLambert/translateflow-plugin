@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "task": "rich-local-fonts",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [
+    "oxford-radio-css"
+  ],
+  "branch": "fix/rich-font-svg-20261013",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-font-svg-20261013",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/mdd-format.test.mjs",
+      "tests/mdd-security.test.mjs",
+      "tests/rich-mdd-css.test.mjs",
+      "tests/rich-resource-resolver.test.mjs",
+      "tests/rich-dictionary-sanitizer.test.mjs",
+      "tests/constants.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/rich-local-fonts.spec.mjs",
+      "e2e/oxford-radio-css.spec.mjs",
+      "e2e/multi-dictionary-viewer.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "e2e/mdd-resources.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "Chrome字体原型后实施有界真实TTF slice，fonts完成再SVG。"
+}

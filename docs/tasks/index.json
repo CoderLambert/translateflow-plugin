@@ -266,7 +266,7 @@
     },
     {
       "task": "oxford-radio-css",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "rich-multiple-records"
       ],
@@ -287,6 +287,15 @@
         "rich-multiple-records"
       ],
       "branch": "fix/rich-index-cache-budget-20261013",
+      "candidateHead": null
+    },
+    {
+      "task": "rich-local-fonts",
+      "status": "working",
+      "dependencies": [
+        "oxford-radio-css"
+      ],
+      "branch": "fix/rich-font-svg-20261013",
       "candidateHead": null
     },
     {
