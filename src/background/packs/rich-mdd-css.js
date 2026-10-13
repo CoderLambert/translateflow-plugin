@@ -1,4 +1,5 @@
 import * as cssTree from "css-tree";
+import { collectRichMddFontFaces, sanitizeRichFontFamily } from "./rich-mdd-fonts.js";
 import { normalizeMddResourcePath } from "./importers/mdd-resource-path.js";
 
 const MAX_STYLESHEET_BYTES = 64 * 1024;
@@ -55,7 +56,8 @@ export function sanitizeRichMddStylesheet(bytes, stylesheetPath) {
   if (unclosedBlock) return { css: "", assetSlots: [], diagnostics: ["css.parse_failed"] };
 
   const slots = new Map();
-  const context = { slots, stylesheetPath, diagnostics, rules: 0, accepted: 0, overflow: false };
+  const fonts = collectRichMddFontFaces(ast, stylesheetPath, diagnostics);
+  const context = { fonts, slots, stylesheetPath, diagnostics, rules: 0, accepted: 0, overflow: false };
   const css = sanitizeList(ast.children, context, 0);
   if (context.overflow || new TextEncoder().encode(css).byteLength > MAX_STYLESHEET_BYTES) {
     return { css: "", assetSlots: [], diagnostics: [...new Set([...diagnostics, "css.output_limit"])].slice(0, 24) };
@@ -63,6 +65,7 @@ export function sanitizeRichMddStylesheet(bytes, stylesheetPath) {
   return {
     css,
     assetSlots: [...slots].map(([token, path]) => ({ token, path, kind: "image" })),
+    ...(fonts.faces.length ? { fontFaces: fonts.faces } : {}),
     diagnostics: [...new Set(diagnostics)].slice(0, 24)
   };
 }
@@ -115,6 +118,7 @@ function sanitizeList(list, context, depth) {
       if (nested) output.push(`@media ${canonicalQuery}{${nested}}`);
       return;
     }
+    if (node.type === "Atrule" && String(node.name).toLowerCase() === "font-face") return;
     context.diagnostics.push("css.rule_filtered");
   });
   return output.join("");
@@ -122,6 +126,7 @@ function sanitizeList(list, context, depth) {
 
 function sanitizeDeclaration(declaration, context, allowContent = false) {
   const property = String(declaration.property || "").toLowerCase();
+  if (property === "font-family" && !declaration.important) return sanitizeRichFontFamily(declaration.value, context.fonts.families);
   if (!PROPERTIES.has(property) || declaration.important) return "";
   if (property === "content") {
     if (!allowContent) return "";
@@ -154,7 +159,7 @@ function sanitizeDeclaration(declaration, context, allowContent = false) {
       }
       let token = [...context.slots.keys()].find((key) => context.slots.get(key) === path);
       if (!token) {
-        if (context.slots.size >= MAX_ASSET_SLOTS) {
+        if (context.slots.size + context.fonts.faces.length >= MAX_ASSET_SLOTS) {
           unsafe = true;
           return;
         }

@@ -326,7 +326,7 @@ export function createRichMddResourceManager({
           ...(selected.dimensions ? { width: selected.dimensions.width, height: selected.dimensions.height } : {}),
           size: selected.bytes.byteLength,
           base64: bytesToBase64(selected.bytes, signal),
-          ...(safeStylesheet ? { safeCss: safeStylesheet.css, assetSlots: safeStylesheet.assetSlots } : {}),
+          ...(safeStylesheet ? { safeCss: safeStylesheet.css, assetSlots: safeStylesheet.assetSlots, ...(safeStylesheet.fontFaces ? { fontFaces: safeStylesheet.fontFaces } : {}) } : {}),
           diagnostics: [...new Set(diagnostics)].slice(0, 24)
         };
       });

@@ -66,7 +66,8 @@ export function validateResourceMime(result) {
   const expected = {
     image: /^image\/(?:png|jpeg|gif|webp|avif)$/u,
     audio: /^audio\/(?:wav|mpeg|ogg|mp4|aac|flac)$/u,
-    stylesheet: /^text\/css$/u
+    stylesheet: /^text\/css$/u,
+    font: /^font\/ttf$/u
   }[result.kind];
   if (!expected || !expected.test(String(result.mime || ""))) {
     throw richError("RICH_MDD_CORRUPT", "MDD resource type failed MIME verification.");

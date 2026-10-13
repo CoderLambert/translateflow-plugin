@@ -3,6 +3,7 @@ import {
   mdictFail,
   requireMdictAtMost
 } from "./mdict-contract.js";
+import { classifyMddTrueType } from "./mdd-font-policy.js";
 import { readMddAvifDimensions } from "./mdd-avif-policy.js";
 
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
@@ -15,6 +16,7 @@ export function classifyMddResource(path, input, limits) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   requireMdictAtMost(bytes.byteLength, limits.resourceBytes, "MDD resource bytes");
   const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  if (extension === "ttf") return classifyMddTrueType(bytes);
   if (extension === "css") return classifyCss(bytes);
   if (["png", "jpg", "jpeg", "gif", "webp", "avif"].includes(extension)) {
     return classifyImage(extension, bytes, limits);

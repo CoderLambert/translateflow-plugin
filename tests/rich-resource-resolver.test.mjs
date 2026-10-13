@@ -38,6 +38,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
   });
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -350,6 +351,7 @@ async function createStylesheetHarness({ imageResponse, deferImage = false }) {
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextDecoder, Uint8Array, Blob, URL, atob });
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -415,6 +417,7 @@ function createMediaLifecycleHarness(assets) {
   });
   vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(MEDIA, "utf8"), context);
+  vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   return { messages, resolver, get observer() { return latestObserver; } };
@@ -471,4 +474,162 @@ test("the same image path retains separate ordinary and validated semantic descr
   assert.match(parent.children[1].className, /tf-rich-resource-image-oxford-inline/u);
   assert.equal(harness.resolver.activeObjectUrlCount, 2);
   harness.resolver.close(container); assert.equal(harness.resolver.activeObjectUrlCount, 0);
+});
+
+function createFontHarness({ manifest, fontBytes = Buffer.alloc(32), rejectDecode = false, rejectWeight = null, deferDecode = false, deferRead = false, stale = false, imageSlots = [], constructorFails = false, cryptoProvider = globalThis.crypto, stylesheetCss = null } = {}) {
+  const messages = [], styles = [], notices = [], created = [], pendingReads = [], pendingLoads = [], registered = new Set();
+  const document = {
+    fonts: registered,
+    createElement(tag) { return { tagName: tag.toUpperCase(), className: '', textContent: '', remove() { this.removed = true; } }; }
+  };
+  class Face {
+    constructor(family, bytes, descriptors) {
+      if (constructorFails) throw new Error('synthetic native constructor rejection');
+      this.family = family; this.bytes = bytes; this.style = descriptors.style; this.weight = descriptors.weight; this.display = descriptors.display; this.status = 'unloaded'; created.push(this);
+    }
+    load() {
+      this.status = 'loading';
+      if (deferDecode) return new Promise((resolve) => pendingLoads.push(() => { this.status = 'loaded'; resolve(this); }));
+      if (rejectDecode || this.weight === rejectWeight) { this.status = 'error'; return Promise.reject(new Error('synthetic decoder rejection')); }
+      this.status = 'loaded'; return Promise.resolve(this);
+    }
+  }
+  const faces = manifest || [{ familyToken: 'tffamily0', path: 'fonts/fixture.ttf', style: 'normal', weight: '400', display: 'swap' }];
+  const css = Buffer.from(stylesheetCss || '.tf-rich-viewer .entry{font-family:tffamily0,serif;color:red}.tf-rich-viewer .choice:checked ~ .panel{display:block}');
+  const app = { modules: { contentI18n: createContentI18nStub(), runtime: {
+    messages: { background: { RICH_MDD_RESOURCE: 'RICH_MDD_RESOURCE', RICH_MDD_RESOURCE_READ_CANCEL: 'RICH_MDD_RESOURCE_READ_CANCEL' } },
+    sendRuntimeMessage(message) {
+      messages.push(message);
+      if (message.type === 'RICH_MDD_RESOURCE_READ_CANCEL') return Promise.resolve({ ok: true, cancelled: true });
+      if (/\.png$/u.test(message.path || '')) return Promise.resolve({ ok: true, found: false, packageVersion: 'v1' });
+      if (message.path === 'entry.css') return Promise.resolve({ ok: true, found: true, packageVersion: 'v1', mime: 'text/css', size: css.length, base64: css.toString('base64'), safeCss: css.toString(), assetSlots: imageSlots, fontFaces: faces });
+      const result = { ok: true, found: true, packageVersion: stale ? 'v2' : 'v1', mime: 'font/ttf', size: fontBytes.length, base64: fontBytes.toString('base64') };
+      return deferRead ? new Promise((resolve) => pendingReads.push(() => resolve(result))) : Promise.resolve(result);
+    }
+  } } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, FontFace: Face, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob, crypto: cryptoProvider });
+  for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
+  const resolver = app.modules.richResourceResolver;
+  const attach = () => { const container = { ownerDocument: document }; const viewport = { appendChild: (node) => notices.push(node) }; const session = resolver.attach(container, { appendChild: (node) => styles.push(node) }, viewport, [{ kind: 'stylesheet', path: 'entry.css' }], 'fixture', 'v1'); return { container, session }; };
+  return { resolver, attach, messages, styles, notices, created, registered, pendingReads, pendingLoads };
+}
+
+test('local font manifests preserve four face variants and isolate random family aliases across sessions', async () => {
+  const manifest = ['normal', 'italic'].flatMap((style) => ['400', '700'].map((weight) => ({ familyToken: 'tffamily0', path: `fonts/${style}-${weight}.ttf`, style, weight, display: 'swap' })));
+  const h = createFontHarness({ manifest }); const first = h.attach(), second = h.attach();
+  await waitFor(() => h.registered.size === 8);
+  const aliases = [...h.registered].map((face) => face.family);
+  assert.equal(new Set(aliases).size, 2); assert.ok(aliases.every((value) => /^tf-rich-font-[0-9a-f]{32}-0$/u.test(value)));
+  assert.equal(h.styles.length, 2); assert.notEqual(h.styles[0].textContent, h.styles[1].textContent);
+  assert.ok(h.styles.every((node) => !node.textContent.includes('tffamily0') && node.textContent.includes(':checked ~ .panel')));
+  assert.equal(h.resolver.activeFontBytes, 8 * 32);
+  h.resolver.close(first.container); assert.equal(h.registered.size, 4);
+  h.resolver.close(second.container); assert.equal(h.registered.size, 0); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+for (const options of [{ rejectDecode: true }, { constructorFails: true }, { stale: true }]) test(`bad font stays a default-font fallback and body/state CSS remains: ${JSON.stringify(options)}`, async () => {
+  const h = createFontHarness(options), { container } = h.attach();
+  await waitFor(() => h.notices.length === 1);
+  assert.equal(h.registered.size, 0); assert.equal(h.resolver.activeFontBytes, 0);
+  assert.equal(h.styles.length, 1); assert.match(h.styles[0].textContent, /:checked ~ \.panel/u); assert.doesNotMatch(h.styles[0].textContent, /tffamily/u);
+  assert.equal(h.notices[0].textContent, 'content.rich.fontsUnavailable');
+  h.resolver.close(container); assert.equal(h.notices[0].removed, true);
+});
+
+test('malformed font manifests and combined slot overflow cannot introduce page font names or reads', async () => {
+  for (const manifest of [
+    [{ familyToken: 'page-font', path: 'fonts/a.ttf', style: 'normal', weight: '400', display: 'swap' }],
+    [{ familyToken: 'tffamily0', path: 'https://attacker.invalid/a.ttf', style: 'normal', weight: '400', display: 'swap' }],
+    Array.from({ length: 9 }, () => ({ familyToken: 'tffamily0', path: 'fonts/a.ttf', style: 'normal', weight: '400', display: 'swap' })),
+    Array.from({ length: 2 }, () => ({ familyToken: 'tffamily0', path: 'fonts/a.ttf', style: 'normal', weight: '400', display: 'swap' }))
+  ]) {
+    const h = createFontHarness({ manifest }); const { container } = h.attach();
+    await waitFor(() => h.styles.length === 1);
+    assert.equal(h.messages.filter((message) => /\.ttf$/u.test(message.path || '')).length, 0);
+    assert.match(h.styles[0].textContent, /font-family:serif,serif/u); assert.equal(h.notices.length, 1);
+    h.resolver.close(container);
+  }
+});
+
+test('close while a font read or native decode is pending never appends an old face and reservations settle once', async () => {
+  for (const phase of ['read', 'decode']) {
+    const h = createFontHarness({ deferRead: phase === 'read', deferDecode: phase === 'decode' }); const { container } = h.attach();
+    await waitFor(() => (phase === 'read' ? h.pendingReads.length : h.pendingLoads.length) === 1);
+    assert.equal(h.resolver.activeFontBytes, phase === 'decode' ? 32 : 0);
+    h.resolver.close(container); h.resolver.close(container);
+    assert.equal(h.registered.size, 0);
+    if (phase === 'decode') assert.equal(h.resolver.activeFontBytes, 32, 'pending native bytes stay reserved until the same two-read job settles');
+    (phase === 'read' ? h.pendingReads[0] : h.pendingLoads[0])();
+    await waitFor(() => h.resolver.activeFontBytes === 0 && h.resolver.pendingReadCount === 0);
+    assert.equal(h.registered.size, 0); assert.equal(h.notices.length, 0);
+  }
+});
+
+test('font pending work shares the existing two-read queue across repeated close/reopen', async () => {
+  const h = createFontHarness({ deferDecode: true }); const first = h.attach(), second = h.attach();
+  await waitFor(() => h.pendingLoads.length === 2);
+  h.resolver.close(first.container); h.resolver.close(second.container);
+  const third = h.attach();
+  await waitFor(() => h.resolver.pendingReadCount > 0);
+  assert.equal(h.created.length, 2); assert.equal(h.resolver.activeFontBytes, 64);
+  h.pendingLoads[0](); h.pendingLoads[1]();
+  await waitFor(() => h.pendingLoads.length === 3);
+  assert.equal(h.resolver.activeFontBytes, 32); assert.equal(h.registered.size, 0);
+  h.pendingLoads[2](); await waitFor(() => h.registered.size === 1);
+  h.resolver.close(third.container); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+test('font bytes reserve the existing 32MiB active budget before decode, without using image budget', async () => {
+  const manifest = Array.from({ length: 5 }, (_, index) => ({ familyToken: `tffamily${index}`, path: `fonts/${index}.ttf`, style: 'normal', weight: '400', display: 'swap' }));
+  const h = createFontHarness({ manifest, fontBytes: Buffer.alloc(8 * 1024 * 1024) }); const { container, session } = h.attach();
+  await waitFor(() => h.notices.length === 1);
+  assert.equal(h.registered.size, 4); assert.equal(h.created.length, 4); assert.equal(session.objectBytes, 32 * 1024 * 1024); assert.equal(session.imageBytes, 0);
+  assert.equal(h.resolver.activeFontBytes, 32 * 1024 * 1024);
+  h.resolver.close(container); assert.equal(h.registered.size, 0); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+
+test('eight image slots plus a font face reject font admission but retain the body CSS', async () => {
+  const h = createFontHarness({ imageSlots: Array.from({ length: 8 }, (_, index) => ({ kind: 'image', token: `tfasset${index}`, path: `images/${index}.png` })) });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.equal(h.notices.length, 1); assert.equal(h.created.length, 0);
+  assert.equal(h.messages.filter((message) => /\.ttf$/u.test(message.path || '')).length, 0);
+  assert.match(h.styles[0].textContent, /:checked ~ \.panel/u); h.resolver.close(container);
+});
+
+
+test('one failed font variant reports one degradation notice without discarding other faces or state CSS', async () => {
+  const manifest = ['normal', 'italic'].flatMap((style) => ['400', '700'].map((weight) => ({ familyToken: 'tffamily0', path: `fonts/${style}-${weight}.ttf`, style, weight, display: 'swap' })));
+  const h = createFontHarness({ manifest, rejectWeight: '400' }), { container } = h.attach();
+  await waitFor(() => h.created.length === 4 && h.registered.size === 2);
+  assert.equal(h.notices.length, 1); assert.ok([...h.registered].every((face) => face.weight === '700'));
+  assert.equal(h.resolver.activeFontBytes, 64); assert.match(h.styles[0].textContent, /:checked ~ \.panel/u);
+  h.resolver.close(container); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+
+test('HTTP-like runtimes without randomUUID still use cryptographic random aliases', async () => {
+  const h = createFontHarness({ cryptoProvider: { getRandomValues: (bytes) => globalThis.crypto.getRandomValues(bytes) } });
+  const { container } = h.attach(); await waitFor(() => h.registered.size === 1);
+  assert.match([...h.registered][0].family, /^tf-rich-font-[0-9a-f]{32}-0$/u);
+  assert.equal(h.notices.length, 0); h.resolver.close(container);
+});
+
+test('missing native randomness falls back without dropping body CSS or exposing source family tokens', async () => {
+  const h = createFontHarness({ cryptoProvider: {} }); const { container } = h.attach();
+  await waitFor(() => h.styles.length === 1);
+  assert.equal(h.created.length, 0); assert.equal(h.notices.length, 1);
+  assert.doesNotMatch(h.styles[0].textContent, /tffamily/u); assert.match(h.styles[0].textContent, /:checked ~ \.panel/u);
+  h.resolver.close(container);
+});
+
+test('session alias expansion keeps the 64KiB CSS output budget and falls back without native font work', async () => {
+  const manifest = Array.from({ length: 8 }, (_, index) => ({ familyToken: `tffamily${index}`, path: `fonts/${index}.ttf`, style: 'normal', weight: '400', display: 'swap' }));
+  const stylesheetCss = '.tf-rich-viewer .entry{font-family:' + manifest.map((face) => face.familyToken).join(',') + ';color:red}';
+  const h = createFontHarness({ manifest, stylesheetCss: stylesheetCss.repeat(512) }); const { container } = h.attach();
+  await waitFor(() => h.styles.length === 1);
+  assert.ok(Buffer.byteLength(h.styles[0].textContent) <= 64 * 1024);
+  assert.equal(h.created.length, 0); assert.equal(h.notices.length, 1);
+  assert.doesNotMatch(h.styles[0].textContent, /tffamily/u); assert.match(h.styles[0].textContent, /color:red/u);
+  h.resolver.close(container);
 });

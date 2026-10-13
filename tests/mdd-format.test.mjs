@@ -1,3 +1,5 @@
+import { makeTinyTrueType } from "./helpers/ttf-fixture.mjs";
+import { classifyMddResource } from "../src/background/packs/importers/mdd-resource-policy.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -318,3 +320,12 @@ function mddKeyBlock(entries) {
 function sha256(input) {
   return createHash("sha256").update(input).digest("hex");
 }
+
+test("generated TrueType fonts round-trip through MDD with exact bytes and bounded classification", async () => {
+  const bytes = makeTinyTrueType(), source = trackedSource(makeMdd([['fonts/synthetic.ttf', bytes]]));
+  const index = await buildMddIndex({ source });
+  const result = await lookupMddResource({ source, index, path: 'fonts/synthetic.ttf' });
+  assert.equal(result.kind, 'font'); assert.equal(result.mime, 'font/ttf');
+  assert.equal(sha256(result.bytes), sha256(bytes));
+  assert.deepEqual(classifyMddResource('fixture.ttf', bytes, MDD_IMPORT_LIMITS), { kind: 'font', mime: 'font/ttf' });
+});

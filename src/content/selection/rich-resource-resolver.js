@@ -34,6 +34,10 @@
     maxViewImagePixels: MAX_VIEW_IMAGE_PIXELS
   });
 
+  const fonts = app.modules.richResourceFonts.create({ isCurrent, scheduleRead, fetchAsset,
+    maxAssetBytes: MAX_ASSET_BYTES, maxActiveBytes: MAX_VIEW_BLOB_BYTES,
+    onRelease: (session) => media.retryVisibleImages(session) });
+
   function attach(container, shadowRoot, viewport, resources, dictionaryId, packageVersion = "") {
     close(container);
     const session = {
@@ -115,6 +119,7 @@
           }
         }
         if (!css || !isCurrent(session)) return;
+        css = fonts.apply(session, resource, { ...asset, safeCss: css });
         const style = document.createElement("style");
         style.textContent = css;
         session.shadowRoot.appendChild(style);
@@ -166,7 +171,8 @@
     const expectedMime = {
       image: /^image\/(?:png|jpeg|gif|webp|avif)$/u,
       audio: /^audio\/(?:wav|mpeg|ogg|mp4|aac|flac)$/u,
-      stylesheet: /^text\/css$/u
+      stylesheet: /^text\/css$/u,
+      font: /^font\/ttf$/u
     }[resource.kind];
     const base64 = String(response.base64 || "");
     if (!expectedMime?.test(mime) || !Number.isSafeInteger(size) || size <= 0 || size > MAX_ASSET_BYTES || base64.length > MAX_BASE64_CHARS) {
@@ -183,7 +189,7 @@
       ? response.safeCss
       : "";
     const assetSlots = normalizeStylesheetAssetSlots(response.assetSlots);
-    return { bytes, mime, size, width, height, safeCss, assetSlots };
+    return { bytes, mime, size, width, height, safeCss, assetSlots, fontFaces: response.fontFaces };
   }
 
   function normalizeStylesheetAssetSlots(input) {
@@ -254,6 +260,7 @@
     if (session.activeAudio) media.releaseActiveAudio(session, session.activeAudio, false);
     cancelQueuedReads(session);
     cancelRunningReads(session);
+    fonts.close(session);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();
@@ -386,6 +393,7 @@
     close,
     closeAll,
     closeDictionary,
+    get activeFontBytes() { return fonts.activeBytes; },
     get activeObjectUrlCount() { return activeObjectUrlCount; },
     get activeObjectUrlBytes() {
       let bytes = 0;
