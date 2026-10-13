@@ -26,7 +26,9 @@
       "tests/constants.test.mjs",
       "tests/selection-reading-window.test.mjs",
       "tests/selection-v2.test.mjs",
-      "tests/rich-mdd-css.test.mjs"
+      "tests/rich-mdd-css.test.mjs",
+      "tests/dictionary-library-v2-presentation.test.mjs",
+      "tests/dictionary-pack-ui.test.mjs"
     ],
     [
       "npm",
@@ -63,9 +65,10 @@
       "e2e/oxford-radio-css.spec.mjs",
       "e2e/rich-resource-failure-ui.spec.mjs",
       "e2e/rich-reading-window.spec.mjs",
-      "e2e/selection-assistant-ui.spec.mjs"
+      "e2e/selection-assistant-ui.spec.mjs",
+      "e2e/settings-ia.spec.mjs"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "精简词典库卡片：保留关键摘要与操作，完整元数据默认收起，完成窄屏与键盘验证。"
+  "nextAction": "冻结当前实现候选，完成整体验收、自查与现有本地加载包更新。"
 }
