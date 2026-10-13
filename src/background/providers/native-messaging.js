@@ -89,6 +89,13 @@ export function createNativeMessagingClient({
   async function selectAccount(accountId) { return request("auth.select", { accountId: String(accountId || "") }); }
   async function logout() { return request("auth.logout"); }
   async function listModels() { return request("models.list"); }
+  async function restart() {
+    if (connecting || pending.size) throw hostBusy();
+    const current = port;
+    if (current) close(current, disconnected());
+    await ensureConnected();
+    return { restarted: true };
+  }
   async function infer(input, { signal, onDelta } = {}) {
     return request("infer.start", input, { signal, onEvent: event => {
       if (event.name === "infer.delta" && typeof event.payload?.text === "string") onDelta?.(event.payload.text);
@@ -194,7 +201,7 @@ export function createNativeMessagingClient({
     if (succeeded) entry.resolve(value); else entry.reject(normalizeClientError(value));
   }
 
-  return Object.freeze({ ensureConnected, authStatus, startAuth, selectAccount, logout, listModels, infer });
+  return Object.freeze({ ensureConnected, authStatus, startAuth, selectAccount, logout, listModels, restart, infer });
 }
 
 export const nativeMessagingClient = createNativeMessagingClient();

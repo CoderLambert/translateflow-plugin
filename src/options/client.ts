@@ -65,7 +65,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     return String(response.result || "");
   }
 
-  async function chatGPTPlanAction(action: "status" | "models" | "connect" | "add" | "select" | "logout", accountId?: string) {
+  async function chatGPTPlanAction(action: "status" | "models" | "restart" | "connect" | "add" | "select" | "logout", accountId?: string) {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION, action, accountId });
     if (!response?.ok) {
       const error = Object.assign(new Error(String(response?.error || i18n.t("options.chatgptPlan.actionFailed"))), {
@@ -74,7 +74,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
       });
       throw error;
     }
-    return response as { status?: ChatGPTPlanAuthStatus; models?: ChatGPTPlanModel[]; connected?: boolean; selected?: boolean; modelSelectionCleared?: boolean; revocationConfirmed?: boolean };
+    return response as { status?: ChatGPTPlanAuthStatus; models?: ChatGPTPlanModel[]; connected?: boolean; restarted?: boolean; selected?: boolean; modelSelectionCleared?: boolean; revocationConfirmed?: boolean };
   }
 
   async function profiles(): Promise<SiteEntry[]> {

@@ -72,6 +72,52 @@ test("ChatGPT host handshake, status, model list, and streamed result share one 
   assert.deepEqual(result, { text: "hello" });
 });
 
+test("explicit restart closes the idle port and completes a fresh host handshake", async () => {
+  const ports = [], posted = [];
+  const browser = {
+    runtime: {
+      getManifest: () => ({ permissions: ["nativeMessaging"] }),
+      connectNative(name) {
+        assert.equal(name, CHATGPT_PLAN_NATIVE_HOST);
+        const messages = new Set(), disconnects = new Set();
+        const port = {
+          disconnected: false,
+          postMessage(request) {
+            posted.push(request);
+            if (request.method === "hello") reply(port, request, { protocolVersion: 1, capabilities: CAPABILITIES });
+            else if (request.method === "auth.status") reply(port, request, { connected: true, canInfer: true, storage: "fake" });
+            else assert.fail(`Unexpected host method: ${request.method}`);
+          },
+          disconnect() { port.disconnected = true; for (const listener of disconnects) listener(); },
+          onMessage: { addListener(listener) { messages.add(listener); } },
+          onDisconnect: { addListener(listener) { disconnects.add(listener); } },
+          deliver(frame) { for (const listener of messages) listener(frame); }
+        };
+        ports.push(port); return port;
+      },
+      lastError: undefined
+    }
+  };
+  const client = createNativeMessagingClient({ getBrowser: () => browser });
+  await client.authStatus();
+  assert.equal(ports.length, 1); assert.equal(ports[0].disconnected, false);
+  assert.deepEqual(await client.restart(), { restarted: true });
+  assert.equal(ports[0].disconnected, true); assert.equal(ports.length, 2);
+  await client.authStatus();
+  assert.deepEqual(posted.map(value => value.method), ["hello", "auth.status", "hello", "auth.status"]);
+});
+
+test("restart refuses to interrupt an active native request", async () => {
+  const fixture = fakeBrowser(helloOr(() => {}));
+  const client = createNativeMessagingClient({ getBrowser: () => fixture.browser });
+  const status = client.authStatus();
+  await new Promise(resolve => setImmediate(resolve));
+  await assert.rejects(client.restart(), { code: "HOST_BUSY" });
+  fixture.port.deliver({ type: "terminal", requestId: fixture.posted.at(-1).requestId, sequence: 0, ok: true,
+    payload: { connected: false, canInfer: false, storage: "fake" } });
+  await status;
+});
+
 test("account add and selection use bounded explicit native messages", async () => {
   const fixture = fakeBrowser(helloOr((request, port) => {
     if (request.method === "auth.start") {

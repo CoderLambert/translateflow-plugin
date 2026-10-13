@@ -12,6 +12,8 @@ test.describe("ChatGPT Plan native host Settings", () => {
     await expect(section.getByRole("status")).toContainText("尚未检查连接");
     await section.getByRole("button", { name: "检查状态并加载模型" }).click();
     await expect(section.getByRole("status")).toContainText("当前用户尚未安装或注册 TranslateFlow native host");
+    await section.getByRole("button", { name: "重启本地组件" }).click();
+    await expect(section.getByRole("status")).toContainText("当前用户尚未安装或注册 TranslateFlow native host");
     await expect(section.getByRole("button", { name: "连接 ChatGPT 账号" })).toBeEnabled();
     await expect(section.getByRole("button", { name: "添加其他账号" })).toBeEnabled();
 

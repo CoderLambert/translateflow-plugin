@@ -12,17 +12,17 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
   const [authAction, setAuthAction] = useState<AuthAction | null>(null);
   const operation = useRef(0);
 
-  async function refresh() {
+  async function refresh(restart = false) {
     const current = ++operation.current;
     let status: ChatGPTPlanAuthStatus | null = null;
-    setView(value => ({ ...value, busy: true, models: [], message: i18n.t("options.chatgptPlan.checking"), error: false }));
+    setView(value => ({ ...value, busy: true, models: [], message: i18n.t(restart ? "options.chatgptPlan.restarting" : "options.chatgptPlan.checking"), error: false }));
     try {
-      const response = await client.chatGPTPlanAction("status");
+      const response = await client.chatGPTPlanAction(restart ? "restart" : "status");
       status = normalizeStatus(response.status);
       if (current !== operation.current) return;
       if (!status?.connected) {
         setView({ status, models: [], busy: false, error: false,
-          message: i18n.t("options.chatgptPlan.disconnected") });
+          message: i18n.t(restart ? "options.chatgptPlan.restartedDisconnected" : "options.chatgptPlan.disconnected") });
         return;
       }
       if (!status.canInfer) {
@@ -33,7 +33,7 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
       if (current !== operation.current) return;
       const models = normalizeModels(result.models);
       setView({ status, models, busy: false, error: false,
-        message: i18n.t("options.chatgptPlan.connected", { storage: status.storage }) });
+        message: i18n.t(restart ? "options.chatgptPlan.restartedConnected" : "options.chatgptPlan.connected", { storage: status.storage }) });
       if (config.chatgptPlanModel && !models.some(model => model.slug === config.chatgptPlanModel)) update({ chatgptPlanModel: "" });
     } catch (error) {
       if (current !== operation.current) return;
@@ -123,6 +123,7 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
     <p className="hint">{i18n.t("options.chatgptPlan.modelHelp")}</p>
     <div className="actions">
       <button type="button" disabled={disabled || view.busy} onClick={() => void refresh()}>{i18n.t("options.chatgptPlan.check")}</button>
+      <button type="button" disabled={disabled || view.busy} onClick={() => void refresh(true)}>{i18n.t("options.chatgptPlan.restart")}</button>
       <button type="button" disabled={chatGPTSignInActionDisabled(disabled, view.busy, Boolean(authAction))}
         onClick={event => void connect(event, authAction === "add")}>
         {i18n.t(authAction === "add" ? "options.chatgptPlan.retryAddAccount" : authAction === "connect" ? "options.chatgptPlan.retryConnect" : "options.chatgptPlan.connect")}

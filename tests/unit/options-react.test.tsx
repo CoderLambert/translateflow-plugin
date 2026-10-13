@@ -60,6 +60,19 @@ test("ChatGPT settings explain when Native Messaging permission is unavailable",
   expect(await screen.findByText(/Native Messaging 权限不可用/u)).toBeTruthy();
 });
 
+test("ChatGPT settings restart the local component and reload models from the fresh connection", async () => {
+  const chatGPTPlanAction = vi.fn(async (action: string) => {
+    if (action === "restart") return { restarted: true, status: { connected: true, canInfer: true, storage: "fixture-store", accounts: [] } };
+    if (action === "models") return { models: [{ slug: "fixture-model", displayName: "Fixture model" }] };
+    throw new Error(`Unexpected action: ${action}`);
+  });
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
+  await userEvent.click(screen.getByRole("button", { name: "重启本地组件" }));
+  expect(await screen.findByText("本地组件已重启 · 安全存储：fixture-store")).toBeTruthy();
+  expect(screen.getByRole("option", { name: /Fixture model · fixture-model/u })).toBeTruthy();
+  expect(chatGPTPlanAction.mock.calls.map(([action]) => action)).toEqual(["restart", "models"]);
+});
+
 test("ChatGPT sign-in keeps an explicit retry action while authorization is pending", () => {
   expect(chatGPTSignInActionDisabled(false, true, true)).toBe(false);
   expect(chatGPTSignInActionDisabled(false, true, false)).toBe(true);
