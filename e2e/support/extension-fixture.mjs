@@ -20,12 +20,14 @@ export const test = base.extend({
   ecdictMdxReleaseHostAccess: [false, { option: true, scope: "worker" }],
   ecdictMdxCachedArchivePath: ["", { option: true, scope: "worker" }],
   staticContentInjection: [true, { option: true, scope: "worker" }],
+  nativeMessagingPregranted: [false, { option: true, scope: "worker" }],
   harness: [async ({
     lexiconPacks,
     commandCallbackProbe,
     ecdictMdxReleaseHostAccess,
     ecdictMdxCachedArchivePath,
-    staticContentInjection
+    staticContentInjection,
+    nativeMessagingPregranted
   }, use) => {
     const server = await startMockServer({
       ecdictMdxArchivePath: ecdictMdxCachedArchivePath
@@ -37,7 +39,7 @@ export const test = base.extend({
     const buildReport = await prepareExtensionTestCopy({
       extensionDir, lexiconPacks, ecdictMdxReleaseHostAccess,
       ecdictMdxCachedArchivePath, captureCommands: commandCallbackProbe,
-      staticContentInjection, baseUrl: server.baseUrl
+      staticContentInjection, nativeMessagingPregranted, baseUrl: server.baseUrl
     });
 
     console.log("[E2E_PRODUCTION_ARTIFACT]", JSON.stringify({

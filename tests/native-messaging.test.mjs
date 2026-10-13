@@ -35,9 +35,9 @@ function fail(port, request, code, sequence = 0) {
   port.deliver({ type: "terminal", requestId: request.requestId, sequence, ok: false, error: { code, message: "fixture failure" } });
 }
 
-function helloOr(handler) {
+function helloOr(handler, hostVersion = "dev") {
   return (request, port) => {
-    if (request.method === "hello") reply(port, request, { protocolVersion: 1, capabilities: CAPABILITIES });
+    if (request.method === "hello") reply(port, request, { protocolVersion: 1, hostVersion, capabilities: CAPABILITIES });
     else handler(request, port);
   };
 }
@@ -66,10 +66,56 @@ test("ChatGPT host handshake, status, model list, and streamed result share one 
 
   assert.equal(fixture.connects, 1);
   assert.deepEqual(fixture.posted.map(value => value.method), ["hello", "auth.status", "models.list", "infer.start"]);
-  assert.deepEqual(status, { connected: true, canInfer: true, storage: "fake" });
+  assert.deepEqual(status, { connected: true, canInfer: true, storage: "fake", hostVersion: "dev", protocolVersion: 1 });
   assert.equal(models.models[0].slug, "fixture-model");
   assert.deepEqual(deltas, ["hello"]);
   assert.deepEqual(result, { text: "hello" });
+});
+
+test("explicit restart closes the idle port and completes a fresh host handshake", async () => {
+  const ports = [], posted = [];
+  const browser = {
+    runtime: {
+      getManifest: () => ({ permissions: ["nativeMessaging"] }),
+      connectNative(name) {
+        assert.equal(name, CHATGPT_PLAN_NATIVE_HOST);
+        const messages = new Set(), disconnects = new Set();
+        const port = {
+          disconnected: false,
+          postMessage(request) {
+            posted.push(request);
+            if (request.method === "hello") reply(port, request, { protocolVersion: 1, hostVersion: "dev", capabilities: CAPABILITIES });
+            else if (request.method === "auth.status") reply(port, request, { connected: true, canInfer: true, storage: "fake" });
+            else assert.fail(`Unexpected host method: ${request.method}`);
+          },
+          disconnect() { port.disconnected = true; for (const listener of disconnects) listener(); },
+          onMessage: { addListener(listener) { messages.add(listener); } },
+          onDisconnect: { addListener(listener) { disconnects.add(listener); } },
+          deliver(frame) { for (const listener of messages) listener(frame); }
+        };
+        ports.push(port); return port;
+      },
+      lastError: undefined
+    }
+  };
+  const client = createNativeMessagingClient({ getBrowser: () => browser });
+  await client.authStatus();
+  assert.equal(ports.length, 1); assert.equal(ports[0].disconnected, false);
+  assert.deepEqual(await client.restart(), { restarted: true });
+  assert.equal(ports[0].disconnected, true); assert.equal(ports.length, 2);
+  await client.authStatus();
+  assert.deepEqual(posted.map(value => value.method), ["hello", "auth.status", "hello", "auth.status"]);
+});
+
+test("restart refuses to interrupt an active native request", async () => {
+  const fixture = fakeBrowser(helloOr(() => {}));
+  const client = createNativeMessagingClient({ getBrowser: () => fixture.browser });
+  const status = client.authStatus();
+  await new Promise(resolve => setImmediate(resolve));
+  await assert.rejects(client.restart(), { code: "HOST_BUSY" });
+  fixture.port.deliver({ type: "terminal", requestId: fixture.posted.at(-1).requestId, sequence: 0, ok: true,
+    payload: { connected: false, canInfer: false, storage: "fake" } });
+  await status;
 });
 
 test("account add and selection use bounded explicit native messages", async () => {
@@ -99,12 +145,33 @@ test("missing SIWC scope and an expired token surface distinct recoverable error
 });
 
 test("invalid host sequence and missing host fail closed", async () => {
-  const badSequence = fakeBrowser((request, port) => reply(port, request, { protocolVersion: 1, capabilities: CAPABILITIES }, 1));
+  const badSequence = fakeBrowser((request, port) => reply(port, request, { protocolVersion: 1, hostVersion: "dev", capabilities: CAPABILITIES }, 1));
   const client = createNativeMessagingClient({ getBrowser: () => badSequence.browser });
   await assert.rejects(client.ensureConnected(), { code: "NATIVE_HOST_PROTOCOL" });
 
   const missing = fakeBrowser(() => {}, { connectError: new Error("host path must not escape to callers") });
   await assert.rejects(createNativeMessagingClient({ getBrowser: () => missing.browser }).ensureConnected(), { code: "NATIVE_HOST_UNAVAILABLE" });
+});
+
+test("optional nativeMessaging permission is checked before opening a host port", async () => {
+  const fixture = fakeBrowser(helloOr(() => {}), { permissions: [], optionalPermissions: ["nativeMessaging"] });
+  fixture.browser.permissions.contains = async details => details.permissions?.[0] === "nativeMessaging";
+  const client = createNativeMessagingClient({ getBrowser: () => fixture.browser });
+  await client.ensureConnected();
+  assert.equal(fixture.connects, 1);
+});
+
+test("missing and old host versions require an update while malformed versions fail the protocol", async () => {
+  for (const version of [undefined, "0.7.9"]) {
+    const fixture = fakeBrowser((request, port) => {
+      if (request.method === "hello") reply(port, request, { protocolVersion: 1, ...(version ? { hostVersion: version } : {}), capabilities: CAPABILITIES });
+    });
+    await assert.rejects(createNativeMessagingClient({ getBrowser: () => fixture.browser }).ensureConnected(), { code: "NATIVE_HOST_UPDATE_REQUIRED" });
+  }
+  for (const version of ["latest", ["0.8.0"], { version: "0.8.0" }]) {
+    const malformed = fakeBrowser(helloOr(() => {}, version));
+    await assert.rejects(createNativeMessagingClient({ getBrowser: () => malformed.browser }).ensureConnected(), { code: "NATIVE_HOST_PROTOCOL" });
+  }
 });
 
 test("cancel sends a separate control request and never resolves a partial inference", async () => {

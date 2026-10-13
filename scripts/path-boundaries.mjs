@@ -65,6 +65,21 @@ export async function assertBuildOutputPaths(sourceRoot, output, options = {}) {
   return target;
 }
 
+export async function assertOwnedOutputPath(sourceRoot, allowedRoot, output) {
+  const root = path.resolve(sourceRoot);
+  const boundary = path.resolve(allowedRoot);
+  const target = path.resolve(output);
+  if (pathRelation(root, boundary) !== "descendant" || pathRelation(boundary, target) !== "descendant") {
+    throw new Error("Unsafe owned output: target must stay below its repository-owned boundary");
+  }
+  await assertDirectoryWritePath(target, root);
+  await assertDisposableOutputTree(target);
+  if (pathRelation(await canonicalPath(boundary), await canonicalPath(target)) !== "descendant") {
+    throw new Error("Unsafe owned output: canonical target escaped its repository-owned boundary");
+  }
+  return target;
+}
+
 async function temporaryWriteRoot(target, failureMessage) {
   const temporaryRoot = path.resolve(tmpdir());
   if (pathRelation(temporaryRoot, target) === "descendant") return temporaryRoot;

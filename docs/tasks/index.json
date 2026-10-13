@@ -316,6 +316,15 @@
       "candidateHead": "2b9080b118b431838d80561ec1152eae362df9cf"
     },
     {
+      "task": "rich-runtime-resource-recovery",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "oxford-radio-css"
+      ],
+      "branch": "fix/rich-runtime-assets-20261013",
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854"
+    },
+    {
       "task": "rich-stripkey-migration",
       "status": "completed",
       "dependencies": [

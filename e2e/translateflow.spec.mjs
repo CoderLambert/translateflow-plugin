@@ -378,11 +378,11 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result")).toHaveAttribute("data-result-kind", "empty");
     await expect(page.locator(".tf-selection-status")).toHaveAttribute("data-kind", "info");
     await expect(page.locator(".tf-selection-status")).toHaveText("");
-    await expect(page.getByRole("button", { name: "使用 AI 进一步解释这个词" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
     await expect(page.getByRole("button", { name: "使用普通翻译处理这个词" })).toBeVisible();
     expect(harness.server.calls).toHaveLength(0);
 
-    await page.getByRole("button", { name: "使用 AI 进一步解释这个词" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     await expect(page.locator(".tf-selection-ai-detail")).toContainText("streamed answer");
     expect(harness.server.calls).toHaveLength(1);
@@ -443,12 +443,12 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await dictionaryDetails.locator("summary").click();
     await expect(dictionaryDetails).toHaveJSProperty("open", false);
     await expect(page.locator(".tf-selection-source")).toBeHidden();
-    await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
     const visibleActions = page.locator(".tf-selection-panel > .tf-selection-actions button:visible");
-    await expect(visibleActions).toHaveText(["AI 详解", "复制"]);
+    await expect(visibleActions).toHaveText(["复制"]);
     expect(harness.server.calls).toHaveLength(0);
 
-    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(primary).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "streaming");
@@ -481,7 +481,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
     expect(harness.server.calls).toHaveLength(1);
 
-    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     await expect(page.locator(".tf-selection-ai-detail")).toContainText("streamed answer");
     expect(harness.server.calls).toHaveLength(2);
@@ -520,7 +520,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
 
-    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("streamed");
@@ -560,7 +560,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     expect(harness.server.calls).toHaveLength(0);
 
-    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "interrupted");
@@ -574,7 +574,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
-    await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典", "AI 辅助"]);
+    await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典"]);
+    await expect(detail.locator(".tf-selection-generated-label")).toHaveText("AI · 理解");
 
     const box = await panel.boundingBox();
     expect(box).not.toBeNull();

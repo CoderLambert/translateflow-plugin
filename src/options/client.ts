@@ -5,13 +5,14 @@ import { normalizeSelectionDepth } from "../shared/selection.js";
 import { normalizeOrigin } from "../shared/url.js";
 import { createI18n } from "../i18n/index.js";
 import type { I18n } from "../i18n/index.js";
+import { CHATGPT_PLAN_NATIVE_PERMISSION } from "../shared/chatgpt-native-host.js";
 
 export type OptionsConfig = { provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
 export type SiteProfile = { provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
 export type SiteEntry = { origin: string; profile: SiteProfile };
 export type CacheStats = { pageCount: number; segmentCount: number; bytes: number };
 export type ChatGPTPlanAccount = { id: string; label: string; email?: string; connected: boolean };
-export type ChatGPTPlanAuthStatus = { connected: boolean; canInfer: boolean; expiresAt?: string; storage: string; activeAccountId?: string; accounts: ChatGPTPlanAccount[] };
+export type ChatGPTPlanAuthStatus = { connected: boolean; canInfer: boolean; expiresAt?: string; storage: string; activeAccountId?: string; accounts: ChatGPTPlanAccount[]; hostVersion?: string; protocolVersion?: number };
 export type ChatGPTPlanModel = { slug: string; displayName: string };
 
 export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
@@ -65,7 +66,21 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     return String(response.result || "");
   }
 
-  async function chatGPTPlanAction(action: "status" | "models" | "connect" | "add" | "select" | "logout", accountId?: string) {
+  async function hasChatGPTPlanPermission() {
+    const manifest = api.runtime.getManifest();
+    if (manifest.permissions?.includes(CHATGPT_PLAN_NATIVE_PERMISSION)) return true;
+    if (!manifest.optional_permissions?.includes(CHATGPT_PLAN_NATIVE_PERMISSION)) return false;
+    return api.permissions.contains({ permissions: [CHATGPT_PLAN_NATIVE_PERMISSION] });
+  }
+
+  async function requestChatGPTPlanPermission() {
+    if (await hasChatGPTPlanPermission()) return true;
+    const manifest = api.runtime.getManifest();
+    if (!manifest.optional_permissions?.includes(CHATGPT_PLAN_NATIVE_PERMISSION)) return false;
+    return api.permissions.request({ permissions: [CHATGPT_PLAN_NATIVE_PERMISSION] });
+  }
+
+  async function chatGPTPlanAction(action: "status" | "models" | "restart" | "connect" | "add" | "select" | "logout", accountId?: string) {
     const response = await api.runtime.sendMessage({ type: BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION, action, accountId });
     if (!response?.ok) {
       const error = Object.assign(new Error(String(response?.error || i18n.t("options.chatgptPlan.actionFailed"))), {
@@ -74,7 +89,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
       });
       throw error;
     }
-    return response as { status?: ChatGPTPlanAuthStatus; models?: ChatGPTPlanModel[]; connected?: boolean; selected?: boolean; modelSelectionCleared?: boolean; revocationConfirmed?: boolean };
+    return response as { status?: ChatGPTPlanAuthStatus; models?: ChatGPTPlanModel[]; connected?: boolean; restarted?: boolean; selected?: boolean; modelSelectionCleared?: boolean; revocationConfirmed?: boolean };
   }
 
   async function profiles(): Promise<SiteEntry[]> {
@@ -114,7 +129,8 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     if (!stillNeeded && !providerNeeded) await api.permissions.remove({ origins: [pattern] });
   }
 
-  return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, chatGPTPlanAction, profiles, saveProfile, deleteProfile, cacheStats, pruneCache, clearCache, behaviorSites, removeBehavior };
+  return { version: api.runtime.getManifest().version, loadConfig, saveConfig, testProvider, hasChatGPTPlanPermission, requestChatGPTPlanPermission,
+    chatGPTPlanAction, profiles, saveProfile, deleteProfile, cacheStats, pruneCache, clearCache, behaviorSites, removeBehavior };
 }
 export type OptionsClient = ReturnType<typeof optionsClient>;
 function objectRecord(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }

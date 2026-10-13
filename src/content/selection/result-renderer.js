@@ -267,9 +267,37 @@
     )];
   }
 
+  function updateSource(node, snapshot, result = null) {
+    const sourceText = String(snapshot?.text || "").trim();
+    const headword = String(result?.headword || "").trim();
+    const lexical = ["local", "technical", "explained"].includes(String(result?.kind || ""));
+    const duplicate = lexical && headword && normalize(sourceText) === normalize(headword);
+    node.textContent = sourceText;
+    node.hidden = !sourceText || duplicate;
+    node.dataset.role = lexical ? "lexical-source" : "selection-source";
+  }
+
+  function normalize(value) {
+    return String(value || "").normalize("NFKC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("en-US");
+  }
+
+  function setLocalizedStatus(node, message, fallbackKey, kind) {
+    app.modules.uiPrimitives?.setStatus?.(node, "", kind);
+    const descriptor = typeof message === "string"
+      ? { key: message.startsWith("content.") ? message : null, text: message, args: {} }
+      : { key: message?.key || fallbackKey, text: "", args: message?.args || {} };
+    if (descriptor.key) locale.bindText(node, descriptor.key, descriptor.args);
+    else {
+      locale.unbind(node);
+      node.textContent = descriptor.text || locale.t(fallbackKey);
+    }
+  }
+
   app.modules.selectionResultRenderer = Object.freeze({
     render,
     appendRichDictionaryDetails,
-    appendRichDictionaryCards
+    appendRichDictionaryCards,
+    updateSource,
+    setLocalizedStatus
   });
 })();

@@ -75,6 +75,7 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
       hasText: "简明英汉字典增强版"
     });
     await expect(installed).toBeVisible();
+    await installed.locator(".dictionary-v2-details > summary").click();
     const entryCount = installed.locator(".dictionary-v2-metadata-item").filter({ hasText: "词条" });
     await expect(entryCount).toHaveCount(1);
     await expect(entryCount.locator("dt")).toHaveText("词条");

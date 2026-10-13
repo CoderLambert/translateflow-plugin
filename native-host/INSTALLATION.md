@@ -1,7 +1,11 @@
 # Native host installation readiness
 
+面向最终用户和公开发布维护者的中文安装流程见
+[`docs/CHATGPT_NATIVE_HOST_INSTALL.md`](../docs/CHATGPT_NATIVE_HOST_INSTALL.md)。本文保留候选构建、注册路径和工程验收细节。
+
 This note describes the candidate's user-level install path. The extension
-manifest declares `nativeMessaging`, but the build and checks do not register a
+manifest declares `nativeMessaging` as an optional permission requested only
+from the ChatGPT subscription Settings action, but the build and checks do not register a
 host, change browser settings, register an OAuth client, sign in to an account,
 or create credentials.
 
@@ -24,9 +28,10 @@ or create credentials.
   or Developer Dashboard is not required to obtain that development ID. A
   development ID may differ from the published ID unless the final manifest
   has a stable `key`.
-- The root `manifest.json` declares `nativeMessaging` in its `permissions`
-  array. This lets the extension request a Native Messaging connection; it
-  does not register the host. The extension host does not need an additional
+- The root `manifest.json` declares `nativeMessaging` in its
+  `optional_permissions` array. The extension requests it from an explicit
+  user gesture before opening a Native Messaging connection; it does not
+  register the host. The extension host does not need an additional
   network `host_permissions` entry for Native Messaging.
 
 ## Host registration
@@ -64,6 +69,18 @@ translateflow-host install --extension-id <exact-id> --dry-run
 translateflow-host install --extension-id <exact-id> --browser chromium --dry-run
 translateflow-host uninstall --browser chromium --dry-run
 ```
+
+An unsigned Windows/Linux amd64 candidate can be built only with explicit
+release identity inputs:
+
+```sh
+TF_CHROME_EXTENSION_ID=<exact-id> TF_NATIVE_HOST_VERSION=<x.y.z> npm run build:native-host:candidate
+```
+
+The output records the commit, target, byte count and SHA-256 in
+`.output/native-host-candidate/`. It is deliberately marked `publishable:false`
+and `NOT_SIGNED`; it must not be presented as a public release until the real
+Web Store ID, platform signatures and clean-system acceptance are available.
 
 The `--extension-id` must be exactly 32 lowercase characters from `a` through
 `p`. The normal `install` command writes only the current user's files and the

@@ -7,7 +7,7 @@
 
   function create({ onResize = () => {} } = {}) {
     let actions, addButton, openButton, statusNode;
-    let saveHandler, openHandler, isCurrent;
+    let saveHandler, openHandler, isCurrent, available = false, viewActive = true;
 
     function ensure() {
       if (actions) return actions;
@@ -35,7 +35,8 @@
       saveHandler = typeof onSave === "function" ? onSave : null;
       openHandler = typeof onOpen === "function" ? onOpen : null;
       isCurrent = typeof current === "function" ? current : () => true;
-      actions.hidden = !saveHandler;
+      available = Boolean(saveHandler);
+      syncVisibility();
       addButton.hidden = !saveHandler;
       addButton.disabled = false;
       openButton.hidden = true;
@@ -87,14 +88,16 @@
       if (key) locale.bindText(statusNode, key);
     }
 
-    function hide() { if (actions) actions.hidden = true; }
-    function reset() { saveHandler = openHandler = isCurrent = null; hide(); }
+    function syncVisibility() { if (actions) actions.hidden = !available || !viewActive; }
+    function setActive(active) { viewActive = Boolean(active); syncVisibility(); }
+    function hide() { available = false; syncVisibility(); }
+    function reset() { saveHandler = openHandler = isCurrent = null; available = false; syncVisibility(); }
     function dispose() {
       if (actions) { locale.unbindTree(actions); actions.remove(); }
       reset(); actions = addButton = openButton = statusNode = null;
     }
 
-    return Object.freeze({ ensure, show, hide, reset, dispose });
+    return Object.freeze({ ensure, show, setActive, hide, reset, dispose });
   }
 
   app.modules.selectionVocabularyActions = Object.freeze({ create });

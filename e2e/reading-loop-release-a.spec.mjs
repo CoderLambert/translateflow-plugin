@@ -95,7 +95,7 @@ test('Release A actual product: trusted creation matrix survives browser restart
     await content.page.getByRole('button', { name: 'Close', exact: true }).click();
     await query(content.page, '#sentence', 'This is a synthetic ordinary sentence.'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved'); expect(env.server.calls).toHaveLength(1);
     await query(content.page, '#first', 'session'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'saved');
-    await content.page.getByRole('button', { name: 'Explain with AI using the surrounding context' }).click(); await expect(content.page.locator('.tf-selection-ai-detail')).toHaveAttribute('data-state', 'success');
+    await content.page.getByRole('tab', { name: 'AI understand: explain what this means here' }).click(); await expect(content.page.locator('.tf-selection-ai-detail')).toHaveAttribute('data-state', 'success');
     await expect.poll(async () => (await details(center)).flatMap(value => value.artifacts).filter(artifact => artifact.kind === 'assistant').length).toBe(1);
     expect(env.server.calls).toHaveLength(2); const before = await details(center);
     expect(before.find(value => value.record.itemText === 'zzsyntheticmissing').artifacts[0].payload.outcome).toBe('no-hit');

@@ -105,7 +105,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       showLoading(_snapshot, handler) { onCancel = handler; cancelHandlers.push(handler); cancelButtonDisabled = false; },
       setLoadingStatus(status) { statuses.push(status); },
       setLoadingCancelable(cancelable) { cancelButtonDisabled = !cancelable; },
-      showResult(_snapshot, card, _copy, onExplain, onSave, onOpen) {
+      showResult(_snapshot, card, onExplain, onSave, onOpen) {
         results.push(card); resultActions.push({ onExplain, onSave, onOpen });
       },
       showError(_snapshot, message) { errors.push(message); },

@@ -8,13 +8,12 @@
     || !app?.modules.selectionContext
     || !app?.modules.selectionPopover
     || !app?.modules.selectionResultModel
-    || !app?.modules.selectionClipboard
     || !app?.modules.selectionMessages
     || !app?.modules.selectionRichDetails
     || app.modules.selectionController
   ) return;
 
-  const { messages, getPageIdentity, sendRuntimeMessage, showToast } = app.modules.runtime;
+  const { messages, getPageIdentity, sendRuntimeMessage } = app.modules.runtime;
   const i18n = app.modules.contentI18n;
   const t = (key, args) => i18n.t(key, args);
   const tasks = app.modules.tasks;
@@ -22,14 +21,13 @@
   const { captureSelectionContext } = app.modules.selectionContext;
   const projection = app.modules.textProjection;
   const popover = app.modules.selectionPopover;
-  const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
   const vocabularyBook = app.modules.selectionVocabularyBook?.create() || {
     add: async () => ({ ignored: true }),
     open: () => ({ ignored: true })
   };
-  const { buildLocalResult, copyTextForCard } = app.modules.selectionResultModel;
+  const { buildLocalResult } = app.modules.selectionResultModel;
   const model = app.modules.selectionResultModel;
   const records = app.modules.selectionRecordClient?.create({ onStatus: (view) => app.modules.selectionRecordStatus?.update(view, {
     save: (event) => records.save(event), retry: (event) => records.retry(event),
@@ -158,8 +156,6 @@
         showResult(
           snapshot,
           card,
-          copyTextForCard(card),
-          "content.selection.resultCopied",
           resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null,
           vocabularyEntry ? (event) => {
             if (!event?.isTrusted) return { ignored: true };
@@ -233,8 +229,7 @@
     const requestId = `assistant-${crypto.randomUUID()}`;
     const state = activeAssistant = { snapshot, capture, version, expectedPage, depth, baseCard, action, queryRecord, operation,
       requestId, partial: "", sequence: 0, stopping: false, terminal: false, port: null };
-    if (!baseCard) popover.showLoading(snapshot, () => stopAssistant(true), "content.ai.connecting");
-    popover.showAiDetailStreaming("", () => stopAssistant(true));
+    popover.showAiDetailStreaming("", () => stopAssistant(true), action);
     try {
       const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
       port.onMessage.addListener(message => handleAssistantMessage(state, message));
@@ -259,7 +254,7 @@
     if (message.type === "delta") {
       if (message.sequence !== state.sequence || typeof message.text !== "string") return interruptAssistant(state, "content.ai.orderError");
       state.sequence++; state.partial += message.text;
-      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true));
+      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true), state.action);
       return;
     }
     if (message.type === "interrupted") {
@@ -273,7 +268,7 @@
     state.terminal = true; activeAssistant = null;
     try { state.port.disconnect(); } catch {}
     const answer = String(message.text || "");
-    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "content.selection.answerCopied"));
+    popover.showAiDetailResult({ explanation: answer }, state.action);
     records?.accept(state.queryRecord, { kind: "assistant", targetLanguage: message.readingResult.targetLanguage,
       provenance: message.readingResult.provenance, payload: message.turn },
     { key: state.operation?.operationId, operation: state.operation, sourceLanguage: message.readingResult.sourceLanguage });
@@ -285,7 +280,7 @@
     if (!state || state.terminal || state.stopping) return;
     state.stopping = true;
     try { state.port?.postMessage({ type: "cancel", requestId: state.requestId }); } catch {}
-    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial);
+    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial, state.action);
   }
   function abandonAssistant() {
     const state = activeAssistant;
@@ -302,7 +297,7 @@
     void records?.discard(state.queryRecord, state.operation);
     if (isCurrentSelection(state.version, state.snapshot, state.expectedPage)) {
       popover.showAiDetailInterrupted(state.partial, message,
-        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action));
+        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action), state.action);
     }
   }
   function assistantLive(state) { return activeAssistant === state && !state.terminal && isCurrentSelection(state.version, state.snapshot, state.expectedPage); }
@@ -315,8 +310,8 @@
   function localizedError(key, code = "") {
     return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
   }
-  function showResult(snapshot, card, copyText, copiedMessage, onExplain = null, onSaveVocabulary = null, onOpenVocabulary = null) {
-    popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain, onSaveVocabulary, onOpenVocabulary);
+  function showResult(snapshot, card, onExplain = null, onSaveVocabulary = null, onOpenVocabulary = null) {
+    popover.showResult(snapshot, card, onExplain, onSaveVocabulary, onOpenVocabulary);
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
@@ -332,17 +327,6 @@
     });
   }
 
-  function copyAction(copyText, copiedMessageKey) {
-    return async () => {
-      try {
-        await writeSelectionText(copyText);
-        showToast(t(copiedMessageKey), "success");
-      } catch (error) {
-        const message = error?.i18nKey ? t(error.i18nKey) : String(error?.message || error);
-        showToast(t("content.selection.copyFailed", { message }), "error");
-      }
-    };
-  }
 
   function isCurrentSelection(version, snapshot, expectedPage) {
     return version === requestVersion

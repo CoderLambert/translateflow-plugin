@@ -4,7 +4,7 @@ import { getDictionaryCatalogEntry, getDictionaryCatalogEntryForRecipe } from ".
 import { getCuratedInstallPresentation, getCuratedMdxInstallPresentation } from "./curated-dictionary-presentation.js";
 import type { DictionaryClient, DictionaryRecord, DictionarySnapshot } from "./dictionary-client";
 import {
-  getCatalogDictionaryRows, getDictionaryHealthPresentation, getLocalRichDictionaryRows
+  getCatalogDictionaryRows, getDictionaryCompactFacts, getDictionaryHealthPresentation, getLocalRichDictionaryRows
 } from "./dictionary-library-v2-presentation.js";
 import { installedPackMeta, installedPackName } from "./installed-pack-ui.js";
 import { getBundledPackPresentation } from "./pack-ui.js";
@@ -63,8 +63,9 @@ export function CuratedList({ client, snapshot, refresh, setStatus }: {
     const catalog = getDictionaryCatalogEntryForRecipe(source.id);
     const installedCatalog = mdx ? dictionary?.catalog : entry?.display?.catalog;
     const installedSize = mdx ? dictionary?.installedBytes : entry?.active?.totalBytes;
+    const rows = catalogRows(catalog, { installedCatalog, installedSize, ...(mdx ? { entryCount: dictionary?.entryCount || source.mdx.entryCount, resourceCount: dictionary?.resourceCount, resourceBytes: dictionary?.resourceBytes } : {}) });
     return <div className="site-row dictionary-pack-row" data-recipe-id={source.id} data-pack-id={source.output.packId} data-trust-class={source.trustClass} key={source.id}>
-      <div className="site-summary"><div className="dictionary-pack-heading"><strong>{source.label}</strong><HealthBadge view={{ label: presentation.badgeLabel, kind: presentation.kind }} /></div><small>{source.description}</small><Metadata rows={catalogRows(catalog, { installedCatalog, installedSize, ...(mdx ? { entryCount: dictionary?.entryCount || source.mdx.entryCount, resourceCount: dictionary?.resourceCount, resourceBytes: dictionary?.resourceBytes } : {}) })} /><Limitations entry={catalog} /><small className="dictionary-pack-detail" aria-live="polite">{messages[source.id] || presentation.detail}</small></div>
+      <div className="site-summary"><div className="dictionary-pack-heading"><strong>{source.label}</strong><HealthBadge view={{ label: presentation.badgeLabel, kind: presentation.kind }} /></div><DictionaryDetails rows={rows} entry={catalog} description={String(source.description || "")} /><small className="dictionary-pack-detail" aria-live="polite">{messages[source.id] || presentation.detail}</small></div>
       <div className="site-actions">{active === source.id ? <button type="button" aria-label={i18n.t("dictionary.cancelInstall", { title: String(source.label) })} onClick={() => void client.cancelCurated()}>{i18n.t("common.cancel")}</button> : presentation.status !== "identity-conflict" ? <><button type="button" aria-label={`${presentation.actionLabel} ${source.label}`} data-action={dictionary || entry ? "reinstall" : "install"} onClick={event => { if (event.nativeEvent.isTrusted) void install(source, dictionary); }}>{presentation.actionLabel}</button>{mdx && dictionary ? <button type="button" aria-label={i18n.t("dictionary.deleteNamed", { title: String(source.label) })} onClick={() => void client.uninstallRich(String(source.output.packId)).then(() => setStatus(i18n.t("dictionary.deleted", { title: String(source.label) }))).then(refresh).catch(error => setStatus(errorText(error, i18n), true))}>{i18n.t("common.delete")}</button> : null}</> : null}</div>
     </div>;
   })}</div>;
@@ -78,7 +79,8 @@ export function InstalledPackList({ client, snapshot, refresh, setStatus }: {
   return <div id="installedDictionaryList" className="site-list" aria-live="polite">{entries.length ? entries.map(([packId, entry], index) => {
     const name = installedPackName(packId, entry, client.sources), health = getDictionaryHealthPresentation(entry.status);
     const catalog = entry.display?.catalog ? getDictionaryCatalogEntry(entry.display.catalog.entryId) : null;
-    return <div className="site-row dictionary-pack-row" role="group" data-pack-id={packId} aria-labelledby={`installed-dictionary-${index}`} key={packId}><div className="site-summary"><div className="dictionary-pack-heading"><strong id={`installed-dictionary-${index}`}>{name}</strong><HealthBadge view={health} /></div>{catalog ? <><Metadata rows={catalogRows(catalog, { installedCatalog: entry.display.catalog, installedSize: entry.active?.totalBytes, entryCount: entry.active?.recordCount })} /><Limitations entry={catalog} /></> : <div className="dictionary-pack-meta">{installedPackMeta(entry).map((item: string) => <span key={item}>{item}</span>)}</div>}{health.kind !== "success" ? <small className="dictionary-pack-detail">{health.detail}</small> : null}</div><div className="site-actions"><button type="button" aria-label={i18n.t("dictionary.deleteNamed", { title: name })} onClick={() => void client.uninstallPack(packId).then(() => setStatus(i18n.t("dictionary.deleted", { title: name }))).then(refresh).catch(error => setStatus(errorText(error, i18n), true))}>{i18n.t("common.delete")}</button></div></div>;
+    const rows = catalog ? catalogRows(catalog, { installedCatalog: entry.display.catalog, installedSize: entry.active?.totalBytes, entryCount: entry.active?.recordCount }) : [];
+    return <div className="site-row dictionary-pack-row" role="group" data-pack-id={packId} aria-labelledby={`installed-dictionary-${index}`} key={packId}><div className="site-summary"><div className="dictionary-pack-heading"><strong id={`installed-dictionary-${index}`}>{name}</strong><HealthBadge view={health} /></div>{catalog ? <DictionaryDetails rows={rows} entry={catalog} /> : <div className="dictionary-pack-meta">{installedPackMeta(entry).map((item: string) => <span key={item}>{item}</span>)}</div>}{health.kind !== "success" ? <small className="dictionary-pack-detail">{health.detail}</small> : null}</div><div className="site-actions"><button type="button" aria-label={i18n.t("dictionary.deleteNamed", { title: name })} onClick={() => void client.uninstallPack(packId).then(() => setStatus(i18n.t("dictionary.deleted", { title: name }))).then(refresh).catch(error => setStatus(errorText(error, i18n), true))}>{i18n.t("common.delete")}</button></div></div>;
   }) : i18n.t("dictionary.noInstalled")}</div>;
 }
 
@@ -113,7 +115,8 @@ export function RichList({ client, dictionaries, refresh, setStatus }: {
     const catalog = dictionary.catalog ? getDictionaryCatalogEntry(dictionary.catalog.entryId) : null;
     const installedBytes = Number(dictionary.installedBytes) || Number(dictionary.sourceSize || 0) + Number(dictionary.indexSize || 0) + Number(dictionary.resourceBytes || 0);
     const local = getLocalRichDictionaryRows(dictionary, installedBytes);
-    return <div className="site-row dictionary-pack-row" data-dictionary-id={id} data-status={String(dictionary.status || "unknown")} role="group" aria-labelledby={`rich-dictionary-${index}`} key={id}><div className="site-summary"><div className="dictionary-pack-heading"><strong id={`rich-dictionary-${index}`}>{title}</strong><HealthBadge view={health} /></div>{catalog ? <><Metadata rows={catalogRows(catalog, { installedCatalog: dictionary.catalog, installedSize: installedBytes, installedSourceFileName: dictionary.fileName, installedSourceSize: dictionary.sourceSize, entryCount: dictionary.entryCount, resourceCount: dictionary.resourceCount, resourceBytes: dictionary.resourceBytes, includeDownload: false })} /><Limitations entry={catalog} /></> : <><Metadata rows={local.rows} />{local.detail ? <small className="dictionary-pack-detail">{local.detail}</small> : null}</>}{health.kind !== "success" ? <small className="dictionary-pack-detail">{health.detail}</small> : null}</div>
+    const rows = catalog ? catalogRows(catalog, { installedCatalog: dictionary.catalog, installedSize: installedBytes, installedSourceFileName: dictionary.fileName, installedSourceSize: dictionary.sourceSize, entryCount: dictionary.entryCount, resourceCount: dictionary.resourceCount, resourceBytes: dictionary.resourceBytes, includeDownload: false }) : local.rows;
+    return <div className="site-row dictionary-pack-row" data-dictionary-id={id} data-status={String(dictionary.status || "unknown")} role="group" aria-labelledby={`rich-dictionary-${index}`} key={id}><div className="site-summary"><div className="dictionary-pack-heading"><strong id={`rich-dictionary-${index}`}>{title}</strong><HealthBadge view={health} /></div><DictionaryDetails rows={rows} entry={catalog} detail={catalog ? "" : local.detail || ""} />{health.kind !== "success" ? <small className="dictionary-pack-detail">{health.detail}</small> : null}</div>
       {dictionary.resourceRecovery ? <small data-role="resource-recovery">{i18n.t(dictionary.resourceRecovery.previousResourcesAvailable ? "dictionary.resourcesUpdateIncomplete" : "dictionary.resourcesIncomplete")}</small> : null}
       <div className="site-actions">{dictionary.preferred ? <span className="rich-mdict-personal-preference" data-role="personal-preference" role="status">{i18n.t("dictionary.preferred")}</span> : <button type="button" data-action="promote-preferred" disabled={busyId === id} aria-label={i18n.t("dictionary.preferredAria", { action: i18n.t(dictionary.enabled === false ? "dictionary.enablePreferred" : "dictionary.setPreferred"), title })} onClick={() => void action(id, () => client.promoteRich(id), i18n.t("dictionary.preferredSaved"))}>{i18n.t(dictionary.enabled === false ? "dictionary.enablePreferred" : "dictionary.setPreferred")}</button>}
         <PreferenceToggle action="enabled" label={i18n.t("dictionary.showSelection")} checked={dictionary.enabled !== false} disabled={busyId === id} change={checked => void action(id, () => client.updateRichPreferences(id, { enabled: checked }), i18n.t("dictionary.visibilitySaved"))} />
@@ -129,10 +132,23 @@ export function RichList({ client, dictionaries, refresh, setStatus }: {
 export function Metadata({ rows }: { rows: DictionaryRecord[] }) {
   return rows.length ? <dl className="dictionary-v2-metadata">{rows.map((row, index) => <div className="dictionary-v2-metadata-item" key={`${String(row.label)}:${index}`}><dt>{String(row.label || "")}</dt><dd>{row.href ? <a href={String(row.href)} target="_blank" rel="noopener">{String(row.value || "")}</a> : String(row.value || "")}</dd></div>)}</dl> : null;
 }
+function DictionaryDetails({ rows, entry = null, description = "", detail = "" }: { rows: DictionaryRecord[]; entry?: DictionaryRecord | null; description?: string; detail?: string }) {
+  const i18n = useOptionsI18n();
+  const facts = getDictionaryCompactFacts(rows) as string[];
+  return <>
+    {facts.length ? <div className="dictionary-compact-facts">{facts.map(fact => <span key={fact}>{fact}</span>)}</div> : null}
+    <details className="dictionary-v2-details"><summary>{i18n.t("dictionary.details")}</summary><div className="dictionary-v2-details-body">
+      {description ? <p className="dictionary-v2-description">{description}</p> : null}
+      <Metadata rows={rows} />
+      {detail ? <small className="dictionary-pack-detail">{detail}</small> : null}
+      <Limitations entry={entry} />
+    </div></details>
+  </>;
+}
 function Limitations({ entry }: { entry: DictionaryRecord | null }) {
   const i18n = useOptionsI18n();
   const notes = [...(entry?.source?.legalLimitations || []), ...(entry?.knownLimitations || []).map((item: DictionaryRecord) => item.description)].filter((item): item is string => typeof item === "string" && Boolean(item.trim())).slice(0, 16);
-  return notes.length ? <details className="dictionary-v2-limitations"><summary>{i18n.t("dictionary.limitations")}</summary><ul>{notes.map(note => <li key={note}>{note}</li>)}</ul></details> : null;
+  return notes.length ? <div className="dictionary-v2-limitations"><p>{i18n.t("dictionary.limitations")}</p><ul>{notes.map(note => <li key={note}>{note}</li>)}</ul></div> : null;
 }
 function HealthBadge({ view }: { view: DictionaryRecord }) { const i18n = useOptionsI18n(); return <span className="dictionary-health-badge" data-kind={String(view.kind)} aria-label={i18n.t("dictionary.healthAria", { status: String(view.label) })}>{String(view.label)}</span>; }
 function PreferenceToggle({ action, label, checked, disabled, change }: { action: string; label: string; checked: boolean; disabled: boolean; change: (value: boolean) => void }) { return <label className="checkbox-label"><input type="checkbox" data-action={action} checked={checked} disabled={disabled} onChange={event => change(event.target.checked)} />{label}</label>; }

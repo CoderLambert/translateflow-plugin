@@ -11,6 +11,7 @@ const CATALOG_SOURCE_FILES = Object.freeze([
   "src/i18n/catalog-content.js",
   "src/i18n/catalog-content-page.js",
   "src/i18n/catalog-options.js",
+  "src/i18n/catalog-options-chatgpt.js",
   "src/i18n/catalog-dictionary.js",
   "src/i18n/catalog-learning.js"
 ]);

@@ -185,6 +185,8 @@ test("Oxford disclosure and active pronunciation layout remain compact without d
   assert.match(staticCss, /\.o-pronunciation-set\.o-active \{ display: block; \}/u);
   assert.match(staticCss, /details\.o-unbox-panel\[open\] > \.o-unbox-body \{ display: block; \}/u);
   assert.match(staticCss, /summary\.o-unbox-tile \{ display: flex;/u);
+  assert.match(staticCss, /\.o-pos-body:has\(details\.o-unbox-panel\[open\]\) \{ flex-direction: column !important; \}/u);
+  assert.match(staticCss, /> \.o-pos-detail \{ flex: 0 0 auto !important; width: 100% !important; min-width: 0 !important; \}/u);
   assert.match(staticCss, /\.o-symbol-token > \.tf-rich-resource-image \{ display: inline-block; width: auto; height: 1\.05em; max-width: 3em;/u);
 });
 
@@ -502,4 +504,17 @@ test("legacy descriptor metrics count validated presentation variants per Shadow
     else assert.equal(renderer.appendRichDictionaryDetails(container, response), true);
     assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, rejected ? 0 : 2);
   }
+});
+
+test('symbol-token image placeholders remain explicit and use compact horizontal fallback rules', async () => {
+  const { viewer, document } = await loadModules(); const host = document.createElement('div');
+  viewer.render(host, { nodes: [{ type: 'element', tag: 'span', attrs: { class: 'o-symbol-token' }, children: ['CEFR', 'OPAL', 'CET', 'NETM'].map(label => ({ type: 'resource', kind: 'image', path: `symbols/${label}.png`, label })) },
+    { type: 'resource', kind: 'image', path: 'illustration.png', label: 'Ordinary illustration' }] }, 'safe', {});
+  const placeholders = walk(host.shadowRoot).filter(node => node.dataset?.richResourceKind === 'image'); assert.equal(placeholders.length, 5);
+  assert.equal(placeholders.at(-1).textContent, "content.rich.imageLabel");
+  const css = findTag(host.shadowRoot, 'style').textContent;
+  assert.match(css, /\.o-symbol-token \{[^}]*display: inline-flex !important;[^}]*flex-flow: row nowrap !important/s);
+  assert.match(css, /data-rich-resource-kind="image"[^}]*min-height: 0 !important[^}]*white-space: nowrap/s);
+  assert.match(css, /\.tf-rich-owned-action \{[^}]*flex-shrink: 0;[^}]*white-space: nowrap;[^}]*writing-mode: horizontal-tb/s);
+  assert.match(css, /\.o-head-symbol-set\.o-active \{[^}]*flex-wrap: wrap/s);
 });

@@ -9,7 +9,8 @@ register the host for that ID. No host install or OAuth operation was run as
 part of these offline checks. Client registration and sign-in start only after
 an explicit `auth.start` request.
 
-The executable uses current-user OS credential storage so a later host process
+The extension requests its optional `nativeMessaging` permission only when the
+user enables ChatGPT subscription access. The executable uses current-user OS credential storage so a later host process
 can restore the session. Linux stores the protected record in Secret Service
 over the current session D-Bus; Windows encrypts it with current-user DPAPI and
 writes only ciphertext under the user config directory. Linux reports locked
@@ -108,13 +109,16 @@ and sign-out flow is bounded by the configured authentication timeout.
 ## Extension connection owner
 
 The MV3 background service worker is the sole owner of
-`chrome.runtime.connectNative` and the native host port. Popup, Options,
+`chrome.runtime.connectNative` and the native host port. Its `hello` response
+includes the additive `hostVersion` release identity so the extension can stop
+before authentication or inference when an installed component is too old.
+Popup, Options,
 Content, and other extension callers send validated runtime messages to that
 owner; it forwards requests over the shared port and correlates `requestId` and
 sequence frames. They must not open separate native host connections.
 
 The Native Messaging host name is `com.coderlambert.translateflow`. Before
-release, the root extension manifest's `permissions` array declares
+release, the root extension manifest's `optional_permissions` array declares
 `nativeMessaging`, and the user-level host manifest must allow the extension's
 exact Chrome origin. A pinned release extension ID is not included in this
 candidate; installation behavior and expected paths are documented in

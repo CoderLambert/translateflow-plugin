@@ -26,6 +26,42 @@ const CAPABILITY_LABELS = Object.freeze({
   "mdd.encoding.big5": "附件使用 Big5 编码，当前版本无法读取。"
 });
 
+const COMPACT_FACT_LABELS = Object.freeze([
+  "语言方向",
+  "格式",
+  "词条",
+  "已安装大小",
+  "下载大小",
+  "本地附件"
+]);
+
+export function getDictionaryCompactFacts(rows, { maxItems = 4 } = {}) {
+  if (!Array.isArray(rows) || !Number.isSafeInteger(maxItems) || maxItems < 1 || maxItems > 6) return [];
+  const values = new Map();
+  for (const row of rows) {
+    const label = String(row?.label || "").trim();
+    const value = String(row?.value || "").trim();
+    if (!label || !value || values.has(label) || !isUsefulCompactValue(label, value)) continue;
+    values.set(label, value);
+  }
+  const sizeLabel = values.has("已安装大小") ? "已安装大小" : "下载大小";
+  return COMPACT_FACT_LABELS
+    .filter((label) => label !== "已安装大小" && label !== "下载大小" || label === sizeLabel)
+    .flatMap((label) => values.has(label) ? [compactFact(label, values.get(label))] : [])
+    .slice(0, maxItems);
+}
+
+function isUsefulCompactValue(label, value) {
+  if (/^(?:未记录|大小未知|内容日期未知)$/u.test(value)) return false;
+  if (label === "语言方向" && /^(?:由你确认|尚未核验)/u.test(value)) return false;
+  return value.length <= 80;
+}
+
+function compactFact(label, value) {
+  if (label === "词条") return `${value} 词条`;
+  return value;
+}
+
 export function getCatalogDictionaryRows(entry, {
   installedCatalog,
   installedVersion = "",

@@ -96,6 +96,9 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
     await page.screenshot({ path: test.info().outputPath("synthetic-local-wordbook-save.png") });
     await expect(page.locator(".tf-selection-vocabulary-add")).toBeVisible();
+    await expect(page.locator(".tf-selection-footer-actions > .tf-selection-vocabulary-actions")).toBeVisible();
+    await expect(page.locator(".tf-selection-result .tf-selection-vocabulary-actions")).toHaveCount(0);
+    await expect(page.locator(".tf-selection-footer-actions").getByRole("button", { name: "Copy" })).toHaveCount(0);
     await page.locator(".tf-selection-vocabulary-add").click();
     await expect(page.locator(".tf-selection-vocabulary-open")).toBeVisible();
     await page.screenshot({ path: test.info().outputPath("synthetic-selection-saved.png") });

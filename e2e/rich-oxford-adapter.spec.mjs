@@ -3,8 +3,10 @@ import { makeRichMdx } from '../tests/helpers/rich-mdict-fixture.mjs';
 import { makeMdd } from '../tests/helpers/mdd-fixture.mjs';
 import { makeOxfordAdapterRecord, ADAPTER_DIAGRAM } from '../tests/helpers/oxford-adapter-fixture.mjs';
 function wav() { const bytes = Buffer.alloc(44 + 1600); bytes.write('RIFF'); bytes.writeUInt32LE(bytes.length - 8, 4); bytes.write('WAVEfmt ', 8); bytes.writeUInt32LE(16, 16); bytes.writeUInt16LE(1, 20); bytes.writeUInt16LE(1, 22); bytes.writeUInt32LE(8000, 24); bytes.writeUInt32LE(16000, 28); bytes.writeUInt16LE(2, 32); bytes.writeUInt16LE(16, 34); bytes.write('data', 36); bytes.writeUInt32LE(1600, 40); return bytes; }
-const go = makeOxfordAdapterRecord({ posCount: 4, pronunciationIndices: [0, 3], headIndices: [0, 3] }) + '<a href="#panel.2.deep">OPEN DEEP SECTION</a><a href="entry://adapterother#panel.1.deep">OPEN OTHER ENTRY</a>';
-const other = makeOxfordAdapterRecord({ posCount: 3, pronunciationIndices: [0, 1, 2], headIndices: [0, 1, 2] });
+const layoutCss = '.o-pos-body{display:flex;flex-direction:row-reverse}.o-pos-extra{flex:0 0 auto}.o-pos-detail{flex:1 1 auto;min-width:0}';
+const stylesheet = '<link rel="stylesheet" href="styles/oxford-layout.css">';
+const go = stylesheet + makeOxfordAdapterRecord({ posCount: 4, pronunciationIndices: [0, 3], headIndices: [0, 3] }) + '<a href="#panel.2.deep">OPEN DEEP SECTION</a><a href="entry://adapterother#panel.1.deep">OPEN OTHER ENTRY</a>';
+const other = stylesheet + makeOxfordAdapterRecord({ posCount: 3, pronunciationIndices: [0, 1, 2], headIndices: [0, 1, 2] });
 
 async function selectWord(page) {
   await page.evaluate(() => { const node = document.createElement('p'); node.id = 'adapter-word'; node.textContent = 'go'; document.body.append(node); });
@@ -20,7 +22,7 @@ test('structural Oxford POS, native disclosures, hints and registered illustrati
   const row = options.locator('#richMdictInstalledList [data-dictionary-id]').filter({ hasText: 'Generic Structural Fixture' });
   await row.getByRole('button', { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles({ name: 'Generic Structural Fixture.mdd', mimeType: 'application/octet-stream', buffer: makeMdd([
-    ['images/diagram.svg', Buffer.from(ADAPTER_DIAGRAM)], ...[0, 1, 2, 3].map((index) => [`audio/pron-${index}.wav`, wav()])
+    ['images/diagram.svg', Buffer.from(ADAPTER_DIAGRAM)], ['styles/oxford-layout.css', Buffer.from(layoutCss)], ...[0, 1, 2, 3].map((index) => [`audio/pron-${index}.wav`, wav()])
   ]) }); await expect(options.locator('#status')).toContainText('本地资源已更新', { timeout: 60000 }); await options.close();
   const external = [];
   for (let pass = 0; pass < 2; pass += 1) {
@@ -30,6 +32,17 @@ test('structural Oxford POS, native disclosures, hints and registered illustrati
     const card = page.locator('.tf-selection-rich-record').filter({ hasText: 'Generic Structural Fixture' });
     if (!await card.evaluate((node) => node.open)) await card.locator('summary').first().click(); await expect(card).toHaveAttribute('data-state', 'success', { timeout: 30000 });
     const viewer = card.locator('.tf-rich-viewer'); await expect(viewer.locator('label[for="pos-0"]')).toBeVisible();
+    const posBody = viewer.locator('.o-for-pos-0.o-pos-panel .o-pos-body');
+    const disclosure = posBody.locator('details.o-unbox-panel');
+    await expect.poll(() => posBody.evaluate((node) => getComputedStyle(node).flexDirection)).toBe('row-reverse');
+    await disclosure.locator('summary').click();
+    await expect.poll(() => posBody.evaluate((node) => getComputedStyle(node).flexDirection)).toBe('column');
+    const widths = await posBody.evaluate((node) => ({ body: node.getBoundingClientRect().width,
+      extra: node.querySelector(':scope > .o-pos-extra').getBoundingClientRect().width,
+      detail: node.querySelector(':scope > .o-pos-detail').getBoundingClientRect().width }));
+    expect(widths.extra).toBeGreaterThan(widths.body * .9); expect(widths.detail).toBeGreaterThan(widths.body * .9);
+    await disclosure.locator('summary').click();
+    await expect.poll(() => posBody.evaluate((node) => getComputedStyle(node).flexDirection)).toBe('row-reverse');
     await expect(viewer.locator('.o-pronunciation-set.o-active')).toContainText('PRON 0');
     await viewer.locator('.o-pronunciation-set.o-active [data-action="load-mdd-audio"]').click(); await expect(viewer.locator('audio')).toBeVisible();
     await viewer.locator('audio').evaluate((node) => { window.__oldAdapterAudio = node; });

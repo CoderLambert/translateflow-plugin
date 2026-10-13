@@ -101,10 +101,14 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
         if (body?.stream === true && systemPrompt.includes("Plain text only")) {
+          const markdown = userContent.includes("markdownfixture");
+          const chunks = markdown
+            ? ["## Summary\n\n**streamed** answer\n\n- first\n", "- second\n\n`code`\n\n![remote](https://remote.invalid/pixel.png)\n\n[unsafe](javascript:alert(1))"]
+            : ["streamed ", "answer"];
           response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-          response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "streamed " } }] })}\n\n`);
+          response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[0] } }] })}\n\n`);
           await new Promise(resolve => setTimeout(resolve, 300));
-          if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "answer" } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
+          if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[1] } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
           return;
         }
 
@@ -125,7 +129,9 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         if (isConnectionTest) {
           completionContent = "OK";
         } else if (isPlainAssistant) {
-          completionContent = "streamed answer";
+          completionContent = userContent.includes("markdownfixture")
+            ? "## Summary\n\n**streamed** answer\n\n- first\n- second\n\n`code`\n\n![remote](https://remote.invalid/pixel.png)\n\n[unsafe](javascript:alert(1))"
+            : "streamed answer";
         } else if (isSelectionExplain) {
           let explainPayload = {};
           try { explainPayload = JSON.parse(userContent); } catch {}

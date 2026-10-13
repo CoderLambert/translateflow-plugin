@@ -186,6 +186,16 @@
   }
   function closeAll() { for (const state of [...active]) close(state.host); }
   function closeDictionary(id) { for (const state of [...active]) if (state.identity.dictionaryId === id) close(state.host); }
+  function dismissTransients(scope) {
+    if (!scope) return false;
+    let dismissed = false;
+    for (const state of [...active].reverse()) {
+      if (state.closed || !scope.contains(state.host)) continue;
+      dismissed = Boolean(app.modules.richResourceResolver?.closeImagePreview(state.host)) || dismissed;
+      dismissed = closeHint(state) || dismissed;
+    }
+    return dismissed;
+  }
   function prepareTarget(host, target) { return sessions.get(host)?.prepare(target) || false; }
   function consumeEscape(event, scope) {
     for (const state of [...active].reverse()) {
@@ -196,5 +206,5 @@
     }
     return false;
   }
-  app.modules.richOxfordAdapter = Object.freeze({ project, recognize, bind, close, closeAll, closeDictionary, prepareTarget, consumeEscape });
+  app.modules.richOxfordAdapter = Object.freeze({ project, recognize, bind, close, closeAll, closeDictionary, dismissTransients, prepareTarget, consumeEscape });
 })();

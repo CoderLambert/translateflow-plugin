@@ -1,3 +1,4 @@
+import { zh_CN as contentMessages } from "../src/i18n/catalog.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -12,7 +13,7 @@ const version = 'import-navigation-123e4567';
 const dictionary = { id, packVersion: version, packageVersion: version, preferred: true, status: 'ready', title: 'Synthetic navigation dictionary' };
 const hit = (query, html = `<p id="sense.1">${query.toUpperCase()} DEFINITION</p><a href="entry://come#sense.1">COME LINK</a><a href="entry://go">GO LINK</a><a href="#sense.1">LOCAL LINK</a>`) => ({ ok: true, found: true, errors: [], dictionaries: [{ ...dictionary, text: `${query.toUpperCase()} DEFINITION`, headword: query, richRecord: { rawRecord: html, format: 'HTML' } }] });
 const flush = () => new Promise((resolve) => setImmediate(resolve));
-function harness(list = [dictionary], resources = false) {
+function harness(list = [dictionary], resources = false, messages = {}) {
   const dom = new JSDOM('<!doctype html><body></body>', { url: 'https://fixture.invalid/selection' });
   const document = dom.window.document;
   const fontSet = new Set(); Object.defineProperty(document, 'fonts', { value: fontSet });
@@ -21,7 +22,7 @@ function harness(list = [dictionary], resources = false) {
   const container = document.createElement('div'); document.body.append(container);
   const calls = [], pending = [], outcomes = [], displayed = [], closed = [], navigations = [];
   let generation = 1;
-  const app = { modules: { contentI18n: createContentI18nStub(),
+  const app = { modules: { contentI18n: createContentI18nStub({ messages }),
     richResourceResolver: { close(host) { closed.push(host); } },
     runtime: { messages: { background: { RICH_MDICT_VIEWER_LIST: 'list', RICH_MDICT_LOOKUP: 'lookup', RICH_MDICT_LOOKUP_CANCEL: 'cancel', RICH_MDD_RESOURCE: 'asset', RICH_MDD_RESOURCE_READ_CANCEL: 'assetCancel' } },
       sendRuntimeMessage(message) { calls.push(message); if (message.type === 'list') return Promise.resolve({ ok: true, dictionaries: list });
@@ -199,4 +200,13 @@ test('a changed generation without explicit cancel cannot commit navigation or r
   const h = harness(); await h.start(); await h.complete('go'); const nav = h.navigation(); h.click('COME LINK'); await flush();
   h.nextGeneration(); await h.complete('come'); assert.equal(nav.snapshot.closed, true); assert.equal(nav.snapshot.history.length, 0);
   assert.equal(h.viewer(), undefined); assert.equal(h.displayed.length, 1); await h.stop();
+});
+
+for (const kind of ['error', 'stale']) test(`localized navigation ${kind} explicitly retains the current entry`, async () => {
+  const h = harness([dictionary], false, contentMessages); await h.start(); await h.complete('go');
+  h.viewer().querySelector('button').click(); await flush(); const response = hit('come');
+  if (kind === 'error') response.errors = [{ code: 'UNAVAILABLE' }]; else response.dictionaries[0].packageVersion = 'changed';
+  await h.complete('come', response);
+  assert.equal(h.status(), '目标词条未能打开，已保留当前词条。');
+  assert.match(h.viewer().textContent, /GO DEFINITION/); assert.equal(h.navigation().snapshot.cursor, 0); h.dom.window.close();
 });

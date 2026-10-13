@@ -3,6 +3,10 @@ import { chatGPTPlanController } from "./chatgpt-plan.js";
 export async function handleChatGPTPlanAction(action, controller = chatGPTPlanController, input = {}) {
   if (action === "status") return { status: await controller.authStatus() };
   if (action === "models") return controller.listModels();
+  if (action === "restart") {
+    await controller.restartHost();
+    return { restarted: true, status: await controller.authStatus() };
+  }
   if (action === "connect" || action === "add") {
     await controller.ensureConnected();
     const modelSelectionCleared = await clearChatGPTPlanModelSelections();

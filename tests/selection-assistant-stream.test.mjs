@@ -321,7 +321,7 @@ test("ChatGPT host frames stream through a Learning Center follow-up and commit 
       methods.push(request);
       const send = frame => { for (const listener of hostMessages) listener({ requestId: request.requestId, ...frame }); };
       if (request.method === "hello") {
-        send({ type: "terminal", sequence: 0, ok: true, payload: { protocolVersion: 1,
+        send({ type: "terminal", sequence: 0, ok: true, payload: { protocolVersion: 1, hostVersion: "dev",
           capabilities: ["auth.status", "auth.start", "auth.select", "auth.logout", "models.list", "infer.start", "cancel"] } });
       } else if (request.method === "infer.start") {
         send({ type: "event", sequence: 0, event: "infer.delta", payload: { text: "Native " } });

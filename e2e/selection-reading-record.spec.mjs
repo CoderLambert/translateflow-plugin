@@ -190,7 +190,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     const translated = list.find((value) => value.itemText.startsWith("This is")); expect(translated.lookupCount).toBe(2);
     detail = await message(M.GET_RECORD, { recordId: translated.recordId }); expect(detail.data.artifacts.map((a) => a.kind)).toEqual(["translation", "translation"]);
     await query(content); await expect(status(content)).toHaveAttribute("data-state", "saved");
-    await content.page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await content.page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect(content.page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     await expect(status(content)).toHaveAttribute("data-state", "saved");
     expect(server.calls).toHaveLength(2);

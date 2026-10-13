@@ -628,6 +628,25 @@ func TestServerUnknownMethodGetsOneSafeTerminal(t *testing.T) {
 	}
 }
 
+func TestHelloReportsBoundedReleaseIdentity(t *testing.T) {
+	input := new(bytes.Buffer)
+	writeRequest(t, input, map[string]any{"type": "request", "requestId": "hello-1", "method": "hello"})
+	output := new(bytes.Buffer)
+	server := NewServer(&blockingBackend{started: make(chan struct{})}, input, output)
+	server.HostVersion = "0.8.0"
+	if err := server.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	frames := readResponses(t, output)
+	if len(frames) != 1 || frames[0].OK == nil || !*frames[0].OK {
+		t.Fatalf("hello responses = %#v, want one success", frames)
+	}
+	payload, ok := frames[0].Payload.(map[string]any)
+	if !ok || payload["protocolVersion"] != float64(1) || payload["hostVersion"] != "0.8.0" {
+		t.Fatalf("hello payload = %#v, want protocol and host versions", frames[0].Payload)
+	}
+}
+
 func TestStartupErrorReturnsCredentialUnavailableBeforeCallingBackend(t *testing.T) {
 	input := new(bytes.Buffer)
 	writeRequest(t, input, map[string]any{
