@@ -5,7 +5,7 @@
   "owner": "main",
   "dependencies": [
     "oxford-radio-css",
-    "rich-mdict-multiple-records"
+    "rich-multiple-records"
   ],
   "branch": "fix/rich-font-svg-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-font-svg-20261013",
@@ -84,5 +84,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "冻结完整Oxford高影响收口候选，统一执行一次exact-head验收与真实六文件产品流程。"
+  "nextAction": "冻结依赖名已校准的最终候选并重新绑定本地gate证据。"
 }

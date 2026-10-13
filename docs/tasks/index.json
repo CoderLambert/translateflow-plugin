@@ -293,7 +293,8 @@
       "task": "rich-local-fonts",
       "status": "working",
       "dependencies": [
-        "oxford-radio-css"
+        "oxford-radio-css",
+        "rich-multiple-records"
       ],
       "branch": "fix/rich-font-svg-20261013",
       "candidateHead": null
