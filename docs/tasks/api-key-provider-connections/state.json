@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "api-key-provider-connections",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/api-key-provider-connections",
   "worktree": null,
-  "candidateHead": null,
+  "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -36,5 +36,13 @@
   "artifactRequired": true,
   "syncHead": null,
   "pullRequest": null,
-  "nextAction": "修复扩展重载后的划词错误提示，并在 Provider 连接卡内显示测试反馈；随后执行受影响验证和重新构建。"
+  "nextAction": "本地修复与安装包更新已完成；远端同步仍需明确授权。扩展重载后，已打开的网页需刷新一次以加载新的 Content Script。",
+  "validation": {
+    "npmRunValidate": "PASS (1543 Node tests, 47 Vitest)",
+    "wxtBuild": "PASS (206 files, 39543158 bytes)",
+    "wxtSmoke": "PASS (Chromium 153.0.8010.12)",
+    "relatedE2E": "PASS (14/14)",
+    "realLocalLmStudio": "PASS (hy-mt2-7b: card test returned OK; releases translated as 版本发布)",
+    "reportedFailureDiagnosis": "PASS (fresh packaged runtime succeeds; stale Content Script now tells the user to refresh after extension reload)"
+  }
 }
