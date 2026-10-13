@@ -280,12 +280,12 @@
     },
     {
       "task": "rich-stripkey-migration",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "rich-lookup-outcome"
       ],
       "branch": "fix/rich-stripkey-migration-20261013",
-      "candidateHead": null
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d"
     },
     {
       "task": "selection-vocabulary-book-v1",

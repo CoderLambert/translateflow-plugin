@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "rich-stripkey-migration",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "rich-lookup-outcome"
   ],
   "branch": "fix/rich-stripkey-migration-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-stripkey-20261013",
-  "candidateHead": null,
+  "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -62,5 +62,6 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "实现严格属性别名与受影响legacy派生索引原子迁移。"
+  "nextAction": "准确候选8门禁及独立审核PASS；guarded squash merge后继续#270多records。",
+  "pullRequest": 327
 }
