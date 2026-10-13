@@ -1,3 +1,5 @@
+import { JSDOM } from "jsdom";
+import { zh_CN as contentMessages } from "../src/i18n/catalog-content.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -483,7 +485,7 @@ function createFontHarness({ manifest, fontBytes = Buffer.alloc(32), rejectDecod
   const messages = [], styles = [], notices = [], created = [], pendingReads = [], pendingLoads = [], registered = new Set();
   const document = {
     fonts: registered,
-    createElement(tag) { return { tagName: tag.toUpperCase(), className: '', textContent: '', remove() { this.removed = true; } }; }
+    createElement(tag) { return { tagName: tag.toUpperCase(), className: '', textContent: '', dataset: {}, style: {}, setAttribute() {}, addEventListener() {}, append() {}, remove() { this.removed = true; } }; }
   };
   class Face {
     constructor(family, bytes, descriptors) {
@@ -595,7 +597,8 @@ test('font bytes reserve the existing 32MiB active budget before decode, without
 test('eight image slots plus a font face reject font admission but retain the body CSS', async () => {
   const h = createFontHarness({ imageSlots: Array.from({ length: 8 }, (_, index) => ({ kind: 'image', token: `tfasset${index}`, path: `images/${index}.png` })) });
   const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
-  assert.equal(h.notices.length, 1); assert.equal(h.created.length, 0);
+  assert.equal(h.notices.filter(node => node.className === 'tf-rich-truncated').length, 1);
+  assert.equal(h.notices.filter(node => node.className === 'tf-rich-resource-notice').length, 1); assert.equal(h.created.length, 0);
   assert.equal(h.messages.filter((message) => /\.ttf$/u.test(message.path || '')).length, 0);
   assert.match(h.styles[0].textContent, /:checked ~ \.panel/u); h.resolver.close(container);
 });
@@ -669,4 +672,105 @@ test('family declaration scanning skips strings, escaped syntax and parenthesize
   assert.ok(h.styles[0].textContent.startsWith(protectedCss));
   assert.match(h.styles[0].textContent.slice(protectedCss.length), /font-family:tf-rich-font-[0-9a-f]{32}-0,serif/u);
   h.resolver.close(container);
+});
+
+function failureUiHarness(reply) {
+  const dom = new JSDOM('<!doctype html><body></body>', { url: 'https://fixture.invalid/' }), document = dom.window.document;
+  for (const method of ['play', 'pause', 'load']) dom.window.HTMLMediaElement.prototype[method] = method === 'play' ? () => Promise.resolve() : () => {};
+  const host = document.createElement('div'), shadow = host.attachShadow({ mode: 'open' }), viewport = document.createElement('div');
+  viewport.className = 'tf-rich-viewer'; shadow.append(viewport); document.body.append(host);
+  const calls = [], resources = [], app = { modules: { contentI18n: createContentI18nStub({ messages: contentMessages }), runtime: {
+    messages: { background: { RICH_MDD_RESOURCE: 'read', RICH_MDD_RESOURCE_READ_CANCEL: 'cancel', OPEN_OPTIONS: 'settings' } },
+    sendRuntimeMessage(message) { calls.push(message); return Promise.resolve(message.type === 'read' ? reply(message) : { ok: true }); }
+  } } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob, crypto: globalThis.crypto });
+  for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
+  const h = { dom, host, shadow, viewport, calls, resources, resolver: app.modules.richResourceResolver,
+    add(kind, path) { const element = document.createElement('span'); viewport.append(element); resources.push({ kind, path, element }); return element; },
+    attach() { h.session = h.resolver.attach(host, shadow, viewport, resources, 'fixture', 'v1'); },
+    notice() { return shadow.querySelector('.tf-rich-resource-notice'); },
+    async settle() { await waitFor(() => !h.resolver.runningReadCount && !h.resolver.pendingReadCount); },
+    close() { h.resolver.close(host); dom.window.close(); } };
+  return h;
+}
+function validUiAsset(kind) {
+  const bytes = Buffer.from('x'); return { ok: true, found: true, packageVersion: 'v1', size: bytes.length, base64: bytes.toString('base64'),
+    mime: kind === 'stylesheet' ? 'text/css' : kind === 'image' ? 'image/png' : 'audio/wav', width: 1, height: 1,
+    ...(kind === 'stylesheet' ? { safeCss: '.tf-rich-viewer .entry{color:red}', assetSlots: [] } : {}) };
+}
+for (const [kind, response, code] of [
+  ['missing', { ok: true, found: false }, 'RICH_MDD_RESOURCE_MISSING'],
+  ['stale', { ok: true, found: false, stale: true, packageVersion: 'v2' }, 'RICH_MDD_RESOURCE_STALE'],
+  ['invalid', { ok: false, errorCode: 'RICH_MDD_CORRUPT', error: 'PRIVATE BODY/path' }, 'RICH_MDD_CORRUPT'],
+  ['unavailable', { ok: false, errorCode: '../../PRIVATE BODY/path' }, 'RICH_MDD_RESOURCE_UNAVAILABLE'],
+  ['unavailable', { ok: false, errorCode: 'RICH_MDD_' + 'X'.repeat(80) }, 'RICH_MDD_RESOURCE_UNAVAILABLE']
+]) test(`stylesheet ${kind} preserves safe classification and one external recovery notice`, async () => {
+  const h = failureUiHarness(() => response); h.add('stylesheet', 'entry.css'); h.attach(); await h.settle();
+  assert.equal(h.notice().dataset.failureKind, kind); assert.equal(h.notice().dataset.errorCode, code);
+  assert.equal(h.session.resources[0].failureCode, code); assert.equal(h.shadow.querySelectorAll('.tf-rich-resource-notice').length, 1);
+  assert.equal(h.notice().nextSibling, h.viewport); assert.doesNotMatch(h.notice().textContent, /PRIVATE|\.\.\/|RICH_MDD/u);
+  h.notice().querySelector('button').click(); assert.equal(h.calls.filter(call => call.type === 'settings').length, 1); h.close();
+});
+for (const response of [{ ...validUiAsset('stylesheet'), packageVersion: undefined }, { ...validUiAsset('stylesheet'), base64: '!!' }, { ...validUiAsset('stylesheet'), mime: 'text/html' }]) test('found bytes require the bound version and valid MIME/base64', async () => {
+  const h = failureUiHarness(() => response); h.add('stylesheet', 'entry.css'); h.attach(); await h.settle();
+  assert.equal(h.notice().dataset.failureKind, response.packageVersion ? 'invalid' : 'stale'); assert.equal(h.shadow.querySelectorAll('style').length, 0); h.close();
+});
+test('corrupt CSS image slot degrades to none while preserving validated body and state CSS', async () => {
+  const h = failureUiHarness(message => message.path.endsWith('.css') ? { ...validUiAsset('stylesheet'), safeCss: '.tf-rich-viewer .entry{color:red;background-image:tfasset0}.tf-rich-viewer :checked~.panel{display:block}', assetSlots: [{ kind: 'image', token: 'tfasset0', path: 'images/fail.png' }] } : { ok: false, errorCode: 'RICH_MDD_CORRUPT' });
+  h.add('stylesheet', 'entry.css'); h.attach(); await h.settle(); const style = h.shadow.querySelector('style');
+  assert.match(style.textContent, /color:red/); assert.match(style.textContent, /background-image:none/); assert.match(style.textContent, /:checked~\.panel/);
+  assert.equal(h.notice().dataset.failureKind, 'invalid'); h.close();
+});
+test('missing followed by stale upgrades the same notice; successful audio retry clears only its own descriptor failure', async () => {
+  let audio = { ok: true, found: false }, css = { ok: true, found: false };
+  const h = failureUiHarness(message => message.path.endsWith('.wav') ? audio : css); h.add('stylesheet', 'entry.css'); h.add('audio', 'tone.wav'); h.attach(); await h.settle();
+  const notice = h.notice(); h.viewport.querySelector('button').click(); await h.settle();
+  assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'missing'); assert.match(h.viewport.querySelector('button').textContent, /点击重试/);
+  audio = { ok: true, found: false, stale: true }; h.viewport.querySelector('button').click(); await h.settle();
+  assert.equal(h.notice(), notice); assert.equal(h.notice().dataset.failureKind, 'stale'); assert.match(h.notice().textContent, /重新查词/);
+  audio = validUiAsset('audio'); h.viewport.querySelector('button').click(); await h.settle();
+  assert.ok(h.viewport.querySelector('audio')); assert.equal(h.session.resources[1].failureCode, undefined);
+  assert.equal(h.notice().dataset.failureKind, 'missing'); assert.equal(h.session.failedResources.size, 1); h.close();
+});
+test('successful audio retry removes the sole failure notice and native decode errors remain classified and retryable', async () => {
+  let response = { ok: false, errorCode: 'RICH_MDD_STORAGE', error: 'private-path' };
+  const h = failureUiHarness(() => response); h.add('audio', 'tone.wav'); h.attach(); h.viewport.querySelector('button').click(); await h.settle();
+  const button = h.viewport.querySelector('button'); assert.equal(button.disabled, false); assert.equal(button.dataset.errorCode, 'RICH_MDD_STORAGE'); assert.equal(button.dataset.failureKind, 'unavailable');
+  response = validUiAsset('audio'); button.click(); await h.settle(); assert.equal(h.notice(), null); assert.equal(h.session.failedResources.size, 0);
+  h.viewport.querySelector('audio').dispatchEvent(new h.dom.window.Event('error'));
+  assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'invalid'); assert.equal(h.resolver.activeObjectUrlCount, 0); assert.equal(h.notice().dataset.failureKind, 'invalid'); h.close();
+});
+test('audio admission capacity stays retryable and does not claim missing attachments', async () => {
+  const h = failureUiHarness(() => validUiAsset('audio')); h.add('audio', 'tone.wav'); h.attach(); h.session.objectBytes = 32 * 1024 * 1024;
+  h.viewport.querySelector('button').click(); await h.settle(); assert.equal(h.notice(), null); assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'capacity');
+  assert.match(h.viewport.querySelector('button').textContent, /稍后重试/); h.session.objectBytes = 0; h.viewport.querySelector('button').click(); await h.settle(); assert.ok(h.viewport.querySelector('audio')); h.close();
+});
+test('closed or replaced resource sessions never append late failure notices or dispatch old settings actions', async () => {
+  let resolve; const h = failureUiHarness(() => new Promise(done => { resolve = done; })); h.add('stylesheet', 'entry.css'); h.attach(); await flushMicrotasks();
+  h.resolver.close(h.host); resolve({ ok: false, errorCode: 'RICH_MDD_CORRUPT' }); await h.settle(); assert.equal(h.notice(), null);
+  h.close();
+  const active = failureUiHarness(() => ({ ok: true, found: false })); active.add('stylesheet', 'entry.css'); active.attach(); await active.settle(); const button = active.notice().querySelector('button');
+  active.resolver.close(active.host); button.click(); assert.equal(active.calls.filter(call => call.type === 'settings').length, 0); active.close();
+});
+
+for (const cancelled of [{ ok: true, cancelled: true }, { ok: false, errorCode: 'CANCELLED' }, { ok: false, errorCode: 'RICH_MDD_CORRUPT' }]) test('switching audio ignores the superseded cancelled read within a still-live viewer', async () => {
+  let resolveA; const h = failureUiHarness(message => message.path === 'a.wav' ? new Promise(done => { resolveA = done; }) : validUiAsset('audio'));
+  h.add('audio', 'a.wav'); h.add('audio', 'b.wav'); h.attach(); const [a, b] = [...h.viewport.querySelectorAll('button')];
+  a.click(); await flushMicrotasks(); b.click(); resolveA(cancelled); await h.settle();
+  assert.equal(h.notice(), null); assert.ok(h.viewport.querySelector('audio')); assert.equal(h.session.failedResources?.size || 0, 0);
+  assert.equal(h.calls.filter(call => call.type === 'cancel').length, 1); h.close();
+});
+test('router RICH_MDICT failures retain a bounded safe code while rendering unavailable retry feedback', async () => {
+  const h = failureUiHarness(() => ({ ok: false, errorCode: 'RICH_MDICT_CONTENT_ONLY', error: 'private content' })); h.add('audio', 'tone.wav'); h.attach(); h.viewport.querySelector('button').click(); await h.settle();
+  assert.equal(h.viewport.querySelector('button').dataset.errorCode, 'RICH_MDICT_CONTENT_ONLY'); assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'unavailable');
+  assert.doesNotMatch(h.notice().textContent, /CONTENT_ONLY|private/); h.close();
+});
+
+for (const cancelled of [{ ok: true, cancelled: true }, { ok: false, errorCode: 'CANCELLED' }]) test('current audio cancellation restores the default retryable button without an error label', async () => {
+  let reply = cancelled; const h = failureUiHarness(() => reply); h.add('audio', 'tone.wav'); h.attach();
+  h.viewport.querySelector('button').click(); await h.settle(); const button = h.viewport.querySelector('button');
+  assert.equal(button.disabled, false); assert.equal(button.textContent, contentMessages['content.rich.playAudioGeneric']);
+  assert.equal(button.dataset.failureKind, undefined); assert.equal(button.dataset.errorCode, undefined); assert.equal(button.dataset.state, undefined);
+  assert.equal(h.notice(), null); assert.equal(h.session.activeAudio, null);
+  reply = validUiAsset('audio'); button.click(); await h.settle(); assert.ok(h.viewport.querySelector('audio')); h.close();
 });

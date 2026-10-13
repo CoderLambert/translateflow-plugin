@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "task": "rich-runtime-resource-recovery",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [
+    "oxford-radio-css"
+  ],
+  "branch": "fix/rich-runtime-assets-20261013",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
+  "candidateHead": "",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/rich-resource-resolver.test.mjs",
+      "tests/rich-navigation.test.mjs",
+      "tests/rich-viewer-contract.test.mjs",
+      "tests/constants.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/mdd-resources.spec.mjs",
+      "e2e/rich-navigation.spec.mjs",
+      "e2e/oxford-radio-css.spec.mjs",
+      "e2e/rich-resource-failure-ui.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "完成资源失败聚合提示、紧凑徽标降级和导航回退文案，然后执行一次完整相关验收。"
+}

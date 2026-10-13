@@ -122,7 +122,7 @@
             css = css.replaceAll(slot.token, `url("${url}")`);
           } catch (error) {
             if (!isCurrent(session)) return;
-            if (error?.code !== "RICH_MDD_RESOURCE_MISSING") throw error;
+            if (media.failureKind(error) === "Stale") throw error;
             css = css.replaceAll(slot.token, "none");
           }
         }
@@ -145,7 +145,15 @@
   }
 
   async function fetchAsset(session, resource) {
-    if (!isCurrent(session)) throw new Error("Rich viewer is closed.");
+    try { const asset = await readAsset(session, resource); if (resource.kind !== "audio" || session.activeAudio?.resource === resource) media.clearFailure(session, resource); return asset; }
+    catch (error) {
+      const failure = media.failure(error?.name === "AbortError" ? "RICH_MDD_RESOURCE_CANCELLED" : error?.code);
+      if (resource.kind !== "audio" || session.activeAudio?.resource === resource) media.reportFailure(session, resource, failure);
+      throw failure;
+    }
+  }
+  async function readAsset(session, resource) {
+    if (!isCurrent(session)) throw media.failure("RICH_MDD_RESOURCE_STALE");
     const requestId = createResourceRequestId();
     session.inFlightRequests.add(requestId);
     resource.inFlightRequests?.add(requestId);
@@ -163,8 +171,10 @@
       session.inFlightRequests.delete(requestId);
       resource.inFlightRequests?.delete(requestId);
     }
-    if (!isCurrent(session) || !response?.ok) throw new Error("MDD resource is unavailable.");
-    if (response.stale || (session.packageVersion && response.packageVersion !== session.packageVersion)) {
+    if (!isCurrent(session)) throw media.failure("RICH_MDD_RESOURCE_STALE");
+    if (response?.cancelled) throw media.failure("RICH_MDD_RESOURCE_CANCELLED");
+    if (!response?.ok) throw media.failure(response?.errorCode);
+    if (response.stale || (session.packageVersion && (response.found || response.packageVersion) && response.packageVersion !== session.packageVersion)) {
       const error = new Error("MDD package version changed while this entry was being rendered.");
       error.code = "RICH_MDD_RESOURCE_STALE";
       throw error;
@@ -174,7 +184,7 @@
       error.code = "RICH_MDD_RESOURCE_MISSING";
       throw error;
     }
-    if (resource.kind === "image" && response.mime === "image/svg+xml") return app.modules.richSvg.asset(response);
+    if (resource.kind === "image" && response.mime === "image/svg+xml") { try { return app.modules.richSvg.asset(response); } catch { throw media.failure("RICH_MDD_RESOURCE_INVALID"); } }
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {
@@ -185,14 +195,14 @@
     }[resource.kind];
     const base64 = String(response.base64 || "");
     if (!expectedMime?.test(mime) || !Number.isSafeInteger(size) || size <= 0 || size > MAX_ASSET_BYTES || base64.length > MAX_BASE64_CHARS) {
-      throw new Error("MDD resource failed the viewer bounds.");
+      throw media.failure("RICH_MDD_RESOURCE_INVALID");
     }
-    const bytes = app.modules.richResourceEncoding.decodeBase64(base64, size);
-    if (resource.kind === "stylesheet" && bytes.byteLength > MAX_STYLESHEET_BYTES) throw new Error("MDD stylesheet is too large.");
+    let bytes; try { bytes = app.modules.richResourceEncoding.decodeBase64(base64, size); } catch { throw media.failure("RICH_MDD_RESOURCE_INVALID"); }
+    if (resource.kind === "stylesheet" && bytes.byteLength > MAX_STYLESHEET_BYTES) throw media.failure("RICH_MDD_RESOURCE_INVALID");
     const width = Number(response.width);
     const height = Number(response.height);
     if (resource.kind === "image" && (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0)) {
-      throw new Error("MDD image dimensions are missing.");
+      throw media.failure("RICH_MDD_RESOURCE_INVALID");
     }
     const safeCss = typeof response.safeCss === "string" && response.safeCss.length <= MAX_STYLESHEET_BYTES
       ? response.safeCss
@@ -267,6 +277,7 @@
     if (session.closed) return;
     previews?.close(session, false);
     session.closed = true;
+    locale.unbindTree(session.recoveryNotice); session.recoveryNotice?.remove(); session.failedResources?.clear();
     if (sessionsByContainer.get(session.container) === session) sessionsByContainer.delete(session.container);
     activeSessions.delete(session);
     session.imageObserver?.disconnect();

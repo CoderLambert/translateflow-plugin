@@ -57,9 +57,12 @@
 .tf-rich-viewer th { font-weight: 700; }
 .tf-rich-viewer .o-symbol-wrap { display: inline-flex; align-items: center; margin: 0 .12em; line-height: 1; vertical-align: middle; }
 .tf-rich-viewer .o-symbol-token > .tf-rich-resource-image { display: inline-block; width: auto; height: 1.05em; max-width: 3em; max-height: 1.05em; margin: 0; border-radius: 0; object-fit: contain; vertical-align: text-bottom; }
+.tf-rich-viewer .tf-rich-owned-action { flex-shrink: 0; white-space: nowrap; writing-mode: horizontal-tb; }
+.tf-rich-viewer .o-symbol-token { max-width: 100%; display: inline-flex !important; flex-flow: row nowrap !important; align-items: center; gap: .16em; vertical-align: middle; }
+.tf-rich-viewer .o-symbol-token .tf-rich-placeholder[data-rich-resource-kind="image"], .tf-rich-viewer .o-symbol-token .tf-rich-placeholder[data-rich-placeholder="image"] { display: inline-flex !important; flex: 0 0 auto; min-height: 0 !important; max-width: 9em; padding: 1px 3px !important; margin: 0 !important; font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
 .tf-rich-viewer .o-pronunciation-set, .tf-rich-viewer .o-head-symbol-set { display: none; }
 .tf-rich-viewer .o-pronunciation-set.o-active { display: block; }
-.tf-rich-viewer .o-head-symbol-set.o-active { display: inline-flex; }
+.tf-rich-viewer .o-head-symbol-set.o-active { display: inline-flex; flex-wrap: wrap; }
 .tf-rich-viewer details.o-unbox-panel { margin: .55em 0; border: 1px solid var(--tf-border-soft, #d8ddd4); border-radius: 9px; background: var(--tf-bg-subtle, #f7f5ef); }
 .tf-rich-viewer details.o-unbox-panel > summary.o-unbox-tile { display: flex; align-items: center; min-width: 0; width: 100%; height: auto; min-height: 34px; margin: 0; padding: 6px 9px; border-radius: 9px; cursor: pointer; list-style: none; }
 .tf-rich-viewer details.o-unbox-panel > summary.o-unbox-tile::-webkit-details-marker { display: none; }

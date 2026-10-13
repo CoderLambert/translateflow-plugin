@@ -5,6 +5,63 @@
 
   function create({ isCurrent, scheduleRead, fetchAsset, createTrackedUrl, revokeUrl, makePlaceholder, cancelResourceRequest,
     maxAssetBytes, maxViewImageBytes, maxViewImagePixels }) {
+    function failure(code) {
+      const safe = code === "CANCELLED" ? code : typeof code === "string" && code.trim().length <= 64 && /^(?:RICH_MDD_|RICH_MDICT_|MDICT_|MDD_|PACK_)[A-Z0-9_]+$/u.test(code.trim()) ? code.trim() : "RICH_MDD_RESOURCE_UNAVAILABLE";
+      const error = new Error("Dictionary resource is unavailable."); error.code = safe; return error;
+    }
+    function failureKind(error) {
+      const code = failure(error?.code).code;
+      if (/CANCELLED|ABORT/u.test(code)) return "Cancelled";
+      if (code === "RICH_MDD_RESOURCE_CAPACITY") return "Capacity";
+      if (/STALE|VERSION/u.test(code)) return "Stale";
+      if (/MISSING|NOT_FOUND/u.test(code)) return "Missing";
+      if (/INVALID|CORRUPT|CHECKSUM|UNSUPPORTED|LIMIT/u.test(code)) return "Invalid";
+      return "Unavailable";
+    }
+    function reportFailure(session, resource, error) {
+      if (!isCurrent(session) || !["stylesheet", "image", "audio"].includes(resource.kind)) return;
+      if (failureKind(error) === "Cancelled") return;
+      resource.failureCode = failure(error?.code).code;
+      if (failureKind(error) === "Capacity") return;
+      session.failedResources ||= new Map();
+      const key = app.modules.richResourcePath.descriptorKey(resource.kind, resource.path, resource.presentation);
+      if (key) session.failedResources.set(key, resource.failureCode);
+      updateNotice(session);
+    }
+    function clearFailure(session, resource) {
+      if (!isCurrent(session)) return;
+      delete resource.failureCode;
+      session.failedResources?.delete(app.modules.richResourcePath.descriptorKey(resource.kind, resource.path, resource.presentation));
+      updateNotice(session);
+    }
+    function updateNotice(session) {
+      if (!isCurrent(session) || !session.viewport?.appendChild) return;
+      const priority = { Missing: 1, Unavailable: 2, Invalid: 3, Stale: 4 };
+      let code = "", kind = "";
+      for (const current of session.failedResources?.values() || []) {
+        const category = failureKind({ code: current });
+        if (!kind || priority[category] > priority[kind]) { code = current; kind = category; }
+      }
+      if (!kind) { locale.unbindTree(session.recoveryNotice); session.recoveryNotice?.remove(); session.recoveryNotice = null; return; }
+      if (session.recoveryNotice) {
+        locale.bindText(session.recoveryText, "content.rich.resources" + kind);
+        session.recoveryNotice.dataset.failureKind = kind.toLowerCase(); session.recoveryNotice.dataset.errorCode = code;
+        return;
+      }
+      const notice = document.createElement("div"), text = document.createElement("span"), settings = document.createElement("button");
+      notice.className = "tf-rich-resource-notice"; notice.dataset.failureKind = kind.toLowerCase(); notice.dataset.errorCode = code; notice.setAttribute("role", "status");
+      notice.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;font-size:.85em";
+      locale.bindText(text, "content.rich.resources" + kind);
+      settings.type = "button"; locale.bindText(settings, "content.rich.resourceSettings");
+      settings.addEventListener("click", () => {
+        if (!isCurrent(session)) return;
+        void app.modules.runtime.sendRuntimeMessage({ type: app.modules.runtime.messages.background.OPEN_OPTIONS }).catch(() => {});
+      });
+      notice.append(text, settings);
+      if (session.shadowRoot?.insertBefore && session.viewport.parentNode === session.shadowRoot) session.shadowRoot.insertBefore(notice, session.viewport);
+      else if (session.viewport.prepend) session.viewport.prepend(notice); else session.viewport.appendChild(notice);
+      session.recoveryNotice = notice; session.recoveryText = text; session.recoveryKind = kind;
+    }
     function installLazyImages(session, resource) {
       if (!resource.instances.length) return;
       if (typeof IntersectionObserver !== "function") {
@@ -98,12 +155,12 @@
           const height = asset.height;
           if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 ||
               !Number.isSafeInteger(asset.size) || asset.size <= 0 || asset.size > maxAssetBytes) {
-            resource.imageLoadFailed = true;
+            resource.imageLoadFailed = true; reportFailure(session, resource, failure("RICH_MDD_RESOURCE_INVALID"));
             return;
           }
           const pixels = width * height;
           if (!Number.isSafeInteger(pixels) || pixels <= 0 || pixels > maxViewImagePixels) {
-            resource.imageLoadFailed = true;
+            resource.imageLoadFailed = true; reportFailure(session, resource, failure("RICH_MDD_RESOURCE_INVALID"));
             return;
           }
           if (session.imagePixels + pixels > maxViewImagePixels ||
@@ -117,9 +174,8 @@
           resource.imageWidth = width;
           resource.imageHeight = height;
           for (const instance of resource.instances) showImageInstance(session, resource, instance);
-        } catch {
-          // A failed or over-budget read leaves its observed placeholder in place.
-          // Capacity changes call retryVisibleImages() so it can be tried again.
+        } catch (error) {
+          if (isCurrent(session)) { resource.imageLoadFailed = !["Capacity", "Cancelled"].includes(failureKind(error)); reportFailure(session, resource, error); }
         }
       })().finally(() => {
         resource.loadingPromise = null;
@@ -137,7 +193,8 @@
     }
 
     function failImageResource(session, resource, url) {
-      if (resource.objectUrl !== url) return;
+      if (!isCurrent(session) || resource.objectUrl !== url) return;
+      reportFailure(session, resource, failure("RICH_MDD_RESOURCE_INVALID"));
       resource.imageLoadFailed = true;
       resource.objectUrl = "";
       resource.imageWidth = 0;
@@ -190,7 +247,7 @@
         const asset = await scheduleRead(session, () => session.activeAudio === activeAudio ? fetchAsset(session, resource) : undefined);
         if (!asset || !isCurrent(session) || session.activeAudio !== activeAudio) return;
         const url = createTrackedUrl(session, asset, 0, "audio");
-        if (!url) throw new Error("Audio resource budget was exceeded.");
+        if (!url) throw failure("RICH_MDD_RESOURCE_CAPACITY");
         const audio = document.createElement("audio");
         audio.className = "tf-rich-resource-audio";
         audio.controls = true;
@@ -207,19 +264,30 @@
         activeAudio.objectUrl = url;
         instance.element = audio;
         audio.addEventListener("error", () => {
-          if (session.activeAudio === activeAudio) releaseActiveAudio(session, activeAudio, true);
+          if (isCurrent(session) && session.activeAudio === activeAudio) {
+            reportFailure(session, resource, failure("RICH_MDD_RESOURCE_INVALID"));
+            releaseActiveAudio(session, activeAudio, true);
+            labelAudioFailure(instance.element, failure("RICH_MDD_RESOURCE_INVALID"));
+          }
         }, { once: true });
         if (button.parentNode) button.replaceWith(audio);
         const playPromise = audio.play?.();
         if (playPromise?.catch) void playPromise.catch(() => {});
-      } catch {
+      } catch (error) {
         if (session.activeAudio !== activeAudio || !isCurrent(session)) return;
         session.activeAudio = null;
         bindAudioButton(session, resource, instance);
-        locale.bindText(instance.element, resource.label ? "content.rich.audioUnreadable" : "content.rich.audioMissing", resource.label ? { label: resource.label } : {});
+        reportFailure(session, resource, error);
+        labelAudioFailure(instance.element, error);
       }
     }
 
+    function labelAudioFailure(button, error) {
+      const kind = failureKind(error); if (kind === "Cancelled") return;
+      const key = kind === "Missing" ? "content.rich.audioResourceMissing" : "content.rich.audio" + kind;
+      button.dataset.state = "error"; button.dataset.failureKind = kind.toLowerCase(); button.dataset.errorCode = failure(error?.code).code;
+      locale.bindText(button, key); locale.bindAttribute(button, "aria-label", key);
+    }
     function releaseActiveAudio(session, activeAudio, restoreButton) {
       if (!activeAudio) return;
       if (activeAudio.audio) {
@@ -292,7 +360,7 @@
       locale.bindAttribute(element, "title", descriptionKey);
     }
 
-    return Object.freeze({ installLazyImages, installAudioLoader, releaseActiveAudio, restorePlaceholders, retryVisibleImages });
+    return Object.freeze({ failure, failureKind, reportFailure, installLazyImages, installAudioLoader, releaseActiveAudio, restorePlaceholders, retryVisibleImages, clearFailure });
   }
 
   app.modules.richResourceMedia = Object.freeze({ create });
