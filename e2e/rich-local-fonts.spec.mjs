@@ -7,12 +7,15 @@ const variants = [
   { style: 'normal', weight: '400', advance: 300 }, { style: 'italic', weight: '400', advance: 330 },
   { style: 'normal', weight: '700', advance: 600 }, { style: 'italic', weight: '700', advance: 630 }
 ];
+const stateId = (index) => index === 0 ? 'tffamily0' : `font-state-${index}`;
+const controls = '<div class="font-switch">' + variants.map((_, index) => `<input type="radio" id="${stateId(index)}" name="font-states" class="choice" ${index === 0 ? 'checked' : ''}>`).join('') + '<nav>' + variants.map((_, index) => `<label for="${stateId(index)}" class="font-label">State ${index}</label>`).join('') + '</nav><div class="font-panels">' + variants.map((_, index) => `<section class="font-panel font-panel-${index}">FONT STATE ${index}</section>`).join('') + '</div></div><span class="tffamily0">COLLIDING CLASS</span>';
+const stateCss = '.choice{display:none}.font-panel{display:none}.tffamily0{color:#123456}.font-label::before{content:"font-family:tffamily0"}' + variants.map((_, index) => `#${stateId(index)}:checked~.font-panels>.font-panel-${index}{display:block}`).join('');
 const css = '.probe{font-family:"Fixture Font",monospace;font-size:40px;display:inline-block}.italic{font-style:italic}.bold{font-weight:700}' +
   variants.map(({ style, weight }, index) => `@font-face{font-family:"Fixture Font";src:url(fonts/${index}.ttf) format("truetype");font-style:${style};font-weight:${weight};font-display:swap}`).join('') +
-  '@font-face{font-family:Remote;src:url(https://attacker.invalid/font.ttf)}.remote{font-family:Remote,serif}';
-const record = '<link rel="stylesheet" href="font.css"><div class="entry">' + variants.map(({ style, weight }, index) => `<span class="probe ${style === 'italic' ? 'italic' : ''} ${weight === '700' ? 'bold' : ''}" data-untrusted="discard">AAAA</span>`).join('') + '<p>FONT RECORD TAIL</p><p class="remote">REMOTE FONT FALLBACK</p></div>';
-const brokenRecord = '<link rel="stylesheet" href="broken.css"><div><input type="radio" id="state-a" name="states" class="choice" checked><input type="radio" id="state-b" name="states" class="choice"><nav><label for="state-a">First</label><label for="state-b">Second</label></nav><div class="panels"><section class="panel first">FIRST VISIBLE PANEL</section><section class="panel second">SECOND VISIBLE PANEL</section></div><span class="probe">AAAA</span><p>BROKEN FONT BODY TAIL</p></div>';
-const brokenCss = '@font-face{font-family:Broken;src:url(fonts/broken.ttf)}.probe{font-family:Broken,monospace;font-size:40px}.choice{display:none}.panel{display:none}#state-a:checked~.panels>.first{display:block}#state-b:checked~.panels>.second{display:block}';
+  '@font-face{font-family:Remote;src:url(https://attacker.invalid/font.ttf)}.remote{font-family:Remote,serif}' + stateCss;
+const record = '<link rel="stylesheet" href="font.css"><div class="entry">' + variants.map(({ style, weight }, index) => `<span class="probe ${style === 'italic' ? 'italic' : ''} ${weight === '700' ? 'bold' : ''}" data-untrusted="discard">AAAA</span>`).join('') + controls + '<p>FONT RECORD TAIL</p><p class="remote">REMOTE FONT FALLBACK</p></div>';
+const brokenRecord = '<link rel="stylesheet" href="broken.css"><div><input type="radio" id="tffamily0" name="states" class="choice" checked><input type="radio" id="state-b" name="states" class="choice"><nav><label for="tffamily0">First</label><label for="state-b">Second</label></nav><div class="panels"><section class="panel first">FIRST VISIBLE PANEL</section><section class="panel second">SECOND VISIBLE PANEL</section></div><span class="probe">AAAA</span><p>BROKEN FONT BODY TAIL</p></div>';
+const brokenCss = '@font-face{font-family:Broken;src:url(fonts/broken.ttf)}.probe{font-family:Broken,monospace;font-size:40px}.choice{display:none}.panel{display:none}#tffamily0:checked~.panels>.first{display:block}#state-b:checked~.panels>.second{display:block}';
 
 async function selectWord(page, text) {
   await page.evaluate((text) => { let word = document.querySelector('#font-word'); if (!word) { word = document.createElement('p'); word.id = 'font-word'; document.body.append(word); } word.textContent = text; }, text);
@@ -66,6 +69,15 @@ test('local TrueType faces load with four variants, isolated families, fallback 
       expect(proof.faces).toHaveLength(4); expect(proof.faces.every((face) => face.status === 'loaded')).toBe(true); expect(proof.matched).toBe(true);
       for (let variant = 0; variant < 4; variant += 1) expect(proof.widths[variant]).toBeCloseTo((variants[variant].advance + index * 100) * 0.16, 1);
       expect(proof.fallback).toBe('serif');
+      expect(await viewer.locator('.tffamily0').evaluate((node) => getComputedStyle(node).color)).toBe('rgb(18, 52, 86)');
+      expect(await viewer.locator('label[for="tffamily0"]').evaluate((node) => getComputedStyle(node, '::before').content)).toBe('"font-family:tffamily0"');
+      for (let state = 0; state < 4; state += 1) {
+        await viewer.locator(`label[for="${stateId(state)}"]`).click();
+        for (let panel = 0; panel < 4; panel += 1) {
+          if (panel === state) await expect(viewer.locator(`.font-panel-${panel}`)).toBeVisible();
+          else await expect(viewer.locator(`.font-panel-${panel}`)).toBeHidden();
+        }
+      }
     }
     expect(aliases[0]).not.toBe(aliases[1]);
     expect(await page.evaluate(() => [...document.fonts].filter((face) => face.family.startsWith('tf-rich-font-')).length)).toBe(8);

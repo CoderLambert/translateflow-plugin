@@ -633,3 +633,37 @@ test('session alias expansion keeps the 64KiB CSS output budget and falls back w
   assert.doesNotMatch(h.styles[0].textContent, /tffamily/u); assert.match(h.styles[0].textContent, /color:red/u);
   h.resolver.close(container);
 });
+
+const collidingNonFontCss = '.tf-rich-viewer [data-rich-target-id="tffamily0"]:checked ~ .panel{display:block}.tf-rich-viewer .tffamily0{color:red}.tf-rich-viewer .label::before{content:"font-family:tffamily0; { tffamily0 }"}';
+for (const [branch, options] of [
+  ['loaded', {}], ['decode failure', { rejectDecode: true }], ['bad manifest', { manifest: [{ familyToken: 'invalid' }] }], ['no randomness', { cryptoProvider: {} }]
+]) test(`font token collisions preserve selectors and literal content in the ${branch} branch`, async () => {
+  const h = createFontHarness({ ...options, stylesheetCss: collidingNonFontCss + '.tf-rich-viewer .entry{font-family:tffamily0,serif}' });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.ok(h.styles[0].textContent.startsWith(collidingNonFontCss));
+  if (branch === 'bad manifest' || branch === 'no randomness') assert.match(h.styles[0].textContent, /font-family:serif,serif/u);
+  else assert.match(h.styles[0].textContent, /font-family:tf-rich-font-[0-9a-f]{32}-0,serif/u);
+  if (branch === 'decode failure') await waitFor(() => h.notices.length === 1);
+  h.resolver.close(container);
+});
+
+test('font alias overflow fallback preserves colliding non-font CSS exactly', async () => {
+  const manifest = Array.from({ length: 8 }, (_, index) => ({ familyToken: `tffamily${index}`, path: `fonts/${index}.ttf`, style: 'normal', weight: '400', display: 'swap' }));
+  const families = manifest.map((face) => face.familyToken).join(',');
+  const h = createFontHarness({ manifest, stylesheetCss: collidingNonFontCss + `.tf-rich-viewer .entry{font-family:${families};color:red}`.repeat(512) });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.ok(h.styles[0].textContent.startsWith(collidingNonFontCss));
+  assert.ok(Buffer.byteLength(h.styles[0].textContent) <= 64 * 1024);
+  assert.equal(h.created.length, 0); assert.equal(h.notices.length, 1);
+  assert.match(h.styles[0].textContent.slice(collidingNonFontCss.length), /font-family:serif,serif/u);
+  h.resolver.close(container);
+});
+
+test('family declaration scanning skips strings, escaped syntax and parenthesized non-font values', async () => {
+  const protectedCss = '@media (max-width:500px){.tf-rich-viewer .tffamily0{color:rgb(0,0,0);content:"font-family:tffamily0; \\" tffamily0"}.tf-rich-viewer [data-rich-target-id="tffamily0"]{color:red}}';
+  const h = createFontHarness({ stylesheetCss: protectedCss + '.tf-rich-viewer .entry{font-family:tffamily0,serif}' });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.ok(h.styles[0].textContent.startsWith(protectedCss));
+  assert.match(h.styles[0].textContent.slice(protectedCss.length), /font-family:tf-rich-font-[0-9a-f]{32}-0,serif/u);
+  h.resolver.close(container);
+});
