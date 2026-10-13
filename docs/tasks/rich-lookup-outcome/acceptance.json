@@ -150,5 +150,35 @@
     "物理音频输出、最低支持浏览器、真实私有包全流程、4GB性能 NOT RUN。",
     "首次candidate静态行数失败、后续注释断言/派生投影失败及两个E2E事件采样失败保留ignored原日志，未改写为PASS。",
     "E2E artifact-tree算法 hash 3d6f5e4f6f326305dfaa3c1e26bf1a8d95a39dcceb19188952a0f240a4210253；local-task artifact.treeSha256使用独立输入 fingerprint 算法，请分别引用。"
-  ]
+  ],
+  "postMergeVerification": {
+    "mergeHead": "f1d655c30299286ca454f6a030d2d52d988a0c08",
+    "treeMatchesSync": true,
+    "checks": [
+      {
+        "command": [
+          "node",
+          "--test",
+          "tests/selection-rich-outcome.test.mjs",
+          "tests/selection-multi-dictionary.test.mjs"
+        ],
+        "result": "PASS",
+        "tests": 26
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "test:e2e",
+          "--",
+          "e2e/multi-dictionary-viewer.spec.mjs"
+        ],
+        "result": "PASS",
+        "tests": 6
+      }
+    ],
+    "logSha256": "2c25fa2a089c1455db9256bc6a5038529d241d13398b0b0d87e50bedc0f67584",
+    "artifactReuse": "合入tree与sync完全相同；生产输入与准确候选不变，复用已审计WXT包。",
+    "log": "docs/task-execution/local/rich-lookup-outcome/post-merge.log"
+  }
 }

@@ -6,7 +6,7 @@ import {
 } from "./mdict-contract.js";
 import { safeAdd } from "./mdict-rich-key-codec.js";
 
-export const RICH_MDICT_INDEX_SCHEMA_VERSION = 1;
+export const RICH_MDICT_INDEX_SCHEMA_VERSION = 2;
 export const RICH_MDICT_INDEX_FORMAT = "mdx-v2-rich";
 export const RICH_MDICT_IMPORT_LIMITS = Object.freeze({
   ...MDICT_IMPORT_LIMITS,
@@ -30,7 +30,7 @@ export function validateRichMdictIndex(index, {
 } = {}) {
   if (
     !index ||
-    index.schemaVersion !== RICH_MDICT_INDEX_SCHEMA_VERSION ||
+    ![1, RICH_MDICT_INDEX_SCHEMA_VERSION].includes(index.schemaVersion) ||
     index.format !== RICH_MDICT_INDEX_FORMAT ||
     !Number.isSafeInteger(index.sourceSize) ||
     index.sourceSize !== sourceSize ||

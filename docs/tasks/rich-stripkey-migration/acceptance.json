@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "task": "rich-stripkey-migration",
+  "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+  "tree": "b58906e6a9f85a798a8f652f3ba147cc9d709d62",
+  "inputTree": "ce075f02fe0434b711fceeca7e11fd04570550489cf700488eee69fcee6d4a52",
+  "frozenAt": "2026-10-13T05:55:44.603Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12 (Playwright channel chromium)"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11.329269,
+      "startedAt": "2026-10-13T05:55:47.791Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/63ed579c-cde5-4330-96cd-4cdeee084693.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/rich-mdict-format.test.mjs",
+        "tests/rich-mdict-storage.test.mjs",
+        "tests/rich-mdict-index-migration.test.mjs"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 193.386979,
+      "startedAt": "2026-10-13T05:55:47.943Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/a3785ebe-a596-43dc-bb32-d589a01500ad.log",
+      "logSha256": "8c8b7a8381483ba961006f2515dc077287962f963dfc1ecf604d9070d0d09d7b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 44346.304806,
+      "startedAt": "2026-10-13T05:55:48.291Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/2ccf9223-9202-4224-ad60-e654a9a5f7bc.log",
+      "logSha256": "bbb5468c92bc430540efbb9b4892a409e81fdf3f4362ba26c828d77b463d16ab"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2121.510277,
+      "startedAt": "2026-10-13T05:56:32.772Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/91eded1e-af8d-4b97-897c-01efd9993fcd.log",
+      "logSha256": "e4c2ffd77f60ea1f9178c06ba57971b3256edf8bac5f11c6e265741d17758df4"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1112.457591,
+      "startedAt": "2026-10-13T05:56:35.031Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/97d96b98-7a70-42c4-9134-b241b7209c6a.log",
+      "logSha256": "208a833377a64170048ee6fceae7e439cbe02d05aac36c21a33b7ec07b340755"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 160.153055,
+      "startedAt": "2026-10-13T05:56:36.276Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/3faadc3f-a4eb-4cff-bab5-2badc9e462c5.log",
+      "logSha256": "59bdeaf061b5002ac8f5e7bf4905b1614bf563fd9ed1a0dec03845ac40855d48"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 169.105426,
+      "startedAt": "2026-10-13T05:56:36.570Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/b170b5dd-d2c0-4997-87bf-eeefc11e3c7b.log",
+      "logSha256": "283b2e48f24ad38f214dacf60b4dd529b3043f45d0205d4237a8419f9cfebe0a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/rich-mdict-index-migration.spec.mjs",
+        "e2e/rich-mdict-product.spec.mjs",
+        "e2e/multi-dictionary-viewer.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/mdd-resources.spec.mjs"
+      ],
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 30057.652039,
+      "startedAt": "2026-10-13T05:56:36.871Z",
+      "log": "docs/task-execution/local/rich-stripkey-migration/146c65ba-7848-48c3-8f0d-6d00a0a06130.log",
+      "logSha256": "33e6f797e909d8f102edbec1cb7a6ac5f31ffd759a6550fdace40eea0cf50dc7"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "d67454e9dbdfdd9569673e65e6616b49f4bbe7d05f2e770e19342668c6d4910a"
+  },
+  "limitations": [
+    "真实Chromium/MV3/OPFS迁移与restart使用隔离合成fixture，Provider=0/MDD外网=0断言通过；不是#274完整Oxford产品验收。",
+    "真实Oxford本地只读header/parser核对另列；不写用户OPFS、不外传正文/私人路径。",
+    "固定派生index文件激活在storage提交点后不可回滚；Selection取消与派生索引激活分开记录。",
+    "本PR仅Stripkey兼容与受影响legacy迁移；多records/总cache预算/#271-274仍未完成。",
+    "物理音频输出/最低浏览器/真实4GB性能 NOT RUN。",
+    "E2E inventory hash c1b4e4bc8e5c20dce0f859db3f43c265a44d63de6d03f81a1e7a380d02353a98 与local-task artifact fingerprint算法不同，分别引用。"
+  ],
+  "realOxfordReadOnly": {
+    "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+    "result": "PASS",
+    "runner": "dev_explorer (独立只读定位；不代替独立review)",
+    "input": {
+      "role": "MDX",
+      "sourceSize": 38807694,
+      "sha256": "737a93e9a25bfdaf5ee1683b4a0aff43ec5a9ed6238700526e258c79cad24e19",
+      "identityReuse": "复用先前流式SHA身份，运行前后size/mtime一致，未重复hash/download"
+    },
+    "parsedStripKey": true,
+    "indexSchemaVersion": 2,
+    "serializedIndexBytes": 607164,
+    "indexBuildMs": 162.434,
+    "queries": [
+      {
+        "word": "arch",
+        "found": true,
+        "sourceBytes": 18923,
+        "decodedBytes": 18921,
+        "durationMs": 4.676
+      },
+      {
+        "word": "go",
+        "found": true,
+        "sourceBytes": 778100,
+        "decodedBytes": 778098,
+        "durationMs": 20.277
+      },
+      {
+        "word": "come",
+        "found": true,
+        "sourceBytes": 587579,
+        "decodedBytes": 587577,
+        "durationMs": 13.516
+      },
+      {
+        "word": "get",
+        "found": true,
+        "sourceBytes": 566816,
+        "decodedBytes": 566814,
+        "durationMs": 14.721
+      }
+    ],
+    "anonymousPunctuationSamples": {
+      "count": 2,
+      "oldHitsPerSample": 0,
+      "newHitsPerSample": 1
+    },
+    "isolatedMigrationSimulation": {
+      "result": "PASS",
+      "builds": 1,
+      "stateUpdates": 1,
+      "secondLoadRebuilds": 0,
+      "sourceWrites": 0,
+      "oldIndexResourcesMetadataRetained": true,
+      "durationMs": 155.324
+    },
+    "report": "docs/task-execution/local/rich-stripkey-migration/oxford-readonly-summary.json",
+    "reportSha256": "c1178af09f73112d9aa196e60f3ba0606b78c6746c1a2a777685df5b2b71c745",
+    "limitations": [
+      "时延是单次观察；不代表性能门槛或峰值内存。",
+      "仅本地parser与隔离in-memory迁移；真实用户OPFS/真实Oxford浏览器终验NOT RUN。"
+    ]
+  }
+}

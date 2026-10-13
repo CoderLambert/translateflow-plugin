@@ -645,7 +645,7 @@ function createEnvironment(overrides = {}) {
 
 function createIndex(sourceSize) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     format: "mdx-v2-rich",
     sourceSize,
     entryCount: 1,

@@ -99,7 +99,7 @@ export function parseRichMdictHeader(
     encoding: normalizeMdictEncoding(attributes.Encoding),
     encrypted,
     keyCaseSensitive: yesNo(attributes.KeyCaseSensitive, false),
-    stripKey: yesNo(attributes.StripKey, false),
+    stripKey: stripKeyOption(attributes),
     compact: cleanText(attributes.Compact || "No"),
     compat: cleanText(attributes.Compat || "No"),
     styleSheet,
@@ -151,6 +151,15 @@ function parseStyleSheet(value) {
     rules.push({ id, begin: lines[index + 1], end: lines[index + 2] });
   }
   return rules;
+}
+
+function stripKeyOption(attributes) {
+  const standard = attributes.StripKey;
+  const alias = attributes.Stripkey;
+  if (standard !== undefined && alias !== undefined && yesNo(standard, false) !== yesNo(alias, false)) {
+    mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict StripKey options conflict.");
+  }
+  return yesNo(standard ?? alias, false);
 }
 
 function yesNo(value, defaultValue) {

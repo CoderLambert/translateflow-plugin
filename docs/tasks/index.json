@@ -273,10 +273,19 @@
     },
     {
       "task": "rich-lookup-outcome",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
-      "branch": "fix/rich-lookup-outcome-20261013",
+      "branch": "main",
       "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615"
+    },
+    {
+      "task": "rich-stripkey-migration",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "rich-lookup-outcome"
+      ],
+      "branch": "fix/rich-stripkey-migration-20261013",
+      "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d"
     },
     {
       "task": "selection-vocabulary-book-v1",
