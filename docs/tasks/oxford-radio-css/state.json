@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "task": "oxford-radio-css",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [
+    "rich-multiple-records"
+  ],
+  "branch": "fix/oxford-rich-layout-20261013",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-layout-20261013",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/rich-mdict-security.test.mjs",
+      "tests/rich-dictionary-sanitizer.test.mjs",
+      "tests/rich-viewer-contract.test.mjs",
+      "tests/rich-mdd-css.test.mjs",
+      "tests/selection-rich-outcome.test.mjs",
+      "tests/selection-multi-dictionary.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/oxford-radio-css.spec.mjs",
+      "e2e/rich-mdict-records.spec.mjs",
+      "e2e/multi-dictionary-viewer.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "e2e/rich-viewer-security.spec.mjs",
+      "e2e/mdd-resources.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "真实radio全状态/必要CSS规则统计后，执行单一generic结构样式切片；字体/SVG后续。"
+}
