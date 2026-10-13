@@ -176,11 +176,14 @@
       if (token.name === "label" && !token.duplicate && /^[a-z0-9_-]{1,80}$/iu.test(token.attrs.for || "")) {
         attrs["data-rich-label-for"] = token.attrs.for;
       }
-      const targetId = /^[a-z0-9_-]{1,80}$/iu.test(token.attrs.id || "") ? token.attrs.id : "";
+      const targetId = /^[a-z0-9_.-]{1,80}$/iu.test(token.attrs.id || "") ? token.attrs.id : "";
       if (targetId) attrs["data-rich-target-id"] = targetId;
       if (token.name === "a") {
-        const fragment = /^#([a-z0-9_-]{1,80})$/iu.exec(String(token.attrs.href || ""));
-        if (fragment) attrs["data-rich-fragment-target"] = fragment[1];
+        const action = app.modules.richNavigationActions?.parse(token.attrs.href || "");
+        if (action?.kind === "fragment") attrs["data-rich-fragment-target"] = action.fragment;
+        if (action?.kind === "entry") attrs["data-rich-entry-target"] = action.headword;
+        if (action?.kind === "entry" && action.fragment) attrs["data-rich-entry-fragment"] = action.fragment;
+        if (!app.modules.richNavigationActions && /^#[a-z0-9_-]{1,80}$/iu.test(token.attrs.href || "")) attrs["data-rich-fragment-target"] = token.attrs.href.slice(1);
       }
       const style = styleApi.safeStyle(token.attrs.style || "");
       if (token.name === "font" && !style.color && token.attrs.color) {

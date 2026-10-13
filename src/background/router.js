@@ -278,7 +278,8 @@ export async function handleBackgroundMessage(message, sender) {
         return lookupRichMdictDictionaries({
           text: message.text,
           dictionaryId: message.dictionaryId,
-          requestId: message.requestId
+          requestId: message.requestId,
+          ...(message.expectedPackVersion !== undefined || message.expectedPackageVersion !== undefined ? { expectedPackVersion: message.expectedPackVersion, expectedPackageVersion: message.expectedPackageVersion } : {})
         }, selectionContentOwnerKey(sender, message));
       }
       return lookupRichMdictDictionaries(message.text);

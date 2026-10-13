@@ -277,7 +277,7 @@ async function createHarness(dictionaries, { listResponse = null, renderPlainTex
     selectionRichViewer: { renderPlainText }
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document, requestAnimationFrame: (callback) => callback() });
-  for (const name of ["empty-state", "rich-result-renderer", "result-renderer", "popover", "rich-details"]) {
+  for (const name of ["empty-state", "rich-result-renderer", "result-renderer", "popover", "rich-lookup-identity", "rich-details"]) {
     vm.runInContext(await readFile(selectionSource(name), "utf8"), context);
   }
   const update = app.modules.selectionPopover.updateRichDictionarySummary;

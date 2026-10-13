@@ -7,7 +7,7 @@ import {
   RICH_MDICT_SOURCE_ID,
   RICH_MDICT_STATE_KEY,
   validateCuratedRichMdictProvenance,
-  clampText
+  clampText, richError
 } from "./rich-mdict-contract.js";
 import { createRichMdictPreferencesStore } from "./rich-mdict-preferences.js";
 
@@ -158,18 +158,17 @@ export async function promoteRichMdictDictionary(dictionaryId) {
 export async function lookupRichMdictDictionaries(request, selectionOwnerKey = "") {
   if (request && typeof request === "object" && !Array.isArray(request) && Object.hasOwn(request, "dictionaryId")) {
     const id = normalizePackId(request.dictionaryId);
+    if (!selectionOwnerKey && (request.expectedPackVersion !== undefined || request.expectedPackageVersion !== undefined)) throw richError("RICH_MDICT_INPUT", "Version-bound navigation requires a Selection owner.");
     const preferences = await getRichMdictPreferencesStore().readAll();
     if (preferences.dictionaries[id]?.enabled === false) {
-      return {
-        found: false,
-        dictionaries: [],
-        errors: [{ id, title: "", code: "RICH_MDICT_DISABLED", message: "This rich dictionary is disabled in Settings." }]
-      };
+      return disabledRichDictionary(id);
     }
     const lookupIdentity = selectionOwnerKey
-      ? { requestId: request.requestId, ownerKey: selectionOwnerKey }
+      ? { requestId: request.requestId, ownerKey: selectionOwnerKey, ...(request.expectedPackVersion !== undefined || request.expectedPackageVersion !== undefined ? { expectedPackVersion: request.expectedPackVersion, expectedPackageVersion: request.expectedPackageVersion } : {}) }
       : null;
-    return getRichMdictManager().lookupDictionary(request.text, id, lookupIdentity);
+    const result = await getRichMdictManager().lookupDictionary(request.text, id, lookupIdentity);
+    if (request.expectedPackVersion !== undefined && (await getRichMdictPreferencesStore().readAll()).dictionaries[id]?.enabled === false) return disabledRichDictionary(id);
+    return result;
   }
   return getRichMdictManager().lookup(typeof request === "string" ? request : request?.text);
 }
@@ -297,4 +296,8 @@ function isValidRichPackId(value) {
 function serializeRichMdictPacks(packIds, action, index = 0) {
   if (index >= packIds.length) return action();
   return serializeRichMdictPack(packIds[index], () => serializeRichMdictPacks(packIds, action, index + 1));
+}
+
+function disabledRichDictionary(id) {
+  return { found: false, dictionaries: [], errors: [{ id, title: "", code: "RICH_MDICT_DISABLED", message: "This rich dictionary is disabled in Settings." }] };
 }

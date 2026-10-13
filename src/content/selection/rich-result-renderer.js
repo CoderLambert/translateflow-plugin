@@ -124,8 +124,12 @@
       let pendingResult = null;
       let resultDisplayed = false;
       let retryHandler = null;
+      let navigation = null;
       const card = {
         dictionary,
+        releaseNavigation() { clearPendingResult(); body.replaceChildren(); navigation = null; },
+        mountNavigation: (node) => details.insertBefore(node, body),
+        bindNavigation: (value) => { navigation = value; },
         isOpen: () => details.open,
         setLoading() {
           clearPendingResult();
@@ -164,12 +168,12 @@
           body.appendChild(empty);
           retryHandler = null;
         },
-        setResult(record, dictionaryId, onDisplay = null, onError = null, isCurrent = null) {
+        setResult(record, dictionaryId, onDisplay = null, onError = null, isCurrent = null, eager = false) {
           clearPendingResult();
           setCardState(details, status, "success", "content.rich.complete");
           retryHandler = null;
           pendingResult = { record, dictionaryId, onDisplay, onError, isCurrent };
-          if (details.open) renderPendingResult();
+          if (details.open || eager) renderPendingResult();
           else {
             const note = document.createElement("p");
             note.className = "tf-selection-rich-deferred";
@@ -193,7 +197,7 @@
           return;
         }
         body.replaceChildren();
-        const displayed = renderRichDictionaryRecord(body, pendingResult.record, pendingResult.dictionaryId);
+        const displayed = renderRichDictionaryRecord(body, pendingResult.record, pendingResult.dictionaryId, navigation);
         resultDisplayed = true;
         pendingResult.onDisplay?.(displayed);
       }
@@ -202,6 +206,7 @@
         if (!details.open) return;
         try {
           renderPendingResult();
+          navigation?.opened?.();
         } catch {
           const onError = pendingResult?.onError;
           card.setError("content.rich.lookupUnavailable");
@@ -237,7 +242,7 @@
     renderedHosts.delete(container);
   }
 
-  function renderRichDictionaryRecord(container, dictionary, dictionaryId) {
+  function renderRichDictionaryRecord(container, dictionary, dictionaryId, navigation = null) {
     if (dictionary?.records !== undefined && !Array.isArray(dictionary.records)) throw new Error("Rich dictionary records are invalid.");
     const inputs = Array.isArray(dictionary?.records) ? dictionary.records : [dictionary];
     if (!inputs.length || inputs.length > 256) throw new Error("Rich dictionary record count is invalid.");
@@ -266,7 +271,8 @@
     closeRecords(container);
     renderedHosts.set(container, []);
     try {
-      const displayed = prepared.map(({ record, tree }) => renderSingleRecord(container, record, dictionaryId, tree));
+      const displayed = prepared.map(({ record, tree }) => renderSingleRecord(container, record, dictionaryId, tree, navigation));
+      navigation?.rendered(renderedHosts.get(container) || []);
       return { ...displayed[0], text: displayed.map((item) => item.text).filter(Boolean).join("\n\n") };
     } catch (error) { closeRecords(container); throw error; }
   }
@@ -285,7 +291,7 @@
     return { nodes: nodes || 1, resources: resources.size, expandedBytes: new TextEncoder().encode(String(fallback)).byteLength };
   }
 
-  function renderSingleRecord(container, dictionary, dictionaryId, safeTree) {
+  function renderSingleRecord(container, dictionary, dictionaryId, safeTree, navigation = null) {
     const headword = String(dictionary?.headword || "").trim();
     const bodyText = String(dictionary?.text || "").trim();
     const body = document.createElement("div");
@@ -301,7 +307,8 @@
           displayed = viewer.render(body, safeTree, fallback, {
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
             dictionaryId: String(dictionaryId || ""),
-            packageVersion: String(dictionary?.packageVersion || "")
+            packageVersion: String(dictionary?.packageVersion || ""),
+            ...(navigation ? { onAction: (action) => navigation.navigate(action) } : {})
           });
         }
       } catch {

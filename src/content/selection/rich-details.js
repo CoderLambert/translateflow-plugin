@@ -9,12 +9,11 @@
   const { messages, sendRuntimeMessage } = app.modules.runtime;
   const popover = app.modules.selectionPopover;
   const MAX_CONCURRENT_LOOKUPS = 3;
-  const REQUEST_ID_PREFIX = "selection-rich-lookup-";
+  const { createLookupRequestId, createContentDocumentOwnerToken } = app.modules.richLookupIdentity;
   const CONTENT_DOCUMENT_OWNER_TOKEN = createContentDocumentOwnerToken();
   const lookupQueue = [];
   let activeSession = null;
   let runningLookups = 0;
-  let fallbackRequestCounter = 0;
   let lifecycle = null;
   let routeWatchTimer = null;
   let nativeNavigationEvents = false;
@@ -202,7 +201,18 @@
         }
 
         state.settled = true;
-        card.setResult({ ...record, packageVersion: dictionary.packageVersion || "" }, dictionaryId, (displayed) => {
+        state.navigation?.close();
+        const delivered = { ...record, packageVersion: record.packageVersion || dictionary.packageVersion || "" };
+        state.navigation = app.modules.richNavigation?.create({ card, dictionary, initialRecord: delivered, initialQuery: session.snapshot.text,
+          isCurrent: () => isLiveSession(session) && state.requestId === requestId,
+          request: (text, identity) => {
+            const navId = createLookupRequestId();
+            const promise = scheduleLookup(session, navId, card, null, () => sendRuntimeMessage({
+              type: messages.background.RICH_MDICT_LOOKUP, requestId: navId, ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN,
+              text, dictionaryId, expectedPackVersion: identity.packVersion, expectedPackageVersion: identity.packageVersion }));
+            return { promise, cancel: () => promise.cancel() };
+          } });
+        card.setResult(delivered, dictionaryId, (displayed) => {
           if (isLiveSession(session) && state.requestId === requestId) session.onResult?.(displayed, dictionary);
         }, () => {
           if (!isLiveSession(session) || state.requestId !== requestId || state.outcome !== "hit") return;
@@ -212,6 +222,7 @@
         setOutcome(session, state, "hit");
       } catch {
         if (!isLiveSession(session)) return;
+        state.navigation?.close();
         state.settled = true;
         card.setError("content.rich.lookupUnavailable", () => { void request(true); });
         setOutcome(session, state, "error");
@@ -224,8 +235,9 @@
   }
 
   function scheduleLookup(session, requestId, card, state, action) {
-    return new Promise((resolve, reject) => {
-      const job = {
+    let job;
+    const promise = new Promise((resolve, reject) => {
+      job = {
         session,
         requestId,
         card,
@@ -240,6 +252,14 @@
       lookupQueue.push(job);
       drainLookups();
     });
+    promise.cancel = () => {
+      const index = lookupQueue.indexOf(job);
+      if (index >= 0) lookupQueue.splice(index, 1);
+      session.queuedJobs.delete(job); settleJob(job, null);
+      if (!session.cancelled && session.inFlightRequests.has(requestId)) void sendRuntimeMessage({
+        type: messages.background.RICH_MDICT_LOOKUP_CANCEL, requestId, ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN }).catch(() => {});
+    };
+    return promise;
   }
 
   function drainLookups() {
@@ -255,8 +275,8 @@
       runningLookups += 1;
       Promise.resolve()
         .then(() => {
-          if (!isLiveSession(job.session)) return null;
-          setOutcome(job.session, job.state, "pending");
+          if (!isLiveSession(job.session) || job.settled) return null;
+          if (job.state) setOutcome(job.session, job.state, "pending");
           job.session.inFlightRequests.add(job.requestId);
           return job.action();
         })
@@ -285,6 +305,7 @@
   function cancelSession(session) {
     if (session.cancelPromise) return session.cancelPromise;
     session.cancelled = true;
+    for (const state of session.lookupStates.values()) state.navigation?.close();
     if (activeSession === session) {
       activeSession = null;
       stopRouteWatcher();
@@ -300,7 +321,7 @@
     for (const job of pendingJobs) settleJob(job, null);
 
     for (const job of pendingJobs) {
-      job.state.outcome = "cancelled";
+      if (job.state) job.state.outcome = "cancelled";
       job.card.setError("content.rich.selectionChanged");
     }
     const requestIds = [...session.inFlightRequests];
@@ -357,36 +378,6 @@
     if (routeWatchTimer === null) return;
     window.clearInterval(routeWatchTimer);
     routeWatchTimer = null;
-  }
-
-  function createLookupRequestId() {
-    const bytes = new Uint8Array(16);
-    if (globalThis.crypto?.getRandomValues) {
-      globalThis.crypto.getRandomValues(bytes);
-    } else {
-      // Extension contexts provide WebCrypto; this fallback is only for test/old browser harnesses.
-      for (let index = 0; index < bytes.length; index += 1) {
-        bytes[index] = Math.floor(Math.random() * 256);
-      }
-      fallbackRequestCounter += 1;
-      bytes[0] ^= fallbackRequestCounter & 0xff;
-    }
-    const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    return REQUEST_ID_PREFIX + hex;
-  }
-
-  function createContentDocumentOwnerToken() {
-    const bytes = new Uint8Array(16);
-    if (globalThis.crypto?.getRandomValues) {
-      globalThis.crypto.getRandomValues(bytes);
-    } else {
-      // Supported browsers provide WebCrypto; retain isolation in test harnesses
-      // that execute the content module without a browser crypto global.
-      for (let index = 0; index < bytes.length; index += 1) {
-        bytes[index] = Math.floor(Math.random() * 256);
-      }
-    }
-    return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
   }
 
   function safeErrorCode(value) {

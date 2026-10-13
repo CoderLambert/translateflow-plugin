@@ -275,6 +275,7 @@ test("dictionary lookups carry dictionaryId and isolate loading, errors, and sta
     }
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-lookup-identity.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(DETAILS, "utf8"), context);
   const module = app.modules.selectionRichDetails;
   const snapshot = { text: "word" };
@@ -342,6 +343,7 @@ test("rich dictionary lookup scheduler caps concurrency and drops stale queued w
     }
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-lookup-identity.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(DETAILS, "utf8"), context);
   await app.modules.selectionRichDetails.load({ text: "word" }, 5, "page", () => current);
 
@@ -417,6 +419,7 @@ test("Selection change cancels active lookup IDs, drops old queued work, and sta
     }
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-lookup-identity.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(DETAILS, "utf8"), context);
   const module = app.modules.selectionRichDetails;
 
