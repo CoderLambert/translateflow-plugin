@@ -36,6 +36,33 @@ and sanitizer contracts. This UI migration neither changes the compatibility
 matrix nor adds MDX/MDD capabilities; selected files remain local and remote or
 active dictionary content remains blocked by the existing policy.
 
+## Key normalization and derived index upgrades
+
+The Rich MDX header parser accepts the standard `StripKey` and the explicitly
+verified Oxford spelling `Stripkey`. The default remains false. Other attribute
+names are not lowercased, and conflicting values are rejected. This is a
+normalization compatibility fix, not a change to the dictionary's source text.
+
+New compact indexes use schema 2. Strictly validated schema 1 indexes remain
+readable. On a cold legacy load, a bounded read of the retained MDX header
+checks whether the verified `Stripkey` alias caused the old index to preserve
+punctuation incorrectly. Only affected indexes rebuild their derived lookup
+bounds; unaffected legacy indexes are not rewritten. Unexpected normalization
+mismatches fail explicitly rather than silently rebuilding changed source data.
+
+The rebuilt index is written to the fixed `index-normalized-v2.json` path and
+read back for size, digest and structural validation before its active pointer
+changes. The original `source.mdx`, `index.json`, MDD files, resources and user
+preferences remain intact. Pack serialization and an expected-pointer check
+prevent a replacement or uninstall from activating a stale rebuild. A failed
+write, validation or activation retains the old pointer and reports an error.
+Cancellation before activation prevents the pointer change; cancellation after
+an irreversible successful storage commit does not claim to roll it back.
+
+See [the migration task](tasks/rich-stripkey-migration/task.md) for exact
+candidate evidence. These mechanics do not establish the complete Oxford
+layout, navigation, attachment-recovery or final-product acceptance.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,
