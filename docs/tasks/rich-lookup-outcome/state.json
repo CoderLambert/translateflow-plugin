@@ -12,7 +12,8 @@
     [
       "git",
       "diff",
-      "--check"
+      "--check",
+      "origin/main...HEAD"
     ],
     [
       "node",
