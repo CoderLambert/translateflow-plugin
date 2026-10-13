@@ -1,4 +1,4 @@
-import { zh_CN as contentMessages } from "../src/i18n/catalog-content.js";
+import { zh_CN as contentMessages } from "../src/i18n/catalog.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';

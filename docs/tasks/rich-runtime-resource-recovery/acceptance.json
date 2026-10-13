@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "task": "rich-runtime-resource-recovery",
+  "candidateHead": "8d9aef7816c804d7d718bdd17ff74b79b0802465",
+  "tree": "85c8c855287a077c5cf1f65e54fb498e996efbb4",
+  "inputTree": "cc431a21490e49f67b62480b42eaf5a723ed1e0abdf65f2e40e4c4ded01fb0a9",
+  "frozenAt": "2026-10-13T14:04:50.500Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "8d9aef7816c804d7d718bdd17ff74b79b0802465",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 10.502573,
+      "startedAt": "2026-10-13T14:05:00.212Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/353e5c5b-8bb2-44f1-a1bf-68c9ba51e79f.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/rich-resource-resolver.test.mjs",
+        "tests/rich-navigation.test.mjs",
+        "tests/rich-viewer-contract.test.mjs",
+        "tests/constants.test.mjs"
+      ],
+      "candidateHead": "8d9aef7816c804d7d718bdd17ff74b79b0802465",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1082.122772,
+      "startedAt": "2026-10-13T14:05:00.355Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/47344200-084d-44a8-942b-52b37aea90b9.log",
+      "logSha256": "9f4e8b973246bf20d75efae6de913fa141007a88c0608eb38ac5b6e283c2ed74"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "8d9aef7816c804d7d718bdd17ff74b79b0802465",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 13197.671533,
+      "startedAt": "2026-10-13T14:05:01.571Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/d608ded5-f7b8-4aa5-bbd7-fd7140c0fddd.log",
+      "logSha256": "cd101cce9e3d3e50cfb3185f8ffb88dff2e639d0f5f8ae8daf1fb072a15b9c47"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}
