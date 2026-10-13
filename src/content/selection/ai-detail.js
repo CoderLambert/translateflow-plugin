@@ -4,6 +4,10 @@
 
   const { button } = app.modules.uiPrimitives;
   const locale = app.modules.contentI18n;
+  const markdown = app.modules.selectionMarkdownRenderer || Object.freeze({
+    render(target, text, { onRendered } = {}) { target.textContent = String(text || ""); onRendered?.(); },
+    clear() {}
+  });
 
   const ACTION_LABEL_KEYS = Object.freeze({
     understand: "content.ai.understandLabel",
@@ -13,12 +17,13 @@
 
   function create({ container, onResize, action = "" } = {}) {
     if (!container) throw new Error("Selection AI detail container is required.");
-    let node = null;
+    let node = null, markdownBody = null;
 
     function reset() {
+      markdown.clear(markdownBody);
       locale.unbindTree(node);
       node?.remove();
-      node = null;
+      node = markdownBody = null;
     }
 
     function loading(onCancel) {
@@ -86,6 +91,8 @@
       onAction = null
     } = {}) {
       const target = ensureNode();
+      const markdownText = state === "success" ? explanation : answer;
+      if (!markdownText) markdown.clear(markdownBody);
       target.replaceChildren();
       target.hidden = state === "idle";
       target.dataset.state = state;
@@ -120,20 +127,14 @@
           target.appendChild(meaning);
         }
         if (explanation) {
-          const body = document.createElement("div");
-          body.className = "tf-selection-generated-body";
-          body.textContent = explanation;
-          target.appendChild(body);
+          appendMarkdown(target, explanation, false);
         }
         onResize?.();
         return;
       }
 
       if (answer) {
-        const body = document.createElement("div");
-        body.className = "tf-selection-generated-body";
-        body.textContent = answer;
-        target.appendChild(body);
+        appendMarkdown(target, answer, state === "streaming" || state === "stopping");
       }
 
       const statusNode = document.createElement("div");
@@ -174,6 +175,15 @@
       onResize?.();
     }
 
+    function appendMarkdown(target, text, streaming) {
+      if (!markdownBody) {
+        markdownBody = document.createElement("div");
+        markdownBody.className = "tf-selection-generated-body tf-selection-markdown";
+      }
+      target.appendChild(markdownBody);
+      markdown.render(markdownBody, text, { streaming, onRendered: onResize });
+    }
+
     return Object.freeze({
       reset,
       ensure: ensureNode,
@@ -200,7 +210,7 @@
 
   function create({ tabList, workspace, dictionaryPane, onDictionaryLeave, onChange, onRequest, onResize } = {}) {
     if (!tabList || !workspace || !dictionaryPane) throw new Error("Selection view containers are required.");
-    const tabs = new Map(), panes = new Map([["dictionary", dictionaryPane]]), details = new Map(), states = new Map(), copies = new Map();
+    const tabs = new Map(), panes = new Map([["dictionary", dictionaryPane]]), details = new Map(), states = new Map();
     let active = "dictionary", requestHandler = null;
     createTab("dictionary", "content.selection.dictionaryTab", "content.selection.dictionaryTabAria");
     for (const action of AI_ACTIONS) {
@@ -291,14 +301,12 @@
         details.get(action)?.reset();
         states.set(action, "idle");
       }
-      copies.clear();
       sync();
     }
 
-    function render(action, state, method, args = [], copy = null) {
+    function render(action, state, method, args = []) {
       if (!details.has(action)) return false;
       states.set(action, state);
-      if (copy) copies.set(action, copy);
       details.get(action)[method](...args);
       sync();
       onChange?.(active);
@@ -320,18 +328,17 @@
       reset,
       selectDictionary: () => select("dictionary"),
       active: () => active,
-      copyHandler: () => active === "dictionary" ? null : copies.get(active) || null,
       loading: (action, cancel) => render(action, "loading", "loading", [cancel]),
       streaming: (action, answer, stop) => render(action, "streaming", "streaming", [answer, stop]),
       stopping: (action, answer) => render(action, "stopping", "streaming", [answer, null, true]),
       interrupted: (action, answer, message, handler) => render(action, "interrupted", "interrupted", [answer, message, retry(action, handler)]),
-      success: (action, result, copy) => render(action, "success", "success", [result], copy),
+      success: (action, result) => render(action, "success", "success", [result]),
       error: (action, message, handler) => render(action, "error", "error", [message, retry(action, handler)]),
       cancelled: (action, handler) => render(action, "cancelled", "cancelled", [retry(action, handler)]),
       dispose() {
         for (const detail of details.values()) detail.reset();
         locale.unbindTree(tabList);
-        tabs.clear(); panes.clear(); details.clear(); states.clear(); copies.clear();
+        tabs.clear(); panes.clear(); details.clear(); states.clear();
       }
     });
   }

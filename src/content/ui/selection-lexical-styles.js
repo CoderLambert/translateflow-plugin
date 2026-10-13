@@ -24,16 +24,15 @@
 }
 .tf-selection-vocabulary-actions {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid var(--tf-border-soft);
+  min-width: 0;
 }
 .tf-selection-vocabulary-actions[hidden] { display: none; }
 .tf-selection-vocabulary-status {
-  flex: 1 1 100%;
+  flex: 1 1 150px;
   color: var(--tf-text-secondary);
   font-size: var(--tf-font-size-xs);
   line-height: 1.4;
@@ -132,6 +131,7 @@
   margin-top: 8px;
   padding-top: 10px;
 }
+.tf-selection-footer-actions[hidden] { display: none; }
 .tf-selection-footer-actions .tf-selection-action-primary {
   min-height: 36px;
   padding-inline: 14px;

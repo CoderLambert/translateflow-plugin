@@ -136,6 +136,35 @@ test("Dictionary and AI tabs stay isolated, lazy and reusable within one selecti
   expect(harness.server.calls).toHaveLength(2);
 });
 
+test("AI Markdown is rendered safely without changing the dictionary window size", async ({ harness }) => {
+  test.setTimeout(60000); await harness.reset();
+  await harness.setStorage({ uiLocale: "zh_CN", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
+  const content = await harness.open("/selection"); await content.setViewportSize({ width: 1280, height: 900 }); await harness.inject(content);
+  await content.evaluate(() => {
+    const node = document.createElement("p"); node.id = "markdown-fixture"; node.textContent = "markdownfixture"; document.body.prepend(node);
+  });
+  const external = [];
+  content.on("request", request => {
+    if (/^https?:/u.test(request.url()) && new URL(request.url()).origin !== harness.server.baseUrl) external.push(request.url());
+  });
+  await select(content, "#markdown-fixture", "markdownfixture");
+  const panel = content.locator(".tf-selection-panel"), dictionarySize = await panel.boundingBox();
+  await content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+  await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+  const body = content.locator("#tf-selection-panel-understand .tf-selection-generated-body");
+  await expect(body.locator("h2")).toHaveText("Summary");
+  await expect(body.locator("strong")).toHaveText("streamed");
+  await expect(body.locator("li")).toHaveCount(2);
+  await expect(body.locator("code")).toHaveText("code");
+  await expect(body.locator("img, script")).toHaveCount(0);
+  await expect(body).toContainText("unsafe");
+  expect(await body.locator("a").evaluateAll(links => links.some(link => link.href.startsWith("javascript:")))).toBe(false);
+  const aiSize = await panel.boundingBox();
+  expect(Math.abs(aiSize.width - dictionarySize.width)).toBeLessThanOrEqual(1);
+  expect(content.locator(".tf-selection-footer-actions").getByRole("button", { name: "复制" })).toHaveCount(0);
+  expect(external).toEqual([]);
+});
+
 test("Narrow initial, streaming and completed AI panels stay inside the actual visual viewport", async ({ harness }) => {
   test.setTimeout(60000); await harness.reset();
   await harness.setStorage({ uiLocale: "zh_CN", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });

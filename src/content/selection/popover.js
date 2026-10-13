@@ -15,8 +15,8 @@
     appendRichDictionaryCards: appendRichCards, updateSource, setLocalizedStatus } = app.modules.selectionResultRenderer;
   const focusReturn = createFocusReturn();
   let root, chip, panel, sourceNode, resultNode, workspace, tabList, emptyState, statusNode, vocabularyActions,
-    copyButton, retryButton, cancelButton, closeButton, activeSnapshot;
-  let translateHandler, retryHandler, copyHandler, dictionaryCopyHandler, explainHandler, cancelHandler, closeHandler,
+    footerActions, retryButton, cancelButton, closeButton, activeSnapshot;
+  let translateHandler, retryHandler, explainHandler, cancelHandler, closeHandler,
     localEmptyOptions = null, readingLayout, viewTabs;
 
   function ensureUi() {
@@ -65,8 +65,7 @@
     resultNode.setAttribute("aria-labelledby", "tf-selection-tab-dictionary");
     resultNode.setAttribute("aria-live", "polite");
     emptyState = createEmptyState({ container: resultNode, onResize: reposition });
-    vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, reset() {}, hide() {}, dispose() {} };
-    resultNode.appendChild(vocabularyActions.ensure());
+    vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, setActive() {}, reset() {}, hide() {}, dispose() {} };
     workspace.appendChild(resultNode);
     viewTabs = createViewTabs({ tabList, workspace, dictionaryPane: resultNode,
       onDictionaryLeave: suspendDictionaryTransients,
@@ -74,21 +73,19 @@
       onChange: syncView,
       onResize: reposition });
 
-    const actions = document.createElement("div");
-    actions.className = "tf-selection-actions tf-selection-footer-actions";
-
-    copyButton = button({ text: locale.t("content.common.copy"), className: "tf-selection-action-quiet" });
-    locale.bindText(copyButton, "content.common.copy");
-    copyButton.addEventListener("click", () => copyHandler?.());
+    footerActions = document.createElement("div");
+    footerActions.className = "tf-selection-actions tf-selection-footer-actions";
     retryButton = button({ text: locale.t("content.common.retry"), className: "tf-selection-action-primary" });
     locale.bindText(retryButton, "content.common.retry");
     retryButton.addEventListener("click", (event) => retryHandler?.(event));
+    retryButton.hidden = true;
     cancelButton = button({ text: locale.t("content.common.cancel"), className: "tf-selection-action-quiet" });
     locale.bindText(cancelButton, "content.common.cancel");
     cancelButton.addEventListener("click", () => cancelHandler?.());
+    cancelButton.hidden = true;
 
-    actions.append(copyButton, retryButton, cancelButton);
-    panel.append(header, sourceNode, statusNode, tabList, workspace, actions);
+    footerActions.append(vocabularyActions.ensure(), retryButton, cancelButton);
+    panel.append(header, sourceNode, statusNode, tabList, workspace, footerActions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
     readingLayout = app.modules.selection.createReadingLayout?.({ panel, result: resultNode, header, onResize: reposition });
@@ -101,13 +98,13 @@
   }
 
   function syncView(view = viewTabs?.active?.() || "dictionary") {
-    if (!copyButton || !retryButton || !statusNode) return;
+    if (!retryButton || !statusNode) return;
     panel.dataset.selectionView = view;
     readingLayout?.setActiveView?.(view);
-    copyHandler = view === "dictionary" ? dictionaryCopyHandler : viewTabs.copyHandler();
-    copyButton.hidden = typeof copyHandler !== "function";
+    vocabularyActions?.setActive?.(view === "dictionary");
     retryButton.hidden = view !== "dictionary" || typeof retryHandler !== "function";
     statusNode.hidden = !tabList.hidden && view !== "dictionary";
+    syncFooterVisibility();
     reposition();
   }
 
@@ -118,9 +115,10 @@
     }
     app.modules.richOxfordAdapter?.dismissTransients?.(resultNode);
   }
-  function moveVocabularyActionsToEnd() {
-    const actions = vocabularyActions?.ensure?.();
-    if (actions?.parentNode === resultNode) resultNode.appendChild(actions);
+  function syncFooterVisibility() {
+    if (!footerActions) return;
+    const vocabulary = vocabularyActions?.ensure?.();
+    footerActions.hidden = Boolean(vocabulary?.hidden && retryButton?.hidden && cancelButton?.hidden);
   }
 
   function showChip(snapshot, onTranslate) {
@@ -149,13 +147,13 @@
     viewTabs.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
-    resultNode.appendChild(vocabularyActions.ensure());
     resultNode.hidden = true;
     configureTabs(null, false);
     viewTabs.selectDictionary();
     hideActionButtons();
     cancelButton.hidden = false;
     cancelButton.disabled = false;
+    syncFooterVisibility();
     position(snapshot, panel);
     focusPanelEntry();
   }
@@ -177,11 +175,10 @@
       : "content.selection.loadingText";
   }
 
-  function showResult(snapshot, result, onCopy, onExplain, onSaveVocabulary, onOpenVocabulary) {
+  function showResult(snapshot, result, onExplain, onSaveVocabulary, onOpenVocabulary) {
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
-    dictionaryCopyHandler = typeof onCopy === "function" ? onCopy : null;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     vocabularyActions.show({ onSave: onSaveVocabulary, onOpen: onOpenVocabulary,
       current: () => snapshot === activeSnapshot && !panel?.hidden });
@@ -213,13 +210,12 @@
     viewTabs.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
-    resultNode.appendChild(vocabularyActions.ensure());
     resultNode.hidden = false;
     configureTabs(explainHandler, Boolean(explainHandler));
     viewTabs.selectDictionary();
     cancelButton.hidden = true;
-    copyButton.hidden = true;
     retryButton.hidden = false;
+    syncFooterVisibility();
     position(snapshot, panel);
   }
 
@@ -228,7 +224,6 @@
     viewTabs.reset();
     emptyState?.reset();
     const { generatedMeaning, explanation } = renderStructuredResult(resultNode, input);
-    resultNode.appendChild(vocabularyActions.ensure());
     if (generatedMeaning || explanation) {
       viewTabs.success("understand", { generatedMeaning, explanation });
       return true;
@@ -241,7 +236,6 @@
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
     if (appended) {
-      moveVocabularyActionsToEnd();
       resultNode.hidden = false;
       reposition();
     }
@@ -253,7 +247,6 @@
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
     if (cards.length) {
-      moveVocabularyActionsToEnd();
       resultNode.hidden = false;
       reposition();
     }
@@ -264,18 +257,16 @@
     if (snapshot !== activeSnapshot || panel?.hidden || !localEmptyOptions) return;
     if (summary.hasHit) {
       emptyState?.reset();
-      moveVocabularyActionsToEnd();
       reposition();
       return;
     }
     emptyState.show({ ...localEmptyOptions, ...summary.feedback });
-    moveVocabularyActionsToEnd();
     reposition();
   }
 
   function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
     if (snapshot !== activeSnapshot || panel?.hidden || typeof onSave !== "function") return false;
-    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); moveVocabularyActionsToEnd(); reposition(); return true; }
+    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); syncFooterVisibility(); reposition(); return true; }
   function showEmpty(snapshot, { titleKey, messageKey, onExplain, onTranslate } = {}) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
@@ -288,12 +279,10 @@
     viewTabs.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
-    resultNode.appendChild(vocabularyActions.ensure());
     resultNode.hidden = false;
     hideActionButtons();
     localEmptyOptions = { titleKey, messageKey, onExplain: null, onTranslate };
     emptyState.show(localEmptyOptions);
-    moveVocabularyActionsToEnd();
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     configureTabs(explainHandler, Boolean(explainHandler));
     viewTabs.selectDictionary();
@@ -315,10 +304,10 @@
     ensureUi(); viewTabs.interrupted(action, answer, message, onRetry);
   }
 
-  function showAiDetailResult(result, onCopy, action = "understand") {
+  function showAiDetailResult(result, action = "understand") {
     ensureUi(); locale.unbind(statusNode); setStatus(statusNode, "", "success");
     cancelButton.hidden = true;
-    viewTabs.success(action, result, typeof onCopy === "function" ? onCopy : null);
+    viewTabs.success(action, result);
   }
 
   function showAiDetailError(message, onRetry, action = "understand") {
@@ -356,7 +345,7 @@
     statusNode = null;
     vocabularyActions?.dispose();
     vocabularyActions = null;
-    copyButton = null;
+    footerActions = null;
     retryButton = null;
     cancelButton = null;
     closeButton = null;
@@ -369,13 +358,14 @@
 
   function clearActionHandlers() {
     localEmptyOptions = null;
-    retryHandler = copyHandler = dictionaryCopyHandler = explainHandler = cancelHandler = null;
+    retryHandler = explainHandler = cancelHandler = null;
     vocabularyActions?.reset();
   }
 
   function hideActionButtons() {
-    cancelButton.hidden = copyButton.hidden = retryButton.hidden = true;
+    cancelButton.hidden = retryButton.hidden = true;
     vocabularyActions?.hide();
+    syncFooterVisibility();
   }
   function setCloseHandler(handler) { closeHandler = typeof handler === "function" ? handler : null; }
   function contains(target) { return ownsNode(target); }

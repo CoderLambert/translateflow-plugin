@@ -143,8 +143,6 @@
       update(next) { if (next !== snapshot) { snapshot = next; manual = false; manualReading = false; activeView = "dictionary"; setMode(false); } schedule(); },
       setActiveView(view) {
         activeView = view === "dictionary" ? "dictionary" : "ai";
-        if (activeView === "dictionary") setMode(manual ? manualReading : false);
-        else setMode(false);
         schedule();
         onResize();
       },

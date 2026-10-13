@@ -9,7 +9,7 @@
     if (response?.errorCode) error.code = response.errorCode;
     return error;
   }
-  const { buildTranslationResult, copyTextForCard, readingTranslation } = app.modules.selectionResultModel;
+  const { buildTranslationResult, readingTranslation } = app.modules.selectionResultModel;
 
   function create({ assertCurrent, showResult, onResult }) {
     const popover = app.modules.selectionPopover;
@@ -29,7 +29,7 @@
       if (cached) {
         tasks.completeTask(task, { done: 1, cacheHits: 1 });
         const card = buildTranslationResult(cached);
-        showResult(snapshot, card, copyTextForCard(card), "content.selection.translationCopied");
+        showResult(snapshot, card);
         onResult(queryRecord, readingTranslation(cached, lookup.readingResult));
         return;
       }
@@ -63,7 +63,7 @@
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
       const card = buildTranslationResult(translation);
-      showResult(snapshot, card, copyTextForCard(card), "content.selection.translationCopied");
+      showResult(snapshot, card);
       onResult(queryRecord, readingTranslation(translation, translated.readingResult));
     };
   }

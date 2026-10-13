@@ -37,6 +37,12 @@ test('rich article expands the existing window on overflow; container layout, ma
   await viewer.locator('summary').click();
   await expect(panel).toHaveAttribute('data-view-mode','reading');
   await expect.poll(async()=>(await panel.boundingBox()).width).toBeGreaterThan(900);
+  const readingWidth=(await panel.boundingBox()).width;
+  const understand=panel.getByRole('tab',{name:/AI 理解/u});
+  await understand.evaluate(node=>node.click());
+  await expect(panel).toHaveAttribute('data-view-mode','reading');
+  await expect.poll(async()=>Math.abs((await panel.boundingBox()).width-readingWidth)).toBeLessThanOrEqual(1);
+  await panel.getByRole('tab',{name:/显示词典结果/u}).evaluate(node=>node.click());
   await expect.poll(()=>viewer.locator('.layout').evaluate(el=>getComputedStyle(el).flexDirection)).toBe('row-reverse');
   await contained(page,panel);await viewer.locator('.tail').scrollIntoViewIfNeeded();await expect(viewer.locator('.tail')).toBeInViewport();
   await page.screenshot({path:info.outputPath('reading-desktop.png')});

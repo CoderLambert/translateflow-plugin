@@ -26,10 +26,11 @@ test("Selection settings expose all explanation-depth modes and license path", a
 });
 
 test("Selection popover keeps a non-modal structured result region", async () => {
-  const [popover, viewTabs, renderer, tokens, aiStyles, emptyStyles, lexicalStyles] = await Promise.all([
+  const [popover, viewTabs, renderer, markdown, tokens, aiStyles, emptyStyles, lexicalStyles] = await Promise.all([
     source("src/content/selection/popover.js"),
     source("src/content/selection/ai-detail.js"),
     source("src/content/selection/result-renderer.js"),
+    source("src/entries/selection-markdown.js"),
     source("src/content/ui/tokens.js"),
     source("src/content/ui/selection-ai-detail-styles.js"),
     source("src/content/ui/selection-empty-state-styles.js"),
@@ -62,6 +63,10 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(aiStyles, /\.tf-selection-ai-actions/);
   assert.match(aiStyles, /\.tf-selection-view-tabs/);
   assert.match(aiStyles, /\.tf-selection-view-tab/);
+  assert.match(markdown, /new MarkdownIt/);
+  assert.match(markdown, /document\.createElement/);
+  assert.doesNotMatch(markdown, /innerHTML/);
+  assert.doesNotMatch(popover, /content\.common\.copy/);
   assert.match(emptyStyles, /\.tf-selection-empty/);
   assert.match(emptyStyles, /\.tf-selection-empty-actions/);
   assert.match(lexicalStyles, /\.tf-selection-dictionary-entry/);
@@ -118,7 +123,7 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(controller, /forceTranslation: true/);
   assert.match(controller, /explainSnapshot/);
   assert.doesNotMatch(controller, /resolved\.route === "needs-explanation"/);
-  assert.match(controller, /copyTextForCard/);
+  assert.doesNotMatch(controller, /copyTextForCard/);
 });
 
 test("Selection no-hit is neutral while local lexicon failures keep diagnostic error copy", async () => {

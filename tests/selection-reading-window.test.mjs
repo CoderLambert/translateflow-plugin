@@ -18,7 +18,7 @@ function fixture(){
 test('late rich content expands once; restoring compact mode remains stable until a new selection',()=>{
  const h=fixture(),snap={};h.layout.update(snap);h.flush();assert.equal(h.panel.dataset.viewMode,'compact');assert.equal(h.toggle.hidden,false);
  h.setHeight(500);h.flush();assert.equal(h.panel.dataset.viewMode,'reading');assert.equal(h.changes(),1);
- h.layout.setActiveView('understand');h.flush();assert.equal(h.panel.dataset.viewMode,'compact');assert.equal(h.toggle.hidden,true);
+ h.layout.setActiveView('understand');h.flush();assert.equal(h.panel.dataset.viewMode,'reading');assert.equal(h.toggle.hidden,true);
  h.layout.setActiveView('dictionary');h.flush();assert.equal(h.panel.dataset.viewMode,'reading');assert.equal(h.toggle.hidden,false);
  h.setHeight(20);h.flush();assert.equal(h.panel.dataset.viewMode,'reading');
  h.toggle.click();assert.equal(h.panel.dataset.viewMode,'compact');h.setHeight(600);h.flush();assert.equal(h.panel.dataset.viewMode,'compact');
