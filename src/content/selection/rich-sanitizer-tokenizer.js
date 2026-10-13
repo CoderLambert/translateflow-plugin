@@ -103,6 +103,16 @@
         continue;
       }
 
+      if (token.name === "svg") {
+        const safe = app.modules.safeSvg?.extractSafeSvg(source, open);
+        if (safe) {
+          if (nodeCount + safe.nodes > limits.outputNodes || stack.length - 1 + safe.depth > limits.depth) { truncated = true; break; }
+          stack[stack.length - 1].children.push({ type: "svg", scene: safe.scene });
+          nodeCount += safe.nodes;
+          offset = safe.end;
+          continue;
+        }
+      }
       if (token.name === "img") {
         const path = resourcePath?.normalize?.(token.attrs.src || "") || "";
         if (!path) continue;
@@ -143,7 +153,10 @@
       }
       if (token.name === "input") {
         const attrs = app.modules.richDictionaryControls?.tokenAttributes(token);
-        if (attrs) appendElement("input", { ...styleApi.safeAttributes(token), ...attrs });
+        if (attrs) {
+          const element = appendElement("input", { ...styleApi.safeAttributes(token), ...attrs });
+          app.modules.richOxfordAdapter?.project(element, token);
+        }
         else if (String(token.attrs.type || "").toLowerCase() === "radio") appendElement("span", { "data-rich-control-unavailable": "radio" });
         continue;
       }
@@ -166,11 +179,14 @@
       if (token.name === "label" && !token.duplicate && /^[a-z0-9_-]{1,80}$/iu.test(token.attrs.for || "")) {
         attrs["data-rich-label-for"] = token.attrs.for;
       }
-      const targetId = /^[a-z0-9_-]{1,80}$/iu.test(token.attrs.id || "") ? token.attrs.id : "";
+      const targetId = /^[a-z0-9_.-]{1,80}$/iu.test(token.attrs.id || "") ? token.attrs.id : "";
       if (targetId) attrs["data-rich-target-id"] = targetId;
       if (token.name === "a") {
-        const fragment = /^#([a-z0-9_-]{1,80})$/iu.exec(String(token.attrs.href || ""));
-        if (fragment) attrs["data-rich-fragment-target"] = fragment[1];
+        const action = app.modules.richNavigationActions?.parse(token.attrs.href || "");
+        if (action?.kind === "fragment") attrs["data-rich-fragment-target"] = action.fragment;
+        if (action?.kind === "entry") attrs["data-rich-entry-target"] = action.headword;
+        if (action?.kind === "entry" && action.fragment) attrs["data-rich-entry-fragment"] = action.fragment;
+        if (!app.modules.richNavigationActions && /^#[a-z0-9_-]{1,80}$/iu.test(token.attrs.href || "")) attrs["data-rich-fragment-target"] = token.attrs.href.slice(1);
       }
       const style = styleApi.safeStyle(token.attrs.style || "");
       if (token.name === "font" && !style.color && token.attrs.color) {
@@ -187,6 +203,7 @@
       }
       const element = appendElement(tag, attrs, style);
       if (!element) continue;
+      app.modules.richOxfordAdapter?.project(element, token);
       if (!token.selfClosing) {
         if (stack.length >= limits.depth + 1) {
           truncated = true;

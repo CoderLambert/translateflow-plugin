@@ -333,6 +333,7 @@ async function loadModules({
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   if (richResourcePath) app.modules.richResourcePath = { ...app.modules.richResourcePath, ...richResourcePath };
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-navigation-actions.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
@@ -345,6 +346,7 @@ async function loadSanitizedPipeline({ resolver = null } = {}) {
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   for (const path of SANITIZER_MODULES) vm.runInContext(await readFile(path, "utf8"), context);
   vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-navigation-actions.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);

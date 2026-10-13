@@ -42,10 +42,11 @@ async function load(files, { compiled = false } = {}) {
 test("immutable old registration loading new bytes keeps required content modules and a recoverable translation path", async () => {
   const h = await load(preSwitchRuntimeMapping.contentScripts);
   try {
-    for (const name of ["runtime", "appearance", "tasks", "dom", "processor", "auto", "selectionController", "quickControl", "subtitleController"]) {
+    for (const name of ["runtime", "appearance", "tasks", "dom", "processor", "auto", "selectionController", "selectionRichDetails", "quickControl", "subtitleController"]) {
       assert.ok(h.app.modules[name], `${name} must register during the old-list/new-bytes window`);
     }
     assert.equal(h.app.loaded, true); assert.equal(h.app.modules.selectionTranslationQuery, undefined);
+    assert.equal(h.app.modules.richLookupIdentity, undefined);
     assert.equal(h.app.modules.selectionRichResultRenderer, undefined); assert.deepEqual(h.errors, []);
     const node = h.window.document.querySelector("#source").firstChild, range = h.window.document.createRange();
     range.selectNodeContents(node); h.window.getSelection().addRange(range);
@@ -57,6 +58,8 @@ test("immutable old registration loading new bytes keeps required content module
     assert.equal(h.requests.some((request) => ["TRANSLATE_BATCH", "CACHE_LOOKUP", "CACHE_STORE"].includes(request.type)), false);
     assert.equal(h.requests.some((request) => request.method?.startsWith("reading.")), false);
     assert.deepEqual(h.errors, []);
+    await h.app.modules.selectionRichDetails.load({ text: "synthetic" }, 1, h.window.location.href, () => true);
+    assert.equal(h.requests.some(request => ["RICH_MDICT_VIEWER_LIST", "RICH_MDICT_LOOKUP"].includes(request.type)), false);
     const result = h.window.document.createElement("div");
     h.app.modules.selectionResultRenderer.render(result, { primaryMeaning: "Existing visible result" });
     let lookups = 0;

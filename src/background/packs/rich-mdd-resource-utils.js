@@ -1,3 +1,4 @@
+import { validateSafeSvgScene } from "../../shared/safe-svg.js";
 import {
   RICH_MDD_MAX_SIDECAR_BYTES,
   RICH_MDD_MAX_SIDECAR_FILES,
@@ -64,11 +65,13 @@ export async function assertStagedSidecars({ store, packId, resourceVersion, sid
 
 export function validateResourceMime(result) {
   const expected = {
-    image: /^image\/(?:png|jpeg|gif|webp|avif)$/u,
+    image: /^image\/(?:png|jpeg|gif|webp|avif|svg\+xml)$/u,
     audio: /^audio\/(?:wav|mpeg|ogg|mp4|aac|flac)$/u,
-    stylesheet: /^text\/css$/u
+    stylesheet: /^text\/css$/u,
+    font: /^font\/ttf$/u
   }[result.kind];
-  if (!expected || !expected.test(String(result.mime || ""))) {
+  if (!expected || !expected.test(String(result.mime || "")) ||
+      (result.mime === "image/svg+xml" && !validateSafeSvgScene(result.safeSvg))) {
     throw richError("RICH_MDD_CORRUPT", "MDD resource type failed MIME verification.");
   }
 }

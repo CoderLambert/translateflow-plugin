@@ -1,3 +1,5 @@
+import { preflightRichAttachments } from "../background/packs/local-dictionary-preflight-attachments.js";
+import { resolveAssociatedRichResourceFiles, formatBytes as formatByteProgress } from "./local-dictionary-import-presentation.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { CURATED_IMPORTER_TYPES } from "../shared/curated-dictionaries.js";
 import { getCatalogPermissionOrigins, makeInstalledCatalogMetadata } from "../shared/dictionary-catalog-v2.js";
@@ -47,6 +49,7 @@ export function dictionaryClient({
     commitRequestId: string;
     richController: ImportController | null;
   } = null;
+  let attachmentPreflightAbort: AbortController | null = null;
   let activeMdd: ImportController | null = null;
 
   async function load(): Promise<DictionarySnapshot> {
@@ -88,17 +91,34 @@ export function dictionaryClient({
     if (activeMdd) throw new Error("另一组 MDD 附件正在处理中。");
     const controller = makeMddController({
       runtime, WorkerCtor, cryptoProvider,
-      onProgress(event: { phase?: string }) { onProgress(resourceProgressLabel(event.phase)); }
+      onProgress(event: { phase?: string; bytesWritten?: number; fileBytes?: number; completedBytes?: number; totalBytes?: number }) {
+        const bytes = Number.isSafeInteger(event.bytesWritten) && Number.isSafeInteger(event.fileBytes)
+          ? ` · ${formatByteProgress(event.bytesWritten)} / ${formatByteProgress(event.fileBytes)}` : "";
+        const overall = Number.isSafeInteger(event.completedBytes) && Number.isSafeInteger(event.totalBytes)
+          ? ` · ${formatByteProgress(event.completedBytes)} / ${formatByteProgress(event.totalBytes)} 选定源文件` : "";
+        onProgress(resourceProgressLabel(event.phase) + bytes + overall);
+      }
     });
     activeMdd = controller;
     try {
-      return await controller.attachResources({ dictionaryId: dictionary.id, mdxFileName: dictionary.fileName, files });
+      const abort = new AbortController(); attachmentPreflightAbort = abort;
+      const report = await preflightRichAttachments({ files, mdxFileName: dictionary.fileName, signal: abort.signal });
+      if (abort.signal.aborted) throw new DOMException("Resource selection cancelled.", "AbortError");
+      if (report.compatibility.status !== "supported" || report.resources.unassociatedFiles.length) throw new Error("请重新选择完整的同名 MDD 与合法资源文件；未知文件不能导入。");
+      const selected = resolveAssociatedRichResourceFiles(report.resources.associatedMdd, report.resources.associatedSidecars, files);
+      if (!selected || !selected.mddFiles.length) throw new Error("请选择至少一个匹配的 MDD 附件。");
+      if (report.resources.ignoredFiles.length) onProgress("脚本已忽略，不执行。");
+      attachmentPreflightAbort = null;
+      const result = await controller.attachResources({ dictionaryId: dictionary.id, mdxFileName: dictionary.fileName,
+        mdxSourceBytes: dictionary.sourceSize, expectedMdxVersion: dictionary.packVersion, files: selected.mddFiles, sidecars: selected.sidecars });
+      return { ...result, ignoredFiles: report.resources.ignoredFiles };
     } finally {
+      attachmentPreflightAbort = null;
       controller.dispose();
       if (activeMdd === controller) activeMdd = null;
     }
   }
-  async function cancelMdd() { return activeMdd?.cancel() || { cancelled: false, phase: "" }; }
+  async function cancelMdd() { if (attachmentPreflightAbort) { attachmentPreflightAbort.abort(); return { cancelled: true, phase: "preflight" }; } return activeMdd?.cancel() || { cancelled: false, phase: "" }; }
 
   async function installOfficial(source: DictionaryRecord, pack: DictionaryRecord) {
     const granted = await requestDictionaryPackOriginPermission(source, permissions);

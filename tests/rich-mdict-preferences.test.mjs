@@ -5,7 +5,7 @@ import {
   RICH_MDICT_PREFERENCES_KEY
 } from "../src/background/packs/rich-mdict-preferences.js";
 import { createRichMdictManager } from "../src/background/packs/rich-mdict.js";
-import { createRichMdictViewerDictionaryLister } from "../src/background/packs/api.js";
+import { createRichMdictViewerDictionaryLister, lookupRichMdictDictionaries } from "../src/background/packs/api.js";
 import { RICH_MDICT_SOURCE_ID } from "../src/background/packs/rich-mdict-contract.js";
 
 const FIRST_ID = "rich-mdict-123e4567-e89b-42d3-a456-426614174000";
@@ -233,3 +233,18 @@ function createStorageArea() {
     }
   };
 }
+
+test("disabled dictionary rejects version-bound navigation before any source lookup", async () => {
+  const storageArea = createStorageArea();
+  const preferences = createRichMdictPreferencesStore({ storageArea });
+  await preferences.reconcile([{ id: FIRST_ID, title: "Synthetic navigation dictionary" }]);
+  await preferences.update(FIRST_ID, { enabled: false });
+  const previous = globalThis.chrome;
+  globalThis.chrome = { storage: { local: storageArea } };
+  try {
+    await assert.rejects(lookupRichMdictDictionaries({ dictionaryId: FIRST_ID, text: "come", expectedPackVersion: "import-navigation-123e4567", expectedPackageVersion: "import-navigation-123e4567" }), (error) => error.code === "RICH_MDICT_INPUT");
+    const result = await lookupRichMdictDictionaries({ dictionaryId: FIRST_ID, text: "come",
+      requestId: "selection-rich-lookup-0123456789abcdef0123456789abcdef", expectedPackVersion: "import-navigation-123e4567", expectedPackageVersion: "import-navigation-123e4567" }, "selection:7:0:doc");
+    assert.equal(result.found, false); assert.deepEqual(result.dictionaries, []); assert.equal(result.errors[0].code, "RICH_MDICT_DISABLED");
+  } finally { globalThis.chrome = previous; }
+});

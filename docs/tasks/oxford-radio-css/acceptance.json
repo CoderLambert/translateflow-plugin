@@ -425,5 +425,19 @@
     "summaryLog": "docs/task-execution/local/oxford-radio-css/real-radio-summary.json",
     "summarySha256": "2161cb4b4a7864fd4f3416f0252a1cb0891b1b89c1ed88081f15a622744d7087",
     "rawReportSha256": "091c0eab5b91363e5dd6d72f3793783d8ca3e9429a5462a82389040642000680"
+  },
+  "postMerge": {
+    "mainHead": "cbf9e3b7498a3fa36e768ffcf48146996cd4786c",
+    "mergePR": 329,
+    "treeEqualsSyncHead": true,
+    "syncHead": "1fd365470c524aea6ceea1b34c81d3a4977b22be",
+    "targetedNode": "PASS",
+    "radioChromiumE2E": "1/1 PASS",
+    "logSha256": "dcb572112e46dba16a8c414f2def26407fcdda6b78a1b59a062a3f5e8857a438",
+    "realOxford": "4/4 PASS, reused owned test-profile install, no prewarm, browser restart",
+    "artifactInventory": "6f8384252f9a0728e393794032e4073f80b13148b841f6a0d3fe3d1b13acec3e",
+    "providerCalls": 0,
+    "externalRequests": 0,
+    "rawPrivateReportSha256": "6848e5543255e7276cd739bcc5c0467892679d0dc71e4d91d7f86eb919458285"
   }
 }

@@ -147,6 +147,79 @@ for the aggregate. This corrects an occurrence-count regression: the verified
 go record has 1,079 resource nodes but 539 descriptors. No resource, node,
 text, active-Blob or image limit is raised.
 
+## Local TrueType fonts
+
+Bounded local stylesheet `@font-face` declarations can be projected to an
+optional `fontFaces` manifest. Each face retains a canonical local TTF path,
+an anonymous family token, normal/italic style, 400/700 weight and swap/fallback
+display. A single local URL and optional truetype format are accepted; local()
+lookup, mixed sources, external URLs, unsupported descriptors and duplicate
+variants are rejected with diagnostics. Declaration order does not affect
+ordinary font-family references. Verified `%20` spaces in the four target URLs
+are decoded once; all other percent escapes remain unsupported, including
+encoded separators, traversal, scheme/control characters and double encoding.
+Only declared families and generic fallbacks
+survive; original custom family names are not returned to the viewer.
+
+The existing eight-slot bound covers image slots and font faces together.
+Source/generated CSS remain bounded at 64 KiB, including random alias expansion.
+The MDD resource policy accepts only sfnt TrueType TTF with at most 64 bounded,
+non-overlapping directory tables and consistent required table/glyph bounds.
+The native browser decoder validates table contents. The eight-MiB resource
+limit remains unchanged; this does not add OTF, WOFF, TTC or sidecar-font import.
+
+Chromium does not load a blob @font-face inside a Shadow stylesheet in the
+measured prototype. The viewer instead constructs controlled ArrayBuffer
+FontFace objects and adds them to the owning document's font set. Each
+stylesheet/session uses cryptographically random names referenced only by
+its scoped Shadow CSS. Alias rewriting visits only actual font-family
+declarations; selectors, controlled IDs and literal content remain unchanged
+even when their spelling matches a family token, including fallback paths.
+No dictionary font URL is emitted, and no CSP or
+permission is changed. An absent native RNG, unsupported API or failed face
+uses a visible display-fallback notice while preserving other stylesheet rules.
+
+Font bytes share the existing per-view 32-MiB active-resource budget, separately
+from the image byte budget. Reservation happens before native decoding and
+shares the existing two-read queue. Closing deletes registered faces. Native
+loads cannot be aborted; their reservations and queue slots remain until
+settlement, and stale completion cannot register a face. These are logical
+resource-byte bounds, not measured browser heap/RSS limits.
+
+See [the font task](tasks/rich-local-fonts/task.md) for exact candidate and
+acceptance evidence. The measured private package contains four TrueType
+faces totalling 2,956,896 bytes. The task now also owns the bounded static SVG,
+same-dictionary entry/history, Oxford interaction adapter and attachment
+recovery closeout. Synthetic Chromium evidence covers those generic contracts;
+the private-package report records only the real scenarios it actually runs.
+An unlisted private scenario remains `NOT_RUN` even when its synthetic contract
+passes.
+
+## Current Oxford product closeout boundary
+
+The current viewer supports safe inline and local MDD SVG scenes, local
+`entry://` navigation with bounded Back/Forward history, Oxford POS/hint/unbox
+and registered illustration interactions, and restart recovery for incomplete
+resource installation. These paths retain the existing sanitizer, local
+resource resolver, lookup cancellation, dictionary/version identity and
+aggregate display budgets. Hint admission measures actual nodes and UTF-8 text
+across every record Shadow viewport in the same card, including an already open
+hint or illustration preview.
+
+Six-file selection may include one inert JavaScript sidecar for an understandable
+ignored-file diagnostic. Its bytes are not read by a worker, persisted or
+executed. Complete attachment reselection and abandoned staging cleanup use
+persisted background state; a failed or cancelled replacement keeps the prior
+healthy active resources.
+
+The synthetic browser suite is the portable regression evidence for SVG,
+navigation, adapter behavior, cancellation and recovery. Private Oxford
+acceptance is separate and never publishes source paths or dictionary text.
+Its sanitized task evidence may record only roles, byte sizes, hashes, browser
+and artifact identities, scenario status and network/Provider counts. It does
+not turn the private package into an approved Official source or redistribution
+artifact.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,

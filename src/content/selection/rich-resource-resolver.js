@@ -34,6 +34,16 @@
     maxViewImagePixels: MAX_VIEW_IMAGE_PIXELS
   });
 
+  const fonts = app.modules.richResourceFonts.create({ isCurrent, scheduleRead, fetchAsset,
+    maxAssetBytes: MAX_ASSET_BYTES, maxActiveBytes: MAX_VIEW_BLOB_BYTES,
+    onRelease: (session) => media.retryVisibleImages(session) });
+
+  const svg = app.modules.richSvg?.create({ isCurrent, scheduleRead, fetchAsset,
+    maxActiveBytes: MAX_VIEW_BLOB_BYTES, maxImageBytes: MAX_VIEW_IMAGE_BYTES, maxImagePixels: MAX_VIEW_IMAGE_PIXELS, makePlaceholder });
+
+  const previews = app.modules.richResourcePreview?.create({ isCurrent, scheduleRead, fetchAsset, createTrackedUrl, revokeUrl, cancelResourceRequest,
+    maxActiveBytes: MAX_VIEW_BLOB_BYTES, maxImageBytes: MAX_VIEW_IMAGE_BYTES, maxImagePixels: MAX_VIEW_IMAGE_PIXELS });
+
   function attach(container, shadowRoot, viewport, resources, dictionaryId, packageVersion = "") {
     close(container);
     const session = {
@@ -79,6 +89,7 @@
     }
     for (const resource of session.resources) {
       if (resource.kind === "audio") media.installAudioLoader(session, resource);
+      else if (resource.kind === "image" && /\.svg$/iu.test(resource.path)) void svg?.load(session, resource);
       else if (resource.kind === "image") media.installLazyImages(session, resource);
       else void scheduleRead(session, () => loadStylesheet(session, resource));
     }
@@ -95,6 +106,7 @@
         for (const slot of asset.assetSlots) {
           if (!isCurrent(session)) return;
           try {
+            if (/\.svg$/iu.test(slot.path)) { css = css.replaceAll(slot.token, "none"); continue; }
             const image = await fetchAsset(session, { kind: "image", path: slot.path, label: "" });
             if (!isCurrent(session)) return;
             const pixels = image.width * image.height;
@@ -115,6 +127,7 @@
           }
         }
         if (!css || !isCurrent(session)) return;
+        css = fonts.apply(session, resource, { ...asset, safeCss: css });
         const style = document.createElement("style");
         style.textContent = css;
         session.shadowRoot.appendChild(style);
@@ -161,18 +174,20 @@
       error.code = "RICH_MDD_RESOURCE_MISSING";
       throw error;
     }
+    if (resource.kind === "image" && response.mime === "image/svg+xml") return app.modules.richSvg.asset(response);
     const size = Number(response.size);
     const mime = String(response.mime || "");
     const expectedMime = {
       image: /^image\/(?:png|jpeg|gif|webp|avif)$/u,
       audio: /^audio\/(?:wav|mpeg|ogg|mp4|aac|flac)$/u,
-      stylesheet: /^text\/css$/u
+      stylesheet: /^text\/css$/u,
+      font: /^font\/ttf$/u
     }[resource.kind];
     const base64 = String(response.base64 || "");
     if (!expectedMime?.test(mime) || !Number.isSafeInteger(size) || size <= 0 || size > MAX_ASSET_BYTES || base64.length > MAX_BASE64_CHARS) {
       throw new Error("MDD resource failed the viewer bounds.");
     }
-    const bytes = decodeBase64(base64, size);
+    const bytes = app.modules.richResourceEncoding.decodeBase64(base64, size);
     if (resource.kind === "stylesheet" && bytes.byteLength > MAX_STYLESHEET_BYTES) throw new Error("MDD stylesheet is too large.");
     const width = Number(response.width);
     const height = Number(response.height);
@@ -183,7 +198,7 @@
       ? response.safeCss
       : "";
     const assetSlots = normalizeStylesheetAssetSlots(response.assetSlots);
-    return { bytes, mime, size, width, height, safeCss, assetSlots };
+    return { bytes, mime, size, width, height, safeCss, assetSlots, fontFaces: response.fontFaces };
   }
 
   function normalizeStylesheetAssetSlots(input) {
@@ -229,16 +244,19 @@
   }
 
   function close(container) {
+    app.modules.richOxfordAdapter?.close(container);
     const session = sessionsByContainer.get(container);
     if (!session) return;
     closeSession(session, false);
   }
 
   function closeAll() {
+    app.modules.richOxfordAdapter?.closeAll();
     for (const session of [...activeSessions]) closeSession(session, false);
   }
 
   function closeDictionary(dictionaryId) {
+    app.modules.richOxfordAdapter?.closeDictionary(dictionaryId);
     const id = String(dictionaryId || "");
     for (const session of [...activeSessions]) {
       if (session.dictionaryId === id) closeSession(session, true);
@@ -247,6 +265,7 @@
 
   function closeSession(session, restorePlaceholders) {
     if (session.closed) return;
+    previews?.close(session, false);
     session.closed = true;
     if (sessionsByContainer.get(session.container) === session) sessionsByContainer.delete(session.container);
     activeSessions.delete(session);
@@ -254,6 +273,8 @@
     if (session.activeAudio) media.releaseActiveAudio(session, session.activeAudio, false);
     cancelQueuedReads(session);
     cancelRunningReads(session);
+    fonts.close(session);
+    svg?.close(session, restorePlaceholders);
     for (const url of [...session.urls.keys()]) revokeUrl(session, url);
     for (const resource of session.resources) {
       resource.styleNode?.remove();
@@ -266,14 +287,18 @@
   }
 
   function scheduleRead(session, action) {
-    return new Promise((resolve, reject) => {
+    let job;
+    const promise = new Promise((resolve, reject) => {
       if (!isCurrent(session)) {
         resolve(undefined);
         return;
       }
-      readQueue.push({ session, action, resolve, reject });
+      job = { session, action, resolve, reject };
+      readQueue.push(job);
       drainReads();
     });
+    promise.cancel = () => { const index = readQueue.indexOf(job); if (index >= 0) { readQueue.splice(index, 1); job.resolve(undefined); } };
+    return promise;
   }
 
   function cancelQueuedReads(session) {
@@ -343,31 +368,6 @@
     return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
   }
 
-  function decodeBase64(base64, expectedSize) {
-    if (!isStrictBase64(base64)) throw new Error("MDD resource encoding is invalid.");
-    const binary = atob(base64);
-    if (binary.length !== expectedSize || binary.length > MAX_ASSET_BYTES) throw new Error("MDD resource byte length is inconsistent.");
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    return bytes;
-  }
-
-  function isStrictBase64(value) {
-    if (!value || value.length % 4 !== 0) return false;
-    const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
-    const payloadEnd = value.length - padding;
-    if ((padding === 2 && payloadEnd % 4 !== 2) || (padding === 1 && payloadEnd % 4 !== 3)) return false;
-    for (let index = 0; index < payloadEnd; index += 1) {
-      const code = value.charCodeAt(index);
-      if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122) ||
-          (code >= 48 && code <= 57) || code === 43 || code === 47)) return false;
-    }
-    for (let index = payloadEnd; index < value.length; index += 1) {
-      if (value.charCodeAt(index) !== 61) return false;
-    }
-    return true;
-  }
-
   function makePlaceholder(kind, label = "", presentation = "") {
     const node = kind === "audio" ? document.createElement("button") : document.createElement("span");
     node.className = "tf-rich-placeholder";
@@ -386,6 +386,10 @@
     close,
     closeAll,
     closeDictionary,
+    stopAudio(container) { const session = sessionsByContainer.get(container); if (session?.activeAudio) media.releaseActiveAudio(session, session.activeAudio, true); },
+    openImagePreview: (container, key, opener) => previews?.open(sessionsByContainer.get(container), key, opener) || false,
+    closeImagePreview: (container) => previews?.close(sessionsByContainer.get(container)) || false,
+    get activeFontBytes() { return fonts.activeBytes; },
     get activeObjectUrlCount() { return activeObjectUrlCount; },
     get activeObjectUrlBytes() {
       let bytes = 0;

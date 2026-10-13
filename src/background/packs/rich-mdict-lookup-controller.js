@@ -29,6 +29,7 @@ export function createRichMdictLookupController({
   const cancelledRequests = new Map();
 
   async function lookupText(text, dictionaryId, lookupIdentity = null) {
+    const expected = expectedVersions(lookupIdentity);
     const query = normalizeQuery(text);
     const targetId = dictionaryId === undefined ? "" : normalizePackId(dictionaryId);
     const operation = lookupIdentity ? beginOperation(lookupIdentity) : null;
@@ -53,11 +54,14 @@ export function createRichMdictLookupController({
         const active = entry.active;
         try {
           if (!isValidSnapshot(packId, active)) throw richError("RICH_MDICT_CORRUPT", "Rich dictionary metadata is malformed.");
+          assertExpectedVersions(active, expected);
           await assertSourceSize(active);
           assertNotAborted(signal);
           const index = await loadIndex(active, signal);
           assertNotAborted(signal);
           const result = await lookup({ source: sourceReader(packId, active, signal), index, text: query, signal });
+          assertNotAborted(signal);
+          if (expected) assertExpectedVersions((await stateStore.read()).packs?.[packId]?.active, expected);
           assertNotAborted(signal);
           if (result?.found) {
             dictionaries.push(dictionaryResponse(result, index, active, packId, clampUtf8Text));
@@ -172,7 +176,7 @@ function dictionaryResponse(result, index, active, packId, clampUtf8Text) {
   if (cycles !== undefined && (!Number.isSafeInteger(cycles) || cycles < 0 || cycles > RICH_MDICT_MAX_RECORDS)) {
     throw richError("RICH_MDICT_CORRUPT", "Rich MDict result diagnostics are invalid.");
   }
-  return { id: packId, packVersion: active.packVersion, title: active.title, records, styleSheetRules,
+  return { id: packId, packVersion: active.packVersion, packageVersion: active.resources?.packVersion || active.packVersion, title: active.title, records, styleSheetRules,
     headword: first.headword, text: first.text, richRecord: { ...first.richRecord, styleSheetRules },
     aggregateSourceRecordBytes: sourceBytes, aggregateDecodedTextBytes: textBytes,
     ...(first.aliasTarget ? { aliasTarget: first.aliasTarget } : {}),
@@ -206,4 +210,18 @@ function normalizeOwnerKey(value) {
 
 function assertNotAborted(signal) {
   if (signal?.aborted) throw richMdictAbortError();
+}
+
+function expectedVersions(identity) {
+  const pack = identity?.expectedPackVersion, resource = identity?.expectedPackageVersion;
+  if (pack === undefined && resource === undefined) return null;
+  if (![pack, resource].every((value) => typeof value === "string" && /^[A-Za-z0-9_.-]{1,120}$/u.test(value))) {
+    throw richError("RICH_MDICT_INPUT", "Rich dictionary expected versions are invalid.");
+  }
+  return { pack, resource };
+}
+function assertExpectedVersions(active, expected) {
+  if (expected && (active?.packVersion !== expected.pack || (active?.resources?.packVersion || active?.packVersion) !== expected.resource)) {
+    throw richError("RICH_MDICT_STALE", "This dictionary changed while navigating. Reopen the lookup.");
+  }
 }

@@ -24,12 +24,14 @@
     let nodes = 0;
     const resources = new Set();
     const visit = (items) => { for (const node of items || []) {
-      nodes += 1;
+      nodes += node.type === "svg" ? app.modules.safeSvg?.validateSafeSvgScene(node.scene)?.nodes || 1 : 1;
       const key = node.type === "resource" ? app.modules.richResourcePath?.descriptorKey?.(node.kind, node.path, node.presentation) : "";
       if (key) resources.add(key);
       if (node.children) visit(node.children);
     } };
     visit(result.nodes);
+    const plan = app.modules.richOxfordAdapter?.recognize(result.nodes);
+    if (plan && nodes + plan.extraNodes <= LIMITS.outputNodes - 1) nodes += plan.extraNodes;
     const metrics = Object.freeze({ expandedBytes: result.expandedBytes, nodes, resources: resources.size });
     return { nodes: result.nodes, truncated: result.truncated, metrics, controlsUnavailable: result.controlsUnavailable === true, diagnostics: result.controlsDegraded ? ["controls.unavailable"] : [] };
   }
@@ -154,7 +156,7 @@
 
   function containsDisplayContent(nodes) {
     for (const node of Array.isArray(nodes) ? nodes : []) {
-      if ((node.type === "text" && node.text) || node.type === "resource") return true;
+      if ((node.type === "text" && node.text) || node.type === "resource" || node.type === "svg") return true;
       if (node.type === "element" && containsDisplayContent(node.children)) return true;
     }
     return false;

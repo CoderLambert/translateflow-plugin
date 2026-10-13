@@ -1,3 +1,4 @@
+import { makeTinyTrueType } from "./helpers/ttf-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildMddIndex, lookupMddResource, normalizeMddResourcePath, MDD_IMPORT_LIMITS } from "../src/background/packs/importers/mdd.js";
@@ -400,3 +401,22 @@ function concatBytes(...items) {
   }
   return result;
 }
+
+test("TrueType policy rejects disguised formats, invalid directories, missing tables and overlapping ranges", () => {
+  const valid = makeTinyTrueType();
+  const rejects = (mutate) => { const bytes = Buffer.from(valid); mutate(bytes); assert.throws(() => classifyMddResource('font.ttf', bytes, MDD_IMPORT_LIMITS), MDictImportError); };
+  rejects((bytes) => bytes.write('OTTO', 0));
+  rejects((bytes) => bytes.write('ttcf', 0));
+  rejects((bytes) => bytes.writeUInt16BE(65, 4));
+  rejects((bytes) => bytes.writeUInt32BE(0xffffffff, 20));
+  rejects((bytes) => bytes.writeUInt32BE(0xffffffff, 24));
+  rejects((bytes) => bytes.writeUInt32BE(12, 20));
+  rejects((bytes) => bytes.writeUInt32BE(bytes.readUInt32BE(20), 36));
+  rejects((bytes) => bytes.copy(bytes, 28, 12, 16));
+  rejects((bytes) => bytes.write('XXXX', bytes.indexOf(Buffer.from('head'))));
+  const head = valid.readUInt32BE(valid.indexOf(Buffer.from('head')) + 8);
+  rejects((bytes) => bytes.writeUInt32BE(0, head + 12));
+  assert.throws(() => classifyMddResource('font.ttf', valid.subarray(0, 12), MDD_IMPORT_LIMITS), MDictImportError);
+  assert.throws(() => classifyMddResource('font.ttf', valid, { resourceBytes: valid.length - 1 }), MDictImportError);
+  assert.equal(classifyMddSidecarPath('font.ttf'), null, 'standalone sidecar font installation remains unsupported');
+});

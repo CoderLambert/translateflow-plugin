@@ -100,10 +100,11 @@
 }
 `;
 
-  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "" } = {}) {
+  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "", onAction = null, packVersion = "", recordOffset = null } = {}) {
     if (!container) return false;
     const root = getShadowRoot(container);
     if (!root) return false;
+    app.modules.richOxfordAdapter?.close(container);
     app.modules.richResourceResolver?.close(container);
     root.replaceChildren();
 
@@ -116,20 +117,7 @@
     viewport.setAttribute("role", "region");
     locale.bindAttribute(viewport, "aria-label", "content.rich.contentAria");
     viewport.tabIndex = 0;
-    viewport.addEventListener("click", (event) => {
-      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-      const button = path.find((node) => node instanceof HTMLButtonElement && node.hasAttribute("data-rich-fragment-target")) || null;
-      if (!button || !viewport.contains(button)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const targetId = String(button.dataset.richFragmentTarget || "");
-      const target = [...viewport.querySelectorAll("[data-rich-target-id]")]
-        .find((node) => node.dataset.richTargetId === targetId);
-      if (!target) return;
-      target.scrollIntoView({ block: "nearest", behavior: "auto" });
-      target.tabIndex = -1;
-      target.focus({ preventScroll: true });
-    });
+    app.modules.richNavigationActions?.bind(viewport, onAction);
     if (preserveNewlines) viewport.style.setProperty("white-space", "pre-wrap");
     root.appendChild(viewport);
 
@@ -140,6 +128,7 @@
     let unavailable = ast?.controlsUnavailable === true || controls?.unavailable;
     const nodes = unavailable ? [{ type: "text", text: controls?.plainText() || boundedFallback }] : sourceNodes;
     let count = {
+      elements: new Map(),
       controls: unavailable ? null : controls,
       value: 0,
       textBytes: 0,
@@ -174,6 +163,7 @@
     if (resources.length && dictionaryId) {
       app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId, packageVersion);
     }
+    if (!unavailable) app.modules.richOxfordAdapter?.bind({ host: container, viewport, nodes, controls, elements: count.elements, count: count.value, textBytes: count.textBytes, identity: { dictionaryId, packVersion, packageVersion, recordOffset } });
     return true;
   }
 
@@ -195,6 +185,12 @@
       count.textBytes += utf8ByteLength(bounded);
       if (bounded.length < text.length) count.truncated = true;
       return document.createTextNode(bounded);
+    }
+    if (node.type === "svg") {
+      const built = app.modules.richSvg?.build(node.scene);
+      if (!built || depth + built.depth > MAX_DEPTH || count.value + built.nodes - 1 > MAX_CONTENT_NODES) { count.truncated = true; return null; }
+      count.value += built.nodes - 1;
+      return built.element;
     }
     if (node.type === "resource") {
       const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
@@ -225,12 +221,12 @@
     if (DROP_SUBTREE_TAGS.has(tag)) return null;
     if (tag === "img" || tag === "audio") return placeholder(tag);
     if (tag === "a") {
-      const target = String(node.attrs?.["data-rich-fragment-target"] || "");
-      if (!/^[a-z0-9_-]{1,80}$/iu.test(target)) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
-      const link = document.createElement("button");
-      link.type = "button";
-      link.className = "tf-rich-fragment-link";
-      link.dataset.richFragmentTarget = target;
+      const api = app.modules.richNavigationActions;
+      const action = node.attrs?.["data-rich-entry-target"]
+        ? api?.validate({ kind: "entry", headword: node.attrs["data-rich-entry-target"], fragment: node.attrs["data-rich-entry-fragment"] || "" })
+        : api?.validate({ kind: "fragment", fragment: node.attrs?.["data-rich-fragment-target"] });
+      const link = api?.button(action);
+      if (!link) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
       applySafeStyles(link, node.style);
       appendChildren(link, node.children, depth, count, resources, resourceMap);
       return link;
@@ -240,6 +236,7 @@
     const control = count.controls?.element(node);
     if (tag === "input" && !control) return null;
     const element = control || document.createElement(tag === "label" ? "span" : tag);
+    count.elements.set(node, element);
     element.className = `tf-rich-node-${tag}`;
     applySafeAttributes(element, node.attrs);
     applySafeStyles(element, node.style);
@@ -325,7 +322,7 @@
       element.setAttribute("data-compact-id", compactId);
     }
     const targetId = String(attrs["data-rich-target-id"] || "");
-    if (/^[a-z0-9_-]{1,80}$/iu.test(targetId)) element.dataset.richTargetId = targetId;
+    if (/^[a-z0-9_.-]{1,80}$/iu.test(targetId)) element.dataset.richTargetId = targetId;
     const safeClasses = String(attrs.class || "")
       .split(/\s+/u)
       .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))

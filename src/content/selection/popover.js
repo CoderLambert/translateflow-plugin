@@ -401,6 +401,7 @@
     showAiDetailCancelled,
     hide,
     setCloseHandler,
+    consumeRichEscape: (event) => !panel?.hidden && isEventInsidePanel(event) && app.modules.richOxfordAdapter?.consumeEscape(event, panel),
     contains,
     isEventInsidePanel,
     reposition

@@ -198,6 +198,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     },
     navigateTo(url, { notify = false } = {}) { location.href = url; if (notify) windowListeners.get("popstate")?.(); },
     close: () => app.modules.selectionPopover.closeHandler?.(),
+    escape: () => documentListeners.get("keydown")({ key: "Escape", target: {} }),
     location, windowListeners
   };
 
@@ -415,4 +416,12 @@ test("Selection cache quota failure remains visible after storage begins", async
   assert.ok(h.errors.includes("content.selection.cacheStoreFailed"));
   assert.equal(h.results.length, 0);
   assert.equal(h.accepted.length, 0);
+});
+
+test("controller capture Escape closes owned rich layers before dismissing Selection", async () => {
+  const h = harness(); await h.ready; const before = h.hideCount; let layers = 2;
+  h.appModules.selectionPopover.isEventInsidePanel = () => true;
+  h.appModules.selectionPopover.consumeRichEscape = () => layers-- > 0;
+  h.escape(); assert.equal(h.hideCount, before); h.escape(); assert.equal(h.hideCount, before);
+  h.escape(); assert.equal(h.hideCount, before + 1);
 });

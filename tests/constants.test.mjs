@@ -64,6 +64,14 @@ test("selection modules are loaded before the content bootstrap", () => {
     assert.ok(CONTENT_SOURCE_FILES.includes(file), `${file} should be compiled`); assert.ok(CONTENT_SOURCE_FILES.indexOf(file) < CONTENT_SOURCE_FILES.indexOf("content.js"));
   }
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-style.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-oxford-adapter.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  for (const file of ["rich-resource-encoding", "rich-resource-preview"]) assert.ok(CONTENT_SOURCE_FILES.indexOf(`src/content/selection/${file}.js`) < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-resolver.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-navigation-actions.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-navigation.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-result-renderer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-lookup-identity.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-details.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/entries/safe-svg.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-svg.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-svg.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-fonts.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-resolver.js"));
   for (const helper of ["rich-controls", "rich-sanitizer-tags"]) assert.ok(CONTENT_SOURCE_FILES.indexOf(`src/content/selection/${helper}.js`) < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-viewer.js"));

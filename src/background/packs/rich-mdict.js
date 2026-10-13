@@ -1,3 +1,4 @@
+import { createRichResourceRecovery, makeResourceRecovery } from "./rich-resource-recovery.js";
 import { createRichMdictIndexLoader } from "./rich-mdict-index-migration.js";
 import { createOpfsPackStore } from "./opfs-store.js";
 import { createPackStateStore } from "./state.js";
@@ -66,6 +67,7 @@ export function createRichMdictManager({
   cryptoProvider = globalThis.crypto,
   lookup = lookupRichMdict,
   buildIndex = buildRichMdictIndex,
+  getSessionToken,
   storageManager = globalThis.navigator?.storage
 } = {}) {
   if (!store?.writeFile || !store?.readFile || !store?.readFileRange || !store?.getFileSize) {
@@ -75,6 +77,7 @@ export function createRichMdictManager({
     throw new Error("Rich MDict manager requires a namespaced dictionary state store.");
   }
 
+  const resourceRecovery = createRichResourceRecovery({ store, stateStore, ...(getSessionToken ? { getSessionToken } : {}) });
   const indexCache = new Map();
   const operationsByRequest = new Map();
   const preflightQuota = createRichMdictInstallPreflight({
@@ -96,6 +99,7 @@ export function createRichMdictManager({
 
   function commit(input = {}) {
     const metadata = validateCommit(input);
+    const attachmentIntent = makeResourceRecovery(input.attachmentIntent, metadata.packVersion);
     const catalogReplacement = validateCatalogReplacement(
       input.catalogReplacement,
       metadata.packId,
@@ -135,6 +139,7 @@ export function createRichMdictManager({
         const index = await assertStagedFiles(metadata, operation.controller.signal);
         if (operation.controller.signal.aborted) throw richMdictAbortError();
         const snapshot = makeRichMdictSnapshot(metadata, index);
+        if (attachmentIntent) snapshot.resourceRecovery = attachmentIntent;
         const previousSnapshot = state.packs[metadata.packId]?.active || null;
         const retainedResourceVersion = retainCatalogResources(
           previousSnapshot,
@@ -206,6 +211,8 @@ export function createRichMdictManager({
   }
 
   async function list() {
+    const initial = await stateStore.read();
+    for (const packId of Object.keys(initial.packs || {})) await serialize(packId, () => resourceRecovery.clean(packId));
     const state = await stateStore.read();
     const dictionaries = [];
     for (const [packId, entry] of Object.entries(state.packs || {})) {
