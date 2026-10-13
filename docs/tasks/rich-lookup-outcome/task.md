@@ -39,3 +39,5 @@
 Oxford 私有输入已沿既有本地验收脚本限定线索只读确认可访问；六文件总 1,533,010,812 bytes。MDX 38,807,694 bytes，两个 MDD 分别 30,900,438 / 1,463,189,889 bytes，CSS 61,996、PNG 35,943、JS 14,852 bytes。JS 仅作输入身份散列，不执行。#319 旧报告复用已有安装（reusedOwnedProfileInstall=true，install=null），可保留查询/重启结论，不能当作本轮六文件完整重新导入证据。私有路径、词条内容和媒体不进入仓库。
 
 真实 MDX 只读核对：header 使用 `Stripkey="Yes"`，无 `StripKey`，`KeyCaseSensitive="No"`，当前 parser 错误得到 stripKey=false。当前 schema 1 compact index：133,571 keys、90 key blocks、5,607 record blocks、344,095,474 decoded bytes、607,436 serialized index bytes。完整 key 元数据扫描发现 5,185 个重复 display headword 组，均有 distinct offsets，7 组跨 key block；共享 offset 0；本包 record span 跨 record block 0。arch/go/come/get 各一个 span，原始 record bytes 分别 18,923/778,100/587,579/566,816。全 record/alias 扫描 NOT RUN；同 offset、跨 record block 等仍须合成回归。上述是后续 #270 设计输入，未实现或宣称其 PASS。
+
+本切片还需由既有 `scripts/reading-content-classic.mjs` 再生 `src/content/reading-record.js`：该 legacy 投影入口直接引用 Popover/rich-details，源码变化后须保持可复现。仅生成输出更新，不修改 Reading 业务、存储或权限。旧注释字符串不再作为“主结果不替换”的证据，现有动态 outcome 测试与 multi-dictionary E2E 断言实际主结果。
