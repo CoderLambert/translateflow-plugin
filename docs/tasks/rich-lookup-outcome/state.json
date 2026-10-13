@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "task": "rich-lookup-outcome",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/rich-lookup-outcome-20261013",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-outcome-20261013",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/selection-multi-dictionary.test.mjs",
+      "tests/multi-dictionary-viewer.test.mjs",
+      "tests/selection-rich-outcome.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/multi-dictionary-viewer.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "e2e/rich-viewer-security.spec.mjs",
+      "e2e/mdd-resources.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "实现session聚合状态，定向测试后冻结候选。"
+}
