@@ -1,25 +1,16 @@
+import { classifyRichAttachments } from "./local-dictionary-preflight-attachments.js";
 import {
   MDICT_IMPORT_ERROR,
   MDictImportError
 } from "./importers/mdict-contract.js";
 import { buildRichMdictIndex } from "./importers/mdict-rich.js";
 import { buildMddIndex } from "./importers/mdd.js";
-import {
-  RICH_MDD_MAX_COMPANIONS,
-  RICH_MDD_MAX_SOURCE_BYTES,
-  RICH_MDD_MAX_SIDECAR_FILE_BYTES,
-  classifyMddSidecarPath,
-  validateMddCompanions
-} from "./rich-mdd-contract.js";
-import { normalizeMddResourcePath } from "./importers/mdd-resource-path.js";
+import { RICH_MDD_MAX_SOURCE_BYTES } from "./rich-mdd-contract.js";
 import { makeBoundedFileIdentityHint } from "./local-dictionary-preflight-identity.js";
 import { SHIPPED_CAPABILITIES, basePreflightResult, blobRangeSource,
-  escapePreflightRegExp, isPreflightAbort, normalizePreflightLanguage,
-  preflightAbortError, preflightExtension, reason, safeFileLabel,
+  isPreflightAbort, normalizePreflightLanguage,
+  preflightAbortError, reason, safeFileLabel,
   assertPreflightFileLimit, uniqueCapabilities } from "./local-dictionary-preflight-contract.js";
-
-const MDX_EXT = ".mdx";
-const MDD_EXT = ".mdd";
 
 export async function preflightMdxFiles({
   files,
@@ -30,81 +21,11 @@ export async function preflightMdxFiles({
   sourceLanguage,
   targetLanguage
 }) {
-  const baseName = mdxFile.name.slice(0, -MDX_EXT.length);
-  const companionPattern = new RegExp(
-    `^${escapePreflightRegExp(baseName)}(?:\\.([1-9][0-9]?))?\\.mdd$`,
-    "iu"
-  );
-  const mddFiles = files.filter((file) => preflightExtension(file.name) === MDD_EXT);
-  const companions = [];
-  const unassociated = [];
-  const sidecarCandidates = [];
-  for (const file of mddFiles) {
-    if (companionPattern.test(file.name)) companions.push(file);
-    else unassociated.push(file);
-  }
-  for (const file of files) {
-    if (file === mdxFile || mddFiles.includes(file)) continue;
-    const path = selectedSidecarPath(file);
-    let type = null;
-    try { if (path) type = classifyMddSidecarPath(path); } catch { /* invalid path remains unassociated */ }
-    if (!type) {
-      unassociated.push(file);
-      continue;
-    }
-    if (!Number.isSafeInteger(file.size) || file.size <= 0 || file.size > RICH_MDD_MAX_SIDECAR_FILE_BYTES ||
-        (type.kind === "stylesheet" && file.size > 64 * 1024)) {
-      return basePreflightResult({
-        family: "mdict-rich", files, sourceBytes, status: "invalid",
-        reason: reason("mdd.sidecar_too_large")
-      });
-    }
-    sidecarCandidates.push({ file, path, ...type });
-  }
-
-  let orderedCompanions = [];
-  if (companions.length) {
-    if (companions.length > RICH_MDD_MAX_COMPANIONS) {
-      return basePreflightResult({
-        family: "mdict-rich",
-        files,
-        sourceBytes,
-        status: "invalid",
-        reason: reason("mdd.too_many_companions")
-      });
-    }
-    try {
-      orderedCompanions = validateMddCompanions(
-        companions.map((file) => file.name),
-        mdxFile.name
-      ).map(({ fileName }) => companions.find((file) => file.name === fileName));
-    } catch (error) {
-      return basePreflightResult({
-        family: "mdict-rich",
-        files,
-        sourceBytes,
-        status: "invalid",
-        reason: reason(mapMddAssociationError(error))
-      });
-    }
-  }
-  const associatedSidecars = sidecarCandidates
-    .sort((left, right) => left.path.localeCompare(right.path))
-    .map(({ file, path, kind, mime }) => ({
-      fileName: safeFileLabel(file.name), path, sourceBytes: file.size, kind, mime
-    }));
-  if (!orderedCompanions.length && associatedSidecars.length) {
-    for (const file of sidecarCandidates.map((item) => item.file)) unassociated.push(file);
-    associatedSidecars.length = 0;
-  }
-  if (associatedSidecars.length > 32 || associatedSidecars.reduce((sum, item) => sum + item.sourceBytes, 0) > 64 * 1024 * 1024) {
-    return basePreflightResult({
-      family: "mdict-rich", files, sourceBytes, status: "invalid",
-      reason: reason("mdd.sidecar_package_too_large"), associatedMdd: [], associatedSidecars,
-      unassociatedFiles: unassociated
-    });
-  }
-  const unassociatedFiles = unassociated;
+  let attachments;
+  try { attachments = classifyRichAttachments(files, mdxFile.name); }
+  catch (error) { return basePreflightResult({ family: "mdict-rich", files, sourceBytes,
+    status: "invalid", reason: reason(error.preflightReason || "mdd.companion_names_ambiguous_or_invalid") }); }
+  const { orderedCompanions, associatedSidecars, unassociatedFiles, ignoredFiles } = attachments;
 
   let index;
   try {
@@ -158,7 +79,7 @@ export async function preflightMdxFiles({
           route: { importer: "rich-mdict", requiresSemanticConfirmation: false },
           associatedMdd,
           associatedSidecars,
-          unassociatedFiles
+          unassociatedFiles, ignoredFiles
         });
       }
       return basePreflightResult({
@@ -174,7 +95,7 @@ export async function preflightMdxFiles({
         route: { importer: "none", requiresSemanticConfirmation: false },
         associatedMdd,
         associatedSidecars,
-        unassociatedFiles
+        unassociatedFiles, ignoredFiles
       });
     }
   }
@@ -236,17 +157,9 @@ export async function preflightMdxFiles({
     route,
     associatedMdd,
     associatedSidecars,
-    unassociatedFiles,
+    unassociatedFiles, ignoredFiles,
     identity: { hints: mdxIdentityHint ? [mdxIdentityHint] : [] }
   });
-}
-
-function selectedSidecarPath(file) {
-  const relative = String(file?.webkitRelativePath || "");
-  if (!relative) return normalizeMddResourcePath(String(file?.name || ""));
-  const segments = relative.replaceAll("\\", "/").split("/");
-  // A directory picker reports the chosen root folder as the first segment.
-  return normalizeMddResourcePath(segments.length > 1 ? segments.slice(1).join("/") : segments[0]);
 }
 
 function mdxFailureResult({ files, sourceBytes, error, mdxFile }) {
@@ -355,10 +268,4 @@ function mapMddError(error) {
     if (error.code === MDICT_IMPORT_ERROR.UNSUPPORTED) return "mdd.capability_unsupported";
   }
   return "mdd.preflight_failed";
-}
-
-function mapMddAssociationError(error) {
-  return /consecutive/iu.test(error?.message || "")
-    ? "mdd.numbering_not_consecutive"
-    : "mdd.companion_names_ambiguous_or_invalid";
 }

@@ -18,7 +18,7 @@ test('structural Oxford POS, native disclosures, hints and registered illustrati
   await options.locator('#localDictionaryFiles').setInputFiles({ name: 'Generic Structural Fixture.mdx', mimeType: 'application/octet-stream', buffer: makeRichMdx([['adapterother', other], ['go', go]], { title: 'Generic Structural Fixture' }) });
   await expect(options.locator('#localDictionaryPreflightSummary')).toContainText('Generic Structural Fixture'); await options.locator('#localDictionaryImportButton').click(); await expect(options.locator('#localDictionaryImportProgress')).toContainText('完成', { timeout: 60000 });
   const row = options.locator('#richMdictInstalledList [data-dictionary-id]').filter({ hasText: 'Generic Structural Fixture' });
-  await row.getByRole('button', { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole('button', { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles({ name: 'Generic Structural Fixture.mdd', mimeType: 'application/octet-stream', buffer: makeMdd([
     ['images/diagram.svg', Buffer.from(ADAPTER_DIAGRAM)], ...[0, 1, 2, 3].map((index) => [`audio/pron-${index}.wav`, wav()])
   ]) }); await expect(options.locator('#status')).toContainText('本地资源已更新', { timeout: 60000 }); await options.close();

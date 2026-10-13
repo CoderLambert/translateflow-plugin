@@ -45,7 +45,8 @@ export function createLocalDictionaryClient({
   onProgress?: (message: string, phase: string) => void;
 } = {}) {
   let active: LocalController | null = null;
-  let retryAttachment: null | { dictionaryId: string; mdxFileName: string; mdxSourceBytes: number; files: File[]; sidecars: { path: string; file: File }[]; title: string } = null;
+  let disposed = false;
+  let retryAttachment: null | { dictionaryId: string; mdxFileName: string; mdxSourceBytes: number; expectedMdxVersion: string; files: File[]; sidecars: { path: string; file: File }[]; title: string } = null;
   const progress = (event: { phase?: string; fileName?: string; bytesRead?: number; bytesWritten?: number; fileBytes?: number; completedBytes?: number; totalBytes?: number }) => {
     const label = importProgressLabel(event.phase);
     const name = event.fileName ? ` · ${safeFileLabel(event.fileName)}` : "";
@@ -91,17 +92,19 @@ export function createLocalDictionaryClient({
         if (!attached) throw new Error("MDD 文件名无法安全匹配到唯一的所选文件；请重新选择文件组。");
         const imported = await run(rich, () => rich.importDictionary({
           mdxFile,
+          ...(attached.mddFiles.length ? { attachmentIntent: { mddCount: attached.mddFiles.length, sidecarCount: attached.sidecars.length } } : {}),
           displayMetadata: { name: report.identity.displayTitle || fileBaseName(mdxFile.name) }
         }));
         const importedRecord = imported as Record<string, any>;
+        const expectedMdxVersion = String(importedRecord.commit?.dictionary?.packVersion || "");
         const dictionaryId = String(importedRecord.commit?.dictionary?.id || importedRecord.commit?.dictionary?.packId || "");
         if (attached.mddFiles.length) {
           if (!dictionaryId) throw new Error("MDX 已安装，但无法确认目标词典标识，MDD 附件未附加。");
           try {
             onProgress("MDX 已安装，正在原子检查并添加已关联的 MDD…", "");
-            await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, mdxSourceBytes: mdxFile.size, files: attached.mddFiles, sidecars: attached.sidecars }));
+            await run(mdd, () => mdd.attachResources({ dictionaryId, mdxFileName: mdxFile.name, mdxSourceBytes: mdxFile.size, expectedMdxVersion, files: attached.mddFiles, sidecars: attached.sidecars }));
           } catch (error) {
-            retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, mdxSourceBytes: mdxFile.size, files: attached.mddFiles, sidecars: attached.sidecars, title: String(report.identity.displayTitle || "") };
+            retryAttachment = { dictionaryId, mdxFileName: mdxFile.name, mdxSourceBytes: mdxFile.size, expectedMdxVersion, files: attached.mddFiles, sidecars: attached.sidecars, title: String(report.identity.displayTitle || "") };
             const cancelled = isAbort(error);
             return {
               progress: cancelled ? "MDX 已安装；MDD 附件导入已取消，原有附件保持不变。" : `MDX 已安装；MDD 未更改。${userMessage(error)}`,
@@ -147,7 +150,7 @@ export function createLocalDictionaryClient({
     const attempt = retryAttachment;
     if (!attempt) throw new Error("没有可重试的 MDD 附件。");
     try {
-      await run(mdd, () => mdd.attachResources({ dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, mdxSourceBytes: attempt.mdxSourceBytes, files: attempt.files, sidecars: attempt.sidecars }));
+      await run(mdd, () => mdd.attachResources({ dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, mdxSourceBytes: attempt.mdxSourceBytes, expectedMdxVersion: attempt.expectedMdxVersion, files: attempt.files, sidecars: attempt.sidecars }));
       retryAttachment = null;
       return { progress: "完成 · MDD 附件已添加", status: "MDD 附件已安全添加。", error: false, changed: true, retryMdd: false };
     } catch (error) {
@@ -161,11 +164,13 @@ export function createLocalDictionaryClient({
   }
 
   async function run<T>(controller: LocalController, task: () => Promise<T>) {
+    if (disposed) throw new DOMException("Import owner closed.", "AbortError");
     active = controller;
     return task();
   }
 
   function dispose() {
+    disposed = true;
     active?.dispose?.(); active = null;
     rich.dispose(); structured.dispose(); stardict.dispose(); mdd.dispose(); tflex.dispose();
   }

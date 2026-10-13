@@ -241,13 +241,7 @@ export async function handleBackgroundMessage(message, sender) {
       return { ready: true };
     case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_COMMIT:
       assertOptionsSender(sender);
-      return commitRichMdictImport({
-        requestId: message.requestId,
-        packId: message.packId,
-        packVersion: message.packVersion,
-        metadata: message.metadata,
-        catalogReplacement: message.catalogReplacement
-      });
+      return commitRichMdictImport(message);
     case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_CANCEL:
       assertOptionsSender(sender);
       return cancelRichMdictImport(message.requestId);
@@ -297,23 +291,11 @@ export async function handleBackgroundMessage(message, sender) {
       }
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_PREFLIGHT:
       assertOptionsSender(sender);
-      return preflightRichMddResourceImport({
-        dictionaryId: message.dictionaryId,
-        requestId: message.requestId,
-        resourceVersion: message.resourceVersion,
-        mdxFileName: message.mdxFileName,
-        files: message.files,
-        sidecars: message.sidecars
-      });
+      return preflightRichMddResourceImport(message);
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_COMMIT:
       assertOptionsSender(sender);
       {
-        const result = await commitRichMddResourceImport({
-          dictionaryId: message.dictionaryId,
-          requestId: message.requestId,
-          resourceVersion: message.resourceVersion,
-          metadata: message.metadata
-        });
+        const result = await commitRichMddResourceImport(message);
         await notifyRichMddResourcesChanged(message.dictionaryId);
         return result;
       }

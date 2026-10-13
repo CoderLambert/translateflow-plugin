@@ -1,3 +1,4 @@
+import { normalizeResourceRecovery } from "./rich-resource-recovery.js";
 import {
   RICH_MDICT_IMPORT_LIMITS,
   validateRichMdictIndex
@@ -234,6 +235,7 @@ export function publicRichDictionary(entry) {
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
     ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),
+    ...(normalizeResourceRecovery(active.resourceRecovery, active.packVersion) ? { resourceRecovery: { ...normalizeResourceRecovery(active.resourceRecovery, active.packVersion), previousResourcesAvailable: resourceSources.length > 0 } } : {}),
     status: entry?.status || "unknown"
   };
 }

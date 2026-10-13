@@ -16,7 +16,7 @@ test('inline and local MDD SVG render native safe scenes across restart without 
   await options.locator('#localDictionaryImportButton').click();
   await expect(options.locator('#localDictionaryImportProgress')).toContainText('完成', { timeout: 60000 });
   const row = options.locator('#richMdictInstalledList [data-dictionary-id]').filter({ hasText: 'Static SVG Fixture' });
-  await row.getByRole('button', { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole('button', { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles({ name: 'Static SVG Fixture.mdd', mimeType: 'application/octet-stream', buffer: makeMdd([
     ['icons/local.svg', Buffer.from(local)], ['icons/hostile.svg', Buffer.from(hostile)],
     ['svg.css', Buffer.from('.svg-body{color:#123456;background-image:url(icons/local.svg)}')]

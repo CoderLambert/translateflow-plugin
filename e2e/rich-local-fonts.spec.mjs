@@ -37,7 +37,7 @@ async function installed(harness, title, advanceOffset) {
   const broken = makeTinyTrueType(); const cmapAt = broken.readUInt32BE(broken.indexOf(Buffer.from('cmap')) + 8); broken.writeUInt16BE(1, cmapAt); // valid bounded sfnt directory; browser decoder rejects the unsupported cmap version
   const mdd = makeMdd([['font.css', Buffer.from(css)], ['broken.css', Buffer.from(brokenCss)], ['fonts/broken.ttf', broken], ...variants.map(({ advance, style, weight }, index) => [`fonts/${index}.ttf`, makeTinyTrueType({ advance: advance + advanceOffset, weight: Number(weight), italic: style === 'italic' })])]);
   const row = options.locator('#richMdictInstalledList [data-dictionary-id]').filter({ hasText: title });
-  await row.getByRole('button', { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole('button', { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles({ name: `${title}.mdd`, mimeType: 'application/octet-stream', buffer: mdd });
   await expect(options.locator('#status')).toContainText('本地资源已更新', { timeout: 60000 });
   await options.close();

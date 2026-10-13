@@ -43,7 +43,14 @@ export function getRichMddResourceManager() {
 }
 
 export function commitRichMdictImport(input) {
-  return getRichMdictManager().commit(input).then(async (result) => {
+  return getRichMdictManager().commit({
+    requestId: input.requestId,
+    packId: input.packId,
+    packVersion: input.packVersion,
+    metadata: input.metadata,
+    catalogReplacement: input.catalogReplacement,
+    attachmentIntent: input.attachmentIntent
+  }).then(async (result) => {
     const listed = await getRichMdictManager().listMetadata();
     await getRichMdictPreferencesStore().reconcile(listed.dictionaries);
     return result;
@@ -178,11 +185,26 @@ export function cancelRichMdictLookup(requestId, selectionOwnerKey) {
 }
 
 export function preflightRichMddResourceImport(input) {
-  return getRichMddResourceManager().preflight(input);
+  return getRichMddResourceManager().preflight({
+    dictionaryId: input.dictionaryId,
+    requestId: input.requestId,
+    resourceVersion: input.resourceVersion,
+    mdxFileName: input.mdxFileName,
+    files: input.files,
+    sidecars: input.sidecars,
+    expectedMdxVersion: input.expectedMdxVersion,
+    mdxSourceBytes: input.mdxSourceBytes
+  });
 }
 
 export function commitRichMddResourceImport(input) {
-  return getRichMddResourceManager().commit(input);
+  return getRichMddResourceManager().commit({
+    dictionaryId: input.dictionaryId,
+    requestId: input.requestId,
+    resourceVersion: input.resourceVersion,
+    metadata: input.metadata,
+    expectedMdxVersion: input.expectedMdxVersion
+  });
 }
 
 export function cancelRichMddResourceImport(requestId) {

@@ -24,7 +24,7 @@ export function createMddResourceImportController({
 
   let active = null;
 
-  async function attachResources({ dictionaryId, mdxFileName, files, sidecars = [], mdxSourceBytes = 0 } = {}) {
+  async function attachResources({ dictionaryId, mdxFileName, files, sidecars = [], mdxSourceBytes = 0, expectedMdxVersion } = {}) {
     if (active) throw controllerError("RICH_MDD_BUSY", "Another MDD resource import is already running.");
     const normalizedFiles = validateFiles(files, mdxFileName);
     const normalizedSidecars = validateSidecars(sidecars);
@@ -58,6 +58,7 @@ export function createMddResourceImportController({
         requestId,
         resourceVersion: identity.resourceVersion,
         mdxFileName: current.mdxFileName,
+        ...(expectedMdxVersion !== undefined ? { expectedMdxVersion, mdxSourceBytes: mdxBytes } : {}),
         files: normalizedFiles.map(({ fileName, size }) => ({ fileName, size })),
         sidecars: normalizedSidecars.map(({ path, size, kind, mime }) => ({ path, size, kind, mime }))
       });
@@ -93,14 +94,14 @@ export function createMddResourceImportController({
         dictionaryId: current.dictionaryId,
         requestId,
         resourceVersion: identity.resourceVersion,
-        metadata: ready.metadata
+        metadata: ready.metadata,
+        ...(expectedMdxVersion !== undefined ? { expectedMdxVersion } : {})
       });
       if (!commit?.ok) {
         if (current.cancelRequested) throw abortError();
         throw responseError(commit, "MDD resource activation failed.");
       }
       current.committed = true;
-      if (current.cancelRequested) throw abortError();
       emitProgress(onProgress, requestId, "done", { dictionaryId: current.dictionaryId, resources: ready.metadata.resources, sidecars: ready.metadata.sidecars || [] });
       return { requestId, ready, commit };
     } catch (error) {

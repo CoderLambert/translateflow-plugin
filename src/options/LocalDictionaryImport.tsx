@@ -129,7 +129,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
       onDrop={event => { event.preventDefault(); setDragging(false); if (event.nativeEvent.isTrusted) replaceSelection(Array.from(event.dataTransfer.files)); }}>
       <span>{i18n.t("localImport.drop")}</span><small>{i18n.t("localImport.support")}</small>
     </label>
-    <input ref={inputRef} id="localDictionaryFiles" className="visually-hidden-file-input" type="file" multiple accept=".mdx,.mdd,.css,.png,.jpg,.jpeg,.gif,.webp,.wav,.mp3,.ogg,.oga,.opus,.m4a,.mp4,.aac,.flac,.ifo,.idx,.dict,.dict.dz,.syn,.json,.dat" aria-describedby="localDictionaryHelp" disabled={busy}
+    <input ref={inputRef} id="localDictionaryFiles" className="visually-hidden-file-input" type="file" multiple accept=".mdx,.mdd,.css,.js,.png,.jpg,.jpeg,.gif,.webp,.wav,.mp3,.ogg,.oga,.opus,.m4a,.mp4,.aac,.flac,.ifo,.idx,.dict,.dict.dz,.syn,.json,.dat" aria-describedby="localDictionaryHelp" disabled={busy}
       onChange={event => replaceSelection(Array.from(event.target.files || []))} />
     <input ref={node => { directoryInputRef.current = node; if (node && !node.hasAttribute("webkitdirectory")) node.setAttribute("webkitdirectory", ""); }} id="localDictionaryFolder" className="visually-hidden-file-input" type="file" multiple aria-describedby="localDictionaryHelp" disabled={busy}
       onChange={event => replaceSelection(Array.from(event.target.files || []))} />
@@ -138,6 +138,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
     <div className="actions"><button id="localDictionaryChooseFiles" type="button" disabled={busy} onClick={event => { if (event.nativeEvent.isTrusted) inputRef.current?.click(); }}>{i18n.t("localImport.choose")}</button><button id="localDictionaryChooseFolder" type="button" disabled={busy} onClick={event => { if (event.nativeEvent.isTrusted) directoryInputRef.current?.click(); }}>{i18n.t("localImport.chooseFolder")}</button><button id="localDictionaryClearFiles" type="button" disabled={busy || !files.length} onClick={() => replaceSelection([])}>{i18n.t("localImport.clear")}</button></div>
     <section id="localDictionaryPreflight" className="local-dictionary-preflight" aria-labelledby="localDictionaryPreflightHeading" hidden={!showPreflight}>
       <h4 id="localDictionaryPreflightHeading">{i18n.t("localImport.preflight")}</h4>
+      {report?.resources.ignoredFiles?.length ? <p data-role="ignored-scripts">{i18n.t("dictionary.scriptsIgnored")}</p> : null}
       <div id="localDictionaryPreflightSummary" className="local-dictionary-preflight-summary" aria-live="polite">
         {phase === "checking" ? <SummaryRow label={i18n.t("localImport.checkStatus")} value={i18n.t("localImport.checking")} /> : view ? view.rows.map((row: { label: string; value: string }, index: number) => <SummaryRow key={`${row.label}:${index}`} {...row} />) : progress ? <SummaryRow label={i18n.t("localImport.checkStatus")} value={progress} /> : null}
         {report && !isInstalledStateKnownForFamily(report.identity.family, installed.known) ? <SummaryRow label={i18n.t("localImport.duplicateCheck")} value={i18n.t("localImport.installedUnknown")} /> : null}

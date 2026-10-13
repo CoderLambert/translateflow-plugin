@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 vi.mock("../../src/options/local-dictionary-client", () => ({ createLocalDictionaryClient: vi.fn() }));
 
+import { RichList } from "../../src/options/DictionaryViews";
 import { LocalDictionaryImport } from "../../src/options/LocalDictionaryImport";
 import { createLocalDictionaryClient } from "../../src/options/local-dictionary-client";
 import { LocaleProvider } from "../../src/options/LocaleContext";
@@ -67,3 +68,26 @@ function makeService(overrides: Record<string, unknown> = {}) {
     ...overrides
   };
 }
+
+test("six-file selection displays ignored scripts and keeps the rich import route enabled", async () => {
+  const next = { ...report, resources: { ...report.resources, associatedMdd: [{ fileName: "fixture.mdd" }, { fileName: "fixture.1.mdd" }], associatedSidecars: [], ignoredFiles: [{ fileName: "fixture.js", size: 10, reason: "script_not_executed" }] } };
+  const preflight = vi.fn(async (_files: File[]) => next);
+  const service = makeService({ preflight });
+  vi.mocked(createLocalDictionaryClient).mockReturnValue(service as never); render(subject());
+  await userEvent.upload(document.querySelector<HTMLInputElement>("#localDictionaryFiles")!, ["mdx", "mdd", "1.mdd", "css", "png", "js"].map(ext => new File(["fixture"], `fixture.${ext}`)));
+  await screen.findByText("脚本已忽略，不执行。");
+  expect(preflight.mock.calls[0]?.[0]).toHaveLength(6);
+  expect((screen.getByRole("button", { name: "安装词典" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+
+test("installed resource recovery remains visible with full-set selection instructions", () => {
+  const dictionary = { id: "rich-test", title: "Recovery fixture", fileName: "Recovery.mdx", status: "ready", sourceSize: 100,
+    resourceRecovery: { previousResourcesAvailable: true } };
+  render(<LocaleProvider value={zh}><RichList client={{} as never} dictionaries={[dictionary]} refresh={async () => {}} setStatus={vi.fn()} /></LocaleProvider>);
+  expect(screen.getByText("本次更新未完成，原附件仍可用。")).toBeTruthy();
+  expect(screen.getByText("请重选全部要保留的附件；此操作会替换完整资源集合。")).toBeTruthy();
+  expect((screen.getByRole("button", { name: "为 Recovery fixture 添加或重新选择资源" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(document.querySelector('input[data-action="attach-mdd-resources"]')?.getAttribute("accept")).toContain(".css");
+  expect(document.querySelector('input[data-action="attach-mdd-resources"]')?.getAttribute("accept")).toContain(".js");
+});

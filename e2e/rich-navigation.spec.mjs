@@ -16,7 +16,7 @@ async function install(harness) {
   await expect(options.locator('#localDictionaryPreflightSummary')).toContainText('Navigation Fixture'); await options.locator('#localDictionaryImportButton').click();
   await expect(options.locator('#localDictionaryImportProgress')).toContainText('完成', { timeout: 60000 });
   const row = options.locator('#richMdictInstalledList [data-dictionary-id]').filter({ hasText: 'Navigation Fixture' });
-  await row.getByRole('button', { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole('button', { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles({ name: 'Navigation Fixture.mdd', mimeType: 'application/octet-stream', buffer: makeMdd([
     ['navigation.css', Buffer.from(css)], ['fonts/static.ttf', makeTinyTrueType()], ['audio/go.wav', wav()]
   ]) }); await expect(options.locator('#status')).toContainText('本地资源已更新', { timeout: 60000 }); await options.close();

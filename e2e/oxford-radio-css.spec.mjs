@@ -30,7 +30,7 @@ test("generic radio state CSS works through real MDD resources and stays isolate
   await options.locator("#localDictionaryImportButton").click();
   await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 60_000 });
   const row = options.locator("#richMdictInstalledList [data-dictionary-id]").filter({ hasText: "Synthetic Radio State" });
-  await row.getByRole("button", { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole("button", { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles({ name: "radio.mdd", mimeType: "application/octet-stream", buffer: makeMdd([["styles/state.css", Buffer.from(css)]]) });
   await expect(options.locator("#status")).toContainText("本地资源已更新", { timeout: 60_000 });
 

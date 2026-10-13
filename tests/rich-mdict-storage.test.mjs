@@ -133,7 +133,7 @@ test("MDD preflight enforces the package-wide 4,000,000,000-byte selected-source
   const env = createEnvironment();
   const metadata = await stage(env, BASE_ID);
   await env.manager.commit({ ...BASE_ID, metadata });
-  const resourceManager = createRichMddResourceManager({
+  const resourceManager = createRichMddResourceManager({ getSessionToken: async () => "a".repeat(64),
     store: env.store,
     stateStore: env.stateStore,
     cryptoProvider: webcrypto
@@ -391,7 +391,7 @@ test("successful curated MDX replacement retains a usable attached MDD version a
   const oldMetadata = await stageCurated(env, old, CURATED_PROVENANCE);
   await env.manager.commit({ ...old, metadata: oldMetadata });
 
-  const resourceManager = createRichMddResourceManager({
+  const resourceManager = createRichMddResourceManager({ getSessionToken: async () => "a".repeat(64),
     store: env.store,
     stateStore: env.stateStore,
     cryptoProvider: webcrypto
@@ -514,6 +514,7 @@ test("structured pack recovery does not delete active or staged rich data in the
     stateStore: richStateStore,
     cryptoProvider: webcrypto,
     storageManager: null,
+    getSessionToken: async () => "a".repeat(64),
     buildIndex: async ({ source }) => {
       await source.read(0, 1);
       return createIndex(source.size);
@@ -536,6 +537,7 @@ test("structured pack recovery does not delete active or staged rich data in the
     stateStore: structuredStateStore,
     permissions: null,
     storageManager: null,
+    getSessionToken: async () => "a".repeat(64),
     cryptoProvider: webcrypto
   });
   await structuredManager.recoverAll();
@@ -613,7 +615,7 @@ test("MDD SVG manager emits a validated scene DTO without raw XML encoding", asy
   const env = createEnvironment();
   const metadata = await stage(env, BASE_ID);
   await env.manager.commit({ ...BASE_ID, metadata });
-  const resources = createRichMddResourceManager({ store: env.store, stateStore: env.stateStore, cryptoProvider: webcrypto });
+  const resources = createRichMddResourceManager({ getSessionToken: async () => "a".repeat(64), store: env.store, stateStore: env.stateStore, cryptoProvider: webcrypto });
   const xml = '<svg viewBox="0 0 16 16"><path d="M0 0L16 0L0 16Z" fill="#123456"/></svg>';
   const file = new Blob([makeMdd([["icons/static.svg", encoder.encode(xml)]])]);
   Object.defineProperty(file, "name", { value: "english-filename.mdd" });
@@ -643,6 +645,7 @@ function createEnvironment(overrides = {}) {
     stateStore,
     cryptoProvider: webcrypto,
     storageManager: null,
+    getSessionToken: async () => "a".repeat(64),
     buildIndex: builder,
     lookup: overrides.lookup || (async ({ source, text }) => {
       await source.read(92, 8);
