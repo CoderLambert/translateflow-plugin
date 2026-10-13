@@ -97,8 +97,8 @@ test("media AST accepts only one bounded screen/px feature or known color scheme
     '@media screen and (min-width:400px){.bad{color:red}}', '@media (max-width:500px),screen{.bad{color:red}}',
     '@media (max-width:calc(1px + 1px)){.bad{color:red}}'
   ].join('\n')), "entry.css");
-  assert.match(result.css, /@media screen and \(max-width: 500px\)/u);
-  assert.match(result.css, /@media \(max-width: 374px\)/u);
+  assert.match(result.css, /@container tf-rich-article \(max-width: 500px\)/u);
+  assert.match(result.css, /@container tf-rich-article \(max-width: 374px\)/u);
   assert.doesNotMatch(result.css, /\.bad/u);
 });
 
@@ -204,4 +204,104 @@ test("font URL percent compatibility rejects all other escapes, encoded traversa
     assert.equal(result.fontFaces, undefined, path); assert.ok(result.diagnostics.includes('css.font_filtered'), path);
     assert.equal(result.css, '.tf-rich-viewer .entry{color:red;font-family:serif}');
   }
+});
+
+test('bounded flex declarations preserve coherent row layouts and article-relative narrow stacking', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    '.line{display:flex;flex-flow:row wrap;gap:4px 1em}',
+    '.pronunciation{display:inline-flex;flex-direction:row;flex-wrap:wrap}',
+    '.body{display:flex;flex-direction:row-reverse}',
+    '.child{flex-grow:16;flex-shrink:.25;flex-basis:100%;flex:1 1 auto;min-width:0;row-gap:64px;column-gap:4rem}',
+    '@media screen and (max-width:500px){.body{flex-direction:column;gap:0}}'
+  ].join('')), 'entry.css');
+  assert.match(result.css, /\.tf-rich-viewer \.line\{display:flex;flex-flow:row wrap;gap:4px 1em\}/u);
+  assert.match(result.css, /display:inline-flex;flex-direction:row;flex-wrap:wrap/u);
+  assert.match(result.css, /flex-direction:row-reverse/u);
+  assert.match(result.css, /flex-grow:16;flex-shrink:\.25;flex-basis:100%;flex:1 1 auto;min-width:0;row-gap:64px;column-gap:4rem/u);
+  assert.match(result.css, /@container tf-rich-article \(max-width: 500px\)\{\.tf-rich-viewer \.body\{flex-direction:column;gap:0\}\}/u);
+  assert.deepEqual(result.diagnostics, []); assert.deepEqual(result.assetSlots, []);
+});
+
+test('flex shorthand accepts only bounded common forms and finite direction/wrap combinations', () => {
+  for (const value of ['0', '1', '.25', '0 1 auto', '1 20px', '1 1 0%', '2 0 40rem', '.25 .5 512px', 'auto', 'none', 'initial']) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`.ok{flex:${value}}`), 'entry.css');
+    assert.match(result.css, /^\.tf-rich-viewer \.ok\{flex:/u, value); assert.deepEqual(result.diagnostics, [], value);
+  }
+  for (const value of ['row', 'column-reverse', 'wrap', 'nowrap', 'row wrap', 'wrap-reverse column-reverse']) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`.ok{flex-flow:${value}}`), 'entry.css');
+    assert.equal(result.css, `.tf-rich-viewer .ok{flex-flow:${value}}`); assert.deepEqual(result.diagnostics, []);
+  }
+});
+
+test('new flex, minimum-width and gap values reject escape functions, unbounded factors and unsupported grammar', () => {
+  const unsafe = {
+    'flex-direction': ['inherit', 'unset', 'revert', 'sideways', 'row column'],
+    'flex-wrap': ['inherit', 'balance', 'wrap nowrap'],
+    'flex-flow': ['row column', 'wrap nowrap', 'row row', 'row wrap auto', 'var(--flow)'],
+    'flex-grow': ['17', '16.01', '-1', '+1', '1e2', 'calc(1 + 1)', 'var(--grow)'],
+    'flex-shrink': ['999', 'Infinity', '-.1', 'attr(data-size)'],
+    'flex-basis': ['513px', '40.01em', '101%', '-1px', '1vw', '1vh', 'min-content', 'max-content', 'calc(100% - 1px)'],
+    flex: ['17 1 auto', '1 17 0', '1 1 513px', '1 1 101%', '-1 1 auto', '1 1 auto 0', 'auto 1 1', 'inherit', 'var(--flex)', 'url(https://attacker.invalid)'],
+    'min-width': ['auto', 'none', '513px', '41rem', '101%', '-1px', '100vw', 'env(safe-area-inset-left)'],
+    gap: ['65px', '4.01em', '26%', '-1px', '1px 2px 3px', 'normal', 'calc(1px + 1px)'],
+    'row-gap': ['1px 2px', '65px', 'var(--gap)'],
+    'column-gap': ['4.01rem', '26%', '1svw']
+  };
+  for (const [property, values] of Object.entries(unsafe)) for (const value of values) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`.keep{color:red;${property}:${value}}`), 'entry.css');
+    assert.equal(result.css, '.tf-rich-viewer .keep{color:red}', `${property}:${value}`);
+    assert.ok(result.diagnostics.includes('css.declaration_filtered'), `${property}:${value}`); assert.deepEqual(result.assetSlots, []);
+  }
+  const escaped = sanitizeRichMddStylesheet(Buffer.from('.keep{display:inline-flex;position:fixed;inset:0;z-index:999;order:-1;overflow:visible}'), 'entry.css');
+  assert.equal(escaped.css, '.tf-rich-viewer .keep{display:inline-flex}');
+});
+
+test('min-width and gap accept their exact finite boundaries without altering rule or declaration budgets', () => {
+  for (const [property, value] of [['min-width', '0'], ['min-width', '512px'], ['min-width', '40em'], ['min-width', '100%'], ['flex-basis', 'auto'], ['gap', '64px 4rem'], ['row-gap', '25%']]) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`.ok{${property}:${value}}`), 'entry.css'); assert.equal(result.css, `.tf-rich-viewer .ok{${property}:${value}}`);
+  }
+  const declarations = '.ok{' + 'min-width:0;'.repeat(13) + '}';
+  const limited = sanitizeRichMddStylesheet(Buffer.from(declarations), 'entry.css');
+  assert.equal((limited.css.match(/min-width:0/gu) || []).length, 12); assert.ok(limited.diagnostics.includes('css.declaration_limit'));
+  const rules = sanitizeRichMddStylesheet(Buffer.from('.ok{display:inline-flex}'.repeat(513)), 'entry.css');
+  assert.equal(rules.css, ''); assert.ok(rules.diagnostics.includes('css.accepted_rule_limit'));
+});
+
+test('background shorthand projects only pure colors and never admits resource or functional backgrounds', () => {
+  for (const value of ['red', '#123456', '#abcd', 'transparent', 'rgba(1,2,3,.4)', 'hsl(210,50%,40%)']) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`.contrast{color:white;background:${value}}`), 'entry.css');
+    assert.equal(result.css, `.tf-rich-viewer .contrast{color:white;background-color:${value}}`);
+    assert.deepEqual(result.assetSlots, []); assert.deepEqual(result.diagnostics, []);
+  }
+  for (const value of ['url(local.png)', 'url(https://attacker.invalid/x.png)', 'linear-gradient(red,blue)', 'radial-gradient(red,blue)', 'var(--bg)', 'env(x)', 'none', 'red center', '#fff no-repeat', 'red,url(local.png)', 'color-mix(in srgb,red,blue)']) {
+    const result = sanitizeRichMddStylesheet(Buffer.from(`.contrast{color:white;background:${value}}`), 'entry.css');
+    assert.equal(result.css, '.tf-rich-viewer .contrast{color:white}', value); assert.deepEqual(result.assetSlots, []);
+  }
+  const important = sanitizeRichMddStylesheet(Buffer.from('.keep{color:red;background:white!important;flex-flow:row wrap!important}'), 'entry.css');
+  assert.equal(important.css, '.tf-rich-viewer .keep{color:red}');
+});
+
+test('width queries become only the named article container, while color media retain their media scope', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    '@media (max-width:374px){.entry{flex-direction:column}}',
+    '@media screen and (max-width:800px){.entry{flex-wrap:wrap}}',
+    '@media (prefers-color-scheme:dark){.entry{background:#123;color:white}}',
+    '@media (prefers-color-scheme:light){.entry{background:white}}',
+    '@container page (max-width:500px){.escape{display:flex}}',
+    '@media (max-width:239px){.escape{color:red}}',
+    '@media (max-width:801px){.escape{color:red}}',
+    '@media (max-width:500px) and (prefers-color-scheme:dark){.escape{color:red}}'
+  ].join('')), 'entry.css');
+  assert.match(result.css, /@container tf-rich-article \(max-width: 374px\)\{\.tf-rich-viewer \.entry\{flex-direction:column\}\}/u);
+  assert.match(result.css, /@container tf-rich-article \(max-width: 800px\)/u);
+  assert.match(result.css, /@media \(prefers-color-scheme: dark\)\{\.tf-rich-viewer \.entry\{background-color:#123;color:white\}\}/u);
+  assert.match(result.css, /@media \(prefers-color-scheme: light\)/u);
+  assert.doesNotMatch(result.css, /@media[^{}]*max-width|@container page|\.escape/u);
+  assert.ok(result.diagnostics.includes('css.rule_filtered')); assert.ok(result.diagnostics.includes('css.media_filtered'));
+});
+
+test('ordinary list item flex directions use the same finite grammar without dictionary-specific exceptions', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from('ul.examples > li{display:flex;flex-direction:column;flex-wrap:wrap;min-width:0}li.synonym{display:flex;flex-direction:row-reverse}'), 'entry.css');
+  assert.equal(result.css, '.tf-rich-viewer ul.examples > li{display:flex;flex-direction:column;flex-wrap:wrap;min-width:0}.tf-rich-viewer li.synonym{display:flex;flex-direction:row-reverse}');
+  assert.deepEqual(result.diagnostics, []);
 });

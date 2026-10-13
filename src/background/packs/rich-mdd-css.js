@@ -19,7 +19,8 @@ const PROPERTIES = new Set([
   "padding", "padding-top", "padding-right", "padding-bottom", "padding-left", "border",
   "border-top", "border-right", "border-bottom", "border-left", "border-color", "border-width",
   "border-style", "border-collapse", "border-spacing", "display", "width", "max-width", "height",
-  "align-items", "justify-content", "position", "content"
+  "align-items", "justify-content", "position", "content", "min-width", "flex-direction",
+  "flex-flow", "flex-wrap", "flex-grow", "flex-shrink", "flex-basis", "flex", "gap", "row-gap", "column-gap"
 ]);
 const COLOR_NAMES = new Set([
   "black", "silver", "gray", "white", "maroon", "red", "purple", "fuchsia", "green", "lime",
@@ -115,7 +116,7 @@ function sanitizeList(list, context, depth) {
         return;
       }
       const nested = sanitizeList(node.block.children, context, depth + 1);
-      if (nested) output.push(`@media ${canonicalQuery}{${nested}}`);
+      if (nested) output.push(`@${canonicalQuery.kind} ${canonicalQuery.query}{${nested}}`);
       return;
     }
     if (node.type === "Atrule" && String(node.name).toLowerCase() === "font-face") return;
@@ -125,7 +126,8 @@ function sanitizeList(list, context, depth) {
 }
 
 function sanitizeDeclaration(declaration, context, allowContent = false) {
-  const property = String(declaration.property || "").toLowerCase();
+  const rawProperty = String(declaration.property || "").toLowerCase();
+  const property = rawProperty === "background" ? "background-color" : rawProperty;
   if (property === "font-family" && !declaration.important) return sanitizeRichFontFamily(declaration.value, context.fonts.families);
   if (!PROPERTIES.has(property) || declaration.important) return "";
   if (property === "content") {
@@ -230,11 +232,11 @@ function normalizeMedia(prelude) {
   if (features.length !== 1 || features[0].type !== "Feature" || features[0].kind !== "media") return "";
   const feature = features[0], value = feature.value;
   if (!query.mediaType && feature.name === "prefers-color-scheme" && value?.type === "Identifier" && ["dark", "light"].includes(value.name)) {
-    return `(prefers-color-scheme: ${value.name})`;
+    return { kind: "media", query: `(prefers-color-scheme: ${value.name})` };
   }
   if (feature.name !== "max-width" || value?.type !== "Dimension" || value.unit !== "px" || !/^\d{3}$/u.test(value.value)) return "";
   const width = Number(value.value);
-  return width >= 240 && width <= 800 ? `${query.mediaType ? "screen and " : ""}(max-width: ${width}px)` : "";
+  return width >= 240 && width <= 800 ? { kind: "container", query: `tf-rich-article (max-width: ${width}px)` } : "";
 }
 
 function safeValue(property, value, hasAsset) {
@@ -256,7 +258,29 @@ function safeValue(property, value, hasAsset) {
   if (property === "border-style") return /^(?:none|solid|dotted|dashed|double)$/u.test(value);
   if (SPACING_PROPERTIES.test(property)) return value.split(/\s+/u).length <= (property === "margin" || property === "padding" ? 4 : 1) && value.split(/\s+/u).every((item) => item === "0" || safeSpacing(item, 64));
   if (BORDER_PROPERTIES.test(property)) return value.split(/\s+/u).length <= 3 && value.split(/\s+/u).every((item) => item === "0" || safeSpacing(item, 8) || /^(?:none|solid|dotted|dashed|double)$/u.test(item) || COLOR_NAMES.has(item) || /^#[0-9a-f]{3,8}$/u.test(item));
-  if (["display"].includes(property)) return /^(?:block|inline|inline-block|none|table|table-row|table-cell|flex)$/u.test(value);
+  if (["display"].includes(property)) return /^(?:block|inline|inline-block|none|table|table-row|table-cell|flex|inline-flex)$/u.test(value);
+  if (property === "flex-direction") return safeFlexDirection(value);
+  if (property === "flex-wrap") return safeFlexWrap(value);
+  if (property === "flex-flow") {
+    const values = value.split(/\s+/u);
+    return values.length === 1 ? safeFlexDirection(value) || safeFlexWrap(value) :
+      values.length === 2 && ((safeFlexDirection(values[0]) && safeFlexWrap(values[1])) || (safeFlexWrap(values[0]) && safeFlexDirection(values[1])));
+  }
+  if (property === "flex-grow" || property === "flex-shrink") return safeFlexFactor(value);
+  if (property === "flex-basis") return value === "auto" || safeFlexLength(value);
+  if (property === "flex") {
+    if (/^(?:none|auto|initial)$/u.test(value)) return true;
+    const values = value.split(/\s+/u);
+    if (!safeFlexFactor(values[0])) return false;
+    if (values.length === 1) return true;
+    if (values.length === 2) return safeFlexFactor(values[1]) || values[1] === "auto" || safeFlexLength(values[1]);
+    return values.length === 3 && safeFlexFactor(values[1]) && (values[2] === "auto" || safeFlexLength(values[2]));
+  }
+  if (property === "min-width") return safeFlexLength(value);
+  if (["gap", "row-gap", "column-gap"].includes(property)) {
+    const values = value.split(/\s+/u);
+    return values.length <= (property === "gap" ? 2 : 1) && values.every(item => item === "0" || safeSpacing(item, 64) || safeSpacing(item, 4, "em", "rem") || safeSpacing(item, 25, "%"));
+  }
   if (property === "position") return value === "relative";
   if (property === "align-items") return /^(?:center|stretch|flex-start|flex-end|baseline)$/u.test(value);
   if (property === "justify-content") return /^(?:flex-start|flex-end|center|space-between|space-around)$/u.test(value);
@@ -270,4 +294,11 @@ function safeSpacing(value, max, unit = "px", alternate = "") {
   const match = new RegExp(`^(\\d{1,3}(?:\\.\\d{1,2})?)(?:${units})$`, "u").exec(value);
   if (!match) return false;
   return Number(match[1]) <= max;
+}
+
+function safeFlexDirection(value) { return /^(?:row|row-reverse|column|column-reverse)$/u.test(value); }
+function safeFlexWrap(value) { return /^(?:nowrap|wrap|wrap-reverse)$/u.test(value); }
+function safeFlexFactor(value) { return /^(?:\d{1,2}(?:\.\d{1,2})?|\.\d{1,2})$/u.test(value) && Number(value) <= 16; }
+function safeFlexLength(value) {
+  return value === "0" || safeSpacing(value, 512) || safeSpacing(value, 40, "em", "rem") || safeSpacing(value, 100, "%");
 }
