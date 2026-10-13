@@ -127,10 +127,12 @@
         dictionary,
         isOpen: () => details.open,
         setLoading() {
+          clearPendingResult();
           setCardState(details, status, "loading", "content.rich.querying");
           body.replaceChildren();
         },
         setError(message, onRetry = null) {
+          clearPendingResult();
           setCardState(details, status, "error", "content.rich.queryFailed");
           body.replaceChildren();
           const failure = document.createElement("p");
@@ -152,6 +154,7 @@
           }
         },
         setEmpty(message = "content.rich.noMatch") {
+          clearPendingResult();
           setCardState(details, status, "empty", "content.rich.noMatchShort");
           body.replaceChildren();
           const empty = document.createElement("p");
@@ -160,10 +163,11 @@
           body.appendChild(empty);
           retryHandler = null;
         },
-        setResult(record, dictionaryId, onDisplay = null) {
+        setResult(record, dictionaryId, onDisplay = null, onError = null) {
+          clearPendingResult();
           setCardState(details, status, "success", "content.rich.complete");
           retryHandler = null;
-          pendingResult = { record, dictionaryId, onDisplay };
+          pendingResult = { record, dictionaryId, onDisplay, onError };
           if (details.open) renderPendingResult();
           else {
             const note = document.createElement("p");
@@ -173,6 +177,12 @@
           }
         }
       };
+
+      function clearPendingResult() {
+        pendingResult = null;
+        resultDisplayed = false;
+        retryHandler = null;
+      }
 
       function renderPendingResult() {
         if (!pendingResult || resultDisplayed) return;
@@ -184,7 +194,13 @@
 
       details.addEventListener("toggle", () => {
         if (!details.open) return;
-        renderPendingResult();
+        try {
+          renderPendingResult();
+        } catch {
+          const onError = pendingResult?.onError;
+          card.setError("content.rich.lookupUnavailable");
+          onError?.();
+        }
         if (typeof onLookup === "function") onLookup(dictionary, card);
       });
       cards.push(card);

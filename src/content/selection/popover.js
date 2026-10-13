@@ -19,6 +19,7 @@
   let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions;
   let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
   let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
+  let localEmptyOptions = null;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -196,7 +197,7 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
-    if (appended) { emptyState?.reset();
+    if (appended) {
       resultNode.hidden = false;
       reposition();
     }
@@ -207,11 +208,34 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
-    if (cards.length) { emptyState?.reset();
+    if (cards.length) {
       resultNode.hidden = false;
       reposition();
     }
     return cards.length > 0;
+  }
+
+  function updateRichDictionarySummary(snapshot, summary) {
+    if (snapshot !== activeSnapshot || panel?.hidden || !localEmptyOptions) return;
+    if (summary.hasHit) {
+      emptyState?.reset();
+      reposition();
+      return;
+    }
+    // A structured miss alone cannot establish the outcome of unqueried,
+    // running or failed rich dictionaries. Preserve explicit recovery actions.
+    let options = { ...localEmptyOptions, titleKey: "content.rich.title", messageKey: "content.rich.queryOnOpen" };
+    if (summary.listState === "pending" || summary.counts.queued || summary.counts.pending) {
+      options = { ...options, titleKey: "content.rich.title", messageKey: "content.rich.querying" };
+    } else if (summary.listState === "error" || summary.counts.error || summary.counts.unavailable) {
+      options = { ...options, titleKey: "content.rich.queryFailed", messageKey: "content.rich.temporarilyUnavailable" };
+    } else if (summary.counts.cancelled) {
+      options = { ...options, titleKey: "content.rich.title", messageKey: "content.rich.selectionChanged" };
+    } else if (summary.allNoHit || (summary.listState === "ready" && !summary.dictionaries.length)) {
+      options = localEmptyOptions;
+    }
+    emptyState.show(options);
+    reposition();
   }
 
   function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
@@ -251,7 +275,8 @@
     resultNode.replaceChildren();
     resultNode.hidden = false;
     hideActionButtons();
-    emptyState.show({ titleKey, messageKey, onExplain, onTranslate });
+    localEmptyOptions = { titleKey, messageKey, onExplain, onTranslate };
+    emptyState.show(localEmptyOptions);
     if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
@@ -337,6 +362,7 @@
   }
 
   function clearActionHandlers() {
+    localEmptyOptions = null;
     retryHandler = copyHandler = explainHandler = cancelHandler = null;
     vocabularyActions?.reset();
   }
@@ -374,6 +400,7 @@
     showResult,
     appendRichDictionaryDetails,
     appendRichDictionaryCards,
+    updateRichDictionarySummary,
     showVocabularyActions,
     showError,
     showEmpty,

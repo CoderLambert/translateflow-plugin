@@ -245,6 +245,66 @@ test.describe("multiple local rich dictionary cards", () => {
     expect(harness.server.calls).toHaveLength(0);
   });
 
+  test("structured and preferred misses leave unopened dictionaries neutral until a rich hit is displayed", async ({ harness }) => {
+    const options = await openOptions(harness);
+    const fallback = await installFixture(options, {
+      title: "Fixture Rich Outcome Hit", marker: "Rich outcome fallback definition",
+      fileName: "fixture-outcome-hit.mdx", lookupKey: "richoutcomeword"
+    });
+    const preferred = await installFixture(options, {
+      title: "Fixture Rich Outcome Preferred Miss", marker: "Unrelated fixture definition",
+      fileName: "fixture-outcome-preferred-miss.mdx", lookupKey: "unrelatedfixtureword"
+    });
+    await setDictionaryPreference(options, fallback.row, "expandedByDefault", false);
+    await promoteDictionaryToPreferred(options, preferred.row);
+    const page = await openOutcomeSelection(harness);
+    await installRichViewerMessageProbe(harness, page);
+    await selectElementText(page, "#rich-outcome-selection");
+    await page.locator(".tf-selection-chip").click();
+    const preferredCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${preferred.id}"]`);
+    const fallbackCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${fallback.id}"]`);
+    await expect(preferredCard).toHaveAttribute("data-state", "empty");
+    await expect(fallbackCard).toHaveJSProperty("open", false);
+    await expect(fallbackCard).toHaveAttribute("data-state", "idle");
+    await expect(page.locator(".tf-selection-empty-message")).toHaveText("展开后查询");
+    await expect(page.locator(".tf-selection-empty-title")).not.toHaveText("本地词典暂未收录");
+    expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP").map((message) => message.dictionaryId)).toEqual([preferred.id]);
+    await fallbackCard.locator("summary").click();
+    await expect(fallbackCard).toHaveAttribute("data-state", "success");
+    await expect(fallbackCard).toContainText("Rich outcome fallback definition");
+    await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
+    await expect(preferredCard).toHaveAttribute("data-state", "empty");
+    expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP").map((message) => message.dictionaryId)).toEqual([preferred.id, fallback.id]);
+    expect(harness.server.calls).toHaveLength(0);
+    await mkdir(evidenceDir, { recursive: true });
+    await page.screenshot({ path: resolve(evidenceDir, "structured-miss-preferred-miss-rich-hit.png"), fullPage: false });
+  });
+
+  test("all actual dictionary misses restore the global no-hit recovery surface", async ({ harness }) => {
+    const options = await openOptions(harness);
+    const first = await installFixture(options, {
+      title: "Fixture Outcome First Miss", marker: "First unrelated definition",
+      fileName: "fixture-outcome-first-miss.mdx", lookupKey: "unrelatedfixtureword"
+    });
+    const second = await installFixture(options, {
+      title: "Fixture Outcome Second Miss", marker: "Second unrelated definition",
+      fileName: "fixture-outcome-second-miss.mdx", lookupKey: "anotherfixtureword"
+    });
+    await setDictionaryPreference(options, second.row, "expandedByDefault", true);
+    const page = await openOutcomeSelection(harness);
+    await installRichViewerMessageProbe(harness, page);
+    await selectElementText(page, "#rich-outcome-selection");
+    await page.locator(".tf-selection-chip").click();
+    for (const { id } of [first, second]) {
+      await expect(page.locator(`.tf-selection-rich-record[data-dictionary-id="${id}"]`)).toHaveAttribute("data-state", "empty");
+    }
+    await expect(page.locator(".tf-selection-empty-title")).toHaveText("本地词典暂未收录");
+    await expect(page.locator(".tf-selection-empty-message")).toContainText("没有找到可靠的本地词典结果");
+    await expect(page.locator(".tf-selection-empty-actions")).toContainText("普通翻译");
+    expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP")).toHaveLength(2);
+    expect(harness.server.calls).toHaveLength(0);
+  });
+
   test("a corrupted dictionary reports its own error while another card and the structured primary render", async ({ harness }) => {
     const options = await openOptions(harness);
     const corrupt = await installFixture(options, {
@@ -276,6 +336,21 @@ test.describe("multiple local rich dictionary cards", () => {
     expect(harness.server.calls).toHaveLength(0);
   });
 });
+
+async function openOutcomeSelection(harness) {
+  const page = await harness.open("/selection");
+  const resolved = await harness.runtime({ type: "SELECTION_RESOLVE", text: "richoutcomeword", pageUrl: page.url(), context: null });
+  expect(resolved.ok).toBe(true);
+  expect(resolved.routeReason).toBe("no-hit-local");
+  await page.evaluate(() => {
+    const node = document.createElement("p");
+    node.id = "rich-outcome-selection";
+    node.textContent = "richoutcomeword";
+    document.body.appendChild(node);
+  });
+  await harness.inject(page);
+  return page;
+}
 
 async function openOptions(harness) {
   const options = await harness.context.newPage();
