@@ -13,6 +13,7 @@ export function makeRichMdx(entries, {
   compat = "No",
   format = "Html",
   encoding = "UTF-8",
+  keyOptions = { KeyCaseSensitive: "No", StripKey: "Yes" },
   keyBlockEntryCounts = [entries?.length || 0],
   keyBlockDescriptorOverrides = [],
   styleSheet = "1\n<b>\n</b>"
@@ -53,8 +54,8 @@ export function makeRichMdx(entries, {
     keyBlocks.push(keyBlock);
     keyDescriptors.push(Buffer.concat([
       u64be(blockEntryCount),
-      sizedKey(Buffer.from(descriptorOverride.firstKey ?? fixtureLookupKey(blockEntries[0][0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
-      sizedKey(Buffer.from(descriptorOverride.lastKey ?? fixtureLookupKey(blockEntries.at(-1)[0]), textEncoding), textEncoding === "utf16le" ? 2 : 1),
+      sizedKey(Buffer.from(descriptorOverride.firstKey ?? fixtureLookupKey(blockEntries[0][0], keyOptions), textEncoding), textEncoding === "utf16le" ? 2 : 1),
+      sizedKey(Buffer.from(descriptorOverride.lastKey ?? fixtureLookupKey(blockEntries.at(-1)[0], keyOptions), textEncoding), textEncoding === "utf16le" ? 2 : 1),
       u64be(keyBlock.byteLength),
       u64be(keyRaw.byteLength)
     ]));
@@ -94,8 +95,7 @@ export function makeRichMdx(entries, {
     ` Format="${escapeAttribute(format)}"`,
     ` Compact="${compact}"`,
     ` Compat="${compat}"`,
-    ' KeyCaseSensitive="No"',
-    ' StripKey="Yes"',
+    ...Object.entries(keyOptions).map(([name, value]) => ` ${name}="${escapeAttribute(value)}"`),
     ` Description="${escapeAttribute("Bounded security fixture")}"`,
     ` Title="${escapeAttribute(title)}"`,
     ` StyleSheet="${escapeAttribute(styleSheet)}"`,
@@ -172,9 +172,9 @@ function escapeAttribute(value) {
     .replaceAll(">", "&gt;");
 }
 
-function fixtureLookupKey(value) {
-  return String(value)
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[\p{P}\p{Z}\s]/gu, "");
+function fixtureLookupKey(value, options) {
+  let key = String(value).normalize("NFKC");
+  if (!/^yes$/iu.test(String(options.KeyCaseSensitive))) key = key.toLowerCase();
+  if (/^yes$/iu.test(String(options.StripKey ?? options.Stripkey))) key = key.replace(/[\p{P}\p{Z}\s]/gu, "");
+  return key;
 }

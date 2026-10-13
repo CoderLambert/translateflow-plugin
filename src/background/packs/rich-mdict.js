@@ -1,3 +1,4 @@
+import { createRichMdictIndexLoader } from "./rich-mdict-index-migration.js";
 import { createOpfsPackStore } from "./opfs-store.js";
 import { createPackStateStore } from "./state.js";
 import {
@@ -82,6 +83,8 @@ export function createRichMdictManager({
     storageManager,
     serialize
   });
+  const loadIndex = createRichMdictIndexLoader({ store, stateStore, cryptoProvider, buildIndex,
+    indexCache, serialize, assertSourceSize, sourceReader });
   const lookupController = createRichMdictLookupController({
     stateStore,
     lookup,
@@ -229,10 +232,6 @@ export function createRichMdictManager({
     return { dictionaries };
   }
 
-  function assertLookupNotAborted(signal) {
-    if (signal?.aborted) throw richMdictAbortError();
-  }
-
   function clampUtf8Text(value, maxBytes) {
     const text = String(value ?? "");
     const encoder = new TextEncoder();
@@ -315,30 +314,6 @@ export function createRichMdictManager({
     if (sourceSize !== snapshot.sourceSize) {
       throw richError("RICH_MDICT_CORRUPT", "Rich dictionary source size does not match its installed index.");
     }
-  }
-
-  async function loadIndex(snapshot, signal) {
-    assertLookupNotAborted(signal);
-    const size = await store.getFileSize(snapshot.packId, snapshot.packVersion, RICH_MDICT_INDEX_PATH);
-    assertLookupNotAborted(signal);
-    if (!Number.isSafeInteger(size) || size <= 0 || size > RICH_MDICT_MAX_INDEX_BYTES || size !== snapshot.indexSize) {
-      throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index is missing or has an invalid size.");
-    }
-    const key = cacheKey(snapshot);
-    const cached = indexCache.get(key);
-    if (cached) return cached;
-    const bytes = await store.readFile(snapshot.packId, snapshot.packVersion, RICH_MDICT_INDEX_PATH);
-    assertLookupNotAborted(signal);
-    const digest = await sha256(bytes, cryptoProvider);
-    assertLookupNotAborted(signal);
-    if (digest !== snapshot.indexSha256) {
-      throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index checksum failed.");
-    }
-    const index = parseIndex(bytes);
-    assertLookupNotAborted(signal);
-    assertIndexMatchesMetadata(index, snapshot);
-    indexCache.set(key, index);
-    return index;
   }
 
   async function releaseReservation(requestId, packId, packVersion) {

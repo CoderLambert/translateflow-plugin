@@ -46,23 +46,7 @@ export async function buildRichMdictIndex({
   const rangeSource = withMdictAbortSignal(source, signal);
   throwIfAborted(signal);
   const sourceSize = validateMdictSource(rangeSource, limits);
-  const headerSizeBytes = await readSourceRange(rangeSource, 0, 4);
-  const headerBytesLength = readMdictUint32Be(headerSizeBytes, 0);
-  requireMdictAtMost(
-    headerBytesLength,
-    limits.headerBytes,
-    "MDict header bytes"
-  );
-  const headerAndLength = await readSourceRange(
-    rangeSource,
-    0,
-    headerBytesLength + 8
-  );
-  const header = parseRichMdictHeader(
-    headerAndLength,
-    limits
-  );
-  const keyPreambleOffset = headerBytesLength + 8;
+  const { header, keyPreambleOffset } = await readRichMdictSourceHeader({ source: rangeSource, limits, signal });
   const preambleBytes = await readSourceRange(
     rangeSource,
     keyPreambleOffset,
@@ -248,6 +232,28 @@ export async function buildRichMdictIndex({
   );
   validateRichMdictIndex(index, { sourceSize, limits });
   return index;
+}
+
+export async function readRichMdictSourceHeader({ source, limits = RICH_MDICT_IMPORT_LIMITS, signal } = {}) {
+  const rangeSource = withMdictAbortSignal(source, signal);
+  validateMdictSource(rangeSource, limits);
+  const headerSizeBytes = await readSourceRange(rangeSource, 0, 4);
+  const headerBytesLength = readMdictUint32Be(headerSizeBytes, 0);
+  requireMdictAtMost(
+    headerBytesLength,
+    limits.headerBytes,
+    "MDict header bytes"
+  );
+  const headerAndLength = await readSourceRange(
+    rangeSource,
+    0,
+    headerBytesLength + 8
+  );
+  const header = parseRichMdictHeader(
+    headerAndLength,
+    limits
+  );
+  return { header, keyPreambleOffset: headerBytesLength + 8 };
 }
 
 export function assertRichMdictIndex(index, source) {
