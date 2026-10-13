@@ -1,0 +1,429 @@
+{
+  "schema": 1,
+  "task": "oxford-radio-css",
+  "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+  "tree": "94291e39e4bb8f3ff842a77eda0ab79edf7ab07f",
+  "inputTree": "871fd0402e288d49158b4457820c966a70bfb9f280d42cafce126ed4ee656ee6",
+  "frozenAt": "2026-10-13T08:25:58.344Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 10.398368,
+      "startedAt": "2026-10-13T08:25:58.684Z",
+      "log": "docs/task-execution/local/oxford-radio-css/e63aa75f-c9e4-448d-8903-864bae4d93f1.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/rich-mdict-security.test.mjs",
+        "tests/rich-dictionary-sanitizer.test.mjs",
+        "tests/rich-viewer-contract.test.mjs",
+        "tests/rich-mdd-css.test.mjs",
+        "tests/selection-rich-outcome.test.mjs",
+        "tests/selection-multi-dictionary.test.mjs",
+        "tests/rich-controls.test.mjs",
+        "tests/constants.test.mjs",
+        "tests/rich-resource-resolver.test.mjs"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 580.854241,
+      "startedAt": "2026-10-13T08:25:58.835Z",
+      "log": "docs/task-execution/local/oxford-radio-css/a0c9e6c6-6c42-4586-a48e-07c4b215f061.log",
+      "logSha256": "4dc133ccd1d3c0192c2fca671b25e922e63a91f106e4efe4898c7876a99770fd"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 45168.718542,
+      "startedAt": "2026-10-13T08:25:59.560Z",
+      "log": "docs/task-execution/local/oxford-radio-css/cfcd3965-b6f6-462c-9b5c-b0c474b92960.log",
+      "logSha256": "f357294a60ea5cb29ee75e61fa6af49e8f5f433b74fa9503aef0fccaa11ee314"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2094.540543,
+      "startedAt": "2026-10-13T08:26:44.860Z",
+      "log": "docs/task-execution/local/oxford-radio-css/fb38c641-670d-4c72-ae81-4cec0a9fbd64.log",
+      "logSha256": "fc2da2b2bba6e0251cc2d6e2fbc503d82872d96e9957ab3c80400e7b8402b861"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1016.683456,
+      "startedAt": "2026-10-13T08:26:47.081Z",
+      "log": "docs/task-execution/local/oxford-radio-css/24013377-cd72-4dd6-b905-518ea1e5268f.log",
+      "logSha256": "17e4cbd7e4bc618030d2862507dfed850d8d27b57b18ee171fc422f03114fabd"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 163.378607,
+      "startedAt": "2026-10-13T08:26:48.231Z",
+      "log": "docs/task-execution/local/oxford-radio-css/0e4787e7-710d-4821-85b9-f5958f2a8459.log",
+      "logSha256": "8cd348f99919217cc6743562f0889ac442ddd8d3d92223af05db2ac976468fc0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 165.923458,
+      "startedAt": "2026-10-13T08:26:48.531Z",
+      "log": "docs/task-execution/local/oxford-radio-css/8d33e2c6-1faf-402b-946e-1fb33033af33.log",
+      "logSha256": "77cb8ff3c21c358d774ea093d7368dcc298267088550928b222343f80fb387da"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/oxford-radio-css.spec.mjs",
+        "e2e/rich-mdict-records.spec.mjs",
+        "e2e/multi-dictionary-viewer.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/rich-viewer-security.spec.mjs",
+        "e2e/mdd-resources.spec.mjs"
+      ],
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 32064.381498,
+      "startedAt": "2026-10-13T08:26:48.829Z",
+      "log": "docs/task-execution/local/oxford-radio-css/5f0613e0-82fc-442c-9c9d-e6aafad7a747.log",
+      "logSha256": "11f5981c3b59ede73e760f81e25afbf5821fb0cbf1959d3a9661d9e56f680ff8"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "183ee7a3e89a8b3e37e8e1cfb83afbe490d27f1c7f9a0567e62c2eee07371dce"
+  },
+  "limitations": [
+    "同一六文件私有包；本切片实际选择5个支持文件，JS不导入不执行。六文件全选旧候选预检FAIL/install NOT_RUN；待#269/#273收口，不作#274终验。",
+    "字体/static SVG、entry/back/forward、hint/unbox/illustration、失败恢复未据本片验收；#271/#272/#273/#274继续open。",
+    "真实tail检查为有正文末尾且viewer无内部max-height；不替代完整长词条最终验收。",
+    "heap/RSS NOT_MEASURED；cache预算按用户反馈延后。",
+    "GitHub workflows为dispatch-only；当前无required CI。合并前仍核对远端准确head/base/checks/threads及保护。"
+  ],
+  "realOxfordRadio": {
+    "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
+    "artifactInventory": "6f8384252f9a0728e393794032e4073f80b13148b841f6a0d3fe3d1b13acec3e",
+    "artifactFiles": 120,
+    "artifactBytes": 2432985,
+    "selectedFiles": 5,
+    "selectedRoles": [
+      "css",
+      "mdd",
+      "mdd",
+      "mdx",
+      "png"
+    ],
+    "excludedInertScript": true,
+    "freshProfile": true,
+    "reusedInstall": false,
+    "javascriptExecutionAllowed": false,
+    "install": "PASS",
+    "observations": [
+      {
+        "word": "arch",
+        "nodes": 268,
+        "labels": 3,
+        "radios": 3,
+        "checked": 1,
+        "script": 0,
+        "details": 1,
+        "viewportOverflow": false,
+        "footerPresent": true,
+        "states": [
+          {
+            "checked": 1,
+            "panels": [
+              "block",
+              "none",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "block",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "none",
+              "block"
+            ],
+            "focusInside": true
+          }
+        ],
+        "keyboard": "PASS",
+        "tail": {
+          "nonEmptyLast": true,
+          "viewportMaxHeight": "none"
+        },
+        "status": "PASS"
+      },
+      {
+        "word": "go",
+        "nodes": 11092,
+        "labels": 4,
+        "radios": 4,
+        "checked": 1,
+        "script": 0,
+        "details": 0,
+        "viewportOverflow": false,
+        "footerPresent": true,
+        "states": [
+          {
+            "checked": 1,
+            "panels": [
+              "block",
+              "none",
+              "none",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "block",
+              "none",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "none",
+              "block",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "none",
+              "none",
+              "block"
+            ],
+            "focusInside": true
+          }
+        ],
+        "keyboard": "PASS",
+        "tail": {
+          "nonEmptyLast": true,
+          "viewportMaxHeight": "none"
+        },
+        "status": "PASS"
+      }
+    ],
+    "afterRestart": [
+      {
+        "word": "arch",
+        "nodes": 268,
+        "labels": 3,
+        "radios": 3,
+        "checked": 1,
+        "script": 0,
+        "details": 1,
+        "viewportOverflow": false,
+        "footerPresent": true,
+        "states": [
+          {
+            "checked": 1,
+            "panels": [
+              "block",
+              "none",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "block",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "none",
+              "block"
+            ],
+            "focusInside": true
+          }
+        ],
+        "keyboard": "PASS",
+        "tail": {
+          "nonEmptyLast": true,
+          "viewportMaxHeight": "none"
+        },
+        "status": "PASS"
+      },
+      {
+        "word": "go",
+        "nodes": 11092,
+        "labels": 4,
+        "radios": 4,
+        "checked": 1,
+        "script": 0,
+        "details": 0,
+        "viewportOverflow": false,
+        "footerPresent": true,
+        "states": [
+          {
+            "checked": 1,
+            "panels": [
+              "block",
+              "none",
+              "none",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "block",
+              "none",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "none",
+              "block",
+              "none"
+            ],
+            "focusInside": true
+          },
+          {
+            "checked": 1,
+            "panels": [
+              "none",
+              "none",
+              "none",
+              "block"
+            ],
+            "focusInside": true
+          }
+        ],
+        "keyboard": "PASS",
+        "tail": {
+          "nonEmptyLast": true,
+          "viewportMaxHeight": "none"
+        },
+        "status": "PASS"
+      }
+    ],
+    "providerCalls": 0,
+    "externalRequests": 0,
+    "browser": "Google Chrome for Testing 153.0.8010.12",
+    "status": "PASS",
+    "packageSourceBytes": 1533010812,
+    "inputRoles": [
+      {
+        "role": "css",
+        "size": 61996
+      },
+      {
+        "role": "js",
+        "size": 14852
+      },
+      {
+        "role": "mdd",
+        "size": 1463189889
+      },
+      {
+        "role": "mdd",
+        "size": 30900438
+      },
+      {
+        "role": "mdx",
+        "size": 38807694
+      },
+      {
+        "role": "png",
+        "size": 35943
+      }
+    ],
+    "summaryLog": "docs/task-execution/local/oxford-radio-css/real-radio-summary.json",
+    "summarySha256": "2161cb4b4a7864fd4f3416f0252a1cb0891b1b89c1ed88081f15a622744d7087",
+    "rawReportSha256": "091c0eab5b91363e5dd6d72f3793783d8ca3e9429a5462a82389040642000680"
+  }
+}

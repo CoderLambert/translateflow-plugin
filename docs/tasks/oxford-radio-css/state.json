@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "oxford-radio-css",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "rich-multiple-records"
   ],
   "branch": "fix/oxford-rich-layout-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-layout-20261013",
-  "candidateHead": null,
+  "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -69,5 +69,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "真实radio全状态/必要CSS规则统计后，执行单一generic结构样式切片；字体/SVG后续。"
+  "nextAction": "exact-head验收与独审通过；准确远端head/base/threads/checks核对后guarded squash merge，post-main验证。"
 }

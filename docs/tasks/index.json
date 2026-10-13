@@ -266,12 +266,12 @@
     },
     {
       "task": "oxford-radio-css",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "rich-multiple-records"
       ],
       "branch": "fix/oxford-rich-layout-20261013",
-      "candidateHead": null
+      "candidateHead": "9c7b2aa67ea8809a05aac53717a40564ae405734"
     },
     {
       "task": "path-safety",
