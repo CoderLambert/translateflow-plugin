@@ -21,10 +21,16 @@
       "node",
       "--test",
       "tests/rich-mdict-records.test.mjs",
+      "tests/rich-viewer-contract.test.mjs",
+      "tests/rich-dictionary-sanitizer.test.mjs",
+      "tests/selection-multi-dictionary.test.mjs",
+      "tests/selection-rich-outcome.test.mjs",
       "tests/rich-mdict-format.test.mjs",
       "tests/rich-mdict-product.test.mjs",
-      "tests/selection-rich-outcome.test.mjs",
-      "tests/selection-multi-dictionary.test.mjs"
+      "tests/rich-mdict-security.test.mjs",
+      "tests/rich-mdict-storage.test.mjs",
+      "tests/rich-mdict-lookup-cancellation.test.mjs",
+      "tests/rich-mdict-index-migration.test.mjs"
     ],
     [
       "npm",
