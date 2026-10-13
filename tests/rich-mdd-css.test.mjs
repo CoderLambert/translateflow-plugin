@@ -112,9 +112,9 @@ test("CSS visits rejected source rules before late state rules without spending 
 });
 
 test("accepted-rule and expanded UTF8 output overflow return diagnostics and no partial style", () => {
-  const edge = sanitizeRichMddStylesheet(Buffer.from('.x{color:red}'.repeat(512)), "entry.css");
+  const edge = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 512 }, (_, index) => `.x${index}{color:red}`).join('')), "entry.css");
   assert.equal((edge.css.match(/color:red/gu) || []).length, 512);
-  const extra = sanitizeRichMddStylesheet(Buffer.from('.x{color:red}'.repeat(513)), "entry.css");
+  const extra = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 513 }, (_, index) => `.x${index}{color:red}`).join('')), "entry.css");
   assert.equal(extra.css, ""); assert.ok(extra.diagnostics.includes("css.accepted_rule_limit"));
   const ids = Array.from({ length: 512 }, (_, index) => '#' + ('x'.repeat(76) + index) + '{color:red}').join('');
   assert.ok(Buffer.byteLength(ids) < 64 * 1024);
@@ -263,7 +263,7 @@ test('min-width and gap accept their exact finite boundaries without altering ru
   const declarations = '.ok{' + 'min-width:0;'.repeat(13) + '}';
   const limited = sanitizeRichMddStylesheet(Buffer.from(declarations), 'entry.css');
   assert.equal((limited.css.match(/min-width:0/gu) || []).length, 12); assert.ok(limited.diagnostics.includes('css.declaration_limit'));
-  const rules = sanitizeRichMddStylesheet(Buffer.from('.ok{display:inline-flex}'.repeat(513)), 'entry.css');
+  const rules = sanitizeRichMddStylesheet(Buffer.from(Array.from({ length: 513 }, (_, index) => `.ok${index}{display:inline-flex}`).join('')), 'entry.css');
   assert.equal(rules.css, ''); assert.ok(rules.diagnostics.includes('css.accepted_rule_limit'));
 });
 
@@ -304,4 +304,40 @@ test('ordinary list item flex directions use the same finite grammar without dic
   const result = sanitizeRichMddStylesheet(Buffer.from('ul.examples > li{display:flex;flex-direction:column;flex-wrap:wrap;min-width:0}li.synonym{display:flex;flex-direction:row-reverse}'), 'entry.css');
   assert.equal(result.css, '.tf-rich-viewer ul.examples > li{display:flex;flex-direction:column;flex-wrap:wrap;min-width:0}.tf-rich-viewer li.synonym{display:flex;flex-direction:row-reverse}');
   assert.deepEqual(result.diagnostics, []);
+});
+
+test('identical sanitized rules keep their last source position across an intervening overriding rule', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from('.a{color:red}.b{color:blue}.a{color:red}'), 'entry.css');
+  assert.equal(result.css, '.tf-rich-viewer .b{color:blue}.tf-rich-viewer .a{color:red}');
+  const normalized = sanitizeRichMddStylesheet(Buffer.from('.a{background: red;position:fixed}.b{color:blue}.a{background-color:red}'), 'entry.css');
+  assert.equal(normalized.css, '.tf-rich-viewer .b{color:blue}.tf-rich-viewer .a{background-color:red}');
+  const different = sanitizeRichMddStylesheet(Buffer.from('.a{color:red}.a{color:blue}.a{color:red;font-weight:bold}'), 'entry.css');
+  assert.equal((different.css.match(/\.a\{/gu) || []).length, 3, 'only the complete safe rule may be deduplicated');
+});
+
+test('deduplication is local to each rule list and never crosses media or article-container conditions', () => {
+  const result = sanitizeRichMddStylesheet(Buffer.from([
+    '.same{color:red}',
+    '@media(prefers-color-scheme:dark){.same{color:red}.same{color:red}}',
+    '@media(prefers-color-scheme:light){.same{color:red}}',
+    '@media(max-width:500px){.same{color:red}.same{color:red}}',
+    '@media(max-width:500px){.same{color:red}}',
+    '.same{color:red}'
+  ].join('')), 'entry.css');
+  assert.equal((result.css.match(/\.same\{color:red\}/gu) || []).length, 5);
+  assert.equal((result.css.match(/@container tf-rich-article/gu) || []).length, 2, 'separate blocks remain separate even with the same query');
+  assert.ok(result.css.endsWith('.tf-rich-viewer .same{color:red}')); assert.ok(result.css.startsWith('@media (prefers-color-scheme: dark)'));
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test('output counts retained rules while duplicate source rules still consume the unchanged visit budget', () => {
+  const edge = sanitizeRichMddStylesheet(Buffer.from('.same{display:inline-flex}'.repeat(1024)), 'entry.css');
+  assert.equal(edge.css, '.tf-rich-viewer .same{display:inline-flex}'); assert.deepEqual(edge.diagnostics, []);
+  const extra = sanitizeRichMddStylesheet(Buffer.from('.same{display:inline-flex}'.repeat(1025)), 'entry.css');
+  assert.equal(extra.css, ''); assert.ok(extra.diagnostics.includes('css.rule_limit'));
+  const nested = '@media(max-width:500px){.same{color:red}.same{color:red}}';
+  const allowed = sanitizeRichMddStylesheet(Buffer.from(nested.repeat(512)), 'entry.css');
+  assert.equal((allowed.css.match(/\.same\{color:red\}/gu) || []).length, 512); assert.deepEqual(allowed.diagnostics, []);
+  const over = sanitizeRichMddStylesheet(Buffer.from('@media(max-width:500px){.same{color:red}}'.repeat(513)), 'entry.css');
+  assert.equal(over.css, ''); assert.ok(over.diagnostics.includes('css.accepted_rule_limit'));
 });

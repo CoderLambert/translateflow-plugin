@@ -76,7 +76,7 @@ function sanitizeList(list, context, depth) {
     context.overflow = true; context.diagnostics.push("css.depth_limit");
     return "";
   }
-  const output = [];
+  const output = [], lastRules = new Map();
   list.forEach((node) => {
     if (node.type === "Rule") {
       if (++context.rules > MAX_VISITED_RULES) {
@@ -103,9 +103,8 @@ function sanitizeList(list, context, depth) {
         else context.diagnostics.push("css.declaration_filtered");
       });
       if (selectors.length && declarations.length) {
-        if (++context.accepted > MAX_OUTPUT_RULES) {
-          context.overflow = true; context.diagnostics.push("css.accepted_rule_limit");
-        } else output.push(`${selectors.join(",")}{${declarations.join(";")}}`);
+        const rule = `${selectors.join(",")}{${declarations.join(";")}}`;
+        lastRules.set(rule, output.length); output.push(rule);
       }
       return;
     }
@@ -122,7 +121,11 @@ function sanitizeList(list, context, depth) {
     if (node.type === "Atrule" && String(node.name).toLowerCase() === "font-face") return;
     context.diagnostics.push("css.rule_filtered");
   });
-  return output.join("");
+  // Within one condition/list, the last identical safe rule dominates every
+  // earlier copy. Keep its source position; conditional child lists stay separate.
+  context.accepted += lastRules.size;
+  if (context.accepted > MAX_OUTPUT_RULES) { context.overflow = true; context.diagnostics.push("css.accepted_rule_limit"); }
+  return output.filter((rule, index) => !lastRules.has(rule) || lastRules.get(rule) === index).join("");
 }
 
 function sanitizeDeclaration(declaration, context, allowContent = false) {
