@@ -1,29 +1,26 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.selection || !app?.modules.uiHost ||
-    !app?.modules.uiPrimitives || !app?.modules.selectionAiDetail || !app?.modules.selectionEmptyState ||
+    !app?.modules.uiPrimitives || !app?.modules.selectionViewTabs || !app?.modules.selectionEmptyState ||
     !app?.modules.selectionResultRenderer || app.modules.selectionPopover) return;
 
   const { installInteractionIsolation, clearPageSelection, positionPopover } = app.modules.selection;
   const locale = app.modules.contentI18n;
   const { getLayer, ownsNode, createFocusReturn, isEventInsidePanel: eventInsidePanel } = app.modules.uiHost;
   const { button, surface, status, setStatus } = app.modules.uiPrimitives;
-  const { create: createAiDetail } = app.modules.selectionAiDetail;
+  const { create: createViewTabs } = app.modules.selectionViewTabs;
   const { create: createEmptyState } = app.modules.selectionEmptyState;
   const createVocabularyActions = app.modules.selectionVocabularyActions?.create;
-  const { render: renderStructuredResult } = app.modules.selectionResultRenderer;
-  const { appendRichDictionaryDetails: appendRichDetails } = app.modules.selectionResultRenderer;
-  const { appendRichDictionaryCards: appendRichCards } = app.modules.selectionResultRenderer;
+  const { render: renderStructuredResult, appendRichDictionaryDetails: appendRichDetails,
+    appendRichDictionaryCards: appendRichCards, updateSource, setLocalizedStatus } = app.modules.selectionResultRenderer;
   const focusReturn = createFocusReturn();
-
-  let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions;
-  let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
-  let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
-  let localEmptyOptions = null, readingLayout;
+  let root, chip, panel, sourceNode, resultNode, workspace, tabList, emptyState, statusNode, vocabularyActions,
+    copyButton, retryButton, cancelButton, closeButton, activeSnapshot;
+  let translateHandler, retryHandler, copyHandler, dictionaryCopyHandler, explainHandler, cancelHandler, closeHandler,
+    localEmptyOptions = null, readingLayout, viewTabs;
 
   function ensureUi() {
     if (root?.isConnected) return;
-
     root = document.createElement("div");
     root.className = "tf-selection-ui";
 
@@ -49,28 +46,37 @@
 
     sourceNode = document.createElement("div");
     sourceNode.className = "tf-selection-source";
-
     statusNode = status({ className: "tf-selection-status" });
     statusNode.setAttribute("aria-live", "polite");
 
+    tabList = document.createElement("div");
+    tabList.className = "tf-selection-view-tabs";
+    tabList.setAttribute("role", "tablist");
+    locale.bindAttribute(tabList, "aria-label", "content.selection.viewTabsAria");
+    tabList.hidden = true;
+
+    workspace = document.createElement("div");
+    workspace.className = "tf-selection-workspace";
+
     resultNode = document.createElement("div");
-    resultNode.className = "tf-selection-result";
+    resultNode.className = "tf-selection-result tf-selection-view-panel tf-selection-dictionary-panel";
+    resultNode.id = "tf-selection-panel-dictionary";
+    resultNode.setAttribute("role", "tabpanel");
+    resultNode.setAttribute("aria-labelledby", "tf-selection-tab-dictionary");
     resultNode.setAttribute("aria-live", "polite");
-    aiDetail = createAiDetail({ container: resultNode, onResize: reposition });
     emptyState = createEmptyState({ container: resultNode, onResize: reposition });
     vocabularyActions = createVocabularyActions?.({ onResize: reposition }) || { ensure: () => document.createDocumentFragment(), show() {}, reset() {}, hide() {}, dispose() {} };
+    resultNode.appendChild(vocabularyActions.ensure());
+    workspace.appendChild(resultNode);
+    viewTabs = createViewTabs({ tabList, workspace, dictionaryPane: resultNode,
+      onDictionaryLeave: suspendDictionaryTransients,
+      onRequest: (event, action, handler) => handler(event, action),
+      onChange: syncView,
+      onResize: reposition });
 
     const actions = document.createElement("div");
     actions.className = "tf-selection-actions tf-selection-footer-actions";
 
-    explainButton = button({
-      text: locale.t("content.selection.aiDetail"),
-      label: locale.t("content.selection.aiDetailAria"),
-      className: "tf-selection-action-primary"
-    });
-    locale.bindText(explainButton, "content.selection.aiDetail");
-    locale.bindAttribute(explainButton, "aria-label", "content.selection.aiDetailAria");
-    explainButton.addEventListener("click", (event) => explainHandler?.(event));
     copyButton = button({ text: locale.t("content.common.copy"), className: "tf-selection-action-quiet" });
     locale.bindText(copyButton, "content.common.copy");
     copyButton.addEventListener("click", () => copyHandler?.());
@@ -81,11 +87,40 @@
     locale.bindText(cancelButton, "content.common.cancel");
     cancelButton.addEventListener("click", () => cancelHandler?.());
 
-    actions.append(explainButton, copyButton, retryButton, cancelButton);
-    panel.append(header, sourceNode, statusNode, resultNode, vocabularyActions.ensure(), actions);
+    actions.append(copyButton, retryButton, cancelButton);
+    panel.append(header, sourceNode, statusNode, tabList, workspace, actions);
     root.append(chip, panel);
     getLayer("selection").appendChild(root);
     readingLayout = app.modules.selection.createReadingLayout?.({ panel, result: resultNode, header, onResize: reposition });
+    viewTabs.selectDictionary();
+  }
+
+  function configureTabs(handler, visible) {
+    explainHandler = typeof handler === "function" ? handler : null;
+    viewTabs.configure(explainHandler, visible);
+  }
+
+  function syncView(view = viewTabs?.active?.() || "dictionary") {
+    if (!copyButton || !retryButton || !statusNode) return;
+    panel.dataset.selectionView = view;
+    readingLayout?.setActiveView?.(view);
+    copyHandler = view === "dictionary" ? dictionaryCopyHandler : viewTabs.copyHandler();
+    copyButton.hidden = typeof copyHandler !== "function";
+    retryButton.hidden = view !== "dictionary" || typeof retryHandler !== "function";
+    statusNode.hidden = !tabList.hidden && view !== "dictionary";
+    reposition();
+  }
+
+  function suspendDictionaryTransients() {
+    for (const host of resultNode?.querySelectorAll(".tf-selection-rich-text") || []) {
+      app.modules.richResourceResolver?.stopAudio(host);
+      app.modules.richResourceResolver?.closeImagePreview(host);
+    }
+    app.modules.richOxfordAdapter?.dismissTransients?.(resultNode);
+  }
+  function moveVocabularyActionsToEnd() {
+    const actions = vocabularyActions?.ensure?.();
+    if (actions?.parentNode === resultNode) resultNode.appendChild(actions);
   }
 
   function showChip(snapshot, onTranslate) {
@@ -109,12 +144,15 @@
     chip.hidden = true;
     panel.hidden = false;
     clearPageSelection();
-    updateSource(snapshot);
+    updateSource(sourceNode, snapshot);
     setLocalizedStatus(statusNode, loadingMessage, "content.selection.loadingText", "loading");
-    aiDetail?.reset();
+    viewTabs.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
+    resultNode.appendChild(vocabularyActions.ensure());
     resultNode.hidden = true;
+    configureTabs(null, false);
+    viewTabs.selectDictionary();
     hideActionButtons();
     cancelButton.hidden = false;
     cancelButton.disabled = false;
@@ -143,21 +181,21 @@
     ensureUi();
     activeSnapshot = snapshot;
     clearActionHandlers();
-    copyHandler = onCopy;
+    dictionaryCopyHandler = typeof onCopy === "function" ? onCopy : null;
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     vocabularyActions.show({ onSave: onSaveVocabulary, onOpen: onOpenVocabulary,
       current: () => snapshot === activeSnapshot && !panel?.hidden });
     chip.hidden = true;
     panel.hidden = false;
-    updateSource(snapshot, result);
+    updateSource(sourceNode, snapshot, result);
     locale.unbind(statusNode); setStatus(statusNode, "", "success");
-    renderResult(result);
-    if (explainHandler) aiDetail.choices(explainHandler);
+    const hasGenerated = renderResult(result);
+    configureTabs(explainHandler, Boolean(explainHandler || hasGenerated));
+    viewTabs.selectDictionary();
     resultNode.hidden = false;
     cancelButton.hidden = true;
-    copyButton.hidden = false;
-    explainButton.hidden = !explainHandler;
     retryButton.hidden = true;
+    syncView();
     position(snapshot, panel);
   }
 
@@ -170,28 +208,32 @@
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     chip.hidden = true;
     panel.hidden = false;
-    updateSource(snapshot);
+    updateSource(sourceNode, snapshot);
     setLocalizedStatus(statusNode, message, "content.selection.errorRetry", "error");
-    aiDetail?.reset();
+    viewTabs.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
-    resultNode.hidden = true;
+    resultNode.appendChild(vocabularyActions.ensure());
+    resultNode.hidden = false;
+    configureTabs(explainHandler, Boolean(explainHandler));
+    viewTabs.selectDictionary();
     cancelButton.hidden = true;
     copyButton.hidden = true;
-    explainButton.hidden = !explainHandler;
     retryButton.hidden = false;
     position(snapshot, panel);
   }
 
   function renderResult(input) {
     app.modules.richResourceResolver?.closeAll();
-    aiDetail?.reset();
+    viewTabs.reset();
     emptyState?.reset();
     const { generatedMeaning, explanation } = renderStructuredResult(resultNode, input);
-    aiDetail.ensure();
+    resultNode.appendChild(vocabularyActions.ensure());
     if (generatedMeaning || explanation) {
-      aiDetail.success({ generatedMeaning, explanation });
+      viewTabs.success("understand", { generatedMeaning, explanation });
+      return true;
     }
+    return false;
   }
 
   function appendRichDictionaryDetails(response) {
@@ -199,6 +241,7 @@
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
     if (appended) {
+      moveVocabularyActionsToEnd();
       resultNode.hidden = false;
       reposition();
     }
@@ -210,6 +253,7 @@
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
     if (cards.length) {
+      moveVocabularyActionsToEnd();
       resultNode.hidden = false;
       reposition();
     }
@@ -220,36 +264,18 @@
     if (snapshot !== activeSnapshot || panel?.hidden || !localEmptyOptions) return;
     if (summary.hasHit) {
       emptyState?.reset();
+      moveVocabularyActionsToEnd();
       reposition();
       return;
     }
     emptyState.show({ ...localEmptyOptions, ...summary.feedback });
+    moveVocabularyActionsToEnd();
     reposition();
   }
 
   function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
     if (snapshot !== activeSnapshot || panel?.hidden || typeof onSave !== "function") return false;
-    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); reposition(); return true; }
-  function updateSource(snapshot, result = null) {
-    const sourceText = String(snapshot?.text || "").trim();
-    const headword = String(result?.headword || "").trim();
-    const resultKind = String(result?.kind || "");
-    const lexicalResult = ["local", "technical", "explained"].includes(resultKind);
-    const duplicatesHeadword = lexicalResult
-      && headword
-      && normalizeDisplayText(sourceText) === normalizeDisplayText(headword);
-
-    sourceNode.textContent = sourceText;
-    sourceNode.hidden = !sourceText || duplicatesHeadword;
-    sourceNode.dataset.role = lexicalResult ? "lexical-source" : "selection-source";
-  }
-  function normalizeDisplayText(value) {
-    return String(value || "")
-      .normalize("NFKC")
-      .replace(/\s+/gu, " ")
-      .trim()
-      .toLocaleLowerCase("en-US");
-  }
+    vocabularyActions.show({ onSave, onOpen, current: () => snapshot === activeSnapshot && !panel?.hidden }); moveVocabularyActionsToEnd(); reposition(); return true; }
   function showEmpty(snapshot, { titleKey, messageKey, onExplain, onTranslate } = {}) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
@@ -257,60 +283,50 @@
     clearActionHandlers();
     chip.hidden = true;
     panel.hidden = false;
-    updateSource(snapshot);
+    updateSource(sourceNode, snapshot);
     locale.unbind(statusNode); setStatus(statusNode, "", "info");
-    aiDetail?.reset();
+    viewTabs.reset();
     emptyState?.reset();
     resultNode.replaceChildren();
+    resultNode.appendChild(vocabularyActions.ensure());
     resultNode.hidden = false;
     hideActionButtons();
-    localEmptyOptions = { titleKey, messageKey, onExplain, onTranslate };
+    localEmptyOptions = { titleKey, messageKey, onExplain: null, onTranslate };
     emptyState.show(localEmptyOptions);
-    if (typeof onExplain === "function") aiDetail.choices(onExplain);
+    moveVocabularyActionsToEnd();
+    explainHandler = typeof onExplain === "function" ? onExplain : null;
+    configureTabs(explainHandler, Boolean(explainHandler));
+    viewTabs.selectDictionary();
     position(snapshot, panel);
   }
-  function showAiDetailLoading(onCancel) {
-    ensureUi(); if (!resultNode || resultNode.hidden) return;
-    explainHandler = null; explainButton.hidden = true;
-    aiDetail.loading(onCancel);
+  function showAiDetailLoading(onCancel, action = "understand") {
+    ensureUi(); viewTabs.loading(action, onCancel);
   }
-  function showAiDetailStreaming(answer, onStop) {
-    ensureUi(); if (!resultNode) return; locale.unbind(statusNode); setStatus(statusNode, "", "info");
-    resultNode.hidden = false; explainHandler = null;
-    explainButton.hidden = cancelButton.hidden = true;
-    aiDetail.streaming(answer, onStop);
+  function showAiDetailStreaming(answer, onStop, action = "understand") {
+    ensureUi(); locale.unbind(statusNode); setStatus(statusNode, "", "info"); cancelButton.hidden = true;
+    viewTabs.streaming(action, answer, onStop);
   }
 
-  function showAiDetailStopping(answer) {
-    ensureUi(); if (!resultNode) return;
-    resultNode.hidden = false; cancelButton.hidden = true;
-    aiDetail.streaming(answer, null, true);
+  function showAiDetailStopping(answer, action = "understand") {
+    ensureUi(); cancelButton.hidden = true; viewTabs.stopping(action, answer);
   }
 
-  function showAiDetailInterrupted(answer, message, onRetry) {
-    ensureUi(); if (!resultNode) return;
-    resultNode.hidden = false; explainHandler = null; explainButton.hidden = true;
-    aiDetail.interrupted(answer, message, onRetry);
+  function showAiDetailInterrupted(answer, message, onRetry, action = "understand") {
+    ensureUi(); viewTabs.interrupted(action, answer, message, onRetry);
   }
 
-  function showAiDetailResult(result, onCopy) {
-    ensureUi(); if (!resultNode || resultNode.hidden) return; locale.unbind(statusNode); setStatus(statusNode, "", "success");
-    if (typeof onCopy === "function") copyHandler = onCopy;
-    explainHandler = null; explainButton.hidden = cancelButton.hidden = true;
-    copyButton.hidden = typeof onCopy !== "function";
-    aiDetail.success(result);
+  function showAiDetailResult(result, onCopy, action = "understand") {
+    ensureUi(); locale.unbind(statusNode); setStatus(statusNode, "", "success");
+    cancelButton.hidden = true;
+    viewTabs.success(action, result, typeof onCopy === "function" ? onCopy : null);
   }
 
-  function showAiDetailError(message, onRetry) {
-    ensureUi(); if (!resultNode || resultNode.hidden) return;
-    explainHandler = null; explainButton.hidden = true;
-    aiDetail.error(message, onRetry);
+  function showAiDetailError(message, onRetry, action = "understand") {
+    ensureUi(); viewTabs.error(action, message, onRetry);
   }
 
-  function showAiDetailCancelled(onRetry) {
-    ensureUi(); if (!resultNode || resultNode.hidden) return;
-    explainHandler = null; explainButton.hidden = true;
-    aiDetail.cancelled(onRetry);
+  function showAiDetailCancelled(onRetry, action = "understand") {
+    ensureUi(); viewTabs.cancelled(action, onRetry);
   }
 
   function focusPanelEntry() {
@@ -331,16 +347,16 @@
     chip = null;
     panel = null;
     sourceNode = null;
-    aiDetail?.reset();
+    viewTabs?.dispose(); viewTabs = null;
     emptyState?.reset();
     resultNode = null;
-    aiDetail = null;
+    workspace = null;
+    tabList = null;
     emptyState = null;
     statusNode = null;
     vocabularyActions?.dispose();
     vocabularyActions = null;
     copyButton = null;
-    explainButton = null;
     retryButton = null;
     cancelButton = null;
     closeButton = null;
@@ -353,23 +369,12 @@
 
   function clearActionHandlers() {
     localEmptyOptions = null;
-    retryHandler = copyHandler = explainHandler = cancelHandler = null;
+    retryHandler = copyHandler = dictionaryCopyHandler = explainHandler = cancelHandler = null;
     vocabularyActions?.reset();
   }
 
-  function setLocalizedStatus(node, message, fallbackKey, kind) {
-    setStatus(node, "", kind);
-    const descriptor = typeof message === "string"
-      ? { key: message.startsWith("content.") ? message : null, text: message, args: {} }
-      : { key: message?.key || fallbackKey, text: "", args: message?.args || {} };
-    if (descriptor.key) locale.bindText(node, descriptor.key, descriptor.args);
-    else {
-      locale.unbind(node);
-      node.textContent = descriptor.text || locale.t(fallbackKey);
-    }
-  }
   function hideActionButtons() {
-    cancelButton.hidden = copyButton.hidden = explainButton.hidden = retryButton.hidden = true;
+    cancelButton.hidden = copyButton.hidden = retryButton.hidden = true;
     vocabularyActions?.hide();
   }
   function setCloseHandler(handler) { closeHandler = typeof handler === "function" ? handler : null; }

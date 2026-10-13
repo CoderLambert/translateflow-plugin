@@ -273,7 +273,12 @@ async function createHarness(dictionaries, { listResponse = null, renderPlainTex
       status: ({ className }) => { const node = document.createElement("div"); node.className = className; return node; },
       setStatus: (node, text) => { node.textContent = text; }
     },
-    selectionAiDetail: { create: () => ({ reset() {}, ensure() {}, choices() {} }) },
+    selectionViewTabs: { create: () => ({ configure() {}, reset() {}, selectDictionary() {}, active: () => "dictionary", copyHandler: () => null,
+      loading() {}, streaming() {}, stopping() {}, interrupted() {}, success() {}, error() {}, cancelled() {}, dispose() {} }) },
+    selectionPopoverPresentation: {
+      updateSource(node, snapshot) { node.textContent = snapshot?.text || ""; },
+      setLocalizedStatus(node, message) { node.textContent = typeof message === "string" ? message : message?.key || ""; }
+    },
     selectionRichViewer: { renderPlainText }
   } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document, requestAnimationFrame: (callback) => callback() });

@@ -175,7 +175,7 @@ test("ordinary anchors and tracking-only URLs preserve active query while route 
   const page = await prepare(harness, '<main><p id="public">PUBLIC persistent connection remains.</p></main>');
   harness.server.setDelay(700);
   await query(harness, page, "#public", "persistent");
-  await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+  await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
   await expect.poll(() => harness.server.calls.length).toBe(1);
   // Explicit AI starts a fresh frozen capture; bind the identity before URL events.
   const before = await probe(harness, page, "current"), revision = await probe(harness, page, "revision");
@@ -259,9 +259,9 @@ test("same-text Range changes, pending insertion, removal and navigation cancel 
   for (const mode of ["range", "insert", "remove", "navigate"]) {
     if (mode === "remove") await page.evaluate(() => { const p = document.createElement("p"); p.id = "a"; p.textContent = "ALPHA persistent connection remains."; document.querySelector("main").prepend(p); });
     await query(harness, page, "#a", "persistent");
-    await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
     const callsBefore = harness.server.calls.length;
-    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect.poll(() => harness.server.calls.length).toBe(callsBefore + 1);
     const frozen = await probe(harness, page, "current"), revision = await probe(harness, page, "revision");
     if (mode === "range") await select(page, "#b", "persistent");

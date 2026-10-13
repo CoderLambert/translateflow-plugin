@@ -15,7 +15,7 @@ test("corrupt bundled lexicon stays diagnostic, actionable and Provider-free", a
   await expect(status).toContainText("设置 > 本地词典");
   await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeHidden();
+  await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeHidden();
   expect(harness.server.calls).toHaveLength(0);
 });
 

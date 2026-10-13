@@ -107,7 +107,7 @@
     const locale = app.modules.contentI18n;
     const toggle = app.modules.uiPrimitives.button({ text: "", className: "tf-selection-size-toggle" });
     toggle.hidden = true; header.insertBefore(toggle, header.lastElementChild);
-    let snapshot = null, manual = false, closed = false, frame = null;
+    let snapshot = null, manual = false, manualReading = false, activeView = "dictionary", closed = false, frame = null;
     const observed = new Set();
     const resize = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
     const mutation = typeof MutationObserver === "function" ? new MutationObserver(schedule) : null;
@@ -127,7 +127,8 @@
       const hosts = [...result.querySelectorAll('.tf-selection-rich-record[open] .tf-selection-rich-text')];
       for (const host of observed) if (!hosts.includes(host)) { resize?.unobserve(host); observed.delete(host); }
       for (const host of hosts) if (!observed.has(host)) { observed.add(host); resize?.observe(host); }
-      toggle.hidden = hosts.length === 0;
+      toggle.hidden = activeView !== "dictionary" || hosts.length === 0;
+      if (activeView !== "dictionary") return;
       if (!hosts.length || manual || panel.dataset.viewMode === "reading") return;
       // Vertical overflow also matters: wrapped columns can be unreadable without horizontal overflow.
       if (result.clientHeight > 0 && (result.scrollHeight > result.clientHeight + 8 || result.scrollWidth > result.clientWidth + 8)) {
@@ -135,11 +136,18 @@
       }
     }
     toggle.addEventListener("click", () => {
-      manual = true; setMode(panel.dataset.viewMode !== "reading"); onResize();
+      manual = true; manualReading = panel.dataset.viewMode !== "reading"; setMode(manualReading); onResize();
     });
     setMode(false);
     return {
-      update(next) { if (next !== snapshot) { snapshot = next; manual = false; setMode(false); } schedule(); },
+      update(next) { if (next !== snapshot) { snapshot = next; manual = false; manualReading = false; activeView = "dictionary"; setMode(false); } schedule(); },
+      setActiveView(view) {
+        activeView = view === "dictionary" ? "dictionary" : "ai";
+        if (activeView === "dictionary") setMode(manual ? manualReading : false);
+        else setMode(false);
+        schedule();
+        onResize();
+      },
       dispose() { closed = true; resize?.disconnect(); mutation?.disconnect(); observed.clear(); if (frame !== null) cancelAnimationFrame(frame); locale.unbindTree(toggle); }
     };
   }

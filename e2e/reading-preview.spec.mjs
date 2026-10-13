@@ -46,7 +46,7 @@ test("saved lookup details reopen from the highlighted word without exposing ans
   const original = await harness.open("/selection"); await harness.inject(original);
   await select(original, "#technical-competition", "session");
   await expect(original.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
-  await original.getByRole("button", { name: "Explain with AI using the surrounding context", exact: true }).click();
+  await original.getByRole("tab", { name: "AI understand: explain what this means here", exact: true }).click();
   await expect(original.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
   const listed = await message(center, M.LIST_RECORDS, { pageKey: null, query: "session", cursor: null, limit: 30 });
   expect(listed.data.items).toHaveLength(1);

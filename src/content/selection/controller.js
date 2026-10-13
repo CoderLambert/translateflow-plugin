@@ -233,8 +233,7 @@
     const requestId = `assistant-${crypto.randomUUID()}`;
     const state = activeAssistant = { snapshot, capture, version, expectedPage, depth, baseCard, action, queryRecord, operation,
       requestId, partial: "", sequence: 0, stopping: false, terminal: false, port: null };
-    if (!baseCard) popover.showLoading(snapshot, () => stopAssistant(true), "content.ai.connecting");
-    popover.showAiDetailStreaming("", () => stopAssistant(true));
+    popover.showAiDetailStreaming("", () => stopAssistant(true), action);
     try {
       const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
       port.onMessage.addListener(message => handleAssistantMessage(state, message));
@@ -259,7 +258,7 @@
     if (message.type === "delta") {
       if (message.sequence !== state.sequence || typeof message.text !== "string") return interruptAssistant(state, "content.ai.orderError");
       state.sequence++; state.partial += message.text;
-      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true));
+      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true), state.action);
       return;
     }
     if (message.type === "interrupted") {
@@ -273,7 +272,7 @@
     state.terminal = true; activeAssistant = null;
     try { state.port.disconnect(); } catch {}
     const answer = String(message.text || "");
-    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "content.selection.answerCopied"));
+    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "content.selection.answerCopied"), state.action);
     records?.accept(state.queryRecord, { kind: "assistant", targetLanguage: message.readingResult.targetLanguage,
       provenance: message.readingResult.provenance, payload: message.turn },
     { key: state.operation?.operationId, operation: state.operation, sourceLanguage: message.readingResult.sourceLanguage });
@@ -285,7 +284,7 @@
     if (!state || state.terminal || state.stopping) return;
     state.stopping = true;
     try { state.port?.postMessage({ type: "cancel", requestId: state.requestId }); } catch {}
-    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial);
+    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial, state.action);
   }
   function abandonAssistant() {
     const state = activeAssistant;
@@ -302,7 +301,7 @@
     void records?.discard(state.queryRecord, state.operation);
     if (isCurrentSelection(state.version, state.snapshot, state.expectedPage)) {
       popover.showAiDetailInterrupted(state.partial, message,
-        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action));
+        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action), state.action);
     }
   }
   function assistantLive(state) { return activeAssistant === state && !state.terminal && isCurrentSelection(state.version, state.snapshot, state.expectedPage); }

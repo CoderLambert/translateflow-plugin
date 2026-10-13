@@ -49,7 +49,7 @@ test("Content partial/Stop saves nothing; complete and grounded learning-center 
   const content = await harness.open("/selection"); await harness.inject(content);
   await select(content, "#technical-competition", "session");
   await expect(content.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
-  await content.getByRole("button", { name: "解释这里是什么意思" }).click();
+  await content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
   await expect(content.locator(".tf-selection-generated-body")).toContainText("streamed");
   await content.getByRole("button", { name: "停止 AI 回答", exact: true }).click();
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "interrupted");
@@ -95,10 +95,45 @@ test("A no-hit AI answer clears the temporary connection status after completion
   await harness.setStorage({ uiLocale: "zh_CN", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const content = await harness.open("/selection"); await harness.inject(content);
   await select(content, "#nohit", "TFNoSuchLexeme");
-  await content.getByRole("button", { name: "拆解这里的表达", exact: true }).click();
+  await content.getByRole("tab", { name: "AI 分析：拆解这里的表达", exact: true }).click();
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
   await expect(content.locator(".tf-selection-status")).toHaveText("");
   await expect(content.locator(".tf-selection-status")).toHaveAttribute("data-kind", "success");
+});
+
+test("Dictionary and AI tabs stay isolated, lazy and reusable within one selection", async ({ harness }) => {
+  test.setTimeout(60000); await harness.reset();
+  await harness.setStorage({ uiLocale: "zh_CN", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
+  const content = await harness.open("/selection"); await harness.inject(content);
+  await select(content, "#technical-competition", "session");
+  const dictionary = content.getByRole("tab", { name: "显示词典结果" });
+  const understand = content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" });
+  const analyze = content.getByRole("tab", { name: "AI 分析：拆解这里的表达" });
+  await expect(dictionary).toHaveAttribute("aria-selected", "true");
+  await expect(content.locator("#tf-selection-panel-dictionary")).toBeVisible();
+  expect(harness.server.calls).toHaveLength(0);
+
+  await dictionary.press("ArrowRight");
+  await expect(understand).toBeFocused();
+  expect(harness.server.calls).toHaveLength(0);
+  await understand.press("Enter");
+  await expect(content.locator("#tf-selection-panel-understand .tf-selection-generated-body")).toContainText("streamed");
+  await dictionary.click();
+  await expect(content.locator("#tf-selection-panel-dictionary")).toBeVisible();
+  await expect(content.locator("#tf-selection-panel-understand")).toBeHidden();
+  await expect(understand).toHaveAttribute("data-state", "success");
+  expect(harness.server.calls).toHaveLength(1);
+
+  await understand.click();
+  await expect(content.locator("#tf-selection-panel-understand .tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+  expect(harness.server.calls).toHaveLength(1);
+  await analyze.click();
+  await expect(content.locator("#tf-selection-panel-analyze .tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+  expect(harness.server.calls).toHaveLength(2);
+  expect(JSON.parse(harness.server.calls.at(-1).userContent)).toMatchObject({ question: "拆解这里的表达。" });
+  await understand.click();
+  await expect(content.locator("#tf-selection-panel-understand .tf-selection-generated-body")).toContainText("streamed answer");
+  expect(harness.server.calls).toHaveLength(2);
 });
 
 test("Narrow initial, streaming and completed AI panels stay inside the actual visual viewport", async ({ harness }) => {
@@ -107,7 +142,7 @@ test("Narrow initial, streaming and completed AI panels stay inside the actual v
   const content = await harness.open("/selection"); await content.setViewportSize({ width: 360, height: 420 }); await harness.inject(content);
   await select(content, "#technical-competition", "session");
   const initial = await geometry(content, "initial");
-  await content.getByRole("button", { name: "解释这里是什么意思" }).click();
+  await content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
   await expect(content.locator(".tf-selection-generated-body")).toContainText("streamed");
   const streaming = await geometry(content, "streaming");

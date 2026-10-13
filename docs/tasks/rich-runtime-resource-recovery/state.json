@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "rich-runtime-resource-recovery",
-  "status": "ready_to_sync",
+  "status": "working",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css"
   ],
   "branch": "fix/rich-runtime-assets-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
-  "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+  "candidateHead": null,
   "mergeHead": "",
   "validationCommands": [
     [
@@ -70,5 +70,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "同步已验收候选与产物到远端分支和用户当前加载目录；PR 保持 draft 等待实际界面复核。"
+  "nextAction": "等待用户在 Chrome 扩展页重新加载已同步安装目录并检查真实 Oxford 的词典/AI 标签切换；本任务后续资源恢复范围继续保持 working。"
 }

@@ -14,7 +14,7 @@ test("missing bundled lexicon remains a diagnostic error instead of a no-hit sta
   await expect(status).toContainText("内置本地词典资源缺失或不可读");
   await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeHidden();
+  await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeHidden();
   expect(harness.server.calls).toHaveLength(0);
 
   await page.getByRole("button", { name: "重试" }).click();

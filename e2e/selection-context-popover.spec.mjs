@@ -82,7 +82,7 @@ test.describe("Selection context and popover lifecycle", () => {
     });
 
     await openDetail(page);
-    await page.getByRole("button", { name: "解释这里是什么意思" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     const payload = JSON.parse(harness.server.calls.at(-1).userContent);
     expect(payload.text).toBe("persistent");
@@ -174,7 +174,7 @@ test.describe("Selection context and popover lifecycle", () => {
     await openDetail(page);
     harness.server.setDelay(600);
     const callsBefore = harness.server.calls.length;
-    await page.getByRole("button", { name: "解释这里是什么意思" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect.poll(() => harness.server.calls.length).toBe(callsBefore + 1);
     const call = harness.server.calls[callsBefore];
     expect(call.systemPrompt).toContain("Plain text only");
