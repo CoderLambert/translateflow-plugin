@@ -28,6 +28,7 @@
       isCurrentSelection,
       onResult,
       cancelled: false,
+      listState: "pending",
       cancelPromise: null,
       lookupStates: new Map(),
       queuedJobs: new Set(),
@@ -36,19 +37,37 @@
     };
     activeSession = session;
     startRouteWatcher();
+    publishSummary(session);
 
     try {
       const response = await sendRuntimeMessage({
         type: messages.background.RICH_MDICT_VIEWER_LIST
       });
-      if (!isLiveSession(session) || !response?.ok) return;
+      if (!isLiveSession(session)) return;
+      if (!response?.ok) {
+        session.listState = "error";
+        publishSummary(session);
+        return;
+      }
 
       const dictionaries = Array.isArray(response.dictionaries) ? response.dictionaries : [];
+      session.listState = "ready";
+      for (const dictionary of dictionaries) {
+        const id = String(dictionary?.id || "");
+        if (id) session.lookupStates.set(id, {
+          inFlight: false,
+          settled: false,
+          outcome: dictionary?.status && dictionary.status !== "ready" ? "unavailable" : "unqueried"
+        });
+      }
+      publishSummary(session);
       popover.appendRichDictionaryCards(dictionaries, (dictionary, card) => {
         void lookupDictionary(session, dictionary, card);
       });
     } catch {
-      // Detailed dictionary reads do not delay or replace the primary result.
+      if (!isLiveSession(session)) return;
+      session.listState = "error";
+      publishSummary(session);
     }
   }
 
@@ -56,6 +75,48 @@
     return activeSession === session
       && !session.cancelled
       && session.isCurrentSelection(session.version, session.snapshot, session.expectedPage);
+  }
+
+  // Only this session owns outcomes; cards and the popover consume snapshots.
+  function publishSummary(session) {
+    if (!isLiveSession(session)) return;
+    const counts = { unqueried: 0, queued: 0, pending: 0, hit: 0, "no-hit": 0, error: 0, cancelled: 0, unavailable: 0 };
+    const dictionaries = [...session.lookupStates].map(([id, state]) => {
+      counts[state.outcome] += 1;
+      return Object.freeze({ id, outcome: state.outcome });
+    });
+    const allNoHit = session.listState === "ready" && dictionaries.length > 0 && counts["no-hit"] === dictionaries.length;
+    const summary = Object.freeze({
+      version: session.version,
+      listState: session.listState,
+      dictionaries: Object.freeze(dictionaries),
+      counts: Object.freeze(counts),
+      hasHit: counts.hit > 0,
+      allNoHit,
+      feedback: createSummaryFeedback(session.listState, counts, allNoHit, dictionaries.length)
+    });
+    popover.updateRichDictionarySummary?.(session.snapshot, summary);
+  }
+
+  function createSummaryFeedback(listState, counts, allNoHit, dictionaryCount) {
+    // A structured miss cannot establish the outcome of unqueried, running or
+    // failed rich dictionaries. Null preserves the original no-hit recovery.
+    if (counts.hit) return null;
+    let titleKey = "content.rich.title", messageKey = "content.rich.queryOnOpen";
+    if (listState === "pending" || counts.queued || counts.pending) {
+      messageKey = "content.rich.querying";
+    } else if (listState === "error" || counts.error || counts.unavailable) {
+      titleKey = "content.rich.queryFailed";
+      messageKey = "content.rich.temporarilyUnavailable";
+    } else if (counts.cancelled) {
+      messageKey = "content.rich.selectionChanged";
+    } else if (allNoHit || (listState === "ready" && !dictionaryCount)) return null;
+    return Object.freeze({ titleKey, messageKey });
+  }
+
+  function setOutcome(session, state, outcome) {
+    state.outcome = outcome;
+    publishSummary(session);
   }
 
   async function lookupDictionary(session, dictionary, card) {
@@ -66,7 +127,7 @@
       let state = session.lookupStates.get(dictionaryId);
       if (state?.settled) return;
       if (!state) {
-        state = { inFlight: false, settled: true };
+        state = { inFlight: false, settled: true, outcome: "unqueried" };
         session.lookupStates.set(dictionaryId, state);
       } else {
         state.settled = true;
@@ -77,22 +138,25 @@
       card.setError(detail
         ? { key: "content.rich.currentUnavailableWithReason", args: { reason: detail } }
         : { key: "content.rich.currentUnavailable", args: {} });
+      setOutcome(session, state, "unavailable");
       return;
     }
 
     let state = session.lookupStates.get(dictionaryId);
     if (!state) {
-      state = { inFlight: false, settled: false };
+      state = { inFlight: false, settled: false, outcome: "unqueried" };
       session.lookupStates.set(dictionaryId, state);
     }
     const request = async (retry = false) => {
       if (!isLiveSession(session)) return;
       if (state.inFlight || (state.settled && !retry)) return;
       state.inFlight = true;
-      card.setLoading();
       try {
+        card.setLoading();
+        setOutcome(session, state, "queued");
         const requestId = createLookupRequestId();
-        const result = await scheduleLookup(session, requestId, card, () => {
+        state.requestId = requestId;
+        const result = await scheduleLookup(session, requestId, card, state, () => {
           if (!isLiveSession(session)) return null;
           return sendRuntimeMessage({
             type: messages.background.RICH_MDICT_LOOKUP,
@@ -105,6 +169,12 @@
         if (!result || !isLiveSession(session)) return;
 
         const lookupError = Array.isArray(result?.errors) ? result.errors[0] : null;
+        if (result.cancelled || result.errorCode === "CANCELLED" || lookupError?.code === "CANCELLED") {
+          state.settled = true;
+          card.setError("content.rich.selectionChanged", () => { void request(true); });
+          setOutcome(session, state, "cancelled");
+          return;
+        }
         if (!result?.ok || lookupError) {
           state.settled = true;
           const reason = safeErrorCode(result?.errorCode || lookupError?.code);
@@ -112,30 +182,39 @@
             ? { key: "content.rich.lookupUnavailableWithReason", args: { reason } }
             : { key: "content.rich.lookupUnavailable", args: {} },
           () => { void request(true); });
+          setOutcome(session, state, "error");
           return;
         }
 
         const records = Array.isArray(result.dictionaries) ? result.dictionaries : [];
         const record = records.find((item) => String(item?.id || "") === dictionaryId);
-        if (result.found && records.length && !record) {
+        if (result.found && !record) {
           state.settled = true;
           card.setError("content.rich.mismatch");
+          setOutcome(session, state, "error");
           return;
         }
         if (!result.found || !record) {
           state.settled = true;
           card.setEmpty();
+          setOutcome(session, state, "no-hit");
           return;
         }
 
         state.settled = true;
         card.setResult({ ...record, packageVersion: dictionary.packageVersion || "" }, dictionaryId, (displayed) => {
-          if (isLiveSession(session)) session.onResult?.(displayed, dictionary);
-        });
+          if (isLiveSession(session) && state.requestId === requestId) session.onResult?.(displayed, dictionary);
+        }, () => {
+          if (!isLiveSession(session) || state.requestId !== requestId || state.outcome !== "hit") return;
+          card.setError("content.rich.lookupUnavailable", () => { void request(true); });
+          setOutcome(session, state, "error");
+        }, () => isLiveSession(session) && state.requestId === requestId);
+        setOutcome(session, state, "hit");
       } catch {
         if (!isLiveSession(session)) return;
         state.settled = true;
         card.setError("content.rich.lookupUnavailable", () => { void request(true); });
+        setOutcome(session, state, "error");
       } finally {
         state.inFlight = false;
       }
@@ -144,12 +223,13 @@
     void request();
   }
 
-  function scheduleLookup(session, requestId, card, action) {
+  function scheduleLookup(session, requestId, card, state, action) {
     return new Promise((resolve, reject) => {
       const job = {
         session,
         requestId,
         card,
+        state,
         action,
         resolve,
         reject,
@@ -176,6 +256,7 @@
       Promise.resolve()
         .then(() => {
           if (!isLiveSession(job.session)) return null;
+          setOutcome(job.session, job.state, "pending");
           job.session.inFlightRequests.add(job.requestId);
           return job.action();
         })
@@ -219,6 +300,7 @@
     for (const job of pendingJobs) settleJob(job, null);
 
     for (const job of pendingJobs) {
+      job.state.outcome = "cancelled";
       job.card.setError("content.rich.selectionChanged");
     }
     const requestIds = [...session.inFlightRequests];

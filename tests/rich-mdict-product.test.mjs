@@ -140,7 +140,8 @@ test("Settings and selection expose local rich details while preserving the stri
   assert.match(localClient, /preflightLocalDictionaryFiles/u);
   assert.doesNotMatch(localUi, /dangerouslySetInnerHTML|innerHTML/u);
   assert.match(details, /RICH_MDICT_LOOKUP/u);
-  assert.match(details, /do not delay or replace the primary result/u);
+  // Primary preservation runs against the real popover/renderer in
+  // selection-rich-outcome.test.mjs: "rich outcomes never replace the structured primary".
   assert.match(renderer, /sanitizeRichDictionaryRecord\(richRecord\)/u);
   assert.match(renderer, /viewer\.render\(body, safeTree, fallback/u);
   assert.match(renderer, /viewer\.renderPlainText\(body, fallback\)/u);

@@ -19,6 +19,7 @@
   let root, chip, panel, sourceNode, resultNode, aiDetail, emptyState, statusNode, vocabularyActions;
   let copyButton, explainButton, retryButton, cancelButton, closeButton, activeSnapshot;
   let translateHandler, retryHandler, copyHandler, explainHandler, cancelHandler, closeHandler;
+  let localEmptyOptions = null;
 
   function ensureUi() {
     if (root?.isConnected) return;
@@ -196,7 +197,7 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const appended = appendRichDetails(resultNode, response);
-    if (appended) { emptyState?.reset();
+    if (appended) {
       resultNode.hidden = false;
       reposition();
     }
@@ -207,11 +208,22 @@
     ensureUi();
     if (!resultNode || panel.hidden) return false;
     const cards = appendRichCards(resultNode, dictionaries, onLookup);
-    if (cards.length) { emptyState?.reset();
+    if (cards.length) {
       resultNode.hidden = false;
       reposition();
     }
     return cards.length > 0;
+  }
+
+  function updateRichDictionarySummary(snapshot, summary) {
+    if (snapshot !== activeSnapshot || panel?.hidden || !localEmptyOptions) return;
+    if (summary.hasHit) {
+      emptyState?.reset();
+      reposition();
+      return;
+    }
+    emptyState.show({ ...localEmptyOptions, ...summary.feedback });
+    reposition();
   }
 
   function showVocabularyActions(snapshot, onSave, onOpen) { ensureUi();
@@ -251,7 +263,8 @@
     resultNode.replaceChildren();
     resultNode.hidden = false;
     hideActionButtons();
-    emptyState.show({ titleKey, messageKey, onExplain, onTranslate });
+    localEmptyOptions = { titleKey, messageKey, onExplain, onTranslate };
+    emptyState.show(localEmptyOptions);
     if (typeof onExplain === "function") aiDetail.choices(onExplain);
     position(snapshot, panel);
   }
@@ -337,6 +350,7 @@
   }
 
   function clearActionHandlers() {
+    localEmptyOptions = null;
     retryHandler = copyHandler = explainHandler = cancelHandler = null;
     vocabularyActions?.reset();
   }
@@ -374,6 +388,7 @@
     showResult,
     appendRichDictionaryDetails,
     appendRichDictionaryCards,
+    updateRichDictionarySummary,
     showVocabularyActions,
     showError,
     showEmpty,

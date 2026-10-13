@@ -272,6 +272,13 @@
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
     },
     {
+      "task": "rich-lookup-outcome",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "fix/rich-lookup-outcome-20261013",
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615"
+    },
+    {
       "task": "selection-vocabulary-book-v1",
       "status": "completed",
       "dependencies": [],

@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "task": "rich-lookup-outcome",
+  "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+  "tree": "e7f9ecdcdda0af37d927039a30c26d723e2107eb",
+  "inputTree": "deebfb4a928d07ca667f1775008e558d0ad6cc2cb1f4f942a0f93e21d26dc51f",
+  "frozenAt": "2026-10-13T05:33:38.350Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12 (Playwright channel chromium)"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11.32256,
+      "startedAt": "2026-10-13T05:33:43.371Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/b54361e8-3eb1-48b0-99e8-336f203f6d7f.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/selection-multi-dictionary.test.mjs",
+        "tests/multi-dictionary-viewer.test.mjs",
+        "tests/selection-rich-outcome.test.mjs"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 108.082559,
+      "startedAt": "2026-10-13T05:33:43.514Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/881bb1be-755d-4695-96d2-09879c1bcf25.log",
+      "logSha256": "291b8d537932a758bdb9bcd24079394188960b30d8da944dcc4835df87cc3010"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 43839.629385,
+      "startedAt": "2026-10-13T05:33:43.770Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/bf3e5bb3-69b5-4313-996e-5e7a4a0b07fd.log",
+      "logSha256": "9131c0fd92cfb8c0f6abf16bae13f945b4fc4a3addc5a03b00bf4ff11e8a117c"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2094.057867,
+      "startedAt": "2026-10-13T05:34:27.743Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/32375177-6bb0-4bc0-99af-2d9b76320665.log",
+      "logSha256": "aabeb3d7af52018d25f2b9aa985ae181e142f3e47d78c79efae9f67362df1b3c"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1020.20746,
+      "startedAt": "2026-10-13T05:34:29.978Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/d265ce92-fcde-4c50-a5eb-28a1f1c9f630.log",
+      "logSha256": "8b1e08ed7abc591685bf4bc55fe75a78368f8c2ef40779d7aff9a231fa3001b0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 158.200929,
+      "startedAt": "2026-10-13T05:34:31.130Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/0a448dd2-3c87-4312-8fe2-edb4b6f58074.log",
+      "logSha256": "894599f6c65e82eb0e273bad9d7fe1b57ad9f3138fd16f23264f248d782a9800"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 169.005364,
+      "startedAt": "2026-10-13T05:34:31.429Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/f76ec53e-eb3d-4b8f-95b4-5c87095d7b77.log",
+      "logSha256": "08ff2c137259dd1aea70c023353209e38b9e288ed9b5e41753dcc8723184b01a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/multi-dictionary-viewer.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/rich-viewer-security.spec.mjs",
+        "e2e/mdd-resources.spec.mjs"
+      ],
+      "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 27939.665396,
+      "startedAt": "2026-10-13T05:34:31.729Z",
+      "log": "docs/task-execution/local/rich-lookup-outcome/f2e90dda-1673-406b-adf8-10f14f725658.log",
+      "logSha256": "68ef43573c8e07e0489ed1f146a0cb2f8cbc3cd3bb14d77d3c9ac557fd0fe04f"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "824f7e5ab09c6a3e5cceb6d2ab26343fd76ba25e7dffe28ee05171f5dc4f3cac"
+  },
+  "limitations": [
+    "本切片为合成词典/临时扩展副本 Chromium/MV3 验收；不是真实 Oxford 六文件最终验收。",
+    "Provider=0由相关用户流程断言；external HTTP=0由安全和资源场景断言，不外推未执行页面。",
+    "物理音频输出、最低支持浏览器、真实私有包全流程、4GB性能 NOT RUN。",
+    "首次candidate静态行数失败、后续注释断言/派生投影失败及两个E2E事件采样失败保留ignored原日志，未改写为PASS。",
+    "E2E artifact-tree算法 hash 3d6f5e4f6f326305dfaa3c1e26bf1a8d95a39dcceb19188952a0f240a4210253；local-task artifact.treeSha256使用独立输入 fingerprint 算法，请分别引用。"
+  ]
+}
