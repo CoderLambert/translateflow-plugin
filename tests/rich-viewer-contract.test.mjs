@@ -185,6 +185,8 @@ test("Oxford disclosure and active pronunciation layout remain compact without d
   assert.match(staticCss, /\.o-pronunciation-set\.o-active \{ display: block; \}/u);
   assert.match(staticCss, /details\.o-unbox-panel\[open\] > \.o-unbox-body \{ display: block; \}/u);
   assert.match(staticCss, /summary\.o-unbox-tile \{ display: flex;/u);
+  assert.match(staticCss, /\.o-pos-body:has\(details\.o-unbox-panel\[open\]\) \{ flex-direction: column !important; \}/u);
+  assert.match(staticCss, /> \.o-pos-detail \{ flex: 0 0 auto !important; width: 100% !important; min-width: 0 !important; \}/u);
   assert.match(staticCss, /\.o-symbol-token > \.tf-rich-resource-image \{ display: inline-block; width: auto; height: 1\.05em; max-width: 3em;/u);
 });
 

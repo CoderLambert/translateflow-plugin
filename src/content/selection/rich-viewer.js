@@ -78,6 +78,9 @@
 .tf-rich-viewer details.o-unbox-panel[open] > .o-unbox-body { display: block; }
 .tf-rich-viewer details.o-unbox-panel .o-unbox-body-header { padding: 0 0 .4em; background: transparent; font: inherit; font-weight: 700; line-height: 1.35; }
 .tf-rich-viewer details.o-unbox-panel .o-unbox-body-content { padding: 0; }
+.tf-rich-viewer .o-pos-body:has(details.o-unbox-panel[open]) { flex-direction: column !important; }
+.tf-rich-viewer .o-pos-body:has(details.o-unbox-panel[open]) > .o-pos-extra,
+.tf-rich-viewer .o-pos-body:has(details.o-unbox-panel[open]) > .o-pos-detail { flex: 0 0 auto !important; width: 100% !important; min-width: 0 !important; }
 .tf-rich-placeholder { display: inline-flex; align-items: center; gap: .36em; min-height: 26px; padding: 3px 8px; border: 1px solid var(--tf-border-soft, #d8ddd4); border-radius: 999px; background: var(--tf-bg-subtle, #f1ece2); color: var(--tf-text-muted, #747d73); font-size: .84em; line-height: 1.25; vertical-align: middle; }
 .tf-rich-placeholder[data-rich-resource-kind="image"]::before { content: "▧"; color: var(--tf-green-700, #557b52); font-size: .92em; }
 .tf-rich-placeholder[data-state="loading"] { opacity: .72; }

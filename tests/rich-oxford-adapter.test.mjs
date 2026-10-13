@@ -55,7 +55,7 @@ for (const [count, pronunciationIndices] of [[3, [0, 1, 2]], [4, [0, 3]]]) test(
 for (const [name, change] of [
   ['noncanonical index', (html) => html.replace('data-pos-index="0"', 'data-pos-index="00"')],
   ['class conflict', (html) => html.replace('o-pos-radio-0', 'o-pos-radio-1')],
-  ['panel conflict', (html) => html.replace('o-for-pos-2"><p', 'o-for-pos-1"><p')],
+  ['panel conflict', (html) => html.replace('o-for-pos-2"><div class="o-pos-body"', 'o-for-pos-1"><div class="o-pos-body"')],
   ['label conflict', (html) => html.replace('for="pos-0" class="o-for-pos-0"', 'for="pos-0" class="o-for-pos-1"')],
   ['multiple switch', (html) => html + '<div class="o-pos-switch"></div>'],
   ['no word line', (html) => html.replace('o-word-line', 'generic-word')]
