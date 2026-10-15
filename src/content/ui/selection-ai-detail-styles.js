@@ -54,6 +54,10 @@
   justify-content: space-between;
   gap: 10px;
 }
+.tf-selection-translation-card[data-engine="browser"] .tf-selection-translation-header {
+  justify-content: flex-end;
+  margin-bottom: -5px;
+}
 .tf-selection-translation-label {
   color: var(--tf-green-800);
   font-size: 11px;

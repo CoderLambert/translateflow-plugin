@@ -59,10 +59,12 @@
     card.dataset.engine = result.browserDefinition || result.browserPair ? "browser" : "ai";
     const header = document.createElement("div");
     header.className = "tf-selection-translation-header";
-    const label = document.createElement("span");
-    label.className = "tf-selection-translation-label";
-    locale.bindText(label, card.dataset.engine === "browser" ? "content.basic.sourceBadge" : "content.selection.badgeTranslation");
-    header.appendChild(label);
+    if (card.dataset.engine !== "browser") {
+      const label = document.createElement("span");
+      label.className = "tf-selection-translation-label";
+      locale.bindText(label, "content.selection.badgeTranslation");
+      header.appendChild(label);
+    }
     appendTranslationCopy(header, result.primaryMeaning, "tf-selection-translation-copy tf-selection-action-quiet");
     const meaning = document.createElement("div");
     meaning.className = "tf-selection-primary tf-selection-translation-meaning";
