@@ -10,6 +10,7 @@ import { optionsClient } from "./client";
 import { glossaryClient } from "./glossary-client";
 import { useLocale } from "./useLocale";
 import { useOptions } from "./useOptions";
+import { SettingSwitch } from "./SettingSwitch";
 
 const navItems = [
   ["general", "options.nav.general"], ["selection", "options.nav.selection"], ["appearance", "options.nav.appearance"],
@@ -57,7 +58,8 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
         <BehaviorSection restoreSites={ui.restoreSites.value} autoSites={ui.autoSites.value} loading={ui.restoreSites.loading || ui.autoSites.loading} errors={[ui.restoreSites.error, ui.autoSites.error]} disabled={ui.busy} refresh={() => void ui.refreshBehaviors()} remove={(key, origin) => void ui.removeBehavior(key, origin)} />
       </>}
       <GlossarySection client={glossary} setStatus={setStatus} />
-      {config ? <details open={activeHash === "#dictionary-packs" || undefined}><summary>{i18n.t("options.basic.dictionaryAdvanced")}</summary><label><input type="checkbox" disabled={ui.busy} checked={config.dictionaryEnabled === true} onChange={event => update({ dictionaryEnabled: event.target.checked })} />{i18n.t("options.basic.dictionaryEnabled")}</label><DictionarySection client={dictionaries} setStatus={setStatus} /></details> : null}
+      {config ? <details open={activeHash === "#dictionary-packs" || undefined}><summary>{i18n.t("options.basic.dictionaryAdvanced")}</summary><SettingSwitch id="dictionaryEnabled" label={i18n.t("options.basic.dictionaryEnabled")} description={i18n.t("options.basic.dictionaryHelp")}
+        disabled={ui.busy} checked={config.dictionaryEnabled === true} onChange={checked => update({ dictionaryEnabled: checked })} /><DictionarySection client={dictionaries} setStatus={setStatus} /></details> : null}
       {config ? <>
         <ProviderSections config={config} disabled={ui.busy} update={update} client={client} connections={ui.connections.value} loading={ui.connections.loading} error={ui.connections.error} reload={ui.refreshConnections} setStatus={setStatus} />
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />

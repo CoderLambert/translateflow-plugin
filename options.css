@@ -281,6 +281,69 @@ label {
   line-height: 1.5;
 }
 
+.setting-switch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  max-width: 760px;
+  margin: 16px 0 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-bg-card);
+  cursor: pointer;
+  font-weight: 500;
+  transition: border-color var(--tf-transition), background-color var(--tf-transition), box-shadow var(--tf-transition);
+}
+
+.setting-switch:hover {
+  border-color: color-mix(in srgb, var(--tf-green-600) 28%, var(--tf-border-main));
+  background: color-mix(in srgb, var(--tf-green-50) 56%, var(--tf-bg-card));
+}
+
+.setting-switch:has(.setting-switch-control:focus-visible) {
+  border-color: var(--tf-green-500);
+  box-shadow: var(--tf-focus-ring);
+}
+
+.setting-switch-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.setting-switch-copy strong {
+  color: var(--tf-text-strong);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.setting-switch-description {
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.setting-switch-control.tf-switch {
+  width: 44px;
+  min-height: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.setting-switch-control.tf-switch:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.setting-switch-control.tf-switch:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
 
 .setting-choice-help {
   display: grid;
@@ -991,6 +1054,11 @@ kbd {
 
   .site-row {
     grid-template-columns: 1fr;
+  }
+
+  .setting-switch {
+    gap: 12px;
+    padding: 13px 14px;
   }
 
   .site-actions {
