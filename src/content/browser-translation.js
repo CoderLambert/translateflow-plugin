@@ -3,8 +3,8 @@
   if (!app?.modules.browserTranslationContract || app.modules.browserTranslation) return;
   const { BROWSER_ENGINE, browserLanguage, chooseDetectedLanguage, scriptLanguage, detectionSample, translationParts,
     BROWSER_TRANSLATION_ACTIONS: actions } = app.modules.browserTranslationContract;
-  const resources = new Map(), detections = new Map();
-  const IDLE_MS = 120000, PREPARE_MS = 180000, CANCEL_DRAIN_MS = 1500;
+  const resources = new Map(), detections = new Map(), capacityWaiters = new Set();
+  const IDLE_MS = 120000, PREPARE_MS = 180000, CANCEL_DRAIN_MS = 1500, CAPACITY_WAIT_MS = 30000;
   let generation = 0;
   const error = (code, cause) => Object.assign(new Error(code), { code, cause, i18nKey: `content.basic.${code}` });
   const pairKey = pair => `translator:${pair.sourceLanguage}:${pair.targetLanguage}`;
@@ -35,11 +35,24 @@
       if (timeoutMs) { timer = setTimeout(() => finish(reject, error("BROWSER_TIMEOUT")), timeoutMs); timer.unref?.(); }
     });
   }
+  function wakeCapacityWaiters() {
+    for (const wake of capacityWaiters) wake();
+    capacityWaiters.clear();
+  }
+  function waitForCapacity(signal, deadlineAt) {
+    const remaining = deadlineAt - Date.now();
+    if (remaining <= 0) return Promise.reject(error("BROWSER_TIMEOUT"));
+    let wake;
+    const pending = new Promise(resolve => { wake = resolve; });
+    capacityWaiters.add(wake);
+    return wait(pending, signal, remaining).finally(() => capacityWaiters.delete(wake));
+  }
   function retire(entry) {
     if (entry.removed) return;
     entry.removed = true; clearTimeout(entry.timer);
     if (resources.get(entry.key) === entry) resources.delete(entry.key);
     entry.controller.abort(); safeDestroy(entry.instance);
+    wakeCapacityWaiters();
   }
   function release(entry, owner) {
     entry.owners.delete(owner);
@@ -47,24 +60,30 @@
     if (!entry.instance || entry.invalid) return retire(entry);
     entry.lastUsed = Date.now();
     entry.timer = setTimeout(() => retire(entry), IDLE_MS); entry.timer.unref?.();
+    wakeCapacityWaiters();
   }
   function report(entry, loaded) {
     if (typeof loaded !== "number" || !Number.isFinite(loaded) || loaded < 0 || loaded > 1 || entry.removed) return;
     entry.loaded = Math.max(entry.loaded || 0, loaded);
     for (const owner of entry.owners) if (!owner.signal?.aborted) { try { owner.progress?.(entry.loaded); } catch {} }
   }
-  function acquire(kind, pair, { signal, progress } = {}) {
+  function acquire(kind, pair, { signal, progress, capacityDeadlineAt = Date.now() + CAPACITY_WAIT_MS } = {}) {
     if (signal?.aborted) return Promise.reject(error("CANCELLED"));
+    const expected = generation;
+    const retryWhenFree = () => waitForCapacity(signal, capacityDeadlineAt).then(() => {
+      assertLive(signal, expected);
+      return acquire(kind, pair, { signal, progress, capacityDeadlineAt });
+    });
     const id = kind === "detector" ? "detector" : pairKey(pair);
     let entry = resources.get(id);
-    if (entry?.invalid) { if (entry.owners.size) return Promise.reject(error("BROWSER_BUSY")); retire(entry); entry = null; }
+    if (entry?.invalid) { if (entry.owners.size) return retryWhenFree(); retire(entry); entry = null; }
     if (!entry) {
       const api = kind === "detector" ? globalThis.LanguageDetector : globalThis.Translator;
       if (typeof api?.create !== "function") return Promise.reject(error("BROWSER_UNAVAILABLE"));
       const peers = [...resources.values()].filter(item => item.kind === kind);
       if (peers.length >= (kind === "detector" ? 1 : 2)) {
         const idle = peers.filter(item => !item.owners.size).sort((a, b) => a.lastUsed - b.lastUsed)[0];
-        if (!idle) return Promise.reject(error("BROWSER_BUSY"));
+        if (!idle) return retryWhenFree();
         retire(idle);
       }
       entry = { key: id, kind, controller: new AbortController(), owners: new Set(), instance: null,
@@ -125,8 +144,19 @@
     try { return await globalThis.Translator.availability(pair); } catch { return "unavailable"; }
   }
   function prepare(pair, options = {}) {
-    return acquire("translator", pair, options).then(lease => {
-      lease.release(); return { engine: BROWSER_ENGINE, ...pair, state: "ready" };
+    const sample = typeof options.verifyText === "string" ? options.verifyText.trim().slice(0, 160) : "";
+    return acquire("translator", pair, options).then(async lease => {
+      lease.release();
+      if (sample) {
+        try { options.onPhase?.("verifying"); } catch {}
+        // Model creation alone is not proof that real inference succeeds.
+        await use("translator", pair, async instance => {
+          if (typeof instance.translate !== "function") throw error("BROWSER_VERIFY_FAILED");
+          const translated = await instance.translate(sample, options.signal ? { signal: options.signal } : undefined);
+          if (typeof translated !== "string" || !translated.trim()) throw error("BROWSER_VERIFY_FAILED");
+        }, options);
+      }
+      return { engine: BROWSER_ENGINE, ...pair, state: "ready" };
     });
   }
   function prepareDetector(options = {}) {

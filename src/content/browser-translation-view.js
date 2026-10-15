@@ -12,7 +12,7 @@
       return new Intl.DisplayNames([locale], { type: "language" }).of(code === "zh" ? "zh-Hans" : code);
     } catch { return LANGUAGE_NAMES[code] || code; }
   }
-  function prompt({ signal, title, message = "", pair = null, detectText = "", allowPrepare = false, action = null }) {
+  function prompt({ signal, title, message = "", pair = null, detectText = "", verifyText = "", allowPrepare = false, action = null }) {
     closeActive?.();
     return new Promise((resolve, reject) => {
       const lifetime = new AbortController();
@@ -87,12 +87,16 @@
               finish({ ...pair, sourceLanguage: decision.language, automatic: true, decision }); return;
             }
             const selected = { ...pair, sourceLanguage: select.value, automatic: false };
-            if (allowPrepare && selected.sourceLanguage !== selected.targetLanguage) await engine.prepare(selected, { signal: lifetime.signal, progress: updateProgress });
+            if (allowPrepare && selected.sourceLanguage !== selected.targetLanguage) await engine.prepare(selected, {
+              signal: lifetime.signal, progress: updateProgress,
+              verifyText: verifyText || detectionSample(detectText).slice(0, 160),
+              onPhase: phase => { if (live(current) && phase === "verifying") status.textContent = t("verifying"); }
+            });
             if (live(current)) finish(selected);
           } catch (cause) {
             if (!live(current)) return;
             if (cause?.code === "CANCELLED") return abort();
-            status.textContent = t(["BROWSER_TIMEOUT", "BROWSER_BUSY", "BROWSER_TOO_LONG"].includes(cause?.code) ? cause.code : "prepareFailed");
+            status.textContent = t(["BROWSER_TIMEOUT", "BROWSER_BUSY", "BROWSER_TOO_LONG", "BROWSER_VERIFY_FAILED"].includes(cause?.code) ? cause.code : "prepareFailed");
           } finally {
             if (live(current)) { busy = false; select.disabled = false; progress.hidden = true; refresh(); }
           }

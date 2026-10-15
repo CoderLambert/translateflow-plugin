@@ -14,6 +14,8 @@ export const en = Object.freeze({
   "content.basic.prepare": "Prepare basic translation",
   "content.basic.preparing": "Preparing basic translation…",
   "content.basic.prepareFailed": "Language preparation failed. Check your connection and retry.",
+  "content.basic.verifying": "Checking the local model with a real translation…",
+  "content.basic.BROWSER_VERIFY_FAILED": "The local model opened, but its test translation failed. Retry preparation.",
   "content.basic.retry": "Retry preparation",
   "content.basic.help": "Prepare this language pair to continue. Available models are reused automatically. Chrome manages its shared language packs.",
   "content.basic.source": "Source language",
@@ -87,6 +89,8 @@ export const zh_CN = Object.freeze({
   "content.basic.prepare": "准备基础翻译",
   "content.basic.preparing": "正在准备基础翻译…",
   "content.basic.prepareFailed": "语言包准备失败，请检查网络后重试。",
+  "content.basic.verifying": "正在使用真实译文检查本地模型…",
+  "content.basic.BROWSER_VERIFY_FAILED": "本地模型已创建，但测试译文未通过，请重试准备。"
   "content.basic.retry": "重试准备",
   "content.basic.help": "准备此语言对后继续翻译。可用模型会自动复用，共享语言包由 Chrome 管理。",
   "content.basic.source": "源语言",

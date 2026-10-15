@@ -4,11 +4,11 @@
 
 ## 自动识别与首次使用
 
-源语言选择“自动识别”后，优先使用 Chrome LanguageDetector 判断划选单词的实际语言，而不是沿用网站界面语言。用户明确设置或手动纠正的源语言优先于自动识别结果。
+源语言选择“自动识别”后，优先使用 Chrome LanguageDetector 判断实际语言，而不是沿用网站界面语言。划词时若现有阅读投影已捕获非敏感上下文，使用选词附近的句子辅助检测；真正翻译、收藏和缓存的仍是所选单词。敏感或无法定位的上下文不用于检测。用户明确设置或手动纠正的源语言优先于自动识别结果。
 
 如果识别模型尚需准备，点击“启用识别并继续”。准备完成后自动识别并进入翻译，不再要求额外确认识别结果。仅当置信度不足、候选接近或中文简繁无法可靠区分时，展开手动选择。手动纠正按当前文本保存在页面内存，不把某个单词的语言应用到后续所有划词。
 
-新语言对仍可能需要点击“准备并翻译”以允许 Chrome 下载/激活资源。已有可用语言对自动创建或复用实例，不逐条询问。准备面板显示目标语言、原文样本与真实下载进度；纠正源语言放在次要展开项中。取消、超时或导航后的迟到结果不会继续显示或进入缓存。
+新语言对仍可能需要点击“准备并翻译”以允许 Chrome 下载/激活资源。已有可用语言对自动创建或复用实例，不逐条询问。实例全部忙碌时会按队列等待（总等待预算 30 秒），而不是立刻提示繁忙。首次准备还会使用选词做一次真实的非空译文自检；失败允许重试。准备面板显示下载和自检状态；纠正源语言放在次要展开项中。取消、超时或导航后的迟到结果不会继续显示或进入缓存。
 
 ## 模型与结果
 
@@ -24,9 +24,9 @@
 
 Browser translation is limited to basic definitions for selected words. Webpages, subtitles, and longer selected text require a configured AI service and never initialize or download browser translation models.
 
-Automatic mode identifies the selected word with Chrome LanguageDetector, not the website UI locale. An explicit source setting or manual correction wins, and ambiguous results are not turned into confident guesses.
+Automatic mode uses Chrome LanguageDetector and, when the existing source projection provides safe non-sensitive context, a bounded nearby sentence to identify selected words. Only the word itself is translated and cached. Explicit source settings and manual corrections take precedence; ambiguous results are never forced.
 
-For first use, choose **Enable detection and continue**. Successful detection proceeds automatically. Manual source selection is a secondary option for ambiguous results. A new translator pair may require **Prepare and translate**; already available models are warmed or reused without repeated confirmation. Chrome may require activation again for a new origin even when shared language packs are on disk.
+For first use, choose **Enable detection and continue**. Successful detection proceeds automatically. Manual source selection is secondary for ambiguous results. A new pair may require **Prepare and translate**; preparation confirms a non-empty real test translation before reporting success. Busy model slots wait up to 30 seconds for capacity instead of failing immediately. Ready models are reused automatically; Chrome may still require activation for a new origin.
 
 Each page retains one detector and at most two translator pairs for selection tasks, with serial model use and a two-minute idle lifetime. Releasing an instance does not uninstall language packs. Known target-language content is kept without generating or saving a duplicate definition. Cancellation is isolated per request; late output cannot overwrite the new task.
 

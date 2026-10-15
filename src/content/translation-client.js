@@ -14,6 +14,8 @@
     if (!controller || controller.signal.aborted || location.href !== pageUrl || cancelled.has(requestId)) throw engine.error("CANCELLED");
   }
   function responseError(response) { return engine.error(response?.errorCode || "BROWSER_UNAVAILABLE"); }
+  // The surrounding sentence is local language evidence, never an AI Provider input.
+  function withoutNativeDetection(payload) { const { detectionText: _sample, ...request } = payload; return request; }
   function browserEligible(payload) {
     return payload?.languageSource === "selection" && payload?.browserTranslationAllowed === true;
   }
@@ -77,7 +79,7 @@
         await raw({ type: messages.OPEN_OPTIONS, hash: "#provider" });
         throw engine.error("AI_REQUIRED");
       }
-      const response = await raw(payload);
+      const response = await raw(withoutNativeDetection(payload));
       assertCurrent(controller, payload.pageUrl, payload.requestId);
       if (controller.browserAllowed && response?.ok && response.configSnapshotId) {
         boundedSet(browserFallbacks, String(response.configSnapshotId), payload.pageUrl);
@@ -122,19 +124,20 @@
   }
   async function ensurePair(group, payload, controller) {
     const pair = group.pair;
+    const verifyText = group.members[0]?.contentText ?? group.members[0]?.text ?? "";
     if (engine.ready(pair)) return;
     const availability = await engine.capability(pair);
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (availability === "available") {
       // Warm an already-available model without making the user confirm every request.
-      try { await engine.prepare(pair, { signal: controller.signal }); return; }
-      catch (cause) { if (cause?.code !== "BROWSER_PREPARE") throw cause; }
+      try { await engine.prepare(pair, { signal: controller.signal, verifyText }); return; }
+      catch (cause) { if (!["BROWSER_PREPARE", "BROWSER_VERIFY_FAILED"].includes(cause?.code)) throw cause; }
     }
     if (["unsupported", "insecure", "unavailable", "policy-denied"].includes(availability)) {
       await view.prompt({ signal: controller.signal, title: availability, message: t(`${availability}Help`) }); throw engine.error("BROWSER_UNAVAILABLE");
     }
     const selected = await view.prompt({ signal: controller.signal, title: "prepare", pair, allowPrepare: true,
-      detectText: group.members[0]?.detectionText || group.members[0]?.contentText || group.members[0]?.text });
+      verifyText, detectText: group.members[0]?.detectionText || verifyText });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (selected.sourceLanguage !== pair.sourceLanguage) {
       for (const item of group.members) boundedSet(corrections, item.correctionKey, selected.sourceLanguage);

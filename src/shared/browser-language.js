@@ -72,3 +72,30 @@ export function detectionSample(text, protectedIds = []) {
   return translationParts(text, protectedIds).filter(part => !part.protected).map(part => part.text).join(" ")
     .replace(/https?:\/\/\S+|\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/giu, " ").replace(/\s+/gu, " ").trim().slice(0, 4000);
 }
+
+/** Native-only bounded context: prefer nearby prose, never unrelated page locale. */
+export function selectionDetectionSample(selectedText, contextText) {
+  const selected = String(selectedText || "").replace(/\s+/gu, " ").trim();
+  if (!selected) return "";
+  const context = String(contextText || "").replace(/\s+/gu, " ").trim();
+  if (!context || context.length <= selected.length + 5) return selected;
+  const lower = context.toLocaleLowerCase(), target = selected.toLocaleLowerCase();
+  let position = lower.indexOf(target), match = -1;
+  while (position !== -1) {
+    const before = context[position - 1] || "", after = context[position + selected.length] || "";
+    if (!/[\p{L}\p{N}_]/u.test(before) && !/[\p{L}\p{N}_]/u.test(after)) {
+      match = position; break;
+    }
+    position = lower.indexOf(target, position + 1);
+  }
+  if (match < 0) return selected;
+  const before = context.slice(Math.max(0, match - 160), match);
+  const after = context.slice(match + selected.length, Math.min(context.length, match + selected.length + 160));
+  const leftBoundary = Math.max(...[".", "!", "?", "。", "！", "？"].map(char => before.lastIndexOf(char)));
+  const nextBoundary = after.search(/[.!?。！？]/u);
+  const prefix = leftBoundary < 0 ? before : before.slice(leftBoundary + 1);
+  const suffix = nextBoundary < 0 ? after : after.slice(0, nextBoundary + 1);
+  const sample = (prefix + selected + suffix).trim();
+  return sample.length > selected.length + 5 ? sample : selected;
+}
+
