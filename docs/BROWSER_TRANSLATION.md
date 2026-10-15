@@ -10,6 +10,8 @@ Chrome 内置本地模型只用于获准的单词划词释义。词典命中仍�
 
 校验不是语义质量评分，也不是磁盘模型清单。界面显示的是本次实际 API 调用结果。Chrome 的设备限制、模型下载、用户激活及资源清理仍适用。释放 JS 实例不会删除 Chrome 语言包。
 
+准备失败时，每个模型会结束初始化/下载状态，区分失败模型与因整轮停止而取消的模型；点击“重试准备”可以重新开始。展开“Chrome 诊断信息”可查看失败模型、扩展错误代码和浏览器异常名称，不展示原始异常消息或选词内容。更换校验语言对会清除上一轮结果；关闭基础翻译会释放实例并清除过期的就绪显示。
+
 ## 阅读时的交互
 
 已有可用模型自动创建/复用，不要求逐词确认。需要资源时可在划词浮层点击准备，或者打开设置页统一准备。进入设置页前只把语言对写入 `storage.session`，不保存正文、上下文或凭据；最多保留32条、一天有效的临时记录，设置页可重新选择该语言对。历史“曾检查通过”不等于永久可用。
@@ -35,6 +37,8 @@ Content 和 Options 使用同一个运行时实现：一个检测器、最多两
 Chrome native models remain restricted to authorized selected-word definitions; pages, subtitles and longer selections retain the existing AI path. Settings → General → Chrome local models prepares detector and translator together from a user click, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
 
 A non-sensitive bounded source sentence can supplement short-word language evidence. Conflicts and incompatible scripts remain uncertain; only the selected word is translated/cached. Context is not sent to an AI provider. Local corrections are scoped to the word and its context.
+
+Failed preparation ends each model's active status and identifies the failed model separately from its cancelled peer. Retry starts a new attempt. The expandable Chrome diagnostic shows only the model, error code and safe browser exception name. Changing the test pair clears the previous result; disabling browser definitions releases the models and clears stale readiness.
 
 While the user-opened Settings page stays open, a validated extension Port broker shares its ready models across tabs. Closing Settings restores page-local execution. No hidden document, Offscreen reason, new permission or alternative local model is added; cross-tab sharing is intentionally not persistent after Settings closes. Remote messages cannot authorize model downloads. Pending preparation stores only language pairs/timestamps in session storage (bounded and expiring).
 

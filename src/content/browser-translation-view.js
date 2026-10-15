@@ -33,7 +33,7 @@
         if (!lifetime.signal.aborted) void app.modules.runtime.sendRuntimeMessage({ type: app.modules.runtime.messages.background.OPEN_OPTIONS, hash: "#general" });
       };
       const cancel = button({ text: t("cancel") });
-      let settled = false, busy = false, revision = 0, lastLoaded = 0, primary = null;
+      let settled = false, busy = false, retry = false, revision = 0, lastLoaded = 0, primary = null;
       const live = current => !settled && !lifetime.signal.aborted && current === revision;
       const finish = (value, failure = null) => {
         if (settled) return; settled = true; revision++;
@@ -71,13 +71,13 @@
         primary = button({ text: t(allowPrepare ? "prepareContinue" : !select.value && canDetect ? "detectContinue" : "continue") });
         const refresh = () => {
           primary.disabled = busy || (!select.value && !canDetect);
-          primary.textContent = t(busy ? "preparing" : allowPrepare ? "prepareContinue" : !select.value && canDetect ? "detectContinue" : "continue");
+          primary.textContent = t(busy ? "preparing" : retry ? "retry" : allowPrepare ? "prepareContinue" : !select.value && canDetect ? "detectContinue" : "continue");
         };
-        select.onchange = refresh;
+        select.onchange = () => { retry = false; refresh(); };
         if (!select.value && !canDetect) details.open = true;
         primary.onclick = async event => {
           if (!event.isTrusted || busy || settled) return;
-          const current = ++revision; busy = true; select.disabled = true; refresh();
+          const current = ++revision; busy = true; retry = false; select.disabled = true; refresh();
           status.textContent = t("preparing"); progress.hidden = false; progress.removeAttribute("value"); lastLoaded = 0;
           try {
             if (!select.value) {
@@ -101,6 +101,7 @@
           } catch (cause) {
             if (!live(current)) return;
             if (cause?.code === "CANCELLED") return abort();
+            retry = true;
             const visible = ["BROWSER_TIMEOUT", "BROWSER_QUEUE_TIMEOUT", "BROWSER_BUSY", "BROWSER_TOO_LONG", "BROWSER_VERIFY_FAILED", "BROWSER_DETECTION_MISMATCH", "BROWSER_POLICY", "BROWSER_NETWORK", "BROWSER_MODEL_UNAVAILABLE"];
             status.textContent = t(visible.includes(cause?.code) ? cause.code : "prepareFailed");
           } finally {

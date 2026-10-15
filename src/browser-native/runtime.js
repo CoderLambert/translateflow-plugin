@@ -3,7 +3,10 @@ import { BROWSER_ENGINE, browserLanguage } from "../shared/browser-translation.j
 import { chooseDetectedLanguage, combineLanguageEvidence, scriptLanguage, detectionSample, translationParts } from "../shared/browser-language.js";
 
 export function createBrowserNativeRuntime(environment = globalThis, limits = {}) {
-  const timers = { set: limits.setTimeout || setTimeout, clear: limits.clearTimeout || clearTimeout };
+  // Window timer methods require their Window receiver. Calling an unbound
+  // method through this adapter throws Illegal invocation in real Chromium.
+  const timers = { set: limits.setTimeout || globalThis.setTimeout.bind(globalThis),
+    clear: limits.clearTimeout || globalThis.clearTimeout.bind(globalThis) };
   const now = limits.now || Date.now;
   const budget = { preparation: 180000, operation: 30000, capacity: 30000, drain: 1500,
     idle: Number(environment.navigator?.deviceMemory) < 4 ? 60000 : 120000, queue: 64, ...limits };
@@ -12,12 +15,18 @@ export function createBrowserNativeRuntime(environment = globalThis, limits = {}
   const error = (code, cause) => Object.assign(new Error(code), { code, cause, i18nKey: `content.basic.${code}` });
   const safeDestroy = value => { try { value?.destroy?.(); } catch {} };
   const emit = (callback, value) => { try { callback?.(value); } catch {} };
+  const safeNativeName = value => typeof value === "string" && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(value) && value !== "Error" ? value : "";
+  const nativeErrorName = cause => safeNativeName(cause?.name);
   function normalizeError(cause) {
-    if (typeof cause?.code === "string" && /^(?:BROWSER_|CANCELLED|CONFIG_)/.test(cause.code)) return cause;
-    const code = { AbortError: "CANCELLED", NotAllowedError: "BROWSER_PREPARE", InvalidStateError: "BROWSER_PREPARE",
+    const coded = typeof cause?.code === "string" && /^(?:BROWSER_[A-Z_]+|CANCELLED|CONFIG_[A-Z_]+)$/.test(cause.code);
+    const name = coded ? safeNativeName(cause.nativeName) || nativeErrorName(cause.cause) : nativeErrorName(cause);
+    const code = coded ? cause.code : { AbortError: "CANCELLED", NotAllowedError: "BROWSER_PREPARE", InvalidStateError: "BROWSER_PREPARE",
       SecurityError: "BROWSER_POLICY", NotSupportedError: "BROWSER_MODEL_UNAVAILABLE", QuotaExceededError: "BROWSER_TOO_LONG",
       NetworkError: "BROWSER_NETWORK", DataError: "BROWSER_RESULT" }[cause?.name] || "BROWSER_UNAVAILABLE";
-    return error(code, cause);
+    const normalized = error(code, cause);
+    if (name) normalized.nativeName = name;
+    if (["detector", "translator"].includes(cause?.model)) normalized.model = cause.model;
+    return normalized;
   }
   function assertLive(signal, expected = generation) {
     if (signal?.aborted || expected !== generation) throw error("CANCELLED");
@@ -281,22 +290,34 @@ export function createBrowserNativeRuntime(environment = globalThis, limits = {}
     const controller = new AbortController(), expected = generation;
     const relay = () => controller.abort();
     options.signal?.addEventListener("abort", relay, { once: true });
-    const update = (model, phase, loaded) => emit(options.onStatus, { model, phase, ...(loaded === undefined ? {} : { loaded }) });
+    const update = (model, phase, loaded, details = {}) => emit(options.onStatus, { model, phase, ...(loaded === undefined ? {} : { loaded }), ...details });
+    const reportModelFailure = (model, cause) => {
+      const normalized = normalizeError(cause);
+      const phase = normalized.code === "CANCELLED" ? "cancelled" : "failed";
+      update(model, phase, undefined, { errorCode: normalized.code, ...(normalized.nativeName ? { nativeName: normalized.nativeName } : {}) });
+      return Object.assign(error(normalized.code, cause), { model, ...(normalized.nativeName ? { nativeName: normalized.nativeName } : {}) });
+    };
     // Both creates start in the same click stack, before any promise is awaited.
-    const detectorJob = acquire("detector", null, { signal: controller.signal, progress: loaded => update("detector", "downloading", loaded) });
-    const translatorJob = acquire("translator", pair, { signal: controller.signal, progress: loaded => update("translator", "downloading", loaded) });
+    const detectorJob = acquire("detector", null, { signal: controller.signal, progress: loaded => update("detector", "downloading", loaded),
+      onPhase: phase => update("detector", phase) });
+    const translatorJob = acquire("translator", pair, { signal: controller.signal, progress: loaded => update("translator", "downloading", loaded),
+      onPhase: phase => update("translator", phase) });
     let cleaned = false; const leases = [];
-    const own = job => job.then(lease => { if (cleaned) lease.release(); else leases.push(lease); return lease; });
-    const first = own(detectorJob), second = own(translatorJob);
+    const own = (model, job) => job.then(lease => { if (cleaned) lease.release(); else leases.push(lease); return lease; }, cause => {
+      throw reportModelFailure(model, cause);
+    });
+    const first = own("detector", detectorJob), second = own("translator", translatorJob);
     const job = Promise.all([first, second]).then(async ([detector, translator]) => {
       assertLive(options.signal, expected);
       update("detector", "verifying"); update("translator", "verifying");
       const [decision, translatedText] = await Promise.all([
-        perform(detector, async (instance, signal) => chooseDetectedLanguage(await instance.detect(sampleText, { signal }), sampleText), { signal: controller.signal, keepLease: true }),
+        perform(detector, async (instance, signal) => chooseDetectedLanguage(await instance.detect(sampleText, { signal }), sampleText), { signal: controller.signal, keepLease: true })
+          .catch(cause => { throw reportModelFailure("detector", cause); }),
         perform(translator, (instance, signal) => infer(instance, sampleText, signal), { signal: controller.signal, keepLease: true })
+          .catch(cause => { throw reportModelFailure("translator", cause); })
       ]);
       assertLive(options.signal, expected);
-      if (decision.language !== pair.sourceLanguage) throw error("BROWSER_DETECTION_MISMATCH");
+      if (decision.language !== pair.sourceLanguage) throw reportModelFailure("detector", error("BROWSER_DETECTION_MISMATCH"));
       translator.entry.verified = true; detector.entry.verified = true;
       update("detector", "ready"); update("translator", "ready");
       return { ...pair, detectedLanguage: decision.language, translatedText, verified: true };

@@ -173,7 +173,9 @@ test("page translation without AI stays out of browser models and remains silent
   const state = await clientContext();
   const result = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "restore", cacheOnly: true,
     languageSource: "page", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
-  assert.deepEqual(result, { ok: true, hits: [], engine: "ai", skippedIds: [] });
+  // This DTO is created inside the VM; compare its complete structured-cloned
+  // message value rather than requiring the host realm's Object prototype.
+  assert.deepEqual(structuredClone(result), { ok: true, hits: [], engine: "ai", skippedIds: [] });
   assert.equal(state.model.executions.length, 0);
 });
 
