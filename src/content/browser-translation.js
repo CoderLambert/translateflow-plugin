@@ -146,17 +146,21 @@
   function prepare(pair, options = {}) {
     const sample = typeof options.verifyText === "string" ? options.verifyText.trim().slice(0, 160) : "";
     return acquire("translator", pair, options).then(async lease => {
-      lease.release();
-      if (sample) {
-        try { options.onPhase?.("verifying"); } catch {}
-        // Model creation alone is not proof that real inference succeeds.
-        await use("translator", pair, async instance => {
-          if (typeof instance.translate !== "function") throw error("BROWSER_VERIFY_FAILED");
-          const translated = await instance.translate(sample, options.signal ? { signal: options.signal } : undefined);
-          if (typeof translated !== "string" || !translated.trim()) throw error("BROWSER_VERIFY_FAILED");
-        }, options);
+      try {
+        // Keep the creation lease until self-check finishes; a third language
+        // pair must not evict this instance between create() and translate().
+        if (sample) {
+          try { options.onPhase?.("verifying"); } catch {}
+          await use("translator", pair, async instance => {
+            if (typeof instance.translate !== "function") throw error("BROWSER_VERIFY_FAILED");
+            const translated = await instance.translate(sample, options.signal ? { signal: options.signal } : undefined);
+            if (typeof translated !== "string" || !translated.trim()) throw error("BROWSER_VERIFY_FAILED");
+          }, options);
+        }
+        return { engine: BROWSER_ENGINE, ...pair, state: "ready" };
+      } finally {
+        lease.release();
       }
-      return { engine: BROWSER_ENGINE, ...pair, state: "ready" };
     });
   }
   function prepareDetector(options = {}) {
