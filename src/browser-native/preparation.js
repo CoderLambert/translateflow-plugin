@@ -31,6 +31,8 @@ export function resolvePreparationPair(source, target) {
   if (!sampleText) throw Object.assign(new Error("BROWSER_LANGUAGE"), { code: "BROWSER_LANGUAGE" });
   return { sourceLanguage, targetLanguage, sampleText };
 }
+/** @typedef {{ request: (message: object, options?: { signal?: AbortSignal }) => Promise<unknown>, dispose: () => void }} PreparationClient */
+/** @param {unknown} engine @param {{ onChange?: (state: any) => void, client?: PreparationClient | null, now?: () => number }} [options] */
 export function createPreparationController(engine, { onChange = (_state) => {}, client = null, now = Date.now } = {}) {
   let current = 0, controller = null, closed = false;
   let state = { phase: "idle", busy: false, models: {}, result: null, errorCode: "", warning: "", pending: [] };
