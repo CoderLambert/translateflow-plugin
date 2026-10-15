@@ -43,8 +43,8 @@ const test = base.extend({
       await expect.poll(async () => {
         readinessReads++;
         return worker.evaluate(() => chrome.storage.local.get(["uiLocale"]));
-      }).toEqual({ uiLocale: "auto" });
-      console.log("[I18N_NATIVE_DEFAULTS_READY]", JSON.stringify({ artifact, initialLocale, readinessReads, uiLocale: "auto", storageWritesByHarness: 0 }));
+      }).toEqual({ uiLocale: "zh_CN" });
+      console.log("[I18N_NATIVE_DEFAULTS_READY]", JSON.stringify({ artifact, initialLocale, readinessReads, uiLocale: "zh_CN", storageWritesByHarness: 0 }));
       await use({ context, openOptions, extensionId, worker, errors, external });
       expect(external, "No Provider or external HTTP call").toEqual([]);
       expect(errors, "No uncaught page errors").toEqual([]);

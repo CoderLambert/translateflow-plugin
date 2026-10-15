@@ -14,7 +14,7 @@ export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_
 export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });
 export const DEFAULT_CONFIG = Object.freeze({
   aiServiceConfigured: null, browserTranslationEnabled: true, browserSourceLanguage: "auto", dictionaryEnabled: false,
-  apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", chatgptPlanModel: "", targetLanguage: "Simplified Chinese", uiLocale: "auto",
+  apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", chatgptPlanModel: "", targetLanguage: "Simplified Chinese", uiLocale: "zh_CN",
   appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
   youtubeSubtitleMode: "bilingual", youtubeSubtitleSize: "standard", selectionExplanationDepth: SELECTION_EXPLANATION_DEPTH.AUTO,
   prompt: DEFAULT_PROMPT, openAICompatible: DEFAULT_OPENAI_COMPATIBLE,
