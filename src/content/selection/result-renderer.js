@@ -26,18 +26,19 @@
       : (input || {});
 
     container.dataset.resultKind = String(result.kind || "translation");
-    renderHeadword(container, result);
-
-    const entries = Array.isArray(result.dictionaryEntries) ? result.dictionaryEntries : [];
-    if (entries.length) {
-      renderDictionarySummary(container, entries[0], result);
+    if (result.kind === "translation") {
+      container.dataset.translationEngine = result.browserDefinition || result.browserPair ? "browser" : "ai";
+      renderTranslationCard(container, result);
     } else {
-      renderCompactMeaning(container, result);
-    }
-    renderBadges(container, result.badges);
-    if (result.kind === "translation") appendTranslationCopy(container, result.primaryMeaning);
-    if (hasCollapsedDictionaryDetails(entries, result.moreEntryCount, result.examples)) {
-      renderDictionaryDetails(container, entries, result.moreEntryCount, result.headword, result.examples);
+      delete container.dataset.translationEngine;
+      renderHeadword(container, result);
+      const entries = Array.isArray(result.dictionaryEntries) ? result.dictionaryEntries : [];
+      if (entries.length) renderDictionarySummary(container, entries[0], result);
+      else renderCompactMeaning(container, result);
+      renderBadges(container, result.badges);
+      if (hasCollapsedDictionaryDetails(entries, result.moreEntryCount, result.examples)) {
+        renderDictionaryDetails(container, entries, result.moreEntryCount, result.headword, result.examples);
+      }
     }
 
     const generatedMeaning = String(result.generatedMeaning || "").trim();
@@ -52,9 +53,27 @@
     return { generatedMeaning, explanation };
   }
 
-  function appendTranslationCopy(container, text) {
+  function renderTranslationCard(container, result) {
+    const card = document.createElement("section");
+    card.className = "tf-selection-translation-card";
+    card.dataset.engine = result.browserDefinition || result.browserPair ? "browser" : "ai";
+    const header = document.createElement("div");
+    header.className = "tf-selection-translation-header";
+    const label = document.createElement("span");
+    label.className = "tf-selection-translation-label";
+    locale.bindText(label, card.dataset.engine === "browser" ? "content.basic.sourceBadge" : "content.selection.badgeTranslation");
+    header.appendChild(label);
+    appendTranslationCopy(header, result.primaryMeaning, "tf-selection-translation-copy tf-selection-action-quiet");
+    const meaning = document.createElement("div");
+    meaning.className = "tf-selection-primary tf-selection-translation-meaning";
+    meaning.textContent = String(result.primaryMeaning || "").trim();
+    card.append(header, meaning);
+    container.appendChild(card);
+  }
+
+  function appendTranslationCopy(container, text, className = "") {
     if (!app.modules.selectionClipboard) return;
-    const copy = document.createElement("button"); copy.type = "button"; copy.className = "tf-ui-button";
+    const copy = document.createElement("button"); copy.type = "button"; copy.className = `tf-ui-button ${className}`.trim();
     locale.bindText(copy, "content.common.copy");
     copy.addEventListener("click", async event => {
       if (!event.isTrusted) return;

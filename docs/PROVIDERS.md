@@ -119,4 +119,4 @@ Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider
 
 ## 浏览器基础翻译与 AI 的选择
 
-无已配置 AI 服务时，页面、划词和字幕使用默认开启的浏览器基础翻译；此能力不是 HTTP Provider，不能由后台执行。`translationConfig()` 为基础引擎生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset、Glossary 与解释路径。AI 配置错误不视为“未配置”；AI 请求失败不会自动回退，用户点击后通过新任务切换。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。
+无已配置 AI 服务时，只有单词型划词可使用默认开启的浏览器基础释义；整页、字幕和较长划词内容明确要求配置 AI。此能力不是 HTTP Provider，不能由后台执行。`translationConfig()` 仅为获准的划词任务生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset、Glossary 与其它翻译路径。AI 配置错误不视为“未配置”；只有符合范围的划词在 AI 请求失败后可由用户点击切换到新基础任务。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。

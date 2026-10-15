@@ -227,12 +227,12 @@ test("Glossary React controls cover save, scope, case, enable, edit and delete",
   await waitFor(() => expect(remove).toHaveBeenCalled());
 });
 
-test("basic translation defaults on and source preference changes through the existing settings owner", async () => {
+test("selected-word browser definitions default on and source preference changes through the existing settings owner", async () => {
   const update = vi.fn();
   render(<LocaleProvider value={zh}><GeneralSection config={config} disabled={false} update={update} /></LocaleProvider>);
-  const enabled = screen.getByLabelText("启用浏览器基础翻译") as HTMLInputElement;
+  const enabled = screen.getByLabelText("启用划词浏览器释义") as HTMLInputElement;
   expect(enabled.checked).toBe(true);
   await userEvent.click(enabled); expect(update).toHaveBeenCalledWith({ browserTranslationEnabled: false });
-  await userEvent.selectOptions(screen.getByLabelText("基础翻译源语言"), "fr");
+  await userEvent.selectOptions(screen.getByLabelText("划词释义源语言"), "fr");
   expect(update).toHaveBeenCalledWith({ browserSourceLanguage: "fr" });
 });

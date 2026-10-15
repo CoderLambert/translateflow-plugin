@@ -221,7 +221,7 @@
   function create({ tabList, workspace, dictionaryPane, onDictionaryLeave, onChange, onRequest, onResize } = {}) {
     if (!tabList || !workspace || !dictionaryPane) throw new Error("Selection view containers are required.");
     const tabs = new Map(), panes = new Map([["dictionary", dictionaryPane]]), details = new Map(), states = new Map();
-    let active = "dictionary", requestHandler = null;
+    let active = "dictionary", requestHandler = null, browserDefinition = false;
     createTab("dictionary", "content.selection.dictionaryTab", "content.selection.dictionaryTabAria");
     for (const action of AI_ACTIONS) {
       const panel = document.createElement("div");
@@ -267,10 +267,17 @@
       enabled[next].focus({ preventScroll: true });
     }
 
-    function setPrimaryKind(kind) {
+    function setPrimaryKind(kind, result = {}) {
       const translation = kind === "translation", tab = tabs.get("dictionary");
-      locale.bindText(tab, translation ? "content.basic.translationTab" : "content.selection.dictionaryTab");
-      locale.bindAttribute(tab, "aria-label", translation ? "content.basic.translationTab" : "content.selection.dictionaryTabAria");
+      browserDefinition = translation && Boolean(result?.browserDefinition || result?.browserPair);
+      locale.bindText(tab, browserDefinition ? "content.basic.definitionTab" : translation ? "content.basic.translationTab" : "content.selection.dictionaryTab");
+      locale.bindAttribute(tab, "aria-label", browserDefinition ? "content.basic.definitionTab" : translation ? "content.basic.translationTab" : "content.selection.dictionaryTabAria");
+      const understand = tabs.get("understand");
+      locale.bindText(understand, browserDefinition ? "content.selection.aiDetail" : "content.ai.understand");
+      locale.bindAttribute(understand, "aria-label", browserDefinition ? "content.selection.aiDetailAria" : "content.ai.understandTabAria");
+      for (const action of ["analyze", "usage"]) tabs.get(action).hidden = browserDefinition;
+      if (browserDefinition && ["analyze", "usage"].includes(active)) select("dictionary");
+      sync();
     }
 
     function configure(handler, visible) {
@@ -313,7 +320,7 @@
     }
 
     function reset() {
-      setPrimaryKind("local");
+      setPrimaryKind("local", {});
       for (const action of AI_ACTIONS) {
         details.get(action)?.reset();
         states.set(action, "idle");

@@ -74,7 +74,9 @@ test("cancelling preparation destroys a late instance; cancelling translation re
   controller.abort(); translateDone("late"); await assert.rejects(running, { code: "CANCELLED" }); engine.dispose();
 });
 
-async function clientContext({ settings = { ok: true, engine: BROWSER_ENGINE, enabled: true, sourceLanguage: "auto", targetLanguage: "Chinese" }, prompt = async () => true } = {}) {
+async function clientContext({ settings = payload => payload.surface === "selection-word"
+  ? { ok: true, engine: BROWSER_ENGINE, enabled: true, configured: false, sourceLanguage: "auto", targetLanguage: "Chinese" }
+  : { ok: true, engine: "ai", enabled: true, configured: false }, prompt = async () => true } = {}) {
   const calls = [], events = {}, model = { creates: 0, executions: [], disposed: 0 };
   const engine = { detectDecision: async () => ({ language: "en", source: "detector", scriptKnown: true }), capability: async () => "downloadable", ready: () => true,
     execute: async input => { model.executions.push(input); return { translations: input.segments.map(item => ({ id: item.id, text: `译:${item.text}` })) }; },
@@ -86,8 +88,9 @@ async function clientContext({ settings = { ok: true, engine: BROWSER_ENGINE, en
   vm.runInContext(await source("../src/content/translation-client.js"), context);
   const raw = async payload => {
     calls.push(payload);
-    if (payload.type === M.TRANSLATION_ENGINE_SETTINGS) return settings;
-    if (payload.type === M.CACHE_LOOKUP) return { ok: true, engine: BROWSER_ENGINE, sourceLanguage: payload.browserTranslation.sourceLanguage, targetLanguage: "zh", configSnapshotId: "snapshot", hits: [] };
+    if (payload.type === M.TRANSLATION_ENGINE_SETTINGS) return typeof settings === "function" ? settings(payload) : settings;
+    if (payload.type === M.CACHE_LOOKUP && payload.browserTranslation) return { ok: true, engine: BROWSER_ENGINE, sourceLanguage: payload.browserTranslation.sourceLanguage, targetLanguage: "zh", configSnapshotId: "snapshot", hits: [] };
+    if (payload.type === M.CACHE_LOOKUP) return { ok: true, engine: "ai", targetLanguage: "Chinese", configSnapshotId: "ai-snapshot", hits: [] };
     if (payload.type === M.TRANSLATE_BATCH) return { ok: false, errorCode: "PROVIDER_HTTP" };
     return { ok: true };
   };
@@ -97,31 +100,36 @@ async function clientContext({ settings = { ok: true, engine: BROWSER_ENGINE, en
 test("disabled basic translation does not query models or execute; settings notification releases instances", async () => {
   const state = await clientContext({ settings: { ok: true, engine: BROWSER_ENGINE, enabled: false } });
   state.engine.detectDecision = () => assert.fail("must not detect while disabled");
-  await assert.rejects(state.client.send({ type: M.CACHE_LOOKUP, pageUrl: "https://example.test/" }, state.raw), { code: "BROWSER_DISABLED" });
+  await assert.rejects(state.client.send({ type: M.CACHE_LOOKUP, requestId: "selection", pageUrl: "https://example.test/",
+    languageSource: "selection", browserTranslationAllowed: true, segments: [{ id: "1", text: "hello" }] }, state.raw), { code: "BROWSER_DISABLED" });
   assert.equal(state.model.executions.length, 0);
   state.notify({ type: M.PUBLIC_SETTINGS_CHANGED, changes: { browserTranslationEnabled: { newValue: false } } });
   assert.equal(state.model.disposed, 1);
 });
 
-test("automatic subtitle source uses track language and the shared subtitle cache source", async () => {
+test("subtitles require AI and never initialize browser translation", async () => {
   const state = await clientContext();
   const unit = { id: "cue", mediaId: "video", text: "bonjour", track: { language: "fr" }, cue: { startTime: 1, endTime: 2 } };
-  const result = await state.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "task", pageUrl: "https://example.test/", units: [unit] }, state.raw);
-  assert.equal(result.ok, true);
-  assert.equal(state.model.executions[0].pair.sourceLanguage, "fr");
-  const stored = state.calls.find(item => item.type === M.CACHE_STORE);
-  assert.equal(stored.items[0].sourceText, buildSubtitleCacheSource(unit));
-  assert.equal(state.calls.some(item => item.type === M.TRANSLATE_BATCH), false);
+  await assert.rejects(state.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "task", pageUrl: "https://example.test/", units: [unit] }, state.raw), { code: "AI_REQUIRED" });
+  assert.equal(state.model.executions.length, 0);
+  assert.equal(state.calls.some(item => item.type === M.CACHE_STORE), false);
 });
 
 test("AI error waits for explicit fallback choice and requires a fresh task", async () => {
   let choose; const prompts = [];
-  const state = await clientContext({ prompt: options => { prompts.push(options); return new Promise(resolve => { choose = resolve; }); } });
-  const pending = state.client.send({ type: M.TRANSLATE_BATCH, requestId: "ai-task", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const state = await clientContext({ settings: payload => payload.forceBrowser
+    ? { ok: true, engine: BROWSER_ENGINE, enabled: true, configured: true, sourceLanguage: "auto", targetLanguage: "Chinese" }
+    : { ok: true, engine: "ai", enabled: true, configured: true },
+    prompt: options => { prompts.push(options); return new Promise(resolve => { choose = resolve; }); } });
+  const lookup = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "ai-task", pageUrl: "https://example.test/",
+    languageSource: "selection", browserTranslationAllowed: true, segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const pending = state.client.send({ type: M.TRANSLATE_BATCH, requestId: "ai-task", pageUrl: "https://example.test/",
+    configSnapshotId: lookup.configSnapshotId, segments: [{ id: "1", text: "hello" }] }, state.raw);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(prompts[0].action.label, "useBasic"); assert.equal(state.model.executions.length, 0);
   choose(true); await assert.rejects(pending, { code: "ENGINE_SWITCH" });
-  const fresh = await state.client.send({ type: M.CACHE_LOOKUP, pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const fresh = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "fresh-task", pageUrl: "https://example.test/",
+    languageSource: "selection", browserTranslationAllowed: true, segments: [{ id: "1", text: "hello" }] }, state.raw);
   assert.equal(fresh.ok, true);
   assert.equal(state.calls.findLast(item => item.type === M.CACHE_LOOKUP).browserTranslation.forceBrowser, true);
 });
@@ -160,26 +168,18 @@ test("automatic cache restoration never opens a preparation or settings prompt",
   assert.equal(state.model.executions.length, 0);
 });
 
-test("subtitle cancellation rejects late local output before cache writes, and a fresh task can retry", async () => {
+test("page translation without AI stays out of browser models and remains silent for cache-only restore", async () => {
   const state = await clientContext();
-  let release, started;
-  const startedPromise = new Promise(resolve => { started = resolve; });
-  state.engine.execute = () => { started(); return new Promise(resolve => { release = resolve; }); };
-  const payload = { type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "old-media-task", pageUrl: "https://example.test/", units: [{ id: "cue", mediaId: "old", text: "hello", track: { language: "en" }, cue: { startTime: 1, endTime: 2 } }] };
-  const pending = state.client.send(payload, state.raw);
-  await startedPromise;
-  await state.client.send({ type: M.CANCEL_TRANSLATION, requestId: "old-media-task" }, state.raw);
-  release({ translations: [{ id: "cue", text: "late" }] });
-  await assert.rejects(pending, { code: "CANCELLED" });
-  assert.equal(state.calls.some(item => item.type === M.CACHE_STORE), false);
-  state.engine.execute = async input => ({ translations: input.segments.map(item => ({ id: item.id, text: "new" })) });
-  const result = await state.client.send({ ...payload, requestId: "new-media-task", units: payload.units.map(unit => ({ ...unit, mediaId: "new" })) }, state.raw);
-  assert.equal(result.translations[0].text, "new");
+  const result = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "restore", cacheOnly: true,
+    languageSource: "page", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  assert.deepEqual(result, { ok: true, hits: [], engine: "ai", skippedIds: [] });
+  assert.equal(state.model.executions.length, 0);
 });
 
 test("navigation aborts an active browser translation and rejects its late result", async () => {
   const state = await clientContext();
-  const lookup = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "page-task", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const lookup = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "page-task", languageSource: "selection",
+    browserTranslationAllowed: true, pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
   let release, started;
   const startedPromise = new Promise(resolve => { started = resolve; });
   state.engine.execute = () => { started(); return new Promise(resolve => { release = resolve; }); };
@@ -220,6 +220,7 @@ test("Selection detection receives text and cancellation, not the page language"
   const state = await clientContext();
   let options;
   state.engine.detectDecision = async (_text, input) => { options = input; return { language: "en", scriptKnown: true }; };
-  const response = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "selection", languageSource: "selection", pageUrl: "https://example.test/", segments: [{ id: "1", text: "Actually" }] }, state.raw);
+  const response = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "selection", languageSource: "selection",
+    browserTranslationAllowed: true, pageUrl: "https://example.test/", segments: [{ id: "1", text: "Actually" }] }, state.raw);
   assert.equal(Object.hasOwn(options, "hint"), false); assert.equal(options.signal instanceof AbortSignal, true); assert.equal(response.sourceLanguage, "en");
 });

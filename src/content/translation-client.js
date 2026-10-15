@@ -4,7 +4,7 @@
   const { BROWSER_ENGINE, browserLanguage, buildSubtitleCacheSource, explicitSource, detectionSample } = app.modules.browserTranslationContract;
   const engine = app.modules.browserTranslation, view = app.modules.browserTranslationView;
   const messages = app.modules.runtime.messages.background;
-  const plans = new Map(), requests = new Map(), corrections = new Map(), cancelled = new Set();
+  const plans = new Map(), requests = new Map(), corrections = new Map(), browserFallbacks = new Map(), cancelled = new Set();
   const PREFIX = "browser-plan:";
   let forceBrowser = false, route = location.href;
   const t = (key, args) => app.modules.contentI18n.t(`content.basic.${key}`, args);
@@ -14,11 +14,16 @@
     if (!controller || controller.signal.aborted || location.href !== pageUrl || cancelled.has(requestId)) throw engine.error("CANCELLED");
   }
   function responseError(response) { return engine.error(response?.errorCode || "BROWSER_UNAVAILABLE"); }
+  function browserEligible(payload) {
+    return payload?.languageSource === "selection" && payload?.browserTranslationAllowed === true;
+  }
   function correctionKey(payload, segment) {
     return payload.languageSource === "subtitle" ? `track:${payload.trackKey || ""}` : `${payload.languageSource || "page"}:${segment.contentText ?? segment.text}`;
   }
   async function checkedSettings(payload, raw, controller) {
-    const result = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, forceBrowser });
+    const eligible = browserEligible(payload) || controller.browserAllowed === true;
+    const result = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl,
+      forceBrowser: eligible && forceBrowser, surface: eligible ? "selection-word" : (payload.languageSource || "page") });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!result?.ok) throw Object.assign(engine.error("AI_CONFIG"), { code: result?.errorCode || "CONFIG" });
     if (result.engine === BROWSER_ENGINE && !result.enabled && !payload.cacheOnly) {
@@ -51,7 +56,7 @@
   async function groupLookup(group, payload, raw, controller) {
     const response = await raw({ type: messages.CACHE_LOOKUP, requestId: payload.requestId, pageUrl: payload.pageUrl,
       segments: group.members.map(item => ({ id: item.id, text: item.text })),
-      browserTranslation: { forceBrowser: true, sourceLanguage: group.pair.sourceLanguage } });
+      browserTranslation: { forceBrowser: true, surface: "selection-word", sourceLanguage: group.pair.sourceLanguage } });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!response?.ok) throw responseError(response);
     if (response.engine !== BROWSER_ENGINE || response.sourceLanguage !== group.pair.sourceLanguage || response.targetLanguage !== group.pair.targetLanguage) throw engine.error("CONFIG_SNAPSHOT_EXPIRED");
@@ -60,11 +65,24 @@
   }
   async function lookup(payload, raw, controller) {
     if (payload.configSnapshotId && !isNativeId(payload.configSnapshotId)) return raw(payload);
+    controller.browserAllowed = browserEligible(payload);
     const settings = await checkedSettings(payload, raw, controller);
     if (settings.engine !== BROWSER_ENGINE) {
       controller.basic = false;
       if (isNativeId(payload.configSnapshotId)) throw engine.error("ENGINE_SWITCH");
-      return raw(payload);
+      if (settings.configured === false) {
+        if (payload.cacheOnly) return { ok: true, hits: [], engine: "ai", skippedIds: [] };
+        await view.prompt({ signal: controller.signal, title: "aiRequired", message: t("aiRequiredHelp"), action: { label: "configureAi" } });
+        assertCurrent(controller, payload.pageUrl, payload.requestId);
+        await raw({ type: messages.OPEN_OPTIONS, hash: "#provider" });
+        throw engine.error("AI_REQUIRED");
+      }
+      const response = await raw(payload);
+      assertCurrent(controller, payload.pageUrl, payload.requestId);
+      if (controller.browserAllowed && response?.ok && response.configSnapshotId) {
+        boundedSet(browserFallbacks, String(response.configSnapshotId), payload.pageUrl);
+      }
+      return response;
     }
     controller.basic = true;
     if (!settings.enabled && payload.cacheOnly) return { ok: true, hits: [], engine: BROWSER_ENGINE };
@@ -126,8 +144,10 @@
   async function translate(payload, raw, controller) {
     if (!isNativeId(payload.configSnapshotId)) {
       controller.basic = false;
+      controller.browserAllowed = controller.browserAllowed || browserFallbacks.get(String(payload.configSnapshotId || "")) === payload.pageUrl;
       const response = await raw(payload); assertCurrent(controller, payload.pageUrl, payload.requestId);
       if (response?.ok || ["CANCELLED", "CONFIG_SNAPSHOT_EXPIRED"].includes(response?.errorCode)) return response;
+      if (!controller.browserAllowed) return response;
       await view.prompt({ signal: controller.signal, title: "aiFailed", message: t("aiFailedHelp"), action: { label: "useBasic" } });
       assertCurrent(controller, payload.pageUrl, payload.requestId); forceBrowser = true; throw engine.error("ENGINE_SWITCH");
     }
@@ -191,6 +211,7 @@
   }
   async function subtitles(payload, raw, controller) {
     const settings = await checkedSettings(payload, raw, controller);
+    if (settings.engine !== BROWSER_ENGINE && settings.configured === false) throw engine.error("AI_REQUIRED");
     if (settings.engine !== BROWSER_ENGINE) return translate(payload, raw, controller);
     controller.basic = true;
     const units = payload.units || [];
@@ -232,7 +253,7 @@
     for (const [id, controller] of requests) if (!basicOnly || controller.basic) { controller.abort(); requests.delete(id); }
     for (const plan of plans.values()) { cancelled.add(plan.requestId); plan.cancelled = true; }
     while (cancelled.size > 256) cancelled.delete(cancelled.values().next().value);
-    plans.clear(); corrections.clear(); engine.dispose(); view.close();
+    plans.clear(); corrections.clear(); browserFallbacks.clear(); engine.dispose(); view.close();
   }
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type !== messages.PUBLIC_SETTINGS_CHANGED) return;
@@ -242,8 +263,8 @@
   window.addEventListener("pagehide", dispose); window.addEventListener("popstate", dispose);
   window.addEventListener("hashchange", dispose); window.navigation?.addEventListener("navigate", dispose);
   async function requireAi(pageUrl) {
-    const result = await app.modules.runtime.sendRuntimeMessage({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl });
-    if (result?.engine !== BROWSER_ENGINE) return true;
+    const result = await app.modules.runtime.sendRuntimeMessage({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl, surface: "selection-ai" });
+    if (result?.ok && result.engine === "ai" && result.configured !== false) return true;
     await app.modules.runtime.sendRuntimeMessage({ type: messages.OPEN_OPTIONS, hash: "#provider" }); return false;
   }
   app.modules.translationClient = { send, dispose, requireAi };
