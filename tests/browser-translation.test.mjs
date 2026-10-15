@@ -7,10 +7,11 @@ import * as language from "../src/shared/browser-language.js";
 import { getConfigHash } from "../src/background/cache-db.js";
 import { buildSubtitleCacheSource } from "../src/shared/subtitle-cache.js";
 import { BACKGROUND_MESSAGES as M } from "../src/shared/constants.js";
+import { createBrowserNativeRuntime } from "../src/browser-native/runtime.js";
 
 const source = path => readFile(new URL(path, import.meta.url), "utf8");
 function engineContext(Translator) {
-  const app = { modules: { browserTranslationContract: { browserLanguage, languageHintMatchesText, BROWSER_TRANSLATION_ACTIONS, BROWSER_ENGINE, ...language } } };
+  const app = { modules: { browserTranslationContract: { browserLanguage, languageHintMatchesText, BROWSER_TRANSLATION_ACTIONS, BROWSER_ENGINE, ...language, createBrowserNativeRuntime } } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, Translator, isSecureContext: true, AbortController, setTimeout, clearTimeout });
   return { app, context };
 }
@@ -211,7 +212,7 @@ test("a high-confidence browser detection is used for a short word despite the s
   assert.equal(await app.modules.browserTranslation.detect("Actually", "zh-CN"), "en"); app.modules.browserTranslation.dispose();
 });
 test("an explicit website translator policy denial is distinct from unavailable models", async () => {
-  const { app, context } = engineContext({ availability: () => assert.fail("policy denial must not query model availability") });
+  const { app, context } = engineContext({ availability: () => assert.fail("policy denial must not query model availability"), create: () => assert.fail("policy denial must not create") });
   context.document = { featurePolicy: { features: () => ["translator"], allowsFeature: () => false } };
   vm.runInContext(await source("../src/content/browser-translation.js"), context);
   assert.equal(await app.modules.browserTranslation.capability({ sourceLanguage: "en", targetLanguage: "zh" }), "policy-denied");

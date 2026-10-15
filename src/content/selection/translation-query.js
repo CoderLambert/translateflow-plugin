@@ -16,11 +16,19 @@
     return async function translateSelection(snapshot, task, version, expectedPage, queryRecord = null, options = {}) {
       tasks.transition(task, "cache_lookup");
       popover.setLoadingStatus("content.selection.cacheChecking");
+      const nativeContext = options.browserTranslationAllowed === true ? snapshot.sourceCapture?.context : null;
+      // The projection owner has already checked sensitivity; never scan page DOM a second time.
+      const detectFromContext = nativeContext?.sensitive === false && nativeContext.source === "visible-local"
+        && typeof nativeContext.text === "string";
+      const selectionDetectionSample = app.modules.browserTranslationContract?.selectionDetectionSample;
+      const nativeDetectionText = detectFromContext && typeof selectionDetectionSample === "function"
+        ? selectionDetectionSample(snapshot.text, nativeContext.text) : snapshot.text;
       const lookup = await sendRuntimeMessage({
         type: messages.background.CACHE_LOOKUP,
         requestId: task.id,
         languageSource: "selection",
         browserTranslationAllowed: options.browserTranslationAllowed === true,
+        ...(options.browserTranslationAllowed === true ? { detectionText: nativeDetectionText } : {}),
         pageUrl: snapshot.pageUrl,
         segments: [{ id: "selection", text: snapshot.text }]
       });

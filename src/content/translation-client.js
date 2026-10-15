@@ -14,11 +14,13 @@
     if (!controller || controller.signal.aborted || location.href !== pageUrl || cancelled.has(requestId)) throw engine.error("CANCELLED");
   }
   function responseError(response) { return engine.error(response?.errorCode || "BROWSER_UNAVAILABLE"); }
+  // The surrounding sentence is local language evidence, never an AI Provider input.
+  function withoutNativeDetection(payload) { const { detectionText: _sample, ...request } = payload; return request; }
   function browserEligible(payload) {
     return payload?.languageSource === "selection" && payload?.browserTranslationAllowed === true;
   }
   function correctionKey(payload, segment) {
-    return payload.languageSource === "subtitle" ? `track:${payload.trackKey || ""}` : `${payload.languageSource || "page"}:${segment.contentText ?? segment.text}`;
+    return payload.languageSource === "subtitle" ? `track:${payload.trackKey || ""}` : `${payload.languageSource || "page"}:${segment.contentText ?? segment.text}:${segment.detectionText ?? payload.detectionText ?? ""}`;
   }
   async function checkedSettings(payload, raw, controller) {
     const eligible = browserEligible(payload) || controller.browserAllowed === true;
@@ -38,7 +40,8 @@
     const explicit = explicitSource({ corrected: corrections.get(correctionKey(payload, segment)), configured: settings.sourceLanguage,
       trackLanguage: segment.sourceLanguageHint || payload.sourceLanguageHint, surface: payload.languageSource });
     if (explicit) return explicit;
-    let decision = await engine.detectDecision(sample, { signal: controller.signal, cacheOnly: payload.cacheOnly });
+    const sourceText = segment.contentText ?? segment.text;
+    let decision = await (engine.detectSelection ? engine.detectSelection(sourceText, sample, { signal: controller.signal, cacheOnly: payload.cacheOnly }) : engine.detectDecision(sample, { signal: controller.signal, cacheOnly: payload.cacheOnly }));
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (decision.source === "empty") return decision;
     const uncertainChinese = decision.language === "zh" && !decision.scriptKnown && browserLanguage(settings.targetLanguage) === "zh";
@@ -46,7 +49,7 @@
       if (payload.cacheOnly) return { language: "", source: "unknown" };
       const selected = await view.prompt({ signal: controller.signal, title: decision.reason === "prepare-detector" ? "prepareDetection" : "language",
         message: t(decision.reason === "prepare-detector" ? "prepareDetectionHelp" : "uncertain"),
-        pair: { sourceLanguage: "", targetLanguage: browserLanguage(settings.targetLanguage) }, detectText: sample });
+        pair: { sourceLanguage: "", targetLanguage: browserLanguage(settings.targetLanguage) }, detectText: sample, sourceText });
       assertCurrent(controller, payload.pageUrl, payload.requestId);
       decision = selected.decision || { language: selected.sourceLanguage, source: "manual", scriptKnown: true };
       if (!selected.automatic) boundedSet(corrections, correctionKey(payload, segment), decision.language);
@@ -64,7 +67,7 @@
     return response;
   }
   async function lookup(payload, raw, controller) {
-    if (payload.configSnapshotId && !isNativeId(payload.configSnapshotId)) return raw(payload);
+    if (payload.configSnapshotId && !isNativeId(payload.configSnapshotId)) return raw(withoutNativeDetection(payload));
     controller.browserAllowed = browserEligible(payload);
     const settings = await checkedSettings(payload, raw, controller);
     if (settings.engine !== BROWSER_ENGINE) {
@@ -77,7 +80,7 @@
         await raw({ type: messages.OPEN_OPTIONS, hash: "#provider" });
         throw engine.error("AI_REQUIRED");
       }
-      const response = await raw(payload);
+      const response = await raw(withoutNativeDetection(payload));
       assertCurrent(controller, payload.pageUrl, payload.requestId);
       if (controller.browserAllowed && response?.ok && response.configSnapshotId) {
         boundedSet(browserFallbacks, String(response.configSnapshotId), payload.pageUrl);
@@ -122,19 +125,20 @@
   }
   async function ensurePair(group, payload, controller) {
     const pair = group.pair;
+    const verifyText = group.members[0]?.contentText ?? group.members[0]?.text ?? "";
     if (engine.ready(pair)) return;
     const availability = await engine.capability(pair);
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (availability === "available") {
       // Warm an already-available model without making the user confirm every request.
-      try { await engine.prepare(pair, { signal: controller.signal }); return; }
-      catch (cause) { if (cause?.code !== "BROWSER_PREPARE") throw cause; }
+      try { await engine.prepare(pair, { signal: controller.signal, verifyText }); return; }
+      catch (cause) { if (!["BROWSER_PREPARE", "BROWSER_VERIFY_FAILED"].includes(cause?.code)) throw cause; }
     }
     if (["unsupported", "insecure", "unavailable", "policy-denied"].includes(availability)) {
       await view.prompt({ signal: controller.signal, title: availability, message: t(`${availability}Help`) }); throw engine.error("BROWSER_UNAVAILABLE");
     }
     const selected = await view.prompt({ signal: controller.signal, title: "prepare", pair, allowPrepare: true,
-      detectText: group.members[0]?.detectionText || group.members[0]?.contentText || group.members[0]?.text });
+      verifyText, detectText: group.members[0]?.detectionText || verifyText });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (selected.sourceLanguage !== pair.sourceLanguage) {
       for (const item of group.members) boundedSet(corrections, item.correctionKey, selected.sourceLanguage);
@@ -153,7 +157,7 @@
     }
     controller.basic = true;
     const plan = requirePlan(payload, controller);
-    const settings = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, forceBrowser: true });
+    const settings = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, forceBrowser: true, surface: "selection-word" });
     assertCurrent(controller, payload.pageUrl, plan.requestId);
     if (!settings?.ok) throw responseError(settings);
     if (!settings.enabled) throw engine.error("BROWSER_DISABLED");
@@ -169,7 +173,17 @@
       }
       await ensurePair(group, payload, controller);
       assertCurrent(controller, payload.pageUrl, plan.requestId);
-      const result = await engine.execute({ pair: group.pair, signal: controller.signal, segments: members.map(item => requested.get(item.id)) });
+      const input = { pair: group.pair, signal: controller.signal, segments: members.map(item => requested.get(item.id)) };
+      let result;
+      try { result = await engine.execute(input); }
+      catch (cause) {
+        // A user may close the shared Settings host while a word is running.
+        // Re-prepare the same frozen pair at most once, never switch to AI.
+        if (!["BROWSER_PREPARE", "BROWSER_HOST_LOST"].includes(cause?.code)) throw cause;
+        assertCurrent(controller, payload.pageUrl, plan.requestId);
+        await ensurePair(group, payload, controller);
+        result = await engine.execute(input);
+      }
       assertCurrent(controller, payload.pageUrl, plan.requestId);
       const values = new Map((result.translations || []).map(item => [item.id, item.text]));
       if (values.size !== members.length || values.size !== result.translations?.length) throw engine.error("BROWSER_RESULT");
