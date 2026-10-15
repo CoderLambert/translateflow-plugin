@@ -22,7 +22,7 @@ test("same-version upgrade rejects implicit locale writes and loss of any persis
   const copy=structuredClone(before);
   assert.doesNotThrow(()=>assertUnchangedUpgradeSnapshot(before,copy));
   for(const mutate of [
-    after=>{after.storage.uiLocale="auto";},
+    after=>{after.storage.uiLocale="zh_CN";},
     after=>{delete after.storage.targetLanguage;},
     after=>{after.storage.extra.keep=false;},
     after=>{after.databases[0].version=3;},
@@ -38,7 +38,7 @@ test("same-version upgrade rejects implicit locale writes and loss of any persis
 test("only an observed native update for the exact old version authorizes the new missing locale default",()=>{
   const before={targetLanguage:"Chinese",extra:{keep:true}};
   const event={reason:"update",previousVersion:"0.8.0"};
-  assert.deepEqual(expectedStorageAfterInstalledUpdate(before,event,"0.8.0"),{...before,uiLocale:"auto"});
+  assert.deepEqual(expectedStorageAfterInstalledUpdate(before,event,"0.8.0"),{...before,uiLocale:"zh_CN"});
   assert.deepEqual(before,{targetLanguage:"Chinese",extra:{keep:true}});
   for(const nativeEvent of [undefined,{reason:"install"},{reason:"chrome_update"},
     {reason:"update"},{reason:"update",previousVersion:"0.7.0"}]) {

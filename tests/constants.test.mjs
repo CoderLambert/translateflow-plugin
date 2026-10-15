@@ -8,7 +8,7 @@ const CONTENT_SOURCE_FILES = contentSourceFiles();
 
 test("default config remains compatible with existing DeepSeek cache version", () => {
   assert.equal(DEFAULT_CONFIG.provider, "deepseek"); assert.equal(DEFAULT_CONFIG.model, "deepseek-flash");
-  assert.equal(DEFAULT_CONFIG.targetLanguage, "Simplified Chinese"); assert.equal(DEFAULT_CONFIG.appearance, "standard");
+  assert.equal(DEFAULT_CONFIG.targetLanguage, "Simplified Chinese"); assert.equal(DEFAULT_CONFIG.uiLocale, "zh_CN"); assert.equal(DEFAULT_CONFIG.appearance, "standard");
   assert.equal(DEFAULT_CONFIG.youtubeSubtitleMode, "bilingual"); assert.equal(DEFAULT_CONFIG.youtubeSubtitleSize, "standard");
   assert.equal(DEFAULT_CONFIG.selectionExplanationDepth, "auto");
 });
