@@ -9,7 +9,7 @@ export function assertUnchangedUpgradeSnapshot(before, after) {
 export function expectedStorageAfterInstalledUpdate(before, nativeEvent, previousVersion) {
   assert.equal(nativeEvent?.reason, "update", "A real update event must precede default initialization");
   assert.equal(nativeEvent.previousVersion, previousVersion, "Update event must name the actual old package version");
-  return Object.hasOwn(before,"uiLocale") ? before : {...before,uiLocale:"auto"};
+  return Object.hasOwn(before,"uiLocale") ? before : {...before,uiLocale:"zh_CN"};
 }
 
 // Compiled Content is statically registered by the Manifest. A native update
