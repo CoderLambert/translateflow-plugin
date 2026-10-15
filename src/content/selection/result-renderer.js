@@ -57,32 +57,11 @@
     const card = document.createElement("section");
     card.className = "tf-selection-translation-card";
     card.dataset.engine = result.browserDefinition || result.browserPair ? "browser" : "ai";
-    const header = document.createElement("div");
-    header.className = "tf-selection-translation-header";
-    if (card.dataset.engine !== "browser") {
-      const label = document.createElement("span");
-      label.className = "tf-selection-translation-label";
-      locale.bindText(label, "content.selection.badgeTranslation");
-      header.appendChild(label);
-    }
-    appendTranslationCopy(header, result.primaryMeaning, "tf-selection-translation-copy tf-selection-action-quiet");
     const meaning = document.createElement("div");
     meaning.className = "tf-selection-primary tf-selection-translation-meaning";
     meaning.textContent = String(result.primaryMeaning || "").trim();
-    card.append(header, meaning);
+    card.appendChild(meaning);
     container.appendChild(card);
-  }
-
-  function appendTranslationCopy(container, text, className = "") {
-    if (!app.modules.selectionClipboard) return;
-    const copy = document.createElement("button"); copy.type = "button"; copy.className = `tf-ui-button ${className}`.trim();
-    locale.bindText(copy, "content.common.copy");
-    copy.addEventListener("click", async event => {
-      if (!event.isTrusted) return;
-      try { await app.modules.selectionClipboard.writeText(String(text || "")); locale.bindText(copy, "content.selection.translationCopied"); }
-      catch { locale.bindText(copy, "content.selection.copyDenied"); }
-    });
-    container.append(copy);
   }
 
   function renderBadges(container, badges) {

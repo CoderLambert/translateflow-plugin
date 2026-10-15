@@ -74,9 +74,7 @@
       browserDefinition: basic,
       browserPair: basic ? { sourceLanguage: metadata.sourceLanguage, targetLanguage: metadata.targetLanguage } : null,
       primaryMeaning: String(text || "").trim(),
-      badges: basic
-        ? []
-        : [{ label: t("content.selection.badgeTranslation"), labelKey: "content.selection.badgeTranslation", kind: "translation" }],
+      badges: [],
       senses: [],
       domains: [],
       typeLabels: []

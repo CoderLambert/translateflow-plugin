@@ -47,40 +47,9 @@
   border-color: var(--tf-border-soft);
   background: var(--tf-bg-subtle);
 }
-.tf-selection-translation-header {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.tf-selection-translation-card[data-engine="browser"] .tf-selection-translation-header {
-  justify-content: flex-end;
-  margin-bottom: -5px;
-}
-.tf-selection-translation-label {
-  color: var(--tf-green-800);
-  font-size: 11px;
-  font-weight: 720;
-  letter-spacing: .02em;
-}
-.tf-selection-translation-card[data-engine="ai"] .tf-selection-translation-label { color: var(--tf-text-secondary); }
 .tf-selection-translation-meaning {
   font-size: 18px;
   line-height: 1.45;
-}
-.tf-selection-translation-copy.tf-ui-button {
-  min-height: 28px;
-  padding: 4px 9px;
-  border-color: transparent;
-  background: transparent;
-  color: var(--tf-text-secondary);
-  font-size: 11px;
-  box-shadow: none;
-}
-.tf-selection-translation-copy.tf-ui-button:hover {
-  border-color: var(--tf-border-soft);
-  background: color-mix(in srgb, var(--tf-bg-card) 72%, transparent);
 }
 .tf-selection-panel[data-result-kind="browser-definition"] > .tf-selection-record-status[data-state="invite"] { display: none; }
 .tf-selection-panel[data-result-kind="browser-definition"] .tf-selection-footer-actions {
