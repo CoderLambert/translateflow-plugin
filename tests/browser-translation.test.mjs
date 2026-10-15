@@ -3,14 +3,15 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { browserLanguage, browserConfig, hasConfiguredAi, BROWSER_TRANSLATION_ACTIONS, BROWSER_ENGINE, languageHintMatchesText } from "../src/shared/browser-translation.js";
+import * as language from "../src/shared/browser-language.js";
 import { getConfigHash } from "../src/background/cache-db.js";
 import { buildSubtitleCacheSource } from "../src/shared/subtitle-cache.js";
 import { BACKGROUND_MESSAGES as M } from "../src/shared/constants.js";
 
 const source = path => readFile(new URL(path, import.meta.url), "utf8");
 function engineContext(Translator) {
-  const app = { modules: { browserTranslationContract: { browserLanguage, languageHintMatchesText, BROWSER_TRANSLATION_ACTIONS } } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, Translator, isSecureContext: true, AbortController });
+  const app = { modules: { browserTranslationContract: { browserLanguage, languageHintMatchesText, BROWSER_TRANSLATION_ACTIONS, BROWSER_ENGINE, ...language } } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, Translator, isSecureContext: true, AbortController, setTimeout, clearTimeout });
   return { app, context };
 }
 
@@ -69,15 +70,16 @@ test("cancelling preparation destroys a late instance; cancelling translation re
   await engine.prepare(pair);
   const controller = new AbortController();
   const running = engine.execute({ pair, signal: controller.signal, segments: [{ id: "1", text: "hello" }] });
-  controller.abort(); translateDone("late"); await assert.rejects(running, { code: "CANCELLED" });
+  await new Promise(resolve => setImmediate(resolve));
+  controller.abort(); translateDone("late"); await assert.rejects(running, { code: "CANCELLED" }); engine.dispose();
 });
 
 async function clientContext({ settings = { ok: true, engine: BROWSER_ENGINE, enabled: true, sourceLanguage: "auto", targetLanguage: "Chinese" }, prompt = async () => true } = {}) {
   const calls = [], events = {}, model = { creates: 0, executions: [], disposed: 0 };
-  const engine = { detect: async () => "en", capability: async () => "downloadable", ready: () => true,
+  const engine = { detectDecision: async () => ({ language: "en", source: "detector", scriptKnown: true }), capability: async () => "downloadable", ready: () => true,
     execute: async input => { model.executions.push(input); return { translations: input.segments.map(item => ({ id: item.id, text: `译:${item.text}` })) }; },
     dispose: () => model.disposed++, error: code => Object.assign(new Error(code), { code }) };
-  const app = { modules: { browserTranslationContract: { BROWSER_ENGINE, browserLanguage, buildSubtitleCacheSource }, browserTranslation: engine,
+  const app = { modules: { browserTranslationContract: { BROWSER_ENGINE, browserLanguage, buildSubtitleCacheSource, ...language }, browserTranslation: engine,
     browserTranslationView: { prompt, close() {} }, runtime: { messages: { background: M } }, contentI18n: { t: key => key } } };
   let notify;
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/" }, document: { documentElement: { lang: "en" } }, window: { addEventListener: (type, fn) => { events[type] = fn; } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController });
@@ -94,14 +96,14 @@ async function clientContext({ settings = { ok: true, engine: BROWSER_ENGINE, en
 
 test("disabled basic translation does not query models or execute; settings notification releases instances", async () => {
   const state = await clientContext({ settings: { ok: true, engine: BROWSER_ENGINE, enabled: false } });
-  state.engine.detect = () => assert.fail("must not detect while disabled");
+  state.engine.detectDecision = () => assert.fail("must not detect while disabled");
   await assert.rejects(state.client.send({ type: M.CACHE_LOOKUP, pageUrl: "https://example.test/" }, state.raw), { code: "BROWSER_DISABLED" });
   assert.equal(state.model.executions.length, 0);
   state.notify({ type: M.PUBLIC_SETTINGS_CHANGED, changes: { browserTranslationEnabled: { newValue: false } } });
   assert.equal(state.model.disposed, 1);
 });
 
-test("subtitle track language takes precedence and uses the shared subtitle cache source", async () => {
+test("automatic subtitle source uses track language and the shared subtitle cache source", async () => {
   const state = await clientContext();
   const unit = { id: "cue", mediaId: "video", text: "bonjour", track: { language: "fr" }, cue: { startTime: 1, endTime: 2 } };
   const result = await state.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "task", pageUrl: "https://example.test/", units: [unit] }, state.raw);
@@ -177,36 +179,36 @@ test("subtitle cancellation rejects late local output before cache writes, and a
 
 test("navigation aborts an active browser translation and rejects its late result", async () => {
   const state = await clientContext();
-  await state.client.send({ type: M.CACHE_LOOKUP, pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const lookup = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "page-task", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
   let release, started;
   const startedPromise = new Promise(resolve => { started = resolve; });
   state.engine.execute = () => { started(); return new Promise(resolve => { release = resolve; }); };
-  const pending = state.client.send({ type: M.TRANSLATE_BATCH, configSnapshotId: "snapshot", requestId: "page-task", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const pending = state.client.send({ type: M.TRANSLATE_BATCH, configSnapshotId: lookup.configSnapshotId, requestId: "page-task", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
   await startedPromise; state.events.popstate(); release({ translations: [{ id: "1", text: "late" }] });
   await assert.rejects(pending, { code: "CANCELLED" }); assert.equal(state.model.disposed, 1);
 });
 
-test("denied language detection falls back to page hints or manual choice without starting a download", async () => {
+test("denied detection requests manual choice rather than guessing from Latin page hints", async () => {
   const { app, context } = engineContext({});
   context.LanguageDetector = { availability: async () => { throw new Error("permission denied"); }, create: () => assert.fail("must not create") };
   vm.runInContext(await source("../src/content/browser-translation.js"), context);
-  assert.equal(await app.modules.browserTranslation.detect("a short sentence", "de"), "de");
+  assert.equal(await app.modules.browserTranslation.detect("a short sentence", "de"), "");
   assert.equal(await app.modules.browserTranslation.detect("a short sentence"), "");
 });
 
-test("English words on a Chinese UI do not inherit Chinese source language, and Latin does not imply English", async () => {
+test("selection language never inherits Chinese or Latin website UI language", async () => {
   const { app, context } = engineContext({});
   vm.runInContext(await source("../src/content/browser-translation.js"), context);
   assert.equal(await app.modules.browserTranslation.detect("Actually", "zh-CN"), "");
-  assert.equal(await app.modules.browserTranslation.detect("Actually", "en"), "en");
-  assert.equal(await app.modules.browserTranslation.detect("bonjour", "fr"), "fr");
+  assert.equal(await app.modules.browserTranslation.detect("Actually", "en"), "");
+  assert.equal(await app.modules.browserTranslation.detect("bonjour", "fr"), "");
   assert.equal(await app.modules.browserTranslation.detect("中文词语", "en"), "");
 });
 test("a high-confidence browser detection is used for a short word despite the site's UI language", async () => {
   const { app, context } = engineContext({});
   context.LanguageDetector = { availability: async () => "available", create: async () => ({ detect: async () => [{ detectedLanguage: "en", confidence: 0.95 }], destroy() {} }) };
   vm.runInContext(await source("../src/content/browser-translation.js"), context);
-  assert.equal(await app.modules.browserTranslation.detect("Actually", "zh-CN"), "en");
+  assert.equal(await app.modules.browserTranslation.detect("Actually", "zh-CN"), "en"); app.modules.browserTranslation.dispose();
 });
 test("an explicit website translator policy denial is distinct from unavailable models", async () => {
   const { app, context } = engineContext({ availability: () => assert.fail("policy denial must not query model availability") });
@@ -214,10 +216,10 @@ test("an explicit website translator policy denial is distinct from unavailable 
   vm.runInContext(await source("../src/content/browser-translation.js"), context);
   assert.equal(await app.modules.browserTranslation.capability({ sourceLanguage: "en", targetLanguage: "zh" }), "policy-denied");
 });
-test("Selection detection receives no page language hint, even on a Latin-language page", async () => {
+test("Selection detection receives text and cancellation, not the page language", async () => {
   const state = await clientContext();
-  let hint;
-  state.engine.detect = async (_text, pageHint) => { hint = pageHint; return "en"; };
+  let options;
+  state.engine.detectDecision = async (_text, input) => { options = input; return { language: "en", scriptKnown: true }; };
   const response = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "selection", languageSource: "selection", pageUrl: "https://example.test/", segments: [{ id: "1", text: "Actually" }] }, state.raw);
-  assert.equal(hint, ""); assert.equal(response.sourceLanguage, "en");
+  assert.equal(Object.hasOwn(options, "hint"), false); assert.equal(options.signal instanceof AbortSignal, true); assert.equal(response.sourceLanguage, "en");
 });

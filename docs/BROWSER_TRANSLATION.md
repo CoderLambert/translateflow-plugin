@@ -1,27 +1,33 @@
-# 浏览器基础翻译 / browser basic translation
+# 浏览器基础翻译 / Browser basic translation
 
-无需 AI Key 或词典即可尝试划词、页面和字幕翻译。设置 → 常规中的“启用浏览器基础翻译”默认开启；已配置 AI 时仍优先使用选定 AI 及站点覆盖。AI 配置按保存的连接判断，不发送自动测试请求。连接失效会显示配置错误。
+浏览器基础翻译可用于划词、网页和字幕。默认开启；已配置 AI 时仍优先使用选定 AI 及站点覆盖。连接错误不会伪装成“未配置”，AI 请求失败后只有用户点击“使用基础翻译”才启动新的本地任务。
 
-源语言默认为自动，字幕优先采用轨道语言，网页/划词结合浏览器识别与页面语言。短词不一定能可靠识别，请在准备面板纠正源语言，或在设置中保存源语言偏好。目标语言沿用全局/站点设置，默认简体中文；标准语言名称和代码映射到浏览器语言代码。AI 自定义目标文案保留，基础引擎无法识别时需要改为标准语言。
+## 自动识别与首次使用
 
-第一次翻译可能出现“准备基础翻译”。只有点击该按钮才创建翻译实例并允许浏览器下载语言包；进度条显示浏览器报告的进度，失败后可重试或取消。语言识别模型缺失时，可以直接手选源语言，也可以明确点击“识别语言”准备识别模型。关闭基础翻译后停止基础任务、释放实例；Chrome 已下载的共享语言包由浏览器管理，扩展不删除它们。
+源语言选择“自动识别”后，优先使用 Chrome LanguageDetector 判断实际文本，而不是沿用网站界面语言。网页逐段判断，并按源语言分别调用相应语言对和缓存；不会将第一批识别出的语言套到整页。字幕在自动模式下优先使用自身轨道语言。用户明确设置或手动纠正的源语言优先于这些自动证据。
 
-AI 请求失败后可取消并重试原任务，或点击“使用基础翻译”开始新任务。此选择仅对当前页面生效，页面导航或变更 AI 连接后重新采用默认选择。基础结果标明来源，可复制和收藏；“AI 解释”仍需配置 AI。基础引擎不执行 AI Prompt、术语表指令或 Preset。富文本按受保护的格式片段翻译，保留链接和代码，但片段间语义连贯性可能受影响。
+如果识别模型尚需准备，点击“启用识别并继续”。准备完成后自动识别并进入翻译，不再要求额外确认识别结果。仅当置信度不足、候选接近或中文简繁无法可靠区分时，展开手动选择。手动纠正按当前文本/字幕轨道保存于页面内存，不把某个单词的语言应用到后续所有划词。
 
-浏览器、操作系统、语言对、安全上下文和网站 Permissions Policy 都可能限制能力。普通 HTTP 页面不提供基础翻译时，可使用 HTTPS 或配置 AI。API 可探测、`downloadable`、模型准备完成和真实翻译是不同状态，不能互相代替。离线可用性需要先完成语言包准备，再在本机断网实测。
+新语言对仍可能需要点击“准备并翻译”以允许 Chrome 下载/激活资源。已有可用语言对自动创建或复用实例，不逐条询问。准备面板显示目标语言、原文样本与真实下载进度；纠正源语言放在次要展开项中。取消、超时或导航后的迟到结果不会继续显示或进入缓存。
 
-词典是高级设置中的可选功能，新安装默认关闭，基础安装包不附带词典。升级会保留已安装且启用的词典；显式关闭也会保留。启用后先查询本地结构化/富文本词典，未命中或资源不可用时继续翻译。词典、收藏及阅读记录不会被清空。
+## 模型与结果
+
+每个页面复用一个检测器和最多两个语言对实例，同实例任务串行。闲置约两分钟后释放实例；释放实例不删除 Chrome 管理的语言包。已确定为目标语言的段落直接保留，划词显示“原文已是目标语言”，不产生重复译文记录。
+
+基础引擎不执行 AI Prompt、术语表指令和风格 Preset。链接和代码沿用现有保护方式；代码/内部标记不发送给模型，格式片段分别翻译，片段之间的语义连贯性仍由模型和上下文决定。单段内部混用多种语言不保证都能精准拆分。
+
+现有 IndexedDB、AI 缓存指纹、词典、收藏及 Reading 数据保持不变。浏览器结果使用明确语言对的独立配置快照；模型准备期间后台重启导致快照丢失时，仅按同一语言对恢复一次，不自动改用云端。
+
+浏览器版本、设备、安全上下文和网站 Permissions Policy 仍可能限制可用性。Chrome 还可能对新的站点再次要求用户激活，即使磁盘上已有共享语言包。界面会明确提示，不绕过浏览器限制。真实离线效果和翻译质量由用户在本机完成产品验收；单元测试使用 mock，不冒充真实模型验证。
 
 ## English
 
-Basic translation can translate selections, pages and subtitles without an AI key or dictionary. Enable browser basic translation is on by default. A configured AI service and its site overrides take priority; a broken AI connection remains a configuration error. No connection test is sent automatically.
+Basic translation supports selections, webpages and subtitles. Configured AI services keep priority; AI failures require an explicit choice before switching to a new local task.
 
-The source language defaults to automatic detection. Subtitle tracks take priority; page language is a hint when detection is unavailable. Correct ambiguous words in the preparation panel, or save a source preference in Settings. The target is remembered globally and per site, with Simplified Chinese as the default. Custom AI target descriptions remain supported by AI; basic translation requires a recognized standard language.
+Automatic mode identifies the actual text with Chrome LanguageDetector, not the website UI locale. Paragraphs are classified independently and grouped by source language with separate cache snapshots. Subtitle track language is used in automatic mode; an explicit source setting or correction wins. Ambiguous results are not turned into confident guesses.
 
-Click Prepare basic translation on the page to create the translator and allow language-pack downloads. Installing the extension, opening a page or displaying a selection chip does not download models. Progress, cancellation and retry are available. If detection needs a model, choose a source manually or explicitly prepare language detection. Turning basic translation off stops basic tasks and releases instances. Chrome manages its shared downloaded language packs.
+For first use, choose **Enable detection and continue**. Successful detection proceeds automatically. Manual source selection is a secondary option for ambiguous results. A new translator pair may require **Prepare and translate**; already available models are warmed or reused without repeated confirmation. Chrome may require activation again for a new origin even when shared language packs are on disk.
 
-After an AI failure, explicitly choose Use basic translation to start a new task. This choice lasts for the current page and resets after navigation or AI connection changes. Basic results identify their source and support copying/saving. AI explanations require an AI service. AI prompts, glossary instructions and style presets do not apply to the basic engine. Translating protected formatting runs independently can reduce context across runs.
+Each page retains one detector and at most two translator pairs, with serial model use and a two-minute idle lifetime. Releasing an instance does not uninstall language packs. Known target-language content is kept without generating or saving a duplicate translation. Cancellation is isolated per request; late output cannot overwrite the new task.
 
-Browser support, language pairs, secure contexts and site permissions can limit availability. Use HTTPS or configure AI when basic translation is unavailable. A detectable API or downloadable state does not prove successful translation or offline operation. Prepare the language packs, then test offline on the actual device.
-
-Dictionaries are optional advanced settings and are excluded from the base package. New installs leave dictionaries off; upgrades retain enabled imported dictionaries and explicit disabled preferences. Dictionary misses or unavailable resources continue to translation. Existing dictionaries, saved vocabulary and reading records remain intact.
+Existing AI, cache, dictionary and reading-history boundaries remain unchanged. Protected formatting is retained; code and internal sentinels stay out of model input. Paragraph-level detection does not promise perfect intra-sentence code-switching or translation quality. Secure contexts, website policy and device support still apply. Unit tests use mock models; real translation and offline acceptance remain user-run checks.

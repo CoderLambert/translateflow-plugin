@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.3
+# TranslateFlow v0.8.4
 
 轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时可使用浏览器基础翻译，AI 与本地词典均为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
@@ -184,24 +184,29 @@ npm run test:e2e
 
 E2E 使用临时 unpacked 扩展副本、本地 fixture 页面和本地 OpenAI-compatible mock server，不需要真实 API Key。生产 `manifest.json` 不会因为测试而扩大 Host Permission；测试副本运行时才临时加入 localhost 权限。
 
-## Chrome 本地安装
+## 新用户安装与首次配置
 
-首次安装或更新后：
+先在仓库目录构建可安装的扩展：
 
 ```bash
 npm ci
-npm run validate
+npm run build:extension
 ```
 
-然后：
+构建完成后按以下步骤安装和配置：
 
 1. 打开 `chrome://extensions/`
 2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
-4. 选择 `dist/extension/`。仓库根目录只用于开发调试，不作为正式发布包
-5. 在设置页确认目标语言；浏览器基础翻译默认开启
-6. 刷新 HTTPS 目标网页，划词或点击翻译，按页面提示点击“准备基础翻译”
-7. 可选：配置 AI 连接，或在高级设置中导入并启用本地词典
+4. 选择仓库内的 `dist/extension/`；不要选择仓库根目录
+5. 打开 TranslateFlow 设置，在“通用”中保持“启用浏览器基础翻译”开启
+6. 源语言建议保持“自动识别”，将默认目标语言设为需要的语言；默认是简体中文
+7. 打开一个 HTTPS 网页并刷新页面，然后划词或启动整页翻译
+8. 首次使用某个语言对时，按页面提示点击“准备并翻译”；Chrome 可能需要下载对应的语言识别或翻译模型，准备完成后会自动复用
+
+基础翻译不需要 API Key。需要 AI 解释或希望优先使用 AI 翻译时，再到 Provider 设置添加连接、填写模型与 API Key，并设为默认服务。词典也是可选功能：需要查词时，在“高级设置：可选词典”中导入词典并开启“翻译前优先查询已安装词典”。
+
+更新本地安装时，重新执行 `npm run build:extension`，再到 `chrome://extensions/` 点击 TranslateFlow 卡片上的“重新加载”，最后刷新正在验收的网页。扩展设置、词典、收藏和阅读记录保存在 Chrome 配置中，重新构建不会主动删除这些数据。
 
 日常开发循环：
 
