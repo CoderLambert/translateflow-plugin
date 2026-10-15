@@ -24,7 +24,10 @@ export const en = Object.freeze({
   "options.native.preparing": "Preparing models…",
   "options.native.cancelled": "Preparation cancelled",
   "options.native.failed": "Preparation failed",
+  "options.native.prepareFailureHelp": "Chrome could not finish preparing the local models. Retry or expand the diagnostic details below.",
   "options.native.ready": "Detection and translation self-check passed",
+  "options.native.modelReady": "Verified",
+  "options.native.disabled": "Browser definitions are off. Enable them to prepare local models.",
   "options.native.detector": "Language detector",
   "options.native.translator": "Translator",
   "options.native.initializing": "Initializing",
@@ -38,7 +41,8 @@ export const en = Object.freeze({
   "options.native.pending": "Language pairs requested by reading pages",
   "options.native.pendingHint": "Only language codes and timestamps are remembered for this browser session. A past check is not an installed-model inventory.",
   "options.native.lastVerified": "Previously checked",
-  "options.native.statusWarning": "The browser could not read or save the temporary preparation status. Model controls remain available."
+  "options.native.statusWarning": "The browser could not read or save the temporary preparation status. Model controls remain available.",
+  "options.native.diagnostic": "Chrome diagnostic"
 });
 export const zh_CN = Object.freeze({
   "content.basic.waiting": "正在等待空闲的本地模型…",
@@ -66,7 +70,10 @@ export const zh_CN = Object.freeze({
   "options.native.preparing": "正在准备模型…",
   "options.native.cancelled": "已取消准备",
   "options.native.failed": "准备失败",
+  "options.native.prepareFailureHelp": "Chrome 未能完成本地模型准备，请重试或展开下方诊断信息。",
   "options.native.ready": "语言识别与翻译自检通过",
+  "options.native.modelReady": "已通过校验",
+  "options.native.disabled": "浏览器释义已关闭，重新开启后才可准备本地模型。",
   "options.native.detector": "语言识别模型",
   "options.native.translator": "翻译模型",
   "options.native.initializing": "正在初始化",
@@ -80,5 +87,6 @@ export const zh_CN = Object.freeze({
   "options.native.pending": "阅读页面请求准备的语言对",
   "options.native.pendingHint": "仅在本次浏览器会话保存语言代码和时间。曾经检查通过，不代表当前语言包已安装。",
   "options.native.lastVerified": "曾检查通过",
-  "options.native.statusWarning": "浏览器无法读取或保存临时准备状态，仍可使用模型准备按钮。"
+  "options.native.statusWarning": "浏览器无法读取或保存临时准备状态，仍可使用模型准备按钮。",
+  "options.native.diagnostic": "Chrome 诊断信息"
 });

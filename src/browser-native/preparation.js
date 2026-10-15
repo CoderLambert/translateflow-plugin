@@ -35,16 +35,28 @@ export function resolvePreparationPair(source, target) {
 /** @param {unknown} engine @param {{ onChange?: (state: any) => void, client?: PreparationClient | null, now?: () => number }} [options] */
 export function createPreparationController(engine, { onChange = (_state) => {}, client = null, now = Date.now } = {}) {
   let current = 0, controller = null, closed = false;
-  let state = { phase: "idle", busy: false, models: {}, result: null, errorCode: "", warning: "", pending: [] };
+  let state = { phase: "idle", busy: false, models: {}, result: null, errorCode: "", nativeErrorName: "", failureModel: "", warning: "", pending: [] };
   const publish = patch => { if (!closed) { state = { ...state, ...patch }; onChange(state); } };
-  function cancel() { current++; controller?.abort(); controller = null; if (state.busy) publish({ phase: "cancelled", busy: false }); }
+  function cancel() {
+    current++; controller?.abort(); controller = null;
+    if (state.busy) {
+      const models = Object.fromEntries(Object.entries(state.models).map(([model, status]) => [model,
+        ["ready", "failed", "cancelled"].includes(status.phase) ? status : { ...status, phase: "cancelled" }
+      ]));
+      publish({ phase: "cancelled", busy: false, models });
+    }
+  }
+  function reset() {
+    cancel();
+    publish({ phase: "idle", busy: false, models: {}, result: null, errorCode: "", nativeErrorName: "", failureModel: "", warning: "" });
+  }
   function start(source, target) {
-    cancel(); const revision = ++current; controller = new AbortController();
+    reset(); const revision = ++current; controller = new AbortController();
     const signal = controller.signal;
     let pair;
     try { pair = resolvePreparationPair(source, target); }
     catch (cause) { publish({ phase: "failed", busy: false, errorCode: cause.code }); return Promise.reject(cause); }
-    publish({ phase: "preparing", busy: true, result: null, errorCode: "", warning: "", models: { detector: { phase: "initializing" }, translator: { phase: "initializing" } } });
+    publish({ phase: "preparing", busy: true, result: null, errorCode: "", nativeErrorName: "", failureModel: "", warning: "", models: { detector: { phase: "initializing" }, translator: { phase: "initializing" } } });
     let work;
     try {
       // Start immediately: never await storage/IPC before the model create calls.
@@ -55,14 +67,30 @@ export function createPreparationController(engine, { onChange = (_state) => {},
     } catch (cause) { work = Promise.reject(cause); }
     return Promise.resolve(work).then(async result => {
       if (closed || signal.aborted || revision !== current) return null;
-      publish({ phase: "ready", busy: false, result: { ...result, sampleText: pair.sampleText, checkedAt: now() } });
+      publish({ phase: "ready", busy: false, models: { detector: { phase: "ready" }, translator: { phase: "ready" } },
+        result: { ...result, sampleText: pair.sampleText, checkedAt: now() } });
       if (client) {
         try { await client.request({ kind: "pending-verified", pair }); }
         catch { if (!closed && revision === current) publish({ warning: "BROWSER_STATUS_SAVE" }); }
       }
       return result;
     }, cause => {
-      if (!closed && revision === current) publish({ phase: signal.aborted ? "cancelled" : "failed", busy: false, errorCode: engine.normalizeError(cause).code });
+      if (!closed && revision === current) {
+        const normalized = engine.normalizeError(cause);
+        const phase = signal.aborted ? "cancelled" : "failed";
+        const failureModel = ["detector", "translator"].includes(normalized.model) ? normalized.model : "";
+        const models = Object.fromEntries(Object.entries(state.models).map(([model, status]) => [model,
+          ["failed", "cancelled", "ready"].includes(status.phase) ? status : {
+            ...status, phase: failureModel && model !== failureModel ? "cancelled" : phase
+          }
+        ]));
+        if (failureModel) models[failureModel] = {
+          ...models[failureModel], phase: normalized.code === "CANCELLED" ? "cancelled" : "failed", errorCode: normalized.code,
+          ...(normalized.nativeName ? { nativeName: normalized.nativeName } : {})
+        };
+        publish({ phase, busy: false, errorCode: normalized.code, nativeErrorName: normalized.nativeName || "",
+          failureModel: phase === "failed" ? failureModel : "", models });
+      }
       throw cause;
     });
   }
@@ -71,5 +99,5 @@ export function createPreparationController(engine, { onChange = (_state) => {},
     try { const pending = await client.request({ kind: "pending-list" }); if (!closed) publish({ pending: Array.isArray(pending) ? pending : [] }); }
     catch { if (!closed) publish({ warning: "BROWSER_STATUS_READ" }); }
   }
-  return { start, cancel, refresh, state: () => state, dispose() { closed = true; cancel(); client?.dispose(); engine.dispose(); } };
+  return { start, cancel, reset, refresh, state: () => state, dispose() { closed = true; cancel(); client?.dispose(); engine.dispose(); } };
 }
