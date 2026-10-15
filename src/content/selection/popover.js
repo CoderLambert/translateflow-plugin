@@ -143,6 +143,7 @@
     cancelHandler = onCancel;
     chip.hidden = true;
     panel.hidden = false;
+    delete panel.dataset.resultKind;
     clearPageSelection();
     updateSource(sourceNode, snapshot);
     setLocalizedStatus(statusNode, loadingMessage, "content.selection.loadingText", "loading");
@@ -186,10 +187,11 @@
       current: () => snapshot === activeSnapshot && !panel?.hidden });
     chip.hidden = true;
     panel.hidden = false;
+    panel.dataset.resultKind = result?.browserDefinition || result?.browserPair ? "browser-definition" : String(result?.kind || "result");
     updateSource(sourceNode, snapshot, result);
     locale.unbind(statusNode); setStatus(statusNode, "", "success");
     const hasGenerated = renderResult(result);
-    viewTabs.setPrimaryKind?.(result?.kind);
+    viewTabs.setPrimaryKind?.(result?.kind, result);
     configureTabs(explainHandler, Boolean(explainHandler || hasGenerated));
     viewTabs.selectDictionary();
     resultNode.hidden = false;
@@ -208,6 +210,7 @@
     explainHandler = typeof onExplain === "function" ? onExplain : null;
     chip.hidden = true;
     panel.hidden = false;
+    delete panel.dataset.resultKind;
     updateSource(sourceNode, snapshot);
     setLocalizedStatus(statusNode, message, "content.selection.errorRetry", "error");
     viewTabs.reset();
@@ -277,6 +280,7 @@
     clearActionHandlers();
     chip.hidden = true;
     panel.hidden = false;
+    delete panel.dataset.resultKind;
     updateSource(sourceNode, snapshot);
     locale.unbind(statusNode); setStatus(statusNode, "", "info");
     viewTabs.reset();

@@ -117,7 +117,7 @@
     setQuickControlSelectionActive(true);
     popover.showChip(snapshot, (event) => translateSnapshot(snapshot, { event }));
   }
-  async function translateSnapshot(snapshot, { forceTranslation = false, event } = {}) {
+  async function translateSnapshot(snapshot, { forceTranslation = false, browserTranslationAllowed = false, event } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
     const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
@@ -135,7 +135,7 @@
     let resolved = null;
     try {
       if (forceTranslation) {
-        await translateSelection(snapshot, task, version, expectedPage, queryRecord);
+        await translateSelection(snapshot, task, version, expectedPage, queryRecord, { browserTranslationAllowed });
         return;
       }
       tasks.transition(task, "translating");
@@ -176,7 +176,8 @@
       }
       if (resolved.route === "translation") {
         if (queryRecord) queryRecord.sourceLanguage = resolved.intent?.sourceLanguage || "unknown";
-        await translateSelection(snapshot, task, version, expectedPage, queryRecord);
+        browserTranslationAllowed = resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1;
+        await translateSelection(snapshot, task, version, expectedPage, queryRecord, { browserTranslationAllowed });
         return;
       }
       if (resolved.routeReason === "no-hit-local") {
@@ -187,7 +188,7 @@
           onExplain: resolved.explanationAllowed
             ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action)
             : null,
-          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, event })
+          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed: true, event })
         });
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
@@ -207,7 +208,7 @@
     } catch (error) {
       if (error?.code === "ENGINE_SWITCH" && isCurrentSelection(version, snapshot, expectedPage)) {
         tasks.failTask(task, error);
-        return translateSnapshot(snapshot, { forceTranslation: true });
+        return translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed });
       }
       if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
       tasks.failTask(task, error);
@@ -323,8 +324,8 @@
     return assistantResults.get(result?.action) === result && result.snapshot === activeSnapshot &&
       result.snapshot?.sourceRevision === projection.revision() && getPageIdentity(location.href) === result.expectedPage;
   }
-  function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
-    return runTranslation(snapshot, task, version, expectedPage, queryRecord);
+  function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext, options = {}) {
+    return runTranslation(snapshot, task, version, expectedPage, queryRecord, options);
   }
   function failureMessage(error) {
     if (extensionContextInvalid(error?.message)) return "content.ai.extensionReloaded";

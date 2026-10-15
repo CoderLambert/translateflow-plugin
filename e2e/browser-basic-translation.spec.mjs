@@ -62,8 +62,11 @@ test("without AI or dictionaries Selection prepares only from a click, retries d
   await expect(basicPanel(page)).toContainText("语言包准备失败");
   await basicPanel(page).getByRole("button", { name: "重试准备", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).toContainText("基础:session");
-  await expect(page.locator(".tf-selection-result")).toContainText("浏览器基础翻译");
-  await expect(page.getByRole("tab", { name: "译文", exact: true })).toBeVisible();
+  await expect(page.locator(".tf-selection-result")).toContainText("浏览器释义");
+  await expect(page.getByRole("tab", { name: "释义", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "AI 详解", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "分析", exact: true })).toBeHidden();
+  await expect(page.getByRole("tab", { name: "用法", exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "复制", exact: true })).toBeVisible();
   expect(harness.server.calls.length).toBe(0);
   const count = (await isolated(harness, page, "probe")).inputs.length;
@@ -73,23 +76,15 @@ test("without AI or dictionaries Selection prepares only from a click, retries d
   await page.screenshot({ path: "docs/task-execution/local/browser-basic-translation/selection-mock.png" });
 });
 
-test("page translation preserves markers, links and code; disabling releases models and prevents further initialization", async ({ harness }) => {
+test("page translation without AI asks for AI and never initializes browser models", async ({ harness }) => {
   await harness.reset(); await noAi(harness);
   const page = await harness.open("/article"); await harness.inject(page); await isolated(harness, page, "install");
   const running = harness.sendContent(page, "ABT_TRANSLATE_PAGE");
-  await expect(basicPanel(page)).toBeVisible(); await basicPanel(page).getByRole("button", { name: "准备基础翻译", exact: true }).click();
-  expect((await running).ok).toBe(true);
-  await expect(page.locator("#rich .abt-translation a")).toHaveAttribute("href", "/docs");
-  await expect(page.locator("#rich .abt-translation code")).toHaveText("npm test");
-  const initial = await isolated(harness, page, "probe"); expect(initial.inputs.some(text => /TF:|npm test/.test(text))).toBe(false);
-  expect((await harness.sendContent(page, "ABT_TRANSLATE_PAGE")).ok).toBe(true);
-  expect((await isolated(harness, page, "probe")).inputs.length).toBe(initial.inputs.length);
-  await harness.setStorage({ browserTranslationEnabled: false });
-  await expect.poll(async () => (await isolated(harness, page, "probe")).destroyed).toBe(1);
-  const retry = harness.sendContent(page, "ABT_TRANSLATE_PAGE");
-  await expect(basicPanel(page)).toContainText("基础翻译已关闭");
-  await basicPanel(page).getByRole("button", { name: "取消", exact: true }).click(); await retry;
-  expect((await isolated(harness, page, "probe")).creates).toBe(initial.creates);
+  await expect(basicPanel(page)).toContainText("浏览器翻译仅用于划词释义");
+  await expect(basicPanel(page).getByRole("button", { name: "配置 AI 服务", exact: true })).toBeVisible();
+  expect((await isolated(harness, page, "probe")).creates).toBe(0);
+  await basicPanel(page).getByRole("button", { name: "取消", exact: true }).click(); await running;
+  await expect(page.locator(".abt-translation")).toHaveCount(0);
 });
 
 test("AI stays preferred; failures switch only on click and begin a new basic task", async ({ harness }) => {
@@ -102,7 +97,7 @@ test("AI stays preferred; failures switch only on click and begin a new basic ta
   harness.server.setFailures([401]); await select(page);
   await expect(basicPanel(page)).toContainText("AI 翻译失败");
   expect(harness.server.calls.length).toBe(2); expect((await isolated(harness, page, "probe")).creates).toBe(0);
-  await basicPanel(page).getByRole("button", { name: "使用基础翻译", exact: true }).click();
+  await basicPanel(page).getByRole("button", { name: "使用浏览器释义", exact: true }).click();
   await basicPanel(page).getByRole("button", { name: "准备基础翻译", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).toContainText("基础:session"); expect(harness.server.calls.length).toBe(2);
   await page.keyboard.press("Escape"); await select(page, "#ambiguous");
@@ -110,14 +105,12 @@ test("AI stays preferred; failures switch only on click and begin a new basic ta
   expect((await isolated(harness, page, "probe")).inputs).toContain("persistent"); expect(harness.server.calls.length).toBe(2);
 });
 
-test("subtitle language comes from its track and site target overrides apply", async ({ harness }) => {
+test("subtitles without AI never initialize browser translation", async ({ harness }) => {
   await harness.reset(); await noAi(harness, { siteProfiles: { [normalizeOrigin(harness.server.baseUrl)]: { targetLanguage: "Japanese" } } });
   const page = await harness.open("/article"); await harness.inject(page); await isolated(harness, page, "install");
-  const running = isolated(harness, page, "subtitle");
-  await expect(basicPanel(page)).toBeVisible(); await expect(basicPanel(page).getByRole("combobox")).toHaveValue("fr");
-  await basicPanel(page).getByRole("button", { name: "准备基础翻译", exact: true }).click();
-  const result = await running; expect(result.ok).toBe(true); expect(result.translations[0].text).toContain("基础:Bonjour");
-  expect((await isolated(harness, page, "probe")).pairs[0]).toEqual({ sourceLanguage: "fr", targetLanguage: "ja" });
+  await isolated(harness, page, "subtitle").catch(() => null);
+  expect((await isolated(harness, page, "probe")).creates).toBe(0);
+  expect((await isolated(harness, page, "probe")).pairs).toEqual([]);
 });
 
 test("closing Selection rejects a late browser result before cache store", async ({ harness }) => {
@@ -139,12 +132,12 @@ test("source correction restarts with a new pair; unavailable model has a settin
   await basicPanel(page).getByRole("button", { name: "准备基础翻译", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).toContainText("基础:session");
   expect((await isolated(harness, page, "probe")).pairs).toEqual([{ sourceLanguage: "de", targetLanguage: "zh" }]);
-  const another = await harness.open("/article"); await harness.inject(another); await isolated(harness, another, "install", { availability: "unavailable" });
-  const pending = harness.sendContent(another, "ABT_TRANSLATE_PAGE");
+  const another = await harness.open("/selection"); await harness.inject(another); await isolated(harness, another, "install", { availability: "unavailable" });
+  await select(another);
   await expect(basicPanel(another)).toContainText("此处无法使用基础翻译");
   await expect(basicPanel(another).getByRole("button", { name: "翻译设置 / 配置 AI" })).toBeVisible();
   expect((await isolated(harness, another, "probe")).creates).toBe(0);
-  await basicPanel(another).getByRole("button", { name: "取消", exact: true }).click(); await pending;
+  await basicPanel(another).getByRole("button", { name: "取消", exact: true }).click();
 });
 
 test("English Selection is detected independently of a Chinese website UI", async ({ harness }) => {

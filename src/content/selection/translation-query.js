@@ -13,13 +13,14 @@
 
   function create({ assertCurrent, showResult, onResult }) {
     const popover = app.modules.selectionPopover;
-    return async function translateSelection(snapshot, task, version, expectedPage, queryRecord = null) {
+    return async function translateSelection(snapshot, task, version, expectedPage, queryRecord = null, options = {}) {
       tasks.transition(task, "cache_lookup");
       popover.setLoadingStatus("content.selection.cacheChecking");
       const lookup = await sendRuntimeMessage({
         type: messages.background.CACHE_LOOKUP,
         requestId: task.id,
         languageSource: "selection",
+        browserTranslationAllowed: options.browserTranslationAllowed === true,
         pageUrl: snapshot.pageUrl,
         segments: [{ id: "selection", text: snapshot.text }]
       });

@@ -81,7 +81,7 @@ export function registerMessageRouter() {
 export async function handleBackgroundMessage(message, sender) {
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
-      return translationEngineSettings(message.pageUrl, message.forceBrowser === true);
+      return translationEngineSettings(message.pageUrl, { forceBrowser: message.forceBrowser === true, surface: message.surface });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
       const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
       if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
