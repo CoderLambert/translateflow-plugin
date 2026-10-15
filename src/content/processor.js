@@ -142,20 +142,24 @@
       requestId: task?.id,
       cacheOnly,
       pageUrl,
+      languageSource: "page",
       configSnapshotId: existingSnapshotId,
-      segments: groups.map(({ id, text }) => ({ id, text }))
+      segments: groups.map(({ id, text, elements }) => ({ id, text,
+        protectedIds: app.modules.structured.encodeElement(elements[0]).descriptors.flatMap((item, index) => item.protectedText != null ? [index] : []) }))
     });
     if (task) tasks.assertActive(task);
     if (!lookup?.ok) throw responseError(lookup, "content.page.cacheLookupFailed");
     const configSnapshotId = String(lookup.configSnapshotId || "");
 
     const cachedMap = new Map((lookup.hits || []).map((item) => [String(item.id), item.text]));
+    const skippedIds = new Set(lookup.skippedIds || []);
     const uncached = [];
     let cacheHits = 0;
     let apiTranslated = 0;
     let missing = 0;
 
     for (const group of groups) {
+      if (skippedIds.has(group.id)) continue;
       const translation = cachedMap.get(group.id);
       if (translation) {
         if (getPageIdentity(location.href) === expectedPageIdentity) {

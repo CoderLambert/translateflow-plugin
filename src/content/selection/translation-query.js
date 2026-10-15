@@ -26,6 +26,11 @@
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
       const configSnapshotId = String(lookup.configSnapshotId || "");
+      if (lookup.skippedIds?.includes("selection")) {
+        tasks.completeTask(task, { done: 1, cacheHits: 0, apiTranslated: 0 });
+        popover.showEmpty(snapshot, { titleKey: "content.basic.alreadyTarget", messageKey: "content.basic.alreadyTargetHelp" });
+        return;
+      }
 
       const cached = (lookup.hits || [])
         .find((item) => String(item.id) === "selection")?.text?.trim();

@@ -9,7 +9,9 @@ export function browserLanguage(value) {
   if (ALIASES[lower]) return ALIASES[lower];
   const named = Object.entries(LANGUAGE_NAMES).find(([, name]) => name.toLowerCase() === lower);
   if (named) return named[0];
-  if (/^zh-(?:hant|tw|hk|mo)(?:-|$)/i.test(raw)) return "zh-Hant";
+  const tag = raw.replace(/_/g, "-");
+  if (/^zh-hans(?:-|$)/i.test(tag)) return "zh";
+  if (/^zh-(?:hant|tw|hk|mo)(?:-|$)/i.test(tag)) return "zh-Hant";
   const code = lower.split(/[-_]/)[0];
   return Object.hasOwn(LANGUAGE_NAMES, code) && /^[a-z]{2,3}(?:[-_][a-z0-9]+)*$/i.test(raw) ? code : "";
 }
@@ -37,17 +39,10 @@ export function browserConfig(stored, siteProfile, sourceLanguage) {
   return { provider: BROWSER_ENGINE, model: BROWSER_ENGINE_VERSION, prompt: "", targetLanguage, sourceLanguage: source, engine: BROWSER_ENGINE };
 }
 
-// A site's UI locale is only a hint for multilingual article/selection text.
-// Script checks reject incompatible hints; they do not guess a Latin language.
+// Page locale never identifies a Latin language or a language using shared Han.
 export function languageHintMatchesText(text, language) {
-  const code = browserLanguage(language);
-  if (!code) return false;
-  const value = String(text || "").replace(/⟦TF:[^⟧]*⟧/g, "");
-  const scripts = { zh: /\p{Script=Han}/u, "zh-Hant": /\p{Script=Han}/u,
-    ja: /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u, ko: /[\p{Script=Hangul}\p{Script=Han}]/u,
-    ru: /\p{Script=Cyrillic}/u, uk: /\p{Script=Cyrillic}/u, bg: /\p{Script=Cyrillic}/u,
-    ar: /\p{Script=Arabic}/u, he: /\p{Script=Hebrew}/u, el: /\p{Script=Greek}/u,
-    hi: /\p{Script=Devanagari}/u, mr: /\p{Script=Devanagari}/u, bn: /\p{Script=Bengali}/u,
-    kn: /\p{Script=Kannada}/u, ta: /\p{Script=Tamil}/u, te: /\p{Script=Telugu}/u, th: /\p{Script=Thai}/u };
-  return (scripts[code] || /\p{Script=Latin}/u).test(value);
+  const code = browserLanguage(language), value = String(text || "");
+  const kana = /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(value);
+  const hangul = /\p{Script=Hangul}/u.test(value);
+  return code === "ja" ? kana && !hangul : code === "ko" ? hangul && !kana : false;
 }
