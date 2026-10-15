@@ -62,3 +62,5 @@ li > .abt-translation {
     transition: none !important;
   }
 }
+
+.abt-translation > .abt-translation-source { display: block; font-size: .75em; opacity: .7; }

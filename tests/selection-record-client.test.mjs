@@ -130,7 +130,8 @@ test("A completed AI answer explains why it is unsaved and can be explicitly sav
       turnId: "turn-1", parentTurnId: null, branchId: "branch-1", regenerationOf: null, completionStatus: "completed" } }),
   { key: operation.operationId, operation });
   await ctx.queue;
-  assert.deepEqual(h.views.at(-1), { state: "invite", messageKey: "content.reading.aiPaused", messageArgs: {}, retryAvailable: false });
+  assert.deepEqual(h.views.at(-1), { state: "invite", messageKey: "content.reading.aiPaused", messageArgs: {},
+    retryAvailable: false, openAvailable: true });
   assert.equal(h.writes.length, 0); assert.equal(h.messages.some((request) => request.method === M.BEGIN_QUERY), false);
 
   h.enable(); await h.client.refresh();
@@ -138,6 +139,54 @@ test("A completed AI answer explains why it is unsaved and can be explicitly sav
   await h.client.save(h.event);
   assert.deepEqual(h.writes.map((artifact) => artifact.kind), ["dictionary", "assistant"]);
   assert.equal(h.messages.filter((request) => request.method === M.APPEND_ASSISTANT).length, 1);
+});
+
+test("assistant save status stays scoped to its tab and manual save returns the Reading reference", async () => {
+  const h = await harness({ enabled: false }), ctx = h.start(), scoped = [], saved = [];
+  const operation = h.client.assistant(ctx, h.event), key = operation.operationId;
+  h.client.accept(ctx, assistantDraft(h, { action: "understand" }), { key, operation,
+    onStatus: view => scoped.push(h.clone(view)), onSaved: receipt => saved.push(h.clone(receipt)) });
+  await ctx.queue;
+  assert.equal(scoped.at(-1).state, "invite");
+  assert.equal(scoped.at(-1).openAvailable, true);
+  assert.equal(h.views.length, 0, "assistant state must not overwrite the dictionary/global status");
+
+  h.enable(); await h.client.refresh();
+  assert.equal(scoped.at(-1).state, "manual");
+  await h.client.save(h.event, key);
+  assert.equal(scoped.at(-1).state, "saved");
+  assert.equal(saved.length, 1);
+  assert.deepEqual({ recordId: saved[0].recordId, artifactId: saved[0].artifactId },
+    { recordId: h.writes[0].recordId, artifactId: h.writes[0].artifactId });
+  assert.equal(h.messages.filter(request => request.method === M.APPEND_ASSISTANT).length, 1);
+});
+
+test("assistant save retry reuses its artifact and does not change another tab status", async () => {
+  let fail = true;
+  const h = await harness({ responseFilter(value, request) {
+    if (request.method === M.APPEND_ASSISTANT && fail) { fail = false; throw new Error("synthetic lost ack"); }
+    return value;
+  } }), ctx = h.start(), understand = [], analyze = [], saved = [];
+  const first = h.client.assistant(ctx, h.event), firstKey = first.operationId;
+  h.client.accept(ctx, assistantDraft(h, { action: "understand", turnId: "turn-understand" }), { key: firstKey, operation: first,
+    onStatus: view => understand.push(h.clone(view)), onSaved: receipt => saved.push(h.clone(receipt)) });
+  await ctx.queue;
+  assert.equal(understand.at(-1).state, "not-saved");
+  assert.equal(understand.at(-1).retryAvailable, true);
+
+  const second = h.client.assistant(ctx, h.event), secondKey = second.operationId;
+  h.client.accept(ctx, assistantDraft(h, { action: "analyze", turnId: "turn-analyze" }), { key: secondKey, operation: second,
+    onStatus: view => analyze.push(h.clone(view)) });
+  await ctx.queue;
+  assert.equal(analyze.at(-1).state, "saved");
+  assert.equal(understand.at(-1).state, "not-saved");
+
+  await h.client.retry(h.event, firstKey);
+  assert.equal(understand.at(-1).state, "saved");
+  assert.equal(saved.length, 1);
+  const understandWrites = h.writes.filter(item => item.payload.action === "understand");
+  assert.equal(understandWrites.length, 2);
+  assert.deepEqual(understandWrites[0], understandWrites[1]);
 });
 
 test("Storage/lost-ACK retry keeps the exact operation/artifact and performs no second result request", async () => {

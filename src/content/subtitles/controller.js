@@ -75,9 +75,9 @@
       if (mode !== "off") pipeline?.ingest(snapshot).catch(() => renderer.setStatusKey("content.subtitle.translationFailed", "error"));
     }
 
-    function consumeTranslation({ unit, translation }) {
+    function consumeTranslation({ unit, translation, engine }) {
       if (unit.mediaId !== mediaId) return;
-      renderer.renderTranslation(translation); renderer.setStatus("");
+      renderer.renderTranslation(translation); renderer.setStatus(engine === "browser-translator" ? t("content.basic.sourceBadge") : "");
     }
 
     function consumeState(state) {

@@ -13,6 +13,9 @@ export async function handleVocabularyBookMessage(message, sender) {
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
       assertVocabularyContentSender(sender);
       return getVocabularyBook().add(message.entry);
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE:
+      assertVocabularyContentSender(sender);
+      return getVocabularyBook().addAiNote(message.note);
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
       assertVocabularyContentSender(sender);
       await chrome.tabs.create({ url: `${chrome.runtime.getURL(EXTENSION_PAGES.learningCenter)}#wordbook` });

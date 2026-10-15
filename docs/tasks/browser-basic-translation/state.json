@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "task": "browser-basic-translation",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/api-key-provider-connections",
+  "worktree": ".",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/browser-translation.test.mjs"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/versioned-commit.test.mjs",
+      "tests/release-gate.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit",
+      "--",
+      "tests/unit/options-react.test.tsx",
+      "tests/unit/react-locale.test.tsx"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "node",
+      "scripts/run-e2e.mjs",
+      "e2e/browser-basic-translation.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "用户授权以阶段性快照同步全部当前改动到 main；当前候选版本 0.8.2。最新短词识别及划词与页面语言解耦修复通过 21 项定向 Node 和 8 项 E2E；真实模型与离线仍未验证，整体产品设计待后续重做。",
+  "validation": {
+    "browserEngineNode": "PASS 14/14",
+    "versionHookAndRelease": "PASS 9/9",
+    "check": "PASS",
+    "typecheck": "PASS",
+    "components": "PASS 18/18",
+    "e2e": "PASS 6 basic + 1 rich dictionary + 4 compatibility; final narrow/dark preparation repeat PASS",
+    "build": "PASS; dist/extension and .output/chrome-mv3 identical",
+    "realBrowser": "Capability/policy PASS; model preparation BLOCKED after 180s; actual translation/offline/quality NOT VERIFIED",
+    "commitPreview": "PASS, isolated alternate index; actual index unchanged",
+    "languageFollowup": "PASS 21 targeted Node + 8 browser E2E; 0.8.2 builds PASS; no page-language fallback for Selection"
+  },
+  "artifacts": {
+    "default": {
+      "files": 128,
+      "bytes": 2775951,
+      "sha256": "31fe059a563e18b7132028da49ecac0cd49c39db634ec22be455d16df7791c40"
+    },
+    "wxt": {
+      "files": 128,
+      "bytes": 2775951,
+      "sha256": "31fe059a563e18b7132028da49ecac0cd49c39db634ec22be455d16df7791c40"
+    }
+  }
+}

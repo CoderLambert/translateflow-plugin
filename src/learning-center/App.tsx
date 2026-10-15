@@ -139,7 +139,14 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
       <Button aria-pressed={section === "wordbook"} onClick={() => navigateSection("wordbook")}>{i18n.t("learning.sectionWordbook")}</Button>
       <Button aria-pressed={section === "review"} onClick={() => navigateSection("review")}>{i18n.t("learning.sectionReview")}</Button>
     </nav>
-    {section !== "reading" ? <VocabularyBook section={section} i18n={i18n} /> : <>
+    {section !== "reading" ? <VocabularyBook section={section} i18n={i18n} onOpenReadingRef={async reference => {
+      try {
+        const linked = await client.getRecord(reference.recordId);
+        if (!linked.artifacts.some(artifact => artifact.artifactId === reference.artifactId)) return false;
+        navigate(reference.recordId);
+        return true;
+      } catch { return false; }
+    }} /> : <>
     {offline || stateError ? <><Notice error>{i18n.t(offline ? "learning.unconfirmed" : "learning.error")}</Notice><Button onClick={() => { setOffline(false); setConnection(value => value + 1); refresh(); }}>{i18n.t("learning.retry")}</Button></>
       : !state ? <Notice>{i18n.t("learning.loading")}</Notice> : null}
     {state && <section className="consent">

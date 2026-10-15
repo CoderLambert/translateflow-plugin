@@ -1,13 +1,14 @@
 import { getEffectiveConfig } from "./config.js";
+import { translationConfig } from "./browser-translation.js";
 
 const snapshots = new Map();
 const MAX_AGE_MS = 5 * 60 * 1000;
 const MAX_SNAPSHOTS = 256;
 
-export async function createEffectiveConfigSnapshot(pageUrl) {
+export async function createEffectiveConfigSnapshot(pageUrl, options = {}) {
   prune();
   const id = crypto.randomUUID();
-  const config = await getEffectiveConfig(pageUrl);
+  const config = await translationConfig(pageUrl, options);
   snapshots.set(id, { pageUrl: String(pageUrl || ""), config, createdAt: Date.now() });
   if (snapshots.size > MAX_SNAPSHOTS) snapshots.delete(snapshots.keys().next().value);
   return { id, config };

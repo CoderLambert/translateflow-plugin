@@ -1,3 +1,4 @@
+import { hasConfiguredAi } from "../shared/browser-translation.js";
 import {
   CONFIG_KEYS,
   DEFAULT_CONFIG,
@@ -40,7 +41,7 @@ import { ensureProviderConnections } from "./provider-connections.js";
 export async function getConfig() {
   await ensureProviderConnections();
   const stored = await chrome.storage.local.get(CONFIG_KEYS);
-  return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...stored });
+  return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...stored, dictionaryEnabled: stored.dictionaryEnabled ?? await inferInstalledDictionaryPreference() });
 }
 
 export async function getEffectiveConfig(pageUrl = "") {
@@ -73,7 +74,11 @@ export async function getEffectiveGlossary(pageUrl = "") {
 }
 
 export async function getEffectiveContext(pageUrl) {
-  const { stored, resolved, temporaryPreset } = await resolveBaseConfig(pageUrl);
+  const stored = await getConfig();
+  const site = getSiteProfile(stored.siteProfiles, pageUrl);
+  const { resolved, temporaryPreset } = hasConfiguredAi(stored, site)
+    ? await resolveBaseConfig(pageUrl)
+    : { resolved: { provider: "browser-translator", model: "translator-v1", targetLanguage: site?.targetLanguage || stored.targetLanguage }, temporaryPreset: null };
   const origin = normalizeOrigin(pageUrl);
   const siteProfile = getSiteProfile(stored.siteProfiles, pageUrl);
   const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
@@ -125,8 +130,9 @@ export async function saveSitePreset(pageUrl, value) {
 export async function ensureConfigDefaults() {
   const current = await chrome.storage.local.get(CONFIG_KEYS);
   const missing = {};
+  if (current.dictionaryEnabled === undefined) missing.dictionaryEnabled = await inferInstalledDictionaryPreference();
   for (const [key, value] of Object.entries(DEFAULT_CONFIG)) {
-    if (current[key] === undefined) missing[key] = value;
+    if (current[key] === undefined && !Object.hasOwn(missing, key)) missing[key] = value;
   }
   if (Object.keys(missing).length) await chrome.storage.local.set(missing);
   await ensureProviderConnections();
@@ -171,4 +177,12 @@ function normalizeStoredConfig(config) {
     glossary: normalizeGlossaryStore(config?.glossary),
     siteGlossaries: normalizeSiteGlossaryStore(config?.siteGlossaries)
   };
+}
+
+async function inferInstalledDictionaryPreference() {
+  const stored = await chrome.storage.local.get(["tfDictionaryPackStateV1", "tfRichMdictStateV1", "tfRichMdictPreferencesV1"]);
+  const structured = Object.values(stored.tfDictionaryPackStateV1?.packs || {}).some(entry => entry?.status === "healthy" && entry.active);
+  const rich = Object.entries(stored.tfRichMdictStateV1?.packs || {}).some(([id, entry]) =>
+    entry?.status === "healthy" && entry.active && stored.tfRichMdictPreferencesV1?.dictionaries?.[id]?.enabled !== false);
+  return structured || rich;
 }

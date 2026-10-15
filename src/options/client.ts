@@ -8,7 +8,7 @@ import type { I18n } from "../i18n/index.js";
 import { CHATGPT_PLAN_NATIVE_PERMISSION } from "../shared/chatgpt-native-host.js";
 import { getConnectionHostPermissionPattern, normalizeProviderBaseUrl } from "../shared/provider-connections.js";
 
-export type OptionsConfig = { provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
+export type OptionsConfig = { browserTranslationEnabled?: boolean; browserSourceLanguage?: string; dictionaryEnabled?: boolean; provider: string; apiKey: string; model: string; chatgptPlanModel: string; prompt: string; targetLanguage: string; appearance: string; cacheMaxMB: number; openAICompatible: { baseUrl: string; apiKey: string; model: string; streaming: boolean }; youtubeSubtitleMode: string; youtubeSubtitleSize: string; selectionExplanationDepth: string };
 export type ServiceRef = { kind: "api-key"; connectionId: string } | { kind: "chatgpt-plan" };
 export type ProviderConnection = { id: string; revision: number; name: string; platform: string; protocol: string; baseUrl: string; credentialId: string; defaultModel: string; hasApiKey: boolean; settings: { streaming: boolean; outputTokens: number; temperature: number | null; reasoning: string; allowEmptyApiKey: boolean; allowInsecureHttp: boolean } };
 export type ProviderConnectionState = { version: number; defaultService: ServiceRef | null; connections: ProviderConnection[] };
@@ -21,9 +21,10 @@ export type ChatGPTPlanModel = { slug: string; displayName: string };
 
 export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI18n({ browserLocale: api.i18n.getUILanguage() })) {
   async function loadConfig(): Promise<OptionsConfig> {
-    const value = await api.storage.local.get(["provider", "apiKey", "model", "chatgptPlanModel", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
+    const value = await api.storage.local.get(["browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "provider", "apiKey", "model", "chatgptPlanModel", "prompt", "targetLanguage", "appearance", "cacheMaxMB", "openAICompatible", "youtubeSubtitleMode", "youtubeSubtitleSize", "selectionExplanationDepth"]) as Record<string, unknown>;
     const openAI = { ...DEFAULT_OPENAI_COMPATIBLE, ...objectRecord(value.openAICompatible) };
     return {
+      browserTranslationEnabled: value.browserTranslationEnabled !== false, browserSourceLanguage: text(value.browserSourceLanguage, "auto"), dictionaryEnabled: value.dictionaryEnabled === true,
       provider: text(value.provider, DEFAULT_CONFIG.provider), apiKey: text(value.apiKey),
       model: text(value.model, DEFAULT_CONFIG.model),
       chatgptPlanModel: text(value.chatgptPlanModel),
@@ -64,7 +65,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
   async function saveConfig(input: OptionsConfig, requestPermission: boolean) {
     const value = normalizeConfig(input);
     if (requestPermission && value.provider === PROVIDER_IDS.OPENAI_COMPATIBLE) await ensureOpenAIPermission(value.openAICompatible.baseUrl);
-    await api.storage.local.set({ provider: value.provider, apiKey: value.apiKey, model: value.model, chatgptPlanModel: value.chatgptPlanModel, prompt: value.prompt, targetLanguage: value.targetLanguage,
+    await api.storage.local.set({ browserTranslationEnabled: value.browserTranslationEnabled !== false, browserSourceLanguage: value.browserSourceLanguage || "auto", dictionaryEnabled: value.dictionaryEnabled === true, provider: value.provider, apiKey: value.apiKey, model: value.model, chatgptPlanModel: value.chatgptPlanModel, prompt: value.prompt, targetLanguage: value.targetLanguage,
       appearance: value.appearance, cacheMaxMB: value.cacheMaxMB, openAICompatible: value.openAICompatible,
       youtubeSubtitleMode: value.youtubeSubtitleMode, youtubeSubtitleSize: value.youtubeSubtitleSize, selectionExplanationDepth: value.selectionExplanationDepth });
     return value;

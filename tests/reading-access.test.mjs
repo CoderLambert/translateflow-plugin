@@ -190,6 +190,16 @@ test("learning deep link contains only a record ID and retains native document/p
   await rejects(() => createReadingAccess({ browser }).authorize(sender, M.GET_RECORD), E.FORBIDDEN);
 });
 
+test("fixed wordbook and review routes retain Learning Center read authority", async () => {
+  for (const hash of ["#wordbook", "#review"]) {
+    const browser = nativeBrowser(), sender = extensionSender();
+    sender.url += hash;
+    const [context] = await browser.runtime.getContexts();
+    browser.runtime.getContexts = async () => [{ ...context, documentUrl: sender.url }];
+    assert.equal((await createReadingAccess({ browser }).authorize(sender, M.GET_RECORD)).scope, "extension");
+  }
+});
+
 test("Content fixed-open ACK works before and after registration without granting history", async () => {
   const browser = nativeBrowser(); let opened = 0;
   browser.tabs.create = async ({ url }) => { assert.equal(url, browser.runtime.getURL("learning-center.html")); opened++; return { id: 99 }; };

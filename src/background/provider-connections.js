@@ -71,7 +71,7 @@ export async function setDefaultService(rawService) {
   const service = normalizeServiceRef(rawService);
   if (!service) throw connectionError("默认服务无效。", "CONFIG");
   if (service.kind === "api-key" && !state.connections[service.connectionId]) throw connectionError("所选连接不存在。", "CONNECTION_MISSING");
-  await chrome.storage.local.set({ defaultService: service });
+  await chrome.storage.local.set({ defaultService: service, aiServiceConfigured: true });
   return { defaultService: service };
 }
 

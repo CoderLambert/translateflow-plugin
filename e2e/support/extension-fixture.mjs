@@ -84,6 +84,7 @@ export const test = base.extend({
           await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" });
           await chrome.storage.local.clear();
           await chrome.storage.local.set({
+            dictionaryEnabled: true,
             provider: "openai-compatible",
             model: "mock-model",
             targetLanguage: "Simplified Chinese",

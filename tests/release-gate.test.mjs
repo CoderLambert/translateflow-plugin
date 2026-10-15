@@ -8,10 +8,10 @@ const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
 const release = await readFile(new URL("../docs/RELEASE_V0.8.md", import.meta.url), "utf8");
 const youtube = await readFile(new URL("../docs/YOUTUBE_SUBTITLES.md", import.meta.url), "utf8");
 
-test("v0.8 release metadata stays aligned", () => {
-  assert.equal(manifest.version, "0.8.0");
-  assert.equal(pkg.version, "0.8.0");
-  assert.match(readme, /^# TranslateFlow v0\.8/m);
+test("build metadata stays aligned and historical v0.8 gate remains available", () => {
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(pkg.version, manifest.version);
+  assert.ok(readme.startsWith(`# TranslateFlow v${manifest.version}\n`));
   assert.match(release, /TranslateFlow v0\.8 Release Gate/);
 });
 

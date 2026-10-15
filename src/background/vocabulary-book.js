@@ -2,8 +2,11 @@ import {
   VocabularyBookError,
   VOCABULARY_BOOK_LIMITS,
   VOCABULARY_BOOK_VERSION,
+  createVocabularyAiEntry,
   isVocabularyDue,
+  mergeVocabularyAiNote,
   mergeVocabularyDraft,
+  validateVocabularyAiNoteDraft,
   validateVocabularyDraft,
   validateVocabularyEntry,
   validateVocabularyStore,
@@ -31,7 +34,12 @@ export function createVocabularyBook({ storage, now = Date.now, randomId = () =>
     try { result = await storage.get(VOCABULARY_BOOK_STORAGE_KEY); }
     catch { throw error("VOCABULARY_STORAGE"); }
     if (!result || !Object.hasOwn(result, VOCABULARY_BOOK_STORAGE_KEY)) return { ...EMPTY_STORE, entries: [] };
-    return validateVocabularyStore(result[VOCABULARY_BOOK_STORAGE_KEY]);
+    const raw = result[VOCABULARY_BOOK_STORAGE_KEY], store = validateVocabularyStore(raw);
+    if (raw?.version !== VOCABULARY_BOOK_VERSION) {
+      try { await storage.set({ [VOCABULARY_BOOK_STORAGE_KEY]: store }); }
+      catch { throw error("VOCABULARY_STORAGE"); }
+    }
+    return store;
   }
 
   async function writeStore(store) {
@@ -64,8 +72,26 @@ export function createVocabularyBook({ storage, now = Date.now, randomId = () =>
         }
         if (store.entries.length >= VOCABULARY_BOOK_LIMITS.entries) throw error("VOCABULARY_CAPACITY");
         const at = now();
-        const entry = validateVocabularyEntry({ id: randomId(), ...draft, savedAt: at, reviewCount: 0,
+        const entry = validateVocabularyEntry({ id: randomId(), ...draft, aiNotes: [], savedAt: at, reviewCount: 0,
           knownStreak: 0, lastReviewedAt: null, nextReviewAt: at });
+        await writeStore({ ...store, entries: [entry, ...store.entries] });
+        return { added: true, updated: false, entry };
+      });
+    },
+    addAiNote(input) {
+      return serialize(async () => {
+        const draft = validateVocabularyAiNoteDraft(input), store = await readStore(), identity = vocabularyIdentity(draft);
+        const index = store.entries.findIndex((entry) => vocabularyIdentity(entry) === identity);
+        const at = now();
+        if (index >= 0) {
+          const previous = store.entries[index], updated = mergeVocabularyAiNote(previous, input, at);
+          const entries = store.entries.slice(); entries[index] = updated;
+          const changed = JSON.stringify(previous) !== JSON.stringify(updated);
+          if (changed) await writeStore({ ...store, entries });
+          return { added: false, updated: changed, entry: updated };
+        }
+        if (store.entries.length >= VOCABULARY_BOOK_LIMITS.entries) throw error("VOCABULARY_CAPACITY");
+        const entry = createVocabularyAiEntry(input, { id: randomId(), savedAt: at });
         await writeStore({ ...store, entries: [entry, ...store.entries] });
         return { added: true, updated: false, entry };
       });

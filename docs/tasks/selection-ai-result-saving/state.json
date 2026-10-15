@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "task": "selection-ai-result-saving",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/api-key-provider-connections",
+  "worktree": ".",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/vocabulary-book.test.mjs",
+      "tests/selection-record-client.test.mjs",
+      "tests/selection-controller-cancel.test.mjs",
+      "tests/selection-ui-contract.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit",
+      "--",
+      "tests/unit/learning-center/components.test.tsx"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "node",
+      "scripts/run-e2e.mjs",
+      "e2e/selection-ai-result-saving.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs",
+      "e2e/selection-reading-record.spec.mjs",
+      "e2e/selection-vocabulary-book.spec.mjs",
+      "e2e/learning-center.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "用户已授权全部当前成果阶段性同步；本任务源码随 sync-current-worktree 候选合入，后续核对实际 mergeHead 再更新完成记录。",
+  "validation": {
+    "npmRunValidate": "PASS (1549 Node tests, 48 Vitest); final retry-label-only follow-up passed 7 affected Node tests and npm run check",
+    "wxtBuild": "PASS (206 files, 39563522 bytes, .output/chrome-mv3)",
+    "selectionAiSavingE2E": "PASS (2/2: auto-save, explicit enable/save, restart persistence, one Provider request)",
+    "selectionReadingRecordE2E": "PASS (7/7)",
+    "learningCenterVocabularyE2E": "PASS (5/5)",
+    "selectionAssistantE2E": "PASS after isolated rerun of two transient-state timing assertions; the combined run passed the other 5/7",
+    "diffCheck": "PASS"
+  }
+}

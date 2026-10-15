@@ -18,6 +18,8 @@
       popover.setLoadingStatus("content.selection.cacheChecking");
       const lookup = await sendRuntimeMessage({
         type: messages.background.CACHE_LOOKUP,
+        requestId: task.id,
+        languageSource: "selection",
         pageUrl: snapshot.pageUrl,
         segments: [{ id: "selection", text: snapshot.text }]
       });
@@ -29,7 +31,7 @@
         .find((item) => String(item.id) === "selection")?.text?.trim();
       if (cached) {
         tasks.completeTask(task, { done: 1, cacheHits: 1 });
-        const card = buildTranslationResult(cached);
+        const card = buildTranslationResult(cached, lookup);
         showResult(snapshot, card);
         onResult(queryRecord, readingTranslation(cached, lookup.readingResult));
         return;
@@ -65,9 +67,9 @@
       if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-      const card = buildTranslationResult(translation);
+      const card = buildTranslationResult(translation, lookup);
       showResult(snapshot, card);
-      onResult(queryRecord, readingTranslation(translation, translated.readingResult));
+      onResult(queryRecord, readingTranslation(translation, translated.readingResult || lookup.readingResult));
     };
   }
   app.modules.selectionTranslationQuery = Object.freeze({ create });

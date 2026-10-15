@@ -1,6 +1,16 @@
-# TranslateFlow v0.8
+# TranslateFlow v0.8.2
 
-轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
+轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时可使用浏览器基础翻译，AI 与本地词典均为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
+
+## v0.8.1 基础翻译
+
+- 划词、整页和字幕共用引擎选择：可用词典优先用于查词，已配置 AI 优先用于翻译，无 AI 时使用默认开启的浏览器基础翻译。
+- 源语言自动识别，目标语言默认简体中文并记住全局/站点设置；可在页面准备面板或设置中纠正源语言。
+- 语言包准备由页面内真实点击启动；安装、页面载入、悬浮按钮出现均不下载。AI 失败后只有点击“使用基础翻译”才切换。
+- 设置中可关闭基础翻译；关闭会停止基础任务并释放实例，不删除 Chrome 的共享语言包。
+- 基础安装包不再附带词典；可选词典管理位于高级设置，升级保留已安装词典的启用状态。
+
+详见[浏览器基础翻译使用说明与限制](docs/BROWSER_TRANSLATION.md)。接口存在不代表模型可运行；真实离线能力需在本机完成语言包准备后验证。
 
 ## v0.8 重点
 
@@ -153,16 +163,15 @@ cd translateflow-plugin
 
 默认构建由 WXT 编译后台、Popup 和 Options，Content/MAIN/Worker 继续复用精确源码桥；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
 
-首次源码安装或清理过词典产物后，先执行：
+源码安装不需要词典包或 AI Key，执行：
 
 ```bash
-npm install
-npm run setup:lexicon
+npm ci
 npm run validate
 npm run build:extension:release
 ```
 
-`setup:lexicon` 会读取已审核的 source lock，使用锁定的 OMW revision/source URL，校验下载文件 SHA-256，再生成并认证 `assets/lexicon/core` 与 `assets/lexicon/technical`。校验不通过时会 fail closed，不会继续构建。
+默认与 release 构建均不包含内置词典。需要研究/认证旧内置词典时，可单独运行 `npm run setup:lexicon`，再执行 `node scripts/build-extension.mjs --require-lexicon`；此显式构建继续校验来源锁和词典完整性。
 
 真实 Chromium 扩展 E2E：
 
@@ -177,11 +186,10 @@ E2E 使用临时 unpacked 扩展副本、本地 fixture 页面和本地 OpenAI-c
 
 ## Chrome 本地安装
 
-首次安装或更新到包含词典格式/数据变更的版本：
+首次安装或更新后：
 
 ```bash
-npm install
-npm run setup:lexicon
+npm ci
 npm run validate
 ```
 
@@ -191,10 +199,9 @@ npm run validate
 2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
 4. 选择 `dist/extension/`。仓库根目录只用于开发调试，不作为正式发布包
-5. 打开 TranslateFlow 设置页 → **本地词典**
-6. 确认 **Core Semantic** 与 **Technical Concepts** 均显示“已就绪”
-7. 配置 Provider 并测试 API
-8. 刷新目标英文网页后测试
+5. 在设置页确认目标语言；浏览器基础翻译默认开启
+6. 刷新 HTTPS 目标网页，划词或点击翻译，按页面提示点击“准备基础翻译”
+7. 可选：配置 AI 连接，或在高级设置中导入并启用本地词典
 
 日常开发循环：
 
@@ -208,7 +215,7 @@ chrome://extensions/ → 重新加载
 刷新目标网页
 ```
 
-如果 Settings 显示内置词典“资源缺失或不可读”，重新运行 `npm run setup:lexicon` 后再重新加载扩展。可选 OPFS 词典与内置 Core / Technical 是两套独立机制；当前没有通过产品质量门并注册为可下载来源的可选词典包。
+词典缺失、损坏或未命中不会阻断翻译；不使用词典时可在高级设置中关闭。个人导入词典、收藏和阅读记录保持独立保存。
 
 ## Provider 配置
 

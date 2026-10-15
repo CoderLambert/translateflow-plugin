@@ -1,3 +1,4 @@
+import { LANGUAGE_NAMES } from "../shared/browser-translation.js";
 import { TRANSLATION_APPEARANCES } from "../shared/appearance.js";
 import type { OptionsConfig } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
@@ -11,7 +12,10 @@ type Props = { config: OptionsConfig; disabled: boolean; update: (patch: Partial
 export function GeneralSection({ config, disabled, update }: Props) {
   const i18n = useOptionsI18n();
   return <section id="general" tabIndex={-1}><h2>{i18n.t("options.general.title")}</h2><p className="section-summary">{i18n.t("options.general.summary")}</p>
-    <label htmlFor="targetLanguage">{i18n.t("options.general.targetLanguage")}</label><input id="targetLanguage" disabled={disabled} value={config.targetLanguage} onChange={event => update({ targetLanguage: event.target.value })} type="text" placeholder="Simplified Chinese" />
+    <label><input id="browserTranslationEnabled" type="checkbox" disabled={disabled} checked={config.browserTranslationEnabled !== false} onChange={event => update({ browserTranslationEnabled: event.target.checked })} />{i18n.t("options.basic.enabled")}</label>
+    <p className="hint">{i18n.t("options.basic.help")}</p>
+    <label htmlFor="browserSourceLanguage">{i18n.t("options.basic.source")}</label><select id="browserSourceLanguage" disabled={disabled} value={config.browserSourceLanguage || "auto"} onChange={event => update({ browserSourceLanguage: event.target.value })}><option value="auto">{i18n.t("options.basic.auto")}</option>{Object.entries(LANGUAGE_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select>
+    <label htmlFor="targetLanguage">{i18n.t("options.general.targetLanguage")}</label><input id="targetLanguage" list="browserTargetLanguages" disabled={disabled} value={config.targetLanguage} onChange={event => update({ targetLanguage: event.target.value })} type="text" placeholder="Simplified Chinese" /><datalist id="browserTargetLanguages">{Object.entries(LANGUAGE_NAMES).map(([code, name]) => <option key={code} value={name}>{code}</option>)}</datalist>
     <label htmlFor="prompt">{i18n.t("options.general.prompt")}</label><textarea id="prompt" disabled={disabled} value={config.prompt} onChange={event => update({ prompt: event.target.value })} rows={6} onKeyDown={preventComposingSubmit} />
     <p className="hint">{i18n.t("options.general.help")}</p></section>;
 }
@@ -21,7 +25,7 @@ export function SelectionSection({ config, disabled, update }: Props) {
   return <section id="selection" tabIndex={-1}><h2>{i18n.t("options.selection.title")}</h2><p className="section-summary">{i18n.t("options.selection.summary")}</p>
     <label htmlFor="selectionExplanationDepth">{i18n.t("options.selection.depth")}</label><select id="selectionExplanationDepth" disabled={disabled} value={config.selectionExplanationDepth} onChange={event => update({ selectionExplanationDepth: event.target.value })}><option value="auto">{i18n.t("options.selection.auto")}</option><option value="concise">{i18n.t("options.selection.concise")}</option><option value="standard">{i18n.t("options.selection.standard")}</option><option value="professional">{i18n.t("options.selection.professional")}</option></select>
     <div className="setting-choice-help" aria-label={i18n.t("options.selection.depthAria")}><div><strong>Auto</strong><span>{i18n.t("options.selection.autoHelp")}</span></div><div><strong>Concise</strong><span>{i18n.t("options.selection.conciseHelp")}</span></div><div><strong>Standard</strong><span>{i18n.t("options.selection.standardHelp")}</span></div><div><strong>Professional</strong><span>{i18n.t("options.selection.professionalHelp")}</span></div></div>
-    <div className="data-source-card"><strong>{i18n.t("options.selection.sources")}</strong><p>{i18n.t("options.selection.sourcesHelp")}</p><a href="assets/lexicon/core/THIRD_PARTY_NOTICES.txt" target="_blank" rel="noopener">{i18n.t("options.selection.notices")}</a></div></section>;
+    <div className="data-source-card"><strong>{i18n.t("options.basic.dictionaryAdvanced")}</strong><p>{i18n.t("options.basic.dictionaryHelp")}</p></div></section>;
 }
 
 export function AppearanceSection({ config, disabled, update }: Props) {

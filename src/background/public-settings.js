@@ -1,4 +1,4 @@
-const KEYS = ["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"];
+const KEYS = ["browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"];
 
 export async function readPublicSettings() { return chrome.storage.local.get(KEYS); }
 

@@ -116,3 +116,7 @@ Provider 不访问页面 DOM、IndexedDB 或 Options 状态。所有外部 HTTP 
 ## Glossary
 
 Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider 选择前规范化并组合进 Effective Prompt；非空 glossary 的稳定 identity 进入缓存指纹，空 glossary 不改变旧缓存身份。
+
+## 浏览器基础翻译与 AI 的选择
+
+无已配置 AI 服务时，页面、划词和字幕使用默认开启的浏览器基础翻译；此能力不是 HTTP Provider，不能由后台执行。`translationConfig()` 为基础引擎生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset、Glossary 与解释路径。AI 配置错误不视为“未配置”；AI 请求失败不会自动回退，用户点击后通过新任务切换。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。

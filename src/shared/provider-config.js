@@ -77,7 +77,7 @@ export function resolveTranslationConfigForSite(
 
   const siteProfile = getSiteProfile(globalConfig.siteProfiles, siteKey);
   const connectionState = normalizeProviderConnectionState(globalConfig);
-  if (Object.keys(connectionState.connections).length && connectionState.defaultService) {
+  if (connectionState.defaultService || siteProfile?.serviceRef) {
     return resolveConnectionConfig(globalConfig, connectionState, siteProfile, temporaryPresetOverride);
   }
   const provider = normalizeProviderId(siteProfile?.provider || globalConfig.provider);

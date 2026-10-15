@@ -50,6 +50,7 @@ export async function sourceClosure(roots, root = ROOT) {
 }
 
 export async function lexicalAssetFiles({ root = ROOT, requireLexicon = false } = {}) {
+  if (!requireLexicon) return { files: [], missing: [] };
   const files = [];
   const missing = [];
   const canonicalRoot = await realpath(root);

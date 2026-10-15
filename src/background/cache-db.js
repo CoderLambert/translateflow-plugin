@@ -274,6 +274,8 @@ export async function getConfigHash(config) {
     prompt: String(config?.prompt || "").trim()
   };
 
+  if (provider === "browser-translator") payload.sourceLanguage = String(config.sourceLanguage || "");
+
   if (config?.connectionId) {
     payload.connectionId = String(config.connectionId);
     payload.connectionRevision = Number(config.connectionRevision || 0);

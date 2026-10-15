@@ -12,8 +12,8 @@ import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } fr
 import { ensureProviderConnections } from "./provider-connections.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
-const PUBLIC_SETTING_KEYS = new Set(["cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"]);
-const PUBLIC_SETTING_SIGNALS = new Set(["provider", "model", "prompt", "targetLanguage", "openAICompatible", "apiKey", "providerConnections", "providerCredentials", "defaultService", "glossary", "siteGlossaries"]);
+const PUBLIC_SETTING_KEYS = new Set(["browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"]);
+const PUBLIC_SETTING_SIGNALS = new Set(["aiServiceConfigured", "provider", "model", "prompt", "targetLanguage", "openAICompatible", "apiKey", "providerConnections", "providerCredentials", "defaultService", "glossary", "siteGlossaries"]);
 
 export function initializeBackground() {
   Promise.resolve(chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })).catch(() => {});

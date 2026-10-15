@@ -158,7 +158,7 @@ npm run validate
 | WXT 开发服务 | `npm run dev`（开发辅助资源不得进入生产包） |
 | Chromium/MV3/DOM/交互变化 | `npx playwright install chromium`，然后 `npm run build:extension:wxt`、`npm run test:e2e` |
 | 首次构建或缺失内置词典资源 | `npm run setup:lexicon`，按 README 核对生成结果 |
-| 带内置词典的发布安装包 | `npm run build:extension:release` |
+| 默认发布安装包（词典可选） | `npm run build:extension:release` |
 | 富文本词典输入与展示安全 | `npm run test:rich-mdict-security` |
 | 富文本查询取消 | `npm run test:rich-lookup-cancellation` |
 | 富文本词典浏览器路径 | `npm run test:e2e:rich-mdict` |
@@ -206,3 +206,7 @@ npm run validate
 仅在当前分支确实存在 `.agents/skills/**/SKILL.md`、且任务匹配时加载相应 Skill；存在 `docs/AGENT_SKILLS.md` 时按其路由规则使用。缺少 Skill 不阻塞常规工作，不假设未合并分支上的文件可用。
 
 本文件只保留稳定、可执行的规则。不要写入易过期的 Issue 清单、当前 SHA、测试数量、模型名称或发布进度；这些放在本地任务/专门证据文档中。修改规范不得作为绕过已有约束的手段。
+
+## 本仓库提交版本约定
+
+用户要求每次 commit 自动更新版本并编译。使用已启用的 `.githooks/pre-commit`：默认递增 patch，保留明确暂存的更高版本；同步 Manifest、package/lock 与 README 标题，构建暂存区快照到 `dist/extension/`。不得夹带其它未暂存修改。新 clone 运行 `npm run hooks:install`；此约定不授予当前任务 commit、推送或发布授权。

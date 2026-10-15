@@ -3,6 +3,7 @@ import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
 import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "./cache-db.js";
+import { translationEngineSettings } from "./browser-translation.js";
 import { getConfig, getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
   hideQuickControlSite,
@@ -57,7 +58,6 @@ import {
   uninstallRichMdictDictionary,
   uninstallDictionaryPack
 } from "./packs/api.js";
-
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (isReadingMessage(message)) {
@@ -80,8 +80,11 @@ export function registerMessageRouter() {
 
 export async function handleBackgroundMessage(message, sender) {
   switch (message?.type) {
+    case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
+      return translationEngineSettings(message.pageUrl, message.forceBrowser === true);
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
       const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
       return {
         translations: await runTranslationRequest({
           requestId: message.requestId,
@@ -150,17 +153,18 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
       const snapshot = message.configSnapshotId
         ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl) }
-        : await createEffectiveConfigSnapshot(message.pageUrl);
+        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation);
       const config = snapshot.config;
       const result = await lookupTranslations({
         pageUrl: message.pageUrl,
         segments: message.segments,
         config
       });
-      return { ...result, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
+      return { ...result, engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
     }
     case BACKGROUND_MESSAGES.CACHE_STORE: {
       const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      if (config.engine === "browser-translator" && (await getConfig()).browserTranslationEnabled === false) throw Object.assign(new Error("Browser translation is disabled."), { code: "BROWSER_DISABLED" });
       const result = await storeTranslations({
         pageUrl: message.pageUrl,
         pageTitle: message.pageTitle,
@@ -203,7 +207,8 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE:
       return { context: await saveSiteAppearance(message.pageUrl, message.appearance) };
     case BACKGROUND_MESSAGES.OPEN_OPTIONS:
-      await chrome.runtime.openOptionsPage();
+      if (["#general", "#provider", "#dictionary-packs"].includes(message.hash)) await chrome.tabs.create({ url: chrome.runtime.getURL(`options.html${message.hash}`) });
+      else await chrome.runtime.openOptionsPage();
       return { opened: true };
     case BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT:
       return { context: await getEffectiveContext(message.pageUrl) };
@@ -333,6 +338,7 @@ export async function handleBackgroundMessage(message, sender) {
       assertSelectionContentSender(sender);
       return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW:
@@ -344,7 +350,6 @@ export async function handleBackgroundMessage(message, sender) {
       throw new Error("未知扩展消息。");
   }
 }
-
 
 async function notifyRichMddResourcesChanged(dictionaryId) {
   const tabsApi = globalThis.chrome?.tabs;

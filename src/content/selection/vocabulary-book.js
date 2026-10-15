@@ -21,6 +21,16 @@
         const response = await request(messages.background.VOCABULARY_BOOK_ADD, { entry });
         return { added: response.added === true, updated: response.updated === true };
       },
+      async addAiNote(note, event) {
+        if (!event?.isTrusted || !note) return { ignored: true };
+        const response = await request(messages.background.VOCABULARY_BOOK_ADD_AI_NOTE, { note });
+        return { added: response.added === true, updated: response.updated === true };
+      },
+      async syncAiNote(note) {
+        if (!note) return { ignored: true };
+        const response = await request(messages.background.VOCABULARY_BOOK_ADD_AI_NOTE, { note });
+        return { added: response.added === true, updated: response.updated === true };
+      },
       async open(event) {
         if (!event?.isTrusted) return { ignored: true };
         await request(messages.background.VOCABULARY_BOOK_OPEN);

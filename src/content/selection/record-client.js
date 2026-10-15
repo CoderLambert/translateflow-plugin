@@ -29,9 +29,15 @@
     }
     const show = (ctx, state, messageKey, retryAvailable = false, messageArgs = {}, options = {}) => {
       if (!live(ctx)) return;
-      ctx.view = { state, messageKey, messageArgs, retryAvailable };
-      if (options.openAvailable) ctx.view.openAvailable = true;
-      onStatus(ctx.view);
+      const view = { state, messageKey, messageArgs, retryAvailable };
+      if (options.openAvailable) view.openAvailable = true;
+      if (options.item?.onStatus) {
+        options.item.view = view;
+        options.item.onStatus(view);
+      } else {
+        ctx.view = view;
+        onStatus(view);
+      }
     };
     const hasAssistantDraft = (ctx) => [...ctx.drafts.values()].some((item) => item.bounded.kind === "assistant");
     function disabledMessage(ctx) {
@@ -40,12 +46,12 @@
       if (ctx.policy?.enabled === false) return assistant ? "content.reading.aiPaused" : "content.reading.paused";
       return "content.reading.disabled";
     }
-    function failure(ctx, caught) {
+    function failure(ctx, caught, item = null) {
       if (!live(ctx)) return;
       const code = caught?.code || E.INTERRUPTED;
       if (!retryable.has(code)) ctx.blocked = true;
       if (code === E.DISABLED) {
-        show(ctx, "disabled", disabledMessage(ctx), false, {}, { openAvailable: true });
+        show(ctx, "disabled", disabledMessage(ctx), false, {}, { openAvailable: true, item });
         return;
       }
       const messages = {
@@ -59,7 +65,7 @@
         [E.STORAGE]: "content.reading.storage",
         [E.INTERRUPTED]: "content.reading.interrupted"
       };
-      show(ctx, "not-saved", messages[code] || "content.reading.unsupported", retryable.has(code));
+      show(ctx, "not-saved", messages[code] || "content.reading.unsupported", retryable.has(code), {}, { item });
     }
     function connect(ctx) {
       if (port || !chrome.runtime.connect || !live(ctx)) return;
@@ -137,7 +143,7 @@
         const state = await ctx.policyPromise;
         const previous = await ctx.previousDone;
         if (!itemLive(ctx, item) || ctx.blocked || (!access.live(operation) && !access.accepted(operation))) throw error(E.STALE_OPERATION);
-        if (!state.enabled || state.excluded || (!ctx.auto && !ctx.manual)) throw error(E.DISABLED);
+        if (!state.enabled || state.excluded || (!ctx.auto && !ctx.manual && !item.manual)) throw error(E.DISABLED);
         const source = await item.sourcePromise;
         if (!itemLive(ctx, item) || source.selectedText !== ctx.capture.selectedText || source.documentGeneration !== item.documentGeneration) {
           throw error(E.STALE_OPERATION);
@@ -181,7 +187,7 @@
       })();
       try { return await operation.preparing; } finally { operation.preparing = null; }
     }
-    function accept(ctx, draft, { key = "primary", operation = ctx?.operations[0], sourceLanguage } = {}) {
+    function accept(ctx, draft, { key = "primary", operation = ctx?.operations[0], sourceLanguage, onStatus: itemStatus, onSaved } = {}) {
       if (!live(ctx) || !operation || ctx.blocked) return null;
       if (sourceLanguage) ctx.sourceLanguage = sourceLanguage;
       if (!draft) { if (!ctx.drafts.size) show(ctx, "not-saved", "content.reading.unsupported"); return null; }
@@ -199,6 +205,8 @@
       const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
       promise.catch(() => {});
       const item = { operation, bounded, artifact: null, saved: false, accepted, settled: false, resolve, reject, promise,
+        onStatus: typeof itemStatus === "function" ? itemStatus : null, onSaved: typeof onSaved === "function" ? onSaved : null,
+        manual: false, view: null,
         sourcePromise: ctx.capture.ready, sourceLanguage: sourceLanguage || ctx.sourceLanguage,
         documentGeneration: app.modules.selectionSourceSnapshot.documentGeneration,
         pageUrl: ctx.snapshot.pageUrl, referenceGeneration };
@@ -206,27 +214,32 @@
       ctx.queue = ctx.queue.then(async () => {
         await ctx.policyPromise;
         if (!itemLive(ctx, item) || ctx.blocked) throw error(E.STALE_OPERATION);
-        if (ctx.auto || ctx.manual) await flush(ctx);
+        if (ctx.auto || ctx.manual || item.manual) await flush(ctx, new Set([key]));
         else if (live(ctx)) showAvailable(ctx);
         else throw error(E.DISABLED);
-      }).catch((caught) => { settle(item, null, caught); failure(ctx, caught); });
+      }).catch((caught) => { settle(item, null, caught); failure(ctx, caught, item); });
       return promise;
     }
     function showAvailable(ctx) {
       if (ctx.blocked || !ctx.drafts.size) return;
-      const assistant = hasAssistantDraft(ctx);
-      if (ctx.policy?.excluded) show(ctx, "disabled", assistant ? "content.reading.aiSiteExcluded" : "content.reading.siteExcluded",
-        false, {}, { openAvailable: true });
-      else if (ctx.policy?.enabled) show(ctx, "manual", "content.reading.enabled");
-      else show(ctx, declined ? "disabled" : "invite",
-        assistant ? "content.reading.aiPaused" : declined ? "content.reading.notRecorded" : "content.reading.invite");
-    }
-    async function flush(ctx) {
-      if ((!live(ctx) && !contextLive(ctx)) || ctx.blocked) return;
       for (const item of ctx.drafts.values()) {
         if (item.saved) continue;
+        const assistant = item.bounded.kind === "assistant";
+        if (ctx.policy?.excluded) show(ctx, "disabled", assistant ? "content.reading.aiSiteExcluded" : "content.reading.siteExcluded",
+          false, {}, { openAvailable: true, item });
+        else if (ctx.policy?.enabled) show(ctx, "manual", "content.reading.enabled", false, {}, { item });
+        else show(ctx, declined ? "disabled" : "invite",
+          assistant ? "content.reading.aiPaused" : declined ? "content.reading.notRecorded" : "content.reading.invite",
+          false, {}, { openAvailable: assistant, item });
+      }
+    }
+    async function flush(ctx, onlyKeys = null) {
+      if ((!live(ctx) && !contextLive(ctx)) || ctx.blocked) return;
+      for (const [key, item] of ctx.drafts) {
+        if (onlyKeys && !onlyKeys.has(key)) continue;
+        if (item.saved) continue;
         if (!itemLive(ctx, item) || ctx.blocked) continue;
-        show(ctx, "saving", "content.reading.saving");
+        show(ctx, "saving", "content.reading.saving", false, {}, { item });
         const token = await prepare(ctx, item.operation, item);
         if (!item.artifact) item.artifact = C.validateResultArtifact({ ...item.bounded,
           recordId: token.recordId, sourceSnapshotId: (await item.sourcePromise).sourceSnapshotId });
@@ -245,9 +258,11 @@
           source: await item.sourcePromise, sourceLanguage: item.sourceLanguage, pageUrl: item.pageUrl,
           consentGeneration: ctx.policy.consentGeneration, sitePolicyRevision: ctx.policy.sitePolicyRevision };
         if (ctx.referenceGeneration === referenceGeneration) lastSaved = ctx.ref;
-        settle(item, { artifactId: saved.artifactId, recordId: saved.recordId, revision: saved.revision, duplicate: saved.duplicate });
+        const receipt = { artifactId: saved.artifactId, recordId: saved.recordId, revision: saved.revision, duplicate: saved.duplicate };
+        settle(item, receipt);
+        item.onSaved?.(receipt);
+        show(ctx, "saved", "content.reading.saved", false, {}, { openAvailable: true, item });
       }
-      if (ctx.drafts.size) show(ctx, "saved", "content.reading.saved");
     }
     async function refresh(checkRecord = false) {
       const ctx = current;
@@ -293,17 +308,17 @@
       for (const item of ctx.drafts.values()) if (!item.saved) settle(item, null, error(E.DISABLED));
       for (const op of ctx.operations) access.cancel(op);
     }
-    async function save(event) {
+    async function save(event, key = null) {
       const ctx = current;
       if (!ctx || !live(ctx) || ctx.blocked || !access.trusted(event)) return;
       await refresh();
       if (!live(ctx) || ctx.blocked || !ctx.policy?.enabled || ctx.policy.excluded) return;
       if (!ctx.manual && !ctx.auto) {
         // First consent returns to one bounded current card. New tokens belong to this explicit save action.
-        const old = ctx.operations;
-        ctx.operations = [];
+        const selected = key === null ? [...ctx.drafts.entries()] : [[key, ctx.drafts.get(key)]].filter(([, item]) => item);
+        const old = new Set(selected.map(([, item]) => item.operation));
         const replacement = new Map();
-        for (const item of ctx.drafts.values()) {
+        for (const [, item] of selected) {
           let op = replacement.get(item.operation);
           if (!op) {
             op = access.create({ snapshot: ctx.snapshot, capture: ctx.capture, event, isCurrent: ctx.isCurrent, purpose: item.operation.purpose });
@@ -312,18 +327,22 @@
           }
           item.operation = op; item.bounded.operationId = op.operationId;
           if (item.accepted && !access.accept(op)) { failure(ctx, error(E.STALE_OPERATION)); return; }
+          if (key !== null) item.manual = true;
         }
+        ctx.operations = ctx.operations.filter((op) => !old.has(op));
         for (const op of old) { access.cancel(op); access.forget(op); }
-        ctx.manual = true;
+        if (key === null) ctx.manual = true;
         ctx.policyPromise = Promise.resolve(ctx.policy);
       }
-      ctx.queue = ctx.queue.then(() => flush(ctx)).catch((caught) => failure(ctx, caught));
+      const item = key === null ? null : ctx.drafts.get(key);
+      ctx.queue = ctx.queue.then(() => flush(ctx, key === null ? null : new Set([key]))).catch((caught) => failure(ctx, caught, item));
       await ctx.queue;
     }
-    async function retry(event) {
+    async function retry(event, key = null) {
       const ctx = current;
       if (!ctx || !live(ctx) || ctx.blocked || !access.trusted(event)) return;
-      ctx.queue = ctx.queue.then(() => flush(ctx)).catch((caught) => failure(ctx, caught));
+      const item = key === null ? null : ctx.drafts.get(key);
+      ctx.queue = ctx.queue.then(() => flush(ctx, key === null ? null : new Set([key]))).catch((caught) => failure(ctx, caught, item));
       await ctx.queue;
     }
     async function close(ctx = current) {

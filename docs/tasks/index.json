@@ -258,6 +258,13 @@
       "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972"
     },
     {
+      "task": "browser-basic-translation",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
+    },
+    {
       "task": "chatgpt-native-host-distribution",
       "status": "ready_to_sync",
       "dependencies": [],
@@ -348,11 +355,25 @@
       "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d"
     },
     {
+      "task": "selection-ai-result-saving",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
+    },
+    {
       "task": "selection-vocabulary-book-v1",
       "status": "completed",
       "dependencies": [],
       "branch": "feat/selection-vocabulary-book-v1",
       "candidateHead": "033540996db9ce4150d949772f4386b258456673"
+    },
+    {
+      "task": "sync-current-worktree",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
     },
     {
       "task": "workflow-local",

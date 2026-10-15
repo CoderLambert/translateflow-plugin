@@ -18,10 +18,14 @@
   function create({ container, onResize, action = "" } = {}) {
     if (!container) throw new Error("Selection AI detail container is required.");
     let node = null, markdownBody = null;
+    const persistenceView = app.modules.selectionAiPersistenceView?.create({ onResize }) || Object.freeze({
+      reset() {}, update() {}, render() {}
+    });
 
     function reset() {
       markdown.clear(markdownBody);
       locale.unbindTree(node);
+      persistenceView.reset(node);
       node?.remove();
       node = markdownBody = null;
     }
@@ -48,11 +52,16 @@
     }
 
     function success(result = {}) {
+      persistenceView.reset(node);
       render({
         state: "success",
         generatedMeaning: String(result.generatedMeaning || "").trim(),
         explanation: String(result.explanation || "").trim()
       });
+    }
+
+    function persistence(next = {}) {
+      persistenceView.update(ensureNode(), next);
     }
 
     function error(messageKey, onRetry) {
@@ -129,6 +138,7 @@
         if (explanation) {
           appendMarkdown(target, explanation, false);
         }
+        persistenceView.render(target);
         onResize?.();
         return;
       }
@@ -192,6 +202,7 @@
       streaming,
       interrupted,
       success,
+      persistence,
       error,
       cancelled
     });
@@ -199,7 +210,6 @@
 
   app.modules.selectionAiDetail = Object.freeze({ create });
 })();
-
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.uiPrimitives || !app?.modules.contentI18n || !app?.modules.selectionAiDetail || app.modules.selectionViewTabs) return;
@@ -257,6 +267,12 @@
       enabled[next].focus({ preventScroll: true });
     }
 
+    function setPrimaryKind(kind) {
+      const translation = kind === "translation", tab = tabs.get("dictionary");
+      locale.bindText(tab, translation ? "content.basic.translationTab" : "content.selection.dictionaryTab");
+      locale.bindAttribute(tab, "aria-label", translation ? "content.basic.translationTab" : "content.selection.dictionaryTabAria");
+    }
+
     function configure(handler, visible) {
       requestHandler = typeof handler === "function" ? handler : null;
       tabList.hidden = !visible;
@@ -297,6 +313,7 @@
     }
 
     function reset() {
+      setPrimaryKind("local");
       for (const action of AI_ACTIONS) {
         details.get(action)?.reset();
         states.set(action, "idle");
@@ -325,6 +342,7 @@
 
     return Object.freeze({
       configure,
+      setPrimaryKind,
       reset,
       selectDictionary: () => select("dictionary"),
       active: () => active,
@@ -333,6 +351,7 @@
       stopping: (action, answer) => render(action, "stopping", "streaming", [answer, null, true]),
       interrupted: (action, answer, message, handler) => render(action, "interrupted", "interrupted", [answer, message, retry(action, handler)]),
       success: (action, result) => render(action, "success", "success", [result]),
+      persistence: (action, state) => details.get(action)?.persistence(state) ?? false,
       error: (action, message, handler) => render(action, "error", "error", [message, retry(action, handler)]),
       cancelled: (action, handler) => render(action, "cancelled", "cancelled", [retry(action, handler)]),
       dispose() {

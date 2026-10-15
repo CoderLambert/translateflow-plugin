@@ -35,6 +35,7 @@
       renderCompactMeaning(container, result);
     }
     renderBadges(container, result.badges);
+    if (result.kind === "translation") appendTranslationCopy(container, result.primaryMeaning);
     if (hasCollapsedDictionaryDetails(entries, result.moreEntryCount, result.examples)) {
       renderDictionaryDetails(container, entries, result.moreEntryCount, result.headword, result.examples);
     }
@@ -49,6 +50,18 @@
     }
 
     return { generatedMeaning, explanation };
+  }
+
+  function appendTranslationCopy(container, text) {
+    if (!app.modules.selectionClipboard) return;
+    const copy = document.createElement("button"); copy.type = "button"; copy.className = "tf-ui-button";
+    locale.bindText(copy, "content.common.copy");
+    copy.addEventListener("click", async event => {
+      if (!event.isTrusted) return;
+      try { await app.modules.selectionClipboard.writeText(String(text || "")); locale.bindText(copy, "content.selection.translationCopied"); }
+      catch { locale.bindText(copy, "content.selection.copyDenied"); }
+    });
+    container.append(copy);
   }
 
   function renderBadges(container, badges) {

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "task": "sync-current-worktree",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/api-key-provider-connections",
+  "worktree": ".",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "node",
+      "scripts/run-e2e.mjs",
+      "e2e/browser-basic-translation.spec.mjs",
+      "e2e/selection-ai-result-saving.spec.mjs",
+      "e2e/selection-reading-record.spec.mjs",
+      "e2e/selection-vocabulary-book.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs",
+      "e2e/learning-center.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "精确提交并推送当前全部成果，建立 PR；绑定候选执行完整验收及 squash 合入。"
+}
