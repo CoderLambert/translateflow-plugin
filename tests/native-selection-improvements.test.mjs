@@ -6,6 +6,7 @@ import { selectionDetectionSample } from "../src/shared/browser-language.js";
 import * as contract from "../src/shared/browser-translation.js";
 import * as language from "../src/shared/browser-language.js";
 import { en, zh_CN } from "../src/i18n/catalog-browser-translation.js";
+import { createBrowserNativeRuntime } from "../src/browser-native/runtime.js";
 
 const contentSource = await readFile(new URL("../src/content/browser-translation.js", import.meta.url), "utf8");
 const selectionSource = await readFile(new URL("../src/content/selection/translation-query.js", import.meta.url), "utf8");
@@ -18,7 +19,7 @@ function deferred() {
   return { promise, resolve };
 }
 function modelHarness(Translator) {
-  const app = { modules: { browserTranslationContract: { ...contract, ...language } } };
+  const app = { modules: { browserTranslationContract: { ...contract, ...language, createBrowserNativeRuntime } } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, Translator, LanguageDetector: null,
     isSecureContext: true, setTimeout, clearTimeout, AbortController });
   vm.runInContext(contentSource, context);

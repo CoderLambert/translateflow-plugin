@@ -1,17 +1,25 @@
-# Native selected-word quality follow-up
+# Chrome 原生翻译完整性收口
 
-## Scope
-Based on main at 7cc6002fb575ccbd2e11044defcb88de6be4b62c. Retain the current production rule: Chrome built-in translation is only permitted for eligible selected words. Do not activate local models for webpages, subtitles, or longer text.
+## 基线与范围
 
-Implement exactly three improvements:
-1. Reuse the existing non-sensitive selection source projection as a short LanguageDetector sample, without sending surrounding context to the Translator, AI Provider, or translation cache.
-2. Replace immediate model capacity errors with abortable, deadline-bounded waiting (30 seconds) and preserve per-request cancellation and native resource cleanup.
-3. After creation/first use of a Translator pair, perform a real non-empty translation self-check and expose verification status; failure invalidates the instance and allows an explicit retry.
+- 当前主分支：`7cc6002fb575ccbd2e11044defcb88de6be4b62c`。
+- 继续 PR #339：`81690dae770fb7ea01ad33b7ce87cd099dee19ba`，不另建平行实现。
+- 用户要求一次补齐成熟度差距；保持单词释义产品范围、词典和 AI 路由。
+- 不新增独立模型引擎/Offscreen权限，不执行 E2E；真实产品验收由用户完成。
 
-Keep the existing ISOLATED Content runtime, WXT entry, message protocol, language pair cache identity, dictionaries, Reading records, permissions, and database intact. No Offscreen or external model downloads.
+## 已实现合同
 
-## Automated acceptance
-Targeted Node tests for context extraction/privacy, resource queue fairness/cancellation, real test translation and failure/retry, plus JS syntax checks. Do not run browser E2E or human product acceptance in this coding round.
+1. Content/Options 共享同一 Chrome runtime：检测、翻译、串行租约、容量排队、取消、超时、迟到资源、普通/流式结果。
+2. 设置页同时准备检测器/翻译器；完整句语言自检和非空真实翻译检查、独立进度、取消重试、错误反馈。
+3. 用户打开的设置页可作为可选共享主机；Port 来源、请求所有权、隐身隔离、容量上限、丢失恢复；无共享页时返回本页执行，绝不静默下载。
+4. 临时待准备语言对：session、仅代码/时间戳、32条、一天期限、Options-only状态读取/标记。
+5. 选词/上下文证据分别检测，冲突不猜、简繁共享字符不伪确定、手动纠正按上下文隔离。
+6. 修复 PR #339 中文文案漏逗号；适配既有测试夹具到共享运行时工厂。
 
-## User acceptance
-Open an HTTPS reading page in Chrome. Select an ambiguous word with English/French/German sentence context; verify language recognition follows the sentence. Trigger two active language pairs and then another pair if practical; no immediate busy error. Prepare a new pair and confirm the verification phase appears and a definition is eventually returned. Confirm other content (page, subtitle and longer selection) still requires AI.
+## 明确保留的差异
+
+跨标签共享依赖用户保持设置页打开，不等同 FluentRead 的 Offscreen 生命周期。没有引入 franc-min 统计语料或旧实验 API；使用现代 Chrome API及有限纯规则。功能与稳定性只可按实际证据声明，不得说所有浏览器环境和语义质量都已通过。
+
+## 用户验收
+
+本地构建后，在 Chrome 设置页准备双模型，查看实际检测语言和译文；两张阅读页测试英文/德文等短词和中文语境里的外语词；关闭设置页、取消/重试、断网后使用已准备语言对；确认整页/字幕/长选区仍走 AI。无需重新论证是否开发此功能。

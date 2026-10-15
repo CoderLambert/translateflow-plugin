@@ -12,7 +12,7 @@
       return new Intl.DisplayNames([locale], { type: "language" }).of(code === "zh" ? "zh-Hans" : code);
     } catch { return LANGUAGE_NAMES[code] || code; }
   }
-  function prompt({ signal, title, message = "", pair = null, detectText = "", verifyText = "", allowPrepare = false, action = null }) {
+  function prompt({ signal, title, message = "", pair = null, detectText = "", sourceText = "", verifyText = "", allowPrepare = false, action = null }) {
     closeActive?.();
     return new Promise((resolve, reject) => {
       const lifetime = new AbortController();
@@ -25,7 +25,13 @@
       const status = document.createElement("p"); status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); status.textContent = message || t("help");
       const progress = document.createElement("progress"); progress.max = 1; progress.hidden = true; progress.setAttribute("aria-label", t("preparing"));
       const options = button({ text: t("configure") });
-      options.onclick = () => { void app.modules.runtime.sendRuntimeMessage({ type: app.modules.runtime.messages.background.OPEN_OPTIONS, hash: "#general" }); };
+      options.onclick = async event => {
+        if (!event?.isTrusted) return;
+        if (pair?.sourceLanguage && pair.sourceLanguage !== pair.targetLanguage && engine.requestPreparation) {
+          try { await engine.requestPreparation(pair, { signal: lifetime.signal }); } catch { /* Opening Settings remains available when session storage is unavailable. */ }
+        }
+        if (!lifetime.signal.aborted) void app.modules.runtime.sendRuntimeMessage({ type: app.modules.runtime.messages.background.OPEN_OPTIONS, hash: "#general" });
+      };
       const cancel = button({ text: t("cancel") });
       let settled = false, busy = false, revision = 0, lastLoaded = 0, primary = null;
       const live = current => !settled && !lifetime.signal.aborted && current === revision;
@@ -75,11 +81,10 @@
           status.textContent = t("preparing"); progress.hidden = false; progress.removeAttribute("value"); lastLoaded = 0;
           try {
             if (!select.value) {
-              // The model creation begins in this click, not after a storage or messaging await.
               await engine.prepareDetector({ signal: lifetime.signal, progress: updateProgress });
               if (!live(current)) return;
               status.textContent = t("detecting");
-              const decision = await engine.detectDecision(detectText, { signal: lifetime.signal });
+              const decision = await (engine.detectSelection ? engine.detectSelection(sourceText || detectText, detectText, { signal: lifetime.signal }) : engine.detectDecision(detectText, { signal: lifetime.signal }));
               if (!live(current)) return;
               if (!decision.language || decision.language === "zh" && !decision.scriptKnown && pair.targetLanguage === "zh") {
                 status.textContent = t("uncertain"); details.open = true; return;
@@ -88,15 +93,16 @@
             }
             const selected = { ...pair, sourceLanguage: select.value, automatic: false };
             if (allowPrepare && selected.sourceLanguage !== selected.targetLanguage) await engine.prepare(selected, {
-              signal: lifetime.signal, progress: updateProgress,
+              signal: lifetime.signal, progress: updateProgress, userGesture: true,
               verifyText: verifyText || detectionSample(detectText).slice(0, 160),
-              onPhase: phase => { if (live(current) && phase === "verifying") status.textContent = t("verifying"); }
+              onPhase: phase => { if (live(current) && ["verifying", "waiting"].includes(phase)) status.textContent = t(phase); }
             });
             if (live(current)) finish(selected);
           } catch (cause) {
             if (!live(current)) return;
             if (cause?.code === "CANCELLED") return abort();
-            status.textContent = t(["BROWSER_TIMEOUT", "BROWSER_BUSY", "BROWSER_TOO_LONG", "BROWSER_VERIFY_FAILED"].includes(cause?.code) ? cause.code : "prepareFailed");
+            const visible = ["BROWSER_TIMEOUT", "BROWSER_QUEUE_TIMEOUT", "BROWSER_BUSY", "BROWSER_TOO_LONG", "BROWSER_VERIFY_FAILED", "BROWSER_DETECTION_MISMATCH", "BROWSER_POLICY", "BROWSER_NETWORK", "BROWSER_MODEL_UNAVAILABLE"];
+            status.textContent = t(visible.includes(cause?.code) ? cause.code : "prepareFailed");
           } finally {
             if (live(current)) { busy = false; select.disabled = false; progress.hidden = true; refresh(); }
           }

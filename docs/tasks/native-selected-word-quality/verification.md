@@ -1,30 +1,39 @@
-# Native selected-word quality: verification status
+# Verification — native model completeness
 
-Base: `main@7cc6002fb575ccbd2e11044defcb88de6be4b62c`.
+Date: 2026-10-15. Parent: `81690dae770fb7ea01ad33b7ce87cd099dee19ba` (PR #339), based on main `7cc6002fb575ccbd2e11044defcb88de6be4b62c`.
 
-## Completed (direct execution with the actual edited source, not a complete checkout)
+## Executed against the actual modified source
 
-- Parsed four changed classic/IIFE JavaScript files through V8 `Function` constructor: PASS.
-- Parsed the new Node test module after removing ESM imports and top-level file reads for syntax only: PASS.
-- Executed edited `src/shared/browser-language.js` against four selection-context cases: PASS.
-- Executed edited `src/content/browser-translation.js` in a mocked V8 runtime:
-  - Two active model pairs; third pair waits until a resource is released: PASS.
-  - Cancelling a queued third pair returns `CANCELLED` and creates no model: PASS.
-  - Real nonempty sample translation required before `ready`: PASS.
-  - Empty verification rejects, retires the model, and next preparation may retry: PASS.
+```sh
+node --test tests/native-*-completion.test.mjs \
+  tests/native-models.test.mjs tests/native-selection-improvements.test.mjs
+```
 
-The source above was loaded from exact Git blob SHAs and executed with synthetic Chrome Translator objects; no real browser model was invoked.
+**83 PASS; 0 failed/cancelled/skipped.**
+
+- Runtime:20; language evidence:15; preparation controller:9; Port broker/host/fallback:21.
+- Existing model lifecycle:10; previous selected-word improvements:8.
+- `node --check`:23 JS/MJS files PASS, including both locale modules and existing adapted fixtures.
+- TypeScript5.8.3 `transpileModule`:2 changed TSX files PASS (syntax only).
+- JavaScript declaration emission for the runtime/preparation/transport interfaces completed using the available TypeScript compiler; this is not the repository's full typecheck.
+
+The tests exercise actual production functions with mocked Chrome native APIs and linked in-memory Port endpoints, not rewritten pseudocode. They cover sync dual create, matching detected language, empty output, shared creation/cancellation, capacity/deadlines, late cleanup, stream-only results, context conflicts, privacy, host/source/ownership checks, cancellation during asynchronous preference reads, corrupt session state, lost host fallback and prohibition on silent downloads.
+
+The inherited PR #339 Chinese catalog had a missing comma after BROWSER_VERIFY_FAILED. It is fixed. Previous incomplete syntax checks must not be treated as proof that that older revision loaded correctly.
 
 ## Not executed
 
-- `node --test tests/native-selection-improvements.test.mjs` and existing repository tests: NOT RUN.
-- `npm run check`, `npm run typecheck`, WXT build: NOT RUN.
-- Playwright/real Chrome/actual language-model download/offline test: NOT RUN.
+- Full repository `npm test`, `npm run validate`, locked TypeScript check, WXT build and versioned pre-commit build: NOT RUN.
+- `tests/browser-translation.test.mjs` full execution: NOT RUN; its original assertions are retained and fixture injection is adapted to the shared runtime factory.
+- React mounted component tests, Playwright E2E, actual Chrome models/downloads/offline/semantic quality: NOT RUN.
 
-Reason: The available container runs Node 22.16.0 / npm 10.9.2, whereas this repository requires Node 24.21+ / npm 11.19+; the container cannot resolve github.com and does not contain a complete checkout. Source edits were applied using the GitHub connector.
+Execution environment: Node22.16.0/npm10.9.2 and globally available TypeScript5.8.3. The project requests Node24.21.x/npm11.19.x and its lockfile TypeScript/WXT dependencies. This working area is a source slice, not a full dependency-installed checkout; direct GitHub DNS access is unavailable, so repository access uses the connector. Do not describe the 83 tests as a full project/build/real-model acceptance.
 
-## Manual acceptance owner
+## Product / architecture limits
 
-The user verifies real Chrome behavior. Test German/English ambiguous selected words in their own sentence, prepare a new language pair and observe verification, cancel/retry model preparation, and confirm page/subtitle/long-text tasks remain AI-only.
+- User-run Chrome acceptance owns real downloads, offline operation and semantic translation quality.
+- Shared models live in the user-opened Options page. Closing it ends cross-tab sharing; fallback remains the original per-page execution environment. This is not Offscreen parity and does not promise permanent cross-origin model activation.
+- Chrome-only modern APIs remain the target; no legacy experimental API adapter, franc-min corpus, separate model engine or change to page/subtitle/long-selection AI scope.
+- No new permission, dependency, database schema or credential storage. Session preparation status contains only normalized language codes and timestamps.
 
-No permissions, external dependencies, cache DB schema or browser execution context were added.
+Keep PR #339 Draft until the actual repository build/acceptance succeeds. No merge or release was performed by this coding task.

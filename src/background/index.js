@@ -1,4 +1,5 @@
 import { ensureConfigDefaults, removeLegacyV1Cache } from "./config.js";
+import { createBrowserNativeBroker } from "./browser-native-broker.js";
 import { registerMessageRouter } from "./router.js";
 import { registerCommandRouter } from "./commands.js";
 import { syncSiteRegistrations } from "./auto-sites.js";
@@ -19,7 +20,8 @@ export function initializeBackground() {
   Promise.resolve(chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })).catch(() => {});
   registerMessageRouter();
   registerCommandRouter();
-  chrome.runtime.onConnect.addListener(port => { if (!handleReadingPort(port)) handleSelectionAssistantStreamPort(port); });
+  const nativeBroker = createBrowserNativeBroker(chrome);
+  chrome.runtime.onConnect.addListener(port => { if (!nativeBroker.connect(port) && !handleReadingPort(port)) handleSelectionAssistantStreamPort(port); });
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { onReadingTabUpdated(tabId, changeInfo); if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) abortSelectionAssistantStreams(tabId); });
   chrome.tabs.onRemoved.addListener(tabId => { onReadingTabRemoved(tabId); abortSelectionAssistantStreams(tabId); });
   chrome.permissions.onRemoved.addListener(() => { onReadingPermissionsRemoved(); abortSelectionAssistantStreams(); });

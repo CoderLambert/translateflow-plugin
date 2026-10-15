@@ -6,6 +6,7 @@ import { en as optionsEn, zh_CN as optionsZhCN } from "./catalog-options.js";
 import { en as optionsChatGPTEn, zh_CN as optionsChatGPTZhCN } from "./catalog-options-chatgpt.js";
 import { en as dictionaryEn, zh_CN as dictionaryZhCN } from "./catalog-dictionary.js";
 import { en as learningEn, zh_CN as learningZhCN } from "./catalog-learning.js";
+import { en as nativeEn, zh_CN as nativeZhCN } from "./catalog-native-completion.js";
 
 // One logical catalog, split only to keep source files reviewable and within
 // repository size limits. Consumers import this aggregate, never the shards.
@@ -17,7 +18,8 @@ export const en = Object.freeze({
   ...optionsEn,
   ...optionsChatGPTEn,
   ...dictionaryEn,
-  ...learningEn
+  ...learningEn,
+  ...nativeEn
 });
 
 export const zh_CN = Object.freeze({
@@ -28,7 +30,8 @@ export const zh_CN = Object.freeze({
   ...optionsZhCN,
   ...optionsChatGPTZhCN,
   ...dictionaryZhCN,
-  ...learningZhCN
+  ...learningZhCN,
+  ...nativeZhCN
 });
 
 export const catalogs = Object.freeze({ en, zh_CN });

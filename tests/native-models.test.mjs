@@ -4,10 +4,11 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import * as contract from "../src/shared/browser-translation.js";
 import * as language from "../src/shared/browser-language.js";
+import { createBrowserNativeRuntime } from "../src/browser-native/runtime.js";
 const text = await readFile(new URL("../src/content/browser-translation.js", import.meta.url), "utf8");
 const pair = { sourceLanguage: "en", targetLanguage: "zh" };
 function setup(Translator, LanguageDetector) {
-  const app = { modules: { browserTranslationContract: { ...contract, ...language } } };
+  const app = { modules: { browserTranslationContract: { ...contract, ...language, createBrowserNativeRuntime } } };
   const host = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, Translator, LanguageDetector, isSecureContext: true,
     AbortController, setTimeout, clearTimeout });
   vm.runInContext(text, host);
