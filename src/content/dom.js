@@ -63,20 +63,21 @@
   function shouldTranslate(text) {
     if (!text || text.length < MIN_TEXT_LENGTH || text.length > 5000) return false;
     if (/^(https?:\/\/|www\.)/i.test(text)) return false;
-    const latin = (text.match(/[A-Za-z]/g) || []).length;
-    const cjk = (text.match(/[\u3400-\u9fff]/g) || []).length;
-    const letters = latin + cjk;
-    if (letters < 6) return false;
-    return latin / letters >= 0.58;
+    const letters = (text.match(/\p{L}/gu) || []).length;
+    return letters >= 6;
   }
 
-  function insertTranslation(el, translation) {
+  function insertTranslation(el, translation, engine = "") {
     if (!translation || el.hasAttribute(TRANSLATED_ATTR)) return false;
     const node = document.createElement("span");
     node.className = TRANSLATION_CLASS;
     node.setAttribute("aria-hidden", "false");
     const source = structured.encodeElement(el);
     node.appendChild(structured.renderTranslation(translation, source));
+    if (engine === "browser-translator") {
+      const source = document.createElement("small"); source.className = "abt-translation-source";
+      source.textContent = app.modules.contentI18n.t("content.basic.sourceBadge"); node.appendChild(source);
+    }
     el.appendChild(node);
     el.setAttribute(TRANSLATED_ATTR, "1");
     return true;

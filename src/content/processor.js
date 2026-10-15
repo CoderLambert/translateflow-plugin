@@ -48,6 +48,7 @@
       let apiTranslated = 0;
       let missing = 0;
       let done = 0;
+      let configSnapshotId = "";
       const pageUrl = location.href;
 
       if (!silent) {
@@ -60,8 +61,10 @@
           cacheOnly,
           pageUrl,
           auto: false,
-          task
+          task,
+          configSnapshotId
         });
+        configSnapshotId = result.configSnapshotId || configSnapshotId;
         cacheHits += result.cacheHits;
         apiTranslated += result.apiTranslated;
         missing += result.missing;
@@ -108,6 +111,11 @@
         task: tasks.getTaskStatus(task)
       };
     } catch (error) {
+      if (error?.code === "ENGINE_SWITCH") {
+        if (task) tasks.failTask(task, error);
+        state.manualRunning = false;
+        return processPage({ cacheOnly, silent });
+      }
       if (task) tasks.failTask(task, error);
       if (tasks.isCancelledError(error)) {
         if (!silent) showToast(t("content.page.cancelled"), "info");
@@ -124,18 +132,22 @@
     }
   }
 
-  async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null }) {
+  async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "" }) {
     const expectedPageIdentity = getPageIdentity(pageUrl);
     const pageTitle = document.title;
     if (task) tasks.transition(task, "cache_lookup");
 
     const lookup = await sendRuntimeMessage({
       type: messages.background.CACHE_LOOKUP,
+      requestId: task?.id,
+      cacheOnly,
       pageUrl,
+      configSnapshotId: existingSnapshotId,
       segments: groups.map(({ id, text }) => ({ id, text }))
     });
     if (task) tasks.assertActive(task);
     if (!lookup?.ok) throw responseError(lookup, "content.page.cacheLookupFailed");
+    const configSnapshotId = String(lookup.configSnapshotId || "");
 
     const cachedMap = new Map((lookup.hits || []).map((item) => [String(item.id), item.text]));
     const uncached = [];
@@ -147,7 +159,7 @@
       const translation = cachedMap.get(group.id);
       if (translation) {
         if (getPageIdentity(location.href) === expectedPageIdentity) {
-          cacheHits += insertGroupTranslation(group, translation);
+          cacheHits += insertGroupTranslation(group, translation, lookup.engine);
         }
       } else {
         uncached.push(group);
@@ -157,7 +169,7 @@
     const processed = groups.reduce((sum, group) => sum + group.elements.length, 0);
     if (cacheOnly || uncached.length === 0) {
       missing = cacheOnly ? uncached.reduce((sum, group) => sum + group.elements.length, 0) : 0;
-      return { cacheHits, apiTranslated, missing, processed };
+      return { cacheHits, apiTranslated, missing, processed, configSnapshotId };
     }
 
     if (task) tasks.transition(task, "translating");
@@ -165,7 +177,8 @@
       type: messages.background.TRANSLATE_BATCH,
       requestId: task?.id || crypto.randomUUID(),
       pageUrl,
-      segments: uncached.map(({ id, text }) => ({ id, text }))
+      configSnapshotId,
+      segments: uncached.map(({ id, text, elements }) => ({ id, text, protectedIds: app.modules.structured.encodeElement(elements[0]).descriptors.flatMap((item, index) => item.protectedText != null ? [index] : []) }))
     });
     if (task) tasks.assertActive(task);
     if (!response?.ok) throw responseError(response, "content.page.translationFailed");
@@ -180,11 +193,12 @@
       }
 
       if (getPageIdentity(location.href) === expectedPageIdentity) {
-        apiTranslated += insertGroupTranslation(group, translation);
+        apiTranslated += insertGroupTranslation(group, translation, response.engine);
       }
       toStore.push({ sourceText: group.text, translation });
     }
 
+    if (getPageIdentity(location.href) !== expectedPageIdentity) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
     if (toStore.length) {
       if (task) {
         tasks.assertActive(task);
@@ -195,6 +209,7 @@
         type: messages.background.CACHE_STORE,
         pageUrl,
         pageTitle,
+        configSnapshotId,
         items: toStore
       });
       if (task) tasks.assertActive(task);
@@ -206,10 +221,10 @@
       }
     }
 
-    return { cacheHits, apiTranslated, missing, processed };
+    return { cacheHits, apiTranslated, missing, processed, configSnapshotId };
   }
 
-  function insertGroupTranslation(group, translation) {
+  function insertGroupTranslation(group, translation, engine = "") {
     let inserted = 0;
     for (const el of group.elements) {
       if (!document.contains(el)) continue;
@@ -218,7 +233,7 @@
         if (state.auto || state.cacheRestore) app.modules.auto?.invalidateAndObserve(el);
         continue;
       }
-      if (!el.hasAttribute(TRANSLATED_ATTR) && insertTranslation(el, translation)) inserted += 1;
+      if (!el.hasAttribute(TRANSLATED_ATTR) && insertTranslation(el, translation, engine)) inserted += 1;
     }
     return inserted;
   }

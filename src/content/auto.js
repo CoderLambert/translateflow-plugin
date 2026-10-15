@@ -10,7 +10,7 @@
     || app.modules.auto
   ) return;
 
-  const { constants, state, getPageIdentity, getSiteScope, showToast } = app.modules.runtime;
+  const { constants, messages, state, getPageIdentity, getSiteScope, sendRuntimeMessage, showToast } = app.modules.runtime;
   const t = (key, args) => app.modules.contentI18n.t(key, args);
   const tasks = app.modules.tasks;
   const {
@@ -33,10 +33,11 @@
   async function maybeStartPersistentModes() {
     try {
       const origin = getSiteScope(location.href);
+      const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
       const {
         cacheRestoreSites = [],
         autoSites = []
-      } = await chrome.storage.local.get(["cacheRestoreSites", "autoSites"]);
+      } = response?.settings || {};
 
       const autoEnabled = Array.isArray(autoSites) && autoSites.includes(origin);
       const restoreEnabled = Array.isArray(cacheRestoreSites) && cacheRestoreSites.includes(origin);
@@ -56,7 +57,8 @@
 
   async function maybeStartAutoMode() {
     try {
-      const { autoSites = [] } = await chrome.storage.local.get(["autoSites"]);
+      const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
+      const { autoSites = [] } = response?.settings || {};
       if (Array.isArray(autoSites) && autoSites.includes(getSiteScope(location.href))) {
         await enableAutoMode({ announce: false });
       }

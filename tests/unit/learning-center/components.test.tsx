@@ -70,6 +70,28 @@ test("Still learning reports the saved review and refreshes the due card", async
   expect(screen.queryByTestId("vocabulary-review-card")).toBeNull();
   expect(client.review).toHaveBeenCalledWith("review-entry", "again");
 });
+test("wordbook separates dictionary facts from AI notes and keeps a missing Reading link unavailable", async () => {
+  const entry = {
+    id: "ai-note-entry", headword: "persistent", sourceLanguage: "en", targetLanguage: "zh-CN",
+    pronunciation: "", partOfSpeech: "adjective", definitions: ["持久的"], examples: [],
+    sources: [{ sourceId: "pwn-3.0", packId: "core-fixture", packVersion: "1", sourceEntryId: "persistent" }],
+    aiNotes: [{ action: "understand", text: "A synthetic contextual explanation.", truncated: true, turnId: "turn-1",
+      provenance: { provider: "mock", model: "mock-model", promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" },
+      readingRef: { recordId: RECORD_ID, artifactId: "missing-artifact" }, savedAt: 2 }],
+    savedAt: 1, reviewCount: 0, knownStreak: 0, lastReviewedAt: null, nextReviewAt: 1
+  };
+  const client = { list: vi.fn(async () => ({ entries: [entry], due: [entry], count: 1, dueCount: 1, capacity: 200 })),
+    review: vi.fn(), remove: vi.fn() };
+  const open = vi.fn(async () => false);
+  render(<VocabularyBook section="wordbook" i18n={i18n} client={client as any} onOpenReadingRef={open} />);
+  expect(await screen.findByRole("heading", { name: "Dictionary definitions" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "AI learning notes" })).toBeTruthy();
+  expect(screen.getByText("Understanding")).toBeTruthy();
+  expect(screen.getByText("mock · mock-model")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Open full answer" }));
+  expect(open).toHaveBeenCalledWith({ recordId: RECORD_ID, artifactId: "missing-artifact" });
+  expect(await screen.findByText("The linked full answer is unavailable. This AI note remains saved.")).toBeTruthy();
+});
 test("StrictMode mount and synthetic events do not grant consent or start exports", async () => {
   const calls: string[] = []; let enabled = false;
   const client = new ReadingClient(async raw => {

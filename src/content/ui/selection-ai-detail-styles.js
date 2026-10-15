@@ -219,6 +219,29 @@
   padding: 7px 10px;
   background: var(--tf-bg-card);
 }
+.tf-selection-ai-persistence {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--tf-border-soft);
+}
+.tf-selection-ai-save-status {
+  color: var(--tf-text-secondary);
+  font-size: var(--tf-font-size-xs);
+  line-height: 1.45;
+}
+.tf-selection-ai-save-status[data-state="failed"],
+.tf-selection-ai-save-status[data-state="not-saved"] { color: var(--tf-danger); }
+.tf-selection-ai-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.tf-selection-ai-save-actions .tf-ui-button {
+  min-height: 32px;
+  padding: 6px 9px;
+}
 `;
 
   app.modules.uiSelectionAiDetailStyles = Object.freeze({ css });

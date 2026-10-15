@@ -2,25 +2,18 @@ import { test, expect } from "./support/extension-fixture.mjs";
 
 test.use({ lexiconPacks: "missing" });
 
-test("missing bundled lexicon remains a diagnostic error instead of a no-hit state", async ({ harness }) => {
+test("missing optional dictionaries remain diagnosable and do not block translation", async ({ harness }) => {
+  await harness.reset();
   const page = await harness.open("/selection");
   await harness.inject(page);
-
   await selectElementText(page, "#ambiguous");
   await page.locator(".tf-selection-chip").click();
-
-  const status = page.locator(".tf-selection-status");
-  await expect(status).toHaveAttribute("data-kind", "error");
-  await expect(status).toContainText("内置本地词典资源缺失或不可读");
-  await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeHidden();
-  expect(harness.server.calls).toHaveLength(0);
-
-  await page.getByRole("button", { name: "重试" }).click();
-  await expect(status).toHaveAttribute("data-kind", "error");
-  await expect(status).toContainText("内置本地词典资源缺失或不可读");
-  expect(harness.server.calls).toHaveLength(0);
+  await expect(page.locator(".tf-selection-primary")).not.toBeEmpty();
+  await expect(page.getByRole("tab", { name: "译文", exact: true })).toBeVisible();
+  expect(harness.server.calls).toHaveLength(1);
+  const diagnostic = await harness.runtime({ type: "BUNDLED_LEXICON_STATUS" });
+  expect(diagnostic.ok).toBe(true);
+  expect(diagnostic.packs.some(pack => pack.status !== "ready" && pack.errorCode)).toBe(true);
 });
 
 async function selectElementText(page, selector) {

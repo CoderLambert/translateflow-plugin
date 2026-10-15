@@ -1,6 +1,7 @@
 import { CACHE_SCHEMA_VERSION, PROVIDER_IDS } from "../shared/constants.js";
 import { byteLength, sha256 } from "../shared/hash.js";
 import { normalizeOpenAIBaseUrl } from "../shared/provider-config.js";
+import { isProviderProtocol, normalizeProviderBaseUrl } from "../shared/provider-connections.js";
 import { normalizeSourceText } from "../shared/text.js";
 import { normalizeUrl } from "../shared/url.js";
 
@@ -273,7 +274,17 @@ export async function getConfigHash(config) {
     prompt: String(config?.prompt || "").trim()
   };
 
-  if (provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
+  if (provider === "browser-translator") payload.sourceLanguage = String(config.sourceLanguage || "");
+
+  if (config?.connectionId) {
+    payload.connectionId = String(config.connectionId);
+    payload.connectionRevision = Number(config.connectionRevision || 0);
+    payload.protocol = String(config.protocol || provider);
+  }
+
+  if (isProviderProtocol(provider)) {
+    payload.endpoint = normalizeProviderBaseUrl(config?.apiBaseUrl || "");
+  } else if (provider === PROVIDER_IDS.OPENAI_COMPATIBLE) {
     payload.endpoint = normalizeOpenAIBaseUrl(config?.apiBaseUrl || "");
   } else if (provider === PROVIDER_IDS.CHATGPT_PLAN) {
     payload.endpoint = String(config?.apiBaseUrl || "");

@@ -103,7 +103,7 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     await expect(page.locator(".tf-selection-vocabulary-open")).toBeVisible();
     await page.screenshot({ path: test.info().outputPath("synthetic-selection-saved.png") });
     const saved = await driver.evaluate(async key => (await chrome.storage.local.get(key))[key], VOCABULARY_BOOK_STORAGE_KEY);
-    expect(saved.version).toBe(1);
+    expect(saved.version).toBe(2);
     expect(saved.entries).toHaveLength(1);
     expect(saved.entries[0].headword).toBe("persistent");
     expect(saved.entries[0].sources[0].sourceId).toBe("pwn-3.0");

@@ -48,11 +48,10 @@ test("#107 Selection release gate keeps every required fixture family in manual 
   }
 
   assert.match(missing, /lexiconPacks: "missing"/);
-  assert.match(missing, /内置本地词典资源缺失或不可读/);
+  assert.match(missing, /server\.calls\)\.toHaveLength\(1\)/);
+  assert.match(missing, /pack\.status !== "ready" && pack\.errorCode/);
   assert.match(corrupt, /lexiconPacks: "corrupt"/);
-  assert.match(corrupt, /内置本地词典校验失败/);
   assert.match(incompatible, /lexiconPacks: "incompatible"/);
-  assert.match(incompatible, /与当前扩展版本不兼容/);
 
   assert.match(fixture, /prepareExtensionTestCopy\(/);
   assert.doesNotMatch(fixture, /buildExtension\(/);
@@ -89,8 +88,9 @@ test("#107 hard assertions remain explicit in browser evidence", async () => {
   assert.match(releaseGate, /toBeHidden\(\)/);
 
   for (const diagnostic of [corrupt, incompatible]) {
-    assert.match(diagnostic, /设置 > 本地词典/);
-    assert.match(diagnostic, /name: "重试"/);
-    assert.match(diagnostic, /server\.calls\)\.toHaveLength\(0\)/);
+    assert.match(diagnostic, /server\.calls\)\.toHaveLength\(1\)/);
+    assert.match(diagnostic, /BUNDLED_LEXICON_STATUS/);
+    assert.match(diagnostic, /pack\.status !== "ready" && pack\.errorCode/);
+    assert.match(diagnostic, /name: "译文", exact: true/);
   }
 });

@@ -1,3 +1,5 @@
+import { hasConfiguredAi } from "../../shared/browser-translation.js";
+import { getSiteProfile } from "../../shared/provider-config.js";
 import { getConfig, getEffectiveConfig } from "../config.js";
 import { runLexicalLookup } from "../lexical/index.js";
 import { assessLexicalLookup } from "../lexical/ranking.js";
@@ -17,10 +19,9 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
 
   const text = String(input.text || "").trim();
   const pageUrl = String(input.pageUrl || "");
-  const [storedConfig, effectiveConfig] = await Promise.all([
-    getStoredConfig(),
-    getPageConfig(pageUrl)
-  ]);
+  const storedConfig = await getStoredConfig();
+  const site = getSiteProfile(storedConfig.siteProfiles, pageUrl);
+  const effectiveConfig = (deps.getEffectiveConfig || hasConfiguredAi(storedConfig, site)) ? await getPageConfig(pageUrl) : { targetLanguage: site?.targetLanguage || storedConfig.targetLanguage };
 
   const requestedDepth = normalizeSelectionDepth(
     input.depth || storedConfig.selectionExplanationDepth
@@ -28,6 +29,10 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
   const targetLanguage = effectiveConfig.targetLanguage || storedConfig.targetLanguage;
   const intent = classifySelectionIntent({ text, targetLanguage });
   const context = sanitizeSelectionContext(input.context);
+
+  if (storedConfig.dictionaryEnabled === false) {
+    return response({ text, intent, context, lookup: null, decision: null, route: { route: "translation", reason: "dictionary-disabled", depth: requestedDepth, explanationAllowed: true } });
+  }
 
   if (intent.reason === "rich-dictionary-only") {
     const decision = { outcome: "no-hit", candidates: [], evidence: [] };
@@ -38,6 +43,7 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
       text,
       explainRequested: input.explainRequested === true
     });
+    if (storedConfig.dictionaryEnabled === true && input.explainRequested !== true) return { ...response({ text, intent, route: { ...route, route: "translation" }, context, lookup: null, decision }), preferRich: true };
     return response({ text, intent, route, context, lookup: null, decision });
   }
 
@@ -58,23 +64,27 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
     });
   }
 
-  const lookup = await lexicalLookup({
+  let lookup;
+  try { lookup = await lexicalLookup({
     text,
     pageUrl,
     contextText: context.text,
     sourceLanguage: intent.sourceLanguage,
     targetLanguage: "zh-CN"
-  });
+  }); } catch {
+    return response({ text, intent, context, lookup: null, decision: null, route: { route: "translation", reason: "dictionary-unavailable", depth: requestedDepth, explanationAllowed: true } });
+  }
   const decision = assessLookup(lookup, { contextText: context.text });
-  const route = chooseSelectionRoute({
+  const route = { ...chooseSelectionRoute({
     intent,
     decision,
     depth: requestedDepth,
     text,
     explainRequested: input.explainRequested === true
-  });
+  }) };
 
-  return response({ text, intent, route, context, lookup, decision });
+  if (!["local", "translation"].includes(route.route) && input.explainRequested !== true) { route.route = "translation"; route.reason = "dictionary-miss"; }
+  return { ...response({ text, intent, route, context, lookup, decision }), preferRich: storedConfig.dictionaryEnabled === true && route.route === "translation" && intent.kind === "lexical" };
 }
 
 function response({ text, intent, route, context, lookup, decision }) {

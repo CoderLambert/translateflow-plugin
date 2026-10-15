@@ -25,6 +25,8 @@
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
   const vocabularyBook = app.modules.selectionVocabularyBook?.create() || {
     add: async () => ({ ignored: true }),
+    addAiNote: async () => ({ ignored: true }),
+    syncAiNote: async () => ({ ignored: true }),
     open: () => ({ ignored: true })
   };
   const { buildLocalResult } = app.modules.selectionResultModel;
@@ -34,13 +36,16 @@
     open: (event) => records.open(event), decline: (event) => records.decline(event)
   }) });
   const runTranslation = app.modules.selectionTranslationQuery?.create({
-    assertCurrent, showResult, onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
+    assertCurrent, showResult: (...args) => (app.modules.selectionTranslationActions?.create({ showResult, explainSnapshot, vocabularyBook }) || showResult)(...args), onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
   }) || (() => Promise.reject(localizedError("content.selection.updatedRefresh")));
   let recordContext = null;
   let started = false;
   let activeSnapshot = null;
   let activeTask = null;
   let activeAssistant = null;
+  const assistantResults = new Map();
+  const assistantPersistence = app.modules.selectionAssistantPersistence?.create({ records, vocabularyBook, popover,
+    isLive: assistantResultLive }) || Object.freeze({ attach() {} });
   let requestVersion = 0;
   let selectionTimer = null;
   const projectionGuard = app.modules.selectionSourceSnapshot.createProjectionGuard({ getSnapshot: () => activeSnapshot,
@@ -73,7 +78,6 @@
     if (isExtensionOwnedNode(event.target)) return;
     scheduleSelectionRefresh();
   }
-
   function scheduleSelectionRefresh() {
     clearTimeout(selectionTimer);
     selectionTimer = setTimeout(refreshSelectionUi, 90);
@@ -105,6 +109,7 @@
     void records?.close();
     recordContext = null;
     app.modules.selectionRecordStatus?.clear();
+    assistantResults.clear();
     requestVersion += 1;
     snapshot.selectionGeneration = requestVersion;
     activeSnapshot = snapshot;
@@ -112,14 +117,12 @@
     setQuickControlSelectionActive(true);
     popover.showChip(snapshot, (event) => translateSnapshot(snapshot, { event }));
   }
-
   async function translateSnapshot(snapshot, { forceTranslation = false, event } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
     const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
       await tasks.cancelTask(activeTask);
     }
-
     if (!isFrozenCurrent(snapshot, capture)) return;
     const task = beginTask(snapshot);
 
@@ -135,7 +138,6 @@
         await translateSelection(snapshot, task, version, expectedPage, queryRecord);
         return;
       }
-
       tasks.transition(task, "translating");
       popover.setLoadingStatus("content.selection.resolving");
       const selectionContext = captureSelectionContext(snapshot);
@@ -168,13 +170,15 @@
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: !vocabularyEntry });
         return;
       }
-
+      if (resolved.preferRich && app.modules.selectionDictionaryFirst) {
+        const hit = await app.modules.selectionDictionaryFirst.run(snapshot, task, options => loadRich(snapshot, version, expectedPage, queryRecord, options));
+        assertCurrent(version, snapshot, expectedPage, task); if (hit) return;
+      }
       if (resolved.route === "translation") {
         if (queryRecord) queryRecord.sourceLanguage = resolved.intent?.sourceLanguage || "unknown";
         await translateSelection(snapshot, task, version, expectedPage, queryRecord);
         return;
       }
-
       if (resolved.routeReason === "no-hit-local") {
         tasks.completeTask(task, { done: 1 });
         popover.showEmpty(snapshot, {
@@ -201,6 +205,10 @@
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
       }
     } catch (error) {
+      if (error?.code === "ENGINE_SWITCH" && isCurrentSelection(version, snapshot, expectedPage)) {
+        tasks.failTask(task, error);
+        return translateSnapshot(snapshot, { forceTranslation: true });
+      }
       if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
       tasks.failTask(task, error);
 
@@ -212,9 +220,9 @@
       );
     }
   }
-
   async function explainSnapshot(snapshot, depth, baseCard = null, event = null, action = "understand") {
     if (!snapshot || snapshot !== activeSnapshot || !["understand", "analyze", "usage"].includes(action)) return;
+    if (app.modules.translationClient && !await app.modules.translationClient.requireAi(snapshot.pageUrl)) return;
     const currentCapture = snapshot.sourceCapture;
     const captureIsCurrent = Boolean(currentCapture && isFrozenCurrent(snapshot, currentCapture));
     const existing = Boolean(recordContext && captureIsCurrent);
@@ -222,6 +230,7 @@
     if (activeTask && !tasks.isTerminal(activeTask)) await tasks.cancelTask(activeTask);
     if (!isFrozenCurrent(snapshot, capture)) return;
     abandonAssistant();
+    assistantResults.delete(action);
     const version = ++requestVersion, expectedPage = getPageIdentity(snapshot.pageUrl);
     const queryRecord = existing ? recordContext : (recordContext = records?.start({ snapshot, capture, event, purpose: "assistant",
       isCurrent: () => isFrozenCurrent(snapshot, capture) && snapshot.pageUrl === location.href }) || null);
@@ -234,7 +243,10 @@
       const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
       port.onMessage.addListener(message => handleAssistantMessage(state, message));
       port.onDisconnect.addListener(() => {
-        if (!state.terminal) interruptAssistant(state, "content.ai.disconnected");
+        const runtimeMessage = String(chrome.runtime.lastError?.message || "");
+        if (!state.terminal) interruptAssistant(state, extensionContextInvalid(runtimeMessage)
+          ? "content.ai.extensionReloaded"
+          : "content.ai.disconnected");
       });
       port.postMessage({ protocolVersion: 1, type: "start", requestId, text: capture.selectedText,
         pageUrl: snapshot.pageUrl, context: captureSelectionContext(snapshot), depth, ownerToken: ownerToken(),
@@ -242,7 +254,6 @@
         parentTurnId: null, branchId: `branch-${crypto.randomUUID()}`, regenerationOf: null });
     } catch { interruptAssistant(state, "content.ai.connectFailed"); }
   }
-
   function handleAssistantMessage(state, message) {
     if (!assistantLive(state) || message?.protocolVersion !== 1 || message.requestId !== state.requestId) return;
     if (message.type === "started") {
@@ -269,12 +280,16 @@
     try { state.port.disconnect(); } catch {}
     const answer = String(message.text || "");
     popover.showAiDetailResult({ explanation: answer }, state.action);
-    records?.accept(state.queryRecord, { kind: "assistant", targetLanguage: message.readingResult.targetLanguage,
-      provenance: message.readingResult.provenance, payload: message.turn },
-    { key: state.operation?.operationId, operation: state.operation, sourceLanguage: message.readingResult.sourceLanguage });
-    records?.render();
+    const completed = { action: state.action, snapshot: state.snapshot, capture: state.capture,
+      expectedPage: state.expectedPage, operation: state.operation, queryRecord: state.queryRecord,
+      readingRef: null, wordbookSaved: false,
+      note: { headword: state.capture.selectedText, sourceLanguage: message.readingResult.sourceLanguage,
+        targetLanguage: message.readingResult.targetLanguage, action: state.action, text: answer,
+        turnId: message.turn.turnId, provenance: message.readingResult.provenance, readingRef: null } };
+    assistantResults.set(state.action, completed);
+    assistantPersistence.attach(completed, { targetLanguage: message.readingResult.targetLanguage,
+      sourceLanguage: message.readingResult.sourceLanguage, provenance: message.readingResult.provenance, turn: message.turn });
   }
-
   function stopAssistant(show) {
     const state = activeAssistant;
     if (!state || state.terminal || state.stopping) return;
@@ -301,12 +316,20 @@
     }
   }
   function assistantLive(state) { return activeAssistant === state && !state.terminal && isCurrentSelection(state.version, state.snapshot, state.expectedPage); }
+  function extensionContextInvalid(message) { return /extension context invalidated|receiving end does not exist/iu.test(String(message || "")); }
   function ownerToken() { return [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, "0")).join(""); }
 
+  function assistantResultLive(result) {
+    return assistantResults.get(result?.action) === result && result.snapshot === activeSnapshot &&
+      result.snapshot?.sourceRevision === projection.revision() && getPageIdentity(location.href) === result.expectedPage;
+  }
   function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
     return runTranslation(snapshot, task, version, expectedPage, queryRecord);
   }
-  function failureMessage(error) { return error?.i18nKey || "content.selection.errorRetry"; }
+  function failureMessage(error) {
+    if (extensionContextInvalid(error?.message)) return "content.ai.extensionReloaded";
+    return error?.i18nKey || "content.selection.errorRetry";
+  }
   function localizedError(key, code = "") {
     return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
   }
@@ -315,7 +338,7 @@
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
-  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false } = {}) {
+  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false, eager = false, onSettled = null } = {}) {
     return loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection, (record, dictionary) => {
       records?.accept(queryRecord, model.readingRich(record, dictionary), { key: `rich:${dictionary.id}` });
       if (!allowVocabularyFallback) return;
@@ -324,22 +347,18 @@
       popover.showVocabularyActions(snapshot, (event) => { if (!event?.isTrusted) return { ignored: true };
         if (!isCurrentVocabularySelection(snapshot, snapshot.sourceCapture, expectedPage)) throw localizedError("content.vocabulary.updated");
         return vocabularyBook.add(vocabularyEntry, event); }, (event) => vocabularyBook.open(event));
-    });
+    }, { eager, onSettled });
   }
-
-
   function isCurrentSelection(version, snapshot, expectedPage) {
     return version === requestVersion
       && snapshot === activeSnapshot
       && snapshot.sourceRevision === projection.revision()
       && getPageIdentity(location.href) === expectedPage;
   }
-
   function isCurrentVocabularySelection(snapshot, capture, expectedPage) {
     return isFrozenCurrent(snapshot, capture)
       && getPageIdentity(location.href) === expectedPage;
   }
-
   function assertCurrent(version, snapshot, expectedPage, task) {
     tasks.assertActive(task);
     if (!isCurrentSelection(version, snapshot, expectedPage)) {
@@ -349,18 +368,15 @@
       throw error;
     }
   }
-
   function handleOutsidePointerDown(event) {
     if (popover.contains(event.target)) return;
     if (!activeSnapshot) return;
     dismiss();
   }
-
   function handleKeyDown(event) {
     if (event.key !== "Escape" || popover.consumeRichEscape?.(event)) return;
     dismiss({ restoreFocus: popover.isEventInsidePanel(event) });
   }
-
   function dismiss({ restoreFocus = false } = {}) {
     projectionGuard.clear();
     abandonAssistant();
@@ -369,13 +385,13 @@
     void records?.close();
     recordContext = null;
     app.modules.selectionRecordStatus?.clear();
+    assistantResults.clear();
     activeSnapshot = null;
     projection.watchPage(null);
     requestVersion += 1;
     popover.hide({ restoreFocus });
     setQuickControlSelectionActive(false);
   }
-
   function cancelActiveTask({ showCancelled, snapshot: expectedSnapshot, task: expectedTask, version: expectedVersion }) {
     const task = activeTask;
     if (!task || tasks.isTerminal(task)) return;
@@ -389,7 +405,6 @@
       popover.showError(snapshot, "content.selection.cancelled", (event) => translateSnapshot(snapshot, { event }));
     }
   }
-
   function setQuickControlSelectionActive(active) { app.modules.quickControl?.setSelectionActive(Boolean(active)); }
 
   function freezeQuery(snapshot) {

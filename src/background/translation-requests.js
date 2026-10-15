@@ -60,6 +60,8 @@ export function cancelTranslationRequest(requestId) {
 export function buildTranslationRequestKey(segments, config) {
   return JSON.stringify({
     provider: String(config?.provider || ""),
+    connectionId: String(config?.connectionId || ""),
+    connectionRevision: Number(config?.connectionRevision || 0),
     apiBaseUrl: String(config?.apiBaseUrl || ""),
     model: String(config?.model || ""),
     prompt: String(config?.prompt || ""),

@@ -44,6 +44,7 @@ export function buildTranslationPrompt(config, fallbackPrompt = "") {
 export async function requestChatCompletions({
   url,
   apiKey,
+  headers: requestHeaders = {},
   body,
   providerLabel,
   requireApiKey = true,
@@ -55,8 +56,8 @@ export async function requestChatCompletions({
     throw new ProviderRequestError(`请先配置 ${providerLabel} API Key。`, { code: "CONFIG" });
   }
 
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers = { "Content-Type": "application/json", ...requestHeaders };
+  if (token && !hasAuthenticationHeader(headers)) headers.Authorization = `Bearer ${token}`;
 
   let attempt = 0;
   while (true) {
@@ -91,6 +92,42 @@ export async function requestChatCompletions({
       );
     }
   }
+}
+
+export function openAIAuthenticationHeaders(config, apiKey) {
+  const token = String(apiKey || "").trim();
+  if (!token) return {};
+  return config?.platform === "azure-v1" ? { "api-key": token } : { Authorization: `Bearer ${token}` };
+}
+
+export async function requestProviderJson({
+  url,
+  headers = {},
+  body,
+  providerLabel,
+  signal,
+  retryPolicy = DEFAULT_RETRY_POLICY
+}) {
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    try {
+      return await performRequest({ url, headers: { "Content-Type": "application/json", ...headers }, body,
+        providerLabel, signal, timeoutMs: retryPolicy.requestTimeoutMs });
+    } catch (error) {
+      const normalized = normalizeProviderError(error, providerLabel);
+      const maxAttempts = getMaxAttemptsForFailure(normalized, retryPolicy);
+      if (signal?.aborted || normalized.code === "CANCELLED" || attempt >= maxAttempts) throw normalized;
+      const { retryable } = classifyProviderFailure(normalized);
+      if (!retryable) throw normalized;
+      await sleep(computeRetryDelayMs({ attempt, retryAfterMs: normalized.retryAfterMs,
+        baseDelayMs: retryPolicy.baseDelayMs, maxDelayMs: retryPolicy.maxDelayMs }), signal);
+    }
+  }
+}
+
+function hasAuthenticationHeader(headers) {
+  return Object.keys(headers || {}).some(name => ["authorization", "api-key"].includes(name.toLowerCase()));
 }
 
 export async function requestParsedTranslation({
@@ -243,7 +280,7 @@ function normalizeProviderError(error, providerLabel) {
   );
 }
 
-function parseJsonObject(content, providerLabel) {
+export function parseJsonObject(content, providerLabel) {
   const trimmed = String(content || "").trim();
   const unfenced = trimmed
     .replace(/^\s*```(?:json)?\s*/i, "")

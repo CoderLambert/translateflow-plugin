@@ -5,14 +5,23 @@ import type { I18n } from "../../i18n/index.js";
 import { Button, Confirmation, Notice } from "../components/common";
 
 type Section = "wordbook" | "review";
+type VocabularyAiNote = {
+  action: "understand" | "analyze" | "usage";
+  text: string;
+  truncated: boolean;
+  provenance: { provider: string; model: string };
+  readingRef: { recordId: string; artifactId: string } | null;
+};
 
-export function VocabularyBook({ section, i18n, client = vocabularyBookClient }: {
+export function VocabularyBook({ section, i18n, client = vocabularyBookClient, onOpenReadingRef }: {
   section: Section; i18n: I18n; client?: VocabularyBookClient;
+  onOpenReadingRef?: (reference: { recordId: string; artifactId: string }) => Promise<boolean>;
 }) {
   const [book, setBook] = useState<VocabularyList | null>(null);
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false), [notice, setNotice] = useState("");
   const [revealed, setRevealed] = useState(false), [confirmId, setConfirmId] = useState<string | null>(null);
+  const [unavailableRefs, setUnavailableRefs] = useState<Set<string>>(() => new Set());
   const active = useRef(false), generation = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -63,6 +72,14 @@ export function VocabularyBook({ section, i18n, client = vocabularyBookClient }:
     } finally { if (active.current) setBusy(false); }
   }
 
+  async function openReading(reference: { recordId: string; artifactId: string }) {
+    if (!onOpenReadingRef) return;
+    const key = `${reference.recordId}\u0000${reference.artifactId}`;
+    if (unavailableRefs.has(key)) return;
+    const opened = await onOpenReadingRef(reference);
+    if (!opened && active.current) setUnavailableRefs(currentRefs => new Set(currentRefs).add(key));
+  }
+
   const due = book?.due ?? [];
   const current = due[0] ?? null;
   const nextReviewAt = book?.entries.reduce<number | null>((next, entry) =>
@@ -84,16 +101,16 @@ export function VocabularyBook({ section, i18n, client = vocabularyBookClient }:
       {nextReviewAt === null ? i18n.t("learning.reviewAllCaughtUp") : i18n.t("learning.reviewEmpty", { date: i18n.formatDateTime(nextReviewAt) })}
     </Notice>}
     {!loading && !loadError && section === "review" && current && <ReviewCard entry={current} dueCount={due.length} revealed={revealed} busy={busy}
-      i18n={i18n} onReveal={() => setRevealed(true)} onRate={rating => void review(rating, current)} />}
+      i18n={i18n} unavailableRefs={unavailableRefs} onOpenReading={openReading}
+      onReveal={() => setRevealed(true)} onRate={rating => void review(rating, current)} />}
     {!loading && !loadError && section === "wordbook" && book && book.count > 0 && <ul className="vocabulary-list">
       {book.entries.map(entry => <li key={entry.id}>
         <article className="vocabulary-entry" data-entry-id={entry.id}>
           <div className="vocabulary-entry-copy">
             <h3>{entry.headword}</h3>
             {(entry.pronunciation || entry.partOfSpeech) && <p className="vocabulary-meta">{[entry.pronunciation, entry.partOfSpeech].filter(Boolean).join(" · ")}</p>}
-            <ul className="vocabulary-definitions">{entry.definitions.map(definition => <li key={definition}>{definition}</li>)}</ul>
-            {entry.examples.length > 0 && <blockquote>{entry.examples.map(example => <p key={example}>{example}</p>)}</blockquote>}
-            <p className="muted">{i18n.t("learning.savedAt", { date: i18n.formatDateTime(entry.savedAt) })} · {i18n.t("learning.wordSource")}: {entry.sources.map(source => source.packId).filter((value, index, all) => all.indexOf(value) === index).join(", ")}</p>
+            <VocabularyAnswer entry={entry} i18n={i18n} unavailableRefs={unavailableRefs} onOpenReading={openReading} />
+            <p className="muted">{i18n.t("learning.savedAt", { date: i18n.formatDateTime(entry.savedAt) })}</p>
           </div>
           <Button className="danger" disabled={busy} onClick={() => setConfirmId(entry.id)}>{i18n.t("learning.wordDelete")}</Button>
         </article>
@@ -104,8 +121,10 @@ export function VocabularyBook({ section, i18n, client = vocabularyBookClient }:
   </section>;
 }
 
-function ReviewCard({ entry, dueCount, revealed, busy, i18n, onReveal, onRate }: {
+function ReviewCard({ entry, dueCount, revealed, busy, i18n, unavailableRefs, onOpenReading, onReveal, onRate }: {
   entry: VocabularyEntry; dueCount: number; revealed: boolean; busy: boolean; i18n: I18n;
+  unavailableRefs: Set<string>;
+  onOpenReading: (reference: { recordId: string; artifactId: string }) => Promise<void>;
   onReveal: () => void; onRate: (rating: ReviewRating) => void;
 }) {
   return <article className="vocabulary-review-card" data-testid="vocabulary-review-card" data-entry-id={entry.id}>
@@ -113,13 +132,44 @@ function ReviewCard({ entry, dueCount, revealed, busy, i18n, onReveal, onRate }:
     <h3>{entry.headword}</h3>
     {(entry.pronunciation || entry.partOfSpeech) && <p className="vocabulary-meta">{[entry.pronunciation, entry.partOfSpeech].filter(Boolean).join(" · ")}</p>}
     {revealed ? <div className="vocabulary-answer">
-      <ul className="vocabulary-definitions">{entry.definitions.map(definition => <li key={definition}>{definition}</li>)}</ul>
-      {entry.examples.length > 0 && <blockquote>{entry.examples.map(example => <p key={example}>{example}</p>)}</blockquote>}
-      <p className="muted">{i18n.t("learning.wordSource")}: {entry.sources.map(source => source.packId).filter((value, index, all) => all.indexOf(value) === index).join(", ")}</p>
+      <VocabularyAnswer entry={entry} i18n={i18n} unavailableRefs={unavailableRefs} onOpenReading={onOpenReading} />
       <div className="actions">
         <Button disabled={busy} onClick={() => onRate("again")}>{i18n.t("learning.reviewAgain")}</Button>
         <Button className="primary" disabled={busy} onClick={() => onRate("know")}>{i18n.t("learning.reviewKnow")}</Button>
       </div>
     </div> : <Button className="primary" onClick={onReveal}>{i18n.t("learning.reviewReveal")}</Button>}
   </article>;
+}
+
+function VocabularyAnswer({ entry, i18n, unavailableRefs, onOpenReading }: {
+  entry: VocabularyEntry; i18n: I18n; unavailableRefs: Set<string>;
+  onOpenReading: (reference: { recordId: string; artifactId: string }) => Promise<void>;
+}) {
+  const notes = (entry.aiNotes ?? []) as VocabularyAiNote[];
+  return <div className="vocabulary-answer-sections">
+    {entry.definitions.length > 0 && <section className="vocabulary-facts">
+      <h4>{i18n.t("learning.dictionaryDefinitions")}</h4>
+      <ul className="vocabulary-definitions">{entry.definitions.map(definition => <li key={definition}>{definition}</li>)}</ul>
+      {entry.examples.length > 0 && <blockquote>{entry.examples.map(example => <p key={example}>{example}</p>)}</blockquote>}
+      <p className="muted">{i18n.t("learning.wordSource")}: {entry.sources.map(source => source.packId).filter((value, index, all) => all.indexOf(value) === index).join(", ")}</p>
+    </section>}
+    {notes.length > 0 && <section className="vocabulary-ai-notes">
+      <h4>{i18n.t("learning.aiNotes")}</h4>
+      {notes.map(note => {
+        const key = note.readingRef ? `${note.readingRef.recordId}\u0000${note.readingRef.artifactId}` : "";
+        const unavailable = !note.readingRef || unavailableRefs.has(key);
+        return <article className="vocabulary-ai-note" key={note.action}>
+          <div className="vocabulary-ai-note-heading">
+            <strong>{i18n.t(`learning.aiNote.${note.action}` as Parameters<I18n["t"]>[0])}</strong>
+            <span>{note.provenance.provider} · {note.provenance.model}</span>
+          </div>
+          <p className="text">{note.text}</p>
+          {note.truncated && <p className="muted">{i18n.t("learning.aiNoteTruncated")}</p>}
+          {note.readingRef && !unavailable
+            ? <Button onClick={() => void onOpenReading(note.readingRef!)}>{i18n.t("learning.openFullAnswer")}</Button>
+            : <p className="muted">{i18n.t("learning.fullAnswerUnavailable")}</p>}
+        </article>;
+      })}
+    </section>}
+  </div>;
 }

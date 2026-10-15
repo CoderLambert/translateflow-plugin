@@ -28,7 +28,7 @@ content scripts -> messages -> background router
 3. 翻译缓存 IndexedDB 仅由 `src/background/cache-db.js` 直接访问；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。其它 Reading 后台模块调用唯一 adapter，Content 与扩展 UI 只能走后台 v2 消息，不能直接或间接引入 adapter。两库不互相迁移或清空；词典 OPFS 独立。
 4. 普通 `http/https` 页面的 Content Script 由生产 Manifest 静态声明；`src/background/auto-sites.js` 只维护按站点模式状态并清理旧动态注册。若未来恢复动态注册，其唯一所有者仍是该模块。
 5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
-   `src/entries/content.js` 是唯一生产 Content 模块图；WXT 将有序 classic/IIFE owners 与 `src/entries/reading-contract.js` 的共享 Reading DTO adapter 编译为一个 ISOLATED IIFE。`scripts/reading-*-classic.mjs` 与 `src/content/reading-{source,contract,record}.js` 仅保留旧注册/Node 合同的可复现投影，不进入当前安装包。Content 编译闭包不引入 React、动态 import 或新的浏览器能力。
+   `src/entries/content.js` 是唯一生产 Content 模块图；WXT 将有序 classic/IIFE owners 与 `src/entries/reading-contract.js` 的共享 Reading DTO adapter 编译为一个 ISOLATED IIFE。`scripts/reading-*-classic.mjs` 与 `src/content/reading-{source,contract,record}.js` 仅保留旧注册/Node 合同的可复现投影，不进入当前安装包。Content 编译闭包不引入 React 或动态 import；浏览器基础翻译仅在 ISOLATED Content 内调用 Translator / LanguageDetector，不增加 MAIN 桥或网络 Provider。
 6. Runtime message value 必须集中定义。
 7. 权限属于公共 API，不能在普通重构中扩大。
 8. API 调用和缓存读写必须基于同一个 Effective Translation Config。
@@ -69,15 +69,19 @@ owners under StrictMode.
 
 `resolveTranslationConfig()` 负责把：
 
-- 默认 Provider
-- Provider credentials
+- 默认服务引用
+- API Key 连接定义与 credentials
 - 默认 Prompt
 - Target Language
 - Site Profile
 
 解析成一次翻译真正使用的配置。
 
-站点 Profile 只覆盖 Provider / Model / Prompt / Target Language，不复制 API Key。
+站点 Profile 只覆盖 `serviceRef` / Model / Prompt / Target Language，不复制 API Key。API Key 连接由 `providerConnections` + `providerCredentials` 表示；`chatgpt-plan` 保持独立服务引用。旧 Provider 配置会惰性迁移，但仍保留用于回滚。
+
+Background 将本地存储访问限制为 trusted extension contexts。Content 不直接读取 `chrome.storage.local`；它通过 `PUBLIC_SETTINGS_GET` / `PUBLIC_SETTINGS_SET` 获取允许暴露的页面行为设置，并接收脱敏的 `PUBLIC_SETTINGS_CHANGED` 通知。Provider 连接列表只返回 `hasApiKey`。
+
+页面翻译的第一次 cache lookup 会创建短生命周期 Effective Config snapshot；同一任务的 Provider 请求和 cache store 使用该 snapshot，避免设置中途变化造成缓存与请求身份不一致。
 
 ## Background
 
@@ -186,6 +190,7 @@ The bridge owns a monotonic `videoId + generation` identity. The isolated source
 - URL normalization
 - text normalization
 - provider identity
+- provider connection ID / revision / protocol
 - Provider endpoint 是否参与 cache fingerprint
 - Runtime message value
 - site profile storage shape
@@ -298,3 +303,17 @@ IndexedDB and cache misses do not fall through to Provider translation.
 ## Development task evidence
 
 `docs/tasks/` contains sanitized local task contracts and candidate-bound acceptance/review metadata. `scripts/local-task.mjs` verifies local evidence without network/model calls or automatic Git mutations; the coordinator owns state and integration. Raw logs, events and screenshots remain ignored under `docs/task-execution/local/`. These development files and `.codex` hooks are outside both production allowlists. See [tasks/LOCAL_WORKFLOW.md](tasks/LOCAL_WORKFLOW.md).
+
+## Browser basic translation
+
+`translationEngineSettings()` selects AI from saved connection configuration, or browser basic translation when no AI is configured. The blank untouched DeepSeek connection created by legacy migration is a placeholder; explicit default selection (`aiServiceConfigured`) and invalid connection references remain visible configuration errors. AI explanations keep the existing Provider path.
+
+`browserTranslationEnabled` defaults to true, `browserSourceLanguage` to auto, `dictionaryEnabled` to false on new installs. Existing active imported dictionaries infer the dictionary preference before defaults are persisted; explicit false and per-dictionary enabled preferences survive upgrades. No dictionary, vocabulary or Reading store is cleared.
+
+`TRANSLATION_ENGINE_SETTINGS` returns only engine, enabled flag and language preferences. The Content translation client routes page/Selection cache lookup → frozen snapshot → local browser execution → background cache store; subtitles reuse their existing cache-source contract and queue. Browser snapshot creation normalizes the source code and resolves the target from global/site settings. Browser cache identity uses provider `browser-translator`, model `translator-v1` and explicit source/target languages; existing AI hash payloads and DB schema remain unchanged.
+
+`browser-translation.js` owns capability/prepare/execute/cancel, live instances and generation guards. The view calls create synchronously from a trusted page button. Capability queries and automatic cache restore never download models. Available language detection can be used locally; otherwise the page/track language is a hint and the user can choose or explicitly prepare detection. Internal structured markers are split outside the translator; code/kbd bodies are copied from protected descriptors. Translation of formatting runs separately can reduce cross-run linguistic context.
+
+AI failures wait for explicit fallback selection, then restart through a new task and config snapshot. Closing, stopping, route changes and disabling basic translation abort pending local work; generation and task guards reject late results before rendering/cache writes. Disabling basic translation releases its instances without cancelling an active AI task or deleting shared Chrome language packs. Dictionary misses query enabled rich dictionaries before continuing to translation.
+
+Production packages omit generated dictionaries by default, even if local generated assets exist. `--require-lexicon` remains an explicit certification build with authenticated descriptors.

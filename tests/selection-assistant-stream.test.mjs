@@ -44,6 +44,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
   const p = port({ url: "https://example.test/article", tab: { id: 7, incognito: false } });
   const visibleContext = "記事では弁護士が地域の相談窓口を案内していた。";
   let providerPrompt;
+  let providerSystemPrompt;
   let providerCalls = 0;
   const config = { provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" };
   const resolverDeps = {
@@ -59,6 +60,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
     readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
     completeText: async input => {
       providerCalls += 1;
+      providerSystemPrompt = input.systemPrompt;
       providerPrompt = JSON.parse(input.prompt);
       return { text: "此处指律师。", mode: "unary" };
     }
@@ -67,6 +69,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
   await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.equal(providerCalls, 1);
+  assert.match(providerSystemPrompt, /Write the answer in Simplified Chinese\./u);
   assert.equal(providerPrompt.text, "弁護士");
   assert.equal(providerPrompt.context, visibleContext);
   assert.deepEqual(providerPrompt.candidates, []);

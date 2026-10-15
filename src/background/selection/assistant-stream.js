@@ -71,7 +71,7 @@ async function run(state, request, deps) {
     const mode = config.streaming ? "stream" : "unary";
     post(state, { type: "started", mode });
     const prompt = JSON.stringify({ question, text: selectedText, context: contextText, candidates, history });
-    const result = await complete({ systemPrompt: "Explain from context. Plain text only.", prompt }, config,
+    const result = await complete({ systemPrompt: assistantSystemPrompt(config), prompt }, config,
       { signal: state.ctl.signal, onDelta: delta => emitDelta(state, delta) });
     throwIfCancelled(state);
     const text = String(result.text || "");
@@ -104,6 +104,14 @@ function emitDelta(state, raw) {
   const text = String(raw || "");
   if (!text || text.length > MAX_DELTA || state.chars + text.length > MAX_TOTAL) { state.ctl.abort(); return; }
   state.chars += text.length; post(state, { type: "delta", sequence: state.seq++, text });
+}
+function assistantSystemPrompt(config) {
+  const targetLanguage = String(config?.targetLanguage || "Simplified Chinese").trim() || "Simplified Chinese";
+  return [
+    "Answer the user's question about the selected text using only the supplied context and candidates.",
+    `Write the answer in ${targetLanguage}.`,
+    "Plain text only."
+  ].join("\n");
 }
 function post(state, message) { if (!state.closed) try { state.port.postMessage({ protocolVersion: V, requestId: state.id, ...message }); } catch { state.ctl?.abort(); } }
 function fail(state, code) { post(state, { type: "interrupted", code, partialChars: state.chars }); state.ctl?.abort(); }

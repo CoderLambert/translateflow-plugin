@@ -102,11 +102,13 @@ See `docs/LEXICAL_DATA_BOUNDARIES.md`.
 
 The repository root is a development workspace, not the release artifact.
 
-`npm run validate` builds and audits the allowlisted `dist/extension` tree. A release build with generated bundled dictionaries uses:
+`npm run validate` builds and audits the allowlisted `dist/extension` tree. Default and release builds omit bundled dictionaries; the release entry is:
 
 ```bash
 npm run build:extension:release
 ```
+
+For an explicitly requested dictionary certification package, use `node scripts/build-extension.mjs --require-lexicon`; authenticated dictionary checks remain fail closed.
 
 Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, source locks, benchmark corpora or import-security samples to the production allowlist just to make runtime tests pass.
 
@@ -189,3 +191,11 @@ npm run test:e2e
 - 测试需要额外 Host Permission 时，只修改测试临时副本的 manifest，不扩大生产 manifest 权限。
 - `npm run validate` 保持快速，不包含浏览器启动；`npm run test:e2e` 在本地按变更/任务要求单独运行；手动 Actions 只作备用。
 - 新增核心用户流程时，优先在 E2E 中覆盖“成功、缓存命中、错误恢复”至少一个真实 MV3 路径。
+
+## 每次提交的版本与安装包
+
+本仓库使用 `.githooks/pre-commit`。当前工作区已启用；新 clone 运行 `npm run hooks:install`（仅设置本仓库 `core.hooksPath`）。正常 `git commit` 会从暂存区快照编译，版本默认在 HEAD 基础上递增 patch；已明确暂存更高版本时保留该版本。
+
+编译成功后，同步 `package.json`、`package-lock.json`、`manifest.json` 和 README 标题的版本字段，更新 `dist/extension/`。只将这些字段加入索引，不夹带其它未暂存修改；其它源码的未暂存修改也不会进入安装包。编译失败不会改版本/索引。若编译过程中有人改动索引或版本文件，提交中止并要求重试。手动提高版本时请一并暂存相关版本文件，避免覆盖未暂存的版本选择。
+
+`node scripts/prepare-versioned-commit.mjs --preview` 可只预览并编译当前暂存快照，不修改索引、工作区版本或安装包。钩子不创建 commit、不推送、不发布，也不自动运行全量测试。

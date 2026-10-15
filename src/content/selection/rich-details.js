@@ -18,12 +18,12 @@
   let routeWatchTimer = null;
   let nativeNavigationEvents = false;
 
-  async function load(snapshot, version, expectedPage, isCurrentSelection, onResult = null) {
+  async function load(snapshot, version, expectedPage, isCurrentSelection, onResult = null, options = {}) {
     // Frozen pre-upgrade registrations omit newer helpers. Keep Selection usable
     // through the existing refresh notice, without creating unowned rich queries.
     if (!createLookupRequestId || !CONTENT_DOCUMENT_OWNER_TOKEN) {
       if (isCurrentSelection(version, snapshot, expectedPage)) popover.appendRichDictionaryCards([], () => {});
-      return;
+      options.onSettled?.({ hasHit: false }); return;
     }
     if (activeSession) void cancelSession(activeSession);
     const session = {
@@ -31,7 +31,7 @@
       version,
       expectedPage,
       isCurrentSelection,
-      onResult,
+      onResult, options, notified: false,
       cancelled: false,
       listState: "pending",
       cancelPromise: null,
@@ -66,7 +66,7 @@
         });
       }
       publishSummary(session);
-      popover.appendRichDictionaryCards(dictionaries, (dictionary, card) => {
+      popover.appendRichDictionaryCards(options.eager ? dictionaries.map(item => ({ ...item, expandedByDefault: true })) : dictionaries, (dictionary, card) => {
         void lookupDictionary(session, dictionary, card);
       });
     } catch {
@@ -101,6 +101,10 @@
       feedback: createSummaryFeedback(session.listState, counts, allNoHit, dictionaries.length)
     });
     popover.updateRichDictionarySummary?.(session.snapshot, summary);
+    if (!session.notified && (summary.hasHit || session.listState === "error" ||
+      (session.listState === "ready" && !counts.unqueried && !counts.queued && !counts.pending))) {
+      session.notified = true; session.options.onSettled?.(summary);
+    }
   }
 
   function createSummaryFeedback(listState, counts, allNoHit, dictionaryCount) {
@@ -311,6 +315,7 @@
   function cancelSession(session) {
     if (session.cancelPromise) return session.cancelPromise;
     session.cancelled = true;
+    session.options.onSettled?.({ hasHit: false, cancelled: true });
     for (const state of session.lookupStates.values()) state.navigation?.close();
     if (activeSession === session) {
       activeSession = null;

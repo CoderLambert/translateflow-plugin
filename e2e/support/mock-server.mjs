@@ -64,6 +64,28 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         return;
       }
 
+      if (request.method === "POST" && isNativeProviderPath(url.pathname)) {
+        const body = JSON.parse(await readBody(request));
+        const native = nativeProviderInput(url.pathname, body);
+        const plannedStatus = Number(failures.shift() || 200);
+        const segments = parseSegments(native.userContent);
+        const call = providerCall({ request, plannedStatus, protocol: native.protocol,
+          systemPrompt: native.systemPrompt, userContent: native.userContent, segments });
+        calls.push(call);
+        trackResponseState(response, call);
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+        if (plannedStatus !== 200) {
+          json(response, plannedStatus, { error: { message: `mock failure ${plannedStatus}` } });
+          return;
+        }
+        const completionContent = native.systemPrompt.includes("Reply with exactly: OK")
+          ? "OK"
+          : JSON.stringify({ translations: segments.map(item => ({ id: item.id,
+              text: translateDeterministically(item.text, native.systemPrompt) })) });
+        json(response, 200, nativeProviderResponse(native.protocol, completionContent));
+        return;
+      }
+
       if (request.method === "POST" && url.pathname === "/v1/chat/completions") {
         const body = JSON.parse(await readBody(request));
         const systemPrompt = String(
@@ -243,6 +265,40 @@ function translateDeterministically(text, systemPrompt) {
   }
 
   return `[${mode}|${glossary}] ${translated}`;
+}
+
+function isNativeProviderPath(pathname) {
+  return pathname === "/v1/responses" || pathname === "/v1/messages" || /\/models\/[^/]+:generateContent$/u.test(pathname);
+}
+
+function nativeProviderInput(pathname, body) {
+  if (pathname === "/v1/responses") return { protocol: "openai-responses", systemPrompt: String(body?.instructions || ""), userContent: String(body?.input || "") };
+  if (pathname === "/v1/messages") return { protocol: "anthropic-messages", systemPrompt: String(body?.system || ""), userContent: String(body?.messages?.[0]?.content || "") };
+  return { protocol: "gemini-generate", systemPrompt: String(body?.systemInstruction?.parts?.map(item => item?.text || "").join("") || ""), userContent: String(body?.contents?.[0]?.parts?.map(item => item?.text || "").join("") || "") };
+}
+
+function parseSegments(userContent) {
+  try {
+    const payload = JSON.parse(userContent);
+    return Array.isArray(payload?.segments) ? payload.segments.map(item => ({ id: String(item?.id || ""), text: String(item?.text || "") })) : [];
+  } catch { return []; }
+}
+
+function providerCall({ request, plannedStatus, protocol, systemPrompt, userContent, segments }) {
+  return { plannedStatus, protocol, systemPrompt, userContent, segments,
+    headers: { authorization: String(request.headers.authorization || ""), xApiKey: String(request.headers["x-api-key"] || ""), xGoogApiKey: String(request.headers["x-goog-api-key"] || "") },
+    responseState: "pending" };
+}
+
+function trackResponseState(response, call) {
+  response.once("finish", () => { call.responseState = "finished"; });
+  response.once("close", () => { if (!response.writableFinished) call.responseState = "closed"; });
+}
+
+function nativeProviderResponse(protocol, text) {
+  if (protocol === "openai-responses") return { output: [{ content: [{ type: "output_text", text }] }] };
+  if (protocol === "anthropic-messages") return { content: [{ type: "text", text }] };
+  return { candidates: [{ content: { parts: [{ text }] } }] };
 }
 
 function renderFixture(pathname) {

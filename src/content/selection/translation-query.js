@@ -18,17 +18,20 @@
       popover.setLoadingStatus("content.selection.cacheChecking");
       const lookup = await sendRuntimeMessage({
         type: messages.background.CACHE_LOOKUP,
+        requestId: task.id,
+        languageSource: "selection",
         pageUrl: snapshot.pageUrl,
         segments: [{ id: "selection", text: snapshot.text }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
+      const configSnapshotId = String(lookup.configSnapshotId || "");
 
       const cached = (lookup.hits || [])
         .find((item) => String(item.id) === "selection")?.text?.trim();
       if (cached) {
         tasks.completeTask(task, { done: 1, cacheHits: 1 });
-        const card = buildTranslationResult(cached);
+        const card = buildTranslationResult(cached, lookup);
         showResult(snapshot, card);
         onResult(queryRecord, readingTranslation(cached, lookup.readingResult));
         return;
@@ -40,6 +43,7 @@
         type: messages.background.TRANSLATE_BATCH,
         requestId: task.id,
         pageUrl: snapshot.pageUrl,
+        configSnapshotId,
         segments: [{ id: "selection", text: snapshot.text }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
@@ -56,15 +60,16 @@
         type: messages.background.CACHE_STORE,
         pageUrl: snapshot.pageUrl,
         pageTitle: document.title,
+        configSnapshotId,
         items: [{ sourceText: snapshot.text, translation }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-      const card = buildTranslationResult(translation);
+      const card = buildTranslationResult(translation, lookup);
       showResult(snapshot, card);
-      onResult(queryRecord, readingTranslation(translation, translated.readingResult));
+      onResult(queryRecord, readingTranslation(translation, translated.readingResult || lookup.readingResult));
     };
   }
   app.modules.selectionTranslationQuery = Object.freeze({ create });

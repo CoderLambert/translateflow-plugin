@@ -8,7 +8,7 @@ async function source(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-test("Selection settings expose all explanation-depth modes and license path", async () => {
+test("Selection settings expose explanation-depth modes and optional dictionary guidance", async () => {
   const [html, js] = await Promise.all([
     source("src/options/CommonSections.tsx"),
     source("src/options/client.ts")
@@ -20,7 +20,8 @@ test("Selection settings expose all explanation-depth modes and license path", a
   }
   assert.match(html, /options\.selection\.summary/);
   assert.match(optionsZhCN["options.selection.summary"], /“理解”“分析”或“用法”/);
-  assert.match(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
+  assert.match(html, /options\.basic\.dictionaryHelp/);
+  assert.doesNotMatch(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
   assert.match(js, /normalizeSelectionDepth\(value\.selectionExplanationDepth\)/);
   assert.match(js, /selectionExplanationDepth:\s*normalizeSelectionDepth\(input\.selectionExplanationDepth\)/);
 });
@@ -78,10 +79,11 @@ test("Selection popover keeps a non-modal structured result region", async () =>
 });
 
 test("Selection assistant preserves the local card while streaming, stopping and retrying", async () => {
-  const [controller, popover, aiDetail] = await Promise.all([
+  const [controller, popover, aiDetail, persistence] = await Promise.all([
     source("src/content/selection/controller.js"),
     source("src/content/selection/popover.js"),
-    source("src/content/selection/ai-detail.js")
+    source("src/content/selection/ai-detail.js"),
+    source("src/content/selection/ai-persistence-view.js")
   ]);
 
   assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card, event, action\)/);
@@ -96,6 +98,7 @@ test("Selection assistant preserves the local card while streaming, stopping and
   assert.match(aiDetail, /aria-busy/);
   assert.match(aiDetail, /content\.ai\.retryAria/);
   assert.match(aiDetail, /content\.ai\.stopAria/);
+  assert.match(persistence, /vocabulary\.state === "failed" \? "content\.reading\.retrySave"/);
   assert.equal(contentZhCN["content.ai.retryAria"], "重新请求 AI 详解");
   assert.equal(contentZhCN["content.ai.stopAria"], "停止 AI 回答");
   for (const action of ["understand", "analyze", "usage"]) assert.match(aiDetail, new RegExp(action));

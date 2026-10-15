@@ -2,22 +2,9 @@ import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
-import {
-  clearAllCache,
-  clearPageCache,
-  getCacheStats,
-  getPageCacheStatus,
-  lookupTranslations,
-  pruneCache,
-  storeTranslations
-} from "./cache-db.js";
-import {
-  getConfig,
-  getEffectiveConfig,
-  getEffectiveContext,
-  saveSiteAppearance,
-  saveSitePreset
-} from "./config.js";
+import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "./cache-db.js";
+import { translationEngineSettings } from "./browser-translation.js";
+import { getConfig, getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
   hideQuickControlSite,
   registerAutoSite,
@@ -30,6 +17,10 @@ import {
 } from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
+import { deleteProviderConnection, listProviderConnections, setDefaultService, upsertProviderConnection } from "./provider-connections.js";
+import { testSavedProviderConnection } from "./provider-connection-runtime.js";
+import { readPublicSettings, writePublicSettings } from "./public-settings.js";
+import { createEffectiveConfigSnapshot, resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
@@ -67,7 +58,6 @@ import {
   uninstallRichMdictDictionary,
   uninstallDictionaryPack
 } from "./packs/api.js";
-
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (isReadingMessage(message)) {
@@ -90,8 +80,11 @@ export function registerMessageRouter() {
 
 export async function handleBackgroundMessage(message, sender) {
   switch (message?.type) {
+    case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
+      return translationEngineSettings(message.pageUrl, message.forceBrowser === true);
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await getEffectiveConfig(message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
       return {
         translations: await runTranslationRequest({
           requestId: message.requestId,
@@ -117,6 +110,22 @@ export async function handleBackgroundMessage(message, sender) {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTIONS_LIST:
+      assertOptionsSender(sender); return listProviderConnections();
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_UPSERT:
+      assertOptionsSender(sender); return upsertProviderConnection(message);
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_DELETE:
+      assertOptionsSender(sender); return deleteProviderConnection(message.connectionId, message.expectedRevision);
+    case BACKGROUND_MESSAGES.DEFAULT_SERVICE_SET:
+      assertOptionsSender(sender); return setDefaultService(message.service);
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_TEST: {
+      assertOptionsSender(sender);
+      return testSavedProviderConnection(message.connectionId);
+    }
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_GET:
+      return { settings: await readPublicSettings() };
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET:
+      return writePublicSettings(message.settings);
     case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
       assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
@@ -142,21 +151,28 @@ export async function handleBackgroundMessage(message, sender) {
         targetLanguage: message.targetLanguage || "zh-CN"
       });
     case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
-      const config = await getEffectiveConfig(message.pageUrl);
+      const snapshot = message.configSnapshotId
+        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl) }
+        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation);
+      const config = snapshot.config;
       const result = await lookupTranslations({
         pageUrl: message.pageUrl,
         segments: message.segments,
         config
       });
-      return { ...result, readingResult: await readingTranslationResult(config) };
+      return { ...result, engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
     }
-    case BACKGROUND_MESSAGES.CACHE_STORE:
-      return storeTranslations({
+    case BACKGROUND_MESSAGES.CACHE_STORE: {
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      if (config.engine === "browser-translator" && (await getConfig()).browserTranslationEnabled === false) throw Object.assign(new Error("Browser translation is disabled."), { code: "BROWSER_DISABLED" });
+      const result = await storeTranslations({
         pageUrl: message.pageUrl,
         pageTitle: message.pageTitle,
         items: message.items,
-        config: await getEffectiveConfig(message.pageUrl)
+        config
       });
+      return result;
+    }
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
       return getPageCacheStatus({
         pageUrl: message.pageUrl,
@@ -191,7 +207,8 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE:
       return { context: await saveSiteAppearance(message.pageUrl, message.appearance) };
     case BACKGROUND_MESSAGES.OPEN_OPTIONS:
-      await chrome.runtime.openOptionsPage();
+      if (["#general", "#provider", "#dictionary-packs"].includes(message.hash)) await chrome.tabs.create({ url: chrome.runtime.getURL(`options.html${message.hash}`) });
+      else await chrome.runtime.openOptionsPage();
       return { opened: true };
     case BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT:
       return { context: await getEffectiveContext(message.pageUrl) };
@@ -321,6 +338,7 @@ export async function handleBackgroundMessage(message, sender) {
       assertSelectionContentSender(sender);
       return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW:

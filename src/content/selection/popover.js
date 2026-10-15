@@ -104,6 +104,8 @@
     vocabularyActions?.setActive?.(view === "dictionary");
     retryButton.hidden = view !== "dictionary" || typeof retryHandler !== "function";
     statusNode.hidden = !tabList.hidden && view !== "dictionary";
+    const recordStatus = panel.querySelector?.(":scope > .tf-selection-record-status");
+    if (recordStatus) recordStatus.hidden = view !== "dictionary";
     syncFooterVisibility();
     reposition();
   }
@@ -187,6 +189,7 @@
     updateSource(sourceNode, snapshot, result);
     locale.unbind(statusNode); setStatus(statusNode, "", "success");
     const hasGenerated = renderResult(result);
+    viewTabs.setPrimaryKind?.(result?.kind);
     configureTabs(explainHandler, Boolean(explainHandler || hasGenerated));
     viewTabs.selectDictionary();
     resultNode.hidden = false;
@@ -310,6 +313,10 @@
     viewTabs.success(action, result);
   }
 
+  function showAiPersistence(state, action = "understand") {
+    ensureUi(); viewTabs.persistence(action, state); syncView(viewTabs.active());
+  }
+
   function showAiDetailError(message, onRetry, action = "understand") {
     ensureUi(); viewTabs.error(action, message, onRetry);
   }
@@ -394,6 +401,7 @@
     showAiDetailStopping,
     showAiDetailInterrupted,
     showAiDetailResult,
+    showAiPersistence,
     showAiDetailError,
     showAiDetailCancelled,
     hide,

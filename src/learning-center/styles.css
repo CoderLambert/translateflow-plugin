@@ -35,6 +35,14 @@ label { display: block; font-weight: 600; margin-bottom: 8px; }
 .vocabulary-answer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--tf-border-main); }
 .vocabulary-answer .actions { margin-top: 20px; }
 .vocabulary-answer .actions > button { min-width: 140px; }
+.vocabulary-answer-sections { display: grid; gap: 16px; }
+.vocabulary-answer-sections h4 { margin: 0 0 8px; color: var(--tf-text-strong); }
+.vocabulary-ai-notes { display: grid; gap: 10px; }
+.vocabulary-ai-note { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--tf-border-main); border-radius: var(--tf-radius-sm); background: var(--tf-bg-card); }
+.vocabulary-ai-note-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.vocabulary-ai-note-heading span { color: var(--tf-text-secondary); font-size: 12px; }
+.vocabulary-ai-note .text, .vocabulary-ai-note .muted { margin: 0; }
+.vocabulary-ai-note button { justify-self: start; }
 @media (max-width: 480px) { .learning-sections > button { flex: 1 1 28%; padding-inline: 8px; } .vocabulary-entry > button { width: 100%; } }
 .notice { padding: 12px 16px; background: var(--tf-green-100); border-radius: var(--tf-radius-sm); overflow-wrap: anywhere; }
 .error { border-left: 4px solid var(--tf-danger); }

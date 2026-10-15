@@ -37,6 +37,7 @@
       QUICK_CONTROL_TOGGLE: "TF_QUICK_CONTROL_TOGGLE"
     }),
     background: Object.freeze({
+      TRANSLATION_ENGINE_SETTINGS: "TRANSLATION_ENGINE_SETTINGS",
       TRANSLATE_BATCH: "TRANSLATE_BATCH",
       SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH",
       CANCEL_TRANSLATION: "CANCEL_TRANSLATION",
@@ -49,6 +50,7 @@
       RICH_MDD_RESOURCE_READ_CANCEL: "RICH_MDD_RESOURCE_READ_CANCEL",
       RICH_MDD_RESOURCES_CHANGED: "RICH_MDD_RESOURCES_CHANGED",
       VOCABULARY_BOOK_ADD: "VOCABULARY_BOOK_ADD",
+      VOCABULARY_BOOK_ADD_AI_NOTE: "VOCABULARY_BOOK_ADD_AI_NOTE",
       VOCABULARY_BOOK_OPEN: "VOCABULARY_BOOK_OPEN",
       CACHE_LOOKUP: "CACHE_LOOKUP",
       CACHE_STORE: "CACHE_STORE",
@@ -60,6 +62,9 @@
       OPEN_OPTIONS: "OPEN_OPTIONS",
       EFFECTIVE_CONTEXT: "EFFECTIVE_CONTEXT",
       TEMP_PRESET_SET: "TEMP_PRESET_SET",
+      PUBLIC_SETTINGS_GET: "PUBLIC_SETTINGS_GET",
+      PUBLIC_SETTINGS_SET: "PUBLIC_SETTINGS_SET",
+      PUBLIC_SETTINGS_CHANGED: "PUBLIC_SETTINGS_CHANGED",
       YOUTUBE_BRIDGE_INSTALL: "YOUTUBE_BRIDGE_INSTALL"
     })
   });
@@ -115,6 +120,11 @@
   }
 
   function sendRuntimeMessage(payload) {
+    if (app.modules.translationClient) return app.modules.translationClient.send(payload, rawRuntimeMessage);
+    return rawRuntimeMessage(payload);
+  }
+
+  function rawRuntimeMessage(payload) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(payload, (response) => {
         const error = chrome.runtime.lastError;

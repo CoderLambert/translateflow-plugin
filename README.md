@@ -1,15 +1,25 @@
-# TranslateFlow v0.8
+# TranslateFlow v0.8.3
 
-轻量、BYOK、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。保留英文原文，在原段落中展示中文译文；支持 DeepSeek 与 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
+轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时可使用浏览器基础翻译，AI 与本地词典均为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
+
+## v0.8.1 基础翻译
+
+- 划词、整页和字幕共用引擎选择：可用词典优先用于查词，已配置 AI 优先用于翻译，无 AI 时使用默认开启的浏览器基础翻译。
+- 源语言自动识别，目标语言默认简体中文并记住全局/站点设置；可在页面准备面板或设置中纠正源语言。
+- 语言包准备由页面内真实点击启动；安装、页面载入、悬浮按钮出现均不下载。AI 失败后只有点击“使用基础翻译”才切换。
+- 设置中可关闭基础翻译；关闭会停止基础任务并释放实例，不删除 Chrome 的共享语言包。
+- 基础安装包不再附带词典；可选词典管理位于高级设置，升级保留已安装词典的启用状态。
+
+详见[浏览器基础翻译使用说明与限制](docs/BROWSER_TRANSLATION.md)。接口存在不代表模型可运行；真实离线能力需在本机完成语言包准备后验证。
 
 ## v0.8 重点
 
-- DeepSeek Provider
-- OpenAI-compatible Provider
-- 自定义 OpenAI-compatible Base URL / API Key / Model
+- OpenAI Chat Completions、OpenAI Responses、Anthropic Messages、Gemini generateContent 四种原生协议
+- OpenAI、Anthropic、Gemini、DeepSeek、OpenRouter、Groq、xAI、Mistral、百炼等平台预设
+- 可配置多个 API Key 连接，并为默认服务或站点保存稳定引用
 - 支持无 API Key 的本地兼容服务
 - 按 API Origin 动态申请 Host Permission
-- 站点级 Provider / Model / Prompt / Target Language 覆盖
+- 站点级连接 / Model / Prompt / Target Language 覆盖
 - 划词翻译浮层：选择文本后按需翻译、复制、取消、失败重试，并复用站点配置与 IndexedDB 缓存
 - 统一 Translation Task：阶段进度、用户取消、Provider timeout/retry 与 in-flight 请求去重
 - 结构化双语渲染：保留链接、强调、code/kbd/mark 等安全内联语义，不注入模型 HTML
@@ -52,8 +62,9 @@ resolveEffectiveGlossary(pageUrl)
    ├───────────────┐
    ▼               ▼
 cache-db        providers/
-                   ├── deepseek
-                   └── openai-compatible
+                   ├── openai-chat / openai-responses
+                   ├── anthropic-messages / gemini-generate
+                   └── chatgpt-plan (optional native host)
 ```
 
 关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖和术语表先在共享配置层解析，Provider adapter 不读取术语存储。
@@ -72,7 +83,7 @@ cache-db        providers/
 - 原生 CSS；Content / MAIN / Worker / Background 不引入 React
 - chrome.storage.local
 - IndexedDB
-- DeepSeek / OpenAI-compatible Chat Completions
+- OpenAI Chat Completions / Responses、Anthropic Messages、Gemini generateContent
 
 Node.js 只用于开发校验；单元测试使用 `node:test`，浏览器 E2E 使用 Playwright。Playwright 仅为开发依赖，不进入扩展运行时。
 
@@ -152,16 +163,15 @@ cd translateflow-plugin
 
 默认构建由 WXT 编译后台、Popup 和 Options，Content/MAIN/Worker 继续复用精确源码桥；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
 
-首次源码安装或清理过词典产物后，先执行：
+源码安装不需要词典包或 AI Key，执行：
 
 ```bash
-npm install
-npm run setup:lexicon
+npm ci
 npm run validate
 npm run build:extension:release
 ```
 
-`setup:lexicon` 会读取已审核的 source lock，使用锁定的 OMW revision/source URL，校验下载文件 SHA-256，再生成并认证 `assets/lexicon/core` 与 `assets/lexicon/technical`。校验不通过时会 fail closed，不会继续构建。
+默认与 release 构建均不包含内置词典。需要研究/认证旧内置词典时，可单独运行 `npm run setup:lexicon`，再执行 `node scripts/build-extension.mjs --require-lexicon`；此显式构建继续校验来源锁和词典完整性。
 
 真实 Chromium 扩展 E2E：
 
@@ -176,11 +186,10 @@ E2E 使用临时 unpacked 扩展副本、本地 fixture 页面和本地 OpenAI-c
 
 ## Chrome 本地安装
 
-首次安装或更新到包含词典格式/数据变更的版本：
+首次安装或更新后：
 
 ```bash
-npm install
-npm run setup:lexicon
+npm ci
 npm run validate
 ```
 
@@ -190,10 +199,9 @@ npm run validate
 2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
 4. 选择 `dist/extension/`。仓库根目录只用于开发调试，不作为正式发布包
-5. 打开 TranslateFlow 设置页 → **本地词典**
-6. 确认 **Core Semantic** 与 **Technical Concepts** 均显示“已就绪”
-7. 配置 Provider 并测试 API
-8. 刷新目标英文网页后测试
+5. 在设置页确认目标语言；浏览器基础翻译默认开启
+6. 刷新 HTTPS 目标网页，划词或点击翻译，按页面提示点击“准备基础翻译”
+7. 可选：配置 AI 连接，或在高级设置中导入并启用本地词典
 
 日常开发循环：
 
@@ -207,58 +215,44 @@ chrome://extensions/ → 重新加载
 刷新目标网页
 ```
 
-如果 Settings 显示内置词典“资源缺失或不可读”，重新运行 `npm run setup:lexicon` 后再重新加载扩展。可选 OPFS 词典与内置 Core / Technical 是两套独立机制；当前没有通过产品质量门并注册为可下载来源的可选词典包。
+词典缺失、损坏或未命中不会阻断翻译；不使用词典时可在高级设置中关闭。个人导入词典、收藏和阅读记录保持独立保存。
 
 ## Provider 配置
 
-### DeepSeek
-
-配置：
-
-```text
-Provider: DeepSeek
-API Key: sk-...
-Model: deepseek-flash
-```
-
-API Origin 固定为：
-
-```text
-https://api.deepseek.com
-```
-
-### OpenAI-compatible
+### API Key 连接
 
 配置示例：
 
 ```text
-Provider: OpenAI-compatible
-Base URL: https://api.example.com/v1
-API Key:   sk-...        # 本地服务可留空
-Model:     your-model
+平台: Anthropic
+协议: anthropic-messages
+Base URL: https://api.anthropic.com/v1
+API Key:  sk-ant-...
+Model:    claude-...
 ```
 
-插件会自动请求：
+设置页可保存多个连接，并选择默认翻译服务。第一版原生支持：
 
 ```text
-<Base URL>/chat/completions
+openai-chat         -> <Base URL>/chat/completions
+openai-responses    -> <Base URL>/responses
+anthropic-messages  -> <Base URL>/messages
+gemini-generate     -> <Base URL>/models/<model>:generateContent
 ```
 
-如果 Base URL 已经以 `/chat/completions` 结尾，则不会重复追加。
+Azure OpenAI v1 使用 `https://<resource>.openai.azure.com/openai/v1` 形式的 Base URL，并自动改用 Azure 的 `api-key` header；旧 deployment API 与 Entra ID 不在当前范围。
 
-生产扩展已获得普通 `http/https` 页面的访问权限，因此 OpenAI-compatible Provider 不再为每个 API Origin 单独弹出权限请求；Provider 凭据、调用时机和缓存身份仍按现有配置边界处理。
-
-例如 Ollama/OpenAI-compatible 网关：
+本地服务可选择 Local / self-hosted，显式允许空 API Key 和 `http`，例如：
 
 ```text
 http://localhost:11434/v1
 ```
 
-Host Permission 会按浏览器 Match Pattern 申请，因此 localhost 不按端口精细隔离。
+API Key 独立保存在 trusted extension context 可访问的本地存储中，Content Script 只能通过脱敏消息读取公开设置。连接列表只显示“已保存 API Key”，不会把密钥回传给页面。
 
 ### ChatGPT 订阅
 
-ChatGPT 订阅 Provider 通过可选的 TranslateFlow 本地组件连接。未安装组件时，词典、DeepSeek 和 OpenAI-compatible 等其他功能仍可使用。设置页只会在用户点击 **启用本地连接** 后申请 `nativeMessaging` 权限，并提供下载、重新检测和重启入口。
+ChatGPT 订阅 Provider 通过可选的 TranslateFlow 本地组件连接。未安装组件时，词典和 API Key 连接仍可使用。设置页只会在用户点击 **启用本地连接** 后申请 `nativeMessaging` 权限，并提供下载、重新检测和重启入口。
 
 面向用户的 Windows/Linux 安装、升级、卸载与故障恢复步骤见 [ChatGPT 本地组件安装与发布引导](docs/CHATGPT_NATIVE_HOST_INSTALL.md)。
 
@@ -266,7 +260,7 @@ ChatGPT 订阅 Provider 通过可选的 TranslateFlow 本地组件连接。未�
 
 设置页可以针对站点覆盖：
 
-- Provider
+- API Key 连接或 ChatGPT 订阅服务
 - Model
 - Prompt
 - Target Language
@@ -275,24 +269,24 @@ ChatGPT 订阅 Provider 通过可选的 TranslateFlow 本地组件连接。未�
 
 ```text
 https://github.com
-Provider: OpenAI-compatible
+连接: OpenAI-compatible
 Model: qwen-coder
 Prompt: 技术文档翻译 Prompt
 Target Language: English
 ```
 
-而新闻网站可继续继承默认 DeepSeek 配置。
+而新闻网站可继续继承默认连接。
 
 站点配置只保存覆盖项，API 凭据仍由 Provider 全局配置统一管理，避免每个站点重复保存密钥。
 
 解析顺序：
 
 ```text
-Provider 全局配置
+默认服务 + 连接定义与凭据
       +
 默认 Prompt / Target Language
       ↓
-站点 Provider / Model / Prompt / Target Language 覆盖
+站点连接 / Model / Prompt / Target Language 覆盖
       ↓
 Effective Translation Config
 ```
@@ -380,11 +374,11 @@ normalized URL
 
 config:
 cache schema
-+ provider
++ provider connection ID / revision / protocol
 + model
 + target language
 + prompt
-+ OpenAI-compatible endpoint（仅通用 Provider）
++ Provider endpoint
 + effective glossary identity（仅非空术语表）
 
 Preset 不额外写入 cache fingerprint；它通过最终解析出的 Prompt 进入缓存身份。因此切回曾经使用过的同一有效模式，会复用之前的缓存版本。
@@ -395,9 +389,7 @@ SHA-256(normalized source text)
 
 普通纯文本段落继续使用原有规范化文本作为缓存身份，因此既有缓存继续命中。包含受支持内联结构的段落使用带 TranslateFlow 结构标记的确定性 source fingerprint，首次可能 miss 一次，但不会提升全局缓存 schema。
 
-DeepSeek 不把固定 API Base URL 放进指纹，因此 v0.3/v0.4 DeepSeek 缓存继续命中。
-
-OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容服务使用同一模型名时误复用译文。非空有效术语表也会以确定性 identity 参与缓存；空术语表不会增加字段，因此保持既有缓存兼容。修改无关站点的术语不会使当前站点缓存失效。
+迁移后的旧 DeepSeek / OpenAI-compatible 配置保留旧缓存兼容路径。新连接把连接 ID、revision、协议和 Base URL 纳入缓存版本，避免不同后端或连接版本使用同一模型名时误复用译文。API Key 字节不进入缓存。非空有效术语表也会以确定性 identity 参与缓存；空术语表保持既有缓存兼容。
 
 ## 权限
 
@@ -416,7 +408,7 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 
 - 划词：普通网页打开后即可使用，只有点击“译”才进行本地查询或按需调用 Provider；
 - 自动翻译、缓存恢复和持久 Quick Control：仍由用户按站点开启；
-- OpenAI-compatible：只在用户配置并触发翻译时调用。
+- API Key Provider：只在用户配置并触发翻译时调用。
 - ChatGPT 订阅：`nativeMessaging` 是可选权限，仅在用户从设置页启用本地连接后申请；未授权不影响其他 Provider。
 
 关闭某个站点的自动翻译只移除该站点模式，不会撤销全站划词所需的 Manifest 权限。
@@ -488,12 +480,12 @@ OpenAI-compatible 会把 Base URL 纳入缓存版本，避免两个不同兼容�
 
 ## 当前限制
 
-- OpenAI-compatible 当前基于 Chat Completions 接口，不是 Responses API。
-- 不同兼容服务对 JSON 输出能力差异较大，当前通过严格 Prompt + 容错 JSON 解析适配。
-- Provider 额外 Header 尚未开放配置；OpenRouter 等需要特殊 Header 的场景后续可扩展。
+- 当前支持 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages 和 Gemini generateContent；不支持旧 Azure deployment API、Bedrock、Vertex IAM/OAuth 或自动 failover。
+- 不同兼容服务对结构化输出能力差异较大，当前通过严格 Prompt、完整 segment 校验和一次格式重试适配。
+- 自定义额外 Header 尚未开放配置。
 - PDF、Side Panel、非 YouTube 视频站点的双语字幕尚未实现；v0.8 视频体验首发支持 YouTube。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
-- API Key 保存于 `chrome.storage.local`，适合个人 BYOK，不是服务端密钥保险库。
+- API Key 保存于仅 trusted extension context 可访问的 `chrome.storage.local`，适合个人 BYOK，不是操作系统密钥保险库。
 
 ## 开发任务与本地验收
 

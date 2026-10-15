@@ -12,6 +12,10 @@
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
+      case messages.background.PUBLIC_SETTINGS_CHANGED:
+        handlePublicSettingsChanges(message.changes || {});
+        sendResponse({ ok: true });
+        return false;
       case messages.background.RICH_MDD_RESOURCES_CHANGED:
         app.modules.richResourceResolver?.closeDictionary(message.dictionaryId);
         sendResponse({ ok: true });
@@ -33,8 +37,7 @@
     }
   });
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local") return;
+  function handlePublicSettingsChanges(changes) {
     if (changes.appearance || changes.siteProfiles) appearance.refresh().catch(() => {});
     if (changes.youtubeSubtitleMode) subtitleController.setMode(changes.youtubeSubtitleMode.newValue, { persist: false }).catch(() => {});
     if (changes.youtubeSubtitleSize) subtitleController.setSize(changes.youtubeSubtitleSize.newValue, { persist: false }).catch(() => {});
@@ -53,18 +56,18 @@
     if ((changes.apiKey || changes.openAICompatible) && state.auto) { state.autoBackoffUntil = 0; if (state.pending.size) scheduleAutoDrain(120); }
 
     const translationProfileChanged = changes.siteProfiles ? siteProfileAffectsTranslation(changes.siteProfiles) : false;
-    const translationConfigChanged = Boolean(changes.provider || changes.model || changes.prompt || changes.targetLanguage || changes.openAICompatible || translationProfileChanged || changes.glossary || changes.siteGlossaries);
+    const translationConfigChanged = Boolean(changes.provider || changes.model || changes.prompt || changes.targetLanguage || changes.openAICompatible || changes.providerConnections || changes.providerCredentials || changes.defaultService || translationProfileChanged || changes.glossary || changes.siteGlossaries);
     if ((state.auto || state.cacheRestore) && translationConfigChanged) {
       state.autoBackoffUntil = 0;
       clearTranslations();
       state.currentPageIdentity = getPageIdentity(location.href);
       rescanAutoPage();
     }
-  });
+  }
 
   function siteProfileAffectsTranslation(change) {
     const origin = getSiteScope(location.href), before = change?.oldValue?.[origin] || {}, after = change?.newValue?.[origin] || {};
-    return ["provider", "model", "prompt", "targetLanguage", "preset"].some((field) => String(before?.[field] ?? "") !== String(after?.[field] ?? ""));
+    return ["provider", "serviceRef", "model", "prompt", "targetLanguage", "preset"].some((field) => JSON.stringify(before?.[field] ?? "") !== JSON.stringify(after?.[field] ?? ""));
   }
 
   function refreshIncrementalRoute() {

@@ -8,6 +8,7 @@ const sources = await Promise.all([
   "../src/content/tasks.js",
   "../src/content/selection/result-model.js",
   "../src/content/selection/translation-query.js",
+  "../src/content/selection/assistant-persistence.js",
   "../src/content/selection/controller.js"
 ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
 
@@ -17,10 +18,10 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
+function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "" } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
-  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [];
-  const assistantPorts = [], vocabularyAdds = [];
+  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
+  const assistantPorts = [], vocabularyAdds = [], aiPersistence = [];
   const storeStarted = deferred(), secondStoreStarted = deferred();
   const pageUrl = "https://fixture.invalid/article";
   const location = { href: pageUrl };
@@ -33,6 +34,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
 
   const sendRuntimeMessage = async (request) => {
     messages.push(request);
+    if (runtimeFailure) throw new Error(runtimeFailure);
     switch (request.type) {
       case "selection-resolve":
         if (resolveRoute === "local") return { ok: true, route: "local", explanationAllowed: true, depth: "standard",
@@ -74,7 +76,11 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       disconnect() { session.disconnected = true; }
     };
     session.emit = message => onMessage?.(message);
-    session.disconnectExternally = () => onDisconnect?.();
+    session.disconnectExternally = (message = "") => {
+      chrome.runtime.lastError = message ? { message } : undefined;
+      onDisconnect?.();
+      delete chrome.runtime.lastError;
+    };
     assistantPorts.push(session);
     return session.port;
   }
@@ -112,7 +118,8 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       showAiDetailStreaming(_answer, onStop) { onAssistantStop = onStop; },
       showAiDetailStopping() {},
       showAiDetailResult() {},
-      showAiDetailInterrupted() {},
+      showAiPersistence(state, action) { aiPersistence.push({ state, action }); },
+      showAiDetailInterrupted(_answer, message) { assistantInterruptions.push(message); },
       hide() { hideCount++; }, reposition() { repositionCount++; }, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
@@ -120,12 +127,19 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     selectionRichDetails: { load: async () => {}, cancel: async () => {}, bindLifecycle() {} },
     selectionVocabularyBook: { create: () => ({
       add: async (entry, event) => { vocabularyAdds.push({ entry, event }); return { added: true }; },
+      addAiNote: async (note, event) => { vocabularyAdds.push({ note, event }); return { added: true }; },
+      syncAiNote: async (note) => { vocabularyAdds.push({ note, sync: true }); return { updated: true }; },
       open: async () => ({})
     }) },
     selectionRecordClient: { create: () => readingRecords ? ({
       start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
       assistant(context) { const operation = { operationId: `assistant-${context.operations.length + 1}` }; context.operations.push(operation); return operation; },
-      accept(_context, artifact) { accepted.push(artifact); },
+      accept(_context, artifact, options = {}) {
+        accepted.push(artifact);
+        options.onStatus?.({ state: "saved", messageKey: "content.reading.saved", retryAvailable: false, openAvailable: true });
+        options.onSaved?.({ recordId: "record-1", artifactId: `artifact-${accepted.length}`, revision: accepted.length, duplicate: false });
+        return Promise.resolve();
+      },
       close: async () => null, discard: async () => {}, invalidateReference() { referenceInvalidations++; }, refresh: async () => {}, render() {},
       save: async () => {}, retry: async () => {}, open: async () => {}, decline() {}
     }) : null },
@@ -171,7 +185,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
   documentListeners.get("mouseup")({ target: {} });
 
   return {
-    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds,
+    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds, aiPersistence, assistantInterruptions,
     ready: waitForChip(1), storeStarted: storeStarted.promise,
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
     resolveStore: (index = 0, result = { ok: true }) => storeAcks[index].resolve(result), get stored() { return stored; },
@@ -179,14 +193,17 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     get hideCount() { return hideCount; }, get repositionCount() { return repositionCount; },
     get referenceInvalidations() { return referenceInvalidations; },
     stop: () => onCancel?.(), translate: () => onTranslate?.({ isTrusted: true }),
-    explain: (index = 0) => resultActions[index]?.onExplain?.({ isTrusted: true }, "understand"),
+    explain: (index = 0, action = "understand") => resultActions[index]?.onExplain?.({ isTrusted: true }, action),
     save: (index = 0) => resultActions[index]?.onSave?.({ isTrusted: true }),
     stopAssistant: () => onAssistantStop?.(),
     completeAssistant(text = "AI explanation") {
       const session = assistantPorts.at(-1), start = session?.messages.find(message => message.type === "start");
       session?.emit({ protocolVersion: 1, type: "complete", requestId: start?.requestId, text,
-        turn: { completionStatus: "completed", assistantAnswer: text },
-        readingResult: { targetLanguage: "zh-CN", sourceLanguage: "en", provenance: { provider: "synthetic" } } });
+        turn: { completionStatus: "completed", assistantAnswer: text, action: start?.action || "understand",
+          turnId: start?.turnId || "turn-1", threadId: start?.threadId || "thread-1", parentTurnId: null,
+          branchId: start?.branchId || "branch-1", regenerationOf: null },
+        readingResult: { targetLanguage: "zh-CN", sourceLanguage: "en", provenance: { provider: "synthetic", model: "mock-model",
+          promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" } } });
     },
     stopAt: (index) => cancelHandlers[index]?.(),
     getTask: () => app.modules.tasks.getLatestTask("selection"),
@@ -275,6 +292,28 @@ test("a local dictionary save remains valid after its optional AI explanation co
   assert.equal(h.vocabularyAdds.length, 1);
 });
 
+test("a completed AI tab exposes its own Learning Center state and saves one bounded wordbook note", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain(0, "analyze");
+  h.completeAssistant("Synthetic analysis");
+
+  const persistence = h.aiPersistence.at(-1);
+  assert.equal(persistence.action, "analyze");
+  assert.equal(persistence.state.reading.messageKey, "content.reading.savedAiAnswer");
+  await persistence.state.onSaveVocabulary({ isTrusted: true });
+
+  assert.equal(h.vocabularyAdds.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.vocabularyAdds[0].note)), {
+    headword: "current selected text", sourceLanguage: "en", targetLanguage: "zh-CN", action: "analyze",
+    text: "Synthetic analysis", turnId: h.assistantPorts.at(-1).messages[0].turnId,
+    provenance: { provider: "synthetic", model: "mock-model", promptVersion: "selection-assistant-v1",
+      providerConfigFingerprint: "opaque" },
+    readingRef: { recordId: "record-1", artifactId: "artifact-2" }
+  });
+});
+
 test("a local dictionary save remains valid after its optional AI explanation is stopped", async () => {
   const h = harness({ resolveRoute: "local" });
   await h.ready;
@@ -285,6 +324,25 @@ test("a local dictionary save remains valid after its optional AI explanation is
   await h.save();
 
   assert.equal(h.vocabularyAdds.length, 1);
+});
+
+test("an assistant port invalidated by an extension reload tells the user to refresh the page", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain();
+
+  h.assistantPorts.at(-1).disconnectExternally("Extension context invalidated.");
+
+  assert.deepEqual(h.assistantInterruptions, ["content.ai.extensionReloaded"]);
+});
+
+test("a Selection request invalidated by an extension reload tells the user to refresh the page", async () => {
+  const h = harness({ runtimeFailure: "Extension context invalidated." });
+  await h.ready;
+  await h.translate();
+
+  assert.deepEqual(h.errors, ["content.ai.extensionReloaded"]);
 });
 
 test("a new selection invalidates a saved local dictionary result", async () => {

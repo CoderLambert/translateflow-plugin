@@ -251,6 +251,27 @@
       "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
+      "task": "api-key-provider-connections",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972"
+    },
+    {
+      "task": "browser-basic-translation",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
+    },
+    {
+      "task": "chatgpt-native-host-distribution",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "fix/rich-runtime-assets-20261013",
+      "candidateHead": "df6e65fd908228ca46763a1fa276c76d3164fd3e"
+    },
+    {
       "task": "chatgpt-plan-nativehost-closeout",
       "status": "completed",
       "dependencies": [],
@@ -317,12 +338,12 @@
     },
     {
       "task": "rich-runtime-resource-recovery",
-      "status": "ready_to_sync",
+      "status": "working",
       "dependencies": [
         "oxford-radio-css"
       ],
       "branch": "fix/rich-runtime-assets-20261013",
-      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854"
+      "candidateHead": null
     },
     {
       "task": "rich-stripkey-migration",
@@ -334,11 +355,25 @@
       "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d"
     },
     {
+      "task": "selection-ai-result-saving",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
+    },
+    {
       "task": "selection-vocabulary-book-v1",
       "status": "completed",
       "dependencies": [],
       "branch": "feat/selection-vocabulary-book-v1",
       "candidateHead": "033540996db9ce4150d949772f4386b258456673"
+    },
+    {
+      "task": "sync-current-worktree",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
     },
     {
       "task": "workflow-local",

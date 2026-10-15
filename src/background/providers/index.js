@@ -1,11 +1,18 @@
 import { PROVIDER_IDS } from "../../shared/constants.js";
 import { deepSeekProvider } from "./deepseek.js";
-import { openAICompatibleProvider } from "./openai-compatible.js";
+import { openAIChatProvider, openAICompatibleProvider } from "./openai-compatible.js";
 import { chatGPTPlanProvider } from "./chatgpt-plan.js";
+import { openAIResponsesProvider } from "./openai-responses.js";
+import { anthropicMessagesProvider } from "./anthropic-messages.js";
+import { geminiGenerateProvider } from "./gemini-generate.js";
 
 const PROVIDERS = new Map([
   [deepSeekProvider.id, deepSeekProvider],
   [openAICompatibleProvider.id, openAICompatibleProvider],
+  [openAIChatProvider.id, openAIChatProvider],
+  [openAIResponsesProvider.id, openAIResponsesProvider],
+  [anthropicMessagesProvider.id, anthropicMessagesProvider],
+  [geminiGenerateProvider.id, geminiGenerateProvider],
   [chatGPTPlanProvider.id, chatGPTPlanProvider]
 ]);
 

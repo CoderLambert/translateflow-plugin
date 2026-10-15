@@ -7,16 +7,16 @@ test("Content locale waits for storage, refreshes bound text, and removes its li
   const listeners = new Set();
   let resolveRead;
   const read = new Promise((resolve) => { resolveRead = resolve; });
-  globalThis.__TRANSLATE_FLOW_CONTENT__ = { modules: {} };
+  globalThis.__TRANSLATE_FLOW_CONTENT__ = { modules: { runtime: {
+    messages: { background: { PUBLIC_SETTINGS_GET: "PUBLIC_SETTINGS_GET", PUBLIC_SETTINGS_CHANGED: "PUBLIC_SETTINGS_CHANGED" } },
+    sendRuntimeMessage: async () => ({ settings: await read })
+  } } };
   globalThis.chrome = {
     i18n: { getUILanguage: () => "en-US" },
-    storage: {
-      local: { get: async () => read },
-      onChanged: {
-        addListener(listener) { listeners.add(listener); },
-        removeListener(listener) { listeners.delete(listener); }
-      }
-    }
+    runtime: { onMessage: {
+      addListener(listener) { listeners.add(listener); },
+      removeListener(listener) { listeners.delete(listener); }
+    } }
   };
 
   try {
@@ -36,7 +36,7 @@ test("Content locale waits for storage, refreshes bound text, and removes its li
     owner.bindText(node, "learning.title");
     assert.equal(node.textContent, "学习中心");
 
-    for (const listener of listeners) listener({ uiLocale: { oldValue: "zh_CN", newValue: "en" } }, "local");
+    for (const listener of listeners) listener({ type: "PUBLIC_SETTINGS_CHANGED", changes: { uiLocale: { oldValue: "zh_CN", newValue: "en" } } });
     assert.equal(node.textContent, "Learning center");
     assert.equal(owner.get().locale, "en");
 

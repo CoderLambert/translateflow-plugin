@@ -9,6 +9,10 @@ import {
 } from "./presets.js";
 import { normalizeAppearanceId } from "./appearance.js";
 import { normalizeOrigin } from "./url.js";
+import {
+  normalizeProviderConnectionState,
+  normalizeServiceRef
+} from "./provider-connections.js";
 
 export function normalizeProviderId(value) {
   const provider = String(value || PROVIDER_IDS.DEEPSEEK).trim().toLowerCase();
@@ -72,6 +76,10 @@ export function resolveTranslationConfigForSite(
   };
 
   const siteProfile = getSiteProfile(globalConfig.siteProfiles, siteKey);
+  const connectionState = normalizeProviderConnectionState(globalConfig);
+  if (connectionState.defaultService || siteProfile?.serviceRef) {
+    return resolveConnectionConfig(globalConfig, connectionState, siteProfile, temporaryPresetOverride);
+  }
   const provider = normalizeProviderId(siteProfile?.provider || globalConfig.provider);
 
   const base = provider === PROVIDER_IDS.OPENAI_COMPATIBLE
@@ -126,6 +134,8 @@ export function resolveTranslationConfigForSite(
 
 export function normalizeSiteProfile(rawProfile = {}) {
   const profile = {};
+  const serviceRef = normalizeServiceRef(rawProfile.serviceRef);
+  if (serviceRef) profile.serviceRef = serviceRef;
   if (rawProfile.provider) profile.provider = normalizeProviderId(rawProfile.provider);
 
   const model = String(rawProfile.model || "").trim();
@@ -204,3 +214,51 @@ export function getSiteProfile(siteProfiles, pageUrl) {
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
+
+function resolveConnectionConfig(globalConfig, connectionState, siteProfile, temporaryPresetOverride) {
+  const siteService = normalizeServiceRef(siteProfile?.serviceRef) || legacySiteService(siteProfile?.provider, connectionState);
+  const service = siteService || connectionState.defaultService;
+  let base;
+  if (service?.kind === "chatgpt-plan") {
+    base = { provider: PROVIDER_IDS.CHATGPT_PLAN, serviceRef: service, apiKey: "", apiBaseUrl: "https://api.openai.com/v1/responses",
+      model: String(globalConfig.chatgptPlanModel || "").trim(), streaming: true, connectionId: "", connectionRevision: 0, protocol: PROVIDER_IDS.CHATGPT_PLAN, platform: "chatgpt-plan" };
+  } else {
+    const connection = connectionState.connections[service?.connectionId];
+    if (!connection) throw configError(`连接不存在或已删除：${service?.connectionId || "unknown"}`, "CONNECTION_MISSING");
+    const apiKey = String(connectionState.credentials[connection.credentialId] || "").trim();
+    if (!apiKey && !connection.settings.allowEmptyApiKey) throw configError(`请先为 ${connection.name} 配置 API Key。`, "CONFIG");
+    base = { provider: connection.protocol, protocol: connection.protocol, serviceRef: service, connectionId: connection.id,
+      connectionRevision: connection.revision, platform: connection.platform, providerLabel: connection.name, apiKey,
+      apiBaseUrl: connection.baseUrl, model: connection.defaultModel,
+      streaming: connection.protocol === "openai-chat" && connection.settings.streaming,
+      outputTokens: connection.settings.outputTokens, temperature: connection.settings.temperature, reasoning: connection.settings.reasoning,
+      allowEmptyApiKey: connection.settings.allowEmptyApiKey, allowInsecureHttp: connection.settings.allowInsecureHttp };
+  }
+  return withTranslationOverrides(base, globalConfig, siteProfile, temporaryPresetOverride);
+}
+
+function withTranslationOverrides(base, globalConfig, siteProfile, temporaryPresetOverride) {
+  const sitePrompt = String(siteProfile?.prompt || "").trim();
+  const globalPrompt = String(globalConfig.prompt || DEFAULT_CONFIG.prompt).trim() || DEFAULT_CONFIG.prompt;
+  const savedPresetId = normalizePresetId(siteProfile?.preset);
+  const temporaryPresetActive = Boolean(temporaryPresetOverride?.active);
+  const temporaryPresetId = normalizePresetId(temporaryPresetOverride?.presetId);
+  const selectedPresetId = temporaryPresetActive ? temporaryPresetId : savedPresetId;
+  const effectivePresetId = sitePrompt ? "" : selectedPresetId;
+  const basePrompt = sitePrompt || globalPrompt;
+  return { ...base, model: String(siteProfile?.model || base.model || "").trim(),
+    prompt: effectivePresetId ? composePresetPrompt(basePrompt, effectivePresetId) : basePrompt,
+    targetLanguage: String(siteProfile?.targetLanguage || globalConfig.targetLanguage || DEFAULT_CONFIG.targetLanguage).trim() || DEFAULT_CONFIG.targetLanguage,
+    siteOrigin: siteProfile?.origin || "", presetId: effectivePresetId, selectedPresetId, savedPresetId,
+    presetSource: sitePrompt ? "site-prompt" : (temporaryPresetActive ? "temporary" : (savedPresetId ? "site" : "none")),
+    hasSitePromptOverride: Boolean(sitePrompt) };
+}
+
+function legacySiteService(provider, state) {
+  if (!provider) return null;
+  if (provider === PROVIDER_IDS.CHATGPT_PLAN) return { kind: "chatgpt-plan" };
+  const id = provider === PROVIDER_IDS.OPENAI_COMPATIBLE ? "openai-compatible" : provider === PROVIDER_IDS.DEEPSEEK ? "deepseek" : "";
+  return id && state.connections[id] ? { kind: "api-key", connectionId: id } : null;
+}
+
+function configError(message, code) { const error = new Error(message); error.code = code; return error; }
