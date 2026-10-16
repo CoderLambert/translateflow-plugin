@@ -18,16 +18,16 @@ jobs:
           node-version: '24.21.0'
       - run: npm install --global npm@11.19.0
       - run: npm ci
-      - name: Export tracked source and public locked dependencies
+      - run: npx playwright install chromium
+      - name: Export public browser and npm runtime
         run: |
-          mkdir -p "$RUNNER_TEMP/mt-inputs"
-          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/mt-inputs/source.tar.gz"
-          tar -czf "$RUNNER_TEMP/mt-inputs/dependencies.tar.gz" node_modules
-          cp "$(command -v node)" "$RUNNER_TEMP/mt-inputs/node"
-          sha256sum "$RUNNER_TEMP/mt-inputs/"* > "$RUNNER_TEMP/mt-inputs/SHA256SUMS"
+          mkdir -p "$RUNNER_TEMP/mt-browser"
+          tar -czf "$RUNNER_TEMP/mt-browser/chromium.tar.gz" -C "$HOME/.cache/ms-playwright" .
+          tar -czf "$RUNNER_TEMP/mt-browser/npm.tar.gz" -C "$(npm root -g)" npm
+          sha256sum "$RUNNER_TEMP/mt-browser/"* > "$RUNNER_TEMP/mt-browser/SHA256SUMS"
       - uses: actions/upload-artifact@v4
         with:
-          name: free-mt-build-inputs
-          path: ${{ runner.temp }}/mt-inputs/
+          name: free-mt-browser
+          path: ${{ runner.temp }}/mt-browser/
           retention-days: 1
           compression-level: 0
