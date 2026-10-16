@@ -28,11 +28,15 @@ Content 和 Options 使用同一个运行时实现：一个检测器、最多两
 
 ## 数据与验收
 
+划词基础释义可点击“收藏到生词本”；进一步解释的“理解 / 分析 / 用法”使用已配置的 AI 服务（包括本地兼容服务），点击“收藏 AI 笔记到生词本”保存为带来源的 AI 学习笔记。生词本收藏与阅读记录独立：无需开启阅读记录，阅读记录保存失败也不阻止收藏。收藏仅由点击触发，仍按现有生词本入口查看和删除，不改变既有数据格式。
+
 原 Provider、缓存 schema、词典、收藏和 ReadingRecord 不变；浏览器译文仍以源/目标语言及同一有效配置快照隔离。模型错误分为准备、下载/策略、等待、推理超时、语言自检不匹配及无效结果。取消、关闭或导航后的旧请求不能覆盖新的结果。
 
 当前单元测试使用实际源码和模拟 Chrome API；真实模型下载、断网翻译和语义质量由用户在 Chrome 本机验收。不要把模拟测试、自检非空结果或在线免费翻译服务的报告当成离线语义质量证明。
 
 ## English
+
+Selected-word definitions can be saved to the wordbook. Further explanations use the configured AI service, including local compatible services, and are saved explicitly as attributed AI notes. Wordbook saving does not require reading recording to be enabled or a reading artifact to be saved. Existing storage, viewing and deletion paths remain unchanged.
 
 Chrome native models remain restricted to authorized selected-word definitions; pages, subtitles and longer selections retain the existing AI path. Settings → General → Chrome local models prepares detector and translator together from a user click, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
 

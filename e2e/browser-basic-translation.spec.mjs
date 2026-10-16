@@ -1,4 +1,5 @@
 import { normalizeOrigin } from "../src/shared/url.js";
+import { VOCABULARY_BOOK_STORAGE_KEY } from "../src/background/vocabulary-book.js";
 import { test, expect } from "./support/extension-fixture.mjs";
 
 async function isolated(harness, page, action, input = {}) {
@@ -69,6 +70,12 @@ test("without AI or dictionaries Selection prepares only from a click, retries d
   await expect(page.getByRole("tab", { name: "分析", exact: true })).toBeHidden();
   await expect(page.getByRole("tab", { name: "用法", exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "复制", exact: true })).toBeHidden();
+  expect(harness.server.calls.length).toBe(0);
+  await page.getByRole("button", { name: "收藏到生词本", exact: true }).click();
+  await expect(page.locator(".tf-selection-vocabulary-open")).toBeVisible();
+  await expect.poll(async () => (await harness.getStorage(VOCABULARY_BOOK_STORAGE_KEY))[VOCABULARY_BOOK_STORAGE_KEY])
+    .toMatchObject({ entries: [{ headword: "session", sourceLanguage: "en", targetLanguage: "zh",
+      definitions: ["基础:session"], sources: [{ sourceId: "browser-translator" }], aiNotes: [] }] });
   expect(harness.server.calls.length).toBe(0);
   const count = (await isolated(harness, page, "probe")).inputs.length;
   await page.keyboard.press("Escape"); await select(page);

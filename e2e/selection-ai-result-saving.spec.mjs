@@ -47,7 +47,7 @@ test("complete AI result persists to Learning Center and wordbook across a brows
   await expect(panel).not.toContainText("该结果暂不支持保存");
   expect(harness.server.calls).toHaveLength(1);
 
-  await panel.getByRole("button", { name: "将 AI 笔记加入生词本" }).click();
+  await panel.getByRole("button", { name: "收藏 AI 笔记到生词本" }).click();
   await expect(panel).toContainText("已将 AI 学习笔记加入生词本");
   await expect.poll(async () => (await harness.getStorage(VOCABULARY_BOOK_STORAGE_KEY))[VOCABULARY_BOOK_STORAGE_KEY])
     .toMatchObject({ version: 2, entries: [{ headword: "session", definitions: [], sources: [], aiNotes: [{ action: "understand",
@@ -92,10 +92,17 @@ test("recording-off AI result waits for explicit enable and save without another
   await expect(panel).toContainText("AI 回答未保存：阅读记录已暂停");
   expect(harness.server.calls).toHaveLength(1);
 
+  await panel.getByRole("button", { name: "收藏 AI 笔记到生词本" }).click();
+  await expect(panel).toContainText("已将 AI 学习笔记加入生词本");
+  await expect.poll(async () => (await harness.getStorage(VOCABULARY_BOOK_STORAGE_KEY))[VOCABULARY_BOOK_STORAGE_KEY])
+    .toMatchObject({ entries: [{ headword: "session", aiNotes: [{ action: "analyze", text: "streamed answer", readingRef: null }] }] });
+  expect(harness.server.calls).toHaveLength(1);
+
   const opened = harness.context.waitForEvent("page");
   await panel.getByRole("button", { name: "保存到学习中心" }).click();
   const center = await opened;
   await expect(center).toHaveURL(/learning-center\.html/u);
+  expect((await message(center, M.GET_RECORDING_STATE)).data.enabled).toBe(false);
   await center.getByRole("button", { name: /开启记录|恢复记录/u }).click();
   await content.bringToFront();
   await content.evaluate(() => window.dispatchEvent(new Event("focus")));

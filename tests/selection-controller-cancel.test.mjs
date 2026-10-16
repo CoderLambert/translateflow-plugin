@@ -18,7 +18,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "" } = {}) {
+function harness({ resolveRoute = "translation", readingRecords = true, rejectReading = false, runtimeFailure = "" } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
   const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
   const assistantPorts = [], vocabularyAdds = [], aiPersistence = [];
@@ -135,6 +135,7 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
       start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
       assistant(context) { const operation = { operationId: `assistant-${context.operations.length + 1}` }; context.operations.push(operation); return operation; },
       accept(_context, artifact, options = {}) {
+        if (rejectReading) return null;
         accepted.push(artifact);
         options.onStatus?.({ state: "saved", messageKey: "content.reading.saved", retryAvailable: false, openAvailable: true });
         options.onSaved?.({ recordId: "record-1", artifactId: `artifact-${accepted.length}`, revision: accepted.length, duplicate: false });
@@ -312,6 +313,21 @@ test("a completed AI tab exposes its own Learning Center state and saves one bou
       providerConfigFingerprint: "opaque" },
     readingRef: { recordId: "record-1", artifactId: "artifact-2" }
   });
+});
+
+test("an unavailable reading artifact does not prevent an explicit wordbook AI note save", async () => {
+  const h = harness({ resolveRoute: "local", rejectReading: true });
+  await h.ready;
+  await h.translate();
+  await h.explain(0, "understand");
+  h.completeAssistant("Synthetic meaning");
+  const persistence = h.aiPersistence.at(-1).state;
+  assert.equal(persistence.reading.messageKey, "content.reading.unsupported");
+  assert.equal(h.aiPersistence.find(value => value.state.vocabulary)?.state.vocabulary.available, true);
+  await persistence.onSaveVocabulary({ isTrusted: true });
+  assert.equal(h.vocabularyAdds.length, 1);
+  assert.equal(h.vocabularyAdds[0].note.text, "Synthetic meaning");
+  assert.equal(h.vocabularyAdds[0].note.readingRef, null);
 });
 
 test("a local dictionary save remains valid after its optional AI explanation is stopped", async () => {
