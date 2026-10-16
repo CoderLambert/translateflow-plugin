@@ -42,7 +42,7 @@ test("Settings uses the calm responsive card layout and bounded content width", 
   assert.match(css, /grid-template-columns:\s*240px minmax\(0, 900px\)/);
   assert.match(css, /width:\s*min\(1240px/);
   assert.match(css, /max-width:\s*900px/);
-  assert.match(css, /main > section\s*\{/);
+  assert.match(css, /main > section,[\s\S]*?\.settings-panel > section,[\s\S]*?\.settings-card\s*\{/);
   assert.match(css, /background:[\s\S]*var\(--tf-bg-app\)/);
   assert.match(css, /@media \(max-width:\s*760px\)/);
   assert.doesNotMatch(css, /rgba\(127,127,127/);

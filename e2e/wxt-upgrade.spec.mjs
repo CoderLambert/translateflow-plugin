@@ -190,12 +190,14 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const expectedReplacement={...before,registrations:[],
       databases:cachedOldRuntime ? before.databases : withEmptyReadingDatabase(before.databases)};
     const after=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,after);
+    await driver.locator('.settings-nav a[href="#general"]').click();
     await expect(driver.locator("#uiLocale")).toBeVisible();
     await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
     const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,afterLocaleDisplay);
     expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
     phases.push({phase:cachedOldRuntime ? "PRE_UPGRADE_CACHED_OLD_RUNTIME" : "WXT-replacement-runtime",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,
       startupObserver:next.startupObserver,networkStartup:replacementStartup,observerExecuted:!cachedOldRuntime,nativeLifecycle:initialLifecycle??null,nativeRuntime:initialRuntime,snapshot:summary(after)});
+    await driver.locator('.settings-nav a[href="#dictionary-packs"]').click();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText("你的个人首选");
