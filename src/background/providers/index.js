@@ -1,3 +1,5 @@
+import { MACHINE_ENGINE } from "../../shared/machine-translation.js";
+import { translateMachineBatch } from "./machine-translation.js";
 import { PROVIDER_IDS } from "../../shared/constants.js";
 import { deepSeekProvider } from "./deepseek.js";
 import { openAIChatProvider, openAICompatibleProvider } from "./openai-compatible.js";
@@ -24,6 +26,7 @@ export function getProvider(config) {
 }
 
 export async function translateBatch(segments, config, options = {}) {
+  if (config?.engine === MACHINE_ENGINE) return translateMachineBatch(segments, config, options);
   return getProvider(config).translateBatch(segments, config, options);
 }
 

@@ -1,3 +1,4 @@
+import { MachineTranslationControl } from "./MachineTranslationControl";
 import { useMemo } from "react";
 import { CONTENT_MESSAGES } from "../shared/constants.js";
 import { TRANSLATION_PRESETS } from "../shared/presets.js";
@@ -42,16 +43,18 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
 
     <section id="effectiveContext" className="page-card" hidden={!context} aria-label={i18n.t("popup.currentContext")} aria-busy={ui.context.loading}>
       <div className="page-card-head"><div className="site-icon" aria-hidden="true">🌐</div><div className="site-copy"><span className="section-kicker">{i18n.t("popup.currentPage")}</span><strong id="contextSite">{context?.hostname || context?.origin || "—"}</strong></div></div>
-      <div className="context-grid"><span>{i18n.t("popup.translationMode")}</span><strong id="contextMode">{context?.hasSitePromptOverride ? "Custom Prompt" : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : context?.presetLabel || "Default"}</strong><span>{i18n.t("popup.modelService")}</span><strong><span id="contextProvider">{context?.providerLabel || formatProvider(context?.provider)}</span> · <span id="contextModel">{context?.model || "—"}</span></strong></div>
+      <div className="context-grid"><span>{i18n.t("popup.translationMode")}</span><strong id="contextMode">{context?.engine === "machine-translation" ? i18n.t("mt.free") : context?.hasSitePromptOverride ? "Custom Prompt" : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : context?.presetLabel || "Default"}</strong><span>{i18n.t("popup.modelService")}</span><strong><span id="contextProvider">{context?.providerLabel || formatProvider(context?.provider)}</span>{context?.engine === "machine-translation" ? null : <> · <span id="contextModel">{context?.model || "—"}</span></>}</strong></div>
     </section>
     {ui.context.error ? <div className="preset-hint" role="alert">{ui.context.error} <button type="button" onClick={() => void ui.refreshContext()}>{i18n.t("common.retry")}</button></div> : null}
+
+    <MachineTranslationControl i18n={i18n} disabled={ui.busy} onApplied={async () => { await ui.refreshContext(); await ui.refreshCache(); }} onTranslate={ui.translate} />
 
     <div className="learning-center-nav"><button id="learningCenter" className="learning-center-link" onClick={() => void ui.openLearning()}>{i18n.t("learning.title")}</button></div>
 
     <section className="primary-section" aria-label={i18n.t("popup.pageTranslation")}>
       <button id="translate" className="tf-button tf-button--primary primary-action" disabled={ui.busy} onClick={() => void ui.translate()}>{i18n.t("popup.translatePage")}</button>
       <button id="cancelTask" className="tf-button cancel-task" hidden={!ui.translating} onClick={() => void ui.cancel()}>{i18n.t("popup.cancelTranslation")}</button>
-      <div id="status" className={`status-banner${ui.notice.error ? " error" : ""}`} role="status" aria-live="polite">{ui.notice.message}</div>
+      <div id="status" className={`status-banner${ui.notice.error ? " error" : ""}`} role="status" aria-label={i18n.t("popup.pageTranslation")} aria-live="polite">{ui.notice.message}</div>
     </section>
 
     <section className="control-card tf-card" aria-label={i18n.t("popup.pagePreferences")}>
@@ -65,9 +68,9 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
 
     <details className="secondary-card tf-accordion"><summary>{i18n.t("popup.modeAndControls")}</summary><div className="secondary-content">
       <label className="preset-label" htmlFor="presetSelect">{i18n.t("popup.translationMode")}</label>
-      <select id="presetSelect" className="tf-select" disabled={ui.busy} value={ui.preset} onChange={event => ui.setPreset(event.target.value)}><option value="inherit">{i18n.t("popup.inheritSite")}</option><option value="none">{i18n.t("popup.noPreset")}</option>{TRANSLATION_PRESETS.map(item => <option key={item.id} value={item.id}>{localizedPresetLabel(item.id, i18n)} · {i18n.t(`preset.${item.id}.description` as "preset.technical.description")}</option>)}</select>
-      <div className="row preset-actions"><button id="applyPreset" className="tf-button tf-button--secondary" disabled={ui.busy} onClick={() => void ui.applyPreset(false)}>{i18n.t("popup.applyTemporarily")}</button><button id="savePreset" className="tf-button tf-button--secondary" disabled={ui.busy} onClick={() => void ui.applyPreset(true)}>{i18n.t("popup.saveToSite")}</button></div>
-      <div id="presetHint" className="preset-hint">{context ? contextHint(context, i18n) : ui.context.loading ? i18n.t("popup.loadingContext") : ui.context.error}</div>
+      <select id="presetSelect" className="tf-select" disabled={ui.busy || context?.engine === "machine-translation"} value={ui.preset} onChange={event => ui.setPreset(event.target.value)}><option value="inherit">{i18n.t("popup.inheritSite")}</option><option value="none">{i18n.t("popup.noPreset")}</option>{TRANSLATION_PRESETS.map(item => <option key={item.id} value={item.id}>{localizedPresetLabel(item.id, i18n)} · {i18n.t(`preset.${item.id}.description` as "preset.technical.description")}</option>)}</select>
+      <div className="row preset-actions"><button id="applyPreset" className="tf-button tf-button--secondary" disabled={ui.busy || context?.engine === "machine-translation"} onClick={() => void ui.applyPreset(false)}>{i18n.t("popup.applyTemporarily")}</button><button id="savePreset" className="tf-button tf-button--secondary" disabled={ui.busy || context?.engine === "machine-translation"} onClick={() => void ui.applyPreset(true)}>{i18n.t("popup.saveToSite")}</button></div>
+      <div id="presetHint" className="preset-hint">{context?.engine === "machine-translation" ? i18n.t("mt.independent") : context ? contextHint(context, i18n) : ui.context.loading ? i18n.t("popup.loadingContext") : ui.context.error}</div>
       <div className="row maintenance-actions"><button id="toggle" className="tf-button tf-button--ghost" disabled={ui.busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.TOGGLE_TRANSLATIONS)}>{i18n.t("popup.toggleTranslations")}</button><button id="clear" className="tf-button tf-button--ghost" disabled={ui.busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.CLEAR_TRANSLATIONS)}>{i18n.t("popup.clearTranslations")}</button></div>
     </div></details>
 

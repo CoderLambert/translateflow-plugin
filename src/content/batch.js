@@ -20,7 +20,8 @@
         el,
         text,
         rich: source.rich,
-        normalizedText: normalizeSourceText(text)
+        normalizedText: normalizeSourceText(text),
+        protectedIds: (source.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : [])
       });
     }
     return entries;
@@ -29,29 +30,31 @@
   function groupEntriesByText(entries) {
     const byText = new Map();
     for (const entry of entries) {
-      let group = byText.get(entry.normalizedText);
+      const groupKey = JSON.stringify([entry.normalizedText, entry.protectedIds || []]);
+      let group = byText.get(groupKey);
       if (!group) {
         group = {
           id: String(byText.size + 1),
           text: entry.text,
           normalizedText: entry.normalizedText,
           rich: entry.rich,
+          protectedIds: entry.protectedIds || [],
           elements: []
         };
-        byText.set(entry.normalizedText, group);
+        byText.set(groupKey, group);
       }
       group.elements.push(entry.el);
     }
     return [...byText.values()];
   }
 
-  function makeBatches(groups) {
+  function makeBatches(groups, limits = {}) {
     const batches = [];
     let current = [];
     let chars = 0;
     for (const group of groups) {
       const nextChars = chars + group.text.length;
-      if (current.length && (current.length >= BATCH_MAX_ITEMS || nextChars > BATCH_MAX_CHARS)) {
+      if (current.length && (current.length >= (limits.maxItems || BATCH_MAX_ITEMS) || nextChars > (limits.maxChars || BATCH_MAX_CHARS))) {
         batches.push(current);
         current = [];
         chars = 0;

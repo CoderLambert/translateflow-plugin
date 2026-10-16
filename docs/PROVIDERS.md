@@ -120,3 +120,22 @@ Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider
 ## 浏览器基础翻译与 AI 的选择
 
 无已配置 AI 服务时，只有单词型划词可使用默认开启的浏览器基础释义；整页、字幕和较长划词内容明确要求配置 AI。此能力不是 HTTP Provider，不能由后台执行。`translationConfig()` 仅为获准的划词任务生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset、Glossary 与其它翻译路径。AI 配置错误不视为“未配置”；只有符合范围的划词在 AI 请求失败后可由用户点击切换到新基础任务。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。
+
+
+## 免费在线机器翻译
+
+`machineTranslation` 是独立 opt-in 配置，不属于 `providerConnections`。缺失时为 legacy；合法配置包含 version=1、mode（legacy/free-online）、providerId、sourceLanguage。未知服务、模式或版本明确失败，不回退到可能收费的 AI。
+
+首批固定服务为 `mt-microsoft-web`（Edge 网页接口）和 `mt-tencent-transmart`（腾讯交互翻译）。不包含用户 Key、Cookie、任意 Base URL、任意 Header 或代理。网络仅在 `providers/machine-translation-transport.js`；`credentials: omit`、拒绝重定向、请求前检查已授权 origin，真实 HTTP 及正文读取共用 15 秒超时、512 KiB 响应上限。每家串行、有界等待、429/403 冷却；失败不自动换线或转 AI。不会新增 Manifest 权限。
+
+全局模式只修改自己的键；站点 `machineTranslation` 只作为覆盖值。未显式覆盖的旧站点 AI 选择优先于新增全局免费模式。Options 和 Popup 是设置/连接检查的唯一可信入口。启用或测试必须有用户动作和前端明确传输确认；检查只发送固定非敏感例句。读取状态不会联网。全局/站点切换会取消当前文字任务，不改 AI 凭据和独立助手任务。
+
+`translationConfig()` 在网页/文字划词解析免费路由；AI `getEffectiveConfig()`、`getEffectiveConfigForSite()`、字幕与助手保持原行为。免费配置不要求 Key，损坏的 AI 连接不阻断显式免费文字翻译。`hasConfiguredAi()` 语义不因免费模式改变。
+
+免费快照有 mt: 前缀，绑定 tab/frame/document/pageUrl，缺失、过期、切换、导航及 worker 重启后拒绝旧任务，不落回 AI。Provider 和 cache store 复用同一快照。MT 指纹单独加入服务、固定 endpoint、源/目标语言及 adapter/input 版本，单条源身份额外包含 protectedIds。原 AI / browser-translator 指纹、IndexedDB schema、Reading schema 不改变、不清理。
+
+富文本复用纯函数 `translationParts`：结构标记、链接目标及 code/kbd 留在本地，只有文字槽送给 Provider。返回结果必须完整且与输入一一对应；结构错误、实体损坏、空值、业务失败不作为成功写入缓存。显示复用现有安全 DOM 重建。首版不对免费接口承诺 AI Prompt、风格或自定义译法生效。
+
+Reading 仍保存现有 `translation` artifact；provenance 使用真实 provider、`model: not-disclosed`、`promptVersion: mt-adapter-v1` 和实际配置指纹。未披露模型不伪装成具体 AI 模型。悬停和历史回看仍只读本地，助手 artifact 不改变。
+
+单测：`node --test tests/machine-translation.test.mjs`。实际编译 MV3 流程：`npm run test:e2e -- e2e/machine-translation.spec.mjs`（先构建）。E2E 仅对两个固定域名注入合成响应，不替代用户网络的真实服务可用性验证。

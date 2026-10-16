@@ -12,7 +12,10 @@
   const { constants, messages, state, getPageIdentity, normalizeSourceText, sendRuntimeMessage, showToast } = app.modules.runtime;
   const t = (key, args) => app.modules.contentI18n.t(key, args);
   const resultMessage = (key, args = {}) => ({ message: t(key, args), messageKey: key, messageArgs: args });
-  const responseError = (response, key) => Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
+  const responseError = (response, key) => {
+    if (/^MT_(CONFIG|LANGUAGE|STRUCTURE|PERMISSION|INPUT|BUSY|RATE_LIMIT|BLOCKED|HTTP|TIMEOUT|NETWORK|RESPONSE|CONSENT)$/u.test(response?.errorCode || "")) key = `mt.error.${response.errorCode}`;
+    return Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
+  };
   const tasks = app.modules.tasks;
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
@@ -43,7 +46,8 @@
       }
 
       const groups = groupEntriesByText(entries);
-      const batches = makeBatches(groups);
+      const engineSettings = await sendRuntimeMessage({ type: messages.background.TRANSLATION_ENGINE_SETTINGS, pageUrl: location.href, surface: "page" });
+      const batches = makeBatches(groups, engineSettings?.engine === "machine-translation" ? { maxItems: 3, maxChars: 2500 } : {});
       let cacheHits = 0;
       let apiTranslated = 0;
       let missing = 0;
@@ -133,6 +137,9 @@
   }
 
   async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "" }) {
+    // Older callers omit protection metadata; freeze it before the first await.
+    groups = groups.map(group => ({ ...group, protectedIds: group.protectedIds ||
+      (app.modules.structured?.encodeElement(group.elements[0])?.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : []) }));
     const expectedPageIdentity = getPageIdentity(pageUrl);
     const pageTitle = document.title;
     if (task) tasks.transition(task, "cache_lookup");
@@ -144,8 +151,7 @@
       pageUrl,
       languageSource: "page",
       configSnapshotId: existingSnapshotId,
-      segments: groups.map(({ id, text, elements }) => ({ id, text,
-        protectedIds: app.modules.structured.encodeElement(elements[0]).descriptors.flatMap((item, index) => item.protectedText != null ? [index] : []) }))
+      segments: groups.map(({ id, text, protectedIds = [] }) => ({ id, text, protectedIds }))
     });
     if (task) tasks.assertActive(task);
     if (!lookup?.ok) throw responseError(lookup, "content.page.cacheLookupFailed");
@@ -182,7 +188,7 @@
       requestId: task?.id || crypto.randomUUID(),
       pageUrl,
       configSnapshotId,
-      segments: uncached.map(({ id, text, elements }) => ({ id, text, protectedIds: app.modules.structured.encodeElement(elements[0]).descriptors.flatMap((item, index) => item.protectedText != null ? [index] : []) }))
+      segments: uncached.map(({ id, text, protectedIds = [] }) => ({ id, text, protectedIds }))
     });
     if (task) tasks.assertActive(task);
     if (!response?.ok) throw responseError(response, "content.page.translationFailed");
@@ -199,7 +205,7 @@
       if (getPageIdentity(location.href) === expectedPageIdentity) {
         apiTranslated += insertGroupTranslation(group, translation, response.engine);
       }
-      toStore.push({ sourceText: group.text, translation });
+      toStore.push({ sourceText: group.text, translation, ...(lookup.engine === "machine-translation" ? { protectedIds: group.protectedIds || [] } : {}) });
     }
 
     if (getPageIdentity(location.href) !== expectedPageIdentity) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
@@ -213,6 +219,7 @@
         type: messages.background.CACHE_STORE,
         pageUrl,
         pageTitle,
+        requestId: task?.id,
         configSnapshotId,
         items: toStore
       });
@@ -232,8 +239,9 @@
     let inserted = 0;
     for (const el of group.elements) {
       if (!document.contains(el)) continue;
-      const currentText = extractSourceSegment(el).text;
-      if (normalizeSourceText(currentText) !== group.normalizedText) {
+      const current = extractSourceSegment(el), currentText = current.text;
+      const protectedIds = (current.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : []);
+      if (normalizeSourceText(currentText) !== group.normalizedText || (engine === "machine-translation" && JSON.stringify(protectedIds) !== JSON.stringify(group.protectedIds || []))) {
         if (state.auto || state.cacheRestore) app.modules.auto?.invalidateAndObserve(el);
         continue;
       }

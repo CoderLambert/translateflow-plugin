@@ -44,9 +44,9 @@ test("translation exposes cancellation and reports the confirmed cancelled resul
   await userEvent.click(screen.getByRole("button", { name: "Translate current page" }));
   const cancelButton = await screen.findByRole("button", { name: "Cancel current translation" });
   await userEvent.click(cancelButton); expect(cancel).toHaveBeenCalledWith(7, expect.any(String));
-  expect(screen.getByRole("status").textContent).toContain("Cancelling translation");
+  expect(screen.getByRole("status", { name: "Page translation" }).textContent).toContain("Cancelling translation");
   await act(async () => result.resolve({ ok: true, cancelled: true }));
-  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Translation cancelled"));
+  await waitFor(() => expect(screen.getByRole("status", { name: "Page translation" }).textContent).toContain("Translation cancelled"));
 });
 
 test("page action failure stays recoverable and a retry can succeed", async () => {

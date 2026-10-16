@@ -1,9 +1,10 @@
+import { MACHINE_ENGINE, normalizeProtectedIds } from "../shared/machine-translation.js";
 import { executeTranslation } from "./translation-gateway.js";
 
 const inflightByKey = new Map();
 const requestsById = new Map();
 
-export async function runTranslationRequest({ requestId, segments, config }) {
+export async function runTranslationRequest({ requestId, segments, config, pageUrl = "", ownerTabId = null }) {
   const id = String(requestId || crypto.randomUUID());
   const requestConfig = withStructuredMarkerInstruction(segments, config);
   const key = buildTranslationRequestKey(segments, requestConfig);
@@ -15,6 +16,9 @@ export async function runTranslationRequest({ requestId, segments, config }) {
       key,
       controller,
       consumers: new Set(),
+      pages: new Map(),
+      tabs: new Map(),
+      engine: requestConfig.engine,
       settled: false,
       promise: null
     };
@@ -31,6 +35,7 @@ export async function runTranslationRequest({ requestId, segments, config }) {
   }
 
   entry.consumers.add(id);
+  entry.pages.set(id, pageUrl); entry.tabs.set(id, ownerTabId);
   requestsById.set(id, entry);
 
   try {
@@ -38,7 +43,7 @@ export async function runTranslationRequest({ requestId, segments, config }) {
     if (!entry.consumers.has(id)) throw createCancelledError();
     return translations;
   } finally {
-    entry.consumers.delete(id);
+    entry.consumers.delete(id); entry.pages.delete(id); entry.tabs.delete(id);
     if (requestsById.get(id) === entry) requestsById.delete(id);
   }
 }
@@ -48,7 +53,7 @@ export function cancelTranslationRequest(requestId) {
   const entry = requestsById.get(id);
   if (!entry) return { cancelled: false };
 
-  entry.consumers.delete(id);
+  entry.consumers.delete(id); entry.pages.delete(id); entry.tabs.delete(id);
   requestsById.delete(id);
 
   if (!entry.settled && entry.consumers.size === 0) {
@@ -57,8 +62,17 @@ export function cancelTranslationRequest(requestId) {
   return { cancelled: true };
 }
 
+export function cancelTextTranslations(pageUrl = "") {
+  for (const [id, entry] of requestsById) if (!pageUrl || entry.pages.get(id) === pageUrl) cancelTranslationRequest(id);
+}
+
+export function cancelMachineTranslations(tabId = null) {
+  for (const [id, entry] of requestsById) if (entry.engine === MACHINE_ENGINE && (tabId === null || entry.tabs.get(id) === tabId)) cancelTranslationRequest(id);
+}
+
 export function buildTranslationRequestKey(segments, config) {
   return JSON.stringify({
+    ...(config?.engine === MACHINE_ENGINE ? { engine: config.engine, sourceLanguage: config.sourceLanguage, inputVersion: config.inputVersion } : {}),
     provider: String(config?.provider || ""),
     connectionId: String(config?.connectionId || ""),
     connectionRevision: Number(config?.connectionRevision || 0),
@@ -68,7 +82,8 @@ export function buildTranslationRequestKey(segments, config) {
     targetLanguage: String(config?.targetLanguage || ""),
     segments: (Array.isArray(segments) ? segments : []).map((item) => ({
       id: String(item.id),
-      text: String(item.text)
+      text: String(item.text),
+      ...(config?.engine === MACHINE_ENGINE ? { protectedIds: normalizeProtectedIds(item.protectedIds) } : {})
     }))
   });
 }
@@ -81,6 +96,7 @@ function createCancelledError() {
 
 
 function withStructuredMarkerInstruction(segments, config) {
+  if (config?.engine === MACHINE_ENGINE) return config;
   const hasMarkers = (Array.isArray(segments) ? segments : [])
     .some((item) => /⟦TF:\d+:[SE]⟧/.test(String(item?.text || "")));
   if (!hasMarkers) return config;
