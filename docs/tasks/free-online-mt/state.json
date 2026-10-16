@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "task": "free-online-mt",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/free-online-mt-20261016",
+  "candidateHead": "",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/machine-translation.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/machine-translation.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "功能已实现；完成最终版本产物核对并同步 PR。真实供应商及用户网络可用性仍需独立验证，未合入 main。"
+}

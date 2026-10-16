@@ -6,8 +6,8 @@ const CAPABILITIES = Object.freeze({
   partialResults: false
 });
 
-export function getTranslationGatewayCapabilities() {
-  return CAPABILITIES;
+export function getTranslationGatewayCapabilities(config) {
+  return config?.engine === "machine-translation" ? Object.freeze({ ...CAPABILITIES, streaming: false }) : CAPABILITIES;
 }
 
 export async function executeTranslation({

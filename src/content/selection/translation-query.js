@@ -5,6 +5,7 @@
   const tasks = app.modules.tasks;
   const t = (key) => app.modules.contentI18n.t(key);
   function localizedError(key, response = null) {
+    if (/^MT_(CONFIG|LANGUAGE|STRUCTURE|PERMISSION|INPUT|BUSY|RATE_LIMIT|BLOCKED|HTTP|TIMEOUT|NETWORK|RESPONSE|CONSENT)$/u.test(response?.errorCode || "")) key = `mt.error.${response.errorCode}`;
     const error = Object.assign(new Error(t(key)), { i18nKey: key });
     if (response?.errorCode) error.code = response.errorCode;
     return error;

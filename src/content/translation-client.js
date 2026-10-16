@@ -72,6 +72,7 @@
     const settings = await checkedSettings(payload, raw, controller);
     if (settings.engine !== BROWSER_ENGINE) {
       controller.basic = false;
+      if (settings.engine === "machine-translation") controller.browserAllowed = false;
       if (isNativeId(payload.configSnapshotId)) throw engine.error("ENGINE_SWITCH");
       if (settings.configured === false) {
         if (payload.cacheOnly) return { ok: true, hits: [], engine: "ai", skippedIds: [] };
@@ -272,6 +273,7 @@
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type !== messages.PUBLIC_SETTINGS_CHANGED) return;
     if (["defaultService", "providerConnections", "aiServiceConfigured", "apiKey"].some(key => message.changes?.[key])) forceBrowser = false;
+    if (message.changes?.machineTranslation || message.changes?.siteProfiles || message.changes?.targetLanguage) { forceBrowser = false; dispose(); }
     if (message.changes?.browserSourceLanguage || message.changes?.targetLanguage || message.changes?.browserTranslationEnabled?.newValue === false) dispose({ basicOnly: true });
   });
   window.addEventListener("pagehide", dispose); window.addEventListener("popstate", dispose);

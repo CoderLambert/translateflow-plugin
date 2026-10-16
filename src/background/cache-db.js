@@ -1,3 +1,4 @@
+import { MACHINE_ENGINE, machineSourceIdentity } from "../shared/machine-translation.js";
 import { CACHE_SCHEMA_VERSION, PROVIDER_IDS } from "../shared/constants.js";
 import { byteLength, sha256 } from "../shared/hash.js";
 import { normalizeOpenAIBaseUrl } from "../shared/provider-config.js";
@@ -33,7 +34,7 @@ export async function lookupTranslations({ pageUrl, segments, config }) {
   const hashed = await Promise.all(segments.map(async (segment) => ({
     id: String(segment.id),
     text: String(segment.text),
-    sourceHash: await sha256(normalizeSourceText(segment.text))
+    sourceHash: await translationSourceHash(segment.text, config, segment.protectedIds)
   })));
 
   const tx = db.transaction([TRANSLATIONS, PAGES], "readwrite");
@@ -76,7 +77,7 @@ export async function storeTranslations({ pageUrl, pageTitle = "", items, config
   const prepared = await Promise.all(items.map(async (item) => {
     const sourceText = String(item.sourceText || "");
     const translation = String(item.translation || "").trim();
-    const sourceHash = await sha256(normalizeSourceText(sourceText));
+    const sourceHash = await translationSourceHash(sourceText, config, item.protectedIds);
     const cacheKey = `${ctx.pageConfigKey}:${sourceHash}`;
     return {
       cacheKey,
@@ -264,7 +265,15 @@ export async function pruneCache(maxBytes) {
   return { ...finalStats, deleted };
 }
 
+export function translationSourceHash(text, config, protectedIds) {
+  return sha256(config?.engine === MACHINE_ENGINE ? machineSourceIdentity(text, protectedIds) : normalizeSourceText(text));
+}
+
 export async function getConfigHash(config) {
+  if (config?.engine === MACHINE_ENGINE) return sha256(JSON.stringify({
+    cacheSchema: CACHE_SCHEMA_VERSION, engine: MACHINE_ENGINE, provider: config.provider, endpoint: config.apiBaseUrl,
+    sourceLanguage: config.sourceLanguage, targetLanguage: config.targetLanguage, protocol: config.protocol, inputVersion: config.inputVersion
+  }));
   const provider = String(config?.provider || PROVIDER_IDS.DEEPSEEK).trim();
   const payload = {
     cacheSchema: CACHE_SCHEMA_VERSION,

@@ -1,9 +1,10 @@
+import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machine-translation-settings.js";
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
 import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "./cache-db.js";
-import { translationEngineSettings } from "./browser-translation.js";
+import { translationConfig, translationEngineSettings } from "./browser-translation.js";
 import { getConfig, getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
   hideQuickControlSite,
@@ -77,21 +78,23 @@ export function registerMessageRouter() {
     return true;
   });
 }
-
 export async function handleBackgroundMessage(message, sender) {
+  if (MACHINE_SETTING_MESSAGES.includes(message?.type)) return handleMachineSettingsMessage(message, sender);
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
       return translationEngineSettings(message.pageUrl, { forceBrowser: message.forceBrowser === true, surface: message.surface });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
       if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
       return {
         translations: await runTranslationRequest({
           requestId: message.requestId,
+          pageUrl: message.pageUrl, ownerTabId: sender?.tab?.id,
           segments: message.segments,
           config
         }),
-        readingResult: await readingTranslationResult(config)
+        readingResult: await readingTranslationResult(config),
+        ...(config.engine === "machine-translation" ? { engine: config.engine, provider: config.provider } : {})
       };
     }
     case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
@@ -152,18 +155,18 @@ export async function handleBackgroundMessage(message, sender) {
       });
     case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
       const snapshot = message.configSnapshotId
-        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl) }
-        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation);
+        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender) }
+        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation, sender);
       const config = snapshot.config;
       const result = await lookupTranslations({
         pageUrl: message.pageUrl,
         segments: message.segments,
         config
       });
-      return { ...result, engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
+      return { ...result, ...(config.engine === "machine-translation" ? { provider: config.provider } : {}), engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
     }
     case BACKGROUND_MESSAGES.CACHE_STORE: {
-      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
       if (config.engine === "browser-translator" && (await getConfig()).browserTranslationEnabled === false) throw Object.assign(new Error("Browser translation is disabled."), { code: "BROWSER_DISABLED" });
       const result = await storeTranslations({
         pageUrl: message.pageUrl,
@@ -176,7 +179,7 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
       return getPageCacheStatus({
         pageUrl: message.pageUrl,
-        config: await getEffectiveConfig(message.pageUrl)
+        config: await translationConfig(message.pageUrl)
       });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_PAGE:
       return clearPageCache({ pageUrl: message.pageUrl });
@@ -368,7 +371,6 @@ async function notifyRichMddResourcesChanged(dictionaryId) {
     }
   }));
 }
-
 function assertOptionsSender(sender) {
   const expected = chrome.runtime.getURL(EXTENSION_PAGES.options);
   const actual = String(sender?.url || "");
@@ -399,7 +401,6 @@ function assertSelectionContentSender(sender) {
     throw error;
   }
 }
-
 export function selectionContentOwnerKey(sender, message = {}) {
   const tabId = Number(sender?.tab?.id);
   const frameId = Number.isInteger(sender?.frameId) ? sender.frameId : 0;

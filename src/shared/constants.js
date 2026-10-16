@@ -1,3 +1,4 @@
+import { DEFAULT_MACHINE_TRANSLATION } from "./machine-translation.js";
 import { DEFAULT_APPEARANCE_ID } from "./appearance.js";
 import { SELECTION_EXPLANATION_DEPTH } from "./selection.js";
 
@@ -13,6 +14,7 @@ export const GLOSSARY_STORAGE_VERSION = 1;
 export const DEFAULT_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, entries: Object.freeze([]) });
 export const DEFAULT_SITE_GLOSSARY_STORE = Object.freeze({ version: GLOSSARY_STORAGE_VERSION, sites: Object.freeze({}) });
 export const DEFAULT_CONFIG = Object.freeze({
+  machineTranslation: DEFAULT_MACHINE_TRANSLATION,
   aiServiceConfigured: null, browserTranslationEnabled: true, browserSourceLanguage: "auto", dictionaryEnabled: false,
   apiKey: "", provider: PROVIDER_IDS.DEEPSEEK, model: "deepseek-flash", chatgptPlanModel: "", targetLanguage: "Simplified Chinese", uiLocale: "zh_CN",
   appearance: DEFAULT_APPEARANCE_ID, cacheMaxMB: 200, cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
@@ -24,6 +26,7 @@ export const DEFAULT_CONFIG = Object.freeze({
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
 export const CACHE_SCHEMA_VERSION = 2;
 export const BACKGROUND_MESSAGES = Object.freeze({
+  MACHINE_TRANSLATION_GET: "MACHINE_TRANSLATION_GET", MACHINE_TRANSLATION_SAVE: "MACHINE_TRANSLATION_SAVE", MACHINE_TRANSLATION_TEST: "MACHINE_TRANSLATION_TEST",
   TRANSLATION_ENGINE_SETTINGS: "TRANSLATION_ENGINE_SETTINGS",
   TRANSLATE_BATCH: "TRANSLATE_BATCH", SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH", CANCEL_TRANSLATION: "CANCEL_TRANSLATION",
   TEST_API: "TEST_API", PROVIDER_CONNECTIONS_LIST: "PROVIDER_CONNECTIONS_LIST", PROVIDER_CONNECTION_UPSERT: "PROVIDER_CONNECTION_UPSERT",
