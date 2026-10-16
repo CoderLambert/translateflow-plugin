@@ -1,0 +1,33 @@
+name: Free MT build inputs
+on:
+  push:
+    branches: [feat/free-online-mt-20261016]
+    paths: [.github/workflows/free-mt-build-inputs.yml]
+permissions:
+  contents: read
+jobs:
+  inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - name: Export tracked source and public locked dependencies
+        run: |
+          mkdir -p "$RUNNER_TEMP/mt-inputs"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/mt-inputs/source.tar.gz"
+          tar -czf "$RUNNER_TEMP/mt-inputs/dependencies.tar.gz" node_modules
+          cp "$(command -v node)" "$RUNNER_TEMP/mt-inputs/node"
+          sha256sum "$RUNNER_TEMP/mt-inputs/"* > "$RUNNER_TEMP/mt-inputs/SHA256SUMS"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: free-mt-build-inputs
+          path: ${{ runner.temp }}/mt-inputs/
+          retention-days: 1
+          compression-level: 0
