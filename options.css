@@ -228,7 +228,22 @@ h1 {
   color: var(--tf-text-secondary);
 }
 
-main > section {
+.settings-panel[hidden] {
+  display: none !important;
+}
+
+.settings-panel:focus {
+  outline: none;
+}
+
+.settings-panel:focus-visible {
+  outline: 2px solid var(--tf-green-600);
+  outline-offset: 4px;
+}
+
+main > section,
+.settings-panel > section,
+.settings-card {
   scroll-margin-top: 24px;
   margin-top: 18px;
   padding: 24px;
@@ -1002,7 +1017,9 @@ kbd {
     min-width: 0;
   }
 
-  main > section {
+  main > section,
+  .settings-panel > section,
+  .settings-card {
     padding: 20px 16px;
     border-radius: var(--tf-radius-md);
   }

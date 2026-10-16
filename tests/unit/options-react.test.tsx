@@ -23,6 +23,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const zh = createI18n({ uiLocale: "zh_CN" });
+const en = createI18n({ uiLocale: "en" });
 function LocaleControl() { const locale = useLocale(); return <UiLocaleSection {...locale} />; }
 function zhNode(node: React.ReactNode) { return <LocaleProvider value={zh}>{node}</LocaleProvider>; }
 
@@ -205,28 +206,53 @@ test("UI locale StrictMode deduplicates its initial read and writes only after i
   await waitFor(() => expect(set).toHaveBeenCalledWith({ uiLocale: "zh_CN" }));
 });
 
-test("Glossary React controls cover save, scope, case, enable, edit and delete", async () => {
+test("preferred translations explain their behavior and preserve save, scope, case, enable, edit and delete", async () => {
   const first: GlossaryRow = { scope: "global", origin: "", entry: { id: "term-1", source: "repository", target: "仓库", caseSensitive: false, enabled: true } };
   const rows = vi.fn(async () => [first]);
   const save = vi.fn(async () => [{ ...first, entry: { ...first.entry, target: "代码仓库", caseSensitive: true } }]);
-  const setEnabled = vi.fn(async () => [{ ...first, entry: { ...first.entry, enabled: false } }]);
+  const setEnabled = vi.fn(async (_row: GlossaryRow, enabled: boolean) => [{ ...first, entry: { ...first.entry, enabled } }]);
   const remove = vi.fn(async () => []);
   const client = { rows, save, setEnabled, remove } as GlossaryClient;
   const status = vi.fn();
   render(<StrictMode>{zhNode(<GlossarySection client={client} setStatus={status} />)}</StrictMode>);
   await screen.findByText(/repository → 仓库/u);
+  expect(screen.getByRole("heading", { name: "自定义译法" })).toBeTruthy();
+  expect(screen.getByText(/网页和字幕翻译、划词查词都会使用这里的译法/u)).toBeTruthy();
+  expect(screen.getByText("例如：repository → 仓库，pull request → 拉取请求。")).toBeTruthy();
+  await userEvent.selectOptions(screen.getByLabelText("应用范围"), "site");
+  expect(screen.getByText(/填写完整网站地址，例如 https:\/\/github\.com/u)).toBeTruthy();
+  expect((screen.getByLabelText("网站地址") as HTMLInputElement).disabled).toBe(false);
+  await userEvent.selectOptions(screen.getByLabelText("应用范围"), "global");
   await userEvent.click(screen.getByRole("button", { name: "编辑" }));
-  const target = screen.getByLabelText("目标译法");
+  const target = screen.getByLabelText("希望译成");
   await userEvent.clear(target); await userEvent.type(target, "代码仓库");
-  await userEvent.click(screen.getByLabelText("区分大小写"));
-  await userEvent.click(screen.getByRole("button", { name: "保存术语" }));
+  await userEvent.click(screen.getByLabelText(/区分大小写/u));
+  await userEvent.click(screen.getByRole("button", { name: "保存自定义译法" }));
   await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: "term-1", target: "代码仓库", caseSensitive: true })));
+  expect(status).toHaveBeenCalledWith("已保存。之后的翻译和划词查词会优先使用这条译法。");
   await userEvent.click(screen.getByRole("button", { name: "停用" }));
   await waitFor(() => expect(setEnabled).toHaveBeenCalledWith(expect.objectContaining({ entry: expect.objectContaining({ id: "term-1" }) }), false));
+  await userEvent.click(screen.getByRole("button", { name: "启用" }));
+  await waitFor(() => expect(setEnabled).toHaveBeenLastCalledWith(expect.objectContaining({ entry: expect.objectContaining({ id: "term-1" }) }), true));
   await userEvent.click(screen.getByRole("button", { name: "删除" }));
   await waitFor(() => expect(remove).toHaveBeenCalled());
 });
 
+test("preferred translations provide complete matching English copy and an instructive empty state", async () => {
+  const client = { rows: vi.fn(async () => []), save: vi.fn(), setEnabled: vi.fn(), remove: vi.fn() } as unknown as GlossaryClient;
+  const view = render(<LocaleProvider value={zh}><GlossarySection client={client} setStatus={vi.fn()} /></LocaleProvider>);
+  expect(await screen.findByRole("heading", { name: "自定义译法" })).toBeTruthy();
+  view.rerender(<LocaleProvider value={en}><GlossarySection client={client} setStatus={vi.fn()} /></LocaleProvider>);
+  expect(await screen.findByRole("heading", { name: "Preferred translations" })).toBeTruthy();
+  expect(screen.getByText(/web pages, subtitles and selected-word lookups/u)).toBeTruthy();
+  expect(screen.getByText("For example: repository → 仓库, pull request → 拉取请求.")).toBeTruthy();
+  expect(screen.getByLabelText("Apply to")).toBeTruthy();
+  expect(screen.getByLabelText("Original word or phrase")).toBeTruthy();
+  expect(screen.getByLabelText("Translate it as")).toBeTruthy();
+  expect(screen.getByText(/You have not added any preferred translations yet/u)).toBeTruthy();
+  await userEvent.selectOptions(screen.getByLabelText("Apply to"), "site");
+  expect(screen.getByText(/Enter the full website address, such as https:\/\/github\.com/u)).toBeTruthy();
+});
 test("selected-word browser definitions default on and source preference changes through the existing settings owner", async () => {
   const update = vi.fn();
   render(<LocaleProvider value={zh}><GeneralSection config={config} disabled={false} update={update} /></LocaleProvider>);

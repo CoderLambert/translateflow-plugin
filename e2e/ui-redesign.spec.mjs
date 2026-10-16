@@ -44,7 +44,7 @@ test.describe("UI redesign release gate", () => {
     expect(intrinsic.bodyMinWidth).toBe("360px");
   });
 
-  test("Settings keeps active navigation, bounded desktop content and a usable narrow layout", async ({ harness }) => {
+  test("Settings keeps active navigation, bounded desktop content and a usable narrow layout", async ({ harness }, testInfo) => {
     const page = await harness.context.newPage();
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`chrome-extension://${harness.extensionId}/options.html`);
@@ -62,11 +62,15 @@ test.describe("UI redesign release gate", () => {
     expect(desktop.width).toBeLessThanOrEqual(1240);
 
     await expect(page.locator('.settings-nav a[href="#general"]')).toHaveAttribute("aria-current", "page");
+    const promptWidth = await page.locator("#prompt").evaluate((node) => node.getBoundingClientRect().width);
+    expect(promptWidth).toBeGreaterThan(0);
+    expect(promptWidth).toBeLessThanOrEqual(760);
     await page.locator('.settings-nav a[href="#appearance"]').click();
     await expect(page.locator('.settings-nav a[href="#appearance"]')).toHaveAttribute("aria-current", "page");
 
-    const promptWidth = await page.locator("#prompt").evaluate((node) => node.getBoundingClientRect().width);
-    expect(promptWidth).toBeLessThanOrEqual(760);
+    await expect(page.locator("#prompt")).toBeHidden();
+    await expect(page.locator("#defaultAppearance")).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("settings-appearance-desktop.png"), fullPage: true });
 
     await page.setViewportSize({ width: 700, height: 900 });
     const narrow = await shell.evaluate((node) => ({
@@ -75,7 +79,10 @@ test.describe("UI redesign release gate", () => {
     }));
     expect(narrow.display).toBe("block");
     expect(narrow.overflow).toBeLessThanOrEqual(0);
+    await page.locator('.settings-nav a[href="#auto-sites"]').click();
     await expect(page.locator("#cacheRestoreSitesList")).toBeVisible();
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+    await page.screenshot({ path: testInfo.outputPath("settings-behavior-dark-narrow.png"), fullPage: true });
 
     await page.close();
   });

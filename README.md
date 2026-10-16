@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.11
+# TranslateFlow v0.8.13
 
 轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时可使用浏览器能力完成划词释义；整页、字幕和较长文本翻译使用已配置的 AI 服务，本地词典仍为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
@@ -25,7 +25,7 @@
 - 结构化双语渲染：保留链接、强调、code/kbd/mark 等安全内联语义，不注入模型 HTML
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
 - DeepSeek v0.3/v0.4 缓存继续兼容
-- 全局 + 站点术语表：支持覆盖、启停、大小写规则，并纳入有效缓存身份
+- 全局 + 网站自定义译法：支持覆盖、启停和大小写规则
 - Technical / Academic / News / Natural 四种内置翻译模式
 - Popup 展示当前站点 / 模式 / Provider / Model，并支持临时切换或保存到本站
 
@@ -37,7 +37,7 @@
 - **Persistent cache restore**：可按站点自动恢复 IndexedDB 已有译文；cache miss 不触发 Provider。
 - **Chrome Commands**：翻译/更新页面、显示/隐藏译文、切换 Quick Control。
 - **YouTube subtitles**：MAIN-world player-owned timedtext 主路径，TextTrack 与 rendered DOM 作为 fallback；支持双语/原文/off、ASR、人类字幕、SPA 切换与缓存复用。
-- **Settings IA**：General / Appearance / YouTube / Sites / Automatic behavior / Glossary + Advanced Provider / Cache / Developer。
+- **Settings IA**：General / Appearance / YouTube / Sites / Automatic behavior / Preferred translations + Advanced Provider / Cache / Developer。
 
 ## 架构
 
@@ -67,7 +67,7 @@ cache-db        providers/
                    └── chatgpt-plan (optional native host)
 ```
 
-关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖和术语表先在共享配置层解析，Provider adapter 不读取术语存储。
+关键原则：**API 请求和缓存查询必须使用同一份有效配置**。站点覆盖和自定义译法先在共享配置层解析，Provider adapter 不读取 glossary 存储。
 
 词典/划词能力遵循另一条硬边界：**Source-driven data → Rule-driven retrieval → Context-driven ranking → User-driven AI**。TranslateFlow 负责查询、排序、来源追踪和展示，不把持续人工维护单词释义当作 coverage 方案。测试/benchmark 词条属于验证资产，不应为了通过测试进入运行时词典；大型辞典通过可下载/本地导入机制提供，而不是塞进基础扩展包。
 
@@ -204,7 +204,9 @@ npm run build:extension
 7. 打开一个 HTTPS 网页并刷新页面，然后划选单词；首次使用某个语言对时，按划词面板提示点击“准备并翻译”
 8. 如需整页、字幕或较长文本翻译，到 Provider 设置添加 AI 连接、填写模型与 API Key，并设为默认服务
 
-划词浏览器释义不需要 API Key。AI 解释、整页、字幕和较长文本翻译需要 AI 服务。词典也是可选功能：需要更完整的本地词典结果时，在“高级设置：可选词典”中导入词典并开启“翻译前优先查询已安装词典”。
+设置页点击左侧栏目后，右侧只显示对应内容。切换栏目会保留尚未保存的修改，全局配置通过底部“保存全局设置”统一保存；界面语言仍会即时保存，连接、站点、术语与词典沿用各自的保存或安装入口。通用栏目包含语言、Chrome 本地模型与快捷键，Provider 测试入口位于 Provider 栏目。模型准备和词典导入不会因切换栏目而中断。
+
+划词浏览器释义不需要 API Key。AI 解释、整页、字幕和较长文本翻译需要 AI 服务。词典也是可选功能：需要更完整的本地词典结果时，点击左侧“高级 → 词典库”，导入词典并开启“翻译前优先查询已安装词典”。
 
 更新本地安装时，重新执行 `npm run build:extension`，再到 `chrome://extensions/` 点击 TranslateFlow 卡片上的“重新加载”，最后刷新正在验收的网页。扩展设置、词典、收藏和阅读记录保存在 Chrome 配置中，重新构建不会主动删除这些数据。
 
@@ -327,9 +329,9 @@ Popup 可以临时切换当前站点模式，也可以明确“保存到本站�
 
 如果站点 Profile 已经填写自定义 Prompt，则该 Prompt 优先，Popup 会显示 **Custom Prompt**；选择 Preset 不会覆盖这个自定义 Prompt。
 
-## 术语表
+## 自定义译法
 
-设置页支持全局和站点级术语，例如：
+可以告诉 TranslateFlow 遇到某个词或短语时优先翻成什么。网页和字幕翻译、划词查词都会使用这里的译法，但不会修改已安装的本地词典。例如：
 
 ```text
 repository   -> 仓库
@@ -337,9 +339,9 @@ pull request -> 拉取请求
 middleware   -> 中间件
 ```
 
-每条术语包含：
+每条自定义译法包含：
 
-- 来源术语与目标译法；
+- 原文词语与希望译成的内容；
 - 是否区分大小写；
 - 启用/停用状态；
 - 稳定 ID，便于编辑和后续迁移。
@@ -357,9 +359,9 @@ siteGlossaries:
     https://github.com: [...]
 ```
 
-运行时会先规范化术语。相同 scope 下重复的有效 source key 只保留一个，最新保存值生效；匹配站点的术语会扩展并覆盖同 key 的全局术语。站点术语只影响对应规范化 Origin。
+运行时会先规范化自定义译法。相同 scope 下重复的有效 source key 只保留一个，最新保存值生效；匹配网站的译法会扩展并覆盖同 key 的全局译法。网站译法只影响对应规范化 Origin。
 
-术语在共享配置层被组合进最终 Prompt，DeepSeek/OpenAI-compatible Provider 本身不感知 glossary 数据结构。
+自定义译法在共享配置层被组合进最终 Prompt，DeepSeek/OpenAI-compatible Provider 本身不感知 glossary 数据结构。
 
 ## 缓存
 
@@ -384,7 +386,7 @@ cache schema
 + target language
 + prompt
 + Provider endpoint
-+ effective glossary identity（仅非空术语表）
++ effective glossary identity（仅存在非空自定义译法时）
 
 Preset 不额外写入 cache fingerprint；它通过最终解析出的 Prompt 进入缓存身份。因此切回曾经使用过的同一有效模式，会复用之前的缓存版本。
 
@@ -394,7 +396,7 @@ SHA-256(normalized source text)
 
 普通纯文本段落继续使用原有规范化文本作为缓存身份，因此既有缓存继续命中。包含受支持内联结构的段落使用带 TranslateFlow 结构标记的确定性 source fingerprint，首次可能 miss 一次，但不会提升全局缓存 schema。
 
-迁移后的旧 DeepSeek / OpenAI-compatible 配置保留旧缓存兼容路径。新连接把连接 ID、revision、协议和 Base URL 纳入缓存版本，避免不同后端或连接版本使用同一模型名时误复用译文。API Key 字节不进入缓存。非空有效术语表也会以确定性 identity 参与缓存；空术语表保持既有缓存兼容。
+迁移后的旧 DeepSeek / OpenAI-compatible 配置保留旧缓存兼容路径。新连接把连接 ID、revision、协议和 Base URL 纳入缓存版本，避免不同后端或连接版本使用同一模型名时误复用译文。API Key 字节不进入缓存。非空的有效自定义译法也会以确定性 identity 参与缓存；没有自定义译法时保持既有缓存兼容。
 
 ## 权限
 
@@ -459,7 +461,7 @@ SHA-256(normalized source text)
 - SPA 路由变化：重新计算页面身份
 - API 错误：退避重试
 
-修改全局 Provider、OpenAI-compatible 配置、当前站点 Profile 或有效术语表时，自动模式会清理当前页面译文并按新配置重新处理。Popup 的临时 Preset 会立即重新翻译当前页面，之后新增内容继续使用该 session 模式。
+修改全局 Provider、OpenAI-compatible 配置、当前站点 Profile 或有效自定义译法时，自动模式会清理当前页面译文并按新配置重新处理。Popup 的临时 Preset 会立即重新翻译当前页面，之后新增内容继续使用该 session 模式。
 
 ## 学习中心
 
