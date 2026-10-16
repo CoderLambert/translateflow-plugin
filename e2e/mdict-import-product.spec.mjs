@@ -43,6 +43,10 @@ test.describe("strict MDict visible local import", () => {
     await options
       .locator("#localDictionarySemanticConfirmation")
       .check();
+    await options.locator('.settings-nav a[href="#appearance"]').click();
+    await expect(options.locator("#localDictionaryPreflightSummary")).toBeHidden();
+    await options.locator('.settings-nav a[href="#dictionary-packs"]').click();
+    await expect(options.locator("#localDictionarySemanticConfirmation")).toBeChecked();
     await expect(options.locator("#localDictionaryPreflightSummary")).toContainText("安装方式MDX 结构化纯文本词典");
     await options.locator("#localDictionaryImportButton").click();
     await expect(

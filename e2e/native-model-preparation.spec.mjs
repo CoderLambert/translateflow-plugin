@@ -1,5 +1,12 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
+async function closeTestPages({ harness }) {
+  // The worker profile is shared: an earlier Settings page would register a competing model host.
+  for (const page of harness.context.pages()) if (page !== harness.driver) await page.close();
+}
+test.beforeEach(closeTestPages);
+test.afterEach(closeTestPages);
+
 async function openSettings(harness, options = {}) {
   await harness.reset();
   await harness.setStorage({ provider: "deepseek", apiKey: "", providerConnections: {}, providerCredentials: {}, defaultService: null,
@@ -44,6 +51,9 @@ test("Settings prepares both models with native Window timers and shares them ac
     { kind: "detector", attempt: 1, activated: true }, { kind: "translator", attempt: 1, activated: true }
   ]);
   await section.screenshot({ path: testInfo.outputPath("native-models-ready.png") });
+  // A hidden General panel must keep serving already-prepared models.
+  await page.locator('.settings-nav a[href="#provider"]').click();
+  await expect(section).toBeHidden();
   for (let i = 0; i < 2; i++) {
     const reader = await harness.open("/selection"); await harness.inject(reader);
     const tabId = await harness.tabId(reader);
@@ -61,6 +71,8 @@ test("Settings prepares both models with native Window timers and shares them ac
     await reader.close();
   }
   expect(await page.evaluate(() => __tfNativeSettings.creates.length)).toBe(2);
+  await page.locator('.settings-nav a[href="#general"]').click();
+  await expect(section.getByText("语言识别与翻译自检通过", { exact: true })).toBeVisible();
   expect(harness.server.calls).toHaveLength(0);
   expect(errors).toEqual([]);
 });
@@ -121,5 +133,20 @@ test("unsupported Settings APIs keep preparation disabled without model creation
   await expect(section).toContainText("当前设置页面未提供所需的两个 Chrome API");
   await expect(section.getByRole("button", { name: "准备并校验两个模型", exact: true })).toBeDisabled();
   expect(await page.evaluate(() => __tfNativeSettings.creates)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("preparation continues while another settings category is visible", async ({ harness }) => {
+  const { page, section, errors } = await openSettings(harness, { hold: true });
+  await section.getByRole("button", { name: "准备并校验两个模型", exact: true }).click();
+  await expect(section.getByRole("progressbar")).toHaveCount(2);
+  await page.locator('.settings-nav a[href="#appearance"]').click();
+  await expect(section).toBeHidden();
+  expect(await page.evaluate(() => __tfNativeSettings.destroyed)).toBe(0);
+  await page.evaluate(() => { for (const resolve of __tfNativeSettings.pending.splice(0)) resolve(); });
+  await expect.poll(() => page.evaluate(() => __tfNativeSettings.inputs.length)).toBe(2);
+  await page.locator('.settings-nav a[href="#general"]').click();
+  await expect(section.getByText("语言识别与翻译自检通过", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => __tfNativeSettings.creates.length)).toBe(2);
   expect(errors).toEqual([]);
 });

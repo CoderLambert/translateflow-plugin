@@ -13,7 +13,7 @@ test.describe("Settings information architecture", () => {
     await expect(nav.getByRole("link", { name: "Provider" })).toBeVisible();
 
     await nav.getByRole("link", { name: "YouTube" }).click();
-    await expect(page.locator("#youtube")).toBeFocused();
+    await expect(page.locator("#settings-panel-youtube")).toBeFocused();
 
     await page.locator("#youtubeSubtitleMode").selectOption("original");
     await page.locator("#youtubeSubtitleSize").selectOption("large");
@@ -40,7 +40,7 @@ test.describe("Settings information architecture", () => {
     const dictionaryNav = nav.getByRole("link", { name: "词典库" });
     await expect(dictionaryNav).toBeVisible();
     await dictionaryNav.click();
-    await expect(page.locator("#dictionary-packs")).toBeFocused();
+    await expect(page.locator("#settings-panel-dictionary-packs")).toBeFocused();
 
     const library = page.locator("#dictionary-packs");
     await expect(library.getByRole("heading", { name: "词典库", exact: true })).toBeVisible();
