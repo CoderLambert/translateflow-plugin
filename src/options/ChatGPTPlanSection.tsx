@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { OptionsClient, OptionsConfig, ChatGPTPlanAuthStatus, ChatGPTPlanModel } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
-import { CHATGPT_PLAN_HOST_DOWNLOAD_URL } from "../shared/chatgpt-native-host.js";
 
 type Props = { config: OptionsConfig; disabled: boolean; update: (patch: Partial<OptionsConfig>) => void; client: Pick<OptionsClient, "chatGPTPlanAction"> & Partial<Pick<OptionsClient, "hasChatGPTPlanPermission" | "requestChatGPTPlanPermission">> };
 type ViewState = { status: ChatGPTPlanAuthStatus | null; models: ChatGPTPlanModel[]; message: string; error: boolean; busy: boolean; errorCode?: string };
@@ -12,6 +11,7 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
   const i18n = useOptionsI18n();
   const [view, setView] = useState<ViewState>({ status: null, models: [], message: i18n.t("options.chatgptPlan.notChecked"), error: false, busy: false });
   const [authAction, setAuthAction] = useState<AuthAction | null>(null);
+  const [copiedCommand, setCopiedCommand] = useState("");
   const [permission, setPermission] = useState<PermissionState>(client.hasChatGPTPlanPermission ? "checking" : "granted");
   const operation = useRef(0);
 
@@ -159,13 +159,48 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
   const available = view.models.some(model => model.slug === config.chatgptPlanModel);
   const hostNeedsInstall = ["NATIVE_HOST_UNAVAILABLE", "NATIVE_HOST_DISCONNECTED", "NATIVE_HOST_TIMEOUT", "NATIVE_HOST_UPDATE_REQUIRED"].includes(view.errorCode || "");
   const controlsAvailable = permission === "granted" && !hostNeedsInstall;
+  const runtimeExtensionId = typeof chrome === "undefined" ? "" : chrome.runtime?.id;
+  const hostVersion = typeof chrome === "undefined" ? "" : chrome.runtime?.getManifest().version;
+  const extensionId = validExtensionId(runtimeExtensionId) ? runtimeExtensionId : "";
+  const developmentCommands = extensionId ? nativeHostDevelopmentCommands(extensionId, hostVersion) : null;
+  async function copyCommand(command: string) {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopiedCommand(command);
+    } catch {
+      setCopiedCommand("");
+    }
+  }
   return <section className="advanced" aria-labelledby="chatgpt-plan-title">
     <h2 id="chatgpt-plan-title">{i18n.t("options.chatgptPlan.title")}</h2>
     <p className="section-summary">{i18n.t("options.chatgptPlan.summary")}</p>
     <p className={`notice${view.error ? " error" : ""}`} role="status" aria-live="polite">{view.message}</p>
-    {hostNeedsInstall && <p className="hint"><a href={CHATGPT_PLAN_HOST_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
-      {i18n.t(view.errorCode === "NATIVE_HOST_UPDATE_REQUIRED" ? "options.chatgptPlan.updateHost" : "options.chatgptPlan.downloadHost")}
-    </a></p>}
+    {hostNeedsInstall && <div className="native-host-setup">
+      <p>{i18n.t("options.chatgptPlan.noPublicDownload")}</p>
+      {developmentCommands ? <details>
+        <summary>{i18n.t("options.chatgptPlan.developmentSetup")}</summary>
+        <p className="hint">{i18n.t("options.chatgptPlan.developmentHelp")}</p>
+        <dl><dt>{i18n.t("options.chatgptPlan.extensionId")}</dt><dd><code>{extensionId}</code></dd></dl>
+        <div className="native-host-command">
+          <strong>{i18n.t("options.chatgptPlan.buildCommand")}</strong>
+          <code>{developmentCommands.build}</code>
+          <button type="button" onClick={() => void copyCommand(developmentCommands.build)}>{i18n.t(copiedCommand === developmentCommands.build ? "options.chatgptPlan.copied" : "options.chatgptPlan.copyCommand")}</button>
+        </div>
+        {developmentCommands.install.map(({ browser, command }) => <div className="native-host-command" key={browser}>
+          <strong>{i18n.t("options.chatgptPlan.installCommand", { browser: browser === "chrome" ? "Google Chrome" : "Chromium" })}</strong>
+          <code>{command}</code>
+          <button type="button" onClick={() => void copyCommand(command)}>{i18n.t(copiedCommand === command ? "options.chatgptPlan.copied" : "options.chatgptPlan.copyCommand")}</button>
+        </div>)}
+        <div className="native-host-next-steps">
+          <strong>{i18n.t("options.chatgptPlan.afterInstall")}</strong>
+          <ol>
+            <li>{i18n.t("options.chatgptPlan.afterInstallReload")}</li>
+            <li>{i18n.t("options.chatgptPlan.afterInstallReopen")}</li>
+            <li>{i18n.t("options.chatgptPlan.afterInstallCheck")}</li>
+          </ol>
+        </div>
+      </details> : null}
+    </div>}
     {Boolean(view.status?.accounts?.length) && <>
       <label htmlFor="chatgptPlanAccount">{i18n.t("options.chatgptPlan.account")}</label>
       <select id="chatgptPlanAccount" disabled={disabled || view.busy} value={view.status?.activeAccountId || ""}
@@ -202,6 +237,22 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
 
 export function chatGPTSignInActionDisabled(disabled: boolean, busy: boolean, authPending: boolean): boolean {
   return disabled || (busy && !authPending);
+}
+
+export function nativeHostDevelopmentCommands(extensionId: string, version: string) {
+  if (!validExtensionId(extensionId) || !/^\d+\.\d+\.\d+$/u.test(version)) return null;
+  const binary = `./.output/native-host-candidate/translateflow-host-${version}-linux-amd64`;
+  return {
+    build: `TF_CHROME_EXTENSION_ID=${extensionId} TF_NATIVE_HOST_VERSION=${version} npm run build:native-host:candidate`,
+    install: [
+      { browser: "chrome", command: binary },
+      { browser: "chromium", command: `${binary} install --browser chromium` }
+    ]
+  };
+}
+
+function validExtensionId(value: unknown): value is string {
+  return typeof value === "string" && /^[a-p]{32}$/u.test(value);
 }
 
 function normalizeModels(value: unknown): ChatGPTPlanModel[] {

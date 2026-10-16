@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection } from "../../src/options/CommonSections";
-import { ChatGPTPlanSection, chatGPTSignInActionDisabled } from "../../src/options/ChatGPTPlanSection";
+import { ChatGPTPlanSection, chatGPTSignInActionDisabled, nativeHostDevelopmentCommands } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { ProviderConnectionsSection } from "../../src/options/ProviderConnectionsSection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
@@ -97,16 +97,31 @@ test("ChatGPT settings request optional local-app access only from the enable bu
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
 });
 
-test("ChatGPT settings link host installation and update failures to the maintained release page", async () => {
+test("ChatGPT settings honestly report missing public downloads and show exact development registration commands", async () => {
+  vi.stubGlobal("chrome", { ...chrome, runtime: { id: "heoihmkbboakhnjihclndppjomoflbom", getManifest: () => ({ version: "0.8.13" }) } });
   const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "NATIVE_HOST_UNAVAILABLE" }); });
   render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
     chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
   } as any} />));
   await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
-  const download = await screen.findByRole("link", { name: "下载 TranslateFlow 本地组件" });
-  expect(download.getAttribute("href")).toBe("https://github.com/CoderLambert/translateflow-plugin/releases/latest");
+  expect(await screen.findByText(/尚未发布公开安装包/u)).toBeTruthy();
+  await userEvent.click(screen.getByText("开发版测试注册"));
+  expect(screen.getByText("heoihmkbboakhnjihclndppjomoflbom")).toBeTruthy();
+  expect(screen.getByText(/TF_CHROME_EXTENSION_ID=heoihmkbboakhnjihclndppjomoflbom TF_NATIVE_HOST_VERSION=0\.8\.13/u)).toBeTruthy();
+  expect(screen.getByText("./.output/native-host-candidate/translateflow-host-0.8.13-linux-amd64")).toBeTruthy();
+  expect(screen.getByText(/translateflow-host-0\.8\.13-linux-amd64 install --browser chromium$/u)).toBeTruthy();
+  expect(screen.getByText("打开 chrome://extensions，重新加载 TranslateFlow。")).toBeTruthy();
+  expect(screen.getByText("关闭旧设置页，再重新打开“设置 → Provider”。")).toBeTruthy();
+  expect(screen.getByText("点击“已经安装 · 重新检测”。")).toBeTruthy();
+  expect(screen.queryByRole("link", { name: /下载 TranslateFlow 本地组件/u })).toBeNull();
   expect(screen.queryByRole("button", { name: "连接 ChatGPT 账号" })).toBeNull();
   expect(screen.getByRole("button", { name: "已经安装 · 重新检测" })).toBeTruthy();
+});
+
+test("native host development commands reject invalid extension IDs", () => {
+  expect(nativeHostDevelopmentCommands("not-an-extension-id", "0.8.13")).toBeNull();
+  expect(nativeHostDevelopmentCommands("heoihmkbboakhnjihclndppjomoflbom", "dev")).toBeNull();
+  expect(nativeHostDevelopmentCommands("heoihmkbboakhnjihclndppjomoflbom", "0.8.13")?.install).toHaveLength(2);
 });
 
 test("ChatGPT settings restart the local component and reload models from the fresh connection", async () => {

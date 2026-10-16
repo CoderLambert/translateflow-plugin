@@ -591,6 +591,26 @@ label {
   margin-top: 18px;
 }
 
+.native-host-setup {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-bg-card);
+}
+
+.native-host-setup p { margin: 0 0 10px; }
+.native-host-setup summary { cursor: pointer; font-weight: 700; }
+.native-host-setup dl { margin: 12px 0; }
+.native-host-setup dd { margin: 4px 0 0; }
+.native-host-setup code { overflow-wrap: anywhere; }
+.native-host-command { display: grid; gap: 8px; margin-top: 12px; }
+.native-host-command code { padding: 10px; border-radius: var(--tf-radius-sm); background: var(--tf-bg-muted); }
+.native-host-command button { width: fit-content; }
+.native-host-next-steps { margin-top: 16px; }
+.native-host-next-steps ol { margin: 8px 0 0; padding-left: 22px; color: var(--tf-text-secondary); }
+.native-host-next-steps li + li { margin-top: 5px; }
+
 .cache-card,
 .site-list {
   margin-top: 14px;
