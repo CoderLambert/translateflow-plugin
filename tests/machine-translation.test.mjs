@@ -104,7 +104,7 @@ test("formatting markers and protected code never leave the extension", async ()
   storage(); const requests = [];
   globalThis.fetch = async (url, init) => { requests.push({ url, init }); return ok(JSON.parse(init.body).map(text => `译:${text}`)); };
   const text = "Read ⟦TF:0:S⟧secretCode()⟦TF:0:E⟧ with ⟦TF:1:S⟧care⟦TF:1:E⟧.";
-  const result = await translateMachineBatch([{ id: "a", text, protectedIds: [0] }], config());
+  const result = await translateMachineBatch([{ id: "a", text, format: "tf-markers", protectedIds: [0] }], config());
   assert.equal(result[0].id, "a"); assert.match(result[0].text, /⟦TF:0:S⟧secretCode\(\)⟦TF:0:E⟧/u);
   assert.ok(result[0].text.includes("⟦TF:1:S⟧译:care⟦TF:1:E⟧"));
   assert.equal(requests.length, 1); assert.doesNotMatch(requests[0].init.body, /TF:|secretCode/);
@@ -115,6 +115,20 @@ test("formatting markers and protected code never leave the extension", async ()
 test("malformed structure is refused before any request", async () => {
   let calls = 0; globalThis.fetch = () => { calls++; throw new Error("must not call"); };
   for (const segment of [{ id: "a", text: "broken ⟦TF:0:S⟧text" }, { id: "a", text: "plain", protectedIds: [2] }, { id: "a", text: "plain", protectedIds: [-1] }]) {
+    await assert.rejects(translateMachineBatch([segment], config()), { code: "MT_STRUCTURE" });
+  }
+  assert.equal(calls, 0);
+});
+
+test("marker-looking user text cannot be silently treated as trusted DOM structure", async () => {
+  let calls = 0; globalThis.fetch = () => { calls++; throw new Error("must not call"); };
+  const literal = "A literal ⟦TF:0:S⟧user word⟦TF:0:E⟧ inside a selection.";
+  for (const segment of [
+    { id: "a", text: literal, format: "plain" },
+    { id: "a", text: literal },
+    { id: "a", text: "plain", format: "tf-markers" },
+    { id: "a", text: "plain", format: "plain", protectedIds: [0] }
+  ]) {
     await assert.rejects(translateMachineBatch([segment], config()), { code: "MT_STRUCTURE" });
   }
   assert.equal(calls, 0);
