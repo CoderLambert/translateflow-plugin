@@ -57,8 +57,8 @@ Actions 均为 `workflow_dispatch` 手动备用验证，日常验收在本地。
 - shared contracts/pure helpers: `src/shared/`
 - Provider/network: `src/background/providers/`
 - effective config: `src/background/config.js` + `src/shared/provider-config.js`
-- translation cache IndexedDB: `src/background/cache-db.js`
-- independent ReadingRecord IndexedDB: `src/background/reading-record/idb.js`; other Reading backend modules call this adapter, while Content and extension UI use the v2 background messages. Consent/exclusions live only in Reading meta; cache and dictionary OPFS remain separate. The source checker allows only these two exact direct IndexedDB owners and rejects frontend runtime dependency chains into the Reading adapter.
+- generic translation/cache IndexedDB (only direct owner): `src/background/cache/storage-indexeddb.js`; `src/background/cache-db.js` is the stable facade, not a database owner. The business adapter is `src/background/cache/application.js`; generic service/storage do not import Provider or DOM. Request identities/revisions live under `src/shared/cache/` and `src/shared/translation-cache-identity.js`.
+- independent ReadingRecord IndexedDB: `src/background/reading-record/idb.js`; other Reading backend modules call this adapter, while Content and extension UI use v2 background messages. Consent/exclusions live only in Reading meta; cache and dictionary OPFS remain separate. The source checker permits exactly **`src/background/cache/storage-indexeddb.js` and `src/background/reading-record/idb.js`** as direct IndexedDB owners, and rejects frontend chains into the Reading adapter.
 - dynamic site scripts: `src/background/auto-sites.js`
 - DOM extraction/render: `src/content/dom.js`
 - batching: `src/content/batch.js`
@@ -139,6 +139,8 @@ Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, sour
 新增站点配置字段时，需要确认它是否影响缓存 identity。
 
 ## Cache changes
+
+当前通用缓存的**存储物理布局 DB4**（`entries` / `epochs`）、**统一记录 envelope v1** 与**翻译业务策略 revision**相互独立。翻译 Provider、Prompt、原文处理或格式标记演进时只更新业务请求 identity/revision，不得建立 DB2/DB3 兼容读取、双写或每次升级物理数据库。历史普通译文缓存已经在 DB4 升级时丢弃；AI 解释结果仅一次性封装，ReadingRecord/词典/设置/凭据不受影响。缓存查询令牌和写入在同一失效代次下校验，cache-only miss 不得发起 Provider 请求。
 
 缓存是用户数据。不要在无关 PR 中修改：
 
