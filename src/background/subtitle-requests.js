@@ -1,4 +1,5 @@
 import { lookupTranslations, storeTranslations } from "./cache-db.js";
+import { isCachePersistenceError } from "../shared/cache/persistence-errors.js";
 import { getEffectiveConfig } from "./config.js";
 import { runTranslationRequest } from "./translation-requests.js";
 import { normalizeSourceText } from "../shared/text.js";
@@ -24,12 +25,21 @@ export async function runSubtitleTranslationBatch({
     id: unit.id,
     text: buildSubtitleCacheSource(unit), providerText: unit.text, format: "plain"
   }));
-  const cached = await lookupTranslations({
-    pageUrl,
-    segments: cacheSegments,
-    namespace: "subtitle-translation",
-    config
-  });
+  let cached, cacheWarning = "";
+  try {
+    cached = await lookupTranslations({
+      pageUrl,
+      segments: cacheSegments,
+      namespace: "subtitle-translation",
+      config
+    });
+  } catch (error) {
+    if (!isCachePersistenceError(error)) throw error;
+    // A broken cache does not turn an authorized subtitle request into a
+    // failed translation or a second Provider call.
+    cached = { hits: [], writeTokens: [] };
+    cacheWarning = error.code;
+  }
   const cacheTokens = new Map((cached.writeTokens || []).map(item => [String(item.id), item.token]));
   const cachedById = new Map((cached.hits || []).map((item) => [String(item.id), item.text]));
   const missing = normalized.filter((unit) => !cachedById.has(unit.id));
@@ -71,21 +81,28 @@ export async function runSubtitleTranslationBatch({
     });
   }
 
-  if (storeItems.length) {
-    await storeTranslations({
-      pageUrl,
-      pageTitle,
-      items: storeItems,
-      namespace: "subtitle-translation",
-      config
-    });
+  if (storeItems.length && !cacheWarning) {
+    try {
+      const saved = await storeTranslations({
+        pageUrl,
+        pageTitle,
+        items: storeItems,
+        namespace: "subtitle-translation",
+        config
+      });
+      cacheWarning = saved.cacheWarning || (Number(saved.stored || 0) < storeItems.length ? "CACHE_NOT_SAVED" : "");
+    } catch (error) {
+      if (!isCachePersistenceError(error)) throw error;
+      cacheWarning = error.code;
+    }
   }
 
   return {
     translations,
     cacheHits,
     apiTranslated,
-    missing: normalized.length - translations.length
+    missing: normalized.length - translations.length,
+    ...(cacheWarning ? { cacheWarning } : {})
   };
 }
 
