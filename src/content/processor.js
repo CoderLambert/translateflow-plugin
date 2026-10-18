@@ -180,7 +180,8 @@
     const processed = groups.reduce((sum, group) => sum + group.elements.length, 0);
     if (cacheOnly || uncached.length === 0) {
       missing = cacheOnly ? uncached.reduce((sum, group) => sum + group.elements.length, 0) : 0;
-      return { cacheHits, apiTranslated, missing, processed, configSnapshotId };
+      return { cacheHits, apiTranslated, missing, processed, configSnapshotId,
+        ...(cacheWarning ? { cacheWarning } : {}) };
     }
 
     if (task) tasks.transition(task, "translating");
