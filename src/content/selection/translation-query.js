@@ -71,20 +71,26 @@
       tasks.transition(task, "storing");
       popover.setLoadingStatus("content.selection.storing");
       popover.setLoadingCancelable(false);
-      const stored = await sendRuntimeMessage({
-        type: messages.background.CACHE_STORE,
-        pageUrl: snapshot.pageUrl,
-        pageTitle: document.title,
-        configSnapshotId,
-        items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken }]
-      });
-      assertCurrent(version, snapshot, expectedPage, task);
-      if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);
+      let cacheWarning = String(lookup.cacheWarning || "");
+      if (!cacheWarning) {
+        const stored = await sendRuntimeMessage({
+          type: messages.background.CACHE_STORE,
+          pageUrl: snapshot.pageUrl,
+          pageTitle: document.title,
+          configSnapshotId,
+          items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken }]
+        });
+        assertCurrent(version, snapshot, expectedPage, task);
+        if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);
+        cacheWarning = stored.cacheWarning || (Number(stored.stored || 0) < 1 ? "CACHE_NOT_SAVED" : "");
+      }
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
       const card = buildTranslationResult(translation, lookup);
       showResult(snapshot, card);
       onResult(queryRecord, readingTranslation(translation, translated.readingResult || lookup.readingResult));
+      if (cacheWarning) app.modules.runtime.showToast(t("content.selection.cacheNotSaved"), "error");
+      return cacheWarning ? { cacheWarning } : undefined;
     };
   }
   app.modules.selectionTranslationQuery = Object.freeze({ create });
