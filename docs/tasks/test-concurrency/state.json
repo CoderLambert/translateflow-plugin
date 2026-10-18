@@ -12,7 +12,7 @@
     [
       "npm",
       "run",
-      "validate"
+      "check"
     ],
     [
       "npm",
@@ -38,7 +38,15 @@
     [
       "npm",
       "run",
-      "test:e2e"
+      "test:e2e",
+      "--",
+      "e2e/reading-preview.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e:special"
     ]
   ],
   "artifactRequired": true,

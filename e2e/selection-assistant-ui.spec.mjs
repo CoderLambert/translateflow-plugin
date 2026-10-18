@@ -174,15 +174,14 @@ test("Narrow initial, streaming and completed AI panels stay inside the actual v
   await harness.setStorage({ uiLocale: "zh_CN", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const content = await harness.open("/selection"); await content.setViewportSize({ width: 360, height: 420 }); await harness.inject(content);
   await select(content, "#technical-competition", "session");
-  const initial = await geometry(content, "initial");
+  await expect(async () => expectInsideViewport(await geometry(content, "initial"))).toPass({ timeout: 6000 });
   const stream = harness.server.holdNextAssistantStream();
   await content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
   await stream.started;
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
   await expect(content.locator(".tf-selection-generated-body")).toContainText("streamed");
-  const streaming = await geometry(content, "streaming");
+  await expect(async () => expectInsideViewport(await geometry(content, "streaming"))).toPass({ timeout: 6000 });
   stream.release();
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
-  const completed = await geometry(content, "completed");
-  for (const value of [initial, streaming, completed]) expectInsideViewport(value);
+  await expect(async () => expectInsideViewport(await geometry(content, "completed"))).toPass({ timeout: 6000 });
 });

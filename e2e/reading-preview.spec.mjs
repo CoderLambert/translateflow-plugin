@@ -52,6 +52,12 @@ test("saved lookup details reopen from the highlighted word without exposing ans
   const listed = await message(center, M.LIST_RECORDS, { pageKey: null, query: "session", cursor: null, limit: 30 });
   expect(listed.data.items).toHaveLength(1);
   const recordId = listed.data.items[0].recordId;
+  // Rendering success precedes the asynchronous Reading append. Navigate only
+  // after the actual saved record contains the completed assistant artifact.
+  await expect.poll(async () => {
+    const detail = await message(center, M.GET_RECORD, { recordId });
+    return detail.data.artifacts.filter(value => value.kind === "assistant").length;
+  }).toBe(1);
 
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html#record=${recordId}`);
   await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
