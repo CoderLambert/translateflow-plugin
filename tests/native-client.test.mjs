@@ -31,11 +31,14 @@ function setup({ prompt = async () => { throw new Error("Unexpected prompt"); },
       const sourceLanguage = payload.browserTranslation.sourceLanguage, id = `backend-${++sequence}`;
       backend.set(id, sourceLanguage);
       return { ok: true, engine: contract.BROWSER_ENGINE, sourceLanguage, targetLanguage: settings.targetLanguage, configSnapshotId: id,
-        hits: payload.segments.filter(item => cache.has(`${sourceLanguage}:${item.text}`)).map(item => ({ id: item.id, text: cache.get(`${sourceLanguage}:${item.text}`) })) };
+        hits: payload.segments.filter(item => cache.has(`${sourceLanguage}:${item.text}`)).map(item => ({ id: item.id, text: cache.get(`${sourceLanguage}:${item.text}`) })),
+        writeTokens: payload.segments.map(item => ({ id: item.id, token: { namespace: 'translation', source: item.text, language: sourceLanguage } })) };
     }
     if (payload.type === M.CACHE_STORE) {
       const lang = backend.get(payload.configSnapshotId);
       if (!lang) return { ok: false, errorCode: "CONFIG_SNAPSHOT_EXPIRED" };
+      if (payload.items.some(item => !item.cacheToken || item.cacheToken.language !== lang))
+        return { ok: false, errorCode: "CACHE_INVALID_TOKEN" };
       for (const item of payload.items) cache.set(`${lang}:${item.sourceText}`, item.translation);
       return { ok: true, stored: payload.items.length };
     }
