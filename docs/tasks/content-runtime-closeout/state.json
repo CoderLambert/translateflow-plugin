@@ -1,20 +1,44 @@
 {
   "schema": 1,
   "task": "content-runtime-closeout",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/local-content-reliability-20261019",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-local-content-closeout",
-  "candidateHead": null,
+  "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
   "mergeHead": null,
   "validationCommands": [
-    ["git", "diff", "--check", "origin/main...HEAD"],
-    ["npm", "run", "validate"],
-    ["npm", "run", "build:extension:wxt"],
-    ["env", "TF_SMOKE_ARTIFACT=dist/extension", "TF_SMOKE_REPORT=.wxt/reports/stable-smoke.json", "npm", "run", "test:wxt:smoke"],
-    ["npm", "run", "test:wxt:smoke"]
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "TF_SMOKE_REPORT=.wxt/reports/stable-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ]
   ],
   "artifactRequired": true,
-  "nextAction": "Record complete non-E2E acceptance and package fingerprint; full Chromium E2E is explicitly deferred to the next feature at the user's request, then sync through the protected squash PR."
+  "nextAction": "Merge PR #348 with expected-head protection. Full Chromium E2E remains deferred to the next feature at user request."
 }
