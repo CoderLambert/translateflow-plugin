@@ -153,3 +153,12 @@ PR 公开摘要证据：[PR #345 测试证据评论](https://github.com/CoderLam
 `state.json` 规则来自仓库级本地任务流程，不来自 `browser-native-language` 自身的提交历史。该流程与 `local-task.mjs` 在 2026-10-03 的 #280 引入，规定任务索引是 `state.json` 的投影；`browser-native-language` 任务档案后来在 #333 增加，但未带 `state.json`。因此这是历史任务资料未初始化，而索引实现又假定所有任务目录都已初始化，并非过去曾存在后又删除了该文件。
 
 隔离工作树中已作最小修正：索引仅包含存在 `state.json` 的目录；当前任务允许将 `validation-report.md` 作为元数据归档；`tests/local-task.test.mjs` 新增缺状态目录和报告归档测试。`node --test tests/local-task.test.mjs` 17/17 PASS，`node scripts/local-task.mjs index` 成功。Gate 随后实际退出 1，提示这些工作流脚本/测试改动尚未提交，需重新冻结候选。当前结论仍为 BLOCKED；不把原候选的缓存测试结果改写成新候选结果，也未提交、推送或合并工作流修正。
+
+
+## 最终提交与合并验收 — 2026-10-19
+
+本节取代前述收口 BLOCKED 的当前结论，保留历史记录。用户授权清理不适用提交规则并提交合并；修正提交 `4545d8ce19a808a0ef940d61f64ca43dceb97e53` 已普通推送、冻结并实际执行全部9项合同检查。Node 1844/1844、Vitest 59/59、缓存148/148、工作流/提交24/24、Native IDB 19条、MV3 6/6、同ID升级2/2、全量Chromium 224 PASS /0 FAIL /7条件SKIP；全部退出0，零重试/零flaky。完整validate、WXT build/smoke均PASS。原始日志、实测耗时和hash均在acceptance.json；归档前实际Gate退出0。
+
+正常commit不再自动升版本/编译，轻量hook仍检查暂存diff；显式版本准备仍可用。没有削弱产品断言、Gate输入/祖先/日志/产物校验，没有虚构无状态任务。报告及索引均可合法归档。最终元数据提交只包含五个允许的归档文件，归档后再次检查Gate与远端head。
+
+用户已确认人工验收，生产包fingerprint与原包相同。真实付费Provider未调用，人工请求计数未验证；Mock请求边界已由本轮实际自动化验证。主Agent对本轮diff自查：只增加已授权工作流/提交规则修正，没有新产品实现或权限变化；不把本节标为独立模型审核。当前结论READY_FOR_USER_ACCEPTANCE，任务ready_to_sync，实际合并并核对tree后才本地completed。

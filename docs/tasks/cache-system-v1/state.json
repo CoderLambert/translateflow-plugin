@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "cache-system-v1",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/independent-cache-system-20261018",
-  "candidateHead": "",
+  "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
   "mergeHead": "",
   "validationCommands": [
     [
@@ -79,5 +79,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户授权本次规则清理、提交、推送和 squash 合并。普通 commit 仅检查暂存 diff，不自动升版本/编译；保留显式 commit:prepare。先提交验收工具/提交钩子修正，冻结准确候选并按完整合同记录实际结果；Gate 通过后归档元数据，核对远端准确 head 后合并。保留用户人工验收与历史证据，未合入不得 completed。"
+  "nextAction": "全部合同命令与用户人工验收均通过；归档仅当前任务元数据及生成索引。归档后再次执行 Gate，核对远端准确 head 与无冲突后按用户授权 squash 合并；fetch并核对main tree后再记录completed/mergeHead。"
 }
