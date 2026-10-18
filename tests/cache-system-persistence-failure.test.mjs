@@ -15,7 +15,7 @@ const cacheMessages = Object.freeze({
 const storageError = code => Object.assign(new Error(code), { code });
 
 async function createContentHarness(file, { lookupWarning = '', writeWarning = '', cacheOnly = false } = {}) {
-  const requests = [], toasts = [], displayed = [], accepted = [], el = {};
+  const requests = [], toasts = [], displayed = [], accepted = [], el = { hasAttribute: () => false };
   const state = { manualRunning: false, autoDrainRunning: false, pending: new Set(),
     startupRestorePromise: null, lastAutoPruneAt: Date.now() };
   const runtime = {
