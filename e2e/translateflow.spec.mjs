@@ -317,6 +317,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("selection controls are isolated, avoid page-cache reuse, and resolve local lexicon without Provider calls", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await page.addStyleTag({ content: `button, .tf-selection-chip, .tf-selection-panel { display: none !important; color: rgb(255, 0, 0) !important; font-size: 1px !important; }` });
     await harness.inject(page);
@@ -432,6 +433,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("ambiguous Selection keeps dictionary content visible through explicit AI detail", async ({ harness }) => {
+    await harness.installUserDictionaries();
     await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
     const page = await harness.open("/selection");
     await harness.inject(page);
@@ -512,6 +514,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("technical entity Selection stays compact and preserves supplied identity metadata", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -528,6 +531,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("Selection AI detail cancel preserves local content and stale completion cannot overwrite retry", async ({ harness }) => {
+    await harness.installUserDictionaries();
     await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
     const stream = harness.server.holdNextAssistantStream();
     const page = await harness.open("/selection");
@@ -564,6 +568,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("Selection card exposes provenance, explicit AI retry and a readable answer in a narrow viewport", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await page.setViewportSize({ width: 360, height: 260 });
     await harness.inject(page);
@@ -595,7 +600,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
-    await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典"]);
+    await expect(page.locator(".tf-selection-result-badge")).toContainText(["词典包 · local-e2e-user-lexical"]);
     await expect(detail.locator(".tf-selection-generated-label")).toHaveText("AI · 理解");
 
     const box = await panel.boundingBox();
@@ -683,7 +688,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator("#glossary .abt-translation")).toContainText("[TECH|GLOSSARY]");
     expect(harness.server.calls).toHaveLength(2);
   });
-  test("lexical gateway reads bundled TFLex locally without Provider calls", async ({ harness }) => {
+  test("lexical gateway reads installed user TFLex locally without Provider calls", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/article");
     expect(harness.server.calls).toHaveLength(0);
 
@@ -697,7 +703,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(word.ok).toBe(true);
     expect(word.status).toBe("candidates");
     expect(word.candidates).toHaveLength(2);
-    expect(word.candidates[0].provenance.packId).toBe("core-semantic-en-zh-runtime-fixture");
+    expect(word.candidates[0].provenance.packId).toBe("local-e2e-user-lexical");
     expect(harness.server.calls).toHaveLength(0);
 
     const tmux = await harness.runtime({
@@ -710,7 +716,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(tmux.ok).toBe(true);
     expect(tmux.status).toBe("candidates");
     expect(tmux.candidates.some((candidate) =>
-      candidate.provenance?.packId === "technical-wikidata-en-zh"
+      candidate.provenance?.packId === "local-e2e-user-concepts"
     )).toBe(true);
     expect(harness.server.calls).toHaveLength(0);
 
@@ -732,7 +738,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(alias.ok).toBe(true);
     expect(alias.status).toBe("candidates");
     expect(alias.matchedBy).toBe("alias");
-    expect([...new Set(alias.candidates.map((candidate) => candidate.headword))]).toEqual(["persistent", "session"]);
+    expect([...new Set(alias.candidates.map((candidate) => candidate.headword))].sort()).toEqual(["persistent", "session"]);
     expect(alias.candidates).toHaveLength(3);
     expect(alias.candidates.every((candidate) => candidate.matchedBy === "alias")).toBe(true);
     expect(harness.server.calls).toHaveLength(0);

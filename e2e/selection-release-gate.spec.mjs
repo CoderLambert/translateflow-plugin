@@ -3,6 +3,7 @@ import { test, expect } from "./support/extension-fixture.mjs";
 test.describe("Selection UX release gate", () => {
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test.afterEach(async ({ harness }) => {
@@ -11,7 +12,7 @@ test.describe("Selection UX release gate", () => {
     }
   });
 
-  test("technical Core/Technical competition stays local, attributable and Provider-free", async ({ harness }) => {
+  test("installed lexical/concept dictionary competition stays local, attributable and Provider-free", async ({ harness }) => {
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -43,7 +44,7 @@ test.describe("Selection UX release gate", () => {
     await dictionaryDetails.locator("summary").click();
     const provenance = page.locator(".tf-selection-entry-provenance");
     await expect(provenance).toHaveCount(2);
-    expect(new Set(await provenance.allTextContents())).toEqual(new Set(["本地词典", "技术词条"]));
+    expect(new Set(await provenance.allTextContents())).toEqual(new Set(["词典包 · local-e2e-user-lexical", "技术词条"]));
     await expect(page.locator(".tf-selection-source")).toBeHidden();
     expect(harness.server.calls).toHaveLength(0);
   });
@@ -296,6 +297,7 @@ test.describe("Selection UX release gate", () => {
     await selectElementText(page, "#ambiguous");
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
+    await expect(close).toBeFocused();
     await moved.focus();
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();

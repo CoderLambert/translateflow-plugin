@@ -3,7 +3,7 @@
 Issue: #75  
 Epic: #74
 
-TFLex is TranslateFlow's immutable lexical-data contract. It deliberately separates the **logical record model** from the **physical storage profile** so bundled extension assets and downloaded OPFS packs can use the safest access pattern for their environment.
+TFLex is TranslateFlow's immutable lexical-data contract. It deliberately separates the **logical record model** from the **physical storage profile** so imported sharded files and installed OPFS packs can use the safest access pattern for their environment.
 
 ## 1. Scope
 
@@ -25,7 +25,7 @@ Every pack has a manifest containing at least:
   "formatVersion": 1,
   "readerMinVersion": 1,
   "normalizationVersion": 1,
-  "packId": "core-semantic-en-zh",
+  "packId": "local-example-en-zh",
   "packVersion": "source-locked-version",
   "sourceLanguage": "en",
   "targetLanguage": "zh-CN",
@@ -118,7 +118,7 @@ source record/sense/entity id when available
 
 Candidates from different sources are not silently merged merely because their Chinese strings match.
 
-User Glossary is the only v1 source allowed to express an explicit user override. Core, Technical and optional dictionary packs contribute attributable candidates to ranking.
+User Glossary is the only v1 source allowed to express an explicit user override. User-installed dictionary packs contribute attributable candidates to ranking.
 
 ## 5. Normalization v1
 
@@ -155,12 +155,12 @@ The reader returns zero or more **candidates**. Ranking/sufficiency is a separat
 
 ## 7. Physical profile: bundled-sharded-v1
 
-Evidence from #75 shows current Chromium can return a byte range from a `chrome-extension://` asset, but that behavior is not used as a v1 correctness dependency.
+The persisted name `bundled-sharded-v1` is retained as a format identifier for existing files and generic import/conversion tools. It does not indicate product bundling. Production packages contain no dictionary content.
 
-Bundled Core therefore uses bounded immutable shards:
+This profile uses bounded immutable shards:
 
 ```text
-assets/lexicon/core/
+user-selected-pack/
   manifest.json
   directory/index metadata
   shards/...
@@ -234,11 +234,10 @@ A local import must use a safe `local-*` pack ID, `distributionStatus=user-impor
 
 Production lookup registration is dynamic and state-driven:
 
-- bundled Core/Technical readers remain first in gateway order;
-- healthy active `opfs-indexed-v1` snapshots are discovered from persisted pack state on lookup and appended after bundled readers;
+- healthy active `opfs-indexed-v1` snapshots are discovered from persisted pack state on lookup and form the only production dictionary reader input;
 - active pack IDs are processed in stable lexical order for deterministic candidate ordering;
 - changing the active version or uninstalling a pack takes effect without a service-worker restart;
-- a typed corrupt/incompatible/storage error from one optional pack is isolated to that pack and recorded as a diagnostic rather than suppressing healthy bundled/optional candidates;
+- a typed corrupt/incompatible/storage error from one optional pack is isolated to that pack and recorded as a diagnostic rather than suppressing healthy user-dictionary candidates;
 - malformed `healthy` snapshot metadata is treated as corrupt;
 - lexical lookup never performs recovery state mutation; recovery/rollback remains owned by the dictionary-pack lifecycle manager.
 

@@ -16,7 +16,7 @@ import { createTflexReader } from "../src/background/lexical/tflex-reader.js";
 
 const fixtureRoot = fileURLToPath(new URL("./fixtures/tflex-runtime-pack/", import.meta.url));
 
-function coreReader() {
+function userFixtureReader() {
   return createTflexReader({
     packBasePath: "fixture",
     cryptoProvider: webcrypto,
@@ -109,7 +109,7 @@ function technicalSessionReader() {
 
 test("Lexical Gateway returns separate attributable senses and aggregates non-user sources", async () => {
   const gateway = createLexicalGateway({
-    packReaders: [coreReader(), technicalSessionReader()]
+    packReaders: [userFixtureReader(), technicalSessionReader()]
   });
   const persistent = await gateway.lookup({ text: "persistent" });
   assert.equal(persistent.status, LEXICAL_RESULT_STATUS.CANDIDATES);
@@ -121,7 +121,7 @@ test("Lexical Gateway returns separate attributable senses and aggregates non-us
   assert.equal(session.status, LEXICAL_RESULT_STATUS.CANDIDATES);
   assert.deepEqual(
     session.candidates.map((candidate) => candidate.provenance.packId),
-    ["core-semantic-en-zh-runtime-fixture", "technical-fixture"]
+    ["local-reader-runtime-fixture", "technical-fixture"]
   );
 });
 
@@ -163,7 +163,7 @@ test("Lexical Gateway preserves source-provided Technical sense metadata without
 });
 
 test("exact phrase wins while phrase misses expose evidence without token concatenation", async () => {
-  const gateway = createLexicalGateway({ packReaders: [coreReader()] });
+  const gateway = createLexicalGateway({ packReaders: [userFixtureReader()] });
   const exact = await gateway.lookup({ text: "terminal multiplexer" });
   assert.equal(exact.status, LEXICAL_RESULT_STATUS.CANDIDATES);
   assert.equal(exact.matchedBy, "exact");
@@ -191,7 +191,7 @@ test("CSS descendant selection resolves the exact local context phrase before wo
 });
 
 test("alias lookup returns one or many attributable candidates instead of choosing a winner", async () => {
-  const gateway = createLexicalGateway({ packReaders: [coreReader()] });
+  const gateway = createLexicalGateway({ packReaders: [userFixtureReader()] });
 
   const single = await gateway.lookup({ text: "term mux" });
   assert.equal(single.status, LEXICAL_RESULT_STATUS.CANDIDATES);
@@ -242,7 +242,7 @@ test("Lexical Gateway has no Provider/network dependency", async () => {
 });
 
 test("gateway uses generic morphology without a hand-authored irregular vocabulary", async () => {
-  const gateway = createLexicalGateway({ packReaders: [coreReader()] });
+  const gateway = createLexicalGateway({ packReaders: [userFixtureReader()] });
 
   const went = await gateway.lookup({ text: "went" });
   assert.equal(went.status, LEXICAL_RESULT_STATUS.NO_HIT);
@@ -331,7 +331,7 @@ test("irregular forms remain source gaps until an attributable morphology source
 });
 
 test("unsupported and no-hit are distinct typed outcomes", async () => {
-  const gateway = createLexicalGateway({ packReaders: [coreReader()] });
+  const gateway = createLexicalGateway({ packReaders: [userFixtureReader()] });
   const unsupported = await gateway.lookup({
     text: "persistent",
     sourceLanguage: "ja",

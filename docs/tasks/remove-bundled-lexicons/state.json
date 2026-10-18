@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "task": "remove-bundled-lexicons",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [
+    "cache-system-v1"
+  ],
+  "branch": "refactor/remove-bundled-lexicons",
+  "candidateHead": "",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=1",
+      "--retries=0",
+      "--reporter=line,json"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "定向回归和旧main同ID开发包替换已通过，提交候选后冻结准确SHA/tree；执行一次完整validate、WXT构建、smoke、完整Chromium，最后主Agent自查及Gate后归档，保持Draft等待用户人工验收。"
+}

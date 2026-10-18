@@ -16,7 +16,6 @@ import { CURATED_ECDICT_MDX_WORKER_MESSAGES } from "./workers/curated-ecdict-mdx
 export type DictionaryRecord = Record<string, any>;
 export type PackState = { packs: Record<string, DictionaryRecord> };
 export type DictionarySnapshot = {
-  bundled: DictionaryRecord[];
   packState: PackState;
   rich: DictionaryRecord[];
 };
@@ -53,16 +52,13 @@ export function dictionaryClient({
   let activeMdd: ImportController | null = null;
 
   async function load(): Promise<DictionarySnapshot> {
-    const [bundled, packs, rich] = await Promise.all([
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS }),
+    const [packs, rich] = await Promise.all([
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }),
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })
     ]);
-    if (!bundled?.ok) throw new Error(bundled?.error || "读取内置词典状态失败。");
     if (!packs?.ok) throw new Error(packs?.error || "读取已安装词典状态失败。");
     if (!rich?.ok) throw new Error(rich?.error || "读取富文本词典状态失败。");
     return {
-      bundled: Array.isArray(bundled.packs) ? bundled.packs : [],
       packState: packs.state && typeof packs.state === "object" ? packs.state : { packs: {} },
       rich: Array.isArray(rich.dictionaries) ? rich.dictionaries : []
     };

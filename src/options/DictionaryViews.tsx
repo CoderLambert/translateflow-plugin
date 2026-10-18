@@ -7,21 +7,11 @@ import {
   getCatalogDictionaryRows, getDictionaryCompactFacts, getDictionaryHealthPresentation, getLocalRichDictionaryRows
 } from "./dictionary-library-v2-presentation.js";
 import { installedPackMeta, installedPackName } from "./installed-pack-ui.js";
-import { getBundledPackPresentation } from "./pack-ui.js";
 import { useOptionsI18n } from "./LocaleContext";
 import type { I18n } from "../i18n/index.js";
 
 type StatusWriter = (message: string, error?: boolean) => void;
 const catalogRows = getCatalogDictionaryRows as (entry: DictionaryRecord | null, options?: DictionaryRecord) => DictionaryRecord[];
-
-export function BundledList({ packs }: { packs: DictionaryRecord[] }) {
-  const i18n = useOptionsI18n();
-  if (!packs.length) return <div id="bundledLexiconList" className="site-list dictionary-health-list" aria-live="polite">{i18n.t("dictionary.noBundled")}</div>;
-  return <div id="bundledLexiconList" className="site-list dictionary-health-list" aria-live="polite">{packs.map(pack => {
-    const view = getBundledPackPresentation(pack);
-    return <div className="site-row dictionary-pack-row" key={String(pack.packId || pack.id)}><div className="site-summary"><div className="dictionary-pack-heading"><strong>{String(pack.label || pack.packId || pack.id)}</strong><HealthBadge view={view} /></div>{view.meta.length ? <div className="dictionary-pack-meta">{view.meta.map((item: string) => <span key={item}>{item}</span>)}</div> : null}{view.detail ? <small className="dictionary-pack-detail">{view.detail}</small> : null}</div></div>;
-  })}</div>;
-}
 
 export function OfficialList({ client, snapshot, refresh, setStatus }: {
   client: DictionaryClient; snapshot: DictionarySnapshot; refresh: () => Promise<void>; setStatus: StatusWriter;
@@ -85,7 +75,7 @@ export function InstalledPackList({ client, snapshot, refresh, setStatus }: {
     const catalog = entry.display?.catalog ? getDictionaryCatalogEntry(entry.display.catalog.entryId) : null;
     const rows = catalog ? catalogRows(catalog, { installedCatalog: entry.display.catalog, installedSize: entry.active?.totalBytes, entryCount: entry.active?.recordCount }) : [];
     return <div className="site-row dictionary-pack-row" role="group" data-pack-id={packId} aria-labelledby={`installed-dictionary-${index}`} key={packId}><div className="site-summary"><div className="dictionary-pack-heading"><strong id={`installed-dictionary-${index}`}>{name}</strong><HealthBadge view={health} /></div>{catalog ? <DictionaryDetails rows={rows} entry={catalog} /> : <div className="dictionary-pack-meta">{installedPackMeta(entry).map((item: string) => <span key={item}>{item}</span>)}</div>}{health.kind !== "success" ? <small className="dictionary-pack-detail">{health.detail}</small> : null}</div><div className="site-actions"><button type="button" aria-label={i18n.t("dictionary.deleteNamed", { title: name })} onClick={() => void client.uninstallPack(packId).then(() => setStatus(i18n.t("dictionary.deleted", { title: name }))).then(refresh).catch(error => setStatus(errorText(error, i18n), true))}>{i18n.t("common.delete")}</button></div></div>;
-  }) : i18n.t("dictionary.noInstalled")}</div>;
+  }) : <><p>{i18n.t("dictionary.noInstalled")}</p><div className="actions"><a href="#dictionaryDownloadHeading" onClick={event => { event.preventDefault(); document.getElementById("dictionaryDownloadHeading")?.focus(); }}>{i18n.t("dictionary.downloadHeading")}</a><a href="#dictionaryImportHeading" onClick={event => { event.preventDefault(); document.getElementById("dictionaryImportHeading")?.focus(); }}>{i18n.t("dictionary.import")}</a></div></>}</div>;
 }
 
 export function RichList({ client, dictionaries, refresh, setStatus }: {

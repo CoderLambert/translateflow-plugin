@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeLookupKey } from "./build-tflex-core.mjs";
+import { normalizeLookupKey } from "./tflex-writer.mjs";
 import { validateFreeDictPackOutput } from "./build-tflex-freedict.mjs";
 
 const DEFAULT_TERMS = Object.freeze([

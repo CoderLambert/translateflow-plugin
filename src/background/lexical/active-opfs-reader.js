@@ -32,10 +32,11 @@ export function createActiveOpfsPackReader({
       lastStateError = null;
     } catch (error) {
       lastStateError = makeDiagnostic("", error, LEXICAL_ERROR_CODES.STORAGE);
-      return [];
+      return { entries: [], errors: [], stateError: lastStateError };
     }
 
     const entries = [];
+    const errors = [];
     const observedPackIds = new Set();
     for (const [packId, entry] of Object.entries(state?.packs || {})) {
       if (entry?.status !== "healthy") continue;
@@ -48,12 +49,14 @@ export function createActiveOpfsPackReader({
         !snapshot.fingerprint ||
         !Array.isArray(snapshot.files)
       ) {
-        lastErrors.set(packId, {
+        const diagnostic = {
           packId,
           code: LEXICAL_ERROR_CODES.CORRUPT,
           message: "Healthy dictionary pack has malformed active snapshot metadata.",
           path: "manifest.json"
-        });
+        };
+        errors.push(diagnostic);
+        lastErrors.set(packId, diagnostic);
         continue;
       }
       entries.push({ packId, snapshot });
@@ -69,7 +72,7 @@ export function createActiveOpfsPackReader({
     for (const packId of lastErrors.keys()) {
       if (!observedPackIds.has(packId)) lastErrors.delete(packId);
     }
-    return entries;
+    return { entries, errors, stateError: null };
   }
 
   function readerFor(snapshot) {
@@ -91,18 +94,31 @@ export function createActiveOpfsPackReader({
 
   async function lookupAll(text) {
     const hits = [];
-    for (const { packId, snapshot } of await activeEntries()) {
+    const { entries, errors, stateError } = await activeEntries();
+    if (stateError) throw diagnosticError(stateError);
+    let readablePacks = 0;
+    for (const { packId, snapshot } of entries) {
       try {
         const reader = readerFor(snapshot);
         const packHits = typeof reader.lookupAll === "function"
           ? await reader.lookupAll(text)
           : [await reader.lookup(text)].filter(Boolean);
+        readablePacks += 1;
         lastErrors.delete(packId);
         hits.push(...packHits);
       } catch (error) {
         if (!isTypedLexicalError(error)) throw error;
-        lastErrors.set(packId, makeDiagnostic(packId, error));
+        const diagnostic = makeDiagnostic(packId, error);
+        errors.push(diagnostic);
+        lastErrors.set(packId, diagnostic);
       }
+    }
+    // Report a failed local lookup only when no installed pack was readable.
+    // Request-local failures preserve isolation and cannot borrow another
+    // concurrent lookup's diagnostics from stats().
+    if (!readablePacks && errors.length) {
+      errors.sort((a, b) => compareText(a.packId, b.packId));
+      throw diagnosticError(errors[0]);
     }
     return hits;
   }
@@ -113,8 +129,9 @@ export function createActiveOpfsPackReader({
       return (await lookupAll(text))[0] || null;
     },
     async inspect() {
-      const packs = [];
-      for (const { packId, snapshot } of await activeEntries()) {
+      const { entries, errors, stateError } = await activeEntries();
+      const packs = errors.map(diagnostic => ({ status: "error", ...diagnostic }));
+      for (const { packId, snapshot } of entries) {
         try {
           const metadata = await readerFor(snapshot).inspect();
           lastErrors.delete(packId);
@@ -126,7 +143,7 @@ export function createActiveOpfsPackReader({
           packs.push({ status: "error", packId, ...diagnostic });
         }
       }
-      return { packs, stateError: lastStateError };
+      return { packs, stateError };
     },
     clearCache() {
       for (const reader of readers.values()) reader.clearCache?.();
@@ -183,10 +200,14 @@ function isTypedLexicalError(error) {
 function makeDiagnostic(packId, error, fallbackCode = "") {
   return {
     packId: String(packId || error?.packId || ""),
-    code: String(error?.code || fallbackCode || ""),
+    code: String(isTypedLexicalError(error) ? error.code : fallbackCode || error?.code || ""),
     message: String(error?.message || error || ""),
     path: String(error?.path || "")
   };
+}
+
+function diagnosticError(diagnostic) {
+  return Object.assign(new Error(diagnostic.message), diagnostic);
 }
 
 function compareText(a, b) {

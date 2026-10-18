@@ -9,7 +9,7 @@ test("Selection assistant Port streams real text and stop preserves partial with
   test.setTimeout(60000); const temporary = await mkdtemp(join(tmpdir(), "tf-assistant-stream-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
   const server = await startMockServer(); let context;
   try {
-    await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
+    await prepareExtensionTestCopy({ extensionDir: extension, baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium", args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
     const driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);

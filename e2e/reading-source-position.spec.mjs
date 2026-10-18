@@ -4,6 +4,7 @@ import { createSourceDigest } from "../src/shared/reading/identity.js";
 
 async function prepare(harness, html, { streaming = false } = {}) {
   await harness.reset();
+  await harness.installUserDictionaries();
   if (streaming) await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const page = await harness.open("/article");
   await page.evaluate((html) => { document.body.innerHTML = html; }, html);
@@ -150,6 +151,7 @@ for (const format of ["SVG", "XHTML"]) test(`${format} native lowercase sensitiv
     page = await prepare(harness, '<main><svg xmlns="http://www.w3.org/2000/svg" style="white-space:normal"><text id="public">PUBLIC session tail</text><script type="application/json">SECRET_SCRIPT</script><style>/* SECRET_STYLE */</style><textarea>SECRET_FORM</textarea></svg></main>');
   } else {
     await harness.reset();
+  await harness.installUserDictionaries();
     await harness.context.route("**/reading-xhtml", (route) => route.fulfill({ contentType: "application/xhtml+xml", body: '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Reading fixture</title></head><body><main><p id="public">PUBLIC session tail<script type="application/json">SECRET_SCRIPT</script><style>/* SECRET_STYLE */</style><textarea>SECRET_FORM</textarea></p></main></body></html>' }));
     page = await harness.open("/reading-xhtml"); await harness.inject(page);
   }

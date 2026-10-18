@@ -498,7 +498,7 @@ test("Sensitive ambiguous Selection explanation input never includes surrounding
   assert.equal(JSON.stringify(result.explanationInput).includes("password"), false);
 });
 
-test("Selection resolver preserves competing Core/Technical candidates for #85 ranking", async () => {
+test("Selection resolver preserves competing user-dictionary candidates for #85 ranking", async () => {
   const core = {
     id: "core:container",
     kind: "lexical",
@@ -576,7 +576,7 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
         exactCaseMatch: true,
         domains: ["developer-tool"],
         typeLabels: ["terminal multiplexer", "free software"],
-        provenance: { packId: "technical-wikidata", packVersion: "fixture", fingerprint: "sha256:tech" }
+        provenance: { packId: "local-concepts-fixture", packVersion: "fixture", fingerprint: "sha256:tech" }
       }]
     })
   });

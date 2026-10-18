@@ -4,7 +4,7 @@ import { open, stat, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
-import { stableStringify } from "./build-tflex-core.mjs";
+import { stableStringify } from "./tflex-writer.mjs";
 import {
   STARDICT_IMPORT_ERROR,
   STARDICT_IMPORT_LIMITS,

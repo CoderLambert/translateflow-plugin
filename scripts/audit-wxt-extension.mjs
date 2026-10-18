@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ROOT, runtimeAssetRoots, sourceClosure, lexicalAssetFiles, byteSummary } from "./wxt-assets.mjs";
+import { ROOT, runtimeAssetRoots, sourceClosure, byteSummary } from "./wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { expectedProductionManifest } from "./production-manifest.mjs";
@@ -19,16 +19,15 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   // WXT's compiled Content entrypoint is the only approved build-time projection.
   assertProductionManifest(manifest, baseline);
   const runtime = await sourceClosure(runtimeAssetRoots());
-  const lexical = await lexicalAssetFiles();
   const locales = await sourceClosure((await checkManifestLocales()).files);
   const assetMap = JSON.parse(await readFile(resolve(reportDir, "asset-map.json"), "utf8"));
-  assert.deepEqual(assetMap, { runtime, lexical, locales }, "Raw runtime asset map must match current MAIN/Worker sources");
+  assert.deepEqual(assetMap, { runtime, locales }, "Raw runtime asset map must match current MAIN/Worker sources");
   const compiled = JSON.parse(await readFile(resolve(reportDir, "compiled-closures.json"), "utf8"));
   const summary = await byteSummary(output);
   const present = new Set(summary.files.map((entry) => entry.path));
-  const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...runtime, ...lexical.files, ...locales, ...compiled.map((item) => item.fileName)]);
+  const expected = new Set(["manifest.json", ...Object.values(EXTENSION_PAGES), ...runtime, ...locales, ...compiled.map((item) => item.fileName)]);
   assert.deepEqual([...present].sort(), [...expected].sort(), "Unregistered or missing production assets");
-  for (const path of [...runtime, ...lexical.files, ...locales]) {
+  for (const path of [...runtime, ...locales]) {
     assert.deepEqual(await readFile(resolve(output, path)), await readFile(resolve(ROOT, path)), `Bridge changed source bytes: ${path}`);
   }
   assert.deepEqual(manifest.content_scripts, [{ matches: ["http://*/*", "https://*/*"],
@@ -110,7 +109,7 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   uiClosure.htmlBytes = Object.values(EXTENSION_PAGES).reduce((sum, path) => sum + sizes.get(path), 0);
   uiClosure.bytes += uiClosure.htmlBytes;
   const report = { status: codeBudgetExceeded ? "PASS_WITH_WARNING" : "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: ["content_scripts"],
-    runtimeFiles: runtime.length, compiledContent: { js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES] }, lexicalMissing: lexical.missing, ...summary,
+    runtimeFiles: runtime.length, compiledContent: { js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES] }, ...summary,
     codeBudgetBytes, platformCodeBytes, codeBudgetExceeded, codeBudgetOverageBytes,
     warnings: codeBudgetWarning ? [codeBudgetWarning] : [],
     reactPageClosures: Object.fromEntries([...pageCompiled].map(([name, files]) => [name, [...files].sort()])),

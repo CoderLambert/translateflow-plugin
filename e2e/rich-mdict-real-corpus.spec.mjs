@@ -39,6 +39,7 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test.skip(!process.env.RICH_MDICT_REAL_MDX,
@@ -238,6 +239,7 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes", async ({ harness }) => {

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 vi.mock("../../src/options/local-dictionary-client", () => ({ createLocalDictionaryClient: vi.fn() }));
 
 import { RichList } from "../../src/options/DictionaryViews";
+import { DictionarySection } from "../../src/options/DictionarySection";
 import { LocalDictionaryImport } from "../../src/options/LocalDictionaryImport";
 import { createLocalDictionaryClient } from "../../src/options/local-dictionary-client";
 import { LocaleProvider } from "../../src/options/LocaleContext";
@@ -141,4 +142,30 @@ test("installed resource recovery remains visible with full-set selection instru
   expect((screen.getByRole("button", { name: "为 Recovery fixture 添加或重新选择资源" }) as HTMLButtonElement).disabled).toBe(false);
   expect(document.querySelector('input[data-action="attach-mdd-resources"]')?.getAttribute("accept")).toContain(".css");
   expect(document.querySelector('input[data-action="attach-mdd-resources"]')?.getAttribute("accept")).toContain(".js");
+});
+
+test("dictionary library renders downloads, installed dictionaries and imports without a bundled group", async () => {
+  const service = makeService();
+  vi.mocked(createLocalDictionaryClient).mockReturnValue(service as never);
+  const client = {
+    load: vi.fn(async () => ({ packState: { packs: {} }, rich: [] })),
+    sources: [], dispose: vi.fn()
+  };
+  const view = render(<LocaleProvider value={zh}><DictionarySection client={client as never} setStatus={vi.fn()} /></LocaleProvider>);
+  await screen.findByRole("heading", { name: "精选上游与官方词典" });
+  expect(screen.getAllByRole("heading", { level: 3 }).map(heading => heading.textContent)).toEqual([
+    "精选上游与官方词典", "已安装", "本地导入"
+  ]);
+  expect(screen.queryByText("内置词典")).toBeNull();
+  expect(screen.getByRole("link", { name: "精选上游与官方词典" }).getAttribute("href")).toBe("#dictionaryDownloadHeading");
+  expect(screen.getByRole("link", { name: "本地导入" }).getAttribute("href")).toBe("#dictionaryImportHeading");
+  const initialHash = location.hash;
+  await userEvent.click(screen.getByRole("link", { name: "精选上游与官方词典" }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "精选上游与官方词典" }));
+  await userEvent.click(screen.getByRole("link", { name: "本地导入" }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "本地导入" }));
+  expect(location.hash).toBe(initialHash);
+  expect(service.importFiles).not.toHaveBeenCalled();
+  view.unmount();
+  expect(client.dispose).toHaveBeenCalledTimes(1);
 });
