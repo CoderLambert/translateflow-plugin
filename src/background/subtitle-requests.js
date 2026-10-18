@@ -14,20 +14,24 @@ export async function runSubtitleTranslationBatch({
   pageUrl,
   pageTitle = "",
   units
-}) {
+}, deps = {}) {
+  const effectiveConfig = deps.getEffectiveConfig || getEffectiveConfig;
+  const lookupCache = deps.lookupTranslations || lookupTranslations;
+  const runProvider = deps.runTranslationRequest || runTranslationRequest;
+  const storeCache = deps.storeTranslations || storeTranslations;
   const normalized = normalizeUnits(units);
   if (!normalized.length) {
     return { translations: [], cacheHits: 0, apiTranslated: 0, missing: 0 };
   }
 
-  const config = await getEffectiveConfig(pageUrl);
+  const config = await effectiveConfig(pageUrl);
   const cacheSegments = normalized.map((unit) => ({
     id: unit.id,
     text: buildSubtitleCacheSource(unit), providerText: unit.text, format: "plain"
   }));
   let cached, cacheWarning = "";
   try {
-    cached = await lookupTranslations({
+    cached = await lookupCache({
       pageUrl,
       segments: cacheSegments,
       namespace: "subtitle-translation",
@@ -46,7 +50,7 @@ export async function runSubtitleTranslationBatch({
 
   const translatedById = new Map();
   if (missing.length) {
-    const translated = await runTranslationRequest({
+    const translated = await runProvider({
       requestId,
       pageUrl,
       segments: missing.map((unit) => ({ id: unit.id, text: unit.text, format: "plain" })),
@@ -83,7 +87,7 @@ export async function runSubtitleTranslationBatch({
 
   if (storeItems.length && !cacheWarning) {
     try {
-      const saved = await storeTranslations({
+      const saved = await storeCache({
         pageUrl,
         pageTitle,
         items: storeItems,
