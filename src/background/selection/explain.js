@@ -8,6 +8,7 @@ import { resolveSelectionRequest } from "./resolve.js";
 import { buildSelectionExplainPrompt, SELECTION_EXPLAIN_QUESTION, SELECTION_READING_PROMPT_VERSION } from "./explain-prompt.js";
 import { readingTranslationResult } from "./reading-result.js";
 import { sha256 } from "../../shared/hash.js";
+import { isCachePersistenceError } from "../../shared/cache/persistence-errors.js";
 import { configFingerprint } from "../../shared/translation-cache-identity.js";
 import {
   buildSelectionExplainCacheIdentity,
@@ -74,12 +75,20 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     readingResult.provenance.promptVersion = SELECTION_READING_PROMPT_VERSION;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);
 
-    const allowPersistentCache = !payload.sensitive;
-    let cacheToken;
+    let allowPersistentCache = !payload.sensitive;
+    let cacheToken, cacheWarning = "";
     if (allowPersistentCache) {
-      const cached = await lookupCache({ cacheKey: cache.cacheKey });
-      cacheToken = cached?.cacheToken;
+      let cached;
+      try {
+        cached = await lookupCache({ cacheKey: cache.cacheKey });
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        // An authorized explanation can still be generated without persistence.
+        allowPersistentCache = false;
+        cacheWarning = error.code;
+      }
       assertActive(controller.signal);
+      cacheToken = cached?.cacheToken;
       if (cached?.hit) {
         const generated = parseSelectionExplainResult(cached.hit, { candidateIds });
         return response({
@@ -100,15 +109,21 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     assertActive(controller.signal);
 
     if (allowPersistentCache) {
-      await storeCache({
-        cacheKey: cache.cacheKey,
-        ...(cacheToken ? { cacheToken } : {}),
-        result: {
-          selectedCandidateIds: [...generated.selectedCandidateIds],
-          explanation: generated.explanation,
-          translation: generated.translation
-        }
-      });
+      try {
+        const stored = await storeCache({
+          cacheKey: cache.cacheKey,
+          ...(cacheToken ? { cacheToken } : {}),
+          result: {
+            selectedCandidateIds: [...generated.selectedCandidateIds],
+            explanation: generated.explanation,
+            translation: generated.translation
+          }
+        });
+        cacheWarning = stored?.cacheWarning || (Number(stored?.stored || 0) !== 1 ? "CACHE_NOT_SAVED" : "");
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        cacheWarning = error.code;
+      }
       assertActive(controller.signal);
     }
 
@@ -117,7 +132,8 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
       generated,
       cacheHit: false,
       cacheKey: cache.cacheKey,
-      readingResult
+      readingResult,
+      cacheWarning
     });
   } finally {
     if (requestsById.get(requestId) === controller) requestsById.delete(requestId);
@@ -133,7 +149,7 @@ export function cancelSelectionExplanationRequest(requestId) {
   return { cancelled: true };
 }
 
-function response({ resolved, generated, cacheHit, cacheKey, readingResult }) {
+function response({ resolved, generated, cacheHit, cacheKey, readingResult, cacheWarning = "" }) {
   const candidates = Array.isArray(resolved?.decision?.candidates)
     ? resolved.decision.candidates
     : [];
@@ -145,6 +161,7 @@ function response({ resolved, generated, cacheHit, cacheKey, readingResult }) {
     cacheKey,
     generated,
     readingResult,
+    ...(cacheWarning ? { cacheWarning } : {}),
     local: {
       decisionOutcome: resolved?.decision?.outcome || "",
       decisionReason: resolved?.decision?.reason || "",
