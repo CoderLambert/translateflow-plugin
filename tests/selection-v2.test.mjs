@@ -390,8 +390,8 @@ test("lexical resource errors remain diagnosable without automatic translation",
       assert.equal(result.route, SELECTION_ROUTE.UNRESOLVED, `${code}, throws=${throws}`);
       assert.equal(result.routeReason, "local-error");
       assert.equal(result.decision.error.code, code);
-      assert.equal(result.explanationAllowed, false);
-      assert.equal(result.preferRich, false);
+      assert.equal(result.explanationAllowed, true, "a one-word MDX hit may expose explicit AI actions");
+      assert.equal(result.preferRich, true, "try imported rich dictionaries without translating automatically");
       assert.equal(JSON.stringify(result).includes("private diagnostic path"), false);
     }
   }
@@ -584,4 +584,38 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
   assert.equal(result.route, SELECTION_ROUTE.LOCAL);
   assert.equal(result.decision.topCandidateId, "technical:Q1935361");
   assert.equal(result.decision.candidates[0].typeLabels[0], "terminal multiplexer");
+});
+
+for (const [status, text, explanationAllowed, route, preferRich] of [
+  ["error", "noted", true, SELECTION_ROUTE.UNRESOLVED, true],
+  ["no-hit", "noted", true, SELECTION_ROUTE.UNRESOLVED, false],
+  ["unsupported", "noted", false, SELECTION_ROUTE.TRANSLATION, true],
+  ["error", "unknown lexical phrase", false, SELECTION_ROUTE.UNRESOLVED, false],
+  ["no-hit", "unknown lexical phrase", false, SELECTION_ROUTE.TRANSLATION, true]
+]) {
+  test(`rich-first ${status} lookup for ${text} preserves explicit AI availability (${explanationAllowed})`, async () => {
+    const result = await resolveSelectionRequest({ text, pageUrl: "https://fixture.invalid/article" }, {
+      getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+      getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+      runLexicalLookup: async () => ({ status, candidates: [], error: status === "error"
+        ? { code: "LEXICON_STORAGE_ERROR", message: "Optional structured pack unavailable" } : undefined })
+    });
+    assert.equal(result.route, route);
+    assert.equal(result.preferRich, preferRich);
+    assert.equal(result.explanationAllowed, explanationAllowed);
+    assert.equal(result.lookup.status, status, "retain the real structured lookup diagnostic");
+    assert.equal("explanationInput" in result, false, "resolving must not start AI");
+  });
+}
+
+test("an unexpected structured lookup failure still tries imported rich dictionaries first", async () => {
+  const result = await resolveSelectionRequest({ text: "noted", pageUrl: "https://fixture.invalid/article" }, {
+    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => { throw new Error("structured source temporarily unavailable"); }
+  });
+  assert.equal(result.route, SELECTION_ROUTE.UNRESOLVED);
+  assert.equal(result.routeReason, "local-error");
+  assert.equal(result.preferRich, true);
+  assert.equal(result.explanationAllowed, true);
 });

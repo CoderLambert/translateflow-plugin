@@ -6,6 +6,7 @@
   const { css } = app.modules.uiTokens;
   const featureCss = [
     app.modules.uiQuickControlStyles?.css,
+    app.modules.uiQuickControlPositionStyles?.css,
     app.modules.uiSelectionAiDetailStyles?.css,
     app.modules.uiSelectionEmptyStateStyles?.css,
     app.modules.uiSelectionLexicalStyles?.css,

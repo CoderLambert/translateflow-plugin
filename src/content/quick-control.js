@@ -11,7 +11,7 @@
     || app.modules.quickControl
   ) return;
 
-  const { messages, state, getSiteScope, sendRuntimeMessage } = app.modules.runtime;
+  const { messages, state, getSiteScope, sendRuntimeMessage, showToast } = app.modules.runtime;
   const i18n = app.modules.contentI18n;
   const t = (key, args) => i18n.t(key, args);
   const tasks = app.modules.tasks;
@@ -27,6 +27,8 @@
   let selectionActive = false;
   let latestTask = null;
   let context = null;
+  let positionVersion = 0;
+  let positionRead;
 
   const view = app.modules.quickControlView.create({
     onToggle: togglePanel,
@@ -38,7 +40,8 @@
     onPresetChange: changePreset,
     onAppearanceChange: changeAppearance,
     onSettings: openSettings,
-    onHideSite: hideOnSite
+    onHideSite: hideOnSite,
+    onPositionChange: savePosition
   });
 
   function start() {
@@ -88,13 +91,35 @@
 
   async function refreshSiteVisibility() {
     const origin = getSiteScope(location.href);
-    const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
+    const [response] = await Promise.all([
+      sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET }),
+      loadPosition()
+    ]);
     const stored = response?.settings || {};
     persistentVisible = Array.isArray(stored.quickControlSites)
       && stored.quickControlSites.includes(origin);
     hiddenForSite = Array.isArray(stored.quickControlHiddenSites)
       && stored.quickControlHiddenSites.includes(origin);
     updateVisibility();
+  }
+
+  function loadPosition() {
+    if (positionRead) return positionRead;
+    const version = positionVersion;
+    positionRead = sendRuntimeMessage({ type: messages.background.QUICK_CONTROL_POSITION_GET }).then(saved => {
+      if (saved?.ok && version === positionVersion) view.setPosition(saved.position || null);
+    }).catch(() => {});
+    return positionRead;
+  }
+
+  async function savePosition(position) {
+    const version = ++positionVersion;
+    try {
+      const response = await sendRuntimeMessage({ type: messages.background.QUICK_CONTROL_POSITION_SET, position });
+      if (!response?.ok) throw new Error("Position save failed");
+    } catch {
+      if (version === positionVersion) showToast(t("content.quick.positionSaveFailed"), "error");
+    }
   }
 
   function shouldRender() {

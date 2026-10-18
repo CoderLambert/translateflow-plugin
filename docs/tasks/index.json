@@ -286,6 +286,13 @@
       "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468"
     },
     {
+      "task": "content-runtime-closeout",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "fix/local-content-reliability-20261019",
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568"
+    },
+    {
       "task": "offline-dictionary",
       "status": "paused",
       "dependencies": [],

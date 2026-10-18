@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "task": "content-runtime-closeout",
+  "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+  "tree": "eba5a9089edf5b019460c7ccb074ea1883011d54",
+  "inputTree": "25b9caf5db2660dc45c0acc74e687d477bea2a7f887dd0ff87fadb0743f88682",
+  "frozenAt": "2026-10-18T20:23:52.633Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 13.572786,
+      "startedAt": "2026-10-18T20:23:54.979Z",
+      "log": "docs/task-execution/local/content-runtime-closeout/cf0e8293-6379-4eda-83b4-799d4c8494e8.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 53819.654757,
+      "startedAt": "2026-10-18T20:23:55.161Z",
+      "log": "docs/task-execution/local/content-runtime-closeout/2dc02a54-e09e-494f-8098-e3f873213d67.log",
+      "logSha256": "ba38aa804f177aefa2f111a9f7754e1441cf4183931493b367a3105c7e7735f1"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2653.133576,
+      "startedAt": "2026-10-18T20:24:51.072Z",
+      "log": "docs/task-execution/local/content-runtime-closeout/e53e42a9-1629-4311-97bc-2e9379fd2e91.log",
+      "logSha256": "e9b578eb90e0889651c841af668eba739dc45294a1093e6565ca3bbddff01117"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "TF_SMOKE_REPORT=.wxt/reports/stable-smoke.json",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1190.737997,
+      "startedAt": "2026-10-18T20:24:55.443Z",
+      "log": "docs/task-execution/local/content-runtime-closeout/4579a1ed-5be0-4e79-b745-fee07c9cd14a.log",
+      "logSha256": "a3a694149661d1ac0d91431b25412b8fea325db52b09da03833f433c86c79763"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1130.79006,
+      "startedAt": "2026-10-18T20:25:00.988Z",
+      "log": "docs/task-execution/local/content-runtime-closeout/0be75d96-b5d4-41b2-894c-ddbcf9029a00.log",
+      "logSha256": "321564f1b5401ad76c1ae6902994dc524c01713218a1635ef56b5f286a22d386"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "772364e50dd0ec627760c0cb23e560297999a75221220bfbc208e0d711c9bd2a"
+  },
+  "limitations": [
+    "Per user instruction, full npm run test:e2e is deferred to the next feature. The run on prior candidate fa010838154245f35fdb48e6fbc3fbf0a6de599f was stopped at 226/239 passed, 1 interrupted, 9 skipped, 3 not run; it is not a passing full E2E result."
+  ]
+}

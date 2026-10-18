@@ -141,7 +141,11 @@ Content/Selection (later #79)
 
 `background/lexical/active-opfs-reader.js` discovers enabled user-installed dictionaries from existing state and isolates per-pack faults. The generic `tflex-reader.js` retains bounded shard reads and byte-accounted LRU caching for format tooling; production lookup does not read extension-package dictionaries or issue health probes. An empty library yields local no-hit, while User Glossary remains available. Local lexical results do not enter translation cache. No data migration or preference reset is involved.
 
+Rich dictionary lookup/navigation follows the frozen selection capture, independently of AI request versions; a new selection, query, route or document still invalidates the old session.
+
 ## Content
+
+An invalidated extension context is terminal for the current document's automatic translation and cache-restore queues. `runtime.js` classifies a missing messaging API; `auto.js` stops both in-memory modes, observers and timers, clears pending work, and displays one localized refresh notice. Saved site settings and cached data remain intact, and a page refresh starts a fresh context with the saved modes. Ordinary network failures retain the existing retry/backoff behavior.
 
 Content Script 的 owner 继续按 classic registry 模块分层，由 WXT 在构建期按唯一图组合：
 
