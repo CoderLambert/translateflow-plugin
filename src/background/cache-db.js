@@ -7,7 +7,8 @@ import { normalizeSourceText } from "../shared/text.js";
 import { normalizeUrl } from "../shared/url.js";
 
 const DB_NAME = "ai_bilingual_translator";
-const DB_VERSION = 2;
+// This upgrade discards old translation/page rows; Reading records use another database.
+const DB_VERSION = 3;
 const TRANSLATIONS = "translations";
 const PAGES = "pages";
 const SELECTION_EXPLANATIONS = "selection_explanations";
@@ -51,7 +52,7 @@ export async function lookupTranslations({ pageUrl, segments, config }) {
   for (let i = 0; i < lookups.length; i += 1) {
     const { segment } = lookups[i];
     const record = records[i];
-    if (!record?.translation) continue;
+    if (!record?.translation || record.cacheSchema !== CACHE_SCHEMA_VERSION) continue;
     if (normalizeSourceText(record.sourceText) !== normalizeSourceText(segment.text)) continue;
 
     hits.push({ id: segment.id, text: record.translation });
@@ -81,6 +82,7 @@ export async function storeTranslations({ pageUrl, pageTitle = "", items, config
     const cacheKey = `${ctx.pageConfigKey}:${sourceHash}`;
     return {
       cacheKey,
+      cacheSchema: CACHE_SCHEMA_VERSION,
       pageKey: ctx.pageKey,
       pageConfigKey: ctx.pageConfigKey,
       configHash: ctx.configHash,
@@ -324,8 +326,15 @@ function openDb() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
+      // One-way cache reset: never parse, migrate or fall back to pre-v3 translations.
+      // Only these two translation stores are disposable. In particular,
+      // selection_explanations and the separate ReadingRecord database survive.
+      if (event.oldVersion > 0 && event.oldVersion < DB_VERSION) {
+        if (db.objectStoreNames.contains(TRANSLATIONS)) db.deleteObjectStore(TRANSLATIONS);
+        if (db.objectStoreNames.contains(PAGES)) db.deleteObjectStore(PAGES);
+      }
       if (!db.objectStoreNames.contains(TRANSLATIONS)) {
         const store = db.createObjectStore(TRANSLATIONS, { keyPath: "cacheKey" });
         store.createIndex("pageKey", "pageKey", { unique: false });
