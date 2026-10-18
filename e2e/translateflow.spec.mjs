@@ -13,7 +13,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(translated.ok).toBe(true);
     expect(translated.apiTranslated).toBe(3);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     const richTranslation = page.locator("#rich .abt-translation");
     await expect(richTranslation.locator("a")).toHaveAttribute("href", "/docs");
@@ -29,7 +29,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(restored.ok).toBe(true);
     expect(restored.cacheHits).toBe(3);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
   });
 
   test("Quick-Control-only persistent injection does not auto-restore cached page translations", async ({ harness }) => {
@@ -39,7 +39,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-quick-only-seed" });
     expect(translated.ok).toBe(true);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     await page.close();
 
     await harness.setStorage({
@@ -53,7 +53,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await reopened.waitForTimeout(600);
 
     await expect(reopened.locator(".abt-translation")).toHaveCount(0);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     await reopened.close();
   });
 
@@ -133,7 +133,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-appearance" });
     expect(translated.ok).toBe(true);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
 
     await expect.poll(() => page.evaluate(() =>
@@ -152,7 +152,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
       return { paddingTop: style.paddingTop, lineHeight: style.lineHeight, borderLeftWidth: style.borderLeftWidth };
     });
     expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     await harness.setStorage({
       siteProfiles: {
@@ -172,7 +172,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
     await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
     await expect(rich.locator("code")).toHaveText("npm test");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     const readingContext = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(readingContext.ok).toBe(true);
@@ -196,7 +196,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
     await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
     await expect(rich.locator("code")).toHaveText("npm test");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     const minimalContext = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(minimalContext.ok).toBe(true);
@@ -256,13 +256,13 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await page.getByRole("button", { name: "重试" }).click();
     await expect(page.locator(".tf-quick-status")).toContainText("翻译完成");
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200]);
+    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200, 200]);
 
     await page.getByLabel("阅读外观").selectOption("reading");
     await expect.poll(() => page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-line-height").trim()
     )).toBe("1.8");
-    expect(harness.server.calls).toHaveLength(2);
+    expect(harness.server.calls).toHaveLength(3);
 
     await harness.sendContent(page, "ABT_CLEAR_PAGE_CACHE");
     await harness.sendContent(page, "ABT_CLEAR_TRANSLATIONS");
@@ -629,7 +629,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     harness.server.setFailures([]);
     await page.getByRole("button", { name: "重试" }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
-    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200]);
+    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200, 200]);
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
 

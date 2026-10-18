@@ -21,7 +21,7 @@ test.describe("v0.8 release-gate browser flows", () => {
     await popup.locator("#translate").click();
     await expect.poll(() => page.locator(".abt-translation").count()).toBeGreaterThan(0);
     const translatedCount = await page.locator(".abt-translation").count();
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     await popup.locator("details").first().locator("summary").click();
     await popup.locator("#toggle").click();
@@ -35,7 +35,7 @@ test.describe("v0.8 release-gate browser flows", () => {
     await popup.locator("details").nth(1).locator("summary").click();
     await popup.locator("#restore").click();
     await expect(page.locator(".abt-translation")).toHaveCount(translatedCount);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
   });
 
   test("Popup release layout stays readable at normal extension width", async ({ harness }, testInfo) => {

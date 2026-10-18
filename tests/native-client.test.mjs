@@ -4,6 +4,7 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import * as contract from "../src/shared/browser-translation.js";
 import * as language from "../src/shared/browser-language.js";
+const runtimeCode = await readFile(new URL("../src/content/runtime.js", import.meta.url), "utf8");
 const code = await readFile(new URL("../src/content/translation-client.js", import.meta.url), "utf8");
 const M = Object.fromEntries(["TRANSLATION_ENGINE_SETTINGS", "CACHE_LOOKUP", "CACHE_STORE", "TRANSLATE_BATCH", "SUBTITLE_TRANSLATE_BATCH", "CANCEL_TRANSLATION", "OPEN_OPTIONS", "PUBLIC_SETTINGS_CHANGED"].map(key => [key, key]));
 const pageUrl = "https://example.test/article";
@@ -19,9 +20,10 @@ function setup({ prompt = async () => { throw new Error("Unexpected prompt"); },
   };
   const buildSubtitleCacheSource = unit => JSON.stringify({ media: unit.mediaId, track: unit.track, text: unit.text });
   const app = { modules: { browserTranslationContract: { ...contract, ...language, buildSubtitleCacheSource }, browserTranslation: engine,
-    browserTranslationView: { prompt, close() {} }, runtime: { messages: { background: M } }, contentI18n: { t: key => key } } };
+    browserTranslationView: { prompt, close() {} }, contentI18n: { t: key => key } } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: pageUrl }, document: { documentElement: { lang: "es" } },
-    window: { addEventListener: (key, fn) => { events[key] = fn; } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController });
+    window: { addEventListener: (key, fn) => { events[key] = fn; } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController, URL });
+  vm.runInContext(runtimeCode, context);
   vm.runInContext(code, context);
   const raw = async payload => {
     calls.push(payload);

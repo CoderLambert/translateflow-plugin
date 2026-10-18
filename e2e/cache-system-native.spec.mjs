@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 const allowed = new Set([
   '/tests/cache-system-browser-cases.js',
   '/src/shared/url.js', '/src/shared/translation-cache-identity.js',
-  '/src/shared/cache/identity.js', '/src/shared/cache/record.js', '/src/shared/cache/single-flight.js',
+  '/src/shared/cache/persistence-errors.js', '/src/shared/cache/identity.js', '/src/shared/cache/record.js', '/src/shared/cache/single-flight.js',
   '/src/background/cache/service.js', '/src/background/cache/storage-indexeddb.js',
   '/src/background/cache/application.js'
 ]);
@@ -30,6 +30,8 @@ test('native cache upgrade, transaction and independent-client contracts', async
       const module = await import('/tests/cache-system-browser-cases.js');
       return module.runBrowserCacheTests();
     });
+    report.browserVersion = page.context().browser().version();
+    console.log('[NATIVE_CACHE_CONTRACTS]', JSON.stringify(report));
     expect(report.status).toBe('PASS'); expect(report.databaseVersion).toBe(4);
     expect(report.checks.every(check => check.status === 'PASS')).toBe(true);
     await testInfo.attach('native-indexeddb-contracts.json', { body: Buffer.from(JSON.stringify(report, null, 2)), contentType: 'application/json' });

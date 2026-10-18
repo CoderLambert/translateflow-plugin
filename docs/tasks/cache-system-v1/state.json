@@ -27,12 +27,49 @@
     [
       "npm",
       "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
       "test:e2e",
       "--",
       "e2e/cache-system-native.spec.mjs",
-      "e2e/cache-system-mv3.spec.mjs"
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-mv3.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/wxt-upgrade.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=1",
+      "--retries=0"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "PR #345 本轮已补齐 Page/Selection/Chrome/Subtitle 生成译文在持久化失败时仍可显示、增量自动和 cache-only 恢复的限频错误反馈、对字面 TF marker 默认按纯文本处理、翻译命名空间联合容量清理不淘汰独立 AI 解释。新增 Node 与 native-IDB 回归测试，隔离 V8 测试及解析检查有 PASS；远端当前 head 的正式 Node24/npm11 npm run validate、真实原生 IndexedDB DB2/3→4 升级/回滚、WXT 同 ID 升级、MV3 E2E、实际安装包指纹仍 NOT RUN/BLOCKED。需要在允许访问 Node24/Chromium 的环境运行完整验证，冻结准确 candidateHead，自查并准备用户手动体验验收；此前不得改 completed、不得合并或继续 M0/M1。"
+  "nextAction": "执行本轮修复后准确候选的 Node24 完整 validate、原生 IndexedDB、WXT smoke、MV3、同 ID 升级与全量 Chromium 回归；保留基线失败与环境阻塞，完成候选证据和人工验收前不合并、不 completed。"
 }

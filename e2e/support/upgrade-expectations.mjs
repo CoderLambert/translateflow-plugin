@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { byteLength, opaqueCacheIdentity } from "../../src/shared/cache/identity.js";
 
 export function assertUnchangedUpgradeSnapshot(before, after) {
   assert.deepEqual(after, before, "Same-version replacement must preserve the expected stored snapshot");
@@ -18,14 +19,27 @@ export function expectedRegistrationsAfterInstalledUpdate(before, nativeEvent, p
   return [];
 }
 
-// This legacy WXT fixture does not seed AI explanations. Refuse to discard any
-// unexpectedly populated explanation rows; opaque preservation is covered by
-// the dedicated native-IDB upgrade contract tests, not by a fake expected row.
-export function expectedTranslationCacheDatabases(databases) {
+// Validate every opaque value and all deterministic envelope fields. Only the
+// random write ID comes from the observed upgrade, and must be a UUID.
+export function expectedTranslationCacheDatabases(databases, observed = []) {
   return databases.map(db => {
     if (db.name !== "ai_bilingual_translator" || ![2, 3].includes(db.version)) return db;
-    assert.equal((db.stores.selection_explanations || []).length, 0, "Use native upgrade tests for seeded explanation records");
-    return { ...db, version: 4, stores: { entries: [], epochs: [] } };
+    const rows = db.stores.selection_explanations || [];
+    const entries = observed.find(next => next.name === db.name)?.stores.entries || [];
+    assert.equal(entries.length, rows.length, "Every old explanation must migrate exactly once");
+    const expected = rows.map(old => {
+      const identity = opaqueCacheIdentity("selection-explanation", old.cacheKey);
+      const actual = entries.find(entry => entry.key === identity.key);
+      assert(actual, "Explanation identity must be retained");
+      assert.match(actual.writeId, /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u);
+      const record = { recordVersion:1, ...identity, value:old.result, metadata:{},
+        createdAt:old.createdAt, updatedAt:old.createdAt, lastAccessedAt:old.lastAccessedAt,
+        expiresAt:0, writeId:actual.writeId, bytes:actual.bytes };
+      assert.equal(actual.bytes, byteLength(record), "Migrated bytes must be exact");
+      assert.deepEqual(actual, record, "Opaque result and timestamps must survive intact");
+      return record;
+    });
+    return { ...db, version:4, stores:{entries:expected,epochs:[]} };
   });
 }
 export function assertRecoveredDatabases(before, after, observedAt = Date.now()) {

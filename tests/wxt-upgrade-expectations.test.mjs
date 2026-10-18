@@ -1,3 +1,5 @@
+import { createCacheRecord, normalizePolicy } from "../src/shared/cache/record.js";
+import { opaqueCacheIdentity } from "../src/shared/cache/identity.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, expectedTranslationCacheDatabases, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
@@ -115,5 +117,20 @@ test("cache recovery compares all content/stores canonically and permits only va
     // Every adversarial snapshot passes the superseded three-row guard.
     assert.equal(bad[0].stores.translations.length,3);
     assert.throws(()=>assertRecoveredDatabases(before,bad,400),assert.AssertionError);
+  }
+});
+
+
+test("nonempty explanation upgrade expectations reject dropped or mutated opaque data", () => {
+  const old=seededDatabases();
+  old[0].stores.selection_explanations=[{cacheKey:"selection",result:{explanation:"完整解释",nested:{keep:[1,2]}},createdAt:100,lastAccessedAt:200}];
+  const entry=createCacheRecord(opaqueCacheIdentity("selection-explanation","selection"),old[0].stores.selection_explanations[0].result,normalizePolicy(),100);
+  entry.lastAccessedAt=200;
+  const observed=[{name:"ai_bilingual_translator",version:4,stores:{entries:[entry],epochs:[]}}];
+  assert.deepEqual(expectedTranslationCacheDatabases(old,observed),observed);
+  for(const change of [db=>db[0].stores.entries.pop(),db=>db[0].stores.entries[0].value.nested.keep.pop(),
+    db=>db[0].stores.entries[0].createdAt++,db=>db[0].stores.entries[0].bytes++,db=>db[0].stores.entries[0].key="changed"]) {
+    const bad=structuredClone(observed);change(bad);
+    assert.throws(()=>expectedTranslationCacheDatabases(old,bad));
   }
 });

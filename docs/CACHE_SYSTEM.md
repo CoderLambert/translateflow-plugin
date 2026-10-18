@@ -66,4 +66,4 @@ Required before user final acceptance:
 4. Verify storage-write failures leave safe generated content available with explicit cache status in all actual UI paths, not merely in the generic `getOrLoad` tests.
 5. Build one exact candidate installation package and record its fingerprint. Do not install an unverified package into the user's existing profile.
 
-The current execution environment cannot resolve Git/npm downloads, provides Node22 rather than required Node24, and Chromium blocks localhost navigation with `ERR_BLOCKED_BY_ADMINISTRATOR`; zero native IndexedDB cases executed there. Do not disable managed policy or claim a full PASS. The module remains working until remaining integration and genuine validation finish.
+The earlier source-overlay environment was blocked by Node22/download and managed-browser restrictions. The subsequent PR #345 validation uses an isolated worktree, Node24/npm11 and real Chromium; current candidate results and limitations belong in `docs/tasks/cache-system-v1/validation-report.md` and `acceptance.json`, rather than extending historical overlay counts. The module remains unmerged and requires user acceptance.

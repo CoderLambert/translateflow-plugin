@@ -97,7 +97,7 @@
 
       const key = cacheWarning ? "content.page.cacheNotSaved"
         : missing ? "content.page.completeMissing" : "content.page.complete";
-      const args = missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
+      const args = cacheWarning ? {} : missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
       const message = t(key, args);
       tasks.completeTask(task, {
         done: entries.length,

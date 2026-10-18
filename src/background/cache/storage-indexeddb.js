@@ -101,7 +101,7 @@ export function createIndexedDbCacheStore({ indexedDBFactory = globalThis.indexe
       signal?.addEventListener('abort', cancel, { once: true });
       tx.oncomplete = () => { signal?.removeEventListener('abort', cancel); resolve(result); };
       tx.onerror = event => { failure ||= event.target?.error || tx.error; };
-      tx.onabort = () => { signal?.removeEventListener('abort', cancel); reject(failure?.code ? failure : cacheError(
+      tx.onabort = () => { signal?.removeEventListener('abort', cancel); reject(typeof failure?.code === 'string' ? failure : cacheError(
         failure?.name === 'QuotaExceededError' || tx.error?.name === 'QuotaExceededError' ? 'CACHE_QUOTA' : 'CACHE_STORAGE',
         '缓存事务未提交。', failure || tx.error)); };
       try { work(tx, then, value => { result = value; }, fail); } catch (error) { fail(error); }

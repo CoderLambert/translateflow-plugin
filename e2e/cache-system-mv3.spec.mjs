@@ -58,3 +58,76 @@ test('invalid structured translation never enters cache and no legacy write is a
   expect((await harness.runtime({ type: 'CACHE_LOOKUP', pageUrl, segments, cacheOnly: true })).hits).toHaveLength(0);
   expect(harness.server.calls).toHaveLength(0);
 });
+
+async function failEntryWrites(harness, fail) {
+  await harness.serviceWorker.evaluate(fail => {
+    if (fail) {
+      globalThis.__tfOriginalCachePut = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function(...args) {
+        if (this.name === 'entries') throw new DOMException('Synthetic cache quota failure', 'QuotaExceededError');
+        return globalThis.__tfOriginalCachePut.apply(this, args);
+      };
+    } else if (globalThis.__tfOriginalCachePut) {
+      IDBObjectStore.prototype.put = globalThis.__tfOriginalCachePut;
+      delete globalThis.__tfOriginalCachePut;
+    }
+  }, fail);
+}
+
+test('compiled Content keeps generated Page text visible after an actual IDB write failure', async ({ harness }) => {
+  const page = await harness.open('/article'); await harness.inject(page);
+  await failEntryWrites(harness, true);
+  try {
+    const translated = await harness.sendContent(page, 'ABT_TRANSLATE_PAGE', { taskId: 'quota-page' });
+    expect(translated, JSON.stringify(translated)).toMatchObject({ ok: true, apiTranslated: 3, cacheWarning: 'CACHE_QUOTA' });
+    await expect(page.locator('.abt-translation')).toHaveCount(3);
+    expect(harness.server.calls).toHaveLength(2);
+    expect(await harness.runtime({ type: 'CACHE_STATS' })).toMatchObject({ ok: true, segmentCount: 0 });
+    await page.screenshot({ path: test.info().outputPath('page-cache-write-failure.png') });
+  } finally { await failEntryWrites(harness, false); }
+  await harness.sendContent(page, 'ABT_CLEAR_TRANSLATIONS');
+  expect(await harness.sendContent(page, 'ABT_RESTORE_CACHE')).toMatchObject({ ok: true, cacheHits: 0 });
+  await expect(page.locator('.abt-translation')).toHaveCount(0);
+  expect(harness.server.calls).toHaveLength(2);
+});
+
+test('compiled Selection displays the verified translation after an actual IDB write failure', async ({ harness }) => {
+  await harness.setStorage({ dictionaryEnabled: false });
+  const page = await harness.open('/selection'); await harness.inject(page);
+  await failEntryWrites(harness, true);
+  try {
+    await page.locator('#unknown-phrase').evaluate(node => {
+      const range = document.createRange(); range.selectNodeContents(node);
+      getSelection().removeAllRanges(); getSelection().addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+    });
+    await page.locator('.tf-selection-chip').click();
+    await expect(page.locator('.tf-selection-primary')).not.toBeEmpty();
+    await expect(page.locator('.tf-toast-message')).toContainText('缓存');
+    expect(harness.server.calls).toHaveLength(1);
+    expect(await harness.runtime({ type: 'CACHE_STATS' })).toMatchObject({ ok: true, segmentCount: 0 });
+    await page.screenshot({ path: test.info().outputPath('selection-cache-write-failure.png') });
+  } finally { await failEntryWrites(harness, false); }
+});
+
+test('compiled explanation cache hits independently and survives translation quota pruning', async ({ harness }) => {
+  const message = { type: 'SELECTION_EXPLAIN', text: 'persistent', pageUrl, depth: 'standard' };
+  const first = await harness.runtime({ ...message, requestId: 'explain-seed' });
+  expect(first).toMatchObject({ ok: true, cacheHit: false });
+  expect(harness.server.calls).toHaveLength(1);
+  expect(await harness.runtime({ ...message, requestId: 'explain-hit' })).toMatchObject({ ok: true, cacheHit: true, generated: first.generated });
+  expect(harness.server.calls).toHaveLength(1);
+  for (let n = 0; n < 7; n++) {
+    const text = `Synthetic large translation ${n}`, lookup = await read(harness, text);
+    expect(await write(harness, text, lookup, '合'.repeat(350000))).toMatchObject({ ok: true, stored: 1 });
+  }
+  const before = await harness.runtime({ type: 'CACHE_STATS' });
+  expect(before).toMatchObject({ segmentCount: 7, selectionExplanationCount: 1 });
+  await harness.setStorage({ cacheMaxMB: 5 });
+  const after = await harness.runtime({ type: 'CACHE_PRUNE' });
+  expect(after.deleted).toBeGreaterThan(0);
+  expect(after.segmentCount).toBeLessThan(7);
+  expect(after.selectionExplanationCount).toBe(1);
+  expect(await harness.runtime({ ...message, requestId: 'explain-after-prune' })).toMatchObject({ ok: true, cacheHit: true, generated: first.generated });
+  expect(harness.server.calls).toHaveLength(1);
+});

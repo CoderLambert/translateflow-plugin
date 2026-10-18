@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { createI18n } from '../src/i18n/index.js';
+const strictI18n = createI18n({ uiLocale: 'zh_CN' });
 import { isCachePersistenceError } from '../src/shared/cache/persistence-errors.js';
 import { runSubtitleTranslationBatch } from '../src/background/subtitle-requests.js';
 
@@ -55,7 +57,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
   };
   const entry = { id: '1', el, text: pageText, rich: false, normalizedText: pageText, protectedIds: [] };
   const modules = {
-    runtime, contentI18n: { t: key => key }, tasks,
+    runtime, contentI18n: { t: (key, args) => { strictI18n.t(key, args); return key; } }, tasks,
     dom: {
       collectElements: () => [el], extractSourceSegment: () => ({ text: pageText }),
       insertTranslation: (_el, text) => { displayed.push(text); return true; },

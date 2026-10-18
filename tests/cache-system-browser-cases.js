@@ -74,6 +74,29 @@ export async function runBrowserCacheTests() {
     await rejects(() => store.putMany([{ record: good, token: slots[0].token }, { record: bad, token: slots[1].token }]));
     equal((await service.stats()).entries, 0, 'atomic rollback'); service.close();
   });
+  await check('native DOMException numeric codes become recoverable cache quota errors', async () => {
+    const name=database('quota-error'), {service}=make(name), id=await makeIdentity();
+    const {token}=await service.read(id), original=IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put=function(...args) {
+      if(this.name==='entries')throw new DOMException('Synthetic quota', 'QuotaExceededError');
+      return original.apply(this,args);
+    };
+    try { await rejects(()=>service.write(id,'completed translation',{token}),'CACHE_QUOTA'); }
+    finally { IDBObjectStore.prototype.put=original; }
+    equal((await service.read(id)).hit,false,'failed transaction left no entry');
+    await seed(service,id,'retry');equal((await service.read(id)).value,'retry','storage recovers without clearing DB');service.close();
+  });
+  await check('concurrent native connections commit whole batches without torn values', async () => {
+    const name=database('concurrent'), first=make(name), second=make(name);
+    const identities=await Promise.all([makeIdentity('a'),makeIdentity('b')]);
+    const [a,b]=await Promise.all([first.service.readMany(identities),second.service.readMany(identities)]);
+    const batch=(value,slots)=>identities.map((identity,n)=>({identity,value,token:slots[n].token}));
+    const results=await Promise.all([first.service.writeMany(batch('first',a)),second.service.writeMany(batch('second',b))]);
+    ok(results.every(result=>result.written.length===2),'both atomic batches committed');
+    const rows=await first.service.readMany(identities);
+    ok(rows.every(row=>row.hit),'all values present');equal(rows[0].value,rows[1].value,'no torn batch');
+    equal((await first.service.stats()).entries,2,'no lost entries');first.service.close();second.service.close();
+  });
   await check('cancellation before storage commit prevents the write', async () => {
     const name = database('cancel-write'), { service } = make(name), id = await makeIdentity(); const { token } = await service.read(id);
     const controller = new AbortController(), write = service.write(id, 'cancelled', { token, signal: controller.signal }); controller.abort();

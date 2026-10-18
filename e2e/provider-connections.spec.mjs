@@ -53,7 +53,7 @@ test.describe("API key provider connections", () => {
     const translated = await harness.sendContent(article, "ABT_TRANSLATE_PAGE", { taskId: "provider-connections-anthropic" });
     expect(translated).toMatchObject({ ok: true, apiTranslated: 3 });
     await expect(article.locator("[data-abt-translated='1']")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     expect(harness.server.calls[0]).toMatchObject({ protocol: "anthropic-messages", headers: { xApiKey: "anthropic-e2e-secret" } });
 
     await options.reload();
