@@ -23,7 +23,7 @@ npm run build:extension:wxt
 npm run test:wxt:smoke
 ```
 
-默认产物位于稳定安装目录 `dist/extension/`，显式 WXT 入口输出到 `.output/chrome-mv3/`；两者使用同一 WXT 引擎和产物审核。有限 smoke 从实际 WXT 包制作临时测试副本，使用合成 Core 词典、本地审核 Technical 词典与确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
+默认产物位于稳定安装目录 `dist/extension/`，显式 WXT 入口输出到 `.output/chrome-mv3/`；两者使用同一 WXT 引擎和产物审核。有限 smoke 从实际 WXT 包制作临时测试副本，显式安装合成用户词典并使用确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
 
 涉及真实 Chrome/MV3/DOM/交互行为的改动还应运行适用的浏览器 E2E：
 
@@ -108,7 +108,7 @@ The repository root is a development workspace, not the release artifact.
 npm run build:extension:release
 ```
 
-For an explicitly requested dictionary certification package, use `node scripts/build-extension.mjs --require-lexicon`; authenticated dictionary checks remain fail closed.
+Every production build excludes dictionary content. User dictionaries are installed explicitly through the existing download/import lifecycle. Build and package auditing remain independent of dictionary availability; user-pack import integrity checks stay fail closed.
 
 Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, source locks, benchmark corpora or import-security samples to the production allowlist just to make runtime tests pass.
 

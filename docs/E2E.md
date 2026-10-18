@@ -118,3 +118,7 @@ These fixture rules prevent false cache/provider assertions without changing pro
 6. 失败时上传 Playwright report / trace artifacts
 
 生产运行时不依赖 Playwright。
+
+## User dictionary fixtures
+
+The default isolated extension/profile contains no dictionary content, matching production. Tests requiring local hits explicitly install synthetic user dictionaries using `e2e/support/user-dictionaries.mjs`; queries then use the real OPFS state and production Reader. Missing, corrupt and incompatible resources are user-pack faults, not missing extension assets. Tests keep zero-Provider assertions, explicit AI/cancellation and storage isolation; no test dictionary is copied into the installation package.

@@ -752,7 +752,7 @@ function certifyLexicalPrimary(productReport, playwrightEvidence, failures) {
     topCandidateId: productReport?.structuredPrimary?.topCandidateId || null,
     candidateIds: productReport?.structuredPrimary?.candidateIds || [],
     unchangedAfterDictionaryWork: productReport?.structuredPrimary?.unchanged === true,
-    releaseGate: "lexicon-release workflow remains the quantitative primary-lane regression gate"
+    releaseGate: "user-installed dictionary and Selection Chromium regressions"
   };
 }
 
@@ -765,9 +765,9 @@ function certifyPackage(report, failures) {
   requireEqual(report.builder, "scripts/build-extension.mjs", "production package builder", failures);
   requireEqual(report.allowlistAudited, true, "production package allowlist audit", failures);
   requireEqual(report.validationAssetsIncluded, false, "package excludes validation assets", failures);
-  requireEqual(report.lexicalAssetsIncluded, true, "production package includes the certified lexical lane", failures);
-  if (!Array.isArray(report.files) || !report.files.some((path) => path.startsWith("assets/lexicon/core/")) || !report.files.some((path) => path.startsWith("assets/lexicon/technical/"))) {
-    failures.push("production package does not contain both Core and Technical lexical assets");
+  requireEqual(report.lexicalAssetsIncluded, false, "production package excludes dictionary data", failures);
+  if (!Array.isArray(report.files) || report.files.some((path) => path.startsWith("assets/lexicon/"))) {
+    failures.push("production package must exclude dictionary assets");
   }
   if (!Number.isSafeInteger(report.totalBytes) || report.totalBytes <= 0 || report.totalBytes >= ECDICT_LOCK.mdx.bytes) {
     failures.push("production extension size is missing or not smaller than the pinned MDX corpus");
@@ -833,7 +833,7 @@ async function inspectProductionPackage() {
   const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-vnext-package-"));
   const extensionDir = join(tempRoot, "extension");
   try {
-    const built = await buildExtension({ outDir: extensionDir, requireLexicon: true, allowExternalOutput: true });
+    const built = await buildExtension({ outDir: extensionDir, allowExternalOutput: true });
     const files = await listFiles(extensionDir);
     const paths = files.map((file) => relative(extensionDir, file).replaceAll("\\", "/")).sort();
     const manifest = JSON.parse(await readFile(join(extensionDir, "manifest.json"), "utf8"));

@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, win32 } from "node:path";
-import { assertAssetPath, isInsideSourceRoot, runtimeAssetRoots, sourceClosure, lexicalAssetFiles } from "../scripts/wxt-assets.mjs";
+import { assertAssetPath, isInsideSourceRoot, runtimeAssetRoots, sourceClosure } from "../scripts/wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { GLOBAL_CONTENT_SCRIPT, projectProductionManifest } from "../scripts/production-manifest.mjs";
@@ -53,41 +53,6 @@ test("bridge follows only relative imports and rejects symlink escapes", async (
     await writeFile(join(outside, "private.js"), "secret");
     await symlink(join(outside, "private.js"), join(root, "escape.js"));
     await assert.rejects(sourceClosure(["escape.js"], root), /escapes source root/u);
-  } finally { await rm(root, { recursive: true, force: true }); await rm(outside, { recursive: true, force: true }); }
-});
-
-test("default builds omit dictionaries; explicit dictionary builds fail closed", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tf-wxt-lexical-"));
-  try {
-    const result = await lexicalAssetFiles({ root });
-    assert.equal(result.missing.length, 0);
-    assert.deepEqual(result.files, []);
-    await assert.rejects(lexicalAssetFiles({ root, requireLexicon: true }), /requires generated packs/u);
-    await mkdir(join(root, "assets/lexicon/core"), { recursive: true });
-    await writeFile(join(root, "assets/lexicon/core/manifest.json"), JSON.stringify({ format: "tflex", files: [{ path: "../../../private" }] }));
-    await assert.rejects(lexicalAssetFiles({ root, requireLexicon: true }), /Unsafe runtime asset path/u);
-  } finally { await rm(root, { recursive: true, force: true }); }
-});
-
-test("generated dictionaries copy only authenticated runtime descriptors, excluding stray source locks", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tf-wxt-valid-pack-"));
-  const outside = await mkdtemp(join(tmpdir(), "tf-wxt-lexical-outside-"));
-  try {
-    const pack = join(root, "assets/lexicon/core");
-    await cp(new URL("./fixtures/tflex-runtime-pack", import.meta.url), pack, { recursive: true });
-    await cp(new URL("./fixtures/tflex-runtime-pack", import.meta.url), join(root, "assets/lexicon/technical"), { recursive: true });
-    await writeFile(join(pack, "source-lock.json"), "private input never copied");
-    const files = await lexicalAssetFiles({ root, requireLexicon: true });
-    assert.equal(files.files.length, 8);
-    assert(!files.files.some((path) => path.includes("source-lock")));
-    const shard = join(pack, "shards/0000.jsonl");
-    await cp(shard, join(outside, "private.jsonl"));
-    await rm(shard);
-    await symlink(join(outside, "private.jsonl"), shard);
-    await assert.rejects(lexicalAssetFiles({ root, requireLexicon: true }), /escapes source root/u);
-    await rm(shard);
-    await writeFile(join(pack, "shards/0000.jsonl"), "corrupt");
-    await assert.rejects(lexicalAssetFiles({ root, requireLexicon: true }), /size mismatch|hash mismatch/u);
   } finally { await rm(root, { recursive: true, force: true }); await rm(outside, { recursive: true, force: true }); }
 });
 

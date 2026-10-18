@@ -91,7 +91,7 @@ export function inspectSources(root, files) {
     if (path.startsWith("entrypoints/") && !UI.test(path) && code.split(/\r?\n/u).length > 20) failures.push(`${path} 必须保持 20 行以内的组合入口`);
     if (path.startsWith("src/content/") && esm) failures.push(`${path} classic Content 不允许 ESM import/export/dynamic import`);
     if (effects.has("fetch") && !path.startsWith("src/background/providers/") &&
-        path !== "src/background/lexical/package-assets.js" && path !== "src/content/subtitles/youtube-main-bridge.js") failures.push(`${path} 直接使用 fetch；网络只允许 Provider，包资源只允许 lexical/package-assets.js`);
+        path !== "src/content/subtitles/youtube-main-bridge.js") failures.push(`${path} 直接使用 fetch；网络只允许 Provider`);
     if (effects.has("indexedDB") && !IDB_OWNERS.has(path)) failures.push(`${path} 直接访问 IndexedDB；只能位于 ${[...IDB_OWNERS].join(" 或 ")}`);
     if (effects.has("registerContentScripts") && path !== "src/background/auto-sites.js") failures.push(`${path} 注册动态 Content Script；只能位于 src/background/auto-sites.js`);
     if (path === "src/content/subtitles/youtube-main-bridge.js" && api.fetchCalls.size) failures.push(`${path} MAIN observer 不允许主动 fetch`);

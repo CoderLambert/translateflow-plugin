@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dictionaryClient, type DictionaryClient, type DictionarySnapshot } from "./dictionary-client";
-import { BundledList, CuratedList, InstalledPackList, OfficialList, RichList } from "./DictionaryViews";
+import { CuratedList, InstalledPackList, OfficialList, RichList } from "./DictionaryViews";
 import { LocalDictionaryImport } from "./LocalDictionaryImport";
 import { useOptionsI18n } from "./LocaleContext";
 
@@ -41,13 +41,8 @@ export function DictionarySection({ client, setStatus }: {
   }, [client, refresh]);
 
   const content = snapshot ? <>
-    <div className="dictionary-library-group" aria-labelledby="dictionaryBuiltInHeading">
-      <h3 id="dictionaryBuiltInHeading">{i18n.t("dictionary.builtIn")}</h3><p className="hint">{i18n.t("dictionary.builtInHelp")}</p>
-      <BundledList packs={snapshot.bundled} />
-      <details className="dictionary-repair-help"><summary>{i18n.t("dictionary.sourceRepair")}</summary><p>{i18n.t("dictionary.sourceRepairHelp")}</p></details>
-    </div>
     <div className="dictionary-library-group" aria-labelledby="dictionaryDownloadHeading">
-      <h3 id="dictionaryDownloadHeading">{i18n.t("dictionary.downloadHeading")}</h3><p className="hint">{i18n.t("dictionary.downloadHelp")}</p>
+      <h3 id="dictionaryDownloadHeading" tabIndex={-1}>{i18n.t("dictionary.downloadHeading")}</h3><p className="hint">{i18n.t("dictionary.downloadHelp")}</p>
       <h4>{i18n.t("dictionary.official")}</h4><p className="hint">{i18n.t("dictionary.officialHelp")}</p>
       <OfficialList client={client} snapshot={snapshot} refresh={refresh} setStatus={setStatus} />
       <h4>{i18n.t("dictionary.curated")}</h4><p className="hint">{i18n.t("dictionary.curatedHelp")}</p>
@@ -69,7 +64,7 @@ export function DictionarySection({ client, setStatus }: {
     {!snapshot && !error ? <div className="dictionary-library-group" aria-busy="true">{i18n.t("dictionary.loading")}</div> : null}
     {error && snapshot ? <p role="alert">{i18n.t("dictionary.refreshFailed", { message: error })}</p> : null}
     <div className="dictionary-library-group" aria-labelledby="dictionaryImportHeading">
-      <h3 id="dictionaryImportHeading">{i18n.t("dictionary.import")}</h3><p className="hint">{i18n.t("dictionary.importHelp")}</p>
+      <h3 id="dictionaryImportHeading" tabIndex={-1}>{i18n.t("dictionary.import")}</h3><p className="hint">{i18n.t("dictionary.importHelp")}</p>
       <LocalDictionaryImport setStatus={setStatus} onChanged={refresh} />
     </div>
   </section>;

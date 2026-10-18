@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Opt-in PF-01 smoke: consumes the actual WXT production artifact, never builds an old package.
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium, expect } from "@playwright/test";
 import { startMockServer } from "../e2e/support/mock-server.mjs";
-import { compileTflexTechnical } from "./build-tflex-technical.mjs";
+import { installUserDictionaries, USER_LEXICAL_PACK_ID } from "../e2e/support/user-dictionaries.mjs";
 import { auditWxtExtension } from "./audit-wxt-extension.mjs";
 import { ROOT } from "./wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
@@ -19,13 +19,9 @@ const server = await startMockServer();
 let context;
 try {
   await cp(resolve(ROOT, ".output/chrome-mv3"), extension, { recursive: true });
-  // Test-only changes: a synthetic Core pack and local mock-origin permission.
-  // No production JS/CSS/HTML is patched and no real browser profile is touched.
-  await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
-  await mkdir(join(extension, "assets/lexicon"), { recursive: true });
-  await cp(resolve(ROOT, "tests/fixtures/tflex-runtime-pack"), join(extension, "assets/lexicon/core"), { recursive: true });
-  await compileTflexTechnical({ extractPath: resolve(ROOT, "lexicon/sources/wikidata-tech-entities.json"),
-    sourceLockPath: resolve(ROOT, "lexicon/source-locks/technical-wikidata.json"), outDir: join(extension, "assets/lexicon/technical") });
+  // Test-only change to the artifact: local mock-origin permission.
+  // Synthetic user dictionaries are installed only in the isolated profile.
+  // No production JS/CSS/HTML is patched and no real profile is touched.
   const manifestPath = join(extension, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.host_permissions.push("http://127.0.0.1/*");
@@ -80,11 +76,15 @@ try {
   await page.goto(`${server.baseUrl}/article`);
   const tabId = await driver.evaluate(async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url)?.id, page.url());
   assert(Number.isInteger(tabId));
+  const noDictionary = await driver.evaluate((pageUrl) => chrome.runtime.sendMessage({ type: "LEXICAL_LOOKUP", text: "persistent", pageUrl }), page.url());
+  assert.equal(noDictionary.status, "no-hit");
+  assert.equal(server.calls.length, 0, "Fresh installation must remain local and Provider-free");
+  await installUserDictionaries(driver);
   const lexical = await driver.evaluate((pageUrl) => chrome.runtime.sendMessage({ type: "LEXICAL_LOOKUP", text: "persistent", pageUrl, sourceLanguage: "en", targetLanguage: "zh-CN" }), page.url());
   assert.equal(lexical.ok, true);
   assert.equal(lexical.status, "candidates");
   assert.equal(lexical.candidates.length, 2);
-  assert.equal(lexical.candidates[0].provenance.packId, "core-semantic-en-zh-runtime-fixture");
+  assert.equal(lexical.candidates[0].provenance.packId, USER_LEXICAL_PACK_ID);
   assert.equal(server.calls.length, 0, "Local dictionary lookup must not call Provider");
   await driver.evaluate(async ({ tabId, scripts, styles, main }) => {
     await chrome.scripting.insertCSS({ target: { tabId }, files: styles });
@@ -116,12 +116,13 @@ try {
   assert.deepEqual(externalRequests, []);
   const report = { status: "PASS", browser: context.browser()?.version(), extensionId,
     productionSource: audit.source, productionManifestDifferences: audit.manifestDifferences,
-    testCopyChanges: ["Synthetic Core TFLex fixture", "Technical pack built from existing reviewed local extract/source-lock", "Required localhost host permission only in temporary test copy"],
+    testCopyChanges: ["Required localhost host permission only in temporary test copy"],
+    userDictionarySetup: "Synthetic user dictionaries in isolated OPFS; real Reader queries", freshInstallNoHit: noDictionary.status,
     popup: "PASS", options: "PASS", backgroundCacheStats: "PASS", workerInvalidInputResponses: workerResults,
     mainBridgeVersion: 1, contentOrderedScripts: CONTENT_SCRIPT_FILES.length, lexicalCandidates: lexical.candidates.length,
     bodyTranslations: translated.apiTranslated, restoredCacheHits: restored.cacheHits, localProviderCalls: server.calls.length,
     unexpectedRegistrations: registrations, pageErrors, externalRequests,
-    notRun: ["Chrome 102 runtime", "Real YouTube timedtext", "Full E2E", "Same-ID old→WXT upgrade/restart", "Release lexicon certification", "Real paid Provider", "Other browsers"] };
+    notRun: ["Chrome 102 runtime", "Real YouTube timedtext", "Full E2E", "Same-ID old→WXT upgrade/restart", "Real paid Provider", "Other browsers"] };
   await writeFile(resolve(ROOT, ".wxt/reports/browser-smoke.json"), JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
 } finally {

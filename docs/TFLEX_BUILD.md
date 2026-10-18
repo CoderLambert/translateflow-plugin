@@ -1,83 +1,30 @@
-# Building the TFLex Core Semantic Pack
+# Building and validating generic TFLex packs
 
-Issue: #76  
-Contract: [TFLEX_V1.md](./TFLEX_V1.md)
+TFLex is a content-independent format. TranslateFlow no longer generates built-in source packs or includes dictionary content in any extension package. Users explicitly download or import dictionaries through the library. The file/storage contract remains [TFLEX_V1.md](TFLEX_V1.md).
 
-The Core pack build is intentionally **offline and source-locked**. The compiler never downloads source data. A release engineer obtains the exact locked artifacts, verifies them through the compiler, and produces deterministic TFLex output.
+## Shared writer and validation
 
-## Locked official inputs
+`scripts/tflex-writer.mjs` owns reusable tooling, without source-specific lexical records:
 
-Source lock:
+- `writeTflexPack({ records, sources, packId, packVersion, sourceLanguage, targetLanguage, outDir, maxShardBytes })` writes deterministic bounded shards, directory, notices and fingerprinted manifest; returns `{ manifest, directory, records }`.
+- `validateTflexRecords(records)` validates the logical data-only record model.
+- `validateTflexOutput({ outDir, readerVersion })` validates the emitted manifest, descriptors, hashes, shard ranges, record counts and fingerprint.
+- Shared normalization, deterministic JSON serialization and format constants are reused by existing third-party conversion tools.
 
-`lexicon/source-locks/core-semantic-pwn3-cow.json`
+Each source provides its attributable `id`, `version`, `provenance`, locked data URL/SHA-256 and license identity/source/notice. The caller supplies real source-derived records. A successful writer result is format evidence, not permission to redistribute a source or a declaration of source quality.
 
-The lock pins Open Multilingual Wordnet repository commit:
+The output directory must be new or empty. The writer refuses destructive replacement of a nonempty directory. Each shard stays within `maxShardBytes` (default 512 KiB); a single oversized record is rejected. The persisted profile identifier `bundled-sharded-v1` remains unchanged for existing files and generic tooling. It does not enable dictionary packaging.
 
-`406bf83b3c507a3d1f26e88252d5d66893fd36bf`
+## Retained converters
 
-with these raw data SHA-256 values:
+The existing FreeDict research, MDX, StarDict and Kaikki/Wiktextract tools retain their independent provenance and format restrictions. See their scripts and source contracts before invoking them. Browser imports continue to use the existing local importer/OPFS installation transaction; no storage migration, changed pack ID or user-data cleanup is required.
 
-| Source | Locked path | SHA-256 |
-| --- | --- | --- |
-| Princeton WordNet 3.0 English tab | `wns/eng/wn-data-eng.tab` | `d1409d88addcdb890b1606dd280b558cca4258b1f33bd580d54ed949daad1ede` |
-| Chinese Open Wordnet tab | `wns/cow/wn-data-cmn.tab` | `379fd2e41d3e1395f9f27cf23a39c6181849ffb4020c14a07ed2a4d4dd651122` |
+Production runtime lookup uses enabled user-installed OPFS dictionaries and effective User Glossary. The reusable sharded Reader remains bounded and integrity-checked. Test records remain under `tests/` or `e2e/` and never enter installation packages.
 
-The same lock contains the exact source-license notices used to generate `THIRD_PARTY_NOTICES.txt`.
-
-## Reproduce an official build
-
-Download the two raw files from the exact URLs in the source lock into a local source cache. Do not substitute the repository default branch.
-
-The output directory must be new or empty. The compiler deliberately refuses to recursively delete a non-empty directory; cleanup is an explicit caller/release-engineer action.
-
-Then run:
+## Validation
 
 ```bash
-node scripts/build-tflex-core.mjs \
-  --eng /path/to/wn-data-eng.tab \
-  --cmn /path/to/wn-data-cmn.tab \
-  --source-lock lexicon/source-locks/core-semantic-pwn3-cow.json \
-  --out /tmp/translateflow-core
+node --test tests/tflex-builder.test.mjs
 ```
 
-The source lock also pins `formatVersion`, `readerMinVersion`, and `normalizationVersion`. The compiler rejects incompatible locks and verifies both SHA-256 digests **before parsing**. Source drift fails closed. The emitted manifest records `compilerVersion`. Before returning success, the compiler re-opens the generated manifest/directory/shards and validates file sizes/hashes, shard ranges, duplicate lookup keys, reader compatibility, record structure and the pack fingerprint.
-
-A successful output contains:
-
-```text
-manifest.json
-directory.json
-THIRD_PARTY_NOTICES.txt
-shards/0000.jsonl
-shards/0001.jsonl
-...
-```
-
-The bundled profile guarantees each lexical shard stays within the Design Freeze read-unit budget of 512 KiB. An oversized individual record is rejected. The manifest records the effective `profileOptions.maxShardBytes`, and that value participates in the pack fingerprint.
-
-## Determinism
-
-For identical locked bytes, source-lock metadata, compiler version and shard-size profile:
-
-- record ordering is deterministic;
-- JSON object keys are serialized deterministically;
-- shard boundaries are deterministic;
-- file hashes and manifest fingerprint are deterministic.
-
-The manifest fingerprint covers lookup-visible format/source identity plus the ordered output file descriptors. It intentionally excludes the fingerprint field itself.
-
-## CI fixture
-
-`tests/fixtures/tflex-core/` is project-authored and small enough for CI. It is not an upstream dictionary subset and carries no upstream dictionary text.
-
-Run:
-
-```bash
-npm run validate
-```
-
-The tests compile the fixture twice and require byte-identical outputs, preserved polysemy, raw/display normalization, bounded shards, source-drift rejection, license-metadata validation and data-only rejection.
-
-## Scope boundary
-
-#76 builds the immutable Core artifact only. Runtime reading/ranking belongs to #77/#85. Technical Wikidata records belong to #78. Optional FreeDict packaging remains #83.
+Use the retained converter-specific tests for each affected input format. A normal extension build requires no dictionary sources, downloads or generated dictionary files. Historical source-specific build instructions were retired; their original content is preserved in Git history at `349321a079544a51834de1b3173f1fc653220e6d`.

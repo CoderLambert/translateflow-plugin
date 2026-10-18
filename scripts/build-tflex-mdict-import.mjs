@@ -11,7 +11,7 @@ import {
   normalizeExactLookupKey,
   normalizeLookupKey,
   stableStringify
-} from "./build-tflex-core.mjs";
+} from "./tflex-writer.mjs";
 import {
   TFLEX_OPFS_INDEXED_PROFILE,
   buildIndexedData

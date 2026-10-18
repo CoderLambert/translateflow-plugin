@@ -214,6 +214,9 @@ test.describe("Dictionary Ecosystem v2 release-critical route evidence", () => {
     let providerCalls = 0;
     for (let sample = 0; sample < 10; sample += 1) {
       if (sample > 0) await harness.reset();
+      // Every sample clears pack pointers; install the structured user dictionary
+      // explicitly before measuring the existing primary-plus-Rich workload.
+      await harness.installUserDictionaries();
       const options = await openOptions(harness);
       options.on("request", (request) => {
         if (/^https?:/iu.test(request.url()) && new URL(request.url()).origin !== harness.server.baseUrl) externalRequests.push(request.url());

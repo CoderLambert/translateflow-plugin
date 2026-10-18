@@ -55,10 +55,10 @@ const CANCELLATION_BASELINE = Object.freeze({
 export const EXPECTED_OPTIONAL_SKIPS = Object.freeze([
   ["e2e/local-dictionary-preflight-real-ecdict.spec.mjs", "pinned real ECDICT MDX preflight stays local, bounded, and routes to the rich importer"],
   ["e2e/rich-mdict-real-corpus.spec.mjs", "Settings install survives reload, Selection shows a real record with zero Provider calls, and delete removes it"],
-  ["e2e/rich-mdict-real-corpus.spec.mjs", "the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes"],
-  ["e2e/release-lexicon.spec.mjs", "production extension resolves the built Core and Technical packs without Provider calls"]
+  ["e2e/rich-mdict-real-corpus.spec.mjs", "the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes"]
 ]);
 export const REQUIRED_E2E_CASES = Object.freeze([
+  ["e2e/release-lexicon.spec.mjs", "production extension resolves installed user packs without Provider calls"],
   ["e2e/dictionary-library-v2-product.spec.mjs", "separates source freshness, review, trust and installed lifecycle with accessible responsive UX"],
   ["e2e/rich-mdict-product.spec.mjs", "Settings install persists, Selection reads safe text locally, and delete clears it"],
   ["e2e/dictionary-ecosystem-v2-release.spec.mjs", "unified MDX-only Rich route installs locally and exposes accessible keyboard states"],
@@ -552,7 +552,7 @@ function certifyBoundary(repositoryFiles, repositoryPayloads, packageFiles, fail
   if (!Array.isArray(packageFiles) || packageFiles.length === 0) failures.push("production package inventory is missing");
   const packagePayloads = Array.isArray(packageFiles) ? packageFiles.filter((path) => forbiddenPayload.test(path)) : [];
   if (packagePayloads.length) failures.push(`production package contains ${packagePayloads.length} raw dictionary/archive payload path(s)`);
-  const forbiddenPaths = Array.isArray(packageFiles) ? packageFiles.filter((path) => /^(?:tests|e2e|scripts|docs|\.github|lexicon|\.release-sources|node_modules|test-results|playwright-report)\//u.test(path)) : [];
+  const forbiddenPaths = Array.isArray(packageFiles) ? packageFiles.filter((path) => path.startsWith("assets/lexicon/") || /^(?:tests|e2e|scripts|docs|\.github|lexicon|\.release-sources|node_modules|test-results|playwright-report)\//u.test(path)) : [];
   if (forbiddenPaths.length) failures.push(`production package contains ${forbiddenPaths.length} validation/research path(s)`);
   return { status: failures.length === before ? "passed" : "failed", repositoryUnapprovedPayloadCount: Array.isArray(repositoryFiles) ? repositoryFiles.filter((path) => forbiddenPayload.test(path) && !Object.hasOwn(ALLOWED_SYNTHETIC_REPOSITORY_FIXTURES, path)).length : null, approvedSyntheticFixtureCount: Array.isArray(repositoryPayloads) ? repositoryPayloads.length : null, packageFileCount: Array.isArray(packageFiles) ? packageFiles.length : null, packageRawPayloadCount: packagePayloads.length, packageForbiddenPathCount: forbiddenPaths.length };
 }
@@ -632,7 +632,7 @@ async function inspectReleasePackage() {
   const temporary = await mkdtemp(join(tmpdir(), "translateflow-ecosystem-v2-package-"));
   const destination = join(temporary, "extension");
   try {
-    const built = await buildExtension({ outDir: destination, requireLexicon: true, allowExternalOutput: true });
+    const built = await buildExtension({ outDir: destination, allowExternalOutput: true });
     return { files: await listFiles(destination), totalBytes: built.totalBytes };
   } finally {
     await rm(temporary, { recursive: true, force: true });

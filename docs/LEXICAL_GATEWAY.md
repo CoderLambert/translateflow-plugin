@@ -27,13 +27,13 @@ User Glossary exact override
   -> conservative rule-based morphology fallback
 ```
 
-Except for an explicit User Glossary override, a generic Core hit does not short-circuit Technical or optional-pack candidates. Ranking and sufficiency are owned by #85.
+Except for an explicit User Glossary override, a user-dictionary hit does not short-circuit candidates from other enabled dictionaries. Ranking and sufficiency are owned by #85.
 
 The runtime does not carry a project-authored irregular word→lemma table. Irregular forms such as `went`, `children`, `better` or `written` remain measurable source gaps unless an attributable dictionary/morphology source supplies the relation. Generic suffix rules remain valid runtime algorithms because they do not encode per-word lexical facts.
 
-## TFLex bundled reader
+## Generic TFLex reader
 
-The bundled reader:
+The reusable sharded-format reader:
 
 - loads only `manifest.json` + `directory.json` metadata initially;
 - locates the bounded shard by sorted key range;
@@ -44,15 +44,13 @@ The bundled reader:
 
 The default runtime cache is at most **4 decoded shards / 2 MiB of raw shard bytes**, whichever limit is reached first. This is an explicit payload-accounting bound, not a claim about exact JavaScript heap size. Final real-reader heap evidence remains part of the release/performance gate.
 
-## Package asset boundary
+## User-installed dictionary boundary
 
-`src/background/lexical/package-assets.js` is the only non-Provider source module permitted to call `fetch()`, and it may only read `chrome.runtime.getURL(...)` extension-package assets. It is not an external network boundary and requires no host permission.
+Production registers only the existing active OPFS reader and effective User Glossary resolver. It discovers enabled user dictionaries from persisted state; there are no fixed package paths, bundled Readers, health checks or status messages. No installed dictionary is a normal local `no-hit`, not resource damage. A damaged user pack remains a scoped diagnostic and cannot suppress healthy packs or Glossary.
 
-Official release packaging places the #76-generated Core pack under:
+Users install through curated downloads or local TFLex / StarDict / MDX / MDD import. Installation, rollback, resource recovery, ordering and preferences retain their existing owners and storage formats. The gateway neither mutates installation state nor downloads data. The settings library exposes curated dictionaries, installed dictionaries and local import.
 
-`assets/lexicon/core/`
-
-Tests use project-authored fixtures and do not require live network data. Those fixtures are validation assets only and must not be copied into the production extension. Production packaging is allowlist-based and may include generated `assets/lexicon/**` only when the pack itself is an approved runtime asset.
+All extension builds exclude dictionary content. Tests explicitly prepare synthetic user-installed dictionaries in isolated profiles; fixtures never enter the production package.
 
 ## Dictionary facts vs runtime rules
 
@@ -65,7 +63,7 @@ The following are not acceptable long-term coverage mechanisms:
 - query-specific ranking branches that encode a hidden sense table;
 - using benchmark fixtures as runtime data.
 
-A small evidenced compatibility override may exist temporarily, but it must remain bounded and have a source-driven replacement path. The former `reviewed-tech-terms` dataset is retained only as validation/audit history; the production Technical builder does not import it. New technical coverage must come from attributable source pipelines such as #116/#121/#126.
+A small evidenced compatibility override may exist temporarily, but it must remain bounded and have a source-driven replacement path. The retired built-in dictionaries and their source-specific builders are no longer maintained. New dictionary coverage must come from attributable user-installed sources.
 
 ## Ranking and sufficiency
 

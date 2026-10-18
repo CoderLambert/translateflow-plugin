@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "task": "remove-bundled-lexicons",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [
+    "cache-system-v1"
+  ],
+  "branch": "refactor/remove-bundled-lexicons",
+  "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/dictionary-ecosystem-v2-release.spec.mjs",
+      "e2e/wxt-upgrade.spec.mjs",
+      "--workers=1",
+      "--retries=0",
+      "--reporter=line,json"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地Gate通过后同步证据并创建单一Draft PR，等待用户人工验收；不合并、不发布。"
+}
