@@ -161,6 +161,7 @@
     let cacheHits = 0;
     let apiTranslated = 0;
     let missing = 0;
+    let cacheWarning = "";
 
     for (const group of groups) {
       if (skippedIds.has(group.id)) continue;
@@ -224,7 +225,7 @@
       if (task) tasks.assertActive(task);
       if (!stored?.ok) throw responseError(stored, "content.page.cacheStoreFailed");
       const saved = Number(stored.stored || 0);
-      const cacheWarning = stored.cacheWarning || (saved < toStore.length ? "CACHE_NOT_SAVED" : "");
+      cacheWarning = stored.cacheWarning || (saved < toStore.length ? "CACHE_NOT_SAVED" : "");
 
       if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000 && !cacheWarning) {
         state.lastAutoPruneAt = Date.now();
@@ -233,7 +234,7 @@
     }
 
     return { cacheHits, apiTranslated, missing, processed, configSnapshotId,
-      ...(typeof cacheWarning !== "undefined" && cacheWarning ? { cacheWarning } : {}) };
+      ...(cacheWarning ? { cacheWarning } : {}) };
   }
 
   function insertGroupTranslation(group, translation, engine = "") {
