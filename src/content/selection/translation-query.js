@@ -12,6 +12,26 @@
   }
   const { buildTranslationResult, readingTranslation } = app.modules.selectionResultModel;
 
+  // Free web MT has a strict "do not upload code/kbd" boundary. A plain
+  // Selection.toString() erases the source DOM; check the frozen user range
+  // before any Provider call, including a range beginning inside <code>.
+  function selectionHasProtectedCode(range) {
+    if (!range?.startContainer || !range?.endContainer ||
+        typeof range.intersectsNode !== "function") return true;
+    const selector = "code,kbd,pre,samp";
+    const ancestor = node => node?.nodeType === 1 ? node : node?.parentElement;
+    const from = ancestor(range.startContainer), to = ancestor(range.endContainer);
+    if (!from || !to || from.closest?.(selector) || to.closest?.(selector)) return true;
+    const common = ancestor(range.commonAncestorContainer);
+    if (!common?.querySelectorAll) return true;
+    // The query is limited to the selected common ancestor. Refuse unusually
+    // complex ranges rather than allowing an unbounded DOM scan or code leak.
+    const candidates = common.querySelectorAll(selector);
+    if (candidates.length > 512) return true;
+    try { return [...candidates].some(node => range.intersectsNode(node)); }
+    catch { return true; }
+  }
+
   function create({ assertCurrent, showResult, onResult }) {
     const popover = app.modules.selectionPopover;
     return async function translateSelection(snapshot, task, version, expectedPage, queryRecord = null, options = {}) {
@@ -35,6 +55,10 @@
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
+      if (lookup.engine === "machine-translation" && selectionHasProtectedCode(snapshot.range)) {
+        throw localizedError("mt.error.MT_PROTECTED_SELECTION",
+          { errorCode: "MT_PROTECTED_SELECTION" });
+      }
       const configSnapshotId = String(lookup.configSnapshotId || "");
       const cacheToken = (lookup.writeTokens || []).find(item => String(item.id) === "selection")?.token;
       if (lookup.skippedIds?.includes("selection")) {
