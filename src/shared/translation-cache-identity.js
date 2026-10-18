@@ -46,7 +46,9 @@ export function translationSource(segment) {
   if (!Array.isArray(protectedIds) || protectedIds.length > 512 ||
       protectedIds.some(id => !Number.isSafeInteger(id) || id < 0 || id > 100000)) throw cacheError('CACHE_INVALID_INPUT');
   const ids = [...new Set(protectedIds)].sort((a, b) => a - b);
-  const format = segment?.format ?? (/⟦TF:\d+:[SE]⟧/u.test(text) ? 'tf-markers' : 'plain');
+  // Format is an explicit transport contract. Marker-looking user text does
+  // not grant permission to interpret it as an internal structured protocol.
+  const format = segment?.format ?? 'plain';
   if (!['plain', 'tf-markers'].includes(format) || (format === 'plain' && ids.length)) throw cacheError('CACHE_INVALID_INPUT');
   const source = { text, cacheSource, format, protectedIds: ids };
   if (format === 'tf-markers') markerTree(text, ids);
