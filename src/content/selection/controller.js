@@ -172,7 +172,7 @@
         return;
       }
       if (resolved.preferRich && app.modules.selectionDictionaryFirst) {
-        const hit = await app.modules.selectionDictionaryFirst.run(snapshot, task, options => loadRich(snapshot, version, expectedPage, queryRecord, options));
+        const hit = await app.modules.selectionDictionaryFirst.run(snapshot, task, options => loadRich(snapshot, version, expectedPage, queryRecord, options), resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null);
         assertCurrent(version, snapshot, expectedPage, task); if (hit) return;
       }
       if (resolved.route === "translation") {
@@ -214,7 +214,7 @@
         tasks.failTask(task, error);
         return translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed });
       }
-      if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
+      if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask || version !== requestVersion) return;
       tasks.failTask(task, error);
 
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
@@ -227,7 +227,7 @@
   }
   async function explainSnapshot(snapshot, depth, baseCard = null, event = null, action = "understand") {
     if (!snapshot || snapshot !== activeSnapshot || !["understand", "analyze", "usage"].includes(action)) return;
-    if (app.modules.translationClient && !await app.modules.translationClient.requireAi(snapshot.pageUrl)) return;
+    if (app.modules.translationClient && !await app.modules.translationClient.requireAi(snapshot.pageUrl)) return snapshot === activeSnapshot && popover.showAiDetailInterrupted("", "content.basic.aiRequired", retryEvent => explainSnapshot(snapshot, depth, baseCard, retryEvent, action), action);
     const currentCapture = snapshot.sourceCapture;
     const captureIsCurrent = Boolean(currentCapture && isFrozenCurrent(snapshot, currentCapture));
     const existing = Boolean(recordContext && captureIsCurrent);
@@ -343,8 +343,8 @@
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
-  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false, eager = false, onSettled = null } = {}) {
-    return loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection, (record, dictionary) => {
+  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false, eager = false, onSettled = null } = {}) { const capture = snapshot.sourceCapture;
+    return loadRichDictionaryDetails(snapshot, version, expectedPage, (_version, selected, page) => isCurrentVocabularySelection(selected, capture, page), (record, dictionary) => {
       records?.accept(queryRecord, model.readingRich(record, dictionary), { key: `rich:${dictionary.id}` });
       if (!allowVocabularyFallback) return;
       const vocabularyEntry = model.vocabularyDraftFromRich(record, dictionary, sourceLanguage || "en");

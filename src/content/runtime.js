@@ -68,6 +68,8 @@
       CACHE_CLEAR_PAGE: "CACHE_CLEAR_PAGE",
       CACHE_PRUNE: "CACHE_PRUNE",
       QUICK_CONTROL_SITE_HIDE: "QUICK_CONTROL_SITE_HIDE",
+      QUICK_CONTROL_POSITION_GET: "QUICK_CONTROL_POSITION_GET",
+      QUICK_CONTROL_POSITION_SET: "QUICK_CONTROL_POSITION_SET",
       SITE_APPEARANCE_SAVE: "SITE_APPEARANCE_SAVE",
       OPEN_OPTIONS: "OPEN_OPTIONS",
       EFFECTIVE_CONTEXT: "EFFECTIVE_CONTEXT",
@@ -136,8 +138,13 @@
 
   function rawRuntimeMessage(payload) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(payload, (response) => {
-        const error = chrome.runtime.lastError;
+      const runtime = globalThis.chrome?.runtime;
+      if (typeof runtime?.sendMessage !== "function") {
+        reject(Object.assign(new Error("Extension context invalidated."), { code: "EXTENSION_CONTEXT_INVALIDATED" }));
+        return;
+      }
+      runtime.sendMessage(payload, (response) => {
+        const error = runtime.lastError;
         if (error) reject(new Error(error.message));
         else resolve(response);
       });

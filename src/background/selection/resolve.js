@@ -87,11 +87,10 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
     explainRequested: input.explainRequested === true
   });
 
-  return {
-    ...response({ text, intent, route, context, lookup, decision }),
-    preferRich: storedConfig.dictionaryEnabled === true && input.explainRequested !== true &&
-      route.route === SELECTION_ROUTE.TRANSLATION && intent.kind === "lexical"
-  };
+  const preferRich = storedConfig.dictionaryEnabled === true && input.explainRequested !== true && intent.kind === "lexical" &&
+    (route.route === SELECTION_ROUTE.TRANSLATION || (decision.outcome === "error" && intent.tokenCount === 1));
+  if (preferRich && intent.tokenCount === 1 && decision.outcome === "error") route.explanationAllowed = true;
+  return { ...response({ text, intent, route, context, lookup, decision }), preferRich };
 }
 
 function response({ text, intent, route, context, lookup, decision }) {

@@ -25,12 +25,26 @@
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
   const { processPage, processGroupBatch } = app.modules.processor;
   const { TRANSLATION_CLASS, TRANSLATED_ATTR, CANDIDATE_SELECTOR, AUTO_DEBOUNCE_MS, AUTO_ROOT_MARGIN } = constants;
+  let contextInvalidated = false;
+
+  function stopForInvalidContext(error) {
+    if (error?.code !== "EXTENSION_CONTEXT_INVALIDATED" && !/extension context invalidated/iu.test(String(error?.message || error || ""))) return false;
+    if (!contextInvalidated) {
+      contextInvalidated = true;
+      state.auto = state.cacheRestore = false;
+      state.autoBackoffUntil = 0;
+      stopIncrementalObservers();
+      showToast(t("content.ai.extensionReloaded"), "error");
+    }
+    return true;
+  }
 
   function isIncrementalActive() {
     return state.auto || state.cacheRestore;
   }
 
   async function maybeStartPersistentModes() {
+    if (contextInvalidated) return;
     try {
       const origin = getSiteScope(location.href);
       const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
@@ -52,20 +66,22 @@
       if (autoEnabled) {
         await enableAutoMode({ announce: false });
       }
-    } catch {}
+    } catch (error) { stopForInvalidContext(error); }
   }
 
   async function maybeStartAutoMode() {
+    if (contextInvalidated) return;
     try {
       const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
       const { autoSites = [] } = response?.settings || {};
       if (Array.isArray(autoSites) && autoSites.includes(getSiteScope(location.href))) {
         await enableAutoMode({ announce: false });
       }
-    } catch {}
+    } catch (error) { stopForInvalidContext(error); }
   }
 
   async function enableCacheRestoreMode({ announce = false, initialRestore = true } = {}) {
+    if (contextInvalidated) return;
     const wasEnabled = state.cacheRestore;
     state.cacheRestore = true;
     state.currentPageIdentity = getPageIdentity(location.href);
@@ -75,7 +91,7 @@
         cacheOnly: true,
         silent: true,
         startup: true
-      }).catch(() => null);
+      }).catch(error => { stopForInvalidContext(error); return null; });
 
       state.startupRestorePromise = restorePromise;
       try {
@@ -87,6 +103,7 @@
       }
     }
 
+    if (contextInvalidated) return;
     ensureAutoObservers();
     rescanAutoPage();
     if (announce) showToast(t("content.page.cacheRestoreEnabled"), "success");
@@ -104,11 +121,12 @@
   }
 
   async function enableAutoMode({ announce = false } = {}) {
-    if (state.auto) return;
+    if (contextInvalidated || state.auto) return;
     if (state.startupRestorePromise) {
       try { await state.startupRestorePromise; } catch {}
     }
 
+    if (contextInvalidated) return;
     state.auto = true;
     state.currentPageIdentity = getPageIdentity(location.href);
     ensureAutoObservers();
@@ -333,6 +351,7 @@
   }
 
   function handleAutoError(error) {
+    if (stopForInvalidContext(error)) return;
     const now = Date.now();
     const message = error?.message || String(error);
 

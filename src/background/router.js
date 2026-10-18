@@ -20,6 +20,7 @@ import { testProvider } from "./providers/index.js";
 import { deleteProviderConnection, listProviderConnections, setDefaultService, upsertProviderConnection } from "./provider-connections.js";
 import { testSavedProviderConnection } from "./provider-connection-runtime.js";
 import { readPublicSettings, writePublicSettings } from "./public-settings.js";
+import { readQuickControlPosition, saveQuickControlPosition } from "./quick-control-position.js";
 import { resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
@@ -125,8 +126,9 @@ export async function handleBackgroundMessage(message, sender) {
     }
     case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_GET:
       return { settings: await readPublicSettings() };
-    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET:
-      return writePublicSettings(message.settings);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_GET: return readQuickControlPosition(sender);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_SET: return saveQuickControlPosition(sender, message.position);
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET: return writePublicSettings(message.settings);
     case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
       assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:

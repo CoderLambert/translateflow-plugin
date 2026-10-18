@@ -9,6 +9,7 @@ const sources = await Promise.all([
   "../src/content/selection/result-model.js",
   "../src/content/selection/translation-query.js",
   "../src/content/selection/assistant-persistence.js",
+  "../src/content/selection/dictionary-first.js",
   "../src/content/selection/controller.js"
 ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
 
@@ -18,10 +19,10 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "" } = {}) {
+function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "", preferRich = false, explanationAllowed = true, deferRich = false } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
   const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
-  const assistantPorts = [], vocabularyAdds = [], aiPersistence = [];
+  const assistantPorts = [], vocabularyAdds = [], aiPersistence = [], emptyViews = [], assistantAnswers = [], assistantUpdates = [], richLookups = [], assistantRetries = [];
   const storeStarted = deferred(), secondStoreStarted = deferred();
   const pageUrl = "https://fixture.invalid/article";
   const location = { href: pageUrl };
@@ -37,6 +38,8 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
     if (runtimeFailure) throw new Error(runtimeFailure);
     switch (request.type) {
       case "selection-resolve":
+        if (preferRich) return { ok: true, route: "translation", preferRich, explanationAllowed, depth: "standard",
+          intent: { kind: "lexical", sourceLanguage: "en" } };
         if (resolveRoute === "local") return { ok: true, route: "local", explanationAllowed: true, depth: "standard",
           intent: { kind: "lexical", sourceLanguage: "en" }, decision: { topCandidateId: "persistent", candidates: [{
             id: "persistent", kind: "lexical", headword: "persistent", pronunciation: "/pərˈsɪstənt/", partOfSpeech: "adjective",
@@ -116,16 +119,17 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
         results.push(card); resultActions.push({ onExplain, onSave, onOpen });
       },
       showError(_snapshot, message) { errors.push(message); },
-      showAiDetailStreaming(_answer, onStop) { onAssistantStop = onStop; },
+      showEmpty(snapshot, options) { emptyViews.push({ snapshot, ...options }); },
+      showAiDetailStreaming(answer, onStop) { onAssistantStop = onStop; assistantUpdates.push(answer); },
       showAiDetailStopping() {},
-      showAiDetailResult() {},
+      showAiDetailResult(result, action) { assistantAnswers.push({ result, action }); },
       showAiPersistence(state, action) { aiPersistence.push({ state, action }); },
-      showAiDetailInterrupted(_answer, message) { assistantInterruptions.push(message); },
+      showAiDetailInterrupted(_answer, message, retry, action) { assistantInterruptions.push(message); assistantRetries.push({ retry, action }); },
       hide() { hideCount++; }, reposition() { repositionCount++; }, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
     selectionMessages: { unresolvedMessage: () => "content.selection.resolveFailed" },
-    selectionRichDetails: { load: async () => {}, cancel: async () => {}, bindLifecycle() {} },
+    selectionRichDetails: { load: async (...args) => { richLookups.push(args); if (!deferRich) args.at(-1)?.onSettled?.({ hasHit: true }); }, cancel: async () => {}, bindLifecycle() {} },
     selectionVocabularyBook: { create: () => ({
       add: async (entry, event) => { vocabularyAdds.push({ entry, event }); return { added: true }; },
       addAiNote: async (note, event) => { vocabularyAdds.push({ note, event }); return { added: true }; },
@@ -198,6 +202,7 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
 
   return {
     messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds, aiPersistence, assistantInterruptions,
+    emptyViews, assistantAnswers, assistantUpdates, richLookups, assistantRetries,
     ready: waitForChip(1), storeStarted: storeStarted.promise,
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
     resolveStore: (index = 0, result = { ok: true, stored: 1 }) => storeAcks[index].resolve(result), get stored() { return stored; },
@@ -497,4 +502,105 @@ test("controller capture Escape closes owned rich layers before dismissing Selec
   h.appModules.selectionPopover.consumeRichEscape = () => layers-- > 0;
   h.escape(); assert.equal(h.hideCount, before); h.escape(); assert.equal(h.hideCount, before);
   h.escape(); assert.equal(h.hideCount, before + 1);
+});
+
+for (const explanationAllowed of [true, false]) {
+  test(`rich-first hits expose AI actions only when allowed (${explanationAllowed})`, async () => {
+    const h = harness({ preferRich: true, explanationAllowed });
+    await h.ready;
+    await h.translate();
+    assert.equal(h.getTask().state, "completed");
+    assert.equal(h.emptyViews.length, 1);
+    assert.equal(h.results.length, 0, "must retain the rich view instead of recreating it");
+    assert.equal(h.messages.filter(value => value.type === "translate-batch").length, 0);
+    assert.equal(h.assistantPorts.length, 0);
+    const callback = h.emptyViews[0].onExplain;
+    if (!explanationAllowed) return assert.equal(callback, null);
+    for (const action of ["understand", "analyze", "usage"]) {
+      await callback({ isTrusted: true }, action);
+      assert.equal(h.assistantPorts.at(-1).messages[0].action, action);
+      h.completeAssistant(`answer for ${action}`);
+      assert.equal(h.assistantAnswers.at(-1).action, action);
+    }
+  });
+}
+
+for (const change of ["close", "selection"]) {
+  test(`rich-first AI ignores late messages after ${change}`, async () => {
+    const h = harness({ preferRich: true });
+    await h.ready;
+    await h.translate();
+    const explain = h.emptyViews[0].onExplain;
+    await explain({ isTrusted: true }, "understand");
+    const old = h.assistantPorts[0], requestId = old.messages[0].requestId;
+    const updateCount = h.assistantUpdates.length;
+    if (change === "close") h.close();
+    else h.setSelectedText("new selected text");
+    await h.waitForChip(change === "close" ? 1 : 2);
+    assert.equal(old.disconnected, true);
+    assert.ok(old.messages.some(message => message.type === "cancel" && message.requestId === requestId));
+    h.completeAssistant("stale answer");
+    old.emit({ protocolVersion: 1, type: "delta", requestId, sequence: 0, text: "stale delta" });
+    await explain({ isTrusted: true }, "usage");
+    assert.equal(h.assistantPorts.length, 1, "old callback cannot start another request");
+    assert.deepEqual(h.assistantAnswers, []);
+    assert.equal(h.assistantUpdates.length, updateCount);
+    assert.deepEqual(h.aiPersistence, []);
+    assert.deepEqual(h.assistantInterruptions, []);
+  });
+}
+
+test("same-selection rich lookup and navigation stay current across an AI request", async () => {
+  const h = harness({ preferRich: true });
+  await h.ready;
+  await h.translate();
+  const [snapshot, version, page, current] = h.richLookups[0];
+  assert.equal(current(version, snapshot, page), true);
+  await h.emptyViews[0].onExplain({ isTrusted: true }, "understand");
+  assert.equal(current(version, snapshot, page), true);
+  h.completeAssistant();
+  assert.equal(current(version, snapshot, page), true);
+  await h.translate();
+  assert.equal(current(version, snapshot, page), false, "a fresh query capture invalidates old dictionary work");
+  const next = h.richLookups.at(-1);
+  h.setSelectedText("another word"); await h.waitForChip(2);
+  assert.equal(next[3](next[1], next[0], next[2]), false);
+});
+
+test("starting AI during rich lookup never overwrites the AI view with cancellation", async () => {
+  const h = harness({ preferRich: true, deferRich: true });
+  await h.ready;
+  const pending = h.translate();
+  while (!h.emptyViews.length) await new Promise(resolve => setImmediate(resolve));
+  await h.emptyViews[0].onExplain({ isTrusted: true }, "understand");
+  const [snapshot, version, page, current, , options] = h.richLookups[0];
+  assert.equal(current(version, snapshot, page), true);
+  options.onSettled({ hasHit: true });
+  await pending;
+  assert.deepEqual(h.errors, []);
+  h.completeAssistant("current answer");
+  assert.equal(h.assistantAnswers.at(-1).result.explanation, "current answer");
+});
+
+test("unconfigured AI leaves a recoverable tab and can retry after configuration", async () => {
+  const h = harness({ preferRich: true });
+  await h.ready; await h.translate();
+  h.appModules.translationClient = { requireAi: async () => false };
+  await h.emptyViews[0].onExplain({ isTrusted: true }, "usage");
+  assert.deepEqual(h.assistantInterruptions, ["content.basic.aiRequired"]);
+  assert.equal(h.assistantPorts.length, 0);
+  assert.equal(h.assistantRetries.at(-1).action, "usage");
+  h.appModules.translationClient.requireAi = async () => true;
+  await h.assistantRetries.at(-1).retry({ isTrusted: true });
+  assert.equal(h.assistantPorts.at(-1).messages[0].action, "usage");
+});
+
+test("an AI configuration check returning after close cannot recreate a stale tab", async () => {
+  const h = harness({ preferRich: true }), check = deferred();
+  await h.ready; await h.translate();
+  h.appModules.translationClient = { requireAi: () => check.promise };
+  const pending = h.emptyViews[0].onExplain({ isTrusted: true }, "usage");
+  h.close(); check.resolve(false); await pending;
+  assert.deepEqual(h.assistantInterruptions, []);
+  assert.equal(h.assistantPorts.length, 0);
 });
