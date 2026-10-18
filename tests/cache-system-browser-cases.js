@@ -90,6 +90,29 @@ export async function runBrowserCacheTests() {
     await seed(service, a, 'a'); now++; await seed(service, b, 'b'); now++; await service.read(a); now++; await seed(service, c, 'c');
     equal((await service.read(b)).hit, false, 'least recent evicted'); equal((await service.read(a)).hit, true, 'touched entry retained'); service.close();
   });
+  await check('translation namespace quota never evicts independent explanation entries', async () => {
+    const name = database('quota-isolation');
+    let now = 1000;
+    const cache = createCacheService({ store: createIndexedDbCacheStore({ databaseName: name }), clock: () => now });
+    for (const namespace of ['translation', 'subtitle-translation', 'selection-explanation']) cache.register(namespace);
+    const explain = await makeIdentity('explain', { namespace: 'selection-explanation' });
+    const page = await makeIdentity('page', { namespace: 'translation' });
+    const subtitle = await makeIdentity('subtitle', { namespace: 'subtitle-translation' });
+    await seed(cache, explain, { explanation: 'persist independently' }); now++;
+    await seed(cache, page, 'A'.repeat(700)); now++;
+    await seed(cache, subtitle, 'B'.repeat(700));
+    const selected = (await Promise.all(['translation', 'subtitle-translation'].map(namespace =>
+      cache.list({ namespace })))).flat();
+    const limit = Math.max(...selected.map(row => row.bytes));
+    const pruned = await cache.prune({ namespaces: ['translation', 'subtitle-translation'], maxBytes: limit });
+    ok(pruned.deleted >= 1, 'translation budget enforced');
+    const left = (await Promise.all(['translation', 'subtitle-translation'].map(namespace =>
+      cache.list({ namespace })))).flat();
+    ok(left.reduce((sum, row) => sum + row.bytes, 0) <= limit, 'combined translation budget');
+    equal((await cache.read(explain)).value, { explanation: 'persist independently' }, 'explanation preserved');
+    await rejects(() => cache.prune({ namespace: 'translation', namespaces: ['translation'] }), 'CACHE_INVALID_FILTER');
+    cache.close();
+  });
   await check('invalid record eviction cannot delete a concurrently refreshed value', async () => {
     const name = database('compare-delete'), { service, store } = make(name), id = await makeIdentity();
     await seed(service, id, 'old'); const old = (await store.lookup([id], Date.now()))[0].record;
