@@ -88,7 +88,10 @@ export function createApplicationCache({ store = createIndexedDbCacheStore(), cl
     },
     async pruneCache(maxBytes) {
       if (!Number.isFinite(maxBytes) || maxBytes < 0) throw cacheError('CACHE_INVALID_POLICY');
-      const result = await cache.prune({ maxBytes: Math.max(5 * 1024 * 1024, Math.floor(maxBytes)) });
+      // A user's translation-size limit is not permission to evict independent
+      // AI explanation entries. Both translation namespaces share this budget.
+      const result = await cache.prune({ namespaces: TRANSLATION_NAMESPACES,
+        maxBytes: Math.max(5 * 1024 * 1024, Math.floor(maxBytes)) });
       return { ...await api.getCacheStats(), deleted: result.deleted };
     },
     close() { cache.close(); }
