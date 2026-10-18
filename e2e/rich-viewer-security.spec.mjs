@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
@@ -7,7 +8,7 @@ import {
 } from "../tests/helpers/rich-viewer-security-fixture.mjs";
 
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
-  "/tmp/translateflow-rich-viewer-183";
+  defaultEvidenceDir(import.meta.url);
 
 test.describe("Rich MDict isolated viewer security and product behavior", () => {
   test.setTimeout(300_000);

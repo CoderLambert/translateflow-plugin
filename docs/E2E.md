@@ -118,3 +118,5 @@ These fixture rules prevent false cache/provider assertions without changing pro
 6. 失败时上传 Playwright report / trace artifacts
 
 生产运行时不依赖 Playwright。
+
+开发阶段的模块选测命令、并发预算、串行专项与完整验收组成见 [TEST_SELECTION.md](TEST_SELECTION.md)。

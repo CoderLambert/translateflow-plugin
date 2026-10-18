@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { chromium, expect } from "@playwright/test";
 import { startMockServer } from "../e2e/support/mock-server.mjs";
 import { compileTflexTechnical } from "./build-tflex-technical.mjs";
@@ -12,13 +12,14 @@ import { ROOT } from "./wxt-assets.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 
-const audit = await auditWxtExtension();
+const artifact = resolve(ROOT, process.env.TF_SMOKE_ARTIFACT || ".output/chrome-mv3");
+const audit = await auditWxtExtension({ output: artifact });
 const testRoot = await mkdtemp(join(tmpdir(), "translateflow-wxt-smoke-"));
 const extension = join(testRoot, "extension");
 const server = await startMockServer();
 let context;
 try {
-  await cp(resolve(ROOT, ".output/chrome-mv3"), extension, { recursive: true });
+  await cp(artifact, extension, { recursive: true });
   // Test-only changes: a synthetic Core pack and local mock-origin permission.
   // No production JS/CSS/HTML is patched and no real browser profile is touched.
   await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
@@ -114,7 +115,7 @@ try {
   assert.deepEqual(registrations, []);
   assert.deepEqual(pageErrors, []);
   assert.deepEqual(externalRequests, []);
-  const report = { status: "PASS", browser: context.browser()?.version(), extensionId,
+  const report = { status: "PASS", artifact, productionAudit: audit, browser: context.browser()?.version(), extensionId,
     productionSource: audit.source, productionManifestDifferences: audit.manifestDifferences,
     testCopyChanges: ["Synthetic Core TFLex fixture", "Technical pack built from existing reviewed local extract/source-lock", "Required localhost host permission only in temporary test copy"],
     popup: "PASS", options: "PASS", backgroundCacheStats: "PASS", workerInvalidInputResponses: workerResults,
@@ -122,7 +123,9 @@ try {
     bodyTranslations: translated.apiTranslated, restoredCacheHits: restored.cacheHits, localProviderCalls: server.calls.length,
     unexpectedRegistrations: registrations, pageErrors, externalRequests,
     notRun: ["Chrome 102 runtime", "Real YouTube timedtext", "Full E2E", "Same-ID old→WXT upgrade/restart", "Release lexicon certification", "Real paid Provider", "Other browsers"] };
-  await writeFile(resolve(ROOT, ".wxt/reports/browser-smoke.json"), JSON.stringify(report, null, 2) + "\n");
+  const reportPath = resolve(ROOT, process.env.TF_SMOKE_REPORT || ".wxt/reports/browser-smoke.json");
+  await mkdir(dirname(reportPath), { recursive: true });
+  await writeFile(reportPath, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
 } finally {
   if (context) await context.close();

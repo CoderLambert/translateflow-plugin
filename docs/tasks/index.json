@@ -383,6 +383,13 @@
       "candidateHead": null
     },
     {
+      "task": "test-concurrency",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "chore/test-concurrency-and-selection",
+      "candidateHead": null
+    },
+    {
       "task": "workflow-local",
       "status": "completed",
       "dependencies": [],

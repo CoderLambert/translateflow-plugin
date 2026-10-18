@@ -1,9 +1,10 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
-const evidenceDir = resolve("test-results/multi-dictionary-viewer-evidence");
+const evidenceDir = defaultEvidenceDir(import.meta.url);
 
 test.describe("multiple local rich dictionary cards", () => {
   test.setTimeout(300_000);

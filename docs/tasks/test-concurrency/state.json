@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "task": "test-concurrency",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "chore/test-concurrency-and-selection",
+  "worktree": ".",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "候选提交后冻结并执行完整验收；创建依赖 #346 的 Draft PR，不合并或发布。",
+  "externalDependencies": [
+    "https://github.com/CoderLambert/translateflow-plugin/pull/346"
+  ]
+}

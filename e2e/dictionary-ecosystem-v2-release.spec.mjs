@@ -1,10 +1,11 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
 const evidenceDirectory = resolve(
-  process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || "/tmp/translateflow-dictionary-ecosystem-v2/evidence"
+  process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url)
 );
 const preferredBaseline = JSON.parse(await readFile(new URL("../docs/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE.json", import.meta.url), "utf8"));
 const report = {
