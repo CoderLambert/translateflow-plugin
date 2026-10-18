@@ -59,3 +59,7 @@
 ## 保留与未验证
 
 保留所有用户词典/MDX/MDD/StarDict/TFLex通道、OPFS事务、用户偏好、Reading/Vocabulary、Glossary、Provider与缓存；无manifest权限或数据库schema更改。真实私有大型词典及生产网络下载若未实际执行，不视为PASS。完整验证、量化文件/行/包数据与限制写入 validation-report.md。
+
+## 最终候选自查结果
+
+候选261a60f6，生产包构建输入与0fcedc71一致。首次完整E2E唯一fixture遗漏已用真实用户安装准备修复，受影响3项和旧版升级2项共5/5通过；原始FAIL不改写。有效去重225 PASS/7条件SKIP。复核保留证据日志SHA、生产/build/package无diff和精确包SHA；没有未解决的已证实缺陷。扫描20处命中均是当前任务范围/删除报告、反向退役断言或上述历史证据。只做主Agent自查，不标为独立模型审核。

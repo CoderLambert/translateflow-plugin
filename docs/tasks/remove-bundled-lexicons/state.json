@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "remove-bundled-lexicons",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "cache-system-v1"
   ],
   "branch": "refactor/remove-bundled-lexicons",
-  "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+  "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
   "mergeHead": "",
   "validationCommands": [
     [
@@ -28,5 +28,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "完整E2E 222 PASS/1 FAIL/9 SKIP；修复显式用户词典fixture遗漏，冻结后重验受影响3项及补跑2项已有旧包升级。其余有效证据按原head复用。"
+  "nextAction": "本地Gate通过后同步证据并创建单一Draft PR，等待用户人工验收；不合并、不发布。"
 }
