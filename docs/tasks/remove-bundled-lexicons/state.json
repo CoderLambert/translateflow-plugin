@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "remove-bundled-lexicons",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "cache-system-v1"
   ],
   "branch": "refactor/remove-bundled-lexicons",
   "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
-  "mergeHead": "",
+  "mergeHead": "1c46d76417bae1c4415cc4c7a39be73aa471b28b",
   "validationCommands": [
     [
       "npm",
@@ -28,5 +28,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地Gate通过后同步证据并创建单一Draft PR，等待用户人工验收；不合并、不发布。"
+  "nextAction": "用户已明确授权合并；PR #346 已 squash 合入 main，tree 与同步提交一致。保留原候选验收绑定，不代表发布。",
+  "syncHead": "be5f81d030c2d67083e85776f363dc68ab2c5883",
+  "pr": 346
 }

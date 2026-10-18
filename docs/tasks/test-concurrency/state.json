@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "task": "test-concurrency",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [
+    "remove-bundled-lexicons"
+  ],
+  "branch": "chore/test-concurrency-and-selection",
+  "worktree": ".",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=.output/chrome-mv3",
+      "TF_SMOKE_REPORT=test-results/explicit-wxt-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "TF_SMOKE_REPORT=test-results/stable-wxt-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/reading-preview.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e:special"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "用户已授权合并；整合已合入的 #346，执行集成候选验收及本地 gate 后 guarded squash merge。",
+  "externalDependencies": [
+    "https://github.com/CoderLambert/translateflow-plugin/pull/346"
+  ]
+}

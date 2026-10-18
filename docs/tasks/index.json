@@ -310,7 +310,7 @@
     },
     {
       "task": "remove-bundled-lexicons",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "cache-system-v1"
       ],
@@ -389,6 +389,15 @@
       "status": "working",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
+    },
+    {
+      "task": "test-concurrency",
+      "status": "reviewing",
+      "dependencies": [
+        "remove-bundled-lexicons"
+      ],
+      "branch": "chore/test-concurrency-and-selection",
       "candidateHead": null
     },
     {

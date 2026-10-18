@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
@@ -6,7 +7,7 @@ import { readMddInteropFixture } from "../tests/helpers/mdd-fixture.mjs";
 
 const TRUST_LABEL = "本地导入 · 用户提供 / 未验证";
 const evidenceDir = process.env.DICTIONARY_LIBRARY_VNEXT_EVIDENCE_DIR ||
-  resolve("test-results/dictionary-library-vnext-evidence");
+  defaultEvidenceDir(import.meta.url);
 
 test.describe("Dictionary Library vNext integrated product flow", () => {
   test.setTimeout(300_000);

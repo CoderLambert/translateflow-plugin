@@ -1,4 +1,6 @@
 import { defineConfig } from "vitest/config";
+import { globSync } from "node:fs";
+import { testWorkers } from "./scripts/test-concurrency.mjs";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
@@ -8,7 +10,7 @@ export default defineConfig({
     exclude: ["tests/*.test.mjs", "e2e/**", "node_modules/**", ".wxt/**", ".output/**", "dist/**"],
     environment: "node",
     globals: false,
-    maxWorkers: 2,
+    maxWorkers: testWorkers(globSync("tests/unit/**/*.test.{ts,tsx}").length),
     passWithNoTests: false
   }
 });

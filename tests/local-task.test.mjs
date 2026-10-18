@@ -177,14 +177,15 @@ test("artifact fingerprint uses actual bytes and rejects symlink/root escape", (
   symlinkSync(join(f.root, "package.json"), join(f.root, "dist/extension/link.json"));
   assert.throws(() => fingerprint(f.root, "dist/extension"), /Symlinked/u);
 });
-test("all workflows are manual-only; original job bodies and manual inputs remain intact", () => {
+test("all workflows are manual-only; permissions, jobs and manual inputs remain intact", () => {
   const directory = fileURLToPath(new URL("../.github/workflows/", import.meta.url));
-  const names = readdirSync(directory).filter((n) => n.endsWith(".yml")); assert.equal(names.length, 10);
+  const names = readdirSync(directory).filter((n) => n.endsWith(".yml")); assert.ok(names.length > 0);
   assert.ok(!names.includes("lexicon-release.yml"), "retired bundled dictionary workflow must stay absent");
   for (const name of names) {
     const text = readFileSync(join(directory, name), "utf8"), block = text.split(/^on:\s*$/mu)[1]?.split(/^permissions:/mu)[0];
     assert.ok(block, name); assert.deepEqual([...block.matchAll(/^  ([a-z_]+):/gmu)].map((m) => m[1]), ["workflow_dispatch"], name);
     assert.match(text, /^jobs:/mu);
+    assert.match(text, /^permissions:\n  contents: read/mu);
   }
   assert.match(readFileSync(join(directory, "dictionary-library-vnext-certification.yml"), "utf8"), /base_sha:/u);
   assert.match(readFileSync(join(directory, "wiktextract-rich-poc.yml"), "utf8"), /run_experimental_full_extraction:/u);

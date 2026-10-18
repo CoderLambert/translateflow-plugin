@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { test, expect, chromium } from "@playwright/test";
 import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -85,7 +86,7 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
     const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,sameUserDataDir:true,sameExtensionId:true,viewport:{width:1280,height:720},
       method:"Per fresh /article document: insertCSS → ordered raw scripts → native status; repeat same file injection on same document for warm/idempotence. Measures scripting + bootstrap + message round trip with performance.now in the extension page. No speed threshold or performance claim.",
       contentFiles:[...CONTENT_SCRIPT_FILES],styleFiles:[...CONTENT_STYLE_FILES],providerCalls:0,phases};
-    const dir=resolve(process.env.TF_UPGRADE_EVIDENCE_DIR||"test-results/wxt-upgrade-evidence");await mkdir(dir,{recursive:true});
+    const dir=resolve(process.env.TF_UPGRADE_EVIDENCE_DIR||defaultEvidenceDir(import.meta.url));await mkdir(dir,{recursive:true});
     await writeFile(join(dir,"injection-samples.json"),JSON.stringify(report,null,2)+"\n");
     console.log("[WXT_INJECTION_SAMPLES]",JSON.stringify(report));
   } finally {await context?.close().catch(()=>{});await server.close();await rm(root,{recursive:true,force:true});}

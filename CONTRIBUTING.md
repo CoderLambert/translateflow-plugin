@@ -199,3 +199,5 @@ npm run test:e2e
 明确准备新版本时，可运行 `npm run commit:prepare`：从暂存区快照编译，默认递增 patch，保留明确暂存的更高版本；成功后同步 `package.json`、`package-lock.json`、`manifest.json` 和 README 标题，更新 `dist/extension/`。该显式命令只暂存版本字段，不夹带其它未暂存修改。编译失败或检测到并发修改时中止，不覆盖用户修改。
 
 `node scripts/prepare-versioned-commit.mjs --preview` 可只预览并编译当前暂存快照，不修改索引、工作区版本或安装包。版本准备命令不创建 commit、不推送、不发布，也不自动运行全量测试。验收后的元数据归档保持已测试版本和输入不变，不需要禁用钩子。
+
+开发阶段的模块选测命令、并发预算、串行专项与完整验收组成见 [docs/TEST_SELECTION.md](docs/TEST_SELECTION.md)。

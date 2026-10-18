@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_TEST_WORKERS: "2"
+
 jobs:
   certify:
     name: Dictionary Library vNext final certification

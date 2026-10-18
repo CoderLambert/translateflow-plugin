@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { test, expect, chromium } from "@playwright/test";
 import { mkdtemp, rm, mkdir, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -17,7 +18,7 @@ import { request, record, snapshot as readingSnapshot, artifact, recordListItem 
 
 const oldArtifact = process.env.TF_UPGRADE_OLD_ARTIFACT;
 const newArtifact = process.env.TF_UPGRADE_NEW_ARTIFACT;
-const reportDir = resolve(process.env.TF_UPGRADE_EVIDENCE_DIR || "test-results/wxt-upgrade-evidence");
+const reportDir = resolve(process.env.TF_UPGRADE_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url));
 
 for(const existingUiLocale of [undefined,"zh_CN"]) {
 const scenario=existingUiLocale===undefined ? "missing-ui-locale" : "existing-ui-locale";
