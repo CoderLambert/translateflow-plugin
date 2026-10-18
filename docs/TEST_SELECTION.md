@@ -13,7 +13,7 @@ Node、Vitest、普通 Playwright 的本地默认并发上限为 10，`TF_TEST_W
 
 完整验收顺序：`npm run validate` → `npm run build:extension:wxt` → 两目录 smoke → `npm run test:e2e`。`validate` 不含 E2E。E2E 默认使用 `.output/chrome-mv3`；`TF_E2E_ARTIFACT=dist/extension` 可让完整回归消费标准包。CI 只在标准包上执行一套完整回归，两个目录均独立构建/审计/smoke。
 
-`test:e2e` 无文件参数时先执行普通功能，再以单 worker 执行 `scripts/test-concurrency.mjs` 登记的专项。`npm run test:e2e:special` 显式运行这些专项；`npm run test:e2e:upgrade` 单独运行升级。完整升级需 `TF_UPGRADE_OLD_ARTIFACT` 指向固定旧提交 `19e89b65fd3600073410407392da82ffa666ffc8` 的产物，`TF_UPGRADE_NEW_ARTIFACT` 指向本次标准包。大型 MDD 和真实语料沿用既有环境变量，缺输入明确 SKIP；不能把无语料运行当发布认证。
+`test:e2e` 无文件参数时先执行普通功能，再以单 worker 执行 `scripts/test-concurrency.mjs` 登记的专项。`npm run test:e2e:special` 显式运行这些专项；`npm run test:e2e:upgrade` 单独运行升级。完整升级需 `TF_UPGRADE_OLD_ARTIFACT` 指向固定旧提交 `19e89b65fd3600073410407392da82ffa666ffc8` 的产物，`TF_UPGRADE_NEW_ARTIFACT` 指向本次标准包。用户词典升级还需 `TF_USER_DICTIONARY_OLD_ARTIFACT` 指向固定移除前 main `349321a079544a51834de1b3173f1fc653220e6d` 的 WXT 包；CI 顺序构建该旧包以保留升级覆盖。大型 MDD 和真实语料沿用既有环境变量，缺输入明确 SKIP；不能把无语料运行当发布认证。
 
 同文件按顺序、每用例独立 profile、零重试。默认报告在 `test-results/run-<时间>-<唯一标识>/`，spec 默认证据各自独立。显式证据目录供现有认证消费者使用，调用方必须为每次运行分配独立目录；不得并发写同一任务证据。Playwright 使用依赖项目保证普通功能结束后才执行串行专项，单次 reporter 覆盖两个阶段；定向文件与 `--special` 不额外运行依赖项目。完整验收使用 npm 入口。
 

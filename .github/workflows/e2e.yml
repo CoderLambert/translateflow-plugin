@@ -43,6 +43,15 @@ jobs:
           git worktree add --detach "$TF_FIXED_OLD_ROOT" 19e89b65fd3600073410407392da82ffa666ffc8
           node "$TF_FIXED_OLD_ROOT/scripts/build-extension.mjs"
           node --input-type=module -e 'import {appendFileSync} from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `TF_UPGRADE_OLD_ARTIFACT=${process.env.TF_FIXED_OLD_ROOT}/dist/extension\nTF_UPGRADE_NEW_ARTIFACT=dist/extension\n`);'
+      - name: Build the fixed pre-removal user-dictionary upgrade artifact
+        env:
+          TF_USER_OLD_ROOT: ${{ runner.temp }}/translateflow-pre-removal
+        run: |
+          git fetch --no-tags origin 349321a079544a51834de1b3173f1fc653220e6d
+          git worktree add --detach "$TF_USER_OLD_ROOT" 349321a079544a51834de1b3173f1fc653220e6d
+          npm ci --prefix "$TF_USER_OLD_ROOT" --no-audit --no-fund
+          node "$TF_USER_OLD_ROOT/scripts/build-extension.mjs" --out "$TF_USER_OLD_ROOT/.output/chrome-mv3"
+          node --input-type=module -e 'import {appendFileSync} from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `TF_USER_DICTIONARY_OLD_ARTIFACT=${process.env.TF_USER_OLD_ROOT}/.output/chrome-mv3\n`);'
       # Includes the sequential resource/performance/upgrade phase; no second full suite.
       - run: npm run test:e2e
       - name: Upload reports and evidence

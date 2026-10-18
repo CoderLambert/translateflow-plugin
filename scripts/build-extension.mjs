@@ -12,7 +12,7 @@ import { auditWxtExtension } from "./audit-wxt-extension.mjs";
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DEFAULT_OUT = resolve(ROOT, "dist/extension");
 
-export async function buildExtension({ outDir = DEFAULT_OUT, requireLexicon = false, allowExternalOutput = false } = {}) {
+export async function buildExtension({ outDir = DEFAULT_OUT, allowExternalOutput = false } = {}) {
   const options = { allowExternalOutput, allowWxtOutput: true };
   const output = await assertBuildOutputPaths(ROOT, outDir, options);
   // Each invocation builds in its own staging directory, including parallel Node
@@ -23,7 +23,7 @@ export async function buildExtension({ outDir = DEFAULT_OUT, requireLexicon = fa
     const artifact = resolve(staging, "output/chrome-mv3");
     await promisify(execFile)(process.execPath, [resolve(ROOT, "node_modules/wxt/bin/wxt.mjs"), "build", "-b", "chrome", "--mv3"], {
       cwd: ROOT, maxBuffer: 4 * 1024 * 1024,
-      env: { ...process.env, TF_WXT_BUILD_ROOT: staging, TRANSLATEFLOW_WXT_REQUIRE_LEXICON: requireLexicon ? "1" : "0" }
+      env: { ...process.env, TF_WXT_BUILD_ROOT: staging }
     });
     const audit = await auditWxtExtension({ output: artifact, reportDir });
     await assertBuildOutputPaths(ROOT, output, options);
@@ -42,10 +42,9 @@ export async function buildExtension({ outDir = DEFAULT_OUT, requireLexicon = fa
 }
 
 function parseArgs(argv) {
-  const args = { outDir: DEFAULT_OUT, requireLexicon: false };
+  const args = { outDir: DEFAULT_OUT };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === "--require-lexicon") { args.requireLexicon = true; continue; }
     if (arg === "--out") {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error("missing value for --out");

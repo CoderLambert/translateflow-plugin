@@ -14,6 +14,7 @@ test.describe("Dictionary Library vNext integrated product flow", () => {
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("two local rich MDX dictionaries and one attached MDD keep isolated cards, preferences, and resources", async ({ harness }) => {

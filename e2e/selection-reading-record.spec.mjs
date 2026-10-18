@@ -1,12 +1,12 @@
 import { test, expect, chromium } from "@playwright/test";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { startMockServer } from "./support/mock-server.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { READING_METHOD as M } from "../src/shared/reading/constants.js";
-import { compileTflexTechnical } from "../scripts/build-tflex-technical.mjs";
+import { installUserDictionaries } from "./support/user-dictionaries.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { defaultArtifact } from "./support/production-artifact.mjs";
 
@@ -95,11 +95,6 @@ test.describe("Selection → frozen trusted source → committed Reading records
     const production = await inventory(artifact); await cp(artifact, extension, { recursive: true });
     expect(await inventory(extension)).toEqual(production);
     const backgroundSha256 = hash(await readFile(join(extension, "background.js")));
-    await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
-    await mkdir(join(extension, "assets/lexicon"), { recursive: true });
-    await cp(join(root, "tests/fixtures/tflex-runtime-pack"), join(extension, "assets/lexicon/core"), { recursive: true });
-    await compileTflexTechnical({ extractPath: join(root, "lexicon/sources/wikidata-tech-entities.json"),
-      sourceLockPath: join(root, "lexicon/source-locks/technical-wikidata.json"), outDir: join(extension, "assets/lexicon/technical") });
     await writeFile(join(extension, "learning-center.html"), '<!doctype html><title>Synthetic consent callback for #234; not #235 UI</title>');
     const manifest = JSON.parse(await readFile(join(extension, "manifest.json"), "utf8"));
     manifest.host_permissions.push("http://127.0.0.1/*"); await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
@@ -111,7 +106,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     center = await context.newPage(); await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
     await writeFile(test.info().outputPath("selection-reading-package.json"), JSON.stringify({ production, backgroundSha256, artifactPath: artifact,
       productionCopyExactBeforeFixtures: true, backgroundUnchanged: true, browser: context.browser().version(),
-      fixtureChanges: ["synthetic Core and existing local Technical fixture", "fixed synthetic LC HTML", "localhost test permission"], paidProviderCalls: 0 }, null, 2));
+      fixtureChanges: ["synthetic user dictionaries in isolated OPFS", "fixed synthetic LC HTML", "localhost test permission"], paidProviderCalls: 0 }, null, 2));
   });
   test.afterAll(async () => { await context?.close(); await server?.close(); if (temporary) await rm(temporary, { recursive: true, force: true }); });
   test.beforeEach(async () => {
@@ -123,6 +118,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
         selectionExplanationDepth: "standard", appearance: "standard", glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
         openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
     }, { baseUrl: server.baseUrl });
+    await installUserDictionaries(driver);
     const state = await message(M.GET_RECORDING_STATE);
     expect((await message(M.CLEAR_RECORDS, { expectedDataGeneration: state.data.dataGeneration })).ok).toBe(true);
     await enable(false);

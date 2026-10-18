@@ -12,5 +12,5 @@ export function testWorkers(fileCount, env = process.env, cpus = availableParall
 export const serialE2EFiles = [
   "large-mdd-opfs-import.spec.mjs", "dictionary-ecosystem-v2-release.spec.mjs",
   "selection-rich-lookup-cancel.spec.mjs", "wxt-injection-samples.spec.mjs",
-  "wxt-upgrade.spec.mjs", "design-freeze-poc.spec.mjs", "reading-loop-release-a.spec.mjs"
+  "wxt-upgrade.spec.mjs", "user-dictionary-upgrade.spec.mjs", "design-freeze-poc.spec.mjs", "reading-loop-release-a.spec.mjs"
 ];

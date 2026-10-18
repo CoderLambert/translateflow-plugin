@@ -18,7 +18,7 @@ cryptographic digest and byte size.
 
 None of these directories should be copied directly into `dist/extension`.
 
-Generated runtime packs belong under `assets/lexicon/**` and only approved bundled bootstrap packs may enter the base extension.
+Generated dictionary packs are external downloadable/importable artifacts. No dictionary resources enter the base extension.
 
 Large/high-coverage dictionaries should be downloadable/imported rather than bundled.
 
@@ -26,7 +26,7 @@ Large/high-coverage dictionaries should be downloadable/imported rather than bun
 
 Project-authored word/translation records are **not** the normal way to grow coverage.
 
-The existing `sources/reviewed-tech-terms.json` was introduced as a transitional compatibility layer while fixing #115. Treat it as bounded exception/regression support:
+The old built-in dictionary sources and project-authored compatibility terms have been retired. Any future source work must respect these boundaries:
 
 - do not keep adding words simply because a benchmark or real page exposes a miss;
 - prefer an attributable upstream/source pipeline;

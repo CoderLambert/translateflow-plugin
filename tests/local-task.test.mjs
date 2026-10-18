@@ -180,6 +180,7 @@ test("artifact fingerprint uses actual bytes and rejects symlink/root escape", (
 test("all workflows are manual-only; permissions, jobs and manual inputs remain intact", () => {
   const directory = fileURLToPath(new URL("../.github/workflows/", import.meta.url));
   const names = readdirSync(directory).filter((n) => n.endsWith(".yml")); assert.ok(names.length > 0);
+  assert.ok(!names.includes("lexicon-release.yml"), "retired bundled dictionary workflow must stay absent");
   for (const name of names) {
     const text = readFileSync(join(directory, name), "utf8"), block = text.split(/^on:\s*$/mu)[1]?.split(/^permissions:/mu)[0];
     assert.ok(block, name); assert.deepEqual([...block.matchAll(/^  ([a-z_]+):/gmu)].map((m) => m[1]), ["workflow_dispatch"], name);

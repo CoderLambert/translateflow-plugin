@@ -14,6 +14,3 @@ export const YOUTUBE_MAIN_BRIDGE_FILES = Object.freeze([
   "src/content/subtitles/youtube-timedtext.js",
   "src/content/subtitles/youtube-main-bridge.js"
 ]);
-export const BUNDLED_LEXICON_PATHS = Object.freeze({
-  core: "assets/lexicon/core", technical: "assets/lexicon/technical"
-});

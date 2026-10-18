@@ -29,6 +29,21 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); });
 
+test("dictionary loading reads installed state only and needs no bundled status service", async () => {
+  const fixture = makeFixture();
+  fixture.sendMessage.mockImplementation(async message => {
+    if (message.type === BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS) return { ok: true, state: { packs: {} } };
+    if (message.type === BACKGROUND_MESSAGES.RICH_MDICT_LIST) return { ok: true, dictionaries: [] };
+    throw new Error("unexpected dictionary load message");
+  });
+
+  await expect(fixture.client.load()).resolves.toEqual({ packState: { packs: {} }, rich: [] });
+  expect(fixture.sendMessage.mock.calls.map(([message]) => message.type)).toEqual([
+    BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS, BACKGROUND_MESSAGES.RICH_MDICT_LIST
+  ]);
+  expect(fixture.workerCreated).not.toHaveBeenCalled();
+});
+
 test("the real curated worker READY reaches the Options client and commits the staged dictionary once", async () => {
   const fixture = makeFixture();
   const progress = vi.fn();
@@ -79,7 +94,7 @@ function makeFixture({ changeReadySource = "", commitResponse = { ok: true }, pe
 } = {}) {
   const staged = new Map<string, Uint8Array>();
   const workerMessages: Record<string, any>[] = [];
-  const sendMessage = vi.fn(async () => commitResponse);
+  const sendMessage = vi.fn(async (_message: Record<string, any>): Promise<Record<string, any>> => commitResponse);
   const workerCreated = vi.fn();
   class CuratedWorker extends EventTarget {
     constructor() { super(); workerCreated(); }

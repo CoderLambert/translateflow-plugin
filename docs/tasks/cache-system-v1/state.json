@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "cache-system-v1",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/independent-cache-system-20261018",
   "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
-  "mergeHead": "",
+  "mergeHead": "349321a079544a51834de1b3173f1fc653220e6d",
   "validationCommands": [
     [
       "node",
@@ -79,5 +79,6 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "全部合同命令与用户人工验收均通过；归档仅当前任务元数据及生成索引。归档后再次执行 Gate，核对远端准确 head 与无冲突后按用户授权 squash 合并；fetch并核对main tree后再记录completed/mergeHead。"
+  "nextAction": "PR #345 已按用户授权 squash 合入 main，并核对 main tree 与准确 syncHead 完全相同。全部任务要求与用户人工验收已满足。此完成记录依仓库流程留本地，随后续授权同步；不为状态归档重复测试或另建提交，不继续其它翻译功能。",
+  "syncHead": "abcd476ae496cd3fd6ba973196903ab045776ac5"
 }

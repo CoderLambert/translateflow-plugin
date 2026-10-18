@@ -15,6 +15,7 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("hostile HTML and styles stay inert while readable dictionary structure remains available", async ({ harness }) => {

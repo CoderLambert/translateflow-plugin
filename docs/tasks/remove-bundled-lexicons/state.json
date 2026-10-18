@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "task": "remove-bundled-lexicons",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [
+    "cache-system-v1"
+  ],
+  "branch": "refactor/remove-bundled-lexicons",
+  "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
+  "mergeHead": "1c46d76417bae1c4415cc4c7a39be73aa471b28b",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/dictionary-ecosystem-v2-release.spec.mjs",
+      "e2e/wxt-upgrade.spec.mjs",
+      "--workers=1",
+      "--retries=0",
+      "--reporter=line,json"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "用户已明确授权合并；PR #346 已 squash 合入 main，tree 与同步提交一致。保留原候选验收绑定，不代表发布。",
+  "syncHead": "be5f81d030c2d67083e85776f363dc68ab2c5883",
+  "pr": 346
+}

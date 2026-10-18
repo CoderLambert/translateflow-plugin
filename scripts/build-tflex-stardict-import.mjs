@@ -10,7 +10,7 @@ import {
   normalizeExactLookupKey,
   normalizeLookupKey,
   stableStringify
-} from "./build-tflex-core.mjs";
+} from "./tflex-writer.mjs";
 import { TFLEX_OPFS_INDEXED_PROFILE } from "./build-tflex-freedict.mjs";
 import { projectStarDictPoc } from "./project-stardict-import.mjs";
 import { buildStarDictLocalTflexFromProjection } from "../src/background/packs/importers/stardict-local-adapter.js";

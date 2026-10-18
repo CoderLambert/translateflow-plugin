@@ -11,6 +11,7 @@ test.describe("multiple local rich dictionary cards", () => {
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("personal preference persists and opens first beside the unchanged structured primary", async ({ harness }) => {

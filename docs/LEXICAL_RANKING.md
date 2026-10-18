@@ -1,7 +1,7 @@
 # Lexical Ranking & Sufficiency Policy v1
 
 Issue: #85  
-Inputs: #77 Lexical Gateway candidates + #78 Technical candidates
+Inputs: Lexical Gateway candidates from enabled user dictionaries and effective User Glossary
 
 This policy is a deterministic, local-only layer between candidate collection and Selection v2 intent/UI work. It does not call a Provider, does not generate prose, and never hides candidates.
 
@@ -20,7 +20,7 @@ All candidates remain in the result, including candidates below the top rank.
 
 User Glossary is the only explicit override source. A valid User Glossary hit is immediately `sufficient`.
 
-Core, Technical and optional packs are never first-hit overrides. They contribute attributable candidates to the same ranking set.
+User-installed dictionaries are never first-hit overrides. They contribute attributable candidates to the same ranking set.
 
 ## Ranking signals
 
@@ -46,7 +46,7 @@ Additional deterministic signals:
 | technical candidate in technical context | +14 |
 | candidate domain/type/alias token overlaps context | +5 each, capped at +15 |
 
-There is deliberately **no pack-ID/source-name boost**. A Core or optional candidate is not preferred just because of source identity, and a Technical candidate gets no blanket preference outside technical context.
+There is deliberately **no pack-ID/source-name boost**. No user-dictionary candidate is preferred just because of source identity; technical metadata gets no blanket preference outside technical context.
 
 ## Context handling
 

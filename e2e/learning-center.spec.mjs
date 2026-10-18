@@ -32,6 +32,7 @@ async function trace(page) {
 
 test("real toolbar Popup reports success when opening the learning center closes it", async ({ harness }) => {
   await harness.reset();
+  await harness.installUserDictionaries();
   await harness.serviceWorker.evaluate(() => chrome.runtime.onMessage.addListener((request, sender) => {
     if (request.method === "reading.open-learning-center") globalThis.__toolbarPopupSender = {
       id: sender.id, url: sender.url, origin: sender.origin, documentId: sender.documentId,
@@ -82,6 +83,7 @@ test("real toolbar Popup reports success when opening the learning center closes
 test("Actual React product: Popup/selection, consent, real save, history, site policy, delete and JSON download", async ({ harness }, info) => {
   test.setTimeout(120000);
   await harness.reset();
+  await harness.installUserDictionaries();
   await harness.driver.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
   await harness.driver.reload();
   const opened = harness.context.waitForEvent("page");
@@ -204,6 +206,7 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   test.setTimeout(120000);
   await harness.resetProfile();
   await harness.reset();
+  await harness.installUserDictionaries();
   await harness.setStorage({ uiLocale: "en", readingMemorySites: [] });
   await harness.driver.reload();
 
