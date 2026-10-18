@@ -379,12 +379,13 @@ siteGlossaries:
 
 ## 缓存
 
-IndexedDB 名称和数据结构保持不变：
+翻译缓存统一为 **v3 单一格式**。数据库沿用 `ai_bilingual_translator`，旧版升级时一次性清空重建 `translations` 和 `pages`，不迁移、不读取旧译文；升级后需要用户显式重新翻译才能写入新缓存，自动恢复不会请求 Provider。独立 `selection_explanations`（划词 AI 解释）保留，ReadingRecord 和词典使用各自数据库/存储，不受本次清理影响。
 
 ```text
-ai_bilingual_translator
+ai_bilingual_translator (DB v3)
 ├── pages
-└── translations
+├── translations (cache schema v3 only)
+└── selection_explanations (independent)
 ```
 
 缓存身份：
