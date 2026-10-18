@@ -45,11 +45,17 @@ export function createMemoryCacheStore() {
       for (const [k, row] of rows) if (matchesFilter(row, filter)) { rows.delete(k); deleted++; }
       return { deleted };
     },
-    async prune({ namespace, maxEntries = Number.MAX_SAFE_INTEGER, maxBytes = Number.MAX_SAFE_INTEGER, now = Date.now() } = {}) {
+    async prune({ namespace, namespaces, maxEntries = Number.MAX_SAFE_INTEGER, maxBytes = Number.MAX_SAFE_INTEGER, now = Date.now() } = {}) {
       if (!Number.isSafeInteger(maxEntries) || maxEntries < 0 || !Number.isSafeInteger(maxBytes) || maxBytes < 0) throw cacheError('CACHE_INVALID_POLICY');
+      if (namespaces !== undefined && (namespace !== undefined || !Array.isArray(namespaces) ||
+          namespaces.length < 1 || namespaces.length > 16 || new Set(namespaces).size !== namespaces.length)) {
+        throw cacheError('CACHE_INVALID_FILTER');
+      }
+      if (namespaces) namespaces.forEach(value => validateFilter({ namespace: value }));
+      const allowed = namespaces ? new Set(namespaces) : null;
       let deleted = 0, bytes = 0; const live = [];
       for (const [key, row] of rows) {
-        if (namespace !== undefined && row.namespace !== namespace) continue;
+        if (namespace !== undefined && row.namespace !== namespace || allowed && !allowed.has(row.namespace)) continue;
         if (row.recordVersion !== CACHE_RECORD_VERSION || !Number.isSafeInteger(row.bytes) || row.bytes < 1 ||
             !Number.isSafeInteger(row.lastAccessedAt) || row.lastAccessedAt < 0 ||
             !Number.isSafeInteger(row.expiresAt) || row.expiresAt < 0 || (row.expiresAt && row.expiresAt <= now)) { rows.delete(key); deleted++; continue; }
