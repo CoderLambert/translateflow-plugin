@@ -23,3 +23,25 @@ Fixes pin coordinator inputs, send descriptor source.text, explicitly project en
 ## Remaining work before final acceptance notification
 
 Keep status working; do not mark ready_to_sync/completed from test counts alone. Resolve existing-test/mocks and historical WXT upgrade expectations under the new token/envelope contract. Validate all consumers' storage-failure display behavior. Run native-IDB and production compiled-extension checks in a permitted environment, build/fingerprint a candidate, and only then ask for the user's product acceptance. PR #342 is not a dependency that may be silently merged; its MT code must later adapt to this cache module.
+
+
+## Continuation: Content UI persistence fallback (2026-10-18)
+
+The original isolated overlay result (108 tests on Node22) remains historical. Additional remote-branch edits now cover storage-response failures in the actual classic Content modules.
+
+**Reproduced before the fix using fetched Content IIFEs and a deterministic synthetic runtime:**
+- Page cache-only restoration with an unavailable database lost the lookup warning and incorrectly reported a genuine cache miss.
+- A successful Page translation followed by `CACHE_STORE {ok:false,errorCode:CACHE_QUOTA}` marked the task failed.
+- Selection with the same storage response never displayed its already-verified translation.
+- The Chrome local translator's native plan threw on an equivalent cache failure; lookup warnings were omitted from the plan response.
+
+**Implemented on the existing PR branch:**
+- Propagate Page cache-read warnings through cache-only / no-uncached early returns.
+- Classify only `CACHE_QUOTA`, `CACHE_STORAGE`, `CACHE_STORAGE_BLOCKED`, and `CACHE_STORAGE_TIMEOUT` as recoverable persistence faults in the classic Content runtime; a parity test keeps the classifier aligned with Background. Never downgrade `CACHE_INVALID_TOKEN`, `CACHE_INVALIDATED`, `CONFIG_SNAPSHOT_EXPIRED`, or `CANCELLED`.
+- Page and Selection preserve valid generated translations and show an explicit unsaved-cache warning when a cache-store response reports a recoverable fault.
+- Chrome local Selection and Subtitle retain the verified local-model result on a cache-store error; native lookup forwards a storage warning and skips tokenless writes. No automatic Provider rerun.
+- Extended `tests/cache-system-persistence-failure.test.mjs` and `tests/native-client.test.mjs` to capture these cases.
+
+**Executed this turn**: fetched exact remote Content IIFEs and invoked them with an isolated, deterministic V8 mock runtime, yielding **20/20 Page+Selection scenarios PASS** and **9/9 Chrome-local scenarios PASS**, covering both recoverable storage errors and fail-closed identity/config/cancellation outcomes. These are targeted source execution checks with mock dependencies, **not** Node project's `npm test`, TypeScript, compiled MV3, native IDB, or browser E2E. There were no live Provider calls.
+
+**Outstanding**: Node24/npm11 `npm ci && npm run validate`, actual WXT/Chromium/IndexedDB DB2/3→4 upgrade and rollback, existing full tests/mocks, actual UI smoke with real browser extension, build fingerprint, user acceptance. Current environment contains Node22.16.0/npm10.9.2 and cannot resolve github.com/npm downloads; the earlier managed Chromium `ERR_BLOCKED_BY_ADMINISTRATOR` remains unresolved. Keep task `working` and PR Draft; do not promote this report to whole-module acceptance.
