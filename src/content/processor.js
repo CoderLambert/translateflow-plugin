@@ -47,6 +47,7 @@
       let cacheHits = 0;
       let apiTranslated = 0;
       let missing = 0;
+      let cacheWarning = "";
       let done = 0;
       let configSnapshotId = "";
       const pageUrl = location.href;
@@ -68,6 +69,7 @@
         cacheHits += result.cacheHits;
         apiTranslated += result.apiTranslated;
         missing += result.missing;
+        if (result.cacheWarning) cacheWarning = result.cacheWarning;
         done += result.processed;
         if (task) {
           tasks.updateProgress(task, {
@@ -91,7 +93,8 @@
         return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args };
       }
 
-      const key = missing ? "content.page.completeMissing" : "content.page.complete";
+      const key = cacheWarning ? "content.page.cacheNotSaved"
+        : missing ? "content.page.completeMissing" : "content.page.complete";
       const args = missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
       const message = t(key, args);
       tasks.completeTask(task, {
@@ -99,12 +102,13 @@
         cacheHits,
         apiTranslated
       });
-      if (!silent) showToast(message, "success");
+      if (!silent) showToast(message, cacheWarning ? "error" : "success");
       return {
         count,
         cacheHits,
         apiTranslated,
         missing,
+        ...(cacheWarning ? { cacheWarning } : {}),
         message,
         messageKey: key,
         messageArgs: args,
@@ -219,14 +223,17 @@
       });
       if (task) tasks.assertActive(task);
       if (!stored?.ok) throw responseError(stored, "content.page.cacheStoreFailed");
+      const saved = Number(stored.stored || 0);
+      const cacheWarning = stored.cacheWarning || (saved < toStore.length ? "CACHE_NOT_SAVED" : "");
 
-      if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000) {
+      if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000 && !cacheWarning) {
         state.lastAutoPruneAt = Date.now();
         sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
       }
     }
 
-    return { cacheHits, apiTranslated, missing, processed, configSnapshotId };
+    return { cacheHits, apiTranslated, missing, processed, configSnapshotId,
+      ...(typeof cacheWarning !== "undefined" && cacheWarning ? { cacheWarning } : {}) };
   }
 
   function insertGroupTranslation(group, translation, engine = "") {
