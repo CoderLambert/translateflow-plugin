@@ -37,7 +37,7 @@ export function machineTranslationClient(api: typeof chrome = chrome) {
     async test(config: MachineSettings, consent: boolean, requestId: string, targetLanguage: string) {
       if (!consent) throw Object.assign(new Error("Consent required"), { code: "MT_CONSENT" });
       if (!await grant({ ...config, mode: "free-online" })) throw Object.assign(new Error("Permission required"), { code: "MT_PERMISSION" });
-      return send<MachineTestResult>({ type: BACKGROUND_MESSAGES.MACHINE_TRANSLATION_TEST, providerId: config.providerId, requestId, targetLanguage });
+      return send<MachineTestResult>({ type: BACKGROUND_MESSAGES.MACHINE_TRANSLATION_TEST, providerId: config.providerId, requestId, targetLanguage, consent });
     },
     cancel: (requestId: string) => send<{ cancelled: boolean }>({ type: BACKGROUND_MESSAGES.CANCEL_TRANSLATION, requestId }),
     async activePage() {
