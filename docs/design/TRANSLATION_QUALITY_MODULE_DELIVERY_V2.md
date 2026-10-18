@@ -175,3 +175,100 @@ M3 同页缓存准确复用与恢复优化
 下一次执行时先依据 #342 实际最新状态继续其未完成验收、复杂格式和真实网络门槛；只有 #342 真的满足合并与人工验收要求并成为 main 历史的一部分，才能开 M1 新分支。
 
 如果 M0 在无法控制的第三方 endpoint 可用性上被阻塞，保留 blocked、交付独立验证证据，并由用户决定是否收窄支持范围；未获用户批准不得擅自视为完成或越过依赖。
+---
+
+## 8. 开源参考落地规范：复用现有实现，不重造翻译引擎
+
+本附录是 [Issue #344 三份源码报告与交叉汇总](https://github.com/CoderLambert/translateflow-plugin/issues/344) 的**代码实施合同**，不改变 M0→M1→M2→M3 的串行交付顺序、门禁和人工验收。基线：`main@961a3757`，`#342/head@8e7e7049`，每次实施前复查最新状态。**本次补充纯文档，不等于代码修改或测试通过。**
+
+### 8.1 成熟项目设计的“采用/不采用”
+
+| 参考 | 对应已验证代码 | 采用方式 | 不做的事情 |
+|---|---|---|---|
+| FluentRead | [网页 whole-block 安全判定](https://github.com/FluentRead/FluentRead/blob/main/src/core/translation/serialization.ts#L298-L410)、[真正请求分叉](https://github.com/FluentRead/FluentRead/blob/main/src/features/full-page-translation/content/liveTextTranslation.ts#L175-L228)、[文档内联编号/atom](https://github.com/FluentRead/FluentRead/blob/main/src/features/document-translation/core/document.ts#L835-L975) | 采用**能安全整句才整句、无法保留结构就分槽**的策略；AI rich 中保留完整 code 语义并验证编号 marker | 不把文档协议误称为网页所有模式已实现；不直接照搬 GPL 源文件 |
+| KISS Translator | [REPLACE/WARP 分类](https://github.com/fishjar/kiss-translator/blob/7a7e2957ce2084d374f802b3537f2e0ca87cd7b8/src/libs/translator.js#L82-L176)、[占位符保存与还原](https://github.com/fishjar/kiss-translator/blob/7a7e2957ce2084d374f802b3537f2e0ca87cd7b8/src/libs/translator.js#L4191-L4350) | 在已有 `structured.js` 中区分**可翻译样式**与**必须保留字面**，复用现有 source descriptor | 不照搬拼接 `outerHTML` + 模型结果 HTML 的完整渲染流程；不能靠 {{1}} 自动获得术语语义 |
+| Read Frog | [按 Provider 能力分叉与回退](https://github.com/mengxi-ream/read-frog/blob/b7a63b77c3d7391905a83dd13e5e78ea651a8e11/src/utils/host/translate/core/translation-request.ts#L145-L240)、[marker 完整性](https://github.com/mengxi-ream/read-frog/blob/b7a63b77c3d7391905a83dd13e5e78ea651a8e11/src/utils/host/translate/html-attribute-markers.ts)、[Microsoft HTML 拒绝](https://github.com/mengxi-ream/read-frog/blob/b7a63b77c3d7391905a83dd13e5e78ea651a8e11/src/utils/host/translate/api/microsoft.ts#L37-L53)、[Google 换行保护](https://github.com/mengxi-ream/read-frog/blob/b7a63b77c3d7391905a83dd13e5e78ea651a8e11/src/utils/host/translate/api/google.ts#L42-L74) | 引擎能力选择 + 严格输出验证 + 不缓存退化结果；识别“语义检测文本”和“实际翻译文本”的区别 | 不把 Microsoft/腾讯网页服务当成 HTML-safe；不移植整套任务/状态/DOM 系统 |
+| Linguist/Bergamot | [Bergamot html:false](https://github.com/translate-tools/linguist/blob/dcad45b5587d079a8a4aec8defdac34037fbbdf2/src/lib/translators/bergamot/BergamotTranslator.ts#L35-L63)、[模型资源缓存](https://github.com/translate-tools/linguist/blob/dcad45b5587d079a8a4aec8defdac34037fbbdf2/src/lib/translators/bergamot/TranslatorBackingWithCache.ts#L15-L75) | 本地引擎保持**纯文本 API、独立模型生命周期**，用现有 Chrome runtime 实现 | 不引入 Bergamot；模型文件 cache 不等于译文 cache |
+| 通用库 | [domtranslator](https://github.com/translate-tools/domtranslator)（Apache-2.0）、[DOMPurify](https://github.com/cure53/DOMPurify)（Apache-2.0 / MPL-2.0） | 仅有**真实缺口**才评估增依赖；优先浏览器原生 `TreeWalker`、`createElement`、`Intl.Segmenter`、`AbortController` | domtranslator 示例逐 TextNode 调用，无法解决跨标签上下文分裂，不用它替换现有 Page/Selection/缓存管线。当前安全渲染不解析模型 HTML，不需要为此默认添加 DOMPurify |
+
+**许可说明**：FluentRead/KISS/Read Frog 的上游实现采用 GPL-3.0，TranslateFlow 当前 main 没有核实到根目录 LICENSE；在未明确许可兼容前只能借鉴机制并独立实现，不能照搬 GPL 代码。Linguist 的根 LICENSE (BSD-3-Clause) 与 package.json (`GPL-3.0`) 存在元数据不一致，也不能简单复制整个项目。Apache 组件亦需保留适当 NOTICE/版权信息。
+
+### 8.2 不增加新的 Provider/DOM/Cache 框架
+
+**保留真实单一链路**：
+
+```text
+Content (classic IIFE + WXT single isolated script)
+  dom.extractSourceSegment + structured.encodeElement
+       → batch.buildEntries / groupEntriesByText
+       → processor.CACHE_LOOKUP / TRANSLATE_BATCH
+       → Background config snapshot / translation-gateway
+       → selected Provider adapter
+       → structured.renderTranslation (trusted source DOM descriptors)
+       → processor.CACHE_STORE（只有通过格式和请求校验的结果）
+```
+
+不再实现一个新的跨项目 DOMTranslator、翻译 Scheduler、IDB、任务状态机或 Provider Gateway。新 shared 工具必须是**无 chrome、无 DOM、无副作用的纯函数**，Content 仍按 `src/entries/content.js` 的装配顺序使用，禁止在经典内容脚本中随意使用动态 import。
+
+**M1 的最小数据合同（M0 不需要先造一套）**：
+
+```ts
+// 实施规格，不是已提交的代码
+type SourceUnit = {
+  semanticText: string;         // DOM 中真实可见的意义文本，保留 useMemo 等 code 字面
+  providerText: string;         // 本次 Provider 真正收到的文本，按引擎适配
+  descriptors: SafeDescriptor[];// 原始 DOM 中受控 tag/href/title/code 等
+  protectedIds: number[];       // code/kbd 等本地强制恢复的编号
+  formatIdentity: string;       // 本地验证和比对，初期不改现有 IDB key
+};
+```
+
+在**同一次源快照**生成以上内容，避免 `text.replace(/⟦TF:[^⟧]*⟧/g, "")` 将用户字面标记误删；不能把 `semanticText` 直接当成跨引擎/跨格式的缓存 key。M1 先保留既有消息字段 `text` 与实际 Provider 参数，只有必要且有测试证明时才扩大合同。
+
+### 8.3 引擎选择真值表（先保密和安全，再谈自然度）
+
+| 当前输入/能力 | AI（含兼容本地 LLM） | M0 免费 MT（Edge/腾讯） | 现有 Chrome Translator |
+|---|---|---|---|
+| 无结构的自然句 | 一次整段 Provider 输入 | 一次整段纯文本输入，超限才断句 | 当前获准范围内整条选区调用 |
+| strong/em/a 等可移动内联格式 | 整段加成对 marker，输出严格验证 | 默认继续受控分槽；若要放弃译文侧行内样式换取纯文本整句，先做独立产品验收，不暗改 | 仅安全纯文本场景整句；结构复杂仍分槽 |
+| code/kbd 等不可变字面 | 现有 AI 授权范围内可以在标记对里传真实名称供模型理解，结果必须以源代码字面重建 | **保持 #342 承诺：代码、标记、URL 不上传**；不可能要求服务取得与 AI 完全相同的语义上下文，保留分槽与已知质量限制 | 本地不改 code/kbd；未证明安全时不做整体 rich 自动对齐 |
+| 供应商 HTML、坏 marker 或服务不支持 | 拒绝错误结构/安全降级，不缓存 | 绝不硬送 HTML，失败不缓存且不转付费服务 | 纯文本 Provider，保留原文/明确失败、不得偷偷下载 |
+
+**重要产品边界**：在“免费 MT 不上传 protected code 字面”的明确隐私条件下，含 `<code>useMemo</code>` 的复杂英文句子可能仍有语序不自然，不能宣称仅靠 Prompt 能根治。不要为了测试通过私自破坏这一约束。若未来希望获得更自然的 MT 整句，需单独取得允许发送技术标识符或接受译文侧纯文本格式降级的明确产品决策。
+
+### 8.4 M0 #342 的最小实现步骤（当前唯一允许的生产代码模块）
+
+**入口及现有能力**：
+
+`src/shared/machine-translation.js` 定义 MT 选项、固定服务及 `machineSourceIdentity`；`src/content/batch.js` 透传 `protectedIds`；`src/shared/browser-language.js` 提供 `translationParts`；`src/background/providers/machine-translation.js` 依旧拆出 prose 请求；`machine-translation-transport.js` 已有严格固定 URL、15s 超时、512KiB 响应上限、禁 Cookie、禁重定向、排队与 429/403 冷却；`effective-config-snapshots.js` 保护 MT 任务归属。
+
+1. **先冻结当前候选/定位真实缺口**：检查 #342 `docs/tasks/free-online-mt/{task.md,state.json,review.md}`，不要重建功能模块或伪造其它任务状态。已有相关 Node 23 项和生产 WXT 合成 HTTP E2E 17 项在 PR 中记为已报告结果；只保留准确候选绑定的有效证据，完成尚未通过的本地 `validate`/task gate/真正安装包验收。
+2. **结果结构验证**：复用 `translationParts` 输入校验，新增源 marker 与回译 marker **相同 id 集合、每个 S/E 恰好一次、嵌套合法、无额外/残余 marker、protected span 原文字面**的成功门槛。Content `structured.renderMarked` 不能只检查 stack 却允许缺少 descriptor；**错误结果不 STORE、不展示为成功翻译**。旧 exact cache 命中时必须在展示前再次验证；cacheOnly 不能用付费调用修复坏条目。
+3. **长句和行边界**：正常不含 marker 的句子仍一次发送；`splitMachineText` 只有遇到 provider 字节/字符上限才运行。若当前手写字符断句的 Unicode/换行边界有实际失败 fixture，可用内置 `Intl.Segmenter` sentence/grapheme 改进；不为了技术美观重构或增加 API 次数。
+4. **有 code/kbd/链接的句子**：保持当前本地结构保护和文本槽分流。不能按字符串搜索在翻译结果中“猜测” code/link 应放哪里；Provider 无 HTML 对齐能力的场景安全保留原文、受控降级或明确失败，不能牺牲安全去追求整句。
+5. **连接验收**：PR 报告微软单次真实调用 PASS、腾讯 FAIL（`MT_NETWORK`、无 HTTP status）；当前浏览器/网络重新用用户显式确认的固定非敏感句分别检查。腾讯仍不可用则模块保持 BLOCKED，或等待用户明确批准缩小首发范围；**mock E2E 不能冒充腾讯真实网络可用**。禁自动跨服务/付费 AI fallback。
+
+**M0 已有测试入口**：`tests/machine-translation.test.mjs`、`e2e/machine-translation.spec.mjs`，只补缺失的 marker 丢/重/错、字面 TF token、code 重复、坏缓存/取消、长句语序/Unicode；保持原合成 Transport harness。不要增加第二套测试驱动器。
+
+### 8.5 M1 全文/划词 AI 质量模块：内部步骤，必须同一模块完成
+
+文件所有权：`src/content/{structured,dom,batch,processor}.js`、`src/content/selection/translation-query.js`、`src/background/translation-requests.js` 与受影响测试；完全保留 Provider Snapshot/Prompt/Glossary/Reading 原入口。
+
+1. 原生 DOM 一次提取 `semanticText` 与受控 descriptors；plain/rich/Selection 可以做**语义对照**，仍保留正确的 providerText 和旧缓存身份。用户本来就含 `⟦TF:0:S⟧` 的正文必须当字面，不与内部标记碰撞。不要额外递归整页敏感 DOM。
+2. 将现有 `renderMarked` 变为“先验证、后渲染”：检查每个 descriptor **恰好开闭一次**、未知/重复/错嵌套/残余 token；允许完整标记对作为原子单元随中文语序移动，但不许破坏父子关系；code/kbd 内容取源 `protectedText`，a.href/title 取源 DOM 允许的属性，不执行模型 HTML。
+3. 对无效输出采用 **fail closed**：不写缓存和 Reading 成功记录；用户能看到明确错误或保留原文并显式重试。不要继续静默 `stripMarkers` 后标记为成功，因为它可能使受保护 code 丢失。缓存恢复也使用同一 validator，不隐式重新付费翻译。
+4. 基础翻译 Prompt 仍由已有配置/站点/术语表决定，`translation-requests.js` 的 rich 补充规则**只约束格式**。现有 “do not reorder markers” 过于强，调整为“成对标记整体可移动；内部技术名不得改，数量/嵌套必须正确”；给用户 Prompt 维持覆盖优先级，温度=0 不是解决问题的唯一手段。
+5. 完整端到端回归：同一真实模型与有效配置的 Page/Selection、冷/热缓存、复制/断言 `useMemo` 的否定语义（不会阻止重新渲染），多 code、嵌套 strong/a、恶意链接、断连/取消、SPA；对 UI 自然度做用户手动验收。**完成此一整条功能后才进入 M2**，不得把 DTO 或 Prompt 单独当已交付功能。
+
+### 8.6 M2 Chrome 本地模型和 M3 缓存：只在其准入后动手
+
+- **M2**：复用 `src/shared/browser-language.js` 的 `selectionDetectionSample`、`translationParts` 和 `src/browser-native/runtime.js` 的 `prepareBundle` / `detectDecision` / `execute`。KISS 的模型失败后失效实例重建仅供异常恢复思路参考；需要实际 Chromium 状态和 bounded retry，不照搬具体错误字符串。不自动下载、不默认整页、不引入 Bergamot，不把全页其它正文隐式发送供检测。
+- **M3**：先量测现有 exact cache、`src/background/translation-requests.js` 的 `inflightByKey` 和 SPA/cacheOnly。仅当同配置+同 payload+同格式/保护 identity 的请求有可量化重复调用时优化。取消最后消费者后旧 aborted entry 应从 Map 隔离，旧 Promise `finally` 只能删自己的 entry（防止新任务被旧任务清理）。不清数据库、不增 DB_VERSION、不为语义相似就跨 rich/plain/Provider 共享缓存。可借鉴 Read Frog 的局部 LRU 思路，但不得复制其状态系统。
+
+### 8.7 各模块最低完成标准与实际调用
+
+**每个模块内部**可多次小提交、增量跑受影响 Node/Vitest 和 WXT 浏览器用例，仍只允许**一个模块拥有生产代码写入权**；不把下一模块与当前模块并行开发。候选合入前对准确 HEAD 集中完成一次完整 `npm run validate` 与必要 `npm run test:e2e`，后续失败按受影响范围重验，完整执行日志、包 fingerprint、真实 Provider 结果与人工验收分别记录。当前没运行的测试不得写 PASS。
+
+功能门槛：受保护 code/kbd 字面失真 0，格式 marker 漂移/恶意链接不得作为成功缓存，自动缓存恢复 Provider 新调用 0，缺乏明确用户意图的收费 AI 调用 0，字幕/词典/Reading 既有数据不破坏。自然中文由真实样本+人工核查确定，不能要求不同 LLM 每次逐字相同。
+
+**模块完成只以真实 PR 合并到最新 main + 完整验收 + 真实 mergeHead 为准。** 
