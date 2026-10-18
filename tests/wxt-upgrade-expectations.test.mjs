@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, expectedTranslationCacheDatabases, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
 
 test("observed update removes the exact old dynamic closure after compiled static Content takes ownership",()=>{
   const old={contentScripts:["old.js","content.js"],contentStyles:["old.css"]};
@@ -62,13 +62,28 @@ test("upgrade retains every existing UI-locale value including unknown and null 
 });
 
 function seededDatabases() {
-  return [{ name:"ai_bilingual_translator",version:2,stores:{
-    translations:[0,1,2].map(id=>({cacheKey:"key-"+id,pageKey:"page",sourceHash:"source-"+id,configHash:"config",
+  return [{ name:"ai_bilingual_translator",version:3,stores:{
+    translations:[0,1,2].map(id=>({cacheKey:"key-"+id,cacheSchema:3,pageKey:"page",sourceHash:"source-"+id,configHash:"config",
       sourceText:"text-"+id,translation:"translation-"+id,createdAt:100,lastAccessedAt:200,bytes:123})),
     pages:[{pageKey:"page",url:"https://fixture.invalid/article",title:"Fixture",createdAt:100,lastAccessedAt:200}],
     selection_explanations:[{cacheKey:"selection",explanation:"preserved",lastAccessedAt:200}]
   }}];
 }
+
+
+test("v2→v3 upgrade drops only old translation/page rows, preserving independent explanations",()=>{
+  const current=seededDatabases();
+  const old=structuredClone(current);
+  old[0].version=2;
+  old[0].stores.translations.forEach(row=>{delete row.cacheSchema;});
+  const next=expectedTranslationCacheDatabases(old);
+  assert.equal(next[0].version,3);
+  assert.deepEqual(next[0].stores.translations,[]);
+  assert.deepEqual(next[0].stores.pages,[]);
+  assert.deepEqual(next[0].stores.selection_explanations,old[0].stores.selection_explanations);
+  assert.equal(old[0].stores.translations.length,3);
+  assert.deepEqual(expectedTranslationCacheDatabases(next),next);
+});
 
 test("cache recovery compares all content/stores canonically and permits only valid read metadata",()=>{
   const before=seededDatabases(),valid=structuredClone(before);
@@ -90,7 +105,7 @@ test("cache recovery compares all content/stores canonically and permits only va
     db=>{db[0].stores.pages[0].title="corrupted";},
     db=>{db[0].stores.selection_explanations=[];},
     db=>{db[0].stores.selection_explanations[0].lastAccessedAt=300;},
-    db=>{db[0].version=3;},
+    db=>{db[0].version=4;},
     db=>{db[0].name="different";},
     db=>{delete db[0].stores.selection_explanations;},
     db=>{db[0].stores.extra=[];},
