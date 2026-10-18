@@ -67,9 +67,11 @@
       "test:e2e",
       "--",
       "--workers=1",
-      "--retries=0"
+      "--retries=0",
+      "--reporter=line,json",
+      "--output=docs/task-execution/local/pr345-final/test-results"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "执行本轮修复后准确候选的 Node24 完整 validate、原生 IndexedDB、WXT smoke、MV3、同 ID 升级与全量 Chromium 回归；保留基线失败与环境阻塞，完成候选证据和人工验收前不合并、不 completed。"
+  "nextAction": "完成全部基线失败修复的统一候选验收：Node24 validate、原生 IndexedDB、WXT smoke、MV3、同 ID 升级与全量 Chromium（逐项保留条件性跳过和网络模式）；自动化验收后等待用户人工最终验收，不合并、不 completed。"
 }

@@ -77,6 +77,7 @@ test.describe("v0.8 release-gate browser flows", () => {
   });
 
   test("Quick Control remains dismissible and readable in dark mode", async ({ harness }) => {
+    await harness.setStorage({ uiLocale: "en" });
     const page = await harness.open("/article");
     await page.emulateMedia({ colorScheme: "dark" });
     await harness.inject(page);

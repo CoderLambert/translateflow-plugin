@@ -46,6 +46,7 @@ async function inspect(content, command, body = {}) {
     const [result] = await chrome.scripting.executeScript({ target: { tabId }, args: [command, body], func: async (command, body) => {
       const modules = globalThis.__TRANSLATE_FLOW_CONTENT__.modules;
       if (command === "source") return modules.selectionController.getQuerySource()?.ready || null;
+      if (command === "authority") return modules.readingAccessCollector.read({ nonce: "synthetic-current", action: "inspect" });
       if (command === "focus") { window.dispatchEvent(new Event("focus")); return true; }
       if (command === "forged") return modules.readingAccessCollector.read({ nonce: "synthetic-forged", action: "begin", recordId: null, operationId: "not-owned" });
       if (command === "method") return chrome.runtime.sendMessage({ protocolVersion: 2, method: body.method, ...body.fields });
@@ -118,7 +119,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     server.reset();
     await driver.evaluate(async ({ baseUrl }) => {
       await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" }); await chrome.storage.local.clear();
-      await chrome.storage.local.set({ uiLocale: "zh_CN", provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
+      await chrome.storage.local.set({ uiLocale: "zh_CN", dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
         selectionExplanationDepth: "standard", appearance: "standard", glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
         openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
     }, { baseUrl: server.baseUrl });
@@ -212,8 +213,20 @@ test.describe("Selection → frozen trusted source → committed Reading records
     await query(content, "#first", "session", 1); await expect(status(content)).toHaveAttribute("data-state", "disabled");
     await content.page.getByRole("button", { name: "关闭", exact: true }).click(); await enable(); await inspect(content, "focus");
     await expect(content.page.locator(".tf-selection-panel")).toHaveCount(0); expect(await records()).toHaveLength(0);
+    // Ordinary anchors keep the readable query, but Reading still binds its original raw URL.
+    await enable(false); const anchor = await open(); await query(anchor); await expect(status(anchor)).toHaveAttribute("data-state", "invite");
+    const frozen = await inspect(anchor, "source");
+    expect((await inspect(anchor, "authority"))?.sourceSnapshot).toEqual(frozen);
+    await anchor.page.evaluate(() => { location.hash = "new-source"; });
+    await expect(anchor.page.locator(".tf-selection-panel")).toBeVisible();
+    expect(await inspect(anchor, "source")).toEqual(frozen);
+    expect(await inspect(anchor, "authority")).toBeNull();
+    await enable(); await inspect(anchor, "focus");
+    await expect(anchor.page.getByRole("button", { name: "保存本次结果", exact: true })).toHaveCount(0);
+    expect(await inspect(anchor, "authority")).toBeNull();
+    expect(await records()).toHaveLength(0); expect(server.calls).toHaveLength(0);
     await enable(false); const other = await open(); await query(other); await expect(status(other)).toHaveAttribute("data-state", "invite");
-    await other.page.evaluate(() => { history.pushState({}, "", "/article#new-source"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
+    await other.page.evaluate(() => { history.pushState({}, "", "/article#/new-source"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
     await expect(other.page.locator(".tf-selection-panel")).toHaveCount(0); await enable(); expect(await records()).toHaveLength(0);
     const site = await message(M.GET_SITE_RECORDING, { siteKey: server.baseUrl });
     await message(M.SET_SITE_RECORDING, { siteKey: server.baseUrl, excluded: true, expectedSitePolicyRevision: site.data.sitePolicyRevision });

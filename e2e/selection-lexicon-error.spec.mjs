@@ -2,12 +2,15 @@ import { test, expect } from "./support/extension-fixture.mjs";
 
 test.use({ lexiconPacks: "missing" });
 
-test("missing optional dictionaries remain diagnosable and do not block translation", async ({ harness }) => {
+test("missing dictionaries show a diagnostic and translate only after an explicit fallback", async ({ harness }) => {
   await harness.reset();
   const page = await harness.open("/selection");
   await harness.inject(page);
   await selectElementText(page, "#ambiguous");
   await page.locator(".tf-selection-chip").click();
+  await expect(page.locator(".tf-selection-status")).toContainText("内置本地词典资源缺失或不可读");
+  expect(harness.server.calls).toHaveLength(0);
+  await page.getByRole("button", { name: "使用普通翻译处理这个词", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).not.toBeEmpty();
   await expect(page.getByRole("tab", { name: "译文", exact: true })).toBeVisible();
   expect(harness.server.calls).toHaveLength(1);

@@ -146,6 +146,7 @@ export function createCuratedDictionaryWorkerHandler({
       const result = {
         type: CURATED_WORKER_MESSAGES.READY,
         requestId,
+        sourceId: source.id,
         token,
         packId: built.manifest.packId,
         packVersion: built.manifest.packVersion,

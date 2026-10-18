@@ -28,9 +28,14 @@ test("Selection assistant Port streams real text and stop preserves partial with
         if (name === "cancel") globalThis.__stream.port.postMessage({ type: "cancel", requestId });
         return globalThis.__stream?.events || [];
       } }); return result.result; }, { tabId, name, requestId, pageUrl: page.url() }); }
-    await command("start", "stream-stop"); await expect.poll(async () => (await command("read", "stream-stop")).filter(value => value.type === "delta").length).toBeGreaterThan(0);
+    const stream = server.holdNextAssistantStream();
+    await command("start", "stream-stop");
+    await expect.poll(() => command("read", "stream-stop")).toEqual(expect.arrayContaining([expect.objectContaining({ type: "delta" })]));
+    await stream.started;
     await command("cancel", "stream-stop"); await expect.poll(async () => (await command("read", "stream-stop")).at(-1)?.type).toBe("interrupted");
-    await new Promise(resolve => setTimeout(resolve, 400)); let events = await command("read", "stream-stop"); expect(events.some(value => value.type === "complete" || value.turn)).toBe(false);
+    await expect.poll(() => server.calls[0]?.responseState).toBe("closed");
+    stream.release(); await stream.finished;
+    let events = await command("read", "stream-stop"); expect(events.some(value => value.type === "complete" || value.turn)).toBe(false);
     await command("start", "stream-complete"); await expect.poll(async () => (await command("read", "stream-complete")).at(-1)?.type).toBe("complete");
     events = await command("read", "stream-complete"); expect(events.filter(value => value.type === "delta").map(value => value.text).join("")).toBe("streamed answer");
     expect(events.at(-1).turn).toMatchObject({ action: "understand", threadId: "thread-1", turnId: "stream-complete", parentTurnId: null,

@@ -131,7 +131,7 @@ test("explicit CJK explanation sends bounded context after a local-only miss", a
     }
   }, {
     resolveSelectionRequest: (input) => resolveSelectionRequest(input, {
-      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
+      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto", dictionaryEnabled: true }),
       getEffectiveConfig: async () => config,
       runLexicalLookup: async () => {
         lexicalCalls += 1;

@@ -309,7 +309,11 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await harness.setStorage({ siteProfiles: { "http://127.0.0.1": { provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", preset: "technical" } } });
     const response = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(response.ok).toBe(true);
-    expect(response.context).toMatchObject({ hostname: "127.0.0.1", provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", presetId: "technical", presetLabel: "Technical", presetSource: "site" });
+    expect(response.context).toMatchObject({ hostname: "127.0.0.1", provider: "openai-chat", model: "site-mock-model", targetLanguage: "Japanese", presetId: "technical", presetLabel: "Technical", presetSource: "site" });
+    await harness.inject(page);
+    expect((await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-site-profile" })).ok).toBe(true);
+    expect(harness.server.calls.length).toBeGreaterThan(0);
+    expect(harness.server.calls.every(call => call.model === "site-mock-model" && call.systemPrompt.includes("Japanese"))).toBe(true);
   });
 
   test("selection controls are isolated, avoid page-cache reuse, and resolve local lexicon without Provider calls", async ({ harness }) => {
@@ -454,17 +458,20 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-source")).toBeHidden();
     await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
     const visibleActions = page.locator(".tf-selection-panel > .tf-selection-actions button:visible");
-    await expect(visibleActions).toHaveText(["复制"]);
+    await expect(visibleActions).toHaveText(["收藏到生词本"]);
     expect(harness.server.calls).toHaveLength(0);
 
+    const stream = harness.server.holdNextAssistantStream();
     await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(primary).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("AI 正在回答");
     await expect(page.getByRole("button", { name: "停止 AI 回答" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "复制" })).toBeVisible();
+    await expect(page.locator(".tf-selection-panel > .tf-selection-actions")).toBeHidden();
 
+    stream.release();
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
     expect(harness.server.calls).toHaveLength(1);
@@ -522,6 +529,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
   test("Selection AI detail cancel preserves local content and stale completion cannot overwrite retry", async ({ harness }) => {
     await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
+    const stream = harness.server.holdNextAssistantStream();
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -530,6 +538,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
 
     await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("streamed");
@@ -543,6 +552,9 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(1);
 
     await page.getByRole("button", { name: "重新请求 AI 详解" }).click();
+    await expect.poll(() => harness.server.calls.length).toBe(2);
+    stream.release();
+    await stream.finished;
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
     expect(harness.server.calls).toHaveLength(2);
@@ -551,7 +563,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
   });
 
-  test("Selection card exposes provenance, explicit AI retry, narrow viewport and copy", async ({ harness }) => {
+  test("Selection card exposes provenance, explicit AI retry and a readable answer in a narrow viewport", async ({ harness }) => {
     const page = await harness.open("/selection");
     await page.setViewportSize({ width: 360, height: 260 });
     await harness.inject(page);
@@ -593,8 +605,10 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(360);
     expect(box.y + box.height).toBeLessThanOrEqual(260);
 
-    await page.getByRole("button", { name: "复制" }).click();
-    await expect(page.locator(".tf-toast")).toContainText("回答已复制");
+    const answer = detail.locator(".tf-selection-generated-body");
+    await answer.scrollIntoViewIfNeeded();
+    await expect(answer).toBeInViewport();
+    await expect(answer).toHaveText("streamed answer");
 
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();

@@ -153,7 +153,7 @@ export function dictionaryClient({
       activeCurated.phase = "commit";
       activeCurated.commitRequestId = makeRequestId("curated-commit", cryptoProvider);
       onProgress("正在保存并进行后台完整性验证…");
-      return await requireOk(runtime.sendMessage({
+      const committed = await requireOk(runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_LOCAL_IMPORT_COMMIT,
         token: ready.token,
         requestId: activeCurated.commitRequestId,
@@ -163,6 +163,7 @@ export function dictionaryClient({
           licenseLabel: source.sourceLicenseLabel, catalog: makeInstalledCatalogMetadata(source)
         }
       }), "精选词典激活失败。");
+      return { ...committed, stats: ready.stats };
     } finally {
       activeCurated?.worker?.terminate();
       if (activeCurated?.requestId === requestId) activeCurated = null;
@@ -170,13 +171,13 @@ export function dictionaryClient({
   }
 
   async function installCuratedMdx(source: DictionaryRecord, existing: DictionaryRecord | null, onProgress: ProgressWriter) {
-    const origins = getCatalogPermissionOrigins(source);
-    const granted = await permissions.request({ origins });
-    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
     const requestId = makeRequestId("curated", cryptoProvider);
-    const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
-    activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
     try {
+      const origins = getCatalogPermissionOrigins(source);
+      const granted = await permissions.request({ origins });
+      if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
+      const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
+      activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
       onProgress("正在连接已审核的上游词典…");
       const ready = await waitForWorker(worker, requestId, CURATED_ECDICT_MDX_WORKER_MESSAGES, message => onProgress(describeCuratedMdxProgress(message, source)), source.id);
       if (!activeCurated || activeCurated.requestId !== requestId) throw abortError();
@@ -197,9 +198,11 @@ export function dictionaryClient({
       if ((error as Error).name === "AbortError") throw error;
       throw new Error(getCuratedMdxErrorMessage(error, activeCurated?.phase));
     } finally {
-      activeCurated?.worker?.terminate();
-      activeCurated?.richController?.dispose();
-      if (activeCurated?.requestId === requestId) activeCurated = null;
+      if (activeCurated?.requestId === requestId) {
+        activeCurated.worker?.terminate();
+        activeCurated.richController?.dispose();
+        activeCurated = null;
+      }
     }
   }
 

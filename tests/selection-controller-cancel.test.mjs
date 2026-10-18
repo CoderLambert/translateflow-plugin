@@ -147,12 +147,23 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
     selectionRecordStatus: { update() {}, clear() {} },
     selectionSourceSnapshot: {
       createProjectionGuard({ getSnapshot, getCurrentUrl, getPageIdentity, onAccept, onReject }) {
+        const freezeQuery = (snapshot) => {
+          const frozen = this.capture(snapshot);
+          snapshot.sourceCapture = frozen; snapshot.text = frozen.selectedText;
+          return frozen;
+        };
+        const isFrozenCurrent = (snapshot, frozen) => snapshot === getSnapshot() && snapshot.sourceCapture === frozen
+          && snapshot.sourceRevision === frozen.sourceRevision && frozen.sourceRevision === projectionRevision;
+        const getQuerySource = () => {
+          const snapshot = getSnapshot(), frozen = snapshot?.sourceCapture;
+          return frozen && isFrozenCurrent(snapshot, frozen) ? frozen : null;
+        };
         return { invalidate: (revision = projectionRevision) => {
           const snapshot = getSnapshot(), capture = snapshot?.sourceCapture;
           if (!snapshot) return;
           if (this.matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) onAccept(snapshot, capture, revision);
           else onReject();
-        }, clear() {} };
+        }, clear() {}, freezeQuery, isFrozenCurrent, getQuerySource };
       },
       matchesCurrentPage(snapshot, frozen, currentUrl, getIdentity) {
         return Boolean(snapshot) && getIdentity(snapshot.pageUrl) === getIdentity(currentUrl)
@@ -372,7 +383,9 @@ test("navigation and projection changes invalidate a saved local dictionary resu
   await projection.ready;
   await projection.translate();
   const projectionSave = projection.resultActions[0].onSave;
+  assert.ok(projection.appModules.selectionController.getQuerySource());
   projection.changeProjection();
+  assert.equal(projection.appModules.selectionController.getQuerySource(), null);
   assert.throws(() => projectionSave({ isTrusted: true }), error => error.i18nKey === "content.vocabulary.updated");
   assert.equal(projection.vocabularyAdds.length, 0);
 });

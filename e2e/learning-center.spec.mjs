@@ -41,6 +41,7 @@ test("real toolbar Popup reports success when opening the learning center closes
   }));
   const cdp = await harness.context.newCDPSession(harness.driver);
   await cdp.send("Target.setDiscoverTargets", { discover: true });
+  const targetsBeforeOpen = new Set((await cdp.send("Target.getTargets")).targetInfos.map(target => target.targetId));
   await harness.driver.evaluate(() => {
     const button = document.createElement("button");
     button.id = "open-real-popup";
@@ -55,8 +56,11 @@ test("real toolbar Popup reports success when opening the learning center closes
   expect(popupContexts).toHaveLength(1);
   const popupUrl = `chrome-extension://${harness.extensionId}/popup.html`;
   const targets = await cdp.send("Target.getTargets");
-  const popupTarget = targets.targetInfos.find(target => target.url === popupUrl);
-  expect(popupTarget).toBeTruthy();
+  // The driver is also a popup.html document, but it is a normal browser tab.
+  // Bind the new action-popup target rather than the first matching URL.
+  const popupTargets = targets.targetInfos.filter(target => target.url === popupUrl && !targetsBeforeOpen.has(target.targetId));
+  expect(popupTargets).toHaveLength(1);
+  const [popupTarget] = popupTargets;
   const { sessionId } = await cdp.send("Target.attachToTarget", { targetId: popupTarget.targetId });
   const evaluateId = 1;
   await cdp.send("Target.sendMessageToTarget", { sessionId,

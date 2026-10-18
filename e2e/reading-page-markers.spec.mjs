@@ -20,10 +20,14 @@ test("authorized revisit keeps one word highlight for repeated lookups and resto
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
     const driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", autoSites: [], cacheRestoreSites: [],
+    // The native install handler can commit defaults after its worker becomes visible.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [],
       quickControlSites: [], quickControlHiddenSites: [], readingMemorySites: [] }));
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
     await center.getByRole("button", { name: "Enable recording", exact: true }).click();
+    await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
     const source = await context.newPage(); await source.goto(articleUrl);
     for (let index = 0; index < 2; index++) {

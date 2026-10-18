@@ -51,6 +51,9 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     extensionId = new URL(worker.url()).host;
     driver = await context.newPage();
     await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+    // Finish native installation before beforeEach clears and replaces fixture settings.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
     await writeFile(test.info().outputPath("selection-vocabulary-package.json"), JSON.stringify({ artifactPath: artifact,
       productionInventory: production, backgroundSha256, exactCopyBeforeFixtures: true, browser: context.browser().version(),
       temporaryChanges: ["synthetic Core TFLex fixture and repository Technical fixture", "localhost test host permission"], paidProviderCalls: 0,
@@ -66,7 +69,7 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     for (const page of context.pages()) if (page !== driver) await page.close();
     await driver.evaluate(async () => {
       await chrome.storage.local.clear();
-      await chrome.storage.local.set({ uiLocale: "en", provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+      await chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
         prompt: "Translate the segments and return JSON only.", selectionExplanationDepth: "standard", appearance: "standard",
         glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} }, openAICompatible: {
           baseUrl: "http://127.0.0.1:1/v1", apiKey: "", model: "offline-test-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });

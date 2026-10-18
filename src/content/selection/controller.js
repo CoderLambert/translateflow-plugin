@@ -52,6 +52,7 @@
     getCurrentUrl: () => location.href, getPageIdentity,
     onAccept: (snapshot, capture, revision) => { snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition(); },
     onReject: () => { records?.invalidateReference(); dismiss(); } });
+  const { freezeQuery, isFrozenCurrent, getQuerySource } = projectionGuard;
   function start() {
     if (started) return;
     started = true;
@@ -68,9 +69,9 @@
     window.visualViewport?.addEventListener("scroll", () => popover.reposition()); window.visualViewport?.addEventListener("resize", () => popover.reposition());
     window.addEventListener("focus", () => { void records?.refresh(); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void records?.refresh(); });
-    const checkReadingRoute = () => { records?.invalidateReference(); if (activeSnapshot && activeSnapshot.pageUrl !== location.href) dismiss(); };
-    window.addEventListener("popstate", checkReadingRoute, true);
-    window.addEventListener("hashchange", checkReadingRoute, true);
+    const invalidateReadingReference = () => records?.invalidateReference();
+    window.addEventListener("popstate", invalidateReadingReference, true);
+    window.addEventListener("hashchange", invalidateReadingReference, true);
     const leaveDocument = () => { records?.invalidateReference(); dismiss(); };
     app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: leaveDocument, onPageHide: leaveDocument });
   }
@@ -200,7 +201,10 @@
         snapshot,
         unresolvedMessage(resolved),
         (event) => translateSnapshot(snapshot, { event }),
-        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null
+        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null,
+        resolved.routeReason === "local-error" ? (event) => translateSnapshot(snapshot, {
+          forceTranslation: true, browserTranslationAllowed: resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1, event
+        }) : null
       );
       if (resolved.intent?.kind === "lexical") {
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
@@ -408,12 +412,6 @@
   }
   function setQuickControlSelectionActive(active) { app.modules.quickControl?.setSelectionActive(Boolean(active)); }
 
-  function freezeQuery(snapshot) {
-    const capture = app.modules.selectionSourceSnapshot.capture(snapshot);
-    snapshot.sourceCapture = capture; snapshot.text = capture.selectedText;
-    return capture;
-  }
-  function isFrozenCurrent(snapshot, capture) { return snapshot === activeSnapshot && snapshot.sourceCapture === capture && snapshot.sourceRevision === capture.sourceRevision && capture.sourceRevision === projection.revision(); }
   function beginTask(snapshot) { return activeTask = tasks.createTask({ surface: "selection", pageUrl: snapshot.pageUrl, total: 1 }); }
-  app.modules.selectionController = { start, getQuerySource: () => { projection.revision(); return activeSnapshot?.sourceCapture || null; } };
+  app.modules.selectionController = { start, getQuerySource };
 })();

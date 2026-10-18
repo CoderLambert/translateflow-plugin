@@ -15,7 +15,7 @@ function load(extra = {}) {
   const context = vm.createContext({ document, window, crypto: webcrypto, TextEncoder, performance: { now: () => 0 },
     setTimeout, clearTimeout,
     chrome: { dom: { openOrClosedShadowRoot: (node) => node.shadowRoot ?? null } },
-    __TRANSLATE_FLOW_CONTENT__: { modules: { runtime: { constants: { EXTENSION_UI_ATTR: "data-tf-extension-ui", TRANSLATION_CLASS: "abt-translation" }, cleanText: (value) => value.trim() } } }, ...extra });
+    __TRANSLATE_FLOW_CONTENT__: { modules: { runtime: { constants: { EXTENSION_UI_ATTR: "data-tf-extension-ui", TRANSLATION_CLASS: "abt-translation", TRANSLATED_ATTR: "data-abt-translated" }, cleanText: (value) => value.trim() } } }, ...extra });
   for (const file of files.slice(0, 3)) vm.runInContext(sources.get(file), context);
   return { context, document, modules: context.__TRANSLATE_FLOW_CONTENT__.modules };
 }
@@ -56,6 +56,19 @@ function element(document, children = [], style = {}) {
   children.forEach((child, index) => { child.parentElement = node; child.nextSibling = children[index + 1] || null; });
   return node;
 }
+
+test("translation bookkeeping leaves the source revision intact while page mutations still invalidate it", () => {
+  const state = load(), target = element(state.document);
+  const changed = state.modules.textProjectionPolicy.sourceMutation;
+  assert.equal(changed({ type: "attributes", target, attributeName: "data-abt-translated", oldValue: null }), false);
+  assert.equal(changed({ type: "attributes", target, attributeName: "data-abt-translated", oldValue: "1" }), false);
+  for (const attributeName of ["style", "hidden", "aria-hidden", "data-page-state"]) {
+    assert.equal(changed({ type: "attributes", target, attributeName, oldValue: null }), true, attributeName);
+  }
+  assert.equal(changed({ type: "characterData", target: { nodeType: 3, parentElement: target } }), true);
+  assert.equal(changed({ type: "childList", target, addedNodes: [element(state.document)], removedNodes: [] }), true);
+  assert.equal(changed({ type: "childList", target, addedNodes: [], removedNodes: [element(state.document)] }), true);
+});
 
 test("lowercase SVG/XHTML sensitive tags are excluded before their text is read", () => {
   const state = load({ getComputedStyle: (node) => node.style });
@@ -247,13 +260,18 @@ test("selection context uses the nearest safe block for div and span based text"
   state.modules.textProjection.positionForRange = () => ({ start: 2, end: 12 });
   vm.runInContext(sources.get(files[3]), state.context);
 
-  const snapshot = { text: "persistent", range, pageUrl: "https://example.test/page", selectionGeneration: 1 };
-  const capture = state.modules.selectionSourceSnapshot.capture(snapshot);
+  const snapshot = { text: "persistent", range, pageUrl: "https://example.test/page", selectionGeneration: 1,
+    sourceRevision: state.modules.textProjection.revision() };
+  const pageIdentity = (url) => new URL(url).origin;
+  const guard = state.modules.selectionSourceSnapshot.createProjectionGuard({ getSnapshot: () => snapshot,
+    getCurrentUrl: () => snapshot.pageUrl, getPageIdentity: pageIdentity, onAccept() {}, onReject() {} });
+  const capture = guard.freezeQuery(snapshot);
+  assert.equal(snapshot.sourceCapture, capture);
+  assert.equal(guard.getQuerySource(), capture);
   assert.equal(state.modules.selectionSourceSnapshot.contextRoot(range), block);
   assert.equal(capture.context.text, sentence);
   assert.equal(capture.context.text.includes("connection remains available"), true);
   assert.equal(state.modules.selectionSourceSnapshot.matches(snapshot, capture), true);
-  const pageIdentity = (url) => new URL(url).origin;
   assert.equal(state.modules.selectionSourceSnapshot.matchesCurrentPage(snapshot, capture, "https://example.test/next", pageIdentity), true);
   assert.equal(state.modules.selectionSourceSnapshot.matchesCurrentPage(snapshot, capture, "https://other.test/", pageIdentity), false);
   state.modules.textProjection.project = () => ({ status: "resolved", text: "A persistent cache entry changed nearby." });
@@ -276,17 +294,20 @@ test("heading selections keep a narrow context root and can re-anchor after an e
     assert.deepEqual(json(position), { start: 9, end: 16 }); return restoredRange;
   };
   state.modules.textProjection.revision = () => 2;
-  const snapshot = { pageUrl: "https://example.test/article", range: { startContainer: oldText, endContainer: oldText }, sourceCapture: null };
-  const capture = snapshot.sourceCapture = { selectedText: "session", context: { source: "visible-local", text: "Read the session carefully." },
+  const snapshot = { pageUrl: "https://example.test/article", range: { startContainer: oldText, endContainer: oldText }, sourceCapture: null, sourceRevision: 1 };
+  const capture = snapshot.sourceCapture = { selectedText: "session", sourceRevision: 1, context: { source: "visible-local", text: "Read the session carefully." },
     rangeIdentity: { startContainer: oldText, endContainer: oldText, text: "session" } };
   let accepted = null, rejected = false;
   const guard = state.modules.selectionSourceSnapshot.createProjectionGuard({ getSnapshot: () => snapshot,
     getCurrentUrl: () => snapshot.pageUrl, getPageIdentity: (value) => new URL(value).origin,
-    onAccept: (_snapshot, _capture, revision) => { accepted = revision; }, onReject: () => { rejected = true; }, delay: 5 });
+    onAccept: (_snapshot, _capture, revision) => { accepted = revision; _snapshot.sourceRevision = _capture.sourceRevision = revision; },
+    onReject: () => { rejected = true; }, delay: 5 });
+  assert.equal(guard.getQuerySource(), null);
   guard.invalidate(2);
   await new Promise(resolve => setTimeout(resolve, 15));
   assert.equal(accepted, 2); assert.equal(rejected, false);
   assert.equal(snapshot.range, restoredRange); assert.equal(capture.rangeIdentity.startContainer, restoredRange.startContainer);
+  assert.equal(guard.getQuerySource(), capture);
 });
 
 test("rendered cross-block separators do not replace raw Range identity", () => {

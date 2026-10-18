@@ -5,6 +5,7 @@ import { readingTranslationResult } from "./reading-result.js";
 import { resolveSelectionRequest } from "./resolve.js";
 import { ASSISTANT_ROOT_QUESTIONS as QUESTIONS, groundLearningAssistant } from "./assistant-grounding.js";
 import { sanitizeSelectionContext } from "../../shared/selection.js";
+import { normalizeUrl } from "../../shared/url.js";
 
 const PORT = "selection.assistant-stream", V = 1, MAX_TEXT = 2000, MAX_DELTA = 2048, MAX_TOTAL = 24000, MAX_ACTIVE = 32;
 const active = new Set();
@@ -13,7 +14,7 @@ export function handleSelectionAssistantStreamPort(port, deps = {}) {
   if (port.name !== PORT) return false;
   const scope = senderScope(port.sender);
   if (active.size >= MAX_ACTIVE || !scope) { try { port.disconnect(); } catch {} return true; }
-  const state = { port, scope, tabId: port.sender.tab?.id ?? null, ctl: null, id: "", started: false, closed: false, seq: 0, chars: 0 };
+  const state = { port, scope, tabId: port.sender.tab?.id ?? null, currentUrl: port.sender.url, ctl: null, id: "", started: false, closed: false, seq: 0, chars: 0 };
   active.add(state);
   const close = () => { state.closed = true; state.ctl?.abort(); active.delete(state); };
   port.onDisconnect.addListener(close);
@@ -27,6 +28,26 @@ export function handleSelectionAssistantStreamPort(port, deps = {}) {
 
 export function abortSelectionAssistantStreams(tabId = null) {
   for (const state of active) if (tabId === null || state.tabId === tabId) state.ctl?.abort();
+}
+
+export function onSelectionAssistantTabUpdated(tabId, changeInfo = {}) {
+  if (!Object.hasOwn(changeInfo, "url") && changeInfo.status !== "loading") return;
+  for (const state of active) {
+    if (state.tabId !== tabId) continue;
+    let samePage = false;
+    if (state.scope === "content") {
+      try {
+        samePage = normalizeUrl(changeInfo.url) === normalizeUrl(state.port.sender.url);
+        if (changeInfo.status === "loading") {
+          // Chrome also reports loading for hash/History API URL updates. A
+          // real replacement document disconnects its Port; reloads abort now.
+          samePage = samePage && changeInfo.url !== state.currentUrl;
+        }
+      } catch { samePage = false; }
+    }
+    if (samePage) state.currentUrl = changeInfo.url;
+    else state.ctl?.abort();
+  }
 }
 
 async function run(state, request, deps) {

@@ -8,6 +8,9 @@
     const validIdentity = typeof identity.id === "string" && /^rich-mdict-[a-f0-9-]{36}$/u.test(identity.id) &&
       [identity.packVersion, identity.packageVersion].every((value) => typeof value === "string" && /^[A-Za-z0-9_.-]{1,120}$/u.test(value));
     let history = [{ query: initialQuery, fragment: "", ...identity }], cursor = 0;
+    // Associate only a numeric record position with each bounded metadata entry.
+    // Rendered hosts are used for the current action, never retained in history.
+    const fragmentRecords = new WeakMap();
     let currentRecord = initialRecord, hosts = [], pending = null, generation = 0, closed = false;
     const toolbar = document.createElement("div"); toolbar.className = "tf-rich-navigation";
     toolbar.setAttribute("role", "group"); locale.bindAttribute(toolbar, "aria-label", "content.rich.navigationAria");
@@ -29,21 +32,36 @@
       card.setResult(record, identity.id, null, null, () => live() && token === generation, true);
       return true;
     }
-    function locate(fragment) {
-      const result = actions.locate(hosts, fragment);
+    function fragmentHosts(recordIndex) {
+      if (recordIndex === undefined) return hosts;
+      return Number.isInteger(recordIndex) && recordIndex >= 0 && recordIndex < hosts.length ? [hosts[recordIndex]] : [];
+    }
+    function locate(fragment, recordIndex) {
+      const result = actions.locate(fragmentHosts(recordIndex), fragment);
       if (!result.found) update("content.rich.fragmentMissing");
       else if (result.duplicates) update("content.rich.fragmentFirst");
       return result;
     }
-    async function navigate(raw, index = null) {
+    async function navigate(raw, index = null, originHost = null) {
       const action = actions.validate(raw);
       if (!live() || !action) return;
-      if (action.kind === "fragment") { if (locate(action.fragment).found) history[cursor].fragment = action.fragment; return; }
+      const recordIndex = originHost === null ? undefined : hosts.indexOf(originHost);
+      if (recordIndex === -1) return;
+      if (action.kind === "fragment") {
+        if (locate(action.fragment, recordIndex).found) {
+          history[cursor].fragment = action.fragment;
+          if (recordIndex === undefined) fragmentRecords.delete(history[cursor]);
+          else fragmentRecords.set(history[cursor], recordIndex);
+        }
+        return;
+      }
       if (!validIdentity) { update("content.rich.navigationUnavailable"); return; }
       if (action.headword === history[cursor].query) {
         if (pending) { cancelPending(); show(currentRecord, generation, history[cursor]); }
         update();
-        if (action.fragment && locate(action.fragment).found) history[cursor].fragment = action.fragment;
+        if (action.fragment && locate(action.fragment).found) {
+          history[cursor].fragment = action.fragment; fragmentRecords.delete(history[cursor]);
+        }
         return;
       }
       cancelPending(); const token = generation;
@@ -70,9 +88,9 @@
       finally {
         if (live() && token === generation) {
           pending = null;
-          if (key) { show(currentRecord, token, history[cursor]); if (history[cursor].fragment) actions.locate(hosts, history[cursor].fragment); }
+          if (key) { show(currentRecord, token, history[cursor]); if (history[cursor].fragment) actions.locate(fragmentHosts(fragmentRecords.get(history[cursor])), history[cursor].fragment); }
           update(key);
-          if (!key && history[cursor].fragment) locate(history[cursor].fragment);
+          if (!key && history[cursor].fragment) locate(history[cursor].fragment, fragmentRecords.get(history[cursor]));
         }
       }
     }
@@ -80,7 +98,7 @@
     forward.addEventListener("click", () => { if (cursor < history.length - 1) void navigate({ kind: "entry", headword: history[cursor + 1].query, fragment: history[cursor + 1].fragment }, cursor + 1); });
     function close() { if (closed) return; closed = true; cancelPending(); history = []; cursor = -1; hosts = []; currentRecord = null; card.releaseNavigation?.(); toolbar.remove(); }
     const runtime = Object.freeze({ navigate, rendered(value) { hosts = value; },
-      opened() { if (live() && !pending && history[cursor]?.fragment) { update(); locate(history[cursor].fragment); } },
+      opened() { if (live() && !pending && history[cursor]?.fragment) { update(); locate(history[cursor].fragment, fragmentRecords.get(history[cursor])); } },
       close,
       get snapshot() { return { history: history.map((item) => ({ ...item })), cursor, pending: Boolean(pending), closed }; } });
     card.bindNavigation?.(runtime); update(); return runtime;

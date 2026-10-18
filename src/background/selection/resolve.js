@@ -43,8 +43,7 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
       text,
       explainRequested: input.explainRequested === true
     });
-    if (storedConfig.dictionaryEnabled === true && input.explainRequested !== true) return { ...response({ text, intent, route: { ...route, route: "translation" }, context, lookup: null, decision }), preferRich: true };
-    return response({ text, intent, route, context, lookup: null, decision });
+    return { ...response({ text, intent, route, context, lookup: null, decision }), preferRich: false };
   }
 
   if (intent.kind === "translation") {
@@ -65,26 +64,34 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
   }
 
   let lookup;
-  try { lookup = await lexicalLookup({
-    text,
-    pageUrl,
-    contextText: context.text,
-    sourceLanguage: intent.sourceLanguage,
-    targetLanguage: "zh-CN"
-  }); } catch {
-    return response({ text, intent, context, lookup: null, decision: null, route: { route: "translation", reason: "dictionary-unavailable", depth: requestedDepth, explanationAllowed: true } });
+  try {
+    lookup = await lexicalLookup({
+      text,
+      pageUrl,
+      contextText: context.text,
+      sourceLanguage: intent.sourceLanguage,
+      targetLanguage: "zh-CN"
+    });
+  } catch (error) {
+    lookup = {
+      status: "error",
+      error: { code: typeof error?.code === "string" ? error.code.slice(0, 80) : "LEXICAL_LOOKUP_FAILED" }
+    };
   }
   const decision = assessLookup(lookup, { contextText: context.text });
-  const route = { ...chooseSelectionRoute({
+  const route = chooseSelectionRoute({
     intent,
     decision,
     depth: requestedDepth,
     text,
     explainRequested: input.explainRequested === true
-  }) };
+  });
 
-  if (!["local", "translation"].includes(route.route) && input.explainRequested !== true) { route.route = "translation"; route.reason = "dictionary-miss"; }
-  return { ...response({ text, intent, route, context, lookup, decision }), preferRich: storedConfig.dictionaryEnabled === true && route.route === "translation" && intent.kind === "lexical" };
+  return {
+    ...response({ text, intent, route, context, lookup, decision }),
+    preferRich: storedConfig.dictionaryEnabled === true && input.explainRequested !== true &&
+      route.route === SELECTION_ROUTE.TRANSLATION && intent.kind === "lexical"
+  };
 }
 
 function response({ text, intent, route, context, lookup, decision }) {

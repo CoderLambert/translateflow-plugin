@@ -1,6 +1,6 @@
 {
   "name": "translateflow-plugin",
-  "version": "0.8.15",
+  "version": "0.8.20",
   "private": true,
   "type": "module",
   "scripts": {

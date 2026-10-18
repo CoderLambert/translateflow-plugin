@@ -10,6 +10,30 @@ const hit = (id, text = "synthetic definition") => ({ ok: true, found: true, dic
 const failure = { ok: false, errorCode: "INDEX_UNAVAILABLE" };
 const dictionary = (id, options = {}) => ({ id, title: id, status: "ready", ...options });
 
+test("lexicon error recovery keeps diagnostic copy and disposes its explicit translation action", async () => {
+  const h = await createHarness([]);
+  const snapshot = { text: "syntheticword" };
+  let translated = 0;
+  h.popover.showError(snapshot, "content.selection.lexiconMissing", () => {}, null, () => { translated++; });
+  const actions = h.nodes("tf-selection-empty-actions");
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].parentNode, h.nodes("tf-selection-result")[0]);
+  assert.equal(h.nodes("tf-selection-status")[0].textContent, "content.selection.lexiconMissing");
+  assert.equal(h.nodes("tf-selection-empty").length, 0);
+  assert.equal(actions[0].children.length, 1);
+  const translate = actions[0].children[0];
+  assert.equal(translate.attributes.get("aria-label"), "content.selection.regularTranslationAria");
+  translate.dispatch("click");
+  assert.equal(translated, 1);
+  h.popover.showError(snapshot, "content.selection.errorRetry", () => {});
+  assert.equal(h.nodes("tf-selection-empty-actions").length, 0);
+  h.popover.showEmpty(snapshot, { onTranslate() {} });
+  assert.equal(h.nodes("tf-selection-empty").length, 1);
+  assert.equal(h.nodes("tf-selection-empty-actions").length, 1);
+  h.popover.showResult(snapshot, { kind: "local", primaryMeaning: "structured meaning" });
+  assert.equal(h.nodes("tf-selection-empty-actions").length, 0);
+});
+
 for (const [name, firstResult, secondResult, expectedEmpty, expectedTitle] of [
   ["structured no-hit plus rich hit", miss, hit("second"), false, ""],
   ["all executed dictionaries return no-hit", miss, miss, true, "content.selection.localEmptyTitle"],
@@ -296,7 +320,7 @@ async function createHarness(dictionaries, { listResponse = null, renderPlainTex
   const sentLookups = () => sent.filter((message) => message.type === "lookup");
   const completeRequest = async (requestId, result) => { pending.get(requestId)(result); pending.delete(requestId); await flush(); };
   return {
-    module: app.modules.selectionRichDetails, layer, summaries, displayed, nodes, sentLookups,
+    module: app.modules.selectionRichDetails, popover: app.modules.selectionPopover, layer, summaries, displayed, nodes, sentLookups,
     summary: () => summaries.at(-1),
     cards: () => nodes("tf-selection-rich-record"),
     invalidate() { currentVersion += 1; },

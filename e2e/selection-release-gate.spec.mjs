@@ -58,7 +58,8 @@ test.describe("Selection UX release gate", () => {
     await expect(page.locator(".tf-selection-source")).toBeVisible();
     await expect(page.locator(".tf-selection-source")).toHaveText("persistent session");
     await expect(page.locator(".tf-selection-result")).toHaveAttribute("data-result-kind", "translation");
-    await expect(page.locator(".tf-selection-result-badge")).toContainText("翻译");
+    await expect(page.locator(".tf-selection-translation-card")).toHaveAttribute("data-engine", "ai");
+    await expect(page.locator(".tf-selection-translation-meaning")).toContainText("persistent session");
     await expect(page.locator(".tf-selection-dictionary-entry")).toHaveCount(0);
 
     expect(harness.server.calls).toHaveLength(1);
@@ -313,6 +314,10 @@ test.describe("Selection UX release gate", () => {
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result")).toContainText("tmux");
     await prior.evaluate((element) => element.remove());
+    // Removing an unrelated focus target keeps the selected source valid.
+    // Closing must still be safe when that focus target no longer exists.
+    await expect(panel).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     expect(await prior.count()).toBe(0);
     expect(await page.evaluate(() => document.activeElement?.id || "")).not.toBe("focus-return-before");
@@ -330,6 +335,7 @@ test.describe("Selection UX release gate", () => {
   });
 
   test("new Selection supersedes in-flight AI detail and outside click dismisses the current card", async ({ harness }) => {
+    await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -337,10 +343,9 @@ test.describe("Selection UX release gate", () => {
     await page.locator(".tf-selection-chip").click();
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
 
-    // Keep the mock stream pending long enough to exercise superseding an
-    // in-flight Selection response on slower extension runners.
-    harness.server.setDelay(1_200);
+    const stream = harness.server.holdNextAssistantStream();
     await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
     await expect.poll(() => harness.server.calls.length).toBe(1);
     await expect.poll(() => harness.server.calls[0].responseState).toBe("pending");
@@ -351,7 +356,8 @@ test.describe("Selection UX release gate", () => {
     await expect(page.locator(".tf-selection-result")).toContainText("tmux");
     await expect(page.locator(".tf-selection-ai-detail")).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "显示词典结果" })).toHaveAttribute("aria-selected", "true");
-    await expect.poll(() => harness.server.calls[0].responseState).toMatch(/^(?:finished|closed)$/u);
+    await stream.finished;
+    expect(harness.server.calls[0].responseState).toBe("closed");
     await expect(page.locator(".tf-selection-ai-detail")).toHaveCount(0);
     await expect(page.locator(".tf-selection-result")).toContainText("tmux");
     await expect(page.locator(".tf-selection-result")).not.toContainText("持续存在或保持有效");
@@ -362,7 +368,6 @@ test.describe("Selection UX release gate", () => {
       composed: true
     });
     await expect(page.getByRole("dialog", { name: "TranslateFlow 划词翻译" })).toBeHidden();
-    harness.server.setDelay(0);
   });
 });
 
