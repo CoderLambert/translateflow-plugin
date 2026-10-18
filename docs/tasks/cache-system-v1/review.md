@@ -45,3 +45,15 @@ The original isolated overlay result (108 tests on Node22) remains historical. A
 **Executed this turn**: fetched exact remote Content IIFEs and invoked them with an isolated, deterministic V8 mock runtime, yielding **20/20 Page+Selection scenarios PASS** and **9/9 Chrome-local scenarios PASS**, covering both recoverable storage errors and fail-closed identity/config/cancellation outcomes. These are targeted source execution checks with mock dependencies, **not** Node project's `npm test`, TypeScript, compiled MV3, native IDB, or browser E2E. There were no live Provider calls.
 
 **Outstanding**: Node24/npm11 `npm ci && npm run validate`, actual WXT/Chromium/IndexedDB DB2/3→4 upgrade and rollback, existing full tests/mocks, actual UI smoke with real browser extension, build fingerprint, user acceptance. Current environment contains Node22.16.0/npm10.9.2 and cannot resolve github.com/npm downloads; the earlier managed Chromium `ERR_BLOCKED_BY_ADMINISTRATOR` remains unresolved. Keep task `working` and PR Draft; do not promote this report to whole-module acceptance.
+
+
+## Continuation: incremental warnings and explicit plain/rich source contract (2026-10-18)
+
+**New source fixes submitted after the UI storage-failure work:**
+- `src/content/auto.js` now surfaces a rate-limited cache failure toast for incremental automatic translation or cache-only restoration. It reuses `state.lastAutoErrorAt` (5-second throttle), keeps successful auto tasks successful, and never turns cache-only restoration into a Provider request.
+- `src/shared/translation-cache-identity.js` now defaults to `format: 'plain'` unless the caller explicitly requests `tf-markers`. Previously a literal `⟦TF:...⟧` example in a user paragraph could be misclassified as structured or rejected on a missing closing marker. Real Page/Selection/Subtitle callers already supply explicit formats; explicit rich still receives marker-tree validation and isolated cache identity.
+- Added `tests/cache-system-auto-feedback.test.mjs` (4 Node cases) and two marker-protocol cases in `tests/cache-system-domains.test.mjs`.
+
+**Executed source-only checks this turn:** five actual auto.js IIFE scenarios using an isolated V8 fixture (auto warning, cache-only warning, two silent-success scenarios, throttled repeat) **5/5 PASS**; after source contract change, seven translation-cache-identity.js V8 scenarios (balanced/unbalanced user literal tokens, explicitly structured input, protection rejection, malformed rich rejection, rich/plain separation) **7/7 PASS**. Earlier 29/29 mock-driven Content cases were verified against the previous candidate; they are not a substitute for complete tests of the new head. These checks neither install WXT nor exercise native IndexedDB.
+
+**Still NOT RUN:** this exact remote candidate's `npm run validate` on required Node24/npm11; actual Node `--test` for the newly added files; native Chromium IDB upgrade and rollback; compiled WXT/MV3 behavior; installation package and user acceptance. No paid Provider requests. Remain Draft / working until full verification is available. Not an implementation-wave completion.
