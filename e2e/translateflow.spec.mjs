@@ -337,13 +337,22 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
     expect(harness.server.calls).toHaveLength(1);
 
-    const seeded = await harness.runtime({
-      type: "CACHE_STORE",
-      pageUrl: page.url(),
-      pageTitle: "Selection cache poison fixture",
-      items: [{ sourceText: "terminal multiplexer", translation: "WRONG PAGE CACHE" }]
+    // Seed an intentionally unrelated page cache through the real v1 read-token
+    // contract. A legacy tokenless STORE must never become valid in production.
+    const seedLookup = await harness.runtime({
+      type: "CACHE_LOOKUP", pageUrl: page.url(),
+      segments: [{ id: "seed", text: "terminal multiplexer", format: "plain" }]
     });
-    expect(seeded.ok).toBe(true);
+    expect(seedLookup).toMatchObject({ ok: true, hits: [] });
+    expect(seedLookup.writeTokens).toHaveLength(1);
+    const seeded = await harness.runtime({
+      type: "CACHE_STORE", pageUrl: page.url(),
+      pageTitle: "Selection cache poison fixture",
+      configSnapshotId: seedLookup.configSnapshotId,
+      items: [{ sourceText: "terminal multiplexer", translation: "WRONG PAGE CACHE",
+        format: "plain", cacheToken: seedLookup.writeTokens[0].token }]
+    });
+    expect(seeded).toMatchObject({ ok: true, stored: 1 });
 
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
