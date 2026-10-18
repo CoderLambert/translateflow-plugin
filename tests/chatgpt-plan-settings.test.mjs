@@ -89,6 +89,16 @@ test("add and select account use explicit host actions and clear stale model cho
   }
 });
 
+test("restart replaces the native connection and reports fresh status without clearing model choices", async () => {
+  const calls = [];
+  const result = await handleChatGPTPlanAction("restart", {
+    async restartHost() { calls.push("restart"); return { restarted: true }; },
+    async authStatus() { calls.push("status"); return { connected: true, canInfer: true, storage: "system-secure" }; }
+  });
+  assert.deepEqual(calls, ["restart", "status"]);
+  assert.deepEqual(result, { restarted: true, status: { connected: true, canInfer: true, storage: "system-secure" } });
+});
+
 async function assertConnectAndLogoutClearForDefaultProvider(provider) {
   for (const action of ["connect", "logout"]) {
     const otherProvider = provider === "deepseek" ? "openai-compatible" : "deepseek";

@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "task": "test-concurrency",
+  "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+  "tree": "86a3eb78b5557e86f19a1934b31164a67063a6a1",
+  "inputTree": "7636b39112dff7b33b8a8204749be22ffc8e059cd7cf927891333117be8bb45b",
+  "frozenAt": "2026-10-18T19:40:27.433Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14836.608249,
+      "startedAt": "2026-10-18T19:41:15.062Z",
+      "log": "docs/task-execution/local/test-concurrency/f6065461-f0d9-48c3-840e-704ee204199c.log",
+      "logSha256": "36a329da354541c733270a0d4b67ec364c0d612f732a888c6680c0ca3511efa6"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2431.627949,
+      "startedAt": "2026-10-18T19:41:30.043Z",
+      "log": "docs/task-execution/local/test-concurrency/414c54b9-0476-45ee-9b15-cd0d77065b7f.log",
+      "logSha256": "af83174b6451cdcfa6a8ab6dd95649ff5a246e1651e0a957fd5e039f133fe35e"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=.output/chrome-mv3",
+        "TF_SMOKE_REPORT=test-results/explicit-wxt-smoke.json",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1123.520621,
+      "startedAt": "2026-10-18T19:41:32.621Z",
+      "log": "docs/task-execution/local/test-concurrency/d08f0254-dd33-455c-a85e-b4a6682ba9df.log",
+      "logSha256": "b13564be0dc62552e890bb0ebc7bbc6eeb8282d05d0e7ad16f7bbe41e4624307"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "TF_SMOKE_REPORT=test-results/stable-wxt-smoke.json",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1143.665126,
+      "startedAt": "2026-10-18T19:41:33.884Z",
+      "log": "docs/task-execution/local/test-concurrency/08fc6aaa-9f37-458b-bacb-7109a837b911.log",
+      "logSha256": "0f980da9932616d39a536ec045e0a55fcbd8902647ae29d5c0dd6beb12a84110"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/reading-preview.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs"
+      ],
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14794.681097,
+      "startedAt": "2026-10-18T19:41:35.269Z",
+      "log": "docs/task-execution/local/test-concurrency/66bd33da-13fa-4094-9794-a112a5b8f344.log",
+      "logSha256": "efc869eddb96618e321a4d877784971a149d2b4f9cc617e11107ec442b256b34"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e:special"
+      ],
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 106808.7498,
+      "startedAt": "2026-10-18T19:41:50.219Z",
+      "log": "docs/task-execution/local/test-concurrency/fe347640-cfaf-4959-b50d-8c22c128b61c.log",
+      "logSha256": "5dbd9718bc9945c38cc2e6691b5009ca395d9b825c222f5250872f8524adf4b5"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "662f0e6d689d0c8a630cb31621a218593d26ca62bf1cf17abdaf703088cc865a"
+  },
+  "limitations": [
+    "6 conditional SKIP: five unavailable real dictionary/archive cases plus large MDD fixture. Not release corpus certification.",
+    "Current candidate has scoped checks; full validate and unaffected browser PASS retain original 749af4e6 binding, not relabelled as new full execution.",
+    "Actions not triggered. No real paid Provider, store release or other browser certification."
+  ],
+  "reusedEvidence": {
+    "candidateHead": "749af4e6686bce030af520d66ceb6d7d5a46d458",
+    "path": "docs/task-execution/local/test-concurrency/integration-749af4e6-acceptance.json",
+    "sha256": "e852667422e28bfd03473195a2c60a995b45afd1b1f255c41e8fcb5339260395",
+    "validate": "1793 Node / 62 Vitest, strict types / static / default build PASS at original candidate",
+    "fullE2E": "207 PASS / 2 FAIL / 5 SKIP / 18 NOT RUN; original FAIL retained",
+    "resolution": "Only two E2E files changed plus commit version metadata/task contract; scoped 8 PASS resolves both failures, special 17 PASS / 1 SKIP completes missing phase. Unique effective 226 PASS / 6 SKIP."
+  }
+}

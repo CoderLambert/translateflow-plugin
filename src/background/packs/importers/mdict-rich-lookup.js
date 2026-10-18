@@ -53,93 +53,80 @@ export async function lookupRichMdict({
 
   const budget = createRichMdictLookupBudget(onMetrics);
   const rangeSource = meterRichMdictRangeSource(source, budget);
-  const visited = new Set();
   const requestedKey = query;
-  let currentKey = query;
-  let initialAliasTarget = null;
+  const keyCache = new Map(), blockCache = new Map(), spanCache = new Map(), matchCache = new Map();
+  const terminals = new Map();
+  let aggregateSourceRecordBytes = 0, aggregateDecodedTextBytes = 0, aliasCycleBranches = 0;
+  const context = { source: rangeSource, index, limits, decompressionStreamFactory, budget, signal, keyCache, blockCache };
   try {
-    for (let hop = 0; hop <= MAX_ALIAS_HOPS; hop += 1) {
+    const roots = await matches(query);
+    if (!roots.length) return { found: false, requestedKey, records: [] };
+    await visitAll(roots, new Set(), 0, null);
+    if (!terminals.size) mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict alias loop has no valid terminal record.");
+    const records = [...terminals.values()].sort((left, right) => left.recordOffset - right.recordOffset);
+    return { found: true, requestedKey, ...records[0], records, aggregateSourceRecordBytes, aggregateDecodedTextBytes,
+      ...(aliasCycleBranches ? { diagnostics: { aliasCycleBranches } } : {}) };
+  } finally { budget.report(); }
+
+  async function matches(text) {
+    const key = normalizeLexicalExactKey(text);
+    if (!matchCache.has(key)) matchCache.set(key, await findMatchingEntries({ ...context, text }));
+    return matchCache.get(key);
+  }
+
+  async function visitAll(entries, path, hops, aliasTarget) {
+    // Charge the complete next branch before processing any of its candidates.
+    budget.consumeSpanVisits(entries.length);
+    for (const match of entries) {
       throwIfAborted(signal);
-      budget.metrics.aliasHops = hop + 1;
-      const cycleKey = comparisonKey(currentKey, index.header);
-      if (visited.has(cycleKey)) {
-        mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict alias loop detected.");
+      if (path.has(match.recordOffset)) { aliasCycleBranches += 1; continue; }
+      let decoded = spanCache.get(match.recordOffset);
+      if (!decoded) {
+        const bytes = await readRecord({ ...context, start: match.recordOffset, end: match.recordEnd });
+        throwIfAborted(signal);
+        const rawRecord = decodeRichMdictRecordText(bytes, index.header.encoding, match.displayForm, limits);
+        decoded = { rawRecord, sourceRecordBytes: bytes.byteLength,
+          decodedTextBytes: new TextEncoder().encode(rawRecord).byteLength };
+        spanCache.set(match.recordOffset, decoded);
       }
-      visited.add(cycleKey);
-      const match = await findExactEntry({
-        source: rangeSource,
-        index,
-        text: currentKey,
-        limits,
-        decompressionStreamFactory,
-        budget,
-        signal
-      });
-      throwIfAborted(signal);
-      if (!match) {
-        if (hop === 0) return { found: false, requestedKey };
-        mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict alias target is missing.", {
-          aliasTarget: currentKey
-        });
-      }
-      const record = await readRecord({
-        source: rangeSource,
-        index,
-        start: match.recordOffset,
-        end: match.recordEnd,
-        limits,
-        decompressionStreamFactory,
-        budget,
-        signal
-      });
-      throwIfAborted(signal);
-      const rawRecord = decodeRichMdictRecordText(
-        record,
-        index.header.encoding,
-        match.displayForm,
-        limits
-      );
-      if (rawRecord.startsWith(LINK_PREFIX)) {
-        const target = rawRecord.slice(LINK_PREFIX.length).trim();
+      if (decoded.rawRecord.startsWith(LINK_PREFIX)) {
+        const target = decoded.rawRecord.slice(LINK_PREFIX.length).trim();
         validateRichMdictAliasTarget(target, limits);
-        if (initialAliasTarget === null) initialAliasTarget = target;
-        if (hop === MAX_ALIAS_HOPS) {
-          mdictFail(MDICT_IMPORT_ERROR.LIMIT, "MDict alias chain exceeds the safety limit.");
-        }
-        currentKey = target;
+        if (hops === MAX_ALIAS_HOPS) mdictFail(MDICT_IMPORT_ERROR.LIMIT, "MDict alias chain exceeds the safety limit.");
+        budget.metrics.aliasHops = Math.max(budget.metrics.aliasHops, hops + 1);
+        const targets = await matches(target);
+        if (!targets.length) mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict alias target is missing.");
+        const nextPath = new Set(path); nextPath.add(match.recordOffset);
+        await visitAll(targets, nextPath, hops + 1, aliasTarget ?? target);
         continue;
       }
-      return {
-        found: true,
-        requestedKey,
-        displayForm: match.displayForm,
-        rawRecord,
-        sourceRecordBytes: record.byteLength,
-        decodedTextBytes: new TextEncoder().encode(rawRecord).byteLength,
-        safeTextFallback: toSafeRichMdictPlainText(rawRecord, index.header, limits.expandedTextBytes),
-        aliasTarget: initialAliasTarget
-      };
+      if (terminals.has(match.recordOffset)) continue;
+      aggregateSourceRecordBytes += decoded.sourceRecordBytes;
+      aggregateDecodedTextBytes += decoded.decodedTextBytes;
+      requireMdictAtMost(aggregateSourceRecordBytes, limits.entryBytes, "MDict aggregate record bytes");
+      requireMdictAtMost(aggregateDecodedTextBytes, limits.expandedTextBytes, "MDict aggregate decoded text bytes");
+      terminals.set(match.recordOffset, { ...decoded, displayForm: match.displayForm, recordOffset: match.recordOffset,
+        recordEnd: match.recordEnd, safeTextFallback: toSafeRichMdictPlainText(decoded.rawRecord, index.header, limits.expandedTextBytes), aliasTarget });
     }
-    mdictFail(MDICT_IMPORT_ERROR.LIMIT, "MDict alias chain exceeds the safety limit.");
-  } finally {
-    budget.report();
   }
 }
 
-async function findExactEntry({
+async function findMatchingEntries({
   source,
   index,
   text,
   limits,
   decompressionStreamFactory,
   budget,
-  signal
+  signal,
+  keyCache
 }) {
   throwIfAborted(signal);
   const normalizedQuery = comparisonKey(text, index.header);
   const rangeQuery = lookupSortKey(text, index.header);
   const candidates = [];
   for (let blockIndex = 0; blockIndex < index.keyBlocks.length; blockIndex += 1) {
+    budget.consumeKeyScans();
     const block = index.keyBlocks[blockIndex];
     if (
       rangeQuery >= block.lookupMinKey &&
@@ -148,76 +135,53 @@ async function findExactEntry({
       candidates.push({ blockIndex, descriptor: block });
     }
   }
-  budget.checkCandidatePlan(candidates.map((candidate) => candidate.descriptor));
-  budget.addCandidateCount(candidates.length);
-
-  let firstFolded = null;
-  let exactSpelling = null;
+  const uncached = candidates.filter(({ blockIndex }) => !keyCache.has(blockIndex));
+  budget.checkCandidatePlan(uncached.map((candidate) => candidate.descriptor));
+  budget.addCandidateCount(uncached.length);
+  const exact = [], folded = [];
+  let exactCount = 0, foldedCount = 0;
   for (const { blockIndex } of candidates) {
-    throwIfAborted(signal);
-    const entries = await decodeRichKeyBlock({
-      source,
-      index,
-      blockIndex,
-      limits,
-      decompressionStreamFactory,
-      budget,
-      signal
-    });
-    throwIfAborted(signal);
-    let firstFoldedInBlock = null;
-    let exactSpellingInBlock = null;
+    const entries = await cachedKeys({ source, index, blockIndex, limits, decompressionStreamFactory, budget, signal, keyCache });
+    let nextRecordOffset;
+    const nextOffsets = new Array(entries.length);
+    for (let position = entries.length - 1; position >= 0; position -= 1) {
+      budget.consumeKeyScans();
+      if (entries[position + 1]?.recordOffset > entries[position].recordOffset) nextRecordOffset = entries[position + 1].recordOffset;
+      nextOffsets[position] = nextRecordOffset;
+    }
     for (let entryIndex = 0; entryIndex < entries.length; entryIndex += 1) {
       if ((entryIndex & 0x3ff) === 0) throwIfAborted(signal);
+      budget.consumeKeyScans();
       const entry = entries[entryIndex];
       if (comparisonKey(entry.displayForm, index.header) !== normalizedQuery) continue;
-      const match = {
-        recordOffset: entry.recordOffset,
-        displayForm: entry.displayForm,
-        blockIndex,
-        entryIndex
-      };
-      if (!firstFolded) firstFolded = match;
-      if (!firstFoldedInBlock) firstFoldedInBlock = match;
+      const match = { recordOffset: entry.recordOffset, displayForm: entry.displayForm, blockIndex, entryIndex,
+        nextRecordOffset: nextOffsets[entryIndex] };
+      foldedCount += 1;
+      if (folded.length <= RICH_MDICT_LOOKUP_BUDGETS.matchedEntries) folded.push(match);
       if (normalizeLexicalExactKey(entry.displayForm) === normalizeLexicalExactKey(text)) {
-        exactSpellingInBlock = match;
-        break;
+        exactCount += 1;
+        if (exact.length <= RICH_MDICT_LOOKUP_BUDGETS.matchedEntries) exact.push(match);
       }
     }
-    const blockMatch = exactSpellingInBlock || firstFoldedInBlock;
-    if (blockMatch) {
-      for (
-        let entryIndex = blockMatch.entryIndex + 1;
-        entryIndex < entries.length;
-        entryIndex += 1
-      ) {
-        if (entries[entryIndex].recordOffset > blockMatch.recordOffset) {
-          blockMatch.nextRecordOffset = entries[entryIndex].recordOffset;
-          break;
-        }
-      }
-    }
-    if (exactSpellingInBlock) {
-      exactSpelling = exactSpellingInBlock;
-      break;
-    }
   }
-  const selected = exactSpelling || firstFolded;
-  if (!selected) return null;
-  const recordEnd = await findNextRecordOffset({
-    source,
-    index,
-    selected,
-    limits,
-    decompressionStreamFactory,
-    budget,
-    signal
-  });
-  throwIfAborted(signal);
-  if (recordEnd <= selected.recordOffset) {
-    mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict record boundary is empty or reversed.");
+  budget.checkMatches(exactCount || foldedCount);
+  const chosen = exactCount ? exact : folded;
+  const seenOffsets = new Set(), matches = [];
+  for (const selected of chosen) {
+    if (seenOffsets.has(selected.recordOffset)) continue;
+    seenOffsets.add(selected.recordOffset);
+    const recordEnd = await findNextRecordOffset({ source, index, selected, limits, decompressionStreamFactory, budget, signal, keyCache });
+    throwIfAborted(signal);
+    if (recordEnd <= selected.recordOffset) mdictFail(MDICT_IMPORT_ERROR.CORRUPT, "MDict record boundary is empty or reversed.");
+    matches.push({ ...selected, recordEnd });
   }
-  return { ...selected, recordEnd };
+  return matches;
+}
+
+async function cachedKeys(options) {
+  const { keyCache, blockIndex } = options;
+  if (!keyCache.has(blockIndex)) keyCache.set(blockIndex, await decodeRichKeyBlock(options));
+  return keyCache.get(blockIndex);
 }
 
 async function findNextRecordOffset({
@@ -227,7 +191,8 @@ async function findNextRecordOffset({
   limits,
   decompressionStreamFactory,
   budget,
-  signal
+  signal,
+  keyCache
 }) {
   throwIfAborted(signal);
   const start = selected.recordOffset;
@@ -238,20 +203,14 @@ async function findNextRecordOffset({
     blockIndex += 1
   ) {
     throwIfAborted(signal);
+    budget.consumeKeyScans();
     const descriptor = index.keyBlocks[blockIndex];
     if (descriptor.lastRecordOffset <= start) continue;
     if (descriptor.firstRecordOffset > start) return descriptor.firstRecordOffset;
-    const entries = await decodeRichKeyBlock({
-      source,
-      index,
-      blockIndex,
-      limits,
-      decompressionStreamFactory,
-      budget,
-      signal
-    });
+    const entries = await cachedKeys({ source, index, blockIndex, limits, decompressionStreamFactory, budget, signal, keyCache });
     throwIfAborted(signal);
     for (const entry of entries) {
+      budget.consumeKeyScans();
       throwIfAborted(signal);
       if (entry.recordOffset > start) return entry.recordOffset;
     }
@@ -267,7 +226,8 @@ async function readRecord({
   limits,
   decompressionStreamFactory,
   budget,
-  signal
+  signal,
+  blockCache
 }) {
   throwIfAborted(signal);
   if (
@@ -293,20 +253,17 @@ async function readRecord({
     const overlapStart = Math.max(start, descriptor.uncompressedOffset);
     const overlapEnd = Math.min(end, descriptor.uncompressedOffset + descriptor.decompressedBytes);
     if (overlapStart < overlapEnd) {
-      budget.consumeRecordBlock(descriptor);
-      throwIfAborted(signal);
-      const compressed = await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes, signal);
-      throwIfAborted(signal);
-      const block = await decodeMdictBlock({
-        input: compressed,
-        expectedBytes: descriptor.decompressedBytes,
-        limits,
-        label: "MDict record block",
-        decompressionStreamFactory,
-        signal
-      });
-      throwIfAborted(signal);
-      const decoded = block.bytes;
+      let decoded = blockCache.get(blockIndex);
+      if (!decoded) {
+        budget.consumeRecordBlock(descriptor);
+        const compressed = await readSourceRange(source, descriptor.dataOffset, descriptor.compressedBytes, signal);
+        throwIfAborted(signal);
+        const block = await decodeMdictBlock({ input: compressed, expectedBytes: descriptor.decompressedBytes,
+          limits, label: "MDict record block", decompressionStreamFactory, signal });
+        throwIfAborted(signal);
+        decoded = block.bytes;
+        blockCache.set(blockIndex, decoded);
+      }
       const from = overlapStart - descriptor.uncompressedOffset;
       const to = overlapEnd - descriptor.uncompressedOffset;
       const chunk = decoded.subarray(from, to);

@@ -7,7 +7,7 @@ import {
   RICH_MDICT_SOURCE_ID,
   RICH_MDICT_STATE_KEY,
   validateCuratedRichMdictProvenance,
-  clampText
+  clampText, richError
 } from "./rich-mdict-contract.js";
 import { createRichMdictPreferencesStore } from "./rich-mdict-preferences.js";
 
@@ -43,7 +43,14 @@ export function getRichMddResourceManager() {
 }
 
 export function commitRichMdictImport(input) {
-  return getRichMdictManager().commit(input).then(async (result) => {
+  return getRichMdictManager().commit({
+    requestId: input.requestId,
+    packId: input.packId,
+    packVersion: input.packVersion,
+    metadata: input.metadata,
+    catalogReplacement: input.catalogReplacement,
+    attachmentIntent: input.attachmentIntent
+  }).then(async (result) => {
     const listed = await getRichMdictManager().listMetadata();
     await getRichMdictPreferencesStore().reconcile(listed.dictionaries);
     return result;
@@ -158,18 +165,17 @@ export async function promoteRichMdictDictionary(dictionaryId) {
 export async function lookupRichMdictDictionaries(request, selectionOwnerKey = "") {
   if (request && typeof request === "object" && !Array.isArray(request) && Object.hasOwn(request, "dictionaryId")) {
     const id = normalizePackId(request.dictionaryId);
+    if (!selectionOwnerKey && (request.expectedPackVersion !== undefined || request.expectedPackageVersion !== undefined)) throw richError("RICH_MDICT_INPUT", "Version-bound navigation requires a Selection owner.");
     const preferences = await getRichMdictPreferencesStore().readAll();
     if (preferences.dictionaries[id]?.enabled === false) {
-      return {
-        found: false,
-        dictionaries: [],
-        errors: [{ id, title: "", code: "RICH_MDICT_DISABLED", message: "This rich dictionary is disabled in Settings." }]
-      };
+      return disabledRichDictionary(id);
     }
     const lookupIdentity = selectionOwnerKey
-      ? { requestId: request.requestId, ownerKey: selectionOwnerKey }
+      ? { requestId: request.requestId, ownerKey: selectionOwnerKey, ...(request.expectedPackVersion !== undefined || request.expectedPackageVersion !== undefined ? { expectedPackVersion: request.expectedPackVersion, expectedPackageVersion: request.expectedPackageVersion } : {}) }
       : null;
-    return getRichMdictManager().lookupDictionary(request.text, id, lookupIdentity);
+    const result = await getRichMdictManager().lookupDictionary(request.text, id, lookupIdentity);
+    if (request.expectedPackVersion !== undefined && (await getRichMdictPreferencesStore().readAll()).dictionaries[id]?.enabled === false) return disabledRichDictionary(id);
+    return result;
   }
   return getRichMdictManager().lookup(typeof request === "string" ? request : request?.text);
 }
@@ -179,11 +185,26 @@ export function cancelRichMdictLookup(requestId, selectionOwnerKey) {
 }
 
 export function preflightRichMddResourceImport(input) {
-  return getRichMddResourceManager().preflight(input);
+  return getRichMddResourceManager().preflight({
+    dictionaryId: input.dictionaryId,
+    requestId: input.requestId,
+    resourceVersion: input.resourceVersion,
+    mdxFileName: input.mdxFileName,
+    files: input.files,
+    sidecars: input.sidecars,
+    expectedMdxVersion: input.expectedMdxVersion,
+    mdxSourceBytes: input.mdxSourceBytes
+  });
 }
 
 export function commitRichMddResourceImport(input) {
-  return getRichMddResourceManager().commit(input);
+  return getRichMddResourceManager().commit({
+    dictionaryId: input.dictionaryId,
+    requestId: input.requestId,
+    resourceVersion: input.resourceVersion,
+    metadata: input.metadata,
+    expectedMdxVersion: input.expectedMdxVersion
+  });
 }
 
 export function cancelRichMddResourceImport(requestId) {
@@ -297,4 +318,8 @@ function isValidRichPackId(value) {
 function serializeRichMdictPacks(packIds, action, index = 0) {
   if (index >= packIds.length) return action();
   return serializeRichMdictPack(packIds[index], () => serializeRichMdictPacks(packIds, action, index + 1));
+}
+
+function disabledRichDictionary(id) {
+  return { found: false, dictionaries: [], errors: [{ id, title: "", code: "RICH_MDICT_DISABLED", message: "This rich dictionary is disabled in Settings." }] };
 }

@@ -3,6 +3,10 @@ import { chatGPTPlanController } from "./chatgpt-plan.js";
 export async function handleChatGPTPlanAction(action, controller = chatGPTPlanController, input = {}) {
   if (action === "status") return { status: await controller.authStatus() };
   if (action === "models") return controller.listModels();
+  if (action === "restart") {
+    await controller.restartHost();
+    return { restarted: true, status: await controller.authStatus() };
+  }
   if (action === "connect" || action === "add") {
     await controller.ensureConnected();
     const modelSelectionCleared = await clearChatGPTPlanModelSelections();
@@ -34,8 +38,8 @@ export async function handleChatGPTPlanAction(action, controller = chatGPTPlanCo
 }
 
 export async function clearChatGPTPlanModelSelections(storage = chrome.storage.local) {
-  const stored = await storage.get(["provider", "chatgptPlanModel", "siteProfiles"]);
-  const globalProvider = providerId(stored.provider);
+  const stored = await storage.get(["provider", "defaultService", "chatgptPlanModel", "siteProfiles"]);
+  const globalProvider = stored.defaultService?.kind === "chatgpt-plan" ? "chatgpt-plan" : providerId(stored.provider);
   const patch = {};
   if (String(stored.chatgptPlanModel || "")) patch.chatgptPlanModel = "";
 
@@ -45,7 +49,8 @@ export async function clearChatGPTPlanModelSelections(storage = chrome.storage.l
   let profilesChanged = false;
   for (const [origin, raw] of Object.entries(profiles)) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
-    const profileProvider = providerId(raw.provider || globalProvider);
+    const profileProvider = raw.serviceRef?.kind === "chatgpt-plan" ? "chatgpt-plan"
+      : raw.serviceRef?.kind === "api-key" ? "api-key" : providerId(raw.provider || globalProvider);
     if (profileProvider !== "chatgpt-plan" || !String(raw.model || "")) continue;
     const next = { ...raw };
     delete next.model;

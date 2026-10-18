@@ -81,7 +81,8 @@ export function createChatGPTPlanController(client = nativeMessagingClient) {
     startAuth: options => client.startAuth(options),
     selectAccount: accountId => client.selectAccount(accountId),
     logout: () => client.logout(),
-    listModels: () => client.listModels()
+    listModels: () => client.listModels(),
+    restartHost: () => client.restart()
   });
 }
 

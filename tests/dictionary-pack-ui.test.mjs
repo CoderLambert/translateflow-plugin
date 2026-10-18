@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { describeBundledPackState, getBundledPackPresentation, requestDictionaryPackOriginPermission } from "../src/options/pack-ui.js";
+import { requestDictionaryPackOriginPermission } from "../src/options/pack-ui.js";
 import { zh_CN as dictionaryZhCN } from "../src/i18n/catalog-dictionary.js";
 import { zh_CN as optionsZhCN } from "../src/i18n/catalog-options.js";
 
@@ -70,31 +70,7 @@ test("pack Settings surface keeps permission request on the options user-gesture
   assert.doesNotMatch(html, /legacy-options-source/);
 });
 
-test("Settings presents bundled lexicon health as scannable status metadata", async () => {
-  assert.deepEqual(getBundledPackPresentation({
-    status: "ready",
-    packVersion: "locked-v1",
-    recordCount: 1234
-  }), {
-    kind: "success",
-    label: "已就绪",
-    meta: ["版本 locked-v1", "1,234 条记录"],
-    detail: ""
-  });
-
-  assert.equal(getBundledPackPresentation({ status: "unavailable" }).label, "资源缺失");
-  assert.equal(getBundledPackPresentation({ status: "corrupt" }).label, "校验失败");
-  assert.equal(getBundledPackPresentation({ status: "incompatible" }).kind, "warning");
-  assert.equal(getBundledPackPresentation({ status: "unhealthy" }).label, "健康检查失败");
-  assert.equal(getBundledPackPresentation({ status: "unknown", message: "probe failed" }).detail, "probe failed");
-
-  assert.match(describeBundledPackState({
-    status: "ready",
-    packVersion: "locked-v1",
-    recordCount: 1234
-  }), /已就绪.*版本 locked-v1.*1,234 条记录/);
-  assert.doesNotMatch(describeBundledPackState({ status: "unavailable" }), /npm run setup:lexicon/);
-
+test("Settings keeps user dictionary health and discoverable installation paths", async () => {
   const source = await readFile(new URL("../src/options/DictionaryViews.tsx", import.meta.url), "utf8");
   const section = await readFile(new URL("../src/options/DictionarySection.tsx", import.meta.url), "utf8");
   const html = await readFile(new URL("../options.html", import.meta.url), "utf8");
@@ -107,9 +83,13 @@ test("Settings presents bundled lexicon health as scannable status metadata", as
   assert.match(common, /options\.selection\.depth/);
   assert.equal(optionsZhCN["options.selection.depth"], "AI 详解深度");
   assert.match(source, /aria-live="polite"/);
-  assert.match(section, /dictionary-repair-help/);
-  assert.match(section, /dictionary\.sourceRepairHelp/);
-  assert.match(dictionaryZhCN["dictionary.sourceRepairHelp"], /npm run setup:lexicon/);
+  assert.match(source, /dictionary-v2-details/);
+  assert.match(source, /dictionary-compact-facts/);
+  assert.equal(dictionaryZhCN["dictionary.details"], "详细信息");
+  assert.doesNotMatch(section, /Bundled|builtIn|sourceRepair/);
+  assert.match(source, /href="#dictionaryDownloadHeading"/);
+  assert.match(source, /href="#dictionaryImportHeading"/);
+  assert.match(dictionaryZhCN["dictionary.noInstalled"], /TFLex \/ StarDict \/ MDict/);
   assert.match(html, /src\/options\/main\.tsx/);
   assert.doesNotMatch(html, /FreeDict eng-zho 2025\.11\.23/);
   assert.match(css, /dictionary-health-badge\[data-kind="success"\]/);

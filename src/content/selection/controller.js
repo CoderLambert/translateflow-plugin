@@ -8,13 +8,12 @@
     || !app?.modules.selectionContext
     || !app?.modules.selectionPopover
     || !app?.modules.selectionResultModel
-    || !app?.modules.selectionClipboard
     || !app?.modules.selectionMessages
     || !app?.modules.selectionRichDetails
     || app.modules.selectionController
   ) return;
 
-  const { messages, getPageIdentity, sendRuntimeMessage, showToast } = app.modules.runtime;
+  const { messages, getPageIdentity, sendRuntimeMessage } = app.modules.runtime;
   const i18n = app.modules.contentI18n;
   const t = (key, args) => i18n.t(key, args);
   const tasks = app.modules.tasks;
@@ -22,34 +21,43 @@
   const { captureSelectionContext } = app.modules.selectionContext;
   const projection = app.modules.textProjection;
   const popover = app.modules.selectionPopover;
-  const { writeText: writeSelectionText } = app.modules.selectionClipboard;
   const { unresolvedMessage } = app.modules.selectionMessages;
   const { load: loadRichDictionaryDetails, cancel: cancelRichDictionaryDetails } = app.modules.selectionRichDetails;
   const vocabularyBook = app.modules.selectionVocabularyBook?.create() || {
     add: async () => ({ ignored: true }),
+    addAiNote: async () => ({ ignored: true }),
+    syncAiNote: async () => ({ ignored: true }),
     open: () => ({ ignored: true })
   };
-  const { buildLocalResult, copyTextForCard } = app.modules.selectionResultModel;
+  const { buildLocalResult } = app.modules.selectionResultModel;
   const model = app.modules.selectionResultModel;
   const records = app.modules.selectionRecordClient?.create({ onStatus: (view) => app.modules.selectionRecordStatus?.update(view, {
     save: (event) => records.save(event), retry: (event) => records.retry(event),
     open: (event) => records.open(event), decline: (event) => records.decline(event)
   }) });
   const runTranslation = app.modules.selectionTranslationQuery?.create({
-    assertCurrent, showResult, onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
+    assertCurrent, showResult: (...args) => (app.modules.selectionTranslationActions?.create({ showResult, explainSnapshot, vocabularyBook }) || showResult)(...args), onResult: (queryRecord, draft) => records?.accept(queryRecord, draft)
   }) || (() => Promise.reject(localizedError("content.selection.updatedRefresh")));
   let recordContext = null;
   let started = false;
   let activeSnapshot = null;
   let activeTask = null;
   let activeAssistant = null;
+  const assistantResults = new Map();
+  const assistantPersistence = app.modules.selectionAssistantPersistence?.create({ records, vocabularyBook, popover,
+    isLive: assistantResultLive }) || Object.freeze({ attach() {} });
   let requestVersion = 0;
   let selectionTimer = null;
+  const projectionGuard = app.modules.selectionSourceSnapshot.createProjectionGuard({ getSnapshot: () => activeSnapshot,
+    getCurrentUrl: () => location.href, getPageIdentity,
+    onAccept: (snapshot, capture, revision) => { snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition(); },
+    onReject: () => { records?.invalidateReference(); dismiss(); } });
+  const { freezeQuery, isFrozenCurrent, getQuerySource } = projectionGuard;
   function start() {
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
-    projection.start(handleProjectionInvalidation);
+    projection.start(projectionGuard.invalidate);
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
     document.addEventListener("keyup", handlePotentialSelection, true);
@@ -58,31 +66,23 @@
     document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("scroll", () => popover.reposition(), true);
     window.addEventListener("resize", () => popover.reposition(), true);
+    window.visualViewport?.addEventListener("scroll", () => popover.reposition()); window.visualViewport?.addEventListener("resize", () => popover.reposition());
     window.addEventListener("focus", () => { void records?.refresh(); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void records?.refresh(); });
-    const checkReadingRoute = () => { records?.invalidateReference(); if (activeSnapshot && activeSnapshot.pageUrl !== location.href) dismiss(); };
-    window.addEventListener("popstate", checkReadingRoute, true);
-    window.addEventListener("hashchange", checkReadingRoute, true);
+    const invalidateReadingReference = () => records?.invalidateReference();
+    window.addEventListener("popstate", invalidateReadingReference, true);
+    window.addEventListener("hashchange", invalidateReadingReference, true);
     const leaveDocument = () => { records?.invalidateReference(); dismiss(); };
     app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: leaveDocument, onPageHide: leaveDocument });
   }
-
   function handlePotentialSelection(event) {
     if (isExtensionOwnedNode(event.target)) return;
     scheduleSelectionRefresh();
   }
-
   function scheduleSelectionRefresh() {
     clearTimeout(selectionTimer);
     selectionTimer = setTimeout(refreshSelectionUi, 90);
   }
-  function handleProjectionInvalidation(revision = projection.revision()) {
-    const snapshot = activeSnapshot, capture = snapshot?.sourceCapture; if (!snapshot) return;
-    const current = app.modules.selectionSourceSnapshot.matchesCurrentPage(snapshot, capture, location.href, getPageIdentity);
-    if (!current) { records?.invalidateReference(); dismiss(); return; }
-    snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition();
-  }
-
   function refreshSelectionUi() {
     const snapshot = readSelection();
     if (!snapshot) {
@@ -110,6 +110,7 @@
     void records?.close();
     recordContext = null;
     app.modules.selectionRecordStatus?.clear();
+    assistantResults.clear();
     requestVersion += 1;
     snapshot.selectionGeneration = requestVersion;
     activeSnapshot = snapshot;
@@ -117,14 +118,12 @@
     setQuickControlSelectionActive(true);
     popover.showChip(snapshot, (event) => translateSnapshot(snapshot, { event }));
   }
-
-  async function translateSnapshot(snapshot, { forceTranslation = false, event } = {}) {
+  async function translateSnapshot(snapshot, { forceTranslation = false, browserTranslationAllowed = false, event } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
     const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
       await tasks.cancelTask(activeTask);
     }
-
     if (!isFrozenCurrent(snapshot, capture)) return;
     const task = beginTask(snapshot);
 
@@ -137,10 +136,9 @@
     let resolved = null;
     try {
       if (forceTranslation) {
-        await translateSelection(snapshot, task, version, expectedPage, queryRecord);
+        await translateSelection(snapshot, task, version, expectedPage, queryRecord, { browserTranslationAllowed });
         return;
       }
-
       tasks.transition(task, "translating");
       popover.setLoadingStatus("content.selection.resolving");
       const selectionContext = captureSelectionContext(snapshot);
@@ -161,8 +159,6 @@
         showResult(
           snapshot,
           card,
-          copyTextForCard(card),
-          "content.selection.resultCopied",
           resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, card, event, action) : null,
           vocabularyEntry ? (event) => {
             if (!event?.isTrusted) return { ignored: true };
@@ -172,16 +168,19 @@
           (event) => vocabularyBook.open(event)
         );
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
-        void loadRich(snapshot, version, expectedPage, queryRecord);
+        void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: !vocabularyEntry });
         return;
       }
-
+      if (resolved.preferRich && app.modules.selectionDictionaryFirst) {
+        const hit = await app.modules.selectionDictionaryFirst.run(snapshot, task, options => loadRich(snapshot, version, expectedPage, queryRecord, options));
+        assertCurrent(version, snapshot, expectedPage, task); if (hit) return;
+      }
       if (resolved.route === "translation") {
         if (queryRecord) queryRecord.sourceLanguage = resolved.intent?.sourceLanguage || "unknown";
-        await translateSelection(snapshot, task, version, expectedPage, queryRecord);
+        browserTranslationAllowed = resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1;
+        await translateSelection(snapshot, task, version, expectedPage, queryRecord, { browserTranslationAllowed });
         return;
       }
-
       if (resolved.routeReason === "no-hit-local") {
         tasks.completeTask(task, { done: 1 });
         popover.showEmpty(snapshot, {
@@ -190,10 +189,10 @@
           onExplain: resolved.explanationAllowed
             ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action)
             : null,
-          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, event })
+          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed: true, event })
         });
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
-        void loadRich(snapshot, version, expectedPage, queryRecord);
+        void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
         return;
       }
 
@@ -202,12 +201,19 @@
         snapshot,
         unresolvedMessage(resolved),
         (event) => translateSnapshot(snapshot, { event }),
-        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null
+        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null,
+        resolved.routeReason === "local-error" ? (event) => translateSnapshot(snapshot, {
+          forceTranslation: true, browserTranslationAllowed: resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1, event
+        }) : null
       );
       if (resolved.intent?.kind === "lexical") {
-        void loadRich(snapshot, version, expectedPage, queryRecord);
+        void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
       }
     } catch (error) {
+      if (error?.code === "ENGINE_SWITCH" && isCurrentSelection(version, snapshot, expectedPage)) {
+        tasks.failTask(task, error);
+        return translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed });
+      }
       if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
       tasks.failTask(task, error);
 
@@ -219,9 +225,9 @@
       );
     }
   }
-
   async function explainSnapshot(snapshot, depth, baseCard = null, event = null, action = "understand") {
     if (!snapshot || snapshot !== activeSnapshot || !["understand", "analyze", "usage"].includes(action)) return;
+    if (app.modules.translationClient && !await app.modules.translationClient.requireAi(snapshot.pageUrl)) return;
     const currentCapture = snapshot.sourceCapture;
     const captureIsCurrent = Boolean(currentCapture && isFrozenCurrent(snapshot, currentCapture));
     const existing = Boolean(recordContext && captureIsCurrent);
@@ -229,6 +235,7 @@
     if (activeTask && !tasks.isTerminal(activeTask)) await tasks.cancelTask(activeTask);
     if (!isFrozenCurrent(snapshot, capture)) return;
     abandonAssistant();
+    assistantResults.delete(action);
     const version = ++requestVersion, expectedPage = getPageIdentity(snapshot.pageUrl);
     const queryRecord = existing ? recordContext : (recordContext = records?.start({ snapshot, capture, event, purpose: "assistant",
       isCurrent: () => isFrozenCurrent(snapshot, capture) && snapshot.pageUrl === location.href }) || null);
@@ -236,13 +243,15 @@
     const requestId = `assistant-${crypto.randomUUID()}`;
     const state = activeAssistant = { snapshot, capture, version, expectedPage, depth, baseCard, action, queryRecord, operation,
       requestId, partial: "", sequence: 0, stopping: false, terminal: false, port: null };
-    if (!baseCard) popover.showLoading(snapshot, () => stopAssistant(true), "content.ai.connecting");
-    popover.showAiDetailStreaming("", () => stopAssistant(true));
+    popover.showAiDetailStreaming("", () => stopAssistant(true), action);
     try {
       const port = state.port = chrome.runtime.connect({ name: "selection.assistant-stream" });
       port.onMessage.addListener(message => handleAssistantMessage(state, message));
       port.onDisconnect.addListener(() => {
-        if (!state.terminal) interruptAssistant(state, "content.ai.disconnected");
+        const runtimeMessage = String(chrome.runtime.lastError?.message || "");
+        if (!state.terminal) interruptAssistant(state, extensionContextInvalid(runtimeMessage)
+          ? "content.ai.extensionReloaded"
+          : "content.ai.disconnected");
       });
       port.postMessage({ protocolVersion: 1, type: "start", requestId, text: capture.selectedText,
         pageUrl: snapshot.pageUrl, context: captureSelectionContext(snapshot), depth, ownerToken: ownerToken(),
@@ -250,7 +259,6 @@
         parentTurnId: null, branchId: `branch-${crypto.randomUUID()}`, regenerationOf: null });
     } catch { interruptAssistant(state, "content.ai.connectFailed"); }
   }
-
   function handleAssistantMessage(state, message) {
     if (!assistantLive(state) || message?.protocolVersion !== 1 || message.requestId !== state.requestId) return;
     if (message.type === "started") {
@@ -262,7 +270,7 @@
     if (message.type === "delta") {
       if (message.sequence !== state.sequence || typeof message.text !== "string") return interruptAssistant(state, "content.ai.orderError");
       state.sequence++; state.partial += message.text;
-      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true));
+      if (!state.stopping) popover.showAiDetailStreaming(state.partial, () => stopAssistant(true), state.action);
       return;
     }
     if (message.type === "interrupted") {
@@ -276,19 +284,23 @@
     state.terminal = true; activeAssistant = null;
     try { state.port.disconnect(); } catch {}
     const answer = String(message.text || "");
-    popover.showAiDetailResult({ explanation: answer }, copyAction(answer, "content.selection.answerCopied"));
-    records?.accept(state.queryRecord, { kind: "assistant", targetLanguage: message.readingResult.targetLanguage,
-      provenance: message.readingResult.provenance, payload: message.turn },
-    { key: state.operation?.operationId, operation: state.operation, sourceLanguage: message.readingResult.sourceLanguage });
-    records?.render();
+    popover.showAiDetailResult({ explanation: answer }, state.action);
+    const completed = { action: state.action, snapshot: state.snapshot, capture: state.capture,
+      expectedPage: state.expectedPage, operation: state.operation, queryRecord: state.queryRecord,
+      readingRef: null, wordbookSaved: false,
+      note: { headword: state.capture.selectedText, sourceLanguage: message.readingResult.sourceLanguage,
+        targetLanguage: message.readingResult.targetLanguage, action: state.action, text: answer,
+        turnId: message.turn.turnId, provenance: message.readingResult.provenance, readingRef: null } };
+    assistantResults.set(state.action, completed);
+    assistantPersistence.attach(completed, { targetLanguage: message.readingResult.targetLanguage,
+      sourceLanguage: message.readingResult.sourceLanguage, provenance: message.readingResult.provenance, turn: message.turn });
   }
-
   function stopAssistant(show) {
     const state = activeAssistant;
     if (!state || state.terminal || state.stopping) return;
     state.stopping = true;
     try { state.port?.postMessage({ type: "cancel", requestId: state.requestId }); } catch {}
-    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial);
+    if (show && assistantLive(state)) popover.showAiDetailStopping(state.partial, state.action);
   }
   function abandonAssistant() {
     const state = activeAssistant;
@@ -305,58 +317,53 @@
     void records?.discard(state.queryRecord, state.operation);
     if (isCurrentSelection(state.version, state.snapshot, state.expectedPage)) {
       popover.showAiDetailInterrupted(state.partial, message,
-        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action));
+        (event) => explainSnapshot(state.snapshot, state.depth, state.baseCard, event, state.action), state.action);
     }
   }
   function assistantLive(state) { return activeAssistant === state && !state.terminal && isCurrentSelection(state.version, state.snapshot, state.expectedPage); }
+  function extensionContextInvalid(message) { return /extension context invalidated|receiving end does not exist/iu.test(String(message || "")); }
   function ownerToken() { return [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, "0")).join(""); }
 
-  function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext) {
-    return runTranslation(snapshot, task, version, expectedPage, queryRecord);
+  function assistantResultLive(result) {
+    return assistantResults.get(result?.action) === result && result.snapshot === activeSnapshot &&
+      result.snapshot?.sourceRevision === projection.revision() && getPageIdentity(location.href) === result.expectedPage;
   }
-
-  function failureMessage(error) { return error?.i18nKey || "content.selection.errorRetry"; }
-
+  function translateSelection(snapshot, task, version, expectedPage, queryRecord = recordContext, options = {}) {
+    return runTranslation(snapshot, task, version, expectedPage, queryRecord, options);
+  }
+  function failureMessage(error) {
+    if (extensionContextInvalid(error?.message)) return "content.ai.extensionReloaded";
+    return error?.i18nKey || "content.selection.errorRetry";
+  }
   function localizedError(key, code = "") {
     return Object.assign(new Error(t(key)), { i18nKey: key, code: String(code || "") });
   }
-
-  function showResult(snapshot, card, copyText, copiedMessage, onExplain = null, onSaveVocabulary = null, onOpenVocabulary = null) {
-    popover.showResult(snapshot, card, copyAction(copyText, copiedMessage), onExplain, onSaveVocabulary, onOpenVocabulary);
+  function showResult(snapshot, card, onExplain = null, onSaveVocabulary = null, onOpenVocabulary = null) {
+    popover.showResult(snapshot, card, onExplain, onSaveVocabulary, onOpenVocabulary);
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
-
-  function loadRich(snapshot, version, expectedPage, queryRecord) {
+  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false, eager = false, onSettled = null } = {}) {
     return loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection, (record, dictionary) => {
       records?.accept(queryRecord, model.readingRich(record, dictionary), { key: `rich:${dictionary.id}` });
-    });
+      if (!allowVocabularyFallback) return;
+      const vocabularyEntry = model.vocabularyDraftFromRich(record, dictionary, sourceLanguage || "en");
+      if (!vocabularyEntry) return;
+      popover.showVocabularyActions(snapshot, (event) => { if (!event?.isTrusted) return { ignored: true };
+        if (!isCurrentVocabularySelection(snapshot, snapshot.sourceCapture, expectedPage)) throw localizedError("content.vocabulary.updated");
+        return vocabularyBook.add(vocabularyEntry, event); }, (event) => vocabularyBook.open(event));
+    }, { eager, onSettled });
   }
-
-  function copyAction(copyText, copiedMessageKey) {
-    return async () => {
-      try {
-        await writeSelectionText(copyText);
-        showToast(t(copiedMessageKey), "success");
-      } catch (error) {
-        const message = error?.i18nKey ? t(error.i18nKey) : String(error?.message || error);
-        showToast(t("content.selection.copyFailed", { message }), "error");
-      }
-    };
-  }
-
   function isCurrentSelection(version, snapshot, expectedPage) {
     return version === requestVersion
       && snapshot === activeSnapshot
       && snapshot.sourceRevision === projection.revision()
       && getPageIdentity(location.href) === expectedPage;
   }
-
   function isCurrentVocabularySelection(snapshot, capture, expectedPage) {
     return isFrozenCurrent(snapshot, capture)
       && getPageIdentity(location.href) === expectedPage;
   }
-
   function assertCurrent(version, snapshot, expectedPage, task) {
     tasks.assertActive(task);
     if (!isCurrentSelection(version, snapshot, expectedPage)) {
@@ -366,32 +373,30 @@
       throw error;
     }
   }
-
   function handleOutsidePointerDown(event) {
     if (popover.contains(event.target)) return;
     if (!activeSnapshot) return;
     dismiss();
   }
-
   function handleKeyDown(event) {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || popover.consumeRichEscape?.(event)) return;
     dismiss({ restoreFocus: popover.isEventInsidePanel(event) });
   }
-
   function dismiss({ restoreFocus = false } = {}) {
+    projectionGuard.clear();
     abandonAssistant();
     cancelActiveTask({ showCancelled: false });
     void cancelRichDictionaryDetails();
     void records?.close();
     recordContext = null;
     app.modules.selectionRecordStatus?.clear();
+    assistantResults.clear();
     activeSnapshot = null;
     projection.watchPage(null);
     requestVersion += 1;
     popover.hide({ restoreFocus });
     setQuickControlSelectionActive(false);
   }
-
   function cancelActiveTask({ showCancelled, snapshot: expectedSnapshot, task: expectedTask, version: expectedVersion }) {
     const task = activeTask;
     if (!task || tasks.isTerminal(task)) return;
@@ -405,15 +410,8 @@
       popover.showError(snapshot, "content.selection.cancelled", (event) => translateSnapshot(snapshot, { event }));
     }
   }
-
   function setQuickControlSelectionActive(active) { app.modules.quickControl?.setSelectionActive(Boolean(active)); }
 
-  function freezeQuery(snapshot) {
-    const capture = app.modules.selectionSourceSnapshot.capture(snapshot);
-    snapshot.sourceCapture = capture; snapshot.text = capture.selectedText;
-    return capture;
-  }
-  function isFrozenCurrent(snapshot, capture) { return snapshot === activeSnapshot && snapshot.sourceCapture === capture && snapshot.sourceRevision === capture.sourceRevision && capture.sourceRevision === projection.revision(); }
   function beginTask(snapshot) { return activeTask = tasks.createTask({ surface: "selection", pageUrl: snapshot.pageUrl, total: 1 }); }
-  app.modules.selectionController = { start, getQuerySource: () => { projection.revision(); return activeSnapshot?.sourceCapture || null; } };
+  app.modules.selectionController = { start, getQuerySource };
 })();

@@ -27,6 +27,7 @@ export function createRichMdictImportController({
   async function importDictionary({
     mdxFile,
     displayMetadata = {},
+    attachmentIntent,
     curatedRecipe = null,
     expectedActiveVersion = ""
   } = {}) {
@@ -108,6 +109,7 @@ export function createRichMdictImportController({
         packId: ready.packId,
         packVersion: ready.packVersion,
         metadata: ready.metadata,
+        ...(attachmentIntent ? { attachmentIntent } : {}),
         ...(catalogReplacement ? { catalogReplacement } : {})
       });
       if (!commit?.ok) {
@@ -115,13 +117,6 @@ export function createRichMdictImportController({
         throw responseError(commit, "Rich dictionary activation failed.");
       }
       current.committed = true;
-      if (current.cancelRequested) {
-        await runtime.sendMessage({
-          type: BACKGROUND_MESSAGES.RICH_MDICT_UNINSTALL,
-          packId: identity.packId
-        });
-        throw abortError();
-      }
       emitProgress(onProgress, requestId, "done", {
         dictionary: commit.dictionary,
         metadata: ready.metadata

@@ -3,6 +3,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { build as buildFixture } from "vite";
 import { startMockServer } from "./support/mock-server.mjs";
 import { request, snapshot } from "../tests/fixtures/reading/contract.mjs";
 import { sourceClosure } from "../scripts/wxt-assets.mjs";
@@ -82,7 +83,7 @@ async function installCollector(page, safety = { selection: "safe", context: "sa
       globalThis.__TRANSLATE_FLOW_CONTENT__.modules ||= {};
       globalThis.__TRANSLATE_FLOW_CONTENT__.modules.readingAccessCollector = { read(challenge) {
         return { nonce: challenge.nonce, documentGeneration: generation, selectionGeneration: 1, captureSafety: state, sourceSnapshot: frozen,
-          intent: ["register", "inspect"].includes(challenge.action) ? null : { action: challenge.action, recordId: challenge.recordId, operationId: challenge.operationId } };
+          intent: ["register", "inspect", "handoff", "page"].includes(challenge.action) ? null : { action: challenge.action, recordId: challenge.recordId, operationId: challenge.operationId } };
       } };
       return { generation, snapshot: frozen };
     } }), { id, input: snapshot(), safety });
@@ -120,7 +121,17 @@ test.describe("Reading native authority (synthetic repository / owned collector 
       await mkdir(dirname(join(extension, path)), { recursive: true });
       await cp(join(sourceRoot, path), join(extension, path));
     }
-    await writeFile(join(extension, "background.js"), fixtureBootstrap);
+    // The production dependency graph now contains bare package imports (for
+    // example css-tree). Compile this explicitly synthetic worker with those
+    // dependencies instead of shipping an unresolvable raw module graph.
+    const entry = join(extension, "reading-access-entry.mjs");
+    await writeFile(entry, fixtureBootstrap);
+    await buildFixture({ configFile: false, root: sourceRoot, logLevel: "silent",
+      resolve: { alias: { "css-tree": fileURLToPath(import.meta.resolve("css-tree")) } },
+      build: { outDir: extension, emptyOutDir: false, minify: false, target: "esnext",
+        lib: { entry, formats: ["es"], fileName: () => "background.js" },
+        rollupOptions: { output: { inlineDynamicImports: true } } } });
+    await rm(entry);
     // Test assets only. Production does not yet claim the #235 learning-center artifact exists.
     for (const name of ["learning-center.html", "unexpected.html"]) await writeFile(join(extension, name), "<!doctype html><title>Synthetic Reading authority fixture; not product UI</title><p>Fixture only</p>");
     const manifest = JSON.parse(await readFile(join(extension, "manifest.json"), "utf8"));
@@ -131,6 +142,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"); extensionId = new URL(worker.url()).host;
     driver = await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+    await expect.poll(() => worker.evaluate(() => typeof globalThis.__resetReadingFixture)).toBe("function");
     version = await driver.evaluate(() => navigator.userAgent);
   });
   test.beforeEach(async () => { await worker.evaluate(() => globalThis.__resetReadingFixture()); server.reset(); });
@@ -322,7 +334,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
 
 
   test("Ordinary lookup keeps the production legacy router and uses only a local synthetic provider", async () => {
-    await driver.evaluate(async (baseUrl) => chrome.storage.local.set({ provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+    await driver.evaluate(async (baseUrl) => chrome.storage.local.set({ dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
       openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" } }), server.baseUrl);
     const lookup = await sendPage(driver, { type: "SELECTION_RESOLVE", text: "React", pageUrl: `${server.baseUrl}/article`, context: null, depth: "basic" });
     expect(lookup.ok).toBe(true); expect(lookup).not.toHaveProperty("protocolVersion");

@@ -12,7 +12,7 @@ import {
   normalizeExactLookupKey,
   normalizeLookupKey,
   stableStringify
-} from "./build-tflex-core.mjs";
+} from "./tflex-writer.mjs";
 import { validateTflexRecord } from "../src/background/lexical/tflex-integrity.js";
 
 export const TFLEX_OPFS_INDEXED_PROFILE = "opfs-indexed-v1";

@@ -32,8 +32,9 @@ Headword meanings, translations, definitions, pronunciation, examples, entity fa
 Only files required by the installed extension:
 
 - runtime code and UI;
-- required static assets;
-- explicitly approved **small bootstrap** lexical packs.
+- required static assets.
+
+No dictionary content enters the base extension. Users explicitly install resources through the download/import lifecycle.
 
 These files may enter the Chrome Web Store artifact.
 
@@ -47,7 +48,7 @@ Examples:
 - dictionary compilers;
 - source qualification reports.
 
-They exist to reproduce runtime packs. They are **not runtime assets** and must not be copied into the production extension.
+They exist to reproduce downloadable/importable packs. They are **not runtime assets** and must not be copied into the production extension.
 
 ### C. Validation assets
 
@@ -126,17 +127,15 @@ A small project-authored override layer may exist only when all of the following
 
 The override set must remain small and must not become a dictionary project.
 
-The former `reviewed-tech-terms` dataset is retained only as **validation/audit history**. It is not compiled into the production Technical pack. New coverage should come from #116/#121/#124/#126 source pipelines; any future temporary override must be separately approved against the exception criteria above.
+The built-in dictionary product system and its source-specific build paths are retired. Historical source decisions are audit evidence, not current dictionary content or permission to reintroduce it.
 
 Regression words remain in validation fixtures even after their runtime data source changes.
 
-## 4. Bundled data budget
+## 4. Dictionary content installation
 
-Bundled lexical data exists only to provide a useful offline bootstrap experience.
+The base extension contains no dictionary resources. Offline lookup requires a user-installed dictionary or effective User Glossary. Fresh installs show download/import entry points without resource-missing or reload instructions. Neither an empty library nor a local miss downloads data or triggers a Provider.
 
-The bundled Core/Technical footprint should stay bounded. Do not attempt to make the bundled extension a complete English-Chinese dictionary by adding more and more hand-curated records.
-
-High-coverage resources should be downloadable.
+Existing OPFS packs, preferences, Reading records and caches survive upgrades without clearing or migration. The generic TFLex format remains supported independently of any historical source pack.
 
 ## 5. Production package boundary
 
@@ -151,8 +150,9 @@ content.js
 content.css
 popup.*
 options.*
-src/**
-assets/lexicon/**        # only generated/approved bundled runtime packs
+compiled runtime closures
+exact MAIN/Worker source closures
+_locales/**
 ```
 
 The production artifact must not include:
@@ -182,7 +182,7 @@ Every lexical PR should answer:
 1. Is this change an algorithm/rule or dictionary content?
 2. If dictionary content, why is it not coming from a source pipeline?
 3. Does any validation fixture enter the runtime artifact?
-4. Does the change increase the bundled lexical footprint?
+4. Does every dictionary remain outside the extension package?
 5. Could the same behavior be represented with source metadata instead of a query-specific rule?
 6. Is AI still explicit and non-authoritative?
 

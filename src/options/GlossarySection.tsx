@@ -70,10 +70,12 @@ export function GlossarySection({ client, setStatus }: {
   return <section id="glossary" tabIndex={-1}>
     <h2>{i18n.t("options.glossary.title")}</h2>
     <p className="hint">{i18n.t("options.glossary.help")}</p>
+    <p className="hint">{i18n.t("options.glossary.example")}</p>
     <div className="profile-grid">
       <div><label htmlFor="glossaryScope">{i18n.t("options.glossary.scope")}</label><select id="glossaryScope" value={draft.scope} disabled={busy} onChange={event => update("scope", event.target.value as GlossaryScope)}><option value="global">{i18n.t("options.glossary.global")}</option><option value="site">{i18n.t("options.glossary.site")}</option></select></div>
       <div><label htmlFor="glossaryOrigin">{i18n.t("options.glossary.origin")}</label><input id="glossaryOrigin" value={draft.origin} onChange={event => update("origin", event.target.value)} type="text" placeholder="https://github.com" disabled={busy || draft.scope !== "site"} /></div>
     </div>
+    {draft.scope === "site" ? <p className="hint">{i18n.t("options.glossary.siteHelp")}</p> : null}
     <div className="profile-grid">
       <div><label htmlFor="glossarySource">{i18n.t("options.glossary.source")}</label><input ref={sourceRef} id="glossarySource" value={draft.source} onChange={event => update("source", event.target.value)} type="text" placeholder="pull request" disabled={busy} /></div>
       <div><label htmlFor="glossaryTarget">{i18n.t("options.glossary.target")}</label><input id="glossaryTarget" value={draft.target} onChange={event => update("target", event.target.value)} type="text" placeholder="pull request" disabled={busy} /></div>
@@ -97,7 +99,7 @@ function GlossaryRowView({ row, busy, edit, toggle, remove, i18n }: {
   remove: (row: GlossaryRow) => Promise<void>;
   i18n: I18n;
 }) {
-  return <div className="site-row"><div className="site-summary"><strong>{row.scope === "global" ? i18n.t("options.glossary.global") : row.origin}</strong><small>{row.entry.source} → {row.entry.target} · {i18n.t(row.entry.caseSensitive ? "options.glossary.caseSensitive" : "options.glossary.ignoreCase")} · {i18n.t(row.entry.enabled ? "options.glossary.statusEnabled" : "options.glossary.statusDisabled")}</small></div><div className="site-actions"><button type="button" disabled={busy} onClick={() => edit(row)}>{i18n.t("common.edit")}</button><button type="button" disabled={busy} onClick={() => void toggle(row)}>{i18n.t(row.entry.enabled ? "common.disable" : "common.enable")}</button><button type="button" disabled={busy} onClick={() => void remove(row)}>{i18n.t("common.delete")}</button></div></div>;
+  return <div className="site-row"><div className="site-summary"><strong>{row.scope === "global" ? i18n.t("options.glossary.global") : row.origin}</strong><small>{row.entry.source} → {row.entry.target} · {i18n.t(row.entry.caseSensitive ? "options.glossary.caseSensitiveStatus" : "options.glossary.ignoreCase")} · {i18n.t(row.entry.enabled ? "options.glossary.statusEnabled" : "options.glossary.statusDisabled")}</small></div><div className="site-actions"><button type="button" disabled={busy} onClick={() => edit(row)}>{i18n.t("common.edit")}</button><button type="button" disabled={busy} onClick={() => void toggle(row)}>{i18n.t(row.entry.enabled ? "common.disable" : "common.enable")}</button><button type="button" disabled={busy} onClick={() => void remove(row)}>{i18n.t("common.delete")}</button></div></div>;
 }
 
 function errorText(error: unknown, fallback: string) { return error instanceof Error ? error.message : String(error || fallback); }

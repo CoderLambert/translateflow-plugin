@@ -11,7 +11,7 @@ const UI = /^(?:entrypoints\/(?:learning-center|reading-preview)\/|src\/(?:learn
 const PURE = /^src\/(?:shared|i18n)\//u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
 const READING_IDB = "src/background/reading-record/idb.js";
-const IDB_OWNERS = new Set(["src/background/cache-db.js", READING_IDB]);
+const IDB_OWNERS = new Set(["src/background/cache/storage-indexeddb.js", READING_IDB]);
 const isBackgroundSource = (path) => path.startsWith("src/background/") || path === "background.js" || /^entrypoints\/background\.(?:js|ts)$/u.test(path);
 export const isRuntimeSource = (path) => path.startsWith("src/") || path.startsWith("entrypoints/") || ROOT_RUNTIME.has(path);
 const isReact = (name) => /^(?:react|react-dom)(?:\/|$)/u.test(name);
@@ -91,7 +91,7 @@ export function inspectSources(root, files) {
     if (path.startsWith("entrypoints/") && !UI.test(path) && code.split(/\r?\n/u).length > 20) failures.push(`${path} 必须保持 20 行以内的组合入口`);
     if (path.startsWith("src/content/") && esm) failures.push(`${path} classic Content 不允许 ESM import/export/dynamic import`);
     if (effects.has("fetch") && !path.startsWith("src/background/providers/") &&
-        path !== "src/background/lexical/package-assets.js" && path !== "src/content/subtitles/youtube-main-bridge.js") failures.push(`${path} 直接使用 fetch；网络只允许 Provider，包资源只允许 lexical/package-assets.js`);
+        path !== "src/content/subtitles/youtube-main-bridge.js") failures.push(`${path} 直接使用 fetch；网络只允许 Provider`);
     if (effects.has("indexedDB") && !IDB_OWNERS.has(path)) failures.push(`${path} 直接访问 IndexedDB；只能位于 ${[...IDB_OWNERS].join(" 或 ")}`);
     if (effects.has("registerContentScripts") && path !== "src/background/auto-sites.js") failures.push(`${path} 注册动态 Content Script；只能位于 src/background/auto-sites.js`);
     if (path === "src/content/subtitles/youtube-main-bridge.js" && api.fetchCalls.size) failures.push(`${path} MAIN observer 不允许主动 fetch`);
@@ -104,6 +104,7 @@ export function inspectSources(root, files) {
         if (!dependencyFile) failures.push(`${path} 无法解析或越界的源码依赖: ${specifier}`);
         else graph.get(path).resolved.push(relative(root, dependencyFile).replaceAll(sep, "/"));
       } else if (!(isReact(specifier) && UI.test(path)) &&
+          !(path === "src/entries/selection-markdown.js" && specifier === "markdown-it") &&
           !(path === "src/background/packs/rich-mdd-css.js" && specifier === "css-tree") &&
           !(path === "entrypoints/background.ts" && specifier === "wxt/utils/define-background") &&
           !(path === "entrypoints/background.js" && specifier === "wxt/utils/define-background") &&

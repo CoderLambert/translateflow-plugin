@@ -9,7 +9,7 @@ import {
   projectKaikkiEntry,
   validateProjectedKaikkiEntry
 } from "../scripts/project-kaikki-rich.mjs";
-import { stableStringify } from "../scripts/build-tflex-core.mjs";
+import { stableStringify } from "../scripts/tflex-writer.mjs";
 import {
   auditWiktextractProjectionCompatibility
 } from "../scripts/audit-wiktextract-projection-compatibility.mjs";

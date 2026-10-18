@@ -1,3 +1,4 @@
+import { normalizeResourceRecovery } from "./rich-resource-recovery.js";
 import {
   RICH_MDICT_IMPORT_LIMITS,
   validateRichMdictIndex
@@ -14,12 +15,14 @@ export const RICH_MDICT_STATE_KEY = "tfRichMdictStateV1";
 export const RICH_MDICT_OPFS_ROOT = "rich-mdict-dictionaries";
 export const RICH_MDICT_SOURCE_PATH = "source.mdx";
 export const RICH_MDICT_INDEX_PATH = "index.json";
+export const RICH_MDICT_NORMALIZED_INDEX_PATH = "index-normalized-v2.json";
 export const RICH_MDICT_MAX_SOURCE_BYTES = 128 * 1024 * 1024;
 export const RICH_MDICT_MAX_INDEX_BYTES = 8 * 1024 * 1024;
 export const RICH_MDICT_MAX_ENTRIES = 4_000_000;
 export const RICH_MDICT_MAX_SOURCE_RECORD_BYTES = RICH_MDICT_IMPORT_LIMITS.entryBytes;
 export const RICH_MDICT_MAX_RECORD_TEXT_BYTES = RICH_MDICT_IMPORT_LIMITS.expandedTextBytes;
 export const RICH_MDICT_MAX_DISPLAY_BYTES = 2 * 1024 * 1024;
+export const RICH_MDICT_MAX_RECORDS = 256;
 export const RICH_MDICT_SOURCE_ID = "local-rich-mdict";
 
 export function validateCommit({ packId, packVersion, metadata } = {}) {
@@ -171,7 +174,8 @@ export function parseIndex(bytes) {
 }
 
 export function assertIndexMatchesMetadata(index, metadata) {
-  if (index.sourceSize !== metadata.sourceSize || index.entryCount !== metadata.entryCount) {
+  if (index.sourceSize !== metadata.sourceSize || index.entryCount !== metadata.entryCount ||
+      (metadata.indexSchemaVersion !== undefined && index.schemaVersion !== metadata.indexSchemaVersion)) {
     throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index does not match its install metadata.");
   }
 }
@@ -183,7 +187,10 @@ export function isValidSnapshot(packId, snapshot) {
     normalizeVersion(snapshot.packVersion) === snapshot.packVersion &&
     Number.isSafeInteger(snapshot.sourceSize) && snapshot.sourceSize > 0 &&
     Number.isSafeInteger(snapshot.indexSize) && snapshot.indexSize > 0 &&
-    /^[a-f0-9]{64}$/u.test(String(snapshot.indexSha256 || ""))
+    /^[a-f0-9]{64}$/u.test(String(snapshot.indexSha256 || "")) &&
+    [RICH_MDICT_INDEX_PATH, RICH_MDICT_NORMALIZED_INDEX_PATH].includes(snapshot.indexPath === undefined ? RICH_MDICT_INDEX_PATH : snapshot.indexPath) &&
+    (snapshot.indexSchemaVersion === undefined || [1, 2].includes(snapshot.indexSchemaVersion)) &&
+    (snapshot.indexPath !== RICH_MDICT_NORMALIZED_INDEX_PATH || snapshot.indexSchemaVersion === 2)
   );
   if (!valid || snapshot.curated === undefined) return valid;
   try {
@@ -228,6 +235,7 @@ export function publicRichDictionary(entry) {
     installedAt: Number(active.installedAt || 0),
     ...(active.curated ? { curated: active.curated } : {}),
     ...(migratedCatalog.migrated ? { catalog: migratedCatalog.catalog } : {}),
+    ...(normalizeResourceRecovery(active.resourceRecovery, active.packVersion) ? { resourceRecovery: { ...normalizeResourceRecovery(active.resourceRecovery, active.packVersion), previousResourcesAvailable: resourceSources.length > 0 } } : {}),
     status: entry?.status || "unknown"
   };
 }
@@ -239,6 +247,8 @@ export function makeRichMdictSnapshot(metadata, index) {
     sourceSize: metadata.sourceSize,
     indexSize: metadata.indexSize,
     indexSha256: metadata.indexSha256,
+    indexPath: RICH_MDICT_INDEX_PATH,
+    indexSchemaVersion: index.schemaVersion,
     entryCount: index.entryCount,
     title: clampText(index.header.title || metadata.title, 200),
     fileName: metadata.fileName,
@@ -312,8 +322,16 @@ export async function sha256(bytes, cryptoProvider) {
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+export function richMdictIndexPath(snapshot) {
+  const path = snapshot.indexPath === undefined ? RICH_MDICT_INDEX_PATH : snapshot.indexPath;
+  if (![RICH_MDICT_INDEX_PATH, RICH_MDICT_NORMALIZED_INDEX_PATH].includes(path)) {
+    throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index path is invalid.");
+  }
+  return path;
+}
+
 export function cacheKey(snapshot) {
-  return `${snapshot.packId}@${snapshot.packVersion}@${snapshot.indexSha256}`;
+  return `${snapshot.packId}@${snapshot.packVersion}@${richMdictIndexPath(snapshot)}@${snapshot.indexSchemaVersion ?? 1}@${snapshot.indexSha256}`;
 }
 
 export function clampText(value, limit) {

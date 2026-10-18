@@ -25,6 +25,7 @@ type Server struct {
 	Input        io.Reader
 	Output       io.Writer
 	StartupError error
+	HostVersion  string
 	MaxFrame     uint32
 	MaxActive    int
 	MaxControls  int
@@ -82,6 +83,7 @@ func NewServer(backend contract.Backend, input io.Reader, output io.Writer) *Ser
 		MaxFrame:    MaxFrameBytes,
 		MaxActive:   defaultMaxRequests,
 		MaxControls: defaultMaxControls,
+		HostVersion: "dev",
 		active:      make(map[string]*operation),
 	}
 }
@@ -271,6 +273,7 @@ func (s *Server) dispatch(ctx context.Context, op *operation, req request) {
 		}
 		success(map[string]any{
 			"protocolVersion": 1,
+			"hostVersion":     s.HostVersion,
 			"maxFrameBytes":   s.MaxFrame,
 			"capabilities":    []string{"auth.status", "auth.start", "auth.select", "auth.logout", "models.list", "infer.start", "cancel"},
 		})

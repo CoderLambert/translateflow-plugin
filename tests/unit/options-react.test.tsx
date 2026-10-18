@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection } from "../../src/options/CommonSections";
 import { ChatGPTPlanSection, chatGPTSignInActionDisabled } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
+import { ProviderConnectionsSection } from "../../src/options/ProviderConnectionsSection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
 import { LocaleProvider } from "../../src/options/LocaleContext";
 import { useLocale } from "../../src/options/useLocale";
@@ -22,8 +23,26 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const zh = createI18n({ uiLocale: "zh_CN" });
+const en = createI18n({ uiLocale: "en" });
 function LocaleControl() { const locale = useLocale(); return <UiLocaleSection {...locale} />; }
 function zhNode(node: React.ReactNode) { return <LocaleProvider value={zh}>{node}</LocaleProvider>; }
+
+test("provider connection test feedback stays visible in the tested card", async () => {
+  let finish: ((value: string) => void) | undefined;
+  const testProviderConnection = vi.fn(() => new Promise<string>((resolve) => { finish = resolve; }));
+  const connection = { id: "local", revision: 1, name: "LM Studio HY-MT2", platform: "local", protocol: "openai-chat",
+    baseUrl: "http://localhost:1234/v1", credentialId: "local", defaultModel: "hy-mt2-7b", hasApiKey: false,
+    settings: { streaming: true, outputTokens: 4096, temperature: null, reasoning: "", allowEmptyApiKey: true, allowInsecureHttp: true } };
+  render(zhNode(<ProviderConnectionsSection client={{ testProviderConnection, saveProviderConnection: vi.fn(),
+    deleteProviderConnection: vi.fn(), setDefaultService: vi.fn() } as any} state={{ version: 1,
+    defaultService: { kind: "api-key", connectionId: "local" }, connections: [connection] } as any}
+    loading={false} error="" disabled={false} reload={vi.fn()} setStatus={vi.fn()} />));
+
+  await userEvent.click(screen.getByRole("button", { name: "测试" }));
+  expect(screen.getByRole("status").textContent).toContain("正在测试 LM Studio HY-MT2");
+  finish?.("OK");
+  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("模型返回：OK"));
+});
 
 test("general React controls keep values controlled without writing from render", async () => {
   const update = vi.fn(); render(zhNode(<GeneralSection config={config} disabled={false} update={update} />));
@@ -43,7 +62,7 @@ test("ChatGPT settings load host models on demand and keep sign-in gated by a tr
   render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={update} client={client} />));
 
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
-  await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
+  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
   await screen.findByText("已连接 · 安全存储：fixture-store");
   expect(screen.getByRole("option", { name: /Fixture model · fixture-model/ })).toBeTruthy();
   await userEvent.selectOptions(screen.getByLabelText("模型"), "fixture-model");
@@ -55,9 +74,52 @@ test("ChatGPT settings load host models on demand and keep sign-in gated by a tr
 
 test("ChatGPT settings explain when Native Messaging permission is unavailable", async () => {
   const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("permission"), { code: "NATIVE_MESSAGING_PERMISSION" }); });
-  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
-  await userEvent.click(screen.getByRole("button", { name: "检查状态并加载模型" }));
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction,
+    hasChatGPTPlanPermission: vi.fn(async () => true), requestChatGPTPlanPermission: vi.fn(async () => true) } as any} />));
+  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
   expect(await screen.findByText(/Native Messaging 权限不可用/u)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "启用本地连接" })).toBeTruthy();
+});
+
+test("ChatGPT settings request optional local-app access only from the enable button", async () => {
+  const chatGPTPlanAction = vi.fn();
+  const requestChatGPTPlanPermission = vi.fn(async () => false);
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+    chatGPTPlanAction,
+    hasChatGPTPlanPermission: vi.fn(async () => false),
+    requestChatGPTPlanPermission
+  } as any} />));
+  const enable = await screen.findByRole("button", { name: "启用本地连接" });
+  expect(chatGPTPlanAction).not.toHaveBeenCalled();
+  await userEvent.click(enable);
+  expect(requestChatGPTPlanPermission).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText(/未授予本地应用连接权限/u)).toBeTruthy();
+  expect(chatGPTPlanAction).not.toHaveBeenCalled();
+});
+
+test("ChatGPT settings link host installation and update failures to the maintained release page", async () => {
+  const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "NATIVE_HOST_UNAVAILABLE" }); });
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+    chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
+  } as any} />));
+  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
+  const download = await screen.findByRole("link", { name: "下载 TranslateFlow 本地组件" });
+  expect(download.getAttribute("href")).toBe("https://github.com/CoderLambert/translateflow-plugin/releases/latest");
+  expect(screen.queryByRole("button", { name: "连接 ChatGPT 账号" })).toBeNull();
+  expect(screen.getByRole("button", { name: "已经安装 · 重新检测" })).toBeTruthy();
+});
+
+test("ChatGPT settings restart the local component and reload models from the fresh connection", async () => {
+  const chatGPTPlanAction = vi.fn(async (action: string) => {
+    if (action === "restart") return { restarted: true, status: { connected: true, canInfer: true, storage: "fixture-store", accounts: [] } };
+    if (action === "models") return { models: [{ slug: "fixture-model", displayName: "Fixture model" }] };
+    throw new Error(`Unexpected action: ${action}`);
+  });
+  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{ chatGPTPlanAction } as any} />));
+  await userEvent.click(screen.getByRole("button", { name: "重启本地组件" }));
+  expect(await screen.findByText("本地组件已重启 · 安全存储：fixture-store")).toBeTruthy();
+  expect(screen.getByRole("option", { name: /Fixture model · fixture-model/u })).toBeTruthy();
+  expect(chatGPTPlanAction.mock.calls.map(([action]) => action)).toEqual(["restart", "models"]);
 });
 
 test("ChatGPT sign-in keeps an explicit retry action while authorization is pending", () => {
@@ -124,6 +186,18 @@ test("settings persist a separate ChatGPT model without requesting an API-origin
   expect(requestPermission).not.toHaveBeenCalled();
 });
 
+test("options client grants nativeMessaging only after an explicit request", async () => {
+  const contains = vi.fn(async () => false), request = vi.fn(async () => true);
+  const api = { i18n: { getUILanguage: () => "en" }, storage: { local: { get, set } },
+    runtime: { getManifest: () => ({ version: "fixture", permissions: [], optional_permissions: ["nativeMessaging"] }), sendMessage: vi.fn() },
+    permissions: { contains, request } };
+  const client = optionsClient(api as any, zh);
+  expect(await client.hasChatGPTPlanPermission()).toBe(false);
+  expect(request).not.toHaveBeenCalled();
+  expect(await client.requestChatGPTPlanPermission()).toBe(true);
+  expect(request).toHaveBeenCalledWith({ permissions: ["nativeMessaging"] });
+});
+
 test("UI locale StrictMode deduplicates its initial read and writes only after interaction", async () => {
   render(<StrictMode><LocaleControl /></StrictMode>);
   const select = await screen.findByLabelText("Interface language");
@@ -132,24 +206,59 @@ test("UI locale StrictMode deduplicates its initial read and writes only after i
   await waitFor(() => expect(set).toHaveBeenCalledWith({ uiLocale: "zh_CN" }));
 });
 
-test("Glossary React controls cover save, scope, case, enable, edit and delete", async () => {
+test("preferred translations explain their behavior and preserve save, scope, case, enable, edit and delete", async () => {
   const first: GlossaryRow = { scope: "global", origin: "", entry: { id: "term-1", source: "repository", target: "仓库", caseSensitive: false, enabled: true } };
   const rows = vi.fn(async () => [first]);
   const save = vi.fn(async () => [{ ...first, entry: { ...first.entry, target: "代码仓库", caseSensitive: true } }]);
-  const setEnabled = vi.fn(async () => [{ ...first, entry: { ...first.entry, enabled: false } }]);
+  const setEnabled = vi.fn(async (_row: GlossaryRow, enabled: boolean) => [{ ...first, entry: { ...first.entry, enabled } }]);
   const remove = vi.fn(async () => []);
   const client = { rows, save, setEnabled, remove } as GlossaryClient;
   const status = vi.fn();
   render(<StrictMode>{zhNode(<GlossarySection client={client} setStatus={status} />)}</StrictMode>);
   await screen.findByText(/repository → 仓库/u);
+  expect(screen.getByRole("heading", { name: "自定义译法" })).toBeTruthy();
+  expect(screen.getByText(/网页和字幕翻译、划词查词都会使用这里的译法/u)).toBeTruthy();
+  expect(screen.getByText("例如：repository → 仓库，pull request → 拉取请求。")).toBeTruthy();
+  await userEvent.selectOptions(screen.getByLabelText("应用范围"), "site");
+  expect(screen.getByText(/填写完整网站地址，例如 https:\/\/github\.com/u)).toBeTruthy();
+  expect((screen.getByLabelText("网站地址") as HTMLInputElement).disabled).toBe(false);
+  await userEvent.selectOptions(screen.getByLabelText("应用范围"), "global");
   await userEvent.click(screen.getByRole("button", { name: "编辑" }));
-  const target = screen.getByLabelText("目标译法");
+  const target = screen.getByLabelText("希望译成");
   await userEvent.clear(target); await userEvent.type(target, "代码仓库");
-  await userEvent.click(screen.getByLabelText("区分大小写"));
-  await userEvent.click(screen.getByRole("button", { name: "保存术语" }));
+  await userEvent.click(screen.getByLabelText(/区分大小写/u));
+  await userEvent.click(screen.getByRole("button", { name: "保存自定义译法" }));
   await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: "term-1", target: "代码仓库", caseSensitive: true })));
+  expect(status).toHaveBeenCalledWith("已保存。之后的翻译和划词查词会优先使用这条译法。");
   await userEvent.click(screen.getByRole("button", { name: "停用" }));
   await waitFor(() => expect(setEnabled).toHaveBeenCalledWith(expect.objectContaining({ entry: expect.objectContaining({ id: "term-1" }) }), false));
+  await userEvent.click(screen.getByRole("button", { name: "启用" }));
+  await waitFor(() => expect(setEnabled).toHaveBeenLastCalledWith(expect.objectContaining({ entry: expect.objectContaining({ id: "term-1" }) }), true));
   await userEvent.click(screen.getByRole("button", { name: "删除" }));
   await waitFor(() => expect(remove).toHaveBeenCalled());
+});
+
+test("preferred translations provide complete matching English copy and an instructive empty state", async () => {
+  const client = { rows: vi.fn(async () => []), save: vi.fn(), setEnabled: vi.fn(), remove: vi.fn() } as unknown as GlossaryClient;
+  const view = render(<LocaleProvider value={zh}><GlossarySection client={client} setStatus={vi.fn()} /></LocaleProvider>);
+  expect(await screen.findByRole("heading", { name: "自定义译法" })).toBeTruthy();
+  view.rerender(<LocaleProvider value={en}><GlossarySection client={client} setStatus={vi.fn()} /></LocaleProvider>);
+  expect(await screen.findByRole("heading", { name: "Preferred translations" })).toBeTruthy();
+  expect(screen.getByText(/web pages, subtitles and selected-word lookups/u)).toBeTruthy();
+  expect(screen.getByText("For example: repository → 仓库, pull request → 拉取请求.")).toBeTruthy();
+  expect(screen.getByLabelText("Apply to")).toBeTruthy();
+  expect(screen.getByLabelText("Original word or phrase")).toBeTruthy();
+  expect(screen.getByLabelText("Translate it as")).toBeTruthy();
+  expect(screen.getByText(/You have not added any preferred translations yet/u)).toBeTruthy();
+  await userEvent.selectOptions(screen.getByLabelText("Apply to"), "site");
+  expect(screen.getByText(/Enter the full website address, such as https:\/\/github\.com/u)).toBeTruthy();
+});
+test("selected-word browser definitions default on and source preference changes through the existing settings owner", async () => {
+  const update = vi.fn();
+  render(<LocaleProvider value={zh}><GeneralSection config={config} disabled={false} update={update} /></LocaleProvider>);
+  const enabled = screen.getByLabelText("启用划词浏览器释义") as HTMLInputElement;
+  expect(enabled.checked).toBe(true);
+  await userEvent.click(enabled); expect(update).toHaveBeenCalledWith({ browserTranslationEnabled: false });
+  await userEvent.selectOptions(screen.getByLabelText("划词释义源语言"), "fr");
+  expect(update).toHaveBeenCalledWith({ browserSourceLanguage: "fr" });
 });

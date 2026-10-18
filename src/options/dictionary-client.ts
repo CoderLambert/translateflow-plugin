@@ -1,3 +1,5 @@
+import { preflightRichAttachments } from "../background/packs/local-dictionary-preflight-attachments.js";
+import { resolveAssociatedRichResourceFiles, formatBytes as formatByteProgress } from "./local-dictionary-import-presentation.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 import { CURATED_IMPORTER_TYPES } from "../shared/curated-dictionaries.js";
 import { getCatalogPermissionOrigins, makeInstalledCatalogMetadata } from "../shared/dictionary-catalog-v2.js";
@@ -14,7 +16,6 @@ import { CURATED_ECDICT_MDX_WORKER_MESSAGES } from "./workers/curated-ecdict-mdx
 export type DictionaryRecord = Record<string, any>;
 export type PackState = { packs: Record<string, DictionaryRecord> };
 export type DictionarySnapshot = {
-  bundled: DictionaryRecord[];
   packState: PackState;
   rich: DictionaryRecord[];
 };
@@ -47,19 +48,17 @@ export function dictionaryClient({
     commitRequestId: string;
     richController: ImportController | null;
   } = null;
+  let attachmentPreflightAbort: AbortController | null = null;
   let activeMdd: ImportController | null = null;
 
   async function load(): Promise<DictionarySnapshot> {
-    const [bundled, packs, rich] = await Promise.all([
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS }),
+    const [packs, rich] = await Promise.all([
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }),
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })
     ]);
-    if (!bundled?.ok) throw new Error(bundled?.error || "读取内置词典状态失败。");
     if (!packs?.ok) throw new Error(packs?.error || "读取已安装词典状态失败。");
     if (!rich?.ok) throw new Error(rich?.error || "读取富文本词典状态失败。");
     return {
-      bundled: Array.isArray(bundled.packs) ? bundled.packs : [],
       packState: packs.state && typeof packs.state === "object" ? packs.state : { packs: {} },
       rich: Array.isArray(rich.dictionaries) ? rich.dictionaries : []
     };
@@ -88,17 +87,34 @@ export function dictionaryClient({
     if (activeMdd) throw new Error("另一组 MDD 附件正在处理中。");
     const controller = makeMddController({
       runtime, WorkerCtor, cryptoProvider,
-      onProgress(event: { phase?: string }) { onProgress(resourceProgressLabel(event.phase)); }
+      onProgress(event: { phase?: string; bytesWritten?: number; fileBytes?: number; completedBytes?: number; totalBytes?: number }) {
+        const bytes = Number.isSafeInteger(event.bytesWritten) && Number.isSafeInteger(event.fileBytes)
+          ? ` · ${formatByteProgress(event.bytesWritten)} / ${formatByteProgress(event.fileBytes)}` : "";
+        const overall = Number.isSafeInteger(event.completedBytes) && Number.isSafeInteger(event.totalBytes)
+          ? ` · ${formatByteProgress(event.completedBytes)} / ${formatByteProgress(event.totalBytes)} 选定源文件` : "";
+        onProgress(resourceProgressLabel(event.phase) + bytes + overall);
+      }
     });
     activeMdd = controller;
     try {
-      return await controller.attachResources({ dictionaryId: dictionary.id, mdxFileName: dictionary.fileName, files });
+      const abort = new AbortController(); attachmentPreflightAbort = abort;
+      const report = await preflightRichAttachments({ files, mdxFileName: dictionary.fileName, signal: abort.signal });
+      if (abort.signal.aborted) throw new DOMException("Resource selection cancelled.", "AbortError");
+      if (report.compatibility.status !== "supported" || report.resources.unassociatedFiles.length) throw new Error("请重新选择完整的同名 MDD 与合法资源文件；未知文件不能导入。");
+      const selected = resolveAssociatedRichResourceFiles(report.resources.associatedMdd, report.resources.associatedSidecars, files);
+      if (!selected || !selected.mddFiles.length) throw new Error("请选择至少一个匹配的 MDD 附件。");
+      if (report.resources.ignoredFiles.length) onProgress("脚本已忽略，不执行。");
+      attachmentPreflightAbort = null;
+      const result = await controller.attachResources({ dictionaryId: dictionary.id, mdxFileName: dictionary.fileName,
+        mdxSourceBytes: dictionary.sourceSize, expectedMdxVersion: dictionary.packVersion, files: selected.mddFiles, sidecars: selected.sidecars });
+      return { ...result, ignoredFiles: report.resources.ignoredFiles };
     } finally {
+      attachmentPreflightAbort = null;
       controller.dispose();
       if (activeMdd === controller) activeMdd = null;
     }
   }
-  async function cancelMdd() { return activeMdd?.cancel() || { cancelled: false, phase: "" }; }
+  async function cancelMdd() { if (attachmentPreflightAbort) { attachmentPreflightAbort.abort(); return { cancelled: true, phase: "preflight" }; } return activeMdd?.cancel() || { cancelled: false, phase: "" }; }
 
   async function installOfficial(source: DictionaryRecord, pack: DictionaryRecord) {
     const granted = await requestDictionaryPackOriginPermission(source, permissions);
@@ -133,7 +149,7 @@ export function dictionaryClient({
       activeCurated.phase = "commit";
       activeCurated.commitRequestId = makeRequestId("curated-commit", cryptoProvider);
       onProgress("正在保存并进行后台完整性验证…");
-      return await requireOk(runtime.sendMessage({
+      const committed = await requireOk(runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_LOCAL_IMPORT_COMMIT,
         token: ready.token,
         requestId: activeCurated.commitRequestId,
@@ -143,6 +159,7 @@ export function dictionaryClient({
           licenseLabel: source.sourceLicenseLabel, catalog: makeInstalledCatalogMetadata(source)
         }
       }), "精选词典激活失败。");
+      return { ...committed, stats: ready.stats };
     } finally {
       activeCurated?.worker?.terminate();
       if (activeCurated?.requestId === requestId) activeCurated = null;
@@ -150,13 +167,13 @@ export function dictionaryClient({
   }
 
   async function installCuratedMdx(source: DictionaryRecord, existing: DictionaryRecord | null, onProgress: ProgressWriter) {
-    const origins = getCatalogPermissionOrigins(source);
-    const granted = await permissions.request({ origins });
-    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
     const requestId = makeRequestId("curated", cryptoProvider);
-    const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
-    activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
     try {
+      const origins = getCatalogPermissionOrigins(source);
+      const granted = await permissions.request({ origins });
+      if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
+      const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
+      activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
       onProgress("正在连接已审核的上游词典…");
       const ready = await waitForWorker(worker, requestId, CURATED_ECDICT_MDX_WORKER_MESSAGES, message => onProgress(describeCuratedMdxProgress(message, source)), source.id);
       if (!activeCurated || activeCurated.requestId !== requestId) throw abortError();
@@ -177,9 +194,11 @@ export function dictionaryClient({
       if ((error as Error).name === "AbortError") throw error;
       throw new Error(getCuratedMdxErrorMessage(error, activeCurated?.phase));
     } finally {
-      activeCurated?.worker?.terminate();
-      activeCurated?.richController?.dispose();
-      if (activeCurated?.requestId === requestId) activeCurated = null;
+      if (activeCurated?.requestId === requestId) {
+        activeCurated.worker?.terminate();
+        activeCurated.richController?.dispose();
+        activeCurated = null;
+      }
     }
   }
 

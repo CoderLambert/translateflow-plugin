@@ -10,6 +10,7 @@ const RESOURCE_PATH_SOURCE = new URL("../src/content/selection/rich-resource-pat
 
 function sanitizer() {
   const context = vm.createContext({});
+  for (const file of ["rich-controls.js", "rich-sanitizer-tags.js"]) vm.runInContext(readFileSync(new URL(`../src/content/selection/${file}`, import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(RESOURCE_PATH_SOURCE, "utf8"), context, { filename: "rich-resource-path.js" });
   vm.runInContext(readFileSync(STYLE_SOURCE, "utf8"), context, { filename: "rich-sanitizer-style.js" });
   vm.runInContext(readFileSync(TOKENIZER_SOURCE, "utf8"), context, { filename: "rich-sanitizer-tokenizer.js" });
@@ -108,6 +109,9 @@ test("Oxford pronunciation labels replace only matching icons beside local audio
     format: "HTML",
     rawRecord: '<div class="o-pron-chunk o-pron-BrE"><img src="img/voicebre.svg"><a href="sound://audio/word/entry_br.mp3"></a></div>' +
       '<div class="o-pron-chunk o-pron-NAmE"><img src="img/voicenam.svg"><a href="sound://audio/word/entry_us.mp3"></a></div>' +
+      '<div class="o-pron-chunk o-pron-BrE"><img src="img/vendor-speaker.svg" alt="英音发音"><a href="sound://audio/word/entry_br_alt.mp3"></a></div>' +
+      '<div><a href="sound://audio/example_br.mp3"><img src="img/example-speaker.svg" alt="英音发音"></a></div>' +
+      '<div><a href="sound://audio/example_us.mp3"><img src="img/example-speaker.svg" alt="美音发音"></a></div>' +
       '<div class="o-example-eng"><img src="img/voicebre.svg"></div>' +
       '<div class="o-pron-chunk o-pron-BrE"><img src="img/voicebre.svg">no audio</div>'
   });
@@ -117,13 +121,32 @@ test("Oxford pronunciation labels replace only matching icons beside local audio
     if (node.type === "element" && node.attrs?.["data-rich-pronunciation"]) pronunciationLabels.push(node.attrs["data-rich-pronunciation"]);
     if (node.type === "resource") resources.push(node);
   });
-  assert.deepEqual(pronunciationLabels, ["british", "american"]);
+  assert.deepEqual(pronunciationLabels, []);
   assert.deepEqual(resources.filter((node) => node.kind === "audio").map((node) => node.path), [
-    "audio/word/entry_br.mp3", "audio/word/entry_us.mp3"
+    "audio/word/entry_br.mp3", "audio/word/entry_us.mp3", "audio/word/entry_br_alt.mp3",
+    "audio/example_br.mp3", "audio/example_us.mp3"
+  ]);
+  assert.deepEqual(resources.filter((node) => node.kind === "audio").map((node) => node.presentation), [
+    "pronunciation-british", "pronunciation-american", "pronunciation-british",
+    "pronunciation-british", "pronunciation-american"
   ]);
   assert.deepEqual(resources.filter((node) => node.kind === "image").map((node) => node.path), [
     "img/voicebre.svg", "img/voicebre.svg"
   ]);
+});
+
+test("safe dictionary disclosures preserve details and summary structure", () => {
+  const result = sanitizer().sanitizeRichDictionaryRecord({
+    format: "HTML",
+    rawRecord: '<details class="o-unbox-panel" open onclick="alert(1)"><summary class="o-unbox-tile"><span class="o-unbox-tile-title">More about</span></summary><div class="o-unbox-body">Supplement</div></details>'
+  });
+  const elements = [];
+  walk(result.nodes, (node) => { if (node.type === "element") elements.push(node); });
+  assert.deepEqual(elements.map((node) => node.tag), ["details", "summary", "span", "div"]);
+  assert.equal(elements[0].attrs.class, "o-unbox-panel");
+  assert.equal(Object.hasOwn(elements[0].attrs, "open"), false);
+  assert.equal(Object.hasOwn(elements[0].attrs, "onclick"), false);
+  assert.equal(textContent(result.nodes), "More aboutSupplement");
 });
 
 test("actual ECDICT compact stylesheet rules safely wrap each following segment", () => {
@@ -280,4 +303,77 @@ test("unknown compact ids stay literal and invalid stylesheet data cannot expand
     styleSheetRules: [{ id: 1, begin: "<script>", end: "</script>" }, { id: 1, begin: "<b>", end: "</b>" }]
   });
   assert.equal(textContent(invalid.nodes), "`1`entry");
+});
+
+
+test("sanitizer reports complete frozen metrics for compact expansion, placeholders and every fallback", () => {
+  const module = sanitizer();
+  const inputs = [
+    { format: "Text", rawRecord: "plain text" },
+    { rawRecord: "`1`entry", styleSheetRules: [{ id: 1, begin: "<b>", end: "</b>" }] },
+    { rawRecord: '<img src="local.png"><a href="sound://local.wav">audio</a>' },
+    { rawRecord: "before <b title='unterminated>after" },
+    { rawRecord: "x".repeat(3 * 1024 * 1024) },
+    { rawRecord: { toString() { throw new Error("synthetic coercion failure"); } } }
+  ];
+  for (const input of inputs) {
+    const result = module.sanitizeRichDictionaryRecord(input);
+    assert.ok(Object.isFrozen(result.metrics));
+    assert.equal(result.metrics.nodes, countNodes(result.nodes));
+    let resources = 0;
+    walk(result.nodes, (node) => { if (node.type === "resource") resources += 1; });
+    assert.equal(result.metrics.resources, resources);
+    assert.ok(Number.isSafeInteger(result.metrics.expandedBytes));
+    assert.ok(result.metrics.expandedBytes >= 0 && result.metrics.expandedBytes <= module.limits.expandedBytes);
+  }
+  assert.ok(module.sanitizeRichDictionaryRecord(inputs[1]).metrics.expandedBytes > Buffer.byteLength(inputs[1].rawRecord));
+  assert.equal(module.sanitizeRichDictionaryRecord(inputs[2]).metrics.resources, 2);
+});
+
+test("resource metrics count canonical kind/path descriptors while every repeated reference remains a node", () => {
+  const module = sanitizer();
+  const rawRecord = '<link rel="stylesheet" href="state.css">' + '<img src="images/same.png"><audio src="audio/same.wav"/>'.repeat(1100) + '<p>REPEATED RESOURCE TAIL</p>';
+  const result = module.sanitizeRichDictionaryRecord({ rawRecord, format: "HTML" });
+  assert.equal(result.truncated, false);
+  assert.equal(result.metrics.resources, 3);
+  assert.equal(result.metrics.nodes, countNodes(result.nodes));
+  assert.ok(result.metrics.nodes > 2200);
+  let references = 0;
+  walk(result.nodes, (node) => { if (node.type === "resource") references += 1; });
+  assert.equal(references, 2201);
+  assert.match(textContent(result.nodes), /REPEATED RESOURCE TAIL/u);
+
+  const unique = module.sanitizeRichDictionaryRecord({ rawRecord: Array.from({ length: 1025 }, (_, index) => `<img src="images/${index}.png">`).join(''), format: "HTML" });
+  assert.equal(unique.truncated, true);
+  assert.equal(unique.metrics.resources, 1024);
+  assert.ok(countNodes(unique.nodes) >= 1024);
+});
+
+test("descriptor metrics preserve ordinary and two pronunciation presentations of the same audio path", () => {
+  const module = sanitizer();
+  const ordinary = '<audio src="audio/shared.wav"/>';
+  const british = '<span class="o-pron-chunk o-pron-BrE">' + ordinary + '</span>';
+  const american = '<span class="o-pron-chunk o-pron-NAmE">' + ordinary + '</span>';
+  const result = module.sanitizeRichDictionaryRecord({ rawRecord: (ordinary + british + american).repeat(400) + '<p>ALL PRESENTATIONS TAIL</p>' });
+  assert.equal(result.truncated, false);
+  assert.equal(result.metrics.resources, 3);
+  let occurrences = 0;
+  walk(result.nodes, (node) => { if (node.type === "resource") occurrences += 1; });
+  assert.equal(occurrences, 1200);
+  assert.equal(result.metrics.nodes, countNodes(result.nodes));
+  assert.match(textContent(result.nodes), /ALL PRESENTATIONS TAIL/u);
+});
+
+test("canonical descriptor identity filters hostile paths and folds only unrecognized presentations to ordinary", () => {
+  const context = vm.createContext({});
+  vm.runInContext(readFileSync(RESOURCE_PATH_SOURCE, "utf8"), context);
+  const api = context.__TRANSLATE_FLOW_CONTENT__.modules.richResourcePath;
+  const ordinary = api.descriptorKey("audio", "audio/shared.wav");
+  assert.equal(api.descriptorKey("audio", "audio/shared.wav", "unknown"), ordinary);
+  assert.notEqual(api.descriptorKey("audio", "audio/shared.wav", "pronunciation-british"), ordinary);
+  assert.notEqual(api.descriptorKey("audio", "audio/shared.wav", "pronunciation-american"), ordinary);
+  assert.equal(api.descriptorKey("image", "images/plain.png", "oxford-opposition"), api.descriptorKey("image", "images/plain.png"));
+  assert.notEqual(api.descriptorKey("image", "img/OPP.png", "oxford-opposition"), api.descriptorKey("image", "img/OPP.png"));
+  for (const path of ["https://attacker.invalid/x.png", "../secret.png", "/images/same.png", "images%2fsame.png", "images\\same.png"]) assert.equal(api.descriptorKey("image", path), "");
+  assert.equal(api.descriptorKey("script", "images/same.png"), "");
 });

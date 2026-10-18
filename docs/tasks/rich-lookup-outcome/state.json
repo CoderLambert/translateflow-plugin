@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "task": "rich-lookup-outcome",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "main",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-outcome-20261013",
+  "candidateHead": "96758226c69990d6f10f590ba98849de1d7d8615",
+  "mergeHead": "f1d655c30299286ca454f6a030d2d52d988a0c08",
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/selection-multi-dictionary.test.mjs",
+      "tests/multi-dictionary-viewer.test.mjs",
+      "tests/selection-rich-outcome.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/multi-dictionary-viewer.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "e2e/rich-viewer-security.spec.mjs",
+      "e2e/mdd-resources.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "已合入且合后main Node26 / multi-dictionary E2E6/6 PASS；继续#270 Stripkey与派生索引兼容。",
+  "pullRequest": 326,
+  "syncHead": "ce3dad985643e3101f6437e21c51f73064827380"
+}

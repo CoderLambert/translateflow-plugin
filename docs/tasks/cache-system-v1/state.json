@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "task": "cache-system-v1",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/independent-cache-system-20261018",
+  "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+  "mergeHead": "349321a079544a51834de1b3173f1fc653220e6d",
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/cache-system.test.mjs",
+      "tests/cache-system-domains.test.mjs",
+      "tests/cache-system-review.test.mjs",
+      "tests/cache-system-integration-review.test.mjs",
+      "tests/cache-system-auto-feedback.test.mjs",
+      "tests/cache-system-persistence-failure.test.mjs",
+      "tests/native-client.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-native.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-mv3.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/wxt-upgrade.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=1",
+      "--retries=0",
+      "--reporter=line,json",
+      "--output=docs/task-execution/local/pr345-final/test-results"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/local-task.test.mjs",
+      "tests/versioned-commit.test.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "PR #345 已按用户授权 squash 合入 main，并核对 main tree 与准确 syncHead 完全相同。全部任务要求与用户人工验收已满足。此完成记录依仓库流程留本地，随后续授权同步；不为状态归档重复测试或另建提交，不继续其它翻译功能。",
+  "syncHead": "abcd476ae496cd3fd6ba973196903ab045776ac5"
+}

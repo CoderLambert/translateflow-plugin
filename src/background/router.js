@@ -1,23 +1,10 @@
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { handleCacheMessage } from "./cache/message-handler.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
-import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
-import {
-  clearAllCache,
-  clearPageCache,
-  getCacheStats,
-  getPageCacheStatus,
-  lookupTranslations,
-  pruneCache,
-  storeTranslations
-} from "./cache-db.js";
-import {
-  getConfig,
-  getEffectiveConfig,
-  getEffectiveContext,
-  saveSiteAppearance,
-  saveSitePreset
-} from "./config.js";
+import { BACKGROUND_MESSAGES } from "../shared/constants.js";
+import { translationEngineSettings } from "./browser-translation.js";
+import { getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
   hideQuickControlSite,
   registerAutoSite,
@@ -30,11 +17,15 @@ import {
 } from "./auto-sites.js";
 import { setTemporaryPresetOverride } from "./preset-session.js";
 import { testProvider } from "./providers/index.js";
+import { deleteProviderConnection, listProviderConnections, setDefaultService, upsertProviderConnection } from "./provider-connections.js";
+import { testSavedProviderConnection } from "./provider-connection-runtime.js";
+import { readPublicSettings, writePublicSettings } from "./public-settings.js";
+import { resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
-import { getBundledLexiconStatus, runLexicalLookup } from "./lexical/index.js";
+import { runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
 import { handleVocabularyBookMessage } from "./vocabulary-book-router.js";
 import {
@@ -67,7 +58,6 @@ import {
   uninstallRichMdictDictionary,
   uninstallDictionaryPack
 } from "./packs/api.js";
-
 export function registerMessageRouter() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (isReadingMessage(message)) {
@@ -90,11 +80,15 @@ export function registerMessageRouter() {
 
 export async function handleBackgroundMessage(message, sender) {
   switch (message?.type) {
+    case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
+      return translationEngineSettings(message.pageUrl, { forceBrowser: message.forceBrowser === true, surface: message.surface });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await getEffectiveConfig(message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
       return {
         translations: await runTranslationRequest({
           requestId: message.requestId,
+          pageUrl: message.pageUrl, ownerTabId: sender?.tab?.id,
           segments: message.segments,
           config
         }),
@@ -117,6 +111,22 @@ export async function handleBackgroundMessage(message, sender) {
       const config = await getEffectiveConfig(message.pageUrl || "");
       return { result: await testProvider(config) };
     }
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTIONS_LIST:
+      assertOptionsSender(sender); return listProviderConnections();
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_UPSERT:
+      assertOptionsSender(sender); return upsertProviderConnection(message);
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_DELETE:
+      assertOptionsSender(sender); return deleteProviderConnection(message.connectionId, message.expectedRevision);
+    case BACKGROUND_MESSAGES.DEFAULT_SERVICE_SET:
+      assertOptionsSender(sender); return setDefaultService(message.service);
+    case BACKGROUND_MESSAGES.PROVIDER_CONNECTION_TEST: {
+      assertOptionsSender(sender);
+      return testSavedProviderConnection(message.connectionId);
+    }
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_GET:
+      return { settings: await readPublicSettings() };
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET:
+      return writePublicSettings(message.settings);
     case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
       assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
@@ -141,37 +151,14 @@ export async function handleBackgroundMessage(message, sender) {
         sourceLanguage: message.sourceLanguage || "en",
         targetLanguage: message.targetLanguage || "zh-CN"
       });
-    case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
-      const config = await getEffectiveConfig(message.pageUrl);
-      const result = await lookupTranslations({
-        pageUrl: message.pageUrl,
-        segments: message.segments,
-        config
-      });
-      return { ...result, readingResult: await readingTranslationResult(config) };
-    }
+    case BACKGROUND_MESSAGES.CACHE_LOOKUP:
     case BACKGROUND_MESSAGES.CACHE_STORE:
-      return storeTranslations({
-        pageUrl: message.pageUrl,
-        pageTitle: message.pageTitle,
-        items: message.items,
-        config: await getEffectiveConfig(message.pageUrl)
-      });
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
-      return getPageCacheStatus({
-        pageUrl: message.pageUrl,
-        config: await getEffectiveConfig(message.pageUrl)
-      });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_PAGE:
-      return clearPageCache({ pageUrl: message.pageUrl });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_ALL:
-      return clearAllCache();
     case BACKGROUND_MESSAGES.CACHE_STATS:
-      return getCacheStats();
-    case BACKGROUND_MESSAGES.CACHE_PRUNE: {
-      const { cacheMaxMB } = await getConfig();
-      return pruneCache(Number(cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB) * 1024 * 1024);
-    }
+    case BACKGROUND_MESSAGES.CACHE_PRUNE:
+      return handleCacheMessage(message);
     case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_REGISTER:
       return registerCacheRestoreSite(message.origin);
     case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER:
@@ -191,7 +178,8 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE:
       return { context: await saveSiteAppearance(message.pageUrl, message.appearance) };
     case BACKGROUND_MESSAGES.OPEN_OPTIONS:
-      await chrome.runtime.openOptionsPage();
+      if (["#general", "#provider", "#dictionary-packs"].includes(message.hash)) await chrome.tabs.create({ url: chrome.runtime.getURL(`options.html${message.hash}`) });
+      else await chrome.runtime.openOptionsPage();
       return { opened: true };
     case BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT:
       return { context: await getEffectiveContext(message.pageUrl) };
@@ -202,8 +190,6 @@ export async function handleBackgroundMessage(message, sender) {
       return { context: await saveSitePreset(message.pageUrl, message.preset) };
     case BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL:
       return installYouTubeMainBridge(sender);
-    case BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS:
-      return getBundledLexiconStatus();
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS:
       assertOptionsSender(sender);
       return getDictionaryPackStatus({ recover: true });
@@ -241,13 +227,7 @@ export async function handleBackgroundMessage(message, sender) {
       return { ready: true };
     case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_COMMIT:
       assertOptionsSender(sender);
-      return commitRichMdictImport({
-        requestId: message.requestId,
-        packId: message.packId,
-        packVersion: message.packVersion,
-        metadata: message.metadata,
-        catalogReplacement: message.catalogReplacement
-      });
+      return commitRichMdictImport(message);
     case BACKGROUND_MESSAGES.RICH_MDICT_IMPORT_CANCEL:
       assertOptionsSender(sender);
       return cancelRichMdictImport(message.requestId);
@@ -278,7 +258,8 @@ export async function handleBackgroundMessage(message, sender) {
         return lookupRichMdictDictionaries({
           text: message.text,
           dictionaryId: message.dictionaryId,
-          requestId: message.requestId
+          requestId: message.requestId,
+          ...(message.expectedPackVersion !== undefined || message.expectedPackageVersion !== undefined ? { expectedPackVersion: message.expectedPackVersion, expectedPackageVersion: message.expectedPackageVersion } : {})
         }, selectionContentOwnerKey(sender, message));
       }
       return lookupRichMdictDictionaries(message.text);
@@ -296,23 +277,11 @@ export async function handleBackgroundMessage(message, sender) {
       }
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_PREFLIGHT:
       assertOptionsSender(sender);
-      return preflightRichMddResourceImport({
-        dictionaryId: message.dictionaryId,
-        requestId: message.requestId,
-        resourceVersion: message.resourceVersion,
-        mdxFileName: message.mdxFileName,
-        files: message.files,
-        sidecars: message.sidecars
-      });
+      return preflightRichMddResourceImport(message);
     case BACKGROUND_MESSAGES.RICH_MDD_RESOURCE_COMMIT:
       assertOptionsSender(sender);
       {
-        const result = await commitRichMddResourceImport({
-          dictionaryId: message.dictionaryId,
-          requestId: message.requestId,
-          resourceVersion: message.resourceVersion,
-          metadata: message.metadata
-        });
+        const result = await commitRichMddResourceImport(message);
         await notifyRichMddResourcesChanged(message.dictionaryId);
         return result;
       }
@@ -338,6 +307,7 @@ export async function handleBackgroundMessage(message, sender) {
       assertSelectionContentSender(sender);
       return cancelRichMddResourceLookup(message.requestId, selectionContentOwnerKey(sender, message));
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD:
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_OPEN:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_REVIEW:

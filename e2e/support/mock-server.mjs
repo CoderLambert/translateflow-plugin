@@ -10,6 +10,17 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
   let ecdictMdxArchiveMode = "archive";
   let ecdictMdxArchiveRequests = [];
   let customPages = new Map();
+  let nextAssistantStream = null;
+  const heldAssistantStreams = new Set();
+
+  function releaseAssistantStreams() {
+    nextAssistantStream = null;
+    for (const stream of heldAssistantStreams) {
+      stream.release();
+      stream.finish();
+    }
+    heldAssistantStreams.clear();
+  }
 
   const server = createServer(async (request, response) => {
     try {
@@ -64,6 +75,28 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         return;
       }
 
+      if (request.method === "POST" && isNativeProviderPath(url.pathname)) {
+        const body = JSON.parse(await readBody(request));
+        const native = nativeProviderInput(url.pathname, body);
+        const plannedStatus = Number(failures.shift() || 200);
+        const segments = parseSegments(native.userContent);
+        const call = providerCall({ request, plannedStatus, protocol: native.protocol,
+          systemPrompt: native.systemPrompt, userContent: native.userContent, segments });
+        calls.push(call);
+        trackResponseState(response, call);
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+        if (plannedStatus !== 200) {
+          json(response, plannedStatus, { error: { message: `mock failure ${plannedStatus}` } });
+          return;
+        }
+        const completionContent = native.systemPrompt.includes("Reply with exactly: OK")
+          ? "OK"
+          : JSON.stringify({ translations: segments.map(item => ({ id: item.id,
+              text: translateDeterministically(item.text, native.systemPrompt) })) });
+        json(response, 200, nativeProviderResponse(native.protocol, completionContent));
+        return;
+      }
+
       if (request.method === "POST" && url.pathname === "/v1/chat/completions") {
         const body = JSON.parse(await readBody(request));
         const systemPrompt = String(
@@ -84,6 +117,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
 
         const call = {
           plannedStatus,
+          model: String(body?.model || ""),
           systemPrompt,
           userContent,
           segments: segments.map((item) => ({
@@ -100,14 +134,6 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
 
         if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
-        if (body?.stream === true && systemPrompt.includes("Plain text only")) {
-          response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-          response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "streamed " } }] })}\n\n`);
-          await new Promise(resolve => setTimeout(resolve, 300));
-          if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "answer" } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
-          return;
-        }
-
         if (plannedStatus !== 200) {
           response.statusCode = plannedStatus;
           response.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -118,6 +144,31 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           return;
         }
 
+        if (body?.stream === true && systemPrompt.includes("Plain text only")) {
+          const heldStream = nextAssistantStream;
+          nextAssistantStream = null;
+          const markdown = userContent.includes("markdownfixture");
+          const chunks = markdown
+            ? ["## Summary\n\n**streamed** answer\n\n- first\n", "- second\n\n`code`\n\n![remote](https://remote.invalid/pixel.png)\n\n[unsafe](javascript:alert(1))"]
+            : ["streamed ", "answer"];
+          const onClose = () => heldStream?.release();
+          response.once("close", onClose);
+          try {
+            response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+            response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[0] } }] })}\n\n`);
+            heldStream?.start();
+            // Cancellation cases hold completion explicitly instead of racing
+            // several browser assertions against a short wall-clock delay.
+            await (heldStream?.wait || new Promise(resolve => setTimeout(resolve, 300)));
+            if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[1] } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
+          } finally {
+            response.off("close", onClose);
+            heldStream?.finish();
+            heldAssistantStreams.delete(heldStream);
+          }
+          return;
+        }
+
         const isConnectionTest = systemPrompt.includes("Reply with exactly: OK");
         const isSelectionExplain = systemPrompt.includes("Selection Explain");
         const isPlainAssistant = systemPrompt.includes("Plain text only");
@@ -125,7 +176,9 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
         if (isConnectionTest) {
           completionContent = "OK";
         } else if (isPlainAssistant) {
-          completionContent = "streamed answer";
+          completionContent = userContent.includes("markdownfixture")
+            ? "## Summary\n\n**streamed** answer\n\n- first\n- second\n\n`code`\n\n![remote](https://remote.invalid/pixel.png)\n\n[unsafe](javascript:alert(1))"
+            : "streamed answer";
         } else if (isSelectionExplain) {
           let explainPayload = {};
           try { explainPayload = JSON.parse(userContent); } catch {}
@@ -185,6 +238,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       return ecdictMdxArchiveRequests;
     },
     reset() {
+      releaseAssistantStreams();
       calls = [];
       failures = [];
       delayMs = 0;
@@ -198,6 +252,16 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
     setDelay(ms) {
       delayMs = Math.max(0, Number(ms) || 0);
     },
+    holdNextAssistantStream() {
+      if (nextAssistantStream) throw new Error("An assistant stream is already waiting for its request.");
+      let start, release, finish;
+      const started = new Promise(resolve => { start = resolve; });
+      const wait = new Promise(resolve => { release = resolve; });
+      const finished = new Promise(resolve => { finish = resolve; });
+      nextAssistantStream = { started, wait, finished, start, release, finish };
+      heldAssistantStreams.add(nextAssistantStream);
+      return { started, finished, release };
+    },
     setPage(pathname, body) {
       const path = new URL(String(pathname), "http://fixture.invalid").pathname;
       customPages.set(path, String(body));
@@ -209,6 +273,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       ecdictMdxArchiveMode = mode;
     },
     close() {
+      releaseAssistantStreams();
       return new Promise((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());
       });
@@ -239,6 +304,40 @@ function translateDeterministically(text, systemPrompt) {
   return `[${mode}|${glossary}] ${translated}`;
 }
 
+function isNativeProviderPath(pathname) {
+  return pathname === "/v1/responses" || pathname === "/v1/messages" || /\/models\/[^/]+:generateContent$/u.test(pathname);
+}
+
+function nativeProviderInput(pathname, body) {
+  if (pathname === "/v1/responses") return { protocol: "openai-responses", systemPrompt: String(body?.instructions || ""), userContent: String(body?.input || "") };
+  if (pathname === "/v1/messages") return { protocol: "anthropic-messages", systemPrompt: String(body?.system || ""), userContent: String(body?.messages?.[0]?.content || "") };
+  return { protocol: "gemini-generate", systemPrompt: String(body?.systemInstruction?.parts?.map(item => item?.text || "").join("") || ""), userContent: String(body?.contents?.[0]?.parts?.map(item => item?.text || "").join("") || "") };
+}
+
+function parseSegments(userContent) {
+  try {
+    const payload = JSON.parse(userContent);
+    return Array.isArray(payload?.segments) ? payload.segments.map(item => ({ id: String(item?.id || ""), text: String(item?.text || "") })) : [];
+  } catch { return []; }
+}
+
+function providerCall({ request, plannedStatus, protocol, systemPrompt, userContent, segments }) {
+  return { plannedStatus, protocol, systemPrompt, userContent, segments,
+    headers: { authorization: String(request.headers.authorization || ""), xApiKey: String(request.headers["x-api-key"] || ""), xGoogApiKey: String(request.headers["x-goog-api-key"] || "") },
+    responseState: "pending" };
+}
+
+function trackResponseState(response, call) {
+  response.once("finish", () => { call.responseState = "finished"; });
+  response.once("close", () => { if (!response.writableFinished) call.responseState = "closed"; });
+}
+
+function nativeProviderResponse(protocol, text) {
+  if (protocol === "openai-responses") return { output: [{ content: [{ type: "output_text", text }] }] };
+  if (protocol === "anthropic-messages") return { content: [{ type: "text", text }] };
+  return { candidates: [{ content: { parts: [{ text }] } }] };
+}
+
 function renderFixture(pathname) {
   const pages = {
     "/article": `
@@ -255,11 +354,14 @@ function renderFixture(pathname) {
       <p id="selectable">Selection translation should reuse the same provider configuration while keeping Selection v2 cache identity separate.</p>
       <p id="lexical-context"><span id="entity">tmux</span> is a <span id="lexical">terminal multiplexer</span> used to manage terminal sessions.</p>
       <p id="technical-competition-context">Open tmux in the terminal and attach to a <span id="technical-competition">session</span>.</p>
+      <p id="technical-competition-second-context">A second <span id="technical-competition-second">session</span> keeps another saved lookup on this page.</p>
       <p id="ambiguous-context">A <span id="ambiguous">persistent</span> connection remains available across reconnects.</p>
       <p id="phrase-context">The documentation mentions <span id="unknown-phrase">persistent session</span> as an ordinary phrase.</p>
       <p id="nohit-context">The invented token <span id="nohit">TFNoSuchLexeme</span> is intentionally absent from the local dictionary.</p>
       <p id="unrelated">UNRELATED_SECRET_PAGE_TEXT should never be sent for the nearby selection.</p>
       <div id="editable" contenteditable="true">Private draft <span contenteditable="false"><span id="editable-word">persistent</span></span> account token</div>
+      <p id="dual-source">The <span id="foundation">foundation</span> is <span id="production-grade">production-grade</span>.</p>
+      <a href="#link" id="test-link">Normal Link</a>
     `,
     "/failure": `
       <p id="auth">Authentication failures should produce a visible retry action instead of leaving the translation UI stuck.</p>

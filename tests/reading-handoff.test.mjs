@@ -13,7 +13,8 @@ function target(overrides = {}) {
   return { recordId: RECORD.recordId, recordRevision: RECORD.revision, pageKey: IDENTITY.pageKey,
     siteKey: IDENTITY.siteKey, safeReturnUrl: RECORD.safeReturnUrl, consentGeneration: 1,
     dataGeneration: 1, sitePolicyRevision: 1, pageGeneration: 1,
-    summary: { recordId: RECORD.recordId, revision: RECORD.revision, anchor: RECORD.anchor, hasCompletedAssistant: false }, ...overrides };
+    summary: { recordId: RECORD.recordId, revision: RECORD.revision, itemKey: RECORD.itemKey,
+      anchor: RECORD.anchor, hasCompletedAssistant: false }, ...overrides };
 }
 function setup({ permitted = true, currentTarget = target(), clock = 1000 } = {}) {
   let permission = permitted, created = 0, tab = null, value = currentTarget;

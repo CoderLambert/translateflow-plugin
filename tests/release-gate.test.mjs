@@ -8,15 +8,16 @@ const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
 const release = await readFile(new URL("../docs/RELEASE_V0.8.md", import.meta.url), "utf8");
 const youtube = await readFile(new URL("../docs/YOUTUBE_SUBTITLES.md", import.meta.url), "utf8");
 
-test("v0.8 release metadata stays aligned", () => {
-  assert.equal(manifest.version, "0.8.0");
-  assert.equal(pkg.version, "0.8.0");
-  assert.match(readme, /^# TranslateFlow v0\.8/m);
+test("build metadata stays aligned and historical v0.8 gate remains available", () => {
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(pkg.version, manifest.version);
+  assert.ok(readme.startsWith(`# TranslateFlow v${manifest.version}\n`));
   assert.match(release, /TranslateFlow v0\.8 Release Gate/);
 });
 
 test("production permissions include the authorized ordinary-web-page access", () => {
-  assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting", "nativeMessaging"]);
+  assert.deepEqual(manifest.permissions, ["storage", "activeTab", "scripting"]);
+  assert.deepEqual(manifest.optional_permissions, ["nativeMessaging"]);
   assert.deepEqual(manifest.host_permissions, ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]);
   assert.equal(manifest.optional_host_permissions, undefined);
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));

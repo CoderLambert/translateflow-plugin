@@ -9,25 +9,31 @@
   const { messages, sendRuntimeMessage } = app.modules.runtime;
   const popover = app.modules.selectionPopover;
   const MAX_CONCURRENT_LOOKUPS = 3;
-  const REQUEST_ID_PREFIX = "selection-rich-lookup-";
-  const CONTENT_DOCUMENT_OWNER_TOKEN = createContentDocumentOwnerToken();
+  const { createLookupRequestId, createContentDocumentOwnerToken } = app.modules.richLookupIdentity || {};
+  const CONTENT_DOCUMENT_OWNER_TOKEN = createContentDocumentOwnerToken?.() || "";
   const lookupQueue = [];
   let activeSession = null;
   let runningLookups = 0;
-  let fallbackRequestCounter = 0;
   let lifecycle = null;
   let routeWatchTimer = null;
   let nativeNavigationEvents = false;
 
-  async function load(snapshot, version, expectedPage, isCurrentSelection, onResult = null) {
+  async function load(snapshot, version, expectedPage, isCurrentSelection, onResult = null, options = {}) {
+    // Frozen pre-upgrade registrations omit newer helpers. Keep Selection usable
+    // through the existing refresh notice, without creating unowned rich queries.
+    if (!createLookupRequestId || !CONTENT_DOCUMENT_OWNER_TOKEN) {
+      if (isCurrentSelection(version, snapshot, expectedPage)) popover.appendRichDictionaryCards([], () => {});
+      options.onSettled?.({ hasHit: false }); return;
+    }
     if (activeSession) void cancelSession(activeSession);
     const session = {
       snapshot,
       version,
       expectedPage,
       isCurrentSelection,
-      onResult,
+      onResult, options, notified: false,
       cancelled: false,
+      listState: "pending",
       cancelPromise: null,
       lookupStates: new Map(),
       queuedJobs: new Set(),
@@ -36,19 +42,37 @@
     };
     activeSession = session;
     startRouteWatcher();
+    publishSummary(session);
 
     try {
       const response = await sendRuntimeMessage({
         type: messages.background.RICH_MDICT_VIEWER_LIST
       });
-      if (!isLiveSession(session) || !response?.ok) return;
+      if (!isLiveSession(session)) return;
+      if (!response?.ok) {
+        session.listState = "error";
+        publishSummary(session);
+        return;
+      }
 
       const dictionaries = Array.isArray(response.dictionaries) ? response.dictionaries : [];
-      popover.appendRichDictionaryCards(dictionaries, (dictionary, card) => {
+      session.listState = "ready";
+      for (const dictionary of dictionaries) {
+        const id = String(dictionary?.id || "");
+        if (id) session.lookupStates.set(id, {
+          inFlight: false,
+          settled: false,
+          outcome: dictionary?.status && dictionary.status !== "ready" ? "unavailable" : "unqueried"
+        });
+      }
+      publishSummary(session);
+      popover.appendRichDictionaryCards(options.eager ? dictionaries.map(item => ({ ...item, expandedByDefault: true })) : dictionaries, (dictionary, card) => {
         void lookupDictionary(session, dictionary, card);
       });
     } catch {
-      // Detailed dictionary reads do not delay or replace the primary result.
+      if (!isLiveSession(session)) return;
+      session.listState = "error";
+      publishSummary(session);
     }
   }
 
@@ -56,6 +80,52 @@
     return activeSession === session
       && !session.cancelled
       && session.isCurrentSelection(session.version, session.snapshot, session.expectedPage);
+  }
+
+  // Only this session owns outcomes; cards and the popover consume snapshots.
+  function publishSummary(session) {
+    if (!isLiveSession(session)) return;
+    const counts = { unqueried: 0, queued: 0, pending: 0, hit: 0, "no-hit": 0, error: 0, cancelled: 0, unavailable: 0 };
+    const dictionaries = [...session.lookupStates].map(([id, state]) => {
+      counts[state.outcome] += 1;
+      return Object.freeze({ id, outcome: state.outcome });
+    });
+    const allNoHit = session.listState === "ready" && dictionaries.length > 0 && counts["no-hit"] === dictionaries.length;
+    const summary = Object.freeze({
+      version: session.version,
+      listState: session.listState,
+      dictionaries: Object.freeze(dictionaries),
+      counts: Object.freeze(counts),
+      hasHit: counts.hit > 0,
+      allNoHit,
+      feedback: createSummaryFeedback(session.listState, counts, allNoHit, dictionaries.length)
+    });
+    popover.updateRichDictionarySummary?.(session.snapshot, summary);
+    if (!session.notified && (summary.hasHit || session.listState === "error" ||
+      (session.listState === "ready" && !counts.unqueried && !counts.queued && !counts.pending))) {
+      session.notified = true; session.options.onSettled?.(summary);
+    }
+  }
+
+  function createSummaryFeedback(listState, counts, allNoHit, dictionaryCount) {
+    // A structured miss cannot establish the outcome of unqueried, running or
+    // failed rich dictionaries. Null preserves the original no-hit recovery.
+    if (counts.hit) return null;
+    let titleKey = "content.rich.title", messageKey = "content.rich.queryOnOpen";
+    if (listState === "pending" || counts.queued || counts.pending) {
+      messageKey = "content.rich.querying";
+    } else if (listState === "error" || counts.error || counts.unavailable) {
+      titleKey = "content.rich.queryFailed";
+      messageKey = "content.rich.temporarilyUnavailable";
+    } else if (counts.cancelled) {
+      messageKey = "content.rich.selectionChanged";
+    } else if (allNoHit || (listState === "ready" && !dictionaryCount)) return null;
+    return Object.freeze({ titleKey, messageKey });
+  }
+
+  function setOutcome(session, state, outcome) {
+    state.outcome = outcome;
+    publishSummary(session);
   }
 
   async function lookupDictionary(session, dictionary, card) {
@@ -66,7 +136,7 @@
       let state = session.lookupStates.get(dictionaryId);
       if (state?.settled) return;
       if (!state) {
-        state = { inFlight: false, settled: true };
+        state = { inFlight: false, settled: true, outcome: "unqueried" };
         session.lookupStates.set(dictionaryId, state);
       } else {
         state.settled = true;
@@ -77,22 +147,25 @@
       card.setError(detail
         ? { key: "content.rich.currentUnavailableWithReason", args: { reason: detail } }
         : { key: "content.rich.currentUnavailable", args: {} });
+      setOutcome(session, state, "unavailable");
       return;
     }
 
     let state = session.lookupStates.get(dictionaryId);
     if (!state) {
-      state = { inFlight: false, settled: false };
+      state = { inFlight: false, settled: false, outcome: "unqueried" };
       session.lookupStates.set(dictionaryId, state);
     }
     const request = async (retry = false) => {
       if (!isLiveSession(session)) return;
       if (state.inFlight || (state.settled && !retry)) return;
       state.inFlight = true;
-      card.setLoading();
       try {
+        card.setLoading();
+        setOutcome(session, state, "queued");
         const requestId = createLookupRequestId();
-        const result = await scheduleLookup(session, requestId, card, () => {
+        state.requestId = requestId;
+        const result = await scheduleLookup(session, requestId, card, state, () => {
           if (!isLiveSession(session)) return null;
           return sendRuntimeMessage({
             type: messages.background.RICH_MDICT_LOOKUP,
@@ -105,6 +178,12 @@
         if (!result || !isLiveSession(session)) return;
 
         const lookupError = Array.isArray(result?.errors) ? result.errors[0] : null;
+        if (result.cancelled || result.errorCode === "CANCELLED" || lookupError?.code === "CANCELLED") {
+          state.settled = true;
+          card.setError("content.rich.selectionChanged", () => { void request(true); });
+          setOutcome(session, state, "cancelled");
+          return;
+        }
         if (!result?.ok || lookupError) {
           state.settled = true;
           const reason = safeErrorCode(result?.errorCode || lookupError?.code);
@@ -112,30 +191,51 @@
             ? { key: "content.rich.lookupUnavailableWithReason", args: { reason } }
             : { key: "content.rich.lookupUnavailable", args: {} },
           () => { void request(true); });
+          setOutcome(session, state, "error");
           return;
         }
 
         const records = Array.isArray(result.dictionaries) ? result.dictionaries : [];
         const record = records.find((item) => String(item?.id || "") === dictionaryId);
-        if (result.found && records.length && !record) {
+        if (result.found && !record) {
           state.settled = true;
           card.setError("content.rich.mismatch");
+          setOutcome(session, state, "error");
           return;
         }
         if (!result.found || !record) {
           state.settled = true;
           card.setEmpty();
+          setOutcome(session, state, "no-hit");
           return;
         }
 
         state.settled = true;
-        card.setResult({ ...record, packageVersion: dictionary.packageVersion || "" }, dictionaryId, (displayed) => {
-          if (isLiveSession(session)) session.onResult?.(displayed, dictionary);
-        });
+        state.navigation?.close();
+        const delivered = { ...record, packageVersion: record.packageVersion || dictionary.packageVersion || "" };
+        state.navigation = app.modules.richNavigation?.create({ card, dictionary, initialRecord: delivered, initialQuery: session.snapshot.text,
+          isCurrent: () => isLiveSession(session) && state.requestId === requestId,
+          request: (text, identity) => {
+            const navId = createLookupRequestId();
+            const promise = scheduleLookup(session, navId, card, null, () => sendRuntimeMessage({
+              type: messages.background.RICH_MDICT_LOOKUP, requestId: navId, ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN,
+              text, dictionaryId, expectedPackVersion: identity.packVersion, expectedPackageVersion: identity.packageVersion }));
+            return { promise, cancel: () => promise.cancel() };
+          } });
+        card.setResult(delivered, dictionaryId, (displayed) => {
+          if (isLiveSession(session) && state.requestId === requestId) session.onResult?.(displayed, dictionary);
+        }, () => {
+          if (!isLiveSession(session) || state.requestId !== requestId || state.outcome !== "hit") return;
+          card.setError("content.rich.lookupUnavailable", () => { void request(true); });
+          setOutcome(session, state, "error");
+        }, () => isLiveSession(session) && state.requestId === requestId);
+        setOutcome(session, state, "hit");
       } catch {
         if (!isLiveSession(session)) return;
+        state.navigation?.close();
         state.settled = true;
         card.setError("content.rich.lookupUnavailable", () => { void request(true); });
+        setOutcome(session, state, "error");
       } finally {
         state.inFlight = false;
       }
@@ -144,12 +244,14 @@
     void request();
   }
 
-  function scheduleLookup(session, requestId, card, action) {
-    return new Promise((resolve, reject) => {
-      const job = {
+  function scheduleLookup(session, requestId, card, state, action) {
+    let job;
+    const promise = new Promise((resolve, reject) => {
+      job = {
         session,
         requestId,
         card,
+        state,
         action,
         resolve,
         reject,
@@ -160,6 +262,14 @@
       lookupQueue.push(job);
       drainLookups();
     });
+    promise.cancel = () => {
+      const index = lookupQueue.indexOf(job);
+      if (index >= 0) lookupQueue.splice(index, 1);
+      session.queuedJobs.delete(job); settleJob(job, null);
+      if (!session.cancelled && session.inFlightRequests.has(requestId)) void sendRuntimeMessage({
+        type: messages.background.RICH_MDICT_LOOKUP_CANCEL, requestId, ownerToken: CONTENT_DOCUMENT_OWNER_TOKEN }).catch(() => {});
+    };
+    return promise;
   }
 
   function drainLookups() {
@@ -175,7 +285,8 @@
       runningLookups += 1;
       Promise.resolve()
         .then(() => {
-          if (!isLiveSession(job.session)) return null;
+          if (!isLiveSession(job.session) || job.settled) return null;
+          if (job.state) setOutcome(job.session, job.state, "pending");
           job.session.inFlightRequests.add(job.requestId);
           return job.action();
         })
@@ -204,6 +315,8 @@
   function cancelSession(session) {
     if (session.cancelPromise) return session.cancelPromise;
     session.cancelled = true;
+    session.options.onSettled?.({ hasHit: false, cancelled: true });
+    for (const state of session.lookupStates.values()) state.navigation?.close();
     if (activeSession === session) {
       activeSession = null;
       stopRouteWatcher();
@@ -219,6 +332,7 @@
     for (const job of pendingJobs) settleJob(job, null);
 
     for (const job of pendingJobs) {
+      if (job.state) job.state.outcome = "cancelled";
       job.card.setError("content.rich.selectionChanged");
     }
     const requestIds = [...session.inFlightRequests];
@@ -275,36 +389,6 @@
     if (routeWatchTimer === null) return;
     window.clearInterval(routeWatchTimer);
     routeWatchTimer = null;
-  }
-
-  function createLookupRequestId() {
-    const bytes = new Uint8Array(16);
-    if (globalThis.crypto?.getRandomValues) {
-      globalThis.crypto.getRandomValues(bytes);
-    } else {
-      // Extension contexts provide WebCrypto; this fallback is only for test/old browser harnesses.
-      for (let index = 0; index < bytes.length; index += 1) {
-        bytes[index] = Math.floor(Math.random() * 256);
-      }
-      fallbackRequestCounter += 1;
-      bytes[0] ^= fallbackRequestCounter & 0xff;
-    }
-    const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    return REQUEST_ID_PREFIX + hex;
-  }
-
-  function createContentDocumentOwnerToken() {
-    const bytes = new Uint8Array(16);
-    if (globalThis.crypto?.getRandomValues) {
-      globalThis.crypto.getRandomValues(bytes);
-    } else {
-      // Supported browsers provide WebCrypto; retain isolation in test harnesses
-      // that execute the content module without a browser crypto global.
-      for (let index = 0; index < bytes.length; index += 1) {
-        bytes[index] = Math.floor(Math.random() * 256);
-      }
-    }
-    return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
   }
 
   function safeErrorCode(value) {

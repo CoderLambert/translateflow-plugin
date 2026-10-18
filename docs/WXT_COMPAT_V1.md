@@ -1,14 +1,10 @@
-> #248 默认切换：`build:extension` 与 `build:extension:release` 现统一使用 WXT，稳定安装目录仍为 `dist/extension/`。`build:extension:wxt` 是同一引擎的显式输出入口（`.output/chrome-mv3/`）。下文 opt-in/旧默认描述为接入阶段的历史证据；最终升级与切换结果见 [PLATFORM_UPGRADE_V1.md](PLATFORM_UPGRADE_V1.md)。
->
-> #250 当前态：生产 WXT Manifest 静态加载编译后的 `content-scripts/content.js/.css`；`src/entries/content.js` 是唯一 Content 源模块图，Popup/Commands 的旧标签恢复使用同一安装路径。raw asset map 不再复制 ISOLATED Content 源码，只保留 MAIN/Worker 精确闭包、locale 与认证词典。下文逐文件 Content bridge、无静态注册等表述只记录 #246 历史阶段。
+# WXT production build and compatibility evidence
 
-# WXT compatibility build v1
+`build:extension` and `build:extension:release` use the sole WXT engine and stable install directory `dist/extension/`. `build:extension:wxt` emits the same engine's package at `.output/chrome-mv3/`. Every production build excludes dictionary content. Local generated files cannot enable another dictionary packaging mode.
 
-This is the opt-in PF-01 / #246 implementation of the [tested migration contract](./PLATFORM_UPGRADE_V1.md). The default `build:extension`, release command, aggregate `validate`, old E2E builder and certification consumers still use the existing `dist/extension` package. Their final switch and same-ID upgrade proof belong to #248. This document records implementation evidence, not independent review or release approval.
+## Build and audit
 
-## Build ownership and reproduction
-
-Use the root lock with Node **24.21.0**, npm **11.19.0**, WXT **0.21.4** and Vite **7.3.1**. The only direct development dependencies in this slice are WXT, Vite and existing Playwright **1.63.0**. React, TypeScript and Vitest production integration remains with the later authorized slices.
+Use the root lock and package.json Node/npm constraints:
 
 ```bash
 npm ci
@@ -17,27 +13,15 @@ npm run build:extension:wxt
 npm run test:wxt:smoke
 ```
 
-`prepare` invokes `wxt prepare`. `dev` invokes the WXT Chrome MV3 development server; its helper permissions/connections are development-only. `build:extension:wxt` invokes the actual WXT production build and then the required artifact audit. Its destination is `.output/chrome-mv3/`, separate from `dist/extension/`; neither package is repaired by editing generated files. Source checking excludes only root generated `.wxt/`, `.output/`, `dist/` directories while keeping all actual JS sources subject to the existing boundary checks.
+WXT compiles Background, Content, Popup, Options and the learning center from their existing owners. Only mapped MAIN/Worker relative-import closures and locales remain raw assets. `src/shared/runtime-assets.js` owns the stable runtime paths. The package audit rejects undeclared public assets and preserves source confinement, exact Worker/MAIN bytes, manifest permissions and compiled React boundaries. Source locks, corpora, compilers, docs and tests stay outside the package.
 
-Normal builds do not download lexical data. If Core/Technical resources have not been generated, the WXT development build explicitly warns and reports both missing paths. To make a user installation with built-in dictionaries, run the existing source-lock/bootstrap/certification flow first. The unchanged default release command still requires its existing resources. The WXT lexical gate `TRANSLATEFLOW_WXT_REQUIRE_LEXICON=1` fails closed when a generated pack is absent; it does not substitute for source/release certification.
+The default empty dictionary library is normal. Users explicitly download or import dictionaries; production never probes missing bundled resources. Smoke and browser tests start from actual audited production bytes and explicitly prepare synthetic user dictionaries in isolated storage for tests requiring hits. They do not add runtime dictionary assets to the extension copy.
 
-## One source and stable installed paths
+Content remains an ISOLATED classic/IIFE registry compiled to `content-scripts/content.js/.css`; MAIN and Workers retain their existing contexts. Permissions, OPFS schemas and user settings are unaffected by dictionary content removal.
 
-| Input | Installed output | Loading contract |
-| --- | --- | --- |
-| `entrypoints/background.ts` → existing `src/background/index.js` | `background.js` plus WXT-generated shared chunks | Current #247 thin TypeScript entry; static import and synchronous `initializeBackground()` in `defineBackground.main`; no fake globals, eval or delayed listener registration |
-| Existing root `popup.html` and its original modules/CSS | `popup.html`, compiled chunks/CSS | Registered directly through `entrypoints:found`; no copied second HTML template |
-| Existing root `options.html` and its original modules/CSS | `options.html`, compiled chunks/CSS | WXT unlisted-page compilation plus original Manifest `options_page`; no `options_ui` behavior change |
-| `src/entries/content.js` + `entrypoints/content.ts` | `content-scripts/content.js/.css` | WXT 编译的 ISOLATED classic/IIFE；Manifest、Popup、Commands 共用稳定安装路径，`auto-sites.js` 只保留意图与旧注册清理 |
-| Three mapped YouTube MAIN files | Identical paths and bytes | Protocol → timedtext → MAIN bridge order; existing `world: MAIN` boundary |
-| Six mapped module Workers and their relative imports | Identical paths and bytes | Existing `getURL()` Worker loading; browser-safe importer/shared/provider closures; existing OPFS lifecycle |
-| Generated Core/Technical manifests and descriptors | `assets/lexicon/core` / `technical` | Only manifest plus registered directory/shards/notices; shape, fingerprint, descriptor hashes and confinement checked; stray inputs are excluded |
+## Historical evidence boundary
 
-`src/shared/runtime-assets.js` remains the pure path contract for Worker, MAIN, pages and bundled dictionaries. After #250, `CONTENT_SCRIPT_FILES` / `CONTENT_STYLE_FILES` are installed-output mappings; source order is owned by `src/entries/content.js` and checked separately. Provider behavior, sender authorization, cache/OPFS schema, import cancellation and Selection lifecycle are unchanged.
-
-`scripts/wxt-assets.mjs` computes only the remaining MAIN/Worker raw closure. The build adds individual `absoluteSrc`/`relativeDest` assets and separately audited locale/lexical files; it never exposes all of `src/`, the repository or `node_modules` as public. A nonempty undeclared public directory fails the build. PF-05 removed the ISOLATED Content raw bridge without changing MAIN/Worker execution contexts.
-
-The generated production Manifest is deep-equal to root `manifest.json`: **zero allowed differences** in this slice. MV3, version, commands, root page identities, module background, minimum Chrome **102**, required/optional permissions and host scopes are unchanged. There is no static Content registration, WAR, new key, sandbox or CSP exception. Both compiled JS and CSS explicitly target `chrome102`; this is not a runtime/polyfill claim. React is absent from all compiled and raw runtime closures.
+The records below and the linked `wxt-compat-v1/` JSON capture the original migration candidate. Built-in dictionary gates, counts and fixture arrangements in that historical evidence are retired; they are not current build requirements or current verification results. Existing SHA, timestamps and measurements remain unchanged. Current evidence is recorded per task under `docs/tasks/`.
 
 ## Actual verification evidence
 

@@ -32,5 +32,18 @@
     return normalize(value.slice("sound://".length));
   }
 
-  app.modules.richResourcePath = Object.freeze({ normalize, normalizeAudioReference, normalizeSoundReference });
+  function validatedPresentation(value, kind, path) {
+    if (kind === "image" && value === "oxford-opposition" && path === "img/OPP.png") return value;
+    if (kind === "image" && value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
+    if (kind === "audio" && (value === "pronunciation-british" || value === "pronunciation-american")) return value;
+    return "";
+  }
+
+  function descriptorKey(kind, rawPath, presentation = "") {
+    const path = normalize(rawPath);
+    if (!path || path !== rawPath || !["image", "audio", "stylesheet"].includes(kind)) return "";
+    return `${kind}\u0000${path}\u0000${validatedPresentation(presentation, kind, path)}`;
+  }
+
+  app.modules.richResourcePath = Object.freeze({ normalize, normalizeAudioReference, normalizeSoundReference, validatedPresentation, descriptorKey });
 })();

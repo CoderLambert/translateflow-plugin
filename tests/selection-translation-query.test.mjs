@@ -14,7 +14,8 @@ function harness(reply, { current = () => true } = {}) {
   const app = { modules: {
     contentI18n: createContentI18nStub(),
     runtime: { messages: { background: { CACHE_LOOKUP: "lookup", TRANSLATE_BATCH: "translate", CACHE_STORE: "store" } },
-      async sendRuntimeMessage(request) { sent.push(json(request)); return reply(request); } },
+      async sendRuntimeMessage(request) { sent.push(json(request)); return reply(request); },
+      showToast() {} },
     tasks: { transition() {}, completeTask(_task, result) { completions.push(json(result)); },
       responseError(response, message) { return new Error(response.error || message); } },
     selectionPopover: { setLoadingStatus(message) { statuses.push(message); }, setLoadingCancelable() {} }
@@ -43,13 +44,15 @@ test("Selection translation cache hit displays and records its actual response w
 });
 
 test("Selection cache miss preserves lookup → Provider → committed cache → visible result ordering", async () => {
-  const h = harness((request) => request.type === "lookup" ? { ok: true, hits: [] } : request.type === "translate"
+  const h = harness((request) => request.type === "lookup" ? { ok: true, hits: [], configSnapshotId: "pinned",
+      writeTokens: [{ id: "selection", token: { fixture: true } }] } : request.type === "translate"
     ? { ok: true, translations: [{ id: "selection", text: "fresh visible result" }], readingResult: { targetLanguage: "zh-CN", provenance } }
-    : { ok: true });
+    : { ok: true, stored: 1 });
   await h.run();
   assert.deepEqual(h.sent.map((item) => item.type), ["lookup", "translate", "store"]);
   assert.equal(h.sent[1].requestId, "synthetic-task");
-  assert.deepEqual(h.sent[2].items, [{ sourceText: "synthetic source", translation: "fresh visible result" }]);
+  assert.deepEqual(h.sent[2].items, [{ sourceText: "synthetic source", translation: "fresh visible result",
+    format: "plain", cacheToken: { fixture: true } }]);
   assert.equal(h.shown[0].primaryMeaning, "fresh visible result");
   assert.equal(h.artifacts[0].artifact.payload.text, "fresh visible result");
   assert.deepEqual(h.completions, [{ done: 1, apiTranslated: 1 }]);
@@ -59,7 +62,8 @@ test("Selection supersession or failed cache commit never displays or records a 
   const stale = harness(() => ({ ok: true, hits: [{ id: "selection", text: "old result" }] }), { current: () => false });
   await assert.rejects(stale.run(), /selection superseded/);
   assert.equal(stale.shown.length, 0); assert.equal(stale.artifacts.length, 0);
-  const failed = harness((request) => request.type === "lookup" ? { ok: true, hits: [] } : request.type === "translate"
+  const failed = harness((request) => request.type === "lookup" ? { ok: true, hits: [],
+    writeTokens: [{ id: "selection", token: { fixture: true } }] } : request.type === "translate"
     ? { ok: true, translations: [{ id: "selection", text: "uncommitted result" }] } : { ok: false, error: "synthetic storage failure" });
   await assert.rejects(failed.run(), /content\.selection\.cacheStoreFailed/);
   assert.equal(failed.shown.length, 0); assert.equal(failed.artifacts.length, 0); assert.equal(failed.completions.length, 0);

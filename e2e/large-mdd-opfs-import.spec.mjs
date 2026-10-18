@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -6,7 +7,7 @@ import { basename, join, resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 
 const fixtureDir = process.env.TF_LARGE_MDD_FIXTURE_DIR || "";
-const evidenceDir = process.env.TF_LARGE_MDD_EVIDENCE_DIR || "/tmp/large-mdd-evidence";
+const evidenceDir = process.env.TF_LARGE_MDD_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url);
 const reportPath = resolve(evidenceDir, "large-mdd-browser-import.json");
 
 test.describe("large synthetic MDD product import", () => {

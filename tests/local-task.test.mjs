@@ -42,10 +42,17 @@ async function ready(f) {
 test("actual commands, monotonic duration and log hash permit only evidence archive commits", async (t) => {
   const f = fixture(t), a = await ready(f);
   assert.equal(gate(f.root, "234").candidateHead, a.candidateHead);
+  writeFileSync(join(f.root, "docs/tasks/234/validation-report.md"), "# Candidate-bound validation report\n");
   f.git("add", "docs/tasks"); f.git("commit", "-m", "archive only");
   const result = gate(f.root, "234");
   assert.notEqual(result.syncHead, result.candidateHead);
   assert.equal(result.syncHead, f.git("rev-parse", "HEAD"));
+});
+test("task index skips historical task folders that have no state.json", (t) => {
+  const f = fixture(t);
+  mkdirSync(join(f.root, "docs/tasks/browser-native-language"), { recursive: true });
+  writeFileSync(join(f.root, "docs/tasks/browser-native-language/task.md"), "Historical task without local state\n");
+  assert.deepEqual(buildIndex(f.root).tasks.map((task) => task.task), ["234"]);
 });
 test("candidate requires committed clean inputs; later tracked, staged and untracked code rejects", async (t) => {
   const f = fixture(t);
@@ -170,13 +177,15 @@ test("artifact fingerprint uses actual bytes and rejects symlink/root escape", (
   symlinkSync(join(f.root, "package.json"), join(f.root, "dist/extension/link.json"));
   assert.throws(() => fingerprint(f.root, "dist/extension"), /Symlinked/u);
 });
-test("all workflows are manual-only; original job bodies and manual inputs remain intact", () => {
+test("all workflows are manual-only; permissions, jobs and manual inputs remain intact", () => {
   const directory = fileURLToPath(new URL("../.github/workflows/", import.meta.url));
-  const names = readdirSync(directory).filter((n) => n.endsWith(".yml")); assert.equal(names.length, 11);
+  const names = readdirSync(directory).filter((n) => n.endsWith(".yml")); assert.ok(names.length > 0);
+  assert.ok(!names.includes("lexicon-release.yml"), "retired bundled dictionary workflow must stay absent");
   for (const name of names) {
     const text = readFileSync(join(directory, name), "utf8"), block = text.split(/^on:\s*$/mu)[1]?.split(/^permissions:/mu)[0];
     assert.ok(block, name); assert.deepEqual([...block.matchAll(/^  ([a-z_]+):/gmu)].map((m) => m[1]), ["workflow_dispatch"], name);
     assert.match(text, /^jobs:/mu);
+    assert.match(text, /^permissions:\n  contents: read/mu);
   }
   assert.match(readFileSync(join(directory, "dictionary-library-vnext-certification.yml"), "utf8"), /base_sha:/u);
   assert.match(readFileSync(join(directory, "wiktextract-rich-poc.yml"), "utf8"), /run_experimental_full_extraction:/u);

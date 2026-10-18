@@ -48,6 +48,8 @@ async function frozenSelection(harness, page) {
           selectedText: capture.selectedText,
           context: capture.context,
           rawRangeText: capture.rangeIdentity?.text,
+          startConnected: capture.rangeIdentity?.startContainer?.isConnected,
+          endConnected: capture.rangeIdentity?.endContainer?.isConnected,
           startOffset: capture.rangeIdentity?.startOffset,
           endOffset: capture.rangeIdentity?.endOffset
         } : null;
@@ -80,7 +82,7 @@ test.describe("Selection context and popover lifecycle", () => {
     });
 
     await openDetail(page);
-    await page.getByRole("button", { name: "解释这里是什么意思" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     const payload = JSON.parse(harness.server.calls.at(-1).userContent);
     expect(payload.text).toBe("persistent");
@@ -88,6 +90,14 @@ test.describe("Selection context and popover lifecycle", () => {
     expect(payload.context).not.toContain("UNRELATED_SECRET_PAGE_TEXT");
 
     await page.locator("#unrelated").evaluate(node => { node.textContent = "A separate page block changed."; });
+    await expect(page.locator(".tf-selection-panel")).toBeVisible();
+    await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
+
+    await page.locator(".markdown-line").evaluate(node => {
+      node.innerHTML = 'A <span id="target">persistent</span> connection remains available across reconnects.';
+    });
+    await expect.poll(async () => (await frozenSelection(harness, page))?.startConnected).toBe(true);
+    await expect.poll(async () => (await frozenSelection(harness, page))?.endConnected).toBe(true);
     await expect(page.locator(".tf-selection-panel")).toBeVisible();
     await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
   });
@@ -164,7 +174,7 @@ test.describe("Selection context and popover lifecycle", () => {
     await openDetail(page);
     harness.server.setDelay(600);
     const callsBefore = harness.server.calls.length;
-    await page.getByRole("button", { name: "解释这里是什么意思" }).click();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect.poll(() => harness.server.calls.length).toBe(callsBefore + 1);
     const call = harness.server.calls[callsBefore];
     expect(call.systemPrompt).toContain("Plain text only");

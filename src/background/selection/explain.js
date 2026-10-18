@@ -8,6 +8,8 @@ import { resolveSelectionRequest } from "./resolve.js";
 import { buildSelectionExplainPrompt, SELECTION_EXPLAIN_QUESTION, SELECTION_READING_PROMPT_VERSION } from "./explain-prompt.js";
 import { readingTranslationResult } from "./reading-result.js";
 import { sha256 } from "../../shared/hash.js";
+import { isCachePersistenceError } from "../../shared/cache/persistence-errors.js";
+import { configFingerprint } from "../../shared/translation-cache-identity.js";
 import {
   buildSelectionExplainCacheIdentity,
   parseSelectionExplainResult
@@ -66,15 +68,27 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     cache.cacheKey = "selection-explain:" + await sha256(JSON.stringify([SELECTION_READING_PROMPT_VERSION, SELECTION_EXPLAIN_QUESTION, cache.cacheKey]));
     const payload = { ...cache.payload, userQuestion: SELECTION_EXPLAIN_QUESTION };
     const systemPrompt = buildSelectionExplainPrompt({ targetLanguage: config.targetLanguage, depth: payload.depth });
+    cache.cacheKey = "selection-explain:" + await sha256(JSON.stringify([cache.cacheKey, systemPrompt, payload,
+      await configFingerprint({ ...config, prompt: systemPrompt })]));
     const readingResult = { ...await readingTranslationResult({ ...config, prompt: systemPrompt }),
       userQuestion: SELECTION_EXPLAIN_QUESTION, action: "understand", sourceLanguage: resolved.intent?.sourceLanguage || "en" };
     readingResult.provenance.promptVersion = SELECTION_READING_PROMPT_VERSION;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);
 
-    const allowPersistentCache = !payload.sensitive;
+    let allowPersistentCache = !payload.sensitive;
+    let cacheToken, cacheWarning = "";
     if (allowPersistentCache) {
-      const cached = await lookupCache({ cacheKey: cache.cacheKey });
+      let cached;
+      try {
+        cached = await lookupCache({ cacheKey: cache.cacheKey });
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        // An authorized explanation can still be generated without persistence.
+        allowPersistentCache = false;
+        cacheWarning = error.code;
+      }
       assertActive(controller.signal);
+      cacheToken = cached?.cacheToken;
       if (cached?.hit) {
         const generated = parseSelectionExplainResult(cached.hit, { candidateIds });
         return response({
@@ -95,14 +109,21 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     assertActive(controller.signal);
 
     if (allowPersistentCache) {
-      await storeCache({
-        cacheKey: cache.cacheKey,
-        result: {
-          selectedCandidateIds: [...generated.selectedCandidateIds],
-          explanation: generated.explanation,
-          translation: generated.translation
-        }
-      });
+      try {
+        const stored = await storeCache({
+          cacheKey: cache.cacheKey,
+          ...(cacheToken ? { cacheToken } : {}),
+          result: {
+            selectedCandidateIds: [...generated.selectedCandidateIds],
+            explanation: generated.explanation,
+            translation: generated.translation
+          }
+        });
+        cacheWarning = stored?.cacheWarning || (Number(stored?.stored || 0) !== 1 ? "CACHE_NOT_SAVED" : "");
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        cacheWarning = error.code;
+      }
       assertActive(controller.signal);
     }
 
@@ -111,7 +132,8 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
       generated,
       cacheHit: false,
       cacheKey: cache.cacheKey,
-      readingResult
+      readingResult,
+      cacheWarning
     });
   } finally {
     if (requestsById.get(requestId) === controller) requestsById.delete(requestId);
@@ -127,25 +149,26 @@ export function cancelSelectionExplanationRequest(requestId) {
   return { cancelled: true };
 }
 
-function response({ resolved, generated, cacheHit, cacheKey, readingResult }) {
+function response({ resolved, generated, cacheHit, cacheKey, readingResult, cacheWarning = "" }) {
   const candidates = Array.isArray(resolved?.decision?.candidates)
     ? resolved.decision.candidates
     : [];
   return {
     route: "explained",
-    routeReason: resolved.routeReason,
-    depth: resolved.depth,
+    routeReason: resolved?.routeReason,
+    depth: resolved?.depth,
     cacheHit,
     cacheKey,
     generated,
     readingResult,
+    ...(cacheWarning ? { cacheWarning } : {}),
     local: {
       decisionOutcome: resolved?.decision?.outcome || "",
       decisionReason: resolved?.decision?.reason || "",
       topCandidateId: resolved?.decision?.topCandidateId || null,
       candidates
     },
-    contextPolicy: resolved.contextPolicy
+    contextPolicy: resolved?.contextPolicy
   };
 }
 

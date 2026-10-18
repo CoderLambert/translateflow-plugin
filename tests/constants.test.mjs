@@ -8,7 +8,7 @@ const CONTENT_SOURCE_FILES = contentSourceFiles();
 
 test("default config remains compatible with existing DeepSeek cache version", () => {
   assert.equal(DEFAULT_CONFIG.provider, "deepseek"); assert.equal(DEFAULT_CONFIG.model, "deepseek-flash");
-  assert.equal(DEFAULT_CONFIG.targetLanguage, "Simplified Chinese"); assert.equal(DEFAULT_CONFIG.appearance, "standard");
+  assert.equal(DEFAULT_CONFIG.targetLanguage, "Simplified Chinese"); assert.equal(DEFAULT_CONFIG.uiLocale, "zh_CN"); assert.equal(DEFAULT_CONFIG.appearance, "standard");
   assert.equal(DEFAULT_CONFIG.youtubeSubtitleMode, "bilingual"); assert.equal(DEFAULT_CONFIG.youtubeSubtitleSize, "standard");
   assert.equal(DEFAULT_CONFIG.selectionExplanationDepth, "auto");
 });
@@ -18,9 +18,13 @@ test("message values stay unique inside each channel", () => {
   assert.equal(new Set(Object.values(CONTENT_MESSAGES)).size, Object.keys(CONTENT_MESSAGES).length);
 });
 
-test("compiled content runtime mirrors Quick Control message values", () => {
+test("compiled content runtime mirrors directly consumed message values", () => {
   const source = readFileSync(new URL("../src/content/runtime.js", import.meta.url), "utf8");
-  const required = [CONTENT_MESSAGES.QUICK_CONTROL_SHOW, CONTENT_MESSAGES.QUICK_CONTROL_TOGGLE, BACKGROUND_MESSAGES.SELECTION_RESOLVE, BACKGROUND_MESSAGES.SELECTION_EXPLAIN, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT, BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE, BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
+  const required = [CONTENT_MESSAGES.QUICK_CONTROL_SHOW, CONTENT_MESSAGES.QUICK_CONTROL_TOGGLE,
+    BACKGROUND_MESSAGES.SELECTION_RESOLVE, BACKGROUND_MESSAGES.SELECTION_EXPLAIN,
+    BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT,
+    BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE,
+    BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
   for (const value of required) assert.ok(source.includes(`"${value}"`), `${value} missing from content runtime`);
 });
 
@@ -60,10 +64,19 @@ test("WXT owns one stable Content JS/CSS pair and compiles bootstrap last", () =
 });
 
 test("selection modules are loaded before the content bootstrap", () => {
-  for (const file of ["src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/clipboard.js", "src/content/selection/messages.js", "src/content/selection/empty-state.js", "src/content/selection/rich-sanitizer-style.js", "src/content/selection/rich-sanitizer-tokenizer.js", "src/content/selection/rich-sanitizer.js", "src/content/selection/rich-viewer.js", "src/content/selection/result-renderer.js", "src/content/selection/rich-details.js", "src/content/selection/controller.js"]) {
+  for (const file of ["src/content/selection/selection.js", "src/content/selection/context.js", "src/content/selection/result-model.js", "src/content/selection/clipboard.js", "src/content/selection/messages.js", "src/content/selection/empty-state.js", "src/content/selection/rich-controls.js", "src/content/selection/rich-sanitizer-tags.js", "src/content/selection/rich-sanitizer-style.js", "src/content/selection/rich-sanitizer-tokenizer.js", "src/content/selection/rich-sanitizer.js", "src/content/selection/rich-viewer.js", "src/content/selection/result-renderer.js", "src/content/selection/rich-details.js", "src/content/selection/controller.js"]) {
     assert.ok(CONTENT_SOURCE_FILES.includes(file), `${file} should be compiled`); assert.ok(CONTENT_SOURCE_FILES.indexOf(file) < CONTENT_SOURCE_FILES.indexOf("content.js"));
   }
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-style.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-oxford-adapter.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  for (const file of ["rich-resource-encoding", "rich-resource-preview"]) assert.ok(CONTENT_SOURCE_FILES.indexOf(`src/content/selection/${file}.js`) < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-resolver.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-navigation-actions.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-navigation.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-result-renderer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-lookup-identity.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-details.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/entries/safe-svg.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-svg.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-svg.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
+  assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-fonts.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-resource-resolver.js"));
+  for (const helper of ["rich-controls", "rich-sanitizer-tags"]) assert.ok(CONTENT_SOURCE_FILES.indexOf(`src/content/selection/${helper}.js`) < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer-tokenizer.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-sanitizer.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-viewer.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/selection/rich-viewer.js") < CONTENT_SOURCE_FILES.indexOf("src/content/selection/result-renderer.js"));

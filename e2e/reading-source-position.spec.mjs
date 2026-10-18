@@ -2,8 +2,10 @@ import { test, expect } from "./support/extension-fixture.mjs";
 import { validateSourceSnapshot } from "../src/shared/reading/source.js";
 import { createSourceDigest } from "../src/shared/reading/identity.js";
 
-async function prepare(harness, html) {
+async function prepare(harness, html, { streaming = false } = {}) {
   await harness.reset();
+  await harness.installUserDictionaries();
+  if (streaming) await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const page = await harness.open("/article");
   await page.evaluate((html) => { document.body.innerHTML = html; }, html);
   await harness.inject(page);
@@ -35,7 +37,8 @@ async function probe(harness, page, command, args = {}) {
       if (command === "revision") return modules.textProjection.revision();
       if (command === "namespace-inspection") return [...document.querySelectorAll("main,svg,text,script,style,textarea")].map((node) => ({ tag: node.tagName, whiteSpace: getComputedStyle(node).whiteSpace, decision: modules.textProjectionPolicy.inspect(node) }));
       if (command === "pending-mutation") {
-        const before = modules.textProjection.revision(), p = document.createElement("p"); p.textContent = "AD_INSERTED"; document.querySelector("main").prepend(p);
+        const before = modules.textProjection.revision(), node = document.querySelector("#a").firstChild;
+        node.insertData(node.nodeValue.indexOf("persistent"), "AD_INSERTED ");
         const current = modules.selectionController.getQuerySource(), after = modules.textProjection.revision();
         return { before, after, current };
       }
@@ -148,6 +151,7 @@ for (const format of ["SVG", "XHTML"]) test(`${format} native lowercase sensitiv
     page = await prepare(harness, '<main><svg xmlns="http://www.w3.org/2000/svg" style="white-space:normal"><text id="public">PUBLIC session tail</text><script type="application/json">SECRET_SCRIPT</script><style>/* SECRET_STYLE */</style><textarea>SECRET_FORM</textarea></svg></main>');
   } else {
     await harness.reset();
+  await harness.installUserDictionaries();
     await harness.context.route("**/reading-xhtml", (route) => route.fulfill({ contentType: "application/xhtml+xml", body: '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Reading fixture</title></head><body><main><p id="public">PUBLIC session tail<script type="application/json">SECRET_SCRIPT</script><style>/* SECRET_STYLE */</style><textarea>SECRET_FORM</textarea></p></main></body></html>' }));
     page = await harness.open("/reading-xhtml"); await harness.inject(page);
   }
@@ -172,14 +176,24 @@ for (const format of ["SVG", "XHTML"]) test(`${format} native lowercase sensitiv
 });
 
 test("ordinary anchors and tracking-only URLs preserve active query while route hashes invalidate it", async ({ harness }) => {
-  const page = await prepare(harness, '<main><p id="public">PUBLIC persistent connection remains.</p></main>');
-  harness.server.setDelay(700);
+  const page = await prepare(harness, '<main><p id="public">PUBLIC persistent connection remains.</p></main>', { streaming: true });
   await query(harness, page, "#public", "persistent");
-  await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+  const stream = harness.server.holdNextAssistantStream();
+  await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+  await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
+  await stream.started;
   await expect.poll(() => harness.server.calls.length).toBe(1);
   // Explicit AI starts a fresh frozen capture; bind the identity before URL events.
   const before = await probe(harness, page, "current"), revision = await probe(harness, page, "revision");
-  await page.evaluate(() => { history.pushState({}, "", "#introduction"); history.replaceState({}, "", "?utm_source=fixture&gclid=123#details"); });
+  await page.evaluate(() => { location.hash = "introduction"; });
+  await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
+  await page.evaluate(() => { history.replaceState({}, "", "?utm_source=fixture&gclid=123#details"); });
+  await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
+  await page.evaluate(() => { location.hash = "appendix"; });
+  await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
+  expect(harness.server.calls[0].responseState).toBe("pending");
+  stream.release();
+  await stream.finished;
   await expect(page.locator(".tf-selection-ai-detail[data-state='success']")).toBeVisible();
   expect((await probe(harness, page, "current")).snapshot.sourceSnapshotId).toBe(before.snapshot.sourceSnapshotId);
   expect(await probe(harness, page, "revision")).toBe(revision);
@@ -253,15 +267,17 @@ test("real bilingual insertion and clearing keep source projection, revision and
   expect((await probe(harness, page, "current")).snapshot.anchor.quote).toEqual(capture.snapshot.anchor.quote);
 });
 
-test("same-text Range changes, pending insertion, removal and navigation cancel real delayed AI and suppress late writeback", async ({ harness }) => {
-  const page = await prepare(harness, '<main><p id="a">ALPHA persistent connection remains.</p><p id="b">BETA persistent connection differs.</p></main>');
-  harness.server.setDelay(700);
+test("same-text Range changes, pending insertion, removal and navigation cancel real streaming AI and suppress late writeback", async ({ harness }) => {
+  const page = await prepare(harness, '<main><p id="a">ALPHA persistent connection remains.</p><p id="b">BETA persistent connection differs.</p></main>', { streaming: true });
   for (const mode of ["range", "insert", "remove", "navigate"]) {
     if (mode === "remove") await page.evaluate(() => { const p = document.createElement("p"); p.id = "a"; p.textContent = "ALPHA persistent connection remains."; document.querySelector("main").prepend(p); });
     await query(harness, page, "#a", "persistent");
-    await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
     const callsBefore = harness.server.calls.length;
-    await page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    const stream = harness.server.holdNextAssistantStream();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
+    await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
     await expect.poll(() => harness.server.calls.length).toBe(callsBefore + 1);
     const frozen = await probe(harness, page, "current"), revision = await probe(harness, page, "revision");
     if (mode === "range") await select(page, "#b", "persistent");
@@ -270,18 +286,39 @@ test("same-text Range changes, pending insertion, removal and navigation cancel 
       if (mode === "remove") document.querySelector("#a").remove();
       if (mode === "navigate") history.pushState({}, "", "/different-source-page");
     }, mode);
-    await expect.poll(async () => (await probe(harness, page, "trace")).filter((event) => event.type === "CANCEL_TRANSLATION" && event.response?.cancelled).length).toBeGreaterThan(0);
+    // The current assistant uses a dedicated Port. Native response closure proves
+    // its cancellation reached the Provider instead of only recording local intent.
+    await expect.poll(() => harness.server.calls[callsBefore]?.responseState).toBe("closed");
     if (mode !== "range") await expect.poll(async () => probe(harness, page, "revision")).toBeGreaterThan(revision);
     expect(frozen.snapshot.contextText).toContain("ALPHA");
-    await page.waitForTimeout(850);
+    stream.release();
+    await stream.finished;
     await expect(page.locator(".tf-selection-ai-detail[data-state='success']")).toHaveCount(0);
     expect(await probe(harness, page, "current")).toBeNull();
     if (mode === "remove") await page.evaluate(() => { const p = document.createElement("p"); p.id = "a"; p.textContent = "ALPHA persistent connection remains."; document.querySelector("main").prepend(p); });
   }
-  const trace = await probe(harness, page, "trace");
-  expect(trace.filter((event) => event.type === "CANCEL_TRANSLATION" && event.response?.cancelled)).toHaveLength(4);
+  expect(harness.server.calls.filter(call => call.responseState === "closed")).toHaveLength(4);
   expect(harness.server.calls).toHaveLength(4);
-  console.log("[READING_POSITION_AI]", JSON.stringify({ explicitLocalStubCalls: 4, actualCancellationReceipts: 4, paidProviderCalls: 0 }));
+  console.log("[READING_POSITION_AI]", JSON.stringify({ explicitLocalStubCalls: 4, actualProviderCancellations: 4, paidProviderCalls: 0 }));
+});
+
+test("native tracking-only full navigation and same-URL reload abort held assistant streams", async ({ harness }) => {
+  for (const mode of ["tracking-navigation", "reload"]) {
+    const page = await prepare(harness, '<main><p id="public">PUBLIC persistent connection remains.</p></main>', { streaming: true });
+    await query(harness, page, "#public", "persistent");
+    const stream = harness.server.holdNextAssistantStream();
+    await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
+    await expect(page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
+    expect(harness.server.calls).toHaveLength(1);
+    if (mode === "tracking-navigation") await page.goto(`${harness.server.baseUrl}/article?utm_source=full-document-load`);
+    else await page.reload();
+    await expect.poll(() => harness.server.calls[0]?.responseState, { message: mode }).toBe("closed");
+    stream.release(); await stream.finished;
+    await expect(page.locator(".tf-selection-ai-detail[data-state='success']")).toHaveCount(0);
+    expect(harness.server.calls).toHaveLength(1);
+    await page.close();
+  }
 });
 
 test("editable, shadow, generated text and over-budget pages fail closed while ordinary queries still work", async ({ harness }) => {

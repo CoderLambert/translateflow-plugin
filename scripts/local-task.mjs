@@ -53,7 +53,7 @@ function load(root, task) {
   return { p, state };
 }
 function archiveFiles(task) {
-  return new Set([`docs/tasks/${task}/state.json`, `docs/tasks/${task}/acceptance.json`, `docs/tasks/${task}/review.md`, "docs/tasks/index.json"]);
+  return new Set([`docs/tasks/${task}/state.json`, `docs/tasks/${task}/acceptance.json`, `docs/tasks/${task}/review.md`, `docs/tasks/${task}/validation-report.md`, "docs/tasks/index.json"]);
 }
 export function inputTree(root, task, head) {
   const excluded = archiveFiles(task);
@@ -116,10 +116,14 @@ function event(root, task, type, details = {}) {
   } finally { closeSync(fd); }
 }
 export function buildIndex(root) {
-  const tasks = readdirSync(join(root, "docs/tasks"), { withFileTypes: true }).filter((d) => d.isDirectory() && ID.test(d.name)).map((d) => {
-    const s = json(safePath(root, `docs/tasks/${d.name}/state.json`));
+  const tasks = readdirSync(join(root, "docs/tasks"), { withFileTypes: true }).filter((d) => d.isDirectory() && ID.test(d.name)).flatMap((d) => {
+    const statePath = safePath(root, `docs/tasks/${d.name}/state.json`);
+    // Historical task folders may predate the local state workflow. They are
+    // not index entries until a coordinator initializes state.json.
+    if (!existsSync(statePath)) return [];
+    const s = json(statePath);
     requireValue(s.task === d.name, "Task directory mismatch");
-    return { task: s.task, status: s.status, dependencies: s.dependencies, branch: s.branch ?? null, candidateHead: s.candidateHead ?? null };
+    return [{ task: s.task, status: s.status, dependencies: s.dependencies, branch: s.branch ?? null, candidateHead: s.candidateHead ?? null }];
   }).sort((a, b) => a.task.localeCompare(b.task, "en", { numeric: true }));
   return { schema: 1, source: "*/state.json", tasks };
 }

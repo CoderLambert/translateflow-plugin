@@ -36,7 +36,8 @@
     }
 
     async function loadSettings() {
-      const values = await chrome.storage.local.get(["youtubeSubtitleMode", "youtubeSubtitleSize"]);
+      const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
+      const values = response?.settings || {};
       mode = MODES.includes(values.youtubeSubtitleMode) ? values.youtubeSubtitleMode : "bilingual";
       size = SIZES.includes(values.youtubeSubtitleSize) ? values.youtubeSubtitleSize : "standard";
       renderer.setMode(mode); renderer.setSize(size);
@@ -74,9 +75,11 @@
       if (mode !== "off") pipeline?.ingest(snapshot).catch(() => renderer.setStatusKey("content.subtitle.translationFailed", "error"));
     }
 
-    function consumeTranslation({ unit, translation }) {
+    function consumeTranslation({ unit, translation, engine, cacheWarning }) {
       if (unit.mediaId !== mediaId) return;
-      renderer.renderTranslation(translation); renderer.setStatus("");
+      renderer.renderTranslation(translation);
+      if (cacheWarning) renderer.setStatusKey("content.subtitle.cacheNotSaved", "error");
+      else renderer.setStatus(engine === "browser-translator" ? t("content.basic.sourceBadge") : "");
     }
 
     function consumeState(state) {
@@ -116,7 +119,7 @@
 
     async function setMode(next, { persist = true } = {}) {
       mode = renderer.setMode(next);
-      if (persist) await chrome.storage.local.set({ youtubeSubtitleMode: mode });
+      if (persist) await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_SET, settings: { youtubeSubtitleMode: mode } });
       source?.setMode?.(mode);
       if (mode === "off") renderer.setStatus(""); else source?.refresh("mode-change", true);
       return mode;
@@ -124,7 +127,7 @@
 
     async function setSize(next, { persist = true } = {}) {
       size = renderer.setSize(next);
-      if (persist) await chrome.storage.local.set({ youtubeSubtitleSize: size });
+      if (persist) await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_SET, settings: { youtubeSubtitleSize: size } });
       return size;
     }
 

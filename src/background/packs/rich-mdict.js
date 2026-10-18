@@ -1,3 +1,5 @@
+import { createRichResourceRecovery, makeResourceRecovery } from "./rich-resource-recovery.js";
+import { createRichMdictIndexLoader } from "./rich-mdict-index-migration.js";
 import { createOpfsPackStore } from "./opfs-store.js";
 import { createPackStateStore } from "./state.js";
 import {
@@ -65,6 +67,7 @@ export function createRichMdictManager({
   cryptoProvider = globalThis.crypto,
   lookup = lookupRichMdict,
   buildIndex = buildRichMdictIndex,
+  getSessionToken,
   storageManager = globalThis.navigator?.storage
 } = {}) {
   if (!store?.writeFile || !store?.readFile || !store?.readFileRange || !store?.getFileSize) {
@@ -74,6 +77,7 @@ export function createRichMdictManager({
     throw new Error("Rich MDict manager requires a namespaced dictionary state store.");
   }
 
+  const resourceRecovery = createRichResourceRecovery({ store, stateStore, ...(getSessionToken ? { getSessionToken } : {}) });
   const indexCache = new Map();
   const operationsByRequest = new Map();
   const preflightQuota = createRichMdictInstallPreflight({
@@ -82,6 +86,8 @@ export function createRichMdictManager({
     storageManager,
     serialize
   });
+  const loadIndex = createRichMdictIndexLoader({ store, stateStore, cryptoProvider, buildIndex,
+    indexCache, serialize, assertSourceSize, sourceReader });
   const lookupController = createRichMdictLookupController({
     stateStore,
     lookup,
@@ -93,6 +99,7 @@ export function createRichMdictManager({
 
   function commit(input = {}) {
     const metadata = validateCommit(input);
+    const attachmentIntent = makeResourceRecovery(input.attachmentIntent, metadata.packVersion);
     const catalogReplacement = validateCatalogReplacement(
       input.catalogReplacement,
       metadata.packId,
@@ -132,6 +139,7 @@ export function createRichMdictManager({
         const index = await assertStagedFiles(metadata, operation.controller.signal);
         if (operation.controller.signal.aborted) throw richMdictAbortError();
         const snapshot = makeRichMdictSnapshot(metadata, index);
+        if (attachmentIntent) snapshot.resourceRecovery = attachmentIntent;
         const previousSnapshot = state.packs[metadata.packId]?.active || null;
         const retainedResourceVersion = retainCatalogResources(
           previousSnapshot,
@@ -203,6 +211,8 @@ export function createRichMdictManager({
   }
 
   async function list() {
+    const initial = await stateStore.read();
+    for (const packId of Object.keys(initial.packs || {})) await serialize(packId, () => resourceRecovery.clean(packId));
     const state = await stateStore.read();
     const dictionaries = [];
     for (const [packId, entry] of Object.entries(state.packs || {})) {
@@ -227,10 +237,6 @@ export function createRichMdictManager({
     }
     dictionaries.sort((a, b) => compareText(a.title, b.title) || compareText(a.id, b.id));
     return { dictionaries };
-  }
-
-  function assertLookupNotAborted(signal) {
-    if (signal?.aborted) throw richMdictAbortError();
   }
 
   function clampUtf8Text(value, maxBytes) {
@@ -315,30 +321,6 @@ export function createRichMdictManager({
     if (sourceSize !== snapshot.sourceSize) {
       throw richError("RICH_MDICT_CORRUPT", "Rich dictionary source size does not match its installed index.");
     }
-  }
-
-  async function loadIndex(snapshot, signal) {
-    assertLookupNotAborted(signal);
-    const size = await store.getFileSize(snapshot.packId, snapshot.packVersion, RICH_MDICT_INDEX_PATH);
-    assertLookupNotAborted(signal);
-    if (!Number.isSafeInteger(size) || size <= 0 || size > RICH_MDICT_MAX_INDEX_BYTES || size !== snapshot.indexSize) {
-      throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index is missing or has an invalid size.");
-    }
-    const key = cacheKey(snapshot);
-    const cached = indexCache.get(key);
-    if (cached) return cached;
-    const bytes = await store.readFile(snapshot.packId, snapshot.packVersion, RICH_MDICT_INDEX_PATH);
-    assertLookupNotAborted(signal);
-    const digest = await sha256(bytes, cryptoProvider);
-    assertLookupNotAborted(signal);
-    if (digest !== snapshot.indexSha256) {
-      throw richError("RICH_MDICT_CORRUPT", "Rich dictionary index checksum failed.");
-    }
-    const index = parseIndex(bytes);
-    assertLookupNotAborted(signal);
-    assertIndexMatchesMetadata(index, snapshot);
-    indexCache.set(key, index);
-    return index;
   }
 
   async function releaseReservation(requestId, packId, packVersion) {

@@ -8,6 +8,9 @@ const VIEWER = new URL("../src/content/selection/rich-viewer.js", import.meta.ur
 const RENDERER = new URL("../src/content/selection/result-renderer.js", import.meta.url);
 const RICH_RENDERER = new URL("../src/content/selection/rich-result-renderer.js", import.meta.url);
 const SANITIZER_MODULES = [
+  "../src/content/selection/rich-controls.js",
+  "../src/content/selection/rich-sanitizer-tags.js",
+  "../src/content/selection/rich-resource-path.js",
   "../src/content/selection/rich-sanitizer-style.js",
   "../src/content/selection/rich-sanitizer-tokenizer.js",
   "../src/content/selection/rich-sanitizer.js"
@@ -142,6 +145,7 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
     { type: "resource", kind: "image", path: "img/OPP.png", presentation: "oxford-opposition" },
     { type: "resource", kind: "image", path: "img/Ox3000_key_S.png", presentation: "oxford-key" },
     { type: "resource", kind: "image", path: "img/not-oxford.png", presentation: "oxford-opposition" },
+    { type: "resource", kind: "audio", path: "audio/word/entry_br.mp3", presentation: "pronunciation-british" },
     { type: "element", tag: "span", attrs: { class: "tf-rich-pronunciation-label", "data-rich-pronunciation": "british" }, children: [{ type: "text", text: "untrusted raw label" }] }
   ] }, "fallback", { dictionaryId: "fixture" });
 
@@ -156,8 +160,34 @@ test("Oxford inline icons and pronunciation labels stay localized and non-intera
   assert.deepEqual(JSON.parse(JSON.stringify(attachCalls[0][3].map((item) => [item.path, item.presentation]))), [
     ["img/OPP.png", "oxford-opposition"],
     ["img/Ox3000_key_S.png", "oxford-key"],
-    ["img/not-oxford.png", ""]
+    ["img/not-oxford.png", ""],
+    ["audio/word/entry_br.mp3", "pronunciation-british"]
   ]);
+});
+
+test("Oxford disclosure and active pronunciation layout remain compact without dictionary CSS", async () => {
+  const { viewer, document } = await loadModules();
+  const host = document.createElement("div");
+  viewer.render(host, { nodes: [
+    { type: "element", tag: "div", attrs: { class: "o-pronunciation-set o-active" }, children: [{ type: "text", text: "active pronunciation" }] },
+    { type: "element", tag: "div", attrs: { class: "o-pronunciation-set" }, children: [{ type: "text", text: "inactive pronunciation" }] },
+    { type: "element", tag: "details", attrs: { class: "o-unbox-panel" }, children: [
+      { type: "element", tag: "summary", attrs: { class: "o-unbox-tile" }, children: [
+        { type: "element", tag: "div", attrs: { class: "o-unbox-tile-title" }, children: [{ type: "text", text: "补充说明 MORE ABOUT" }] }
+      ] },
+      { type: "element", tag: "div", attrs: { class: "o-unbox-body" }, children: [{ type: "text", text: "supplement" }] }
+    ] }
+  ] }, "fallback");
+
+  assert.ok(findTag(host.shadowRoot, "details"));
+  assert.ok(findTag(host.shadowRoot, "summary"));
+  const staticCss = findTag(host.shadowRoot, "style").textContent;
+  assert.match(staticCss, /\.o-pronunciation-set\.o-active \{ display: block; \}/u);
+  assert.match(staticCss, /details\.o-unbox-panel\[open\] > \.o-unbox-body \{ display: block; \}/u);
+  assert.match(staticCss, /summary\.o-unbox-tile \{ display: flex;/u);
+  assert.match(staticCss, /\.o-pos-body:has\(details\.o-unbox-panel\[open\]\) \{ flex-direction: column !important; \}/u);
+  assert.match(staticCss, /> \.o-pos-detail \{ flex: 0 0 auto !important; width: 100% !important; min-width: 0 !important; \}/u);
+  assert.match(staticCss, /\.o-symbol-token > \.tf-rich-resource-image \{ display: inline-block; width: auto; height: 1\.05em; max-width: 3em;/u);
 });
 
 test("viewer caps AST traversal and uses no network or HTML parser APIs", async () => {
@@ -243,6 +273,53 @@ test("per-dictionary Compact rules carry safe formatting into the isolated viewe
   assert.ok(textContent(host.shadowRoot).includes("HeadwordFieldNote"));
 });
 
+test("multiple records use independent viewers, shared Compact rules and one aggregate display callback", async () => {
+  const { renderer, document } = await loadSanitizedPipeline();
+  const container = document.createElement("div"), displayed = [];
+  const [card] = renderer.appendRichDictionaryCards(container, [{ id: "fixture", expandedByDefault: true }]);
+  card.setResult({ id: "fixture", packVersion: "actual-v2", styleSheetRules: [{ id: 1, begin: "<b>", end: "</b>" }],
+    records: [
+      { headword: "term", text: "first fallback", richRecord: { rawRecord: "`1`FIRST SENTINEL", format: "HTML" } },
+      { headword: "term", text: "second fallback", richRecord: { rawRecord: "`1`SECOND SENTINEL", format: "HTML" } }
+    ] }, "fixture", (value) => displayed.push(value));
+  const hosts = walk(container).filter((node) => node.className === "tf-selection-rich-text");
+  assert.equal(hosts.length, 2);
+  assert.notEqual(hosts[0].shadowRoot, hosts[1].shadowRoot);
+  assert.match(textContent(findClass(hosts[0].shadowRoot, "tf-rich-viewer")), /FIRST SENTINEL/u);
+  assert.match(textContent(findClass(hosts[1].shadowRoot, "tf-rich-viewer")), /SECOND SENTINEL/u);
+  assert.equal(findTag(hosts[0].shadowRoot, "b").tagName, "B");
+  assert.equal(displayed.length, 1);
+  assert.equal(displayed[0].text, "FIRST SENTINEL\n\nSECOND SENTINEL");
+  findTag(container, "details").dispatch("toggle");
+  assert.equal(displayed.length, 1);
+});
+
+for (const kind of ["expandedBytes", "nodes", "resources"]) {
+  test(`multiple records enforce cumulative sanitized ${kind} before creating any viewers`, async () => {
+    const { renderer, document } = await loadSanitizedPipeline();
+    const container = document.createElement("div");
+    let rawRecord, styleSheetRules = [];
+    if (kind === "nodes") rawRecord = "<span>x</span>".repeat(9000);
+    else if (kind === "resources") rawRecord = Array.from({ length: 600 }, (_, index) => `<a href="sound://fixture${index}.wav">audio</a>`).join("");
+    else { rawRecord = "`1`entry".repeat(600); styleSheetRules = [{ id: 1, begin: "x".repeat(4000), end: "" }]; }
+    assert.throws(() => renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", styleSheetRules,
+      records: Array.from({ length: 2 }, () => ({ text: "bounded fallback", richRecord: { rawRecord, format: "HTML" } })) }] }), /aggregate display/u);
+    assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, 0);
+  });
+}
+
+test("clearing a multi-record card closes only its own resource hosts", async () => {
+  const closed = [];
+  const { renderer, document } = await loadModules({ resolver: { close: (host) => closed.push(host) } });
+  const container = document.createElement("div");
+  const [card] = renderer.appendRichDictionaryCards(container, [{ id: "fixture", expandedByDefault: true }]);
+  card.setResult({ records: [{ text: "first" }, { text: "second" }] }, "fixture");
+  const hosts = walk(container).filter((node) => node.className === "tf-selection-rich-text");
+  const previous = closed.length;
+  card.setError("content.rich.lookupUnavailable");
+  assert.deepEqual(closed.slice(previous), hosts);
+});
+
 async function loadModules({
   sanitizer = { sanitizeRichDictionaryRecord: () => ({ nodes: [], truncated: false }) },
   resolver = null,
@@ -252,23 +329,30 @@ async function loadModules({
   const app = { modules: {
     contentI18n: createContentI18nStub(),
     selectionRichSanitizer: sanitizer,
-    ...(resolver ? { richResourceResolver: resolver } : {}),
-    ...(richResourcePath ? { richResourcePath } : {})
+    ...(resolver ? { richResourceResolver: resolver } : {})
   } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
+  if (richResourcePath) app.modules.richResourcePath = { ...app.modules.richResourcePath, ...richResourcePath };
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-navigation-actions.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
   vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
   vm.runInContext(await readFile(RENDERER, "utf8"), context);
   return { viewer: app.modules.selectionRichViewer, renderer: app.modules.selectionResultRenderer, document };
 }
 
-async function loadSanitizedPipeline() {
+async function loadSanitizedPipeline({ resolver = null } = {}) {
   const document = new FakeDocument();
-  const app = { modules: { contentI18n: createContentI18nStub() } };
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document });
+  const app = { modules: { contentI18n: createContentI18nStub(), ...(resolver ? { richResourceResolver: resolver } : {}) } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, TextEncoder, document });
   for (const path of SANITIZER_MODULES) vm.runInContext(await readFile(path, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-controls.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-navigation-actions.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(VIEWER, "utf8"), context);
-  return { sanitizer: app.modules.selectionRichSanitizer, viewer: app.modules.selectionRichViewer, document };
+  vm.runInContext(await readFile(RICH_RENDERER, "utf8"), context);
+  vm.runInContext(await readFile(RENDERER, "utf8"), context);
+  return { sanitizer: app.modules.selectionRichSanitizer, viewer: app.modules.selectionRichViewer, renderer: app.modules.selectionResultRenderer, document };
 }
 
 function findClass(root, className) {
@@ -358,3 +442,79 @@ class FakeNode {
     return this.shadowRoot;
   }
 }
+
+test("more than 1024 repeated references render their complete record using a few canonical descriptors", async () => {
+  const { renderer, document } = await loadSanitizedPipeline();
+  const container = document.createElement("div");
+  const rawRecord = '<img src="images/same.png"><audio src="audio/same.wav"/>'.repeat(1100) + '<p>COMPLETE REPEATED TAIL</p>';
+  assert.equal(renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", text: "fallback", richRecord: { rawRecord, format: "HTML" } }] }), true);
+  const host = walk(container).find((node) => node.className === "tf-selection-rich-text");
+  assert.ok(host);
+  assert.match(textContent(findClass(host.shadowRoot, "tf-rich-viewer")), /COMPLETE REPEATED TAIL/u);
+  assert.equal(walk(host.shadowRoot).filter((node) => node.dataset?.richResourceKind === "image").length, 1100);
+  assert.equal(walk(host.shadowRoot).filter((node) => node.dataset?.richResourceKind === "audio").length, 1100);
+});
+
+test("multi-record descriptor budgets count unique paths per Shadow and keep the 1024 aggregate boundary", async () => {
+  const { renderer, document } = await loadSanitizedPipeline();
+  const definition = (distinct) => Array.from({ length: distinct }, (_, index) => `<img src="images/${index}.png"><img src="images/${index}.png">`).join('') + '<p>RECORD TAIL</p>';
+  const make = (distinct) => ({ dictionaries: [{ id: "fixture", records: Array.from({ length: 2 }, () => ({ text: "fallback", richRecord: { rawRecord: definition(distinct), format: "HTML" } })) }] });
+  const healthy = document.createElement("div");
+  assert.equal(renderer.appendRichDictionaryDetails(healthy, make(512)), true);
+  assert.equal(walk(healthy).filter((node) => node.className === "tf-selection-rich-text").length, 2);
+  const rejected = document.createElement("div");
+  assert.throws(() => renderer.appendRichDictionaryDetails(rejected, make(513)), /aggregate display/u);
+  assert.equal(walk(rejected).filter((node) => node.className === "tf-selection-rich-text").length, 0);
+});
+
+test("legacy tree metrics fallback deduplicates only closed canonical resource descriptors", async () => {
+  const { renderer, document } = await loadModules({
+    richResourcePath: { normalize: (path) => typeof path === "string" && /^local\/[a-z]+\.png$/u.test(path) ? path : "" },
+    sanitizer: { sanitizeRichDictionaryRecord: () => ({ nodes: Array.from({ length: 1100 }, () => ({ type: "resource", kind: "image", path: "local/same.png" })) }) }
+  });
+  const container = document.createElement("div");
+  assert.equal(renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", richRecord: { rawRecord: "valid legacy tree", format: "HTML" } }] }), true);
+  assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, 1);
+});
+
+test("sanitizer metrics and viewer descriptors agree on semantic image and pronunciation variants", async () => {
+  const attached = [];
+  const { renderer, document, sanitizer } = await loadSanitizedPipeline({ resolver: { close() {}, attach(...args) { attached.push(args[3]); } } });
+  const audio = '<audio src="audio/shared.wav"/>';
+  const rawRecord = audio + '<span class="o-pron-chunk o-pron-BrE">' + audio + '</span><span class="o-pron-chunk o-pron-NAmE">' + audio + '</span>' +
+    '<img src="img/OPP.png"><span class="o-ref-opp"><span class="o-symbol-opp o-symbol-source-img"><img src="img/OPP.png"></span></span><p>VARIANT TAIL</p>';
+  const tree = sanitizer.sanitizeRichDictionaryRecord({ rawRecord });
+  assert.equal(tree.metrics.resources, 5);
+  const container = document.createElement("div");
+  renderer.appendRichDictionaryDetails(container, { dictionaries: [{ id: "fixture", richRecord: { rawRecord, format: "HTML" } }] });
+  assert.equal(attached.length, 1); assert.equal(attached[0].length, tree.metrics.resources);
+  assert.deepEqual(Array.from(attached[0], (item) => item.presentation).sort(), ["", "", "oxford-opposition", "pronunciation-american", "pronunciation-british"]);
+  const host = walk(container).find((node) => node.className === "tf-selection-rich-text");
+  assert.equal(walk(host.shadowRoot).filter((node) => node.className?.includes("tf-rich-inline-symbol-placeholder")).length, 1);
+  assert.match(textContent(host.shadowRoot), /VARIANT TAIL/u);
+});
+
+test("legacy descriptor metrics count validated presentation variants per Shadow and reject aggregate overflow", async () => {
+  const variantTree = (count) => ({ nodes: Array.from({ length: count }, (_, index) => ["", "pronunciation-british", "pronunciation-american", "unknown"].map((presentation) => ({ type: "resource", kind: "audio", path: `audio/${index}.wav`, presentation }))).flat() });
+  for (const [count, rejected] of [[170, false], [171, true]]) {
+    const { renderer, document } = await loadModules({ sanitizer: { sanitizeRichDictionaryRecord: () => variantTree(count) } });
+    const container = document.createElement("div");
+    const response = { dictionaries: [{ id: "fixture", records: Array.from({ length: 2 }, () => ({ richRecord: { rawRecord: "valid legacy AST" } })) }] };
+    if (rejected) assert.throws(() => renderer.appendRichDictionaryDetails(container, response), /aggregate display/u);
+    else assert.equal(renderer.appendRichDictionaryDetails(container, response), true);
+    assert.equal(walk(container).filter((node) => node.className === "tf-selection-rich-text").length, rejected ? 0 : 2);
+  }
+});
+
+test('symbol-token image placeholders remain explicit and use compact horizontal fallback rules', async () => {
+  const { viewer, document } = await loadModules(); const host = document.createElement('div');
+  viewer.render(host, { nodes: [{ type: 'element', tag: 'span', attrs: { class: 'o-symbol-token' }, children: ['CEFR', 'OPAL', 'CET', 'NETM'].map(label => ({ type: 'resource', kind: 'image', path: `symbols/${label}.png`, label })) },
+    { type: 'resource', kind: 'image', path: 'illustration.png', label: 'Ordinary illustration' }] }, 'safe', {});
+  const placeholders = walk(host.shadowRoot).filter(node => node.dataset?.richResourceKind === 'image'); assert.equal(placeholders.length, 5);
+  assert.equal(placeholders.at(-1).textContent, "content.rich.imageLabel");
+  const css = findTag(host.shadowRoot, 'style').textContent;
+  assert.match(css, /\.o-symbol-token \{[^}]*display: inline-flex !important;[^}]*flex-flow: row nowrap !important/s);
+  assert.match(css, /data-rich-resource-kind="image"[^}]*min-height: 0 !important[^}]*white-space: nowrap/s);
+  assert.match(css, /\.tf-rich-owned-action \{[^}]*flex-shrink: 0;[^}]*white-space: nowrap;[^}]*writing-mode: horizontal-tb/s);
+  assert.match(css, /\.o-head-symbol-set\.o-active \{[^}]*flex-wrap: wrap/s);
+});

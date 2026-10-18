@@ -1,35 +1,29 @@
 {
   "name": "translateflow-plugin",
-  "version": "0.8.0",
+  "version": "0.8.25",
   "private": true,
   "type": "module",
   "scripts": {
+    "hooks:install": "git config --local core.hooksPath .githooks",
+    "commit:prepare": "node scripts/prepare-versioned-commit.mjs",
     "check": "node scripts/check.mjs && npm run check:i18n",
     "check:i18n": "node scripts/i18n-locales.mjs --check",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node scripts/run-node-tests.mjs",
     "validate": "npm run check && npm test && npm run typecheck && npm run test:unit && npm run build:extension",
     "benchmark:translation": "node scripts/benchmark-translation.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
-    "build:tflex:core": "node scripts/build-tflex-core.mjs",
-    "build:tflex:technical": "node scripts/build-tflex-technical.mjs",
     "evaluate:lexical": "node scripts/evaluate-lexical-ranking.mjs",
-    "build:lexicon:release": "node scripts/build-release-lexicon.mjs",
-    "certify:lexicon": "node scripts/certify-lexical-release.mjs",
-    "certify:offline-dictionary-beta": "node scripts/certify-offline-dictionary-beta.mjs",
     "certify:dictionary-library-vnext": "node scripts/certify-vnext-dictionary-library.mjs",
     "certify:dictionary-ecosystem-v2": "node scripts/certify-dictionary-ecosystem-v2.mjs",
     "build:tflex:freedict": "node scripts/build-tflex-freedict.mjs",
     "lock:kaikki": "node scripts/lock-kaikki-source.mjs",
-    "setup:lexicon": "node scripts/setup-lexicon.mjs",
-    "benchmark:lexical": "node scripts/benchmark-lexical-quality.mjs",
     "build:extension": "node scripts/build-extension.mjs",
-    "build:extension:release": "node scripts/build-extension.mjs --require-lexicon",
-    "evaluate:bootstrap": "node scripts/evaluate-core-bootstrap.mjs",
+    "build:extension:release": "node scripts/build-extension.mjs",
+    "build:native-host:candidate": "node scripts/build-native-host-candidate.mjs",
     "measure:extension-footprint": "node scripts/measure-extension-footprint.mjs",
     "project:kaikki": "node scripts/project-kaikki-rich.mjs",
     "ingest:wiktextract": "python3 scripts/run-pinned-wiktextract-ingest.py",
     "audit:wiktextract-rich": "node scripts/audit-wiktextract-projection-compatibility.mjs",
-    "certify:selection-lexical": "node scripts/certify-integrated-lexical-quality.mjs",
     "project:stardict": "node scripts/project-stardict-import.mjs",
     "project:mdict": "node scripts/project-mdict-import.mjs",
     "build:tflex:mdict-import": "node scripts/build-tflex-mdict-import.mjs",
@@ -45,7 +39,9 @@
     "build:extension:wxt": "node scripts/build-extension.mjs --out .output/chrome-mv3",
     "test:wxt:smoke": "node scripts/smoke-wxt-extension.mjs",
     "typecheck": "wxt prepare && tsc --noEmit",
-    "test:unit": "wxt prepare && vitest run"
+    "test:unit": "wxt prepare && vitest run",
+    "test:e2e:special": "node scripts/run-e2e.mjs --special",
+    "test:e2e:upgrade": "node scripts/run-e2e.mjs e2e/wxt-upgrade.spec.mjs"
   },
   "engines": {
     "node": ">=24.21.0 <25",
@@ -70,5 +66,8 @@
     "vitest": "5.0.3",
     "wxt": "0.21.4"
   },
-  "packageManager": "npm@11.19.0"
+  "packageManager": "npm@11.19.0",
+  "dependencies": {
+    "markdown-it": "15.0.2"
+  }
 }

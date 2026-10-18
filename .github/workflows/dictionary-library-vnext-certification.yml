@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_TEST_WORKERS: "2"
+
 jobs:
   certify:
     name: Dictionary Library vNext final certification
@@ -20,29 +23,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Checkout locked Open Multilingual Wordnet source
-        uses: actions/checkout@v4
-        with:
-          repository: omwn/omw-data
-          ref: 406bf83b3c507a3d1f26e88252d5d66893fd36bf
-          path: .release-sources/omw-data
-          sparse-checkout: |
-            wns/eng/wn-data-eng.tab
-            wns/cow/wn-data-cmn.tab
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-
-      - name: Checkout locked WordNet 3.0 sense index
-        uses: actions/checkout@v4
-        with:
-          repository: nltk/wordnet
-          ref: ce91915ae38a341ae845be4d825ef6003cddf395
-          path: .release-sources/wordnet
-          sparse-checkout: |
-            wn/data/wordnet-3.0/index.sense
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -58,10 +38,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/translateflow-vnext/cache" "$RUNNER_TEMP/translateflow-vnext/evidence-private" "$RUNNER_TEMP/translateflow-vnext/evidence-published" "$RUNNER_TEMP/translateflow-vnext/mdd-work" "$RUNNER_TEMP/writemdict"
           node -e 'process.stdout.write(String(Date.now()))' > "$RUNNER_TEMP/translateflow-vnext/evidence-private/run-started-at-ms"
 
-      - name: Rebuild the locked Core and Technical lexical lane
-        run: npm run setup:lexicon
-
-      - name: Validate source packs and run all unit checks
+      - name: Validate production sources and run all unit checks
         run: npm run validate
 
       - name: Run focused active Rich lookup range and decode cancellation tests

@@ -8,6 +8,7 @@ const sources = await Promise.all([
   "../src/content/tasks.js",
   "../src/content/selection/result-model.js",
   "../src/content/selection/translation-query.js",
+  "../src/content/selection/assistant-persistence.js",
   "../src/content/selection/controller.js"
 ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
 
@@ -17,10 +18,10 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
+function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "" } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
-  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [];
-  const assistantPorts = [], vocabularyAdds = [];
+  const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
+  const assistantPorts = [], vocabularyAdds = [], aiPersistence = [];
   const storeStarted = deferred(), secondStoreStarted = deferred();
   const pageUrl = "https://fixture.invalid/article";
   const location = { href: pageUrl };
@@ -33,6 +34,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
 
   const sendRuntimeMessage = async (request) => {
     messages.push(request);
+    if (runtimeFailure) throw new Error(runtimeFailure);
     switch (request.type) {
       case "selection-resolve":
         if (resolveRoute === "local") return { ok: true, route: "local", explanationAllowed: true, depth: "standard",
@@ -43,7 +45,8 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
           }] } };
         return { ok: true, route: "translation", intent: { kind: "translation", sourceLanguage: "en" }, explanationAllowed: false };
       case "cache-lookup":
-        return { ok: true, hits: [] };
+        return { ok: true, hits: [], configSnapshotId: "fixture-config",
+          writeTokens: [{ id: "selection", token: { fixture: true } }] };
       case "translate-batch":
         return { ok: true, translations: [{ id: "selection", text: `${request.segments[0].text} translated` }],
           readingResult: { targetLanguage: "zh-CN", provenance: { provider: "synthetic" } } };
@@ -54,7 +57,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
           storeAcks.push(storeAck);
           (index === 0 ? storeStarted : secondStoreStarted).resolve();
           const result = await storeAck.promise;
-          if (result?.ok) stored = true;
+          if (result?.ok && Number(result.stored || 0) > 0) stored = true;
           return result;
         }
       case "cancel-translation":
@@ -74,7 +77,11 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       disconnect() { session.disconnected = true; }
     };
     session.emit = message => onMessage?.(message);
-    session.disconnectExternally = () => onDisconnect?.();
+    session.disconnectExternally = (message = "") => {
+      chrome.runtime.lastError = message ? { message } : undefined;
+      onDisconnect?.();
+      delete chrome.runtime.lastError;
+    };
     assistantPorts.push(session);
     return session.port;
   }
@@ -105,14 +112,15 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
       showLoading(_snapshot, handler) { onCancel = handler; cancelHandlers.push(handler); cancelButtonDisabled = false; },
       setLoadingStatus(status) { statuses.push(status); },
       setLoadingCancelable(cancelable) { cancelButtonDisabled = !cancelable; },
-      showResult(_snapshot, card, _copy, onExplain, onSave, onOpen) {
+      showResult(_snapshot, card, onExplain, onSave, onOpen) {
         results.push(card); resultActions.push({ onExplain, onSave, onOpen });
       },
       showError(_snapshot, message) { errors.push(message); },
       showAiDetailStreaming(_answer, onStop) { onAssistantStop = onStop; },
       showAiDetailStopping() {},
       showAiDetailResult() {},
-      showAiDetailInterrupted() {},
+      showAiPersistence(state, action) { aiPersistence.push({ state, action }); },
+      showAiDetailInterrupted(_answer, message) { assistantInterruptions.push(message); },
       hide() { hideCount++; }, reposition() { repositionCount++; }, contains: () => false
     },
     selectionClipboard: { writeText: async () => {} },
@@ -120,17 +128,43 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     selectionRichDetails: { load: async () => {}, cancel: async () => {}, bindLifecycle() {} },
     selectionVocabularyBook: { create: () => ({
       add: async (entry, event) => { vocabularyAdds.push({ entry, event }); return { added: true }; },
+      addAiNote: async (note, event) => { vocabularyAdds.push({ note, event }); return { added: true }; },
+      syncAiNote: async (note) => { vocabularyAdds.push({ note, sync: true }); return { updated: true }; },
       open: async () => ({})
     }) },
     selectionRecordClient: { create: () => readingRecords ? ({
       start({ snapshot, capture }) { return { snapshot, capture, operations: [] }; },
       assistant(context) { const operation = { operationId: `assistant-${context.operations.length + 1}` }; context.operations.push(operation); return operation; },
-      accept(_context, artifact) { accepted.push(artifact); },
+      accept(_context, artifact, options = {}) {
+        accepted.push(artifact);
+        options.onStatus?.({ state: "saved", messageKey: "content.reading.saved", retryAvailable: false, openAvailable: true });
+        options.onSaved?.({ recordId: "record-1", artifactId: `artifact-${accepted.length}`, revision: accepted.length, duplicate: false });
+        return Promise.resolve();
+      },
       close: async () => null, discard: async () => {}, invalidateReference() { referenceInvalidations++; }, refresh: async () => {}, render() {},
       save: async () => {}, retry: async () => {}, open: async () => {}, decline() {}
     }) : null },
     selectionRecordStatus: { update() {}, clear() {} },
     selectionSourceSnapshot: {
+      createProjectionGuard({ getSnapshot, getCurrentUrl, getPageIdentity, onAccept, onReject }) {
+        const freezeQuery = (snapshot) => {
+          const frozen = this.capture(snapshot);
+          snapshot.sourceCapture = frozen; snapshot.text = frozen.selectedText;
+          return frozen;
+        };
+        const isFrozenCurrent = (snapshot, frozen) => snapshot === getSnapshot() && snapshot.sourceCapture === frozen
+          && snapshot.sourceRevision === frozen.sourceRevision && frozen.sourceRevision === projectionRevision;
+        const getQuerySource = () => {
+          const snapshot = getSnapshot(), frozen = snapshot?.sourceCapture;
+          return frozen && isFrozenCurrent(snapshot, frozen) ? frozen : null;
+        };
+        return { invalidate: (revision = projectionRevision) => {
+          const snapshot = getSnapshot(), capture = snapshot?.sourceCapture;
+          if (!snapshot) return;
+          if (this.matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) onAccept(snapshot, capture, revision);
+          else onReject();
+        }, clear() {}, freezeQuery, isFrozenCurrent, getQuerySource };
+      },
       matchesCurrentPage(snapshot, frozen, currentUrl, getIdentity) {
         return Boolean(snapshot) && getIdentity(snapshot.pageUrl) === getIdentity(currentUrl)
           && (frozen ? this.matches(snapshot, frozen) : this.rangeMatches(snapshot.range, snapshot.rangeIdentity));
@@ -163,22 +197,25 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
   documentListeners.get("mouseup")({ target: {} });
 
   return {
-    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds,
+    messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds, aiPersistence, assistantInterruptions,
     ready: waitForChip(1), storeStarted: storeStarted.promise,
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
-    resolveStore: (index = 0, result = { ok: true }) => storeAcks[index].resolve(result), get stored() { return stored; },
+    resolveStore: (index = 0, result = { ok: true, stored: 1 }) => storeAcks[index].resolve(result), get stored() { return stored; },
     get cancelButtonDisabled() { return cancelButtonDisabled; },
     get hideCount() { return hideCount; }, get repositionCount() { return repositionCount; },
     get referenceInvalidations() { return referenceInvalidations; },
     stop: () => onCancel?.(), translate: () => onTranslate?.({ isTrusted: true }),
-    explain: (index = 0) => resultActions[index]?.onExplain?.({ isTrusted: true }, "understand"),
+    explain: (index = 0, action = "understand") => resultActions[index]?.onExplain?.({ isTrusted: true }, action),
     save: (index = 0) => resultActions[index]?.onSave?.({ isTrusted: true }),
     stopAssistant: () => onAssistantStop?.(),
     completeAssistant(text = "AI explanation") {
       const session = assistantPorts.at(-1), start = session?.messages.find(message => message.type === "start");
       session?.emit({ protocolVersion: 1, type: "complete", requestId: start?.requestId, text,
-        turn: { completionStatus: "completed", assistantAnswer: text },
-        readingResult: { targetLanguage: "zh-CN", sourceLanguage: "en", provenance: { provider: "synthetic" } } });
+        turn: { completionStatus: "completed", assistantAnswer: text, action: start?.action || "understand",
+          turnId: start?.turnId || "turn-1", threadId: start?.threadId || "thread-1", parentTurnId: null,
+          branchId: start?.branchId || "branch-1", regenerationOf: null },
+        readingResult: { targetLanguage: "zh-CN", sourceLanguage: "en", provenance: { provider: "synthetic", model: "mock-model",
+          promptVersion: "selection-assistant-v1", providerConfigFingerprint: "opaque" } } });
     },
     stopAt: (index) => cancelHandlers[index]?.(),
     getTask: () => app.modules.tasks.getLatestTask("selection"),
@@ -190,6 +227,7 @@ function harness({ resolveRoute = "translation", readingRecords = true } = {}) {
     },
     navigateTo(url, { notify = false } = {}) { location.href = url; if (notify) windowListeners.get("popstate")?.(); },
     close: () => app.modules.selectionPopover.closeHandler?.(),
+    escape: () => documentListeners.get("keydown")({ key: "Escape", target: {} }),
     location, windowListeners
   };
 
@@ -266,6 +304,28 @@ test("a local dictionary save remains valid after its optional AI explanation co
   assert.equal(h.vocabularyAdds.length, 1);
 });
 
+test("a completed AI tab exposes its own Learning Center state and saves one bounded wordbook note", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain(0, "analyze");
+  h.completeAssistant("Synthetic analysis");
+
+  const persistence = h.aiPersistence.at(-1);
+  assert.equal(persistence.action, "analyze");
+  assert.equal(persistence.state.reading.messageKey, "content.reading.savedAiAnswer");
+  await persistence.state.onSaveVocabulary({ isTrusted: true });
+
+  assert.equal(h.vocabularyAdds.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.vocabularyAdds[0].note)), {
+    headword: "current selected text", sourceLanguage: "en", targetLanguage: "zh-CN", action: "analyze",
+    text: "Synthetic analysis", turnId: h.assistantPorts.at(-1).messages[0].turnId,
+    provenance: { provider: "synthetic", model: "mock-model", promptVersion: "selection-assistant-v1",
+      providerConfigFingerprint: "opaque" },
+    readingRef: { recordId: "record-1", artifactId: "artifact-2" }
+  });
+});
+
 test("a local dictionary save remains valid after its optional AI explanation is stopped", async () => {
   const h = harness({ resolveRoute: "local" });
   await h.ready;
@@ -276,6 +336,25 @@ test("a local dictionary save remains valid after its optional AI explanation is
   await h.save();
 
   assert.equal(h.vocabularyAdds.length, 1);
+});
+
+test("an assistant port invalidated by an extension reload tells the user to refresh the page", async () => {
+  const h = harness({ resolveRoute: "local" });
+  await h.ready;
+  await h.translate();
+  await h.explain();
+
+  h.assistantPorts.at(-1).disconnectExternally("Extension context invalidated.");
+
+  assert.deepEqual(h.assistantInterruptions, ["content.ai.extensionReloaded"]);
+});
+
+test("a Selection request invalidated by an extension reload tells the user to refresh the page", async () => {
+  const h = harness({ runtimeFailure: "Extension context invalidated." });
+  await h.ready;
+  await h.translate();
+
+  assert.deepEqual(h.errors, ["content.ai.extensionReloaded"]);
 });
 
 test("a new selection invalidates a saved local dictionary result", async () => {
@@ -304,7 +383,9 @@ test("navigation and projection changes invalidate a saved local dictionary resu
   await projection.ready;
   await projection.translate();
   const projectionSave = projection.resultActions[0].onSave;
+  assert.ok(projection.appModules.selectionController.getQuerySource());
   projection.changeProjection();
+  assert.equal(projection.appModules.selectionController.getQuerySource(), null);
   assert.throws(() => projectionSave({ isTrusted: true }), error => error.i18nKey === "content.vocabulary.updated");
   assert.equal(projection.vocabularyAdds.length, 0);
 });
@@ -394,17 +475,26 @@ test("dismiss after storage starts permits the commit but suppresses stale UI an
   assert.equal(h.accepted.length, 0);
 });
 
-test("Selection cache quota failure remains visible after storage begins", async () => {
+test("Selection quota warning keeps a confirmed translation visible without a second Provider call", async () => {
   const h = harness();
   await h.ready;
   const pending = h.translate();
   await h.storeStarted;
-  h.resolveStore(0, { ok: false, errorCode: "QUOTA_EXCEEDED" });
+  h.resolveStore(0, { ok: true, stored: 0, cacheWarning: "CACHE_QUOTA" });
   await pending;
 
-  assert.equal(h.getTask().state, "failed");
-  assert.equal(h.getTask().errorCode, "QUOTA_EXCEEDED");
-  assert.ok(h.errors.includes("content.selection.cacheStoreFailed"));
-  assert.equal(h.results.length, 0);
-  assert.equal(h.accepted.length, 0);
+  assert.equal(h.getTask().state, "completed");
+  assert.equal(h.stored, false);
+  assert.deepEqual(h.errors, []);
+  assert.equal(h.results.length, 1);
+  assert.equal(h.accepted.length, 1);
+  assert.equal(h.messages.filter(message => message.type === "translate-batch").length, 1);
+});
+
+test("controller capture Escape closes owned rich layers before dismissing Selection", async () => {
+  const h = harness(); await h.ready; const before = h.hideCount; let layers = 2;
+  h.appModules.selectionPopover.isEventInsidePanel = () => true;
+  h.appModules.selectionPopover.consumeRichEscape = () => layers-- > 0;
+  h.escape(); assert.equal(h.hideCount, before); h.escape(); assert.equal(h.hideCount, before);
+  h.escape(); assert.equal(h.hideCount, before + 1);
 });

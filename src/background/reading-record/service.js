@@ -39,7 +39,11 @@ export function createReadingService({ browser, repository = null, collector, no
   function previewTargetRequest(entry) {
     return { recordId: entry.recordId, expectedRevision: entry.recordRevision, dataGeneration: entry.dataGeneration,
       consentGeneration: entry.consentGeneration, pageGeneration: entry.pageGeneration, pageRevision: entry.pageRevision,
-      sitePolicyRevision: entry.sitePolicyRevision };
+      sitePolicyRevision: entry.sitePolicyRevision, relatedRecords: entry.relatedRecords };
+  }
+  function assertPreviewTarget(entry, target) {
+    if (target.recordId !== entry.recordId || target.revision !== entry.recordRevision ||
+        JSON.stringify(target.relatedRecords || []) !== JSON.stringify(entry.relatedRecords)) fail(E.STALE_OPERATION, "preview.revision");
   }
   async function readPreview(entry) {
     const assertPreviewCurrent = () => {
@@ -52,6 +56,7 @@ export function createReadingService({ browser, repository = null, collector, no
     assertPreviewCurrent();
     const target = await repositoryMethod("readPreviewTarget")({ request: previewTargetRequest(entry), access: entry.ownerAccess,
       assertCurrent: assertPreviewCurrent });
+    assertPreviewTarget(entry, target);
     assertPreviewCurrent();
     await requirePreviewConsent(entry.siteKey);
     assertPreviewCurrent();
@@ -81,7 +86,7 @@ export function createReadingService({ browser, repository = null, collector, no
     if (frame.contextId !== candidate.contextId || frame.tabId !== candidate.tabId) fail(E.FORBIDDEN, "preview.bind-frame");
     const target = await repositoryMethod("readPreviewTarget")({ request: previewTargetRequest(entry), access: entry.ownerAccess,
       assertCurrent: () => { assertAccess(entry.ownerAccess); if (previews.get(request.previewId) !== entry) fail(E.STALE_OPERATION, "preview.expired"); } });
-    if (target.recordId !== entry.recordId || target.revision !== entry.recordRevision) fail(E.STALE_OPERATION, "preview.revision");
+    assertPreviewTarget(entry, target);
     await requirePreviewConsent(entry.siteKey);
     assertAccess(access);
     return previews.bind(access, request.previewId, request.claimId);
@@ -98,7 +103,8 @@ export function createReadingService({ browser, repository = null, collector, no
       if (access.scope !== "content" || access.siteExcluded) fail(E.FORBIDDEN, "preview.create-scope");
       await accessControl.validateCurrent(access);
       await requirePreviewConsent(access.siteKey);
-      const target = await repositoryMethod("readPreviewTarget")({ request: { recordId: request.recordId, expectedRevision: request.expectedRevision },
+      const target = await repositoryMethod("readPreviewTarget")({ request: { recordId: request.recordId, expectedRevision: request.expectedRevision,
+        relatedRecords: request.relatedRecords },
         access, assertCurrent: () => assertAccess(access) });
       await requirePreviewConsent(access.siteKey);
       await accessControl.validateCurrent(access);
@@ -207,7 +213,7 @@ export function createReadingService({ browser, repository = null, collector, no
         access = { ...access, siteExcluded: bool(policy?.siteExcluded, "policy.siteExcluded") };
         if (request.method === M.GET_PAGE_SUMMARY && access.siteExcluded) fail(E.DISABLED, "policy.site");
       }
-      const resourcePageKey = access.scope === "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF].includes(request.method) ? access.pageKey : null;
+      const resourcePageKey = access.scope === "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_RECORD, M.CONSUME_HANDOFF, M.DELETE_RECORD].includes(request.method) ? access.pageKey : null;
       if (access.scope !== "content" && [M.BEGIN_QUERY, M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT, M.GET_PAGE_SUMMARY, M.CANCEL_OPERATION, M.REGISTER_DOCUMENT, M.CONSUME_HANDOFF].includes(request.method)) fail(E.FORBIDDEN, "scope.content-only");
       authorizeReadingMethod(request.method, access, resourcePageKey);
       const data = await dispatch(request, access);

@@ -308,3 +308,38 @@ function notFound() {
   error.name = "NotFoundError";
   return error;
 }
+
+for (const change of ['none', 'initial-mdx', 'initial-mdd', 'during-mdx', 'during-mdd', 'uninstall', 'malformed']) {
+  test(`expected navigation versions reject ${change} drift through the real manager lookup`, async () => {
+    const bytes = makeRichMdx([["go", "<p>GO</p>"]]);
+    const index = await buildRichMdictIndex({ source: byteSource(bytes) });
+    const indexBytes = new TextEncoder().encode(JSON.stringify(index));
+    const packId = "rich-mdict-123e4567-e89b-42d3-a456-426614174000";
+    const packVersion = "import-navigation-123e4567";
+    const active = { packId, packVersion, sourceSize: bytes.length, indexSize: indexBytes.length, indexSha256: await digest(indexBytes),
+      entryCount: 1, title: index.header.title, fileName: "fixture.mdx", format: index.header.format, header: index.header };
+    const state = { packs: { [packId]: { sourceId: RICH_MDICT_SOURCE_ID, status: "healthy", active } } };
+    if (change === 'initial-mdx') active.packVersion = 'import-next-123e4568';
+    if (change === 'initial-mdd') active.resources = { packVersion: 'changed-mdd' };
+    const store = { async writeFile() {}, async readFile() { return indexBytes; }, async getFileSize(_id, _version, path) { return path === RICH_MDICT_INDEX_PATH ? indexBytes.length : bytes.length; },
+      async readFileRange(_id, _version, _path, offset, size) { return bytes.subarray(offset, offset + size); }, async listVersions() { return [packVersion]; }, async removeVersion() {} };
+    const manager = createRichMdictManager({ store, stateStore: { async read() { return state; }, async update(fn) { return fn(state); } }, cryptoProvider: webcrypto,
+      lookup: async (input) => {
+        const result = await lookupRichMdict(input);
+        if (change === 'during-mdx') state.packs[packId].active = { ...active, packVersion: 'import-next-123e4568' };
+        if (change === 'during-mdd') active.resources = { packVersion: 'changed-mdd' };
+        if (change === 'uninstall') delete state.packs[packId];
+        return result;
+      } });
+    const request = { requestId: 'selection-rich-lookup-0123456789abcdef0123456789abcdef', ownerKey: 'selection:7:0:doc', expectedPackVersion: packVersion, expectedPackageVersion: packVersion };
+    if (change === 'malformed') {
+      request.expectedPackageVersion = 'bad version';
+      await assert.rejects(manager.lookupDictionary('go', packId, request), (error) => error.code === 'RICH_MDICT_INPUT');
+    } else {
+      const result = await manager.lookupDictionary('go', packId, request);
+      assert.equal(result.found, change === 'none');
+      if (change === 'none') { assert.equal(result.dictionaries[0].packVersion, packVersion); assert.equal(result.dictionaries[0].packageVersion, packVersion); }
+      else assert.equal(result.errors[0].code, 'RICH_MDICT_STALE');
+    }
+  });
+}

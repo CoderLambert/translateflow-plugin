@@ -1,22 +1,23 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
-test.use({ lexiconPacks: "corrupt" });
 
-test("corrupt bundled lexicon stays diagnostic, actionable and Provider-free", async ({ harness }) => {
+test("corrupt user dictionaries show a diagnostic and translate only after an explicit fallback", async ({ harness }) => {
+  await harness.reset();
+  await harness.installUserDictionaries({ fault: "corrupt" });
   const page = await harness.open("/selection");
   await harness.inject(page);
-
   await selectElementText(page, "#ambiguous");
   await page.locator(".tf-selection-chip").click();
-
-  const status = page.locator(".tf-selection-status");
-  await expect(status).toHaveAttribute("data-kind", "error");
-  await expect(status).toContainText("内置本地词典校验失败");
-  await expect(status).toContainText("设置 > 本地词典");
-  await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "使用 AI 结合上下文详解" })).toBeHidden();
+  await expect(page.locator(".tf-selection-status")).toContainText("本地词典校验失败");
   expect(harness.server.calls).toHaveLength(0);
+  await page.getByRole("button", { name: "使用普通翻译处理这个词", exact: true }).click();
+  await expect(page.locator(".tf-selection-primary")).not.toBeEmpty();
+  await expect(page.getByRole("tab", { name: "译文", exact: true })).toBeVisible();
+  expect(harness.server.calls).toHaveLength(1);
+  const diagnostic = await harness.runtime({ type: "LEXICAL_LOOKUP", text: "persistent", pageUrl: page.url() });
+  expect(diagnostic.ok).toBe(true);
+  expect(diagnostic.status).toBe("error");
+  expect(diagnostic.error.code).toBe("LEXICON_CORRUPT");
 });
 
 async function selectElementText(page, selector) {

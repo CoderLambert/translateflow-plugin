@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
@@ -7,13 +8,14 @@ import {
 } from "../tests/helpers/rich-viewer-security-fixture.mjs";
 
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
-  "/tmp/translateflow-rich-viewer-183";
+  defaultEvidenceDir(import.meta.url);
 
 test.describe("Rich MDict isolated viewer security and product behavior", () => {
   test.setTimeout(300_000);
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("hostile HTML and styles stay inert while readable dictionary structure remains available", async ({ harness }) => {
@@ -147,22 +149,26 @@ test.describe("Rich MDict isolated viewer security and product behavior", () => 
     await page.setViewportSize({ width: 360, height: 800 });
     await expect(page.locator(".tf-selection-panel")).toBeVisible({ timeout: 10_000 });
     await expect(viewer).toBeVisible({ timeout: 30_000 });
-    const darkLayout = await viewer.evaluate((root) => {
-      const style = getComputedStyle(root);
-      const rect = root.getBoundingClientRect();
-      return {
-        foreground: style.color,
-        background: style.backgroundColor,
-        left: rect.left,
-        right: rect.right,
-        viewportWidth: window.innerWidth,
-        tabIndex: root.tabIndex
-      };
-    });
-    expect(darkLayout.tabIndex).toBe(0);
-    expect(darkLayout.left).toBeGreaterThanOrEqual(0);
-    expect(darkLayout.right).toBeLessThanOrEqual(darkLayout.viewportWidth);
-    expect(darkLayout.foreground).not.toBe(darkLayout.background);
+    let darkLayout;
+    // Visibility predates resize; wait for viewport clamping before recording layout.
+    await expect(async () => {
+      darkLayout = await viewer.evaluate((root) => {
+        const style = getComputedStyle(root);
+        const rect = root.getBoundingClientRect();
+        return {
+          foreground: style.color,
+          background: style.backgroundColor,
+          left: rect.left,
+          right: rect.right,
+          viewportWidth: window.innerWidth,
+          tabIndex: root.tabIndex
+        };
+      });
+      expect(darkLayout.tabIndex).toBe(0);
+      expect(darkLayout.left).toBeGreaterThanOrEqual(0);
+      expect(darkLayout.right).toBeLessThanOrEqual(darkLayout.viewportWidth);
+      expect(darkLayout.foreground).not.toBe(darkLayout.background);
+    }).toPass({ timeout: 10_000 });
     await page.screenshot({
       path: resolve(evidenceDir, "rich-viewer-security-dark-narrow.png"),
       fullPage: false,

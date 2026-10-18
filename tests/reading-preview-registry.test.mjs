@@ -41,3 +41,13 @@ test("Preview owner and frame identity, one-shot expiry, and bounded sessions ar
   assert.equal(registry.get(created.previewId), null);
   assert.equal(registry.size, 0);
 });
+
+test("Changing a related assistant record revokes its open preview", () => {
+  const relatedId = "99999999-9999-4999-8999-999999999999";
+  const registry = createReadingPreviewRegistry({ now: () => 1_000, randomId: () => "preview-related" });
+  const created = registry.create({ access: owner, target: { ...target,
+    relatedRecords: [{ recordId: relatedId, expectedRevision: 4 }] } });
+  assert.equal(registry.get(created.previewId)?.relatedRecords[0].recordId, relatedId);
+  assert.equal(registry.revokeRecord(relatedId), 1);
+  assert.equal(registry.get(created.previewId), null);
+});

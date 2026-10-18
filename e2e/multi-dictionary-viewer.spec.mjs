@@ -1,15 +1,17 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
-const evidenceDir = resolve("test-results/multi-dictionary-viewer-evidence");
+const evidenceDir = defaultEvidenceDir(import.meta.url);
 
 test.describe("multiple local rich dictionary cards", () => {
   test.setTimeout(300_000);
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("personal preference persists and opens first beside the unchanged structured primary", async ({ harness }) => {
@@ -80,8 +82,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await expect(cardById(alpha.id)).toHaveJSProperty("open", true);
     await expect(cardById(beta.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(beta.id)).toContainText("Beta rich gloss");
-    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
-    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).toBeVisible();
+    await expect(cardById(beta.id).locator(".tf-selection-rich-preference")).not.toBeAttached();
     const preferredVisibleMs = Date.now() - selectionStarted;
     await expect(cardById(alpha.id)).toHaveAttribute("data-state", "success");
     await expect(cardById(alpha.id)).toContainText("Alpha rich gloss");
@@ -184,7 +185,7 @@ test.describe("multiple local rich dictionary cards", () => {
     await expect(cards).toHaveCount(1);
     await expect(cards.first()).toHaveAttribute("data-dictionary-id", enabled.id);
     await expect(cards.first()).toHaveJSProperty("open", true);
-    await expect(cards.first().locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(cards.first().locator(".tf-selection-rich-preference")).not.toBeAttached();
     await cards.first().locator("summary").click();
     await expect(cards.first()).toHaveAttribute("data-state", "success");
     await expect(cards.first()).toContainText("Enabled rich gloss");
@@ -240,8 +241,68 @@ test.describe("multiple local rich dictionary cards", () => {
     await page.locator(".tf-selection-chip").click();
     const remainingCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${alpha.id}"]`);
     await expect(remainingCard).toHaveJSProperty("open", true);
-    await expect(remainingCard.locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(remainingCard.locator(".tf-selection-rich-preference")).not.toBeAttached();
     await expect(remainingCard).toHaveAttribute("data-state", "success");
+    expect(harness.server.calls).toHaveLength(0);
+  });
+
+  test("structured and preferred misses leave unopened dictionaries neutral until a rich hit is displayed", async ({ harness }) => {
+    const options = await openOptions(harness);
+    const fallback = await installFixture(options, {
+      title: "Fixture Rich Outcome Hit", marker: "Rich outcome fallback definition",
+      fileName: "fixture-outcome-hit.mdx", lookupKey: "richoutcomeword"
+    });
+    const preferred = await installFixture(options, {
+      title: "Fixture Rich Outcome Preferred Miss", marker: "Unrelated fixture definition",
+      fileName: "fixture-outcome-preferred-miss.mdx", lookupKey: "unrelatedfixtureword"
+    });
+    await setDictionaryPreference(options, fallback.row, "expandedByDefault", false);
+    await promoteDictionaryToPreferred(options, preferred.row);
+    const page = await openOutcomeSelection(harness);
+    await installRichViewerMessageProbe(harness, page);
+    await selectElementText(page, "#rich-outcome-selection");
+    await page.locator(".tf-selection-chip").click();
+    const preferredCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${preferred.id}"]`);
+    const fallbackCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${fallback.id}"]`);
+    await expect(preferredCard).toHaveAttribute("data-state", "empty");
+    await expect(fallbackCard).toHaveJSProperty("open", false);
+    await expect(fallbackCard).toHaveAttribute("data-state", "idle");
+    await expect(page.locator(".tf-selection-empty-message")).toHaveText("展开后查询");
+    await expect(page.locator(".tf-selection-empty-title")).not.toHaveText("本地词典暂未收录");
+    expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP").map((message) => message.dictionaryId)).toEqual([preferred.id]);
+    await fallbackCard.locator("summary").click();
+    await expect(fallbackCard).toHaveAttribute("data-state", "success");
+    await expect(fallbackCard).toContainText("Rich outcome fallback definition");
+    await expect(page.locator(".tf-selection-empty")).toHaveCount(0);
+    await expect(preferredCard).toHaveAttribute("data-state", "empty");
+    expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP").map((message) => message.dictionaryId)).toEqual([preferred.id, fallback.id]);
+    expect(harness.server.calls).toHaveLength(0);
+    await mkdir(evidenceDir, { recursive: true });
+    await page.screenshot({ path: resolve(evidenceDir, "structured-miss-preferred-miss-rich-hit.png"), fullPage: false });
+  });
+
+  test("all actual dictionary misses restore the global no-hit recovery surface", async ({ harness }) => {
+    const options = await openOptions(harness);
+    const first = await installFixture(options, {
+      title: "Fixture Outcome First Miss", marker: "First unrelated definition",
+      fileName: "fixture-outcome-first-miss.mdx", lookupKey: "unrelatedfixtureword"
+    });
+    const second = await installFixture(options, {
+      title: "Fixture Outcome Second Miss", marker: "Second unrelated definition",
+      fileName: "fixture-outcome-second-miss.mdx", lookupKey: "anotherfixtureword"
+    });
+    await setDictionaryPreference(options, second.row, "expandedByDefault", true);
+    const page = await openOutcomeSelection(harness);
+    await installRichViewerMessageProbe(harness, page);
+    await selectElementText(page, "#rich-outcome-selection");
+    await page.locator(".tf-selection-chip").click();
+    for (const { id } of [first, second]) {
+      await expect(page.locator(`.tf-selection-rich-record[data-dictionary-id="${id}"]`)).toHaveAttribute("data-state", "empty");
+    }
+    await expect(page.locator(".tf-selection-empty-title")).toHaveText("本地词典暂未收录");
+    await expect(page.locator(".tf-selection-empty-message")).toContainText("没有找到可靠的本地词典结果");
+    await expect(page.locator(".tf-selection-empty-actions")).toContainText("普通翻译");
+    expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP")).toHaveLength(2);
     expect(harness.server.calls).toHaveLength(0);
   });
 
@@ -269,13 +330,28 @@ test.describe("multiple local rich dictionary cards", () => {
     const corruptCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${corrupt.id}"]`);
     const healthyCard = page.locator(`.tf-selection-rich-record[data-dictionary-id="${healthy.id}"]`);
     await expect(corruptCard).toHaveAttribute("data-state", "error");
-    await expect(corruptCard.locator(".tf-selection-rich-preference")).toHaveText("你的首选 · 个人偏好");
+    await expect(corruptCard.locator(".tf-selection-rich-preference")).not.toBeAttached();
     await expect(healthyCard).toHaveAttribute("data-state", "success");
     await expect(healthyCard).toContainText("Healthy rich gloss");
     await expect(page.locator(".tf-selection-result")).toContainText("持久的");
     expect(harness.server.calls).toHaveLength(0);
   });
 });
+
+async function openOutcomeSelection(harness) {
+  const page = await harness.open("/selection");
+  const resolved = await harness.runtime({ type: "SELECTION_RESOLVE", text: "richoutcomeword", pageUrl: page.url(), context: null });
+  expect(resolved.ok).toBe(true);
+  expect(resolved.routeReason).toBe("no-hit-local");
+  await page.evaluate(() => {
+    const node = document.createElement("p");
+    node.id = "rich-outcome-selection";
+    node.textContent = "richoutcomeword";
+    document.body.appendChild(node);
+  });
+  await harness.inject(page);
+  return page;
+}
 
 async function openOptions(harness) {
   const options = await harness.context.newPage();

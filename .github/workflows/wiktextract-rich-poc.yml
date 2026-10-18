@@ -12,6 +12,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_TEST_WORKERS: "2"
+
 jobs:
   source-qualification-no-go:
     name: source-qualification-no-go

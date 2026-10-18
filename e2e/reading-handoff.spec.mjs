@@ -2,6 +2,7 @@ import { test, expect, chromium } from "@playwright/test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { installUserDictionaries } from "./support/user-dictionaries.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
 
@@ -12,15 +13,19 @@ test("Reading handoff opens the exact saved page and target Content consumes one
   const server = await startMockServer();
   let context;
   try {
-    await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
+    await prepareExtensionTestCopy({ extensionDir: extension, baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
     const id = new URL(worker.url()).host, driver = await context.newPage();
     await driver.goto(`chrome-extension://${id}/popup.html`);
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", autoSites: [], cacheRestoreSites: [],
+    // The native install handler can commit defaults after its worker becomes visible.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [],
       quickControlSites: [], quickControlHiddenSites: [], readingMemorySites: [] }));
 
+    await installUserDictionaries(driver);
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
     await center.getByRole("button", { name: "Enable recording", exact: true }).click();
     await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
@@ -58,15 +63,11 @@ test("Reading handoff opens the exact saved page and target Content consumes one
     }, tabId);
     await expect.poll(readHandoff).toMatchObject({ state: "consumed" });
     const consumed = await readHandoff();
-    expect(Object.keys(consumed.summary).sort()).toEqual(["anchor", "hasCompletedAssistant", "recordId", "revision"]);
+    expect(Object.keys(consumed.summary).sort()).toEqual(["anchor", "hasCompletedAssistant", "itemKey", "recordId", "revision"]);
 
-    await center.getByRole("button", { name: "Enable site markers", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Disable site markers", exact: true })).toHaveAttribute("aria-pressed", "true");
-    expect(await driver.evaluate(() => chrome.storage.local.get("readingMemorySites"))).toEqual({ readingMemorySites: [new URL(server.baseUrl).origin] });
+    await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
+    expect(await driver.evaluate(() => chrome.storage.local.get("readingMemoryDisabledSites"))).toEqual({});
     await center.screenshot({ path: info.outputPath("reading-handoff-ready.png"), fullPage: true });
-    await center.getByRole("button", { name: "Disable site markers", exact: true }).click();
-    await expect(center.getByRole("button", { name: "Enable site markers", exact: true })).toHaveAttribute("aria-pressed", "false");
-    expect(await driver.evaluate(() => chrome.storage.local.get("readingMemorySites"))).toEqual({ readingMemorySites: [] });
   } finally {
     await context?.close(); await server.close(); await rm(temporary, { recursive: true, force: true });
   }

@@ -5,11 +5,12 @@
 
   const ALLOWED_TAGS = new Set([
     "div", "span", "p", "br", "b", "strong", "i", "em", "u",
-    "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "a"
+    "ul", "ol", "li", "table", "tr", "td", "th", "ruby", "rt", "rp", "a",
+    "details", "summary", "nav", "section", "label", "input"
   ]);
   const DROP_SUBTREE_TAGS = new Set([
     "script", "style", "iframe", "object", "embed", "form", "svg", "math",
-    "video", "source", "input", "button", "select", "textarea", "link", "meta", "base"
+    "video", "source", "button", "select", "textarea", "link", "meta", "base"
   ]);
   const STYLE_PROPERTIES = new Set([
     "background-color", "border", "border-bottom", "border-color", "border-left",
@@ -25,36 +26,76 @@
   const MAX_TEXT_BYTES = 2 * 1024 * 1024;
   const MAX_RESOURCE_DESCRIPTORS = 1024;
   const VIEWER_CSS = `
-:host { --tf-rich-blue: #1e90ff; --tf-rich-note: #777; display: block; min-width: 0; max-width: 100%; color: var(--tf-text-main, #3c463d); }
+:host { container: tf-rich-article / inline-size; --tf-rich-blue: #1e90ff; --tf-rich-note: #777; display: block; min-width: 0; max-width: 100%; color: var(--tf-text-main, #3c463d); }
 *, *::before, *::after { box-sizing: border-box; max-width: 100%; }
 .tf-rich-viewer {
   box-sizing: border-box;
   max-width: 100%;
-  max-height: 210px;
-  overflow: auto;
+  overflow: visible;
   overflow-wrap: anywhere;
   color: inherit;
   font: inherit;
   line-height: 1.55;
   white-space: normal;
-  scrollbar-width: thin;
 }
 .tf-rich-viewer:focus-visible { outline: 2px solid var(--tf-green-600, #6f9668); outline-offset: 2px; }
 .tf-rich-viewer p { margin: 0 0 .45em; }
 .tf-rich-viewer p:last-child { margin-bottom: 0; }
-.tf-rich-viewer ul, .tf-rich-viewer ol { margin: .25em 0; padding-left: 1.5em; }
-.tf-rich-viewer li { margin: .1em 0; }
+.tf-rich-viewer ul.tf-rich-node-ul, .tf-rich-viewer ol.tf-rich-node-ol {
+  margin: .35em 0 .55em;
+  padding-inline-start: 1.35em;
+  list-style-position: outside;
+}
+.tf-rich-viewer ul.tf-rich-node-ul > li.tf-rich-node-li,
+.tf-rich-viewer ol.tf-rich-node-ol > li.tf-rich-node-li {
+  margin: .3em 0;
+  padding-inline-start: .15em;
+}
 .tf-rich-table-scroll { max-width: 100%; overflow-x: auto; }
 .tf-rich-viewer table { max-width: 100%; border-collapse: collapse; }
 .tf-rich-viewer td, .tf-rich-viewer th { border: 1px solid var(--tf-border-soft, rgba(58,75,59,.14)); padding: 2px 5px; vertical-align: top; }
 .tf-rich-viewer th { font-weight: 700; }
-.tf-rich-placeholder { display: inline-block; padding: 1px 5px; border: 1px dashed var(--tf-border-soft, #b9c2b4); border-radius: 4px; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
-.tf-rich-inline-symbol-placeholder { padding: 0 .12em; border: 0; border-radius: 2px; font-size: 1em; line-height: 1; vertical-align: middle; }
-.tf-rich-pronunciation-label { display: inline-block; margin: 0 .2em; color: var(--tf-text-muted, #777); font-size: .82em; line-height: 1; vertical-align: middle; }
-.tf-rich-resource-image { display: block; max-width: min(100%, 320px); height: auto; object-fit: contain; }
+.tf-rich-viewer .o-head-main { flex-shrink: 0; font-size: 1.5em; font-weight: 700; }
+.tf-rich-viewer .o-symbol-wrap { display: inline-flex; align-items: center; margin: 0 .12em; line-height: 1; vertical-align: middle; }
+.tf-rich-viewer .o-symbol-token > .tf-rich-resource-image { display: inline-block; width: auto; height: 1.05em; max-width: 3em; max-height: 1.05em; margin: 0; border-radius: 0; object-fit: contain; vertical-align: text-bottom; }
+.tf-rich-viewer .tf-rich-owned-action { flex-shrink: 0; white-space: nowrap; writing-mode: horizontal-tb; }
+.tf-rich-viewer .o-symbol-token { max-width: 100%; display: inline-flex !important; flex-flow: row nowrap !important; align-items: center; gap: .16em; vertical-align: middle; }
+.tf-rich-viewer .o-symbol-token .tf-rich-placeholder[data-rich-resource-kind="image"], .tf-rich-viewer .o-symbol-token .tf-rich-placeholder[data-rich-placeholder="image"] { display: inline-flex !important; flex: 0 0 auto; min-height: 0 !important; max-width: 9em; padding: 1px 3px !important; margin: 0 !important; font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+.tf-rich-viewer .o-pronunciation-set, .tf-rich-viewer .o-head-symbol-set { display: none; }
+.tf-rich-viewer .o-pronunciation-set.o-active { display: block; }
+.tf-rich-viewer .o-head-symbol-set.o-active { display: inline-flex; flex-wrap: wrap; }
+.tf-rich-viewer details.o-unbox-panel { margin: .55em 0; border: 1px solid var(--tf-border-soft, #d8ddd4); border-radius: 9px; background: var(--tf-bg-subtle, #f7f5ef); }
+.tf-rich-viewer details.o-unbox-panel > summary.o-unbox-tile { display: flex; align-items: center; min-width: 0; width: 100%; height: auto; min-height: 34px; margin: 0; padding: 6px 9px; border-radius: 9px; cursor: pointer; list-style: none; }
+.tf-rich-viewer details.o-unbox-panel > summary.o-unbox-tile::-webkit-details-marker { display: none; }
+.tf-rich-viewer details.o-unbox-panel > summary.o-unbox-tile::before { content: "›"; flex: 0 0 auto; margin-right: 7px; color: var(--tf-green-700, #557b52); font-size: 1.15em; line-height: 1; transition: transform 120ms ease; }
+.tf-rich-viewer details.o-unbox-panel[open] > summary.o-unbox-tile::before { transform: rotate(90deg); }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-tile-icon, .tf-rich-viewer details.o-unbox-panel .o-unbox-tile-illustration { display: none; }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-tile-title { display: flex; flex-flow: row wrap; align-items: baseline; gap: .2em .45em; min-width: 0; text-align: left; }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-tile-simp, .tf-rich-viewer details.o-unbox-panel .o-unbox-tile-eng { margin: 0; color: inherit; font: inherit; line-height: 1.3; white-space: normal; }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-tile-simp { font-weight: 700; }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-tile-eng { color: var(--tf-text-muted, #747d73); font-size: .82em; }
+.tf-rich-viewer details.o-unbox-panel > .o-unbox-body { display: none; margin: 0; padding: 8px 10px 10px; border-top: 1px solid var(--tf-border-soft, #d8ddd4); background: transparent; font: inherit; }
+.tf-rich-viewer details.o-unbox-panel[open] > .o-unbox-body { display: block; }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-body-header { padding: 0 0 .4em; background: transparent; font: inherit; font-weight: 700; line-height: 1.35; }
+.tf-rich-viewer details.o-unbox-panel .o-unbox-body-content { padding: 0; }
+.tf-rich-viewer .o-pos-body:has(details.o-unbox-panel[open]) { flex-direction: column !important; }
+.tf-rich-viewer .o-pos-body:has(details.o-unbox-panel[open]) > .o-pos-extra,
+.tf-rich-viewer .o-pos-body:has(details.o-unbox-panel[open]) > .o-pos-detail { flex: 0 0 auto !important; width: 100% !important; min-width: 0 !important; }
+.tf-rich-placeholder { display: inline-flex; align-items: center; gap: .36em; min-height: 26px; padding: 3px 8px; border: 1px solid var(--tf-border-soft, #d8ddd4); border-radius: 999px; background: var(--tf-bg-subtle, #f1ece2); color: var(--tf-text-muted, #747d73); font-size: .84em; line-height: 1.25; vertical-align: middle; }
+.tf-rich-placeholder[data-rich-resource-kind="image"]::before { content: "▧"; color: var(--tf-green-700, #557b52); font-size: .92em; }
+.tf-rich-placeholder[data-state="loading"] { opacity: .72; }
+.tf-rich-placeholder[data-state="error"] { border-color: color-mix(in srgb, var(--tf-color-danger, #bd5550) 28%, var(--tf-border-soft, #d8ddd4)); color: var(--tf-color-danger, #9c514d); }
+.tf-rich-inline-symbol-placeholder { min-height: 0; padding: 0 .12em; border: 0; border-radius: 2px; background: transparent; font-size: 1em; line-height: 1; vertical-align: middle; }
+.tf-rich-inline-symbol-placeholder::before { display: none; }
+.tf-rich-pronunciation-label { display: inline-flex; align-items: center; min-height: 26px; margin: 0 .12em; padding: 3px 7px; border-radius: 999px; background: var(--tf-green-50, #f5f8f2); color: var(--tf-green-800, #3f613f); font-size: .78em; font-weight: 700; line-height: 1; vertical-align: middle; }
+.tf-rich-resource-image { display: block; max-width: min(100%, 360px); height: auto; margin: .45em 0; border-radius: 8px; object-fit: contain; }
 .tf-rich-resource-image-oxford-inline { display: inline-block; width: auto; height: 1em; max-width: 4em; max-height: 1em; margin: 0 .12em; vertical-align: middle; object-fit: contain; }
-.tf-rich-resource-audio { display: block; max-width: 100%; margin: .25em 0; }
-.tf-rich-audio-load { font: inherit; cursor: pointer; background: transparent; }
+.tf-rich-resource-audio { display: inline-block; width: min(100%, 280px); height: 32px; margin: .18em .3em .18em 0; vertical-align: middle; }
+.tf-rich-audio-load { flex-shrink: 0; white-space: nowrap; min-height: 28px; padding: 4px 10px; border-color: color-mix(in srgb, var(--tf-green-600, #6f9668) 30%, var(--tf-border-soft, #d8ddd4)); background: var(--tf-green-50, #f5f8f2); color: var(--tf-green-800, #3f613f); font: inherit; font-size: .82em; font-weight: 700; cursor: pointer; }
+.tf-rich-audio-load::before { content: "◖))"; font-size: .9em; letter-spacing: -.16em; transform: translateX(-.08em); }
+.tf-rich-audio-load:hover { border-color: var(--tf-green-600, #6f9668); background: var(--tf-green-100, #edf3e8); }
+.tf-rich-audio-load:focus-visible { outline: 2px solid var(--tf-green-500, #8caf82); outline-offset: 2px; }
+.tf-rich-audio-load:disabled { cursor: progress; opacity: .7; }
 .tf-rich-fragment-link { border: 0; padding: 0; color: var(--tf-rich-blue); font: inherit; text-decoration: underline; cursor: pointer; background: transparent; }
 .tf-rich-truncated { margin-top: .35em; color: var(--tf-text-muted, #8a9187); font-size: .9em; }
 @media (prefers-color-scheme: dark) {
@@ -66,10 +107,11 @@
 }
 `;
 
-  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "" } = {}) {
+  function render(container, ast, fallbackText = "", { preserveNewlines = false, dictionaryId = "", packageVersion = "", onAction = null, packVersion = "", recordOffset = null } = {}) {
     if (!container) return false;
     const root = getShadowRoot(container);
     if (!root) return false;
+    app.modules.richOxfordAdapter?.close(container);
     app.modules.richResourceResolver?.close(container);
     root.replaceChildren();
 
@@ -82,33 +124,25 @@
     viewport.setAttribute("role", "region");
     locale.bindAttribute(viewport, "aria-label", "content.rich.contentAria");
     viewport.tabIndex = 0;
-    viewport.addEventListener("click", (event) => {
-      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
-      const button = path.find((node) => node instanceof HTMLButtonElement && node.hasAttribute("data-rich-fragment-target")) || null;
-      if (!button || !viewport.contains(button)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const targetId = String(button.dataset.richFragmentTarget || "");
-      const target = [...viewport.querySelectorAll("[data-rich-target-id]")]
-        .find((node) => node.dataset.richTargetId === targetId);
-      if (!target) return;
-      target.scrollIntoView({ block: "nearest", behavior: "auto" });
-      target.tabIndex = -1;
-      target.focus({ preventScroll: true });
-    });
+    app.modules.richNavigationActions?.bind(viewport, onAction);
     if (preserveNewlines) viewport.style.setProperty("white-space", "pre-wrap");
     root.appendChild(viewport);
 
     const fallbackSource = String(fallbackText || "");
     const boundedFallback = clipUtf8Text(fallbackSource, MAX_TEXT_BYTES);
+    const sourceNodes = Array.isArray(ast?.nodes) ? ast.nodes : [];
+    const controls = app.modules.richDictionaryControls?.createView(sourceNodes);
+    let unavailable = ast?.controlsUnavailable === true || controls?.unavailable;
+    const nodes = unavailable ? [{ type: "text", text: controls?.plainText() || boundedFallback }] : sourceNodes;
     let count = {
+      elements: new Map(),
+      controls: unavailable ? null : controls,
       value: 0,
       textBytes: 0,
       truncated: Boolean(ast?.truncated) || boundedFallback.length < fallbackSource.length
     };
     const resources = [];
     const resourceMap = new Map();
-    const nodes = Array.isArray(ast?.nodes) ? ast.nodes : [];
     for (let index = 0; index < nodes.length; index += 1) {
       const rendered = renderNode(nodes[index], 0, count, resources, resourceMap);
       if (rendered) viewport.appendChild(rendered);
@@ -116,6 +150,11 @@
         if (index < nodes.length - 1) count.truncated = true;
         break;
       }
+    }
+    if (count.controls?.finish() === false) {
+      viewport.replaceChildren(document.createTextNode(clipUtf8Text(controls.plainText() || boundedFallback, MAX_TEXT_BYTES)));
+      resources.length = 0;
+      unavailable = true;
     }
     if (!viewport.childNodes.length && boundedFallback) {
       viewport.appendChild(document.createTextNode(boundedFallback));
@@ -126,10 +165,12 @@
       locale.bindText(note, "content.rich.truncated");
       viewport.appendChild(note);
     }
+    if (unavailable) app.modules.richDictionaryControls?.unavailableNotice(viewport, locale);
     container.replaceChildren(document.createTextNode(boundedFallback));
     if (resources.length && dictionaryId) {
       app.modules.richResourceResolver?.attach(container, root, viewport, resources, dictionaryId, packageVersion);
     }
+    if (!unavailable) app.modules.richOxfordAdapter?.bind({ host: container, viewport, nodes, controls, elements: count.elements, count: count.value, textBytes: count.textBytes, identity: { dictionaryId, packVersion, packageVersion, recordOffset } });
     return true;
   }
 
@@ -152,12 +193,18 @@
       if (bounded.length < text.length) count.truncated = true;
       return document.createTextNode(bounded);
     }
+    if (node.type === "svg") {
+      const built = app.modules.richSvg?.build(node.scene);
+      if (!built || depth + built.depth > MAX_DEPTH || count.value + built.nodes - 1 > MAX_CONTENT_NODES) { count.truncated = true; return null; }
+      count.value += built.nodes - 1;
+      return built.element;
+    }
     if (node.type === "resource") {
       const path = app.modules.richResourcePath?.normalize?.(node.path) || "";
       if (!path || path !== node.path || !["image", "audio", "stylesheet"].includes(node.kind)) return null;
       const label = String(node.label || "").slice(0, 160);
-      const presentation = oxfordImagePresentation(node.presentation, path);
-      const key = `${node.kind}\u0000${path}\u0000${presentation}`;
+      const presentation = app.modules.richResourcePath.validatedPresentation(node.presentation, node.kind, path);
+      const key = app.modules.richResourcePath.descriptorKey(node.kind, path, presentation);
       let item = resourceMap.get(key);
       if (!item) {
         if (resources.length >= MAX_RESOURCE_DESCRIPTORS) {
@@ -169,8 +216,8 @@
         resources.push(item);
       } else if (!item.label && label) item.label = label;
       if (node.kind === "stylesheet") return null;
-      const placeholderNode = placeholder(node.kind === "image" ? "img" : "audio", label);
-      if (presentation) decorateOxfordPlaceholder(placeholderNode, presentation);
+      const placeholderNode = placeholder(node.kind === "image" ? "img" : "audio", label, presentation);
+      if (node.kind === "image" && presentation) decorateOxfordPlaceholder(placeholderNode, presentation);
       item.elements.push(placeholderNode);
       if (node.kind === "audio") placeholderNode.className += " tf-rich-audio-load";
       return placeholderNode;
@@ -181,19 +228,22 @@
     if (DROP_SUBTREE_TAGS.has(tag)) return null;
     if (tag === "img" || tag === "audio") return placeholder(tag);
     if (tag === "a") {
-      const target = String(node.attrs?.["data-rich-fragment-target"] || "");
-      if (!/^[a-z0-9_-]{1,80}$/iu.test(target)) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
-      const link = document.createElement("button");
-      link.type = "button";
-      link.className = "tf-rich-fragment-link";
-      link.dataset.richFragmentTarget = target;
+      const api = app.modules.richNavigationActions;
+      const action = node.attrs?.["data-rich-entry-target"]
+        ? api?.validate({ kind: "entry", headword: node.attrs["data-rich-entry-target"], fragment: node.attrs["data-rich-entry-fragment"] || "" })
+        : api?.validate({ kind: "fragment", fragment: node.attrs?.["data-rich-fragment-target"] });
+      const link = api?.button(action);
+      if (!link) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
       applySafeStyles(link, node.style);
       appendChildren(link, node.children, depth, count, resources, resourceMap);
       return link;
     }
     if (!ALLOWED_TAGS.has(tag)) return renderChildren(node.children, depth + 1, count, resources, resourceMap);
 
-    const element = document.createElement(tag);
+    const control = count.controls?.element(node);
+    if (tag === "input" && !control) return null;
+    const element = control || document.createElement(tag === "label" ? "span" : tag);
+    count.elements.set(node, element);
     element.className = `tf-rich-node-${tag}`;
     applySafeAttributes(element, node.attrs);
     applySafeStyles(element, node.style);
@@ -279,11 +329,11 @@
       element.setAttribute("data-compact-id", compactId);
     }
     const targetId = String(attrs["data-rich-target-id"] || "");
-    if (/^[a-z0-9_-]{1,80}$/iu.test(targetId)) element.dataset.richTargetId = targetId;
+    if (/^[a-z0-9_.-]{1,80}$/iu.test(targetId)) element.dataset.richTargetId = targetId;
     const safeClasses = String(attrs.class || "")
       .split(/\s+/u)
       .filter((name) => /^[-_a-z][-_a-z0-9]{0,47}$/iu.test(name))
-      .slice(0, 4);
+      .slice(0, 8);
     if (safeClasses.length) element.className += ` ${[...new Set(safeClasses)].join(" ")}`;
     const pronunciation = safePronunciationKind(element.tagName.toLowerCase(), attrs);
     if (pronunciation) element.setAttribute("data-rich-pronunciation", pronunciation);
@@ -307,12 +357,6 @@
     if (!classes.includes("tf-rich-pronunciation-label")) return "";
     const value = String(attrs["data-rich-pronunciation"] || "");
     return value === "british" || value === "american" ? value : "";
-  }
-
-  function oxfordImagePresentation(value, path) {
-    if (value === "oxford-opposition" && path === "img/OPP.png") return value;
-    if (value === "oxford-key" && (path === "img/Ox3000_key_L.png" || path === "img/Ox3000_key_S.png")) return value;
-    return "";
   }
 
   function decorateOxfordPlaceholder(element, presentation) {
@@ -347,10 +391,12 @@
     }
   }
 
-  function placeholder(kind, label = "") {
+  function placeholder(kind, label = "", presentation = "") {
     const item = document.createElement("span");
     item.className = "tf-rich-placeholder";
     const image = kind === "img" || kind === "image";
+    item.dataset.richResourceKind = image ? "image" : "audio";
+    if (presentation) item.dataset.richPresentation = presentation;
     locale.bindAttribute(item, "aria-label", image ? "content.rich.imageMissing" : "content.rich.audioMissing");
     locale.bindText(item,
       label ? (image ? "content.rich.imageLabel" : "content.rich.audioLabel") : (image ? "content.rich.imageMissing" : "content.rich.audioMissing"),

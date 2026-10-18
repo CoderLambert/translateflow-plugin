@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -9,7 +10,7 @@ import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { buildRichMdictIndex, lookupRichMdict } from "../src/background/packs/importers/mdict-rich.js";
 
 const evidenceDir = process.env.MDD_INTEROP_EVIDENCE_DIR ||
-  resolve("/tmp/translateflow-mdd-184/evidence");
+  defaultEvidenceDir(import.meta.url);
 const lock = JSON.parse(await readFile(
   new URL("../tests/fixtures/mdd-interop/corpus-lock.json", import.meta.url),
   "utf8"
@@ -57,6 +58,18 @@ test.describe("local MDD resource product and security behavior", () => {
       mimeType: "application/octet-stream",
       buffer: mdd
     }, { success: true });
+    const compactFacts = row.locator(".dictionary-compact-facts");
+    await expect(compactFacts).toContainText("MDX 富文本");
+    await expect(compactFacts).toContainText("MDD 文件");
+    const dictionaryDetails = row.locator(".dictionary-v2-details");
+    await expect(dictionaryDetails).not.toHaveAttribute("open", "");
+    await expect(row.locator(".dictionary-v2-metadata")).not.toBeVisible();
+    await expect(row.locator('[data-action="attach-mdd-resources-button"]')).toBeVisible();
+    const dictionaryDetailsSummary = dictionaryDetails.locator("summary");
+    await dictionaryDetailsSummary.focus();
+    await dictionaryDetailsSummary.press("Space");
+    await expect(dictionaryDetails).toHaveAttribute("open", "");
+    await expect(row.locator(".dictionary-v2-metadata")).toBeVisible();
 
     const deniedSettingsRead = await readMddResourceFromOptions(
       options,
@@ -83,6 +96,7 @@ test.describe("local MDD resource product and security behavior", () => {
       hasText: "TranslateFlow MDD Interop Fixture"
     });
     await expect(row).toBeVisible();
+    await expect(row.locator(".dictionary-v2-details")).not.toHaveAttribute("open", "");
     const afterReload = await readMddResource(harness, resourceProbe, dictionaryId, "interop/sample.png");
     expect(afterReload.ok).toBe(true);
     expect(afterReload.found).toBe(true);
@@ -157,14 +171,7 @@ test.describe("local MDD resource product and security behavior", () => {
     const audio = richViewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
     await expect(audio).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(2);
-    await audio.evaluate((node) => {
-      node.addEventListener("play", () => node.dataset.e2ePlayEvent = "true", { once: true });
-    });
-    await audio.scrollIntoViewIfNeeded();
-    const audioBox = await audio.boundingBox();
-    expect(audioBox).toBeTruthy();
-    await page.mouse.click(audioBox.x + 16, audioBox.y + Math.max(16, audioBox.height / 2));
-    await expect.poll(() => audio.getAttribute("data-e2e-play-event"), { timeout: 5_000 }).toBe("true");
+    await expect.poll(() => audio.getAttribute("data-playback"), { timeout: 5_000 }).toMatch(/^(?:playing|ended)$/u);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(2);
     expect(await page.evaluate(() => window.__mddFixtureExecuted || false)).toBe(false);
     expect(harness.server.calls).toHaveLength(0);
@@ -309,7 +316,7 @@ test.describe("local MDD resource product and security behavior", () => {
     })).toBe(true);
     await expect(viewer).toContainText("Example.");
 
-    const screenshotPath = resolve(process.env.TF_RICH_DICTIONARY_SCREENSHOT || "/tmp/translateflow-rich-dictionary-demo.png");
+    const screenshotPath = resolve(process.env.TF_RICH_DICTIONARY_SCREENSHOT || resolve(evidenceDir, "rich-dictionary-demo.png"));
     await mkdir(dirname(screenshotPath), { recursive: true });
     await page.screenshot({ path: screenshotPath, fullPage: false, caret: "initial" });
     console.log("[RICH_VIEWER_SCREENSHOT]", JSON.stringify({
@@ -371,21 +378,22 @@ test.describe("local MDD resource product and security behavior", () => {
 
     const layoutBeforeUnload = await viewer.evaluate((root) => {
       const currentImage = root.querySelector("img.tf-rich-resource-image");
+      const scrollRoot = root.getRootNode().host.closest(".tf-selection-result");
       const tail = document.createElement("p");
       tail.dataset.testScrollTail = "true";
       tail.textContent = "TAIL_AFTER_TALL_IMAGE";
       tail.style.height = "600px";
       tail.style.margin = "0";
       currentImage.after(tail);
-      const imageBottom = currentImage.getBoundingClientRect().bottom - root.getBoundingClientRect().top + root.scrollTop;
-      root.scrollTop = imageBottom + 10;
+      const imageBottom = currentImage.getBoundingClientRect().bottom - scrollRoot.getBoundingClientRect().top + scrollRoot.scrollTop;
+      scrollRoot.scrollTop = imageBottom + 10;
       const tailRect = tail.getBoundingClientRect();
       return {
-        scrollHeight: root.scrollHeight,
-        scrollTop: root.scrollTop,
-        tailTop: tailRect.top - root.getBoundingClientRect().top,
+        scrollHeight: scrollRoot.scrollHeight,
+        scrollTop: scrollRoot.scrollTop,
+        tailTop: tailRect.top - scrollRoot.getBoundingClientRect().top,
         tailText: tail.textContent,
-        imageTop: currentImage.getBoundingClientRect().top - root.getBoundingClientRect().top
+        imageTop: currentImage.getBoundingClientRect().top - scrollRoot.getBoundingClientRect().top
       };
     });
     expect(layoutBeforeUnload.imageTop).toBeLessThan(-200);
@@ -393,12 +401,13 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(0);
     const layoutAfterUnload = await viewer.evaluate((root) => {
       const currentImage = root.querySelector("img.tf-rich-resource-image");
+      const scrollRoot = root.getRootNode().host.closest(".tf-selection-result");
       const tail = root.querySelector("[data-test-scroll-tail]");
       const tailRect = tail.getBoundingClientRect();
       return {
-        scrollHeight: root.scrollHeight,
-        scrollTop: root.scrollTop,
-        tailTop: tailRect.top - root.getBoundingClientRect().top,
+        scrollHeight: scrollRoot.scrollHeight,
+        scrollTop: scrollRoot.scrollTop,
+        tailTop: tailRect.top - scrollRoot.getBoundingClientRect().top,
         imageWidth: currentImage.width,
         imageHeight: currentImage.height,
         imageHasSource: currentImage.hasAttribute("src"),
@@ -410,11 +419,14 @@ test.describe("local MDD resource product and security behavior", () => {
     expect(layoutAfterUnload.tailTop).toBe(layoutBeforeUnload.tailTop);
     expect(layoutAfterUnload).toMatchObject({ imageWidth: 240, imageHeight: 600, imageHasSource: false, imageVisibility: "hidden" });
 
-    await viewer.evaluate((root) => { root.scrollTop = 0; });
+    await viewer.evaluate((root) => { root.getRootNode().host.closest(".tf-selection-result").scrollTop = 0; });
     await expect(image).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => image.evaluate((node) => node.naturalHeight)).toBe(600);
     await expect.poll(() => activeObjectUrlCount(harness, page)).toBe(1);
-    const layoutAfterReturn = await viewer.evaluate((root) => ({ scrollHeight: root.scrollHeight, scrollTop: root.scrollTop }));
+    const layoutAfterReturn = await viewer.evaluate((root) => {
+      const scrollRoot = root.getRootNode().host.closest(".tf-selection-result");
+      return { scrollHeight: scrollRoot.scrollHeight, scrollTop: scrollRoot.scrollTop };
+    });
     expect(layoutAfterReturn.scrollHeight).toBe(layoutBeforeUnload.scrollHeight);
     expect(layoutAfterReturn.scrollTop).toBe(0);
     expect(harness.server.calls).toHaveLength(0);
@@ -828,14 +840,17 @@ test.describe("local MDD resource product and security behavior", () => {
     await expect.poll(() => viewer.evaluate((node) => node.getRootNode().activeElement?.dataset.richTargetId || "")).toBe("media-anchor");
     const audioLoader = viewer.locator("button[data-action='load-mdd-audio']");
     await expect(audioLoader).toBeVisible();
+    // Loading from this trusted click starts playback; observe the non-bubbling
+    // play event before the audio element is created, on the actual audio target.
+    await viewer.evaluate((node) => node.addEventListener("play", (event) => {
+      const audio = event.target;
+      if (audio instanceof HTMLAudioElement && audio.matches("audio.tf-rich-resource-audio")) {
+        audio.dataset.e2ePlayEvent = "true";
+      }
+    }, { capture: true, once: true }));
     await audioLoader.click();
     const audio = viewer.locator("audio.tf-rich-resource-audio[src^='blob:']");
     await expect(audio).toBeVisible({ timeout: 30_000 });
-    await audio.evaluate((node) => node.addEventListener("play", () => { node.dataset.e2ePlayEvent = "true"; }, { once: true }));
-    await audio.scrollIntoViewIfNeeded();
-    const audioBox = await audio.boundingBox();
-    expect(audioBox).toBeTruthy();
-    await page.mouse.click(audioBox.x + 16, audioBox.y + Math.max(16, audioBox.height / 2));
     await expect.poll(() => audio.getAttribute("data-e2e-play-event"), { timeout: 5_000 }).toBe("true");
     expect(await page.evaluate(() => window.__mddLinkedPackageExecuted || false)).toBe(false);
     expect(remoteRequests).toEqual([]);
@@ -923,7 +938,7 @@ test.describe("local MDD resource product and security behavior", () => {
 });
 
 async function attachMddFile(row, file, { success }) {
-  await row.getByRole("button", { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole("button", { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles(file);
   const status = row.page().locator("#status");
   if (success) await expect(status).toContainText("本地资源已更新", { timeout: 60_000 });

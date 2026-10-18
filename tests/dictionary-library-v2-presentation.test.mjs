@@ -6,6 +6,7 @@ import {
   formatDictionaryBytes,
   getCatalogDictionaryRows,
   getCuratedMdxErrorMessage,
+  getDictionaryCompactFacts,
   getDictionaryCompatibilityLabel,
   getDictionaryHealthPresentation,
   getLocalRichDictionaryRows
@@ -34,6 +35,28 @@ test("Catalog v2 presentation keeps upstream, content and review dates distinct"
   assert.match(values["许可与使用条款"], /MIT/u);
   assert.match(values["许可与使用条款"], /CC/u);
   assert.ok(rows.some(({ label, href }) => label === "上游项目" && href === "https://github.com/skywind3000/ECDICT"));
+});
+
+test("dictionary compact facts prefer useful identity and installed size while staying bounded", () => {
+  const rows = getCatalogDictionaryRows(ecdict, {
+    installedSize: 101_000_000,
+    entryCount: 3_402_564
+  });
+  assert.deepEqual(getDictionaryCompactFacts(rows), [
+    "English → 简体中文",
+    "MDX 富文本（压缩包下载）",
+    "3,402,564 词条",
+    "96.3 MiB"
+  ]);
+  assert.deepEqual(getDictionaryCompactFacts([
+    { label: "语言方向", value: "由你确认；TranslateFlow 尚未核验。" },
+    { label: "格式", value: "MDX 富文本" },
+    { label: "词条", value: "133,571" },
+    { label: "已安装大小", value: "1.4 GiB" },
+    { label: "下载大小", value: "37.0 MiB" },
+    { label: "本地附件", value: "2 个 MDD 文件 · 1.4 GiB" }
+  ]), ["MDX 富文本", "133,571 词条", "1.4 GiB", "2 个 MDD 文件 · 1.4 GiB"]);
+  assert.deepEqual(getDictionaryCompactFacts([], { maxItems: 0 }), []);
 });
 
 test("local compatibility and health states use user-facing explanations", () => {

@@ -1,9 +1,7 @@
 import { readFile, realpath, readdir, stat } from "node:fs/promises";
 import platformPath, { resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { webcrypto } from "node:crypto";
-import { WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES, BUNDLED_LEXICON_PATHS } from "../src/shared/runtime-assets.js";
-import { validateTflexManifest, verifyTflexManifestFingerprint, verifyTflexDescriptor } from "../src/background/lexical/tflex-integrity.js";
+import { WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { pathRelation } from "./path-boundaries.mjs";
 
 export const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -47,44 +45,6 @@ export async function sourceClosure(roots, root = ROOT) {
   }
   for (const rootPath of roots) await visit(rootPath);
   return [...files].sort();
-}
-
-export async function lexicalAssetFiles({ root = ROOT, requireLexicon = false } = {}) {
-  const files = [];
-  const missing = [];
-  const canonicalRoot = await realpath(root);
-  for (const packRoot of Object.values(BUNDLED_LEXICON_PATHS)) {
-    let text;
-    try { text = await readFile(resolve(root, packRoot, "manifest.json"), "utf8"); }
-    catch (error) {
-      if (error.code !== "ENOENT") throw error;
-      missing.push(packRoot);
-      continue;
-    }
-    const manifest = JSON.parse(text);
-    if (manifest.format !== "tflex" || !Array.isArray(manifest.files)) throw new Error(`Invalid generated pack: ${packRoot}`);
-    const paths = ["manifest.json", ...manifest.files.map((entry) => assertAssetPath(entry.path))];
-    if (new Set(paths).size !== paths.length) throw new Error(`Duplicate pack path: ${packRoot}`);
-    validateTflexManifest(manifest, 1);
-    await verifyTflexManifestFingerprint(manifest, webcrypto);
-    for (const entry of manifest.files) {
-      const allowed = entry.role === "lookup-index" && entry.path === "directory.json"
-        || entry.role === "license-notice" && entry.path === "THIRD_PARTY_NOTICES.txt"
-        || entry.role === "lexical-data" && /^shards\/[a-zA-Z0-9_-]+\.jsonl$/u.test(entry.path);
-      if (!allowed) throw new Error(`Unregistered generated pack asset: ${packRoot}/${entry.path}`);
-    }
-    for (const path of paths) {
-      const asset = `${packRoot}/${path}`;
-      // Verify existence and confinement; never copy an entire generated directory.
-      const canonical = await realpath(resolve(root, asset));
-      if (!isInsideSourceRoot(canonicalRoot, canonical)) throw new Error(`Asset escapes source root: ${asset}`);
-      if (!(await stat(canonical)).isFile()) throw new Error(`Asset must be a file: ${asset}`);
-      if (path !== "manifest.json") await verifyTflexDescriptor(manifest.files.find((entry) => entry.path === path), await readFile(canonical), webcrypto, manifest.packId);
-      files.push(asset);
-    }
-  }
-  if (requireLexicon && missing.length) throw new Error(`Release WXT build requires generated packs: ${missing.join(", ")}`);
-  return { files: files.sort(), missing };
 }
 
 export async function walkFiles(root) {

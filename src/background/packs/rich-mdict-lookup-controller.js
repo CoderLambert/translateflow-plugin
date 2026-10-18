@@ -1,5 +1,6 @@
 import {
   RICH_MDICT_MAX_DISPLAY_BYTES,
+  RICH_MDICT_MAX_RECORDS,
   RICH_MDICT_MAX_SOURCE_RECORD_BYTES,
   RICH_MDICT_MAX_RECORD_TEXT_BYTES,
   RICH_MDICT_SOURCE_ID,
@@ -28,6 +29,7 @@ export function createRichMdictLookupController({
   const cancelledRequests = new Map();
 
   async function lookupText(text, dictionaryId, lookupIdentity = null) {
+    const expected = expectedVersions(lookupIdentity);
     const query = normalizeQuery(text);
     const targetId = dictionaryId === undefined ? "" : normalizePackId(dictionaryId);
     const operation = lookupIdentity ? beginOperation(lookupIdentity) : null;
@@ -52,38 +54,17 @@ export function createRichMdictLookupController({
         const active = entry.active;
         try {
           if (!isValidSnapshot(packId, active)) throw richError("RICH_MDICT_CORRUPT", "Rich dictionary metadata is malformed.");
+          assertExpectedVersions(active, expected);
           await assertSourceSize(active);
           assertNotAborted(signal);
           const index = await loadIndex(active, signal);
           assertNotAborted(signal);
           const result = await lookup({ source: sourceReader(packId, active, signal), index, text: query, signal });
           assertNotAborted(signal);
+          if (expected) assertExpectedVersions((await stateStore.read()).packs?.[packId]?.active, expected);
+          assertNotAborted(signal);
           if (result?.found) {
-            const rawRecordBytes = new TextEncoder().encode(result.rawRecord).byteLength;
-            if (!Number.isSafeInteger(result.sourceRecordBytes) ||
-                result.sourceRecordBytes <= 0 ||
-                result.sourceRecordBytes > RICH_MDICT_MAX_SOURCE_RECORD_BYTES ||
-                !Number.isSafeInteger(rawRecordBytes) ||
-                rawRecordBytes > RICH_MDICT_MAX_RECORD_TEXT_BYTES ||
-                (Number.isSafeInteger(result.decodedTextBytes) && result.decodedTextBytes !== rawRecordBytes)) {
-              throw richError("RICH_MDICT_LIMIT", "Rich MDict record exceeds the source or decoded text safety limit.");
-            }
-            dictionaries.push({
-            id: packId,
-            packVersion: active.packVersion,
-            title: active.title,
-            headword: clampText(result.displayForm, 300),
-            text: clampUtf8Text(result.safeTextFallback, RICH_MDICT_MAX_DISPLAY_BYTES),
-            richRecord: {
-              rawRecord: result.rawRecord,
-              sourceBytes: result.sourceRecordBytes,
-              textBytes: rawRecordBytes,
-              format: clampText(index.header.format, 40),
-              styleSheetRules: index.header.styleSheetRules.map(({ id, begin, end }) => ({ id, begin, end }))
-            },
-            ...(result.aliasTarget ? { aliasTarget: clampText(result.aliasTarget, 300) } : {}),
-            ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {})
-            });
+            dictionaries.push(dictionaryResponse(result, index, active, packId, clampUtf8Text));
           }
         } catch (error) {
           if (signal?.aborted || error?.name === "AbortError") throw richMdictAbortError();
@@ -152,6 +133,73 @@ export function createRichMdictLookupController({
   return Object.freeze({ lookupText, cancelLookup });
 }
 
+function dictionaryResponse(result, index, active, packId, clampUtf8Text) {
+  const multiple = result.records !== undefined;
+  const inputs = multiple ? result.records : [result];
+  if (!Array.isArray(inputs) || !inputs.length || inputs.length > RICH_MDICT_MAX_RECORDS) {
+    throw richError("RICH_MDICT_LIMIT", "Rich MDict result record count is invalid.");
+  }
+  const styleSheetRules = responseStyleRules(index.header.styleSheetRules);
+  const offsets = new Set();
+  let sourceBytes = 0, textBytes = 0, fallbackBytes = 0;
+  const records = inputs.map((record) => {
+    const rawBytes = typeof record?.rawRecord === "string" ? new TextEncoder().encode(record.rawRecord).byteLength : NaN;
+    if (!Number.isSafeInteger(record?.sourceRecordBytes) || record.sourceRecordBytes <= 0 ||
+        record.sourceRecordBytes > RICH_MDICT_MAX_SOURCE_RECORD_BYTES || !Number.isSafeInteger(rawBytes) ||
+        rawBytes > RICH_MDICT_MAX_RECORD_TEXT_BYTES ||
+        (multiple && record.decodedTextBytes !== rawBytes) ||
+        (record.decodedTextBytes !== undefined && record.decodedTextBytes !== rawBytes)) {
+      throw richError("RICH_MDICT_LIMIT", "Rich MDict record exceeds the source or decoded text safety limit.");
+    }
+    if (multiple) {
+      if (!Number.isSafeInteger(record.recordOffset) || record.recordOffset < 0 || offsets.has(record.recordOffset) ||
+          !Number.isSafeInteger(record.recordEnd) || record.recordEnd - record.recordOffset !== record.sourceRecordBytes ||
+          record.recordEnd > index.totalRecordBytes) throw richError("RICH_MDICT_CORRUPT", "Rich MDict result record offsets are invalid.");
+      offsets.add(record.recordOffset);
+    }
+    sourceBytes += record.sourceRecordBytes; textBytes += rawBytes;
+    const text = String(record.safeTextFallback ?? "");
+    fallbackBytes += new TextEncoder().encode(text).byteLength;
+    if (sourceBytes > RICH_MDICT_MAX_SOURCE_RECORD_BYTES || textBytes > RICH_MDICT_MAX_RECORD_TEXT_BYTES ||
+        fallbackBytes > RICH_MDICT_MAX_DISPLAY_BYTES) throw richError("RICH_MDICT_LIMIT", "Rich MDict aggregate result exceeds its safety limit.");
+    return { headword: clampText(record.displayForm, 300), text: clampUtf8Text(text, RICH_MDICT_MAX_DISPLAY_BYTES),
+      ...(multiple ? { recordOffset: record.recordOffset, recordEnd: record.recordEnd } : {}),
+      richRecord: { rawRecord: record.rawRecord, sourceBytes: record.sourceRecordBytes, textBytes: rawBytes, format: clampText(index.header.format, 40) },
+      ...(record.aliasTarget ? { aliasTarget: clampText(record.aliasTarget, 300) } : {}) };
+  });
+  if ((result.aggregateSourceRecordBytes !== undefined && result.aggregateSourceRecordBytes !== sourceBytes) ||
+      (result.aggregateDecodedTextBytes !== undefined && result.aggregateDecodedTextBytes !== textBytes)) {
+    throw richError("RICH_MDICT_CORRUPT", "Rich MDict aggregate result byte counts are inconsistent.");
+  }
+  const first = records[0];
+  const cycles = result.diagnostics?.aliasCycleBranches;
+  if (cycles !== undefined && (!Number.isSafeInteger(cycles) || cycles < 0 || cycles > RICH_MDICT_MAX_RECORDS)) {
+    throw richError("RICH_MDICT_CORRUPT", "Rich MDict result diagnostics are invalid.");
+  }
+  return { id: packId, packVersion: active.packVersion, packageVersion: active.resources?.packVersion || active.packVersion, title: active.title, records, styleSheetRules,
+    headword: first.headword, text: first.text, richRecord: { ...first.richRecord, styleSheetRules },
+    aggregateSourceRecordBytes: sourceBytes, aggregateDecodedTextBytes: textBytes,
+    ...(first.aliasTarget ? { aliasTarget: first.aliasTarget } : {}),
+    ...(cycles ? { diagnostics: { aliasCycleBranches: cycles } } : {}),
+    ...(result.debugMetrics ? { debugMetrics: sanitizeDebugMetrics(result.debugMetrics) } : {}) };
+}
+
+function responseStyleRules(rules) {
+  if (!Array.isArray(rules) || rules.length > 255) throw richError("RICH_MDICT_LIMIT", "Rich MDict stylesheet rule count is invalid.");
+  let bytes = 0;
+  const ids = new Set();
+  return rules.map(({ id, begin, end }) => {
+    if (!Number.isInteger(id) || id < 1 || id > 255 || ids.has(id) || typeof begin !== "string" || typeof end !== "string") {
+      throw richError("RICH_MDICT_CORRUPT", "Rich MDict stylesheet rule metadata is invalid.");
+    }
+    ids.add(id);
+    const beginBytes = new TextEncoder().encode(begin).byteLength, endBytes = new TextEncoder().encode(end).byteLength;
+    bytes += beginBytes + endBytes;
+    if (beginBytes > 4096 || endBytes > 4096 || bytes > 64 * 1024) throw richError("RICH_MDICT_LIMIT", "Rich MDict stylesheet metadata exceeds its safety limit.");
+    return { id, begin, end };
+  });
+}
+
 function normalizeOwnerKey(value) {
   const ownerKey = String(value || "");
   if (!ownerKey || ownerKey.length > 512 || /[\u0000-\u001f\u007f]/u.test(ownerKey)) {
@@ -162,4 +210,18 @@ function normalizeOwnerKey(value) {
 
 function assertNotAborted(signal) {
   if (signal?.aborted) throw richMdictAbortError();
+}
+
+function expectedVersions(identity) {
+  const pack = identity?.expectedPackVersion, resource = identity?.expectedPackageVersion;
+  if (pack === undefined && resource === undefined) return null;
+  if (![pack, resource].every((value) => typeof value === "string" && /^[A-Za-z0-9_.-]{1,120}$/u.test(value))) {
+    throw richError("RICH_MDICT_INPUT", "Rich dictionary expected versions are invalid.");
+  }
+  return { pack, resource };
+}
+function assertExpectedVersions(active, expected) {
+  if (expected && (active?.packVersion !== expected.pack || (active?.resources?.packVersion || active?.packVersion) !== expected.resource)) {
+    throw richError("RICH_MDICT_STALE", "This dictionary changed while navigating. Reopen the lookup.");
+  }
 }

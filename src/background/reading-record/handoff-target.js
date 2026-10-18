@@ -19,7 +19,8 @@ export function* readHandoffTarget(store, context) {
   const target = { recordId, recordRevision: record.revision, pageKey: record.pageKey, siteKey: row.siteKey,
     safeReturnUrl: record.safeReturnUrl, consentGeneration: meta.consentGeneration, dataGeneration: meta.dataGeneration,
     sitePolicyRevision: site.sitePolicyRevision, pageGeneration: page.pageGeneration,
-    summary: { recordId, revision: record.revision, anchor: record.anchor, hasCompletedAssistant: row.listItem.hasCompletedAssistant } };
+    summary: { recordId, revision: record.revision, itemKey: record.itemKey,
+      anchor: record.anchor, hasCompletedAssistant: row.listItem.hasCompletedAssistant } };
   if (expected) for (const key of ["recordId", "recordRevision", "pageKey", "siteKey", "safeReturnUrl", "consentGeneration", "dataGeneration", "sitePolicyRevision", "pageGeneration"]) {
     if (target[key] !== expected[key]) fail(E.STALE_OPERATION, "handoff.generations");
   }

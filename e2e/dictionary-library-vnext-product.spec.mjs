@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
@@ -6,13 +7,14 @@ import { readMddInteropFixture } from "../tests/helpers/mdd-fixture.mjs";
 
 const TRUST_LABEL = "本地导入 · 用户提供 / 未验证";
 const evidenceDir = process.env.DICTIONARY_LIBRARY_VNEXT_EVIDENCE_DIR ||
-  resolve("test-results/dictionary-library-vnext-evidence");
+  defaultEvidenceDir(import.meta.url);
 
 test.describe("Dictionary Library vNext integrated product flow", () => {
   test.setTimeout(300_000);
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("two local rich MDX dictionaries and one attached MDD keep isolated cards, preferences, and resources", async ({ harness }) => {
@@ -115,8 +117,10 @@ test.describe("Dictionary Library vNext integrated product flow", () => {
     await expect(onlyBetaCard).toHaveAttribute("open", "");
     await expect(onlyBetaCard).toHaveAttribute("data-state", "success", { timeout: 30_000 });
     await expect(onlyBetaCard).toContainText("Beta's synthetic usage panel");
-    await expect(onlyBetaCard.locator(".tf-selection-rich-trust")).toContainText(TRUST_LABEL);
-    await expect(onlyBetaCard.locator(".tf-selection-rich-format")).toContainText("Html");
+    // Successful lookup headers show the dictionary name. Source/trust metadata
+    // remains in the installed library, whose identity was checked above.
+    await expect(onlyBetaCard.locator("summary")).toHaveText("Field Notes · Beta");
+    await expect(onlyBetaCard.locator(".tf-selection-rich-trust, .tf-selection-rich-format")).toHaveCount(0);
     const betaImage = onlyBetaCard.locator("img.tf-rich-resource-image[src^='blob:']");
     await expect(betaImage).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => betaImage.evaluate((node) => node.naturalWidth)).toBe(2);
@@ -369,7 +373,7 @@ async function readDictionaryIdentity(options, ids) {
 }
 
 async function attachMddFile(row, file) {
-  await row.getByRole("button", { name: /添加或替换 MDD 附件/u }).click();
+  await row.getByRole("button", { name: /添加或重新选择资源/u }).click();
   await row.locator('input[data-action="attach-mdd-resources"]').setInputFiles(file);
   await expect(row.page().locator("#status")).toContainText("本地资源已更新", { timeout: 60_000 });
   await expect(row).toContainText("1 个 MDD 文件");

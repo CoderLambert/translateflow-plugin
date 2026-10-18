@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "task": "api-key-provider-connections",
+  "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
+  "tree": "75ef091c16a70b6ba79ebf07d14856bb7e57e817",
+  "inputTree": "8853a696a6b82f9a2a86ea4b8b10b8335d5277cfc6802c1e040f7d50880008c2",
+  "frozenAt": "2026-10-13T19:45:00.271Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 50543.070535,
+      "startedAt": "2026-10-13T19:45:03.575Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/0134d511-0c20-4c7c-8c0c-16b3e9cd0463.log",
+      "logSha256": "ef9b9f5e022f30663c433d701781080997b47fc62c9b8597d7e432d9d3371016"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2439.463295,
+      "startedAt": "2026-10-13T19:45:58.553Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/b4b553a1-c660-44a1-aea5-d62dd94c2f82.log",
+      "logSha256": "eb439342b9ea3f67da4dd4ec4442fc1c67f7bb7eff8484d53f38e98cf0d056ef"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1158.043817,
+      "startedAt": "2026-10-13T19:46:03.178Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/776d546f-1644-43c3-aacb-1e963d2ade9b.log",
+      "logSha256": "3e4161e04c258bcd9f6021f8188d3b9a0f98700e252c7f5342a304071b0759a1"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/run-e2e.mjs",
+        "e2e/provider-connections.spec.mjs",
+        "e2e/selection-assistant-stream.spec.mjs",
+        "e2e/subtitles.spec.mjs",
+        "e2e/learning-center.spec.mjs"
+      ],
+      "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 28020.335018,
+      "startedAt": "2026-10-13T19:46:08.240Z",
+      "log": "docs/task-execution/local/api-key-provider-connections/a796ac76-46c4-450c-9331-31d0cc1f803a.log",
+      "logSha256": "1a9154463761a45c0e83a145b6f388a3e2d9a87a62cac05fa3ca1247bc227d91"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "1c9dbbc50285fb42764d6c61440c077b5ab478a327955ffa379735e147e66df9"
+  },
+  "limitations": [
+    "Real paid Provider endpoints were not called; native cloud protocol coverage uses the repository mock Provider. Real local LM Studio hy-mt2-7b was verified separately.",
+    "Chrome 102, other browsers, real YouTube timedtext, same-ID upgrade/restart, and release lexicon certification were not run.",
+    "The WXT build passed with the advisory platform-code budget warning: 2008340/1576595 bytes."
+  ]
+}

@@ -13,7 +13,7 @@ test.describe("Settings information architecture", () => {
     await expect(nav.getByRole("link", { name: "Provider" })).toBeVisible();
 
     await nav.getByRole("link", { name: "YouTube" }).click();
-    await expect(page.locator("#youtube")).toBeFocused();
+    await expect(page.locator("#settings-panel-youtube")).toBeFocused();
 
     await page.locator("#youtubeSubtitleMode").selectOption("original");
     await page.locator("#youtubeSubtitleSize").selectOption("large");
@@ -40,18 +40,18 @@ test.describe("Settings information architecture", () => {
     const dictionaryNav = nav.getByRole("link", { name: "词典库" });
     await expect(dictionaryNav).toBeVisible();
     await dictionaryNav.click();
-    await expect(page.locator("#dictionary-packs")).toBeFocused();
+    await expect(page.locator("#settings-panel-dictionary-packs")).toBeFocused();
 
     const library = page.locator("#dictionary-packs");
     await expect(library.getByRole("heading", { name: "词典库", exact: true })).toBeVisible();
     await expect(
       library.locator("h3").allTextContents()
     ).resolves.toEqual([
-      "内置词典",
       "精选上游与官方词典",
       "已安装",
       "本地导入"
     ]);
+    await expect(library.getByRole("heading", { name: "内置词典", exact: true })).toHaveCount(0);
     await expect(
       library.getByRole("heading", { name: "官方词典", exact: true })
     ).toBeVisible();
@@ -66,12 +66,24 @@ test.describe("Settings information architecture", () => {
       .filter({ hasText: "ECDICT 高频英汉" });
     await expect(curated).toBeVisible();
     await expect(curated).toContainText("精选上游 · 非官方");
+    await expect(curated.locator(".dictionary-compact-facts")).toContainText("English → 简体中文");
+    await expect(curated.locator(".dictionary-compact-facts")).toContainText("CSV 词典数据");
+    const details = curated.locator(".dictionary-v2-details");
+    await expect(details).not.toHaveAttribute("open", "");
+    await expect(curated.getByRole("link", { name: "访问上游项目" })).not.toBeVisible();
+    const detailsSummary = details.getByText("详细信息", { exact: true });
+    await detailsSummary.focus();
+    await expect(detailsSummary).toBeFocused();
+    await detailsSummary.press("Enter");
+    await expect(details).toHaveAttribute("open", "");
     await expect(
       curated.getByRole("link", { name: "访问上游项目" })
     ).toBeVisible();
     await expect(
       curated.getByRole("link", { name: "查看上游许可说明" })
     ).toBeVisible();
+    await page.reload();
+    await expect(page.locator("#curatedDictionaryList .site-row").filter({ hasText: "ECDICT 高频英汉" }).locator(".dictionary-v2-details")).not.toHaveAttribute("open", "");
 
     await expect(page.getByRole("heading", { name: "本地导入", exact: true })).toBeVisible();
     await expect(page.locator("#localDictionaryChooseFiles")).toBeVisible();
@@ -84,6 +96,7 @@ test.describe("Settings information architecture", () => {
     }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.viewport);
 
+    await page.screenshot({ path: test.info().outputPath("settings-dictionary-library.png"), fullPage: true });
     await page.locator("#refreshDictionaryPacks").focus();
     await expect(page.locator("#refreshDictionaryPacks")).toBeFocused();
     await page.close();

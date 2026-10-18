@@ -48,7 +48,7 @@
     latestTask = tasks.getLatestTask("page");
     document.addEventListener("pointerdown", handleOutsidePointerDown, true);
     document.addEventListener("keydown", handleKeyDown, true);
-    chrome.storage.onChanged.addListener(handleStorageChange);
+    chrome.runtime.onMessage.addListener(handleSettingsMessage);
     refreshSiteVisibility().catch(() => {});
   }
 
@@ -88,7 +88,8 @@
 
   async function refreshSiteVisibility() {
     const origin = getSiteScope(location.href);
-    const stored = await chrome.storage.local.get(["quickControlSites", "quickControlHiddenSites"]);
+    const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
+    const stored = response?.settings || {};
     persistentVisible = Array.isArray(stored.quickControlSites)
       && stored.quickControlSites.includes(origin);
     hiddenForSite = Array.isArray(stored.quickControlHiddenSites)
@@ -250,8 +251,9 @@
     view.destroy();
   }
 
-  function handleStorageChange(changes, areaName) {
-    if (areaName !== "local") return;
+  function handleSettingsMessage(message) {
+    if (message?.type !== messages.background.PUBLIC_SETTINGS_CHANGED) return false;
+    const changes = message.changes || {};
     if (changes.quickControlSites || changes.quickControlHiddenSites) {
       refreshSiteVisibility().catch(() => {});
     }
@@ -259,6 +261,7 @@
       refreshContext().catch(() => {});
     }
     if (changes.autoSites && shouldRender()) view.setAuto(state.auto);
+    return false;
   }
 
   app.modules.quickControl = {

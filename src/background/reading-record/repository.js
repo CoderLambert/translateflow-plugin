@@ -1,6 +1,8 @@
 import { READING_METHOD as M, READING_LIMITS as L, READING_ERROR as E } from "../../shared/reading/constants.js";
 import { fail } from "../../shared/reading/validation.js";
-import { createReadingDatabase } from "./idb.js";
+import { collect, createReadingDatabase, only } from "./idb.js";
+import { validatePreviewAssistantDetail } from "../../shared/reading/record.js";
+import { compareAssistantArtifacts } from "../../shared/reading/artifact.js";
 import { state, pageState, policy, sitePolicy, detail } from "./storage-state.js";
 import { prepare, validatedWrite, append, cancel, cancellationInput } from "./write.js";
 import { manage } from "./management.js";
@@ -77,7 +79,16 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
           (context.request.pageRevision !== undefined && page.pageRevision !== context.request.pageRevision) ||
           (context.request.sitePolicyRevision !== undefined && site.sitePolicyRevision !== context.request.sitePolicyRevision)) fail(E.STALE_OPERATION, "preview.page");
       if (row.record.revision !== context.request.expectedRevision) fail(E.STALE_OPERATION, "preview.record-revision");
-      return { detail: yield* detail(store, row.record.recordId, row), recordId: row.record.recordId,
+      const primary = yield* detail(store, row.record.recordId, row), related = [], relatedRecords = [];
+      for (const request of context.request.relatedRecords || []) {
+        const candidate = yield store("records").get(request.recordId);
+        if (!candidate || candidate.record.revision !== request.expectedRevision || candidate.record.pageKey !== row.record.pageKey ||
+            candidate.siteKey !== row.siteKey || candidate.record.itemKey !== row.record.itemKey) continue;
+        const assistantOnly = yield* previewAssistantDetail(store, candidate);
+        if (!assistantOnly) continue;
+        related.push(assistantOnly); relatedRecords.push({ recordId: candidate.record.recordId, expectedRevision: candidate.record.revision });
+      }
+      return { detail: { ...primary, related }, relatedRecords, recordId: row.record.recordId,
         siteKey: row.siteKey, pageKey: row.record.pageKey, revision: row.record.revision,
         dataGeneration: meta.dataGeneration, consentGeneration: meta.consentGeneration,
         pageGeneration: page.pageGeneration, pageRevision: page.pageRevision, sitePolicyRevision: site.sitePolicyRevision };
@@ -106,4 +117,16 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
     finishExport(context) { return run("readonly", context, (store) => finish(store, context)); },
     cancelExport(context) { return run("readonly", context, function* (store) { policy(yield* state(store), context); }); }
   };
+}
+
+function* previewAssistantDetail(store, row) {
+  const artifactRows = yield* collect(store("artifacts"), only(row.record.recordId), "record", L.artifactsPerRecord + 1);
+  const artifacts = artifactRows.map(item => item.value).filter(artifact => artifact.kind === "assistant")
+    .sort(compareAssistantArtifacts)
+    .slice(-L.previewAssistantArtifacts);
+  if (!artifacts.length) return null;
+  const snapshotIds = new Set(artifacts.map(artifact => artifact.sourceSnapshotId));
+  const snapshotRows = yield* collect(store("snapshots"), only(row.record.recordId), "record", L.snapshotsPerRecord + 1);
+  const snapshots = snapshotRows.map(item => item.value).filter(snapshot => snapshotIds.has(snapshot.sourceSnapshotId));
+  return validatePreviewAssistantDetail({ record: row.record, snapshots, artifacts });
 }

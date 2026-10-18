@@ -1,3 +1,4 @@
+import "../src/content/selection/ai-persistence-view.js";
 import "../src/content/selection/ai-detail.js";
 import "../src/content/selection/popover.js";
 import "../src/content/selection/rich-details.js";
@@ -7,6 +8,7 @@ import "../src/content/selection/handoff-client.js";
 import "../src/content/reading-return-card.js";
 import "../src/content/reading-page-markers.js";
 import "../src/content/selection/record-status.js";
+import "../src/content/selection/assistant-persistence.js";
 import "../src/content/selection/controller.js";
 import "../src/content/quick-control-view.js";
 import "../src/content/quick-control.js";

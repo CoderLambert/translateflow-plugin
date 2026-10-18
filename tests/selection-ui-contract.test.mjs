@@ -8,7 +8,7 @@ async function source(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-test("Selection settings expose all explanation-depth modes and license path", async () => {
+test("Selection settings expose explanation-depth modes and optional dictionary guidance", async () => {
   const [html, js] = await Promise.all([
     source("src/options/CommonSections.tsx"),
     source("src/options/client.ts")
@@ -19,16 +19,19 @@ test("Selection settings expose all explanation-depth modes and license path", a
     assert.match(html, new RegExp(`value="${value}"`));
   }
   assert.match(html, /options\.selection\.summary/);
-  assert.match(optionsZhCN["options.selection.summary"], /点击“AI 详解”/);
-  assert.match(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
+  assert.match(optionsZhCN["options.selection.summary"], /“理解”“分析”或“用法”/);
+  assert.match(html, /options\.basic\.dictionaryHelp/);
+  assert.doesNotMatch(html, /assets\/lexicon\/core\/THIRD_PARTY_NOTICES\.txt/);
   assert.match(js, /normalizeSelectionDepth\(value\.selectionExplanationDepth\)/);
   assert.match(js, /selectionExplanationDepth:\s*normalizeSelectionDepth\(input\.selectionExplanationDepth\)/);
 });
 
 test("Selection popover keeps a non-modal structured result region", async () => {
-  const [popover, renderer, tokens, aiStyles, emptyStyles, lexicalStyles] = await Promise.all([
+  const [popover, viewTabs, renderer, markdown, tokens, aiStyles, emptyStyles, lexicalStyles] = await Promise.all([
     source("src/content/selection/popover.js"),
+    source("src/content/selection/ai-detail.js"),
     source("src/content/selection/result-renderer.js"),
+    source("src/entries/selection-markdown.js"),
     source("src/content/ui/tokens.js"),
     source("src/content/ui/selection-ai-detail-styles.js"),
     source("src/content/ui/selection-empty-state-styles.js"),
@@ -42,11 +45,15 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(renderer, /tf-selection-entry-meaning/);
   assert.match(popover, /renderStructuredResult/);
   assert.match(popover, /showAiDetailResult/);
-  assert.match(popover, /content\.selection\.aiDetail/);
+  assert.match(viewTabs, /content\.selection\.dictionaryTab/);
+  assert.match(popover, /role", "tablist"/);
+  assert.match(popover, /role", "tabpanel"/);
+  assert.match(viewTabs, /content\.ai\.\$\{action\}TabAria/);
   assert.match(popover, /content\.selection\.process/);
-  assert.equal(contentZhCN["content.selection.aiDetail"], "AI 详解");
+  assert.equal(contentZhCN["content.selection.dictionaryTab"], "词典");
+  assert.equal(contentZhCN["content.ai.understand"], "理解");
   assert.equal(contentZhCN["content.selection.process"], "处理所选文本");
-  assert.match(popover, /duplicatesHeadword/);
+  assert.match(renderer, /normalize\(sourceText\) === normalize\(headword\)/);
   assert.match(popover, /tf-selection-action-primary/);
   assert.match(popover, /tf-selection-action-quiet/);
   assert.match(popover, /function reposition\(\)/);
@@ -55,6 +62,12 @@ test("Selection popover keeps a non-modal structured result region", async () =>
   assert.match(tokens, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(aiStyles, /\.tf-selection-ai-detail/);
   assert.match(aiStyles, /\.tf-selection-ai-actions/);
+  assert.match(aiStyles, /\.tf-selection-view-tabs/);
+  assert.match(aiStyles, /\.tf-selection-view-tab/);
+  assert.match(markdown, /new MarkdownIt/);
+  assert.match(markdown, /document\.createElement/);
+  assert.doesNotMatch(markdown, /innerHTML/);
+  assert.doesNotMatch(popover, /content\.common\.copy/);
   assert.match(emptyStyles, /\.tf-selection-empty/);
   assert.match(emptyStyles, /\.tf-selection-empty-actions/);
   assert.match(lexicalStyles, /\.tf-selection-dictionary-entry/);
@@ -66,10 +79,11 @@ test("Selection popover keeps a non-modal structured result region", async () =>
 });
 
 test("Selection assistant preserves the local card while streaming, stopping and retrying", async () => {
-  const [controller, popover, aiDetail] = await Promise.all([
+  const [controller, popover, aiDetail, persistence] = await Promise.all([
     source("src/content/selection/controller.js"),
     source("src/content/selection/popover.js"),
-    source("src/content/selection/ai-detail.js")
+    source("src/content/selection/ai-detail.js"),
+    source("src/content/selection/ai-persistence-view.js")
   ]);
 
   assert.match(controller, /explainSnapshot\(snapshot, resolved\.depth, card, event, action\)/);
@@ -84,6 +98,7 @@ test("Selection assistant preserves the local card while streaming, stopping and
   assert.match(aiDetail, /aria-busy/);
   assert.match(aiDetail, /content\.ai\.retryAria/);
   assert.match(aiDetail, /content\.ai\.stopAria/);
+  assert.match(persistence, /vocabulary\.state === "failed" \? "content\.reading\.retrySave"/);
   assert.equal(contentZhCN["content.ai.retryAria"], "重新请求 AI 详解");
   assert.equal(contentZhCN["content.ai.stopAria"], "停止 AI 回答");
   for (const action of ["understand", "analyze", "usage"]) assert.match(aiDetail, new RegExp(action));
@@ -105,13 +120,13 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.equal(contentZhCN["content.selection.badgeAi"], "AI 辅助");
   assert.match(contentZhCN["content.selection.sourcePack"], /词典包 ·/);
   assert.match(popover, /content\.selection\.loadingWord/);
-  assert.match(controller, /content\.ai\.connecting/);
+  assert.match(controller, /action, threadId/);
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(controller, /popover\.showEmpty/);
   assert.match(controller, /forceTranslation: true/);
   assert.match(controller, /explainSnapshot/);
   assert.doesNotMatch(controller, /resolved\.route === "needs-explanation"/);
-  assert.match(controller, /copyTextForCard/);
+  assert.doesNotMatch(controller, /copyTextForCard/);
 });
 
 test("Selection no-hit is neutral while local lexicon failures keep diagnostic error copy", async () => {
@@ -134,7 +149,7 @@ test("Selection no-hit is neutral while local lexicon failures keep diagnostic e
 
   assert.match(messages, /LEXICON_STORAGE/);
   assert.match(messages, /content\.selection\.lexiconMissing/);
-  assert.match(contentZhCN["content.selection.lexiconMissing"], /设置 > 本地词典/);
+  assert.match(contentZhCN["content.selection.lexiconMissing"], /设置 > 词典库/);
   assert.match(messages, /LEXICON_CORRUPT/);
   assert.match(messages, /LEXICON_INCOMPATIBLE/);
   assert.match(controller, /popover\.showError/);

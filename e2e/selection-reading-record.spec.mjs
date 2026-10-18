@@ -1,12 +1,12 @@
 import { test, expect, chromium } from "@playwright/test";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { startMockServer } from "./support/mock-server.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { READING_METHOD as M } from "../src/shared/reading/constants.js";
-import { compileTflexTechnical } from "../scripts/build-tflex-technical.mjs";
+import { installUserDictionaries } from "./support/user-dictionaries.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { defaultArtifact } from "./support/production-artifact.mjs";
 
@@ -46,6 +46,7 @@ async function inspect(content, command, body = {}) {
     const [result] = await chrome.scripting.executeScript({ target: { tabId }, args: [command, body], func: async (command, body) => {
       const modules = globalThis.__TRANSLATE_FLOW_CONTENT__.modules;
       if (command === "source") return modules.selectionController.getQuerySource()?.ready || null;
+      if (command === "authority") return modules.readingAccessCollector.read({ nonce: "synthetic-current", action: "inspect" });
       if (command === "focus") { window.dispatchEvent(new Event("focus")); return true; }
       if (command === "forged") return modules.readingAccessCollector.read({ nonce: "synthetic-forged", action: "begin", recordId: null, operationId: "not-owned" });
       if (command === "method") return chrome.runtime.sendMessage({ protocolVersion: 2, method: body.method, ...body.fields });
@@ -94,11 +95,6 @@ test.describe("Selection → frozen trusted source → committed Reading records
     const production = await inventory(artifact); await cp(artifact, extension, { recursive: true });
     expect(await inventory(extension)).toEqual(production);
     const backgroundSha256 = hash(await readFile(join(extension, "background.js")));
-    await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
-    await mkdir(join(extension, "assets/lexicon"), { recursive: true });
-    await cp(join(root, "tests/fixtures/tflex-runtime-pack"), join(extension, "assets/lexicon/core"), { recursive: true });
-    await compileTflexTechnical({ extractPath: join(root, "lexicon/sources/wikidata-tech-entities.json"),
-      sourceLockPath: join(root, "lexicon/source-locks/technical-wikidata.json"), outDir: join(extension, "assets/lexicon/technical") });
     await writeFile(join(extension, "learning-center.html"), '<!doctype html><title>Synthetic consent callback for #234; not #235 UI</title>');
     const manifest = JSON.parse(await readFile(join(extension, "manifest.json"), "utf8"));
     manifest.host_permissions.push("http://127.0.0.1/*"); await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
@@ -110,7 +106,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     center = await context.newPage(); await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
     await writeFile(test.info().outputPath("selection-reading-package.json"), JSON.stringify({ production, backgroundSha256, artifactPath: artifact,
       productionCopyExactBeforeFixtures: true, backgroundUnchanged: true, browser: context.browser().version(),
-      fixtureChanges: ["synthetic Core and existing local Technical fixture", "fixed synthetic LC HTML", "localhost test permission"], paidProviderCalls: 0 }, null, 2));
+      fixtureChanges: ["synthetic user dictionaries in isolated OPFS", "fixed synthetic LC HTML", "localhost test permission"], paidProviderCalls: 0 }, null, 2));
   });
   test.afterAll(async () => { await context?.close(); await server?.close(); if (temporary) await rm(temporary, { recursive: true, force: true }); });
   test.beforeEach(async () => {
@@ -118,10 +114,11 @@ test.describe("Selection → frozen trusted source → committed Reading records
     server.reset();
     await driver.evaluate(async ({ baseUrl }) => {
       await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" }); await chrome.storage.local.clear();
-      await chrome.storage.local.set({ provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
+      await chrome.storage.local.set({ uiLocale: "zh_CN", dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
         selectionExplanationDepth: "standard", appearance: "standard", glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
         openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
     }, { baseUrl: server.baseUrl });
+    await installUserDictionaries(driver);
     const state = await message(M.GET_RECORDING_STATE);
     expect((await message(M.CLEAR_RECORDS, { expectedDataGeneration: state.data.dataGeneration })).ok).toBe(true);
     await enable(false);
@@ -190,15 +187,18 @@ test.describe("Selection → frozen trusted source → committed Reading records
     const translated = list.find((value) => value.itemText.startsWith("This is")); expect(translated.lookupCount).toBe(2);
     detail = await message(M.GET_RECORD, { recordId: translated.recordId }); expect(detail.data.artifacts.map((a) => a.kind)).toEqual(["translation", "translation"]);
     await query(content); await expect(status(content)).toHaveAttribute("data-state", "saved");
-    await content.page.getByRole("button", { name: "使用 AI 结合上下文详解" }).click();
+    await content.page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
     await expect(content.page.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
     await expect(status(content)).toHaveAttribute("data-state", "saved");
-    expect(server.calls).toHaveLength(2); expect(JSON.parse(server.calls[1].userContent).userQuestion).toBe("这里是什么意思？");
+    expect(server.calls).toHaveLength(2);
+    const explainRequest = JSON.parse(server.calls[1].userContent);
+    expect(explainRequest.question).toBe("这里是什么意思？");
+    expect(explainRequest.text).toBe("session");
     list = await records(); const lexical = list.find((value) => value.itemText === "session");
     detail = await message(M.GET_RECORD, { recordId: lexical.recordId }); expect(detail.data.record.lookupCount).toBe(1);
     const assistant = detail.data.artifacts.find((a) => a.kind === "assistant"); expect(assistant.payload.userQuestion).toBe("这里是什么意思？");
     expect(assistant.payload.assistantAnswer).toContain(await content.page.locator(".tf-selection-generated-body").innerText());
-    expect(assistant.provenance.model).toBe("mock-model"); expect(assistant.provenance.promptVersion).toBe("selection-explain-reading-v2");
+    expect(assistant.provenance.model).toBe("mock-model"); expect(assistant.provenance.promptVersion).toBe("selection-assistant-v1");
     expect(JSON.stringify(assistant.provenance)).not.toContain("127.0.0.1");
     await message(M.GET_RECORD, { recordId: lexical.recordId }); expect(server.calls).toHaveLength(2);
   });
@@ -209,8 +209,20 @@ test.describe("Selection → frozen trusted source → committed Reading records
     await query(content, "#first", "session", 1); await expect(status(content)).toHaveAttribute("data-state", "disabled");
     await content.page.getByRole("button", { name: "关闭", exact: true }).click(); await enable(); await inspect(content, "focus");
     await expect(content.page.locator(".tf-selection-panel")).toHaveCount(0); expect(await records()).toHaveLength(0);
+    // Ordinary anchors keep the readable query, but Reading still binds its original raw URL.
+    await enable(false); const anchor = await open(); await query(anchor); await expect(status(anchor)).toHaveAttribute("data-state", "invite");
+    const frozen = await inspect(anchor, "source");
+    expect((await inspect(anchor, "authority"))?.sourceSnapshot).toEqual(frozen);
+    await anchor.page.evaluate(() => { location.hash = "new-source"; });
+    await expect(anchor.page.locator(".tf-selection-panel")).toBeVisible();
+    expect(await inspect(anchor, "source")).toEqual(frozen);
+    expect(await inspect(anchor, "authority")).toBeNull();
+    await enable(); await inspect(anchor, "focus");
+    await expect(anchor.page.getByRole("button", { name: "保存本次结果", exact: true })).toHaveCount(0);
+    expect(await inspect(anchor, "authority")).toBeNull();
+    expect(await records()).toHaveLength(0); expect(server.calls).toHaveLength(0);
     await enable(false); const other = await open(); await query(other); await expect(status(other)).toHaveAttribute("data-state", "invite");
-    await other.page.evaluate(() => { history.pushState({}, "", "/article#new-source"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
+    await other.page.evaluate(() => { history.pushState({}, "", "/article#/new-source"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
     await expect(other.page.locator(".tf-selection-panel")).toHaveCount(0); await enable(); expect(await records()).toHaveLength(0);
     const site = await message(M.GET_SITE_RECORDING, { siteKey: server.baseUrl });
     await message(M.SET_SITE_RECORDING, { siteKey: server.baseUrl, excluded: true, expectedSitePolicyRevision: site.data.sitePolicyRevision });

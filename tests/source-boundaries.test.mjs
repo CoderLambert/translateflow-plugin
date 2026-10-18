@@ -54,6 +54,7 @@ const negatives = [
   ["MAIN appended container fetch delegation", { "src/content/subtitles/youtube-main-bridge.js": approvedMainSource + '\nconst page=globalThis;const box={request:page.fetch};Reflect.apply(box.request,page,["https://invalid.test"]);' }, /MAIN observer/u],
   ["Content fetch TS", { "src/content/bad.ts": 'globalThis["fetch"]("https://invalid.test");' }, /直接使用 fetch/u],
   ["Content fetch alias", { "src/content/bad.js": 'const request = globalThis.fetch; request("https://invalid.test");' }, /直接使用 fetch/u],
+  ["old cache facade direct IDB", { "src/background/cache-db.js": 'indexedDB.open("illegal");' }, /IndexedDB/u],
   ["Content IDB TS", { "src/content/bad.ts": 'globalThis["indexedDB"].open("illegal");' }, /IndexedDB/u],
   ["Reading repository direct IDB", { "src/background/reading-record/repository.js": 'globalThis.indexedDB.open("illegal");' }, /IndexedDB/u],
   ["Reading nested adapter direct IDB", { "src/background/reading-record/nested/idb.js": 'indexedDB.open("illegal");' }, /IndexedDB/u],
@@ -169,7 +170,7 @@ test("CLI allows unrelated data properties and shadowed local bindings", () => {
 test("CLI preserves approved owners and the exact existing MAIN request forwarder", () => {
   const result = runFixture({
     "src/background/providers/network.js": 'const key="fetch";globalThis[key]("https://invalid.test");',
-    "src/background/cache-db.js": 'const key="indexedDB";globalThis[key].open("cache");',
+    "src/background/cache/storage-indexeddb.js": 'const key="indexedDB";globalThis[key].open("cache");',
     "src/background/reading-record/idb.js": 'const key="indexedDB";export const open=()=>globalThis[key].open("reading");',
     "src/background/reading-record/repository.js": 'import {open} from "./idb.js";export const repository=()=>open();',
     "src/background/auto-sites.js": 'const sdk=chrome.scripting;const key="registerContentScripts";sdk[key]([]);',

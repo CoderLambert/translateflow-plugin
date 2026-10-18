@@ -4,7 +4,7 @@ import { READING_ERROR as E, READING_LIMITS as L, READING_METHOD as M } from "..
 import { validateReadingRequest } from "../src/shared/reading/dto.js";
 import { validateResultArtifact } from "../src/shared/reading/artifact.js";
 import { validateSourceSnapshot } from "../src/shared/reading/source.js";
-import { validateReadingRecord, validateRecordDetail, validateReadingExport } from "../src/shared/reading/record.js";
+import { validateReadingRecord, validateRecordDetail, validatePreviewDetail, validateReadingExport } from "../src/shared/reading/record.js";
 import { validateOperationToken, validateHandoff } from "../src/shared/reading/lifecycle.js";
 import { artifact, handoff, record, request, snapshot, token } from "./fixtures/reading/contract.mjs";
 
@@ -49,6 +49,29 @@ test("Record detail and export preserve independently readable question, answer 
   assert.deepEqual(validateReadingExport(bundle), bundle);
   rejects(() => validateReadingExport({ ...bundle, format: "cache" }), E.BAD_DTO);
   rejects(() => validateReadingExport({ ...bundle, records: Array(L.records + 1).fill(detail) }), E.LIMIT);
+});
+test("Hover preview accepts bounded assistant-only history for the exact same page item", () => {
+  const relatedId = "22222222-2222-4222-8222-222222222222";
+  const primary = { record: record(), snapshots: [snapshot()], artifacts: [artifact()] };
+  const root = artifact("assistant", { artifactId: "assistant-related-root", recordId: relatedId,
+    sourceSnapshotId: "source-related", createdAt: 1001 });
+  const followUp = artifact("assistant", { artifactId: "assistant-related-follow-up", recordId: relatedId,
+    sourceSnapshotId: "source-related", createdAt: 1002, payload: {
+      ...artifact("assistant").payload,
+      action: "follow-up",
+      turnId: "turn-follow-up",
+      parentTurnId: root.payload.turnId
+    } });
+  const related = { record: record({ recordId: relatedId, revision: 3 }), snapshots: [snapshot({ sourceSnapshotId: "source-related" })],
+    artifacts: [root, followUp] };
+  const preview = { ...primary, related: [related] };
+  assert.deepEqual(validatePreviewDetail(preview), preview);
+  rejects(() => validatePreviewDetail({ ...preview, related: [{ ...related, artifacts: [followUp, root] }] }), E.BAD_DTO);
+  rejects(() => validatePreviewDetail({ ...preview, related: [{ ...related, record: { ...related.record, pageKey: `rp1:${"f".repeat(64)}` } }] }), E.BAD_DTO);
+  rejects(() => validatePreviewDetail({ ...preview, related: [{ ...related, artifacts: [artifact("translation", {
+    artifactId: "translation-related", recordId: relatedId, sourceSnapshotId: "source-related" })] }] }), E.BAD_DTO);
+  rejects(() => validateReadingRequest(request(M.PREVIEW_CREATE, { relatedRecords: Array(L.previewRelatedRecords + 1).fill({
+    recordId: relatedId, expectedRevision: 2 }) })), E.LIMIT);
 });
 test("No-hit is an actual dictionary result; failures and partial AI are not completed artifacts", () => {
   const noHit = artifact("dictionary", { payload: { ...artifact().payload, outcome: "no-hit", definitions: [] }, provenance: [] });

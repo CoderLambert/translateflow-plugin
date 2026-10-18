@@ -18,6 +18,7 @@ import (
 // Set at release build time with -ldflags -X main.pinnedExtensionID=<Chrome ID>.
 // An empty value keeps development builds explicit about their allowlist.
 var pinnedExtensionID string
+var version = "dev"
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -133,6 +134,7 @@ func runHost() int {
 	}
 	host := protocol.NewServer(client, os.Stdin, os.Stdout)
 	host.StartupError = startupErr
+	host.HostVersion = version
 	if err := host.Run(context.Background()); err != nil {
 		log.Printf("native host stopped: %v", err)
 		return 1

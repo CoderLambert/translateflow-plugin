@@ -131,7 +131,7 @@ test("explicit CJK explanation sends bounded context after a local-only miss", a
     }
   }, {
     resolveSelectionRequest: (input) => resolveSelectionRequest(input, {
-      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
+      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto", dictionaryEnabled: true }),
       getEffectiveConfig: async () => config,
       runLexicalLookup: async () => {
         lexicalCalls += 1;
@@ -308,9 +308,9 @@ test("tmux explanation is grounded in attributable local technical facts", async
     decision: {
       outcome: "ambiguous",
       reason: "candidate-gap-too-small",
-      topCandidateId: "technical-wikidata:Q1935361",
+      topCandidateId: "local-concepts-fixture:Q1935361",
       candidates: [{
-        id: "technical-wikidata:Q1935361",
+        id: "local-concepts-fixture:Q1935361",
         kind: "technical-entity",
         headword: "tmux",
         aliases: ["tmux"],
@@ -323,7 +323,7 @@ test("tmux explanation is grounded in attributable local technical facts", async
         domains: ["developer-tool"],
         typeLabels: ["terminal multiplexer", "free software"],
         provenance: {
-          packId: "technical-wikidata",
+          packId: "local-concepts-fixture",
           packVersion: "2026-09",
           fingerprint: "sha256:tmux",
           sourceRefs: [{ sourceId: "wikidata", recordId: "Q1935361@12345" }]
@@ -337,7 +337,7 @@ test("tmux explanation is grounded in attributable local technical facts", async
       sensitive: false,
       depth: "standard",
       candidates: [{
-        id: "technical-wikidata:Q1935361",
+        id: "local-concepts-fixture:Q1935361",
         kind: "technical-entity",
         headword: "tmux",
         aliases: ["tmux"],
@@ -350,7 +350,7 @@ test("tmux explanation is grounded in attributable local technical facts", async
         domains: ["developer-tool"],
         typeLabels: ["terminal multiplexer", "free software"],
         provenance: {
-          packId: "technical-wikidata",
+          packId: "local-concepts-fixture",
           packVersion: "2026-09",
           fingerprint: "sha256:tmux",
           sourceRefs: [{ sourceId: "wikidata", recordId: "Q1935361@12345" }]
@@ -372,7 +372,7 @@ test("tmux explanation is grounded in attributable local technical facts", async
     completeJson: async (input) => {
       providerPayload = input.payload;
       return input.parseResult({
-        selectedCandidateIds: ["technical-wikidata:Q1935361"],
+        selectedCandidateIds: ["local-concepts-fixture:Q1935361"],
         explanation: "tmux 是用于管理多个终端会话的终端复用器。",
         translation: ""
       });
@@ -380,9 +380,9 @@ test("tmux explanation is grounded in attributable local technical facts", async
   });
 
   assert.equal(result.route, "explained");
-  assert.deepEqual(result.generated.selectedCandidateIds, ["technical-wikidata:Q1935361"]);
+  assert.deepEqual(result.generated.selectedCandidateIds, ["local-concepts-fixture:Q1935361"]);
   assert.deepEqual(providerPayload.candidates[0].typeLabels, ["terminal multiplexer", "free software"]);
-  assert.equal(providerPayload.candidates[0].provenance.packId, "technical-wikidata");
+  assert.equal(providerPayload.candidates[0].provenance.packId, "local-concepts-fixture");
   assert.equal(providerPayload.candidates[0].provenance.sourceRefs[0].sourceId, "wikidata");
   assert.equal(result.local.candidates[0].provenance.fingerprint, "sha256:tmux");
 });
@@ -422,4 +422,60 @@ test("Selection explanation cancellation aborts the Provider signal", async () =
   assert.deepEqual(cancelSelectionExplanationRequest("cancel-me"), { cancelled: true });
   await assert.rejects(promise, (error) => error?.code === "CANCELLED");
   assert.equal(observedAbort, true);
+});
+
+test("AI explanation remains usable when cache write fails with quota pressure", async () => {
+  let providerCalls = 0;
+  const result = await runSelectionExplanationRequest({
+    requestId: "explain-cache-quota-fixture",
+    text: "persistent", pageUrl: "https://example.test/",
+    context: { text: "persistent connection", source: "visible-local", sensitive: false }
+  }, {
+    resolveSelectionRequest: async () => ambiguousResolved(),
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => ({ hit: null, cacheToken: { fixture: true } }),
+    storeSelectionExplanation: async () => {
+      throw Object.assign(new Error("synthetic quota"), { code: "CACHE_QUOTA" });
+    },
+    completeJson: async input => {
+      providerCalls += 1;
+      return input.parseResult({
+        selectedCandidateIds: ["core:persistent:1"],
+        explanation: "连接在重连期间保持有效。",
+        translation: "持续的"
+      });
+    }
+  });
+  assert.equal(providerCalls, 1);
+  assert.equal(result.route, "explained");
+  assert.equal(result.generated.explanation, "连接在重连期间保持有效。");
+  assert.equal(result.cacheWarning, "CACHE_QUOTA");
+});
+
+test("AI explanation skips cache storage if opening IndexedDB failed before generation", async () => {
+  let providerCalls = 0, stores = 0;
+  const result = await runSelectionExplanationRequest({
+    requestId: "explain-cache-read-fixture",
+    text: "persistent", pageUrl: "https://example.test/",
+    context: { text: "persistent connection", source: "visible-local", sensitive: false }
+  }, {
+    resolveSelectionRequest: async () => ambiguousResolved(),
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => {
+      throw Object.assign(new Error("blocked"), { code: "CACHE_STORAGE_BLOCKED" });
+    },
+    storeSelectionExplanation: async () => { stores++; return { stored: 1 }; },
+    completeJson: async input => {
+      providerCalls += 1;
+      return input.parseResult({
+        selectedCandidateIds: ["core:persistent:1"],
+        explanation: "解释内容仍然完整。",
+        translation: "持续的"
+      });
+    }
+  });
+  assert.equal(providerCalls, 1);
+  assert.equal(stores, 0);
+  assert.equal(result.generated.explanation, "解释内容仍然完整。");
+  assert.equal(result.cacheWarning, "CACHE_STORAGE_BLOCKED");
 });

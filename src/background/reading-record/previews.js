@@ -1,4 +1,4 @@
-import { READING_ERROR as E } from "../../shared/reading/constants.js";
+import { READING_ERROR as E, READING_LIMITS as L } from "../../shared/reading/constants.js";
 import { fail } from "../../shared/reading/validation.js";
 
 const UNCLAIMED_MS = 15_000;
@@ -37,6 +37,10 @@ export function createReadingPreviewRegistry({ now = Date.now, randomId = () => 
         !Number.isSafeInteger(target.revision) || !Number.isSafeInteger(target.dataGeneration) ||
         !Number.isSafeInteger(target.consentGeneration) || !Number.isSafeInteger(target.pageGeneration) ||
         !Number.isSafeInteger(target.pageRevision) || !Number.isSafeInteger(target.sitePolicyRevision)) fail(E.FORBIDDEN, "preview.owner");
+    const relatedRecords = Array.isArray(target.relatedRecords) ? target.relatedRecords.map(item => ({
+      recordId: item?.recordId, expectedRevision: item?.expectedRevision })) : [];
+    if (relatedRecords.length > L.previewRelatedRecords || new Set(relatedRecords.map(item => item.recordId)).size !== relatedRecords.length ||
+        relatedRecords.some(item => !item.recordId || item.recordId === target.recordId || !Number.isSafeInteger(item.expectedRevision))) fail(E.FORBIDDEN, "preview.related");
     const existing = owners.get(access.ownerKey);
     if (existing) remove(existing);
     if (sessions.size >= SESSIONS_GLOBAL) fail(E.CAPACITY, "preview.sessions");
@@ -45,7 +49,7 @@ export function createReadingPreviewRegistry({ now = Date.now, randomId = () => 
     const entry = { previewId, ownerKey: access.ownerKey, ownerAccess: ownerAccess(access), tabId: access.tabId,
       nativeDocumentId: access.nativeDocumentId, documentGeneration: access.documentGeneration,
       navigationGeneration: access.navigationGeneration, authorityGeneration: access.authorityGeneration,
-      pageKey: target.pageKey, siteKey: target.siteKey, recordId: target.recordId, recordRevision: target.revision,
+      pageKey: target.pageKey, siteKey: target.siteKey, recordId: target.recordId, recordRevision: target.revision, relatedRecords,
       dataGeneration: target.dataGeneration, consentGeneration: target.consentGeneration,
       pageGeneration: target.pageGeneration, pageRevision: target.pageRevision, sitePolicyRevision: target.sitePolicyRevision,
       expiresAt: now() + UNCLAIMED_MS, bound: null, claims: new Map() };
@@ -104,7 +108,7 @@ export function createReadingPreviewRegistry({ now = Date.now, randomId = () => 
     revokeTab(tabId) { return revoke(entry => entry.tabId === tabId); },
     revokeSite(siteKey) { return revoke(entry => entry.siteKey === siteKey); },
     revokePage(pageKey) { return revoke(entry => entry.pageKey === pageKey); },
-    revokeRecord(recordId) { return revoke(entry => entry.recordId === recordId); },
+    revokeRecord(recordId) { return revoke(entry => entry.recordId === recordId || entry.relatedRecords.some(item => item.recordId === recordId)); },
     get size() { prune(); return sessions.size; } });
 }
 

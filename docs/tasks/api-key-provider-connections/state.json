@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "task": "api-key-provider-connections",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/api-key-provider-connections",
+  "worktree": null,
+  "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972",
+  "mergeHead": "0ebd54fa9397ce76cf3d1bfe217522cc13f36550",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "node",
+      "scripts/run-e2e.mjs",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/selection-assistant-stream.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/learning-center.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "syncHead": "05238aebff24d303ecfcdd2a2ef4d3b6fe431e8d",
+  "pullRequest": null,
+  "nextAction": "PR #332 已合入 main，完成记录现已校准；原验收候选与限制保留。",
+  "validation": {
+    "npmRunValidate": "PASS (1543 Node tests, 47 Vitest)",
+    "wxtBuild": "PASS (206 files, 39543158 bytes)",
+    "wxtSmoke": "PASS (Chromium 153.0.8010.12)",
+    "relatedE2E": "PASS (14/14)",
+    "realLocalLmStudio": "PASS (hy-mt2-7b: card test returned OK; releases translated as 版本发布)",
+    "reportedFailureDiagnosis": "PASS (fresh packaged runtime succeeds; stale Content Script now tells the user to refresh after extension reload)"
+  },
+  "pr": 332,
+  "completionVerification": {
+    "mergeHeadIsMainAncestor": true,
+    "source": "actual merged PR and current 749af4e6/77a4a90f regression; original candidate bindings retained",
+    "originalCandidatePreserved": true,
+    "historicalFailure": "05238aeb 的原始 E2E FAIL 保留；本次对当前 main 的 validate/有效浏览器覆盖和77a4a90定向修复作为后续验证，不改写旧执行。"
+  }
+}

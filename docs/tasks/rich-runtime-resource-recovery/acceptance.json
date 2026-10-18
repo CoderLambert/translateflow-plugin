@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "task": "rich-runtime-resource-recovery",
+  "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+  "tree": "353eeae2be84a678ca44abcb8f9ecfa8a44fffd4",
+  "inputTree": "d6d115c035454cbd9b74eae3f52010ece12d506233bbeb095c9b80aaa4af6bd1",
+  "frozenAt": "2026-10-13T15:41:02.436Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 13.503337,
+      "startedAt": "2026-10-13T15:41:13.310Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/dcd7ce16-10c3-47ca-953a-fa4ba7b79379.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/rich-resource-resolver.test.mjs",
+        "tests/rich-navigation.test.mjs",
+        "tests/rich-viewer-contract.test.mjs",
+        "tests/constants.test.mjs",
+        "tests/selection-reading-window.test.mjs",
+        "tests/selection-v2.test.mjs",
+        "tests/rich-mdd-css.test.mjs",
+        "tests/dictionary-library-v2-presentation.test.mjs",
+        "tests/dictionary-pack-ui.test.mjs"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1192.406799,
+      "startedAt": "2026-10-13T15:41:13.542Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/42a3e95f-1f76-4ecd-ae81-18982e937031.log",
+      "logSha256": "e003fba295a60ce5d1ef9a48c0731d8c3485aa6e82b53377eb2fa6d33ca64c36"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 50683.837162,
+      "startedAt": "2026-10-13T15:41:20.459Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/9445478f-3952-4fa2-92bf-c7abce1f76aa.log",
+      "logSha256": "a7199078a182c9f0806e329051503d947c8128a12a2c28f1e3e3c6148474a3a4"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2351.225058,
+      "startedAt": "2026-10-13T15:42:14.313Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/be672aab-49bd-428e-928e-3abceb482f2b.log",
+      "logSha256": "362913f571124c861579d4d7c9cc51756f3938aa26ba6839191472ccfc172a6d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1151.928914,
+      "startedAt": "2026-10-13T15:42:19.909Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/f935fcbc-dfe5-4cae-8f55-0a8a182a20be.log",
+      "logSha256": "2bca18019e9250f55d979e62ad65c31c37e797ed4fffe9ad8e7ec9c33c8b3a97"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-mdict-security"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 159.791487,
+      "startedAt": "2026-10-13T15:42:29.142Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/0adcb0a5-e01c-4490-bb32-0b35efb6f5cb.log",
+      "logSha256": "33c509ff44d0a0221f28f71dc4a9a488f0b61017e8237e5bb53442bdd980bd4e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:rich-lookup-cancellation"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 189.449526,
+      "startedAt": "2026-10-13T15:42:29.516Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/919c032e-0c6e-4a4c-b485-9c40b5d672b1.log",
+      "logSha256": "60373fd0e885a907e37b7655df8c0cdb0f8faaff33f8564b2c3040ded7da9838"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/mdd-resources.spec.mjs",
+        "e2e/rich-navigation.spec.mjs",
+        "e2e/oxford-radio-css.spec.mjs",
+        "e2e/rich-resource-failure-ui.spec.mjs",
+        "e2e/rich-reading-window.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs",
+        "e2e/settings-ia.spec.mjs"
+      ],
+      "candidateHead": "8bf3ffd390d5a34e6c9e4d75e7ac5201ad561854",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 29873.520956,
+      "startedAt": "2026-10-13T15:42:34.830Z",
+      "log": "docs/task-execution/local/rich-runtime-resource-recovery/4bee0e03-07cd-494c-8b1a-23b47ffed83d.log",
+      "logSha256": "4f6c4e253af6c78812e53f75ed5af10a6acb505b8bfb82df08353bce3aa36cef"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "d647e94ed268b6050203eaab3ad58f3802d90181123c0a18fd8c05873258fd77"
+  },
+  "localInstallation": {
+    "result": "COPIED_AND_FINGERPRINT_VERIFIED",
+    "sameLoadDirectory": true,
+    "backupCreated": true,
+    "profileStorageTouched": false,
+    "treeSha256": "d647e94ed268b6050203eaab3ad58f3802d90181123c0a18fd8c05873258fd77",
+    "activation": "User must reload the existing extension and refresh the options page; original browser runtime is not yet visually verified."
+  },
+  "limitations": [
+    "Original user browser activation and visual verification remain pending reload.",
+    "Full private Oxford six-file certification was not repeated for this Settings presentation cleanup."
+  ]
+}

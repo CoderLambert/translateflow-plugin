@@ -10,7 +10,8 @@ function createChromeMock({ permitted = false } = {}) {
     autoSites: [],
     quickControlSites: [],
     quickControlHiddenSites: [],
-    readingMemorySites: []
+    readingMemorySites: [],
+    readingMemoryDisabledSites: []
   };
   const registered = new Map();
   let permissionGranted = permitted;
@@ -145,27 +146,38 @@ test("startup removes obsolete dynamic registrations after switching to static i
   assert.deepEqual([...mock.registered.keys()], ["unrelated_registration"]);
 });
 
-test("Reading marker intent is permission-gated, port-precise and survives revocation without changing other features", async () => {
+test("Reading markers default on, remain permission-gated and retain an internal opt-out", async () => {
   const mock = createChromeMock({ permitted: false });
   const coordinator = await loadCoordinator(mock);
+  assert.deepEqual(await coordinator.getReadingMemorySite("http://127.0.0.1:8123"), {
+    state: "permission-required", enabled: true, permissionGranted: false
+  });
+  assert.deepEqual(await coordinator.setReadingMemorySite("http://127.0.0.1:8123", true), {
+    state: "permission-required", enabled: true, permissionGranted: false
+  });
+  assert.deepEqual(mock.storage.readingMemoryDisabledSites, []);
+  mock.setPermission(true);
+  assert.deepEqual(await coordinator.getReadingMemorySite("http://127.0.0.1:8123"), {
+    state: "ready", enabled: true, permissionGranted: true
+  });
+  await coordinator.registerAutoSite("http://127.0.0.1:8123");
+  assert.deepEqual(await coordinator.setReadingMemorySite("http://127.0.0.1:8123", false), {
+    state: "ready", enabled: false, permissionGranted: true
+  });
+  assert.deepEqual(mock.storage.readingMemoryDisabledSites, ["http://127.0.0.1:8123"]);
+  assert.deepEqual((await coordinator.syncSiteRegistrations()).readingMemoryDisabledSites, ["http://127.0.0.1:8123"]);
+  mock.setPermission(false);
+  assert.deepEqual(await coordinator.getReadingMemorySite("http://127.0.0.1:8123"), {
+    state: "ready", enabled: false, permissionGranted: false
+  });
   assert.deepEqual(await coordinator.setReadingMemorySite("http://127.0.0.1:8123", true), {
     state: "permission-required", enabled: false, permissionGranted: false
   });
-  assert.deepEqual(mock.storage.readingMemorySites, []);
   mock.setPermission(true);
   assert.deepEqual(await coordinator.setReadingMemorySite("http://127.0.0.1:8123", true), {
     state: "ready", enabled: true, permissionGranted: true
   });
-  assert.deepEqual(mock.storage.readingMemorySites, ["http://127.0.0.1:8123"]);
-  await coordinator.registerAutoSite("http://127.0.0.1:8123");
+  assert.deepEqual(mock.storage.readingMemoryDisabledSites, []);
   mock.setPermission(false);
-  assert.deepEqual(await coordinator.getReadingMemorySite("http://127.0.0.1:8123"), {
-    state: "permission-required", enabled: true, permissionGranted: false
-  });
-  assert.deepEqual((await coordinator.syncSiteRegistrations()).readingMemorySites, ["http://127.0.0.1:8123"]);
-  assert.deepEqual(mock.storage.readingMemorySites, ["http://127.0.0.1:8123"]);
-  assert.deepEqual(mock.storage.autoSites, []);
-  assert.deepEqual(await coordinator.setReadingMemorySite("http://127.0.0.1:8123", false), {
-    state: "ready", enabled: false, permissionGranted: false
-  });
+  assert.deepEqual(mock.storage.autoSites, ["http://127.0.0.1"]);
 });

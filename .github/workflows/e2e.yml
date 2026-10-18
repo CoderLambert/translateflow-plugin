@@ -6,22 +6,18 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_TEST_WORKERS: "2"
+
 jobs:
-  chromium-smoke:
+  chromium:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact: dist/extension
-            name: stable-wxt
-          - artifact: .output/chrome-mv3
-            name: wxt
+    timeout-minutes: 30
     env:
-      TF_E2E_ARTIFACT: ${{ matrix.artifact }}
-      TF_I18N_ARTIFACT: ${{ matrix.artifact }}
+      TF_E2E_ARTIFACT: dist/extension
+      TF_I18N_ARTIFACT: dist/extension
       TF_E2E_ARTIFACT_SOURCE_HEAD: ${{ github.sha }}
+      TF_TEST_RUN_DIR: test-results/${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,7 +27,14 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build:extension:wxt
       - run: npm run test:wxt:smoke
+        env:
+          TF_SMOKE_ARTIFACT: .output/chrome-mv3
+          TF_SMOKE_REPORT: test-results/explicit-wxt-smoke.json
       - run: npm run build:extension
+      - run: npm run test:wxt:smoke
+        env:
+          TF_SMOKE_ARTIFACT: dist/extension
+          TF_SMOKE_REPORT: test-results/stable-wxt-smoke.json
       - name: Build the fixed pre-switch comparison artifact
         env:
           TF_FIXED_OLD_ROOT: ${{ runner.temp }}/translateflow-pre-wxt
@@ -39,15 +42,25 @@ jobs:
           git fetch --no-tags origin 19e89b65fd3600073410407392da82ffa666ffc8
           git worktree add --detach "$TF_FIXED_OLD_ROOT" 19e89b65fd3600073410407392da82ffa666ffc8
           node "$TF_FIXED_OLD_ROOT/scripts/build-extension.mjs"
-          node --input-type=module -e 'import {appendFileSync} from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `TF_UPGRADE_OLD_ARTIFACT=${process.env.TF_FIXED_OLD_ROOT}/dist/extension\nTF_UPGRADE_NEW_ARTIFACT=.output/chrome-mv3\n`);'
-      - run: npm run test:e2e -- --output test-results/e2e-${{ matrix.name }}
-      - name: Upload Playwright report
-        if: failure()
+          node --input-type=module -e 'import {appendFileSync} from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `TF_UPGRADE_OLD_ARTIFACT=${process.env.TF_FIXED_OLD_ROOT}/dist/extension\nTF_UPGRADE_NEW_ARTIFACT=dist/extension\n`);'
+      - name: Build the fixed pre-removal user-dictionary upgrade artifact
+        env:
+          TF_USER_OLD_ROOT: ${{ runner.temp }}/translateflow-pre-removal
+        run: |
+          git fetch --no-tags origin 349321a079544a51834de1b3173f1fc653220e6d
+          git worktree add --detach "$TF_USER_OLD_ROOT" 349321a079544a51834de1b3173f1fc653220e6d
+          npm ci --prefix "$TF_USER_OLD_ROOT" --no-audit --no-fund
+          node "$TF_USER_OLD_ROOT/scripts/build-extension.mjs" --out "$TF_USER_OLD_ROOT/.output/chrome-mv3"
+          node --input-type=module -e 'import {appendFileSync} from "node:fs"; appendFileSync(process.env.GITHUB_ENV, `TF_USER_DICTIONARY_OLD_ARTIFACT=${process.env.TF_USER_OLD_ROOT}/.output/chrome-mv3\n`);'
+      # Includes the sequential resource/performance/upgrade phase; no second full suite.
+      - run: npm run test:e2e
+      - name: Upload reports and evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.name }}
+          name: chromium-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            playwright-report/
             test-results/
+            .wxt/reports/
           if-no-files-found: ignore
           retention-days: 7

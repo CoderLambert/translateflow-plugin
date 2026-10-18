@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path, { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compileTflexTechnical } from "../../scripts/build-tflex-technical.mjs";
 import { byteSummary } from "../../scripts/wxt-assets.mjs";
 import { assertDisjointPaths, assertDisjointPathsOnDisk } from "../../scripts/path-boundaries.mjs";
 import { WORKER_PATHS } from "../../src/shared/runtime-assets.js";
@@ -61,46 +60,19 @@ export async function copyProductionArtifact(artifact, extensionDir, { generatio
 }
 
 export async function prepareExtensionTestCopy({artifact = defaultArtifact, extensionDir,
-  generation = "current", lexiconPacks = "fixture", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, staticContentInjection = true, baseUrl}) {
+  generation = "current", ecdictMdxReleaseHostAccess = false, ecdictMdxCachedArchivePath = "", captureCommands = false, observeInstalled = false, executionProof = false, startupNetwork = null, staticContentInjection = true, nativeMessagingPregranted = false, baseUrl}) {
     assert(!(captureCommands && observeInstalled), "Lifecycle observation and Commands probing use separate test copies");
     assert(!(captureCommands && (executionProof || startupNetwork)), "Startup observation and Commands probing use separate test copies");
     const sourceReport = await copyProductionArtifact(artifact, extensionDir, { generation });
 
-    const lexiconDir = join(extensionDir, "assets", "lexicon");
-    await rm(lexiconDir, { recursive: true, force: true });
-    if (lexiconPacks === "release") {
-      await cp(join(repoRoot, "assets", "lexicon"), lexiconDir, { recursive: true });
-    } else if (lexiconPacks !== "missing") {
-      await mkdir(lexiconDir, { recursive: true });
-      await cp(
-        join(repoRoot, "tests", "fixtures", "tflex-runtime-pack"),
-        join(lexiconDir, "core"),
-        { recursive: true }
-      );
-      await compileTflexTechnical({
-        extractPath: join(repoRoot, "lexicon", "sources", "wikidata-tech-entities.json"),
-        sourceLockPath: join(repoRoot, "lexicon", "source-locks", "technical-wikidata.json"),
-        outDir: join(lexiconDir, "technical")
-      });
-
-      if (lexiconPacks === "corrupt") {
-        const shardPath = join(lexiconDir, "core", "shards", "0000.jsonl");
-        const bytes = new Uint8Array(await readFile(shardPath));
-        const corruptBytes = new Uint8Array(bytes.byteLength + 1);
-        corruptBytes.set(bytes);
-        corruptBytes[corruptBytes.length - 1] = 10;
-        await writeFile(shardPath, corruptBytes);
-      } else if (lexiconPacks === "incompatible") {
-        const coreManifestPath = join(lexiconDir, "core", "manifest.json");
-        const manifest = JSON.parse(await readFile(coreManifestPath, "utf8"));
-        manifest.formatVersion = 2;
-        await writeFile(coreManifestPath, JSON.stringify(manifest) + "\n", "utf8");
-      }
-    }
-
     const manifestPath = join(extensionDir, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     if (!staticContentInjection) delete manifest.content_scripts;
+    if (nativeMessagingPregranted) {
+      manifest.permissions = [...new Set([...(manifest.permissions || []), "nativeMessaging"])];
+      manifest.optional_permissions = (manifest.optional_permissions || []).filter(value => value !== "nativeMessaging");
+      if (!manifest.optional_permissions.length) delete manifest.optional_permissions;
+    }
     manifest.host_permissions = [...new Set([...(manifest.host_permissions || []),
       "http://127.0.0.1/*",
       "https://api.deepseek.com/*",
@@ -164,16 +136,21 @@ export async function prepareExtensionTestCopy({artifact = defaultArtifact, exte
     const beforeFiles = new Map(sourceReport.files.map((f) => [f.path, f.sha256]));
     const afterFiles = new Map(after.files.map((f) => [f.path, f.sha256]));
     const changes = [...new Set([...beforeFiles.keys(), ...afterFiles.keys()])].filter((p) => beforeFiles.get(p) !== afterFiles.get(p)).sort();
-    for (const path of changes) assert(path === "manifest.json" || path.startsWith("assets/lexicon/")
+    for (const path of changes) assert(path === "manifest.json"
       || ecdictMdxCachedArchivePath && path === WORKER_PATHS.curatedEcdictMdx
       || (captureCommands || observeInstalled || executionProof || startupNetwork) && path === manifest.background.service_worker,
       `Test adapter changed production runtime: ${path}`);
     const originalManifest = JSON.parse(await readFile(join(sourceReport.artifact, "manifest.json"), "utf8"));
     const expectedManifest = structuredClone(originalManifest);
     if (!staticContentInjection) delete expectedManifest.content_scripts;
+    if (nativeMessagingPregranted) {
+      expectedManifest.permissions = [...new Set([...(expectedManifest.permissions || []), "nativeMessaging"])];
+      expectedManifest.optional_permissions = (expectedManifest.optional_permissions || []).filter(value => value !== "nativeMessaging");
+      if (!expectedManifest.optional_permissions.length) delete expectedManifest.optional_permissions;
+    }
     assert.deepEqual({...manifest, host_permissions: originalManifest.host_permissions}, expectedManifest,
       "Test adapter changed Manifest beyond approved host/static-Content controls");
-    return {...sourceReport, testCopy: {...after, changes}, lexiconMode: lexiconPacks,
+    return {...sourceReport, testCopy: {...after, changes},
       cachedWorkerOverride: Boolean(ecdictMdxCachedArchivePath), commandCallbackProbe: captureCommands,
       staticContentInjection, lifecycleObserver,startupObserver};
 }

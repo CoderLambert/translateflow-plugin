@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "task": "rich-stripkey-migration",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [
+    "rich-lookup-outcome"
+  ],
+  "branch": "main",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-stripkey-20261013",
+  "candidateHead": "40a69f965e046c3d799e2ca6a174af201c9ba68d",
+  "mergeHead": "320f78e2b34fc16648e35369b06c473f1a58c68e",
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/rich-mdict-format.test.mjs",
+      "tests/rich-mdict-storage.test.mjs",
+      "tests/rich-mdict-index-migration.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-mdict-security"
+    ],
+    [
+      "npm",
+      "run",
+      "test:rich-lookup-cancellation"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/rich-mdict-index-migration.spec.mjs",
+      "e2e/rich-mdict-product.spec.mjs",
+      "e2e/multi-dictionary-viewer.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs",
+      "e2e/mdd-resources.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "Stripkey与受影响legacy迁移已合入且合后main验证PASS；继续#270多records。",
+  "pullRequest": 327,
+  "syncHead": "562dec877c82c8a890d30613eb9318ed59eda93d"
+}

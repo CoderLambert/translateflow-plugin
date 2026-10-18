@@ -43,7 +43,7 @@ function fixtureReader(options = {}) {
 test("TFLex reader loads exact words/phrases and preserves polysemy", async () => {
   const { reader } = fixtureReader();
   const persistent = await reader.lookup("persistent");
-  assert.equal(persistent.pack.packId, "core-semantic-en-zh-runtime-fixture");
+  assert.equal(persistent.pack.packId, "local-reader-runtime-fixture");
   assert.equal(persistent.exactCaseMatch, true);
   assert.equal(persistent.record.senses.length, 2);
   assert.deepEqual(persistent.record.senses.map((sense) => sense.translations), [
@@ -60,7 +60,7 @@ test("TFLex reader loads exact words/phrases and preserves polysemy", async () =
 test("TFLex reader exposes validated immutable pack metadata for health reporting", async () => {
   const { reader } = fixtureReader();
   const metadata = await reader.inspect();
-  assert.equal(metadata.packId, "core-semantic-en-zh-runtime-fixture");
+  assert.equal(metadata.packId, "local-reader-runtime-fixture");
   assert.ok(metadata.packVersion);
   assert.match(metadata.fingerprint, /^sha256:[a-f0-9]{64}$/);
   assert.equal(metadata.sourceLanguage, "en");

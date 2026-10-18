@@ -1,6 +1,6 @@
 import { READING_ERROR, READING_LIMITS as L } from "./constants.js";
 import { validateAnchor, validateSourceSnapshot } from "./source.js";
-import { validateResultArtifact } from "./artifact.js";
+import { compareAssistantArtifacts, validateResultArtifact } from "./artifact.js";
 import { createReadingItemKey } from "./identity.js";
 import { applicationBytes } from "./lifecycle.js";
 import { array, choice, fail, integer, jsonBytes, nullable, object, pageKey, recordId, safeReturnUrl, text, version } from "./validation.js";
@@ -71,6 +71,39 @@ export function validateRecordDetail(value, path = "detail") {
     visited.add(turnId);
   }
   for (const turnId of turns.keys()) visit(turnId);
+  return { record, snapshots, artifacts };
+}
+export function validatePreviewDetail(value, path = "previewDetail") {
+  object(value, ["record", "snapshots", "artifacts", "related"], path);
+  const primary = validateRecordDetail({ record: value.record, snapshots: value.snapshots, artifacts: value.artifacts }, path);
+  const related = value.related === undefined ? [] : array(value.related, L.previewRelatedRecords,
+    validatePreviewAssistantDetail, `${path}.related`);
+  const ids = new Set([primary.record.recordId]);
+  for (const item of related) {
+    if (ids.has(item.record.recordId) || item.record.pageKey !== primary.record.pageKey || item.record.itemKey !== primary.record.itemKey ||
+        !item.artifacts.length || item.artifacts.some(artifact => artifact.kind !== "assistant")) fail(READING_ERROR.BAD_DTO, `${path}.related`);
+    ids.add(item.record.recordId);
+  }
+  return { ...primary, related };
+}
+export function validatePreviewAssistantDetail(value, path = "previewAssistantDetail") {
+  object(value, ["record", "snapshots", "artifacts"], path);
+  const record = validateReadingRecord(value.record, `${path}.record`);
+  const snapshots = array(value.snapshots, L.previewAssistantArtifacts, validateSourceSnapshot, `${path}.snapshots`);
+  const artifacts = array(value.artifacts, L.previewAssistantArtifacts, validateResultArtifact, `${path}.artifacts`);
+  if (!snapshots.length || !artifacts.length || artifacts.some(artifact => artifact.kind !== "assistant")) {
+    fail(READING_ERROR.BAD_DTO, path);
+  }
+  if (snapshots.some(snapshot => snapshot.selectedText !== record.itemText)) fail(READING_ERROR.BAD_DTO, `${path}.snapshots`);
+  const snapshotIds = unique(snapshots, "sourceSnapshotId", path);
+  unique(artifacts, "artifactId", path);
+  unique(artifacts.map(artifact => artifact.payload), "turnId", path);
+  for (const artifact of artifacts) {
+    if (artifact.recordId !== record.recordId || !snapshotIds.has(artifact.sourceSnapshotId)) fail(READING_ERROR.BAD_DTO, `${path}.references`);
+  }
+  for (let index = 1; index < artifacts.length; index++) {
+    if (compareAssistantArtifacts(artifacts[index - 1], artifacts[index]) > 0) fail(READING_ERROR.BAD_DTO, `${path}.order`);
+  }
   return { record, snapshots, artifacts };
 }
 function unique(values, key, path) {

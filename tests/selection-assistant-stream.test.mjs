@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } from "../src/background/selection/assistant-stream.js";
+import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort, onSelectionAssistantTabUpdated } from "../src/background/selection/assistant-stream.js";
 import { resolveSelectionRequest } from "../src/background/selection/resolve.js";
 import { createChatGPTPlanProvider } from "../src/background/providers/chatgpt-plan.js";
 import { createNativeMessagingClient } from "../src/background/providers/native-messaging.js";
@@ -44,6 +44,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
   const p = port({ url: "https://example.test/article", tab: { id: 7, incognito: false } });
   const visibleContext = "記事では弁護士が地域の相談窓口を案内していた。";
   let providerPrompt;
+  let providerSystemPrompt;
   let providerCalls = 0;
   const config = { provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" };
   const resolverDeps = {
@@ -59,6 +60,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
     readingTranslationResult: async () => ({ targetLanguage: "Simplified Chinese", provenance: { provider: "mock", model: "test", promptVersion: "p", providerConfigFingerprint: "f".repeat(64) } }),
     completeText: async input => {
       providerCalls += 1;
+      providerSystemPrompt = input.systemPrompt;
       providerPrompt = JSON.parse(input.prompt);
       return { text: "此处指律师。", mode: "unary" };
     }
@@ -67,6 +69,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
   await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.equal(providerCalls, 1);
+  assert.match(providerSystemPrompt, /Write the answer in Simplified Chinese\./u);
   assert.equal(providerPrompt.text, "弁護士");
   assert.equal(providerPrompt.context, visibleContext);
   assert.deepEqual(providerPrompt.candidates, []);
@@ -154,6 +157,44 @@ test("unary fallback is labeled and navigation aborts the tab-owned request", as
   handleSelectionAssistantStreamPort(navigating, { ...deps, completeText: (_a, _b, { signal }) => new Promise((_resolve, reject) => signal.addEventListener("abort", () => { aborted = true; reject(Object.assign(new Error(), { code: "CANCELLED" })); })) });
   navigating.emit({ ...input, requestId: "nav" }); while (!navigating.sent.length) await new Promise(resolve => setTimeout(resolve, 0));
   abortSelectionAssistantStreams(7); await new Promise(resolve => setTimeout(resolve, 0)); assert.equal(aborted, true); assert.equal(navigating.sent.at(-1).code, "CANCELLED");
+});
+
+test("same-document anchors and tracking updates preserve a pending stream but real navigation aborts it", async () => {
+  globalThis.chrome = { runtime: { id: "ext" } };
+  for (const change of [
+    { status: "loading" },
+    { status: "loading", url: `${input.pageUrl}?utm_source=fixture&gclid=123#appendix` },
+    { url: "https://example.test/article#/new-route" },
+    { url: "https://example.test/article?topic=other" },
+    { url: "https://example.test/different-page" },
+    { url: "https://other.test/article" },
+    { url: "about:blank" }
+  ]) {
+    const p = port(); let signal, finish;
+    handleSelectionAssistantStreamPort(p, { ...deps, completeText: (_input, _config, options) => {
+      signal = options.signal;
+      return new Promise(resolve => { finish = resolve; options.onDelta("partial"); });
+    } });
+    p.emit(input);
+    await p.whenSent(value => value.type === "delta");
+    onSelectionAssistantTabUpdated(8, change);
+    assert.equal(signal.aborted, false);
+    for (const update of [
+      { status: "loading", url: `${input.pageUrl}#introduction` },
+      { status: "complete" },
+      { status: "loading", url: `${input.pageUrl}?utm_source=fixture&gclid=123#details` },
+      { status: "loading", url: `${input.pageUrl}?utm_source=fixture&gclid=123#appendix` }
+    ]) {
+      onSelectionAssistantTabUpdated(7, update);
+      assert.equal(signal.aborted, false, JSON.stringify(update));
+    }
+    onSelectionAssistantTabUpdated(7, change);
+    assert.equal(signal.aborted, true, JSON.stringify(change));
+    finish({ text: "late provider result", mode: "stream" });
+    const terminal = await p.whenSent(value => value.type === "interrupted");
+    assert.equal(terminal.code, "CANCELLED");
+    assert.equal(p.sent.some(value => value.type === "complete"), false);
+  }
 });
 
 test("learning-center history is repository-grounded and acknowledges only the committed complete turn", async () => {
@@ -249,7 +290,7 @@ test("Stop during provenance leaves the prepared Reading operation uncommitted",
   assert.equal(p.sent.at(-1).type, "interrupted"); assert.equal(p.sent.at(-1).code, "CANCELLED");
 });
 
-test("learning-center stop cancels the prepared operation and never commits partial text", async () => {
+for (const action of ["stop", "hash", "reload"]) test(`learning-center ${action} cancels the prepared operation and never commits partial text`, async () => {
   globalThis.chrome = { runtime: { id: "ext" } }; const p = historyPort(); let committed = 0, cancelled = 0;
   const waiting = { ...deps,
     prepareLearningAssistantTurn: async () => ({ session: {}, grounded: { question: "Why?", history: [], sourceSnapshotId: "source-1",
@@ -262,8 +303,10 @@ test("learning-center stop cancels the prepared operation and never commits part
   handleSelectionAssistantStreamPort(p, waiting); p.emit({ protocolVersion: 1, type: "start", requestId: "history-stop",
     recordId: "11111111-1111-4111-8111-111111111111", recordRevision: 3, sourceSnapshotId: "source-1",
     targetTurnId: "turn-1", historyAction: "follow-up", question: "Why?" });
-  while (!p.sent.some(value => value.type === "delta")) await new Promise(resolve => setTimeout(resolve, 0));
-  p.emit({ type: "cancel", requestId: "history-stop" }); await new Promise(resolve => setTimeout(resolve, 0));
+  await p.whenSent(value => value.type === "delta");
+  if (action === "stop") p.emit({ type: "cancel", requestId: "history-stop" });
+  else onSelectionAssistantTabUpdated(9, action === "hash" ? { url: `${p.sender.url}#record` } : { status: "loading" });
+  await p.whenSent(value => value.type === "interrupted");
   assert.equal(committed, 0); assert.equal(cancelled, 1); assert.equal(p.sent.at(-1).type, "interrupted");
 });
 
@@ -321,7 +364,7 @@ test("ChatGPT host frames stream through a Learning Center follow-up and commit 
       methods.push(request);
       const send = frame => { for (const listener of hostMessages) listener({ requestId: request.requestId, ...frame }); };
       if (request.method === "hello") {
-        send({ type: "terminal", sequence: 0, ok: true, payload: { protocolVersion: 1,
+        send({ type: "terminal", sequence: 0, ok: true, payload: { protocolVersion: 1, hostVersion: "dev",
           capabilities: ["auth.status", "auth.start", "auth.select", "auth.logout", "models.list", "infer.start", "cancel"] } });
       } else if (request.method === "infer.start") {
         send({ type: "event", sequence: 0, event: "infer.delta", payload: { text: "Native " } });

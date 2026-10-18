@@ -1,3 +1,4 @@
+import { createRichResourceRecovery, createRichMddPreflight } from "./rich-resource-recovery.js";
 import { createOpfsPackStore } from "./opfs-store.js";
 import { createPackStateStore } from "./state.js";
 import {
@@ -14,16 +15,11 @@ import { isRichMddPackageWithinBudget, richMddAttachmentSourceBytes } from "./ri
 import {
   RICH_MDD_MAX_ASSET_BYTES,
   RICH_MDD_MAX_INDEX_BYTES,
-  RICH_MDD_MAX_SOURCE_BYTES,
   RICH_MDD_MAX_TOTAL_INDEX_BYTES,
-  RICH_MDD_MAX_TOTAL_SOURCE_BYTES,
   makeResourceSnapshot,
   normalizeResourceImportMetadata,
   parseMddIndex,
-  resourceFilePaths,
-  safeFileName,
   summarizeResources,
-  validateMddCompanions,
   validateResourceRequest,
   validateResourceSnapshot
 } from "./rich-mdd-contract.js";
@@ -31,7 +27,6 @@ import { sanitizeRichMddStylesheet } from "./rich-mdd-css.js";
 import {
   assertStagedSidecars,
   bytesToBase64,
-  normalizeSidecarPreflightFiles,
   resourceReader,
   validateResourceMime
 } from "./rich-mdd-resource-utils.js";
@@ -63,6 +58,7 @@ export function createRichMddResourceManager({
   buildIndex = buildMddIndex,
   lookup = lookupMddResource,
   validateIndex = validateMddIndex,
+  getSessionToken,
   createLookupBudget = createMddLookupBudget
 } = {}) {
   if (!store?.writeFile || !store?.readFile || !store?.readFileRange || !store?.getFileSize) {
@@ -76,61 +72,10 @@ export function createRichMddResourceManager({
   const lookupCancellation = createRichMddLookupCancellation();
   const indexCache = createRichMddIndexCache(RICH_MDD_MAX_TOTAL_INDEX_BYTES);
 
-  async function preflight({ dictionaryId, requestId, resourceVersion, mdxFileName, files, sidecars: sidecarInput = [] } = {}) {
-    const packId = normalizePackId(dictionaryId);
-    const id = normalizeRequestId(requestId);
-    const version = normalizeVersion(resourceVersion);
-    const ordered = validateMddCompanions((Array.isArray(files) ? files : []).map((file) => file?.fileName), mdxFileName);
-    const sizeByName = new Map((Array.isArray(files) ? files : []).map((file) => [safeFileName(file?.fileName), Number(file?.size)]));
-    let totalBytes = 0;
-    for (const item of ordered) {
-      const size = sizeByName.get(item.fileName);
-      if (!Number.isSafeInteger(size) || size <= 0 || size > RICH_MDD_MAX_SOURCE_BYTES) {
-        throw richError("RICH_MDD_LIMIT", "An MDD file exceeds the 4,000,000,000-byte safety limit.");
-      }
-      totalBytes += size;
-    }
-    const sidecars = normalizeSidecarPreflightFiles(sidecarInput);
-    const sidecarBytes = sidecars.reduce((sum, item) => sum + item.size, 0);
-    if (!isRichMddPackageWithinBudget(0, totalBytes + sidecarBytes)) {
-      throw richError("RICH_MDD_LIMIT", "MDD sources and sidecars exceed the 4,000,000,000-byte package safety limit.");
-    }
-    if (storageManager?.estimate) {
-      const estimate = await storageManager.estimate();
-      const quota = Number(estimate?.quota);
-      const usage = Number(estimate?.usage);
-      if (Number.isFinite(quota) && Number.isFinite(usage) && Math.max(0, quota - usage) < totalBytes + sidecarBytes + 32 * 1024 * 1024) {
-        throw richError("RICH_MDD_QUOTA", "There is not enough browser storage for these MDD resources.");
-      }
-    }
-    return serializeRichMdictPack(packId, async () => {
-      if ((await store.listVersions(packId)).includes(version)) {
-        throw richError("RICH_MDD_EXISTS", "This MDD resource import version is already in use.");
-      }
-      await stateStore.update((current) => {
-        const entry = current.packs?.[packId];
-        if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || !isValidSnapshot(packId, entry.active)) {
-          throw richError("RICH_MDD_DICTIONARY", "Install the matching rich MDX dictionary before attaching MDD resources.");
-        }
-        if (safeFileName(entry.active.fileName) !== safeFileName(mdxFileName)) {
-          throw richError("RICH_MDD_DICTIONARY", "Selected MDD companions do not match the installed MDX filename.");
-        }
-        const installedMdxBytes = Number(entry.active.sourceSize);
-        if (installedMdxBytes <= 0 || !isRichMddPackageWithinBudget(installedMdxBytes, totalBytes + sidecarBytes)) {
-          throw richError("RICH_MDD_LIMIT", "MDX, MDD sources, and sidecars exceed the 4,000,000,000-byte package safety limit.");
-        }
-        if (current.resourceReservations?.[id]) throw richError("RICH_MDD_BUSY", "MDD resource request ID is already reserved.");
-        const duplicate = Object.values(current.resourceReservations || {}).some((reservation) => reservation?.packId === packId);
-        if (duplicate) throw richError("RICH_MDD_BUSY", "Another MDD resource import is already active for this dictionary.");
-        current.resourceReservations ||= {};
-        current.resourceReservations[id] = { packId, resourceVersion: version, createdAt: Date.now() };
-        return current;
-      });
-      return { ready: true, totalBytes: totalBytes + sidecarBytes, fileCount: ordered.length + sidecars.length };
-    });
-  }
+  const recovery = createRichResourceRecovery({ store, stateStore, ...(getSessionToken ? { getSessionToken } : {}) });
+  const preflight = createRichMddPreflight({ store, stateStore, storageManager, serialize: serializeRichMdictPack, recovery });
 
-  async function commit({ dictionaryId, requestId, resourceVersion, metadata } = {}) {
+  async function commit({ dictionaryId, requestId, resourceVersion, metadata, expectedMdxVersion } = {}) {
     const packId = normalizePackId(dictionaryId);
     const id = normalizeRequestId(requestId);
     const version = normalizeVersion(resourceVersion);
@@ -139,15 +84,15 @@ export function createRichMddResourceManager({
     operationsByRequest.set(id, operation);
     return serializeRichMdictPack(packId, async () => {
       try {
+        const token = await recovery.getSessionToken();
         const state = await stateStore.read();
         const entry = state.packs?.[packId];
         const reservation = state.resourceReservations?.[id];
         if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || !isValidSnapshot(packId, entry.active)) {
           throw richError("RICH_MDD_DICTIONARY", "Rich MDX dictionary is no longer installed.");
         }
-        if (reservation?.packId !== packId || reservation?.resourceVersion !== version) {
-          throw richError("RICH_MDD_RESERVATION", "MDD resource import reservation is missing or expired.");
-        }
+        recovery.assertReservation(reservation, { packId, version, token, expectedMdxVersion }, entry.active);
+        operation.reserved = true;
         const normalized = normalizeResourceImportMetadata(metadata, entry.active.fileName);
         const installedMdxBytes = Number(entry.active.sourceSize);
         const sidecarBytes = normalized.sidecars.reduce((sum, item) => sum + item.sourceSize, 0);
@@ -177,7 +122,10 @@ export function createRichMddResourceManager({
           ) {
             throw richError("RICH_MDD_RESERVATION", "MDD resource activation state changed before commit.");
           }
+          recovery.assertReservation(currentReservation, { packId, version, token, expectedMdxVersion }, currentEntry.active);
+          if (operation.controller.signal.aborted) throw richMdictAbortError();
           currentEntry.active.resources = snapshot;
+          delete currentEntry.active.resourceRecovery;
           delete current.resourceReservations[id];
           return current;
         });
@@ -195,11 +143,11 @@ export function createRichMddResourceManager({
           }
         };
       } catch (error) {
-        if (!operation.committed) {
-          await releaseReservation(id, packId, version).catch(() => {});
+        if (!operation.committed && operation.reserved) {
+          await releaseReservation(id, packId, version, operation.controller.signal.aborted ? "cancelled" : "failed").catch(() => {});
           const current = await stateStore.read().catch(() => null);
-          const activeVersion = current?.packs?.[packId]?.active?.resources?.packVersion;
-          if (activeVersion !== version) await store.removeVersion(packId, version).catch(() => {});
+          const referenced = [current?.packs?.[packId]?.active, current?.packs?.[packId]?.fallback].some(snapshot => snapshot?.packVersion === version || snapshot?.resources?.packVersion === version);
+          if (!referenced) await store.removeVersion(packId, version).catch(() => {});
         }
         throw error;
       } finally {
@@ -222,11 +170,14 @@ export function createRichMddResourceManager({
     const version = normalizeVersion(resourceVersion);
     return serializeRichMdictPack(packId, async () => {
       const state = await stateStore.read();
-      if (state.packs?.[packId]?.active?.resources?.packVersion === version) {
+      if ([state.packs?.[packId]?.active, state.packs?.[packId]?.fallback].some(snapshot => snapshot?.packVersion === version || snapshot?.resources?.packVersion === version)) {
         return { removed: false, installed: true };
       }
+      const token = await recovery.getSessionToken();
+      const reservation = state.resourceReservations?.[id];
+      if (reservation?.packId !== packId || reservation.resourceVersion !== version || reservation.browserSessionToken !== token) return { removed: false, installed: false };
       const removed = await store.removeVersion(packId, version);
-      await releaseReservation(id, packId, version);
+      await releaseReservation(id, packId, version, "cancelled");
       return { removed, installed: false };
     });
   }
@@ -325,8 +276,8 @@ export function createRichMddResourceManager({
           kind: selected.kind,
           ...(selected.dimensions ? { width: selected.dimensions.width, height: selected.dimensions.height } : {}),
           size: selected.bytes.byteLength,
-          base64: bytesToBase64(selected.bytes, signal),
-          ...(safeStylesheet ? { safeCss: safeStylesheet.css, assetSlots: safeStylesheet.assetSlots } : {}),
+          ...(selected.safeSvg ? { safeSvg: selected.safeSvg } : { base64: bytesToBase64(selected.bytes, signal) }),
+          ...(safeStylesheet ? { safeCss: safeStylesheet.css, assetSlots: safeStylesheet.assetSlots, ...(safeStylesheet.fontFaces ? { fontFaces: safeStylesheet.fontFaces } : {}) } : {}),
           diagnostics: [...new Set(diagnostics)].slice(0, 24)
         };
       });
@@ -387,10 +338,14 @@ export function createRichMddResourceManager({
     return index;
   }
 
-  async function releaseReservation(id, packId, version) {
+  async function releaseReservation(id, packId, version, errorCode) {
     await stateStore.update((current) => {
       const reservation = current.resourceReservations?.[id];
-      if (reservation?.packId === packId && reservation?.resourceVersion === version) delete current.resourceReservations[id];
+      if (reservation?.packId === packId && reservation?.resourceVersion === version) {
+        const active = current.packs?.[packId]?.active;
+        if (active?.packVersion === reservation.expectedMdxVersion && active.resourceRecovery) active.resourceRecovery.errorCode = errorCode;
+        delete current.resourceReservations[id];
+      }
       return current;
     });
   }

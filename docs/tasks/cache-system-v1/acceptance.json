@@ -1,0 +1,234 @@
+{
+  "schema": 1,
+  "task": "cache-system-v1",
+  "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+  "tree": "04d413137c13b6ffe921aa0161d076d0f91fc297",
+  "inputTree": "1951fd55bbb147d3f4ce9ee12203844056f9a91b050bdc575ac1145db6b36d13",
+  "frozenAt": "2026-10-18T18:18:07.114Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12 / Playwright 1.63.0",
+    "os": "Linux-7.2.5-3-omarchy-x86_64-with-glibc2.44"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2431.591704,
+      "startedAt": "2026-10-18T18:18:07.257Z",
+      "log": "docs/task-execution/local/cache-system-v1/5ffb033a-1bdc-4e44-9d54-2b473d7faabb.log",
+      "logSha256": "7cc2d0a12adb030492592a3422fa9b6e0449ff4b187b631942348eb683d6072f"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/cache-system.test.mjs",
+        "tests/cache-system-domains.test.mjs",
+        "tests/cache-system-review.test.mjs",
+        "tests/cache-system-integration-review.test.mjs",
+        "tests/cache-system-auto-feedback.test.mjs",
+        "tests/cache-system-persistence-failure.test.mjs",
+        "tests/native-client.test.mjs"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 270.398654,
+      "startedAt": "2026-10-18T18:18:09.790Z",
+      "log": "docs/task-execution/local/cache-system-v1/3a0ebc8c-5077-42ed-a0f1-6dc98bce91a3.log",
+      "logSha256": "14f7827ddcff8447fd0572f8ea89a0849b28ca87ed4329d7934adfa878f3a62e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1152.277672,
+      "startedAt": "2026-10-18T18:18:09.845Z",
+      "log": "docs/task-execution/local/cache-system-v1/5b0c80ad-ef43-4bc7-8b38-f3c60930a3ce.log",
+      "logSha256": "4f29e14a95b7c2a8fee00e9aed7deb03f0a1bb9390ec1673daf3f6c126156efe"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/local-task.test.mjs",
+        "tests/versioned-commit.test.mjs"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3815.459821,
+      "startedAt": "2026-10-18T18:18:10.166Z",
+      "log": "docs/task-execution/local/cache-system-v1/effd83e9-fdbb-4185-82a1-08ae0688790b.log",
+      "logSha256": "5554130fd425bb9954315e19fca21f73145a2efd5dabf0ad999e0e4a0098254f"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/cache-system-native.spec.mjs",
+        "--workers=1",
+        "--retries=0"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 891.075574,
+      "startedAt": "2026-10-18T18:18:11.097Z",
+      "log": "docs/task-execution/local/cache-system-v1/75422e4b-0b26-4ab1-b8c9-5d556497f1ef.log",
+      "logSha256": "fdd1d608ea222fa11e2b5c819fbe5e953fca6d524087f75f282541cf71d42452"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/cache-system-mv3.spec.mjs",
+        "--workers=1",
+        "--retries=0"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4898.552647,
+      "startedAt": "2026-10-18T18:18:12.090Z",
+      "log": "docs/task-execution/local/cache-system-v1/4e5deb6e-0be4-4423-8bf0-9ed012e71fab.log",
+      "logSha256": "1fa14e9f059dc806d5c5f2511ef577142d2321ebf5cce9e70369574184c1bca0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 54764.174693,
+      "startedAt": "2026-10-18T18:18:14.096Z",
+      "log": "docs/task-execution/local/cache-system-v1/9c0e2c84-7377-4cc5-9824-bc6172ab2ef6.log",
+      "logSha256": "745f2f67b5f46b7c814ae5a28cdfa8154b37e2593399d438ba0bfb20661bd350"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/wxt-upgrade.spec.mjs",
+        "--workers=1",
+        "--retries=0"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 22118.585407,
+      "startedAt": "2026-10-18T18:18:17.093Z",
+      "log": "docs/task-execution/local/cache-system-v1/d1ec5ace-b298-41c6-921a-10aa3aae1ab4.log",
+      "logSha256": "e10e3e345b933fb2274755dd8b24980db68836b33e620c66ccdc2341a97a8742"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json",
+        "--output=docs/task-execution/local/pr345-final/test-results"
+      ],
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 460596.350011,
+      "startedAt": "2026-10-18T18:18:39.340Z",
+      "log": "docs/task-execution/local/cache-system-v1/89f8323c-8849-47ed-9841-bffd9df75e6c.log",
+      "logSha256": "262cc959320daddada59a1548ae6d315e9f27707c732290dd148b414def696de"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "c3b444aed6277b4741c0a10637cfe85a0941476582973a8a535685422f02e664",
+    "manifestVersion": "0.8.20",
+    "fileCount": 128,
+    "totalBytes": 2916095,
+    "archive": "docs/task-execution/local/cache-system-v1/final/TranslateFlow-0.8.20-pr345-4545d8ce.zip",
+    "archiveBytes": 858441,
+    "archiveSha256": "82a13b8c583c5f77b3ca1b95d931f53c068083fa6a072a5696eb2fe23c5d33f7"
+  },
+  "limitations": [
+    "7 existing conditional asset-dependent skips; identities and reasons in docs/task-execution/local/cache-system-v1/final/skip-manifest.json; never counted as PASS.",
+    "Real paid AI Provider calls intentionally NOT RUN; user manual Provider request counts NOT VERIFIED. All automated Provider assertions use repository mocks.",
+    "Chrome 102, other browsers and real public YouTube timedtext NOT RUN; user manual page/selection/cache/subtitle acceptance is preserved for identical package bytes.",
+    "Existing non-blocking #245 platform size advisory: 2138926/1576595 bytes; no budget or assertions lowered.",
+    "User authorized removal of automatic per-commit version/build requirement; normal pre-commit checks staged diff only. Final metadata archive does not change tested inputs."
+  ],
+  "userAcceptance": {
+    "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+    "result": "PASS",
+    "confirmedOn": "2026-10-19",
+    "checks": [
+      "页面首次翻译与刷新后缓存恢复",
+      "重复 Selection 翻译",
+      "缓存统计只读刷新",
+      "YouTube 字幕翻译与刷新后恢复"
+    ],
+    "providerRequestCount": "NOT VERIFIED BY USER; automated evidence retained separately",
+    "userDataCleared": false,
+    "sourceCandidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+    "appliesToCandidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+    "basis": "User acceptance of identical 0.8.20 package bytes; not a new manual test",
+    "artifactTreeSha256": "c3b444aed6277b4741c0a10637cfe85a0941476582973a8a535685422f02e664"
+  },
+  "providerRequestEvidence": {
+    "result": "MOCK_ASSERTIONS_PASS",
+    "realPaidProviderCalls": "NOT RUN",
+    "userManualProviderCount": "NOT VERIFIED",
+    "evidence": [
+      "e2e/translateflow.spec.mjs: cache restore keeps mock server call count unchanged",
+      "e2e/selection-release-gate.spec.mjs: local Core/Technical dictionary result has zero mock calls; explicit ordinary translation has one",
+      "e2e/cache-system-mv3.spec.mjs: explanation cache hit and post-prune hit keep the initial mock call count at one; stale invalidation writes are rejected",
+      "e2e/wxt-upgrade.spec.mjs: cache-only restore adds no mock call; unauthorizedProviderCalls is zero",
+      "tests/cache-system.test.mjs and tests/selection-explain-runtime.test.mjs: cache-only miss and explanation cancellation boundaries"
+    ],
+    "verifiedBy": "Actual final candidate full Chromium run and cache-focused Node checks; mock assertions only"
+  },
+  "e2eSummary": {
+    "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+    "result": "PASS",
+    "passCount": 224,
+    "failCount": 0,
+    "skipCount": 7,
+    "flakyCount": 0,
+    "source": "One final Playwright invocation with both old/new upgrade artifacts configured",
+    "report": "docs/task-execution/local/cache-system-v1/final/full-report.json",
+    "reportSha256": "f7cc2def7ecf768be2f8bf2bdf19c9b0e124f27c11c128468ace60519dccdb63"
+  },
+  "decision": "READY_FOR_USER_ACCEPTANCE"
+}

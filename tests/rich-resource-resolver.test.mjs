@@ -1,3 +1,5 @@
+import { JSDOM } from "jsdom";
+import { zh_CN as contentMessages } from "../src/i18n/catalog.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -26,9 +28,7 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
         return new Promise((resolve) => pending.push(resolve));
       }
     },
-    richResourcePath: {
-      normalize(value) { return String(value || ""); }
-    }
+
   } };
   const context = vm.createContext({
     __TRANSLATE_FLOW_CONTENT__: app,
@@ -38,7 +38,10 @@ test("closing a rich viewer purges queued stale MDD resource reads", async () =>
     URL,
     atob
   });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-encoding.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -124,6 +127,8 @@ test("duplicate visible image instances share one URL and release it after the l
   harness.resolver.attach(container, { appendChild() {} }, {}, [
     { kind: "image", path: "images/shared.png", label: "shared", elements: [first, second] }
   ], "rich-mdict-10000000-0000-4000-8000-000000000001", "v1");
+
+  assert.equal(harness.observer.options.root, null, "lazy media follows the browser viewport and clipping scroll ancestors");
 
   harness.observer.trigger(first, true);
   harness.observer.trigger(second, true);
@@ -341,13 +346,16 @@ async function createStylesheetHarness({ imageResponse, deferImage = false }) {
         return Promise.resolve(imageResponse);
       }
     },
-    richResourcePath: { normalize(value) { return String(value || ""); } }
+
   } };
   const document = {
     createElement(name) { return { tagName: name, textContent: "", remove() { this.removed = true; } }; }
   };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextDecoder, Uint8Array, Blob, URL, atob });
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(MEDIA, "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
+  vm.runInContext(await readFile(new URL("../src/content/selection/rich-resource-encoding.js", import.meta.url), "utf8"), context);
   vm.runInContext(await readFile(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   const container = {};
@@ -377,7 +385,7 @@ function createMediaLifecycleHarness(assets) {
   const messages = [];
   let latestObserver = null;
   class Observer {
-    constructor(callback) { this.callback = callback; this.targets = new Set(); latestObserver = this; }
+    constructor(callback, options) { this.callback = callback; this.options = options; this.targets = new Set(); latestObserver = this; }
     observe(target) { this.targets.add(target); }
     unobserve(target) { this.targets.delete(target); }
     disconnect() { this.targets.clear(); }
@@ -405,13 +413,16 @@ function createMediaLifecycleHarness(assets) {
         });
       }
     },
-    richResourcePath: { normalize(value) { return String(value || ""); } }
+
   } };
   const context = vm.createContext({
     __TRANSLATE_FLOW_CONTENT__: app, document, IntersectionObserver: Observer,
     TextDecoder, Uint8Array, Blob, URL, atob, crypto: globalThis.crypto
   });
+  vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-path.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(MEDIA, "utf8"), context);
+  vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-fonts.js", import.meta.url), "utf8"), context);
+  vm.runInContext(readFileSync(new URL("../src/content/selection/rich-resource-encoding.js", import.meta.url), "utf8"), context);
   vm.runInContext(readFileSync(RESOLVER, "utf8"), context);
   const resolver = app.modules.richResourceResolver;
   return { messages, resolver, get observer() { return latestObserver; } };
@@ -451,3 +462,327 @@ class FakeElement {
   pause() {}
   load() {}
 }
+
+test("the same image path retains separate ordinary and validated semantic descriptor styles", async () => {
+  const bytes = Buffer.from([137, 80, 78, 71]);
+  const harness = createMediaLifecycleHarness({ "img/OPP.png": { bytes, mime: "image/png", width: 24, height: 24 } });
+  const parent = new FakeParent();
+  const ordinary = parent.append(new FakeElement("SPAN")), semantic = parent.append(new FakeElement("SPAN"));
+  const container = {};
+  harness.resolver.attach(container, { appendChild() {} }, {}, [
+    { kind: "image", path: "img/OPP.png", element: ordinary },
+    { kind: "image", path: "img/OPP.png", presentation: "oxford-opposition", element: semantic }
+  ], "rich-mdict-10000000-0000-4000-8000-000000000001", "v1");
+  harness.observer.trigger(ordinary, true); harness.observer.trigger(semantic, true);
+  await waitFor(() => parent.children.every((node) => node.tagName === "IMG"));
+  assert.equal(parent.children[0].className, "tf-rich-resource-image");
+  assert.match(parent.children[1].className, /tf-rich-resource-image-oxford-inline/u);
+  assert.equal(harness.resolver.activeObjectUrlCount, 2);
+  harness.resolver.close(container); assert.equal(harness.resolver.activeObjectUrlCount, 0);
+});
+
+function createFontHarness({ manifest, fontBytes = Buffer.alloc(32), rejectDecode = false, rejectWeight = null, deferDecode = false, deferRead = false, stale = false, imageSlots = [], constructorFails = false, cryptoProvider = globalThis.crypto, stylesheetCss = null } = {}) {
+  const messages = [], styles = [], notices = [], created = [], pendingReads = [], pendingLoads = [], registered = new Set();
+  const document = {
+    fonts: registered,
+    createElement(tag) { return { tagName: tag.toUpperCase(), className: '', textContent: '', dataset: {}, style: {}, setAttribute() {}, addEventListener() {}, append() {}, remove() { this.removed = true; } }; }
+  };
+  class Face {
+    constructor(family, bytes, descriptors) {
+      if (constructorFails) throw new Error('synthetic native constructor rejection');
+      this.family = family; this.bytes = bytes; this.style = descriptors.style; this.weight = descriptors.weight; this.display = descriptors.display; this.status = 'unloaded'; created.push(this);
+    }
+    load() {
+      this.status = 'loading';
+      if (deferDecode) return new Promise((resolve) => pendingLoads.push(() => { this.status = 'loaded'; resolve(this); }));
+      if (rejectDecode || this.weight === rejectWeight) { this.status = 'error'; return Promise.reject(new Error('synthetic decoder rejection')); }
+      this.status = 'loaded'; return Promise.resolve(this);
+    }
+  }
+  const faces = manifest || [{ familyToken: 'tffamily0', path: 'fonts/fixture.ttf', style: 'normal', weight: '400', display: 'swap' }];
+  const css = Buffer.from(stylesheetCss || '.tf-rich-viewer .entry{font-family:tffamily0,serif;color:red}.tf-rich-viewer .choice:checked ~ .panel{display:block}');
+  const app = { modules: { contentI18n: createContentI18nStub(), runtime: {
+    messages: { background: { RICH_MDD_RESOURCE: 'RICH_MDD_RESOURCE', RICH_MDD_RESOURCE_READ_CANCEL: 'RICH_MDD_RESOURCE_READ_CANCEL' } },
+    sendRuntimeMessage(message) {
+      messages.push(message);
+      if (message.type === 'RICH_MDD_RESOURCE_READ_CANCEL') return Promise.resolve({ ok: true, cancelled: true });
+      if (/\.png$/u.test(message.path || '')) return Promise.resolve({ ok: true, found: false, packageVersion: 'v1' });
+      if (message.path === 'entry.css') return Promise.resolve({ ok: true, found: true, packageVersion: 'v1', mime: 'text/css', size: css.length, base64: css.toString('base64'), safeCss: css.toString(), assetSlots: imageSlots, fontFaces: faces });
+      const result = { ok: true, found: true, packageVersion: stale ? 'v2' : 'v1', mime: 'font/ttf', size: fontBytes.length, base64: fontBytes.toString('base64') };
+      return deferRead ? new Promise((resolve) => pendingReads.push(() => resolve(result))) : Promise.resolve(result);
+    }
+  } } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, FontFace: Face, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob, crypto: cryptoProvider });
+  for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
+  const resolver = app.modules.richResourceResolver;
+  const attach = () => { const container = { ownerDocument: document }; const viewport = { appendChild: (node) => notices.push(node) }; const session = resolver.attach(container, { appendChild: (node) => styles.push(node) }, viewport, [{ kind: 'stylesheet', path: 'entry.css' }], 'fixture', 'v1'); return { container, session }; };
+  return { resolver, attach, messages, styles, notices, created, registered, pendingReads, pendingLoads };
+}
+
+test('local font manifests preserve four face variants and isolate random family aliases across sessions', async () => {
+  const manifest = ['normal', 'italic'].flatMap((style) => ['400', '700'].map((weight) => ({ familyToken: 'tffamily0', path: `fonts/${style}-${weight}.ttf`, style, weight, display: 'swap' })));
+  const h = createFontHarness({ manifest }); const first = h.attach(), second = h.attach();
+  await waitFor(() => h.registered.size === 8);
+  const aliases = [...h.registered].map((face) => face.family);
+  assert.equal(new Set(aliases).size, 2); assert.ok(aliases.every((value) => /^tf-rich-font-[0-9a-f]{32}-0$/u.test(value)));
+  assert.equal(h.styles.length, 2); assert.notEqual(h.styles[0].textContent, h.styles[1].textContent);
+  assert.ok(h.styles.every((node) => !node.textContent.includes('tffamily0') && node.textContent.includes(':checked ~ .panel')));
+  assert.equal(h.resolver.activeFontBytes, 8 * 32);
+  h.resolver.close(first.container); assert.equal(h.registered.size, 4);
+  h.resolver.close(second.container); assert.equal(h.registered.size, 0); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+for (const options of [{ rejectDecode: true }, { constructorFails: true }, { stale: true }]) test(`bad font stays a default-font fallback and body/state CSS remains: ${JSON.stringify(options)}`, async () => {
+  const h = createFontHarness(options), { container } = h.attach();
+  await waitFor(() => h.notices.length === 1);
+  assert.equal(h.registered.size, 0); assert.equal(h.resolver.activeFontBytes, 0);
+  assert.equal(h.styles.length, 1); assert.match(h.styles[0].textContent, /:checked ~ \.panel/u); assert.doesNotMatch(h.styles[0].textContent, /tffamily/u);
+  assert.equal(h.notices[0].textContent, 'content.rich.fontsUnavailable');
+  h.resolver.close(container); assert.equal(h.notices[0].removed, true);
+});
+
+test('malformed font manifests and combined slot overflow cannot introduce page font names or reads', async () => {
+  for (const manifest of [
+    [{ familyToken: 'page-font', path: 'fonts/a.ttf', style: 'normal', weight: '400', display: 'swap' }],
+    [{ familyToken: 'tffamily0', path: 'https://attacker.invalid/a.ttf', style: 'normal', weight: '400', display: 'swap' }],
+    Array.from({ length: 9 }, () => ({ familyToken: 'tffamily0', path: 'fonts/a.ttf', style: 'normal', weight: '400', display: 'swap' })),
+    Array.from({ length: 2 }, () => ({ familyToken: 'tffamily0', path: 'fonts/a.ttf', style: 'normal', weight: '400', display: 'swap' }))
+  ]) {
+    const h = createFontHarness({ manifest }); const { container } = h.attach();
+    await waitFor(() => h.styles.length === 1);
+    assert.equal(h.messages.filter((message) => /\.ttf$/u.test(message.path || '')).length, 0);
+    assert.match(h.styles[0].textContent, /font-family:serif,serif/u); assert.equal(h.notices.length, 1);
+    h.resolver.close(container);
+  }
+});
+
+test('close while a font read or native decode is pending never appends an old face and reservations settle once', async () => {
+  for (const phase of ['read', 'decode']) {
+    const h = createFontHarness({ deferRead: phase === 'read', deferDecode: phase === 'decode' }); const { container } = h.attach();
+    await waitFor(() => (phase === 'read' ? h.pendingReads.length : h.pendingLoads.length) === 1);
+    assert.equal(h.resolver.activeFontBytes, phase === 'decode' ? 32 : 0);
+    h.resolver.close(container); h.resolver.close(container);
+    assert.equal(h.registered.size, 0);
+    if (phase === 'decode') assert.equal(h.resolver.activeFontBytes, 32, 'pending native bytes stay reserved until the same two-read job settles');
+    (phase === 'read' ? h.pendingReads[0] : h.pendingLoads[0])();
+    await waitFor(() => h.resolver.activeFontBytes === 0 && h.resolver.pendingReadCount === 0);
+    assert.equal(h.registered.size, 0); assert.equal(h.notices.length, 0);
+  }
+});
+
+test('font pending work shares the existing two-read queue across repeated close/reopen', async () => {
+  const h = createFontHarness({ deferDecode: true }); const first = h.attach(), second = h.attach();
+  await waitFor(() => h.pendingLoads.length === 2);
+  h.resolver.close(first.container); h.resolver.close(second.container);
+  const third = h.attach();
+  await waitFor(() => h.resolver.pendingReadCount > 0);
+  assert.equal(h.created.length, 2); assert.equal(h.resolver.activeFontBytes, 64);
+  h.pendingLoads[0](); h.pendingLoads[1]();
+  await waitFor(() => h.pendingLoads.length === 3);
+  assert.equal(h.resolver.activeFontBytes, 32); assert.equal(h.registered.size, 0);
+  h.pendingLoads[2](); await waitFor(() => h.registered.size === 1);
+  h.resolver.close(third.container); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+test('font bytes reserve the existing 32MiB active budget before decode, without using image budget', async () => {
+  const manifest = Array.from({ length: 5 }, (_, index) => ({ familyToken: `tffamily${index}`, path: `fonts/${index}.ttf`, style: 'normal', weight: '400', display: 'swap' }));
+  const h = createFontHarness({ manifest, fontBytes: Buffer.alloc(8 * 1024 * 1024) }); const { container, session } = h.attach();
+  await waitFor(() => h.notices.length === 1);
+  assert.equal(h.registered.size, 4); assert.equal(h.created.length, 4); assert.equal(session.objectBytes, 32 * 1024 * 1024); assert.equal(session.imageBytes, 0);
+  assert.equal(h.resolver.activeFontBytes, 32 * 1024 * 1024);
+  h.resolver.close(container); assert.equal(h.registered.size, 0); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+
+test('eight image slots plus a font face reject font admission but retain the body CSS', async () => {
+  const h = createFontHarness({ imageSlots: Array.from({ length: 8 }, (_, index) => ({ kind: 'image', token: `tfasset${index}`, path: `images/${index}.png` })) });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.equal(h.notices.filter(node => node.className === 'tf-rich-truncated').length, 1);
+  assert.equal(h.notices.filter(node => node.className === 'tf-rich-resource-notice').length, 1); assert.equal(h.created.length, 0);
+  assert.equal(h.messages.filter((message) => /\.ttf$/u.test(message.path || '')).length, 0);
+  assert.match(h.styles[0].textContent, /:checked ~ \.panel/u); h.resolver.close(container);
+});
+
+
+test('one failed font variant reports one degradation notice without discarding other faces or state CSS', async () => {
+  const manifest = ['normal', 'italic'].flatMap((style) => ['400', '700'].map((weight) => ({ familyToken: 'tffamily0', path: `fonts/${style}-${weight}.ttf`, style, weight, display: 'swap' })));
+  const h = createFontHarness({ manifest, rejectWeight: '400' }), { container } = h.attach();
+  await waitFor(() => h.created.length === 4 && h.registered.size === 2);
+  assert.equal(h.notices.length, 1); assert.ok([...h.registered].every((face) => face.weight === '700'));
+  assert.equal(h.resolver.activeFontBytes, 64); assert.match(h.styles[0].textContent, /:checked ~ \.panel/u);
+  h.resolver.close(container); assert.equal(h.resolver.activeFontBytes, 0);
+});
+
+
+test('HTTP-like runtimes without randomUUID still use cryptographic random aliases', async () => {
+  const h = createFontHarness({ cryptoProvider: { getRandomValues: (bytes) => globalThis.crypto.getRandomValues(bytes) } });
+  const { container } = h.attach(); await waitFor(() => h.registered.size === 1);
+  assert.match([...h.registered][0].family, /^tf-rich-font-[0-9a-f]{32}-0$/u);
+  assert.equal(h.notices.length, 0); h.resolver.close(container);
+});
+
+test('missing native randomness falls back without dropping body CSS or exposing source family tokens', async () => {
+  const h = createFontHarness({ cryptoProvider: {} }); const { container } = h.attach();
+  await waitFor(() => h.styles.length === 1);
+  assert.equal(h.created.length, 0); assert.equal(h.notices.length, 1);
+  assert.doesNotMatch(h.styles[0].textContent, /tffamily/u); assert.match(h.styles[0].textContent, /:checked ~ \.panel/u);
+  h.resolver.close(container);
+});
+
+test('session alias expansion keeps the 64KiB CSS output budget and falls back without native font work', async () => {
+  const manifest = Array.from({ length: 8 }, (_, index) => ({ familyToken: `tffamily${index}`, path: `fonts/${index}.ttf`, style: 'normal', weight: '400', display: 'swap' }));
+  const stylesheetCss = '.tf-rich-viewer .entry{font-family:' + manifest.map((face) => face.familyToken).join(',') + ';color:red}';
+  const h = createFontHarness({ manifest, stylesheetCss: stylesheetCss.repeat(512) }); const { container } = h.attach();
+  await waitFor(() => h.styles.length === 1);
+  assert.ok(Buffer.byteLength(h.styles[0].textContent) <= 64 * 1024);
+  assert.equal(h.created.length, 0); assert.equal(h.notices.length, 1);
+  assert.doesNotMatch(h.styles[0].textContent, /tffamily/u); assert.match(h.styles[0].textContent, /color:red/u);
+  h.resolver.close(container);
+});
+
+const collidingNonFontCss = '.tf-rich-viewer [data-rich-target-id="tffamily0"]:checked ~ .panel{display:block}.tf-rich-viewer .tffamily0{color:red}.tf-rich-viewer .label::before{content:"font-family:tffamily0; { tffamily0 }"}';
+for (const [branch, options] of [
+  ['loaded', {}], ['decode failure', { rejectDecode: true }], ['bad manifest', { manifest: [{ familyToken: 'invalid' }] }], ['no randomness', { cryptoProvider: {} }]
+]) test(`font token collisions preserve selectors and literal content in the ${branch} branch`, async () => {
+  const h = createFontHarness({ ...options, stylesheetCss: collidingNonFontCss + '.tf-rich-viewer .entry{font-family:tffamily0,serif}' });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.ok(h.styles[0].textContent.startsWith(collidingNonFontCss));
+  if (branch === 'bad manifest' || branch === 'no randomness') assert.match(h.styles[0].textContent, /font-family:serif,serif/u);
+  else assert.match(h.styles[0].textContent, /font-family:tf-rich-font-[0-9a-f]{32}-0,serif/u);
+  if (branch === 'decode failure') await waitFor(() => h.notices.length === 1);
+  h.resolver.close(container);
+});
+
+test('font alias overflow fallback preserves colliding non-font CSS exactly', async () => {
+  const manifest = Array.from({ length: 8 }, (_, index) => ({ familyToken: `tffamily${index}`, path: `fonts/${index}.ttf`, style: 'normal', weight: '400', display: 'swap' }));
+  const families = manifest.map((face) => face.familyToken).join(',');
+  const h = createFontHarness({ manifest, stylesheetCss: collidingNonFontCss + `.tf-rich-viewer .entry{font-family:${families};color:red}`.repeat(512) });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.ok(h.styles[0].textContent.startsWith(collidingNonFontCss));
+  assert.ok(Buffer.byteLength(h.styles[0].textContent) <= 64 * 1024);
+  assert.equal(h.created.length, 0); assert.equal(h.notices.length, 1);
+  assert.match(h.styles[0].textContent.slice(collidingNonFontCss.length), /font-family:serif,serif/u);
+  h.resolver.close(container);
+});
+
+test('family declaration scanning skips strings, escaped syntax and parenthesized non-font values', async () => {
+  const protectedCss = '@media (max-width:500px){.tf-rich-viewer .tffamily0{color:rgb(0,0,0);content:"font-family:tffamily0; \\" tffamily0"}.tf-rich-viewer [data-rich-target-id="tffamily0"]{color:red}}';
+  const h = createFontHarness({ stylesheetCss: protectedCss + '.tf-rich-viewer .entry{font-family:tffamily0,serif}' });
+  const { container } = h.attach(); await waitFor(() => h.styles.length === 1);
+  assert.ok(h.styles[0].textContent.startsWith(protectedCss));
+  assert.match(h.styles[0].textContent.slice(protectedCss.length), /font-family:tf-rich-font-[0-9a-f]{32}-0,serif/u);
+  h.resolver.close(container);
+});
+
+function failureUiHarness(reply) {
+  const dom = new JSDOM('<!doctype html><body></body>', { url: 'https://fixture.invalid/' }), document = dom.window.document;
+  for (const method of ['play', 'pause', 'load']) dom.window.HTMLMediaElement.prototype[method] = method === 'play' ? () => Promise.resolve() : () => {};
+  const host = document.createElement('div'), shadow = host.attachShadow({ mode: 'open' }), viewport = document.createElement('div');
+  viewport.className = 'tf-rich-viewer'; shadow.append(viewport); document.body.append(host);
+  const calls = [], resources = [], app = { modules: { contentI18n: createContentI18nStub({ messages: contentMessages }), runtime: {
+    messages: { background: { RICH_MDD_RESOURCE: 'read', RICH_MDD_RESOURCE_READ_CANCEL: 'cancel', OPEN_OPTIONS: 'settings' } },
+    sendRuntimeMessage(message) { calls.push(message); return Promise.resolve(message.type === 'read' ? reply(message) : { ok: true }); }
+  } } };
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, document, TextEncoder, TextDecoder, Uint8Array, Blob, URL, atob, crypto: globalThis.crypto });
+  for (const name of ['rich-resource-path', 'rich-resource-media', 'rich-resource-fonts', 'rich-resource-encoding', 'rich-resource-resolver']) vm.runInContext(readFileSync(new URL(`../src/content/selection/${name}.js`, import.meta.url), 'utf8'), context);
+  const h = { dom, host, shadow, viewport, calls, resources, resolver: app.modules.richResourceResolver,
+    add(kind, path, presentation = '') { const element = document.createElement('span'); viewport.append(element); resources.push({ kind, path, ...(presentation ? { presentation } : {}), element }); return element; },
+    attach() { h.session = h.resolver.attach(host, shadow, viewport, resources, 'fixture', 'v1'); },
+    notice() { return shadow.querySelector('.tf-rich-resource-notice'); },
+    async settle() { await waitFor(() => !h.resolver.runningReadCount && !h.resolver.pendingReadCount); },
+    close() { h.resolver.close(host); dom.window.close(); } };
+  return h;
+}
+function validUiAsset(kind) {
+  const bytes = Buffer.from('x'); return { ok: true, found: true, packageVersion: 'v1', size: bytes.length, base64: bytes.toString('base64'),
+    mime: kind === 'stylesheet' ? 'text/css' : kind === 'image' ? 'image/png' : 'audio/wav', width: 1, height: 1,
+    ...(kind === 'stylesheet' ? { safeCss: '.tf-rich-viewer .entry{color:red}', assetSlots: [] } : {}) };
+}
+test('Oxford pronunciation buttons use short visible labels and full accessible names', () => {
+  const h = failureUiHarness(() => validUiAsset('audio'));
+  h.add('audio', 'british.wav', 'pronunciation-british');
+  h.add('audio', 'american.wav', 'pronunciation-american');
+  h.attach();
+  const [british, american] = [...h.viewport.querySelectorAll('button')];
+  assert.equal(british.textContent, '英');
+  assert.equal(british.getAttribute('aria-label'), '播放英音');
+  assert.equal(american.textContent, '美');
+  assert.equal(american.getAttribute('aria-label'), '播放美音');
+  h.close();
+});
+for (const [kind, response, code] of [
+  ['missing', { ok: true, found: false }, 'RICH_MDD_RESOURCE_MISSING'],
+  ['stale', { ok: true, found: false, stale: true, packageVersion: 'v2' }, 'RICH_MDD_RESOURCE_STALE'],
+  ['invalid', { ok: false, errorCode: 'RICH_MDD_CORRUPT', error: 'PRIVATE BODY/path' }, 'RICH_MDD_CORRUPT'],
+  ['unavailable', { ok: false, errorCode: '../../PRIVATE BODY/path' }, 'RICH_MDD_RESOURCE_UNAVAILABLE'],
+  ['unavailable', { ok: false, errorCode: 'RICH_MDD_' + 'X'.repeat(80) }, 'RICH_MDD_RESOURCE_UNAVAILABLE']
+]) test(`stylesheet ${kind} preserves safe classification and one external recovery notice`, async () => {
+  const h = failureUiHarness(() => response); h.add('stylesheet', 'entry.css'); h.attach(); await h.settle();
+  assert.equal(h.notice().dataset.failureKind, kind); assert.equal(h.notice().dataset.errorCode, code);
+  assert.equal(h.session.resources[0].failureCode, code); assert.equal(h.shadow.querySelectorAll('.tf-rich-resource-notice').length, 1);
+  assert.equal(h.notice().nextSibling, h.viewport); assert.doesNotMatch(h.notice().textContent, /PRIVATE|\.\.\/|RICH_MDD/u);
+  h.notice().querySelector('button').click(); assert.equal(h.calls.filter(call => call.type === 'settings').length, 1); h.close();
+});
+for (const response of [{ ...validUiAsset('stylesheet'), packageVersion: undefined }, { ...validUiAsset('stylesheet'), base64: '!!' }, { ...validUiAsset('stylesheet'), mime: 'text/html' }]) test('found bytes require the bound version and valid MIME/base64', async () => {
+  const h = failureUiHarness(() => response); h.add('stylesheet', 'entry.css'); h.attach(); await h.settle();
+  assert.equal(h.notice().dataset.failureKind, response.packageVersion ? 'invalid' : 'stale'); assert.equal(h.shadow.querySelectorAll('style').length, 0); h.close();
+});
+test('corrupt CSS image slot degrades to none while preserving validated body and state CSS', async () => {
+  const h = failureUiHarness(message => message.path.endsWith('.css') ? { ...validUiAsset('stylesheet'), safeCss: '.tf-rich-viewer .entry{color:red;background-image:tfasset0}.tf-rich-viewer :checked~.panel{display:block}', assetSlots: [{ kind: 'image', token: 'tfasset0', path: 'images/fail.png' }] } : { ok: false, errorCode: 'RICH_MDD_CORRUPT' });
+  h.add('stylesheet', 'entry.css'); h.attach(); await h.settle(); const style = h.shadow.querySelector('style');
+  assert.match(style.textContent, /color:red/); assert.match(style.textContent, /background-image:none/); assert.match(style.textContent, /:checked~\.panel/);
+  assert.equal(h.notice().dataset.failureKind, 'invalid'); h.close();
+});
+test('missing followed by stale upgrades the same notice; successful audio retry clears only its own descriptor failure', async () => {
+  let audio = { ok: true, found: false }, css = { ok: true, found: false };
+  const h = failureUiHarness(message => message.path.endsWith('.wav') ? audio : css); h.add('stylesheet', 'entry.css'); h.add('audio', 'tone.wav'); h.attach(); await h.settle();
+  const notice = h.notice(); h.viewport.querySelector('button').click(); await h.settle();
+  assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'missing'); assert.match(h.viewport.querySelector('button').textContent, /点击重试/);
+  audio = { ok: true, found: false, stale: true }; h.viewport.querySelector('button').click(); await h.settle();
+  assert.equal(h.notice(), notice); assert.equal(h.notice().dataset.failureKind, 'stale'); assert.match(h.notice().textContent, /重新查词/);
+  audio = validUiAsset('audio'); h.viewport.querySelector('button').click(); await h.settle();
+  assert.ok(h.viewport.querySelector('audio')); assert.equal(h.session.resources[1].failureCode, undefined);
+  assert.equal(h.notice().dataset.failureKind, 'missing'); assert.equal(h.session.failedResources.size, 1); h.close();
+});
+test('successful audio retry removes the sole failure notice and native decode errors remain classified and retryable', async () => {
+  let response = { ok: false, errorCode: 'RICH_MDD_STORAGE', error: 'private-path' };
+  const h = failureUiHarness(() => response); h.add('audio', 'tone.wav'); h.attach(); h.viewport.querySelector('button').click(); await h.settle();
+  const button = h.viewport.querySelector('button'); assert.equal(button.disabled, false); assert.equal(button.dataset.errorCode, 'RICH_MDD_STORAGE'); assert.equal(button.dataset.failureKind, 'unavailable');
+  response = validUiAsset('audio'); button.click(); await h.settle(); assert.equal(h.notice(), null); assert.equal(h.session.failedResources.size, 0);
+  h.viewport.querySelector('audio').dispatchEvent(new h.dom.window.Event('error'));
+  assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'invalid'); assert.equal(h.resolver.activeObjectUrlCount, 0); assert.equal(h.notice().dataset.failureKind, 'invalid'); h.close();
+});
+test('audio admission capacity stays retryable and does not claim missing attachments', async () => {
+  const h = failureUiHarness(() => validUiAsset('audio')); h.add('audio', 'tone.wav'); h.attach(); h.session.objectBytes = 32 * 1024 * 1024;
+  h.viewport.querySelector('button').click(); await h.settle(); assert.equal(h.notice(), null); assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'capacity');
+  assert.match(h.viewport.querySelector('button').textContent, /稍后重试/); h.session.objectBytes = 0; h.viewport.querySelector('button').click(); await h.settle(); assert.ok(h.viewport.querySelector('audio')); h.close();
+});
+test('closed or replaced resource sessions never append late failure notices or dispatch old settings actions', async () => {
+  let resolve; const h = failureUiHarness(() => new Promise(done => { resolve = done; })); h.add('stylesheet', 'entry.css'); h.attach(); await flushMicrotasks();
+  h.resolver.close(h.host); resolve({ ok: false, errorCode: 'RICH_MDD_CORRUPT' }); await h.settle(); assert.equal(h.notice(), null);
+  h.close();
+  const active = failureUiHarness(() => ({ ok: true, found: false })); active.add('stylesheet', 'entry.css'); active.attach(); await active.settle(); const button = active.notice().querySelector('button');
+  active.resolver.close(active.host); button.click(); assert.equal(active.calls.filter(call => call.type === 'settings').length, 0); active.close();
+});
+
+for (const cancelled of [{ ok: true, cancelled: true }, { ok: false, errorCode: 'CANCELLED' }, { ok: false, errorCode: 'RICH_MDD_CORRUPT' }]) test('switching audio ignores the superseded cancelled read within a still-live viewer', async () => {
+  let resolveA; const h = failureUiHarness(message => message.path === 'a.wav' ? new Promise(done => { resolveA = done; }) : validUiAsset('audio'));
+  h.add('audio', 'a.wav'); h.add('audio', 'b.wav'); h.attach(); const [a, b] = [...h.viewport.querySelectorAll('button')];
+  a.click(); await flushMicrotasks(); b.click(); resolveA(cancelled); await h.settle();
+  assert.equal(h.notice(), null); assert.ok(h.viewport.querySelector('audio')); assert.equal(h.session.failedResources?.size || 0, 0);
+  assert.equal(h.calls.filter(call => call.type === 'cancel').length, 1); h.close();
+});
+test('router RICH_MDICT failures retain a bounded safe code while rendering unavailable retry feedback', async () => {
+  const h = failureUiHarness(() => ({ ok: false, errorCode: 'RICH_MDICT_CONTENT_ONLY', error: 'private content' })); h.add('audio', 'tone.wav'); h.attach(); h.viewport.querySelector('button').click(); await h.settle();
+  assert.equal(h.viewport.querySelector('button').dataset.errorCode, 'RICH_MDICT_CONTENT_ONLY'); assert.equal(h.viewport.querySelector('button').dataset.failureKind, 'unavailable');
+  assert.doesNotMatch(h.notice().textContent, /CONTENT_ONLY|private/); h.close();
+});
+
+for (const cancelled of [{ ok: true, cancelled: true }, { ok: false, errorCode: 'CANCELLED' }]) test('current audio cancellation restores the default retryable button without an error label', async () => {
+  let reply = cancelled; const h = failureUiHarness(() => reply); h.add('audio', 'tone.wav'); h.attach();
+  h.viewport.querySelector('button').click(); await h.settle(); const button = h.viewport.querySelector('button');
+  assert.equal(button.disabled, false); assert.equal(button.textContent, contentMessages['content.rich.playAudioGeneric']);
+  assert.equal(button.dataset.failureKind, undefined); assert.equal(button.dataset.errorCode, undefined); assert.equal(button.dataset.state, undefined);
+  assert.equal(h.notice(), null); assert.equal(h.session.activeAudio, null);
+  reply = validUiAsset('audio'); button.click(); await h.settle(); assert.ok(h.viewport.querySelector('audio')); h.close();
+});

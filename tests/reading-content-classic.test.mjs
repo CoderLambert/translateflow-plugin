@@ -12,6 +12,6 @@ test("legacy Reading projections stay reproducible but WXT compiles their readab
   }
   for (const source of ["src/content/selection/source-snapshot.js", "src/content/reading-anchor-resolver.js", "src/content/selection/record-access.js",
     "src/content/selection/record-client.js", "src/content/selection/handoff-client.js", "src/content/reading-return-card.js", "src/content/reading-page-markers.js",
-    "src/content/selection/record-status.js", "src/content/selection/ai-detail.js", "src/content/selection/popover.js", "src/content/selection/rich-details.js",
+    "src/content/selection/record-status.js", "src/content/selection/assistant-persistence.js", "src/content/selection/ai-persistence-view.js", "src/content/selection/ai-detail.js", "src/content/selection/popover.js", "src/content/selection/rich-details.js",
     "src/content/selection/controller.js", "src/content/quick-control-view.js", "src/content/quick-control.js"]) assert(sources.includes(source));
 });

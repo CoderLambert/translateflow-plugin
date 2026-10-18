@@ -133,7 +133,7 @@ test("MDD preflight enforces the package-wide 4,000,000,000-byte selected-source
   const env = createEnvironment();
   const metadata = await stage(env, BASE_ID);
   await env.manager.commit({ ...BASE_ID, metadata });
-  const resourceManager = createRichMddResourceManager({
+  const resourceManager = createRichMddResourceManager({ getSessionToken: async () => "a".repeat(64),
     store: env.store,
     stateStore: env.stateStore,
     cryptoProvider: webcrypto
@@ -391,7 +391,7 @@ test("successful curated MDX replacement retains a usable attached MDD version a
   const oldMetadata = await stageCurated(env, old, CURATED_PROVENANCE);
   await env.manager.commit({ ...old, metadata: oldMetadata });
 
-  const resourceManager = createRichMddResourceManager({
+  const resourceManager = createRichMddResourceManager({ getSessionToken: async () => "a".repeat(64),
     store: env.store,
     stateStore: env.stateStore,
     cryptoProvider: webcrypto
@@ -514,6 +514,7 @@ test("structured pack recovery does not delete active or staged rich data in the
     stateStore: richStateStore,
     cryptoProvider: webcrypto,
     storageManager: null,
+    getSessionToken: async () => "a".repeat(64),
     buildIndex: async ({ source }) => {
       await source.read(0, 1);
       return createIndex(source.size);
@@ -536,6 +537,7 @@ test("structured pack recovery does not delete active or staged rich data in the
     stateStore: structuredStateStore,
     permissions: null,
     storageManager: null,
+    getSessionToken: async () => "a".repeat(64),
     cryptoProvider: webcrypto
   });
   await structuredManager.recoverAll();
@@ -609,6 +611,27 @@ async function stageWithStore(manager, store, identity) {
   };
 }
 
+test("MDD SVG manager emits a validated scene DTO without raw XML encoding", async () => {
+  const env = createEnvironment();
+  const metadata = await stage(env, BASE_ID);
+  await env.manager.commit({ ...BASE_ID, metadata });
+  const resources = createRichMddResourceManager({ getSessionToken: async () => "a".repeat(64), store: env.store, stateStore: env.stateStore, cryptoProvider: webcrypto });
+  const xml = '<svg viewBox="0 0 16 16"><path d="M0 0L16 0L0 16Z" fill="#123456"/></svg>';
+  const file = new Blob([makeMdd([["icons/static.svg", encoder.encode(xml)]])]);
+  Object.defineProperty(file, "name", { value: "english-filename.mdd" });
+  const input = { dictionaryId: BASE_ID.packId, requestId: "svg-resource-import", resourceVersion: "import-svg-123e4567", mdxFileName: "english-filename.mdx" };
+  await resources.preflight({ ...input, files: [{ fileName: file.name, size: file.size }] });
+  const worker = createMddResourceImportWorkerHandler({ postMessage() {}, store: env.store, cryptoProvider: webcrypto });
+  const ready = await worker.handleMessage({ type: MDD_RESOURCE_WORKER_MESSAGES.START, requestId: input.requestId, input: { ...input, files: [file] } });
+  assert.equal(ready.type, MDD_RESOURCE_WORKER_MESSAGES.READY);
+  await resources.commit({ ...input, metadata: ready.metadata });
+  const result = await resources.lookupResource({ dictionaryId: BASE_ID.packId, path: "icons/static.svg" });
+  assert.equal(result.found, true); assert.equal(result.kind, "image"); assert.equal(result.mime, "image/svg+xml");
+  assert.equal(result.safeSvg.format, "safe-svg-v1"); assert.equal(result.safeSvg.root.children[0].tag, "path");
+  assert.equal(result.size, Buffer.byteLength(xml)); assert.equal(result.width, 16); assert.equal(result.height, 16);
+  assert.equal(Object.hasOwn(result, "base64"), false); assert.equal(Object.hasOwn(result, "bytes"), false);
+});
+
 function createEnvironment(overrides = {}) {
   const store = new MemoryStore();
   const storageArea = new MemoryStorageArea();
@@ -622,6 +645,7 @@ function createEnvironment(overrides = {}) {
     stateStore,
     cryptoProvider: webcrypto,
     storageManager: null,
+    getSessionToken: async () => "a".repeat(64),
     buildIndex: builder,
     lookup: overrides.lookup || (async ({ source, text }) => {
       await source.read(92, 8);
@@ -645,7 +669,7 @@ function createEnvironment(overrides = {}) {
 
 function createIndex(sourceSize) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     format: "mdx-v2-rich",
     sourceSize,
     entryCount: 1,

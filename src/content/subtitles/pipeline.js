@@ -286,7 +286,9 @@
                 onTranslation({
                   unit,
                   translation: result.text,
-                  cacheHit: Boolean(result.cacheHit)
+                  engine: response.engine || "ai",
+                  cacheHit: Boolean(result.cacheHit),
+                  cacheWarning: response.cacheWarning || ""
                 });
               }
             }
@@ -298,6 +300,7 @@
             maybePruneCache(response);
           } catch (error) {
             tasks.failTask(activeTask, error);
+            if (error?.code === "ENGINE_SWITCH" && batchGeneration === generation && !stopped) { pending.unshift(...batch); continue; }
             if (!tasks.isCancelledError(error) && batchGeneration === generation && !stopped) {
               pending.unshift(...batch);
               blockedByError = true;

@@ -9,11 +9,16 @@ test("Selection assistant Port streams real text and stop preserves partial with
   test.setTimeout(60000); const temporary = await mkdtemp(join(tmpdir(), "tf-assistant-stream-")), extension = join(temporary, "extension"), profile = join(temporary, "profile");
   const server = await startMockServer(); let context;
   try {
-    await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
+    await prepareExtensionTestCopy({ extensionDir: extension, baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium", args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
     const driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);
     await driver.evaluate(baseUrl => chrome.storage.local.set({ provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+      providerConnectionsVersion: 1,
+      providerConnections: { "openai-compatible": { id: "openai-compatible", revision: 1, name: "OpenAI-compatible", platform: "custom",
+        protocol: "openai-chat", baseUrl: `${baseUrl}/v1`, credentialId: "openai-compatible", defaultModel: "mock-model",
+        settings: { streaming: true, outputTokens: 4096, temperature: null, reasoning: "", allowEmptyApiKey: true, allowInsecureHttp: true } } },
+      providerCredentials: { "openai-compatible": "" }, defaultService: { kind: "api-key", connectionId: "openai-compatible" },
       openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } }), server.baseUrl);
     const page = await context.newPage(); await page.goto(`${server.baseUrl}/selection`); const tabId = await driver.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url).id, page.url());
     async function command(name, requestId) { return driver.evaluate(async ({ tabId, name, requestId, pageUrl }) => { const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", args: [name, requestId, pageUrl], func: (name, requestId, pageUrl) => {
@@ -23,9 +28,14 @@ test("Selection assistant Port streams real text and stop preserves partial with
         if (name === "cancel") globalThis.__stream.port.postMessage({ type: "cancel", requestId });
         return globalThis.__stream?.events || [];
       } }); return result.result; }, { tabId, name, requestId, pageUrl: page.url() }); }
-    await command("start", "stream-stop"); await expect.poll(async () => (await command("read", "stream-stop")).filter(value => value.type === "delta").length).toBeGreaterThan(0);
+    const stream = server.holdNextAssistantStream();
+    await command("start", "stream-stop");
+    await expect.poll(() => command("read", "stream-stop")).toEqual(expect.arrayContaining([expect.objectContaining({ type: "delta" })]));
+    await stream.started;
     await command("cancel", "stream-stop"); await expect.poll(async () => (await command("read", "stream-stop")).at(-1)?.type).toBe("interrupted");
-    await new Promise(resolve => setTimeout(resolve, 400)); let events = await command("read", "stream-stop"); expect(events.some(value => value.type === "complete" || value.turn)).toBe(false);
+    await expect.poll(() => server.calls[0]?.responseState).toBe("closed");
+    stream.release(); await stream.finished;
+    let events = await command("read", "stream-stop"); expect(events.some(value => value.type === "complete" || value.turn)).toBe(false);
     await command("start", "stream-complete"); await expect.poll(async () => (await command("read", "stream-complete")).at(-1)?.type).toBe("complete");
     events = await command("read", "stream-complete"); expect(events.filter(value => value.type === "delta").map(value => value.text).join("")).toBe("streamed answer");
     expect(events.at(-1).turn).toMatchObject({ action: "understand", threadId: "thread-1", turnId: "stream-complete", parentTurnId: null,

@@ -228,7 +228,22 @@ h1 {
   color: var(--tf-text-secondary);
 }
 
-main > section {
+.settings-panel[hidden] {
+  display: none !important;
+}
+
+.settings-panel:focus {
+  outline: none;
+}
+
+.settings-panel:focus-visible {
+  outline: 2px solid var(--tf-green-600);
+  outline-offset: 4px;
+}
+
+main > section,
+.settings-panel > section,
+.settings-card {
   scroll-margin-top: 24px;
   margin-top: 18px;
   padding: 24px;
@@ -279,6 +294,69 @@ label {
   color: var(--tf-text-muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.setting-switch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  max-width: 760px;
+  margin: 16px 0 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--tf-border-soft);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-bg-card);
+  cursor: pointer;
+  font-weight: 500;
+  transition: border-color var(--tf-transition), background-color var(--tf-transition), box-shadow var(--tf-transition);
+}
+
+.setting-switch:hover {
+  border-color: color-mix(in srgb, var(--tf-green-600) 28%, var(--tf-border-main));
+  background: color-mix(in srgb, var(--tf-green-50) 56%, var(--tf-bg-card));
+}
+
+.setting-switch:has(.setting-switch-control:focus-visible) {
+  border-color: var(--tf-green-500);
+  box-shadow: var(--tf-focus-ring);
+}
+
+.setting-switch-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.setting-switch-copy strong {
+  color: var(--tf-text-strong);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.setting-switch-description {
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.setting-switch-control.tf-switch {
+  width: 44px;
+  min-height: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.setting-switch-control.tf-switch:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.setting-switch-control.tf-switch:disabled {
+  opacity: .5;
+  cursor: default;
 }
 
 
@@ -479,6 +557,17 @@ label {
   margin-top: 17px;
 }
 
+.connection-list { display: grid; gap: 10px; margin: 18px 0 24px; }
+.connection-card { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px; border: 1px solid var(--tf-border-soft); border-radius: var(--tf-radius-md); background: var(--tf-bg-card); }
+.connection-card > div:first-child { display: grid; min-width: 0; gap: 3px; }
+.connection-card small { overflow-wrap: anywhere; color: var(--tf-text-secondary); }
+.connection-key-state { width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: var(--tf-green-50); color: var(--tf-green-800); font-size: 11px; font-weight: 650; }
+.connection-key-state.empty { background: color-mix(in srgb, var(--tf-bg-muted) 80%, transparent); color: var(--tf-text-muted); }
+.connection-test-status { margin-top: 6px; color: var(--tf-text-secondary); font-size: 12px; line-height: 1.45; }
+.connection-test-status[data-kind="success"] { color: var(--tf-green-800); }
+.connection-test-status[data-kind="error"] { color: var(--tf-danger); }
+.connection-editor { padding-top: 4px; border-top: 1px solid var(--tf-border-soft); }
+
 .checkbox-label {
   display: inline-flex;
   align-items: center;
@@ -640,6 +729,67 @@ label {
   line-height: 1.5;
 }
 
+.dictionary-compact-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 0;
+  margin-top: 6px;
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dictionary-compact-facts span + span::before {
+  content: "·";
+  margin: 0 7px;
+  color: var(--tf-text-muted);
+}
+
+.dictionary-v2-details {
+  margin-top: 7px;
+  color: var(--tf-text-secondary);
+  font-size: 12px;
+}
+
+.dictionary-v2-details > summary {
+  width: fit-content;
+  cursor: pointer;
+  list-style: none;
+  color: var(--tf-text-secondary);
+  font-weight: 650;
+}
+
+.dictionary-v2-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dictionary-v2-details > summary::before {
+  content: "›";
+  display: inline-block;
+  margin-inline-end: 6px;
+  color: var(--tf-text-muted);
+}
+
+.dictionary-v2-details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.dictionary-v2-details > summary:focus-visible {
+  outline: none;
+  border-radius: 3px;
+  box-shadow: var(--tf-focus-ring);
+}
+
+.dictionary-v2-details-body {
+  padding-top: 3px;
+}
+
+.dictionary-v2-description {
+  margin: 7px 0 0;
+  color: var(--tf-text-muted);
+  line-height: 1.5;
+}
+
 .dictionary-v2-metadata {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -673,23 +823,23 @@ label {
   text-underline-offset: 2px;
 }
 
-.dictionary-v2-metadata-item a:focus-visible,
-.dictionary-v2-limitations summary:focus-visible {
+.dictionary-v2-metadata-item a:focus-visible {
   outline: none;
   border-radius: 3px;
   box-shadow: var(--tf-focus-ring);
 }
 
 .dictionary-v2-limitations {
-  margin-top: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tf-border-soft);
   color: var(--tf-text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.dictionary-v2-limitations summary {
-  width: fit-content;
-  cursor: pointer;
+.dictionary-v2-limitations > p {
+  margin: 0;
   color: var(--tf-text-secondary);
   font-weight: 650;
 }
@@ -701,31 +851,6 @@ label {
 
 .dictionary-v2-limitations li + li {
   margin-top: 4px;
-}
-
-.dictionary-repair-help {
-  max-width: 760px;
-  margin-top: 10px;
-  color: var(--tf-text-muted);
-  font-size: 12px;
-}
-
-.dictionary-repair-help summary {
-  width: fit-content;
-  cursor: pointer;
-  color: var(--tf-text-secondary);
-  font-weight: 650;
-}
-
-.dictionary-repair-help summary:focus-visible {
-  outline: none;
-  border-radius: 4px;
-  box-shadow: var(--tf-focus-ring);
-}
-
-.dictionary-repair-help p {
-  margin: 7px 0 0;
-  line-height: 1.5;
 }
 
 .site-actions {
@@ -867,7 +992,9 @@ kbd {
     min-width: 0;
   }
 
-  main > section {
+  main > section,
+  .settings-panel > section,
+  .settings-card {
     padding: 20px 16px;
     border-radius: var(--tf-radius-md);
   }
@@ -881,6 +1008,8 @@ kbd {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .connection-card { align-items: stretch; flex-direction: column; }
 
   .shortcut-list span {
     justify-content: flex-start;
@@ -917,6 +1046,11 @@ kbd {
 
   .site-row {
     grid-template-columns: 1fr;
+  }
+
+  .setting-switch {
+    gap: 12px;
+    padding: 13px 14px;
   }
 
   .site-actions {

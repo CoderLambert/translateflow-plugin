@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   normalizeLookupKey,
   stableStringify
-} from "./build-tflex-core.mjs";
+} from "./tflex-writer.mjs";
 import {
   createProjectionStats,
   KAIKKI_PROJECTION_VERSION,

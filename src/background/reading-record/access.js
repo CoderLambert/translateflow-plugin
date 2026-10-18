@@ -6,9 +6,11 @@ import { classifyPage, derivePageIdentity, requireCaptureSafety } from "./policy
 
 const ENTRY_PATHS = new Set(["/popup.html", "/options.html"]);
 const TOOLBAR_POPUP_PATH = "/popup.html";
+const LEARNING_SECTION_HASHES = new Set(["#wordbook", "#review"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const ACTIONS = new Map([[M.BEGIN_QUERY, "begin"], [M.SAVE_QUERY_RESULT, "save"], [M.APPEND_ASSISTANT, "save"],
   [M.GET_RECORD, "detail"], [M.CANCEL_OPERATION, "cancel"], [M.CONSUME_HANDOFF, "handoff"],
+  [M.DELETE_RECORD, "delete"],
   [M.GET_RECORDING_STATE, "page"], [M.GET_SITE_RECORDING, "page"], [M.GET_SITE_MARKERS, "page"], [M.GET_PAGE_SUMMARY, "page"],
   [M.PREVIEW_CREATE, "page"], [M.PREVIEW_BIND, "page"], [M.PREVIEW_CLOSE, "page"]]);
 
@@ -112,11 +114,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
           authorityGeneration, senderVerified: true, allowlisted: false, incognito: false, sensitive: false,
           editable: false, accountPage: false, navigationGeneration: 1, tabId: -1, nativeEntryOnly: true };
       }
-      if (learningCenter && sender.url.includes("#") && !url.hash) fail(E.FORBIDDEN, "sender.hash");
-      if (learningCenter && url.hash) {
-        if (!url.hash.startsWith("#record=")) fail(E.FORBIDDEN, "sender.hash");
-        recordId(url.hash.slice(8), "sender.hash");
-      }
+      if (learningCenter) validateLearningCenterHash(url, sender.url, "sender.hash");
       if (url.search || (learningCenter ? sender.url.split("#")[0] !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH) : !ENTRY_PATHS.has(url.pathname))) fail(E.FORBIDDEN, "sender.path");
       if (!nativeDocumentId(sender.documentId) || typeof browser.runtime.getContexts !== "function") fail(E.CAPABILITY_LIMITED, "sender.context");
       let contexts;
@@ -129,11 +127,7 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
         let current;
         try { current = new URL(context.documentUrl); } catch { fail(E.FORBIDDEN, "context.url"); }
         if (current.search || context.documentUrl.split("#")[0] !== browser.runtime.getURL(READING_LEARNING_CENTER_PATH)) fail(E.FORBIDDEN, "context.url");
-        if (context.documentUrl.includes("#") && !current.hash) fail(E.FORBIDDEN, "context.hash");
-        if (current.hash) {
-          if (!current.hash.startsWith("#record=")) fail(E.FORBIDDEN, "context.hash");
-          recordId(current.hash.slice(8), "context.hash");
-        }
+        validateLearningCenterHash(current, context.documentUrl, "context.hash");
       }
       const samePage = learningCenter ? context.documentUrl.split("#")[0] === sender.url.split("#")[0] : context.documentUrl === sender.url;
       if (!UUID.test(context.contextId || "") || context.documentId !== sender.documentId || !samePage || context.incognito !== false ||
@@ -192,4 +186,11 @@ export function createReadingAccess({ browser, collector = readOwnedCollector, r
       }
     },
     isCurrent };
+}
+
+function validateLearningCenterHash(url, rawUrl, path) {
+  if (rawUrl.includes("#") && !url.hash) fail(E.FORBIDDEN, path);
+  if (!url.hash || LEARNING_SECTION_HASHES.has(url.hash)) return;
+  if (!url.hash.startsWith("#record=")) fail(E.FORBIDDEN, path);
+  recordId(url.hash.slice(8), path);
 }

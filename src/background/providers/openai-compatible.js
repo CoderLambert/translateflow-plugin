@@ -4,6 +4,7 @@ import {
 } from "../../shared/provider-config.js";
 import {
   buildTranslationPrompt,
+  openAIAuthenticationHeaders,
   requestChatCompletions,
   requestParsedJson,
   requestParsedTranslation
@@ -42,15 +43,15 @@ export const openAICompatibleProvider = Object.freeze({
 
   async completeText({ systemPrompt, prompt }, config, { signal, onDelta } = {}) {
     await assertEndpointPermission(config.apiBaseUrl);
-    const model = requireModel(config.model), body = { model, messages: [{ role: "system", content: String(systemPrompt || "") }, { role: "user", content: String(prompt || "") }], temperature: 0.2 };
+    const model = requireModel(config.model), body = withTemperature({ model, messages: [{ role: "system", content: String(systemPrompt || "") }, { role: "user", content: String(prompt || "") }] }, config, 0.2);
     if (config.streaming) {
       try {
-        const data = await requestChatCompletionsStream({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, providerLabel: PROVIDER_LABEL,
+        const data = await requestChatCompletionsStream({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, headers: openAIAuthenticationHeaders(config, config.apiKey), providerLabel: providerLabel(config),
           requireApiKey: false, signal, body, onTextDelta: onDelta });
         return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "stream" };
       } catch (error) { if (!isUnsupportedStreamingError(error)) throw error; }
     }
-    const data = await requestChatCompletions({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, providerLabel: PROVIDER_LABEL,
+    const data = await requestChatCompletions({ url: buildChatCompletionsUrl(config.apiBaseUrl), apiKey: config.apiKey, headers: openAIAuthenticationHeaders(config, config.apiKey), providerLabel: providerLabel(config),
       requireApiKey: false, signal, body: { ...body, stream: false } });
     return { text: String(data?.choices?.[0]?.message?.content || ""), mode: "unary" };
   },
@@ -62,9 +63,10 @@ export const openAICompatibleProvider = Object.freeze({
     const data = await requestChatCompletions({
       url: buildChatCompletionsUrl(config.apiBaseUrl),
       apiKey: config.apiKey,
-      providerLabel: PROVIDER_LABEL,
+      headers: openAIAuthenticationHeaders(config, config.apiKey),
+      providerLabel: providerLabel(config),
       requireApiKey: false,
-      body: {
+      body: withTemperature({
         model,
         messages: localTranslationModel
           ? [{ role: "user", content: "Reply with exactly: OK" }]
@@ -72,13 +74,20 @@ export const openAICompatibleProvider = Object.freeze({
               { role: "system", content: "Reply with exactly: OK" },
               { role: "user", content: "Connection test" }
             ],
-        stream: false,
-        temperature: 0
-      }
+        stream: false
+      }, config, 0)
     });
-    return data?.choices?.[0]?.message?.content?.trim() || "OK";
+    const result = data?.choices?.[0]?.message?.content?.trim();
+    if (result !== "OK") {
+      const error = new Error(`${providerLabel(config)} 连接测试返回了非预期内容。`);
+      error.code = "MALFORMED_RESPONSE";
+      throw error;
+    }
+    return result;
   }
 });
+
+export const openAIChatProvider = Object.freeze({ ...openAICompatibleProvider, id: "openai-chat" });
 
 async function completeStructuredJson({ systemPrompt, payload, parseResult } = {}, config, signal) {
   await assertEndpointPermission(config.apiBaseUrl);
@@ -101,7 +110,7 @@ async function completeStructuredJson({ systemPrompt, payload, parseResult } = {
 
   return requestParsedJson({
     request,
-    providerLabel: PROVIDER_LABEL,
+    providerLabel: providerLabel(config),
     parseResult
   });
 }
@@ -124,18 +133,18 @@ function requestStructuredCompletion({
         { role: "user", content: userPayload }
       ];
 
-  const body = {
+  const body = withTemperature({
     model,
     messages,
-    stream: false,
-    temperature: 0.1
-  };
+    stream: false
+  }, config, 0.1);
   if (structured) body.response_format = { type: "json_object" };
 
   return requestChatCompletions({
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
-    providerLabel: PROVIDER_LABEL,
+    headers: openAIAuthenticationHeaders(config, config.apiKey),
+    providerLabel: providerLabel(config),
     requireApiKey: false,
     signal,
     body
@@ -149,7 +158,8 @@ async function translateGenericBatch(segments, config, model, signal, onProgress
     : requestChatCompletions({
         url: buildChatCompletionsUrl(config.apiBaseUrl),
         apiKey: config.apiKey,
-        providerLabel: PROVIDER_LABEL,
+        headers: openAIAuthenticationHeaders(config, config.apiKey),
+        providerLabel: providerLabel(config),
         requireApiKey: false,
         signal,
         body: { ...body, stream: false }
@@ -158,7 +168,7 @@ async function translateGenericBatch(segments, config, model, signal, onProgress
   return requestParsedTranslation({
     request,
     segments,
-    providerLabel: PROVIDER_LABEL
+    providerLabel: providerLabel(config)
   });
 }
 
@@ -166,7 +176,8 @@ async function requestGenericStreaming(body, config, signal, onProgress) {
   const request = {
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
-    providerLabel: PROVIDER_LABEL,
+    headers: openAIAuthenticationHeaders(config, config.apiKey),
+    providerLabel: providerLabel(config),
     requireApiKey: false,
     signal
   };
@@ -191,7 +202,7 @@ function buildGenericRequestBody(segments, config, model) {
   const payload = {
     segments: segments.map((item) => ({ id: String(item.id), text: String(item.text) }))
   };
-  return {
+  return withTemperature({
     model,
     messages: [
       {
@@ -199,9 +210,8 @@ function buildGenericRequestBody(segments, config, model) {
         content: buildTranslationPrompt(config, "Translate to Simplified Chinese and return JSON only.")
       },
       { role: "user", content: JSON.stringify(payload) }
-    ],
-    temperature: 0.2
-  };
+    ]
+  }, config, 0.2);
 }
 
 async function translateLocalBatches(segments, config, model, signal) {
@@ -228,7 +238,7 @@ async function translateLocalBatches(segments, config, model, signal) {
     const result = await requestParsedTranslation({
       request,
       segments: batch,
-      providerLabel: PROVIDER_LABEL,
+      providerLabel: providerLabel(config),
       parseResult: parseLocalTranslationResult
     });
     translated.push(...result);
@@ -241,7 +251,8 @@ function requestLocalBatch(batch, config, model, signal, useStructuredOutput) {
   return requestChatCompletions({
     url: buildChatCompletionsUrl(config.apiBaseUrl),
     apiKey: config.apiKey,
-    providerLabel: PROVIDER_LABEL,
+    headers: openAIAuthenticationHeaders(config, config.apiKey),
+    providerLabel: providerLabel(config),
     requireApiKey: false,
     signal,
     body: buildLocalTranslationRequestBody({
@@ -266,6 +277,16 @@ async function assertEndpointPermission(baseUrl) {
     error.code = "PERMISSION";
     throw error;
   }
+}
+
+function providerLabel(config) { return String(config?.providerLabel || PROVIDER_LABEL); }
+
+function withTemperature(body, config, legacyFallback) {
+  const explicit = Number(config?.temperature);
+  if (config?.temperature !== null && config?.temperature !== undefined && Number.isFinite(explicit)) {
+    return { ...body, temperature: explicit };
+  }
+  return config?.connectionId ? body : { ...body, temperature: legacyFallback };
 }
 
 function requireModel(value) {

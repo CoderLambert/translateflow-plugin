@@ -13,6 +13,7 @@ export type RecordItem = ReturnType<typeof validateRecordListItem>;
 export type PageItem = ReturnType<typeof validatePageListItem>;
 export type Exclusion = ReturnType<typeof validateExclusionItem>;
 export interface Detail { record: ReturnType<typeof validateReadingRecord>; snapshots: ReturnType<typeof validateSourceSnapshot>[]; artifacts: ReturnType<typeof validateResultArtifact>[] }
+export interface PreviewDetail extends Detail { related: Detail[] }
 export interface RecordingState { enabled: boolean; consentGeneration: number; dataGeneration: number; capacityReached: boolean; recordCount: number; totalBytes: number }
 export interface Page<T> { items: T[]; nextCursor: string | null; catalogRevision?: number }
 export interface ExportStart { exportId: string; exportRevision: number; nextCursor: string; expiresAt: number }
@@ -52,7 +53,7 @@ export class ReadingClient {
   setMarkers(siteKey: string, enabled: boolean) { return this.request<SiteMarkers>(M.SET_SITE_MARKERS, { siteKey, enabled }); }
   createHandoff(recordId: string, expectedRevision: number) { return this.request<ReturnHandoff>(M.CREATE_HANDOFF, { recordId, expectedRevision }); }
   previewClaim(previewId: string) { return this.request<{ claimId: string }>(M.PREVIEW_CLAIM, { previewId }); }
-  previewRead(previewId: string) { return this.request<Detail>(M.PREVIEW_READ, { previewId }); }
+  previewRead(previewId: string) { return this.request<PreviewDetail>(M.PREVIEW_READ, { previewId }); }
   previewClose(previewId: string) { return this.request<{ closed: true }>(M.PREVIEW_CLOSE, { previewId }); }
   // Called directly by a trusted click, before any asynchronous work.
   requestSitePermission(siteKey: string) { return chrome.permissions.request({ origins: [`${new URL(siteKey).origin}/*`] }); }

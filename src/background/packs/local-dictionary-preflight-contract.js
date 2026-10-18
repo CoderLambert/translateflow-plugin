@@ -39,6 +39,7 @@ export function basePreflightResult({
   associatedSidecars = [],
   unassociatedFiles = [],
   missingCompanionHints = [],
+  ignoredFiles = [],
   identity = {}
 }) {
   const safeCapabilities = uniqueCapabilities(capabilities);
@@ -68,6 +69,8 @@ export function basePreflightResult({
     resources: {
       associatedMdd,
       associatedSidecars,
+      ignoredFiles: ignoredFiles.slice(0, 32).filter(item => item?.reason === "script_not_executed" && Number.isSafeInteger(item.size) && item.size >= 0)
+        .map(item => ({ fileName: safeFileLabel(item.fileName), size: item.size, reason: "script_not_executed" })),
       unassociatedFiles: unassociatedFiles.map((file) => safeFileLabel(file.name)),
       missingCompanionHints: missingCompanionHints.map(cleanDisplayText).filter(Boolean)
     },

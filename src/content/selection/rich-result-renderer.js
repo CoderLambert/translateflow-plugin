@@ -2,6 +2,7 @@
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.contentI18n || app.modules.selectionRichResultRenderer) return;
   const locale = app.modules.contentI18n;
+  const renderedHosts = new WeakMap();
 
   function appendRichDictionaryDetails(container, response) {
     if (!container || !response || typeof response !== "object") return false;
@@ -22,7 +23,7 @@
       record.className = "tf-selection-rich-record";
       const title = document.createElement("div");
       title.className = "tf-selection-rich-title";
-      title.textContent = dictionaryMetadataText(dictionary);
+      title.textContent = String(dictionary?.title || "Rich MDict");
       record.appendChild(title);
       renderRichDictionaryRecord(record, dictionary, dictionary?.id);
       section.appendChild(record);
@@ -63,7 +64,7 @@
       });
     const cards = [];
 
-    for (const [index, { dictionary }] of ordered.entries()) {
+    for (const { dictionary } of ordered) {
       const details = document.createElement("details");
       details.className = "tf-selection-rich-record";
       details.dataset.dictionaryId = String(dictionary?.id || "");
@@ -72,11 +73,6 @@
 
       const summary = document.createElement("summary");
       summary.className = "tf-selection-rich-summary";
-      const order = document.createElement("span");
-      order.className = "tf-selection-rich-order";
-      order.textContent = String(index + 1);
-      locale.bindAttribute(order, "aria-label", "content.rich.order", { index: index + 1 });
-
       const identity = document.createElement("span");
       identity.className = "tf-selection-rich-identity";
       const title = document.createElement("strong");
@@ -84,36 +80,11 @@
       if (dictionary?.title) title.textContent = String(dictionary.title);
       else locale.bindText(title, "content.rich.title");
       identity.appendChild(title);
-      if (dictionary?.preferred) {
-        const preferred = document.createElement("span");
-        preferred.className = "tf-selection-rich-preference";
-        locale.bindText(preferred, "content.rich.preferred");
-        identity.appendChild(preferred);
-      }
-
-      const metadata = document.createElement("span");
-      metadata.className = "tf-selection-rich-metadata";
-      const trustLabel = String(dictionary?.trustLabel || "").trim();
-      if (trustLabel) {
-        const trust = document.createElement("span");
-        trust.className = "tf-selection-rich-trust";
-        locale.bindText(trust, "content.rich.trust", { trust: trustLabel });
-        metadata.appendChild(trust);
-      }
-      const format = String(dictionary?.format || "").trim();
-      if (format) {
-        const formatLabel = document.createElement("span");
-        formatLabel.className = "tf-selection-rich-format";
-        formatLabel.textContent = format;
-        metadata.appendChild(formatLabel);
-      }
-      if (metadata.childElementCount) identity.appendChild(metadata);
-
       const status = document.createElement("span");
       status.className = "tf-selection-rich-card-status";
       status.setAttribute("aria-live", "polite");
       locale.bindText(status, details.open ? "content.rich.querying" : "content.rich.queryOnOpen");
-      summary.append(order, identity, status);
+      summary.append(identity, status);
 
       const body = document.createElement("div");
       body.className = "tf-selection-rich-card-body";
@@ -123,14 +94,20 @@
       let pendingResult = null;
       let resultDisplayed = false;
       let retryHandler = null;
+      let navigation = null;
       const card = {
         dictionary,
+        releaseNavigation() { clearPendingResult(); body.replaceChildren(); navigation = null; },
+        mountNavigation: (node) => details.insertBefore(node, body),
+        bindNavigation: (value) => { navigation = value; },
         isOpen: () => details.open,
         setLoading() {
+          clearPendingResult();
           setCardState(details, status, "loading", "content.rich.querying");
           body.replaceChildren();
         },
         setError(message, onRetry = null) {
+          clearPendingResult();
           setCardState(details, status, "error", "content.rich.queryFailed");
           body.replaceChildren();
           const failure = document.createElement("p");
@@ -152,6 +129,7 @@
           }
         },
         setEmpty(message = "content.rich.noMatch") {
+          clearPendingResult();
           setCardState(details, status, "empty", "content.rich.noMatchShort");
           body.replaceChildren();
           const empty = document.createElement("p");
@@ -160,11 +138,12 @@
           body.appendChild(empty);
           retryHandler = null;
         },
-        setResult(record, dictionaryId, onDisplay = null) {
+        setResult(record, dictionaryId, onDisplay = null, onError = null, isCurrent = null, eager = false) {
+          clearPendingResult();
           setCardState(details, status, "success", "content.rich.complete");
           retryHandler = null;
-          pendingResult = { record, dictionaryId, onDisplay };
-          if (details.open) renderPendingResult();
+          pendingResult = { record, dictionaryId, onDisplay, onError, isCurrent };
+          if (details.open || eager) renderPendingResult();
           else {
             const note = document.createElement("p");
             note.className = "tf-selection-rich-deferred";
@@ -174,17 +153,35 @@
         }
       };
 
+      function clearPendingResult() {
+        closeRecords(body);
+        pendingResult = null;
+        resultDisplayed = false;
+        retryHandler = null;
+      }
+
       function renderPendingResult() {
         if (!pendingResult || resultDisplayed) return;
+        if (typeof pendingResult.isCurrent === "function" && !pendingResult.isCurrent()) {
+          clearPendingResult();
+          return;
+        }
         body.replaceChildren();
-        const displayed = renderRichDictionaryRecord(body, pendingResult.record, pendingResult.dictionaryId);
+        const displayed = renderRichDictionaryRecord(body, pendingResult.record, pendingResult.dictionaryId, navigation);
         resultDisplayed = true;
         pendingResult.onDisplay?.(displayed);
       }
 
       details.addEventListener("toggle", () => {
         if (!details.open) return;
-        renderPendingResult();
+        try {
+          renderPendingResult();
+          navigation?.opened?.();
+        } catch {
+          const onError = pendingResult?.onError;
+          card.setError("content.rich.lookupUnavailable");
+          onError?.();
+        }
         if (typeof onLookup === "function") onLookup(dictionary, card);
       });
       cards.push(card);
@@ -197,7 +194,14 @@
     return cards;
   }
 
-  function setCardState(details, status, state, key) { details.dataset.state = state; locale.bindText(status, key); }
+  function setCardState(details, status, state, key) {
+    details.dataset.state = state;
+    status.hidden = state === "success";
+    if (status.hidden) {
+      locale.unbind(status);
+      status.textContent = "";
+    } else locale.bindText(status, key);
+  }
 
   function bindMessage(node, message, fallbackKey) {
     if (message && typeof message === "object" && typeof message.key === "string") {
@@ -210,25 +214,82 @@
     } else locale.bindText(node, fallbackKey);
   }
 
-  function renderRichDictionaryRecord(container, dictionary, dictionaryId) {
+  function closeRecords(container) {
+    for (const host of renderedHosts.get(container) || []) { app.modules.richOxfordAdapter?.close(host); app.modules.richResourceResolver?.close(host); }
+    renderedHosts.delete(container);
+  }
+
+  function renderRichDictionaryRecord(container, dictionary, dictionaryId, navigation = null) {
+    if (dictionary?.records !== undefined && !Array.isArray(dictionary.records)) throw new Error("Rich dictionary records are invalid.");
+    const inputs = Array.isArray(dictionary?.records) ? dictionary.records : [dictionary];
+    if (!inputs.length || inputs.length > 256) throw new Error("Rich dictionary record count is invalid.");
+    const totals = { expandedBytes: Math.max(0, inputs.length - 1) * 2, nodes: 0, resources: 0 };
+    const sanitizer = app.modules.selectionRichSanitizer;
+    const prepared = inputs.map((input) => {
+      const record = { ...input, packageVersion: dictionary?.packageVersion, packVersion: dictionary?.packVersion };
+      if (record.richRecord && !record.richRecord.styleSheetRules && dictionary?.styleSheetRules) {
+        record.richRecord = { ...record.richRecord, styleSheetRules: dictionary.styleSheetRules };
+      }
+      const richRecord = record.richRecord;
+      let tree = null;
+      if (richRecord && sanitizer?.sanitizeRichDictionaryRecord) {
+        try { tree = sanitizer.sanitizeRichDictionaryRecord(richRecord); } catch { /* Existing safe text fallback. */ }
+      }
+      const measured = treeMetrics(tree, richRecord?.rawRecord ?? record.text ?? "");
+      for (const key of Object.keys(totals)) {
+        if (!Number.isSafeInteger(measured[key]) || measured[key] < 0) throw new Error("Rich dictionary display metrics are invalid.");
+        totals[key] += measured[key];
+      }
+      if (totals.expandedBytes > 2 * 1024 * 1024 || totals.nodes > 32768 || totals.resources > 1024) {
+        throw new Error("Rich dictionary aggregate display exceeds its safety limits.");
+      }
+      return { record, tree };
+    });
+    closeRecords(container);
+    renderedHosts.set(container, []);
+    try {
+      const displayed = prepared.map(({ record, tree }) => renderSingleRecord(container, record, dictionaryId, tree, navigation));
+      navigation?.rendered(renderedHosts.get(container) || []);
+      return { ...displayed[0], text: displayed.map((item) => item.text).filter(Boolean).join("\n\n") };
+    } catch (error) { closeRecords(container); throw error; }
+  }
+
+  function treeMetrics(tree, fallback) {
+    if (tree?.metrics) return tree.metrics;
+    let nodes = 0;
+    const resources = new Set();
+    const visit = (items) => { for (const node of items || []) {
+      nodes += node.type === "svg" ? app.modules.safeSvg?.validateSafeSvgScene(node.scene)?.nodes || 1 : 1;
+      const key = node.type === "resource" ? app.modules.richResourcePath?.descriptorKey?.(node.kind, node.path, node.presentation) : "";
+      if (key) resources.add(key);
+      if (node.children) visit(node.children);
+    } };
+    visit(tree?.nodes);
+    const plan = app.modules.richOxfordAdapter?.recognize(tree?.nodes);
+    if (plan && nodes + plan.extraNodes <= 32767) nodes += plan.extraNodes;
+    return { nodes: nodes || 1, resources: resources.size, expandedBytes: new TextEncoder().encode(String(fallback)).byteLength };
+  }
+
+  function renderSingleRecord(container, dictionary, dictionaryId, safeTree, navigation = null) {
     const headword = String(dictionary?.headword || "").trim();
     const bodyText = String(dictionary?.text || "").trim();
     const body = document.createElement("div");
     body.className = "tf-selection-rich-text";
+    renderedHosts.get(container)?.push(body);
     const fallback = bodyText || locale.t("content.rich.emptyBody");
     const richRecord = dictionary?.richRecord;
-    const sanitizer = app.modules.selectionRichSanitizer;
     const viewer = app.modules.selectionRichViewer;
     let displayed = false;
-    let safeTree = null;
-    if (richRecord && sanitizer?.sanitizeRichDictionaryRecord && viewer?.render) {
+    if (richRecord && safeTree && viewer?.render) {
       try {
-        safeTree = sanitizer.sanitizeRichDictionaryRecord(richRecord);
         if (safeTree) {
           displayed = viewer.render(body, safeTree, fallback, {
             preserveNewlines: String(richRecord.format || "").toLowerCase() === "text",
             dictionaryId: String(dictionaryId || ""),
-            packageVersion: String(dictionary?.packageVersion || "")
+            packageVersion: String(dictionary?.packageVersion || ""),
+            ...(dictionary?.packVersion ? { packVersion: String(dictionary.packVersion) } : {}),
+            ...(Number.isSafeInteger(dictionary?.recordOffset) ? { recordOffset: dictionary.recordOffset } : {}),
+            ...(navigation ? { onAction: (action) => navigation.navigate(action, null, body) } : {})
           });
         }
       } catch {
@@ -248,8 +309,9 @@
     container.appendChild(body);
     const viewport = body.shadowRoot?.querySelector?.(".tf-rich-viewer");
     if (!bodyText && !displayed && viewport) locale.bindText(viewport, "content.rich.emptyBody");
+    const visibleText = typeof viewport?.innerText === "string" ? viewport.innerText : viewport?.textContent;
     return { id: String(dictionaryId || ""), headword, packVersion: dictionary?.packVersion,
-      text: String(viewport?.textContent ?? (!displayed ? bodyText : "")) };
+      text: String(visibleText ?? (!displayed ? bodyText : "")).replace(/\r\n?/gu, "\n") };
   }
 
   function semanticHeadwordMatches(tree, headword) {
@@ -289,8 +351,6 @@
   function normalizeHeadword(value) {
     return String(value || "").normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
   }
-
-  function dictionaryMetadataText(dictionary) { return [String(dictionary?.title || "Rich MDict"), String(dictionary?.trustLabel || "").trim(), String(dictionary?.format || "").trim()].filter(Boolean).join(" · "); }
 
   app.modules.selectionRichResultRenderer = Object.freeze({ appendRichDictionaryDetails, appendRichDictionaryCards });
 })();

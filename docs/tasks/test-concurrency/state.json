@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "task": "test-concurrency",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [
+    "remove-bundled-lexicons"
+  ],
+  "branch": "chore/test-concurrency-and-selection",
+  "worktree": ".",
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=.output/chrome-mv3",
+      "TF_SMOKE_REPORT=test-results/explicit-wxt-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "TF_SMOKE_REPORT=test-results/stable-wxt-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/reading-preview.spec.mjs",
+      "e2e/selection-assistant-ui.spec.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e:special"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "PR #347 已按用户授权 squash 合入，tree 一致；保留首次失败、定向修复和专项证据，不代表发布认证。",
+  "externalDependencies": [
+    "https://github.com/CoderLambert/translateflow-plugin/pull/346"
+  ],
+  "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+  "syncHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b",
+  "pr": 347,
+  "mergeHead": "e7fdfa5ce5d69a289785679147988c4ba62f1d37"
+}

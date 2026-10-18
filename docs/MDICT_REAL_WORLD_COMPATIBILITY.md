@@ -36,6 +36,190 @@ and sanitizer contracts. This UI migration neither changes the compatibility
 matrix nor adds MDX/MDD capabilities; selected files remain local and remote or
 active dictionary content remains blocked by the existing policy.
 
+## Key normalization and derived index upgrades
+
+The Rich MDX header parser accepts the standard `StripKey` and the explicitly
+verified Oxford spelling `Stripkey`. The default remains false. Other attribute
+names are not lowercased, and conflicting values are rejected. This is a
+normalization compatibility fix, not a change to the dictionary's source text.
+
+New compact indexes use schema 2. Strictly validated schema 1 indexes remain
+readable. On a cold legacy load, a bounded read of the retained MDX header
+checks whether the verified `Stripkey` alias caused the old index to preserve
+punctuation incorrectly. Only affected indexes rebuild their derived lookup
+bounds; unaffected legacy indexes are not rewritten. Unexpected normalization
+mismatches fail explicitly rather than silently rebuilding changed source data.
+
+The rebuilt index is written to the fixed `index-normalized-v2.json` path and
+read back for size, digest and structural validation before its active pointer
+changes. The original `source.mdx`, `index.json`, MDD files, resources and user
+preferences remain intact. Pack serialization and an expected-pointer check
+prevent a replacement or uninstall from activating a stale rebuild. A failed
+write, validation or activation retains the old pointer and reports an error.
+Cancellation before activation prevents the pointer change; cancellation after
+an irreversible successful storage commit does not claim to roll it back.
+
+See [the migration task](tasks/rich-stripkey-migration/task.md) for exact
+candidate evidence. These mechanics do not establish the complete Oxford
+layout, navigation, attachment-recovery or final-product acceptance.
+
+## Multiple records and alias collections
+
+Rich lookup returns `records[]` for all selected exact-spelling key entries, or
+for the folded collection when no exact spelling exists. Duplicate source
+positions and convergent terminal positions produce one record. Terminal
+records retain their original source order. The first scalar record remains a
+compatibility view; consumers normalize the array or that legacy view instead
+of concatenating adjacent raw HTML strings.
+
+Aliases resolve each path independently with an eight-link bound and source
+offsets for cycle detection. A cycle branch is pruned while valid siblings
+continue; bounded diagnostics record that pruning. An alias collection with no
+valid terminal, a missing target, a corrupt span or exhausted work budget fails
+explicitly. Folded-key visited sets are insufficient because separate records
+can legitimately return to the same key collection.
+
+The complete query shares existing range/byte/decode budgets. Candidate span
+visits include initial roots, cache hits, repeated terminals and pruned cycle
+branches; the initial guard is 256 actual visits, supported by a maximum 23
+visits measured in the pinned Oxford alias graph. Selected matches are limited
+to 64 after exact/folded precedence is decided, and actual key scans have their
+own 1,000,000-entry guard. These guards are compatibility limits, not promises
+about all dictionaries. Exceeding them reports a limit rather than silently
+returning a partial entry.
+
+Record and aggregate source/text bounds remain 1 MiB / 2 MiB. Sanitized Compact
+expansion, nodes and resource descriptors also share the existing 2 MiB /
+32,768 / 1,024 limits across the complete result. Each record uses the existing
+sanitizer and a separate Shadow viewer so local IDs, fragments and styles do
+not cross records. Display completion reports one bounded plain-text summary;
+it does not add a Reading or vocabulary persistence channel.
+
+Exact implementation and acceptance are recorded in
+[the multiple-record task](tasks/rich-multiple-records/task.md). Original MDX/MDD files,
+index schema, permissions, CSP and Provider boundaries do not change in this
+slice, and its synthetic browser evidence does not replace Oxford final
+acceptance.
+
+## Controlled radio state and scoped stylesheet rules
+
+Rich records can retain coherent radio/label relationships as bounded data.
+The tokenizer and viewer both validate IDs, names, label targets and checked
+states before creating controls inside that record's Shadow root. Passive nav/section
+wrappers and up to eight safe class tokens preserve the relationships; the
+verified go panels require a state class in the fifth position. Zero initial
+selection stays zero; multiple initial checked states, duplicate identities or
+incomplete radio relationships degrade that record to readable safe text with
+a visible notice. Decorative orphan labels become static text without disabling
+an otherwise valid group. Native label actions and bounded keyboard handling
+update only the associated group; no form, dictionary handler or script runs.
+
+Local stylesheet compilation uses the existing background css-tree path and
+closed selector atoms for compounds, descendants, child/sibling relationships,
+`:checked`, simple structural/focus states, `[open]` and static before/after
+pseudo-elements. IDs use the same controlled targets as labels and fragments.
+Pure bounded string content is allowed on the two pseudo-elements; arbitrary
+functions, attribute-driven content, external URLs and Shadow escape selectors
+remain rejected. Relative flex layouts and finite pixel max-width media
+conditions are supported; fixed positioning cannot escape the viewer.
+
+Source and generated CSS are each capped at 64 KiB. Source rule visits are
+bounded at 1,024 and accepted output rules at 512; the existing twelve
+declarations per rule and eight local asset slots remain bounded. A read-only
+inspection measured 636 source rules and 463 potentially useful rules in the
+verified Oxford sidecar, including state rules beyond the former 255 visits.
+That projection is design evidence, not a claim of browser acceptance. Rule,
+output-byte or nesting exhaustion rejects the stylesheet with diagnostics
+instead of presenting a truncated stylesheet as complete.
+
+See [the radio/CSS task](tasks/oxford-radio-css/task.md) for exact candidate and
+browser evidence. This slice does not establish font/static-SVG support,
+cross-entry history, Oxford-specific adapters or attachment recovery. Existing
+long-entry scrolling, footer actions, pronunciation controls and details stay
+under regression coverage. No stored index, source file, permission or CSP
+migration is introduced.
+
+The cumulative 1,024 resource budget counts actual descriptors using a shared
+closed identity: kind, canonical path and validated presentation. Repeated
+references still consume the node budget, while references to the same
+descriptor share that descriptor. Each independent record keeps its own count
+for the aggregate. This corrects an occurrence-count regression: the verified
+go record has 1,079 resource nodes but 539 descriptors. No resource, node,
+text, active-Blob or image limit is raised.
+
+## Local TrueType fonts
+
+Bounded local stylesheet `@font-face` declarations can be projected to an
+optional `fontFaces` manifest. Each face retains a canonical local TTF path,
+an anonymous family token, normal/italic style, 400/700 weight and swap/fallback
+display. A single local URL and optional truetype format are accepted; local()
+lookup, mixed sources, external URLs, unsupported descriptors and duplicate
+variants are rejected with diagnostics. Declaration order does not affect
+ordinary font-family references. Verified `%20` spaces in the four target URLs
+are decoded once; all other percent escapes remain unsupported, including
+encoded separators, traversal, scheme/control characters and double encoding.
+Only declared families and generic fallbacks
+survive; original custom family names are not returned to the viewer.
+
+The existing eight-slot bound covers image slots and font faces together.
+Source/generated CSS remain bounded at 64 KiB, including random alias expansion.
+The MDD resource policy accepts only sfnt TrueType TTF with at most 64 bounded,
+non-overlapping directory tables and consistent required table/glyph bounds.
+The native browser decoder validates table contents. The eight-MiB resource
+limit remains unchanged; this does not add OTF, WOFF, TTC or sidecar-font import.
+
+Chromium does not load a blob @font-face inside a Shadow stylesheet in the
+measured prototype. The viewer instead constructs controlled ArrayBuffer
+FontFace objects and adds them to the owning document's font set. Each
+stylesheet/session uses cryptographically random names referenced only by
+its scoped Shadow CSS. Alias rewriting visits only actual font-family
+declarations; selectors, controlled IDs and literal content remain unchanged
+even when their spelling matches a family token, including fallback paths.
+No dictionary font URL is emitted, and no CSP or
+permission is changed. An absent native RNG, unsupported API or failed face
+uses a visible display-fallback notice while preserving other stylesheet rules.
+
+Font bytes share the existing per-view 32-MiB active-resource budget, separately
+from the image byte budget. Reservation happens before native decoding and
+shares the existing two-read queue. Closing deletes registered faces. Native
+loads cannot be aborted; their reservations and queue slots remain until
+settlement, and stale completion cannot register a face. These are logical
+resource-byte bounds, not measured browser heap/RSS limits.
+
+See [the font task](tasks/rich-local-fonts/task.md) for exact candidate and
+acceptance evidence. The measured private package contains four TrueType
+faces totalling 2,956,896 bytes. The task now also owns the bounded static SVG,
+same-dictionary entry/history, Oxford interaction adapter and attachment
+recovery closeout. Synthetic Chromium evidence covers those generic contracts;
+the private-package report records only the real scenarios it actually runs.
+An unlisted private scenario remains `NOT_RUN` even when its synthetic contract
+passes.
+
+## Current Oxford product closeout boundary
+
+The current viewer supports safe inline and local MDD SVG scenes, local
+`entry://` navigation with bounded Back/Forward history, Oxford POS/hint/unbox
+and registered illustration interactions, and restart recovery for incomplete
+resource installation. These paths retain the existing sanitizer, local
+resource resolver, lookup cancellation, dictionary/version identity and
+aggregate display budgets. Hint admission measures actual nodes and UTF-8 text
+across every record Shadow viewport in the same card, including an already open
+hint or illustration preview.
+
+Six-file selection may include one inert JavaScript sidecar for an understandable
+ignored-file diagnostic. Its bytes are not read by a worker, persisted or
+executed. Complete attachment reselection and abandoned staging cleanup use
+persisted background state; a failed or cancelled replacement keeps the prior
+healthy active resources.
+
+The synthetic browser suite is the portable regression evidence for SVG,
+navigation, adapter behavior, cancellation and recovery. Private Oxford
+acceptance is separate and never publishes source paths or dictionary text.
+Its sanitized task evidence may record only roles, byte sizes, hashes, browser
+and artifact identities, scenario status and network/Provider counts. It does
+not turn the private package into an approved Official source or redistribution
+artifact.
+
 ## Local inspection
 
 The inspector is a read-only local tool. It does not make network requests,
