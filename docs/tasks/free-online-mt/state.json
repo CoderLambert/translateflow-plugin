@@ -15,7 +15,8 @@
     [
       "node",
       "--test",
-      "tests/machine-translation.test.mjs"
+      "tests/machine-translation.test.mjs",
+      "tests/machine-translation-selection-protection.test.mjs"
     ],
     [
       "npm",
@@ -25,11 +26,23 @@
     [
       "npm",
       "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
       "test:e2e",
       "--",
-      "e2e/machine-translation.spec.mjs"
+      "e2e/machine-translation.spec.mjs",
+      "--workers=1",
+      "--retries=0"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：原 #342 旧分支与 main(DB4/#345、用户词典/#346、Quick Control/#348、文档/#350)有真实冲突。已在 integration/pr342-db4-20261019 进行安全适配：保留 DB4 唯一缓存驱动与 write token、最新 Content/Reading，移入免费 MT Provider/Options/Popup 和受保护划词防外发。当前仍需完成编译/全仓验证及真实微软/腾讯检查，测试记录未执行不得写 PASS；旧 DB3/hash/升级断言不得回归。用户验收前保持 Draft、不合并。"
+  "nextAction": "当前 #342 已吸收 main@1ddae050 的 DB4/#345、#346 用户词典、#348 Runtime、#350 文档，GitHub 合并冲突已修；最近补充选区 code/kbd/pre 防外发、字面 TF marker fail-closed、字素安全分块和后台测试同意/权限二次校验及负例。仍为 working/Draft，无冻结 candidateHead、无当前 Node24 validate/MV3 安装包实测；下一步按 validationCommands 先定向后集中全量验收，真实微软/腾讯网络和人工验收分别记录，绝不将历史 0.8.14 日志算为当前候选通过。"
 }
