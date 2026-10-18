@@ -59,6 +59,32 @@ test('plain literal TF text stays data when the caller declares plain format', a
   assert.equal(plan.preparedConfig.prompt, config.prompt);
   assert.equal(plan.source.text, segment.text);
 });
+test('undecorated user markers are literal plain text, not an inferred internal transport', async () => {
+  const paired = { text: 'Docs show ⟦TF:0:S⟧syntax⟦TF:0:E⟧ literally.' };
+  const incomplete = { text: 'User content includes ⟦TF:0:S⟧ as a code example.' };
+  for (const segment of [paired, incomplete]) {
+    const plan = translationRequestDescriptor(config, segment);
+    assert.equal(plan.source.format, 'plain');
+    assert.equal(plan.source.text, segment.text);
+    assert.equal(plan.preparedConfig.prompt, config.prompt);
+    assert.equal((await createTranslationIdentity(config, segment, 'page')).key,
+      (await createTranslationIdentity(config, { ...segment, format: 'plain' }, 'page')).key);
+  }
+  const explicitRich = { ...paired, format: 'tf-markers' };
+  assert.equal(translationRequestDescriptor(config, explicitRich).source.format, 'tf-markers');
+  assert.notEqual((await createTranslationIdentity(config, paired, 'page')).key,
+    (await createTranslationIdentity(config, explicitRich, 'page')).key);
+});
+
+test('implicit plain format cannot smuggle protected rich IDs or bypass rich marker validation', () => {
+  const text = 'Docs show ⟦TF:0:S⟧syntax⟦TF:0:E⟧ literally.';
+  assert.throws(() => translationRequestDescriptor(config, { text, protectedIds: [0] }),
+    { code: 'CACHE_INVALID_INPUT' });
+  assert.throws(() => translationRequestDescriptor(config, {
+    text: 'Literal ⟦TF:0:S⟧ without a closing marker.', format: 'tf-markers'
+  }), { code: 'CACHE_INVALID_VALUE' });
+});
+
 test('source text identity preserves whitespace, case, Unicode joiners and exact code', async () => {
   const values = ['A B', 'A  B', 'a b', 'A\u00a0B', 'A\nB', 'A\u200dB'];
   const identities = await Promise.all(values.map(text => createTranslationIdentity(config, { text, format: 'plain' }, 'page')));
