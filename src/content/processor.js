@@ -80,17 +80,19 @@
         }
       }
 
-      if (!cacheOnly && apiTranslated > 0) {
+      if (!cacheOnly && apiTranslated > 0 && !cacheWarning) {
         sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
       }
 
       const count = cacheHits + apiTranslated;
       if (cacheOnly) {
-        const key = cacheHits ? "content.page.restoreSummary" : "content.page.noCache";
+        const key = cacheWarning ? "content.page.cacheLookupFailed"
+          : cacheHits ? "content.page.restoreSummary" : "content.page.noCache";
         const args = cacheHits ? { hits: cacheHits, missing } : {};
         const message = t(key, args);
-        if (!silent) showToast(message, cacheHits ? "success" : "info");
-        return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args };
+        if (!silent) showToast(message, cacheWarning ? "error" : cacheHits ? "success" : "info");
+        return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args,
+          ...(cacheWarning ? { cacheWarning } : {}) };
       }
 
       const key = cacheWarning ? "content.page.cacheNotSaved"
@@ -161,7 +163,7 @@
     let cacheHits = 0;
     let apiTranslated = 0;
     let missing = 0;
-    let cacheWarning = "";
+    let cacheWarning = String(lookup.cacheWarning || "");
 
     for (const group of groups) {
       if (skippedIds.has(group.id)) continue;
@@ -209,7 +211,7 @@
     }
 
     if (getPageIdentity(location.href) !== expectedPageIdentity) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
-    if (toStore.length) {
+    if (toStore.length && !cacheWarning) {
       if (task) {
         tasks.assertActive(task);
         tasks.transition(task, "storing");
