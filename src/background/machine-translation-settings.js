@@ -43,6 +43,12 @@ export async function saveMachineTranslationSettings(input) {
 }
 
 export async function testMachineTranslationSettings(input) {
+  // UI consent is necessary but not sufficient: the trusted background
+  // request boundary must reject an omitted/false confirmation as well.
+  if (input?.consent !== true) throw machineError("MT_CONSENT");
+  const provider = MACHINE_PROVIDERS.find(item => item.id === input.providerId);
+  if (!provider) throw machineError("MT_CONFIG");
+  if (!await chrome.permissions.contains({ origins: [`${provider.origin}/*`] })) throw machineError("MT_PERMISSION");
   const target = browserLanguage(input?.targetLanguage || "zh");
   if (!target) throw machineError("MT_LANGUAGE");
   const source = target === "en" ? "zh" : "en";
