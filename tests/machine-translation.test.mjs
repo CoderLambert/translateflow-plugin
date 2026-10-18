@@ -92,6 +92,11 @@ test("long chunks preserve all Unicode and whitespace; invalid chunk limits are 
   const source = "Text with emoji 👩‍💻.\n".repeat(200) + "结束";
   const chunks = splitMachineText(source);
   assert.equal(chunks.join(""), source); assert.ok(chunks.every(chunk => [...chunk].length <= 1000));
+  const emoji = "👩‍💻".repeat(500);
+  const safe = splitMachineText(emoji, 101);
+  assert.equal(safe.join(""), emoji);
+  assert.ok(safe.every(chunk => [...chunk].length <= 101 && chunk.split("👩‍💻").join("") === ""));
+  assert.throws(() => splitMachineText("👩‍💻", 2), { code: "MT_INPUT" });
   for (const size of [0, -1, Infinity, 1.5]) assert.throws(() => splitMachineText(source, size), { code: "MT_INPUT" });
 });
 
