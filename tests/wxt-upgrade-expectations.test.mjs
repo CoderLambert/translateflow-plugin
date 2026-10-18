@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, expectedTranslationCacheDatabases, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
 
 test("observed update removes the exact old dynamic closure after compiled static Content takes ownership",()=>{
   const old={contentScripts:["old.js","content.js"],contentStyles:["old.css"]};
@@ -69,6 +69,20 @@ function seededDatabases() {
     selection_explanations:[{cacheKey:"selection",explanation:"preserved",lastAccessedAt:200}]
   }}];
 }
+
+test("single-layout v4 upgrade discards only translations and pages, never guesses legacy contents",()=>{
+  const old=seededDatabases();
+  const migrated=expectedTranslationCacheDatabases(old.map(db=>({...db,stores:{...db.stores,selection_explanations:[]}})));
+  assert.equal(migrated[0].version,4);
+  assert.deepEqual(Object.keys(migrated[0].stores).sort(),["entries","epochs"]);
+  assert.deepEqual(migrated[0].stores.entries,[]);
+  assert.deepEqual(migrated[0].stores.epochs,[]);
+  assert.equal(old[0].version,2);
+  assert.equal(old[0].stores.translations.length,3);
+  assert.throws(()=>expectedTranslationCacheDatabases(old),assert.AssertionError,
+    "nonempty explanation rows require the real native-IDB preservation fixture");
+  assert.deepEqual(expectedTranslationCacheDatabases(migrated),migrated);
+});
 
 test("cache recovery compares all content/stores canonically and permits only valid read metadata",()=>{
   const before=seededDatabases(),valid=structuredClone(before);
