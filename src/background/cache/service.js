@@ -1,4 +1,5 @@
 import { cacheError, validateIdentity } from '../../shared/cache/identity.js';
+import { isCachePersistenceError } from '../../shared/cache/persistence-errors.js';
 import { CACHE_MODES, normalizePolicy, createCacheRecord, isCurrentRecord, matchesFilter,
   validateFilter, validWriteToken } from '../../shared/cache/record.js';
 import { createSingleFlight } from '../../shared/cache/single-flight.js';
@@ -127,7 +128,7 @@ export function createCacheService({ store, clock = Date.now, onEvent = () => {}
           return { hit: false, cache: 'miss', stored: true, value, ...written };
         } catch (error) {
           if (error.code === 'CANCELLED' || error.code === 'CACHE_INVALIDATED' || producerSignal.aborted) throw error;
-          if (!['CACHE_QUOTA', 'CACHE_STORAGE', 'CACHE_STORAGE_BLOCKED', 'CACHE_STORAGE_TIMEOUT'].includes(error.code)) throw error;
+          if (!isCachePersistenceError(error)) throw error;
           return { hit: false, cache: 'miss', stored: false, value, warning: error.code };
         }
       }, { signal, metadata: identity });
