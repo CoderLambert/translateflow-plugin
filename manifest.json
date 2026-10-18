@@ -1,23 +1,64 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "0.8.23",
+  "version": "0.8.24",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "optional_permissions": ["nativeMessaging"],
-  "host_permissions": ["https://api.deepseek.com/*", "http://*/*", "https://*/*"],
-  "web_accessible_resources": [{
-    "resources": ["reading-preview.html"],
-    "matches": ["http://*/*", "https://*/*"]
-  }],
-  "background": {"service_worker": "background.js", "type": "module"},
-  "action": {"default_title": "__MSG_actionTitle__", "default_popup": "popup.html"},
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "optional_permissions": [
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://api.deepseek.com/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "reading-preview.html"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "__MSG_actionTitle__",
+    "default_popup": "popup.html"
+  },
   "options_page": "options.html",
   "commands": {
-    "translate-page": {"suggested_key": {"default": "Ctrl+Shift+Y", "mac": "MacCtrl+Shift+Y"}, "description": "__MSG_translatePage__"},
-    "toggle-translations": {"suggested_key": {"default": "Ctrl+Shift+K", "mac": "MacCtrl+Shift+K"}, "description": "__MSG_toggleTranslations__"},
-    "toggle-quick-control": {"suggested_key": {"default": "Ctrl+Shift+Period", "mac": "MacCtrl+Shift+Period"}, "description": "__MSG_toggleQuickControl__"}
+    "translate-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "MacCtrl+Shift+Y"
+      },
+      "description": "__MSG_translatePage__"
+    },
+    "toggle-translations": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "MacCtrl+Shift+K"
+      },
+      "description": "__MSG_toggleTranslations__"
+    },
+    "toggle-quick-control": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Period",
+        "mac": "MacCtrl+Shift+Period"
+      },
+      "description": "__MSG_toggleQuickControl__"
+    }
   },
   "minimum_chrome_version": "102"
 }
