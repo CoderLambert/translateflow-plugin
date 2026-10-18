@@ -12,9 +12,12 @@
 
 ## 兼容约束
 
-不改写 AI 凭据/连接/defaultService；不清库、不升缓存或 Reading schema。
+不改写 AI 凭据/连接/defaultService。根据用户 2026-10-18 最新决定，翻译缓存仅支持最新版：
+升级 `ai_bilingual_translator` 为 DB v3，清空并重建原 `translations` 与 `pages`，
+缓存协议 v3 是唯一解析/读写路径；不迁移旧译文、不双读/双写、不提供旧键回退。
+`selection_explanations`、独立 ReadingRecord 数据库、词典和 AI 设置不清除。
 新增模式缺失为 legacy，未知模式/服务/版本显式失败。
-原缓存指纹保持不变；MT 源语言、固定协议和 protectedIds 独立入身份。
+统一缓存 v3 指纹；按引擎、实际 Provider、源/目标语言、输入格式/保护身份和有效请求配置隔离；不保留旧翻译 hash 兼容。
 免费快照缺失/过期不落回 AI；代码/内部标记不发给翻译服务。
 用户仅通过可信扩展界面启用免费传输；页面/历史/悬停读取不得隐式联网。
 
@@ -27,7 +30,7 @@ Google、B站及自动跨供应商调度为后续独立任务，不显示未实�
 
 ## 验收
 
-以 state.json 中实际命令和 acceptance 记录为准。必须验证：旧配置/缓存兼容、
+以 state.json 中实际命令和 acceptance 记录为准。必须验证：旧配置和 Reading 数据保留、**旧译文缓存一次性清空、新版缓存可正常写入读取、cacheOnly 不联网**、
 免费模式不受未配置/失效 AI 影响、词典优先、取消与切换、富文本、业务错误、
 限流、记录来源与本地回看。真实供应商联网测试与 mock E2E 分开报告。
 
