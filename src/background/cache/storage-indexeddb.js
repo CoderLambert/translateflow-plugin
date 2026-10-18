@@ -200,14 +200,20 @@ export function createIndexedDbCacheStore({ indexedDBFactory = globalThis.indexe
         });
       });
     },
-    async prune({ namespace, maxEntries = Number.MAX_SAFE_INTEGER, maxBytes = Number.MAX_SAFE_INTEGER, now = Date.now() } = {}) {
+    async prune({ namespace, namespaces, maxEntries = Number.MAX_SAFE_INTEGER, maxBytes = Number.MAX_SAFE_INTEGER, now = Date.now() } = {}) {
       if (!Number.isSafeInteger(maxEntries) || maxEntries < 0 || !Number.isSafeInteger(maxBytes) || maxBytes < 0) throw cacheError('CACHE_INVALID_POLICY');
+      if (namespaces !== undefined && (namespace !== undefined || !Array.isArray(namespaces) ||
+          namespaces.length < 1 || namespaces.length > 16 || new Set(namespaces).size !== namespaces.length)) {
+        throw cacheError('CACHE_INVALID_FILTER');
+      }
+      if (namespaces) namespaces.forEach(value => validateFilter({ namespace: value }));
+      const allowed = namespaces ? new Set(namespaces) : null;
       const filter = namespace === undefined ? {} : { namespace }; validateFilter(filter);
       return transact('readwrite', (tx, then, finish) => {
         let bytes = 0, deleted = 0; const live = [];
         walk(cursorFor(tx.objectStore(ENTRIES), filter), then, cursor => {
           const row = cursor.value;
-          if (!matchesFilter(row, filter)) return;
+          if (!matchesFilter(row, filter) || allowed && !allowed.has(row.namespace)) return;
           if (row.recordVersion !== CACHE_RECORD_VERSION || !Number.isSafeInteger(row.bytes) || row.bytes < 1 ||
               !Number.isSafeInteger(row.lastAccessedAt) || row.lastAccessedAt < 0 ||
               !Number.isSafeInteger(row.expiresAt) || row.expiresAt < 0 || (row.expiresAt && row.expiresAt <= now)) {
