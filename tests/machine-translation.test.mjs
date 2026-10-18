@@ -181,10 +181,12 @@ test("MT fingerprints include service, source, target, endpoint and adapter vers
   assert.notEqual(buildTranslationRequestKey([{ id: "a", text: "x", protectedIds: [] }], value), buildTranslationRequestKey([{ id: "a", text: "x", protectedIds: [0] }], value));
 });
 
-test("legacy AI and local cache hashes remain exactly byte-compatible", async () => {
+test("all translation engines use only v3 cache identities, never legacy v2 hashes", async () => {
   const value = { provider: "deepseek", model: "test", targetLanguage: "Chinese", prompt: "Translate" };
-  const expected = createHash("sha256").update(JSON.stringify({ cacheSchema: 2, ...value })).digest("hex");
+  const expected = createHash("sha256").update(JSON.stringify({ cacheSchema: 3, ...value })).digest("hex");
+  const legacyV2 = createHash("sha256").update(JSON.stringify({ cacheSchema: 2, ...value })).digest("hex");
   assert.equal(await getConfigHash(value), expected);
+  assert.notEqual(await getConfigHash(value), legacyV2);
   assert.equal(await translationSourceHash("  Hello  world  ", value, [0]), createHash("sha256").update("Hello world").digest("hex"));
 });
 
