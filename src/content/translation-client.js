@@ -64,6 +64,7 @@
     if (!response?.ok) throw responseError(response);
     if (response.engine !== BROWSER_ENGINE || response.sourceLanguage !== group.pair.sourceLanguage || response.targetLanguage !== group.pair.targetLanguage) throw engine.error("CONFIG_SNAPSHOT_EXPIRED");
     group.snapshotId = response.configSnapshotId; group.readingResult = response.readingResult;
+    group.cacheWarning = response.cacheWarning || group.cacheWarning || "";
     // Keep the original read fence across a native-config snapshot refresh.
     // A cache clear during model preparation must not resurrect old results.
     if (!group.cacheTokens) group.cacheTokens = new Map((response.writeTokens || []).map(item => [String(item.id), item.token]));
@@ -201,7 +202,7 @@
   async function store(payload, raw, controller) {
     if (!isNativeId(payload.configSnapshotId)) return raw(payload);
     controller.basic = true;
-    const plan = requirePlan(payload, controller); let stored = 0;
+    const plan = requirePlan(payload, controller); let stored = 0, cacheWarning = "";
     const wanted = new Map((payload.items || []).map(item => [item.sourceText, item.translation]));
     const knownSources = new Set(plan.groups.flatMap(group => group.members.map(item => item.text)));
     if ([...wanted.keys()].some(source => !knownSources.has(source))) throw engine.error("BROWSER_RESULT");
@@ -212,6 +213,7 @@
           protectedIds: item.protectedIds || [], cacheToken: group.cacheTokens.get(String(item.id)) };
       });
       if (!items.length) continue;
+      if (group.cacheWarning) { cacheWarning = group.cacheWarning; continue; }
       assertCurrent(controller, payload.pageUrl, plan.requestId);
       let response = await raw({ ...payload, configSnapshotId: group.snapshotId, items });
       assertCurrent(controller, payload.pageUrl, plan.requestId);
@@ -220,9 +222,12 @@
         response = await raw({ ...payload, configSnapshotId: group.snapshotId, items });
       }
       if (!response?.ok) throw responseError(response);
-      assertCurrent(controller, payload.pageUrl, plan.requestId); stored += Number(response.stored || 0);
+      assertCurrent(controller, payload.pageUrl, plan.requestId);
+      stored += Number(response.stored || 0);
+      if (response.cacheWarning || Number(response.stored || 0) < items.length)
+        cacheWarning = response.cacheWarning || "CACHE_NOT_SAVED";
     }
-    return { ok: true, stored };
+    return { ok: true, stored, ...(cacheWarning ? { cacheWarning } : {}) };
   }
   async function subtitles(payload, raw, controller) {
     const settings = await checkedSettings(payload, raw, controller);
@@ -234,15 +239,17 @@
       trackKey: `${units[0]?.mediaId || ""}:${units[0]?.track?.id || ""}:${units[0]?.track?.language || ""}`,
       segments: units.map(unit => ({ id: unit.id, text: buildSubtitleCacheSource(unit), contentText: unit.text, detectionText: unit.text, sourceLanguageHint: unit.track?.language })) }, raw, controller);
     const hits = new Map(response.hits.map(hit => [hit.id, hit.text])), missing = units.filter(unit => !hits.has(unit.id));
-    let result = { ok: true, translations: [] };
+    let result = { ok: true, translations: [] }, cacheWarning = response.cacheWarning || "";
     if (missing.length) {
       result = await translate({ type: messages.TRANSLATE_BATCH, requestId: payload.requestId, pageUrl: payload.pageUrl,
         configSnapshotId: response.configSnapshotId, segments: missing.map(unit => ({ id: unit.id, text: unit.text })) }, raw, controller);
       const saved = await store({ type: messages.CACHE_STORE, requestId: payload.requestId, pageUrl: payload.pageUrl, pageTitle: payload.pageTitle, configSnapshotId: response.configSnapshotId,
         items: missing.map(unit => ({ sourceText: buildSubtitleCacheSource(unit), translation: result.translations.find(item => item.id === unit.id)?.text })) }, raw, controller);
       if (!saved.ok) return saved;
+      cacheWarning = saved.cacheWarning || cacheWarning;
     }
-    return { ok: true, engine: BROWSER_ENGINE, translations: [...response.hits.map(hit => ({ ...hit, cacheHit: !hit.skipped })), ...result.translations], cacheHits: hits.size - response.skippedIds.length, apiTranslated: result.translations.length };
+    return { ok: true, engine: BROWSER_ENGINE, translations: [...response.hits.map(hit => ({ ...hit, cacheHit: !hit.skipped })), ...result.translations], cacheHits: hits.size - response.skippedIds.length, apiTranslated: result.translations.length,
+      ...(cacheWarning ? { cacheWarning } : {}) };
   }
   async function send(payload, raw) {
     if (location.href !== route) { dispose(); route = location.href; forceBrowser = false; }
