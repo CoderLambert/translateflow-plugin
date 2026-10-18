@@ -18,7 +18,10 @@ test("Reading handoff opens the exact saved page and target Content consumes one
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker");
     const id = new URL(worker.url()).host, driver = await context.newPage();
     await driver.goto(`chrome-extension://${id}/popup.html`);
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", autoSites: [], cacheRestoreSites: [],
+    // The native install handler can commit defaults after its worker becomes visible.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [],
       quickControlSites: [], quickControlHiddenSites: [], readingMemorySites: [] }));
 
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
@@ -58,7 +61,7 @@ test("Reading handoff opens the exact saved page and target Content consumes one
     }, tabId);
     await expect.poll(readHandoff).toMatchObject({ state: "consumed" });
     const consumed = await readHandoff();
-    expect(Object.keys(consumed.summary).sort()).toEqual(["anchor", "hasCompletedAssistant", "recordId", "revision"]);
+    expect(Object.keys(consumed.summary).sort()).toEqual(["anchor", "hasCompletedAssistant", "itemKey", "recordId", "revision"]);
 
     await expect(center.getByRole("button", { name: /site markers/i })).toHaveCount(0);
     expect(await driver.evaluate(() => chrome.storage.local.get("readingMemoryDisabledSites"))).toEqual({});

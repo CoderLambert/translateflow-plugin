@@ -87,9 +87,9 @@ test.describe("Dictionary Ecosystem v2 release-critical route evidence", () => {
     await options.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
 
-    const chooseFiles = options.getByRole("button", { name: "选择 / 重新选择文件" });
+    const chooseFiles = options.getByRole("button", { name: "选择或重新选择文件", exact: true });
     await expect(chooseFiles).toBeVisible();
-    await expect(chooseFiles).toHaveAccessibleName("选择 / 重新选择文件");
+    await expect(chooseFiles).toHaveAccessibleName("选择或重新选择文件");
     const fileList = options.locator("#localDictionaryFileList");
     await expect(fileList).toHaveAttribute("aria-label", "已选择的词典文件");
 

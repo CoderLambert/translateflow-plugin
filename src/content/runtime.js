@@ -8,6 +8,16 @@
     "igshid", "yclid", "_hsenc", "_hsmi", "vero_conv", "vero_id"
   ]);
 
+  // Keep the classic Content registry's failure classification aligned with
+  // src/shared/cache/persistence-errors.js (Background/ESM). Contract and
+  // invalidation errors are deliberately NOT recoverable storage failures.
+  const PERSISTENCE_ERRORS = new Set([
+    "CACHE_QUOTA", "CACHE_STORAGE", "CACHE_STORAGE_BLOCKED", "CACHE_STORAGE_TIMEOUT"
+  ]);
+  const isCachePersistenceError = value => PERSISTENCE_ERRORS.has(
+    typeof value === "string" ? value : value?.errorCode || value?.code
+  );
+
   const constants = Object.freeze({
     TRANSLATION_CLASS: "abt-translation",
     TRANSLATED_ATTR: "data-abt-translated",
@@ -164,7 +174,8 @@
     getSiteScope,
     getPageIdentity,
     sendRuntimeMessage,
-    showToast
+    showToast,
+    isCachePersistenceError
   };
 
   function createLegacyContentI18n() {

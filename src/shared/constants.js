@@ -22,7 +22,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   siteProfiles: {}, glossary: DEFAULT_GLOSSARY_STORE, siteGlossaries: DEFAULT_SITE_GLOSSARY_STORE
 });
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
-export const CACHE_SCHEMA_VERSION = 2;
+// Public alias only. Storage layout and domain strategy versions are independent.
+export { CACHE_RECORD_VERSION as CACHE_SCHEMA_VERSION } from "./cache/record.js";
 export const BACKGROUND_MESSAGES = Object.freeze({
   TRANSLATION_ENGINE_SETTINGS: "TRANSLATION_ENGINE_SETTINGS",
   TRANSLATE_BATCH: "TRANSLATE_BATCH", SUBTITLE_TRANSLATE_BATCH: "SUBTITLE_TRANSLATE_BATCH", CANCEL_TRANSLATION: "CANCEL_TRANSLATION",

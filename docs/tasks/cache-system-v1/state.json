@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "task": "cache-system-v1",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/independent-cache-system-20261018",
+  "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/cache-system.test.mjs",
+      "tests/cache-system-domains.test.mjs",
+      "tests/cache-system-review.test.mjs",
+      "tests/cache-system-integration-review.test.mjs",
+      "tests/cache-system-auto-feedback.test.mjs",
+      "tests/cache-system-persistence-failure.test.mjs",
+      "tests/native-client.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-native.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-mv3.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/wxt-upgrade.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--workers=1",
+      "--retries=0",
+      "--reporter=line,json",
+      "--output=docs/task-execution/local/pr345-final/test-results"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/local-task.test.mjs",
+      "tests/versioned-commit.test.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "全部合同命令与用户人工验收均通过；归档仅当前任务元数据及生成索引。归档后再次执行 Gate，核对远端准确 head 与无冲突后按用户授权 squash 合并；fetch并核对main tree后再记录completed/mergeHead。"
+}

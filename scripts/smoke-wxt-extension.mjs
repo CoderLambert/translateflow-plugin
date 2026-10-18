@@ -96,7 +96,7 @@ try {
   assert.equal(translated.ok, true, JSON.stringify(translated));
   assert.equal(translated.apiTranslated, 3);
   await expect(page.locator(".abt-translation")).toHaveCount(3);
-  assert.equal(server.calls.length, 1);
+  assert.equal(server.calls.length, 2, "Plain and structured segments use distinct effective prompts");
   const rich = page.locator("#rich .abt-translation");
   await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
   await expect(rich.locator("a")).toContainText("API documentation");
@@ -109,7 +109,7 @@ try {
   assert.equal(restored.ok, true);
   assert.equal(restored.cacheHits, 3);
   await expect(page.locator(".abt-translation")).toHaveCount(3);
-  assert.equal(server.calls.length, 1, "Cache restore must not call Provider");
+  assert.equal(server.calls.length, 2, "Cache restore must not call Provider");
   const registrations = await driver.evaluate(() => chrome.scripting.getRegisteredContentScripts());
   assert.deepEqual(registrations, []);
   assert.deepEqual(pageErrors, []);

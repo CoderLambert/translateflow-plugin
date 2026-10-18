@@ -11,7 +11,7 @@ const UI = /^(?:entrypoints\/(?:learning-center|reading-preview)\/|src\/(?:learn
 const PURE = /^src\/(?:shared|i18n)\//u;
 const ROOT_RUNTIME = new Set(["background.js", "content.js", "popup.js", "options.js"]);
 const READING_IDB = "src/background/reading-record/idb.js";
-const IDB_OWNERS = new Set(["src/background/cache-db.js", READING_IDB]);
+const IDB_OWNERS = new Set(["src/background/cache/storage-indexeddb.js", READING_IDB]);
 const isBackgroundSource = (path) => path.startsWith("src/background/") || path === "background.js" || /^entrypoints\/background\.(?:js|ts)$/u.test(path);
 export const isRuntimeSource = (path) => path.startsWith("src/") || path.startsWith("entrypoints/") || ROOT_RUNTIME.has(path);
 const isReact = (name) => /^(?:react|react-dom)(?:\/|$)/u.test(name);

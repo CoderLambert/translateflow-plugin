@@ -131,7 +131,7 @@ test("explicit CJK explanation sends bounded context after a local-only miss", a
     }
   }, {
     resolveSelectionRequest: (input) => resolveSelectionRequest(input, {
-      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
+      getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto", dictionaryEnabled: true }),
       getEffectiveConfig: async () => config,
       runLexicalLookup: async () => {
         lexicalCalls += 1;
@@ -422,4 +422,60 @@ test("Selection explanation cancellation aborts the Provider signal", async () =
   assert.deepEqual(cancelSelectionExplanationRequest("cancel-me"), { cancelled: true });
   await assert.rejects(promise, (error) => error?.code === "CANCELLED");
   assert.equal(observedAbort, true);
+});
+
+test("AI explanation remains usable when cache write fails with quota pressure", async () => {
+  let providerCalls = 0;
+  const result = await runSelectionExplanationRequest({
+    requestId: "explain-cache-quota-fixture",
+    text: "persistent", pageUrl: "https://example.test/",
+    context: { text: "persistent connection", source: "visible-local", sensitive: false }
+  }, {
+    resolveSelectionRequest: async () => ambiguousResolved(),
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => ({ hit: null, cacheToken: { fixture: true } }),
+    storeSelectionExplanation: async () => {
+      throw Object.assign(new Error("synthetic quota"), { code: "CACHE_QUOTA" });
+    },
+    completeJson: async input => {
+      providerCalls += 1;
+      return input.parseResult({
+        selectedCandidateIds: ["core:persistent:1"],
+        explanation: "连接在重连期间保持有效。",
+        translation: "持续的"
+      });
+    }
+  });
+  assert.equal(providerCalls, 1);
+  assert.equal(result.route, "explained");
+  assert.equal(result.generated.explanation, "连接在重连期间保持有效。");
+  assert.equal(result.cacheWarning, "CACHE_QUOTA");
+});
+
+test("AI explanation skips cache storage if opening IndexedDB failed before generation", async () => {
+  let providerCalls = 0, stores = 0;
+  const result = await runSelectionExplanationRequest({
+    requestId: "explain-cache-read-fixture",
+    text: "persistent", pageUrl: "https://example.test/",
+    context: { text: "persistent connection", source: "visible-local", sensitive: false }
+  }, {
+    resolveSelectionRequest: async () => ambiguousResolved(),
+    getEffectiveConfig: async () => config,
+    lookupSelectionExplanation: async () => {
+      throw Object.assign(new Error("blocked"), { code: "CACHE_STORAGE_BLOCKED" });
+    },
+    storeSelectionExplanation: async () => { stores++; return { stored: 1 }; },
+    completeJson: async input => {
+      providerCalls += 1;
+      return input.parseResult({
+        selectedCandidateIds: ["core:persistent:1"],
+        explanation: "解释内容仍然完整。",
+        translation: "持续的"
+      });
+    }
+  });
+  assert.equal(providerCalls, 1);
+  assert.equal(stores, 0);
+  assert.equal(result.generated.explanation, "解释内容仍然完整。");
+  assert.equal(result.cacheWarning, "CACHE_STORAGE_BLOCKED");
 });

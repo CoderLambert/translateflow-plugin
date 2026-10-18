@@ -32,7 +32,7 @@ function expectInsideViewport(value) {
   expect(value.panelRect.left).toBeGreaterThanOrEqual(viewport.offsetLeft + 7);
   expect(value.panelRect.right).toBeLessThanOrEqual(viewport.offsetLeft + viewport.width - 7);
   expect(value.panelRect.top).toBeGreaterThanOrEqual(viewport.offsetTop + 7);
-  expect(value.panelRect.bottom).toBeLessThanOrEqual(viewport.offsetTop + viewport.height - 7);
+  expect(value.panelRect.bottom, JSON.stringify(value)).toBeLessThanOrEqual(viewport.offsetTop + viewport.height - 7);
   expect(value.closeRect.left).toBeGreaterThanOrEqual(value.panelRect.left);
   expect(value.closeRect.right).toBeLessThanOrEqual(value.panelRect.right);
   expect(value.closeRect.top).toBeGreaterThanOrEqual(value.panelRect.top);
@@ -49,9 +49,13 @@ test("Content partial/Stop saves nothing; complete and grounded learning-center 
   const content = await harness.open("/selection"); await harness.inject(content);
   await select(content, "#technical-competition", "session");
   await expect(content.locator(".tf-selection-record-status")).toHaveAttribute("data-state", "saved");
+  const stream = harness.server.holdNextAssistantStream();
   await content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+  await stream.started;
   await expect(content.locator(".tf-selection-generated-body")).toContainText("streamed");
   await content.getByRole("button", { name: "停止 AI 回答", exact: true }).click();
+  await stream.finished;
+  expect(harness.server.calls[0].responseState).toBe("closed");
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "interrupted");
   await expect(content.locator(".tf-selection-ai-detail")).toContainText("已停止，未保存");
   let listed = await message(center, M.LIST_RECORDS, { pageKey: null, query: "session", cursor: null, limit: 30 });
@@ -161,7 +165,7 @@ test("AI Markdown is rendered safely without changing the dictionary window size
   expect(await body.locator("a").evaluateAll(links => links.some(link => link.href.startsWith("javascript:")))).toBe(false);
   const aiSize = await panel.boundingBox();
   expect(Math.abs(aiSize.width - dictionarySize.width)).toBeLessThanOrEqual(1);
-  expect(content.locator(".tf-selection-footer-actions").getByRole("button", { name: "复制" })).toHaveCount(0);
+  await expect(content.locator(".tf-selection-footer-actions").getByRole("button", { name: "复制" })).toHaveCount(0);
   expect(external).toEqual([]);
 });
 
@@ -171,10 +175,13 @@ test("Narrow initial, streaming and completed AI panels stay inside the actual v
   const content = await harness.open("/selection"); await content.setViewportSize({ width: 360, height: 420 }); await harness.inject(content);
   await select(content, "#technical-competition", "session");
   const initial = await geometry(content, "initial");
+  const stream = harness.server.holdNextAssistantStream();
   await content.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+  await stream.started;
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "streaming");
   await expect(content.locator(".tf-selection-generated-body")).toContainText("streamed");
   const streaming = await geometry(content, "streaming");
+  stream.release();
   await expect(content.locator(".tf-selection-ai-detail")).toHaveAttribute("data-state", "success");
   const completed = await geometry(content, "completed");
   for (const value of [initial, streaming, completed]) expectInsideViewport(value);

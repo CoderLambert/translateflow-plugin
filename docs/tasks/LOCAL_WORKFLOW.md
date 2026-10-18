@@ -8,7 +8,7 @@
 - `<task>/state.json`：主 Agent 单写。dependencies、validationCommands、artifactRequired 是机器可执行验收要求，合同中只引用，不另建状态机。更改要求时重新绑定任务合同；用户授权的验证范围收窄须说明依据和既有覆盖，不能把未解决失败或数据/安全问题排除出验收。
 - `<task>/acceptance.json`：准确 candidateHead/tree、环境、实际 checks、单调耗时、日志 hash、实际包 fingerprint 和限制。
 - `<task>/review.md`：可选的自查或历史审核记录，写明实际主体与准确 head；不要求模型审核，不把自查写成独审通过。
-- `index.json`：从每个 state.json 生成的只读投影。`node scripts/local-task.mjs index`；禁止手工维护。
+- `index.json`：从含有 `state.json` 的任务目录生成的只读投影。没有状态文件的历史任务目录不会进入索引，也不会为补索引而伪造状态；`node scripts/local-task.mjs index`；禁止手工维护。
 - `../task-execution/local/`：Git 忽略的原始事件、完整日志、截图和备份。禁止提交原始私人信息；日志丢失时本地 gate 拒绝同步，不补造 PASS。
 
 状态：working → reviewing → ready_to_sync → completed；问题修复为 changes_requested → working。暂停/阻塞使用 paused/blocked，保存下一动作。状态由协调者根据真实结果写入，Hook 不判断。completed 必须满足本任务验收、实际合入 main 并记录 mergeHead；编写完成、PR、测试通过均不能单独作为完成。依赖要求 completed 且 mergeHead 为已 fetch 的 origin/main 祖先。
@@ -23,7 +23,7 @@
 - 核对 Git 基线后保留本轮结果；有远端代码变化迹象或到合并边界才再次刷新，不循环查询同一状态。日常不查询 GitHub Issue/评论/标签/CI。独立读取可批量进行，只读取相关片段，不反复加载原始日志或整段历史。
 - 沿用现有任务卡、脚本和状态机。完成记录优先随下一次已授权同步归档；用户要求单独同步时做最小归档，不为归档新建递归任务、重复冻结/验收/模型审核或继续生成下一轮待归档记录。除用户明确要求或实际功能缺口，不增加平台、Hook、检查脚本、流程层级或重复文档；满足验收及本次授权后结束。
 
-纯元数据归档仅允许当前任务的 state.json、acceptance.json、review.md 和生成 index.json 的事实记录变化。主 Agent 核对实际 diff、索引、原候选证据、未变化的源码/合同输入指纹及真实合入 SHA；不改 candidateHead，不改写独审结论，不降低 dependencies、validationCommands、artifactRequired 或人工验收。条件满足时复用原验收证据，不再调用模型审核或重跑完整 validate；复用不代表新归档提交获得了独立审核。
+纯元数据归档仅允许当前任务的 state.json、acceptance.json、review.md、validation-report.md 和生成 index.json 的事实记录变化。主 Agent 核对实际 diff、索引、原候选证据、未变化的源码/合同输入指纹及真实合入 SHA；不改 candidateHead，不改写独审结论，不降低 dependencies、validationCommands、artifactRequired 或人工验收。条件满足时复用原验收证据，不再调用模型审核或重跑完整 validate；复用不代表新归档提交获得了独立审核。
 
 合并前归档仍执行现有 gate。合并后仅更新完成记录时，保留原实现 mergeHead 和验收/审核绑定，核对原 syncHead 与实际 squash 合入的 tree 一致、合入提交属于当前 main，再校对上述输入指纹与生成索引；不将 completed 临时改为 ready_to_sync 来强行通过 gate。缺失证据、出现白名单外修改或验收要求变化时停止复用，按影响恢复验证。准确远端 head、实际分支保护/必需审查、人工验收和合并后核对始终保留。
 
@@ -69,7 +69,7 @@
 
 候选必须先提交再测，避免“测过脏树但没有可审代码”。acceptance 生成后是元数据修改：它不可能同时包含自身未来 commit SHA。
 
-candidateHead 是实际测试的提交，syncHead 是归档提交和远端 expected-head。两者必须有 Git 祖先关系，且完整输入指纹一致；冻结、命令前后和 gate 逐文件校对真实磁盘输入与 Git blob，不依赖可被 assume-unchanged/skip-worktree 隐藏的 Git status。当前 Linux 使用精确字节和可执行位；CRLF 转换/Windows 该门槛 NOT VERIFIED，不能宣称跨平台。只允许**当前任务**的 state.json、acceptance.json、review.md 以及生成 index.json 的差异。task.md、其它任务文件、源码、测试、package/lock、workflow、脚本、构建输入的任何变化都使旧候选失效。冻结后的机器验收要求另与候选 state 比较，不能通过改 state 削弱依赖或检查。
+candidateHead 是实际测试的提交，syncHead 是归档提交和远端 expected-head。两者必须有 Git 祖先关系，且完整输入指纹一致；冻结、命令前后和 gate 逐文件校对真实磁盘输入与 Git blob，不依赖可被 assume-unchanged/skip-worktree 隐藏的 Git status。当前 Linux 使用精确字节和可执行位；CRLF 转换/Windows 该门槛 NOT VERIFIED，不能宣称跨平台。只允许**当前任务**的 state.json、acceptance.json、review.md、validation-report.md 以及生成 index.json 的差异。task.md、其它任务文件、源码、测试、package/lock、workflow、脚本、构建输入的任何变化都使旧候选失效。冻结后的机器验收要求另与候选 state 比较，不能通过改 state 削弱依赖或检查。
 
 主 Agent 根据真实结果将当前 state 写为 ready_to_sync/candidateHead，生成索引，归档证据并提交，然后：
 

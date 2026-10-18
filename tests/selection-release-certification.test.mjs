@@ -31,7 +31,7 @@ test("#107 Selection release gate keeps every required fixture family in manual 
     "ambiguous Selection keeps dictionary content visible through explicit AI detail",
     "technical entity Selection stays compact and preserves supplied identity metadata",
     "Selection AI detail cancel preserves local content and stale completion cannot overwrite retry",
-    "Selection card exposes provenance, explicit AI retry, narrow viewport and copy",
+    "Selection card exposes provenance, explicit AI retry and a readable answer in a narrow viewport",
     "selection context stays selection-only inside nested editable surfaces"
   ]) {
     assert.ok(integrated.includes(marker), marker);

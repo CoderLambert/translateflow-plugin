@@ -42,10 +42,17 @@ async function ready(f) {
 test("actual commands, monotonic duration and log hash permit only evidence archive commits", async (t) => {
   const f = fixture(t), a = await ready(f);
   assert.equal(gate(f.root, "234").candidateHead, a.candidateHead);
+  writeFileSync(join(f.root, "docs/tasks/234/validation-report.md"), "# Candidate-bound validation report\n");
   f.git("add", "docs/tasks"); f.git("commit", "-m", "archive only");
   const result = gate(f.root, "234");
   assert.notEqual(result.syncHead, result.candidateHead);
   assert.equal(result.syncHead, f.git("rev-parse", "HEAD"));
+});
+test("task index skips historical task folders that have no state.json", (t) => {
+  const f = fixture(t);
+  mkdirSync(join(f.root, "docs/tasks/browser-native-language"), { recursive: true });
+  writeFileSync(join(f.root, "docs/tasks/browser-native-language/task.md"), "Historical task without local state\n");
+  assert.deepEqual(buildIndex(f.root).tasks.map((task) => task.task), ["234"]);
 });
 test("candidate requires committed clean inputs; later tracked, staged and untracked code rejects", async (t) => {
   const f = fixture(t);

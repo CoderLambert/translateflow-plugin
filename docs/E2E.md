@@ -71,6 +71,14 @@ mock server 解析真实 Chat Completions request：
 
 因此缓存测试可以直接断言 Provider 调用次数，而不是根据 UI 时间推断是否命中缓存。
 
+停止、换选区和流式布局用例使用 `server.holdNextAssistantStream()`，并显式配置 `streaming: true`。`started` 表示真实请求已收到第一段响应，`release()` 允许完成；取消用例还须验证服务端 `responseState` 为 `closed`，不能只看按钮消失或用固定延时等待自然完成。
+
+## 固定 ECDICT 来源的导入验证
+
+`e2e/curated-ecdict-product.spec.mjs` 默认访问 recipe 锁定的公开上游 URL。若测试浏览器的外网环境无法完成下载，可用 `TF_E2E_ECDICT_CSV=/absolute/path/ecdict.csv` 提供已下载的完整公开源文件。用例会先核对当前 recipe 的完整字节数和 Git blob SHA-1，记录实际 SHA-256，然后仅回放该精确 URL 的 GET 响应；文件不符即失败。
+
+该模式仍运行原生产权限请求、Worker 转换、OPFS staging、后台完整性验证、提交、Selection 查询和删除。证据标记为 `verified-source-replay` 并断言仅一次拦截，不能作为浏览器实际互联网下载成功的证明。不设置变量时，网络模式为 `direct-upstream`。生产 URL、权限、TLS 和转换逻辑均不因该测试选项变化。
+
 ## 当前 v0.8 smoke flows
 
 Playwright suite covers:
@@ -90,9 +98,9 @@ Real public YouTube and OS/browser chrome are not stable CI dependencies; live e
 
 ## Test isolation requirements
 
-The Playwright extension fixture uses a worker-scoped persistent Chromium profile, so tests must reset both extension storage and IndexedDB-backed translation cache between cases.
+The shared Playwright extension fixture creates one temporary persistent Chromium profile per test. A case can restart that same profile to verify persistence; the next case receives a fresh profile, including independent Reading IndexedDB consent/history, dictionary OPFS, permissions, open documents and requests. Clearing `chrome.storage.local` alone cannot reset those owners and previously caused order-dependent results.
 
-`harness.reset()` therefore clears cache through the public `CACHE_CLEAR_ALL` background route before restoring baseline `chrome.storage.local` values. Clearing storage alone is insufficient because IndexedDB survives and can create order-dependent cache hits.
+Initial setup waits for the native installation defaults to commit before applying fixture settings. Within a case, `harness.reset()` clears translation cache through the public `CACHE_CLEAR_ALL` route and restores baseline `chrome.storage.local` values. It deliberately does not erase Reading history or OPFS; use `resetProfile()` when a single case needs another fresh installation.
 
 Multiple test pages may also remain open at the same URL. URL-only tab lookup is ambiguous, so `harness.open()` stamps each page with a unique test token and `tabId(page)` resolves the exact Chrome tab by checking that token through `chrome.scripting.executeScript`.
 

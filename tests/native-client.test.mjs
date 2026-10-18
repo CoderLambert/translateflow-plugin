@@ -4,6 +4,7 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import * as contract from "../src/shared/browser-translation.js";
 import * as language from "../src/shared/browser-language.js";
+const runtimeCode = await readFile(new URL("../src/content/runtime.js", import.meta.url), "utf8");
 const code = await readFile(new URL("../src/content/translation-client.js", import.meta.url), "utf8");
 const M = Object.fromEntries(["TRANSLATION_ENGINE_SETTINGS", "CACHE_LOOKUP", "CACHE_STORE", "TRANSLATE_BATCH", "SUBTITLE_TRANSLATE_BATCH", "CANCEL_TRANSLATION", "OPEN_OPTIONS", "PUBLIC_SETTINGS_CHANGED"].map(key => [key, key]));
 const pageUrl = "https://example.test/article";
@@ -19,9 +20,10 @@ function setup({ prompt = async () => { throw new Error("Unexpected prompt"); },
   };
   const buildSubtitleCacheSource = unit => JSON.stringify({ media: unit.mediaId, track: unit.track, text: unit.text });
   const app = { modules: { browserTranslationContract: { ...contract, ...language, buildSubtitleCacheSource }, browserTranslation: engine,
-    browserTranslationView: { prompt, close() {} }, runtime: { messages: { background: M } }, contentI18n: { t: key => key } } };
+    browserTranslationView: { prompt, close() {} }, contentI18n: { t: key => key } } };
   const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: pageUrl }, document: { documentElement: { lang: "es" } },
-    window: { addEventListener: (key, fn) => { events[key] = fn; } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController });
+    window: { addEventListener: (key, fn) => { events[key] = fn; } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController, URL });
+  vm.runInContext(runtimeCode, context);
   vm.runInContext(code, context);
   const raw = async payload => {
     calls.push(payload);
@@ -31,11 +33,14 @@ function setup({ prompt = async () => { throw new Error("Unexpected prompt"); },
       const sourceLanguage = payload.browserTranslation.sourceLanguage, id = `backend-${++sequence}`;
       backend.set(id, sourceLanguage);
       return { ok: true, engine: contract.BROWSER_ENGINE, sourceLanguage, targetLanguage: settings.targetLanguage, configSnapshotId: id,
-        hits: payload.segments.filter(item => cache.has(`${sourceLanguage}:${item.text}`)).map(item => ({ id: item.id, text: cache.get(`${sourceLanguage}:${item.text}`) })) };
+        hits: payload.segments.filter(item => cache.has(`${sourceLanguage}:${item.text}`)).map(item => ({ id: item.id, text: cache.get(`${sourceLanguage}:${item.text}`) })),
+        writeTokens: payload.segments.map(item => ({ id: item.id, token: { namespace: 'translation', source: item.text, language: sourceLanguage } })) };
     }
     if (payload.type === M.CACHE_STORE) {
       const lang = backend.get(payload.configSnapshotId);
       if (!lang) return { ok: false, errorCode: "CONFIG_SNAPSHOT_EXPIRED" };
+      if (payload.items.some(item => !item.cacheToken || item.cacheToken.language !== lang))
+        return { ok: false, errorCode: "CACHE_INVALID_TOKEN" };
       for (const item of payload.items) cache.set(`${lang}:${item.sourceText}`, item.translation);
       return { ok: true, stored: payload.items.length };
     }
@@ -148,4 +153,73 @@ test("a native plan cannot be reused by a different request", async () => {
   await assert.rejects(s.client.send({ type: M.TRANSLATE_BATCH, pageUrl, requestId: "other", configSnapshotId: original.configSnapshotId,
     segments: [{ id: "a", text: "Hello" }] }, s.raw), { code: "CONFIG_SNAPSHOT_EXPIRED" });
   assert.equal(s.executions.length, 0);
+});
+
+
+test("native selection retains model result when the Background reports a cache persistence failure", async () => {
+  for (const code of ["CACHE_QUOTA", "CACHE_STORAGE", "CACHE_STORAGE_BLOCKED", "CACHE_STORAGE_TIMEOUT"]) {
+    const s = setup(), segments = [{ id: "a", text: "Hello world" }];
+    const { lookup, result, requestId } = await translate(s, segments);
+    const raw = async payload => payload.type === M.CACHE_STORE
+      ? { ok: false, errorCode: code } : s.raw(payload);
+    const saved = await s.client.send({
+      type: M.CACHE_STORE, pageUrl, requestId, configSnapshotId: lookup.configSnapshotId,
+      items: [{ sourceText: segments[0].text, translation: result.translations[0].text }]
+    }, raw);
+    assert.equal(saved.ok, true);
+    assert.equal(saved.stored, 0);
+    assert.equal(saved.cacheWarning, code);
+    assert.equal(result.translations[0].text, "translated[en]:Hello world");
+    assert.equal(s.executions.length, 1, "do not execute the native model again");
+    assert.equal(s.cache.size, 0, "failed persistence cannot become a hit");
+  }
+});
+
+test("native lookup passes cache read failures to the UI and never attempts a tokenless save", async () => {
+  const s = setup(), segments = [{ id: "a", text: "Hello world" }];
+  const raw = async payload => {
+    const response = await s.raw(payload);
+    return payload.type === M.CACHE_LOOKUP && payload.browserTranslation
+      ? { ...response, cacheWarning: "CACHE_STORAGE", writeTokens: [] }
+      : response;
+  };
+  const requestId = "native-cache-outage";
+  const lookup = await s.client.send({ type: M.CACHE_LOOKUP, pageUrl, requestId, segments, cacheOnly: false }, raw);
+  assert.equal(lookup.ok, true);
+  assert.equal(lookup.cacheWarning, "CACHE_STORAGE");
+  const translated = await s.client.send({ type: M.TRANSLATE_BATCH, pageUrl, requestId,
+    configSnapshotId: lookup.configSnapshotId, segments }, raw);
+  const saved = await s.client.send({ type: M.CACHE_STORE, pageUrl, requestId,
+    configSnapshotId: lookup.configSnapshotId, items: [{
+      sourceText: "Hello world", translation: translated.translations[0].text
+    }] }, raw);
+  assert.equal(saved.cacheWarning, "CACHE_STORAGE");
+  assert.equal(saved.stored, 0);
+  assert.equal(s.calls.some(call => call.type === M.CACHE_STORE), false);
+  assert.equal(s.executions.length, 1);
+});
+
+test("native subtitle delivery survives a failed cache write and does not run the model twice", async () => {
+  const s = setup();
+  const raw = async payload => payload.type === M.CACHE_STORE
+    ? { ok: false, errorCode: "CACHE_QUOTA" } : s.raw(payload);
+  const reply = await s.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "native-subtitle-outage",
+    pageUrl, units: [{ id: "sub", text: "Bonjour", mediaId: "public-video", track: { id: "en", language: "en" } }] }, raw);
+  assert.equal(reply.ok, true);
+  assert.equal(reply.translations.length, 1);
+  assert.equal(reply.translations[0].text, "translated[en]:Bonjour");
+  assert.equal(reply.cacheWarning, "CACHE_QUOTA");
+  assert.equal(s.executions.length, 1);
+  assert.equal(s.cache.size, 0);
+});
+
+test("native store still rejects invalid tokens and stale configuration", async () => {
+  const s = setup(), segments = [{ id: "a", text: "Hello world" }];
+  const { lookup, result, requestId } = await translate(s, segments);
+  const rejectedRaw = async payload => payload.type === M.CACHE_STORE
+    ? { ok: false, errorCode: "CACHE_INVALID_TOKEN" } : s.raw(payload);
+  await assert.rejects(s.client.send({ type: M.CACHE_STORE, pageUrl, requestId,
+    configSnapshotId: lookup.configSnapshotId, items: [{ sourceText: "Hello world", translation: result.translations[0].text }] }, rejectedRaw),
+  { code: "CACHE_INVALID_TOKEN" });
+  assert.equal(s.cache.size, 0);
 });

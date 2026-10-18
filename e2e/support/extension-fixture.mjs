@@ -257,6 +257,10 @@ export const test = base.extend({
       }
     };
 
+    // The worker target can appear before the native install handler commits
+    // defaults. Do not let that late write overwrite a test's explicit config.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
     await harness.reset();
     await use(harness);
     } finally {
@@ -266,7 +270,10 @@ export const test = base.extend({
         finally { await rm(tempRoot, { recursive: true, force: true }); }
       }
     }
-  }, { scope: "worker" }]
+  // Each case owns its real profile, including Reading IDB, dictionary OPFS,
+  // permissions, open documents and in-flight requests. storage.local.clear()
+  // alone cannot reset those owners or restore first-install consent.
+  }, { scope: "test" }]
 });
 
 export { expect };

@@ -45,7 +45,8 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
           }] } };
         return { ok: true, route: "translation", intent: { kind: "translation", sourceLanguage: "en" }, explanationAllowed: false };
       case "cache-lookup":
-        return { ok: true, hits: [] };
+        return { ok: true, hits: [], configSnapshotId: "fixture-config",
+          writeTokens: [{ id: "selection", token: { fixture: true } }] };
       case "translate-batch":
         return { ok: true, translations: [{ id: "selection", text: `${request.segments[0].text} translated` }],
           readingResult: { targetLanguage: "zh-CN", provenance: { provider: "synthetic" } } };
@@ -56,7 +57,7 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
           storeAcks.push(storeAck);
           (index === 0 ? storeStarted : secondStoreStarted).resolve();
           const result = await storeAck.promise;
-          if (result?.ok) stored = true;
+          if (result?.ok && Number(result.stored || 0) > 0) stored = true;
           return result;
         }
       case "cancel-translation":
@@ -146,12 +147,23 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
     selectionRecordStatus: { update() {}, clear() {} },
     selectionSourceSnapshot: {
       createProjectionGuard({ getSnapshot, getCurrentUrl, getPageIdentity, onAccept, onReject }) {
+        const freezeQuery = (snapshot) => {
+          const frozen = this.capture(snapshot);
+          snapshot.sourceCapture = frozen; snapshot.text = frozen.selectedText;
+          return frozen;
+        };
+        const isFrozenCurrent = (snapshot, frozen) => snapshot === getSnapshot() && snapshot.sourceCapture === frozen
+          && snapshot.sourceRevision === frozen.sourceRevision && frozen.sourceRevision === projectionRevision;
+        const getQuerySource = () => {
+          const snapshot = getSnapshot(), frozen = snapshot?.sourceCapture;
+          return frozen && isFrozenCurrent(snapshot, frozen) ? frozen : null;
+        };
         return { invalidate: (revision = projectionRevision) => {
           const snapshot = getSnapshot(), capture = snapshot?.sourceCapture;
           if (!snapshot) return;
           if (this.matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) onAccept(snapshot, capture, revision);
           else onReject();
-        }, clear() {} };
+        }, clear() {}, freezeQuery, isFrozenCurrent, getQuerySource };
       },
       matchesCurrentPage(snapshot, frozen, currentUrl, getIdentity) {
         return Boolean(snapshot) && getIdentity(snapshot.pageUrl) === getIdentity(currentUrl)
@@ -188,7 +200,7 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
     messages, chips, results, resultActions, errors, accepted, statuses, appModules: app.modules, assistantPorts, vocabularyAdds, aiPersistence, assistantInterruptions,
     ready: waitForChip(1), storeStarted: storeStarted.promise,
     secondStoreStarted: secondStoreStarted.promise, waitForChip,
-    resolveStore: (index = 0, result = { ok: true }) => storeAcks[index].resolve(result), get stored() { return stored; },
+    resolveStore: (index = 0, result = { ok: true, stored: 1 }) => storeAcks[index].resolve(result), get stored() { return stored; },
     get cancelButtonDisabled() { return cancelButtonDisabled; },
     get hideCount() { return hideCount; }, get repositionCount() { return repositionCount; },
     get referenceInvalidations() { return referenceInvalidations; },
@@ -371,7 +383,9 @@ test("navigation and projection changes invalidate a saved local dictionary resu
   await projection.ready;
   await projection.translate();
   const projectionSave = projection.resultActions[0].onSave;
+  assert.ok(projection.appModules.selectionController.getQuerySource());
   projection.changeProjection();
+  assert.equal(projection.appModules.selectionController.getQuerySource(), null);
   assert.throws(() => projectionSave({ isTrusted: true }), error => error.i18nKey === "content.vocabulary.updated");
   assert.equal(projection.vocabularyAdds.length, 0);
 });
@@ -461,19 +475,20 @@ test("dismiss after storage starts permits the commit but suppresses stale UI an
   assert.equal(h.accepted.length, 0);
 });
 
-test("Selection cache quota failure remains visible after storage begins", async () => {
+test("Selection quota warning keeps a confirmed translation visible without a second Provider call", async () => {
   const h = harness();
   await h.ready;
   const pending = h.translate();
   await h.storeStarted;
-  h.resolveStore(0, { ok: false, errorCode: "QUOTA_EXCEEDED" });
+  h.resolveStore(0, { ok: true, stored: 0, cacheWarning: "CACHE_QUOTA" });
   await pending;
 
-  assert.equal(h.getTask().state, "failed");
-  assert.equal(h.getTask().errorCode, "QUOTA_EXCEEDED");
-  assert.ok(h.errors.includes("content.selection.cacheStoreFailed"));
-  assert.equal(h.results.length, 0);
-  assert.equal(h.accepted.length, 0);
+  assert.equal(h.getTask().state, "completed");
+  assert.equal(h.stored, false);
+  assert.deepEqual(h.errors, []);
+  assert.equal(h.results.length, 1);
+  assert.equal(h.accepted.length, 1);
+  assert.equal(h.messages.filter(message => message.type === "translate-batch").length, 1);
 });
 
 test("controller capture Escape closes owned rich layers before dismissing Selection", async () => {

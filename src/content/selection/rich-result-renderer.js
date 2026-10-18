@@ -289,7 +289,7 @@
             packageVersion: String(dictionary?.packageVersion || ""),
             ...(dictionary?.packVersion ? { packVersion: String(dictionary.packVersion) } : {}),
             ...(Number.isSafeInteger(dictionary?.recordOffset) ? { recordOffset: dictionary.recordOffset } : {}),
-            ...(navigation ? { onAction: (action) => navigation.navigate(action) } : {})
+            ...(navigation ? { onAction: (action) => navigation.navigate(action, null, body) } : {})
           });
         }
       } catch {

@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
+import { readFile, stat } from "node:fs/promises";
+import { isAbsolute } from "node:path";
 import {
   test,
   expect
 } from "./support/extension-fixture.mjs";
+import { CURATED_DICTIONARY_IDS, getCuratedDictionary } from "../src/shared/curated-dictionaries.js";
 
 test.describe("curated ECDICT product flow", () => {
   test.setTimeout(180_000);
@@ -10,7 +14,8 @@ test.describe("curated ECDICT product flow", () => {
     await harness.reset();
   });
 
-  test("visible Settings install activates the locked upstream pack for Selection without Provider calls", async ({ harness }) => {
+  test("visible Settings install activates the locked upstream pack for Selection without Provider calls", async ({ harness }, testInfo) => {
+    const network = await configureEcdictSource(harness.context);
     const options = await harness.context.newPage();
     await options.goto(
       `chrome-extension://${harness.extensionId}/options.html#dictionary-packs`
@@ -26,9 +31,14 @@ test.describe("curated ECDICT product flow", () => {
       .getByRole("button", { name: "下载并安装" })
       .click();
 
-    await expect(row).toContainText("安装完成", {
-      timeout: 150_000
-    });
+    try {
+      await expect(row).toContainText("安装完成", {
+        timeout: 150_000
+      });
+    } finally {
+      await network.finish(testInfo);
+    }
+    expect(network.evidence.interceptionCount).toBe(network.replay ? 1 : 0);
     const installDetail = String(
       await row
         .locator(".dictionary-pack-detail")
@@ -207,6 +217,45 @@ test.describe("curated ECDICT product flow", () => {
     expect(harness.server.calls).toHaveLength(0);
   });
 });
+
+async function configureEcdictSource(context) {
+  const source = getCuratedDictionary(CURATED_DICTIONARY_IDS.ECDICT_EN_ZH);
+  const sourcePath = process.env.TF_E2E_ECDICT_CSV;
+  const evidence = {
+    networkMode: sourcePath ? "verified-source-replay" : "direct-upstream",
+    url: source.downloadUrl,
+    inputBytes: source.downloadBytes,
+    gitBlobSha1: source.upstreamBlobSha1,
+    interceptionCount: 0
+  };
+  let handler;
+  if (sourcePath) {
+    if (!isAbsolute(sourcePath)) throw new Error("TF_E2E_ECDICT_CSV must be an absolute path to the complete locked public CSV.");
+    const info = await stat(sourcePath);
+    if (!info.isFile() || info.size !== source.downloadBytes) throw new Error("ECDICT replay source byte length does not match the declared source lock.");
+    const bytes = await readFile(sourcePath);
+    const gitBlobSha1 = createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+    if (bytes.length !== source.downloadBytes || gitBlobSha1 !== source.upstreamBlobSha1) throw new Error("ECDICT replay source does not match the declared Git blob lock.");
+    evidence.sha256 = createHash("sha256").update(bytes).digest("hex");
+    handler = async (route) => {
+      expect(route.request().url()).toBe(source.downloadUrl);
+      expect(route.request().method()).toBe("GET");
+      evidence.interceptionCount += 1;
+      await route.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", body: bytes });
+    };
+    // Replay only this exact, integrity-verified public source. Permission requests,
+    // the production Worker, parser, quarantine and commit still run normally.
+    await context.route(source.downloadUrl, handler);
+  }
+  return {
+    replay: Boolean(sourcePath), evidence,
+    async finish(testInfo) {
+      console.log("[ECDICT_PRODUCT_NETWORK]", JSON.stringify(evidence));
+      await testInfo.attach("ecdict-source-evidence", { body: JSON.stringify(evidence, null, 2), contentType: "application/json" });
+      if (handler) await context.unroute(source.downloadUrl, handler);
+    }
+  };
+}
 
 async function selectElementText(page, selector) {
   await page.locator(selector).evaluate((element) => {

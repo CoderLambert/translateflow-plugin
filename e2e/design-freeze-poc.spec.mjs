@@ -1,6 +1,6 @@
 import { test, expect, chromium } from "@playwright/test";
 import { webcrypto } from "node:crypto";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { copyProductionArtifact, defaultArtifact } from "./support/production-artifact.mjs";
@@ -338,8 +338,9 @@ test("Design Freeze POC: visible context crosses inline nodes but editable conte
 });
 
 
-test("Design Freeze POC: optional host access can be requested for one trusted origin only", async () => {
+test("Design Freeze POC: an exact host request preserves the production permission baseline", async () => {
   const { tempRoot, extensionDir, userDataDir } = await prepareExtension();
+  const manifest = JSON.parse(await readFile(join(extensionDir, "manifest.json"), "utf8"));
   let context;
   try {
     const launched = await launchExtension(extensionDir, userDataDir);
@@ -369,7 +370,8 @@ test("Design Freeze POC: optional host access can be requested for one trusted o
             origins: [requestedOrigin]
           });
           const all = await chrome.permissions.getAll();
-          globalThis.__tfPermissionRequest.result = { granted, origins: all.origins || [] };
+          const contains = await chrome.permissions.contains({ origins: [requestedOrigin] });
+          globalThis.__tfPermissionRequest.result = { granted, contains, origins: all.origins || [] };
         } catch (error) {
           globalThis.__tfPermissionRequest.result = {
             granted: false,
@@ -382,30 +384,24 @@ test("Design Freeze POC: optional host access can be requested for one trusted o
     });
 
     const before = await page.evaluate(async () => (await chrome.permissions.getAll()).origins || []);
-    expect(before).not.toContain("https://packs.translateflow.example/*");
+    expect([...before].sort()).toEqual([...manifest.host_permissions].sort());
+    const preGranted = await page.evaluate(() => chrome.permissions.contains({
+      origins: ["https://packs.translateflow.example/*"]
+    }));
+    expect(preGranted).toBe(true);
 
     await page.locator("#tf-design-freeze-permission").click();
     await expect.poll(() => page.evaluate(() => globalThis.__tfPermissionRequest?.started)).toBe(true);
-    await page.waitForTimeout(500);
+    await expect.poll(() => page.evaluate(() => globalThis.__tfPermissionRequest?.result)).not.toBeNull();
     const permission = await page.evaluate(() => globalThis.__tfPermissionRequest);
-    console.log("[design-freeze:optional-origin]", JSON.stringify(permission));
+    console.log("[design-freeze:exact-origin]", JSON.stringify({ ...permission, preGranted }));
 
     expect(permission.requestedOrigin).toBe("https://packs.translateflow.example/*");
-    if (permission.result) {
-      expect(permission.result.granted, permission.result.error || "optional host request was denied").toBe(true);
-      expect(permission.result.origins).toContain("https://packs.translateflow.example/*");
-      expect(permission.result.origins).not.toContain("https://*/*");
-      const removed = await page.evaluate(async () => chrome.permissions.remove({
-        origins: ["https://packs.translateflow.example/*"]
-      }));
-      expect(removed).toBe(true);
-    } else {
-      // Headless Chromium cannot interact with the browser-level optional-host
-      // permission prompt. A still-pending Promise after a user-gesture click
-      // proves the request reached that prompt rather than being synchronously
-      // rejected by the extension permission contract.
-      expect(permission.result).toBeNull();
-    }
+    expect(permission.result.granted, permission.result.error || "exact host request was denied").toBe(true);
+    expect(permission.result.contains).toBe(true);
+    // getAll() keeps the manifest's covering patterns; it does not add a
+    // redundant literal origin for a host the production package already has.
+    expect([...permission.result.origins].sort()).toEqual([...before].sort());
 
     await page.close();
   } finally {

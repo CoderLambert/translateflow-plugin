@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, writeFile, readFile, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, mkdir, rm, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { nextCommitVersion, prepareVersionedCommit } from "../scripts/prepare-versioned-commit.mjs";
@@ -28,7 +28,7 @@ test("commit versions increment patch, preserve explicit forward bumps and rejec
   assert.throws(() => nextCommitVersion("0.8.2", "0.8.1"), /older/);
   assert.throws(() => nextCommitVersion("0.8.65535", "0.8.65535"), /exhausted/);
 });
-test("hook compiles the index, syncs version fields and preserves unrelated unstaged changes", async t => {
+test("explicit version preparation compiles the index and preserves unrelated unstaged changes", async t => {
   const root = await fixture(t);
   const staged = { ...await json(root, "package.json"), description: "staged description" };
   await writeFile(join(root, "package.json"), JSON.stringify(staged, null, 2) + "\n"); await git(root, "add", "package.json");
@@ -71,4 +71,23 @@ test("an unstaged manual version choice is preserved and requires explicit stagi
   await writeFile(join(root, "package.json"), JSON.stringify({ ...pkg, version: "0.9.0" }, null, 2) + "\n");
   await assert.rejects(prepareVersionedCommit({ root, build: () => assert.fail("must reject before compilation") }), /Stage the manual version/);
   assert.equal(await git(root, "write-tree"), tree); assert.equal((await json(root, "package.json")).version, "0.9.0");
+});
+test("ordinary commits preserve versions and skip compilation while rejecting staged whitespace errors", async t => {
+  const root = await fixture(t);
+  await mkdir(join(root, ".githooks"));
+  const hook = join(root, ".githooks/pre-commit");
+  await writeFile(hook, await readFile(new URL("../.githooks/pre-commit", import.meta.url)));
+  await chmod(hook, 0o755);
+  await git(root, "config", "core.hooksPath", ".githooks");
+  await writeFile(join(root, "notes.md"), "Evidence archive\n");
+  await git(root, "add", "notes.md");
+  await git(root, "commit", "-qm", "archive evidence without changing product version");
+  assert.equal((await json(root, "package.json")).version, "0.8.1");
+  assert.equal((await json(root, "manifest.json")).version, "0.8.1");
+  await assert.rejects(readFile(join(root, "dist/extension/manifest.json")), { code: "ENOENT" });
+  const head = await git(root, "rev-parse", "HEAD");
+  await writeFile(join(root, "notes.md"), "Invalid trailing whitespace \n");
+  await git(root, "add", "notes.md");
+  await assert.rejects(git(root, "commit", "-qm", "must reject whitespace"));
+  assert.equal(await git(root, "rev-parse", "HEAD"), head);
 });

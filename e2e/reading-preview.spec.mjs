@@ -139,13 +139,12 @@ test("saved lookup details reopen from the highlighted word without exposing ans
 
 test("multiple highlights on the same line show independent previews on hover and preserve page interactivity", async ({ harness }) => {
   test.setTimeout(60000);
-  await harness.resetProfile();
   await harness.reset();
   await harness.setStorage({ uiLocale: "en", openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
   const center = await harness.context.newPage();
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
-  const enableRecording = center.getByRole("button", { name: "Enable recording", exact: true });
-  if (await enableRecording.isVisible()) await enableRecording.click();
+  await center.getByRole("button", { name: "Enable recording", exact: true }).click();
+  await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
   const original = await harness.open("/selection"); await harness.inject(original);
 
@@ -257,7 +256,9 @@ test("a new lookup on a page with live highlights keeps the refreshed word previ
   const center = await harness.context.newPage();
   await center.goto(`chrome-extension://${harness.extensionId}/learning-center.html`);
   const enableRecording = center.getByRole("button", { name: "Enable recording", exact: true });
-  if (await enableRecording.isVisible()) await enableRecording.click();
+  await expect(enableRecording).toBeVisible();
+  await enableRecording.click();
+  await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
   const page = await harness.open("/selection"); await harness.inject(page);
   await select(page, "#foundation", "foundation");
