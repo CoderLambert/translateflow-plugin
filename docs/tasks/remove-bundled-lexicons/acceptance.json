@@ -1,16 +1,146 @@
 {
   "schema": 1,
   "task": "remove-bundled-lexicons",
-  "candidateHead": "fdef650b24aca8a8012902c124b07f20b5f5ab6f",
-  "tree": "3f33423b8da50a05429cb8df41d5361df71d89b0",
-  "inputTree": "6331446089b4085f0708a39f2130eabb5bf24e29e94a9a01dd4c7ca6b740c699",
-  "frozenAt": "2026-10-18T18:48:53.701Z",
+  "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+  "tree": "6612062c3ede0c2eafd8072fb3ea94c9004420ea",
+  "inputTree": "0ed339e9bfe123fdd2df6198ac64286e53770d95ae19e82c50b0997dad69c8a5",
+  "frozenAt": "2026-10-18T18:53:21.474Z",
   "environment": {
     "node": "v24.22.0",
     "npm": "11.19.0",
-    "browser": "NOT RUN"
+    "browser": "NOT RUN",
+    "upgradeOldArtifact": "/tmp/translateflow-pr345-final-20261019/.output/chrome-mv3",
+    "upgradeOldArtifactFingerprint": "c3b444aed6277b4741c0a10637cfe85a0941476582973a8a535685422f02e664"
   },
   "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14695.453034,
+      "startedAt": "2026-10-18T18:53:21.675Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/101aadf4-bf39-4fd8-9d57-81e2ca2448a2.log",
+      "logSha256": "2b58fc2cc71989ac4b6d13cbe2fa0cf1337202665520eea236162f8d46659195"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/local-task.test.mjs"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3608.287178,
+      "startedAt": "2026-10-18T18:53:36.509Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/05e74706-594d-4d49-84ab-1e5a874384e9.log",
+      "logSha256": "eaed9061b696bce829f3834652f1a8317d1204465e189decb316c21cf9493a1b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4821.165431,
+      "startedAt": "2026-10-18T18:53:40.260Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/21aea779-4b67-4964-a072-46d954480d6c.log",
+      "logSha256": "5df9cc1e3b5d350e3702e765da1168a5fc4dff90116d6b83fece5ab3b58db8e5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3813.020125,
+      "startedAt": "2026-10-18T18:53:45.223Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/d17586b8-0f90-4966-b85a-a547f283e748.log",
+      "logSha256": "7937e04319fdb70d3299f35fac05ff5bf83e40eadc33f2047d8bd58695ae44d0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2467.876375,
+      "startedAt": "2026-10-18T18:53:49.182Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/9d5a0eb9-cd76-4bd9-a3ac-5ae28ad5370b.log",
+      "logSha256": "77b4aa745516cb05cdfc6542428983102a80b1624b56c282810a4d5cb88f34ed"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2498.313344,
+      "startedAt": "2026-10-18T18:53:51.795Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/a7a0b9c6-5a26-4817-9634-5d27346e9417.log",
+      "logSha256": "a61450bc569bc9ec2fc7813a31f5222978d66f5257a1e3b046e60aeaf2857900"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1190.388225,
+      "startedAt": "2026-10-18T18:53:54.434Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/46eeeb74-dbce-4eeb-8715-d73921656f02.log",
+      "logSha256": "e6268e648c5623b7bc0115c12087f5aa1b550159c1797b1bff21ed13acc3f262"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 430193.585432,
+      "startedAt": "2026-10-18T18:54:04.359Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/9581b289-e5be-444d-9f4d-b66ce7e5a23b.log",
+      "logSha256": "ad9b47da9696d2993f2b05fdaee2b03097d7b08683f52ef0d76020fda24ff037"
+    }
+  ],
+  "artifact": null,
+  "limitations": [],
+  "priorChecks": [
     {
       "command": [
         "npm",
@@ -27,6 +157,31 @@
       "logSha256": "620fda66a63135f21db51d26b7df2ca13732bf872379507f42cf90f1491e4bbc"
     }
   ],
-  "artifact": null,
-  "limitations": []
+  "reusedChecks": [
+    {
+      "result": "REUSED",
+      "testedHead": "fdef650b24aca8a8012902c124b07f20b5f5ab6f",
+      "testedTree": "3f33423b8da50a05429cb8df41d5361df71d89b0",
+      "sourceCommand": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "sourceResult": "FAIL",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/ac0db496-1415-4a44-bd76-4f54bea716dc.log",
+      "logSha256": "620fda66a63135f21db51d26b7df2ca13732bf872379507f42cf90f1491e4bbc",
+      "scope": "1774 passing Node cases outside tests/local-task.test.mjs; original 16 passing cases in that file are rechecked along with the one repaired failure",
+      "passingCasesReused": 1774,
+      "totalNodeCases": 1791,
+      "changedPaths": [
+        "docs/tasks/LOCAL_WORKFLOW.md",
+        "docs/tasks/index.json",
+        "docs/tasks/remove-bundled-lexicons/acceptance.json",
+        "docs/tasks/remove-bundled-lexicons/state.json",
+        "docs/tasks/remove-bundled-lexicons/task.md",
+        "tests/local-task.test.mjs"
+      ],
+      "verification": "All production, other test, package/lock and build inputs exactly unchanged in Git; only workflow test expectation and task/document metadata differ."
+    }
+  ]
 }

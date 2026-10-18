@@ -29,4 +29,6 @@
 
 首次冻结 `fdef650b24aca8a8012902c124b07f20b5f5ab6f` 执行一次 `npm run validate`：静态/i18n通过，Node 1790 PASS / 1 FAIL；唯一失败是 `tests/local-task.test.mjs` 仍要求11个workflow，与本任务删除旧词典workflow后的10个不符。修正仅此测试清单，保留所有手动触发/inputs/jobs断言并增加退役文件不存在断言。
 
-依用户“失败后只重验受影响项”要求，原始失败命令不改写PASS；保存原head/tree/日志/hash，并核对新候选实现/其余测试/构建输入与原候选完全相同。复用1790个未变化的Node PASS，重跑整个local-task测试文件覆盖唯一失败；state.json拆分原validate组成项，执行其余静态检查、类型检查、Vitest和默认构建，再执行显式WXT/smoke/全量E2E。此调整不排除未解决失败，不削弱任何功能、安全、格式或包边界验收。最终报告明确区分原validate FAIL、修复后定向PASS与REUSED。
+依用户“失败后只重验受影响项”要求，原始失败命令不改写PASS；保存原head/tree/日志/hash，并核对新候选实现/其余测试/构建输入与原候选完全相同。复用1774个文件外未变化的Node PASS，重跑整个local-task测试文件覆盖唯一失败；state.json拆分原validate组成项，执行其余静态检查、类型检查、Vitest和默认构建，再执行显式WXT/smoke/全量E2E。此调整不排除未解决失败，不削弱任何功能、安全、格式或包边界验收。最终报告明确区分原validate FAIL、修复后定向PASS与REUSED。
+
+完整E2E在0fcedc71实际执行一次：222 PASS / 1 FAIL / 9 SKIP。唯一失败为ecosystem循环重置后未显式安装结构化用户词典；修复只增加计时前安装，不改变性能/请求/查询断言。最终候选复用未变生产输入的类型/单测/构建/smoke和其它浏览器PASS，重跑check、该文件3项，并使用已核对的19e旧包补跑2项升级；保留原失败与跳过证据，不重复全量构建或E2E。

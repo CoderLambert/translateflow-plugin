@@ -310,12 +310,12 @@
     },
     {
       "task": "remove-bundled-lexicons",
-      "status": "changes_requested",
+      "status": "reviewing",
       "dependencies": [
         "cache-system-v1"
       ],
       "branch": "refactor/remove-bundled-lexicons",
-      "candidateHead": ""
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d"
     },
     {
       "task": "rich-index-cache-budget",
