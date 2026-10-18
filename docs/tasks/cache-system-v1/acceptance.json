@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "task": "cache-system-v1",
+  "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+  "tree": "9957c71f0c98b679eda9a852c03e7dab151e8580",
+  "inputTree": "7b7c42f4d8496a4ce9373e3c0ae134e55aa5560d040a040dd11adfd8036d3043",
+  "frozenAt": "2026-10-18T17:08:44.009Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12 / Playwright 1.63.0"
+  },
+  "checks": [
+    {
+      "name": "cache-focused-node",
+      "command": [
+        "node",
+        "--test",
+        "tests/cache-system.test.mjs",
+        "tests/cache-system-domains.test.mjs",
+        "tests/cache-system-review.test.mjs",
+        "tests/cache-system-integration-review.test.mjs",
+        "tests/cache-system-auto-feedback.test.mjs",
+        "tests/cache-system-persistence-failure.test.mjs",
+        "tests/native-client.test.mjs"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": 203.424313,
+      "log": "docs/task-execution/local/cache-system-v1/cache-focused.log",
+      "logSha256": "7a62bec8329ca7aea26fa3ea4ff8353126de4f5747395d451a6828dce5c20952"
+    },
+    {
+      "name": "npm-ci",
+      "command": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": 1281,
+      "log": "docs/task-execution/local/cache-system-v1/npm-ci.log",
+      "logSha256": "c4826140a1da8d5babe91846026e3de0abe7416ec4db7ae878f99297d1114990"
+    },
+    {
+      "name": "validate-after-clean-install",
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": null,
+      "log": "docs/task-execution/local/cache-system-v1/validate-after-ci.log",
+      "logSha256": "fdbbb3add7ab605b3eb46f043ace0cb0c113f99c539c731f43471973b0979082"
+    },
+    {
+      "name": "wxt-production-build",
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": null,
+      "log": "docs/task-execution/local/cache-system-v1/build-wxt-after-ci.log",
+      "logSha256": "7cc2d0a12adb030492592a3422fa9b6e0449ff4b187b631942348eb683d6072f"
+    },
+    {
+      "name": "wxt-smoke",
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": null,
+      "log": "docs/task-execution/local/cache-system-v1/wxt-smoke-after-ci.log",
+      "logSha256": "4db709f367f25d63b0bf61092ca23c3a3018265f88bcb47618fdaef2c6f8dc2a"
+    },
+    {
+      "name": "native-indexeddb",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/cache-system-native.spec.mjs",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json",
+        "--output=docs/task-execution/local/luna-browser/cache-native/test-results"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": 1096.112,
+      "log": "docs/task-execution/local/cache-system-v1/cache-native.log",
+      "assertionCount": 19,
+      "logSha256": "78e295cd01490af70e562e76f84ab60ebcc6c2f16dea215d0823f3a30ce45f9b"
+    },
+    {
+      "name": "compiled-mv3-integration",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/cache-system-mv3.spec.mjs",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json",
+        "--output=docs/task-execution/local/luna-browser/cache-mv3/test-results"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": 4607.095,
+      "log": "docs/task-execution/local/cache-system-v1/cache-mv3.log",
+      "testCount": 6,
+      "logSha256": "b84b1ed1da0e7787a10523e37bed8cc191609859bf3264c99b660e6b9d942bbe"
+    },
+    {
+      "name": "same-id-upgrade-and-injection-supplement",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/wxt-upgrade.spec.mjs",
+        "e2e/wxt-injection-samples.spec.mjs",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json",
+        "--output=docs/task-execution/local/pr345-final/upgrade-tests"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": null,
+      "evidenceFiles": [
+        "docs/task-execution/local/cache-system-v1/upgrade-supplement.json",
+        "docs/task-execution/local/pr345-final/upgrade-evidence/same-id-upgrade-existing-ui-locale.json",
+        "docs/task-execution/local/pr345-final/upgrade-evidence/same-id-upgrade-missing-ui-locale.json",
+        "docs/task-execution/local/pr345-final/upgrade-evidence/injection-samples.json"
+      ],
+      "testCount": 3
+    },
+    {
+      "name": "full-chromium-e2e-base-run",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json",
+        "--output=docs/task-execution/local/luna-browser/full/test-results"
+      ],
+      "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+      "result": "PASS",
+      "exitCode": 0,
+      "durationMs": 438557.569,
+      "log": "docs/task-execution/local/cache-system-v1/full-e2e-base.log",
+      "expected": 221,
+      "skipped": 10,
+      "unexpected": 0,
+      "flaky": 0,
+      "logSha256": "38f17153a4d8ceba5b820e73458fab33cc93186372fdd2a903e3984fd67672e3"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "c3b444aed6277b4741c0a10637cfe85a0941476582973a8a535685422f02e664",
+    "manifestVersion": "0.8.20",
+    "fileCount": 128,
+    "totalBytes": 2916095,
+    "archive": "docs/task-execution/local/pr345-final/TranslateFlow-0.8.20-pr345.zip",
+    "archiveBytes": 855581,
+    "archiveSha256": "12c809b3e91c9507eae7d75356be94148ff78c644bffd74a227f9f688ad97bb1"
+  },
+  "limitations": [
+    "完整 E2E 基础批次 221 PASS / 10 SKIP；原先因缺旧包条件而跳过的两个 wxt-upgrade 与一个 wxt-injection-samples 用例已在同候选、同生产包上补跑 3/3 PASS。去重后为 224 PASS / 7 条原有外部资产条件跳过。",
+    "7 个真实词典/发布资产相关场景因输入或环境条件未提供而保持 SKIP，未通过删除断言或伪造输入改为通过。",
+    "Chrome 102、真实 YouTube timedtext 和其它浏览器 NOT RUN；用户人工体验验收于 2026-10-19 PASS。真实收费 Provider 按任务要求 NOT RUN；人工 Provider 请求数 NOT VERIFIED。",
+    "npm run validate 输出已有 #245 platform code size advisory：2,138,926 / 1,576,595 bytes；命令及全部子门禁退出码为 0。",
+    "此次工作只在隔离 worktree 记录验收文档及 metadata；没有新生产代码修复、提交、推送或合并。",
+    "node scripts/local-task.mjs index BLOCKED：仓库已有 docs/tasks/browser-native-language/state.json 缺失；未虚构无关任务状态。实际执行 node scripts/local-task.mjs gate cache-system-v1，退出码 1，提示 Uncommitted code/test/build input; freeze again，因为 validation-report.md 不在元数据归档白名单。现有 acceptance 还含 null duration 和与 state.validationCommands 不完全匹配的 E2E 参数；不可通过改写记录伪造 Gate PASS。"
+  ],
+  "providerRequestEvidence": {
+    "result": "MOCK_ASSERTIONS_PASS",
+    "realPaidProviderCalls": "NOT RUN",
+    "userManualProviderCount": "NOT VERIFIED",
+    "evidence": [
+      "e2e/translateflow.spec.mjs: cache restore keeps mock server call count unchanged",
+      "e2e/selection-release-gate.spec.mjs: local Core/Technical dictionary result has zero mock calls; explicit ordinary translation has one",
+      "e2e/cache-system-mv3.spec.mjs: explanation cache hit and post-prune hit keep the initial mock call count at one; stale invalidation writes are rejected",
+      "e2e/wxt-upgrade.spec.mjs: cache-only restore adds no mock call; unauthorizedProviderCalls is zero",
+      "tests/cache-system.test.mjs and tests/selection-explain-runtime.test.mjs: cache-only miss and explanation cancellation boundaries"
+    ],
+    "verifiedBy": "Existing passing tests bound to candidateHead; no new test run in this documentation-only closeout"
+  },
+  "decision": "BLOCKED",
+  "e2eSummary": {
+    "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+    "result": "PASS",
+    "passCount": 224,
+    "failCount": 0,
+    "skipCount": 7,
+    "evidenceFiles": [
+      "docs/task-execution/local/pr345-final/full/e2e-aggregate-23bb8275.json",
+      "docs/task-execution/local/cache-system-v1/upgrade-supplement.json"
+    ],
+      "note": "Identity-merged coverage from the full base run plus three supplemental cases; not one Playwright invocation. Product automation and user acceptance pass, while documentation sync remains blocked by local-task gate."
+  },
+  "userAcceptance": {
+    "candidateHead": "23bb8275608d9053d92219e55dace44cc69bb39e",
+    "result": "PASS",
+    "confirmedOn": "2026-10-19",
+    "checks": [
+      "页面首次翻译与刷新后缓存恢复",
+      "重复 Selection 翻译",
+      "缓存统计只读刷新",
+      "YouTube 字幕翻译与刷新后恢复"
+    ],
+    "providerRequestCount": "NOT VERIFIED BY USER; automated evidence retained separately",
+    "userDataCleared": false
+  }
+}

@@ -10,6 +10,8 @@
 
 2026-10-18 用户追加授权：继续修复验收中全部失败，包括 main 同样存在的既有故障。覆盖 Selection/Reading、词典安装和导入、设置语言、字幕及公共测试隔离；分别记录生产缺陷、测试前提漂移和环境问题。该范围不包含新 Provider、新产品模块、合并 main 或发布。此前 169 通过 / 54 失败 / 7 跳过和 2 个套件级错误仅作为待核对的历史结果，不视为当前候选验收。
 
+2026-10-19 用户已确认人工验收通过，并追加授权完成提交、推送与 squash 合并，以及清理造成提交阻塞的不合适仓库规则。此轮仅修复索引对缺状态历史目录的处理、验收报告归档边界，并取消普通 commit 自动升版本/编译；保留按需版本准备、实际验收和准确远端 head 合并。该授权取代上段的合并限制，不包含发布或继续新功能。
+
 通用请求身份、record envelope/namespace/TTL/容量策略、Memory/IndexedDB StorageDriver、持久化失效代次、取消共享、Page/Selection/Chrome plan/Subtitle/AI 解释适配、旧普通译文一次性废弃、测试和架构 owner 调整。
 
 数据库布局 DB4、通用记录 recordVersion1、业务策略版本分开。业务和存储均不依赖旧 CACHE_SCHEMA_VERSION 哈希规则。翻译 Prompt/模型/源处理改变只改变业务身份；数据库结构不随之升级。无旧译文 parser、legacy key fallback 或双写。AI 解释内容仅一次性封装搬运，不影响独立 Reading 数据库/词典/凭据。

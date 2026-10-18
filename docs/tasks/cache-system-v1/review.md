@@ -121,3 +121,35 @@ The original isolated overlay result (108 tests on Node22) remains historical. A
 **Executed isolated checks**: latest Memory store code with three namespaces and an over-budget translation set passed explanation preservation, combined translation-byte-budget and invalid-filter cases (**PASS**); latest application.js transmitted exactly the two requested translation namespaces (**PASS**). Parsed latest application.js, storage-memory.js and storage-indexeddb.js function bodies in the V8 runtime without syntax errors. Native IDB, actual Node suite, E2E and compiled extension remain **NOT RUN** due to environment restrictions. These mock and parse checks do not prove the native IndexedDB behavior.
 
 **Rollback consideration:** reverting the application-only scoping restores former global LRU semantics; reverting the optional driver filter as well is safe only after the application no longer passes `namespaces`. No stored record schema changes or data-clearing side effects are introduced.
+
+
+## 最终候选验收 — 2026-10-19
+
+PR #345 刷新后的 head 与当前候选均为 `23bb8275608d9053d92219e55dace44cc69bb39e`，tree `9957c71f0c98b679eda9a852c03e7dab151e8580`。该 tree 与本地执行验证的 `dc7a15ec3dfb918cf160b2366677eeb7f302a95e` 完全一致；远端提交只传递已验证 tree，没有源码、测试或构建输入漂移。`origin/main` 为 `961a3757f3cad93921031b038e52e621c8c840b7`。
+
+按锁文件完成 `npm ci --no-audit --no-fund` 后重跑 `npm run validate`，退出码 0：768 源文件检查、1,106 个 i18n keys、Node 1,842/1,842、typecheck、Vitest 59/59 和默认扩展构建全部通过。缓存定向 Node 148/148；WXT build/smoke、真实 Chromium Native IndexedDB 19 项、编译后 MV3 6/6 均通过。Node/npm 为 24.22.0/11.19.0，Playwright/Chromium 为 1.63.0/153.0.8010.12。
+
+完整 Chromium 回归的基础批次为 221 PASS / 10 条条件 SKIP / 0 FAIL / 0 flaky / 0 suite errors / 0 retries。基础批次里因旧包环境缺失而跳过的两个同 ID 升级和一个 injection cold/warm 场景，随后用真实旧包（提交 `19e89b65fd3600073410407392da82ffa666ffc8`）、实际 WXT 包、同 Profile/扩展路径补跑，3/3 PASS。按用例身份合并为 224 PASS / 7 条原有词典/发布资产条件 SKIP / 0 FAIL。不得把它描述成单次 Playwright 运行的 224/7。
+
+最终 ECDICT 浏览器证据为 direct-upstream：锁定公开 CSV 65,933,428 字节，Git blob SHA-1 `c4ade63ea08cf39d9c3475e96929036d64d94c94`，无网络拦截。更早本 review 中关于 verified-source-replay 的句子说明的是较早运行；它不代表最终候选运行。
+
+两项同 ID 升级各清除旧译文 3 条、保留 explanation 1 条、保留独立 ReadingRecord 1 条，并验证词典、设置、旧 Content 运行时失效、重启恢复和 cache-only 无 Provider 请求；均使用独立临时 Profile，没有触碰用户 Chrome 数据。真实收费 Provider 为 NOT RUN。产物清单、hash、测试日志及完整结果见 `validation-report.md` 和忽略的 `docs/task-execution/local/`。
+
+**产品验证：自动化 PASS，用户人工验收 PASS；最终收口结论：BLOCKED。** 用户于 2026-10-19 确认页面翻译/刷新缓存恢复、Selection 重复翻译、缓存统计只读刷新、YouTube 字幕翻译/刷新恢复均正常。Provider 请求数以 Mock 自动化断言核对：页面恢复不增加请求；本地词典命中不请求 Provider；AI explanation 缓存命中不增加请求；同 ID 升级 cache-only 恢复无未授权请求；真实收费 Provider 未调用，人工端请求日志未提供。任务状态继续为 `reviewing`，PR 保持 Draft，不合并，不标记 completed。
+
+收口时实际执行 `node scripts/local-task.mjs gate cache-system-v1`，退出码 1：`validation-report.md` 不在 local-task 元数据归档白名单，脚本拒绝该未提交文件。此前 `node scripts/local-task.mjs index` 因无关目录缺少 `docs/tasks/browser-native-language/state.json` 而 BLOCKED，未伪造该任务状态。另有既存 acceptance 记录不满足 Gate 的精确命令/实测耗时字段，不能通过手改元数据冒充通过。同步与正式合并条件尚未满足。此文是主 Agent 对实际运行记录的整理，不是独立模型审核。完整逐项报告及矩阵见 [`validation-report.md`](validation-report.md)。
+
+干净安装复验补充：`npm ci --no-audit --no-fund` 后再次 `npm run validate` 仍为 0（Node 1842/1842、Vitest 59/59）；并重建 `.output/chrome-mv3`、重跑 WXT smoke 均通过，WXT 包 tree 与已测包相同。索引生成命令因另一项任务缺 `docs/tasks/browser-native-language/state.json` 返回 ENOENT；未创建或改写那项无关任务。
+
+
+PR 公开摘要证据：[PR #345 测试证据评论](https://github.com/CoderLambert/translateflow-plugin/pull/345#issuecomment-6252829682)。未上传原始测试日志或个人数据。
+
+## 用户人工验收更新 — 2026-10-19
+
+用户明确确认 PR #345 人工验收通过。人工实际使用反馈：页面翻译/刷新后缓存恢复、重复 Selection 翻译、缓存统计只读查看、YouTube 字幕翻译/刷新后恢复均正常。Provider 请求数量没有人工日志证据，仍只引用 Mock 自动化断言。未清理用户数据。收口 Gate 实际失败；验收归档尚未同步。PR 维持 Draft，未合并；任务状态维持 `reviewing`，不标记 completed。
+
+## 收口工作流核对 — 2026-10-19
+
+`state.json` 规则来自仓库级本地任务流程，不来自 `browser-native-language` 自身的提交历史。该流程与 `local-task.mjs` 在 2026-10-03 的 #280 引入，规定任务索引是 `state.json` 的投影；`browser-native-language` 任务档案后来在 #333 增加，但未带 `state.json`。因此这是历史任务资料未初始化，而索引实现又假定所有任务目录都已初始化，并非过去曾存在后又删除了该文件。
+
+隔离工作树中已作最小修正：索引仅包含存在 `state.json` 的目录；当前任务允许将 `validation-report.md` 作为元数据归档；`tests/local-task.test.mjs` 新增缺状态目录和报告归档测试。`node --test tests/local-task.test.mjs` 17/17 PASS，`node scripts/local-task.mjs index` 成功。Gate 随后实际退出 1，提示这些工作流脚本/测试改动尚未提交，需重新冻结候选。当前结论仍为 BLOCKED；不把原候选的缓存测试结果改写成新候选结果，也未提交、推送或合并工作流修正。

@@ -70,8 +70,14 @@
       "--retries=0",
       "--reporter=line,json",
       "--output=docs/task-execution/local/pr345-final/test-results"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/local-task.test.mjs",
+      "tests/versioned-commit.test.mjs"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "完成全部基线失败修复的统一候选验收：Node24 validate、原生 IndexedDB、WXT smoke、MV3、同 ID 升级与全量 Chromium（逐项保留条件性跳过和网络模式）；自动化验收后等待用户人工最终验收，不合并、不 completed。"
+  "nextAction": "用户授权本次规则清理、提交、推送和 squash 合并。普通 commit 仅检查暂存 diff，不自动升版本/编译；保留显式 commit:prepare。先提交验收工具/提交钩子修正，冻结准确候选并按完整合同记录实际结果；Gate 通过后归档元数据，核对远端准确 head 后合并。保留用户人工验收与历史证据，未合入不得 completed。"
 }

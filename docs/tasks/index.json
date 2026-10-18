@@ -265,6 +265,13 @@
       "candidateHead": null
     },
     {
+      "task": "cache-system-v1",
+      "status": "working",
+      "dependencies": [],
+      "branch": "feat/independent-cache-system-20261018",
+      "candidateHead": ""
+    },
+    {
       "task": "chatgpt-native-host-distribution",
       "status": "ready_to_sync",
       "dependencies": [],

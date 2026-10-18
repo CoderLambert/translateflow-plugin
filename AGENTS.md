@@ -209,4 +209,4 @@ npm run validate
 
 ## 本仓库提交版本约定
 
-用户要求每次 commit 自动更新版本并编译。使用已启用的 `.githooks/pre-commit`：默认递增 patch，保留明确暂存的更高版本；同步 Manifest、package/lock 与 README 标题，构建暂存区快照到 `dist/extension/`。不得夹带其它未暂存修改。新 clone 运行 `npm run hooks:install`；此约定不授予当前任务 commit、推送或发布授权。
+普通 commit 不自动升版本、不编译、不改写暂存区；`.githooks/pre-commit` 仅检查暂存 diff。按实际改动选择验证，复用有效证据，纯文档和验收归档不触发构建。需要交付新版本时，明确更新 Manifest、package/lock 与 README 标题并验证实际安装包；可显式运行 `npm run commit:prepare` 从暂存快照准备版本与包。不得夹带未暂存修改。新 clone 可运行 `npm run hooks:install`；这些命令不授予 commit、推送、合并或发布授权。
