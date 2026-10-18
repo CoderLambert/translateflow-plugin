@@ -34,5 +34,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "独立缓存核心、业务接入、Page/Selection/Chrome/Subtitle 存储故障保底、自动/仅恢复模式限频提示和富文本格式显式判定已提交。V8 source fixture 29+5+7 场景分批 PASS，不等于远端候选 Node 全仓/真实浏览器验收；新增 Node 回归测试尚未通过 node --test 正式运行。下一步在 Node24/npm11 可用环境执行 npm ci && npm run validate，运行同 ID WXT DB2/3→4 升级、原生 IDB/Chrome MV3 与用户数据保留用例；冻结实际 candidateHead、构建并记录安装包指纹后才通知用户最终验收。当前保持 working/Draft，不合并、不调用付费 Provider。"
+  "nextAction": "PR #345 本轮已补齐 Page/Selection/Chrome/Subtitle 生成译文在持久化失败时仍可显示、增量自动和 cache-only 恢复的限频错误反馈、对字面 TF marker 默认按纯文本处理、翻译命名空间联合容量清理不淘汰独立 AI 解释。新增 Node 与 native-IDB 回归测试，隔离 V8 测试及解析检查有 PASS；远端当前 head 的正式 Node24/npm11 npm run validate、真实原生 IndexedDB DB2/3→4 升级/回滚、WXT 同 ID 升级、MV3 E2E、实际安装包指纹仍 NOT RUN/BLOCKED。需要在允许访问 Node24/Chromium 的环境运行完整验证，冻结准确 candidateHead，自查并准备用户手动体验验收；此前不得改 completed、不得合并或继续 M0/M1。"
 }
