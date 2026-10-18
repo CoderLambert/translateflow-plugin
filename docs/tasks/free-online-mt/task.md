@@ -10,17 +10,20 @@
 复用任务、取消、配置快照、缓存、安全富文本重建和 Reading translation artifact。
 失败不切换其它供应商、AI 或本地模型，不自动下载模型，不新增服务端。
 
+## 最新基线与缓存架构（2026-10-19）
+
+当前唯一生产缓存协议是已合入 PR #345 的 DB4（`entries` / `epochs`）+ 单一记录 envelope v1。此免费 MT 模块**仅调用既有 cache facade/业务 identity**，保持 `src/background/cache/storage-indexeddb.js` 唯一缓存 IDB owner。不改变物理 DB、记录解析或旧记录清理流程；M0 只引入 `machine-translation` 引擎身份、固定服务/语言方向/输入协议/保护结构的独立缓存指纹。
+
+本任务基于最新 main（包含 #345/#346/#348/#350），在独立整合分支完成冲突处理后才更新原 Draft PR #342。最初 `main@961a3757` 和 DB3 方案只是历史基线，严禁将旧 `cache-db.js`、DB3 升级 fixture 或内置词典引用带回新实现。
+
 ## 兼容约束
 
-不改写 AI 凭据/连接/defaultService。根据用户 2026-10-18 最新决定，翻译缓存仅支持最新版：
-升级 `ai_bilingual_translator` 为 DB v3，清空并重建原 `translations` 与 `pages`，
-缓存协议 v3 是唯一解析/读写路径；不迁移旧译文、不双读/双写、不提供旧键回退。
-`selection_explanations`、独立 ReadingRecord 数据库、词典和 AI 设置不清除。
-新增模式缺失为 legacy，未知模式/服务/版本显式失败。
-统一缓存 v3 指纹；按引擎、实际 Provider、源/目标语言、输入格式/保护身份和有效请求配置隔离；不保留旧翻译 hash 兼容。
-免费快照缺失/过期不落回 AI；代码/内部标记不发给翻译服务。
-用户仅通过可信扩展界面启用免费传输；页面/历史/悬停读取不得隐式联网。
-
+- 不改写 AI 凭据、Provider 连接/defaultService；机器翻译是用户显式同意的独立配置，没有权限或语言不支持时失败，不能回落到收费 AI。
+- 站点原有显式 AI 优先级及用户词典、Reading、字幕、Chrome 本地模型、快捷悬浮球位置必须保持。不得恢复 #346 删除的内置词典。
+- 免费 MT 不外发内部控制 marker、code/kbd/pre 等受保护 DOM 字面及链接 URL。Page 走已有 rich/protectedIds；Selection 显式拒绝无法安全确认的受保护选区。
+- DB4 有效 config/request identity 按 provider、真实输入、format/保护、source/target 和策略版本隔离；cacheOnly 0 Provider 请求，取消/页面变化旧结果不可回写。
+- Provider HTTP 仅固定微软/腾讯非付费网页接口，15s 超时、512KiB 响应限制、限流冷却、不携带 API Key/Cookie/重定向。
+- 本轮不新建翻译 DOM/Provider/缓存框架，不添加 Google 或额外模型下载逻辑。真实腾讯可用性需要当前用户网络验证；Mock PASS 不可冒充。
 ## 范围
 
 shared 配置与身份，background 路由/快照/MT adapter，Content 结构元信息传递，

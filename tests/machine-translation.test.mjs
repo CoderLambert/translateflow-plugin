@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createTranslationIdentity } from "../src/shared/translation-cache-identity.js";
+import { CACHE_RECORD_VERSION } from "../src/shared/cache/record.js";
 import { DEFAULT_MACHINE_TRANSLATION, MACHINE_ENGINE, createMachineConfig, machineLanguage,
   normalizeMachineTranslation, rawTranslationSite, resolveMachineTranslation } from "../src/shared/machine-translation.js";
 import { buildMachineRequest, parseMachineResponse, requestMachineTexts } from "../src/background/providers/machine-translation-transport.js";
@@ -91,6 +92,11 @@ test("long chunks preserve all Unicode and whitespace; invalid chunk limits are 
   const source = "Text with emoji 👩‍💻.\n".repeat(200) + "结束";
   const chunks = splitMachineText(source);
   assert.equal(chunks.join(""), source); assert.ok(chunks.every(chunk => [...chunk].length <= 1000));
+  const emoji = "👩‍💻".repeat(500);
+  const safe = splitMachineText(emoji, 101);
+  assert.equal(safe.join(""), emoji);
+  assert.ok(safe.every(chunk => [...chunk].length <= 101 && chunk.split("👩‍💻").join("") === ""));
+  assert.throws(() => splitMachineText("👩‍💻", 2), { code: "MT_INPUT" });
   for (const size of [0, -1, Infinity, 1.5]) assert.throws(() => splitMachineText(source, size), { code: "MT_INPUT" });
 });
 
@@ -171,23 +177,28 @@ test("MT snapshots bind tab, document, URL and expire without a paid fallback", 
   await assert.rejects(resolveEffectiveConfigSnapshot(snapshot.id, page, sender), { code: "CONFIG_SNAPSHOT_EXPIRED" });
 });
 
-test("MT fingerprints include service, source, target, endpoint and adapter version, never credentials", async () => {
+test("DB4 identities isolate MT service, language, endpoint, format and protected code", async () => {
   const value = config(), hash = await getConfigHash(value);
-  for (const patch of [{ provider: "mt-tencent-transmart" }, { sourceLanguage: "en" }, { targetLanguage: "ja" }, { apiBaseUrl: "https://example.invalid" }, { inputVersion: "mt-slots-v2" }]) {
+  for (const patch of [{ provider: "mt-tencent-transmart" }, { sourceLanguage: "en" },
+    { targetLanguage: "ja" }, { apiBaseUrl: "https://example.invalid" }, { inputVersion: "mt-slots-v2" }])
     assert.notEqual(await getConfigHash({ ...value, ...patch }), hash);
-  }
   assert.equal(await getConfigHash({ ...value, apiKey: "ignored", prompt: "AI prompt ignored" }), hash);
-  assert.notEqual(await translationSourceHash("same ⟦TF:0:S⟧text⟦TF:0:E⟧", value, []), await translationSourceHash("same ⟦TF:0:S⟧text⟦TF:0:E⟧", value, [0]));
-  assert.notEqual(buildTranslationRequestKey([{ id: "a", text: "x", protectedIds: [] }], value), buildTranslationRequestKey([{ id: "a", text: "x", protectedIds: [0] }], value));
+  const rich = "same ⟦TF:0:S⟧text⟦TF:0:E⟧";
+  const plain = await createTranslationIdentity(value, { text: rich, format: "tf-markers", protectedIds: [] }, "page");
+  const guarded = await createTranslationIdentity(value, { text: rich, format: "tf-markers", protectedIds: [0] }, "page");
+  assert.notEqual(plain.key, guarded.key);
+  assert.notEqual(buildTranslationRequestKey([{ id: "a", text: rich, format: "tf-markers", protectedIds: [] }], value),
+    buildTranslationRequestKey([{ id: "a", text: rich, format: "tf-markers", protectedIds: [0] }], value));
+  assert.notEqual(await translationSourceHash("Hello world", value), await translationSourceHash("Other text", value));
 });
 
-test("all translation engines use only v3 cache identities, never legacy v2 hashes", async () => {
-  const value = { provider: "deepseek", model: "test", targetLanguage: "Chinese", prompt: "Translate" };
-  const expected = createHash("sha256").update(JSON.stringify({ cacheSchema: 3, ...value })).digest("hex");
-  const legacyV2 = createHash("sha256").update(JSON.stringify({ cacheSchema: 2, ...value })).digest("hex");
-  assert.equal(await getConfigHash(value), expected);
-  assert.notEqual(await getConfigHash(value), legacyV2);
-  assert.equal(await translationSourceHash("  Hello  world  ", value, [0]), createHash("sha256").update("Hello world").digest("hex"));
+test("MT request identity evolves separately from the DB4 record envelope", async () => {
+  assert.equal(CACHE_RECORD_VERSION, 1);
+  const value = config(), base = await getConfigHash(value);
+  assert.equal(await getConfigHash({ ...value, cacheSchema: 999, cacheDatabaseVersion: 2 }), base);
+  assert.notEqual(await getConfigHash({ ...value, translationStrategyVersion: "new-input-v2" }), base);
+  const ai = { provider: "deepseek", model: "test", targetLanguage: "Chinese", prompt: "Translate" };
+  assert.notEqual(await getConfigHash(ai), await getConfigHash({ ...ai, prompt: "Different prompt" }));
 });
 
 test("MT results validate against existing Reading schema, without assistant or dictionary mutation", async () => {

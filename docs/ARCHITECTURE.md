@@ -25,7 +25,7 @@ content scripts -> messages -> background router
 
 1. `src/shared/` 是纯合同/纯函数层，不访问 `chrome.*` 或 `browser.*`，也不能通过间接依赖引入它们。
 2. 外部 HTTP 只能位于 `src/background/providers/`。
-3. 翻译缓存 IndexedDB 仅由 `src/background/cache-db.js` 直接访问；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。其它 Reading 后台模块调用唯一 adapter，Content 与扩展 UI 只能走后台 v2 消息，不能直接或间接引入 adapter。两库不互相迁移或清空；词典 OPFS 独立。
+3. 通用翻译缓存 IndexedDB **仅由 `src/background/cache/storage-indexeddb.js` 直接访问**；`src/background/cache-db.js` 是稳定门面，`cache/application.js` 负责业务命名空间，`cache/service.js` 负责通用策略。ReadingRecord 独立数据库仅由 `src/background/reading-record/idb.js` 直接访问。源码检查器只允许这两个精确路径作为直接 IndexedDB owner。其它 Reading 后台模块调用其 adapter，Content 与扩展 UI 只能走后台 v2 消息；两库不得互相迁移或清空，词典 OPFS 独立。
 4. 普通 `http/https` 页面的 Content Script 由生产 Manifest 静态声明；`src/background/auto-sites.js` 只维护按站点模式状态并清理旧动态注册。若未来恢复动态注册，其唯一所有者仍是该模块。
 5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
    `src/entries/content.js` 是唯一生产 Content 模块图；WXT 将有序 classic/IIFE owners 与 `src/entries/reading-contract.js` 的共享 Reading DTO adapter 编译为一个 ISOLATED IIFE。`scripts/reading-*-classic.mjs` 与 `src/content/reading-{source,contract,record}.js` 仅保留旧注册/Node 合同的可复现投影，不进入当前安装包。Content 编译闭包不引入 React 或动态 import；浏览器基础翻译仅在 ISOLATED Content 内调用 Translator / LanguageDetector，不增加 MAIN 桥或网络 Provider。
@@ -88,7 +88,10 @@ Background 将本地存储访问限制为 trusted extension contexts。Content �
 - `config.js`: 持久配置 + effective config
 - `providers/`: 网络 Provider adapter；统一接收 AbortSignal，并由 shared 层负责 timeout/retry
 - `translation-requests.js`: requestId / in-flight coalescing / background AbortController
-- `cache-db.js`: cache identity / IndexedDB / LRU
+- `cache-db.js`: stable cache API facade; no direct IndexedDB or translation identity rules
+- `cache/application.js`: translate/subtitle/AI explanation namespaces and legacy-facing response contracts
+- `cache/service.js`, `cache/storage-indexeddb.js`, `cache/storage-memory.js`: pure cache orchestration, sole IndexedDB owner, independent in-memory driver
+- `../shared/cache/`, `../shared/translation-cache-identity.js`: one record envelope and provider-/format-aware request identity; domain strategy revision is separate from physical DB version
 - `auto-sites.js`: serialized per-site auto/cache/Quick Control/Reading-marker intent state + obsolete dynamic-registration cleanup; a feature intent is not a permission grant
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
@@ -106,7 +109,7 @@ TranslateFlow owns the lexical **engine**, not the ongoing authorship of diction
 - AI output is never silently promoted into authoritative local dictionary data;
 - large dictionaries should be downloadable/imported rather than increasing the base extension artifact.
 
-The current project-authored reviewed technical terms are a transitional compatibility layer after #115, not a source to keep expanding for coverage. See [LEXICAL_DATA_BOUNDARIES.md](./LEXICAL_DATA_BOUNDARIES.md).
+The extension contains no dictionary content. Users explicitly download or import local dictionaries; fresh installs have a normal empty library. Query engines and content sources are independent. See [LEXICAL_DATA_BOUNDARIES.md](./LEXICAL_DATA_BOUNDARIES.md).
 
 Production builds are created from an explicit allowlist into `dist/extension`. The repository may contain large source/validation corpora without those bytes becoming user installation cost.
 
@@ -114,7 +117,7 @@ Production builds are created from an explicit allowlist into `dist/extension`. 
 
 `build:extension` and `build:extension:release` use the sole WXT production engine, audit the package before replacing the stable `dist/extension/` install directory, and preserve the existing `buildExtension()` report contract for certifiers. `build:extension:wxt` uses the same builder with `.output/chrome-mv3/` as its output. Each build uses isolated temporary staging so parallel certifiers cannot overwrite one another. `entrypoints/background.ts` statically imports the existing `initializeBackground()` and synchronously registers listeners in `main`; WXT build-time imports have no substitute Chrome/window globals. The root `popup.html` and `options.html` remain the unique UI source, registered through the WXT entrypoint hook and compiled by Vite. Their installed identities and full-tab `options_page` semantics stay unchanged.
 
-`src/shared/runtime-assets.js` provides stable Worker, MAIN, page and bundled-dictionary paths to runtime callers and build/tests. WXT owns the Content entrypoint and emits stable `content-scripts/content.js/.css`, used by both Manifest injection and Popup/Command recovery. `scripts/wxt-assets.mjs` now derives raw assets only from mapped MAIN/Worker roots and their relative-import closure; locale files and authenticated generated pack descriptors are added separately. The whole `src` tree is never copied, and generated source locks/corpora stay outside both packages.
+`src/shared/runtime-assets.js` provides stable Worker, MAIN and page paths to runtime callers and build/tests. WXT owns the Content entrypoint and emits stable `content-scripts/content.js/.css`, used by both Manifest injection and Popup/Command recovery. `scripts/wxt-assets.mjs` now derives raw assets only from mapped MAIN/Worker roots and their relative-import closure; locale files are added separately. The whole `src` tree is never copied, and generated source locks/corpora stay outside both packages.
 
 Content source owners remain classic/IIFE registry modules, compiled by WXT into one ISOLATED script; MAIN and Workers retain their existing loading contexts and raw source bytes. The production Manifest loads the compiled Content JS/CSS at `document_idle` on ordinary `http/https` pages, so Selection starts with the page. Reading first establishes a document-only controlled registration. One-shot handoff resolves one anchor; persistent page recognition additionally requires the independent site intent and fetches only the current page's bounded `PageSummaryItem` pages. Both reuse text-projection exclusions/budgets, render only in Shadow layers, and never wrap page DOM or call a Provider. Recognition draws a pointer-transparent highlight for each unique verified Range. Pointer hit-testing on the underlying word opens an extension-origin iframe with the selected record's useful dictionary, translation and saved context. The preview may also include a bounded set of completed assistant artifacts from exact same-item records on that page after the repository rechecks page, item identity and revision; the host page receives none of those bodies. It does not render a badge or page-history panel. SPA route changes re-register the document/page identity before reading again. `auto-sites.js` keeps automatic translation, cache restoration, persistent Quick Control and independent Reading recognition intent by site, and removes registrations left by older builds to prevent duplicate injection. The compiled JS/CSS explicitly targets Chrome 102, without a polyfill or a claim that Chrome 102 runtime has been tested. See [WXT_COMPAT_V1.md](./WXT_COMPAT_V1.md) for the build and artifact audit.
 
@@ -135,13 +138,17 @@ Content/Selection (later #79)
   -> LEXICAL_LOOKUP
   -> background/lexical/gateway.js
        -> effective User Glossary override
-       -> bundled/active TFLex readers
+       -> enabled user-installed OPFS readers
        -> attributable candidates
 ```
 
-`background/lexical/tflex-reader.js` performs bounded shard reads and byte-accounted LRU caching; it does not use IndexedDB or Provider APIs. `background/lexical/package-assets.js` is the narrowly scoped exception to the source-level `fetch` rule: it reads only extension-package URLs produced by `chrome.runtime.getURL`, never external HTTP origins. Local lexical results do not enter translation cache.
+`background/lexical/active-opfs-reader.js` discovers enabled user-installed dictionaries from existing state and isolates per-pack faults. The generic `tflex-reader.js` retains bounded shard reads and byte-accounted LRU caching for format tooling; production lookup does not read extension-package dictionaries or issue health probes. An empty library yields local no-hit, while User Glossary remains available. Local lexical results do not enter translation cache. No data migration or preference reset is involved.
+
+Rich dictionary lookup/navigation follows the frozen selection capture, independently of AI request versions; a new selection, query, route or document still invalidates the old session.
 
 ## Content
+
+An invalidated extension context is terminal for the current document's automatic translation and cache-restore queues. `runtime.js` classifies a missing messaging API; `auto.js` stops both in-memory modes, observers and timers, clears pending work, and displays one localized refresh notice. Saved site settings and cached data remain intact, and a page refresh starts a fresh context with the saved modes. Ordinary network failures retain the existing retry/backoff behavior.
 
 Content Script 的 owner 继续按 classic registry 模块分层，由 WXT 在构建期按唯一图组合：
 
@@ -225,7 +232,7 @@ failed / cancelled
 
 Page translation encodes supported inline elements (a, strong/b, em/i, code, kbd, mark) into TranslateFlow-controlled markers before the Provider request. Provider adapters remain format-agnostic; the request coordinator adds the marker-preservation protocol only when structured markers are present. Rendering never uses model-produced HTML or innerHTML: it rebuilds DOM from a fixed tag whitelist and preserves only the original safe link href/title attributes. code/kbd text is restored from the original DOM.
 
-Plain paragraphs retain their existing normalized source identity. Rich paragraphs use the deterministic marker-encoded source as their segment identity, so only those paragraphs can incur a one-time cache miss; the IndexedDB schema and global cache schema version remain unchanged.
+The current generic cache uses `ai_bilingual_translator` **DB4** with `entries` / `epochs` and a **single record envelope v1**. On the DB2/DB3→DB4 structural upgrade, disposable old translation/page rows are intentionally discarded; independent AI explanation values are preserved by a one-time opaque transfer. ReadingRecord, user dictionary OPFS, settings and credentials remain separate. Plain/structured source identity, effective Provider configuration and prompt/format protocol are captured by `src/shared/translation-cache-identity.js`; later translation strategy changes update the identity/revision, **not** the database version or the record parser. Cache-only misses never trigger a new Provider call. See [CACHE_SYSTEM.md](./CACHE_SYSTEM.md).
 
 
 ## Glossary boundary
@@ -310,10 +317,10 @@ IndexedDB and cache misses do not fall through to Provider translation.
 
 `browserTranslationEnabled` defaults to true, `browserSourceLanguage` to auto, `dictionaryEnabled` to false on new installs. Existing active imported dictionaries infer the dictionary preference before defaults are persisted; explicit false and per-dictionary enabled preferences survive upgrades. No dictionary, vocabulary or Reading store is cleared.
 
-`TRANSLATION_ENGINE_SETTINGS` returns engine, configured state, enabled flag and language preferences. The Content translation client permits local browser execution only when the Selection resolver classified the request as lexical. Page, subtitle and longer-selection cache snapshots continue through the effective AI configuration. Browser snapshot creation normalizes the source code and resolves the target from global/site settings. Browser cache identity uses provider `browser-translator`, model `translator-v1` and explicit source/target languages; existing AI hash payloads and DB schema remain unchanged.
+`TRANSLATION_ENGINE_SETTINGS` returns engine, configured state, enabled flag and language preferences. The Content translation client permits local browser execution only when the Selection resolver classified the request as lexical. Page, subtitle and longer-selection cache snapshots continue through the effective AI configuration. Browser snapshot creation normalizes the source code and resolves the target from global/site settings. Browser cache identity uses provider `browser-translator`, model `translator-v1` and explicit source/target languages within the shared DB4 contract. AI/Browser/Subtitle requests carry separate effective identities; a model, Prompt or format revision changes its cache key without introducing a new physical schema or a legacy reader.
 
 `browser-translation.js` owns capability/prepare/execute/cancel, live instances and generation guards. The view calls create synchronously from a trusted page button. Capability queries and automatic cache restore never download models. Available language detection can be used locally; otherwise the page/track language is a hint and the user can choose or explicitly prepare detection. Internal structured markers are split outside the translator; code/kbd bodies are copied from protected descriptors. Translation of formatting runs separately can reduce cross-run linguistic context.
 
-Eligible selected-word AI failures wait for explicit fallback selection, then restart through a new task and config snapshot. Other surfaces report the AI requirement and never fall back to browser models. Closing, stopping, route changes and disabling basic translation abort pending local work; generation and task guards reject late results before rendering/cache writes. Disabling basic translation releases its instances without cancelling an active AI task or deleting shared Chrome language packs. Dictionary misses query enabled rich dictionaries before continuing to translation.
+Eligible selected-word AI failures wait for explicit fallback selection, then restart through a new task and config snapshot. Other surfaces report the AI requirement and never fall back to browser models. Closing, stopping, route changes and disabling basic translation abort pending local work; generation and task guards reject late results before rendering/cache writes. Disabling basic translation releases its instances without cancelling an active AI task or deleting shared Chrome language packs. With dictionaries enabled, a single-word or short CJK dictionary miss first queries enabled rich dictionaries; if none match, it remains a local no-hit result with no Provider request. Unavailable or invalid local resources retain a distinct diagnostic. Ordinary translation or AI explanation from those states requires an explicit user action. Disabling dictionaries and longer multi-word selections retain their existing translation routes.
 
-Production packages omit generated dictionaries by default, even if local generated assets exist. `--require-lexicon` remains an explicit certification build with authenticated descriptors.
+All production builds exclude dictionary content, even if generated files exist locally. No alternate bundled-dictionary build mode exists. User dictionary validation and installation transactions remain unchanged.

@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, open, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,7 +12,7 @@ const lock = JSON.parse(await readFile(
 ));
 const mdxPath = process.env.RICH_MDICT_REAL_MDX || "";
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
-  resolve(repoRoot, "test-results/rich-mdict-evidence");
+  defaultEvidenceDir(import.meta.url);
 
 test("pinned real ECDICT MDX preflight stays local, bounded, and routes to the rich importer", async () => {
   test.skip(!mdxPath, "Set RICH_MDICT_REAL_MDX in the dedicated pinned-corpus compatibility gate.");

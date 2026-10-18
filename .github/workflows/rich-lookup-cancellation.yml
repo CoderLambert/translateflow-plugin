@@ -6,6 +6,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_TEST_WORKERS: "2"
+
 jobs:
   verify:
     name: Rich lookup cancellation and retained evidence

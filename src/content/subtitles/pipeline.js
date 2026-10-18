@@ -287,7 +287,8 @@
                   unit,
                   translation: result.text,
                   engine: response.engine || "ai",
-                  cacheHit: Boolean(result.cacheHit)
+                  cacheHit: Boolean(result.cacheHit),
+                  cacheWarning: response.cacheWarning || ""
                 });
               }
             }

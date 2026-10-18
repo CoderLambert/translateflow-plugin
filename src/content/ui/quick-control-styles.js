@@ -3,16 +3,7 @@
   if (!app?.modules.runtime || app.modules.uiQuickControlStyles) return;
 
   const css = `
-.tf-quick-control {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-}
-
 .tf-quick-trigger {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
   width: 52px;
   height: 52px;
   padding: 0;
@@ -80,11 +71,6 @@
 }
 
 .tf-quick-panel {
-  position: fixed;
-  right: 18px;
-  bottom: 82px;
-  width: min(356px, calc(100vw - 24px));
-  max-height: min(560px, calc(100vh - 104px));
   overflow: auto;
   padding: var(--tf-space-4);
   border-color: var(--tf-border-soft);
@@ -366,6 +352,7 @@
 
 .tf-quick-footer {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--tf-space-2);
   margin-top: var(--tf-space-4);
   padding-top: var(--tf-space-3);
@@ -373,7 +360,7 @@
 }
 
 .tf-quick-footer .tf-ui-button {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-height: 34px;
   border-color: transparent;
   background: transparent;

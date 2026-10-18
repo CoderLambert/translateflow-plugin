@@ -1,25 +1,28 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { test, expect, chromium } from "@playwright/test";
 import { mkdtemp, rm, mkdir, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, expectedTranslationCacheDatabases, assertRecoveredDatabases } from "./support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases, expectedTranslationCacheDatabases } from "./support/upgrade-expectations.mjs";
 import { mappingForGeneration } from "./support/runtime-mapping.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { startClosedNetwork, startupNetworkControl, assertStartupNetworkControl } from "./support/closed-network.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { makeMdd } from "../tests/helpers/mdd-fixture.mjs";
+import { DEFAULT_CONFIG } from "../src/shared/constants.js";
+import { migrateLegacyProviderState } from "../src/shared/provider-connections.js";
 import { READING_METHOD } from "../src/shared/reading/constants.js";
-import { request } from "../tests/fixtures/reading/contract.mjs";
+import { request, record, snapshot as readingSnapshot, artifact, recordListItem } from "../tests/fixtures/reading/contract.mjs";
 
 const oldArtifact = process.env.TF_UPGRADE_OLD_ARTIFACT;
 const newArtifact = process.env.TF_UPGRADE_NEW_ARTIFACT;
-const reportDir = resolve(process.env.TF_UPGRADE_EVIDENCE_DIR || "test-results/wxt-upgrade-evidence");
+const reportDir = resolve(process.env.TF_UPGRADE_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url));
 
 for(const existingUiLocale of [undefined,"zh_CN"]) {
 const scenario=existingUiLocale===undefined ? "missing-ui-locale" : "existing-ui-locale";
-test(`same profile and unpacked path preserve real settings, cache, OPFS, preferences and registrations through old → WXT → restart (${scenario})`, async ({}, testInfo) => {
+test(`same profile and unpacked path preserve settings, dictionaries and Reading while resetting legacy translation cache (${scenario})`, async ({}, testInfo) => {
   test.skip(!oldArtifact || !newArtifact, "Set both fixed old and actual WXT artifacts; no builder fallback.");
   test.setTimeout(180_000);
   const listenerCountBefore = process.getActiveResourcesInfo().filter(type => type === "TCPServerWrap").length;
@@ -130,7 +133,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     newControl = startupNetworkControl(`wxt-${scenario}`, server.baseUrl);
     oldManifest=JSON.parse(await readFile(join(oldArtifact,"manifest.json"),"utf8"));
     newManifest=JSON.parse(await readFile(join(newArtifact,"manifest.json"),"utf8"));
-    expect(newManifest.version).toBe(oldManifest.version);
+    expect(newManifest.version.localeCompare(oldManifest.version, "en", { numeric: true })).toBeGreaterThan(0);
     const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,generation:"pre-switch-19e",baseUrl:server.baseUrl,startupNetwork:oldControl});
     injectionMapping=old.runtimeMapping;
     const oldWorker=await launch();
@@ -158,12 +161,50 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     for(const type of ["CACHE_RESTORE_SITE_REGISTER","QUICK_CONTROL_SITE_REGISTER","AUTO_SITE_REGISTER","AUTO_SITE_UNREGISTER"])
       expect(await runtime({type,origin})).toMatchObject({ok:true});
     await expect.poll(()=>driver.evaluate(async()=> (await chrome.scripting.getRegisteredContentScripts()).length)).toBe(1);
+    // The fixed old package really writes a nonempty explanation through its
+    // own adapter. Reading did not exist in that package; seed a synthetic
+    // independent DB with its current exact schema to prove preservation.
+    await driver.evaluate(async seed => {
+      const oldCache=await import(chrome.runtime.getURL("src/background/cache-db.js"));
+      const saved=await oldCache.storeSelectionExplanation({cacheKey:"upgrade-opaque",result:seed.explanation});
+      if(saved.stored!==1)throw Error("Old explanation seed failed");
+      const db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open("translateflow-reading-records",1);
+        req.onupgradeneeded=()=>{
+          const db=req.result; db.createObjectStore("meta");
+          const records=db.createObjectStore("records",{keyPath:"record.recordId"});
+          records.createIndex("recent",["sortTime","record.recordId"],{unique:true});
+          records.createIndex("page","record.pageKey");
+          records.createIndex("pageRecent",["record.pageKey","sortTime","record.recordId"],{unique:true});
+          for(const [name,id] of [["snapshots","sourceSnapshotId"],["artifacts","artifactId"]]){
+            db.createObjectStore(name,{keyPath:["recordId",`value.${id}`]}).createIndex("record","recordId");
+          }
+          const pages=db.createObjectStore("pages",{keyPath:"pageKey"});
+          pages.createIndex("expires","expiresAt");pages.createIndex("recent",["sortTime","pageKey"],{unique:true});
+          db.createObjectStore("receipts",{keyPath:"key"}).createIndex("expires","expiresAt");
+        };
+        req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+      });
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(["records","snapshots","artifacts"],"readwrite");
+        tx.objectStore("records").put({record:seed.record,siteKey:"https://example.test",documentGeneration:"doc-1",listItem:seed.listItem,sortTime:-1000,bytes:1024});
+        tx.objectStore("snapshots").put({recordId:seed.record.recordId,value:seed.snapshot});
+        tx.objectStore("artifacts").put({recordId:seed.record.recordId,value:seed.artifact});
+        tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+      });db.close();
+      const {openAICompatible}=await chrome.storage.local.get("openAICompatible");
+      await chrome.storage.local.set({apiKey:"synthetic-deepseek-credential",openAICompatible:{...openAICompatible,apiKey:"synthetic-compatible-credential"}});
+    },{explanation:{selectedCandidateIds:["opaque"],explanation:"完整保留的合成解释",translation:"synthetic meaning",nested:{keep:[1,2]}},
+      record:record(),snapshot:readingSnapshot(),artifact:artifact(),listItem:recordListItem()});
+    await page.close();
     const before=await snapshot();
     const legacyRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
     expect(legacyRuntime).toEqual({ok:false,error:"未知扩展消息。",errorCode:""});
     expect(before.storage.uiLocale).toBe(existingUiLocale);
     expect(Object.hasOwn(before.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
-    expect(before.databases).toEqual([expect.objectContaining({name:"ai_bilingual_translator",version:2})]);
+    expect(before.databases).toEqual([expect.objectContaining({name:"ai_bilingual_translator",version:2}),expect.objectContaining({name:"translateflow-reading-records",version:1})]);
+    expect(before.databases[0].stores.selection_explanations).toHaveLength(1);
+    expect(before.databases[1].stores.records).toHaveLength(1);
     expect(Object.keys(before.databases[0].stores).sort()).toEqual(["pages","selection_explanations","translations"]);
     expect(before.databases[0].stores.translations).toHaveLength(3);
     expect(before.opfs.find(f=>f.path.includes(alpha.id)&&f.path.endsWith("source.mdx"))?.sha256).toBe(alpha.sourceSha256);
@@ -181,26 +222,30 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     const cachedOldRuntime=initialLifecycle===undefined;
     if(cachedOldRuntime) expect(initialRuntime).toEqual(legacyRuntime);
     else {
-      expect(initialLifecycle).toEqual({events:[],capacity:4,overflow:false});
+      expect(initialLifecycle).toMatchObject({events:expect.any(Array),capacity:4,overflow:false});
+      expect(initialLifecycle.events).toHaveLength(1);
+      expect(initialLifecycle.events[0]).toMatchObject({reason:"update",previousVersion:oldManifest.version});
       expect(initialRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     }
     const replacementStartup=await startupProof(initialWorker,cachedOldRuntime ? oldControl : newControl,replacementNetworkStart);
     // Chrome prunes the old dynamic registration when its raw files disappear,
     // even if it temporarily retains the cached old background worker.
-    const expectedReplacement={...before,registrations:[],
-      databases:cachedOldRuntime ? before.databases : withEmptyReadingDatabase(expectedTranslationCacheDatabases(before.databases))};
-    const after=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,after);
+    const replacementStorage=cachedOldRuntime ? before.storage : expectedFirstUpdateStorage(before.storage,initialLifecycle.events[0],oldManifest.version);
+    const after=await snapshot();
+    const expectedReplacement={...before,storage:replacementStorage,registrations:[],
+      databases:cachedOldRuntime ? before.databases : withEmptyReadingDatabase(expectedTranslationCacheDatabases(before.databases,after.databases))};
+    assertUnchangedUpgradeSnapshot(expectedReplacement,after);
     await driver.locator('.settings-nav a[href="#general"]').click();
     await expect(driver.locator("#uiLocale")).toBeVisible();
-    await expect(driver.locator("#uiLocale")).toHaveValue(existingUiLocale??"auto");
+    await expect(driver.locator("#uiLocale")).toHaveValue(replacementStorage.uiLocale??"auto");
     const afterLocaleDisplay=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,afterLocaleDisplay);
-    expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(existingUiLocale!==undefined);
+    expect(Object.hasOwn(afterLocaleDisplay.storage,"uiLocale")).toBe(Object.hasOwn(replacementStorage,"uiLocale"));
     phases.push({phase:cachedOldRuntime ? "PRE_UPGRADE_CACHED_OLD_RUNTIME" : "WXT-replacement-runtime",id:extensionId,artifact:next.treeSha256,testChanges:next.testCopy.changes,lifecycleObserver:next.lifecycleObserver,
       startupObserver:next.startupObserver,networkStartup:replacementStartup,observerExecuted:!cachedOldRuntime,nativeLifecycle:initialLifecycle??null,nativeRuntime:initialRuntime,snapshot:summary(after)});
     await driver.locator('.settings-nav a[href="#dictionary-packs"]').click();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${alpha.id}"] [data-action="enabled"]`)).not.toBeChecked();
     await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-action="enabled"]`)).toBeChecked();
-    await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText("你的个人首选");
+    await expect(driver.locator(`#richMdictInstalledList [data-dictionary-id="${beta.id}"] [data-role="personal-preference"]`)).toHaveText(replacementStorage.uiLocale === "zh_CN" ? "你的个人首选" : "Your preferred dictionary");
     const stale=await context.newPage(); await stale.goto(`${server.baseUrl}/selection`); await inject(stale);
     const staleId=await tabId(stale);
     const beforeActivation=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,beforeActivation);
@@ -217,19 +262,21 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     ]);
     expect(reloadedWorker).not.toBe(initialWorker);
     const activatedStartup=await startupProof(reloadedWorker,newControl,reloadNetworkStart);
-    driver=await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/options.html`);
+    driver=await context.newPage(); await driver.goto(`chrome-extension://${extensionId}/options.html#general`);
     await expect(driver.locator("#save")).toBeVisible();
     await expect.poll(()=>reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver?.events.length)).toBe(1);
     const reloadedLifecycle=await reloadedWorker.evaluate(()=>globalThis.__tfInstalledObserver);
     expect(reloadedLifecycle.overflow).toBe(false);
-    const expectedReloadStorage=expectedStorageAfterInstalledUpdate(before.storage,reloadedLifecycle.events[0],oldManifest.version);
-    const expectedReloadRegistrations=expectedRegistrationsAfterInstalledUpdate(before.registrations,reloadedLifecycle.events[0],oldManifest.version,
+    const expectedReloadStorage=expectedFirstUpdateStorage(replacementStorage,reloadedLifecycle.events[0],newManifest.version);
+    const expectedReloadRegistrations=expectedRegistrationsAfterInstalledUpdate(cachedOldRuntime ? before.registrations : [],reloadedLifecycle.events[0],newManifest.version,
       mappingForGeneration("pre-switch-19e"),next.runtimeMapping);
+    expect(expectedReloadStorage.providerCredentials["openai-compatible"]).toBe("synthetic-compatible-credential");
+    expect(expectedReloadStorage.providerCredentials.deepseek).toBe("synthetic-deepseek-credential");
     const activatedRuntime=await runtime(request(READING_METHOD.OPEN_LEARNING_CENTER));
-    expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
+    expect(activatedRuntime,JSON.stringify(activatedRuntime)).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     await expect.poll(()=>driver.evaluate(()=>chrome.storage.local.get(["uiLocale"]).then(x=>x.uiLocale))).toBe(expectedReloadStorage.uiLocale);
     const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage,
-      registrations:expectedReloadRegistrations,databases:withEmptyReadingDatabase(expectedTranslationCacheDatabases(beforeActivation.databases))});
+      registrations:expectedReloadRegistrations,databases:withEmptyReadingDatabase(expectedTranslationCacheDatabases(beforeActivation.databases,activated.databases))});
     phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,networkStartup:activatedStartup,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
@@ -239,33 +286,47 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     // unsuitable for checking an old binding. Probe the old registered channel.
     expect(invalidated).toMatchObject({ok:false,invalidated:true});
     const reopened=await context.newPage(); await reopened.goto(`${server.baseUrl}/article`);
-    // The old translation rows are intentionally gone after DB v3 activation.
-    // cacheOnly must be a miss without making any Provider request.
+    // The v4 schema intentionally discards old translation and page rows; this
+    // site's cache-only restore must NOT silently incur a new Provider charge.
     await expect(reopened.locator(".abt-translation")).toHaveCount(0);
     expect(server.calls).toHaveLength(1);
-    // Explicit user translation creates fresh v3 rows through the production path.
-    expect(await content(reopened,{type:"ABT_TRANSLATE_PAGE",taskId:"upgrade-retranslate-v3"}))
+    const emptyCache=await snapshot();
+    expect(emptyCache.databases.find(db=>db.name==="ai_bilingual_translator")).toMatchObject({
+      version:4,stores:{entries:[expect.objectContaining({namespace:"selection-explanation",value:before.databases[0].stores.selection_explanations[0].result})],epochs:[]}
+    });
+    expect(emptyCache.storage).toEqual(expectedReloadStorage);
+    expect(emptyCache.opfs).toEqual(before.opfs);
+    // Only explicit user action creates fresh v4 cache records.
+    expect(await content(reopened,{type:"ABT_TRANSLATE_PAGE",taskId:"upgrade-v4-explicit"}))
       .toMatchObject({ok:true,apiTranslated:3});
     await expect(reopened.locator(".abt-translation")).toHaveCount(3);
-    expect(server.calls).toHaveLength(2);
+    expect(server.calls).toHaveLength(3);
     await reopened.reload(); await expect(reopened.locator(".abt-translation")).toHaveCount(3);
-    expect(server.calls).toHaveLength(2);
+    expect(server.calls).toHaveLength(3);
     await stale.reload(); await expect(stale.locator(".tf-selection-chip")).toHaveCount(0);
     await inject(stale); expect(await content(stale,{type:"ABT_STATUS"})).toMatchObject({ok:true});
-    expect(server.calls).toHaveLength(2);
+    expect(server.calls).toHaveLength(3);
+    const center=await context.newPage();
+    await center.goto(`chrome-extension://${extensionId}/learning-center.html`);
+    const retainedReading=await center.evaluate(()=>chrome.runtime.sendMessage({protocolVersion:2,method:"reading.list-records",pageKey:null,query:"React",cursor:null,limit:20}));
+    expect(retainedReading,JSON.stringify(retainedReading)).toMatchObject({ok:true,data:{items:[{recordId:record().recordId,itemText:"React"}]}});
+    await center.close();
     const afterRecovery=await snapshot();
     expect(afterRecovery.storage).toEqual(expectedReloadStorage); expect(afterRecovery.opfs).toEqual(before.opfs);
     expect(afterRecovery.registrations).toEqual(expectedReloadRegistrations);
-    const newCache=afterRecovery.databases.find(db=>db.name==="ai_bilingual_translator");
-    expect(newCache.version).toBe(3);
-    expect(newCache.stores.translations).toHaveLength(3);
-    expect(newCache.stores.translations.every(row=>row.cacheSchema===3)).toBe(true);
-    // Verify every nontranslation store remained unchanged after cache retranslation.
-    const withoutNewTranslations=afterRecovery.databases.map(db=>db.name==="ai_bilingual_translator"
-      ? {...db,stores:{...db.stores,translations:[],pages:[]}} : db);
-    assertRecoveredDatabases(activated.databases,withoutNewTranslations);
-    phases.push({phase:"WXT-after-recovery",id:extensionId,oldTranslationRowsDiscarded:true,
-      newV3TranslationRows:3,otherStoredDataPreserved:true,snapshot:summary(afterRecovery)});
+    const cacheDatabase=afterRecovery.databases.find(db=>db.name==="ai_bilingual_translator");
+    expect(cacheDatabase.version).toBe(4);
+    expect(Object.keys(cacheDatabase.stores).sort()).toEqual(["entries","epochs"]);
+    expect(cacheDatabase.stores.entries).toHaveLength(4);
+    expect(cacheDatabase.stores.entries.filter(row=>row.namespace==="translation")).toHaveLength(3);
+    expect(cacheDatabase.stores.entries.every(row=>row.recordVersion===1)).toBe(true);
+    // The fresh translations alone may differ; settings, Reading, independent
+    // cache types and dictionary OPFS must remain exactly unchanged.
+    const exceptTranslations=databases=>databases.map(db=>db.name==="ai_bilingual_translator"
+      ? {...db,stores:{...db.stores,entries:db.stores.entries.filter(row=>row.namespace!=="translation")}} : db);
+    assertRecoveredDatabases(activated.databases,exceptTranslations(afterRecovery.databases));
+    phases.push({phase:"WXT-after-recovery",id:extensionId,oldTranslationsDiscarded:true,
+      newCacheEntries:3,otherUserDataPreserved:true,snapshot:summary(afterRecovery)});
     await context.close(); context=null;
     const restartNetworkStart=network.snapshot().attempts.length;
     const restartedWorker=await launch();
@@ -277,11 +338,11 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
     phases.push({phase:"WXT-browser-restart",id:extensionId,networkStartup:restartedStartup,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
-    expect(server.calls).toHaveLength(2); expect(network.snapshot().forwardedOutsideMock).toBe(0);
+    expect(server.calls).toHaveLength(3); expect(network.snapshot().forwardedOutsideMock).toBe(0);
     expect(network.snapshot().overflow).toBe(false); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
-      productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,oldCacheRowsDiscarded:3,providerSeedCalls:1,explicitReTranslationCalls:1,
+      productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,oldCacheRowsDiscarded:3,providerSeedCalls:1,explicitRetranslateCalls:2,explanationRowsPreserved:1,readingRowsPreserved:1,
       unauthorizedProviderCalls:0,network:network.snapshot(),backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
@@ -327,4 +388,12 @@ function withEmptyReadingDatabase(databases) {
   return [...databases,{name:"translateflow-reading-records",version:1,stores:{
     artifacts:[],meta:[],pages:[],receipts:[],records:[],snapshots:[]
   }}].sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+function expectedFirstUpdateStorage(before,event,previousVersion) {
+  const values=expectedStorageAfterInstalledUpdate(before,event,previousVersion);
+  const defaults={...DEFAULT_CONFIG,...values,dictionaryEnabled:values.dictionaryEnabled??true};
+  const migrated=migrateLegacyProviderState(defaults);
+  return {...defaults,providerConnectionsVersion:migrated.version,providerConnections:migrated.connections,
+    providerCredentials:migrated.credentials,defaultService:migrated.defaultService};
 }

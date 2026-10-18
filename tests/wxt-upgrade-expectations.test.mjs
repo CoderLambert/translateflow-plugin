@@ -1,3 +1,5 @@
+import { createCacheRecord, normalizePolicy } from "../src/shared/cache/record.js";
+import { opaqueCacheIdentity } from "../src/shared/cache/identity.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, expectedTranslationCacheDatabases, assertRecoveredDatabases } from "../e2e/support/upgrade-expectations.mjs";
@@ -62,27 +64,26 @@ test("upgrade retains every existing UI-locale value including unknown and null 
 });
 
 function seededDatabases() {
-  return [{ name:"ai_bilingual_translator",version:3,stores:{
-    translations:[0,1,2].map(id=>({cacheKey:"key-"+id,cacheSchema:3,pageKey:"page",sourceHash:"source-"+id,configHash:"config",
+  return [{ name:"ai_bilingual_translator",version:2,stores:{
+    translations:[0,1,2].map(id=>({cacheKey:"key-"+id,pageKey:"page",sourceHash:"source-"+id,configHash:"config",
       sourceText:"text-"+id,translation:"translation-"+id,createdAt:100,lastAccessedAt:200,bytes:123})),
     pages:[{pageKey:"page",url:"https://fixture.invalid/article",title:"Fixture",createdAt:100,lastAccessedAt:200}],
     selection_explanations:[{cacheKey:"selection",explanation:"preserved",lastAccessedAt:200}]
   }}];
 }
 
-
-test("v2→v3 upgrade drops only old translation/page rows, preserving independent explanations",()=>{
-  const current=seededDatabases();
-  const old=structuredClone(current);
-  old[0].version=2;
-  old[0].stores.translations.forEach(row=>{delete row.cacheSchema;});
-  const next=expectedTranslationCacheDatabases(old);
-  assert.equal(next[0].version,3);
-  assert.deepEqual(next[0].stores.translations,[]);
-  assert.deepEqual(next[0].stores.pages,[]);
-  assert.deepEqual(next[0].stores.selection_explanations,old[0].stores.selection_explanations);
+test("single-layout v4 upgrade discards only translations and pages, never guesses legacy contents",()=>{
+  const old=seededDatabases();
+  const migrated=expectedTranslationCacheDatabases(old.map(db=>({...db,stores:{...db.stores,selection_explanations:[]}})));
+  assert.equal(migrated[0].version,4);
+  assert.deepEqual(Object.keys(migrated[0].stores).sort(),["entries","epochs"]);
+  assert.deepEqual(migrated[0].stores.entries,[]);
+  assert.deepEqual(migrated[0].stores.epochs,[]);
+  assert.equal(old[0].version,2);
   assert.equal(old[0].stores.translations.length,3);
-  assert.deepEqual(expectedTranslationCacheDatabases(next),next);
+  assert.throws(()=>expectedTranslationCacheDatabases(old),assert.AssertionError,
+    "nonempty explanation rows require the real native-IDB preservation fixture");
+  assert.deepEqual(expectedTranslationCacheDatabases(migrated),migrated);
 });
 
 test("cache recovery compares all content/stores canonically and permits only valid read metadata",()=>{
@@ -105,7 +106,7 @@ test("cache recovery compares all content/stores canonically and permits only va
     db=>{db[0].stores.pages[0].title="corrupted";},
     db=>{db[0].stores.selection_explanations=[];},
     db=>{db[0].stores.selection_explanations[0].lastAccessedAt=300;},
-    db=>{db[0].version=4;},
+    db=>{db[0].version=3;},
     db=>{db[0].name="different";},
     db=>{delete db[0].stores.selection_explanations;},
     db=>{db[0].stores.extra=[];},
@@ -116,5 +117,20 @@ test("cache recovery compares all content/stores canonically and permits only va
     // Every adversarial snapshot passes the superseded three-row guard.
     assert.equal(bad[0].stores.translations.length,3);
     assert.throws(()=>assertRecoveredDatabases(before,bad,400),assert.AssertionError);
+  }
+});
+
+
+test("nonempty explanation upgrade expectations reject dropped or mutated opaque data", () => {
+  const old=seededDatabases();
+  old[0].stores.selection_explanations=[{cacheKey:"selection",result:{explanation:"完整解释",nested:{keep:[1,2]}},createdAt:100,lastAccessedAt:200}];
+  const entry=createCacheRecord(opaqueCacheIdentity("selection-explanation","selection"),old[0].stores.selection_explanations[0].result,normalizePolicy(),100);
+  entry.lastAccessedAt=200;
+  const observed=[{name:"ai_bilingual_translator",version:4,stores:{entries:[entry],epochs:[]}}];
+  assert.deepEqual(expectedTranslationCacheDatabases(old,observed),observed);
+  for(const change of [db=>db[0].stores.entries.pop(),db=>db[0].stores.entries[0].value.nested.keep.pop(),
+    db=>db[0].stores.entries[0].createdAt++,db=>db[0].stores.entries[0].bytes++,db=>db[0].stores.entries[0].key="changed"]) {
+    const bad=structuredClone(observed);change(bad);
+    assert.throws(()=>expectedTranslationCacheDatabases(old,bad));
   }
 });

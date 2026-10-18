@@ -367,10 +367,10 @@ function passingEvidence() {
       builder: "scripts/build-extension.mjs",
       allowlistAudited: true,
       validationAssetsIncluded: false,
-      lexicalAssetsIncluded: true,
+      lexicalAssetsIncluded: false,
       totalBytes: 38_000_000,
       fileCount: 3,
-      files: ["manifest.json", "assets/lexicon/core/manifest.json", "assets/lexicon/technical/manifest.json"],
+      files: ["manifest.json", "background.js"],
       hostPermissions: ["https://api.deepseek.com/*", "http://*/*", "https://*/*"]
     }
   };

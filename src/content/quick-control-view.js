@@ -9,6 +9,7 @@
     let root, trigger, panel, stateBadge, statusNode, progressNode, translateButton;
     let retryButton, cancelButton, autoButton, autoStatus, presetSelect, appearanceSelect;
     let taskValue = null, workingStateValues = new Set(), autoValue = false, contextValue = null, messageValue = null;
+    let positionValue = null, positioner;
     const unsubscribeLocale = locale.subscribe(refreshLocale);
     function ensure() {
       if (root?.isConnected) return api;
@@ -23,6 +24,8 @@
         className: "tf-quick-trigger"
       });
       trigger.setAttribute("aria-expanded", "false");
+      trigger.title = t("content.quick.moveHint");
+      trigger.setAttribute("aria-description", t("content.quick.moveHint"));
       const triggerMark = document.createElement("span");
       triggerMark.className = "tf-quick-trigger-mark";
       triggerMark.setAttribute("aria-hidden", "true");
@@ -137,11 +140,15 @@
       footer.className = "tf-quick-footer";
       const settingsButton = action(t("content.common.settings"), "tf-quick-settings", handlers.onSettings);
       const hideButton = action(t("content.quick.hideSite"), "tf-quick-hide-site", handlers.onHideSite);
+      if (app.modules.quickControlPosition) footer.append(action(t("content.quick.resetPosition"), "tf-quick-reset-position", () => positioner?.reset()));
       footer.append(settingsButton, hideButton);
 
       panel.append(header, stateBlock, primaryActions, inlineActions, autoButton, preferences, footer);
       root.append(trigger, panel);
       getLayer("quick-control").appendChild(root);
+      positioner = app.modules.quickControlPosition?.create({ trigger, panel, position: positionValue,
+        onMove: () => closePanel({ restoreFocus: false }),
+        onCommit: position => { positionValue = position; handlers.onPositionChange?.(position); } });
       renderTask();
       renderAuto();
       renderContext();
@@ -150,20 +157,10 @@
     }
 
     function destroy() {
+      positioner?.dispose(); positioner = null;
       root?.remove();
-      root = null;
-      trigger = null;
-      panel = null;
-      stateBadge = null;
-      statusNode = null;
-      progressNode = null;
-      translateButton = null;
-      retryButton = null;
-      cancelButton = null;
-      autoButton = null;
-      autoStatus = null;
-      presetSelect = null;
-      appearanceSelect = null;
+      root = trigger = panel = stateBadge = statusNode = progressNode = translateButton = null;
+      retryButton = cancelButton = autoButton = autoStatus = presetSelect = appearanceSelect = null;
     }
 
     function togglePanel() {
@@ -171,6 +168,7 @@
       if (panel.hidden) {
         panel.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
+        positioner?.reposition();
         queueMicrotask(() => translateButton?.focus({ preventScroll: true }));
         return true;
       }
@@ -191,7 +189,9 @@
     }
 
     function setSuppressed(value) {
+      if (value) positioner?.cancel();
       if (root) root.dataset.suppressed = value ? "true" : "false";
+      if (!value) positioner?.reposition();
     }
 
     function isVisible() {
@@ -357,13 +357,13 @@
       const suppressed = root.dataset.suppressed === "true";
       const active = root.getRootNode()?.activeElement;
       const focusClass = root.contains(active) ? [...(active.classList || [])].find((name) => name.startsWith("tf-quick-")) : "";
-      root.remove();
-      root = null;
+      destroy();
       ensure();
       setSuppressed(suppressed);
       if (open) {
         panel.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
+        positioner?.reposition();
       }
       if (focusClass) root.querySelector(`.${focusClass}`)?.focus({ preventScroll: true });
     }
@@ -384,6 +384,7 @@
       setContext,
       setPresetDisabled,
       setAppearanceDisabled,
+      setPosition: position => { positionValue = position; positioner?.setPosition(position); },
       isOpen: () => Boolean(panel && !panel.hidden),
       dispose: () => { unsubscribeLocale(); destroy(); }
     };

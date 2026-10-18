@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -5,7 +6,7 @@ import { test, expect } from "./support/extension-fixture.mjs";
 
 const mdxPath = process.env.CC_CEDICT_REAL_MDX || "";
 const mddPath = process.env.CC_CEDICT_REAL_MDD || "";
-const evidenceDir = process.env.CC_CEDICT_EVIDENCE_DIR || "/tmp/translateflow-real-dict";
+const evidenceDir = process.env.CC_CEDICT_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url);
 
 test.describe("real CC-CEDICT rich resource display", () => {
   test.setTimeout(12 * 60 * 1000);

@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
@@ -6,7 +7,7 @@ import { readBoundaryFixture } from "../tests/helpers/mdx-boundary-fixture.mjs";
 import { VOCABULARY_BOOK_STORAGE_KEY } from "../src/background/vocabulary-book.js";
 
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
-  resolve("test-results/rich-mdict-evidence");
+  defaultEvidenceDir(import.meta.url);
 
 test.describe("Rich MDict local product and security behavior", () => {
   test.setTimeout(300_000);

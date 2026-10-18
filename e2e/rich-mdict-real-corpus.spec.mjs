@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
@@ -16,7 +17,7 @@ const archiveCacheDir = process.env.RICH_MDICT_CACHE_DIR || "";
 const ecdictZipPath = process.env.RICH_MDICT_REAL_ARCHIVE ||
   (archiveCacheDir ? resolve(archiveCacheDir, "ecdict-mdx-28.zip") : "");
 const evidenceDir = process.env.RICH_MDICT_EVIDENCE_DIR ||
-  resolve(repoRoot, "test-results/rich-mdict-evidence");
+  defaultEvidenceDir(import.meta.url);
 const ECDICT_RECIPE_ID = "ecdict-en-zh-mdx-curated";
 const ECDICT_PACK_ID = "rich-mdict-18500000-0000-4000-8000-000000000028";
 const ECDICT_PERMISSION_ORIGINS = [
@@ -39,6 +40,7 @@ test.describe("pinned real ECDICT rich MDict product gate", () => {
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test.skip(!process.env.RICH_MDICT_REAL_MDX,
@@ -238,6 +240,7 @@ test.describe("curated ECDICT MDX one-click real archive gate", () => {
 
   test.beforeEach(async ({ harness }) => {
     await harness.reset();
+    await harness.installUserDictionaries();
   });
 
   test("the Settings card requests the exact host pair, installs/reinstalls the real archive, preserves the active version on failure/cancel, works offline, and deletes", async ({ harness }) => {

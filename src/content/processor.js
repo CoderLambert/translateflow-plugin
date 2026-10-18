@@ -12,10 +12,7 @@
   const { constants, messages, state, getPageIdentity, normalizeSourceText, sendRuntimeMessage, showToast } = app.modules.runtime;
   const t = (key, args) => app.modules.contentI18n.t(key, args);
   const resultMessage = (key, args = {}) => ({ message: t(key, args), messageKey: key, messageArgs: args });
-  const responseError = (response, key) => {
-    if (/^MT_(CONFIG|LANGUAGE|STRUCTURE|PERMISSION|INPUT|BUSY|RATE_LIMIT|BLOCKED|HTTP|TIMEOUT|NETWORK|RESPONSE|CONSENT)$/u.test(response?.errorCode || "")) key = `mt.error.${response.errorCode}`;
-    return Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
-  };
+  const responseError = (response, key) => Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
   const tasks = app.modules.tasks;
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
@@ -46,11 +43,11 @@
       }
 
       const groups = groupEntriesByText(entries);
-      const engineSettings = await sendRuntimeMessage({ type: messages.background.TRANSLATION_ENGINE_SETTINGS, pageUrl: location.href, surface: "page" });
-      const batches = makeBatches(groups, engineSettings?.engine === "machine-translation" ? { maxItems: 3, maxChars: 2500 } : {});
+      const batches = makeBatches(groups);
       let cacheHits = 0;
       let apiTranslated = 0;
       let missing = 0;
+      let cacheWarning = "";
       let done = 0;
       let configSnapshotId = "";
       const pageUrl = location.href;
@@ -72,6 +69,7 @@
         cacheHits += result.cacheHits;
         apiTranslated += result.apiTranslated;
         missing += result.missing;
+        if (result.cacheWarning) cacheWarning = result.cacheWarning;
         done += result.processed;
         if (task) {
           tasks.updateProgress(task, {
@@ -82,33 +80,37 @@
         }
       }
 
-      if (!cacheOnly && apiTranslated > 0) {
+      if (!cacheOnly && apiTranslated > 0 && !cacheWarning) {
         sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
       }
 
       const count = cacheHits + apiTranslated;
       if (cacheOnly) {
-        const key = cacheHits ? "content.page.restoreSummary" : "content.page.noCache";
+        const key = cacheWarning ? "content.page.cacheLookupFailed"
+          : cacheHits ? "content.page.restoreSummary" : "content.page.noCache";
         const args = cacheHits ? { hits: cacheHits, missing } : {};
         const message = t(key, args);
-        if (!silent) showToast(message, cacheHits ? "success" : "info");
-        return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args };
+        if (!silent) showToast(message, cacheWarning ? "error" : cacheHits ? "success" : "info");
+        return { count, cacheHits, apiTranslated: 0, missing, message, messageKey: key, messageArgs: args,
+          ...(cacheWarning ? { cacheWarning } : {}) };
       }
 
-      const key = missing ? "content.page.completeMissing" : "content.page.complete";
-      const args = missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
+      const key = cacheWarning ? "content.page.cacheNotSaved"
+        : missing ? "content.page.completeMissing" : "content.page.complete";
+      const args = cacheWarning ? {} : missing ? { hits: cacheHits, translated: apiTranslated, missing } : { hits: cacheHits, translated: apiTranslated };
       const message = t(key, args);
       tasks.completeTask(task, {
         done: entries.length,
         cacheHits,
         apiTranslated
       });
-      if (!silent) showToast(message, "success");
+      if (!silent) showToast(message, cacheWarning ? "error" : "success");
       return {
         count,
         cacheHits,
         apiTranslated,
         missing,
+        ...(cacheWarning ? { cacheWarning } : {}),
         message,
         messageKey: key,
         messageArgs: args,
@@ -137,9 +139,6 @@
   }
 
   async function processGroupBatch(groups, { cacheOnly, pageUrl, auto, task = null, configSnapshotId: existingSnapshotId = "" }) {
-    // Older callers omit protection metadata; freeze it before the first await.
-    groups = groups.map(group => ({ ...group, protectedIds: group.protectedIds ||
-      (app.modules.structured?.encodeElement(group.elements[0])?.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : []) }));
     const expectedPageIdentity = getPageIdentity(pageUrl);
     const pageTitle = document.title;
     if (task) tasks.transition(task, "cache_lookup");
@@ -151,11 +150,12 @@
       pageUrl,
       languageSource: "page",
       configSnapshotId: existingSnapshotId,
-      segments: groups.map(({ id, text, protectedIds = [] }) => ({ id, text, protectedIds }))
+      segments: groups.map(({ id, text, protectedIds = [], rich }) => ({ id, text, protectedIds, format: rich ? "tf-markers" : "plain" }))
     });
     if (task) tasks.assertActive(task);
     if (!lookup?.ok) throw responseError(lookup, "content.page.cacheLookupFailed");
     const configSnapshotId = String(lookup.configSnapshotId || "");
+    const cacheWriteTokens = new Map((lookup.writeTokens || []).map(item => [String(item.id), item.token]));
 
     const cachedMap = new Map((lookup.hits || []).map((item) => [String(item.id), item.text]));
     const skippedIds = new Set(lookup.skippedIds || []);
@@ -163,6 +163,7 @@
     let cacheHits = 0;
     let apiTranslated = 0;
     let missing = 0;
+    let cacheWarning = String(lookup.cacheWarning || "");
 
     for (const group of groups) {
       if (skippedIds.has(group.id)) continue;
@@ -179,7 +180,8 @@
     const processed = groups.reduce((sum, group) => sum + group.elements.length, 0);
     if (cacheOnly || uncached.length === 0) {
       missing = cacheOnly ? uncached.reduce((sum, group) => sum + group.elements.length, 0) : 0;
-      return { cacheHits, apiTranslated, missing, processed, configSnapshotId };
+      return { cacheHits, apiTranslated, missing, processed, configSnapshotId,
+        ...(cacheWarning ? { cacheWarning } : {}) };
     }
 
     if (task) tasks.transition(task, "translating");
@@ -188,7 +190,7 @@
       requestId: task?.id || crypto.randomUUID(),
       pageUrl,
       configSnapshotId,
-      segments: uncached.map(({ id, text, protectedIds = [] }) => ({ id, text, protectedIds }))
+      segments: uncached.map(({ id, text, protectedIds = [], rich }) => ({ id, text, protectedIds, format: rich ? "tf-markers" : "plain" }))
     });
     if (task) tasks.assertActive(task);
     if (!response?.ok) throw responseError(response, "content.page.translationFailed");
@@ -205,11 +207,12 @@
       if (getPageIdentity(location.href) === expectedPageIdentity) {
         apiTranslated += insertGroupTranslation(group, translation, response.engine);
       }
-      toStore.push({ sourceText: group.text, translation, ...(lookup.engine === "machine-translation" ? { protectedIds: group.protectedIds || [] } : {}) });
+      toStore.push({ sourceText: group.text, translation, protectedIds: group.protectedIds || [],
+        format: group.rich ? "tf-markers" : "plain", cacheToken: cacheWriteTokens.get(String(group.id)) });
     }
 
     if (getPageIdentity(location.href) !== expectedPageIdentity) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
-    if (toStore.length) {
+    if (toStore.length && !cacheWarning) {
       if (task) {
         tasks.assertActive(task);
         tasks.transition(task, "storing");
@@ -219,29 +222,34 @@
         type: messages.background.CACHE_STORE,
         pageUrl,
         pageTitle,
-        requestId: task?.id,
         configSnapshotId,
         items: toStore
       });
       if (task) tasks.assertActive(task);
-      if (!stored?.ok) throw responseError(stored, "content.page.cacheStoreFailed");
+      if (!stored?.ok && !app.modules.runtime.isCachePersistenceError?.(stored)) {
+        throw responseError(stored, "content.page.cacheStoreFailed");
+      }
+      const saved = stored?.ok ? Number(stored.stored || 0) : 0;
+      cacheWarning = stored?.ok
+        ? (stored.cacheWarning || (saved < toStore.length ? "CACHE_NOT_SAVED" : ""))
+        : stored.errorCode;
 
-      if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000) {
+      if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000 && !cacheWarning) {
         state.lastAutoPruneAt = Date.now();
         sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
       }
     }
 
-    return { cacheHits, apiTranslated, missing, processed, configSnapshotId };
+    return { cacheHits, apiTranslated, missing, processed, configSnapshotId,
+      ...(cacheWarning ? { cacheWarning } : {}) };
   }
 
   function insertGroupTranslation(group, translation, engine = "") {
     let inserted = 0;
     for (const el of group.elements) {
       if (!document.contains(el)) continue;
-      const current = extractSourceSegment(el), currentText = current.text;
-      const protectedIds = (current.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : []);
-      if (normalizeSourceText(currentText) !== group.normalizedText || (engine === "machine-translation" && JSON.stringify(protectedIds) !== JSON.stringify(group.protectedIds || []))) {
+      const currentText = extractSourceSegment(el).text;
+      if (normalizeSourceText(currentText) !== group.normalizedText) {
         if (state.auto || state.cacheRestore) app.modules.auto?.invalidateAndObserve(el);
         continue;
       }

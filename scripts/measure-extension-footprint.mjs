@@ -5,120 +5,51 @@ import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildExtension } from "./build-extension.mjs";
-import { certifyLexicalRelease } from "./certify-lexical-release.mjs";
 
 const ZIP_END_OF_CENTRAL_DIRECTORY_BYTES = 22;
 const ZIP_LOCAL_HEADER_BYTES = 30;
 const ZIP_CENTRAL_HEADER_BYTES = 46;
 
-export const BUNDLED_LEXICON_RAW_BUDGET_BYTES = 37_000_000;
-export const BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES = 4_000_000;
-
-export async function measureExtensionFootprint({
-  releaseRoot = resolve("assets/lexicon")
-} = {}) {
+export async function measureExtensionFootprint() {
   const tempRoot = await mkdtemp(join(tmpdir(), "translateflow-footprint-"));
   const extensionDir = join(tempRoot, "extension");
-
   try {
-    const build = await buildExtension({
-      outDir: extensionDir,
-      requireLexicon: true,
-      allowExternalOutput: true
-    });
+    const build = await buildExtension({ outDir: extensionDir, allowExternalOutput: true });
     const entries = await readEntries(extensionDir);
-    const categorized = categorizeEntries(entries);
-    const zipProxy = zipDeflateProxy(entries);
-    const cert = await certifyLexicalRelease({ root: resolve(releaseRoot) });
-
-    const structuralFailures = [];
-    const rawTotal = entries.reduce((sum, entry) => sum + entry.bytes, 0);
-    const rawLexical = categorized.lexical.reduce((sum, entry) => sum + entry.bytes, 0);
-    if (rawTotal !== build.totalBytes) {
-      structuralFailures.push(
-        "production package byte drift: buildExtension=" + build.totalBytes + ", measured=" + rawTotal
-      );
-    }
-    if (rawLexical !== build.lexicalBytes) {
-      structuralFailures.push(
-        "lexical package byte drift: buildExtension=" + build.lexicalBytes + ", measured=" + rawLexical
-      );
-    }
-    if (!categorized.core.length) structuralFailures.push("production package is missing bundled Core");
-    if (!categorized.technical.length) structuralFailures.push("production package is missing bundled Technical");
-    if (cert.failures.length) {
-      structuralFailures.push(...cert.failures.map((failure) => "release certifier: " + failure));
-    }
-    structuralFailures.push(...assessBundledLexiconBudget({
-      rawBytes: rawLexical,
-      zipProxyBytes: zipDeflateProxy(categorized.lexical).totalBytes
-    }));
-
+    const rawTotal = sumBytes(entries);
+    const structuralFailures = assessPackageInventory(entries);
+    if (rawTotal !== build.totalBytes) structuralFailures.push("production package byte inventory drift");
     return {
       schemaVersion: 1,
       report: "production-extension-footprint-cost",
-      productionBehaviorChanged: false,
       packageBoundary: {
         builder: "scripts/build-extension.mjs",
         allowlistAudited: true,
-        validationAssetsIncluded: false
+        validationAssetsIncluded: false,
+        dictionaryAssetsIncluded: false
       },
-      bundledPolicy: {
-        decision: "retain-current-full-core-as-bounded-bootstrap",
-        rawLexiconBudgetBytes: BUNDLED_LEXICON_RAW_BUDGET_BYTES,
-        zipDeflateProxyBudgetBytes: BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES,
-        growthPolicy: "fail CI above either ceiling; intentional growth requires explicit policy/evidence update",
-        richDictionaryPolicy: "high-coverage dictionaries remain downloadable/imported"
-      },
-      rawBytes: {
-        total: rawTotal,
-        runtimeWithoutLexicon: sumBytes(categorized.runtime),
-        lexical: rawLexical,
-        core: sumBytes(categorized.core),
-        technical: sumBytes(categorized.technical),
-        otherLexical: sumBytes(categorized.otherLexical),
-        lexicalShare: ratio(rawLexical, rawTotal),
-        coreShare: ratio(sumBytes(categorized.core), rawTotal)
-      },
+      rawBytes: { total: rawTotal },
       zipDeflateProxy: {
         method: "per-file raw DEFLATE level 9 + minimal ZIP local/central headers",
-        caveat: "This is a deterministic upload/install-size proxy, not a claim about Chrome Web Store CRX/download/delta bytes.",
-        totalBytes: zipProxy.totalBytes,
-        runtimeWithoutLexiconBytes: zipDeflateProxy(categorized.runtime).totalBytes,
-        lexicalBytes: zipDeflateProxy(categorized.lexical).totalBytes,
-        coreBytes: zipDeflateProxy(categorized.core).totalBytes,
-        technicalBytes: zipDeflateProxy(categorized.technical).totalBytes,
-        otherLexicalBytes: zipDeflateProxy(categorized.otherLexical).totalBytes,
-        lexicalShare: ratio(zipDeflateProxy(categorized.lexical).totalBytes, zipProxy.totalBytes),
-        coreShare: ratio(zipDeflateProxy(categorized.core).totalBytes, zipProxy.totalBytes)
-      },
-      coldLookup: {
-        persistentMs: cert.timingMs.coldPersistent,
-        packageReads: cert.reads.cold.reads,
-        packageReadBytes: cert.reads.cold.bytes,
-        warmPersistentMs: cert.timingMs.warmPersistent,
-        warmReadDelta: {
-          reads: cert.reads.warm.reads - cert.reads.cold.reads,
-          bytes: cert.reads.warm.bytes - cert.reads.cold.bytes
-        },
-        decodedCacheBytes: cert.cache.bytes,
-        decodedCacheBudgetBytes: cert.cache.maxBytes,
-        heapDeltaObservedBytes: cert.heapObservation.deltaBytes,
-        note: cert.heapObservation.note
+        caveat: "Deterministic size proxy; not Chrome Web Store CRX/download/delta bytes.",
+        ...zipDeflateProxy(entries)
       },
       files: {
         count: entries.length,
-        largest: entries
-          .slice()
-          .sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path, "en"))
-          .slice(0, 20)
-          .map(({ path, bytes, compressedBytes }) => ({ path, bytes, compressedBytes }))
+        largest: entries.slice().sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path, "en"))
+          .slice(0, 20).map(({ path, bytes, compressedBytes }) => ({ path, bytes, compressedBytes }))
       },
       structuralFailures
     };
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }
+}
+
+export function assessPackageInventory(entries) {
+  const forbidden = entries.filter(({ path }) => path.startsWith("assets/lexicon/") ||
+    /^(?:tests|e2e|scripts|docs|lexicon|node_modules|\.github|\.release-sources)\//u.test(path));
+  return forbidden.map(({ path }) => "dictionary or development asset entered production package: " + path);
 }
 
 export function zipDeflateProxy(entries) {
@@ -144,52 +75,6 @@ export function zipDeflateProxy(entries) {
     envelopeBytes,
     totalBytes: payloadBytes + envelopeBytes
   };
-}
-
-export function assessBundledLexiconBudget({ rawBytes, zipProxyBytes } = {}) {
-  const failures = [];
-  if (!Number.isSafeInteger(rawBytes) || rawBytes < 0) {
-    throw new Error("rawBytes must be a non-negative integer");
-  }
-  if (!Number.isSafeInteger(zipProxyBytes) || zipProxyBytes < 0) {
-    throw new Error("zipProxyBytes must be a non-negative integer");
-  }
-  if (rawBytes > BUNDLED_LEXICON_RAW_BUDGET_BYTES) {
-    failures.push(
-      "bundled lexical raw budget exceeded: " + rawBytes +
-      " > " + BUNDLED_LEXICON_RAW_BUDGET_BYTES
-    );
-  }
-  if (zipProxyBytes > BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES) {
-    failures.push(
-      "bundled lexical ZIP/deflate proxy budget exceeded: " + zipProxyBytes +
-      " > " + BUNDLED_LEXICON_ZIP_PROXY_BUDGET_BYTES
-    );
-  }
-  return failures;
-}
-
-export function categorizeEntries(entries) {
-  const result = {
-    runtime: [],
-    lexical: [],
-    core: [],
-    technical: [],
-    otherLexical: []
-  };
-
-  for (const entry of Array.isArray(entries) ? entries : []) {
-    const path = String(entry?.path || "");
-    if (path.startsWith("assets/lexicon/")) {
-      result.lexical.push(entry);
-      if (path.startsWith("assets/lexicon/core/")) result.core.push(entry);
-      else if (path.startsWith("assets/lexicon/technical/")) result.technical.push(entry);
-      else result.otherLexical.push(entry);
-    } else {
-      result.runtime.push(entry);
-    }
-  }
-  return result;
 }
 
 async function readEntries(root) {
@@ -225,10 +110,6 @@ function sumBytes(entries) {
   return (Array.isArray(entries) ? entries : []).reduce((sum, entry) => sum + Number(entry?.bytes || 0), 0);
 }
 
-function ratio(numerator, denominator) {
-  return denominator ? numerator / denominator : 0;
-}
-
 function parseArgs(argv) {
   const result = {};
   for (let index = 0; index < argv.length; index += 1) {
@@ -245,9 +126,7 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const report = await measureExtensionFootprint({
-    releaseRoot: args.root || undefined
-  });
+  const report = await measureExtensionFootprint();
   const output = JSON.stringify(report, null, 2) + "\n";
   if (args.out) await writeFile(resolve(args.out), output);
   process.stdout.write(output);

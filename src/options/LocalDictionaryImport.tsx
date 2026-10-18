@@ -18,6 +18,7 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
   const service = useRef<LocalDictionaryClient | null>(null);
   const preflightAbort = useRef<AbortController | null>(null);
   const generation = useRef(0);
+  const installedGeneration = useRef(0);
   const mounted = useRef(false);
   const [ready, setReady] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -37,9 +38,12 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
     mounted.current = true;
     const client = createLocalDictionaryClient({ onProgress: (message, nextPhase) => { if (mounted.current) { setProgress(message); setImportPhase(nextPhase); } } });
     service.current = client; setReady(true);
+    const changed = () => { void refreshInstalled(client); };
+    document.addEventListener("translateflow:dictionary-state-changed", changed);
     void refreshInstalled(client);
     return () => {
-      mounted.current = false; generation.current += 1; preflightAbort.current?.abort();
+      mounted.current = false; generation.current += 1; installedGeneration.current += 1; preflightAbort.current?.abort();
+      document.removeEventListener("translateflow:dictionary-state-changed", changed);
       client.dispose(); if (service.current === client) service.current = null;
     };
   }, []);
@@ -68,8 +72,10 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
 
   async function refreshInstalled(client = service.current, request = generation.current) {
     if (!client) return;
+    const installedRequest = ++installedGeneration.current;
+    setInstalled(current => ({ ...current, known: { rich: false, packs: false } }));
     const next = await client.installed();
-    if (mounted.current && request === generation.current) setInstalled(next);
+    if (mounted.current && request === generation.current && installedRequest === installedGeneration.current) setInstalled(next);
   }
 
   function replaceSelection(next: File[]) {
@@ -89,8 +95,8 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
     try {
       const result = await client.importFiles(report, files);
       if (!mounted.current) return;
-      setProgress(result.progress); setImportPhase(""); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
-      if (result.changed) await onChanged();
+      setProgress(result.progress); setImportPhase(result.changed && !result.retryMdd ? "done" : ""); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
+      if (result.changed) await Promise.all([onChanged(), refreshInstalled(client)]);
     } finally { if (mounted.current) setBusy(false); }
   }
 
@@ -112,8 +118,8 @@ export function LocalDictionaryImport({ setStatus, onChanged }: {
     try {
       const result = await service.current.retryMdd();
       if (!mounted.current) return;
-      setProgress(result.progress); setImportPhase(""); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
-      if (result.changed) await onChanged();
+      setProgress(result.progress); setImportPhase(result.changed && !result.retryMdd ? "done" : ""); setRetryMdd(result.retryMdd); setStatus(result.status, result.error);
+      if (result.changed) await Promise.all([onChanged(), refreshInstalled()]);
     } finally { if (mounted.current) setBusy(false); }
   }
 

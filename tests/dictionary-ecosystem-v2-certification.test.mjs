@@ -356,9 +356,9 @@ test("accepts only the enumerated optional skips and never skips required E2E ca
   const evidence = makeEvidence();
   evidence.playwright.stats.skipped = 1;
   evidence.playwright.suites.push({
-    file: "e2e/release-lexicon.spec.mjs",
+    file: "e2e/local-dictionary-preflight-real-ecdict.spec.mjs",
     specs: [{
-      title: "production extension resolves the built Core and Technical packs without Provider calls",
+      title: "pinned real ECDICT MDX preflight stays local, bounded, and routes to the rich importer",
       tests: [{ expectedStatus: "passed", status: "skipped", results: [{ status: "skipped" }] }]
     }]
   });
@@ -460,4 +460,12 @@ test("allows only the exact locked synthetic MDD interoperability files in the r
   const unapprovedResult = certifyDictionaryEcosystemV2(unapprovedFixture);
   assert.equal(unapprovedResult.status, "FAIL");
   assert.ok(unapprovedResult.failures.some((failure) => failure.includes("repository contains 1 unapproved raw dictionary/archive payload")));
+});
+
+test("ecosystem package audit rejects a structured dictionary payload in the base extension", () => {
+  const evidence = makeEvidence();
+  evidence.packageFiles.push("assets/lexicon/user-pack/entries.dat");
+  const result = certifyDictionaryEcosystemV2(evidence);
+  assert.equal(result.status, "FAIL");
+  assert.ok(result.failures.some(failure => failure.includes("validation/research path")));
 });

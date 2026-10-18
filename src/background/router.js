@@ -1,11 +1,11 @@
-import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machine-translation-settings.js";
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machine-translation-settings.js";
+import { handleCacheMessage } from "./cache/message-handler.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
-import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
-import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "./cache-db.js";
-import { translationConfig, translationEngineSettings } from "./browser-translation.js";
-import { getConfig, getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
+import { BACKGROUND_MESSAGES } from "../shared/constants.js";
+import { translationEngineSettings } from "./browser-translation.js";
+import { getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
   hideQuickControlSite,
   registerAutoSite,
@@ -21,12 +21,13 @@ import { testProvider } from "./providers/index.js";
 import { deleteProviderConnection, listProviderConnections, setDefaultService, upsertProviderConnection } from "./provider-connections.js";
 import { testSavedProviderConnection } from "./provider-connection-runtime.js";
 import { readPublicSettings, writePublicSettings } from "./public-settings.js";
-import { createEffectiveConfigSnapshot, resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
+import { readQuickControlPosition, saveQuickControlPosition } from "./quick-control-position.js";
+import { resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
-import { getBundledLexiconStatus, runLexicalLookup } from "./lexical/index.js";
+import { runLexicalLookup } from "./lexical/index.js";
 import { resolveSelectionRequest } from "./selection/resolve.js";
 import { handleVocabularyBookMessage } from "./vocabulary-book-router.js";
 import {
@@ -78,6 +79,7 @@ export function registerMessageRouter() {
     return true;
   });
 }
+
 export async function handleBackgroundMessage(message, sender) {
   if (MACHINE_SETTING_MESSAGES.includes(message?.type)) return handleMachineSettingsMessage(message, sender);
   switch (message?.type) {
@@ -127,8 +129,9 @@ export async function handleBackgroundMessage(message, sender) {
     }
     case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_GET:
       return { settings: await readPublicSettings() };
-    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET:
-      return writePublicSettings(message.settings);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_GET: return readQuickControlPosition(sender);
+    case BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_SET: return saveQuickControlPosition(sender, message.position);
+    case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET: return writePublicSettings(message.settings);
     case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
       assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
@@ -153,44 +156,14 @@ export async function handleBackgroundMessage(message, sender) {
         sourceLanguage: message.sourceLanguage || "en",
         targetLanguage: message.targetLanguage || "zh-CN"
       });
-    case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
-      const snapshot = message.configSnapshotId
-        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender) }
-        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation, sender);
-      const config = snapshot.config;
-      const result = await lookupTranslations({
-        pageUrl: message.pageUrl,
-        segments: message.segments,
-        config
-      });
-      return { ...result, ...(config.engine === "machine-translation" ? { provider: config.provider } : {}), engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
-    }
-    case BACKGROUND_MESSAGES.CACHE_STORE: {
-      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
-      if (config.engine === "browser-translator" && (await getConfig()).browserTranslationEnabled === false) throw Object.assign(new Error("Browser translation is disabled."), { code: "BROWSER_DISABLED" });
-      const result = await storeTranslations({
-        pageUrl: message.pageUrl,
-        pageTitle: message.pageTitle,
-        items: message.items,
-        config
-      });
-      return result;
-    }
+    case BACKGROUND_MESSAGES.CACHE_LOOKUP:
+    case BACKGROUND_MESSAGES.CACHE_STORE:
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
-      return getPageCacheStatus({
-        pageUrl: message.pageUrl,
-        config: await translationConfig(message.pageUrl)
-      });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_PAGE:
-      return clearPageCache({ pageUrl: message.pageUrl });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_ALL:
-      return clearAllCache();
     case BACKGROUND_MESSAGES.CACHE_STATS:
-      return getCacheStats();
-    case BACKGROUND_MESSAGES.CACHE_PRUNE: {
-      const { cacheMaxMB } = await getConfig();
-      return pruneCache(Number(cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB) * 1024 * 1024);
-    }
+    case BACKGROUND_MESSAGES.CACHE_PRUNE:
+      return handleCacheMessage(message, sender);
     case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_REGISTER:
       return registerCacheRestoreSite(message.origin);
     case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER:
@@ -222,8 +195,6 @@ export async function handleBackgroundMessage(message, sender) {
       return { context: await saveSitePreset(message.pageUrl, message.preset) };
     case BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL:
       return installYouTubeMainBridge(sender);
-    case BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS:
-      return getBundledLexiconStatus();
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS:
       assertOptionsSender(sender);
       return getDictionaryPackStatus({ recover: true });
@@ -371,6 +342,7 @@ async function notifyRichMddResourcesChanged(dictionaryId) {
     }
   }));
 }
+
 function assertOptionsSender(sender) {
   const expected = chrome.runtime.getURL(EXTENSION_PAGES.options);
   const actual = String(sender?.url || "");
@@ -401,6 +373,7 @@ function assertSelectionContentSender(sender) {
     throw error;
   }
 }
+
 export function selectionContentOwnerKey(sender, message = {}) {
   const tabId = Number(sender?.tab?.id);
   const frameId = Number.isInteger(sender?.frameId) ? sender.frameId : 0;

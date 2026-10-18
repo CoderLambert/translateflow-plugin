@@ -32,6 +32,7 @@ async function trace(page) {
 
 test("real toolbar Popup reports success when opening the learning center closes it", async ({ harness }) => {
   await harness.reset();
+  await harness.installUserDictionaries();
   await harness.serviceWorker.evaluate(() => chrome.runtime.onMessage.addListener((request, sender) => {
     if (request.method === "reading.open-learning-center") globalThis.__toolbarPopupSender = {
       id: sender.id, url: sender.url, origin: sender.origin, documentId: sender.documentId,
@@ -41,6 +42,7 @@ test("real toolbar Popup reports success when opening the learning center closes
   }));
   const cdp = await harness.context.newCDPSession(harness.driver);
   await cdp.send("Target.setDiscoverTargets", { discover: true });
+  const targetsBeforeOpen = new Set((await cdp.send("Target.getTargets")).targetInfos.map(target => target.targetId));
   await harness.driver.evaluate(() => {
     const button = document.createElement("button");
     button.id = "open-real-popup";
@@ -55,8 +57,11 @@ test("real toolbar Popup reports success when opening the learning center closes
   expect(popupContexts).toHaveLength(1);
   const popupUrl = `chrome-extension://${harness.extensionId}/popup.html`;
   const targets = await cdp.send("Target.getTargets");
-  const popupTarget = targets.targetInfos.find(target => target.url === popupUrl);
-  expect(popupTarget).toBeTruthy();
+  // The driver is also a popup.html document, but it is a normal browser tab.
+  // Bind the new action-popup target rather than the first matching URL.
+  const popupTargets = targets.targetInfos.filter(target => target.url === popupUrl && !targetsBeforeOpen.has(target.targetId));
+  expect(popupTargets).toHaveLength(1);
+  const [popupTarget] = popupTargets;
   const { sessionId } = await cdp.send("Target.attachToTarget", { targetId: popupTarget.targetId });
   const evaluateId = 1;
   await cdp.send("Target.sendMessageToTarget", { sessionId,
@@ -78,6 +83,7 @@ test("real toolbar Popup reports success when opening the learning center closes
 test("Actual React product: Popup/selection, consent, real save, history, site policy, delete and JSON download", async ({ harness }, info) => {
   test.setTimeout(120000);
   await harness.reset();
+  await harness.installUserDictionaries();
   await harness.driver.evaluate(() => chrome.storage.local.set({ uiLocale: "zh_CN" }));
   await harness.driver.reload();
   const opened = harness.context.waitForEvent("page");
@@ -200,6 +206,7 @@ test("Reading user journey: explicit consent, persistent browser restart, exact 
   test.setTimeout(120000);
   await harness.resetProfile();
   await harness.reset();
+  await harness.installUserDictionaries();
   await harness.setStorage({ uiLocale: "en", readingMemorySites: [] });
   await harness.driver.reload();
 

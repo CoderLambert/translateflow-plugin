@@ -1,57 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { BUNDLED_LEXICON_PATHS } from "../src/shared/runtime-assets.js";
 
-async function source(path) {
-  return readFile(new URL("../" + path, import.meta.url), "utf8");
-}
+const source = (path) => readFile(new URL("../" + path, import.meta.url), "utf8");
 
-test("production lexical gateway registers bundled packs before active OPFS dictionaries", async () => {
-  const code = await source("src/background/lexical/index.js");
-  assert.deepEqual(BUNDLED_LEXICON_PATHS, { core: "assets/lexicon/core", technical: "assets/lexicon/technical" });
-  assert.match(code, /path:\s*BUNDLED_LEXICON_PATHS\.core/);
-  assert.match(code, /path:\s*BUNDLED_LEXICON_PATHS\.technical/);
-  assert.match(code, /createActiveOpfsPackReader/);
-  assert.match(
-    code,
-    /packReaders:\s*\[\s*\.\.\.BUNDLED_PACKS\.map\([\s\S]*?activeOpfsReader\s*\]/
-  );
-});
-
-test("release lexicon CI builds from the exact Design Freeze OMW revision", async () => {
-  const [workflow, packageJson] = await Promise.all([
-    source(".github/workflows/lexicon-release.yml"),
-    source("package.json")
-  ]);
-  assert.match(workflow, /omwn\/omw-data/);
-  assert.match(workflow, /406bf83b3c507a3d1f26e88252d5d66893fd36bf/);
-  assert.match(workflow, /npm run setup:lexicon/);
-  assert.match(workflow, /npm run benchmark:lexical/);
-  assert.match(workflow, /lexical-quality-report\.json/);
-  assert.match(workflow, /npm run certify:selection-lexical/);
-  assert.match(workflow, /integrated-lexical-certification\.json/);
-  assert.match(workflow, /npm run certify:lexicon/);
-  assert.match(workflow, /npm run test:e2e/);
-
-  const pkg = JSON.parse(packageJson);
-  assert.equal(pkg.scripts["build:lexicon:release"], "node scripts/build-release-lexicon.mjs");
-  assert.equal(pkg.scripts["setup:lexicon"], "node scripts/setup-lexicon.mjs");
-  assert.equal(pkg.scripts["certify:lexicon"], "node scripts/certify-lexical-release.mjs");
-  assert.equal(
-    pkg.scripts["certify:selection-lexical"],
-    "node scripts/certify-integrated-lexical-quality.mjs"
-  );
-  assert.equal(pkg.scripts["benchmark:lexical"], "node scripts/benchmark-lexical-quality.mjs");
-});
-
-test("release certification keeps the 40 MiB lexical asset gate", async () => {
-  const [certifier, setup] = await Promise.all([
-    source("scripts/certify-lexical-release.mjs"),
-    source("scripts/setup-lexicon.mjs")
-  ]);
-  assert.match(certifier, /MAX_RELEASE_LEXICON_BYTES\s*=\s*40\s*\*\s*1024\s*\*\s*1024/);
-  assert.match(certifier, /assets\.bytes\s*<=\s*MAX_RELEASE_LEXICON_BYTES/);
-  assert.match(setup, /certifyLexicalRelease/);
-  assert.match(setup, /certification\.failures\.length/);
+test("all production build entries use the dictionary-free WXT engine", async () => {
+  const pkg = JSON.parse(await source("package.json"));
+  assert.equal(pkg.scripts["build:extension"], "node scripts/build-extension.mjs");
+  assert.equal(pkg.scripts["build:extension:release"], "node scripts/build-extension.mjs");
+  assert.equal(pkg.scripts["build:extension:wxt"], "node scripts/build-extension.mjs --out .output/chrome-mv3");
+  for (const name of ["setup:lexicon", "build:tflex:core", "build:tflex:technical", "build:lexicon:release", "certify:lexicon"]) assert.equal(pkg.scripts[name], undefined);
 });

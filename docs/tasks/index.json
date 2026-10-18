@@ -252,7 +252,7 @@
     },
     {
       "task": "api-key-provider-connections",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
       "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972"
@@ -265,8 +265,15 @@
       "candidateHead": null
     },
     {
+      "task": "cache-system-v1",
+      "status": "completed",
+      "dependencies": [],
+      "branch": "feat/independent-cache-system-20261018",
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53"
+    },
+    {
       "task": "chatgpt-native-host-distribution",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "fix/rich-runtime-assets-20261013",
       "candidateHead": "df6e65fd908228ca46763a1fa276c76d3164fd3e"
@@ -277,6 +284,13 @@
       "dependencies": [],
       "branch": "feat/chatgpt-plan-nativehost-closeout-20261009",
       "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468"
+    },
+    {
+      "task": "content-runtime-closeout",
+      "status": "completed",
+      "dependencies": [],
+      "branch": "fix/local-content-reliability-20261019",
+      "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568"
     },
     {
       "task": "offline-dictionary",
@@ -302,6 +316,15 @@
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
     },
     {
+      "task": "remove-bundled-lexicons",
+      "status": "completed",
+      "dependencies": [
+        "cache-system-v1"
+      ],
+      "branch": "refactor/remove-bundled-lexicons",
+      "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39"
+    },
+    {
       "task": "rich-index-cache-budget",
       "status": "paused",
       "dependencies": [
@@ -312,7 +335,7 @@
     },
     {
       "task": "rich-local-fonts",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "oxford-radio-css",
         "rich-multiple-records"
@@ -356,7 +379,7 @@
     },
     {
       "task": "selection-ai-result-saving",
-      "status": "working",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
       "candidateHead": null
@@ -370,10 +393,19 @@
     },
     {
       "task": "sync-current-worktree",
-      "status": "working",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
       "candidateHead": null
+    },
+    {
+      "task": "test-concurrency",
+      "status": "completed",
+      "dependencies": [
+        "remove-bundled-lexicons"
+      ],
+      "branch": "chore/test-concurrency-and-selection",
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b"
     },
     {
       "task": "workflow-local",

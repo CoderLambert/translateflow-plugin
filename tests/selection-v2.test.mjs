@@ -60,7 +60,7 @@ test("short Han and kana headwords use only the local Rich MDict route", async (
   const selection = state.__TRANSLATE_FLOW_CONTENT__.modules.selection;
   let lexicalLookups = 0;
   const deps = {
-    getConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    getConfig: async () => ({ targetLanguage: "Simplified Chinese", dictionaryEnabled: true }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
     runLexicalLookup: async () => {
       lexicalLookups += 1;
@@ -81,7 +81,9 @@ test("short Han and kana headwords use only the local Rich MDict route", async (
     assert.equal(intent.sourceLanguage, sourceLanguage, text);
 
     const result = await resolveSelectionRequest({ text, pageUrl: "https://example.test/" }, deps);
+    assert.equal(result.route, SELECTION_ROUTE.UNRESOLVED, text);
     assert.equal(result.routeReason, "no-hit-local", text);
+    assert.equal(result.preferRich, false, text);
     assert.equal(result.lookup, null, text);
     assert.equal(result.decision.outcome, "no-hit", text);
   }
@@ -310,6 +312,7 @@ test("rich-only CJK no-hit stays local by default and carries sanitized context 
   const deps = {
     getConfig: async () => ({
       selectionExplanationDepth: "auto",
+      dictionaryEnabled: true,
       targetLanguage: "Simplified Chinese"
     }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
@@ -327,6 +330,7 @@ test("rich-only CJK no-hit stays local by default and carries sanitized context 
   const local = await resolveSelectionRequest({ text: "弁護士", context }, deps);
   assert.equal(local.route, SELECTION_ROUTE.UNRESOLVED);
   assert.equal(local.routeReason, "no-hit-local");
+  assert.equal(local.preferRich, false);
   assert.equal("explanationInput" in local, false);
   assert.equal(lexicalCalls, 0);
 
@@ -349,6 +353,72 @@ test("rich-only CJK no-hit stays local by default and carries sanitized context 
   assert.equal(lexicalCalls, 0);
 });
 
+test("single-word misses with dictionaries enabled remain local until an explicit explanation", async () => {
+  const deps = {
+    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => ({ status: "no-hit", candidates: [] })
+  };
+  const local = await resolveSelectionRequest({ text: "zzsyntheticmissing" }, deps);
+  assert.equal(local.route, SELECTION_ROUTE.UNRESOLVED);
+  assert.equal(local.routeReason, "no-hit-local");
+  assert.equal(local.decision.outcome, "no-hit");
+  assert.equal(local.preferRich, false);
+  assert.equal("explanationInput" in local, false);
+
+  const explicit = await resolveSelectionRequest({ text: "zzsyntheticmissing", explainRequested: true }, deps);
+  assert.equal(explicit.route, SELECTION_ROUTE.NEEDS_EXPLANATION);
+  assert.equal(explicit.routeReason, "no-hit-explicit-explanation");
+  assert.equal(explicit.preferRich, false);
+  assert.equal(explicit.explanationInput.selectionText, "zzsyntheticmissing");
+});
+
+test("lexical resource errors remain diagnosable without automatic translation", async () => {
+  const deps = {
+    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" })
+  };
+  for (const code of ["LEXICON_STORAGE", "LEXICON_CORRUPT", "LEXICON_INCOMPATIBLE"]) {
+    for (const throws of [false, true]) {
+      const result = await resolveSelectionRequest({ text: "persistent" }, {
+        ...deps,
+        runLexicalLookup: async () => {
+          if (throws) throw Object.assign(new Error("private diagnostic path"), { code });
+          return { status: "error", error: { code } };
+        }
+      });
+      assert.equal(result.route, SELECTION_ROUTE.UNRESOLVED, `${code}, throws=${throws}`);
+      assert.equal(result.routeReason, "local-error");
+      assert.equal(result.decision.error.code, code);
+      assert.equal(result.explanationAllowed, true, "a one-word MDX hit may expose explicit AI actions");
+      assert.equal(result.preferRich, true, "try imported rich dictionaries without translating automatically");
+      assert.equal(JSON.stringify(result).includes("private diagnostic path"), false);
+    }
+  }
+  const unexpected = await resolveSelectionRequest({ text: "persistent" }, {
+    ...deps, runLexicalLookup: async () => { throw new Error("private unexpected failure"); }
+  });
+  assert.equal(unexpected.routeReason, "local-error");
+  assert.equal(unexpected.decision.error.code, "LEXICAL_LOOKUP_FAILED");
+  assert.equal(JSON.stringify(unexpected).includes("private unexpected failure"), false);
+});
+
+test("explicitly disabling dictionaries retains ordinary translation without lexical lookup", async () => {
+  let lexicalCalls = 0;
+  const deps = {
+    getConfig: async () => ({ dictionaryEnabled: false, targetLanguage: "Simplified Chinese" }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => { lexicalCalls += 1; return { status: "no-hit" }; }
+  };
+  for (const text of ["persistent", "弁護士", "persistent session"]) {
+    const result = await resolveSelectionRequest({ text }, deps);
+    assert.equal(result.route, SELECTION_ROUTE.TRANSLATION, text);
+    assert.equal(result.routeReason, "dictionary-disabled", text);
+    assert.equal(result.lookup, null);
+  }
+  assert.equal(lexicalCalls, 0);
+});
+
 test("Unknown multi-word lexical phrases route to translation instead of token-definition concatenation", async () => {
   const result = await resolveSelectionRequest({
     text: "persistent session",
@@ -356,6 +426,7 @@ test("Unknown multi-word lexical phrases route to translation instead of token-d
   }, {
     getConfig: async () => ({
       selectionExplanationDepth: "auto",
+      dictionaryEnabled: true,
       targetLanguage: "Simplified Chinese"
     }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
@@ -387,6 +458,7 @@ test("Unknown multi-word lexical phrases route to translation instead of token-d
   assert.equal(result.route, SELECTION_ROUTE.TRANSLATION);
   assert.equal(result.routeReason, "unknown-phrase-translation");
   assert.equal(result.lookup.status, "no-hit");
+  assert.equal(result.preferRich, true);
 });
 
 test("Sensitive ambiguous Selection explanation input never includes surrounding form text or raw URL", async () => {
@@ -426,7 +498,7 @@ test("Sensitive ambiguous Selection explanation input never includes surrounding
   assert.equal(JSON.stringify(result.explanationInput).includes("password"), false);
 });
 
-test("Selection resolver preserves competing Core/Technical candidates for #85 ranking", async () => {
+test("Selection resolver preserves competing user-dictionary candidates for #85 ranking", async () => {
   const core = {
     id: "core:container",
     kind: "lexical",
@@ -504,7 +576,7 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
         exactCaseMatch: true,
         domains: ["developer-tool"],
         typeLabels: ["terminal multiplexer", "free software"],
-        provenance: { packId: "technical-wikidata", packVersion: "fixture", fingerprint: "sha256:tech" }
+        provenance: { packId: "local-concepts-fixture", packVersion: "fixture", fingerprint: "sha256:tech" }
       }]
     })
   });
@@ -512,4 +584,38 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
   assert.equal(result.route, SELECTION_ROUTE.LOCAL);
   assert.equal(result.decision.topCandidateId, "technical:Q1935361");
   assert.equal(result.decision.candidates[0].typeLabels[0], "terminal multiplexer");
+});
+
+for (const [status, text, explanationAllowed, route, preferRich] of [
+  ["error", "noted", true, SELECTION_ROUTE.UNRESOLVED, true],
+  ["no-hit", "noted", true, SELECTION_ROUTE.UNRESOLVED, false],
+  ["unsupported", "noted", false, SELECTION_ROUTE.TRANSLATION, true],
+  ["error", "unknown lexical phrase", false, SELECTION_ROUTE.UNRESOLVED, false],
+  ["no-hit", "unknown lexical phrase", false, SELECTION_ROUTE.TRANSLATION, true]
+]) {
+  test(`rich-first ${status} lookup for ${text} preserves explicit AI availability (${explanationAllowed})`, async () => {
+    const result = await resolveSelectionRequest({ text, pageUrl: "https://fixture.invalid/article" }, {
+      getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+      getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+      runLexicalLookup: async () => ({ status, candidates: [], error: status === "error"
+        ? { code: "LEXICON_STORAGE_ERROR", message: "Optional structured pack unavailable" } : undefined })
+    });
+    assert.equal(result.route, route);
+    assert.equal(result.preferRich, preferRich);
+    assert.equal(result.explanationAllowed, explanationAllowed);
+    assert.equal(result.lookup.status, status, "retain the real structured lookup diagnostic");
+    assert.equal("explanationInput" in result, false, "resolving must not start AI");
+  });
+}
+
+test("an unexpected structured lookup failure still tries imported rich dictionaries first", async () => {
+  const result = await resolveSelectionRequest({ text: "noted", pageUrl: "https://fixture.invalid/article" }, {
+    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
+    runLexicalLookup: async () => { throw new Error("structured source temporarily unavailable"); }
+  });
+  assert.equal(result.route, SELECTION_ROUTE.UNRESOLVED);
+  assert.equal(result.routeReason, "local-error");
+  assert.equal(result.preferRich, true);
+  assert.equal(result.explanationAllowed, true);
 });

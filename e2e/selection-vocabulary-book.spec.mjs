@@ -1,5 +1,5 @@
 import { test, expect, chromium } from "@playwright/test";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -7,9 +7,9 @@ import { startMockServer } from "./support/mock-server.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { VOCABULARY_BOOK_STORAGE_KEY } from "../src/background/vocabulary-book.js";
 import { defaultArtifact } from "./support/production-artifact.mjs";
-import { compileTflexTechnical } from "../scripts/build-tflex-technical.mjs";
+import { installUserDictionaries } from "./support/user-dictionaries.mjs";
 
-// Real WXT Chromium artifact, with a clearly synthetic Core fixture copied into
+// Real WXT Chromium artifact, with explicit synthetic user dictionaries installed in
 // a temporary browser profile. This proves the UX and local storage contract,
 // not dictionary corpus coverage or a paid-provider flow.
 const root = resolve(import.meta.dirname, ".."), artifact = defaultArtifact;
@@ -35,12 +35,6 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     await cp(artifact, extension, { recursive: true });
     expect(await inventory(extension)).toEqual(production);
     const backgroundSha256 = hash(await readFile(join(extension, "background.js")));
-    await rm(join(extension, "assets/lexicon"), { recursive: true, force: true });
-    await mkdir(join(extension, "assets/lexicon"), { recursive: true });
-    await cp(join(root, "tests/fixtures/tflex-runtime-pack"), join(extension, "assets/lexicon/core"), { recursive: true });
-    await compileTflexTechnical({ extractPath: join(root, "lexicon/sources/wikidata-tech-entities.json"),
-      sourceLockPath: join(root, "lexicon/source-locks/technical-wikidata.json"),
-      outDir: join(extension, "assets/lexicon/technical") });
     const manifest = JSON.parse(await readFile(join(extension, "manifest.json"), "utf8"));
     manifest.host_permissions.push("http://127.0.0.1/*");
     await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
@@ -51,9 +45,12 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     extensionId = new URL(worker.url()).host;
     driver = await context.newPage();
     await driver.goto(`chrome-extension://${extensionId}/popup.html`);
+    // Finish native installation before beforeEach clears and replaces fixture settings.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
     await writeFile(test.info().outputPath("selection-vocabulary-package.json"), JSON.stringify({ artifactPath: artifact,
       productionInventory: production, backgroundSha256, exactCopyBeforeFixtures: true, browser: context.browser().version(),
-      temporaryChanges: ["synthetic Core TFLex fixture and repository Technical fixture", "localhost test host permission"], paidProviderCalls: 0,
+      temporaryChanges: ["synthetic user dictionaries in isolated OPFS", "localhost test host permission"], paidProviderCalls: 0,
       privateDictionaryUpload: false }, null, 2));
   });
 
@@ -66,13 +63,12 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     for (const page of context.pages()) if (page !== driver) await page.close();
     await driver.evaluate(async () => {
       await chrome.storage.local.clear();
-      await chrome.storage.local.set({ uiLocale: "en", provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+      await chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
         prompt: "Translate the segments and return JSON only.", selectionExplanationDepth: "standard", appearance: "standard",
         glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} }, openAICompatible: {
           baseUrl: "http://127.0.0.1:1/v1", apiKey: "", model: "offline-test-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
     });
-    const lexicon = await driver.evaluate(() => chrome.runtime.sendMessage({ type: "BUNDLED_LEXICON_STATUS" }));
-    expect(lexicon.packs.filter(pack => pack.status === "ready")).toHaveLength(2);
+    await installUserDictionaries(driver);
     server.reset();
   });
 
@@ -106,7 +102,7 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     expect(saved.version).toBe(2);
     expect(saved.entries).toHaveLength(1);
     expect(saved.entries[0].headword).toBe("persistent");
-    expect(saved.entries[0].sources[0].sourceId).toBe("pwn-3.0");
+    expect(saved.entries[0].sources[0].sourceId).toBe("e2e-synthetic-user-source");
     expect(saved.entries[0]).not.toHaveProperty("pageUrl");
     expect(saved.entries[0]).not.toHaveProperty("context");
     expect(server.calls).toHaveLength(0);

@@ -853,31 +853,6 @@ label {
   margin-top: 4px;
 }
 
-.dictionary-repair-help {
-  max-width: 760px;
-  margin-top: 10px;
-  color: var(--tf-text-muted);
-  font-size: 12px;
-}
-
-.dictionary-repair-help summary {
-  width: fit-content;
-  cursor: pointer;
-  color: var(--tf-text-secondary);
-  font-weight: 650;
-}
-
-.dictionary-repair-help summary:focus-visible {
-  outline: none;
-  border-radius: 4px;
-  box-shadow: var(--tf-focus-ring);
-}
-
-.dictionary-repair-help p {
-  margin: 7px 0 0;
-  line-height: 1.5;
-}
-
 .site-actions {
   display: flex;
   flex-wrap: wrap;

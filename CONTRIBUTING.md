@@ -23,7 +23,7 @@ npm run build:extension:wxt
 npm run test:wxt:smoke
 ```
 
-默认产物位于稳定安装目录 `dist/extension/`，显式 WXT 入口输出到 `.output/chrome-mv3/`；两者使用同一 WXT 引擎和产物审核。有限 smoke 从实际 WXT 包制作临时测试副本，使用合成 Core 词典、本地审核 Technical 词典与确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
+默认产物位于稳定安装目录 `dist/extension/`，显式 WXT 入口输出到 `.output/chrome-mv3/`；两者使用同一 WXT 引擎和产物审核。有限 smoke 从实际 WXT 包制作临时测试副本，显式安装合成用户词典并使用确定性 localhost Provider；不替代完整 E2E、同 ID 升级或发布认证。构建、精确资源映射和后续切换边界见 [docs/WXT_COMPAT_V1.md](docs/WXT_COMPAT_V1.md)。
 
 涉及真实 Chrome/MV3/DOM/交互行为的改动还应运行适用的浏览器 E2E：
 
@@ -57,8 +57,8 @@ Actions 均为 `workflow_dispatch` 手动备用验证，日常验收在本地。
 - shared contracts/pure helpers: `src/shared/`
 - Provider/network: `src/background/providers/`
 - effective config: `src/background/config.js` + `src/shared/provider-config.js`
-- translation cache IndexedDB: `src/background/cache-db.js`
-- independent ReadingRecord IndexedDB: `src/background/reading-record/idb.js`; other Reading backend modules call this adapter, while Content and extension UI use the v2 background messages. Consent/exclusions live only in Reading meta; cache and dictionary OPFS remain separate. The source checker allows only these two exact direct IndexedDB owners and rejects frontend runtime dependency chains into the Reading adapter.
+- generic translation/cache IndexedDB (only direct owner): `src/background/cache/storage-indexeddb.js`; `src/background/cache-db.js` is the stable facade, not a database owner. The business adapter is `src/background/cache/application.js`; generic service/storage do not import Provider or DOM. Request identities/revisions live under `src/shared/cache/` and `src/shared/translation-cache-identity.js`.
+- independent ReadingRecord IndexedDB: `src/background/reading-record/idb.js`; other Reading backend modules call this adapter, while Content and extension UI use v2 background messages. Consent/exclusions live only in Reading meta; cache and dictionary OPFS remain separate. The source checker permits exactly **`src/background/cache/storage-indexeddb.js` and `src/background/reading-record/idb.js`** as direct IndexedDB owners, and rejects frontend chains into the Reading adapter.
 - dynamic site scripts: `src/background/auto-sites.js`
 - DOM extraction/render: `src/content/dom.js`
 - batching: `src/content/batch.js`
@@ -108,7 +108,7 @@ The repository root is a development workspace, not the release artifact.
 npm run build:extension:release
 ```
 
-For an explicitly requested dictionary certification package, use `node scripts/build-extension.mjs --require-lexicon`; authenticated dictionary checks remain fail closed.
+Every production build excludes dictionary content. User dictionaries are installed explicitly through the existing download/import lifecycle. Build and package auditing remain independent of dictionary availability; user-pack import integrity checks stay fail closed.
 
 Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, source locks, benchmark corpora or import-security samples to the production allowlist just to make runtime tests pass.
 
@@ -139,6 +139,8 @@ Never add tests, E2E fixtures, build scripts, docs, raw dictionary sources, sour
 新增站点配置字段时，需要确认它是否影响缓存 identity。
 
 ## Cache changes
+
+当前通用缓存的**存储物理布局 DB4**（`entries` / `epochs`）、**统一记录 envelope v1** 与**翻译业务策略 revision**相互独立。翻译 Provider、Prompt、原文处理或格式标记演进时只更新业务请求 identity/revision，不得建立 DB2/DB3 兼容读取、双写或每次升级物理数据库。历史普通译文缓存已经在 DB4 升级时丢弃；AI 解释结果仅一次性封装，ReadingRecord/词典/设置/凭据不受影响。缓存查询令牌和写入在同一失效代次下校验，cache-only miss 不得发起 Provider 请求。
 
 缓存是用户数据。不要在无关 PR 中修改：
 
@@ -192,10 +194,12 @@ npm run test:e2e
 - `npm run validate` 保持快速，不包含浏览器启动；`npm run test:e2e` 在本地按变更/任务要求单独运行；手动 Actions 只作备用。
 - 新增核心用户流程时，优先在 E2E 中覆盖“成功、缓存命中、错误恢复”至少一个真实 MV3 路径。
 
-## 每次提交的版本与安装包
+## 按需准备版本与安装包
 
-本仓库使用 `.githooks/pre-commit`。当前工作区已启用；新 clone 运行 `npm run hooks:install`（仅设置本仓库 `core.hooksPath`）。正常 `git commit` 会从暂存区快照编译，版本默认在 HEAD 基础上递增 patch；已明确暂存更高版本时保留该版本。
+本仓库的 `.githooks/pre-commit` 只执行 `git diff --cached --check`，不自动升版本、编译或改写暂存区。新 clone 可运行 `npm run hooks:install`（仅设置本仓库 `core.hooksPath`）。开发提交、文档与验收归档不需要为提交本身重建安装包或重跑未受影响的测试。
 
-编译成功后，同步 `package.json`、`package-lock.json`、`manifest.json` 和 README 标题的版本字段，更新 `dist/extension/`。只将这些字段加入索引，不夹带其它未暂存修改；其它源码的未暂存修改也不会进入安装包。编译失败不会改版本/索引。若编译过程中有人改动索引或版本文件，提交中止并要求重试。手动提高版本时请一并暂存相关版本文件，避免覆盖未暂存的版本选择。
+明确准备新版本时，可运行 `npm run commit:prepare`：从暂存区快照编译，默认递增 patch，保留明确暂存的更高版本；成功后同步 `package.json`、`package-lock.json`、`manifest.json` 和 README 标题，更新 `dist/extension/`。该显式命令只暂存版本字段，不夹带其它未暂存修改。编译失败或检测到并发修改时中止，不覆盖用户修改。
 
-`node scripts/prepare-versioned-commit.mjs --preview` 可只预览并编译当前暂存快照，不修改索引、工作区版本或安装包。钩子不创建 commit、不推送、不发布，也不自动运行全量测试。
+`node scripts/prepare-versioned-commit.mjs --preview` 可只预览并编译当前暂存快照，不修改索引、工作区版本或安装包。版本准备命令不创建 commit、不推送、不发布，也不自动运行全量测试。验收后的元数据归档保持已测试版本和输入不变，不需要禁用钩子。
+
+开发阶段的模块选测命令、并发预算、串行专项与完整验收组成见 [docs/TEST_SELECTION.md](docs/TEST_SELECTION.md)。

@@ -1,10 +1,11 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
 const evidenceDirectory = resolve(
-  process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || "/tmp/translateflow-dictionary-ecosystem-v2/evidence"
+  process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url)
 );
 const preferredBaseline = JSON.parse(await readFile(new URL("../docs/DICTIONARY_ECOSYSTEM_V2_PREFERRED_BASELINE.json", import.meta.url), "utf8"));
 const report = {
@@ -87,9 +88,9 @@ test.describe("Dictionary Ecosystem v2 release-critical route evidence", () => {
     await options.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
 
-    const chooseFiles = options.getByRole("button", { name: "选择 / 重新选择文件" });
+    const chooseFiles = options.getByRole("button", { name: "选择或重新选择文件", exact: true });
     await expect(chooseFiles).toBeVisible();
-    await expect(chooseFiles).toHaveAccessibleName("选择 / 重新选择文件");
+    await expect(chooseFiles).toHaveAccessibleName("选择或重新选择文件");
     const fileList = options.locator("#localDictionaryFileList");
     await expect(fileList).toHaveAttribute("aria-label", "已选择的词典文件");
 
@@ -214,6 +215,9 @@ test.describe("Dictionary Ecosystem v2 release-critical route evidence", () => {
     let providerCalls = 0;
     for (let sample = 0; sample < 10; sample += 1) {
       if (sample > 0) await harness.reset();
+      // Every sample clears pack pointers; install the structured user dictionary
+      // explicitly before measuring the existing primary-plus-Rich workload.
+      await harness.installUserDictionaries();
       const options = await openOptions(harness);
       options.on("request", (request) => {
         if (/^https?:/iu.test(request.url()) && new URL(request.url()).origin !== harness.server.baseUrl) externalRequests.push(request.url());

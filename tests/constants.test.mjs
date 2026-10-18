@@ -24,13 +24,20 @@ test("compiled content runtime mirrors directly consumed message values", () => 
     BACKGROUND_MESSAGES.SELECTION_RESOLVE, BACKGROUND_MESSAGES.SELECTION_EXPLAIN,
     BACKGROUND_MESSAGES.VOCABULARY_BOOK_ADD_AI_NOTE, BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT,
     BACKGROUND_MESSAGES.TEMP_PRESET_SET, BACKGROUND_MESSAGES.SITE_APPEARANCE_SAVE,
-    BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
+    BACKGROUND_MESSAGES.QUICK_CONTROL_SITE_HIDE, BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_GET,
+    BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_SET, BACKGROUND_MESSAGES.OPEN_OPTIONS, BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL];
   for (const value of required) assert.ok(source.includes(`"${value}"`), `${value} missing from content runtime`);
 });
 
 test("task runtime is loaded before content processors", () => {
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/tasks.js") > CONTENT_SOURCE_FILES.indexOf("src/content/runtime.js"));
   assert.ok(CONTENT_SOURCE_FILES.indexOf("src/content/tasks.js") < CONTENT_SOURCE_FILES.indexOf("src/content/processor.js"));
+});
+
+test("Quick Control position behavior is available before its view", () => {
+  const position = CONTENT_SOURCE_FILES.indexOf("src/content/quick-control-position.js");
+  assert.ok(position > CONTENT_SOURCE_FILES.indexOf("src/content/runtime.js"));
+  assert.ok(position < CONTENT_SOURCE_FILES.indexOf("src/content/quick-control-view.js"));
 });
 
 test("appearance runtime loads after core runtime and before translation tasks", () => {

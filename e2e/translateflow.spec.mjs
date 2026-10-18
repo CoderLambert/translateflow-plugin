@@ -13,7 +13,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(translated.ok).toBe(true);
     expect(translated.apiTranslated).toBe(3);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     const richTranslation = page.locator("#rich .abt-translation");
     await expect(richTranslation.locator("a")).toHaveAttribute("href", "/docs");
@@ -29,7 +29,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(restored.ok).toBe(true);
     expect(restored.cacheHits).toBe(3);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
   });
 
   test("Quick-Control-only persistent injection does not auto-restore cached page translations", async ({ harness }) => {
@@ -39,7 +39,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-quick-only-seed" });
     expect(translated.ok).toBe(true);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     await page.close();
 
     await harness.setStorage({
@@ -53,7 +53,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await reopened.waitForTimeout(600);
 
     await expect(reopened.locator(".abt-translation")).toHaveCount(0);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     await reopened.close();
   });
 
@@ -133,7 +133,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-appearance" });
     expect(translated.ok).toBe(true);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
 
     await expect.poll(() => page.evaluate(() =>
@@ -152,7 +152,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
       return { paddingTop: style.paddingTop, lineHeight: style.lineHeight, borderLeftWidth: style.borderLeftWidth };
     });
     expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     await harness.setStorage({
       siteProfiles: {
@@ -172,7 +172,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
     await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
     await expect(rich.locator("code")).toHaveText("npm test");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     const readingContext = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(readingContext.ok).toBe(true);
@@ -196,7 +196,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(await rich.getAttribute("data-appearance-identity")).toBe("preserve");
     await expect(rich.locator("a")).toHaveAttribute("href", "/docs");
     await expect(rich.locator("code")).toHaveText("npm test");
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     const minimalContext = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(minimalContext.ok).toBe(true);
@@ -256,13 +256,13 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await page.getByRole("button", { name: "重试" }).click();
     await expect(page.locator(".tf-quick-status")).toContainText("翻译完成");
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200]);
+    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200, 200]);
 
     await page.getByLabel("阅读外观").selectOption("reading");
     await expect.poll(() => page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue("--tf-translation-line-height").trim()
     )).toBe("1.8");
-    expect(harness.server.calls).toHaveLength(2);
+    expect(harness.server.calls).toHaveLength(3);
 
     await harness.sendContent(page, "ABT_CLEAR_PAGE_CACHE");
     await harness.sendContent(page, "ABT_CLEAR_TRANSLATIONS");
@@ -309,10 +309,15 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await harness.setStorage({ siteProfiles: { "http://127.0.0.1": { provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", preset: "technical" } } });
     const response = await harness.runtime({ type: "EFFECTIVE_CONTEXT", pageUrl: page.url() });
     expect(response.ok).toBe(true);
-    expect(response.context).toMatchObject({ hostname: "127.0.0.1", provider: "openai-compatible", model: "site-mock-model", targetLanguage: "Japanese", presetId: "technical", presetLabel: "Technical", presetSource: "site" });
+    expect(response.context).toMatchObject({ hostname: "127.0.0.1", provider: "openai-chat", model: "site-mock-model", targetLanguage: "Japanese", presetId: "technical", presetLabel: "Technical", presetSource: "site" });
+    await harness.inject(page);
+    expect((await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "e2e-site-profile" })).ok).toBe(true);
+    expect(harness.server.calls.length).toBeGreaterThan(0);
+    expect(harness.server.calls.every(call => call.model === "site-mock-model" && call.systemPrompt.includes("Japanese"))).toBe(true);
   });
 
   test("selection controls are isolated, avoid page-cache reuse, and resolve local lexicon without Provider calls", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await page.addStyleTag({ content: `button, .tf-selection-chip, .tf-selection-panel { display: none !important; color: rgb(255, 0, 0) !important; font-size: 1px !important; }` });
     await harness.inject(page);
@@ -337,13 +342,22 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
     expect(harness.server.calls).toHaveLength(1);
 
-    const seeded = await harness.runtime({
-      type: "CACHE_STORE",
-      pageUrl: page.url(),
-      pageTitle: "Selection cache poison fixture",
-      items: [{ sourceText: "terminal multiplexer", translation: "WRONG PAGE CACHE" }]
+    // Seed an intentionally unrelated page cache through the real v1 read-token
+    // contract. A legacy tokenless STORE must never become valid in production.
+    const seedLookup = await harness.runtime({
+      type: "CACHE_LOOKUP", pageUrl: page.url(),
+      segments: [{ id: "seed", text: "terminal multiplexer", format: "plain" }]
     });
-    expect(seeded.ok).toBe(true);
+    expect(seedLookup).toMatchObject({ ok: true, hits: [] });
+    expect(seedLookup.writeTokens).toHaveLength(1);
+    const seeded = await harness.runtime({
+      type: "CACHE_STORE", pageUrl: page.url(),
+      pageTitle: "Selection cache poison fixture",
+      configSnapshotId: seedLookup.configSnapshotId,
+      items: [{ sourceText: "terminal multiplexer", translation: "WRONG PAGE CACHE",
+        format: "plain", cacheToken: seedLookup.writeTokens[0].token }]
+    });
+    expect(seeded).toMatchObject({ ok: true, stored: 1 });
 
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
@@ -419,6 +433,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("ambiguous Selection keeps dictionary content visible through explicit AI detail", async ({ harness }) => {
+    await harness.installUserDictionaries();
     await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
     const page = await harness.open("/selection");
     await harness.inject(page);
@@ -445,17 +460,20 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-source")).toBeHidden();
     await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
     const visibleActions = page.locator(".tf-selection-panel > .tf-selection-actions button:visible");
-    await expect(visibleActions).toHaveText(["复制"]);
+    await expect(visibleActions).toHaveText(["收藏到生词本"]);
     expect(harness.server.calls).toHaveLength(0);
 
+    const stream = harness.server.holdNextAssistantStream();
     await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(primary).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("AI 正在回答");
     await expect(page.getByRole("button", { name: "停止 AI 回答" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "复制" })).toBeVisible();
+    await expect(page.locator(".tf-selection-panel > .tf-selection-actions")).toBeHidden();
 
+    stream.release();
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
     expect(harness.server.calls).toHaveLength(1);
@@ -496,6 +514,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("technical entity Selection stays compact and preserves supplied identity metadata", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -512,7 +531,9 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
   });
 
   test("Selection AI detail cancel preserves local content and stale completion cannot overwrite retry", async ({ harness }) => {
+    await harness.installUserDictionaries();
     await harness.setStorage({ openAICompatible: { baseUrl: `${harness.server.baseUrl}/v1`, apiKey: "", model: "mock-model", streaming: true } });
+    const stream = harness.server.holdNextAssistantStream();
     const page = await harness.open("/selection");
     await harness.inject(page);
 
@@ -521,6 +542,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
 
     await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
+    await stream.started;
     const detail = page.locator(".tf-selection-ai-detail");
     await expect(detail).toHaveAttribute("data-state", "streaming");
     await expect(detail).toContainText("streamed");
@@ -534,6 +556,9 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls).toHaveLength(1);
 
     await page.getByRole("button", { name: "重新请求 AI 详解" }).click();
+    await expect.poll(() => harness.server.calls.length).toBe(2);
+    stream.release();
+    await stream.finished;
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
     expect(harness.server.calls).toHaveLength(2);
@@ -542,7 +567,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
   });
 
-  test("Selection card exposes provenance, explicit AI retry, narrow viewport and copy", async ({ harness }) => {
+  test("Selection card exposes provenance, explicit AI retry and a readable answer in a narrow viewport", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await page.setViewportSize({ width: 360, height: 260 });
     await harness.inject(page);
@@ -574,7 +600,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
-    await expect(page.locator(".tf-selection-result-badge")).toContainText(["本地词典"]);
+    await expect(page.locator(".tf-selection-result-badge")).toContainText(["词典包 · local-e2e-user-lexical"]);
     await expect(detail.locator(".tf-selection-generated-label")).toHaveText("AI · 理解");
 
     const box = await panel.boundingBox();
@@ -584,8 +610,10 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(360);
     expect(box.y + box.height).toBeLessThanOrEqual(260);
 
-    await page.getByRole("button", { name: "复制" }).click();
-    await expect(page.locator(".tf-toast")).toContainText("回答已复制");
+    const answer = detail.locator(".tf-selection-generated-body");
+    await answer.scrollIntoViewIfNeeded();
+    await expect(answer).toBeInViewport();
+    await expect(answer).toHaveText("streamed answer");
 
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
@@ -660,7 +688,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator("#glossary .abt-translation")).toContainText("[TECH|GLOSSARY]");
     expect(harness.server.calls).toHaveLength(2);
   });
-  test("lexical gateway reads bundled TFLex locally without Provider calls", async ({ harness }) => {
+  test("lexical gateway reads installed user TFLex locally without Provider calls", async ({ harness }) => {
+    await harness.installUserDictionaries();
     const page = await harness.open("/article");
     expect(harness.server.calls).toHaveLength(0);
 
@@ -674,7 +703,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(word.ok).toBe(true);
     expect(word.status).toBe("candidates");
     expect(word.candidates).toHaveLength(2);
-    expect(word.candidates[0].provenance.packId).toBe("core-semantic-en-zh-runtime-fixture");
+    expect(word.candidates[0].provenance.packId).toBe("local-e2e-user-lexical");
     expect(harness.server.calls).toHaveLength(0);
 
     const tmux = await harness.runtime({
@@ -687,7 +716,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(tmux.ok).toBe(true);
     expect(tmux.status).toBe("candidates");
     expect(tmux.candidates.some((candidate) =>
-      candidate.provenance?.packId === "technical-wikidata-en-zh"
+      candidate.provenance?.packId === "local-e2e-user-concepts"
     )).toBe(true);
     expect(harness.server.calls).toHaveLength(0);
 
@@ -709,7 +738,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(alias.ok).toBe(true);
     expect(alias.status).toBe("candidates");
     expect(alias.matchedBy).toBe("alias");
-    expect([...new Set(alias.candidates.map((candidate) => candidate.headword))]).toEqual(["persistent", "session"]);
+    expect([...new Set(alias.candidates.map((candidate) => candidate.headword))].sort()).toEqual(["persistent", "session"]);
     expect(alias.candidates).toHaveLength(3);
     expect(alias.candidates.every((candidate) => candidate.matchedBy === "alias")).toBe(true);
     expect(harness.server.calls).toHaveLength(0);

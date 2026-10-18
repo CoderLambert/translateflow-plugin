@@ -149,10 +149,9 @@
   }
 
   function provenanceDescriptor(candidate, prefix = "label") {
-    if (candidate?.kind === "technical-entity") return localizedDescriptor("content.selection.sourceTechnical", {}, prefix);
+    if (isTechnicalCandidate(candidate)) return localizedDescriptor("content.selection.sourceTechnical", {}, prefix);
     const packId = String(candidate?.provenance?.packId || "").trim();
-    if (!packId || packId === "core" || packId.includes("core")) return localizedDescriptor("content.selection.sourceLocal", {}, prefix);
-    if (packId.includes("technical") || packId.includes("wikidata")) return localizedDescriptor("content.selection.sourceTechnical", {}, prefix);
+    if (!packId) return localizedDescriptor("content.selection.sourceLocal", {}, prefix);
     const args = { packId };
     return localizedDescriptor("content.selection.sourcePack", args, prefix);
   }

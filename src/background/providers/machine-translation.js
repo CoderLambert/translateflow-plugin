@@ -43,15 +43,23 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
 
 export function splitMachineText(text, maximum = 1000) {
   if (typeof text !== "string" || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > 10000) throw machineError("MT_INPUT");
-  const points = [...text], chunks = [];
-  for (let start = 0; start < points.length;) {
-    let end = Math.min(start + maximum, points.length);
-    if (end < points.length) {
-      for (let cut = end; cut > start + maximum / 2; cut--) {
-        if (/[\s。！？.!?;]/u.test(points[cut - 1])) { end = cut; break; }
+  // Native grapheme boundaries avoid splitting emoji ZWJ sequences and
+  // combining marks; requests still honor the existing code-point limit.
+  const graphemes = [...new Intl.Segmenter("und", { granularity: "grapheme" }).segment(text)].map(item => item.segment);
+  const sizes = graphemes.map(item => [...item].length), chunks = [];
+  if (sizes.some(size => size > maximum)) throw machineError("MT_INPUT");
+  for (let start = 0; start < graphemes.length;) {
+    let end = start, chars = 0;
+    while (end < graphemes.length && chars + sizes[end] <= maximum) chars += sizes[end++];
+    if (end < graphemes.length) {
+      let trailing = chars;
+      for (let cut = end; cut > start && trailing > maximum / 2; cut--) {
+        if (/[\s。！？.!?;]/u.test(graphemes[cut - 1])) { end = cut; break; }
+        trailing -= sizes[cut - 1];
       }
     }
-    chunks.push(points.slice(start, end).join("")); start = end;
+    chunks.push(graphemes.slice(start, end).join(""));
+    start = end;
   }
   return chunks;
 }

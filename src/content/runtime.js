@@ -8,6 +8,16 @@
     "igshid", "yclid", "_hsenc", "_hsmi", "vero_conv", "vero_id"
   ]);
 
+  // Keep the classic Content registry's failure classification aligned with
+  // src/shared/cache/persistence-errors.js (Background/ESM). Contract and
+  // invalidation errors are deliberately NOT recoverable storage failures.
+  const PERSISTENCE_ERRORS = new Set([
+    "CACHE_QUOTA", "CACHE_STORAGE", "CACHE_STORAGE_BLOCKED", "CACHE_STORAGE_TIMEOUT"
+  ]);
+  const isCachePersistenceError = value => PERSISTENCE_ERRORS.has(
+    typeof value === "string" ? value : value?.errorCode || value?.code
+  );
+
   const constants = Object.freeze({
     TRANSLATION_CLASS: "abt-translation",
     TRANSLATED_ATTR: "data-abt-translated",
@@ -58,6 +68,8 @@
       CACHE_CLEAR_PAGE: "CACHE_CLEAR_PAGE",
       CACHE_PRUNE: "CACHE_PRUNE",
       QUICK_CONTROL_SITE_HIDE: "QUICK_CONTROL_SITE_HIDE",
+      QUICK_CONTROL_POSITION_GET: "QUICK_CONTROL_POSITION_GET",
+      QUICK_CONTROL_POSITION_SET: "QUICK_CONTROL_POSITION_SET",
       SITE_APPEARANCE_SAVE: "SITE_APPEARANCE_SAVE",
       OPEN_OPTIONS: "OPEN_OPTIONS",
       EFFECTIVE_CONTEXT: "EFFECTIVE_CONTEXT",
@@ -126,8 +138,13 @@
 
   function rawRuntimeMessage(payload) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(payload, (response) => {
-        const error = chrome.runtime.lastError;
+      const runtime = globalThis.chrome?.runtime;
+      if (typeof runtime?.sendMessage !== "function") {
+        reject(Object.assign(new Error("Extension context invalidated."), { code: "EXTENSION_CONTEXT_INVALIDATED" }));
+        return;
+      }
+      runtime.sendMessage(payload, (response) => {
+        const error = runtime.lastError;
         if (error) reject(new Error(error.message));
         else resolve(response);
       });
@@ -164,7 +181,8 @@
     getSiteScope,
     getPageIdentity,
     sendRuntimeMessage,
-    showToast
+    showToast,
+    isCachePersistenceError
   };
 
   function createLegacyContentI18n() {

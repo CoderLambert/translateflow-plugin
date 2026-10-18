@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "task": "content-runtime-closeout",
+  "status": "completed",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/local-content-reliability-20261019",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-local-content-closeout",
+  "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568",
+  "mergeHead": "511e7ee3d8358be09b8bcc610b2d8fe04608fbd4",
+  "validationCommands": [
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main...HEAD"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "TF_SMOKE_REPORT=.wxt/reports/stable-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "Complete. Full Chromium E2E remains explicitly deferred to the next feature."
+}

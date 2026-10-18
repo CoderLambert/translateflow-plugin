@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "task": "remove-bundled-lexicons",
+  "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
+  "tree": "b0ae4a5bf57dcf94027eb5ba8ad63adae5dee0f2",
+  "inputTree": "ffacd6bb10d9d6e54bd31f35bb08d2741afff1cc212f08181a9f77bf7fbeb72f",
+  "frozenAt": "2026-10-18T19:05:34.890Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12 / Playwright 1.63.0"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14730.966433,
+      "startedAt": "2026-10-18T19:05:35.089Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/c15e911d-da64-46c7-ba36-8a66cd3ca6e2.log",
+      "logSha256": "2b58fc2cc71989ac4b6d13cbe2fa0cf1337202665520eea236162f8d46659195"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/dictionary-ecosystem-v2-release.spec.mjs",
+        "e2e/wxt-upgrade.spec.mjs",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json"
+      ],
+      "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 60069.474466,
+      "startedAt": "2026-10-18T19:05:57.537Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/3cf8465e-f7a3-4b50-ab3a-7c307dafa2f8.log",
+      "logSha256": "419b6c709ddda02801b8c5dce6cdabb1170b37629e3067c1d3a7d65c4f53938b"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "cc5c9155e71c08157828e0fc22365182a93c6528c6601e46e1daddcd0e176625"
+  },
+  "limitations": [
+    "7 conditional E2E skips: 6 unavailable real/large dictionary corpus cases and 1 fixed-artifact injection benchmark (missing benchmark configuration).",
+    "Real paid Provider, actual Chrome 102, other browsers and live YouTube player not run.",
+    "Current-main same-ID replacement is same-version dev reload; separate 0.8.0 to 0.8.20 WXT upgrade cases passed.",
+    "Inherited #245 platform code advisory budget exceeded; unchanged threshold, build audits PASS."
+  ],
+  "priorChecks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "fdef650b24aca8a8012902c124b07f20b5f5ab6f",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 40298.356712,
+      "startedAt": "2026-10-18T18:48:53.850Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/ac0db496-1415-4a44-bd76-4f54bea716dc.log",
+      "logSha256": "620fda66a63135f21db51d26b7df2ca13732bf872379507f42cf90f1491e4bbc"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14695.453034,
+      "startedAt": "2026-10-18T18:53:21.675Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/101aadf4-bf39-4fd8-9d57-81e2ca2448a2.log",
+      "logSha256": "2b58fc2cc71989ac4b6d13cbe2fa0cf1337202665520eea236162f8d46659195"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/local-task.test.mjs"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3608.287178,
+      "startedAt": "2026-10-18T18:53:36.509Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/05e74706-594d-4d49-84ab-1e5a874384e9.log",
+      "logSha256": "eaed9061b696bce829f3834652f1a8317d1204465e189decb316c21cf9493a1b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4821.165431,
+      "startedAt": "2026-10-18T18:53:40.260Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/21aea779-4b67-4964-a072-46d954480d6c.log",
+      "logSha256": "5df9cc1e3b5d350e3702e765da1168a5fc4dff90116d6b83fece5ab3b58db8e5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3813.020125,
+      "startedAt": "2026-10-18T18:53:45.223Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/d17586b8-0f90-4966-b85a-a547f283e748.log",
+      "logSha256": "7937e04319fdb70d3299f35fac05ff5bf83e40eadc33f2047d8bd58695ae44d0"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2467.876375,
+      "startedAt": "2026-10-18T18:53:49.182Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/9d5a0eb9-cd76-4bd9-a3ac-5ae28ad5370b.log",
+      "logSha256": "77b4aa745516cb05cdfc6542428983102a80b1624b56c282810a4d5cb88f34ed"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2498.313344,
+      "startedAt": "2026-10-18T18:53:51.795Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/a7a0b9c6-5a26-4817-9634-5d27346e9417.log",
+      "logSha256": "a61450bc569bc9ec2fc7813a31f5222978d66f5257a1e3b046e60aeaf2857900"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1190.388225,
+      "startedAt": "2026-10-18T18:53:54.434Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/46eeeb74-dbce-4eeb-8715-d73921656f02.log",
+      "logSha256": "e6268e648c5623b7bc0115c12087f5aa1b550159c1797b1bff21ed13acc3f262"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--workers=1",
+        "--retries=0",
+        "--reporter=line,json"
+      ],
+      "candidateHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 430193.585432,
+      "startedAt": "2026-10-18T18:54:04.359Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/9581b289-e5be-444d-9f4d-b66ce7e5a23b.log",
+      "logSha256": "ad9b47da9696d2993f2b05fdaee2b03097d7b08683f52ef0d76020fda24ff037"
+    }
+  ],
+  "reusedChecks": [
+    {
+      "result": "REUSED",
+      "testedHead": "fdef650b24aca8a8012902c124b07f20b5f5ab6f",
+      "testedTree": "3f33423b8da50a05429cb8df41d5361df71d89b0",
+      "sourceCommand": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "sourceResult": "FAIL",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/ac0db496-1415-4a44-bd76-4f54bea716dc.log",
+      "logSha256": "620fda66a63135f21db51d26b7df2ca13732bf872379507f42cf90f1491e4bbc",
+      "scope": "1774 passing Node cases outside tests/local-task.test.mjs; original 16 passing cases in that file are rechecked along with the one repaired failure",
+      "passingCasesReused": 1774,
+      "totalNodeCases": 1791,
+      "changedPaths": [
+        "docs/tasks/LOCAL_WORKFLOW.md",
+        "docs/tasks/index.json",
+        "docs/tasks/remove-bundled-lexicons/acceptance.json",
+        "docs/tasks/remove-bundled-lexicons/state.json",
+        "docs/tasks/remove-bundled-lexicons/task.md",
+        "tests/local-task.test.mjs"
+      ],
+      "verification": "All production, other test, package/lock and build inputs exactly unchanged in Git; only workflow test expectation and task/document metadata differ."
+    },
+    {
+      "result": "REUSED",
+      "testedHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+      "testedTree": "6612062c3ede0c2eafd8072fb3ea94c9004420ea",
+      "scope": "All 7 passing quality/build/smoke commands and 222 passing full E2E cases; ecosystem file 3 cases rechecked; 2 old-version upgrade skips supplemented. Original full FAIL retained.",
+      "changedPaths": [
+        "docs/tasks/index.json",
+        "docs/tasks/remove-bundled-lexicons/acceptance.json",
+        "docs/tasks/remove-bundled-lexicons/state.json",
+        "docs/tasks/remove-bundled-lexicons/task.md",
+        "docs/tasks/remove-bundled-lexicons/validation-report.md",
+        "e2e/dictionary-ecosystem-v2-release.spec.mjs"
+      ],
+      "verification": "Only ecosystem fixture preparation and task/document metadata changed. All production/package/lock/build inputs unchanged; no artifact rebuild."
+    }
+  ],
+  "artifactBuiltHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+  "summary": {
+    "node": {
+      "result": "PASS with REUSED",
+      "uniquePassed": 1791,
+      "failedUnresolved": 0,
+      "reusedOutsideRecheckedFile": 1774,
+      "rechecked": 17
+    },
+    "vitest": {
+      "result": "REUSED",
+      "passed": 62,
+      "failed": 0
+    },
+    "chromium": {
+      "result": "PASS with REUSED",
+      "fullAttempt": {
+        "passed": 222,
+        "failed": 1,
+        "skipped": 9,
+        "durationMs": 429752.222
+      },
+      "scopedRepairAndSupplement": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 59668.812
+      },
+      "uniqueEffective": {
+        "passed": 225,
+        "failedUnresolved": 0,
+        "skipped": 7
+      },
+      "retries": 0
+    },
+    "sourceMetrics": {
+      "baseHead": "349321a079544a51834de1b3173f1fc653220e6d",
+      "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39",
+      "before": {
+        "trackedFiles": 1168,
+        "trackedCodeFiles": 779,
+        "runtimeSourceFiles": 400
+      },
+      "after": {
+        "trackedFiles": 1141,
+        "trackedCodeFiles": 760,
+        "runtimeSourceFiles": 399
+      },
+      "addedLines": 1467,
+      "deletedLines": 9868,
+      "changedFiles": 148,
+      "codeAddedLines": 885,
+      "codeDeletedLines": 6557
+    }
+  },
+  "artifactDetails": {
+    "builtHead": "0fcedc71af5e5b3efb57265c3773eabbe020987d",
+    "version": "0.8.20",
+    "fileCount": 128,
+    "bytes": 2896602,
+    "lexicalBytes": 0,
+    "e2eInventorySha256": "12f3ce0521a0542e07750eaf472b668af8ac4a470600e436ee51326f98cfbe36",
+    "zip": "docs/task-execution/local/remove-bundled-lexicons/TranslateFlow-0.8.20-no-bundled-0fcedc71.zip",
+    "zipBytes": 850697,
+    "zipSha256": "c30d0fe15421c1503d67c3b06f9d3302180ded73a03b014aae159a8a71c1fd69"
+  }
+}

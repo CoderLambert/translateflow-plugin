@@ -12,7 +12,7 @@ import {
   onReadingTabRemoved,
   onReadingTabUpdated
 } from "./reading-record/runtime.js";
-import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } from "./selection/assistant-stream.js";
+import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort, onSelectionAssistantTabUpdated } from "./selection/assistant-stream.js";
 import { ensureProviderConnections } from "./provider-connections.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
@@ -25,14 +25,26 @@ export function initializeBackground() {
   registerCommandRouter();
   const nativeBroker = createBrowserNativeBroker(chrome);
   chrome.runtime.onConnect.addListener(port => { if (!nativeBroker.connect(port) && !handleReadingPort(port)) handleSelectionAssistantStreamPort(port); });
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { onReadingTabUpdated(tabId, changeInfo); if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) { abortSelectionAssistantStreams(tabId); invalidateMachineSnapshots(tabId); cancelMachineTranslations(tabId); } });
-  chrome.tabs.onRemoved.addListener(tabId => { onReadingTabRemoved(tabId); abortSelectionAssistantStreams(tabId); invalidateMachineSnapshots(tabId); cancelMachineTranslations(tabId); });
-  chrome.permissions.onRemoved.addListener(() => { onReadingPermissionsRemoved(); abortSelectionAssistantStreams(); cancelMachineTranslations(); invalidateMachineSnapshots(); abortMachineHttp(); });
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    onReadingTabUpdated(tabId, changeInfo);
+    onSelectionAssistantTabUpdated(tabId, changeInfo);
+    if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) {
+      invalidateMachineSnapshots(tabId);
+      cancelMachineTranslations(tabId);
+    }
+  });
+  chrome.tabs.onRemoved.addListener(tabId => {
+    onReadingTabRemoved(tabId); abortSelectionAssistantStreams(tabId);
+    invalidateMachineSnapshots(tabId); cancelMachineTranslations(tabId);
+  });
+  chrome.permissions.onRemoved.addListener(() => {
+    onReadingPermissionsRemoved(); abortSelectionAssistantStreams();
+    cancelMachineTranslations(); invalidateMachineSnapshots(); abortMachineHttp();
+  });
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
     if (changes.machineTranslation) { cancelTextTranslations(); invalidateMachineSnapshots(); }
-    if (changes.siteProfiles) { cancelMachineTranslations(); invalidateMachineSnapshots(); }
-    if (changes.targetLanguage) { cancelMachineTranslations(); invalidateMachineSnapshots(); }
+    if (changes.siteProfiles || changes.targetLanguage) { cancelMachineTranslations(); invalidateMachineSnapshots(); }
     const publicChanges = Object.fromEntries(Object.entries(changes).filter(([key]) => PUBLIC_SETTING_KEYS.has(key) || PUBLIC_SETTING_SIGNALS.has(key))
       .map(([key, change]) => [key, PUBLIC_SETTING_KEYS.has(key) ? change : { changed: true }]));
     if (!Object.keys(publicChanges).length) return;

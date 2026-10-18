@@ -1,3 +1,5 @@
+> 历史审计记录：下文内置词典、旧生成命令及发布认证要求已退役；不属于当前产品或执行要求。原始测量与验收保持原绑定。当前实现见 [LEXICAL_GATEWAY.md](LEXICAL_GATEWAY.md)。
+
 # Selection v2 Design Freeze
 
 Issue: #75  

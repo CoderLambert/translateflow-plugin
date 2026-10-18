@@ -19,7 +19,7 @@ async function loadResultModel() {
 
 function candidate(overrides = {}) {
   return {
-    id: "core:persistent:1",
+    id: "user:persistent:1",
     kind: "lexical",
     headword: "persistent",
     pronunciation: "",
@@ -27,7 +27,7 @@ function candidate(overrides = {}) {
     translations: ["持久的"],
     domains: [],
     typeLabels: [],
-    provenance: { packId: "core", packVersion: "1" },
+    provenance: { packId: "", packVersion: "1" },
     ...overrides
   };
 }
@@ -35,12 +35,12 @@ function candidate(overrides = {}) {
 test("local result preserves ranked candidate boundaries instead of flattening alternatives", async () => {
   const model = await loadResultModel();
   const second = candidate({
-    id: "core:persistent:2",
+    id: "user:persistent:2",
     partOfSpeech: "noun",
     translations: ["持续存在", "持久的", "持续存在"]
   });
   const first = candidate({
-    id: "core:persistent:1",
+    id: "user:persistent:1",
     translations: ["持久的", "持续的", "持久的"]
   });
 
@@ -91,7 +91,7 @@ test("structured result keeps technical identity and only supplied metadata", as
     translations: [],
     domains: ["developer-tool"],
     typeLabels: ["terminal multiplexer"],
-    provenance: { packId: "technical-wikidata-en-zh", packVersion: "2026-09" }
+    provenance: { packId: "local-concepts-en-zh", packVersion: "2026-09" }
   });
 
   const card = model.buildLocalResult({
@@ -108,15 +108,15 @@ test("structured result keeps technical identity and only supplied metadata", as
   assert.deepEqual([...card.dictionaryEntries[0].typeLabels], ["terminal multiplexer"]);
 });
 
-test("Core and Technical candidates remain separate logical entries", async () => {
+test("User dictionaries retain separate lexical and concept entries", async () => {
   const model = await loadResultModel();
   const core = candidate({
-    id: "core:container:1",
+    id: "user:container:1",
     headword: "container",
     partOfSpeech: "noun",
     translations: ["容器"],
     domains: ["general"],
-    provenance: { packId: "core-semantic", packVersion: "1" }
+    provenance: { packId: "local-general-fixture", packVersion: "1" }
   });
   const technical = candidate({
     id: "technical:Q987767",
@@ -126,7 +126,7 @@ test("Core and Technical candidates remain separate logical entries", async () =
     translations: [],
     domains: ["software"],
     typeLabels: ["operating-system-level virtualization"],
-    provenance: { packId: "technical-wikidata-en-zh", packVersion: "2026-09" }
+    provenance: { packId: "local-concepts-en-zh", packVersion: "2026-09" }
   });
 
   const card = model.buildLocalResult({
@@ -141,7 +141,7 @@ test("Core and Technical candidates remain separate logical entries", async () =
   assert.equal(card.dictionaryEntries[0].provenanceLabel, "技术词条");
   assert.deepEqual([...card.dictionaryEntries[0].typeLabels], ["operating-system-level virtualization"]);
   assert.equal(card.dictionaryEntries[1].kind, "lexical");
-  assert.equal(card.dictionaryEntries[1].provenanceLabel, "本地词典");
+  assert.equal(card.dictionaryEntries[1].provenanceLabel, "词典包 · local-general-fixture");
   assert.deepEqual([...card.dictionaryEntries[1].translations], ["容器"]);
 });
 

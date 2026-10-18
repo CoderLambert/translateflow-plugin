@@ -12,7 +12,7 @@ Quick Control follows the shared TranslateFlow sage/beige design system.
 - Retry and cancel appear only when task state requires them.
 - Auto translation is expressed as an accessible pressed-state control with a switch-like visual, not a second primary CTA.
 - Translation preset and Reading Appearance are grouped as lower-emphasis reading preferences.
-- Settings and per-site hide remain footer actions.
+- Settings, reset position and per-site hide remain footer actions.
 - Escape closes the panel and restores focus to the FAB; pointer interaction outside the panel dismisses it without stealing focus.
 - Nonessential transitions are disabled when the user requests reduced motion.
 - Selection UI still takes visual precedence and suppresses Quick Control while active.
@@ -33,6 +33,14 @@ The content-side Quick Control never calls `chrome.permissions.request()`. Persi
 The in-page toolbar has **在本站隐藏**. This adds the Origin to `quickControlHiddenSites`, removes it from `quickControlSites`, and hides the control even if content scripts are still present for auto translation.
 
 The Popup can remove that hidden state and show Quick Control again. Hiding the control does not silently alter Provider credentials, translation cache, or auto-translation settings.
+
+## Moving the floating button
+
+Drag the button away from a website's floating controls. A movement of at least 6px starts a drag; releasing saves its position for this site without opening the panel or translating. Escape, pointer cancellation, window blur or selection UI activation cancels an unfinished drag. Normal clicks still open the panel.
+
+With the button focused, Alt + arrow keys move it in 16px steps. Releasing the key commits the move; Escape cancels before release. Alt + Home or **恢复默认位置 / Reset position** in the panel removes this site's saved position and returns the button to the bottom right. Resizing keeps the button and panel inside the visible viewport; position is relative to available viewport space.
+
+Background stores only a versioned, bounded map (up to 256 sites) under `quickControlPositions` in local extension storage. Each entry contains scheme + hostname and normalized x/y coordinates, following the existing site-scope rule (ports share a scope). Writes occur only on completed user moves or explicit reset. Reads return only the verified top-frame sender's own position; other sites are unaffected. No page text, URL path, query, Provider data or browsing history is recorded. The preference applies when the control next loads on that site; already open tabs keep their current placement. A failed write leaves the moved button usable and shows a localized save failure notice. Existing settings and cache formats are unchanged.
 
 ## Task-state reuse
 

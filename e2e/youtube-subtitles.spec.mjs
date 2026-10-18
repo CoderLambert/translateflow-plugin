@@ -2,6 +2,7 @@ import { test, expect } from "./support/extension-fixture.mjs";
 
 test.beforeEach(async ({ harness }) => {
   await harness.reset();
+  await harness.setStorage({ uiLocale: "en" });
 });
 
 test("YouTube controller renders bilingually, applies preset, reuses cache and rejects stale video results", async ({ harness }) => {
@@ -60,7 +61,7 @@ test("YouTube controller renders bilingually, applies preset, reuses cache and r
   await expect.poll(async () => (await readOverlay(page)).original).toBe("Second video cue");
   await expect.poll(async () => (await readOverlay(page)).translated)
     .toBe("[TECH|PLAIN] Second video cue");
-  await page.waitForTimeout(350);
+  await expect.poll(() => harness.server.calls[2].responseState).not.toBe("pending");
   overlay = await readOverlay(page);
   expect(overlay.translated).not.toContain("Old video pending");
   expect(harness.server.calls.length).toBeGreaterThanOrEqual(4);

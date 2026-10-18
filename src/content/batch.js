@@ -1,7 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || !app?.modules.dom || app.modules.batch) return;
-
   const { constants, normalizeSourceText } = app.modules.runtime;
   const { extractSourceSegment, shouldTranslate } = app.modules.dom;
   const { TRANSLATED_ATTR, BATCH_MAX_ITEMS, BATCH_MAX_CHARS } = constants;
@@ -11,18 +10,13 @@
     let nextId = 1;
     for (const el of elements) {
       if (!document.contains(el) || el.hasAttribute(TRANSLATED_ATTR)) continue;
-      const source = extractSourceSegment(el);
-      const text = source.text;
+      const source = extractSourceSegment(el), text = source.text;
       const visibleText = source.rich ? text.replace(/⟦TF:[^⟧]*⟧/g, "") : text;
       if (!shouldTranslate(visibleText)) continue;
-      entries.push({
-        id: String(nextId++),
-        el,
-        text,
-        rich: source.rich,
+      entries.push({ id: String(nextId++), el, text, rich: source.rich,
         normalizedText: normalizeSourceText(text),
-        protectedIds: (source.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : [])
-      });
+        // Capture protection with the same source snapshot, not a later live DOM read.
+        protectedIds: (source.descriptors || []).flatMap((item, index) => item.protectedText != null ? [index] : []) });
     }
     return entries;
   }
@@ -30,17 +24,13 @@
   function groupEntriesByText(entries) {
     const byText = new Map();
     for (const entry of entries) {
-      const groupKey = JSON.stringify([entry.normalizedText, entry.protectedIds || []]);
+      // Execution equivalence is exact source + format + protected content policy.
+      // Cosmetic normalization is only retained for the existing stale-DOM check.
+      const groupKey = JSON.stringify([entry.text, entry.rich === true, entry.protectedIds || []]);
       let group = byText.get(groupKey);
       if (!group) {
-        group = {
-          id: String(byText.size + 1),
-          text: entry.text,
-          normalizedText: entry.normalizedText,
-          rich: entry.rich,
-          protectedIds: entry.protectedIds || [],
-          elements: []
-        };
+        group = { id: String(byText.size + 1), text: entry.text, normalizedText: entry.normalizedText,
+          rich: entry.rich, protectedIds: entry.protectedIds || [], elements: [] };
         byText.set(groupKey, group);
       }
       group.elements.push(entry.el);
@@ -50,21 +40,16 @@
 
   function makeBatches(groups, limits = {}) {
     const batches = [];
-    let current = [];
-    let chars = 0;
+    let current = [], chars = 0;
     for (const group of groups) {
       const nextChars = chars + group.text.length;
       if (current.length && (current.length >= (limits.maxItems || BATCH_MAX_ITEMS) || nextChars > (limits.maxChars || BATCH_MAX_CHARS))) {
-        batches.push(current);
-        current = [];
-        chars = 0;
+        batches.push(current); current = []; chars = 0;
       }
-      current.push(group);
-      chars += group.text.length;
+      current.push(group); chars += group.text.length;
     }
     if (current.length) batches.push(current);
     return batches;
   }
-
   app.modules.batch = { buildEntries, groupEntriesByText, makeBatches };
 })();

@@ -52,6 +52,7 @@
     getCurrentUrl: () => location.href, getPageIdentity,
     onAccept: (snapshot, capture, revision) => { snapshot.sourceRevision = revision; if (capture) capture.sourceRevision = revision; popover.reposition(); },
     onReject: () => { records?.invalidateReference(); dismiss(); } });
+  const { freezeQuery, isFrozenCurrent, getQuerySource } = projectionGuard;
   function start() {
     if (started) return;
     started = true;
@@ -68,9 +69,9 @@
     window.visualViewport?.addEventListener("scroll", () => popover.reposition()); window.visualViewport?.addEventListener("resize", () => popover.reposition());
     window.addEventListener("focus", () => { void records?.refresh(); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void records?.refresh(); });
-    const checkReadingRoute = () => { records?.invalidateReference(); if (activeSnapshot && activeSnapshot.pageUrl !== location.href) dismiss(); };
-    window.addEventListener("popstate", checkReadingRoute, true);
-    window.addEventListener("hashchange", checkReadingRoute, true);
+    const invalidateReadingReference = () => records?.invalidateReference();
+    window.addEventListener("popstate", invalidateReadingReference, true);
+    window.addEventListener("hashchange", invalidateReadingReference, true);
     const leaveDocument = () => { records?.invalidateReference(); dismiss(); };
     app.modules.selectionRichDetails.bindLifecycle({ getActivePage: () => activeSnapshot?.pageUrl, getPageIdentity, onRouteLeave: leaveDocument, onPageHide: leaveDocument });
   }
@@ -171,7 +172,7 @@
         return;
       }
       if (resolved.preferRich && app.modules.selectionDictionaryFirst) {
-        const hit = await app.modules.selectionDictionaryFirst.run(snapshot, task, options => loadRich(snapshot, version, expectedPage, queryRecord, options));
+        const hit = await app.modules.selectionDictionaryFirst.run(snapshot, task, options => loadRich(snapshot, version, expectedPage, queryRecord, options), resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null);
         assertCurrent(version, snapshot, expectedPage, task); if (hit) return;
       }
       if (resolved.route === "translation") {
@@ -200,7 +201,10 @@
         snapshot,
         unresolvedMessage(resolved),
         (event) => translateSnapshot(snapshot, { event }),
-        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null
+        resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null,
+        resolved.routeReason === "local-error" ? (event) => translateSnapshot(snapshot, {
+          forceTranslation: true, browserTranslationAllowed: resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1, event
+        }) : null
       );
       if (resolved.intent?.kind === "lexical") {
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
@@ -210,7 +214,7 @@
         tasks.failTask(task, error);
         return translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed });
       }
-      if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask) return;
+      if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask || version !== requestVersion) return;
       tasks.failTask(task, error);
 
       const cancelled = tasks.isCancelledError(error) || task.state === "cancelled";
@@ -223,7 +227,7 @@
   }
   async function explainSnapshot(snapshot, depth, baseCard = null, event = null, action = "understand") {
     if (!snapshot || snapshot !== activeSnapshot || !["understand", "analyze", "usage"].includes(action)) return;
-    if (app.modules.translationClient && !await app.modules.translationClient.requireAi(snapshot.pageUrl)) return;
+    if (app.modules.translationClient && !await app.modules.translationClient.requireAi(snapshot.pageUrl)) return snapshot === activeSnapshot && popover.showAiDetailInterrupted("", "content.basic.aiRequired", retryEvent => explainSnapshot(snapshot, depth, baseCard, retryEvent, action), action);
     const currentCapture = snapshot.sourceCapture;
     const captureIsCurrent = Boolean(currentCapture && isFrozenCurrent(snapshot, currentCapture));
     const existing = Boolean(recordContext && captureIsCurrent);
@@ -339,8 +343,8 @@
     records?.render();
     if (!records) app.modules.selectionRecordStatus?.update({ state: "not-saved", messageKey: "content.reading.recordsUnavailable", messageArgs: {} });
   }
-  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false, eager = false, onSettled = null } = {}) {
-    return loadRichDictionaryDetails(snapshot, version, expectedPage, isCurrentSelection, (record, dictionary) => {
+  function loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage = "en", allowVocabularyFallback = false, eager = false, onSettled = null } = {}) { const capture = snapshot.sourceCapture;
+    return loadRichDictionaryDetails(snapshot, version, expectedPage, (_version, selected, page) => isCurrentVocabularySelection(selected, capture, page), (record, dictionary) => {
       records?.accept(queryRecord, model.readingRich(record, dictionary), { key: `rich:${dictionary.id}` });
       if (!allowVocabularyFallback) return;
       const vocabularyEntry = model.vocabularyDraftFromRich(record, dictionary, sourceLanguage || "en");
@@ -408,12 +412,6 @@
   }
   function setQuickControlSelectionActive(active) { app.modules.quickControl?.setSelectionActive(Boolean(active)); }
 
-  function freezeQuery(snapshot) {
-    const capture = app.modules.selectionSourceSnapshot.capture(snapshot);
-    snapshot.sourceCapture = capture; snapshot.text = capture.selectedText;
-    return capture;
-  }
-  function isFrozenCurrent(snapshot, capture) { return snapshot === activeSnapshot && snapshot.sourceCapture === capture && snapshot.sourceRevision === capture.sourceRevision && capture.sourceRevision === projection.revision(); }
   function beginTask(snapshot) { return activeTask = tasks.createTask({ surface: "selection", pageUrl: snapshot.pageUrl, total: 1 }); }
-  app.modules.selectionController = { start, getQuerySource: () => { projection.revision(); return activeSnapshot?.sourceCapture || null; } };
+  app.modules.selectionController = { start, getQuerySource };
 })();

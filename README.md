@@ -1,24 +1,18 @@
-# TranslateFlow v0.8.14
+# TranslateFlow v0.8.29
 
-轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。可主动选择无需 Key 的微软或腾讯免费在线服务完成网页及划词翻译；原有 AI 服务、本地单词释义和可选词典继续保留。字幕仍使用原有 AI 路径。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
+轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时可使用浏览器能力完成划词释义，也可主动启用免 Key 的免费在线网页及划词翻译；未启用免费服务时整页、字幕和较长文本仍使用已配置的 AI 服务，本地词典仍为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
-## 免费在线翻译（首批：微软 / 腾讯）
+## 免费在线机器翻译（开发候选：微软 / 腾讯）
 
-1. 打开设置 **常规 → 免费在线翻译**，选择免费在线模式与服务。
-2. 确认将待译文本发送给所选服务商，点击 **保存翻译方式**；可用固定示例检查连接。
-3. 回到网页，使用原有翻译按钮或划词入口。Popup 的免费翻译区域可单独切换本站并立即翻译。
+在常规设置中选择「免费在线翻译」和具体服务、确认文本将发送给所选供应商后，可使用原有网页翻译及普通划词入口。Popup 可以单独为本站应用服务并立即翻译。没有 AI Key 也可以选择此模式；原有站点 AI 连接、Glossary、用户安装词典、Reading、字幕和本地模型设置不被替换。
 
-升级默认维持原有行为，不修改 AI Key、连接、已有站点服务或词典。已显式配置 AI 的站点继续使用原选择，除非在 Popup 为本站明确选择免费模式。AI 理解、分析、用法、追问和字幕继续使用原有 AI 配置。
+首批仅验证固定的 Microsoft Edge 网页接口和腾讯 Transmart 交互接口，**不是 Azure 或腾讯云付费翻译 API**。网页端点可能失效或限流；失败不会自动切换到付费 AI。扩展对行内代码、内部 marker 和链接属性执行本地保护；普通划词一旦包含 code/kbd/pre 等无法安全外发的内容，则拒绝该在线服务并保留原文。本模块仍在 PR #342 验收阶段，**不应将当前仓库说明误读为已完成真实供应商认证**。
 
-微软使用 Edge 网页接口，腾讯使用交互翻译 Transmart，**不是 Azure Translator / 腾讯云付费 API**。网页接口没有可用性承诺；连接检查的结果只代表当次网络。失败不会自动换线、转付费 AI 或下载本地模型。首版不含 Google、B站、免费字幕或自建网关。
-
-原文段落仍保留；代码、链接地址和内部格式标记留在本地。复杂行内结构分槽翻译，跨标签语句可能不如整句自然。AI Prompt、风格和自定义译法不应用到免费接口，切回 AI 后原设置继续生效。免费缓存按服务、语言对和结构身份隔离，原缓存和阅读历史不清空。
-
-详见 [免费在线翻译实现与验收](docs/tasks/free-online-mt/task.md) 和 [Provider 文档](docs/PROVIDERS.md#免费在线机器翻译)。
+缓存使用 #345 已合入的统一 DB4（`entries`/`epochs`）和请求身份；免费服务、语言、原文和结构策略只影响缓存 key，**不会另外创建 DB3 或双轨缓存解析**。详见 [Provider 接口说明](docs/PROVIDERS.md) 及 [独立缓存模块](docs/CACHE_SYSTEM.md)。
 
 ## v0.8.1 基础翻译
 
-- 浏览器翻译只用于划选单词的基础释义；原有模式下整页、字幕和较长划词内容使用 AI；显式免费模式支持整页和长划词。两者均不会自动下载浏览器翻译模型。
+- 浏览器翻译只用于划选单词的基础释义；整页、字幕和较长划词内容使用 AI，不会自动调用或下载浏览器翻译模型。
 - 划词释义自动识别源语言，目标语言默认简体中文；短词识别不确定时可手动纠正。
 - 语言包准备由设置页 **常规 → Chrome 本地模型 → 准备并校验两个模型**，或划词面板内的真实点击启动；安装、页面载入、悬浮按钮和整页翻译均不会下载。
 - 设置中可关闭划词浏览器释义；关闭会停止相关任务并释放实例，不删除 Chrome 的共享语言包。
@@ -38,7 +32,7 @@
 - 统一 Translation Task：阶段进度、用户取消、Provider timeout/retry 与 in-flight 请求去重
 - 结构化双语渲染：保留链接、强调、code/kbd/mark 等安全内联语义，不注入模型 HTML
 - Provider Base URL 纳入 OpenAI-compatible 缓存版本
-- DeepSeek v0.3/v0.4 缓存继续兼容
+- 翻译、字幕与 AI 解释分命名空间缓存；策略变化只改变业务 identity，不反复升级物理数据库
 - 全局 + 网站自定义译法：支持覆盖、启停和大小写规则
 - Technical / Academic / News / Natural 四种内置翻译模式
 - Popup 展示当前站点 / 模式 / Provider / Model，并支持临时切换或保存到本站
@@ -52,6 +46,16 @@
 - **Chrome Commands**：翻译/更新页面、显示/隐藏译文、切换 Quick Control。
 - **YouTube subtitles**：MAIN-world player-owned timedtext 主路径，TextTrack 与 rendered DOM 作为 fallback；支持双语/原文/off、ASR、人类字幕、SPA 切换与缓存复用。
 - **Settings IA**：General / Appearance / YouTube / Sites / Automatic behavior / Preferred translations + Advanced Provider / Cache / Developer。
+
+## 本地词典、AI 与学习记录
+
+安装包不附带词典。用户可主动下载精选词典或导入 TFLex、StarDict、MDX/MDD；支持预检、进度、取消、启停、首选、排序、更新和删除。富词典通过隔离视图与限定 HTML/CSS 显示 MDD 本地图片、音频及受支持的字体/SVG，不执行词典脚本或自动请求远程资源。没有安装词典属于正常空状态。
+
+单词查询优先展示词典或浏览器基础释义；“理解 / 分析 / 用法”由用户明确激活，分别保存请求状态与完整结果。切换词典/AI 标签不会把本地查询伪装为 Provider 结果，停止、失败或旧选区回调不能覆盖当前内容。
+
+学习中心区分 Reading 历史、生词本与最小复习：Reading 保存原文位置和已完成结果；生词本保存用户明确收藏的词典摘要或独立标注的 AI 学习笔记；复习通过“再学一次 / 已掌握”更新本地计划，尚不提供 SRS/FSRS 或云同步。历史恢复不重新查询词典或调用 Provider，Reading 与生词本删除互不级联。完整边界见 [学习中心](docs/LEARNING_CENTER_V1.md) 与 [Reading loop](docs/READING_LOOP_V1.md)。
+
+已完成的 Oxford 10 定向验收不代表所有商业 MDX/MDD、编码或 MDict 版本全面兼容，具体证据见 [MDict compatibility](docs/MDICT_REAL_WORLD_COMPATIBILITY.md)。
 
 ## 架构
 
@@ -175,7 +179,7 @@ git clone https://github.com/CoderLambert/translateflow-plugin.git
 cd translateflow-plugin
 ```
 
-默认构建由 WXT 编译后台、Popup 和 Options，Content/MAIN/Worker 继续复用精确源码桥；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
+默认构建由 WXT 编译后台、Content、Popup 和 Options，MAIN/Worker 保留精确资源映射；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。安装包不包含词典内容；`tests/`、`e2e/`、`scripts/`、`docs/`、原始词典来源和 source-lock 等开发/验证资产不会进入生产扩展。
 
 源码安装不需要词典包或 AI Key，执行：
 
@@ -185,7 +189,7 @@ npm run validate
 npm run build:extension:release
 ```
 
-默认与 release 构建均不包含内置词典。需要研究/认证旧内置词典时，可单独运行 `npm run setup:lexicon`，再执行 `node scripts/build-extension.mjs --require-lexicon`；此显式构建继续校验来源锁和词典完整性。
+所有正式构建均不附带词典。需要离线查词时，在 **高级设置 → 词典库** 主动下载精选词典，或导入 TFLex、StarDict、MDX/MDD。没有安装词典是正常空状态，不会自动下载、调用 AI 或要求重装扩展。通用查询引擎与词典内容来源相互独立；升级保留已安装词典、排序偏好及缓存。
 
 真实 Chromium 扩展 E2E：
 
@@ -379,39 +383,11 @@ siteGlossaries:
 
 ## 缓存
 
-翻译缓存统一为 **v3 单一格式**。数据库沿用 `ai_bilingual_translator`，旧版升级时一次性清空重建 `translations` 和 `pages`，不迁移、不读取旧译文；升级后需要用户显式重新翻译才能写入新缓存，自动恢复不会请求 Provider。独立 `selection_explanations`（划词 AI 解释）保留，ReadingRecord 和词典使用各自数据库/存储，不受本次清理影响。
+缓存入口仍由 `src/background/cache-db.js` 提供稳定 API，底层采用独立缓存模块。`ai_bilingual_translator` 的物理布局为 DB4，使用通用 `entries` / `epochs`；记录 envelope 与各业务策略版本独立演进。
 
-```text
-ai_bilingual_translator (DB v3)
-├── pages
-├── translations (cache schema v3 only)
-└── selection_explanations (independent)
-```
+页面翻译、字幕和 AI 解释使用隔离的命名空间。译文 identity 包含实际原文、有效连接与 endpoint/model、语言、最终 Prompt、模型参数、格式和策略版本；Provider 调用与读写缓存共享同一份有效配置。密钥明文不进入缓存 identity。显式清除会使在途旧结果的写入 token 失效，避免结果返回后重新写回。
 
-缓存身份：
-
-```text
-page:
-normalized URL
-
-config:
-cache schema
-+ provider connection ID / revision / protocol
-+ model
-+ target language
-+ prompt
-+ Provider endpoint
-+ effective glossary identity（仅存在非空自定义译法时）
-
-Preset 不额外写入 cache fingerprint；它通过最终解析出的 Prompt 进入缓存身份。因此切回曾经使用过的同一有效模式，会复用之前的缓存版本。
-
-segment:
-SHA-256(normalized source text)
-```
-
-普通纯文本段落继续使用原有规范化文本作为缓存身份，因此既有缓存继续命中。包含受支持内联结构的段落使用带 TranslateFlow 结构标记的确定性 source fingerprint，首次可能 miss 一次，但不会提升全局缓存 schema。
-
-迁移后的旧 DeepSeek / OpenAI-compatible 配置保留旧缓存兼容路径。新连接把连接 ID、revision、协议和 Base URL 纳入缓存版本，避免不同后端或连接版本使用同一模型名时误复用译文。API Key 字节不进入缓存。非空的有效自定义译法也会以确定性 identity 参与缓存；没有自定义译法时保持既有缓存兼容。
+升级会一次性丢弃旧普通译文与页面索引，不读取旧译文格式、回退旧 key 或双写；独立解释缓存按原值保留，Reading、词典、设置与凭据不受影响。只支持旧 DB2/3 的旧程序不能直接降级打开 DB4。完整合同见 [独立缓存模块](docs/CACHE_SYSTEM.md)。
 
 ## 权限
 
@@ -437,7 +413,7 @@ SHA-256(normalized source text)
 
 ## 划词翻译
 
-在普通 http/https 网页中无需先打开 Popup；选择 2–2000 字符的英文文本后会出现轻量“译”按钮。仅在用户点击后才检查 IndexedDB 缓存并调用 Provider；翻译使用当前站点的 Effective Translation Config。
+在普通 http/https 网页中无需先打开 Popup；选择 2–2000 字符的文本后会出现轻量“译”按钮。点击后按文本形态和用户设置查询本地词典、浏览器基础释义或翻译；AI 操作使用当前站点的 Effective Translation Config。
 
 支持：
 
@@ -490,7 +466,7 @@ SHA-256(normalized source text)
 
 - `src/shared/` 禁止依赖 `chrome.*`
 - 外部 `fetch()` 只能位于 `src/background/providers/`
-- IndexedDB 只能由 `src/background/cache-db.js` 访问
+- 通用缓存 IndexedDB 仅由 `src/background/cache/storage-indexeddb.js` 访问，`cache-db.js` 保持稳定外观；ReadingRecord 仅由 `src/background/reading-record/idb.js` 直接访问
 - 动态 Content Script 注册只能由 `src/background/auto-sites.js` 调用
 - Content Script 模块禁止 ESM import/export
 - `src/` 单文件超过 420 行失败
@@ -505,10 +481,11 @@ SHA-256(normalized source text)
 - 当前支持 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages 和 Gemini generateContent；不支持旧 Azure deployment API、Bedrock、Vertex IAM/OAuth 或自动 failover。
 - 不同兼容服务对结构化输出能力差异较大，当前通过严格 Prompt、完整 segment 校验和一次格式重试适配。
 - 自定义额外 Header 尚未开放配置。
+- ChatGPT 订阅需要单独安装 Native Messaging Host；未授权或未安装不影响 API Key 与本地词典，Windows 实机、签名与公开分发仍需独立验收。
 - PDF、Side Panel、非 YouTube 视频站点的双语字幕尚未实现；v0.8 视频体验首发支持 YouTube。
 - Chrome 内部页面、Chrome Web Store 等受保护页面无法注入。
 - API Key 保存于仅 trusted extension context 可访问的 `chrome.storage.local`，适合个人 BYOK，不是操作系统密钥保险库。
 
 ## 开发任务与本地验收
 
-任务和执行状态见 [docs/tasks/index.json](docs/tasks/index.json)，完整流程见 [docs/tasks/LOCAL_WORKFLOW.md](docs/tasks/LOCAL_WORKFLOW.md)。日常在本地完成验收与具名独立审核；GitHub 仅用于代码同步。Actions 只接受手动触发，原始执行日志/截图保持本地并忽略。
+任务和执行状态见 [docs/tasks/index.json](docs/tasks/index.json)，完整流程见 [docs/tasks/LOCAL_WORKFLOW.md](docs/tasks/LOCAL_WORKFLOW.md)。日常在本地完成验收与主 Agent 自查；GitHub 仅用于代码同步。Actions 只接受手动触发，原始执行日志/截图保持本地并忽略。

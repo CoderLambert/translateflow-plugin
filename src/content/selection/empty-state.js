@@ -16,6 +16,33 @@
       delete container.dataset.resultKind;
     }
 
+    function createActions({ onExplain = null, onTranslate = null } = {}) {
+      const actions = document.createElement("div");
+      actions.className = "tf-selection-empty-actions";
+      if (typeof onExplain === "function") {
+        const explain = button({ text: locale.t("content.selection.aiDetail"), label: locale.t("content.selection.aiFurtherAria") });
+        locale.bindText(explain, "content.selection.aiDetail");
+        locale.bindAttribute(explain, "aria-label", "content.selection.aiFurtherAria");
+        explain.addEventListener("click", (event) => onExplain(event));
+        actions.appendChild(explain);
+      }
+      if (typeof onTranslate === "function") {
+        const translate = button({ text: locale.t("content.selection.regularTranslation"), label: locale.t("content.selection.regularTranslationAria") });
+        locale.bindText(translate, "content.selection.regularTranslation");
+        locale.bindAttribute(translate, "aria-label", "content.selection.regularTranslationAria");
+        translate.addEventListener("click", (event) => onTranslate(event));
+        actions.appendChild(translate);
+      }
+      return actions;
+    }
+
+    function showActions(options = {}) {
+      reset();
+      node = createActions(options);
+      if (node.childElementCount) container.appendChild(node);
+      onResize?.();
+    }
+
     function show({
       titleKey = "content.selection.localEmptyTitle",
       messageKey = "content.selection.localEmpty",
@@ -37,29 +64,14 @@
       locale.bindText(body, messageKey);
       node.append(heading, body);
 
-      const actions = document.createElement("div");
-      actions.className = "tf-selection-empty-actions";
-      if (typeof onExplain === "function") {
-        const explain = button({ text: locale.t("content.selection.aiDetail"), label: locale.t("content.selection.aiFurtherAria") });
-        locale.bindText(explain, "content.selection.aiDetail");
-        locale.bindAttribute(explain, "aria-label", "content.selection.aiFurtherAria");
-        explain.addEventListener("click", (event) => onExplain(event));
-        actions.appendChild(explain);
-      }
-      if (typeof onTranslate === "function") {
-        const translate = button({ text: locale.t("content.selection.regularTranslation"), label: locale.t("content.selection.regularTranslationAria") });
-        locale.bindText(translate, "content.selection.regularTranslation");
-        locale.bindAttribute(translate, "aria-label", "content.selection.regularTranslationAria");
-        translate.addEventListener("click", (event) => onTranslate(event));
-        actions.appendChild(translate);
-      }
+      const actions = createActions({ onExplain, onTranslate });
       if (actions.childElementCount) node.appendChild(actions);
 
       container.appendChild(node);
       onResize?.();
     }
 
-    return Object.freeze({ reset, show });
+    return Object.freeze({ reset, show, showActions });
   }
 
   app.modules.selectionEmptyState = Object.freeze({ create });
