@@ -57,3 +57,18 @@ The original isolated overlay result (108 tests on Node22) remains historical. A
 **Executed source-only checks this turn:** five actual auto.js IIFE scenarios using an isolated V8 fixture (auto warning, cache-only warning, two silent-success scenarios, throttled repeat) **5/5 PASS**; after source contract change, seven translation-cache-identity.js V8 scenarios (balanced/unbalanced user literal tokens, explicitly structured input, protection rejection, malformed rich rejection, rich/plain separation) **7/7 PASS**. Earlier 29/29 mock-driven Content cases were verified against the previous candidate; they are not a substitute for complete tests of the new head. These checks neither install WXT nor exercise native IndexedDB.
 
 **Still NOT RUN:** this exact remote candidate's `npm run validate` on required Node24/npm11; actual Node `--test` for the newly added files; native Chromium IDB upgrade and rollback; compiled WXT/MV3 behavior; installation package and user acceptance. No paid Provider requests. Remain Draft / working until full verification is available. Not an implementation-wave completion.
+
+
+## Continuation: namespace-isolated capacity pruning (2026-10-18)
+
+**Reproduced** against the actual Memory driver code in an isolated V8 harness: the old globally scoped `pruneCache` used all namespaces as a shared LRU. With a small translation budget and an older `selection-explanation` record, the explanation was evicted before translation entries. This changed the old explanation-retention behavior and undermined the new independent-domain policy.
+
+**Fix**: `pruneCache(maxBytes)` now supplies the two explicit translation namespaces (`translation` and `subtitle-translation`) as a combined quota scope. Both storage drivers implement the same optional `namespaces` filter for `prune`; the original single-`namespace` and global modes remain. Mixed/empty/duplicate/overly large or malformed namespace filters are rejected. No DB layout, migration, existing cache record reader or general cache policy changes are required. `clearAllCache` remains intentionally global.
+
+**Tests added**:
+- `tests/cache-system-domains.test.mjs`: a 6-entry cross-namespace over-budget regression with an older independent AI explanation record; asserts eviction and explanation preservation.
+- `tests/cache-system-browser-cases.js`: actual native IndexedDB equivalent covering combined budget, explanation isolation, and mixed-filter rejection (committed but **NOT RUN**).
+
+**Executed isolated checks**: latest Memory store code with three namespaces and an over-budget translation set passed explanation preservation, combined translation-byte-budget and invalid-filter cases (**PASS**); latest application.js transmitted exactly the two requested translation namespaces (**PASS**). Parsed latest application.js, storage-memory.js and storage-indexeddb.js function bodies in the V8 runtime without syntax errors. Native IDB, actual Node suite, E2E and compiled extension remain **NOT RUN** due to environment restrictions. These mock and parse checks do not prove the native IndexedDB behavior.
+
+**Rollback consideration:** reverting the application-only scoping restores former global LRU semantics; reverting the optional driver filter as well is safe only after the application no longer passes `namespaces`. No stored record schema changes or data-clearing side effects are introduced.
