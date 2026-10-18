@@ -24,7 +24,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   siteProfiles: {}, glossary: DEFAULT_GLOSSARY_STORE, siteGlossaries: DEFAULT_SITE_GLOSSARY_STORE
 });
 export const CONFIG_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
-export const CACHE_SCHEMA_VERSION = 2;
+// Single v3 translation cache contract. Pre-v3 translation rows are discarded on DB upgrade.
+export const CACHE_SCHEMA_VERSION = 3;
 export const BACKGROUND_MESSAGES = Object.freeze({
   MACHINE_TRANSLATION_GET: "MACHINE_TRANSLATION_GET", MACHINE_TRANSLATION_SAVE: "MACHINE_TRANSLATION_SAVE", MACHINE_TRANSLATION_TEST: "MACHINE_TRANSLATION_TEST",
   TRANSLATION_ENGINE_SETTINGS: "TRANSLATION_ENGINE_SETTINGS",
