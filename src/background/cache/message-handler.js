@@ -2,16 +2,17 @@ import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../../shared/constants.js";
 import { isCachePersistenceError } from "../../shared/cache/persistence-errors.js";
 import { readingTranslationResult } from "../selection/reading-result.js";
 import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "../cache-db.js";
-import { getConfig, getEffectiveConfig } from "../config.js";
+import { getConfig } from "../config.js";
+import { translationConfig } from "../browser-translation.js";
 import { createEffectiveConfigSnapshot, resolveEffectiveConfigSnapshot } from "../effective-config-snapshots.js";
 
 // Business message adapter; the generic service and storage remain independent.
-export async function handleCacheMessage(message) {
+export async function handleCacheMessage(message, sender = null) {
   switch (message.type) {
     case BACKGROUND_MESSAGES.CACHE_LOOKUP: {
       const snapshot = message.configSnapshotId
-        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl) }
-        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation);
+        ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender) }
+        : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation, sender);
       const config = snapshot.config;
       let result;
       try {
@@ -26,10 +27,12 @@ export async function handleCacheMessage(message) {
         // cacheOnly remains read-only; missing tokens disallow persistent writes.
         result = { hits: [], writeTokens: [], cacheWarning: error.code };
       }
-      return { ...result, engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
+      return { ...result, ...(config.engine === "machine-translation" ? { provider: config.provider } : {}),
+        engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage,
+        configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
     }
     case BACKGROUND_MESSAGES.CACHE_STORE: {
-      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
       if (config.engine === "browser-translator" && (await getConfig()).browserTranslationEnabled === false) throw Object.assign(new Error("Browser translation is disabled."), { code: "BROWSER_DISABLED" });
       try {
         const result = await storeTranslations({
@@ -50,7 +53,7 @@ export async function handleCacheMessage(message) {
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
       return getPageCacheStatus({
         pageUrl: message.pageUrl,
-        config: await getEffectiveConfig(message.pageUrl)
+        config: await translationConfig(message.pageUrl)
       });
     case BACKGROUND_MESSAGES.CACHE_CLEAR_PAGE:
       return clearPageCache({ pageUrl: message.pageUrl });
