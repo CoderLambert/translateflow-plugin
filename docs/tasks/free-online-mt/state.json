@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "free-online-mt",
-  "status": "reviewing",
+  "status": "working",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/free-online-mt-20261016",
@@ -27,5 +27,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "功能已实现；完成最终版本产物核对并同步 PR。真实供应商及用户网络可用性仍需独立验证，未合入 main。"
+  "nextAction": "用户已批准废弃旧翻译缓存，正在 PR #342 分支实施 DB/cache schema v3 单一解析、升级回归与现有 MT 模块验收。旧 translations/pages 清空；ReadingRecord/词典/凭据/独立解释缓存保留。未执行完整 validate、真实浏览器升级 E2E 与真实腾讯/微软再验，禁止写 PASS 或 completed。"
 }
