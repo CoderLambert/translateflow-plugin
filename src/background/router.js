@@ -1,4 +1,5 @@
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machine-translation-settings.js";
 import { handleCacheMessage } from "./cache/message-handler.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
@@ -80,11 +81,12 @@ export function registerMessageRouter() {
 }
 
 export async function handleBackgroundMessage(message, sender) {
+  if (MACHINE_SETTING_MESSAGES.includes(message?.type)) return handleMachineSettingsMessage(message, sender);
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
       return translationEngineSettings(message.pageUrl, { forceBrowser: message.forceBrowser === true, surface: message.surface });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
+      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
       if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
       return {
         translations: await runTranslationRequest({
@@ -93,7 +95,8 @@ export async function handleBackgroundMessage(message, sender) {
           segments: message.segments,
           config
         }),
-        readingResult: await readingTranslationResult(config)
+        readingResult: await readingTranslationResult(config),
+        ...(config.engine === "machine-translation" ? { engine: config.engine, provider: config.provider } : {})
       };
     }
     case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
@@ -160,7 +163,7 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.CACHE_CLEAR_ALL:
     case BACKGROUND_MESSAGES.CACHE_STATS:
     case BACKGROUND_MESSAGES.CACHE_PRUNE:
-      return handleCacheMessage(message);
+      return handleCacheMessage(message, sender);
     case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_REGISTER:
       return registerCacheRestoreSite(message.origin);
     case BACKGROUND_MESSAGES.CACHE_RESTORE_SITE_UNREGISTER:
