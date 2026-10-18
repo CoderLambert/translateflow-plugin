@@ -8,10 +8,31 @@
   "candidateHead": "",
   "mergeHead": "",
   "validationCommands": [
-    ["node", "--test", "tests/cache-system.test.mjs", "tests/cache-system-domains.test.mjs", "tests/cache-system-review.test.mjs", "tests/cache-system-integration-review.test.mjs"],
-    ["npm", "run", "validate"],
-    ["npm", "run", "test:e2e", "--", "e2e/cache-system-native.spec.mjs", "e2e/cache-system-mv3.spec.mjs"]
+    [
+      "node",
+      "--test",
+      "tests/cache-system.test.mjs",
+      "tests/cache-system-domains.test.mjs",
+      "tests/cache-system-review.test.mjs",
+      "tests/cache-system-integration-review.test.mjs",
+      "tests/cache-system-auto-feedback.test.mjs",
+      "tests/cache-system-persistence-failure.test.mjs",
+      "tests/native-client.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-native.spec.mjs",
+      "e2e/cache-system-mv3.spec.mjs"
+    ]
   ],
   "artifactRequired": true,
-  "nextAction": "独立缓存核心和 Page/Selection/Browser/Subtitle/解释接入已进入此分支。先完成全仓接入回归及旧 WXT 升级 fixture、权限/存储边界断言适配，再在 Node24 与真实 WXT/Chromium 环境冻结准确候选验收。离线 overlay Node22 定向108项通过不等于当前远端候选整体通过；管理策略阻断 native IDB 执行，不绕过、不报PASS。当前未构建安装包、未合并、未通知最终验收。"
+  "nextAction": "独立缓存核心、业务接入、Page/Selection/Chrome/Subtitle 存储故障保底、自动/仅恢复模式限频提示和富文本格式显式判定已提交。V8 source fixture 29+5+7 场景分批 PASS，不等于远端候选 Node 全仓/真实浏览器验收；新增 Node 回归测试尚未通过 node --test 正式运行。下一步在 Node24/npm11 可用环境执行 npm ci && npm run validate，运行同 ID WXT DB2/3→4 升级、原生 IDB/Chrome MV3 与用户数据保留用例；冻结实际 candidateHead、构建并记录安装包指纹后才通知用户最终验收。当前保持 working/Draft，不合并、不调用付费 Provider。"
 }
