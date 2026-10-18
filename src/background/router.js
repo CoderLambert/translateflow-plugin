@@ -1,4 +1,5 @@
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { isCachePersistenceError } from "../shared/cache/persistence-errors.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../shared/constants.js";
@@ -166,13 +167,21 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.CACHE_STORE: {
       const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl);
       if (config.engine === "browser-translator" && (await getConfig()).browserTranslationEnabled === false) throw Object.assign(new Error("Browser translation is disabled."), { code: "BROWSER_DISABLED" });
-      const result = await storeTranslations({
-        pageUrl: message.pageUrl,
-        pageTitle: message.pageTitle,
-        items: message.items,
-        config
-      });
-      return result;
+      try {
+        const result = await storeTranslations({
+          pageUrl: message.pageUrl,
+          pageTitle: message.pageTitle,
+          items: message.items,
+          config
+        });
+        // A failed/invalidated persistence fence does not invalidate an already
+        // verified translation. However, invalid input and stale config errors
+        // must continue to fail closed.
+        return { ...result, ...(result.skipped ? { cacheWarning: "CACHE_INVALIDATED" } : {}) };
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        return { stored: 0, cacheWarning: error.code };
+      }
     }
     case BACKGROUND_MESSAGES.CACHE_PAGE_STATUS:
       return getPageCacheStatus({
