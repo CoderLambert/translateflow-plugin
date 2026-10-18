@@ -152,3 +152,72 @@ test("a native plan cannot be reused by a different request", async () => {
     segments: [{ id: "a", text: "Hello" }] }, s.raw), { code: "CONFIG_SNAPSHOT_EXPIRED" });
   assert.equal(s.executions.length, 0);
 });
+
+
+test("native selection retains model result when the Background reports a cache persistence failure", async () => {
+  for (const code of ["CACHE_QUOTA", "CACHE_STORAGE", "CACHE_STORAGE_BLOCKED", "CACHE_STORAGE_TIMEOUT"]) {
+    const s = setup(), segments = [{ id: "a", text: "Hello world" }];
+    const { lookup, result, requestId } = await translate(s, segments);
+    const raw = async payload => payload.type === M.CACHE_STORE
+      ? { ok: false, errorCode: code } : s.raw(payload);
+    const saved = await s.client.send({
+      type: M.CACHE_STORE, pageUrl, requestId, configSnapshotId: lookup.configSnapshotId,
+      items: [{ sourceText: segments[0].text, translation: result.translations[0].text }]
+    }, raw);
+    assert.equal(saved.ok, true);
+    assert.equal(saved.stored, 0);
+    assert.equal(saved.cacheWarning, code);
+    assert.equal(result.translations[0].text, "translated[en]:Hello world");
+    assert.equal(s.executions.length, 1, "do not execute the native model again");
+    assert.equal(s.cache.size, 0, "failed persistence cannot become a hit");
+  }
+});
+
+test("native lookup passes cache read failures to the UI and never attempts a tokenless save", async () => {
+  const s = setup(), segments = [{ id: "a", text: "Hello world" }];
+  const raw = async payload => {
+    const response = await s.raw(payload);
+    return payload.type === M.CACHE_LOOKUP && payload.browserTranslation
+      ? { ...response, cacheWarning: "CACHE_STORAGE", writeTokens: [] }
+      : response;
+  };
+  const requestId = "native-cache-outage";
+  const lookup = await s.client.send({ type: M.CACHE_LOOKUP, pageUrl, requestId, segments, cacheOnly: false }, raw);
+  assert.equal(lookup.ok, true);
+  assert.equal(lookup.cacheWarning, "CACHE_STORAGE");
+  const translated = await s.client.send({ type: M.TRANSLATE_BATCH, pageUrl, requestId,
+    configSnapshotId: lookup.configSnapshotId, segments }, raw);
+  const saved = await s.client.send({ type: M.CACHE_STORE, pageUrl, requestId,
+    configSnapshotId: lookup.configSnapshotId, items: [{
+      sourceText: "Hello world", translation: translated.translations[0].text
+    }] }, raw);
+  assert.equal(saved.cacheWarning, "CACHE_STORAGE");
+  assert.equal(saved.stored, 0);
+  assert.equal(s.calls.some(call => call.type === M.CACHE_STORE), false);
+  assert.equal(s.executions.length, 1);
+});
+
+test("native subtitle delivery survives a failed cache write and does not run the model twice", async () => {
+  const s = setup();
+  const raw = async payload => payload.type === M.CACHE_STORE
+    ? { ok: false, errorCode: "CACHE_QUOTA" } : s.raw(payload);
+  const reply = await s.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "native-subtitle-outage",
+    pageUrl, units: [{ id: "sub", text: "Bonjour", mediaId: "public-video", track: { id: "en", language: "en" } }] }, raw);
+  assert.equal(reply.ok, true);
+  assert.equal(reply.translations.length, 1);
+  assert.equal(reply.translations[0].text, "translated[en]:Bonjour");
+  assert.equal(reply.cacheWarning, "CACHE_QUOTA");
+  assert.equal(s.executions.length, 1);
+  assert.equal(s.cache.size, 0);
+});
+
+test("native store still rejects invalid tokens and stale configuration", async () => {
+  const s = setup(), segments = [{ id: "a", text: "Hello world" }];
+  const { lookup, result, requestId } = await translate(s, segments);
+  const rejectedRaw = async payload => payload.type === M.CACHE_STORE
+    ? { ok: false, errorCode: "CACHE_INVALID_TOKEN" } : s.raw(payload);
+  await assert.rejects(s.client.send({ type: M.CACHE_STORE, pageUrl, requestId,
+    configSnapshotId: lookup.configSnapshotId, items: [{ sourceText: "Hello world", translation: result.translations[0].text }] }, rejectedRaw),
+  { code: "CACHE_INVALID_TOKEN" });
+  assert.equal(s.cache.size, 0);
+});
