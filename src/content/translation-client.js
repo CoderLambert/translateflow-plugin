@@ -118,7 +118,8 @@
     boundedSet(plans, id, plan);
     return { ok: true, engine: BROWSER_ENGINE, configSnapshotId: id, hits, skippedIds,
       writeTokens: [...groups.values()].flatMap(group => [...group.cacheTokens].map(([id, token]) => ({ id, token }))),
-      targetLanguage, sourceLanguage: one?.pair.sourceLanguage || (groups.size ? "" : targetLanguage), readingResult: one?.readingResult };
+      targetLanguage, sourceLanguage: one?.pair.sourceLanguage || (groups.size ? "" : targetLanguage), readingResult: one?.readingResult,
+      ...([...groups.values()].some(group => group.cacheWarning) ? { cacheWarning: [...groups.values()].find(group => group.cacheWarning).cacheWarning } : {}) };
   }
   function requirePlan(payload, controller) {
     const plan = plans.get(payload.configSnapshotId);
@@ -221,7 +222,13 @@
         await groupLookup(group, { ...payload, requestId: plan.requestId }, raw, controller);
         response = await raw({ ...payload, configSnapshotId: group.snapshotId, items });
       }
-      if (!response?.ok) throw responseError(response);
+      if (!response?.ok) {
+        if (!app.modules.runtime.isCachePersistenceError?.(response)) throw responseError(response);
+        // The browser model already produced valid text. Storage failure must
+        // not invalidate the result, re-run the model or hide subtitle output.
+        cacheWarning = response.errorCode;
+        continue;
+      }
       assertCurrent(controller, payload.pageUrl, plan.requestId);
       stored += Number(response.stored || 0);
       if (response.cacheWarning || Number(response.stored || 0) < items.length)
