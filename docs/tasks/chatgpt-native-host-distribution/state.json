@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "chatgpt-native-host-distribution",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/rich-runtime-assets-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-runtime-assets-20261013",
   "candidateHead": "df6e65fd908228ca46763a1fa276c76d3164fd3e",
-  "mergeHead": null,
+  "mergeHead": "93ae86e9d96f8febe36578f15a933dee87e9f31f",
   "validationCommands": [
     [
       "npm",
@@ -34,7 +34,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "Push the Draft PR. Public release remains blocked on the real Chrome Web Store ID, Windows signing certificate, Linux release signing, and clean-system installer acceptance.",
+  "nextAction": "PR #331 已合入 main，完成记录现已校准；原验收候选与限制保留。公开分发未获本次授权，继续受 releaseStatus 限制。",
   "validation": {
     "npmRunValidate": "PASS (1524 Node tests, 46 Vitest)",
     "wxtBuildSmoke": "PASS (Chromium 153.0.8010.12)",
@@ -52,5 +52,13 @@
     ],
     "resolution": "Fixed and revalidated; no unresolved blocker in the reviewed scope."
   },
-  "documentationHead": "42ba15fe548057a7feb154a97fcd923d092bbb49"
+  "documentationHead": "42ba15fe548057a7feb154a97fcd923d092bbb49",
+  "pr": 331,
+  "syncHead": "58e2a0875863cc7146c7c6ada4a2bedeceaf4b4b",
+  "completionVerification": {
+    "mergeHeadIsMainAncestor": true,
+    "source": "actual merged PR and current 749af4e6/77a4a90f regression; original candidate bindings retained",
+    "originalCandidatePreserved": true
+  },
+  "releaseStatus": "BLOCKED: 商店 ID、Windows/Linux 签名、真实干净系统安装验收仍缺失；仅实现与未签名候选范围完成。"
 }

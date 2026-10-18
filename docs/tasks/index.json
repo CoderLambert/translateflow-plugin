@@ -252,7 +252,7 @@
     },
     {
       "task": "api-key-provider-connections",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
       "candidateHead": "886e5759b204b7dab840380f4f8431ebe179e972"
@@ -273,7 +273,7 @@
     },
     {
       "task": "chatgpt-native-host-distribution",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "fix/rich-runtime-assets-20261013",
       "candidateHead": "df6e65fd908228ca46763a1fa276c76d3164fd3e"
@@ -328,7 +328,7 @@
     },
     {
       "task": "rich-local-fonts",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "oxford-radio-css",
         "rich-multiple-records"
@@ -372,7 +372,7 @@
     },
     {
       "task": "selection-ai-result-saving",
-      "status": "working",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
       "candidateHead": null
@@ -386,19 +386,19 @@
     },
     {
       "task": "sync-current-worktree",
-      "status": "working",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
       "candidateHead": null
     },
     {
       "task": "test-concurrency",
-      "status": "reviewing",
+      "status": "completed",
       "dependencies": [
         "remove-bundled-lexicons"
       ],
       "branch": "chore/test-concurrency-and-selection",
-      "candidateHead": null
+      "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b"
     },
     {
       "task": "workflow-local",

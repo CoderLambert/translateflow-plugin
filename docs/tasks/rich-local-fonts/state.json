@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-local-fonts",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "oxford-radio-css",
@@ -10,7 +10,7 @@
   "branch": "fix/rich-font-svg-20261013",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-font-svg-20261013",
   "candidateHead": "42a40f190af4e6268c5a43fa0e9043242da67cfc",
-  "mergeHead": null,
+  "mergeHead": "fef5eab3292f3e2d26c0ce85e073ac8fb1dcc598",
   "validationCommands": [
     [
       "git",
@@ -84,5 +84,12 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "推送 PR #330，核对远端准确 head/base/checks/review 后 guarded squash merge。"
+  "nextAction": "PR #330 已合入 main，完成记录现已校准；原验收候选与限制保留。",
+  "pr": 330,
+  "syncHead": "7037ca0822db1fc1593e15384d66ddcd19ca78f8",
+  "completionVerification": {
+    "mergeHeadIsMainAncestor": true,
+    "source": "actual merged PR and current 749af4e6/77a4a90f regression; original candidate bindings retained",
+    "originalCandidatePreserved": true
+  }
 }

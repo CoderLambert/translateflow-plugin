@@ -1,6 +1,6 @@
 # Independently evolving cache module
 
-Status: implementation branch, not release acceptance. The user explicitly asked to finish this cache module before resuming other translation modules. This document supersedes earlier DB3-only cache implementation details; it does not authorize a merge or release.
+Status: merged in PR #345; the original candidate and limitations remain in `docs/tasks/cache-system-v1/`. This is implementation acceptance, not store/release certification. The user explicitly asked to finish this cache module before resuming other translation modules. This document supersedes earlier DB3-only cache implementation details; it does not authorize a merge or release.
 
 ## Boundaries
 
