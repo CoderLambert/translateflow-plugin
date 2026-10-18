@@ -226,9 +226,13 @@
         items: toStore
       });
       if (task) tasks.assertActive(task);
-      if (!stored?.ok) throw responseError(stored, "content.page.cacheStoreFailed");
-      const saved = Number(stored.stored || 0);
-      cacheWarning = stored.cacheWarning || (saved < toStore.length ? "CACHE_NOT_SAVED" : "");
+      if (!stored?.ok && !app.modules.runtime.isCachePersistenceError?.(stored)) {
+        throw responseError(stored, "content.page.cacheStoreFailed");
+      }
+      const saved = stored?.ok ? Number(stored.stored || 0) : 0;
+      cacheWarning = stored?.ok
+        ? (stored.cacheWarning || (saved < toStore.length ? "CACHE_NOT_SAVED" : ""))
+        : stored.errorCode;
 
       if (auto && Date.now() - state.lastAutoPruneAt > 5 * 60 * 1000 && !cacheWarning) {
         state.lastAutoPruneAt = Date.now();
