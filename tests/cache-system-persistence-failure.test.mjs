@@ -14,12 +14,13 @@ const cacheMessages = Object.freeze({
 });
 const storageError = code => Object.assign(new Error(code), { code });
 
-async function createContentHarness(file, { lookupWarning = '', writeWarning = '', cacheOnly = false } = {}) {
+async function createContentHarness(file, { lookupWarning = '', writeWarning = '', writeErrorCode = '', cacheOnly = false } = {}) {
   const requests = [], toasts = [], displayed = [], accepted = [], el = { hasAttribute: () => false };
   const state = { manualRunning: false, autoDrainRunning: false, pending: new Set(),
     startupRestorePromise: null, lastAutoPruneAt: Date.now() };
   const runtime = {
     constants: { TRANSLATED_ATTR: 'data-tf-translated' },
+    isCachePersistenceError,
     messages: { background: cacheMessages }, state,
     getPageIdentity: url => url,
     normalizeSourceText: value => String(value || '').trim(),
@@ -36,6 +37,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
           readingResult: { targetLanguage: 'zh', provenance: { provider: 'fixture', model: 'test' } } };
       }
       if (message.type === cacheMessages.CACHE_STORE) {
+        if (writeErrorCode) return { ok: false, errorCode: writeErrorCode };
         return writeWarning ? { ok: true, stored: 0, cacheWarning: writeWarning } : { ok: true, stored: 1 };
       }
       return { ok: true };
@@ -147,6 +149,48 @@ test('Selection skips impossible writes after a failed lookup but retains genera
   assert.deepEqual(h.displayed, [translation]);
   assert.equal(h.requests.filter(req => req.type === 'CACHE_STORE').length, 0);
 });
+
+test('classic Content storage-error classifier matches the shared background contract', async () => {
+  const source = await readFile(new URL('../src/content/runtime.js', import.meta.url), 'utf8');
+  const modules = { contentI18n: { t: key => key } };
+  const context = vm.createContext({
+    globalThis: { __TRANSLATE_FLOW_CONTENT__: { modules } },
+    location: { href: pageUrl }, URL
+  });
+  vm.runInContext(source, context, { filename: 'src/content/runtime.js' });
+  const codes = ['CACHE_QUOTA', 'CACHE_STORAGE', 'CACHE_STORAGE_BLOCKED', 'CACHE_STORAGE_TIMEOUT',
+    'CACHE_INVALID_TOKEN', 'CACHE_INVALIDATED', 'CONFIG_SNAPSHOT_EXPIRED', 'CANCELLED', 'CACHE_UPGRADE_FAILED', ''];
+  for (const code of codes) {
+    assert.equal(modules.runtime.isCachePersistenceError({ errorCode: code }), isCachePersistenceError(code), code);
+  }
+});
+
+for (const [surface, file] of [
+  ['Page', 'src/content/processor.js'],
+  ['Selection', 'src/content/selection/translation-query.js']
+]) {
+  test(`${surface} displays verified translation when CACHE_STORE explicitly returns a persistence error`, async () => {
+    for (const code of ['CACHE_QUOTA', 'CACHE_STORAGE', 'CACHE_STORAGE_BLOCKED', 'CACHE_STORAGE_TIMEOUT']) {
+      const h = await createContentHarness(file, { writeErrorCode: code });
+      const result = await h.run();
+      assert.equal(result.cacheWarning, code);
+      assert.deepEqual(h.displayed, [translation]);
+      assert.equal(h.requests.filter(req => req.type === 'TRANSLATE_BATCH').length, 1);
+      assert.equal(h.requests.filter(req => req.type === 'CACHE_STORE').length, 1);
+      assert.match(h.toasts.at(-1).text, /cacheNotSaved/u);
+      if (surface === 'Selection') assert.equal(h.accepted.length, 1);
+    }
+  });
+
+  test(`${surface} refuses to swallow stale config, invalid token or cancellation errors`, async () => {
+    for (const code of ['CONFIG_SNAPSHOT_EXPIRED', 'CACHE_INVALID_TOKEN', 'CANCELLED']) {
+      const h = await createContentHarness(file, { writeErrorCode: code });
+      await assert.rejects(h.run(), error => error.code === code);
+      assert.equal(h.requests.filter(req => req.type === 'TRANSLATE_BATCH').length, 1);
+      if (surface === 'Selection') assert.deepEqual(h.displayed, []);
+    }
+  });
+}
 
 const subtitleInput = { requestId: 'subtitle-test', pageUrl, units: [{
   id: 'subtitle-1', mediaId: 'public-video', source: 'youtube',
