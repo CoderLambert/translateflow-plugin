@@ -1,6 +1,6 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
-  if (!app?.modules.uiHost || !app?.modules.uiPrimitives || !app?.modules.contentI18n || !app?.modules.quickControlPosition || app.modules.quickControlView) return;
+  if (!app?.modules.uiHost || !app?.modules.uiPrimitives || !app?.modules.contentI18n || app.modules.quickControlView) return;
 
   const { getLayer } = app.modules.uiHost, locale = app.modules.contentI18n, t = (key, args) => locale.t(key, args),
     { button, surface, status, setStatus, badge, progress, setProgress } = app.modules.uiPrimitives;
@@ -140,13 +140,13 @@
       footer.className = "tf-quick-footer";
       const settingsButton = action(t("content.common.settings"), "tf-quick-settings", handlers.onSettings);
       const hideButton = action(t("content.quick.hideSite"), "tf-quick-hide-site", handlers.onHideSite);
-      const resetButton = action(t("content.quick.resetPosition"), "tf-quick-reset-position", () => positioner?.reset());
-      footer.append(settingsButton, resetButton, hideButton);
+      if (app.modules.quickControlPosition) footer.append(action(t("content.quick.resetPosition"), "tf-quick-reset-position", () => positioner?.reset()));
+      footer.append(settingsButton, hideButton);
 
       panel.append(header, stateBlock, primaryActions, inlineActions, autoButton, preferences, footer);
       root.append(trigger, panel);
       getLayer("quick-control").appendChild(root);
-      positioner = app.modules.quickControlPosition.create({ trigger, panel, position: positionValue,
+      positioner = app.modules.quickControlPosition?.create({ trigger, panel, position: positionValue,
         onMove: () => closePanel({ restoreFocus: false }),
         onCommit: position => { positionValue = position; handlers.onPositionChange?.(position); } });
       renderTask();
