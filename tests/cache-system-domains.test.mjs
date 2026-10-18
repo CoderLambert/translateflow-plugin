@@ -134,6 +134,31 @@ test('full clear removes current caches, without any domain owning Reading stora
   assert.equal((await app.getCacheStats()).selectionExplanationCount, 1);
   await app.clearAllCache(); assert.equal((await app.getCacheStats()).segmentCount, 0); assert.equal((await app.getCacheStats()).selectionExplanationCount, 0);
 });
+test('translation byte-budget cleanup does not evict independently migrated AI explanation results', async () => {
+  const app = application();
+  const key = 'preserved-explanation';
+  const explanation = await app.lookupSelectionExplanation({ cacheKey: key });
+  assert.equal((await app.storeSelectionExplanation({ cacheKey: key, result: { explanation: 'keep this independent answer' },
+    cacheToken: explanation.cacheToken })).stored, 1);
+  // Use both translation namespaces. Previously the global LRU pruner evicted
+  // this older explanation before any translated text, changing user behavior.
+  for (let i = 0; i < 6; i++) {
+    const segment = { id: String(i), text: `Unique paragraph ${i} for isolated quota coverage.`, format: 'plain' };
+    const namespace = i % 2 ? 'subtitle-translation' : 'translation';
+    assert.equal((await save(app, segment, 'T'.repeat(1_000_000), { namespace })).stored, 1);
+  }
+  assert.equal((await app.getCacheStats()).segmentCount, 6);
+  const limit = 5 * 1024 * 1024;
+  const after = await app.pruneCache(limit);
+  const translationEntries = (await Promise.all(['translation', 'subtitle-translation'].map(namespace =>
+    app.cache.list({ namespace })))).flat();
+  assert.ok(translationEntries.length < 6, 'the configured translation budget must prune both kinds');
+  assert.ok(translationEntries.reduce((sum, row) => sum + row.bytes, 0) <= limit);
+  assert.equal(after.selectionExplanationCount, 1);
+  assert.deepEqual((await app.lookupSelectionExplanation({ cacheKey: key })).hit,
+    { explanation: 'keep this independent answer' });
+});
+
 test('page status is derived from entries rather than a separately inconsistent page index', async () => {
   const app = application(); await save(app, plain, 'text', { pageTitle: 'Title' });
   const stats = await app.getPageCacheStatus({ pageUrl, config });
