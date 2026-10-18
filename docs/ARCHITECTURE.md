@@ -25,7 +25,7 @@ content scripts -> messages -> background router
 
 1. `src/shared/` 是纯合同/纯函数层，不访问 `chrome.*` 或 `browser.*`，也不能通过间接依赖引入它们。
 2. 外部 HTTP 只能位于 `src/background/providers/`。
-3. 翻译缓存 IndexedDB 仅由 `src/background/cache-db.js` 直接访问；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。其它 Reading 后台模块调用唯一 adapter，Content 与扩展 UI 只能走后台 v2 消息，不能直接或间接引入 adapter。两库不互相迁移或清空；词典 OPFS 独立。
+3. 通用翻译缓存 IndexedDB **仅由 `src/background/cache/storage-indexeddb.js` 直接访问**；`src/background/cache-db.js` 是稳定门面，`cache/application.js` 负责业务命名空间，`cache/service.js` 负责通用策略。ReadingRecord 独立数据库仅由 `src/background/reading-record/idb.js` 直接访问。源码检查器只允许这两个精确路径作为直接 IndexedDB owner。其它 Reading 后台模块调用其 adapter，Content 与扩展 UI 只能走后台 v2 消息；两库不得互相迁移或清空，词典 OPFS 独立。
 4. 普通 `http/https` 页面的 Content Script 由生产 Manifest 静态声明；`src/background/auto-sites.js` 只维护按站点模式状态并清理旧动态注册。若未来恢复动态注册，其唯一所有者仍是该模块。
 5. `background.js` 和 `content.js` 保持组合入口，不承载业务功能。
    `src/entries/content.js` 是唯一生产 Content 模块图；WXT 将有序 classic/IIFE owners 与 `src/entries/reading-contract.js` 的共享 Reading DTO adapter 编译为一个 ISOLATED IIFE。`scripts/reading-*-classic.mjs` 与 `src/content/reading-{source,contract,record}.js` 仅保留旧注册/Node 合同的可复现投影，不进入当前安装包。Content 编译闭包不引入 React 或动态 import；浏览器基础翻译仅在 ISOLATED Content 内调用 Translator / LanguageDetector，不增加 MAIN 桥或网络 Provider。
@@ -88,7 +88,10 @@ Background 将本地存储访问限制为 trusted extension contexts。Content �
 - `config.js`: 持久配置 + effective config
 - `providers/`: 网络 Provider adapter；统一接收 AbortSignal，并由 shared 层负责 timeout/retry
 - `translation-requests.js`: requestId / in-flight coalescing / background AbortController
-- `cache-db.js`: cache identity / IndexedDB / LRU
+- `cache-db.js`: stable cache API facade; no direct IndexedDB or translation identity rules
+- `cache/application.js`: translate/subtitle/AI explanation namespaces and legacy-facing response contracts
+- `cache/service.js`, `cache/storage-indexeddb.js`, `cache/storage-memory.js`: pure cache orchestration, sole IndexedDB owner, independent in-memory driver
+- `../shared/cache/`, `../shared/translation-cache-identity.js`: one record envelope and provider-/format-aware request identity; domain strategy revision is separate from physical DB version
 - `auto-sites.js`: serialized per-site auto/cache/Quick Control/Reading-marker intent state + obsolete dynamic-registration cleanup; a feature intent is not a permission grant
 - `router.js`: message dispatch
 - `index.js`: service-worker lifecycle
@@ -229,7 +232,7 @@ failed / cancelled
 
 Page translation encodes supported inline elements (a, strong/b, em/i, code, kbd, mark) into TranslateFlow-controlled markers before the Provider request. Provider adapters remain format-agnostic; the request coordinator adds the marker-preservation protocol only when structured markers are present. Rendering never uses model-produced HTML or innerHTML: it rebuilds DOM from a fixed tag whitelist and preserves only the original safe link href/title attributes. code/kbd text is restored from the original DOM.
 
-Plain paragraphs retain their existing normalized source identity. Rich paragraphs use the deterministic marker-encoded source as their segment identity, so only those paragraphs can incur a one-time cache miss; the IndexedDB schema and global cache schema version remain unchanged.
+The current generic cache uses `ai_bilingual_translator` **DB4** with `entries` / `epochs` and a **single record envelope v1**. On the DB2/DB3→DB4 structural upgrade, disposable old translation/page rows are intentionally discarded; independent AI explanation values are preserved by a one-time opaque transfer. ReadingRecord, user dictionary OPFS, settings and credentials remain separate. Plain/structured source identity, effective Provider configuration and prompt/format protocol are captured by `src/shared/translation-cache-identity.js`; later translation strategy changes update the identity/revision, **not** the database version or the record parser. Cache-only misses never trigger a new Provider call. See [CACHE_SYSTEM.md](./CACHE_SYSTEM.md).
 
 
 ## Glossary boundary
@@ -314,7 +317,7 @@ IndexedDB and cache misses do not fall through to Provider translation.
 
 `browserTranslationEnabled` defaults to true, `browserSourceLanguage` to auto, `dictionaryEnabled` to false on new installs. Existing active imported dictionaries infer the dictionary preference before defaults are persisted; explicit false and per-dictionary enabled preferences survive upgrades. No dictionary, vocabulary or Reading store is cleared.
 
-`TRANSLATION_ENGINE_SETTINGS` returns engine, configured state, enabled flag and language preferences. The Content translation client permits local browser execution only when the Selection resolver classified the request as lexical. Page, subtitle and longer-selection cache snapshots continue through the effective AI configuration. Browser snapshot creation normalizes the source code and resolves the target from global/site settings. Browser cache identity uses provider `browser-translator`, model `translator-v1` and explicit source/target languages; existing AI hash payloads and DB schema remain unchanged.
+`TRANSLATION_ENGINE_SETTINGS` returns engine, configured state, enabled flag and language preferences. The Content translation client permits local browser execution only when the Selection resolver classified the request as lexical. Page, subtitle and longer-selection cache snapshots continue through the effective AI configuration. Browser snapshot creation normalizes the source code and resolves the target from global/site settings. Browser cache identity uses provider `browser-translator`, model `translator-v1` and explicit source/target languages within the shared DB4 contract. AI/Browser/Subtitle requests carry separate effective identities; a model, Prompt or format revision changes its cache key without introducing a new physical schema or a legacy reader.
 
 `browser-translation.js` owns capability/prepare/execute/cancel, live instances and generation guards. The view calls create synchronously from a trusted page button. Capability queries and automatic cache restore never download models. Available language detection can be used locally; otherwise the page/track language is a hint and the user can choose or explicitly prepare detection. Internal structured markers are split outside the translator; code/kbd bodies are copied from protected descriptors. Translation of formatting runs separately can reduce cross-run linguistic context.
 

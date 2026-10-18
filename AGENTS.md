@@ -73,7 +73,9 @@ git rev-parse HEAD origin/main
 | `src/shared/` | 消息常量、纯函数、配置解析、规范化、通用规则 |
 | `src/background/` | 路由、有效配置、任务协调、持久化与扩展生命周期 |
 | `src/background/providers/` | Provider adapter、外部 HTTP、超时与重试 |
-| `src/background/cache-db.js` | IndexedDB、翻译缓存身份及兼容性 |
+| `src/background/cache-db.js` | 通用缓存对外兼容门面；**不直接访问 IndexedDB** |
+| `src/background/cache/` | 独立缓存服务、请求复用、Memory/IndexedDB Driver；只有 `storage-indexeddb.js` 访问通用缓存 IndexedDB |
+| `src/shared/cache/`、`src/shared/translation-cache-identity.js` | 通用缓存请求身份、单一记录合同与各翻译业务指纹；与数据库物理版本解耦 |
 | `src/background/reading-record/` | Reading 权限与会话、独立历史仓库；只有 `idb.js` 直接访问该库 |
 | `src/background/auto-sites.js` | 动态 Content Script 注册与站点权限 |
 | `src/background/lexical/` | 本地词典查询、来源与词典生命周期相关逻辑 |
@@ -89,12 +91,12 @@ git rev-parse HEAD origin/main
 
 - `src/shared/` 保持纯合同/纯函数，不访问 `chrome.*`，不承载 UI 或后台副作用。
 - 外部 HTTP 放在 `src/background/providers/`；词典查询只读用户已安装的本地资源，不探测安装包词典资源，也不隐式联网。
-- 翻译缓存 IndexedDB 访问只放在 `src/background/cache-db.js`；独立 ReadingRecord 数据库仅由 `src/background/reading-record/idb.js` 直接访问。Reading 的授权与站点排除只有该库 meta 一个事实来源，Content/Popup/Options/学习中心通过后台消息调用，不直接或间接引入存储 adapter。词典 OPFS 等已有存储通道继续遵循其独立契约，不混入翻译缓存或 Reading 历史。
+- 通用翻译缓存 IndexedDB **唯一直接访问者**为 `src/background/cache/storage-indexeddb.js`；`src/background/cache-db.js` 只转发稳定业务 API，`src/background/cache/application.js` 适配翻译/字幕/AI 解释命名空间，`src/background/cache/service.js` 不依赖 Provider/DOM。独立 ReadingRecord IndexedDB **唯一直接访问者**为 `src/background/reading-record/idb.js`；两个 owner 必须符合 `scripts/source-boundaries.mjs` 的精确白名单。Reading 授权与站点排除仅在 Reading meta；Content/Popup/Options/学习中心走后台消息，不直接引入存储适配器。词典 OPFS 独立，不混入缓存或 Reading 历史。
 - 动态脚本注册只放在 `src/background/auto-sites.js`；根入口保持薄层。Content owner 仍是按依赖顺序登记到同一 global registry 的 classic/IIFE 源码，生产由 `src/entries/content.js` 经 WXT 编译为单一 ISOLATED script；不得在网页运行时引入 module/React 假设。
 - Runtime message value 集中定义；新增消息同步更新发送方、路由、校验、响应和测试，不在多个 UI 中复制字符串或逻辑。
 - Provider 调用和缓存读写必须使用同一份 Effective Translation Config。站点配置只存覆盖值，凭据仍由 Provider 配置统一管理。
 - Preset、Glossary、Prompt 优先级和缓存身份复用既有解析链；OpenAI-compatible endpoint 的缓存区分、空术语表兼容性、本地服务无 API Key 场景不能被普通重构破坏。
-- DB/store/index、缓存 schema、URL/text normalization、Provider identity、消息契约、站点配置或词典格式变更，先说明兼容/迁移影响，并补回归测试；不得靠清空用户数据掩盖错误。
+- 通用缓存当前物理 DB4（`ai_bilingual_translator` 的 `entries`/`epochs`）、记录 envelope v1；翻译策略/Prompt/格式协议改变只更新稳定请求 identity/revision，**不得因此提升 DB 版本或新增旧缓存 reader**。只有物理 store/index/record 格式确实变更才单独评审升级事务和回滚。历史普通译文缓存已按用户决策一次性废弃，旧 AI 解释只做一次性不改答案的封装搬迁；Reading、用户词典、设置和凭据不能被迁移逻辑删除。URL/text normalization、Provider identity、消息契约、站点配置或词典格式变更仍须先说明兼容影响并补回归测试。
 - 复用现有 task、requestId、generation、取消和重试机制；不要在 Popup、Selection 或设置页另起一套后台编排。
 
 配置/Provider 修改先读 [docs/PROVIDERS.md](docs/PROVIDERS.md)，更广的运行时边界以 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 为准。
