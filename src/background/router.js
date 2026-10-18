@@ -157,11 +157,19 @@ export async function handleBackgroundMessage(message, sender) {
         ? { id: message.configSnapshotId, config: await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl) }
         : await createEffectiveConfigSnapshot(message.pageUrl, message.browserTranslation);
       const config = snapshot.config;
-      const result = await lookupTranslations({
-        pageUrl: message.pageUrl,
-        segments: message.segments,
-        config
-      });
+      let result;
+      try {
+        result = await lookupTranslations({
+          pageUrl: message.pageUrl,
+          segments: message.segments,
+          config
+        });
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        // Keep the pinned Provider config available for an explicit translation.
+        // cacheOnly remains read-only; missing tokens disallow persistent writes.
+        result = { hits: [], writeTokens: [], cacheWarning: error.code };
+      }
       return { ...result, engine: config.engine || "ai", sourceLanguage: config.sourceLanguage || "", targetLanguage: config.targetLanguage, configSnapshotId: snapshot.id, readingResult: await readingTranslationResult(config) };
     }
     case BACKGROUND_MESSAGES.CACHE_STORE: {
