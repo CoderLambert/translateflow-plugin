@@ -14,7 +14,7 @@ import { resolveSelectionRequest } from "../src/background/selection/resolve.js"
 import { readingTranslationResult } from "../src/background/selection/reading-result.js";
 import { validateResultArtifact } from "../src/shared/reading/artifact.js";
 import { createEffectiveConfigSnapshot, invalidateMachineSnapshots, resolveEffectiveConfigSnapshot } from "../src/background/effective-config-snapshots.js";
-import { handleMachineSettingsMessage, saveMachineTranslationSettings } from "../src/background/machine-translation-settings.js";
+import { handleMachineSettingsMessage, saveMachineTranslationSettings, testMachineTranslationSettings } from "../src/background/machine-translation-settings.js";
 import { normalizeProviderConnection } from "../src/shared/provider-connections.js";
 import { BACKGROUND_MESSAGES as M } from "../src/shared/constants.js";
 
@@ -173,7 +173,9 @@ test("global save changes only the new field; site save preserves AI and appeara
 test("free mode requires consent and permission; settings/test messages reject page content", async () => {
   storage();
   await assert.rejects(saveMachineTranslationSettings({ scope: "global", config: settings() }), { code: "MT_CONSENT" });
+  await assert.rejects(testMachineTranslationSettings({ providerId: "mt-microsoft-web", requestId: "no-consent" }), { code: "MT_CONSENT" });
   chrome.permissions.contains = async () => false;
+  await assert.rejects(testMachineTranslationSettings({ providerId: "mt-microsoft-web", consent: true, requestId: "no-access" }), { code: "MT_PERMISSION" });
   await assert.rejects(saveMachineTranslationSettings({ scope: "global", config: settings(), consent: true }), { code: "MT_PERMISSION" });
   await assert.rejects(requestMachineTexts(config(), ["hello"]), { code: "MT_PERMISSION" });
   assert.throws(() => handleMachineSettingsMessage({ type: M.MACHINE_TRANSLATION_TEST }, sender), { code: "MT_PERMISSION" });
