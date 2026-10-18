@@ -629,7 +629,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     harness.server.setFailures([]);
     await page.getByRole("button", { name: "重试" }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN]");
-    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200, 200]);
+    expect(harness.server.calls.map((call) => call.plannedStatus)).toEqual([401, 200]);
     await page.getByRole("button", { name: "关闭" }).click();
     await clearSelection(page);
 
