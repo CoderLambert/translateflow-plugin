@@ -26,6 +26,14 @@ export function expectedRegistrationsAfterInstalledUpdate(before, nativeEvent, p
   return [];
 }
 
+// Expectations for the one-way v2→v3 translation-cache reset. Only translation
+// rows and their page index are disposable; explanations and unrelated DBs stay.
+export function expectedTranslationCacheDatabases(databases) {
+  return databases.map(db => db.name === "ai_bilingual_translator" && db.version === 2
+    ? { ...db, version: 3, stores: { ...db.stores, translations: [], pages: [] } }
+    : db);
+}
+
 export function assertRecoveredDatabases(before, after, observedAt = Date.now()) {
   function canonical(databases, compareAgainst) {
     return databases.map(db => {
@@ -34,7 +42,7 @@ export function assertRecoveredDatabases(before, after, observedAt = Date.now())
         const prior = compareAgainst?.find(candidate => candidate.name === db.name);
         const normalized = rows.map(row => {
           const copy = structuredClone(row);
-          if (db.name === "ai_bilingual_translator" && db.version === 2 && key) {
+          if (db.name === "ai_bilingual_translator" && db.version === 3 && key) {
             const previous = prior?.stores[name]?.find(candidate => candidate[key] === row[key]);
             if (compareAgainst) {
               assert(previous, "Recovery cannot insert a cache row");
