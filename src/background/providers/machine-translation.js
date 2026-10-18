@@ -16,6 +16,12 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
     ids.add(String(segment.id)); total += segment.text.length;
     if (total > 100000) throw machineError("MT_INPUT");
     const protectedIds = normalizeProtectedIds(segment.protectedIds);
+    // Never infer trusted structure from user-authored marker-looking text.
+    // Only the Page encoder may explicitly request the internal rich protocol.
+    const format = segment.format ?? "plain";
+    if (!["plain", "tf-markers"].includes(format) ||
+        (format !== "tf-markers" && (protectedIds.length || /⟦TF:/u.test(segment.text))) ||
+        (format === "tf-markers" && !/⟦TF:\d+:[SE]⟧/u.test(segment.text))) throw machineError("MT_STRUCTURE");
     let parts;
     try { parts = translationParts(segment.text, protectedIds); } catch { throw machineError("MT_STRUCTURE"); }
     const markerIds = new Set([...segment.text.matchAll(/⟦TF:(\d+):S⟧/gu)].map(match => Number(match[1])));
