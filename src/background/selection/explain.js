@@ -8,6 +8,7 @@ import { resolveSelectionRequest } from "./resolve.js";
 import { buildSelectionExplainPrompt, SELECTION_EXPLAIN_QUESTION, SELECTION_READING_PROMPT_VERSION } from "./explain-prompt.js";
 import { readingTranslationResult } from "./reading-result.js";
 import { sha256 } from "../../shared/hash.js";
+import { configFingerprint } from "../../shared/translation-cache-identity.js";
 import {
   buildSelectionExplainCacheIdentity,
   parseSelectionExplainResult
@@ -66,14 +67,18 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     cache.cacheKey = "selection-explain:" + await sha256(JSON.stringify([SELECTION_READING_PROMPT_VERSION, SELECTION_EXPLAIN_QUESTION, cache.cacheKey]));
     const payload = { ...cache.payload, userQuestion: SELECTION_EXPLAIN_QUESTION };
     const systemPrompt = buildSelectionExplainPrompt({ targetLanguage: config.targetLanguage, depth: payload.depth });
+    cache.cacheKey = "selection-explain:" + await sha256(JSON.stringify([cache.cacheKey, systemPrompt, payload,
+      await configFingerprint({ ...config, prompt: systemPrompt })]));
     const readingResult = { ...await readingTranslationResult({ ...config, prompt: systemPrompt }),
       userQuestion: SELECTION_EXPLAIN_QUESTION, action: "understand", sourceLanguage: resolved.intent?.sourceLanguage || "en" };
     readingResult.provenance.promptVersion = SELECTION_READING_PROMPT_VERSION;
     const candidateIds = payload.candidates.map((candidate) => candidate.id);
 
     const allowPersistentCache = !payload.sensitive;
+    let cacheToken;
     if (allowPersistentCache) {
       const cached = await lookupCache({ cacheKey: cache.cacheKey });
+      cacheToken = cached?.cacheToken;
       assertActive(controller.signal);
       if (cached?.hit) {
         const generated = parseSelectionExplainResult(cached.hit, { candidateIds });
@@ -97,6 +102,7 @@ export async function runSelectionExplanationRequest(input = {}, deps = {}) {
     if (allowPersistentCache) {
       await storeCache({
         cacheKey: cache.cacheKey,
+        ...(cacheToken ? { cacheToken } : {}),
         result: {
           selectedCandidateIds: [...generated.selectedCandidateIds],
           explanation: generated.explanation,
@@ -133,8 +139,8 @@ function response({ resolved, generated, cacheHit, cacheKey, readingResult }) {
     : [];
   return {
     route: "explained",
-    routeReason: resolved.routeReason,
-    depth: resolved.depth,
+    routeReason: resolved?.routeReason,
+    depth: resolved?.depth,
     cacheHit,
     cacheKey,
     generated,
@@ -145,7 +151,7 @@ function response({ resolved, generated, cacheHit, cacheKey, readingResult }) {
       topCandidateId: resolved?.decision?.topCandidateId || null,
       candidates
     },
-    contextPolicy: resolved.contextPolicy
+    contextPolicy: resolved?.contextPolicy
   };
 }
 

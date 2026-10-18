@@ -22,13 +22,15 @@ export async function runSubtitleTranslationBatch({
   const config = await getEffectiveConfig(pageUrl);
   const cacheSegments = normalized.map((unit) => ({
     id: unit.id,
-    text: buildSubtitleCacheSource(unit)
+    text: buildSubtitleCacheSource(unit), providerText: unit.text, format: "plain"
   }));
   const cached = await lookupTranslations({
     pageUrl,
     segments: cacheSegments,
+    namespace: "subtitle-translation",
     config
   });
+  const cacheTokens = new Map((cached.writeTokens || []).map(item => [String(item.id), item.token]));
   const cachedById = new Map((cached.hits || []).map((item) => [String(item.id), item.text]));
   const missing = normalized.filter((unit) => !cachedById.has(unit.id));
 
@@ -36,7 +38,8 @@ export async function runSubtitleTranslationBatch({
   if (missing.length) {
     const translated = await runTranslationRequest({
       requestId,
-      segments: missing.map((unit) => ({ id: unit.id, text: unit.text })),
+      pageUrl,
+      segments: missing.map((unit) => ({ id: unit.id, text: unit.text, format: "plain" })),
       config
     });
     for (const item of translated || []) {
@@ -63,6 +66,7 @@ export async function runSubtitleTranslationBatch({
     translations.push({ id: unit.id, text: translatedText, cacheHit: false });
     storeItems.push({
       sourceText: buildSubtitleCacheSource(unit),
+      providerText: unit.text, format: "plain", cacheToken: cacheTokens.get(String(unit.id)),
       translation: translatedText
     });
   }
@@ -72,6 +76,7 @@ export async function runSubtitleTranslationBatch({
       pageUrl,
       pageTitle,
       items: storeItems,
+      namespace: "subtitle-translation",
       config
     });
   }

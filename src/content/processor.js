@@ -144,12 +144,12 @@
       pageUrl,
       languageSource: "page",
       configSnapshotId: existingSnapshotId,
-      segments: groups.map(({ id, text, elements }) => ({ id, text,
-        protectedIds: app.modules.structured.encodeElement(elements[0]).descriptors.flatMap((item, index) => item.protectedText != null ? [index] : []) }))
+      segments: groups.map(({ id, text, protectedIds = [], rich }) => ({ id, text, protectedIds, format: rich ? "tf-markers" : "plain" }))
     });
     if (task) tasks.assertActive(task);
     if (!lookup?.ok) throw responseError(lookup, "content.page.cacheLookupFailed");
     const configSnapshotId = String(lookup.configSnapshotId || "");
+    const cacheWriteTokens = new Map((lookup.writeTokens || []).map(item => [String(item.id), item.token]));
 
     const cachedMap = new Map((lookup.hits || []).map((item) => [String(item.id), item.text]));
     const skippedIds = new Set(lookup.skippedIds || []);
@@ -182,7 +182,7 @@
       requestId: task?.id || crypto.randomUUID(),
       pageUrl,
       configSnapshotId,
-      segments: uncached.map(({ id, text, elements }) => ({ id, text, protectedIds: app.modules.structured.encodeElement(elements[0]).descriptors.flatMap((item, index) => item.protectedText != null ? [index] : []) }))
+      segments: uncached.map(({ id, text, protectedIds = [], rich }) => ({ id, text, protectedIds, format: rich ? "tf-markers" : "plain" }))
     });
     if (task) tasks.assertActive(task);
     if (!response?.ok) throw responseError(response, "content.page.translationFailed");
@@ -199,7 +199,8 @@
       if (getPageIdentity(location.href) === expectedPageIdentity) {
         apiTranslated += insertGroupTranslation(group, translation, response.engine);
       }
-      toStore.push({ sourceText: group.text, translation });
+      toStore.push({ sourceText: group.text, translation, protectedIds: group.protectedIds || [],
+        format: group.rich ? "tf-markers" : "plain", cacheToken: cacheWriteTokens.get(String(group.id)) });
     }
 
     if (getPageIdentity(location.href) !== expectedPageIdentity) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });

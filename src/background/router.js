@@ -88,6 +88,7 @@ export async function handleBackgroundMessage(message, sender) {
       return {
         translations: await runTranslationRequest({
           requestId: message.requestId,
+          pageUrl: message.pageUrl, ownerTabId: sender?.tab?.id,
           segments: message.segments,
           config
         }),

@@ -30,11 +30,12 @@
         browserTranslationAllowed: options.browserTranslationAllowed === true,
         ...(options.browserTranslationAllowed === true ? { detectionText: nativeDetectionText } : {}),
         pageUrl: snapshot.pageUrl,
-        segments: [{ id: "selection", text: snapshot.text }]
+        segments: [{ id: "selection", text: snapshot.text, format: "plain" }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
       const configSnapshotId = String(lookup.configSnapshotId || "");
+      const cacheToken = (lookup.writeTokens || []).find(item => String(item.id) === "selection")?.token;
       if (lookup.skippedIds?.includes("selection")) {
         tasks.completeTask(task, { done: 1, cacheHits: 0, apiTranslated: 0 });
         popover.showEmpty(snapshot, { titleKey: "content.basic.alreadyTarget", messageKey: "content.basic.alreadyTargetHelp" });
@@ -58,7 +59,7 @@
         requestId: task.id,
         pageUrl: snapshot.pageUrl,
         configSnapshotId,
-        segments: [{ id: "selection", text: snapshot.text }]
+        segments: [{ id: "selection", text: snapshot.text, format: "plain" }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!translated?.ok) throw localizedError("content.page.translationFailed", translated);
@@ -75,7 +76,7 @@
         pageUrl: snapshot.pageUrl,
         pageTitle: document.title,
         configSnapshotId,
-        items: [{ sourceText: snapshot.text, translation }]
+        items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);

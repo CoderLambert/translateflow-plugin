@@ -58,12 +58,15 @@
   }
   async function groupLookup(group, payload, raw, controller) {
     const response = await raw({ type: messages.CACHE_LOOKUP, requestId: payload.requestId, pageUrl: payload.pageUrl,
-      segments: group.members.map(item => ({ id: item.id, text: item.text })),
+      segments: group.members.map(item => ({ id: item.id, text: item.text, format: item.format || "plain", protectedIds: item.protectedIds || [] })),
       browserTranslation: { forceBrowser: true, surface: "selection-word", sourceLanguage: group.pair.sourceLanguage } });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!response?.ok) throw responseError(response);
     if (response.engine !== BROWSER_ENGINE || response.sourceLanguage !== group.pair.sourceLanguage || response.targetLanguage !== group.pair.targetLanguage) throw engine.error("CONFIG_SNAPSHOT_EXPIRED");
     group.snapshotId = response.configSnapshotId; group.readingResult = response.readingResult;
+    // Keep the original read fence across a native-config snapshot refresh.
+    // A cache clear during model preparation must not resurrect old results.
+    if (!group.cacheTokens) group.cacheTokens = new Map((response.writeTokens || []).map(item => [String(item.id), item.token]));
     return response;
   }
   async function lookup(payload, raw, controller) {
@@ -102,18 +105,18 @@
       if (decision.source === "empty" || decision.language === targetLanguage && decision.scriptKnown) {
         hits.push({ id: segment.id, text: segment.contentText ?? segment.text, skipped: true }); skippedIds.push(segment.id); continue;
       }
-      if (!decision.language) continue; // A silent cache-only lookup never prompts or guesses.
+      if (!decision.language) continue;
       if (!groups.has(decision.language)) groups.set(decision.language, { pair: { sourceLanguage: decision.language, targetLanguage }, members: [], snapshotId: "", readingResult: null });
       groups.get(decision.language).members.push({ ...segment, decision, correctionKey: correctionKey(payload, segment) });
     }
     for (const group of groups.values()) hits.push(...(await groupLookup(group, payload, raw, controller)).hits);
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     const id = PREFIX + crypto.randomUUID(), one = groups.size === 1 ? [...groups.values()][0] : null;
-    // This content-only plan dispatches each language to its OWN existing background snapshot.
-    // AI's request-wide immutable snapshot contract is unchanged.
+    // This content-only plan dispatches each language to its own background snapshot.
     const plan = { id, pageUrl: payload.pageUrl, requestId: payload.requestId, groups: [...groups.values()], results: new Map(), cancelled: false, targetLanguage, skippedIds };
     boundedSet(plans, id, plan);
     return { ok: true, engine: BROWSER_ENGINE, configSnapshotId: id, hits, skippedIds,
+      writeTokens: [...groups.values()].flatMap(group => [...group.cacheTokens].map(([id, token]) => ({ id, token }))),
       targetLanguage, sourceLanguage: one?.pair.sourceLanguage || (groups.size ? "" : targetLanguage), readingResult: one?.readingResult };
   }
   function requirePlan(payload, controller) {
@@ -130,7 +133,6 @@
     const availability = await engine.capability(pair);
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (availability === "available") {
-      // Warm an already-available model without making the user confirm every request.
       try { await engine.prepare(pair, { signal: controller.signal, verifyText }); return; }
       catch (cause) { if (!["BROWSER_PREPARE", "BROWSER_VERIFY_FAILED"].includes(cause?.code)) throw cause; }
     }
@@ -177,8 +179,7 @@
       let result;
       try { result = await engine.execute(input); }
       catch (cause) {
-        // A user may close the shared Settings host while a word is running.
-        // Re-prepare the same frozen pair at most once, never switch to AI.
+        // Re-prepare only the same frozen pair after a lost shared host.
         if (!["BROWSER_PREPARE", "BROWSER_HOST_LOST"].includes(cause?.code)) throw cause;
         assertCurrent(controller, payload.pageUrl, plan.requestId);
         await ensurePair(group, payload, controller);
@@ -207,14 +208,14 @@
     for (const group of plan.groups) {
       const items = group.members.filter(item => wanted.has(item.text)).map(item => {
         if (plan.results.get(item.id) !== wanted.get(item.text)) throw engine.error("BROWSER_RESULT");
-        return { sourceText: item.text, translation: wanted.get(item.text) };
+        return { sourceText: item.text, translation: wanted.get(item.text), format: item.format || "plain",
+          protectedIds: item.protectedIds || [], cacheToken: group.cacheTokens.get(String(item.id)) };
       });
       if (!items.length) continue;
       assertCurrent(controller, payload.pageUrl, plan.requestId);
       let response = await raw({ ...payload, configSnapshotId: group.snapshotId, items });
       assertCurrent(controller, payload.pageUrl, plan.requestId);
       if (response?.errorCode === "CONFIG_SNAPSHOT_EXPIRED") {
-        // A worker restart/download wait may discard its in-memory snapshot. Recover ONLY the pinned native pair, once.
         await groupLookup(group, { ...payload, requestId: plan.requestId }, raw, controller);
         response = await raw({ ...payload, configSnapshotId: group.snapshotId, items });
       }

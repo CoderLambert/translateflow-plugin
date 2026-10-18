@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "task": "cache-system-v1",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/independent-cache-system-20261018",
+  "candidateHead": "",
+  "mergeHead": "",
+  "validationCommands": [
+    ["node", "--test", "tests/cache-system.test.mjs", "tests/cache-system-domains.test.mjs", "tests/cache-system-review.test.mjs", "tests/cache-system-integration-review.test.mjs"],
+    ["npm", "run", "validate"],
+    ["npm", "run", "test:e2e", "--", "e2e/cache-system-native.spec.mjs", "e2e/cache-system-mv3.spec.mjs"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "独立缓存核心和 Page/Selection/Browser/Subtitle/解释接入已进入此分支。先完成全仓接入回归及旧 WXT 升级 fixture、权限/存储边界断言适配，再在 Node24 与真实 WXT/Chromium 环境冻结准确候选验收。离线 overlay Node22 定向108项通过不等于当前远端候选整体通过；管理策略阻断 native IDB 执行，不绕过、不报PASS。当前未构建安装包、未合并、未通知最终验收。"
+}
