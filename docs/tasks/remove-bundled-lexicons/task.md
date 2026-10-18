@@ -24,3 +24,9 @@
 真实产物不含内置词典、source locks、测试及原始数据。报告命令/数量/耗时/原始日志、head/tree/包 fingerprint、文件数/增删行/产物字节及未验证真实语料。保留必要历史审计并标明退役；每个残留符号需分类。最后主 Agent 对照实际 diff 自查，不自动模型独审。
 
 完整 E2E 执行时设置 `TF_USER_DICTIONARY_OLD_ARTIFACT=/tmp/translateflow-pr345-final-20261019/.output/chrome-mv3`，这是已核对 PR #345 归档指纹的旧 main 安装包。新增升级case在同ID临时profile通过真实UI安装TFLex/MDX/MDD，替换同路径新包并核实新执行标记，精确比较storage/OPFS/全部IndexedDB；当前版本不变，因此只证明开发包替换/管理页reload，不声称商店版本更新事件。
+
+## 验收命令拆分与有效结果复用
+
+首次冻结 `fdef650b24aca8a8012902c124b07f20b5f5ab6f` 执行一次 `npm run validate`：静态/i18n通过，Node 1790 PASS / 1 FAIL；唯一失败是 `tests/local-task.test.mjs` 仍要求11个workflow，与本任务删除旧词典workflow后的10个不符。修正仅此测试清单，保留所有手动触发/inputs/jobs断言并增加退役文件不存在断言。
+
+依用户“失败后只重验受影响项”要求，原始失败命令不改写PASS；保存原head/tree/日志/hash，并核对新候选实现/其余测试/构建输入与原候选完全相同。复用1790个未变化的Node PASS，重跑整个local-task测试文件覆盖唯一失败；state.json拆分原validate组成项，执行其余静态检查、类型检查、Vitest和默认构建，再执行显式WXT/smoke/全量E2E。此调整不排除未解决失败，不削弱任何功能、安全、格式或包边界验收。最终报告明确区分原validate FAIL、修复后定向PASS与REUSED。

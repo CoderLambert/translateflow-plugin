@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "remove-bundled-lexicons",
-  "status": "reviewing",
+  "status": "changes_requested",
   "owner": "main",
   "dependencies": [
     "cache-system-v1"
@@ -13,7 +13,27 @@
     [
       "npm",
       "run",
-      "validate"
+      "check"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/local-task.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
     ],
     [
       "npm",
@@ -36,5 +56,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "定向回归和旧main同ID开发包替换已通过，提交候选后冻结准确SHA/tree；执行一次完整validate、WXT构建、smoke、完整Chromium，最后主Agent自查及Gate后归档，保持Draft等待用户人工验收。"
+  "nextAction": "初次validate在1791项Node中1790PASS，仅旧workflow计数11→10断言FAIL；修正此fixture后定向重验local-task测试，复用未变化1790PASS及原日志；按拆分命令完成未执行typecheck/Vitest/build和完整E2E，不重复全量Node。"
 }

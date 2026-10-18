@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "task": "remove-bundled-lexicons",
+  "candidateHead": "fdef650b24aca8a8012902c124b07f20b5f5ab6f",
+  "tree": "3f33423b8da50a05429cb8df41d5361df71d89b0",
+  "inputTree": "6331446089b4085f0708a39f2130eabb5bf24e29e94a9a01dd4c7ca6b740c699",
+  "frozenAt": "2026-10-18T18:48:53.701Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "fdef650b24aca8a8012902c124b07f20b5f5ab6f",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 40298.356712,
+      "startedAt": "2026-10-18T18:48:53.850Z",
+      "log": "docs/task-execution/local/remove-bundled-lexicons/ac0db496-1415-4a44-bd76-4f54bea716dc.log",
+      "logSha256": "620fda66a63135f21db51d26b7df2ca13732bf872379507f42cf90f1491e4bbc"
+    }
+  ],
+  "artifact": null,
+  "limitations": []
+}

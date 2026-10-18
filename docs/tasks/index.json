@@ -310,7 +310,7 @@
     },
     {
       "task": "remove-bundled-lexicons",
-      "status": "reviewing",
+      "status": "changes_requested",
       "dependencies": [
         "cache-system-v1"
       ],
