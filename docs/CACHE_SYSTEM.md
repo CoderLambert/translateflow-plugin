@@ -38,7 +38,9 @@ Every stored write must use the token returned by the earlier read. The token re
 
 The first consumer cancellation does not cancel other consumers. The final cancellation evicts the old entry before aborting it. A producer that ignores abort cannot capture an immediate retry or remove a newer in-flight entry in its `finally`. Cross-client invalidation epochs are also included in load-sharing identity.
 
-TTL is absolute, not extended by reads. Policies cap namespace entries, bytes, single-value bytes and aggregate writes. One quota failure can prune affected namespaces and retry storage once; never regenerate an expensive answer to retry a database write. Raw text, URLs, keys, prompts and credentials are excluded from generic event counters.
+TTL is absolute, not extended by reads. Policies cap namespace entries, bytes, single-value bytes and aggregate writes.
+
+The user-facing translation quota (`pruneCache(maxBytes)`) applies a **combined** budget only to the `translation` and `subtitle-translation` namespaces. It must not evict the independent `selection-explanation` namespace simply because an old explanation is least recently used. Both storage backends accept `prune({ namespaces: [...] })` to enforce this aggregate filtered budget. The explicit clear-all operation is still global, while namespace policies and physical DB layout remain independent of translation strategy revisions. One quota failure can prune affected namespaces and retry storage once; never regenerate an expensive answer to retry a database write. Raw text, URLs, keys, prompts and credentials are excluded from generic event counters.
 
 ## Existing scenario integration
 
