@@ -3,6 +3,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { installUserDictionaries, removeUserDictionaryBytes } from './support/user-dictionaries.mjs';
 import { startMockServer } from './support/mock-server.mjs';
 import { prepareExtensionTestCopy } from './support/production-artifact.mjs';
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from '../src/shared/constants.js';
@@ -14,7 +15,7 @@ const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 async function environment(info) {
   const temp = await mkdtemp(join(tmpdir(), 'tf-reading-loop-a-')), extension = join(temp, 'extension'), profile = join(temp, 'profile');
   const server = await startMockServer();
-  const build = await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: 'fixture', baseUrl: server.baseUrl });
+  const build = await prepareExtensionTestCopy({ extensionDir: extension, baseUrl: server.baseUrl });
   let context, driver, id;
   async function launch() {
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: 'chromium', args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
@@ -23,6 +24,8 @@ async function environment(info) {
     driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);
   }
   await launch();
+  await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(['uiLocale']))).toEqual({ uiLocale: 'zh_CN' });
+  await driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'en', dictionaryEnabled: true }));
   return { temp, extension, server, build,
     get context() { return context; }, get driver() { return driver; }, get id() { return id; },
     async restart() { await context.close(); await launch(); },
@@ -67,8 +70,8 @@ async function details(center) {
   return Promise.all(list.data.items.map(async item => { const value = await send(center, M.GET_RECORD, { recordId: item.recordId }); expect(value.ok).toBe(true); return value.data; }));
 }
 async function downloadJson(page) {
-  const waiting = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export JSON', exact: true }).click();
-  const file = await waiting, stream = await file.createReadStream(), chunks = [];
+  const [file] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export JSON', exact: true }).click()]);
+  const stream = await file.createReadStream(), chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
   const bytes = Buffer.concat(chunks); return { bytes, data: JSON.parse(bytes.toString('utf8')) };
 }
@@ -76,10 +79,16 @@ async function downloadJson(page) {
 test('Release A actual product: trusted creation matrix survives browser restart and missing dictionaries without Provider work', async ({}, info) => {
   test.setTimeout(120000); const env = await environment(info);
   try {
-    await env.driver.evaluate(async baseUrl => chrome.storage.local.set({ uiLocale: 'en', provider: 'openai-compatible', targetLanguage: 'Simplified Chinese',
-      prompt: 'Translate the segments and return JSON only.', appearance: 'standard', selectionExplanationDepth: 'standard',
-      glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
-      openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: '', model: 'mock-model' }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} }), env.server.baseUrl);
+    await env.driver.evaluate(async baseUrl => {
+      // The Popup has already migrated first-install provider defaults. Start
+      // this synthetic legacy fixture before a fresh migration of its own config.
+      await chrome.storage.local.clear();
+      await chrome.storage.local.set({ uiLocale: 'en', dictionaryEnabled: true, provider: 'openai-compatible', targetLanguage: 'Simplified Chinese',
+        prompt: 'Translate the segments and return JSON only.', appearance: 'standard', selectionExplanationDepth: 'standard',
+        glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
+        openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: '', model: 'mock-model' }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
+    }, env.server.baseUrl);
+    await installUserDictionaries(env.driver);
     let center = await env.center(); const content = await env.openContent();
     await query(content.page, '#first', 'session'); await expect(content.page.locator('.tf-selection-record-status')).toHaveAttribute('data-state', 'invite');
     expect(env.server.calls).toHaveLength(0); expect((await send(center, M.GET_RECORDING_STATE)).data.recordCount).toBe(0);
@@ -101,8 +110,9 @@ test('Release A actual product: trusted creation matrix survives browser restart
     expect(before.find(value => value.record.itemText === 'zzsyntheticmissing').artifacts[0].payload.outcome).toBe('no-hit');
     expect(before.find(value => value.record.itemText.startsWith('This is')).record.lookupCount).toBe(2);
     const immutable = before.map(({ record, snapshots, artifacts }) => ({ recordId: record.recordId, itemText: record.itemText, lookupCount: record.lookupCount, snapshots, artifacts }));
-    await env.driver.evaluate(() => chrome.storage.local.remove(['provider', 'openAICompatible']));
-    await rm(join(env.extension, 'assets/lexicon'), { recursive: true, force: true });
+    await env.driver.evaluate(() => chrome.storage.local.remove(['provider', 'openAICompatible', 'providerConnectionsVersion',
+      'providerConnections', 'providerCredentials', 'defaultService', 'aiServiceConfigured']));
+    await removeUserDictionaryBytes(env.driver);
     await env.restart(); await env.context.setOffline(true); center = await env.center();
     const callsBeforeHistory = env.server.calls.length, resources = [];
     center.on('request', request => { if (/^https?:|lexicon|\.mdd|\.mdx/.test(request.url())) resources.push(request.url()); });
@@ -120,7 +130,7 @@ test('Release A actual product: trusted creation matrix survives browser restart
     expect(env.server.calls).toHaveLength(callsBeforeHistory); expect(resources).toEqual([]);
     await center.screenshot({ path: info.outputPath('release-a-restarted-real-history.png'), fullPage: true });
     await env.report('release-a-real-restart.json', { creation: 'shipped trusted Selection; no seed', records: immutable.length, kinds: [...new Set(before.flatMap(value => value.artifacts.map(artifact => artifact.kind)))],
-      explicitProviderCalls: 2, historyProviderCalls: env.server.calls.length - callsBeforeHistory, historyResourceRequests: resources.length, browserRestart: true, dictionaryAssetsRemoved: true, providerUnconfigured: true, offline: true,
+      explicitProviderCalls: 2, historyProviderCalls: env.server.calls.length - callsBeforeHistory, historyResourceRequests: resources.length, browserRestart: true, userDictionaryBytesRemoved: true, providerUnconfigured: true, offline: true,
       immutableHistorySha256: sha(JSON.stringify(immutable)), fullQuestionAnswerRead: true });
   } finally { await env.close(); }
 });

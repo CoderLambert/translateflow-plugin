@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "./support/extension-fixture.mjs";
@@ -8,8 +9,8 @@ import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constan
 
 test.use({ staticContentInjection: false });
 
-const evidenceDir = process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || "";
-const baselinePath = evidenceDir
+const evidenceDir = process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR || defaultEvidenceDir(import.meta.url);
+const baselinePath = process.env.DICTIONARY_ECOSYSTEM_V2_EVIDENCE_DIR
   ? resolve(evidenceDir, "rich-lookup-cancellation-baseline.json")
   : resolve("tests/fixtures/rich-lookup-cancellation-baseline.json");
 const baselineEvidence = JSON.parse(await readFile(baselinePath, "utf8"));

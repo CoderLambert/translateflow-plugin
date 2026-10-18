@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { test, expect, chromium } from "@playwright/test";
 import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -5,7 +6,7 @@ import { tmpdir } from "node:os";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
-import { READING_METHOD, READING_ERROR } from "../src/shared/reading/constants.js";
+import { READING_METHOD } from "../src/shared/reading/constants.js";
 import { request } from "../tests/fixtures/reading/contract.mjs";
 
 test("fixed old and actual WXT use the same profile and invocation for ten cold/warm injection samples", async () => {
@@ -41,8 +42,11 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
       } else expect(await worker.evaluate(()=>globalThis.__tfWxtExecutionProof)).toBeUndefined();
       const driver=await context.newPage();await driver.goto(`chrome-extension://${id}/popup.html`);
       if(name==="WXT") {
-        const nativeRuntime=await driver.evaluate(message=>chrome.runtime.sendMessage(message),request(READING_METHOD.OPEN_LEARNING_CENTER));
-        expect(nativeRuntime).toMatchObject({protocolVersion:2,ok:false,error:{code:READING_ERROR.NOT_READY}});
+        const [center,nativeRuntime]=await Promise.all([context.waitForEvent("page"),
+          driver.evaluate(message=>chrome.runtime.sendMessage(message),request(READING_METHOD.OPEN_LEARNING_CENTER))]);
+        expect(nativeRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
+        await expect(center).toHaveURL(/learning-center\.html$/u);
+        await center.close();
         activation.nativeRuntime=nativeRuntime;
       }
       const pagesBefore=context.pages().length;const samples=[];
@@ -82,7 +86,7 @@ test("fixed old and actual WXT use the same profile and invocation for ten cold/
     const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,sameUserDataDir:true,sameExtensionId:true,viewport:{width:1280,height:720},
       method:"Per fresh /article document: insertCSS → ordered raw scripts → native status; repeat same file injection on same document for warm/idempotence. Measures scripting + bootstrap + message round trip with performance.now in the extension page. No speed threshold or performance claim.",
       contentFiles:[...CONTENT_SCRIPT_FILES],styleFiles:[...CONTENT_STYLE_FILES],providerCalls:0,phases};
-    const dir=resolve(process.env.TF_UPGRADE_EVIDENCE_DIR||"test-results/wxt-upgrade-evidence");await mkdir(dir,{recursive:true});
+    const dir=resolve(process.env.TF_UPGRADE_EVIDENCE_DIR||defaultEvidenceDir(import.meta.url));await mkdir(dir,{recursive:true});
     await writeFile(join(dir,"injection-samples.json"),JSON.stringify(report,null,2)+"\n");
     console.log("[WXT_INJECTION_SAMPLES]",JSON.stringify(report));
   } finally {await context?.close().catch(()=>{});await server.close();await rm(root,{recursive:true,force:true});}

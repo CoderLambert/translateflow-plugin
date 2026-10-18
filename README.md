@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.13
+# TranslateFlow v0.8.24
 
 轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时可使用浏览器能力完成划词释义；整页、字幕和较长文本翻译使用已配置的 AI 服务，本地词典仍为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
@@ -161,7 +161,7 @@ git clone https://github.com/CoderLambert/translateflow-plugin.git
 cd translateflow-plugin
 ```
 
-默认构建由 WXT 编译后台、Popup 和 Options，Content/MAIN/Worker 继续复用精确源码桥；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。Selection v2 的 Core / Technical 真实词典资源属于生成产物，`assets/lexicon/` 不提交到 Git；`tests/`、`e2e/`、`scripts/`、`docs/`、`lexicon/sources/` 和 source-lock 等开发/验证资产不会进入生产扩展。
+默认构建由 WXT 编译后台、Content、Popup 和 Options，MAIN/Worker 保留精确资源映射；`npm run build:extension` 将审核过的 WXT 包输出到稳定安装目录 `dist/extension/`。安装包不包含词典内容；`tests/`、`e2e/`、`scripts/`、`docs/`、原始词典来源和 source-lock 等开发/验证资产不会进入生产扩展。
 
 源码安装不需要词典包或 AI Key，执行：
 
@@ -171,7 +171,7 @@ npm run validate
 npm run build:extension:release
 ```
 
-默认与 release 构建均不包含内置词典。需要研究/认证旧内置词典时，可单独运行 `npm run setup:lexicon`，再执行 `node scripts/build-extension.mjs --require-lexicon`；此显式构建继续校验来源锁和词典完整性。
+所有正式构建均不附带词典。需要离线查词时，在 **高级设置 → 词典库** 主动下载精选词典，或导入 TFLex、StarDict、MDX/MDD。没有安装词典是正常空状态，不会自动下载、调用 AI 或要求重装扩展。通用查询引擎与词典内容来源相互独立；升级保留已安装词典、排序偏好及缓存。
 
 真实 Chromium 扩展 E2E：
 

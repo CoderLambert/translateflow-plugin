@@ -146,7 +146,7 @@ test("same Chinese string from different sources is never silently merged", asyn
   assert.equal(result.candidates.length, 2);
   assert.deepEqual(
     result.candidates.map((candidate) => candidate.provenance.packId),
-    ["core-semantic", "optional-dictionary"]
+    ["local-general-fixture", "optional-dictionary"]
   );
   assert.ok(result.candidates.every((candidate) => candidate.translations.includes("持久的")));
 });

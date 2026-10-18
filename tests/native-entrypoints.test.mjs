@@ -17,7 +17,7 @@ test("page processor skips target-language passages, does not render duplicate o
   } };
   vm.runInNewContext(await readFile(new URL("../src/content/processor.js", import.meta.url), "utf8"),
     { __TRANSLATE_FLOW_CONTENT__: app, document: { title: "test", contains: () => true }, location: { href: pageUrl } });
-  const result = await app.modules.processor.processGroupBatch([{ id: "a", text: "原文", elements: [el], normalizedText: "原文" }], { cacheOnly: false, pageUrl });
+  const result = await app.modules.processor.processGroupBatch([{ id: "a", text: "原文", elements: [el], normalizedText: "原文", protectedIds: [0] }], { cacheOnly: false, pageUrl });
   assert.equal(calls.length, 1); assert.equal(calls[0].segments[0].protectedIds[0], 0);
   assert.equal(result.cacheHits, 0); assert.equal(result.apiTranslated, 0); assert.equal(result.missing, 0);
 });

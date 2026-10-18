@@ -19,7 +19,7 @@ test.describe("Chrome Commands MV3 routing (actual registered callback probe)", 
     const translated = await routeCommand(harness, page, "translate-page");
     expect(translated?.ok).toBe(true);
     await expect(page.locator(".abt-translation")).toHaveCount(3);
-    expect(harness.server.calls).toHaveLength(1);
+    expect(harness.server.calls).toHaveLength(2);
 
     let hidden = await routeCommand(harness, page, "toggle-translations");
     expect(hidden).toMatchObject({ ok: true, hidden: true });
@@ -35,11 +35,11 @@ test.describe("Chrome Commands MV3 routing (actual registered callback probe)", 
 
     let quick = await routeCommand(harness, page, "toggle-quick-control");
     expect(quick).toMatchObject({ ok: true, visible: true });
-    await expect(page.getByRole("button", { name: "TranslateFlow Quick Control" })).toBeVisible();
+    await expect(page.locator(".tf-quick-trigger")).toBeVisible();
 
     quick = await routeCommand(harness, page, "toggle-quick-control");
     expect(quick).toMatchObject({ ok: true, visible: false });
-    await expect(page.getByRole("button", { name: "TranslateFlow Quick Control" })).toHaveCount(0);
+    await expect(page.locator(".tf-quick-trigger")).toHaveCount(0);
   });
 
   test("protected pages are rejected before send or content injection", async ({ harness }) => {

@@ -1,3 +1,4 @@
+import { defaultEvidenceDir } from "./support/evidence-dir.mjs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -9,7 +10,7 @@ import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 import { buildRichMdictIndex, lookupRichMdict } from "../src/background/packs/importers/mdict-rich.js";
 
 const evidenceDir = process.env.MDD_INTEROP_EVIDENCE_DIR ||
-  resolve("/tmp/translateflow-mdd-184/evidence");
+  defaultEvidenceDir(import.meta.url);
 const lock = JSON.parse(await readFile(
   new URL("../tests/fixtures/mdd-interop/corpus-lock.json", import.meta.url),
   "utf8"
@@ -315,7 +316,7 @@ test.describe("local MDD resource product and security behavior", () => {
     })).toBe(true);
     await expect(viewer).toContainText("Example.");
 
-    const screenshotPath = resolve(process.env.TF_RICH_DICTIONARY_SCREENSHOT || "/tmp/translateflow-rich-dictionary-demo.png");
+    const screenshotPath = resolve(process.env.TF_RICH_DICTIONARY_SCREENSHOT || resolve(evidenceDir, "rich-dictionary-demo.png"));
     await mkdir(dirname(screenshotPath), { recursive: true });
     await page.screenshot({ path: screenshotPath, fullPage: false, caret: "initial" });
     console.log("[RICH_VIEWER_SCREENSHOT]", JSON.stringify({

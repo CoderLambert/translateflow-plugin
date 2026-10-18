@@ -1,3 +1,5 @@
+> 历史审计记录：下文内置词典、旧生成命令及发布认证要求已退役；不属于当前产品或执行要求。原始测量与验收保持原绑定。当前实现见 [LEXICAL_GATEWAY.md](LEXICAL_GATEWAY.md)。
+
 # TranslateFlow platform upgrade v1: PF-00 migration contract
 
 > 后续 #248 已将普通 `http/https` 页面改为 Manifest 静态 Content Script 注入；#250 进一步由 WXT 编译唯一 Content 模块图，安装路径为 `content-scripts/content.js/.css`。raw asset map 现在只保留 MAIN/Worker 精确闭包、locale 与认证词典。本文中逐文件 Content bridge、optional-origin、无静态注册及权限不变的表述是迁移阶段冻结证据，不再代表当前生产包。

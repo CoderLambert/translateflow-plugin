@@ -16,7 +16,6 @@ import { CURATED_ECDICT_MDX_WORKER_MESSAGES } from "./workers/curated-ecdict-mdx
 export type DictionaryRecord = Record<string, any>;
 export type PackState = { packs: Record<string, DictionaryRecord> };
 export type DictionarySnapshot = {
-  bundled: DictionaryRecord[];
   packState: PackState;
   rich: DictionaryRecord[];
 };
@@ -53,16 +52,13 @@ export function dictionaryClient({
   let activeMdd: ImportController | null = null;
 
   async function load(): Promise<DictionarySnapshot> {
-    const [bundled, packs, rich] = await Promise.all([
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.BUNDLED_LEXICON_STATUS }),
+    const [packs, rich] = await Promise.all([
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }),
       runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })
     ]);
-    if (!bundled?.ok) throw new Error(bundled?.error || "读取内置词典状态失败。");
     if (!packs?.ok) throw new Error(packs?.error || "读取已安装词典状态失败。");
     if (!rich?.ok) throw new Error(rich?.error || "读取富文本词典状态失败。");
     return {
-      bundled: Array.isArray(bundled.packs) ? bundled.packs : [],
       packState: packs.state && typeof packs.state === "object" ? packs.state : { packs: {} },
       rich: Array.isArray(rich.dictionaries) ? rich.dictionaries : []
     };
@@ -153,7 +149,7 @@ export function dictionaryClient({
       activeCurated.phase = "commit";
       activeCurated.commitRequestId = makeRequestId("curated-commit", cryptoProvider);
       onProgress("正在保存并进行后台完整性验证…");
-      return await requireOk(runtime.sendMessage({
+      const committed = await requireOk(runtime.sendMessage({
         type: BACKGROUND_MESSAGES.DICTIONARY_LOCAL_IMPORT_COMMIT,
         token: ready.token,
         requestId: activeCurated.commitRequestId,
@@ -163,6 +159,7 @@ export function dictionaryClient({
           licenseLabel: source.sourceLicenseLabel, catalog: makeInstalledCatalogMetadata(source)
         }
       }), "精选词典激活失败。");
+      return { ...committed, stats: ready.stats };
     } finally {
       activeCurated?.worker?.terminate();
       if (activeCurated?.requestId === requestId) activeCurated = null;
@@ -170,13 +167,13 @@ export function dictionaryClient({
   }
 
   async function installCuratedMdx(source: DictionaryRecord, existing: DictionaryRecord | null, onProgress: ProgressWriter) {
-    const origins = getCatalogPermissionOrigins(source);
-    const granted = await permissions.request({ origins });
-    if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
     const requestId = makeRequestId("curated", cryptoProvider);
-    const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
-    activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
     try {
+      const origins = getCatalogPermissionOrigins(source);
+      const granted = await permissions.request({ origins });
+      if (!granted) throw codedError("DICTIONARY_PERMISSION_DENIED", "下载权限未获准。");
+      const worker = new WorkerCtor(runtime.getURL(WORKER_PATHS.curatedEcdictMdx), { type: "module" });
+      activeCurated = { sourceId: source.id, requestId, phase: "download", worker, commitRequestId: "", richController: null };
       onProgress("正在连接已审核的上游词典…");
       const ready = await waitForWorker(worker, requestId, CURATED_ECDICT_MDX_WORKER_MESSAGES, message => onProgress(describeCuratedMdxProgress(message, source)), source.id);
       if (!activeCurated || activeCurated.requestId !== requestId) throw abortError();
@@ -197,9 +194,11 @@ export function dictionaryClient({
       if ((error as Error).name === "AbortError") throw error;
       throw new Error(getCuratedMdxErrorMessage(error, activeCurated?.phase));
     } finally {
-      activeCurated?.worker?.terminate();
-      activeCurated?.richController?.dispose();
-      if (activeCurated?.requestId === requestId) activeCurated = null;
+      if (activeCurated?.requestId === requestId) {
+        activeCurated.worker?.terminate();
+        activeCurated.richController?.dispose();
+        activeCurated = null;
+      }
     }
   }
 

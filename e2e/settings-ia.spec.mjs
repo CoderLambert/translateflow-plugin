@@ -47,11 +47,11 @@ test.describe("Settings information architecture", () => {
     await expect(
       library.locator("h3").allTextContents()
     ).resolves.toEqual([
-      "内置词典",
       "精选上游与官方词典",
       "已安装",
       "本地导入"
     ]);
+    await expect(library.getByRole("heading", { name: "内置词典", exact: true })).toHaveCount(0);
     await expect(
       library.getByRole("heading", { name: "官方词典", exact: true })
     ).toBeVisible();
@@ -96,6 +96,7 @@ test.describe("Settings information architecture", () => {
     }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.viewport);
 
+    await page.screenshot({ path: test.info().outputPath("settings-dictionary-library.png"), fullPage: true });
     await page.locator("#refreshDictionaryPacks").focus();
     await expect(page.locator("#refreshDictionaryPacks")).toBeFocused();
     await page.close();

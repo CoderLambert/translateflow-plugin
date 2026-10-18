@@ -2,6 +2,7 @@ import { test as base, chromium, expect } from "@playwright/test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { installUserDictionaries } from "./user-dictionaries.mjs";
 import { startMockServer } from "./mock-server.mjs";
 import { prepareExtensionTestCopy } from "./production-artifact.mjs";
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../../src/shared/constants.js";
@@ -16,13 +17,11 @@ const YOUTUBE_MAIN_BRIDGE_SCRIPTS = [
 
 export const test = base.extend({
   commandCallbackProbe: [false, { option: true, scope: "worker" }],
-  lexiconPacks: ["fixture", { option: true, scope: "worker" }],
   ecdictMdxReleaseHostAccess: [false, { option: true, scope: "worker" }],
   ecdictMdxCachedArchivePath: ["", { option: true, scope: "worker" }],
   staticContentInjection: [true, { option: true, scope: "worker" }],
   nativeMessagingPregranted: [false, { option: true, scope: "worker" }],
   harness: [async ({
-    lexiconPacks,
     commandCallbackProbe,
     ecdictMdxReleaseHostAccess,
     ecdictMdxCachedArchivePath,
@@ -37,7 +36,7 @@ export const test = base.extend({
     let context;
     try {
     const buildReport = await prepareExtensionTestCopy({
-      extensionDir, lexiconPacks, ecdictMdxReleaseHostAccess,
+      extensionDir, ecdictMdxReleaseHostAccess,
       ecdictMdxCachedArchivePath, captureCommands: commandCallbackProbe,
       staticContentInjection, nativeMessagingPregranted, baseUrl: server.baseUrl
     });
@@ -46,7 +45,7 @@ export const test = base.extend({
       artifact: buildReport.artifact, sourceHead: buildReport.sourceHead,
       treeSha256: buildReport.treeSha256, fileCount: buildReport.fileCount,
       totalBytes: buildReport.totalBytes, lexicalBytes: buildReport.lexicalBytes,
-      lexiconMode: buildReport.lexiconMode, testChanges: buildReport.testCopy.changes,
+      testChanges: buildReport.testCopy.changes,
       commandCallbackProbe: buildReport.commandCallbackProbe,
       cachedWorkerOverride: buildReport.cachedWorkerOverride,
       staticContentInjection: buildReport.staticContentInjection
@@ -77,6 +76,10 @@ export const test = base.extend({
       extensionDir,
       buildReport,
       server,
+
+      async installUserDictionaries(options = {}) {
+        return installUserDictionaries(driver, options);
+      },
 
       async reset() {
         server.reset();
@@ -257,6 +260,10 @@ export const test = base.extend({
       }
     };
 
+    // The worker target can appear before the native install handler commits
+    // defaults. Do not let that late write overwrite a test's explicit config.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
     await harness.reset();
     await use(harness);
     } finally {
@@ -266,7 +273,10 @@ export const test = base.extend({
         finally { await rm(tempRoot, { recursive: true, force: true }); }
       }
     }
-  }, { scope: "worker" }]
+  // Each case owns its real profile, including Reading IDB, dictionary OPFS,
+  // permissions, open documents and in-flight requests. storage.local.clear()
+  // alone cannot reset those owners or restore first-install consent.
+  }, { scope: "test" }]
 });
 
 export { expect };

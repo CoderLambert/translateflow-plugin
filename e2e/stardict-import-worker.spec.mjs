@@ -7,30 +7,36 @@ test("Settings StarDict controller transfers into a Dedicated Worker and activat
   // initializes. No controller/source module is added to the artifact.
   await page.addInitScript(() => {
     if(location.protocol!=="chrome-extension:")return;
-    const probe=globalThis.__tfStarDictProbe={workers:[],messages:[],phases:[]};
+    const probe=globalThis.__tfStarDictProbe={workers:[],messages:[],phases:[],lifecycle:[]};
     const NativeWorker=globalThis.Worker;
     globalThis.Worker=class extends NativeWorker {
       constructor(url,options) {
         super(url,options);this.probe={url:String(url),options,messages:[],transfers:[],terminated:false};
-        probe.workers.push(this.probe);this.addEventListener("message",event=>this.probe.messages.push(event.data));
+        probe.workers.push(this.probe);this.addEventListener("message",event=>{
+          this.probe.messages.push(event.data);
+          if(event.data.type==="stardict-import:progress")probe.lifecycle.push(event.data.phase);
+          if(event.data.type==="stardict-import:ready")probe.lifecycle.push("ready");
+        });
       }
       postMessage(message,transfer) {const refs=Array.isArray(transfer)?transfer:[];
-        super.postMessage(message,transfer);this.probe.transfers.push(refs.map(item=>item.byteLength));}
+        super.postMessage(message,transfer);this.probe.transfers.push(refs.map(item=>item.byteLength));
+        if(message.type==="stardict-import:start")probe.lifecycle.push("transfer");}
       terminate(){this.probe.terminated=true;return super.terminate();}
     };
     const nativeSend=chrome.runtime.sendMessage.bind(chrome.runtime);
     chrome.runtime.sendMessage=function(message,...args){
       const result=nativeSend(message,...args);
       if(message?.type==="DICTIONARY_LOCAL_IMPORT_COMMIT"){
+        probe.lifecycle.push("commit");
         const entry={message,result:null};probe.messages.push(entry);
-        Promise.resolve(result).then(value=>{entry.result=value});
+        Promise.resolve(result).then(value=>{entry.result=value;probe.lifecycle.push(value?.ok?"done":"error")});
       }
       return result;
     };
   });
   await page.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
-  await page.evaluate(()=>{
-    const progress=document.querySelector("#localDictionaryImportProgress");
+  // Document load can finish before React mounts the import panel.
+  await page.locator("#localDictionaryImportProgress").evaluate(progress=>{
     const observer=new MutationObserver(records=>{
       const phases=records.filter(record=>record.attributeName==="data-phase");
       for(let i=0;i<phases.length;i++)globalThis.__tfStarDictProbe.phases.push(
@@ -64,14 +70,17 @@ test("Settings StarDict controller transfers into a Dedicated Worker and activat
     let tokenStillExists=false;
     try {const root=await navigator.storage.getDirectory();const quarantine=await root.getDirectoryHandle("dictionary-import-quarantine");await quarantine.getDirectoryHandle(ready.token);tokenStillExists=true;}
     catch(error){if(error.name!=="NotFoundError")throw error;}
-    return {workers:workers.length,worker,ready,commit,lookup,tokenStillExists,phases:p.phases};
+    return {workers:workers.length,worker,ready,commit,lookup,tokenStillExists,phases:p.phases,lifecycle:p.lifecycle};
   },WORKER_PATHS.stardictImport);
   expect(result.workers).toBe(1);expect(result.worker.options).toEqual({type:"module"});
   expect(result.worker.terminated).toBe(true);expect(result.worker.transfers).toEqual([[0,0,0]]);
   expect(result.ready.packId).toMatch(/^local-stardict-/);
   expect(result.ready.packVersion).toMatch(/^import-[a-z0-9]+-[a-f0-9]{8}$/);
   expect(result.ready.fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
-  expect(result.phases).toEqual(["read","convert","stage","stage","stage","commit","done"]);
+  // React renders changes of phase; each individual staged file remains verified
+  // against the native Worker messages and their order before the real commit.
+  expect(result.phases).toEqual(["read","convert","stage","commit","done"]);
+  expect(result.lifecycle).toEqual(["transfer","convert","stage","stage","stage","ready","commit","done"]);
   expect(result.worker.messages.filter(m=>m.type==="stardict-import:progress"&&m.phase==="stage").map(m=>m.path))
     .toEqual(["entries.dat","index.dat","manifest.json"]);
   expect(result.commit.message.token).toBe(result.ready.token);

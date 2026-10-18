@@ -265,6 +265,13 @@
       "candidateHead": null
     },
     {
+      "task": "cache-system-v1",
+      "status": "completed",
+      "dependencies": [],
+      "branch": "feat/independent-cache-system-20261018",
+      "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53"
+    },
+    {
       "task": "chatgpt-native-host-distribution",
       "status": "ready_to_sync",
       "dependencies": [],
@@ -300,6 +307,15 @@
       "dependencies": [],
       "branch": "main",
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
+    },
+    {
+      "task": "remove-bundled-lexicons",
+      "status": "completed",
+      "dependencies": [
+        "cache-system-v1"
+      ],
+      "branch": "refactor/remove-bundled-lexicons",
+      "candidateHead": "261a60f6008ab9d1f6703b256d0d71c735675c39"
     },
     {
       "task": "rich-index-cache-budget",
@@ -373,6 +389,15 @@
       "status": "working",
       "dependencies": [],
       "branch": "feat/api-key-provider-connections",
+      "candidateHead": null
+    },
+    {
+      "task": "test-concurrency",
+      "status": "reviewing",
+      "dependencies": [
+        "remove-bundled-lexicons"
+      ],
+      "branch": "chore/test-concurrency-and-selection",
       "candidateHead": null
     },
     {

@@ -2,6 +2,7 @@ import { test, expect, chromium } from "@playwright/test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { installUserDictionaries } from "./support/user-dictionaries.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
 import { READING_METHOD as M } from "../src/shared/reading/constants.js";
@@ -15,15 +16,20 @@ test("authorized revisit keeps one word highlight for repeated lookups and resto
   server.setPage("/marker-page", `<!doctype html><style>main{margin:0 48px}</style><main>${longPrefix}<p id="source">PUBLIC <span id="word">session</span> alpha tail</p></main>`);
   let context;
   try {
-    const buildReport = await prepareExtensionTestCopy({ extensionDir: extension, lexiconPacks: "fixture", baseUrl: server.baseUrl });
+    const buildReport = await prepareExtensionTestCopy({ extensionDir: extension, baseUrl: server.baseUrl });
     context = await chromium.launchPersistentContext(profile, { headless: true, channel: "chromium",
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent("serviceworker"), id = new URL(worker.url()).host;
     const driver = await context.newPage(); await driver.goto(`chrome-extension://${id}/popup.html`);
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", autoSites: [], cacheRestoreSites: [],
+    // The native install handler can commit defaults after its worker becomes visible.
+    await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
+      .toEqual({ uiLocale: "zh_CN" });
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [],
       quickControlSites: [], quickControlHiddenSites: [], readingMemorySites: [] }));
+    await installUserDictionaries(driver);
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
     await center.getByRole("button", { name: "Enable recording", exact: true }).click();
+    await expect(center.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
     const source = await context.newPage(); await source.goto(articleUrl);
     for (let index = 0; index < 2; index++) {

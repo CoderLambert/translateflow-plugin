@@ -201,7 +201,7 @@
     position(snapshot, panel);
   }
 
-  function showError(snapshot, message, onRetry, onExplain) {
+  function showError(snapshot, message, onRetry, onExplain, onTranslate = null) {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
@@ -214,9 +214,9 @@
     updateSource(sourceNode, snapshot);
     setLocalizedStatus(statusNode, message, "content.selection.errorRetry", "error");
     viewTabs.reset();
-    emptyState?.reset();
     resultNode.replaceChildren();
     resultNode.hidden = false;
+    emptyState.showActions({ onTranslate });
     configureTabs(explainHandler, Boolean(explainHandler));
     viewTabs.selectDictionary();
     cancelButton.hidden = true;

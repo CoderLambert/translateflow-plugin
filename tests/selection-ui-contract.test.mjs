@@ -149,7 +149,7 @@ test("Selection no-hit is neutral while local lexicon failures keep diagnostic e
 
   assert.match(messages, /LEXICON_STORAGE/);
   assert.match(messages, /content\.selection\.lexiconMissing/);
-  assert.match(contentZhCN["content.selection.lexiconMissing"], /设置 > 本地词典/);
+  assert.match(contentZhCN["content.selection.lexiconMissing"], /设置 > 词典库/);
   assert.match(messages, /LEXICON_CORRUPT/);
   assert.match(messages, /LEXICON_INCOMPATIBLE/);
   assert.match(controller, /popover\.showError/);

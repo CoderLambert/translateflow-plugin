@@ -1,7 +1,7 @@
 (() => {
   const app = globalThis.__TRANSLATE_FLOW_CONTENT__;
   if (!app?.modules.runtime || app.modules.textProjectionPolicy) return;
-  const { EXTENSION_UI_ATTR, TRANSLATION_CLASS } = app.modules.runtime.constants;
+  const { EXTENSION_UI_ATTR, TRANSLATION_CLASS, TRANSLATED_ATTR } = app.modules.runtime.constants;
   const limits = Object.freeze({ sliceChars: 16000, sliceNodes: 500, sliceMs: 8, totalChars: 1000000, totalNodes: 25000, totalMs: 250 });
   const excludedTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "INPUT", "TEXTAREA", "SELECT", "OPTION"]);
   function owned(node) {
@@ -98,6 +98,7 @@
   }
   function sourceMutation(record) {
     if (owned(record.target)) return false;
+    if (record.type === "attributes" && record.attributeName === TRANSLATED_ATTR) return false;
     if (record.type === "characterData") return true;
     if (record.type === "childList") { for (const nodes of [record.addedNodes, record.removedNodes]) for (const node of nodes) if (!owned(node)) return true; return false; }
     if (record.attributeName === "class") {

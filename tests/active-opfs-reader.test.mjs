@@ -82,7 +82,7 @@ test("active OPFS reader uses deterministic packId order and ignores non-healthy
   );
 });
 
-test("corrupt optional pack is isolated and cannot suppress bundled lexical candidates", async () => {
+test("corrupt user pack is isolated and cannot suppress another installed dictionary", async () => {
   const state = packState({
     broken: activeEntry("broken", "v1", "b"),
     healthy: activeEntry("healthy", "v1", "h")
@@ -112,12 +112,8 @@ test("corrupt optional pack is isolated and cannot suppress bundled lexical cand
     cryptoProvider: fakeCrypto()
   });
 
-  const bundledReader = fixtureReader(
-    snapshot("core", "bundled", "core"),
-    { core: { bundled: "内置词典" } }
-  );
   const gateway = createLexicalGateway({
-    packReaders: [bundledReader, optionalReader]
+    packReaders: [optionalReader]
   });
 
   const result = await gateway.lookup({
@@ -128,7 +124,7 @@ test("corrupt optional pack is isolated and cannot suppress bundled lexical cand
   assert.equal(result.status, "candidates");
   assert.deepEqual(
     result.candidates.map((candidate) => candidate.translations[0]),
-    ["内置词典", "可选词典"]
+    ["可选词典"]
   );
   assert.deepEqual(
     optionalReader.stats().errors.map((item) => [item.packId, item.code]),
@@ -159,14 +155,16 @@ test("healthy state with malformed active snapshot is isolated and diagnosed as 
     cryptoProvider: fakeCrypto()
   });
 
-  assert.deepEqual(await reader.lookupAll("word"), []);
+  await assert.rejects(reader.lookupAll("word"), { code: LEXICAL_ERROR_CODES.CORRUPT });
+  const inspected = await reader.inspect();
+  assert.equal(inspected.packs[0].code, LEXICAL_ERROR_CODES.CORRUPT);
   assert.deepEqual(
     reader.stats().errors.map((item) => [item.packId, item.code]),
     [["malformed", LEXICAL_ERROR_CODES.CORRUPT]]
   );
 });
 
-test("optional state-store failure degrades to bundled-only lookup instead of lexical ERROR", async () => {
+test("user dictionary state-store failure returns a typed lookup error and inspect diagnostics", async () => {
   const optionalReader = createActiveOpfsPackReader({
     stateStore: {
       async read() {
@@ -179,12 +177,8 @@ test("optional state-store failure degrades to bundled-only lookup instead of le
     },
     cryptoProvider: fakeCrypto()
   });
-  const bundledReader = fixtureReader(
-    snapshot("core", "bundled", "core"),
-    { core: { bundled: "内置词典" } }
-  );
   const gateway = createLexicalGateway({
-    packReaders: [bundledReader, optionalReader]
+    packReaders: [optionalReader]
   });
 
   const result = await gateway.lookup({
@@ -192,8 +186,9 @@ test("optional state-store failure degrades to bundled-only lookup instead of le
     sourceLanguage: "en",
     targetLanguage: "zh-CN"
   });
-  assert.equal(result.status, "candidates");
-  assert.deepEqual(result.candidates.map((candidate) => candidate.translations[0]), ["内置词典"]);
+  assert.equal(result.status, "error");
+  assert.equal(result.error.code, LEXICAL_ERROR_CODES.STORAGE);
+  assert.equal((await optionalReader.inspect()).stateError.code, LEXICAL_ERROR_CODES.STORAGE);
   assert.equal(optionalReader.stats().stateError.code, LEXICAL_ERROR_CODES.STORAGE);
 });
 
@@ -243,7 +238,7 @@ test("removing an active pack clears its cached reader and diagnostic state", as
     cryptoProvider: fakeCrypto()
   });
 
-  await reader.lookupAll("word");
+  await assert.rejects(reader.lookupAll("word"), { code: LEXICAL_ERROR_CODES.STORAGE });
   assert.equal(reader.stats().readerCount, 1);
   assert.equal(reader.stats().errors.length, 1);
 
@@ -251,6 +246,71 @@ test("removing an active pack clears its cached reader and diagnostic state", as
   assert.deepEqual(await reader.lookupAll("word"), []);
   assert.equal(reader.stats().readerCount, 0);
   assert.equal(reader.stats().errors.length, 0);
+});
+
+for (const code of Object.values(LEXICAL_ERROR_CODES)) {
+  test(`sole installed dictionary ${code} remains a typed failure, then clears after repair`, async () => {
+    let broken = true;
+    const reader = createActiveOpfsPackReader({
+      stateStore: memoryStateStore(() => packState({ user: activeEntry("user", "v1", "u") })),
+      store: fakeStore(),
+      readerFactory() {
+        return { async lookupAll() { if (broken) throw Object.assign(new Error("fixture failed"), { code, path: "index.dat" }); return []; } };
+      }
+    });
+    const gateway = createLexicalGateway({ packReaders: [reader] });
+    const input = { text: "word" };
+    assert.equal((await gateway.lookup(input)).error.code, code);
+    broken = false;
+    assert.equal((await gateway.lookup(input)).status, "no-hit");
+    assert.deepEqual(reader.stats().errors, []);
+  });
+}
+
+test("a readable user dictionary miss isolates another pack's failure", async () => {
+  const reader = createActiveOpfsPackReader({
+    stateStore: memoryStateStore(() => packState({ broken: activeEntry("broken", "v1", "b"), healthy: activeEntry("healthy", "v1", "h") })),
+    store: fakeStore(),
+    readerFactory({ snapshot }) {
+      return { async lookupAll() { if (snapshot.packId === "broken") throw Object.assign(new Error("corrupt"), { code: LEXICAL_ERROR_CODES.CORRUPT }); return []; } };
+    }
+  });
+  const gateway = createLexicalGateway({ packReaders: [reader] });
+  assert.equal((await gateway.lookup({ text: "word" })).status, "no-hit");
+  assert.equal(reader.stats().errors[0].code, LEXICAL_ERROR_CODES.CORRUPT);
+});
+
+test("glossary overrides bypass unreadable installed dictionary state", async () => {
+  const reader = createActiveOpfsPackReader({ stateStore: { async read() { throw new Error("storage unavailable"); } }, store: fakeStore() });
+  const gateway = createLexicalGateway({ packReaders: [reader], resolveGlossary: async () => [{ id: "own", source: "word", target: "个人译法", enabled: true }] });
+  const result = await gateway.lookup({ text: "word" });
+  assert.equal(result.status, "candidates");
+  assert.deepEqual(result.candidates[0].translations, ["个人译法"]);
+  assert.equal(reader.stats().stateError, null, "glossary override must not access user dictionary state");
+});
+
+test("concurrent lookups decide failure from their own readable packs, not shared diagnostics", async () => {
+  let resume;
+  const waiting = new Promise(resolve => { resume = resolve; });
+  let entered;
+  const started = new Promise(resolve => { entered = resolve; });
+  const reader = createActiveOpfsPackReader({
+    stateStore: memoryStateStore(() => packState({ alpha: activeEntry("alpha", "v1", "a"), beta: activeEntry("beta", "v1", "b") })),
+    store: fakeStore(),
+    readerFactory({ snapshot }) {
+      return { async lookupAll(text) {
+        if (text === "broken") throw Object.assign(new Error("concurrent corrupt fixture"), { code: LEXICAL_ERROR_CODES.CORRUPT });
+        if (snapshot.packId === "beta") { entered(); await waiting; }
+        return [];
+      } };
+    }
+  });
+  const healthy = reader.lookupAll("word");
+  await started;
+  await assert.rejects(reader.lookupAll("broken"), { code: LEXICAL_ERROR_CODES.CORRUPT });
+  resume();
+  assert.deepEqual(await healthy, []);
+  assert.equal(reader.stats().errors[0].packId, "alpha", "other request diagnostics remain observable but cannot alter this result");
 });
 
 function fixtureReader(packSnapshot, translations) {

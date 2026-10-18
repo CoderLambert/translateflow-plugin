@@ -30,11 +30,12 @@
         browserTranslationAllowed: options.browserTranslationAllowed === true,
         ...(options.browserTranslationAllowed === true ? { detectionText: nativeDetectionText } : {}),
         pageUrl: snapshot.pageUrl,
-        segments: [{ id: "selection", text: snapshot.text }]
+        segments: [{ id: "selection", text: snapshot.text, format: "plain" }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
       const configSnapshotId = String(lookup.configSnapshotId || "");
+      const cacheToken = (lookup.writeTokens || []).find(item => String(item.id) === "selection")?.token;
       if (lookup.skippedIds?.includes("selection")) {
         tasks.completeTask(task, { done: 1, cacheHits: 0, apiTranslated: 0 });
         popover.showEmpty(snapshot, { titleKey: "content.basic.alreadyTarget", messageKey: "content.basic.alreadyTargetHelp" });
@@ -58,7 +59,7 @@
         requestId: task.id,
         pageUrl: snapshot.pageUrl,
         configSnapshotId,
-        segments: [{ id: "selection", text: snapshot.text }]
+        segments: [{ id: "selection", text: snapshot.text, format: "plain" }]
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!translated?.ok) throw localizedError("content.page.translationFailed", translated);
@@ -70,20 +71,30 @@
       tasks.transition(task, "storing");
       popover.setLoadingStatus("content.selection.storing");
       popover.setLoadingCancelable(false);
-      const stored = await sendRuntimeMessage({
-        type: messages.background.CACHE_STORE,
-        pageUrl: snapshot.pageUrl,
-        pageTitle: document.title,
-        configSnapshotId,
-        items: [{ sourceText: snapshot.text, translation }]
-      });
-      assertCurrent(version, snapshot, expectedPage, task);
-      if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);
+      let cacheWarning = String(lookup.cacheWarning || "");
+      if (!cacheWarning) {
+        const stored = await sendRuntimeMessage({
+          type: messages.background.CACHE_STORE,
+          pageUrl: snapshot.pageUrl,
+          pageTitle: document.title,
+          configSnapshotId,
+          items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken }]
+        });
+        assertCurrent(version, snapshot, expectedPage, task);
+        if (!stored?.ok && !app.modules.runtime.isCachePersistenceError?.(stored)) {
+          throw localizedError("content.selection.cacheStoreFailed", stored);
+        }
+        cacheWarning = stored?.ok
+          ? (stored.cacheWarning || (Number(stored.stored || 0) < 1 ? "CACHE_NOT_SAVED" : ""))
+          : stored.errorCode;
+      }
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
       const card = buildTranslationResult(translation, lookup);
       showResult(snapshot, card);
       onResult(queryRecord, readingTranslation(translation, translated.readingResult || lookup.readingResult));
+      if (cacheWarning) app.modules.runtime.showToast(t("content.selection.cacheNotSaved"), "error");
+      return cacheWarning ? { cacheWarning } : undefined;
     };
   }
   app.modules.selectionTranslationQuery = Object.freeze({ create });

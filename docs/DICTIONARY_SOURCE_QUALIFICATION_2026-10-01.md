@@ -1,3 +1,5 @@
+> 历史审计记录：下文内置词典、旧生成命令及发布认证要求已退役；不属于当前产品或执行要求。原始测量与验收保持原绑定。当前实现见 [LEXICAL_GATEWAY.md](LEXICAL_GATEWAY.md)。
+
 # Dictionary source qualification — 2026-10-01
 
 Parent: [#198](https://github.com/CoderLambert/translateflow-plugin/issues/198) · Research issue: [#205](https://github.com/CoderLambert/translateflow-plugin/issues/205)
@@ -29,7 +31,7 @@ The exact candidate is the standard, non-Plus [OEWN 2025 release](https://github
 
 The exact [2025 LICENSE.md](https://github.com/globalwordnet/english-wordnet/blob/2025-edition/LICENSE.md) states OEWN further development is CC BY 4.0 and the underlying WordNet terms apply. The exact [WNDB license notice](https://github.com/globalwordnet/english-wordnet/blob/2025-edition/WNDB_License.txt) identifies the underlying database as Princeton WordNet **3.1** and carries its license notice and disclaimer. Any future derivative must retain both attribution/license layers and the WordNet notice/disclaimer. This does not establish #122 Official trust-root approval.
 
-The existing [Core semantic source lock](../lexicon/source-locks/core-semantic-pwn3-cow.json) records PWN 3.0 aligned to Chinese Open Wordnet, with 61,340 of 147,306 locked PWN headwords mapped. OEWN 2025's PWN 3.1 basis could include meaningful changes relative to that baseline. We did not measure version-to-version sense alignment, incremental coverage, Chinese mapping impact, or user-visible quality. The observed JSON sense/POS counts confirm artifact shape only; they do not establish an improvement. OEWN has no Chinese translation field and no current separate monolingual supplement flow, so the candidate remains NO-GO for this cycle.
+The existing [Core semantic source lock](https://github.com/CoderLambert/translateflow-plugin/blob/349321a079544a51834de1b3173f1fc653220e6d/lexicon/source-locks/core-semantic-pwn3-cow.json) records PWN 3.0 aligned to Chinese Open Wordnet, with 61,340 of 147,306 locked PWN headwords mapped. OEWN 2025's PWN 3.1 basis could include meaningful changes relative to that baseline. We did not measure version-to-version sense alignment, incremental coverage, Chinese mapping impact, or user-visible quality. The observed JSON sense/POS counts confirm artifact shape only; they do not establish an improvement. OEWN has no Chinese translation field and no current separate monolingual supplement flow, so the candidate remains NO-GO for this cycle.
 
 ## Maintained EN→zh-CN sources and prior decisions
 

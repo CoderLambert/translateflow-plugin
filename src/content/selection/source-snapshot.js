@@ -177,6 +177,19 @@
   }
   function createProjectionGuard({ getSnapshot, getCurrentUrl, getPageIdentity, onAccept, onReject, delay = 120 }) {
     let timer = null;
+    const freezeQuery = (snapshot) => {
+      const frozen = capture(snapshot);
+      snapshot.sourceCapture = frozen;
+      snapshot.text = frozen.selectedText;
+      return frozen;
+    };
+    const isFrozenCurrent = (snapshot, frozen) => snapshot === getSnapshot() && snapshot.sourceCapture === frozen
+      && snapshot.sourceRevision === frozen.sourceRevision && frozen.sourceRevision === projection.revision();
+    const getQuerySource = () => {
+      projection.revision();
+      const snapshot = getSnapshot(), frozen = snapshot?.sourceCapture;
+      return frozen && isFrozenCurrent(snapshot, frozen) ? frozen : null;
+    };
     const clear = () => { clearTimeout(timer); timer = null; };
     const accept = (snapshot, capture, revision, range = null) => {
       clear();
@@ -198,7 +211,7 @@
       if (matchesCurrentPage(snapshot, capture, getCurrentUrl(), getPageIdentity)) { accept(snapshot, capture, revision); return; }
       clear(); timer = setTimeout(() => { timer = null; validate(snapshot, capture, projection.revision()); }, delay);
     };
-    return Object.freeze({ invalidate, clear });
+    return Object.freeze({ invalidate, clear, freezeQuery, isFrozenCurrent, getQuerySource });
   }
   async function digest(text) {
     const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));

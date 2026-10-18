@@ -6,6 +6,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_TEST_WORKERS: "2"
+
 jobs:
   independent-mdd-resources:
     runs-on: ubuntu-latest

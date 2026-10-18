@@ -87,7 +87,10 @@ test("real Options stores only UI language, updates two pages and restores after
 });
 
 test("failed native storage write reports failure and keeps the committed language", async ({ localeHarness: h }) => {
+  await h.worker.evaluate(() => chrome.storage.local.remove("uiLocale"));
   const page = await h.openOptions();
+  await expect(page.locator("#uiLocale")).toHaveValue("auto");
+  await expect(page.locator("#uiLocaleControl h2")).toHaveText("Interface language");
   await page.evaluate(() => {
     const original = chrome.storage.local.set;
     globalThis.__tfRestoreLocaleWrite = () => { chrome.storage.local.set = original; };
@@ -150,6 +153,7 @@ test("the new control remains hidden while the initial stored language is pendin
 });
 
 test("mounted Quick Control, Selection and subtitle controls follow one live Content locale", async ({ localeHarness: h }) => {
+  await h.worker.evaluate(() => chrome.storage.local.set({ uiLocale: "en" }));
   await h.context.route("https://i18n.fixture.test/**", route => route.fulfill({
     contentType: "text/html",
     body: "<!doctype html><html><body><p id='selection'>synthetic selection text</p></body></html>"

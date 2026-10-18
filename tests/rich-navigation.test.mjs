@@ -110,6 +110,70 @@ test('duplicate current entry and local fragment only locate, and multi-record d
   assert.notEqual(hosts[1].shadowRoot.activeElement?.dataset.richTargetId, 'sense.1'); await h.stop();
 });
 
+test('local fragment clicks stay in their own terminal record even when entry navigation is bound', async () => {
+  const h = harness(); await h.start(); const result = hit('go');
+  result.dictionaries[0].records = [0, 1].map((index) => ({ headword: 'go', text: `RECORD ${index}`, richRecord: {
+    rawRecord: `<p id="sense.1">RECORD ${index}</p>${index === 0 ? '<p id="first.only">FIRST ONLY</p>' : ''}<a href="#sense.1">LOCAL LINK</a><a href="#first.only">MISSING HERE</a>`, format: 'HTML'
+  } }));
+  await h.complete('go', result);
+  const hosts = [...h.container.querySelectorAll('.tf-selection-rich-text')];
+  const localFocus = () => hosts.map(host => host.shadowRoot.activeElement?.dataset.richTargetId === 'sense.1');
+  hosts[1].shadowRoot.querySelector('[data-rich-fragment-target="sense.1"]').click();
+  assert.deepEqual(localFocus(), [false, true]);
+  hosts[1].shadowRoot.querySelector('[data-rich-fragment-target="first.only"]').click();
+  assert.deepEqual(localFocus(), [false, true]);
+  hosts[0].shadowRoot.querySelector('[data-rich-fragment-target="sense.1"]').click();
+  assert.deepEqual(localFocus(), [true, false]);
+  assert.equal(h.calls.filter(item => item.type === 'lookup').length, 1);
+  assert.equal(h.navigation().snapshot.history.length, 1);
+  assert.equal(h.displayed.length, 1);
+  await h.stop();
+});
+
+test('Back and Forward restore the originating record of a local fragment without retaining its DOM', async () => {
+  const h = harness(); await h.start(); const result = hit('go');
+  result.dictionaries[0].records = [0, 1].map(index => ({ headword: 'go', text: `RECORD ${index}`, richRecord: {
+    rawRecord: `<p id="sense.1">RECORD ${index}</p><a href="#sense.1">LOCAL LINK</a><a href="entry://come#sense.1">COME LINK</a>`, format: 'HTML'
+  } }));
+  await h.complete('go', result);
+  const initialHosts = [...h.container.querySelectorAll('.tf-selection-rich-text')];
+  initialHosts[1].shadowRoot.querySelector('[data-rich-fragment-target="sense.1"]').click();
+  const nav = h.navigation();
+  assert.equal(nav.snapshot.history[0].fragment, 'sense.1');
+  initialHosts[1].shadowRoot.querySelector('[data-rich-action="entry"]').click();
+  await flush(); await h.complete('come');
+  h.button('back').click(); await flush(); await h.complete('go', result);
+  const restoredHosts = [...h.container.querySelectorAll('.tf-selection-rich-text')];
+  const focused = () => restoredHosts.map(host => host.shadowRoot.activeElement?.dataset.richTargetId === 'sense.1');
+  assert.deepEqual(focused(), [false, true]);
+  assert.notEqual(restoredHosts[1], initialHosts[1]);
+  await nav.navigate({ kind: 'fragment', fragment: 'sense.1' }, null, initialHosts[0]);
+  assert.deepEqual(focused(), [false, true]);
+  h.button('forward').click(); await flush(); await h.complete('come');
+  assert.equal(h.viewer().getRootNode().activeElement.dataset.richTargetId, 'sense.1');
+  assert.equal(h.calls.filter(item => item.type === 'lookup').length, 4);
+  for (const item of nav.snapshot.history) assert.deepEqual(Object.keys(item).sort(), ['fragment', 'id', 'packVersion', 'packageVersion', 'query'].sort());
+  assert.equal(h.displayed.length, 1); await h.stop();
+});
+
+test('a missing originating record on Back never redirects its fragment to another record', async () => {
+  const h = harness(); await h.start(); const result = hit('go');
+  result.dictionaries[0].records = [0, 1].map(index => ({ headword: 'go', text: `RECORD ${index}`, richRecord: {
+    rawRecord: `<p id="sense.1">RECORD ${index}</p><a href="#sense.1">LOCAL LINK</a>`, format: 'HTML'
+  } }));
+  await h.complete('go', result);
+  const hosts = [...h.container.querySelectorAll('.tf-selection-rich-text')];
+  hosts[1].shadowRoot.querySelector('[data-rich-fragment-target="sense.1"]').click();
+  void h.navigation().navigate({ kind: 'entry', headword: 'come', fragment: '' });
+  await flush(); await h.complete('come');
+  h.button('back').click(); await flush();
+  const missing = { ...result, dictionaries: [{ ...result.dictionaries[0], records: result.dictionaries[0].records.slice(0, 1) }] };
+  await h.complete('go', missing);
+  assert.equal(h.status(), 'content.rich.fragmentMissing');
+  assert.notEqual(h.viewer().getRootNode().activeElement?.dataset.richTargetId, 'sense.1');
+  assert.equal(h.calls.filter(item => item.type === 'lookup').length, 3); await h.stop();
+});
+
 test('new navigation cancels inflight request and an old late response cannot replace the latest entry', async () => {
   const h = harness(); await h.start(); await h.complete('go'); h.click('COME LINK'); await flush();
   const nav = h.navigation(); void nav.navigate({ kind: 'entry', headword: 'other', fragment: '' }); await flush();

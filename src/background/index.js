@@ -9,7 +9,7 @@ import {
   onReadingTabRemoved,
   onReadingTabUpdated
 } from "./reading-record/runtime.js";
-import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort } from "./selection/assistant-stream.js";
+import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort, onSelectionAssistantTabUpdated } from "./selection/assistant-stream.js";
 import { ensureProviderConnections } from "./provider-connections.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
@@ -22,7 +22,7 @@ export function initializeBackground() {
   registerCommandRouter();
   const nativeBroker = createBrowserNativeBroker(chrome);
   chrome.runtime.onConnect.addListener(port => { if (!nativeBroker.connect(port) && !handleReadingPort(port)) handleSelectionAssistantStreamPort(port); });
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { onReadingTabUpdated(tabId, changeInfo); if (changeInfo?.status === "loading" || Object.hasOwn(changeInfo || {}, "url")) abortSelectionAssistantStreams(tabId); });
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { onReadingTabUpdated(tabId, changeInfo); onSelectionAssistantTabUpdated(tabId, changeInfo); });
   chrome.tabs.onRemoved.addListener(tabId => { onReadingTabRemoved(tabId); abortSelectionAssistantStreams(tabId); });
   chrome.permissions.onRemoved.addListener(() => { onReadingPermissionsRemoved(); abortSelectionAssistantStreams(); });
   chrome.storage.onChanged.addListener((changes, areaName) => {

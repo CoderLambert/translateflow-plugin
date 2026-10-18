@@ -304,6 +304,12 @@
                   apiTranslated: result.apiTranslated
                 });
               }
+              if (result.cacheWarning && Date.now() - state.lastAutoErrorAt > 5000) {
+                // Incremental auto and cache-only restore are silent on success,
+                // but must surface persistent-storage failures without spamming.
+                showToast(t(allowProvider ? "content.page.cacheNotSaved" : "content.page.cacheLookupFailed"), "error");
+                state.lastAutoErrorAt = Date.now();
+              }
             } catch (error) {
               if (task) tasks.failTask(task, error);
               throw error;

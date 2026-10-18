@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 vi.mock("../../src/options/local-dictionary-client", () => ({ createLocalDictionaryClient: vi.fn() }));
 
 import { RichList } from "../../src/options/DictionaryViews";
+import { DictionarySection } from "../../src/options/DictionarySection";
 import { LocalDictionaryImport } from "../../src/options/LocalDictionaryImport";
 import { createLocalDictionaryClient } from "../../src/options/local-dictionary-client";
 import { LocaleProvider } from "../../src/options/LocaleContext";
@@ -50,6 +51,33 @@ test("local dictionary React cancel aborts a pending preflight without importing
   expect(service.importFiles).not.toHaveBeenCalled();
 });
 
+test("installed-state refresh disables import until confirmed and ignores an older failed response", async () => {
+  const service = makeService();
+  vi.mocked(createLocalDictionaryClient).mockReturnValue(service as never);
+  render(subject());
+  await userEvent.upload(document.querySelector<HTMLInputElement>("#localDictionaryFiles")!, new File(["fixture"], "fixture.mdx"));
+  const button = screen.getByRole("button", { name: "安装词典" }) as HTMLButtonElement;
+  await waitFor(() => expect(button.disabled).toBe(false));
+
+  type Installed = Awaited<ReturnType<typeof service.installed>>;
+  const older = deferred<Installed>();
+  const newer = deferred<Installed>();
+  service.installed.mockImplementationOnce(() => older.promise).mockImplementationOnce(() => newer.promise);
+  await act(async () => { document.dispatchEvent(new CustomEvent("translateflow:dictionary-state-changed")); });
+  expect(button.disabled).toBe(true);
+  await act(async () => { document.dispatchEvent(new CustomEvent("translateflow:dictionary-state-changed")); });
+  await act(async () => { newer.resolve({ candidates: [], known: { rich: true, packs: true } }); });
+  expect(button.disabled).toBe(false);
+  await act(async () => { older.resolve({ candidates: [], known: { rich: false, packs: true } }); });
+  expect(button.disabled).toBe(false);
+
+  service.installed.mockResolvedValueOnce({ candidates: [], known: { rich: false, packs: true } });
+  await act(async () => { document.dispatchEvent(new CustomEvent("translateflow:dictionary-state-changed")); });
+  expect(button.disabled).toBe(true);
+  expect(document.querySelector("#localDictionaryPreflightSummary")?.textContent).toContain("安装已暂停");
+  expect(service.importFiles).not.toHaveBeenCalled();
+});
+
 test("local dictionary StrictMode disposes every controller owner", async () => {
   const services = [makeService(), makeService()];
   vi.mocked(createLocalDictionaryClient).mockImplementation(() => services.shift() as never);
@@ -68,6 +96,30 @@ function makeService(overrides: Record<string, unknown> = {}) {
     ...overrides
   };
 }
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => { resolve = resolvePromise; reject = rejectPromise; });
+  return { promise, resolve, reject };
+}
+
+test("a dictionary preference keeps the pending user choice and rolls back a rejected save", async () => {
+  const save = deferred<void>();
+  const updateRichPreferences = vi.fn(() => save.promise);
+  const setStatus = vi.fn();
+  const dictionary = { id: "rich-test", title: "Preference fixture", status: "ready", enabled: true, expandedByDefault: false };
+  render(<LocaleProvider value={zh}><RichList client={{ updateRichPreferences } as never} dictionaries={[dictionary]} refresh={vi.fn()} setStatus={setStatus} /></LocaleProvider>);
+  const expanded = screen.getByRole("checkbox", { name: "默认展开释义（首选自动展开）" }) as HTMLInputElement;
+  await userEvent.click(expanded);
+  expect(expanded.checked).toBe(true);
+  expect(expanded.disabled).toBe(true);
+  expect(updateRichPreferences).toHaveBeenCalledExactlyOnceWith("rich-test", { expandedByDefault: true });
+  await act(async () => { save.reject(new Error("Synthetic preference write failure")); });
+  expect(expanded.checked).toBe(false);
+  expect(expanded.disabled).toBe(false);
+  expect(setStatus).toHaveBeenCalledWith("Synthetic preference write failure", true);
+});
 
 test("six-file selection displays ignored scripts and keeps the rich import route enabled", async () => {
   const next = { ...report, resources: { ...report.resources, associatedMdd: [{ fileName: "fixture.mdd" }, { fileName: "fixture.1.mdd" }], associatedSidecars: [], ignoredFiles: [{ fileName: "fixture.js", size: 10, reason: "script_not_executed" }] } };
@@ -90,4 +142,30 @@ test("installed resource recovery remains visible with full-set selection instru
   expect((screen.getByRole("button", { name: "为 Recovery fixture 添加或重新选择资源" }) as HTMLButtonElement).disabled).toBe(false);
   expect(document.querySelector('input[data-action="attach-mdd-resources"]')?.getAttribute("accept")).toContain(".css");
   expect(document.querySelector('input[data-action="attach-mdd-resources"]')?.getAttribute("accept")).toContain(".js");
+});
+
+test("dictionary library renders downloads, installed dictionaries and imports without a bundled group", async () => {
+  const service = makeService();
+  vi.mocked(createLocalDictionaryClient).mockReturnValue(service as never);
+  const client = {
+    load: vi.fn(async () => ({ packState: { packs: {} }, rich: [] })),
+    sources: [], dispose: vi.fn()
+  };
+  const view = render(<LocaleProvider value={zh}><DictionarySection client={client as never} setStatus={vi.fn()} /></LocaleProvider>);
+  await screen.findByRole("heading", { name: "精选上游与官方词典" });
+  expect(screen.getAllByRole("heading", { level: 3 }).map(heading => heading.textContent)).toEqual([
+    "精选上游与官方词典", "已安装", "本地导入"
+  ]);
+  expect(screen.queryByText("内置词典")).toBeNull();
+  expect(screen.getByRole("link", { name: "精选上游与官方词典" }).getAttribute("href")).toBe("#dictionaryDownloadHeading");
+  expect(screen.getByRole("link", { name: "本地导入" }).getAttribute("href")).toBe("#dictionaryImportHeading");
+  const initialHash = location.hash;
+  await userEvent.click(screen.getByRole("link", { name: "精选上游与官方词典" }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "精选上游与官方词典" }));
+  await userEvent.click(screen.getByRole("link", { name: "本地导入" }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "本地导入" }));
+  expect(location.hash).toBe(initialHash);
+  expect(service.importFiles).not.toHaveBeenCalled();
+  view.unmount();
+  expect(client.dispose).toHaveBeenCalledTimes(1);
 });

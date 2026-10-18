@@ -10,6 +10,17 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
   let ecdictMdxArchiveMode = "archive";
   let ecdictMdxArchiveRequests = [];
   let customPages = new Map();
+  let nextAssistantStream = null;
+  const heldAssistantStreams = new Set();
+
+  function releaseAssistantStreams() {
+    nextAssistantStream = null;
+    for (const stream of heldAssistantStreams) {
+      stream.release();
+      stream.finish();
+    }
+    heldAssistantStreams.clear();
+  }
 
   const server = createServer(async (request, response) => {
     try {
@@ -106,6 +117,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
 
         const call = {
           plannedStatus,
+          model: String(body?.model || ""),
           systemPrompt,
           userContent,
           segments: segments.map((item) => ({
@@ -122,18 +134,6 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
 
         if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
-        if (body?.stream === true && systemPrompt.includes("Plain text only")) {
-          const markdown = userContent.includes("markdownfixture");
-          const chunks = markdown
-            ? ["## Summary\n\n**streamed** answer\n\n- first\n", "- second\n\n`code`\n\n![remote](https://remote.invalid/pixel.png)\n\n[unsafe](javascript:alert(1))"]
-            : ["streamed ", "answer"];
-          response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-          response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[0] } }] })}\n\n`);
-          await new Promise(resolve => setTimeout(resolve, 300));
-          if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[1] } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
-          return;
-        }
-
         if (plannedStatus !== 200) {
           response.statusCode = plannedStatus;
           response.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -141,6 +141,31 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
           response.end(JSON.stringify({
             error: { message: `mock failure ${plannedStatus}` }
           }));
+          return;
+        }
+
+        if (body?.stream === true && systemPrompt.includes("Plain text only")) {
+          const heldStream = nextAssistantStream;
+          nextAssistantStream = null;
+          const markdown = userContent.includes("markdownfixture");
+          const chunks = markdown
+            ? ["## Summary\n\n**streamed** answer\n\n- first\n", "- second\n\n`code`\n\n![remote](https://remote.invalid/pixel.png)\n\n[unsafe](javascript:alert(1))"]
+            : ["streamed ", "answer"];
+          const onClose = () => heldStream?.release();
+          response.once("close", onClose);
+          try {
+            response.statusCode = 200; response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+            response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[0] } }] })}\n\n`);
+            heldStream?.start();
+            // Cancellation cases hold completion explicitly instead of racing
+            // several browser assertions against a short wall-clock delay.
+            await (heldStream?.wait || new Promise(resolve => setTimeout(resolve, 300)));
+            if (!response.destroyed) { response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[1] } }] })}\n\n`); response.end("data: [DONE]\n\n"); }
+          } finally {
+            response.off("close", onClose);
+            heldStream?.finish();
+            heldAssistantStreams.delete(heldStream);
+          }
           return;
         }
 
@@ -213,6 +238,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       return ecdictMdxArchiveRequests;
     },
     reset() {
+      releaseAssistantStreams();
       calls = [];
       failures = [];
       delayMs = 0;
@@ -226,6 +252,16 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
     setDelay(ms) {
       delayMs = Math.max(0, Number(ms) || 0);
     },
+    holdNextAssistantStream() {
+      if (nextAssistantStream) throw new Error("An assistant stream is already waiting for its request.");
+      let start, release, finish;
+      const started = new Promise(resolve => { start = resolve; });
+      const wait = new Promise(resolve => { release = resolve; });
+      const finished = new Promise(resolve => { finish = resolve; });
+      nextAssistantStream = { started, wait, finished, start, release, finish };
+      heldAssistantStreams.add(nextAssistantStream);
+      return { started, finished, release };
+    },
     setPage(pathname, body) {
       const path = new URL(String(pathname), "http://fixture.invalid").pathname;
       customPages.set(path, String(body));
@@ -237,6 +273,7 @@ export async function startMockServer({ ecdictMdxArchivePath = "" } = {}) {
       ecdictMdxArchiveMode = mode;
     },
     close() {
+      releaseAssistantStreams();
       return new Promise((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());
       });
