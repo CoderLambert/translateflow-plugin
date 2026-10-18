@@ -81,8 +81,12 @@
           items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken }]
         });
         assertCurrent(version, snapshot, expectedPage, task);
-        if (!stored?.ok) throw localizedError("content.selection.cacheStoreFailed", stored);
-        cacheWarning = stored.cacheWarning || (Number(stored.stored || 0) < 1 ? "CACHE_NOT_SAVED" : "");
+        if (!stored?.ok && !app.modules.runtime.isCachePersistenceError?.(stored)) {
+          throw localizedError("content.selection.cacheStoreFailed", stored);
+        }
+        cacheWarning = stored?.ok
+          ? (stored.cacheWarning || (Number(stored.stored || 0) < 1 ? "CACHE_NOT_SAVED" : ""))
+          : stored.errorCode;
       }
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
