@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { prepareExtensionTestCopy } from "./support/production-artifact.mjs";
-import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases } from "./support/upgrade-expectations.mjs";
+import { assertUnchangedUpgradeSnapshot, expectedStorageAfterInstalledUpdate, expectedRegistrationsAfterInstalledUpdate, assertRecoveredDatabases, expectedTranslationCacheDatabases } from "./support/upgrade-expectations.mjs";
 import { mappingForGeneration } from "./support/runtime-mapping.mjs";
 import { startMockServer } from "./support/mock-server.mjs";
 import { startClosedNetwork, startupNetworkControl, assertStartupNetworkControl } from "./support/closed-network.mjs";
@@ -19,7 +19,7 @@ const reportDir = resolve(process.env.TF_UPGRADE_EVIDENCE_DIR || "test-results/w
 
 for(const existingUiLocale of [undefined,"zh_CN"]) {
 const scenario=existingUiLocale===undefined ? "missing-ui-locale" : "existing-ui-locale";
-test(`same profile and unpacked path preserve real settings, cache, OPFS, preferences and registrations through old → WXT → restart (${scenario})`, async ({}, testInfo) => {
+test(`same profile and unpacked path preserve settings, dictionaries and Reading while resetting legacy translation cache (${scenario})`, async ({}, testInfo) => {
   test.skip(!oldArtifact || !newArtifact, "Set both fixed old and actual WXT artifacts; no builder fallback.");
   test.setTimeout(180_000);
   const listenerCountBefore = process.getActiveResourcesInfo().filter(type => type === "TCPServerWrap").length;
@@ -188,7 +188,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     // Chrome prunes the old dynamic registration when its raw files disappear,
     // even if it temporarily retains the cached old background worker.
     const expectedReplacement={...before,registrations:[],
-      databases:cachedOldRuntime ? before.databases : withEmptyReadingDatabase(before.databases)};
+      databases:cachedOldRuntime ? before.databases : withEmptyReadingDatabase(expectedTranslationCacheDatabases(before.databases))};
     const after=await snapshot(); assertUnchangedUpgradeSnapshot(expectedReplacement,after);
     await driver.locator('.settings-nav a[href="#general"]').click();
     await expect(driver.locator("#uiLocale")).toBeVisible();
@@ -229,7 +229,7 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(activatedRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     await expect.poll(()=>driver.evaluate(()=>chrome.storage.local.get(["uiLocale"]).then(x=>x.uiLocale))).toBe(expectedReloadStorage.uiLocale);
     const activated=await snapshot();expect(activated).toEqual({...beforeActivation,storage:expectedReloadStorage,
-      registrations:expectedReloadRegistrations,databases:withEmptyReadingDatabase(beforeActivation.databases)});
+      registrations:expectedReloadRegistrations,databases:withEmptyReadingDatabase(expectedTranslationCacheDatabases(beforeActivation.databases))});
     phases.push({phase:"WXT-management-reload",id:extensionId,newWorkerObserved:true,networkStartup:activatedStartup,nativeLifecycle:reloadedLifecycle,nativeRuntime:activatedRuntime,snapshot:summary(activated)});
     const invalidated=await driver.evaluate(async(id)=>{
       try {return await chrome.tabs.sendMessage(id,{type:"ABT_STATUS"});}
@@ -239,23 +239,41 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     // unsuitable for checking an old binding. Probe the old registered channel.
     expect(invalidated).toMatchObject({ok:false,invalidated:true});
     const reopened=await context.newPage(); await reopened.goto(`${server.baseUrl}/article`);
-    // These restore checks now run after actual new-WXT activation, not against
-    // the old background Chromium can retain at the same unpacked version.
-    await expect(reopened.locator(".abt-translation")).toHaveCount(3); expect(server.calls).toHaveLength(1);
-    await reopened.reload(); await expect(reopened.locator(".abt-translation")).toHaveCount(3);
+    // The v4 schema intentionally discards old translation and page rows; this
+    // site's cache-only restore must NOT silently incur a new Provider charge.
+    await expect(reopened.locator(".abt-translation")).toHaveCount(0);
     expect(server.calls).toHaveLength(1);
+    const emptyCache=await snapshot();
+    expect(emptyCache.databases.find(db=>db.name==="ai_bilingual_translator")).toMatchObject({
+      version:4,stores:{entries:[],epochs:[]}
+    });
+    expect(emptyCache.storage).toEqual(expectedReloadStorage);
+    expect(emptyCache.opfs).toEqual(before.opfs);
+    // Only explicit user action creates fresh v4 cache records.
+    expect(await content(reopened,{type:"ABT_TRANSLATE_PAGE",taskId:"upgrade-v4-explicit"}))
+      .toMatchObject({ok:true,apiTranslated:3});
+    await expect(reopened.locator(".abt-translation")).toHaveCount(3);
+    expect(server.calls).toHaveLength(2);
+    await reopened.reload(); await expect(reopened.locator(".abt-translation")).toHaveCount(3);
+    expect(server.calls).toHaveLength(2);
     await stale.reload(); await expect(stale.locator(".tf-selection-chip")).toHaveCount(0);
     await inject(stale); expect(await content(stale,{type:"ABT_STATUS"})).toMatchObject({ok:true});
-    expect(server.calls).toHaveLength(1);
+    expect(server.calls).toHaveLength(2);
     const afterRecovery=await snapshot();
     expect(afterRecovery.storage).toEqual(expectedReloadStorage); expect(afterRecovery.opfs).toEqual(before.opfs);
     expect(afterRecovery.registrations).toEqual(expectedReloadRegistrations);
-    // Only the cache owner's lastAccessedAt on existing translation/page rows
-    // may advance during real reads. Content/identity and all other stores stay exact.
-    assertRecoveredDatabases(activated.databases,afterRecovery.databases);
-    expect(afterRecovery.databases[0].stores.translations).toHaveLength(3);
-    phases.push({phase:"WXT-after-recovery",id:extensionId,allDatabaseContentPreserved:true,
-      allowedReadMetadata:["ai_bilingual_translator.translations.lastAccessedAt","ai_bilingual_translator.pages.lastAccessedAt"],snapshot:summary(afterRecovery)});
+    const cacheDatabase=afterRecovery.databases.find(db=>db.name==="ai_bilingual_translator");
+    expect(cacheDatabase.version).toBe(4);
+    expect(Object.keys(cacheDatabase.stores).sort()).toEqual(["entries","epochs"]);
+    expect(cacheDatabase.stores.entries).toHaveLength(3);
+    expect(cacheDatabase.stores.entries.every(row=>row.recordVersion===1 && row.namespace==="translation")).toBe(true);
+    // The fresh translations alone may differ; settings, Reading, independent
+    // cache types and dictionary OPFS must remain exactly unchanged.
+    const exceptTranslations=databases=>databases.map(db=>db.name==="ai_bilingual_translator"
+      ? {...db,stores:{...db.stores,entries:db.stores.entries.filter(row=>row.namespace!=="translation")}} : db);
+    assertRecoveredDatabases(activated.databases,exceptTranslations(afterRecovery.databases));
+    phases.push({phase:"WXT-after-recovery",id:extensionId,oldTranslationsDiscarded:true,
+      newCacheEntries:3,otherUserDataPreserved:true,snapshot:summary(afterRecovery)});
     await context.close(); context=null;
     const restartNetworkStart=network.snapshot().attempts.length;
     const restartedWorker=await launch();
@@ -267,11 +285,11 @@ test(`same profile and unpacked path preserve real settings, cache, OPFS, prefer
     expect(restartedRuntime).toMatchObject({protocolVersion:2,ok:true,data:{opened:true}});
     const restarted=await snapshot(); expect(restarted).toEqual(afterRecovery);
     phases.push({phase:"WXT-browser-restart",id:extensionId,networkStartup:restartedStartup,nativeLifecycle:restartedLifecycle,nativeRuntime:restartedRuntime,snapshot:summary(restarted)});
-    expect(server.calls).toHaveLength(1); expect(network.snapshot().forwardedOutsideMock).toBe(0);
+    expect(server.calls).toHaveLength(2); expect(network.snapshot().forwardedOutsideMock).toBe(0);
     expect(network.snapshot().overflow).toBe(false); expect(errors).toEqual([]);
     await mkdir(reportDir,{recursive:true});
     const report={schemaVersion:1,status:"PASS",testInputHead:process.env.TF_E2E_ARTIFACT_SOURCE_HEAD??null,browserVersion,extensionId,stableUnpackedPath:true,sameUserDataDir:true,
-      productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,providerSeedCalls:1,
+      productionKeyChanged:false,phases,cachedOldRuntimeBeforeManagementReload:cachedOldRuntime,newWxtRuntimeAfterManagementReload:true,uiLocale:{before:existingUiLocale??"ABSENT",afterReplacement:after.storage.uiLocale??"ABSENT",afterInstalledUpdate:afterRecovery.storage.uiLocale,uiValue:existingUiLocale??"auto",implicitUiStorageWrite:false},dictionaryIds:[alpha.id,beta.id],cacheRows:3,oldCacheRowsDiscarded:3,providerSeedCalls:1,explicitRetranslateCalls:1,
       unauthorizedProviderCalls:0,network:network.snapshot(),backgroundReload:true,staleWorldInvalidated:true,refreshRecovery:true,
       realChrome102:"NOT RUN",realYouTube:"NOT RUN",paidProvider:"NOT RUN"};
     await writeFile(join(reportDir,`same-id-upgrade-${scenario}.json`),JSON.stringify(report,null,2)+"\n");
