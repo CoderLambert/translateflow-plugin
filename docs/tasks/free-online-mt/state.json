@@ -3,7 +3,11 @@
   "task": "free-online-mt",
   "status": "working",
   "owner": "main",
-  "dependencies": [],
+  "dependencies": [
+    "cache-system-v1",
+    "remove-bundled-lexicons",
+    "content-runtime-closeout"
+  ],
   "branch": "feat/free-online-mt-20261016",
   "candidateHead": "",
   "mergeHead": "",
@@ -27,5 +31,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户已批准废弃旧翻译缓存，正在 PR #342 分支实施 DB/cache schema v3 单一解析、升级回归与现有 MT 模块验收。旧 translations/pages 清空；ReadingRecord/词典/凭据/独立解释缓存保留。未执行完整 validate、真实浏览器升级 E2E 与真实腾讯/微软再验，禁止写 PASS 或 completed。"
+  "nextAction": "2026-10-19：原 #342 旧分支与 main(DB4/#345、用户词典/#346、Quick Control/#348、文档/#350)有真实冲突。已在 integration/pr342-db4-20261019 进行安全适配：保留 DB4 唯一缓存驱动与 write token、最新 Content/Reading，移入免费 MT Provider/Options/Popup 和受保护划词防外发。当前仍需完成编译/全仓验证及真实微软/腾讯检查，测试记录未执行不得写 PASS；旧 DB3/hash/升级断言不得回归。用户验收前保持 Draft、不合并。"
 }
