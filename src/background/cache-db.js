@@ -324,8 +324,9 @@ async function removeOrphanPages(pageKeys) {
 
 function openDb() {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
+  const opening = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
+    let rejected = false;
     request.onupgradeneeded = (event) => {
       const db = request.result;
       // One-way cache reset: never parse, migrate or fall back to pre-v3 translations.
@@ -350,10 +351,18 @@ function openDb() {
         store.createIndex("lastAccessedAt", "lastAccessedAt", { unique: false });
       }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("无法打开 IndexedDB。"));
-    request.onblocked = () => reject(new Error("IndexedDB 升级被其他扩展页面阻塞，请关闭扩展设置页后重试。"));
+    request.onsuccess = () => {
+      const db = request.result;
+      // A blocked upgrade can subsequently finish after callers have received
+      // the error. Close that late connection rather than leaking a v3 handle.
+      if (rejected) { db.close(); return; }
+      db.onversionchange = () => { db.close(); dbPromise = null; };
+      resolve(db);
+    };
+    request.onerror = () => { rejected = true; reject(request.error || new Error("无法打开 IndexedDB。")); };
+    request.onblocked = () => { rejected = true; reject(new Error("IndexedDB 升级被其他扩展页面阻塞，请关闭扩展设置页后重试。")); };
   });
+  dbPromise = opening.catch(error => { dbPromise = null; throw error; });
   return dbPromise;
 }
 
