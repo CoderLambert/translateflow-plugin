@@ -1,3 +1,4 @@
+import { normalizeMachineTranslation } from "./machine-translation.js";
 import {
   DEFAULT_CONFIG,
   DEFAULT_OPENAI_COMPATIBLE,
@@ -134,6 +135,7 @@ export function resolveTranslationConfigForSite(
 
 export function normalizeSiteProfile(rawProfile = {}) {
   const profile = {};
+  if (rawProfile.machineTranslation !== undefined) profile.machineTranslation = normalizeMachineTranslation(rawProfile.machineTranslation);
   const serviceRef = normalizeServiceRef(rawProfile.serviceRef);
   if (serviceRef) profile.serviceRef = serviceRef;
   if (rawProfile.provider) profile.provider = normalizeProviderId(rawProfile.provider);

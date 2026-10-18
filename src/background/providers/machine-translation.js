@@ -1,0 +1,57 @@
+import { translationParts } from "../../shared/browser-language.js";
+import { MACHINE_ENGINE, machineError, machineProvider, normalizeProtectedIds } from "../../shared/machine-translation.js";
+import { requestMachineTexts } from "./machine-translation-transport.js";
+
+// Reuse the existing local structure parser; no provider receives TF markers,
+// link destinations, code/kbd content, dictionary material or AI credentials.
+export async function translateMachineBatch(segments, config, { signal } = {}) {
+  if (config?.engine !== MACHINE_ENGINE) throw machineError("MT_CONFIG");
+  const provider = machineProvider(config.provider), ids = new Set();
+  if (!Array.isArray(segments) || segments.length > 128) throw machineError("MT_INPUT");
+  const requests = [], plans = [];
+  let total = 0;
+  for (const segment of segments) {
+    if (signal?.aborted) throw machineError("CANCELLED");
+    if (typeof segment?.text !== "string" || !segment.id || ids.has(String(segment.id))) throw machineError("MT_INPUT");
+    ids.add(String(segment.id)); total += segment.text.length;
+    if (total > 100000) throw machineError("MT_INPUT");
+    const protectedIds = normalizeProtectedIds(segment.protectedIds);
+    let parts;
+    try { parts = translationParts(segment.text, protectedIds); } catch { throw machineError("MT_STRUCTURE"); }
+    const markerIds = new Set([...segment.text.matchAll(/⟦TF:(\d+):S⟧/gu)].map(match => Number(match[1])));
+    if (protectedIds.some(id => !markerIds.has(id))) throw machineError("MT_STRUCTURE");
+    const pieces = [];
+    for (const part of parts) {
+      if (part.protected || !part.text.trim() || config.sourceLanguage === config.targetLanguage) { pieces.push({ literal: part.text }); continue; }
+      for (const chunk of splitMachineText(part.text)) {
+        const match = /^(\s*)([\s\S]*?)(\s*)$/u.exec(chunk);
+        if (!match[2]) { pieces.push({ literal: chunk }); continue; }
+        pieces.push({ index: requests.length, before: match[1], after: match[3] }); requests.push(match[2]);
+      }
+    }
+    plans.push({ id: String(segment.id), pieces });
+  }
+  const answers = [];
+  for (let start = 0; start < requests.length; start += provider.batchSize) {
+    if (signal?.aborted) throw machineError("CANCELLED");
+    const batch = requests.slice(start, start + provider.batchSize);
+    answers.push(...await requestMachineTexts(config, batch, { signal }));
+  }
+  if (signal?.aborted) throw machineError("CANCELLED");
+  return plans.map(plan => ({ id: plan.id, text: plan.pieces.map(piece => piece.literal ?? `${piece.before}${answers[piece.index]}${piece.after}`).join("") }));
+}
+
+export function splitMachineText(text, maximum = 1000) {
+  if (typeof text !== "string" || !Number.isSafeInteger(maximum) || maximum < 1 || maximum > 10000) throw machineError("MT_INPUT");
+  const points = [...text], chunks = [];
+  for (let start = 0; start < points.length;) {
+    let end = Math.min(start + maximum, points.length);
+    if (end < points.length) {
+      for (let cut = end; cut > start + maximum / 2; cut--) {
+        if (/[\s。！？.!?;]/u.test(points[cut - 1])) { end = cut; break; }
+      }
+    }
+    chunks.push(points.slice(start, end).join("")); start = end;
+  }
+  return chunks;
+}

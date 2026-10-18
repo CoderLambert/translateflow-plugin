@@ -509,3 +509,8 @@ select {
     transition: none;
   }
 }
+
+.mt-popup .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mt-popup .row button { flex: 1 1 120px; white-space: normal; }
+.mt-popup .mt-consent { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.5; margin-block: 10px; }
+.mt-popup .mt-consent input { flex: 0 0 auto; margin-top: 3px; }

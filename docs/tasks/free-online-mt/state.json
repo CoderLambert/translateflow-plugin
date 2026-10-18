@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "task": "free-online-mt",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/free-online-mt-20261016",
+  "candidateHead": "",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/machine-translation.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/machine-translation.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "用户已批准废弃旧翻译缓存，正在 PR #342 分支实施 DB/cache schema v3 单一解析、升级回归与现有 MT 模块验收。旧 translations/pages 清空；ReadingRecord/词典/凭据/独立解释缓存保留。未执行完整 validate、真实浏览器升级 E2E 与真实腾讯/微软再验，禁止写 PASS 或 completed。"
+}
