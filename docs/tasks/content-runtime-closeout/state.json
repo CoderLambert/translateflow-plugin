@@ -13,9 +13,8 @@
     ["npm", "run", "validate"],
     ["npm", "run", "build:extension:wxt"],
     ["env", "TF_SMOKE_ARTIFACT=dist/extension", "TF_SMOKE_REPORT=.wxt/reports/stable-smoke.json", "npm", "run", "test:wxt:smoke"],
-    ["npm", "run", "test:wxt:smoke"],
-    ["npm", "run", "test:e2e"]
+    ["npm", "run", "test:wxt:smoke"]
   ],
   "artifactRequired": true,
-  "nextAction": "Finish integrated acceptance, record the exact candidate and package fingerprint, then sync through a protected squash PR."
+  "nextAction": "Record complete non-E2E acceptance and package fingerprint; full Chromium E2E is explicitly deferred to the next feature at the user's request, then sync through the protected squash PR."
 }

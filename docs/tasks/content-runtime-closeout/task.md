@@ -11,7 +11,7 @@
 - `git diff --check origin/main...HEAD`
 - `npm run validate`：静态检查、Node、类型、Vitest 与默认 WXT 安装包。
 - `npm run build:extension:wxt` 后分别对 `dist/extension/` 与 `.output/chrome-mv3/` 运行 smoke。
-- `npm run test:e2e`：完整 Chromium/MV3 回归，覆盖三项新流程及旧用户词典诊断。
+- 完整 `npm run test:e2e` 按用户要求延至下一项功能验收，不作为本次合并门槛。此前针对改动流程的定向 E2E 为 22/22 PASS；在候选 `fa010838154245f35fdb48e6fbc3fbf0a6de599f` 上启动的完整套件被用户要求停止，停止时 226/239 PASS、1 项中断、9 项跳过、3 项未运行，不记为完整 E2E 通过。
 - 包 fingerprint 绑定实际 `dist/extension/`；不含词典数据。
 
 当前任务不包含 native-host 功能、商店发布或真实 Provider 认证。各原始工作记录保留在 `auto-context-invalidated/`、`quick-control-position/` 与 `rich-dictionary-ai-actions/`，本任务为它们唯一的集成状态与当前验收入口。
