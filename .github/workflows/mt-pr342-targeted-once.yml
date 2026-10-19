@@ -1,0 +1,61 @@
+name: mt-pr342-targeted-once
+
+on:
+  push:
+    branches:
+      - feat/free-online-mt-20261016
+    paths:
+      - .github/workflows/mt-pr342-targeted-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mt-pr342-targeted-once
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TF_TEST_WORKERS: '2'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Machine translation, selection and DB4 targeted tests
+        run: >-
+          node --test
+          tests/machine-translation.test.mjs
+          tests/machine-translation-selection-protection.test.mjs
+          tests/selection-translation-query.test.mjs
+          tests/cache-system.test.mjs
+          tests/cache-system-review.test.mjs
+          tests/cache-system-integration-review.test.mjs
+      - name: Final Node, type, UI and production bundle validation
+        run: npm run validate
+      - name: WXT second output build
+        run: npm run build:extension:wxt
+      - name: Stable and explicit WXT smoke
+        run: |
+          TF_SMOKE_ARTIFACT=dist/extension TF_SMOKE_REPORT=test-results/mt342-stable-smoke.json npm run test:wxt:smoke
+          TF_SMOKE_ARTIFACT=.output/chrome-mv3 TF_SMOKE_REPORT=test-results/mt342-explicit-smoke.json npm run test:wxt:smoke
+      - name: Install Chromium for actual MT extension E2E
+        run: npx playwright install --with-deps chromium
+      - name: Machine translation browser E2E (mock network only)
+        run: npm run test:e2e -- e2e/machine-translation.spec.mjs --workers=1 --retries=0
+      - name: Upload local-only test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt-pr342-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+            .wxt/reports/
+          if-no-files-found: ignore
+          retention-days: 3
