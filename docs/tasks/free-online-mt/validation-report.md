@@ -90,3 +90,11 @@ Same-ID 0.8.29→0.8.30 unpacked replacement and Chromium management reload pres
 PR #342 was read as OPEN/DRAFT at candidate HEAD. Human final acceptance and real-vendor connectivity remain pending; no private dictionary compatibility or full-project E2E claim. No M1–M3, physical DB4 change, built-in dictionary restoration, commit, push, merge or release. Existing isolated loopback test servers closed automatically; no LAN review server was needed, no external-access or Tailscale setup was made.
 
 Exact command logs and inventories are archived locally in `docs/task-execution/local/free-online-mt/continuation-62bb5f10/`; local-task logs are referenced by acceptance.json. A transferable evidence bundle and compiled candidate ZIP are delivered outside Git. Local metadata remains uncommitted.
+
+## 2026-10-19 committed candidate 0d24500 / package 0.8.31
+
+After the user asked to skip the manual acceptance wait and continue development, the already completed local acceptance archive was committed as `0d245001483b7b653452e0c0889f713c310be7fe`; the repository commit preparation rule advanced package metadata and rebuilt the extension to 0.8.31. This new commit was frozen as the precise candidate and all six task-contract commands were rerun through `scripts/local-task.mjs`, producing local timed logs with hashes.
+
+Results on Node 24.22.0, npm 11.19.0, WXT 0.21.4 and Chromium 153.0.8010.12: MT + Selection unit 53/53 PASS; `npm run validate` PASS (Node 1885/1885, Vitest 62/62, strict TypeScript, checks and default WXT build); explicit WXT build PASS; WXT smoke PASS_WITH_WARNING with no page errors or outside requests forwarded; compiled MT E2E 7/7 PASS; main DB4 `0.8.29` → candidate `0.8.31` same-ID update 1/1 PASS. DB4, Reading, settings and synthetic user MDX dictionary remained intact, with zero provider requests. `node scripts/local-task.mjs gate free-online-mt` PASS on this candidate.
+
+PR #342 remains OPEN/DRAFT at remote head `62bb5f10`; local `0d24500` has not been pushed. The user explicitly asked that future development skip the manual acceptance wait. This does not authorize live vendor calls; Microsoft/Tencent remain mocked and no private text was sent. M1–M3 remain outside this task contract and were not started. Store automatic update and full-project E2E are not claimed.

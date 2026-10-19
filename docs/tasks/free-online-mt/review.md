@@ -119,3 +119,7 @@
 ## 2026-10-19 primary-agent self-check, candidate 62bb5f10
 
 Reviewed the actual main→candidate diff and MT adapter/transport, snapshot ownership, cache facade and Selection protection paths. Targeted tests verify URL/code/link protection, authoritative HTTP errors and queue release, strategy identity isolation, no-provider cacheOnly, navigation/cancellation and preserved user data. No new confirmed defect found; no implementation edits required. This is primary-agent self-check, not independent review. Real supplier availability and user final acceptance remain unverified. Local metadata changes do not authorize merging or release.
+
+## Post-commit candidate self-check: 0d24500
+
+The 0.8.31 commit changes only package version metadata plus the previously tested archive. Rebuilt and reran all six required task commands against the exact commit; all passed and local-task gate passes. No production logic defect was found. The user asked to skip manual acceptance as a development blocker; vendor calls remain unrequested. Remote PR is still Draft and unchanged.

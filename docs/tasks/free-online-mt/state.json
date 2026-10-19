@@ -9,7 +9,7 @@
     "content-runtime-closeout"
   ],
   "branch": "feat/free-online-mt-20261016",
-  "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+  "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
   "mergeHead": "",
   "validationCommands": [
     [
@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19 本地从最新远端 62bb5f10 接手并冻结；完整 validate（1885 Node + 62 Vitest）、WXT build/smoke、MT Chromium 7/7、扩展 MT/DB4 14/14（原生 DB4 子检查19/19）、同 ID main 0.8.29→候选0.8.30 升级1/1、用户词典导入与取消3/3均通过。待用户最终验收；真实 Microsoft/Tencent 连接未经本轮明确同意，未运行。PR 保持 Draft，未提交/推送/合并/发布；ready_to_sync 仅表示本地自动化证据齐备，不表示人工验收或任务完成。"
+  "nextAction": "2026-10-19 本地 commit 0d245001483b7b653452e0c0889f713c310be7fe（版本 0.8.31）在提交后对准确 SHA 完成本地 task 合同全部 6 项并通过 gate。用户已要求后续跳过人工验收等待；PR #342 仍 OPEN/DRAFT 于远端 62bb5f10，本地提交未推送。真实 Microsoft/Tencent 请求仍未执行，原始明确授权条件继续有效。M1–M3 按本 task 合同未启动。"
 }
