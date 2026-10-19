@@ -52,6 +52,24 @@ test("site AI choices and subtitle/assistant routes keep their existing behavior
   assert.equal(resolveMachineTranslation(stored, { provider: "broken", machineTranslation: settings("mt-tencent-transmart") }).provider, "mt-tencent-transmart");
 });
 
+test("browser translation is the no-AI route for pages and subtitles, with explicit AI fallback", async () => {
+  const connection = normalizeProviderConnection({ id: "cloud", name: "Cloud", platform: "openai", protocol: "openai-chat",
+    baseUrl: "https://api.example.invalid/v1", credentialId: "cloud", defaultModel: "synthetic", settings: {} });
+  const { memory } = storage({ machineTranslation: DEFAULT_MACHINE_TRANSLATION });
+  for (const surface of ["page", "subtitle", "selection-word"]) {
+    const result = await translationEngineSettings(page, { surface });
+    assert.equal(result.engine, "browser-translator");
+    assert.equal(result.configured, false);
+  }
+  assert.equal((await translationEngineSettings(page, { surface: "selection-ai" })).engine, "ai");
+  Object.assign(memory, { providerConnectionsVersion: 1, providerConnections: { cloud: connection },
+    providerCredentials: { cloud: "synthetic-test-key" }, defaultService: { kind: "api-key", connectionId: "cloud" } });
+  assert.equal((await translationEngineSettings(page, { surface: "page" })).engine, "ai");
+  const fallback = await translationEngineSettings(page, { surface: "page", forceBrowser: true });
+  assert.equal(fallback.engine, "browser-translator");
+  assert.equal(fallback.configured, true);
+});
+
 test("site overrides use the existing port-normalized site identity", () => {
   const site = { machineTranslation: settings() };
   assert.equal(rawTranslationSite({ siteProfiles: { "http://localhost": site } }, "http://localhost:3210/page"), site);

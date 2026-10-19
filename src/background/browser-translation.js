@@ -12,7 +12,7 @@ export async function translationEngineSettings(pageUrl, options = {}) {
   if (machine) return { ...machine, enabled: true, configured: true };
   const site = getSiteProfile(stored.siteProfiles, pageUrl);
   const configured = hasConfiguredAi(stored, site);
-  const browserEligible = request.surface === "selection-word";
+  const browserEligible = ["page", "selection-word", "subtitle"].includes(request.surface);
   const engine = browserEligible && (request.forceBrowser === true || !configured) ? BROWSER_ENGINE : "ai";
   // Resolve configuration errors here; never hide a broken AI connection.
   if (engine === "ai" && configured) await getEffectiveConfig(pageUrl);

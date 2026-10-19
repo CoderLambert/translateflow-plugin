@@ -75,7 +75,7 @@ test("cancelling preparation destroys a late instance; cancelling translation re
   controller.abort(); translateDone("late"); await assert.rejects(running, { code: "CANCELLED" }); engine.dispose();
 });
 
-async function clientContext({ settings = payload => payload.surface === "selection-word"
+async function clientContext({ settings = payload => ["selection-word", "page", "subtitle"].includes(payload.surface)
   ? { ok: true, engine: BROWSER_ENGINE, enabled: true, configured: false, sourceLanguage: "auto", targetLanguage: "Chinese" }
   : { ok: true, engine: "ai", enabled: true, configured: false }, prompt = async () => true } = {}) {
   const calls = [], events = {}, model = { creates: 0, executions: [], disposed: 0 };
@@ -108,12 +108,14 @@ test("disabled basic translation does not query models or execute; settings noti
   assert.equal(state.model.disposed, 1);
 });
 
-test("subtitles require AI and never initialize browser translation", async () => {
+test("subtitles use local browser translation without AI and retain the subtitle surface", async () => {
   const state = await clientContext();
   const unit = { id: "cue", mediaId: "video", text: "bonjour", track: { language: "fr" }, cue: { startTime: 1, endTime: 2 } };
-  await assert.rejects(state.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "task", pageUrl: "https://example.test/", units: [unit] }, state.raw), { code: "AI_REQUIRED" });
-  assert.equal(state.model.executions.length, 0);
-  assert.equal(state.calls.some(item => item.type === M.CACHE_STORE), false);
+  const result = await state.client.send({ type: M.SUBTITLE_TRANSLATE_BATCH, requestId: "task", pageUrl: "https://example.test/", units: [unit] }, state.raw);
+  assert.equal(result.ok, true);
+  assert.equal(state.model.executions.length, 1);
+  assert.equal(state.calls.find(item => item.type === M.TRANSLATION_ENGINE_SETTINGS).surface, "subtitle");
+  assert.equal(state.calls.some(item => item.type === M.CACHE_STORE), true);
 });
 
 test("AI error waits for explicit fallback choice and requires a fresh task", async () => {
@@ -169,13 +171,30 @@ test("automatic cache restoration never opens a preparation or settings prompt",
   assert.equal(state.model.executions.length, 0);
 });
 
-test("page translation without AI stays out of browser models and remains silent for cache-only restore", async () => {
+test("page translation uses the local engine without AI while cache-only restore stays silent", async () => {
   const state = await clientContext();
   const result = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "restore", cacheOnly: true,
     languageSource: "page", pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
-  // This DTO is created inside the VM; compare its complete structured-cloned
-  // message value rather than requiring the host realm's Object prototype.
-  assert.deepEqual(structuredClone(result), { ok: true, hits: [], engine: "ai", skippedIds: [] });
+  assert.equal(result.ok, true);
+  assert.equal(result.engine, BROWSER_ENGINE);
+  assert.equal(state.model.executions.length, 0);
+  const lookup = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "page", languageSource: "page",
+    pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const translated = await state.client.send({ type: M.TRANSLATE_BATCH, requestId: "page", configSnapshotId: lookup.configSnapshotId,
+    pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  assert.equal(translated.engine, BROWSER_ENGINE);
+  assert.equal(state.model.executions.length, 1);
+  assert.equal(state.calls.find(item => item.type === M.TRANSLATION_ENGINE_SETTINGS && item.surface === "page").surface, "page");
+});
+
+test("explicit free online translation keeps its page cache route without opening AI setup", async () => {
+  let prompts = 0;
+  const state = await clientContext({ settings: { ok: true, engine: "machine-translation", configured: false }, prompt: () => { prompts++; throw new Error("must not prompt"); } });
+  const result = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "mt-page", languageSource: "page",
+    pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  assert.equal(result.ok, true);
+  assert.equal(prompts, 0);
+  assert.equal(state.calls.some(item => item.type === M.CACHE_LOOKUP && !item.browserTranslation), true);
   assert.equal(state.model.executions.length, 0);
 });
 

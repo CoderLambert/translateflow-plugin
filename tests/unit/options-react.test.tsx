@@ -342,12 +342,12 @@ test("preferred translations provide complete matching English copy and an instr
   await userEvent.selectOptions(screen.getByLabelText("Apply to"), "site");
   expect(screen.getByText(/Enter the full website address, such as https:\/\/github\.com/u)).toBeTruthy();
 });
-test("selected-word browser definitions default on and source preference changes through the existing settings owner", async () => {
+test("browser translation defaults on and source preference changes through the existing settings owner", async () => {
   const update = vi.fn();
   render(<LocaleProvider value={zh}><GeneralSection config={config} disabled={false} update={update} /></LocaleProvider>);
-  const enabled = screen.getByLabelText("启用划词浏览器释义") as HTMLInputElement;
+  const enabled = screen.getByLabelText("启用浏览器翻译") as HTMLInputElement;
   expect(enabled.checked).toBe(true);
   await userEvent.click(enabled); expect(update).toHaveBeenCalledWith({ browserTranslationEnabled: false });
-  await userEvent.selectOptions(screen.getByLabelText("划词释义源语言"), "fr");
+  await userEvent.selectOptions(screen.getByLabelText("浏览器翻译默认源语言"), "fr");
   expect(update).toHaveBeenCalledWith({ browserSourceLanguage: "fr" });
 });
