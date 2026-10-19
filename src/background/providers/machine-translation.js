@@ -28,11 +28,17 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
     if (protectedIds.some(id => !markerIds.has(id))) throw machineError("MT_STRUCTURE");
     const pieces = [];
     for (const part of parts) {
-      if (part.protected || !part.text.trim() || config.sourceLanguage === config.targetLanguage) { pieces.push({ literal: part.text }); continue; }
-      for (const chunk of splitMachineText(part.text)) {
-        const match = /^(\s*)([\s\S]*?)(\s*)$/u.exec(chunk);
-        if (!match[2]) { pieces.push({ literal: chunk }); continue; }
-        pieces.push({ index: requests.length, before: match[1], after: match[3] }); requests.push(match[2]);
+      // Internal protected slots are immutable. Ordinary text still needs
+      // literal URL protection: a visible address is not safe MT payload.
+      for (const unit of part.protected ? [{ text: part.text, protected: true }] : splitMachineVisibleUrls(part.text)) {
+        if (unit.protected || !unit.text.trim() || config.sourceLanguage === config.targetLanguage) {
+          pieces.push({ literal: unit.text }); continue;
+        }
+        for (const chunk of splitMachineText(unit.text)) {
+          const match = /^(\s*)([\s\S]*?)(\s*)$/u.exec(chunk);
+          if (!match[2]) { pieces.push({ literal: chunk }); continue; }
+          pieces.push({ index: requests.length, before: match[1], after: match[3] }); requests.push(match[2]);
+        }
       }
     }
     plans.push({ id: String(segment.id), pieces });
@@ -45,6 +51,22 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
   }
   if (signal?.aborted) throw machineError("CANCELLED");
   return plans.map(plan => ({ id: plan.id, text: plan.pieces.map(piece => piece.literal ?? `${piece.before}${answers[piece.index]}${piece.after}`).join("") }));
+}
+
+// Preserve user-visible addresses verbatim: only surrounding prose is sent
+// to free web MT. Selection separately uses its stricter fail-closed policy.
+const VISIBLE_ADDRESS = /(?:\b[a-z][a-z0-9+.-]*:\/\/[^\s<>"'⟦⟧]+|\b(?:mailto|data|blob|javascript|tel):[^\s<>"'⟦⟧]+|\b[\w.%+-]+@(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}|\bwww\.[^\s<>"'⟦⟧]+|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?|\b(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?)/giu;
+
+export function splitMachineVisibleUrls(text) {
+  const units = [];
+  let offset = 0;
+  for (const match of text.matchAll(VISIBLE_ADDRESS)) {
+    if (match.index > offset) units.push({ text: text.slice(offset, match.index), protected: false });
+    units.push({ text: match[0], protected: true });
+    offset = match.index + match[0].length;
+  }
+  if (offset < text.length || !units.length) units.push({ text: text.slice(offset), protected: false });
+  return units;
 }
 
 export function splitMachineText(text, maximum = 1000) {

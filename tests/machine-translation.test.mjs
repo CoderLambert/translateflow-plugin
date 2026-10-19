@@ -5,7 +5,7 @@ import { CACHE_RECORD_VERSION } from "../src/shared/cache/record.js";
 import { DEFAULT_MACHINE_TRANSLATION, MACHINE_ENGINE, createMachineConfig, machineLanguage,
   normalizeMachineTranslation, rawTranslationSite, resolveMachineTranslation } from "../src/shared/machine-translation.js";
 import { buildMachineRequest, parseMachineResponse, requestMachineTexts } from "../src/background/providers/machine-translation-transport.js";
-import { splitMachineText, translateMachineBatch } from "../src/background/providers/machine-translation.js";
+import { splitMachineText, splitMachineVisibleUrls, translateMachineBatch } from "../src/background/providers/machine-translation.js";
 import { getConfigHash, translationSourceHash } from "../src/background/cache-db.js";
 import { buildTranslationRequestKey, cancelMachineTranslations, runTranslationRequest } from "../src/background/translation-requests.js";
 import { translationConfig, translationEngineSettings } from "../src/background/browser-translation.js";
@@ -110,6 +110,38 @@ test("formatting markers and protected code never leave the extension", async ()
   assert.equal(requests.length, 1); assert.doesNotMatch(requests[0].init.body, /TF:|secretCode/);
   assert.equal(requests[0].init.credentials, "omit"); assert.equal(requests[0].init.redirect, "error");
   assert.deepEqual(requests[0].init.headers, { "Content-Type": "application/json" });
+});
+
+test("visible Page URLs and email addresses remain local while surrounding text translates", async () => {
+  storage(); const payloads = [];
+  globalThis.fetch = async (_url, init) => {
+    const sent = JSON.parse(init.body);
+    payloads.push(...sent);
+    return ok(sent.map(text => "译:" + text));
+  };
+  const raw = "Read https://docs.example.invalid/private?token=fixture and mail admin@corp.example.invalid or visit 192.168.0.7:8080/internal.";
+  const result = await translateMachineBatch([{ id: "urls", text: raw, format: "plain" }], config());
+  for (const value of ["https://docs.example.invalid/private?token=fixture", "admin@corp.example.invalid", "192.168.0.7:8080/internal"]) {
+    assert.ok(result[0].text.includes(value));
+    assert.ok(payloads.every(sent => !sent.includes(value)), "Protected address leaked to MT payload: " + value);
+  }
+  assert.ok(payloads.length > 0, "Safe surrounding prose should still be translated");
+});
+
+test("URL-only segments never call a free MT Provider", async () => {
+  storage(); let calls = 0;
+  globalThis.fetch = () => { calls++; throw new Error("URL must remain local"); };
+  const raw = "https://private.example.invalid/path?secret=fixture";
+  assert.deepEqual(await translateMachineBatch([{ id: "url", text: raw }], config()), [{ id: "url", text: raw }]);
+  assert.equal(calls, 0);
+});
+
+test("visible URL splitting is lossless across links and plain text", () => {
+  const input = "Docs: docs.example.invalid/help, code, https://intra.example.invalid/path?q=1. Email team@example.invalid.";
+  const units = splitMachineVisibleUrls(input);
+  assert.equal(units.map(item => item.text).join(""), input);
+  assert.ok(units.filter(item => item.protected).length >= 3);
+  assert.ok(units.filter(item => !item.protected).some(item => item.text.includes("Docs: ")));
 });
 
 test("malformed structure is refused before any request", async () => {
