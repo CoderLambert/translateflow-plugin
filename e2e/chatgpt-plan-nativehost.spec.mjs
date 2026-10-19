@@ -14,7 +14,16 @@ test.describe("ChatGPT Plan native host Settings", () => {
     await expect(section.getByRole("status")).toContainText("尚未检查连接");
     await section.getByRole("button", { name: "检查状态并加载模型" }).click();
     await expect(section.getByRole("status")).toContainText("当前用户尚未安装或注册 TranslateFlow native host");
-    await expect(section.getByRole("link", { name: "下载 TranslateFlow 本地组件" })).toHaveAttribute("href", /github\.com\/CoderLambert\/translateflow-plugin\/releases\/latest/u);
+    await expect(section.getByText("本地组件尚未发布公开安装包。请勿从未验证的来源下载或运行未签名候选文件。")).toBeVisible();
+    await expect(section.getByRole("link", { name: /下载 TranslateFlow 本地组件/u })).toHaveCount(0);
+    await section.getByText("开发版测试注册", { exact: true }).click();
+    const version = await page.evaluate(() => chrome.runtime.getManifest().version);
+    const buildCommand = `TF_CHROME_EXTENSION_ID=${harness.extensionId} TF_NATIVE_HOST_VERSION=${version} npm run build:native-host:candidate`;
+    const binary = `./.output/native-host-candidate/translateflow-host-${version}-linux-amd64`;
+    await expect(section.getByText(harness.extensionId, { exact: true })).toBeVisible();
+    await expect(section.getByText(buildCommand, { exact: true })).toBeVisible();
+    await expect(section.getByText(binary, { exact: true })).toBeVisible();
+    await expect(section.getByText(`${binary} install --browser chromium`, { exact: true })).toBeVisible();
     await section.getByRole("button", { name: "已经安装 · 重新检测" }).click();
     await expect(section.getByRole("status")).toContainText("当前用户尚未安装或注册 TranslateFlow native host");
     await expect(section.getByRole("button", { name: "重启本地组件" })).toHaveCount(0);

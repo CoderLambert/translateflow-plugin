@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "free-online-mt",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "cache-system-v1",
@@ -10,7 +10,7 @@
   ],
   "branch": "feat/free-online-mt-20261016",
   "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
-  "mergeHead": "",
+  "mergeHead": "1d3c127ddbf519f767a4f26f0ee4c7a03b90baf9",
   "validationCommands": [
     [
       "node",
@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19 本地 commit 0d245001483b7b653452e0c0889f713c310be7fe（版本 0.8.31）在提交后对准确 SHA 完成本地 task 合同全部 6 项并通过 gate。用户已要求后续跳过人工验收等待；PR #342 仍 OPEN/DRAFT 于远端 62bb5f10，本地提交未推送。真实 Microsoft/Tencent 请求仍未执行，原始明确授权条件继续有效。M1–M3 按本 task 合同未启动。"
+  "nextAction": "PR #342 已于 2026-10-19 squash 合入 main；origin/main tree 与验收 syncHead f8516ef 的 tree 一致。按任务合同完成 M0；真实供应商可用性、商店自动更新和完整真实词典兼容性未验证，M1–M3 不属于本任务合同。"
 }
