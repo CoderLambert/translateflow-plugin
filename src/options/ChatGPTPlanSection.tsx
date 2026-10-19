@@ -159,8 +159,9 @@ export function ChatGPTPlanSection({ config, disabled, update, client }: Props) 
   const available = view.models.some(model => model.slug === config.chatgptPlanModel);
   const hostNeedsInstall = ["NATIVE_HOST_UNAVAILABLE", "NATIVE_HOST_DISCONNECTED", "NATIVE_HOST_TIMEOUT", "NATIVE_HOST_UPDATE_REQUIRED"].includes(view.errorCode || "");
   const controlsAvailable = permission === "granted" && !hostNeedsInstall;
-  const runtimeExtensionId = typeof chrome === "undefined" ? "" : chrome.runtime?.id;
-  const hostVersion = typeof chrome === "undefined" ? "" : chrome.runtime?.getManifest().version;
+  const runtime = typeof chrome === "undefined" ? undefined : chrome.runtime;
+  const runtimeExtensionId = runtime?.id || "";
+  const hostVersion = runtime?.getManifest?.().version ?? "";
   const extensionId = validExtensionId(runtimeExtensionId) ? runtimeExtensionId : "";
   const browserTarget = typeof navigator === "undefined" ? null : nativeHostDevelopmentTarget(navigator.platform, navigator.userAgent);
   const developmentCommands = extensionId ? nativeHostDevelopmentCommands(extensionId, hostVersion, browserTarget) : null;
