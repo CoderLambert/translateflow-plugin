@@ -173,6 +173,54 @@
       "Full Oxford import, restart, offline, and content-quality acceptance remains outstanding."
     ]
   },
+  "supplementalVerification": {
+    "verifiedAt": "2026-10-20",
+    "verificationHead": "0e1bbb5d21d0081cc168ae8184a5b0de441778cf",
+    "baseHeadAtVerification": "913c60693f17c16d9baff95274ddbc2bcf44cbea",
+    "productionInputsMatchedBase": true,
+    "package": {
+      "version": "0.8.35",
+      "paths": [".output/chrome-mv3", "dist/extension"],
+      "files": 130,
+      "bytes": 2965925,
+      "lexicalBytes": 0,
+      "treeSha256": "cfdeedeaf462dc4949b19077fecf680572af03696a8b2eee980a9acdf8abf98e"
+    },
+    "checks": [
+      {
+        "command": "npm run validate",
+        "result": "PASS",
+        "summary": "Node 1899/1899; static checks 781 source files and 1161 locale keys; strict typecheck; Vitest 65/65; default WXT build."
+      },
+      {
+        "command": "npm run build:extension:wxt",
+        "result": "PASS"
+      },
+      {
+        "command": "npm run test:wxt:smoke",
+        "result": "PASS_WITH_WARNING",
+        "warning": "Existing #245 platform-code budget advisory exceeded by 599521 bytes."
+      },
+      {
+        "command": "npm run test:rich-mdict-security",
+        "result": "PASS 3/3"
+      },
+      {
+        "command": "npm run test:rich-lookup-cancellation",
+        "result": "PASS 12/12"
+      },
+      {
+        "command": "TF_TEST_WORKERS=1 npm run test:e2e -- e2e/mdd-resources.spec.mjs e2e/rich-navigation.spec.mjs e2e/oxford-radio-css.spec.mjs e2e/rich-resource-failure-ui.spec.mjs e2e/rich-reading-window.spec.mjs e2e/selection-assistant-ui.spec.mjs e2e/settings-ia.spec.mjs --retries=0",
+        "result": "PASS 18/18"
+      },
+      {
+        "command": "TF_TEST_WORKERS=1 TF_E2E_ARTIFACT=dist/extension npm run test:e2e -- e2e/rich-mdict-product.spec.mjs e2e/rich-viewer-security.spec.mjs e2e/selection-rich-lookup-cancel.spec.mjs --retries=0",
+        "result": "PASS 5/5"
+      }
+    ],
+    "networkBoundary": "Synthetic dictionary fixtures and local mocks; no Provider or external service calls.",
+    "receiptLimit": "Supplemental run, not a frozen task-candidate receipt; command output was not captured as local-task logs. Since verificationHead, main changed only README/docs/task metadata and tests/mdict-raw-boundary-interop.test.mjs. Production, package/build, and listed E2E inputs are unchanged; the added MDict test is tracked separately by offline-dictionary."
+  },
   "limitations": [
     "User reported Chrome reload and dictionary/AI tab switching as PASS; exact active extension package identity and recovery of the original resource failure remain unverified.",
     "Full private Oxford six-file certification was not repeated for this Settings presentation cleanup."
