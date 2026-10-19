@@ -97,3 +97,37 @@ test("raw and normalized boundary representations must match as one complete pai
     assert.doesNotMatch(JSON.stringify(report), /expectedFirst|actualFirst|wrong|PRIVATE/u);
   }
 });
+
+test("raw descriptors preserve technical punctuation and Unicode key ranges", async () => {
+  const entries = [
+    ["Apple", "apple sentinel"],
+    ["C#", "c sharp sentinel"],
+    ["C++", "c plus plus sentinel"],
+    ["New York", "space sentinel"],
+    ["Node.js", "dot sentinel"],
+    ["O'Neil", "apostrophe sentinel"],
+    ["co-op", "hyphen sentinel"],
+    ["e\u0301", "combining mark sentinel"],
+    ["Ｆoo", "fullwidth sentinel"]
+  ];
+  const bytes = makeRichMdx(entries, {
+    keyOptions: { KeyCaseSensitive: "No", StripKey: "Yes" },
+    keyBlockDescriptorOverrides: [{
+      firstKey: entries[0][0],
+      lastKey: entries.at(-1)[0]
+    }]
+  });
+  const index = await buildRichMdictIndex({ source: source(bytes) });
+  const block = index.keyBlocks[0];
+
+  assert.equal(block.firstKey, "Apple");
+  assert.equal(block.lastKey, "Ｆoo");
+  assert.notEqual(block.firstKey, lookupSortKey(entries[0][0], index.header));
+  assert.notEqual(block.lastKey, lookupSortKey(entries.at(-1)[0], index.header));
+  for (const [key] of entries) {
+    const result = await lookupRichMdict({ source: source(bytes), index, text: key });
+    assert.equal(result.found, true, key);
+    assert.equal(result.displayForm, key);
+    assert.match(result.rawRecord, /sentinel/u);
+  }
+});
