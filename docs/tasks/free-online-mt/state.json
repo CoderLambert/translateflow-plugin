@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "free-online-mt",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "cache-system-v1",
@@ -9,7 +9,7 @@
     "content-runtime-closeout"
   ],
   "branch": "feat/free-online-mt-20261016",
-  "candidateHead": "",
+  "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
   "mergeHead": "",
   "validationCommands": [
     [
@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：本任务 E2E 与证据变更已精确暂存；按本次提交版本约定运行 npm run commit:prepare，将 package/lock/Manifest/README 同步到 0.8.30 并构建暂存快照。最终版本重新通过 Node MT/Selection/cache 定向测试 127/127、npm run check、WXT 构建、Chromium MT + DB4 14/14（原生 DB4 19/19）及严格 DB4 main 0.8.29 → MT 0.8.30 同 ID 包替换 1/1。candidateHead 仍为空、status 保持 working；只用本地 Mock，没有请求真实 Microsoft/Tencent。Chromium 管理页重载不证明商店自动更新；全量 validate、全项目 E2E、WXT smoke、本地 task gate、真实服务与用户手工验收仍未运行。后续需完成人工/真实服务验收；本次提交推送不表示任务完成或授权合并/发布。"
+  "nextAction": "2026-10-19 本地从最新远端 62bb5f10 接手并冻结；完整 validate（1885 Node + 62 Vitest）、WXT build/smoke、MT Chromium 7/7、扩展 MT/DB4 14/14（原生 DB4 子检查19/19）、同 ID main 0.8.29→候选0.8.30 升级1/1、用户词典导入与取消3/3均通过。待用户最终验收；真实 Microsoft/Tencent 连接未经本轮明确同意，未运行。PR 保持 Draft，未提交/推送/合并/发布；ready_to_sync 仅表示本地自动化证据齐备，不表示人工验收或任务完成。"
 }

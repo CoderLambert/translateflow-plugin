@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "task": "free-online-mt",
+  "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+  "tree": "bbca7c2e738b5e3c37f67a40bfd96ef421ac5671",
+  "inputTree": "d30b706fb455ea0f860d5f158e5f1c885e656a2e8dfe5fc42c42d7f4ded8eace",
+  "frozenAt": "2026-10-19T08:20:39.244Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2993.594946,
+      "startedAt": "2026-10-19T08:20:55.533Z",
+      "log": "docs/task-execution/local/free-online-mt/418c44ee-3dbc-40fb-8cd7-ba26d7c51ada.log",
+      "logSha256": "3c103d5a35a7bdb20595a044708e3a23df54e2fcf89e91866085252aae018675"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/verify-mt-db4-upgrade.mjs"
+      ],
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4653.905439,
+      "startedAt": "2026-10-19T08:21:15.544Z",
+      "log": "docs/task-execution/local/free-online-mt/f7e580f2-4352-4174-8403-f6f4674f8acf.log",
+      "logSha256": "f293115dd1a2279a67bf8c8eb88b986d045a8df0509b9bd5258311b917adb20a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1309.681916,
+      "startedAt": "2026-10-19T08:21:36.661Z",
+      "log": "docs/task-execution/local/free-online-mt/46b06e6a-414a-47fc-8d07-1a0733b454b4.log",
+      "logSha256": "e11a4ecafaba8fe1a301fe6155751e4d49232c768887ab2c27a40b5727181377"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/machine-translation.test.mjs",
+        "tests/machine-translation-selection-protection.test.mjs"
+      ],
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 198.220594,
+      "startedAt": "2026-10-19T08:22:03.986Z",
+      "log": "docs/task-execution/local/free-online-mt/2ba83cfa-33fd-4d3f-a48d-90dd306c72c8.log",
+      "logSha256": "52d10f203b4034e3d7371444f6dfdc6e971c5fc2e1e68b25bf45315c5e2d9fd6"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 66536.013941,
+      "startedAt": "2026-10-19T08:22:04.346Z",
+      "log": "docs/task-execution/local/free-online-mt/b57d3faa-e3dd-4e51-b976-c05836c50b69.log",
+      "logSha256": "d553be41a5690d4a336c77b1593b04d284b79dc0c4e469fca0e5b295b79a1403"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/machine-translation.spec.mjs",
+        "--workers=1",
+        "--retries=0"
+      ],
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 9010.233051,
+      "startedAt": "2026-10-19T08:23:11.076Z",
+      "log": "docs/task-execution/local/free-online-mt/b59dca29-761c-45ca-b216-3606708149a2.log",
+      "logSha256": "8793f496e9ff0f31eaa2d76b3ae66ad5479423281a7ddca307d5dce76f34b0de"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "5271ab3ff97dc04b5d673b711f43efc3fef687e05d5059692bc85116c9071e0a"
+  },
+  "limitations": [
+    "Human final acceptance pending; PR #342 remains OPEN DRAFT. No merge, release, M1–M3, commit or push performed.",
+    "Microsoft/Tencent transport is synthetic in MT E2E. No live vendor connectivity test authorized or performed; no private page or paid request sent.",
+    "Same-ID main 0.8.29 to candidate 0.8.30 unpacked replacement and management reload PASS; store-triggered automatic update NOT VERIFIED.",
+    "Full-project E2E and real private dictionary compatibility NOT RUN. Focused synthetic MDX/MDD and TFLex import/cancellation flows PASS.",
+    "Existing test fixtures bind isolated loopback ports and close after execution; no LAN review service needed or left running. No Tailscale, public listener, firewall or external-access changes.",
+    "Local task gate is an automated evidence check only; ready_to_sync does not mean human acceptance, merged or released."
+  ]
+}

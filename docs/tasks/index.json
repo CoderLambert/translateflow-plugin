@@ -294,14 +294,14 @@
     },
     {
       "task": "free-online-mt",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [
         "cache-system-v1",
         "remove-bundled-lexicons",
         "content-runtime-closeout"
       ],
       "branch": "feat/free-online-mt-20261016",
-      "candidateHead": ""
+      "candidateHead": "62bb5f10df7b638ad112c024e7fa0be7046c532c"
     },
     {
       "task": "offline-dictionary",

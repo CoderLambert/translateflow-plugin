@@ -115,3 +115,7 @@
 - 对最终 `0.8.30` 快照重新运行 Node MT/Selection/缓存相关测试 **127/127 PASS**、`npm run check` **PASS**、`npm run build:extension:wxt` **PASS**。最终 WXT 包 129 文件、2,947,518 bytes、词典资源 0 bytes，fingerprint `b455a1703e52637d80ade71edacdfa822b50693ca9f4049dea71ebe77ef19d20`。
 - 最终包的 Chromium MT + DB4 MV3/native 流程 **14/14 PASS**，原生 DB4 检查 **19/19 PASS**。严格 `scripts/verify-mt-db4-upgrade.mjs` **1/1 PASS**：main `0.8.29`（artifact `649a05c8e11ce26e0faa52dce551216c1318d0b3f5ca141797736b6f357194a1`）替换为当前 `0.8.30` 包；同 ID、同 profile/解包路径，cache、Reading、合成用户词典、设置保留，Provider 请求 0。详情见 `validation-report.md`。
 - E2E 只使用 Microsoft/Tencent Mock；没有请求真实供应商。升级验证使用 Chromium 管理页强制重载，不等同于商店自动更新，后者仍未验证。全量 `npm run validate`、全项目 E2E、WXT smoke、本地 task gate、真实服务及用户手工验收仍未执行；任务保持 `working`，`candidateHead` 为空，不合并或发布。
+
+## 2026-10-19 primary-agent self-check, candidate 62bb5f10
+
+Reviewed the actual main→candidate diff and MT adapter/transport, snapshot ownership, cache facade and Selection protection paths. Targeted tests verify URL/code/link protection, authoritative HTTP errors and queue release, strategy identity isolation, no-provider cacheOnly, navigation/cancellation and preserved user data. No new confirmed defect found; no implementation edits required. This is primary-agent self-check, not independent review. Real supplier availability and user final acceptance remain unverified. Local metadata changes do not authorize merging or release.
