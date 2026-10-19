@@ -346,12 +346,12 @@
     },
     {
       "task": "rich-index-cache-budget",
-      "status": "paused",
+      "status": "ready_to_sync",
       "dependencies": [
         "rich-multiple-records"
       ],
-      "branch": "fix/rich-index-cache-budget-20261013",
-      "candidateHead": null
+      "branch": "codex/rich-index-cache-budget-20261020",
+      "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4"
     },
     {
       "task": "rich-local-fonts",

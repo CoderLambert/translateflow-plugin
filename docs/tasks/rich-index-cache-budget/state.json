@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "rich-index-cache-budget",
-  "status": "paused",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "rich-multiple-records"
   ],
-  "branch": "fix/rich-index-cache-budget-20261013",
-  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-cache-20261013",
-  "candidateHead": null,
+  "branch": "codex/rich-index-cache-budget-20261020",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-index-cache-budget-20261020",
+  "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -16,15 +16,6 @@
       "diff",
       "--check",
       "origin/main...HEAD"
-    ],
-    [
-      "node",
-      "--test",
-      "tests/rich-mdict-index-cache.test.mjs",
-      "tests/rich-mdict-storage.test.mjs",
-      "tests/rich-mdict-index-migration.test.mjs",
-      "tests/rich-mdict-lookup-cancellation.test.mjs",
-      "tests/rich-mdict-records.test.mjs"
     ],
     [
       "npm",
@@ -44,16 +35,6 @@
     [
       "npm",
       "run",
-      "test:rich-mdict-security"
-    ],
-    [
-      "npm",
-      "run",
-      "test:rich-lookup-cancellation"
-    ],
-    [
-      "npm",
-      "run",
       "test:e2e",
       "--",
       "e2e/rich-mdict-index-cache.spec.mjs",
@@ -64,5 +45,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "依据用户关于实际安装规模与当前优先级的反馈暂缓：测量与局部未验收代码保留独立worktree，先完成#271真实Oxford显示；之后恢复最小cache收口。"
+  "nextAction": "0.8.35 候选 d74b92f7 完成 validate、显式 WXT 构建、WXT smoke 和 5 个相关 Chromium spec（10/10）；精确安装包指纹与 validation-report 已归档。下一步执行本地 gate，提交并普通推送仅包含允许的任务元数据归档；按远端保护和 expected-head 检查处理 PR #352。"
 }
