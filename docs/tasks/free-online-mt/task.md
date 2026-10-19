@@ -39,3 +39,13 @@ Google、B站及自动跨供应商调度为后续独立任务，不显示未实�
 
 本环境普通 Git/DNS 不可用，使用临时分支工作流导出公开源码和锁定构建依赖；
 不含凭据，临时工作流在最终功能差异中删除，不改变项目日常手动验证策略。
+
+### DB4 main → M0 同 ID 升级的严格门禁
+
+需要从 `main@1ddae0504a7478480253723d9f5fb43d13b77b88` 和当前 #342 分支分别构建真实 WXT 包。在 Node 24.21+ 设置 `TF_DB4_OLD_ARTIFACT` / `TF_DB4_NEW_ARTIFACT` 为两套完整编译目录，执行：
+
+```bash
+node scripts/verify-mt-db4-upgrade.mjs
+```
+
+验收入口只运行 `e2e/machine-translation-db4-upgrade.spec.mjs`（workers=1、retries=0），必须有 PASS 回执；缺包、跳过或失败均不通过。测试使用隔离临时 profile 与封闭网络，不能外发真实用户文本。当前主线与候选包同为 0.8.29，因此仅证明同 ID 的实际包替换和 Chromium 管理重载，不能宣称已验证商店版本递增自动更新。

@@ -57,3 +57,5 @@
 
 - 已核对 `main@1ddae050` 与本 PR package version 都是 **0.8.29**。新增测试使用 Chromium 管理页 `developerPrivate.reload` 强制重载同路径实际替换的包，**只验证同 ID、同 profile 和真实 DB4/Reading/OPFS 数据保留**，不是扩展商店随递增版本触发的自动更新。
 - 未来准备发布时须单独核对版本递增与真实更新触发，再重测对应验收；当前不擅自提升版本或宣称用户升级完成。由于 test-only 变动，还没有可归属此 HEAD 的 Node24/Chromium 结果。
+
+- 新增 `scripts/verify-mt-db4-upgrade.mjs` 和任务验证命令：严格要求来自 main DB4 与 PR 的真实 WXT 安装包，Playwright 不允许 SKIP 冒充 PASS；此命令截至当前仍 NOT RUN。

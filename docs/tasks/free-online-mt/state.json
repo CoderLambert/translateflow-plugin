@@ -41,8 +41,12 @@
       "e2e/machine-translation.spec.mjs",
       "--workers=1",
       "--retries=0"
+    ],
+    [
+      "node",
+      "scripts/verify-mt-db4-upgrade.mjs"
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：新增 DB4 main→MT #342 同 ID 升级 E2E 尚未运行。main 和 PR 当前 version 都是 0.8.29，现有用例严格验证隔离 profile 内的解包包替换 + chrome.developerPrivate 管理重载，不伪称商店版本递增自动更新；未来实际发布前版本变更及对应升级仍单列用户验收。现有 Node24 全量/E2E PASS 绑定旧候选 c8742f，当前新增 E2E 需在 Node24+Chromium 上以明确输入包运行，之后才重新冻结 candidateHead。真实两家 Provider 网络和用户人工验收未完成，Draft 不合并。"
+  "nextAction": "2026-10-19：新增 DB4 main→MT #342 同 ID 升级 E2E 尚未运行。main 和 PR 当前 version 都是 0.8.29，现有用例严格验证隔离 profile 内的解包包替换 + chrome.developerPrivate 管理重载，不伪称商店版本递增自动更新；未来实际发布前版本变更及对应升级仍单列用户验收。现有 Node24 全量/E2E PASS 绑定旧候选 c8742f，当前新增 E2E 需在 Node24+Chromium 上以明确输入包运行，之后才重新冻结 candidateHead。真实两家 Provider 网络和用户人工验收未完成，Draft 不合并。 严格升级入口 scripts/verify-mt-db4-upgrade.mjs 已纳入 validationCommands；缺旧/新真实 WXT 包、Node24 或缺 PASS 回执会失败，不接受 Playwright SKIP。该入口尚 NOT RUN。"
 }
