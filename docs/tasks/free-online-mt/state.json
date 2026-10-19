@@ -44,5 +44,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：在 #342 当前 DB4 分支补足免费 MT 划词隐私边界（链接 DOM、可见 URL、过期/断开选区）并补负例测试，修正 task.md 过期 DB4 清空条件。仍为 working/Draft，candidateHead 未冻结；下一步先 Node>=24.21 MT Node 定向及 DB4 回归，再集中 validate、WXT 双目录 Smoke、Chromium E2E；Microsoft/Tencent 真实联网及用户人工验收分别独立验证，未测不得记 PASS。"
+  "nextAction": "2026-10-19：真实 Ubuntu Node24/npm11 定向 MT+DB4 114/114 PASS（Actions #39200177197）；validate 在 Quick Control MT 集成使视图文件超过 420 行的静态门禁处 FAIL，其余阶段 NOT RUN。已修正 machineMode preset 视图并减少行数，第二轮远端验证运行中/待运行；若通过继续 WXT 双目录 Smoke、MT Chromium mock E2E，真实 Microsoft/Tencent 状态与用户人工验收仍独立未通过。"
 }

@@ -323,12 +323,11 @@
         ...(Array.isArray(context?.availablePresets) ? context.availablePresets : [])
           .map((item) => option(item.id, `${item.label} · ${item.description}`))
       );
-      if (context.engine === "machine-translation") {
-        presetSelect.replaceChildren(option("inherit", `${t("mt.free")} · ${context.providerLabel || ""}`));
-        presetSelect.title = t("mt.settings");
-      } else presetSelect.title = "";
-      presetSelect.disabled = context.engine === "machine-translation";
-      presetSelect.value = context?.temporaryPresetActive
+      const machineMode = context.engine === "machine-translation";
+      if (machineMode) presetSelect.replaceChildren(option("inherit", `${t("mt.free")} · ${context.providerLabel || ""}`));
+      presetSelect.title = machineMode ? t("mt.settings") : "";
+      presetSelect.disabled = machineMode;
+      presetSelect.value = machineMode ? "inherit" : context?.temporaryPresetActive
         ? (context.temporaryPresetId || "none")
         : (context?.savedPresetId || "inherit");
 

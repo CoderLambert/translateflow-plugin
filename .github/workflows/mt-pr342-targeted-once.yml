@@ -1,4 +1,4 @@
-name: mt-pr342-targeted-once
+name: mt-pr342-targeted-recheck
 
 on:
   push:

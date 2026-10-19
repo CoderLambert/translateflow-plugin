@@ -28,3 +28,10 @@
 - 新增零外发的负例测试及普通文字成功路径回归；模拟行为验证不等于 Node24 全量测试或真实浏览器验证。
 - 已修正 task.md 中遗留的“再次清空旧译文缓存”条件：不得破坏 #345 的 DB4 现有数据。
 - 当前准确候选尚无 Node24/npm validate、WXT/Chromium 运行证据，Microsoft/Tencent 真实服务及用户人工验收均未完成。状态继续 working/Draft，不合并。
+
+## 2026-10-19 Node24 真实验证迭代 1
+
+- 工作流：https://github.com/CoderLambert/translateflow-plugin/actions/runs/39200177197 ，HEAD `5eef0c4ab127c89a610d946691738578e10baef3`，GitHub Ubuntu / Node v24.21.0 / npm v11.19.0。
+- MT/Selection/DB4 相关 6 个 Node 文件的定向测试 **114 PASS / 0 FAIL**（运行日志有逐项证据）。
+- `npm run validate` **FAIL** 于 `npm run check`：`src/content/quick-control-view.js` 因 MT UI 集成增加至门禁 420 行以上；后续 Node 全量/typecheck/Vitest/WXT/Chromium 均未执行，不能标为失败或通过。
+- 修复该单一门禁：将 MT preset 状态改为 `machineMode` 分支，固定 machine mode 时选择 `inherit` 并继续禁用 AI preset 选择；代码不改变 Quick Control 位置、拖动或扩展权限。复核脚本行数限制后重试同一候选的连续 gate（第 2 轮）。
