@@ -1,4 +1,4 @@
-name: mt-pr342-targeted-recheck
+name: mt-pr342-prospective-final
 
 on:
   push:
@@ -28,6 +28,26 @@ jobs:
           node-version: '24.21.0'
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Rebuild public legacy projection and derive final candidate tree
+        run: |
+          node scripts/reading-content-classic.mjs
+          rm .github/workflows/mt-pr342-targeted-once.yml
+          python3 - <<'PY'
+          import base64, subprocess
+          from pathlib import Path
+          changed=set(subprocess.check_output(['git','diff','--name-only'], text=True).splitlines())
+          for p in ('src/content/reading-source.js','src/content/reading-record.js'):
+              if p not in changed: continue
+              print('TF_PROJECTION_START:'+p)
+              encoded=base64.b64encode(Path(p).read_bytes()).decode('ascii')
+              for offset in range(0,len(encoded),8000):
+                  print('TF_PROJECTION_PART:'+encoded[offset:offset+8000])
+              print('TF_PROJECTION_END:'+p)
+          PY
+          git add -A
+          echo "TF_PROSPECTIVE_TREE:$(git write-tree)"
+          git reset -q
+          git status --short
       - name: Machine translation, selection and DB4 targeted tests
         run: >-
           node --test
@@ -57,5 +77,7 @@ jobs:
           path: |
             test-results/
             .wxt/reports/
+            dist/extension/
+            .output/chrome-mv3/
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
