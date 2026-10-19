@@ -1,13 +1,170 @@
 {
   "schema": 1,
   "task": "offline-dictionary",
-  "candidateHead": null,
-  "checks": [],
+  "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172",
+  "tree": "6021d0736452b00601c7475be2f5a9b010a2ebe5",
+  "inputTree": "cb063f76b85a1b0b777a62a753e82224607997cfbc949f07bcfef8ee805b594f",
+  "frozenAt": "2026-10-19T19:57:28.532Z",
+  "stageMerge": {
+    "pullRequest": 357,
+    "mergeHead": "be0e88229a56c013af025836b09259ca6b9222f0",
+    "method": "squash",
+    "baseHeadAtMerge": "913c60693f17c16d9baff95274ddbc2bcf44cbea",
+    "candidateTreeMatchesMain": true,
+    "taskComplete": false
+  },
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "NOT RUN"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/mdict-raw-boundary-interop.test.mjs"
+      ],
+      "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 208,
+      "log": "docs/task-execution/local/offline-dictionary/od1-interop-node-test-8de40aee.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/mdict-raw-boundary-interop.test.mjs",
+        "tests/rich-mdict-*.test.mjs",
+        "tests/mdd-format.test.mjs",
+        "tests/mdd-security.test.mjs"
+      ],
+      "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172",
+      "result": "BLOCKED",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 3390,
+      "log": "docs/task-execution/local/offline-dictionary/od1-mix-synthetic-regressions-8de40aee.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/mdict-raw-boundary-interop.test.mjs",
+        "tests/rich-mdict-*.test.mjs",
+        "tests/mdd-format.test.mjs",
+        "tests/mdd-security.test.mjs"
+      ],
+      "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3285.182281,
+      "log": "docs/task-execution/local/offline-dictionary/od1-mix-synthetic-regressions-node24-8de40aee.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/mdict-raw-boundary-interop.test.mjs"
+      ],
+      "candidateHead": "638e9c2e906072a87ed9f6b1d6228681f74928e5",
+      "result": "FAIL",
+      "expectedForReproduction": true,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 74.230968,
+      "log": "docs/task-execution/local/offline-dictionary/od1-pre-fix-baseline-638e9c2e.log",
+      "note": "The test was copied unchanged into an isolated temporary worktree at the pre-fix implementation. It fails during buildRichMdictIndex with expectedFirst Apple versus actualFirst apple and expectedLast fullwidth Foo versus actualLast foo."
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "inspect:mdict",
+        "--",
+        "<private MDX>",
+        "<matching-stem MDD subset>",
+        "--label",
+        "oxford10-local-subset",
+        "--hash",
+        "--samples",
+        "12",
+        "--output",
+        "<ignored local report>"
+      ],
+      "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 410,
+      "report": "docs/task-execution/local/offline-dictionary/oxford10-bounded-inspector.json",
+      "note": "The bounded inspector built the MDX index, read 12 deterministic sample records with 0 unreadable samples, and built the explicitly supplied 30,900,438-byte MDD index. The result covers only this input subset and sample; it does not certify resource payloads or the full dictionary."
+    }
+  ],
+  "localInputSummary": {
+    "label": "oxford10-local-set",
+    "fileCount": 6,
+    "totalBytes": 1533010812,
+    "networkAccess": false,
+    "dictionaryContentExported": false,
+    "mdx": {
+      "bytes": 38807694,
+      "result": "PASS_SAMPLE_ONLY",
+      "entryCount": 133571,
+      "keyBlockCount": 90,
+      "recordBlockCount": 5607,
+      "sampledRecords": 12,
+      "unreadableSampleRecords": 0
+    },
+    "mdd": [
+      {
+        "role": "matching-stem subset",
+        "bytes": 30900438,
+        "result": "INDEX_PASS",
+        "resourcePaths": 193,
+        "payloadBytesRead": false
+      },
+      {
+        "role": "large companion",
+        "bytes": 1463189889,
+        "result": "NOT_RUN_INPUT_CAP",
+        "payloadBytesRead": false
+      }
+    ],
+    "cssSidecar": {
+      "bytes": 61996,
+      "result": "PASS_WITH_FILTERS",
+      "sanitizedBytes": 40168,
+      "acceptedFontFaceCount": 4,
+      "localAssetSlotCount": 0,
+      "diagnosticCodes": [
+        "css.selector_filtered",
+        "css.declaration_filtered",
+        "css.declaration_limit"
+      ],
+      "report": "docs/task-execution/local/offline-dictionary/oxford10-css-sanitizer.json"
+    },
+    "javascriptSidecar": {
+      "bytes": 14852,
+      "result": "NOT_READ_OR_EXECUTED"
+    },
+    "imageSidecar": {
+      "bytes": 35943,
+      "result": "NOT_OPENED"
+    },
+    "fullSetResult": "NOT_FULLY_TESTED_INPUT_EXCEEDS_512_MIB"
+  },
   "artifact": null,
   "limitations": [
-    "Task definition only; implementation, binary regression, target-corpus verification and browser acceptance NOT RUN.",
-    "No target dictionary file set has been selected or provided for this task; OD-2 and OD-3 require the actual local MDX and associated resources.",
-    "Existing ECDICT and synthetic interop evidence retains its original scope and tested revision; it has not been rerun or rebound to this task.",
-    "Current state.validationCommands covers implementation quality and synthetic regressions only. Bind actual target-corpus and browser commands before candidate freeze; missing input, skipped tests or a local gate alone cannot satisfy the product acceptance contract."
+    "This candidate adds synthetic regression coverage only; production sources and build inputs are unchanged.",
+    "The unchanged synthetic regression was reproduced against the pre-fix implementation at 638e9c2e: the first/last descriptor pair disagreed with normalized Apple/apple and fullwidth Foo/foo, and buildRichMdictIndex rejected the key block. The current candidate's related synthetic regression suite passes 135/135.",
+    "The first combined synthetic test attempt did not launch three files because this worktree lacked node_modules and a non-login shell selected Node 26.7.0. After confirming package-lock parity and using the available dependency tree plus Node 24.22.0, all 135 tests passed; the blocked attempt log is retained without changing its result.",
+    "npm run validate, a WXT build, and Chromium E2E were not rerun for this test-only candidate. Earlier results remain bound to their original candidate and are not represented as new runs here.",
+    "A bounded local inspector run covered the 38,807,694-byte MDX and one 30,900,438-byte matching-stem MDD only: MDX index built (133,571 entries, 90 key blocks, 5,607 record blocks), 12/12 sampled records readable; MDD index built (193 resource paths). The report is in the ignored local evidence directory. It did not read the second 1,463,189,889-byte MDD, the CSS/JS/image sidecars, or resource payload bytes. The full local set exceeds the inspector's 512 MiB cap; no full-reader comparison, fixed 60-query set, or actual import/restart/offline/browser-display acceptance has been performed.",
+    "The user separately reported that Chrome reload and Oxford dictionary/AI tab switching passed. The installed package identity is unknown, and this does not establish import, persistence, offline lookup, or rich-content acceptance for the supplied local file set.",
+    "No actual extension artifact was rebuilt or fingerprinted for this test-only change."
   ]
 }

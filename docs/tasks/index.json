@@ -314,10 +314,10 @@
     },
     {
       "task": "offline-dictionary",
-      "status": "paused",
+      "status": "working",
       "dependencies": [],
-      "branch": "fix/oxford-rich-closeout-20261009",
-      "candidateHead": null
+      "branch": "codex/offline-dictionary-od1-20261020",
+      "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172"
     },
     {
       "task": "oxford-radio-css",
