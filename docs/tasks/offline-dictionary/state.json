@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "offline-dictionary",
-  "status": "paused",
+  "status": "working",
   "owner": "main",
   "dependencies": [],
-  "branch": "fix/oxford-rich-closeout-20261009",
-  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-oxford-closeout-20261009",
-  "candidateHead": null,
+  "branch": "codex/offline-dictionary-od1-20261020",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-offline-dictionary-od1-20261020",
+  "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -29,5 +29,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "OX-01 的四项 Oxford 富文本收口已通过 PR #319 合入（candidate 5fe26af5f7a5cb3b1aa65a91ce364a1add10ca44；merge 1778776ab8fb7bdf33590762d2d8becdfe21f73e）。本任务更宽的 OD-2/OD-3 合同还要求全量独立 reader 对照、至少 60 个固定查询及相应浏览器认证，当前未执行；除非用户明确重新启用该范围，否则保持 paused，不把 OX-01 结果升格为整卡完成。"
+  "nextAction": "OD-1 合成回归已通过 PR #357 以 squash 合入，merge SHA be0e88229a56c013af025836b09259ca6b9222f0；这只是边界测试阶段合入，不关闭整卡。相关 Rich MDX/MDD Node 回归 135/135 通过，且在 638e9c2e 前修复基线上复现了预期失败。用户提供的 Oxford10 本地输入已做有限抽样：MDX 索引 133571 条、12/12 样本可读；一份 30 MB MDD 索引通过；62 KB CSS 经安全净化后输出 40 KB，报告有选择器/声明过滤。1.46 GB MDD 与 JS/PNG、完整独立 reader 对照、60 个固定查询、真实浏览器导入/重启/断网展示验收仍未完成，按用户要求留到最后统一验收；整卡保持 working。"
 }
