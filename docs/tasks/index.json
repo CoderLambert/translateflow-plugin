@@ -346,7 +346,7 @@
     },
     {
       "task": "rich-index-cache-budget",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "rich-multiple-records"
       ],
