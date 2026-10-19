@@ -2,7 +2,7 @@
 
 ## 范围
 
-Chrome 内置本地模型只用于获准的单词划词释义。词典命中仍优先显示词典，已配置的 AI 仍按原设置优先；AI 失败不会静默切换。整页、字幕、短语和长选区继续使用 AI，不因本轮修改开放本地翻译。
+Chrome 内置本地翻译适用于整页、字幕和符合条件的单词划词，不适用于短语或长选区。无 AI 配置时，这些流程会在用户点击准备后使用本地翻译；已配置 AI 时仍优先使用 AI，AI 失败后也只在用户明确点击时切换。单词划词命中词典时仍优先显示词典。
 
 ## 设置页一次准备
 
@@ -14,7 +14,7 @@ Chrome 内置本地模型只用于获准的单词划词释义。词典命中仍�
 
 ## 阅读时的交互
 
-已有可用模型自动创建/复用，不要求逐词确认。需要资源时可在划词浮层点击准备，或者打开设置页统一准备。进入设置页前只把语言对写入 `storage.session`，不保存正文、上下文或凭据；最多保留32条、一天有效的临时记录，设置页可重新选择该语言对。历史“曾检查通过”不等于永久可用。
+已有可用模型自动创建/复用，不要求逐词确认。需要资源时可在页面、划词或字幕翻译提示中点击准备，也可打开设置页统一准备。进入设置页前只把语言对写入 `storage.session`，不保存正文、上下文或凭据；最多保留32条、一天有效的临时记录，设置页可重新选择该语言对。历史“曾检查通过”不等于永久可用。
 
 短词以实际文本检测为基础，附近句子仅作为辅助证据：来自现有非敏感 SourceSnapshot，截取有界局部句子。多个相同词无法定位到具体出现位置时不猜测。强烈冲突、简繁不确定、中文语境里的外语词等不会自动变成确定结果，也不能误当成“已是目标语言”而跳过。人工纠正按文本及上下文区分，不污染后续其他选词。检测上下文不发送给 AI Provider、不进入译文缓存；Translator 翻译的仍是单词本身，不承诺解决同语言的一词多义。
 
@@ -34,9 +34,9 @@ Content 和 Options 使用同一个运行时实现：一个检测器、最多两
 
 ## English
 
-Chrome native models remain restricted to authorized selected-word definitions; pages, subtitles and longer selections retain the existing AI path. Settings → General → Chrome local models prepares detector and translator together from a user click, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
+Chrome native translation supports pages, subtitles and eligible single-word selections; phrases and longer selections remain on the AI path. When AI is configured it remains preferred, and switching after an AI failure requires an explicit user click. Without AI, local translation starts only after the user clicks prepare. Settings → General → Chrome local models prepares detector and translator together, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
 
-A non-sensitive bounded source sentence can supplement short-word language evidence. Conflicts and incompatible scripts remain uncertain; only the selected word is translated/cached. Context is not sent to an AI provider. Local corrections are scoped to the word and its context.
+For word selections, a non-sensitive bounded source sentence can supplement language evidence. Conflicts and incompatible scripts remain uncertain; only the selected word is translated/cached. Context is not sent to an AI provider. Local corrections are scoped to the word and its context.
 
 Failed preparation ends each model's active status and identifies the failed model separately from its cancelled peer. Retry starts a new attempt. The expandable Chrome diagnostic shows only the model, error code and safe browser exception name. Changing the test pair clears the previous result; disabling browser definitions releases the models and clears stale readiness.
 
