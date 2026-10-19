@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19 M0 连续直接实现修复：Provider 403/429 冷却存储失败保留、HTTP 错误响应 cancel 不遮蔽状态、Page 可见 URL/邮箱/IP 本地保留；新增对 localhost:端口、IPv6 方括号地址、git@host:path SCP 风格地址的零外发保护（Page 分槽、Selection fail-closed），分别补定向 Node 负例。通过 MT inputVersion=mt-slots-v2 防止复用隐私策略旧缓存，无 DB4 物理迁移。浏览器 Page E2E 新增可见 URL 零外发断言。当前新代码的 V8 隔离语义测试 PASS；完整 Node24/实际 Chromium 及 DB4 同 ID 升级测试 NOT RUN，先前 c8742f 的成功门禁只覆盖旧候选。待准确 HEAD 的定向实测与真实 Microsoft/Tencent、用户体验验收，PR 继续 Draft。"
+  "nextAction": "2026-10-19：继续 M0 免费 MT 生产修复与准确候选定向验证。当前 transport 的 streaming 响应超过512KiB时取消 Promise 可能一直不 settle，阻塞 MT_RESPONSE 和 Provider 队列；本次改为非阻塞 best-effort cancel，并新增队列可继续处理下一请求的 node:test 回归。先前已完成 Page/Selection 地址保护、HTTP 状态保留及 mt-slots-v2 缓存身份隔离；未改 DB4、Reading、词典、Quick Control 或权限。新 HEAD 的 Node24 定向和当前 WXT/Chromium、DB4 同 ID 升级尚 NOT RUN，旧 c8742f 的验证不覆盖本轮。验证失败先修复，用户人工和真实 Microsoft/Tencent 独立记录，不合并 Draft。"
 }

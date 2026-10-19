@@ -363,6 +363,38 @@ test("bad error response stream cannot mask HTTP status or poison queued request
   assert.equal(requests, 2);
 });
 
+test("streaming overflow releases the MT queue without waiting for a stalled cancel", async () => {
+  storage();
+  const cancelCalled = defer(), cancelRelease = defer(); let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) return new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(512 * 1024 + 1)); },
+      cancel() { cancelCalled.resolve(); return cancelRelease.promise; }
+    }));
+    return ok(["恢复"]);
+  };
+  let firstCode = "", secondResult;
+  const first = requestMachineTexts(config(), ["oversized input"]).then(
+    () => { firstCode = "RESOLVED"; }, error => { firstCode = error.code; }
+  );
+  await cancelCalled.promise;
+  const second = requestMachineTexts(config(), ["following input"]).then(
+    values => { secondResult = values; }, error => { secondResult = error.code; }
+  );
+  // An event-loop turn proves forward progress before the first body's
+  // cancel() promise is released. No arbitrary sleep or external Provider.
+  await new Promise(resolve => setImmediate(resolve));
+  try {
+    assert.equal(firstCode, "MT_RESPONSE");
+    assert.deepEqual(secondResult, ["恢复"]);
+    assert.equal(calls, 2);
+  } finally {
+    cancelRelease.resolve();
+    await Promise.all([first, second]);
+  }
+});
+
 test("oversized response retains MT_RESPONSE when canceling body throws", async () => {
   storage();
   globalThis.fetch = async () => new Response(new ReadableStream({

@@ -107,7 +107,13 @@ async function readBoundedBody(response, signal) {
       text += decoder.decode(next.value, { stream: true });
     }
     return text + decoder.decode();
-  } finally { signal.removeEventListener("abort", cancel); if (!complete) await reader.cancel().catch(() => {}); reader.releaseLock(); }
+  } finally {
+    signal.removeEventListener("abort", cancel);
+    // Stream.cancel() may never settle on a broken or stalled response. The
+    // response limit has already failed: release the queue without awaiting it.
+    if (!complete) cancel();
+    reader.releaseLock();
+  }
 }
 
 export function buildMachineRequest(providerId, texts, from, to) {

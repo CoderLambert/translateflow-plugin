@@ -93,3 +93,9 @@
 - 在 `splitMachineVisibleUrls` 保留 Page 中的 `localhost:端口/路径`、IPv6 `[fd00::1]:8080/路径`、SCP 风格 `git@host:私有路径`；过去旧正则对前两种返回可译普通段，对第三种只保护主机、仍可能外发仓库路径。
 - Selection 的 `selectionContainsProtectedContent` 同步 fail-closed，禁止上述地址经普通划词被发送。扩展 Node 负例、V8 分槽模拟已确认所列地址完整本地保留；未变动 provider endpoint/权限或 DB4 物理层。
 - 新准确候选真实 Node24、Chromium 与原安装包升级验证仍 NOT RUN。URL 隐私修复不等于微软/腾讯服务当前网络可用，必须分别验证。
+
+## 2026-10-19 MT 大响应流取消不得阻塞队列
+
+- `src/background/providers/machine-translation-transport.js`：`readBoundedBody` 在 streaming 正文超过 512KiB 或出错后，原本 `await reader.cancel()`；上游取消异步若不 settle，HTTP 失败无法返回且 per-provider queue slot 一直占用。本轮改为取消并处理拒绝，但不等待取消完成，随后释放 reader lock。
+- `tests/machine-translation.test.mjs` 新增确定性回归：首个响应越界，`ReadableStream.cancel()` 被人为延迟，验证仍能返回 `MT_RESPONSE`，第二个同服务请求在解除 cancel gate 之前拿到结果；最后清理 deferred gate。该测试尚未在真实 Node24 执行（NOT RUN）。
+- 其余 DB4 物理库、ReadingRecord、用户安装词典、Quick Control、扩展权限未变。
