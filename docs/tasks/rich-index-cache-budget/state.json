@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "task": "rich-index-cache-budget",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [
     "rich-multiple-records"
   ],
   "branch": "codex/rich-index-cache-budget-20261020",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-index-cache-budget-20261020",
-  "candidateHead": null,
+  "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -45,5 +45,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-20 用户恢复任务。Manager 注入式 20 词典测量为 14,986,390 字节（32,000 entries）：8 MiB 在暖查询产生 40 次索引重读，16 MiB 保留全部条目且首选热查 12 次不重读；缓存/迁移定向 Node 40/40 PASS。接下来提交候选，冻结后运行 validate、显式 WXT/smoke、相关 Chromium E2E 并归档准确包指纹。"
+  "nextAction": "0.8.35 候选 d74b92f7 完成 validate、显式 WXT 构建、WXT smoke 和 5 个相关 Chromium spec（10/10）；精确安装包指纹与 validation-report 已归档。下一步执行本地 gate，提交并普通推送仅包含允许的任务元数据归档；按远端保护和 expected-head 检查处理 PR #352。"
 }

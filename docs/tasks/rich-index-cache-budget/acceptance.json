@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "task": "rich-index-cache-budget",
+  "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
+  "tree": "e63591426055288d6da8fa50d0cb1c572b6a15eb",
+  "inputTree": "dbcd3aeaf1781b8b518370a5e57c0e0fe7498bdf76df13f5a2917a3145f9b121",
+  "frozenAt": "2026-10-19T17:50:40.981Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 51912.488783,
+      "startedAt": "2026-10-19T17:50:52.517Z",
+      "log": "docs/task-execution/local/rich-index-cache-budget/761cf632-a7f7-41b9-867a-e4b1d97e601f.log",
+      "logSha256": "bb94d13048c2f91e35e203ba2777172420e1dc7f7db64057591e4433eb55388b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2483.160432,
+      "startedAt": "2026-10-19T17:51:47.467Z",
+      "log": "docs/task-execution/local/rich-index-cache-budget/e895c92b-bb6a-445f-992c-e9d4b47b7798.log",
+      "logSha256": "09323028cf2c8c2cc3b98ee4be87c1cb1f73a58ddcc7df04e8c217c024e7af23"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1242.700303,
+      "startedAt": "2026-10-19T17:51:51.818Z",
+      "log": "docs/task-execution/local/rich-index-cache-budget/7d357685-7260-4718-a70d-ec777a5d0b97.log",
+      "logSha256": "64fa0f90ce656efa913702db1b08890d45b591df3c4127ad15411d296c2c1bad"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/rich-mdict-index-cache.spec.mjs",
+        "e2e/rich-mdict-index-migration.spec.mjs",
+        "e2e/multi-dictionary-viewer.spec.mjs",
+        "e2e/selection-rich-lookup-cancel.spec.mjs",
+        "e2e/rich-mdict-records.spec.mjs"
+      ],
+      "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 32247.43383,
+      "startedAt": "2026-10-19T17:51:57.483Z",
+      "log": "docs/task-execution/local/rich-index-cache-budget/a1ae5156-0f0e-4294-b2ac-0471efca7bff.log",
+      "logSha256": "684fb12955c752b018e37f0d32da061f00571cc93c7adaf5d690e7b2b704173e"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 11.940742,
+      "startedAt": "2026-10-19T17:53:41.956Z",
+      "log": "docs/task-execution/local/rich-index-cache-budget/394dccf4-3630-4a9c-bc19-5203c0068072.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "a41fcb0359a4b2a2ebdb08376012275ed3eef5fad83887039a994ec9cfb92e7f"
+  },
+  "limitations": [
+    "20-dictionary measurement uses legal synthetic indexes and manager-backed in-memory storage; it does not predict actual user dictionary counts or Oxford performance.",
+    "Heap/RSS peak memory was not measured; the cache budget bounds validated serialized index bytes only.",
+    "Builds pass with the existing #245 advisory warning: platform code exceeds budget by 599196 bytes (2175791/1576595).",
+    "Browser validation used local synthetic dictionaries and mocks; no Microsoft or Tencent service was contacted."
+  ]
+}
