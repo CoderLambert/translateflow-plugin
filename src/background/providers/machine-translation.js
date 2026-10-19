@@ -55,7 +55,7 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
 
 // Preserve user-visible addresses verbatim: only surrounding prose is sent
 // to free web MT. Selection separately uses its stricter fail-closed policy.
-const VISIBLE_ADDRESS = /(?:\b[a-z][a-z0-9+.-]*:\/\/[^\s<>"'⟦⟧]+|\b(?:mailto|data|blob|javascript|tel):[^\s<>"'⟦⟧]+|\b[\w.%+-]+@(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}|\bwww\.[^\s<>"'⟦⟧]+|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?|\b(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?)/giu;
+const VISIBLE_ADDRESS = /(?:\b[a-z][a-z0-9+.-]*:\/\/[^\s<>"'⟦⟧]+|\b(?:mailto|data|blob|javascript|tel):[^\s<>"'⟦⟧]+|\b[\w.%+-]+@(?:[\p{L}\p{N}_-]+\.)+[\p{L}]{2,}(?::[^\s<>"'⟦⟧]+)?|\bwww\.[^\s<>"'⟦⟧]+|\blocalhost(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?|\[[0-9a-fA-F:.]+\](?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?|\b(?:[\p{L}\p{N}_-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s<>"'⟦⟧]*)?)/giu;
 
 export function splitMachineVisibleUrls(text) {
   const units = [];

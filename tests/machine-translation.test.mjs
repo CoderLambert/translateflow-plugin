@@ -136,6 +136,25 @@ test("URL-only segments never call a free MT Provider", async () => {
   assert.equal(calls, 0);
 });
 
+test("local hosts, IPv6 addresses and scp-style repository URLs never leave Page", async () => {
+  storage();
+  const outbound = [];
+  globalThis.fetch = async (_url, init) => {
+    const payload = JSON.parse(init.body);
+    outbound.push(...payload);
+    return ok(payload.map(value => "译:" + value));
+  };
+  const addresses = ["localhost:3000/private?token=fixture",
+    "[fd00::1]:8080/internal", "git@github.com:private/repo"];
+  const source = "Read " + addresses.join(" and ") + " before proceeding.";
+  const translated = await translateMachineBatch([{ id: "addresses", text: source }], config());
+  for (const address of addresses) {
+    assert.ok(translated[0].text.includes(address), "Address was changed: " + address);
+    assert.ok(outbound.every(value => !value.includes(address)), "Address leaked: " + address);
+  }
+  assert.ok(outbound.length > 0, "Normal prose should still be translated");
+});
+
 test("visible URL splitting is lossless across links and plain text", () => {
   const input = "Docs: docs.example.invalid/help, code, https://intra.example.invalid/path?q=1. Email team@example.invalid.";
   const units = splitMachineVisibleUrls(input);

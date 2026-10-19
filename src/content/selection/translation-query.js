@@ -15,7 +15,7 @@
   // The existing AI/local routes are unchanged. Free online MT must not
   // upload protected DOM, link text or visible URLs from a selection.
   function selectionContainsProtectedContent(range, selectedText) {
-    const urlLike = /(?:[a-z][a-z0-9+.-]*:\/\/|\b(?:mailto|data|blob|javascript|tel):|\bwww\.|(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s]*)?|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s]*)?)/iu;
+    const urlLike = /(?:[a-z][a-z0-9+.-]*:\/\/|\b(?:mailto|data|blob|javascript|tel):|\bwww\.|\blocalhost(?::\d{1,5})?(?:[/?#][^\s]*)?|\[[0-9a-fA-F:.]+\](?::\d{1,5})?(?:[/?#][^\s]*)?|(?:[\p{L}\p{N}_-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s]*)?|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s]*)?)/iu;
     if (typeof selectedText !== "string" || urlLike.test(selectedText)) return true;
     if (!range?.startContainer || !range?.endContainer ||
         typeof range.intersectsNode !== "function" ||

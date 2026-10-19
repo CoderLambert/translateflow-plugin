@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19 M0：已实现免费 MT 403/429 存储异常冷却保留、错误响应 cancel() 异常不遮蔽 HTTP 状态、Page 可见 URL/邮箱/IP 本地保留 + MT inputVersion v2 隔离旧隐私策略缓存；新增 8 个 Node 负例，并扩展 e2e/machine-translation.spec.mjs 对可见 URL 只本地渲染而不进入实际编译扩展 MT 请求的断言。V8 隔离 URL/HTTP/语义身份行为已通过，仅测试替身。当前 Node24 定向、Chromium MT 浏览器、DB4 同 ID 升级新用例 NOT RUN；旧 c8742f 旧 SHA 的 validate/MT E2E PASS 不覆盖当前新代码。后续必须以准确新 HEAD 集中做受影响验证，不重复跑不相干全量；真实 Microsoft/Tencent 和用户安装人工验收仍待。Draft 不合并不发布。"
+  "nextAction": "2026-10-19 M0 连续直接实现修复：Provider 403/429 冷却存储失败保留、HTTP 错误响应 cancel 不遮蔽状态、Page 可见 URL/邮箱/IP 本地保留；新增对 localhost:端口、IPv6 方括号地址、git@host:path SCP 风格地址的零外发保护（Page 分槽、Selection fail-closed），分别补定向 Node 负例。通过 MT inputVersion=mt-slots-v2 防止复用隐私策略旧缓存，无 DB4 物理迁移。浏览器 Page E2E 新增可见 URL 零外发断言。当前新代码的 V8 隔离语义测试 PASS；完整 Node24/实际 Chromium 及 DB4 同 ID 升级测试 NOT RUN，先前 c8742f 的成功门禁只覆盖旧候选。待准确 HEAD 的定向实测与真实 Microsoft/Tencent、用户体验验收，PR 继续 Draft。"
 }

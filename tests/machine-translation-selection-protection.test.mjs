@@ -101,7 +101,10 @@ for (const text of [
   "Visit www.example.invalid/help",
   "Send mailto:user@example.invalid",
   "Local http://127.0.0.1:8080/secret",
-  "Server 192.168.0.7:3000/internal"
+  "Server 192.168.0.7:3000/internal",
+  "Local localhost:3000/private?token=fixture",
+  "Internal [fd00::1]:8080/private",
+  "Repository git@github.com:private/repo"
 ]) test("free web MT must not upload visible URL text: " + text, async () => {
   const h = harness("machine-translation", fakeRange({ currentText: text }), text);
   await assert.rejects(h.run(), { code: "MT_PROTECTED_SELECTION" });

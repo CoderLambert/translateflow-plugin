@@ -87,3 +87,9 @@
 ### 2026-10-19 编译扩展的 Page 可见地址 E2E 断言
 
 - 原 Microsoft Page 富文本 E2E 同一段落加入可见 URL、邮箱，新增编译扩展的 Provider mock 请求原文中不得出现明文与译文原样包含地址断言；原 code/href 守卫和 Tencent 隔离断言保持。Node24 Chromium 尚 **NOT RUN**；静态修改不能代替真实安装包验收。
+
+## 2026-10-19 补齐技术链接特殊格式零外发
+
+- 在 `splitMachineVisibleUrls` 保留 Page 中的 `localhost:端口/路径`、IPv6 `[fd00::1]:8080/路径`、SCP 风格 `git@host:私有路径`；过去旧正则对前两种返回可译普通段，对第三种只保护主机、仍可能外发仓库路径。
+- Selection 的 `selectionContainsProtectedContent` 同步 fail-closed，禁止上述地址经普通划词被发送。扩展 Node 负例、V8 分槽模拟已确认所列地址完整本地保留；未变动 provider endpoint/权限或 DB4 物理层。
+- 新准确候选真实 Node24、Chromium 与原安装包升级验证仍 NOT RUN。URL 隐私修复不等于微软/腾讯服务当前网络可用，必须分别验证。
