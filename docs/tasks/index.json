@@ -272,6 +272,15 @@
       "candidateHead": "4545d8ce19a808a0ef940d61f64ca43dceb97e53"
     },
     {
+      "task": "chatgpt-native-host-development-setup",
+      "status": "working",
+      "dependencies": [
+        "chatgpt-native-host-distribution"
+      ],
+      "branch": "fix/chatgpt-native-host-development-setup-20261020",
+      "candidateHead": null
+    },
+    {
       "task": "chatgpt-native-host-distribution",
       "status": "completed",
       "dependencies": [],
@@ -294,7 +303,7 @@
     },
     {
       "task": "free-online-mt",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [
         "cache-system-v1",
         "remove-bundled-lexicons",

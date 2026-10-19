@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "task": "chatgpt-native-host-development-setup",
+  "status": "working",
+  "owner": "main",
+  "dependencies": ["chatgpt-native-host-distribution"],
+  "branch": "fix/chatgpt-native-host-development-setup-20261020",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-nativehost-dev-setup-20261020",
+  "candidateHead": null,
+  "mergeHead": "",
+  "validationCommands": [
+    ["git", "diff", "--check", "origin/main...HEAD"],
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:wxt"],
+    ["npm", "run", "test:wxt:smoke"],
+    ["npm", "run", "test:e2e", "--", "e2e/chatgpt-plan-nativehost.spec.mjs", "--workers=1", "--retries=0"]
+  ],
+  "artifactRequired": true,
+  "nextAction": "移植开发命令入口及缺失 Host Chromium 断言，完成候选验收后提交并按 expected-head 合并。"
+}

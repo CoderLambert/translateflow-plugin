@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { GeneralSection } from "../../src/options/CommonSections";
-import { ChatGPTPlanSection, chatGPTSignInActionDisabled } from "../../src/options/ChatGPTPlanSection";
+import { ChatGPTPlanSection, chatGPTSignInActionDisabled, nativeHostDevelopmentCommands, nativeHostDevelopmentTarget } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { ProviderConnectionsSection } from "../../src/options/ProviderConnectionsSection";
 import { UiLocaleSection } from "../../src/options/UiLocaleSection";
@@ -26,6 +26,18 @@ const zh = createI18n({ uiLocale: "zh_CN" });
 const en = createI18n({ uiLocale: "en" });
 function LocaleControl() { const locale = useLocale(); return <UiLocaleSection {...locale} />; }
 function zhNode(node: React.ReactNode) { return <LocaleProvider value={zh}>{node}</LocaleProvider>; }
+function stubNativeHostTarget(platform: string, userAgent: string) {
+  const originalPlatform = Object.getOwnPropertyDescriptor(navigator, "platform");
+  const originalUserAgent = Object.getOwnPropertyDescriptor(navigator, "userAgent");
+  Object.defineProperty(navigator, "platform", { configurable: true, value: platform });
+  Object.defineProperty(navigator, "userAgent", { configurable: true, value: userAgent });
+  return () => {
+    if (originalPlatform) Object.defineProperty(navigator, "platform", originalPlatform);
+    else Reflect.deleteProperty(navigator, "platform");
+    if (originalUserAgent) Object.defineProperty(navigator, "userAgent", originalUserAgent);
+    else Reflect.deleteProperty(navigator, "userAgent");
+  };
+}
 
 test("provider connection test feedback stays visible in the tested card", async () => {
   let finish: ((value: string) => void) | undefined;
@@ -97,16 +109,93 @@ test("ChatGPT settings request optional local-app access only from the enable bu
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
 });
 
-test("ChatGPT settings link host installation and update failures to the maintained release page", async () => {
+test("ChatGPT settings honestly report missing public downloads and show exact development registration commands", async () => {
+  const restoreNavigator = stubNativeHostTarget("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64) Chrome/153.0.0.0");
+  try {
+    vi.stubGlobal("chrome", { ...chrome, runtime: { id: "heoihmkbboakhnjihclndppjomoflbom", getManifest: () => ({ version: "0.8.13" }) } });
+    const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "NATIVE_HOST_UNAVAILABLE" }); });
+    render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+      chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
+    } as any} />));
+    await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
+    expect(await screen.findByText(/尚未发布公开安装包/u)).toBeTruthy();
+    await userEvent.click(screen.getByText("开发版测试注册"));
+    expect(screen.getByText("heoihmkbboakhnjihclndppjomoflbom")).toBeTruthy();
+    expect(screen.getByText(/TF_CHROME_EXTENSION_ID=heoihmkbboakhnjihclndppjomoflbom TF_NATIVE_HOST_VERSION=0\.8\.13/u)).toBeTruthy();
+    expect(screen.getByText("./.output/native-host-candidate/translateflow-host-0.8.13-linux-amd64")).toBeTruthy();
+    expect(screen.getByText(/translateflow-host-0\.8\.13-linux-amd64 install --browser chromium$/u)).toBeTruthy();
+    expect(screen.getByText("打开 chrome://extensions，重新加载 TranslateFlow。")).toBeTruthy();
+    expect(screen.getByText("关闭旧设置页，再重新打开“设置 → Provider”。")).toBeTruthy();
+    expect(screen.getByText("点击“已经安装 · 重新检测”。")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /下载 TranslateFlow 本地组件/u })).toBeNull();
+    expect(screen.queryByRole("button", { name: "连接 ChatGPT 账号" })).toBeNull();
+    expect(screen.getByRole("button", { name: "已经安装 · 重新检测" })).toBeTruthy();
+  } finally {
+    restoreNavigator();
+  }
+});
+
+test("native host settings explain unsupported development platforms without showing commands", async () => {
+  const restoreNavigator = stubNativeHostTarget("MacIntel", "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) Chrome/153.0.0.0");
+  try {
+    vi.stubGlobal("chrome", { ...chrome, runtime: { id: "heoihmkbboakhnjihclndppjomoflbom", getManifest: () => ({ version: "0.8.13" }) } });
+    const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "NATIVE_HOST_UNAVAILABLE" }); });
+    render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+      chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
+    } as any} />));
+    await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
+    expect(await screen.findByText("开发命令目前仅支持 Windows x64 和 Linux x64 的扩展安装。")).toBeTruthy();
+    expect(screen.queryByText("开发版测试注册")).toBeNull();
+    expect(screen.queryByText(/TF_CHROME_EXTENSION_ID=/u)).toBeNull();
+  } finally {
+    restoreNavigator();
+  }
+});
+
+test("native host copy commands report clipboard success and failure", async () => {
+  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+  const restoreNavigator = stubNativeHostTarget("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64) Chrome/153.0.0.0");
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  vi.stubGlobal("chrome", { ...chrome, runtime: { id: "heoihmkbboakhnjihclndppjomoflbom", getManifest: () => ({ version: "0.8.32" }) } });
   const chatGPTPlanAction = vi.fn(async () => { throw Object.assign(new Error("missing"), { code: "NATIVE_HOST_UNAVAILABLE" }); });
-  render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
-    chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
-  } as any} />));
-  await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
-  const download = await screen.findByRole("link", { name: "下载 TranslateFlow 本地组件" });
-  expect(download.getAttribute("href")).toBe("https://github.com/CoderLambert/translateflow-plugin/releases/latest");
-  expect(screen.queryByRole("button", { name: "连接 ChatGPT 账号" })).toBeNull();
-  expect(screen.getByRole("button", { name: "已经安装 · 重新检测" })).toBeTruthy();
+  try {
+    render(zhNode(<ChatGPTPlanSection config={config} disabled={false} update={vi.fn()} client={{
+      chatGPTPlanAction, hasChatGPTPlanPermission: vi.fn(async () => true)
+    } as any} />));
+    await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
+    await userEvent.click(screen.getByText("开发版测试注册"));
+    const copyButton = screen.getAllByRole("button", { name: "复制命令" }).at(0);
+    if (!copyButton) throw new Error("build command copy button was not rendered");
+    await userEvent.click(copyButton);
+    expect(writeText).toHaveBeenCalledWith("TF_CHROME_EXTENSION_ID=heoihmkbboakhnjihclndppjomoflbom TF_NATIVE_HOST_VERSION=0.8.32 npm run build:native-host:candidate");
+    expect(await screen.findByText("命令已复制到剪贴板。")).toBeTruthy();
+    writeText.mockRejectedValueOnce(new Error("clipboard unavailable"));
+    await userEvent.click(copyButton);
+    expect(await screen.findByText("复制失败，请手动选择并复制命令。")).toBeTruthy();
+  } finally {
+    if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+    else Reflect.deleteProperty(navigator, "clipboard");
+    restoreNavigator();
+  }
+});
+
+test("native host development commands match supported operating systems and architectures", () => {
+  const extensionId = "heoihmkbboakhnjihclndppjomoflbom";
+  expect(nativeHostDevelopmentTarget("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64) Chrome/153.0.0.0")).toBe("linux");
+  expect(nativeHostDevelopmentTarget("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/153.0.0.0")).toBe("windows");
+  expect(nativeHostDevelopmentTarget("MacIntel", "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) Chrome/153.0.0.0")).toBeNull();
+  expect(nativeHostDevelopmentTarget("Linux armv8l", "Mozilla/5.0 (Linux; armv8l) Chrome/153.0.0.0")).toBeNull();
+  expect(nativeHostDevelopmentCommands("not-an-extension-id", "0.8.13", "linux")).toBeNull();
+  expect(nativeHostDevelopmentCommands(extensionId, "dev", "linux")).toBeNull();
+  expect(nativeHostDevelopmentCommands(extensionId, "0.8.13", null)).toBeNull();
+  const linux = nativeHostDevelopmentCommands(extensionId, "0.8.13", "linux");
+  expect(linux?.install.map(command => command.browser)).toEqual(["chrome", "chromium"]);
+  expect(linux?.install[1]?.command).toContain("install --browser chromium");
+  const windows = nativeHostDevelopmentCommands(extensionId, "0.8.13", "windows");
+  expect(windows?.build).toContain("$env:TF_CHROME_EXTENSION_ID");
+  expect(windows?.install.map(command => command.browser)).toEqual(["chrome"]);
+  expect(windows?.install[0]?.command).toBe(String.raw`.\.output\native-host-candidate\translateflow-host-0.8.13-windows-amd64.exe`);
 });
 
 test("ChatGPT settings restart the local component and reload models from the fresh connection", async () => {
