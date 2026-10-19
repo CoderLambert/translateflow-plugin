@@ -159,10 +159,22 @@
     "backupCreated": true,
     "profileStorageTouched": false,
     "treeSha256": "d647e94ed268b6050203eaab3ad58f3802d90181123c0a18fd8c05873258fd77",
-    "activation": "User must reload the existing extension and refresh the options page; original browser runtime is not yet visually verified."
+    "activation": "User reported reloading the existing Chrome extension and confirming Oxford dictionary/AI tab switching. Exact active extension package fingerprint was not independently confirmed; original attachment-resource recovery remains unverified."
+  },
+  "userReportedAcceptance": {
+    "reportedAt": "2026-10-20",
+    "scope": "Reloaded Chrome extension; Oxford dictionary and AI tabs can be switched.",
+    "result": "USER_REPORTED_PASS",
+    "privateDictionaryContentShared": false,
+    "packageFingerprint": null,
+    "limitations": [
+      "The exact active extension package was not confirmed.",
+      "This does not verify recovery of the original missing or stale attachment resource.",
+      "Full Oxford import, restart, offline, and content-quality acceptance remains outstanding."
+    ]
   },
   "limitations": [
-    "Original user browser activation and visual verification remain pending reload.",
+    "User reported Chrome reload and dictionary/AI tab switching as PASS; exact active extension package identity and recovery of the original resource failure remain unverified.",
     "Full private Oxford six-file certification was not repeated for this Settings presentation cleanup."
   ]
 }
