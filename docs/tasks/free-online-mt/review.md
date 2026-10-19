@@ -65,3 +65,9 @@
 - `src/background/providers/machine-translation-transport.js`：冷却写入失败时保留内存围栏，不掩盖真实 `MT_BLOCKED` / `MT_RATE_LIMIT`；冷却读取失败时回退内存状态，避免存储损坏时对用户显示不相干的错误或无谓重试。未改变固定服务/权限/Key/网络终点。
 - `tests/machine-translation.test.mjs`：新增 storage GET 失败但正常翻译仍可完成，以及 403 + storage SET/GET 失败仍按 `MT_BLOCKED` 且重复请求数保持 1 的负例。
 - 本次修改属于生产 Provider 代码，旧 c8742f 已通过的全量 gate 不能宣称覆盖此变更。最新定向 Node24、浏览器/升级相关测试均待准确候选重验；当前只是源码变更和本轮审核，**NOT RUN**。
+
+### 2026-10-19 HTTP 错误响应体清理
+
+- 免费 MT Provider 的 HTTP 403/429/非 2xx 和超大 Content-Length 错误分支，不再等待可能失败或永不 settle 的 `ReadableStream.cancel()`。通过 `discardResponseBody` best-effort 丢弃内容，保留原始 `MT_BLOCKED`、`MT_RATE_LIMIT`、`MT_HTTP`、`MT_RESPONSE`，及时释放队列槽位，防止下一个请求无谓超时。
+- 测试添加错误流取消拒绝时仍返回 `MT_HTTP`、后续请求可成功，以及超过 512KiB 返回 `MT_RESPONSE` 两条负例。无新增 Provider、付费回退、缓存格式或权限。
+- 本轮新增生产改动准确 Node24 测试、Chromium E2E 尚 NOT RUN；之前通过的项目全量证据不能用于宣称本轮新增用例已经通过。

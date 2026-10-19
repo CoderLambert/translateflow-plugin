@@ -282,6 +282,29 @@ test("failed cooldown persistence preserves the real HTTP error and blocks repea
   assert.equal(count, 1);
 });
 
+test("bad error response stream cannot mask HTTP status or poison queued requests", async () => {
+  storage();
+  let requests = 0;
+  globalThis.fetch = async () => {
+    requests++;
+    if (requests === 1) return new Response(new ReadableStream({
+      cancel() { throw new Error("synthetic broken response body"); }
+    }), { status: 503 });
+    return ok(["恢复"]);
+  };
+  await assert.rejects(requestMachineTexts(config(), ["first"]), { code: "MT_HTTP" });
+  assert.deepEqual(await requestMachineTexts(config(), ["second"]), ["恢复"]);
+  assert.equal(requests, 2);
+});
+
+test("oversized response retains MT_RESPONSE when canceling body throws", async () => {
+  storage();
+  globalThis.fetch = async () => new Response(new ReadableStream({
+    cancel() { throw new Error("synthetic body cancel failure"); }
+  }), { headers: { "content-length": String(512 * 1024 + 1) } });
+  await assert.rejects(requestMachineTexts(config(), ["public fixture"]), { code: "MT_RESPONSE" });
+});
+
 test("rate-limit cooldown survives a new request and never falls back to Tencent or paid AI", async () => {
   const { memory } = storage(); let calls = 0;
   globalThis.fetch = async () => { calls++; return new Response("limited", { status: 429, headers: { "Retry-After": "120" } }); };

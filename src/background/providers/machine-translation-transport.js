@@ -63,10 +63,10 @@ export async function requestMachineTexts(config, texts, { signal, timeoutMs = 1
         const code = response.status === 429 ? "MT_RATE_LIMIT" : "MT_BLOCKED";
         const delay = Math.max(response.status === 429 ? 60000 : 300000, parseRetryAfterMs(response.headers.get("Retry-After")) || 0);
         await cooldown(provider.id, { until: Date.now() + delay, code });
-        await response.body?.cancel();
+        discardResponseBody(response);
         throw machineError(code, { retryAfterMs: delay, status: response.status });
       }
-      if (!response.ok) { await response.body?.cancel(); throw machineError("MT_HTTP", { status: response.status }); }
+      if (!response.ok) { discardResponseBody(response); throw machineError("MT_HTTP", { status: response.status }); }
       const raw = await readBoundedBody(response, controller.signal);
       if (controller.signal.aborted) throw machineError("CANCELLED");
       let data;
@@ -84,8 +84,14 @@ export async function requestMachineTexts(config, texts, { signal, timeoutMs = 1
   });
 }
 
+// Discarding an already-rejected response is best-effort: a broken or stalled
+// body stream must not mask the authoritative HTTP status or hold a queue slot.
+function discardResponseBody(response) {
+  try { response.body?.cancel()?.catch(() => {}); } catch { /* already closed */ }
+}
+
 async function readBoundedBody(response, signal) {
-  if (Number(response.headers.get("content-length") || 0) > RESPONSE_LIMIT) { await response.body?.cancel(); throw machineError("MT_RESPONSE"); }
+  if (Number(response.headers.get("content-length") || 0) > RESPONSE_LIMIT) { discardResponseBody(response); throw machineError("MT_RESPONSE"); }
   if (!response.body) throw machineError("MT_RESPONSE");
   const reader = response.body.getReader(), decoder = new TextDecoder();
   let bytes = 0, text = "", complete = false;

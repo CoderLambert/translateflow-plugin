@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：继续 #342 M0 收尾：修复 MT 429/403 冷却期间 chrome.storage.local GET/SET 失败导致 HTTP 业务错误被存储异常覆盖的问题；持久化异常仅降级为内存冷却，避免立刻重复调用，补 2 个 Provider 定向负例。生产缓存 DB4、Reading、词典、UI 与权限均未修改。旧实现 c8742f 的正式验证可复用作为不受影响范围的历史证据；本次改动的 Provider 定向 Node24 测试尚 NOT RUN，需要在准确 HEAD 上重验，再冻结新候选。DB4 同 ID 升级用例仍未实测；真实 Microsoft/Tencent 网络及用户体验仍独立验收。Draft 不合并。"
+  "nextAction": "2026-10-19：继续实际修复免费 MT 网络错误链：chrome.storage GET/SET 异常仍保留内存 403/429 冷却；额外修复 Provider 错误响应体 cancel() 失败/停滞时遮蔽 MT_HTTP/MT_RESPONSE 或卡住同服务队列的问题，错误响应改为 best-effort 异步丢弃并立即抛真实错误。新增四个定向负例，生产 DB4/Reading/词典/UI/权限均不变。已提交代码，当前代码 HEAD 的 Node24 定向、Chromium 实测仍 NOT RUN；旧全量/浏览器结果只归属旧 SHA，不重复整套。待定向回归及真实用户网络/验收。Draft 不合并。"
 }
