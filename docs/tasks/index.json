@@ -273,12 +273,12 @@
     },
     {
       "task": "chatgpt-native-host-development-setup",
-      "status": "working",
+      "status": "completed",
       "dependencies": [
         "chatgpt-native-host-distribution"
       ],
       "branch": "fix/chatgpt-native-host-development-setup-20261020",
-      "candidateHead": null
+      "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723"
     },
     {
       "task": "chatgpt-native-host-distribution",

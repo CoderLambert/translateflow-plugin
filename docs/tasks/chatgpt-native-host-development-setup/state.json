@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "chatgpt-native-host-development-setup",
-  "status": "working",
+  "status": "completed",
   "owner": "main",
   "dependencies": ["chatgpt-native-host-distribution"],
   "branch": "fix/chatgpt-native-host-development-setup-20261020",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-nativehost-dev-setup-20261020",
-  "candidateHead": null,
-  "mergeHead": "",
+  "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+  "mergeHead": "c78ae11de1cdd71c8c1f0eaa650bd6160097bab8",
   "validationCommands": [
     ["git", "diff", "--check", "origin/main...HEAD"],
     ["npm", "run", "validate"],
@@ -16,5 +16,5 @@
     ["npm", "run", "test:e2e", "--", "e2e/chatgpt-plan-nativehost.spec.mjs", "--workers=1", "--retries=0"]
   ],
   "artifactRequired": true,
-  "nextAction": "移植开发命令入口及缺失 Host Chromium 断言，完成候选验收后提交并按 expected-head 合并。"
+  "nextAction": "PR #351 已 squash 合并为 c78ae11de1cdd71c8c1f0eaa650bd6160097bab8；候选 gate 回放与验收包指纹通过。Windows shell 实际执行、Native Host 安装/注册与 ChatGPT 账号连接未验证，且本任务不代表 Native Host 公开发布。"
 }

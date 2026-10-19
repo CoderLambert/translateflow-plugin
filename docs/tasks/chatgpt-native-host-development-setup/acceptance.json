@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "task": "chatgpt-native-host-development-setup",
+  "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+  "tree": "dbc4dbe8f7daf8d084305ad331c53b6ed0cd5fb4",
+  "inputTree": "28948edad0edfe30cfebc69e8813b073beca0e7ccbff03e6c8b0012aad8873db",
+  "frozenAt": "2026-10-19T17:25:42.853Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "origin/main...HEAD"
+      ],
+      "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 9.906555,
+      "startedAt": "2026-10-19T17:25:48.431Z",
+      "log": "docs/task-execution/local/chatgpt-native-host-development-setup/4db7b2e2-f5de-43b8-b352-09a427679b59.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 50796.930544,
+      "startedAt": "2026-10-19T17:25:50.997Z",
+      "log": "docs/task-execution/local/chatgpt-native-host-development-setup/0ae6e919-feca-43b0-a220-6be7c183c218.log",
+      "logSha256": "a7813b174b6b49f86ffb91b10bedcd5b3f75a00eee20f409b6eca5649f12fe0d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2435.015204,
+      "startedAt": "2026-10-19T17:26:45.601Z",
+      "log": "docs/task-execution/local/chatgpt-native-host-development-setup/07f4efb8-bfb1-46ce-9390-54cff50a77d7.log",
+      "logSha256": "cf199efc0b8e70c84e3d5c2ffdd9109b69ce4775f0250c24f893f0d47c735627"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2007.212,
+      "startedAt": "2026-10-19T17:26:49.857Z",
+      "log": "docs/task-execution/local/chatgpt-native-host-development-setup/8411e2cc-a1b8-46e5-9ffb-80b0ec7d5cae.log",
+      "logSha256": "21f46746de82552d7299ee839e9b3befd1e6a34b0f7ad765c3bd3cd4aae9ffc8"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/chatgpt-plan-nativehost.spec.mjs",
+        "--workers=1",
+        "--retries=0"
+      ],
+      "candidateHead": "d53aa6846f1caa0d6bc8d63858f446df94428723",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3440.521733,
+      "startedAt": "2026-10-19T17:26:54.265Z",
+      "log": "docs/task-execution/local/chatgpt-native-host-development-setup/964df3e3-6e0f-4741-bce8-e5351e942080.log",
+      "logSha256": "e8a705945e4676800fe7be1891d34bdde967f98a624fa7386032fec2a11b1b44"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "bf12978e370576ffe91b1f3faed2d99715e1ed33d3169fd431d245978fd979bd"
+  },
+  "limitations": [
+    "E2E 实际运行于 Linux x64 Chromium 153.0.8010.12；Windows x64 PowerShell 命令由定向单测检查，未在 Windows shell 实际执行。",
+    "未实际安装或注册 Native Host，也未连接 ChatGPT 账号；流程使用本地缺失 Host mock。"
+  ]
+}
