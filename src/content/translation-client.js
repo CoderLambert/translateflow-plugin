@@ -17,6 +17,7 @@
   // The surrounding sentence is local language evidence, never an AI Provider input.
   function withoutNativeDetection(payload) { const { detectionText: _sample, ...request } = payload; return request; }
   function browserEligible(payload) {
+    if (["page", "subtitle"].includes(payload?.languageSource)) return true;
     return payload?.languageSource === "selection" && payload?.browserTranslationAllowed === true;
   }
   function correctionKey(payload, segment) {
@@ -24,8 +25,9 @@
   }
   async function checkedSettings(payload, raw, controller) {
     const eligible = browserEligible(payload) || controller.browserAllowed === true;
+    const surface = payload.languageSource === "selection" ? "selection-word" : payload.languageSource || "page";
     const result = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl,
-      forceBrowser: eligible && forceBrowser, surface: eligible ? "selection-word" : (payload.languageSource || "page") });
+      forceBrowser: eligible && forceBrowser, surface });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!result?.ok) throw Object.assign(engine.error("AI_CONFIG"), { code: result?.errorCode || "CONFIG" });
     if (result.engine === BROWSER_ENGINE && !result.enabled && !payload.cacheOnly) {
@@ -57,9 +59,10 @@
     return decision;
   }
   async function groupLookup(group, payload, raw, controller) {
+    const surface = payload.languageSource === "selection" ? "selection-word" : payload.languageSource || "page";
     const response = await raw({ type: messages.CACHE_LOOKUP, requestId: payload.requestId, pageUrl: payload.pageUrl,
       segments: group.members.map(item => ({ id: item.id, text: item.text, format: item.format || "plain", protectedIds: item.protectedIds || [] })),
-      browserTranslation: { forceBrowser: true, surface: "selection-word", sourceLanguage: group.pair.sourceLanguage } });
+      browserTranslation: { forceBrowser: true, surface, sourceLanguage: group.pair.sourceLanguage } });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!response?.ok) throw responseError(response);
     if (response.engine !== BROWSER_ENGINE || response.sourceLanguage !== group.pair.sourceLanguage || response.targetLanguage !== group.pair.targetLanguage) throw engine.error("CONFIG_SNAPSHOT_EXPIRED");
@@ -76,7 +79,12 @@
     const settings = await checkedSettings(payload, raw, controller);
     if (settings.engine !== BROWSER_ENGINE) {
       controller.basic = false;
-      if (settings.engine === "machine-translation") controller.browserAllowed = false;
+      if (settings.engine === "machine-translation") {
+        controller.browserAllowed = false;
+        const response = await raw(withoutNativeDetection(payload));
+        assertCurrent(controller, payload.pageUrl, payload.requestId);
+        return response;
+      }
       if (isNativeId(payload.configSnapshotId)) throw engine.error("ENGINE_SWITCH");
       if (settings.configured === false) {
         if (payload.cacheOnly) return { ok: true, hits: [], engine: "ai", skippedIds: [] };
@@ -115,7 +123,8 @@
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     const id = PREFIX + crypto.randomUUID(), one = groups.size === 1 ? [...groups.values()][0] : null;
     // This content-only plan dispatches each language to its own background snapshot.
-    const plan = { id, pageUrl: payload.pageUrl, requestId: payload.requestId, groups: [...groups.values()], results: new Map(), cancelled: false, targetLanguage, skippedIds };
+    const plan = { id, pageUrl: payload.pageUrl, requestId: payload.requestId, surface: payload.languageSource === "selection" ? "selection-word" : payload.languageSource || "page",
+      groups: [...groups.values()], results: new Map(), cancelled: false, targetLanguage, skippedIds };
     boundedSet(plans, id, plan);
     return { ok: true, engine: BROWSER_ENGINE, configSnapshotId: id, hits, skippedIds,
       writeTokens: [...groups.values()].flatMap(group => [...group.cacheTokens].map(([id, token]) => ({ id, token }))),
@@ -162,7 +171,7 @@
     }
     controller.basic = true;
     const plan = requirePlan(payload, controller);
-    const settings = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, forceBrowser: true, surface: "selection-word" });
+    const settings = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, forceBrowser: true, surface: plan.surface });
     assertCurrent(controller, payload.pageUrl, plan.requestId);
     if (!settings?.ok) throw responseError(settings);
     if (!settings.enabled) throw engine.error("BROWSER_DISABLED");
@@ -238,20 +247,22 @@
     return { ok: true, stored, ...(cacheWarning ? { cacheWarning } : {}) };
   }
   async function subtitles(payload, raw, controller) {
-    const settings = await checkedSettings(payload, raw, controller);
+    const subtitlePayload = { ...payload, languageSource: "subtitle" };
+    controller.browserAllowed = true;
+    const settings = await checkedSettings(subtitlePayload, raw, controller);
     if (settings.engine !== BROWSER_ENGINE && settings.configured === false) throw engine.error("AI_REQUIRED");
-    if (settings.engine !== BROWSER_ENGINE) return translate(payload, raw, controller);
+    if (settings.engine !== BROWSER_ENGINE) return translate(subtitlePayload, raw, controller);
     controller.basic = true;
-    const units = payload.units || [];
-    const response = await lookup({ type: messages.CACHE_LOOKUP, requestId: payload.requestId, pageUrl: payload.pageUrl, languageSource: "subtitle",
+    const units = subtitlePayload.units || [];
+    const response = await lookup({ type: messages.CACHE_LOOKUP, requestId: subtitlePayload.requestId, pageUrl: subtitlePayload.pageUrl, languageSource: "subtitle",
       trackKey: `${units[0]?.mediaId || ""}:${units[0]?.track?.id || ""}:${units[0]?.track?.language || ""}`,
       segments: units.map(unit => ({ id: unit.id, text: buildSubtitleCacheSource(unit), contentText: unit.text, detectionText: unit.text, sourceLanguageHint: unit.track?.language })) }, raw, controller);
     const hits = new Map(response.hits.map(hit => [hit.id, hit.text])), missing = units.filter(unit => !hits.has(unit.id));
     let result = { ok: true, translations: [] }, cacheWarning = response.cacheWarning || "";
     if (missing.length) {
-      result = await translate({ type: messages.TRANSLATE_BATCH, requestId: payload.requestId, pageUrl: payload.pageUrl,
+      result = await translate({ type: messages.TRANSLATE_BATCH, requestId: subtitlePayload.requestId, pageUrl: subtitlePayload.pageUrl, languageSource: "subtitle",
         configSnapshotId: response.configSnapshotId, segments: missing.map(unit => ({ id: unit.id, text: unit.text })) }, raw, controller);
-      const saved = await store({ type: messages.CACHE_STORE, requestId: payload.requestId, pageUrl: payload.pageUrl, pageTitle: payload.pageTitle, configSnapshotId: response.configSnapshotId,
+      const saved = await store({ type: messages.CACHE_STORE, requestId: subtitlePayload.requestId, pageUrl: subtitlePayload.pageUrl, pageTitle: subtitlePayload.pageTitle, configSnapshotId: response.configSnapshotId,
         items: missing.map(unit => ({ sourceText: buildSubtitleCacheSource(unit), translation: result.translations.find(item => item.id === unit.id)?.text })) }, raw, controller);
       if (!saved.ok) return saved;
       cacheWarning = saved.cacheWarning || cacheWarning;

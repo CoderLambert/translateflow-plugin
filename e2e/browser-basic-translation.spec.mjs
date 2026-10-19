@@ -77,15 +77,19 @@ test("without AI or dictionaries Selection prepares only from a click, retries d
   await page.screenshot({ path: "docs/task-execution/local/browser-basic-translation/selection-mock.png" });
 });
 
-test("page translation without AI asks for AI and never initializes browser models", async ({ harness }) => {
+test("page translation without AI uses browser translation only after a trusted prepare click", async ({ harness }) => {
   await harness.reset(); await noAi(harness);
   const page = await harness.open("/article"); await harness.inject(page); await isolated(harness, page, "install");
-  const running = harness.sendContent(page, "ABT_TRANSLATE_PAGE");
-  await expect(basicPanel(page)).toContainText("浏览器翻译仅用于划词释义");
-  await expect(basicPanel(page).getByRole("button", { name: "配置 AI 服务", exact: true })).toBeVisible();
   expect((await isolated(harness, page, "probe")).creates).toBe(0);
-  await basicPanel(page).getByRole("button", { name: "取消", exact: true }).click(); await running;
-  await expect(page.locator(".abt-translation")).toHaveCount(0);
+  const running = harness.sendContent(page, "ABT_TRANSLATE_PAGE");
+  await expect(basicPanel(page)).toContainText("准备基础翻译");
+  expect((await isolated(harness, page, "probe")).creates).toBe(0);
+  await basicPanel(page).getByRole("button", { name: "准备并翻译", exact: true }).click();
+  await running;
+  await expect(page.locator(".abt-translation").first()).toContainText("基础:");
+  await expect(page.locator(".abt-translation")).not.toHaveCount(0);
+  expect((await isolated(harness, page, "probe")).creates).toBe(1);
+  expect(harness.server.calls.length).toBe(0);
 });
 
 test("AI stays preferred; failures switch only on click and begin a new basic task", async ({ harness }) => {
@@ -98,7 +102,7 @@ test("AI stays preferred; failures switch only on click and begin a new basic ta
   harness.server.setFailures([401]); await select(page);
   await expect(basicPanel(page)).toContainText("AI 翻译失败");
   expect(harness.server.calls.length).toBe(2); expect((await isolated(harness, page, "probe")).creates).toBe(0);
-  await basicPanel(page).getByRole("button", { name: "使用浏览器释义", exact: true }).click();
+  await basicPanel(page).getByRole("button", { name: "使用浏览器翻译", exact: true }).click();
   await basicPanel(page).getByRole("button", { name: "准备并翻译", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).toContainText("基础:session"); expect(harness.server.calls.length).toBe(2);
   await page.keyboard.press("Escape"); await select(page, "#ambiguous");
@@ -106,12 +110,19 @@ test("AI stays preferred; failures switch only on click and begin a new basic ta
   expect((await isolated(harness, page, "probe")).inputs).toContain("persistent"); expect(harness.server.calls.length).toBe(2);
 });
 
-test("subtitles without AI never initialize browser translation", async ({ harness }) => {
+test("subtitles without AI use the local engine after a trusted prepare click", async ({ harness }) => {
   await harness.reset(); await noAi(harness, { siteProfiles: { [normalizeOrigin(harness.server.baseUrl)]: { targetLanguage: "Japanese" } } });
   const page = await harness.open("/article"); await harness.inject(page); await isolated(harness, page, "install");
-  await isolated(harness, page, "subtitle").catch(() => null);
+  const pending = isolated(harness, page, "subtitle");
+  await expect(basicPanel(page)).toContainText("准备基础翻译");
   expect((await isolated(harness, page, "probe")).creates).toBe(0);
-  expect((await isolated(harness, page, "probe")).pairs).toEqual([]);
+  await basicPanel(page).getByRole("button", { name: "准备并翻译", exact: true }).click();
+  const result = await pending;
+  expect(result.ok).toBe(true);
+  expect(result.engine).toBe("browser-translator");
+  expect(result.translations[0].text).toBe("基础:Bonjour tout le monde");
+  expect((await isolated(harness, page, "probe")).pairs).toEqual([{ sourceLanguage: "fr", targetLanguage: "ja" }]);
+  expect(harness.server.calls.length).toBe(0);
 });
 
 test("cancelling preparation then closing Selection rejects late results before cache store", async ({ harness }) => {

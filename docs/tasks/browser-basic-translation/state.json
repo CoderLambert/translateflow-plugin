@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "browser-basic-translation",
-  "status": "working",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
-  "branch": "feat/api-key-provider-connections",
-  "worktree": ".",
-  "candidateHead": null,
+  "branch": "codex/browser-basic-translation-20261020",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-browser-basic-20261020",
+  "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -55,29 +55,24 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户授权以阶段性快照同步全部当前改动到 main；当前候选版本 0.8.2。最新短词识别及划词与页面语言解耦修复通过 21 项定向 Node 和 8 项 E2E；真实模型与离线仍未验证，整体产品设计待后续重做。",
+  "nextAction": "PR #353 is open for candidate e94303b309ecbb6f3eaa32c094de831e5a3fe50c. Candidate-bound checks and WXT artifact fingerprint pass. Await local gate and exact remote-head check before squash merge. Real Chrome Translator model preparation, actual translation, offline behavior, and quality remain unverified.",
   "validation": {
-    "browserEngineNode": "PASS 14/14",
-    "versionHookAndRelease": "PASS 9/9",
+    "browserEngineNode": "PASS 19/19 on e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+    "versionHookAndRelease": "PASS 10/10 on e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
     "check": "PASS",
     "typecheck": "PASS",
-    "components": "PASS 18/18",
-    "e2e": "PASS 6 basic + 1 rich dictionary + 4 compatibility; final narrow/dark preparation repeat PASS",
-    "build": "PASS; dist/extension and .output/chrome-mv3 identical",
-    "realBrowser": "Capability/policy PASS; model preparation BLOCKED after 180s; actual translation/offline/quality NOT VERIFIED",
-    "commitPreview": "PASS, isolated alternate index; actual index unchanged",
-    "languageFollowup": "PASS 21 targeted Node + 8 browser E2E; 0.8.2 builds PASS; no page-language fallback for Selection"
+    "components": "PASS 22/22 on e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+    "e2e": "PASS 8/8 on Chromium 153.0.8010.12; local mocks only",
+    "build": "PASS for npm run build:extension:wxt and npm run build:extension",
+    "realBrowser": "NOT RUN on this candidate; actual Chrome Translator model preparation, translation, offline behavior, and quality unverified",
+    "commitSync": "PASS e94303b309ecbb6f3eaa32c094de831e5a3fe50c pushed to origin/codex/browser-basic-translation-20261020",
+    "pullRequest": "OPEN #353; not merged"
   },
   "artifacts": {
-    "default": {
-      "files": 128,
-      "bytes": 2775951,
-      "sha256": "31fe059a563e18b7132028da49ecac0cd49c39db634ec22be455d16df7791c40"
-    },
     "wxt": {
-      "files": 128,
-      "bytes": 2775951,
-      "sha256": "31fe059a563e18b7132028da49ecac0cd49c39db634ec22be455d16df7791c40"
+      "files": 130,
+      "bytes": 2965925,
+      "sha256": "9ccbfe5beaf4bd5b6b0447f1447e12df995ffb4e6f2edab668fd694f2ad188ef"
     }
   }
 }
