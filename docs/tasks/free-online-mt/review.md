@@ -45,3 +45,10 @@
 - 第四次 E2E 在实际编译扩展（`.output/chrome-mv3`）上执行，**只有机器翻译外网 transport 用 mock**，不是微软/腾讯真实网络成功；E2E 包指纹 SHA-256 `005ee1f2c295aa1dc2ec27cb726cc938e897160ba57bd181e2313b39ddc246a2` / 129 文件；产物 [Actions ZIP](https://github.com/CoderLambert/translateflow-plugin/actions/runs/39201493588/artifacts/12164102054)，压缩包 SHA-256 `2a60ba6f7dd47c47c40840f1497d25beee94ba7852550baed9cc1d243132817c`，仅为本轮 CI 产物而非用户已验收发布包。
 - **未通过门槛**：当前 Microsoft/Tencent 真实联网 NOT VERIFIED，真实用户安装/操作人工验收 NOT RUN；完整旧包同扩展 ID 升级 E2E NOT RUN，`scripts/local-task.mjs gate` / 签名 acceptance.json NOT RUN（GitHub CI 是辅助证据，不自动等于本地任务 gate）。
 - **界限**：PR 保持 Draft；没有向 main 合并/发布，没有修改 DB4 物理协议/ReadingRecord DB owner、恢复旧 DB3/内置词典或扩大权限。旧 0.8.14/DB3/历史 17/17 不是该候选的证据；本节证据以 SHA 与以上日志为准。
+
+## 2026-10-19 DB4 -> MT 同 ID 升级回归（新增测试，尚未运行）
+
+- 新增 `e2e/machine-translation-db4-upgrade.spec.mjs`：要求两个真实构建包（`TF_DB4_OLD_ARTIFACT` / `TF_DB4_NEW_ARTIFACT`），从当前主线 DB4 WXT 升级到 M0 候选 WXT，而非仅测试旧 DB2/3 的迁移。
+- 测试在一次性 Chromium profile、同一解包路径、真实扩展 ID 下，使用合成 MDX/MDD、Reading fixture 和 DB4 cache 写入数据；升级后比较用户配置、Reading IDB、缓存 `entries/epochs`、OPFS 完整内容、缓存 `cacheOnly` 命中，并由封闭网络控制证明 Provider 0 请求。
+- 没有实际执行新测试，结果 **NOT RUN**；缺少构建包应标 SKIP，不能被当成 PASS。该测试本身未改生产源码、生产权限或 DB4 物理版本。
+- 本次变更触及冻结测试输入，`state.candidateHead` 清空并改回 `working`。旧实现候选 `c8742f9728e0b0dfbe00c910553ce0575fbe7c90` 的 Node24 完整验证仍是有效历史证据；新 HEAD 需独立测试/重新冻结，不能沿用旧 candidate SHA 冒充新测试通过。

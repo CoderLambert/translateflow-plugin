@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "free-online-mt",
-  "status": "reviewing",
+  "status": "working",
   "owner": "main",
   "dependencies": [
     "cache-system-v1",
@@ -9,7 +9,7 @@
     "content-runtime-closeout"
   ],
   "branch": "feat/free-online-mt-20261016",
-  "candidateHead": "c8742f9728e0b0dfbe00c910553ce0575fbe7c90",
+  "candidateHead": "",
   "mergeHead": "",
   "validationCommands": [
     [
@@ -44,5 +44,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：M0 #342 自动化候选已冻结为 c8742f9728e0b0dfbe00c910553ce0575fbe7c90，Git tree ee64def47ff0c7e593b690a8907fa25f900c9928。真实 Linux Node24.21/npm11.19：MT+Selection+DB4 Node 114/114 PASS、full validate Node 1872/1872 PASS + typecheck/Vitest/WXT default build PASS；额外 WXT build、双目录 Chromium Smoke PASS，MT+DB4 E2E 13/13 PASS，Native IDB DB4 19/19 PASS。证据详见 validation-report.md 和 Actions #39201010519、#39201493588；模拟 Provider 仅 E2E mock，Microsoft/Tencent 当前真实网络及用户安装验收 NOT VERIFIED；旧包同 ID 升级全链、local-task gate 未验证。用户人工验收和真实 Provider 范围裁决前维持 Draft，不合并、不发布、不启动 M1–M3。"
+  "nextAction": "2026-10-19：新增从 main 已交付 DB4 安装包到 #342 的同 ID 实际 WXT 升级测试 e2e/machine-translation-db4-upgrade.spec.mjs：须显式提供两个真实构建包，隔离 profile，验证 user settings、Reading DB、用户词典 OPFS、DB4 entries/epochs 逐项保留、cacheOnly 命中且 Provider 0 请求。新 E2E 尚 NOT RUN；需 Node24+Chromium+主线包、候选包运行，准确候选重新冻结。先前 c8742f 的 1872 Node、MT/DB4 13 E2E 仅作为历史已测试实现证据，不自动转移新 test tree。真实 Microsoft/Tencent 与用户安装验收仍待定，PR Draft 不合并。"
 }
