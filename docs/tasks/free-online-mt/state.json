@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：新增 DB4 main→MT #342 同 ID 升级 E2E 尚未运行。main 和 PR 当前 version 都是 0.8.29，现有用例严格验证隔离 profile 内的解包包替换 + chrome.developerPrivate 管理重载，不伪称商店版本递增自动更新；未来实际发布前版本变更及对应升级仍单列用户验收。现有 Node24 全量/E2E PASS 绑定旧候选 c8742f，当前新增 E2E 需在 Node24+Chromium 上以明确输入包运行，之后才重新冻结 candidateHead。真实两家 Provider 网络和用户人工验收未完成，Draft 不合并。 严格升级入口 scripts/verify-mt-db4-upgrade.mjs 已纳入 validationCommands；缺旧/新真实 WXT 包、Node24 或缺 PASS 回执会失败，不接受 Playwright SKIP。该入口尚 NOT RUN。"
+  "nextAction": "2026-10-19：继续 #342 M0 收尾：修复 MT 429/403 冷却期间 chrome.storage.local GET/SET 失败导致 HTTP 业务错误被存储异常覆盖的问题；持久化异常仅降级为内存冷却，避免立刻重复调用，补 2 个 Provider 定向负例。生产缓存 DB4、Reading、词典、UI 与权限均未修改。旧实现 c8742f 的正式验证可复用作为不受影响范围的历史证据；本次改动的 Provider 定向 Node24 测试尚 NOT RUN，需要在准确 HEAD 上重验，再冻结新候选。DB4 同 ID 升级用例仍未实测；真实 Microsoft/Tencent 网络及用户体验仍独立验收。Draft 不合并。"
 }

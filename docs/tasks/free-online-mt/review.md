@@ -59,3 +59,9 @@
 - 未来准备发布时须单独核对版本递增与真实更新触发，再重测对应验收；当前不擅自提升版本或宣称用户升级完成。由于 test-only 变动，还没有可归属此 HEAD 的 Node24/Chromium 结果。
 
 - 新增 `scripts/verify-mt-db4-upgrade.mjs` 和任务验证命令：严格要求来自 main DB4 与 PR 的真实 WXT 安装包，Playwright 不允许 SKIP 冒充 PASS；此命令截至当前仍 NOT RUN。
+
+## 2026-10-19 MT 429/403 冷却容错补丁
+
+- `src/background/providers/machine-translation-transport.js`：冷却写入失败时保留内存围栏，不掩盖真实 `MT_BLOCKED` / `MT_RATE_LIMIT`；冷却读取失败时回退内存状态，避免存储损坏时对用户显示不相干的错误或无谓重试。未改变固定服务/权限/Key/网络终点。
+- `tests/machine-translation.test.mjs`：新增 storage GET 失败但正常翻译仍可完成，以及 403 + storage SET/GET 失败仍按 `MT_BLOCKED` 且重复请求数保持 1 的负例。
+- 本次修改属于生产 Provider 代码，旧 c8742f 已通过的全量 gate 不能宣称覆盖此变更。最新定向 Node24、浏览器/升级相关测试均待准确候选重验；当前只是源码变更和本轮审核，**NOT RUN**。

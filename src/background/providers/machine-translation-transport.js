@@ -25,13 +25,18 @@ async function withSlot(id, signal, operation) {
 async function cooldown(id, value) {
   const key = `tfMtCooldown:${id}`, storage = globalThis.chrome?.storage?.local;
   if (value) {
+    // A provider's HTTP 429/403 is authoritative even when storage is
+    // unavailable. Keep the in-memory fence instead of turning the response
+    // into an unrelated storage/network error.
     memoryCooldowns.set(id, value);
-    if (storage) await storage.set({ [key]: value });
+    try { await storage?.set({ [key]: value }); } catch { /* memory-only cooldown */ }
     return value;
   }
-  const saved = storage ? (await storage.get([key]))[key] : null;
-  const current = [saved, memoryCooldowns.get(id)].filter(item => Number.isFinite(item?.until)).sort((a, b) => b.until - a.until)[0];
-  return current;
+  let saved = null;
+  try { saved = storage ? (await storage.get([key]))[key] : null; }
+  catch { /* use the surviving in-memory cooldown */ }
+  return [saved, memoryCooldowns.get(id)].filter(item => Number.isFinite(item?.until))
+    .sort((a, b) => b.until - a.until)[0];
 }
 
 export function abortMachineHttp() { for (const controller of active) controller.abort(); }

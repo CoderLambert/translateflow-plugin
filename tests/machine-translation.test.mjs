@@ -259,6 +259,29 @@ test("oversized and non-JSON responses are refused rather than displayed or pers
   await assert.rejects(requestMachineTexts(config(), ["hello"]), { code: "MT_RESPONSE" });
 });
 
+test("storage read failures do not block authorized free MT requests", async () => {
+  storage();
+  chrome.storage.local.get = async () => { throw new Error("synthetic storage read failure"); };
+  globalThis.fetch = async () => ok(["服务恢复"]);
+  const translated = await requestMachineTexts(config(), ["public fixture"]);
+  assert.deepEqual(translated, ["服务恢复"]);
+});
+
+test("failed cooldown persistence preserves the real HTTP error and blocks repeat calls", async () => {
+  storage();
+  chrome.storage.local.set = async () => { throw new Error("synthetic storage quota error"); };
+  let count = 0;
+  globalThis.fetch = async () => {
+    count++;
+    return new Response("not allowed", { status: 403 });
+  };
+  const blockedConfig = config("mt-tencent-transmart");
+  await assert.rejects(requestMachineTexts(blockedConfig, ["public fixture"]), { code: "MT_BLOCKED" });
+  chrome.storage.local.get = async () => { throw new Error("synthetic storage read failure"); };
+  await assert.rejects(requestMachineTexts(blockedConfig, ["second public fixture"]), { code: "MT_BLOCKED" });
+  assert.equal(count, 1);
+});
+
 test("rate-limit cooldown survives a new request and never falls back to Tencent or paid AI", async () => {
   const { memory } = storage(); let calls = 0;
   globalThis.fetch = async () => { calls++; return new Response("limited", { status: 429, headers: { "Retry-After": "120" } }); };
