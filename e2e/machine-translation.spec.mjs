@@ -62,18 +62,22 @@ test("legacy mode remains AI; free setting reads never trigger a translation", a
 test("Microsoft page translation protects inline code/links, restores cache and Tencent stays isolated", async ({ harness }) => {
   await noAi(harness);
   const page = await harness.open("/article");
-  await page.evaluate(() => { document.body.innerHTML = '<main><p id="mt-rich">Read <code>privateCode()</code> with <strong>careful attention</strong> and <a href="https://example.invalid/private?token=synthetic">the documentation</a>.</p><p id="mt-plain">Read https://docs.example.invalid/private?token=visible and email admin@example.invalid before continuing.</p></main>'; });
+  await page.evaluate(() => { document.body.innerHTML = '<main><p id="mt-rich">Read <code>privateCode()</code> with <kbd>Ctrl+K</kbd>, <strong>careful attention</strong> and <a href="https://example.invalid/private?token=synthetic">the documentation</a>.</p><p id="mt-plain">Read https://docs.example.invalid/private?token=visible and email admin@example.invalid before continuing. Localhost localhost:3000/private?token=local, IPv6 [fd00::1]:8080/private?token=ipv6, repository git@github.com:private/repo.</p></main>'; });
   await harness.inject(page);
   const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "mt-page" }); expect(translated.ok).toBe(true);
   await expect(page.locator(".abt-translation")).toHaveCount(2);
   await expect(page.locator(".abt-translation code")).toHaveText("privateCode()");
+  await expect(page.locator(".abt-translation kbd")).toHaveText("Ctrl+K");
   await expect(page.locator(".abt-translation a")).toHaveAttribute("href", "https://example.invalid/private?token=synthetic");
   const first = await probe(harness); expect(first.calls.length).toBeGreaterThan(0);
   expect(JSON.stringify(first.calls)).not.toMatch(/privateCode|TF:|token=synthetic/);
   // Visible address text, not only href attributes, stays inside the browser.
-  expect(JSON.stringify(first.calls)).not.toMatch(/docs\.example\.invalid|token=visible|admin@example\.invalid/);
+  expect(JSON.stringify(first.calls)).not.toMatch(/docs\.example\.invalid|token=visible|admin@example\.invalid|localhost:3000|token=local|fd00::1|token=ipv6|git@github\.com|private\/repo/);
   await expect(page.locator(".abt-translation").nth(1)).toContainText("https://docs.example.invalid/private?token=visible");
   await expect(page.locator(".abt-translation").nth(1)).toContainText("admin@example.invalid");
+  await expect(page.locator(".abt-translation").nth(1)).toContainText("localhost:3000/private?token=local");
+  await expect(page.locator(".abt-translation").nth(1)).toContainText("[fd00::1]:8080/private?token=ipv6");
+  await expect(page.locator(".abt-translation").nth(1)).toContainText("git@github.com:private/repo");
   expect(first.calls.every(item => item.credentials === "omit" && item.redirect === "error")).toBe(true);
   expect(harness.server.calls).toHaveLength(0);
   await harness.sendContent(page, "ABT_RESTORE_CACHE"); expect((await probe(harness)).calls.length).toBe(first.calls.length);
@@ -99,6 +103,13 @@ test("Selection stores a translation artifact, survives reload, and history read
   await page.reload(); await select(page, "#technical-competition");
   await expect(page.locator(".tf-selection-primary")).toContainText("微软译文");
   expect((await probe(harness)).calls.length).toBe(count); expect(harness.server.calls).toHaveLength(0);
+  await harness.setStorage({ machineTranslation: machine("mt-tencent-transmart") });
+  await page.reload(); await select(page, "#technical-competition");
+  await expect(page.locator(".tf-selection-primary")).toContainText("腾讯译文");
+  const switchedCalls = (await probe(harness)).calls;
+  expect(switchedCalls.length).toBeGreaterThan(count);
+  expect(switchedCalls.at(-1).origin).toBe("https://transmart.qq.com");
+  expect(harness.server.calls).toHaveLength(0);
   await page.screenshot({ path: `${evidence}/selection-mocked-transport.png` }); await page.close(); await center.close();
 });
 
@@ -146,4 +157,20 @@ test("cancellation aborts the real pending transport and invalid responses never
   await expect(page.locator(".abt-translation")).toHaveCount(0); const before = (await probe(harness)).calls.length;
   await harness.sendContent(page, "ABT_RESTORE_CACHE"); expect((await probe(harness)).calls.length).toBe(before);
   expect(harness.server.calls).toHaveLength(0); await page.close();
+});
+
+test("navigating away aborts the tab-owned free MT request", async ({ harness }) => {
+  await noAi(harness); const page = await harness.open("/article"); await harness.inject(page);
+  await harness.serviceWorker.evaluate(() => { globalThis.__mtProbe.mode = "hold"; });
+  const pending = harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "mt-navigation" })
+    .then(() => ({ resolved: true }), error => ({ error: String(error) }));
+  await expect.poll(async () => (await probe(harness)).calls.length).toBeGreaterThan(0);
+  await page.goto(new URL("/selection?navigation=mt", page.url()).href);
+  const outcome = await pending;
+  expect(outcome).toHaveProperty("error");
+  expect(outcome.error).toMatch(/message channel closed/i);
+  await expect.poll(async () => (await probe(harness)).aborted).toBeGreaterThan(0);
+  expect(await page.locator(".abt-translation").count()).toBe(0);
+  expect(harness.server.calls).toHaveLength(0);
+  await page.close();
 });

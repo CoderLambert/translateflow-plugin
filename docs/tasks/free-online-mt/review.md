@@ -99,3 +99,19 @@
 - `src/background/providers/machine-translation-transport.js`：`readBoundedBody` 在 streaming 正文超过 512KiB 或出错后，原本 `await reader.cancel()`；上游取消异步若不 settle，HTTP 失败无法返回且 per-provider queue slot 一直占用。本轮改为取消并处理拒绝，但不等待取消完成，随后释放 reader lock。
 - `tests/machine-translation.test.mjs` 新增确定性回归：首个响应越界，`ReadableStream.cancel()` 被人为延迟，验证仍能返回 `MT_RESPONSE`，第二个同服务请求在解除 cancel gate 之前拿到结果；最后清理 deferred gate。该测试尚未在真实 Node24 执行（NOT RUN）。
 - 其余 DB4 物理库、ReadingRecord、用户安装词典、Quick Control、扩展权限未变。
+
+## 2026-10-19 最新 PR HEAD 的本地工程验证
+
+- 刷新后的远端 `feat/free-online-mt-20261016` 在验证前后均为 `198a50525b78516135aa5a0d59817a446d82f64d`，`main` 为 `1ddae0504a7478480253723d9f5fb43d13b77b88`。使用 Node `v24.22.0` / npm `11.19.0`，分别构建 main 与 PR 的真实 WXT 包；详细产物指纹及命令见 `validation-report.md`。测试时只有两个 E2E 文件未提交；现在 E2E 和任务证据/状态/index 都在本地修改，尚未冻结 commit candidate。
+- 定向 Node **127/127 PASS**；`npm run check` PASS；实际 WXT Chromium 的 MT、DB4 MV3/native cache 流程 **14/14 PASS**，MT 文件增加 Tencent Selection 后单独重跑 **7/7 PASS**；DB4 原生 IDB 子检查 **19/19 PASS**。
+- 严格 `node scripts/verify-mt-db4-upgrade.mjs` **1/1 PASS**：在同扩展 ID、隔离 Chromium profile 和同一路径包替换下，DB4/cacheOnly、Reading、合成用户安装 MDX/MDD 与设置保留，Provider 请求 0。main 和 PR 均为 `0.8.29`，该回归只证明管理页强制 reload，不证明商店自动更新。
+- Chromium 用例覆盖 Microsoft/Tencent Mock 的 Page 与 Selection、code/kbd/link/内部 marker、URL/邮箱/IPv6/localhost/Git SSH 保持本地、缓存恢复、配置切换、用户取消及导航中止；没有调用真实服务。PR 包关闭词典字节数为 0。
+- 回归期间发现并修正了升级测试使用旧 Options selector、从 Options 请求仅 Learning Center 授权的 Reading 列表，以及导航测试未及时处理浏览器消息通道关闭。修复均是 E2E 测试夹具；生产源码未变。实际供应商网络可用性仍未验证，符合本次 Mock-only 限制；没有 commit、push、merge 或发布。
+- 全量 `npm run validate`、全项目 E2E、WXT smoke、本地 task gate、真实供应商传输和用户手工安装验收未运行；旧 `c8742f` 全量 PASS 不当作本 HEAD 的验证证据。
+
+## 2026-10-19 版本化暂存快照复验
+
+- 在精确暂存本任务的 E2E 与证据文件后，当前 worktree 的 `pre-commit` 实际只运行 `git diff --cached --check`；按本次任务的版本约定显式运行 `npm run commit:prepare`，只同步 README、Manifest、package 与 lock 到 `0.8.30`，并构建暂存快照到忽略的 `dist/extension/`。没有夹带 unstaged 修改。
+- 对最终 `0.8.30` 快照重新运行 Node MT/Selection/缓存相关测试 **127/127 PASS**、`npm run check` **PASS**、`npm run build:extension:wxt` **PASS**。最终 WXT 包 129 文件、2,947,518 bytes、词典资源 0 bytes，fingerprint `b455a1703e52637d80ade71edacdfa822b50693ca9f4049dea71ebe77ef19d20`。
+- 最终包的 Chromium MT + DB4 MV3/native 流程 **14/14 PASS**，原生 DB4 检查 **19/19 PASS**。严格 `scripts/verify-mt-db4-upgrade.mjs` **1/1 PASS**：main `0.8.29`（artifact `649a05c8e11ce26e0faa52dce551216c1318d0b3f5ca141797736b6f357194a1`）替换为当前 `0.8.30` 包；同 ID、同 profile/解包路径，cache、Reading、合成用户词典、设置保留，Provider 请求 0。详情见 `validation-report.md`。
+- E2E 只使用 Microsoft/Tencent Mock；没有请求真实供应商。升级验证使用 Chromium 管理页强制重载，不等同于商店自动更新，后者仍未验证。全量 `npm run validate`、全项目 E2E、WXT smoke、本地 task gate、真实服务及用户手工验收仍未执行；任务保持 `working`，`candidateHead` 为空，不合并或发布。

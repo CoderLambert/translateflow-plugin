@@ -116,12 +116,22 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
     expect(newManifest.version.localeCompare(oldManifest.version,"en",{numeric:true})).toBeGreaterThanOrEqual(0);
     const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,baseUrl:server.baseUrl});
     await launch();
-    await driver.locator("#defaultProvider").selectOption("openai-compatible");
-    await driver.locator("#openaiBaseUrl").fill(server.baseUrl + "/v1");
-    await driver.locator("#openaiModel").fill("upgrade-synthetic");
-    await driver.locator("#targetLanguage").fill("Simplified Chinese");
-    await driver.locator("#save").click();
-    await expect(driver.locator("#status")).toContainText("已保存");
+    await driver.evaluate(async ({ baseUrl }) => chrome.storage.local.set({
+      apiKey: "synthetic-retained-key",
+      openAICompatible: { baseUrl: baseUrl + "/v1", apiKey: "synthetic-retained-openai-key", model: "synthetic-retained-model" },
+      providerConnectionsVersion: 1,
+      providerConnections: { "upgrade-synthetic": { id: "upgrade-synthetic", revision: 1, name: "Upgrade synthetic",
+        platform: "custom", protocol: "openai-chat", baseUrl: baseUrl + "/v1", credentialId: "upgrade-synthetic",
+        defaultModel: "upgrade-synthetic", settings: { streaming: false, outputTokens: 4096, temperature: null,
+          reasoning: "", allowEmptyApiKey: true, allowInsecureHttp: true } } },
+      providerCredentials: { "upgrade-synthetic": "" },
+      defaultService: { kind: "api-key", connectionId: "upgrade-synthetic" },
+      targetLanguage: "Japanese",
+      machineTranslation: { version: 1, mode: "free-online", providerId: "mt-tencent-transmart", sourceLanguage: "auto" },
+      siteProfiles: { "https://fixture.invalid": { targetLanguage: "French", appearance: "compact",
+        serviceRef: { kind: "api-key", connectionId: "upgrade-synthetic" } } },
+      dictionaryEnabled: true
+    }), { baseUrl: server.baseUrl });
     const mdx = makeRichMdx([["persistent","<p>Locally installed user dictionary</p>"]],
       {title:"MT DB4 Upgrade Fixture",styleSheet:""});
     const mdd = makeMdd([["\\media\\continuity.css",new TextEncoder().encode(".continuity{}")]]);
@@ -177,9 +187,12 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
       .filter({hasText:"MT DB4 Upgrade Fixture"})).toBeVisible();
     const cached = await runtime({type:"CACHE_LOOKUP",pageUrl,cacheOnly:true,segments});
     expect(cached).toMatchObject({ok:true,hits:[{id:"existing",text:"主线既有缓存需要保留。"}]});
-    const reading = await runtime({protocolVersion:2,method:"reading.list-records",
-      pageKey:null,query:"React",cursor:null,limit:20});
+    const learning = await context.newPage();
+    await learning.goto("chrome-extension://" + extensionId + "/learning-center.html");
+    const reading = await learning.evaluate(message => chrome.runtime.sendMessage(message),
+      {protocolVersion:2,method:"reading.list-records",pageKey:null,query:"React",cursor:null,limit:20});
     expect(reading).toMatchObject({ok:true,data:{items:[{recordId:record().recordId}]}});
+    await learning.close();
     expect(server.calls).toHaveLength(0);
     expect(network.snapshot().forwardedOutsideMock).toBe(0);
     expect(next.treeSha256).not.toBe(old.treeSha256);

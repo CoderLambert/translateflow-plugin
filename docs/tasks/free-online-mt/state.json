@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：继续 M0 免费 MT 生产修复与准确候选定向验证。当前 transport 的 streaming 响应超过512KiB时取消 Promise 可能一直不 settle，阻塞 MT_RESPONSE 和 Provider 队列；本次改为非阻塞 best-effort cancel，并新增队列可继续处理下一请求的 node:test 回归。先前已完成 Page/Selection 地址保护、HTTP 状态保留及 mt-slots-v2 缓存身份隔离；未改 DB4、Reading、词典、Quick Control 或权限。新 HEAD 的 Node24 定向和当前 WXT/Chromium、DB4 同 ID 升级尚 NOT RUN，旧 c8742f 的验证不覆盖本轮。验证失败先修复，用户人工和真实 Microsoft/Tencent 独立记录，不合并 Draft。"
+  "nextAction": "2026-10-19：本任务 E2E 与证据变更已精确暂存；按本次提交版本约定运行 npm run commit:prepare，将 package/lock/Manifest/README 同步到 0.8.30 并构建暂存快照。最终版本重新通过 Node MT/Selection/cache 定向测试 127/127、npm run check、WXT 构建、Chromium MT + DB4 14/14（原生 DB4 19/19）及严格 DB4 main 0.8.29 → MT 0.8.30 同 ID 包替换 1/1。candidateHead 仍为空、status 保持 working；只用本地 Mock，没有请求真实 Microsoft/Tencent。Chromium 管理页重载不证明商店自动更新；全量 validate、全项目 E2E、WXT smoke、本地 task gate、真实服务与用户手工验收仍未运行。后续需完成人工/真实服务验收；本次提交推送不表示任务完成或授权合并/发布。"
 }
