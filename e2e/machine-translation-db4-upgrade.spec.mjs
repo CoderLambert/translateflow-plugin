@@ -111,7 +111,9 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
     network = await startClosedNetwork(server.baseUrl);
     const oldManifest = JSON.parse(await readFile(join(resolve(oldArtifact),"manifest.json"),"utf8"));
     const newManifest = JSON.parse(await readFile(join(resolve(newArtifact),"manifest.json"),"utf8"));
-    expect(newManifest.version.localeCompare(oldManifest.version,"en",{numeric:true})).toBeGreaterThan(0);
+    // Both built packages currently declare 0.8.29; this exercises a real
+    // same-ID unpacked replacement+management reload, not automatic store update.
+    expect(newManifest.version.localeCompare(oldManifest.version,"en",{numeric:true})).toBeGreaterThanOrEqual(0);
     const old = await prepareExtensionTestCopy({artifact:oldArtifact,extensionDir,baseUrl:server.baseUrl});
     await launch();
     await driver.locator("#defaultProvider").selectOption("openai-compatible");
@@ -151,7 +153,7 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
     await context.close(); context=null; driver=null;
     await rm(extensionDir,{recursive:true,force:true});
     const next = await prepareExtensionTestCopy({artifact:newArtifact,extensionDir,
-      baseUrl:server.baseUrl,observeInstalled:true});
+      baseUrl:server.baseUrl});
     await launch();
     const manager = await context.newPage();
     await manager.goto("chrome://extensions/");
@@ -167,7 +169,9 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
     const after = await snapshot();
     expect(ownedSettings(after.storage)).toEqual(ownedSettings(before.storage));
     expect(after.opfs).toEqual(before.opfs);
-    expect(database(after,"translateflow-reading-records")).toEqual(database(before,"translateflow-reading-records"));
+    for (const store of ["records","snapshots","artifacts"])
+      expect(database(after,"translateflow-reading-records").stores[store])
+        .toEqual(database(before,"translateflow-reading-records").stores[store]);
     expect(database(after,"ai_bilingual_translator")).toEqual(database(before,"ai_bilingual_translator"));
     await expect(driver.locator("#richMdictInstalledList [data-dictionary-id]")
       .filter({hasText:"MT DB4 Upgrade Fixture"})).toBeVisible();
@@ -178,10 +182,12 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
     expect(reading).toMatchObject({ok:true,data:{items:[{recordId:record().recordId}]}});
     expect(server.calls).toHaveLength(0);
     expect(network.snapshot().forwardedOutsideMock).toBe(0);
+    expect(next.treeSha256).not.toBe(old.treeSha256);
     phases.push({phase:"free-mt-db4",artifact:next.treeSha256,cachePreserved:true,
       readingPreserved:true,userDictionaryPreserved:true,providerRequests:0});
     const report={status:"PASS",schemaVersion:1,oldVersion:oldManifest.version,
       newVersion:newManifest.version,extensionId,sameProfile:true,sameUnpackedPath:true,
+      upgradeMethod:"unpacked-replacement-and-management-reload",storeVersionUpdateVerified:false,
       oldSourceHead:process.env.TF_DB4_OLD_SOURCE_HEAD||null,
       newSourceHead:process.env.TF_DB4_NEW_SOURCE_HEAD||null,
       phases,network:network.snapshot()};

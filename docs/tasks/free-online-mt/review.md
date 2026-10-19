@@ -52,3 +52,8 @@
 - 测试在一次性 Chromium profile、同一解包路径、真实扩展 ID 下，使用合成 MDX/MDD、Reading fixture 和 DB4 cache 写入数据；升级后比较用户配置、Reading IDB、缓存 `entries/epochs`、OPFS 完整内容、缓存 `cacheOnly` 命中，并由封闭网络控制证明 Provider 0 请求。
 - 没有实际执行新测试，结果 **NOT RUN**；缺少构建包应标 SKIP，不能被当成 PASS。该测试本身未改生产源码、生产权限或 DB4 物理版本。
 - 本次变更触及冻结测试输入，`state.candidateHead` 清空并改回 `working`。旧实现候选 `c8742f9728e0b0dfbe00c910553ce0575fbe7c90` 的 Node24 完整验证仍是有效历史证据；新 HEAD 需独立测试/重新冻结，不能沿用旧 candidate SHA 冒充新测试通过。
+
+### 同版本包替换与商店更新的证据区分
+
+- 已核对 `main@1ddae050` 与本 PR package version 都是 **0.8.29**。新增测试使用 Chromium 管理页 `developerPrivate.reload` 强制重载同路径实际替换的包，**只验证同 ID、同 profile 和真实 DB4/Reading/OPFS 数据保留**，不是扩展商店随递增版本触发的自动更新。
+- 未来准备发布时须单独核对版本递增与真实更新触发，再重测对应验收；当前不擅自提升版本或宣称用户升级完成。由于 test-only 变动，还没有可归属此 HEAD 的 Node24/Chromium 结果。

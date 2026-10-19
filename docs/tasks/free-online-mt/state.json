@@ -44,5 +44,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：新增从 main 已交付 DB4 安装包到 #342 的同 ID 实际 WXT 升级测试 e2e/machine-translation-db4-upgrade.spec.mjs：须显式提供两个真实构建包，隔离 profile，验证 user settings、Reading DB、用户词典 OPFS、DB4 entries/epochs 逐项保留、cacheOnly 命中且 Provider 0 请求。新 E2E 尚 NOT RUN；需 Node24+Chromium+主线包、候选包运行，准确候选重新冻结。先前 c8742f 的 1872 Node、MT/DB4 13 E2E 仅作为历史已测试实现证据，不自动转移新 test tree。真实 Microsoft/Tencent 与用户安装验收仍待定，PR Draft 不合并。"
+  "nextAction": "2026-10-19：新增 DB4 main→MT #342 同 ID 升级 E2E 尚未运行。main 和 PR 当前 version 都是 0.8.29，现有用例严格验证隔离 profile 内的解包包替换 + chrome.developerPrivate 管理重载，不伪称商店版本递增自动更新；未来实际发布前版本变更及对应升级仍单列用户验收。现有 Node24 全量/E2E PASS 绑定旧候选 c8742f，当前新增 E2E 需在 Node24+Chromium 上以明确输入包运行，之后才重新冻结 candidateHead。真实两家 Provider 网络和用户人工验收未完成，Draft 不合并。"
 }
