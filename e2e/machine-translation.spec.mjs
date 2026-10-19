@@ -62,7 +62,7 @@ test("legacy mode remains AI; free setting reads never trigger a translation", a
 test("Microsoft page translation protects inline code/links, restores cache and Tencent stays isolated", async ({ harness }) => {
   await noAi(harness);
   const page = await harness.open("/article");
-  await page.evaluate(() => { document.body.innerHTML = '<main><p id="mt-rich">Read <code>privateCode()</code> with <strong>careful attention</strong> and <a href="https://example.invalid/private?token=synthetic">the documentation</a>.</p><p id="mt-plain">This ordinary paragraph is ready for machine translation.</p></main>'; });
+  await page.evaluate(() => { document.body.innerHTML = '<main><p id="mt-rich">Read <code>privateCode()</code> with <strong>careful attention</strong> and <a href="https://example.invalid/private?token=synthetic">the documentation</a>.</p><p id="mt-plain">Read https://docs.example.invalid/private?token=visible and email admin@example.invalid before continuing.</p></main>'; });
   await harness.inject(page);
   const translated = await harness.sendContent(page, "ABT_TRANSLATE_PAGE", { taskId: "mt-page" }); expect(translated.ok).toBe(true);
   await expect(page.locator(".abt-translation")).toHaveCount(2);
@@ -70,6 +70,10 @@ test("Microsoft page translation protects inline code/links, restores cache and 
   await expect(page.locator(".abt-translation a")).toHaveAttribute("href", "https://example.invalid/private?token=synthetic");
   const first = await probe(harness); expect(first.calls.length).toBeGreaterThan(0);
   expect(JSON.stringify(first.calls)).not.toMatch(/privateCode|TF:|token=synthetic/);
+  // Visible address text, not only href attributes, stays inside the browser.
+  expect(JSON.stringify(first.calls)).not.toMatch(/docs\.example\.invalid|token=visible|admin@example\.invalid/);
+  await expect(page.locator(".abt-translation").nth(1)).toContainText("https://docs.example.invalid/private?token=visible");
+  await expect(page.locator(".abt-translation").nth(1)).toContainText("admin@example.invalid");
   expect(first.calls.every(item => item.credentials === "omit" && item.redirect === "error")).toBe(true);
   expect(harness.server.calls).toHaveLength(0);
   await harness.sendContent(page, "ABT_RESTORE_CACHE"); expect((await probe(harness)).calls.length).toBe(first.calls.length);

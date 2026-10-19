@@ -83,3 +83,7 @@
 - 可见 URL/邮箱/IP 从远程 Provider payload 中移除后，旧免费 MT 缓存可能包含此前不遵守此策略的结果；本次将 `MACHINE_INPUT_VERSION` 定向提升为 `mt-slots-v2`，因此新旧 MT 请求的 `configFingerprint`/`request identity` 隔离。保护此前缓存的物理记录、不删 DB4 entries/epochs、不迁移 Reading/词典、不改 AI 缓存身份。
 - 新增测试证实旧 `mt-slots-v1` 与新 v2 的 `getConfigHash`、`createTranslationIdentity` 和 `buildTranslationRequestKey` 不相等；原本使用 v2 作为“虚拟变更版本”的断言移至 v3。
 - Node24/Chromium 运行验收仍 **NOT RUN**；静态合同修改不能替代构建与真实用户网络检测。
+
+### 2026-10-19 编译扩展的 Page 可见地址 E2E 断言
+
+- 原 Microsoft Page 富文本 E2E 同一段落加入可见 URL、邮箱，新增编译扩展的 Provider mock 请求原文中不得出现明文与译文原样包含地址断言；原 code/href 守卫和 Tencent 隔离断言保持。Node24 Chromium 尚 **NOT RUN**；静态修改不能代替真实安装包验收。

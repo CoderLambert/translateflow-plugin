@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19 M0 继续修复 Page 可见 URL 本地保护、HTTP 错误稳定性；由于真实 MT payload 策略改变，将 MACHINE_INPUT_VERSION 从 mt-slots-v1 升为 mt-slots-v2，只隔离 MT 旧缓存身份，禁止命中隐私旧策略的译文。DB4 仍 version4/recordEnvelope1，Reading/用户词典/Quick Control 不变、不重复清库。新增旧 v1 与新 v2 的 cache/request identity 负例。新准确生产 HEAD 的 Node24 定向、WXT/Chromium 受影响测试、同 ID DB4 升级 E2E 仍 NOT RUN，先前 c8742f 证据不覆盖新代码；必须按准确 SHA 测试并冻结后交用户验收。真实 Microsoft/Tencent 状态独立未验证，Draft 不合并。"
+  "nextAction": "2026-10-19 M0：已实现免费 MT 403/429 存储异常冷却保留、错误响应 cancel() 异常不遮蔽 HTTP 状态、Page 可见 URL/邮箱/IP 本地保留 + MT inputVersion v2 隔离旧隐私策略缓存；新增 8 个 Node 负例，并扩展 e2e/machine-translation.spec.mjs 对可见 URL 只本地渲染而不进入实际编译扩展 MT 请求的断言。V8 隔离 URL/HTTP/语义身份行为已通过，仅测试替身。当前 Node24 定向、Chromium MT 浏览器、DB4 同 ID 升级新用例 NOT RUN；旧 c8742f 旧 SHA 的 validate/MT E2E PASS 不覆盖当前新代码。后续必须以准确新 HEAD 集中做受影响验证，不重复跑不相干全量；真实 Microsoft/Tencent 和用户安装人工验收仍待。Draft 不合并不发布。"
 }
