@@ -259,7 +259,7 @@
     },
     {
       "task": "browser-basic-translation",
-      "status": "ready_to_sync",
+      "status": "working",
       "dependencies": [],
       "branch": "codex/browser-basic-translation-20261020",
       "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c"
