@@ -10,6 +10,7 @@ import { optionsClient } from "./client";
 import { glossaryClient } from "./glossary-client";
 import { useLocale } from "./useLocale";
 import { useOptions } from "./useOptions";
+import { MachineTranslationSection } from "./MachineTranslationSection";
 import { SettingSwitch } from "./SettingSwitch";
 
 const navItems = [
@@ -72,7 +73,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
     </nav>
     <main><header className="settings-intro"><span className="section-kicker">{i18n.t("options.kicker")}</span><h1>{i18n.t("options.title")}</h1><p className="lead">{i18n.t("options.lead")}</p></header>
       {!config ? <section className="tf-card" aria-busy={!ui.loadError}>{ui.loadError ? <><p role="alert">{i18n.t("options.loadFailed", { message: ui.loadError })}</p><button type="button" onClick={() => void ui.loadConfig()}>{i18n.t("common.retry")}</button></> : <p>{i18n.t("options.loading")}</p>}</section> : <>
-        <SettingsPanel id="general" activeHash={activeHash}><GeneralSection config={config} disabled={ui.busy} update={update} />{localeSection}<ShortcutsSection /></SettingsPanel>
+        <SettingsPanel id="general" activeHash={activeHash}><MachineTranslationSection /><GeneralSection config={config} disabled={ui.busy} update={update} />{localeSection}<ShortcutsSection /></SettingsPanel>
         <SettingsPanel id="selection" activeHash={activeHash}><SelectionSection config={config} disabled={ui.busy} update={update} /></SettingsPanel>
         <SettingsPanel id="appearance" activeHash={activeHash}><AppearanceSection config={config} disabled={ui.busy} update={update} /></SettingsPanel>
         <SettingsPanel id="youtube" activeHash={activeHash}><YoutubeSection config={config} disabled={ui.busy} update={update} /></SettingsPanel>

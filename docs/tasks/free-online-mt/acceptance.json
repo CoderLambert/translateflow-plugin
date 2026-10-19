@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "task": "free-online-mt",
+  "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+  "tree": "f38467cab1136c3e5bc393f22084481a9f137424",
+  "inputTree": "9e1a92b8167d04644ee6c612a9399d893dec5e1382b6fa985c833562d166096f",
+  "frozenAt": "2026-10-19T08:31:47.412Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/machine-translation.test.mjs",
+        "tests/machine-translation-selection-protection.test.mjs"
+      ],
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 165.872359,
+      "startedAt": "2026-10-19T08:31:47.606Z",
+      "log": "docs/task-execution/local/free-online-mt/3d95e575-197e-4265-a757-cf1e9079993e.log",
+      "logSha256": "b4749b11aa9d4420372f3e924ebe06e9f33a83a905d376351b3ca3db09db1b0b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 54317.786268,
+      "startedAt": "2026-10-19T08:31:52.877Z",
+      "log": "docs/task-execution/local/free-online-mt/a897a3f7-3d51-49f3-899b-659583056643.log",
+      "logSha256": "0b9dc5f41a469bcf7d36ea3a89e98e9861349cc81f7d357f1dd39d8c7ed4c156"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2622.295462,
+      "startedAt": "2026-10-19T08:32:58.056Z",
+      "log": "docs/task-execution/local/free-online-mt/4ba6c49f-36ec-4566-ae9d-2acfd1e2c17a.log",
+      "logSha256": "57bc5eb77c4d7d2be71a581d3bf256fc81a01af877a2438df550a017fd807a6a"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1327.56115,
+      "startedAt": "2026-10-19T08:33:08.925Z",
+      "log": "docs/task-execution/local/free-online-mt/f85104f1-f503-4cb3-b7c8-e374fcae3c98.log",
+      "logSha256": "f5f2fe9cadbd92c70704a4f1668d401830abac3c0dd3b2ec8a843166b2e0818b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/machine-translation.spec.mjs",
+        "--workers=1",
+        "--retries=0"
+      ],
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 7197.797538,
+      "startedAt": "2026-10-19T08:33:20.955Z",
+      "log": "docs/task-execution/local/free-online-mt/1b2528bb-7ce3-412f-95ae-77ab4da05a17.log",
+      "logSha256": "ed71d4b183b8fc68f7f3fe881c0a87b4ef29bf68bcd67a7a42fd3324dc954b7a"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/verify-mt-db4-upgrade.mjs"
+      ],
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4019.085307,
+      "startedAt": "2026-10-19T08:33:31.965Z",
+      "log": "docs/task-execution/local/free-online-mt/e2931d90-9832-4876-943c-9fd8569791fa.log",
+      "logSha256": "78e81b6d447d6f176e406dd124048a81dc5e6785ab473c122c841b9dc72b9759"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "7d25d76a54f69aebd75312e0b5cdc9287999ac90b164fcfb03558d02f7dfde0c"
+  },
+  "limitations": [
+    "User instruction on 2026-10-19 waives waiting for manual final acceptance as a prerequisite to continuing development.",
+    "Real Microsoft/Tencent connectivity was not tested: mock-only transport remains the rule unless user explicitly requests the one-time fixed public-sentence check.",
+    "PR #342 remains OPEN/DRAFT at remote head 62bb5f10; local commits are not pushed. No merge or release.",
+    "M1–M3 remain outside this task contract and were not started. No physical DB4 change or built-in dictionary restoration.",
+    "Same-ID unpacked replacement and management reload are verified; Chrome Web Store automatic update is not verified. Full-project E2E and real private dictionary corpus compatibility were not run.",
+    "Only isolated loopback mock listeners were used; they closed after tests. No LAN/external listener or Tailscale setup."
+  ]
+}

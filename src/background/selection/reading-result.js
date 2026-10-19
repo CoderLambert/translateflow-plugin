@@ -6,5 +6,5 @@ export async function readingTranslationResult(config) {
   const configHash = await getConfigHash(config);
   return { targetLanguage: config.targetLanguage,
     provenance: { provider: config.provider, model: config.model,
-      promptVersion: "translation-prompt-v1", providerConfigFingerprint: configHash } };
+      promptVersion: config.engine === "machine-translation" ? "mt-adapter-v1" : "translation-prompt-v1", providerConfigFingerprint: configHash } };
 }

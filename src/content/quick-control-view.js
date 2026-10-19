@@ -314,7 +314,6 @@
       ensure();
       renderContext();
     }
-
     function renderContext() {
       if (!presetSelect || !appearanceSelect) return;
       const context = contextValue || {};
@@ -324,7 +323,11 @@
         ...(Array.isArray(context?.availablePresets) ? context.availablePresets : [])
           .map((item) => option(item.id, `${item.label} · ${item.description}`))
       );
-      presetSelect.value = context?.temporaryPresetActive
+      const machineMode = context.engine === "machine-translation";
+      if (machineMode) presetSelect.replaceChildren(option("inherit", `${t("mt.free")} · ${context.providerLabel || ""}`));
+      presetSelect.title = machineMode ? t("mt.settings") : "";
+      presetSelect.disabled = machineMode;
+      presetSelect.value = machineMode ? "inherit" : context?.temporaryPresetActive
         ? (context.temporaryPresetId || "none")
         : (context?.savedPresetId || "inherit");
 
@@ -337,10 +340,8 @@
         ? context.appearanceId
         : "inherit";
     }
-
-    function setPresetDisabled(disabled) { if (presetSelect) presetSelect.disabled = Boolean(disabled); }
+    function setPresetDisabled(disabled) { if (presetSelect) presetSelect.disabled = Boolean(disabled) || contextValue?.engine === "machine-translation"; }
     function setAppearanceDisabled(disabled) { if (appearanceSelect) appearanceSelect.disabled = Boolean(disabled); }
-
     function renderMessage() {
       if (!statusNode || !messageValue) return;
       const text = messageValue.key

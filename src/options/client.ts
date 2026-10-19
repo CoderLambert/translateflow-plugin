@@ -139,8 +139,10 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
   }
 
   async function saveProfile(originInput: string, profileInput: SiteProfile) {
-    const origin = normalizeOrigin(originInput), profile = normalizeSiteProfile(profileInput);
+    const origin = normalizeOrigin(originInput);
     const stored = await api.storage.local.get(["siteProfiles"]) as Record<string, unknown>, next: Record<string, unknown> = { ...objectRecord(stored.siteProfiles) };
+    const existing = objectRecord(next[origin]);
+    const profile = normalizeSiteProfile({ ...(existing.machineTranslation !== undefined ? { machineTranslation: existing.machineTranslation } : {}), ...profileInput });
     if (Object.keys(profile).length) next[origin] = profile; else delete next[origin];
     await api.storage.local.set({ siteProfiles: next });
     return { origin, saved: Object.keys(profile).length > 0 };

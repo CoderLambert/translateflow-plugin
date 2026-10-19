@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "task": "free-online-mt",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [
+    "cache-system-v1",
+    "remove-bundled-lexicons",
+    "content-runtime-closeout"
+  ],
+  "branch": "feat/free-online-mt-20261016",
+  "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe",
+  "mergeHead": "",
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/machine-translation.test.mjs",
+      "tests/machine-translation-selection-protection.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/machine-translation.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ],
+    [
+      "node",
+      "scripts/verify-mt-db4-upgrade.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "2026-10-19 本地 commit 0d245001483b7b653452e0c0889f713c310be7fe（版本 0.8.31）在提交后对准确 SHA 完成本地 task 合同全部 6 项并通过 gate。用户已要求后续跳过人工验收等待；PR #342 仍 OPEN/DRAFT 于远端 62bb5f10，本地提交未推送。真实 Microsoft/Tencent 请求仍未执行，原始明确授权条件继续有效。M1–M3 按本 task 合同未启动。"
+}

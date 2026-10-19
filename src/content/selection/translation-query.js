@@ -5,11 +5,39 @@
   const tasks = app.modules.tasks;
   const t = (key) => app.modules.contentI18n.t(key);
   function localizedError(key, response = null) {
+    if (/^MT_(CONFIG|LANGUAGE|STRUCTURE|PERMISSION|INPUT|BUSY|RATE_LIMIT|BLOCKED|HTTP|TIMEOUT|NETWORK|RESPONSE|CONSENT)$/u.test(response?.errorCode || "")) key = `mt.error.${response.errorCode}`;
     const error = Object.assign(new Error(t(key)), { i18nKey: key });
     if (response?.errorCode) error.code = response.errorCode;
     return error;
   }
   const { buildTranslationResult, readingTranslation } = app.modules.selectionResultModel;
+
+  // The existing AI/local routes are unchanged. Free online MT must not
+  // upload protected DOM, link text or visible URLs from a selection.
+  function selectionContainsProtectedContent(range, selectedText) {
+    const urlLike = /(?:[a-z][a-z0-9+.-]*:\/\/|\b(?:mailto|data|blob|javascript|tel):|\bwww\.|\blocalhost(?::\d{1,5})?(?:[/?#][^\s]*)?|\[[0-9a-fA-F:.]+\](?::\d{1,5})?(?:[/?#][^\s]*)?|(?:[\p{L}\p{N}_-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s]*)?|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s]*)?)/iu;
+    if (typeof selectedText !== "string" || urlLike.test(selectedText)) return true;
+    if (!range?.startContainer || !range?.endContainer ||
+        typeof range.intersectsNode !== "function" ||
+        typeof range.toString !== "function") return true;
+    const selector = "code,kbd,pre,samp,a[href],area[href]";
+    const ancestor = node => node?.nodeType === 1 ? node : node?.parentElement;
+    const comparable = value => String(value).replace(/[\t\n\r\f ]+/gu, " ").trim();
+    try {
+      // Range is live: a DOM mutation during CACHE_LOOKUP can invalidate it.
+      if (range.startContainer.isConnected === false || range.endContainer.isConnected === false ||
+          !comparable(selectedText) || comparable(range.toString()) !== comparable(selectedText)) return true;
+      const from = ancestor(range.startContainer), to = ancestor(range.endContainer);
+      if (typeof from?.closest !== "function" || typeof to?.closest !== "function" ||
+          from.closest(selector) || to.closest(selector)) return true;
+      const common = ancestor(range.commonAncestorContainer);
+      if (typeof common?.querySelectorAll !== "function") return true;
+      // Bound traversal; reject unknown or unusually complex selections.
+      const candidates = common.querySelectorAll(selector);
+      if (candidates.length > 512) return true;
+      return [...candidates].some(node => range.intersectsNode(node));
+    } catch { return true; }
+  }
 
   function create({ assertCurrent, showResult, onResult }) {
     const popover = app.modules.selectionPopover;
@@ -34,6 +62,10 @@
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
+      if (lookup.engine === "machine-translation" && selectionContainsProtectedContent(snapshot.range, snapshot.text)) {
+        throw localizedError("mt.error.MT_PROTECTED_SELECTION",
+          { errorCode: "MT_PROTECTED_SELECTION" });
+      }
       const configSnapshotId = String(lookup.configSnapshotId || "");
       const cacheToken = (lookup.writeTokens || []).find(item => String(item.id) === "selection")?.token;
       if (lookup.skippedIds?.includes("selection")) {

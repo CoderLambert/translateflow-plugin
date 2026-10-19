@@ -1,3 +1,4 @@
+import { resolveMachineTranslation, rawTranslationSite } from "../../shared/machine-translation.js";
 import { hasConfiguredAi } from "../../shared/browser-translation.js";
 import { getSiteProfile } from "../../shared/provider-config.js";
 import { getConfig, getEffectiveConfig } from "../config.js";
@@ -20,8 +21,9 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
   const text = String(input.text || "").trim();
   const pageUrl = String(input.pageUrl || "");
   const storedConfig = await getStoredConfig();
-  const site = getSiteProfile(storedConfig.siteProfiles, pageUrl);
-  const effectiveConfig = (deps.getEffectiveConfig || hasConfiguredAi(storedConfig, site)) ? await getPageConfig(pageUrl) : { targetLanguage: site?.targetLanguage || storedConfig.targetLanguage };
+  const machine = resolveMachineTranslation(storedConfig, rawTranslationSite(storedConfig, pageUrl), "selection");
+  const site = machine ? rawTranslationSite(storedConfig, pageUrl) : getSiteProfile(storedConfig.siteProfiles, pageUrl);
+  const effectiveConfig = machine || ((deps.getEffectiveConfig || hasConfiguredAi(storedConfig, site)) ? await getPageConfig(pageUrl) : { targetLanguage: site?.targetLanguage || storedConfig.targetLanguage });
 
   const requestedDepth = normalizeSelectionDepth(
     input.depth || storedConfig.selectionExplanationDepth

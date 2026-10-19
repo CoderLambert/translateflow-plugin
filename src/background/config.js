@@ -1,3 +1,4 @@
+import { resolveMachineTranslation, rawTranslationSite } from "../shared/machine-translation.js";
 import { hasConfiguredAi } from "../shared/browser-translation.js";
 import {
   CONFIG_KEYS,
@@ -75,12 +76,13 @@ export async function getEffectiveGlossary(pageUrl = "") {
 
 export async function getEffectiveContext(pageUrl) {
   const stored = await getConfig();
-  const site = getSiteProfile(stored.siteProfiles, pageUrl);
-  const { resolved, temporaryPreset } = hasConfiguredAi(stored, site)
+  const machine = resolveMachineTranslation(stored, rawTranslationSite(stored, pageUrl));
+  const site = machine ? rawTranslationSite(stored, pageUrl) : getSiteProfile(stored.siteProfiles, pageUrl);
+  const { resolved, temporaryPreset } = machine ? { resolved: machine, temporaryPreset: null } : hasConfiguredAi(stored, site)
     ? await resolveBaseConfig(pageUrl)
     : { resolved: { provider: "browser-translator", model: "translator-v1", targetLanguage: site?.targetLanguage || stored.targetLanguage }, temporaryPreset: null };
   const origin = normalizeOrigin(pageUrl);
-  const siteProfile = getSiteProfile(stored.siteProfiles, pageUrl);
+  const siteProfile = site;
   const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
   const appearance = resolveAppearance(stored.appearance, siteProfile?.appearance);
 
@@ -88,6 +90,7 @@ export async function getEffectiveContext(pageUrl) {
     origin,
     hostname: new URL(origin).hostname,
     provider: resolved.provider,
+    engine: resolved.engine || "ai",
     providerLabel: resolved.providerLabel,
     connectionId: resolved.connectionId,
     model: resolved.model,
@@ -101,7 +104,7 @@ export async function getEffectiveContext(pageUrl) {
     temporaryPresetId: normalizePresetId(temporaryPreset?.presetId),
     hasSiteProfile: Boolean(siteProfile),
     hasSitePromptOverride: Boolean(resolved.hasSitePromptOverride),
-    glossaryCount: glossary.length,
+    glossaryCount: machine ? 0 : glossary.length,
     appearanceId: appearance.id,
     appearanceLabel: appearance.label,
     appearanceSource: appearance.source,

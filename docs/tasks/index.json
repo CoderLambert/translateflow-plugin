@@ -293,6 +293,17 @@
       "candidateHead": "3eacc10a666dbfbf8456b8728aa770866a9b2568"
     },
     {
+      "task": "free-online-mt",
+      "status": "ready_to_sync",
+      "dependencies": [
+        "cache-system-v1",
+        "remove-bundled-lexicons",
+        "content-runtime-closeout"
+      ],
+      "branch": "feat/free-online-mt-20261016",
+      "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe"
+    },
+    {
       "task": "offline-dictionary",
       "status": "paused",
       "dependencies": [],
