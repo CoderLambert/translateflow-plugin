@@ -44,5 +44,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "当前 #342 已吸收 main@1ddae050 的 DB4/#345、#346 用户词典、#348 Runtime、#350 文档，GitHub 合并冲突已修；最近补充选区 code/kbd/pre 防外发、字面 TF marker fail-closed、字素安全分块和后台测试同意/权限二次校验及负例。仍为 working/Draft，无冻结 candidateHead、无当前 Node24 validate/MV3 安装包实测；下一步按 validationCommands 先定向后集中全量验收，真实微软/腾讯网络和人工验收分别记录，绝不将历史 0.8.14 日志算为当前候选通过。"
+  "nextAction": "2026-10-19：在 #342 当前 DB4 分支补足免费 MT 划词隐私边界（链接 DOM、可见 URL、过期/断开选区）并补负例测试，修正 task.md 过期 DB4 清空条件。仍为 working/Draft，candidateHead 未冻结；下一步先 Node>=24.21 MT Node 定向及 DB4 回归，再集中 validate、WXT 双目录 Smoke、Chromium E2E；Microsoft/Tencent 真实联网及用户人工验收分别独立验证，未测不得记 PASS。"
 }

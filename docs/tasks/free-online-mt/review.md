@@ -21,3 +21,10 @@
 - 实际源码在独立 V8 模拟中校验了 Rich marker/code 本地保留、纯文字符号 fail-closed、emoji 分界及后台拒绝无同意/无权限，结果 PASS；该检查**不属于仓库 Node24/npm validate 或编译 MV3 测试**。GitHub 当前 head 可能随用户其他提交变化；候选与测试必须重新绑定最新 SHA。
 - 保留原 PR 中历史 0.8.14 构建/Mock E2E/微软单次成功与腾讯网络失败记录，但**这些均不是当前 0.8.29/DB4 候选的实测**。Node24 全仓、真实 WXT 安装包、浏览器同 ID 升级、真实微软/腾讯、本机最终人工验收均为 **NOT RUN 或待验收**。
 - 下一步只运行当前模块的 MT Node、选区保护、相关 Popup/Options/MV3 和 DB4 回归；定向通过后在冻结 candidateHead 上集中执行一次 `npm run validate` 和 WXT 双目录构建/Smoke。无需因一处小改动重复完整 CI，也不得用合成响应宣告真实 Tencent 可用。
+
+## 2026-10-19 URL 划词安全补丁（待正式 Node24/Chromium 验证）
+
+- 免费 MT 增加链接 DOM (a[href]/area[href])、跨链接选区、可见 URL/域名/IP、选区文字变化及已断开 Range 的拒绝条件；均在 TRANSLATE_BATCH 前处理，不改变现有 AI/本地路线。
+- 新增零外发的负例测试及普通文字成功路径回归；模拟行为验证不等于 Node24 全量测试或真实浏览器验证。
+- 已修正 task.md 中遗留的“再次清空旧译文缓存”条件：不得破坏 #345 的 DB4 现有数据。
+- 当前准确候选尚无 Node24/npm validate、WXT/Chromium 运行证据，Microsoft/Tencent 真实服务及用户人工验收均未完成。状态继续 working/Draft，不合并。

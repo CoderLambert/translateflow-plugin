@@ -12,24 +12,31 @@
   }
   const { buildTranslationResult, readingTranslation } = app.modules.selectionResultModel;
 
-  // Free web MT has a strict "do not upload code/kbd" boundary. A plain
-  // Selection.toString() erases the source DOM; check the frozen user range
-  // before any Provider call, including a range beginning inside <code>.
-  function selectionHasProtectedCode(range) {
+  // The existing AI/local routes are unchanged. Free online MT must not
+  // upload protected DOM, link text or visible URLs from a selection.
+  function selectionContainsProtectedContent(range, selectedText) {
+    const urlLike = /(?:[a-z][a-z0-9+.-]*:\/\/|\b(?:mailto|data|blob|javascript|tel):|\bwww\.|(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}(?::\d{1,5})?(?:[/?#][^\s]*)?|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?:[/?#][^\s]*)?)/iu;
+    if (typeof selectedText !== "string" || urlLike.test(selectedText)) return true;
     if (!range?.startContainer || !range?.endContainer ||
-        typeof range.intersectsNode !== "function") return true;
-    const selector = "code,kbd,pre,samp";
+        typeof range.intersectsNode !== "function" ||
+        typeof range.toString !== "function") return true;
+    const selector = "code,kbd,pre,samp,a[href],area[href]";
     const ancestor = node => node?.nodeType === 1 ? node : node?.parentElement;
-    const from = ancestor(range.startContainer), to = ancestor(range.endContainer);
-    if (!from || !to || from.closest?.(selector) || to.closest?.(selector)) return true;
-    const common = ancestor(range.commonAncestorContainer);
-    if (!common?.querySelectorAll) return true;
-    // The query is limited to the selected common ancestor. Refuse unusually
-    // complex ranges rather than allowing an unbounded DOM scan or code leak.
-    const candidates = common.querySelectorAll(selector);
-    if (candidates.length > 512) return true;
-    try { return [...candidates].some(node => range.intersectsNode(node)); }
-    catch { return true; }
+    const comparable = value => String(value).replace(/[\t\n\r\f ]+/gu, " ").trim();
+    try {
+      // Range is live: a DOM mutation during CACHE_LOOKUP can invalidate it.
+      if (range.startContainer.isConnected === false || range.endContainer.isConnected === false ||
+          !comparable(selectedText) || comparable(range.toString()) !== comparable(selectedText)) return true;
+      const from = ancestor(range.startContainer), to = ancestor(range.endContainer);
+      if (typeof from?.closest !== "function" || typeof to?.closest !== "function" ||
+          from.closest(selector) || to.closest(selector)) return true;
+      const common = ancestor(range.commonAncestorContainer);
+      if (typeof common?.querySelectorAll !== "function") return true;
+      // Bound traversal; reject unknown or unusually complex selections.
+      const candidates = common.querySelectorAll(selector);
+      if (candidates.length > 512) return true;
+      return [...candidates].some(node => range.intersectsNode(node));
+    } catch { return true; }
   }
 
   function create({ assertCurrent, showResult, onResult }) {
@@ -55,7 +62,7 @@
       });
       assertCurrent(version, snapshot, expectedPage, task);
       if (!lookup?.ok) throw localizedError("content.selection.cacheLookupFailed", lookup);
-      if (lookup.engine === "machine-translation" && selectionHasProtectedCode(snapshot.range)) {
+      if (lookup.engine === "machine-translation" && selectionContainsProtectedContent(snapshot.range, snapshot.text)) {
         throw localizedError("mt.error.MT_PROTECTED_SELECTION",
           { errorCode: "MT_PROTECTED_SELECTION" });
       }
