@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "task": "browser-basic-translation",
+  "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+  "tree": "538f16b39977f42d3487a26fa59b5eaaf8ec63a5",
+  "inputTree": "5f408b08e70815ede27a2ab9e1f6211cf7c9cc0f911b2d233c6694e9f7e23f77",
+  "frozenAt": "2026-10-19T18:44:51.977Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12 (Playwright E2E)"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/browser-translation.test.mjs"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 109.446154,
+      "startedAt": "2026-10-19T18:44:59.594Z",
+      "log": "docs/task-execution/local/browser-basic-translation/34ab77b2-b808-4fac-b3e0-ecc03daef777.log",
+      "logSha256": "b968f05d04205bc01f2e00e2adf230180f5f88f3d5703c17ee6f6ed35ab63302"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/versioned-commit.test.mjs",
+        "tests/release-gate.test.mjs"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 340.256197,
+      "startedAt": "2026-10-19T18:44:59.941Z",
+      "log": "docs/task-execution/local/browser-basic-translation/cf180ba0-5697-4ae8-b359-403bcdfeeaff.log",
+      "logSha256": "d64538a3372792d504d515841eb718b16c6c5610aff040c2928b711b3a90feeb"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 15105.315414,
+      "startedAt": "2026-10-19T18:45:02.850Z",
+      "log": "docs/task-execution/local/browser-basic-translation/45349dd1-7798-4836-92f1-331b481d798c.log",
+      "logSha256": "c21716d7f64e73e2715cbcf93715ae65bb5a29821159fc12e7dbf05e8bf626cc"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5005.295663,
+      "startedAt": "2026-10-19T18:45:18.232Z",
+      "log": "docs/task-execution/local/browser-basic-translation/6228daba-0cab-485c-b968-27ff8d87d8c6.log",
+      "logSha256": "e6bc809a2cbb526e82d5bcf32bf7da0fec2faea9573ac1429e42b412b3a86774"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit",
+        "--",
+        "tests/unit/options-react.test.tsx",
+        "tests/unit/react-locale.test.tsx"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1622.068254,
+      "startedAt": "2026-10-19T18:45:23.473Z",
+      "log": "docs/task-execution/local/browser-basic-translation/2e2c7e31-10f6-4545-9e4d-49a4b4b108a6.log",
+      "logSha256": "cda5910ebbfe9edadc4d6096d5954657c6260ad5013398f24916f7d40cfcae5e"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2431.063806,
+      "startedAt": "2026-10-19T18:45:27.573Z",
+      "log": "docs/task-execution/local/browser-basic-translation/2e045de2-078e-47a1-90e0-9d3e72f511eb.log",
+      "logSha256": "6a9408b85ced82f811bb23c08294fd0ac1cecd3f474653a57ac9456492f4ab48"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2487.031907,
+      "startedAt": "2026-10-19T18:45:30.312Z",
+      "log": "docs/task-execution/local/browser-basic-translation/5b64a93c-0c98-48c5-8b96-347daccbb11c.log",
+      "logSha256": "4e220d9962fca06c5fe6c7dab27e39a0b986abe37b8e8a5e6e4c5859dfcf335b"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/run-e2e.mjs",
+        "e2e/browser-basic-translation.spec.mjs"
+      ],
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 8888.7586,
+      "startedAt": "2026-10-19T18:45:35.147Z",
+      "log": "docs/task-execution/local/browser-basic-translation/1c1775b0-126d-4770-be42-d96b23eea2ba.log",
+      "logSha256": "a793b1bdb90dd9387e40024c52ebb7596a4a2a882f8254af28f7c5c881f817d3"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "9ccbfe5beaf4bd5b6b0447f1447e12df995ffb4e6f2edab668fd694f2ad188ef"
+  },
+  "limitations": [
+    "Real Chrome Translator model preparation, actual translation, offline behavior, and translation quality were not tested on this candidate. Chromium E2E uses the local mock only; no real Microsoft or Tencent service requests were made."
+  ]
+}

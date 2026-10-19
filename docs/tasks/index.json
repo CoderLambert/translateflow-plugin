@@ -259,10 +259,10 @@
     },
     {
       "task": "browser-basic-translation",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
-      "branch": "feat/api-key-provider-connections",
-      "candidateHead": null
+      "branch": "codex/browser-basic-translation-20261020",
+      "candidateHead": "e94303b309ecbb6f3eaa32c094de831e5a3fe50c"
     },
     {
       "task": "cache-system-v1",
