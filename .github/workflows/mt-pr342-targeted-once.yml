@@ -1,4 +1,4 @@
-name: mt-pr342-prospective-final
+name: mt-pr342-wxt-chromium
 
 on:
   push:
@@ -57,18 +57,20 @@ jobs:
           tests/cache-system.test.mjs
           tests/cache-system-review.test.mjs
           tests/cache-system-integration-review.test.mjs
-      - name: Final Node, type, UI and production bundle validation
-        run: npm run validate
+      # Full validate already passed on the same prospective source tree in run 39201010519.
+      # Rebuild byte-for-byte production artifacts before Chrome tests; no repeated 1872-test suite.
+      - name: Build default WXT output (previous full validate PASS)
+        run: npm run build:extension
       - name: WXT second output build
         run: npm run build:extension:wxt
+      - name: Install Chromium required by WXT Smoke and E2E
+        run: npx playwright install --with-deps chromium
       - name: Stable and explicit WXT smoke
         run: |
           TF_SMOKE_ARTIFACT=dist/extension TF_SMOKE_REPORT=test-results/mt342-stable-smoke.json npm run test:wxt:smoke
           TF_SMOKE_ARTIFACT=.output/chrome-mv3 TF_SMOKE_REPORT=test-results/mt342-explicit-smoke.json npm run test:wxt:smoke
-      - name: Install Chromium for actual MT extension E2E
-        run: npx playwright install --with-deps chromium
       - name: Machine translation browser E2E (mock network only)
-        run: npm run test:e2e -- e2e/machine-translation.spec.mjs --workers=1 --retries=0
+        run: npm run test:e2e -- e2e/machine-translation.spec.mjs e2e/cache-system-mv3.spec.mjs e2e/cache-system-native.spec.mjs --workers=1 --retries=0
       - name: Upload local-only test artifacts
         if: always()
         uses: actions/upload-artifact@v4
