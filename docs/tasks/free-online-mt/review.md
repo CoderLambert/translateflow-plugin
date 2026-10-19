@@ -35,3 +35,13 @@
 - MT/Selection/DB4 相关 6 个 Node 文件的定向测试 **114 PASS / 0 FAIL**（运行日志有逐项证据）。
 - `npm run validate` **FAIL** 于 `npm run check`：`src/content/quick-control-view.js` 因 MT UI 集成增加至门禁 420 行以上；后续 Node 全量/typecheck/Vitest/WXT/Chromium 均未执行，不能标为失败或通过。
 - 修复该单一门禁：将 MT preset 状态改为 `machineMode` 分支，固定 machine mode 时选择 `inherit` 并继续禁用 AI preset 选择；代码不改变 Quick Control 位置、拖动或扩展权限。复核脚本行数限制后重试同一候选的连续 gate（第 2 轮）。
+
+## 2026-10-19 最终源码候选与真实自动化验证（**主 Agent 自查，非独立验收**）
+
+- **准确已测试源码候选**：`c8742f9728e0b0dfbe00c910553ce0575fbe7c90`，Git tree `ee64def47ff0c7e593b690a8907fa25f900c9928`；GitHub 以 lease 原子更新并核对 `git/commits` 的 tree。后续仅允许当前任务的状态/评审/验证报告归档变更，源码变更必须重新验证受影响项。
+- GitHub Ubuntu Node **24.21.0** / npm **11.19.0**。首次运行 [#39200177197](https://github.com/CoderLambert/translateflow-plugin/actions/runs/39200177197)：定向 114/114 PASS；Quick Control 行数门禁 FAIL；已修复。第二次 [#39200499677](https://github.com/CoderLambert/translateflow-plugin/actions/runs/39200499677)：1870/1872 Node PASS，剩余临时 workflow/manual-only 门禁与生成 Reading 脚本过期；已修复。
+- 第三次 [#39201010519](https://github.com/CoderLambert/translateflow-plugin/actions/runs/39201010519)：在临时 CI 文件已从执行工作树删除且 Reading 兼容源码重新生成后，**`npm run validate` PASS（Node 1872/1872 PASS、静态检查、严格 TypeScript、Vitest、默认 WXT 构建）**，显式 WXT 构建 PASS；Smoke 因 Chromium 依赖尚未安装而未完成，后续测试被跳过，非产品断言失败。
+- 第四次 [#39201493588](https://github.com/CoderLambert/translateflow-plugin/actions/runs/39201493588)：同一 prospective Git tree，定向 Node PASS、默认及显式 WXT 构建 PASS、**两个 Chromium WXT Smoke PASS、MT + DB4 Chromium E2E 13/13 PASS**（6 MT、6 compiled MV3 cache、1 native cache）；Chromium `153.0.8010.12`；原生 IndexedDB 子检查 **19/19 PASS / DB_VERSION=4**。
+- 第四次 E2E 在实际编译扩展（`.output/chrome-mv3`）上执行，**只有机器翻译外网 transport 用 mock**，不是微软/腾讯真实网络成功；E2E 包指纹 SHA-256 `005ee1f2c295aa1dc2ec27cb726cc938e897160ba57bd181e2313b39ddc246a2` / 129 文件；产物 [Actions ZIP](https://github.com/CoderLambert/translateflow-plugin/actions/runs/39201493588/artifacts/12164102054)，压缩包 SHA-256 `2a60ba6f7dd47c47c40840f1497d25beee94ba7852550baed9cc1d243132817c`，仅为本轮 CI 产物而非用户已验收发布包。
+- **未通过门槛**：当前 Microsoft/Tencent 真实联网 NOT VERIFIED，真实用户安装/操作人工验收 NOT RUN；完整旧包同扩展 ID 升级 E2E NOT RUN，`scripts/local-task.mjs gate` / 签名 acceptance.json NOT RUN（GitHub CI 是辅助证据，不自动等于本地任务 gate）。
+- **界限**：PR 保持 Draft；没有向 main 合并/发布，没有修改 DB4 物理协议/ReadingRecord DB owner、恢复旧 DB3/内置词典或扩大权限。旧 0.8.14/DB3/历史 17/17 不是该候选的证据；本节证据以 SHA 与以上日志为准。
