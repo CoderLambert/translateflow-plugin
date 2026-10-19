@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "task": "rich-index-cache-budget",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [
     "rich-multiple-records"
@@ -9,7 +9,7 @@
   "branch": "codex/rich-index-cache-budget-20261020",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-index-cache-budget-20261020",
   "candidateHead": "d74b92f7ad9284f4c543a239e41da4ac3c8f83a4",
-  "mergeHead": null,
+  "mergeHead": "207b37f7670b6c6895e1fb98c9f9db8a86e3a29a",
   "validationCommands": [
     [
       "git",
@@ -45,5 +45,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "0.8.35 候选 d74b92f7 完成 validate、显式 WXT 构建、WXT smoke 和 5 个相关 Chromium spec（10/10）；精确安装包指纹与 validation-report 已归档。下一步执行本地 gate，提交并普通推送仅包含允许的任务元数据归档；按远端保护和 expected-head 检查处理 PR #352。"
+  "nextAction": "PR #352 已以 expected-head squash 合并为 207b37f7670b6c6895e1fb98c9f9db8a86e3a29a。合并树与已验收 syncHead 69751af19371bcc78b5c523040878c76d67b1923 一致，验收证据保持绑定候选 d74b92f7。"
 }
