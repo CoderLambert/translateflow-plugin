@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19 当前 M0 #342 实现补丁最新提交 805333fa：已处理存储异常下免费 MT 403/429 冷却、错误响应体 cancel 拒绝不遮蔽 HTTP 错误、Page 可见 URL/邮箱/IP 地址本地保留而只翻译周围文字，并补 7 个 Node 定向回归用例。代码级 V8 隔离行为验证：HTTP 3/3 PASS、URL 4/4 PASS，明确不等于 Node24/WXT/Chromium 真实测试。此前已完成的全量 Node 1872/1872 和浏览器 E2E 13/13 仅归属实施候选 c8742f；因本轮生产代码改动，新 HEAD 定向 Node24、受影响浏览器用例、DB4 same-ID 升级需逐项重新验证后冻结 candidateHead。真实 Microsoft/Tencent 免费网页端点的用户网络行为及安装人工验收仍需独立确认；保持 Draft、不自动合并/发布或启动 M1-M3。不重复运行无关昂贵全量测试。"
+  "nextAction": "2026-10-19 M0 继续修复 Page 可见 URL 本地保护、HTTP 错误稳定性；由于真实 MT payload 策略改变，将 MACHINE_INPUT_VERSION 从 mt-slots-v1 升为 mt-slots-v2，只隔离 MT 旧缓存身份，禁止命中隐私旧策略的译文。DB4 仍 version4/recordEnvelope1，Reading/用户词典/Quick Control 不变、不重复清库。新增旧 v1 与新 v2 的 cache/request identity 负例。新准确生产 HEAD 的 Node24 定向、WXT/Chromium 受影响测试、同 ID DB4 升级 E2E 仍 NOT RUN，先前 c8742f 证据不覆盖新代码；必须按准确 SHA 测试并冻结后交用户验收。真实 Microsoft/Tencent 状态独立未验证，Draft 不合并。"
 }

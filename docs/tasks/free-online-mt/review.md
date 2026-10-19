@@ -77,3 +77,9 @@
 - 生产补丁 [`805333fa`](https://github.com/CoderLambert/translateflow-plugin/commit/805333fa7c2b84123c54f5a233cfc18c65bdd0e5)：`src/background/providers/machine-translation.js` 增加 `splitMachineVisibleUrls`，以不丢字的方式保留 Page 普通文本中的完整 URL、邮箱和 IPv4 链接本地字面值，仅外发前后安全文字；空请求不调用免费 MT Provider。已有受保护 code/kbd/HTML marker 的原结构合同不变，Selection 保留更严格的拒绝逻辑。
 - `tests/machine-translation.test.mjs` 新增 Page 混合文字（翻译周围文字但 Provider body 无可见地址）、纯 URL 0 网络调用、拆分前后字节重建三条定向负例。当前提交的 provider 逻辑在 V8 隔离模拟行为 4/4 PASS；其 `fetch` 是测试替身，不是微软/腾讯真实联网。
 - 连同前两次 HTTP 修复，本轮共新增 7 个 Node 回归用例和 3 个真实源码的隔离 HTTP 行为检查。**准确 HEAD 的 Node24 项目测试、WXT、Chromium 和升级 gate 仍 NOT RUN**；旧 `c8742f` 的 PASS 不覆盖最新代码。无 DB4/Reading/词典/Quick Control/权限改动。
+
+## 2026-10-19 免费 MT 隐私策略修订与 DB4 身份围栏
+
+- 可见 URL/邮箱/IP 从远程 Provider payload 中移除后，旧免费 MT 缓存可能包含此前不遵守此策略的结果；本次将 `MACHINE_INPUT_VERSION` 定向提升为 `mt-slots-v2`，因此新旧 MT 请求的 `configFingerprint`/`request identity` 隔离。保护此前缓存的物理记录、不删 DB4 entries/epochs、不迁移 Reading/词典、不改 AI 缓存身份。
+- 新增测试证实旧 `mt-slots-v1` 与新 v2 的 `getConfigHash`、`createTranslationIdentity` 和 `buildTranslationRequestKey` 不相等；原本使用 v2 作为“虚拟变更版本”的断言移至 v3。
+- Node24/Chromium 运行验收仍 **NOT RUN**；静态合同修改不能替代构建与真实用户网络检测。

@@ -4,7 +4,9 @@ import { normalizeSourceText } from "./text.js";
 
 // Product mode is deliberately separate from AI connections and credentials.
 export const MACHINE_ENGINE = "machine-translation";
-export const MACHINE_INPUT_VERSION = "mt-slots-v1";
+// The visible-URL privacy policy changes actual free-MT transport: never
+// restore translations produced before URL protection from the DB4 cache.
+export const MACHINE_INPUT_VERSION = "mt-slots-v2";
 export const MACHINE_PROVIDERS = Object.freeze([
   Object.freeze({ id: "mt-microsoft-web", label: "Microsoft", origin: "https://edge.microsoft.com", path: "/translate/translatetext", batchSize: 12 }),
   Object.freeze({ id: "mt-tencent-transmart", label: "Tencent Transmart", origin: "https://transmart.qq.com", path: "/api/imt", batchSize: 1 })

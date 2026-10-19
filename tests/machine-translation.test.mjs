@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createTranslationIdentity } from "../src/shared/translation-cache-identity.js";
 import { CACHE_RECORD_VERSION } from "../src/shared/cache/record.js";
-import { DEFAULT_MACHINE_TRANSLATION, MACHINE_ENGINE, createMachineConfig, machineLanguage,
+import { DEFAULT_MACHINE_TRANSLATION, MACHINE_ENGINE, MACHINE_INPUT_VERSION, createMachineConfig, machineLanguage,
   normalizeMachineTranslation, rawTranslationSite, resolveMachineTranslation } from "../src/shared/machine-translation.js";
 import { buildMachineRequest, parseMachineResponse, requestMachineTexts } from "../src/background/providers/machine-translation-transport.js";
 import { splitMachineText, splitMachineVisibleUrls, translateMachineBatch } from "../src/background/providers/machine-translation.js";
@@ -228,7 +228,7 @@ test("MT snapshots bind tab, document, URL and expire without a paid fallback", 
 test("DB4 identities isolate MT service, language, endpoint, format and protected code", async () => {
   const value = config(), hash = await getConfigHash(value);
   for (const patch of [{ provider: "mt-tencent-transmart" }, { sourceLanguage: "en" },
-    { targetLanguage: "ja" }, { apiBaseUrl: "https://example.invalid" }, { inputVersion: "mt-slots-v2" }])
+    { targetLanguage: "ja" }, { apiBaseUrl: "https://example.invalid" }, { inputVersion: "mt-slots-v3" }])
     assert.notEqual(await getConfigHash({ ...value, ...patch }), hash);
   assert.equal(await getConfigHash({ ...value, apiKey: "ignored", prompt: "AI prompt ignored" }), hash);
   const rich = "same ⟦TF:0:S⟧text⟦TF:0:E⟧";
@@ -238,6 +238,21 @@ test("DB4 identities isolate MT service, language, endpoint, format and protecte
   assert.notEqual(buildTranslationRequestKey([{ id: "a", text: rich, format: "tf-markers", protectedIds: [] }], value),
     buildTranslationRequestKey([{ id: "a", text: rich, format: "tf-markers", protectedIds: [0] }], value));
   assert.notEqual(await translationSourceHash("Hello world", value), await translationSourceHash("Other text", value));
+});
+
+test("changed Page URL privacy semantics cannot reuse old free MT cache entries", async () => {
+  assert.equal(MACHINE_INPUT_VERSION, "mt-slots-v2");
+  const current = config();
+  const previous = { ...current, inputVersion: "mt-slots-v1" };
+  assert.notEqual(await getConfigHash(previous), await getConfigHash(current));
+  const source = { text: "Visit https://docs.example.invalid/private.", format: "plain" };
+  const oldEntry = await createTranslationIdentity(previous, source, "page");
+  const protectedEntry = await createTranslationIdentity(current, source, "page");
+  assert.notEqual(oldEntry.key, protectedEntry.key);
+  assert.notEqual(buildTranslationRequestKey([{ id: "s", ...source }], previous),
+    buildTranslationRequestKey([{ id: "s", ...source }], current));
+  // Only this MT semantic identity changed, not DB4's physical storage contract.
+  assert.equal(CACHE_RECORD_VERSION, 1);
 });
 
 test("MT request identity evolves separately from the DB4 record envelope", async () => {
