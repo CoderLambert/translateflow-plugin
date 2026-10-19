@@ -165,7 +165,8 @@ test("native host copy commands report clipboard success and failure", async () 
     } as any} />));
     await userEvent.click(await screen.findByRole("button", { name: "检查状态并加载模型" }));
     await userEvent.click(screen.getByText("开发版测试注册"));
-    const copyButton = screen.getAllByRole("button", { name: "复制命令" })[0];
+    const copyButton = screen.getAllByRole("button", { name: "复制命令" }).at(0);
+    if (!copyButton) throw new Error("build command copy button was not rendered");
     await userEvent.click(copyButton);
     expect(writeText).toHaveBeenCalledWith("TF_CHROME_EXTENSION_ID=heoihmkbboakhnjihclndppjomoflbom TF_NATIVE_HOST_VERSION=0.8.32 npm run build:native-host:candidate");
     expect(await screen.findByText("命令已复制到剪贴板。")).toBeTruthy();
