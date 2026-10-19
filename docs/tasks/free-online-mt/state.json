@@ -48,5 +48,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "2026-10-19：继续实际修复免费 MT 网络错误链：chrome.storage GET/SET 异常仍保留内存 403/429 冷却；额外修复 Provider 错误响应体 cancel() 失败/停滞时遮蔽 MT_HTTP/MT_RESPONSE 或卡住同服务队列的问题，错误响应改为 best-effort 异步丢弃并立即抛真实错误。新增四个定向负例，生产 DB4/Reading/词典/UI/权限均不变。已提交代码，当前代码 HEAD 的 Node24 定向、Chromium 实测仍 NOT RUN；旧全量/浏览器结果只归属旧 SHA，不重复整套。待定向回归及真实用户网络/验收。Draft 不合并。"
+  "nextAction": "2026-10-19 当前 M0 #342 实现补丁最新提交 805333fa：已处理存储异常下免费 MT 403/429 冷却、错误响应体 cancel 拒绝不遮蔽 HTTP 错误、Page 可见 URL/邮箱/IP 地址本地保留而只翻译周围文字，并补 7 个 Node 定向回归用例。代码级 V8 隔离行为验证：HTTP 3/3 PASS、URL 4/4 PASS，明确不等于 Node24/WXT/Chromium 真实测试。此前已完成的全量 Node 1872/1872 和浏览器 E2E 13/13 仅归属实施候选 c8742f；因本轮生产代码改动，新 HEAD 定向 Node24、受影响浏览器用例、DB4 same-ID 升级需逐项重新验证后冻结 candidateHead。真实 Microsoft/Tencent 免费网页端点的用户网络行为及安装人工验收仍需独立确认；保持 Draft、不自动合并/发布或启动 M1-M3。不重复运行无关昂贵全量测试。"
 }
