@@ -70,5 +70,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "等待用户在 Chrome 扩展页重新加载已同步安装目录并检查真实 Oxford 的词典/AI 标签切换；本任务后续资源恢复范围继续保持 working。"
+  "nextAction": "用户已报告重新加载 Chrome 扩展后，Oxford 词典与 AI 标签可切换（用户报告 PASS）；未分享词典正文。实际扩展包指纹未确认。原安装中的附件资源故障是否恢复仍未验证，完整 Oxford 导入/重启/离线体验留待最终验收；任务保持 working。"
 }
