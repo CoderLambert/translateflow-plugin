@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "rich-index-cache-budget",
-  "status": "paused",
+  "status": "working",
   "owner": "main",
   "dependencies": [
     "rich-multiple-records"
   ],
-  "branch": "fix/rich-index-cache-budget-20261013",
-  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-cache-20261013",
+  "branch": "codex/rich-index-cache-budget-20261020",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-plugin-rich-index-cache-budget-20261020",
   "candidateHead": null,
   "mergeHead": null,
   "validationCommands": [
@@ -16,15 +16,6 @@
       "diff",
       "--check",
       "origin/main...HEAD"
-    ],
-    [
-      "node",
-      "--test",
-      "tests/rich-mdict-index-cache.test.mjs",
-      "tests/rich-mdict-storage.test.mjs",
-      "tests/rich-mdict-index-migration.test.mjs",
-      "tests/rich-mdict-lookup-cancellation.test.mjs",
-      "tests/rich-mdict-records.test.mjs"
     ],
     [
       "npm",
@@ -44,16 +35,6 @@
     [
       "npm",
       "run",
-      "test:rich-mdict-security"
-    ],
-    [
-      "npm",
-      "run",
-      "test:rich-lookup-cancellation"
-    ],
-    [
-      "npm",
-      "run",
       "test:e2e",
       "--",
       "e2e/rich-mdict-index-cache.spec.mjs",
@@ -64,5 +45,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "依据用户关于实际安装规模与当前优先级的反馈暂缓：测量与局部未验收代码保留独立worktree，先完成#271真实Oxford显示；之后恢复最小cache收口。"
+  "nextAction": "2026-10-20 用户恢复任务。Manager 注入式 20 词典测量为 14,986,390 字节（32,000 entries）：8 MiB 在暖查询产生 40 次索引重读，16 MiB 保留全部条目且首选热查 12 次不重读；缓存/迁移定向 Node 40/40 PASS。接下来提交候选，冻结后运行 validate、显式 WXT/smoke、相关 Chromium E2E 并归档准确包指纹。"
 }

@@ -1,6 +1,6 @@
 # Rich MDX index cache 累计预算
 
-目标：基于 main `a778a24f762c97933dd339c7a50bc39d99bd1610` 收口 #270 剩余的无界 parsed MDX index Map。WIP=1；不重新实现 parser/viewer/导入器，不修改权限、CSP、消息、数据 schema 或原 MDX/MDD。
+目标：收口 #270 剩余的无界 parsed MDX index Map。`a778a24f762c97933dd339c7a50bc39d99bd1610` 是任务最初建立时的历史 main 基线；本轮按用户授权，从当时最新的 `origin/main` 恢复同一任务，不改变原范围。WIP=1；不重新实现 parser/viewer/导入器，不修改权限、CSP、消息、数据 schema 或原 MDX/MDD。
 
 先以合法合成 index 测量 20 installed / 20 enabled、顺序打开、连续查询和 preferred 热查询的 entry count、serialized index bytes、OPFS index read count、cold/warm latency；比较候选预算的保留/淘汰，再选择初始默认值。真实 Oxford 的已验证 index serialized bytes 607,164 仅作输入规模参考，不能代替多词典测量。heap/RSS 无可靠峰值则 NOT_MEASURED。
 
@@ -10,4 +10,6 @@
 
 验收：LRU 访问更新/累计边界/active lease/所有 pinned admission bypass/release once/取消与异常/uninstall/replace/migration/restart；20 词典真实 isolated OPFS 或 manager 仿存储计数、preferred 热查询、淘汰后重读、一致性；现有 multi-dictionary、index migration、lookup cancellation、storage 和安全回归。每个 PR npm validate、显式 WXT、smoke、相关 Chromium、diff check，准确 candidate 与 artifact；独审无 blocker 后 guarded squash merge 与 actual main 复验。合成测量不宣称真实 Oxford 浏览器 #274 完成。
 
-当前优先级校准：真实 Oxford index 约 0.6 MiB，没有证据表明 cache 占用导致当前用户问题。根据用户关于尚不清楚安装数量的反馈，主 Agent 将该切片后移到 #271–#273 产品问题之后。合法 20 词典测量已完成，初步候选 16 MiB；这是压力序列依据，不是用户数量预测。局部 code/tests 留在本 worktree，未冻结候选、未建 PR、未宣称 runtime/浏览器验收完成。
+历史优先级校准（2026-10-13）：真实 Oxford index 约 0.6 MiB，没有证据表明 cache 占用导致当前用户问题。根据当时关于尚不清楚安装数量的反馈，该切片曾后移到 #271–#273 产品问题之后。此前 16 MiB 只有候选结论，没有可复核的原始测量记录，因此恢复任务后重新测量；合成压力序列不作为用户安装数量预测，也不宣称真实 Oxford 词典或浏览器性能。
+
+验证范围合并：`npm run validate` 的 `npm test` 会运行 `tests/*.test.mjs`，其中已包含 rich MDict security、lookup cancellation、storage、migration、records 和本任务新增 Node 测试。因此 state.json 不再重复记录这些 Node 子集脚本；仍单独执行显式 WXT 构建、WXT smoke 和本任务涉及的 Chromium E2E。

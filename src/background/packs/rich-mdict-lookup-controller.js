@@ -22,6 +22,7 @@ export function createRichMdictLookupController({
   lookup,
   assertSourceSize,
   loadIndex,
+  acquireIndex = null,
   sourceReader,
   clampUtf8Text
 } = {}) {
@@ -52,12 +53,16 @@ export function createRichMdictLookupController({
         assertNotAborted(signal);
         if (entry?.sourceId !== RICH_MDICT_SOURCE_ID || entry?.status !== "healthy") continue;
         const active = entry.active;
+        let lease = null;
         try {
           if (!isValidSnapshot(packId, active)) throw richError("RICH_MDICT_CORRUPT", "Rich dictionary metadata is malformed.");
           assertExpectedVersions(active, expected);
           await assertSourceSize(active);
           assertNotAborted(signal);
-          const index = await loadIndex(active, signal);
+          lease = acquireIndex
+            ? await acquireIndex(active, signal)
+            : { index: await loadIndex(active, signal), release() {} };
+          const index = lease.index;
           assertNotAborted(signal);
           const result = await lookup({ source: sourceReader(packId, active, signal), index, text: query, signal });
           assertNotAborted(signal);
@@ -74,6 +79,8 @@ export function createRichMdictLookupController({
             code: error?.code || "RICH_MDICT_STORAGE",
             message: clampText(error?.message || String(error), 300)
           });
+        } finally {
+          lease?.release?.();
         }
         if (targetId) break;
       }

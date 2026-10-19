@@ -1,5 +1,6 @@
 import { createRichResourceRecovery, makeResourceRecovery } from "./rich-resource-recovery.js";
 import { createRichMdictIndexLoader } from "./rich-mdict-index-migration.js";
+import { createRichMdictIndexCache } from "./rich-mdict-index-cache.js";
 import { createOpfsPackStore } from "./opfs-store.js";
 import { createPackStateStore } from "./state.js";
 import {
@@ -68,7 +69,8 @@ export function createRichMdictManager({
   lookup = lookupRichMdict,
   buildIndex = buildRichMdictIndex,
   getSessionToken,
-  storageManager = globalThis.navigator?.storage
+  storageManager = globalThis.navigator?.storage,
+  indexCache: suppliedIndexCache = null
 } = {}) {
   if (!store?.writeFile || !store?.readFile || !store?.readFileRange || !store?.getFileSize) {
     throw new Error("Rich MDict manager requires the OPFS dictionary pack store.");
@@ -78,7 +80,7 @@ export function createRichMdictManager({
   }
 
   const resourceRecovery = createRichResourceRecovery({ store, stateStore, ...(getSessionToken ? { getSessionToken } : {}) });
-  const indexCache = new Map();
+  const indexCache = suppliedIndexCache || createRichMdictIndexCache();
   const operationsByRequest = new Map();
   const preflightQuota = createRichMdictInstallPreflight({
     store,
@@ -93,6 +95,7 @@ export function createRichMdictManager({
     lookup,
     assertSourceSize,
     loadIndex,
+    acquireIndex: (snapshot, signal) => loadIndex(snapshot, signal, { lease: true }),
     sourceReader,
     clampUtf8Text
   });
@@ -171,7 +174,7 @@ export function createRichMdictManager({
           return current;
         });
         operation.committed = true;
-        indexCache.set(cacheKey(snapshot), index);
+        indexCache.set(cacheKey(snapshot), index, snapshot.indexSize);
         if (catalogReplacement) await cleanupCatalogVersions({
           store,
           indexCache,
@@ -262,7 +265,7 @@ export function createRichMdictManager({
         }
         return current;
       });
-      if (isValidSnapshot(id, entry.active)) indexCache.delete(cacheKey(entry.active));
+      indexCache.forgetPack(id);
       return { uninstalled: true };
     });
   }

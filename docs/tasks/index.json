@@ -346,11 +346,11 @@
     },
     {
       "task": "rich-index-cache-budget",
-      "status": "paused",
+      "status": "working",
       "dependencies": [
         "rich-multiple-records"
       ],
-      "branch": "fix/rich-index-cache-budget-20261013",
+      "branch": "codex/rich-index-cache-budget-20261020",
       "candidateHead": null
     },
     {

@@ -6,6 +6,7 @@ import { parseRichMdictHeader } from "../src/background/packs/importers/mdict-ri
 import { validateRichMdictIndex } from "../src/background/packs/importers/mdict-rich-validation.js";
 import { createRichMdictManager, serializeRichMdictPack } from "../src/background/packs/rich-mdict.js";
 import { createRichMdictIndexLoader } from "../src/background/packs/rich-mdict-index-migration.js";
+import { createRichMdictIndexCache } from "../src/background/packs/rich-mdict-index-cache.js";
 import { createPackStateStore } from "../src/background/packs/state.js";
 import { cacheKey, isValidSnapshot, richMdictIndexPath, sha256 } from "../src/background/packs/rich-mdict-contract.js";
 import { makeRichMdx } from "./helpers/rich-mdict-fixture.mjs";
@@ -76,6 +77,25 @@ test("affected legacy index migrates atomically, retains every raw file/settings
   const restarted = h.createManager();
   assert.equal((await restarted.lookupDictionary("alpha beta", id)).found, true);
   assert.equal(h.buildCalls(), 1, "persisted schema2 needs no rebuilding after restart");
+});
+
+test("bounded cache drops the old identity and admits the normalized migration identity", async () => {
+  const h = await environment(true);
+  const cache = createRichMdictIndexCache({ maximumBytes: 1024 * 1024 });
+  const manager = h.createManager(cache);
+  const oldKey = cacheKey(h.snapshot);
+  cache.set(oldKey, h.legacy, h.snapshot.indexSize);
+
+  const result = await manager.lookupDictionary("alpha beta", id);
+  const active = (await h.stateStore.read()).packs[id].active;
+  const nextKey = cacheKey(active);
+
+  assert.equal(result.found, true);
+  assert.equal(cache.has(oldKey), false);
+  assert.equal(cache.has(nextKey), true);
+  assert.equal(cache.snapshot().entries, 1);
+  assert.equal(cache.snapshot().cachedBytes, active.indexSize);
+  assert.equal(cache.snapshot().activeLeases, 0);
 });
 
 test("unaffected schema1 verifies only the bounded raw header, never rebuilds or writes", async () => {
@@ -287,7 +307,8 @@ async function environment(affected, keyOptions) {
   const assertSourceSize = async (active) => assert.equal(await store.getFileSize(id, active.packVersion, "source.mdx"), active.sourceSize);
   const load = createRichMdictIndexLoader({ store, stateStore, cryptoProvider: webcrypto, buildIndex, indexCache: cache,
     serialize: serializeRichMdictPack, sourceReader, assertSourceSize });
-  const createManager = () => createRichMdictManager({ store, stateStore, cryptoProvider: webcrypto, buildIndex, storageManager: null });
+  const createManager = (indexCache) => createRichMdictManager({ store, stateStore, cryptoProvider: webcrypto, buildIndex, storageManager: null,
+    ...(indexCache ? { indexCache } : {}) });
   return { manager: createManager(), createManager, load, store, stateStore, storage, bytes, snapshot, legacy, cache,
     buildCalls: () => calls, setBuilder: (value) => { builder = value; }, setStateFailure: (value) => { storage.fail = value; } };
 }

@@ -12,7 +12,7 @@ export function createRichMdictIndexLoader({ store, stateStore, cryptoProvider, 
   serialize, assertSourceSize, sourceReader } = {}) {
   const checkedLegacyIndexes = new WeakSet();
 
-  return (snapshot, signal) => serialize(snapshot.packId, async () => {
+  return (snapshot, signal, { lease = false } = {}) => serialize(snapshot.packId, async () => {
     assertNotAborted(signal);
     const state = await stateStore.read();
     assertNotAborted(signal);
@@ -28,11 +28,12 @@ export function createRichMdictIndexLoader({ store, stateStore, cryptoProvider, 
     await assertIndexSize(active, path, signal);
     const key = cacheKey(active);
     const cached = indexCache.get(key);
-    if (cached && (cached.schemaVersion === 2 || checkedLegacyIndexes.has(cached))) return cached;
+    if (cached && (cached.schemaVersion === 2 || checkedLegacyIndexes.has(cached))) {
+      return loaded(key, cached, active.indexSize, lease);
+    }
     const index = await readVerifiedIndex(active, path, signal);
     if (index.schemaVersion !== 1) {
-      indexCache.set(key, index);
-      return index;
+      return loaded(key, index, active.indexSize, lease);
     }
 
     const source = sourceReader(active.packId, active, signal);
@@ -42,8 +43,7 @@ export function createRichMdictIndexLoader({ store, stateStore, cryptoProvider, 
     if (header.keyCaseSensitive !== index.header.keyCaseSensitive) throw richError("RICH_MDICT_CORRUPT", "Rich dictionary key case option does not match its index.");
     if (header.stripKey === index.header.stripKey) {
       checkedLegacyIndexes.add(index);
-      indexCache.set(key, index);
-      return index;
+      return loaded(key, index, active.indexSize, lease);
     }
 
     if (header.attributes.StripKey !== undefined || header.attributes.Stripkey === undefined ||
@@ -75,9 +75,14 @@ export function createRichMdictIndexLoader({ store, stateStore, cryptoProvider, 
       return current;
     });
     indexCache.delete(key);
-    indexCache.set(cacheKey(next.packs[active.packId].active), persisted);
-    return persisted;
+    return loaded(cacheKey(next.packs[active.packId].active), persisted, nextIndex.indexSize, lease);
   });
+
+  function loaded(key, index, weight, wantsLease) {
+    indexCache.set(key, index, weight);
+    if (!wantsLease) return index;
+    return indexCache.acquire?.(key, index) || indexCache.hold?.(index) || { index, release() {} };
+  }
 
   async function assertIndexSize(snapshot, path, signal) {
     const size = await store.getFileSize(snapshot.packId, snapshot.packVersion, path);
