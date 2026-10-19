@@ -5,6 +5,14 @@
   "tree": "538f16b39977f42d3487a26fa59b5eaaf8ec63a5",
   "inputTree": "5f408b08e70815ede27a2ab9e1f6211cf7c9cc0f911b2d233c6694e9f7e23f77",
   "frozenAt": "2026-10-19T18:44:51.977Z",
+  "stageMerge": {
+    "pullRequest": 353,
+    "mergeHead": "39fe624fd005eeadf15d641784a28f65c69817ff",
+    "method": "squash",
+    "baseHeadAtMerge": "207b37f7670b6c6895e1fb98c9f9db8a86e3a29a",
+    "candidateTreeMatchesMain": false,
+    "taskComplete": false
+  },
   "environment": {
     "node": "v24.22.0",
     "npm": "11.19.0",
