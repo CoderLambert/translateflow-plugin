@@ -1120,3 +1120,25 @@ kbd {
 .mt-settings .checkbox-label input { width: auto; margin-top: 3px; }
 .mt-settings .row { flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .mt-test-result { padding: 12px; border: 1px solid var(--tf-border, currentColor); border-radius: 8px; overflow-wrap: anywhere; }
+
+/* Locate the committed dictionary without obscuring its current health status. */
+.dictionary-pack-row {
+  scroll-margin-top: 24px;
+}
+[data-import-highlight="true"] {
+  outline: 2px solid var(--tf-green-600);
+  outline-offset: 4px;
+  background-color: var(--tf-bg-panel);
+}
+
+.local-dictionary-install-notice {
+  padding: 14px 16px;
+  margin: 14px 0;
+  border: 1px solid var(--tf-green-600);
+  border-inline-start-width: 4px;
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-bg-panel);
+}
+.local-dictionary-install-notice p {
+  margin: 6px 0 0;
+}

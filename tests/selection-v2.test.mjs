@@ -619,3 +619,14 @@ test("an unexpected structured lookup failure still tries imported rich dictiona
   assert.equal(result.preferRich, true);
   assert.equal(result.explanationAllowed, true);
 });
+
+test("canonical MT Simplified Chinese keeps single-word selections eligible for dictionaries", () => {
+  for (const targetLanguage of ["zh", "ZH", " zh ", "zh-CN", "zh-Hans", "Simplified Chinese"]) {
+    const intent = classifySelectionIntent({ text: "localfixture", targetLanguage });
+    assert.equal(intent.kind, SELECTION_INTENT.LEXICAL, targetLanguage);
+    assert.equal(intent.localLexiconEligible, true, targetLanguage);
+  }
+  for (const targetLanguage of ["zh-Hant", "zh-TW", "Traditional Chinese", "ja"]) {
+    assert.equal(classifySelectionIntent({ text: "localfixture", targetLanguage }).reason, "unsupported-local-target", targetLanguage);
+  }
+});

@@ -386,7 +386,7 @@ export function importProgressLabel(phase) {
     index: "建立受限查询索引",
     "store-source": "保存本地源文件",
     "store-index": "保存本地查询索引",
-    commit: "后台完整复核并启用",
+    commit: "正在检查并保存词典，尚未完成",
     done: "完成"
   };
   return labels[phase] || "处理中…";

@@ -6,11 +6,12 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 vi.mock("../../src/options/local-dictionary-client", () => ({ createLocalDictionaryClient: vi.fn() }));
 
-import { RichList } from "../../src/options/DictionaryViews";
+import { CuratedList, RichList } from "../../src/options/DictionaryViews";
 import { DictionarySection } from "../../src/options/DictionarySection";
 import { LocalDictionaryImport } from "../../src/options/LocalDictionaryImport";
 import { createLocalDictionaryClient } from "../../src/options/local-dictionary-client";
 import { LocaleProvider } from "../../src/options/LocaleContext";
+import { getCuratedDictionary } from "../../src/shared/curated-dictionaries.js";
 import { createI18n } from "../../src/i18n/index.js";
 
 const report = {
@@ -168,4 +169,54 @@ test("dictionary library renders downloads, installed dictionaries and imports w
   expect(service.importFiles).not.toHaveBeenCalled();
   view.unmount();
   expect(client.dispose).toHaveBeenCalledTimes(1);
+});
+
+test("installed metadata stays visible while a slow health check is pending and rejects stale checks", async () => {
+  vi.mocked(createLocalDictionaryClient).mockReturnValue(makeService() as never);
+  const oldCheck = deferred<{ packState: { packs: {} }; rich: Record<string, unknown>[] }>();
+  const nextCheck = deferred<{ packState: { packs: {} }; rich: Record<string, unknown>[] }>();
+  let changed: (() => void) | undefined;
+  let current = [{ id: "slow-one", title: "Slow check fixture", status: "checking" }];
+  let checks = 0;
+  const client = { sources: [], dispose: vi.fn(), subscribe: vi.fn((listener: () => void) => { changed = listener; return vi.fn(); }),
+    load: vi.fn((options?: { metadataOnly?: boolean }) => options?.metadataOnly
+      ? Promise.resolve({ packState: { packs: {} }, rich: current }) : (++checks === 1 ? oldCheck.promise : nextCheck.promise)) };
+  render(<LocaleProvider value={zh}><DictionarySection client={client as never} setStatus={vi.fn()} /></LocaleProvider>);
+  await screen.findByText("Slow check fixture");
+  expect(document.querySelector('[data-dictionary-id="slow-one"]')?.getAttribute("data-status")).toBe("checking");
+  current = [{ id: "slow-two", title: "New committed fixture", status: "checking" }];
+  await act(async () => { changed?.(); });
+  await screen.findByText("New committed fixture");
+  await act(async () => { oldCheck.resolve({ packState: { packs: {} }, rich: [{ id: "slow-one", title: "Stale result", status: "ready" }] }); });
+  expect(screen.queryByText("Stale result")).toBeNull();
+  await act(async () => { nextCheck.resolve({ packState: { packs: {} }, rich: [{ id: "slow-two", title: "New committed fixture", status: "ready" }] }); });
+  expect(document.querySelector('[data-dictionary-id="slow-two"]')?.getAttribute("data-status")).toBe("ready");
+});
+
+test("failed full checks retain the installed card and permit a read-only retry", async () => {
+  vi.mocked(createLocalDictionaryClient).mockReturnValue(makeService() as never);
+  let checks = 0;
+  const client = { sources: [], dispose: vi.fn(), load: vi.fn(async (options?: { metadataOnly?: boolean }) => {
+    if (!options?.metadataOnly && ++checks === 1) throw new Error("Synthetic health read failure");
+    return { packState: { packs: {} }, rich: [{ id: "slow", title: "Retained installed fixture", status: options?.metadataOnly ? "checking" : "ready" }] };
+  }) };
+  render(<LocaleProvider value={zh}><DictionarySection client={client as never} setStatus={vi.fn()} /></LocaleProvider>);
+  await screen.findByText("Retained installed fixture");
+  await screen.findByRole("alert");
+  expect(document.querySelector('[data-dictionary-id="slow"]')?.getAttribute("data-status")).toBe("unknown");
+  await userEvent.click(screen.getByRole("button", { name: "重新检查词典状态" }));
+  await waitFor(() => expect(document.querySelector('[data-dictionary-id="slow"]')?.getAttribute("data-status")).toBe("ready"));
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+test("a pending curated dictionary health check never offers an unnecessary repair install", () => {
+  const source = getCuratedDictionary("ecdict-en-zh-mdx-curated")!;
+  const installCurated = vi.fn();
+  render(<LocaleProvider value={zh}><CuratedList client={{ installCurated } as never}
+    snapshot={{ packState: { packs: {} }, rich: [{ id: source.output.packId, title: source.label,
+      curated: { recipeId: source.id }, status: "checking" }] }} refresh={async () => {}} setStatus={vi.fn()} /></LocaleProvider>);
+  const button = screen.getByRole("button", { name: `正在检查 ${source.label}` }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  expect(screen.queryByText("需要修复")).toBeNull();
+  expect(installCurated).not.toHaveBeenCalled();
 });

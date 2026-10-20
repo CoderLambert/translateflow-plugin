@@ -1,3 +1,6 @@
+import { PACK_MANAGER_STATE_KEY } from "../shared/pack-manager.js";
+import { RICH_MDICT_STATE_KEY } from "../background/packs/rich-mdict-contract.js";
+import { RICH_MDICT_PREFERENCES_KEY } from "../background/packs/rich-mdict-preferences.js";
 import { preflightRichAttachments } from "../background/packs/local-dictionary-preflight-attachments.js";
 import { resolveAssociatedRichResourceFiles, formatBytes as formatByteProgress } from "./local-dictionary-import-presentation.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
@@ -33,12 +36,14 @@ export function dictionaryClient({
   runtime = chrome.runtime,
   permissions = chrome.permissions,
   WorkerCtor = Worker,
-  cryptoProvider = crypto
+  cryptoProvider = crypto,
+  storageChanges = typeof chrome === "undefined" ? undefined : chrome.storage.onChanged
 }: {
   runtime?: typeof chrome.runtime;
   permissions?: typeof chrome.permissions;
   WorkerCtor?: typeof Worker;
   cryptoProvider?: Crypto;
+  storageChanges?: typeof chrome.storage.onChanged;
 } = {}) {
   let activeCurated: null | {
     sourceId: string;
@@ -51,10 +56,10 @@ export function dictionaryClient({
   let attachmentPreflightAbort: AbortController | null = null;
   let activeMdd: ImportController | null = null;
 
-  async function load(): Promise<DictionarySnapshot> {
+  async function load({ metadataOnly = false } = {}): Promise<DictionarySnapshot> {
     const [packs, rich] = await Promise.all([
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }),
-      runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS, ...(metadataOnly ? { metadataOnly: true } : {}) }),
+      runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST, ...(metadataOnly ? { metadataOnly: true } : {}) })
     ]);
     if (!packs?.ok) throw new Error(packs?.error || "读取已安装词典状态失败。");
     if (!rich?.ok) throw new Error(rich?.error || "读取富文本词典状态失败。");
@@ -62,6 +67,20 @@ export function dictionaryClient({
       packState: packs.state && typeof packs.state === "object" ? packs.state : { packs: {} },
       rich: Array.isArray(rich.dictionaries) ? rich.dictionaries : []
     };
+  }
+
+  function subscribe(onChanged: () => void) {
+    const listener = (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => {
+      if (area !== "local") return;
+      const visible = (value: unknown, key: string) => value && typeof value === "object"
+        ? (value as Record<string, unknown>)[key === RICH_MDICT_PREFERENCES_KEY ? "dictionaries" : "packs"] : undefined;
+      if ([PACK_MANAGER_STATE_KEY, RICH_MDICT_STATE_KEY, RICH_MDICT_PREFERENCES_KEY].some(key => {
+        const change = changes[key];
+        return change && JSON.stringify(visible(change.oldValue, key)) !== JSON.stringify(visible(change.newValue, key));
+      })) onChanged();
+    };
+    storageChanges?.addListener(listener);
+    return () => storageChanges?.removeListener(listener);
   }
 
   async function uninstallPack(packId: string) {
@@ -225,7 +244,7 @@ export function dictionaryClient({
   }
 
   return {
-    load, uninstallPack, rollbackPack, uninstallRich, updateRichPreferences, reorderRich, promoteRich,
+    load, subscribe, uninstallPack, rollbackPack, uninstallRich, updateRichPreferences, reorderRich, promoteRich,
     attachMdd, cancelMdd, installOfficial, installCurated, cancelCurated, dispose,
     sources: OPTIONAL_PACK_SOURCES
   };

@@ -197,7 +197,7 @@ export async function handleBackgroundMessage(message, sender) {
       return installYouTubeMainBridge(sender);
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS:
       assertOptionsSender(sender);
-      return getDictionaryPackStatus({ recover: true });
+      return getDictionaryPackStatus({ recover: message.metadataOnly !== true });
     case BACKGROUND_MESSAGES.DICTIONARY_PACK_INSTALL:
       assertOptionsSender(sender);
       return installDictionaryPack({
@@ -244,7 +244,7 @@ export async function handleBackgroundMessage(message, sender) {
       });
     case BACKGROUND_MESSAGES.RICH_MDICT_LIST:
       assertOptionsSender(sender);
-      return listRichMdictDictionaries();
+      return listRichMdictDictionaries({ metadataOnly: message.metadataOnly === true });
     case BACKGROUND_MESSAGES.RICH_MDICT_VIEWER_LIST:
       assertSelectionContentSender(sender);
       return listRichMdictViewerDictionaries();

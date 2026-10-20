@@ -125,3 +125,31 @@ function makeFixture({ changeReadySource = "", commitResponse = { ok: true }, pe
   });
   return { client, sendMessage, staged, workerMessages, workerCreated };
 }
+
+test("metadata loads request only the nonblocking installed snapshot", async () => {
+  const fixture = makeFixture();
+  fixture.sendMessage.mockImplementation(async message => {
+    if (message.type === BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS) return { ok: true, state: { packs: {} } };
+    if (message.type === BACKGROUND_MESSAGES.RICH_MDICT_LIST && message.metadataOnly === true) return { ok: true, dictionaries: [{ id: "local", status: "checking" }] };
+    throw new Error("full checks must not run as part of a metadata load");
+  });
+  expect((await fixture.client.load({ metadataOnly: true })).rich[0]?.status).toBe("checking");
+  expect(fixture.workerCreated).not.toHaveBeenCalled();
+});
+
+test("dictionary subscriptions ignore reservations, observe committed state, and unsubscribe", () => {
+  let listener: ((changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void) | undefined;
+  const removeListener = vi.fn();
+  const client = dictionaryClient({ runtime: {} as never, permissions: {} as never, WorkerCtor: class {} as never, cryptoProvider: crypto,
+    storageChanges: { addListener: (fn: NonNullable<typeof listener>) => { listener = fn; }, removeListener } as never });
+  const changed = vi.fn(), unsubscribe = client.subscribe(changed);
+  listener?.({ tfRichMdictStateV1: { oldValue: { packs: {} }, newValue: { packs: {}, reservations: { importing: {} } } } }, "local");
+  expect(changed).not.toHaveBeenCalled();
+  listener?.({ tfRichMdictStateV1: { oldValue: { packs: {} }, newValue: { packs: { installed: { active: { packVersion: "v1" } } } } } }, "local");
+  expect(changed).toHaveBeenCalledTimes(1);
+  listener?.({ tfRichMdictPreferencesV1: { oldValue: { dictionaries: {} }, newValue: { dictionaries: { installed: { enabled: true } } } } }, "local");
+  expect(changed).toHaveBeenCalledTimes(2);
+  listener?.({ uiLocale: { newValue: "en" } }, "local");
+  expect(changed).toHaveBeenCalledTimes(2);
+  unsubscribe(); expect(removeListener).toHaveBeenCalledWith(listener);
+});

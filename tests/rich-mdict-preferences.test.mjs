@@ -5,7 +5,7 @@ import {
   RICH_MDICT_PREFERENCES_KEY
 } from "../src/background/packs/rich-mdict-preferences.js";
 import { createRichMdictManager } from "../src/background/packs/rich-mdict.js";
-import { createRichMdictViewerDictionaryLister, lookupRichMdictDictionaries } from "../src/background/packs/api.js";
+import { createRichMdictDictionaryLister, createRichMdictViewerDictionaryLister, lookupRichMdictDictionaries } from "../src/background/packs/api.js";
 import { RICH_MDICT_SOURCE_ID } from "../src/background/packs/rich-mdict-contract.js";
 
 const FIRST_ID = "rich-mdict-123e4567-e89b-42d3-a456-426614174000";
@@ -247,4 +247,25 @@ test("disabled dictionary rejects version-bound navigation before any source loo
       requestId: "selection-rich-lookup-0123456789abcdef0123456789abcdef", expectedPackVersion: "import-navigation-123e4567", expectedPackageVersion: "import-navigation-123e4567" }, "selection:7:0:doc");
     assert.equal(result.found, false); assert.deepEqual(result.dictionaries, []); assert.equal(result.errors[0].code, "RICH_MDICT_DISABLED");
   } finally { globalThis.chrome = previous; }
+});
+
+test("Options metadata preview never enters full index checks and preserves errors and preferences", async () => {
+  const rows = [{ id: FIRST_ID, title: "Ready fixture", status: "ready", installedAt: 1 },
+    { id: SECOND_ID, title: "Missing fixture", status: "missing", installedAt: 2 }];
+  let checks = 0, metadata = 0;
+  const list = createRichMdictDictionaryLister({
+    manager: { list: async () => { checks++; return { dictionaries: rows }; },
+      listMetadata: async () => { metadata++; return { dictionaries: rows }; } },
+    preferencesStore: { reconcile: async () => ({ [FIRST_ID]: { enabled: false, order: 1 }, [SECOND_ID]: { enabled: true, order: 0 } }) }
+  });
+  const preview = await list({ metadataOnly: true });
+  assert.equal(checks, 0); assert.equal(metadata, 1);
+  assert.equal(preview.dictionaries.find(row => row.id === FIRST_ID).status, "checking");
+  assert.equal(preview.dictionaries.find(row => row.id === SECOND_ID).status, "missing");
+  assert.equal(preview.dictionaries[0].id, SECOND_ID);
+  assert.equal(preview.dictionaries[0].preferred, true);
+  assert.equal(preview.dictionaries[1].enabled, false);
+  const checked = await list();
+  assert.equal(checks, 1); assert.equal(metadata, 1);
+  assert.equal(checked.dictionaries.find(row => row.id === FIRST_ID).status, "ready");
 });

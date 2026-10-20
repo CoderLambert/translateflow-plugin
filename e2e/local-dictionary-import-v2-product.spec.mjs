@@ -353,6 +353,7 @@ test.describe("unified local dictionary import v2", () => {
     await options.locator("#localDictionaryImportButton").click();
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 90_000 });
     await expect(options.locator("#richMdictInstalledList .site-row").filter({ hasText: "Possible Duplicate Fixture" })).toHaveCount(1);
+    const firstDictionaryId = await options.locator("#richMdictInstalledList [data-dictionary-id]").getAttribute("data-dictionary-id");
 
     await options.locator("#localDictionaryFiles").setInputFiles({
       name: "second-copy.mdx", mimeType: "application/octet-stream",
@@ -371,6 +372,9 @@ test.describe("unified local dictionary import v2", () => {
     await options.locator("#localDictionaryImportButton").click();
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成", { timeout: 90_000 });
     await expect(options.locator("#richMdictInstalledList .site-row").filter({ hasText: "Possible Duplicate Fixture" })).toHaveCount(2);
+    const importedRow = options.locator(`#richMdictInstalledList [data-dictionary-id]:not([data-dictionary-id="${firstDictionaryId}"])`);
+    await expect(importedRow).toBeFocused();
+    await expect(importedRow).toBeInViewport();
     expect(harness.server.calls).toHaveLength(0);
   });
 
@@ -461,6 +465,8 @@ test.describe("unified local dictionary import v2", () => {
     await options.locator("#localDictionaryImportButton").click();
     await expect(options.locator("#localDictionaryImportProgress")).toContainText("完整安装校验", { timeout: 90_000 });
     await expect(options.locator("#installedDictionaryList")).toContainText("local-e2e-tflex-v1");
+    await expect(options.locator('#installedDictionaryList [data-pack-id="local-e2e-tflex-v1"]')).toBeFocused();
+    await expect(options.locator('#installedDictionaryList [data-pack-id="local-e2e-tflex-v1"]')).toBeInViewport();
     expect(harness.server.calls).toHaveLength(0);
   });
 
