@@ -13,7 +13,9 @@ import {
 
 export type LocalPreflight = Record<string, any>;
 export type InstalledDictionaryState = { candidates: Record<string, any>[]; known: { rich: boolean; packs: boolean } };
+export type InstalledDictionaryTarget = { kind: "rich" | "pack"; id: string };
 export type LocalImportResult = {
+  installedTarget?: InstalledDictionaryTarget;
   progress: string;
   status: string;
   error: boolean;
@@ -113,7 +115,7 @@ export function createLocalDictionaryClient({
             };
           }
         }
-        return success("完成 · 富文本词典已安装");
+        return success("完成 · 富文本词典已安装", { kind: "rich", id: dictionaryId });
       }
       if (route === "structured-mdict") {
         const mdxFile = files.find(file => /\.mdx$/iu.test(file.name));
@@ -121,20 +123,20 @@ export function createLocalDictionaryClient({
         const inspection = await inspectMdictFile(mdxFile);
         const recipe = createMdictProductRecipe(inspection, { cryptoProvider });
         await run(structured, () => structured.importDictionary({ mdxFile, recipe, displayMetadata: { name: recipe.dictionary.title, format: "mdict" } }));
-        return success("完成 · 结构化词典已安装");
+        return success("完成 · 结构化词典已安装", { kind: "pack", id: recipe.packId });
       }
       if (route === "stardict") {
         const inspection = await inspectStarDictFiles(files);
         const recipe = createStarDictProductRecipe(inspection, { cryptoProvider });
         await run(stardict, () => stardict.importDictionary({ ...inspection, recipe, displayMetadata: { name: recipe.dictionary.bookname, format: "stardict" } }));
-        return success("完成 · StarDict 已安装");
+        return success("完成 · StarDict 已安装", { kind: "pack", id: recipe.packId });
       }
       if (route === "tflex") {
-        await run(tflex, () => tflex.importDictionary({
+        const imported = await run(tflex, () => tflex.importDictionary({
           files,
           displayMetadata: { kind: "local-import", name: report.identity.displayTitle || "本地 TFLex 词典", format: "tflex", sourceLabel: "用户提供 · 未验证" }
         }));
-        return success("完成 · TFLex 文件已通过完整安装校验");
+        return success("完成 · TFLex 文件已通过完整安装校验", { kind: "pack", id: String(imported.commit?.pack?.active?.packId || "") });
       }
       throw new Error("没有可用的导入方式。");
     } catch (error) {
@@ -152,7 +154,7 @@ export function createLocalDictionaryClient({
     try {
       await run(mdd, () => mdd.attachResources({ dictionaryId: attempt.dictionaryId, mdxFileName: attempt.mdxFileName, mdxSourceBytes: attempt.mdxSourceBytes, expectedMdxVersion: attempt.expectedMdxVersion, files: attempt.files, sidecars: attempt.sidecars }));
       retryAttachment = null;
-      return { progress: "完成 · MDD 附件已添加", status: "MDD 附件已安全添加。", error: false, changed: true, retryMdd: false };
+      return { installedTarget: { kind: "rich", id: attempt.dictionaryId }, progress: "完成 · MDD 附件已添加", status: "MDD 附件已安全添加。", error: false, changed: true, retryMdd: false };
     } catch (error) {
       const cancelled = isAbort(error);
       return { progress: cancelled ? "已取消；原有附件保持不变。" : `MDD 附件未更改：${userMessage(error)}`, status: userMessage(error), error: !cancelled, changed: false, retryMdd: true };
@@ -178,8 +180,8 @@ export function createLocalDictionaryClient({
   return { preflight, installed, importFiles, retryMdd, cancel, dispose };
 }
 
-function success(progress: string): LocalImportResult {
-  return { progress, status: "词典已安装并保存在本机；不会自动调用 Provider。若需要确认词条含义，请先在划词结果中查看。", error: false, changed: true, retryMdd: false };
+function success(progress: string, installedTarget: InstalledDictionaryTarget): LocalImportResult {
+  return { installedTarget, progress, status: "词典已安装并保存在本机；不会自动调用 Provider。若需要确认词条含义，请先在划词结果中查看。", error: false, changed: true, retryMdd: false };
 }
 function isAbort(error: unknown) { return error instanceof DOMException ? error.name === "AbortError" : error instanceof Error && error.name === "AbortError"; }
 

@@ -204,6 +204,7 @@ export function isSimplifiedChineseTarget(value) {
   const normalized = String(value || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
   return [
     "simplified-chinese",
+    "zh",
     "zh-cn",
     "zh-hans",
     "简体中文",

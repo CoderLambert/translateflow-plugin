@@ -258,6 +258,7 @@ function safeDictionaryFileName(value) {
 }
 
 export function getDictionaryHealthPresentation(status) {
+  if (status === "checking") return { label: "已安装 · 检查中", kind: "warning", detail: "正在检查可用性，完成后会自动更新。" };
   if (["ready", "healthy"].includes(status)) return { label: "可用", kind: "success", detail: "本地检查通过，可离线查询。" };
   if (["missing", "unavailable"].includes(status)) return { label: "文件缺失", kind: "error", detail: "词典文件不完整，重新安装或导入后可再次检查。" };
   if (["corrupt", "unhealthy"].includes(status)) return { label: "检查失败", kind: "error", detail: "本地词典无法通过完整性检查；其他词典仍可正常使用。" };

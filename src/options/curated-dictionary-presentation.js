@@ -21,6 +21,11 @@ export function getCuratedMdxInstallPresentation(source, dictionary) {
     };
   }
 
+  if (dictionary.status === "checking") {
+    return { status: "checking", kind: "warning", badgeLabel: "已安装 · 检查中", actionLabel: "正在检查",
+      detail: "词典已安装，正在检查可用性；完成后会自动更新。" };
+  }
+
   if (dictionary.status !== "ready") {
     return {
       status: "needs-reinstall",

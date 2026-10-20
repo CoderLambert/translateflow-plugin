@@ -36,6 +36,14 @@ and sanitizer contracts. This UI migration neither changes the compatibility
 matrix nor adds MDX/MDD capabilities; selected files remain local and remote or
 active dictionary content remains blocked by the existing policy.
 
+## Settings list responsiveness
+
+Options first reads committed dictionary metadata and shows installed entries as checking. Full index/file checks run separately and update health afterward; a pending check is not a repair failure or proof of current usability. Storage changes to installed dictionaries, attachments and preferences refresh the list without reloading the page. Temporary import reservations alone do not trigger refresh. Existing full-list requests and import/lookup validation retain their strict checks; the metadata preview does not activate staged files or alter the stored schema.
+
+During installation, a prominent notice explicitly distinguishes checking/saving from completion; large-file verification may still be running after staging has finished. The page must stay open until completion.
+
+Successful local imports now locate and briefly highlight the committed dictionary card, with keyboard focus and a “view the dictionary just installed” action in the import form. Reduced-motion preferences disable animated scrolling. Failed or cancelled attachment operations stay in the import form for retry; background library refreshes do not move focus or scroll the page.
+
 ## Key normalization and derived index upgrades
 
 The Rich MDX header parser accepts the standard `StripKey` and the explicitly

@@ -428,3 +428,19 @@ test("rate-limit cooldown survives a new request and never falls back to Tencent
   assert.ok(memory["tfMtCooldown:mt-microsoft-web"].until >= Date.now() + 110000);
   await assert.rejects(requestMachineTexts(config(), ["again"]), { code: "MT_RATE_LIMIT" }); assert.equal(calls, 1);
 });
+
+for (const providerId of ["mt-microsoft-web", "mt-tencent-transmart"]) {
+  test(`explicit ${providerId} preserves dictionary-first routing for a local word hit`, async () => {
+    let lookups = 0;
+    const resolved = await resolveSelectionRequest({ text: "localfixture", pageUrl: page }, {
+      getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese",
+        machineTranslation: settings(providerId), aiServiceConfigured: true }),
+      getEffectiveConfig: () => assert.fail("explicit MT and dictionary routing must not resolve AI credentials"),
+      runLexicalLookup: async input => { lookups++; assert.equal(input.targetLanguage, "zh-CN"); return { status: "hit", candidates: [] }; },
+      assessLexicalLookup: () => ({ outcome: "sufficient", candidates: [{ id: "synthetic-local" }] })
+    });
+    assert.equal(resolved.intent.kind, "lexical");
+    assert.equal(resolved.route, "local");
+    assert.equal(lookups, 1);
+  });
+}

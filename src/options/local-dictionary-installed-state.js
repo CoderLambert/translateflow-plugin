@@ -2,8 +2,8 @@ import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
 export async function readInstalledDictionaryState(runtime) {
   const [richResult, packResult] = await Promise.allSettled([
-    Promise.resolve().then(() => runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST })),
-    Promise.resolve().then(() => runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS }))
+    Promise.resolve().then(() => runtime.sendMessage({ type: BACKGROUND_MESSAGES.RICH_MDICT_LIST, metadataOnly: true })),
+    Promise.resolve().then(() => runtime.sendMessage({ type: BACKGROUND_MESSAGES.DICTIONARY_PACK_STATUS, metadataOnly: true }))
   ]);
   const candidates = [];
   let rich = false;

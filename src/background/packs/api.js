@@ -61,18 +61,28 @@ export function cancelRichMdictImport(requestId) {
   return getRichMdictManager().cancel(requestId);
 }
 
-export async function listRichMdictDictionaries() {
-  const result = await getRichMdictManager().list();
-  const preferences = await getRichMdictPreferencesStore().reconcile(result.dictionaries);
-  const dictionaries = result.dictionaries.map((dictionary) => ({
-    ...dictionary,
-    trustLabel: richDictionaryTrustLabel(dictionary),
-    ...(preferences[dictionary.id] || defaultRichMdictPreference(dictionary))
-  }));
-  dictionaries.sort(compareRichDictionaryOrder);
-  const preferredId = dictionaries.find((dictionary) => dictionary.enabled !== false)?.id;
-  for (const dictionary of dictionaries) dictionary.preferred = dictionary.id === preferredId;
-  return { ...result, dictionaries };
+export async function listRichMdictDictionaries(options = {}) {
+  return createRichMdictDictionaryLister({
+    manager: getRichMdictManager(), preferencesStore: getRichMdictPreferencesStore()
+  })(options);
+}
+
+export function createRichMdictDictionaryLister({ manager, preferencesStore } = {}) {
+  return async ({ metadataOnly = false } = {}) => {
+    const result = await (metadataOnly === true ? manager.listMetadata() : manager.list());
+    const preferences = await preferencesStore.reconcile(result.dictionaries);
+    const dictionaries = result.dictionaries.map((dictionary) => ({
+      ...dictionary,
+      // Metadata proves installation, not a fresh check of the OPFS files.
+      ...(metadataOnly === true && dictionary.status === "ready" ? { status: "checking" } : {}),
+      trustLabel: richDictionaryTrustLabel(dictionary),
+      ...(preferences[dictionary.id] || defaultRichMdictPreference(dictionary))
+    }));
+    dictionaries.sort(compareRichDictionaryOrder);
+    const preferredId = dictionaries.find((dictionary) => dictionary.enabled !== false)?.id;
+    for (const dictionary of dictionaries) dictionary.preferred = dictionary.id === preferredId;
+    return { ...result, dictionaries };
+  };
 }
 
 export async function listRichMdictViewerDictionaries() {

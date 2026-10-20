@@ -130,6 +130,8 @@ Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider
 
 全局模式只修改自己的键；站点 `machineTranslation` 只作为覆盖值。未显式覆盖的旧站点 AI 选择优先于新增全局免费模式。Options 和 Popup 是设置/连接检查的唯一可信入口。启用或测试必须有用户动作和前端明确传输确认；检查只发送固定非敏感例句。读取状态不会联网。全局/站点切换会取消当前文字任务，不改 AI 凭据和独立助手任务。
 
+开启“翻译前优先查询已安装词典”后，单词划选仍先查询本地词典；命中时不请求在线 MT，即使已有该词的在线译文缓存。免费模式的规范语言码 `zh` 与简体中文词典资格一致；未命中时保留原有普通翻译按钮和显式 MT 路线。
+
 `translationConfig()` 在网页/文字划词解析免费路由；AI `getEffectiveConfig()`、`getEffectiveConfigForSite()`、字幕与助手保持原行为。免费配置不要求 Key，损坏的 AI 连接不阻断显式免费文字翻译。`hasConfiguredAi()` 语义不因免费模式改变。
 
 免费快照有 mt: 前缀，绑定 tab/frame/document/pageUrl，缺失、过期、切换、导航及 worker 重启后拒绝旧任务，不落回 AI。Provider 和 cache store 复用同一快照。MT 指纹单独加入服务、固定 endpoint、源/目标语言及 adapter/input 版本，单条源身份额外包含 protectedIds。原 AI / browser-translator 指纹、IndexedDB schema、Reading schema 不改变、不清理。

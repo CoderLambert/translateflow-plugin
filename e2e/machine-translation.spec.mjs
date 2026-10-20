@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { test, expect } from "./support/extension-fixture.mjs";
+import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
 const machine = providerId => ({ version: 1, mode: "free-online", providerId, sourceLanguage: "auto" });
 const evidence = "docs/task-execution/local/free-online-mt";
@@ -174,3 +175,49 @@ test("navigating away aborts the tab-owned free MT request", async ({ harness })
   expect(harness.server.calls).toHaveLength(0);
   await page.close();
 });
+
+for (const providerId of ["mt-microsoft-web", "mt-tencent-transmart"]) {
+  test(`saved dictionary-first preference prevents ${providerId} calls on a rich word hit`, async ({ harness }, testInfo) => {
+    await noAi(harness, providerId);
+    const options = await harness.context.newPage();
+    await options.goto(`chrome-extension://${harness.extensionId}/options.html#dictionary-packs`);
+    await options.locator("#localDictionaryFiles").setInputFiles({ name: "local-first.mdx", mimeType: "application/octet-stream",
+      buffer: makeRichMdx([["mtlocalfixture", "<p>Local dictionary preferred fixture</p>"]], { title: "Local first fixture", styleSheet: "" }) });
+    await expect(options.locator("#localDictionaryImportButton")).toBeEnabled();
+    await options.locator("#localDictionaryImportButton").click();
+    await expect(options.locator("#localDictionaryImportProgress")).toContainText("完成");
+    await options.locator("#dictionaryEnabled").check();
+    await options.locator("#save").click();
+    await expect.poll(async () => (await harness.getStorage(["dictionaryEnabled"])).dictionaryEnabled).toBe(true);
+    const page = await harness.open("/selection");
+    await page.locator("#technical-competition").evaluate(node => { node.textContent = "mtlocalfixture"; });
+    await harness.inject(page); await select(page, "#technical-competition");
+    const rich = page.locator(".tf-selection-rich-record").filter({ hasText: "Local first fixture" });
+    await expect(rich).toContainText("Local dictionary preferred fixture");
+    expect((await probe(harness)).calls).toHaveLength(0);
+    expect(harness.server.calls).toHaveLength(0);
+    await page.screenshot({ path: testInfo.outputPath("dictionary-first-no-mt.png") });
+    await page.keyboard.press("Escape");
+    await options.locator("#dictionaryEnabled").uncheck(); await options.locator("#save").click();
+    await expect.poll(async () => (await harness.getStorage(["dictionaryEnabled"])).dictionaryEnabled).toBe(false);
+    await select(page, "#technical-competition");
+    await expect(page.locator(".tf-selection-primary")).toContainText(providerId === "mt-microsoft-web" ? "微软译文" : "腾讯译文");
+    const count = (await probe(harness)).calls.length;
+    expect(count).toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await options.locator("#dictionaryEnabled").check(); await options.locator("#save").click();
+    await expect.poll(async () => (await harness.getStorage(["dictionaryEnabled"])).dictionaryEnabled).toBe(true);
+    await select(page, "#technical-competition");
+    await expect(rich).toContainText("Local dictionary preferred fixture");
+    expect((await probe(harness)).calls).toHaveLength(count);
+    await page.keyboard.press("Escape");
+    await page.locator("#technical-competition").evaluate(node => { node.textContent = "unknownmtfixture"; });
+    await select(page, "#technical-competition");
+    const translate = page.getByRole("button", { name: "使用普通翻译处理这个词", exact: true });
+    await expect(translate).toBeVisible();
+    expect((await probe(harness)).calls).toHaveLength(count);
+    await translate.click();
+    await expect(page.locator(".tf-selection-primary")).toContainText(providerId === "mt-microsoft-web" ? "微软译文" : "腾讯译文");
+    expect((await probe(harness)).calls.length).toBeGreaterThan(count);
+  });
+}
