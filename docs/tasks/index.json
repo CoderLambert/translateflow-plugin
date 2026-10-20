@@ -477,6 +477,13 @@
       "dependencies": [],
       "branch": "main",
       "candidateHead": "926ab1e02d3b493494475a36d7ee1867fad02e21"
+    },
+    {
+      "task": "youtube-subtitle-reuse-v1",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "fix/youtube-subtitle-reuse-20261021",
+      "candidateHead": null
     }
   ]
 }

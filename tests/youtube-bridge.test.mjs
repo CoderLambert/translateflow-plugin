@@ -251,3 +251,50 @@ test("MAIN XHR observation preserves native methods and teardown restores only T
   assert.equal(FakeXHR.prototype.open, nativeOpen);
   assert.equal(FakeXHR.prototype.send, nativeSend);
 });
+
+for (const returnToEnglish of [false, true]) test("same-video track change rejects a late old fetch" + (returnToEnglish ? " after A-B-A" : ""), async t => {
+  let release; const pending = new Promise(resolve => { release = resolve; });
+  const page = loadPage({ fetchImpl: () => pending }); const bridge = page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__;
+  t.after(() => bridge.stop());
+  const fetching = page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a&lang=en");
+  page.player.getOption = () => ({ languageCode: "fr", vssId: "fr", kind: "captions" }); bridge.reannounce();
+  if (returnToEnglish) { page.player.getOption = () => ({ languageCode: "en", vssId: "en", kind: "captions" }); bridge.reannounce(); }
+  release({ clone: () => ({ text: async () => JSON.stringify({ events: [{ tStartMs: 0, dDurationMs: 2000, segs: [{ utf8: "old English" }] }] }) }) });
+  await fetching; await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.outbound.filter(m => m.type === "TIMEDTEXT").length, 0);
+});
+test("timedtext URL for another selected language cannot borrow the current track identity", async t => {
+  const page = loadPage({ fetchImpl: async () => ({ clone: () => ({ text: async () => JSON.stringify({ events: [{ tStartMs: 0, dDurationMs: 2000, segs: [{ utf8: "French body" }] }] }) }) }) });
+  t.after(() => page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop());
+  await page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a&lang=fr");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.outbound.filter(m => m.type === "TIMEDTEXT").length, 0);
+});
+
+test("same-video late XHR cannot relabel an old body with the new selected track", t => {
+  class HeldXHR extends EventTarget {
+    open() {} send() {} getResponseHeader() { return "application/json"; }
+  }
+  const page = loadPage({ xhrClass: HeldXHR }); t.after(() => page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop());
+  const xhr = new page.context.XMLHttpRequest(); xhr.open("GET", "https://www.youtube.com/api/timedtext?v=bridge-a&lang=en"); xhr.send();
+  page.player.getOption = () => ({ languageCode: "fr", vssId: "fr", kind: "captions" });
+  xhr.responseText = JSON.stringify({ events: [{ tStartMs: 0, dDurationMs: 2000, segs: [{ utf8: "old English" }] }] });
+  xhr.dispatchEvent({ type: "loadend" });
+  assert.equal(page.outbound.filter(m => m.type === "TIMEDTEXT").length, 0);
+});
+
+test("same-language human URL does not borrow an ASR track identity", async t => {
+  const page = loadPage({ fetchImpl: async () => ({ clone: () => ({ text: async () => JSON.stringify({ events: [{ tStartMs: 0, dDurationMs: 1000, segs: [{ utf8: "human" }] }] }) }) }) });
+  t.after(() => page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop());
+  page.player.getOption = () => ({ languageCode: "en", vssId: "a.en", kind: "asr" });
+  await page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a&lang=en");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.outbound.filter(m => m.type === "TIMEDTEXT").length, 0);
+});
+test("invalid observed URL preserves delegation and the original fetch promise", async t => {
+  const native = Promise.resolve({}); let calls = 0;
+  const page = loadPage({ fetchImpl: () => { calls++; return native; } });
+  t.after(() => page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop());
+  assert.equal(page.context.fetch("http://[invalid/api/timedtext?v=bridge-a"), native);
+  assert.equal(calls, 1);
+});

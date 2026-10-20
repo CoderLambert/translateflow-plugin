@@ -1,4 +1,5 @@
 import { BACKGROUND_MESSAGES, DEFAULT_CONFIG } from "../../shared/constants.js";
+import { cacheError } from "../../shared/cache/identity.js";
 import { isCachePersistenceError } from "../../shared/cache/persistence-errors.js";
 import { readingTranslationResult } from "../selection/reading-result.js";
 import { clearAllCache, clearPageCache, getCacheStats, getPageCacheStatus, lookupTranslations, pruneCache, storeTranslations } from "../cache-db.js";
@@ -60,11 +61,12 @@ export async function handleCacheMessage(message, sender = null) {
       return { ...statuses[0], count: statuses.reduce((sum, status) => sum + status.count, 0) };
     }
     case BACKGROUND_MESSAGES.CACHE_CLEAR_PAGE:
+      if (typeof message.pageUrl !== "string" || !message.pageUrl.trim()) throw cacheError("CACHE_INVALID_INPUT");
       fenceMachineRouteWrites(message.pageUrl);
-      return clearPageCache({ pageUrl: message.pageUrl });
+      return clearAndNotify(message.pageUrl);
     case BACKGROUND_MESSAGES.CACHE_CLEAR_ALL:
       fenceMachineRouteWrites();
-      return clearAllCache();
+      return clearAndNotify(undefined, true);
     case BACKGROUND_MESSAGES.CACHE_STATS:
       return getCacheStats();
     case BACKGROUND_MESSAGES.CACHE_PRUNE: {
@@ -74,4 +76,16 @@ export async function handleCacheMessage(message, sender = null) {
     default:
       throw new Error("Unknown cache message");
   }
+}
+
+async function clearAndNotify(pageUrl, all = false) {
+  const result = all ? await clearAllCache() : await clearPageCache({ pageUrl });
+  // Notification failures cannot turn a committed clear into a reported storage failure.
+  try {
+    const tabs = await globalThis.chrome?.tabs?.query({});
+    await Promise.allSettled((tabs || []).filter(tab => Number.isInteger(tab.id)).map(tab => chrome.tabs.sendMessage(tab.id, {
+      type: BACKGROUND_MESSAGES.CACHE_INVALIDATED, ...(all ? {} : { pageUrl })
+    })));
+  } catch { /* a tab may close while cache removal completes */ }
+  return result;
 }

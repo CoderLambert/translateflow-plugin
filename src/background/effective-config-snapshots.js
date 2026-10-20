@@ -39,6 +39,7 @@ export async function resolveEffectiveConfigSnapshot(id, pageUrl, sender = null)
   return snapshot.config;
 }
 
+export const getTranslationConfigRevision = () => revision;
 export function invalidateTranslationSnapshots() { revision = crypto.randomUUID(); snapshots.clear(); }
 export function releaseEffectiveConfigSnapshot(id) { snapshots.delete(String(id || "")); }
 export function invalidateMachineSnapshots(tabId = null) {

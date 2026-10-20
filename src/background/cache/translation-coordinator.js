@@ -10,7 +10,24 @@ export function createTranslationCoordinator(executeTranslation) {
     if (!request) return { cancelled: false };
     consumers.delete(id); request.controller.abort(); return { cancelled: true };
   }
-  async function run({ requestId, segments, config, pageUrl = '', ownerTabId = null, onProgress }) {
+  async function withRequest({ requestId, pageUrl = '', ownerTabId = null }, work) {
+    const id = String(requestId || crypto.randomUUID()); cancel(id);
+    if (consumers.size >= 1024) throw cacheError('CACHE_BUSY');
+    const consumer = { controller: new AbortController(), pageUrl, ownerTabId, engine: 'ai', key: null, onProgress: null };
+    consumers.set(id, consumer);
+    const assertActive = () => {
+      if (consumer.controller.signal.aborted || consumers.get(id) !== consumer) throw cacheError('CANCELLED');
+    };
+    try { return await work({ signal: consumer.controller.signal, assertActive,
+      run: input => runInRequest(input, consumer, assertActive) }); }
+    finally { if (consumers.get(id) === consumer) consumers.delete(id); }
+  }
+  function run({ requestId, pageUrl = '', ownerTabId = null, ...input }) {
+    return withRequest({ requestId, pageUrl, ownerTabId }, request => request.run(input));
+  }
+  async function runInRequest({ segments, config, onProgress }, consumer, assertActive) {
+    assertActive();
+    const { pageUrl } = consumer;
     if (!Array.isArray(segments) || segments.length > 128) throw cacheError('CACHE_INPUT_LIMIT');
     // Pin inputs before any asynchronous hand-off. A producer must execute the
     // exact payload whose identity was used to join the in-flight request.
@@ -22,51 +39,47 @@ export function createTranslationCoordinator(executeTranslation) {
       seen.add(String(item.id));
     }
     const key = canonicalJson({ pageUrl, request: buildTranslationRequestKey(segments, config) });
-    const id = String(requestId || crypto.randomUUID()); cancel(id);
-    const consumer = { controller: new AbortController(), pageUrl, ownerTabId, engine: config?.engine || 'ai', key, onProgress };
-    consumers.set(id, consumer);
-    try {
-      return structuredClone(await flight.run(key, async signal => {
-        const groups = new Map();
-        for (const segment of segments) {
-          const plan = translationRequestDescriptor(config, segment);
-          const groupKey = canonicalJson({ config: plan.semanticRequest.config, formatProtocol: plan.semanticRequest.formatProtocol });
-          let group = groups.get(groupKey);
-          if (!group) { group = { config: plan.preparedConfig, items: [] }; groups.set(groupKey, group); }
-          group.items.push({ segment, source: plan.source });
-        }
-        const translated = new Map();
-        const deadline = config.engine === "machine-translation" ? performance.now() + 25000 : undefined;
-        // Homogeneous effective-prompt batches: removing cached rich items cannot
-        // silently change the prompt for a remaining plain segment.
-        for (const group of groups.values()) {
-          if (signal.aborted) throw cacheError('CANCELLED');
-          let output;
-          try { output = await executeTranslation({
-            segments: group.items.map(({ segment, source }) => ({ ...segment, text: source.text })),
-            config: group.config, signal, deadline, onProgress(event) {
-              for (const consumer of consumers.values()) if (consumer.key === key && !consumer.controller.signal.aborted) {
-                try { consumer.onProgress?.(event); } catch { /* observer */ }
-              }
+    Object.assign(consumer, { engine: config?.engine || 'ai', key, onProgress });
+    return structuredClone(await flight.run(key, async signal => {
+      const groups = new Map();
+      for (const segment of segments) {
+        const plan = translationRequestDescriptor(config, segment);
+        const groupKey = canonicalJson({ config: plan.semanticRequest.config, formatProtocol: plan.semanticRequest.formatProtocol });
+        let group = groups.get(groupKey);
+        if (!group) { group = { config: plan.preparedConfig, items: [] }; groups.set(groupKey, group); }
+        group.items.push({ segment, source: plan.source });
+      }
+      const translated = new Map();
+      const deadline = config.engine === "machine-translation" ? performance.now() + 25000 : undefined;
+      // Homogeneous effective-prompt batches: removing cached rich items cannot
+      // silently change the prompt for a remaining plain segment.
+      for (const group of groups.values()) {
+        if (signal.aborted) throw cacheError('CANCELLED');
+        let output;
+        try { output = await executeTranslation({
+          segments: group.items.map(({ segment, source }) => ({ ...segment, text: source.text })),
+          config: group.config, signal, deadline, onProgress(event) {
+            for (const consumer of consumers.values()) if (consumer.key === key && !consumer.controller.signal.aborted) {
+              try { consumer.onProgress?.(event); } catch { /* observer */ }
             }
-          }); } catch (error) {
-            if (config.routing === "auto" && translated.size && ["MT_NETWORK", "MT_TIMEOUT", "MT_HTTP", "MT_RESPONSE", "MT_RATE_LIMIT", "MT_BLOCKED", "MT_PERMISSION", "MT_LANGUAGE"].includes(error?.code) && !signal.aborted) break;
-            throw error;
           }
-          if (signal.aborted) throw cacheError('CANCELLED');
-          if (!Array.isArray(output) || (output.length !== group.items.length && !(config.routing === "auto" && output.length > 0 && output.length < group.items.length))) throw cacheError('MALFORMED_RESPONSE');
-          const expected = new Map(group.items.map(item => [String(item.segment.id), item]));
-          for (const item of output) {
-            const source = expected.get(String(item?.id))?.source;
-            if (!source || translated.has(String(item.id)) || !validateTranslationValue({ sourceText: source.cacheSource, source, translation: item.text })) throw cacheError('MALFORMED_RESPONSE');
-            translated.set(String(item.id), { id: item.id, text: item.text, ...(item.providerId ? { providerId: item.providerId, providerLabel: item.providerLabel } : {}) });
-          }
+        }); } catch (error) {
+          if (config.routing === "auto" && translated.size && ["MT_NETWORK", "MT_TIMEOUT", "MT_HTTP", "MT_RESPONSE", "MT_RATE_LIMIT", "MT_BLOCKED", "MT_PERMISSION", "MT_LANGUAGE"].includes(error?.code) && !signal.aborted) break;
+          throw error;
         }
-        return segments.map(item => translated.get(String(item.id))).filter(Boolean);
-      }, { signal: consumer.controller.signal, metadata: { pageUrl, engine: consumer.engine } }));
-    } finally { if (consumers.get(id) === consumer) consumers.delete(id); }
+        if (signal.aborted) throw cacheError('CANCELLED');
+        if (!Array.isArray(output) || (output.length !== group.items.length && !(config.routing === "auto" && output.length > 0 && output.length < group.items.length))) throw cacheError('MALFORMED_RESPONSE');
+        const expected = new Map(group.items.map(item => [String(item.segment.id), item]));
+        for (const item of output) {
+          const source = expected.get(String(item?.id))?.source;
+          if (!source || translated.has(String(item.id)) || !validateTranslationValue({ sourceText: source.cacheSource, source, translation: item.text })) throw cacheError('MALFORMED_RESPONSE');
+          translated.set(String(item.id), { id: item.id, text: item.text, ...(item.providerId ? { providerId: item.providerId, providerLabel: item.providerLabel } : {}) });
+        }
+      }
+      return segments.map(item => translated.get(String(item.id))).filter(Boolean);
+    }, { signal: consumer.controller.signal, metadata: { pageUrl, engine: consumer.engine } }));
   }
-  return Object.freeze({ run, cancel,
+  return Object.freeze({ run, withRequest, cancel,
     cancelText(pageUrl = '') { for (const [id, item] of consumers) if (!pageUrl || item.pageUrl === pageUrl) cancel(id); },
     cancelMachine(tabId = null) { for (const [id, item] of consumers) if (item.engine === 'machine-translation' && (tabId === null || item.ownerTabId === tabId)) cancel(id); },
     close() { for (const id of [...consumers.keys()]) cancel(id); flight.close(); }

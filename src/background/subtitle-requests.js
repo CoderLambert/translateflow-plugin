@@ -1,7 +1,8 @@
 import { lookupTranslations, storeTranslations } from "./cache-db.js";
 import { isCachePersistenceError } from "../shared/cache/persistence-errors.js";
 import { getEffectiveConfig } from "./config.js";
-import { runTranslationRequest } from "./translation-requests.js";
+import { withTranslationRequest } from "./translation-requests.js";
+import { getTranslationConfigRevision } from "./effective-config-snapshots.js";
 import { normalizeSourceText } from "../shared/text.js";
 
 import { buildSubtitleCacheSource } from "../shared/subtitle-cache.js";
@@ -17,97 +18,110 @@ export async function runSubtitleTranslationBatch({
 }, deps = {}) {
   const effectiveConfig = deps.getEffectiveConfig || getEffectiveConfig;
   const lookupCache = deps.lookupTranslations || lookupTranslations;
-  const runProvider = deps.runTranslationRequest || runTranslationRequest;
   const storeCache = deps.storeTranslations || storeTranslations;
   const normalized = normalizeUnits(units);
   if (!normalized.length) {
     return { translations: [], cacheHits: 0, apiTranslated: 0, missing: 0 };
   }
 
-  const config = await effectiveConfig(pageUrl);
-  const cacheSegments = normalized.map((unit) => ({
-    id: unit.id,
-    text: buildSubtitleCacheSource(unit), providerText: unit.text, format: "plain"
-  }));
-  let cached, cacheWarning = "";
-  try {
-    cached = await lookupCache({
-      pageUrl,
-      segments: cacheSegments,
-      namespace: "subtitle-translation",
-      config
-    });
-  } catch (error) {
-    if (!isCachePersistenceError(error)) throw error;
-    // A broken cache does not turn an authorized subtitle request into a
-    // failed translation or a second Provider call.
-    cached = { hits: [], writeTokens: [] };
-    cacheWarning = error.code;
-  }
-  const cacheTokens = new Map((cached.writeTokens || []).map(item => [String(item.id), item.token]));
-  const cachedById = new Map((cached.hits || []).map((item) => [String(item.id), item.text]));
-  const missing = normalized.filter((unit) => !cachedById.has(unit.id));
-
-  const translatedById = new Map();
-  if (missing.length) {
-    const translated = await runProvider({
-      requestId,
-      pageUrl,
-      segments: missing.map((unit) => ({ id: unit.id, text: unit.text, format: "plain" })),
-      config
-    });
-    for (const item of translated || []) {
-      if (item?.text) translatedById.set(String(item.id), String(item.text));
+  return withTranslationRequest({ requestId, pageUrl }, async request => {
+    const runProvider = deps.runTranslationRequest || request.run;
+    const getRevision = deps.getConfigRevision || getTranslationConfigRevision;
+    const revision = getRevision();
+    function assertCurrent() {
+      request.assertActive();
+      if (revision !== getRevision()) throw Object.assign(new Error("翻译配置已改变，请重试。"), { code: "CONFIG_SNAPSHOT_EXPIRED" });
     }
-  }
-
-  const storeItems = [];
-  const translations = [];
-  let cacheHits = 0;
-  let apiTranslated = 0;
-
-  for (const unit of normalized) {
-    const cachedText = cachedById.get(unit.id);
-    if (cachedText) {
-      cacheHits += 1;
-      translations.push({ id: unit.id, text: cachedText, cacheHit: true });
-      continue;
-    }
-
-    const translatedText = translatedById.get(unit.id);
-    if (!translatedText) continue;
-    apiTranslated += 1;
-    translations.push({ id: unit.id, text: translatedText, cacheHit: false });
-    storeItems.push({
-      sourceText: buildSubtitleCacheSource(unit),
-      providerText: unit.text, format: "plain", cacheToken: cacheTokens.get(String(unit.id)),
-      translation: translatedText
-    });
-  }
-
-  if (storeItems.length && !cacheWarning) {
+    const config = await effectiveConfig(pageUrl);
+    assertCurrent();
+    const cacheSegments = normalized.map((unit) => ({
+      id: unit.id,
+      text: buildSubtitleCacheSource(unit), providerText: unit.text, format: "plain"
+    }));
+    let cached, cacheWarning = "";
     try {
-      const saved = await storeCache({
+      cached = await lookupCache({
         pageUrl,
-        pageTitle,
-        items: storeItems,
+        segments: cacheSegments,
         namespace: "subtitle-translation",
         config
       });
-      cacheWarning = saved.cacheWarning || (Number(saved.stored || 0) < storeItems.length ? "CACHE_NOT_SAVED" : "");
     } catch (error) {
       if (!isCachePersistenceError(error)) throw error;
+      // A broken cache does not turn an authorized subtitle request into a
+      // failed translation or a second Provider call.
+      cached = { hits: [], writeTokens: [] };
       cacheWarning = error.code;
     }
-  }
+    assertCurrent();
+    const cacheTokens = new Map((cached.writeTokens || []).map(item => [String(item.id), item.token]));
+    const cachedById = new Map((cached.hits || []).map((item) => [String(item.id), item.text]));
+    const missing = normalized.filter((unit) => !cachedById.has(unit.id));
 
-  return {
-    translations,
-    cacheHits,
-    apiTranslated,
-    missing: normalized.length - translations.length,
-    ...(cacheWarning ? { cacheWarning } : {})
-  };
+    const translatedById = new Map();
+    if (missing.length) {
+      const translated = await runProvider({
+        requestId,
+        pageUrl,
+        segments: missing.map((unit) => ({ id: unit.id, text: unit.text, format: "plain" })),
+        config
+      });
+      assertCurrent();
+      for (const item of translated || []) {
+        if (item?.text) translatedById.set(String(item.id), String(item.text));
+      }
+    }
+
+    const storeItems = [];
+    const translations = [];
+    let cacheHits = 0;
+    let apiTranslated = 0;
+
+    for (const unit of normalized) {
+      const cachedText = cachedById.get(unit.id);
+      if (cachedText) {
+        cacheHits += 1;
+        translations.push({ id: unit.id, text: cachedText, cacheHit: true });
+        continue;
+      }
+
+      const translatedText = translatedById.get(unit.id);
+      if (!translatedText) continue;
+      apiTranslated += 1;
+      translations.push({ id: unit.id, text: translatedText, cacheHit: false });
+      storeItems.push({
+        sourceText: buildSubtitleCacheSource(unit),
+        providerText: unit.text, format: "plain", cacheToken: cacheTokens.get(String(unit.id)),
+        translation: translatedText
+      });
+    }
+
+    assertCurrent();
+    // Once storage starts, its DB4 write fence owns commit; cancellation cannot undo it.
+    if (storeItems.length && !cacheWarning) {
+      try {
+        const saved = await storeCache({
+          pageUrl,
+          pageTitle,
+          items: storeItems,
+          namespace: "subtitle-translation",
+          config
+        });
+        cacheWarning = saved.cacheWarning || (Number(saved.stored || 0) < storeItems.length ? "CACHE_NOT_SAVED" : "");
+      } catch (error) {
+        if (!isCachePersistenceError(error)) throw error;
+        cacheWarning = error.code;
+      }
+    }
+
+    return {
+      translations,
+      cacheHits,
+      apiTranslated,
+      missing: normalized.length - translations.length,
+      ...(cacheWarning ? { cacheWarning } : {})
+    };
+  });
 }
 
 function normalizeUnits(units) {

@@ -241,7 +241,9 @@ test("media switch cancels active work and discards a late result from the previ
 
   resolveFirst();
   await firstFlush;
-  assert.equal(delivered.length, 0);
+  // Known timed cues no longer wait for a second stabilization/flush cycle.
+  assert.deepEqual(delivered.map(item => item.translation), ["NEW"]);
+  assert.equal(delivered[0].unit.mediaId, "youtube:new");
 
   await pipeline.flush({ force: true });
   assert.equal(delivered.length, 1);

@@ -29,8 +29,77 @@ test("timed replay A after B restores a result without another transport call", 
 
 test("original-only startup never enqueues translation", async t => {
   const h = createFixture({ mode: "original" }); await h.controller.start(); t.after(() => h.controller.stop());
-  h.emit(snapshot([cue("A", 1)])); await h.flush();
+  h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); await h.flush();
   assert.equal(h.view.original, "A"); assert.equal(h.requests.length, 0);
+});
+
+test("a short upcoming cue is translated before its start and appears immediately without another request", async t => {
+  const response = deferred(), video = { currentTime: 0.1, seeking: false };
+  const h = createFixture({ video, translate: () => response.promise });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  const a = { id: "A", startTime: 0, endTime: 1, text: "A" }, b = { id: "B", startTime: 2, endTime: 2.2, text: "B" };
+  h.emit(snapshot([a], { mediaTime: 0.1, upcomingCues: [b] })); const running = h.flush(); await tick();
+  assert.deepEqual(Array.from(h.requests[0].units, unit => unit.text), ["A", "B"]);
+  // The Provider completes after A has ended, before the short B starts.
+  video.currentTime = 1.6; h.emit(snapshot([], { mediaTime: 1.6, upcomingCues: [b] })); await tick();
+  response.resolve(translated(h.requests[0])); await running;
+  assert.equal(h.view.translation, "");
+  video.currentTime = 2; h.emit(snapshot([b], { mediaTime: 2 })); await tick();
+  assert.equal(h.view.original, "B"); assert.equal(h.view.translation, "T:B"); assert.equal(h.requests.length, 1);
+  video.currentTime = 2.2; h.emit(snapshot([], { mediaTime: 2.2 }));
+  assert.equal(h.view.translation, "");
+});
+
+test("known timed cues enter the existing batch without waiting for DOM text stabilization", async t => {
+  const h = createFixture(); await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); await tick();
+  assert.equal(h.pipelines[0].getState().candidates, 0);
+  assert.equal(h.pipelines[0].getState().queued, 2);
+});
+
+test("an unsuccessful future cue does not report failure over a successful current cue", async t => {
+  const h = createFixture({ translate: message => ({ ...translated(message), translations: translated(message).translations.filter(item => item.text === "T:A") }) });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); await h.flush();
+  assert.equal(h.requests[0].units.length, 2);
+  assert.equal(h.view.translation, "T:A"); assert.equal(h.view.status, "");
+});
+
+test("a changed playback window drops queued old cues and dispatches the current cue first", async t => {
+  const first = deferred();
+  const h = createFixture({ pipelineOptions: { maxBatchItems: 1 }, translate: message => message.units[0].text === "A" ? first.promise : translated(message) });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3), cue("C", 4)] })); const running = h.flush(); await tick();
+  h.emit(snapshot([cue("D", 10)], { upcomingCues: [cue("E", 11)] })); await tick();
+  first.resolve(translated(h.requests[0])); await running; await h.flush();
+  assert.deepEqual(h.requests.flatMap(message => Array.from(message.units, unit => unit.text)), ["A", "D", "E"]);
+  assert.equal(h.view.translation, "T:D");
+});
+
+test("seek revokes lookahead without starting another execution until the old transport settles", async t => {
+  const first = deferred(), video = { currentTime: 1, seeking: false };
+  const h = createFixture({ video, translate: message => message.units[0].text === "A" ? first.promise : translated(message) });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); const running = h.flush(); await tick();
+  video.seeking = true; video.currentTime = 10;
+  h.emit(snapshot([cue("D", 10)], { seeking: true, upcomingCues: [cue("E", 11)] })); await tick();
+  assert.equal(h.cancelled.length, 1); assert.equal(h.requests.length, 1); assert.equal(h.view.translation, "");
+  video.seeking = false; h.emit(snapshot([cue("D", 10)], { upcomingCues: [cue("E", 11)] })); await tick();
+  assert.equal(h.requests.length, 1);
+  first.resolve(translated(h.requests[0])); await running; await h.flush();
+  assert.equal(h.view.translation, "T:D");
+  assert.deepEqual(Array.from(h.requests.at(-1).units, unit => unit.text), ["D", "E"]);
+});
+
+test("configuration invalidation cannot replay a prefetched result under the new settings", async t => {
+  let revision = "old";
+  const video = { currentTime: 1, seeking: false };
+  const h = createFixture({ video, getContext: () => ({ ok: true, context: { translationRevision: revision } }), translate: message => translated(message, `${revision}:`) });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)], { upcomingCues: [cue("B", 3)] })); await h.flush();
+  revision = "new"; await h.controller.invalidate({ retranslate: true }); await h.flush();
+  video.currentTime = 3; h.emit(snapshot([cue("B", 3)])); await tick();
+  assert.equal(h.view.translation, "new:B"); assert.equal(h.requests.length, 2);
 });
 
 test("off cancels active subtitle work before a slow settings write resolves", async t => {
@@ -158,14 +227,14 @@ test("mode cancellation leaves a same-page non-subtitle task untouched", async t
 });
 
 for (const invalid of ["   ", { unexpected: true }]) test("invalid translation is not remembered as a replayable result: " + JSON.stringify(invalid), async t => {
-  let first = true;
-  const h = createFixture({ translate: message => {
+  let first = true, time = 1000;
+  const h = createFixture({ pipelineOptions: { now: () => time }, translate: message => {
     if (!first) return translated(message); first = false;
     return { ...translated(message), translations: [{ id: message.units[0].id, text: invalid }] };
   } });
   await h.controller.start(); t.after(() => h.controller.stop());
   h.emit(snapshot([cue("A", 1)])); await h.flush();
-  h.emit(snapshot([cue("A", 1)])); await h.flush();
+  time += 2001; h.emit(snapshot([cue("A", 1)])); await h.flush();
   assert.equal(h.requests.length, 2); assert.equal(h.view.translation, "T:A");
 });
 
@@ -185,4 +254,113 @@ test("a result larger than the in-memory byte budget is displayed but not retain
   await h.controller.start(); t.after(() => h.controller.stop());
   for (const c of [cue("A", 1), cue("B", 3), cue("A", 1)]) { h.emit(snapshot([c])); await h.flush(); }
   assert.equal(h.requests.length, 3); assert.equal(h.view.translation, result);
+});
+
+const domSnapshot = text => snapshot(text ? [{ id: "yt:dom:0", startTime: null, endTime: null, text }] : [], { source: "youtube-dom", track: null });
+
+test("a slow DOM prefix result may display while that exact phrase remains in the visible rolling caption", async t => {
+  const response = deferred(), h = createFixture({ translate: () => response.promise });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(domSnapshot("Put your phones down.")); const running = h.flush(); await tick();
+  h.emit(domSnapshot("Put your phones down. Put your laptop down.")); await tick();
+  response.resolve(translated(h.requests[0])); await running;
+  assert.equal(h.view.translation, "T:Put your phones down.");
+  h.emit(domSnapshot("Put your phones down. Put your laptop down. Seriously."));
+  assert.equal(h.view.translation, "T:Put your phones down.");
+  h.emit(domSnapshot("A completely different caption."));
+  assert.equal(h.view.translation, "");
+});
+
+test("a completed DOM phrase survives appended words but clears when the phrase scrolls out", async t => {
+  const h = createFixture(); await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(domSnapshot("This is serious.")); await h.flush();
+  h.emit(domSnapshot("This is serious. Put your phones down."));
+  assert.equal(h.view.translation, "T:This is serious.");
+  h.emit(domSnapshot("Put your phones down."));
+  assert.equal(h.view.translation, "");
+});
+
+test("continuous DOM word updates cannot postpone translation beyond eight hundred milliseconds", async t => {
+  let time = 1000;
+  const h = createFixture({ pipelineOptions: { now: () => time } }); await h.controller.start(); t.after(() => h.controller.stop());
+  for (let index = 0; index <= 8; index++) {
+    time = 1000 + index * 100;
+    h.emit({ ...domSnapshot(Array.from({ length: index + 1 }, (_, i) => `word${i}`).join(" ")), observedAt: time }); await tick();
+    await h.pipelines[0].flush({ force: false });
+    if (index < 8) assert.equal(h.requests.length, 0);
+  }
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0].units[0].text, "word0 word1 word2 word3 word4 word5 word6 word7 word8");
+});
+
+for (const middle of ["", "B"]) test("DOM replay A after " + (middle || "gap") + " restores without another translation", async t => {
+  const h = createFixture(); await h.controller.start(); t.after(() => h.controller.stop());
+  for (const text of ["A", middle, "A"]) { h.emit(domSnapshot(text)); await h.flush(); }
+  assert.equal(h.view.translation, "T:A"); assert.equal(h.requests.length, middle ? 2 : 1);
+});
+test("DOM original/bilingual restores a successful result without another translation", async t => {
+  const h = createFixture(); await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(domSnapshot("A")); await h.flush();
+  await h.controller.setMode("original", { persist: false });
+  await h.controller.setMode("bilingual", { persist: false }); await h.flush();
+  assert.equal(h.view.translation, "T:A"); assert.equal(h.requests.length, 1);
+});
+test("changed effective context invalidates completed replay on route refresh", async t => {
+  let target = "old";
+  const h = createFixture({ getContext: () => ({ ok: true, context: { targetLanguage: target } }), translate: m => translated(m, target + ":") });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)])); await h.flush();
+  target = "new"; await h.controller.refreshRoute(); await h.flush();
+  assert.equal(h.view.translation, "new:A"); assert.equal(h.requests.length, 2);
+});
+test("same current cue failures back off while a new cue may proceed", async t => {
+  let time = 1000;
+  const h = createFixture({ pipelineOptions: { now: () => time }, translate: m => m.units.some(u => u.text === "A") ? { ok: false, errorCode: "HTTP_429" } : translated(m) });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  for (let n = 0; n < 3; n++) { h.emit(snapshot([cue("A", 1)])); await h.flush(); }
+  assert.equal(h.requests.length, 1);
+  h.emit(snapshot([cue("B", 3)])); await h.flush(); assert.equal(h.view.translation, "T:B");
+  time += 2001; h.emit(snapshot([cue("A", 1)])); await h.flush(); assert.equal(h.requests.length, 3);
+});
+
+test("configuration invalidation clears old output before a slow context read and replays only new config", async t => {
+  const context = deferred(); let slow = false, revision = "old";
+  const h = createFixture({ getContext: () => slow ? context.promise : { ok: true, context: { translationRevision: revision } }, translate: m => translated(m, revision + ":") });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)])); await h.flush();
+  slow = true; revision = "new"; const refresh = h.controller.invalidate({ retranslate: true });
+  assert.equal(h.view.translation, "");
+  context.resolve({ ok: true, context: { translationRevision: revision } }); await refresh; await h.flush();
+  assert.equal(h.view.translation, "new:A");
+});
+test("cache invalidation clears replay without starting another translation", async t => {
+  const h = createFixture(); await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)])); await h.flush();
+  await h.controller.invalidate(); assert.equal(h.view.translation, ""); assert.equal(h.requests.length, 1);
+  h.emit(snapshot([cue("A", 1)])); await h.flush();
+  assert.equal(h.requests.length, 2); assert.equal(h.view.translation, "T:A");
+});
+
+test("a failed old caption does not strand the already queued current caption", async t => {
+  const first = deferred();
+  const h = createFixture({ pipelineOptions: { stabilityMs: 0, batchDelayMs: 0, setTimer: (fn) => setImmediate(fn), clearTimer: clearImmediate },
+    translate: m => m.units[0].text === "A" ? first.promise : translated(m) });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  h.emit(snapshot([cue("A", 1)])); const running = h.flush(); await tick();
+  h.emit(snapshot([cue("B", 3)])); await h.flush();
+  first.resolve({ ok: false, errorCode: "HTTP_429" }); await running;
+  await tick(); await tick();
+  assert.equal(h.view.translation, "T:B"); assert.equal(h.requests.length, 2);
+});
+test("partial subtitle retry preserves successful overlap results and requests only missing cues", async t => {
+  let time = 1000, first = true;
+  const h = createFixture({ pipelineOptions: { now: () => time }, translate: m => {
+    const response = translated(m); if (first) { first = false; response.translations.splice(1); } return response;
+  } });
+  await h.controller.start(); t.after(() => h.controller.stop());
+  const frame = snapshot([cue("A", 1), cue("B", 1)]);
+  h.emit(frame); await h.flush(); assert.equal(h.view.translation, "");
+  h.emit(frame); await h.flush(); assert.equal(h.requests.length, 1);
+  time += 2001; h.emit(frame); await h.flush();
+  assert.deepEqual(Array.from(h.requests[1].units, u => u.text), ["B"]); assert.equal(h.view.translation, "T:A\nT:B");
 });

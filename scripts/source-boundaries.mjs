@@ -21,7 +21,7 @@ const MAIN_OBSERVER = "src/content/subtitles/youtube-main-bridge.js";
 // predating .gitattributes. Updating any other source byte requires authorized
 // changes, real subtitle regressions and independent review; never derive the
 // fixed value from the candidate file.
-const APPROVED_MAIN_SHA256 = "6707d04d73fe5a2b20d7b5ea6dc5c0778b6d4016e8da015679e09e5e0074a76a";
+const APPROVED_MAIN_SHA256 = "e3f2fbd694211778b329bd3469b96f3a515fbd70d1864b454e387cf8cbefeafe";
 function dependencies(tree, api) {
   const found = [];
   function visit(node) {

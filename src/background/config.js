@@ -1,3 +1,4 @@
+import { hasConfiguredAi } from "../shared/browser-translation.js";
 import { ensureTranslationPreferences } from "./translation-preferences.js";
 import { selectedTranslationMethod } from "../shared/translation-preferences.js";
 import { resolveMachineTranslation, rawTranslationSite } from "../shared/machine-translation.js";
@@ -87,11 +88,11 @@ export async function getEffectiveGlossary(pageUrl = "") {
   return resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
 }
 
-export async function getEffectiveContext(pageUrl) {
+export async function getEffectiveContext(pageUrl, { surface = "page" } = {}) {
   const stored = await getConfig();
-  const machine = resolveMachineTranslation(stored, rawTranslationSite(stored, pageUrl));
+  const machine = surface === "subtitle" ? null : resolveMachineTranslation(stored, rawTranslationSite(stored, pageUrl));
   const site = getSiteProfile(stored.siteProfiles, pageUrl);
-  const method = selectedTranslationMethod(stored, site);
+  const method = surface === "subtitle" ? (hasConfiguredAi(stored, site) ? "ai" : "browser-local") : selectedTranslationMethod(stored, site);
   const { resolved, temporaryPreset } = machine ? { resolved: machine, temporaryPreset: null } : method === "ai"
     ? await resolveBaseConfig(pageUrl)
     : { resolved: { provider: "browser-translator", providerLabel: "Chrome 本地", model: "translator-v1", targetLanguage: site?.targetLanguage || stored.targetLanguage }, temporaryPreset: null };

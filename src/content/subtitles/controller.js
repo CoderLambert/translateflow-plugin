@@ -54,12 +54,14 @@
 
     async function refreshPreset({ retranslate = false } = {}) {
       const version = lifecycle, read = ++configRead;
-      const response = await sendRuntimeMessage({ type: messages.background.EFFECTIVE_CONTEXT, pageUrl: location.href });
+      const response = await sendRuntimeMessage({ type: messages.background.EFFECTIVE_CONTEXT, pageUrl: location.href, surface: "subtitle" });
       if (!alive(version) || read !== configRead) return presetContext;
       if (!response?.ok) throw new Error(t("content.subtitle.configReadFailed"));
-      presetContext = response.context || {};
+      const nextContext = response.context || {};
+      const changed = presetContext && JSON.stringify(presetContext) !== JSON.stringify(nextContext);
+      presetContext = nextContext;
       renderer.setPresetContext(presetContext);
-      if (retranslate) {
+      if (retranslate || changed) {
         await resetPipeline();
         if (alive(version) && read === configRead && mode !== "off") source?.refresh("preset-change", true);
       }
@@ -71,12 +73,26 @@
       return pipeline?.reset();
     }
 
+    async function invalidate({ retranslate = false } = {}) {
+      const version = lifecycle;
+      await resetPipeline();
+      if (retranslate && alive(version)) await refreshPreset({ retranslate: true });
+    }
+
     function paintTranslation() {
       const count = current?.cues?.length || 0;
       // Untimed DOM lines are translated together; timed overlapping cues retain their order.
       const combined = visibleResults.get("combined");
-      const lines = Array.from({ length: count }, (_, index) => visibleResults.get(index));
-      renderer.renderTranslation(translates() ? (combined ?? (lines.every(Boolean) ? lines.join("\n") : "")) : "");
+      const lines = Array.from({ length: count }, (_, index) => visibleResults.get(index)?.translation);
+      renderer.renderTranslation(translates() ? (combined?.translation ?? (lines.every(Boolean) ? lines.join("\n") : "")) : "");
+    }
+
+    function matchesUntimed(unit, snapshot) {
+      if (!snapshot.cues.length || !snapshot.cues.every(cue => cue.startTime === null && cue.endTime === null)) return false;
+      const text = snapshot.cues.map(cue => cue.text).join(" ");
+      // A rolling DOM caption may append words while an already translated
+      // phrase remains visible. Never carry a phrase after it scrolls out.
+      return snapshot.source === "youtube-dom" ? ` ${text} `.includes(` ${unit.text} `) : unit.text === text;
     }
 
     function consumeSnapshot(input) {
@@ -84,12 +100,17 @@
       const snapshot = normalizeSnapshot(input), nextScope = subtitleScopeKey(snapshot);
       if (nextScope !== scopeKey) { scopeKey = nextScope; knownCues = false; clearFrame(); }
       const nextFrame = JSON.stringify([nextScope, snapshot.cues]);
-      if (nextFrame !== frameKey) { frameKey = nextFrame; visibleResults.clear(); renderer.renderTranslation(""); }
+      if (nextFrame !== frameKey || snapshot.seeking) {
+        const combined = visibleResults.get("combined");
+        frameKey = nextFrame; visibleResults.clear();
+        if (!snapshot.seeking && combined && matchesUntimed(combined.unit, snapshot)) visibleResults.set("combined", combined);
+        else renderer.renderTranslation("");
+      }
       current = snapshot; mediaId = snapshot.mediaId;
       knownCues ||= snapshot.cues.length > 0;
       const player = findPlayer(); if (player) renderer.mount(player);
       if (mode === "off") { renderer.clear(); return; }
-      renderer.renderOriginal(snapshot.cues.map((cue) => cue.text).filter(Boolean).join(" "));
+      renderer.renderOriginal(snapshot.cues.map((cue) => cue.text).filter(Boolean).join(" "), snapshot.source);
       if (snapshot.cues.length || knownCues) renderer.setStatus("");
       else renderer.setStatusKey("content.subtitle.captionsUnavailable", "muted");
       paintTranslation();
@@ -112,15 +133,16 @@
         || (unit.cue.endTime !== null && video.currentTime >= unit.cue.endTime))) return;
       let index;
       if (untimed) {
-        const allUntimed = current.cues.every(cue => cue.startTime === null && cue.endTime === null);
-        if (!allUntimed || unit.text !== current.cues.map(cue => cue.text).join(" ")) return;
+        if (!matchesUntimed(unit, current)) return;
+        const shown = visibleResults.get("combined");
+        if (shown && shown.unit.text.length > unit.text.length && ` ${shown.unit.text} `.includes(` ${unit.text} `)) return;
         index = "combined";
       } else {
         index = current.cues.findIndex(cue => cue.id === unit.cue?.id && cue.text === unit.text
           && cue.startTime === unit.cue.startTime && cue.endTime === unit.cue.endTime);
         if (index < 0) return;
       }
-      visibleResults.set(index, translation); paintTranslation();
+      visibleResults.set(index, { unit, translation }); paintTranslation();
       if (cacheWarning) renderer.setStatusKey("content.subtitle.cacheNotSaved", "error");
       else renderer.setStatus(engine === "browser-translator" ? t("content.basic.sourceBadge") : "");
     }
@@ -196,7 +218,7 @@
 
     async function setPreset(next) {
       const version = lifecycle, read = ++configRead;
-      const response = await sendRuntimeMessage({ type: messages.background.TEMP_PRESET_SET, pageUrl: location.href, preset: next });
+      const response = await sendRuntimeMessage({ type: messages.background.TEMP_PRESET_SET, pageUrl: location.href, surface: "subtitle", preset: next });
       if (!alive(version) || read !== configRead) return presetContext;
       if (!response?.ok) throw new Error(t("content.subtitle.presetUpdateFailed"));
       presetContext = response.context || {};
@@ -207,7 +229,7 @@
     }
 
     return {
-      start, stop, refreshRoute, refreshPreset, setMode, setSize, setPreset,
+      start, stop, refreshRoute, refreshPreset, invalidate, setMode, setSize, setPreset,
       getState: () => ({ started, mode, size, mediaId, presetId: presetContext?.presetId || "", presetSource: presetContext?.presetSource || "none" })
     };
   }

@@ -1,5 +1,7 @@
 # 首批实现验证（非发布验收）
 
+本报告保留首批候选 `bf37935f04ef6271ef8d3b5780142ac8d65c3600` 的历史验证及当时限制；审查后工作树的修复与新证据见 [implementation-report.md](implementation-report.md)。下文“未完成/NOT RUN”描述原候选，不覆盖后续报告。
+
 状态：working / Draft；不合并、不发布。TF 基线 ee8b08dfd08ced762ffcb275304da6249615b718。仅实现 YT-01 的当前字幕/回看修正，以及 YT-02 的前台模式取消部分。
 
 ## 实际执行

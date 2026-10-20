@@ -4,6 +4,8 @@
 
   const {
     SOURCE_KINDS,
+    normalizeCue,
+    selectUpcomingCues,
     normalizeSnapshot,
     createSnapshotEmitter
   } = app.modules.subtitleSource;
@@ -83,13 +85,18 @@
     function emit(reason = "update", force = false) {
       const nextTrack = pickTextTrack(mediaElement, preferredLanguage);
       syncTrackListener(nextTrack);
+      const known = nextTrack ? listCues(nextTrack.cues) : [];
+      const positions = new Map(known.map((cue, index) => [cue, index]));
+      const normalize = (cue, index) => normalizeCue(cue, { source: SOURCE_KINDS.TEXT_TRACK, index: positions.get(cue) ?? index });
       return emitter.emit({
         source: SOURCE_KINDS.TEXT_TRACK,
         reason,
         mediaId: resolveMediaId(),
         mediaTime: mediaElement.currentTime,
+        seeking: mediaElement.seeking === true,
         track: nextTrack,
-        cues: nextTrack ? listCues(nextTrack.activeCues) : []
+        cues: nextTrack ? listCues(nextTrack.activeCues).map(normalize).filter(Boolean) : [],
+        upcomingCues: selectUpcomingCues(known.map(normalize).filter(Boolean), mediaElement.currentTime)
       }, { force });
     }
 

@@ -2,6 +2,7 @@ import { executeTranslation } from './translation-gateway.js';
 import { createTranslationCoordinator } from './cache/translation-coordinator.js';
 
 const coordinator = createTranslationCoordinator(executeTranslation);
+export const withTranslationRequest = (input, work) => coordinator.withRequest(input, work);
 export const runTranslationRequest = input => coordinator.run(input);
 export const cancelTranslationRequest = requestId => coordinator.cancel(requestId);
 export const cancelTextTranslations = pageUrl => coordinator.cancelText(pageUrl);

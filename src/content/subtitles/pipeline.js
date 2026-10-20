@@ -15,6 +15,7 @@
   const DEFAULT_BATCH_DELAY_MS = 60;
   const DEFAULT_MAX_BATCH_ITEMS = 6;
   const DEFAULT_MAX_QUEUE = 24;
+  const MAX_ROLLING_WAIT_MS = 800;
 
   // Scope is shared by the controller and pipeline; display mode is deliberately excluded.
   function subtitleScopeKey({ mediaId = "", source = "", track } = {}) {
@@ -38,6 +39,8 @@
     const candidates = new Map();
     const completed = new Map();
     const inFlight = new Map();
+    const failures = new Map();
+    const activeFingerprints = new Set();
     let completedBytes = 0, scopeKey = "", ingestVersion = 0;
     const pending = [];
     let generation = 0;
@@ -48,9 +51,9 @@
     let processing = false;
     let stopped = false;
     let activeTask = null;
-    let blockedByError = false;
-    let lastUntimedText = "";
     let lastPruneAt = 0;
+    const readyAt = candidate => Math.min(candidate.updatedAt + Math.max(0, stabilityMs),
+      (candidate.firstObservedAt ?? Infinity) + MAX_ROLLING_WAIT_MS);
 
     async function ingest(input) {
       if (stopped) return getState();
@@ -59,8 +62,11 @@
       const nextScope = subtitleScopeKey(snapshot);
       if (nextScope !== scopeKey) await switchMedia(snapshot.mediaId, nextScope);
       if (stopped || version !== ingestVersion) return getState();
+      if (snapshot.seeking) { await cancelPending({ invalidateIngest: false }); return getState(); }
 
       const observedAt = Number(snapshot.observedAt) || now();
+      activeFingerprints.clear();
+      const wanted = new Set();
       const timed = [];
       const untimed = [];
       for (const cue of snapshot.cues) {
@@ -68,68 +74,69 @@
         else untimed.push(cue);
       }
 
-      for (const cue of timed) {
+      for (const [cue, active] of [...timed.map(cue => [cue, true]), ...snapshot.upcomingCues.map(cue => [cue, false])]) {
         const key = candidateKey(cue), unit = createUnit({ key, snapshot, cue });
+        if (!unit) continue;
+        wanted.add(unit.fingerprint);
+        if (active) activeFingerprints.add(unit.fingerprint);
         const cached = unit && completed.get(unit.fingerprint);
         if (cached) { candidates.delete(key); onTranslation?.({ ...cached.result, cacheHit: true, unit }); }
-        else updateCandidate(key, snapshot, cue, observedAt);
+        else {
+          updateCandidate(key, snapshot, cue, observedAt);
+          // A timestamped cue is already a known unit, not a live DOM fragment.
+          finalizeCandidate(key);
+        }
       }
       if (untimed.length) {
         const text = cleanCueText(untimed.map((cue) => cue.text).join(" "));
         updateUntimedCandidate(snapshot, text, observedAt);
-      } else if (lastUntimedText && candidates.has("rolling")) {
+        const unit = createUnit(candidates.get("rolling"));
+        if (unit) { activeFingerprints.add(unit.fingerprint); wanted.add(unit.fingerprint); }
+      } else if (candidates.has("rolling")) {
         finalizeCandidate("rolling");
       }
 
-      blockedByError = false;
+      if (snapshot.mediaTime !== null) {
+        // Replace the unstarted window. In-flight transport remains singly owned
+        // by processQueue until it actually settles, including after cancellation.
+        for (let index = pending.length - 1; index >= 0; index--) {
+          if (!wanted.has(pending[index].fingerprint)) pending.splice(index, 1);
+        }
+      }
+      pending.sort((a, b) => Number(activeFingerprints.has(b.fingerprint)) - Number(activeFingerprints.has(a.fingerprint))
+        || (a.cue.startTime ?? 0) - (b.cue.startTime ?? 0));
+
       scheduleStabilization();
       if (pending.length) scheduleBatch();
       publishState();
       return getState();
     }
-
     function updateCandidate(key, snapshot, cue, observedAt) {
       const previous = candidates.get(key);
       if (previous?.cue.text === cue.text) return;
-      candidates.set(key, {
-        key,
-        snapshot,
-        cue,
-        firstSeenAt: previous?.firstSeenAt || observedAt,
-        updatedAt: observedAt
-      });
+      candidates.set(key, { key, snapshot, cue, updatedAt: observedAt });
     }
-
     function updateUntimedCandidate(snapshot, text, observedAt) {
       if (!text) return;
       const previous = candidates.get("rolling");
       if (previous?.cue.text === text) return;
-      if (!previous && text === lastUntimedText) return;
 
       if (previous && !isRollingContinuation(previous.cue.text, text)) {
         finalizeCandidate("rolling");
       }
 
       candidates.set("rolling", {
-        key: "rolling",
-        snapshot,
-        cue: {
-          id: "",
-          startTime: null,
-          endTime: null,
-          text
-        },
-        firstSeenAt: observedAt,
-        updatedAt: observedAt
+        key: "rolling", snapshot,
+        cue: { id: "", startTime: null, endTime: null, text },
+        updatedAt: observedAt,
+        firstObservedAt: previous && isRollingContinuation(previous.cue.text, text) ? previous.firstObservedAt : observedAt
       });
     }
-
     function isRollingContinuation(previous, next) {
       const a = cleanCueText(previous);
       const b = cleanCueText(next);
       return Boolean(a && b && (b.startsWith(a) || a.startsWith(b)));
     }
-
     function candidateKey(cue) {
       const start = cue.startTime === null ? "na" : Number(cue.startTime).toFixed(3);
       const end = cue.endTime === null ? "na" : Number(cue.endTime).toFixed(3);
@@ -138,7 +145,6 @@
       const slot = generated?.[1] ?? id;
       return `timed:${start}:${end}:${slot}`;
     }
-
     function scheduleStabilization() {
       clearTimer(stabilizationTimer);
       stabilizationTimer = null;
@@ -147,7 +153,7 @@
       let earliest = Infinity;
       const current = now();
       for (const candidate of candidates.values()) {
-        earliest = Math.min(earliest, candidate.updatedAt + Math.max(0, stabilityMs));
+        earliest = Math.min(earliest, readyAt(candidate));
       }
       const delay = Math.max(0, earliest - current);
       stabilizationTimer = setTimer(() => {
@@ -155,18 +161,16 @@
         flushStableCandidates(false);
       }, delay);
     }
-
     function flushStableCandidates(force = false, { schedule = true } = {}) {
       const current = now();
       for (const [key, candidate] of [...candidates]) {
-        if (!force && current < candidate.updatedAt + Math.max(0, stabilityMs)) continue;
+        if (!force && current < readyAt(candidate)) continue;
         finalizeCandidate(key);
       }
       if (candidates.size) scheduleStabilization();
       if (schedule) scheduleBatch();
       publishState();
     }
-
     function finalizeCandidate(key) {
       const candidate = candidates.get(key);
       if (!candidate) return;
@@ -179,14 +183,14 @@
       if (inFlight.get(unit.fingerprint) === generation
         || pending.some((item) => item.fingerprint === unit.fingerprint)) return;
 
-      if (key === "rolling") lastUntimedText = unit.text;
+      if (now() < (failures.get(unit.fingerprint)?.retryAt || 0)) return;
       pending.push(unit);
       if (pending.length > Math.max(1, maxQueue)) {
         pending.splice(0, pending.length - Math.max(1, maxQueue));
       }
     }
-
     function createUnit(candidate) {
+      if (!candidate) return null;
       const snapshot = candidate.snapshot;
       const cue = candidate.cue;
       const text = cleanCueText(cue.text);
@@ -200,17 +204,16 @@
         language: cleanCueText(snapshot.track.language).toLowerCase(),
         autoGenerated: snapshot.track.autoGenerated === true ? true : null
       } : null;
-      const position = candidate.key === "rolling"
-        ? `seq:${sequence}`
-        : candidate.key;
-      const fingerprint = [
+      // Replay identity is local to this scope; DB4 still receives the cue position/sequence.
+      const position = candidate.key;
+      const fingerprint = JSON.stringify([
         snapshot.mediaId,
         snapshot.source,
         track?.id || "",
         track?.language || "",
         position,
         text
-      ].join("|");
+      ]);
 
       return {
         id: `subtitle-${generation}-${sequence}`,
@@ -227,20 +230,21 @@
         text
       };
     }
-
-    function isUntimedUnit(unit) {
-      return unit?.cue?.startTime === null && unit?.cue?.endTime === null;
+    function failUnits(units) {
+      for (const unit of units) {
+        const attempts = Math.min(4, (failures.get(unit.fingerprint)?.attempts || 0) + 1);
+        failures.set(unit.fingerprint, { attempts, retryAt: now() + [2000, 5000, 15000, 30000][attempts - 1] });
+      }
+      while (failures.size > 160) failures.delete(failures.keys().next().value);
     }
-
     function maybePruneCache(response) {
       const current = now();
       if (Number(response?.apiTranslated || 0) <= 0 || current - lastPruneAt < 5 * 60 * 1000) return;
       lastPruneAt = current;
       sendRuntimeMessage({ type: messages.background.CACHE_PRUNE }).catch(() => {});
     }
-
     function scheduleBatch() {
-      if (!pending.length || processing || stopped || blockedByError) return;
+      if (!pending.length || processing || stopped) return;
       clearTimer(batchTimer);
       batchTimer = null;
 
@@ -294,11 +298,12 @@
             for (const unit of batch) {
               const result = byId.get(unit.id);
               if (typeof result?.text !== "string" || !result.text.trim()) {
-                if (isUntimedUnit(unit) && lastUntimedText === unit.text) lastUntimedText = "";
+                failUnits([unit]);
                 continue;
               }
               const value = { translation: result.text, engine: response.engine || "ai",
                 cacheHit: Boolean(result.cacheHit), cacheWarning: response.cacheWarning || "" };
+              failures.delete(unit.fingerprint);
               remember(unit.fingerprint, value);
               onTranslation?.({ unit, ...value });
             }
@@ -312,8 +317,7 @@
             tasks.failTask(batchTask, error);
             if (error?.code === "ENGINE_SWITCH" && batchGeneration === generation && !stopped) { pending.unshift(...batch); continue; }
             if (!tasks.isCancelledError(error) && batchGeneration === generation && !stopped) {
-              pending.unshift(...batch);
-              blockedByError = true;
+              failUnits(batch);
               return;
             }
           } finally {
@@ -324,7 +328,7 @@
         }
       } finally {
         processing = false;
-        if (pending.length && !stopped && !blockedByError) scheduleBatch();
+        if (pending.length && !stopped) scheduleBatch();
       }
     }
 
@@ -344,8 +348,8 @@
     async function cancelPending({ invalidateIngest = true } = {}) {
       generation += 1;
       if (invalidateIngest) ingestVersion += 1;
-      candidates.clear(); pending.splice(0); inFlight.clear(); lastUntimedText = "";
-      blockedByError = false;
+      candidates.clear(); pending.splice(0); inFlight.clear(); failures.clear();
+      activeFingerprints.clear();
       clearTimer(stabilizationTimer); stabilizationTimer = null;
       clearTimer(batchTimer); batchTimer = null;
       const task = activeTask;
@@ -362,7 +366,6 @@
 
     async function flush({ force = true } = {}) {
       if (stopped) return getState();
-      blockedByError = false;
       flushStableCandidates(Boolean(force), { schedule: false });
       clearTimer(batchTimer);
       batchTimer = null;
@@ -376,7 +379,6 @@
       completed.clear(); completedBytes = 0;
       await cancelPending();
     }
-
     function getState() {
       return {
         mediaId,
@@ -384,12 +386,11 @@
         candidates: candidates.size,
         queued: pending.length,
         processing,
-        blockedByError,
+        blockedByError: [...activeFingerprints].some(key => failures.has(key)),
         stopped,
         task: activeTask ? tasks.getTaskStatus(activeTask) : null
       };
     }
-
     function publishState() {
       if (typeof onState === "function") onState(getState());
     }
