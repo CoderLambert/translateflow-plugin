@@ -1,3 +1,15 @@
+# 合并前主 Agent 自查
+
+主体：主 Agent；不是独立模型审核。当前候选 `e6db041b17e434c46b2fa4b8efdfd2625314ca83`，0.8.42；PR #365。
+
+用户已授权提交并合并。对照当前候选和此前已核对的实际 diff，自查唯一偏好、配置迁移、无跨方式备用、联网确认、站点仅文字覆盖、缓存快照一致性、取消/导航迟到结果、Content本地句段和单词Port隔离、结果来源与临时切换；未发现新增阻断缺陷。最新方式选择支持Enter/Escape与焦点保留，字体限定于Selection，不新增全局listener。
+
+首轮冻结候选暴露的Reading生成投影过期已通过唯一生成器修复；定向检查与新候选完整validate通过。版本/Manifest/package/lock/README一致；默认与显式WXT安装包inventory指纹相同。生成物没有靠手动补丁修复；测试、原始日志和私有安装身份未进入生产包或提交。
+
+完整validate（1952 Node、77 Vitest）、显式构建、四份MV3回归（37 PASS/1真实模型SKIP）均绑定当前候选；具体局限和日志hash见acceptance.json与validation-report.md。没有真实模型成功、双网络或Chrome102兼容性的新结论。保持这些限制，不以本地gate代替产品验收。
+
+## 先前自查记录（历史）
+
 # 主 Agent 验收后自查
 
 本次为主 Agent 对照 task.md 与实际 diff 的自查，不是独立模型审核。没有提交或合并候选。

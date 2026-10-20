@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "task": "translation-method",
+  "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
+  "tree": "d7a0edc733ac85c0ab64db327245bd92f8396b35",
+  "inputTree": "dbfd7301df75812a866e4e68aa2e6091cbd71cb4629e421463bd0e5ca17455bd",
+  "frozenAt": "2026-10-20T10:17:53.884Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 55045.78726,
+      "startedAt": "2026-10-20T10:17:54.045Z",
+      "log": "docs/task-execution/local/translation-method/bf6a6480-cd90-431a-83e1-ddfbfef7ceb8.log",
+      "logSha256": "5d1588c3df2b81c71dc91b48ebdaaf317f73fb1f9d6aa6ebc94824a3260e75ef"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2600.837454,
+      "startedAt": "2026-10-20T10:18:49.242Z",
+      "log": "docs/task-execution/local/translation-method/b4b97ff6-43d8-4823-a713-f54d625b989f.log",
+      "logSha256": "7de865b7ed4a49c8401f4371aac6429722167ec976e4aa7acdbd3f737ce514b9"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/translation-method.spec.mjs",
+        "e2e/translation-preferences.spec.mjs",
+        "e2e/browser-basic-translation.spec.mjs",
+        "e2e/machine-translation.spec.mjs"
+      ],
+      "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 51026.258315,
+      "startedAt": "2026-10-20T10:18:51.988Z",
+      "log": "docs/task-execution/local/translation-method/3b1cc9e3-bc52-412d-a749-26125fb836b1.log",
+      "logSha256": "c8f45644e4e07b79aba3bc8be0c9025210d74b81649063a874a50075cc64c507"
+    }
+  ],
+  "artifact": {
+    "path": ".output/chrome-mv3",
+    "treeSha256": "4fb5c0efc03e218fd3966e71f371881bb95be318455a792e98a681cf62697404"
+  },
+  "limitations": [
+    "External Provider responses and local models in MV3 tests are synthetic fixtures; no paid Provider calls or model downloads.",
+    "Real model probe: Translator downloadable; LanguageDetector unavailable. Real-model scenario skipped; not a successful inference.",
+    "Chrome 102 and domestic/overseas dual-network acceptance remain NOT VERIFIED.",
+    "Original Chrome profile reload is NOT RUN: chrome://extensions is disallowed by the browser tool policy."
+  ],
+  "productAcceptance": {
+    "result": "PASS_WITH_DOCUMENTED_LIMITATIONS",
+    "e2e": {
+      "passed": 37,
+      "skipped": 1,
+      "failed": 0
+    },
+    "artifactInventory": {
+      "version": "0.8.42",
+      "treeSha256": "1bcf7fb654e812ce4a5a3eea67b0a97aec2afac032fd22d6a58b2176e8fe5d9d",
+      "fileCount": 131,
+      "totalBytes": 3038597
+    },
+    "selfReview": "main agent; no independent model review; prior runtime self-review reused for unchanged inputs; regenerated Reading classic matches owned source"
+  }
+}

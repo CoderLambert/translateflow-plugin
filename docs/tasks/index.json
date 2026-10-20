@@ -445,10 +445,10 @@
     },
     {
       "task": "translation-method",
-      "status": "reviewing",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/simplify-translation-method-20261020",
-      "candidateHead": null
+      "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83"
     },
     {
       "task": "workflow-local",

@@ -1,5 +1,24 @@
 # 单词与句段独立翻译偏好的本地验收
 
+## 合并前候选验收（最新）
+
+用户已于本轮明确授权提交、推送并合并 main；PR [#365](https://github.com/CoderLambert/translateflow-plugin/pull/365)。实现候选为 `e6db041b17e434c46b2fa4b8efdfd2625314ca83`，版本 **0.8.42**，基线 `49fb4ed7dcbdc49684d79803e0640b2b9fa093c0`。此前未提交记录和 0.8.40 指纹均为历史证据。
+
+- `npm run validate`：PASS；1,952 Node、13 files / 77 Vitest、严格 TS、静态/i18n 检查和默认 WXT 构建；55,045.787 ms。
+- `npm run build:extension:wxt`：PASS；2,600.837 ms。
+- 任务 state 内四份相关 E2E：PASS；真实 Chromium/MV3 37 PASS、1 SKIP、0 FAIL；51,026.258 ms。Chrome for Testing 153.0.8010.12，串行运行、无重试。
+- 默认包与显式包 inventory SHA-256 均为 `1bcf7fb654e812ce4a5a3eea67b0a97aec2afac032fd22d6a58b2176e8fe5d9d`；131 文件、3,038,597 bytes。`acceptance.json` 的 artifact 字段使用 local-task 自身路径/内容指纹算法，数值与 inventory 算法不同。
+
+三项检查由既有 local-task wrapper 在准确候选上执行；逐项命令、单调耗时、原始日志路径/hash、环境和实际产物指纹见 `acceptance.json`。原始日志仅保留在忽略的本地执行目录中。
+
+首个候选 `cfd24b1` 的完整检查有 1,951 Node PASS / 1 FAIL，旧 Reading classic 投影遗漏了共享文案更新。通过 `node scripts/reading-content-classic.mjs` 从唯一 owner 重新生成，定向失败项通过后提交为当前候选；没有直接修改生成内容或放宽测试。保留首轮失败记录，在构建输入修正与版本准备后重新绑定当前候选全部要求。
+
+主 Agent 已核对实际 diff 与调用链，复用未改变代码的先前自查；检查当前临时方式隔离、可信点击、来源、字体/焦点、取消与偏好快照、生成投影和安装包边界。没有未解决阻断问题；这不是独立模型审核。用户接受当前 UI，未继续扩展设计。新增的 DNR 权限来自同时交付的免费 MT 路由，仅为本扩展发往 B站固定端点的 POST 设置会话规则；偏好/本地句段本身不增加权限或扩大单词 Port。
+
+限制：外部 Provider 与多数本地模型为合成测试；真实能力探测 Translator=`downloadable`、LanguageDetector=`unavailable`，对应真实模型用例跳过，无下载/付费请求。真实 Chrome 102、国内直连/海外双网络、商店发布和原 Chrome 实例重载均未验证。不得把 mock 成功或安装目录替换当作这些验收成功。
+
+## 先前未提交开发记录（历史）
+
 2026-10-20；主 Agent 串行实施与自查。未启动子 Agent，不是独立模型审核。
 工作区 `translateflow-translation-method`，分支 `fix/simplify-translation-method-20261020`，基线 `49fb4ed7dcbdc49684d79803e0640b2b9fa093c0`。
 保留既有免费 MT v2 和 UI 的未提交实现；本次前的修改已备份在 Git 忽略的执行目录。原主工作区仍无未提交修改。

@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "translation-method",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/simplify-translation-method-20261020",
-  "candidateHead": null,
+  "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -30,5 +30,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "划选交互、文案与字体优化已完成；95 项相关单测、15 个不同 MV3 场景、类型检查与双构建通过，已备份安装。需用户在 Chrome 扩展页重新加载并刷新网页。保持未提交，未合并，真实模型未验证。"
+  "nextAction": "用户已授权提交并合并main。PR #365；0.8.42候选完整validate通过（1952 Node、77 Vitest）、WXT构建通过、37 MV3通过/1真实模型未就绪跳过。主Agent自查完成，待证据归档提交与准确head squash合并。"
 }
