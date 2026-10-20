@@ -12,7 +12,7 @@ export type OptionsConfig = { browserTranslationEnabled?: boolean; browserSource
 export type ServiceRef = { kind: "api-key"; connectionId: string } | { kind: "chatgpt-plan" };
 export type ProviderConnection = { id: string; revision: number; name: string; platform: string; protocol: string; baseUrl: string; credentialId: string; defaultModel: string; hasApiKey: boolean; settings: { streaming: boolean; outputTokens: number; temperature: number | null; reasoning: string; allowEmptyApiKey: boolean; allowInsecureHttp: boolean } };
 export type ProviderConnectionState = { version: number; defaultService: ServiceRef | null; connections: ProviderConnection[] };
-export type SiteProfile = { serviceRef?: ServiceRef; provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
+export type SiteProfile = { textMethod?: "ai" | "browser-local" | "free-online"; serviceRef?: ServiceRef; provider?: string; preset?: string; appearance?: string; model?: string; prompt?: string; targetLanguage?: string };
 export type SiteEntry = { origin: string; profile: SiteProfile };
 export type CacheStats = { pageCount: number; segmentCount: number; bytes: number };
 export type ChatGPTPlanAccount = { id: string; label: string; email?: string; connected: boolean };
@@ -65,7 +65,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
   async function saveConfig(input: OptionsConfig, requestPermission: boolean) {
     const value = normalizeConfig(input);
     if (requestPermission && value.provider === PROVIDER_IDS.OPENAI_COMPATIBLE) await ensureOpenAIPermission(value.openAICompatible.baseUrl);
-    await api.storage.local.set({ browserTranslationEnabled: value.browserTranslationEnabled !== false, browserSourceLanguage: value.browserSourceLanguage || "auto", dictionaryEnabled: value.dictionaryEnabled === true, provider: value.provider, apiKey: value.apiKey, model: value.model, chatgptPlanModel: value.chatgptPlanModel, prompt: value.prompt, targetLanguage: value.targetLanguage,
+    await api.storage.local.set({ browserSourceLanguage: value.browserSourceLanguage || "auto", provider: value.provider, apiKey: value.apiKey, model: value.model, chatgptPlanModel: value.chatgptPlanModel, prompt: value.prompt, targetLanguage: value.targetLanguage,
       appearance: value.appearance, cacheMaxMB: value.cacheMaxMB, openAICompatible: value.openAICompatible,
       youtubeSubtitleMode: value.youtubeSubtitleMode, youtubeSubtitleSize: value.youtubeSubtitleSize, selectionExplanationDepth: value.selectionExplanationDepth });
     return value;
@@ -142,7 +142,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
     const origin = normalizeOrigin(originInput);
     const stored = await api.storage.local.get(["siteProfiles"]) as Record<string, unknown>, next: Record<string, unknown> = { ...objectRecord(stored.siteProfiles) };
     const existing = objectRecord(next[origin]);
-    const profile = normalizeSiteProfile({ ...(existing.machineTranslation !== undefined ? { machineTranslation: existing.machineTranslation } : {}), ...profileInput });
+    const profile = normalizeSiteProfile({ ...existing, ...profileInput });
     if (Object.keys(profile).length) next[origin] = profile; else delete next[origin];
     await api.storage.local.set({ siteProfiles: next });
     return { origin, saved: Object.keys(profile).length > 0 };

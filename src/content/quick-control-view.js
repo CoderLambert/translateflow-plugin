@@ -272,7 +272,7 @@
       if (taskValue) {
         setStatus(
           statusNode,
-          labels[taskState] || t("content.quick.taskProcessing"),
+          (labels[taskState] || t("content.quick.taskProcessing")) + (taskValue.machineProvider ? ` · ${taskValue.machineSwitching ? t("mt.switching") : ""}${taskValue.machineProvider}` : ""),
           taskState === "failed" ? "error" : (taskState === "completed" ? "success" : "info")
         );
         setProgress(progressNode, taskValue.done || 0, taskValue.total || 1);
@@ -324,7 +324,7 @@
           .map((item) => option(item.id, `${item.label} · ${item.description}`))
       );
       const machineMode = context.engine === "machine-translation";
-      if (machineMode) presetSelect.replaceChildren(option("inherit", `${t("mt.free")} · ${context.providerLabel || ""}`));
+      if (machineMode) presetSelect.replaceChildren(option("inherit", `${t("mt.free")} · ${context.routing === "auto" ? t("mt.routingAuto") : context.providerLabel || ""}`));
       presetSelect.title = machineMode ? t("mt.settings") : "";
       presetSelect.disabled = machineMode;
       presetSelect.value = machineMode ? "inherit" : context?.temporaryPresetActive

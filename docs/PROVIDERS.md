@@ -117,20 +117,32 @@ Provider 不访问页面 DOM、IndexedDB 或 Options 状态。所有外部 HTTP 
 
 Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider 选择前规范化并组合进 Effective Prompt；非空 glossary 的稳定 identity 进入缓存指纹，空 glossary 不改变旧缓存身份。
 
-## 浏览器基础翻译与 AI 的选择
+## 翻译偏好与执行方式
 
-无已配置 AI 服务且未显式启用免费在线机器翻译时，整页、字幕和获准的单词划词可使用默认开启的浏览器基础翻译；短语或长选区仍需要 AI。划词只有在 resolver 判定 `intent.kind === "lexical" && tokenCount === 1` 且当前请求明确带有 `browserTranslationAllowed: true` 时才使用 `selection-word`；标记为 false 或缺失时保持普通 `selection`，包括词典未命中后的普通翻译按钮。普通 `selection` 仍可使用显式启用的机器翻译，不等同于仅允许 AI 的 `selection-ai`。浏览器翻译不是 HTTP Provider，不能由后台执行。`translationConfig()` 为获准的 surface 生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset 和 Glossary。AI 配置错误不视为“未配置”；获准任务在 AI 请求失败后须由用户明确点击切换到新基础任务。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。
+`translationPreferences: { version: 1, wordMethod, textMethod }` 是网页与划词方式的唯一事实来源。
+单词允许 `free-online` / `dictionary` / `browser-local` / `ai`；短语、句段和全文允许后三种翻译方式（不含 dictionary）。网站仅允许覆盖 `textMethod`；单词不使用网站方式、连接或服务参数覆盖。
 
+首次初始化单词为 free-online，句段按现有完整 AI 配置、明确可用本地模型、free-online 顺序确定并持久化。初始化不会发送连接测试、创建模型或下载资源；未知/超时探测不计为就绪。旧网站的明确在线、AI 和 legacy 实际选择迁移为可见的 textMethod；其它网站跟随默认。保留词典、凭据、语言、Prompt 与缓存。旧 machineTranslation.mode、dictionaryEnabled、browserTranslationEnabled 不再竞争网页／划词路由。字幕、显式 AI 助手保持独立路径。
+
+可信 Options / Popup 使用 `TRANSLATION_PREFERENCES_GET` 和 `TRANSLATION_PREFERENCES_SAVE`。保存校验方式、服务参数、联网确认及已授予的 origin 权限；旧 `MACHINE_TRANSLATION_SAVE` 返回 PREFERENCES_REOPEN，要求重开设置。Content 的引擎设置只暴露执行所需公开字段，不返回凭据。Options 统一保存两类偏好；Popup 只保存本站句段，恢复默认不创建本站单词方式。资源管理不修改偏好。
+
+后台按场景、唯一方式和有效配置解析。lookup、执行与写入共用快照；配置变化取消文字任务并失效所有相关快照。本地恢复同时校验配置代次，旧结果不能跨偏好变化重新取快照写入。缓存身份仍使用实际 AI/本地/在线服务、语言对和配置；不升级或清空 DB4。
+
+选词典时只查词典；其它方式不先查词典。未命中、未就绪、失败和拒绝授权都不跨方式备用。划选的内容类型纠正和临时方式只属于当前操作，长期选择必须在设置页明确保存。结果和缓存显示原始来源，AI 理解／分析／用法仍由明确点击触发。Chrome 本地句段在 Content 本地执行，不扩大共享单词 Port。详见 [本地翻译](BROWSER_TRANSLATION.md)。
 
 ## 免费在线机器翻译
 
-`machineTranslation` 是独立 opt-in 配置，不属于 `providerConnections`。缺失时为 legacy；合法配置包含 version=1、mode（legacy/free-online）、providerId、sourceLanguage。未知服务、模式或版本明确失败，不回退到可能收费的 AI。
+`machineTranslation` 继续保存 v2 免费服务参数（routing、providerId、sourceLanguage 与兼容 mode），不属于 providerConnections。只有当前场景偏好为 free-online 才执行，旧 mode 不再决定新版路由；未知服务/语言/版本明确失败。
 
-首批固定服务为 `mt-microsoft-web`（Edge 网页接口）和 `mt-tencent-transmart`（腾讯交互翻译）。不包含用户 Key、Cookie、任意 Base URL、任意 Header 或代理。网络仅在 `providers/machine-translation-transport.js`；`credentials: omit`、拒绝重定向、请求前检查已授权 origin，真实 HTTP 及正文读取共用 15 秒超时、512 KiB 响应上限。每家串行、有界等待、429/403 冷却；失败不自动换线或转 AI。不会新增 Manifest 权限。
+薄适配器注册表包含微软、腾讯、B站、谷歌、火山和有道；自动池只允许已通过真实 MV3 测试的微软 → B站 → 谷歌 → 有道，腾讯保持手选，火山当前网络未通过不默认启用。最近成功方向优先 10 分钟，自动模式顺序备用，固定模式不换线，均不转收费 AI。每段文字槽同一服务完成，已完成段落保留。
 
-全局模式只修改自己的键；站点 `machineTranslation` 只作为覆盖值。未显式覆盖的旧站点 AI 选择优先于新增全局免费模式。Options 和 Popup 是设置/连接检查的唯一可信入口。启用或测试必须有用户动作和前端明确传输确认；检查只发送固定非敏感例句。读取状态不会联网。全局/站点切换会取消当前文字任务，不改 AI 凭据和独立助手任务。
+网络仅在 `providers/machine-translation-transport.js`；不携带用户 Key/Cookie，不接受 UI 提供的地址/Header，拒绝重定向。p-limit 控制两条真实 HTTP，单供应商串行；25 秒批次预算、网页 5 秒/B站 8 秒包括排队和读取，512 KiB 响应上限。p-retry 仅管理候选尝试，不替代 AbortController。取消消费者不提前释放真实传输槽。冷却状态仅由 health owner 维护，保留原存储键。
 
-开启“翻译前优先查询已安装词典”后，单词划选仍先查询本地词典；命中时不请求在线 MT，即使已有该词的在线译文缓存。免费模式的规范语言码 `zh` 与简体中文词典资格一致；未命中时保留原有普通翻译按钮和显式 MT 路线。
+B站固定官方模型和非流式请求，验证 stop/非空/无 thinking 输出。新增 `declarativeNetRequestWithHostAccess`，只对本扩展固定 POST 端点移除 Origin；规则初始化失败则该线路不可用，host permissions 不扩大。
+
+自动计划由既有配置快照持有，首次 lookup 冻结各具体配置/写令牌；结果带实际 providerId、routeRef、来源。缓存业务消息层验证原文/结果/引用后使用原令牌写入具体服务；DB4、通用 service/storage 和 envelope 不变。清缓存使计划不可持久写入，换线不刷新令牌。cacheOnly 仅查询各候选已有缓存。
+
+联网确认单独保存在 machineTranslationConsent（站点可保存自己的确认），与自动／固定服务选择匹配。新默认不生成确认；迁移只继承旧版经过确认的明确免费设置。缺少确认或权限的自动翻译停在授权错误，不上传、不改方式。检查连接仍要求明确确认，只发送固定非敏感例句；读取、编辑和保存本身不翻译。
 
 `translationConfig()` 在网页/文字划词解析免费路由；AI `getEffectiveConfig()`、`getEffectiveConfigForSite()`、字幕与助手保持原行为。免费配置不要求 Key，损坏的 AI 连接不阻断显式免费文字翻译。`hasConfiguredAi()` 语义不因免费模式改变。
 
@@ -138,6 +150,6 @@ Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider
 
 富文本复用纯函数 `translationParts`：结构标记、链接目标及 code/kbd 留在本地，只有文字槽送给 Provider。返回结果必须完整且与输入一一对应；结构错误、实体损坏、空值、业务失败不作为成功写入缓存。显示复用现有安全 DOM 重建。首版不对免费接口承诺 AI Prompt、风格或自定义译法生效。
 
-Reading 仍保存现有 `translation` artifact；provenance 使用真实 provider、`model: not-disclosed`、`promptVersion: mt-adapter-v1` 和实际配置指纹。未披露模型不伪装成具体 AI 模型。悬停和历史回看仍只读本地，助手 artifact 不改变。
+Reading 仍保存现有 `translation` artifact；provenance 使用真实 provider、披露模型（未披露时 `model: not-disclosed`）、`promptVersion: mt-adapter-v1` 和实际配置指纹。未披露模型不伪装成具体 AI 模型。悬停和历史回看仍只读本地，助手 artifact 不改变。
 
-单测：`node --test tests/machine-translation.test.mjs`。实际编译 MV3 流程：`npm run test:e2e -- e2e/machine-translation.spec.mjs`（先构建）。E2E 仅对两个固定域名注入合成响应，不替代用户网络的真实服务可用性验证。
+单测：`node --test tests/translation-preferences.test.mjs tests/machine-translation.test.mjs`。实际编译 MV3 流程：`npm run test:e2e -- e2e/machine-translation.spec.mjs`（先构建）。E2E 对登记的固定域名注入合成响应，不替代真实服务与双网络环境验收。协议来源、许可、准入和验收限制见 [设计记录](tasks/free-mt-auto-routing/design.md)。

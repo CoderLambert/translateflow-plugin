@@ -23,7 +23,7 @@
       record.className = "tf-selection-rich-record";
       const title = document.createElement("div");
       title.className = "tf-selection-rich-title";
-      title.textContent = String(dictionary?.title || "Rich MDict");
+      locale.bindText(title, "mt.sourceDictionary", { name: String(dictionary?.title || "Rich MDict") });
       record.appendChild(title);
       renderRichDictionaryRecord(record, dictionary, dictionary?.id);
       section.appendChild(record);
@@ -77,7 +77,7 @@
       identity.className = "tf-selection-rich-identity";
       const title = document.createElement("strong");
       title.className = "tf-selection-rich-title";
-      if (dictionary?.title) title.textContent = String(dictionary.title);
+      if (dictionary?.title) locale.bindText(title, "mt.sourceDictionary", { name: String(dictionary.title) });
       else locale.bindText(title, "content.rich.title");
       identity.appendChild(title);
       const status = document.createElement("span");

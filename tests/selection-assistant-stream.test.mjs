@@ -48,7 +48,7 @@ test("explicit CJK assistant action streams bounded page context after a local-o
   let providerCalls = 0;
   const config = { provider: "openai-compatible", streaming: false, targetLanguage: "Simplified Chinese" };
   const resolverDeps = {
-    getConfig: async () => ({ targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, targetLanguage: "Simplified Chinese", selectionExplanationDepth: "auto" }),
     getEffectiveConfig: async () => config,
     runLexicalLookup: async () => {
       throw new Error("CJK rich-dictionary text must not use the English lexical index");

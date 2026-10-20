@@ -232,7 +232,7 @@ test("rich card results pass through the reviewed sanitizer and keep resource lo
   }]);
   const card = findClass(container, "tf-selection-rich-record")[0];
   assert.equal(card.dataset.state, "success");
-  assert.equal(findClass(card, "tf-selection-rich-title")[0].textContent, "<img onerror=alert(1)>");
+  assert.equal(findClass(card, "tf-selection-rich-title")[0].textContent, "词典释义 · <img onerror=alert(1)>");
   assert.equal(findClass(card, "tf-selection-rich-trust").length, 0);
   assert.equal(findClass(card, "tf-selection-rich-format").length, 0);
   const status = findClass(card, "tf-selection-rich-card-status")[0];
@@ -511,6 +511,7 @@ async function loadRenderer({
 } = {}) {
   const document = new FakeDocument();
   const app = { modules: { contentI18n: createContentI18nStub({ messages: {
+    "mt.sourceDictionary": "词典释义 · {name}",
     "content.rich.order": "词典顺序 {index}",
     "content.rich.preferred": "你的首选 · 个人偏好",
     "content.rich.trust": "来源 / 信任：{trust}",

@@ -1,3 +1,4 @@
+import { saveTranslationPreferences } from "../src/background/translation-preferences.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createTranslationIdentity } from "../src/shared/translation-cache-identity.js";
@@ -18,8 +19,10 @@ import { handleMachineSettingsMessage, saveMachineTranslationSettings, testMachi
 import { normalizeProviderConnection } from "../src/shared/provider-connections.js";
 import { BACKGROUND_MESSAGES as M } from "../src/shared/constants.js";
 
+import { machineSucceeded } from "../src/background/providers/machine-translation-health.js";
+
 const originalFetch = globalThis.fetch, originalChrome = globalThis.chrome;
-const settings = (providerId = "mt-microsoft-web", sourceLanguage = "auto") => ({ ...DEFAULT_MACHINE_TRANSLATION, mode: "free-online", providerId, sourceLanguage });
+const settings = (providerId = "mt-microsoft-web", sourceLanguage = "auto") => ({ ...DEFAULT_MACHINE_TRANSLATION, routing: "fixed", mode: "free-online", providerId, sourceLanguage });
 const config = (provider = "mt-microsoft-web") => createMachineConfig(settings(provider), "zh-CN");
 const page = "https://fixture.invalid/article";
 const sender = { id: "test-extension", tab: { id: 1 }, frameId: 0, documentId: "document-1", url: page };
@@ -35,12 +38,12 @@ function storage(patch = {}) {
     } } };
   return { memory, writes };
 }
-test.afterEach(() => { cancelMachineTranslations(); invalidateMachineSnapshots(); globalThis.fetch = originalFetch; globalThis.chrome = originalChrome; });
+test.afterEach(async () => { await machineSucceeded(config()); await machineSucceeded(config("mt-tencent-transmart")); cancelMachineTranslations(); invalidateMachineSnapshots(); globalThis.fetch = originalFetch; globalThis.chrome = originalChrome; });
 
 test("MT is opt-in; invalid settings fail rather than becoming a paid default", () => {
   assert.equal(normalizeMachineTranslation(undefined).mode, "legacy");
   assert.equal(resolveMachineTranslation({}), null);
-  for (const value of [null, false, {}, { ...settings(), providerId: "unknown" }, { ...settings(), version: 2 }, { ...settings(), apiKey: "not-allowed" }]) {
+  for (const value of [null, false, {}, { ...settings(), providerId: "unknown" }, { ...settings(), version: 3 }, { ...settings(), apiKey: "not-allowed" }]) {
     assert.throws(() => normalizeMachineTranslation(value), { code: "MT_CONFIG" });
   }
 });
@@ -52,20 +55,20 @@ test("site AI choices and subtitle/assistant routes keep their existing behavior
   assert.equal(resolveMachineTranslation(stored, { provider: "broken", machineTranslation: settings("mt-tencent-transmart") }).provider, "mt-tencent-transmart");
 });
 
-test("browser translation is the no-AI route for pages and subtitles, with explicit AI fallback", async () => {
+test("initial online defaults stay fixed when AI is configured; subtitles retain the independent path", async () => {
   const connection = normalizeProviderConnection({ id: "cloud", name: "Cloud", platform: "openai", protocol: "openai-chat",
     baseUrl: "https://api.example.invalid/v1", credentialId: "cloud", defaultModel: "synthetic", settings: {} });
   const { memory } = storage({ machineTranslation: DEFAULT_MACHINE_TRANSLATION });
   for (const surface of ["page", "subtitle", "selection-word"]) {
     const result = await translationEngineSettings(page, { surface });
-    assert.equal(result.engine, "browser-translator");
-    assert.equal(result.configured, false);
+    assert.equal(result.engine, surface === "subtitle" ? "browser-translator" : "machine-translation");
+    assert.equal(result.configured, surface !== "subtitle");
   }
   assert.equal((await translationEngineSettings(page, { surface: "selection-ai" })).engine, "ai");
   Object.assign(memory, { providerConnectionsVersion: 1, providerConnections: { cloud: connection },
     providerCredentials: { cloud: "synthetic-test-key" }, defaultService: { kind: "api-key", connectionId: "cloud" } });
-  assert.equal((await translationEngineSettings(page, { surface: "page" })).engine, "ai");
-  const fallback = await translationEngineSettings(page, { surface: "page", forceBrowser: true });
+  assert.equal((await translationEngineSettings(page, { surface: "page" })).engine, "machine-translation");
+  const fallback = await translationEngineSettings(page, { surface: "page", temporaryMethod: "browser-local" });
   assert.equal(fallback.engine, "browser-translator");
   assert.equal(fallback.configured, true);
 });
@@ -230,22 +233,22 @@ test("missing and broken AI configurations do not prevent explicit free translat
 test("global save changes only the new field; site save preserves AI and appearance overrides", async () => {
   const ai = { defaultService: { kind: "chatgpt-plan" }, providerCredentials: { cloud: "synthetic" }, siteProfiles: { "https://fixture.invalid": { model: "old-model", appearance: "compact", serviceRef: { kind: "chatgpt-plan" } } } };
   const { memory, writes } = storage(ai);
-  await saveMachineTranslationSettings({ scope: "global", config: settings(), consent: true });
-  assert.deepEqual(Object.keys(writes[0]), ["machineTranslation"]);
-  await saveMachineTranslationSettings({ scope: "site", pageUrl: page, config: settings("mt-tencent-transmart"), consent: true });
+  await saveTranslationPreferences({ scope: "global", preferences: { version: 1, wordMethod: "free-online", textMethod: "free-online" }, config: settings(), consent: true });
+  assert.equal(memory.translationPreferences.textMethod, "free-online");
+  await saveTranslationPreferences({ scope: "site", textMethod: "free-online", pageUrl: page, config: settings("mt-tencent-transmart"), consent: true });
   assert.equal(memory.siteProfiles["https://fixture.invalid"].model, "old-model");
   assert.equal(memory.siteProfiles["https://fixture.invalid"].appearance, "compact");
-  await saveMachineTranslationSettings({ scope: "site", pageUrl: page, inherit: true });
+  await saveTranslationPreferences({ scope: "site", pageUrl: page, inherit: true });
   assert.deepEqual(memory.siteProfiles, ai.siteProfiles); assert.deepEqual(memory.providerCredentials, ai.providerCredentials);
 });
 
 test("free mode requires consent and permission; settings/test messages reject page content", async () => {
   storage();
-  await assert.rejects(saveMachineTranslationSettings({ scope: "global", config: settings() }), { code: "MT_CONSENT" });
+  await assert.rejects(saveMachineTranslationSettings({ scope: "global", config: settings() }), { code: "PREFERENCES_REOPEN" });
   await assert.rejects(testMachineTranslationSettings({ providerId: "mt-microsoft-web", requestId: "no-consent" }), { code: "MT_CONSENT" });
   chrome.permissions.contains = async () => false;
   await assert.rejects(testMachineTranslationSettings({ providerId: "mt-microsoft-web", consent: true, requestId: "no-access" }), { code: "MT_PERMISSION" });
-  await assert.rejects(saveMachineTranslationSettings({ scope: "global", config: settings(), consent: true }), { code: "MT_PERMISSION" });
+  await assert.rejects(saveTranslationPreferences({ scope: "global", preferences: { version: 1, wordMethod: "free-online", textMethod: "free-online" }, config: settings(), consent: true }), { code: "MT_PERMISSION" });
   await assert.rejects(requestMachineTexts(config(), ["hello"]), { code: "MT_PERMISSION" });
   assert.throws(() => handleMachineSettingsMessage({ type: M.MACHINE_TRANSLATION_TEST }, sender), { code: "MT_PERMISSION" });
 });
@@ -332,13 +335,14 @@ test("timeout also cancels a stalled response body, and the next request works",
   storage(); let cancelled = false;
   globalThis.fetch = async () => new Response(new ReadableStream({ cancel() { cancelled = true; } }));
   await assert.rejects(requestMachineTexts(config(), ["hello"], { timeoutMs: 15 }), { code: "MT_TIMEOUT" });
-  assert.equal(cancelled, true); globalThis.fetch = async () => ok(["恢复"]);
+  assert.equal(cancelled, true); await machineSucceeded(config()); globalThis.fetch = async () => ok(["恢复"]);
   assert.deepEqual(await requestMachineTexts(config(), ["next"]), ["恢复"]);
 });
 
 test("oversized and non-JSON responses are refused rather than displayed or persisted", async () => {
   storage(); globalThis.fetch = async () => new Response("<html>blocked</html>");
   await assert.rejects(requestMachineTexts(config(), ["hello"]), { code: "MT_RESPONSE" });
+  await machineSucceeded(config());
   globalThis.fetch = async () => new Response("x".repeat(512 * 1024 + 1));
   await assert.rejects(requestMachineTexts(config(), ["hello"]), { code: "MT_RESPONSE" });
 });
@@ -377,40 +381,30 @@ test("bad error response stream cannot mask HTTP status or poison queued request
     return ok(["恢复"]);
   };
   await assert.rejects(requestMachineTexts(config(), ["first"]), { code: "MT_HTTP" });
+  await machineSucceeded(config());
   assert.deepEqual(await requestMachineTexts(config(), ["second"]), ["恢复"]);
   assert.equal(requests, 2);
 });
 
-test("streaming overflow releases the MT queue without waiting for a stalled cancel", async () => {
+test("streaming overflow retains the actual HTTP slot until body cancellation settles", async () => {
   storage();
   const cancelCalled = defer(), cancelRelease = defer(); let calls = 0;
   globalThis.fetch = async () => {
     calls++;
-    if (calls === 1) return new Response(new ReadableStream({
+    return new Response(new ReadableStream({
       start(controller) { controller.enqueue(new Uint8Array(512 * 1024 + 1)); },
       cancel() { cancelCalled.resolve(); return cancelRelease.promise; }
     }));
-    return ok(["恢复"]);
   };
-  let firstCode = "", secondResult;
-  const first = requestMachineTexts(config(), ["oversized input"]).then(
-    () => { firstCode = "RESOLVED"; }, error => { firstCode = error.code; }
-  );
+  let settled = false;
+  const first = requestMachineTexts(config(), ["oversized input"]).catch(error => { settled = true; return error.code; });
   await cancelCalled.promise;
-  const second = requestMachineTexts(config(), ["following input"]).then(
-    values => { secondResult = values; }, error => { secondResult = error.code; }
-  );
-  // An event-loop turn proves forward progress before the first body's
-  // cancel() promise is released. No arbitrary sleep or external Provider.
+  const controller = new AbortController();
+  const second = requestMachineTexts(config(), ["queued"], { signal: controller.signal }).catch(e => e.code);
   await new Promise(resolve => setImmediate(resolve));
-  try {
-    assert.equal(firstCode, "MT_RESPONSE");
-    assert.deepEqual(secondResult, ["恢复"]);
-    assert.equal(calls, 2);
-  } finally {
-    cancelRelease.resolve();
-    await Promise.all([first, second]);
-  }
+  assert.equal(settled, false); assert.equal(calls, 1);
+  controller.abort(); assert.equal(await second, "CANCELLED");
+  cancelRelease.resolve(); assert.equal(await first, "MT_RESPONSE");
 });
 
 test("oversized response retains MT_RESPONSE when canceling body throws", async () => {
@@ -430,17 +424,17 @@ test("rate-limit cooldown survives a new request and never falls back to Tencent
 });
 
 for (const providerId of ["mt-microsoft-web", "mt-tencent-transmart"]) {
-  test(`explicit ${providerId} preserves dictionary-first routing for a local word hit`, async () => {
+  test(`explicit ${providerId} bypasses dictionary routing for a word even when a dictionary hit is available`, async () => {
     let lookups = 0;
     const resolved = await resolveSelectionRequest({ text: "localfixture", pageUrl: page }, {
-      getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese",
+      getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "free-online", textMethod: "free-online" }, dictionaryEnabled: true, targetLanguage: "Simplified Chinese",
         machineTranslation: settings(providerId), aiServiceConfigured: true }),
       getEffectiveConfig: () => assert.fail("explicit MT and dictionary routing must not resolve AI credentials"),
       runLexicalLookup: async input => { lookups++; assert.equal(input.targetLanguage, "zh-CN"); return { status: "hit", candidates: [] }; },
       assessLexicalLookup: () => ({ outcome: "sufficient", candidates: [{ id: "synthetic-local" }] })
     });
     assert.equal(resolved.intent.kind, "lexical");
-    assert.equal(resolved.route, "local");
-    assert.equal(lookups, 1);
+    assert.equal(resolved.route, "translation");
+    assert.equal(lookups, 0);
   });
 }

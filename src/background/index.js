@@ -1,5 +1,5 @@
 import { cancelMachineTranslations, cancelTextTranslations } from "./translation-requests.js";
-import { invalidateMachineSnapshots } from "./effective-config-snapshots.js";
+import { invalidateTranslationSnapshots, invalidateMachineSnapshots } from "./effective-config-snapshots.js";
 import { abortMachineHttp } from "./providers/machine-translation-transport.js";
 import { ensureConfigDefaults, removeLegacyV1Cache } from "./config.js";
 import { createBrowserNativeBroker } from "./browser-native-broker.js";
@@ -16,7 +16,7 @@ import { abortSelectionAssistantStreams, handleSelectionAssistantStreamPort, onS
 import { ensureProviderConnections } from "./provider-connections.js";
 import { BACKGROUND_MESSAGES } from "../shared/constants.js";
 
-const PUBLIC_SETTING_KEYS = new Set(["browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"]);
+const PUBLIC_SETTING_KEYS = new Set(["translationPreferences", "browserTranslationEnabled", "browserSourceLanguage", "dictionaryEnabled", "cacheRestoreSites", "autoSites", "quickControlSites", "quickControlHiddenSites", "youtubeSubtitleMode", "youtubeSubtitleSize", "uiLocale", "appearance", "siteProfiles"]);
 const PUBLIC_SETTING_SIGNALS = new Set(["machineTranslation", "aiServiceConfigured", "provider", "model", "prompt", "targetLanguage", "openAICompatible", "apiKey", "providerConnections", "providerCredentials", "defaultService", "glossary", "siteGlossaries"]);
 
 export function initializeBackground() {
@@ -43,7 +43,7 @@ export function initializeBackground() {
   });
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
-    if (changes.machineTranslation) { cancelTextTranslations(); invalidateMachineSnapshots(); }
+    if (["translationPreferences", "machineTranslation", "machineTranslationConsent", "siteProfiles", "targetLanguage", "browserSourceLanguage", "provider", "model", "chatgptPlanModel", "apiKey", "openAICompatible", "providerConnections", "providerCredentials", "defaultService", "prompt", "glossary", "siteGlossaries"].some(key => changes[key])) { cancelTextTranslations(); invalidateTranslationSnapshots(); }
     if (changes.siteProfiles || changes.targetLanguage) { cancelMachineTranslations(); invalidateMachineSnapshots(); }
     const publicChanges = Object.fromEntries(Object.entries(changes).filter(([key]) => PUBLIC_SETTING_KEYS.has(key) || PUBLIC_SETTING_SIGNALS.has(key))
       .map(([key, change]) => [key, PUBLIC_SETTING_KEYS.has(key) ? change : { changed: true }]));

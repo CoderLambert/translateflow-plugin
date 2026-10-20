@@ -127,7 +127,7 @@ test("same extension ID: DB4 main -> free MT keeps cache, Reading, user dictiona
       providerCredentials: { "upgrade-synthetic": "" },
       defaultService: { kind: "api-key", connectionId: "upgrade-synthetic" },
       targetLanguage: "Japanese",
-      machineTranslation: { version: 1, mode: "free-online", providerId: "mt-tencent-transmart", sourceLanguage: "auto" },
+      machineTranslation: { version: 2, routing: "fixed", mode: "free-online", providerId: "mt-tencent-transmart", sourceLanguage: "auto" },
       siteProfiles: { "https://fixture.invalid": { targetLanguage: "French", appearance: "compact",
         serviceRef: { kind: "api-key", connectionId: "upgrade-synthetic" } } },
       dictionaryEnabled: true

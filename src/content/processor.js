@@ -104,7 +104,8 @@
         cacheHits,
         apiTranslated
       });
-      if (!silent) showToast(message, cacheWarning ? "error" : "success");
+      if (missing) tasks.failTask(task, Object.assign(new Error(message), { code: "MT_RESPONSE" }));
+      if (!silent) showToast(message, cacheWarning || missing ? "error" : "success");
       return {
         count,
         cacheHits,
@@ -170,7 +171,7 @@
       const translation = cachedMap.get(group.id);
       if (translation) {
         if (getPageIdentity(location.href) === expectedPageIdentity) {
-          cacheHits += insertGroupTranslation(group, translation, lookup.engine);
+          cacheHits += insertGroupTranslation(group, translation, lookup.engine, lookup.hits.find(item => String(item.id) === String(group.id)));
         }
       } else {
         uncached.push(group);
@@ -205,10 +206,10 @@
       }
 
       if (getPageIdentity(location.href) === expectedPageIdentity) {
-        apiTranslated += insertGroupTranslation(group, translation, response.engine);
+        apiTranslated += insertGroupTranslation(group, translation, response.engine, response.translations.find(item => String(item.id) === String(group.id)));
       }
       toStore.push({ sourceText: group.text, translation, protectedIds: group.protectedIds || [],
-        format: group.rich ? "tf-markers" : "plain", cacheToken: cacheWriteTokens.get(String(group.id)) });
+        format: group.rich ? "tf-markers" : "plain", cacheToken: cacheWriteTokens.get(String(group.id)), routeRef: response.translations.find(item => String(item.id) === String(group.id))?.routeRef });
     }
 
     if (getPageIdentity(location.href) !== expectedPageIdentity) throw Object.assign(new Error("Page changed"), { code: "CANCELLED" });
@@ -244,7 +245,7 @@
       ...(cacheWarning ? { cacheWarning } : {}) };
   }
 
-  function insertGroupTranslation(group, translation, engine = "") {
+  function insertGroupTranslation(group, translation, engine = "", metadata = {}) {
     let inserted = 0;
     for (const el of group.elements) {
       if (!document.contains(el)) continue;
@@ -253,7 +254,15 @@
         if (state.auto || state.cacheRestore) app.modules.auto?.invalidateAndObserve(el);
         continue;
       }
-      if (!el.hasAttribute(TRANSLATED_ATTR) && insertTranslation(el, translation, engine)) inserted += 1;
+      if (!el.hasAttribute(TRANSLATED_ATTR) && insertTranslation(el, translation, engine)) {
+        inserted += 1;
+        if (engine === "machine-translation" && metadata?.providerId) {
+          const node = el.querySelector(":scope > .abt-translation");
+          if (!node) continue;
+          node.dataset.providerId = metadata.providerId;
+          node.title = metadata.providerLabel || metadata.providerId;
+        }
+      }
     }
     return inserted;
   }

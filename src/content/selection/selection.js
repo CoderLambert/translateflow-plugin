@@ -46,10 +46,7 @@
       const cjk = (canonical.match(/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g) || []).length;
       const hasKana = /[\u3040-\u30ff\u31f0-\u31ff]/u.test(canonical);
       const maxCjkHeadwordLength = hasKana ? 24 : 6;
-      return cjk >= 2
-        && canonical.length <= maxCjkHeadwordLength
-        && !/\s/u.test(canonical)
-        && !/[。！？!?]/u.test(canonical);
+      return cjk >= 2;
     }
 
     const cjk = (normalized.match(/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g) || []).length;

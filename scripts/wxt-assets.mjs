@@ -21,7 +21,7 @@ export function assertAssetPath(path) {
 // WXT compiles ISOLATED Content. Only execution-context-specific MAIN/Worker
 // resources remain raw assets with their stable runtime paths.
 export function runtimeAssetRoots() {
-  return [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)];
+  return [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS), "assets/licenses/free-mt.txt"];
 }
 
 export async function sourceClosure(roots, root = ROOT) {

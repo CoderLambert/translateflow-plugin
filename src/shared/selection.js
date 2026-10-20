@@ -59,6 +59,12 @@ export function classifySelectionIntent({
     };
   }
 
+  // Phrases belong to text translation; only single words use the word preference.
+  if (tokenCount > 1 || sentenceLike) return { kind: SELECTION_INTENT.TRANSLATION, reason: "sentence-or-long-text", localLexiconEligible: false,
+    sourceLanguage: englishDominant ? "en" : "unknown", targetLanguage, tokenCount };
+  if (!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(normalized) && /^[\p{L}\p{M}]+(?:[-’'][\p{L}\p{M}]+)*$/u.test(normalized)) return {
+    kind: SELECTION_INTENT.LEXICAL, reason: "lexical-token", localLexiconEligible: localTargetSupported && englishDominant,
+    sourceLanguage: englishDominant ? "en" : "unknown", targetLanguage, tokenCount: 1 };
   if (!localTargetSupported || !englishDominant) {
     return {
       kind: SELECTION_INTENT.TRANSLATION,

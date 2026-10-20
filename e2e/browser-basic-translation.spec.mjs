@@ -37,7 +37,7 @@ async function isolated(harness, page, action, input = {}) {
 }
 async function noAi(harness, patch = {}) {
   await harness.setStorage({ provider: "deepseek", apiKey: "", providerConnections: {}, providerCredentials: {}, defaultService: null,
-    aiServiceConfigured: null, openAICompatible: { apiKey: "", baseUrl: "", model: "" }, dictionaryEnabled: false, browserTranslationEnabled: true, ...patch });
+    aiServiceConfigured: null, openAICompatible: { apiKey: "", baseUrl: "", model: "" }, dictionaryEnabled: false, browserTranslationEnabled: true, translationPreferences: { version: 1, wordMethod: "browser-local", textMethod: "browser-local" }, ...patch });
 }
 async function select(page, selector = "#technical-competition") {
   await page.locator(selector).evaluate(node => {
@@ -93,21 +93,21 @@ test("page translation without AI uses browser translation only after a trusted 
 });
 
 test("AI stays preferred; failures switch only on click and begin a new basic task", async ({ harness }) => {
-  await harness.reset(); await harness.setStorage({ dictionaryEnabled: false });
+  await harness.reset(); await harness.setStorage({ dictionaryEnabled: false, translationPreferences: { version: 1, wordMethod: "ai", textMethod: "ai" } });
   const page = await harness.open("/selection"); await harness.inject(page); await isolated(harness, page, "install");
   await select(page, "#ambiguous");
   await expect(page.locator(".tf-selection-primary")).not.toBeEmpty();
   expect((await isolated(harness, page, "probe")).creates).toBe(0);
   await page.keyboard.press("Escape");
   harness.server.setFailures([401]); await select(page);
-  await expect(basicPanel(page)).toContainText("AI 翻译失败");
+  await expect(page.locator(".tf-selection-status")).toContainText("失败");
   expect(harness.server.calls.length).toBe(2); expect((await isolated(harness, page, "probe")).creates).toBe(0);
-  await basicPanel(page).getByRole("button", { name: "使用浏览器翻译", exact: true }).click();
+  await page.getByText("切换方式", { exact: true }).click(); await page.getByRole("button", { name: "用 Chrome 本地查词", exact: true }).click();
   await basicPanel(page).getByRole("button", { name: "准备并翻译", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).toContainText("基础:session"); expect(harness.server.calls.length).toBe(2);
   await page.keyboard.press("Escape"); await select(page, "#ambiguous");
-  await expect(page.locator(".tf-selection-primary")).toContainText("基础:persistent");
-  expect((await isolated(harness, page, "probe")).inputs).toContain("persistent"); expect(harness.server.calls.length).toBe(2);
+  await expect(page.locator(".tf-selection-result")).toContainText("AI 译文");
+  expect((await isolated(harness, page, "probe")).inputs).not.toContain("persistent"); expect(harness.server.calls.length).toBe(2);
 });
 
 test("subtitles without AI use the local engine after a trusted prepare click", async ({ harness }) => {
@@ -185,7 +185,7 @@ test("Selection with no detector asks for its own language instead of using the 
 
 for (const [text, allowed] of [["unlistedword", true], ["東京・大阪", false]]) {
   test(`dictionary no-hit translate button respects word scope: ${text}`, async ({ harness }, testInfo) => {
-    await harness.reset(); await noAi(harness, { dictionaryEnabled: true });
+    await harness.reset(); await noAi(harness, { dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" } });
     const page = await harness.open("/selection"); await harness.inject(page); await isolated(harness, page, "install");
     await page.locator("#technical-competition").evaluate((node, text) => { node.textContent = text; }, text);
     const resolved = await harness.runtime({ type: "SELECTION_RESOLVE", text, pageUrl: page.url() });
@@ -193,8 +193,8 @@ for (const [text, allowed] of [["unlistedword", true], ["東京・大阪", false
     expect(resolved.intent.kind).toBe("lexical");
     expect(resolved.intent.tokenCount).toBe(allowed ? 1 : 2);
     await select(page);
-    await page.getByRole("button", { name: "使用普通翻译处理这个词", exact: true }).click();
-    await expect(basicPanel(page)).toContainText(allowed ? "准备基础翻译" : "此翻译需要配置 AI");
+    await expect(page.getByRole("button", { name: "使用普通翻译处理这个词", exact: true })).toHaveCount(0);
+    if (allowed) { await page.getByText("切换方式", { exact: true }).click(); await page.getByRole("button", { name: "用 Chrome 本地查词", exact: true }).click(); await expect(basicPanel(page)).toContainText("准备基础翻译"); }
     expect((await isolated(harness, page, "probe")).creates).toBe(0);
     expect((await isolated(harness, page, "probe")).inputs).toEqual([]);
     expect(harness.server.calls).toHaveLength(0);
@@ -209,11 +209,11 @@ for (const [text, allowed] of [["unlistedword", true], ["東京・大阪", false
 }
 
 test("unknown English phrase requires AI through the selection chip without creating models", async ({ harness }) => {
-  await harness.reset(); await noAi(harness, { dictionaryEnabled: true });
+  await harness.reset(); await noAi(harness, { dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" } });
   const page = await harness.open("/selection"); await harness.inject(page); await isolated(harness, page, "install");
   await page.locator("#technical-competition").evaluate(node => { node.textContent = "unlisted phrase"; });
   const resolved = await harness.runtime({ type: "SELECTION_RESOLVE", text: "unlisted phrase", pageUrl: page.url() });
-  expect(resolved.routeReason).toBe("unknown-phrase-translation");
+  expect(resolved.routeReason).toBe("selected-method");
   await select(page);
   await expect(basicPanel(page)).toContainText("此翻译需要配置 AI");
   expect((await isolated(harness, page, "probe")).creates).toBe(0);

@@ -29,7 +29,7 @@ function setup({ prompt = async () => { throw new Error("Unexpected prompt"); },
     calls.push(payload);
     if (payload.type === M.TRANSLATION_ENGINE_SETTINGS) return { ...settings };
     if (payload.type === M.CACHE_LOOKUP) {
-      if (!payload.browserTranslation) return { ok: true, engine: "ai", configSnapshotId: "ai-snapshot", hits: [] };
+      if (!payload.browserTranslation?.sourceLanguage) return { ok: true, engine: "ai", configSnapshotId: "ai-snapshot", hits: [] };
       const sourceLanguage = payload.browserTranslation.sourceLanguage, id = `backend-${++sequence}`;
       backend.set(id, sourceLanguage);
       return { ok: true, engine: contract.BROWSER_ENGINE, sourceLanguage, targetLanguage: settings.targetLanguage, configSnapshotId: id,

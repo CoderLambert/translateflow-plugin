@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "task": "free-mt-auto-routing",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [
+    "free-online-mt"
+  ],
+  "branch": "feat/free-mt-auto-routing-20261020",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/machine-translation.spec.mjs",
+      "--workers=1",
+      "--retries=0"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地实现与验收已完成，自查记录在 review.md；等待后续明确的提交/同步授权。双网络环境与实际 Chrome 102 未验证，火山不进入默认池。"
+}

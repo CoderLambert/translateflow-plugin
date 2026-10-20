@@ -81,10 +81,10 @@ export function createBrowserNativeBroker(api, { now = Date.now, timeoutMs = 350
           post(port, { id, ok: true, result: await updatePending(pair, message.kind === "pending-verified") }); return;
         }
         if (message.kind !== "call" || !contentSender(sender) || message.surface !== "selection-word") return fail(port, id, "BROWSER_SCOPE");
-        const preferences = await api.storage.local.get(["browserTranslationEnabled"]);
+        const preferences = await api.storage.local.get(["browserTranslationEnabled", "translationPreferences"]);
         if (closed) return;
         if (cancelled.has(id)) return fail(port, id, "CANCELLED");
-        if (preferences.browserTranslationEnabled === false) return fail(port, id, "BROWSER_DISABLED");
+        if (!preferences.translationPreferences && preferences.browserTranslationEnabled === false) return fail(port, id, "BROWSER_DISABLED");
         const data = nativeRequest(message.action, message.data);
         const host = [...hosts].find(candidate => Boolean(candidate.sender?.tab?.incognito) === Boolean(sender.tab?.incognito));
         if (!host) return fail(port, id, "BROWSER_NO_HOST");

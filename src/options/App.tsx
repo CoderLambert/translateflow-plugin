@@ -85,8 +85,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
         </SettingsPanel>
       </>}
       <SettingsPanel id="glossary" activeHash={activeHash}><GlossarySection client={glossary} setStatus={setStatus} /></SettingsPanel>
-      {config ? <SettingsPanel id="dictionary-packs" activeHash={activeHash}><div className="settings-card"><SettingSwitch id="dictionaryEnabled" label={i18n.t("options.basic.dictionaryEnabled")} description={i18n.t("options.basic.dictionaryHelp")}
-        disabled={ui.busy} checked={config.dictionaryEnabled === true} onChange={checked => update({ dictionaryEnabled: checked })} /></div><DictionarySection client={dictionaries} setStatus={setStatus} /></SettingsPanel> : null}
+      {config ? <SettingsPanel id="dictionary-packs" activeHash={activeHash}><DictionarySection client={dictionaries} setStatus={setStatus} /></SettingsPanel> : null}
       {config ? <>
         <SettingsPanel id="provider" activeHash={activeHash}>
         <ProviderSections config={config} disabled={ui.busy} update={update} client={client} connections={ui.connections.value} loading={ui.connections.loading} error={ui.connections.error} reload={ui.refreshConnections} setStatus={setStatus} />
@@ -95,7 +94,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
         <CacheSection config={config} stats={ui.cache.value} loading={ui.cache.loading} error={ui.cache.error} disabled={ui.busy} update={update} refresh={() => void ui.refreshCache()} prune={() => void ui.prune()} clear={() => void ui.clear()} />
         </SettingsPanel>
         <SettingsPanel id="developer" activeHash={activeHash}><DeveloperSection version={client.version} /></SettingsPanel>
-        <div className="sticky-actions"><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("options.save")}</button>{activeHash === "#provider" ? <button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button> : null}</div>
+        <div className="sticky-actions"><small>{i18n.t("mt.otherScope")}</small><button id="save" className="primary" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(false); }}>{i18n.t("mt.saveOther")}</button>{activeHash === "#provider" ? <button id="test" disabled={ui.busy} onClick={event => { if (event.nativeEvent.isTrusted) void ui.save(true); }}>{i18n.t("options.testProvider")}</button> : null}</div>
       </> : null}
       <div id="status" className={`status${ui.status.error ? " error" : ""}`} role="status" aria-live="polite">{ui.status.message}</div>
     </main>

@@ -23,8 +23,8 @@ test("Selection v2 classifier keeps lexical, sentence and unsupported-local rout
   assert.equal(word.reason, "lexical-token");
 
   const phrase = classifySelectionIntent({ text: "terminal multiplexer", targetLanguage: "zh-CN" });
-  assert.equal(phrase.kind, SELECTION_INTENT.LEXICAL);
-  assert.equal(phrase.reason, "lexical-phrase");
+  assert.equal(phrase.kind, SELECTION_INTENT.TRANSLATION);
+  assert.equal(phrase.reason, "sentence-or-long-text");
 
   const sentence = classifySelectionIntent({
     text: "This full sentence should continue through the normal translation gateway.",
@@ -41,8 +41,8 @@ test("Selection v2 classifier keeps lexical, sentence and unsupported-local rout
   assert.equal(unsupportedSource.reason, "unsupported-local-source");
 
   const unsupportedTarget = classifySelectionIntent({ text: "persistent", targetLanguage: "Japanese" });
-  assert.equal(unsupportedTarget.kind, SELECTION_INTENT.TRANSLATION);
-  assert.equal(unsupportedTarget.reason, "unsupported-local-target");
+  assert.equal(unsupportedTarget.kind, SELECTION_INTENT.LEXICAL);
+  assert.equal(unsupportedTarget.reason, "lexical-token");
 });
 
 test("short Han and kana headwords use only the local Rich MDict route", async () => {
@@ -60,7 +60,7 @@ test("short Han and kana headwords use only the local Rich MDict route", async (
   const selection = state.__TRANSLATE_FLOW_CONTENT__.modules.selection;
   let lexicalLookups = 0;
   const deps = {
-    getConfig: async () => ({ targetLanguage: "Simplified Chinese", dictionaryEnabled: true }),
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, targetLanguage: "Simplified Chinese", dictionaryEnabled: true }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
     runLexicalLookup: async () => {
       lexicalLookups += 1;
@@ -88,11 +88,11 @@ test("short Han and kana headwords use only the local Rich MDict route", async (
     assert.equal(result.decision.outcome, "no-hit", text);
   }
 
-  assert.equal(selection.isEligibleText("这是一个中文选择"), false);
-  assert.equal(selection.isEligibleText("日本語 の単語"), false);
-  assert.equal(selection.isEligibleText("日本語の文です。"), false);
-  assert.equal(selection.isEligibleText("日本語｡"), false);
-  assert.equal(selection.isEligibleText("ｲﾄﾏｷｴｲ｡"), false);
+  assert.equal(selection.isEligibleText("这是一个中文选择"), true);
+  assert.equal(selection.isEligibleText("日本語 の単語"), true);
+  assert.equal(selection.isEligibleText("日本語の文です。"), true);
+  assert.equal(selection.isEligibleText("日本語｡"), true);
+  assert.equal(selection.isEligibleText("ｲﾄﾏｷｴｲ｡"), true);
   assert.equal(lexicalLookups, 0);
 });
 
@@ -240,7 +240,7 @@ test("Selection resolver returns sufficient local lexical results without enteri
       sensitive: false
     }
   }, {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       targetLanguage: "Simplified Chinese"
     }),
@@ -279,7 +279,7 @@ test("Selection resolver returns sufficient local lexical results without enteri
 test("Selection resolver bypasses lexical lookup for sentence and unsupported target translation routes", async () => {
   let lexicalCalls = 0;
   const deps = {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       targetLanguage: "Simplified Chinese"
     }),
@@ -301,7 +301,7 @@ test("Selection resolver bypasses lexical lookup for sentence and unsupported ta
     pageUrl: "https://example.test/"
   }, {
     ...deps,
-    getEffectiveConfig: async () => ({ targetLanguage: "Japanese" })
+    getConfig: async () => ({ targetLanguage: "Japanese", translationPreferences: { version: 1, wordMethod: "ai", textMethod: "ai" } })
   });
   assert.equal(unsupportedTarget.route, SELECTION_ROUTE.TRANSLATION);
   assert.equal(lexicalCalls, 0);
@@ -310,7 +310,7 @@ test("Selection resolver bypasses lexical lookup for sentence and unsupported ta
 test("rich-only CJK no-hit stays local by default and carries sanitized context only on explicit explanation", async () => {
   let lexicalCalls = 0;
   const deps = {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       dictionaryEnabled: true,
       targetLanguage: "Simplified Chinese"
@@ -355,7 +355,7 @@ test("rich-only CJK no-hit stays local by default and carries sanitized context 
 
 test("single-word misses with dictionaries enabled remain local until an explicit explanation", async () => {
   const deps = {
-    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
     runLexicalLookup: async () => ({ status: "no-hit", candidates: [] })
   };
@@ -375,7 +375,7 @@ test("single-word misses with dictionaries enabled remain local until an explici
 
 test("lexical resource errors remain diagnosable without automatic translation", async () => {
   const deps = {
-    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" })
   };
   for (const code of ["LEXICON_STORAGE", "LEXICON_CORRUPT", "LEXICON_INCOMPATIBLE"]) {
@@ -403,17 +403,17 @@ test("lexical resource errors remain diagnosable without automatic translation",
   assert.equal(JSON.stringify(unexpected).includes("private unexpected failure"), false);
 });
 
-test("explicitly disabling dictionaries retains ordinary translation without lexical lookup", async () => {
+test("an explicit AI word preference bypasses dictionary lookup regardless of legacy switches", async () => {
   let lexicalCalls = 0;
   const deps = {
-    getConfig: async () => ({ dictionaryEnabled: false, targetLanguage: "Simplified Chinese" }),
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "ai", textMethod: "ai" }, dictionaryEnabled: false, targetLanguage: "Simplified Chinese" }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
     runLexicalLookup: async () => { lexicalCalls += 1; return { status: "no-hit" }; }
   };
   for (const text of ["persistent", "弁護士", "persistent session"]) {
     const result = await resolveSelectionRequest({ text }, deps);
     assert.equal(result.route, SELECTION_ROUTE.TRANSLATION, text);
-    assert.equal(result.routeReason, "dictionary-disabled", text);
+    assert.equal(result.routeReason, "selected-method", text);
     assert.equal(result.lookup, null);
   }
   assert.equal(lexicalCalls, 0);
@@ -424,7 +424,7 @@ test("Unknown multi-word lexical phrases route to translation instead of token-d
     text: "persistent session",
     pageUrl: "https://example.test/"
   }, {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       dictionaryEnabled: true,
       targetLanguage: "Simplified Chinese"
@@ -456,9 +456,9 @@ test("Unknown multi-word lexical phrases route to translation instead of token-d
   });
 
   assert.equal(result.route, SELECTION_ROUTE.TRANSLATION);
-  assert.equal(result.routeReason, "unknown-phrase-translation");
-  assert.equal(result.lookup.status, "no-hit");
-  assert.equal(result.preferRich, true);
+  assert.equal(result.routeReason, "selected-method");
+  assert.equal(result.lookup, null);
+  assert.equal(result.preferRich, undefined);
 });
 
 test("Sensitive ambiguous Selection explanation input never includes surrounding form text or raw URL", async () => {
@@ -473,7 +473,7 @@ test("Sensitive ambiguous Selection explanation input never includes surrounding
       sensitive: true
     }
   }, {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       targetLanguage: "Simplified Chinese"
     }),
@@ -530,7 +530,7 @@ test("Selection resolver preserves competing user-dictionary candidates for #85 
       sensitive: false
     }
   }, {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       targetLanguage: "Simplified Chinese"
     }),
@@ -558,7 +558,7 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
       sensitive: false
     }
   }, {
-    getConfig: async () => ({
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
       selectionExplanationDepth: "auto",
       targetLanguage: "Simplified Chinese"
     }),
@@ -589,13 +589,13 @@ test("Selection resolver can use an untranslated tmux technical entity locally w
 for (const [status, text, explanationAllowed, route, preferRich] of [
   ["error", "noted", true, SELECTION_ROUTE.UNRESOLVED, true],
   ["no-hit", "noted", true, SELECTION_ROUTE.UNRESOLVED, false],
-  ["unsupported", "noted", false, SELECTION_ROUTE.TRANSLATION, true],
-  ["error", "unknown lexical phrase", false, SELECTION_ROUTE.UNRESOLVED, false],
-  ["no-hit", "unknown lexical phrase", false, SELECTION_ROUTE.TRANSLATION, true]
+  ["unsupported", "noted", true, SELECTION_ROUTE.UNRESOLVED, false],
+  ["error", "unknown lexical phrase", true, SELECTION_ROUTE.TRANSLATION, undefined],
+  ["no-hit", "unknown lexical phrase", true, SELECTION_ROUTE.TRANSLATION, undefined]
 ]) {
   test(`rich-first ${status} lookup for ${text} preserves explicit AI availability (${explanationAllowed})`, async () => {
     const result = await resolveSelectionRequest({ text, pageUrl: "https://fixture.invalid/article" }, {
-      getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+      getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
       getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
       runLexicalLookup: async () => ({ status, candidates: [], error: status === "error"
         ? { code: "LEXICON_STORAGE_ERROR", message: "Optional structured pack unavailable" } : undefined })
@@ -603,14 +603,14 @@ for (const [status, text, explanationAllowed, route, preferRich] of [
     assert.equal(result.route, route);
     assert.equal(result.preferRich, preferRich);
     assert.equal(result.explanationAllowed, explanationAllowed);
-    assert.equal(result.lookup.status, status, "retain the real structured lookup diagnostic");
+    assert.equal(result.lookup?.status, text.includes(" ") ? undefined : status, "phrases bypass dictionaries; word lookups retain diagnostics");
     assert.equal("explanationInput" in result, false, "resolving must not start AI");
   });
 }
 
 test("an unexpected structured lookup failure still tries imported rich dictionaries first", async () => {
   const result = await resolveSelectionRequest({ text: "noted", pageUrl: "https://fixture.invalid/article" }, {
-    getConfig: async () => ({ dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
+    getConfig: async () => ({ translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, dictionaryEnabled: true, targetLanguage: "Simplified Chinese" }),
     getEffectiveConfig: async () => ({ targetLanguage: "Simplified Chinese" }),
     runLexicalLookup: async () => { throw new Error("structured source temporarily unavailable"); }
   });
@@ -627,6 +627,6 @@ test("canonical MT Simplified Chinese keeps single-word selections eligible for 
     assert.equal(intent.localLexiconEligible, true, targetLanguage);
   }
   for (const targetLanguage of ["zh-Hant", "zh-TW", "Traditional Chinese", "ja"]) {
-    assert.equal(classifySelectionIntent({ text: "localfixture", targetLanguage }).reason, "unsupported-local-target", targetLanguage);
+    assert.equal(classifySelectionIntent({ text: "localfixture", targetLanguage }).localLexiconEligible, false, targetLanguage);
   }
 });

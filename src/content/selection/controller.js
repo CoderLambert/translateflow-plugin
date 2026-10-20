@@ -57,6 +57,11 @@
     if (started) return;
     started = true;
     popover.setCloseHandler(dismiss);
+    popover.setRoutingHandler?.((snapshot, patch, event) => {
+      if (snapshot !== activeSnapshot) return;
+      Object.assign(snapshot, patch);
+      return translateSnapshot(snapshot, { event });
+    });
     projection.start(projectionGuard.invalidate);
 
     document.addEventListener("mouseup", handlePotentialSelection, true);
@@ -113,12 +118,13 @@
     assistantResults.clear();
     requestVersion += 1;
     snapshot.selectionGeneration = requestVersion;
+    snapshot.selectionKind = app.modules.browserTranslationContract?.classifySelectionIntent({ text: snapshot.text }).kind === "lexical" ? "word" : "text";
     activeSnapshot = snapshot;
     projection.watchPage(snapshot.pageUrl);
     setQuickControlSelectionActive(true);
     popover.showChip(snapshot, (event) => translateSnapshot(snapshot, { event }));
   }
-  async function translateSnapshot(snapshot, { forceTranslation = false, browserTranslationAllowed = false, event } = {}) {
+  async function translateSnapshot(snapshot, { browserTranslationAllowed = false, event } = {}) {
     if (!snapshot || snapshot !== activeSnapshot) return;
     const capture = freezeQuery(snapshot);
     if (activeTask && !tasks.isTerminal(activeTask)) {
@@ -135,10 +141,6 @@
 
     let resolved = null;
     try {
-      if (forceTranslation) {
-        await translateSelection(snapshot, task, version, expectedPage, queryRecord, { browserTranslationAllowed });
-        return;
-      }
       tasks.transition(task, "translating");
       popover.setLoadingStatus("content.selection.resolving");
       const selectionContext = captureSelectionContext(snapshot);
@@ -146,10 +148,12 @@
         type: messages.background.SELECTION_RESOLVE,
         text: snapshot.text,
         pageUrl: snapshot.pageUrl,
-        context: selectionContext
+        context: selectionContext, selectionKind: snapshot.selectionKind, temporaryMethod: snapshot.temporaryMethod || ""
       });
       assertCurrent(version, snapshot, expectedPage, task);
+      if (resolved?.surface) snapshot.selectionKind = resolved.surface === "selection-word" ? "word" : "text";
       if (!resolved?.ok) throw localizedError("content.selection.resolveFailed", resolved?.errorCode);
+      snapshot.resolvedMethod = resolved.method || "dictionary";
 
       if (resolved.route === "local") {
         const card = buildLocalResult(resolved);
@@ -189,7 +193,7 @@
           onExplain: resolved.explanationAllowed
             ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action)
             : null,
-          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed: resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1, event })
+          onTranslate: null
         });
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
@@ -202,9 +206,7 @@
         unresolvedMessage(resolved),
         (event) => translateSnapshot(snapshot, { event }),
         resolved.explanationAllowed ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action) : null,
-        resolved.routeReason === "local-error" ? (event) => translateSnapshot(snapshot, {
-          forceTranslation: true, browserTranslationAllowed: resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1, event
-        }) : null
+        null
       );
       if (resolved.intent?.kind === "lexical") {
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });
@@ -212,7 +214,7 @@
     } catch (error) {
       if (error?.code === "ENGINE_SWITCH" && isCurrentSelection(version, snapshot, expectedPage)) {
         tasks.failTask(task, error);
-        return translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed });
+        return translateSnapshot(snapshot, { browserTranslationAllowed });
       }
       if (error?.name === "SelectionSupersededError" || snapshot !== activeSnapshot || task !== activeTask || version !== requestVersion) return;
       tasks.failTask(task, error);

@@ -135,6 +135,11 @@ export function resolveTranslationConfigForSite(
 
 export function normalizeSiteProfile(rawProfile = {}) {
   const profile = {};
+  if (rawProfile.textMethod !== undefined) {
+    if (!["ai", "browser-local", "free-online"].includes(rawProfile.textMethod)) throw new Error("Invalid text translation method");
+    profile.textMethod = rawProfile.textMethod;
+  }
+  if (rawProfile.machineTranslationConsent !== undefined) profile.machineTranslationConsent = rawProfile.machineTranslationConsent;
   if (rawProfile.machineTranslation !== undefined) profile.machineTranslation = normalizeMachineTranslation(rawProfile.machineTranslation);
   const serviceRef = normalizeServiceRef(rawProfile.serviceRef);
   if (serviceRef) profile.serviceRef = serviceRef;

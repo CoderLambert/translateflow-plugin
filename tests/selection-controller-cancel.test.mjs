@@ -607,16 +607,13 @@ test("an AI configuration check returning after close cannot recreate a stale ta
 });
 
 for (const tokenCount of [1, 2]) {
-  test(`local no-hit button preserves single-word eligibility (${tokenCount} tokens)`, async () => {
+  test(`dictionary no-hit never exposes an implicit translation action (${tokenCount} tokens)`, async () => {
     const h = harness({ resolvedSelection: { ok: true, route: "unresolved", routeReason: "no-hit-local",
       intent: { kind: "lexical", tokenCount, sourceLanguage: "en" }, explanationAllowed: false } });
     await h.ready; await h.translate();
     assert.equal(h.emptyViews.length, 1);
-    const running = h.emptyViews[0].onTranslate({ isTrusted: true });
-    await h.storeStarted;
-    const lookup = h.messages.find(item => item.type === "cache-lookup");
-    assert.equal(lookup.browserTranslationAllowed, tokenCount === 1);
-    h.resolveStore(); await running;
-    assert.equal(h.results.length, 1);
+    assert.equal(h.emptyViews[0].onTranslate, null);
+    assert.equal(h.messages.some(item => item.type === "cache-lookup"), false);
+    assert.equal(h.results.length, 0);
   });
 }

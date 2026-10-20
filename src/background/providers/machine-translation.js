@@ -4,7 +4,7 @@ import { requestMachineTexts } from "./machine-translation-transport.js";
 
 // Reuse the existing local structure parser; no provider receives TF markers,
 // link destinations, code/kbd content, dictionary material or AI credentials.
-export async function translateMachineBatch(segments, config, { signal } = {}) {
+export async function translateMachineBatch(segments, config, { signal, deadline = performance.now() + 25000 } = {}) {
   if (config?.engine !== MACHINE_ENGINE) throw machineError("MT_CONFIG");
   const provider = machineProvider(config.provider), ids = new Set();
   if (!Array.isArray(segments) || segments.length > 128) throw machineError("MT_INPUT");
@@ -34,7 +34,7 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
         if (unit.protected || !unit.text.trim() || config.sourceLanguage === config.targetLanguage) {
           pieces.push({ literal: unit.text }); continue;
         }
-        for (const chunk of splitMachineText(unit.text)) {
+        for (const chunk of splitMachineText(unit.text, provider.maxCodePoints)) {
           const match = /^(\s*)([\s\S]*?)(\s*)$/u.exec(chunk);
           if (!match[2]) { pieces.push({ literal: chunk }); continue; }
           pieces.push({ index: requests.length, before: match[1], after: match[3] }); requests.push(match[2]);
@@ -47,7 +47,7 @@ export async function translateMachineBatch(segments, config, { signal } = {}) {
   for (let start = 0; start < requests.length; start += provider.batchSize) {
     if (signal?.aborted) throw machineError("CANCELLED");
     const batch = requests.slice(start, start + provider.batchSize);
-    answers.push(...await requestMachineTexts(config, batch, { signal }));
+    answers.push(...await requestMachineTexts(config, batch, { signal, deadline }));
   }
   if (signal?.aborted) throw machineError("CANCELLED");
   return plans.map(plan => ({ id: plan.id, text: plan.pieces.map(piece => piece.literal ?? `${piece.before}${answers[piece.index]}${piece.after}`).join("") }));

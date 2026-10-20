@@ -12,7 +12,7 @@ import { assertProductionManifest } from "../scripts/audit-wxt-extension.mjs";
 
 test("raw asset map retains only MAIN and Worker contexts while Content uses stable compiled paths", async () => {
   const roots = runtimeAssetRoots();
-  assert.deepEqual(roots, [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)]);
+  assert.deepEqual(roots, [...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS), "assets/licenses/free-mt.txt"]);
   assert.deepEqual(CONTENT_SCRIPT_FILES, ["content-scripts/content.js"]);
   assert.deepEqual(CONTENT_STYLE_FILES, ["content-scripts/content.css"]);
   assert.strictEqual(runtimeMain, YOUTUBE_MAIN_BRIDGE_FILES);

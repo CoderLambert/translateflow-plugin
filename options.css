@@ -957,7 +957,7 @@ kbd {
 }
 
 .sticky-actions {
-  position: sticky;
+  position: static;
   z-index: 4;
   bottom: 0;
   display: flex;
@@ -1142,3 +1142,11 @@ kbd {
 .local-dictionary-install-notice p {
   margin: 6px 0 0;
 }
+
+.sticky-actions { flex-wrap: wrap; }
+.sticky-actions > small { flex-basis: 100%; color: var(--tf-text-secondary); }
+
+.mt-word-method { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; border: 1px solid var(--tf-border-main); border-radius: 10px; padding: 14px; margin-block: 16px; }
+.mt-word-method label { display: inline-flex; align-items: center; gap: 8px; margin: 0; min-width: 0; white-space: nowrap; }
+.mt-word-method input[type="radio"] { width: 16px; height: 16px; min-height: 16px; flex: 0 0 16px; padding: 0; margin: 0; accent-color: var(--tf-green-600); }
+@media (min-width: 600px) { .mt-word-method { grid-template-columns: repeat(4, minmax(0, 1fr)); } .mt-text-method { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

@@ -14,11 +14,9 @@ type Props = { config: OptionsConfig; disabled: boolean; update: (patch: Partial
 export function GeneralSection({ config, disabled, update }: Props) {
   const i18n = useOptionsI18n();
   return <section id="general" tabIndex={-1}><h2>{i18n.t("options.general.title")}</h2><p className="section-summary">{i18n.t("options.general.summary")}</p>
-    <SettingSwitch id="browserTranslationEnabled" label={i18n.t("options.basic.enabled")} description={i18n.t("options.basic.help")}
-      disabled={disabled} checked={config.browserTranslationEnabled !== false} onChange={checked => update({ browserTranslationEnabled: checked })} />
     <label htmlFor="browserSourceLanguage">{i18n.t("options.basic.source")}</label><select id="browserSourceLanguage" disabled={disabled} value={config.browserSourceLanguage || "auto"} onChange={event => update({ browserSourceLanguage: event.target.value })}><option value="auto">{i18n.t("options.basic.auto")}</option>{Object.entries(LANGUAGE_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select>
     <label htmlFor="targetLanguage">{i18n.t("options.general.targetLanguage")}</label><input id="targetLanguage" list="browserTargetLanguages" disabled={disabled} value={config.targetLanguage} onChange={event => update({ targetLanguage: event.target.value })} type="text" placeholder="Simplified Chinese" /><datalist id="browserTargetLanguages">{Object.entries(LANGUAGE_NAMES).map(([code, name]) => <option key={code} value={name}>{code}</option>)}</datalist>
-    <BrowserNativeSection enabled={config.browserTranslationEnabled !== false} sourceLanguage={config.browserSourceLanguage || "auto"} targetLanguage={config.targetLanguage} />
+    <BrowserNativeSection enabled={true} sourceLanguage={config.browserSourceLanguage || "auto"} targetLanguage={config.targetLanguage} />
     <label htmlFor="prompt">{i18n.t("options.general.prompt")}</label><textarea id="prompt" disabled={disabled} value={config.prompt} onChange={event => update({ prompt: event.target.value })} rows={6} onKeyDown={preventComposingSubmit} />
     <p className="hint">{i18n.t("options.general.help")}</p></section>;
 }

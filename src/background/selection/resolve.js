@@ -1,7 +1,6 @@
-import { resolveMachineTranslation, rawTranslationSite } from "../../shared/machine-translation.js";
-import { hasConfiguredAi } from "../../shared/browser-translation.js";
-import { getSiteProfile } from "../../shared/provider-config.js";
-import { getConfig, getEffectiveConfig } from "../config.js";
+import { selectedTranslationMethod } from "../../shared/translation-preferences.js";
+import { rawTranslationSite } from "../../shared/machine-translation.js";
+import { getConfig } from "../config.js";
 import { runLexicalLookup } from "../lexical/index.js";
 import { assessLexicalLookup } from "../lexical/ranking.js";
 import {
@@ -14,26 +13,25 @@ import {
 
 export async function resolveSelectionRequest(input = {}, deps = {}) {
   const getStoredConfig = deps.getConfig || getConfig;
-  const getPageConfig = deps.getEffectiveConfig || getEffectiveConfig;
   const lexicalLookup = deps.runLexicalLookup || runLexicalLookup;
   const assessLookup = deps.assessLexicalLookup || assessLexicalLookup;
 
   const text = String(input.text || "").trim();
   const pageUrl = String(input.pageUrl || "");
   const storedConfig = await getStoredConfig();
-  const machine = resolveMachineTranslation(storedConfig, rawTranslationSite(storedConfig, pageUrl), "selection");
-  const site = machine ? rawTranslationSite(storedConfig, pageUrl) : getSiteProfile(storedConfig.siteProfiles, pageUrl);
-  const effectiveConfig = machine || ((deps.getEffectiveConfig || hasConfiguredAi(storedConfig, site)) ? await getPageConfig(pageUrl) : { targetLanguage: site?.targetLanguage || storedConfig.targetLanguage });
-
-  const requestedDepth = normalizeSelectionDepth(
-    input.depth || storedConfig.selectionExplanationDepth
-  );
-  const targetLanguage = effectiveConfig.targetLanguage || storedConfig.targetLanguage;
-  const intent = classifySelectionIntent({ text, targetLanguage });
+  const site = rawTranslationSite(storedConfig, pageUrl);
+  const requestedDepth = normalizeSelectionDepth(input.depth || storedConfig.selectionExplanationDepth);
+  const targetLanguage = site?.targetLanguage || storedConfig.targetLanguage;
+  const classified = classifySelectionIntent({ text, targetLanguage });
+  const intent = input.selectionKind === "word" ? { ...classified, kind: "lexical", tokenCount: 1 }
+    : input.selectionKind === "text" ? { ...classified, kind: "translation" } : classified;
+  const surface = intent.kind === "lexical" ? "selection-word" : "selection-text";
+  const method = selectedTranslationMethod(storedConfig, site, surface, input.temporaryMethod);
   const context = sanitizeSelectionContext(input.context);
 
-  if (storedConfig.dictionaryEnabled === false) {
-    return response({ text, intent, context, lookup: null, decision: null, route: { route: "translation", reason: "dictionary-disabled", depth: requestedDepth, explanationAllowed: true } });
+  if (method !== "dictionary") {
+    return { ...response({ text, intent, context, lookup: null, decision: null,
+      route: { route: input.explainRequested === true ? SELECTION_ROUTE.NEEDS_EXPLANATION : "translation", reason: input.explainRequested === true ? "explicit-ai" : "selected-method", depth: requestedDepth, explanationAllowed: true } }), method, surface };
   }
 
   if (intent.reason === "rich-dictionary-only") {
@@ -81,15 +79,10 @@ export async function resolveSelectionRequest(input = {}, deps = {}) {
     };
   }
   const decision = assessLookup(lookup, { contextText: context.text });
-  const route = chooseSelectionRoute({
-    intent,
-    decision,
-    depth: requestedDepth,
-    text,
-    explainRequested: input.explainRequested === true
-  });
+  const route = chooseSelectionRoute({ intent, decision, depth: requestedDepth, text, explainRequested: input.explainRequested === true });
+  if (route.route === "translation") { route.route = "unresolved"; route.reason = "no-hit-local"; route.explanationAllowed = true; }
 
-  const preferRich = storedConfig.dictionaryEnabled === true && input.explainRequested !== true && intent.kind === "lexical" &&
+  const preferRich = method === "dictionary" && input.explainRequested !== true && intent.kind === "lexical" &&
     (route.route === SELECTION_ROUTE.TRANSLATION || (decision.outcome === "error" && intent.tokenCount === 1));
   if (preferRich && intent.tokenCount === 1 && decision.outcome === "error") route.explanationAllowed = true;
   return { ...response({ text, intent, route, context, lookup, decision }), preferRich };

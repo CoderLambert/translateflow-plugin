@@ -88,6 +88,7 @@ export const test = base.extend({
           await chrome.storage.local.clear();
           await chrome.storage.local.set({
             dictionaryEnabled: true,
+            translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
             provider: "openai-compatible",
             model: "mock-model",
             targetLanguage: "Simplified Chinese",

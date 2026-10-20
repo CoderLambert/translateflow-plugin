@@ -39,7 +39,7 @@ function SiteRow({ item, connections, disabled, edit, remove }: { item: SiteEntr
     appearance: p.appearance ? appearanceLabel(p.appearance, i18n) : inherit,
     model: p.model || inherit, prompt: p.prompt ? custom : inherit, target: p.targetLanguage || inherit
   });
-  return <div className="site-row"><div className="site-summary"><strong>{item.origin}</strong><small>{detail}</small></div><div className="site-actions"><button type="button" disabled={disabled} onClick={edit}>{i18n.t("common.edit")}</button><button type="button" disabled={disabled} onClick={remove}>{i18n.t("common.delete")}</button></div></div>;
+  return <div className="site-row"><div className="site-summary"><strong>{item.origin}</strong><small>{p.textMethod ? i18n.t(`mt.method.${p.textMethod}`) : i18n.t("mt.inherit")} · {detail}</small></div><div className="site-actions"><button type="button" disabled={disabled} onClick={edit}>{i18n.t("common.edit")}</button><button type="button" disabled={disabled} onClick={remove}>{i18n.t("common.delete")}</button></div></div>;
 }
 
 export function BehaviorSection({ restoreSites, autoSites, loading, errors, disabled, refresh, remove }: { restoreSites: string[]; autoSites: string[]; loading: boolean; errors: string[]; disabled: boolean; refresh: () => void; remove: (key: "cacheRestoreSites" | "autoSites", origin: string) => void }) {

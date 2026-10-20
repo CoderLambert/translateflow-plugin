@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "task": "translation-method",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/simplify-translation-method-20261020",
+  "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/translation-method.spec.mjs",
+      "e2e/translation-preferences.spec.mjs",
+      "e2e/browser-basic-translation.spec.mjs",
+      "e2e/machine-translation.spec.mjs"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "用户已授权提交并合并main。PR #365；0.8.42候选完整validate通过（1952 Node、77 Vitest）、WXT构建通过、37 MV3通过/1真实模型未就绪跳过。主Agent自查完成，待证据归档提交与准确head squash合并。"
+}

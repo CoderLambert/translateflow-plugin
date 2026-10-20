@@ -112,3 +112,16 @@ test("task subscribers receive the same page lifecycle used by external controls
   tasks.transition(task, "completed", { done: 2 });
   assert.equal(events.length, 4);
 });
+
+test("machine route progress is bound to the active request and page", () => {
+  const { tasks } = loadTasksModule();
+  const task = tasks.createTask({ id: "route", surface: "page" });
+  tasks.observeMachineProgress({ requestId: "route", pageUrl: "https://other.invalid/", providerLabel: "Wrong" });
+  assert.equal(tasks.getTaskStatus(task).machineProvider, undefined);
+  tasks.observeMachineProgress({ requestId: "route", pageUrl: task.pageUrl, providerLabel: "Bilibili", switching: true });
+  assert.equal(tasks.getTaskStatus(task).machineProvider, "Bilibili");
+  assert.equal(tasks.getTaskStatus(task).machineSwitching, true);
+  tasks.completeTask(task);
+  tasks.observeMachineProgress({ requestId: "route", pageUrl: task.pageUrl, providerLabel: "Late" });
+  assert.equal(tasks.getTaskStatus(task).machineProvider, "Bilibili");
+});
