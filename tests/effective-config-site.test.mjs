@@ -5,7 +5,7 @@ import { getEffectiveConfigForSite } from "../src/background/config.js";
 test("stored site identity resolves profile, preset, glossary and global inheritance without a return URL", async () => {
   globalThis.chrome = { storage: {
     local: { get: async () => ({
-      provider: "deepseek", apiKey: "global-cloud-secret", model: "global-model", prompt: "global prompt",
+      translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, provider: "deepseek", apiKey: "global-cloud-secret", model: "global-model", prompt: "global prompt",
       targetLanguage: "Japanese",
       openAICompatible: { baseUrl: "http://127.0.0.1:11434/v1", apiKey: "", model: "local-model", streaming: true },
       siteProfiles: { "https://local.test": { provider: "openai-compatible", preset: "technical" } },

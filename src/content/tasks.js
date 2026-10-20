@@ -8,6 +8,13 @@
   const tasks = new Map();
   const listeners = new Set();
 
+  function observeMachineProgress(message) {
+    if (message.pageUrl !== location.href) return;
+    const task = tasks.get(String(message.requestId));
+    if (!task || TERMINAL_STATES.has(task.state) || task.pageUrl !== message.pageUrl || typeof message.providerLabel !== "string" || message.providerLabel.length > 80) return;
+    updateProgress(task, { machineProvider: message.providerLabel, machineSwitching: message.switching === true });
+  }
+
   function createTask({
     id = "",
     surface = "page",
@@ -185,7 +192,7 @@
       cacheHits: task.cacheHits,
       apiTranslated: task.apiTranslated,
       error: task.error,
-      errorCode: task.errorCode
+      errorCode: task.errorCode, ...(task.machineProvider ? { machineProvider: task.machineProvider, machineSwitching: task.machineSwitching === true } : {})
     };
   }
 
@@ -207,6 +214,7 @@
   }
 
   app.modules.tasks = {
+    observeMachineProgress,
     createTask,
     transition,
     updateProgress,

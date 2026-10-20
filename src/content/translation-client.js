@@ -6,7 +6,9 @@
   const messages = app.modules.runtime.messages.background;
   const plans = new Map(), requests = new Map(), corrections = new Map(), browserFallbacks = new Map(), cancelled = new Set();
   const PREFIX = "browser-plan:";
-  let forceBrowser = false, route = location.href;
+  let route = location.href;
+  const surfaceFor = payload => payload.languageSource === "selection" ? ((payload.selectionKind === "word" || !payload.selectionKind && payload.browserTranslationAllowed === true) ? "selection-word" : "selection-text") : payload.languageSource || "page";
+  const nativeFor = payload => surfaceFor(payload) === "selection-word" || surfaceFor(payload) === "subtitle" ? engine : engine.local || engine;
   const t = (key, args) => app.modules.contentI18n.t(`content.basic.${key}`, args);
   const isNativeId = id => typeof id === "string" && id.startsWith(PREFIX);
   function boundedSet(map, key, value) { map.set(key, value); if (map.size > 256) map.delete(map.keys().next().value); }
@@ -15,7 +17,7 @@
   }
   function responseError(response) { return engine.error(response?.errorCode || "BROWSER_UNAVAILABLE"); }
   // The surrounding sentence is local language evidence, never an AI Provider input.
-  function withoutNativeDetection(payload) { const { detectionText: _sample, ...request } = payload; return request; }
+  function withoutNativeDetection(payload) { const { detectionText: _sample, ...request } = payload; return { ...request, browserTranslation: { surface: surfaceFor(payload), temporaryMethod: payload.temporaryMethod } }; }
   function browserEligible(payload) {
     if (["page", "subtitle"].includes(payload?.languageSource)) return true;
     return payload?.languageSource === "selection" && payload?.browserTranslationAllowed === true;
@@ -25,9 +27,9 @@
   }
   async function checkedSettings(payload, raw, controller) {
     const eligible = browserEligible(payload) || controller.browserAllowed === true;
-    const surface = payload.languageSource === "selection" && browserEligible(payload) ? "selection-word" : payload.languageSource || "page";
+    const surface = surfaceFor(payload);
     const result = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl,
-      forceBrowser: eligible && forceBrowser, surface });
+      temporaryMethod: payload.temporaryMethod, surface });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!result?.ok) throw Object.assign(engine.error("AI_CONFIG"), { code: result?.errorCode || "CONFIG" });
     if (result.engine === BROWSER_ENGINE && !result.enabled && !payload.cacheOnly) {
@@ -43,7 +45,8 @@
       trackLanguage: segment.sourceLanguageHint || payload.sourceLanguageHint, surface: payload.languageSource });
     if (explicit) return explicit;
     const sourceText = segment.contentText ?? segment.text;
-    let decision = await (engine.detectSelection ? engine.detectSelection(sourceText, sample, { signal: controller.signal, cacheOnly: payload.cacheOnly }) : engine.detectDecision(sample, { signal: controller.signal, cacheOnly: payload.cacheOnly }));
+    const detector = nativeFor(payload);
+    let decision = await (detector.detectSelection ? detector.detectSelection(sourceText, sample, { signal: controller.signal, cacheOnly: payload.cacheOnly }) : detector.detectDecision(sample, { signal: controller.signal, cacheOnly: payload.cacheOnly }));
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (decision.source === "empty") return decision;
     const uncertainChinese = decision.language === "zh" && !decision.scriptKnown && browserLanguage(settings.targetLanguage) === "zh";
@@ -59,13 +62,14 @@
     return decision;
   }
   async function groupLookup(group, payload, raw, controller) {
-    const surface = payload.languageSource === "selection" ? "selection-word" : payload.languageSource || "page";
+    const surface = surfaceFor(payload);
     const response = await raw({ type: messages.CACHE_LOOKUP, requestId: payload.requestId, pageUrl: payload.pageUrl,
       segments: group.members.map(item => ({ id: item.id, text: item.text, format: item.format || "plain", protectedIds: item.protectedIds || [] })),
-      browserTranslation: { forceBrowser: true, surface, sourceLanguage: group.pair.sourceLanguage } });
+      browserTranslation: { configRevision: group.configRevision, temporaryMethod: "browser-local", surface, sourceLanguage: group.pair.sourceLanguage } });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     if (!response?.ok) throw responseError(response);
     if (response.engine !== BROWSER_ENGINE || response.sourceLanguage !== group.pair.sourceLanguage || response.targetLanguage !== group.pair.targetLanguage) throw engine.error("CONFIG_SNAPSHOT_EXPIRED");
+    group.configRevision = response.configRevision || group.configRevision;
     group.snapshotId = response.configSnapshotId; group.readingResult = response.readingResult;
     group.cacheWarning = response.cacheWarning || group.cacheWarning || "";
     // Keep the original read fence across a native-config snapshot refresh.
@@ -123,8 +127,8 @@
     assertCurrent(controller, payload.pageUrl, payload.requestId);
     const id = PREFIX + crypto.randomUUID(), one = groups.size === 1 ? [...groups.values()][0] : null;
     // This content-only plan dispatches each language to its own background snapshot.
-    const plan = { id, pageUrl: payload.pageUrl, requestId: payload.requestId, surface: payload.languageSource === "selection" ? "selection-word" : payload.languageSource || "page",
-      groups: [...groups.values()], results: new Map(), cancelled: false, targetLanguage, skippedIds };
+    const plan = { id, pageUrl: payload.pageUrl, requestId: payload.requestId, surface: surfaceFor(payload),
+      groups: [...groups.values()].map(group => ({ ...group, surface: surfaceFor(payload) })), results: new Map(), cancelled: false, targetLanguage, skippedIds };
     boundedSet(plans, id, plan);
     return { ok: true, engine: BROWSER_ENGINE, configSnapshotId: id, hits, skippedIds,
       writeTokens: [...groups.values()].flatMap(group => [...group.cacheTokens].map(([id, token]) => ({ id, token }))),
@@ -139,7 +143,7 @@
     return plan;
   }
   async function ensurePair(group, payload, controller) {
-    const pair = group.pair;
+    const pair = group.pair, engine = nativeFor({ ...payload, languageSource: payload.languageSource || group.surface, selectionKind: payload.selectionKind || (group.surface === "selection-word" ? "word" : "text") });
     const verifyText = group.members[0]?.contentText ?? group.members[0]?.text ?? "";
     if (engine.ready(pair)) return;
     const availability = await engine.capability(pair);
@@ -164,14 +168,13 @@
       controller.basic = false;
       controller.browserAllowed = controller.browserAllowed || browserFallbacks.get(String(payload.configSnapshotId || "")) === payload.pageUrl;
       const response = await raw(payload); assertCurrent(controller, payload.pageUrl, payload.requestId);
-      if (response?.ok || ["CANCELLED", "CONFIG_SNAPSHOT_EXPIRED"].includes(response?.errorCode)) return response;
-      if (!controller.browserAllowed) return response;
-      await view.prompt({ signal: controller.signal, title: "aiFailed", message: t("aiFailedHelp"), action: { label: "useBasic" } });
-      assertCurrent(controller, payload.pageUrl, payload.requestId); forceBrowser = true; throw engine.error("ENGINE_SWITCH");
+      return response;
     }
     controller.basic = true;
     const plan = requirePlan(payload, controller);
-    const settings = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, forceBrowser: true, surface: plan.surface });
+    payload = { ...payload, languageSource: plan.surface.startsWith("selection-") ? "selection" : plan.surface, selectionKind: plan.surface === "selection-word" ? "word" : "text" };
+    const engine = nativeFor(payload);
+    const settings = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl, temporaryMethod: "browser-local", surface: plan.surface });
     assertCurrent(controller, payload.pageUrl, plan.requestId);
     if (!settings?.ok) throw responseError(settings);
     if (!settings.enabled) throw engine.error("BROWSER_DISABLED");
@@ -271,7 +274,7 @@
       ...(cacheWarning ? { cacheWarning } : {}) };
   }
   async function send(payload, raw) {
-    if (location.href !== route) { dispose(); route = location.href; forceBrowser = false; }
+    if (location.href !== route) { dispose(); route = location.href; }
     if (payload.type === messages.CANCEL_TRANSLATION) {
       const id = payload.requestId; cancelled.add(id); if (cancelled.size > 256) cancelled.delete(cancelled.values().next().value);
       const local = requests.get(id); local?.abort();
@@ -298,8 +301,8 @@
   }
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type !== messages.PUBLIC_SETTINGS_CHANGED) return;
-    if (["defaultService", "providerConnections", "aiServiceConfigured", "apiKey"].some(key => message.changes?.[key])) forceBrowser = false;
-    if (message.changes?.machineTranslation || message.changes?.siteProfiles || message.changes?.targetLanguage) { forceBrowser = false; dispose(); }
+    if (["translationPreferences", "defaultService", "providerConnections", "aiServiceConfigured", "apiKey"].some(key => message.changes?.[key])) dispose();
+    if (message.changes?.machineTranslation || message.changes?.siteProfiles || message.changes?.targetLanguage) { dispose(); }
     if (message.changes?.browserSourceLanguage || message.changes?.targetLanguage || message.changes?.browserTranslationEnabled?.newValue === false) dispose({ basicOnly: true });
   });
   window.addEventListener("pagehide", dispose); window.addEventListener("popstate", dispose);

@@ -11,5 +11,5 @@
     if (action === actions.CANCEL) return engine.dispose();
     throw engine.error("BROWSER_UNAVAILABLE");
   }
-  app.modules.browserTranslation = { ...engine, dispatch };
+  app.modules.browserTranslation = { ...engine, local, dispatch };
 })();

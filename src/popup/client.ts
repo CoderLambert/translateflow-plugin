@@ -7,7 +7,7 @@ import { createI18n } from "../i18n/index.js";
 import type { I18n } from "../i18n/index.js";
 
 export type Site = { tab: { id: number; url: string }; origin: string; match: string };
-export type EffectiveContext = { engine?: string; hostname?: string; origin?: string; provider?: string; providerLabel?: string; connectionId?: string; model?: string; presetId?: string; presetLabel?: string; presetSource?: string; temporaryPresetActive?: boolean; temporaryPresetId?: string; savedPresetId?: string; selectedPresetId?: string; hasSitePromptOverride?: boolean; glossaryCount?: number };
+export type EffectiveContext = { routing?: string; engine?: string; hostname?: string; origin?: string; provider?: string; providerLabel?: string; connectionId?: string; model?: string; presetId?: string; presetLabel?: string; presetSource?: string; temporaryPresetActive?: boolean; temporaryPresetId?: string; savedPresetId?: string; selectedPresetId?: string; hasSitePromptOverride?: boolean; glossaryCount?: number };
 export type CacheStatus = { count: number; totalCount: number; lastAccessedAt?: number };
 export type TaskStatus = { state: string; done: number; total: number; error?: string };
 export type ToggleStatus = { enabled: boolean; hidden?: boolean; origin: string };

@@ -14,7 +14,8 @@ export async function executeTranslation({
   segments,
   config,
   signal,
-  onProgress
+  onProgress,
+  deadline
 }) {
   const input = Array.isArray(segments) ? segments : [];
   if (!input.length) return [];
@@ -27,7 +28,7 @@ export async function executeTranslation({
 
   try {
     const translations = await translateBatch(input, config, {
-      signal,
+      signal, deadline,
       onProgress: (event) => emitProgress(onProgress, {
         ...event,
         completionMode: CAPABILITIES.completionMode

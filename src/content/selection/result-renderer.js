@@ -29,6 +29,7 @@
     if (result.kind === "translation") {
       container.dataset.translationEngine = result.browserDefinition || result.browserPair ? "browser" : "ai";
       renderTranslationCard(container, result);
+      renderBadges(container, result.badges);
     } else {
       delete container.dataset.translationEngine;
       renderHeadword(container, result);
@@ -297,7 +298,7 @@
   function setLocalizedStatus(node, message, fallbackKey, kind) {
     app.modules.uiPrimitives?.setStatus?.(node, "", kind);
     const descriptor = typeof message === "string"
-      ? { key: message.startsWith("content.") ? message : null, text: message, args: {} }
+      ? { key: /^(?:content|mt)\./u.test(message) ? message : null, text: message, args: {} }
       : { key: message?.key || fallbackKey, text: "", args: message?.args || {} };
     if (descriptor.key) locale.bindText(node, descriptor.key, descriptor.args);
     else {

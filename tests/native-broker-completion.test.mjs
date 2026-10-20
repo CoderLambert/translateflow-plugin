@@ -63,3 +63,10 @@ test("closed shared host cannot authorize a silent page model download",async()=
   const client=withSharedNativeHost(model,f.runtime(f.contentSender));
   await assert.rejects(client.prepare(pair),{code:"BROWSER_PREPARE"});assert.equal(creates,0);client.dispose();f.dispose();
 });
+test("a migrated preference ignores the legacy enabled switch without widening the word port",async()=>{
+  const f=fixture(),model=engineFixture();f.local.browserTranslationEnabled=false;f.local.translationPreferences={version:1,wordMethod:"browser-local",textMethod:"ai"};
+  const detach=attachNativeModelHost(f.runtime(f.hostSender),model.engine);await tick();
+  const c=createNativePortClient(f.runtime(f.contentSender));assert.equal(await c.call("capability",{pair}),"available");
+  await assert.rejects(c.request({kind:"call",surface:"selection-text",action:"capability",data:{pair}}),{code:"BROWSER_SCOPE"});
+  assert.equal(model.counts().creates,0);c.dispose();detach();model.engine.dispose();f.dispose();
+});

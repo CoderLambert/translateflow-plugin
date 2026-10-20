@@ -1,5 +1,6 @@
+import { ensureTranslationPreferences } from "./translation-preferences.js";
+import { selectedTranslationMethod } from "../shared/translation-preferences.js";
 import { resolveMachineTranslation, rawTranslationSite } from "../shared/machine-translation.js";
-import { hasConfiguredAi } from "../shared/browser-translation.js";
 import {
   CONFIG_KEYS,
   DEFAULT_CONFIG,
@@ -41,6 +42,7 @@ import { ensureProviderConnections } from "./provider-connections.js";
 
 export async function getConfig() {
   await ensureProviderConnections();
+  await ensureTranslationPreferences();
   const stored = await chrome.storage.local.get(CONFIG_KEYS);
   return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...stored, dictionaryEnabled: stored.dictionaryEnabled ?? await inferInstalledDictionaryPreference() });
 }
@@ -77,10 +79,11 @@ export async function getEffectiveGlossary(pageUrl = "") {
 export async function getEffectiveContext(pageUrl) {
   const stored = await getConfig();
   const machine = resolveMachineTranslation(stored, rawTranslationSite(stored, pageUrl));
-  const site = machine ? rawTranslationSite(stored, pageUrl) : getSiteProfile(stored.siteProfiles, pageUrl);
-  const { resolved, temporaryPreset } = machine ? { resolved: machine, temporaryPreset: null } : hasConfiguredAi(stored, site)
+  const site = getSiteProfile(stored.siteProfiles, pageUrl);
+  const method = selectedTranslationMethod(stored, site);
+  const { resolved, temporaryPreset } = machine ? { resolved: machine, temporaryPreset: null } : method === "ai"
     ? await resolveBaseConfig(pageUrl)
-    : { resolved: { provider: "browser-translator", model: "translator-v1", targetLanguage: site?.targetLanguage || stored.targetLanguage }, temporaryPreset: null };
+    : { resolved: { provider: "browser-translator", providerLabel: "Chrome 本地", model: "translator-v1", targetLanguage: site?.targetLanguage || stored.targetLanguage }, temporaryPreset: null };
   const origin = normalizeOrigin(pageUrl);
   const siteProfile = site;
   const glossary = resolveEffectiveGlossary(stored.glossary, stored.siteGlossaries, pageUrl);
@@ -90,7 +93,9 @@ export async function getEffectiveContext(pageUrl) {
     origin,
     hostname: new URL(origin).hostname,
     provider: resolved.provider,
-    engine: resolved.engine || "ai",
+    engine: resolved.engine || (method === "browser-local" ? "browser-translator" : "ai"),
+    textMethod: method, wordMethod: stored.translationPreferences.wordMethod,
+    routing: resolved.routing,
     providerLabel: resolved.providerLabel,
     connectionId: resolved.connectionId,
     model: resolved.model,
@@ -139,6 +144,7 @@ export async function ensureConfigDefaults() {
   }
   if (Object.keys(missing).length) await chrome.storage.local.set(missing);
   await ensureProviderConnections();
+  await ensureTranslationPreferences();
   return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...current, ...missing, ...await chrome.storage.local.get(CONFIG_KEYS) });
 }
 

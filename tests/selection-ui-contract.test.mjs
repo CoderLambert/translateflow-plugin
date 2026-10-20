@@ -123,7 +123,8 @@ test("Selection result model separates local provenance and AI explanation", asy
   assert.match(controller, /action, threadId/);
   assert.match(controller, /resolved\.routeReason === "no-hit-local"/);
   assert.match(controller, /popover\.showEmpty/);
-  assert.match(controller, /forceTranslation: true/);
+  assert.doesNotMatch(controller, /forceTranslation: true/);
+  assert.match(controller, /temporaryMethod/);
   assert.match(controller, /explainSnapshot/);
   assert.doesNotMatch(controller, /resolved\.route === "needs-explanation"/);
   assert.doesNotMatch(controller, /copyTextForCard/);
@@ -160,7 +161,7 @@ test("Selection result hierarchy renders dictionary content before provenance", 
 
   const headwordIndex = renderer.indexOf("renderHeadword(container, result)");
   const summaryIndex = renderer.indexOf("renderDictionarySummary(container, entries[0], result)");
-  const badgesIndex = renderer.indexOf("renderBadges(container, result.badges)");
+  const badgesIndex = renderer.indexOf("renderBadges(container, result.badges)", summaryIndex);
   assert.ok(headwordIndex >= 0 && summaryIndex > headwordIndex && badgesIndex > summaryIndex);
   assert.match(renderer, /tf-selection-entry-provenance/);
 });

@@ -74,7 +74,8 @@
       browserDefinition: basic,
       browserPair: basic ? { sourceLanguage: metadata.sourceLanguage, targetLanguage: metadata.targetLanguage } : null,
       primaryMeaning: String(text || "").trim(),
-      badges: [],
+      badges: [{ label: basic ? t("mt.sourceBrowser") : metadata.engine === "machine-translation"
+        ? t("mt.sourceOnline", { service: metadata.provider ? t(`mt.service.${metadata.provider}`) : "" }) : t("mt.sourceAi"), kind: basic ? "local" : "ai" }],
       senses: [],
       domains: [],
       typeLabels: []
@@ -102,7 +103,7 @@
       ]),
       domains: uniqueText(candidate?.domains),
       typeLabels: labels,
-      badges: [{ ...provenanceDescriptor(candidate), kind: "local" }]
+      badges: [{ label: t("mt.sourceDictionary", { name: candidate?.provenance?.packName || candidate?.provenance?.packId || t("content.selection.sourceLocal") }), kind: "local" }]
     };
   }
 

@@ -12,6 +12,9 @@
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switch (message?.type) {
+      case messages.content.MACHINE_ROUTE_PROGRESS:
+        if (_sender?.id === chrome.runtime.id) tasks.observeMachineProgress(message);
+        return false;
       case messages.background.PUBLIC_SETTINGS_CHANGED:
         handlePublicSettingsChanges(message.changes || {});
         sendResponse({ ok: true });

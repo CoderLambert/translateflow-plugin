@@ -1,6 +1,6 @@
 {
   "name": "translateflow-plugin",
-  "version": "0.8.40",
+  "version": "0.8.41",
   "private": true,
   "type": "module",
   "scripts": {
@@ -68,6 +68,8 @@
   },
   "packageManager": "npm@11.19.0",
   "dependencies": {
-    "markdown-it": "15.0.2"
+    "markdown-it": "15.0.2",
+    "p-limit": "7.2.0",
+    "p-retry": "8.0.1"
   }
 }

@@ -90,7 +90,7 @@ async function clientContext({ settings = payload => ["selection-word", "page", 
   const raw = async payload => {
     calls.push(payload);
     if (payload.type === M.TRANSLATION_ENGINE_SETTINGS) return typeof settings === "function" ? settings(payload) : settings;
-    if (payload.type === M.CACHE_LOOKUP && payload.browserTranslation) return { ok: true, engine: BROWSER_ENGINE, sourceLanguage: payload.browserTranslation.sourceLanguage, targetLanguage: "zh", configSnapshotId: "snapshot", hits: [] };
+    if (payload.type === M.CACHE_LOOKUP && payload.browserTranslation?.sourceLanguage) return { ok: true, engine: BROWSER_ENGINE, sourceLanguage: payload.browserTranslation.sourceLanguage, targetLanguage: "zh", configSnapshotId: "snapshot", hits: [] };
     if (payload.type === M.CACHE_LOOKUP) return { ok: true, engine: "ai", targetLanguage: "Chinese", configSnapshotId: "ai-snapshot", hits: [] };
     if (payload.type === M.TRANSLATE_BATCH) return { ok: false, errorCode: "PROVIDER_HTTP" };
     return { ok: true };
@@ -118,23 +118,15 @@ test("subtitles use local browser translation without AI and retain the subtitle
   assert.equal(state.calls.some(item => item.type === M.CACHE_STORE), true);
 });
 
-test("AI error waits for explicit fallback choice and requires a fresh task", async () => {
-  let choose; const prompts = [];
-  const state = await clientContext({ settings: payload => payload.forceBrowser
-    ? { ok: true, engine: BROWSER_ENGINE, enabled: true, configured: true, sourceLanguage: "auto", targetLanguage: "Chinese" }
-    : { ok: true, engine: "ai", enabled: true, configured: true },
-    prompt: options => { prompts.push(options); return new Promise(resolve => { choose = resolve; }); } });
+test("AI failure keeps the selected method and never invokes another engine", async () => {
+  const state = await clientContext({ settings: { ok: true, engine: "ai", configured: true }, prompt: () => assert.fail("no fallback prompt") });
   const lookup = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "ai-task", pageUrl: "https://example.test/",
-    languageSource: "selection", browserTranslationAllowed: true, segments: [{ id: "1", text: "hello" }] }, state.raw);
-  const pending = state.client.send({ type: M.TRANSLATE_BATCH, requestId: "ai-task", pageUrl: "https://example.test/",
+    languageSource: "selection", selectionKind: "word", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  const result = await state.client.send({ type: M.TRANSLATE_BATCH, requestId: "ai-task", pageUrl: "https://example.test/",
     configSnapshotId: lookup.configSnapshotId, segments: [{ id: "1", text: "hello" }] }, state.raw);
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(prompts[0].action.label, "useBasic"); assert.equal(state.model.executions.length, 0);
-  choose(true); await assert.rejects(pending, { code: "ENGINE_SWITCH" });
-  const fresh = await state.client.send({ type: M.CACHE_LOOKUP, requestId: "fresh-task", pageUrl: "https://example.test/",
-    languageSource: "selection", browserTranslationAllowed: true, segments: [{ id: "1", text: "hello" }] }, state.raw);
-  assert.equal(fresh.ok, true);
-  assert.equal(state.calls.findLast(item => item.type === M.CACHE_LOOKUP).browserTranslation.forceBrowser, true);
+  assert.equal(result.errorCode, "PROVIDER_HTTP"); assert.equal(state.model.executions.length, 0);
+  await state.client.send({ type: M.CACHE_LOOKUP, requestId: "next-task", pageUrl: "https://example.test/", languageSource: "page", segments: [{ id: "1", text: "hello" }] }, state.raw);
+  assert.equal(state.calls.findLast(item => item.type === M.TRANSLATION_ENGINE_SETTINGS).temporaryMethod, undefined);
 });
 
 test("capability distinguishes HTTP, missing API and site/language policy denial without initializing", async () => {
@@ -194,7 +186,7 @@ test("explicit free online translation keeps its page cache route without openin
     pageUrl: "https://example.test/", segments: [{ id: "1", text: "hello" }] }, state.raw);
   assert.equal(result.ok, true);
   assert.equal(prompts, 0);
-  assert.equal(state.calls.some(item => item.type === M.CACHE_LOOKUP && !item.browserTranslation), true);
+  assert.equal(state.calls.some(item => item.type === M.CACHE_LOOKUP && item.browserTranslation?.surface === "page"), true);
   assert.equal(state.model.executions.length, 0);
 });
 
@@ -260,8 +252,8 @@ for (const flag of [false, undefined]) {
     const input = selectionLookup("denied", flag === undefined ? {} : { browserTranslationAllowed: flag });
     await assert.rejects(state.client.send(input, state.raw), { code: "AI_REQUIRED" });
     assert.deepEqual(prompts, ["aiRequired"]);
-    assert.equal(state.calls[0].surface, "selection");
-    assert.equal(state.calls[0].forceBrowser, false);
+    assert.equal(state.calls[0].surface, "selection-text");
+    assert.equal(state.calls[0].temporaryMethod, undefined);
     assert.deepEqual(state.calls.map(item => item.type), [M.TRANSLATION_ENGINE_SETTINGS, M.OPEN_OPTIONS]);
   });
   test(`cache-only selection with permission ${flag} stays silent and makes no cache or model calls`, async () => {
@@ -272,31 +264,16 @@ for (const flag of [false, undefined]) {
     assert.deepEqual(state.calls.map(item => item.type), [M.TRANSLATION_ENGINE_SETTINGS]);
   });
 }
-test("prior browser permission and explicit fallback cannot authorize a later denied selection", async () => {
-  let configured = true;
-  const prompts = [], state = await clientContext({ settings: payload =>
-    ["selection-word", "page", "subtitle"].includes(payload.surface) && (!configured || payload.forceBrowser)
-      ? { ok: true, engine: BROWSER_ENGINE, enabled: true, sourceLanguage: "en", targetLanguage: "Chinese" }
-      : { ok: true, engine: "ai", configured }, prompt: async input => { prompts.push(input.title); return true; } });
-  const raw = async payload => {
-    const result = await state.raw(payload);
-    return payload.type === M.CACHE_LOOKUP && !payload.browserTranslation
-      ? { ...result, configSnapshotId: `ai:${payload.requestId}` } : result;
-  };
-  const first = await state.client.send(selectionLookup("allowed", { browserTranslationAllowed: true }), raw);
-  await assert.rejects(state.client.send({ type: M.TRANSLATE_BATCH, requestId: "allowed", pageUrl: "https://example.test/",
-    configSnapshotId: first.configSnapshotId, segments: [{ id: "1", text: "hi" }] }, raw), { code: "ENGINE_SWITCH" });
-  const basic = await state.client.send(selectionLookup("basic", { browserTranslationAllowed: true }), raw);
-  assert.equal(basic.engine, BROWSER_ENGINE);
-  forbidBrowser(state);
-  const ai = await state.client.send(selectionLookup("denied-ai", { browserTranslationAllowed: false }), raw);
-  assert.equal(state.calls.findLast(item => item.type === M.TRANSLATION_ENGINE_SETTINGS).forceBrowser, false);
-  const before = prompts.length;
-  const failed = await state.client.send({ type: M.TRANSLATE_BATCH, requestId: "denied-ai", pageUrl: "https://example.test/",
-    configSnapshotId: ai.configSnapshotId, segments: [{ id: "1", text: "hi" }] }, raw);
-  assert.equal(ai.engine, "ai"); assert.equal(failed.errorCode, "PROVIDER_HTTP"); assert.equal(prompts.length, before);
-  configured = false;
-  await assert.rejects(state.client.send(selectionLookup("denied-empty", { browserTranslationAllowed: false }), raw), { code: "AI_REQUIRED" });
+test("temporary native choice is sent only with that operation and cannot affect a later selection", async () => {
+  const state = await clientContext({ settings: payload => payload.temporaryMethod === "browser-local"
+    ? { ok: true, engine: BROWSER_ENGINE, enabled: true, sourceLanguage: "en", targetLanguage: "Chinese" }
+    : { ok: true, engine: "ai", configured: true } });
+  const first = await state.client.send(selectionLookup("temporary", { selectionKind: "word", temporaryMethod: "browser-local" }), state.raw);
+  assert.equal(first.engine, BROWSER_ENGINE);
+  const next = await state.client.send(selectionLookup("next", { selectionKind: "text" }), state.raw);
+  assert.equal(next.engine, "ai");
+  assert.equal(state.calls.findLast(item => item.type === M.TRANSLATION_ENGINE_SETTINGS).temporaryMethod, undefined);
+  assert.equal(state.model.executions.length, 0);
 });
 for (const allowed of [false, true]) {
   test(`explicit MT is retained for selection permission ${allowed}, including failures`, async () => {

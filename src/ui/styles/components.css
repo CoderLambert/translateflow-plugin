@@ -289,3 +289,30 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Translation method fields shared by Popup and Options. */
+.translation-method-fields > label:not(.mt-auto-choice),
+.mt-manual label, .mt-more label { display: block; margin-block: 12px 6px; font-weight: 600; }
+.translation-method-fields select, .mt-more select { width: 100%; }
+.mt-auto-choice { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-weight: 600; }
+.mt-auto-choice input { flex: 0 0 auto; width: auto; margin: 0; accent-color: var(--tf-green-600); }
+.mt-manual, .mt-more, .mt-diagnostics { margin-block: 12px; }
+.mt-manual summary, .mt-more summary, .mt-diagnostics summary { cursor: pointer; overflow-wrap: anywhere; }
+.mt-link { border: 0; background: transparent; color: var(--tf-text-secondary); text-decoration: underline; text-underline-offset: 3px; padding: 6px 0; cursor: pointer; white-space: normal; }
+.mt-link:hover { color: var(--tf-text-main); }
+.mt-pending { color: var(--tf-text-main); font-size: 13px; font-weight: 600; margin-block: 8px; }
+.mt-current { overflow-wrap: anywhere; }
+.mt-popup { padding: 14px; }
+.mt-popup h2 { font-size: 14px; margin: 0 0 5px; }
+.mt-popup p:empty { display: none; }
+.mt-popup .translation-method-fields > label { font-size: 12px; }
+.mt-popup .mt-manual { font-size: 12px; }
+.mt-popup .mt-auto-choice input { width: auto; }
+.mt-settings .row { display: flex; }
+.mt-settings .row button { white-space: normal; }
+@media (max-width: 480px) { .mt-settings .row { align-items: stretch; flex-direction: column; } }
+
+.mt-link:focus-visible, .mt-auto-choice input:focus-visible,
+.mt-manual > summary:focus-visible, .mt-more > summary:focus-visible, .mt-diagnostics > summary:focus-visible {
+  outline: 2px solid var(--tf-green-500); outline-offset: 3px; border-radius: 4px;
+}

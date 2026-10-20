@@ -3,7 +3,7 @@ import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machin
 import { handleCacheMessage } from "./cache/message-handler.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
 import { handleReadingMessage, isReadingMessage } from "./reading-record/runtime.js";
-import { BACKGROUND_MESSAGES } from "../shared/constants.js";
+import { BACKGROUND_MESSAGES, CONTENT_MESSAGES } from "../shared/constants.js";
 import { translationEngineSettings } from "./browser-translation.js";
 import { getEffectiveConfig, getEffectiveContext, saveSiteAppearance, saveSitePreset } from "./config.js";
 import {
@@ -22,8 +22,11 @@ import { deleteProviderConnection, listProviderConnections, setDefaultService, u
 import { testSavedProviderConnection } from "./provider-connection-runtime.js";
 import { readPublicSettings, writePublicSettings } from "./public-settings.js";
 import { readQuickControlPosition, saveQuickControlPosition } from "./quick-control-position.js";
-import { resolveEffectiveConfigSnapshot } from "./effective-config-snapshots.js";
+import { assertMachinePlanInputs, bindMachinePlanResults } from "./cache/machine-translation-plan.js";
+import { resolveEffectiveConfigSnapshot, machineRouteSnapshot } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
+import { readTranslationPreferences, saveTranslationPreferences, assertOnlineConsent } from "./translation-preferences.js";
+import { assertTranslationUiSender } from "./machine-translation-settings.js";
 import { cancelTranslationRequest, runTranslationRequest } from "./translation-requests.js";
 import { runSubtitleTranslationBatch } from "./subtitle-requests.js";
 import { installYouTubeMainBridge } from "./youtube-bridge.js";
@@ -81,22 +84,38 @@ export function registerMessageRouter() {
 }
 
 export async function handleBackgroundMessage(message, sender) {
+  if ([BACKGROUND_MESSAGES.TRANSLATION_PREFERENCES_GET, BACKGROUND_MESSAGES.TRANSLATION_PREFERENCES_SAVE].includes(message?.type)) {
+    assertTranslationUiSender(sender);
+    return message.type === BACKGROUND_MESSAGES.TRANSLATION_PREFERENCES_GET ? readTranslationPreferences(message.pageUrl) : saveTranslationPreferences(message);
+  }
   if (MACHINE_SETTING_MESSAGES.includes(message?.type)) return handleMachineSettingsMessage(message, sender);
   switch (message?.type) {
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
-      return translationEngineSettings(message.pageUrl, { forceBrowser: message.forceBrowser === true, surface: message.surface });
+      return translationEngineSettings(message.pageUrl, { surface: message.surface, temporaryMethod: message.temporaryMethod });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
       const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
       if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
-      return {
-        translations: await runTranslationRequest({
+      if (config.engine === "machine-translation") await assertOnlineConsent(message.pageUrl, config.preferenceSurface);
+      const plan = await machineRouteSnapshot(message.configSnapshotId, message.pageUrl, sender);
+      if (plan) assertMachinePlanInputs(plan, message.segments);
+      const outputs = await runTranslationRequest({
           requestId: message.requestId,
           pageUrl: message.pageUrl, ownerTabId: sender?.tab?.id,
           segments: message.segments,
-          config
-        }),
-        readingResult: await readingTranslationResult(config),
-        ...(config.engine === "machine-translation" ? { engine: config.engine, provider: config.provider } : {})
+          config,
+          onProgress: config.engine === "machine-translation" ? event => {
+            if (event.type !== "machine-route" || !Number.isInteger(sender?.tab?.id)) return;
+            void chrome.tabs.sendMessage(sender.tab.id, { requestId: message.requestId,
+              pageUrl: message.pageUrl, ...event, type: CONTENT_MESSAGES.MACHINE_ROUTE_PROGRESS }, sender.documentId ? { documentId: sender.documentId } : { frameId: sender.frameId || 0 }).catch(() => {});
+          } : undefined
+        });
+      // Recheck snapshot ownership/lifetime after asynchronous Provider work.
+      if (config.engine === "machine-translation") await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
+      const translations = plan ? await bindMachinePlanResults(plan, message.segments, outputs, message.requestId) : outputs;
+      return {
+        translations,
+        readingResult: plan ? translations[0]?.readingResult : await readingTranslationResult(config),
+        ...(config.engine === "machine-translation" ? { engine: config.engine, provider: translations[0]?.providerId || config.provider } : {})
       };
     }
     case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
@@ -139,7 +158,7 @@ export async function handleBackgroundMessage(message, sender) {
         text: message.text,
         pageUrl: message.pageUrl || "",
         context: message.context || null,
-        depth: message.depth
+        depth: message.depth, selectionKind: message.selectionKind, temporaryMethod: message.temporaryMethod
       });
     case BACKGROUND_MESSAGES.SELECTION_EXPLAIN:
       return runSelectionExplanationRequest({
@@ -147,7 +166,7 @@ export async function handleBackgroundMessage(message, sender) {
         text: message.text,
         pageUrl: message.pageUrl || "",
         context: message.context || null,
-        depth: message.depth
+        depth: message.depth, selectionKind: message.selectionKind, temporaryMethod: message.temporaryMethod
       });
     case BACKGROUND_MESSAGES.LEXICAL_LOOKUP:
       return runLexicalLookup({

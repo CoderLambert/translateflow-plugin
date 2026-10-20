@@ -16,7 +16,7 @@
   const focusReturn = createFocusReturn();
   let root, chip, panel, sourceNode, resultNode, workspace, tabList, emptyState, statusNode, vocabularyActions,
     footerActions, retryButton, cancelButton, closeButton, activeSnapshot;
-  let translateHandler, retryHandler, explainHandler, cancelHandler, closeHandler,
+  let routingHandler, translateHandler, retryHandler, explainHandler, cancelHandler, closeHandler,
     localEmptyOptions = null, readingLayout, viewTabs;
 
   function ensureUi() {
@@ -331,7 +331,7 @@
 
   function focusPanelEntry() {
     requestAnimationFrame(() => {
-      if (!panel?.hidden && closeButton?.isConnected) {
+      if (!panel?.hidden && closeButton?.isConnected && !panel.contains(panel.getRootNode().activeElement)) {
         closeButton.focus({ preventScroll: true });
       }
     });
@@ -386,9 +386,10 @@
     position(activeSnapshot, !panel?.hidden ? panel : chip);
   }
   function onDetailsToggle(event) { if (event.target?.tagName === "DETAILS") reposition(); }
-  function position(snapshot, element) { readingLayout?.update(snapshot); positionPopover({ snapshot, element, panel }); }
+  function position(snapshot, element) { app.modules.selectionMethodControls?.render(panel, snapshot, routingHandler, chip); readingLayout?.update(snapshot); positionPopover({ snapshot, element, panel }); }
 
   app.modules.selectionPopover = {
+    setRoutingHandler(handler) { routingHandler = handler; },
     showChip,
     showLoading,
     setLoadingStatus,
@@ -410,7 +411,7 @@
     showAiDetailCancelled,
     hide,
     setCloseHandler,
-    consumeRichEscape: (event) => !panel?.hidden && isEventInsidePanel(event) && app.modules.richOxfordAdapter?.consumeEscape(event, panel),
+    consumeRichEscape: (event) => !panel?.hidden && isEventInsidePanel(event) && (app.modules.selectionMethodControls?.consumeEscape(event, panel) || app.modules.richOxfordAdapter?.consumeEscape(event, panel)),
     contains,
     isEventInsidePanel,
     reposition

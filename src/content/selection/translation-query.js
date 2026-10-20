@@ -55,6 +55,8 @@
         type: messages.background.CACHE_LOOKUP,
         requestId: task.id,
         languageSource: "selection",
+        selectionKind: snapshot.selectionKind || (options.browserTranslationAllowed ? "word" : "text"),
+        temporaryMethod: snapshot.temporaryMethod || "",
         browserTranslationAllowed: options.browserTranslationAllowed === true,
         ...(options.browserTranslationAllowed === true ? { detectionText: nativeDetectionText } : {}),
         pageUrl: snapshot.pageUrl,
@@ -110,7 +112,7 @@
           pageUrl: snapshot.pageUrl,
           pageTitle: document.title,
           configSnapshotId,
-          items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken }]
+          items: [{ sourceText: snapshot.text, translation, format: "plain", cacheToken, routeRef: translated.translations.find(item => String(item.id) === "selection")?.routeRef }]
         });
         assertCurrent(version, snapshot, expectedPage, task);
         if (!stored?.ok && !app.modules.runtime.isCachePersistenceError?.(stored)) {
@@ -122,7 +124,7 @@
       }
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-      const card = buildTranslationResult(translation, lookup);
+      const card = buildTranslationResult(translation, translated);
       showResult(snapshot, card);
       onResult(queryRecord, readingTranslation(translation, translated.readingResult || lookup.readingResult));
       if (cacheWarning) app.modules.runtime.showToast(t("content.selection.cacheNotSaved"), "error");

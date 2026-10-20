@@ -2,7 +2,7 @@
 
 ## 范围
 
-Chrome 内置本地翻译适用于整页、字幕和符合条件的单词划词，不适用于短语或长选区。无 AI 配置时，这些流程会在用户点击准备后使用本地翻译；已配置 AI 时仍优先使用 AI，AI 失败后也只在用户明确点击时切换。单词划词命中词典时仍优先显示词典。划词资格统一使用 resolver 的 lexical intent 和 `tokenCount === 1`，词典未命中后的翻译按钮也遵守此条件；当前请求的允许标记为 false 或缺失时，不因文本短或此前切换过浏览器翻译而放开。显式启用的免费在线机器翻译仍可处理普通划词（含短语）；此模式失败不自动转浏览器或付费 AI。
+Chrome 本地是单词查词与句段／全文各自可选的唯一方式之一，支持单词、短语、句子、段落和全文。选择与资源状态分开：安装词典、配置 AI 或准备本地模型不改变已保存选择。失败保留当前方式；划选面板允许只对当前操作临时切换。词典只有在明确选中时查询；不存在词典优先或 AI 失败后自动跨方式备用。字幕保留既有独立路径。配置与迁移规则见 [翻译偏好](PROVIDERS.md#翻译偏好与执行方式)。
 
 ## 设置页一次准备
 
@@ -10,7 +10,7 @@ Chrome 内置本地翻译适用于整页、字幕和符合条件的单词划词�
 
 校验不是语义质量评分，也不是磁盘模型清单。界面显示的是本次实际 API 调用结果。Chrome 的设备限制、模型下载、用户激活及资源清理仍适用。释放 JS 实例不会删除 Chrome 语言包。
 
-准备失败时，每个模型会结束初始化/下载状态，区分失败模型与因整轮停止而取消的模型；点击“重试准备”可以重新开始。展开“Chrome 诊断信息”可查看失败模型、扩展错误代码和浏览器异常名称，不展示原始异常消息或选词内容。更换校验语言对会清除上一轮结果；关闭基础翻译会释放实例并清除过期的就绪显示。
+准备失败时，每个模型会结束初始化/下载状态，区分失败模型与因整轮停止而取消的模型；点击“重试准备”可以重新开始。展开“Chrome 诊断信息”可查看失败模型、扩展错误代码和浏览器异常名称，不展示原始异常消息或选词内容。更换校验语言对会清除上一轮结果；切换已保存偏好会取消旧任务，模型准备操作不会修改偏好。
 
 ## 阅读时的交互
 
@@ -22,7 +22,9 @@ Chrome 内置本地翻译适用于整页、字幕和符合条件的单词划词�
 
 Content 和 Options 使用同一个运行时实现：一个检测器、最多两个语言对，共享创建、串行实例使用、独立请求取消、忙碌容量队列、有界等待及空闲回收。创建预算180秒，推理/队列预算30秒，取消后最多等待1.5秒排空卡住的推理；低内存设备实例空闲60秒、其余120秒释放。接口支持普通译文与仅流式返回的模型实现，最终仍返回完整字符串。
 
-**共享环境是用户主动打开的设置页，不是 Offscreen。** 保持设置页打开时，多个阅读标签页可通过带来源校验的扩展 Port 共享已就绪模型；关闭后回到页面执行，必要时明确提示重新准备。不存在的共享页不会自动打开。来自网页的消息不能在设置页发起语言包下载。正常/隐身上下文不共享模型主机。当前没有新增权限、隐藏窗口、MAIN-world桥接或其它推理引擎。
+**共享环境是用户主动打开的设置页，不是 Offscreen。** 保持设置页打开时，多个阅读标签页的单词查询可通过带来源校验的扩展 Port 共享已就绪模型；关闭后回到页面执行，必要时明确提示重新准备。不存在的共享页不会自动打开。来自网页的消息不能在设置页发起语言包下载。正常/隐身上下文不共享模型主机。当前没有新增权限、隐藏窗口、MAIN-world桥接或其它推理引擎。
+
+短语、句子、段落及全文使用 Content 自己的同一运行时，不走仅接受单词的共享 Port；不通过放宽 Port 合同或隐藏页面复用模型。
 
 因此，这与 FluentRead 的常驻 Offscreen 实现不是完全相同的生命周期：关闭设置页后不保留跨标签共享；页面执行仍可能受 HTTPS/Permissions Policy 影响。这是明确保留的架构边界，不应在发布说明中宣称已完全消除。
 
@@ -34,12 +36,12 @@ Content 和 Options 使用同一个运行时实现：一个检测器、最多两
 
 ## English
 
-Chrome native translation supports pages, subtitles and eligible single-word selections; phrases and longer selections use AI or explicitly enabled online machine translation. When AI is configured it remains preferred, and switching after an AI failure requires an explicit user click. Without AI, local translation starts only after the user clicks prepare. Settings → General → Chrome local models prepares detector and translator together, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
+Chrome native translation is an explicit choice for words, phrases, sentences, paragraphs and pages. Saved word and text choices are independent and are not changed by resource preparation. Failures retain the selected method; selection controls can switch for one operation. Subtitles keep their independent route. Settings prepares detector and translator together from a real click and verifies a synthetic sentence, without changing either preference.
 
 For word selections, a non-sensitive bounded source sentence can supplement language evidence. Conflicts and incompatible scripts remain uncertain; only the selected word is translated/cached. Context is not sent to an AI provider. Local corrections are scoped to the word and its context.
 
 Failed preparation ends each model's active status and identifies the failed model separately from its cancelled peer. Retry starts a new attempt. The expandable Chrome diagnostic shows only the model, error code and safe browser exception name. Changing the test pair clears the previous result; disabling browser definitions releases the models and clears stale readiness.
 
-While the user-opened Settings page stays open, a validated extension Port broker shares its ready models across tabs. Closing Settings restores page-local execution. No hidden document, Offscreen reason, new permission or alternative local model is added; cross-tab sharing is intentionally not persistent after Settings closes. Remote messages cannot authorize model downloads. Pending preparation stores only language pairs/timestamps in session storage (bounded and expiring).
+While the user-opened Settings page stays open, a validated extension Port broker shares its ready models for single-word lookups. Text selections and pages execute locally in Content with the same runtime and never widen that Port contract. Closing Settings restores page-local execution. No hidden document, Offscreen reason, new permission or alternative local model is added; cross-tab sharing is intentionally not persistent after Settings closes. Remote messages cannot authorize model downloads. Pending preparation stores only language pairs/timestamps in session storage (bounded and expiring).
 
 The shared runtime includes independent cancellation, bounded resource waiting, inference timeouts, idle eviction, streaming-result compatibility and late-result cleanup. Existing AI/dictionary/reading/cache contracts remain unchanged. Real model download, offline behavior and translation quality still require the user's Chrome acceptance.

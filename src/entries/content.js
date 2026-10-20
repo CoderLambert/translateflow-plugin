@@ -69,6 +69,7 @@ import "../content/selection/result-renderer.js";
 import "../content/selection/ai-persistence-view.js";
 import "../content/selection/ai-detail.js";
 import "../content/selection/vocabulary-actions.js";
+import "../content/selection/method-controls.js";
 import "../content/selection/popover.js";
 import "../content/selection/rich-lookup-identity.js";
 import "../content/selection/rich-details.js";

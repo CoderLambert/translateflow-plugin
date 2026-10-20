@@ -1,5 +1,6 @@
 import "../src/content/selection/ai-persistence-view.js";
 import "../src/content/selection/ai-detail.js";
+import "../src/content/selection/method-controls.js";
 import "../src/content/selection/popover.js";
 import "../src/content/selection/rich-details.js";
 import "../src/content/selection/record-access.js";
