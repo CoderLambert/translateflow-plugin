@@ -406,10 +406,10 @@
     },
     {
       "task": "selection-browser-routing",
-      "status": "working",
+      "status": "changes_requested",
       "dependencies": [],
       "branch": "fix/selection-browser-routing",
-      "candidateHead": null
+      "candidateHead": "cfd57bf34f867009561e3ea3cf0471d785047bd6"
     },
     {
       "task": "selection-vocabulary-book-v1",

@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "selection-browser-routing",
-  "status": "working",
+  "status": "changes_requested",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/selection-browser-routing",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-selection-routing",
-  "candidateHead": null,
+  "candidateHead": "cfd57bf34f867009561e3ea3cf0471d785047bd6",
   "mergeHead": null,
   "artifactRequired": true,
   "validationCommands": [
@@ -26,6 +26,14 @@
       "test:wxt:smoke"
     ],
     [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "TF_SMOKE_REPORT=.wxt/reports/standard-browser-smoke.json",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
       "npm",
       "run",
       "test:e2e",
@@ -35,5 +43,5 @@
       "e2e/selection-rich-lookup-cancel.spec.mjs"
     ]
   ],
-  "nextAction": "定向回归后提交候选、冻结，运行完整验收与独立审查。"
+  "nextAction": "完整 validate 的 Node 阶段 1909/1910；已生成所需 Reading classic 投影且定向测试 PASS，补交投影后重新冻结验收。"
 }

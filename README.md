@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.36
+# TranslateFlow v0.8.37
 
 轻量、缓存优先的 Chrome Manifest V3 双语网页翻译扩展。无 AI 配置时，用户可点击准备后使用 Chrome 本地翻译处理整页、符合条件的单词划词和字幕；也可主动启用免 Key 的免费在线网页及划词翻译。已配置 AI 时仍优先使用 AI；短语和较长选区可使用 AI 或显式启用的免费在线翻译；本地词典仍为可选功能。保留英文原文，在原段落中展示中文译文；直接支持 OpenAI、Anthropic、Gemini 与主流 OpenAI-compatible API，并按“规范化 URL + 有效翻译配置 + 原文指纹”缓存翻译结果。
 
