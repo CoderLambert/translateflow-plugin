@@ -3,11 +3,11 @@
   if (!app?.modules.runtime || !app?.modules.contentI18n || !app?.modules.youtubeSubtitleSource || !app?.modules.subtitlePipeline || !app?.modules.subtitleRenderer || app.modules.subtitleController) return;
 
   const { messages, sendRuntimeMessage } = app.modules.runtime;
-  const i18n = app.modules.contentI18n;
-  const t = (key) => i18n.t(key);
+  const t = (key) => app.modules.contentI18n.t(key);
   const { createYouTubeSubtitleSource, PLAYER_SELECTORS } = app.modules.youtubeSubtitleSource;
-  const { createSubtitlePipeline } = app.modules.subtitlePipeline;
+  const { createSubtitlePipeline, subtitleScopeKey } = app.modules.subtitlePipeline;
   const { createSubtitleRenderer, MODES, SIZES } = app.modules.subtitleRenderer;
+  const { normalizeSnapshot } = app.modules.subtitleSource;
 
   function isYouTubePage() { return /(^|\.)youtube\.com$/i.test(location.hostname) && /^\/(?:watch|shorts\/)/.test(location.pathname); }
 
@@ -19,6 +19,9 @@
     pipelineOptions = {}
   } = {}) {
     let source = null, pipeline = null, started = false, mediaId = "", mode = "bilingual", size = "standard", presetContext = null;
+    let lifecycle = 0, configRead = 0, pipelineVersion = 0;
+    let current = null, frameKey = "", scopeKey = "", knownCues = false;
+    const visibleResults = new Map();
     const renderer = rendererFactory({
       onModeChange: (value) => setMode(value).catch(() => {}),
       onSizeChange: (value) => setSize(value).catch(() => {}),
@@ -26,17 +29,22 @@
     });
 
     function findPlayer() { for (const selector of PLAYER_SELECTORS) { const node = document.querySelector(selector); if (node) return node; } return null; }
+    function alive(version) { return started && version === lifecycle; }
+    function translates() { return mode !== "original" && mode !== "off"; }
+    function clearFrame() { current = null; frameKey = ""; visibleResults.clear(); renderer.clear(); }
 
     function createPipeline() {
+      const version = ++pipelineVersion;
       return pipelineFactory({
         ...pipelineOptions,
-        onTranslation: consumeTranslation,
-        onState: consumeState
+        onTranslation(value) { if (started && version === pipelineVersion) consumeTranslation(value); },
+        onState(value) { if (started && version === pipelineVersion && translates()) consumeState(value); }
       });
     }
 
-    async function loadSettings() {
+    async function loadSettings(version) {
       const response = await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_GET });
+      if (!alive(version)) return;
       const values = response?.settings || {};
       mode = MODES.includes(values.youtubeSubtitleMode) ? values.youtubeSubtitleMode : "bilingual";
       size = SIZES.includes(values.youtubeSubtitleSize) ? values.youtubeSubtitleSize : "standard";
@@ -45,39 +53,74 @@
     }
 
     async function refreshPreset({ retranslate = false } = {}) {
-      const response = await sendRuntimeMessage({
-        type: messages.background.EFFECTIVE_CONTEXT,
-        pageUrl: location.href
-      });
+      const version = lifecycle, read = ++configRead;
+      const response = await sendRuntimeMessage({ type: messages.background.EFFECTIVE_CONTEXT, pageUrl: location.href });
+      if (!alive(version) || read !== configRead) return presetContext;
       if (!response?.ok) throw new Error(t("content.subtitle.configReadFailed"));
       presetContext = response.context || {};
       renderer.setPresetContext(presetContext);
-      if (retranslate && started && mode !== "off") {
-        renderer.renderTranslation("");
+      if (retranslate) {
         await resetPipeline();
-        source?.refresh("preset-change", true);
+        if (alive(version) && read === configRead && mode !== "off") source?.refresh("preset-change", true);
       }
       return presetContext;
     }
 
-    async function resetPipeline() {
-      await pipeline?.stop();
-      pipeline = createPipeline();
+    function resetPipeline() {
+      visibleResults.clear(); renderer.renderTranslation("");
+      return pipeline?.reset();
     }
 
-    function consumeSnapshot(snapshot) {
+    function paintTranslation() {
+      const count = current?.cues?.length || 0;
+      // Untimed DOM lines are translated together; timed overlapping cues retain their order.
+      const combined = visibleResults.get("combined");
+      const lines = Array.from({ length: count }, (_, index) => visibleResults.get(index));
+      renderer.renderTranslation(translates() ? (combined ?? (lines.every(Boolean) ? lines.join("\n") : "")) : "");
+    }
+
+    function consumeSnapshot(input) {
+      if (!started) return;
+      const snapshot = normalizeSnapshot(input), nextScope = subtitleScopeKey(snapshot);
+      if (nextScope !== scopeKey) { scopeKey = nextScope; knownCues = false; clearFrame(); }
+      const nextFrame = JSON.stringify([nextScope, snapshot.cues]);
+      if (nextFrame !== frameKey) { frameKey = nextFrame; visibleResults.clear(); renderer.renderTranslation(""); }
+      current = snapshot; mediaId = snapshot.mediaId;
+      knownCues ||= snapshot.cues.length > 0;
       const player = findPlayer(); if (player) renderer.mount(player);
-      if (snapshot.mediaId !== mediaId) { mediaId = snapshot.mediaId; renderer.clear(); }
-      const original = (snapshot.cues || []).map((cue) => cue.text).filter(Boolean).join(" ");
-      renderer.renderOriginal(original);
-      if (snapshot.cues?.length) renderer.setStatus("");
+      if (mode === "off") { renderer.clear(); return; }
+      renderer.renderOriginal(snapshot.cues.map((cue) => cue.text).filter(Boolean).join(" "));
+      if (snapshot.cues.length || knownCues) renderer.setStatus("");
       else renderer.setStatusKey("content.subtitle.captionsUnavailable", "muted");
-      if (mode !== "off") pipeline?.ingest(snapshot).catch(() => renderer.setStatusKey("content.subtitle.translationFailed", "error"));
+      paintTranslation();
+      if (translates()) {
+        const version = pipelineVersion, requestedFrame = frameKey;
+        pipeline?.ingest(snapshot).catch(() => {
+          if (started && translates() && version === pipelineVersion && requestedFrame === frameKey)
+            renderer.setStatusKey("content.subtitle.translationFailed", "error");
+        });
+      }
     }
 
     function consumeTranslation({ unit, translation, engine, cacheWarning }) {
-      if (unit.mediaId !== mediaId) return;
-      renderer.renderTranslation(translation);
+      if (!started || !translates() || !current || subtitleScopeKey(unit) !== scopeKey) return;
+      const video = findPlayer()?.querySelector?.("video");
+      if (video?.seeking) return;
+      const untimed = unit.cue?.startTime === null && unit.cue?.endTime === null;
+      if (video && !untimed && (!Number.isFinite(video.currentTime)
+        || (unit.cue.startTime !== null && video.currentTime < unit.cue.startTime)
+        || (unit.cue.endTime !== null && video.currentTime >= unit.cue.endTime))) return;
+      let index;
+      if (untimed) {
+        const allUntimed = current.cues.every(cue => cue.startTime === null && cue.endTime === null);
+        if (!allUntimed || unit.text !== current.cues.map(cue => cue.text).join(" ")) return;
+        index = "combined";
+      } else {
+        index = current.cues.findIndex(cue => cue.id === unit.cue?.id && cue.text === unit.text
+          && cue.startTime === unit.cue.startTime && cue.endTime === unit.cue.endTime);
+        if (index < 0) return;
+      }
+      visibleResults.set(index, translation); paintTranslation();
       if (cacheWarning) renderer.setStatusKey("content.subtitle.cacheNotSaved", "error");
       else renderer.setStatus(engine === "browser-translator" ? t("content.basic.sourceBadge") : "");
     }
@@ -89,40 +132,60 @@
     async function start() {
       if (started || !isSupportedPage()) return false;
       started = true;
+      const version = ++lifecycle;
       try {
-        await loadSettings();
+        await loadSettings(version);
+        if (!alive(version)) return false;
         renderer.mount(findPlayer());
         pipeline = createPipeline();
-        source = sourceFactory({ onSnapshot: consumeSnapshot, subtitleMode: mode });
-        await source.start();
+        const ownSource = sourceFactory({
+          onSnapshot(snapshot) { if (alive(version)) consumeSnapshot(snapshot); }, subtitleMode: mode
+        });
+        source = ownSource;
+        await ownSource.start();
+        if (!alive(version)) { ownSource.stop(); return false; }
         return true;
       } catch (error) {
-        started = false;
-        renderer.setStatusKey("content.subtitle.controlsUnavailable", "error");
+        if (alive(version)) {
+          await stop();
+          renderer.setStatusKey("content.subtitle.controlsUnavailable", "error");
+        }
         throw error;
       }
     }
 
     async function stop() {
       if (!started) return;
-      started = false; source?.stop(); await pipeline?.stop(); source = pipeline = null; mediaId = ""; renderer.unmount();
+      started = false; lifecycle += 1; configRead += 1; pipelineVersion += 1;
+      const previousSource = source, previousPipeline = pipeline;
+      source = pipeline = null; mediaId = scopeKey = ""; knownCues = false;
+      previousSource?.stop(); clearFrame(); renderer.unmount();
+      await previousPipeline?.stop();
     }
 
     async function refreshRoute() {
-      if (isSupportedPage()) {
-        if (!started) return start();
-        await refreshPreset();
-        source?.refresh("controller-route", true); renderer.mount(findPlayer()); return true;
-      }
-      await stop(); return false;
+      if (!isSupportedPage()) { await stop(); return false; }
+      if (!started) return start();
+      const version = lifecycle;
+      await refreshPreset();
+      if (!alive(version)) return false;
+      source?.refresh("controller-route", true); renderer.mount(findPlayer()); return true;
     }
 
     async function setMode(next, { persist = true } = {}) {
       mode = renderer.setMode(next);
-      if (persist) await sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_SET, settings: { youtubeSubtitleMode: mode } });
+      const selected = mode;
+      // Revoke work before storage/RPC waits; no page-wide or shared-engine cancellation.
+      const cancelling = !translates() ? pipeline?.cancelPending() : undefined;
+      if (!translates()) renderer.renderTranslation("");
+      if (mode === "off") renderer.clear();
       source?.setMode?.(mode);
-      if (mode === "off") renderer.setStatus(""); else source?.refresh("mode-change", true);
-      return mode;
+      if (started && mode !== "off") source?.refresh("mode-change", true);
+      const saving = persist ? sendRuntimeMessage({ type: messages.background.PUBLIC_SETTINGS_SET,
+        settings: { youtubeSubtitleMode: selected } }) : Promise.resolve({ ok: true });
+      const [, saved] = await Promise.all([cancelling, saving]);
+      if (!saved?.ok) throw new Error(t("content.subtitle.configReadFailed"));
+      return selected;
     }
 
     async function setSize(next, { persist = true } = {}) {
@@ -132,30 +195,19 @@
     }
 
     async function setPreset(next) {
-      const response = await sendRuntimeMessage({
-        type: messages.background.TEMP_PRESET_SET,
-        pageUrl: location.href,
-        preset: next
-      });
+      const version = lifecycle, read = ++configRead;
+      const response = await sendRuntimeMessage({ type: messages.background.TEMP_PRESET_SET, pageUrl: location.href, preset: next });
+      if (!alive(version) || read !== configRead) return presetContext;
       if (!response?.ok) throw new Error(t("content.subtitle.presetUpdateFailed"));
       presetContext = response.context || {};
       renderer.setPresetContext(presetContext);
-      if (started && mode !== "off") {
-        renderer.renderTranslation("");
-        await resetPipeline();
-        source?.refresh("preset-change", true);
-      }
+      await resetPipeline();
+      if (alive(version) && read === configRead && mode !== "off") source?.refresh("preset-change", true);
       return presetContext;
     }
 
     return {
-      start,
-      stop,
-      refreshRoute,
-      refreshPreset,
-      setMode,
-      setSize,
-      setPreset,
+      start, stop, refreshRoute, refreshPreset, setMode, setSize, setPreset,
       getState: () => ({ started, mode, size, mediaId, presetId: presetContext?.presetId || "", presetSource: presetContext?.presetSource || "none" })
     };
   }
