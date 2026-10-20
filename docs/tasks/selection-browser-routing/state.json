@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "selection-browser-routing",
-  "status": "changes_requested",
+  "status": "blocked",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/selection-browser-routing",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-selection-routing",
-  "candidateHead": "cfd57bf34f867009561e3ea3cf0471d785047bd6",
-  "mergeHead": null,
+  "candidateHead": "907bf53e21107101107316f4df3aaa4b918471e2",
+  "mergeHead": "bc7f467aa3059d43d72289de23f1b692b84d3c46",
   "artifactRequired": true,
   "validationCommands": [
     [
@@ -43,5 +43,5 @@
       "e2e/selection-rich-lookup-cancel.spec.mjs"
     ]
   ],
-  "nextAction": "完整 validate 的 Node 阶段 1909/1910；已生成所需 Reading classic 投影且定向测试 PASS，补交投影后重新冻结验收。"
+  "nextAction": "功能修复已通过 PR #362 合入 main，独立静态复核未发现新增阻断。当前仅验收归档待完成：由原执行者同步绑定 907bf53e21107101107316f4df3aaa4b918471e2 的 acceptance、日志 hash、包 fingerprint 和审核记录；核验后关闭归档状态。不要重做功能修复或将 PR 自述补造成原始验收证据。详见 validation-report.md。"
 }
