@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "task": "youtube-subtitle-reuse-v1",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/youtube-subtitle-reuse-20261021",
+  "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "env",
+      "TF_TEST_WORKERS=1",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/youtube-subtitles.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/browser-basic-translation.spec.mjs",
+      "--retries=0"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "正式候选已通过 state 合入验收及主 Agent 自查，按准确远端 head squash 合并 PR #366。通用 smoke 既有 fixture 缺少 AI 方式配置的 FAIL 单独保留，不作为 PASS；合并后继续用户明确要求的 Ollama/本地及云端模型接入任务。"
+}

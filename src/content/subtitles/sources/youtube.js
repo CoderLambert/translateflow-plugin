@@ -8,7 +8,7 @@
     || app.modules.youtubeSubtitleSource
   ) return;
 
-  const { SOURCE_KINDS, cleanCueText, normalizeSnapshot, createSnapshotEmitter } = app.modules.subtitleSource;
+  const { SOURCE_KINDS, cleanCueText, normalizeSnapshot, createSnapshotEmitter, selectUpcomingCues } = app.modules.subtitleSource;
   const { createTextTrackSource } = app.modules.textTrackSubtitleSource;
   const protocol = app.modules.youtubeBridgeProtocol;
   const timedtext = app.modules.youtubeTimedtext;
@@ -73,7 +73,7 @@
     const onNavigation = () => refresh("spa-navigation", true);
     const onPopState = () => refresh("popstate", true);
     const onMutation = () => refresh("dom-mutation");
-    const onVideoEvent = () => refresh("media-time");
+    const onVideoEvent = event => refresh(event?.type || "media-time");
 
     function currentVideoId() {
       const fromUrl = parseYouTubeVideoId(win?.location?.href || "");
@@ -169,7 +169,7 @@
     function scheduleNextBoundary(time) {
       clearTimeout(cueTimer);
       cueTimer = null;
-      if (!mainAvailable() || !mainCues.length) return;
+      if (!mainAvailable() || !mainCues.length || videoElement?.paused || videoElement?.seeking) return;
       const boundaries = mainCues.flatMap((cue) => [cue.startTime, cue.endTime]).filter((value) => Number.isFinite(value) && value > time + 0.001);
       if (!boundaries.length) return;
       const rate = Math.max(0.1, Math.abs(Number(videoElement?.playbackRate) || 1));
@@ -187,8 +187,10 @@
         reason,
         mediaId: resolveMediaId(),
         mediaTime: time,
+        seeking: videoElement?.seeking === true,
         track: mainTrack,
-        cues: activeCuesAt(time)
+        cues: activeCuesAt(time),
+        upcomingCues: selectUpcomingCues(mainCues, time)
       }, { force });
       scheduleNextBoundary(time);
       suppressNativeCaptionLayer();
@@ -205,14 +207,14 @@
       for (const selector of CAPTION_CONTAINER_SELECTORS) {
         const container = doc.querySelector?.(selector);
         if (!container) continue;
-        const nodes = [];
         for (const segmentSelector of CAPTION_SEGMENT_SELECTORS) {
-          for (const node of Array.from(container.querySelectorAll?.(segmentSelector) || [])) {
-            if (!nodes.includes(node)) nodes.push(node);
-          }
+          const nodes = Array.from(container.querySelectorAll?.(segmentSelector) || []);
+          const text = cleanCueText(nodes.map(node => node?.textContent).filter(Boolean).join(" "));
+          // Selectors are alternatives: collecting visual-line parents together
+          // with their caption-segment children duplicates the visible words.
+          if (text) return [{ id: "yt:dom:0", startTime: null, endTime: null, text }];
         }
-        const segmentText = cleanCueText(nodes.map((node) => node?.textContent).filter(Boolean).join(" "));
-        const text = segmentText || cleanCueText(container.textContent || "");
+        const text = cleanCueText(container.textContent || "");
         if (text) return [{ id: "yt:dom:0", startTime: null, endTime: null, text }];
       }
       return [];
@@ -225,6 +227,7 @@
         reason,
         mediaId: resolveMediaId(),
         mediaTime: videoElement?.currentTime,
+        seeking: videoElement?.seeking === true,
         track: { kind: "captions", label: "YouTube caption DOM", language: "", mode: "showing" },
         cues
       }, { force });

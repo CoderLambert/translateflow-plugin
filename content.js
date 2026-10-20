@@ -15,6 +15,9 @@
       case messages.content.MACHINE_ROUTE_PROGRESS:
         if (_sender?.id === chrome.runtime.id) tasks.observeMachineProgress(message);
         return false;
+      case messages.background.CACHE_INVALIDATED:
+        if (!message.pageUrl || getPageIdentity(message.pageUrl) === getPageIdentity(location.href)) subtitleController.invalidate().catch(() => {});
+        sendResponse({ ok: true }); return false;
       case messages.background.PUBLIC_SETTINGS_CHANGED:
         handlePublicSettingsChanges(message.changes || {});
         sendResponse({ ok: true });
@@ -41,6 +44,7 @@
   });
 
   function handlePublicSettingsChanges(changes) {
+    if (changes.translationConfig) subtitleController.invalidate({ retranslate: true }).catch(() => {});
     if (changes.appearance || changes.siteProfiles) appearance.refresh().catch(() => {});
     if (changes.youtubeSubtitleMode) subtitleController.setMode(changes.youtubeSubtitleMode.newValue, { persist: false }).catch(() => {});
     if (changes.youtubeSubtitleSize) subtitleController.setSize(changes.youtubeSubtitleSize.newValue, { persist: false }).catch(() => {});

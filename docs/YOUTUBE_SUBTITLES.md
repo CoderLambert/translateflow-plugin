@@ -59,7 +59,7 @@ The primary live-YouTube path runs in the page MAIN world because YouTube's play
 - observes page `fetch` and XHR calls whose URL path matches `/api/timedtext`; it reads the response body, but does not establish cryptographically that a matching request came from YouTube's player;
 - parses only `response.clone()` / completed response data and returns YouTube's original request/response unchanged;
 - uses Resource Timing only to notice matching requests and refresh player metadata; it never reads cue bodies from Resource Timing or refetches a caption URL;
-- binds every response to `videoId + generation` and rejects late responses after SPA/player changes;
+- binds every response to `videoId + generation + trackRevision` and the selected track captured at request start; rejects late responses after video or track changes, including same-video A → B → A track changes. A URL with language metadata must match the selected language and human/ASR kind;
 - after a one-second wait without a captured body, can call the YouTube player's caption module and select a track once for that video generation. Current YouTube Web subtitle requests may require a video-bound `pot`, so TranslateFlow passes only stable selection metadata (language plus ASR kind when applicable) to `setOption` and deliberately does not pass a captured/unsigned `baseUrl`; the YouTube player remains responsible for constructing the actual signed timedtext request. TranslateFlow does not author a timedtext fetch, manufacture a PO token, or nudge while subtitle mode is `off`.
 
 The Background validates the sender tab and YouTube video-page URL before installing the bridge with `chrome.scripting.executeScript({ world: "MAIN" })`. The MAIN/ISOLATED channel uses a versioned, schema-validated `window.postMessage` envelope, with a 2 MiB serialized-payload limit. This is not an authenticated channel: page scripts can observe and forge page messages, so the isolated source treats all envelopes as untrusted input. The bridge exposes no callable `chrome.*`, Provider, cache, storage, or extension network capability to page scripts.
@@ -96,11 +96,17 @@ YouTube's rendered caption DOM remains the final compatibility fallback. The ada
 - caption container: `#ytp-caption-window-container` / `.ytp-caption-window-container`;
 - caption text: `.ytp-caption-segment`, current visual-line and captions-text descendants.
 
+Caption selectors are ordered alternatives. The adapter uses the first non-empty selector result instead of joining both a segment and its parent visual line, which would duplicate the original text. The rendered host exposes the selected source as `data-tf-subtitle-source` for DOM inspection without exposing bridge URLs or credentials.
+
 These are **private YouTube implementation details**, not the primary acquisition API. A selector change must be fixed only in the YouTube adapter; #25/#26 must not depend on them for network acquisition.
 
 When a source is active and mode is not `off`, the adapter hides the caption container's native visual layer while TranslateFlow renders its cue layer. The change is limited to CSS visibility and is restored on off/stop/teardown; it is never used to acquire cues.
 
-For a captured timedtext track, the isolated source stores the complete normalized track but emits only cues active at `video.currentTime`. It updates on `timeupdate`, seeking, play/pause and rate changes, with one timer for the next cue boundary; it never renders the whole transcript.
+For a captured timedtext track, snapshots keep active cues in `cues` and separately expose `upcomingCues`: at most five known timestamped cues starting within the next twelve media seconds. Enabled TextTracks provide the same window from their full cue list, with stable cue IDs before and during playback. DOM fallback cannot provide a future window. Only active cues are rendered; the complete transcript is never displayed or sent to the Provider.
+
+The source updates on `timeupdate`, seeking, play/pause and rate changes, with one timer for the next cue boundary while playing. Paused/seeking media does not schedule that wall-clock timer; media events resume scheduling. Snapshots carry the live `seeking` flag so a seek revokes pending work within the same video/track.
+
+The existing mode/preset/size controls are hidden until the user opens the `译` button in YouTube's bottom `.ytp-right-controls`, before the native settings button. The compact panel opens above the control bar, inside the existing subtitle Shadow DOM. Escape closes it and restores focus; clicking outside or changing fullscreen closes it. A renderer-owned child-list observer reattaches the same live button after native controls reconstruction and removes stale cloned entries. It disconnects on unmount, along with document click/keyboard/fullscreen handlers. A small bottom-right fallback entry is used only while native controls are absent. Player remounts rebuild and localize the preset options. No new translation scheduler or MAIN capability is involved.
 
 ## SPA and teardown behavior
 
@@ -117,9 +123,21 @@ YouTube video identity is derived from `?v=`, `/shorts/<id>`, `/embed/<id>`, `/l
 
 ## Language and auto-caption metadata
 
-Standard `TextTrack` gives us `language`, `label`, `kind`, `id`, and `mode`. The source normalizer marks `autoGenerated: true` only when the track id/label contains an explicit auto/ASR hint; otherwise the value is `null`, not `false`.
+Standard `TextTrack` gives us `language`, `label`, `kind`, `id`, and `mode`. The source normalizer preserves explicit `autoGenerated: true` and ASR kind, or derives `true` from an explicit auto/ASR id/label hint; otherwise the value is `null`, not `false`.
 
 The MAIN bridge reports stable player track metadata, including `autoGenerated: true` for ASR/auto-generated tracks when YouTube exposes that hint. The DOM fallback cannot reliably recover source language or whether the visible caption is auto-generated from rendered text alone. It therefore reports empty language and unknown auto-generation metadata. Downstream code must not invent these values.
+
+## Translation identity and invalidation
+
+The controller checks media/track scope, active cue identity and live media time before displaying a result. The pipeline retains successful results within its bounded current scope, including DOM captions without timestamps. A → gap → A, A → B → A and original → bilingual can restore those results without a new Provider call. Local replay identity includes text; DB4 still receives its existing position/sequence identity and uses the existing effective-config cache identity.
+
+For rolling YouTube DOM captions, the normal stabilization wait remains 280 ms, with an 800 ms maximum wait while words continuously append. A returned translation may remain visible while its entire original phrase is still present in the current caption on whitespace boundaries. Appending words does not erase that translation; removing the phrase, changing scope/configuration, seeking or clearing captions does. This fallback cannot anticipate unseen subtitles or guarantee delivery before a phrase scrolls out when Provider latency exceeds its visible lifetime. Timestamped cues retain their exact identity/time checks.
+
+The subtitle effective-context request uses `surface: "subtitle"`, matching the existing AI/Chrome-local subtitle route rather than the independently selected page-translation method. Configuration and temporary-preset changes revoke old work and clear completed results before awaiting new context. Successful page/all cache removal broadcasts `CACHE_INVALIDATED`; matching subtitle controllers clear results without proactively retranslating. Subsequent authorized source observations can translate again.
+
+The existing Translation Coordinator registers the subtitle consumer before configuration/cache awaits. Cancellation and config revision checks prevent a late preparation step from starting a Provider call or delivering a stale cache hit. Once a DB4 store starts, its existing write fence governs persistence; consumer cancellation does not promise rollback or prove the underlying execution resource has been released. The short-caption fix uses the same single `processQueue` for current cues and bounded lookahead. Known timed cues skip DOM stabilization, current cues sort first, and observations discard unstarted work outside the latest window. After seek/cancellation no replacement execution starts until the old transport settles; no additional scheduler, cache or concurrent prefetch executor is introduced.
+
+Failures have per-result bounded retry cooldowns of 2/5/15/30 seconds. Only failures of currently active cues produce the translation-unavailable status; a failed future cue cannot overwrite the status of a successful current translation. Successful overlapping cues remain reusable, and failure of an old cue does not block a newly queued cue. Retry requires another source observation after cooldown or a mode change; there is no automatic retry timer or new retry button.
 
 ## Verification
 
@@ -129,10 +147,11 @@ Run the repository checks and focused YouTube browser cases with:
 
 ```bash
 npm run validate
-npm run test:e2e -- e2e/subtitles.spec.mjs
+npm run build:extension:wxt
+TF_TEST_WORKERS=1 npm run test:e2e -- e2e/youtube-subtitles.spec.mjs e2e/subtitle-pipeline.spec.mjs --retries=0
 ```
 
-GitHub Actions runs `npm run validate` for PRs and main pushes. The separate Chromium E2E workflow runs `npm run test:e2e` when runtime, E2E, or related configuration files change. Since fixture tests cannot cover YouTube's live player, manually smoke-check the candidate SHA on real YouTube before release; results can vary by account, region and player rollout.
+At the reviewed baseline, the quality and Chromium E2E workflows use `workflow_dispatch`; their presence does not prove a PR has run either check. Since fixture tests cannot cover YouTube's live player, manually smoke-check the actual candidate/package on real YouTube before release; results can vary by account, region and player rollout. The current uncommitted reliability-slice evidence and remaining limits are recorded in [the implementation report](tasks/youtube-subtitle-reuse-v1/implementation-report.md); the earlier validation report remains bound to the original candidate.
 
 Before each v0.8 release candidate ships, perform a manual smoke check on real YouTube for:
 

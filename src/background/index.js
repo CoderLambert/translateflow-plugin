@@ -42,11 +42,14 @@ export function initializeBackground() {
     cancelMachineTranslations(); invalidateMachineSnapshots(); abortMachineHttp();
   });
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local") return;
-    if (["translationPreferences", "machineTranslation", "machineTranslationConsent", "siteProfiles", "targetLanguage", "browserSourceLanguage", "provider", "model", "chatgptPlanModel", "apiKey", "openAICompatible", "providerConnections", "providerCredentials", "defaultService", "prompt", "glossary", "siteGlossaries"].some(key => changes[key])) { cancelTextTranslations(); invalidateTranslationSnapshots(); }
+    const temporaryPresetChanged = areaName === "session" && Boolean(changes.temporaryPresetOverrides);
+    if (areaName !== "local" && !temporaryPresetChanged) return;
+    const configChanged = temporaryPresetChanged || ["translationPreferences", "machineTranslation", "machineTranslationConsent", "siteProfiles", "targetLanguage", "browserSourceLanguage", "provider", "model", "chatgptPlanModel", "apiKey", "openAICompatible", "providerConnections", "providerCredentials", "defaultService", "prompt", "glossary", "siteGlossaries"].some(key => changes[key]);
+    if (configChanged) { cancelTextTranslations(); invalidateTranslationSnapshots(); }
     if (changes.siteProfiles || changes.targetLanguage) { cancelMachineTranslations(); invalidateMachineSnapshots(); }
     const publicChanges = Object.fromEntries(Object.entries(changes).filter(([key]) => PUBLIC_SETTING_KEYS.has(key) || PUBLIC_SETTING_SIGNALS.has(key))
       .map(([key, change]) => [key, PUBLIC_SETTING_KEYS.has(key) ? change : { changed: true }]));
+    if (configChanged) publicChanges.translationConfig = { changed: true };
     if (!Object.keys(publicChanges).length) return;
     chrome.tabs.query({}).then(tabs => Promise.allSettled(tabs.filter(tab => Number.isInteger(tab.id)).map(tab => chrome.tabs.sendMessage(tab.id, {
       type: BACKGROUND_MESSAGES.PUBLIC_SETTINGS_CHANGED,

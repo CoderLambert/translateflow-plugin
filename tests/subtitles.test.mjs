@@ -48,7 +48,7 @@ function arrayLike(items) {
   return value;
 }
 
-function loadModules({ document, window } = {}) {
+function loadModules({ document, window, timers = {} } = {}) {
   FakeMutationObserver.instances = [];
   const context = vm.createContext({
     console,
@@ -57,6 +57,7 @@ function loadModules({ document, window } = {}) {
     MutationObserver: FakeMutationObserver,
     setTimeout,
     clearTimeout,
+    ...timers,
     document,
     window,
     __TRANSLATE_FLOW_CONTENT__: { modules: {} }
@@ -145,7 +146,7 @@ test("TextTrack source emits active cue snapshots without enabling disabled trac
   assert.equal(events.length, eventCount);
 });
 
-test("YouTube source emits only active MAIN timedtext cues and rejects stale video generations", async () => {
+test("YouTube source emits only active MAIN timedtext cues and rejects stale video generations", async t => {
   const doc = new FakeEventTarget();
   const win = new FakeEventTarget();
   win.location = { href: "https://www.youtube.com/watch?v=active-a" };
@@ -166,6 +167,7 @@ test("YouTube source emits only active MAIN timedtext cues and rejects stale vid
   const { youtubeSubtitleSource, youtubeBridgeProtocol } = loadModules({ document: doc, window: win });
   const events = [];
   const source = youtubeSubtitleSource.createYouTubeSubtitleSource({ document: doc, window: win, onSnapshot: (event) => events.push(event) });
+  t.after(() => source.stop());
   await source.start();
 
   function send(type, videoId, generation, payload) {
@@ -190,10 +192,12 @@ test("YouTube source emits only active MAIN timedtext cues and rejects stale vid
   });
   assert.equal(source.getMode(), "youtube-timedtext");
   assert.equal(events.at(-1).cues[0].text, "A one");
+  assert.deepEqual(Array.from(events.at(-1).upcomingCues || [], cue => cue.text), ["A two"]);
 
   video.currentTime = 1.5;
   video.dispatchEvent({ type: "timeupdate" });
   assert.equal(events.at(-1).cues[0].text, "A two");
+  assert.equal(events.at(-1).upcomingCues.length, 0);
 
   win.location.href = "https://www.youtube.com/watch?v=active-b";
   doc.dispatchEvent({ type: "yt-navigate-finish" });
@@ -205,6 +209,37 @@ test("YouTube source emits only active MAIN timedtext cues and rejects stale vid
     cues: [{ id: "yt:0:1000:0", startTime: 0, endTime: 1, text: "stale A" }]
   });
   assert.equal(events.length, beforeStale);
+  source.stop();
+});
+
+test("upcoming subtitle observations are bounded to five known cues within twelve seconds", () => {
+  const { subtitleSource } = loadModules();
+  const snapshot = subtitleSource.normalizeSnapshot({
+    source: "youtube-timedtext", mediaId: "youtube:window", mediaTime: 10,
+    cues: [{ id: "active", startTime: 9, endTime: 11, text: "Current" }],
+    upcomingCues: [
+      { id: "expired", startTime: 8, endTime: 9, text: "Expired" },
+      ...[22, 14, 12, 23, 16, 18, 20].map(startTime => ({ id: String(startTime), startTime, endTime: startTime + 1, text: `At ${startTime}` })),
+      { id: "untimed", text: "Not a known future cue" }
+    ]
+  });
+  assert.deepEqual(Array.from(snapshot.upcomingCues || [], cue => cue.startTime), [12, 14, 16, 18, 20]);
+  assert.deepEqual(Array.from(snapshot.cues, cue => cue.text), ["Current"]);
+  assert.equal(subtitleSource.normalizeSnapshot({ upcomingCues: snapshot.upcomingCues }).upcomingCues.length, 0);
+});
+
+test("TextTrack lookahead keeps a cue identity when it becomes active and never reads disabled tracks", () => {
+  const { textTrackSubtitleSource } = loadModules();
+  const a = { startTime: 1, endTime: 2, text: "A" }, b = { startTime: 3, endTime: 3.2, text: "B" };
+  const enabled = Object.assign(new FakeEventTarget(), { kind: "captions", mode: "showing", language: "en", cues: arrayLike([a, b]), activeCues: arrayLike([a]) });
+  const disabled = { kind: "captions", mode: "disabled", get cues() { throw new Error("disabled track read"); } };
+  const media = Object.assign(new FakeEventTarget(), { currentTime: 1.5, textTracks: Object.assign(new FakeEventTarget(), arrayLike([disabled, enabled])) });
+  const events = [], source = textTrackSubtitleSource.createTextTrackSource({ mediaElement: media, onSnapshot: event => events.push(event) });
+  source.start();
+  const upcoming = events.at(-1).upcomingCues?.[0];
+  assert.equal(upcoming?.text, "B");
+  media.currentTime = 3; enabled.activeCues = arrayLike([b]); enabled.dispatchEvent({ type: "cuechange" });
+  assert.equal(events.at(-1).cues[0].id, upcoming.id);
   source.stop();
 });
 
@@ -222,7 +257,7 @@ test("YouTube adapter isolates DOM fallback and refreshes media identity on SPA 
   });
   const captionContainer = {
     querySelectorAll(selector) {
-      if (selector !== ".ytp-caption-segment") return [];
+      if (![".ytp-caption-segment", ".caption-visual-line"].includes(selector)) return [];
       return [{ textContent: captionText }];
     }
   };
@@ -349,5 +384,29 @@ test("YouTube adapter re-emits unchanged cues when the player root is replaced",
 
   assert.equal(events.length, before + 1);
   assert.equal(events.at(-1).cues[0].text, "Stable caption");
+  source.stop();
+});
+
+test("explicit ASR metadata survives source normalization independently of localized labels", () => {
+  const { subtitleSource } = loadModules();
+  for (const track of [{ id: "yt:a.ja", label: "日本語（自動生成）", kind: "asr" }, { id: "plain", label: "未知", autoGenerated: true }]) {
+    assert.equal(subtitleSource.normalizeSnapshot({ track }).track.autoGenerated, true);
+  }
+});
+
+test("paused timedtext source does not run a wall-clock boundary loop", async () => {
+  const doc = new FakeEventTarget(), win = new FakeEventTarget(); let scheduled = 0;
+  win.location = { href: "https://www.youtube.com/watch?v=paused" };
+  const video = Object.assign(new FakeEventTarget(), { paused: true, currentTime: 1, playbackRate: 1, textTracks: Object.assign(new FakeEventTarget(), arrayLike([])) });
+  const player = { querySelector: selector => selector.startsWith("video") ? video : null };
+  doc.documentElement = player; doc.querySelector = selector => ["#movie_player", ".html5-video-player"].includes(selector) ? player : null;
+  const m = loadModules({ document: doc, window: win, timers: { setTimeout: () => { scheduled++; return scheduled; }, clearTimeout() {} } });
+  const source = m.youtubeSubtitleSource.createYouTubeSubtitleSource({ document: doc, window: win });
+  await source.start();
+  for (const [type, payload] of [["READY", {}], ["TIMEDTEXT", { format: "json3", cues: [{ id: "a", startTime: 0, endTime: 2, text: "A" }], track: null }]]) {
+    m.youtubeBridgeProtocol.post(win, { direction: m.youtubeBridgeProtocol.DIRECTIONS.MAIN_TO_ISOLATED, type, videoId: "paused", generation: 1, observedAt: 1, payload });
+  }
+  assert.equal(source.getSnapshot().cues[0].text, "A"); assert.equal(scheduled, 0);
+  video.paused = false; video.dispatchEvent({ type: "play" }); assert.equal(scheduled, 1);
   source.stop();
 });

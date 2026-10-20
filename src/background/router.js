@@ -23,7 +23,7 @@ import { testSavedProviderConnection } from "./provider-connection-runtime.js";
 import { readPublicSettings, writePublicSettings } from "./public-settings.js";
 import { readQuickControlPosition, saveQuickControlPosition } from "./quick-control-position.js";
 import { assertMachinePlanInputs, bindMachinePlanResults } from "./cache/machine-translation-plan.js";
-import { resolveEffectiveConfigSnapshot, machineRouteSnapshot } from "./effective-config-snapshots.js";
+import { resolveEffectiveConfigSnapshot, machineRouteSnapshot, getTranslationConfigRevision } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { readTranslationPreferences, saveTranslationPreferences, assertOnlineConsent } from "./translation-preferences.js";
 import { assertTranslationUiSender } from "./machine-translation-settings.js";
@@ -206,10 +206,10 @@ export async function handleBackgroundMessage(message, sender) {
       else await chrome.runtime.openOptionsPage();
       return { opened: true };
     case BACKGROUND_MESSAGES.EFFECTIVE_CONTEXT:
-      return { context: await getEffectiveContext(message.pageUrl) };
+      return { context: { ...await getEffectiveContext(message.pageUrl, { surface: message.surface }), translationRevision: getTranslationConfigRevision() } };
     case BACKGROUND_MESSAGES.TEMP_PRESET_SET:
       await setTemporaryPresetOverride(message.pageUrl, message.preset);
-      return { context: await getEffectiveContext(message.pageUrl) };
+      return { context: { ...await getEffectiveContext(message.pageUrl, { surface: message.surface }), translationRevision: getTranslationConfigRevision() } };
     case BACKGROUND_MESSAGES.SITE_PRESET_SAVE:
       return { context: await saveSitePreset(message.pageUrl, message.preset) };
     case BACKGROUND_MESSAGES.YOUTUBE_BRIDGE_INSTALL:
