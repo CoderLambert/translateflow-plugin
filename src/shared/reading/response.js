@@ -37,6 +37,10 @@ export function validateRecordingState(value, scope, path = "recordingState") {
   return state;
 }
 function data(method, value, scope, pageLimit) {
+  if (method === M.IMPORT_START) { object(value, ["importId"], "data"); return { importId: id(value.importId, "data.importId") }; }
+  if (method === M.IMPORT_CHUNK) { object(value, ["sequence"], "data"); return { sequence: integer(value.sequence, 0, L.totalBytes, "data.sequence") }; }
+  if (method === M.IMPORT_CANCEL) { object(value, ["cancelled"], "data"); return { cancelled: choice(value.cancelled, [true], "data.cancelled") }; }
+  if (method === M.IMPORT_FINISH) { object(value, ["imported", "skipped"], "data"); return { imported: integer(value.imported, 0, L.records, "data.imported"), skipped: integer(value.skipped, 0, L.records, "data.skipped") }; }
   if (method === M.BEGIN_QUERY) {
     object(value, value?.state === "ready" ? ["state", "token"] : ["state"], "data");
     const state = choice(value.state, ["ready", "disabled"], "data.state");

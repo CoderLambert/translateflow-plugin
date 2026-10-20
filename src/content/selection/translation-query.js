@@ -124,7 +124,7 @@
       }
 
       tasks.completeTask(task, { done: 1, apiTranslated: 1 });
-      const card = buildTranslationResult(translation, translated);
+      const card = buildTranslationResult(translation, { ...lookup, ...translated });
       showResult(snapshot, card);
       onResult(queryRecord, readingTranslation(translation, translated.readingResult || lookup.readingResult));
       if (cacheWarning) app.modules.runtime.showToast(t("content.selection.cacheNotSaved"), "error");

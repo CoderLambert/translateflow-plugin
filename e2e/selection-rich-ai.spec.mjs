@@ -1,7 +1,6 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 import { makeRichMdx } from "../tests/helpers/rich-mdict-fixture.mjs";
 
-test.use({ lexiconPacks: "missing" });
 test("rich dictionary hits retain lazy AI tabs, dictionary content and stale-answer isolation", async ({ harness }, testInfo) => {
   test.setTimeout(90_000);
   const headword = "noted";

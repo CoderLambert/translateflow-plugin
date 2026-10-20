@@ -50,7 +50,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
 
     const reopened = await harness.open("/article");
     await harness.inject(reopened);
-    await reopened.waitForTimeout(600);
+    await expect.poll(() => incrementalState(harness, reopened)).toMatchObject({ auto: false, cacheRestore: false, idle: true, observing: false });
 
     await expect(reopened.locator(".abt-translation")).toHaveCount(0);
     expect(harness.server.calls).toHaveLength(2);
@@ -102,6 +102,12 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator("#restored-dynamic .abt-translation")).toBeVisible();
     expect(harness.server.calls).toHaveLength(2);
 
+    await harness.serviceWorker.evaluate(missingText => {
+      globalThis.__restoreCacheMissObserved = false;
+      chrome.runtime.onMessage.addListener(message => {
+        if (message.type === "CACHE_LOOKUP" && message.cacheOnly && message.segments?.some(item => item.text === missingText)) globalThis.__restoreCacheMissObserved = true;
+      });
+    }, missingText);
     await page.evaluate((text) => {
       const paragraph = document.createElement("p");
       paragraph.id = "restore-miss";
@@ -109,12 +115,13 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
       document.querySelector("main").appendChild(paragraph);
     }, missingText);
 
-    await page.waitForTimeout(800);
+    await expect.poll(() => harness.serviceWorker.evaluate(() => __restoreCacheMissObserved)).toBe(true);
+    await expect.poll(() => incrementalState(harness, page)).toMatchObject({ cacheRestore: true, auto: false, idle: true });
     await expect(page.locator("#restore-miss .abt-translation")).toHaveCount(0);
     expect(harness.server.calls).toHaveLength(2);
 
     await harness.setStorage({ cacheRestoreSites: [] });
-    await page.waitForTimeout(100);
+    await expect.poll(() => incrementalState(harness, page)).toMatchObject({ auto: false, cacheRestore: false, idle: true, observing: false });
     await page.evaluate((text) => {
       const paragraph = document.createElement("p");
       paragraph.id = "restore-disabled";
@@ -122,7 +129,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
       document.querySelector("main").appendChild(paragraph);
     }, dynamicText);
 
-    await page.waitForTimeout(800);
+    await expect.poll(() => incrementalState(harness, page)).toMatchObject({ auto: false, cacheRestore: false, idle: true, observing: false });
     await expect(page.locator("#restore-disabled .abt-translation")).toHaveCount(0);
     expect(harness.server.calls).toHaveLength(2);
   });
@@ -316,7 +323,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     expect(harness.server.calls.every(call => call.model === "site-mock-model" && call.systemPrompt.includes("Japanese"))).toBe(true);
   });
 
-  test("selection controls are isolated, avoid page-cache reuse, and resolve local lexicon without Provider calls", async ({ harness }) => {
+  test("selection isolates sentence translation, explicit word lookup and page-cache provenance", async ({ harness }) => {
     await harness.installUserDictionaries();
     const page = await harness.open("/selection");
     await page.addStyleTag({ content: `button, .tf-selection-chip, .tf-selection-panel { display: none !important; color: rgb(255, 0, 0) !important; font-size: 1px !important; }` });
@@ -363,6 +370,11 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await clearSelection(page);
     await selectElementText(page, "#lexical");
     await page.locator(".tf-selection-chip").click();
+    await expect(page.locator(".tf-selection-translation-meaning")).toHaveText("WRONG PAGE CACHE");
+    expect(harness.server.calls).toHaveLength(1);
+    await page.getByText("切换方式", { exact: true }).click();
+    await page.getByRole("button", { name: "这是单词？改按单词查词", exact: true }).click();
+    await page.getByRole("button", { name: "用词典查词", exact: true }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("终端复用器");
     await expect(page.locator(".tf-selection-source")).toBeHidden();
     await expect(page.locator(".tf-selection-result")).not.toContainText("WRONG PAGE CACHE");
@@ -393,7 +405,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-status")).toHaveAttribute("data-kind", "info");
     await expect(page.locator(".tf-selection-status")).toHaveText("");
     await expect(page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "使用普通翻译处理这个词" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "使用普通翻译处理这个词" })).toHaveCount(0);
     expect(harness.server.calls).toHaveLength(0);
 
     await page.getByRole("tab", { name: "AI 理解：解释这里是什么意思" }).click();
@@ -424,7 +436,8 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
       }
     });
 
-    await page.getByRole("button", { name: "使用普通翻译处理这个词" }).click();
+    await page.getByText("切换方式", { exact: true }).click();
+    await page.getByRole("button", { name: "用 AI 查词", exact: true }).click();
     await expect(page.locator(".tf-selection-result")).toContainText("[DEFAULT|PLAIN] TFNoSuchLexeme");
     expect(await page.evaluate(() => window.__tfCompetingSelectionEvents)).toEqual([]);
     expect(harness.server.calls).toHaveLength(2);
@@ -524,7 +537,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     const result = page.locator(".tf-selection-result");
     await expect(result).toHaveAttribute("data-result-kind", "technical");
     await expect(result).toContainText("tmux");
-    await expect(result).toContainText("技术词条");
+    await expect(result).toContainText("词典释义 · local-e2e-user-concepts");
     await expect(result).toContainText("terminal multiplexer");
     await expect(page.locator(".tf-selection-dictionary-entry")).toHaveCount(0);
     expect(harness.server.calls).toHaveLength(0);
@@ -600,7 +613,7 @@ test.describe("TranslateFlow MV3 smoke flows", () => {
     await expect(page.locator(".tf-selection-result > .tf-selection-primary")).toContainText("持久的");
     await expect(detail).toHaveAttribute("data-state", "success");
     await expect(detail).toContainText("streamed answer");
-    await expect(page.locator(".tf-selection-result-badge")).toContainText(["词典包 · local-e2e-user-lexical"]);
+    await expect(page.locator(".tf-selection-result-badge")).toContainText(["词典释义 · local-e2e-user-lexical"]);
     await expect(detail.locator(".tf-selection-generated-label")).toHaveText("AI · 理解");
 
     const box = await panel.boundingBox();
@@ -781,4 +794,17 @@ async function clearSelection(page) {
     selection?.removeAllRanges();
     document.dispatchEvent(new Event("selectionchange", { bubbles: true }));
   });
+}
+
+async function incrementalState(harness, page) {
+  const tabId = await harness.tabId(page);
+  return harness.driver.evaluate(async tabId => {
+    const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", func: () => {
+      const state = globalThis.__TRANSLATE_FLOW_CONTENT__?.modules?.runtime?.state;
+      return state ? { auto: state.auto, cacheRestore: state.cacheRestore,
+        idle: !state.manualRunning && !state.autoDrainRunning && !state.autoTimer && !state.startupRestorePromise && state.pending.size === 0,
+        observing: Boolean(state.mutationObserver || state.intersectionObserver) } : null;
+    } });
+    return result.result;
+  }, tabId);
 }

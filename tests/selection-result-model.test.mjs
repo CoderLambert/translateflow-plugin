@@ -169,3 +169,20 @@ test("structured result bounds candidate display without changing ranked order",
   );
   assert.match(model.copyTextForCard(card), /还有 2 个候选/);
 });
+
+test("translation cards and vocabulary drafts preserve actual online, AI and local provenance and target", async () => {
+  const model = await loadResultModel();
+  const code = await readFile(new URL("../src/content/selection/translation-actions.js", import.meta.url), "utf8");
+  const ctx = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: { modules: {} } }); vm.runInContext(code, ctx);
+  for (const engine of ["machine-translation", "ai", "browser-translator"]) for (const targetLanguage of ["ja", "fr"]) {
+    const provider = engine === "machine-translation" ? "mt-microsoft-web" : engine === "ai" ? "mock-ai" : "browser-translator";
+    const card = model.buildTranslationResult("Synthetic translated text", { engine, provider, sourceLanguage: "en", targetLanguage });
+    let entry;
+    const show = ctx.__TRANSLATE_FLOW_CONTENT__.modules.selectionTranslationActions.create({
+      showResult: (_snapshot, _card, _explain, save) => save({}), explainSnapshot() {}, vocabularyBook: { add(value) { entry = value; }, open() {} }
+    });
+    show({ text: "synthetic" }, card);
+    assert.equal(entry.sourceLanguage, "en"); assert.equal(entry.targetLanguage, targetLanguage); assert.equal(entry.sources[0].packId, provider);
+    assert.equal(entry.sources[0].sourceId, engine === "ai" ? "ai-translation" : engine);
+  }
+});

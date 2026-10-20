@@ -1,7 +1,7 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
 async function closeTestPages({ harness }) {
-  // The worker profile is shared: an earlier Settings page would register a competing model host.
+  // Close other documents in this case so only its Settings page can own the shared model host.
   for (const page of harness.context.pages()) if (page !== harness.driver) await page.close();
 }
 test.beforeEach(closeTestPages);
@@ -10,7 +10,7 @@ test.afterEach(closeTestPages);
 async function openSettings(harness, options = {}) {
   await harness.reset();
   await harness.setStorage({ provider: "deepseek", apiKey: "", providerConnections: {}, providerCredentials: {}, defaultService: null,
-    aiServiceConfigured: null, openAICompatible: { apiKey: "", baseUrl: "", model: "" }, dictionaryEnabled: false, browserTranslationEnabled: true });
+    aiServiceConfigured: null, openAICompatible: { apiKey: "", baseUrl: "", model: "" }, dictionaryEnabled: false, browserTranslationEnabled: true, translationPreferences: { version: 1, wordMethod: "browser-local", textMethod: "browser-local" } });
   const page = await harness.context.newPage();
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -113,18 +113,24 @@ test("cancelling and immediately retrying cannot display late model results", as
   expect(errors).toEqual([]);
 });
 
-test("changing the self-check pair and disabling local models clears stale success", async ({ harness }) => {
+test("changing translation preferences preserves ready resources; changing the self-check pair clears stale verification", async ({ harness }) => {
   const { page, section, errors } = await openSettings(harness);
   await section.getByRole("button", { name: "准备并校验两个模型", exact: true }).click();
   await expect(section.getByText("语言识别与翻译自检通过", { exact: true })).toBeVisible();
+  await page.getByRole("group", { name: "单词查词方式", exact: true }).getByRole("radio", { name: "词典", exact: true }).check();
+  await page.getByRole("group", { name: "句段与全文翻译方式", exact: true }).getByRole("radio", { name: "免费在线", exact: true }).check();
+  await page.locator("#mt-save").click();
+  await expect(page.getByText("翻译偏好已保存。", { exact: true })).toBeVisible();
+  await expect(section.getByText("语言识别与翻译自检通过", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => __tfNativeSettings.destroyed)).toBe(0);
+  expect((await harness.getStorage(["translationPreferences"])).translationPreferences).toEqual({ version: 1, wordMethod: "dictionary", textMethod: "free-online" });
+  await expect(page.locator("#browserTranslationEnabled")).toHaveCount(0);
   await section.getByRole("combobox", { name: "校验目标语言" }).selectOption("ja");
   await expect(section.getByText("语言识别与翻译自检通过", { exact: true })).toHaveCount(0);
   await expect(section.getByRole("textbox")).toHaveCount(0);
-  await page.locator("#browserTranslationEnabled").uncheck();
-  await expect(section).toContainText("浏览器释义已关闭");
-  await expect(section.getByRole("button", { name: "准备并校验两个模型", exact: true })).toBeDisabled();
-  await expect.poll(() => page.evaluate(() => __tfNativeSettings.destroyed)).toBe(2);
+  await expect(section.getByRole("button", { name: "准备并校验两个模型", exact: true })).toBeEnabled();
   expect(await page.evaluate(() => __tfNativeSettings.creates.length)).toBe(2);
+  expect(harness.server.calls).toHaveLength(0);
   expect(errors).toEqual([]);
 });
 

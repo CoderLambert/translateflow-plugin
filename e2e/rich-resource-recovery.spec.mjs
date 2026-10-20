@@ -18,7 +18,7 @@ test('six files ignore scripts and restart clears only abandoned staging before 
   await options.locator('#localDictionaryFiles').setInputFiles([mdx,...attachments]);
   await expect(options.locator('[data-role="ignored-scripts"]')).toHaveText('脚本已忽略，不执行。');
   await expect(options.locator('#localDictionaryImportButton')).toBeEnabled();await options.locator('#localDictionaryImportButton').click();
-  await expect(options.locator('#localDictionaryImportProgress')).toContainText('完成', {timeout:60000});
+  await expect(options.locator('#localDictionaryImportProgress')).toHaveText('完成 · 富文本词典已安装', {timeout:60000});
   let row=options.locator('#richMdictInstalledList [data-dictionary-id]').filter({hasText:'Recovery Fixture'});
   await expect(row.locator('[data-role="resource-recovery"]')).toHaveCount(0);
   const listed=await options.evaluate(message=>chrome.runtime.sendMessage(message),{type:MSG.RICH_MDICT_LIST});

@@ -67,7 +67,11 @@ export const READING_LIMITS = Object.freeze({
   exportTtlMs: 10 * 60 * 1000
 });
 
+// Worst-case per-record origin plus JSON framing; the canonical DB ceiling stays 64 MiB.
+export const READING_BACKUP_FILE_BYTES = READING_LIMITS.totalBytes + 1024 * 1024 + READING_LIMITS.records * (READING_LIMITS.urlChars + 64);
+
 export const READING_METHOD = Object.freeze({
+  IMPORT_START: "reading.import-start", IMPORT_CHUNK: "reading.import-chunk", IMPORT_FINISH: "reading.import-finish", IMPORT_CANCEL: "reading.import-cancel",
   BEGIN_QUERY: "reading.begin-query",
   SAVE_QUERY_RESULT: "reading.save-query-result",
   APPEND_ASSISTANT: "reading.append-assistant",

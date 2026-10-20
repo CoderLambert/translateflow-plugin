@@ -117,9 +117,9 @@ test.describe("Dictionary Library vNext integrated product flow", () => {
     await expect(onlyBetaCard).toHaveAttribute("open", "");
     await expect(onlyBetaCard).toHaveAttribute("data-state", "success", { timeout: 30_000 });
     await expect(onlyBetaCard).toContainText("Beta's synthetic usage panel");
-    // Successful lookup headers show the dictionary name. Source/trust metadata
+    // Successful lookup headers show the method and dictionary name. Source/trust metadata
     // remains in the installed library, whose identity was checked above.
-    await expect(onlyBetaCard.locator("summary")).toHaveText("Field Notes · Beta");
+    await expect(onlyBetaCard.locator("summary")).toHaveText("词典释义 · Field Notes · Beta");
     await expect(onlyBetaCard.locator(".tf-selection-rich-trust, .tf-selection-rich-format")).toHaveCount(0);
     const betaImage = onlyBetaCard.locator("img.tf-rich-resource-image[src^='blob:']");
     await expect(betaImage).toBeVisible({ timeout: 30_000 });

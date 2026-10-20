@@ -1,3 +1,4 @@
+import { READING_BACKUP_FILE_BYTES } from "../../shared/reading/constants.js";
 import { READING_METHOD as M, READING_LIMITS as L } from "../../shared/reading/constants.js";
 import { ReadingClient, ReadingError } from "./reading";
 import type { ExportStart, ExportChunk, ExportFinish } from "./reading";
@@ -28,7 +29,7 @@ export async function exportRecords(client: ReadingClient, signal: AbortSignal, 
       if (chunk.sequence !== sequence + 1) throw new ReadingError("READING_INTERRUPTED");
       duplicateRetries = 0;
       const part = new Blob([chunk.jsonChunk]); bytes += part.size;
-      if (bytes > L.totalBytes + 1024 * 1024) throw new ReadingError("READING_LIMIT");
+      if (bytes > READING_BACKUP_FILE_BYTES) throw new ReadingError("READING_LIMIT");
       parts.push(part); lastChunk = chunk.jsonChunk; sequence = chunk.sequence; cursor = chunk.nextCursor; progress(bytes);
     }
     check();

@@ -37,11 +37,11 @@ function* nextRow(store, name, p) {
 }
 function* segment(store, context, p) {
   const reset = (fields) => ({ ...p, offset: 0, ...fields });
-  if (p.phase === "header") return { text: `{"format":"translateflow-reading","schemaVersion":1,"exportedAt":${context.exportedAt},"records":[`, current: p, next: reset({ phase: "record" }) };
+  if (p.phase === "header") return { text: `{"format":"translateflow-reading","schemaVersion":2,"exportedAt":${context.exportedAt},"records":[`, current: p, next: reset({ phase: "record" }) };
   if (p.phase === "record") {
     const row = p.recordId ? yield store("records").get(p.recordId) : yield* firstRecord(store);
     if (!row) return { text: "]}", current: p, next: reset({ phase: "end", eof: true }) };
-    return { text: `{"record":${JSON.stringify(row.record)},"snapshots":[`, current: { ...p, recordId: row.record.recordId },
+    return { text: `{"siteKey":${JSON.stringify(row.siteKey)},"record":${JSON.stringify(row.record)},"snapshots":[`, current: { ...p, recordId: row.record.recordId },
       next: reset({ phase: "snapshots", recordId: row.record.recordId, afterId: null, rowId: null, first: true }) };
   }
   if (p.phase === "snapshots" || p.phase === "artifacts") {

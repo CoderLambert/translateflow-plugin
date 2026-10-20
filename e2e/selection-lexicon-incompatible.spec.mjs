@@ -10,7 +10,8 @@ test("incompatible user dictionaries show a diagnostic and translate only after 
   await page.locator(".tf-selection-chip").click();
   await expect(page.locator(".tf-selection-status")).toContainText("本地词典与当前扩展版本不兼容");
   expect(harness.server.calls).toHaveLength(0);
-  await page.getByRole("button", { name: "使用普通翻译处理这个词", exact: true }).click();
+  await page.getByText("切换方式", { exact: true }).click();
+  await page.getByRole("button", { name: "用 AI 查词", exact: true }).click();
   await expect(page.locator(".tf-selection-primary")).not.toBeEmpty();
   await expect(page.getByRole("tab", { name: "译文", exact: true })).toBeVisible();
   expect(harness.server.calls).toHaveLength(1);

@@ -65,6 +65,8 @@ Azure 仅支持统一的 OpenAI v1 Base URL，并按[微软 v1 Responses API 文
 
 所有翻译和缓存操作必须使用 `getEffectiveConfig(pageUrl)` 解析出的同一配置。页面批处理在首次 cache lookup 时创建短生命周期 effective-config snapshot，后续 Provider 调用和 cache store 复用同一个 snapshot，避免用户在处理中修改连接后产生混合配置。
 
+快照固定版本之前先等待 `ensureConfigInitialized()` 完成连接与翻译偏好的迁移；并发首次读取共用这次初始化，初始化结果不永久缓存。无指定版本的新查询随后重新解析有效配置，并检查解析期间版本未变；指定 `configRevision` 的恢复请求在初始化前后均校验版本，不能借初始化跨越配置失效。迁移不调用翻译服务，也不清空缓存。
+
 有效配置包含：
 
 ```js

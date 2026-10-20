@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { VocabularyBookClient, VocabularyEntry, VocabularyList, ReviewRating } from "../client/vocabulary";
 import { vocabularyBookClient, VocabularyClientError } from "../client/vocabulary";
 import type { I18n } from "../../i18n/index.js";
+import { Backup } from "../components/Backup";
 import { Button, Confirmation, Notice } from "../components/common";
 
 type Section = "wordbook" | "review";
@@ -86,6 +87,7 @@ export function VocabularyBook({ section, i18n, client = vocabularyBookClient, o
     entry.nextReviewAt > Date.now() && (next === null || entry.nextReviewAt < next) ? entry.nextReviewAt : next, null) ?? null;
 
   return <section className="vocabulary-section" aria-busy={loading}>
+    <Backup i18n={i18n} vocabulary={client} disabled={busy || loading} onImported={() => void refresh()} />
     <div className="vocabulary-heading">
       <div>
         <h2>{i18n.t(section === "review" ? "learning.reviewTitle" : "learning.wordbookTitle")}</h2>
@@ -151,7 +153,7 @@ function VocabularyAnswer({ entry, i18n, unavailableRefs, onOpenReading }: {
       <h4>{i18n.t("learning.dictionaryDefinitions")}</h4>
       <ul className="vocabulary-definitions">{entry.definitions.map(definition => <li key={definition}>{definition}</li>)}</ul>
       {entry.examples.length > 0 && <blockquote>{entry.examples.map(example => <p key={example}>{example}</p>)}</blockquote>}
-      <p className="muted">{i18n.t("learning.wordSource")}: {entry.sources.map(source => source.packId).filter((value, index, all) => all.indexOf(value) === index).join(", ")}</p>
+      <p className="muted">{i18n.t("learning.wordSource")}: {entry.sources.map(source => source.sourceId === "ai-translation" && source.packId === "translation-v1" ? i18n.t("learning.legacyTranslationSource") : source.sourceId === "machine-translation" ? i18n.t("mt.sourceOnline", { service: i18n.t(`mt.service.${source.packId}` as Parameters<typeof i18n.t>[0]) }) : source.sourceId === "browser-translator" ? i18n.t("mt.sourceBrowser") : source.sourceId === "ai-translation" ? i18n.t("mt.sourceAi") : source.packId).filter((value, index, all) => all.indexOf(value) === index).join(", ")}</p>
     </section>}
     {notes.length > 0 && <section className="vocabulary-ai-notes">
       <h4>{i18n.t("learning.aiNotes")}</h4>

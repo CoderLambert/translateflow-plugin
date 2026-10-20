@@ -1,6 +1,7 @@
 import { normalizeUrl } from "../shared/url.js";
 import { translationConfig } from "./browser-translation.js";
 import { MACHINE_ENGINE } from "../shared/machine-translation.js";
+import { ensureConfigInitialized } from "./config.js";
 
 const snapshots = new Map();
 let revision = crypto.randomUUID();
@@ -9,6 +10,8 @@ const MAX_SNAPSHOTS = 256;
 
 export async function createEffectiveConfigSnapshot(pageUrl, options = {}, sender = null) {
   prune();
+  if (options?.configRevision && options.configRevision !== revision) throw expired();
+  await ensureConfigInitialized();
   if (options?.configRevision && options.configRevision !== revision) throw expired();
   const expected = revision;
   const resolved = await translationConfig(pageUrl, options);

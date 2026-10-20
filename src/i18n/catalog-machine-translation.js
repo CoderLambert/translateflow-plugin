@@ -1,4 +1,9 @@
 export const en = Object.freeze({
+  "mt.cooldownHelp": "Wait for recovery or choose another service above and save. No automatic retry is sent.",
+  "mt.withdraw": "Save withdrawal for this site",
+  "mt.withdrawn": "Online consent withdrawn for this site. Word lookup follows global settings.",
+  "mt.recoverSettings": "Open settings to authorize or prepare the selected service",
+  "mt.consentScope": "Save unchecked to withdraw global online consent. Word lookup and sites following the default will stop uploading. Explicit site consent is managed in that site’s popup.",
   "mt.switchMethod": "Switch method",
   "mt.switchMethodLabel": "Switch method, current: {method}",
   "mt.changeDefault": "Change default method",
@@ -113,6 +118,11 @@ export const en = Object.freeze({
 });
 
 export const zh_CN = Object.freeze({
+  "mt.cooldownHelp": "可等待恢复，或在上方手动选择其他服务并保存。系统不会定时联网重试。",
+  "mt.withdraw": "保存撤回本站联网同意",
+  "mt.withdrawn": "已撤回本站联网同意。单词查词仍使用全局设置。",
+  "mt.recoverSettings": "前往设置，授权或准备所选服务",
+  "mt.consentScope": "取消勾选并保存可撤回全局联网同意。单词查词和跟随默认的网站将停止上传；本站单独的同意请在该网站的 Popup 中撤回。",
   "mt.switchMethod": "切换方式",
   "mt.switchMethodLabel": "切换方式，当前：{method}",
   "mt.changeDefault": "修改默认方式",

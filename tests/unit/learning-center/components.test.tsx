@@ -84,7 +84,7 @@ test("wordbook separates dictionary facts from AI notes and keeps a missing Read
     review: vi.fn(), remove: vi.fn() };
   const open = vi.fn(async () => false);
   render(<VocabularyBook section="wordbook" i18n={i18n} client={client as any} onOpenReadingRef={open} />);
-  expect(await screen.findByRole("heading", { name: "Dictionary definitions" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Saved meanings" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "AI learning notes" })).toBeTruthy();
   expect(screen.getByText("Understanding")).toBeTruthy();
   expect(screen.getByText("mock · mock-model")).toBeTruthy();

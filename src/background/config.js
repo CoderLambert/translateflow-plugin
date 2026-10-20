@@ -40,9 +40,20 @@ import {
 } from "./preset-session.js";
 import { ensureProviderConnections } from "./provider-connections.js";
 
+let initializingConfig;
+// Join migration writes before consumers capture a revision. Do not memoize the
+// result: storage can be restored or changed while the worker remains alive.
+export async function ensureConfigInitialized() {
+  if (initializingConfig) return initializingConfig;
+  initializingConfig = (async () => {
+    await ensureProviderConnections();
+    await ensureTranslationPreferences();
+  })();
+  try { await initializingConfig; } finally { initializingConfig = null; }
+}
+
 export async function getConfig() {
-  await ensureProviderConnections();
-  await ensureTranslationPreferences();
+  await ensureConfigInitialized();
   const stored = await chrome.storage.local.get(CONFIG_KEYS);
   return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...stored, dictionaryEnabled: stored.dictionaryEnabled ?? await inferInstalledDictionaryPreference() });
 }
@@ -143,8 +154,7 @@ export async function ensureConfigDefaults() {
     if (current[key] === undefined && !Object.hasOwn(missing, key)) missing[key] = value;
   }
   if (Object.keys(missing).length) await chrome.storage.local.set(missing);
-  await ensureProviderConnections();
-  await ensureTranslationPreferences();
+  await ensureConfigInitialized();
   return normalizeStoredConfig({ ...DEFAULT_CONFIG, ...current, ...missing, ...await chrome.storage.local.get(CONFIG_KEYS) });
 }
 

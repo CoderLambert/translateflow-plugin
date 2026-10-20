@@ -22,7 +22,7 @@ test("Reading handoff opens the exact saved page and target Content consumes one
     // The native install handler can commit defaults after its worker becomes visible.
     await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
       .toEqual({ uiLocale: "zh_CN" });
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [],
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, autoSites: [], cacheRestoreSites: [],
       quickControlSites: [], quickControlHiddenSites: [], readingMemorySites: [] }));
 
     await installUserDictionaries(driver);

@@ -8,6 +8,7 @@ import { prepare, validatedWrite, append, cancel, cancellationInput } from "./wr
 import { manage } from "./management.js";
 import { read, queryIdentity } from "./query.js";
 import { open, exportState, chunk, finish } from "./export-reader.js";
+import { restore } from "./restore.js";
 import { readHandoffTarget } from "./handoff-target.js";
 
 // Pure/lazy factory. Reading data has no relationship to cache-db, OPFS or chrome.storage.
@@ -111,6 +112,8 @@ export function createReadingRepository({ now = Date.now, randomId = () => crypt
       const revisions = context.access.scope === "content" ? { pageRevision: (yield* pageState(store, context.access.pageKey)).pageRevision } : { catalogRevision: meta.catalogRevision };
       return { protocolVersion: 2, type: "reading.invalidate", dataGeneration: meta.dataGeneration, consentGeneration: meta.consentGeneration, ...revisions };
     }); },
+    prepareImport(context) { return run("readonly", context, function* (store) { const meta = yield* state(store); policy(meta, context); return meta.exportRevision; }); },
+    async restoreImport(context) { const result = await run("readwrite", context, store => restore(store, context)); if (result.imported) published(); return result; },
     openExport(context) { return run("readonly", context, (store) => open(store, context, now())); },
     checkExport(context) { return run("readonly", context, function* (store) { yield* exportState(store, context); }); },
     readExportChunk(context) { return run("readonly", context, (store) => chunk(store, context)); },

@@ -2,7 +2,6 @@ import { test, expect } from "./support/extension-fixture.mjs";
 import { mkdir } from "node:fs/promises";
 
 const evidence = "docs/task-execution/local/quick-control-position";
-test.use({ lexiconPacks: "missing" });
 test.beforeEach(async ({ harness }) => { await harness.reset(); });
 
 async function openControl(harness) {

@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "task": "test-coverage-maintenance",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/product-completeness-20261020",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/cache-system-mv3.spec.mjs",
+      "e2e/product-completeness.spec.mjs",
+      "--retries=0"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/translation-preferences.spec.mjs",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/translateflow.spec.mjs",
+      "e2e/native-model-preparation.spec.mjs",
+      "--retries=0"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "缓存首次查询竞态及三项失败已修复；完整 validate PASS（1972 Node、80 Vitest），定向 Chromium 49 PASS / 1 真实模型 SKIP，新增 AI/本地多语种缓存收藏重启覆盖。见 validation-report.md；未提交、推送、合并或替换用户安装目录。"
+}

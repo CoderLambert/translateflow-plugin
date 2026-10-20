@@ -17,6 +17,8 @@ test.describe("v0.8 release-gate browser flows", () => {
     const page = await harness.open("/article");
     const tabId = await harness.tabId(page);
     await harness.driver.evaluate(({ tabId }) => chrome.tabs.update(tabId, { active: true }), { tabId });
+    // Open the popup for the selected reading tab, as a real toolbar click does.
+    await popup.reload();
 
     await popup.locator("#translate").click();
     await expect.poll(() => page.locator(".abt-translation").count()).toBeGreaterThan(0);

@@ -223,7 +223,7 @@
       popover.showError(
         snapshot,
         cancelled ? "content.selection.cancelled" : failureMessage(error, resolved),
-        (event) => translateSnapshot(snapshot, { event })
+        (event) => translateSnapshot(snapshot, { event }), null, null, error?.code
       );
     }
   }

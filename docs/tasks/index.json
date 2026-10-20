@@ -295,6 +295,13 @@
       "candidateHead": "4b5b160bd7fbd92c4766be67876e95ef2a466468"
     },
     {
+      "task": "configured-automation",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "fix/product-completeness-20261020",
+      "candidateHead": null
+    },
+    {
       "task": "content-runtime-closeout",
       "status": "completed",
       "dependencies": [],
@@ -343,6 +350,13 @@
       "dependencies": [],
       "branch": "main",
       "candidateHead": "c77e52e9f5e25e4436111bcf16cf628eef7f1dc3"
+    },
+    {
+      "task": "product-completeness",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "fix/product-completeness-20261020",
+      "candidateHead": null
     },
     {
       "task": "remove-bundled-lexicons",
@@ -444,8 +458,15 @@
       "candidateHead": "77a4a90f7d426d57c5bb27d495cf3e98b249ae3b"
     },
     {
-      "task": "translation-method",
+      "task": "test-coverage-maintenance",
       "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "fix/product-completeness-20261020",
+      "candidateHead": null
+    },
+    {
+      "task": "translation-method",
+      "status": "completed",
       "dependencies": [],
       "branch": "fix/simplify-translation-method-20261020",
       "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83"

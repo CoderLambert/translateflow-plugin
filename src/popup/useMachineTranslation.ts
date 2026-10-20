@@ -46,6 +46,13 @@ export function useMachineTranslation(i18n: I18n, enabled: boolean) {
     } catch (error) { if (mounted.current) { setError(true); setNotice(machineErrorText(error, i18n)); } return false; }
     finally { applying.current = false; if (mounted.current) setBusy(false); }
   }
-  return { saved, draft, inherit, ready, busy, consent, setConsent, notice, error, dirty, change, restore, load, apply,
+  async function withdraw() {
+    if (!saved || busy) return;
+    setBusy(true); setError(false);
+    try { const state = await client.save(saved.selected || saved.config, false, "site", pageUrl); if (mounted.current) { accept(state); setNotice(i18n.t("mt.withdrawn")); } }
+    catch (error) { if (mounted.current) { setError(true); setNotice(machineErrorText(error, i18n)); } }
+    finally { if (mounted.current) setBusy(false); }
+  }
+  return { withdraw, saved, draft, inherit, ready, busy, consent, setConsent, notice, error, dirty, change, restore, load, apply,
     canTranslate: ready && Boolean(saved) && (!saved?.errorCode || dirty) && (draft.method !== "free-online" || consent) };
 }

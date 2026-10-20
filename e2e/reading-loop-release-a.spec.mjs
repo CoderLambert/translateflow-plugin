@@ -25,7 +25,7 @@ async function environment(info) {
   }
   await launch();
   await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(['uiLocale']))).toEqual({ uiLocale: 'zh_CN' });
-  await driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'en', dictionaryEnabled: true }));
+  await driver.evaluate(() => chrome.storage.local.set({ uiLocale: 'en', dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: 'dictionary', textMethod: 'ai' } }));
   return { temp, extension, server, build,
     get context() { return context; }, get driver() { return driver; }, get id() { return id; },
     async restart() { await context.close(); await launch(); },
@@ -83,7 +83,7 @@ test('Release A actual product: trusted creation matrix survives browser restart
       // The Popup has already migrated first-install provider defaults. Start
       // this synthetic legacy fixture before a fresh migration of its own config.
       await chrome.storage.local.clear();
-      await chrome.storage.local.set({ uiLocale: 'en', dictionaryEnabled: true, provider: 'openai-compatible', targetLanguage: 'Simplified Chinese',
+      await chrome.storage.local.set({ uiLocale: 'en', dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: 'dictionary', textMethod: 'ai' }, provider: 'openai-compatible', targetLanguage: 'Simplified Chinese',
         prompt: 'Translate the segments and return JSON only.', appearance: 'standard', selectionExplanationDepth: 'standard',
         glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
         openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: '', model: 'mock-model' }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });

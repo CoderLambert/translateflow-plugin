@@ -301,9 +301,14 @@ test.describe("multiple local rich dictionary cards", () => {
     }
     await expect(page.locator(".tf-selection-empty-title")).toHaveText("本地词典暂未收录");
     await expect(page.locator(".tf-selection-empty-message")).toContainText("没有找到可靠的本地词典结果");
-    await expect(page.locator(".tf-selection-empty-actions")).toContainText("普通翻译");
+    await page.getByText("切换方式", { exact: true }).click();
+    await expect(page.getByRole("button", { name: "用 AI 查词", exact: true })).toBeVisible();
     expect((await readRichViewerMessages(harness, page)).filter((message) => message.type === "RICH_MDICT_LOOKUP")).toHaveLength(2);
     expect(harness.server.calls).toHaveLength(0);
+    await page.getByRole("button", { name: "用 AI 查词", exact: true }).click();
+    await expect(page.locator(".tf-selection-primary")).not.toBeEmpty();
+    await expect(page.locator(".tf-selection-result")).toContainText("AI 译文");
+    expect(harness.server.calls).toHaveLength(1);
   });
 
   test("a corrupted dictionary reports its own error while another card and the structured primary render", async ({ harness }) => {

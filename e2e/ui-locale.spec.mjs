@@ -191,9 +191,9 @@ test("mounted Quick Control, Selection and subtitle controls follow one live Con
     selection.addRange(range);
     target.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   });
-  await expect(page.getByRole("button", { name: "处理所选文本" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "翻译选段", exact: true })).toBeVisible();
   await h.worker.evaluate(() => chrome.storage.local.set({ uiLocale: "en" }));
-  await expect(page.getByRole("button", { name: "Process selected text" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Translate selection", exact: true })).toBeVisible();
 
   await h.context.route("https://www.youtube.com/watch**", route => route.fulfill({
     contentType: "text/html",

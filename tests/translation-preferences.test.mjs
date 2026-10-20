@@ -116,3 +116,26 @@ test("preference changes fence AI, online and native snapshots without deleting 
   await assert.rejects(resolveEffectiveConfigSnapshot(snapshot.id, origin), { code: "CONFIG_SNAPSHOT_EXPIRED" });
   await assert.rejects(createEffectiveConfigSnapshot(origin, { configRevision: snapshot.revision }), { code: "CONFIG_SNAPSHOT_EXPIRED" });
 });
+
+test("online consent can be withdrawn with unchanged unavailable AI; site denial blocks inherited consent", async () => {
+  const store = storage({ ...DEFAULT_CONFIG, translationPreferences: prefs(), machineTranslationConsent: { version: 1, routing: "auto", providerId: "mt-microsoft-web" } });
+  const state = await saveTranslationPreferences({ scope: "global", preferences: prefs(), config: store.value().machineTranslation, consent: false });
+  assert.equal(state.globalConsent, false); assert.deepEqual(state.preferences, prefs());
+  assert.equal(store.value().machineTranslationConsent, null);
+  await chrome.storage.local.set({ machineTranslationConsent: { version: 1, routing: "auto", providerId: "mt-microsoft-web" } });
+  const selected = await saveTranslationPreferences({ scope: "site", pageUrl: origin, textMethod: "free-online", consent: false });
+  assert.equal(selected.consent, false); assert.equal(selected.globalConsent, true);
+  assert.equal(onlineConsentValid(store.value(), store.value().siteProfiles[origin]), false);
+  assert.equal(onlineConsentValid(store.value(), store.value().siteProfiles[origin], "selection-word"), true);
+  const follow = await saveTranslationPreferences({ scope: "site", pageUrl: origin, inherit: true, consent: false });
+  assert.equal(follow.siteOverride, false);
+});
+
+test("preference DTO exposes only bounded service cooldown state", async () => {
+  const store = storage({ ...DEFAULT_CONFIG, translationPreferences: prefs(), "tfMtCooldown:mt-microsoft-web": { until: Date.now() + 120000, code: "MT_RATE_LIMIT", failures: 2, private: "not-public" } });
+  const { readTranslationPreferences } = await import("../src/background/translation-preferences.js");
+  const state = await readTranslationPreferences();
+  assert.ok(state.health.find(item => item.providerId === "mt-microsoft-web").until > Date.now());
+  assert.ok(state.health.every(item => Object.keys(item).sort().join(",") === "code,providerId,until"));
+  assert.equal(store.writes(), 0);
+});

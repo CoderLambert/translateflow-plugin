@@ -149,7 +149,7 @@ test.describe("Dictionary Ecosystem v2 release-critical route evidence", () => {
     await selectElementText(page, "#ecosystem-mdx-only-word");
     const chip = page.locator(".tf-selection-chip");
     await expect(chip).toBeVisible();
-    await expect(chip).toHaveAccessibleName("处理所选文本");
+    await expect(chip).toHaveAccessibleName("查词");
     await chip.focus();
     await chip.press("Enter");
 

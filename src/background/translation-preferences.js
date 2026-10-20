@@ -8,6 +8,8 @@ import { migrateLegacyProviderState } from "../shared/provider-connections.js";
 import { browserLanguage } from "../shared/browser-translation.js";
 import { normalizeOrigin } from "../shared/url.js";
 
+import { machineHealth } from "./providers/machine-translation-health.js";
+
 let initializing;
 export function aiConfigurationComplete(stored, pageUrl = "") {
   try {
@@ -78,7 +80,7 @@ export function onlineSettings(stored, site, surface = "page") {
 }
 export function onlineConsentValid(stored, site, surface = "page") {
   const settings = onlineSettings(stored, site, surface);
-  const consent = surface !== "selection-word" && site?.machineTranslationConsent ? site.machineTranslationConsent : stored.machineTranslationConsent;
+  const consent = surface !== "selection-word" && site && Object.hasOwn(site, "machineTranslationConsent") ? site.machineTranslationConsent : stored.machineTranslationConsent;
   return consent?.version === 1 && consent.routing === settings.routing && (settings.routing === "auto" || consent.providerId === settings.providerId);
 }
 export async function assertOnlineConsent(pageUrl, surface = "page") {
@@ -92,7 +94,11 @@ export async function readTranslationPreferences(pageUrl = "") {
   const config = onlineSettings(stored, null), selected = onlineSettings(stored, site);
   let aiPermission = "";
   try { const ai = resolveTranslationConfig(stored, pageUrl); if (ai.provider !== "chatgpt-plan") aiPermission = getProviderHostPermissionPattern(ai.apiBaseUrl); } catch {}
-  return { preferences, aiPermission, config: { ...config, method: preferences.textMethod }, selected: { ...selected, method: selectedTranslationMethod(stored, site) },
+  const health = await Promise.all([...new Set([...(config.routing === "auto" ? MACHINE_AUTO_PROVIDERS : [config.providerId]), ...(selected.routing === "auto" ? MACHINE_AUTO_PROVIDERS : [selected.providerId])])].map(async providerId => {
+    const value = await machineHealth(providerId);
+    return { providerId, until: value.until, code: value.code || "" };
+  }));
+  return { preferences, aiPermission, health, config: { ...config, method: preferences.textMethod }, selected: { ...selected, method: selectedTranslationMethod(stored, site) },
     siteOverride: site?.textMethod !== undefined, consent: onlineConsentValid(stored, site),
     globalConsent: onlineConsentValid(stored, null), targetLanguage: site?.targetLanguage || stored.targetLanguage,
     availability: { ai: aiConfigurationComplete(stored, pageUrl), browser: await probeReadyBrowser(stored), dictionary:
@@ -122,7 +128,9 @@ export async function saveTranslationPreferences(input) {
   if (method === "browser-local" && !browserLanguage(scopeSite?.targetLanguage || stored.targetLanguage) ||
       input.scope === "global" && preferences.wordMethod === "browser-local" && !browserLanguage(stored.targetLanguage)) throw Object.assign(new Error("请选择 Chrome 本地支持的目标语言。"), { code: "MT_LANGUAGE" });
   // Broken AI must be visible and must never select another method. Existing unavailable selections may still be retained.
-  if ((method === "ai" || (input.scope === "global" && preferences.wordMethod === "ai"))) {
+  const previous = normalizeTranslationPreferences(stored.translationPreferences);
+  const aiChanged = input.scope === "global" ? (preferences.textMethod === "ai" && previous.textMethod !== "ai") || (preferences.wordMethod === "ai" && previous.wordMethod !== "ai") : method === "ai" && selectedTranslationMethod(stored, scopeSite) !== "ai";
+  if (!input.inherit && (aiChanged || input.consent === true && (method === "ai" || (input.scope === "global" && preferences.wordMethod === "ai")))) {
     if (!aiConfigurationComplete(stored, input.scope === "site" ? input.pageUrl : "")) throw Object.assign(new Error("请先完成 AI 连接配置。"), { code: "AI_REQUIRED" });
     const resolved = resolveTranslationConfig(stored, input.scope === "site" ? input.pageUrl : "");
     const origin = resolved.provider === "chatgpt-plan" ? "" : getProviderHostPermissionPattern(resolved.apiBaseUrl);
@@ -132,7 +140,7 @@ export async function saveTranslationPreferences(input) {
   if (input.scope === "global") await chrome.storage.local.set({ translationPreferences: preferences, machineTranslation: config, machineTranslationConsent: consent });
   else {
     const origin = normalizeOrigin(input.pageUrl), profiles = { ...stored.siteProfiles }, profile = { ...(scopeSite || {}) };
-    if (input.inherit) { delete profile.textMethod; delete profile.machineTranslation; delete profile.machineTranslationConsent; if (online && consent) profile.machineTranslationConsent = consent; }
+    if (input.inherit) { delete profile.textMethod; delete profile.machineTranslation; delete profile.machineTranslationConsent; if (online && (input.consent === false || input.consent === true && !onlineConsentValid(stored, null))) profile.machineTranslationConsent = consent; }
     else { profile.textMethod = method; profile.machineTranslation = config; profile.machineTranslationConsent = consent; }
     if (Object.keys(profile).length) profiles[origin] = profile; else delete profiles[origin];
     await chrome.storage.local.set({ siteProfiles: profiles });

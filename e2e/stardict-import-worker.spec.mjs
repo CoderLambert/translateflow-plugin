@@ -79,7 +79,7 @@ test("Settings StarDict controller transfers into a Dedicated Worker and activat
   expect(result.ready.fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
   // React renders changes of phase; each individual staged file remains verified
   // against the native Worker messages and their order before the real commit.
-  expect(result.phases).toEqual(["read","convert","stage","commit","done"]);
+  expect(result.phases).toEqual(["read","convert","stage","commit","refresh","done"]);
   expect(result.lifecycle).toEqual(["transfer","convert","stage","stage","stage","ready","commit","done"]);
   expect(result.worker.messages.filter(m=>m.type==="stardict-import:progress"&&m.phase==="stage").map(m=>m.path))
     .toEqual(["entries.dat","index.dat","manifest.json"]);

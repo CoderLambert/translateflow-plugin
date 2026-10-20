@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "translation-method",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/simplify-translation-method-20261020",
   "candidateHead": "e6db041b17e434c46b2fa4b8efdfd2625314ca83",
-  "mergeHead": null,
+  "mergeHead": "8c2b8ec0f65b7afc30be5065c49619b16b2872ea",
   "validationCommands": [
     [
       "npm",
@@ -30,5 +30,6 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户已授权提交并合并main。PR #365；0.8.42候选完整validate通过（1952 Node、77 Vitest）、WXT构建通过、37 MV3通过/1真实模型未就绪跳过。主Agent自查完成，待证据归档提交与准确head squash合并。"
+  "nextAction": "PR #365已squash合入main，merge tree与验收syncHead一致；0.8.42已备份安装。用户手动重新加载扩展并刷新网页。真实模型、Chrome102、双网络与商店发布未验证。本地完成记录按仓库流程留待下一次授权归档，不直接推main。",
+  "syncHead": "ced284d8d59e1abfbedcf9b46b33c1a71623c995"
 }

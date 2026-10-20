@@ -37,6 +37,7 @@ export function handoff(overrides = {}) {
 }
 export function request(method, overrides = {}) {
   const bodies = {
+    [M.IMPORT_START]: { bytes: 100 }, [M.IMPORT_CHUNK]: { importId: "import-1", sequence: 0, jsonChunk: "{}" }, [M.IMPORT_FINISH]: { importId: "import-1" }, [M.IMPORT_CANCEL]: { importId: "import-1" },
     [M.BEGIN_QUERY]: { operationId: "op-1", purpose: "lookup", sourceSnapshot: snapshot(), pageKey: PAGE_KEY, safeReturnUrl: record().safeReturnUrl,
       pageTitle: "Synthetic article", itemText: "React", sourceLanguage: "en", recordId: null, recordRevision: null, captureSafety: { selection: "safe", context: "safe", root: "light-dom" } },
     [M.SAVE_QUERY_RESULT]: { token: token(), artifact: artifact() },
@@ -73,6 +74,7 @@ export function response(method, scope = "extension", overrides = {}) {
   const detail = { record: record(), snapshots: [snapshot()], artifacts: [artifact()] };
   const saved = { state: "saved", recordId: RECORD_ID, revision: 1, artifactId: artifact().artifactId, duplicate: false };
   const values = {
+    [M.IMPORT_START]: { importId: "import-1" }, [M.IMPORT_CHUNK]: { sequence: 0 }, [M.IMPORT_FINISH]: { imported: 1, skipped: 0 }, [M.IMPORT_CANCEL]: { cancelled: true },
     [M.BEGIN_QUERY]: { state: "ready", token: token() },
     [M.SAVE_QUERY_RESULT]: saved, [M.APPEND_ASSISTANT]: saved,
     [M.GET_PAGE_SUMMARY]: { items: [pageSummaryItem()], nextCursor: null, pageRecordCount: 1, pageRevision: 1 },

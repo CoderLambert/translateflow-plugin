@@ -130,3 +130,31 @@ test("storage failures are stable and do not report successful writes", async ()
   const book = createVocabularyBook({ storage: { get: async () => ({}), set: async () => { throw new Error("quota"); } }, now: () => 1, randomId: () => "failure" });
   await assert.rejects(book.add(draft()), error => error.code === "VOCABULARY_STORAGE");
 });
+
+test("wordbook backup restores exact notes, languages and reviews; duplicates preserve newer local data", async () => {
+  const local = storage(), original = createVocabularyBook({ storage: local.adapter, now: () => 1000, randomId: () => "saved-1" });
+  await original.add(draft("persistent", { targetLanguage: "ja" }));
+  await original.addAiNote(aiNote("usage", { targetLanguage: "ja" }));
+  await original.review("saved-1", "know");
+  const { backup } = await original.backup();
+  const target = storage(), restored = createVocabularyBook({ storage: target.adapter });
+  assert.deepEqual(await restored.restore(backup), { imported: 1, skipped: 0 });
+  assert.deepEqual((await restored.backup()).backup.store, backup.store);
+  assert.deepEqual(await restored.restore(backup), { imported: 0, skipped: 1 });
+  assert.equal((await createVocabularyBook({ storage: target.adapter }).list()).entries[0].targetLanguage, "ja");
+  const before = structuredClone(target.value);
+  await assert.rejects(async () => restored.restore({ ...backup, store: { ...backup.store, entries: [...backup.store.entries, { bad: true }] } }), { code: "VOCABULARY_BAD_DATA" });
+  await assert.rejects(async () => restored.restore({ ...backup, schemaVersion: 77 }), { code: "VOCABULARY_BAD_DATA" });
+  assert.deepEqual(target.value, before);
+});
+
+test("wordbook restore capacity and failed writes never acknowledge success or replace existing data", async () => {
+  const originalStorage = storage(), original = createVocabularyBook({ storage: originalStorage.adapter, randomId: () => "existing" });
+  await original.add(draft()); const { backup } = await original.backup();
+  const entries = Array.from({ length: 200 }, (_, index) => ({ ...backup.store.entries[0], id: `filled-${index}`, headword: `filled-${index}` }));
+  const target = storage({ version: 2, entries }), restored = createVocabularyBook({ storage: target.adapter });
+  await assert.rejects(restored.restore(backup), { code: "VOCABULARY_CAPACITY" });
+  assert.deepEqual(target.value.entries, entries);
+  const broken = createVocabularyBook({ storage: { get: async () => ({}), set: async () => { throw new Error("synthetic quota"); } } });
+  await assert.rejects(broken.restore(backup), { code: "VOCABULARY_STORAGE" });
+});

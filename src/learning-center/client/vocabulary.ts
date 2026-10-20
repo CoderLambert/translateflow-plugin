@@ -1,3 +1,4 @@
+import { validateVocabularyBackup } from "../../shared/vocabulary-backup.js";
 import { BACKGROUND_MESSAGES } from "../../shared/constants.js";
 import { validateVocabularyEntry } from "../../shared/vocabulary-book.js";
 
@@ -30,6 +31,12 @@ export class VocabularyBookClient {
     return response;
   }
 
+  async backup() { const result = await this.request(BACKGROUND_MESSAGES.VOCABULARY_BOOK_BACKUP); return validateVocabularyBackup(result.backup); }
+  async restore(backup: unknown) {
+    const result = await this.request(BACKGROUND_MESSAGES.VOCABULARY_BOOK_RESTORE, { backup: validateVocabularyBackup(backup) });
+    if (![result.imported, result.skipped].every(value => Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= 200)) throw new VocabularyClientError("VOCABULARY_BAD_RESPONSE");
+    return { imported: result.imported as number, skipped: result.skipped as number };
+  }
   async list(): Promise<VocabularyList> {
     const response = await this.request(BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST);
     if (!Array.isArray(response.entries) || !Array.isArray(response.due) ||

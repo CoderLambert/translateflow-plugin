@@ -8,6 +8,7 @@ import { ReadingContractError, bool, fail, pageKey as validatePageKey, siteKey a
 import { createReadingAccess, verifyReadingPreviewFrame } from "./access.js";
 import { createReadingPreviewRegistry } from "./previews.js";
 import { createOperationRegistry } from "./operations.js";
+import { createImportRegistry } from "./imports.js";
 import { createExportRegistry } from "./exports.js";
 import { createHandoffRegistry } from "./handoffs.js";
 import { getReadingMemorySite, setReadingMemorySite } from "../auto-sites.js";
@@ -24,6 +25,7 @@ export function createReadingService({ browser, repository = null, collector, no
   const previews = createReadingPreviewRegistry({ now, randomId });
   const operations = createOperationRegistry({ now });
   const assistantSessions = new Set();
+  const imports = createImportRegistry({ repository, now, randomId });
   const exports = createExportRegistry({ repository, now, randomId });
   function repositoryMethod(name) {
     if (typeof repository?.[name] !== "function") fail(E.NOT_READY, "repository");
@@ -183,11 +185,19 @@ export function createReadingService({ browser, repository = null, collector, no
       else if (method === M.DELETE_PAGE) operations.revoke((entry) => entry.access.pageKey === request.pageKey);
       else if (method === M.SET_SITE_RECORDING) operations.revoke((entry) => entry.access.siteKey === request.siteKey);
       else operations.revoke();
-      exports.revoke();
+      exports.revoke(); imports.revoke();
       if (method === M.DELETE_RECORD) handoffs.revoke(entry => entry.target.recordId === request.recordId);
       else if (method === M.DELETE_PAGE) handoffs.revoke(entry => entry.target.pageKey === request.pageKey);
       else if (method === M.SET_SITE_RECORDING) handoffs.revoke(entry => entry.target.siteKey === request.siteKey);
       else handoffs.revoke();
+      return result;
+    }
+    if (method === M.IMPORT_START) return imports.start(context);
+    if (method === M.IMPORT_CHUNK) return imports.chunk(context);
+    if (method === M.IMPORT_CANCEL) return imports.cancel(context);
+    if (method === M.IMPORT_FINISH) {
+      const result = await imports.finish(context);
+      if (result.imported) { operations.revoke(); exports.revoke(); previews.revokeAll(); handoffs.revoke(); }
       return result;
     }
     if (method === M.EXPORT_START) return exports.start(context);
@@ -220,7 +230,7 @@ export function createReadingService({ browser, repository = null, collector, no
       // Opening a tab closes the browser-action Popup as part of the successful
       // operation. The sender was verified before dispatch; requiring it to
       // remain alive afterwards would turn a committed open into a false error.
-      if (request.method !== M.OPEN_LEARNING_CENTER) await accessControl.validateCurrent(access);
+      if (![M.OPEN_LEARNING_CENTER, M.IMPORT_FINISH].includes(request.method)) await accessControl.validateCurrent(access);
       return validateReadingResponse(request.method, { protocolVersion: V, ok: true, data }, access.scope, request.limit);
     } catch (error) {
       // No raw URL/content/stack/error.message is sent or logged.
@@ -298,14 +308,14 @@ export function createReadingService({ browser, repository = null, collector, no
       access, registeredOperation: operation, assertCurrent: () => assertAccess(access) }); }
     finally { operations.revoke(value => value === operation); }
   }
-  function invalidateAccess(tabId) { accessControl.invalidateTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); previews.revokeTab(tabId); }
+  function invalidateAccess(tabId) { accessControl.invalidateTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); imports.revoke(session => session.tabId === tabId); previews.revokeTab(tabId); }
   return { handle, prepareAssistantTurn, commitAssistantTurn, cancelAssistantTurn, accessControl, operations, exports, handoffs,
     previews,
-    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); handoffs.revoke(entry => entry.tabId === tabId); previews.revokeTab(tabId); },
+    forgetTab(tabId) { accessControl.forgetTab(tabId); operations.revoke(entry => entry.access.tabId === tabId); exports.revoke(session => session.tabId === tabId); imports.revoke(session => session.tabId === tabId); handoffs.revoke(entry => entry.tabId === tabId); previews.revokeTab(tabId); },
     invalidateTab(tabId) { invalidateAccess(tabId); handoffs.revoke(entry => entry.tabId === tabId); },
     onTabUpdated(tabId, changeInfo) { handoffs.onTabUpdated(tabId, changeInfo); invalidateAccess(tabId); },
     revoke() { accessControl.invalidateAll(); for (const session of assistantSessions) session.active = false;
-      assistantSessions.clear(); operations.revoke(); exports.revoke(); handoffs.revoke(); previews.revokeAll(); } };
+      assistantSessions.clear(); operations.revoke(); exports.revoke(); imports.revoke(); handoffs.revoke(); previews.revokeAll(); } };
 }
 
 function assertNotAborted(signal) {

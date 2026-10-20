@@ -1,3 +1,4 @@
+import { READING_BACKUP_FILE_BYTES } from "./constants.js";
 import { READING_ERROR as E, READING_LIMITS as L, READING_METHOD as M } from "./constants.js";
 import { validateSourceSnapshot } from "./source.js";
 import { validateResultArtifact } from "./artifact.js";
@@ -6,6 +7,7 @@ import { array, bool, choice, fail, id, integer, jsonBytes, nullable, object, pa
 
 const BASE = ["protocolVersion", "method"];
 const fields = {
+  [M.IMPORT_START]: ["bytes"], [M.IMPORT_CHUNK]: ["importId", "sequence", "jsonChunk"], [M.IMPORT_FINISH]: ["importId"], [M.IMPORT_CANCEL]: ["importId"],
   [M.BEGIN_QUERY]: ["operationId", "purpose", "sourceSnapshot", "pageKey", "safeReturnUrl", "pageTitle", "itemText", "sourceLanguage", "recordId", "recordRevision", "captureSafety"],
   [M.SAVE_QUERY_RESULT]: ["token", "artifact"], [M.APPEND_ASSISTANT]: ["token", "artifact"],
   [M.GET_PAGE_SUMMARY]: ["cursor", "limit"], [M.GET_RECORD]: ["recordId"], [M.GET_RECORD_SITE_KEY]: ["recordId"],
@@ -44,6 +46,12 @@ function pagination(value) {
     limit: value.limit === undefined ? 30 : integer(value.limit, 1, L.pageSize, "request.limit") };
 }
 function body(method, value) {
+  if (method === M.IMPORT_START) return { bytes: integer(value.bytes, 1, READING_BACKUP_FILE_BYTES, "request.bytes") };
+  if ([M.IMPORT_CHUNK, M.IMPORT_FINISH, M.IMPORT_CANCEL].includes(method)) {
+    const result = { importId: id(value.importId, "request.importId") };
+    if (method === M.IMPORT_CHUNK) { result.sequence = integer(value.sequence, 0, L.totalBytes, "request.sequence"); result.jsonChunk = text(value.jsonChunk, 16384, "request.jsonChunk", { empty: true }); }
+    return result;
+  }
   if (method === M.BEGIN_QUERY) return begin(value);
   if ([M.SAVE_QUERY_RESULT, M.APPEND_ASSISTANT].includes(method)) {
     const token = validateOperationToken(value.token), artifact = validateResultArtifact(value.artifact);

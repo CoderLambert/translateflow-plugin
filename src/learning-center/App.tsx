@@ -7,6 +7,7 @@ import { exportRecords, download } from "./client/export";
 import { useLocale } from "./useLocale";
 import { useLibrary } from "./useLibrary";
 import { Button, Confirmation, Notice } from "./components/common";
+import { Backup } from "./components/Backup";
 import { Detail } from "./views/Detail";
 import { Library } from "./views/Library";
 import { Management } from "./views/Management";
@@ -183,7 +184,7 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
         onRecord={next => { originFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; navigate(next); }} />}
     </>}
     {state && <><Management client={client} i18n={i18n} revision={revision} disabled={blocked} selectedSite={page?.siteKey ?? null} />
-      <footer><p>{i18n.t("learning.exportWarning")}</p><div className="actions">
+      <footer><Backup i18n={i18n} reading={client} disabled={blocked} onImported={refresh} /><p>{i18n.t("learning.exportWarning")}</p><div className="actions">
         <Button disabled={blocked} onClick={() => void startExport()}>{i18n.t("learning.export")}</Button>
         <Button disabled={blocked || !state.recordCount} className="danger" onClick={() => setConfirm("all")}>{i18n.t("learning.clear")}</Button></div><p className="muted">{i18n.t("learning.deleteHelp")}</p></footer></>}
     {confirm && <Confirmation i18n={i18n} text={i18n.t(confirm === "record" ? "learning.deleteConfirm" : confirm === "page" ? "learning.deletePageConfirm" : "learning.clearConfirm")} onCancel={() => setConfirm(null)} onConfirm={() => void remove()} />}

@@ -16,7 +16,7 @@
       delete container.dataset.resultKind;
     }
 
-    function createActions({ onExplain = null, onTranslate = null } = {}) {
+    function createActions({ onExplain = null, onTranslate = null, errorCode = "" } = {}) {
       const actions = document.createElement("div");
       actions.className = "tf-selection-empty-actions";
       if (typeof onExplain === "function") {
@@ -32,6 +32,12 @@
         locale.bindAttribute(translate, "aria-label", "content.selection.regularTranslationAria");
         translate.addEventListener("click", (event) => onTranslate(event));
         actions.appendChild(translate);
+      }
+      if (["MT_CONSENT", "MT_PERMISSION", "AI_REQUIRED", "BROWSER_DISABLED", "BROWSER_UNAVAILABLE", "BROWSER_MODEL_REQUIRED", "BROWSER_MODEL_NOT_READY", "BROWSER_MODEL_UNAVAILABLE", "BROWSER_LANGUAGE", "BROWSER_PERMISSION"].includes(errorCode)) {
+        const settings = button({ text: locale.t("mt.recoverSettings") });
+        locale.bindText(settings, "mt.recoverSettings");
+        settings.addEventListener("click", () => app.modules.runtime.sendRuntimeMessage({ type: app.modules.runtime.messages.background.OPEN_OPTIONS, hash: "#general" }));
+        actions.appendChild(settings);
       }
       return actions;
     }

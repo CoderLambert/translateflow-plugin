@@ -234,7 +234,7 @@
       panes.set(action, panel);
       details.set(action, app.modules.selectionAiDetail.create({ container: panel, action, onResize }));
       states.set(action, "idle");
-      createTab(action, `content.ai.${action}`, `content.ai.${action}TabAria`);
+      createTab(action, `content.ai.${action}Label`, `content.ai.${action}TabAria`);
     }
     select("dictionary");
 
@@ -273,7 +273,7 @@
       locale.bindText(tab, browserDefinition ? "content.basic.definitionTab" : translation ? "content.basic.translationTab" : "content.selection.dictionaryTab");
       locale.bindAttribute(tab, "aria-label", browserDefinition ? "content.basic.definitionTab" : translation ? "content.basic.translationTab" : "content.selection.dictionaryTabAria");
       const understand = tabs.get("understand");
-      locale.bindText(understand, browserDefinition ? "content.selection.aiDetail" : "content.ai.understand");
+      locale.bindText(understand, browserDefinition ? "content.selection.aiDetail" : "content.ai.understandLabel");
       locale.bindAttribute(understand, "aria-label", browserDefinition ? "content.selection.aiDetailAria" : "content.ai.understandTabAria");
       for (const action of ["analyze", "usage"]) tabs.get(action).hidden = browserDefinition;
       if (browserDefinition && ["analyze", "usage"].includes(active)) select("dictionary");

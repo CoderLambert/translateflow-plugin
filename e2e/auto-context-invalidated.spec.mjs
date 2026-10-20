@@ -1,7 +1,5 @@
 import { test, expect } from "./support/extension-fixture.mjs";
 
-test.use({ lexiconPacks: "missing" });
-
 test("actual extension reload stops old automatic queues and page refresh restores saved modes", async ({ harness }, info) => {
   test.setTimeout(60_000);
   await harness.reset();

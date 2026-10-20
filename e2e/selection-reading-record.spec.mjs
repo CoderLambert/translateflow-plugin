@@ -114,7 +114,7 @@ test.describe("Selection → frozen trusted source → committed Reading records
     server.reset();
     await driver.evaluate(async ({ baseUrl }) => {
       await chrome.runtime.sendMessage({ type: "CACHE_CLEAR_ALL" }); await chrome.storage.local.clear();
-      await chrome.storage.local.set({ uiLocale: "zh_CN", dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
+      await chrome.storage.local.set({ uiLocale: "zh_CN", translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese", prompt: "Translate the segments and return JSON only.",
         selectionExplanationDepth: "standard", appearance: "standard", glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
         openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });
     }, { baseUrl: server.baseUrl });

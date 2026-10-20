@@ -17,7 +17,7 @@ test.describe("Settings information architecture", () => {
 
     await page.locator("#youtubeSubtitleMode").selectOption("original");
     await page.locator("#youtubeSubtitleSize").selectOption("large");
-    await page.getByRole("button", { name: "保存全局设置" }).click();
+    await page.locator("#save").click();
     await expect(page.locator("#status")).toContainText("全局设置已保存");
 
     await page.reload();

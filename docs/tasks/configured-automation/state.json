@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "configured-automation",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/product-completeness-20261020",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "test",
+      "--",
+      "tests/configured-automation.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "validate"
+    ]
+  ],
+  "nextAction": "本地配置驱动自动验收及 HTML 已交付；真实 DeepSeek 12/20 次、AI/整页/收藏/Oxford 两 MDD 复验 PASS；浏览器综合 275 PASS / 12 SKIP / 1 上游网络 FAIL，真实 Chrome 模型 BLOCKED。详见 validation-report.md；未提交、推送或安装。"
+}

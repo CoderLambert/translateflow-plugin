@@ -20,6 +20,12 @@ export async function handleVocabularyBookMessage(message, sender) {
       assertVocabularyContentSender(sender);
       await chrome.tabs.create({ url: `${chrome.runtime.getURL(EXTENSION_PAGES.learningCenter)}#wordbook` });
       return { opened: true };
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_BACKUP:
+      assertVocabularyLearningCenterSender(sender);
+      return getVocabularyBook().backup();
+    case BACKGROUND_MESSAGES.VOCABULARY_BOOK_RESTORE:
+      assertVocabularyLearningCenterSender(sender);
+      return getVocabularyBook().restore(message.backup);
     case BACKGROUND_MESSAGES.VOCABULARY_BOOK_LIST:
       assertVocabularyLearningCenterSender(sender);
       return getVocabularyBook().list();

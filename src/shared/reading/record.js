@@ -1,9 +1,10 @@
+import { READING_BACKUP_FILE_BYTES } from "./constants.js";
 import { READING_ERROR, READING_LIMITS as L } from "./constants.js";
 import { validateAnchor, validateSourceSnapshot } from "./source.js";
 import { compareAssistantArtifacts, validateResultArtifact } from "./artifact.js";
 import { createReadingItemKey } from "./identity.js";
 import { applicationBytes } from "./lifecycle.js";
-import { array, choice, fail, integer, jsonBytes, nullable, object, pageKey, recordId, safeReturnUrl, text, version } from "./validation.js";
+import { array, choice, fail, integer, jsonBytes, nullable, object, pageKey, recordId, safeReturnUrl, siteKey, text, version } from "./validation.js";
 
 export function validateReadingRecord(value, path = "record") {
   object(value, ["schemaVersion", "recordId", "revision", "itemKey", "itemText", "sourceLanguage", "pageKey",
@@ -113,13 +114,18 @@ function unique(values, key, path) {
 }
 
 export function validateReadingExport(value) {
-  jsonBytes(value, L.totalBytes + 1024 * 1024, "export");
+  jsonBytes(value, READING_BACKUP_FILE_BYTES, "export");
   object(value, ["format", "schemaVersion", "exportedAt", "records"], "export");
-  const records = array(value.records, L.records, validateRecordDetail, "export.records");
+  const schemaVersion = choice(value.schemaVersion, [1, 2], "export.schemaVersion");
+  const records = array(value.records, L.records, (item, path) => {
+    if (schemaVersion === 1) return validateRecordDetail(item, path);
+    object(item, ["siteKey", "record", "snapshots", "artifacts"], path);
+    return { siteKey: siteKey(item.siteKey, `${path}.siteKey`), ...validateRecordDetail({ record: item.record, snapshots: item.snapshots, artifacts: item.artifacts }, path) };
+  }, "export.records");
   unique(records.map((item) => item.record), "recordId", "export.records");
   const rows = records.flatMap((detail) => [detail.record, ...detail.snapshots, ...detail.artifacts]);
   if (applicationBytes(rows) > L.totalBytes) fail(READING_ERROR.LIMIT, "export.bytes");
   return { format: choice(value.format, ["translateflow-reading"], "export.format"),
-    schemaVersion: version(value.schemaVersion, "export.schemaVersion"),
+    schemaVersion,
     exportedAt: integer(value.exportedAt, 0, Number.MAX_SAFE_INTEGER, "export.exportedAt"), records };
 }

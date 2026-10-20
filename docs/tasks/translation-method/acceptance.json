@@ -86,5 +86,13 @@
       "totalBytes": 3038597
     },
     "selfReview": "main agent; no independent model review; prior runtime self-review reused for unchanged inputs; regenerated Reading classic matches owned source"
+  },
+  "mergeVerification": {
+    "mergeHead": "8c2b8ec0f65b7afc30be5065c49619b16b2872ea",
+    "syncHead": "ced284d8d59e1abfbedcf9b46b33c1a71623c995",
+    "tree": "a9715d255cb1138342e04a5513e53ddbfea72c8b",
+    "mainContainsMerge": true,
+    "exactTreeMatch": true,
+    "pr": "https://github.com/CoderLambert/translateflow-plugin/pull/365"
   }
 }

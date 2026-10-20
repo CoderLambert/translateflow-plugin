@@ -24,7 +24,7 @@ test("authorized revisit keeps one word highlight for repeated lookups and resto
     // The native install handler can commit defaults after its worker becomes visible.
     await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
       .toEqual({ uiLocale: "zh_CN" });
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [],
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, autoSites: [], cacheRestoreSites: [],
       quickControlSites: [], quickControlHiddenSites: [], readingMemorySites: [] }));
     await installUserDictionaries(driver);
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);

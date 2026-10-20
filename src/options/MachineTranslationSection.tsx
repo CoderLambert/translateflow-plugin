@@ -10,8 +10,9 @@ export function MachineTranslationSection() {
   const [preferences, setPreferences] = useState<TranslationPreferences>({ version: 1, textMethod: "free-online", wordMethod: "free-online" });
   const [savedPreferences, setSavedPreferences] = useState<TranslationPreferences | null>(null);
   const [availability, setAvailability] = useState({ ai: false, browser: false, dictionary: false });
-  const [consent, setConsent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
+  const [savedConsent, setSavedConsent] = useState(false), [consent, setConsent] = useState(false), [busy, setBusy] = useState(false), [ready, setReady] = useState(false);
   const [notice, setNotice] = useState(""), [error, setError] = useState(false), [result, setResult] = useState<MachineTestResult | null>(null);
+  const [clock, setClock] = useState(Date.now);
   const [health, setHealth] = useState<{ providerId: string; until: number }[]>([]);
   const target = useRef("Simplified Chinese"), request = useRef(""), generation = useRef(0), mounted = useRef(true);
   const load = useCallback(async () => {
@@ -20,7 +21,7 @@ export function MachineTranslationSection() {
       const state = await client.read(); if (!mounted.current || current !== generation.current) return;
       setPreferences(state.preferences); setSavedPreferences(state.preferences); setAvailability({ dictionary: false, ...state.availability });
       setHealth(state.health || []); setDraft(state.config); setSaved(state.errorCode ? null : state.config); target.current = state.targetLanguage;
-      setConsent(state.globalConsent === true); setError(Boolean(state.errorCode));
+      setConsent(state.globalConsent === true); setSavedConsent(state.globalConsent === true); setError(Boolean(state.errorCode));
       setNotice(state.errorCode ? machineErrorText({ code: state.errorCode }, i18n) : ""); setReady(true);
     } catch (error) { if (mounted.current && current === generation.current) { setError(true); setNotice(machineErrorText(error, i18n)); } }
   }, [client, i18n]);
@@ -28,10 +29,14 @@ export function MachineTranslationSection() {
     mounted.current = true; void load();
     return () => { mounted.current = false; generation.current++; if (request.current) void client.cancel(request.current).catch(() => {}); };
   }, [client, load]);
+  useEffect(() => {
+    if (!health.some(item => item.until > clock)) return;
+    const timer = setTimeout(() => setClock(Date.now()), 1000); return () => clearTimeout(timer);
+  }, [health, clock]);
   function change(patch: Partial<MachineSettings>) { if (patch.method) setPreferences(value => ({ ...value, textMethod: patch.method! })); setDraft(value => ({ ...value, ...patch })); setResult(null); setNotice(""); setError(false); if (patch.providerId || patch.routing || patch.method) setConsent(false); }
   async function save() {
     if (busy) return; setBusy(true); setError(false); setNotice("");
-    try { const state = await client.save(draft, consent, "global", "", preferences); if (mounted.current) { setSavedPreferences(state.preferences); setPreferences(state.preferences); setSaved(state.config); setDraft(state.config); setNotice(i18n.t("mt.saved")); } }
+    try { const state = await client.save(draft, consent, "global", "", preferences); if (mounted.current) { setSavedConsent(state.globalConsent); setConsent(state.globalConsent); setSavedPreferences(state.preferences); setPreferences(state.preferences); setSaved(state.config); setDraft(state.config); setNotice(i18n.t("mt.saved")); } }
     catch (error) { if (mounted.current) { setError(true); setNotice(machineErrorText(error, i18n)); } }
     finally { if (mounted.current) setBusy(false); }
   }
@@ -43,7 +48,7 @@ export function MachineTranslationSection() {
     finally { if (request.current === id) request.current = ""; if (mounted.current) setBusy(false); }
   }
   async function cancel() { try { await client.cancel(request.current); } catch (error) { if (mounted.current) { setError(true); setNotice(machineErrorText(error, i18n)); } } }
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved) || JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
+  const dirty = consent !== savedConsent || JSON.stringify(draft) !== JSON.stringify(saved) || JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
   const online = preferences.textMethod === "free-online" || preferences.wordMethod === "free-online";
   return <section className="settings-card mt-settings" aria-labelledby="mt-heading" aria-busy={busy}>
     <h2 id="mt-heading">{i18n.t("mt.title")}</h2><p className="section-summary">{i18n.t("mt.scope")}</p>
@@ -61,15 +66,15 @@ export function MachineTranslationSection() {
             <option value="auto">{i18n.t("mt.auto")}</option>{Object.entries(LANGUAGE_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
           </select>
         </details>
-        {error && health.some(p => p.until > Date.now()) ? <details className="mt-diagnostics"><summary>{i18n.t("mt.recovery")}</summary>
-          {health.filter(p => p.until > Date.now()).map(p => <p key={p.providerId} className="hint">{i18n.t("mt.cooldown", { service: machineServiceLabel(p.providerId, i18n), seconds: Math.ceil((p.until - Date.now()) / 1000) })}</p>)}
-          <button type="button" disabled={busy} onClick={() => change({ routing: "auto" })}>{i18n.t("mt.restoreAuto")}</button>
+        {health.some(p => p.until > clock) ? <details className="mt-diagnostics"><summary>{i18n.t("mt.recovery")}</summary>
+          {health.filter(p => p.until > clock).map(p => <p key={p.providerId} className="hint">{i18n.t("mt.cooldown", { service: machineServiceLabel(p.providerId, i18n), seconds: Math.ceil((p.until - clock) / 1000) })}</p>)}
+          <p className="hint">{i18n.t("mt.cooldownHelp")}</p>
         </details> : null}
-        <p className="hint">{i18n.t("mt.privacy")}</p><label className="checkbox-label"><input id="mt-consent" type="checkbox" disabled={busy} checked={consent} onChange={event => setConsent(event.target.checked)} />{i18n.t("mt.consent")}</label>
+        <p className="hint">{i18n.t("mt.privacy")}</p><p className="hint">{i18n.t("mt.consentScope")}</p><label className="checkbox-label"><input id="mt-consent" type="checkbox" disabled={busy} checked={consent} onChange={event => setConsent(event.target.checked)} />{i18n.t("mt.consent")}</label>
       </> : null}
       <p className="hint">{i18n.t("mt.resourceStatus", { ai: i18n.t(availability.ai ? "mt.ready" : "mt.notReady"), browser: i18n.t(availability.browser ? "mt.ready" : "mt.notReady"), dictionary: i18n.t(availability.dictionary ? "mt.ready" : "mt.notReady") })}</p>
       <p className="hint">{i18n.t("mt.independent")}</p>
-      <div className="row"><button id="mt-save" className="primary" type="button" disabled={busy || (online && !consent)} onClick={() => void save()}>{i18n.t("mt.save")}</button>
+      <div className="row"><button id="mt-save" className="primary" type="button" disabled={busy} onClick={() => void save()}>{i18n.t("mt.save")}</button>
         {online ? <button id="mt-test" type="button" disabled={busy || !consent} onClick={() => void test()}>{i18n.t("mt.test")}</button> : null}
         {busy && request.current ? <button type="button" onClick={() => void cancel()}>{i18n.t("mt.cancel")}</button> : null}
       </div>

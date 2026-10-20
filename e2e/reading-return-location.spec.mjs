@@ -55,7 +55,7 @@ test("Reading return resolves one exact Range, refuses ambiguous/missing locatio
     // The native install handler can commit defaults after its worker becomes visible.
     await expect.poll(() => driver.evaluate(() => chrome.storage.local.get(["uiLocale"])))
       .toEqual({ uiLocale: "zh_CN" });
-    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, autoSites: [], cacheRestoreSites: [], quickControlSites: [], quickControlHiddenSites: [] }));
+    await driver.evaluate(() => chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, autoSites: [], cacheRestoreSites: [], quickControlSites: [], quickControlHiddenSites: [] }));
     await installUserDictionaries(driver);
     const center = await context.newPage(); await center.goto(`chrome-extension://${id}/learning-center.html`);
     await center.getByRole("button", { name: "Enable recording", exact: true }).click();

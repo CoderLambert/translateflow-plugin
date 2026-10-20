@@ -7,7 +7,14 @@ const pageUrl = 'https://cache-contract.invalid/article';
 const source = text => [{ id: 'source', text, format: 'plain' }];
 async function read(harness, text, url = pageUrl, configSnapshotId) {
   const result = await harness.runtime({ type: 'CACHE_LOOKUP', pageUrl: url, segments: source(text), configSnapshotId });
-  expect(result.ok).toBe(true); return result;
+  if (!result.ok) {
+    const second = await harness.runtime({ type: 'CACHE_LOOKUP', pageUrl: url, segments: source(text), configSnapshotId });
+    const diagnostic = { initial: { ok: result.ok, errorCode: result.errorCode }, second: { ok: second.ok, errorCode: second.errorCode || '' }, providerCalls: harness.server.calls.length };
+    console.log('[COLD_CACHE_DIAGNOSTIC]', JSON.stringify(diagnostic));
+    await test.info().attach('cold-cache-diagnostic', { body: JSON.stringify(diagnostic), contentType: 'application/json' });
+  }
+  // The diagnostic never replaces the initial result or retries an assertion.
+  expect(result, JSON.stringify(result)).toMatchObject({ ok: true }); return result;
 }
 async function write(harness, text, lookup, translation, url = pageUrl) {
   return harness.runtime({ type: 'CACHE_STORE', pageUrl: url, configSnapshotId: lookup.configSnapshotId,
@@ -92,7 +99,7 @@ test('compiled Content keeps generated Page text visible after an actual IDB wri
 });
 
 test('compiled Selection displays the verified translation after an actual IDB write failure', async ({ harness }) => {
-  await harness.setStorage({ dictionaryEnabled: false });
+  await harness.setStorage({ translationPreferences: { version: 1, wordMethod: 'ai', textMethod: 'ai' } });
   const page = await harness.open('/selection'); await harness.inject(page);
   await failEntryWrites(harness, true);
   try {

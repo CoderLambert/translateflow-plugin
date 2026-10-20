@@ -73,6 +73,8 @@
       kind: "translation",
       browserDefinition: basic,
       browserPair: basic ? { sourceLanguage: metadata.sourceLanguage, targetLanguage: metadata.targetLanguage } : null,
+      translationSource: { engine: metadata.engine || "ai", provider: metadata.provider || metadata.readingResult?.provenance?.provider || "",
+        sourceLanguage: metadata.sourceLanguage || "auto", targetLanguage: metadata.targetLanguage || metadata.readingResult?.targetLanguage || "" },
       primaryMeaning: String(text || "").trim(),
       badges: [{ label: basic ? t("mt.sourceBrowser") : metadata.engine === "machine-translation"
         ? t("mt.sourceOnline", { service: metadata.provider ? t(`mt.service.${metadata.provider}`) : "" }) : t("mt.sourceAi"), kind: basic ? "local" : "ai" }],

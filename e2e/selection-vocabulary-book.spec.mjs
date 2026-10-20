@@ -63,7 +63,7 @@ test.describe("Selection → local wordbook → minimal review on the WXT Chromi
     for (const page of context.pages()) if (page !== driver) await page.close();
     await driver.evaluate(async () => {
       await chrome.storage.local.clear();
-      await chrome.storage.local.set({ uiLocale: "en", dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+      await chrome.storage.local.set({ uiLocale: "en", translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
         prompt: "Translate the segments and return JSON only.", selectionExplanationDepth: "standard", appearance: "standard",
         glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} }, openAICompatible: {
           baseUrl: "http://127.0.0.1:1/v1", apiKey: "", model: "offline-test-model" }, autoSites: [], cacheRestoreSites: [], siteProfiles: {} });

@@ -21,7 +21,7 @@ TranslateFlow 的浏览器 E2E 使用 Playwright 驱动真实 Chromium，并以 
 ## 本地运行
 
 ```bash
-npm install
+npm ci
 npx playwright install chromium
 npm run build:extension:wxt
 npm run test:e2e
@@ -108,7 +108,7 @@ These fixture rules prevent false cache/provider assertions without changing pro
 
 ## CI
 
-`.github/workflows/e2e.yml` 与快速的 `quality` workflow 分离。E2E workflow：
+`.github/workflows/e2e.yml` 与快速的 `quality` workflow 分离。E2E workflow（按当前仓库约定手动触发）：
 
 1. `npm ci --no-audit --no-fund`
 2. `npx playwright install --with-deps chromium`
@@ -120,6 +120,8 @@ These fixture rules prevent false cache/provider assertions without changing pro
 生产运行时不依赖 Playwright。
 
 开发阶段的模块选测命令、并发预算、串行专项与完整验收组成见 [TEST_SELECTION.md](TEST_SELECTION.md)。
+
+使用私密本地配置自动执行真实服务、指定词典、Chrome 模型及真实网页，并生成逐步截图 HTML 报告，见[配置驱动的自动验收](AUTOMATED_ACCEPTANCE.md)。真实验收与此处的 mock 回归分别报告，凭据不传给普通回归进程。
 
 ## User dictionary fixtures
 

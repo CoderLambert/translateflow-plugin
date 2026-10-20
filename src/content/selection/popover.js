@@ -201,7 +201,7 @@
     position(snapshot, panel);
   }
 
-  function showError(snapshot, message, onRetry, onExplain, onTranslate = null) {
+  function showError(snapshot, message, onRetry, onExplain, onTranslate = null, errorCode = "") {
     app.modules.richResourceResolver?.closeAll();
     ensureUi();
     activeSnapshot = snapshot;
@@ -216,7 +216,7 @@
     viewTabs.reset();
     resultNode.replaceChildren();
     resultNode.hidden = false;
-    emptyState.showActions({ onTranslate });
+    emptyState.showActions({ onTranslate, errorCode });
     configureTabs(explainHandler, Boolean(explainHandler));
     viewTabs.selectDictionary();
     cancelButton.hidden = true;

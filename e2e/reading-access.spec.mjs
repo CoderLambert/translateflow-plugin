@@ -127,7 +127,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     const entry = join(extension, "reading-access-entry.mjs");
     await writeFile(entry, fixtureBootstrap);
     await buildFixture({ configFile: false, root: sourceRoot, logLevel: "silent",
-      resolve: { alias: { "css-tree": fileURLToPath(import.meta.resolve("css-tree")) } },
+      resolve: { alias: Object.fromEntries(["css-tree", "p-limit", "p-retry"].map(name => [name, fileURLToPath(import.meta.resolve(name))])) },
       build: { outDir: extension, emptyOutDir: false, minify: false, target: "esnext",
         lib: { entry, formats: ["es"], fileName: () => "background.js" },
         rollupOptions: { output: { inlineDynamicImports: true } } } });
@@ -135,7 +135,7 @@ test.describe("Reading native authority (synthetic repository / owned collector 
     // Test assets only. Production does not yet claim the #235 learning-center artifact exists.
     for (const name of ["learning-center.html", "unexpected.html"]) await writeFile(join(extension, name), "<!doctype html><title>Synthetic Reading authority fixture; not product UI</title><p>Fixture only</p>");
     const manifest = JSON.parse(await readFile(join(extension, "manifest.json"), "utf8"));
-    expect(manifest.permissions).toEqual(["storage", "activeTab", "scripting"]);
+    expect(manifest.permissions).toEqual(["storage", "activeTab", "scripting", "declarativeNetRequestWithHostAccess"]);
     manifest.host_permissions.push("http://127.0.0.1/*");
     await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
     context = await chromium.launchPersistentContext(join(temporary, "isolated-profile"), { headless: true, channel: "chromium",
@@ -333,13 +333,13 @@ test.describe("Reading native authority (synthetic repository / owned collector 
   });
 
 
-  test("Ordinary lookup keeps the production legacy router and uses only a local synthetic provider", async () => {
-    await driver.evaluate(async (baseUrl) => chrome.storage.local.set({ dictionaryEnabled: true, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
+  test("Ordinary dictionary lookup keeps the production legacy router without Provider calls", async () => {
+    await driver.evaluate(async (baseUrl) => chrome.storage.local.set({ dictionaryEnabled: true, translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" }, provider: "openai-compatible", targetLanguage: "Simplified Chinese",
       openAICompatible: { baseUrl: `${baseUrl}/v1`, apiKey: "", model: "mock-model" } }), server.baseUrl);
     const lookup = await sendPage(driver, { type: "SELECTION_RESOLVE", text: "React", pageUrl: `${server.baseUrl}/article`, context: null, depth: "basic" });
     expect(lookup.ok).toBe(true); expect(lookup).not.toHaveProperty("protocolVersion");
     expect(lookup.intent).toMatchObject({ kind: "lexical", tokenCount: 1 }); expect(lookup.lookup).toBeTruthy();
-    expect(server.calls.every((call) => call.path?.startsWith("/v1") || call.requestId !== undefined)).toBe(true);
-    test.info().annotations.push({ type: "provider", description: "Local mock only; paid provider calls=0. No Reading repository writes claimed." });
+    expect(server.calls).toHaveLength(0);
+    test.info().annotations.push({ type: "provider", description: "Explicit dictionary method; Provider calls=0. No Reading repository writes claimed." });
   });
 });

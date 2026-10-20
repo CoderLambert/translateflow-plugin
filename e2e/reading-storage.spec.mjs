@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { startMockServer } from './support/mock-server.mjs';
 import { READING_METHOD as M, READING_ERROR as E } from '../src/shared/reading/constants.js';
-import { request, snapshot, artifact } from '../tests/fixtures/reading/contract.mjs';
+import { request, snapshot, artifact, record } from '../tests/fixtures/reading/contract.mjs';
 import { createSourceDigest } from '../src/shared/reading/identity.js';
 import { registerStorageRegressions } from './reading-storage-regressions.mjs';
 
@@ -400,6 +400,22 @@ globalThis.__probe={...helpers,...adapter,clock:1000,repo:factory({now:()=>globa
         quota: await cdp.send('Storage.getUsageAndQuota', { origin: quotaOrigin }), estimate: await native.evaluate(() => navigator.storage.estimate()) }));
       expect(result).toEqual({ refused: E.QUOTA, enabled: true, oldRows: 1, exported: 1, afterDelete: 0 });
     } finally { await cdp.send('Storage.overrideQuotaForOrigin', { origin: quotaOrigin }); await cdp.detach(); await page.close(); await new Promise((resolve) => host.close(resolve)); }
+  });
+
+  test('Production Reading restore rolls back all rows when the second addition exceeds real native capacity', async () => {
+    await probeWorker.evaluate(async () => { await __probe.seedRecords(9999); });
+    const before = await probeWorker.evaluate(() => __probe.counts());
+    const source = snapshot(); source.sourceDigest = await createSourceDigest(source);
+    const records = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'].map(recordId => ({
+      siteKey: 'https://example.test', record: record({ recordId, safeReturnUrl: null }), snapshots: [source], artifacts: [artifact('dictionary', { recordId })]
+    }));
+    const jsonChunk = JSON.stringify({ format: 'translateflow-reading', schemaVersion: 2, exportedAt: 1000, records });
+    const started = await message(M.IMPORT_START, { bytes: Buffer.byteLength(jsonChunk) }); expect(started.ok).toBe(true);
+    const importId = started.data.importId;
+    expect((await message(M.IMPORT_CHUNK, { importId, sequence: 0, jsonChunk })).ok).toBe(true);
+    expect(await message(M.IMPORT_FINISH, { importId })).toMatchObject({ ok: false, error: { code: E.CAPACITY } });
+    expect(await probeWorker.evaluate(() => __probe.counts())).toEqual(before);
+    expect((await message(M.GET_RECORD, { recordId: records[0].record.recordId })).error.code).toBe(E.NOT_FOUND);
   });
 
   test('Native blocked upgrade and versionchange close preserve existing rows; unknown future version refuses without resetting cache or OPFS', async () => {

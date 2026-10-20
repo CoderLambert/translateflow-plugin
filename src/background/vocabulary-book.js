@@ -14,6 +14,8 @@ import {
   scheduleVocabularyReview
 } from "../shared/vocabulary-book.js";
 
+import { validateVocabularyBackup } from "../shared/vocabulary-backup.js";
+
 export const VOCABULARY_BOOK_STORAGE_KEY = "tfVocabularyBookV1";
 const EMPTY_STORE = Object.freeze({ version: VOCABULARY_BOOK_VERSION, entries: Object.freeze([]) });
 
@@ -56,6 +58,17 @@ export function createVocabularyBook({ storage, now = Date.now, randomId = () =>
   }
 
   return Object.freeze({
+    backup() { return serialize(async () => ({ backup: validateVocabularyBackup({ format: "translateflow-vocabulary", schemaVersion: 1, exportedAt: now(), store: await readStore() }) })); },
+    restore(input) {
+      const backup = validateVocabularyBackup(input);
+      return serialize(async () => {
+        const store = await readStore(), ids = new Set(store.entries.map(entry => entry.id)), identities = new Set(store.entries.map(vocabularyIdentity));
+        const additions = backup.store.entries.filter(entry => !ids.has(entry.id) && !identities.has(vocabularyIdentity(entry)));
+        if (store.entries.length + additions.length > VOCABULARY_BOOK_LIMITS.entries) throw error("VOCABULARY_CAPACITY");
+        if (additions.length) await writeStore({ ...store, entries: [...store.entries, ...additions] });
+        return { imported: additions.length, skipped: backup.store.entries.length - additions.length };
+      });
+    },
     list() {
       return serialize(async () => publicList(await readStore(), now()));
     },

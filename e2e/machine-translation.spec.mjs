@@ -121,7 +121,12 @@ test("Options applies a consented free service, tests it and preserves AI creden
   const original = await harness.getStorage(["apiKey", "openAICompatible", "defaultService"]);
   await expect(page.locator('.mt-text-method input[value="ai"]')).toBeChecked();
   await page.locator('.mt-text-method input[value="free-online"]').check(); await page.locator(".mt-manual > summary").click(); await page.locator("#mt-provider").selectOption("mt-tencent-transmart");
-  await expect(page.locator("#mt-save")).toBeDisabled(); await page.locator("#mt-consent").check();
+  // Saving a method is separate from consenting to upload text.
+  await expect(page.locator("#mt-save")).toBeEnabled();
+  await page.locator("#mt-save").click(); await expect(page.locator(".mt-settings [role=status]").last()).toContainText("翻译偏好已保存");
+  expect((await probe(harness)).calls).toHaveLength(0);
+  expect((await harness.getStorage(["machineTranslationConsent"])).machineTranslationConsent).toBeNull();
+  await page.locator("#mt-consent").check();
   await page.locator("#mt-save").click(); await expect(page.locator(".mt-settings [role=status]").last()).toContainText("翻译偏好已保存");
   await page.locator("#mt-test").click(); await expect(page.locator(".mt-test-result")).toContainText("腾讯译文");
   const count = (await probe(harness)).calls.length;

@@ -22,11 +22,11 @@ export function machineTranslationClient(api: typeof chrome = chrome) {
     if ("preferences" in result) lastState = result as unknown as MachineState;
     return result as T;
   }
-  function grant(config: MachineSettings, preferences?: TranslationPreferences) {
-    const online = config.method === "free-online" || preferences?.wordMethod === "free-online";
+  function grant(config: MachineSettings, preferences?: TranslationPreferences, consent = true) {
+    const online = consent && (config.method === "free-online" || preferences?.wordMethod === "free-online");
     const providers = online ? (config.routing === "auto" ? MACHINE_AUTO_PROVIDERS : [config.providerId]).map(machineProvider) : [];
     const origins = providers.map(provider => `${provider.origin}/*`);
-    if ((config.method === "ai" || preferences?.wordMethod === "ai") && lastState?.aiPermission) origins.push(lastState.aiPermission);
+    if ((config.method === "ai" && (consent || lastState?.preferences.textMethod !== "ai") || preferences?.wordMethod === "ai" && (consent || lastState?.preferences.wordMethod !== "ai")) && lastState?.aiPermission) origins.push(lastState.aiPermission);
     if (!origins.length) return Promise.resolve(true);
     // Called synchronously from a user event so optional permission keeps its gesture.
     return api.permissions.request({ origins });
@@ -36,9 +36,7 @@ export function machineTranslationClient(api: typeof chrome = chrome) {
     async save(draft: MachineSettings, consent: boolean, scope: "global" | "site", pageUrl = "", preferences?: TranslationPreferences) {
       const { method, ...config } = draft;
       normalizeMachineTranslation(config);
-      const online = method === "free-online" || preferences?.wordMethod === "free-online";
-      if (online && !consent) throw Object.assign(new Error("Consent required"), { code: "MT_CONSENT" });
-      if (!await grant(draft, preferences)) throw Object.assign(new Error("Permission required"), { code: "MT_PERMISSION" });
+      if (!await grant(draft, preferences, consent)) throw Object.assign(new Error("Permission required"), { code: "MT_PERMISSION" });
       return send<MachineState>({ type: BACKGROUND_MESSAGES.TRANSLATION_PREFERENCES_SAVE, scope, pageUrl, config, consent, textMethod: method, preferences });
     },
     async inherit(pageUrl: string, consent = false) {

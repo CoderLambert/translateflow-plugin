@@ -3,8 +3,6 @@ import { webcrypto } from "node:crypto";
 import { buildLocalIndexedTflex } from "../src/background/packs/importers/tflex-local-builder.js";
 import { DICTIONARY_CATALOG_V2 } from "../src/shared/dictionary-catalog-v2.js";
 
-test.use({ lexiconPacks: "missing" });
-
 test("recommended dictionaries are optional and a locally installed structured dictionary works independently", async ({ harness }, info) => {
   test.setTimeout(60_000);
   await harness.reset();
