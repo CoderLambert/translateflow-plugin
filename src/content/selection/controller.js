@@ -189,7 +189,7 @@
           onExplain: resolved.explanationAllowed
             ? (event, action) => explainSnapshot(snapshot, resolved.depth, null, event, action)
             : null,
-          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed: true, event })
+          onTranslate: (event) => translateSnapshot(snapshot, { forceTranslation: true, browserTranslationAllowed: resolved.intent?.kind === "lexical" && resolved.intent?.tokenCount === 1, event })
         });
         records?.accept(queryRecord, model.readingDictionary(resolved, capture.selectedText), { sourceLanguage: resolved.intent?.sourceLanguage });
         void loadRich(snapshot, version, expectedPage, queryRecord, { sourceLanguage: resolved.intent?.sourceLanguage, allowVocabularyFallback: true });

@@ -2,7 +2,7 @@
 
 ## 范围
 
-Chrome 内置本地翻译适用于整页、字幕和符合条件的单词划词，不适用于短语或长选区。无 AI 配置时，这些流程会在用户点击准备后使用本地翻译；已配置 AI 时仍优先使用 AI，AI 失败后也只在用户明确点击时切换。单词划词命中词典时仍优先显示词典。
+Chrome 内置本地翻译适用于整页、字幕和符合条件的单词划词，不适用于短语或长选区。无 AI 配置时，这些流程会在用户点击准备后使用本地翻译；已配置 AI 时仍优先使用 AI，AI 失败后也只在用户明确点击时切换。单词划词命中词典时仍优先显示词典。划词资格统一使用 resolver 的 lexical intent 和 `tokenCount === 1`，词典未命中后的翻译按钮也遵守此条件；当前请求的允许标记为 false 或缺失时，不因文本短或此前切换过浏览器翻译而放开。显式启用的免费在线机器翻译仍可处理普通划词（含短语）；此模式失败不自动转浏览器或付费 AI。
 
 ## 设置页一次准备
 
@@ -34,7 +34,7 @@ Content 和 Options 使用同一个运行时实现：一个检测器、最多两
 
 ## English
 
-Chrome native translation supports pages, subtitles and eligible single-word selections; phrases and longer selections remain on the AI path. When AI is configured it remains preferred, and switching after an AI failure requires an explicit user click. Without AI, local translation starts only after the user clicks prepare. Settings → General → Chrome local models prepares detector and translator together, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
+Chrome native translation supports pages, subtitles and eligible single-word selections; phrases and longer selections use AI or explicitly enabled online machine translation. When AI is configured it remains preferred, and switching after an AI failure requires an explicit user click. Without AI, local translation starts only after the user clicks prepare. Settings → General → Chrome local models prepares detector and translator together, reports progress separately, and verifies the language of a synthetic sentence plus nonempty actual translation output. This is execution verification, not a semantic quality certificate.
 
 For word selections, a non-sensitive bounded source sentence can supplement language evidence. Conflicts and incompatible scripts remain uncertain; only the selected word is translated/cached. Context is not sent to an AI provider. Local corrections are scoped to the word and its context.
 

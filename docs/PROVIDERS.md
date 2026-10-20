@@ -119,7 +119,7 @@ Provider adapter 不读取 glossary 存储。全局/站点 glossary 在 Provider
 
 ## 浏览器基础翻译与 AI 的选择
 
-无已配置 AI 服务时，只有单词型划词可使用默认开启的浏览器基础释义；整页、字幕和较长划词内容明确要求配置 AI。此能力不是 HTTP Provider，不能由后台执行。`translationConfig()` 仅为获准的划词任务生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset、Glossary 与其它翻译路径。AI 配置错误不视为“未配置”；只有符合范围的划词在 AI 请求失败后可由用户点击切换到新基础任务。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。
+无已配置 AI 服务且未显式启用免费在线机器翻译时，整页、字幕和获准的单词划词可使用默认开启的浏览器基础翻译；短语或长选区仍需要 AI。划词只有在 resolver 判定 `intent.kind === "lexical" && tokenCount === 1` 且当前请求明确带有 `browserTranslationAllowed: true` 时才使用 `selection-word`；标记为 false 或缺失时保持普通 `selection`，包括词典未命中后的普通翻译按钮。普通 `selection` 仍可使用显式启用的机器翻译，不等同于仅允许 AI 的 `selection-ai`。浏览器翻译不是 HTTP Provider，不能由后台执行。`translationConfig()` 为获准的 surface 生成带明确语言对的配置快照；原 `getEffectiveConfig()` 保留 AI 连接、Preset 和 Glossary。AI 配置错误不视为“未配置”；获准任务在 AI 请求失败后须由用户明确点击切换到新基础任务。基础引擎不执行 AI Prompt、术语表指令或风格 Preset，缓存与 AI 隔离。详见 [BROWSER_TRANSLATION.md](BROWSER_TRANSLATION.md)。
 
 
 ## 免费在线机器翻译
