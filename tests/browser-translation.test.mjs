@@ -246,3 +246,88 @@ test("Selection detection receives text and cancellation, not the page language"
     browserTranslationAllowed: true, pageUrl: "https://example.test/", segments: [{ id: "1", text: "Actually" }] }, state.raw);
   assert.equal(Object.hasOwn(options, "hint"), false); assert.equal(options.signal instanceof AbortSignal, true); assert.equal(response.sourceLanguage, "en");
 });
+
+const selectionLookup = (requestId, extra = {}) => ({ type: M.CACHE_LOOKUP, requestId, pageUrl: "https://example.test/",
+  languageSource: "selection", segments: [{ id: "1", text: "hi" }], ...extra });
+function forbidBrowser(state) {
+  for (const method of ["detectDecision", "detectSelection", "capability", "prepare", "execute"])
+    state.engine[method] = () => assert.fail(`forbidden browser operation: ${method}`);
+}
+for (const flag of [false, undefined]) {
+  test(`selection with permission ${flag} requires AI and never touches browser resources`, async () => {
+    const prompts = [], state = await clientContext({ prompt: async input => { prompts.push(input.title); return true; } });
+    forbidBrowser(state);
+    const input = selectionLookup("denied", flag === undefined ? {} : { browserTranslationAllowed: flag });
+    await assert.rejects(state.client.send(input, state.raw), { code: "AI_REQUIRED" });
+    assert.deepEqual(prompts, ["aiRequired"]);
+    assert.equal(state.calls[0].surface, "selection");
+    assert.equal(state.calls[0].forceBrowser, false);
+    assert.deepEqual(state.calls.map(item => item.type), [M.TRANSLATION_ENGINE_SETTINGS, M.OPEN_OPTIONS]);
+  });
+  test(`cache-only selection with permission ${flag} stays silent and makes no cache or model calls`, async () => {
+    const state = await clientContext({ prompt: () => assert.fail("must remain silent") }); forbidBrowser(state);
+    const result = await state.client.send(selectionLookup("silent", { cacheOnly: true,
+      ...(flag === undefined ? {} : { browserTranslationAllowed: flag }) }), state.raw);
+    assert.deepEqual(structuredClone(result), { ok: true, hits: [], engine: "ai", skippedIds: [] });
+    assert.deepEqual(state.calls.map(item => item.type), [M.TRANSLATION_ENGINE_SETTINGS]);
+  });
+}
+test("prior browser permission and explicit fallback cannot authorize a later denied selection", async () => {
+  let configured = true;
+  const prompts = [], state = await clientContext({ settings: payload =>
+    ["selection-word", "page", "subtitle"].includes(payload.surface) && (!configured || payload.forceBrowser)
+      ? { ok: true, engine: BROWSER_ENGINE, enabled: true, sourceLanguage: "en", targetLanguage: "Chinese" }
+      : { ok: true, engine: "ai", configured }, prompt: async input => { prompts.push(input.title); return true; } });
+  const raw = async payload => {
+    const result = await state.raw(payload);
+    return payload.type === M.CACHE_LOOKUP && !payload.browserTranslation
+      ? { ...result, configSnapshotId: `ai:${payload.requestId}` } : result;
+  };
+  const first = await state.client.send(selectionLookup("allowed", { browserTranslationAllowed: true }), raw);
+  await assert.rejects(state.client.send({ type: M.TRANSLATE_BATCH, requestId: "allowed", pageUrl: "https://example.test/",
+    configSnapshotId: first.configSnapshotId, segments: [{ id: "1", text: "hi" }] }, raw), { code: "ENGINE_SWITCH" });
+  const basic = await state.client.send(selectionLookup("basic", { browserTranslationAllowed: true }), raw);
+  assert.equal(basic.engine, BROWSER_ENGINE);
+  forbidBrowser(state);
+  const ai = await state.client.send(selectionLookup("denied-ai", { browserTranslationAllowed: false }), raw);
+  assert.equal(state.calls.findLast(item => item.type === M.TRANSLATION_ENGINE_SETTINGS).forceBrowser, false);
+  const before = prompts.length;
+  const failed = await state.client.send({ type: M.TRANSLATE_BATCH, requestId: "denied-ai", pageUrl: "https://example.test/",
+    configSnapshotId: ai.configSnapshotId, segments: [{ id: "1", text: "hi" }] }, raw);
+  assert.equal(ai.engine, "ai"); assert.equal(failed.errorCode, "PROVIDER_HTTP"); assert.equal(prompts.length, before);
+  configured = false;
+  await assert.rejects(state.client.send(selectionLookup("denied-empty", { browserTranslationAllowed: false }), raw), { code: "AI_REQUIRED" });
+});
+for (const allowed of [false, true]) {
+  test(`explicit MT is retained for selection permission ${allowed}, including failures`, async () => {
+    const state = await clientContext({ settings: payload => ({ ok: true,
+      engine: payload.surface === "selection-ai" ? "ai" : "machine-translation", configured: false }),
+      prompt: () => assert.fail("MT must not prompt for AI or browser fallback") });
+    forbidBrowser(state);
+    const response = { ok: true, engine: "machine-translation", configSnapshotId: "mt:pinned", hits: [] };
+    const raw = payload => payload.type === M.CACHE_LOOKUP ? Promise.resolve(response) : state.raw(payload);
+    const lookup = await state.client.send(selectionLookup("mt", { browserTranslationAllowed: allowed }), raw);
+    assert.equal(lookup.engine, "machine-translation");
+    const result = await state.client.send({ type: M.TRANSLATE_BATCH, requestId: "mt", pageUrl: "https://example.test/",
+      configSnapshotId: lookup.configSnapshotId, segments: [{ id: "1", text: "hi" }] }, raw);
+    assert.equal(result.errorCode, "PROVIDER_HTTP");
+  });
+}
+
+test("cancelled word output cannot store or contaminate an immediate denied retry", async () => {
+  const state = await clientContext();
+  const lookup = await state.client.send(selectionLookup("old", { browserTranslationAllowed: true }), state.raw);
+  let release, started;
+  const began = new Promise(resolve => { started = resolve; });
+  state.engine.execute = () => { started(); return new Promise(resolve => { release = resolve; }); };
+  const pending = state.client.send({ type: M.TRANSLATE_BATCH, requestId: "old", pageUrl: "https://example.test/",
+    configSnapshotId: lookup.configSnapshotId, segments: [{ id: "1", text: "hi" }] }, state.raw);
+  const rejected = assert.rejects(pending, { code: "CANCELLED" });
+  await began;
+  await state.client.send({ type: M.CANCEL_TRANSLATION, requestId: "old" }, state.raw);
+  await assert.rejects(state.client.send(selectionLookup("retry", { browserTranslationAllowed: false }), state.raw), { code: "AI_REQUIRED" });
+  release({ translations: [{ id: "1", text: "late" }] }); await rejected;
+  await assert.rejects(state.client.send({ type: M.CACHE_STORE, requestId: "old", pageUrl: "https://example.test/",
+    configSnapshotId: lookup.configSnapshotId, items: [{ sourceText: "hi", translation: "late" }] }, state.raw), { code: "CANCELLED" });
+  assert.equal(state.calls.some(item => item.type === M.CACHE_STORE), false);
+});

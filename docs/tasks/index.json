@@ -405,6 +405,13 @@
       "candidateHead": null
     },
     {
+      "task": "selection-browser-routing",
+      "status": "working",
+      "dependencies": [],
+      "branch": "fix/selection-browser-routing",
+      "candidateHead": null
+    },
+    {
       "task": "selection-vocabulary-book-v1",
       "status": "completed",
       "dependencies": [],

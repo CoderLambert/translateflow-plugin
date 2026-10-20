@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "task": "selection-browser-routing",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/selection-browser-routing",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-selection-routing",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/browser-basic-translation.spec.mjs",
+      "e2e/machine-translation.spec.mjs",
+      "e2e/selection-rich-lookup-cancel.spec.mjs"
+    ]
+  ],
+  "nextAction": "定向回归后提交候选、冻结，运行完整验收与独立审查。"
+}

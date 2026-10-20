@@ -19,7 +19,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "", preferRich = false, explanationAllowed = true, deferRich = false } = {}) {
+function harness({ resolveRoute = "translation", readingRecords = true, runtimeFailure = "", preferRich = false, explanationAllowed = true, deferRich = false, resolvedSelection = null } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
   const messages = [], chips = [], results = [], resultActions = [], errors = [], accepted = [], statuses = [], storeAcks = [], chipWaiters = [], assistantInterruptions = [];
   const assistantPorts = [], vocabularyAdds = [], aiPersistence = [], emptyViews = [], assistantAnswers = [], assistantUpdates = [], richLookups = [], assistantRetries = [];
@@ -38,6 +38,7 @@ function harness({ resolveRoute = "translation", readingRecords = true, runtimeF
     if (runtimeFailure) throw new Error(runtimeFailure);
     switch (request.type) {
       case "selection-resolve":
+        if (resolvedSelection) return resolvedSelection;
         if (preferRich) return { ok: true, route: "translation", preferRich, explanationAllowed, depth: "standard",
           intent: { kind: "lexical", sourceLanguage: "en" } };
         if (resolveRoute === "local") return { ok: true, route: "local", explanationAllowed: true, depth: "standard",
@@ -604,3 +605,18 @@ test("an AI configuration check returning after close cannot recreate a stale ta
   assert.deepEqual(h.assistantInterruptions, []);
   assert.equal(h.assistantPorts.length, 0);
 });
+
+for (const tokenCount of [1, 2]) {
+  test(`local no-hit button preserves single-word eligibility (${tokenCount} tokens)`, async () => {
+    const h = harness({ resolvedSelection: { ok: true, route: "unresolved", routeReason: "no-hit-local",
+      intent: { kind: "lexical", tokenCount, sourceLanguage: "en" }, explanationAllowed: false } });
+    await h.ready; await h.translate();
+    assert.equal(h.emptyViews.length, 1);
+    const running = h.emptyViews[0].onTranslate({ isTrusted: true });
+    await h.storeStarted;
+    const lookup = h.messages.find(item => item.type === "cache-lookup");
+    assert.equal(lookup.browserTranslationAllowed, tokenCount === 1);
+    h.resolveStore(); await running;
+    assert.equal(h.results.length, 1);
+  });
+}

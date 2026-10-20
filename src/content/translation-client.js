@@ -25,7 +25,7 @@
   }
   async function checkedSettings(payload, raw, controller) {
     const eligible = browserEligible(payload) || controller.browserAllowed === true;
-    const surface = payload.languageSource === "selection" ? "selection-word" : payload.languageSource || "page";
+    const surface = payload.languageSource === "selection" && browserEligible(payload) ? "selection-word" : payload.languageSource || "page";
     const result = await raw({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl: payload.pageUrl,
       forceBrowser: eligible && forceBrowser, surface });
     assertCurrent(controller, payload.pageUrl, payload.requestId);
