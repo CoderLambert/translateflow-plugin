@@ -15,6 +15,8 @@ npm run test:wxt:smoke
 
 WXT compiles Background, Content, Popup, Options and the learning center from their existing owners. Only mapped MAIN/Worker relative-import closures and locales remain raw assets. `src/shared/runtime-assets.js` owns the stable runtime paths. The package audit rejects undeclared public assets and preserves source confinement, exact Worker/MAIN bytes, manifest permissions and compiled React boundaries. Source locks, corpora, compilers, docs and tests stay outside the package.
 
+Package size, platform code size and runtime/UI closure sizes are reported as measurements. Builds have no package-size threshold or advisory budget; the former #245 platform-code budget and its overage warnings are retired. Historical budget figures below remain evidence of the original migration.
+
 The default empty dictionary library is normal. Users explicitly download or import dictionaries; production never probes missing bundled resources. Smoke and browser tests start from actual audited production bytes and explicitly prepare synthetic user dictionaries in isolated storage for tests requiring hits. They do not add runtime dictionary assets to the extension copy.
 
 Content remains an ISOLATED classic/IIFE registry compiled to `content-scripts/content.js/.css`; MAIN and Workers retain their existing contexts. Permissions, OPFS schemas and user settings are unaffected by dictionary content removal.

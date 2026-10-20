@@ -82,16 +82,9 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
       }
     }
   }
-  const codeBudgetBytes = 1576595; // #245: old code + max(10%, 100 KiB), excluding dictionary data.
   const uiExclusive = summary.files.filter(entry => approvedUiCompiled.has(entry.path) && !nonUiCompiled.has(entry.path));
   const uiBytes = uiExclusive.reduce((sum, entry) => sum + entry.size, 0);
   const platformCodeBytes = summary.codeBytes - uiBytes;
-  const codeBudgetExceeded = platformCodeBytes > codeBudgetBytes;
-  const codeBudgetOverageBytes = Math.max(0, platformCodeBytes - codeBudgetBytes);
-  const codeBudgetWarning = codeBudgetExceeded
-    ? `Platform code exceeds #245 advisory budget by ${codeBudgetOverageBytes} bytes (${platformCodeBytes}/${codeBudgetBytes}).`
-    : null;
-  if (codeBudgetWarning) console.warn(`WARN: ${codeBudgetWarning}`);
   const sizes = new Map(summary.files.map((entry) => [entry.path, entry.size]));
   const chunks = new Map(compiled.map((item) => [item.fileName, item]));
   function compiledClosure(roots) {
@@ -108,10 +101,9 @@ export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome
   const uiClosure = compiledClosure((await Promise.all(Object.values(EXTENSION_PAGES).map(pageRoots))).flat());
   uiClosure.htmlBytes = Object.values(EXTENSION_PAGES).reduce((sum, path) => sum + sizes.get(path), 0);
   uiClosure.bytes += uiClosure.htmlBytes;
-  const report = { status: codeBudgetExceeded ? "PASS_WITH_WARNING" : "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: ["content_scripts"],
+  const report = { status: "PASS", source: "WXT production .output/chrome-mv3", manifestDifferences: ["content_scripts"],
     runtimeFiles: runtime.length, compiledContent: { js: [...CONTENT_SCRIPT_FILES], css: [...CONTENT_STYLE_FILES] }, ...summary,
-    codeBudgetBytes, platformCodeBytes, codeBudgetExceeded, codeBudgetOverageBytes,
-    warnings: codeBudgetWarning ? [codeBudgetWarning] : [],
+    platformCodeBytes, warnings: [],
     reactPageClosures: Object.fromEntries([...pageCompiled].map(([name, files]) => [name, [...files].sort()])),
     uiExclusiveClosure: { files: uiExclusive.map(entry => entry.path), bytes: uiBytes }, backgroundClosure, uiClosure,
     compiledOutputs: compiled.map((item) => ({ fileName: item.fileName, type: item.type })) };
