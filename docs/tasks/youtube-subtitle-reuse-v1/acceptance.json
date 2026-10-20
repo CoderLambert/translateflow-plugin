@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "task": "youtube-subtitle-reuse-v1",
+  "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895",
+  "tree": "8480ed2aff606edc35d3ab8dc18f5584ba126f40",
+  "inputTree": "627cfb24e6cacf85a0ff23bb84e03ec297dcd6ca8d95eee55918a09d295027aa",
+  "frozenAt": "2026-10-20T21:01:55.976Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Google Chrome for Testing 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 52890.769647,
+      "startedAt": "2026-10-20T21:01:56.343Z",
+      "log": "docs/task-execution/local/youtube-subtitle-reuse-v1/3c337d54-344f-4f27-a4da-b01d44fe38a2.log",
+      "logSha256": "450bc44df48cb48bd98ed29843311b2d2191068de291a17bbb307c77654285d6"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2553.923232,
+      "startedAt": "2026-10-20T21:03:14.923Z",
+      "log": "docs/task-execution/local/youtube-subtitle-reuse-v1/71557baf-7b03-4055-b5e7-1e317b50ccc8.log",
+      "logSha256": "1e37b4981f9fb5d5035747d966e441950fd4ea0a2a969f6bcd321e75792b8116"
+    },
+    {
+      "command": [
+        "env",
+        "TF_TEST_WORKERS=1",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/youtube-subtitles.spec.mjs",
+        "e2e/subtitle-pipeline.spec.mjs",
+        "e2e/subtitles.spec.mjs",
+        "e2e/browser-basic-translation.spec.mjs",
+        "--retries=0"
+      ],
+      "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 36888.556908,
+      "startedAt": "2026-10-20T21:03:46.523Z",
+      "log": "docs/task-execution/local/youtube-subtitle-reuse-v1/4f07d69a-81b0-43e9-a5bf-73459fa2c350.log",
+      "logSha256": "7fb8c7f6609199374df466728e0aac5ab8e6f9c0ab83fcc9101f599b65a0660b"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "b00282c2a816c5f95d9a0da6bed0c2a0c90926339cde8f7d901a467c58677e72"
+  },
+  "limitations": [
+    "Scope is the authorized self-owned subtitle reliability and native-toolbar slice, not the entire historical YT-01..YT-06 upgrade or a store release.",
+    "Real logged-in Chrome playback and native-control screenshots were captured on the 0.8.43 package 0bae631105e29b4ca83ad83e35f36d97680fc7ee21eb9272419c21e5f6e18e98; the runtime source inputs are unchanged in 0.8.44. No new real-provider or real-site run is claimed for the version-only rebuild.",
+    "The optional generic WXT smoke failed MT_CONSENT because its setup omits translationPreferences and therefore does not select its intended AI mock route. Its source is unchanged from origin/main; this is not counted as a passing test. The corresponding second-directory smoke was not run after this shared fixture failure.",
+    "Pure DOM real-site fallback, all track switches/fullscreen/long SPA playback, all local/cloud models and translation-quality certification remain outside this scoped merge evidence.",
+    "FluentRead GPL source is deferred; no GPL production code, new required permission, ASR generation, learning/export or store publication is included."
+  ],
+  "packageInventories": {
+    "algorithm": "e2e/support/production-artifact.mjs inventoryArtifact",
+    "dist": {
+      "treeSha256": "d471406ad5482aa565b3f81f98ab69e184bd0cddd645469011c8a9b7acf85850",
+      "fileCount": 131,
+      "totalBytes": 3073059
+    },
+    "wxt": {
+      "treeSha256": "d471406ad5482aa565b3f81f98ab69e184bd0cddd645469011c8a9b7acf85850",
+      "fileCount": 131,
+      "totalBytes": 3073059
+    },
+    "identical": true
+  },
+  "supplementalChecks": [
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "result": "FAIL",
+      "exitCode": 1,
+      "log": "docs/task-execution/local/youtube-subtitle-reuse-v1/formal-smoke-dist.log",
+      "logSha256": "f3af38668e2c73a6c250e23e93f520f6bd737488b2d17b1c1226b6ae0e27f7db",
+      "classification": "pre-existing fixture route configuration defect; not a product runtime failure",
+      "location": "scripts/smoke-wxt-extension.mjs:66"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "result": "NOT RUN",
+      "reason": "same unchanged fixture omitted AI method selection; stopped after first-directory failure"
+    }
+  ]
+}

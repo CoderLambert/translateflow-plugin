@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "youtube-subtitle-reuse-v1",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/youtube-subtitle-reuse-20261021",
-  "candidateHead": null,
+  "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -33,5 +33,5 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "用户已明确授权提交、推送并通过 PR squash 合入 main；先提交 0.8.44 实现候选，绑定正式本地验收和包指纹，主 Agent 自查及 gate 后按准确远端 head 合并。真实全场景、GPL 接入与商店发布不在本次范围。"
+  "nextAction": "正式候选已通过 state 合入验收及主 Agent 自查，按准确远端 head squash 合并 PR #366。通用 smoke 既有 fixture 缺少 AI 方式配置的 FAIL 单独保留，不作为 PASS；合并后继续用户明确要求的 Ollama/本地及云端模型接入任务。"
 }

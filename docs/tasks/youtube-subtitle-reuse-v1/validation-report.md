@@ -1,5 +1,16 @@
 # 首批实现验证（非发布验收）
 
+## 0.8.44 正式合入候选
+
+用户已授权提交、推送和合并本次自有可靠性切片及底部入口。候选：`a64f77215d3f7703105f82ffa8406689d422d895`。正式证据见 [acceptance.json](acceptance.json)，主 Agent 自查见 [review.md](review.md)；以下首批记录保留历史含义。
+
+- `npm run validate`：PASS；2036 项 Node 与 80 项 Vitest，通过语法/架构/i18n、严格类型检查及默认 WXT 构建。
+- `npm run build:extension:wxt`：PASS。
+- state.json 规定的四文件 Chromium/MV3 回归：27/27 PASS，0 重试。
+- 131 文件、3,073,059 字节；dist 与显式 WXT 包逐文件一致，E2E inventory 摘要 `d471406ad5482aa565b3f81f98ab69e184bd0cddd645469011c8a9b7acf85850`。acceptance.artifact 使用 local-task 自身算法，不与 E2E 算法混用。
+- 补充通用 smoke：FAIL / `MT_CONSENT`，原因是主分支已有的 fixture 未显式选择 AI 方式；第二目录同脚本 smoke 未运行。该失败未计作 PASS，细节/日志摘要保留在 acceptance.supplementalChecks 与自查中。
+- 真实 Chrome 截图与播放采样仍绑定 0.8.43 原包；其 runtime 源码输入与本候选相同，不能将旧截图改写为 0.8.44 新包实测。完整真实场景与发布认证保留。
+
 本报告保留首批候选 `bf37935f04ef6271ef8d3b5780142ac8d65c3600` 的历史验证及当时限制；审查后工作树的修复与新证据见 [implementation-report.md](implementation-report.md)。下文“未完成/NOT RUN”描述原候选，不覆盖后续报告。
 
 状态：working / Draft；不合并、不发布。TF 基线 ee8b08dfd08ced762ffcb275304da6249615b718。仅实现 YT-01 的当前字幕/回看修正，以及 YT-02 的前台模式取消部分。

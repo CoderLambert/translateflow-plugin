@@ -480,10 +480,10 @@
     },
     {
       "task": "youtube-subtitle-reuse-v1",
-      "status": "reviewing",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/youtube-subtitle-reuse-20261021",
-      "candidateHead": null
+      "candidateHead": "a64f77215d3f7703105f82ffa8406689d422d895"
     }
   ]
 }
