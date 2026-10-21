@@ -7,7 +7,7 @@ import { projectProductionManifest } from "./scripts/production-manifest.mjs";
 import { checkManifestLocales } from "./scripts/i18n-locales.mjs";
 
 const { manifest_version: _version, ...baselineManifest } = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
-const manifest = projectProductionManifest(baselineManifest);
+const manifest = projectProductionManifest(baselineManifest, { developer: process.env.TF_CHATGPT_PLAN_DEV_BUILD === "1" });
 const staging = process.env.TF_WXT_BUILD_ROOT;
 const reportDir = staging ? resolve(staging, "reports") : resolve(ROOT, ".wxt/reports");
 const compiledChunks = [];
