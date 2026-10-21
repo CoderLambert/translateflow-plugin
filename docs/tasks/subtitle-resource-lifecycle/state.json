@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "subtitle-resource-lifecycle",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/ollama-local-cloud-connections",
   "worktree": null,
-  "candidateHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc",
+  "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -47,20 +47,20 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "远端分支已推送，Draft PR #368 关联 Issue #367；先完成最终安装包及真实浏览器验收，再以 freeze-batch 绑定同一候选、两任务分别执行全部规定检查/证据/联合 gate。不得提前合并。",
+  "nextAction": "本地检查已绑定同一候选并完成归档；准备校验联合 gate、远端精确 head 和 PR 合并条件。真实 YouTube 长时播放未运行，原因及影响已明确记录；Ollama Cloud 手动测试由用户确认通过。",
   "localValidation": {
     "candidateCommitted": true,
     "baseHead": "d465e933cef10e2a6ae9320837b2925b816dc895",
-    "scopeInputSha256": "b348d959e46901d6b6680ec96425dafffd61d1be94ec3b9dbec4cf031e752907",
+    "scopeInputSha256": "0bf87bd9d63762cf6a54ee71b80bda074e1422f0ec0b1fa925fffa5bd0328f3a",
     "node": "PASS 101/101",
     "check": "PASS",
     "typecheck": "PASS",
-    "build": "PASS",
+    "build": "PASS 0.8.47; 131 files; 3084914 bytes",
     "mockMv3": "PASS 17/17",
-    "isolatedChromiumProbe": "PASS",
-    "realYouTubePerformance": "NOT RUN",
-    "artifactSha256": "c282db163db380c6bc3a7faffcb9c0e1b5eeb1b3ff22253b1c954ec3c6a0e036",
-    "implementationHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
+    "isolatedChromiumProbe": "PASS; Playwright Chromium 153.0.8010.12",
+    "realYouTubePerformance": "NOT RUN; isolated browser blocked by YouTube sign-in anti-bot interstitial",
+    "artifactSha256": "02005b348915162f005d6a7566df5f8530b01f39374001e2b70c069278e40129",
+    "implementationHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
   },
   "syncGroup": [
     "ollama-local-cloud-connections",

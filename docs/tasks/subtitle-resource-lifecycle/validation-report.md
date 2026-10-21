@@ -1,6 +1,6 @@
 # 字幕性能与资源生命周期修复验收
 
-**字幕资源修复已提交 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`；定向验收 PASS，尚未推送或合并。真实 YouTube 播放性能验收 NOT RUN。** 本次解决前轮性能审查确认的 2 项 P1、1 项 P2，不作“所有页面永久零泄漏”的保证。
+**最终候选 `0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e` 已推送至功能分支。** 字幕 Node 回归 101/101、检查、类型检查、构建和合成 Chromium/MV3 E2E 17/17 均 PASS；实际包为 0.8.47（131 文件，3,084,914 bytes）。真实 YouTube 播放验收仍 NOT RUN：隔离 Chromium 遇到 YouTube 登录反机器人提示，视频未加载；短时播放性能、CPU/内存/FPS 对比及长时堆快照均未取得。证据见 `docs/task-execution/local/subtitle-resource-lifecycle/real-youtube-playback.json`。本次解决前轮性能审查确认的 2 项 P1、1 项 P2，不作“所有页面永久零泄漏”的保证。
 
 [打开带截图的 HTML 报告](../../task-execution/local/subtitle-resource-lifecycle/report.html)（自包含本地文件，截图明确标注合成播放器）。
 

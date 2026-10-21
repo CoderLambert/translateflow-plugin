@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "task": "subtitle-resource-lifecycle",
+  "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+  "tree": "0623629e0f192ccebb22fd8e7d15f5959f6e4744",
+  "inputTree": "0bf87bd9d63762cf6a54ee71b80bda074e1422f0ec0b1fa925fffa5bd0328f3a",
+  "syncGroup": [
+    "ollama-local-cloud-connections",
+    "subtitle-resource-lifecycle"
+  ],
+  "frozenAt": "2026-10-21T08:50:38.732Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12 (Playwright channel chromium)"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/youtube-bridge.test.mjs",
+        "tests/subtitles.test.mjs",
+        "tests/subtitle-pipeline.test.mjs",
+        "tests/subtitle-controller-currentness.test.mjs",
+        "tests/subtitle-request-lifecycle.test.mjs",
+        "tests/constants.test.mjs"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 159.352962,
+      "startedAt": "2026-10-21T08:51:20.726Z",
+      "log": "docs/task-execution/local/subtitle-resource-lifecycle/2d9c1ad0-db1f-4ae7-9e0b-3f5d253c8ebe.log",
+      "logSha256": "c8ae6bbd5cc2694a87fba45a357290f95ce8daffe55499084e77cc340e9c3a90"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 16586.749131,
+      "startedAt": "2026-10-21T08:51:30.709Z",
+      "log": "docs/task-execution/local/subtitle-resource-lifecycle/83f0940a-e9f4-4855-87a1-ac607969fe5b.log",
+      "logSha256": "43e787f4fc49ec3295a9d54a20c3e2ab2713d26e9ed9f8c40ca0d686eb18ebac"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2748.551687,
+      "startedAt": "2026-10-21T08:51:50.948Z",
+      "log": "docs/task-execution/local/subtitle-resource-lifecycle/0faf173a-20c8-4dd4-b2ff-929511f1f7c3.log",
+      "logSha256": "7d662c7306fe11df40de5c966f625bfb7e02e2ee50da4d2dee807698277a5470"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/youtube-subtitles.spec.mjs",
+        "e2e/subtitle-pipeline.spec.mjs",
+        "e2e/subtitles.spec.mjs",
+        "e2e/subtitle-resource-lifecycle.spec.mjs",
+        "--retries=0"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 15442.316899,
+      "startedAt": "2026-10-21T08:52:24.722Z",
+      "log": "docs/task-execution/local/subtitle-resource-lifecycle/743a8cb4-bbcc-44ef-901a-41a884694839.log",
+      "logSha256": "c144278a1346c1acb77fdd9240e03c67dadcc1a930b26cf3ba5668db783ef222"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5171.181124,
+      "startedAt": "2026-10-21T08:59:12.389Z",
+      "log": "docs/task-execution/local/subtitle-resource-lifecycle/62b10774-2338-473c-a490-bdd223db2d3f.log",
+      "logSha256": "d25da7ca1c71f2dcb605739f757f7060d5fb30f9f25cdcc9f9d7d514da1be09f"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "02005b348915162f005d6a7566df5f8530b01f39374001e2b70c069278e40129"
+  },
+  "limitations": [
+    "Synthetic Chromium/MV3 subtitle E2E passed 17/17; real YouTube playback remains NOT RUN because the isolated browser received YouTube's sign-in-to-confirm-not-a-bot interstitial (HTTP 200 page, video readyState 0, no captions). See docs/task-execution/local/subtitle-resource-lifecycle/real-youtube-playback.json.",
+    "Real playback CPU/memory/FPS comparison and long-duration heap snapshot remain NOT RUN. The updated package was copied to the existing test directory with the prior package retained as backup; no interactive Chrome reload or account playback was performed."
+  ]
+}

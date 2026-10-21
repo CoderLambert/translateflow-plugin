@@ -1,6 +1,6 @@
 # Ollama、本地部署与云端连接验证
 
-代码已随实现提交 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`。限定模块回归通过。**真实浏览器到本机 Ollama 的验收 BLOCKED：服务拒绝扩展来源，返回 HTTP 403。** 此结论不等同于真实模型浏览器兼容性通过。
+最终候选 `0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e` 已推送至功能分支；解析器现接受 Ollama 返回的 `segments` 数组。Provider Node 回归 41/41、Options 20/20、类型/仓库检查、默认/WXT 构建、WXT smoke 和 MV3 E2E 4/4 均 PASS。实际安装包的本机浏览器测试通过：扩展 ID `ijbkglnpamonghcklbfmlhjlmeeohgmo` 连接 `qwen3.5:9b` 并完成中文翻译，Mock Provider 调用为 0。用户报告其已配置的 Ollama Cloud 模型测试通过；本次未调用云端账户或读取 Key。LM Studio 真实服务未测。
 
 ## 基线与交付范围
 

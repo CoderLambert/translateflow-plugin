@@ -337,10 +337,10 @@
     },
     {
       "task": "ollama-local-cloud-connections",
-      "status": "reviewing",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "feat/ollama-local-cloud-connections",
-      "candidateHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
     },
     {
       "task": "oxford-radio-css",
@@ -450,10 +450,10 @@
     },
     {
       "task": "subtitle-resource-lifecycle",
-      "status": "reviewing",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "feat/ollama-local-cloud-connections",
-      "candidateHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
     },
     {
       "task": "sync-current-worktree",
