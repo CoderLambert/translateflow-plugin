@@ -337,7 +337,7 @@
     },
     {
       "task": "ollama-local-cloud-connections",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/ollama-local-cloud-connections",
       "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
@@ -450,7 +450,7 @@
     },
     {
       "task": "subtitle-resource-lifecycle",
-      "status": "ready_to_sync",
+      "status": "completed",
       "dependencies": [],
       "branch": "feat/ollama-local-cloud-connections",
       "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
