@@ -9,15 +9,15 @@ import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src
 import { expectedProductionManifest } from "./production-manifest.mjs";
 import { checkManifestLocales } from "./i18n-locales.mjs";
 
-export function assertProductionManifest(manifest, baseline) {
-  assert.deepEqual(manifest, expectedProductionManifest(baseline), "Production WXT Manifest must equal the approved compiled Content projection");
+export function assertProductionManifest(manifest, baseline, { developer = false } = {}) {
+  assert.deepEqual(manifest, expectedProductionManifest(baseline, { developer }), "WXT Manifest must equal the approved compiled Content projection for this build edition");
 }
 
-export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome-mv3"), reportDir = resolve(ROOT, ".wxt/reports") } = {}) {
+export async function auditWxtExtension({ output = resolve(ROOT, ".output/chrome-mv3"), reportDir = resolve(ROOT, ".wxt/reports"), developer = false } = {}) {
   const manifest = JSON.parse(await readFile(resolve(output, "manifest.json"), "utf8"));
   const baseline = JSON.parse(await readFile(resolve(ROOT, "manifest.json"), "utf8"));
   // WXT's compiled Content entrypoint is the only approved build-time projection.
-  assertProductionManifest(manifest, baseline);
+  assertProductionManifest(manifest, baseline, { developer });
   const runtime = await sourceClosure(runtimeAssetRoots());
   const locales = await sourceClosure((await checkManifestLocales()).files);
   const assetMap = JSON.parse(await readFile(resolve(reportDir, "asset-map.json"), "utf8"));
