@@ -340,7 +340,7 @@
       "status": "reviewing",
       "dependencies": [],
       "branch": "feat/ollama-local-cloud-connections",
-      "candidateHead": null
+      "candidateHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
     },
     {
       "task": "oxford-radio-css",
@@ -453,7 +453,7 @@
       "status": "reviewing",
       "dependencies": [],
       "branch": "feat/ollama-local-cloud-connections",
-      "candidateHead": null
+      "candidateHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
     },
     {
       "task": "sync-current-worktree",

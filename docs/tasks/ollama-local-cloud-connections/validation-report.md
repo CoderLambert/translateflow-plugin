@@ -1,12 +1,12 @@
 # Ollama、本地部署与云端连接验证
 
-代码和安装包已准备好；限定模块回归通过。**真实浏览器到本机 Ollama 的验收 BLOCKED：服务拒绝扩展来源，返回 HTTP 403。** 此结论不等同于真实模型浏览器兼容性通过。
+代码已随实现提交 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`。限定模块回归通过。**真实浏览器到本机 Ollama 的验收 BLOCKED：服务拒绝扩展来源，返回 HTTP 403。** 此结论不等同于真实模型浏览器兼容性通过。
 
 ## 基线与交付范围
 
 - 前一任务 [PR #366](https://github.com/CoderLambert/translateflow-plugin/pull/366) 已合入远端 main，提交 `d465e933cef10e2a6ae9320837b2925b816dc895`，版本 0.8.44。
-- 本任务从上述 main 提交建立独立分支 `feat/ollama-local-cloud-connections`，尚未提交、推送或合并。不改动用户正在使用的旧字幕安装目录。
-- 当前新增功能没有 candidate commit；`candidateHead = null`。不能将基线 SHA 当作本次改动的验收候选。用下列输入和安装包指纹绑定本地结果。
+- 本任务从上述 main 提交建立分支 `feat/ollama-local-cloud-connections`；实现提交 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`，尚未推送或合并。不改动用户正在使用的旧字幕安装目录。
+- 本任务候选提交为 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`。用下列输入和安装包指纹绑定本地结果。
 - 输入 SHA-256：`3679af26f288611dce5df1149c33859fae9b19e52cf8d99e21892a6dfca3ca82`，算法和逐文件 SHA 见本地 `docs/task-execution/local/ollama-local-cloud-connections/local-validation.json`。
 - 安装包仍标记 0.8.44，是未发布开发包；`dist/extension` 与 `.output/chrome-mv3` 字节树相同：`6c20d0f5a5c09a871e33fb2b575d8dda6de92967497a2ee13d0bab1b94593d8d`，131 文件、3,078,808 字节。
 

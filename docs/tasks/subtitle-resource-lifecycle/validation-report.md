@@ -1,15 +1,15 @@
 # 字幕性能与资源生命周期修复验收
 
-**本地实现及定向验收 PASS；已替换原安装目录，尚未提交、推送或合并。真实 YouTube 播放性能验收 NOT RUN。** 本次解决前轮性能审查确认的 2 项 P1、1 项 P2，不作“所有页面永久零泄漏”的保证。
+**字幕资源修复已提交 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`；定向验收 PASS，尚未推送或合并。真实 YouTube 播放性能验收 NOT RUN。** 本次解决前轮性能审查确认的 2 项 P1、1 项 P2，不作“所有页面永久零泄漏”的保证。
 
 [打开带截图的 HTML 报告](../../task-execution/local/subtitle-resource-lifecycle/report.html)（自包含本地文件，截图明确标注合成播放器）。
 
 ## 候选与交付
 
-- 分支：`feat/ollama-local-cloud-connections`；基线 HEAD / origin/main 均为 `d465e933cef10e2a6ae9320837b2925b816dc895`。本轮已 fetch，未合并其它提交。候选是该隔离工作树的**未提交文件**，不能用基线 SHA 冒充候选。
+- 分支：`feat/ollama-local-cloud-connections`；基线 HEAD / origin/main 均为 `d465e933cef10e2a6ae9320837b2925b816dc895`。实现提交为 `68acb0a124faa92a7efdbde7b5aee3354432cfdc`，未推送或合并。
 - 逐文件候选指纹：`docs/task-execution/local/subtitle-resource-lifecycle/inputs.json`；安全独审绑定见 [main-bridge-review.md](main-bridge-review.md)。已保留前序 Ollama 配置及“译”字居中改动。
-- 实际验证/安装包：`dist/extension`，版本 **0.8.44**，131 文件 / 3,084,866 bytes，tree SHA-256 **`c282db163db380c6bc3a7faffcb9c0e1b5eeb1b3ff22253b1c954ec3c6a0e036`**。
-- 已以暂存复制、指纹校验、旧目录备份和重命名替换交付至 `/home/lambert/githubRepos/lambert/translateflow-plugin-youtube-reliability-20261021/dist/extension`；安装后指纹一致。旧包 `d1205a2e…` 保存在同一 dist 下 `.extension-before-resource-fix-1792566337496`。安装日志为原始证据目录 `install.json`。
+- 实际 Chromium/MV3 E2E 验收包：版本 **0.8.44**，131 文件 / 3,084,866 bytes，tree SHA-256 **`c282db163db380c6bc3a7faffcb9c0e1b5eeb1b3ff22253b1c954ec3c6a0e036`**。版本化提交构建将 `dist/extension` 更新到 **0.8.47**；它与验收源码相同，只更新版本和任务元数据。
+- 版本 0.8.44 曾以暂存复制、指纹校验、旧目录备份和重命名替换交付至 `/home/lambert/githubRepos/lambert/translateflow-plugin-youtube-reliability-20261021/dist/extension`；最终 0.8.47 安装记录见 `install.json`。旧包 `d1205a2e…` 保存在同一 dist 下 `.extension-before-resource-fix-1792566337496`。安装日志为原始证据目录 `install.json`。
 
 ## 修复及证据
 
