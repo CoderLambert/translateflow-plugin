@@ -3,6 +3,7 @@ import { TRANSLATION_APPEARANCES } from "../shared/appearance.js";
 import type { OptionsConfig } from "./client";
 import { useOptionsI18n } from "./LocaleContext";
 import { ChatGPTPlanSection } from "./ChatGPTPlanSection";
+import { CHATGPT_PLAN_DEV_GUIDE_URL, isChatGPTPlanDeveloperBuild } from "../shared/chatgpt-native-host.js";
 import type { OptionsClient } from "./client";
 import type { ProviderConnectionState } from "./client";
 import { ProviderConnectionsSection } from "./ProviderConnectionsSection";
@@ -45,7 +46,15 @@ export function ShortcutsSection() {
 }
 
 export function ProviderSections({ config, disabled, update, client, connections, loading, error, reload, setStatus }: Props & { client: OptionsClient; connections: ProviderConnectionState | null; loading: boolean; error: string; reload: () => Promise<void>; setStatus: (message: string, error?: boolean) => void }) {
+  const i18n = useOptionsI18n();
+  const developer = isChatGPTPlanDeveloperBuild(globalThis.chrome?.runtime?.getManifest?.());
   return <><ProviderConnectionsSection client={client} state={connections} loading={loading} error={error} disabled={disabled} reload={reload} setStatus={setStatus} />
-    <ChatGPTPlanSection config={config} disabled={disabled} update={update} client={client} /></>;
+    {developer ? <ChatGPTPlanSection config={config} disabled={disabled} update={update} client={client} />
+      : <aside className="data-source-card" aria-label={i18n.t("options.chatgptPlan.devOnlyTitle")}>
+          <strong>{i18n.t("options.chatgptPlan.devOnlyTitle")}</strong>
+          <p>{i18n.t("options.chatgptPlan.devOnlyDescription")}</p>
+          <a href={CHATGPT_PLAN_DEV_GUIDE_URL} target="_blank" rel="noopener noreferrer">{i18n.t("options.chatgptPlan.devGuide")}</a>
+        </aside>}
+  </>;
 }
 function preventComposingSubmit(event: React.KeyboardEvent) { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }
