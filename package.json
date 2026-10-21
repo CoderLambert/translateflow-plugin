@@ -19,6 +19,7 @@
     "lock:kaikki": "node scripts/lock-kaikki-source.mjs",
     "build:extension": "node scripts/build-extension.mjs",
     "build:extension:release": "node scripts/build-extension.mjs",
+    "build:extension:dev": "node scripts/build-extension.mjs --developer",
     "build:native-host:candidate": "node scripts/build-native-host-candidate.mjs",
     "measure:extension-footprint": "node scripts/measure-extension-footprint.mjs",
     "project:kaikki": "node scripts/project-kaikki-rich.mjs",

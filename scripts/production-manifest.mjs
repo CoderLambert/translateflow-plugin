@@ -7,14 +7,16 @@ export const GLOBAL_CONTENT_SCRIPT = Object.freeze({
   run_at: "document_idle"
 });
 
-export function projectProductionManifest(baseline) {
+export function projectProductionManifest(baseline, { developer = false } = {}) {
   const { content_scripts: _legacyContentScripts, ...manifest } = baseline;
-  return manifest;
+  // Chrome's version_name distinguishes the experimental unpacked build without changing
+  // version, storage layout, Content scripts or existing host permissions.
+  return developer ? { ...manifest, version_name: `${manifest.version}-dev` } : manifest;
 }
 
-export function expectedProductionManifest(baseline) {
+export function expectedProductionManifest(baseline, { developer = false } = {}) {
   return {
-    ...projectProductionManifest(baseline),
+    ...projectProductionManifest(baseline, { developer }),
     content_scripts: [{
       matches: [...GLOBAL_CONTENT_SCRIPT.matches],
       js: [...GLOBAL_CONTENT_SCRIPT.js],

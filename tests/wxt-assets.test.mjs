@@ -7,6 +7,7 @@ import { assertAssetPath, isInsideSourceRoot, runtimeAssetRoots, sourceClosure }
 import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constants.js";
 import { EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { GLOBAL_CONTENT_SCRIPT, projectProductionManifest } from "../scripts/production-manifest.mjs";
+import { isChatGPTPlanDeveloperBuild, requireChatGPTPlanDeveloperBuild } from "../src/shared/chatgpt-native-host.js";
 import { YOUTUBE_MAIN_BRIDGE_FILES as runtimeMain } from "../src/background/youtube-bridge.js";
 import { assertProductionManifest } from "../scripts/audit-wxt-extension.mjs";
 
@@ -54,6 +55,26 @@ test("bridge follows only relative imports and rejects symlink escapes", async (
     await symlink(join(outside, "private.js"), join(root, "escape.js"));
     await assert.rejects(sourceClosure(["escape.js"], root), /escapes source root/u);
   } finally { await rm(root, { recursive: true, force: true }); await rm(outside, { recursive: true, force: true }); }
+});
+
+test("ChatGPT developer edition is explicitly marked without changing standard site permissions", async () => {
+  const baseline = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
+  const publicManifest = projectProductionManifest(baseline);
+  const developerManifest = projectProductionManifest(baseline, { developer: true });
+  assert.equal(publicManifest.version_name, undefined);
+  assert.equal(developerManifest.version_name, `${baseline.version}-dev`);
+  assert.equal(isChatGPTPlanDeveloperBuild(publicManifest), false);
+  assert.equal(isChatGPTPlanDeveloperBuild(developerManifest), true);
+  assert.equal(isChatGPTPlanDeveloperBuild({ ...developerManifest,
+    permissions: [...developerManifest.permissions, "nativeMessaging"], optional_permissions: undefined }), true);
+  assert.deepEqual(developerManifest.host_permissions, publicManifest.host_permissions);
+  assert.deepEqual(developerManifest.permissions, publicManifest.permissions);
+  assert.throws(() => requireChatGPTPlanDeveloperBuild(publicManifest), { code: "CHATGPT_PLAN_DEV_ONLY" });
+  assert.doesNotThrow(() => requireChatGPTPlanDeveloperBuild(developerManifest));
+  const contentScripts = [{ matches: [...GLOBAL_CONTENT_SCRIPT.matches], js: [...CONTENT_SCRIPT_FILES],
+    css: [...CONTENT_STYLE_FILES], run_at: "document_idle" }];
+  assertProductionManifest({ ...developerManifest, content_scripts: contentScripts }, baseline, { developer: true });
+  assert.throws(() => assertProductionManifest({ ...developerManifest, content_scripts: contentScripts }, baseline));
 });
 
 test("production Manifest fails closed for permissions, static injection and development changes", async () => {

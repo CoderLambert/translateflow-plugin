@@ -1,4 +1,5 @@
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
+import { requireChatGPTPlanDeveloperBuild } from "../shared/chatgpt-native-host.js";
 import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machine-translation-settings.js";
 import { handleCacheMessage } from "./cache/message-handler.js";
 import { readingTranslationResult } from "./selection/reading-result.js";
@@ -152,7 +153,9 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.QUICK_CONTROL_POSITION_SET: return saveQuickControlPosition(sender, message.position);
     case BACKGROUND_MESSAGES.PUBLIC_SETTINGS_SET: return writePublicSettings(message.settings);
     case BACKGROUND_MESSAGES.CHATGPT_PLAN_ACTION:
-      assertOptionsSender(sender); return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
+      assertOptionsSender(sender);
+      requireChatGPTPlanDeveloperBuild(globalThis.chrome?.runtime?.getManifest?.());
+      return handleChatGPTPlanAction(message.action, undefined, { accountId: message.accountId });
     case BACKGROUND_MESSAGES.SELECTION_RESOLVE:
       return resolveSelectionRequest({
         text: message.text,

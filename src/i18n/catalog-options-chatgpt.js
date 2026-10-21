@@ -1,5 +1,9 @@
 export const en = Object.freeze({
   "options.chatgptPlan.providerName": "ChatGPT subscription",
+  "options.chatgptPlan.devOnlyTitle": "ChatGPT subscription · developer preview",
+  "options.chatgptPlan.devOnlyDescription": "The public edition does not offer ChatGPT subscription sign-in. To test this experimental feature, use the self-built GitHub developer edition and configure the native host yourself.",
+  "options.chatgptPlan.devGuide": "GitHub developer build and setup guide",
+  "options.chatgptPlan.savedDevChoice": "ChatGPT subscription (developer edition only; choose another service)",
   "options.chatgptPlan.title": "Provider · ChatGPT subscription",
   "options.chatgptPlan.summary": "Connect through the separately installed Native Messaging Host. Access tokens stay in system credential storage and never enter the extension.",
   "options.chatgptPlan.notChecked": "Connection has not been checked. The host starts only after you request a status check or connect.",
@@ -74,6 +78,10 @@ export const en = Object.freeze({
 
 export const zh_CN = Object.freeze({
   "options.chatgptPlan.providerName": "ChatGPT 订阅",
+  "options.chatgptPlan.devOnlyTitle": "ChatGPT 订阅 · 开发者预览",
+  "options.chatgptPlan.devOnlyDescription": "公开版暂不提供 ChatGPT 订阅登录。需要体验此实验功能，请使用 GitHub 开发版并自行安装、配置本地组件。",
+  "options.chatgptPlan.devGuide": "GitHub 开发版及配置说明",
+  "options.chatgptPlan.savedDevChoice": "ChatGPT 订阅（仅开发版可用，请选择其他服务）",
   "options.chatgptPlan.title": "Provider · ChatGPT 订阅",
   "options.chatgptPlan.summary": "通过单独安装的 Native Messaging Host 连接。访问令牌保存在系统凭据存储中，不会进入扩展。",
   "options.chatgptPlan.notChecked": "尚未检查连接。只有你主动检查状态或连接时才会启动 host。",
