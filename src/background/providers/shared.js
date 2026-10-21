@@ -197,14 +197,15 @@ export function parseTranslationResult(data, segments, providerLabel) {
   }
 
   const parsed = parseJsonObject(content, providerLabel);
-  if (!Array.isArray(parsed.translations)) {
-    throw new ProviderRequestError(`${providerLabel} 返回格式不正确：缺少 translations 数组。`, {
+  const items = Array.isArray(parsed.translations) ? parsed.translations : parsed.segments;
+  if (!Array.isArray(items)) {
+    throw new ProviderRequestError(`${providerLabel} 返回格式不正确：缺少 translations 或 segments 数组。`, {
       code: "MALFORMED_RESPONSE"
     });
   }
 
   const validIds = new Set(segments.map((item) => String(item.id)));
-  return parsed.translations
+  return items
     .filter((item) => validIds.has(String(item.id)) && typeof item.text === "string")
     .map((item) => ({ id: String(item.id), text: item.text.trim() }));
 }
