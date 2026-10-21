@@ -5,9 +5,26 @@ test.use({ nativeMessagingPregranted: true });
 test.describe("ChatGPT Plan native host Settings", () => {
   test.beforeEach(async ({ harness }) => { await harness.reset(); });
 
+  test("public WXT shows a GitHub developer guide rather than account controls", async ({ harness }) => {
+    const page = await harness.context.newPage();
+    await page.goto(`chrome-extension://${harness.extensionId}/options.html#provider`);
+    const manifest = await page.evaluate(() => chrome.runtime.getManifest());
+    test.skip(manifest.version_name === `${manifest.version}-dev`, "Public edition only");
+    const section = page.locator("#settings-panel-provider");
+    await expect(section.getByText("ChatGPT 订阅 · 开发者预览")).toBeVisible();
+    await expect(section.getByRole("link", { name: "GitHub 开发版及配置说明" }))
+      .toHaveAttribute("href", "https://github.com/CoderLambert/translateflow-plugin/blob/main/docs/CHATGPT_DEVELOPMENT_BUILD.md");
+    await expect(section.getByRole("button", { name: "检查状态并加载模型" })).toHaveCount(0);
+    await expect(section.getByRole("button", { name: "连接 ChatGPT 账号" })).toHaveCount(0);
+    await expect(section.getByRole("option", { name: "ChatGPT 订阅", exact: true })).toHaveCount(0);
+    await page.close();
+  });
+
   test("the real WXT Settings surface recovers when the user-level host is absent", async ({ harness }, testInfo) => {
     const page = await harness.context.newPage();
     await page.goto(`chrome-extension://${harness.extensionId}/options.html#provider`);
+    const manifest = await page.evaluate(() => chrome.runtime.getManifest());
+    test.skip(manifest.version_name !== `${manifest.version}-dev`, "Developer edition only");
     const section = page.getByRole("heading", { name: "Provider · ChatGPT 订阅", exact: true }).locator("..");
 
     await expect(section).toBeVisible();
