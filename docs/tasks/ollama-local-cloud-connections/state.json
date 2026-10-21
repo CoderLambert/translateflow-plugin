@@ -60,7 +60,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "Ollama、本地云端连接与 YouTube 字幕生命周期修复已提交；真实浏览器 Ollama HTTP 403 仍是未关闭验收项。未推送/合并。",
+  "nextAction": "远端分支已推送，Draft PR #368 关联 Issue #367；先完成最终安装包及真实浏览器验收，再以 freeze-batch 绑定同一候选、两任务分别执行全部规定检查/证据/联合 gate。不得提前合并。",
   "localValidation": {
     "candidateCommitted": true,
     "node": "PASS 40/40",
@@ -76,5 +76,9 @@
     "inputSha256": "3679af26f288611dce5df1149c33859fae9b19e52cf8d99e21892a6dfca3ca82",
     "artifactSha256": "6c20d0f5a5c09a871e33fb2b575d8dda6de92967497a2ee13d0bab1b94593d8d",
     "implementationHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
-  }
+  },
+  "syncGroup": [
+    "ollama-local-cloud-connections",
+    "subtitle-resource-lifecycle"
+  ]
 }

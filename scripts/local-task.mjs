@@ -52,18 +52,32 @@ function load(root, task) {
   requireValue(Array.isArray(state.dependencies), "Invalid dependencies");
   return { p, state };
 }
-function archiveFiles(task) {
-  return new Set([`docs/tasks/${task}/state.json`, `docs/tasks/${task}/acceptance.json`, `docs/tasks/${task}/review.md`, `docs/tasks/${task}/validation-report.md`, "docs/tasks/index.json"]);
+// A joint delivery must declare exactly the same, ordered group in each
+// candidate task state. Unrelated task archives remain part of code input.
+function syncMembers(task, state) {
+  const members = state.syncGroup ?? [task];
+  requireValue(Array.isArray(members) && members.length > 0 && members.length <= 8 && members.includes(task)
+    && members.every((name) => typeof name === "string" && ID.test(name))
+    && new Set(members).size === members.length && same(members, [...members].sort()), "Invalid syncGroup");
+  return members;
 }
-export function inputTree(root, task, head) {
-  const excluded = archiveFiles(task);
+function archiveFiles(task, members = [task]) {
+  requireValue(members.includes(task), "Task is not in its sync group");
+  const items = members.flatMap((name) => [
+    `docs/tasks/${name}/state.json`, `docs/tasks/${name}/acceptance.json`,
+    `docs/tasks/${name}/review.md`, `docs/tasks/${name}/validation-report.md`
+  ]);
+  return new Set([...items, "docs/tasks/index.json"]);
+}
+export function inputTree(root, task, head, members = [task]) {
+  const excluded = archiveFiles(task, members);
   const files = execFileSync("git", ["ls-tree", "-r", "-z", head], { cwd: root }).toString().split("\0").filter(Boolean);
   return hash(files.filter((line) => !excluded.has(line.slice(line.indexOf("\t") + 1))).join("\0"));
 }
 // Git status can hide assume-unchanged/skip-worktree inputs. Hash disk bytes
 // against Git blobs independently at freeze, before/after commands, and gate.
-function assertWorkingInputs(root, task, head) {
-  const excluded = archiveFiles(task);
+function assertWorkingInputs(root, task, head, members = [task]) {
+  const excluded = archiveFiles(task, members);
   const entries = execFileSync("git", ["ls-tree", "-r", "-z", head], { cwd: root }).toString().split("\0").filter(Boolean);
   for (const entry of entries) {
     const [description, path] = entry.split("\t"), [mode, type, oid] = description.split(" ");
@@ -80,21 +94,24 @@ function assertWorkingInputs(root, task, head) {
 function contract(root, task, head) {
   const prefix = `docs/tasks/${task}`;
   const state = JSON.parse(git(root, "show", `${head}:${prefix}/state.json`));
-  return { validationCommands: state.validationCommands, dependencies: state.dependencies, artifactRequired: state.artifactRequired === true };
+  return { validationCommands: state.validationCommands, dependencies: state.dependencies, artifactRequired: state.artifactRequired === true, syncGroup: syncMembers(task, state) };
 }
 function ensureCandidate(root, task, acceptance, state) {
   requireValue(acceptance.task === task && SHA.test(acceptance.candidateHead), "Candidate not frozen");
+  const members = syncMembers(task, state), frozen = acceptance.syncGroup ?? [task];
+  requireValue(same(members, frozen), "Sync group changed after freezing");
   const head = git(root, "rev-parse", "HEAD");
   git(root, "merge-base", "--is-ancestor", "origin/main", head);
   git(root, "merge-base", "--is-ancestor", acceptance.candidateHead, head);
   requireValue(acceptance.tree === git(root, "rev-parse", `${acceptance.candidateHead}^{tree}`), "Candidate tree mismatch");
-  requireValue(acceptance.inputTree === inputTree(root, task, acceptance.candidateHead) && acceptance.inputTree === inputTree(root, task, head), "Code or task contract changed; freeze and verify again");
+  requireValue(acceptance.inputTree === inputTree(root, task, acceptance.candidateHead, members)
+    && acceptance.inputTree === inputTree(root, task, head, members), "Code or task contract changed; freeze and verify again");
   const expected = contract(root, task, acceptance.candidateHead);
-  requireValue(same(expected, { validationCommands: state.validationCommands, dependencies: state.dependencies, artifactRequired: state.artifactRequired === true }), "Acceptance requirements changed after freezing");
+  requireValue(same(expected, { validationCommands: state.validationCommands, dependencies: state.dependencies, artifactRequired: state.artifactRequired === true, syncGroup: members }), "Acceptance requirements changed after freezing");
   const changed = execFileSync("git", ["diff", "HEAD", "--name-only", "-z"], { cwd: root }).toString().split("\0").filter(Boolean);
   const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: root }).toString().split("\0").filter(Boolean);
-  requireValue([...changed, ...untracked].every((f) => archiveFiles(task).has(f)), "Uncommitted code/test/build input; freeze again");
-  assertWorkingInputs(root, task, acceptance.candidateHead);
+  requireValue([...changed, ...untracked].every((f) => archiveFiles(task, members).has(f)), "Uncommitted code/test/build input; freeze again");
+  assertWorkingInputs(root, task, acceptance.candidateHead, members);
   return head;
 }
 function evidence(root, task) {
@@ -127,16 +144,44 @@ export function buildIndex(root) {
   }).sort((a, b) => a.task.localeCompare(b.task, "en", { numeric: true }));
   return { schema: 1, source: "*/state.json", tasks };
 }
+function frozenRecord(root, task, head, members) {
+  return { schema: 1, task, candidateHead: head, tree: git(root, "rev-parse", `${head}^{tree}`),
+    inputTree: inputTree(root, task, head, members),
+    ...(members.length > 1 ? { syncGroup: members } : {}),
+    frozenAt: new Date().toISOString(),
+    environment: { node: process.version, npm: execFileSync("npm", ["--version"], { cwd: root, encoding: "utf8" }).trim(), browser: "NOT RUN" },
+    checks: [], artifact: null, limitations: [] };
+}
 export function freeze(root, task) {
-  const { p, state } = load(root, task);
+  const { p, state } = load(root, task), members = syncMembers(task, state);
+  requireValue(members.length === 1, "Joint tasks must use freeze-batch");
   requireValue(!git(root, "status", "--porcelain"), "Commit the candidate before freezing");
   const head = git(root, "rev-parse", "HEAD");
   git(root, "merge-base", "--is-ancestor", "origin/main", head);
-  assertWorkingInputs(root, task, head);
-  const acceptance = { schema: 1, task, candidateHead: head, tree: git(root, "rev-parse", `${head}^{tree}`), inputTree: inputTree(root, task, head), frozenAt: new Date().toISOString(), environment: { node: process.version, npm: execFileSync("npm", ["--version"], { cwd: root, encoding: "utf8" }).trim(), browser: "NOT RUN" }, checks: [], artifact: null, limitations: [] };
+  assertWorkingInputs(root, task, head, members);
+  const acceptance = frozenRecord(root, task, head, members);
   save(root, relative(root, p.acceptance), acceptance);
   event(root, task, "candidate_frozen", { candidateHead: head });
   return acceptance;
+}
+export function freezeBatch(root, task) {
+  const members = syncMembers(task, load(root, task).state);
+  requireValue(members.length > 1, "Single task must use freeze");
+  requireValue(!git(root, "status", "--porcelain"), "Commit the candidate before freezing");
+  const head = git(root, "rev-parse", "HEAD");
+  git(root, "merge-base", "--is-ancestor", "origin/main", head);
+  const items = members.map((member) => {
+    const { p, state } = load(root, member);
+    requireValue(same(syncMembers(member, state), members), "Joint task declarations differ");
+    requireValue(same(contract(root, member, head).syncGroup, members), "Candidate joint task declarations differ");
+    assertWorkingInputs(root, member, head, members);
+    return { member, p, acceptance: frozenRecord(root, member, head, members) };
+  });
+  for (const { member, p, acceptance } of items) {
+    save(root, relative(root, p.acceptance), acceptance);
+    event(root, member, "candidate_frozen", { candidateHead: head, syncGroup: members });
+  }
+  return { syncGroup: members, candidateHead: head, acceptances: items.map(({ acceptance }) => acceptance) };
 }
 export async function runCheck(root, task, argv) {
   const { p, state } = load(root, task), acceptance = json(p.acceptance);
@@ -188,7 +233,7 @@ export function fingerprint(root, path) {
   walk(base); requireValue(items.length > 0 && existsSync(join(base, "manifest.json")), "Missing extension artifact");
   return hash(items.join("\n"));
 }
-export function gate(root, task) {
+function gateSingle(root, task) {
   const { p, state } = load(root, task), acceptance = json(p.acceptance);
   const syncHead = ensureCandidate(root, task, acceptance, state);
   requireValue(SHA.test(state.candidateHead ?? "") && state.candidateHead === acceptance.candidateHead, "State candidate does not match acceptance");
@@ -212,12 +257,25 @@ export function gate(root, task) {
   requireValue(state.status === "ready_to_sync", "Task is not ready to sync");
   return { result: "PASS", task, candidateHead: acceptance.candidateHead, syncHead, inputTree: acceptance.inputTree, note: "Local evidence only; coordinator must honor remote protection and exact remote head." };
 }
-
+export function gate(root, task) {
+  const members = syncMembers(task, load(root, task).state);
+  if (members.length === 1) return gateSingle(root, task);
+  for (const member of members) {
+    requireValue(same(syncMembers(member, load(root, member).state), members), "Joint task declarations differ");
+  }
+  // Never certify one participant while a partner still lacks evidence.
+  const results = members.map((member) => gateSingle(root, member));
+  const first = results[0];
+  requireValue(results.every((r) => r.candidateHead === first.candidateHead
+    && r.syncHead === first.syncHead && r.inputTree === first.inputTree), "Joint task candidates or inputs differ");
+  return { ...results.find((r) => r.task === task), syncGroup: members, jointGates: results.map((r) => r.task) };
+}
 async function main() {
   const [action, task, ...args] = process.argv.slice(2);
   if (action === "index" && !task) { save(ROOT, "docs/tasks/index.json", buildIndex(ROOT)); return; }
   const { p, state } = load(ROOT, task);
   if (action === "freeze" && !args.length) console.log(JSON.stringify(freeze(ROOT, task), null, 2));
+  else if (action === "freeze-batch" && !args.length) console.log(JSON.stringify(freezeBatch(ROOT, task), null, 2));
   else if (action === "run" && args[0] === "--" && args.length > 1) { const result = await runCheck(ROOT, task, args.slice(1)); process.exitCode = result.result === "PASS" ? 0 : 1; }
   else if (action === "artifact" && args.length === 1) {
     const acceptance = json(p.acceptance); ensureCandidate(ROOT, task, acceptance, state);
@@ -227,7 +285,7 @@ async function main() {
   else if (action === "report" && !args.length) {
     const acceptance = json(p.acceptance);
     console.log(JSON.stringify({ task, candidateHead: acceptance.candidateHead, scope: "Current acceptance checks only; earlier attempts remain in local events/logs.", runs: acceptance.checks.length, failures: acceptance.checks.filter((c) => c.result === "FAIL").length, commandDurationMs: acceptance.checks.map((c) => ({ command: c.command, result: c.result, durationMs: c.durationMs ?? null })), modelRequests: "UNKNOWN", tokens: "UNKNOWN", note: "Command spans only; do not add native tool or wall-clock spans." }, null, 2));
-  } else throw new Error("Usage: local-task.mjs index | freeze <task> | run <task> -- <approved command> | artifact <task> <package path> | gate <task> | mark <task> <event> | report <task>");
+  } else throw new Error("Usage: local-task.mjs index | freeze <task> | freeze-batch <task> | run <task> -- <approved command> | artifact <task> <package path> | gate <task> | mark <task> <event> | report <task>");
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch((error) => { console.error(`local-task: ${error.message}`); process.exitCode = 1; });

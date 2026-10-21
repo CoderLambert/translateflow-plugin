@@ -47,7 +47,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "字幕资源修复已提交；隔离 Chromium/MV3 证据不覆盖真实 YouTube 长时间播放，待用户刷新扩展和页面后手工验收。未推送/合并。",
+  "nextAction": "远端分支已推送，Draft PR #368 关联 Issue #367；先完成最终安装包及真实浏览器验收，再以 freeze-batch 绑定同一候选、两任务分别执行全部规定检查/证据/联合 gate。不得提前合并。",
   "localValidation": {
     "candidateCommitted": true,
     "baseHead": "d465e933cef10e2a6ae9320837b2925b816dc895",
@@ -61,5 +61,9 @@
     "realYouTubePerformance": "NOT RUN",
     "artifactSha256": "c282db163db380c6bc3a7faffcb9c0e1b5eeb1b3ff22253b1c954ec3c6a0e036",
     "implementationHead": "68acb0a124faa92a7efdbde7b5aee3354432cfdc"
-  }
+  },
+  "syncGroup": [
+    "ollama-local-cloud-connections",
+    "subtitle-resource-lifecycle"
+  ]
 }
