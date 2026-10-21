@@ -11,5 +11,13 @@ export async function testSavedProviderConnection(connectionId) {
   const config = resolveTranslationConfig({ ...DEFAULT_CONFIG, providerConnectionsVersion: state.version,
     providerConnections: state.connections, providerCredentials: state.credentials,
     defaultService: { kind: "api-key", connectionId: connection.id } });
-  return { result: await testProvider(config) };
+  try {
+    return { result: await testProvider(config) };
+  } catch (error) {
+    if (connection.platform === "ollama" && error.status === 403) {
+      const origin = chrome.runtime.getURL("").replace(/\/$/u, "");
+      error.message = `Ollama 拒绝了扩展请求（HTTP 403）。请检查服务的访问限制；若未允许浏览器扩展，请将 ${origin} 加入 Ollama 的 OLLAMA_ORIGINS，重启服务后重试。`;
+    }
+    throw error;
+  }
 }

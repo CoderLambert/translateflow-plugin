@@ -55,7 +55,22 @@ OpenAI Responses、Anthropic Messages 和 Gemini generateContent 使用各自原
 
 ## 平台预设
 
-设置页提供 OpenAI、Anthropic、Google Gemini、DeepSeek、OpenRouter、Groq、xAI、Mistral、阿里云百炼兼容接口、SiliconFlow、Moonshot、智谱、火山方舟、Azure OpenAI v1、本地服务和自定义连接预设。预设只填写推荐协议和 Base URL；用户仍明确提供 Model 与 API Key。
+设置页提供 OpenAI、Anthropic、Google Gemini、DeepSeek、OpenRouter、Groq、xAI、Mistral、阿里云百炼兼容接口、SiliconFlow、Moonshot、智谱、火山方舟、Azure OpenAI v1、Ollama 本地、Ollama Cloud、LM Studio、本地服务和自定义连接预设。预设只填写推荐协议和 Base URL；用户明确选择模型并按服务要求填写 API Key，不限制模型 ID 白名单。
+
+| 服务 | Base URL 默认值 | 模型与认证 |
+| --- | --- | --- |
+| Ollama (local) | `http://127.0.0.1:11434/v1` | 填写 `ollama list` 中的完整聊天模型名，默认允许无 Key / HTTP |
+| Ollama Cloud | `https://ollama.com/v1` | 填写云端目录模型 ID 和 Ollama API Key，无需安装本地 Ollama |
+| LM Studio | `http://127.0.0.1:1234/v1` | 启动本地服务，填写聊天模型 ID；服务启用认证时填写 Key |
+| Local / self-hosted、Custom | 用户服务的 OpenAI API 基础地址 | 适用于 vLLM、llama.cpp 等兼容服务及自定义云端，认证按服务要求配置 |
+
+在“设置 → Provider → API Key 连接”选择预设、填写模型、保存后点击“测试”，再将其选为默认翻译服务或站点覆盖。保存新连接不会自动替换当前默认服务。浏览器刷新后保留连接、模型和选择；密码框留空不展示已保存 Key。预设只是协议配置，聊天模型是否遵守翻译 JSON 合同仍由实际模型决定；embedding、reranker 或纯补全模型不作为翻译聊天模型使用。
+
+Ollama / Ollama Cloud / LM Studio 在 `openai-chat` 下接受服务根地址并规范为 `/v1`。Ollama 的根 `/api`、`/api/chat` 也转换为 `/v1`；带反向代理前缀的地址仍请填写完整兼容 API 路径。不改变旧 Local / Custom 连接的地址语义，不猜测其他平台的版本路径。Ollama 本地入口中的 `:cloud` 模型实际通过已登录的 Ollama 服务请求云端，不能视为离线翻译。
+
+接入依据：[Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility)、[Ollama cloud](https://docs.ollama.com/cloud)、[LM Studio OpenAI compatibility](https://lmstudio.ai/docs/developer/openai-compat)。扩展复用现有 `openai-chat`，不增加 Ollama 原生协议或自动下载模型。
+
+Ollama 在浏览器扩展中返回 403、命令行却正常时，检查服务端来源限制。按 [Ollama FAQ](https://docs.ollama.com/faq#how-can-i-allow-additional-web-origins-to-access-ollama)，将当前扩展的 `chrome-extension://<扩展 ID>` 加入 `OLLAMA_ORIGINS`，保留已有来源，再由服务管理员重启 Ollama。“测试”失败会显示当前扩展的准确来源，便于配置；不自动修改服务、不扩大插件权限，也不移除请求 Origin 绕过限制。若服务使用认证或反向代理，还需检查相应的 Key 和访问策略。单独运行已安装本地模型的浏览器验证：`TF_OLLAMA_REAL_MODEL=<模型名> TF_TEST_WORKERS=1 npm run test:e2e -- e2e/provider-connections.spec.mjs --grep 'real local Ollama' --retries=0`；需先构建 `.output/chrome-mv3`，测试拒绝云端转发模型且不下载模型。
 
 Azure 仅支持统一的 OpenAI v1 Base URL，并按[微软 v1 Responses API 文档](https://learn.microsoft.com/en-us/rest/api/aifoundry/azureopenai/responses)使用 `api-key` header；不实现旧式 deployment URL 拼接、`api-version` 查询参数或 Azure Entra ID。AWS Bedrock、Vertex AI IAM/OAuth、自动 failover 和代理路由不在当前范围。
 

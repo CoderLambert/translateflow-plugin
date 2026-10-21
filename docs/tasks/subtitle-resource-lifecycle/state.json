@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "task": "subtitle-resource-lifecycle",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/ollama-local-cloud-connections",
+  "worktree": null,
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/youtube-bridge.test.mjs",
+      "tests/subtitles.test.mjs",
+      "tests/subtitle-pipeline.test.mjs",
+      "tests/subtitle-controller-currentness.test.mjs",
+      "tests/subtitle-request-lifecycle.test.mjs",
+      "tests/constants.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/youtube-subtitles.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/subtitle-resource-lifecycle.spec.mjs",
+      "--retries=0"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地修复与定向验收通过，测试过的包已替换原安装目录；等待用户重载扩展并刷新 YouTube 验收。未提交/推送/合并。",
+  "localValidation": {
+    "candidateCommitted": false,
+    "baseHead": "d465e933cef10e2a6ae9320837b2925b816dc895",
+    "scopeInputSha256": "b348d959e46901d6b6680ec96425dafffd61d1be94ec3b9dbec4cf031e752907",
+    "node": "PASS 101/101",
+    "check": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "mockMv3": "PASS 17/17",
+    "isolatedChromiumProbe": "PASS",
+    "realYouTubePerformance": "NOT RUN",
+    "artifactSha256": "c282db163db380c6bc3a7faffcb9c0e1b5eeb1b3ff22253b1c954ec3c6a0e036"
+  }
+}

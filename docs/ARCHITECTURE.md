@@ -187,6 +187,8 @@ existing #25 subtitle pipeline -> Background Provider/cache
 
 The bridge owns a monotonic `videoId + generation` identity. The isolated source independently rejects mismatched envelopes before ingestion. The fallback order is current-generation MAIN timedtext, real active HTML TextTrack cues, then rendered YouTube caption DOM. The player-local renderer remains responsible for bilingual/original/off presentation.
 
+Resource observation is single-owned across mode changes. Player-local DOM updates may refresh deduplicated track metadata (including cached track changes); unrelated page mutations do not publish subtitle snapshots. The source preindexes known cue times, detaches the unused TextTrack fallback while MAIN is valid, and releases acquisition listeners, observers, timers and cue state in off/stop. MAIN stop removes hooks/listeners and cancels only its bounded response-clone readers; original page requests remain owned by YouTube. Async bridge installation checks the active document owner before greeting or cleaning up a late installation. The renderer keeps the small native-toolbar rebind observer while off so the user can reopen subtitles. `sources/youtube-dom.js` owns caption DOM fallback/visibility restoration without additional observers.
+
 ## Migration-sensitive boundaries
 
 以下变化必须视为数据/协议迁移：

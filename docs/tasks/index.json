@@ -336,6 +336,13 @@
       "candidateHead": "8de40aee243af431b0301930f646cd38bf83e172"
     },
     {
+      "task": "ollama-local-cloud-connections",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/ollama-local-cloud-connections",
+      "candidateHead": null
+    },
+    {
       "task": "oxford-radio-css",
       "status": "completed",
       "dependencies": [
@@ -440,6 +447,13 @@
       "dependencies": [],
       "branch": "feat/selection-vocabulary-book-v1",
       "candidateHead": "033540996db9ce4150d949772f4386b258456673"
+    },
+    {
+      "task": "subtitle-resource-lifecycle",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/ollama-local-cloud-connections",
+      "candidateHead": null
     },
     {
       "task": "sync-current-worktree",

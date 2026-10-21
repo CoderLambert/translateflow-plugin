@@ -62,6 +62,8 @@ try {
 
   await driver.evaluate(async (baseUrl) => chrome.storage.local.set({
     provider: "openai-compatible", model: "mock-model", targetLanguage: "Simplified Chinese",
+    dictionaryEnabled: true,
+    translationPreferences: { version: 1, wordMethod: "dictionary", textMethod: "ai" },
     prompt: "Translate the segments and return JSON only.", appearance: "standard", cacheMaxMB: 50,
     cacheRestoreSites: [], autoSites: [], quickControlSites: [], quickControlHiddenSites: [],
     siteProfiles: {}, glossary: { version: 1, entries: [] }, siteGlossaries: { version: 1, sites: {} },
