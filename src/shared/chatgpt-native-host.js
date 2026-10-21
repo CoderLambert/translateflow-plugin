@@ -8,8 +8,7 @@ export const CHATGPT_PLAN_DEV_GUIDE_URL = "https://github.com/CoderLambert/trans
 // Accept manifest input rather than reading chrome.* inside a shared pure module.
 export function isChatGPTPlanDeveloperBuild(manifest) {
   return Boolean(manifest && typeof manifest.version === "string" &&
-    manifest.version_name === `${manifest.version}-dev` &&
-    manifest.optional_permissions?.includes("nativeMessaging"));
+    manifest.version_name === `${manifest.version}-dev`);
 }
 
 export function requireChatGPTPlanDeveloperBuild(manifest) {
