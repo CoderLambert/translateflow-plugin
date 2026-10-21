@@ -65,6 +65,8 @@ test("ChatGPT developer edition is explicitly marked without changing standard s
   assert.equal(developerManifest.version_name, `${baseline.version}-dev`);
   assert.equal(isChatGPTPlanDeveloperBuild(publicManifest), false);
   assert.equal(isChatGPTPlanDeveloperBuild(developerManifest), true);
+  assert.equal(isChatGPTPlanDeveloperBuild({ ...developerManifest,
+    permissions: [...developerManifest.permissions, "nativeMessaging"], optional_permissions: undefined }), true);
   assert.deepEqual(developerManifest.host_permissions, publicManifest.host_permissions);
   assert.deepEqual(developerManifest.permissions, publicManifest.permissions);
   assert.throws(() => requireChatGPTPlanDeveloperBuild(publicManifest), { code: "CHATGPT_PLAN_DEV_ONLY" });
