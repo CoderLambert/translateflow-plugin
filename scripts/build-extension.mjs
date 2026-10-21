@@ -11,8 +11,9 @@ import { auditWxtExtension } from "./audit-wxt-extension.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DEFAULT_OUT = resolve(ROOT, "dist/extension");
+const DEVELOPER_OUT = resolve(ROOT, "dist/extension-dev");
 
-export async function buildExtension({ outDir = DEFAULT_OUT, allowExternalOutput = false } = {}) {
+export async function buildExtension({ developer = false, outDir = developer ? DEVELOPER_OUT : DEFAULT_OUT, allowExternalOutput = false } = {}) {
   const options = { allowExternalOutput, allowWxtOutput: true };
   const output = await assertBuildOutputPaths(ROOT, outDir, options);
   // Each invocation builds in its own staging directory, including parallel Node
@@ -23,9 +24,9 @@ export async function buildExtension({ outDir = DEFAULT_OUT, allowExternalOutput
     const artifact = resolve(staging, "output/chrome-mv3");
     await promisify(execFile)(process.execPath, [resolve(ROOT, "node_modules/wxt/bin/wxt.mjs"), "build", "-b", "chrome", "--mv3"], {
       cwd: ROOT, maxBuffer: 4 * 1024 * 1024,
-      env: { ...process.env, TF_WXT_BUILD_ROOT: staging }
+      env: { ...process.env, TF_WXT_BUILD_ROOT: staging, TF_CHATGPT_PLAN_DEV_BUILD: developer ? "1" : "0" }
     });
-    const audit = await auditWxtExtension({ output: artifact, reportDir });
+    const audit = await auditWxtExtension({ output: artifact, reportDir, developer });
     await assertBuildOutputPaths(ROOT, output, options);
     await rm(output, { recursive: true, force: true });
     await mkdir(output, { recursive: true });
@@ -35,16 +36,17 @@ export async function buildExtension({ outDir = DEFAULT_OUT, allowExternalOutput
       await mkdir(resolve(ROOT, ".wxt/reports"), { recursive: true });
       await cp(reportDir, resolve(ROOT, ".wxt/reports"), { recursive: true });
     }
-    return { output, builder: "WXT", fileCount: audit.fileCount, totalBytes: audit.totalBytes,
+    return { output, edition: developer ? "chatgpt-developer" : "public", builder: "WXT", fileCount: audit.fileCount, totalBytes: audit.totalBytes,
       lexicalBytes: audit.lexicalBytes, lexicalAssetsIncluded: audit.lexicalBytes > 0,
       largestFiles: [...audit.files].sort((a,b) => b.size - a.size || a.path.localeCompare(b.path)).slice(0,20) };
   } finally { await rm(staging, { recursive: true, force: true }); }
 }
 
 function parseArgs(argv) {
-  const args = { outDir: DEFAULT_OUT };
+  const args = { developer: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === "--developer") { args.developer = true; continue; }
     if (arg === "--out") {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error("missing value for --out");
