@@ -243,9 +243,11 @@ test("joint gate rejects incomplete partner, altered contract or non-archive inp
   assert.equal((await runCheck(f.root, "234", ["npm", "run", "validate"])).result, "PASS");
   const state = f.load("docs/tasks/234/state.json"); state.status = "ready_to_sync"; state.candidateHead = batch.candidateHead;
   f.save("docs/tasks/234/state.json", state); f.save("docs/tasks/index.json", buildIndex(f.root));
+  const state2 = f.load("docs/tasks/235/state.json"); state2.candidateHead = batch.candidateHead;
+  f.save("docs/tasks/235/state.json", state2); f.save("docs/tasks/index.json", buildIndex(f.root));
   assert.throws(() => gate(f.root, "234"), /Missing passing check/u);
   assert.equal((await runCheck(f.root, "235", ["npm", "run", "validate"])).result, "PASS");
-  const state2 = f.load("docs/tasks/235/state.json"); state2.status = "ready_to_sync"; state2.candidateHead = batch.candidateHead;
+  state2.status = "ready_to_sync";
   f.save("docs/tasks/235/state.json", state2); f.save("docs/tasks/index.json", buildIndex(f.root));
   assert.equal(gate(f.root, "234").result, "PASS");
   state2.validationCommands = [["node", "--version"]];
