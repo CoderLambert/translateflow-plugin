@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "task": "ollama-local-cloud-connections",
+  "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+  "tree": "0623629e0f192ccebb22fd8e7d15f5959f6e4744",
+  "inputTree": "0bf87bd9d63762cf6a54ee71b80bda074e1422f0ec0b1fa925fffa5bd0328f3a",
+  "syncGroup": [
+    "ollama-local-cloud-connections",
+    "subtitle-resource-lifecycle"
+  ],
+  "frozenAt": "2026-10-21T08:50:38.639Z",
+  "environment": {
+    "node": "v24.22.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12 (Playwright channel chromium)"
+  },
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/provider-connections.test.mjs",
+        "tests/provider-config.test.mjs",
+        "tests/provider-native-protocols.test.mjs",
+        "tests/provider-structured-json.test.mjs",
+        "tests/local-translation.test.mjs"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 114.782178,
+      "startedAt": "2026-10-21T08:51:21.081Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/4df708c3-967b-4112-91b3-88fae2661c8d.log",
+      "logSha256": "9ca2fb3161a3097c154699fd254ce76a09440f147714a7b16f05964e58ad6399"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit",
+        "--",
+        "tests/unit/options-react.test.tsx"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1880.762895,
+      "startedAt": "2026-10-21T08:51:30.709Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/e6398f27-8337-481d-adb5-08f0f52e8422.log",
+      "logSha256": "bba017a08786ba3bd8ab4762b956041fc739d5ba15e20af3e87804707059f831"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2685.194943,
+      "startedAt": "2026-10-21T08:51:53.311Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/aef1303f-5be3-492c-b0c1-ba8e960a525e.log",
+      "logSha256": "91e52e546cbb172be1ea498ead7c5ff8d4723fc8476562816210122d7b3dbf72"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 16618.842218,
+      "startedAt": "2026-10-21T08:52:00.970Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/682a68ae-7ea5-49bf-a414-25151bcd55d9.log",
+      "logSha256": "43e787f4fc49ec3295a9d54a20c3e2ab2713d26e9ed9f8c40ca0d686eb18ebac"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1196.965142,
+      "startedAt": "2026-10-21T08:52:19.289Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/e0b6370f-630f-4dd6-b736-1f51a997f2fa.log",
+      "logSha256": "8b2f7139c867f35754eb7a2e55d90b761758417114b3043580612edbab4b6619"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/provider-connections.spec.mjs",
+        "--retries=0"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 10362.402431,
+      "startedAt": "2026-10-21T08:52:42.402Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/f37ba4fb-7f54-4c22-bed1-90880e9e6aeb.log",
+      "logSha256": "33463996430310ca1be0673c5467fc2a540a93cfa80f3c946239d4ff30a1a382"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5090.083362,
+      "startedAt": "2026-10-21T08:59:17.764Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/6753073a-1189-46bb-a44c-9ad5974b436f.log",
+      "logSha256": "fca2ccacd176aa9669ec3b2b39439da3d054d3394fa3314e1126a6ef237249ee"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2583.284502,
+      "startedAt": "2026-10-21T08:59:23.048Z",
+      "log": "docs/task-execution/local/ollama-local-cloud-connections/a0786c4f-e805-44bb-bb9b-c2fef31b58e5.log",
+      "logSha256": "7d662c7306fe11df40de5c966f625bfb7e02e2ee50da4d2dee807698277a5470"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "02005b348915162f005d6a7566df5f8530b01f39374001e2b70c069278e40129"
+  },
+  "limitations": [
+    "Real browser with the installed package passed against local Ollama qwen3.5:9b: connection test returned OK, Chinese translation appeared, and Mock Provider calls were 0. See docs/task-execution/local/ollama-local-cloud-connections/real-local-browser.json.",
+    "The user reported the configured Ollama Cloud model test passed after the fix; this is user-reported acceptance, not an agent-run cloud request. The agent did not use the stored cloud key or call a cloud account. Real LM Studio endpoint remains NOT RUN."
+  ]
+}

@@ -56,6 +56,27 @@ test("provider connection test feedback stays visible in the tested card", async
   await waitFor(() => expect(screen.getByRole("status").textContent).toContain("模型返回：OK"));
 });
 
+test("local and cloud presets set usable addresses and key requirements without restricting model IDs", async () => {
+  const saveProviderConnection = vi.fn(async (connection) => connection);
+  render(zhNode(<ProviderConnectionsSection client={{ testProviderConnection: vi.fn(), saveProviderConnection,
+    deleteProviderConnection: vi.fn(), setDefaultService: vi.fn() } as any} state={{ version: 1, defaultService: null, connections: [] }}
+    loading={false} error="" disabled={false} reload={vi.fn()} setStatus={vi.fn()} />));
+  await userEvent.selectOptions(screen.getByLabelText("平台 Preset"), "ollama");
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe("http://127.0.0.1:11434/v1");
+  expect((screen.getByLabelText("本地服务允许空 API Key") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("本地或自托管服务允许 HTTP") as HTMLInputElement).checked).toBe(true);
+  await userEvent.type(screen.getByLabelText("模型"), "user/model:custom-tag");
+  await userEvent.click(screen.getByRole("button", { name: "保存连接" }));
+  await waitFor(() => expect(saveProviderConnection).toHaveBeenCalledWith(expect.objectContaining({ platform: "ollama",
+    defaultModel: "user/model:custom-tag", settings: expect.objectContaining({ allowEmptyApiKey: true }) }), 0, "", true));
+  await userEvent.selectOptions(screen.getByLabelText("平台 Preset"), "ollama-cloud");
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe("https://ollama.com/v1");
+  expect((screen.getByLabelText("本地服务允许空 API Key") as HTMLInputElement).checked).toBe(false);
+  expect((screen.getByLabelText("本地或自托管服务允许 HTTP") as HTMLInputElement).checked).toBe(false);
+  await userEvent.selectOptions(screen.getByLabelText("平台 Preset"), "lmstudio");
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe("http://127.0.0.1:1234/v1");
+});
+
 test("general React controls keep values controlled without writing from render", async () => {
   const update = vi.fn(); render(zhNode(<GeneralSection config={config} disabled={false} update={update} />));
   expect(set).not.toHaveBeenCalled();

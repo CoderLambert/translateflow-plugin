@@ -83,7 +83,7 @@ ${app.modules.uiTokens.css}
       entry.setAttribute("data-tf-subtitle-button", "true"); entry.setAttribute("data-tf-extension-ui", "youtube-subtitle-button");
       entry.setAttribute("aria-haspopup", "dialog"); entry.setAttribute("aria-expanded", "false");
       entry.textContent = "译";
-      entry.style.cssText = "color:white;font:600 18px/1 sans-serif;width:48px;height:100%;min-height:32px;cursor:pointer;background:transparent;border:0;padding:0;pointer-events:auto;";
+      entry.style.cssText = "display:inline-flex;align-items:center;justify-content:center;text-align:center;color:white;font:600 18px/1 sans-serif;width:48px;height:100%;min-height:32px;cursor:pointer;background:transparent;border:0;padding:0;pointer-events:auto;";
       locale.bindAttribute(entry, "aria-label", "content.subtitle.openSettings"); locale.bindAttribute(entry, "title", "content.subtitle.openSettings");
       entry.addEventListener("click", () => setPanelOpen(!panelOpen));
       bindEntry();

@@ -4,20 +4,19 @@
     !app?.modules.subtitleSource
     || !app.modules.textTrackSubtitleSource
     || !app.modules.youtubeBridgeProtocol
+    || !app.modules.youtubeCaptionDom
     || !app.modules.youtubeTimedtext
     || app.modules.youtubeSubtitleSource
   ) return;
 
-  const { SOURCE_KINDS, cleanCueText, normalizeSnapshot, createSnapshotEmitter, selectUpcomingCues } = app.modules.subtitleSource;
+  const { SOURCE_KINDS, cleanCueText, normalizeSnapshot, createSnapshotEmitter, createCueTimeline } = app.modules.subtitleSource;
   const { createTextTrackSource } = app.modules.textTrackSubtitleSource;
   const protocol = app.modules.youtubeBridgeProtocol;
-  const timedtext = app.modules.youtubeTimedtext;
   const runtime = app.modules.runtime;
+  const { CAPTION_CONTAINER_SELECTORS, CAPTION_SEGMENT_SELECTORS, createCaptionDom } = app.modules.youtubeCaptionDom;
 
   const PLAYER_SELECTORS = Object.freeze(["#movie_player", ".html5-video-player"]);
   const VIDEO_SELECTORS = Object.freeze(["video.html5-main-video", "video"]);
-  const CAPTION_CONTAINER_SELECTORS = Object.freeze(["#ytp-caption-window-container", ".ytp-caption-window-container"]);
-  const CAPTION_SEGMENT_SELECTORS = Object.freeze([".ytp-caption-segment", ".caption-visual-line", ".captions-text span"]);
   const NAVIGATION_EVENTS = Object.freeze(["yt-navigate-finish", "yt-page-data-updated"]);
 
   function parseYouTubeVideoId(rawUrl) {
@@ -40,6 +39,10 @@
     return null;
   }
 
+  // The bridge belongs to the current source in this document. A late install
+  // from a stopped source must not tear down a newer owner.
+  const bridgeOwners = new WeakMap();
+
   function createYouTubeSubtitleSource({
     document: doc = globalThis.document,
     window: win = globalThis.window,
@@ -55,25 +58,34 @@
       const type = runtime?.messages?.background?.YOUTUBE_BRIDGE_INSTALL || "YOUTUBE_BRIDGE_INSTALL";
       return runtime?.sendRuntimeMessage ? runtime.sendRuntimeMessage({ type }) : Promise.resolve({ ok: true });
     });
+    const ownerKey = win || doc;
+    const owner = {};
+    let activation = 0;
     let started = false;
     let mode = ["bilingual", "original", "off"].includes(subtitleMode) ? subtitleMode : "bilingual";
-    let pageVideoId = "";
-    let mainGeneration = null;
-    let mainValid = false;
-    let mainCues = [];
-    let mainTrack = null;
-    let mainReady = false;
-    let playerRoot = null;
-    let videoElement = null;
-    let textTrackSource = null;
-    let observer = null;
-    let cueTimer = null;
-    const hiddenNative = new Map();
+    let pageVideoId = "", mainGeneration = null, mainValid = false;
+    let timeline = createCueTimeline();
+    let mainTrack = null, mainReady = false;
+    let playerRoot = null, videoElement = null;
+    let textTrackSource = null, observer = null, cueTimer = null;
+    const captionDom = createCaptionDom(doc);
+    const restoreNativeCaptionLayer = captionDom.restore;
+    const suppressNativeCaptionLayer = () => mode === "off" ? captionDom.restore() : captionDom.suppress(playerRoot);
 
     const onNavigation = () => refresh("spa-navigation", true);
     const onPopState = () => refresh("popstate", true);
-    const onMutation = () => refresh("dom-mutation");
+    const onMutation = () => {
+      if (!isActive()) return;
+      if (mainAvailable() && playerRoot?.isConnected && videoElement?.isConnected
+        && playerRoot.contains?.(videoElement)) {
+        suppressNativeCaptionLayer();
+        return;
+      }
+      refresh("dom-mutation");
+    };
     const onVideoEvent = event => refresh(event?.type || "media-time");
+
+    function isActive() { return started && mode !== "off"; }
 
     function currentVideoId() {
       const fromUrl = parseYouTubeVideoId(win?.location?.href || "");
@@ -86,19 +98,23 @@
       return id.startsWith("youtube:") || id.startsWith("youtube-media:") ? id : id ? `youtube:${id}` : "youtube:unknown";
     }
 
-    function syncPageIdentity() {
-      const next = currentVideoId();
-      if (!next || next === pageVideoId) return false;
-      pageVideoId = next;
+    function resetMain() {
       mainGeneration = null;
       mainValid = false;
-      mainCues = [];
+      timeline = createCueTimeline();
       mainTrack = null;
       mainReady = false;
       clearTimeout(cueTimer);
       cueTimer = null;
       emitter.reset();
       restoreNativeCaptionLayer();
+    }
+
+    function syncPageIdentity() {
+      const next = currentVideoId();
+      if (!next || next === pageVideoId) return false;
+      pageVideoId = next;
+      resetMain();
       return true;
     }
 
@@ -109,39 +125,48 @@
       const changed = playerRoot !== nextRoot;
       playerRoot = nextRoot;
       const Observer = win?.MutationObserver || globalThis.MutationObserver;
-      if (!started || !playerRoot || typeof Observer !== "function") return changed;
+      if (!isActive() || !playerRoot || typeof Observer !== "function") return changed;
       observer = new Observer(onMutation);
       observer.observe(playerRoot, { childList: true, subtree: true, characterData: true });
       return changed;
     }
 
-    function bindVideo(nextVideo) {
-      if (videoElement === nextVideo && textTrackSource) return false;
-      const changed = videoElement !== nextVideo;
-      textTrackSource?.stop?.();
-      textTrackSource = null;
-      for (const name of ["timeupdate", "seeking", "seeked", "play", "pause", "ratechange", "loadedmetadata", "emptied"]) {
-        videoElement?.removeEventListener?.(name, onVideoEvent);
+    function syncTextTrackSource() {
+      if (!isActive() || !videoElement || mainAvailable()) {
+        textTrackSource?.stop?.();
+        textTrackSource = null;
+        return;
       }
-      videoElement = nextVideo || null;
-      if (!videoElement) return changed;
-      for (const name of ["timeupdate", "seeking", "seeked", "play", "pause", "ratechange", "loadedmetadata", "emptied"]) {
-        videoElement.addEventListener?.(name, onVideoEvent);
-      }
-      let candidate;
-      candidate = createTextTrackSource({
+      if (textTrackSource) return;
+      const candidate = createTextTrackSource({
         mediaElement: videoElement,
         preferredLanguage,
         mediaId: resolveMediaId,
         onSnapshot: (snapshot) => {
-          if (!started || candidate !== textTrackSource || mainAvailable()) return;
+          if (!isActive() || candidate !== textTrackSource || mainAvailable()) return;
           if (snapshot.cues?.length) emitTextTrack(snapshot, "text-track-event");
           else refresh("text-track-empty");
         }
       });
       textTrackSource = candidate;
       candidate.start();
-      return changed;
+    }
+
+    function bindVideo(nextVideo) {
+      if (videoElement === nextVideo) { syncTextTrackSource(); return false; }
+      textTrackSource?.stop?.();
+      textTrackSource = null;
+      for (const name of ["timeupdate", "seeking", "seeked", "play", "pause", "ratechange", "loadedmetadata", "emptied"]) {
+        videoElement?.removeEventListener?.(name, onVideoEvent);
+      }
+      videoElement = nextVideo || null;
+      if (videoElement) {
+        for (const name of ["timeupdate", "seeking", "seeked", "play", "pause", "ratechange", "loadedmetadata", "emptied"]) {
+          videoElement.addEventListener?.(name, onVideoEvent);
+        }
+      }
+      syncTextTrackSource();
+      return true;
     }
 
     function bindCurrentPlayer() {
@@ -158,25 +183,17 @@
 
     function mainAvailable() { return mainValid && validMainMessage({ videoId: pageVideoId, generation: mainGeneration }); }
 
-    function activeCuesAt(time) {
-      return mainCues.filter((cue) => {
-        const start = Number(cue.startTime);
-        const end = cue.endTime === null ? Infinity : Number(cue.endTime);
-        return Number.isFinite(start) && start <= time && time < end;
-      });
-    }
-
     function scheduleNextBoundary(time) {
       clearTimeout(cueTimer);
       cueTimer = null;
-      if (!mainAvailable() || !mainCues.length || videoElement?.paused || videoElement?.seeking) return;
-      const boundaries = mainCues.flatMap((cue) => [cue.startTime, cue.endTime]).filter((value) => Number.isFinite(value) && value > time + 0.001);
-      if (!boundaries.length) return;
+      if (!isActive() || !mainAvailable() || videoElement?.paused || videoElement?.seeking) return;
+      const next = timeline.nextBoundary(time + 0.001);
+      if (next === undefined) return;
       const rate = Math.max(0.1, Math.abs(Number(videoElement?.playbackRate) || 1));
       cueTimer = setTimeout(() => {
         cueTimer = null;
-        if (started && mainAvailable()) emitTimedtext("cue-boundary", true);
-      }, Math.max(0, ((Math.min(...boundaries) - time) / rate) * 1000));
+        if (isActive() && mainAvailable()) emitTimedtext("cue-boundary", true);
+      }, Math.max(0, ((next - time) / rate) * 1000));
     }
 
     function emitTimedtext(reason = "timedtext", force = false) {
@@ -189,8 +206,8 @@
         mediaTime: time,
         seeking: videoElement?.seeking === true,
         track: mainTrack,
-        cues: activeCuesAt(time),
-        upcomingCues: selectUpcomingCues(mainCues, time)
+        cues: timeline.activeAt(time),
+        upcomingCues: timeline.upcomingAt(time)
       }, { force });
       scheduleNextBoundary(time);
       suppressNativeCaptionLayer();
@@ -203,25 +220,8 @@
       return next;
     }
 
-    function readDomCues() {
-      for (const selector of CAPTION_CONTAINER_SELECTORS) {
-        const container = doc.querySelector?.(selector);
-        if (!container) continue;
-        for (const segmentSelector of CAPTION_SEGMENT_SELECTORS) {
-          const nodes = Array.from(container.querySelectorAll?.(segmentSelector) || []);
-          const text = cleanCueText(nodes.map(node => node?.textContent).filter(Boolean).join(" "));
-          // Selectors are alternatives: collecting visual-line parents together
-          // with their caption-segment children duplicates the visible words.
-          if (text) return [{ id: "yt:dom:0", startTime: null, endTime: null, text }];
-        }
-        const text = cleanCueText(container.textContent || "");
-        if (text) return [{ id: "yt:dom:0", startTime: null, endTime: null, text }];
-      }
-      return [];
-    }
-
     function emitDomSnapshot(reason = "dom-fallback", force = false) {
-      const cues = readDomCues();
+      const cues = captionDom.readCues();
       const snapshot = emitter.emit({
         source: SOURCE_KINDS.YOUTUBE_DOM,
         reason,
@@ -237,38 +237,13 @@
     }
 
     function refresh(reason = "refresh", force = false) {
-      if (!started) return getSnapshot();
+      if (!isActive()) return getSnapshot();
       syncPageIdentity();
       const bindingChanged = bindCurrentPlayer();
       if (mainAvailable()) return emitTimedtext(reason, force || bindingChanged);
       const textTrackSnapshot = textTrackSource?.getSnapshot?.();
       if (textTrackSnapshot?.cues?.length) return emitTextTrack(textTrackSnapshot, reason, force || bindingChanged);
       return emitDomSnapshot(reason, force || bindingChanged);
-    }
-
-    function suppressNativeCaptionLayer() {
-      if (mode === "off") {
-        restoreNativeCaptionLayer();
-        return;
-      }
-      const roots = [playerRoot, doc];
-      for (const root of roots) {
-        for (const selector of CAPTION_CONTAINER_SELECTORS) {
-          const node = root?.querySelector?.(selector);
-          if (!node || hiddenNative.has(node)) continue;
-          if (node.style) hiddenNative.set(node, node.style.visibility);
-          node.style && (node.style.visibility = "hidden");
-          node.setAttribute?.("data-tf-native-caption-hidden", "true");
-        }
-      }
-    }
-
-    function restoreNativeCaptionLayer() {
-      for (const [node, visibility] of hiddenNative) {
-        if (node.style) node.style.visibility = visibility || "";
-        node.removeAttribute?.("data-tf-native-caption-hidden");
-      }
-      hiddenNative.clear();
     }
 
     function postToMain(type, payload = {}) {
@@ -285,20 +260,17 @@
     function postHello() { postToMain("HELLO", { mode }); }
 
     function handleBridgeMessage(event) {
-      if (event.source !== win) return;
+      if (!isActive() || event.source !== win) return;
       const result = protocol.validateEnvelope(event.data, { direction: protocol.DIRECTIONS.MAIN_TO_ISOLATED });
       if (!result.ok) return;
       const message = result.value;
       const routeId = currentVideoId();
       if (message.type === "VIDEO_CHANGED") {
         if (routeId && message.videoId && routeId !== message.videoId) return;
+        resetMain();
         pageVideoId = message.videoId;
         mainGeneration = message.generation;
         mainReady = true;
-        mainValid = false;
-        mainCues = [];
-        mainTrack = null;
-        emitter.reset();
         refresh("video-changed", true);
         return;
       }
@@ -310,63 +282,89 @@
         refresh("bridge-ready", true);
       } else if (message.type === "TRACKS" && message.generation === mainGeneration) {
         const nextTrack = message.payload.selected || message.payload.tracks?.[0] || null;
-        if (mainTrack?.id && nextTrack?.id && mainTrack.id !== nextTrack.id) {
+        if ((mainTrack?.id || "") !== (nextTrack?.id || "")) {
           mainValid = false;
-          mainCues = [];
+          timeline = createCueTimeline();
         }
         mainTrack = nextTrack;
-        refresh("track-metadata", true);
+        refresh("track-metadata");
       } else if (message.type === "TIMEDTEXT" && message.generation === mainGeneration) {
         mainReady = true;
         mainValid = true;
-        mainCues = message.payload.cues;
+        timeline = createCueTimeline(message.payload.cues);
+        syncTextTrackSource();
         mainTrack = message.payload.track || mainTrack;
         emitTimedtext("timedtext", true);
       } else if (message.type === "ERROR" && message.generation === mainGeneration) {
         mainValid = false;
-        mainCues = [];
+        timeline = createCueTimeline();
         refresh("bridge-error", true);
       }
+    }
+
+    function listen(enabled) {
+      const toggle = (target, name, callback) => enabled
+        ? target?.addEventListener?.(name, callback) : target?.removeEventListener?.(name, callback);
+      for (const name of NAVIGATION_EVENTS) toggle(doc, name, onNavigation);
+      toggle(win, "popstate", onPopState);
+      toggle(win, "message", handleBridgeMessage);
+    }
+
+    async function activate() {
+      listen(true);
+      const version = ++activation;
+      bridgeOwners.set(ownerKey, owner);
+      try { await install(); } catch {}
+      if (!isActive() || version !== activation) {
+        // Injection may finish after STOP. Clean its late hooks, unless another
+        // active source now owns the shared MAIN bridge.
+        if (!bridgeOwners.has(ownerKey)) postToMain("STOP");
+        return getSnapshot();
+      }
+      postHello();
+      return refresh("start", true);
     }
 
     async function start() {
       if (started) return getSnapshot();
       started = true;
       pageVideoId = currentVideoId();
-      for (const name of NAVIGATION_EVENTS) doc.addEventListener?.(name, onNavigation);
-      win?.addEventListener?.("popstate", onPopState);
-      win?.addEventListener?.("message", handleBridgeMessage);
-      try { await install(); } catch {}
-      if (!started) return getSnapshot();
-      postHello();
-      return refresh("start", true);
+      return mode === "off" ? getSnapshot() : activate();
     }
 
-    function stop() {
-      if (!started) return;
-      postToMain("STOP");
-      started = false;
-      for (const name of NAVIGATION_EVENTS) doc.removeEventListener?.(name, onNavigation);
-      win?.removeEventListener?.("popstate", onPopState);
-      win?.removeEventListener?.("message", handleBridgeMessage);
+    function releasePlayer() {
       observer?.disconnect?.();
       observer = null;
       clearTimeout(cueTimer);
       cueTimer = null;
-      textTrackSource?.stop?.();
-      textTrackSource = null;
       bindVideo(null);
       playerRoot = null;
-      restoreNativeCaptionLayer();
-      emitter.reset();
+      resetMain();
+    }
+
+    function deactivate() {
+      activation++;
+      listen(false);
+      if (bridgeOwners.get(ownerKey) === owner) {
+        bridgeOwners.delete(ownerKey);
+        postToMain("STOP");
+      }
+      releasePlayer();
+    }
+
+    function stop() {
+      if (!started) return;
+      started = false;
+      deactivate();
     }
 
     function setMode(nextMode) {
+      const previous = mode;
       mode = ["bilingual", "original", "off"].includes(nextMode) ? nextMode : "bilingual";
-      if (started) {
-        postHello();
-        if (mode === "off") restoreNativeCaptionLayer();
-        else refresh("mode-change", true);
+      if (started && mode !== previous) {
+        if (mode === "off") deactivate();
+        else if (previous === "off") activate().catch(() => {});
+        else { postHello(); refresh("mode-change", true); }
       }
       return mode;
     }
@@ -374,7 +372,6 @@
     function getSnapshot() {
       return emitter.getLastSnapshot() || normalizeSnapshot({ source: SOURCE_KINDS.YOUTUBE_DOM, reason: "idle", mediaId: resolveMediaId(), cues: [] });
     }
-
     function getMode() {
       if (mainAvailable()) return SOURCE_KINDS.YOUTUBE_TIMEDTEXT;
       return textTrackSource?.getSnapshot?.().cues?.length ? SOURCE_KINDS.TEXT_TRACK : SOURCE_KINDS.YOUTUBE_DOM;

@@ -29,16 +29,18 @@
     navigationTimer: null,
     mutationObserver: null,
     performanceObserver: null,
+    observing: false,
+    tracksSignature: "",
     originalFetch: null,
     fetchWrapper: null,
     xhrPrototype: null,
-    originalXhrOpen: null,
-    originalXhrSend: null,
+    originalXhrOpen: null, originalXhrSend: null,
     xhrOpenWrapper: null,
     xhrSendWrapper: null,
-    xhrRequests: new WeakMap(),
+    xhrRequests: new Map(),
     resourceUrl: ""
   };
+  const bodyReader = timedtext.createBodyReader();
   function clean(value) { return String(value ?? "").trim(); }
   function safeCall(fn, receiver, ...args) {
     try { return typeof fn === "function" ? fn.apply(receiver, args) : undefined; } catch { return undefined; }
@@ -74,9 +76,6 @@
     const data = safeCall(player?.getVideoData, player);
     return clean(data?.video_id || data?.videoId || data?.video_id_raw);
   }
-  function readInitialCaptionTracks() {
-    return page.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-  }
   function readSelectedRaw(player) {
     return safeCall(player?.getOption, player, "captions", "track") || null;
   }
@@ -84,7 +83,7 @@
     const audio = safeCall(player?.getAudioTrack, player);
     const fromAudio = Array.isArray(audio?.captionTracks) ? audio.captionTracks : [];
     const selected = readSelectedRaw(player);
-    const all = [...fromAudio, ...(selected ? [selected] : []), ...readInitialCaptionTracks()];
+    const all = [...fromAudio, ...(selected ? [selected] : []), ...(page.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [])];
     const seen = new Set();
     return all.filter((track) => {
       const identity = timedtext.trackIdentity(track);
@@ -105,10 +104,14 @@
     });
   }
   function resolveState(reason = "refresh") {
+    if (!state.active || state.mode === "off") return false;
     const player = findPlayer();
+    const video = findVideo(player);
+    const bindingChanged = state.player !== player || state.video !== video;
     const nextId = locationVideoId() || readPlayerVideoId(player);
     if (!nextId) return false;
     if (state.videoId !== nextId) {
+      bodyReader.cancelAll();
       state.videoId = nextId;
       state.generation += 1;
       state.captured = false;
@@ -122,7 +125,7 @@
     }
 
     state.player = player;
-    bindVideo(findVideo(player));
+    bindVideo(video);
     const selectedRaw = readSelectedRaw(player);
     const rawTracks = readRawTracks(player);
     const nextRaw = selectedRaw || rawTracks[0] || null;
@@ -130,17 +133,21 @@
     const changed = nextTrack?.id !== state.track?.id;
     state.selectedRaw = selectedRaw;
     state.rawTracks = rawTracks;
-    if (changed) state.trackRevision += 1;
+    if (changed) { state.trackRevision += 1; bodyReader.cancelAll(); }
     state.track = nextTrack;
-    if (changed || rawTracks.length) publishTracks(reason);
+    publishTracks(reason, bindingChanged);
     return true;
   }
-  function publishTracks(reason = "tracks") {
-    post("TRACKS", {
+  function publishTracks(reason = "tracks", force = false) {
+    const payload = {
       reason,
       tracks: state.rawTracks.map(normalizedTrack).filter(Boolean),
       selected: state.track
-    });
+    };
+    const signature = JSON.stringify([state.videoId, state.generation, payload.tracks, payload.selected]);
+    if (!force && signature === state.tracksSignature) return;
+    state.tracksSignature = signature;
+    post("TRACKS", payload);
   }
   function captureContext(url) {
     resolveState("request");
@@ -178,13 +185,17 @@
     }, context);
   }
   function observeFetchResponse(response, context, url) {
-    if (!response || typeof response.clone !== "function") return;
+    if (!isCurrentContext(context) || !response || typeof response.clone !== "function") return;
     let clone;
     try { clone = response.clone(); } catch { return; }
     try {
       const contentType = clone.headers?.get?.("content-type") || response.headers?.get?.("content-type") || "";
-      const bodyPromise = typeof clone.text === "function" ? clone.text() : clone.json?.();
-      Promise.resolve(bodyPromise).then((body) => handleTimedtext(body, context, url, contentType), () => {});
+      bodyReader.read(clone, {
+        isCurrent: () => isCurrentContext(context),
+        onTooLarge: () => post("ERROR", { code: "payload-too-large", message: "Timedtext payload exceeds 2 MiB." }, context)
+      }).then((body) => {
+        if (body !== null) handleTimedtext(body, context, url, contentType);
+      }, () => {});
     } catch {}
   }
   function installFetch() {
@@ -202,12 +213,12 @@
     state.fetchWrapper = wrapper;
     try { page.fetch = wrapper; } catch { state.fetchWrapper = null; state.originalFetch = null; }
   }
-  function readXhrBody(xhr) {
-    try {
-      if (xhr.responseType === "json") return xhr.response;
-      if (!xhr.responseType || xhr.responseType === "text") return xhr.responseText;
-    } catch {}
-    return null;
+  function detachXhr(xhr) {
+    const listener = state.xhrRequests.get(xhr);
+    if (listener) xhr.removeEventListener?.("loadend", listener);
+    state.xhrRequests.delete(xhr);
+    delete xhr.__translateFlowYouTubeRequest;
+    delete xhr.__translateFlowYouTubeObserved;
   }
   function installXhr() {
     const prototype = page.XMLHttpRequest?.prototype;
@@ -216,6 +227,7 @@
     const originalSend = prototype.send;
     if (typeof originalOpen !== "function" || typeof originalSend !== "function") return;
     const openWrapper = function translateFlowYouTubeXhrOpen(method, url, ...rest) {
+      detachXhr(this);
       const value = originalOpen.call(this, method, url, ...rest);
       const rawUrl = requestUrl(url);
       this.__translateFlowYouTubeRequest = isTimedtextUrl(rawUrl) ? captureContext(rawUrl) : null;
@@ -226,12 +238,19 @@
       const context = this.__translateFlowYouTubeRequest;
       if (context && !this.__translateFlowYouTubeObserved && typeof this.addEventListener === "function") {
         this.__translateFlowYouTubeObserved = true;
-        this.addEventListener("loadend", () => {
-          const body = readXhrBody(this);
+        const onLoadEnd = () => {
+          detachXhr(this);
+          const body = timedtext.readXhrBody(this);
           if (body !== null) handleTimedtext(body, context, context.url, this.getResponseHeader?.("content-type") || "");
-        }, { once: true });
+        };
+        state.xhrRequests.set(this, onLoadEnd);
+        this.addEventListener("loadend", onLoadEnd, { once: true });
       }
-      return originalSend.apply(this, args);
+      try { return originalSend.apply(this, args); }
+      catch (error) {
+        detachXhr(this);
+        throw error;
+      }
     };
     state.xhrPrototype = prototype;
     state.originalXhrOpen = originalOpen;
@@ -244,6 +263,7 @@
     } catch { state.xhrOpenWrapper = null; state.xhrSendWrapper = null; }
   }
   function observeResources(entries = []) {
+    if (!state.active || state.mode === "off") return;
     for (const entry of entries) {
       const url = entry?.name || "";
       if (isTimedtextUrl(url)) {
@@ -253,13 +273,14 @@
     }
   }
   function installResourceTiming() {
+    if (!state.active || state.mode === "off" || state.performanceObserver) return;
     observeResources(page.performance?.getEntriesByType?.("resource") || []);
     const Observer = page.PerformanceObserver;
     if (typeof Observer !== "function") return;
     try {
       state.performanceObserver = new Observer((list) => observeResources(list.getEntries?.() || []));
       state.performanceObserver.observe({ type: "resource", buffered: true });
-    } catch { state.performanceObserver = null; }
+    } catch { state.performanceObserver?.disconnect?.(); state.performanceObserver = null; }
   }
   function selectedNudgeTrack() {
     return timedtext.selectNudgeTrack(state.selectedRaw, state.rawTracks);
@@ -268,8 +289,11 @@
     if (!state.active || state.mode === "off" || state.nudged || state.captured) return false;
     state.nudged = true;
     const player = state.player || findPlayer();
+    const generation = state.generation;
     const applyTrack = () => {
+      if (!state.active || state.mode === "off" || generation !== state.generation) return;
       resolveState("nudge");
+      if (generation !== state.generation) return;
       const selection = timedtext.nudgeTrackSelection(selectedNudgeTrack());
       if (selection && typeof player?.setOption === "function") safeCall(player.setOption, player, "captions", "track", selection);
     };
@@ -287,9 +311,10 @@
     }, 1000);
   }
   function scheduleResolve() {
-    if (state.navigationTimer) return;
+    if (!state.active || state.mode === "off" || state.navigationTimer) return;
     state.navigationTimer = setTimeout(() => {
       state.navigationTimer = null;
+      if (!state.active || state.mode === "off") return;
       resolveState("navigation");
       if (state.active && state.mode !== "off" && !state.captured) scheduleNudge();
     }, 0);
@@ -301,9 +326,11 @@
     const message = result.value;
     if (message.type === "HELLO") {
       state.mode = message.payload.mode || "bilingual";
+      if (state.mode === "off") { teardown(); return; }
+      installObservers(); installFetch(); installXhr();
       resolveState("hello");
       post("READY", {});
-      publishTracks("hello");
+      publishTracks("hello", true);
       installResourceTiming();
       scheduleNudge();
     } else if (message.type === "NUDGE") {
@@ -320,17 +347,27 @@
     for (const name of ["loadedmetadata", "loadstart", "durationchange", "emptied"]) state.video?.addEventListener?.(name, scheduleResolve);
   }
   function installObservers() {
+    if (state.observing) return;
+    state.observing = true;
     for (const name of ["yt-navigate-finish", "yt-page-data-updated"]) page.document?.addEventListener?.(name, scheduleResolve);
     page.addEventListener?.("popstate", scheduleResolve);
     const Observer = page.MutationObserver;
     if (typeof Observer === "function" && page.document?.documentElement) {
       try {
-        state.mutationObserver = new Observer(scheduleResolve);
+        state.mutationObserver = new Observer(records => {
+          // Ignore outside mutations. Player DOM can reveal a cached track
+          // change without another timedtext request; metadata itself is deduped.
+          if (state.player?.isConnected && state.video?.isConnected && state.player.contains?.(state.video)
+            && !records.some(record => state.player.contains(record.target))) return;
+          scheduleResolve();
+        });
         state.mutationObserver.observe(page.document.documentElement, { childList: true, subtree: true });
       } catch { state.mutationObserver = null; }
     }
   }
   function restoreHooks() {
+    bodyReader.cancelAll();
+    for (const xhr of state.xhrRequests.keys()) detachXhr(xhr);
     if (state.fetchWrapper && page.fetch === state.fetchWrapper) page.fetch = state.originalFetch;
     const prototype = state.xhrPrototype;
     if (prototype?.open === state.xhrOpenWrapper) prototype.open = state.originalXhrOpen;
@@ -347,13 +384,13 @@
     state.nudgeTimer = state.navigationTimer = null;
     for (const name of ["yt-navigate-finish", "yt-page-data-updated"]) page.document?.removeEventListener?.(name, scheduleResolve);
     page.removeEventListener?.("popstate", scheduleResolve);
-    state.video?.removeEventListener?.("loadedmetadata", scheduleResolve);
-    state.video?.removeEventListener?.("loadstart", scheduleResolve);
-    state.video?.removeEventListener?.("durationchange", scheduleResolve);
-    state.video?.removeEventListener?.("emptied", scheduleResolve);
     state.mutationObserver?.disconnect?.();
     state.performanceObserver?.disconnect?.();
     state.mutationObserver = state.performanceObserver = null;
+    state.observing = false;
+    bindVideo(null); state.player = null;
+    state.track = state.selectedRaw = null; state.rawTracks = [];
+    state.tracksSignature = ""; state.resourceUrl = "";
     page.removeEventListener?.("message", onMessage);
     restoreHooks();
     state.generation += 1;

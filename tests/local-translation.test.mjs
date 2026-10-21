@@ -126,6 +126,35 @@ test("local parser rejects missing, duplicate and unknown ids", () => {
   );
 });
 
+test("generic OpenAI-compatible parser accepts Ollama segments array responses", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+  globalThis.chrome = { permissions: { async contains() { return true; } } };
+  globalThis.fetch = async () => response(200, {
+    choices: [{ message: { content: JSON.stringify({
+      segments: [{ id: "1", text: "今天早上，阳光明媚，天气温暖。" }]
+    }) } }]
+  });
+
+  try {
+    const result = await openAICompatibleProvider.translateBatch(
+      [{ id: "1", text: "This morning, the sun is shining and the weather is warm." }],
+      {
+        apiBaseUrl: "http://127.0.0.1:1234/v1",
+        apiKey: "",
+        model: "qwen3.5:9b",
+        prompt: "Translate the segments and return JSON only.",
+        targetLanguage: "Simplified Chinese"
+      }
+    );
+
+    assert.deepEqual(result, [{ id: "1", text: "今天早上，阳光明媚，天气温暖。" }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.chrome = originalChrome;
+  }
+});
+
 test("local provider falls back when endpoint rejects json_schema", async () => {
   const originalFetch = globalThis.fetch;
   const originalChrome = globalThis.chrome;

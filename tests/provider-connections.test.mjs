@@ -4,11 +4,74 @@ import {
   buildProviderProtocolUrl,
   migrateLegacyProviderState,
   normalizeProviderConnection,
+  providerPlatformPreset,
   publicProviderConnection
 } from "../src/shared/provider-connections.js";
 import { resolveTranslationConfig } from "../src/shared/provider-config.js";
 import { getConfigHash } from "../src/background/cache-db.js";
 import { listProviderConnections, upsertProviderConnection } from "../src/background/provider-connections.js";
+import { testSavedProviderConnection } from "../src/background/provider-connection-runtime.js";
+
+test("a forbidden local Ollama connection test names the exact extension origin to allow", async () => {
+  const previousChrome = globalThis.chrome, previousFetch = globalThis.fetch;
+  const connection = normalizeProviderConnection({ id: "ollama", platform: "ollama", protocol: "openai-chat",
+    baseUrl: "http://127.0.0.1:11434", defaultModel: "local-model", settings: { allowEmptyApiKey: true, allowInsecureHttp: true } });
+  const stored = { providerConnectionsVersion: 1, providerConnections: { ollama: connection }, providerCredentials: {},
+    defaultService: { kind: "api-key", connectionId: "ollama" } };
+  globalThis.chrome = { runtime: { getURL: () => "chrome-extension://abcdefghijklmnopabcdefghijklmnop/" },
+    permissions: { contains: async () => true }, storage: { local: { get: async () => stored, set: async () => {} } } };
+  globalThis.fetch = async () => new Response("Forbidden", { status: 403 });
+  try {
+    await assert.rejects(testSavedProviderConnection("ollama"), error => {
+      assert.equal(error.status, 403);
+      assert.match(error.message, /OLLAMA_ORIGINS/u);
+      assert.match(error.message, /chrome-extension:\/\/abcdefghijklmnopabcdefghijklmnop/u);
+      return true;
+    });
+  } finally { globalThis.chrome = previousChrome; globalThis.fetch = previousFetch; }
+});
+
+test("Ollama and LM Studio presets produce usable keyless local and authenticated cloud connections", () => {
+  for (const [platform, endpoint, keyless] of [
+    ["ollama", "http://127.0.0.1:11434/v1/chat/completions", true],
+    ["ollama-cloud", "https://ollama.com/v1/chat/completions", false],
+    ["lmstudio", "http://127.0.0.1:1234/v1/chat/completions", true]
+  ]) {
+    const preset = providerPlatformPreset(platform);
+    const connection = normalizeProviderConnection({ id: platform, platform: preset.id, protocol: preset.protocol,
+      baseUrl: preset.baseUrl, defaultModel: "user/model:custom-tag", settings: {
+        allowEmptyApiKey: preset.allowEmptyApiKey, allowInsecureHttp: keyless
+      } });
+    assert.equal(buildProviderProtocolUrl(connection), endpoint);
+    const effective = resolveTranslationConfig({ providerConnections: { [platform]: connection },
+      providerCredentials: { [platform]: keyless ? "" : "test-cloud-key" },
+      defaultService: { kind: "api-key", connectionId: platform } });
+    assert.equal(effective.model, "user/model:custom-tag");
+    assert.equal(effective.allowEmptyApiKey, keyless);
+    assert.equal(effective.apiKey, keyless ? "" : "test-cloud-key");
+    if (!keyless) {
+      assert.throws(() => resolveTranslationConfig({ providerConnections: { [platform]: connection }, providerCredentials: {},
+        defaultService: { kind: "api-key", connectionId: platform } }), error => error.code === "CONFIG");
+    }
+  }
+});
+
+test("named local presets accept service roots and Ollama native URLs without altering custom endpoints", () => {
+  for (const [platform, input, expected] of [
+    ["ollama", "http://localhost:11434", "http://localhost:11434/v1"],
+    ["ollama", "http://localhost:11434/api", "http://localhost:11434/v1"],
+    ["ollama", "http://localhost:11434/api/chat", "http://localhost:11434/v1"],
+    ["ollama-cloud", "https://ollama.com", "https://ollama.com/v1"],
+    ["lmstudio", "http://localhost:1234/", "http://localhost:1234/v1"],
+    ["custom", "https://selfhost.test", "https://selfhost.test"],
+    ["ollama", "https://selfhost.test/proxy/v1", "https://selfhost.test/proxy/v1"],
+    ["ollama", "https://selfhost.test/v1/chat/completions", "https://selfhost.test/v1/chat/completions"]
+  ]) {
+    const connection = normalizeProviderConnection({ id: "test", platform, protocol: "openai-chat",
+      baseUrl: input, defaultModel: "custom-model", settings: { allowEmptyApiKey: true, allowInsecureHttp: true } });
+    assert.equal(connection.baseUrl, expected);
+  }
+});
 
 test("legacy provider settings migrate to stable connection references without losing credentials", () => {
   const migrated = migrateLegacyProviderState({ provider: "openai-compatible", apiKey: "deep-secret", model: "deep-model",

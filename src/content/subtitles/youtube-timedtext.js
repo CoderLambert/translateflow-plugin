@@ -170,8 +170,50 @@
     return selection;
   }
 
+  function readXhrBody(xhr) {
+    try {
+      if (xhr.responseType === "json") return xhr.response;
+      if (!xhr.responseType || xhr.responseType === "text") return xhr.responseText;
+    } catch {}
+    return null;
+  }
+  // Read only an already-observed response clone. No URL or network operation.
+  // The owner cancels its readers on teardown, never the player's original body.
+  function createBodyReader() {
+    const readers = new Set();
+    function cancel(reader) {
+      try { Promise.resolve(reader.cancel()).catch(() => {}); } catch {}
+      try { reader.releaseLock(); } catch {}
+    }
+    async function read(clone, { isCurrent, onTooLarge }) {
+      if (!clone.body?.getReader) return typeof clone.text === "function" ? clone.text() : clone.json?.();
+      const reader = clone.body.getReader(), decoder = new TextDecoder();
+      readers.add(reader);
+      let bytes = 0, body = "", done = false;
+      try {
+        while (isCurrent()) {
+          const chunk = await reader.read();
+          if (!isCurrent()) return null;
+          if (chunk.done) { done = true; return body + decoder.decode(); }
+          bytes += chunk.value.byteLength;
+          if (bytes > MAX_PAYLOAD_BYTES) { onTooLarge(); return null; }
+          body += decoder.decode(chunk.value, { stream: true });
+        }
+        return null;
+      } finally {
+        readers.delete(reader);
+        if (!done) cancel(reader);
+        else { try { reader.releaseLock(); } catch {} }
+      }
+    }
+    function cancelAll() { for (const reader of readers) cancel(reader); readers.clear(); }
+    return { read, cancelAll };
+  }
+
   const api = Object.freeze({
     MAX_PAYLOAD_BYTES,
+    createBodyReader,
+    readXhrBody,
     clean,
     byteLength,
     parseTimedtext,

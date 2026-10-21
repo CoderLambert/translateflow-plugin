@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "task": "ollama-local-cloud-connections",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/ollama-local-cloud-connections",
+  "worktree": null,
+  "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/provider-connections.test.mjs",
+      "tests/provider-config.test.mjs",
+      "tests/provider-native-protocols.test.mjs",
+      "tests/provider-structured-json.test.mjs",
+      "tests/local-translation.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit",
+      "--",
+      "tests/unit/options-react.test.tsx"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/provider-connections.spec.mjs",
+      "--retries=0"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地检查已绑定同一候选并完成归档；准备校验联合 gate、远端精确 head 和 PR 合并条件。真实 YouTube 长时播放未运行，原因及影响已明确记录；Ollama Cloud 手动测试由用户确认通过。",
+  "localValidation": {
+    "candidateCommitted": true,
+    "baseHead": "d465e933cef10e2a6ae9320837b2925b816dc895",
+    "inputSha256": "0bf87bd9d63762cf6a54ee71b80bda074e1422f0ec0b1fa925fffa5bd0328f3a",
+    "node": "PASS 41/41",
+    "optionsUnit": "PASS 20/20",
+    "typecheck": "PASS",
+    "check": "PASS",
+    "defaultAndExplicitBuild": "PASS; dist and WXT package fingerprints match",
+    "smoke": "PASS",
+    "mockMv3": "PASS 4/4",
+    "realLocalBrowser": "PASS qwen3.5:9b; extension ID ijbkglnpamonghcklbfmlhjlmeeohgmo; Mock Provider calls 0",
+    "userConfirmedConfiguredCloudModel": "PASS, user-reported after testing configured Ollama Cloud model",
+    "realCloudAndLmStudio": "Cloud not independently called by agent; LM Studio NOT RUN",
+    "artifactSha256": "02005b348915162f005d6a7566df5f8530b01f39374001e2b70c069278e40129",
+    "implementationHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
+  },
+  "syncGroup": [
+    "ollama-local-cloud-connections",
+    "subtitle-resource-lifecycle"
+  ]
+}

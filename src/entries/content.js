@@ -28,6 +28,7 @@ import "../content/subtitles/source.js";
 import "../content/subtitles/sources/text-track.js";
 import "../content/subtitles/youtube-bridge-protocol.js";
 import "../content/subtitles/youtube-timedtext.js";
+import "../content/subtitles/sources/youtube-dom.js";
 import "../content/subtitles/sources/youtube.js";
 import "../content/subtitles/pipeline.js";
 import "../content/subtitles/renderer.js";

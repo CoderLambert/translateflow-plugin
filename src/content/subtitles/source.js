@@ -105,6 +105,45 @@
       .sort((a, b) => a.startTime - b.startTime).slice(0, 5);
   }
 
+  // Index known timed cues once. Prefix end maxima keep overlaps correct when
+  // seeking in either direction, without scanning the full transcript per tick.
+  function createCueTimeline(cues = []) {
+    const items = cues.map((cue, index) => ({ cue, index, start: Number(cue.startTime),
+      end: cue.endTime === null ? Infinity : Number(cue.endTime), maxEnd: -Infinity }))
+      .filter(item => Number.isFinite(item.start)).sort((a, b) => a.start - b.start || a.index - b.index);
+    let maxEnd = -Infinity;
+    for (const item of items) { maxEnd = Math.max(maxEnd, item.end); item.maxEnd = maxEnd; }
+    const boundaries = [...new Set(cues.flatMap(cue => [cue.startTime, cue.endTime]).filter(Number.isFinite))].sort((a, b) => a - b);
+    function upperBound(values, time, read = item => item) {
+      let low = 0, high = values.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (read(values[mid]) <= time) low = mid + 1;
+        else high = mid;
+      }
+      return low;
+    }
+    function activeAt(time) {
+      const active = [];
+      for (let index = upperBound(items, time, item => item.start) - 1; index >= 0; index--) {
+        const item = items[index];
+        if (item.maxEnd <= time) break;
+        if (time < item.end) active.push(item);
+      }
+      return active.sort((a, b) => a.index - b.index).map(item => item.cue);
+    }
+    function upcomingAt(time) {
+      const upcoming = [];
+      for (let index = upperBound(items, time, item => item.start); index < items.length && upcoming.length < 5; index++) {
+        const item = items[index];
+        if (item.start > time + 12) break;
+        if (item.cue.startTime !== null && item.cue.endTime !== null && item.end > item.start) upcoming.push(item.cue);
+      }
+      return upcoming;
+    }
+    return { activeAt, upcomingAt, nextBoundary: time => boundaries[upperBound(boundaries, time)] };
+  }
+
   function snapshotSignature(snapshot) {
     const normalized = normalizeSnapshot(snapshot);
     return JSON.stringify({
@@ -151,6 +190,7 @@
     normalizeSnapshot,
     selectUpcomingCues,
     snapshotSignature,
-    createSnapshotEmitter
+    createSnapshotEmitter,
+    createCueTimeline
   };
 })();

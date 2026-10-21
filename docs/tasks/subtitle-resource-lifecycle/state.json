@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "task": "subtitle-resource-lifecycle",
+  "status": "ready_to_sync",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/ollama-local-cloud-connections",
+  "worktree": null,
+  "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/youtube-bridge.test.mjs",
+      "tests/subtitles.test.mjs",
+      "tests/subtitle-pipeline.test.mjs",
+      "tests/subtitle-controller-currentness.test.mjs",
+      "tests/subtitle-request-lifecycle.test.mjs",
+      "tests/constants.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/youtube-subtitles.spec.mjs",
+      "e2e/subtitle-pipeline.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "e2e/subtitle-resource-lifecycle.spec.mjs",
+      "--retries=0"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地检查已绑定同一候选并完成归档；准备校验联合 gate、远端精确 head 和 PR 合并条件。真实 YouTube 长时播放未运行，原因及影响已明确记录；Ollama Cloud 手动测试由用户确认通过。",
+  "localValidation": {
+    "candidateCommitted": true,
+    "baseHead": "d465e933cef10e2a6ae9320837b2925b816dc895",
+    "scopeInputSha256": "0bf87bd9d63762cf6a54ee71b80bda074e1422f0ec0b1fa925fffa5bd0328f3a",
+    "node": "PASS 101/101",
+    "check": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS 0.8.47; 131 files; 3084914 bytes",
+    "mockMv3": "PASS 17/17",
+    "isolatedChromiumProbe": "PASS; Playwright Chromium 153.0.8010.12",
+    "realYouTubePerformance": "NOT RUN; isolated browser blocked by YouTube sign-in anti-bot interstitial",
+    "artifactSha256": "02005b348915162f005d6a7566df5f8530b01f39374001e2b70c069278e40129",
+    "implementationHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e"
+  },
+  "syncGroup": [
+    "ollama-local-cloud-connections",
+    "subtitle-resource-lifecycle"
+  ]
+}

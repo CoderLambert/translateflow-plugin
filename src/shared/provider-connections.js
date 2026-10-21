@@ -23,6 +23,9 @@ export const PROVIDER_PLATFORMS = Object.freeze([
   preset("zhipu", "Zhipu AI", PROVIDER_PROTOCOLS.OPENAI_CHAT, "https://open.bigmodel.cn/api/paas/v4"),
   preset("volcengine", "Volcengine Ark", PROVIDER_PROTOCOLS.OPENAI_CHAT, "https://ark.cn-beijing.volces.com/api/v3"),
   preset("azure-v1", "Azure OpenAI v1", PROVIDER_PROTOCOLS.OPENAI_RESPONSES, ""),
+  preset("ollama", "Ollama (local)", PROVIDER_PROTOCOLS.OPENAI_CHAT, "http://127.0.0.1:11434/v1", true),
+  preset("ollama-cloud", "Ollama Cloud", PROVIDER_PROTOCOLS.OPENAI_CHAT, "https://ollama.com/v1"),
+  preset("lmstudio", "LM Studio", PROVIDER_PROTOCOLS.OPENAI_CHAT, "http://127.0.0.1:1234/v1", true),
   preset("local", "Local / self-hosted", PROVIDER_PROTOCOLS.OPENAI_CHAT, "http://127.0.0.1:11434/v1", true),
   preset("custom", "Custom", PROVIDER_PROTOCOLS.OPENAI_CHAT, "", true)
 ]);
@@ -52,10 +55,10 @@ export function normalizeProviderConnection(value, fallbackId = "") {
   if (!id) throw new Error("连接 ID 无效。");
   const protocol = String(value?.protocol || "").trim().toLowerCase();
   if (!PROTOCOL_SET.has(protocol)) throw new Error(`不支持的 Provider 协议：${protocol || "empty"}`);
-  const baseUrl = normalizeProviderBaseUrl(value?.baseUrl);
-  if (!baseUrl) throw new Error("请填写 Provider Base URL。");
   const platformValue = String(value?.platform || "custom").trim().toLowerCase();
   const platform = PLATFORM_SET.has(platformValue) ? platformValue : "custom";
+  const baseUrl = normalizePlatformBaseUrl(value?.baseUrl, platform, protocol);
+  if (!baseUrl) throw new Error("请填写 Provider Base URL。");
   const model = String(value?.defaultModel || "").trim();
   const revision = positiveInteger(value?.revision, 1);
   const rawSettings = plainObject(value?.settings);
@@ -170,6 +173,14 @@ function appendPath(baseUrl, suffix) {
   const escaped = suffix.replaceAll("/", "\\/");
   if (new RegExp(`${escaped}$`, "iu").test(normalized)) return normalized;
   return `${normalized}${suffix}`;
+}
+function normalizePlatformBaseUrl(rawUrl, platform, protocol) {
+  const baseUrl = normalizeProviderBaseUrl(rawUrl);
+  if (!baseUrl || protocol !== PROVIDER_PROTOCOLS.OPENAI_CHAT || !["ollama", "ollama-cloud", "lmstudio"].includes(platform)) return baseUrl;
+  const url = new URL(baseUrl);
+  const path = url.pathname.replace(/\/+$/u, "");
+  if (!path || (platform !== "lmstudio" && ["/api", "/api/chat"].includes(path))) url.pathname = "/v1";
+  return url.toString().replace(/\/+$/u, "");
 }
 function preset(id, label, protocol, baseUrl, allowEmptyApiKey = false) { return Object.freeze({ id, label, protocol, baseUrl, allowEmptyApiKey }); }
 function platformLabel(id) { return providerPlatformPreset(id)?.label || "Custom"; }

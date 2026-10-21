@@ -23,10 +23,10 @@ class EventTarget {
   }
 }
 
-function loadPage({ videoId = "bridge-a", fetchImpl = null, xhrClass = null } = {}) {
+function loadPage({ videoId = "bridge-a", fetchImpl = null, xhrClass = null, performanceObserverClass, mutationObserverClass } = {}) {
   const page = new EventTarget();
   const document = new EventTarget();
-  const video = Object.assign(new EventTarget(), { currentTime: 1, playbackRate: 1, paused: false });
+  const video = Object.assign(new EventTarget(), { currentTime: 1, playbackRate: 1, paused: false, isConnected: true });
   let currentId = videoId;
   let nudgeCount = 0;
   let setOptionCount = 0;
@@ -38,6 +38,8 @@ function loadPage({ videoId = "bridge-a", fetchImpl = null, xhrClass = null } = 
     baseUrl: `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&pot=test-token`
   };
   const player = {
+    isConnected: true,
+    contains(node) { return node === video; },
     querySelector(selector) { return selector.startsWith("video") ? video : null; },
     getVideoData() { return { video_id: currentId }; },
     getOption() { return track; },
@@ -65,6 +67,7 @@ function loadPage({ videoId = "bridge-a", fetchImpl = null, xhrClass = null } = 
     Date,
     URL,
     TextEncoder,
+    TextDecoder,
     Promise,
     setTimeout,
     clearTimeout,
@@ -74,8 +77,8 @@ function loadPage({ videoId = "bridge-a", fetchImpl = null, xhrClass = null } = 
     removeEventListener: page.removeEventListener.bind(page),
     dispatchEvent: page.dispatchEvent.bind(page),
     postMessage: (...args) => page.postMessage(...args),
-    MutationObserver: class { observe() {} disconnect() {} },
-    PerformanceObserver: undefined,
+    MutationObserver: mutationObserverClass || class { observe() {} disconnect() {} },
+    PerformanceObserver: performanceObserverClass,
     performance: { getEntriesByType: () => [] },
     XMLHttpRequest: xhrClass || class {},
     fetch: originalFetch
@@ -88,6 +91,7 @@ function loadPage({ videoId = "bridge-a", fetchImpl = null, xhrClass = null } = 
     context,
     page,
     player,
+    video,
     outbound,
     originalFetch,
     setVideoId(value) {
@@ -110,6 +114,138 @@ function sendHello(page, protocol, videoId, generation, mode = "bilingual") {
     payload: { mode }
   });
 }
+
+test("resource observation is single-owned across repeated HELLO, stop and restart", t => {
+  const active = new Set();
+  class Observer { constructor(callback) { this.callback = callback; } observe() { active.add(this); } disconnect() { active.delete(this); } }
+  const page = loadPage({ performanceObserverClass: Observer });
+  const bridge = page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__, protocol = page.context.__TRANSLATE_FLOW_YOUTUBE_BRIDGE_PROTOCOL__;
+  t.after(() => bridge.stop());
+  for (let i = 0; i < 100; i++) sendHello(page.page, protocol, "bridge-a", 1, i % 2 ? "original" : "bilingual");
+  assert.equal(active.size, 1);
+  const observer = [...active][0];
+  bridge.stop(); assert.equal(active.size, 0);
+  const count = page.outbound.length;
+  observer.callback({ getEntries: () => [{ name: "https://www.youtube.com/api/timedtext?v=bridge-a" }] });
+  assert.equal(page.outbound.length, count, "A queued old callback cannot publish after stop");
+  bridge.start(); assert.equal(active.size, 1);
+});
+
+test("unrelated DOM notifications and unchanged state do not republish tracks", t => {
+  let observer;
+  class Observer { constructor(callback) { this.callback = callback; observer = this; } observe() {} disconnect() {} }
+  const page = loadPage({ mutationObserverClass: Observer });
+  const bridge = page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__;
+  t.after(() => bridge.stop());
+  const count = page.outbound.filter(message => message.type === "TRACKS").length;
+  for (let i = 0; i < 40; i++) { observer.callback([{ target: {} }]); bridge.reannounce(); }
+  assert.equal(page.outbound.filter(message => message.type === "TRACKS").length, count);
+  page.player.getOption = () => ({ languageCode: "fr", vssId: "fr", kind: "captions" });
+  bridge.reannounce();
+  assert.equal(page.outbound.filter(message => message.type === "TRACKS").length, count + 1);
+});
+
+test("stopping the bridge detaches pending XHR observation without aborting the page request", () => {
+  class HeldXHR extends EventTarget { open() {} send() { this.sent = true; } abort() { assert.fail("Page-owned request must not be aborted"); } }
+  const page = loadPage({ xhrClass: HeldXHR });
+  const xhr = new page.context.XMLHttpRequest();
+  xhr.open("GET", "https://www.youtube.com/api/timedtext?v=bridge-a"); xhr.send();
+  assert.equal(xhr.listeners.get("loadend").length, 1);
+  page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop();
+  assert.equal(xhr.listeners.get("loadend").length, 0);
+  assert.equal(xhr.sent, true);
+});
+
+test("XHR synchronous failure releases its observation listener and a reused XHR can be observed", () => {
+  const failure = new Error("send failed");
+  class ThrowXHR extends EventTarget { open() {} send() { if (!this.retry) throw failure; } }
+  const page = loadPage({ xhrClass: ThrowXHR }), xhr = new page.context.XMLHttpRequest();
+  const bridge = page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__;
+  try {
+    xhr.open("GET", "https://www.youtube.com/api/timedtext?v=bridge-a");
+    assert.throws(() => xhr.send(), error => error === failure);
+    assert.equal(xhr.listeners.get("loadend").length, 0);
+    xhr.retry = true; xhr.open("GET", "https://www.youtube.com/api/timedtext?v=bridge-a"); xhr.send();
+    assert.equal(xhr.listeners.get("loadend").length, 1);
+    xhr.open("GET", "https://www.youtube.com/api/timedtext?v=bridge-a"); xhr.send();
+    assert.equal(xhr.listeners.get("loadend").length, 1);
+  } finally { bridge.stop(); }
+});
+
+test("late page fetch resolution is not cloned after bridge stop", async () => {
+  let resolve, clones = 0;
+  const request = new Promise(done => { resolve = done; });
+  const page = loadPage({ fetchImpl: () => request });
+  const result = page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a");
+  assert.equal(result, request);
+  page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop();
+  resolve({ clone() { clones++; return { text: async () => "" }; } });
+  await result; await new Promise(setImmediate);
+  assert.equal(clones, 0);
+});
+
+test("stop cancels and unlocks only the owned response stream", async () => {
+  let cancelled = 0;
+  const body = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('{"events":[')); }, cancel() { cancelled++; } });
+  const response = { clone: () => ({ body, headers: { get: () => "application/json" } }) };
+  const page = loadPage({ fetchImpl: () => Promise.resolve(response) });
+  await page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a"); await new Promise(setImmediate);
+  assert.equal(body.locked, true);
+  page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop(); await new Promise(setImmediate);
+  assert.equal(cancelled, 1); assert.equal(body.locked, false);
+  assert.equal(page.outbound.filter(item => item.type === "TIMEDTEXT").length, 0);
+});
+
+test("track replacement cancels an unfinished owned response stream", async () => {
+  let cancelled = 0;
+  const body = new ReadableStream({ cancel() { cancelled++; } });
+  const page = loadPage({ fetchImpl: () => Promise.resolve({ clone: () => ({ body, headers: { get: () => "application/json" } }) }) });
+  try {
+    await page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a"); await new Promise(setImmediate);
+    page.player.getOption = () => ({ languageCode: "fr", vssId: "fr", kind: "captions" });
+    page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.reannounce(); await new Promise(setImmediate);
+    assert.equal(cancelled, 1); assert.equal(body.locked, false);
+  } finally { page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop(); }
+});
+
+test("player DOM updates detect a cached track switch without network or reannounce", async () => {
+  let observer, cancelled = 0;
+  class Observer { constructor(callback) { observer = this; this.callback = callback; } observe() {} disconnect() {} }
+  const body = new ReadableStream({ cancel() { cancelled++; } });
+  const page = loadPage({ mutationObserverClass: Observer, fetchImpl: () => Promise.resolve({ clone: () => ({ body, headers: { get: () => "application/json" } }) }) });
+  const bridge = page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__;
+  try {
+    await page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a"); await new Promise(setImmediate);
+    const before = page.outbound.filter(item => item.type === "TRACKS").length;
+    page.player.getOption = () => ({ languageCode: "fr", vssId: "fr", kind: "captions" });
+    observer.callback([{ target: page.video }]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(bridge.getState().track.language, "fr");
+    assert.equal(page.outbound.filter(item => item.type === "TRACKS").length, before + 1);
+    assert.equal(cancelled, 1); assert.equal(body.locked, false);
+  } finally { bridge.stop(); }
+});
+
+test("oversized observed stream stops reading at the existing two MiB limit", async () => {
+  let cancelled = 0;
+  const body = new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(2 * 1024 * 1024 + 1)); }, cancel() { cancelled++; } });
+  const page = loadPage({ fetchImpl: () => Promise.resolve({ clone: () => ({ body, headers: { get: () => "application/json" } }) }) });
+  try {
+    await page.context.fetch("https://www.youtube.com/api/timedtext?v=bridge-a"); await new Promise(setImmediate);
+    assert.equal(page.outbound.find(item => item.type === "ERROR")?.payload.code, "payload-too-large");
+    assert.equal(cancelled, 1); assert.equal(body.locked, false);
+  } finally { page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__.stop(); }
+});
+
+test("late caption-module completion cannot change the stopped player", async () => {
+  let release;
+  const page = loadPage();
+  page.player.loadModule = () => new Promise(resolve => { release = resolve; });
+  const bridge = page.context.__TRANSLATE_FLOW_YOUTUBE_MAIN_BRIDGE__, protocol = page.context.__TRANSLATE_FLOW_YOUTUBE_BRIDGE_PROTOCOL__;
+  protocol.post(page.page, { direction: protocol.DIRECTIONS.ISOLATED_TO_MAIN, type: "NUDGE", videoId: "bridge-a", generation: 1, payload: {} });
+  bridge.stop(); release(); await Promise.resolve();
+  assert.equal(page.setOptionCount, 0);
+});
 
 test("timedtext parser handles JSON3, XML/srv3, entities and stable track identity", () => {
   const context = vm.createContext({ console, TextEncoder, DOMParser: undefined });

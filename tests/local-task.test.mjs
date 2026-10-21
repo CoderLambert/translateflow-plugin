@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildIndex, freeze, gate, runCheck, fingerprint } from "../scripts/local-task.mjs";
+import { buildIndex, freeze, freezeBatch, gate, runCheck, fingerprint } from "../scripts/local-task.mjs";
 
 function fixture(t, dependencies = []) {
   const root = mkdtempSync(join(tmpdir(), "tf-local-task-"));
@@ -201,4 +201,68 @@ test("focused acceptance commands do not require an unrelated full validate", as
   state.status = "ready_to_sync"; state.candidateHead = acceptance.candidateHead;
   f.save("docs/tasks/234/state.json", state); f.save("docs/tasks/index.json", buildIndex(f.root));
   assert.equal(gate(f.root, "234").result, "PASS");
+});
+
+function jointFixture(t) {
+  const f = fixture(t), members = ["234", "235"];
+  const state = f.load("docs/tasks/234/state.json"); state.syncGroup = members;
+  f.save("docs/tasks/234/state.json", state);
+  mkdirSync(join(f.root, "docs/tasks/235"));
+  f.save("docs/tasks/235/state.json", { ...state, task: "235" });
+  writeFileSync(join(f.root, "docs/tasks/235/task.md"), "# Second task contract\n");
+  f.save("docs/tasks/index.json", buildIndex(f.root));
+  f.git("add", "."); f.git("commit", "-m", "joint task candidate");
+  return f;
+}
+async function readyJoint(f) {
+  const batch = freezeBatch(f.root, "234");
+  assert.deepEqual(batch.syncGroup, ["234", "235"]);
+  for (const member of batch.syncGroup) {
+    const check = await runCheck(f.root, member, ["npm", "run", "validate"]);
+    assert.equal(check.result, "PASS");
+    const state = f.load(`docs/tasks/${member}/state.json`);
+    state.status = "ready_to_sync"; state.candidateHead = batch.candidateHead;
+    f.save(`docs/tasks/${member}/state.json`, state);
+  }
+  f.save("docs/tasks/index.json", buildIndex(f.root));
+  return batch;
+}
+test("explicit joint freeze and both log-backed gates permit shared archive commits", async (t) => {
+  const f = jointFixture(t);
+  assert.throws(() => freeze(f.root, "234"), /freeze-batch/u);
+  const batch = await readyJoint(f);
+  assert.equal(gate(f.root, "234").candidateHead, batch.candidateHead);
+  assert.deepEqual(gate(f.root, "235").jointGates, ["234", "235"]);
+  f.git("add", "docs/tasks"); f.git("commit", "-m", "archive both task records");
+  assert.equal(gate(f.root, "234").syncHead, f.git("rev-parse", "HEAD"));
+  assert.equal(gate(f.root, "235").result, "PASS");
+});
+test("joint gate rejects incomplete partner, altered contract or non-archive inputs", async (t) => {
+  const f = jointFixture(t);
+  const batch = freezeBatch(f.root, "234");
+  assert.equal((await runCheck(f.root, "234", ["npm", "run", "validate"])).result, "PASS");
+  const state = f.load("docs/tasks/234/state.json"); state.status = "ready_to_sync"; state.candidateHead = batch.candidateHead;
+  f.save("docs/tasks/234/state.json", state); f.save("docs/tasks/index.json", buildIndex(f.root));
+  const state2 = f.load("docs/tasks/235/state.json"); state2.candidateHead = batch.candidateHead;
+  f.save("docs/tasks/235/state.json", state2); f.save("docs/tasks/index.json", buildIndex(f.root));
+  assert.throws(() => gate(f.root, "234"), /Missing passing check/u);
+  assert.equal((await runCheck(f.root, "235", ["npm", "run", "validate"])).result, "PASS");
+  state2.status = "ready_to_sync";
+  f.save("docs/tasks/235/state.json", state2); f.save("docs/tasks/index.json", buildIndex(f.root));
+  assert.equal(gate(f.root, "234").result, "PASS");
+  state2.validationCommands = [["node", "--version"]];
+  f.save("docs/tasks/235/state.json", state2);
+  assert.throws(() => gate(f.root, "234"), /requirements changed/u);
+  state2.validationCommands = [["npm", "run", "validate"]];
+  f.save("docs/tasks/235/state.json", state2);
+  writeFileSync(join(f.root, "docs/tasks/235/task.md"), "tampered contract\n");
+  assert.throws(() => gate(f.root, "234"), /Uncommitted/u);
+});
+test("joint freeze refuses inconsistent group declarations and dirty candidate", (t) => {
+  const f = jointFixture(t);
+  const state = f.load("docs/tasks/235/state.json"); delete state.syncGroup;
+  f.save("docs/tasks/235/state.json", state);
+  assert.throws(() => freezeBatch(f.root, "234"), /Commit the candidate/u);
+  f.git("add", "."); f.git("commit", "-m", "inconsistent group");
+  assert.throws(() => freezeBatch(f.root, "234"), /Joint task declarations differ/u);
 });

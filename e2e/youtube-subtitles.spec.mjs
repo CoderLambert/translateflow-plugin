@@ -319,8 +319,19 @@ test("subtitle settings open from one native YouTube toolbar button and survive 
   const mode = page.getByRole("combobox", { name: "TranslateFlow subtitle mode", exact: true });
   try {
     await page.goto(url);
+    // Native toolbar styling can place a text-only flex button at the start.
+    await page.addStyleTag({ content: ".ytp-right-controls-left{display:flex}.ytp-button{display:flex;align-items:center;text-align:left}" });
     await expect.poll(async () => (await readOverlay(page)).translated).toBe("[DEFAULT|PLAIN] A visible caption");
     await expect(entry).toHaveCount(1);
+    const offset = await entry.evaluate(node => {
+      const button = node.getBoundingClientRect(), range = document.createRange();
+      range.selectNodeContents(node);
+      const text = range.getBoundingClientRect();
+      return { x: Math.abs(text.x + text.width / 2 - button.x - button.width / 2),
+        y: Math.abs(text.y + text.height / 2 - button.y - button.height / 2) };
+    });
+    expect(offset.x).toBeLessThanOrEqual(1);
+    expect(offset.y).toBeLessThanOrEqual(2);
     await expect(entry).toHaveAttribute("aria-expanded", "false");
     await expect(mode).toBeHidden();
     await entry.click();

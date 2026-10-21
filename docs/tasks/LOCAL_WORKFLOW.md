@@ -69,7 +69,7 @@
 
 候选必须先提交再测，避免“测过脏树但没有可审代码”。acceptance 生成后是元数据修改：它不可能同时包含自身未来 commit SHA。
 
-candidateHead 是实际测试的提交，syncHead 是归档提交和远端 expected-head。两者必须有 Git 祖先关系，且完整输入指纹一致；冻结、命令前后和 gate 逐文件校对真实磁盘输入与 Git blob，不依赖可被 assume-unchanged/skip-worktree 隐藏的 Git status。当前 Linux 使用精确字节和可执行位；CRLF 转换/Windows 该门槛 NOT VERIFIED，不能宣称跨平台。只允许**当前任务**的 state.json、acceptance.json、review.md、validation-report.md 以及生成 index.json 的差异。task.md、其它任务文件、源码、测试、package/lock、workflow、脚本、构建输入的任何变化都使旧候选失效。冻结后的机器验收要求另与候选 state 比较，不能通过改 state 削弱依赖或检查。
+candidateHead 是实际测试的提交，syncHead 是归档提交和远端 expected-head。两者必须有 Git 祖先关系，且完整输入指纹一致；冻结、命令前后和 gate 逐文件校对真实磁盘输入与 Git blob，不依赖可被 assume-unchanged/skip-worktree 隐藏的 Git status。当前 Linux 使用精确字节和可执行位；CRLF 转换/Windows 该门槛 NOT VERIFIED，不能宣称跨平台。默认只允许**当前任务**的 state.json、acceptance.json、review.md、validation-report.md 以及生成 index.json 的差异。显式联合同步是唯一例外：各任务候选 state.json 须以相同、有序的 syncGroup 声明全部参与者，并通过一次 freeze-batch 锁定同一提交；仅本组以上四类任务归档可排除输入指纹，task.md、非本组任务及任何源码、测试、package/lock、workflow、脚本、构建输入仍须完全一致。gate 对组内每个任务重新检查其自身候选合同、真实 checks、日志/包指纹和 ready_to_sync 状态，要求共同 candidateHead、inputTree、syncHead；任一失败即两者均失败。禁止修改分组来绕过重新冻结和验证。冻结后的机器验收要求另与候选 state 比较，不能通过改 state 削弱依赖或检查。
 
 主 Agent 根据真实结果将当前 state 写为 ready_to_sync/candidateHead，生成索引，归档证据并提交，然后：
 
@@ -93,3 +93,9 @@ Actions 保留为 workflow_dispatch 手动备用，保留实际触发方式、�
 现有 task-execution start/stage/finish 提供 task_start/stage_change/task_end，保留历史兼容；wrapper 提供 command_start/command_end。local-task 提供 candidate_frozen、实际验收 command_start/command_end，`mark` 提供 review_start/review_end/code_sync/task_complete/task_paused/task_blocked；每个事件只保留任务、声明角色、时间、branch/head、耗时/退出码和证据路径。
 
 `node scripts/local-task.mjs report <task>` 在任务完成/暂停或需要统计时输出当前 acceptance 的验收运行耗时与失败次数（不冒充全部历史；历史事件保留在 local）；`task-execution.mjs report <task>` 汇总原生工具跨度和任务阶段。两者观察窗口/数据来源不同，不相加估算 token、模型调用或有效劳动。没有可靠 token 字段记 UNKNOWN。Hook 不联网、不调用大模型、不读取认证/完整会话、不注入原始日志、不决策任务状态。
+
+## 多任务同一实现候选（显式联合交付）
+
+仅当多个本地任务共用一个代码候选、无法拆出独立安全交付时，才在**各自提交前**的 state.json 中声明完全相同、排序且不重复的 syncGroup（最大 8 项）。单任务使用原 freeze/gate；联合任务在干净 HEAD 上只执行一次 `node scripts/local-task.mjs freeze-batch <任一组内task>`，同时为所有参与者创建 acceptance.json。后续逐任务按既有 `run`、`artifact` 绑定真实日志及实际安装包，再分别更新状态并执行 `node scripts/local-task.mjs index`；`gate <任一组内task>` 必须逐一通过**全部**组员的门槛才能返回 PASS。每个单项 gate 都会触发组内完整检查；两份报告应绑定同一个候选和同步 SHA。
+
+明确排除的仅是已声明成员的四种归档文件及共享 index；不排除任何 task.md、合同源文件、产品代码、构建脚本或其它任务；不改变验收命令、人工验收、包指纹与远端保护。冻结后改变 group、候选、源代码或者第三方任务归档均需重新冻结；真实浏览器或服务端 FAIL 不能由联合 gate 代为判定通过。
