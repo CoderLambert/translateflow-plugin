@@ -20,8 +20,20 @@ function fixtureClient(reply) {
   };
 }
 
-test("ChatGPT subscription is registered as a shared Provider", () => {
-  assert.equal(getProvider({ provider: "chatgpt-plan" }).id, "chatgpt-plan");
+test("ChatGPT subscription is registered only for the developer extension", () => {
+  const previous = globalThis.chrome;
+  try {
+    globalThis.chrome = { runtime: { getManifest: () => ({ version: "0.8.47" }) } };
+    assert.throws(() => getProvider({ provider: "chatgpt-plan" }), { code: "CHATGPT_PLAN_DEV_ONLY" });
+    assert.equal(getProvider({ provider: "deepseek" }).id, "deepseek");
+    globalThis.chrome = { runtime: { getManifest: () => ({
+      version: "0.8.47", version_name: "0.8.47-dev", optional_permissions: ["nativeMessaging"]
+    }) } };
+    assert.equal(getProvider({ provider: "chatgpt-plan" }).id, "chatgpt-plan");
+  } finally {
+    if (previous === undefined) delete globalThis.chrome;
+    else globalThis.chrome = previous;
+  }
 });
 
 test("translation uses the injected host once and validates exact response IDs", async () => {
