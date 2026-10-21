@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "task": "subtitle-resource-lifecycle",
-  "status": "ready_to_sync",
+  "status": "completed",
   "owner": "main",
   "dependencies": [],
   "branch": "feat/ollama-local-cloud-connections",
   "worktree": null,
   "candidateHead": "0cf0bc4cafe9bd933bdfbef57a1fdbb8a1cfa91e",
-  "mergeHead": null,
+  "mergeHead": "2a0bb2d55c9b00577927e1c28ea1d9fbedc59e66",
   "validationCommands": [
     [
       "node",
@@ -47,7 +47,7 @@
     ]
   ],
   "artifactRequired": true,
-  "nextAction": "本地检查已绑定同一候选并完成归档；准备校验联合 gate、远端精确 head 和 PR 合并条件。真实 YouTube 长时播放未运行，原因及影响已明确记录；Ollama Cloud 手动测试由用户确认通过。",
+  "nextAction": "已 squash 合并至 origin/main；同步候选 tree 与 main 一致。真实 YouTube 长时播放验收仍因反机器人验证未运行，Ollama Cloud 按用户确认记录通过。",
   "localValidation": {
     "candidateCommitted": true,
     "baseHead": "d465e933cef10e2a6ae9320837b2925b816dc895",
