@@ -120,6 +120,12 @@
     if (announce) showToast(t("content.page.cacheRestoreDisabled"), "info");
   }
 
+  let consecutiveFailures = 0;
+  function resumeAutoTranslation() {
+    state.autoPausedForError = false; consecutiveFailures = 0; state.autoBackoffUntil = 0;
+    if (state.auto) { rescanAutoPage(); if (state.pending.size) scheduleAutoDrain(); }
+  }
+
   async function enableAutoMode({ announce = false } = {}) {
     if (contextInvalidated || state.auto) return;
     if (state.startupRestorePromise) {
@@ -128,6 +134,7 @@
 
     if (contextInvalidated) return;
     state.auto = true;
+    state.autoPausedForError = false; consecutiveFailures = 0;
     state.currentPageIdentity = getPageIdentity(location.href);
     ensureAutoObservers();
     rescanAutoPage();
@@ -136,6 +143,7 @@
 
   function disableAutoMode({ announce = false } = {}) {
     state.auto = false;
+    state.autoPausedForError = false; consecutiveFailures = 0;
     state.autoBackoffUntil = 0;
 
     if (state.cacheRestore) {
@@ -228,6 +236,7 @@
     const nextIdentity = getPageIdentity(location.href);
     if (nextIdentity === state.currentPageIdentity) return;
     state.currentPageIdentity = nextIdentity;
+    state.autoPausedForError = false; consecutiveFailures = 0; state.autoBackoffUntil = 0;
     state.pending.clear();
     clearTranslations();
     queueMicrotask(() => rescanAutoPage());
@@ -260,7 +269,7 @@
   }
 
   function scheduleAutoDrain(delay = AUTO_DEBOUNCE_MS) {
-    if (!isIncrementalActive()) return;
+    if (!isIncrementalActive() || (state.auto && state.autoPausedForError)) return;
     clearTimeout(state.autoTimer);
     const backoffDelay = state.auto
       ? Math.max(0, state.autoBackoffUntil - Date.now())
@@ -273,7 +282,7 @@
   }
 
   async function drainAutoQueue() {
-    if (!isIncrementalActive()) return;
+    if (!isIncrementalActive() || (state.auto && state.autoPausedForError)) return;
     if (state.manualRunning || state.autoDrainRunning) {
       scheduleAutoDrain(350);
       return;
@@ -344,6 +353,7 @@
           throw error;
         }
       }
+      consecutiveFailures = 0;
     } finally {
       state.autoDrainRunning = false;
       if (isIncrementalActive() && state.pending.size) scheduleAutoDrain(120);
@@ -357,11 +367,14 @@
 
     if (state.auto) {
       const code = error?.code || "";
+      consecutiveFailures++;
+      state.autoPausedForError = consecutiveFailures >= 3 || ["MALFORMED_RESPONSE", "CONFIG", "AUTH", "PERMISSION", "CONFIG_SNAPSHOT_EXPIRED"].includes(code);
+      if (state.autoPausedForError) { clearTimeout(state.autoTimer); state.autoTimer = null; }
       const longBackoff = ["CONFIG", "AUTH", "PERMISSION"].includes(code) || /API Key/i.test(message);
       state.autoBackoffUntil = now + (longBackoff ? 5 * 60 * 1000 : 15 * 1000);
 
       if (now - state.lastAutoErrorAt > 5000) {
-        showToast(t("content.page.autoPaused", { message }), "error");
+        showToast(t(state.autoPausedForError ? "content.page.autoNeedsRetry" : "content.page.autoPaused", { message }), "error");
         state.lastAutoErrorAt = now;
       }
     }
@@ -376,6 +389,7 @@
     disableCacheRestoreMode,
     enableAutoMode,
     disableAutoMode,
+    resumeAutoTranslation,
     rescanAutoPage,
     invalidateAndObserve,
     scheduleAutoDrain

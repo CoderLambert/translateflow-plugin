@@ -251,6 +251,13 @@
       "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
+      "task": "ai-translation-reliability",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "fix/ai-translation-reliability",
+      "candidateHead": null
+    },
+    {
       "task": "api-key-provider-connections",
       "status": "completed",
       "dependencies": [],

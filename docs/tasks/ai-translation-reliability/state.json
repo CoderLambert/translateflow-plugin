@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "task": "ai-translation-reliability",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/ai-translation-reliability",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-ai-reliability",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "validate"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:dev"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/provider-connections.spec.mjs",
+      "e2e/translateflow.spec.mjs",
+      "e2e/translation-reliability.spec.mjs",
+      "e2e/cache-system-mv3.spec.mjs",
+      "e2e/auto-context-invalidated.spec.mjs"
+    ]
+  ],
+  "nextAction": "真实 MDN 手动翻译已从 0/13 恢复到 13/13；冻结修复候选，完成本地验收、真实模型复验和交付。"
+}

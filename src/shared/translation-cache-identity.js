@@ -2,7 +2,7 @@ import { cacheError, canonicalJson, createCacheIdentity, digest } from './cache/
 
 // Business contracts evolve here. They are unrelated to IndexedDB/record versions.
 export const TRANSLATION_STRATEGY = 'translation-request-v1';
-export const STRUCTURED_PROMPT_VERSION = 'tf-markers-v1';
+export const STRUCTURED_PROMPT_VERSION = 'tf-markers-v2';
 export const STRUCTURED_PROMPT = [
   'TranslateFlow structured-marker protocol:',
   'Preserve every marker matching ⟦TF:<number>:S⟧ or ⟦TF:<number>:E⟧ exactly,',

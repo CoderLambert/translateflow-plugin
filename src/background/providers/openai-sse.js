@@ -1,10 +1,30 @@
 import {
   DEFAULT_RETRY_POLICY,
+  classifyProviderFailure,
+  computeRetryDelayMs,
+  getMaxAttemptsForFailure,
   parseRetryAfterMs
 } from "../../shared/retry-policy.js";
-import { ProviderRequestError } from "./shared.js";
+import { ProviderRequestError, sleep } from "./shared.js";
 
-export async function requestChatCompletionsStream({
+export async function requestChatCompletionsStream(options) {
+  const policy = options.retryPolicy || DEFAULT_RETRY_POLICY;
+  let emitted = false;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await performStreamRequest({ ...options, timeoutMs: options.timeoutMs ?? policy.requestTimeoutMs,
+        onProgress(event) { emitted = true; options.onProgress?.(event); },
+        onTextDelta(text) { emitted = true; options.onTextDelta?.(text); }
+      });
+    } catch (error) {
+      if (options.signal?.aborted) throw cancelled(error);
+      if (emitted || error.code === "MALFORMED_RESPONSE" || !classifyProviderFailure(error).retryable || attempt >= getMaxAttemptsForFailure(error, policy)) throw error;
+      await sleep(computeRetryDelayMs({ attempt, retryAfterMs: error.retryAfterMs, baseDelayMs: policy.baseDelayMs, maxDelayMs: policy.maxDelayMs }), options.signal);
+    }
+  }
+}
+
+async function performStreamRequest({
   url,
   apiKey,
   headers: requestHeaders = {},
@@ -50,12 +70,11 @@ export async function requestChatCompletionsStream({
 
     return await readOpenAIEventStream(response, {
       providerLabel,
-      signal,
+      signal: linked.signal,
       onProgress,
       onTextDelta
     });
   } catch (error) {
-    if (error instanceof ProviderRequestError) throw error;
     if (signal?.aborted) throw cancelled(error);
     if (linked.didTimeout()) {
       throw new ProviderRequestError(`${providerLabel} 请求超时。`, {
@@ -63,6 +82,7 @@ export async function requestChatCompletionsStream({
         cause: error
       });
     }
+    if (error instanceof ProviderRequestError) throw error;
     throw new ProviderRequestError(
       `${providerLabel} 流式请求失败：${error?.message || error}`,
       { code: "NETWORK", cause: error }
@@ -110,11 +130,8 @@ async function readOpenAIEventStream(response, {
     if (signal?.aborted) throw cancelled(error);
     throw error;
   } finally {
-    if (state.done) {
-      try {
-        await reader.cancel();
-      } catch {}
-    }
+    try { await reader.cancel(); } catch {}
+    reader.releaseLock?.();
   }
 }
 

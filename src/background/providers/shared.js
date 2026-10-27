@@ -1,3 +1,4 @@
+import { translationSource, validateTranslationValue } from "../../shared/translation-cache-identity.js";
 import {
   DEFAULT_RETRY_POLICY,
   classifyProviderFailure,
@@ -142,7 +143,7 @@ export async function requestParsedTranslation({
     attempt += 1;
     try {
       const data = await request();
-      return parseResult(data, segments, providerLabel);
+      return validateParsedTranslation(parseResult(data, segments, providerLabel), segments, providerLabel);
     } catch (error) {
       const normalized = normalizeProviderError(error, providerLabel);
       if (normalized.code !== "MALFORMED_RESPONSE" || attempt >= maxAttempts) throw normalized;
@@ -204,10 +205,23 @@ export function parseTranslationResult(data, segments, providerLabel) {
     });
   }
 
-  const validIds = new Set(segments.map((item) => String(item.id)));
-  return items
-    .filter((item) => validIds.has(String(item.id)) && typeof item.text === "string")
-    .map((item) => ({ id: String(item.id), text: item.text.trim() }));
+  return validateParsedTranslation(items.map((item) => ({ id: String(item?.id), text: typeof item?.text === "string" ? item.text.trim() : item?.text })), segments, providerLabel);
+}
+
+export function validateParsedTranslation(items, segments, providerLabel = "Provider") {
+  const expected = new Map(segments.map(segment => [String(segment.id), segment])), seen = new Set();
+  const invalid = () => new ProviderRequestError(`${providerLabel} 返回的译文不完整或破坏了原文格式。`, { code: "MALFORMED_RESPONSE" });
+  if (!Array.isArray(items) || items.length !== segments.length) throw invalid();
+  for (const item of items) {
+    const id = String(item?.id), segment = expected.get(id);
+    if (!segment || seen.has(id) || typeof item?.text !== "string" || !item.text.trim()) throw invalid();
+    seen.add(id);
+    if (typeof segment.text === "string") {
+      const source = translationSource(segment);
+      if (!validateTranslationValue({ source, sourceText: source.cacheSource, translation: item.text })) throw invalid();
+    }
+  }
+  return items;
 }
 
 async function performRequest({ url, headers, body, providerLabel, signal, timeoutMs }) {
@@ -216,7 +230,7 @@ async function performRequest({ url, headers, body, providerLabel, signal, timeo
   }
 
   const linked = createLinkedSignal(signal, timeoutMs);
-  let response;
+  let response, raw;
   try {
     response = await fetch(url, {
       method: "POST",
@@ -224,6 +238,8 @@ async function performRequest({ url, headers, body, providerLabel, signal, timeo
       body: JSON.stringify(body),
       signal: linked.signal
     });
+    raw = await response.text();
+    if (signal?.aborted || linked.didTimeout()) throw new DOMException("Aborted", "AbortError");
   } catch (error) {
     if (signal?.aborted) {
       throw new ProviderRequestError("翻译请求已取消。", { code: "CANCELLED", cause: error });
@@ -239,7 +255,6 @@ async function performRequest({ url, headers, body, providerLabel, signal, timeo
     linked.cleanup();
   }
 
-  const raw = await response.text();
   let data;
   try {
     data = JSON.parse(raw);
@@ -329,7 +344,7 @@ function createLinkedSignal(externalSignal, timeoutMs) {
   };
 }
 
-function sleep(ms, signal) {
+export function sleep(ms, signal) {
   if (signal?.aborted) {
     return Promise.reject(new ProviderRequestError("翻译请求已取消。", { code: "CANCELLED" }));
   }

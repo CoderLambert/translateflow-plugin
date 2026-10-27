@@ -24,6 +24,7 @@ export function splitLocalTranslationBatches(
   { maxSegments = LOCAL_BATCH_MAX_SEGMENTS, maxChars = LOCAL_BATCH_MAX_CHARS } = {}
 ) {
   const normalized = (Array.isArray(segments) ? segments : []).map((item) => ({
+    ...item,
     id: String(item?.id ?? ""),
     text: String(item?.text ?? "")
   }));
@@ -62,7 +63,8 @@ export function buildLocalTranslationRequestBody({
 }) {
   const prepared = (Array.isArray(segments) ? segments : []).map((item) => ({
     id: String(item.id),
-    text: encodeLocalMarkers(item.text)
+    text: encodeLocalMarkers(item.text),
+    ...(item.protectedIds?.length ? { protected_ids: item.protectedIds } : {})
   }));
   const ids = prepared.map((item) => item.id);
   const prompt = normalizeMarkerPrompt(buildTranslationPrompt(
@@ -70,7 +72,7 @@ export function buildLocalTranslationRequestBody({
     "Translate to Simplified Chinese."
   ));
   const markerInstruction = prepared.some((item) => /\[\[TF_\d+_[SE]\]\]/.test(item.text))
-    ? "Preserve every marker matching [[TF_<number>_S]] or [[TF_<number>_E]] exactly; do not translate, remove, reorder, or alter it."
+    ? "Preserve every marker matching [[TF_<number>_S]] or [[TF_<number>_E]] exactly; do not translate, remove, reorder, or alter it. For each segment, keep all text inside marker pairs listed in protected_ids exactly unchanged."
     : "";
   const outputContract = [
     'Return JSON only in this shape: {"translations":{"<id>":"<translation>"}}.',
