@@ -436,10 +436,10 @@
     },
     {
       "task": "selection-browser-routing",
-      "status": "changes_requested",
+      "status": "blocked",
       "dependencies": [],
       "branch": "fix/selection-browser-routing",
-      "candidateHead": "cfd57bf34f867009561e3ea3cf0471d785047bd6"
+      "candidateHead": "907bf53e21107101107316f4df3aaa4b918471e2"
     },
     {
       "task": "selection-vocabulary-book-v1",
