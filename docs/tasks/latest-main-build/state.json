@@ -61,6 +61,11 @@
       "e2e/chatgpt-plan-nativehost.spec.mjs"
     ],
     [
+      "npm",
+      "run",
+      "build:extension:wxt"
+    ],
+    [
       "env",
       "TF_SMOKE_ARTIFACT=dist/extension",
       "npm",

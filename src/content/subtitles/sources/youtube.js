@@ -4,7 +4,6 @@
     !app?.modules.subtitleSource
     || !app.modules.textTrackSubtitleSource
     || !app.modules.youtubeBridgeProtocol
-    || !app.modules.youtubeCaptionDom
     || !app.modules.youtubeTimedtext
     || app.modules.youtubeSubtitleSource
   ) return;
@@ -13,7 +12,12 @@
   const { createTextTrackSource } = app.modules.textTrackSubtitleSource;
   const protocol = app.modules.youtubeBridgeProtocol;
   const runtime = app.modules.runtime;
-  const { CAPTION_CONTAINER_SELECTORS, CAPTION_SEGMENT_SELECTORS, createCaptionDom } = app.modules.youtubeCaptionDom;
+  // An already registered legacy script list cannot load the new DOM helper until refresh.
+  // Keep TextTrack/timedtext and the rest of Content available without hiding native captions.
+  const { CAPTION_CONTAINER_SELECTORS, CAPTION_SEGMENT_SELECTORS, createCaptionDom } = app.modules.youtubeCaptionDom || {
+    CAPTION_CONTAINER_SELECTORS: [], CAPTION_SEGMENT_SELECTORS: [],
+    createCaptionDom: () => ({ readCues: () => [], suppress() {}, restore() {} })
+  };
 
   const PLAYER_SELECTORS = Object.freeze(["#movie_player", ".html5-video-player"]);
   const VIDEO_SELECTORS = Object.freeze(["video.html5-main-video", "video"]);

@@ -18,7 +18,7 @@ export function ProviderConnectionsSection({ client, state, loading, error, disa
   const [testStatus, setTestStatus] = useState<ConnectionTestStatus | null>(null);
   const connections = state?.connections || [];
   const defaultValue = serviceValue(state?.defaultService || null);
-  const developer = isChatGPTPlanDeveloperBuild(globalThis.chrome?.runtime?.getManifest?.());
+  const developer = isChatGPTPlanDeveloperBuild(typeof chrome === "undefined" ? undefined : chrome.runtime?.getManifest?.());
   const platformOptions = useMemo(() => PROVIDER_PLATFORMS, []);
   const update = (patch: Partial<Draft>) => setDraft(value => ({ ...value, ...patch }));
   const settings = (patch: Partial<Draft["settings"]>) => update({ settings: { ...draft.settings, ...patch } });

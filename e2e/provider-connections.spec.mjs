@@ -109,7 +109,13 @@ test.describe("API key provider connections", () => {
     await options.goto(`chrome-extension://${harness.extensionId}/options.html#provider`);
 
     await expect(options.getByRole("heading", { name: "API Key 连接" })).toBeVisible();
-    await expect(options.getByRole("heading", { name: "Provider · ChatGPT 订阅" })).toBeVisible();
+    const manifest = await options.evaluate(() => chrome.runtime.getManifest());
+    if (manifest.version_name === `${manifest.version}-dev`) {
+      await expect(options.getByRole("heading", { name: "Provider · ChatGPT 订阅" })).toBeVisible();
+    } else {
+      await expect(options.getByRole("link", { name: "GitHub 开发版及配置说明" })).toBeVisible();
+      await expect(options.getByRole("heading", { name: "Provider · ChatGPT 订阅" })).toHaveCount(0);
+    }
     await expect(options.locator(".connection-card").filter({ hasText: "OpenAI-compatible" })).toBeVisible();
 
     const editor = options.locator("form.connection-editor");

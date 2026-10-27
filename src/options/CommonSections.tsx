@@ -47,7 +47,7 @@ export function ShortcutsSection() {
 
 export function ProviderSections({ config, disabled, update, client, connections, loading, error, reload, setStatus }: Props & { client: OptionsClient; connections: ProviderConnectionState | null; loading: boolean; error: string; reload: () => Promise<void>; setStatus: (message: string, error?: boolean) => void }) {
   const i18n = useOptionsI18n();
-  const developer = isChatGPTPlanDeveloperBuild(globalThis.chrome?.runtime?.getManifest?.());
+  const developer = isChatGPTPlanDeveloperBuild(typeof chrome === "undefined" ? undefined : chrome.runtime?.getManifest?.());
   return <><ProviderConnectionsSection client={client} state={connections} loading={loading} error={error} disabled={disabled} reload={reload} setStatus={setStatus} />
     {developer ? <ChatGPTPlanSection config={config} disabled={disabled} update={update} client={client} />
       : <aside className="data-source-card" aria-label={i18n.t("options.chatgptPlan.devOnlyTitle")}>
