@@ -1,3 +1,4 @@
+import { withProviderLifetime } from "../provider-lifetime.js";
 import { MACHINE_ENGINE } from "../../shared/machine-translation.js";
 import { translateMachineRoute } from "./machine-translation-routing.js";
 import { PROVIDER_IDS } from "../../shared/constants.js";
@@ -28,8 +29,9 @@ export function getProvider(config) {
 }
 
 export async function translateBatch(segments, config, options = {}) {
-  if (config?.engine === MACHINE_ENGINE) return translateMachineRoute(segments, config, options);
-  return getProvider(config).translateBatch(segments, config, options);
+  return withProviderLifetime(() => config?.engine === MACHINE_ENGINE
+    ? translateMachineRoute(segments, config, options)
+    : getProvider(config).translateBatch(segments, config, options));
 }
 
 export async function completeJson(input, config, options = {}) {
@@ -37,13 +39,13 @@ export async function completeJson(input, config, options = {}) {
   if (typeof provider.completeJson !== "function") {
     throw new Error(`Provider 不支持结构化 Selection explanation：${provider.id}`);
   }
-  return provider.completeJson(input, config, options);
+  return withProviderLifetime(() => provider.completeJson(input, config, options));
 }
 
 export async function completeText(input, config, options = {}) {
-  return getProvider(config).completeText(input, config, options);
+  return withProviderLifetime(() => getProvider(config).completeText(input, config, options));
 }
 
 export async function testProvider(config) {
-  return getProvider(config).test(config);
+  return withProviderLifetime(() => getProvider(config).test(config));
 }

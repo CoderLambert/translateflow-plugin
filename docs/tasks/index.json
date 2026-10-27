@@ -336,6 +336,13 @@
       "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe"
     },
     {
+      "task": "intermittent-translation-interruption",
+      "status": "working",
+      "dependencies": [],
+      "branch": "fix/intermittent-translation-interruption",
+      "candidateHead": null
+    },
+    {
       "task": "latest-main-build",
       "status": "ready_to_sync",
       "dependencies": [],

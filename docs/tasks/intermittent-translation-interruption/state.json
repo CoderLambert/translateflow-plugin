@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "intermittent-translation-interruption",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "fix/intermittent-translation-interruption",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-interruption-fix",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    ["npm", "run", "validate"],
+    ["npm", "run", "build:extension:dev"],
+    ["env", "TF_SMOKE_ARTIFACT=dist/extension", "npm", "run", "test:wxt:smoke"],
+    ["env", "TF_E2E_ARTIFACT=dist/extension", "TF_TEST_WORKERS=2", "npm", "run", "test:e2e", "--", "e2e/interruption-lifecycle.spec.mjs", "e2e/selection-assistant-stream.spec.mjs", "e2e/selection-assistant-ui.spec.mjs", "e2e/translation-reliability.spec.mjs"]
+  ],
+  "nextAction": "已复现并修复两个触发条件；冻结交付候选后完成验收、真实本地模型并发验证、自查及准确 head 合入。"
+}

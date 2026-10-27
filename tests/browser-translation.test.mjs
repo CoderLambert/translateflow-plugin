@@ -85,7 +85,7 @@ async function clientContext({ settings = payload => ["selection-word", "page", 
   const app = { modules: { browserTranslationContract: { BROWSER_ENGINE, browserLanguage, buildSubtitleCacheSource, ...language }, browserTranslation: engine,
     browserTranslationView: { prompt, close() {} }, runtime: { messages: { background: M } }, contentI18n: { t: key => key } } };
   let notify;
-  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/" }, document: { documentElement: { lang: "en" } }, window: { addEventListener: (type, fn) => { events[type] = fn; } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController });
+  const context = vm.createContext({ __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/" }, document: { documentElement: { lang: "en" } }, window: { addEventListener: (type, fn) => { events[type] = fn; }, navigation: { addEventListener: (type, fn) => { events[`navigation:${type}`] = fn; } } }, chrome: { runtime: { onMessage: { addListener: fn => { notify = fn; } } } }, crypto, AbortController });
   vm.runInContext(await source("../src/content/translation-client.js"), context);
   const raw = async payload => {
     calls.push(payload);
@@ -97,6 +97,20 @@ async function clientContext({ settings = payload => ["selection-word", "page", 
   };
   return { client: app.modules.translationClient, raw, calls, model, events, notify, engine };
 }
+
+for (const [name, destination, shouldCancel] of [
+  ['same-URL state update', { sameDocument: true, url: 'https://example.test/' }, false],
+  ['different document', { sameDocument: false, url: 'https://example.test/' }, true],
+  ['different route', { sameDocument: true, url: 'https://example.test/other' }, true]
+]) test(`AI translation navigation: ${name}`, async () => {
+  const state = await clientContext(); let release;
+  const response = new Promise(resolve => { release = resolve; });
+  const pending = state.client.send({ type: M.TRANSLATE_BATCH, requestId: 'nav', pageUrl: 'https://example.test/', configSnapshotId: 'ai-snapshot', segments: [{ id: '1', text: 'source' }] }, () => response);
+  state.events['navigation:navigate']({ destination });
+  release({ ok: true, translations: [{ id: '1', text: '译文' }] });
+  if (shouldCancel) await assert.rejects(pending, { code: 'CANCELLED' });
+  else assert.equal((await pending).translations[0].text, '译文');
+});
 
 test("disabled basic translation does not query models or execute; settings notification releases instances", async () => {
   const state = await clientContext({ settings: { ok: true, engine: BROWSER_ENGINE, enabled: false } });
