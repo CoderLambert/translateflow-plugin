@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {openAICompatibleProvider} from '../src/background/providers/openai-compatible.js';
 import {createTranslationCoordinator} from '../src/background/cache/translation-coordinator.js';
+import {parseLocalTranslationResult} from '../src/background/providers/local-translation.js';
 import {structuredRecoveryPlan} from '../src/background/providers/structured-recovery.js';
 import {requestChatCompletions,parseTranslationResult} from '../src/background/providers/shared.js';
 import {parseTranslationText} from '../src/background/providers/native-protocol-shared.js';
@@ -13,6 +14,27 @@ for (const translations of [[{id:'a',text:' '}],[{id:'a',text:'译文'},{id:'ext
 const config={engine:'ai',provider:'openai-chat',apiBaseUrl:'http://localhost:1234/v1',model:'hy-mt2-7b',apiKey:'',prompt:'Translate.',targetLanguage:'Chinese'};
 const segment={id:'p',format:'tf-markers',protectedIds:[0],text:'Use ⟦TF:0:S⟧sample()⟦TF:0:E⟧ with ⟦TF:1:S⟧care⟦TF:1:E⟧.'};
 const json=translations=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({translations})}}]}),{headers:{'Content-Type':'application/json'}});
+test('local values retain literal protocol examples that already occur in the source',()=>{
+ const text='Literal ```json and "translations": examples remain text.';
+ assert.deepEqual(parseLocalTranslationResult({choices:[{message:{content:JSON.stringify({translations:{a:text}})}}]},[{id:'a',text}]),[{id:'a',text}]);
+});
+test('persistent single-segment envelope pollution stops after two format attempts',async t=>{
+ let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return json({a:'污染```json{'});});
+ const old=globalThis.chrome;globalThis.chrome={permissions:{contains:async()=>true}};t.after(()=>{globalThis.chrome=old});
+ await assert.rejects(openAICompatibleProvider.translateBatch([{id:'a',text:'A title'}],config,{}),{code:'MALFORMED_RESPONSE'});
+ assert.equal(calls,2);
+});
+for (const damage of ['json-fence', 'cross-segment-json']) test(`local plain batches recover ${damage} instead of rendering transport syntax`,async t=>{
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async(_url,init)=>{
+  calls++;const body=JSON.parse(init.body),items=JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;
+  if(items.length>1)return json({a:damage==='json-fence'?'标题```json{':'标题“b”、 “混入其它段落”}}',b:'另一段'});
+  return json(Object.fromEntries(items.map(s=>[s.id,s.id==='a'?'标题':'另一段'])));
+ });
+ const old=globalThis.chrome;globalThis.chrome={permissions:{contains:async()=>true}};t.after(()=>{globalThis.chrome=old});
+ const output=await openAICompatibleProvider.translateBatch([{id:'a',text:'A title'},{id:'b',text:'Another paragraph'}],config,{});
+ assert.deepEqual(output,[{id:'a',text:'标题'},{id:'b',text:'另一段'}]);assert.equal(calls,4);
+});
 for(const damage of ['missing-marker','translated-code'])test(`actual coordinator recovers local ${damage} without losing code or format`,async t=>{
  t.mock.method(globalThis,'fetch',async(_url,init)=>{
   const body=JSON.parse(init.body),items=JSON.parse(body.messages[0].content.split('Input JSON:\n').at(-1)).segments;

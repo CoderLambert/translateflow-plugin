@@ -216,7 +216,7 @@ function buildGenericRequestBody(segments, config, model) {
   }, config, 0.2);
 }
 
-async function translateLocalBatches(segments, config, model, signal) {
+async function translateLocalBatches(segments, config, model, signal, allowSingleRecovery = true) {
   const batches = splitLocalTranslationBatches(segments);
   const translated = [];
   let structuredOutputSupported = true;
@@ -245,12 +245,16 @@ async function translateLocalBatches(segments, config, model, signal) {
       });
       translated.push(...result);
     } catch (error) {
-      if (error.code !== "MALFORMED_RESPONSE" || !batch.some(item => item.format === "tf-markers")) throw error;
+      if (error.code !== "MALFORMED_RESPONSE" || (!batch.some(item => item.format === "tf-markers") && (!allowSingleRecovery || batch.length < 2))) throw error;
       for (const segment of batch) {
         if (signal?.aborted) throw createCancelledError();
         const existing = lastParsed.find(item => String(item.id) === String(segment.id));
         try { validateParsedTranslation([existing], [segment]); translated.push(existing); continue; } catch {}
-        if (segment.format !== "tf-markers") throw error;
+        if (segment.format !== "tf-markers") {
+          if (!allowSingleRecovery || batch.length < 2) throw error;
+          translated.push(...await translateLocalBatches([segment], config, model, signal, false));
+          continue;
+        }
         const plan = structuredRecoveryPlan(segment);
         const fragments = await translateLocalBatches(plan.fragments, config, model, signal);
         translated.push(plan.restore(fragments));

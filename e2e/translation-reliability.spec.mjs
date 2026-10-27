@@ -18,6 +18,9 @@ async function setup(harness, authFailure = false) {
       __reliabilityCalls.push({ rich: segments.some(s => s.text.includes('[[TF_')), count: segments.length });
       if (__reliabilityAuthFailure) return new Response('{"error":{"message":"PRIVATE_UNTRUSTED_UPSTREAM_PAYLOAD"}}', { status: 401 });
       const translations = Object.fromEntries(segments.map(s => [s.id, `译文：${s.text.replace(/\[\[TF_\d+_E\]\]/u, '')}`]));
+      if (segments.length > 1 && !segments.some(s => s.text.includes("[[TF_")) && !segments.every(s => s.id.includes(":part:"))) {
+        translations[segments[0].id] = "污染译文```json{";
+      }
       return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ translations }) } }] }), { headers: { 'Content-Type': 'application/json' } });
     };
   }, authFailure);
@@ -42,7 +45,8 @@ test('local marker damage recovers in MV3, preserves links/code and restores cac
   await expect(page.locator('#rich .abt-translation a')).toHaveAttribute('href', '/docs');
   await expect(page.locator('#rich .abt-translation')).not.toContainText('[[TF_');
   const calls = await harness.serviceWorker.evaluate(() => __reliabilityCalls);
-  expect(calls.filter(call => call.rich)).toHaveLength(2); expect(calls.length).toBeLessThanOrEqual(6);
+  expect(calls.filter(call => call.rich)).toHaveLength(2); expect(calls).toHaveLength(7);
+  await expect(page.locator(".abt-translation").first()).not.toContainText("```json");
   await harness.sendContent(page, 'ABT_CLEAR_TRANSLATIONS');
   const restored = await harness.sendContent(page, 'ABT_RESTORE_CACHE');
   expect(restored).toMatchObject({ ok: true, cacheHits: 3 });
