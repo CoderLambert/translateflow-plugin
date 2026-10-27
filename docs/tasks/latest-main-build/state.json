@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "task": "latest-main-build",
+  "status": "working",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "integration/latest-main-local-build",
+  "worktree": "/home/lambert/githubRepos/lambert/translateflow-latest-main-build",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "test"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension"
+    ],
+    [
+      "npm",
+      "run",
+      "build:extension:dev"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "TF_I18N_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/chatgpt-plan-nativehost.spec.mjs",
+      "e2e/provider-connections.spec.mjs"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension-dev",
+      "TF_I18N_ARTIFACT=dist/extension-dev",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/chatgpt-plan-nativehost.spec.mjs"
+    ],
+    [
+      "env",
+      "TF_SMOKE_ARTIFACT=dist/extension",
+      "npm",
+      "run",
+      "test:wxt:smoke"
+    ]
+  ],
+  "nextAction": "完成候选验收、自查与受保护合并，随后从 main 交付本地包供用户测试。"
+}

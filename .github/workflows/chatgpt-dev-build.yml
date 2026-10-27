@@ -2,23 +2,6 @@ name: chatgpt-dev-build
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/chatgpt-dev-build.yml"
-      - "scripts/build-extension.mjs"
-      - "scripts/production-manifest.mjs"
-      - "scripts/audit-wxt-extension.mjs"
-      - "src/options/**"
-      - "src/background/providers/**"
-      - "src/background/router.js"
-      - "src/shared/chatgpt-native-host.js"
-      - "src/i18n/catalog-options-chatgpt.js"
-      - "wxt.config.mjs"
-      - "tests/chatgpt-plan-provider.test.mjs"
-      - "tests/wxt-assets.test.mjs"
-      - "e2e/chatgpt-plan-nativehost.spec.mjs"
-      - "package.json"
-      - "docs/CHATGPT_DEVELOPMENT_BUILD.md"
 
 permissions:
   contents: read

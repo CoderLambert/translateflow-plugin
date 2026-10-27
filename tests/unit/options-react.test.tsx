@@ -54,7 +54,7 @@ test("public Provider settings show only the ChatGPT developer guide and preserv
   expect(screen.queryByRole("button", { name: "检查状态并加载模型" })).toBeNull();
   const selected = document.querySelector("#defaultService") as HTMLSelectElement;
   expect(selected.value).toBe("chatgpt-plan");
-  expect(selected.querySelector('option[value="chatgpt-plan"]')?.disabled).toBe(true);
+  expect(selected.querySelector<HTMLOptionElement>('option[value="chatgpt-plan"]')?.disabled).toBe(true);
   expect(chatGPTPlanAction).not.toHaveBeenCalled();
 });
 

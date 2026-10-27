@@ -36,7 +36,7 @@ Native Host **不随扩展 ZIP 自动安装**，账号令牌不进入扩展 ZIP�
 在**同一个仓库 checkout** 里，在扩展安装后将 `<扩展ID>` 换成 `chrome://extensions` 当前显示的 ID：
 
 ```bash
-TF_CHROME_EXTENSION_ID=<扩展ID> TF_NATIVE_HOST_VERSION=0.8.47 npm run build:native-host:candidate
+TF_CHROME_EXTENSION_ID=<扩展ID> TF_NATIVE_HOST_VERSION=0.8.48 npm run build:native-host:candidate
 ```
 
 `TF_NATIVE_HOST_VERSION` 必须与当前候选扩展版本相符；更新版本后请按实际 `manifest.json` 更新它。构建产物位于 `.output/native-host-candidate/`，生成 `release-candidate.json`、`SHA256SUMS` 和适用于 Linux/Windows x64 的候选二进制。候选标记为 `publishable:false`、`NOT_SIGNED`，**不得当作已签名公共安装包分发或绕过系统的未知发布者警告**。
@@ -44,7 +44,7 @@ TF_CHROME_EXTENSION_ID=<扩展ID> TF_NATIVE_HOST_VERSION=0.8.47 npm run build:na
 Linux（Google Chrome）自建示例：
 
 ```bash
-./.output/native-host-candidate/translateflow-host-0.8.47-linux-amd64 install --extension-id <扩展ID> --browser chrome
+./.output/native-host-candidate/translateflow-host-0.8.48-linux-amd64 install --extension-id <扩展ID> --browser chrome
 ```
 
 如果使用 Chromium 而不是 Chrome，将最后一个参数改为 `--browser chromium`。Windows 在 PowerShell 中构建候选后，使用相应 `windows-amd64.exe install --extension-id <扩展ID>` 安装。具体平台、安装注册位置和安全边界见 [Native Host 安装文档](../native-host/INSTALLATION.md)。
