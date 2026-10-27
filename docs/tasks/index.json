@@ -330,10 +330,10 @@
     },
     {
       "task": "latest-main-build",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "integration/latest-main-local-build",
-      "candidateHead": null
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2"
     },
     {
       "task": "offline-dictionary",
