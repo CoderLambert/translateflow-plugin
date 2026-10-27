@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "task": "ai-translation-reliability",
+  "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+  "tree": "fef4544ca5fb0513ce5b6d95f3d3a2190de568d2",
+  "inputTree": "edfdb06fcaf3f17f6db1a9dadc84f1f62e69b552665809ec67898aaaf1b896e6",
+  "frozenAt": "2026-10-27T17:25:21.855Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 77628.599617,
+      "startedAt": "2026-10-27T17:25:22.029Z",
+      "log": "docs/task-execution/local/ai-translation-reliability/b7b7dccc-8e90-4dfa-834e-0881bff3169f.log",
+      "logSha256": "661d22bef66f51d3a4a1a799ce6ba0e790968ca330e2bb1cf3792b2bd82fa80d"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2633.4392,
+      "startedAt": "2026-10-27T17:26:39.813Z",
+      "log": "docs/task-execution/local/ai-translation-reliability/7af5bc66-07ca-402a-83a9-65bbf3c7c97c.log",
+      "logSha256": "77259a064f0bfb91d7dd989327076101d7e2ae8209cb292d6fca43a9031203b5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:dev"
+      ],
+      "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2631.09959,
+      "startedAt": "2026-10-27T17:26:42.606Z",
+      "log": "docs/task-execution/local/ai-translation-reliability/e21c5a7a-0c2e-4cd8-94ca-b379d52cab71.log",
+      "logSha256": "2576feda4e9d931bd7fd0a1c7f72e35b9cd2a1ba8bd02d5480db3e6480b6c135"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1198.814159,
+      "startedAt": "2026-10-27T17:26:45.396Z",
+      "log": "docs/task-execution/local/ai-translation-reliability/f5c23f53-8422-4f31-814f-882866be8b80.log",
+      "logSha256": "c94a8fc08fb3940b4ba1a457ff302b41a545a274e9d5c0c4480f3fc7757d71d3"
+    },
+    {
+      "command": [
+        "env",
+        "TF_E2E_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/provider-connections.spec.mjs",
+        "e2e/translateflow.spec.mjs",
+        "e2e/translation-reliability.spec.mjs",
+        "e2e/cache-system-mv3.spec.mjs",
+        "e2e/auto-context-invalidated.spec.mjs"
+      ],
+      "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 29443.295261,
+      "startedAt": "2026-10-27T17:26:46.746Z",
+      "log": "docs/task-execution/local/ai-translation-reliability/18edd9ef-498b-4d3c-8aad-ada1879dcca7.log",
+      "logSha256": "7a09cef75b68e9d4bbc36d95a5e6959af377ffec29da1c5b7cd1772c5173c4ba"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "eab2d2d835259e3a7eb8b05893ba7d61e88346ba6954fc8b5bdf3a01deb8f52c"
+  },
+  "limitations": [
+    "No complete repository E2E, paid Provider, real ChatGPT account, or same-ID upgrade acceptance.",
+    "Real requests intermittently timed out; root cause remains unconfirmed. Failed runs are preserved.",
+    "The previous dc0c69d candidate failed visual product acceptance and was superseded."
+  ],
+  "additionalEvidence": {
+    "realManualAndCache": {
+      "binding": {
+        "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+        "durationMs": 116990.45723397285,
+        "exitCode": 1,
+        "scriptSha256": "6ffd528c1438fb7a7f9e192925da342bfccc75d42a026504c5fd575823c4ebea",
+        "logSha256": "ed41acc00a29808667021650e4fa70c1de87004dbebf7790e004a939933dac45"
+      },
+      "manualResult": "PASS: 13/13, code/link content intact, no envelope leaks; screenshot reviewed",
+      "cacheResult": "PASS: 13/13, zero new requests",
+      "overallScriptResult": "FAIL: subsequent automatic wait window expired; automatic scene verified separately"
+    },
+    "realAuto": {
+      "binding": {
+        "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
+        "durationMs": 15694.845677993726,
+        "exitCode": 0,
+        "scriptSha256": "028e502993e5ecac18315d89d4636100b1ee4713965ebf87be87c811bf93638f",
+        "logSha256": "0a9cb02ed6addf68b10e863b649b465e29ab0931558bae9576909d1c87a499f3"
+      },
+      "result": "PASS: 10 translated, no backoff"
+    },
+    "packages": [
+      {
+        "path": "dist/extension",
+        "version": "0.8.49",
+        "versionName": null,
+        "fingerprint": "eab2d2d835259e3a7eb8b05893ba7d61e88346ba6954fc8b5bdf3a01deb8f52c"
+      },
+      {
+        "path": ".output/chrome-mv3",
+        "version": "0.8.49",
+        "versionName": null,
+        "fingerprint": "eab2d2d835259e3a7eb8b05893ba7d61e88346ba6954fc8b5bdf3a01deb8f52c"
+      },
+      {
+        "path": "dist/extension-dev",
+        "version": "0.8.49",
+        "versionName": "0.8.49-dev",
+        "fingerprint": "bc6347c7b5f7222837bf537d4ef5f122dbab90cae929f6d3883683b943f7e980"
+      }
+    ]
+  }
+}

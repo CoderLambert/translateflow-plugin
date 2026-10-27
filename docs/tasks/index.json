@@ -252,10 +252,10 @@
     },
     {
       "task": "ai-translation-reliability",
-      "status": "reviewing",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/ai-translation-reliability",
-      "candidateHead": null
+      "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee"
     },
     {
       "task": "api-key-provider-connections",

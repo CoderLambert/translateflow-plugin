@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "task": "ai-translation-reliability",
-  "status": "reviewing",
+  "status": "ready_to_sync",
   "owner": "main",
   "dependencies": [],
   "branch": "fix/ai-translation-reliability",
   "worktree": "/home/lambert/githubRepos/lambert/translateflow-ai-reliability",
-  "candidateHead": null,
+  "candidateHead": "c61c8587e52ef56a76de1113b418bc59896732ee",
   "mergeHead": null,
   "artifactRequired": true,
   "validationCommands": [
@@ -46,5 +46,5 @@
       "e2e/auto-context-invalidated.spec.mjs"
     ]
   ],
-  "nextAction": "首个候选截图发现标题协议污染；增加值内容校验和单段恢复，重新冻结并验证真实可读结果后交付。"
+  "nextAction": "验收和截图自查完成；通过本地 gate 后按准确远端 head 合入并交付。"
 }
