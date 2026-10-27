@@ -306,7 +306,13 @@
     if (message.changes?.browserSourceLanguage || message.changes?.targetLanguage || message.changes?.browserTranslationEnabled?.newValue === false) dispose({ basicOnly: true });
   });
   window.addEventListener("pagehide", dispose); window.addEventListener("popstate", dispose);
-  window.addEventListener("hashchange", dispose); window.navigation?.addEventListener("navigate", dispose);
+  window.addEventListener("hashchange", dispose);
+  window.navigation?.addEventListener("navigate", event => {
+    // Hydration and client routers can replace history state without leaving
+    // this document or URL. Keep its active translations in that case.
+    if (event.destination?.sameDocument && event.destination.url === location.href) return;
+    dispose();
+  });
   async function requireAi(pageUrl) {
     const result = await app.modules.runtime.sendRuntimeMessage({ type: messages.TRANSLATION_ENGINE_SETTINGS, pageUrl, surface: "selection-ai" });
     if (result?.ok && result.engine === "ai" && result.configured !== false) return true;

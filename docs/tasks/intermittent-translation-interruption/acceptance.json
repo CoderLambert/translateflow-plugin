@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "task": "intermittent-translation-interruption",
+  "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+  "tree": "e22951a5e0a323cc80853a1c40dd40f9c92aef96",
+  "inputTree": "2ca7ad79409428e4ac579213feacad18edc7017a59bdd375e2a6dee5ad3a088f",
+  "frozenAt": "2026-10-27T18:22:30.332Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "Chromium 153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "validate"
+      ],
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 53830.640778,
+      "startedAt": "2026-10-27T18:22:30.503Z",
+      "log": "docs/task-execution/local/intermittent-translation-interruption/1eac7edd-5ebe-436d-a1ca-a5af2f725f3e.log",
+      "logSha256": "357223471c51b3a7faa820d441d373264625520ebc4ba45ed6c53f9d1652d005"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:dev"
+      ],
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2547.304167,
+      "startedAt": "2026-10-27T18:24:44.640Z",
+      "log": "docs/task-execution/local/intermittent-translation-interruption/72ee79ce-c03e-43b0-a4c6-45f01aeaf4be.log",
+      "logSha256": "359aa5647cf303f232f1490921e0119813b6c44d2ff1dc29862841c2f53c7a3a"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+      "result": "FAIL",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 324.65027,
+      "startedAt": "2026-10-27T18:24:47.342Z",
+      "log": "docs/task-execution/local/intermittent-translation-interruption/f87b64bb-d5f5-433f-95d5-d884743c08f4.log",
+      "logSha256": "c4ae7f2300ba909cc74a4daa02e13e6d132ef23650228c8bec6e40ff4350cc8e"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1134.389007,
+      "startedAt": "2026-10-27T18:26:47.541Z",
+      "log": "docs/task-execution/local/intermittent-translation-interruption/2882e3e9-d7ed-4f2c-b491-f8f53378b8a7.log",
+      "logSha256": "fba0e0e1283f87a091914d533d78d10bdf421307942381758e100d5b1fcf4e9d"
+    },
+    {
+      "command": [
+        "env",
+        "TF_E2E_ARTIFACT=dist/extension",
+        "TF_TEST_WORKERS=2",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/interruption-lifecycle.spec.mjs",
+        "e2e/selection-assistant-stream.spec.mjs",
+        "e2e/selection-assistant-ui.spec.mjs",
+        "e2e/translation-reliability.spec.mjs"
+      ],
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 39198.344732,
+      "startedAt": "2026-10-27T18:26:48.820Z",
+      "log": "docs/task-execution/local/intermittent-translation-interruption/db719840-6913-48f8-a20f-bcd1a56c1985.log",
+      "logSha256": "11d2928324724c38b92792a27ed5b007a982886339302a630d64851c49a5ab78"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "413a03504fb5a7b58bd2466cd51c50dad2799fbfe789aaf21f9da20344aaf0e4"
+  },
+  "limitations": [
+  "First smoke failed because the fresh worktree lacked .wxt/reports/asset-map.json; an explicit WXT build prepared it and only the failed smoke was rerun. The failed check is preserved.",
+  "Controlled lifecycle reproduction and real local-model checks used temporary profiles; the original user browser request timeline was not available.",
+  "No complete repository E2E, real Native Host account, AI saving acceptance, or exhaustive long-running model/load matrix. Existing timeout and retry limits remain unchanged."
+],
+  "additionalEvidence": {
+  "realConcurrent": {
+    "binding": {
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c",
+      "exitCode": 0,
+      "durationMs": 30580.88552800473,
+      "scriptSha256": "eea7cc5ae9fd232dae058e9d6b0bf534c356654cbe4aa3e7571ff8bcd06628bd",
+      "logSha256": "7f53b4de0f7731c40c0930f8d2f37b832eaf1be7940300aec73a1ab4f1a25208"
+    },
+    "result": "PASS: Next.js page completed with 17 API-translated segments while six assistant actions (two per mode) completed; 11 authorized local-endpoint HTTP responses were 200; screenshots inspected. Saving was not verified."
+  },
+  "packages": [
+    {
+      "path": "dist/extension",
+      "version": "0.8.50",
+      "versionName": null,
+      "inventorySha256": "b159271e52842b65b4597bde7f8264758769255b88689b52c82029607e94639a"
+    },
+    {
+      "path": "dist/extension-dev",
+      "version": "0.8.50",
+      "versionName": "0.8.50-dev",
+      "inventorySha256": "57db4be86ad7c37db31cbff595dafc87f28bbee4a5a5ecf6de9d404c69badd18"
+    },
+    {
+      "path": ".output/chrome-mv3",
+      "version": "0.8.50",
+      "versionName": null,
+      "inventorySha256": "b159271e52842b65b4597bde7f8264758769255b88689b52c82029607e94639a"
+    }
+  ],
+  "baselineReproductions": {
+    "sameUrlHistory": "Old 0.8.49 package cancelled 3/3 times; development fix completed 3/3 times; final candidate E2E also passed.",
+    "unattachedWorker": "Old 0.8.49 disconnected at 30065 ms before a delayed first response; final candidate completed at 36087 ms without a worker debugger."
+  }
+}
+}
