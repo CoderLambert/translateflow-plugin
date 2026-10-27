@@ -1,0 +1,186 @@
+{
+  "schema": 1,
+  "task": "latest-main-build",
+  "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+  "tree": "dbe6f1a773751cf0b9ed51a61ee8c028aec32a34",
+  "inputTree": "b78459d34329a551ffa7ae83c1225c8de80683fa64d75edcef2f61313ac24eef",
+  "frozenAt": "2026-10-27T15:55:50.762Z",
+  "environment": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "browser": "153.0.8010.12"
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 16179.662654,
+      "startedAt": "2026-10-27T15:55:50.908Z",
+      "log": "docs/task-execution/local/latest-main-build/273ee5f3-a744-40d3-b68f-474350411c69.log",
+      "logSha256": "4f6357b014a55284d3d44370d94b89ae0c96fb1b2c955fd8dcd8590f0b0d2139"
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 48626.876569,
+      "startedAt": "2026-10-27T15:56:07.243Z",
+      "log": "docs/task-execution/local/latest-main-build/cc277a88-7287-4701-bf99-c6a4b7dc3cc2.log",
+      "logSha256": "e341519d9b2ab8f6661c5986aa59ddb7d2c9eab48c8a486fc8a02aee98881eb3"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5005.334612,
+      "startedAt": "2026-10-27T15:56:56.025Z",
+      "log": "docs/task-execution/local/latest-main-build/555af830-6825-41b3-ae5e-4834c9f943f0.log",
+      "logSha256": "723d94fda5dea4eb02261a721afd95ff1d33d5f53a6da4626f70f8fda0b582c8"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:unit"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4493.682776,
+      "startedAt": "2026-10-27T15:57:01.180Z",
+      "log": "docs/task-execution/local/latest-main-build/8dba4de5-53d5-4331-8ae7-09359ef2ad45.log",
+      "logSha256": "8515d27f3fc8cd1e65e0a3eb26b9ca8741a781eb7a6fde946ad7cc9aefa39a56"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2520.789114,
+      "startedAt": "2026-10-27T15:57:05.824Z",
+      "log": "docs/task-execution/local/latest-main-build/2ae4e67e-bb21-41a4-934a-15c872d4c584.log",
+      "logSha256": "f1184c25958f820adc299a8317d46d58a4ae87766d963dd5a2bd4e8fb37fdaf4"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:dev"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2536.123104,
+      "startedAt": "2026-10-27T15:57:08.496Z",
+      "log": "docs/task-execution/local/latest-main-build/20faaac7-41ed-449e-89ef-422905493530.log",
+      "logSha256": "bd0e32ea4455d22b462e23365489ccea24be8bde34f817f73116380607761037"
+    },
+    {
+      "command": [
+        "env",
+        "TF_E2E_ARTIFACT=dist/extension",
+        "TF_I18N_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/chatgpt-plan-nativehost.spec.mjs",
+        "e2e/provider-connections.spec.mjs"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 10472.777184,
+      "startedAt": "2026-10-27T15:57:11.184Z",
+      "log": "docs/task-execution/local/latest-main-build/4eeaaccc-2e3f-4716-8869-0bc809c7ce8d.log",
+      "logSha256": "bc0601b4ef192c55f4bceec40aac67796e2aea82e0b845df5e3ae08efb5593ac"
+    },
+    {
+      "command": [
+        "env",
+        "TF_E2E_ARTIFACT=dist/extension-dev",
+        "TF_I18N_ARTIFACT=dist/extension-dev",
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "e2e/chatgpt-plan-nativehost.spec.mjs"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 4032.287493,
+      "startedAt": "2026-10-27T15:57:21.814Z",
+      "log": "docs/task-execution/local/latest-main-build/a0d67615-354c-4af2-8883-f5b512aa5f58.log",
+      "logSha256": "f62c972645ab2012d328124c881068c4bdb193c709354974ceca42e829b8fad5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build:extension:wxt"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 2646.252689,
+      "startedAt": "2026-10-27T15:57:26.010Z",
+      "log": "docs/task-execution/local/latest-main-build/533a5756-f22e-4848-8233-6076ecb92544.log",
+      "logSha256": "8a6c79830c349098d90d229fd3ce4aa93a5d6db0c42da0dbeba548238962a240"
+    },
+    {
+      "command": [
+        "env",
+        "TF_SMOKE_ARTIFACT=dist/extension",
+        "npm",
+        "run",
+        "test:wxt:smoke"
+      ],
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2",
+      "result": "PASS",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1215.034773,
+      "startedAt": "2026-10-27T15:57:28.810Z",
+      "log": "docs/task-execution/local/latest-main-build/6e18423f-4e4c-4435-9328-7bb8bd7c2f21.log",
+      "logSha256": "02f6e9c96cbafeee592bcf4e4d693cbf22b966d03c4a43e7d10e44141cde4607"
+    }
+  ],
+  "artifact": {
+    "path": "dist/extension",
+    "treeSha256": "32a9a5cb8a6065bb46dfb65f37cb57359598ee5a55638d2f6cf0f8b638172a8b"
+  },
+  "limitations": ["Full validate stages were executed as separately recorded commands, not a single npm run validate invocation.", "Public and developer E2E each skip only the case for the other edition; all applicable cases passed.", "Real account OAuth, paid Provider, user browser installation identity, full E2E and Chrome Web Store delivery were not tested.", "Initial candidate b7e781b9 failures remain in ignored local first-acceptance.json and logs; final candidate resolves all recorded failures."],
+  "developerArtifact": {
+    "path": "dist/extension-dev",
+    "treeSha256": "ebca883fdb8071abbfd074b18a274b2d0d34080c64e4fb313799366af6b9052c"
+  }
+}

@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { GeneralSection } from "../../src/options/CommonSections";
+import { GeneralSection, ProviderSections } from "../../src/options/CommonSections";
 import { ChatGPTPlanSection, chatGPTSignInActionDisabled, nativeHostDevelopmentCommands, nativeHostDevelopmentTarget } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { ProviderConnectionsSection } from "../../src/options/ProviderConnectionsSection";
@@ -38,6 +38,25 @@ function stubNativeHostTarget(platform: string, userAgent: string) {
     else Reflect.deleteProperty(navigator, "userAgent");
   };
 }
+
+test("public Provider settings show only the ChatGPT developer guide and preserve a previous selection", () => {
+  vi.stubGlobal("chrome", { ...chrome, runtime: { getManifest: () => ({ version: "0.8.47" }) } });
+  const chatGPTPlanAction = vi.fn();
+  const baseState = { version: 1, defaultService: { kind: "chatgpt-plan" }, connections: [] };
+  render(zhNode(<ProviderSections config={config} disabled={false} update={vi.fn()} client={{
+    chatGPTPlanAction, saveProviderConnection: vi.fn(), deleteProviderConnection: vi.fn(),
+    setDefaultService: vi.fn(), testProviderConnection: vi.fn()
+  } as any} connections={baseState as any} loading={false} error="" reload={vi.fn()} setStatus={vi.fn()} />));
+  expect(screen.getByText("ChatGPT 订阅 · 开发者预览")).toBeTruthy();
+  expect(screen.getByText(/公开版暂不提供 ChatGPT 订阅登录/u)).toBeTruthy();
+  const guide = screen.getByRole("link", { name: "GitHub 开发版及配置说明" });
+  expect(guide.getAttribute("href")).toBe("https://github.com/CoderLambert/translateflow-plugin/blob/main/docs/CHATGPT_DEVELOPMENT_BUILD.md");
+  expect(screen.queryByRole("button", { name: "检查状态并加载模型" })).toBeNull();
+  const selected = document.querySelector("#defaultService") as HTMLSelectElement;
+  expect(selected.value).toBe("chatgpt-plan");
+  expect(selected.querySelector<HTMLOptionElement>('option[value="chatgpt-plan"]')?.disabled).toBe(true);
+  expect(chatGPTPlanAction).not.toHaveBeenCalled();
+});
 
 test("provider connection test feedback stays visible in the tested card", async () => {
   let finish: ((value: string) => void) | undefined;

@@ -1,0 +1,77 @@
+name: chatgpt-dev-build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  developer-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TF_TEST_WORKERS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.21.0"
+      - run: npm ci --no-audit --no-fund
+      - name: Focused release and provider checks
+        run: node --test tests/wxt-assets.test.mjs tests/chatgpt-plan-provider.test.mjs
+      - name: Public production package
+        run: npm run build:extension:release
+      - name: Audited ChatGPT developer package
+        run: npm run build:extension:dev
+      - name: Verify both Manifest editions
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const pub = JSON.parse(readFileSync('dist/extension/manifest.json', 'utf8'));
+          const dev = JSON.parse(readFileSync('dist/extension-dev/manifest.json', 'utf8'));
+          assert.equal(pub.version_name, undefined);
+          assert.equal(dev.version_name, `${dev.version}-dev`);
+          assert.deepEqual(dev.host_permissions, pub.host_permissions);
+          assert.deepEqual(dev.permissions, pub.permissions);
+          assert.deepEqual(dev.optional_permissions, pub.optional_permissions);
+          NODE
+      - name: Prepare Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Public ChatGPT UI regression
+        env:
+          TF_E2E_ARTIFACT: dist/extension
+          TF_I18N_ARTIFACT: dist/extension
+        run: npm run test:e2e -- e2e/chatgpt-plan-nativehost.spec.mjs
+      - name: Developer ChatGPT UI regression
+        env:
+          TF_E2E_ARTIFACT: dist/extension-dev
+          TF_I18N_ARTIFACT: dist/extension-dev
+        run: npm run test:e2e -- e2e/chatgpt-plan-nativehost.spec.mjs
+      - name: Pack verified unpacked developer edition
+        run: |
+          mkdir -p artifacts
+          (cd dist/extension-dev && zip -qr ../../artifacts/translateflow-extension-dev.zip .)
+          unzip -p artifacts/translateflow-extension-dev.zip manifest.json | node -e '
+            let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+              const m=JSON.parse(s);
+              if (m.version_name !== m.version+"-dev") process.exit(1);
+            });'
+          (cd artifacts && sha256sum translateflow-extension-dev.zip > SHA256SUMS)
+          git rev-parse HEAD > artifacts/SOURCE_COMMIT.txt
+      - name: Upload developer extension and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: translateflow-chatgpt-developer-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload focused E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chatgpt-dev-e2e-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

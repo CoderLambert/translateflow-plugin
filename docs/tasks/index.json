@@ -329,6 +329,13 @@
       "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe"
     },
     {
+      "task": "latest-main-build",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "integration/latest-main-local-build",
+      "candidateHead": "c8b5b59b91cfaa51f2ab261df7670f3fa8d5f1c2"
+    },
+    {
       "task": "offline-dictionary",
       "status": "working",
       "dependencies": [],

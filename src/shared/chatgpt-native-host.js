@@ -2,6 +2,21 @@ export const CHATGPT_PLAN_NATIVE_HOST = "com.coderlambert.translateflow";
 export const CHATGPT_PLAN_NATIVE_PERMISSION = "nativeMessaging";
 export const CHATGPT_PLAN_MIN_HOST_VERSION = "0.8.0";
 export const CHATGPT_PLAN_HOST_DOWNLOAD_URL = "https://github.com/CoderLambert/translateflow-plugin/releases/latest";
+export const CHATGPT_PLAN_DEV_GUIDE_URL = "https://github.com/CoderLambert/translateflow-plugin/blob/main/docs/CHATGPT_DEVELOPMENT_BUILD.md";
+
+// Only the separately built, explicitly identified unpacked developer edition exposes this experiment.
+// Accept manifest input rather than reading chrome.* inside a shared pure module.
+export function isChatGPTPlanDeveloperBuild(manifest) {
+  return Boolean(manifest && typeof manifest.version === "string" &&
+    manifest.version_name === `${manifest.version}-dev`);
+}
+
+export function requireChatGPTPlanDeveloperBuild(manifest) {
+  if (isChatGPTPlanDeveloperBuild(manifest)) return;
+  const error = new Error("ChatGPT subscription is available only in the GitHub developer build. Your existing settings are preserved.");
+  error.code = "CHATGPT_PLAN_DEV_ONLY";
+  throw error;
+}
 
 export function compareHostVersions(left, right) {
   const a = parseVersion(left), b = parseVersion(right);

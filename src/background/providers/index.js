@@ -1,6 +1,7 @@
 import { MACHINE_ENGINE } from "../../shared/machine-translation.js";
 import { translateMachineRoute } from "./machine-translation-routing.js";
 import { PROVIDER_IDS } from "../../shared/constants.js";
+import { requireChatGPTPlanDeveloperBuild } from "../../shared/chatgpt-native-host.js";
 import { deepSeekProvider } from "./deepseek.js";
 import { openAIChatProvider, openAICompatibleProvider } from "./openai-compatible.js";
 import { chatGPTPlanProvider } from "./chatgpt-plan.js";
@@ -20,6 +21,7 @@ const PROVIDERS = new Map([
 
 export function getProvider(config) {
   const providerId = String(config?.provider || PROVIDER_IDS.DEEPSEEK).trim().toLowerCase();
+  if (providerId === PROVIDER_IDS.CHATGPT_PLAN) requireChatGPTPlanDeveloperBuild(globalThis.chrome?.runtime?.getManifest?.());
   const provider = PROVIDERS.get(providerId);
   if (!provider) throw new Error(`不支持的翻译 Provider：${providerId}`);
   return provider;
