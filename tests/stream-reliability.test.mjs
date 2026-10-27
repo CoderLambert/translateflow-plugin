@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {requestChatCompletionsStream} from '../src/background/providers/openai-sse.js';
+const policy={maxAttempts:3,malformedMaxAttempts:2,baseDelayMs:0,maxDelayMs:0,requestTimeoutMs:1000};
+const args={url:'https://synthetic.invalid',apiKey:'',requireApiKey:false,body:{},providerLabel:'Synthetic',retryPolicy:policy};
+const success=()=>new Response('data: {"choices":[{"delta":{"content":"OK"}}]}\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
+for(const status of [429,503])test(`stream retries transient ${status} before exposing output`,async t=>{let calls=0;t.mock.method(globalThis,'fetch',async()=>++calls===1?new Response('{"error":{"message":"temporary"}}',{status,headers:{'Retry-After':'0'}}):success());const result=await requestChatCompletionsStream(args);assert.equal(result.choices[0].message.content,'OK');assert.equal(calls,2);});
+test('stream does not replay after exposing a partial answer',async t=>{let calls=0,delta='';t.mock.method(globalThis,'fetch',async()=>{calls++;let sent=false;return new Response(new ReadableStream({pull(c){if(!sent){sent=true;c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"part"}}]}\n\n'));}else c.error(new TypeError('connection lost'));}}),{headers:{'Content-Type':'text/event-stream'}});});await assert.rejects(requestChatCompletionsStream({...args,onTextDelta:x=>{delta+=x}}));assert.equal(calls,1);assert.equal(delta,'part');});
+test('stream retry delay is cancellable and does not dispatch another request',async t=>{let calls=0;const control=new AbortController();t.mock.method(globalThis,'fetch',async()=>{calls++;queueMicrotask(()=>control.abort());return new Response('{}',{status:429,headers:{'Retry-After':'30'}});});await assert.rejects(requestChatCompletionsStream({...args,signal:control.signal}),{code:'CANCELLED'});assert.equal(calls,1);});

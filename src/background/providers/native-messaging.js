@@ -33,6 +33,8 @@ export function createNativeMessagingClient({
   let activeInferenceId = "";
   let hostInfo = null;
   const pending = new Map();
+  const inferenceQueue = [];
+  let inferenceRunning = false;
 
   async function ensureConnected() {
     const browser = getBrowser();
@@ -105,16 +107,39 @@ export function createNativeMessagingClient({
   async function logout() { return request("auth.logout"); }
   async function listModels() { return request("models.list"); }
   async function restart() {
-    if (connecting || pending.size) throw hostBusy();
+    if (connecting || pending.size || inferenceRunning || inferenceQueue.length) throw hostBusy();
     const current = port;
     if (current) close(current, disconnected());
     await ensureConnected();
     return { restarted: true };
   }
-  async function infer(input, { signal, onDelta } = {}) {
-    return request("infer.start", input, { signal, onEvent: event => {
-      if (event.name === "infer.delta" && typeof event.payload?.text === "string") onDelta?.(event.payload.text);
-    } });
+  function infer(input, { signal, onDelta } = {}) {
+    if (signal?.aborted) return Promise.reject(cancelled());
+    if (inferenceQueue.length >= 32) return Promise.reject(hostBusy());
+    return new Promise((resolve, reject) => {
+      const entry = { input, signal, onDelta, resolve, reject, timer: null, abort: null };
+      const remove = error => {
+        const index = inferenceQueue.indexOf(entry);
+        if (index < 0) return;
+        inferenceQueue.splice(index, 1); cleanQueued(entry); reject(error);
+      };
+      entry.abort = () => remove(cancelled());
+      entry.timer = setTimeout(() => remove(hostBusy()), 120000);
+      signal?.addEventListener("abort", entry.abort, { once: true });
+      inferenceQueue.push(entry); drainInferenceQueue();
+    });
+  }
+  function cleanQueued(entry) {
+    clearTimeout(entry.timer); entry.signal?.removeEventListener("abort", entry.abort);
+  }
+  function drainInferenceQueue() {
+    if (inferenceRunning || !inferenceQueue.length) return;
+    const entry = inferenceQueue.shift(); cleanQueued(entry);
+    inferenceRunning = true;
+    request("infer.start", entry.input, { signal: entry.signal, onEvent: event => {
+      if (event.name === "infer.delta" && typeof event.payload?.text === "string") entry.onDelta?.(event.payload.text);
+    } }).then(value => { inferenceRunning = false; drainInferenceQueue(); entry.resolve(value); },
+      error => { inferenceRunning = false; drainInferenceQueue(); entry.reject(error); });
   }
 
   function sendOn(target, method, payload, { signal, onEvent, timeoutMs = 0 } = {}) {
@@ -206,6 +231,7 @@ export function createNativeMessagingClient({
     hostInfo = null;
     try { source.disconnect?.(); } catch {}
     for (const entry of pending.values()) settle(entry, false, error);
+    for (const entry of inferenceQueue.splice(0)) { cleanQueued(entry); entry.reject(error); }
   }
 
   function settle(entry, succeeded, value) {

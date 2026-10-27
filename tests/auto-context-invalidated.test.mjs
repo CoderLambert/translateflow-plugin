@@ -105,6 +105,19 @@ test("startup restore invalidation cannot be followed by a waiting auto enable",
   assert.equal(h.observers.length, 0); assert.equal(h.timers.size, 0);
 });
 
+for (const code of ["MALFORMED_RESPONSE", "AUTH", "NETWORK"]) test(`automatic ${code} failures stop within a bounded number of rounds and can resume explicitly`, async () => {
+  const h = harness({ failure: Object.assign(new Error("Synthetic failure"), { code }) });
+  await h.auto.enableAutoMode(); h.enqueue();
+  while (h.timers.size && h.attempts < 5) await h.drain();
+  assert.equal(h.attempts, code === "NETWORK" ? 3 : 1);
+  assert.equal(h.timers.size, 0); assert.equal(h.state.autoPausedForError, true);
+  h.auto.scheduleAutoDrain(); h.enqueue(); assert.equal(h.timers.size, 0);
+  h.auto.resumeAutoTranslation(); assert.equal(h.state.autoPausedForError, false); assert.equal(h.timers.size, 1);
+  await h.drain();
+  h.auto.disableAutoMode(); await h.auto.enableAutoMode();
+  assert.equal(h.state.autoPausedForError, false);
+});
+
 test("a fresh page context can enable automatic translation normally", async () => {
   const h = harness({ failure: null });
   await h.auto.enableAutoMode(); h.enqueue(); await h.drain();

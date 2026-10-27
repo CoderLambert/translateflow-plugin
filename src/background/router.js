@@ -24,7 +24,7 @@ import { testSavedProviderConnection } from "./provider-connection-runtime.js";
 import { readPublicSettings, writePublicSettings } from "./public-settings.js";
 import { readQuickControlPosition, saveQuickControlPosition } from "./quick-control-position.js";
 import { assertMachinePlanInputs, bindMachinePlanResults } from "./cache/machine-translation-plan.js";
-import { resolveEffectiveConfigSnapshot, machineRouteSnapshot, getTranslationConfigRevision } from "./effective-config-snapshots.js";
+import { resolveEffectiveConfigSnapshot, withEffectiveConfigSnapshot, machineRouteSnapshot, getTranslationConfigRevision } from "./effective-config-snapshots.js";
 import { handleChatGPTPlanAction } from "./providers/chatgpt-plan-settings.js";
 import { readTranslationPreferences, saveTranslationPreferences, assertOnlineConsent } from "./translation-preferences.js";
 import { assertTranslationUiSender } from "./machine-translation-settings.js";
@@ -94,7 +94,7 @@ export async function handleBackgroundMessage(message, sender) {
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
       return translationEngineSettings(message.pageUrl, { surface: message.surface, temporaryMethod: message.temporaryMethod });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {
-      const config = await resolveEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender);
+      return withEffectiveConfigSnapshot(message.configSnapshotId, message.pageUrl, sender, async config => {
       if (config.engine === "browser-translator") throw Object.assign(new Error("Browser translation runs in the page."), { code: "BROWSER_CONTEXT" });
       if (config.engine === "machine-translation") await assertOnlineConsent(message.pageUrl, config.preferenceSurface);
       const plan = await machineRouteSnapshot(message.configSnapshotId, message.pageUrl, sender);
@@ -118,6 +118,7 @@ export async function handleBackgroundMessage(message, sender) {
         readingResult: plan ? translations[0]?.readingResult : await readingTranslationResult(config),
         ...(config.engine === "machine-translation" ? { engine: config.engine, provider: translations[0]?.providerId || config.provider } : {})
       };
+      });
     }
     case BACKGROUND_MESSAGES.SUBTITLE_TRANSLATE_BATCH:
       return runSubtitleTranslationBatch({

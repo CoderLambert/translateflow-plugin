@@ -12,7 +12,15 @@
   const { constants, messages, state, getPageIdentity, normalizeSourceText, sendRuntimeMessage, showToast } = app.modules.runtime;
   const t = (key, args) => app.modules.contentI18n.t(key, args);
   const resultMessage = (key, args = {}) => ({ message: t(key, args), messageKey: key, messageArgs: args });
-  const responseError = (response, key) => Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
+  const errorKeys = { MALFORMED_RESPONSE: "content.page.invalidResponse", MT_RESPONSE: "content.page.invalidResponse",
+    NETWORK: "content.page.networkError", MT_NETWORK: "content.page.networkError", TIMEOUT: "content.page.timeoutError",
+    RATE_LIMIT: "content.page.rateLimited", AUTH: "content.page.authError", CONFIG: "content.page.configError",
+    PERMISSION: "content.page.permissionError", HOST_BUSY: "content.page.providerBusy", CONFIG_SNAPSHOT_BUSY: "content.page.providerBusy",
+    CONFIG_SNAPSHOT_EXPIRED: "content.page.configExpired" };
+  const responseError = (response, fallback) => {
+    const key = Object.hasOwn(errorKeys, response?.errorCode) ? errorKeys[response.errorCode] : fallback;
+    return Object.assign(new Error(t(key)), { code: response?.errorCode || "", i18nKey: key });
+  };
   const tasks = app.modules.tasks;
   const { collectElements, extractSourceSegment, insertTranslation, clearTranslations } = app.modules.dom;
   const { buildEntries, groupEntriesByText, makeBatches } = app.modules.batch;
@@ -105,6 +113,7 @@
         apiTranslated
       });
       if (missing) tasks.failTask(task, Object.assign(new Error(message), { code: "MT_RESPONSE" }));
+      else app.modules.auto?.resumeAutoTranslation?.();
       if (!silent) showToast(message, cacheWarning || missing ? "error" : "success");
       return {
         count,

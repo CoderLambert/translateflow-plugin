@@ -16,7 +16,7 @@ const cacheMessages = Object.freeze({
 });
 const storageError = code => Object.assign(new Error(code), { code });
 
-async function createContentHarness(file, { lookupWarning = '', writeWarning = '', writeErrorCode = '', cacheOnly = false } = {}) {
+async function createContentHarness(file, { lookupWarning = '', writeWarning = '', writeErrorCode = '', translateErrorCode = '', cacheOnly = false } = {}) {
   const requests = [], toasts = [], displayed = [], accepted = [], el = { hasAttribute: () => false };
   const state = { manualRunning: false, autoDrainRunning: false, pending: new Set(),
     startupRestorePromise: null, lastAutoPruneAt: Date.now() };
@@ -35,6 +35,7 @@ async function createContentHarness(file, { lookupWarning = '', writeWarning = '
           ...(lookupWarning ? { cacheWarning: lookupWarning } : {}) };
       }
       if (message.type === cacheMessages.TRANSLATE_BATCH) {
+        if (translateErrorCode) return { ok: false, errorCode: translateErrorCode, error: "PRIVATE_UNTRUSTED_UPSTREAM_PAYLOAD" };
         return { ok: true, translations: [{ id: file.includes('processor') ? '1' : 'selection', text: translation }],
           readingResult: { targetLanguage: 'zh', provenance: { provider: 'fixture', model: 'test' } } };
       }
@@ -101,6 +102,15 @@ test('only transient cache storage failures are recoverable; invalid contracts s
     assert.equal(isCachePersistenceError(storageError(code)), false);
   }
 });
+
+for (const [code, key] of [["MALFORMED_RESPONSE", "invalidResponse"], ["TIMEOUT", "timeoutError"], ["AUTH", "authError"], ["RATE_LIMIT", "rateLimited"]]) {
+  test(`page ${code} feedback is actionable and never exposes upstream text`, async () => {
+    const h = await createContentHarness("src/content/processor.js", { translateErrorCode: code });
+    await assert.rejects(h.run(), error => error.code === code && error.message === `content.page.${key}`);
+    assert.equal(h.displayed.length, 0);
+    assert.ok(!JSON.stringify(h.toasts).includes("PRIVATE_UNTRUSTED"));
+  });
+}
 
 test('Page keeps verified text visible after storage failure, no paid regeneration', async () => {
   const h = await createContentHarness('src/content/processor.js', { writeWarning: 'CACHE_STORAGE' });

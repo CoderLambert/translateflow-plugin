@@ -20,8 +20,12 @@ export async function createEffectiveConfigSnapshot(pageUrl, options = {}, sende
   const machine = config.engine === MACHINE_ENGINE;
   const owner = machine ? machineSnapshotOwner(sender, pageUrl) : null;
   const id = (machine ? "mt:" : "") + crypto.randomUUID();
-  snapshots.set(id, { pageUrl: String(pageUrl || ""), config, owner, tabId: sender?.tab?.id, createdAt: Date.now(), routes: new Map(), sources: new Map(), writable: true });
-  if (snapshots.size > MAX_SNAPSHOTS) snapshots.delete(snapshots.keys().next().value);
+  if (snapshots.size >= MAX_SNAPSHOTS) {
+    const idle = [...snapshots].find(([, snapshot]) => !snapshot.activeRequests);
+    if (!idle) throw Object.assign(new Error("翻译任务较多，请稍后重试。"), { code: "CONFIG_SNAPSHOT_BUSY" });
+    snapshots.delete(idle[0]);
+  }
+  snapshots.set(id, { pageUrl: String(pageUrl || ""), config, owner, tabId: sender?.tab?.id, lastUsedAt: Date.now(), activeRequests: 0, routes: new Map(), sources: new Map(), writable: true });
   return { id, config, revision };
 }
 
@@ -36,7 +40,17 @@ export async function resolveEffectiveConfigSnapshot(id, pageUrl, sender = null)
   const snapshot = snapshots.get(key);
   if (!snapshot || snapshot.pageUrl !== String(pageUrl || "")) throw expired();
   if (snapshot.config.engine === MACHINE_ENGINE && snapshot.owner !== machineSnapshotOwner(sender, pageUrl)) throw expired();
+  snapshot.lastUsedAt = Date.now();
   return snapshot.config;
+}
+
+export async function withEffectiveConfigSnapshot(id, pageUrl, sender, work) {
+  const config = await resolveEffectiveConfigSnapshot(id, pageUrl, sender);
+  const snapshot = snapshots.get(String(id));
+  if (id && (!snapshot || snapshot.config !== config)) throw expired();
+  if (snapshot) snapshot.activeRequests++;
+  try { return await work(config); }
+  finally { if (snapshot) { snapshot.activeRequests--; snapshot.lastUsedAt = Date.now(); } }
 }
 
 export const getTranslationConfigRevision = () => revision;
@@ -53,7 +67,7 @@ function machineSnapshotOwner(sender, pageUrl) {
 function expired() { return Object.assign(new Error("翻译配置快照已失效，请重新开始翻译。"), { code: "CONFIG_SNAPSHOT_EXPIRED" }); }
 function prune() {
   const cutoff = Date.now() - MAX_AGE_MS;
-  for (const [id, value] of snapshots) if (value.createdAt < cutoff) snapshots.delete(id);
+  for (const [id, value] of snapshots) if (!value.activeRequests && value.lastUsedAt < cutoff) snapshots.delete(id);
 }
 
 // Route state belongs to the same bounded, owner-checked snapshot lifecycle.

@@ -1,4 +1,4 @@
-import { ProviderRequestError, buildTranslationPrompt, parseJsonObject } from "./shared.js";
+import { ProviderRequestError, buildTranslationPrompt, parseJsonObject, validateParsedTranslation } from "./shared.js";
 
 export function requireConnectionConfig(config, protocolLabel) {
   const model = String(config?.model || "").trim();
@@ -18,13 +18,9 @@ export function translationInput(segments, config) {
 export function parseTranslationText(text, segments, providerLabel) {
   const parsed = parseJsonObject(text, providerLabel);
   if (!Array.isArray(parsed?.translations)) throw providerError(`${providerLabel} 返回格式不正确：缺少 translations 数组。`, "MALFORMED_RESPONSE");
-  const expected = new Set((segments || []).map(item => String(item.id)));
-  const result = parsed.translations.filter(item => expected.has(String(item?.id)) && typeof item?.text === "string")
-    .map(item => ({ id: String(item.id), text: item.text.trim() }));
-  if (result.length !== expected.size || new Set(result.map(item => item.id)).size !== expected.size) {
-    throw providerError(`${providerLabel} 没有返回完整且唯一的翻译结果。`, "MALFORMED_RESPONSE");
-  }
-  return result;
+  return validateParsedTranslation(parsed.translations.map(item => ({
+    id: String(item?.id), text: typeof item?.text === "string" ? item.text.trim() : item?.text
+  })), segments, providerLabel);
 }
 
 export function parseStructuredText(text, parseResult, providerLabel) {

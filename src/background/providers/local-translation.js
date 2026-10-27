@@ -24,6 +24,7 @@ export function splitLocalTranslationBatches(
   { maxSegments = LOCAL_BATCH_MAX_SEGMENTS, maxChars = LOCAL_BATCH_MAX_CHARS } = {}
 ) {
   const normalized = (Array.isArray(segments) ? segments : []).map((item) => ({
+    ...item,
     id: String(item?.id ?? ""),
     text: String(item?.text ?? "")
   }));
@@ -62,7 +63,8 @@ export function buildLocalTranslationRequestBody({
 }) {
   const prepared = (Array.isArray(segments) ? segments : []).map((item) => ({
     id: String(item.id),
-    text: encodeLocalMarkers(item.text)
+    text: encodeLocalMarkers(item.text),
+    ...(item.protectedIds?.length ? { protected_ids: item.protectedIds } : {})
   }));
   const ids = prepared.map((item) => item.id);
   const prompt = normalizeMarkerPrompt(buildTranslationPrompt(
@@ -70,7 +72,7 @@ export function buildLocalTranslationRequestBody({
     "Translate to Simplified Chinese."
   ));
   const markerInstruction = prepared.some((item) => /\[\[TF_\d+_[SE]\]\]/.test(item.text))
-    ? "Preserve every marker matching [[TF_<number>_S]] or [[TF_<number>_E]] exactly; do not translate, remove, reorder, or alter it."
+    ? "Preserve every marker matching [[TF_<number>_S]] or [[TF_<number>_E]] exactly; do not translate, remove, reorder, or alter it. For each segment, keep all text inside marker pairs listed in protected_ids exactly unchanged."
     : "";
   const outputContract = [
     'Return JSON only in this shape: {"translations":{"<id>":"<translation>"}}.',
@@ -122,7 +124,12 @@ export function parseLocalTranslationResult(data, segments, providerLabel = "Ope
     if (typeof item?.text !== "string") {
       throw malformed(providerLabel, `id ${id} 的翻译不是字符串。`);
     }
-    byId.set(id, decodeLocalMarkers(item.text.trim()));
+    const text = decodeLocalMarkers(item.text.trim());
+    const source = segments.find(segment => String(segment.id) === id);
+    if (typeof source?.text === "string" && hasUnexpectedEnvelope(text, source.text, expectedSet)) {
+      throw malformed(providerLabel, "译文混入了响应协议或其它段落，已拒绝显示。");
+    }
+    byId.set(id, text);
   }
 
   const missing = expectedIds.filter((id) => !byId.has(id));
@@ -131,6 +138,15 @@ export function parseLocalTranslationResult(data, segments, providerLabel = "Ope
   }
 
   return expectedIds.map((id) => ({ id, text: byId.get(id) }));
+}
+
+function hasUnexpectedEnvelope(text, source, expectedIds) {
+  // Reject protocol syntax introduced inside a value, not literal source code.
+  const protocol = [/```(?:json)?/iu, /["“”](?:translations|segments)["“”]\s*[:：]/u, /⟦TF:/u];
+  if (protocol.some(pattern => pattern.test(text) && !pattern.test(source))) return true;
+  if (!text.includes("}}") || /[{}]/u.test(source)) return false;
+  return [...text.matchAll(/["“”]([^"“”]+)["“”]\s*[:：、,]\s*["“”]/gu)]
+    .some(match => expectedIds.has(match[1]));
 }
 
 export function isUnsupportedStructuredOutputError(error) {

@@ -51,7 +51,11 @@ TranslateFlow 的 API Key Provider 完全运行在扩展内部，不依赖 LiteL
 
 OpenAI Responses、Anthropic Messages 和 Gemini generateContent 使用各自原生请求体及响应解析，不把它们伪装成 Chat Completions。未设置 Temperature 时适配器省略该字段，以兼容不接受 Temperature 的推理模型。翻译结果必须完整、唯一地覆盖请求 segment；结构化 Selection 结果解析失败时最多重试一次。
 
-连接测试发送最小请求并要求精确返回 `OK`。HTTP 200 但内容为空或不符合约定仍视为失败。
+连接测试发送最小请求并要求精确返回 `OK`。HTTP 200 但内容为空或不符合约定仍视为失败；连接测试成功不能替代真实页面的结构化翻译验收。
+
+翻译 adapter 在格式重试边界内验证完整且唯一的 ID、非空译文、标记结构和受保护代码。HY-MT 等专用本地模型拆分批次时保留 format/protectedIds，并提示模型保持代码原文；两次格式尝试仍失败时，仅对不合格的富文本段落做一次安全恢复：复用 `translationParts` 留住标记、代码和空白，只把普通文字槽交给同一 Provider，验证完整槽结果后按原结构重组。每段最多 128 个文字槽，槽请求仍使用原有批大小、格式重试和取消边界。额外拒绝译文中原文没有的 JSON 围栏、协议字段或跨段落协议残片；多段纯文本格式尝试耗尽后可以拆成单段重试一次，单段不继续拆分；该降级可能降低跨格式片段的语境连贯性，不以删标记、改代码或更换服务换取成功。
+
+HTTP 超时和外部取消覆盖读取完整响应体。流式网络/限流/服务端暂时故障只在尚未输出内容时按既有策略重试，已输出的流不重放。页面错误仅按本地错误码显示操作建议；自动翻译在格式/认证/配置/权限错误时暂停，其他连续失败最多三轮，手动整页翻译成功或关闭再开启自动翻译后恢复。
 
 ## 平台预设
 
@@ -80,6 +84,8 @@ Azure 仅支持统一的 OpenAI v1 Base URL，并按[微软 v1 Responses API 文
 
 所有翻译和缓存操作必须使用 `getEffectiveConfig(pageUrl)` 解析出的同一配置。页面批处理在首次 cache lookup 时创建短生命周期 effective-config snapshot，后续 Provider 调用和 cache store 复用同一个 snapshot，避免用户在处理中修改连接后产生混合配置。
 
+快照以最后使用时间计算五分钟空闲期限；后台翻译执行期间保留同一冻结配置，完成后留出缓存提交时间。最多保留 256 份，淘汰时不移除正在使用的快照；配置变更、导航失效等现有撤销规则仍立即生效，不复活失效快照。
+
 快照固定版本之前先等待 `ensureConfigInitialized()` 完成连接与翻译偏好的迁移；并发首次读取共用这次初始化，初始化结果不永久缓存。无指定版本的新查询随后重新解析有效配置，并检查解析期间版本未变；指定 `configRevision` 的恢复请求在初始化前后均校验版本，不能借初始化跨越配置失效。迁移不调用翻译服务，也不清空缓存。
 
 有效配置包含：
@@ -94,6 +100,8 @@ Azure 仅支持统一的 OpenAI v1 Base URL，并按[微软 v1 Responses API 文
   allowEmptyApiKey, allowInsecureHttp
 }
 ```
+
+富文本翻译合同升级为 `tf-markers-v2`，仅富文本缓存通过既有 promptVersion 隔离旧结果；纯文本缓存身份和 DB schema 不变，不清空数据。
 
 缓存身份包含连接 ID、连接 revision、协议、规范化 endpoint、Model、Target Language、最终 Prompt 和有效 glossary identity，不包含 API Key。设置页每次保存连接都会保守地递增 revision 并隔离后续缓存；密钥本身不会写入指纹或日志。
 
@@ -113,6 +121,8 @@ Provider 不访问页面 DOM、IndexedDB 或 Options 状态。所有外部 HTTP 
 ## ChatGPT 订阅登录
 
 `chatgpt-plan` 继续走同一个 Provider dispatcher，因此页面翻译、Selection AI 与学习中心追问复用 Effective Config 和完成态校验。它通过 Go Native Messaging Host 调用官方 ChatGPT Responses endpoint，没有 API Key fallback，也不属于 `providerConnections`。
+
+Native client 将网页翻译、Selection 与追问的推理请求统一 FIFO 串行执行；最多等待 32 项、单项排队最多两分钟，超限返回 HOST_BUSY。排队中的取消不启动推理；运行中的取消仍等待 Host 的终态，连接断开会拒绝当前和排队请求，不自动重放。
 
 扩展 service worker 是 `chrome.runtime.connectNative` 的唯一 owner。`nativeMessaging` 是可选权限，只能由设置页用户动作申请；普通扩展构建和离线验证不会安装 Host、登录账号或使用凭据。
 
