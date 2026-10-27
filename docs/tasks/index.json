@@ -337,10 +337,10 @@
     },
     {
       "task": "intermittent-translation-interruption",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "fix/intermittent-translation-interruption",
-      "candidateHead": null
+      "candidateHead": "febcc1782dc9dd4d5828bee26fdda5a54c83984c"
     },
     {
       "task": "latest-main-build",
