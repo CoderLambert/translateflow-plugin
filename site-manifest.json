@@ -8,6 +8,11 @@
       "sha256": "17a3caea4ea10e9ab43316d643992141dbe446f8ddc5494f051ca26e50d2acb7"
     },
     {
+      "path": "demo.html",
+      "bytes": 1378,
+      "sha256": "a1e53aa439256499ea03d60f87b628d9ae40fe5bf5f1609263ec6e250c45ce25"
+    },
+    {
       "path": "privacy.html",
       "bytes": 9690,
       "sha256": "65ae96eef68fe4105aae1cd352117574192eaaa7d308ad077ef97c12972f5f55"
