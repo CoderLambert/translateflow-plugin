@@ -115,30 +115,44 @@ ssh tencent 'sudo systemctl disable --now translateflow-mirror-sync.timer' # 停
 
 如果希望"发布后立即同步"，可选做一个 GitHub Actions 工作流（`release: published` 触发），但那需要在仓库 Secrets 里放一对 SSH 密钥。当前不使用它的原因是不想把可写入生产服务器的凭据放进 CI；服务器主动拉取已经覆盖同一需求，本地 `scripts/publish-mirror.mjs` 也能立即发布。需要时再引入。
 
-## 每次发布的步骤
+## 每次发布：一条命令
+
+完整流程（校验 → 版本递增 → 构建 → 提交 → 推送 → 打 tag 建 Release → 上传 zip → 核对产物 → 通知镜像）：
 
 ```bash
-# 1. 构建并确认产物版本
-npm run build:extension:release
-python3 -c "import json;print(json.load(open('dist/extension/manifest.json'))['version'])"
-
-# 2. 与 GitHub Release 使用同一个 zip（先打包，再上传 Release）
-cd dist/extension && zip -qrX ../../translateflow-<version>-chrome.zip . -x '.*' -x '*/.*' && cd ../..
-
-# 3a. 立即发布到镜像（脚本会读 zip 内的 manifest 校验版本、上传、更新 latest/SHA256SUMS/index.html，并回读校验 sha256）
-node scripts/publish-mirror.mjs \
-  --zip translateflow-<version>-chrome.zip \
-  --version <version> \
-  --public-base https://git.lambert.host/translateflow
-
-# 3b. 或者什么都不做：服务器 timer 会在下一个 15 分钟周期内自动跟上（也可手工触发，见上一节）
-
-# 4. 快速自检
-curl -sSI https://git.lambert.host/translateflow/translateflow-latest-chrome.zip | head -5
-curl -sS https://git.lambert.host/translateflow/SHA256SUMS
+npm run release -- "fix: 一句话描述这次改动"
 ```
 
-脚本默认使用 `ssh` 别名 `tencent` 与目录 `/var/www/translateflow`，可用 `--host` / `--dir` 覆盖，`--dry-run` 只打印计划。它不会删除旧版本 zip，需要清理时手动 `ssh tencent 'rm /var/www/translateflow/translateflow-<旧版本>-chrome.zip'`。
+`scripts/release.mjs` 依次做：
+
+1. 预检：必须在 `main`、不落后 `origin/main`、目标 tag 不存在（本地与远端都查）；
+2. `npm run validate`（check、Node 测试、类型检查、Vitest、构建）；`--skip-validate` 可跳过；
+3. `git add -A` 并打印暂存清单；
+4. `scripts/prepare-versioned-commit.mjs`：按仓库约定递增 patch、同步 Manifest/package/lock/README 标题、从暂存区快照重建 `dist/extension`；
+5. 提交、推送 `main`；
+6. 用 `dist/extension` 打包 `dist/translateflow-<version>-chrome.zip`；
+7. `gh release create v<version>`，说明文档取 `--notes-file` 或按上次 tag 生成变更列表；
+8. 核对 Release 资产：存在 zip 且 `digest` 与本地 `sha256` 一致，不一致直接失败；
+9. 默认由 webhook 触发镜像同步（打印查看命令）；加 `--mirror` 则同时立即推送镜像。
+
+其他开关：
+
+| 参数 | 作用 |
+| --- | --- |
+| `--dry-run` | 只做只读检查与打包计划，不改任何东西 |
+| `--skip-validate` | 跳过 `npm run validate`（仅在已单独跑过验证时使用） |
+| `--no-commit` | 直接发布当前 HEAD，不新建版本提交（工作区必须干净） |
+| `--notes-file <path>` | 用指定 Markdown 作为 Release 说明 |
+| `--mirror` | 发布后立即推送自建镜像（不必等 webhook） |
+
+手动分步执行仍然可用（例如只想重传镜像）：
+
+```bash
+npm run build:extension:release
+cd dist/extension && zip -qrX ../../translateflow-<version>-chrome.zip . -x '.*' -x '*/.*' && cd ../..
+node scripts/publish-mirror.mjs --zip translateflow-<version>-chrome.zip --version <version> \
+  --public-base https://git.lambert.host/translateflow
+```
 
 ## 回滚
 

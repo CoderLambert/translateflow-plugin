@@ -42,7 +42,8 @@
     "typecheck": "wxt prepare && tsc --noEmit",
     "test:unit": "wxt prepare && vitest run",
     "test:e2e:special": "node scripts/run-e2e.mjs --special",
-    "test:e2e:upgrade": "node scripts/run-e2e.mjs e2e/wxt-upgrade.spec.mjs"
+    "test:e2e:upgrade": "node scripts/run-e2e.mjs e2e/wxt-upgrade.spec.mjs",
+    "release": "node scripts/release.mjs"
   },
   "engines": {
     "node": ">=24.21.0 <25",
