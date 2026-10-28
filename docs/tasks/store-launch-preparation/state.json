@@ -25,5 +25,5 @@
       "e2e/popup-polish.spec.mjs"
     ]
   ],
-  "nextAction": "0.8.66 发布后按 main 实际合入记录归档（branch feat/unified-reading-polish merged: 98218db2）。"
+  "nextAction": "维护者确认开发者账号与本地功能测试已完成、图标为AI生成；已明确BYOK无需所有平台账号或全部密钥。Pages和0.8.61材料已备齐，后续为商店条目填写与提交决定，免费网页接口条款仍单独如实记录。未获代理操作商店授权。代码与材料已按 98218db2 归档为 completed；商店提交仍是独立后续动作。"
 }

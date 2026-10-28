@@ -35,10 +35,10 @@ The public package contains its executable extension code. AI responses and down
 
 ## Reviewer instructions
 
-The public edition does not require Native Host, a ChatGPT account, command-line installation, or access to a maintainer's private server.
+TranslateFlow is a bring-your-own-key (BYOK) client: users configure their own compatible service endpoint, model and credentials locally in their browser. There is no TranslateFlow account, subscription or maintainer-operated translation server to sign into. The maintainer does not need an account for every supported service. The public edition does not require Native Host or a ChatGPT subscription.
 
 1. Install and open the toolbar popup, then Settings. The User guide and About → Privacy/support documents can be opened without a working AI connection.
-2. Configure one supported AI service with a model and API credential supplied through the dashboard's private test-instructions channel, if the maintainer chooses to provide one. Alternatively use an available free-online method after explicitly accepting its disclosure. No working credential is embedded in the package or this document.
+2. To test AI features, configure one compatible service available in the review environment with its endpoint, model and credential (a local keyless compatible service is also supported). Testing every platform is not required to follow this path. Free-online page translation can be exercised separately after explicit consent where its service is available. AI-only features still require an AI configuration. No working credential is embedded in the package or this document.
 3. Open https://coderlambert.github.io/translateflow-plugin/demo.html (the public reading example) or another public article. Translate the page, compare original and translated text, hide/show the translation, and restore cache. Cache restoration does not fill misses by calling a service.
 4. Select ordinary page text to open lookup. A local dictionary must be imported before local dictionary results can appear. AI detail is a separate explicit action.
 5. Open AI text translation from the popup. Enter a short non-sensitive sentence, choose a target language and scene, submit, copy and refine it. This feature uses a configured AI service and does not inherit free-online page mode.
@@ -46,7 +46,7 @@ The public edition does not require Native Host, a ChatGPT account, command-line
 7. YouTube assistance requires a video with available captions, a playable site session and a ready translation method. The extension does not generate missing captions or bypass YouTube login/anti-bot restrictions.
 8. Reading records have separate consent/enabling. Inspect pause, site exclusion and deletion; text-window session results do not automatically become reading history.
 
-The local model endpoint used in developer acceptance is not a public reviewer service. Do not send reviewers an inaccessible LAN address. If confidential test access is required, the maintainer must provide a restricted suitable service through the dashboard, with its use authorized and monitored.
+No TranslateFlow login credentials exist to supply. The maintainer has confirmed local functional testing; that confirmation is separate from the recorded automated evidence. The local model endpoint used for acceptance is not a public reviewer service and must not be presented as one. If the review team actually requests additional test access, address that request with one suitable restricted path through the dashboard rather than registering every platform or sharing private production keys. Official test-instructions guidance: https://developer.chrome.com/docs/webstore/cws-dashboard-test-instructions .
 
 ## Screenshots and publication
 

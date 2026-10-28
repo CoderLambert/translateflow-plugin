@@ -37,8 +37,17 @@ const skipValidate = flags.has("--skip-validate");
 const notesFile = value("notes-file");
 
 const step = (text) => console.log(`\n=== ${text}`);
+// A failing step must show which command broke and its tail, not the raw
+// execFile object with megabytes of captured stdout.
 const run = async (command, args, options = {}) => {
-  const result = await exec(command, args, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024, ...options });
+  const shown = `${command} ${args.join(" ")}`;
+  let result;
+  try {
+    result = await exec(command, args, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024, ...options });
+  } catch (error) {
+    const tail = `${error.stdout || ""}${error.stderr || ""}`.trim().split("\n").slice(-25).join("\n");
+    throw new Error(`\nstep failed: ${shown} (exit ${error.code ?? "?"})\n${tail || "(no output)"}`);
+  }
   if (options.echo !== false) {
     const output = `${result.stdout || ""}${result.stderr || ""}`.trim();
     if (output) console.log(output.split("\n").slice(-12).join("\n"));
