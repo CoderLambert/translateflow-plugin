@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "task": "readme-candidate-version",
-  "status": "working",
+  "status": "ready_to_sync",
   "dependencies": [],
   "branch": "docs/readme-candidate-version",
-  "candidateHead": null,
+  "candidateHead": "e0b13de7e07f0cdeac8b2be4433dbc605b9ee766",
   "mergeHead": null,
   "validationCommands": [
     [
@@ -21,5 +21,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "冻结候选并验证候选/源码版本合同和标题兼容，PR/gate后公开同步。"
+  "nextAction": "11项版本检查通过，gate后按准确远端head合入并核对公开README标题与字节。"
 }
