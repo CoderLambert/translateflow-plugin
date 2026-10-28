@@ -16,6 +16,16 @@
 
 TranslateFlow 是 Chrome Manifest V3 翻译扩展。你可以使用自己配置的 AI 服务、免费在线翻译，或设备支持的 Chrome 本地翻译，也可以导入本地词典。**单词查词与句段／全文翻译分别选择方式，失败时保留你的选择，不会悄悄切换到付费 AI。**
 
+## 作者与爱发电主页
+
+我是 TranslateFlow 的开发与维护者 [CoderLambert](https://github.com/CoderLambert)，现已入驻爱发电。
+
+**我的爱发电主页：[https://afdian.com/a/transflow](https://afdian.com/a/transflow)**。
+
+本 GitHub 仓库是我展示和维护 TranslateFlow 项目的平台；上面的爱发电主页由我运营，用于接受读者与用户对项目持续开发、体验改进和日常维护的自愿支持。通过本仓库公开的链接，可以确认该项目与爱发电作者主页的对应关系。
+
+支持完全自愿，不影响扩展功能，也不提供第三方 AI 服务额度。欢迎使用、反馈、分享或点亮 GitHub Star。下方「[请我喝杯咖啡](#请我喝杯咖啡)」提供支持入口和主页二维码。
+
 ## 能做什么
 
 | 功能 | 使用体验 |
