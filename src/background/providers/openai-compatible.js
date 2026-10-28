@@ -155,7 +155,7 @@ function requestStructuredCompletion({
   });
 }
 
-async function translateGenericBatch(segments, config, model, signal, onProgress) {
+async function translateGenericBatch(segments, config, model, signal, onProgress, budget = { dropped: 0, maxDropped: 3 }) {
   const body = buildGenericRequestBody(segments, config, model);
   const request = () => config.streaming
     ? requestGenericStreaming(body, config, signal, onProgress)
@@ -169,11 +169,33 @@ async function translateGenericBatch(segments, config, model, signal, onProgress
         body: { ...body, stream: false }
       });
 
-  return requestParsedTranslation({
-    request,
-    segments,
-    providerLabel: providerLabel(config)
-  });
+  try {
+    return await requestParsedTranslation({
+      request,
+      segments,
+      providerLabel: providerLabel(config)
+    });
+  } catch (error) {
+    if (error.code !== "MALFORMED_RESPONSE") throw error;
+    // Cloud providers have no per-segment recovery, so one truncated or malformed
+    // answer used to discard the whole page. Bisect instead: a bad segment is
+    // isolated down to a single request and only then dropped, while an oversized
+    // batch that was truncated gets a chance to succeed in smaller pieces.
+    if (segments.length === 1) {
+      budget.dropped += 1;
+      if (budget.dropped > budget.maxDropped) throw error;
+      return [];
+    }
+    const middle = Math.ceil(segments.length / 2);
+    const recovered = [];
+    for (const half of [segments.slice(0, middle), segments.slice(middle)]) {
+      if (!half.length) continue;
+      if (signal?.aborted) throw createCancelledError();
+      recovered.push(...await translateGenericBatch(half, config, model, signal, onProgress, budget));
+    }
+    if (!recovered.length) throw error;
+    return recovered;
+  }
 }
 
 async function requestGenericStreaming(body, config, signal, onProgress) {

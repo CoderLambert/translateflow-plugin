@@ -18,8 +18,16 @@
 | --- | --- |
 | `node --test tests/local-partial-batch.test.mjs tests/local-plain-recovery.test.mjs tests/local-translation.test.mjs tests/auto-context-invalidated.test.mjs` | PASS 24 |
 | 回退 provider 改动后重跑新增用例 | FAIL 2（确认红→绿） |
-| `npm test` | PASS 2155，FAIL 0 |
-| `npm run validate` | PASS（check 883 文件、Node 2155、Vitest 93、build） |
+| `node --test tests/generic-partial-batch.test.mjs`（云端路径） | PASS 3；回退 generic 改动后 FAIL 1 |
+| `npm test` | PASS 2158，FAIL 0 |
+| `npm run validate` | PASS（check 884 文件、Node 2158、Vitest 93、build） |
+
+真实模型对照（本机 LM Studio `hy-mt2-7b` + 只让一个指定段落永远失败的注入代理，provider 层直接调用）：
+
+| 构建 | 同一批 3 段、其中 1 段被注入失败 |
+| --- | --- |
+| 修复前（main 0.8.67） | `MALFORMED_RESPONSE 单段恢复没有返回有效译文`，3 段全部丢弃 |
+| 修复后（本分支） | 成功返回其余 2 段真实译文（"与要求从零开始编写代码的教程不同…"、"要创建一个Next.js应用…"），仅注入段缺失 |
 
 新增/更新的用例：
 
@@ -29,6 +37,7 @@
 
 ## 未验证
 
-- 未用真实 `hy-mt2-7b` / LM Studio 在 nextjs.org 上复跑（需要用户的本地模型服务）；建议合并前由用户实机确认整页可翻译。
+- 未用真实 `hy-mt2-7b` / LM Studio 在 nextjs.org 上复跑整页（扩展层种子设置会被自身归一化为免费在线，harness 不可靠）；provider 层的真实模型对照已完成，整页确认需用户在实机完成。
+- 云端（generic）路径只做了 mock 回归，未用真实云服务验证二分重试的额外请求量与费用影响。
 - 未跑浏览器 E2E（`npm run test:e2e`）与真机目视。
 - 未合入 main、未发版、未更新国内镜像。

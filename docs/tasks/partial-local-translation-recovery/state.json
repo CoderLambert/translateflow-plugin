@@ -11,6 +11,7 @@
       "node",
       "--test",
       "tests/local-partial-batch.test.mjs",
+      "tests/generic-partial-batch.test.mjs",
       "tests/local-plain-recovery.test.mjs",
       "tests/local-translation.test.mjs",
       "tests/auto-context-invalidated.test.mjs"
@@ -26,5 +27,5 @@
     ]
   ],
   "artifactRequired": false,
-  "nextAction": "本地修复与回归已通过（全量 Node 2155 PASS，validate 通过）；待用户授权合入 main 与发版。"
+  "nextAction": "本地与云端两条路径的部分成功 + 自动暂停策略已修复，全量 2158 PASS、validate 通过；待用户实机确认后合入 main 并发版。"
 }
