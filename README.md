@@ -1,5 +1,7 @@
 # TranslateFlow v0.8.66
 
+[简体中文](README.md) · **English**
+
 <p align="center">
   <img src="docs/images/icon-128.png" width="80" height="80" alt="TranslateFlow 图标" />
 </p>
@@ -18,12 +20,9 @@ TranslateFlow 是 Chrome Manifest V3 翻译扩展。你可以使用自己配置�
 
 ## 版本说明
 
-| 版本 | 当前状态 |
-| --- | --- |
-| **v0.8.66** | 当前 `main` 的源码版本，与仓库的 Manifest 和 package 版本一致；已发布 [GitHub Release](https://github.com/CoderLambert/translateflow-plugin/releases/latest)，其中附带可直接加载的 zip。 |
-| **v0.8.50** | 上一版公开源码版本，保留在提交历史中。 |
+![最新发布版本](https://img.shields.io/github/v/release/CoderLambert/translateflow-plugin?label=release)
 
-下方功能介绍和截图都来自当前版本的实际扩展界面。商店（Chrome Web Store / Edge Add-ons）上架链接会在审核通过后补充；仓库的 Release 包未经商店签名，需要按「安装」一节以开发者模式加载。
+`main` 的源码版本与 `manifest.json`、`package.json` 一致；每次构建都会发布到 [GitHub Release](https://github.com/CoderLambert/translateflow-plugin/releases/latest)，其中附带可直接加载的 zip。下方功能介绍和截图都来自当前版本的实际扩展界面。商店（Chrome Web Store / Edge Add-ons）上架链接会在审核通过后补充；仓库的 Release 包未经商店签名，需要按「安装」一节以开发者模式加载。
 
 ## 能做什么
 
