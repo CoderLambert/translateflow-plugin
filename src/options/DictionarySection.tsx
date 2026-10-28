@@ -3,6 +3,7 @@ import { dictionaryClient, type DictionaryClient, type DictionarySnapshot } from
 import { CuratedList, InstalledPackList, OfficialList, RichList } from "./DictionaryViews";
 import type { InstalledDictionaryTarget } from "./local-dictionary-client";
 import { LocalDictionaryImport } from "./LocalDictionaryImport";
+import { DictionarySources } from "./DictionarySources";
 import { useOptionsI18n } from "./LocaleContext";
 
 export function DictionarySection({ client, setStatus }: {
@@ -107,6 +108,7 @@ export function DictionarySection({ client, setStatus }: {
     {error && snapshot ? <p role="alert">{i18n.t("dictionary.refreshFailed", { message: error })}</p> : null}
     <div className="dictionary-library-group" aria-labelledby="dictionaryImportHeading">
       <h3 id="dictionaryImportHeading" tabIndex={-1}>{i18n.t("dictionary.import")}</h3><p className="hint">{i18n.t("dictionary.importHelp")}</p>
+      <DictionarySources />
       <LocalDictionaryImport setStatus={setStatus} onChanged={() => refresh(true)} onLocateInstalled={target => setLocateRequest({ target })} />
     </div>
   </section>;

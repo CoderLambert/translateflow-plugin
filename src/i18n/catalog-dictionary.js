@@ -1,4 +1,10 @@
 export const en = Object.freeze({
+  "dictionary.sourcesHeading": "Where to find dictionaries · Download and import tips",
+  "dictionary.sourcesIntro": "Review the sources and limitations of the curated dictionaries above, or visit these external projects. Nothing downloads automatically.",
+  "dictionary.sourcesFreeDict": "Open dictionaries in many languages. Check each dictionary’s license and language direction; terms vary by dictionary.",
+  "dictionary.sourcesWikDict": "Wiktionary-based bilingual data, published under CC BY-SA 4.0. Check that your language pair is available.",
+  "dictionary.sourcesImport": "These projects offer StarDict, not MDX. Extract the archive first, then select the matching .ifo, .idx and .dict/.dict.dz files together; include .syn if supplied. Import checks compatibility; these downloads have not all been tested.",
+  "dictionary.sourcesMdx": "For MDX/MDD, use files you are licensed to use in this reader, with matching local resources. A freely accessible forum or cloud link does not grant permission. TranslateFlow does not distribute commercial dictionaries, execute dictionary scripts or load online pronunciation services.",
   "content.rich.aria": "Detailed dictionary definitions",
   "content.rich.title": "Detailed dictionaries",
   "content.rich.unavailableWithReason": "{title}: temporarily unavailable ({reason})",
@@ -176,6 +182,12 @@ export const en = Object.freeze({
   "localImport.retryingMdd": "Checking MDD and updating attachments atomically…"
 });
 export const zh_CN = Object.freeze({
+  "dictionary.sourcesHeading": "去哪里找词典 · 下载与导入指引",
+  "dictionary.sourcesIntro": "可先查看上方精选词典的来源与限制，或访问以下外部项目。打开本页不会自动下载。",
+  "dictionary.sourcesFreeDict": "多语种开放词典。下载前核对每本词典的授权和语言方向，许可条件因词典而异。",
+  "dictionary.sourcesWikDict": "基于维基词典的双语数据，以 CC BY-SA 4.0 发布；先确认是否提供你需要的语言对。",
+  "dictionary.sourcesImport": "以上提供 StarDict，不是 MDX。先解压下载包，再同时选择同名的 .ifo、.idx 和 .dict/.dict.dz；如附有 .syn，也一并选择。导入时会检查兼容性，未逐包验证所有下载资源。",
+  "dictionary.sourcesMdx": "MDX/MDD 请使用获准在本阅读器使用的文件，并准备配套本地资源。论坛或网盘可下载不等于获得授权。TranslateFlow 不分发商业词典，不执行词典脚本，也不加载在线发音服务。",
   "content.rich.aria": "详细词典释义",
   "content.rich.title": "详细词典",
   "content.rich.unavailableWithReason": "{title}：暂时无法读取（{reason}）",
