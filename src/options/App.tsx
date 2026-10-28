@@ -1,3 +1,4 @@
+import { BRAND_ICONS } from "../shared/runtime-assets.js";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CacheSection, DeveloperSection } from "./CacheSection";
 import { AppearanceSection, GeneralSection, ProviderSections, SelectionSection, ShortcutsSection, YoutubeSection } from "./CommonSections";
@@ -68,7 +69,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
   if (!locale.ready) return <LocaleProvider value={i18n}><div className="settings-shell" aria-busy="true"><main>{locale.status ? localeSection : null}</main></div></LocaleProvider>;
 
   return <LocaleProvider value={i18n}><div className="settings-shell" onKeyDown={onEscape}>
-    <nav className="settings-nav" aria-label={i18n.t("options.navAria")}><div className="nav-brand"><span className="nav-brand-mark" aria-hidden="true">{i18n.t("content.brandMark")}</span><strong>TranslateFlow</strong></div>
+    <nav className="settings-nav" aria-label={i18n.t("options.navAria")}><div className="nav-brand"><span className="nav-brand-mark" aria-hidden="true"><img src={BRAND_ICONS[64]} alt="" width="34" height="34" /></span><strong>TranslateFlow</strong></div>
       {navItems.map(([id, key], index) => <Fragment key={id}>{index === 7 ? <span>{i18n.t("options.nav.advanced")}</span> : null}<a id={`settings-nav-${id}`} data-settings-nav href={`#${id}`} aria-controls={`settings-panel-${id}`} aria-current={activeHash === `#${id}` ? "page" : undefined} onClick={event => navigate(event, id)}>{i18n.t(key)}</a></Fragment>)}
     </nav>
     <main><header className="settings-intro"><span className="section-kicker">{i18n.t("options.kicker")}</span><h1>{i18n.t("options.title")}</h1><p className="lead">{i18n.t("options.lead")}</p></header>

@@ -135,6 +135,7 @@ export function popupClient(api: typeof chrome = chrome, i18n: I18n = createI18n
   return {
     appearances: TRANSLATION_APPEARANCES, context, cacheStatus, toggleStatus, appearance, saveAppearance, toggleSite,
     openOptions: () => api.runtime.openOptionsPage(),
+    openInputTranslation: async () => { if (api.extension?.inIncognitoContext) throw new Error(i18n.t("input.incognito")); const response = await sendRuntime({ type: BACKGROUND_MESSAGES.INPUT_TRANSLATION_OPEN }); if (!response.ok) throw new Error(i18n.t("input.failed")); },
     openLearning: async () => { const response = await sendRuntime({ protocolVersion: READING_PROTOCOL_VERSION, method: READING_METHOD.OPEN_LEARNING_CENTER }); if (!response.ok) throw new Error(i18n.t("popup.learningOpenFailed")); },
     prepareTranslation: async (taskId: string) => { const site = await getActiveSite(); await ensureInjected(site.tab.id); return { site, run: () => api.tabs.sendMessage(site.tab.id, { type: CONTENT_MESSAGES.TRANSLATE_PAGE, taskId }) as Promise<RuntimeResponse> }; },
     cancel: (tabId: number, taskId: string) => api.tabs.sendMessage(tabId, { type: CONTENT_MESSAGES.CANCEL_TASK, taskId }),

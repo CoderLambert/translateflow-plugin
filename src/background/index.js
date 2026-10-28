@@ -1,3 +1,4 @@
+import { handleInputTranslationPort } from "./input-translation.js";
 import { cancelMachineTranslations, cancelTextTranslations } from "./translation-requests.js";
 import { invalidateTranslationSnapshots, invalidateMachineSnapshots } from "./effective-config-snapshots.js";
 import { abortMachineHttp } from "./providers/machine-translation-transport.js";
@@ -24,7 +25,7 @@ export function initializeBackground() {
   registerMessageRouter();
   registerCommandRouter();
   const nativeBroker = createBrowserNativeBroker(chrome);
-  chrome.runtime.onConnect.addListener(port => { if (!nativeBroker.connect(port) && !handleReadingPort(port)) handleSelectionAssistantStreamPort(port); });
+  chrome.runtime.onConnect.addListener(port => { if (!nativeBroker.connect(port) && !handleReadingPort(port) && !handleInputTranslationPort(port)) handleSelectionAssistantStreamPort(port); });
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     onReadingTabUpdated(tabId, changeInfo);
     onSelectionAssistantTabUpdated(tabId, changeInfo);
@@ -39,7 +40,7 @@ export function initializeBackground() {
   });
   chrome.permissions.onRemoved.addListener(() => {
     onReadingPermissionsRemoved(); abortSelectionAssistantStreams();
-    cancelMachineTranslations(); invalidateMachineSnapshots(); abortMachineHttp();
+    cancelTextTranslations(); cancelMachineTranslations(); invalidateMachineSnapshots(); abortMachineHttp();
   });
   chrome.storage.onChanged.addListener((changes, areaName) => {
     const temporaryPresetChanged = areaName === "session" && Boolean(changes.temporaryPresetOverrides);

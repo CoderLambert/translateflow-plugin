@@ -66,7 +66,7 @@ test("Intl uses the UI locale and accepts caller-specified deterministic date op
 test("Manifest is a controlled catalog projection, independent of UI override", () => {
   for (const locale of ["en", "zh_CN"]) {
     const messages = getManifestMessages(locale);
-    assert.deepEqual(Object.keys(messages), ["extensionName", "extensionDescription", "actionTitle", "translatePage", "toggleTranslations", "toggleQuickControl"]);
+    assert.deepEqual(Object.keys(messages), ["inputTranslation", "extensionName", "extensionDescription", "actionTitle", "translatePage", "toggleTranslations", "toggleQuickControl"]);
     assert.equal(messages.extensionDescription.message, catalogs[locale]["manifest.description"]);
     assert.ok(Object.keys(messages).every((key) => /^[a-zA-Z0-9_]+$/.test(key)));
   }

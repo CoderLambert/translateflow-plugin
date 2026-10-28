@@ -25,7 +25,7 @@
     root.className = "tf-selection-ui";
 
     chip = button({ text: locale.t("content.selection.chipMark"), label: locale.t("content.selection.process"), className: "tf-selection-chip" });
-    locale.bindText(chip, "content.selection.chipMark");
+    const mark = app.modules.uiPrimitives.brandIcon?.(22); if (mark) chip.replaceChildren(mark); else locale.bindText(chip, "content.selection.chipMark");
     locale.bindAttribute(chip, "aria-label", "content.selection.process");
     chip.addEventListener("pointerdown", (event) => event.preventDefault());
     chip.addEventListener("click", (event) => translateHandler?.(event));

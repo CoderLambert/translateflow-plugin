@@ -1,4 +1,7 @@
 {
+  "inputTranslation": {
+    "message": "Input translation"
+  },
   "extensionName": {
     "message": "TranslateFlow"
   },

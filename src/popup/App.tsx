@@ -1,3 +1,4 @@
+import { BRAND_ICONS } from "../shared/runtime-assets.js";
 import { ContextRecovery } from "./ContextRecovery";
 import { PopupIcon } from "./PopupIcon";
 import { useMachineTranslation } from "./useMachineTranslation";
@@ -18,6 +19,15 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
   const method = useMachineTranslation(i18n, locale.ready);
   const submitting = useRef(false);
   const [applying, setApplying] = useState(false);
+  const [openingInput, setOpeningInput] = useState(false);
+  const [inputOpenError, setInputOpenError] = useState("");
+  async function openInput() {
+    if (openingInput) return;
+    setOpeningInput(true); setInputOpenError("");
+    try { await client.openInputTranslation(); }
+    catch { setInputOpenError(i18n.t("input.failed")); }
+    finally { setOpeningInput(false); }
+  }
   const busy = ui.busy || method.busy || applying;
   async function translate() {
     if (busy || submitting.current || !method.canTranslate) return;
@@ -68,11 +78,13 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
 
   return <main className="popup-shell">
     <header className="popup-header">
-      <div className="brand"><div className="brand-mark" aria-hidden="true">{i18n.t("content.brandMark")}</div><div className="brand-copy"><strong>TranslateFlow</strong><span>{i18n.t("popup.brandTagline")}</span></div></div>
+      <div className="brand"><div className="brand-mark" aria-hidden="true"><img src={BRAND_ICONS[64]} alt="" width="34" height="34" /></div><div className="brand-copy"><strong>TranslateFlow</strong><span>{i18n.t("popup.brandTagline")}</span></div></div>
       <div className="header-actions"><span className="ready-badge" data-state={badgeState}><span aria-hidden="true" />{i18n.t(badgeState === "busy" ? "common.working" : badgeState === "ready" ? "common.ready" : "popup.needsAttention")}</span><button id="settings" className="icon-btn" aria-label={i18n.t("popup.openSettings")} title={i18n.t("popup.openSettings")} onClick={() => void client.openOptions()}><PopupIcon name="settings" /></button></div>
     </header>
 
     <div className="popup-content">
+    <button id="inputTranslation" className="input-translation-entry" disabled={openingInput} onClick={() => void openInput()}><span className="input-entry-icon" aria-hidden="true">文</span><span><strong>{i18n.t("input.title")}</strong><small>{i18n.t("input.openHint")}</small></span><PopupIcon name="arrow" /></button>
+    {inputOpenError ? <p role="alert" className="status-banner error">{inputOpenError}</p> : null}
     <section id="effectiveContext" className="page-card" hidden={!context} aria-label={i18n.t("popup.currentContext")} aria-busy={ui.context.loading}>
       <div className="page-card-head"><div className="site-icon"><PopupIcon name="globe" /></div><div className="site-copy"><span className="section-kicker">{i18n.t("popup.currentPage")}</span><strong id="contextSite" title={context?.hostname || context?.origin}>{context?.hostname || context?.origin || "—"}</strong></div><span id="contextMode" className="mode-pill" title={`${i18n.t("popup.translationMode")}: ${modeLabel}`}>{modeLabel}</span></div>
       <div className="context-grid"><span>{i18n.t("popup.modelService")}</span><strong title={context?.routing === "auto" ? i18n.t("mt.routingAuto") : duplicateModel ? providerLabel : [providerLabel, modelLabel].filter(Boolean).join(" · ")}><span id="contextProvider">{context?.routing === "auto" ? i18n.t("mt.routingAuto") : providerLabel}</span>{context?.engine === "machine-translation" || duplicateModel ? null : <> · <span id="contextModel">{modelLabel || "—"}</span></>}</strong></div>

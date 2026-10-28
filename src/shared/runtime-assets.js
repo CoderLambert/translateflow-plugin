@@ -1,5 +1,6 @@
 // Stable installed paths shared by runtime callers and build/test adapters.
-export const EXTENSION_PAGES = Object.freeze({ popup: "popup.html", options: "options.html", learningCenter: "learning-center.html", readingPreview: "reading-preview.html" });
+export const BRAND_ICONS = Object.freeze({ 16: "assets/icons/icon-16.png", 32: "assets/icons/icon-32.png", 48: "assets/icons/icon-48.png", 64: "assets/icons/icon-64.png", 128: "assets/icons/icon-128.png" });
+export const EXTENSION_PAGES = Object.freeze({ inputTranslation: "input-translation.html", popup: "popup.html", options: "options.html", learningCenter: "learning-center.html", readingPreview: "reading-preview.html" });
 export const MANIFEST_LOCALE_FILES = Object.freeze(["_locales/en/messages.json", "_locales/zh_CN/messages.json"]);
 export const WORKER_PATHS = Object.freeze({
   curatedDictionary: "src/options/workers/curated-dictionary-worker.js",

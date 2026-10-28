@@ -150,6 +150,7 @@ button:disabled {
   color: var(--tf-text-strong);
 }
 
+.nav-brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .nav-brand-mark {
   display: grid;
   place-items: center;

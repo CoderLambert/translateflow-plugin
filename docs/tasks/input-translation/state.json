@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "task": "input-translation",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/input-translation.test.mjs",
+      "tests/commands.test.mjs",
+      "tests/wxt-assets.test.mjs",
+      "tests/i18n.test.mjs",
+      "tests/i18n-locales.test.mjs"
+    ]
+  ],
+  "nextAction": "0.8.55 功能和图标已构建，按用户最新要求交付人工试用；未推送或合入。"
+}

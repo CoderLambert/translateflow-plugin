@@ -336,6 +336,13 @@
       "candidateHead": "0d245001483b7b653452e0c0889f713c310be7fe"
     },
     {
+      "task": "input-translation",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "intermittent-translation-interruption",
       "status": "ready_to_sync",
       "dependencies": [],

@@ -1,6 +1,8 @@
+import { openInputTranslation } from "./input-translation.js";
 import { CONTENT_MESSAGES, CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../shared/constants.js";
 
 export const COMMANDS = Object.freeze({
+  INPUT_TRANSLATION: "input-translation",
   TRANSLATE_PAGE: "translate-page",
   TOGGLE_TRANSLATIONS: "toggle-translations",
   TOGGLE_QUICK_CONTROL: "toggle-quick-control"
@@ -25,9 +27,14 @@ export function createCommandRouter({
   },
   sendContentMessage = (tabId, message) => chrome.tabs.sendMessage(tabId, message),
   injectContent = injectTranslateFlow,
+  openInput = openInputTranslation,
   createTaskId = () => crypto.randomUUID()
 } = {}) {
   return async function route(command) {
+    if (command === COMMANDS.INPUT_TRANSLATION) {
+      if ((await queryActiveTab())?.incognito) return { ok: false, unsupported: true };
+      return openInput();
+    }
     const type = COMMAND_MESSAGE[command];
     if (!type) return { ok: false, ignored: true };
 

@@ -64,6 +64,7 @@ button, a, select, summary { -webkit-tap-highlight-color: transparent; }
 .popup-icon { display: block; width: 19px; height: 19px; flex: 0 0 auto; }
 .brand, .header-actions, .page-card-head, .control-row, .field-row { display: flex; align-items: center; }
 .brand { gap: 9px; min-width: 0; }
+.brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .brand-mark, .site-icon { display: grid; place-items: center; flex: 0 0 auto; }
 .brand-mark {
   width: 34px; height: 34px; border-radius: 11px;
@@ -236,3 +237,11 @@ a:focus-visible, .mt-consent input:focus-visible, .status-banner:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .popup-shell *, .popup-shell *::before, .popup-shell *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.input-translation-entry { display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px; text-align:left; border:1px solid var(--tf-border-main); border-radius:14px; background:var(--tf-green-50); color:var(--tf-text-strong); cursor:pointer; }
+.input-translation-entry:hover { background:var(--tf-green-100); }
+.input-translation-entry > span:nth-child(2) { flex:1; }
+.input-translation-entry strong { display:block; font-size:13px; }
+.input-translation-entry small { display:block; margin-top:2px; color:var(--tf-text-secondary); font-size:11px; }
+.input-entry-icon { color:var(--tf-green-800); font-size:20px; }
+.input-translation-entry:focus-visible { outline:2px solid var(--tf-green-700); outline-offset:2px; }

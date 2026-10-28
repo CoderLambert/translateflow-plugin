@@ -9,7 +9,7 @@
   padding: 0;
   border: 1px solid rgba(255, 255, 255, .30);
   border-radius: var(--tf-radius-pill);
-  background: linear-gradient(180deg, var(--tf-green-600), var(--tf-green-800));
+  background: var(--tf-bg-card);
   color: var(--tf-primary-foreground);
   box-shadow:
     0 10px 26px rgba(55, 80, 54, .20),

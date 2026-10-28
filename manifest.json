@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "0.8.54",
+  "version": "0.8.55",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
+  "icons": { "16": "assets/icons/icon-16.png", "32": "assets/icons/icon-32.png", "48": "assets/icons/icon-48.png", "128": "assets/icons/icon-128.png" },
   "permissions": [
     "storage",
     "activeTab",
@@ -21,7 +22,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "reading-preview.html"
+        "reading-preview.html", "assets/icons/icon-64.png"
       ],
       "matches": [
         "http://*/*",
@@ -35,10 +36,12 @@
   },
   "action": {
     "default_title": "__MSG_actionTitle__",
+    "default_icon": { "16": "assets/icons/icon-16.png", "32": "assets/icons/icon-32.png", "48": "assets/icons/icon-48.png" },
     "default_popup": "popup.html"
   },
   "options_page": "options.html",
   "commands": {
+    "input-translation": { "description": "__MSG_inputTranslation__" },
     "translate-page": {
       "suggested_key": {
         "default": "Ctrl+Shift+Y",

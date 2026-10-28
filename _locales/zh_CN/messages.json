@@ -1,4 +1,7 @@
 {
+  "inputTranslation": {
+    "message": "输入翻译"
+  },
   "extensionName": {
     "message": "TranslateFlow"
   },

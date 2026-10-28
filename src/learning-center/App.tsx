@@ -1,3 +1,4 @@
+import { BRAND_ICONS } from "../shared/runtime-assets.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { READING_METHOD as M } from "../shared/reading/constants.js";
 import { recordId as validateRecordId } from "../shared/reading/validation.js";
@@ -133,7 +134,7 @@ export function App({ client = readingClient, listen = subscribe }: { client?: R
     {localeError ? <><Notice error>{i18n.t("settings.readError")}</Notice><Button onClick={retryLocale}>{i18n.t("learning.retry")}</Button></> : null}
   </main>;
   return <main className="learning-center">
-    <header><div><p className="eyebrow">TranslateFlow</p><h1>{i18n.t("learning.title")}</h1></div>
+    <header><div><p className="eyebrow learning-brand"><img src={BRAND_ICONS[64]} alt="" width="28" height="28" />TranslateFlow</p><h1>{i18n.t("learning.title")}</h1></div>
     {section === "reading" && state && <p>{i18n.t("learning.count", { count: state.recordCount })}</p>}</header>
     <nav className="learning-sections actions" aria-label={i18n.t("learning.title")}>
       <Button aria-pressed={section === "reading"} onClick={() => navigateSection("reading")}>{i18n.t("learning.sectionReading")}</Button>

@@ -1,3 +1,4 @@
+import { handleInputTranslationMessage } from "./input-translation.js";
 import { EXTENSION_PAGES } from "../shared/runtime-assets.js";
 import { requireChatGPTPlanDeveloperBuild } from "../shared/chatgpt-native-host.js";
 import { MACHINE_SETTING_MESSAGES, handleMachineSettingsMessage } from "./machine-translation-settings.js";
@@ -91,6 +92,7 @@ export async function handleBackgroundMessage(message, sender) {
   }
   if (MACHINE_SETTING_MESSAGES.includes(message?.type)) return handleMachineSettingsMessage(message, sender);
   switch (message?.type) {
+    case BACKGROUND_MESSAGES.INPUT_TRANSLATION_OPEN: case BACKGROUND_MESSAGES.INPUT_TRANSLATION_SETTINGS: return handleInputTranslationMessage(message, sender);
     case BACKGROUND_MESSAGES.TRANSLATION_ENGINE_SETTINGS:
       return translationEngineSettings(message.pageUrl, { surface: message.surface, temporaryMethod: message.temporaryMethod });
     case BACKGROUND_MESSAGES.TRANSLATE_BATCH: {

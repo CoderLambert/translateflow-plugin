@@ -17,7 +17,7 @@ function clientDouble(overrides: Partial<PopupClient> = {}): PopupClient {
     toggleStatus: vi.fn(async (kind: string) => ({ enabled: false, ...(kind === "quick" ? { hidden: false } : {}), origin: "https://example.test" })),
     appearance: vi.fn(async () => ({ available: true, selected: "", defaultId: "standard", title: "Standard" })),
     saveAppearance: vi.fn(async () => ({ available: true, selected: "", defaultId: "standard", title: "Standard" })),
-    toggleSite: vi.fn(async () => "updated"), openOptions: vi.fn(async () => {}), openLearning: vi.fn(async () => {}),
+    toggleSite: vi.fn(async () => "updated"), openInputTranslation: vi.fn(async () => {}), openOptions: vi.fn(async () => {}), openLearning: vi.fn(async () => {}),
     prepareTranslation: vi.fn(async () => ({ site: { tab: { id: 1, url: "https://example.test" }, origin: "https://example.test", match: "https://example.test/*" }, run: async () => ({ ok: true, count: 1 }) })),
     cancel: vi.fn(async () => ({})), taskStatus: vi.fn(async () => ({ task: { state: "translating", done: 0, total: 1 } })),
     action: vi.fn(async () => ({ ok: true })), applyPreset: vi.fn(async () => ({ before: {}, context: {} }))

@@ -26,10 +26,10 @@
       trigger.setAttribute("aria-expanded", "false");
       trigger.title = t("content.quick.moveHint");
       trigger.setAttribute("aria-description", t("content.quick.moveHint"));
-      const triggerMark = document.createElement("span");
+      const triggerMark = app.modules.uiPrimitives.brandIcon?.(42) || document.createElement("span");
       triggerMark.className = "tf-quick-trigger-mark";
       triggerMark.setAttribute("aria-hidden", "true");
-      triggerMark.textContent = t("content.brandMark");
+      if (triggerMark.tagName !== "IMG") triggerMark.textContent = t("content.brandMark");
       trigger.appendChild(triggerMark);
       trigger.addEventListener("click", () => handlers.onToggle?.());
 
@@ -42,10 +42,10 @@
 
       const brand = document.createElement("div");
       brand.className = "tf-quick-brand";
-      const brandMark = document.createElement("span");
+      const brandMark = app.modules.uiPrimitives.brandIcon?.(34) || document.createElement("span");
       brandMark.className = "tf-quick-brand-mark";
       brandMark.setAttribute("aria-hidden", "true");
-      brandMark.textContent = t("content.brandMark");
+      if (brandMark.tagName !== "IMG") brandMark.textContent = t("content.brandMark");
       const brandCopy = document.createElement("div");
       brandCopy.className = "tf-quick-brand-copy";
       const title = document.createElement("strong");

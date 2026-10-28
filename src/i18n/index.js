@@ -73,6 +73,7 @@ function defaultDiagnostic({ code, key }) {
 }
 
 const manifestKeys = Object.freeze({
+  inputTranslation: "input.title",
   extensionName: "manifest.name",
   extensionDescription: "manifest.description",
   actionTitle: "manifest.actionTitle",

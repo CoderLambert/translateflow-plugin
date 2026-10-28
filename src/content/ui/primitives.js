@@ -91,12 +91,21 @@
     if (bar?.style) bar.style.width = `${Math.round(ratio * 100)}%`;
   }
 
+  function brandIcon(size = 32, doc = document) {
+    if (!app.modules.brandAssets?.icon || !globalThis.chrome?.runtime?.getURL) return null;
+    const node = doc.createElement("img");
+    node.src = chrome.runtime.getURL(app.modules.brandAssets.icon); node.alt = ""; node.draggable = false;
+    node.setAttribute("aria-hidden", "true");
+    node.style.cssText = `display:inline-block;width:${size}px;height:${size}px;object-fit:contain;border-radius:24%;flex-shrink:0;vertical-align:middle;`;
+    return node;
+  }
+
   function classes(...values) {
     return values.filter(Boolean).join(" ");
   }
 
   app.modules.uiPrimitives = {
-    button,
+    brandIcon, button,
     surface,
     select,
     menu,
