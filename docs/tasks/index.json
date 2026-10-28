@@ -317,10 +317,10 @@
     },
     {
       "task": "dictionary-readme-preview",
-      "status": "working",
+      "status": "ready_to_sync",
       "dependencies": [],
       "branch": "docs/dictionary-sources-preview",
-      "candidateHead": null
+      "candidateHead": "00c11e4fbdad68d40322f74c8e7be6a1df76db2d"
     },
     {
       "task": "free-mt-auto-routing",
