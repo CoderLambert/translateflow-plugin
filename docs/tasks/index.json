@@ -568,6 +568,13 @@
       "candidateHead": "907bf53e21107101107316f4df3aaa4b918471e2"
     },
     {
+      "task": "selection-half-mount-recovery",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "fix/selection-half-mount-recovery",
+      "candidateHead": null
+    },
+    {
       "task": "selection-vocabulary-book-v1",
       "status": "completed",
       "dependencies": [],

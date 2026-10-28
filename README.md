@@ -1,4 +1,4 @@
-# TranslateFlow v0.8.65
+# TranslateFlow v0.8.66
 
 <p align="center">
   <img src="docs/images/icon-128.png" width="80" height="80" alt="TranslateFlow 图标" />

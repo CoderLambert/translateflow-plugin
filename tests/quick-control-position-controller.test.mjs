@@ -20,7 +20,7 @@ function fixture(send) {
       }, showToast: (...args) => notices.push(args) },
     contentI18n: { start: async () => {}, t: key => key },
     quickControlView: { create: value => { handlers = value; return view; } },
-    tasks: {}, processor: {}, auto: {}, appearance: {}
+    quickControlElements: {}, tasks: {}, processor: {}, auto: {}, appearance: {}
   } };
   vm.runInNewContext(source, { __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/article" } });
   return { controller: app.modules.quickControl, handlers, positions, notices, requests };
@@ -59,4 +59,23 @@ test("save failures are visible and an obsolete failure does not override a succ
   release({ ok: false }); await next;
   assert.equal(f.notices[0][0], "content.quick.positionSaveFailed");
   assert.equal(f.notices[0][1], "error");
+});
+
+test("a pre-upgrade registration without the Quick Control helpers stays inert and asks for a refresh", async () => {
+  let handlers;
+  const notices = [], requests = [];
+  const app = { modules: {
+    runtime: { messages: { background: {} }, state: {}, getSiteScope: () => "https://example.test",
+      sendRuntimeMessage: async message => { requests.push(message); return { ok: true }; },
+      showToast: (...args) => notices.push(args) },
+    contentI18n: { start: async () => {}, t: key => key },
+    quickControlView: { create: value => { handlers = value; return {}; } }
+  } };
+  vm.runInNewContext(source, { __TRANSLATE_FLOW_CONTENT__: app, location: { href: "https://example.test/article" } });
+  assert.equal(handlers, undefined);
+  assert.equal(await app.modules.quickControl.showForTab(), false);
+  assert.equal(await app.modules.quickControl.toggleForTab(), false);
+  assert.equal(app.modules.quickControl.isVisible(), false);
+  assert.deepEqual(requests, []);
+  assert.deepEqual(notices, [["content.selection.updatedRefresh", "info"], ["content.selection.updatedRefresh", "info"]]);
 });

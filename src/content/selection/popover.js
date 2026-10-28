@@ -14,13 +14,13 @@
   const { render: renderStructuredResult, appendRichDictionaryDetails: appendRichDetails,
     appendRichDictionaryCards: appendRichCards, updateSource, setLocalizedStatus } = app.modules.selectionResultRenderer;
   const focusReturn = createFocusReturn();
-  let root, chip, panel, sourceNode, resultNode, workspace, tabList, emptyState, statusNode, vocabularyActions,
+  let root, chip, panel, sourceNode, resultNode, workspace, tabList, emptyState, statusNode, vocabularyActions, mounted,
     footerActions, retryButton, cancelButton, closeButton, activeSnapshot;
   let routingHandler, translateHandler, retryHandler, explainHandler, cancelHandler, closeHandler,
     localEmptyOptions = null, readingLayout, viewTabs;
 
   function ensureUi() {
-    if (root?.isConnected) return;
+    if (root?.isConnected) { if (mounted) return; hide(); }
     root = document.createElement("div");
     root.className = "tf-selection-ui";
 
@@ -90,6 +90,7 @@
     getLayer("selection").appendChild(root);
     readingLayout = app.modules.selection.createReadingLayout?.({ panel, result: resultNode, header, onResize: reposition });
     viewTabs.selectDictionary();
+    mounted = true;
   }
 
   function configureTabs(handler, visible) {
@@ -343,13 +344,12 @@
     locale.unbindTree(root);
     readingLayout?.dispose(); readingLayout = null;
     root.remove(); panel?.removeEventListener("toggle", onDetailsToggle, true);
-    root = null;
+    root = null; mounted = false;
     chip = null;
     panel = null;
     sourceNode = null;
     viewTabs?.dispose(); viewTabs = null;
-    emptyState?.reset();
-    resultNode = null;
+    emptyState?.reset(); resultNode = null;
     workspace = null;
     tabList = null;
     emptyState = null;

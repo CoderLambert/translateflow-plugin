@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "task": "selection-half-mount-recovery",
+  "status": "reviewing",
+  "dependencies": [],
+  "branch": "fix/selection-half-mount-recovery",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/content-ui-reload.test.mjs",
+      "tests/quick-control-position-controller.test.mjs",
+      "tests/reading-content-classic.test.mjs",
+      "tests/release-gate.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "test"
+    ],
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "本地提交已完成；0.8.66候选包待构建确认，push/PR/Release 与 main 合并需单独授权。"
+}

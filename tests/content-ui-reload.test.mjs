@@ -50,6 +50,24 @@ for (const previouslyMounted of [false, true]) test(`partial selection mount can
   } finally { h.dom.window.close(); }
 });
 
+test("a mount failure after the surface is attached is rolled back so the next show rebuilds it", () => {
+  const h = fixture();
+  try {
+    let fail = true;
+    h.modules.selection.createReadingLayout = () => {
+      if (fail) throw new Error("Synthetic late mount failure");
+      return null;
+    };
+    assert.throws(() => h.popover.showChip({}), /late mount failure/u);
+    fail = false;
+    assert.doesNotThrow(() => h.popover.showChip({ text: "synthetic" }));
+    assert.equal(h.w.document.querySelectorAll(".tf-selection-ui").length, 1);
+    assert.ok(h.w.document.querySelector(".tf-selection-chip"));
+    assert.doesNotThrow(() => h.popover.hide());
+    assert.equal(h.w.document.querySelector(".tf-selection-ui"), null);
+  } finally { h.dom.window.close(); }
+});
+
 test("a healthy context retains the packaged brand icon and normal close/reopen", () => {
   const h = fixture();
   try {
