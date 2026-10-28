@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "task": "content-ui-reload",
+  "status": "reviewing",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/content-ui-reload.test.mjs",
+      "tests/ui-foundation.test.mjs",
+      "tests/selection-controller-cancel.test.mjs",
+      "tests/auto-context-invalidated.test.mjs",
+      "tests/selection-reading-window.test.mjs"
+    ],
+    [
+      "node",
+      "--test",
+      "tests/versioned-commit.test.mjs",
+      "tests/release-gate.test.mjs"
+    ],
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ]
+  ],
+  "artifactRequired": true,
+  "nextAction": "0.8.64已构建、相关回归及真实重载通过，关于页和GitHub顶部版本已同步；新ZIP独立交付，更新后刷新旧网页，待后续产品代码同步。"
+}

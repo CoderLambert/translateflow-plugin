@@ -32,10 +32,18 @@ export function nextCommitVersion(headVersion, stagedVersion) {
   if (head[2] === 65535) throw new Error("Patch version is exhausted; explicitly choose a new minor version.");
   return `${head[0]}.${head[1]}.${head[2] + 1}`;
 }
+export function readmeMatchesVersion(text, version) {
+  if (text.startsWith(`# TranslateFlow v${version}\n`)) return true;
+  const candidate = /^# TranslateFlow v(\d+\.\d+\.\d+)（开发候选）\n/u.exec(text);
+  return Boolean(candidate
+    && text.includes(`| **v${candidate[1]}** | 当前已构建的本地开发候选`)
+    && text.includes(`| **v${version}** | 当前 GitHub \`main\` 的源码版本`));
+}
 export function versionedJson(path, text, version) {
   if (path === "README.md") {
-    if (!/^# TranslateFlow v[0-9.]+$/m.test(text)) throw new Error("README has no version heading.");
-    return text.replace(/^# TranslateFlow v[0-9.]+$/m, `# TranslateFlow v${version}`);
+    const heading = /^# TranslateFlow v[0-9.]+(?:（开发候选）)?$/mu;
+    if (!heading.test(text)) throw new Error("README has no version heading.");
+    return text.replace(heading, `# TranslateFlow v${version}`);
   }
   const parsed = JSON.parse(text);
   if (typeof parsed.version !== "string") throw new Error(`${path} has no root version.`);

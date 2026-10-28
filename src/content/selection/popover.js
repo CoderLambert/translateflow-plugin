@@ -342,7 +342,7 @@
     app.modules.richResourceResolver?.closeAll();
     locale.unbindTree(root);
     readingLayout?.dispose(); readingLayout = null;
-    root.remove(); panel.removeEventListener("toggle", onDetailsToggle, true);
+    root.remove(); panel?.removeEventListener("toggle", onDetailsToggle, true);
     root = null;
     chip = null;
     panel = null;

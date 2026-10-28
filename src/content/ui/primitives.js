@@ -92,9 +92,17 @@
   }
 
   function brandIcon(size = 32, doc = document) {
-    if (!app.modules.brandAssets?.icon || !globalThis.chrome?.runtime?.getURL) return null;
+    let url;
+    try {
+      if (!app.modules.brandAssets?.icon || !globalThis.chrome?.runtime?.getURL) return null;
+      url = chrome.runtime.getURL(app.modules.brandAssets.icon);
+    } catch {
+      // Old page scripts survive extension updates; decorative icons must not
+      // prevent the existing refresh notice or a selection surface from mounting.
+      return null;
+    }
     const node = doc.createElement("img");
-    node.src = chrome.runtime.getURL(app.modules.brandAssets.icon); node.alt = ""; node.draggable = false;
+    node.src = url; node.alt = ""; node.draggable = false;
     node.setAttribute("aria-hidden", "true");
     node.style.cssText = `display:inline-block;width:${size}px;height:${size}px;object-fit:contain;border-radius:24%;flex-shrink:0;vertical-align:middle;`;
     return node;

@@ -5,7 +5,17 @@ import { promisify } from "node:util";
 import { mkdtemp, writeFile, readFile, mkdir, rm, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nextCommitVersion, prepareVersionedCommit } from "../scripts/prepare-versioned-commit.mjs";
+import { nextCommitVersion, prepareVersionedCommit, readmeMatchesVersion, versionedJson } from "../scripts/prepare-versioned-commit.mjs";
+test("README candidate headings require both an accurate source version and matching candidate row", () => {
+  const preview = "# TranslateFlow v0.8.64（开发候选）\n\n| **v0.8.64** | 当前已构建的本地开发候选 |\n| **v0.8.50** | 当前 GitHub `main` 的源码版本 |\n";
+  assert.equal(readmeMatchesVersion("# TranslateFlow v0.8.50\n", "0.8.50"), true);
+  assert.equal(readmeMatchesVersion(preview, "0.8.50"), true);
+  assert.equal(readmeMatchesVersion(preview, "0.8.49"), false);
+  assert.equal(readmeMatchesVersion(preview.replace("| **v0.8.64**", "| **v0.8.63**"), "0.8.50"), false);
+  assert.equal(readmeMatchesVersion(preview.replace("（开发候选）", ""), "0.8.50"), false);
+  assert.equal(readmeMatchesVersion(preview.split("\n\n")[0] + "\n", "0.8.50"), false);
+  assert.ok(versionedJson("README.md", preview, "0.8.65").startsWith("# TranslateFlow v0.8.65\n"));
+});
 const exec = promisify(execFile);
 const git = async (root, ...args) => (await exec("git", args, { cwd: root })).stdout.trim();
 const json = (root, path) => readFile(join(root, path), "utf8").then(JSON.parse);
