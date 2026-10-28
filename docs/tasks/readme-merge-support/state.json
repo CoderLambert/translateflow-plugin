@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "readme-merge-support",
+  "status": "working",
+  "dependencies": [],
+  "branch": "docs/readme-merge-support",
+  "candidateHead": null,
+  "mergeHead": null,
+  "validationCommands": [
+    [
+      "node",
+      "--test",
+      "tests/release-gate.test.mjs",
+      "tests/versioned-commit.test.mjs"
+    ],
+    [
+      "git",
+      "diff",
+      "--check",
+      "origin/main"
+    ]
+  ],
+  "artifactRequired": false,
+  "nextAction": "润色合并段落，校验锚点/路径/版本合同后公开合入。"
+}
