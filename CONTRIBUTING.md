@@ -203,3 +203,11 @@ npm run test:e2e
 `node scripts/prepare-versioned-commit.mjs --preview` 可只预览并编译当前暂存快照，不修改索引、工作区版本或安装包。版本准备命令不创建 commit、不推送、不发布，也不自动运行全量测试。验收后的元数据归档保持已测试版本和输入不变，不需要禁用钩子。
 
 开发阶段的模块选测命令、并发预算、串行专项与完整验收组成见 [docs/TEST_SELECTION.md](docs/TEST_SELECTION.md)。
+
+维护者发布一版时可只跑一条命令（校验 → 递增版本并编译 → 提交 → 推送 → 打 tag 建 Release → 上传 zip → 核对产物摘要 → 触发下载镜像）：
+
+```bash
+npm run release -- "fix: 一句话描述这次改动"
+```
+
+它封装上面这些显式步骤，不改变它们各自的语义；`--dry-run` 只做只读检查，`--no-commit` 直接发布当前 HEAD，`--skip-validate`、`--notes-file`、`--mirror` 见 [docs/MIRROR.md](docs/MIRROR.md)。
