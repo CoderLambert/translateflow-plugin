@@ -408,6 +408,13 @@
       "candidateHead": "e0b13de7e07f0cdeac8b2be4433dbc605b9ee766"
     },
     {
+      "task": "readme-merge-support",
+      "status": "ready_to_sync",
+      "dependencies": [],
+      "branch": "docs/readme-merge-support",
+      "candidateHead": "d0e76ac0e8a51c314bd25caf0aba6f9bfb59c0f6"
+    },
+    {
       "task": "readme-right-click-085",
       "status": "ready_to_sync",
       "dependencies": [],
