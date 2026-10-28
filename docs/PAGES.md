@@ -32,4 +32,6 @@ GitHub 的分支 Pages 发布仍会运行其内建部署工作流；这与仓库
 
 站点提交：`676a2dff102c15baa46dc5cfaf08c060da2cc4f2`（仅静态站点）。Pages 报告 built、HTTPS 已强制，8 个公开页面/资源的实际响应均为 200，响应字节与本地站点生成结果完全相同。内容清单为公开 `site-manifest.json`，本地详细核对在忽略目录 `docs/task-execution/local/store-launch-preparation/pages-verification.json`。
 
+0.8.62 支持入口随后补充爱发电外部链接的数据边界，政策更新部署为 `0262b2ac527db124b509d36e16b7501f6db491b9`；Pages 状态 built，两种公开政策均已 HTTP 200 与本地生成内容字节核对一致。上述 `676a2dff` 保留为首次站点部署记录。
+
 该站点不含安装包、测试 profile、私人路径、API Key、用户页面或本地诊断日志。公开阅读示例为项目自写的演示文章，供截图和操作演示，不代表外部文章或模型质量基准。

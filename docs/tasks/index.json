@@ -429,6 +429,13 @@
       "candidateHead": null
     },
     {
+      "task": "readme-coffee-support",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "remove-bundled-lexicons",
       "status": "completed",
       "dependencies": [

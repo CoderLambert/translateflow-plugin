@@ -8,12 +8,13 @@ import { CONTENT_SCRIPT_FILES, CONTENT_STYLE_FILES } from "../src/shared/constan
 import { BRAND_ICONS, LEGAL_ASSETS, EXTENSION_PAGES, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { GLOBAL_CONTENT_SCRIPT, projectProductionManifest } from "../scripts/production-manifest.mjs";
 import { isChatGPTPlanDeveloperBuild, requireChatGPTPlanDeveloperBuild } from "../src/shared/chatgpt-native-host.js";
+import { AUTHOR_SUPPORT_QR } from "../src/shared/author-support.js";
 import { YOUTUBE_MAIN_BRIDGE_FILES as runtimeMain } from "../src/background/youtube-bridge.js";
 import { assertProductionManifest } from "../scripts/audit-wxt-extension.mjs";
 
 test("raw asset map retains only MAIN and Worker contexts while Content uses stable compiled paths", async () => {
   const roots = runtimeAssetRoots();
-  assert.deepEqual(roots, [...Object.values(BRAND_ICONS), ...Object.values(LEGAL_ASSETS), ...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)]);
+  assert.deepEqual(roots, [...Object.values(BRAND_ICONS), ...Object.values(LEGAL_ASSETS), AUTHOR_SUPPORT_QR, ...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)]);
   assert.deepEqual(CONTENT_SCRIPT_FILES, ["content-scripts/content.js"]);
   assert.deepEqual(CONTENT_STYLE_FILES, ["content-scripts/content.css"]);
   assert.strictEqual(runtimeMain, YOUTUBE_MAIN_BRIDGE_FILES);

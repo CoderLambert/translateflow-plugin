@@ -22,6 +22,8 @@ TranslateFlow translates and helps you understand web pages, captions and submit
 - **Dictionary downloads and external links:** initiating a dictionary download contacts the source identified in the interface. That source may receive your IP address and ordinary request metadata. Opening support links, allowed dictionary links or external links in this policy opens the corresponding website, which has its own policies. Viewing the locally installed policy, notices or a local dictionary does not itself initiate these downloads.
 - External services normally see connection IP addresses and request metadata. Submitted text can itself include personal, financial, health or communication information. Do not submit content you do not want shared with the selected service. Automatic redaction is not guaranteed.
 
+The optional author-support link opens the author’s Afdian page only when you click it. Payments, amounts, support periods and payment information are handled by Afdian and its payment services. TranslateFlow does not read orders, payer identities or support status, does not unlock features based on payment, and does not attach page content, API keys or diagnostic reports to that link.
+
 ## Permissions and your choices
 
 The public extension uses `storage` for settings/session data and `activeTab`/`scripting` for current-page actions. HTTP/HTTPS website access supports automatic selection startup, floating controls and enabled translation features; access permission does not mean all browsing content is uploaded. `declarativeNetRequestWithHostAccess` adjusts a request header only for extension-initiated requests to Bilibili's specified translation endpoint.

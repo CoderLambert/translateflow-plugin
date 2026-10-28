@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "task": "readme-coffee-support",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [["npm", "run", "commit:prepare"], ["zbarimg", "--quiet", "--raw", "assets/support/afdian-transflow.png"]],
+  "nextAction": "0.8.62已构建并做聚焦显示核对：README/关于页爱发电及本地二维码、设置页GitHub图标与欢迎Star已完成。新ZIP在Downloads独立目录；Pages政策已更新。待用户试用及后续产品分支同步，原0.8.61候选保留，未操作商店。"
+}

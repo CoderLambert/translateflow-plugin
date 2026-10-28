@@ -53,6 +53,21 @@
 .guide-entry-card > span:nth-child(2) { display: grid; flex: 1; gap: 5px; }
 .guide-entry-card strong { font-size: 14px; font-weight: 600; }
 .guide-entry-card small { color: var(--tf-text-secondary); font-size: 12px; line-height: 1.65; }
+.author-support { display: flex; align-items: flex-start; gap: 24px; justify-content: space-between; margin: 24px 0 0; padding: 20px; border: 1px solid var(--tf-border-soft); border-radius: 12px; background: var(--tf-green-50); box-shadow: none; }
+.author-support-copy { min-width: 0; flex: 1; }
+.author-support h3 { margin: 0 0 8px; color: var(--tf-text-strong); font-size: 15px; }
+.author-support p { margin: 0 0 7px; color: var(--tf-text-main); font-size: 13px; line-height: 1.75; }
+.author-support small { color: var(--tf-text-secondary); font-size: 11px; line-height: 1.7; }
+.author-support-actions { display: grid; justify-items: start; flex: 0 0 232px; gap: 10px; max-width: 100%; }
+.author-support-link { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 40px; padding: 9px 15px; border: 1px solid var(--tf-border-main); border-radius: 8px; background: var(--tf-bg-card); color: var(--tf-green-800); text-decoration: none; font-size: 12px; font-weight: 600; }
+.author-support-link:hover { background: var(--tf-green-100); border-color: var(--tf-green-600); }
+.author-support-link:focus-visible, .author-support-qr summary:focus-visible { outline: 2px solid var(--tf-green-700); outline-offset: 3px; }
+.author-support-qr { width: 232px; max-width: 100%; }
+.author-support-qr summary { color: var(--tf-text-secondary); font-size: 11px; cursor: pointer; }
+.author-support-qr figure { margin: 12px 0 0; }
+.author-support-qr img { display: block; width: 100%; max-width: 232px; height: auto; border: 1px solid var(--tf-border-main); border-radius: 8px; background: white; }
+.author-support-qr figcaption { margin-top: 8px; color: var(--tf-text-secondary); font-size: 11px; line-height: 1.7; }
+@media (max-width: 720px) { .author-support { flex-direction: column; gap: 16px; padding: 16px; } .author-support-actions { flex: auto; } }
 .about-links { display: flex; flex-wrap: wrap; gap: 12px 22px; padding-top: 18px; margin-top: 24px; border-top: 1px solid var(--tf-border-soft); }
 .about-links a { color: var(--tf-green-800); font-size: 13px; text-underline-offset: 4px; }
 .about-version { display: inline-block; padding: 5px 9px; border: 1px solid var(--tf-border-main); border-radius: 6px; font-size: 11px; color: var(--tf-text-secondary); }

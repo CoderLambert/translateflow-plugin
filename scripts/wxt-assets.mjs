@@ -3,6 +3,7 @@ import platformPath, { resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BRAND_ICONS, LEGAL_ASSETS, WORKER_PATHS, YOUTUBE_MAIN_BRIDGE_FILES } from "../src/shared/runtime-assets.js";
 import { pathRelation } from "./path-boundaries.mjs";
+import { AUTHOR_SUPPORT_QR } from "../src/shared/author-support.js";
 
 export const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -21,7 +22,7 @@ export function assertAssetPath(path) {
 // WXT compiles ISOLATED Content. Only execution-context-specific MAIN/Worker
 // resources remain raw assets with their stable runtime paths.
 export function runtimeAssetRoots() {
-  return [...Object.values(BRAND_ICONS), ...Object.values(LEGAL_ASSETS), ...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)];
+  return [...Object.values(BRAND_ICONS), ...Object.values(LEGAL_ASSETS), AUTHOR_SUPPORT_QR, ...YOUTUBE_MAIN_BRIDGE_FILES, ...Object.values(WORKER_PATHS)];
 }
 
 export async function sourceClosure(roots, root = ROOT) {

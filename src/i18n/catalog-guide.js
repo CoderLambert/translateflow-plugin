@@ -200,7 +200,7 @@ export const en = Object.freeze({
   "guide.privacy": "Your data",
   "guide.back": "Back to getting started",
   "guide.about": "About this extension",
-  "guide.aboutText": "TranslateFlow is a browser translation extension. Use your own AI service, online translation or supported browser-local translation, with optional dictionaries and learning tools.",
+  "guide.aboutText": "TranslateFlow brings together bilingual web reading, selection lookup, AI text translation, caption assistance and learning review. Reuse valid cached results to reduce repeated API calls, or look up words offline in imported dictionaries. Choose the translation service that suits you.",
   "guide.aboutVersion": "Version {version}",
   "guide.aboutHelp": "The guide covers the current UI. Platform support, model output and video captions depend on their respective services.",
   "guide.status": "This guide is available offline. Opening it makes no translation request."
@@ -408,7 +408,7 @@ export const zh_CN = Object.freeze({
   "guide.privacy": "数据与隐私",
   "guide.back": "返回首次使用",
   "guide.about": "关于 TranslateFlow",
-  "guide.aboutText": "TranslateFlow 是浏览器翻译扩展，支持自备 AI 服务、在线翻译和受支持的浏览器本地翻译，也提供可选的本地词典与学习工具。",
+  "guide.aboutText": "TranslateFlow 将网页双语阅读、划词查询、AI 文本翻译、字幕辅助与学习回顾连接起来。复用有效缓存，减少重复 API 调用与费用；导入本地词典，离线查词。翻译方式和服务由你选择。",
   "guide.aboutVersion": "当前版本 {version}",
   "guide.aboutHelp": "文档按当前界面编写。平台可用性、模型输出和视频字幕取决于相应服务的实际情况。",
   "guide.status": "文档可离线查看，打开不会调用翻译服务。"

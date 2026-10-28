@@ -1,5 +1,6 @@
 import { UserGuide } from "./UserGuide";
 import { BRAND_ICONS } from "../shared/runtime-assets.js";
+import { RepositoryLink } from "./RepositoryLink";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CacheSection, DeveloperSection } from "./CacheSection";
 import { AppearanceSection, GeneralSection, ProviderSections, SelectionSection, ShortcutsSection, YoutubeSection } from "./CommonSections";
@@ -72,6 +73,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof optionsCl
   return <LocaleProvider value={i18n}><div className="settings-shell" onKeyDown={onEscape}>
     <nav className="settings-nav" aria-label={i18n.t("options.navAria")}><div className="nav-brand"><span className="nav-brand-mark" aria-hidden="true"><img src={BRAND_ICONS[64]} alt="" width="34" height="34" /></span><strong>TranslateFlow</strong></div>
       {navItems.map(([id, key], index) => <Fragment key={id}>{index === 7 ? <span>{i18n.t("options.nav.advanced")}</span> : null}<a id={`settings-nav-${id}`} data-settings-nav href={`#${id}`} aria-controls={`settings-panel-${id}`} aria-current={activeHash === `#${id}` ? "page" : undefined} onClick={event => navigate(event, id)}>{i18n.t(key)}</a></Fragment>)}
+      <RepositoryLink />
     </nav>
     <main><header className="settings-intro" hidden={activeHash === "#help"}><span className="section-kicker">{i18n.t("options.kicker")}</span><h1>{i18n.t("options.title")}</h1><p className="lead">{i18n.t("options.lead")}</p></header>
       {!config ? <section className="tf-card" aria-busy={!ui.loadError}>{ui.loadError ? <><p role="alert">{i18n.t("options.loadFailed", { message: ui.loadError })}</p><button type="button" onClick={() => void ui.loadConfig()}>{i18n.t("common.retry")}</button></> : <p>{i18n.t("options.loading")}</p>}</section> : <>

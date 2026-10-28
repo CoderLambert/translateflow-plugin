@@ -205,6 +205,14 @@ button:disabled {
   font-weight: 650;
 }
 
+.settings-repo-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--tf-border-soft); }
+.settings-nav .settings-repo-link { gap: 10px; min-height: 44px; color: var(--tf-text-main); }
+.settings-repo-link svg { flex-shrink: 0; }
+.settings-repo-name { display: flex; align-items: baseline; gap: 7px; font-size: 12px; font-weight: 600; }
+.settings-repo-name small { color: var(--tf-text-secondary); font-size: 10px; font-weight: 450; }
+.settings-repo-arrow { margin-left: auto; color: var(--tf-text-secondary); font-size: 12px; }
+@media (max-width: 1000px) { .settings-repo-footer { flex: 1 0 100%; margin-top: 2px; padding-top: 4px; } .settings-nav .settings-repo-link { width: fit-content; } }
+
 .settings-intro {
   padding: 8px 4px 22px;
 }
