@@ -387,6 +387,13 @@
       "candidateHead": null
     },
     {
+      "task": "popup-retry-subtitle-translation-only",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "product-completeness",
       "status": "ready_to_sync",
       "dependencies": [],

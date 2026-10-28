@@ -66,7 +66,7 @@
     const owner = {};
     let activation = 0;
     let started = false;
-    let mode = ["bilingual", "original", "off"].includes(subtitleMode) ? subtitleMode : "bilingual";
+    let mode = ["bilingual", "translated", "original", "off"].includes(subtitleMode) ? subtitleMode : "bilingual";
     let pageVideoId = "", mainGeneration = null, mainValid = false;
     let timeline = createCueTimeline();
     let mainTrack = null, mainReady = false;
@@ -365,7 +365,7 @@
 
     function setMode(nextMode) {
       const previous = mode;
-      mode = ["bilingual", "original", "off"].includes(nextMode) ? nextMode : "bilingual";
+      mode = ["bilingual", "translated", "original", "off"].includes(nextMode) ? nextMode : "bilingual";
       if (started && mode !== previous) {
         if (mode === "off") deactivate();
         else if (previous === "off") activate().catch(() => {});

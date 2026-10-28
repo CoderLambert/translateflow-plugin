@@ -32,7 +32,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
       appearance: normalizeAppearanceId(value.appearance) || DEFAULT_APPEARANCE_ID,
       cacheMaxMB: Number(value.cacheMaxMB || DEFAULT_CONFIG.cacheMaxMB),
       openAICompatible: { baseUrl: text(openAI.baseUrl), apiKey: text(openAI.apiKey), model: text(openAI.model), streaming: Boolean(openAI.streaming) },
-      youtubeSubtitleMode: typeof value.youtubeSubtitleMode === "string" && ["bilingual", "original", "off"].includes(value.youtubeSubtitleMode) ? value.youtubeSubtitleMode : "bilingual",
+      youtubeSubtitleMode: typeof value.youtubeSubtitleMode === "string" && ["bilingual", "translated", "original", "off"].includes(value.youtubeSubtitleMode) ? value.youtubeSubtitleMode : "bilingual",
       youtubeSubtitleSize: typeof value.youtubeSubtitleSize === "string" && ["small", "standard", "large"].includes(value.youtubeSubtitleSize) ? value.youtubeSubtitleSize : "standard",
       selectionExplanationDepth: normalizeSelectionDepth(value.selectionExplanationDepth)
     };
@@ -57,7 +57,7 @@ export function optionsClient(api: typeof chrome = chrome, i18n: I18n = createI1
       prompt: input.prompt.trim() || DEFAULT_CONFIG.prompt, targetLanguage: input.targetLanguage.trim() || DEFAULT_CONFIG.targetLanguage,
       appearance: normalizeAppearanceId(input.appearance) || DEFAULT_APPEARANCE_ID, cacheMaxMB: max,
       openAICompatible: { baseUrl: normalizeOpenAIBaseUrl(input.openAICompatible.baseUrl), apiKey: input.openAICompatible.apiKey.trim(), model: input.openAICompatible.model.trim(), streaming: Boolean(input.openAICompatible.streaming) },
-      youtubeSubtitleMode: ["bilingual", "original", "off"].includes(input.youtubeSubtitleMode) ? input.youtubeSubtitleMode : "bilingual",
+      youtubeSubtitleMode: ["bilingual", "translated", "original", "off"].includes(input.youtubeSubtitleMode) ? input.youtubeSubtitleMode : "bilingual",
       youtubeSubtitleSize: ["small", "standard", "large"].includes(input.youtubeSubtitleSize) ? input.youtubeSubtitleSize : "standard",
       selectionExplanationDepth: normalizeSelectionDepth(input.selectionExplanationDepth) };
   }

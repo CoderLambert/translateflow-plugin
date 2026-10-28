@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { GeneralSection, ProviderSections } from "../../src/options/CommonSections";
+import { GeneralSection, ProviderSections, YoutubeSection } from "../../src/options/CommonSections";
 import { ChatGPTPlanSection, chatGPTSignInActionDisabled, nativeHostDevelopmentCommands, nativeHostDevelopmentTarget } from "../../src/options/ChatGPTPlanSection";
 import { GlossarySection } from "../../src/options/GlossarySection";
 import { ProviderConnectionsSection } from "../../src/options/ProviderConnectionsSection";
@@ -38,6 +38,19 @@ function stubNativeHostTarget(platform: string, userAgent: string) {
     else Reflect.deleteProperty(navigator, "userAgent");
   };
 }
+
+test("translation-only subtitles can be selected, saved and reloaded in Options", async () => {
+  const update = vi.fn();
+  render(zhNode(<YoutubeSection config={config} disabled={false} update={update} />));
+  await userEvent.selectOptions(screen.getByLabelText("默认字幕模式"), "translated");
+  expect(update).toHaveBeenCalledWith({ youtubeSubtitleMode: "translated" });
+  vi.stubGlobal("chrome", { ...chrome, runtime: { getManifest: () => ({ version: "0.0.0" }) } });
+  const client = optionsClient(chrome, zh);
+  await client.saveConfig({ ...config, youtubeSubtitleMode: "translated" }, false);
+  expect(set).toHaveBeenCalledWith(expect.objectContaining({ youtubeSubtitleMode: "translated" }));
+  get.mockResolvedValue({ youtubeSubtitleMode: "translated" });
+  expect((await client.loadConfig()).youtubeSubtitleMode).toBe("translated");
+});
 
 test("public Provider settings show only the ChatGPT developer guide and preserve a previous selection", () => {
   vi.stubGlobal("chrome", { ...chrome, runtime: { getManifest: () => ({ version: "0.8.47" }) } });

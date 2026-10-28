@@ -192,6 +192,69 @@ async function readOverlay(page) {
   });
 }
 
+test("translation-only captions hide originals while pending, persist, reuse results and handle failure", async ({ harness: h }, testInfo) => {
+  const url = 'https://www.youtube.com/watch?v=tf-translation-only';
+  await h.setStorage({ youtubeSubtitleMode: 'translated' });
+  await h.context.route(url, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><div id="movie_player" style="position:relative;width:960px;height:540px;background:#182320"><video class="html5-main-video"></video><div id="ytp-caption-window-container"><span class="ytp-caption-segment">Only the translated caption should be visible.</span></div><div class="ytp-right-controls" style="position:absolute;bottom:0;right:0;height:40px"><button class="ytp-settings-button">Settings</button></div></div></body></html>' }));
+  await h.serviceWorker.evaluate(() => {
+    globalThis.__subtitleOriginalFetch = fetch;
+    globalThis.__subtitleHeld = false;
+    globalThis.fetch = async (...args) => {
+      if (!__subtitleHeld && String(args[0]).endsWith('/chat/completions')) {
+        __subtitleHeld = true;
+        await new Promise(resolve => { globalThis.__subtitleRelease = resolve; });
+      }
+      return __subtitleOriginalFetch(...args);
+    };
+  });
+  const page = await h.context.newPage();
+  try {
+    await page.goto(url);
+    await expect.poll(() => h.serviceWorker.evaluate(() => __subtitleHeld)).toBe(true);
+    expect(await readOverlay(page)).toMatchObject({ originalHidden: true, translatedHidden: true });
+    await expect(page.locator('#ytp-caption-window-container')).toHaveCSS('visibility', 'hidden');
+    await h.serviceWorker.evaluate(() => __subtitleRelease());
+    await expect.poll(async () => (await readOverlay(page)).translated).toContain('[DEFAULT|PLAIN]');
+    expect(await readOverlay(page)).toMatchObject({ originalHidden: true, translatedHidden: false });
+    await page.getByRole('button', { name: 'TranslateFlow subtitles', exact: true }).click();
+    const mode = page.getByRole('combobox', { name: 'TranslateFlow subtitle mode', exact: true });
+    await expect(mode).toHaveValue('translated');
+    await expect(page.getByRole('combobox', { name: 'Translated subtitle size' })).toBeEnabled();
+    await mode.selectOption('bilingual');
+    await expect.poll(async () => (await readOverlay(page)).originalHidden).toBe(false);
+    await mode.selectOption('translated');
+    await expect.poll(async () => (await readOverlay(page)).originalHidden).toBe(true);
+    await mode.selectOption('off');
+    await expect(page.locator('#ytp-caption-window-container')).toHaveCSS('visibility', 'visible');
+    await mode.selectOption('translated');
+    await expect.poll(async () => (await readOverlay(page)).translatedHidden).toBe(false);
+    await expect.poll(async () => (await h.getStorage(['youtubeSubtitleMode'])).youtubeSubtitleMode).toBe('translated');
+    expect(h.server.calls).toHaveLength(1);
+    await page.screenshot({ path: testInfo.outputPath('translation-only-settings.png') });
+    await mode.press('Escape');
+    await page.screenshot({ path: testInfo.outputPath('translation-only-caption.png') });
+    await page.reload();
+    await expect.poll(async () => (await readOverlay(page)).translatedHidden).toBe(false);
+    expect((await readOverlay(page)).originalHidden).toBe(true);
+    // Untimed DOM cue identities may restart on reload; persistence of the
+    // display preference does not promise a cross-document cue cache hit.
+    const callsAfterReload = h.server.calls.length;
+    expect(callsAfterReload).toBeLessThanOrEqual(2);
+    h.server.setFailures([401]);
+    await page.locator('.ytp-caption-segment').evaluate(node => { node.textContent = 'A new caption whose translation fails.'; });
+    await expect.poll(async () => (await readOverlay(page)).status).toContain('You can switch to original captions');
+    expect(await readOverlay(page)).toMatchObject({ originalHidden: true, translatedHidden: true });
+    await page.screenshot({ path: testInfo.outputPath('translation-only-failure.png') });
+    await page.getByRole('button', { name: 'TranslateFlow subtitles', exact: true }).click();
+    await mode.selectOption('original');
+    await expect.poll(async () => (await readOverlay(page)).originalHidden).toBe(false);
+    expect(h.server.calls).toHaveLength(callsAfterReload + 1);
+  } finally {
+    await h.serviceWorker.evaluate(() => { globalThis.__subtitleRelease?.(); if (globalThis.__subtitleOriginalFetch) fetch = __subtitleOriginalFetch; });
+    await page.close();
+  }
+});
+
 test("production YouTube controller restores DOM captions and invalidates configuration and cleared cache", async ({ harness }) => {
   const url = "https://www.youtube.com/watch?v=tf-reliability";
   await harness.context.route(url, route => route.fulfill({ contentType: "text/html", body: '<!doctype html><html><head><title>Subtitle reliability fixture</title></head><body><div id="movie_player" style="position:relative;width:960px;height:540px"><video class="html5-main-video"></video><div id="ytp-caption-window-container"><span class="ytp-caption-segment">Caption A</span></div></div></body></html>' }));

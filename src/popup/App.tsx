@@ -1,3 +1,4 @@
+import { ContextRecovery } from "./ContextRecovery";
 import { PopupIcon } from "./PopupIcon";
 import { useMachineTranslation } from "./useMachineTranslation";
 import { MachineTranslationControl } from "./MachineTranslationControl";
@@ -29,6 +30,10 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
       await ui.translate();
     } finally { submitting.current = false; setApplying(false); }
   }
+  async function retryPage() {
+    await Promise.allSettled([ui.refreshContext(), method.ready ? Promise.resolve() : method.load(), ui.refreshCache(), ui.refreshAuto(),
+      ui.refreshCacheRestore(), ui.refreshQuick(), ui.refreshAppearance()]);
+  }
   const context = ui.context.value;
   const cache = ui.cache.value;
   const auto = ui.auto.value;
@@ -39,7 +44,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
   const modelLabel = context?.model || "";
   const duplicateModel = providerLabel.trim().toLowerCase() === modelLabel.trim().toLowerCase();
   const modeLabel = context?.engine === "machine-translation" ? i18n.t("mt.free") : context?.hasSitePromptOverride ? i18n.t("popup.customMode") : context?.presetId ? localizedPresetLabel(context.presetId, i18n) : context?.presetLabel && context.presetLabel !== "Default" ? context.presetLabel : i18n.t("popup.defaultMode");
-  const statusMessage = method.error ? method.notice : ui.notice.message;
+  const statusMessage = method.error ? (method.notice === ui.context.error ? "" : method.notice) : ui.notice.message;
   const statusError = method.error || ui.notice.error;
   const badgeState = busy || !method.ready && !method.error ? "busy" : ui.notice.error || method.error || ui.context.error ? "error" : !method.canTranslate ? "pending" : "ready";
   const cacheText = useMemo(() => {
@@ -72,7 +77,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
       <div className="page-card-head"><div className="site-icon"><PopupIcon name="globe" /></div><div className="site-copy"><span className="section-kicker">{i18n.t("popup.currentPage")}</span><strong id="contextSite" title={context?.hostname || context?.origin}>{context?.hostname || context?.origin || "—"}</strong></div><span id="contextMode" className="mode-pill" title={`${i18n.t("popup.translationMode")}: ${modeLabel}`}>{modeLabel}</span></div>
       <div className="context-grid"><span>{i18n.t("popup.modelService")}</span><strong title={context?.routing === "auto" ? i18n.t("mt.routingAuto") : duplicateModel ? providerLabel : [providerLabel, modelLabel].filter(Boolean).join(" · ")}><span id="contextProvider">{context?.routing === "auto" ? i18n.t("mt.routingAuto") : providerLabel}</span>{context?.engine === "machine-translation" || duplicateModel ? null : <> · <span id="contextModel">{modelLabel || "—"}</span></>}</strong></div>
     </section>
-    {ui.context.error ? <div className="preset-hint" role="alert">{ui.context.error} <button type="button" onClick={() => void ui.refreshContext()}>{i18n.t("common.retry")}</button></div> : null}
+    {ui.context.error ? <ContextRecovery message={ui.context.error} pending={ui.context.loading} disabled={busy} retry={retryPage} i18n={i18n} /> : null}
 
     <MachineTranslationControl i18n={i18n} disabled={busy} method={method} />
 
@@ -98,7 +103,7 @@ export function App({ client: provided }: { client?: ReturnType<typeof popupClie
     <details className="secondary-card tf-accordion"><summary><PopupIcon name="cache" />{i18n.t("popup.quickAndCache")}</summary><div className="secondary-content stacked-actions">
       <SiteSetting id="quickControl" text={toggleText("quick", ui.quick.loading, quick, ui.quick.error, i18n)} label={i18n.t(quick?.hidden ? "popup.showQuickHere" : quick?.enabled ? "popup.disableQuickSite" : "popup.enableQuickSite")} enabled={Boolean(quick?.enabled)} disabled={busy || !quick} onClick={(trusted) => { if (trusted) void ui.toggleSite("quick", ui.quick); }} />
       <SiteSetting id="cacheRestore" text={toggleText("cache", ui.cacheRestore.loading, cacheRestore, ui.cacheRestore.error, i18n)} label={i18n.t(cacheRestore?.enabled ? "popup.disableCacheRestore" : "popup.enableCacheRestore")} enabled={Boolean(cacheRestore?.enabled)} disabled={busy || !cacheRestore} onClick={(trusted) => { if (trusted) void ui.toggleSite("cache", ui.cacheRestore); }} />
-      <div className="setting-block cache-block"><div id="cacheInfo" className="supporting">{cacheText}</div>{ui.cache.error ? <button type="button" onClick={() => void ui.refreshCache()}>{i18n.t("popup.retryCache")}</button> : null}<button id="restore" className="tf-button tf-button--secondary" disabled={busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.RESTORE_CACHE)}>{i18n.t("popup.restoreCache")}</button><button id="clearCache" className="tf-button danger-lite" disabled={busy || cache?.totalCount === 0} onClick={() => void ui.pageAction(CONTENT_MESSAGES.CLEAR_PAGE_CACHE)}>{i18n.t("popup.clearPageCache")}</button></div>
+      <div className="setting-block cache-block"><div id="cacheInfo" className="supporting">{cacheText}</div>{ui.cache.error ? <button type="button" className="tf-button tf-button--secondary recovery-retry" disabled={busy || ui.cache.loading} onClick={() => void ui.refreshCache()}>{i18n.t(ui.cache.loading ? "common.working" : "popup.retryCache")}</button> : null}<button id="restore" className="tf-button tf-button--secondary" disabled={busy} onClick={() => void ui.pageAction(CONTENT_MESSAGES.RESTORE_CACHE)}>{i18n.t("popup.restoreCache")}</button><button id="clearCache" className="tf-button danger-lite" disabled={busy || cache?.totalCount === 0} onClick={() => void ui.pageAction(CONTENT_MESSAGES.CLEAR_PAGE_CACHE)}>{i18n.t("popup.clearPageCache")}</button></div>
     </div></details>
     </div>
     <section className="primary-section" aria-label={i18n.t("popup.pageTranslation")}>

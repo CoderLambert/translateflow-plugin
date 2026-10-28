@@ -308,6 +308,8 @@ test("bridge protocol rejects forged, stale-shape and over-sized page messages",
   assert.equal(protocol.validateEnvelope({ ...valid, type: "UNKNOWN" }).ok, false);
   assert.equal(protocol.validateEnvelope({ ...valid, type: "READY", payload: { unexpected: true } }).ok, false);
   assert.equal(protocol.validateEnvelope({ ...valid, type: "HELLO", payload: { mode: "bilingual", unexpected: true } }).ok, false);
+  assert.equal(protocol.validateEnvelope({ ...valid, type: "HELLO", payload: { mode: "translated" } }).ok, true);
+  assert.equal(protocol.validateEnvelope({ ...valid, type: "HELLO", payload: { mode: "arbitrary-mode" } }).ok, false);
   assert.equal(protocol.validateEnvelope({ ...valid, payload: { format: "json3", cues: [{ id: "x", startTime: 0, endTime: 1, text: "x".repeat(2 * 1024 * 1024) }], track: null } }).error, "payload-too-large");
 });
 

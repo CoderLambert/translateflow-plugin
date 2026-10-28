@@ -58,6 +58,38 @@ test("Popup keeps its action reachable across themes, disclosure, long names and
   await page.close();
 });
 
+test("Popup presents protected-page recovery as a keyboard-accessible card", async ({ harness: h }, testInfo) => {
+  await h.reset(); await h.setStorage({ uiLocale: 'zh_CN' });
+  const protectedPage = await h.context.newPage();
+  await protectedPage.goto('chrome://extensions/'); await protectedPage.bringToFront();
+  const popup = h.driver;
+  await popup.setViewportSize({ width: 360, height: 420 }); await popup.reload();
+  const card = popup.getByRole('alert', { name: '暂时无法读取页面信息' });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('HTTP/HTTPS');
+  await expect(popup.getByRole('button', { name: '重新读取设置' })).toBeVisible();
+  await expect(popup.locator('body')).not.toContainText('缩短划词');
+  await expect(popup.locator('#status')).toBeHidden();
+  const retry = card.getByRole('button', { name: '重试', exact: true });
+  for (const colorScheme of ['light', 'dark']) {
+    await popup.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+    await retry.focus();
+    expect(await retry.evaluate(node => getComputedStyle(node).outlineStyle)).toBe('solid');
+    expect(await retry.evaluate(node => parseFloat(getComputedStyle(node).borderRadius))).toBeGreaterThanOrEqual(6);
+    await reachable(retry);
+    expect(await card.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    await popup.screenshot({ path: testInfo.outputPath(`retry-${colorScheme}.png`) });
+  }
+  await retry.press('Enter'); await expect(retry).toBeEnabled(); await expect(card).toBeVisible();
+  const article = await h.open('/article'); await article.bringToFront();
+  await retry.click(); await expect(card).toHaveCount(0);
+  await expect(popup.locator('#contextSite')).toHaveText('127.0.0.1');
+  await expect(popup.locator('#translate')).toBeEnabled();
+  await expect(popup.locator('#autoSite')).toBeEnabled();
+  expect(h.server.calls).toHaveLength(0);
+  await article.close(); await protectedPage.close();
+});
+
 test("Popup keeps real cancellation reachable and shows completion only after cancellation confirms", async ({ harness: h }) => {
   await mkdir(evidence, { recursive: true }); await h.reset();
   const page = await openPopup(h), popup = h.driver;

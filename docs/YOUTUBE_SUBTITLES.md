@@ -109,6 +109,10 @@ The source updates on `timeupdate`, seeking, play/pause and rate changes, with o
 
 The existing mode/preset/size controls are hidden until the user opens the `译` button in YouTube's bottom `.ytp-right-controls`, before the native settings button. The compact panel opens above the control bar, inside the existing subtitle Shadow DOM. Escape closes it and restores focus; clicking outside or changing fullscreen closes it. A renderer-owned child-list observer reattaches the same live button after native controls reconstruction and removes stale cloned entries. It disconnects on unmount, along with document click/keyboard/fullscreen handlers. A small bottom-right fallback entry is used only while native controls are absent. Player remounts rebuild and localize the preset options. No new translation scheduler or MAIN capability is involved.
 
+## Display modes
+
+The player menu and Options page offer `bilingual` (default), `translated` (translation only), `original`, and `off`. The translation-only mode hides the extension original line and keeps the native caption layer suppressed; while translation is pending, absent or failed, it never falls back to original text. Failure feedback offers switching to original captions. Subtitle size remains adjustable. Bilingual/translation-only switches reuse the same pipeline, current results and cache without invalidating translation identity or adding Provider requests. The existing `youtubeSubtitleMode` preference persists the selection across page reloads; existing values remain valid, unknown values retain the bilingual fallback, and the MAIN bridge accepts only the expanded mode whitelist. No cache/database migration or additional permission is required.
+
 ## SPA and teardown behavior
 
 YouTube changes videos without a full document reload. The source and bridge therefore:

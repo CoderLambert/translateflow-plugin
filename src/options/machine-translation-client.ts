@@ -10,6 +10,7 @@ export const initialMachineSettings = (): MachineSettings => ({ ...DEFAULT_MACHI
 
 export function machineErrorText(error: unknown, i18n: I18n) {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+  if (code === "PAGE_UNSUPPORTED") return i18n.t("popup.protectedPage");
   return i18n.t(["PREFERENCES_REOPEN", "PREFERENCES_CONFIG", "AI_REQUIRED"].includes(code) ? `mt.error.${code}` as MessageKey : code === "CANCELLED" ? "mt.cancelled" : /^MT_(CONFIG|LANGUAGE|STRUCTURE|PERMISSION|INPUT|BUSY|RATE_LIMIT|BLOCKED|HTTP|TIMEOUT|NETWORK|RESPONSE|CONSENT)$/u.test(code) ? `mt.error.${code}` as MessageKey : "mt.error.unknown");
 }
 
@@ -51,7 +52,7 @@ export function machineTranslationClient(api: typeof chrome = chrome) {
     cancel: (requestId: string) => send<{ cancelled: boolean }>({ type: BACKGROUND_MESSAGES.CANCEL_TRANSLATION, requestId }),
     async activePage() {
       const [tab] = await api.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.url || !/^https?:/u.test(tab.url)) throw Object.assign(new Error("Unsupported page"), { code: "MT_INPUT" });
+      if (!tab?.url || !/^https?:/u.test(tab.url)) throw Object.assign(new Error("Unsupported page"), { code: "PAGE_UNSUPPORTED" });
       return tab.url;
     }
   };

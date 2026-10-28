@@ -22,16 +22,16 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   const active = useRef(false), generation = useRef(0), task = useRef<{ id: string; tabId: number } | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const show = useCallback((message: string, error = false) => setNotice({ message, error }), []);
-  const read = useCallback(async <T,>(loader: () => Promise<T>, setter: (value: Loadable<T>) => void, fallback: string) => {
+  const read = useCallback(async <T,>(loader: () => Promise<T>, setter: (value: Loadable<T> | ((previous: Loadable<T>) => Loadable<T>)) => void, fallback: string) => {
     const current = generation.current;
-    setter({ loading: true, value: null, error: "" });
+    setter(previous => ({ loading: true, value: null, error: previous.error }));
     try { const value = await loader(); if (active.current && current === generation.current) setter({ loading: false, value, error: "" }); }
     catch (error) { if (active.current && current === generation.current) setter({ loading: false, value: null, error: error instanceof Error ? error.message : fallback }); }
   }, []);
 
   const refreshContext = useCallback(() => read(client.context, value => {
     setContext(value);
-    const item = value.value;
+    const item = typeof value === "function" ? null : value.value;
     if (item) setPreset(item.temporaryPresetActive ? item.temporaryPresetId || "none" : item.savedPresetId || "inherit");
   }, i18n.t("popup.contextError")), [client, i18n, read]);
   const refreshCache = useCallback(() => read(client.cacheStatus, setCache, i18n.t("popup.cacheError")), [client, i18n, read]);
@@ -143,7 +143,7 @@ export function usePopup(client: PopupClient, i18n: I18n, enabled = true) {
   }, [client, i18n, preset, show, translate]);
 
   const openLearning = useCallback(async () => { try { await client.openLearning(); } catch (error) { show(error instanceof Error ? error.message : String(error), true); } }, [client, show]);
-  return { notice, busy, translating, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
+  return { notice, busy, translating, context, cache, auto, cacheRestore, quick, appearance, preset, setPreset, refreshContext, refreshCache, refreshAuto, refreshCacheRestore, refreshQuick, refreshAppearance, translate, cancel, pageAction, toggleSite, changeAppearance, applyPreset, openLearning };
 }
 
 export function contextHint(value: EffectiveContext, i18n: I18n) {

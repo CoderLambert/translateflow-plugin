@@ -6,7 +6,7 @@ export async function writePublicSettings(value) {
   const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const patch = {};
   if (Object.hasOwn(input, "youtubeSubtitleMode")) {
-    if (!["bilingual", "original", "off"].includes(input.youtubeSubtitleMode)) throw configError("字幕模式无效。");
+    if (!["bilingual", "translated", "original", "off"].includes(input.youtubeSubtitleMode)) throw configError("字幕模式无效。");
     patch.youtubeSubtitleMode = input.youtubeSubtitleMode;
   }
   if (Object.hasOwn(input, "youtubeSubtitleSize")) {

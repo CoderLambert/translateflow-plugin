@@ -148,7 +148,7 @@
     }
 
     function consumeState(state) {
-      if (state.blockedByError) renderer.setStatusKey("content.subtitle.translationUnavailable", "error");
+      if (state.blockedByError) renderer.setStatusKey(mode === "translated" ? "content.subtitle.translationOnlyUnavailable" : "content.subtitle.translationUnavailable", "error");
     }
 
     async function start() {

@@ -5,7 +5,7 @@
   const { select: createSelect } = app.modules.uiPrimitives;
   const locale = app.modules.contentI18n;
   const t = (key, args) => locale.t(key, args);
-  const MODES = Object.freeze(["bilingual", "original", "off"]);
+  const MODES = Object.freeze(["bilingual", "translated", "original", "off"]);
   const SIZES = Object.freeze(["small", "standard", "large"]);
   const SIZE_PX = Object.freeze({ small: 15, standard: 18, large: 22 });
 
@@ -51,7 +51,7 @@ ${app.modules.uiTokens.css}
       modeSelect = createSelect({
         label: t("content.subtitle.modeAria"),
         value: mode,
-        options: [["bilingual", "content.subtitle.bilingual"], ["original", "content.subtitle.original"], ["off", "content.subtitle.off"]]
+        options: [["bilingual", "content.subtitle.bilingual"], ["translated", "content.subtitle.translated"], ["original", "content.subtitle.original"], ["off", "content.subtitle.off"]]
           .map(([value, key]) => ({ value, label: t(key) })),
         className: "tf-subtitle-mode"
       });
@@ -171,9 +171,9 @@ ${app.modules.uiTokens.css}
       host.style.setProperty("--tf-subtitle-size", `${SIZE_PX[size] || SIZE_PX.standard}px`);
       if (modeSelect) modeSelect.value = mode;
       if (presetSelect) presetSelect.value = presetValue;
-      if (sizeSelect) { sizeSelect.value = size; sizeSelect.disabled = mode !== "bilingual"; }
+      if (sizeSelect) { sizeSelect.value = size; sizeSelect.disabled = mode === "original" || mode === "off"; }
       const off = mode === "off";
-      originalEl?.classList.toggle("hidden", off || !originalEl.textContent);
+      originalEl?.classList.toggle("hidden", off || mode === "translated" || !originalEl.textContent);
       translatedEl?.classList.toggle("hidden", off || mode === "original" || !translatedEl.textContent);
       statusEl?.classList.toggle("hidden", off || !statusEl.textContent);
     }
@@ -182,7 +182,7 @@ ${app.modules.uiTokens.css}
       locale.bindAttribute(modeSelect, "aria-label", "content.subtitle.modeAria");
       locale.bindAttribute(presetSelect, "aria-label", "content.subtitle.presetAria");
       locale.bindAttribute(sizeSelect, "aria-label", "content.subtitle.sizeAria");
-      const modeKeys = ["content.subtitle.bilingual", "content.subtitle.original", "content.subtitle.off"];
+      const modeKeys = ["content.subtitle.bilingual", "content.subtitle.translated", "content.subtitle.original", "content.subtitle.off"];
       [...modeSelect.options].forEach((option, index) => locale.bindText(option, modeKeys[index]));
       const sizeKeys = ["content.subtitle.small", "content.subtitle.standard", "content.subtitle.large"];
       [...sizeSelect.options].forEach((option, index) => locale.bindText(option, sizeKeys[index]));

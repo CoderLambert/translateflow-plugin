@@ -46,6 +46,16 @@ button, a, select, summary { -webkit-tap-highlight-color: transparent; }
   scrollbar-color: var(--tf-control-track) transparent;
   scroll-padding-block: 8px;
 }
+.context-recovery {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px;
+  border: 1px solid var(--tf-border-main); border-radius: 14px; background: var(--tf-bg-card);
+}
+.recovery-symbol { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 9px; background: var(--tf-bg-subtle); color: var(--tf-text-secondary); }
+.recovery-copy { display: grid; gap: 7px; min-width: 0; }
+.recovery-copy strong { color: var(--tf-text-strong); font-size: 12px; }
+.recovery-copy p { margin: 0; color: var(--tf-text-secondary); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.recovery-retry { display: inline-flex; align-items: center; justify-content: center; gap: 6px; justify-self: start; min-height: 34px; padding: 6px 10px; font-size: 12px; }
+.recovery-retry .popup-icon, .recovery-retry .action-spinner { width: 15px; height: 15px; }
 .popup-loading { padding: 20px 16px; }
 .popup-loading strong { color: var(--tf-text-strong); font-size: 15px; }
 .popup-loading p { color: var(--tf-text-secondary); }

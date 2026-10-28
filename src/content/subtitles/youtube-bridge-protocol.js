@@ -54,7 +54,7 @@
         return Object.keys(payload).length === 0;
       case "HELLO":
         return Object.keys(payload).every((key) => key === "mode")
-          && (payload.mode === undefined || (typeof payload.mode === "string" && ["bilingual", "original", "off"].includes(payload.mode)));
+          && (payload.mode === undefined || (typeof payload.mode === "string" && ["bilingual", "translated", "original", "off"].includes(payload.mode)));
       case "VIDEO_CHANGED":
         return Object.keys(payload).every((key) => key === "reason")
           && (payload.reason === undefined || boundedString(payload.reason, 128, { allowEmpty: false }));

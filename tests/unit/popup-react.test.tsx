@@ -90,6 +90,29 @@ test.each([
   await waitFor(() => expect(screen.getByRole("button", { name: "Translate current page" }).hasAttribute("disabled")).toBe(false));
 });
 
+test("context retry retains its explanation while pending and recovers after repeated failure", async () => {
+  const pending = deferred<Awaited<ReturnType<PopupClient["context"]>>>();
+  const context = vi.fn().mockRejectedValueOnce(new Error("Protected page: open an HTTP or HTTPS page."))
+    .mockRejectedValueOnce(new Error("Page is still unavailable."))
+    .mockImplementation(() => pending.promise);
+  render(<App client={clientDouble({ context })} />);
+  const card = await screen.findByRole("alert", { name: "Page information unavailable" });
+  expect(card.textContent).toContain("Protected page");
+  await userEvent.selectOptions(await screen.findByRole("combobox", { name: "Translation method" }), "ai");
+  expect(screen.getByText("Pending application")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await waitFor(() => expect(card.textContent).toContain("Page is still unavailable."));
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(card.getAttribute("aria-busy")).toBe("true");
+  expect(card.textContent).toContain("Page is still unavailable.");
+  expect(screen.getByRole("button", { name: "Reading again…" }).hasAttribute("disabled")).toBe(true);
+  expect(context).toHaveBeenCalledTimes(3);
+  await act(async () => pending.resolve({ hostname: "recovered.test", provider: "deepseek", model: "model" }));
+  await screen.findByText("recovered.test");
+  expect(screen.getByText("Pending application")).toBeTruthy();
+  expect(screen.queryByRole("alert", { name: "Page information unavailable" })).toBeNull();
+});
+
 test("page action failure stays recoverable and a retry can succeed", async () => {
   const action = vi.fn().mockResolvedValueOnce({ ok: false, error: "synthetic failure" }).mockResolvedValueOnce({ ok: true, hidden: true });
   const client = clientDouble({ action } as Partial<PopupClient>);

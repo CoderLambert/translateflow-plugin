@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "task": "popup-retry-subtitle-translation-only",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "check"
+    ],
+    [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    [
+      "npm",
+      "run",
+      "test:unit",
+      "--",
+      "tests/unit/popup-react.test.tsx",
+      "tests/unit/options-react.test.tsx"
+    ],
+    [
+      "env",
+      "TF_E2E_ARTIFACT=dist/extension",
+      "TF_TEST_WORKERS=2",
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "e2e/popup-polish.spec.mjs",
+      "e2e/popup-native.spec.mjs",
+      "e2e/youtube-subtitles.spec.mjs",
+      "e2e/subtitles.spec.mjs",
+      "--retries=0"
+    ]
+  ],
+  "nextAction": "0.8.54 已完成本地验证、截图复核和提交交付；尚未获远端同步或合入授权。"
+}
