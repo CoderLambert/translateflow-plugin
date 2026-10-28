@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "ai-service-settings-polish",
+  "status": "reviewing",
+  "owner": "main",
+  "dependencies": [],
+  "branch": "feat/unified-reading-polish",
+  "candidateHead": null,
+  "mergeHead": null,
+  "artifactRequired": true,
+  "validationCommands": [
+    [
+      "npm",
+      "run",
+      "commit:prepare"
+    ]
+  ],
+  "nextAction": "0.8.57 构建完成后交付用户人工试用；未推送或合入。"
+}

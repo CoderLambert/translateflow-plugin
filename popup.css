@@ -245,3 +245,19 @@ a:focus-visible, .mt-consent input:focus-visible, .status-banner:focus-visible,
 .input-translation-entry small { display:block; margin-top:2px; color:var(--tf-text-secondary); font-size:11px; }
 .input-entry-icon { color:var(--tf-green-800); font-size:20px; }
 .input-translation-entry:focus-visible { outline:2px solid var(--tf-green-700); outline-offset:2px; }
+
+.popup-select { min-width:0; width:100%; }
+.popup-select-trigger { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:36px; padding:8px 10px; border:1px solid var(--tf-border-main); border-radius:9px; background:var(--tf-bg-card); color:var(--tf-text-strong); font:inherit; font-size:12px; text-align:left; box-shadow:0 1px 2px rgba(0,0,0,.03); cursor:pointer; }
+.popup-select-trigger > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.popup-select-trigger:hover:not(:disabled),.popup-select-trigger[aria-expanded=true] { border-color:var(--tf-green-600); background:var(--tf-green-50); }
+.popup-select-trigger:focus-visible { outline:2px solid var(--tf-green-700); outline-offset:2px; }
+.popup-select-trigger:disabled { opacity:.5; cursor:default; }
+.popup-select-chevron { flex-shrink:0; width:6px; height:6px; margin:-3px 2px 0; border-right:1.5px solid var(--tf-text-secondary); border-bottom:1.5px solid var(--tf-text-secondary); transform:rotate(45deg); }
+.popup-select-menu { z-index:10000; overflow:auto; padding:5px; border:1px solid var(--tf-border-main); border-radius:10px; background:var(--tf-bg-card); box-shadow:0 8px 28px rgba(20,35,25,.18); color:var(--tf-text-main); font:12px/1.4 var(--tf-font-family); scrollbar-width:thin; }
+.popup-select-option { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:33px; padding:7px 9px; border-radius:6px; cursor:pointer; }
+.popup-select-option > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.popup-select-option.highlighted { background:var(--tf-bg-subtle); }
+.popup-select-option[aria-selected=true] { background:var(--tf-green-100); color:var(--tf-green-800); font-weight:550; }
+.popup-select-option[aria-disabled=true] { opacity:.45; cursor:default; }
+.popup-select.appearance-select { width:152px; flex:0 0 152px; padding:0; }
+@media(max-width:340px) { .popup-select.appearance-select { width:126px; flex-basis:126px; } }

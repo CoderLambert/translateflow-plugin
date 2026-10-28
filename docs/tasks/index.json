@@ -251,6 +251,13 @@
       "candidateHead": "a3812cf06fd26f07963ed9536e446ff4615f5e97"
     },
     {
+      "task": "ai-service-settings-polish",
+      "status": "reviewing",
+      "dependencies": [],
+      "branch": "feat/unified-reading-polish",
+      "candidateHead": null
+    },
+    {
       "task": "ai-translation-reliability",
       "status": "ready_to_sync",
       "dependencies": [],

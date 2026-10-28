@@ -311,12 +311,12 @@ export const zh_CN = Object.freeze({
   "preset.news.description": "新闻 / 报道 / 时事文章",
   "preset.natural.label": "Natural",
   "preset.natural.description": "日常阅读 / 流畅自然表达",
-  "appearance.standard.label": "Standard",
+  "appearance.standard.label": "标准",
   "appearance.standard.description": "适合一般双语阅读的均衡间距与对比度。",
-  "appearance.compact.label": "Compact",
+  "appearance.compact.label": "紧凑",
   "appearance.compact.description": "减少间距，适合密集文档和列表较多的页面。",
-  "appearance.reading.label": "Reading",
+  "appearance.reading.label": "舒适阅读",
   "appearance.reading.description": "更宽松的间距与更清晰的分隔，适合长文阅读。",
-  "appearance.minimal.label": "Minimal",
+  "appearance.minimal.label": "极简",
   "appearance.minimal.description": "弱化额外装饰，尽量贴近网页原有排版。"
 });
